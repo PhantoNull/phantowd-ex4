@@ -9,10 +9,10 @@ after application discovery. The Proxmox example uses NFSv3 over TCP with a
 systemd automount and makes an LXC service require the real mount.
 
 Review and replace every example address, UID/GID, path, VMID, and unit name
-before use. The v1.1 wrapper has passed manual execution and a controlled live
-APKG rescan. The first real boot test used the incomplete v1.0 package and did
-not start rpcbind/NFS; a second reboot is still required to prove v1.1 boot
-persistence.
+before use. The v1.1 wrapper has passed manual execution, a controlled live
+APKG rescan, and a coordinated NAS reboot. Its exact export was removed during
+shutdown and returned automatically after boot without invoking the persistent
+NFS script manually.
 
 These helpers do not modify the firmware SquashFS or raw flash.
 
@@ -39,3 +39,8 @@ chmod 0644 apkg.sign
 The APKG directory is placed on Volume 1 so its backgrounded start script can
 wait for the exported directory on Volume 2. The persistent NFS script remains
 under `/usr/local/config`.
+
+Do not treat a global APKG rescan as an isolated package test. On the observed
+firmware it also cycles unrelated vendor applications, and one rescan left the
+Apache control panel stuck in graceful shutdown. Verify shared services after
+any rescan, or prefer a coordinated reboot with storage clients quiesced.
