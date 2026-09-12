@@ -1,0 +1,5 @@
+menu "PhantoWD packages"
+
+# Project packages will be sourced here as they are introduced.
+
+endmenu
