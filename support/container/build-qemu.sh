@@ -1,0 +1,118 @@
+#!/bin/sh
+set -eu
+
+external_dir="${PHANTOWD_EXTERNAL_DIR:-/external}"
+workspace_dir="${PHANTOWD_WORKSPACE_DIR:-/workspace}"
+
+# This file is maintained by the project and contains no executable secrets.
+# shellcheck disable=SC1091
+. "$external_dir/versions.env"
+
+buildroot_archive="buildroot-$BUILDROOT_VERSION.tar.xz"
+buildroot_url="https://buildroot.org/downloads/$buildroot_archive"
+buildroot_signature="$buildroot_archive.sign"
+buildroot_source="$workspace_dir/buildroot-$BUILDROOT_VERSION"
+download_dir="$workspace_dir/dl"
+key_file="$workspace_dir/buildroot-release-key.asc"
+gnupg_dir="$workspace_dir/gnupg"
+
+mkdir -p "$workspace_dir" "$download_dir/linux"
+
+download_verified() {
+    url="$1"
+    destination="$2"
+    expected_sha256="$3"
+
+    if [ ! -f "$destination" ]; then
+        temporary="$destination.part"
+        curl --fail --location --proto '=https' --tlsv1.2 \
+            --output "$temporary" "$url"
+        mv "$temporary" "$destination"
+    fi
+
+    printf '%s  %s\n' "$expected_sha256" "$destination" | sha256sum --check --status
+}
+
+download_verified \
+    "$BUILDROOT_SIGNING_KEY_URL" \
+    "$key_file" \
+    "$BUILDROOT_SIGNING_KEY_SHA256"
+
+if [ ! -f "$workspace_dir/$buildroot_signature" ]; then
+    curl --fail --location --proto '=https' --tlsv1.2 \
+        --output "$workspace_dir/$buildroot_signature.part" \
+        "$buildroot_url.sign"
+    mv "$workspace_dir/$buildroot_signature.part" \
+        "$workspace_dir/$buildroot_signature"
+fi
+
+rm -rf "$gnupg_dir"
+install -d -m 0700 "$gnupg_dir"
+GNUPGHOME="$gnupg_dir" gpg --batch --quiet --import "$key_file"
+signature_status="$(GNUPGHOME="$gnupg_dir" gpg --batch --status-fd=1 \
+    --verify "$workspace_dir/$buildroot_signature" 2>/dev/null)"
+printf '%s\n' "$signature_status" | grep -F \
+    "[GNUPG:] VALIDSIG $BUILDROOT_SIGNING_KEY_FINGERPRINT " >/dev/null
+grep -F \
+    "SHA256: $BUILDROOT_ARCHIVE_SHA256  $buildroot_archive" \
+    "$workspace_dir/$buildroot_signature" >/dev/null
+
+download_verified \
+    "$buildroot_url" \
+    "$workspace_dir/$buildroot_archive" \
+    "$BUILDROOT_ARCHIVE_SHA256"
+
+linux_archive="linux-$LINUX_VERSION.tar.xz"
+download_verified \
+    "https://cdn.kernel.org/pub/linux/kernel/v6.x/$linux_archive" \
+    "$download_dir/linux/$linux_archive" \
+    "$LINUX_ARCHIVE_SHA256"
+
+if [ ! -f "$buildroot_source/.phantowd-source-ready" ]; then
+    source_stage="$workspace_dir/.buildroot-$BUILDROOT_VERSION.extracting"
+    if [ -e "$source_stage" ]; then
+        echo "Incomplete Buildroot extraction exists at $source_stage" >&2
+        exit 1
+    fi
+    mkdir "$source_stage"
+    tar --extract --xz --file "$workspace_dir/$buildroot_archive" \
+        --directory "$source_stage" --strip-components=1
+    touch "$source_stage/.phantowd-source-ready"
+    mv "$source_stage" "$buildroot_source"
+fi
+
+config_file="$external_dir/configs/phantowd_qemu_armv5_defconfig"
+release_file="$external_dir/board/qemu/armv5/rootfs-overlay/etc/phantowd-release"
+grep -F "BR2_LINUX_KERNEL_CUSTOM_VERSION_VALUE=\"$LINUX_VERSION\"" \
+    "$config_file" >/dev/null
+grep -F "PHANTOWD_KERNEL_VERSION=$LINUX_VERSION" "$release_file" >/dev/null
+config_hash="$(sha256sum "$config_file" | cut -c1-16)"
+output_dir="$workspace_dir/output/$BUILDROOT_VERSION-$config_hash"
+
+make -C "$buildroot_source" \
+    BR2_EXTERNAL="$external_dir" \
+    BR2_DL_DIR="$download_dir" \
+    O="$output_dir" \
+    phantowd_qemu_armv5_defconfig
+
+make -C "$buildroot_source" \
+    BR2_EXTERNAL="$external_dir" \
+    BR2_DL_DIR="$download_dir" \
+    O="$output_dir" \
+    -j"$(getconf _NPROCESSORS_ONLN)"
+
+"$external_dir/support/qemu-smoke.sh" \
+    "$output_dir/images" "$output_dir/qemu-smoke.log" "$LINUX_VERSION"
+
+artifact_dir="$external_dir/artifacts/qemu-armv5"
+install -d -m 0755 "$artifact_dir"
+install -m 0644 "$output_dir/images/zImage" "$artifact_dir/zImage"
+install -m 0644 "$output_dir/images/versatile-pb.dtb" "$artifact_dir/versatile-pb.dtb"
+install -m 0644 "$output_dir/images/rootfs.ext2" "$artifact_dir/rootfs.ext2"
+install -m 0644 "$output_dir/qemu-smoke.log" "$artifact_dir/qemu-smoke.log"
+(
+    cd "$artifact_dir"
+    sha256sum zImage versatile-pb.dtb rootfs.ext2 > SHA256SUMS
+)
+
+printf 'Build and smoke test passed. Artifacts: %s\n' "$artifact_dir"

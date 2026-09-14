@@ -8,3 +8,7 @@ external.desc text eol=lf
 *.md text eol=lf
 *.rc text eol=lf
 *.b64 text eol=lf
+*.env text eol=lf
+*.yml text eol=lf
+Dockerfile text eol=lf
+Makefile text eol=lf

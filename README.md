@@ -6,7 +6,8 @@ is a small Buildroot system with modern, deliberately selected components,
 reproducible builds, safe recovery, and signed model-specific updates.
 
 The project is at the **hardware discovery and non-destructive bring-up**
-stage. It does not yet produce a flashable replacement firmware.
+stage. It does not yet produce a flashable replacement firmware. It now has a
+separately named ARMv5 QEMU baseline for software-only development.
 
 ## Current work
 
@@ -18,6 +19,26 @@ stage. It does not yet produce a flashable replacement firmware.
 - design signed, model-specific updates with rollback protection;
 - keep a legacy NFS integration available while replacement-firmware work is
   in progress.
+
+## Pinned QEMU baseline
+
+The source baseline is pinned to Buildroot 2025.02.18 and Linux 6.18.50. The
+Buildroot release signature, signing-key fingerprint, Buildroot archive hash,
+and Linux archive hash are verified before use. On Windows with Docker Desktop:
+
+```powershell
+.\support\build-qemu.ps1
+```
+
+The build must reach the `PHANTOWD_QEMU_READY` marker on an emulated ARM926
+CPU. Resulting files under `artifacts/qemu-armv5/` are explicitly non-flashable.
+They test the ARMv5 software foundation only; QEMU does not emulate the EX4's
+NAND, SATA, fan, display, LEDs, watchdog, buttons, or management controller.
+
+`BR2_REPRODUCIBLE` is enabled, but bit-for-bit reproducibility is not claimed
+until two clean builds in independently provisioned environments have been
+compared. The container base image is digest-pinned; Debian build-dependency
+packages are not yet tied to an immutable snapshot.
 
 The project mascot and future logo are a small ghost: the **PhantoWD**.
 
@@ -35,7 +56,9 @@ read-only-first policy, and initial boot experiments must avoid NAND writes.
 ## Repository layout
 
 - `board/wd/ex4/` — board notes and future Buildroot board support;
-- `configs/` — future reproducible Buildroot defconfigs;
+- `board/qemu/armv5/` — non-flashable ARMv5 software test target;
+- `configs/` — reproducible Buildroot defconfigs;
+- `support/` — pinned container build and QEMU smoke-test tooling;
 - `contrib/legacy-nfs/` — current legacy-firmware NFS persistence helpers;
 - `doc/` — private runtime wiki, intentionally ignored by Git;
 - `Config.in`, `external.mk`, `external.desc` — Buildroot external-tree

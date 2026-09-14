@@ -5,6 +5,8 @@
 /output/
 /dl/
 /build/
+/.cache/
+/artifacts/
 
 # Firmware images, device dumps, and proprietary inputs.
 *.bin
