@@ -35,6 +35,10 @@ CPU. Resulting files under `artifacts/qemu-armv5/` are explicitly non-flashable.
 They test the ARMv5 software foundation only; QEMU does not emulate the EX4's
 NAND, SATA, fan, display, LEDs, watchdog, buttons, or management controller.
 
+A separate compile-only Linux 6.18 EX4 device-tree baseline is available with
+`.\support\build-ex4-dtb.ps1`. It intentionally disables raw NAND and SDIO,
+and its output under `artifacts/ex4-dtb-research/` is also non-flashable.
+
 `BR2_REPRODUCIBLE` is enabled, but bit-for-bit reproducibility is not claimed
 until two clean builds in independently provisioned environments have been
 compared. The container base image is digest-pinned; Debian build-dependency
@@ -76,8 +80,11 @@ Digital. WD and My Cloud are trademarks of their respective owner.
 
 ## Licensing
 
-No project-wide software license has been selected yet. Until one is added,
-the repository is source-available for review but grants no general reuse
-license. Contributions must retain upstream copyright and license notices.
-Vendor firmware, keys, device dumps, and other proprietary artifacts must not
-be committed.
+Original PhantoWD source code, build tooling, and documentation are licensed
+under Apache-2.0. Linux-derived device trees and kernel changes remain
+GPL-2.0-only, and third-party components retain their upstream licenses.
+See [LICENSE-POLICY.md](LICENSE-POLICY.md) and `REUSE.toml` for the per-file
+rules.
+
+Vendor firmware, keys, device dumps, proprietary binaries, and other
+non-redistributable artifacts must not be committed.

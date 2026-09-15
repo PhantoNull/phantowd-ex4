@@ -36,11 +36,27 @@ jobs:
             phantowd/buildroot:ci \
             /external/support/container/build-qemu.sh
 
+      - name: Compile EX4 device-tree research baseline
+        run: |
+          docker run --rm \
+            --mount type=bind,source="$PWD",target=/external \
+            --mount type=volume,source=phantowd-ci-${{ github.run_id }},target=/workspace \
+            phantowd/buildroot:ci \
+            /external/support/container/build-ex4-dtb.sh
+
       - name: Upload non-flashable QEMU artifacts
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: phantowd-qemu-armv5
           path: artifacts/qemu-armv5/
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Upload non-flashable EX4 DTB research artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: phantowd-ex4-dtb-research
+          path: artifacts/ex4-dtb-research/
           if-no-files-found: error
           retention-days: 7
 
