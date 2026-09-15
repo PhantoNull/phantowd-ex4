@@ -1,0 +1,49 @@
+name: QEMU ARMv5 baseline
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: qemu-armv5-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-boot:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Build pinned environment
+        run: docker build --file support/docker/Dockerfile --tag phantowd/buildroot:ci .
+
+      - name: Create isolated build volume
+        run: docker volume create phantowd-ci-${{ github.run_id }}
+
+      - name: Build and boot ARMv5 image
+        run: |
+          docker run --rm \
+            --mount type=bind,source="$PWD",target=/external \
+            --mount type=volume,source=phantowd-ci-${{ github.run_id }},target=/workspace \
+            phantowd/buildroot:ci \
+            /external/support/container/build-qemu.sh
+
+      - name: Upload non-flashable QEMU artifacts
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: phantowd-qemu-armv5
+          path: artifacts/qemu-armv5/
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Remove isolated build volume
+        if: always()
+        run: docker volume rm phantowd-ci-${{ github.run_id }} || true

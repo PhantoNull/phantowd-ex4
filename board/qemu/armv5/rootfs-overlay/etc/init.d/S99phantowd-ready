@@ -1,0 +1,33 @@
+#!/bin/sh
+
+case "$1" in
+    start)
+        # shellcheck disable=SC1091 # installed into the target rootfs
+        . /etc/phantowd-release
+        running_kernel="$(uname -r)"
+        running_arch="$(uname -m)"
+
+        if [ "$running_kernel" != "$PHANTOWD_KERNEL_VERSION" ]; then
+            echo "PHANTOWD_QEMU_ERROR expected-kernel=$PHANTOWD_KERNEL_VERSION actual-kernel=$running_kernel"
+            exit 1
+        fi
+
+        case "$running_arch" in
+            armv5*) ;;
+            *)
+                echo "PHANTOWD_QEMU_ERROR expected-arch=armv5 actual-arch=$running_arch"
+                exit 1
+                ;;
+        esac
+
+        echo "PHANTOWD_QEMU_READY target=$PHANTOWD_TARGET kernel=$running_kernel arch=$running_arch flashable=$PHANTOWD_FLASHABLE"
+        ;;
+    stop)
+        ;;
+    *)
+        echo "Usage: $0 {start|stop}"
+        exit 1
+        ;;
+esac
+
+exit 0
