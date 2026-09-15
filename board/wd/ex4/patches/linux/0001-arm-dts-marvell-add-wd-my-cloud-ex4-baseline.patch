@@ -1,0 +1,173 @@
+From: PhantoWD EX4 contributors
+Subject: [PATCH] ARM: dts: marvell: add WD My Cloud EX4 research baseline
+
+Add a deliberately incomplete WD My Cloud EX4 device tree for compile-time
+research against Linux 6.18. The raw NAND controller and SDIO remain disabled:
+two published NAND unit-address names are malformed and NAND write/ECC
+semantics remain unqualified, while the SDIO pin group conflicts with the
+second UART used by the management controller.
+
+The board description is derived from the GPL-2.0 device trees published by
+bodhi in the Doozan EX4 thread:
+
+  https://forum.doozan.com/file.php?2,file=7344,filename=kirkwood-wd-common.dtsi
+  SHA-256: 77664ae7649f9306da8c6164a45703ecb0e6cb471759389adad30975fc8b3e45
+
+  https://forum.doozan.com/file.php?2,file=7348,filename=kirkwood-wd-mycloud-ex4.dts
+  SHA-256: df837f7a56995b579908a7dc0d038587020ab5566b8b24b66ea73f5844078af1
+
+This patch is a non-flashable research artifact. It has not been validated on
+EX4 hardware.
+
+---
+ .../bindings/arm/marvell/marvell,kirkwood.yaml     |  1 +
+ arch/arm/boot/dts/marvell/Makefile                 |  3 +-
+ .../dts/marvell/kirkwood-wd-mycloud-ex4.dts        | 113 +++++++++++++++++++++
+ 3 files changed, 116 insertions(+), 1 deletion(-)
+ create mode 100644 arch/arm/boot/dts/marvell/kirkwood-wd-mycloud-ex4.dts
+
+diff --git a/Documentation/devicetree/bindings/arm/marvell/marvell,kirkwood.yaml b/Documentation/devicetree/bindings/arm/marvell/marvell,kirkwood.yaml
+index 0a2afccbba5e..d7467b770643 100644
+--- a/Documentation/devicetree/bindings/arm/marvell/marvell,kirkwood.yaml
++++ b/Documentation/devicetree/bindings/arm/marvell/marvell,kirkwood.yaml
+@@ -185,6 +185,7 @@ properties:
+               - linksys,viper
+               - marvell,db-88f6282-bp
+               - zyxel,nsa325
++              - wd,my-cloud-ex4
+           - const: marvell,kirkwood-88f6282
+           - const: marvell,kirkwood
+ 
+diff --git a/arch/arm/boot/dts/marvell/Makefile b/arch/arm/boot/dts/marvell/Makefile
+index bb3c9921f180..b24d40d22a80 100644
+--- a/arch/arm/boot/dts/marvell/Makefile
++++ b/arch/arm/boot/dts/marvell/Makefile
+@@ -161,5 +161,6 @@ dtb-$(CONFIG_MACH_KIRKWOOD) += \
+ 	kirkwood-topkick.dtb \
+ 	kirkwood-ts219-6281.dtb \
+ 	kirkwood-ts219-6282.dtb \
+ 	kirkwood-ts419-6281.dtb \
+-	kirkwood-ts419-6282.dtb
++	kirkwood-ts419-6282.dtb \
++	kirkwood-wd-mycloud-ex4.dtb
+diff --git a/arch/arm/boot/dts/marvell/kirkwood-wd-mycloud-ex4.dts b/arch/arm/boot/dts/marvell/kirkwood-wd-mycloud-ex4.dts
+new file mode 100644
+index 000000000000..7110f00b0143
+--- /dev/null
++++ b/arch/arm/boot/dts/marvell/kirkwood-wd-mycloud-ex4.dts
+@@ -0,0 +1,113 @@
++// SPDX-License-Identifier: GPL-2.0-only
++/*
++ * Device tree for the Western Digital My Cloud EX4.
++ *
++ * Copyright (c) 2025 bodhi <mibodhi@gmail.com>
++ * Copyright (c) 2026 PhantoWD EX4 contributors
++ *
++ * Research baseline only. This description is incomplete and has not been
++ * validated on hardware.
++ */
++
++/dts-v1/;
++
++#include "kirkwood.dtsi"
++#include "kirkwood-6282.dtsi"
++
++/ {
++	model = "Western Digital My Cloud EX4";
++	compatible = "wd,my-cloud-ex4", "marvell,kirkwood-88f6282",
++		     "marvell,kirkwood";
++
++	memory@0 {
++		device_type = "memory";
++		reg = <0x00000000 0x20000000>;
++	};
++
++	chosen {
++		stdout-path = &uart0;
++	};
++
++	aliases {
++		serial0 = &uart0;
++		serial1 = &uart1;
++		ethernet0 = &eth0port;
++		ethernet1 = &eth1port;
++	};
++};
++
++&uart0 {
++	status = "okay";
++};
++
++/*
++ * UART1 is connected to the enclosure management controller according to
++ * community hardware testing. It is not selected as a console.
++ */
++&uart1 {
++	status = "okay";
++};
++
++&sata {
++	nr-ports = <2>;
++	status = "okay";
++};
++
++&mdio {
++	status = "okay";
++
++	ethphy0: ethernet-phy@0 {
++		reg = <0>;
++	};
++
++	ethphy1: ethernet-phy@1 {
++		reg = <1>;
++	};
++};
++
++&eth0 {
++	status = "okay";
++};
++
++&eth0port {
++	phy-handle = <&ethphy0>;
++};
++
++&eth1 {
++	status = "okay";
++};
++
++&eth1port {
++	phy-handle = <&ethphy1>;
++};
++
++&i2c0 {
++	status = "okay";
++};
++
++/* The enclosure uses a separate IDT 1337G RTC path. */
++&rtc {
++	status = "disabled";
++};
++
++&pciec {
++	status = "okay";
++};
++
++&pcie0 {
++	status = "okay";
++};
++
++&pcie1 {
++	status = "okay";
++};
++
++/* Safety boundary: do not expose unverified raw NAND from this baseline. */
++&nand {
++	status = "disabled";
++};
++
++/* MPP13/14 conflict with UART1; keep SDIO disabled until verified. */
++&sdio {
++	status = "disabled";
++};
+-- 
+2.51.0
