@@ -35,6 +35,14 @@ CPU. Resulting files under `artifacts/qemu-armv5/` are explicitly non-flashable.
 They test the ARMv5 software foundation only; QEMU does not emulate the EX4's
 NAND, SATA, fan, display, LEDs, watchdog, buttons, or management controller.
 
+The first product-owned package is a [read-only diagnostics API](src/phantowd-api/README.md).
+It runs unprivileged on guest loopback only, has no storage/hardware controls,
+and has no authentication/TLS yet. The QEMU test checks its ARMv5 metadata,
+GET/negative request contract, and a smoke-only RSS ceiling. Guest networking
+is restricted and no ports or physical devices are forwarded.
+Run `.\support\test-api.ps1` for fast offline host-native tests; the complete
+build runs those tests again with Buildroot's hash-verified Linux Go compiler.
+
 A separate compile-only Linux 6.18 EX4 device-tree baseline is available with
 `.\support\build-ex4-dtb.ps1`. It intentionally disables raw NAND and SDIO,
 and its output under `artifacts/ex4-dtb-research/` is also non-flashable.

@@ -99,7 +99,20 @@ make -C "$buildroot_source" \
     BR2_EXTERNAL="$external_dir" \
     BR2_DL_DIR="$download_dir" \
     O="$output_dir" \
+    phantowd-api-dirclean
+
+# Clean only the generated local-package directory: rsync alone can retain
+# deleted source files. Dependencies stay cached; all regenerates the rootfs.
+make -C "$buildroot_source" \
+    BR2_EXTERNAL="$external_dir" \
+    BR2_DL_DIR="$download_dir" \
+    O="$output_dir" \
     -j"$(getconf _NPROCESSORS_ONLN)"
+
+GOCACHE="$workspace_dir/api-host-cache" \
+    sh "$external_dir/support/container/test-api.sh" \
+    "$output_dir/host/bin/go" "$external_dir/src/phantowd-api" \
+    "$output_dir/api-host-tests"
 
 "$external_dir/support/qemu-smoke.sh" \
     "$output_dir/images" "$output_dir/qemu-smoke.log" "$LINUX_VERSION"
@@ -110,9 +123,11 @@ install -m 0644 "$output_dir/images/zImage" "$artifact_dir/zImage"
 install -m 0644 "$output_dir/images/versatile-pb.dtb" "$artifact_dir/versatile-pb.dtb"
 install -m 0644 "$output_dir/images/rootfs.ext2" "$artifact_dir/rootfs.ext2"
 install -m 0644 "$output_dir/qemu-smoke.log" "$artifact_dir/qemu-smoke.log"
+install -m 0644 "$output_dir/api-host-tests/coverage.out" "$artifact_dir/api-host-coverage.out"
+install -m 0644 "$output_dir/target/usr/bin/phantowd-api" "$artifact_dir/phantowd-api"
 (
     cd "$artifact_dir"
-    sha256sum zImage versatile-pb.dtb rootfs.ext2 > SHA256SUMS
+    sha256sum zImage versatile-pb.dtb rootfs.ext2 phantowd-api > SHA256SUMS
 )
 
 printf 'Build and smoke test passed. Artifacts: %s\n' "$artifact_dir"

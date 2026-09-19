@@ -1,0 +1,29 @@
+#!/bin/sh
+
+DAEMON=/usr/bin/phantowd-api
+PIDFILE=/run/phantowd-api.pid
+
+case "$1" in
+    start)
+        printf 'Starting PhantoWD loopback diagnostics: '
+        if start-stop-daemon --start --background --make-pidfile \
+            --pidfile "$PIDFILE" --chuid phantowd:phantowd --exec "$DAEMON"; then
+            echo OK
+        else
+            echo FAIL
+            exit 1
+        fi
+        ;;
+    stop)
+        start-stop-daemon --stop --pidfile "$PIDFILE" --exec "$DAEMON"
+        rm -f "$PIDFILE"
+        ;;
+    restart)
+        "$0" stop
+        "$0" start
+        ;;
+    *)
+        echo "Usage: $0 {start|stop|restart}"
+        exit 1
+        ;;
+esac

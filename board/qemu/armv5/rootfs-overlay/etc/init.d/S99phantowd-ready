@@ -20,6 +20,35 @@ case "$1" in
                 ;;
         esac
 
+        # Probe only guest loopback; no guest-to-LAN or host forwarding exists.
+        for api_license in LICENSE Go-LICENSE; do
+            if [ ! -s "/usr/share/licenses/phantowd-api/$api_license" ]; then
+                echo 'PHANTOWD_QEMU_ERROR diagnostics-license-missing'
+                exit 1
+            fi
+        done
+        api_attempt=0
+        while ! /usr/bin/phantowd-api --self-test 2>/dev/null; do
+            api_attempt=$((api_attempt + 1))
+            if [ "$api_attempt" -ge 5 ]; then
+                echo 'PHANTOWD_QEMU_ERROR diagnostics-api-unavailable'
+                exit 1
+            fi
+            sleep 1
+        done
+        api_pid="$(cat /run/phantowd-api.pid)"
+        api_rss="$(awk '/^VmRSS:/ { print $2 }' "/proc/$api_pid/status")"
+        case "$api_rss" in
+            ''|*[!0-9]*)
+                echo 'PHANTOWD_QEMU_ERROR diagnostics-api-rss-unavailable'
+                exit 1
+                ;;
+        esac
+        if [ "$api_rss" -gt 49152 ]; then
+            echo 'PHANTOWD_QEMU_ERROR diagnostics-api-rss-budget-exceeded'
+            exit 1
+        fi
+        echo "PHANTOWD_API_RESOURCE rss_kib=$api_rss scope=qemu-smoke-only"
         echo "PHANTOWD_QEMU_READY target=$PHANTOWD_TARGET kernel=$running_kernel arch=$running_arch flashable=$PHANTOWD_FLASHABLE"
         ;;
     stop)

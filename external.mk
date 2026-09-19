@@ -1,1 +1,1 @@
-# Project package makefiles will be included here as they are introduced.
+include $(sort $(wildcard $(BR2_EXTERNAL_PHANTOWD_EX4_PATH)/package/*/*.mk))

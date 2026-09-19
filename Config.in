@@ -1,5 +1,5 @@
 menu "PhantoWD packages"
 
-# Project packages will be sourced here as they are introduced.
+source "$BR2_EXTERNAL_PHANTOWD_EX4_PATH/package/phantowd-api/Config.in"
 
 endmenu
