@@ -1,6 +1,9 @@
 # Agent instructions
 
 This repository contains safety-critical embedded-NAS research.
+General network topology, Proxmox workloads, lab costs and infrastructure
+configuration/automation belong to the separate sibling LocalLab project.
+Keep only firmware and directly NAS-related operational knowledge here.
 
 Before making changes:
 

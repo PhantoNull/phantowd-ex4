@@ -19,6 +19,8 @@ path = [
     "contrib/**",
     "external.desc",
     "external.mk",
+    "package/**",
+    "src/**",
     "support/**",
     "versions.env",
 ]

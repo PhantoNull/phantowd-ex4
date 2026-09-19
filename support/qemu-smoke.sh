@@ -32,7 +32,7 @@ done
     -serial stdio \
     -monitor none \
     -no-reboot \
-    -netdev user,id=net0 \
+    -netdev user,id=net0,restrict=on \
     -device rtl8139,netdev=net0,romfile= \
     > "$log_file" 2>&1 &
 qemu_pid=$!
@@ -48,8 +48,12 @@ trap cleanup EXIT INT TERM
 attempt=0
 while [ "$attempt" -lt 120 ]; do
     if grep -F "$ready_marker" "$log_file" >/dev/null; then
-        if grep -E 'Kernel panic|PHANTOWD_QEMU_ERROR' "$log_file" >/dev/null; then
+        if grep -E 'Kernel panic|PHANTOWD_QEMU_ERROR|PHANTOWD_API_ERROR' "$log_file" >/dev/null; then
             echo "QEMU reported a boot failure" >&2
+            exit 1
+        fi
+        if ! grep -F 'PHANTOWD_API_READY target=qemu-armv5 goarm=5' "$log_file" >/dev/null; then
+            echo "Missing ARMv5 diagnostics API assertion" >&2
             exit 1
         fi
         echo "QEMU ARMv5 smoke test passed"
