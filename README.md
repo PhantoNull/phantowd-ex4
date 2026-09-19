@@ -64,11 +64,15 @@ read-only-first policy, and initial boot experiments must avoid NAND writes.
 - `configs/` — reproducible Buildroot defconfigs;
 - `support/` — pinned container build and QEMU smoke-test tooling;
 - `contrib/legacy-nfs/` — current legacy-firmware NFS persistence helpers;
-- `doc/` — private runtime wiki, intentionally ignored by Git;
+- `doc/` — private firmware/NAS operational wiki, intentionally ignored by Git;
 - `Config.in`, `external.mk`, `external.desc` — Buildroot external-tree
   skeleton.
 
 ## Scope
+
+General topology, Proxmox-hosted apps, lab costs and infrastructure automation
+are maintained in the separate LocalLab project. This repository keeps NAS
+firmware and directly related operational evidence.
 
 The first hardware target is the WD My Cloud EX4 running vendor firmware
 2.13.108 on ARMv5/Feroceon hardware. Support for other models must use separate
