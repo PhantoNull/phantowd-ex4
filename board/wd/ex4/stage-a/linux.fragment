@@ -60,3 +60,55 @@ CONFIG_PCI=y
 # CONFIG_MAGIC_SYSRQ is not set
 # CONFIG_DEBUG_FS is not set
 # CONFIG_BPF_SYSCALL is not set
+# Stage A must not change CPU clocks, enter SoC idle/suspend states, or expose
+# generic physical-memory access while exact-device behavior is unverified.
+# CONFIG_CPU_FREQ is not set
+# CONFIG_CPU_IDLE is not set
+# CONFIG_SUSPEND is not set
+# CONFIG_PM is not set
+# CONFIG_KPROBES is not set
+# CONFIG_PROFILING is not set
+# CONFIG_DEVMEM is not set
+# CONFIG_DEVPORT is not set
+# Keep only the OF 8250 console path; remove optional serial transports.
+# CONFIG_SERIAL_8250_DMA is not set
+# CONFIG_SERIAL_8250_PCI is not set
+# CONFIG_SERIAL_8250_EXAR is not set
+# CONFIG_SERIAL_8250_DW is not set
+# CONFIG_SERIAL_8250_PERICOM is not set
+# Compile out unneeded hardware classes as defense in depth in addition to the
+# disabled DT nodes. Clock, IRQ, timer, MBUS and Kirkwood pinctrl stay enabled.
+# CONFIG_PCI_MVEBU is not set
+# CONFIG_PCIEASPM is not set
+# CONFIG_FW_LOADER is not set
+# CONFIG_SRAM is not set
+# CONFIG_SERIO is not set
+# CONFIG_HW_RANDOM is not set
+# CONFIG_POWER_RESET is not set
+# CONFIG_POWER_SUPPLY is not set
+# CONFIG_HWMON is not set
+# CONFIG_THERMAL is not set
+# CONFIG_MFD is not set
+# CONFIG_REGULATOR is not set
+# CONFIG_NEW_LEDS is not set
+# CONFIG_DMADEVICES is not set
+# CONFIG_VIRTIO_MENU is not set
+# CONFIG_STAGING is not set
+# CONFIG_IOMMU_SUPPORT is not set
+# CONFIG_WPCM450_SOC is not set
+# CONFIG_EXTCON is not set
+# CONFIG_MEMORY is not set
+# CONFIG_IIO is not set
+# CONFIG_PWM is not set
+# CONFIG_RESET_CONTROLLER is not set
+# CONFIG_PHY_MVEBU_A3700_UTMI is not set
+# CONFIG_NVMEM is not set
+# CONFIG_CONFIGFS_FS is not set
+# CONFIG_MISC_FILESYSTEMS is not set
+# CONFIG_NLS is not set
+# CONFIG_KEYS is not set
+# CONFIG_CRYPTO is not set
+# Kirkwood/ARM Kconfig forcibly retains GPIOLIB, GPIO_MVEBU,
+# SERIAL_8250_FSL, SERIAL_MCTRL_GPIO, GENERIC_PHY and PHY_MVEBU_SATA.
+# The Stage A DTB disables both GPIO controllers and both SATA PHY nodes;
+# the serial options add no separately enumerated controller.

@@ -101,14 +101,22 @@ assert_disabled() {
 
 for option in MACH_KIRKWOOD CPU_FEROCEON SERIAL_8250 \
     SERIAL_8250_CONSOLE SERIAL_OF_PLATFORM DEVTMPFS PROC_FS SYSFS TMPFS \
-    CMDLINE_FORCE EXPERT PCI BLK_DEV_INITRD; do
+    CMDLINE_FORCE EXPERT PCI BLK_DEV_INITRD GPIOLIB GPIO_MVEBU \
+    SERIAL_8250_FSL SERIAL_MCTRL_GPIO GENERIC_PHY PHY_MVEBU_SATA; do
     assert_enabled "$option"
 done
 
 for option in MODULES BLOCK MTD NET USB_SUPPORT MMC SCSI ATA MD \
     BLK_DEV_DM I2C SPI RTC_CLASS WATCHDOG SOUND KEXEC CGROUPS NAMESPACES \
     FHANDLE PERF_EVENTS COREDUMP VT UNIX98_PTYS LEGACY_PTYS MAGIC_SYSRQ \
-    DEBUG_FS BPF_SYSCALL; do
+    DEBUG_FS BPF_SYSCALL CPU_FREQ CPU_IDLE SUSPEND PM KPROBES PROFILING \
+    DEVMEM DEVPORT SERIAL_8250_DMA SERIAL_8250_PCI SERIAL_8250_EXAR \
+    SERIAL_8250_DW SERIAL_8250_PERICOM PCI_MVEBU PCIEASPM FW_LOADER \
+    SRAM SERIO HW_RANDOM \
+    POWER_RESET POWER_SUPPLY HWMON THERMAL MFD REGULATOR NEW_LEDS \
+    DMADEVICES VIRTIO_MENU STAGING IOMMU_SUPPORT WPCM450_SOC EXTCON MEMORY \
+    IIO PWM RESET_CONTROLLER PHY_MVEBU_A3700_UTMI NVMEM CONFIGFS_FS \
+    MISC_FILESYSTEMS NLS KEYS CRYPTO; do
     assert_disabled "$option"
 done
 
@@ -139,10 +147,13 @@ cat > "$artifact_dir/COMPILE-ONLY.txt" <<'EOF'
 COMPILE-ONLY SAFETY ARTIFACT — DO NOT FLASH OR BOOT YET
 
 This image has no block layer, MTD, network, USB, MMC, SCSI, ATA, mdraid,
-device mapper, I2C, SPI, RTC, watchdog, sound, modules or kexec. Mainline
-MACH_KIRKWOOD forces the unused PCI core to remain compiled in; the DTB disables
-the PCIe controller. The DTB enables only the primary serial console beyond
-mandatory core SoC infrastructure.
+device mapper, I2C, SPI, RTC, watchdog, sound, modules, kexec, CPU frequency or
+idle transitions, direct physical-memory access, or optional hardware classes.
+Mainline MACH_KIRKWOOD forces the unused PCI core plus generic GPIO/SATA-PHY
+support to remain compiled in; the PCIe host driver is absent and the DTB
+disables PCIe, both GPIO controllers and both SATA PHY nodes. ARM also retains
+two inert 8250 support helpers. The DTB enables only the primary serial console
+beyond mandatory core SoC infrastructure.
 
 The CPIO is embedded in zImage; the separate rootfs.cpio is retained for static
 inspection only. No legacy uImage wrapper or verified U-Boot load/entry address

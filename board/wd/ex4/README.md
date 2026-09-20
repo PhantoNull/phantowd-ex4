@@ -49,9 +49,13 @@ hardware validation and does not make the DTB safe to boot.
 `configs/phantowd_ex4_stage_a_defconfig` is a separate built-in-initramfs
 target for the first future serial-only RAM bring-up. Its kernel configuration
 removes the block layer, MTD, network, USB, MMC, SCSI, ATA, mdraid, device
-mapper, modules and other optional buses. Mainline `MACH_KIRKWOOD` forces the
-unused PCI core to remain compiled in, while the DTB explicitly disables the
-PCIe controller and every other known non-console peripheral.
+mapper, modules, CPU frequency/idle transitions, direct physical-memory access
+and optional hardware classes. Mainline `MACH_KIRKWOOD` forces the unused PCI
+core plus generic GPIO/SATA-PHY support to remain compiled in. The PCIe host
+driver is compiled out, while the DTB explicitly disables the PCIe controller,
+both GPIO controllers, both SATA PHY nodes and every other known non-console
+peripheral. ARM also retains two inert 8250 support helpers around the required
+serial console.
 
 Build and statically verify it with:
 
