@@ -114,6 +114,11 @@ GOCACHE="$workspace_dir/api-host-cache" \
     "$output_dir/host/bin/go" "$external_dir/src/phantowd-api" \
     "$output_dir/api-host-tests"
 
+GOCACHE="$workspace_dir/lab-tools-host-cache" \
+    sh "$external_dir/support/container/test-lab-tools.sh" \
+    "$output_dir/host/bin/go" "$external_dir/tools/phantowd-lab" \
+    "$output_dir/lab-tools-host-tests"
+
 "$external_dir/support/qemu-smoke.sh" \
     "$output_dir/images" "$output_dir/qemu-smoke.log" "$LINUX_VERSION"
 
@@ -124,6 +129,7 @@ install -m 0644 "$output_dir/images/versatile-pb.dtb" "$artifact_dir/versatile-p
 install -m 0644 "$output_dir/images/rootfs.ext2" "$artifact_dir/rootfs.ext2"
 install -m 0644 "$output_dir/qemu-smoke.log" "$artifact_dir/qemu-smoke.log"
 install -m 0644 "$output_dir/api-host-tests/coverage.out" "$artifact_dir/api-host-coverage.out"
+install -m 0644 "$output_dir/lab-tools-host-tests/coverage.out" "$artifact_dir/lab-tools-host-coverage.out"
 install -m 0644 "$output_dir/target/usr/bin/phantowd-api" "$artifact_dir/phantowd-api"
 (
     cd "$artifact_dir"
