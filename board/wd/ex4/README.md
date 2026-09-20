@@ -43,3 +43,22 @@ Compile and test the patch on Windows with Docker Desktop:
 The resulting `artifacts/ex4-dtb-research/` directory is ignored by Git and
 contains a prominent non-flashable warning. Successful compilation is not
 hardware validation and does not make the DTB safe to boot.
+
+## Stage A compile-only safety target
+
+`configs/phantowd_ex4_stage_a_defconfig` is a separate built-in-initramfs
+target for the first future serial-only RAM bring-up. Its kernel configuration
+removes the block layer, MTD, network, USB, MMC, SCSI, ATA, mdraid, device
+mapper, modules and other optional buses. Mainline `MACH_KIRKWOOD` forces the
+unused PCI core to remain compiled in, while the DTB explicitly disables the
+PCIe controller and every other known non-console peripheral.
+
+Build and statically verify it with:
+
+```powershell
+.\support\build-ex4-stage-a.ps1
+```
+
+The output is deliberately labelled compile-only. It does not prove U-Boot
+load addresses, boot commands, pinmux, clocks, thermal behavior, halt behavior
+or recovery, and must not be used on hardware before those gates are reviewed.

@@ -1,0 +1,62 @@
+CONFIG_MACH_KIRKWOOD=y
+CONFIG_CPU_FEROCEON=y
+CONFIG_AEABI=y
+CONFIG_TTY=y
+CONFIG_SERIAL_8250=y
+CONFIG_SERIAL_8250_CONSOLE=y
+CONFIG_SERIAL_OF_PLATFORM=y
+CONFIG_DEVTMPFS=y
+CONFIG_DEVTMPFS_MOUNT=y
+CONFIG_SYSFS=y
+CONFIG_PROC_FS=y
+CONFIG_TMPFS=y
+CONFIG_PRINTK_TIME=y
+CONFIG_EXPERT=y
+# CONFIG_INITRAMFS_PRESERVE_MTIME is not set
+CONFIG_CMDLINE="console=ttyS0,115200n8 rdinit=/init panic=-1"
+CONFIG_CMDLINE_FORCE=y
+# Mainline MACH_KIRKWOOD selects FORCE_PCI. The Stage A DTB disables pciec.
+CONFIG_PCI=y
+# Keep only the Kirkwood-capable MVEBU platform from multi_v5_defconfig.
+# CONFIG_ARCH_ASPEED is not set
+# CONFIG_ARCH_AT91 is not set
+# CONFIG_ARCH_MICROCHIP is not set
+# CONFIG_ARCH_DAVINCI is not set
+# CONFIG_ARCH_MXC is not set
+# CONFIG_ARCH_NPCM is not set
+# CONFIG_ARCH_WPCM450 is not set
+# CONFIG_ARCH_ORION5X is not set
+# CONFIG_ARCH_SUNXI is not set
+# CONFIG_ARCH_VERSATILE is not set
+# CONFIG_MODULES is not set
+# CONFIG_BLOCK is not set
+# CONFIG_MTD is not set
+# CONFIG_NET is not set
+# CONFIG_USB_SUPPORT is not set
+# CONFIG_MMC is not set
+# CONFIG_SCSI is not set
+# CONFIG_ATA is not set
+# CONFIG_MD is not set
+# CONFIG_BLK_DEV_DM is not set
+# CONFIG_I2C is not set
+# CONFIG_SPI is not set
+# CONFIG_RTC_CLASS is not set
+# CONFIG_WATCHDOG is not set
+# CONFIG_SOUND is not set
+# CONFIG_KEXEC is not set
+# CONFIG_DRM is not set
+# CONFIG_FB is not set
+# CONFIG_MEDIA_SUPPORT is not set
+# CONFIG_INPUT is not set
+# CONFIG_I3C is not set
+# CONFIG_CGROUPS is not set
+# CONFIG_NAMESPACES is not set
+# CONFIG_FHANDLE is not set
+# CONFIG_PERF_EVENTS is not set
+# CONFIG_COREDUMP is not set
+# CONFIG_VT is not set
+# CONFIG_UNIX98_PTYS is not set
+# CONFIG_LEGACY_PTYS is not set
+# CONFIG_MAGIC_SYSRQ is not set
+# CONFIG_DEBUG_FS is not set
+# CONFIG_BPF_SYSCALL is not set

@@ -44,6 +44,14 @@ jobs:
             phantowd/buildroot:ci \
             /external/support/container/build-ex4-dtb.sh
 
+      - name: Compile and verify EX4 Stage A image
+        run: |
+          docker run --rm \
+            --mount type=bind,source="$PWD",target=/external \
+            --mount type=volume,source=phantowd-ci-${{ github.run_id }},target=/workspace \
+            phantowd/buildroot:ci \
+            /external/support/container/build-ex4-stage-a.sh
+
       - name: Upload non-flashable QEMU artifacts
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
@@ -57,6 +65,14 @@ jobs:
         with:
           name: phantowd-ex4-dtb-research
           path: artifacts/ex4-dtb-research/
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Upload compile-only EX4 Stage A artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: phantowd-ex4-stage-a-compile-only
+          path: artifacts/ex4-stage-a-compile-only/
           if-no-files-found: error
           retention-days: 7
 
