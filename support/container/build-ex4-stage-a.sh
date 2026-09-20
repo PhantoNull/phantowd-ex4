@@ -101,7 +101,7 @@ assert_disabled() {
 
 for option in MACH_KIRKWOOD CPU_FEROCEON SERIAL_8250 \
     SERIAL_8250_CONSOLE SERIAL_OF_PLATFORM DEVTMPFS PROC_FS SYSFS TMPFS \
-    CMDLINE_FORCE EXPERT PCI; do
+    CMDLINE_FORCE EXPERT PCI BLK_DEV_INITRD; do
     assert_enabled "$option"
 done
 
@@ -113,6 +113,9 @@ for option in MODULES BLOCK MTD NET USB_SUPPORT MMC SCSI ATA MD \
 done
 
 grep -Fx 'CONFIG_CMDLINE="console=ttyS0,115200n8 rdinit=/init panic=-1"' \
+    "$kernel_config" >/dev/null
+# shellcheck disable=SC2016 # The Buildroot variable must remain literal.
+grep -Fx 'CONFIG_INITRAMFS_SOURCE="${BR_BINARIES_DIR}/rootfs.cpio"' \
     "$kernel_config" >/dev/null
 
 for forbidden in fw_setenv flash_erase flash_eraseall nanddump nandwrite \
@@ -140,6 +143,10 @@ device mapper, I2C, SPI, RTC, watchdog, sound, modules or kexec. Mainline
 MACH_KIRKWOOD forces the unused PCI core to remain compiled in; the DTB disables
 the PCIe controller. The DTB enables only the primary serial console beyond
 mandatory core SoC infrastructure.
+
+The CPIO is embedded in zImage; the separate rootfs.cpio is retained for static
+inspection only. No legacy uImage wrapper or verified U-Boot load/entry address
+is provided. These files are not direct TFTP/bootm inputs.
 
 Compilation and static assertions do not prove RAM addresses, U-Boot command
 compatibility, clocks, pinmux, console input, thermal behavior, halt behavior,

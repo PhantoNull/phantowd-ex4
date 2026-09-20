@@ -62,3 +62,10 @@ Build and statically verify it with:
 The output is deliberately labelled compile-only. It does not prove U-Boot
 load addresses, boot commands, pinmux, clocks, thermal behavior, halt behavior
 or recovery, and must not be used on hardware before those gates are reviewed.
+
+Buildroot embeds the generated `rootfs.cpio` in `zImage`; the separate CPIO is
+retained only for static inspection. The target deliberately does not create a
+legacy `uImage` wrapper. Stock U-Boot is currently known to use `bootm`, so the
+published artifacts are not yet valid TFTP/`bootm` inputs. Legacy-image load
+and entry addresses must be derived from exact-device, read-only bootloader
+evidence before any wrapper or hardware boot command is added.
