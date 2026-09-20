@@ -16,6 +16,8 @@ separately named ARMv5 QEMU baseline for software-only development.
 - reproduce the vendor kernel and user-space layout from legally obtained
   inputs without redistributing proprietary WD binaries;
 - bring up a Buildroot image in RAM or over the network first;
+- provide standards-based NAS services, including SMB and NFS, through a
+  hardware-independent configuration layer and management interface;
 - design signed, model-specific updates with rollback protection.
 
 ## Pinned QEMU baseline
