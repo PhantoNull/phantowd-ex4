@@ -109,6 +109,8 @@ assert_disabled() {
 
 for option in MACH_KIRKWOOD CPU_FEROCEON SERIAL_8250 \
     SERIAL_8250_CONSOLE SERIAL_OF_PLATFORM DEVTMPFS PROC_FS SYSFS TMPFS \
+    ARM_APPENDED_DTB ARM_ATAG_DTB_COMPAT \
+    ARM_ATAG_DTB_COMPAT_CMDLINE_FROM_BOOTLOADER \
     CMDLINE_FORCE EXPERT PCI BLK_DEV_INITRD GPIOLIB GPIO_MVEBU \
     SERIAL_8250_FSL SERIAL_MCTRL_GPIO GENERIC_PHY PHY_MVEBU_SATA; do
     assert_enabled "$option"
@@ -133,6 +135,26 @@ grep -Fx 'CONFIG_CMDLINE="console=ttyS0,115200n8 rdinit=/init panic=-1"' \
 # shellcheck disable=SC2016 # The Buildroot variable must remain literal.
 grep -Fx 'CONFIG_INITRAMFS_SOURCE="${BR_BINARIES_DIR}/rootfs.cpio"' \
     "$kernel_config" >/dev/null
+
+# Build only the raw Linux backward-compatibility form documented upstream:
+# zImage followed immediately by the exact Stage A DTB. This deliberately
+# does not create a legacy uImage wrapper or encode a U-Boot load address.
+appended_image="$output_dir/zImage-with-appended-dtb.compile-only"
+appended_dtb_copy="$output_dir/appended-dtb.actual"
+cat "$zimage" "$dtb" > "$appended_image"
+
+zimage_size="$(wc -c < "$zimage" | tr -d '[:space:]')"
+dtb_size="$(wc -c < "$dtb" | tr -d '[:space:]')"
+appended_size="$(wc -c < "$appended_image" | tr -d '[:space:]')"
+expected_appended_size="$((zimage_size + dtb_size))"
+test "$appended_size" -eq "$expected_appended_size"
+
+cmp -n "$zimage_size" "$zimage" "$appended_image"
+dd if="$appended_image" of="$appended_dtb_copy" bs=1 \
+    skip="$zimage_size" count="$dtb_size" status=none
+cmp "$dtb" "$appended_dtb_copy"
+test "$(dd if="$appended_image" bs=1 skip="$zimage_size" count=4 \
+    status=none | od -An -tx1 | tr -d '[:space:]')" = 'd00dfeed'
 
 busybox_build_dir="$(find "$output_dir/build" -maxdepth 1 -type d \
     -name 'busybox-*' -print -quit)"
@@ -253,6 +275,8 @@ install -d -m 0755 "$artifact_dir"
 install -m 0644 "$zimage" "$artifact_dir/zImage"
 install -m 0644 "$dtb" \
     "$artifact_dir/kirkwood-wd-mycloud-ex4-stage-a.dtb"
+install -m 0644 "$appended_image" \
+    "$artifact_dir/zImage-with-appended-dtb.compile-only"
 install -m 0644 "$kernel_config" "$artifact_dir/linux.config"
 install -m 0644 "$output_dir/images/rootfs.cpio" "$artifact_dir/rootfs.cpio"
 cat > "$artifact_dir/COMPILE-ONLY.txt" <<'EOF'
@@ -269,18 +293,34 @@ two inert 8250 support helpers. The DTB enables only the primary serial console
 beyond mandatory core SoC infrastructure.
 
 The CPIO is embedded in zImage; the separate rootfs.cpio is retained for static
-inspection only. No legacy uImage wrapper or verified U-Boot load/entry address
-is provided. These files are not direct TFTP/bootm inputs.
+inspection only. zImage-with-appended-dtb.compile-only is exactly the raw
+zImage followed by the exact Stage A DTB for static compatibility research.
+It is not a legacy uImage wrapper and provides no U-Boot staging, load or entry
+address. These files are not direct TFTP/bootm inputs.
 
 Compilation and static assertions do not prove RAM addresses, U-Boot command
 compatibility, clocks, pinmux, console input, thermal behavior, halt behavior,
 or recovery on physical WD My Cloud EX4 hardware. Do not boot it until the
 two-way serial, data-backup, disk-removal and reviewed TFTP gates pass.
 EOF
+cat > "$artifact_dir/APPENDED-DTB-MANIFEST.txt" <<EOF
+format=raw-zimage-plus-dtb
+status=compile-only
+flashable=no
+hardware_validated=no
+zimage_bytes=$zimage_size
+dtb_offset=$zimage_size
+dtb_bytes=$dtb_size
+combined_bytes=$appended_size
+zimage_sha256=$(sha256sum "$zimage" | awk '{print $1}')
+dtb_sha256=$(sha256sum "$dtb" | awk '{print $1}')
+combined_sha256=$(sha256sum "$appended_image" | awk '{print $1}')
+EOF
 (
     cd "$artifact_dir"
-    sha256sum zImage kirkwood-wd-mycloud-ex4-stage-a.dtb \
-        linux.config rootfs.cpio > SHA256SUMS
+    sha256sum zImage zImage-with-appended-dtb.compile-only \
+        kirkwood-wd-mycloud-ex4-stage-a.dtb linux.config rootfs.cpio \
+        APPENDED-DTB-MANIFEST.txt > SHA256SUMS
 )
 
 printf 'EX4 Stage A compile passed. Do-not-boot artifact: %s\n' "$artifact_dir"

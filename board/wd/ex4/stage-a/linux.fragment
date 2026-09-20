@@ -12,6 +12,12 @@ CONFIG_PROC_FS=y
 CONFIG_TMPFS=y
 CONFIG_PRINTK_TIME=y
 CONFIG_EXPERT=y
+# Stock Marvell U-Boot is expected to provide ATAGs rather than a DTB. Keep
+# this compatibility path limited to the explicit zImage+DTB artifact built by
+# the verifier; no legacy uImage wrapper or boot command is generated.
+CONFIG_ARM_APPENDED_DTB=y
+CONFIG_ARM_ATAG_DTB_COMPAT=y
+CONFIG_ARM_ATAG_DTB_COMPAT_CMDLINE_FROM_BOOTLOADER=y
 # CONFIG_INITRAMFS_PRESERVE_MTIME is not set
 CONFIG_CMDLINE="console=ttyS0,115200n8 rdinit=/init panic=-1"
 CONFIG_CMDLINE_FORCE=y

@@ -77,8 +77,14 @@ load addresses, boot commands, pinmux, clocks, thermal behavior, halt behavior
 or recovery, and must not be used on hardware before those gates are reviewed.
 
 Buildroot embeds the generated `rootfs.cpio` in `zImage`; the separate CPIO is
-retained only for static inspection. The target deliberately does not create a
-legacy `uImage` wrapper. Stock U-Boot is currently known to use `bootm`, so the
-published artifacts are not yet valid TFTP/`bootm` inputs. Legacy-image load
-and entry addresses must be derived from exact-device, read-only bootloader
-evidence before any wrapper or hardware boot command is added.
+retained only for static inspection. Linux's appended-DTB and ATAG-compatibility
+options are enabled for this old-bootloader research path, and the verifier
+also emits `zImage-with-appended-dtb.compile-only`: exactly the raw `zImage`
+followed by the exact Stage A DTB, with component offsets, sizes and hashes in
+`APPENDED-DTB-MANIFEST.txt`.
+
+The target deliberately does not create a legacy `uImage` wrapper. Stock
+U-Boot is currently known to use `bootm`, so the published artifacts are not
+yet valid TFTP/`bootm` inputs. TFTP staging and wrapper load/entry addresses
+must be derived from exact-device, read-only bootloader evidence before any
+wrapper or hardware boot command is added.
