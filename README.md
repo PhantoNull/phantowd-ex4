@@ -16,9 +16,7 @@ separately named ARMv5 QEMU baseline for software-only development.
 - reproduce the vendor kernel and user-space layout from legally obtained
   inputs without redistributing proprietary WD binaries;
 - bring up a Buildroot image in RAM or over the network first;
-- design signed, model-specific updates with rollback protection;
-- keep a legacy NFS integration available while replacement-firmware work is
-  in progress.
+- design signed, model-specific updates with rollback protection.
 
 ## Pinned QEMU baseline
 
@@ -62,8 +60,9 @@ offset is not proof that a NAND partition can be copied or rewritten as a flat
 file. Bad-block handling, ECC/OOB data, WD headers, validation, and rescue
 behaviour must all be understood first.
 
-The current lab device is still serving data. Development therefore follows a
-read-only-first policy, and initial boot experiments must avoid NAND writes.
+Development follows a read-only-first policy. Initial physical bring-up must
+use non-persistent boot paths and must not involve user-data disks or NAND
+writes.
 
 ## Repository layout
 
@@ -71,16 +70,10 @@ read-only-first policy, and initial boot experiments must avoid NAND writes.
 - `board/qemu/armv5/` — non-flashable ARMv5 software test target;
 - `configs/` — reproducible Buildroot defconfigs;
 - `support/` — pinned container build and QEMU smoke-test tooling;
-- `contrib/legacy-nfs/` — current legacy-firmware NFS persistence helpers;
-- `doc/` — private firmware/NAS operational wiki, intentionally ignored by Git;
 - `Config.in`, `external.mk`, `external.desc` — Buildroot external-tree
   skeleton.
 
 ## Scope
-
-General topology, Proxmox-hosted apps, lab costs and infrastructure automation
-are maintained in the separate LocalLab project. This repository keeps NAS
-firmware and directly related operational evidence.
 
 The first hardware target is the WD My Cloud EX4 running vendor firmware
 2.13.108 on ARMv5/Feroceon hardware. Support for other models must use separate

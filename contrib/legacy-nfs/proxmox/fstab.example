@@ -1,2 +1,0 @@
-# Add to /etc/fstab after replacing NAS_HOST and reviewing the export path.
-NAS_HOST:/mnt/HD/HD_b2/MediaStack /mnt/nas-mediastack nfs vers=3,proto=tcp,mountproto=tcp,hard,_netdev,nofail,x-systemd.automount,x-systemd.mount-timeout=20s 0 0
