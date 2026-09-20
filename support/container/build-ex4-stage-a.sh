@@ -239,7 +239,9 @@ done
 
 busybox_archive_mode="$(
     "$output_dir/host/bin/cpio" -itv --quiet < "$output_dir/images/rootfs.cpio" |
-        awk '$NF ~ /(^|\/)bin\/busybox$/ { print $1 }'
+        awk '$1 ~ /^-/ && ($NF == "bin/busybox" || $NF == "./bin/busybox") {
+            print $1
+        }'
 )"
 if [ "$busybox_archive_mode" != '-rwxr-xr-x' ]; then
     echo "Unexpected initramfs BusyBox mode: $busybox_archive_mode" >&2
