@@ -47,6 +47,18 @@ A separate compile-only Linux 6.18 EX4 device-tree baseline is available with
 `.\support\build-ex4-dtb.ps1`. It intentionally disables raw NAND and SDIO,
 and its output under `artifacts/ex4-dtb-research/` is also non-flashable.
 
+An even narrower Stage A safety target is available with
+`.\support\build-ex4-stage-a.ps1`. It builds a kernel with storage, flash,
+network and unnecessary optional subsystems compiled out, plus a DTB that
+disables every known non-console peripheral and a bounded initramfs. Its
+BusyBox userspace is restricted to the shell and five applets required by the
+fixed init script; storage, network, and general diagnostic applets are absent.
+Only the ELF loader and `libc` remain alongside BusyBox and the fixed init.
+The artifacts are compile-only and must not be booted until the documented
+physical gates pass. The initramfs is embedded in `zImage`; no legacy `uImage`
+wrapper or verified stock-U-Boot load/entry address is provided yet, so these
+artifacts are not direct TFTP/`bootm` inputs.
+
 `BR2_REPRODUCIBLE` is enabled, but bit-for-bit reproducibility is not claimed
 until two clean builds in independently provisioned environments have been
 compared. The container base image is digest-pinned; Debian build-dependency

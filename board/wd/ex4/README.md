@@ -43,3 +43,42 @@ Compile and test the patch on Windows with Docker Desktop:
 The resulting `artifacts/ex4-dtb-research/` directory is ignored by Git and
 contains a prominent non-flashable warning. Successful compilation is not
 hardware validation and does not make the DTB safe to boot.
+
+## Stage A compile-only safety target
+
+`configs/phantowd_ex4_stage_a_defconfig` is a separate built-in-initramfs
+target for the first future serial-only RAM bring-up. Its kernel configuration
+removes the block layer, MTD, network, USB, MMC, SCSI, ATA, mdraid, device
+mapper, modules, CPU frequency/idle transitions, direct physical-memory access
+and optional hardware classes. Mainline `MACH_KIRKWOOD` forces the unused PCI
+core plus generic GPIO/SATA-PHY support to remain compiled in. The PCIe host
+driver is compiled out, while the DTB explicitly disables the PCIe controller,
+both GPIO controllers, both SATA PHY nodes and every other known non-console
+peripheral. ARM also retains two inert 8250 support helpers around the required
+serial console.
+
+The Stage A initramfs also uses a dedicated all-disabled BusyBox configuration
+that enables only `ash`/`sh`, `mount`, `uname`, `sleep`, and `halt`. The build
+checks both the final BusyBox configuration and the installed applet symlinks,
+so tools capable of inspecting, networking, or modifying storage cannot enter
+this probe image through the normal Buildroot defaults. Post-build pruning
+also removes the generic skeleton's dormant network hooks and every shared
+library except the ELF loader and `libc` required by the audited BusyBox
+binary; exact dependency and executable-file allowlists are checked.
+
+Build and statically verify it with:
+
+```powershell
+.\support\build-ex4-stage-a.ps1
+```
+
+The output is deliberately labelled compile-only. It does not prove U-Boot
+load addresses, boot commands, pinmux, clocks, thermal behavior, halt behavior
+or recovery, and must not be used on hardware before those gates are reviewed.
+
+Buildroot embeds the generated `rootfs.cpio` in `zImage`; the separate CPIO is
+retained only for static inspection. The target deliberately does not create a
+legacy `uImage` wrapper. Stock U-Boot is currently known to use `bootm`, so the
+published artifacts are not yet valid TFTP/`bootm` inputs. Legacy-image load
+and entry addresses must be derived from exact-device, read-only bootloader
+evidence before any wrapper or hardware boot command is added.

@@ -15,6 +15,7 @@ path = [
     "SECURITY.md",
     "board/qemu/**",
     "board/wd/ex4/README.md",
+    "board/wd/ex4/stage-a/rootfs-overlay/**",
     "configs/**",
     "contrib/**",
     "external.desc",
@@ -35,4 +36,14 @@ SPDX-FileCopyrightText = [
     "2025 bodhi <mibodhi@gmail.com>",
     "2026 PhantoWD EX4 contributors",
 ]
+SPDX-License-Identifier = "GPL-2.0-only"
+
+[[annotations]]
+path = [
+    "board/wd/ex4/stage-a/kirkwood-wd-mycloud-ex4-stage-a.dts",
+    "board/wd/ex4/stage-a/busybox.config",
+    "board/wd/ex4/stage-a/linux.fragment",
+]
+precedence = "closest"
+SPDX-FileCopyrightText = "2026 PhantoWD EX4 contributors"
 SPDX-License-Identifier = "GPL-2.0-only"

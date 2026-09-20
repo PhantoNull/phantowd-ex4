@@ -1,0 +1,139 @@
+// SPDX-License-Identifier: GPL-2.0-only
+/*
+ * Storage-disabled compile-only bring-up tree for WD My Cloud EX4.
+ *
+ * Copyright (c) 2026 PhantoWD EX4 contributors
+ */
+
+/dts-v1/;
+
+#include "marvell/kirkwood.dtsi"
+#include "marvell/kirkwood-6282.dtsi"
+
+/ {
+	model = "Western Digital My Cloud EX4 Stage A (compile only)";
+	compatible = "wd,my-cloud-ex4", "marvell,kirkwood-88f6282",
+		     "marvell,kirkwood";
+
+	memory@0 {
+		device_type = "memory";
+		reg = <0x00000000 0x20000000>;
+	};
+
+	chosen {
+		stdout-path = "serial0:115200n8";
+	};
+
+	aliases {
+		serial0 = &uart0;
+	};
+};
+
+&uart0 {
+	status = "okay";
+};
+
+/* Every non-console peripheral remains unavailable in Stage A. */
+&uart1 {
+	status = "disabled";
+};
+
+&gpio0 {
+	status = "disabled";
+};
+
+&gpio1 {
+	status = "disabled";
+};
+
+&nand {
+	status = "disabled";
+};
+
+&crypto_sram {
+	status = "disabled";
+};
+
+&sata {
+	status = "disabled";
+};
+
+&sata_phy0 {
+	status = "disabled";
+};
+
+&sata_phy1 {
+	status = "disabled";
+};
+
+&sdio {
+	status = "disabled";
+};
+
+&usb0 {
+	status = "disabled";
+};
+
+&pciec {
+	status = "disabled";
+};
+
+&pcie0 {
+	status = "disabled";
+};
+
+&pcie1 {
+	status = "disabled";
+};
+
+&eth0 {
+	status = "disabled";
+};
+
+&eth1 {
+	status = "disabled";
+};
+
+&mdio {
+	status = "disabled";
+};
+
+&i2c0 {
+	status = "disabled";
+};
+
+&i2c1 {
+	status = "disabled";
+};
+
+&spi0 {
+	status = "disabled";
+};
+
+&rtc {
+	status = "disabled";
+};
+
+&thermal {
+	status = "disabled";
+};
+
+&wdt {
+	status = "disabled";
+};
+
+&cesa {
+	status = "disabled";
+};
+
+&dma0 {
+	status = "disabled";
+};
+
+&dma1 {
+	status = "disabled";
+};
+
+&audio0 {
+	status = "disabled";
+};
