@@ -43,6 +43,15 @@ is restricted and no ports or physical devices are forwarded.
 Run `.\support\test-api.ps1` for fast offline host-native tests; the complete
 build runs those tests again with Buildroot's hash-verified Linux Go compiler.
 
+The [offline research toolkit](tools/phantowd-lab/README.md) validates
+user-supplied local copies of legacy update, logical-mtd3, logical-rescue and
+U-Boot image formats and replays passive controller captures. Artifact
+inspectors accept regular files only; rootfs inventory does not follow
+symlinks or open special files. The toolkit has no firmware construction,
+extraction, flash-device, serial-port or command-transmission path.
+Run `.\support\test-lab-tools.ps1` for its generated-fixture test suite. No
+proprietary firmware or device dump is included in the repository.
+
 A separate compile-only Linux 6.18 EX4 device-tree baseline is available with
 `.\support\build-ex4-dtb.ps1`. It intentionally disables raw NAND and SDIO,
 and its output under `artifacts/ex4-dtb-research/` is also non-flashable.
@@ -84,6 +93,7 @@ writes.
 - `board/qemu/armv5/` — non-flashable ARMv5 software test target;
 - `configs/` — reproducible Buildroot defconfigs;
 - `support/` — pinned container build and QEMU smoke-test tooling;
+- `tools/phantowd-lab/` — host-only read-only format and protocol tooling;
 - `Config.in`, `external.mk`, `external.desc` — Buildroot external-tree
   skeleton.
 
