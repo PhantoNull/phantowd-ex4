@@ -23,6 +23,7 @@ path = [
     "package/**",
     "src/**",
     "support/**",
+    "tools/**",
     "versions.env",
 ]
 precedence = "closest"

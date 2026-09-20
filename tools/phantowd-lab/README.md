@@ -2,7 +2,8 @@
 
 `phantowd-lab` is a host-only, read-only research tool. It validates local
 copies of the legacy WD My Cloud EX4 update, logical-mtd3 and logical-rescue
-formats and replays passive captures of the internal front-controller protocol.
+formats, validates legacy U-Boot image headers and payload CRCs, and replays
+passive captures of the internal front-controller protocol.
 
 It intentionally provides **no** extraction, image construction, flash access,
 serial-port access, command transmission, firmware installation, or device
@@ -17,15 +18,22 @@ children. Captures larger than 16 MiB are rejected where applicable.
 phantowd-lab inspect-update FILE
 phantowd-lab inspect-mtd3 FILE
 phantowd-lab inspect-rescue FILE
+phantowd-lab inspect-uimage FILE
 phantowd-lab inventory-rootfs [--summary] DIRECTORY
 phantowd-lab catalog-mcu
 phantowd-lab decode-mcu "fa 23 00 00 00 00 fb"
 phantowd-lab replay-mcu [--format raw|hex] FILE
 ```
 
-The three inspectors return exit status `0` when all currently understood
-structure and XOR checks pass, `2` when a parsed artifact fails validation,
-and `1` for usage, I/O, or structural errors. Results are JSON.
+The artifact inspectors return exit status `0` when all currently understood
+structure and integrity checks pass, `2` when a parsed artifact fails
+validation, and `1` for usage, I/O, or structural errors. Results are JSON.
+
+`inspect-uimage` validates the standard 64-byte legacy U-Boot header, its
+header and payload CRC32 values, declared size, load address, entry point,
+operating system, architecture, image type and compression. It rejects
+truncated payloads and reports unauthenticated trailing data separately. It
+exposes no image-construction or boot-command path.
 
 `inspect-mtd3` accepts the packed logical object containing the 2 KiB header
 and SquashFS. It does not accept or interpret a physical NAND dump and makes no

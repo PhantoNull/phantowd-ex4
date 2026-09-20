@@ -15,6 +15,7 @@ import (
 
 	"github.com/PhantoNull/phantowd-ex4/phantowd-lab/mcuproto"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-lab/rootfsinventory"
+	"github.com/PhantoNull/phantowd-ex4/phantowd-lab/uimage"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-lab/vendorupdate"
 )
 
@@ -34,6 +35,27 @@ func run(args []string, output io.Writer) (int, error) {
 		return 1, errors.New("usage: phantowd-lab COMMAND [arguments]")
 	}
 	switch args[0] {
+	case "inspect-uimage":
+		if len(args) != 2 {
+			return 1, errors.New("usage: phantowd-lab inspect-uimage FILE")
+		}
+		file, size, err := openRegular(args[1])
+		if err != nil {
+			return 1, err
+		}
+		defer file.Close()
+		report, err := uimage.Inspect(file, size)
+		if err != nil {
+			return 1, err
+		}
+		if err := writeJSON(output, report); err != nil {
+			return 1, err
+		}
+		if !report.Valid {
+			return 2, nil
+		}
+		return 0, nil
+
 	case "inspect-update":
 		if len(args) != 2 {
 			return 1, errors.New("usage: phantowd-lab inspect-update FILE")
