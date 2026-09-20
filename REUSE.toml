@@ -41,6 +41,7 @@ SPDX-License-Identifier = "GPL-2.0-only"
 [[annotations]]
 path = [
     "board/wd/ex4/stage-a/kirkwood-wd-mycloud-ex4-stage-a.dts",
+    "board/wd/ex4/stage-a/busybox.config",
     "board/wd/ex4/stage-a/linux.fragment",
 ]
 precedence = "closest"

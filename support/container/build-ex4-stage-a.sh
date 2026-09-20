@@ -11,6 +11,7 @@ buildroot_source="$workspace_dir/buildroot-$BUILDROOT_VERSION"
 download_dir="$workspace_dir/dl"
 config_file="$external_dir/configs/phantowd_ex4_stage_a_defconfig"
 fragment_file="$external_dir/board/wd/ex4/stage-a/linux.fragment"
+busybox_config_file="$external_dir/board/wd/ex4/stage-a/busybox.config"
 dts_file="$external_dir/board/wd/ex4/stage-a/kirkwood-wd-mycloud-ex4-stage-a.dts"
 init_file="$external_dir/board/wd/ex4/stage-a/rootfs-overlay/init"
 release_file="$external_dir/board/wd/ex4/stage-a/rootfs-overlay/etc/phantowd-release"
@@ -21,6 +22,12 @@ test -s "$download_dir/linux/linux-$LINUX_VERSION.tar.xz"
 grep -F "BR2_LINUX_KERNEL_CUSTOM_VERSION_VALUE=\"$LINUX_VERSION\"" \
     "$config_file" >/dev/null
 grep -Fx 'BR2_LINUX_KERNEL_NEEDS_HOST_OPENSSL=y' "$config_file" >/dev/null
+# shellcheck disable=SC2016 # The Buildroot variable must remain literal.
+grep -F 'BR2_PACKAGE_BUSYBOX_CONFIG="$(BR2_EXTERNAL_PHANTOWD_EX4_PATH)/board/wd/ex4/stage-a/busybox.config"' \
+    "$config_file" >/dev/null
+# shellcheck disable=SC2016 # The Buildroot variable must remain literal.
+grep -F 'BR2_ROOTFS_POST_FAKEROOT_SCRIPT="$(BR2_EXTERNAL_PHANTOWD_EX4_PATH)/board/wd/ex4/stage-a/post-build.sh"' \
+    "$config_file" >/dev/null
 grep -Fx '#include "marvell/kirkwood.dtsi"' "$dts_file" >/dev/null
 grep -Fx '#include "marvell/kirkwood-6282.dtsi"' "$dts_file" >/dev/null
 grep -F "PHANTOWD_KERNEL_VERSION=$LINUX_VERSION" "$release_file" >/dev/null
@@ -58,8 +65,9 @@ for node in uart1 gpio0 gpio1 nand crypto_sram sata sata_phy0 sata_phy1 \
 done
 
 input_hash="$(
-    sha256sum "$config_file" "$fragment_file" "$dts_file" "$init_file" \
-        "$release_file" "$post_build_file" | sha256sum | cut -c1-16
+    sha256sum "$config_file" "$fragment_file" "$busybox_config_file" \
+        "$dts_file" "$init_file" "$release_file" "$post_build_file" | \
+        sha256sum | cut -c1-16
 )"
 output_dir="$workspace_dir/stage-a/$BUILDROOT_VERSION-$input_hash"
 
@@ -126,15 +134,117 @@ grep -Fx 'CONFIG_CMDLINE="console=ttyS0,115200n8 rdinit=/init panic=-1"' \
 grep -Fx 'CONFIG_INITRAMFS_SOURCE="${BR_BINARIES_DIR}/rootfs.cpio"' \
     "$kernel_config" >/dev/null
 
-for forbidden in fw_setenv flash_erase flash_eraseall nanddump nandwrite \
-    mdadm mount.nfs ntfs-3g ssh sshd; do
-    if find "$output_dir/target" -xdev \
-        \( -type f -o -type l \) -name "$forbidden" -print -quit |
-        grep -q .; then
-        echo "Forbidden Stage A userspace path found: $forbidden" >&2
+busybox_build_dir="$(find "$output_dir/build" -maxdepth 1 -type d \
+    -name 'busybox-*' -print -quit)"
+test -n "$busybox_build_dir"
+test -s "$busybox_build_dir/.config"
+
+busybox_enabled="$output_dir/busybox-enabled.actual"
+busybox_expected="$output_dir/busybox-enabled.expected"
+grep '=y$' "$busybox_build_dir/.config" | sort > "$busybox_enabled"
+cat > "$busybox_expected" <<'EOF'
+CONFIG_ASH=y
+CONFIG_ASH_ECHO=y
+CONFIG_ASH_INTERNAL_GLOB=y
+CONFIG_ASH_TEST=y
+CONFIG_BASH_IS_NONE=y
+CONFIG_FEATURE_BUFFERS_USE_MALLOC=y
+CONFIG_HALT=y
+CONFIG_HAVE_DOT_CONFIG=y
+CONFIG_INSTALL_APPLET_SYMLINKS=y
+CONFIG_LFS=y
+CONFIG_MOUNT=y
+CONFIG_NO_DEBUG_LIB=y
+CONFIG_SHELL_ASH=y
+CONFIG_SH_IS_ASH=y
+CONFIG_SLEEP=y
+CONFIG_TRY_LOOP_CONFIGURE=y
+CONFIG_UNAME=y
+EOF
+if ! cmp -s "$busybox_expected" "$busybox_enabled"; then
+    echo 'Stage A BusyBox configuration is not the audited minimal set:' >&2
+    diff -u "$busybox_expected" "$busybox_enabled" >&2 || true
+    exit 1
+fi
+
+for path in bin/ash bin/mount bin/sh bin/sleep bin/uname sbin/halt; do
+    test -x "$output_dir/target/$path" || {
+        echo "Required Stage A BusyBox applet is missing: $path" >&2
         exit 1
-    fi
+    }
 done
+
+test ! -e "$output_dir/target/etc/network"
+test -x "$output_dir/target/bin/busybox"
+test -x "$output_dir/target/lib/ld-linux.so.3"
+test -x "$output_dir/target/lib/libc.so.6"
+
+busybox_needed="$output_dir/busybox-needed.actual"
+"$output_dir/host/bin/arm-buildroot-linux-gnueabi-readelf" -d \
+    "$output_dir/target/bin/busybox" |
+    sed -n 's/.*Shared library: \[\(.*\)\]/\1/p' | sort > "$busybox_needed"
+cat > "$output_dir/busybox-needed.expected" <<'EOF'
+ld-linux.so.3
+libc.so.6
+EOF
+if ! cmp -s "$output_dir/busybox-needed.expected" "$busybox_needed"; then
+    echo 'Stage A BusyBox gained an unexpected dynamic dependency:' >&2
+    diff -u "$output_dir/busybox-needed.expected" "$busybox_needed" >&2 || true
+    exit 1
+fi
+
+find "$output_dir/target/lib" -maxdepth 1 \
+    \( -type f -o -type l \) -print | sort > "$output_dir/libraries.actual"
+cat > "$output_dir/libraries.expected" <<EOF
+$output_dir/target/lib/ld-linux.so.3
+$output_dir/target/lib/libc.so.6
+EOF
+if ! cmp -s "$output_dir/libraries.expected" "$output_dir/libraries.actual"; then
+    echo 'Stage A root filesystem contains unexpected shared libraries:' >&2
+    diff -u "$output_dir/libraries.expected" "$output_dir/libraries.actual" >&2 || true
+    exit 1
+fi
+
+find "$output_dir/target" -xdev -type f -perm /111 -print | sort > \
+    "$output_dir/executables.actual"
+cat > "$output_dir/executables.expected" <<EOF
+$output_dir/target/bin/busybox
+$output_dir/target/init
+$output_dir/target/lib/ld-linux.so.3
+$output_dir/target/lib/libc.so.6
+EOF
+if ! cmp -s "$output_dir/executables.expected" \
+    "$output_dir/executables.actual"; then
+    echo 'Stage A root filesystem contains unexpected executable files:' >&2
+    diff -u "$output_dir/executables.expected" \
+        "$output_dir/executables.actual" >&2 || true
+    exit 1
+fi
+
+find "$output_dir/target" -xdev -type l -print | while IFS= read -r path; do
+    link_target="$(readlink "$path")"
+    case "$link_target" in
+        *busybox)
+            relative_path="${path#"$output_dir/target/"}"
+            case "$relative_path" in
+                bin/ash|bin/mount|bin/sh|bin/sleep|bin/uname|sbin/halt) ;;
+                *)
+                    echo "Unexpected Stage A BusyBox applet: $relative_path" >&2
+                    exit 1
+                    ;;
+            esac
+            ;;
+    esac
+done
+
+busybox_archive_mode="$(
+    "$output_dir/host/bin/cpio" -itv --quiet < "$output_dir/images/rootfs.cpio" |
+        awk '$NF ~ /(^|\/)bin\/busybox$/ { print $1 }'
+)"
+if [ "$busybox_archive_mode" != '-rwxr-xr-x' ]; then
+    echo "Unexpected initramfs BusyBox mode: $busybox_archive_mode" >&2
+    exit 1
+fi
 
 artifact_dir="$external_dir/artifacts/ex4-stage-a-compile-only"
 install -d -m 0755 "$artifact_dir"
@@ -149,6 +259,7 @@ COMPILE-ONLY SAFETY ARTIFACT — DO NOT FLASH OR BOOT YET
 This image has no block layer, MTD, network, USB, MMC, SCSI, ATA, mdraid,
 device mapper, I2C, SPI, RTC, watchdog, sound, modules, kexec, CPU frequency or
 idle transitions, direct physical-memory access, or optional hardware classes.
+Its BusyBox userspace exposes only ash/sh, mount, uname, sleep and halt.
 Mainline MACH_KIRKWOOD forces the unused PCI core plus generic GPIO/SATA-PHY
 support to remain compiled in; the PCIe host driver is absent and the DTB
 disables PCIe, both GPIO controllers and both SATA PHY nodes. ARM also retains

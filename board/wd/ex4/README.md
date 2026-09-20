@@ -57,6 +57,15 @@ both GPIO controllers, both SATA PHY nodes and every other known non-console
 peripheral. ARM also retains two inert 8250 support helpers around the required
 serial console.
 
+The Stage A initramfs also uses a dedicated all-disabled BusyBox configuration
+that enables only `ash`/`sh`, `mount`, `uname`, `sleep`, and `halt`. The build
+checks both the final BusyBox configuration and the installed applet symlinks,
+so tools capable of inspecting, networking, or modifying storage cannot enter
+this probe image through the normal Buildroot defaults. Post-build pruning
+also removes the generic skeleton's dormant network hooks and every shared
+library except the ELF loader and `libc` required by the audited BusyBox
+binary; exact dependency and executable-file allowlists are checked.
+
 Build and statically verify it with:
 
 ```powershell
