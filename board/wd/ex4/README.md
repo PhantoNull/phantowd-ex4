@@ -83,8 +83,10 @@ also emits `zImage-with-appended-dtb.compile-only`: exactly the raw `zImage`
 followed by the exact Stage A DTB, with component offsets, sizes and hashes in
 `APPENDED-DTB-MANIFEST.txt`.
 
-The target deliberately does not create a legacy `uImage` wrapper. Stock
-U-Boot is currently known to use `bootm`, so the published artifacts are not
-yet valid TFTP/`bootm` inputs. TFTP staging and wrapper load/entry addresses
-must be derived from exact-device, read-only bootloader evidence before any
-wrapper or hardware boot command is added.
+The target also emits `uImage-stage-a.compile-only`, a legacy wrapper around
+the exact appended-DTB payload. Its `0x8000` load and entry fields match the
+observed stock kernel header and are checked with host U-Boot tools. The
+wrapper is still **not authorized for hardware boot**: a safe TFTP staging
+address, exact command sequence, thermal stop plan and data/recovery gates
+must be reviewed separately. No boot script, network transfer or flash image
+is generated.

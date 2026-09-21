@@ -22,6 +22,7 @@ test -s "$download_dir/linux/linux-$LINUX_VERSION.tar.xz"
 grep -F "BR2_LINUX_KERNEL_CUSTOM_VERSION_VALUE=\"$LINUX_VERSION\"" \
     "$config_file" >/dev/null
 grep -Fx 'BR2_LINUX_KERNEL_NEEDS_HOST_OPENSSL=y' "$config_file" >/dev/null
+grep -Fx 'BR2_PACKAGE_HOST_UBOOT_TOOLS=y' "$config_file" >/dev/null
 # shellcheck disable=SC2016 # The Buildroot variable must remain literal.
 grep -F 'BR2_PACKAGE_BUSYBOX_CONFIG="$(BR2_EXTERNAL_PHANTOWD_EX4_PATH)/board/wd/ex4/stage-a/busybox.config"' \
     "$config_file" >/dev/null
@@ -156,6 +157,34 @@ cmp "$dtb" "$appended_dtb_copy"
 test "$(dd if="$appended_image" bs=1 skip="$zimage_size" count=4 \
     status=none | od -An -tx1 | tr -d '[:space:]')" = 'd00dfeed'
 
+# The exact stock environment and vendor kernel header both use 0x8000 as
+# load/entry. This produces a structurally valid *research* wrapper only; it
+# does not establish a safe TFTP staging address or authorize hardware boot.
+mkimage="$output_dir/host/bin/mkimage"
+test -x "$mkimage"
+wrapped_image="$output_dir/uImage-stage-a.compile-only"
+SOURCE_DATE_EPOCH=0 "$mkimage" -A arm -O linux -T kernel -C none \
+    -a 0x00008000 -e 0x00008000 \
+    -n 'PhantoWD EX4 Stage A' -d "$appended_image" "$wrapped_image"
+SOURCE_DATE_EPOCH=0 "$mkimage" -A arm -O linux -T kernel -C none \
+    -a 0x00008000 -e 0x00008000 \
+    -n 'PhantoWD EX4 Stage A' -d "$appended_image" \
+    "$output_dir/uImage-stage-a-second-build.actual"
+cmp "$wrapped_image" "$output_dir/uImage-stage-a-second-build.actual"
+"$mkimage" -l "$wrapped_image" > "$output_dir/uimage-header.actual"
+grep -Fx 'Image Type:   ARM Linux Kernel Image (uncompressed)' \
+    "$output_dir/uimage-header.actual" >/dev/null
+grep -Fx 'Load Address: 00008000' \
+    "$output_dir/uimage-header.actual" >/dev/null
+grep -Fx 'Entry Point:  00008000' \
+    "$output_dir/uimage-header.actual" >/dev/null
+wrapped_size="$(wc -c < "$wrapped_image" | tr -d '[:space:]')"
+test "$wrapped_size" -eq "$((appended_size + 64))"
+test "$wrapped_size" -le 5242880
+dd if="$wrapped_image" of="$output_dir/uimage-payload.actual" \
+    bs=64 skip=1 status=none
+cmp "$appended_image" "$output_dir/uimage-payload.actual"
+
 busybox_build_dir="$(find "$output_dir/build" -maxdepth 1 -type d \
     -name 'busybox-*' -print -quit)"
 test -n "$busybox_build_dir"
@@ -277,6 +306,7 @@ install -m 0644 "$dtb" \
     "$artifact_dir/kirkwood-wd-mycloud-ex4-stage-a.dtb"
 install -m 0644 "$appended_image" \
     "$artifact_dir/zImage-with-appended-dtb.compile-only"
+install -m 0644 "$wrapped_image" "$artifact_dir/uImage-stage-a.compile-only"
 install -m 0644 "$kernel_config" "$artifact_dir/linux.config"
 install -m 0644 "$output_dir/images/rootfs.cpio" "$artifact_dir/rootfs.cpio"
 cat > "$artifact_dir/COMPILE-ONLY.txt" <<'EOF'
@@ -294,9 +324,10 @@ beyond mandatory core SoC infrastructure.
 
 The CPIO is embedded in zImage; the separate rootfs.cpio is retained for static
 inspection only. zImage-with-appended-dtb.compile-only is exactly the raw
-zImage followed by the exact Stage A DTB for static compatibility research.
-It is not a legacy uImage wrapper and provides no U-Boot staging, load or entry
-address. These files are not direct TFTP/bootm inputs.
+zImage followed by the exact Stage A DTB. uImage-stage-a.compile-only adds a
+64-byte legacy U-Boot header using the stock kernel's observed 0x8000
+load/entry values, but provides no approved TFTP staging address or boot
+command. It is NOT an authorized hardware-boot or flash artifact.
 
 Compilation and static assertions do not prove RAM addresses, U-Boot command
 compatibility, clocks, pinmux, console input, thermal behavior, halt behavior,
@@ -316,9 +347,29 @@ zimage_sha256=$(sha256sum "$zimage" | awk '{print $1}')
 dtb_sha256=$(sha256sum "$dtb" | awk '{print $1}')
 combined_sha256=$(sha256sum "$appended_image" | awk '{print $1}')
 EOF
+cat > "$artifact_dir/UIMAGE-RESEARCH-MANIFEST.txt" <<EOF
+format=legacy-uimage
+status=compile-only
+flashable=no
+hardware_validated=no
+target=wd-my-cloud-ex4
+stage=A
+payload=zImage-with-appended-dtb.compile-only
+payload_bytes=$appended_size
+payload_sha256=$(sha256sum "$appended_image" | awk '{print $1}')
+header_bytes=64
+wrapped_bytes=$wrapped_size
+timestamp_unix=0
+observed_stock_load_address=0x00008000
+observed_stock_entry_point=0x00008000
+approved_tftp_staging_address=no
+approved_boot_command=no
+wrapped_sha256=$(sha256sum "$wrapped_image" | awk '{print $1}')
+EOF
 (
     cd "$artifact_dir"
     sha256sum zImage zImage-with-appended-dtb.compile-only \
+        uImage-stage-a.compile-only UIMAGE-RESEARCH-MANIFEST.txt \
         kirkwood-wd-mycloud-ex4-stage-a.dtb linux.config rootfs.cpio \
         APPENDED-DTB-MANIFEST.txt > SHA256SUMS
 )

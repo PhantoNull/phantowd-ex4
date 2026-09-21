@@ -63,13 +63,13 @@ disables every known non-console peripheral and a bounded initramfs. Its
 BusyBox userspace is restricted to the shell and five applets required by the
 fixed init script; storage, network, and general diagnostic applets are absent.
 Only the ELF loader and `libc` remain alongside BusyBox and the fixed init.
-The artifacts are compile-only and must not be booted until the documented
-physical gates pass. The initramfs is embedded in `zImage`; no legacy `uImage`
-wrapper or verified stock-U-Boot staging address is provided yet, so these
-artifacts are not direct TFTP/`bootm` inputs. A separately named compile-only
-artifact concatenates the exact Stage A DTB after `zImage` and records both
-component boundaries and hashes; it exists only to validate Linux's
-old-bootloader appended-DTB/ATAG compatibility path offline.
+The artifacts remain research-only and must not be booted until the documented
+physical gates pass. The initramfs is embedded in `zImage`. A separately named
+artifact concatenates the exact Stage A DTB after `zImage`, and an additional
+legacy `uImage` wrapper uses the load/entry values observed in the stock EX4
+kernel header. Both are statically checked, but neither supplies an approved
+TFTP staging address or boot command. The wrapper does not authorize a
+physical boot or a flash operation.
 
 `BR2_REPRODUCIBLE` is enabled, but bit-for-bit reproducibility is not claimed
 until two clean builds in independently provisioned environments have been
