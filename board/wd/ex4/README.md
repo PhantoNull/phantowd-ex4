@@ -124,8 +124,9 @@ candidate. It retains Stage B's disabled NAND, SATA, MTD and other unqualified
 peripherals, then enables the second Ethernet controller and candidate MDIO
 PHY at address 1. A dedicated BusyBox fragment adds only `ifconfig`; the
 fixed `/init` raises each interface briefly, reads its sysfs MAC, carrier and
-operational state over serial, lowers both interfaces, and halts. It does not
-assign an IP address, request DHCP, bridge ports, or start a network service.
+operational state over serial, lowers both interfaces, and halts. Its kernel
+omits IPv4/IPv6, IP autoconfiguration and NFS; it cannot assign an IP address,
+request DHCP, bridge ports, or start a network service.
 Raising a port does start electrical link negotiation; this is not a passive
 probe.
 

@@ -1,2 +1,5 @@
-# Stage B2 must never run kernel-level DHCP/BOOTP autoconfiguration.
+# Stage B2 observes Ethernet carrier without any IP or network filesystem.
+# CONFIG_INET is not set
 # CONFIG_IP_PNP is not set
+# CONFIG_NFS_FS is not set
+# CONFIG_ROOT_NFS is not set
