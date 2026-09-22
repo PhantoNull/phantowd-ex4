@@ -79,8 +79,8 @@ the Stage A serial probe. It leaves the interface down, with no DHCP, IP
 configuration or packet-sending userspace. It has not been booted on hardware;
 `.\support\build-ex4-stage-b.ps1` prepares hash/signature-verified sources,
 then compiles and audits it offline without rebuilding the full QEMU image.
-One local offline build and an independent legacy-uImage parser check have
-passed; a separate clean CI build and exact-device validation remain open.
+A local offline build, an independent legacy-uImage parser check, and a clean
+compile-only CI build have passed; exact-device validation remains open.
 On a default Windows Docker Desktop installation, the wrapper refuses to
 start unless at least 40 GiB is free on the Docker data drive; it does not
 shrink Docker's VHDX or free unrelated images/volumes automatically.
