@@ -81,6 +81,13 @@ if [ ! -f "$buildroot_source/.phantowd-source-ready" ]; then
     mv "$source_stage" "$buildroot_source"
 fi
 
+# Board-only research builds need the same verified sources, not the much
+# larger QEMU root filesystem, Go packages and smoke-test output.
+if [ "${PHANTOWD_PREPARE_ONLY:-0}" = 1 ]; then
+    printf 'Pinned Buildroot and Linux sources verified; QEMU build skipped.\n'
+    exit 0
+fi
+
 config_file="$external_dir/configs/phantowd_qemu_armv5_defconfig"
 release_file="$external_dir/board/qemu/armv5/rootfs-overlay/etc/phantowd-release"
 grep -F "BR2_LINUX_KERNEL_CUSTOM_VERSION_VALUE=\"$LINUX_VERSION\"" \
