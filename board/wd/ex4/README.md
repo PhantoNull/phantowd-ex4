@@ -114,4 +114,5 @@ The first local offline build completed with a 3,870,646-byte legacy uImage.
 An independent parser verified both header and payload CRCs; the final DTB
 retains an all-zero placeholder MAC address, so factory identity and the
 candidate PHY mapping must be observed on hardware before any network use.
-This local result does not replace clean CI or authorize a physical boot.
+The same PR head passed clean compile-only CI. Neither result authorizes a
+physical boot.

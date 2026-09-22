@@ -12,5 +12,7 @@ cd "$module_dir"
 "$go_binary" vet ./...
 "$go_binary" test -count=1 -coverprofile="$report_dir/coverage.out" ./...
 "$go_binary" test -race -count=1 ./...
-"$go_binary" test -run '^$' -fuzz '^FuzzInspect$' -fuzztime=5s -parallel=2 ./vendorupdate
-"$go_binary" test -run '^$' -fuzz '^FuzzStreamDecoder$' -fuzztime=5s -parallel=2 ./mcuproto
+# Use a deterministic iteration budget: Go 1.26 can spuriously report
+# "context deadline exceeded" when a time-limited fuzz run stops.
+"$go_binary" test -run '^$' -fuzz '^FuzzInspect$' -fuzztime=10000x -parallel=2 -timeout=120s ./vendorupdate
+"$go_binary" test -run '^$' -fuzz '^FuzzStreamDecoder$' -fuzztime=10000x -parallel=2 -timeout=120s ./mcuproto
