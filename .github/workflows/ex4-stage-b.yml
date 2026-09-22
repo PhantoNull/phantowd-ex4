@@ -30,6 +30,8 @@ jobs:
 
       - name: Compile and audit EX4 Stage B without building QEMU
         run: |
+          test -x support/container/build-ex4-stage-b.sh
+          test -x board/wd/ex4/stage-b/rootfs-overlay/init
           docker run --rm \
             --mount type=bind,source="$PWD",target=/external \
             --mount type=volume,source=phantowd-stage-b-ci-${{ github.run_id }},target=/workspace \
