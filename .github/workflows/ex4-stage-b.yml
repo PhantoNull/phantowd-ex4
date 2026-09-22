@@ -1,0 +1,49 @@
+name: EX4 Stage B compile-only
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ex4-stage-b-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  compile-only:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Build pinned environment
+        run: docker build --file support/docker/Dockerfile --tag phantowd/buildroot:ci .
+
+      - name: Create isolated build volume
+        run: docker volume create phantowd-stage-b-ci-${{ github.run_id }}
+
+      - name: Compile and audit EX4 Stage B without building QEMU
+        run: |
+          docker run --rm \
+            --mount type=bind,source="$PWD",target=/external \
+            --mount type=volume,source=phantowd-stage-b-ci-${{ github.run_id }},target=/workspace \
+            phantowd/buildroot:ci \
+            /bin/sh -c 'PHANTOWD_PREPARE_ONLY=1 /external/support/container/build-qemu.sh && /external/support/container/build-ex4-stage-b.sh'
+
+      - name: Upload compile-only EX4 Stage B artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: phantowd-ex4-stage-b-compile-only
+          path: artifacts/ex4-stage-b-compile-only/
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Remove isolated build volume
+        if: always()
+        run: docker volume rm phantowd-stage-b-ci-${{ github.run_id }} || true

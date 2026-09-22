@@ -47,7 +47,7 @@ hardware validation and does not make the DTB safe to boot.
 ## Stage A compile-only safety target
 
 `configs/phantowd_ex4_stage_a_defconfig` is a separate built-in-initramfs
-target for the first future serial-only RAM bring-up. Its kernel configuration
+target for the serial-only RAM bring-up. Its kernel configuration
 removes the block layer, MTD, network, USB, MMC, SCSI, ATA, mdraid, device
 mapper, modules, CPU frequency/idle transitions, direct physical-memory access
 and optional hardware classes. Mainline `MACH_KIRKWOOD` forces the unused PCI
@@ -72,9 +72,11 @@ Build and statically verify it with:
 .\support\build-ex4-stage-a.ps1
 ```
 
-The output is deliberately labelled compile-only. It does not prove U-Boot
-load addresses, boot commands, pinmux, clocks, thermal behavior, halt behavior
-or recovery, and must not be used on hardware before those gates are reviewed.
+The output remains labelled compile-only and non-flashable. One exact-device,
+diskless RAM transfer and boot has proven this specific wrapper, appended DTB,
+embedded initramfs, serial marker and halt path. It does not prove pinmux or
+thermal behavior beyond that short trial, fan control, storage, NAND, recovery
+or the safety of repeating the test.
 
 Buildroot embeds the generated `rootfs.cpio` in `zImage`; the separate CPIO is
 retained only for static inspection. Linux's appended-DTB and ATAG-compatibility
@@ -86,7 +88,30 @@ followed by the exact Stage A DTB, with component offsets, sizes and hashes in
 The target also emits `uImage-stage-a.compile-only`, a legacy wrapper around
 the exact appended-DTB payload. Its `0x8000` load and entry fields match the
 observed stock kernel header and are checked with host U-Boot tools. The
-wrapper is still **not authorized for hardware boot**: a safe TFTP staging
-address, exact command sequence, thermal stop plan and data/recovery gates
-must be reviewed separately. No boot script, network transfer or flash image
-is generated.
+wrapper is still a research artifact: no installer, flash image or automatic
+boot script is generated. The one-time physical result does not authorize
+unreviewed boot attempts or production use.
+
+## Stage B Ethernet-enumeration research target
+
+`configs/phantowd_ex4_stage_b_defconfig` retains Stage A's minimal BusyBox and
+storage/flash exclusions, then enables the Linux network core, `mv643xx_eth`,
+MDIO and one candidate PHY mapping for Ethernet 0. Its init only checks that
+`eth0` and an MDIO device appear, records the observed MAC over serial, and
+halts after 20 seconds. It does not bring up the interface, obtain an IP
+address, send packets or run a network service. The PHY mapping and factory
+MAC identity remain hardware hypotheses.
+
+Build and audit locally with `.\support\build-ex4-stage-b.ps1`. This verifies
+the pinned source archives without first rebuilding the full QEMU target and
+checks free space on Docker Desktop's default Windows data drive. The resulting
+artifact is ignored by Git, explicitly non-flashable and **not yet
+hardware-validated**. Do not attach user-data disks or treat Stage A's
+successful serial boot as qualification for Stage B cooling, Ethernet or
+recovery.
+
+The first local offline build completed with a 3,870,646-byte legacy uImage.
+An independent parser verified both header and payload CRCs; the final DTB
+retains an all-zero placeholder MAC address, so factory identity and the
+candidate PHY mapping must be observed on hardware before any network use.
+This local result does not replace clean CI or authorize a physical boot.

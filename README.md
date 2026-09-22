@@ -63,13 +63,27 @@ disables every known non-console peripheral and a bounded initramfs. Its
 BusyBox userspace is restricted to the shell and five applets required by the
 fixed init script; storage, network, and general diagnostic applets are absent.
 Only the ELF loader and `libc` remain alongside BusyBox and the fixed init.
-The artifacts remain research-only and must not be booted until the documented
-physical gates pass. The initramfs is embedded in `zImage`. A separately named
+One narrowly bounded, diskless Stage A RAM boot has now succeeded on an EX4:
+Linux 6.18.50 reached the serial readiness marker and halted after about 20
+seconds. This does not validate storage, Ethernet, cooling, NAND, recovery or
+installation. The artifacts remain research-only and non-flashable. The
+initramfs is embedded in `zImage`. A separately named
 artifact concatenates the exact Stage A DTB after `zImage`, and an additional
 legacy `uImage` wrapper uses the load/entry values observed in the stock EX4
 kernel header. Both are statically checked, but neither supplies an approved
-TFTP staging address or boot command. The wrapper does not authorize a
-physical boot or a flash operation.
+general-purpose boot command. The wrapper does not authorize a flash
+operation or an unreviewed repeat test.
+
+An isolated Stage B research target adds only Ethernet-0/MDIO enumeration to
+the Stage A serial probe. It leaves the interface down, with no DHCP, IP
+configuration or packet-sending userspace. It has not been booted on hardware;
+`.\support\build-ex4-stage-b.ps1` prepares hash/signature-verified sources,
+then compiles and audits it offline without rebuilding the full QEMU image.
+One local offline build and an independent legacy-uImage parser check have
+passed; a separate clean CI build and exact-device validation remain open.
+On a default Windows Docker Desktop installation, the wrapper refuses to
+start unless at least 40 GiB is free on the Docker data drive; it does not
+shrink Docker's VHDX or free unrelated images/volumes automatically.
 
 `BR2_REPRODUCIBLE` is enabled, but bit-for-bit reproducibility is not claimed
 until two clean builds in independently provisioned environments have been
