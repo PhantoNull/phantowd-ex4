@@ -1,0 +1,65 @@
+#!/bin/sh
+
+PATH=/sbin:/bin
+export PATH
+
+fail() {
+    echo "PHANTOWD_EX4_STAGE_B2_ERROR reason=$1"
+    halt -f
+    while :; do sleep 60; done
+}
+
+mount -t proc proc /proc || fail proc-mount
+mount -t sysfs sysfs /sys || fail sysfs-mount
+
+# shellcheck disable=SC1091
+. /etc/phantowd-release || fail release-metadata
+
+[ "$PHANTOWD_TARGET" = "ex4-stage-b2-compile-only" ] || fail target-metadata
+[ "$PHANTOWD_FLASHABLE" = "no" ] || fail flashable-metadata
+[ "$PHANTOWD_HARDWARE_VALIDATED" = "no" ] || fail hardware-metadata
+[ "$PHANTOWD_STORAGE_ENABLED" = "no" ] || fail storage-metadata
+[ "$PHANTOWD_NETWORK_MODE" = "link-observation-only" ] || fail network-metadata
+[ ! -e /proc/mtd ] || fail mtd-exposed
+
+set -- /sys/class/block/*
+[ ! -e "$1" ] || fail block-device-exposed
+
+running_kernel="$(uname -r)"
+running_arch="$(uname -m)"
+[ "$running_kernel" = "$PHANTOWD_KERNEL_VERSION" ] || fail kernel-version
+case "$running_arch" in
+    armv5*) ;;
+    *) fail architecture ;;
+esac
+
+[ -d /sys/class/net/eth0 ] || fail eth0-missing
+[ -d /sys/class/net/eth1 ] || fail eth1-missing
+set -- /sys/bus/mdio_bus/devices/*
+[ -e "$1" ] || fail mdio-phys-missing
+[ "$#" -ge 2 ] || fail second-mdio-phy-missing
+
+echo "PHANTOWD_EX4_STAGE_B2_READY target=$PHANTOWD_TARGET kernel=$running_kernel arch=$running_arch flashable=$PHANTOWD_FLASHABLE storage=$PHANTOWD_STORAGE_ENABLED network=$PHANTOWD_NETWORK_MODE mdio_devices=$#"
+
+# No IP, DHCP, bridge or socket applets exist in this image. Interface-up
+# starts PHY link negotiation only; its result is observed through sysfs.
+for iface in eth0 eth1; do
+    ifconfig "$iface" up || fail "$iface-up"
+done
+sleep 4
+
+for iface in eth0 eth1; do
+    IFS= read -r mac < "/sys/class/net/$iface/address" || fail "$iface-mac"
+    IFS= read -r carrier < "/sys/class/net/$iface/carrier" || fail "$iface-carrier"
+    IFS= read -r operstate < "/sys/class/net/$iface/operstate" || fail "$iface-operstate"
+    echo "PHANTOWD_EX4_STAGE_B2_LINK interface=$iface mac=$mac carrier=$carrier operstate=$operstate"
+done
+
+for iface in eth0 eth1; do
+    ifconfig "$iface" down || fail "$iface-down"
+done
+
+echo "PHANTOWD_EX4_STAGE_B2_HALT timeout_seconds=10"
+sleep 10
+halt -f
+while :; do sleep 60; done

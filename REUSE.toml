@@ -17,6 +17,7 @@ path = [
     "board/wd/ex4/README.md",
     "board/wd/ex4/stage-a/rootfs-overlay/**",
     "board/wd/ex4/stage-b/rootfs-overlay/**",
+    "board/wd/ex4/stage-b2/rootfs-overlay/**",
     "configs/**",
     "contrib/**",
     "external.desc",
@@ -47,6 +48,8 @@ path = [
     "board/wd/ex4/stage-a/linux.fragment",
     "board/wd/ex4/stage-b/kirkwood-wd-mycloud-ex4-stage-b.dts",
     "board/wd/ex4/stage-b/linux.fragment",
+    "board/wd/ex4/stage-b2/kirkwood-wd-mycloud-ex4-stage-b2.dts",
+    "board/wd/ex4/stage-b2/busybox.fragment",
 ]
 precedence = "closest"
 SPDX-FileCopyrightText = "2026 PhantoWD EX4 contributors"

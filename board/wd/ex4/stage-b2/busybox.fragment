@@ -1,0 +1,3 @@
+# SPDX-License-Identifier: GPL-2.0-only
+# Stage B2 needs only the interface-up/down applet, never DHCP or IP tools.
+CONFIG_IFCONFIG=y
