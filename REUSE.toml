@@ -50,6 +50,7 @@ path = [
     "board/wd/ex4/stage-b/linux.fragment",
     "board/wd/ex4/stage-b2/kirkwood-wd-mycloud-ex4-stage-b2.dts",
     "board/wd/ex4/stage-b2/busybox.fragment",
+    "board/wd/ex4/stage-b2/linux.fragment",
 ]
 precedence = "closest"
 SPDX-FileCopyrightText = "2026 PhantoWD EX4 contributors"

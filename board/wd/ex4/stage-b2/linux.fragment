@@ -1,0 +1,2 @@
+# Stage B2 must never run kernel-level DHCP/BOOTP autoconfiguration.
+# CONFIG_IP_PNP is not set

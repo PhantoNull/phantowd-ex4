@@ -17,6 +17,7 @@ stage_b_dir="$external_dir/board/wd/ex4/stage-b"
 stage_b2_dir="$external_dir/board/wd/ex4/stage-b2"
 config_file="$external_dir/configs/phantowd_ex4_stage_b2_defconfig"
 fragment_file="$stage_b_dir/linux.fragment"
+stage_b2_fragment="$stage_b2_dir/linux.fragment"
 busybox_fragment="$stage_b2_dir/busybox.fragment"
 dts_file="$stage_b2_dir/kirkwood-wd-mycloud-ex4-stage-b2.dts"
 init_file="$stage_b2_dir/rootfs-overlay/init"
@@ -28,6 +29,7 @@ grep -Fx "BR2_LINUX_KERNEL_CUSTOM_VERSION_VALUE=\"$LINUX_VERSION\"" "$config_fil
 grep -Fx 'BR2_PACKAGE_HOST_UBOOT_TOOLS=y' "$config_file" >/dev/null
 grep -F 'board/wd/ex4/stage-a/linux.fragment' "$config_file" >/dev/null
 grep -F 'board/wd/ex4/stage-b/linux.fragment' "$config_file" >/dev/null
+grep -F 'board/wd/ex4/stage-b2/linux.fragment' "$config_file" >/dev/null
 grep -F 'board/wd/ex4/stage-b2/busybox.fragment' "$config_file" >/dev/null
 grep -Fx '#include "marvell/kirkwood.dtsi"' "$dts_file" >/dev/null
 grep -Fx '#include "marvell/kirkwood-6282.dtsi"' "$dts_file" >/dev/null
@@ -59,11 +61,13 @@ grep -F 'ethphy0: ethernet-phy@0 {' "$dts_file" >/dev/null
 grep -F 'phy-handle = <&ethphy1>;' "$dts_file" >/dev/null
 grep -F 'ethphy1: ethernet-phy@1 {' "$dts_file" >/dev/null
 grep -Fx 'CONFIG_IFCONFIG=y' "$busybox_fragment" >/dev/null
+grep -Fx '# CONFIG_IP_PNP is not set' "$stage_b2_fragment" >/dev/null
 
 input_hash="$(
     sha256sum "$config_file" "$stage_a_dir/linux.fragment" \
         "$stage_a_dir/busybox.config" "$stage_a_dir/post-build.sh" \
-        "$fragment_file" "$busybox_fragment" "$dts_file" "$init_file" \
+        "$fragment_file" "$stage_b2_fragment" "$busybox_fragment" \
+        "$dts_file" "$init_file" \
         "$release_file" |
         sha256sum | cut -c1-16
 )"
@@ -109,9 +113,10 @@ done
 for option in MODULES BLOCK MTD USB_SUPPORT MMC SCSI ATA MD BLK_DEV_DM \
     I2C SPI RTC_CLASS WATCHDOG SOUND KEXEC CPU_FREQ CPU_IDLE SUSPEND PM \
     DEVMEM DEVPORT PCI_MVEBU HWMON THERMAL DMADEVICES IPV6 NETFILTER \
-    PACKET UNIX WIRELESS WLAN NET_DSA; do
+    PACKET UNIX WIRELESS WLAN NET_DSA IP_PNP; do
     assert_disabled "$option"
 done
+grep -Fx '# CONFIG_IP_PNP is not set' "$kernel_config" >/dev/null
 grep -Fx 'CONFIG_CMDLINE="console=ttyS0,115200n8 rdinit=/init panic=-1"' \
     "$kernel_config" >/dev/null
 # shellcheck disable=SC2016
