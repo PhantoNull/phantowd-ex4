@@ -1,7 +1,27 @@
 name: QEMU ARMv5 baseline
 
 on:
+  push:
+    branches-ignore:
+      - main
+    paths:
+      - 'board/qemu/armv5/**'
+      - 'configs/phantowd_qemu_armv5_defconfig'
+      - 'package/**'
+      - 'src/**'
+      - 'Config.in'
+      - 'external.desc'
+      - 'external.mk'
+      - 'support/build-qemu.ps1'
+      - 'support/build-ex4-dtb.ps1'
+      - 'support/build-ex4-stage-a.ps1'
+      - 'support/container/build-qemu.sh'
+      - 'support/container/build-ex4-dtb.sh'
+      - 'support/container/build-ex4-stage-a.sh'
+      - 'support/docker/Dockerfile'
+      - 'versions.env'
   pull_request:
+    types: [opened, reopened]
     paths:
       - 'board/qemu/armv5/**'
       - 'configs/phantowd_qemu_armv5_defconfig'

@@ -112,8 +112,10 @@ current policy also rejects malformed, all-zero, multicast, and duplicate MAC
 addresses before raising either link, while the known placeholder remains a
 warning so the isolated link/sensor probe can still run. The focused policy
 tests pass under BusyBox `ash` and the pinned Buildroot container shell; the
-expanded policy is awaiting a fresh full B3 CI build and has not yet been
-retested on the EX4. Stage B3 remains research-only and non-flashable.
+expanded policy passed compile-only CI run `35895266788` for candidate
+`a62683e`. The artifact manifest, legacy uImage checksums and embedded init
+and MAC-policy files were independently verified. This candidate has not yet
+been retested on the EX4. Stage B3 remains research-only and non-flashable.
 
 `BR2_REPRODUCIBLE` is enabled, but bit-for-bit reproducibility is not claimed
 until two clean builds in independently provisioned environments have been
