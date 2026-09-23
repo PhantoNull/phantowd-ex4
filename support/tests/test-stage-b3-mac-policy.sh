@@ -10,6 +10,7 @@ printf() {
 	return 127
 }
 
+# shellcheck disable=SC1090
 . "$policy_file"
 
 expect_status() {
@@ -35,9 +36,15 @@ expect_status() {
 }
 
 expect_status 0 distinct-nonplaceholder 00:90:a9:6a:6a:0a 00:90:a9:6a:6a:0b
+expect_status 0 distinct-nonplaceholder 02:aa:bb:cc:dd:ee 00:90:a9:6a:6a:0b
 expect_status 0 placeholder-warning 00:90:a9:6a:6a:0a 00:50:43:00:02:02
 expect_status 1 '' 00:90:a9:6a:6a:0a 00:90:a9:6a:6a:0a
 expect_status 1 '' 00:50:43:00:02:02 00:50:43:00:02:02
 expect_status 2 '' '' 00:50:43:00:02:02
+expect_status 2 '' 00:00:00:00:00:00 00:90:a9:6a:6a:0b
+expect_status 2 '' 01:23:45:67:89:ab 00:90:a9:6a:6a:0b
+expect_status 2 '' ff:ff:ff:ff:ff:ff 00:90:a9:6a:6a:0b
+expect_status 2 '' 00:90:a9:6a:6a:0g 00:90:a9:6a:6a:0b
+expect_status 2 '' 00:90:a9:6a:6a 00:90:a9:6a:6a:0b
 
-echo 'STAGE_B3_MAC_POLICY_TESTS_OK cases=5'
+echo 'STAGE_B3_MAC_POLICY_TESTS_OK cases=11'

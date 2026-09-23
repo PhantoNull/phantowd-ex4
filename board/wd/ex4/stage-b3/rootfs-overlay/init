@@ -52,11 +52,12 @@ IFS= read -r eth1_mac < /sys/class/net/eth1/address || fail eth1-mac
 
 # A placeholder prevents a MAC-handoff pass, but not an isolated link/sensor
 # observation. Keep duplicate addresses fail-closed before bringing links up.
+# shellcheck disable=SC1091
 . /usr/lib/phantowd/stage-b3/mac-policy.sh || fail mac-policy-missing
 if mac_handoff_status="$(stage_b3_mac_handoff_status "$eth0_mac" "$eth1_mac")"; then
 	:
 else
-	fail duplicate-or-missing-mac
+	fail invalid-or-duplicate-mac
 fi
 if [ "$mac_handoff_status" = 'placeholder-warning' ]; then
 	echo "PHANTOWD_EX4_STAGE_B3_MAC_WARNING eth0_mac=$eth0_mac eth1_mac=$eth1_mac reason=placeholder"

@@ -102,6 +102,19 @@ left-port and one right-port link transitions, so sustained stability remains
 unqualified. Both MACs were placeholders. The fixed init lowered both
 interfaces and halted automatically.
 
+Stage B3 is a compile-only follow-up probe for simultaneous two-port carrier,
+the addresses returned by both Ethernet drivers, and the Kirkwood internal
+thermal sensor. It configures no IP address, DHCP client, bridge, storage, or
+MTD and halts after a short observation. One exact-device B3 attempt stopped
+before its readiness marker because the target BusyBox lacked the `printf`
+utility; the helper was changed to use the available shell builtin. The
+current policy also rejects malformed, all-zero, multicast, and duplicate MAC
+addresses before raising either link, while the known placeholder remains a
+warning so the isolated link/sensor probe can still run. The focused policy
+tests pass under BusyBox `ash` and the pinned Buildroot container shell; the
+expanded policy is awaiting a fresh full B3 CI build and has not yet been
+retested on the EX4. Stage B3 remains research-only and non-flashable.
+
 `BR2_REPRODUCIBLE` is enabled, but bit-for-bit reproducibility is not claimed
 until two clean builds in independently provisioned environments have been
 compared. The container base image is digest-pinned; Debian build-dependency
