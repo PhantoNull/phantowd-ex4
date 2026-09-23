@@ -42,6 +42,7 @@ busybox_fragment="$stage_dir/busybox.fragment"
 dts_file="$stage_dir/kirkwood-wd-mycloud-ex4-stage-$stage.dts"
 init_file="$stage_dir/rootfs-overlay/init"
 release_file="$stage_dir/rootfs-overlay/etc/phantowd-release"
+mac_policy_file="$stage_dir/rootfs-overlay/usr/lib/phantowd/stage-b3/mac-policy.sh"
 
 test -f "$buildroot_source/.phantowd-source-ready"
 test -s "$download_dir/linux/linux-$LINUX_VERSION.tar.xz"
@@ -86,16 +87,30 @@ grep -Fx 'CONFIG_IFCONFIG=y' "$busybox_fragment" >/dev/null
 grep -Fx 'CONFIG_INET=y' "$stage_b2_fragment" >/dev/null
 grep -Fx '# CONFIG_IP_PNP is not set' "$stage_fragment" >/dev/null
 grep -Fx '# CONFIG_NFS_FS is not set' "$stage_b2_fragment" >/dev/null
+if [ "$stage" = b3 ]; then
+    test -s "$mac_policy_file"
+    sh "$external_dir/support/tests/test-stage-b3-mac-policy.sh" \
+        "$mac_policy_file"
+fi
 
-input_hash="$(
-    sha256sum "$config_file" "$stage_a_dir/linux.fragment" \
-        "$stage_a_dir/busybox.config" "$stage_a_dir/post-build.sh" \
-        "$fragment_file" "$stage_b2_fragment" "$stage_fragment" \
-        "$busybox_fragment" \
-        "$dts_file" "$init_file" \
-        "$release_file" |
-        sha256sum | cut -c1-16
-)"
+if [ "$stage" = b3 ]; then
+    input_hash="$(
+        sha256sum "$config_file" "$stage_a_dir/linux.fragment" \
+            "$stage_a_dir/busybox.config" "$stage_a_dir/post-build.sh" \
+            "$fragment_file" "$stage_b2_fragment" "$stage_fragment" \
+            "$busybox_fragment" "$dts_file" "$init_file" \
+            "$mac_policy_file" "$release_file" |
+            sha256sum | cut -c1-16
+    )"
+else
+    input_hash="$(
+        sha256sum "$config_file" "$stage_a_dir/linux.fragment" \
+            "$stage_a_dir/busybox.config" "$stage_a_dir/post-build.sh" \
+            "$fragment_file" "$stage_b2_fragment" "$stage_fragment" \
+            "$busybox_fragment" "$dts_file" "$init_file" "$release_file" |
+            sha256sum | cut -c1-16
+    )"
+fi
 output_dir="$workspace_dir/stage-$stage/$BUILDROOT_VERSION-$input_hash"
 
 make -C "$buildroot_source" BR2_EXTERNAL="$external_dir" \
@@ -325,13 +340,13 @@ else
     cat > "$artifact_dir/COMPILE-ONLY.txt" <<'EOF'
 Stage B3 is a NON-FLASHABLE research artifact. A physical trial requires a
 separately reviewed procedure and per-unit MAC values entered into U-Boot RAM
-only; never save those environment changes. It checks whether Linux receives
-two distinct non-placeholder MACs, raises both Ethernet interfaces together,
-samples both links at two-second intervals, then lowers both interfaces and
-halts. The SoC thermal sensor is sampled over serial; it is observational only
-and has no fan or shutdown policy. There is no IP configuration, DHCP, network
-service, storage, MTD or NAND writer. Do not install or use with data-bearing
-disks.
+only; never save those environment changes. It reports MAC handoff status,
+warns on placeholders, and fails closed if the two interface MACs are equal.
+It raises both Ethernet interfaces together, samples both links at two-second
+intervals, then lowers both interfaces and halts. The SoC thermal sensor is
+sampled over serial; it is observational only and has no fan or shutdown
+policy. There is no IP configuration, DHCP, network service, storage, MTD or
+NAND writer. Do not install or use with data-bearing disks.
 EOF
 fi
 cat > "$artifact_dir/UIMAGE-RESEARCH-MANIFEST.txt" <<EOF
