@@ -105,14 +105,33 @@ MAC identity remain hardware hypotheses.
 Build and audit locally with `.\support\build-ex4-stage-b.ps1`. This verifies
 the pinned source archives without first rebuilding the full QEMU target and
 checks free space on Docker Desktop's default Windows data drive. The resulting
-artifact is ignored by Git, explicitly non-flashable and **not yet
-hardware-validated**. Do not attach user-data disks or treat Stage A's
-successful serial boot as qualification for Stage B cooling, Ethernet or
-recovery.
+artifact is ignored by Git and explicitly non-flashable. One diskless
+exact-device RAM boot reached the Stage B `eth0`/MDIO enumeration marker and
+halted; it did not raise a link, identify a factory MAC or prove cooling and
+recovery. Do not attach user-data disks.
 
 The first local offline build completed with a 3,870,646-byte legacy uImage.
 An independent parser verified both header and payload CRCs; the final DTB
 retains an all-zero placeholder MAC address, so factory identity and the
 candidate PHY mapping must be observed on hardware before any network use.
-The same PR head passed clean compile-only CI. Neither result authorizes a
-physical boot.
+The same PR head passed clean compile-only CI before the narrow physical
+trial. The observed MAC was a placeholder, not factory identity.
+
+## Stage B2 dual-Ethernet link-observation research target
+
+`configs/phantowd_ex4_stage_b2_defconfig` is a **separate** non-flashable
+candidate. It retains Stage B's disabled NAND, SATA, MTD and other unqualified
+peripherals, then enables the second Ethernet controller and candidate MDIO
+PHY at address 1. A dedicated BusyBox fragment adds only `ifconfig`; the
+fixed `/init` raises each interface briefly, reads its sysfs MAC, carrier and
+operational state over serial, lowers both interfaces, and halts. Linux's
+`MV643XX_ETH` driver requires the IPv4 core, but the kernel omits IPv6, IP
+autoconfiguration and NFS, while userspace has no IP/DHCP/bridge/service
+tools. Stage B2 therefore never assigns an address or starts a service.
+Raising a port does start electrical link negotiation; this is not a passive
+probe.
+
+Build and audit with `.\support\build-ex4-stage-b2.ps1` on Windows/Docker.
+The candidate PHY addresses and Linux-to-jack mapping are unverified until a
+separately reviewed, diskless, time-bounded RAM trial. A successful compile
+or the earlier Stage B boot does not authorize installation or use with disks.

@@ -8,6 +8,9 @@ reproducible builds, safe recovery, and signed model-specific updates.
 The project is at the **hardware discovery and non-destructive bring-up**
 stage. It does not yet produce a flashable replacement firmware. It now has a
 separately named ARMv5 QEMU baseline for software-only development.
+Short, diskless RAM boots of serial-only Stage A and Ethernet-enumeration
+Stage B have succeeded on one EX4. A separate Stage B2 dual-link probe is in
+development; neither result qualifies storage, cooling or flash updates.
 
 ## Current work
 
