@@ -61,7 +61,7 @@ grep -F 'ethphy0: ethernet-phy@0 {' "$dts_file" >/dev/null
 grep -F 'phy-handle = <&ethphy1>;' "$dts_file" >/dev/null
 grep -F 'ethphy1: ethernet-phy@1 {' "$dts_file" >/dev/null
 grep -Fx 'CONFIG_IFCONFIG=y' "$busybox_fragment" >/dev/null
-grep -Fx '# CONFIG_INET is not set' "$stage_b2_fragment" >/dev/null
+grep -Fx 'CONFIG_INET=y' "$stage_b2_fragment" >/dev/null
 grep -Fx '# CONFIG_IP_PNP is not set' "$stage_b2_fragment" >/dev/null
 grep -Fx '# CONFIG_NFS_FS is not set' "$stage_b2_fragment" >/dev/null
 
@@ -108,14 +108,14 @@ assert_disabled() {
 
 for option in MACH_KIRKWOOD CPU_FEROCEON SERIAL_8250 SERIAL_8250_CONSOLE \
     SERIAL_OF_PLATFORM DEVTMPFS PROC_FS SYSFS TMPFS ARM_APPENDED_DTB \
-    ARM_ATAG_DTB_COMPAT CMDLINE_FORCE BLK_DEV_INITRD NET NETDEVICES \
+    ARM_ATAG_DTB_COMPAT CMDLINE_FORCE BLK_DEV_INITRD NET INET NETDEVICES \
     ETHERNET NET_VENDOR_MARVELL MV643XX_ETH MVMDIO PHYLIB OF_MDIO; do
     assert_enabled "$option"
 done
 for option in MODULES BLOCK MTD USB_SUPPORT MMC SCSI ATA MD BLK_DEV_DM \
     I2C SPI RTC_CLASS WATCHDOG SOUND KEXEC CPU_FREQ CPU_IDLE SUSPEND PM \
     DEVMEM DEVPORT PCI_MVEBU HWMON THERMAL DMADEVICES IPV6 NETFILTER \
-    PACKET UNIX WIRELESS WLAN NET_DSA INET IP_PNP NFS_FS ROOT_NFS SUNRPC; do
+    PACKET UNIX WIRELESS WLAN NET_DSA IP_PNP NFS_FS ROOT_NFS SUNRPC; do
     assert_disabled "$option"
 done
 grep -Fx 'CONFIG_CMDLINE="console=ttyS0,115200n8 rdinit=/init panic=-1"' \
