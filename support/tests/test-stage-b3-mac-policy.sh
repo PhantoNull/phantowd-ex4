@@ -2,6 +2,14 @@
 set -eu
 
 policy_file=${1:?usage: test-stage-b3-mac-policy.sh POLICY_FILE}
+
+# Stage B3 BusyBox is built without its printf applet and ash printf builtin.
+# Shadow printf in this host-side test to reproduce that target constraint.
+printf() {
+	echo 'printf: not found' >&2
+	return 127
+}
+
 . "$policy_file"
 
 expect_status() {
