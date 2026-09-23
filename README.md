@@ -8,9 +8,9 @@ reproducible builds, safe recovery, and signed model-specific updates.
 The project is at the **hardware discovery and non-destructive bring-up**
 stage. It does not yet produce a flashable replacement firmware. It now has a
 separately named ARMv5 QEMU baseline for software-only development.
-Short, diskless RAM boots of serial-only Stage A and Ethernet-enumeration
-Stage B have succeeded on one EX4. A separate Stage B2 dual-link probe is in
-development; neither result qualifies storage, cooling or flash updates.
+Short, diskless RAM boots of serial-only Stage A, Ethernet-enumeration Stage B,
+and the bounded Stage B2 dual-link probe have succeeded on one EX4. These
+results do not qualify storage, cooling, sustained networking or flash updates.
 
 ## Current work
 
@@ -79,14 +79,28 @@ operation or an unreviewed repeat test.
 
 An isolated Stage B research target adds only Ethernet-0/MDIO enumeration to
 the Stage A serial probe. It leaves the interface down, with no DHCP, IP
-configuration or packet-sending userspace. It has not been booted on hardware;
+configuration or packet-sending userspace. One exact-device diskless RAM boot
+reached its readiness marker and halted automatically;
 `.\support\build-ex4-stage-b.ps1` prepares hash/signature-verified sources,
 then compiles and audits it offline without rebuilding the full QEMU image.
 A local offline build, an independent legacy-uImage parser check, and a clean
-compile-only CI build have passed; exact-device validation remains open.
+compile-only CI build have passed. The observed MAC was a placeholder, and
+Stage B did not raise a link or validate network stability.
 On a default Windows Docker Desktop installation, the wrapper refuses to
 start unless at least 40 GiB is free on the Docker data drive; it does not
 shrink Docker's VHDX or free unrelated images/volumes automatically.
+
+Stage B2 adds the second Ethernet controller and a four-second, serial-only
+carrier observation. The Marvell driver requires the IPv4 core, but the target
+disables IP autoconfiguration, IPv6, packet sockets, bridge, NFS and SUNRPC and
+contains no address-management or network-service tools. Exact-head CI and two
+independent builds produced byte-identical uImages. In one diskless RAM boot
+with only the left rear jack cabled, Linux enumerated both NICs and two MDIO
+devices; `eth0` ended at 1 Gbit/s with carrier up and `eth1` down. Two transient
+link down/up events occurred during the short probe, so sustained link
+stability remains unqualified. Both MACs were placeholders. The init lowered
+both interfaces and halted automatically. The right-jack Linux mapping remains
+to be tested separately.
 
 `BR2_REPRODUCIBLE` is enabled, but bit-for-bit reproducibility is not claimed
 until two clean builds in independently provisioned environments have been

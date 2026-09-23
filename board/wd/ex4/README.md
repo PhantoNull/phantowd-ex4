@@ -132,6 +132,13 @@ Raising a port does start electrical link negotiation; this is not a passive
 probe.
 
 Build and audit with `.\support\build-ex4-stage-b2.ps1` on Windows/Docker.
-The candidate PHY addresses and Linux-to-jack mapping are unverified until a
-separately reviewed, diskless, time-bounded RAM trial. A successful compile
-or the earlier Stage B boot does not authorize installation or use with disks.
+Exact-head CI and two independent builds produced byte-identical uImages. One
+separately reviewed, diskless, time-bounded RAM trial with only the left rear
+jack cabled enumerated both NICs and two MDIO devices. `eth0` finished with
+carrier up at 1 Gbit/s while `eth1` remained down, mapping the left jack to
+candidate PHY 0 on the tested unit. The short observation also recorded two
+`eth0` down/up transitions; it does not qualify sustained link stability.
+Both interfaces retained the known placeholder MAC. The fixed init lowered
+both interfaces and halted automatically. The right-jack Linux mapping,
+factory identity, cooling, recovery and repeatability remain unverified. This
+result does not authorize installation or use with disks.
