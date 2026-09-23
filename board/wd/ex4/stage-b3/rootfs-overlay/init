@@ -49,9 +49,18 @@ IFS= read -r thermal_type < "$thermal_zone/type" || fail thermal-type
 
 IFS= read -r eth0_mac < /sys/class/net/eth0/address || fail eth0-mac
 IFS= read -r eth1_mac < /sys/class/net/eth1/address || fail eth1-mac
-[ "$eth0_mac" != '00:50:43:00:02:02' ] || fail eth0-placeholder-mac
-[ "$eth1_mac" != '00:50:43:00:02:02' ] || fail eth1-placeholder-mac
-[ "$eth0_mac" != "$eth1_mac" ] || fail duplicate-macs
+
+# A placeholder prevents a MAC-handoff pass, but not an isolated link/sensor
+# observation. Keep duplicate addresses fail-closed before bringing links up.
+. /usr/lib/phantowd/stage-b3/mac-policy.sh || fail mac-policy-missing
+if mac_handoff_status="$(stage_b3_mac_handoff_status "$eth0_mac" "$eth1_mac")"; then
+	:
+else
+	fail duplicate-or-missing-mac
+fi
+if [ "$mac_handoff_status" = 'placeholder-warning' ]; then
+	echo "PHANTOWD_EX4_STAGE_B3_MAC_WARNING eth0_mac=$eth0_mac eth1_mac=$eth1_mac reason=placeholder"
+fi
 
 read_temperature() {
 	IFS= read -r temperature < "$thermal_zone/temp" || fail thermal-read
@@ -69,7 +78,7 @@ read_interface() {
 }
 
 read_temperature
-echo "PHANTOWD_EX4_STAGE_B3_READY target=$PHANTOWD_TARGET kernel=$running_kernel arch=$running_arch flashable=no storage=no mdio_devices=$# eth0_mac=$eth0_mac eth1_mac=$eth1_mac thermal_type=$thermal_type temp_millicelsius=$temperature"
+echo "PHANTOWD_EX4_STAGE_B3_READY target=$PHANTOWD_TARGET kernel=$running_kernel arch=$running_arch flashable=no storage=no mdio_devices=$# eth0_mac=$eth0_mac eth1_mac=$eth1_mac mac_handoff=$mac_handoff_status thermal_type=$thermal_type temp_millicelsius=$temperature"
 
 ifconfig eth0 up || fail eth0-up
 ifconfig eth1 up || fail eth1-up

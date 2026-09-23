@@ -155,12 +155,14 @@ sockets, network services, storage, MTD, NAND, SATA and the fan controller
 unavailable. The thermal sensor is tripless and observational; it is not a
 thermal safety system.
 
-For a future exact-device trial, use that EX4's stock `mac1`/`mac2` values as
-U-Boot `ethaddr`/`eth1addr`, read them back, and never run `saveenv`. The
-initramfs rejects duplicate or placeholder addresses before raising the
-interfaces. Both HDDs must remain removed. This test would improve the
-combined link, MAC-handoff and internal-sensor evidence; it would not qualify
-fan control, sustained link stability, storage, recovery or installation.
+For an exact-device trial, use that EX4's stock `mac1`/`mac2` values as U-Boot
+`ethaddr`/`eth1addr`, read them back, and never run `saveenv`. The initramfs
+reports placeholder MACs as a warning so the independent link/sensor
+observations can continue, but still rejects duplicate addresses before
+raising interfaces. It configures no IP and starts no network service. Both
+HDDs must remain removed. This test does not qualify MAC handoff when a
+placeholder warning appears, fan control, sustained link stability, storage,
+recovery or installation.
 
 Build and audit with `.\support\build-ex4-stage-b3.ps1` on Windows/Docker.
 The output remains explicitly non-flashable and is not authorized for a
