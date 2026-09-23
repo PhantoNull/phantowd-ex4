@@ -94,13 +94,13 @@ Stage B2 adds the second Ethernet controller and a four-second, serial-only
 carrier observation. The Marvell driver requires the IPv4 core, but the target
 disables IP autoconfiguration, IPv6, packet sockets, bridge, NFS and SUNRPC and
 contains no address-management or network-service tools. Exact-head CI and two
-independent builds produced byte-identical uImages. In one diskless RAM boot
-with only the left rear jack cabled, Linux enumerated both NICs and two MDIO
-devices; `eth0` ended at 1 Gbit/s with carrier up and `eth1` down. Two transient
-link down/up events occurred during the short probe, so sustained link
-stability remains unqualified. Both MACs were placeholders. The init lowered
-both interfaces and halted automatically. The right-jack Linux mapping remains
-to be tested separately.
+independent builds produced byte-identical uImages. Separate diskless RAM
+boots with one rear jack connected at a time mapped the left jack to `eth0`
+and the right jack to `eth1`; each reached 1 Gbit/s carrier while the other
+interface stayed down. The short four-second observations recorded two
+left-port and one right-port link transitions, so sustained stability remains
+unqualified. Both MACs were placeholders. The fixed init lowered both
+interfaces and halted automatically.
 
 `BR2_REPRODUCIBLE` is enabled, but bit-for-bit reproducibility is not claimed
 until two clean builds in independently provisioned environments have been
