@@ -9,8 +9,8 @@ stage_b3_mac_handoff_status() {
 
 	if [ "$1" = "$PHANTOWD_STAGE_B3_PLACEHOLDER_MAC" ] ||
 		[ "$2" = "$PHANTOWD_STAGE_B3_PLACEHOLDER_MAC" ]; then
-		printf '%s\n' 'placeholder-warning'
+		echo 'placeholder-warning'
 	else
-		printf '%s\n' 'distinct-nonplaceholder'
+		echo 'distinct-nonplaceholder'
 	fi
 }
