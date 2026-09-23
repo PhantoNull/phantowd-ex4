@@ -1,0 +1,9 @@
+# Keep Stage B2's link-only kernel surface and add only read-only SoC thermal
+# telemetry. This tripless driver does not provide fan control or shutdown.
+CONFIG_INET=y
+# CONFIG_IP_PNP is not set
+# CONFIG_NFS_FS is not set
+# CONFIG_ROOT_NFS is not set
+CONFIG_THERMAL=y
+CONFIG_THERMAL_OF=y
+CONFIG_KIRKWOOD_THERMAL=y

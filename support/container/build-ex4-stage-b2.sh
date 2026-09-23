@@ -6,6 +6,24 @@ set -eu
 
 external_dir="${PHANTOWD_EXTERNAL_DIR:-/external}"
 workspace_dir="${PHANTOWD_WORKSPACE_DIR:-/workspace}"
+stage="${PHANTOWD_EX4_STAGE:-b2}"
+
+case "$stage" in
+    b2)
+        stage_label='Stage B2'
+        network_mode='link-observation-only'
+        thermal_status=disabled
+        ;;
+    b3)
+        stage_label='Stage B3'
+        network_mode='dual-link-and-internal-thermal-observation-only'
+        thermal_status=okay
+        ;;
+    *)
+        echo "Unsupported EX4 research stage: $stage" >&2
+        exit 2
+        ;;
+esac
 
 # shellcheck disable=SC1091
 . "$external_dir/versions.env"
@@ -15,13 +33,15 @@ download_dir="$workspace_dir/dl"
 stage_a_dir="$external_dir/board/wd/ex4/stage-a"
 stage_b_dir="$external_dir/board/wd/ex4/stage-b"
 stage_b2_dir="$external_dir/board/wd/ex4/stage-b2"
-config_file="$external_dir/configs/phantowd_ex4_stage_b2_defconfig"
+stage_dir="$external_dir/board/wd/ex4/stage-$stage"
+config_file="$external_dir/configs/phantowd_ex4_stage_${stage}_defconfig"
 fragment_file="$stage_b_dir/linux.fragment"
+stage_fragment="$stage_dir/linux.fragment"
 stage_b2_fragment="$stage_b2_dir/linux.fragment"
-busybox_fragment="$stage_b2_dir/busybox.fragment"
-dts_file="$stage_b2_dir/kirkwood-wd-mycloud-ex4-stage-b2.dts"
-init_file="$stage_b2_dir/rootfs-overlay/init"
-release_file="$stage_b2_dir/rootfs-overlay/etc/phantowd-release"
+busybox_fragment="$stage_dir/busybox.fragment"
+dts_file="$stage_dir/kirkwood-wd-mycloud-ex4-stage-$stage.dts"
+init_file="$stage_dir/rootfs-overlay/init"
+release_file="$stage_dir/rootfs-overlay/etc/phantowd-release"
 
 test -f "$buildroot_source/.phantowd-source-ready"
 test -s "$download_dir/linux/linux-$LINUX_VERSION.tar.xz"
@@ -30,11 +50,12 @@ grep -Fx 'BR2_PACKAGE_HOST_UBOOT_TOOLS=y' "$config_file" >/dev/null
 grep -F 'board/wd/ex4/stage-a/linux.fragment' "$config_file" >/dev/null
 grep -F 'board/wd/ex4/stage-b/linux.fragment' "$config_file" >/dev/null
 grep -F 'board/wd/ex4/stage-b2/linux.fragment' "$config_file" >/dev/null
-grep -F 'board/wd/ex4/stage-b2/busybox.fragment' "$config_file" >/dev/null
+grep -F "board/wd/ex4/stage-$stage/linux.fragment" "$config_file" >/dev/null
+grep -F "board/wd/ex4/stage-$stage/busybox.fragment" "$config_file" >/dev/null
 grep -Fx '#include "marvell/kirkwood.dtsi"' "$dts_file" >/dev/null
 grep -Fx '#include "marvell/kirkwood-6282.dtsi"' "$dts_file" >/dev/null
 grep -Fx "PHANTOWD_KERNEL_VERSION=$LINUX_VERSION" "$release_file" >/dev/null
-grep -Fx 'PHANTOWD_NETWORK_MODE=link-observation-only' "$release_file" >/dev/null
+grep -Fx "PHANTOWD_NETWORK_MODE=$network_mode" "$release_file" >/dev/null
 
 assert_dts_status() {
     node="$1"
@@ -51,8 +72,9 @@ assert_dts_status() {
 }
 
 for node in uart0 eth0 eth1 mdio; do assert_dts_status "$node" okay; done
+assert_dts_status thermal "$thermal_status"
 for node in uart1 gpio0 gpio1 nand crypto_sram sata sata_phy0 sata_phy1 \
-    sdio usb0 pciec pcie0 pcie1 i2c0 i2c1 spi0 rtc thermal wdt \
+    sdio usb0 pciec pcie0 pcie1 i2c0 i2c1 spi0 rtc wdt \
     cesa dma0 dma1 audio0; do
     assert_dts_status "$node" disabled
 done
@@ -62,28 +84,29 @@ grep -F 'phy-handle = <&ethphy1>;' "$dts_file" >/dev/null
 grep -F 'ethphy1: ethernet-phy@1 {' "$dts_file" >/dev/null
 grep -Fx 'CONFIG_IFCONFIG=y' "$busybox_fragment" >/dev/null
 grep -Fx 'CONFIG_INET=y' "$stage_b2_fragment" >/dev/null
-grep -Fx '# CONFIG_IP_PNP is not set' "$stage_b2_fragment" >/dev/null
+grep -Fx '# CONFIG_IP_PNP is not set' "$stage_fragment" >/dev/null
 grep -Fx '# CONFIG_NFS_FS is not set' "$stage_b2_fragment" >/dev/null
 
 input_hash="$(
     sha256sum "$config_file" "$stage_a_dir/linux.fragment" \
         "$stage_a_dir/busybox.config" "$stage_a_dir/post-build.sh" \
-        "$fragment_file" "$stage_b2_fragment" "$busybox_fragment" \
+        "$fragment_file" "$stage_b2_fragment" "$stage_fragment" \
+        "$busybox_fragment" \
         "$dts_file" "$init_file" \
         "$release_file" |
         sha256sum | cut -c1-16
 )"
-output_dir="$workspace_dir/stage-b2/$BUILDROOT_VERSION-$input_hash"
+output_dir="$workspace_dir/stage-$stage/$BUILDROOT_VERSION-$input_hash"
 
 make -C "$buildroot_source" BR2_EXTERNAL="$external_dir" \
     BR2_DL_DIR="$download_dir" O="$output_dir" \
-    phantowd_ex4_stage_b2_defconfig
+    "phantowd_ex4_stage_${stage}_defconfig"
 make -C "$buildroot_source" BR2_EXTERNAL="$external_dir" \
     BR2_DL_DIR="$download_dir" O="$output_dir" \
     -j"$(getconf _NPROCESSORS_ONLN)"
 
 kernel_config="$output_dir/build/linux-$LINUX_VERSION/.config"
-dtb="$output_dir/images/kirkwood-wd-mycloud-ex4-stage-b2.dtb"
+dtb="$output_dir/images/kirkwood-wd-mycloud-ex4-stage-$stage.dtb"
 zimage="$output_dir/images/zImage"
 cpio="$output_dir/images/rootfs.cpio"
 test -s "$kernel_config"
@@ -112,9 +135,17 @@ for option in MACH_KIRKWOOD CPU_FEROCEON SERIAL_8250 SERIAL_8250_CONSOLE \
     ETHERNET NET_VENDOR_MARVELL MV643XX_ETH MVMDIO PHYLIB OF_MDIO; do
     assert_enabled "$option"
 done
+if [ "$stage" = b2 ]; then
+    assert_disabled THERMAL THERMAL_OF KIRKWOOD_THERMAL
+else
+    for option in THERMAL THERMAL_OF KIRKWOOD_THERMAL; do
+        assert_enabled "$option"
+    done
+    assert_disabled THERMAL_HWMON THERMAL_MMIO
+fi
 for option in MODULES BLOCK MTD USB_SUPPORT MMC SCSI ATA MD BLK_DEV_DM \
     I2C SPI RTC_CLASS WATCHDOG SOUND KEXEC CPU_FREQ CPU_IDLE SUSPEND PM \
-    DEVMEM DEVPORT PCI_MVEBU HWMON THERMAL DMADEVICES IPV6 NETFILTER \
+    DEVMEM DEVPORT PCI_MVEBU HWMON DMADEVICES IPV6 NETFILTER \
     PACKET UNIX WIRELESS WLAN NET_DSA IP_PNP NFS_FS ROOT_NFS SUNRPC; do
     assert_disabled "$option"
 done
@@ -124,7 +155,7 @@ grep -Fx 'CONFIG_CMDLINE="console=ttyS0,115200n8 rdinit=/init panic=-1"' \
 grep -Fx 'CONFIG_INITRAMFS_SOURCE="${BR_BINARIES_DIR}/rootfs.cpio"' \
     "$kernel_config" >/dev/null
 
-# Stage B2 adds only ifconfig to Stage A's exact minimal BusyBox surface.
+# These stages add only ifconfig to Stage A's exact minimal BusyBox surface.
 busybox_build_dir="$(find "$output_dir/build" -maxdepth 1 -type d \
     -name 'busybox-*' -print -quit)"
 test -n "$busybox_build_dir"
@@ -254,18 +285,18 @@ test "$(dd if="$appended" bs=1 skip="$zimage_size" count=4 \
 
 mkimage="$output_dir/host/bin/mkimage"
 test -x "$mkimage"
-wrapped="$output_dir/uImage-stage-b2.compile-only"
+wrapped="$output_dir/uImage-stage-$stage.compile-only"
 SOURCE_DATE_EPOCH=0 "$mkimage" -A arm -O linux -T kernel -C none \
     -a 0x00008000 -e 0x00008000 \
-    -n 'PhantoWD EX4 Stage B2' -d "$appended" "$wrapped"
+    -n "PhantoWD EX4 $stage_label" -d "$appended" "$wrapped"
 wrapped_size="$(wc -c < "$wrapped" | tr -d '[:space:]')"
 test "$wrapped_size" -eq "$((appended_size + 64))"
 test "$wrapped_size" -le 5242880
 SOURCE_DATE_EPOCH=0 "$mkimage" -A arm -O linux -T kernel -C none \
     -a 0x00008000 -e 0x00008000 \
-    -n 'PhantoWD EX4 Stage B2' -d "$appended" \
-    "$output_dir/uImage-stage-b2-second-build.actual" >/dev/null
-cmp "$wrapped" "$output_dir/uImage-stage-b2-second-build.actual"
+    -n "PhantoWD EX4 $stage_label" -d "$appended" \
+    "$output_dir/uImage-stage-$stage-second-build.actual" >/dev/null
+cmp "$wrapped" "$output_dir/uImage-stage-$stage-second-build.actual"
 dd if="$wrapped" of="$output_dir/uimage-payload.actual" \
     bs=64 skip=1 status=none
 cmp "$appended" "$output_dir/uimage-payload.actual"
@@ -275,31 +306,42 @@ grep -Fx 'Image Type:   ARM Linux Kernel Image (uncompressed)' \
 grep -Fx 'Load Address: 00008000' "$output_dir/uimage-header.actual" >/dev/null
 grep -Fx 'Entry Point:  00008000' "$output_dir/uimage-header.actual" >/dev/null
 
-artifact_dir="$external_dir/artifacts/ex4-stage-b2-compile-only"
+artifact_dir="$external_dir/artifacts/ex4-stage-$stage-compile-only"
 install -d -m 0755 "$artifact_dir"
 install -m 0644 "$zimage" "$artifact_dir/zImage"
-install -m 0644 "$dtb" "$artifact_dir/kirkwood-wd-mycloud-ex4-stage-b2.dtb"
+install -m 0644 "$dtb" "$artifact_dir/kirkwood-wd-mycloud-ex4-stage-$stage.dtb"
 install -m 0644 "$appended" "$artifact_dir/zImage-with-appended-dtb.compile-only"
-install -m 0644 "$wrapped" "$artifact_dir/uImage-stage-b2.compile-only"
+install -m 0644 "$wrapped" "$artifact_dir/uImage-stage-$stage.compile-only"
 install -m 0644 "$kernel_config" "$artifact_dir/linux.config"
 install -m 0644 "$cpio" "$artifact_dir/rootfs.cpio"
-cat > "$artifact_dir/COMPILE-ONLY.txt" <<'EOF'
-Stage B2 is a NON-FLASHABLE research artifact. Do not boot it before a separate
-physical safety review. It adds Ethernet 1 and a second candidate MDIO PHY to
-Stage B. A fixed init script briefly raises both interfaces to observe link
-carrier, then lowers them and halts. There is no DHCP, IP configuration,
-SSH server, storage, MTD or NAND writer. Link negotiation is expected; do not
-assume the interfaces are electrically passive. The prior Stage B boot does
-not qualify Stage B2 PHY mapping, cooling or recovery.
+if [ "$stage" = b2 ]; then
+    cat > "$artifact_dir/COMPILE-ONLY.txt" <<'EOF'
+Stage B2 is a NON-FLASHABLE research artifact. It raises both Ethernet
+interfaces briefly to observe link carrier, then lowers them and halts. There
+is no DHCP, IP configuration, SSH server, storage, MTD or NAND writer. Link
+negotiation is expected; do not assume the interfaces are electrically passive.
 EOF
+else
+    cat > "$artifact_dir/COMPILE-ONLY.txt" <<'EOF'
+Stage B3 is a NON-FLASHABLE research artifact. A physical trial requires a
+separately reviewed procedure and per-unit MAC values entered into U-Boot RAM
+only; never save those environment changes. It checks whether Linux receives
+two distinct non-placeholder MACs, raises both Ethernet interfaces together,
+samples both links at two-second intervals, then lowers both interfaces and
+halts. The SoC thermal sensor is sampled over serial; it is observational only
+and has no fan or shutdown policy. There is no IP configuration, DHCP, network
+service, storage, MTD or NAND writer. Do not install or use with data-bearing
+disks.
+EOF
+fi
 cat > "$artifact_dir/UIMAGE-RESEARCH-MANIFEST.txt" <<EOF
 format=legacy-uimage
 status=compile-only
 flashable=no
 hardware_validated=no
 target=wd-my-cloud-ex4
-stage=B2-dual-ethernet-link-observation
-network_mode=link-observation-only
+stage=$stage-dual-link-mac-and-thermal-observation
+network_mode=$network_mode
 storage_enabled=no
 payload_bytes=$appended_size
 payload_sha256=$(sha256sum "$appended" | awk '{print $1}')
@@ -312,9 +354,9 @@ approved_boot_command=no
 EOF
 (
     cd "$artifact_dir"
-    sha256sum zImage kirkwood-wd-mycloud-ex4-stage-b2.dtb \
-        zImage-with-appended-dtb.compile-only uImage-stage-b2.compile-only \
+    sha256sum zImage "kirkwood-wd-mycloud-ex4-stage-$stage.dtb" \
+        zImage-with-appended-dtb.compile-only "uImage-stage-$stage.compile-only" \
         linux.config rootfs.cpio COMPILE-ONLY.txt \
         UIMAGE-RESEARCH-MANIFEST.txt > SHA256SUMS
 )
-printf 'EX4 Stage B2 compile passed. Non-flashable artifact: %s\n' "$artifact_dir"
+printf 'EX4 %s compile passed. Non-flashable artifact: %s\n' "$stage_label" "$artifact_dir"
