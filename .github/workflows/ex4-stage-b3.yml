@@ -1,9 +1,27 @@
 name: EX4 Stage B3 compile-only
 
 on:
-  push:
-    branches: [main]
   pull_request:
+    paths:
+      - 'board/wd/ex4/stage-a/**'
+      - 'board/wd/ex4/stage-b/**'
+      - 'board/wd/ex4/stage-b2/**'
+      - 'board/wd/ex4/stage-b3/**'
+      - 'board/wd/ex4/patches/linux/**'
+      - 'configs/phantowd_ex4_stage_a_defconfig'
+      - 'configs/phantowd_ex4_stage_b_defconfig'
+      - 'configs/phantowd_ex4_stage_b2_defconfig'
+      - 'configs/phantowd_ex4_stage_b3_defconfig'
+      - 'Config.in'
+      - 'external.desc'
+      - 'external.mk'
+      - 'support/build-ex4-stage-b3.ps1'
+      - 'support/container/build-ex4-stage-b2.sh'
+      - 'support/container/build-ex4-stage-b3.sh'
+      - 'support/container/build-qemu.sh'
+      - 'support/docker/Dockerfile'
+      - 'support/tests/test-stage-b3-mac-policy.sh'
+      - 'versions.env'
   workflow_dispatch:
 
 permissions:

@@ -1,9 +1,6 @@
 name: EX4 Stage B2 compile-only
 
 on:
-  push:
-    branches: [main]
-  pull_request:
   workflow_dispatch:
 
 permissions:
