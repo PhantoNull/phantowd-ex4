@@ -277,6 +277,38 @@ func TestInspectMDV090ComponentCommandIsReadOnlyAndGeneric(t *testing.T) {
 	}
 }
 
+func TestInspectMDV090GPTPartitionCommandIsReadOnlyAndGeneric(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "synthetic-md-disk.img")
+	fixture := syntheticGPTImageWithMDV090()
+	if err := os.WriteFile(path, fixture, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	var output bytes.Buffer
+	code, err := run([]string{"inspect-md-v0.90-partition", path, "1"}, &output)
+	if err != nil || code != 0 {
+		t.Fatalf("valid synthetic md GPT partition: code=%d err=%v output=%s", code, err, output.String())
+	}
+	after, err := os.ReadFile(path)
+	if err != nil || sha256.Sum256(after) != sha256.Sum256(fixture) {
+		t.Fatalf("disk image changed during inspection: err=%v", err)
+	}
+	for _, expected := range []string{`"status": "md-v0.90-superblock-candidate"`, `"partition_number": 1`, `"metadata_version": "0.90"`, `"superblock_checksum_status": "valid"`, `"wd_compatibility": "unqualified"`, `"block_device_opened": false`, `"mutations_performed": false`, `"assembly_performed": false`, `"mount_performed": false`} {
+		if !strings.Contains(output.String(), expected) {
+			t.Fatalf("missing %q in report: %s", expected, output.String())
+		}
+	}
+	for _, secret := range []string{filepath.ToSlash(path), "PRIVATE_ARRAY_ID", "/dev/sda"} {
+		if strings.Contains(output.String(), secret) {
+			t.Fatalf("report leaked %q: %s", secret, output.String())
+		}
+	}
+	output.Reset()
+	code, err = run([]string{"inspect-md-v0.90-partition", path, "2"}, &output)
+	if err != nil || code != 2 || !strings.Contains(output.String(), `"status": "unsupported"`) {
+		t.Fatalf("missing GPT partition: code=%d err=%v output=%s", code, err, output.String())
+	}
+}
+
 func TestPlanStorageInventoryCommandIsRedactedAndDryRunOnly(t *testing.T) {
 	fixture := `{"format":"phantowd-storage-assessment","schema_version":1,"legacy_volume_metadata_state":"not_collected","inventory":{"format":"phantowd-storage-inventory","schema_version":1,"disks":[{"id":"disk-a","wwn":"fixture-wwn-001","serial":"fixture-serial-001","bay":1,"device":"/dev/sda"}],"partitions":[{"id":"partition-a","disk_id":"disk-a","number":2,"partuuid":"fixture-partuuid-001"}],"volumes":[{"id":"volume-a","logical_volume_number":1,"filesystem_uuid":"fixture-fs-uuid-001","filesystem_type":"ext4","md_uuid":"fixture-md-uuid-001","member_partition_ids":["partition-a"]}]}}`
 	path := filepath.Join(t.TempDir(), "assessment.json")
@@ -374,6 +406,39 @@ func syntheticMDV090ComponentForCommand() []byte {
 	return image
 }
 
+func syntheticGPTImageWithMDV090() []byte {
+	const sector = 512
+	const sectors = 2048
+	const entrySize = 128
+	image := make([]byte, sector*sectors)
+	image[510], image[511] = 0x55, 0xaa
+	image[446+4] = 0xee
+	binary.LittleEndian.PutUint32(image[446+8:], 1)
+	binary.LittleEndian.PutUint32(image[446+12:], sectors-1)
+
+	const firstLBA = 64
+	const lastLBA = sectors - 64
+	primaryEntries := image[2*sector : 2*sector+entrySize]
+	copy(primaryEntries[:16], []byte{0x0f, 0x88, 0x9d, 0xa1, 0xfc, 0x05, 0x3b, 0x4d, 0xa0, 0x06, 0x74, 0x3f, 0x0f, 0x84, 0x91, 0x1e})
+	copy(primaryEntries[16:32], []byte("synthetic-partition"))
+	binary.LittleEndian.PutUint64(primaryEntries[32:40], firstLBA)
+	binary.LittleEndian.PutUint64(primaryEntries[40:48], lastLBA)
+	backupEntriesLBA := uint64(sectors - 2)
+	backupEntries := image[int(backupEntriesLBA)*sector : int(backupEntriesLBA)*sector+entrySize]
+	copy(backupEntries, primaryEntries)
+	entriesCRC := crc32.ChecksumIEEE(primaryEntries)
+	putGPTHeaderForCommandWithBounds(image[sector:2*sector], 1, sectors-1, 2, entriesCRC, 3, sectors-3)
+	putGPTHeaderForCommandWithBounds(image[(sectors-1)*sector:], sectors-1, 1, backupEntriesLBA, entriesCRC, 3, sectors-3)
+
+	component := syntheticMDV090ComponentForCommand()
+	componentSuperblock := component[len(component)-64*1024 : len(component)-64*1024+4096]
+	partitionBytes := (lastLBA - firstLBA + 1) * sector
+	partitionSuperblockOffset := int(partitionBytes&^(64*1024-1)) - 64*1024
+	partitionStart := int(firstLBA) * sector
+	copy(image[partitionStart+partitionSuperblockOffset:partitionStart+partitionSuperblockOffset+4096], componentSuperblock)
+	return image
+}
+
 func putMDV12SuperblockForCommand(image []byte) {
 	const partitionStartLBA = 3
 	start := partitionStartLBA*512 + 4096
@@ -424,13 +489,17 @@ func putExtSuperblockForCommand(image []byte) {
 }
 
 func putGPTHeaderForCommand(header []byte, currentLBA, backupLBA, entriesLBA uint64, entriesCRC uint32) {
+	putGPTHeaderForCommandWithBounds(header, currentLBA, backupLBA, entriesLBA, entriesCRC, 3, 61)
+}
+
+func putGPTHeaderForCommandWithBounds(header []byte, currentLBA, backupLBA, entriesLBA uint64, entriesCRC uint32, firstUsableLBA, lastUsableLBA uint64) {
 	copy(header[:8], "EFI PART")
 	binary.LittleEndian.PutUint32(header[8:12], 0x00010000)
 	binary.LittleEndian.PutUint32(header[12:16], 92)
 	binary.LittleEndian.PutUint64(header[24:32], currentLBA)
 	binary.LittleEndian.PutUint64(header[32:40], backupLBA)
-	binary.LittleEndian.PutUint64(header[40:48], 3)
-	binary.LittleEndian.PutUint64(header[48:56], 61)
+	binary.LittleEndian.PutUint64(header[40:48], firstUsableLBA)
+	binary.LittleEndian.PutUint64(header[48:56], lastUsableLBA)
 	copy(header[56:72], []byte{0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff, 0x10})
 	binary.LittleEndian.PutUint64(header[72:80], entriesLBA)
 	binary.LittleEndian.PutUint32(header[80:84], 1)

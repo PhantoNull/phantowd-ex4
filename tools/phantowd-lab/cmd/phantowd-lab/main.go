@@ -183,6 +183,9 @@ func run(args []string, output io.Writer) (int, error) {
 		}
 		return 0, nil
 
+	case "inspect-md-v0.90-partition":
+		return inspectMDV090Partition(args[1:], output)
+
 	case "plan-storage-inventory":
 		if len(args) != 2 {
 			return 1, errors.New("usage: phantowd-lab plan-storage-inventory FILE")
@@ -393,6 +396,92 @@ func inspectMDV12Partition(args []string, output io.Writer) (int, error) {
 		return 1, err
 	}
 	if result.Status != diskimage.MDStatusCandidate {
+		return 2, nil
+	}
+	return 0, nil
+}
+
+type mdV090ImageReport struct {
+	Format          string                  `json:"format"`
+	SchemaVersion   int                     `json:"schema_version"`
+	Status          diskimage.MDV090Status  `json:"status"`
+	PartitionNumber int                     `json:"partition_number"`
+	WDCompatibility string                  `json:"wd_compatibility"`
+	GPT             diskimage.Report        `json:"gpt"`
+	MD              *diskimage.MDV090Report `json:"md_superblock,omitempty"`
+	Findings        []string                `json:"findings"`
+	Limitations     []string                `json:"limitations"`
+}
+
+func inspectMDV090Partition(args []string, output io.Writer) (int, error) {
+	if len(args) != 2 {
+		return 1, errors.New("usage: phantowd-lab inspect-md-v0.90-partition DISK-IMAGE-FILE GPT-PARTITION-NUMBER")
+	}
+	partitionNumber, err := strconv.ParseUint(args[1], 10, 32)
+	if err != nil || partitionNumber == 0 || partitionNumber > 128 {
+		return 1, errors.New("GPT partition number must be between 1 and 128")
+	}
+	file, size, err := openRegular(args[0])
+	if err != nil {
+		return 1, err
+	}
+	defer file.Close()
+	gpt, err := diskimage.Inspect(file, size)
+	if err != nil {
+		return 1, err
+	}
+	result := mdV090ImageReport{
+		Format:          "phantowd-md-v0.90-gpt-partition-inspection",
+		SchemaVersion:   1,
+		Status:          diskimage.MDV090StatusUnsupported,
+		PartitionNumber: int(partitionNumber),
+		WDCompatibility: "unqualified",
+		GPT:             gpt,
+		Findings:        []string{},
+		Limitations: []string{
+			"only one generic GPT partition and one little-endian MD 0.90 component superblock are inspected; GPT type, ext/filesystem metadata, WD XML, all other partitions and other members are not combined or reconciled",
+			"one plausible component does not establish array-wide consistency, filesystem integrity, WD compatibility, or safe assembly",
+			"the supplied regular file is never mounted, modified, or treated as a block device",
+		},
+	}
+	if gpt.Status != diskimage.StatusValid {
+		if gpt.Status == diskimage.StatusDamaged {
+			result.Status = diskimage.MDV090StatusDamaged
+		}
+		result.Findings = []string{"GPT metadata must be valid before an MD 0.90 component partition can be selected"}
+		if err := writeJSON(output, result); err != nil {
+			return 1, err
+		}
+		return 2, nil
+	}
+	var selected *diskimage.Partition
+	for index := range gpt.Partitions {
+		if gpt.Partitions[index].Number == int(partitionNumber) {
+			selected = &gpt.Partitions[index]
+			break
+		}
+	}
+	if selected == nil {
+		result.Findings = []string{"requested GPT partition number is not present"}
+		if err := writeJSON(output, result); err != nil {
+			return 1, err
+		}
+		return 2, nil
+	}
+	partitionSectors := selected.LastLBA - selected.FirstLBA + 1
+	partitionBytes := partitionSectors * 512
+	component := io.NewSectionReader(file, int64(selected.FirstLBA*512), int64(partitionBytes))
+	metadata, err := diskimage.InspectMDV090Component(component, int64(partitionBytes))
+	if err != nil {
+		return 1, err
+	}
+	result.MD = &metadata
+	result.Status = metadata.Status
+	result.Findings = metadata.Findings
+	if err := writeJSON(output, result); err != nil {
+		return 1, err
+	}
+	if result.Status != diskimage.MDV090StatusCandidate {
 		return 2, nil
 	}
 	return 0, nil

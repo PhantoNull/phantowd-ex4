@@ -21,6 +21,7 @@ phantowd-lab inspect-gpt-image FILE
 phantowd-lab inspect-ext-partition IMAGE-FILE GPT-PARTITION-NUMBER
 phantowd-lab inspect-md-v1.2-partition IMAGE-FILE GPT-PARTITION-NUMBER
 phantowd-lab inspect-md-v0.90-component COMPONENT-IMAGE-FILE
+phantowd-lab inspect-md-v0.90-partition DISK-IMAGE-FILE GPT-PARTITION-NUMBER
 phantowd-lab inventory-rootfs [--summary] DIRECTORY
 phantowd-lab scan-storage-refs EXTRACTED-ROOT
 phantowd-lab inspect-storage-inventory FILE
@@ -99,6 +100,15 @@ agreement nor EX4 compatibility or assembly safety. The command never opens a
 block device, assembles an array, mounts, or modifies the image. Exit status is
 `0` for one plausible component, `2` for absent/damaged/unsupported metadata,
 and `1` for usage, I/O or file-open errors.
+
+`inspect-md-v0.90-partition` is the whole-disk-image counterpart: it first
+validates generic GPT, selects one partition, then applies the same bounded
+little-endian MD 0.90 component check to that partition's byte range. It does
+not infer a WD table from a valid GPT, check filesystem metadata, compare RAID
+members, or authorize assembly/mounting. It never opens a block device or
+modifies the image. Exit status is `0` for a plausible component, `2` for
+absent/damaged/unsupported metadata or a missing partition, and `1` for usage,
+I/O or file-open errors.
 
 `inventory-rootfs` walks an already extracted directory without following
 symlinks. It hashes regular files and records deterministic paths, sizes,
