@@ -49,6 +49,12 @@ trap cleanup EXIT INT TERM
 
 attempt=0
 while [ "$attempt" -lt 120 ]; do
+    if grep -F 'PHANTOWD_QEMU_ERROR' "$log_file" >/dev/null; then
+        echo "QEMU reported a boot readiness failure" >&2
+        tail -n 80 "$log_file" >&2
+        exit 1
+    fi
+
     if grep -F "$ready_marker" "$log_file" >/dev/null; then
         if grep -E 'Kernel panic|PHANTOWD_QEMU_ERROR|PHANTOWD_API_ERROR' "$log_file" >/dev/null; then
             echo "QEMU reported a boot failure" >&2
