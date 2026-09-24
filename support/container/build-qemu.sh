@@ -187,6 +187,7 @@ make --no-print-directory -C "$buildroot_source" \
     BR2_DL_DIR="$download_dir" \
     O="$output_dir" \
     show-info > "$artifact_dir/buildroot-show-info.json"
+raw_sbom="$artifact_dir/buildroot-sbom.cdx.json"
 (
     cd "$buildroot_source"
     O="$output_dir" BR2_EXTERNAL="$external_dir" BR2_DL_DIR="$download_dir" \
@@ -194,12 +195,21 @@ make --no-print-directory -C "$buildroot_source" \
         --project-name "PhantoWD EX4 QEMU ARMv5" \
         --project-version "dev-buildroot-$BUILDROOT_VERSION-linux-$LINUX_VERSION" \
         < "$artifact_dir/buildroot-show-info.json" \
-        > "$artifact_dir/sbom.cdx.json"
+        > "$raw_sbom"
 )
+python3 "$external_dir/support/container/augment-cyclonedx.py" \
+    < "$raw_sbom" > "$artifact_dir/sbom.cdx.json"
+rm -f "$raw_sbom"
 python3 -m json.tool "$artifact_dir/sbom.cdx.json" >/dev/null
+python3 -B -m flake8 \
+    "$external_dir/support/container/augment-cyclonedx.py" \
+    "$external_dir/support/container/test_augment_cyclonedx.py"
+python3 -B "$external_dir/support/container/test_augment_cyclonedx.py"
 grep -F '"bomFormat": "CycloneDX"' "$artifact_dir/sbom.cdx.json" >/dev/null
 grep -F "\"specVersion\": \"$CYCLONEDX_SPEC_VERSION\"" \
     "$artifact_dir/sbom.cdx.json" >/dev/null
+grep -F 'golang.org/x/crypto' "$artifact_dir/sbom.cdx.json" >/dev/null
+grep -F 'golang.org/x/sys' "$artifact_dir/sbom.cdx.json" >/dev/null
 install -m 0644 "$output_dir/images/zImage" "$artifact_dir/zImage"
 install -m 0644 "$output_dir/images/versatile-pb.dtb" "$artifact_dir/versatile-pb.dtb"
 install -m 0644 "$output_dir/images/rootfs.ext2" "$artifact_dir/rootfs.ext2"

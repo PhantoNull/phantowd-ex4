@@ -6,9 +6,18 @@ contains an embedded, read-only browser dashboard over its diagnostic API.
 
 - Fixed IPv4 loopback listener: `127.0.0.1:8080` **inside the guest**.
 - Runs as the dedicated `phantowd` user; serving as root is rejected.
-- Standard library only, `CGO_ENABLED=0`, ARMv5 `GOARM=5`.
-- Generated images include project and Go license notices under
-  `/usr/share/licenses/phantowd-api/`; full SBOM/legal-info is still pending.
+- `CGO_ENABLED=0`, ARMv5 `GOARM=5`. The isolated `passwordhash` package uses
+  pinned, vendored `golang.org/x/crypto/argon2`; its BSD-3-Clause license ships
+  with the image and its version appears in the CycloneDX SBOM.
+- `passwordhash` currently provides only a bounded Argon2id PHC hash/verify
+  primitive at the OWASP minimum parameters. It is not connected to the API,
+  creates no account, stores no password, and does not enable login. Parameters
+  are provisional until benchmarked on the EX4; never treat QEMU timing as a
+  hardware tuning result.
+- Generated images include project, Go, x/crypto and x/sys license notices
+  under `/usr/share/licenses/phantowd-api/`. Build output contains a CycloneDX
+  SBOM plus Buildroot's legal manifest; manual redistribution review remains
+  necessary.
 - No authentication or TLS yet: do not expose it to a LAN or forward its port.
 - `GET /` serves embedded HTML, CSS, JavaScript and ghost SVG assets with a
   restrictive Content Security Policy, no-store caching and same-origin-only
@@ -55,7 +64,7 @@ This is a bounded development prototype, not a security-reviewed LAN service.
 
 ## Local tests
 
-From the repository root on Windows, with a local Go 1.24+ installation:
+From the repository root on Windows, with a local Go 1.26+ installation:
 
 ```powershell
 .\support\test-api.ps1
@@ -93,5 +102,5 @@ and deleted source files cannot survive rsync. Dependencies remain cached.
 Go license copying runs after compiler dependencies exist, including on fresh
 parallel builds. Public CI uses the same build/test entrypoint. Hardware
 validation, TLS/authentication, a full management UI, storage services,
-independent clean-build reproduction, SBOM/legal-info delivery, and
-installer/update/rollback testing remain separate unfinished milestones.
+independent clean-build reproduction, manual SBOM/legal redistribution review,
+and installer/update/rollback testing remain separate unfinished milestones.

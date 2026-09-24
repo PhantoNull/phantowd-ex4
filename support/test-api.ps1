@@ -19,7 +19,7 @@ try {
     $env:GOTOOLCHAIN = 'local'
     $env:GOFLAGS = '-mod=vendor'
     go version
-    if ($LASTEXITCODE -ne 0) { throw 'A local Go 1.24+ compiler is required.' }
+    if ($LASTEXITCODE -ne 0) { throw 'A local Go 1.26+ compiler is required.' }
     go vet ./...
     if ($LASTEXITCODE -ne 0) { throw 'Go static checks failed.' }
     go test -count=1 "-coverprofile=$coverageFile" ./...

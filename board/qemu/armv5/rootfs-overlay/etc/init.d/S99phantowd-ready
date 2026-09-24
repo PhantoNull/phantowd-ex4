@@ -21,7 +21,7 @@ case "$1" in
         esac
 
         # Probe only guest loopback; no guest-to-LAN or host forwarding exists.
-        for api_license in LICENSE Go-LICENSE; do
+        for api_license in LICENSE Go-LICENSE Go-XCrypto-LICENSE Go-XSys-LICENSE; do
             if [ ! -s "/usr/share/licenses/phantowd-api/$api_license" ]; then
                 echo 'PHANTOWD_QEMU_ERROR diagnostics-license-missing'
                 exit 1
