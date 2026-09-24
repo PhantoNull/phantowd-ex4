@@ -162,6 +162,27 @@ func run(args []string, output io.Writer) (int, error) {
 	case "inspect-md-v1.2-partition":
 		return inspectMDV12Partition(args[1:], output)
 
+	case "inspect-md-v0.90-component":
+		if len(args) != 2 {
+			return 1, errors.New("usage: phantowd-lab inspect-md-v0.90-component COMPONENT-IMAGE-FILE")
+		}
+		file, size, err := openRegular(args[1])
+		if err != nil {
+			return 1, err
+		}
+		defer file.Close()
+		report, err := diskimage.InspectMDV090Component(file, size)
+		if err != nil {
+			return 1, err
+		}
+		if err := writeJSON(output, report); err != nil {
+			return 1, err
+		}
+		if report.Status != diskimage.MDV090StatusCandidate {
+			return 2, nil
+		}
+		return 0, nil
+
 	case "plan-storage-inventory":
 		if len(args) != 2 {
 			return 1, errors.New("usage: phantowd-lab plan-storage-inventory FILE")

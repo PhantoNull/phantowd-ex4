@@ -35,6 +35,193 @@ const (
 	MDStatusUnsupported MDStatus = "unsupported"
 )
 
+type MDV090Status string
+
+const (
+	MDV090StatusCandidate   MDV090Status = "md-v0.90-superblock-candidate"
+	MDV090StatusNotFound    MDV090Status = "no-md-v0.90-superblock"
+	MDV090StatusDamaged     MDV090Status = "damaged"
+	MDV090StatusUnsupported MDV090Status = "unsupported"
+)
+
+const (
+	mdV090Magic           = 0xa92b4efc
+	mdV090SuperblockBytes = 4096
+	mdV090ReservedBytes   = 64 * 1024
+	mdV090ChecksumField   = 152
+	mdV090MaxDevices      = 27
+	mdV090ThisDiskOffset  = 992 * 4
+)
+
+// MDV090Report is a bounded, read-only observation of a generic Linux MD
+// 0.90 superblock at the standard end-of-component location. It does not
+// establish that an array is complete, healthy, or compatible with any WD
+// model.
+type MDV090Report struct {
+	Format                   string       `json:"format"`
+	SchemaVersion            int          `json:"schema_version"`
+	Status                   MDV090Status `json:"status"`
+	MetadataVersion          string       `json:"metadata_version"`
+	WDCompatibility          string       `json:"wd_compatibility"`
+	ComponentBytes           uint64       `json:"component_bytes"`
+	SuperblockOffsetBytes    uint64       `json:"superblock_offset_bytes"`
+	ArrayLevel               int32        `json:"array_level"`
+	DeclaredDevices          uint32       `json:"declared_devices"`
+	RAIDDisks                uint32       `json:"raid_disks"`
+	MemberNumber             uint32       `json:"member_number"`
+	MemberRole               uint32       `json:"member_role"`
+	MemberRoleDescription    string       `json:"member_role_description,omitempty"`
+	Events                   uint64       `json:"events"`
+	SuperblockChecksumStatus string       `json:"superblock_checksum_status"`
+	ArrayIdentityFingerprint string       `json:"array_identity_fingerprint,omitempty"`
+	RawIdentityRedacted      bool         `json:"raw_identity_redacted"`
+	ImageMetadataRead        bool         `json:"image_metadata_read"`
+	BlockDeviceOpened        bool         `json:"block_device_opened"`
+	MutationsPerformed       bool         `json:"mutations_performed"`
+	AssemblyPerformed        bool         `json:"assembly_performed"`
+	MountPerformed           bool         `json:"mount_performed"`
+	Findings                 []string     `json:"findings"`
+	Limitations              []string     `json:"limitations"`
+}
+
+// InspectMDV090Component inspects only a regular-file image supplied by the
+// caller as one MD component device (typically a partition image). It follows
+// the Linux 0.90 end-of-device placement formula and reads exactly one 4096-
+// byte superblock. It never opens a block device, assembles, mounts, or writes.
+func InspectMDV090Component(image io.ReaderAt, imageSize int64) (MDV090Report, error) {
+	report := newMDV090Report(imageSize)
+	if image == nil || imageSize < 0 {
+		return report, errors.New("invalid component-image reader or size")
+	}
+	if imageSize%logicalSectorBytes != 0 {
+		return damagedMDV090(report, "component image is not aligned to the supported 512-byte logical sector size"), nil
+	}
+	report.ComponentBytes = uint64(imageSize)
+	if imageSize < mdV090ReservedBytes {
+		return unsupportedMDV090(report, "component image is smaller than the 64 KiB reserved metadata region"), nil
+	}
+
+	// MD_NEW_SIZE_SECTORS rounds the byte length down to a 64 KiB boundary,
+	// then reserves the preceding 64 KiB for the superblock and optional data.
+	alignedSize := uint64(imageSize) &^ uint64(mdV090ReservedBytes-1)
+	if alignedSize < mdV090ReservedBytes {
+		return unsupportedMDV090(report, "component image is too small for the standard MD 0.90 superblock placement"), nil
+	}
+	offset := alignedSize - mdV090ReservedBytes
+	if offset+mdV090SuperblockBytes > uint64(imageSize) || offset > math.MaxInt64 {
+		return damagedMDV090(report, "calculated MD 0.90 superblock range exceeds the component image"), nil
+	}
+	report.SuperblockOffsetBytes = offset
+
+	superblock := make([]byte, mdV090SuperblockBytes)
+	if err := readAt(image, superblock, offset, imageSize); err != nil {
+		return report, err
+	}
+	report.ImageMetadataRead = true
+	magic := binary.LittleEndian.Uint32(superblock[0:4])
+	if magic != mdV090Magic {
+		if binary.BigEndian.Uint32(superblock[0:4]) == mdV090Magic {
+			return unsupportedMDV090(report, "big-endian MD 0.90 metadata is not supported by this inspector"), nil
+		}
+		report.Status = MDV090StatusNotFound
+		report.Findings = []string{"no Linux MD 0.90 magic at the standard end-of-component offset"}
+		return report, nil
+	}
+	if binary.LittleEndian.Uint32(superblock[4:8]) != 0 {
+		return unsupportedMDV090(report, "MD metadata at the standard legacy offset is not version 0"), nil
+	}
+	if binary.LittleEndian.Uint32(superblock[8:12]) != 90 {
+		return unsupportedMDV090(report, "legacy MD metadata minor version is not exactly 90"), nil
+	}
+
+	report.MetadataVersion = "0.90"
+	storedChecksum := binary.LittleEndian.Uint32(superblock[mdV090ChecksumField : mdV090ChecksumField+4])
+	if mdV090Checksum(superblock) != storedChecksum {
+		report.SuperblockChecksumStatus = "invalid"
+		return damagedMDV090(report, "MD 0.90 superblock checksum does not match"), nil
+	}
+	report.SuperblockChecksumStatus = "valid"
+
+	report.ArrayLevel = int32(binary.LittleEndian.Uint32(superblock[28:32]))
+	report.DeclaredDevices = binary.LittleEndian.Uint32(superblock[36:40])
+	report.RAIDDisks = binary.LittleEndian.Uint32(superblock[40:44])
+	report.Events = uint64(binary.LittleEndian.Uint32(superblock[156:160])) |
+		uint64(binary.LittleEndian.Uint32(superblock[160:164]))<<32
+	report.MemberNumber = binary.LittleEndian.Uint32(superblock[mdV090ThisDiskOffset : mdV090ThisDiskOffset+4])
+	report.MemberRole = binary.LittleEndian.Uint32(superblock[mdV090ThisDiskOffset+12 : mdV090ThisDiskOffset+16])
+
+	if report.DeclaredDevices == 0 || report.DeclaredDevices > mdV090MaxDevices ||
+		report.RAIDDisks == 0 || report.RAIDDisks > report.DeclaredDevices ||
+		report.MemberNumber >= report.DeclaredDevices {
+		return damagedMDV090(report, "MD 0.90 member and array counts are inconsistent with the 27-device metadata limit"), nil
+	}
+	if report.MemberRole < report.RAIDDisks {
+		report.MemberRoleDescription = "active-slot"
+	} else if report.MemberRole == ^uint32(0) {
+		report.MemberRoleDescription = "unassigned-or-spare"
+	} else {
+		return unsupportedMDV090(report, "MD 0.90 member role uses an unrecognized value"), nil
+	}
+
+	arrayUUID := make([]byte, 16)
+	copy(arrayUUID[0:4], superblock[20:24])
+	copy(arrayUUID[4:8], superblock[52:56])
+	copy(arrayUUID[8:12], superblock[56:60])
+	copy(arrayUUID[12:16], superblock[60:64])
+	if !allZero(arrayUUID) {
+		report.ArrayIdentityFingerprint = fingerprint("phantowd-md-v0.90-array\n", arrayUUID)
+	}
+	report.Status = MDV090StatusCandidate
+	report.Findings = []string{"one generic Linux MD 0.90 component superblock is structurally plausible; array-wide consistency, member health, filesystem integrity, WD compatibility, and assembly safety are unqualified"}
+	return report, nil
+}
+
+func mdV090Checksum(superblock []byte) uint32 {
+	var sum uint64
+	for offset := 0; offset+4 <= len(superblock); offset += 4 {
+		if offset == mdV090ChecksumField {
+			continue
+		}
+		sum += uint64(binary.LittleEndian.Uint32(superblock[offset : offset+4]))
+	}
+	return uint32(sum) + uint32(sum>>32)
+}
+
+func newMDV090Report(imageSize int64) MDV090Report {
+	report := MDV090Report{
+		Format:                   "phantowd-md-v0.90-component-inspection",
+		SchemaVersion:            1,
+		Status:                   MDV090StatusUnsupported,
+		WDCompatibility:          "unqualified",
+		SuperblockChecksumStatus: "not-validated",
+		RawIdentityRedacted:      true,
+		Findings:                 []string{},
+		Limitations: []string{
+			"input must be a regular image of one component device; a whole-disk image is not automatically partitioned or scanned",
+			"only one 4096-byte MD 0.90 superblock at the standard end-of-device location is read; optional bitmap/reserved bytes and alternate layouts are not inspected",
+			"one plausible component does not prove cross-member event agreement, array health, filesystem integrity, WD compatibility, or safe assembly",
+			"raw array identity and host-supplied paths are not returned; the identity fingerprint is not an authenticity check",
+			"no block device is opened, no array is assembled, no filesystem is mounted, and the input image is never modified",
+		},
+	}
+	if imageSize >= 0 {
+		report.ComponentBytes = uint64(imageSize)
+	}
+	return report
+}
+
+func damagedMDV090(report MDV090Report, finding string) MDV090Report {
+	report.Status = MDV090StatusDamaged
+	report.Findings = []string{finding}
+	return report
+}
+
+func unsupportedMDV090(report MDV090Report, finding string) MDV090Report {
+	report.Status = MDV090StatusUnsupported
+	report.Findings = []string{finding}
+	return report
+}
+
 // MDV12Report contains a narrow, read-only observation of one native Linux
 // MD 1.2 component superblock. It is not an array-assembly or WD-compatibility
 // determination.

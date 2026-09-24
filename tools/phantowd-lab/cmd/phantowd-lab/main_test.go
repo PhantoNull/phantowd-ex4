@@ -247,6 +247,36 @@ func TestInspectMDV12PartitionCommandIsReadOnlyAndGeneric(t *testing.T) {
 	}
 }
 
+func TestInspectMDV090ComponentCommandIsReadOnlyAndGeneric(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "synthetic-md-component.img")
+	fixture := syntheticMDV090ComponentForCommand()
+	if err := os.WriteFile(path, fixture, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	var output bytes.Buffer
+	code, err := run([]string{"inspect-md-v0.90-component", path}, &output)
+	if err != nil || code != 0 {
+		t.Fatalf("valid synthetic md component: code=%d err=%v output=%s", code, err, output.String())
+	}
+	after, err := os.ReadFile(path)
+	if err != nil || sha256.Sum256(after) != sha256.Sum256(fixture) {
+		t.Fatalf("image changed during inspection: err=%v", err)
+	}
+	for _, expected := range []string{`"status": "md-v0.90-superblock-candidate"`, `"metadata_version": "0.90"`, `"superblock_checksum_status": "valid"`, `"raid_disks": 2`, `"member_number": 0`, `"wd_compatibility": "unqualified"`, `"block_device_opened": false`, `"mutations_performed": false`, `"assembly_performed": false`, `"mount_performed": false`} {
+		if !strings.Contains(output.String(), expected) {
+			t.Fatalf("missing %q in report: %s", expected, output.String())
+		}
+	}
+	for _, secret := range []string{filepath.ToSlash(path), "PRIVATE_ARRAY_ID", "/dev/sda"} {
+		if strings.Contains(output.String(), secret) {
+			t.Fatalf("report leaked %q: %s", secret, output.String())
+		}
+	}
+	if code, err = run([]string{"inspect-md-v0.90-component", path, "extra"}, &bytes.Buffer{}); code != 1 || err == nil {
+		t.Fatalf("extra argument: code=%d err=%v", code, err)
+	}
+}
+
 func TestPlanStorageInventoryCommandIsRedactedAndDryRunOnly(t *testing.T) {
 	fixture := `{"format":"phantowd-storage-assessment","schema_version":1,"legacy_volume_metadata_state":"not_collected","inventory":{"format":"phantowd-storage-inventory","schema_version":1,"disks":[{"id":"disk-a","wwn":"fixture-wwn-001","serial":"fixture-serial-001","bay":1,"device":"/dev/sda"}],"partitions":[{"id":"partition-a","disk_id":"disk-a","number":2,"partuuid":"fixture-partuuid-001"}],"volumes":[{"id":"volume-a","logical_volume_number":1,"filesystem_uuid":"fixture-fs-uuid-001","filesystem_type":"ext4","md_uuid":"fixture-md-uuid-001","member_partition_ids":["partition-a"]}]}}`
 	path := filepath.Join(t.TempDir(), "assessment.json")
@@ -314,6 +344,33 @@ func syntheticGPTImageForCommand() []byte {
 	putGPTHeaderForCommand(image[63*sector:], sectors-1, 1, 62, entriesCRC)
 	putExtSuperblockForCommand(image)
 	putMDV12SuperblockForCommand(image)
+	return image
+}
+
+func syntheticMDV090ComponentForCommand() []byte {
+	image := make([]byte, 1024*1024)
+	superblockOffset := len(image) - 64*1024
+	sb := image[superblockOffset : superblockOffset+4096]
+	binary.LittleEndian.PutUint32(sb[0:4], 0xa92b4efc)
+	binary.LittleEndian.PutUint32(sb[4:8], 0)
+	binary.LittleEndian.PutUint32(sb[8:12], 90)
+	copy(sb[20:24], []byte("PRIV"))
+	binary.LittleEndian.PutUint32(sb[28:32], 1)
+	binary.LittleEndian.PutUint32(sb[36:40], 2)
+	binary.LittleEndian.PutUint32(sb[40:44], 2)
+	copy(sb[52:56], []byte("ATE_"))
+	copy(sb[56:60], []byte("ARRA"))
+	copy(sb[60:64], []byte("Y_ID"))
+	binary.LittleEndian.PutUint32(sb[156:160], 42)
+	binary.LittleEndian.PutUint32(sb[992*4:992*4+4], 0)
+	binary.LittleEndian.PutUint32(sb[992*4+12:992*4+16], 0)
+	var sum uint64
+	for offset := 0; offset+4 <= len(sb); offset += 4 {
+		if offset != 152 {
+			sum += uint64(binary.LittleEndian.Uint32(sb[offset : offset+4]))
+		}
+	}
+	binary.LittleEndian.PutUint32(sb[152:156], uint32(sum)+uint32(sum>>32))
 	return image
 }
 

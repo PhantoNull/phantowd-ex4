@@ -20,6 +20,7 @@ phantowd-lab inspect-rescue FILE
 phantowd-lab inspect-gpt-image FILE
 phantowd-lab inspect-ext-partition IMAGE-FILE GPT-PARTITION-NUMBER
 phantowd-lab inspect-md-v1.2-partition IMAGE-FILE GPT-PARTITION-NUMBER
+phantowd-lab inspect-md-v0.90-component COMPONENT-IMAGE-FILE
 phantowd-lab inventory-rootfs [--summary] DIRECTORY
 phantowd-lab scan-storage-refs EXTRACTED-ROOT
 phantowd-lab inspect-storage-inventory FILE
@@ -85,6 +86,19 @@ legacy 0.90, vendor-specific RAID metadata, filesystem data, or disks directly.
 No array is assembled, mounted, or modified. Exit status is `0` only for a
 plausible v1.2 component superblock, `2` for absent/damaged/unsupported
 metadata, and `1` for usage, I/O or file-open errors.
+
+`inspect-md-v0.90-component` accepts a regular file containing one caller-
+supplied Linux MD component device (usually a partition image), not a whole
+disk image to be partitioned automatically. It reads exactly the standard
+4096-byte v0.90 superblock at the end-of-device offset defined by Linux's
+64-KiB reservation/alignment rule, validates its legacy checksum and bounded
+member counts, and fingerprints the array UUID. It supports little-endian
+version 0.90 only; it does not inspect optional bitmap data, other v0 minor
+versions, v1.x or vendor metadata. A candidate establishes neither member
+agreement nor EX4 compatibility or assembly safety. The command never opens a
+block device, assembles an array, mounts, or modifies the image. Exit status is
+`0` for one plausible component, `2` for absent/damaged/unsupported metadata,
+and `1` for usage, I/O or file-open errors.
 
 `inventory-rootfs` walks an already extracted directory without following
 symlinks. It hashes regular files and records deterministic paths, sizes,
