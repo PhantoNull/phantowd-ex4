@@ -6,6 +6,7 @@ package diskimage
 import (
 	"encoding/binary"
 	"errors"
+	"hash/crc32"
 	"io"
 	"math"
 )
@@ -18,6 +19,8 @@ const (
 	extIncompatRecover          = 0x0004
 	extIncompat64Bit            = 0x0080
 	extROCompatMetadataChecksum = 0x0400
+	extCRC32CChecksumType       = 1
+	extChecksumOffset           = 0x3fc
 )
 
 type ExtStatus string
@@ -131,6 +134,19 @@ func InspectExtSuperblock(image io.ReaderAt, imageSize int64, firstLBA, lastLBA 
 		report.FeatureIncompat = binary.LittleEndian.Uint32(superblock[0x60:0x64])
 		report.FeatureROCompat = binary.LittleEndian.Uint32(superblock[0x64:0x68])
 	}
+	if report.FeatureROCompat&extROCompatMetadataChecksum != 0 {
+		if superblock[0x175] != extCRC32CChecksumType {
+			report.SuperblockChecksumStatus = "unsupported-algorithm"
+			return unsupportedExt(report, "ext superblock declares an unsupported checksum algorithm"), nil
+		}
+		if binary.LittleEndian.Uint32(superblock[extChecksumOffset:extChecksumOffset+4]) != extSuperblockChecksum(superblock) {
+			report.SuperblockChecksumStatus = "invalid"
+			return damagedExt(report, "ext superblock metadata checksum does not match"), nil
+		}
+		report.SuperblockChecksumStatus = "valid"
+	} else {
+		report.SuperblockChecksumStatus = "not-advertised-or-unknown"
+	}
 	blockCount := uint64(binary.LittleEndian.Uint32(superblock[0x04:0x08]))
 	freeBlockCount := uint64(binary.LittleEndian.Uint32(superblock[0x0c:0x10]))
 	if revision == 1 {
@@ -160,17 +176,16 @@ func InspectExtSuperblock(image io.ReaderAt, imageSize int64, firstLBA, lastLBA 
 		report.FilesystemState = "not-marked-clean"
 	}
 	report.NeedsJournalRecovery = report.FeatureIncompat&extIncompatRecover != 0
-	if report.FeatureROCompat&extROCompatMetadataChecksum != 0 {
-		report.SuperblockChecksumStatus = "present-not-validated"
-	} else {
-		report.SuperblockChecksumStatus = "not-advertised-or-unknown"
-	}
 	if revision == 1 && !allZero(superblock[0x68:0x78]) {
 		report.FilesystemIdentityFingerprint = fingerprint("phantowd-ext-uuid-v1\n", superblock[0x68:0x78])
 	}
 	report.Status = ExtStatusCandidate
 	report.Findings = []string{"ext-family superblock fields are structurally plausible; filesystem integrity, WD compatibility and mount safety are unqualified"}
 	return report, nil
+}
+
+func extSuperblockChecksum(superblock []byte) uint32 {
+	return ^crc32.Update(0, crc32.MakeTable(crc32.Castagnoli), superblock[:extChecksumOffset])
 }
 
 func newExtReport(firstLBA, lastLBA uint64) ExtReport {
@@ -190,7 +205,7 @@ func newExtReport(firstLBA, lastLBA uint64) ExtReport {
 		Findings:                 []string{},
 		Limitations: []string{
 			"only the 1024-byte ext-family superblock at partition offset 1024 is inspected",
-			"superblock and filesystem checksums are not validated; no other filesystem metadata or file data is read",
+			"the ext superblock checksum is checked only when metadata_csum with CRC32C is advertised; no other filesystem checksums, metadata, or file data are read",
 			"a structurally plausible superblock is not proof of filesystem health, a supported WD layout, or safe mounting",
 			"nonzero dynamic-revision filesystem UUIDs are replaced with deterministic SHA-256 fingerprints that are not authenticity checks",
 			"input must be a regular local image file; no block device is opened, mounted, or modified",

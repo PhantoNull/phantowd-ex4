@@ -64,8 +64,11 @@ the selected GPT partition. It reports bounded geometry, feature masks,
 clean-unmount/journal-recovery flags and a redacted filesystem-UUID fingerprint
 when present. Its `ext-superblock-candidate` status only means that selected
 fields are structurally plausible; it does not distinguish ext2/3/4, validate
-the superblock checksum, inspect other filesystem metadata or file contents,
-or establish integrity, WD compatibility or mount safety. Exit status is `0`
+other filesystem metadata checksums, inspect file contents, or establish
+overall filesystem integrity, WD compatibility or mount safety. When the
+metadata-checksum feature is set, it verifies the ext superblock's CRC32C and
+rejects unknown checksum algorithms; without that feature it reports the
+checksum as not advertised or unknown. Exit status is `0`
 for a plausible superblock, `2` for absent/damaged/unsupported metadata and
 `1` for usage, I/O or file-open errors. Like the GPT command, it never opens a
 block device, mounts, or writes the input image.

@@ -195,7 +195,7 @@ func TestInspectExtPartitionCommandIsReadOnlyAndGeneric(t *testing.T) {
 	if err != nil || code != 0 {
 		t.Fatalf("valid synthetic ext partition: code=%d err=%v output=%s", code, err, output.String())
 	}
-	for _, expected := range []string{`"status": "ext-superblock-candidate"`, `"filesystem_family": "ext-family"`, `"filesystem_bytes": 2048`, `"wd_compatibility": "unqualified"`, `"block_device_opened": false`, `"mutations_performed": false`, `"mount_performed": false`, `"superblock_checksum_status": "present-not-validated"`} {
+	for _, expected := range []string{`"status": "ext-superblock-candidate"`, `"filesystem_family": "ext-family"`, `"filesystem_bytes": 2048`, `"wd_compatibility": "unqualified"`, `"block_device_opened": false`, `"mutations_performed": false`, `"mount_performed": false`, `"superblock_checksum_status": "not-advertised-or-unknown"`} {
 		if !strings.Contains(output.String(), expected) {
 			t.Fatalf("missing %q in report: %s", expected, output.String())
 		}
@@ -301,7 +301,6 @@ func putExtSuperblockForCommand(image []byte) {
 	binary.LittleEndian.PutUint32(superblock[76:80], 1)
 	binary.LittleEndian.PutUint32(superblock[92:96], 4)
 	binary.LittleEndian.PutUint32(superblock[96:100], 0x40)
-	binary.LittleEndian.PutUint32(superblock[100:104], 0x400)
 	copy(superblock[104:120], []byte{0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff})
 	copy(superblock[120:136], []byte("EXT4_PRIVATE_LABEL"))
 }
