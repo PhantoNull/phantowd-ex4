@@ -95,11 +95,33 @@ case "$1" in
         fi
         echo 'PHANTOWD_NFS_SMOKE_READY protocol=nfs3 transport=tcp scope=qemu-loopback-only'
 
+        if pidof nmbd >/dev/null 2>&1; then
+            echo 'PHANTOWD_QEMU_ERROR smb-netbios-daemon-running'
+            exit 1
+        fi
+        smb_listener_attempt=0
+        while ! awk '$2 == "0100007F:01BD" && $4 == "0A" { found=1 } END { exit !found }' /proc/net/tcp; do
+            if awk '$2 == "00000000:01BD" && $4 == "0A" { found=1 } END { exit !found }' /proc/net/tcp \
+                || awk '$2 == "00000000000000000000000000000000:01BD" && $4 == "0A" { found=1 } END { exit !found }' /proc/net/tcp6; then
+                echo 'PHANTOWD_QEMU_ERROR smb-listener-bound-to-wildcard'
+                cat /proc/net/tcp /proc/net/tcp6 2>/dev/null || true
+                exit 1
+            fi
+            smb_listener_attempt=$((smb_listener_attempt + 1))
+            if [ "$smb_listener_attempt" -ge 30 ]; then
+                echo 'PHANTOWD_QEMU_ERROR smb-listener-not-loopback-only'
+                cat /proc/net/tcp /proc/net/tcp6 2>/dev/null || true
+                exit 1
+            fi
+            sleep 1
+        done
+        echo 'PHANTOWD_SMB_LISTENER_READY address=127.0.0.1:445 smb1=disabled netbios=nmbd-disabled'
+
         smb_marker=/run/phantowd-smb-marker
         smb_client_log=/run/phantowd-smbclient.log
         rm -f "$smb_marker"
         smb_attempt=0
-        while ! smbclient -N -t 2 -m SMB3 //127.0.0.1/phantowd-smb-smoke \
+        while ! smbclient -N -t 2 -m SMB3_11 //127.0.0.1/phantowd-smb-smoke \
             -c "get marker $smb_marker" >"$smb_client_log" 2>&1; do
             smb_attempt=$((smb_attempt + 1))
             if [ "$smb_attempt" -ge 30 ]; then
@@ -122,7 +144,24 @@ case "$1" in
             exit 1
         fi
         rm -f "$smb_marker"
-        echo 'PHANTOWD_SMB_SMOKE_READY protocol=smb3 transport=tcp scope=qemu-loopback-only'
+        echo 'PHANTOWD_SMB_SMOKE_READY client_max_protocol=SMB3_11 server_min_protocol=SMB3_00 server_max_protocol=SMB3_11 transport=tcp scope=qemu-loopback-only'
+
+        smb_write_marker=/run/phantowd-smb-write-marker
+        printf '%s\n' 'phantowd-qemu-smb-write-probe-v1' >"$smb_write_marker"
+        if smbclient -N -t 2 -m SMB3_11 //127.0.0.1/phantowd-smb-smoke \
+            -c "put $smb_write_marker phantowd-write-must-be-denied" >"$smb_client_log" 2>&1; then
+            rm -f "$smb_write_marker"
+            echo 'PHANTOWD_QEMU_ERROR smb-readonly-share-accepted-write'
+            exit 1
+        fi
+        if ! grep -Eq 'NT_STATUS_(ACCESS_DENIED|MEDIA_WRITE_PROTECTED|NETWORK_ACCESS_DENIED)' "$smb_client_log"; then
+            rm -f "$smb_write_marker"
+            echo 'PHANTOWD_QEMU_ERROR smb-readonly-share-failed-for-unexpected-reason'
+            cat "$smb_client_log"
+            exit 1
+        fi
+        rm -f "$smb_write_marker"
+        echo 'PHANTOWD_SMB_READONLY_READY denied_write=confirmed scope=qemu-loopback-only'
 
         smb_daemon_rss_kib=0
         smb_daemon_pids="$(pidof smbd 2>/dev/null || true)"

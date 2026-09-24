@@ -74,8 +74,16 @@ while [ "$attempt" -lt 120 ]; do
             echo "Missing loopback-only NFSv3/TCP integration assertion" >&2
             exit 1
         fi
-        if ! grep -F 'PHANTOWD_SMB_SMOKE_READY protocol=smb3 transport=tcp scope=qemu-loopback-only' "$log_file" >/dev/null; then
+        if ! grep -F 'PHANTOWD_SMB_LISTENER_READY address=127.0.0.1:445 smb1=disabled netbios=nmbd-disabled' "$log_file" >/dev/null; then
+            echo "Missing loopback-only SMB listener and NetBIOS-disabled assertion" >&2
+            exit 1
+        fi
+        if ! grep -F 'PHANTOWD_SMB_SMOKE_READY client_max_protocol=SMB3_11 server_min_protocol=SMB3_00 server_max_protocol=SMB3_11 transport=tcp scope=qemu-loopback-only' "$log_file" >/dev/null; then
             echo "Missing loopback-only SMB3 integration assertion" >&2
+            exit 1
+        fi
+        if ! grep -F 'PHANTOWD_SMB_READONLY_READY denied_write=confirmed scope=qemu-loopback-only' "$log_file" >/dev/null; then
+            echo "Missing SMB read-only authorization assertion" >&2
             exit 1
         fi
         if ! grep -E 'PHANTOWD_SMB_RESOURCE userspace_daemons=smbd rss_kib=[0-9]+' "$log_file" >/dev/null; then
