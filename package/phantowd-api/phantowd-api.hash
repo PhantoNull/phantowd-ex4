@@ -1,0 +1,3 @@
+# License files are copied verbatim from the repository and pinned Go toolchain.
+sha256  cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30  LICENSE
+sha256  911f8f5782931320f5b8d1160a76365b83aea6447ee6c04fa6d5591467db9dad  Go-LICENSE
