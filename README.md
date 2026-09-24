@@ -49,10 +49,13 @@ physical devices are forwarded.
 Run `.\support\test-api.ps1` for fast offline host-native tests; the complete
 build runs those tests again with Buildroot's hash-verified Linux Go compiler.
 
-The [offline research toolkit](tools/phantowd-lab/README.md) validates user-supplied
-local copies of the legacy WD update, logical-mtd3 and redacted logical-rescue
-formats, replays passive controller captures, and scans extracted trees for
-known legacy storage-path literals. It also validates a project-owned,
+The [offline research toolkit](tools/phantowd-lab/README.md) inspects user-supplied
+copies of the legacy WD update, logical-mtd3 and redacted logical-rescue
+formats; replays passive controller captures; and scans extracted trees for
+known legacy storage-path literals. Its host-only release inspector can fetch
+one exact immutable GitHub release, verify the signed metadata against an exact
+model/revision/channel, and hash the named payloads in a temporary workspace.
+It never authorizes installation. The toolkit validates a project-owned,
 versioned synthetic storage-inventory JSON and generic GPT structure in
 caller-supplied image files, with optional read-only ext-family superblock or
 Linux MD v1.2 and v0.90 component-superblock checks for selected GPT

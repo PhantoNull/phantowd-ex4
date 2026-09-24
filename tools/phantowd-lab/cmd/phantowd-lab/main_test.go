@@ -5,14 +5,91 @@ package main
 
 import (
 	"bytes"
+	"crypto/ed25519"
 	"crypto/sha256"
 	"encoding/binary"
+	"encoding/hex"
+	"encoding/json"
 	"hash/crc32"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 )
+
+func TestInspectReleaseCLIValidatesSignatureTargetAndPayload(t *testing.T) {
+	seed := sha256.Sum256([]byte("synthetic CLI signing key"))
+	privateKey := ed25519.NewKeyFromSeed(seed[:])
+	publicKey := privateKey.Public().(ed25519.PublicKey)
+	keyHash := sha256.Sum256(publicKey)
+	payload := []byte("synthetic EX4 release payload")
+	payloadHash := sha256.Sum256(payload)
+	manifest := map[string]any{
+		"format": "phantowd-release-manifest", "schema_version": 1, "product": "phantowd",
+		"release_version": "v0.1.0", "channel": "nightly", "model_id": "wd-my-cloud-ex4",
+		"hardware_revisions": []string{"board-r1"}, "source_commit": strings.Repeat("b", 40),
+		"buildroot_version": "2025.02.18", "kernel_version": "6.18.53", "minimum_installer": "v0.1.0",
+		"signing_key_id": "sha256:" + hex.EncodeToString(keyHash[:]),
+		"artifacts":      []map[string]any{{"name": "rootfs.swu", "role": "swupdate-bundle", "size_bytes": len(payload), "sha256": hex.EncodeToString(payloadHash[:])}},
+	}
+	manifestBytes, err := json.Marshal(manifest)
+	if err != nil {
+		t.Fatal(err)
+	}
+	root := t.TempDir()
+	artifactDir := filepath.Join(root, "assets")
+	if err := os.Mkdir(artifactDir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	manifestPath := filepath.Join(root, "manifest.json")
+	signaturePath := filepath.Join(root, "manifest.sig")
+	publicKeyPath := filepath.Join(root, "release.pub")
+	if err := os.WriteFile(manifestPath, manifestBytes, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(signaturePath, ed25519.Sign(privateKey, manifestBytes), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(publicKeyPath, publicKey, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(artifactDir, "rootfs.swu"), payload, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	args := []string{"inspect-release", "--manifest", manifestPath, "--signature", signaturePath, "--public-key", publicKeyPath, "--artifacts", artifactDir, "--model", "wd-my-cloud-ex4", "--revision", "board-r1", "--channel", "nightly"}
+	var output bytes.Buffer
+	code, err := run(args, &output)
+	if err != nil || code != 0 {
+		t.Fatalf("valid release returned code=%d err=%v output=%s", code, err, output.String())
+	}
+	if !strings.Contains(output.String(), `"valid": true`) ||
+		!strings.Contains(output.String(), `"channel_matched": true`) ||
+		!strings.Contains(output.String(), `"installation_authorized": false`) ||
+		!strings.Contains(output.String(), `"hardware_qualified": false`) {
+		t.Fatalf("unexpected verifier report: %s", output.String())
+	}
+
+	output.Reset()
+	args[len(args)-3] = "board-r2"
+	code, err = run(args, &output)
+	if err != nil || code != 2 || !strings.Contains(output.String(), `"target_matched": false`) {
+		t.Fatalf("non-target revision returned code=%d err=%v output=%s", code, err, output.String())
+	}
+	args[len(args)-1] = "stable"
+	output.Reset()
+	code, err = run(args, &output)
+	if err != nil || code != 2 || !strings.Contains(output.String(), `"channel_matched": false`) {
+		t.Fatalf("non-target channel returned code=%d err=%v output=%s", code, err, output.String())
+	}
+}
+
+func TestInspectGitHubReleaseRequiresExplicitPinnedInputs(t *testing.T) {
+	var output bytes.Buffer
+	code, err := run([]string{"inspect-github-release"}, &output)
+	if code != 1 || err == nil || !strings.Contains(err.Error(), "--tag VERSION") {
+		t.Fatalf("GitHub release command did not fail closed on missing inputs: code=%d err=%v output=%q", code, err, output.String())
+	}
+}
 
 func TestDecodeMCUCommand(t *testing.T) {
 	var output bytes.Buffer

@@ -1,12 +1,16 @@
 # PhantoWD offline lab toolkit
 
-`phantowd-lab` is a host-only, read-only research tool. It validates local
-copies of the legacy WD My Cloud EX4 update, logical-mtd3 and logical-rescue
-formats and replays passive captures of the internal front-controller protocol.
+`phantowd-lab` is a host-only research tool with no device or installation
+path. It validates local copies of the legacy WD My Cloud EX4 update,
+logical-mtd3 and logical-rescue formats, verifies signed release metadata,
+optionally inspects a public GitHub release, and replays passive captures of
+the internal front-controller protocol.
 
 It intentionally provides **no** extraction, image construction, flash access,
 serial-port access, command transmission, firmware installation, or device
-discovery. Artifact inspectors accept regular files only; symlinks,
+discovery. The GitHub command performs anonymous HTTPS GETs and temporarily
+stages only the release payloads it is checking; it deletes that temporary
+directory before returning. Other artifact inspectors accept regular files only; symlinks,
 block/character devices and pipes are rejected. Rootfs inventory accepts an
 already extracted directory, never follows its symlinks and opens only regular
 children. Captures larger than 16 MiB are rejected where applicable.
@@ -14,6 +18,8 @@ children. Captures larger than 16 MiB are rejected where applicable.
 ## Commands
 
 ```text
+phantowd-lab inspect-github-release --tag VERSION --public-key FILE --model ID --revision ID --channel stable|beta|nightly
+phantowd-lab inspect-release --manifest FILE --signature FILE --public-key FILE --artifacts DIR --model ID --revision ID --channel stable|beta|nightly
 phantowd-lab inspect-update FILE
 phantowd-lab inspect-mtd3 FILE
 phantowd-lab inspect-rescue FILE
@@ -35,6 +41,86 @@ phantowd-lab replay-mcu [--format raw|hex] FILE
 Artifact inspectors return exit status `0` when all currently understood
 structure and XOR checks pass, `2` when a parsed artifact fails validation,
 and `1` for usage, I/O, or structural errors. Results are JSON.
+
+`inspect-release` checks a version-1 JSON manifest signed over its exact bytes
+with a detached raw 64-byte Ed25519 signature. The caller supplies a raw
+32-byte public key, the requested model/revision, and a directory containing
+the named payload files. The requested channel is explicit too, so a valid
+nightly signature cannot be mistaken for a stable-channel match. It rejects
+duplicate/unknown JSON fields, unsupported schema values, non-exact hardware
+revision matches, unsafe artifact names, symlink/non-regular payloads, and
+size or SHA-256 mismatches. The key ID is the
+SHA-256 fingerprint of the supplied public key. Artifact reads happen only
+after the signature, key ID, schema, exact model/revision, and requested
+channel pass. Each file is capped at 1 GiB and the signed bundle at 2 GiB.
+The report covers bytes read during that check only; a future device updater
+must verify again immediately before installation. Exit status is `0` only
+when the signature, metadata, target, and every artifact pass; `2` means a parsed
+release is invalid for that key/target or one or more payloads fail; `1` is
+reserved for usage, input, or structural errors.
+
+`inspect-github-release` is a host-side bridge for the planned public GitHub
+distribution path. It requests one exact version tag from the PhantoWD EX4
+repository (it does not follow a mutable `latest` pointer), requires the API to
+report a published immutable release, and checks that the stable/non-stable
+release flag is consistent with the requested channel. It downloads only
+`manifest.json` and `manifest.sig` first. The exact-byte signature, schema,
+model, board revision, channel and signed version-to-tag match must pass before
+the tool downloads any firmware payload. It then downloads exactly the assets
+listed in the signed manifest, rejects missing/unlisted release assets and
+size mismatches, hashes the downloaded bytes locally, and removes the private
+temporary staging directory. GitHub API metadata and transport hashes are not
+used as a substitute for the detached Ed25519 signature or local SHA-256
+checks. GitHub anonymous API access is currently limited to 60 requests per
+hour per source IP, so this manual command does not poll or retry a `latest`
+endpoint. See GitHub's [REST API rate-limit documentation](https://docs.github.com/en/rest/using-the-rest-api/rate-limits-for-the-rest-api).
+
+The public release is the distribution location, not the trust anchor. The
+caller still supplies a raw public key, so this host command cannot prove that
+the caller chose PhantoWD's genuine key. A future device updater must use a
+public key pinned in a trusted bootstrap/update component, keep its own
+anti-rollback state, re-verify the staged bytes immediately before install,
+and have a tested recovery path. GitHub immutable releases prevent edits to a
+published tag and its attached assets, but do not replace PhantoWD's signature
+or device-side rollback policy. See GitHub's documentation on
+[immutable releases](https://docs.github.com/en/code-security/concepts/supply-chain-security/immutable-releases)
+and [release asset downloads](https://docs.github.com/en/rest/releases/assets).
+
+This is an offline host-side verifier, not the device updater: the caller must
+obtain the public key through a separately trusted channel. Its result always
+sets `installation_authorized` and `hardware_qualified` to false. It does not
+establish key provisioning/rotation, anti-rollback, release expiry, HIL
+qualification, NAND layout, a safe slot, or an installation/recovery path.
+The signature protects the exact manifest bytes; artifacts are bound by the
+signed size and SHA-256 entries. No files are extracted, modified, installed,
+or sent to a device.
+
+The signed JSON object uses these fields:
+
+```json
+{
+  "format": "phantowd-release-manifest",
+  "schema_version": 1,
+  "product": "phantowd",
+  "release_version": "v0.1.0",
+  "channel": "nightly",
+  "model_id": "wd-my-cloud-ex4",
+  "hardware_revisions": ["board-r1"],
+  "source_commit": "<40-or-64-lowercase-hex-characters>",
+  "buildroot_version": "2025.02.18",
+  "kernel_version": "6.18.53",
+  "minimum_installer": "v0.1.0",
+  "signing_key_id": "sha256:<public-key-fingerprint>",
+  "artifacts": [
+    {"name": "release.swu", "role": "swupdate-bundle", "size_bytes": 1234, "sha256": "<64-lowercase-hex-characters>"}
+  ]
+}
+```
+
+The example is schema documentation only; its revision and payload are not
+qualified artifacts. Hardware revision identifiers must be explicit tokens,
+never wildcards. For current development, no revision row has been qualified
+for a public PhantoWD EX4 release.
 
 `inspect-mtd3` accepts the packed logical object containing the 2 KiB header
 and SquashFS. It does not accept or interpret a physical NAND dump and makes no

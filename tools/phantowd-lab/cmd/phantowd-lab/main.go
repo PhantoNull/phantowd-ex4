@@ -4,6 +4,7 @@
 package main
 
 import (
+	"context"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -13,9 +14,12 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/PhantoNull/phantowd-ex4/phantowd-lab/diskimage"
+	"github.com/PhantoNull/phantowd-ex4/phantowd-lab/githubrelease"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-lab/mcuproto"
+	"github.com/PhantoNull/phantowd-ex4/phantowd-lab/releaseverify"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-lab/rootfsinventory"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-lab/storageinventory"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-lab/storagerefs"
@@ -38,6 +42,12 @@ func run(args []string, output io.Writer) (int, error) {
 		return 1, errors.New("usage: phantowd-lab COMMAND [arguments]")
 	}
 	switch args[0] {
+	case "inspect-github-release":
+		return inspectGitHubRelease(args[1:], output)
+
+	case "inspect-release":
+		return inspectRelease(args[1:], output)
+
 	case "inspect-update":
 		if len(args) != 2 {
 			return 1, errors.New("usage: phantowd-lab inspect-update FILE")
@@ -236,6 +246,99 @@ func run(args []string, output io.Writer) (int, error) {
 	default:
 		return 1, fmt.Errorf("unknown command %q", args[0])
 	}
+}
+
+func inspectGitHubRelease(args []string, output io.Writer) (int, error) {
+	flags := flag.NewFlagSet("inspect-github-release", flag.ContinueOnError)
+	flags.SetOutput(io.Discard)
+	tag := flags.String("tag", "", "exact versioned GitHub release tag")
+	publicKeyPath := flags.String("public-key", "", "trusted raw Ed25519 public key (32 bytes)")
+	modelID := flags.String("model", "", "exact requested model identifier")
+	revision := flags.String("revision", "", "exact requested hardware revision")
+	channel := flags.String("channel", "", "expected channel: stable, beta, or nightly")
+	if err := flags.Parse(args); err != nil || flags.NArg() != 0 || *tag == "" || *publicKeyPath == "" || *modelID == "" || *revision == "" || *channel == "" {
+		return 1, errors.New("usage: phantowd-lab inspect-github-release --tag VERSION --public-key FILE --model ID --revision ID --channel stable|beta|nightly")
+	}
+	keyFile, keySize, err := openRegular(*publicKeyPath)
+	if err != nil {
+		return 1, err
+	}
+	defer keyFile.Close()
+	if keySize != 32 {
+		return 1, errors.New("trusted Ed25519 public key must be exactly 32 bytes")
+	}
+	publicKey, err := io.ReadAll(io.LimitReader(keyFile, 33))
+	if err != nil || len(publicKey) != 32 {
+		return 1, errors.New("cannot read trusted Ed25519 public key")
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Minute)
+	defer cancel()
+	result, err := githubrelease.Inspect(ctx, githubrelease.Options{
+		APIBase: githubrelease.DefaultAPIBase, Owner: githubrelease.ProjectOwner,
+		Repository: githubrelease.ProjectRepository, Tag: *tag, PublicKey: publicKey,
+		ModelID: *modelID, Revision: *revision, Channel: *channel,
+	})
+	if err != nil {
+		return 1, err
+	}
+	if err := writeJSON(output, result); err != nil {
+		return 1, err
+	}
+	if !result.Verification.Valid {
+		return 2, nil
+	}
+	return 0, nil
+}
+
+func inspectRelease(args []string, output io.Writer) (int, error) {
+	flags := flag.NewFlagSet("inspect-release", flag.ContinueOnError)
+	flags.SetOutput(io.Discard)
+	manifestPath := flags.String("manifest", "", "signed manifest JSON file")
+	signaturePath := flags.String("signature", "", "detached raw Ed25519 signature file")
+	publicKeyPath := flags.String("public-key", "", "trusted raw Ed25519 public key (32 bytes)")
+	artifactDir := flags.String("artifacts", "", "directory containing the named release payloads")
+	modelID := flags.String("model", "", "exact requested model identifier")
+	revision := flags.String("revision", "", "exact requested hardware revision")
+	channel := flags.String("channel", "", "expected release channel: stable, beta, or nightly")
+	if err := flags.Parse(args); err != nil || flags.NArg() != 0 || *manifestPath == "" || *signaturePath == "" || *publicKeyPath == "" || *artifactDir == "" || *modelID == "" || *revision == "" || *channel == "" {
+		return 1, errors.New("usage: phantowd-lab inspect-release --manifest FILE --signature FILE --public-key FILE --artifacts DIR --model ID --revision ID --channel stable|beta|nightly")
+	}
+	manifest, _, err := openRegular(*manifestPath)
+	if err != nil {
+		return 1, err
+	}
+	defer manifest.Close()
+	signature, signatureSize, err := openRegular(*signaturePath)
+	if err != nil {
+		return 1, err
+	}
+	defer signature.Close()
+	if signatureSize != 64 {
+		return 1, errors.New("detached Ed25519 signature must be exactly 64 bytes")
+	}
+	publicKeyFile, publicKeySize, err := openRegular(*publicKeyPath)
+	if err != nil {
+		return 1, err
+	}
+	defer publicKeyFile.Close()
+	if publicKeySize != 32 {
+		return 1, errors.New("trusted Ed25519 public key must be exactly 32 bytes")
+	}
+	publicKey, err := io.ReadAll(io.LimitReader(publicKeyFile, 33))
+	if err != nil || len(publicKey) != 32 {
+		return 1, errors.New("cannot read trusted Ed25519 public key")
+	}
+	report, err := releaseverify.Inspect(manifest, signature, publicKey, *artifactDir, *modelID, *revision, *channel)
+	if err != nil {
+		return 1, err
+	}
+	if err := writeJSON(output, report); err != nil {
+		return 1, err
+	}
+	if !report.Valid {
+		return 2, nil
+	}
+	return 0, nil
 }
 
 type extImageReport struct {
