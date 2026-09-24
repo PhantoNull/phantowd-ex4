@@ -22,13 +22,38 @@ function formatUptime(seconds) {
 
 function formatObservedTime(value) {
   const date = new Date(value);
-  return Number.isNaN(date.valueOf()) ? "Observation time unavailable" : `Sampled ${date.toLocaleTimeString()}`;
+  if (Number.isNaN(date.valueOf())) return null;
+  return new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "medium" }).format(date);
+}
+
+function setConnectionState(label, state = "ready") {
+  setText("build-label", label);
+  const indicator = byId("service-status-dot");
+  indicator.classList.toggle("is-loading", state === "loading");
+  indicator.classList.toggle("is-unavailable", state === "unavailable");
 }
 
 function renderSystem(system) {
   const buildLabel = system.target === "qemu-armv5" ? "QEMU · EMULATED" :
     system.target === "ui-preview-fixture" ? "LOCAL FIXTURES" : "DEVELOPMENT PROFILE";
-  setText("build-label", buildLabel);
+  setConnectionState(buildLabel);
+  const profileNotice = system.target === "qemu-armv5" ? {
+    title: "Emulator only.",
+    copy: "This image is not flashable or validated on EX4 hardware. No production disks or NAND are accessed.",
+    mark: "HARDWARE NOT VALIDATED",
+  } : system.target === "ui-preview-fixture" ? {
+    title: "Synthetic preview.",
+    copy: "Every value in this view is generated fixture data. No device, disk, or emulator was examined.",
+    mark: "FIXTURE DATA",
+  } : {
+    title: "Development image.",
+    copy: "This target is not release-qualified. Values are observations only and do not authorize storage or firmware actions.",
+    mark: "NOT RELEASE QUALIFIED",
+  };
+  setText("profile-notice-title", profileNotice.title);
+  setText("profile-notice-copy", profileNotice.copy);
+  setText("profile-notice-mark", profileNotice.mark);
+  if (system.target === "ui-preview-fixture") byId("logout").hidden = true;
   setText("kernel-value", `Linux ${system.kernel}`);
   setText("runtime-value", `${system.architecture}${system.goarm ? ` · GOARM ${system.goarm}` : ""} · ${formatUptime(system.uptime_seconds)}`);
   setText("target-value", system.target || "Target unspecified");
@@ -46,11 +71,18 @@ function renderSystem(system) {
   } else {
     setText("memory-value", "Unavailable");
     setText("memory-detail", "Memory values were missing or inconsistent");
+    byId("memory-meter").style.width = "0";
+    byId("memory-meter").parentElement.setAttribute("aria-valuenow", "0");
+    byId("memory-meter").parentElement.setAttribute("aria-label", "Memory availability unavailable");
   }
   setText("firmware-value", system.mode || "Mode unspecified");
   const yesNoUnknown = (value) => value === true ? "yes" : value === false ? "no" : "unknown";
   setText("firmware-detail", `Flashable: ${yesNoUnknown(system.flashable)} · Hardware validated: ${yesNoUnknown(system.hardware_validated)}`);
-  setText("observed-at", formatObservedTime(system.observed_at));
+  const observedAt = byId("observed-at");
+  const formattedTime = formatObservedTime(system.observed_at);
+  observedAt.textContent = formattedTime ? `Last observed ${formattedTime}` : "Observation time unavailable";
+  if (formattedTime) observedAt.dateTime = new Date(system.observed_at).toISOString();
+  else observedAt.removeAttribute("datetime");
 }
 
 function makeIdentityChip(label, status) {
@@ -111,20 +143,41 @@ function renderStorage(storage) {
 
 async function fetchJSON(path) {
   const response = await fetch(path, { method: "GET", headers: { Accept: "application/json" }, cache: "no-store", credentials: "same-origin" });
-  if (!response.ok) throw new Error("diagnostics unavailable");
+  if (!response.ok) {
+    const failure = new Error("diagnostics unavailable");
+    failure.status = response.status;
+    throw failure;
+  }
   return response.json();
 }
 
 async function refreshSnapshot() {
   const button = byId("refresh");
   const error = byId("error-banner");
+  const status = byId("snapshot-status");
+  const label = byId("refresh-label");
+  const originalLabel = label.textContent;
   button.disabled = true;
+  button.setAttribute("aria-busy", "true");
+  label.textContent = "Refreshing…";
+  status.textContent = "Refreshing the read-only snapshot…";
   error.hidden = true;
+  setConnectionState("Refreshing snapshot…", "loading");
   try {
     const [system, storage] = await Promise.all([fetchJSON("/api/v1/system"), fetchJSON("/api/v1/storage")]);
     renderSystem(system);
     renderStorage(storage);
-  } catch {
+    status.textContent = "Read-only snapshot updated.";
+  } catch (failure) {
+    if (failure?.status === 401) {
+      status.textContent = "Session expired. Sign in again to view a current snapshot.";
+      try {
+        await updateAuthView({ refresh: false, notice: "Your session expired. Sign in again to continue." });
+      } catch {
+        showAuthUnavailable();
+      }
+      return;
+    }
     setText("kernel-value", "Unavailable");
     setText("runtime-value", "No current system snapshot");
     setText("target-value", "Target unavailable");
@@ -132,14 +185,23 @@ async function refreshSnapshot() {
     setText("memory-detail", "No current memory sample");
     byId("memory-meter").style.width = "0";
     byId("memory-meter").parentElement.setAttribute("aria-valuenow", "0");
+    byId("memory-meter").parentElement.setAttribute("aria-label", "Memory availability unavailable");
     setText("firmware-value", "Unavailable");
     setText("firmware-detail", "Current hardware and flashability state unavailable");
     setText("observed-at", "No current snapshot");
     setText("device-count", "— devices");
-    byId("device-list").replaceChildren();
+    const empty = document.createElement("p");
+    empty.className = "empty-state";
+    empty.textContent = "Storage observation unavailable. No current device values are shown.";
+    byId("device-list").replaceChildren(empty);
+    setConnectionState("API unavailable", "unavailable");
+    status.textContent = "Snapshot unavailable. Current values were cleared; retry when the local API is available.";
+    error.textContent = "Snapshot unavailable. No current system or storage observations are shown.";
     error.hidden = false;
   } finally {
     button.disabled = false;
+    button.removeAttribute("aria-busy");
+    label.textContent = originalLabel;
   }
 }
 
@@ -149,7 +211,20 @@ function setAuthError(message) {
   error.hidden = false;
 }
 
-async function updateAuthView() {
+function showAuthUnavailable() {
+  byId("auth-panel").hidden = false;
+  byId("dashboard-content").hidden = true;
+  byId("logout").hidden = true;
+  byId("auth-form").hidden = true;
+  byId("auth-retry").hidden = false;
+  byId("auth-password").value = "";
+  setText("auth-title", "Local API unavailable.");
+  setText("auth-description", "Sign-in status cannot be checked right now, so diagnostic data is hidden. Retry after the local service is available.");
+  setAuthError("The local API could not be reached. No current system or storage data is shown.");
+  setConnectionState("API unavailable", "unavailable");
+}
+
+async function updateAuthView({ refresh = true, notice = "" } = {}) {
   const status = await fetchJSON("/api/v1/auth/status");
   const authPanel = byId("auth-panel");
   const dashboard = byId("dashboard-content");
@@ -159,12 +234,15 @@ async function updateAuthView() {
   const submit = byId("auth-submit");
   const authError = byId("auth-error");
   authError.hidden = true;
+  form.hidden = false;
+  byId("auth-retry").hidden = true;
 
   if (status.authenticated) {
     authPanel.hidden = true;
     dashboard.hidden = false;
     logout.hidden = false;
-    await refreshSnapshot();
+    setConnectionState("Authenticated", "loading");
+    if (refresh) await refreshSnapshot();
     return;
   }
 
@@ -179,7 +257,22 @@ async function updateAuthView() {
   submit.textContent = status.setup_required ? "Create account" : "Sign in";
   password.autocomplete = status.setup_required ? "new-password" : "current-password";
   password.value = "";
+  setConnectionState("Sign-in required");
+  if (notice) setAuthError(notice);
 }
+
+byId("auth-retry").addEventListener("click", async () => {
+  const retry = byId("auth-retry");
+  retry.disabled = true;
+  setConnectionState("Checking local API…", "loading");
+  try {
+    await updateAuthView();
+  } catch {
+    showAuthUnavailable();
+  } finally {
+    retry.disabled = false;
+  }
+});
 
 byId("auth-form").addEventListener("submit", async (event) => {
   event.preventDefault();
@@ -247,4 +340,4 @@ byId("logout").addEventListener("click", async () => {
 });
 
 byId("refresh").addEventListener("click", refreshSnapshot);
-updateAuthView().catch(() => setAuthError("The authentication service is unavailable."));
+updateAuthView().catch(showAuthUnavailable);

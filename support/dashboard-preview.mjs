@@ -70,6 +70,11 @@ const server = createServer(async (request, response) => {
     response.end('{"error":"unexpected_input"}\n');
     return;
   }
+  if (url.pathname === "/api/v1/auth/status") {
+    response.writeHead(200, { "Content-Type": "application/json" });
+    response.end('{"authenticated":true,"setup_required":false}\n');
+    return;
+  }
   if (url.pathname === "/api/v1/system" || url.pathname === "/api/v1/storage") {
     response.writeHead(200, { "Content-Type": "application/json" });
     response.end(JSON.stringify(url.pathname.endsWith("/system") ? systemFixture : storageFixture));

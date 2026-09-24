@@ -165,7 +165,7 @@ func TestDashboardServesReadOnlyDevelopmentUIAndAssets(t *testing.T) {
 		contentType string
 		contains    []string
 	}{
-		{"/", "text/html; charset=utf-8", []string{"PhantoWD", "Development profile", "read-only", "hardware_validated"}},
+		{"/", "text/html; charset=utf-8", []string{"PhantoWD", "Development image.", "read-only", "profile-notice-title"}},
 		{"/assets/app.css", "text/css; charset=utf-8", []string{"@media", "prefers-reduced-motion"}},
 		{"/assets/app.js", "text/javascript; charset=utf-8", []string{"/api/v1/system", "/api/v1/storage", "textContent"}},
 	} {

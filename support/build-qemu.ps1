@@ -3,9 +3,15 @@ param()
 
 $ErrorActionPreference = 'Stop'
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
+$dashboardTest = Join-Path $repoRoot 'support/test-dashboard-ui.mjs'
 $imageName = 'phantowd/buildroot:2025.02.18'
 $workspaceVolume = 'phantowd-ex4-buildroot-2025-02-18'
 $dockerfile = Join-Path $repoRoot 'support/docker/Dockerfile'
+
+node $dashboardTest
+if ($LASTEXITCODE -ne 0) {
+    throw 'Dashboard interaction tests failed.'
+}
 
 docker info | Out-Null
 if ($LASTEXITCODE -ne 0) {

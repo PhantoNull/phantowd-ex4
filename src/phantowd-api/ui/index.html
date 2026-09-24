@@ -20,8 +20,8 @@
         <span class="brand-name">PhantoWD <span class="brand-model">EX4</span></span>
       </a>
       <div class="topbar-status">
-        <span class="status-dot" aria-hidden="true"></span>
-        <span id="build-label">Development profile</span>
+        <span class="status-dot is-loading" id="service-status-dot" aria-hidden="true"></span>
+        <span id="build-label">Checking local API…</span>
       </div>
       <button class="logout-button" id="logout" type="button" hidden>Sign out</button>
     </header>
@@ -38,34 +38,36 @@
           <input id="auth-password" name="password" type="password" autocomplete="new-password" minlength="15" maxlength="1024" required>
           <button class="refresh-button" id="auth-submit" type="submit">Create account</button>
         </form>
+        <button class="refresh-button" id="auth-retry" type="button" hidden>Retry connection</button>
         <p class="error-banner" id="auth-error" role="alert" hidden>Authentication request failed.</p>
       </section>
 
       <div id="dashboard-content" hidden>
       <section class="intro" aria-labelledby="page-title">
         <div>
-          <p class="eyebrow">DEVICE CONSOLE <span aria-hidden="true">/</span> OVERVIEW</p>
+        <p class="eyebrow">DEVICE CONSOLE <span aria-hidden="true">/</span> OVERVIEW</p>
           <h1 id="page-title">Know what the system sees.</h1>
         <p class="lede">A read-only snapshot of this development image. It does not assemble, mount, or change storage.</p>
+        <p class="snapshot-status" id="snapshot-status" role="status" aria-live="polite" aria-atomic="true">Waiting for the local API…</p>
         </div>
-        <button class="refresh-button" id="refresh" type="button">
+        <button class="refresh-button" id="refresh" type="button" aria-describedby="snapshot-status">
           <span class="refresh-icon" aria-hidden="true">↻</span>
-          Refresh snapshot
+          <span id="refresh-label">Refresh snapshot</span>
         </button>
       </section>
 
       <section class="notice" aria-label="Development safety notice">
         <span class="notice-icon" aria-hidden="true">i</span>
-        <p><strong>Emulator only.</strong> This image is not flashable and has not been validated on EX4 hardware. No production disks or NAND are accessed.</p>
-        <span class="notice-mark" data-source="hardware_validated">HARDWARE NOT VALIDATED</span>
+        <p><strong id="profile-notice-title">Development image.</strong> <span id="profile-notice-copy">This view is not a release qualification or storage-management interface.</span></p>
+        <span class="notice-mark" id="profile-notice-mark">NOT RELEASE QUALIFIED</span>
       </section>
 
       <div class="section-heading">
         <div>
-          <p class="eyebrow">LIVE OBSERVATIONS</p>
+          <p class="eyebrow">ON-DEMAND OBSERVATIONS</p>
           <h2>System</h2>
         </div>
-        <span class="sample-time" id="observed-at">Waiting for snapshot</span>
+        <time class="sample-time" id="observed-at">Waiting for snapshot</time>
       </div>
 
       <section class="system-grid" aria-label="System observations">

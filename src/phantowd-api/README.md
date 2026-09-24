@@ -102,7 +102,12 @@ From the repository root on Windows, with a local Go 1.26+ installation:
 ```
 
 The first command runs `go vet` and fixture-based tests offline and creates a
-coverage report under ignored `artifacts/api-host-tests/`. The build command
+coverage report under ignored `artifacts/api-host-tests/`. Both PowerShell
+entrypoints also run dependency-free dashboard DOM interaction checks for the
+authenticated, unavailable-service, expired-session, and cleared-data states;
+they do not replace visual browser or assistive-technology testing. The Go
+tests also verify that the QEMU self-test's expected dashboard markers match
+the embedded assets. The build command
 also runs native Linux tests using Buildroot's hash-verified Go compiler and
 tests the real ARMv5 binary inside QEMU. The compiler variant is explicitly
 prebuilt; upstream Buildroot supplies its exact version and archive checksums.

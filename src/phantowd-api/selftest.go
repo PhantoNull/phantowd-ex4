@@ -26,6 +26,16 @@ const (
 	qemuTestWWN    = "500f000000000001"
 )
 
+var qemuDashboardAssets = []struct {
+	path, contentType string
+	markers           []string
+}{
+	{"/", "text/html; charset=utf-8", []string{"PhantoWD EX4", "Development image.", "profile-notice-title", "NOT RELEASE QUALIFIED"}},
+	{"/assets/app.css", "text/css; charset=utf-8", []string{"@media", "prefers-reduced-motion"}},
+	{"/assets/app.js", "text/javascript; charset=utf-8", []string{"/api/v1/system", "/api/v1/storage", "textContent"}},
+	{"/assets/ghost.svg", "image/svg+xml", []string{"<svg", "PhantoWD ghost"}},
+}
+
 func runSelfTest() error {
 	if runtime.GOARCH != "arm" || strings.Split(buildARMLevel(), ",")[0] != "5" {
 		return errors.New("self-test requires the ARMv5 QEMU target")
@@ -117,15 +127,7 @@ func runSelfTest() error {
 	if strings.Contains(string(storageData), qemuTestSerial) || strings.Contains(string(storageData), qemuTestWWN) {
 		return errors.New("raw QEMU storage identifiers leaked through the API")
 	}
-	for _, asset := range []struct {
-		path, contentType string
-		markers           []string
-	}{
-		{"/", "text/html; charset=utf-8", []string{"PhantoWD EX4", "Development profile", "hardware_validated"}},
-		{"/assets/app.css", "text/css; charset=utf-8", []string{"@media", "prefers-reduced-motion"}},
-		{"/assets/app.js", "text/javascript; charset=utf-8", []string{"/api/v1/system", "/api/v1/storage", "textContent"}},
-		{"/assets/ghost.svg", "image/svg+xml", []string{"<svg", "PhantoWD ghost"}},
-	} {
+	for _, asset := range qemuDashboardAssets {
 		response, err := client.Get("http://" + listenAddress + asset.path)
 		if err != nil {
 			return errors.New("dashboard loopback request failed")

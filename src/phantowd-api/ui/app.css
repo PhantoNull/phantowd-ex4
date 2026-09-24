@@ -49,6 +49,8 @@ a { color: inherit; text-decoration: none; }
 .logout-button:hover { border-color: #555d70; color: var(--ink); }
 .status-dot, .footer-dot { color: var(--mint); }
 .status-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--mint); box-shadow: 0 0 12px rgb(143 227 202 / 60%); }
+.status-dot.is-loading { background: var(--amber); box-shadow: 0 0 12px rgb(245 199 126 / 45%); }
+.status-dot.is-unavailable { background: var(--red); box-shadow: 0 0 12px rgb(255 155 155 / 45%); }
 
 .intro { display: flex; align-items: end; justify-content: space-between; gap: 28px; padding: 61px 0 34px; }
 .auth-panel { max-width: 590px; padding: 38px 0 64px; margin: 42px auto 0; }
@@ -63,6 +65,7 @@ a { color: inherit; text-decoration: none; }
 h1, h2, p { margin-top: 0; }
 h1 { max-width: 700px; margin-bottom: 12px; font-size: clamp(31px, 5vw, 48px); line-height: 1.08; letter-spacing: -.055em; font-weight: 680; }
 .lede { max-width: 600px; margin-bottom: 0; color: var(--muted); font-size: 14px; line-height: 1.65; }
+.snapshot-status { min-height: 18px; margin: 12px 0 0; color: var(--quiet); font-size: 11px; line-height: 1.5; }
 .refresh-button { display: inline-flex; flex: none; align-items: center; gap: 9px; min-height: 42px; padding: 0 16px; color: var(--ink); background: var(--surface-raised); border: 1px solid #424a5c; border-radius: 9px; cursor: pointer; transition: border-color .16s ease, background .16s ease, transform .16s ease; }
 .refresh-button:hover { background: #292f40; border-color: var(--violet-soft); }
 .refresh-button:active { transform: translateY(1px); }
