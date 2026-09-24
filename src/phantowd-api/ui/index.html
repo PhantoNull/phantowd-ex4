@@ -1,0 +1,119 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- SPDX-FileCopyrightText: 2026 PhantoWD EX4 contributors -->
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark light">
+  <meta name="theme-color" content="#10131b">
+  <title>PhantoWD EX4 — Device overview</title>
+  <link rel="icon" href="/assets/ghost.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/assets/app.css">
+  <script src="/assets/app.js" defer></script>
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <a class="brand" href="/" aria-label="PhantoWD EX4 device overview">
+        <img src="/assets/ghost.svg" alt="" width="38" height="38">
+        <span class="brand-name">PhantoWD <span class="brand-model">EX4</span></span>
+      </a>
+      <div class="topbar-status">
+        <span class="status-dot" aria-hidden="true"></span>
+        <span id="build-label">Development profile</span>
+      </div>
+    </header>
+
+    <main>
+      <section class="intro" aria-labelledby="page-title">
+        <div>
+          <p class="eyebrow">DEVICE CONSOLE <span aria-hidden="true">/</span> OVERVIEW</p>
+          <h1 id="page-title">Know what the system sees.</h1>
+        <p class="lede">A read-only snapshot of this development image. It does not assemble, mount, or change storage.</p>
+        </div>
+        <button class="refresh-button" id="refresh" type="button">
+          <span class="refresh-icon" aria-hidden="true">↻</span>
+          Refresh snapshot
+        </button>
+      </section>
+
+      <section class="notice" aria-label="Development safety notice">
+        <span class="notice-icon" aria-hidden="true">i</span>
+        <p><strong>Emulator only.</strong> This image is not flashable and has not been validated on EX4 hardware. No production disks or NAND are accessed.</p>
+        <span class="notice-mark" data-source="hardware_validated">HARDWARE NOT VALIDATED</span>
+      </section>
+
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">LIVE OBSERVATIONS</p>
+          <h2>System</h2>
+        </div>
+        <span class="sample-time" id="observed-at">Waiting for snapshot</span>
+      </div>
+
+      <section class="system-grid" aria-label="System observations">
+        <article class="card system-card">
+          <div class="card-heading">
+            <span class="card-icon icon-cpu" aria-hidden="true">⌘</span>
+            <span class="card-label">Runtime</span>
+          </div>
+          <p class="primary-value" id="kernel-value">—</p>
+          <p class="secondary-value" id="runtime-value">Waiting for API</p>
+          <span class="pill pill-neutral" id="target-value">Target unknown</span>
+        </article>
+
+        <article class="card system-card">
+          <div class="card-heading">
+            <span class="card-icon icon-memory" aria-hidden="true">▤</span>
+            <span class="card-label">Memory</span>
+          </div>
+          <p class="primary-value" id="memory-value">—</p>
+          <p class="secondary-value" id="memory-detail">Waiting for API</p>
+          <div class="meter" role="meter" aria-label="Memory availability" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+            <span class="meter-fill" id="memory-meter"></span>
+          </div>
+        </article>
+
+        <article class="card system-card">
+          <div class="card-heading">
+            <span class="card-icon icon-lock" aria-hidden="true">◇</span>
+            <span class="card-label">Firmware state</span>
+          </div>
+          <p class="primary-value" id="firmware-value">Development</p>
+          <p class="secondary-value" id="firmware-detail">Flashable: unknown · Hardware: unknown</p>
+          <span class="pill pill-warning">Not for installation</span>
+        </article>
+      </section>
+
+      <div class="section-heading storage-heading">
+        <div>
+          <p class="eyebrow">KERNEL SYSFS ONLY</p>
+          <h2>Block devices</h2>
+        </div>
+        <span class="count-badge" id="device-count">— devices</span>
+      </div>
+
+      <section class="storage-panel" aria-label="Observed block devices">
+        <div class="storage-head" aria-hidden="true">
+          <span>Device</span><span>Capacity</span><span>Identity signals</span><span>Access</span>
+        </div>
+        <div id="device-list" class="device-list" aria-live="polite">
+          <p class="empty-state">Waiting for the read-only storage observation…</p>
+        </div>
+        <div class="storage-footnote">
+          <span class="footnote-icon" aria-hidden="true">⌁</span>
+          <p>Names such as <code>sda</code> are temporary kernel observations, not stable volume identities. Filesystems, RAID membership, bay mapping, disk health, and WD migration compatibility are not evaluated here.</p>
+        </div>
+      </section>
+
+      <p class="error-banner" id="error-banner" role="alert" hidden>Snapshot unavailable. The service did not return usable diagnostics.</p>
+    </main>
+
+    <footer class="footer">
+      <span>PhantoWD EX4 <span aria-hidden="true">·</span> read-only development console</span>
+      <span>Local guest loopback only <span class="footer-dot" aria-hidden="true">●</span></span>
+    </footer>
+  </div>
+</body>
+</html>

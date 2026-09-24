@@ -66,6 +66,10 @@ while [ "$attempt" -lt 120 ]; do
             echo "Missing ARMv5 diagnostics API assertion" >&2
             exit 1
         fi
+        if ! grep -F 'PHANTOWD_UI_READY mode=development read_only=true transport=guest-loopback-only' "$log_file" >/dev/null; then
+            echo "Missing loopback-only dashboard assertion" >&2
+            exit 1
+        fi
         if ! grep -E 'PHANTOWD_NFS_RESOURCE userspace_daemons=rpcbind,rpc.statd,rpc.mountd rss_kib=[0-9]+' "$log_file" >/dev/null; then
             echo "Missing NFS userspace resource measurement" >&2
             exit 1

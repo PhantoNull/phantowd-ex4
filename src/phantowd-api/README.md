@@ -1,7 +1,8 @@
 # Development diagnostics API
 
 This is the first product-owned Go package, not a complete management plane.
-It is included only in the non-flashable QEMU development configuration.
+It is included only in the non-flashable QEMU development configuration and
+contains an embedded, read-only browser dashboard over its diagnostic API.
 
 - Fixed IPv4 loopback listener: `127.0.0.1:8080` **inside the guest**.
 - Runs as the dedicated `phantowd` user; serving as root is rejected.
@@ -9,6 +10,10 @@ It is included only in the non-flashable QEMU development configuration.
 - Generated images include project and Go license notices under
   `/usr/share/licenses/phantowd-api/`; full SBOM/legal-info is still pending.
 - No authentication or TLS yet: do not expose it to a LAN or forward its port.
+- `GET /` serves embedded HTML, CSS, JavaScript and ghost SVG assets with a
+  restrictive Content Security Policy, no-store caching and same-origin-only
+  fetches. The browser uses `textContent` for observations and has no mutation
+  controls. This is a development console, not an authenticated admin panel.
 - Reads fixed `/proc` diagnostics and basic `/sys/class/block` metadata inside
   the QEMU guest. It never opens a block device, reads disk contents, runs a
   shell command, assembles or mounts storage, or performs configuration writes,
@@ -65,12 +70,19 @@ prebuilt; upstream Buildroot supplies its exact version and archive checksums.
 Native Linux tests also run the race detector and a five-second memory-parser
 fuzz campaign with two workers; ARMv5 race instrumentation is not used.
 
+For a host-browser layout preview, run `node support/dashboard-preview.mjs`.
+It binds only to `127.0.0.1:18081` and serves clearly labelled synthetic
+system/storage fixtures; it is not connected to the NAS and is never packaged
+into firmware. If that port is occupied, choose another unprivileged local port
+with `PHANTOWD_PREVIEW_PORT`.
+
 Guest initialization probes all three GET endpoints, verifies that QEMU's
 root block node appears through sysfs without being opened, rejects
 POST/query/unknown operations, validates non-root identity and ARMv5 metadata,
-and prints an RSS sample with a 48 MiB ceiling. A failure prevents QEMU
-readiness. The RSS sample is a smoke-test measurement, not a steady-state or
-real-EX4 benchmark.
+checks the embedded dashboard and static assets over guest loopback, rejects
+mutating/query dashboard requests, and prints an RSS sample with a 48 MiB
+ceiling. A failure prevents QEMU readiness. The RSS sample is a smoke-test
+measurement, not a steady-state or real-EX4 benchmark.
 
 QEMU uses a disposable disk snapshot and `restrict=on` with no host forwarding
 or physical device passthrough. No NAS address or credential is required.
@@ -79,7 +91,7 @@ The Buildroot entrypoint cleans only the generated local-package directory,
 rebuilds it, then regenerates the root filesystem so stamps cannot hide edits
 and deleted source files cannot survive rsync. Dependencies remain cached.
 Go license copying runs after compiler dependencies exist, including on fresh
-parallel builds. Public CI uses the same build/test entrypoint. Hardware validation,
-TLS/authentication, GUI, storage services, independent clean-build reproduction,
-SBOM/legal-info delivery, and installer/update/rollback testing remain separate
-unfinished milestones.
+parallel builds. Public CI uses the same build/test entrypoint. Hardware
+validation, TLS/authentication, a full management UI, storage services,
+independent clean-build reproduction, SBOM/legal-info delivery, and
+installer/update/rollback testing remain separate unfinished milestones.

@@ -88,6 +88,34 @@ func runSelfTest() error {
 	if strings.Contains(string(storageData), qemuTestSerial) || strings.Contains(string(storageData), qemuTestWWN) {
 		return errors.New("raw QEMU storage identifiers leaked through the API")
 	}
+	for _, asset := range []struct {
+		path, contentType string
+		markers           []string
+	}{
+		{"/", "text/html; charset=utf-8", []string{"PhantoWD EX4", "Development profile", "hardware_validated"}},
+		{"/assets/app.css", "text/css; charset=utf-8", []string{"@media", "prefers-reduced-motion"}},
+		{"/assets/app.js", "text/javascript; charset=utf-8", []string{"/api/v1/system", "/api/v1/storage", "textContent"}},
+		{"/assets/ghost.svg", "image/svg+xml", []string{"<svg", "PhantoWD ghost"}},
+	} {
+		response, err := client.Get("http://" + listenAddress + asset.path)
+		if err != nil {
+			return errors.New("dashboard loopback request failed")
+		}
+		data, readErr := io.ReadAll(io.LimitReader(response.Body, 65537))
+		response.Body.Close()
+		if readErr != nil || len(data) > 65536 || response.StatusCode != http.StatusOK ||
+			response.Header.Get("Content-Type") != asset.contentType || response.Header.Get("Cache-Control") != "no-store" {
+			return errors.New("invalid embedded dashboard asset")
+		}
+		for _, marker := range asset.markers {
+			if !strings.Contains(string(data), marker) {
+				return errors.New("dashboard asset failed its content assertion")
+			}
+		}
+		if asset.path == "/" && response.Header.Get("Content-Security-Policy") != "default-src 'none'; style-src 'self'; script-src 'self'; img-src 'self'; connect-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'" {
+			return errors.New("dashboard policy headers are missing or permissive")
+		}
+	}
 	for _, check := range []struct {
 		method, path string
 		status       int
@@ -96,6 +124,8 @@ func runSelfTest() error {
 		{http.MethodGet, "/api/v1/system?path=/dev/mtd3", http.StatusBadRequest},
 		{http.MethodPost, "/api/v1/storage", http.StatusMethodNotAllowed},
 		{http.MethodGet, "/api/v1/storage?device=/dev/sda", http.StatusBadRequest},
+		{http.MethodPost, "/", http.StatusMethodNotAllowed},
+		{http.MethodGet, "/assets/app.js?file=/etc/passwd", http.StatusBadRequest},
 		{http.MethodGet, "/api/v1/reboot", http.StatusNotFound},
 	} {
 		request, err := http.NewRequest(check.method, "http://"+listenAddress+check.path, nil)
@@ -111,6 +141,7 @@ func runSelfTest() error {
 			return errors.New("unsafe method, query, or route accepted")
 		}
 	}
+	fmt.Printf("PHANTOWD_UI_READY mode=development read_only=true transport=guest-loopback-only\n")
 	fmt.Printf("PHANTOWD_API_READY target=qemu-armv5 goarm=%s uid=%d memory_total_bytes=%d storage_observations=%d identity_metadata=serial+naa-wwn flashable=no hardware_validated=no\n",
 		snapshot.GOARM, snapshot.EffectiveUID, snapshot.Memory.TotalBytes, storage.DeviceCount)
 	return nil

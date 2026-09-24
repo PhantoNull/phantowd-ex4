@@ -1,8 +1,8 @@
 config BR2_PACKAGE_PHANTOWD_API
-	bool "phantowd-api (loopback development diagnostics)"
+	bool "phantowd-api (loopback development dashboard)"
 	depends on BR2_PACKAGE_HOST_GO_TARGET_ARCH_SUPPORTS
 	select BR2_PACKAGE_HOST_GO
 	help
-	  Read-only Go diagnostics prototype for the non-flashable
-	  QEMU target. Only 127.0.0.1:8080 is used. No authentication,
+	  Read-only Go diagnostics API and embedded dashboard prototype for the
+	  non-flashable QEMU target. Only 127.0.0.1:8080 is used. No authentication,
 	  TLS, storage mutation, hardware control or installation operations.

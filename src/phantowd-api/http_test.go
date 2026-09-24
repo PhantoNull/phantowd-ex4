@@ -6,6 +6,7 @@ package main
 import (
 	"encoding/json"
 	"errors"
+	"net/http"
 	"net/http/httptest"
 	"strings"
 	"sync"
@@ -31,7 +32,6 @@ func TestHTTPContract(t *testing.T) {
 		{"body", "GET", "/api/v1/system", "unexpected", 400, false},
 		{"unknown", "GET", "/api/v1/reboot", "", 404, false},
 		{"traversal", "GET", "/api/v1/system/../../etc/shadow", "", 404, false},
-		{"root", "GET", "/", "", 404, false},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			called := false
@@ -96,7 +96,7 @@ func TestConcurrentRequestLimit(t *testing.T) {
 	}
 	response := httptest.NewRecorder()
 	handler.ServeHTTP(response, httptest.NewRequest("GET", "/api/v1/system", nil))
-	if response.Code != 503 || !strings.Contains(response.Body.String(), "busy") {
+	if response.Code != 503 || response.Header().Get("Content-Type") != "application/json" || !strings.Contains(response.Body.String(), "busy") {
 		t.Fatal("concurrent limit not enforced")
 	}
 }
@@ -105,6 +105,70 @@ func TestServerIsLoopbackAndBounded(t *testing.T) {
 	server := newServer(newHandler(nil, nil))
 	if server.Addr != "127.0.0.1:8080" || server.ReadHeaderTimeout <= 0 || server.ReadTimeout <= 0 || server.WriteTimeout <= 0 || server.IdleTimeout <= 0 || server.MaxHeaderBytes != 8192 || !server.DisableGeneralOptionsHandler {
 		t.Fatal("unsafe server defaults")
+	}
+}
+
+func TestDashboardServesReadOnlyDevelopmentUIAndAssets(t *testing.T) {
+	var collectorCalls int
+	handler := newHandler(func() (systemSnapshot, error) {
+		collectorCalls++
+		return collectSystem(fixtureProc(), time.Now())
+	}, func() (storageSnapshot, error) {
+		collectorCalls++
+		return collectStorage(fixtureSysfs())
+	})
+
+	for _, test := range []struct {
+		path        string
+		contentType string
+		contains    []string
+	}{
+		{"/", "text/html; charset=utf-8", []string{"PhantoWD", "Development profile", "read-only", "hardware_validated"}},
+		{"/assets/app.css", "text/css; charset=utf-8", []string{"@media", "prefers-reduced-motion"}},
+		{"/assets/app.js", "text/javascript; charset=utf-8", []string{"/api/v1/system", "/api/v1/storage", "textContent"}},
+	} {
+		t.Run(test.path, func(t *testing.T) {
+			response := httptest.NewRecorder()
+			handler.ServeHTTP(response, httptest.NewRequest("GET", test.path, nil))
+			if response.Code != 200 || response.Header().Get("Content-Type") != test.contentType {
+				t.Fatalf("unexpected dashboard response: status=%d content-type=%q body=%q", response.Code, response.Header().Get("Content-Type"), response.Body.String())
+			}
+			if response.Header().Get("Cache-Control") != "no-store" || response.Header().Get("X-Content-Type-Options") != "nosniff" {
+				t.Fatal("dashboard response is missing no-cache/security headers")
+			}
+			if test.path == "/" {
+				if response.Header().Get("Content-Security-Policy") != "default-src 'none'; style-src 'self'; script-src 'self'; img-src 'self'; connect-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'" {
+					t.Fatal("dashboard CSP is not restrictive")
+				}
+				if strings.Contains(response.Body.String(), "<script>") || strings.Contains(response.Body.String(), " onload=") {
+					t.Fatal("dashboard contains inline executable markup")
+				}
+			}
+			for _, fragment := range test.contains {
+				if !strings.Contains(response.Body.String(), fragment) {
+					t.Fatalf("dashboard asset %q is missing %q", test.path, fragment)
+				}
+			}
+		})
+	}
+	if collectorCalls != 0 {
+		t.Fatalf("loading static dashboard performed %d live observations", collectorCalls)
+	}
+	for _, test := range []struct {
+		method string
+		path   string
+		body   string
+		status int
+	}{
+		{http.MethodPost, "/", "", http.StatusMethodNotAllowed},
+		{http.MethodGet, "/assets/app.css?file=/etc/passwd", "", http.StatusBadRequest},
+		{http.MethodGet, "/assets/app.js", "unexpected", http.StatusBadRequest},
+	} {
+		response := httptest.NewRecorder()
+		handler.ServeHTTP(response, httptest.NewRequest(test.method, test.path, strings.NewReader(test.body)))
+		if response.Code != test.status || collectorCalls != 0 {
+			t.Fatalf("dashboard accepted non-read request method=%s path=%s status=%d observations=%d", test.method, test.path, response.Code, collectorCalls)
+		}
 	}
 }
 
