@@ -6,6 +6,7 @@
 package passwordhash
 
 import (
+	"context"
 	"crypto/rand"
 	"crypto/subtle"
 	"encoding/base64"
@@ -44,12 +45,23 @@ type parameters struct {
 
 // Hash creates a PHC-format Argon2id verifier with a fresh 128-bit salt.
 // Its OWASP-floor parameters are provisional and must be benchmarked on the
-// EX4 before this primitive is used by a released login flow.
-func Hash(password []byte) (string, error) {
-	if len(password) == 0 || len(password) > maxPasswordLength {
+// EX4 before this primitive is used by a released login flow. Calls share one
+// process-wide KDF slot to bound concurrent memory use. A queued call may be
+// cancelled; an Argon2 operation already running cannot be interrupted.
+func Hash(ctx context.Context, password []byte) (string, error) {
+	if err := validatePassword(password); err != nil {
 		return "", errInvalidPassword
 	}
+	var encoded string
+	err := withKDFSlot(ctx, func() error {
+		var err error
+		encoded, err = hashValidated(password)
+		return err
+	})
+	return encoded, err
+}
 
+func hashValidated(password []byte) (string, error) {
 	salt := make([]byte, saltLength)
 	if _, err := rand.Read(salt); err != nil {
 		return "", errors.New("secure random salt unavailable")
@@ -65,16 +77,32 @@ func Hash(password []byte) (string, error) {
 
 // Verify checks password against a bounded PHC-format Argon2id verifier.
 // Malformed or out-of-policy verifiers fail before any KDF work is performed.
-func Verify(password []byte, encoded string) (bool, error) {
-	if len(password) == 0 || len(password) > maxPasswordLength {
+func Verify(ctx context.Context, password []byte, encoded string) (bool, error) {
+	if err := validatePassword(password); err != nil {
 		return false, errInvalidPassword
 	}
 	p, err := parse(encoded)
 	if err != nil {
 		return false, err
 	}
+	verified := false
+	err = withKDFSlot(ctx, func() error {
+		verified = verifyParsed(password, p)
+		return nil
+	})
+	return verified, err
+}
+
+func verifyParsed(password []byte, p parameters) bool {
 	actual := argon2.IDKey(password, p.salt, p.iterations, p.memoryKiB, p.threads, keyLength)
-	return subtle.ConstantTimeCompare(actual, p.key) == 1, nil
+	return subtle.ConstantTimeCompare(actual, p.key) == 1
+}
+
+func validatePassword(password []byte) error {
+	if len(password) == 0 || len(password) > maxPasswordLength {
+		return errInvalidPassword
+	}
+	return nil
 }
 
 func parse(encoded string) (parameters, error) {

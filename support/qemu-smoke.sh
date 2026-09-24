@@ -70,8 +70,8 @@ while [ "$attempt" -lt 120 ]; do
             echo "Missing loopback-only dashboard assertion" >&2
             exit 1
         fi
-        if ! grep -E 'PHANTOWD_AUTH_PRIMITIVE_READY algorithm=argon2id login_enabled=no ex4_parameters_tuned=no kdf_cycle_ms=[0-9]+' "$log_file" >/dev/null; then
-            echo "Missing bounded Argon2id ARMv5 self-test assertion" >&2
+        if ! grep -E 'PHANTOWD_AUTH_PRIMITIVE_READY algorithm=argon2id kdf_concurrency=1 login_enabled=no ex4_parameters_tuned=no kdf_cycle_ms=[0-9]+' "$log_file" >/dev/null; then
+            echo "Missing single-flight bounded Argon2id ARMv5 self-test assertion" >&2
             exit 1
         fi
         if ! grep -E 'PHANTOWD_NFS_RESOURCE userspace_daemons=rpcbind,rpc.statd,rpc.mountd rss_kib=[0-9]+' "$log_file" >/dev/null; then

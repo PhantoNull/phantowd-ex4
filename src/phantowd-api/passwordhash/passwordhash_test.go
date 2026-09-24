@@ -4,16 +4,18 @@
 package passwordhash
 
 import (
+	"context"
 	"strings"
 	"testing"
 )
 
 func TestHashAndVerify(t *testing.T) {
-	first, err := Hash([]byte("test-only passphrase"))
+	ctx := context.Background()
+	first, err := Hash(ctx, []byte("test-only passphrase"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	second, err := Hash([]byte("test-only passphrase"))
+	second, err := Hash(ctx, []byte("test-only passphrase"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -24,11 +26,11 @@ func TestHashAndVerify(t *testing.T) {
 		t.Fatalf("unexpected PHC verifier format: %q", first[:min(len(first), 64)])
 	}
 
-	valid, err := Verify([]byte("test-only passphrase"), first)
+	valid, err := Verify(ctx, []byte("test-only passphrase"), first)
 	if err != nil || !valid {
 		t.Fatalf("correct password rejected: valid=%t err=%v", valid, err)
 	}
-	valid, err = Verify([]byte("wrong passphrase"), first)
+	valid, err = Verify(ctx, []byte("wrong passphrase"), first)
 	if err != nil || valid {
 		t.Fatalf("wrong password accepted: valid=%t err=%v", valid, err)
 	}
@@ -36,7 +38,7 @@ func TestHashAndVerify(t *testing.T) {
 
 func TestVerifyRejectsInvalidPasswordsAndVerifiers(t *testing.T) {
 	for _, password := range [][]byte{nil, {}, make([]byte, maxPasswordLength+1)} {
-		if _, err := Verify(password, "not a verifier"); err == nil {
+		if _, err := Verify(context.Background(), password, "not a verifier"); err == nil {
 			t.Fatalf("Verify(%d-byte password) succeeded", len(password))
 		}
 	}
@@ -56,7 +58,7 @@ func TestVerifyRejectsInvalidPasswordsAndVerifiers(t *testing.T) {
 		"$argon2id$v=19$m=19456,t=2,p=1$AA$AA",
 		strings.Repeat("x", maxPHCLength+1),
 	} {
-		if _, err := Verify([]byte("passphrase"), encoded); err == nil {
+		if _, err := Verify(context.Background(), []byte("passphrase"), encoded); err == nil {
 			t.Fatalf("Verify accepted invalid verifier %q", encoded)
 		}
 	}
@@ -64,7 +66,7 @@ func TestVerifyRejectsInvalidPasswordsAndVerifiers(t *testing.T) {
 
 func TestHashRejectsInvalidPasswordLength(t *testing.T) {
 	for _, password := range [][]byte{nil, {}, make([]byte, maxPasswordLength+1)} {
-		if _, err := Hash(password); err == nil {
+		if _, err := Hash(context.Background(), password); err == nil {
 			t.Fatalf("Hash(%d-byte password) succeeded", len(password))
 		}
 	}

@@ -4,6 +4,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -26,19 +27,19 @@ func runSelfTest() error {
 		return errors.New("self-test requires the ARMv5 QEMU target")
 	}
 	argon2Started := time.Now()
-	verifier, err := passwordhash.Hash([]byte("qemu-self-test-only"))
+	verifier, err := passwordhash.Hash(context.Background(), []byte("qemu-self-test-only"))
 	if err != nil {
 		return errors.New("Argon2id self-test could not hash")
 	}
-	verified, err := passwordhash.Verify([]byte("qemu-self-test-only"), verifier)
+	verified, err := passwordhash.Verify(context.Background(), []byte("qemu-self-test-only"), verifier)
 	if err != nil || !verified {
 		return errors.New("Argon2id self-test could not verify")
 	}
-	verified, err = passwordhash.Verify([]byte("not-the-test-password"), verifier)
+	verified, err = passwordhash.Verify(context.Background(), []byte("not-the-test-password"), verifier)
 	if err != nil || verified {
 		return errors.New("Argon2id self-test accepted a wrong password")
 	}
-	if _, err := passwordhash.Verify([]byte("qemu-self-test-only"), "$argon2id$v=19$m=4294967295,t=2,p=1$AA$AA"); err == nil {
+	if _, err := passwordhash.Verify(context.Background(), []byte("qemu-self-test-only"), "$argon2id$v=19$m=4294967295,t=2,p=1$AA$AA"); err == nil {
 		return errors.New("Argon2id self-test accepted unbounded verifier parameters")
 	}
 	argon2CycleMillis := time.Since(argon2Started).Milliseconds()
@@ -161,7 +162,7 @@ func runSelfTest() error {
 		}
 	}
 	fmt.Printf("PHANTOWD_UI_READY mode=development read_only=true transport=guest-loopback-only\n")
-	fmt.Printf("PHANTOWD_AUTH_PRIMITIVE_READY algorithm=argon2id login_enabled=no ex4_parameters_tuned=no kdf_cycle_ms=%d\n", argon2CycleMillis)
+	fmt.Printf("PHANTOWD_AUTH_PRIMITIVE_READY algorithm=argon2id kdf_concurrency=1 login_enabled=no ex4_parameters_tuned=no kdf_cycle_ms=%d\n", argon2CycleMillis)
 	fmt.Printf("PHANTOWD_API_READY target=qemu-armv5 goarm=%s uid=%d memory_total_bytes=%d storage_observations=%d identity_metadata=serial+naa-wwn flashable=no hardware_validated=no\n",
 		snapshot.GOARM, snapshot.EffectiveUID, snapshot.Memory.TotalBytes, storage.DeviceCount)
 	return nil

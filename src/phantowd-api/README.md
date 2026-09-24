@@ -9,11 +9,13 @@ contains an embedded, read-only browser dashboard over its diagnostic API.
 - `CGO_ENABLED=0`, ARMv5 `GOARM=5`. The isolated `passwordhash` package uses
   pinned, vendored `golang.org/x/crypto/argon2`; its BSD-3-Clause license ships
   with the image and its version appears in the CycloneDX SBOM.
-- `passwordhash` currently provides only a bounded Argon2id PHC hash/verify
-  primitive at the OWASP minimum parameters. It is not connected to the API,
-  creates no account, stores no password, and does not enable login. Parameters
-  are provisional until benchmarked on the EX4; never treat QEMU timing as a
-  hardware tuning result.
+- `passwordhash` currently provides only bounded Argon2id PHC hash/verify
+  primitives at the OWASP minimum parameters. All package calls share a single
+  process-wide work slot, bounding concurrent KDF operations to one; a caller
+  waiting for the slot can cancel, but running Argon2 work cannot be
+  interrupted. This primitive is not connected to the API, creates no account,
+  stores no password, and does not enable login. Parameters are provisional
+  until benchmarked on the EX4; never treat QEMU timing as hardware tuning.
 - Generated images include project, Go, x/crypto and x/sys license notices
   under `/usr/share/licenses/phantowd-api/`. Build output contains a CycloneDX
   SBOM plus Buildroot's legal manifest; manual redistribution review remains
