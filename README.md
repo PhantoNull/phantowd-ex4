@@ -45,10 +45,13 @@ The [offline research toolkit](tools/phantowd-lab/README.md) validates user-supp
 local copies of the legacy WD update, logical-mtd3 and redacted logical-rescue
 formats, replays passive controller captures, and scans extracted trees for
 known legacy storage-path literals. It also validates a project-owned,
-versioned synthetic storage-inventory JSON; this is not a WD XML parser or a
-hardware disk-layout detector. It accepts regular files only for artifact
-inspection; extracted-tree tools do not follow symlinks or open special files.
-The path scan is not full code analysis. The toolkit has no firmware
+versioned synthetic storage-inventory JSON and generic GPT structure in
+caller-supplied image files, with an optional read-only ext-family superblock
+check for one GPT partition. Neither command is a WD XML parser or a WD disk-
+layout compatibility detector; valid partition metadata does not establish
+that a disk can be migrated safely. Artifact inspectors accept regular files only;
+extracted-tree tools do not follow symlinks or open special files. The path
+scan is not full code analysis. The toolkit has no firmware
 extraction, image construction, flash-device, serial-port, or transmit path.
 Run `.\support\test-lab-tools.ps1` for its generated-fixture test suite. No
 proprietary firmware or device dump is included in the repository.

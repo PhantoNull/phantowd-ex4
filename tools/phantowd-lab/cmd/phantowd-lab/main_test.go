@@ -185,6 +185,37 @@ func TestInspectGPTImageCommandIsReadOnlyAndDoesNotQualifyWDCompatibility(t *tes
 	}
 }
 
+func TestInspectExtPartitionCommandIsReadOnlyAndGeneric(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "synthetic-ext.img")
+	if err := os.WriteFile(path, syntheticGPTImageForCommand(), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	var output bytes.Buffer
+	code, err := run([]string{"inspect-ext-partition", path, "1"}, &output)
+	if err != nil || code != 0 {
+		t.Fatalf("valid synthetic ext partition: code=%d err=%v output=%s", code, err, output.String())
+	}
+	for _, expected := range []string{`"status": "ext-superblock-candidate"`, `"filesystem_family": "ext-family"`, `"filesystem_bytes": 2048`, `"wd_compatibility": "unqualified"`, `"block_device_opened": false`, `"mutations_performed": false`, `"mount_performed": false`, `"superblock_checksum_status": "present-not-validated"`} {
+		if !strings.Contains(output.String(), expected) {
+			t.Fatalf("missing %q in report: %s", expected, output.String())
+		}
+	}
+	for _, secret := range []string{filepath.ToSlash(path), "00112233445566778899aabbccddeeff", "EXT4_PRIVATE_LABEL"} {
+		if strings.Contains(output.String(), secret) {
+			t.Fatalf("report leaked %q: %s", secret, output.String())
+		}
+	}
+
+	output.Reset()
+	code, err = run([]string{"inspect-ext-partition", path, "2"}, &output)
+	if err != nil || code != 2 || !strings.Contains(output.String(), `"status": "unsupported"`) {
+		t.Fatalf("missing GPT partition: code=%d err=%v output=%s", code, err, output.String())
+	}
+	if code, err = run([]string{"inspect-ext-partition", path, "129"}, &bytes.Buffer{}); code != 1 || err == nil {
+		t.Fatalf("out-of-range partition number: code=%d err=%v", code, err)
+	}
+}
+
 func TestPlanStorageInventoryCommandIsRedactedAndDryRunOnly(t *testing.T) {
 	fixture := `{"format":"phantowd-storage-assessment","schema_version":1,"legacy_volume_metadata_state":"not_collected","inventory":{"format":"phantowd-storage-inventory","schema_version":1,"disks":[{"id":"disk-a","wwn":"fixture-wwn-001","serial":"fixture-serial-001","bay":1,"device":"/dev/sda"}],"partitions":[{"id":"partition-a","disk_id":"disk-a","number":2,"partuuid":"fixture-partuuid-001"}],"volumes":[{"id":"volume-a","logical_volume_number":1,"filesystem_uuid":"fixture-fs-uuid-001","filesystem_type":"ext4","md_uuid":"fixture-md-uuid-001","member_partition_ids":["partition-a"]}]}}`
 	path := filepath.Join(t.TempDir(), "assessment.json")
@@ -244,13 +275,35 @@ func syntheticGPTImageForCommand() []byte {
 	copy(primaryEntries[:16], []byte{0xaf, 0x3d, 0xc6, 0x0f, 0x83, 0x84, 0x72, 0x47, 0x8e, 0x79, 0x3d, 0x69, 0xd8, 0x47, 0x7d, 0xe4})
 	copy(primaryEntries[16:32], []byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16})
 	binary.LittleEndian.PutUint64(primaryEntries[32:40], 3)
-	binary.LittleEndian.PutUint64(primaryEntries[40:48], 4)
+	binary.LittleEndian.PutUint64(primaryEntries[40:48], 6)
 	backupEntries := image[62*sector : 62*sector+entrySize]
 	copy(backupEntries, primaryEntries)
 	entriesCRC := crc32.ChecksumIEEE(primaryEntries)
 	putGPTHeaderForCommand(image[sector:2*sector], 1, sectors-1, 2, entriesCRC)
 	putGPTHeaderForCommand(image[63*sector:], sectors-1, 1, 62, entriesCRC)
+	putExtSuperblockForCommand(image)
 	return image
+}
+
+func putExtSuperblockForCommand(image []byte) {
+	const sector = 512
+	start := 3*sector + 1024
+	superblock := image[start : start+1024]
+	binary.LittleEndian.PutUint32(superblock[0:4], 4)
+	binary.LittleEndian.PutUint32(superblock[4:8], 2)
+	binary.LittleEndian.PutUint32(superblock[12:16], 1)
+	binary.LittleEndian.PutUint32(superblock[20:24], 1)
+	binary.LittleEndian.PutUint32(superblock[24:28], 0)
+	binary.LittleEndian.PutUint32(superblock[32:36], 2)
+	binary.LittleEndian.PutUint32(superblock[40:44], 4)
+	binary.LittleEndian.PutUint16(superblock[56:58], 0xef53)
+	binary.LittleEndian.PutUint16(superblock[58:60], 1)
+	binary.LittleEndian.PutUint32(superblock[76:80], 1)
+	binary.LittleEndian.PutUint32(superblock[92:96], 4)
+	binary.LittleEndian.PutUint32(superblock[96:100], 0x40)
+	binary.LittleEndian.PutUint32(superblock[100:104], 0x400)
+	copy(superblock[104:120], []byte{0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff})
+	copy(superblock[120:136], []byte("EXT4_PRIVATE_LABEL"))
 }
 
 func putGPTHeaderForCommand(header []byte, currentLBA, backupLBA, entriesLBA uint64, entriesCRC uint32) {

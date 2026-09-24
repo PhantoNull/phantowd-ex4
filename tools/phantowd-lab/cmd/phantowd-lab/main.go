@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/PhantoNull/phantowd-ex4/phantowd-lab/diskimage"
@@ -155,6 +156,9 @@ func run(args []string, output io.Writer) (int, error) {
 		}
 		return 0, nil
 
+	case "inspect-ext-partition":
+		return inspectExtPartition(args[1:], output)
+
 	case "plan-storage-inventory":
 		if len(args) != 2 {
 			return 1, errors.New("usage: phantowd-lab plan-storage-inventory FILE")
@@ -202,6 +206,89 @@ func run(args []string, output io.Writer) (int, error) {
 	default:
 		return 1, fmt.Errorf("unknown command %q", args[0])
 	}
+}
+
+type extImageReport struct {
+	Format          string               `json:"format"`
+	SchemaVersion   int                  `json:"schema_version"`
+	Status          diskimage.ExtStatus  `json:"status"`
+	PartitionNumber int                  `json:"partition_number"`
+	WDCompatibility string               `json:"wd_compatibility"`
+	GPT             diskimage.Report     `json:"gpt"`
+	Filesystem      *diskimage.ExtReport `json:"filesystem,omitempty"`
+	Findings        []string             `json:"findings"`
+	Limitations     []string             `json:"limitations"`
+}
+
+func inspectExtPartition(args []string, output io.Writer) (int, error) {
+	if len(args) != 2 {
+		return 1, errors.New("usage: phantowd-lab inspect-ext-partition IMAGE-FILE GPT-PARTITION-NUMBER")
+	}
+	partitionNumber, err := strconv.ParseUint(args[1], 10, 32)
+	if err != nil || partitionNumber == 0 || partitionNumber > 128 {
+		return 1, errors.New("GPT partition number must be between 1 and 128")
+	}
+	file, size, err := openRegular(args[0])
+	if err != nil {
+		return 1, err
+	}
+	defer file.Close()
+	gpt, err := diskimage.Inspect(file, size)
+	if err != nil {
+		return 1, err
+	}
+	result := extImageReport{
+		Format:          "phantowd-ext-gpt-partition-inspection",
+		SchemaVersion:   1,
+		Status:          diskimage.ExtStatusUnsupported,
+		PartitionNumber: int(partitionNumber),
+		WDCompatibility: "unqualified",
+		GPT:             gpt,
+		Findings:        []string{},
+		Limitations: []string{
+			"only a generic GPT and one ext-family superblock are inspected; no other filesystem, RAID metadata, WD XML, health, or data is read",
+			"a structurally plausible superblock is not proof of filesystem integrity, WD compatibility, or safe mounting",
+			"the supplied regular file is never mounted, modified, or treated as a block device",
+		},
+	}
+	if gpt.Status != diskimage.StatusValid {
+		if gpt.Status == diskimage.StatusDamaged {
+			result.Status = diskimage.ExtStatusDamaged
+		}
+		result.Findings = []string{"GPT metadata must be valid before a partition superblock can be selected"}
+		if err := writeJSON(output, result); err != nil {
+			return 1, err
+		}
+		return 2, nil
+	}
+	var selected *diskimage.Partition
+	for index := range gpt.Partitions {
+		if gpt.Partitions[index].Number == int(partitionNumber) {
+			selected = &gpt.Partitions[index]
+			break
+		}
+	}
+	if selected == nil {
+		result.Findings = []string{"requested GPT partition number is not present"}
+		if err := writeJSON(output, result); err != nil {
+			return 1, err
+		}
+		return 2, nil
+	}
+	filesystem, err := diskimage.InspectExtSuperblock(file, size, selected.FirstLBA, selected.LastLBA)
+	if err != nil {
+		return 1, err
+	}
+	result.Filesystem = &filesystem
+	result.Status = filesystem.Status
+	result.Findings = filesystem.Findings
+	if err := writeJSON(output, result); err != nil {
+		return 1, err
+	}
+	if result.Status != diskimage.ExtStatusCandidate {
+		return 2, nil
+	}
+	return 0, nil
 }
 
 func inventoryRootfs(args []string, output io.Writer) (int, error) {

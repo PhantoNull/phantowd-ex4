@@ -18,6 +18,7 @@ phantowd-lab inspect-update FILE
 phantowd-lab inspect-mtd3 FILE
 phantowd-lab inspect-rescue FILE
 phantowd-lab inspect-gpt-image FILE
+phantowd-lab inspect-ext-partition IMAGE-FILE GPT-PARTITION-NUMBER
 phantowd-lab inventory-rootfs [--summary] DIRECTORY
 phantowd-lab scan-storage-refs EXTRACTED-ROOT
 phantowd-lab inspect-storage-inventory FILE
@@ -56,6 +57,18 @@ filesystem, RAID, or migration check. It never opens a block device, repairs
 metadata, assembles an array, mounts a filesystem, or writes the image. Exit
 status is `0` for a structurally valid GPT and `2` for parsed damaged or
 unsupported input; usage, I/O, and file-open errors return `1`.
+
+`inspect-ext-partition` first requires a structurally valid GPT, then reads
+only the standard 1024-byte ext-family superblock at byte offset 1024 within
+the selected GPT partition. It reports bounded geometry, feature masks,
+clean-unmount/journal-recovery flags and a redacted filesystem-UUID fingerprint
+when present. Its `ext-superblock-candidate` status only means that selected
+fields are structurally plausible; it does not distinguish ext2/3/4, validate
+the superblock checksum, inspect other filesystem metadata or file contents,
+or establish integrity, WD compatibility or mount safety. Exit status is `0`
+for a plausible superblock, `2` for absent/damaged/unsupported metadata and
+`1` for usage, I/O or file-open errors. Like the GPT command, it never opens a
+block device, mounts, or writes the input image.
 
 `inventory-rootfs` walks an already extracted directory without following
 symlinks. It hashes regular files and records deterministic paths, sizes,
