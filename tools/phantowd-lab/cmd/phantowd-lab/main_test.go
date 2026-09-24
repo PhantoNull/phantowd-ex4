@@ -6,6 +6,7 @@ package main
 import (
 	"bytes"
 	"encoding/binary"
+	"hash/crc32"
 	"os"
 	"path/filepath"
 	"strings"
@@ -155,6 +156,35 @@ func TestInspectStorageInventoryCommandEmitsRedactedJSONAndRejectsAmbiguity(t *t
 	}
 }
 
+func TestInspectGPTImageCommandIsReadOnlyAndDoesNotQualifyWDCompatibility(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "synthetic.img")
+	if err := os.WriteFile(path, syntheticGPTImageForCommand(), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	var output bytes.Buffer
+	code, err := run([]string{"inspect-gpt-image", path}, &output)
+	if err != nil || code != 0 {
+		t.Fatalf("valid synthetic GPT: code=%d err=%v output=%s", code, err, output.String())
+	}
+	for _, expected := range []string{`"status": "valid-gpt"`, `"wd_compatibility": "unqualified"`, `"block_device_opened": false`, `"mutations_performed": false`, `"assembly_performed": false`, `"mount_performed": false`} {
+		if !strings.Contains(output.String(), expected) {
+			t.Fatalf("missing %q in report: %s", expected, output.String())
+		}
+	}
+	if strings.Contains(output.String(), filepath.ToSlash(path)) || strings.Contains(output.String(), "fixture-disk-guid") {
+		t.Fatalf("report leaked input path or identity: %s", output.String())
+	}
+
+	if err := os.WriteFile(path, make([]byte, 4096), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	output.Reset()
+	code, err = run([]string{"inspect-gpt-image", path}, &output)
+	if err != nil || code != 2 || !strings.Contains(output.String(), `"status": "unsupported"`) {
+		t.Fatalf("non-GPT input: code=%d err=%v output=%s", code, err, output.String())
+	}
+}
+
 func TestPlanStorageInventoryCommandIsRedactedAndDryRunOnly(t *testing.T) {
 	fixture := `{"format":"phantowd-storage-assessment","schema_version":1,"legacy_volume_metadata_state":"not_collected","inventory":{"format":"phantowd-storage-inventory","schema_version":1,"disks":[{"id":"disk-a","wwn":"fixture-wwn-001","serial":"fixture-serial-001","bay":1,"device":"/dev/sda"}],"partitions":[{"id":"partition-a","disk_id":"disk-a","number":2,"partuuid":"fixture-partuuid-001"}],"volumes":[{"id":"volume-a","logical_volume_number":1,"filesystem_uuid":"fixture-fs-uuid-001","filesystem_type":"ext4","md_uuid":"fixture-md-uuid-001","member_partition_ids":["partition-a"]}]}}`
 	path := filepath.Join(t.TempDir(), "assessment.json")
@@ -198,4 +228,44 @@ func TestInvalidCommand(t *testing.T) {
 	if code, err := run([]string{"write-flash"}, &bytes.Buffer{}); code == 0 || err == nil {
 		t.Fatal("unknown mutation command was accepted")
 	}
+}
+
+func syntheticGPTImageForCommand() []byte {
+	const sector = 512
+	const sectors = 64
+	const entrySize = 128
+	image := make([]byte, sector*sectors)
+	image[510], image[511] = 0x55, 0xaa
+	image[446+4] = 0xee
+	binary.LittleEndian.PutUint32(image[446+8:], 1)
+	binary.LittleEndian.PutUint32(image[446+12:], sectors-1)
+
+	primaryEntries := image[2*sector : 2*sector+entrySize]
+	copy(primaryEntries[:16], []byte{0xaf, 0x3d, 0xc6, 0x0f, 0x83, 0x84, 0x72, 0x47, 0x8e, 0x79, 0x3d, 0x69, 0xd8, 0x47, 0x7d, 0xe4})
+	copy(primaryEntries[16:32], []byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16})
+	binary.LittleEndian.PutUint64(primaryEntries[32:40], 3)
+	binary.LittleEndian.PutUint64(primaryEntries[40:48], 4)
+	backupEntries := image[62*sector : 62*sector+entrySize]
+	copy(backupEntries, primaryEntries)
+	entriesCRC := crc32.ChecksumIEEE(primaryEntries)
+	putGPTHeaderForCommand(image[sector:2*sector], 1, sectors-1, 2, entriesCRC)
+	putGPTHeaderForCommand(image[63*sector:], sectors-1, 1, 62, entriesCRC)
+	return image
+}
+
+func putGPTHeaderForCommand(header []byte, currentLBA, backupLBA, entriesLBA uint64, entriesCRC uint32) {
+	copy(header[:8], "EFI PART")
+	binary.LittleEndian.PutUint32(header[8:12], 0x00010000)
+	binary.LittleEndian.PutUint32(header[12:16], 92)
+	binary.LittleEndian.PutUint64(header[24:32], currentLBA)
+	binary.LittleEndian.PutUint64(header[32:40], backupLBA)
+	binary.LittleEndian.PutUint64(header[40:48], 3)
+	binary.LittleEndian.PutUint64(header[48:56], 61)
+	copy(header[56:72], []byte{0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff, 0x10})
+	binary.LittleEndian.PutUint64(header[72:80], entriesLBA)
+	binary.LittleEndian.PutUint32(header[80:84], 1)
+	binary.LittleEndian.PutUint32(header[84:88], 128)
+	binary.LittleEndian.PutUint32(header[88:92], entriesCRC)
+	binary.LittleEndian.PutUint32(header[16:20], 0)
+	binary.LittleEndian.PutUint32(header[16:20], crc32.ChecksumIEEE(header[:92]))
 }

@@ -13,6 +13,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/PhantoNull/phantowd-ex4/phantowd-lab/diskimage"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-lab/mcuproto"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-lab/rootfsinventory"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-lab/storageinventory"
@@ -129,6 +130,27 @@ func run(args []string, output io.Writer) (int, error) {
 			return 1, err
 		}
 		if !report.Valid {
+			return 2, nil
+		}
+		return 0, nil
+
+	case "inspect-gpt-image":
+		if len(args) != 2 {
+			return 1, errors.New("usage: phantowd-lab inspect-gpt-image FILE")
+		}
+		file, size, err := openRegular(args[1])
+		if err != nil {
+			return 1, err
+		}
+		defer file.Close()
+		report, err := diskimage.Inspect(file, size)
+		if err != nil {
+			return 1, err
+		}
+		if err := writeJSON(output, report); err != nil {
+			return 1, err
+		}
+		if report.Status != diskimage.StatusValid {
 			return 2, nil
 		}
 		return 0, nil
@@ -276,9 +298,9 @@ func openRegular(path string) (*os.File, int64, error) {
 		file.Close()
 		return nil, 0, err
 	}
-	if !openedInfo.Mode().IsRegular() {
+	if !openedInfo.Mode().IsRegular() || !os.SameFile(info, openedInfo) {
 		file.Close()
-		return nil, 0, errors.New("input changed and is no longer a regular file")
+		return nil, 0, errors.New("input changed during open or is no longer the same regular file")
 	}
 	return file, openedInfo.Size(), nil
 }

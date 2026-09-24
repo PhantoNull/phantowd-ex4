@@ -17,6 +17,7 @@ children. Captures larger than 16 MiB are rejected where applicable.
 phantowd-lab inspect-update FILE
 phantowd-lab inspect-mtd3 FILE
 phantowd-lab inspect-rescue FILE
+phantowd-lab inspect-gpt-image FILE
 phantowd-lab inventory-rootfs [--summary] DIRECTORY
 phantowd-lab scan-storage-refs EXTRACTED-ROOT
 phantowd-lab inspect-storage-inventory FILE
@@ -26,7 +27,7 @@ phantowd-lab decode-mcu "fa 23 00 00 00 00 fb"
 phantowd-lab replay-mcu [--format raw|hex] FILE
 ```
 
-The three inspectors return exit status `0` when all currently understood
+Artifact inspectors return exit status `0` when all currently understood
 structure and XOR checks pass, `2` when a parsed artifact fails validation,
 and `1` for usage, I/O, or structural errors. Results are JSON.
 
@@ -43,6 +44,18 @@ PhantoWD parser gate, not a claim that every stock-device rescue record uses
 this exact encoding. Its 2 KiB header schema comes from static GPL-binary
 analysis and still needs corroboration from an exact-device logical rescue
 read; it is not a rescue writer or restore procedure.
+
+`inspect-gpt-image` inspects only bounded GPT metadata in a caller-supplied
+regular image file. It checks the protective MBR, primary and backup headers,
+header and partition-array CRCs, matching copies, partition bounds and
+overlaps. It emits a path-free JSON report with disk and partition identities
+replaced by deterministic SHA-256 fingerprints. A `valid-gpt` result means
+only that the generic structures passed these checks; `wd_compatibility`
+remains `unqualified`. This is not a WD layout detector or a disk-health,
+filesystem, RAID, or migration check. It never opens a block device, repairs
+metadata, assembles an array, mounts a filesystem, or writes the image. Exit
+status is `0` for a structurally valid GPT and `2` for parsed damaged or
+unsupported input; usage, I/O, and file-open errors return `1`.
 
 `inventory-rootfs` walks an already extracted directory without following
 symlinks. It hashes regular files and records deterministic paths, sizes,
