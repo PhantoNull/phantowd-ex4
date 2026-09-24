@@ -6,6 +6,7 @@ package vendorupdate
 import (
 	"bytes"
 	"encoding/binary"
+	"strings"
 	"testing"
 )
 
@@ -76,8 +77,8 @@ func TestInspectLogicalImageRejectsWrongMagic(t *testing.T) {
 func TestInspectSyntheticRescueRedactsIdentity(t *testing.T) {
 	payload := []byte{1, 2, 3, 4, 5, 6, 7, 8}
 	fixture := make([]byte, int(RescueHeaderSize)+len(payload)+4)
-	copy(fixture[0:20], "00:11:22:33:44:55")
-	copy(fixture[0x1c:0x30], "00:12:23:34:45:56")
+	copy(fixture[0:20], "02:11:22:33:44:55")
+	copy(fixture[0x1c:0x30], "06:12:23:34:45:56")
 	binary.LittleEndian.PutUint32(fixture[0x14:], uint32(len(payload)))
 	binary.LittleEndian.PutUint32(fixture[0x18:], xorBytes(payload))
 	fixture[0x30] = 7
@@ -89,11 +90,82 @@ func TestInspectSyntheticRescueRedactsIdentity(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !report.Valid || !report.IdentityFieldsPresent || !report.IdentityRedacted || report.TrailingBytes != 4 {
+	if !report.Valid || !report.IdentityFieldsPresent || !report.IdentityFieldsValid || !report.IdentityRedacted || report.TrailingBytes != 4 {
 		t.Fatalf("unexpected rescue report: %+v", report)
 	}
 	if report.Version != "1.00.synthetic" || report.BoardModelID != 7 || report.Selector.Custom != 0x14 {
 		t.Fatalf("unexpected rescue metadata: %+v", report)
+	}
+}
+
+func TestInspectRescueRejectsIncompleteIdentityPair(t *testing.T) {
+	payload := []byte{1, 2, 3, 4}
+	fixture := make([]byte, int(RescueHeaderSize)+len(payload))
+	copy(fixture[0:20], "02:11:22:33:44:55")
+	binary.LittleEndian.PutUint32(fixture[0x14:], uint32(len(payload)))
+	binary.LittleEndian.PutUint32(fixture[0x18:], xorBytes(payload))
+	copy(fixture[0x32:], rescueMagic)
+	copy(fixture[0x3e:], []byte{0, 0x14, 0, 1, 1})
+	copy(fixture[RescueHeaderSize:], payload)
+
+	report, err := InspectRescueImage(bytes.NewReader(fixture), int64(len(fixture)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if report.Valid {
+		t.Fatalf("rescue with only one identity address was accepted: %+v", report)
+	}
+}
+
+func TestInspectRescueRejectsInvalidIdentityPairs(t *testing.T) {
+	tests := []struct {
+		name   string
+		first  string
+		second string
+		mutate func([]byte)
+	}{
+		{name: "malformed address", first: "02:11:22:33:44:gg", second: "06:12:23:34:45:56"},
+		{name: "multicast address", first: "01:11:22:33:44:55", second: "06:12:23:34:45:56"},
+		{name: "zero address", first: "00:00:00:00:00:00", second: "06:12:23:34:45:56"},
+		{name: "duplicate addresses", first: "02:11:22:33:44:55", second: "02:11:22:33:44:55"},
+		{
+			name:   "nonzero field padding",
+			first:  "02:11:22:33:44:55",
+			second: "06:12:23:34:45:56",
+			mutate: func(fixture []byte) { fixture[17] = 'x' },
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			fixture := syntheticRescue(tt.first, tt.second)
+			if tt.mutate != nil {
+				tt.mutate(fixture)
+			}
+			report, err := InspectRescueImage(bytes.NewReader(fixture), int64(len(fixture)))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if report.Valid || report.IdentityFieldsValid || !report.IdentityRedacted {
+				t.Fatalf("invalid identity pair was accepted or not marked redacted: %+v", report)
+			}
+			for _, problem := range report.Problems {
+				if strings.Contains(problem, tt.first) || strings.Contains(problem, tt.second) {
+					t.Fatalf("identity leaked through problem text: %q", problem)
+				}
+			}
+		})
+	}
+}
+
+func TestInspectRescueAcceptsHexLettersInLocalUnicastPair(t *testing.T) {
+	fixture := syntheticRescue("02:ab:CD:3e:4F:50", "06:12:23:34:45:56")
+	report, err := InspectRescueImage(bytes.NewReader(fixture), int64(len(fixture)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !report.Valid || !report.IdentityFieldsValid || !report.IdentityRedacted {
+		t.Fatalf("valid case-insensitive unicast pair was rejected: %+v", report)
 	}
 }
 
@@ -131,9 +203,24 @@ func TestInspectRescueRejectsCompatibilityMismatch(t *testing.T) {
 	}
 }
 
+func syntheticRescue(first, second string) []byte {
+	payload := []byte{1, 2, 3, 4}
+	fixture := make([]byte, int(RescueHeaderSize)+len(payload))
+	copy(fixture[0:20], first)
+	copy(fixture[0x1c:0x30], second)
+	binary.LittleEndian.PutUint32(fixture[0x14:], uint32(len(payload)))
+	binary.LittleEndian.PutUint32(fixture[0x18:], xorBytes(payload))
+	copy(fixture[0x32:], rescueMagic)
+	copy(fixture[0x3e:], []byte{0, 0x14, 0, 1, 1})
+	copy(fixture[0x48:], "1.00.synthetic")
+	copy(fixture[RescueHeaderSize:], payload)
+	return fixture
+}
+
 func FuzzInspect(f *testing.F) {
 	fixture := syntheticUpdateForFuzz()
 	f.Add(fixture)
+	f.Add(syntheticRescue("02:11:22:33:44:55", "06:12:23:34:45:56"))
 	f.Add([]byte("not firmware"))
 	f.Fuzz(func(t *testing.T, data []byte) {
 		_, _ = Inspect(bytes.NewReader(data), int64(len(data)))

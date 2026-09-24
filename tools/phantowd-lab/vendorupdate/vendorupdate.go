@@ -80,6 +80,7 @@ type RescueImage struct {
 	BoardModelID          byte          `json:"board_model_id"`
 	Selector              ModelSelector `json:"selector"`
 	IdentityFieldsPresent bool          `json:"identity_fields_present"`
+	IdentityFieldsValid   bool          `json:"identity_fields_valid"`
 	IdentityRedacted      bool          `json:"identity_redacted"`
 	Valid                 bool          `json:"valid"`
 	Problems              []string      `json:"problems,omitempty"`
@@ -292,7 +293,13 @@ func InspectRescueImage(r io.ReaderAt, size int64) (RescueImage, error) {
 		Hardware: header[0x41], Sub: header[0x42],
 	}
 	report.Version = cString(header[0x48:0x80])
-	report.IdentityFieldsPresent = hasNonZero(header[0:20]) || hasNonZero(header[0x1c:0x30])
+	mac1, mac1Valid := parseLegacyMACField(header[0:20])
+	mac2, mac2Valid := parseLegacyMACField(header[0x1c:0x30])
+	report.IdentityFieldsPresent = hasNonZero(header[0:20]) && hasNonZero(header[0x1c:0x30])
+	report.IdentityFieldsValid = mac1Valid && mac2Valid && mac1 != mac2
+	if !report.IdentityFieldsValid {
+		report.Problems = append(report.Problems, "rescue identity must contain two distinct, valid unicast MAC addresses")
+	}
 	if report.PayloadLength <= 0 {
 		return report, errors.New("rescue payload length is zero")
 	}
@@ -320,6 +327,51 @@ func InspectRescueImage(r io.ReaderAt, size int64) (RescueImage, error) {
 	}
 	report.Valid = len(report.Problems) == 0
 	return report, nil
+}
+
+// parseLegacyMACField applies the tool's conservative interpretation of a
+// 20-byte rescue identity field without retaining or exposing it in a report.
+// The ASCII/padding encoding is inferred from static analysis and synthetic
+// fixtures; it is not yet corroborated against an exact-device rescue record.
+func parseLegacyMACField(field []byte) ([6]byte, bool) {
+	var address [6]byte
+	if len(field) != 20 {
+		return address, false
+	}
+	for _, padding := range field[17:] {
+		if padding != 0 {
+			return address, false
+		}
+	}
+	for octet := 0; octet < len(address); octet++ {
+		start := octet * 3
+		hi, hiOK := hexNibble(field[start])
+		lo, loOK := hexNibble(field[start+1])
+		if !hiOK || !loOK {
+			return [6]byte{}, false
+		}
+		address[octet] = hi<<4 | lo
+		if octet < len(address)-1 && field[start+2] != ':' {
+			return [6]byte{}, false
+		}
+	}
+	if address[0]&1 != 0 || address == [6]byte{} {
+		return [6]byte{}, false
+	}
+	return address, true
+}
+
+func hexNibble(value byte) (byte, bool) {
+	switch {
+	case value >= '0' && value <= '9':
+		return value - '0', true
+	case value >= 'a' && value <= 'f':
+		return value - 'a' + 10, true
+	case value >= 'A' && value <= 'F':
+		return value - 'A' + 10, true
+	default:
+		return 0, false
+	}
 }
 
 func inspectExtension(r io.ReaderAt, size, offset int64) (*Extension, []string, error) {

@@ -25,7 +25,9 @@ done
     -m 256M \
     -kernel "$images_dir/zImage" \
     -dtb "$images_dir/versatile-pb.dtb" \
-    -drive "file=$images_dir/rootfs.ext2,if=scsi,format=raw" \
+    -drive "file=$images_dir/rootfs.ext2,if=none,id=rootdisk,format=raw" \
+    -device lsi53c895a,id=scsi0 \
+    -device "scsi-hd,bus=scsi0.0,drive=rootdisk,serial=PHANTOWD-QEMU-SERIAL-01,wwn=0x500f000000000001" \
     -snapshot \
     -append "rootwait root=/dev/sda console=ttyAMA0,115200" \
     -display none \

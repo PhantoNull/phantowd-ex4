@@ -12,8 +12,9 @@ import (
 const listenAddress = "127.0.0.1:8080"
 
 type collector func() (systemSnapshot, error)
+type storageSnapshotCollector func() (storageSnapshot, error)
 
-func newHandler(collect collector) http.Handler {
+func newHandler(collect collector, collectStorage storageSnapshotCollector) http.Handler {
 	active := make(chan struct{}, 8)
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -27,7 +28,7 @@ func newHandler(collect collector) http.Handler {
 			writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "busy"})
 			return
 		}
-		if r.URL.Path != "/healthz" && r.URL.Path != "/api/v1/system" {
+		if r.URL.Path != "/healthz" && r.URL.Path != "/api/v1/system" && r.URL.Path != "/api/v1/storage" {
 			writeJSON(w, http.StatusNotFound, map[string]string{"error": "not_found"})
 			return
 		}
@@ -42,6 +43,15 @@ func newHandler(collect collector) http.Handler {
 		}
 		if r.URL.Path == "/healthz" {
 			writeJSON(w, http.StatusOK, map[string]string{"status": "ok", "scope": "process_only"})
+			return
+		}
+		if r.URL.Path == "/api/v1/storage" {
+			snapshot, err := collectStorage()
+			if err != nil {
+				writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "storage_unavailable"})
+				return
+			}
+			writeJSON(w, http.StatusOK, snapshot)
 			return
 		}
 		snapshot, err := collect()

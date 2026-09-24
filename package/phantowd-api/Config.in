@@ -5,4 +5,4 @@ config BR2_PACKAGE_PHANTOWD_API
 	help
 	  Read-only Go diagnostics prototype for the non-flashable
 	  QEMU target. Only 127.0.0.1:8080 is used. No authentication,
-	  TLS, storage, hardware control or installation operations.
+	  TLS, storage mutation, hardware control or installation operations.

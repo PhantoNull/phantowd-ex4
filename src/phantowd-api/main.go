@@ -34,6 +34,8 @@ func main() {
 	}
 	server := newServer(newHandler(func() (systemSnapshot, error) {
 		return collectSystem(os.DirFS("/proc"), time.Now())
+	}, func() (storageSnapshot, error) {
+		return collectStorage(os.DirFS("/sys"))
 	}))
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()

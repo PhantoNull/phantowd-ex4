@@ -38,7 +38,7 @@ func TestHTTPContract(t *testing.T) {
 			handler := newHandler(func() (systemSnapshot, error) {
 				called = true
 				return collectSystem(fixtureProc(), time.Now())
-			})
+			}, nil)
 			request := httptest.NewRequest(test.method, test.path, strings.NewReader(test.body))
 			response := httptest.NewRecorder()
 			handler.ServeHTTP(response, request)
@@ -61,7 +61,7 @@ func TestHTTPContract(t *testing.T) {
 func TestDiagnosticsFailureDoesNotLeak(t *testing.T) {
 	handler := newHandler(func() (systemSnapshot, error) {
 		return systemSnapshot{}, errors.New("fixture-only sensitive-value /fixture/private")
-	})
+	}, nil)
 	response := httptest.NewRecorder()
 	handler.ServeHTTP(response, httptest.NewRequest("GET", "/api/v1/system", nil))
 	if response.Code != 503 || strings.Contains(response.Body.String(), "sensitive-value") || strings.Contains(response.Body.String(), "fixture/private") {
@@ -76,7 +76,7 @@ func TestConcurrentRequestLimit(t *testing.T) {
 		entered <- struct{}{}
 		<-release
 		return collectSystem(fixtureProc(), time.Now())
-	})
+	}, nil)
 	var workers sync.WaitGroup
 	for i := 0; i < 8; i++ {
 		workers.Add(1)
@@ -102,8 +102,51 @@ func TestConcurrentRequestLimit(t *testing.T) {
 }
 
 func TestServerIsLoopbackAndBounded(t *testing.T) {
-	server := newServer(newHandler(nil))
+	server := newServer(newHandler(nil, nil))
 	if server.Addr != "127.0.0.1:8080" || server.ReadHeaderTimeout <= 0 || server.ReadTimeout <= 0 || server.WriteTimeout <= 0 || server.IdleTimeout <= 0 || server.MaxHeaderBytes != 8192 || !server.DisableGeneralOptionsHandler {
 		t.Fatal("unsafe server defaults")
+	}
+}
+
+func TestStorageEndpointIsReadOnlyAndFailClosed(t *testing.T) {
+	var storageCalls int
+	handler := newHandler(nil, func() (storageSnapshot, error) {
+		storageCalls++
+		return collectStorage(fixtureSysfs())
+	})
+	response := httptest.NewRecorder()
+	handler.ServeHTTP(response, httptest.NewRequest("GET", "/api/v1/storage", nil))
+	if response.Code != 200 || storageCalls != 1 || !json.Valid(response.Body.Bytes()) {
+		t.Fatalf("valid read failed: status=%d calls=%d body=%s", response.Code, storageCalls, response.Body.String())
+	}
+	var snapshot storageSnapshot
+	if err := json.Unmarshal(response.Body.Bytes(), &snapshot); err != nil {
+		t.Fatal(err)
+	}
+	if !snapshot.InventoryReadOnly || snapshot.BlockDevicesOpened || snapshot.ContentRead || snapshot.MutationsPerformed || snapshot.StableIdentityAvailable {
+		t.Fatalf("endpoint reported an unsafe or overstated storage operation: %+v", snapshot)
+	}
+	for _, test := range []struct {
+		method string
+		path   string
+		status int
+	}{
+		{method: "POST", path: "/api/v1/storage", status: 405},
+		{method: "GET", path: "/api/v1/storage?device=/dev/sda", status: 400},
+	} {
+		response := httptest.NewRecorder()
+		handler.ServeHTTP(response, httptest.NewRequest(test.method, test.path, nil))
+		if response.Code != test.status || storageCalls != 1 {
+			t.Fatalf("unsafe storage request was accepted: method=%s path=%s status=%d calls=%d", test.method, test.path, response.Code, storageCalls)
+		}
+	}
+
+	failing := newHandler(nil, func() (storageSnapshot, error) {
+		return storageSnapshot{}, errors.New("private path and serial fixture-secret")
+	})
+	response = httptest.NewRecorder()
+	failing.ServeHTTP(response, httptest.NewRequest("GET", "/api/v1/storage", nil))
+	if response.Code != 503 || strings.Contains(response.Body.String(), "private path") || strings.Contains(response.Body.String(), "fixture-secret") {
+		t.Fatal("storage collector error leaked through the API")
 	}
 }

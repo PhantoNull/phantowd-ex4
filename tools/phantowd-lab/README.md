@@ -18,6 +18,9 @@ phantowd-lab inspect-update FILE
 phantowd-lab inspect-mtd3 FILE
 phantowd-lab inspect-rescue FILE
 phantowd-lab inventory-rootfs [--summary] DIRECTORY
+phantowd-lab scan-storage-refs EXTRACTED-ROOT
+phantowd-lab inspect-storage-inventory FILE
+phantowd-lab plan-storage-inventory FILE
 phantowd-lab catalog-mcu
 phantowd-lab decode-mcu "fa 23 00 00 00 00 fb"
 phantowd-lab replay-mcu [--format raw|hex] FILE
@@ -32,10 +35,14 @@ and SquashFS. It does not accept or interpret a physical NAND dump and makes no
 claim about OOB, ECC, eraseblocks, or restoration.
 
 `inspect-rescue` accepts only a regular-file logical rescue object and always
-redacts the two per-device MAC fields in its JSON result. Its 2 KiB header
-schema comes from static GPL-binary analysis and is labelled as needing
-corroboration from an exact-device read; it is not a rescue writer or restore
-procedure.
+redacts the two per-device MAC fields in its JSON result. The report includes
+only presence/validity booleans. For `valid`, both fields must satisfy this
+tool's conservative policy: six colon-separated hexadecimal octets, three NUL
+padding bytes, distinct values and unicast/nonzero addresses. This is a
+PhantoWD parser gate, not a claim that every stock-device rescue record uses
+this exact encoding. Its 2 KiB header schema comes from static GPL-binary
+analysis and still needs corroboration from an exact-device logical rescue
+read; it is not a rescue writer or restore procedure.
 
 `inventory-rootfs` walks an already extracted directory without following
 symlinks. It hashes regular files and records deterministic paths, sizes,
@@ -44,6 +51,90 @@ complete package-manager SBOM: host extraction can lose SquashFS ownership,
 device-node, xattr and mode information, and version/license attribution still
 needs separate corroboration. Keep manifests of proprietary or
 identity-bearing inputs in ignored private evidence storage.
+
+`scan-storage-refs` separately searches an already extracted filesystem for a
+fixed set of legacy disk, volume, share, and NFS path literals. It reads only
+regular files up to 32 MiB, including binary files, and never follows symlinks
+or opens special files. Reports contain relative file paths and recognized
+tokens/counts, never source lines. Scanned bytes, empty files and skipped
+entries are counted to make coverage limits visible. This is a literal-search
+aid—not a complete code/data-flow analysis, disk-layout detector, or proof
+that any path is active.
+Keep reports of vendor extractions in ignored private evidence storage.
+
+`inspect-storage-inventory` validates a project-owned, versioned JSON fixture
+schema (currently version 1). It is not a WD XML parser and does not claim the
+synthetic schema matches an undocumented vendor format. It checks that disk,
+partition, and volume identifiers are unique and cross-referenced, and refuses
+ambiguous logical volume numbers or stable UUIDs. A report derives an opaque
+SHA-256 fingerprint from the filesystem UUID and optional md-array UUID; bay,
+`/dev/sdX`, serial, WWN, PARTUUID and input-local IDs are not returned. The
+historical `HD_*` path is emitted only as a compatibility hint derived from
+the logical volume number, never as an identity or mount instruction. Input is
+one UTF-8 JSON value up to 1 MiB; duplicate object keys and unknown fields are
+rejected. This command reads only that regular file and never probes, assembles,
+mounts or modifies storage. Parsed-but-invalid input exits 2; malformed or
+unsupported input and I/O errors exit 1.
+
+Minimal synthetic example (all identifiers are invented):
+
+```json
+{
+  "format": "phantowd-storage-inventory",
+  "schema_version": 1,
+  "disks": [{
+    "id": "disk-a", "wwn": "sample-wwn-a", "serial": "sample-serial-a",
+    "bay": 1, "device": "/dev/sda"
+  }],
+  "partitions": [{
+    "id": "partition-a", "disk_id": "disk-a", "number": 2,
+    "partuuid": "sample-partuuid-a"
+  }],
+  "volumes": [{
+    "id": "volume-a", "logical_volume_number": 1,
+    "filesystem_uuid": "sample-filesystem-uuid-a",
+    "filesystem_type": "ext4", "member_partition_ids": ["partition-a"]
+  }]
+}
+```
+
+The v1 schema validates an inventory supplied by a caller; it does not detect
+hardware, establish filesystem health, prove a WD layout is supported, or
+authorize an import. Do not treat the fingerprint as an authenticity check.
+
+`plan-storage-inventory` consumes a version-1
+`phantowd-storage-assessment` JSON envelope containing a synthetic inventory
+and a `legacy_volume_metadata_state` fixture assertion. Accepted states are
+`not_collected`, `absent`, `malformed`, and `present_unqualified`; these are
+test inputs, not observations parsed from WD metadata. The command classifies
+the supplied evidence as `candidate`, `ambiguous`, `damaged`, or
+`unsupported`. `candidate` means only that the synthetic inventory is
+internally consistent while legacy metadata was not asserted absent or
+malformed. It does not imply a known or supported EX4 layout. Every result is
+explicitly non-executable, includes an empty operation list, and redacts disk,
+partition, filesystem, and array identifiers. Exit status is `0` only for a
+synthetic candidate, `2` for parsed but non-candidate evidence, and `1` for
+malformed/oversized input or I/O/usage errors. It reads only the supplied
+regular file; it never probes hardware, assembles arrays, mounts, or modifies
+storage.
+
+Example assessment envelope (the nested manifest uses the synthetic v1 schema
+shown above):
+
+```json
+{
+  "format": "phantowd-storage-assessment",
+  "schema_version": 1,
+  "legacy_volume_metadata_state": "not_collected",
+  "inventory": {
+    "format": "phantowd-storage-inventory",
+    "schema_version": 1,
+    "disks": [{ "id": "disk-a", "wwn": "sample-wwn-a", "serial": "sample-serial-a", "bay": 1, "device": "/dev/sda" }],
+    "partitions": [{ "id": "partition-a", "disk_id": "disk-a", "number": 2, "partuuid": "sample-partuuid-a" }],
+    "volumes": [{ "id": "volume-a", "logical_volume_number": 1, "filesystem_uuid": "sample-filesystem-uuid-a", "filesystem_type": "ext4", "member_partition_ids": ["partition-a"] }]
+  }
+}
+```
 
 `--summary` omits paths and file hashes while retaining the tree digest,
 aggregate counts, architectures, interpreters and required-library frequencies.

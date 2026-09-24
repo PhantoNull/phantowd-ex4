@@ -14,6 +14,11 @@ import (
 	"time"
 )
 
+const (
+	qemuTestSerial = "PHANTOWD-QEMU-SERIAL-01"
+	qemuTestWWN    = "500f000000000001"
+)
+
 func runSelfTest() error {
 	if runtime.GOARCH != "arm" || strings.Split(buildARMLevel(), ",")[0] != "5" {
 		return errors.New("self-test requires the ARMv5 QEMU target")
@@ -51,12 +56,46 @@ func runSelfTest() error {
 		snapshot.Memory.AvailableBytes == 0 || snapshot.Memory.AvailableBytes > snapshot.Memory.TotalBytes {
 		return errors.New("invalid development snapshot or privileged server")
 	}
+	storageResponse, err := client.Get("http://" + listenAddress + "/api/v1/storage")
+	if err != nil {
+		return errors.New("storage loopback request failed")
+	}
+	storageData, readErr := io.ReadAll(io.LimitReader(storageResponse.Body, 4097))
+	storageResponse.Body.Close()
+	if readErr != nil || len(storageData) > 4096 || storageResponse.StatusCode != http.StatusOK || storageResponse.Header.Get("Cache-Control") != "no-store" {
+		return errors.New("invalid storage observation response")
+	}
+	var storage storageSnapshot
+	if json.Unmarshal(storageData, &storage) != nil || storage.SchemaVersion != 1 || storage.Scope != "kernel-sysfs-only" ||
+		!storage.InventoryReadOnly || storage.BlockDevicesOpened || storage.ContentRead || storage.MutationsPerformed ||
+		storage.StableIdentityAvailable || storage.DeviceCount != len(storage.Observations) {
+		return errors.New("storage observation crossed or overstated its read-only boundary")
+	}
+	rootDiskFound := false
+	rootDiskIdentityPagesFound := false
+	for _, observation := range storage.Observations {
+		if observation.Name == "sda" && observation.Kind == "block" && observation.SizeBytes > 0 {
+			rootDiskFound = true
+			rootDiskIdentityPagesFound = observation.SerialStatus == identityPresent && observation.WWNStatus == identityPresent
+		}
+	}
+	if !rootDiskFound {
+		return errors.New("QEMU root block device was not observed through sysfs")
+	}
+	if !rootDiskIdentityPagesFound {
+		return errors.New("QEMU SCSI identity pages were not observed and validated through sysfs")
+	}
+	if strings.Contains(string(storageData), qemuTestSerial) || strings.Contains(string(storageData), qemuTestWWN) {
+		return errors.New("raw QEMU storage identifiers leaked through the API")
+	}
 	for _, check := range []struct {
 		method, path string
 		status       int
 	}{
 		{http.MethodPost, "/api/v1/system", http.StatusMethodNotAllowed},
 		{http.MethodGet, "/api/v1/system?path=/dev/mtd3", http.StatusBadRequest},
+		{http.MethodPost, "/api/v1/storage", http.StatusMethodNotAllowed},
+		{http.MethodGet, "/api/v1/storage?device=/dev/sda", http.StatusBadRequest},
 		{http.MethodGet, "/api/v1/reboot", http.StatusNotFound},
 	} {
 		request, err := http.NewRequest(check.method, "http://"+listenAddress+check.path, nil)
@@ -72,7 +111,7 @@ func runSelfTest() error {
 			return errors.New("unsafe method, query, or route accepted")
 		}
 	}
-	fmt.Printf("PHANTOWD_API_READY target=qemu-armv5 goarm=%s uid=%d memory_total_bytes=%d flashable=no hardware_validated=no\n",
-		snapshot.GOARM, snapshot.EffectiveUID, snapshot.Memory.TotalBytes)
+	fmt.Printf("PHANTOWD_API_READY target=qemu-armv5 goarm=%s uid=%d memory_total_bytes=%d storage_observations=%d identity_metadata=serial+naa-wwn flashable=no hardware_validated=no\n",
+		snapshot.GOARM, snapshot.EffectiveUID, snapshot.Memory.TotalBytes, storage.DeviceCount)
 	return nil
 }

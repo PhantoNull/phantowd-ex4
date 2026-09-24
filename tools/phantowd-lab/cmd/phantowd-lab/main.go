@@ -15,6 +15,8 @@ import (
 
 	"github.com/PhantoNull/phantowd-ex4/phantowd-lab/mcuproto"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-lab/rootfsinventory"
+	"github.com/PhantoNull/phantowd-ex4/phantowd-lab/storageinventory"
+	"github.com/PhantoNull/phantowd-ex4/phantowd-lab/storagerefs"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-lab/vendorupdate"
 )
 
@@ -99,6 +101,55 @@ func run(args []string, output io.Writer) (int, error) {
 
 	case "inventory-rootfs":
 		return inventoryRootfs(args[1:], output)
+
+	case "scan-storage-refs":
+		if len(args) != 2 {
+			return 1, errors.New("usage: phantowd-lab scan-storage-refs EXTRACTED-ROOT")
+		}
+		report, err := storagerefs.Inspect(args[1])
+		if err != nil {
+			return 1, err
+		}
+		return 0, writeJSON(output, report)
+
+	case "inspect-storage-inventory":
+		if len(args) != 2 {
+			return 1, errors.New("usage: phantowd-lab inspect-storage-inventory FILE")
+		}
+		file, _, err := openRegular(args[1])
+		if err != nil {
+			return 1, err
+		}
+		defer file.Close()
+		report, err := storageinventory.Inspect(file)
+		if err != nil {
+			return 1, err
+		}
+		if err := writeJSON(output, report); err != nil {
+			return 1, err
+		}
+		if !report.Valid {
+			return 2, nil
+		}
+		return 0, nil
+
+	case "plan-storage-inventory":
+		if len(args) != 2 {
+			return 1, errors.New("usage: phantowd-lab plan-storage-inventory FILE")
+		}
+		file, _, err := openRegular(args[1])
+		if err != nil {
+			return 1, err
+		}
+		defer file.Close()
+		assessment, err := storageinventory.Assess(file)
+		if err != nil {
+			return 1, err
+		}
+		if err := writeJSON(output, assessment); err != nil {
+			return 1, err
+		}
+		return assessment.ExitCode(), nil
 
 	case "decode-mcu":
 		if len(args) < 2 {

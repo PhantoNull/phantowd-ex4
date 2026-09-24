@@ -9,7 +9,9 @@ It is included only in the non-flashable QEMU development configuration.
 - Generated images include project and Go license notices under
   `/usr/share/licenses/phantowd-api/`; full SBOM/legal-info is still pending.
 - No authentication or TLS yet: do not expose it to a LAN or forward its port.
-- No hardware access, block-device access, shell execution, configuration writes,
+- Reads fixed `/proc` diagnostics and basic `/sys/class/block` metadata inside
+  the QEMU guest. It never opens a block device, reads disk contents, runs a
+  shell command, assembles or mounts storage, or performs configuration writes,
   reboot, firmware install, or update operations.
 - `flashable` and `hardware_validated` are always false; the target is explicitly
   `qemu-armv5`. These identifiers are not automatic hardware detection.
@@ -20,6 +22,7 @@ It is included only in the non-flashable QEMU development configuration.
 |---|---|
 | `GET /healthz` | Process-only liveness, not disk/thermal/device health |
 | `GET /api/v1/system` | Versioned JSON: observation time, kernel, architecture/GOARM, uptime, total/available memory, effective UID, development safety flags |
+| `GET /api/v1/storage` | Sorted, bounded kernel block-node observations from sysfs: name, major/minor, 512-byte-sector capacity, read-only/removable flags, partition number, and whole-disk `serial_status` / `wwn_status` when applicable |
 | Non-GET on a known route | `405`, `Allow: GET` |
 | Query or body on a read route | `400` |
 | Unknown route | `404` |
@@ -27,9 +30,19 @@ It is included only in the non-flashable QEMU development configuration.
 
 Only `sys/kernel/osrelease`, `uptime`, and `meminfo` beneath `/proc` are read,
 with a 64 KiB limit per file. `MemAvailable` is required; no invented fallback
-is returned. This is deliberately not a legacy-kernel compatibility package.
-Observations are sampled on demand, not periodically cached yet. No SMART or
-other potentially drive-waking source is queried.
+is returned. The storage endpoint reads bounded attributes beneath
+`/sys/class/block`, with a 32-entry ceiling. For whole-disk SCSI nodes it also
+reads the kernel's read-only VPD page 0x80/0x83 sysfs files, bounded to 4096
+bytes each. It returns only `serial_status` and `wwn_status` (`unavailable`,
+`present`, `invalid`, `ambiguous`, or `unreadable`); raw serial/WWN values are
+never returned. These states validate only observed SCSI VPD metadata and do
+not establish a durable PhantoWD identity. Kernel names and major/minor numbers
+remain transient observations. The endpoint does not collect
+partition/filesystem UUIDs, RAID membership, bay mapping, SMART, or device
+health, and does not prove that a WD layout is supported. It opens no `/dev`
+node and reads no disk contents. This is deliberately not a legacy-kernel
+compatibility package. Observations are sampled on demand, not periodically
+cached yet; no potentially drive-waking source is queried.
 
 The server limits active handlers to eight, request headers to 8 KiB (Go's
 HTTP parser may permit implementation slop), and sets read/write/idle timeouts.
@@ -52,10 +65,12 @@ prebuilt; upstream Buildroot supplies its exact version and archive checksums.
 Native Linux tests also run the race detector and a five-second memory-parser
 fuzz campaign with two workers; ARMv5 race instrumentation is not used.
 
-Guest initialization probes both GET endpoints, rejects POST/query/unknown
-operations, validates non-root identity and ARMv5 metadata, and prints an
-RSS sample with a 48 MiB ceiling. A failure prevents QEMU readiness. The RSS
-sample is a smoke-test measurement, not a steady-state or real-EX4 benchmark.
+Guest initialization probes all three GET endpoints, verifies that QEMU's
+root block node appears through sysfs without being opened, rejects
+POST/query/unknown operations, validates non-root identity and ARMv5 metadata,
+and prints an RSS sample with a 48 MiB ceiling. A failure prevents QEMU
+readiness. The RSS sample is a smoke-test measurement, not a steady-state or
+real-EX4 benchmark.
 
 QEMU uses a disposable disk snapshot and `restrict=on` with no host forwarding
 or physical device passthrough. No NAS address or credential is required.
