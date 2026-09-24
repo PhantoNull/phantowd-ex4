@@ -28,6 +28,8 @@ done
     -drive "file=$images_dir/rootfs.ext2,if=none,id=rootdisk,format=raw" \
     -device lsi53c895a,id=scsi0 \
     -device "scsi-hd,bus=scsi0.0,drive=rootdisk,serial=PHANTOWD-QEMU-SERIAL-01,wwn=0x500f000000000001" \
+    -object rng-random,id=rng0,filename=/dev/urandom \
+    -device virtio-rng-pci,rng=rng0 \
     -snapshot \
     -append "rootwait root=/dev/sda console=ttyAMA0,115200" \
     -display none \
@@ -70,6 +72,14 @@ while [ "$attempt" -lt 120 ]; do
         fi
         if ! grep -F 'PHANTOWD_NFS_SMOKE_READY protocol=nfs3 transport=tcp scope=qemu-loopback-only' "$log_file" >/dev/null; then
             echo "Missing loopback-only NFSv3/TCP integration assertion" >&2
+            exit 1
+        fi
+        if ! grep -F 'PHANTOWD_SMB_SMOKE_READY protocol=smb3 transport=tcp scope=qemu-loopback-only' "$log_file" >/dev/null; then
+            echo "Missing loopback-only SMB3 integration assertion" >&2
+            exit 1
+        fi
+        if ! grep -E 'PHANTOWD_SMB_RESOURCE userspace_daemons=smbd rss_kib=[0-9]+' "$log_file" >/dev/null; then
+            echo "Missing SMB userspace resource measurement" >&2
             exit 1
         fi
         echo "QEMU ARMv5 smoke test passed"

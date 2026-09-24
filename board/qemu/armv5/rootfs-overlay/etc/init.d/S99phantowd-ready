@@ -94,6 +94,54 @@ case "$1" in
             exit 1
         fi
         echo 'PHANTOWD_NFS_SMOKE_READY protocol=nfs3 transport=tcp scope=qemu-loopback-only'
+
+        smb_marker=/run/phantowd-smb-marker
+        smb_client_log=/run/phantowd-smbclient.log
+        rm -f "$smb_marker"
+        smb_attempt=0
+        while ! smbclient -N -t 2 -m SMB3 //127.0.0.1/phantowd-smb-smoke \
+            -c "get marker $smb_marker" >"$smb_client_log" 2>&1; do
+            smb_attempt=$((smb_attempt + 1))
+            if [ "$smb_attempt" -ge 30 ]; then
+                echo 'PHANTOWD_QEMU_ERROR smb3-loopback-read-failed'
+                cat "$smb_client_log" 2>/dev/null || true
+                grep -i ':01BD ' /proc/net/tcp /proc/net/tcp6 2>/dev/null || true
+                cat /var/log/samba/testparm.log 2>/dev/null || true
+                tail -n 40 /var/log/samba/smbd-startup.log 2>/dev/null || true
+                exit 1
+            fi
+            sleep 1
+        done
+        if [ ! -s "$smb_marker" ]; then
+            echo 'PHANTOWD_QEMU_ERROR smb3-loopback-read-failed'
+            exit 1
+        fi
+        if [ "$(cat "$smb_marker" 2>/dev/null)" != 'phantowd-qemu-smb-smoke-v1' ]; then
+            rm -f "$smb_marker"
+            echo 'PHANTOWD_QEMU_ERROR smb3-loopback-content-mismatch'
+            exit 1
+        fi
+        rm -f "$smb_marker"
+        echo 'PHANTOWD_SMB_SMOKE_READY protocol=smb3 transport=tcp scope=qemu-loopback-only'
+
+        smb_daemon_rss_kib=0
+        smb_daemon_pids="$(pidof smbd 2>/dev/null || true)"
+        if [ -z "$smb_daemon_pids" ]; then
+            echo 'PHANTOWD_QEMU_ERROR smb-daemon-not-running name=smbd'
+            exit 1
+        fi
+        # shellcheck disable=SC2086 # pidof intentionally returns a whitespace-separated PID list
+        for smb_daemon_pid in $smb_daemon_pids; do
+            smb_daemon_rss="$(awk '/^VmRSS:/ { print $2 }' "/proc/$smb_daemon_pid/status")"
+            case "$smb_daemon_rss" in
+                ''|*[!0-9]*)
+                    echo 'PHANTOWD_QEMU_ERROR smb-daemon-rss-unavailable name=smbd'
+                    exit 1
+                    ;;
+            esac
+            smb_daemon_rss_kib=$((smb_daemon_rss_kib + smb_daemon_rss))
+        done
+        echo "PHANTOWD_SMB_RESOURCE userspace_daemons=smbd rss_kib=$smb_daemon_rss_kib scope=qemu-smoke-only"
         echo "PHANTOWD_QEMU_READY target=$PHANTOWD_TARGET kernel=$running_kernel arch=$running_arch flashable=$PHANTOWD_FLASHABLE"
         ;;
     stop)
