@@ -49,6 +49,51 @@ case "$1" in
             exit 1
         fi
         echo "PHANTOWD_API_RESOURCE rss_kib=$api_rss scope=qemu-smoke-only"
+
+        nfs_daemon_rss_kib=0
+        for nfs_daemon in rpcbind rpc.statd rpc.mountd; do
+            nfs_daemon_pids="$(pidof "$nfs_daemon" 2>/dev/null || true)"
+            if [ -z "$nfs_daemon_pids" ]; then
+                echo "PHANTOWD_QEMU_ERROR nfs-daemon-not-running name=$nfs_daemon"
+                exit 1
+            fi
+            for nfs_daemon_pid in $nfs_daemon_pids; do
+                nfs_daemon_rss="$(awk '/^VmRSS:/ { print $2 }' "/proc/$nfs_daemon_pid/status")"
+                case "$nfs_daemon_rss" in
+                    ''|*[!0-9]*)
+                        echo "PHANTOWD_QEMU_ERROR nfs-daemon-rss-unavailable name=$nfs_daemon"
+                        exit 1
+                        ;;
+                esac
+                nfs_daemon_rss_kib=$((nfs_daemon_rss_kib + nfs_daemon_rss))
+            done
+        done
+        echo "PHANTOWD_NFS_RESOURCE userspace_daemons=rpcbind,rpc.statd,rpc.mountd rss_kib=$nfs_daemon_rss_kib scope=qemu-smoke-only"
+
+        nfs_mount=/run/phantowd-nfs-smoke
+        mkdir -p "$nfs_mount"
+        if ! mount -t nfs -o vers=3,proto=tcp,nolock,ro,soft,timeo=5,retrans=1 \
+            127.0.0.1:/srv/phantowd-nfs-smoke "$nfs_mount"; then
+            echo 'PHANTOWD_QEMU_ERROR nfs-v3-tcp-loopback-mount-failed'
+            exit 1
+        fi
+        if [ "$(cat "$nfs_mount/marker" 2>/dev/null)" != 'phantowd-qemu-nfs-smoke-v1' ]; then
+            umount "$nfs_mount" || true
+            echo 'PHANTOWD_QEMU_ERROR nfs-v3-tcp-loopback-content-mismatch'
+            exit 1
+        fi
+        if ! awk -v mountpoint="$nfs_mount" \
+            '$2 == mountpoint && $3 == "nfs" && $4 ~ /vers=3/ && $4 ~ /proto=tcp/ { found=1 } END { exit !found }' \
+            /proc/mounts; then
+            umount "$nfs_mount" || true
+            echo 'PHANTOWD_QEMU_ERROR nfs-v3-tcp-mount-options-unverified'
+            exit 1
+        fi
+        if ! umount "$nfs_mount"; then
+            echo 'PHANTOWD_QEMU_ERROR nfs-v3-tcp-loopback-unmount-failed'
+            exit 1
+        fi
+        echo 'PHANTOWD_NFS_SMOKE_READY protocol=nfs3 transport=tcp scope=qemu-loopback-only'
         echo "PHANTOWD_QEMU_READY target=$PHANTOWD_TARGET kernel=$running_kernel arch=$running_arch flashable=$PHANTOWD_FLASHABLE"
         ;;
     stop)

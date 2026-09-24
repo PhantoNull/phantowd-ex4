@@ -161,6 +161,12 @@ make -C "$buildroot_source" \
     O="$output_dir" \
     -j"$(getconf _NPROCESSORS_ONLN)"
 
+make -C "$buildroot_source" \
+    BR2_EXTERNAL="$external_dir" \
+    BR2_DL_DIR="$download_dir" \
+    O="$output_dir" \
+    legal-info
+
 GOCACHE="$workspace_dir/api-host-cache" \
     sh "$external_dir/support/container/test-api.sh" \
     "$output_dir/host/bin/go" "$external_dir/src/phantowd-api" \
@@ -197,6 +203,7 @@ grep -F "\"specVersion\": \"$CYCLONEDX_SPEC_VERSION\"" \
 install -m 0644 "$output_dir/images/zImage" "$artifact_dir/zImage"
 install -m 0644 "$output_dir/images/versatile-pb.dtb" "$artifact_dir/versatile-pb.dtb"
 install -m 0644 "$output_dir/images/rootfs.ext2" "$artifact_dir/rootfs.ext2"
+install -m 0644 "$output_dir/legal-info/manifest.csv" "$artifact_dir/license-manifest.csv"
 install -m 0644 "$output_dir/qemu-smoke.log" "$artifact_dir/qemu-smoke.log"
 install -m 0644 "$output_dir/api-host-tests/coverage.out" "$artifact_dir/api-host-coverage.out"
 install -m 0644 "$output_dir/lab-tools-host-tests/coverage.out" "$artifact_dir/lab-tools-host-coverage.out"
@@ -204,7 +211,7 @@ install -m 0644 "$output_dir/target/usr/bin/phantowd-api" "$artifact_dir/phantow
 (
     cd "$artifact_dir"
     sha256sum zImage versatile-pb.dtb rootfs.ext2 phantowd-api \
-        buildroot-show-info.json sbom.cdx.json > SHA256SUMS
+        buildroot-show-info.json sbom.cdx.json license-manifest.csv > SHA256SUMS
 )
 
 printf 'Build and smoke test passed. Artifacts: %s\n' "$artifact_dir"

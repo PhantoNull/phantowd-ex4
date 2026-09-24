@@ -1,0 +1,9 @@
+CONFIG_NFS_FS=y
+# NFSv2 is obsolete; the QEMU integration target exercises only v3.
+# CONFIG_NFS_V2 is not set
+CONFIG_NFS_V3=y
+# CONFIG_NFS_V4 is not set
+CONFIG_NFSD=y
+# NFSv3 is built into NFSD; disable deprecated v2 and optional v4.
+# CONFIG_NFSD_V2 is not set
+# CONFIG_NFSD_V4 is not set

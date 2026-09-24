@@ -64,6 +64,14 @@ while [ "$attempt" -lt 120 ]; do
             echo "Missing ARMv5 diagnostics API assertion" >&2
             exit 1
         fi
+        if ! grep -E 'PHANTOWD_NFS_RESOURCE userspace_daemons=rpcbind,rpc.statd,rpc.mountd rss_kib=[0-9]+' "$log_file" >/dev/null; then
+            echo "Missing NFS userspace resource measurement" >&2
+            exit 1
+        fi
+        if ! grep -F 'PHANTOWD_NFS_SMOKE_READY protocol=nfs3 transport=tcp scope=qemu-loopback-only' "$log_file" >/dev/null; then
+            echo "Missing loopback-only NFSv3/TCP integration assertion" >&2
+            exit 1
+        fi
         echo "QEMU ARMv5 smoke test passed"
         exit 0
     fi
