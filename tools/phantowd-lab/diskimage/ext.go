@@ -66,7 +66,9 @@ type ExtReport struct {
 
 // InspectExtSuperblock reads the ext-family superblock at the standard
 // 1024-byte offset within a caller-identified partition in a regular raw image.
-// It never reads file data, validates checksums, mounts, or mutates the image.
+// It never reads file data or validates metadata beyond the selected
+// superblock fields and its checksum when metadata_csum is advertised; it
+// never mounts or mutates the image.
 func InspectExtSuperblock(image io.ReaderAt, imageSize int64, firstLBA, lastLBA uint64) (ExtReport, error) {
 	report := newExtReport(firstLBA, lastLBA)
 	if image == nil || imageSize < 0 {

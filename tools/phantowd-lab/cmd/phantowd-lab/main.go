@@ -159,6 +159,9 @@ func run(args []string, output io.Writer) (int, error) {
 	case "inspect-ext-partition":
 		return inspectExtPartition(args[1:], output)
 
+	case "inspect-md-v1.2-partition":
+		return inspectMDV12Partition(args[1:], output)
+
 	case "plan-storage-inventory":
 		if len(args) != 2 {
 			return 1, errors.New("usage: phantowd-lab plan-storage-inventory FILE")
@@ -286,6 +289,89 @@ func inspectExtPartition(args []string, output io.Writer) (int, error) {
 		return 1, err
 	}
 	if result.Status != diskimage.ExtStatusCandidate {
+		return 2, nil
+	}
+	return 0, nil
+}
+
+type mdV12ImageReport struct {
+	Format          string                 `json:"format"`
+	SchemaVersion   int                    `json:"schema_version"`
+	Status          diskimage.MDStatus     `json:"status"`
+	PartitionNumber int                    `json:"partition_number"`
+	WDCompatibility string                 `json:"wd_compatibility"`
+	GPT             diskimage.Report       `json:"gpt"`
+	MD              *diskimage.MDV12Report `json:"md_superblock,omitempty"`
+	Findings        []string               `json:"findings"`
+	Limitations     []string               `json:"limitations"`
+}
+
+func inspectMDV12Partition(args []string, output io.Writer) (int, error) {
+	if len(args) != 2 {
+		return 1, errors.New("usage: phantowd-lab inspect-md-v1.2-partition IMAGE-FILE GPT-PARTITION-NUMBER")
+	}
+	partitionNumber, err := strconv.ParseUint(args[1], 10, 32)
+	if err != nil || partitionNumber == 0 || partitionNumber > 128 {
+		return 1, errors.New("GPT partition number must be between 1 and 128")
+	}
+	file, size, err := openRegular(args[0])
+	if err != nil {
+		return 1, err
+	}
+	defer file.Close()
+	gpt, err := diskimage.Inspect(file, size)
+	if err != nil {
+		return 1, err
+	}
+	result := mdV12ImageReport{
+		Format:          "phantowd-md-v1.2-gpt-partition-inspection",
+		SchemaVersion:   1,
+		Status:          diskimage.MDStatusUnsupported,
+		PartitionNumber: int(partitionNumber),
+		WDCompatibility: "unqualified",
+		GPT:             gpt,
+		Findings:        []string{},
+		Limitations: []string{
+			"only one generic Linux MD v1.2 component superblock is inspected after generic GPT validation; other MD layouts, WD metadata, filesystem metadata, health and file data are not read",
+			"one plausible member does not prove array-wide consistency, a supported WD layout, filesystem integrity, or safe assembly",
+			"the supplied regular file is never mounted, modified, or treated as a block device",
+		},
+	}
+	if gpt.Status != diskimage.StatusValid {
+		if gpt.Status == diskimage.StatusDamaged {
+			result.Status = diskimage.MDStatusDamaged
+		}
+		result.Findings = []string{"GPT metadata must be valid before a partition superblock can be selected"}
+		if err := writeJSON(output, result); err != nil {
+			return 1, err
+		}
+		return 2, nil
+	}
+	var selected *diskimage.Partition
+	for index := range gpt.Partitions {
+		if gpt.Partitions[index].Number == int(partitionNumber) {
+			selected = &gpt.Partitions[index]
+			break
+		}
+	}
+	if selected == nil {
+		result.Findings = []string{"requested GPT partition number is not present"}
+		if err := writeJSON(output, result); err != nil {
+			return 1, err
+		}
+		return 2, nil
+	}
+	metadata, err := diskimage.InspectMDV12Superblock(file, size, selected.FirstLBA, selected.LastLBA)
+	if err != nil {
+		return 1, err
+	}
+	result.MD = &metadata
+	result.Status = metadata.Status
+	result.Findings = metadata.Findings
+	if err := writeJSON(output, result); err != nil {
+		return 1, err
+	}
+	if result.Status != diskimage.MDStatusCandidate {
 		return 2, nil
 	}
 	return 0, nil

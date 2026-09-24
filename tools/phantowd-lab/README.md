@@ -19,6 +19,7 @@ phantowd-lab inspect-mtd3 FILE
 phantowd-lab inspect-rescue FILE
 phantowd-lab inspect-gpt-image FILE
 phantowd-lab inspect-ext-partition IMAGE-FILE GPT-PARTITION-NUMBER
+phantowd-lab inspect-md-v1.2-partition IMAGE-FILE GPT-PARTITION-NUMBER
 phantowd-lab inventory-rootfs [--summary] DIRECTORY
 phantowd-lab scan-storage-refs EXTRACTED-ROOT
 phantowd-lab inspect-storage-inventory FILE
@@ -72,6 +73,18 @@ checksum as not advertised or unknown. Exit status is `0`
 for a plausible superblock, `2` for absent/damaged/unsupported metadata and
 `1` for usage, I/O or file-open errors. Like the GPT command, it never opens a
 block device, mounts, or writes the input image.
+
+`inspect-md-v1.2-partition` first requires a structurally valid GPT, then reads
+only one Linux native MD metadata v1.2 component superblock at its
+partition-relative location and the bounded variable-length member-role array.
+It checks the v1 checksum, basic partition/data bounds, and redacts array and
+member UUIDs to deterministic fingerprints. Its candidate status says nothing
+about other members, array-wide event consistency, RAID health, filesystem
+integrity, WD compatibility or safe assembly. It does not inspect v1.0/v1.1,
+legacy 0.90, vendor-specific RAID metadata, filesystem data, or disks directly.
+No array is assembled, mounted, or modified. Exit status is `0` only for a
+plausible v1.2 component superblock, `2` for absent/damaged/unsupported
+metadata, and `1` for usage, I/O or file-open errors.
 
 `inventory-rootfs` walks an already extracted directory without following
 symlinks. It hashes regular files and records deterministic paths, sizes,

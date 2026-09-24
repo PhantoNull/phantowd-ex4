@@ -5,6 +5,7 @@ package main
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"encoding/binary"
 	"hash/crc32"
 	"os"
@@ -216,6 +217,36 @@ func TestInspectExtPartitionCommandIsReadOnlyAndGeneric(t *testing.T) {
 	}
 }
 
+func TestInspectMDV12PartitionCommandIsReadOnlyAndGeneric(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "synthetic-md.img")
+	fixture := syntheticGPTImageForCommand()
+	if err := os.WriteFile(path, fixture, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	var output bytes.Buffer
+	code, err := run([]string{"inspect-md-v1.2-partition", path, "1"}, &output)
+	if err != nil || code != 0 {
+		t.Fatalf("valid synthetic md partition: code=%d err=%v output=%s", code, err, output.String())
+	}
+	after, err := os.ReadFile(path)
+	if err != nil || sha256.Sum256(after) != sha256.Sum256(fixture) {
+		t.Fatalf("image changed during inspection: err=%v", err)
+	}
+	for _, expected := range []string{`"status": "md-v1.2-superblock-candidate"`, `"metadata_version": "1.2"`, `"superblock_checksum_status": "valid"`, `"raid_disks": 2`, `"member_number": 0`, `"wd_compatibility": "unqualified"`, `"block_device_opened": false`, `"mutations_performed": false`, `"assembly_performed": false`, `"mount_performed": false`} {
+		if !strings.Contains(output.String(), expected) {
+			t.Fatalf("missing %q in report: %s", expected, output.String())
+		}
+	}
+	for _, secret := range []string{filepath.ToSlash(path), "MD_PRIVATE_ARRAY_ID", "MD_PRIVATE_MEMBER_ID", "PRIVATE_MD_SET_NAME"} {
+		if strings.Contains(output.String(), secret) {
+			t.Fatalf("report leaked %q: %s", secret, output.String())
+		}
+	}
+	if code, err = run([]string{"inspect-md-v1.2-partition", path, "129"}, &bytes.Buffer{}); code != 1 || err == nil {
+		t.Fatalf("out-of-range partition number: code=%d err=%v", code, err)
+	}
+}
+
 func TestPlanStorageInventoryCommandIsRedactedAndDryRunOnly(t *testing.T) {
 	fixture := `{"format":"phantowd-storage-assessment","schema_version":1,"legacy_volume_metadata_state":"not_collected","inventory":{"format":"phantowd-storage-inventory","schema_version":1,"disks":[{"id":"disk-a","wwn":"fixture-wwn-001","serial":"fixture-serial-001","bay":1,"device":"/dev/sda"}],"partitions":[{"id":"partition-a","disk_id":"disk-a","number":2,"partuuid":"fixture-partuuid-001"}],"volumes":[{"id":"volume-a","logical_volume_number":1,"filesystem_uuid":"fixture-fs-uuid-001","filesystem_type":"ext4","md_uuid":"fixture-md-uuid-001","member_partition_ids":["partition-a"]}]}}`
 	path := filepath.Join(t.TempDir(), "assessment.json")
@@ -275,14 +306,44 @@ func syntheticGPTImageForCommand() []byte {
 	copy(primaryEntries[:16], []byte{0xaf, 0x3d, 0xc6, 0x0f, 0x83, 0x84, 0x72, 0x47, 0x8e, 0x79, 0x3d, 0x69, 0xd8, 0x47, 0x7d, 0xe4})
 	copy(primaryEntries[16:32], []byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16})
 	binary.LittleEndian.PutUint64(primaryEntries[32:40], 3)
-	binary.LittleEndian.PutUint64(primaryEntries[40:48], 6)
+	binary.LittleEndian.PutUint64(primaryEntries[40:48], 60)
 	backupEntries := image[62*sector : 62*sector+entrySize]
 	copy(backupEntries, primaryEntries)
 	entriesCRC := crc32.ChecksumIEEE(primaryEntries)
 	putGPTHeaderForCommand(image[sector:2*sector], 1, sectors-1, 2, entriesCRC)
 	putGPTHeaderForCommand(image[63*sector:], sectors-1, 1, 62, entriesCRC)
 	putExtSuperblockForCommand(image)
+	putMDV12SuperblockForCommand(image)
 	return image
+}
+
+func putMDV12SuperblockForCommand(image []byte) {
+	const partitionStartLBA = 3
+	start := partitionStartLBA*512 + 4096
+	superblock := image[start : start+260]
+	binary.LittleEndian.PutUint32(superblock[0:4], 0xa92b4efc)
+	binary.LittleEndian.PutUint32(superblock[4:8], 1)
+	copy(superblock[16:32], []byte("MD_PRIVATE_ARRAY_ID"))
+	copy(superblock[32:64], []byte("PRIVATE_MD_SET_NAME"))
+	binary.LittleEndian.PutUint32(superblock[72:76], 1)
+	binary.LittleEndian.PutUint32(superblock[92:96], 2)
+	binary.LittleEndian.PutUint64(superblock[128:136], 16)
+	binary.LittleEndian.PutUint64(superblock[136:144], 32)
+	binary.LittleEndian.PutUint64(superblock[144:152], 8)
+	copy(superblock[168:184], []byte("MD_PRIVATE_MEMBER_ID"))
+	binary.LittleEndian.PutUint64(superblock[200:208], 5)
+	binary.LittleEndian.PutUint32(superblock[220:224], 2)
+	binary.LittleEndian.PutUint16(superblock[256:258], 0)
+	binary.LittleEndian.PutUint16(superblock[258:260], 1)
+	binary.LittleEndian.PutUint32(superblock[216:220], 0)
+	var sum uint64
+	for offset := 0; offset+4 <= len(superblock); offset += 4 {
+		sum += uint64(binary.LittleEndian.Uint32(superblock[offset : offset+4]))
+	}
+	if len(superblock)%4 == 2 {
+		sum += uint64(binary.LittleEndian.Uint16(superblock[len(superblock)-2:]))
+	}
+	binary.LittleEndian.PutUint32(superblock[216:220], uint32(sum)+uint32(sum>>32))
 }
 
 func putExtSuperblockForCommand(image []byte) {

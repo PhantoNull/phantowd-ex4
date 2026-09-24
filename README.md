@@ -46,10 +46,11 @@ local copies of the legacy WD update, logical-mtd3 and redacted logical-rescue
 formats, replays passive controller captures, and scans extracted trees for
 known legacy storage-path literals. It also validates a project-owned,
 versioned synthetic storage-inventory JSON and generic GPT structure in
-caller-supplied image files, with an optional read-only ext-family superblock
-check for one GPT partition. Neither command is a WD XML parser or a WD disk-
-layout compatibility detector; valid partition metadata does not establish
-that a disk can be migrated safely. Artifact inspectors accept regular files only;
+caller-supplied image files, with optional read-only ext-family superblock or
+Linux MD v1.2 component-superblock checks for one GPT partition. These are not
+WD XML parsers or WD disk-layout compatibility detectors; valid partition,
+filesystem, or single-member RAID metadata does not establish that a disk can
+be migrated safely. Artifact inspectors accept regular files only;
 extracted-tree tools do not follow symlinks or open special files. The path
 scan is not full code analysis. The toolkit has no firmware
 extraction, image construction, flash-device, serial-port, or transmit path.
