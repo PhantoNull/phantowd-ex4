@@ -309,6 +309,43 @@ func TestInspectMDV090GPTPartitionCommandIsReadOnlyAndGeneric(t *testing.T) {
 	}
 }
 
+func TestInspectStorageImageAggregatesReadOnlyPartitionObservations(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "synthetic-storage-disk.img")
+	fixture := syntheticGPTImageWithMDV090()
+	if err := os.WriteFile(path, fixture, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	var output bytes.Buffer
+	code, err := run([]string{"inspect-storage-image", path}, &output)
+	if err != nil || code != 0 {
+		t.Fatalf("valid synthetic storage image: code=%d err=%v output=%s", code, err, output.String())
+	}
+	after, err := os.ReadFile(path)
+	if err != nil || sha256.Sum256(after) != sha256.Sum256(fixture) {
+		t.Fatalf("disk image changed during inspection: err=%v", err)
+	}
+	for _, expected := range []string{`"gpt_status": "valid-gpt"`, `"partition_observations"`, `"partition_number": 1`, `"status": "md-v0.90-superblock-candidate"`, `"status": "not-ext-superblock"`, `"status": "no-md-v1.2-superblock"`, `"wd_compatibility": "unqualified"`, `"block_device_opened": false`, `"mutations_performed": false`, `"assembly_performed": false`, `"mount_performed": false`} {
+		if !strings.Contains(output.String(), expected) {
+			t.Fatalf("missing %q in report: %s", expected, output.String())
+		}
+	}
+	for _, secret := range []string{filepath.ToSlash(path), "synthetic-partition", "PRIVATE_ARRAY_ID", "/dev/sda"} {
+		if strings.Contains(output.String(), secret) {
+			t.Fatalf("report leaked %q: %s", secret, output.String())
+		}
+	}
+
+	badPath := filepath.Join(t.TempDir(), "not-gpt.img")
+	if err := os.WriteFile(badPath, []byte("not a GPT disk image"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	output.Reset()
+	code, err = run([]string{"inspect-storage-image", badPath}, &output)
+	if err != nil || code != 2 || !strings.Contains(output.String(), `"partition_observations": []`) {
+		t.Fatalf("invalid GPT report: code=%d err=%v output=%s", code, err, output.String())
+	}
+}
+
 func TestPlanStorageInventoryCommandIsRedactedAndDryRunOnly(t *testing.T) {
 	fixture := `{"format":"phantowd-storage-assessment","schema_version":1,"legacy_volume_metadata_state":"not_collected","inventory":{"format":"phantowd-storage-inventory","schema_version":1,"disks":[{"id":"disk-a","wwn":"fixture-wwn-001","serial":"fixture-serial-001","bay":1,"device":"/dev/sda"}],"partitions":[{"id":"partition-a","disk_id":"disk-a","number":2,"partuuid":"fixture-partuuid-001"}],"volumes":[{"id":"volume-a","logical_volume_number":1,"filesystem_uuid":"fixture-fs-uuid-001","filesystem_type":"ext4","md_uuid":"fixture-md-uuid-001","member_partition_ids":["partition-a"]}]}}`
 	path := filepath.Join(t.TempDir(), "assessment.json")

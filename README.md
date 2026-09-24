@@ -48,7 +48,8 @@ known legacy storage-path literals. It also validates a project-owned,
 versioned synthetic storage-inventory JSON and generic GPT structure in
 caller-supplied image files, with optional read-only ext-family superblock or
 Linux MD v1.2 and v0.90 component-superblock checks for selected GPT
-partitions, plus a direct Linux MD 0.90 component-image check. These are not
+partitions, plus a combined read-only storage-image metadata report and a
+direct Linux MD 0.90 component-image check. These are not
 WD XML parsers or WD disk-layout compatibility detectors; valid partition,
 filesystem, or single-member RAID metadata does not establish that a disk can
 be migrated safely. Artifact inspectors accept regular files only;

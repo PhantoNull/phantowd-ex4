@@ -156,6 +156,9 @@ func run(args []string, output io.Writer) (int, error) {
 		}
 		return 0, nil
 
+	case "inspect-storage-image":
+		return inspectStorageImage(args[1:], output)
+
 	case "inspect-ext-partition":
 		return inspectExtPartition(args[1:], output)
 
@@ -483,6 +486,88 @@ func inspectMDV090Partition(args []string, output io.Writer) (int, error) {
 	}
 	if result.Status != diskimage.MDV090StatusCandidate {
 		return 2, nil
+	}
+	return 0, nil
+}
+
+type storagePartitionObservation struct {
+	Number   int                    `json:"partition_number"`
+	FirstLBA uint64                 `json:"first_lba"`
+	LastLBA  uint64                 `json:"last_lba"`
+	Ext      diskimage.ExtReport    `json:"ext_superblock"`
+	MDV12    diskimage.MDV12Report  `json:"md_v1_2_superblock"`
+	MDV090   diskimage.MDV090Report `json:"md_v0_90_superblock"`
+}
+
+type storageImageReport struct {
+	Format             string                        `json:"format"`
+	SchemaVersion      int                           `json:"schema_version"`
+	WDCompatibility    string                        `json:"wd_compatibility"`
+	GPTStatus          diskimage.Status              `json:"gpt_status"`
+	GPT                diskimage.Report              `json:"gpt"`
+	Partitions         []storagePartitionObservation `json:"partition_observations"`
+	BlockDeviceOpened  bool                          `json:"block_device_opened"`
+	MutationsPerformed bool                          `json:"mutations_performed"`
+	AssemblyPerformed  bool                          `json:"assembly_performed"`
+	MountPerformed     bool                          `json:"mount_performed"`
+	Limitations        []string                      `json:"limitations"`
+}
+
+func inspectStorageImage(args []string, output io.Writer) (int, error) {
+	if len(args) != 1 {
+		return 1, errors.New("usage: phantowd-lab inspect-storage-image DISK-IMAGE-FILE")
+	}
+	file, size, err := openRegular(args[0])
+	if err != nil {
+		return 1, err
+	}
+	defer file.Close()
+	gpt, err := diskimage.Inspect(file, size)
+	if err != nil {
+		return 1, err
+	}
+	result := storageImageReport{
+		Format:          "phantowd-read-only-storage-image-observation",
+		SchemaVersion:   1,
+		WDCompatibility: "unqualified",
+		GPTStatus:       gpt.Status,
+		GPT:             gpt,
+		Partitions:      []storagePartitionObservation{},
+		Limitations: []string{
+			"reports only generic GPT plus bounded ext, Linux MD v1.2, and little-endian MD 0.90 superblock observations for each partition; it does not detect other filesystems, MD versions, WD XML, health, or file data",
+			"observations are independent and are not reconciled into an array or volume; a plausible superblock does not establish WD compatibility, filesystem integrity, or safe assembly/mounting",
+			"the supplied regular file is never mounted, modified, or treated as a block device",
+		},
+	}
+	if gpt.Status != diskimage.StatusValid {
+		if err := writeJSON(output, result); err != nil {
+			return 1, err
+		}
+		return 2, nil
+	}
+	for _, partition := range gpt.Partitions {
+		extReport, err := diskimage.InspectExtSuperblock(file, size, partition.FirstLBA, partition.LastLBA)
+		if err != nil {
+			return 1, err
+		}
+		mdV12Report, err := diskimage.InspectMDV12Superblock(file, size, partition.FirstLBA, partition.LastLBA)
+		if err != nil {
+			return 1, err
+		}
+		partitionSectors := partition.LastLBA - partition.FirstLBA + 1
+		partitionBytes := partitionSectors * 512
+		component := io.NewSectionReader(file, int64(partition.FirstLBA*512), int64(partitionBytes))
+		mdV090Report, err := diskimage.InspectMDV090Component(component, int64(partitionBytes))
+		if err != nil {
+			return 1, err
+		}
+		result.Partitions = append(result.Partitions, storagePartitionObservation{
+			Number: partition.Number, FirstLBA: partition.FirstLBA, LastLBA: partition.LastLBA,
+			Ext: extReport, MDV12: mdV12Report, MDV090: mdV090Report,
+		})
+	}
+	if err := writeJSON(output, result); err != nil {
+		return 1, err
 	}
 	return 0, nil
 }

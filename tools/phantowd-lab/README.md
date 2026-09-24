@@ -18,6 +18,7 @@ phantowd-lab inspect-update FILE
 phantowd-lab inspect-mtd3 FILE
 phantowd-lab inspect-rescue FILE
 phantowd-lab inspect-gpt-image FILE
+phantowd-lab inspect-storage-image DISK-IMAGE-FILE
 phantowd-lab inspect-ext-partition IMAGE-FILE GPT-PARTITION-NUMBER
 phantowd-lab inspect-md-v1.2-partition IMAGE-FILE GPT-PARTITION-NUMBER
 phantowd-lab inspect-md-v0.90-component COMPONENT-IMAGE-FILE
@@ -60,6 +61,17 @@ filesystem, RAID, or migration check. It never opens a block device, repairs
 metadata, assembles an array, mounts a filesystem, or writes the image. Exit
 status is `0` for a structurally valid GPT and `2` for parsed damaged or
 unsupported input; usage, I/O, and file-open errors return `1`.
+
+`inspect-storage-image` produces one read-only JSON snapshot by applying the
+existing GPT, ext-superblock, MD v1.2, and MD 0.90 readers to a regular whole-
+disk image. The filesystem and RAID observations remain independent per
+partition: the command does not reconcile members, infer a WD layout, examine
+file data, or establish health, integrity, compatibility, or mount safety.
+Every parser remains bounded to its relevant metadata. Invalid or unsupported
+GPT returns `2` without partition observations; a valid GPT returns `0` even
+when individual generic superblocks are absent, unsupported, or damaged, so
+inspect those per-format statuses in the JSON. It never opens a block device,
+mounts, assembles, or writes the image.
 
 `inspect-ext-partition` first requires a structurally valid GPT, then reads
 only the standard 1024-byte ext-family superblock at byte offset 1024 within
