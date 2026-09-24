@@ -68,6 +68,26 @@ download_verified \
     "$download_dir/linux/$linux_archive" \
     "$LINUX_ARCHIVE_SHA256"
 
+linux_signature="$download_dir/linux/linux-$LINUX_VERSION.tar.sign"
+if [ ! -f "$linux_signature" ]; then
+    curl --fail --location --proto '=https' --tlsv1.2 \
+        --output "$linux_signature.part" \
+        "https://cdn.kernel.org/pub/linux/kernel/v6.x/linux-$LINUX_VERSION.tar.sign"
+    mv "$linux_signature.part" "$linux_signature"
+fi
+
+# Kernel.org signs the uncompressed tar stream. Pin and verify the stable
+# release signing key in addition to the compressed archive's SHA-256.
+GNUPGHOME="$gnupg_dir" gpg --batch --keyserver-options timeout=30 \
+    --locate-keys "$LINUX_SIGNING_KEY_EMAIL" >/dev/null
+GNUPGHOME="$gnupg_dir" gpg --batch --with-colons --fingerprint --list-keys |
+    grep -F "$LINUX_SIGNING_KEY_FINGERPRINT" >/dev/null
+linux_signature_status="$(xz --decompress --stdout "$download_dir/linux/$linux_archive" |
+    GNUPGHOME="$gnupg_dir" gpg --batch --status-fd=1 \
+        --verify "$linux_signature" - 2>/dev/null)"
+printf '%s\n' "$linux_signature_status" |
+    grep -F "[GNUPG:] VALIDSIG $LINUX_SIGNING_KEY_FINGERPRINT " >/dev/null
+
 if [ ! -f "$buildroot_source/.phantowd-source-ready" ]; then
     source_stage="$workspace_dir/.buildroot-$BUILDROOT_VERSION.extracting"
     if [ -e "$source_stage" ]; then

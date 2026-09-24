@@ -20,9 +20,10 @@ separately named ARMv5 QEMU baseline for software-only development.
 
 ## Pinned QEMU baseline
 
-The source baseline is pinned to Buildroot 2025.02.18 and Linux 6.18.50. The
-Buildroot release signature, signing-key fingerprint, Buildroot archive hash,
-and Linux archive hash are verified before use. On Windows with Docker Desktop:
+The source baseline is pinned to Buildroot 2025.02.18 (LTS) and Linux
+6.18.53. The Buildroot release signature, signing-key fingerprint, Buildroot
+archive hash, and Linux archive hash are verified before use. On Windows with
+Docker Desktop:
 
 ```powershell
 .\support\build-qemu.ps1
