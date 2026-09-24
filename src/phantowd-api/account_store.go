@@ -52,6 +52,13 @@ type accountStore struct {
 	admin *storedAccount
 }
 
+func configuredAccountStateDirectory(dir string) (string, error) {
+	if dir == "" {
+		return "", errors.New("account state directory must be explicitly configured")
+	}
+	return dir, nil
+}
+
 func openAccountStore(dir string) (*accountStore, error) {
 	if !filepath.IsAbs(dir) || filepath.Clean(dir) != dir {
 		return nil, errors.New("account state directory must be an absolute clean path")

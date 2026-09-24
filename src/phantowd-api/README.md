@@ -19,11 +19,12 @@ contains an embedded, read-only browser dashboard over its diagnostic API.
   parameters have not been measured on the EX4 and must not be treated as
   hardware tuning.
 - The API loads one versioned administrator record from
-  `PHANTOWD_STATE_DIR/accounts.json` (default `/var/lib/phantowd`). The state
-  directory must already exist and be private; Linux requires directory mode
-  0700 and file mode 0600. Setup uses an atomic no-replace file link. QEMU
-  deliberately overrides the path to `/run/phantowd-state`, so the account
-  survives an API-process restart but is erased by a guest reboot.
+  `PHANTOWD_STATE_DIR/accounts.json`; the directory must be explicitly
+  configured, already exist, and be private. There is intentionally no implicit
+  `/var/lib` fallback until a product state-volume lifecycle is designed. Linux
+  requires directory mode 0700 and file mode 0600. Setup uses an atomic
+  no-replace file link. QEMU explicitly sets `/run/phantowd-state`, so the
+  account survives an API-process restart but is erased by a guest reboot.
 - Sessions are random, in-memory only, expire after 30 minutes, and are capped
   at eight. Cookies are HttpOnly and SameSite=Strict; logout requires an
   anti-CSRF header. A process-wide login limiter allows five attempts per

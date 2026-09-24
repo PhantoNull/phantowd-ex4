@@ -32,9 +32,9 @@ func main() {
 	if os.Geteuid() == 0 {
 		log.Fatal("refusing to serve as root")
 	}
-	stateDir := os.Getenv("PHANTOWD_STATE_DIR")
-	if stateDir == "" {
-		stateDir = "/var/lib/phantowd"
+	stateDir, err := configuredAccountStateDirectory(os.Getenv("PHANTOWD_STATE_DIR"))
+	if err != nil {
+		log.Fatal("account state directory is not configured")
 	}
 	accounts, err := openAccountStore(stateDir)
 	if err != nil {

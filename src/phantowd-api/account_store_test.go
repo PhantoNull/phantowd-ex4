@@ -67,6 +67,21 @@ func TestAccountStoreFirstSetupAndReopen(t *testing.T) {
 	}
 }
 
+func TestAccountStateDirectoryRequiresExplicitConfiguration(t *testing.T) {
+	if _, err := configuredAccountStateDirectory(""); err == nil {
+		t.Fatal("accepted an unspecified account state directory")
+	}
+
+	configured := "/run/phantowd-state"
+	resolved, err := configuredAccountStateDirectory(configured)
+	if err != nil {
+		t.Fatalf("rejected explicitly configured account state directory: %v", err)
+	}
+	if resolved != configured {
+		t.Fatalf("resolved state directory %q, want configured value %q", resolved, configured)
+	}
+}
+
 func TestAccountStoreConcurrentFirstSetupIsSingleWriter(t *testing.T) {
 	dir := t.TempDir()
 	if err := os.Chmod(dir, 0o700); err != nil {
