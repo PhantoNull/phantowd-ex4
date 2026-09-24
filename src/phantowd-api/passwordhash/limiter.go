@@ -6,6 +6,7 @@ package passwordhash
 import (
 	"context"
 	"errors"
+	"runtime/debug"
 )
 
 var (
@@ -31,6 +32,10 @@ func withKDFSlot(ctx context.Context, work func() error) error {
 	select {
 	case kdfSlot <- struct{}{}:
 		defer func() { <-kdfSlot }()
+		// Argon2's bounded working set is intentionally short-lived. Reclaim it
+		// before the next queued KDF so long-lived services do not retain the
+		// high-water heap/RSS of a password operation indefinitely.
+		defer debug.FreeOSMemory()
 		if err := ctx.Err(); err != nil {
 			return err
 		}

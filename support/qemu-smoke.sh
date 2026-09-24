@@ -70,8 +70,16 @@ while [ "$attempt" -lt 120 ]; do
             echo "Missing loopback-only dashboard assertion" >&2
             exit 1
         fi
-        if ! grep -E 'PHANTOWD_AUTH_PRIMITIVE_READY algorithm=argon2id kdf_concurrency=1 login_enabled=no ex4_parameters_tuned=no kdf_cycle_ms=[0-9]+' "$log_file" >/dev/null; then
-            echo "Missing single-flight bounded Argon2id ARMv5 self-test assertion" >&2
+        if ! grep -E 'PHANTOWD_AUTH_READY algorithm=argon2id kdf_concurrency=1 bootstrap=created login_enabled=yes transport=guest-loopback-http state=volatile-qemu session=memory-only kdf_cycle_ms=[0-9]+' "$log_file" >/dev/null; then
+            echo "Missing first-account/authentication ARMv5 self-test assertion" >&2
+            exit 1
+        fi
+        if ! grep -E 'PHANTOWD_AUTH_READY algorithm=argon2id kdf_concurrency=1 bootstrap=existing login_enabled=yes transport=guest-loopback-http state=volatile-qemu session=memory-only kdf_cycle_ms=[0-9]+' "$log_file" >/dev/null; then
+            echo "Missing persisted-account login after API restart assertion" >&2
+            exit 1
+        fi
+        if ! grep -F 'PHANTOWD_AUTH_STATE_READY account_survives=daemon-restart sessions_memory_only=true scope=qemu-loopback-only' "$log_file" >/dev/null; then
+            echo "Missing account persistence across API process restart assertion" >&2
             exit 1
         fi
         if ! grep -E 'PHANTOWD_NFS_RESOURCE userspace_daemons=rpcbind,rpc.statd,rpc.mountd rss_kib=[0-9]+' "$log_file" >/dev/null; then

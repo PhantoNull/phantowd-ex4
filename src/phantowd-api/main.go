@@ -32,11 +32,19 @@ func main() {
 	if os.Geteuid() == 0 {
 		log.Fatal("refusing to serve as root")
 	}
+	stateDir := os.Getenv("PHANTOWD_STATE_DIR")
+	if stateDir == "" {
+		stateDir = "/var/lib/phantowd"
+	}
+	accounts, err := openAccountStore(stateDir)
+	if err != nil {
+		log.Fatal("account state is unavailable or insecure")
+	}
 	server := newServer(newHandler(func() (systemSnapshot, error) {
 		return collectSystem(os.DirFS("/proc"), time.Now())
 	}, func() (storageSnapshot, error) {
 		return collectStorage(os.DirFS("/sys"))
-	}))
+	}, newAuthController(accounts)))
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
 	shutdownDone := make(chan struct{})

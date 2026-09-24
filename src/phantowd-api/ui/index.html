@@ -23,9 +23,25 @@
         <span class="status-dot" aria-hidden="true"></span>
         <span id="build-label">Development profile</span>
       </div>
+      <button class="logout-button" id="logout" type="button" hidden>Sign out</button>
     </header>
 
     <main>
+      <section class="auth-panel" id="auth-panel" aria-labelledby="auth-title" hidden>
+        <p class="eyebrow">LOCAL ADMINISTRATOR</p>
+        <h1 id="auth-title">Set up your administrator account.</h1>
+        <p class="lede" id="auth-description">This initial account is stored in the configured system-state directory. Use at least 15 characters; a longer passphrase is better.</p>
+        <form id="auth-form" class="auth-form">
+          <label for="auth-username">Username</label>
+          <input id="auth-username" name="username" autocomplete="username" minlength="1" maxlength="32" pattern="[A-Za-z0-9._-]+" required>
+          <label for="auth-password">Password</label>
+          <input id="auth-password" name="password" type="password" autocomplete="new-password" minlength="15" maxlength="1024" required>
+          <button class="refresh-button" id="auth-submit" type="submit">Create account</button>
+        </form>
+        <p class="error-banner" id="auth-error" role="alert" hidden>Authentication request failed.</p>
+      </section>
+
+      <div id="dashboard-content" hidden>
       <section class="intro" aria-labelledby="page-title">
         <div>
           <p class="eyebrow">DEVICE CONSOLE <span aria-hidden="true">/</span> OVERVIEW</p>
@@ -108,6 +124,7 @@
       </section>
 
       <p class="error-banner" id="error-banner" role="alert" hidden>Snapshot unavailable. The service did not return usable diagnostics.</p>
+      </div>
     </main>
 
     <footer class="footer">

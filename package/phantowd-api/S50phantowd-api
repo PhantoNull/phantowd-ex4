@@ -2,6 +2,14 @@
 
 DAEMON=/usr/bin/phantowd-api
 PIDFILE=/run/phantowd-api.pid
+DEFAULTS=/etc/default/phantowd-api
+
+if [ -r "$DEFAULTS" ]; then
+    # shellcheck disable=SC1090 # target-specific state mount configuration
+    . "$DEFAULTS"
+fi
+PHANTOWD_STATE_DIR=${PHANTOWD_STATE_DIR:-/var/lib/phantowd}
+export PHANTOWD_STATE_DIR
 
 case "$1" in
     start)

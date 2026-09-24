@@ -1,15 +1,19 @@
+//go:build qemu
+
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 PhantoWD EX4 contributors
 
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"net/http"
+	"net/http/cookiejar"
 	"runtime"
 	"strings"
 	"time"
@@ -46,9 +50,14 @@ func runSelfTest() error {
 	client := &http.Client{
 		Timeout:       5 * time.Second,
 		Transport:     &http.Transport{Proxy: nil, DisableKeepAlives: true},
+		Jar:           newQEMUCookieJar(),
 		CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse },
 	}
 	defer client.CloseIdleConnections()
+	bootstrap, err := exerciseQEMUAuth(client)
+	if err != nil {
+		return err
+	}
 	var snapshot systemSnapshot
 	for _, path := range []string{"/healthz", "/api/v1/system"} {
 		response, err := client.Get("http://" + listenAddress + path)
@@ -162,8 +171,153 @@ func runSelfTest() error {
 		}
 	}
 	fmt.Printf("PHANTOWD_UI_READY mode=development read_only=true transport=guest-loopback-only\n")
-	fmt.Printf("PHANTOWD_AUTH_PRIMITIVE_READY algorithm=argon2id kdf_concurrency=1 login_enabled=no ex4_parameters_tuned=no kdf_cycle_ms=%d\n", argon2CycleMillis)
+	fmt.Printf("PHANTOWD_AUTH_READY algorithm=argon2id kdf_concurrency=1 bootstrap=%s login_enabled=yes transport=guest-loopback-http state=volatile-qemu session=memory-only kdf_cycle_ms=%d\n", bootstrap, argon2CycleMillis)
 	fmt.Printf("PHANTOWD_API_READY target=qemu-armv5 goarm=%s uid=%d memory_total_bytes=%d storage_observations=%d identity_metadata=serial+naa-wwn flashable=no hardware_validated=no\n",
 		snapshot.GOARM, snapshot.EffectiveUID, snapshot.Memory.TotalBytes, storage.DeviceCount)
 	return nil
+}
+
+func newQEMUCookieJar() *cookiejar.Jar {
+	jar, _ := cookiejar.New(nil)
+	return jar
+}
+
+func exerciseQEMUAuth(client *http.Client) (string, error) {
+	response, err := client.Get("http://" + listenAddress + authStatusPath)
+	if err != nil {
+		return "", errors.New("authentication status request failed")
+	}
+	data, err := readSelfTestResponse(response, 4096)
+	if err != nil || response.StatusCode != http.StatusOK {
+		return "", errors.New("authentication status response invalid")
+	}
+	var status authStatus
+	if err := json.Unmarshal(data, &status); err != nil {
+		return "", errors.New("authentication status JSON invalid")
+	}
+	unauthorized, err := client.Get("http://" + listenAddress + "/api/v1/system")
+	if err != nil {
+		return "", errors.New("unauthenticated diagnostics check failed")
+	}
+	unauthorized.Body.Close()
+	if unauthorized.StatusCode != http.StatusUnauthorized {
+		return "", errors.New("diagnostics were available before authentication")
+	}
+	bootstrap := "existing"
+	credentials := loginRequest{Username: "qemu-admin", Password: "qemu-self-test-only"}
+	if status.SetupRequired {
+		body, _ := json.Marshal(setupRequest(credentials))
+		response, err = postQEMUAuth(client, authSetupPath, body)
+		if err != nil {
+			return "", errors.New("first-account request failed")
+		}
+		response.Body.Close()
+		if response.StatusCode != http.StatusCreated {
+			return "", errors.New("first-account setup failed")
+		}
+		bootstrap = "created"
+		body, _ = json.Marshal(setupRequest(credentials))
+		response, err = postQEMUAuth(client, authSetupPath, body)
+		if err != nil {
+			return "", errors.New("one-time setup rejection request failed")
+		}
+		response.Body.Close()
+		if response.StatusCode != http.StatusConflict {
+			return "", errors.New("one-time administrator setup was not enforced")
+		}
+	} else {
+		body, _ := json.Marshal(credentials)
+		response, err = postQEMUAuth(client, authLoginPath, body)
+		if err != nil {
+			return "", errors.New("existing administrator login request failed")
+		}
+		response.Body.Close()
+		if response.StatusCode != http.StatusOK {
+			return "", errors.New("existing administrator login failed")
+		}
+	}
+
+	wrong := loginRequest{Username: credentials.Username, Password: "incorrect but sufficiently long"}
+	body, _ := json.Marshal(wrong)
+	response, err = postQEMUAuth(client, authLoginPath, body)
+	if err != nil {
+		return "", errors.New("wrong-password request failed")
+	}
+	response.Body.Close()
+	if response.StatusCode != http.StatusUnauthorized {
+		return "", errors.New("wrong password was not rejected")
+	}
+
+	response, err = client.Get("http://" + listenAddress + authSessionPath)
+	if err != nil {
+		return "", errors.New("session request failed")
+	}
+	data, err = readSelfTestResponse(response, 4096)
+	if err != nil || response.StatusCode != http.StatusOK {
+		return "", errors.New("authenticated session response invalid")
+	}
+	var session struct {
+		CSRFToken string `json:"csrf_token"`
+	}
+	if json.Unmarshal(data, &session) != nil || session.CSRFToken == "" {
+		return "", errors.New("session CSRF token missing")
+	}
+	response, err = postQEMUAuth(client, authLogoutPath, nil)
+	if err != nil {
+		return "", errors.New("CSRF rejection request failed")
+	}
+	response.Body.Close()
+	if response.StatusCode != http.StatusForbidden {
+		return "", errors.New("logout without CSRF token was accepted")
+	}
+	request, _ := http.NewRequest(http.MethodPost, "http://"+listenAddress+authLogoutPath, nil)
+	request.Header.Set("Origin", "http://"+listenAddress)
+	request.Header.Set("X-PhantoWD-CSRF", session.CSRFToken)
+	response, err = client.Do(request)
+	if err != nil {
+		return "", errors.New("logout request failed")
+	}
+	response.Body.Close()
+	if response.StatusCode != http.StatusOK {
+		return "", errors.New("authenticated logout failed")
+	}
+	unauthorized, err = client.Get("http://" + listenAddress + "/api/v1/system")
+	if err != nil {
+		return "", errors.New("post-logout authorization check failed")
+	}
+	unauthorized.Body.Close()
+	if unauthorized.StatusCode != http.StatusUnauthorized {
+		return "", errors.New("revoked session remained authorized")
+	}
+	body, _ = json.Marshal(credentials)
+	response, err = postQEMUAuth(client, authLoginPath, body)
+	if err != nil {
+		return "", errors.New("post-logout login request failed")
+	}
+	response.Body.Close()
+	if response.StatusCode != http.StatusOK {
+		return "", errors.New("login after logout failed")
+	}
+	return bootstrap, nil
+}
+
+func postQEMUAuth(client *http.Client, path string, body []byte) (*http.Response, error) {
+	request, err := http.NewRequest(http.MethodPost, "http://"+listenAddress+path, bytes.NewReader(body))
+	if err != nil {
+		return nil, err
+	}
+	request.Header.Set("Origin", "http://"+listenAddress)
+	if body != nil {
+		request.Header.Set("Content-Type", "application/json")
+	}
+	return client.Do(request)
+}
+
+func readSelfTestResponse(response *http.Response, limit int64) ([]byte, error) {
+	defer response.Body.Close()
+	data, err := io.ReadAll(io.LimitReader(response.Body, limit+1))
+	if err != nil || int64(len(data)) > limit {
+		return nil, errors.New("response exceeded the self-test bound")
+	}
+	return data, nil
 }

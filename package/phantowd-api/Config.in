@@ -3,6 +3,15 @@ config BR2_PACKAGE_PHANTOWD_API
 	depends on BR2_PACKAGE_HOST_GO_TARGET_ARCH_SUPPORTS
 	select BR2_PACKAGE_HOST_GO
 	help
-	  Read-only Go diagnostics API and embedded dashboard prototype for the
-	  non-flashable QEMU target. Only 127.0.0.1:8080 is used. No authentication,
-	  TLS, storage mutation, hardware control or installation operations.
+	  Go diagnostics API and embedded dashboard prototype for the non-flashable
+	  QEMU target. Only 127.0.0.1:8080 is used; storage mutation, hardware
+	  control, installation and remote/LAN service are not enabled.
+
+config BR2_PACKAGE_PHANTOWD_API_QEMU_SELFTEST
+	bool "QEMU-only self-test harness (never for product images)"
+	depends on BR2_PACKAGE_PHANTOWD_API
+	default n
+	help
+	  Compile the guest-only end-to-end smoke harness, including a disposable
+	  test credential. Enable only in the QEMU development defconfig. Production
+	  firmware builds must leave this disabled.

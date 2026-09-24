@@ -1,0 +1,22 @@
+#!/bin/sh
+
+case "$1" in
+    start)
+        state_dir=/run/phantowd-state
+        if ! mkdir -p "$state_dir" || ! chown phantowd:phantowd "$state_dir" || ! chmod 0700 "$state_dir"; then
+            echo 'PHANTOWD_QEMU_ERROR development-state-directory-unavailable'
+            exit 1
+        fi
+        echo 'PHANTOWD_STATE_READY location=/run/phantowd-state persistence=guest-lifetime-only'
+        ;;
+    stop)
+        ;;
+    restart)
+        "$0" stop
+        "$0" start
+        ;;
+    *)
+        echo "Usage: $0 {start|stop|restart}"
+        exit 1
+        ;;
+esac

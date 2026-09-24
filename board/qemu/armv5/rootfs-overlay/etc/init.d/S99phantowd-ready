@@ -37,6 +37,34 @@ case "$1" in
             sleep 1
         done
         api_pid="$(cat /run/phantowd-api.pid)"
+        /etc/init.d/S50phantowd-api stop || {
+            echo 'PHANTOWD_QEMU_ERROR diagnostics-api-stop-failed'
+            exit 1
+        }
+        api_stop_attempt=0
+        while kill -0 "$api_pid" 2>/dev/null; do
+            api_stop_attempt=$((api_stop_attempt + 1))
+            if [ "$api_stop_attempt" -ge 10 ]; then
+                echo 'PHANTOWD_QEMU_ERROR diagnostics-api-did-not-stop'
+                exit 1
+            fi
+            sleep 1
+        done
+        /etc/init.d/S50phantowd-api start || {
+            echo 'PHANTOWD_QEMU_ERROR diagnostics-api-restart-failed'
+            exit 1
+        }
+        api_attempt=0
+        while ! /usr/bin/phantowd-api --self-test 2>/dev/null; do
+            api_attempt=$((api_attempt + 1))
+            if [ "$api_attempt" -ge 10 ]; then
+                echo 'PHANTOWD_QEMU_ERROR diagnostics-api-state-restart-check-failed'
+                exit 1
+            fi
+            sleep 1
+        done
+        api_pid="$(cat /run/phantowd-api.pid)"
+        echo 'PHANTOWD_AUTH_STATE_READY account_survives=daemon-restart sessions_memory_only=true scope=qemu-loopback-only'
         api_rss="$(awk '/^VmRSS:/ { print $2 }' "/proc/$api_pid/status")"
         case "$api_rss" in
             ''|*[!0-9]*)

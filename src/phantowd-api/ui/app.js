@@ -143,5 +143,108 @@ async function refreshSnapshot() {
   }
 }
 
+function setAuthError(message) {
+  const error = byId("auth-error");
+  error.textContent = message;
+  error.hidden = false;
+}
+
+async function updateAuthView() {
+  const status = await fetchJSON("/api/v1/auth/status");
+  const authPanel = byId("auth-panel");
+  const dashboard = byId("dashboard-content");
+  const logout = byId("logout");
+  const form = byId("auth-form");
+  const password = byId("auth-password");
+  const submit = byId("auth-submit");
+  const authError = byId("auth-error");
+  authError.hidden = true;
+
+  if (status.authenticated) {
+    authPanel.hidden = true;
+    dashboard.hidden = false;
+    logout.hidden = false;
+    await refreshSnapshot();
+    return;
+  }
+
+  dashboard.hidden = true;
+  logout.hidden = true;
+  authPanel.hidden = false;
+  form.dataset.mode = status.setup_required ? "setup" : "login";
+  setText("auth-title", status.setup_required ? "Set up your administrator account." : "Sign in to PhantoWD.");
+  setText("auth-description", status.setup_required ?
+    "This initial account is stored in the configured system-state directory. Use at least 15 characters; a longer passphrase is better." :
+    "Enter your local administrator credentials to view the system snapshot.");
+  submit.textContent = status.setup_required ? "Create account" : "Sign in";
+  password.autocomplete = status.setup_required ? "new-password" : "current-password";
+  password.value = "";
+}
+
+byId("auth-form").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const form = byId("auth-form");
+  const submit = byId("auth-submit");
+  const error = byId("auth-error");
+  const username = byId("auth-username").value;
+  const password = byId("auth-password").value;
+  const route = form.dataset.mode === "setup" ? "/api/v1/auth/setup" : "/api/v1/auth/login";
+  if (route === "/api/v1/auth/setup" && [...password].length < 15) {
+    setAuthError("Use a passphrase with at least 15 characters.");
+    return;
+  }
+  if (new TextEncoder().encode(password).length > 1024) {
+    setAuthError("The password is longer than the 1024-byte limit.");
+    return;
+  }
+  submit.disabled = true;
+  error.hidden = true;
+  try {
+    const response = await fetch(route, {
+      method: "POST",
+      headers: { Accept: "application/json", "Content-Type": "application/json" },
+      credentials: "same-origin",
+      cache: "no-store",
+      body: JSON.stringify({ username, password }),
+    });
+    if (!response.ok) {
+      const message = response.status === 400 ? "Check the username and password requirements." :
+        response.status === 401 ? "The username or password is not correct." :
+          response.status === 409 ? "Account setup is no longer available. Reload and sign in." :
+            response.status === 429 ? "Too many attempts. Wait one minute before trying again." :
+              "The authentication service is temporarily unavailable.";
+      throw new Error(message);
+    }
+    byId("auth-password").value = "";
+    await updateAuthView();
+  } catch (failure) {
+    setAuthError(failure instanceof Error ? failure.message : "Authentication request failed.");
+  } finally {
+    submit.disabled = false;
+  }
+});
+
+byId("logout").addEventListener("click", async () => {
+  const logout = byId("logout");
+  logout.disabled = true;
+  try {
+    const session = await fetchJSON("/api/v1/auth/session");
+    const response = await fetch("/api/v1/auth/logout", {
+      method: "POST",
+      headers: { Accept: "application/json", "X-PhantoWD-CSRF": session.csrf_token },
+      credentials: "same-origin",
+      cache: "no-store",
+    });
+    if (!response.ok) throw new Error("Could not safely end the session.");
+    await updateAuthView();
+  } catch {
+    const error = byId("error-banner");
+    error.textContent = "Sign out failed. Reload this page and try again.";
+    error.hidden = false;
+  } finally {
+    logout.disabled = false;
+  }
+});
+
 byId("refresh").addEventListener("click", refreshSnapshot);
-refreshSnapshot();
+updateAuthView().catch(() => setAuthError("The authentication service is unavailable."));

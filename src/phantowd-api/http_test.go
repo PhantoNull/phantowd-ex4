@@ -4,15 +4,47 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
+	"io"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"sync"
 	"testing"
 	"time"
 )
+
+const testAdminPassword = "test-only correct horse battery staple"
+
+func newTestAuth(t *testing.T) (*authController, *http.Cookie) {
+	t.Helper()
+	dir := t.TempDir()
+	if err := os.Chmod(dir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	accounts, err := openAccountStore(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := accounts.setup(context.Background(), "test-admin", testAdminPassword); err != nil {
+		t.Fatal(err)
+	}
+	auth := newAuthController(accounts)
+	token, _, err := auth.sessions.create(time.Now())
+	if err != nil {
+		t.Fatal(err)
+	}
+	return auth, &http.Cookie{Name: sessionCookieName, Value: token, Path: "/"}
+}
+
+func loopbackRequest(method, target string, body io.Reader) *http.Request {
+	request := httptest.NewRequest(method, target, body)
+	request.Host = "127.0.0.1:8080"
+	return request
+}
 
 func TestHTTPContract(t *testing.T) {
 	for _, test := range []struct {
@@ -34,12 +66,14 @@ func TestHTTPContract(t *testing.T) {
 		{"traversal", "GET", "/api/v1/system/../../etc/shadow", "", 404, false},
 	} {
 		t.Run(test.name, func(t *testing.T) {
+			auth, cookie := newTestAuth(t)
 			called := false
 			handler := newHandler(func() (systemSnapshot, error) {
 				called = true
 				return collectSystem(fixtureProc(), time.Now())
-			}, nil)
-			request := httptest.NewRequest(test.method, test.path, strings.NewReader(test.body))
+			}, nil, auth)
+			request := loopbackRequest(test.method, test.path, strings.NewReader(test.body))
+			request.AddCookie(cookie)
 			response := httptest.NewRecorder()
 			handler.ServeHTTP(response, request)
 			if response.Code != test.status || called != test.collect {
@@ -59,30 +93,36 @@ func TestHTTPContract(t *testing.T) {
 }
 
 func TestDiagnosticsFailureDoesNotLeak(t *testing.T) {
+	auth, cookie := newTestAuth(t)
 	handler := newHandler(func() (systemSnapshot, error) {
 		return systemSnapshot{}, errors.New("fixture-only sensitive-value /fixture/private")
-	}, nil)
+	}, nil, auth)
 	response := httptest.NewRecorder()
-	handler.ServeHTTP(response, httptest.NewRequest("GET", "/api/v1/system", nil))
+	request := loopbackRequest("GET", "/api/v1/system", nil)
+	request.AddCookie(cookie)
+	handler.ServeHTTP(response, request)
 	if response.Code != 503 || strings.Contains(response.Body.String(), "sensitive-value") || strings.Contains(response.Body.String(), "fixture/private") {
 		t.Fatal("underlying error leaked")
 	}
 }
 
 func TestConcurrentRequestLimit(t *testing.T) {
+	auth, cookie := newTestAuth(t)
 	entered := make(chan struct{}, 8)
 	release := make(chan struct{})
 	handler := newHandler(func() (systemSnapshot, error) {
 		entered <- struct{}{}
 		<-release
 		return collectSystem(fixtureProc(), time.Now())
-	}, nil)
+	}, nil, auth)
 	var workers sync.WaitGroup
 	for i := 0; i < 8; i++ {
 		workers.Add(1)
 		go func() {
 			defer workers.Done()
-			handler.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest("GET", "/api/v1/system", nil))
+			request := loopbackRequest("GET", "/api/v1/system", nil)
+			request.AddCookie(cookie)
+			handler.ServeHTTP(httptest.NewRecorder(), request)
 		}()
 	}
 	defer workers.Wait()
@@ -95,14 +135,16 @@ func TestConcurrentRequestLimit(t *testing.T) {
 		}
 	}
 	response := httptest.NewRecorder()
-	handler.ServeHTTP(response, httptest.NewRequest("GET", "/api/v1/system", nil))
+	request := loopbackRequest("GET", "/api/v1/system", nil)
+	request.AddCookie(cookie)
+	handler.ServeHTTP(response, request)
 	if response.Code != 503 || response.Header().Get("Content-Type") != "application/json" || !strings.Contains(response.Body.String(), "busy") {
 		t.Fatal("concurrent limit not enforced")
 	}
 }
 
 func TestServerIsLoopbackAndBounded(t *testing.T) {
-	server := newServer(newHandler(nil, nil))
+	server := newServer(newHandler(nil, nil, nil))
 	if server.Addr != "127.0.0.1:8080" || server.ReadHeaderTimeout <= 0 || server.ReadTimeout <= 0 || server.WriteTimeout <= 0 || server.IdleTimeout <= 0 || server.MaxHeaderBytes != 8192 || !server.DisableGeneralOptionsHandler {
 		t.Fatal("unsafe server defaults")
 	}
@@ -116,7 +158,7 @@ func TestDashboardServesReadOnlyDevelopmentUIAndAssets(t *testing.T) {
 	}, func() (storageSnapshot, error) {
 		collectorCalls++
 		return collectStorage(fixtureSysfs())
-	})
+	}, nil)
 
 	for _, test := range []struct {
 		path        string
@@ -173,13 +215,16 @@ func TestDashboardServesReadOnlyDevelopmentUIAndAssets(t *testing.T) {
 }
 
 func TestStorageEndpointIsReadOnlyAndFailClosed(t *testing.T) {
+	auth, cookie := newTestAuth(t)
 	var storageCalls int
 	handler := newHandler(nil, func() (storageSnapshot, error) {
 		storageCalls++
 		return collectStorage(fixtureSysfs())
-	})
+	}, auth)
 	response := httptest.NewRecorder()
-	handler.ServeHTTP(response, httptest.NewRequest("GET", "/api/v1/storage", nil))
+	request := loopbackRequest("GET", "/api/v1/storage", nil)
+	request.AddCookie(cookie)
+	handler.ServeHTTP(response, request)
 	if response.Code != 200 || storageCalls != 1 || !json.Valid(response.Body.Bytes()) {
 		t.Fatalf("valid read failed: status=%d calls=%d body=%s", response.Code, storageCalls, response.Body.String())
 	}
@@ -199,7 +244,9 @@ func TestStorageEndpointIsReadOnlyAndFailClosed(t *testing.T) {
 		{method: "GET", path: "/api/v1/storage?device=/dev/sda", status: 400},
 	} {
 		response := httptest.NewRecorder()
-		handler.ServeHTTP(response, httptest.NewRequest(test.method, test.path, nil))
+		request := loopbackRequest(test.method, test.path, nil)
+		request.AddCookie(cookie)
+		handler.ServeHTTP(response, request)
 		if response.Code != test.status || storageCalls != 1 {
 			t.Fatalf("unsafe storage request was accepted: method=%s path=%s status=%d calls=%d", test.method, test.path, response.Code, storageCalls)
 		}
@@ -207,9 +254,11 @@ func TestStorageEndpointIsReadOnlyAndFailClosed(t *testing.T) {
 
 	failing := newHandler(nil, func() (storageSnapshot, error) {
 		return storageSnapshot{}, errors.New("private path and serial fixture-secret")
-	})
+	}, auth)
 	response = httptest.NewRecorder()
-	failing.ServeHTTP(response, httptest.NewRequest("GET", "/api/v1/storage", nil))
+	request = loopbackRequest("GET", "/api/v1/storage", nil)
+	request.AddCookie(cookie)
+	failing.ServeHTTP(response, request)
 	if response.Code != 503 || strings.Contains(response.Body.String(), "private path") || strings.Contains(response.Body.String(), "fixture-secret") {
 		t.Fatal("storage collector error leaked through the API")
 	}

@@ -15,7 +15,7 @@ const listenAddress = "127.0.0.1:8080"
 type collector func() (systemSnapshot, error)
 type storageSnapshotCollector func() (storageSnapshot, error)
 
-func newHandler(collect collector, collectStorage storageSnapshotCollector) http.Handler {
+func newHandler(collect collector, collectStorage storageSnapshotCollector, auth *authController) http.Handler {
 	active := make(chan struct{}, 8)
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -34,7 +34,24 @@ func newHandler(collect collector, collectStorage storageSnapshotCollector) http
 			serveDashboardAsset(w, r)
 			return
 		}
-		if r.URL.Path != "/healthz" && r.URL.Path != "/api/v1/system" && r.URL.Path != "/api/v1/storage" {
+		if r.URL.Path == "/healthz" {
+			if r.Method != http.MethodGet {
+				w.Header().Set("Allow", http.MethodGet)
+				writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
+				return
+			}
+			if r.URL.RawQuery != "" || r.URL.ForceQuery || r.ContentLength != 0 || len(r.TransferEncoding) != 0 {
+				writeJSON(w, http.StatusBadRequest, map[string]string{"error": "unexpected_input"})
+				return
+			}
+			writeJSON(w, http.StatusOK, map[string]string{"status": "ok", "scope": "process_only"})
+			return
+		}
+		if auth != nil && auth.isAuthPath(r.URL.Path) {
+			auth.serve(w, r)
+			return
+		}
+		if r.URL.Path != "/api/v1/system" && r.URL.Path != "/api/v1/storage" {
 			writeJSON(w, http.StatusNotFound, map[string]string{"error": "not_found"})
 			return
 		}
@@ -47,8 +64,8 @@ func newHandler(collect collector, collectStorage storageSnapshotCollector) http
 			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "unexpected_input"})
 			return
 		}
-		if r.URL.Path == "/healthz" {
-			writeJSON(w, http.StatusOK, map[string]string{"status": "ok", "scope": "process_only"})
+		if auth == nil || !auth.authorize(r) {
+			writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "authentication_required"})
 			return
 		}
 		if r.URL.Path == "/api/v1/storage" {

@@ -2,7 +2,8 @@
 // SPDX-FileCopyrightText: 2026 PhantoWD EX4 contributors
 
 // Package passwordhash provides bounded Argon2id password verifiers.
-// It is a primitive only: the diagnostics API does not yet authenticate users.
+// The QEMU-only prototype auth flow uses this package; EX4 KDF tuning remains
+// unverified and production authentication is not enabled.
 package passwordhash
 
 import (
@@ -29,6 +30,9 @@ const (
 	maxIterations     uint32 = 4
 	maxThreads        uint8  = 4
 )
+
+// MaxPasswordLength is the maximum password size accepted as UTF-8 bytes.
+const MaxPasswordLength = maxPasswordLength
 
 var (
 	errInvalidPassword = errors.New("password must contain 1 to 1024 bytes")
@@ -91,6 +95,13 @@ func Verify(ctx context.Context, password []byte, encoded string) (bool, error) 
 		return nil
 	})
 	return verified, err
+}
+
+// ValidateVerifier checks whether encoded uses the bounded PHC format accepted
+// by Verify without running Argon2 work.
+func ValidateVerifier(encoded string) error {
+	_, err := parse(encoded)
+	return err
 }
 
 func verifyParsed(password []byte, p parameters) bool {
