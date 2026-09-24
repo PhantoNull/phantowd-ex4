@@ -33,6 +33,10 @@ The build must reach the `PHANTOWD_QEMU_READY` marker on an emulated ARM926
 CPU. Resulting files under `artifacts/qemu-armv5/` are explicitly non-flashable.
 They test the ARMv5 software foundation only; QEMU does not emulate the EX4's
 NAND, SATA, fan, display, LEDs, watchdog, buttons, or management controller.
+The same artifact directory includes Buildroot package metadata and a
+CycloneDX 1.6 package SBOM. These describe the configured package set; they
+are not a substitute for reviewing and distributing Buildroot `legal-info`
+material before a public firmware release.
 
 The first product-owned package is a [read-only diagnostics API](src/phantowd-api/README.md).
 It runs unprivileged on guest loopback only, has no storage/hardware controls,
