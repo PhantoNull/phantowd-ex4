@@ -15,4 +15,12 @@ if [ ! -f "$artifacts_owner_marker" ]; then
     install -o builder -g builder -m 0644 /dev/null "$artifacts_owner_marker"
 fi
 
+if [ -d /ccache ]; then
+    ccache_owner_marker=/ccache/.phantowd-owner-builder-v1
+    if [ ! -f "$ccache_owner_marker" ]; then
+        chown -R builder:builder /ccache
+        install -o builder -g builder -m 0644 /dev/null "$ccache_owner_marker"
+    fi
+fi
+
 exec gosu builder "$@"

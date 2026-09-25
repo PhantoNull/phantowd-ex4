@@ -13,5 +13,7 @@ cd "$module_dir"
 "$go_binary" test -count=1 -coverprofile="$report_dir/coverage.out" ./...
 "$go_binary" test -tags=qemu -run '^(TestQEMUDashboardAssetsMatchSelfTest|TestQEMUTLSLoopbackSmoke)$' -count=1 .
 "$go_binary" test -race -count=1 ./...
-"$go_binary" test -run '^$' -fuzz '^FuzzParseMemory$' -fuzztime=5s -parallel=2 .
-"$go_binary" test -run '^$' -fuzz '^FuzzParsePHC$' -fuzztime=5s -parallel=2 ./passwordhash
+# Fixed execution counts avoid false deadline failures in the pinned Go 1.26
+# fuzz coordinator while keeping CI fuzz coverage reproducible across runners.
+"$go_binary" test -run '^$' -fuzz '^FuzzParseMemory$' -fuzztime=100000x -parallel=2 .
+"$go_binary" test -run '^$' -fuzz '^FuzzParsePHC$' -fuzztime=250000x -parallel=2 ./passwordhash

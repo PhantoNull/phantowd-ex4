@@ -3,6 +3,7 @@ set -eu
 
 external_dir="${PHANTOWD_EXTERNAL_DIR:-/external}"
 workspace_dir="${PHANTOWD_WORKSPACE_DIR:-/workspace}"
+ccache_dir="${PHANTOWD_CCACHE_DIR:-$workspace_dir/ccache}"
 
 # This file is maintained by the project and contains no executable secrets.
 # shellcheck disable=SC1091
@@ -16,7 +17,15 @@ download_dir="$workspace_dir/dl"
 key_file="$workspace_dir/buildroot-release-key.asc"
 gnupg_dir="$workspace_dir/gnupg"
 
-mkdir -p "$workspace_dir" "$download_dir/linux" "$download_dir/cyclonedx"
+mkdir -p "$workspace_dir" "$download_dir/linux" "$download_dir/cyclonedx" "$ccache_dir"
+
+if [ ! -d "$ccache_dir" ] || [ ! -w "$ccache_dir" ]; then
+    echo "Buildroot compiler cache directory is missing or not writable: $ccache_dir" >&2
+    exit 1
+fi
+BR2_CCACHE_DIR="$ccache_dir"
+CCACHE_UMASK=0022
+export BR2_CCACHE_DIR CCACHE_UMASK
 
 shellcheck -s sh \
     "$external_dir/support/compare-build-artifacts.sh" \
