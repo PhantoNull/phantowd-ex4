@@ -1,0 +1,52 @@
+name: Host research toolkit
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'tools/phantowd-lab/**'
+      - 'support/test-lab-tools.ps1'
+      - 'support/container/test-lab-tools.sh'
+      - '.github/workflows/host-tools.yml'
+  pull_request:
+    paths:
+      - 'tools/phantowd-lab/**'
+      - 'support/test-lab-tools.ps1'
+      - 'support/container/test-lab-tools.sh'
+      - '.github/workflows/host-tools.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: host-tools-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  host-tests:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Go from module pin
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: tools/phantowd-lab/go.mod
+          cache-dependency-path: tools/phantowd-lab/go.mod
+
+      - name: Verify host-tool packages
+        working-directory: tools/phantowd-lab
+        env:
+          GOPROXY: off
+          GOTOOLCHAIN: local
+          GOFLAGS: -mod=vendor
+        run: |
+          go version
+          go vet ./...
+          go test -race -count=1 ./...
+          go test -run '^$' -fuzz '^FuzzInspect$' -fuzztime=5s -parallel=2 ./vendorupdate
+          go test -run '^$' -fuzz '^FuzzStreamDecoder$' -fuzztime=5s -parallel=2 ./mcuproto
