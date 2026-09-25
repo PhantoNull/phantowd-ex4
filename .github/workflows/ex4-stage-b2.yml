@@ -8,6 +8,16 @@ on:
       - 'doc/**'
       - 'tools/phantowd-lab/**'
       - 'support/test-lab-tools.ps1'
+      - 'support/container/test-lab-tools.sh'
+      - 'src/phantowd-api/**'
+      - 'package/phantowd-api/**'
+      - 'board/qemu/armv5/**'
+      - 'configs/phantowd_qemu_armv5_defconfig'
+      - 'support/container/test-api.sh'
+      - 'support/qemu-smoke.sh'
+      - 'support/test-api.ps1'
+      - 'support/test-dashboard-ui.mjs'
+      - 'support/dashboard-preview.mjs'
       - '.github/workflows/host-tools.yml'
   pull_request:
     paths-ignore:
@@ -15,6 +25,16 @@ on:
       - 'doc/**'
       - 'tools/phantowd-lab/**'
       - 'support/test-lab-tools.ps1'
+      - 'support/container/test-lab-tools.sh'
+      - 'src/phantowd-api/**'
+      - 'package/phantowd-api/**'
+      - 'board/qemu/armv5/**'
+      - 'configs/phantowd_qemu_armv5_defconfig'
+      - 'support/container/test-api.sh'
+      - 'support/qemu-smoke.sh'
+      - 'support/test-api.ps1'
+      - 'support/test-dashboard-ui.mjs'
+      - 'support/dashboard-preview.mjs'
       - '.github/workflows/host-tools.yml'
   workflow_dispatch:
 
