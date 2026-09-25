@@ -26,6 +26,7 @@ phantowd-lab inspect-rescue FILE
 phantowd-lab inspect-gpt-image FILE
 phantowd-lab inspect-storage-image DISK-IMAGE-FILE
 phantowd-lab inspect-md-v1.2-image-set DISK-IMAGE-1 DISK-IMAGE-2 [DISK-IMAGE-3 [DISK-IMAGE-4]]
+phantowd-lab inspect-md-v0.90-image-set DISK-IMAGE-1 DISK-IMAGE-2 [DISK-IMAGE-3 [DISK-IMAGE-4]]
 phantowd-lab inspect-ext-partition IMAGE-FILE GPT-PARTITION-NUMBER
 phantowd-lab inspect-md-v1.2-partition IMAGE-FILE GPT-PARTITION-NUMBER
 phantowd-lab inspect-md-v0.90-component COMPONENT-IMAGE-FILE
@@ -183,6 +184,18 @@ from the report and inputs are identified by ordinal only. MD 0.90 candidates
 are counted but not compared by this command. No block device is opened, no
 array is assembled, no filesystem is mounted, and no image is changed. This
 tool does not authorize an import or migration.
+
+`inspect-md-v0.90-image-set` accepts two to four whole-disk regular image
+files, requires valid generic GPT on each, and groups plausible little-endian
+MD 0.90 component superblocks by redacted array fingerprint. It compares only
+selected array geometry, event counters, member numbers, and active-role
+coverage. `metadata-consistent` is a narrow metadata result—not evidence of
+data synchronization, health, WD compatibility, migration safety, or safe
+assembly. Missing roles, duplicate member numbers/active roles, conflicting
+geometry, and differing event counters are non-success statuses. Unidentified
+array IDs are counted but never grouped. Paths and raw IDs are omitted; inputs
+are identified by ordinal. The command uses regular files only and does not
+open block devices, assemble arrays, mount filesystems, or modify images.
 
 `inspect-ext-partition` first requires a structurally valid GPT, then reads
 only the standard 1024-byte ext-family superblock at byte offset 1024 within

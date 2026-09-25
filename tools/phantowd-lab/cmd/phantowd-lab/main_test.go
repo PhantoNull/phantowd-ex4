@@ -430,6 +430,75 @@ func TestInspectStorageImageAggregatesReadOnlyPartitionObservations(t *testing.T
 	}
 }
 
+func TestInspectMDV090ImageSetIsReadOnlyGenericAndRedactsPaths(t *testing.T) {
+	first := syntheticGPTImageWithMDV090()
+	second := syntheticGPTImageWithMDV090()
+	setSyntheticMDV090GPTMember(second, 1, 1, 42)
+	paths := []string{
+		filepath.Join(t.TempDir(), "private-disk-one.img"),
+		filepath.Join(t.TempDir(), "private-disk-two.img"),
+	}
+	fixtures := [][]byte{first, second}
+	for index, path := range paths {
+		if err := os.WriteFile(path, fixtures[index], 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	var output bytes.Buffer
+	code, err := run([]string{"inspect-md-v0.90-image-set", paths[0], paths[1]}, &output)
+	if err != nil || code != 0 {
+		t.Fatalf("complete synthetic MD 0.90 image set: code=%d err=%v output=%s", code, err, output.String())
+	}
+	var report struct {
+		Format             string `json:"format"`
+		WDCompatibility    string `json:"wd_compatibility"`
+		AssemblyPerformed  bool   `json:"assembly_performed"`
+		MountPerformed     bool   `json:"mount_performed"`
+		MutationsPerformed bool   `json:"mutations_performed"`
+		Comparison         struct {
+			Arrays []struct {
+				Status string `json:"status"`
+			} `json:"arrays"`
+		} `json:"md_v0_90_comparison"`
+	}
+	if err := json.Unmarshal(output.Bytes(), &report); err != nil {
+		t.Fatalf("decode output: %v: %s", err, output.String())
+	}
+	if report.Format != "phantowd-md-v0.90-image-set-inspection" || report.WDCompatibility != "unqualified" ||
+		report.AssemblyPerformed || report.MountPerformed || report.MutationsPerformed || len(report.Comparison.Arrays) != 1 ||
+		report.Comparison.Arrays[0].Status != "metadata-consistent" {
+		t.Fatalf("unexpected generic image-set report: %+v; raw=%s", report, output.String())
+	}
+	for index, path := range paths {
+		after, err := os.ReadFile(path)
+		if err != nil || sha256.Sum256(after) != sha256.Sum256(fixtures[index]) {
+			t.Fatalf("input image changed during inspection: path=%s err=%v", path, err)
+		}
+		if strings.Contains(output.String(), filepath.ToSlash(path)) || strings.Contains(output.String(), path) {
+			t.Fatalf("report leaked input path %q: %s", path, output.String())
+		}
+	}
+	for _, secret := range []string{"PRIVATE_ARRAY_ID", "PRIVATE_MD_SET_NAME", "/dev/sda"} {
+		if strings.Contains(output.String(), secret) {
+			t.Fatalf("report leaked %q: %s", secret, output.String())
+		}
+	}
+	divergentPath := filepath.Join(t.TempDir(), "divergent-disk.img")
+	divergent := syntheticGPTImageWithMDV090()
+	setSyntheticMDV090GPTMember(divergent, 1, 1, 41)
+	if err := os.WriteFile(divergentPath, divergent, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	output.Reset()
+	code, err = run([]string{"inspect-md-v0.90-image-set", paths[0], divergentPath}, &output)
+	if err != nil || code != 2 || !strings.Contains(output.String(), `"status": "divergent-events"`) {
+		t.Fatalf("divergent synthetic image set: code=%d err=%v output=%s", code, err, output.String())
+	}
+	if code, err = run([]string{"inspect-md-v0.90-image-set"}, &bytes.Buffer{}); code != 1 || err == nil {
+		t.Fatalf("missing image paths: code=%d err=%v", code, err)
+	}
+}
+
 func TestInspectMDV12ImageSetComparesComponentsWithoutWriting(t *testing.T) {
 	directory := t.TempDir()
 	firstPath := filepath.Join(directory, "first-private-disk.img")
@@ -638,6 +707,28 @@ func syntheticGPTImageWithMDV090() []byte {
 	partitionStart := int(firstLBA) * sector
 	copy(image[partitionStart+partitionSuperblockOffset:partitionStart+partitionSuperblockOffset+4096], componentSuperblock)
 	return image
+}
+
+func setSyntheticMDV090GPTMember(image []byte, memberNumber, role uint32, events uint64) {
+	const sector = 512
+	const firstLBA = 64
+	const lastLBA = 2048 - 64
+	partitionBytes := (lastLBA - firstLBA + 1) * sector
+	superblockOffset := int(partitionBytes&^(64*1024-1)) - 64*1024
+	superblockStart := firstLBA*sector + superblockOffset
+	superblock := image[superblockStart : superblockStart+4096]
+	binary.LittleEndian.PutUint32(superblock[156:160], uint32(events))
+	binary.LittleEndian.PutUint32(superblock[160:164], uint32(events>>32))
+	binary.LittleEndian.PutUint32(superblock[992*4:992*4+4], memberNumber)
+	binary.LittleEndian.PutUint32(superblock[992*4+12:992*4+16], role)
+	binary.LittleEndian.PutUint32(superblock[152:156], 0)
+	var sum uint64
+	for offset := 0; offset+4 <= len(superblock); offset += 4 {
+		if offset != 152 {
+			sum += uint64(binary.LittleEndian.Uint32(superblock[offset : offset+4]))
+		}
+	}
+	binary.LittleEndian.PutUint32(superblock[152:156], uint32(sum)+uint32(sum>>32))
 }
 
 func putMDV12SuperblockForCommand(image []byte) {

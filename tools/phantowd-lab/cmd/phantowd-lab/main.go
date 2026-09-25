@@ -175,6 +175,9 @@ func run(args []string, output io.Writer) (int, error) {
 	case "inspect-md-v1.2-image-set":
 		return inspectMDV12ImageSet(args[1:], output)
 
+	case "inspect-md-v0.90-image-set":
+		return inspectMDV090ImageSet(args[1:], output)
+
 	case "inspect-ext-partition":
 		return inspectExtPartition(args[1:], output)
 
@@ -785,6 +788,95 @@ func inspectMDV12ImageSet(args []string, output io.Writer) (int, error) {
 	}
 	for _, array := range comparison.Arrays {
 		if array.Status != diskimage.MDV12ArrayMetadataConsistent {
+			return 2, nil
+		}
+	}
+	return 0, nil
+}
+
+type mdV090ImageSetInput struct {
+	InputIndex        int              `json:"input_index"`
+	GPTStatus         diskimage.Status `json:"gpt_status"`
+	MDV090Candidates  int              `json:"md_v0_90_candidates"`
+	MDV090Unqualified int              `json:"md_v0_90_unqualified_partitions"`
+}
+
+type mdV090ImageSetReport struct {
+	Format             string                         `json:"format"`
+	SchemaVersion      int                            `json:"schema_version"`
+	WDCompatibility    string                         `json:"wd_compatibility"`
+	Inputs             []mdV090ImageSetInput          `json:"inputs"`
+	Comparison         diskimage.MDV090ImageSetReport `json:"md_v0_90_comparison"`
+	BlockDeviceOpened  bool                           `json:"block_device_opened"`
+	MutationsPerformed bool                           `json:"mutations_performed"`
+	AssemblyPerformed  bool                           `json:"assembly_performed"`
+	MountPerformed     bool                           `json:"mount_performed"`
+	Limitations        []string                       `json:"limitations"`
+}
+
+func inspectMDV090ImageSet(args []string, output io.Writer) (int, error) {
+	if len(args) < 2 || len(args) > maxStorageImageSetInputs {
+		return 1, errors.New("usage: phantowd-lab inspect-md-v0.90-image-set DISK-IMAGE-1 DISK-IMAGE-2 [DISK-IMAGE-3 [DISK-IMAGE-4]]")
+	}
+	result := mdV090ImageSetReport{
+		Format:          "phantowd-md-v0.90-image-set-inspection",
+		SchemaVersion:   1,
+		WDCompatibility: "unqualified",
+		Inputs:          []mdV090ImageSetInput{},
+		Limitations: []string{
+			"all inputs must be regular whole-disk image files with valid generic GPT; input order is represented only by an ordinal, and no host paths are returned",
+			"only generic little-endian MD 0.90 components are grouped; MD v1.2 and other metadata versions are not compared by this command",
+			"metadata agreement does not establish array synchronization, disk health, filesystem integrity, WD layout compatibility, migration safety, or suitability for assembly",
+			"the comparator does not interpret recovery, replacement, reshape, bitmap, bad-block, journal, or other feature semantics",
+			"no block device is opened, no array is assembled, no filesystem is mounted, and no image is modified",
+		},
+	}
+	components := make([]diskimage.MDV090ImageComponent, 0)
+	allGPTValid := true
+	for inputIndex, path := range args {
+		file, size, err := openRegular(path)
+		if err != nil {
+			return 1, err
+		}
+		observed, observeErr := observeStorageImage(file, size)
+		closeErr := file.Close()
+		if observeErr != nil {
+			return 1, observeErr
+		}
+		if closeErr != nil {
+			return 1, closeErr
+		}
+		input := mdV090ImageSetInput{InputIndex: inputIndex + 1, GPTStatus: observed.GPTStatus}
+		if observed.GPTStatus != diskimage.StatusValid {
+			allGPTValid = false
+			result.Inputs = append(result.Inputs, input)
+			continue
+		}
+		for _, partition := range observed.Partitions {
+			if partition.MDV090.Status == diskimage.MDV090StatusCandidate {
+				input.MDV090Candidates++
+				components = append(components, diskimage.MDV090ImageComponent{
+					InputIndex: inputIndex + 1, PartitionNumber: partition.Number, Report: partition.MDV090,
+				})
+			} else {
+				input.MDV090Unqualified++
+			}
+		}
+		result.Inputs = append(result.Inputs, input)
+	}
+	comparison, err := diskimage.CompareMDV090ImageSet(components)
+	if err != nil {
+		return 1, err
+	}
+	result.Comparison = comparison
+	if err := writeJSON(output, result); err != nil {
+		return 1, err
+	}
+	if !allGPTValid || comparison.CandidateComponents == 0 || comparison.UnidentifiedCandidateComponents != 0 || len(comparison.Arrays) == 0 {
+		return 2, nil
+	}
+	for _, array := range comparison.Arrays {
+		if array.Status != diskimage.MDV090ArrayMetadataConsistent {
 			return 2, nil
 		}
 	}
