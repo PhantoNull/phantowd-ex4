@@ -241,9 +241,49 @@ func TestInspectMDV090ComponentReportsLinux32DescriptorStateBits(t *testing.T) {
 		t.Fatal(err)
 	}
 	wantFlags := []string{"faulty", "active", "sync", "removed", "write-mostly"}
-	if report.SchemaVersion != 2 || report.Status != MDV090StatusCandidate || report.MemberState != state ||
+	if report.SchemaVersion != 3 || report.Status != MDV090StatusCandidate || report.MemberState != state ||
 		strings.Join(report.MemberStateFlags, ",") != strings.Join(wantFlags, ",") {
 		t.Fatalf("descriptor state bits were not preserved and decoded conservatively: %+v", report)
+	}
+}
+
+func TestInspectMDV090ComponentReportsArrayDescriptorTableWithoutMajorMinor(t *testing.T) {
+	image := syntheticMDV090Component()
+	superblock := mdV090Superblock(image)
+	const descriptor = mdV090DisksOffsetWords*4 + 2*mdV090DescriptorWords*4
+	binary.LittleEndian.PutUint32(superblock[descriptor:descriptor+4], 2)
+	binary.LittleEndian.PutUint32(superblock[descriptor+4:descriptor+8], 8)
+	binary.LittleEndian.PutUint32(superblock[descriptor+8:descriptor+12], 32)
+	binary.LittleEndian.PutUint32(superblock[descriptor+12:descriptor+16], 1)
+	binary.LittleEndian.PutUint32(superblock[descriptor+16:descriptor+20], 1<<1|1<<2|1<<31)
+	redactedOnly := mdV090DisksOffsetWords*4 + 3*mdV090DescriptorWords*4
+	binary.LittleEndian.PutUint32(superblock[redactedOnly+4:redactedOnly+8], 8)
+	binary.LittleEndian.PutUint32(superblock[redactedOnly+8:redactedOnly+12], 32)
+	sealMDV090Superblock(superblock)
+
+	report, err := InspectMDV090Component(bytes.NewReader(image), int64(len(image)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if report.SchemaVersion != 3 || len(report.DiskDescriptors) != mdV090MaxDevices {
+		t.Fatalf("expected schema v3 and the full bounded 27-slot table, got %+v", report)
+	}
+	entry := report.DiskDescriptors[2]
+	if entry.DescriptorIndex != 2 || !entry.HasNonzeroCoreFields || entry.MemberNumber != 2 ||
+		entry.Role != 1 || entry.State != 1<<1|1<<2|1<<31 ||
+		strings.Join(entry.StateFlags, ",") != "active,sync" ||
+		!report.DiskDescriptors[3].HasNonzeroCoreFields || report.DiskDescriptors[3].State != 0 ||
+		report.DiskDescriptors[4].HasNonzeroCoreFields {
+		t.Fatalf("array descriptor table was not observed conservatively: %+v", report.DiskDescriptors)
+	}
+	encoded, err := json.Marshal(report)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, rawDeviceNumber := range []string{`"major"`, `"minor"`, `"device_major"`, `"device_minor"`} {
+		if strings.Contains(string(encoded), rawDeviceNumber) {
+			t.Fatalf("array descriptor report leaked kernel major/minor fields %q: %s", rawDeviceNumber, encoded)
+		}
 	}
 }
 

@@ -58,15 +58,16 @@ type MDV090ArraySummary struct {
 }
 
 type MDV090ArrayMember struct {
-	InputIndex       int      `json:"input_index"`
-	PartitionNumber  int      `json:"partition_number"`
-	MemberNumber     uint32   `json:"member_number"`
-	NRDisks          uint32   `json:"nr_disks"`
-	Role             uint32   `json:"role"`
-	RoleDescription  string   `json:"role_description"`
-	MemberState      uint32   `json:"member_state"`
-	MemberStateFlags []string `json:"member_state_flags"`
-	Events           uint64   `json:"events"`
+	InputIndex       int                    `json:"input_index"`
+	PartitionNumber  int                    `json:"partition_number"`
+	MemberNumber     uint32                 `json:"member_number"`
+	NRDisks          uint32                 `json:"nr_disks"`
+	Role             uint32                 `json:"role"`
+	RoleDescription  string                 `json:"role_description"`
+	MemberState      uint32                 `json:"member_state"`
+	MemberStateFlags []string               `json:"member_state_flags"`
+	DiskDescriptors  []MDV090DiskDescriptor `json:"disk_descriptors"`
+	Events           uint64                 `json:"events"`
 }
 
 // CompareMDV090ImageSet compares bounded generic MD 0.90 observations from
@@ -76,13 +77,13 @@ type MDV090ArrayMember struct {
 func CompareMDV090ImageSet(components []MDV090ImageComponent) (MDV090ImageSetReport, error) {
 	report := MDV090ImageSetReport{
 		Format:          "phantowd-md-v0.90-image-set-inspection",
-		SchemaVersion:   2,
+		SchemaVersion:   3,
 		WDCompatibility: "unqualified",
 		Arrays:          []MDV090ArraySummary{},
 		Limitations: []string{
 			"only caller-selected regular-file images and their parsed MD 0.90 components are compared; WD XML, other metadata versions, filesystem integrity, disk health, and user data are not inspected",
 			"metadata-consistent means only that observed components agree on selected constant fields and cover assigned RAID slots; it does not establish member operational state, sync state, health, WD compatibility, import safety, or recovery",
-			"per-component this_disk state bits are reported as stored metadata only; the 27-entry array-wide descriptor table is not reconciled, and flags are not proof of current operational or synchronization state",
+			"the 27-entry array-wide descriptor table is reported per component as stored metadata with major/minor fields omitted; tables are not reconciled, and flags are not proof of current operational or synchronization state",
 			"member identity and replacement/recovery semantics beyond the legacy member number and role are not available in this report",
 			"raw image paths and on-disk identifiers are not returned; fingerprints are redaction aids, not authenticity checks",
 			"no block device is opened, no array is assembled, no filesystem is mounted, and no input image is modified",
@@ -188,7 +189,8 @@ func compareMDV090ArrayGroup(identity string, components []MDV090ImageComponent)
 			InputIndex: component.InputIndex, PartitionNumber: component.PartitionNumber,
 			MemberNumber: current.MemberNumber, NRDisks: current.NRDisks, Role: current.MemberRole,
 			RoleDescription: current.MemberRoleDescription, MemberState: current.MemberState,
-			MemberStateFlags: append([]string{}, current.MemberStateFlags...), Events: current.Events,
+			MemberStateFlags: append([]string{}, current.MemberStateFlags...),
+			DiskDescriptors:  cloneMDV090DiskDescriptors(current.DiskDescriptors), Events: current.Events,
 		})
 	}
 	for count := range nrDisksSeen {
@@ -236,4 +238,13 @@ func compareMDV090ArrayGroup(identity string, components []MDV090ImageComponent)
 		array.Findings = append(array.Findings, "components agree on selected constant MD 0.90 fields and cover each assigned RAID slot; device state, data synchronization, and array health remain unqualified")
 	}
 	return array
+}
+
+func cloneMDV090DiskDescriptors(source []MDV090DiskDescriptor) []MDV090DiskDescriptor {
+	cloned := make([]MDV090DiskDescriptor, len(source))
+	for index, descriptor := range source {
+		cloned[index] = descriptor
+		cloned[index].StateFlags = append([]string{}, descriptor.StateFlags...)
+	}
+	return cloned
 }

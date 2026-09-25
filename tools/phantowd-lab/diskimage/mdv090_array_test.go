@@ -23,7 +23,7 @@ func TestCompareMDV090ImageSetReportsCompleteGenericArrayMetadata(t *testing.T) 
 		t.Fatalf("got %d array groups, want one: %+v", len(report.Arrays), report)
 	}
 	array := report.Arrays[0]
-	if report.SchemaVersion != 2 || report.CandidateComponents != 2 || array.Status != MDV090ArrayMetadataConsistent ||
+	if report.SchemaVersion != 3 || report.CandidateComponents != 2 || array.Status != MDV090ArrayMetadataConsistent ||
 		array.RAIDDisks != 2 || len(array.ObservedNRDisks) != 1 || array.ObservedNRDisks[0] != 2 ||
 		array.ObservedRAIDRoles != 2 || len(array.MissingRAIDRoles) != 0 ||
 		len(array.Members) != 2 || array.ArrayIdentityFingerprint == "" ||
@@ -35,6 +35,13 @@ func TestCompareMDV090ImageSetReportsCompleteGenericArrayMetadata(t *testing.T) 
 		array.Members[1].MemberState != 1<<1 ||
 		strings.Join(array.Members[1].MemberStateFlags, ",") != "active" {
 		t.Fatalf("per-component stored descriptor flags were lost or treated as array health: %+v", array.Members)
+	}
+	if len(array.Members[0].DiskDescriptors) != mdV090MaxDevices ||
+		!array.Members[0].DiskDescriptors[0].HasNonzeroCoreFields ||
+		array.Members[0].DiskDescriptors[0].State != 1<<1|1<<2 ||
+		len(array.Members[1].DiskDescriptors) != mdV090MaxDevices ||
+		array.Members[1].DiskDescriptors[1].State != 1<<1 {
+		t.Fatalf("array-wide descriptor tables were not preserved as per-component snapshots: %+v", array.Members)
 	}
 	encoded, err := json.Marshal(report)
 	if err != nil {
@@ -193,6 +200,12 @@ func md090ArrayComponentWithNRDisksAndState(inputIndex, partitionNumber int, mem
 	binary.LittleEndian.PutUint32(superblock[mdV090ThisDiskOffset:mdV090ThisDiskOffset+4], memberNumber)
 	binary.LittleEndian.PutUint32(superblock[mdV090ThisDiskOffset+12:mdV090ThisDiskOffset+16], role)
 	binary.LittleEndian.PutUint32(superblock[mdV090ThisDiskOffset+16:mdV090ThisDiskOffset+20], memberState)
+	descriptor := mdV090DisksOffsetWords*4 + int(memberNumber)*mdV090DescriptorBytes
+	binary.LittleEndian.PutUint32(superblock[descriptor:descriptor+4], memberNumber)
+	binary.LittleEndian.PutUint32(superblock[descriptor+4:descriptor+8], 8)
+	binary.LittleEndian.PutUint32(superblock[descriptor+8:descriptor+12], memberNumber+1)
+	binary.LittleEndian.PutUint32(superblock[descriptor+12:descriptor+16], role)
+	binary.LittleEndian.PutUint32(superblock[descriptor+16:descriptor+20], memberState)
 	sealMDV090Superblock(superblock)
 	report, err := InspectMDV090Component(bytes.NewReader(image), int64(len(image)))
 	if err != nil {
