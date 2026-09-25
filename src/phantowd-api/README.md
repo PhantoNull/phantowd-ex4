@@ -45,6 +45,12 @@ contains an embedded, read-only browser dashboard over its diagnostic API.
   CSRF-checked logout, and account reload after daemon restart. The self-test
   is not compiled in normal/product builds and its credential is not a default
   account. Do not expose the loopback development service to a LAN.
+- The QEMU-only runtime check also creates a temporary ECDSA certificate and
+  key, starts a separate ephemeral loopback HTTPS listener using the configured
+  transport, completes first-admin setup and a CSRF-protected logout over TLS,
+  verifies the Secure `__Host-` cookie, and rejects a mismatched Origin. Test
+  credentials and keys live only in a temporary directory and are removed;
+  this does not provision production certificates or qualify LAN exposure.
 - Generated images include project, Go, x/crypto and x/sys license notices
   under `/usr/share/licenses/phantowd-api/`. Build output contains a CycloneDX
   SBOM plus Buildroot's legal manifest; manual redistribution review remains
