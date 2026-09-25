@@ -93,15 +93,6 @@ linux_signature_status="$(xz --decompress --stdout "$download_dir/linux/$linux_a
 printf '%s\n' "$linux_signature_status" |
     grep -F "[GNUPG:] VALIDSIG $LINUX_SIGNING_KEY_FINGERPRINT " >/dev/null
 
-cyclonedx_generator="$buildroot_source/utils/generate-cyclonedx"
-grep -F "CYCLONEDX_VERSION = \"$CYCLONEDX_SPEC_VERSION\"" \
-    "$cyclonedx_generator" >/dev/null
-cyclonedx_schema="$download_dir/cyclonedx/spdx-$CYCLONEDX_SPEC_VERSION.schema.json"
-download_verified \
-    "https://raw.githubusercontent.com/CycloneDX/specification/$CYCLONEDX_SPEC_VERSION/schema/spdx.schema.json" \
-    "$cyclonedx_schema" \
-    "$CYCLONEDX_SPDX_SCHEMA_SHA256"
-
 if [ ! -f "$buildroot_source/.phantowd-source-ready" ]; then
     source_stage="$workspace_dir/.buildroot-$BUILDROOT_VERSION.extracting"
     if [ -e "$source_stage" ]; then
@@ -144,6 +135,15 @@ if [ "${PHANTOWD_PREPARE_ONLY:-0}" = 1 ]; then
     printf 'Pinned Buildroot and Linux sources verified; QEMU build skipped.\n'
     exit 0
 fi
+
+cyclonedx_generator="$buildroot_source/utils/generate-cyclonedx"
+grep -F "CYCLONEDX_VERSION = \"$CYCLONEDX_SPEC_VERSION\"" \
+    "$cyclonedx_generator" >/dev/null
+cyclonedx_schema="$download_dir/cyclonedx/spdx-$CYCLONEDX_SPEC_VERSION.schema.json"
+download_verified \
+    "https://raw.githubusercontent.com/CycloneDX/specification/$CYCLONEDX_SPEC_VERSION/schema/spdx.schema.json" \
+    "$cyclonedx_schema" \
+    "$CYCLONEDX_SPDX_SCHEMA_SHA256"
 
 config_file="$external_dir/configs/phantowd_qemu_armv5_defconfig"
 release_file="$external_dir/board/qemu/armv5/rootfs-overlay/etc/phantowd-release"
