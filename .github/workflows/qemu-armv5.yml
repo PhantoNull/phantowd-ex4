@@ -9,6 +9,7 @@ on:
       - 'tools/phantowd-lab/**'
       - 'support/test-lab-tools.ps1'
       - 'support/container/test-lab-tools.sh'
+      - 'support/test-firmware-workflow-paths.sh'
       - '.github/workflows/host-tools.yml'
   pull_request:
     paths-ignore:
@@ -17,6 +18,7 @@ on:
       - 'tools/phantowd-lab/**'
       - 'support/test-lab-tools.ps1'
       - 'support/container/test-lab-tools.sh'
+      - 'support/test-firmware-workflow-paths.sh'
       - '.github/workflows/host-tools.yml'
   workflow_dispatch:
 
