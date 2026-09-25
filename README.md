@@ -127,18 +127,18 @@ left-port and one right-port link transitions, so sustained stability remains
 unqualified. Both MACs were placeholders. The fixed init lowered both
 interfaces and halted automatically.
 
-`BR2_REPRODUCIBLE` is enabled, but bit-for-bit reproducibility is not claimed
-until two clean builds in independently provisioned environments have been
-compared. The manually triggered
-`.github/workflows/reproducibility.yml` builds the same commit on two isolated
-GitHub-hosted runners and compares an explicit allowlist of QEMU kernel/rootfs,
-API, EX4 research DTB, SBOM, and license outputs; transient smoke logs and
-measurements are excluded. That workflow has not yet passed on GitHub, so
-reproducibility remains unproven. The container base image is digest-pinned and build-dependency
-packages come from the fixed Debian snapshot in
+`BR2_REPRODUCIBLE` is enabled. GitHub run
+[36097108144](https://github.com/PhantoNull/phantowd-ex4/actions/runs/36097108144)
+built commit `53a0d65` on two separate clean hosted runners and reported
+byte-for-byte identity across 11 allowlisted paths, including the QEMU image,
+API, research DTBs, SBOM and license manifest. This is evidence for that exact
+commit and artifact set, not a universal reproducibility guarantee; transient
+smoke logs and measurements are excluded. The container base image is
+digest-pinned and build-dependency packages come from the fixed Debian snapshot in
 `support/docker/debian-snapshot.sources`; APT archive signature verification
-remains enabled. This pins package selection but does not itself prove
-bit-for-bit reproducibility.
+remains enabled. See the [workflow](.github/workflows/reproducibility.yml) and
+[comparator](support/compare-build-artifacts.sh) for the public comparison
+scope. These outputs remain non-flashable research artifacts.
 
 The project mascot and future logo are a small ghost: the **PhantoWD**.
 
