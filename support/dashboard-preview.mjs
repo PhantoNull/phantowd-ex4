@@ -55,7 +55,7 @@ const arraysFixture = {
   block_devices_opened: false,
   disk_content_read: false,
   mutations_performed: false,
-  array_count: 2,
+  array_count: 3,
   arrays: [
     {
       name: "md0", level: "raid1", state: "clean", health: "healthy",
@@ -68,6 +68,12 @@ const arraysFixture = {
       expected_devices: 2, active_devices: 1, degraded_devices: 1,
       sync_action: "recover", sync_progress_percent: 62.5,
       members: [{ name: "sda3", state: "active" }, { name: "sdb3", state: "faulty" }],
+    },
+    {
+      name: "md2", level: "raid1", state: "active", health: "paused",
+      expected_devices: 2, active_devices: 2, degraded_devices: 0,
+      sync_action: "frozen",
+      members: [{ name: "sda4", state: "active" }, { name: "sdb4", state: "active" }],
     },
   ],
   limitations: ["synthetic preview fixture; no device was examined"],

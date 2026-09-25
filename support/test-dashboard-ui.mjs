@@ -80,11 +80,15 @@ function systemFixture() {
 function arraysFixture() {
   return {
     status: "available",
-    array_count: 1,
+    array_count: 2,
     arrays: [{
       name: "md0", level: "raid1", state: "clean", health: "healthy",
       expected_devices: 2, active_devices: 2, degraded_devices: 0,
       sync_action: "idle", members: [{ name: "sda2" }, { name: "sdb2" }],
+    }, {
+      name: "md1", level: "raid1", state: "active", health: "paused",
+      expected_devices: 2, active_devices: 2, degraded_devices: 0,
+      sync_action: "frozen", members: [{ name: "sda3" }, { name: "sdb3" }],
     }],
   };
 }
@@ -155,9 +159,12 @@ async function testReadOnlySnapshotAndSafeRendering() {
   assert.equal(elements["observed-at"].dateTime, "2026-09-25T12:30:00.000Z");
   assert.equal(elements["profile-notice-title"].textContent, "Emulator only.");
   assert.match(elements["snapshot-status"].textContent, /updated/);
-  assert.equal(elements["array-count"].textContent, "1 array");
+  assert.equal(elements["array-count"].textContent, "2 arrays");
   assert.equal(elements["array-list"].children[0].children[0].children[0].textContent, "md0");
   assert.equal(elements["array-list"].children[0].children[1].textContent, "healthy");
+  assert.equal(elements["array-list"].children[1].children[1].textContent, "paused");
+  assert.match(elements["array-list"].children[1].children[1].className, /array-health-paused/);
+  assert.equal(elements["array-list"].children[1].children[4].textContent, "frozen · progress unavailable");
   assert.equal(elements["device-list"].children[0].children[0].children[1].children[0].textContent, "disk<script>");
   assert.equal(elements["device-list"].children[0].children[3].textContent, "Kernel read-only");
   assert.deepEqual(requests.map(({ path }) => path), [
