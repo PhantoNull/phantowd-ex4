@@ -222,7 +222,7 @@ func validArrayInventoryStatus(status arrayInventoryStatus) bool {
 
 func validArrayHealth(health arrayHealth) bool {
 	switch health {
-	case arrayHealthHealthy, arrayHealthDegraded, arrayHealthSyncing, arrayHealthInactive, arrayHealthUnknown:
+	case arrayHealthHealthy, arrayHealthDegraded, arrayHealthSyncing, arrayHealthPaused, arrayHealthInactive, arrayHealthUnknown:
 		return true
 	default:
 		return false

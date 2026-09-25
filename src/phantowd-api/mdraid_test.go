@@ -145,6 +145,12 @@ func TestParseMDStatRejectsMalformedOrUnboundedInput(t *testing.T) {
 	}
 }
 
+func TestClassifyFrozenMDArrayAsPaused(t *testing.T) {
+	if health := classifyMDHealth("active", "frozen", "raid1", 2, 0, true); health != arrayHealthPaused {
+		t.Fatalf("frozen sync action was classified as %q, want paused", health)
+	}
+}
+
 func FuzzParseMDStat(f *testing.F) {
 	f.Add("Personalities : [raid1]\nmd0 : active raid1 sda2[0] sdb2[1]\n      1024 blocks [2/2] [UU]\n")
 	f.Add("md1 : active raid1 sda3[0] sdb3[1](F)\n      1024 blocks [2/1] [U_]\n      recovery = DELAYED\n")

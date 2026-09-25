@@ -112,6 +112,7 @@ h2 { margin-bottom: 0; font-size: 22px; letter-spacing: -.035em; font-weight: 65
 .array-health-healthy { border-color: #3d6f61; color: var(--mint); background: rgb(143 227 202 / 7%); }
 .array-health-degraded { border-color: #74494c; color: var(--red); background: rgb(255 155 155 / 7%); }
 .array-health-syncing { border-color: #705d3e; color: var(--amber); background: rgb(245 199 126 / 7%); }
+.array-health-paused { border-color: #705d3e; color: var(--amber); background: rgb(245 199 126 / 7%); }
 .array-health-inactive { color: var(--muted); }
 .array-row > span:not(.array-health) { min-width: 0; overflow-wrap: anywhere; color: var(--muted); line-height: 1.5; }
 .storage-head, .device-row { display: grid; grid-template-columns: minmax(125px, 1.1fr) minmax(100px, .75fr) minmax(150px, 1fr) minmax(90px, .65fr); align-items: center; gap: 15px; padding: 13px 18px; }

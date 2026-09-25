@@ -175,7 +175,7 @@ function renderArrays(inventory) {
     title.append(name, level);
 
     const health = document.createElement("span");
-    health.className = `array-health array-health-${["healthy", "degraded", "syncing", "inactive"].includes(array.health) ? array.health : "unknown"}`;
+    health.className = `array-health array-health-${["healthy", "degraded", "syncing", "paused", "inactive"].includes(array.health) ? array.health : "unknown"}`;
     health.textContent = array.health || "unknown";
 
     const deviceState = document.createElement("span");

@@ -34,6 +34,7 @@ const (
 	arrayHealthHealthy  arrayHealth = "healthy"
 	arrayHealthDegraded arrayHealth = "degraded"
 	arrayHealthSyncing  arrayHealth = "syncing"
+	arrayHealthPaused   arrayHealth = "paused"
 	arrayHealthInactive arrayHealth = "inactive"
 	arrayHealthUnknown  arrayHealth = "unknown"
 )
@@ -547,6 +548,9 @@ func classifyMDHealth(state, action, level string, raidDisks, degraded uint32, c
 	}
 	if degraded > 0 || degraded >= raidDisks {
 		return arrayHealthDegraded
+	}
+	if action == "frozen" {
+		return arrayHealthPaused
 	}
 	if action != "idle" {
 		return arrayHealthSyncing
