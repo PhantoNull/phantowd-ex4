@@ -12,6 +12,8 @@ import (
 	"crypto/x509/pkix"
 	"encoding/pem"
 	"math/big"
+	"net"
+	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
@@ -43,7 +45,11 @@ func writeTestTLSFiles(t *testing.T, host string) (string, string) {
 		KeyUsage:              x509.KeyUsageDigitalSignature,
 		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
 		BasicConstraintsValid: true,
-		DNSNames:              []string{host},
+	}
+	if ip := net.ParseIP(host); ip != nil {
+		template.IPAddresses = []net.IP{ip}
+	} else {
+		template.DNSNames = []string{host}
 	}
 	der, err := x509.CreateCertificate(rand.Reader, template, template, &privateKey.PublicKey, privateKey)
 	if err != nil {
@@ -156,6 +162,55 @@ func TestAPITransportLoadsTLSOnlyForMatchingOrigin(t *testing.T) {
 	request.Host = "attacker.home.arpa:8443"
 	if validOrigin(request, config.AllowedOrigin) {
 		t.Fatal("request with a mismatched Host header was accepted")
+	}
+}
+
+func TestConfiguredTLSServerCompletesHTTPSRequest(t *testing.T) {
+	certPath, keyPath := writeTestTLSFiles(t, "127.0.0.1")
+	values := tlsEnvironment("127.0.0.1:8443", "https://127.0.0.1:8443", certPath, keyPath)
+	transport, err := loadAPITransportConfigFrom(transportEnvironment(values))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	server := newConfiguredServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	}), transport)
+	serveResult := make(chan error, 1)
+	go func() { serveResult <- server.ServeTLS(listener, "", "") }()
+
+	certPEM, err := os.ReadFile(certPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	roots := x509.NewCertPool()
+	if !roots.AppendCertsFromPEM(certPEM) {
+		t.Fatal("could not trust the generated test certificate")
+	}
+	client := &http.Client{
+		Timeout: 3 * time.Second,
+		Transport: &http.Transport{TLSClientConfig: &tls.Config{
+			RootCAs: roots, MinVersion: tls.VersionTLS12,
+		}},
+	}
+	response, err := client.Get("https://" + listener.Addr().String() + "/healthz")
+	if err != nil {
+		_ = server.Close()
+		t.Fatalf("HTTPS request failed: %v", err)
+	}
+	response.Body.Close()
+	if response.StatusCode != http.StatusNoContent || response.TLS == nil || response.TLS.Version < tls.VersionTLS12 {
+		t.Fatalf("unexpected HTTPS response: status=%d tls=%v", response.StatusCode, response.TLS)
+	}
+	if err := server.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if err := <-serveResult; err != http.ErrServerClosed {
+		t.Fatalf("TLS server exit = %v, want ErrServerClosed", err)
 	}
 }
 
