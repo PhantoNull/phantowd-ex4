@@ -194,14 +194,16 @@ require these values to match: Linux explicitly treats `nr_disks` as
 non-constant MD 0.90 metadata. A `raid-slot` is only an assigned role; the
 comparator reports the raw `this_disk.state` value plus Linux 3.2-defined
 `faulty`, `active`, `sync`, `removed`, and `write-mostly` flag names. These are
-stored descriptor metadata, not live measurements; the comparator does not
-reconcile the 27-entry array-wide descriptor table. It now returns all 27
-stored descriptors per component, exposing descriptor index, member number,
-role, state and recognized state flags while omitting kernel major/minor
-numbers and reserved words. A nonzero descriptor is not proof of a live or
-valid device, and tables are not reconciled across images or with `this_disk`.
-The component and nested image-set report schemas are version 3; the outer
-whole-disk CLI envelope remains version 1.
+stored descriptor metadata, not live measurements. It returns all 27 stored
+descriptors per component, exposing descriptor index, member number, role,
+state and recognized state flags while omitting kernel major/minor numbers
+and reserved words. Across images, it compares member number, role, and state
+by descriptor index; a mismatch is reported as a stored-metadata conflict.
+Kernel major/minor numbers are deliberately excluded. Agreement is not proof
+of a live or valid device, and this comparison does not reconcile the table
+with `this_disk`. The component report schema is version 3, the nested
+image-set report schema is version 4, and the outer whole-disk CLI envelope
+remains version 1.
 The descriptor layout and flag definitions follow the
 [upstream Linux v3.2 MD header](https://github.com/torvalds/linux/blob/v3.2/include/linux/raid/md_p.h);
 the relationship between the array table and `this_disk` follows its

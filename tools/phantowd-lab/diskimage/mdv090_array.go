@@ -11,6 +11,12 @@ import (
 
 const maxMDV090ImageSetComponents = 512
 
+const (
+	mdV090DescriptorTableNotCompared = "not-compared"
+	mdV090DescriptorTableConsistent  = "consistent"
+	mdV090DescriptorTableMismatched  = "mismatched"
+)
+
 type MDV090ArrayStatus string
 
 const (
@@ -45,16 +51,18 @@ type MDV090ImageSetReport struct {
 }
 
 type MDV090ArraySummary struct {
-	ArrayIdentityFingerprint string              `json:"array_identity_fingerprint"`
-	WDCompatibility          string              `json:"wd_compatibility"`
-	Status                   MDV090ArrayStatus   `json:"status"`
-	ArrayLevel               int32               `json:"array_level"`
-	RAIDDisks                uint32              `json:"raid_disks"`
-	ObservedNRDisks          []uint32            `json:"observed_nr_disks"`
-	ObservedRAIDRoles        int                 `json:"observed_raid_roles"`
-	MissingRAIDRoles         []uint32            `json:"missing_raid_roles"`
-	Members                  []MDV090ArrayMember `json:"members"`
-	Findings                 []string            `json:"findings"`
+	ArrayIdentityFingerprint       string              `json:"array_identity_fingerprint"`
+	WDCompatibility                string              `json:"wd_compatibility"`
+	Status                         MDV090ArrayStatus   `json:"status"`
+	ArrayLevel                     int32               `json:"array_level"`
+	RAIDDisks                      uint32              `json:"raid_disks"`
+	ObservedNRDisks                []uint32            `json:"observed_nr_disks"`
+	ObservedRAIDRoles              int                 `json:"observed_raid_roles"`
+	MissingRAIDRoles               []uint32            `json:"missing_raid_roles"`
+	DescriptorTableStatus          string              `json:"descriptor_table_status"`
+	DescriptorTableMismatchIndices []int               `json:"descriptor_table_mismatch_indices"`
+	Members                        []MDV090ArrayMember `json:"members"`
+	Findings                       []string            `json:"findings"`
 }
 
 type MDV090ArrayMember struct {
@@ -77,13 +85,14 @@ type MDV090ArrayMember struct {
 func CompareMDV090ImageSet(components []MDV090ImageComponent) (MDV090ImageSetReport, error) {
 	report := MDV090ImageSetReport{
 		Format:          "phantowd-md-v0.90-image-set-inspection",
-		SchemaVersion:   3,
+		SchemaVersion:   4,
 		WDCompatibility: "unqualified",
 		Arrays:          []MDV090ArraySummary{},
 		Limitations: []string{
 			"only caller-selected regular-file images and their parsed MD 0.90 components are compared; WD XML, other metadata versions, filesystem integrity, disk health, and user data are not inspected",
 			"metadata-consistent means only that observed components agree on selected constant fields and cover assigned RAID slots; it does not establish member operational state, sync state, health, WD compatibility, import safety, or recovery",
-			"the 27-entry array-wide descriptor table is reported per component as stored metadata with major/minor fields omitted; tables are not reconciled, and flags are not proof of current operational or synchronization state",
+			"the 27-entry array-wide descriptor table is reported per component; member number, role, and state are compared by descriptor index when multiple components are supplied, while kernel major/minor fields are omitted",
+			"descriptor-table agreement is only agreement in stored metadata; it does not establish current operational or synchronization state, array health, WD compatibility, import safety, or recovery",
 			"member identity and replacement/recovery semantics beyond the legacy member number and role are not available in this report",
 			"raw image paths and on-disk identifiers are not returned; fingerprints are redaction aids, not authenticity checks",
 			"no block device is opened, no array is assembled, no filesystem is mounted, and no input image is modified",
@@ -105,7 +114,9 @@ func CompareMDV090ImageSet(components []MDV090ImageComponent) (MDV090ImageSetRep
 			return report, errors.New("duplicate MD 0.90 component location")
 		}
 		locations[location] = true
-		if component.Report.Status != MDV090StatusCandidate || component.Report.MetadataVersion != "0.90" ||
+		if component.Report.Status != MDV090StatusCandidate || component.Report.SchemaVersion != 3 ||
+			component.Report.MetadataVersion != "0.90" ||
+			!validMDV090DiskDescriptorTable(component.Report.DiskDescriptors) ||
 			component.Report.SuperblockChecksumStatus != "valid" {
 			report.UnqualifiedComponents++
 			continue
@@ -139,21 +150,24 @@ func CompareMDV090ImageSet(components []MDV090ImageComponent) (MDV090ImageSetRep
 func compareMDV090ArrayGroup(identity string, components []MDV090ImageComponent) MDV090ArraySummary {
 	first := components[0].Report
 	array := MDV090ArraySummary{
-		ArrayIdentityFingerprint: identity,
-		WDCompatibility:          "unqualified",
-		Status:                   MDV090ArrayMetadataConsistent,
-		ArrayLevel:               first.ArrayLevel,
-		RAIDDisks:                first.RAIDDisks,
-		ObservedNRDisks:          []uint32{},
-		MissingRAIDRoles:         []uint32{},
-		Members:                  []MDV090ArrayMember{},
-		Findings:                 []string{},
+		ArrayIdentityFingerprint:       identity,
+		WDCompatibility:                "unqualified",
+		Status:                         MDV090ArrayMetadataConsistent,
+		ArrayLevel:                     first.ArrayLevel,
+		RAIDDisks:                      first.RAIDDisks,
+		ObservedNRDisks:                []uint32{},
+		MissingRAIDRoles:               []uint32{},
+		DescriptorTableStatus:          mdV090DescriptorTableNotCompared,
+		DescriptorTableMismatchIndices: []int{},
+		Members:                        []MDV090ArrayMember{},
+		Findings:                       []string{},
 	}
 	if array.RAIDDisks == 0 || array.RAIDDisks > mdV090MaxDevices {
 		array.Status = MDV090ArrayConflicting
 		array.Findings = []string{"component reports a RAID-disk count outside the MD 0.90 metadata limit"}
 		return array
 	}
+	array.DescriptorTableStatus, array.DescriptorTableMismatchIndices = compareMDV090DescriptorTables(components)
 	activeRoles := make(map[uint32]bool, array.RAIDDisks)
 	memberNumbers := make(map[uint32]bool, len(components))
 	nrDisksSeen := make(map[uint32]bool, len(components))
@@ -224,6 +238,10 @@ func compareMDV090ArrayGroup(identity string, components []MDV090ImageComponent)
 	if len(array.MissingRAIDRoles) != 0 {
 		array.Findings = append(array.Findings, fmt.Sprintf("%d assigned RAID slot(s) are missing from the supplied image set", len(array.MissingRAIDRoles)))
 	}
+	if array.DescriptorTableStatus == mdV090DescriptorTableMismatched {
+		conflicting = true
+		array.Findings = append(array.Findings, fmt.Sprintf("stored member number, role, or state differs at %d array descriptor index(es)", len(array.DescriptorTableMismatchIndices)))
+	}
 	switch {
 	case duplicate:
 		array.Status = MDV090ArrayAmbiguous
@@ -238,6 +256,45 @@ func compareMDV090ArrayGroup(identity string, components []MDV090ImageComponent)
 		array.Findings = append(array.Findings, "components agree on selected constant MD 0.90 fields and cover each assigned RAID slot; device state, data synchronization, and array health remain unqualified")
 	}
 	return array
+}
+
+func validMDV090DiskDescriptorTable(descriptors []MDV090DiskDescriptor) bool {
+	if len(descriptors) != mdV090MaxDevices {
+		return false
+	}
+	for index, descriptor := range descriptors {
+		if descriptor.DescriptorIndex != index {
+			return false
+		}
+	}
+	return true
+}
+
+func compareMDV090DescriptorTables(components []MDV090ImageComponent) (string, []int) {
+	mismatches := []int{}
+	if len(components) < 2 {
+		return mdV090DescriptorTableNotCompared, mismatches
+	}
+	for _, component := range components {
+		if !validMDV090DiskDescriptorTable(component.Report.DiskDescriptors) {
+			return "unavailable", []int{}
+		}
+	}
+	baseline := components[0].Report.DiskDescriptors
+	for index := 0; index < mdV090MaxDevices; index++ {
+		first := baseline[index]
+		for _, component := range components[1:] {
+			current := component.Report.DiskDescriptors[index]
+			if current.MemberNumber != first.MemberNumber || current.Role != first.Role || current.State != first.State {
+				mismatches = append(mismatches, index)
+				break
+			}
+		}
+	}
+	if len(mismatches) != 0 {
+		return mdV090DescriptorTableMismatched, mismatches
+	}
+	return mdV090DescriptorTableConsistent, mismatches
 }
 
 func cloneMDV090DiskDescriptors(source []MDV090DiskDescriptor) []MDV090DiskDescriptor {

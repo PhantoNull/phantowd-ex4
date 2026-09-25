@@ -433,6 +433,7 @@ func TestInspectStorageImageAggregatesReadOnlyPartitionObservations(t *testing.T
 func TestInspectMDV090ImageSetIsReadOnlyGenericAndRedactsPaths(t *testing.T) {
 	first := syntheticGPTImageWithMDV090()
 	second := syntheticGPTImageWithMDV090()
+	setSyntheticMDV090GPTDescriptor(first, 1, 1, 1, 1<<1)
 	setSyntheticMDV090GPTMember(second, 1, 1, 42, 3, 1<<1)
 	paths := []string{
 		filepath.Join(t.TempDir(), "private-disk-one.img"),
@@ -459,9 +460,11 @@ func TestInspectMDV090ImageSetIsReadOnlyGenericAndRedactsPaths(t *testing.T) {
 		Comparison         struct {
 			SchemaVersion int `json:"schema_version"`
 			Arrays        []struct {
-				Status          string   `json:"status"`
-				ObservedNRDisks []uint32 `json:"observed_nr_disks"`
-				Members         []struct {
+				Status                       string   `json:"status"`
+				ObservedNRDisks              []uint32 `json:"observed_nr_disks"`
+				DescriptorTableStatus        string   `json:"descriptor_table_status"`
+				DescriptorTableMismatchSlots []int    `json:"descriptor_table_mismatch_indices"`
+				Members                      []struct {
 					MemberState      uint32   `json:"member_state"`
 					MemberStateFlags []string `json:"member_state_flags"`
 					DiskDescriptors  []struct {
@@ -480,8 +483,10 @@ func TestInspectMDV090ImageSetIsReadOnlyGenericAndRedactsPaths(t *testing.T) {
 	}
 	if report.Format != "phantowd-md-v0.90-image-set-inspection" || report.SchemaVersion != 1 || report.WDCompatibility != "unqualified" ||
 		report.AssemblyPerformed || report.MountPerformed || report.MutationsPerformed || len(report.Comparison.Arrays) != 1 ||
-		report.Comparison.SchemaVersion != 3 ||
+		report.Comparison.SchemaVersion != 4 ||
 		report.Comparison.Arrays[0].Status != "metadata-consistent" ||
+		report.Comparison.Arrays[0].DescriptorTableStatus != "consistent" ||
+		len(report.Comparison.Arrays[0].DescriptorTableMismatchSlots) != 0 ||
 		len(report.Comparison.Arrays[0].Members) != 2 ||
 		report.Comparison.Arrays[0].Members[0].MemberState != 1<<1|1<<2 ||
 		strings.Join(report.Comparison.Arrays[0].Members[0].MemberStateFlags, ",") != "active,sync" ||
@@ -514,6 +519,7 @@ func TestInspectMDV090ImageSetIsReadOnlyGenericAndRedactsPaths(t *testing.T) {
 	divergentPath := filepath.Join(t.TempDir(), "divergent-disk.img")
 	divergent := syntheticGPTImageWithMDV090()
 	setSyntheticMDV090GPTMember(divergent, 1, 1, 41, 2, 1<<1|1<<2)
+	setSyntheticMDV090GPTDescriptor(divergent, 1, 1, 1, 1<<1)
 	if err := os.WriteFile(divergentPath, divergent, 0o600); err != nil {
 		t.Fatal(err)
 	}
@@ -759,6 +765,30 @@ func setSyntheticMDV090GPTMember(image []byte, memberNumber, role uint32, events
 	binary.LittleEndian.PutUint32(superblock[descriptor+8:descriptor+12], memberNumber+1)
 	binary.LittleEndian.PutUint32(superblock[descriptor+12:descriptor+16], role)
 	binary.LittleEndian.PutUint32(superblock[descriptor+16:descriptor+20], memberState)
+	binary.LittleEndian.PutUint32(superblock[152:156], 0)
+	var sum uint64
+	for offset := 0; offset+4 <= len(superblock); offset += 4 {
+		if offset != 152 {
+			sum += uint64(binary.LittleEndian.Uint32(superblock[offset : offset+4]))
+		}
+	}
+	binary.LittleEndian.PutUint32(superblock[152:156], uint32(sum)+uint32(sum>>32))
+}
+
+func setSyntheticMDV090GPTDescriptor(image []byte, descriptorIndex, memberNumber, role uint32, state uint32) {
+	const sector = 512
+	const firstLBA = 64
+	const lastLBA = 2048 - 64
+	partitionBytes := (lastLBA - firstLBA + 1) * sector
+	superblockOffset := int(partitionBytes&^(64*1024-1)) - 64*1024
+	superblockStart := firstLBA*sector + superblockOffset
+	superblock := image[superblockStart : superblockStart+4096]
+	descriptor := 128*4 + int(descriptorIndex)*32*4
+	binary.LittleEndian.PutUint32(superblock[descriptor:descriptor+4], memberNumber)
+	binary.LittleEndian.PutUint32(superblock[descriptor+4:descriptor+8], 8)
+	binary.LittleEndian.PutUint32(superblock[descriptor+8:descriptor+12], memberNumber+1)
+	binary.LittleEndian.PutUint32(superblock[descriptor+12:descriptor+16], role)
+	binary.LittleEndian.PutUint32(superblock[descriptor+16:descriptor+20], state)
 	binary.LittleEndian.PutUint32(superblock[152:156], 0)
 	var sum uint64
 	for offset := 0; offset+4 <= len(superblock); offset += 4 {
