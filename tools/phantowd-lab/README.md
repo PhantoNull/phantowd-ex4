@@ -382,3 +382,6 @@ From the repository root with Go 1.24 or newer:
 
 Tests use generated redistributable fixtures. No WD firmware, device dump,
 network connection, NAS address, or credential is required.
+The hosted container suite also performs bounded fuzz campaigns for the vendor
+update parser, passive MCU decoder, and synthetic storage-inventory/dry-run
+boundary; arbitrary inventory input must never become executable.

@@ -103,6 +103,36 @@ func TestInspectRejectsDuplicateJSONKeysAndUnknownFields(t *testing.T) {
 	}
 }
 
+func FuzzStorageInventoryAndDryRunNeverBecomeExecutable(f *testing.F) {
+	f.Add([]byte(singleDiskFixture(1, "/dev/sda")))
+	f.Add([]byte(`{"format":"phantowd-storage-inventory","schema_version":1,"disks":[],"partitions":[],"volumes":[]}`))
+	f.Add([]byte(`{"format":"phantowd-storage-inventory","format":"phantowd-storage-inventory"}`))
+	f.Add([]byte{})
+	f.Fuzz(func(t *testing.T, data []byte) {
+		report, err := Inspect(bytes.NewReader(data))
+		if !report.IdentityMaterialRedacted || report.Format != format || report.SchemaVersion != schemaVersion {
+			t.Fatalf("inventory parser lost its fixed redaction/schema guarantees: %+v", report)
+		}
+		if err == nil {
+			if report.Valid {
+				if len(report.Violations) != 0 || len(report.Volumes) != report.VolumeCount {
+					t.Fatalf("valid inventory report violates count/status invariants: %+v", report)
+				}
+			} else if len(report.Violations) == 0 || len(report.Volumes) != 0 {
+				t.Fatalf("invalid inventory did not fail closed: %+v", report)
+			}
+		}
+
+		assessmentInput := `{"format":"phantowd-storage-assessment","schema_version":1,"legacy_volume_metadata_state":"not_collected","inventory":` + string(data) + `}`
+		assessment, _ := Assess(strings.NewReader(assessmentInput))
+		if !assessment.IdentityMaterialRedacted || assessment.CanExecute || assessment.Plan.Executable ||
+			assessment.MutationsPerformed || assessment.AssemblyPerformed || assessment.MountPerformed ||
+			len(assessment.Plan.Operations) != 0 {
+			t.Fatalf("untrusted inventory input became executable or lost redaction: %+v", assessment)
+		}
+	})
+}
+
 func singleDiskFixture(bay int, device string) string {
 	return fmt.Sprintf(`{
   "format":"phantowd-storage-inventory",

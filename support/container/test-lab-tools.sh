@@ -14,3 +14,4 @@ cd "$module_dir"
 "$go_binary" test -race -count=1 ./...
 "$go_binary" test -run '^$' -fuzz '^FuzzInspect$' -fuzztime=5s -parallel=2 ./vendorupdate
 "$go_binary" test -run '^$' -fuzz '^FuzzStreamDecoder$' -fuzztime=5s -parallel=2 ./mcuproto
+"$go_binary" test -run '^$' -fuzz '^FuzzStorageInventoryAndDryRunNeverBecomeExecutable$' -fuzztime=5s -parallel=2 ./storageinventory
