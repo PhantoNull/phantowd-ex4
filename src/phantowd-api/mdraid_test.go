@@ -6,6 +6,7 @@ package main
 import (
 	"fmt"
 	"io/fs"
+	"strings"
 	"testing"
 	"testing/fstest"
 	"time"
@@ -92,6 +93,34 @@ func TestParseMDStatRejectsMalformedOrUnboundedInput(t *testing.T) {
 	if _, err := parseMDStat(string(make([]byte, maxProcBytes+1))); err == nil {
 		t.Fatal("unbounded mdstat accepted")
 	}
+}
+
+func FuzzParseMDStat(f *testing.F) {
+	f.Add("Personalities : [raid1]\nmd0 : active raid1 sda2[0] sdb2[1]\n      1024 blocks [2/2] [UU]\n")
+	f.Add("md1 : active raid1 sda3[0] sdb3[1](F)\n      1024 blocks [2/1] [U_]\n      recovery = DELAYED\n")
+	f.Add("md0 : inactive\n")
+	f.Fuzz(func(t *testing.T, data string) {
+		records, err := parseMDStat(data)
+		if err != nil {
+			return
+		}
+		if len(records) > maxMDArrayEntries {
+			t.Fatal("parser returned too many arrays")
+		}
+		for _, record := range records {
+			if !validMDName(record.name) || len(record.members) > maxMDMemberEntries {
+				t.Fatal("parser returned an invalid or unbounded record")
+			}
+			if record.countsKnown && (record.expectedDevices == 0 || record.activeDevices > record.expectedDevices) {
+				t.Fatal("parser returned inconsistent device counts")
+			}
+			if record.memberSlots != "" && record.countsKnown &&
+				(uint32(len(record.memberSlots)) != record.expectedDevices ||
+					uint32(strings.Count(record.memberSlots, "U")) != record.activeDevices) {
+				t.Fatal("parser returned inconsistent member-slot counts")
+			}
+		}
+	})
 }
 
 func emptySysfs() fstest.MapFS {

@@ -144,8 +144,9 @@ the embedded assets. The build command
 also runs native Linux tests using Buildroot's hash-verified Go compiler and
 tests the real ARMv5 binary inside QEMU. The compiler variant is explicitly
 prebuilt; upstream Buildroot supplies its exact version and archive checksums.
-Native Linux tests also run the race detector and a five-second memory-parser
-fuzz campaign with two workers; ARMv5 race instrumentation is not used.
+Native Linux tests also run the race detector and fixed-iteration memory and
+Linux MD status parser fuzz campaigns with two workers; the PHC parser has its
+own fixed-iteration fuzz campaign. ARMv5 race instrumentation is not used.
 
 For a host-browser layout preview, run `node support/dashboard-preview.mjs`.
 It binds only to `127.0.0.1:18081` and serves clearly labelled synthetic
