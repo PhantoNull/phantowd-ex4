@@ -1,5 +1,7 @@
 FROM debian:12-slim@sha256:88200866dfff7ea7f5cbcb6ec7c8a701889efe6fe859fe64d6990e4b07ea4171
 
+COPY support/docker/debian-snapshot.sources /etc/apt/sources.list.d/debian.sources
+
 RUN apt-get update \
     && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
         bash \

@@ -82,8 +82,11 @@ and its output under `artifacts/ex4-dtb-research/` is also non-flashable.
 
 `BR2_REPRODUCIBLE` is enabled, but bit-for-bit reproducibility is not claimed
 until two clean builds in independently provisioned environments have been
-compared. The container base image is digest-pinned; Debian build-dependency
-packages are not yet tied to an immutable snapshot.
+compared. The container base image is digest-pinned and build-dependency
+packages now come from the fixed Debian snapshot in
+`support/docker/debian-snapshot.sources`; APT archive signature verification
+remains enabled. This pins package selection but does not itself prove
+bit-for-bit reproducibility.
 
 The project mascot and future logo are a small ghost: the **PhantoWD**.
 
