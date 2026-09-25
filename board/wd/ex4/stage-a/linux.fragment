@@ -1,0 +1,120 @@
+CONFIG_MACH_KIRKWOOD=y
+CONFIG_CPU_FEROCEON=y
+CONFIG_AEABI=y
+CONFIG_TTY=y
+CONFIG_SERIAL_8250=y
+CONFIG_SERIAL_8250_CONSOLE=y
+CONFIG_SERIAL_OF_PLATFORM=y
+CONFIG_DEVTMPFS=y
+CONFIG_DEVTMPFS_MOUNT=y
+CONFIG_SYSFS=y
+CONFIG_PROC_FS=y
+CONFIG_TMPFS=y
+CONFIG_PRINTK_TIME=y
+CONFIG_EXPERT=y
+# Stock Marvell U-Boot is expected to provide ATAGs rather than a DTB. Keep
+# this compatibility path limited to the explicit zImage+DTB artifact built by
+# the verifier; no legacy uImage wrapper or boot command is generated.
+CONFIG_ARM_APPENDED_DTB=y
+CONFIG_ARM_ATAG_DTB_COMPAT=y
+CONFIG_ARM_ATAG_DTB_COMPAT_CMDLINE_FROM_BOOTLOADER=y
+# CONFIG_INITRAMFS_PRESERVE_MTIME is not set
+CONFIG_CMDLINE="console=ttyS0,115200n8 rdinit=/init panic=-1"
+CONFIG_CMDLINE_FORCE=y
+# Mainline MACH_KIRKWOOD selects FORCE_PCI. The Stage A DTB disables pciec.
+CONFIG_PCI=y
+# Keep only the Kirkwood-capable MVEBU platform from multi_v5_defconfig.
+# CONFIG_ARCH_ASPEED is not set
+# CONFIG_ARCH_AT91 is not set
+# CONFIG_ARCH_MICROCHIP is not set
+# CONFIG_ARCH_DAVINCI is not set
+# CONFIG_ARCH_MXC is not set
+# CONFIG_ARCH_NPCM is not set
+# CONFIG_ARCH_WPCM450 is not set
+# CONFIG_ARCH_ORION5X is not set
+# CONFIG_ARCH_SUNXI is not set
+# CONFIG_ARCH_VERSATILE is not set
+# CONFIG_MODULES is not set
+# CONFIG_BLOCK is not set
+# CONFIG_MTD is not set
+# CONFIG_NET is not set
+# CONFIG_USB_SUPPORT is not set
+# CONFIG_MMC is not set
+# CONFIG_SCSI is not set
+# CONFIG_ATA is not set
+# CONFIG_MD is not set
+# CONFIG_BLK_DEV_DM is not set
+# CONFIG_I2C is not set
+# CONFIG_SPI is not set
+# CONFIG_RTC_CLASS is not set
+# CONFIG_WATCHDOG is not set
+# CONFIG_SOUND is not set
+# CONFIG_KEXEC is not set
+# CONFIG_DRM is not set
+# CONFIG_FB is not set
+# CONFIG_MEDIA_SUPPORT is not set
+# CONFIG_INPUT is not set
+# CONFIG_I3C is not set
+# CONFIG_CGROUPS is not set
+# CONFIG_NAMESPACES is not set
+# CONFIG_FHANDLE is not set
+# CONFIG_PERF_EVENTS is not set
+# CONFIG_COREDUMP is not set
+# CONFIG_VT is not set
+# CONFIG_UNIX98_PTYS is not set
+# CONFIG_LEGACY_PTYS is not set
+# CONFIG_MAGIC_SYSRQ is not set
+# CONFIG_DEBUG_FS is not set
+# CONFIG_BPF_SYSCALL is not set
+# Stage A must not change CPU clocks, enter SoC idle/suspend states, or expose
+# generic physical-memory access while exact-device behavior is unverified.
+# CONFIG_CPU_FREQ is not set
+# CONFIG_CPU_IDLE is not set
+# CONFIG_SUSPEND is not set
+# CONFIG_PM is not set
+# CONFIG_KPROBES is not set
+# CONFIG_PROFILING is not set
+# CONFIG_DEVMEM is not set
+# CONFIG_DEVPORT is not set
+# Keep only the OF 8250 console path; remove optional serial transports.
+# CONFIG_SERIAL_8250_DMA is not set
+# CONFIG_SERIAL_8250_PCI is not set
+# CONFIG_SERIAL_8250_EXAR is not set
+# CONFIG_SERIAL_8250_DW is not set
+# CONFIG_SERIAL_8250_PERICOM is not set
+# Compile out unneeded hardware classes as defense in depth in addition to the
+# disabled DT nodes. Clock, IRQ, timer, MBUS and Kirkwood pinctrl stay enabled.
+# CONFIG_PCI_MVEBU is not set
+# CONFIG_PCIEASPM is not set
+# CONFIG_FW_LOADER is not set
+# CONFIG_SRAM is not set
+# CONFIG_SERIO is not set
+# CONFIG_HW_RANDOM is not set
+# CONFIG_POWER_RESET is not set
+# CONFIG_POWER_SUPPLY is not set
+# CONFIG_HWMON is not set
+# CONFIG_THERMAL is not set
+# CONFIG_MFD is not set
+# CONFIG_REGULATOR is not set
+# CONFIG_NEW_LEDS is not set
+# CONFIG_DMADEVICES is not set
+# CONFIG_VIRTIO_MENU is not set
+# CONFIG_STAGING is not set
+# CONFIG_IOMMU_SUPPORT is not set
+# CONFIG_WPCM450_SOC is not set
+# CONFIG_EXTCON is not set
+# CONFIG_MEMORY is not set
+# CONFIG_IIO is not set
+# CONFIG_PWM is not set
+# CONFIG_RESET_CONTROLLER is not set
+# CONFIG_PHY_MVEBU_A3700_UTMI is not set
+# CONFIG_NVMEM is not set
+# CONFIG_CONFIGFS_FS is not set
+# CONFIG_MISC_FILESYSTEMS is not set
+# CONFIG_NLS is not set
+# CONFIG_KEYS is not set
+# CONFIG_CRYPTO is not set
+# Kirkwood/ARM Kconfig forcibly retains GPIOLIB, GPIO_MVEBU,
+# SERIAL_8250_FSL, SERIAL_MCTRL_GPIO, GENERIC_PHY and PHY_MVEBU_SATA.
+# The Stage A DTB disables both GPIO controllers and both SATA PHY nodes;
+# the serial options add no separately enumerated controller.

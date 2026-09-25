@@ -8,6 +8,9 @@ reproducible builds, safe recovery, and signed model-specific updates.
 The project is at the **hardware discovery and non-destructive bring-up**
 stage. It does not yet produce a flashable replacement firmware. It now has a
 separately named ARMv5 QEMU baseline for software-only development.
+Short, diskless RAM boots of serial-only Stage A, Ethernet-enumeration Stage B,
+and the bounded Stage B2 dual-link probe have succeeded on one EX4. These
+results do not qualify storage, cooling, sustained networking or flash updates.
 
 ## Current work
 
@@ -79,6 +82,49 @@ outputs; they are not downloadable firmware releases.
 A separate compile-only Linux 6.18 EX4 device-tree baseline is available with
 `.\support\build-ex4-dtb.ps1`. It intentionally disables raw NAND and SDIO,
 and its output under `artifacts/ex4-dtb-research/` is also non-flashable.
+
+An even narrower Stage A safety target is available with
+`.\support\build-ex4-stage-a.ps1`. It builds a kernel with storage, flash,
+network and unnecessary optional subsystems compiled out, plus a DTB that
+disables every known non-console peripheral and a bounded initramfs. Its
+BusyBox userspace is restricted to the shell and five applets required by the
+fixed init script; storage, network, and general diagnostic applets are absent.
+Only the ELF loader and `libc` remain alongside BusyBox and the fixed init.
+One narrowly bounded, diskless Stage A RAM boot has now succeeded on an EX4:
+Linux 6.18.50 reached the serial readiness marker and halted after about 20
+seconds. This does not validate storage, Ethernet, cooling, NAND, recovery or
+installation. The artifacts remain research-only and non-flashable. The
+initramfs is embedded in `zImage`. A separately named
+artifact concatenates the exact Stage A DTB after `zImage`, and an additional
+legacy `uImage` wrapper uses the load/entry values observed in the stock EX4
+kernel header. Both are statically checked, but neither supplies an approved
+general-purpose boot command. The wrapper does not authorize a flash
+operation or an unreviewed repeat test.
+
+An isolated Stage B research target adds only Ethernet-0/MDIO enumeration to
+the Stage A serial probe. It leaves the interface down, with no DHCP, IP
+configuration or packet-sending userspace. One exact-device diskless RAM boot
+reached its readiness marker and halted automatically;
+`.\support\build-ex4-stage-b.ps1` prepares hash/signature-verified sources,
+then compiles and audits it offline without rebuilding the full QEMU image.
+A local offline build, an independent legacy-uImage parser check, and a clean
+compile-only CI build have passed. The observed MAC was a placeholder, and
+Stage B did not raise a link or validate network stability.
+On a default Windows Docker Desktop installation, the wrapper refuses to
+start unless at least 40 GiB is free on the Docker data drive; it does not
+shrink Docker's VHDX or free unrelated images/volumes automatically.
+
+Stage B2 adds the second Ethernet controller and a four-second, serial-only
+carrier observation. The Marvell driver requires the IPv4 core, but the target
+disables IP autoconfiguration, IPv6, packet sockets, bridge, NFS and SUNRPC and
+contains no address-management or network-service tools. Exact-head CI and two
+independent builds produced byte-identical uImages. Separate diskless RAM
+boots with one rear jack connected at a time mapped the left jack to `eth0`
+and the right jack to `eth1`; each reached 1 Gbit/s carrier while the other
+interface stayed down. The short four-second observations recorded two
+left-port and one right-port link transitions, so sustained stability remains
+unqualified. Both MACs were placeholders. The fixed init lowered both
+interfaces and halted automatically.
 
 `BR2_REPRODUCIBLE` is enabled, but bit-for-bit reproducibility is not claimed
 until two clean builds in independently provisioned environments have been

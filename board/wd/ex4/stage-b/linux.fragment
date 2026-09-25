@@ -1,0 +1,19 @@
+# Stage B extends the proven serial-only Stage A configuration. The only
+# intended kernel expansion is the network core, IPv4 dependency, one Marvell
+# Ethernet MAC and its MDIO/PHY support. The interface remains DOWN in init.
+CONFIG_NET=y
+CONFIG_INET=y
+CONFIG_NETDEVICES=y
+CONFIG_ETHERNET=y
+CONFIG_NET_VENDOR_MARVELL=y
+CONFIG_MV643XX_ETH=y
+CONFIG_MVMDIO=y
+CONFIG_PHYLIB=y
+CONFIG_OF_MDIO=y
+# CONFIG_IPV6 is not set
+# CONFIG_NETFILTER is not set
+# CONFIG_PACKET is not set
+# CONFIG_UNIX is not set
+# CONFIG_WIRELESS is not set
+# CONFIG_WLAN is not set
+# CONFIG_NET_DSA is not set

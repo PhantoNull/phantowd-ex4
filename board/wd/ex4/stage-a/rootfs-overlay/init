@@ -1,0 +1,47 @@
+#!/bin/sh
+
+PATH=/sbin:/bin
+export PATH
+
+fail() {
+    echo "PHANTOWD_EX4_STAGE_A_ERROR reason=$1"
+    halt -f
+    while :; do
+        sleep 60
+    done
+}
+
+mount -t proc proc /proc || fail proc-mount
+mount -t sysfs sysfs /sys || fail sysfs-mount
+
+# shellcheck disable=SC1091
+. /etc/phantowd-release || fail release-metadata
+
+[ "$PHANTOWD_FLASHABLE" = "no" ] || fail flashable-metadata
+[ "$PHANTOWD_HARDWARE_VALIDATED" = "no" ] || fail hardware-metadata
+[ "$PHANTOWD_STORAGE_ENABLED" = "no" ] || fail storage-metadata
+[ "$PHANTOWD_NETWORK_ENABLED" = "no" ] || fail network-metadata
+
+[ ! -e /proc/mtd ] || fail mtd-exposed
+
+set -- /sys/class/block/*
+[ ! -e "$1" ] || fail block-device-exposed
+
+running_kernel="$(uname -r)"
+running_arch="$(uname -m)"
+
+[ "$running_kernel" = "$PHANTOWD_KERNEL_VERSION" ] || fail kernel-version
+
+case "$running_arch" in
+    armv5*) ;;
+    *) fail architecture ;;
+esac
+
+echo "PHANTOWD_EX4_STAGE_A_READY target=$PHANTOWD_TARGET kernel=$running_kernel arch=$running_arch flashable=$PHANTOWD_FLASHABLE storage=$PHANTOWD_STORAGE_ENABLED network=$PHANTOWD_NETWORK_ENABLED"
+echo "PHANTOWD_EX4_STAGE_A_HALT timeout_seconds=20"
+sleep 20
+halt -f
+
+while :; do
+    sleep 60
+done

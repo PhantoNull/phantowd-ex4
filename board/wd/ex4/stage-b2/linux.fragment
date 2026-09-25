@@ -1,0 +1,6 @@
+# MV643XX_ETH has a direct Kconfig dependency on INET. Stage B2 retains the
+# IPv4 core only for that driver, with no address autoconfiguration or tools.
+CONFIG_INET=y
+# CONFIG_IP_PNP is not set
+# CONFIG_NFS_FS is not set
+# CONFIG_ROOT_NFS is not set
