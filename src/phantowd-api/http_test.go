@@ -32,7 +32,7 @@ func newTestAuth(t *testing.T) (*authController, *http.Cookie) {
 	if err := accounts.setup(context.Background(), "test-admin", testAdminPassword); err != nil {
 		t.Fatal(err)
 	}
-	auth := newAuthController(accounts)
+	auth := newAuthController(accounts, defaultPublicOrigin)
 	token, _, err := auth.sessions.create(time.Now())
 	if err != nil {
 		t.Fatal(err)

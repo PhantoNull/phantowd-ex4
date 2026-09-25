@@ -4,7 +4,17 @@ This is the first product-owned Go package, not a complete management plane.
 It is included only in the non-flashable QEMU development configuration and
 contains an embedded, read-only browser dashboard over its diagnostic API.
 
-- Fixed IPv4 loopback listener: `127.0.0.1:8080` **inside the guest**.
+- Default IPv4 loopback listener: `127.0.0.1:8080` **inside the guest**.
+  Optional listener configuration is fail-closed: non-loopback binds require a
+  TLS certificate/key pair and one exact HTTPS origin. TLS keys must be regular
+  non-symlink files not accessible to group/other users; the certificate must be currently valid and
+  match the origin host. TLS has a minimum version of 1.2. No proxy headers or
+  certificate provisioning/renewal are implemented. The QEMU image does not
+  opt into remote listening.
+- `PHANTOWD_LISTEN_ADDR` defaults to `127.0.0.1:8080`. Remote use additionally
+  requires `PHANTOWD_TLS_CERT_FILE`, `PHANTOWD_TLS_KEY_FILE`, and
+  `PHANTOWD_PUBLIC_ORIGIN` (for example, `https://nas.example:8443`). These are
+  configuration hooks only; the firmware does not provision certificates.
 - Runs as the dedicated `phantowd` user; serving as root is rejected.
 - `CGO_ENABLED=0`, ARMv5 `GOARM=5`. The isolated `passwordhash` package uses
   pinned, vendored `golang.org/x/crypto/argon2`; its BSD-3-Clause license ships
@@ -28,13 +38,19 @@ contains an embedded, read-only browser dashboard over its diagnostic API.
 - Sessions are random, in-memory only, expire after 30 minutes, and are capped
   at eight. Cookies are HttpOnly and SameSite=Strict; logout requires an
   anti-CSRF header. A process-wide login limiter allows five attempts per
-  minute. Secure/`__Host-` cookie handling exists for TLS requests, but the
-  shipped server itself has no TLS configuration.
+  minute. Secure/`__Host-` cookies are used for TLS requests. Mutating auth
+  requests require the configured exact Origin and matching Host/scheme.
 - QEMU alone compiles a `qemu`-tagged self-test with a disposable password so
   the guest can test setup, duplicate-setup rejection, login, denied access,
   CSRF-checked logout, and account reload after daemon restart. The self-test
   is not compiled in normal/product builds and its credential is not a default
   account. Do not expose the loopback development service to a LAN.
+- The QEMU-only runtime check also creates a temporary ECDSA certificate and
+  key, starts a separate ephemeral loopback HTTPS listener using the configured
+  transport, completes first-admin setup and a CSRF-protected logout over TLS,
+  verifies the Secure `__Host-` cookie, and rejects a mismatched Origin. Test
+  credentials and keys live only in a temporary directory and are removed;
+  this does not provision production certificates or qualify LAN exposure.
 - Generated images include project, Go, x/crypto and x/sys license notices
   under `/usr/share/licenses/phantowd-api/`. Build output contains a CycloneDX
   SBOM plus Buildroot's legal manifest; manual redistribution review remains
@@ -57,10 +73,10 @@ contains an embedded, read-only browser dashboard over its diagnostic API.
 |---|---|
 | `GET /healthz` | Process-only liveness, not disk/thermal/device health |
 | `GET /api/v1/auth/status` | Public first-setup/authenticated status; does not reveal the account name |
-| `POST /api/v1/auth/setup` | One-time first-admin creation; strict same-loopback Origin and JSON validation |
+| `POST /api/v1/auth/setup` | One-time first-admin creation; strict configured-Origin and JSON validation |
 | `POST /api/v1/auth/login` | Authenticate administrator; strict Origin, bounded request, generic credential error and five-per-minute process limit |
 | `GET /api/v1/auth/session` | Authenticated session metadata and CSRF token |
-| `POST /api/v1/auth/logout` | Revoke session; requires same-loopback Origin and CSRF header |
+| `POST /api/v1/auth/logout` | Revoke session; requires configured Origin and CSRF header |
 | `GET /api/v1/system` | Authenticated versioned JSON: observation time, kernel, architecture/GOARM, uptime, total/available memory, effective UID, development safety flags |
 | `GET /api/v1/storage` | Authenticated, sorted, bounded kernel block-node observations from sysfs: name, major/minor, 512-byte-sector capacity, read-only/removable flags, partition number, and whole-disk `serial_status` / `wwn_status` when applicable |
 | Non-GET on a known route | `405`, `Allow: GET` |
@@ -88,10 +104,19 @@ The server limits active handlers to eight, request headers to 8 KiB (Go's
 HTTP parser may permit implementation slop), and sets read/write/idle timeouts.
 Auth JSON is capped at 2 KiB, rejects duplicate/unknown fields and trailing
 values, and refuses content encodings. This is a bounded development
-prototype, not a security-reviewed LAN service. The API binds only inside the
-guest to `127.0.0.1:8080`; there is no TLS, remote listener, first-boot
-hardware pairing, password change/reset/recovery, MFA, persistent session,
-production state-volume provisioning, or volume migration/rollback.
+prototype, not a security-reviewed LAN service. The QEMU guest binds only to
+`127.0.0.1:8080`. The optional TLS/listener configuration is only a transport
+safety primitive; it does not qualify the API for deployment on an EX4 or make
+the QEMU listener remotely accessible. There is no first-boot hardware
+pairing, password change/reset/recovery, MFA, persistent session, certificate
+provisioning/renewal, production state-volume provisioning, or volume
+migration/rollback.
+
+Firmware source and test builds are developed and checked locally/QEMU and by
+GitHub Actions. Intended user-facing distribution is through versioned GitHub
+Releases; users are not expected to compile the source locally. Actions runs
+and development artifacts are qualification outputs, not installable firmware
+releases. No production release or safe in-device updater exists yet.
 
 ## Local tests
 

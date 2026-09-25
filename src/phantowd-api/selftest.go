@@ -68,6 +68,10 @@ func runSelfTest() error {
 	if err != nil {
 		return err
 	}
+	if err := exerciseQEMUTLS(); err != nil {
+		return err
+	}
+	fmt.Printf("PHANTOWD_TLS_READY target=qemu-armv5 min_version=1.2 origin_enforced=true scope=loopback-test-only\n")
 	var snapshot systemSnapshot
 	for _, path := range []string{"/healthz", "/api/v1/system"} {
 		response, err := client.Get("http://" + listenAddress + path)

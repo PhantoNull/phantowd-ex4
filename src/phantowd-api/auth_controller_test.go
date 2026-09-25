@@ -24,7 +24,7 @@ func newEmptyTestAuth(t *testing.T) (*authController, *accountStore) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	return newAuthController(accounts), accounts
+	return newAuthController(accounts, defaultPublicOrigin), accounts
 }
 
 func authRequest(method, path, body string) *http.Request {
@@ -32,7 +32,7 @@ func authRequest(method, path, body string) *http.Request {
 	if method == http.MethodPost && body != "" {
 		request.Header.Set("Content-Type", "application/json")
 	}
-	request.Header.Set("Origin", "http://127.0.0.1:8080")
+	request.Header.Set("Origin", defaultPublicOrigin)
 	return request
 }
 

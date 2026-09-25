@@ -78,6 +78,10 @@ while [ "$attempt" -lt 120 ]; do
             echo "Missing persisted-account login after API restart assertion" >&2
             exit 1
         fi
+        if ! grep -F 'PHANTOWD_TLS_READY target=qemu-armv5 min_version=1.2 origin_enforced=true scope=loopback-test-only' "$log_file" >/dev/null; then
+            echo "Missing ARMv5 TLS handshake and exact-origin assertion" >&2
+            exit 1
+        fi
         if ! grep -F 'PHANTOWD_AUTH_STATE_READY account_survives=daemon-restart sessions_memory_only=true scope=qemu-loopback-only' "$log_file" >/dev/null; then
             echo "Missing account persistence across API process restart assertion" >&2
             exit 1
