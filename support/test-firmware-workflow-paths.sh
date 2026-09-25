@@ -7,6 +7,7 @@ stage_b_workflow="$repo_root/.github/workflows/ex4-stage-b.yml"
 stage_b2_workflow="$repo_root/.github/workflows/ex4-stage-b2.yml"
 stage_b3_workflow="$repo_root/.github/workflows/ex4-stage-b3.yml"
 host_workflow="$repo_root/.github/workflows/host-tools.yml"
+reproducibility_workflow="$repo_root/.github/workflows/reproducibility.yml"
 
 require_event_path() {
     workflow=$1
@@ -81,6 +82,31 @@ require_manual_only() {
     require_manual_dispatch "$workflow"
 }
 
+require_checkout_credentials_not_persisted() {
+    workflow=$1
+    if ! awk '
+        function finish_step() {
+            if (in_checkout) {
+                checkouts++
+                if (!disabled) bad = 1
+            }
+            in_checkout = 0
+            disabled = 0
+        }
+        /^      - / { finish_step() }
+        /^        uses: actions\/checkout@/ { in_checkout = 1 }
+        in_checkout && /^          persist-credentials: false$/ { disabled = 1 }
+        END {
+            finish_step()
+            if (checkouts == 0 || bad) exit 1
+        }
+    ' "$workflow"; then
+        printf 'workflow %s must disable persisted checkout credentials\n' \
+            "$workflow" >&2
+        exit 1
+    fi
+}
+
 host_tool_paths='
 tools/phantowd-lab/**
 support/test-lab-tools.ps1
@@ -150,6 +176,11 @@ $qemu_unrelated_ex4_stage_paths
 EOF
 
 require_develop_push "$host_workflow"
+
+for workflow in "$qemu_workflow" "$stage_b_workflow" "$stage_b2_workflow" \
+    "$stage_b3_workflow" "$host_workflow" "$reproducibility_workflow"; do
+    require_checkout_credentials_not_persisted "$workflow"
+done
 
 for workflow in "$stage_b3_workflow"; do
     while IFS= read -r path; do
