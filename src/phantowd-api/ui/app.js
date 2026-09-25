@@ -142,6 +142,63 @@ function renderStorage(storage) {
   }
 }
 
+function renderArrays(inventory) {
+  const list = byId("array-list");
+  list.replaceChildren();
+  const arrays = Array.isArray(inventory.arrays) ? inventory.arrays : [];
+  const status = inventory.status || "unavailable";
+  const count = Number(inventory.array_count);
+  const visibleCount = Number.isInteger(count) ? count : arrays.length;
+  setText("array-count", status === "available" ?
+    `${visibleCount} ${visibleCount === 1 ? "array" : "arrays"}` :
+    `RAID ${status}`);
+
+  if (arrays.length === 0) {
+    const empty = document.createElement("p");
+    empty.className = "empty-state";
+    empty.textContent = status === "available" ? "No software RAID arrays are currently visible to this kernel." :
+      status === "unsupported" ? "This kernel does not expose RAID status; health is unknown." :
+        "RAID inventory is incomplete or unavailable. No health conclusion is shown.";
+    list.append(empty);
+    return;
+  }
+
+  for (const array of arrays) {
+    const row = document.createElement("article");
+    row.className = "array-row";
+    const title = document.createElement("div");
+    title.className = "array-title";
+    const name = document.createElement("strong");
+    name.textContent = array.name || "unnamed array";
+    const level = document.createElement("small");
+    level.textContent = array.level || "level unknown";
+    title.append(name, level);
+
+    const health = document.createElement("span");
+    health.className = `array-health array-health-${["healthy", "degraded", "syncing", "paused", "inactive"].includes(array.health) ? array.health : "unknown"}`;
+    health.textContent = array.health || "unknown";
+
+    const deviceState = document.createElement("span");
+    const expected = Number(array.expected_devices);
+    const active = Number(array.active_devices);
+    const degraded = Number(array.degraded_devices);
+    deviceState.textContent = Number.isInteger(expected) && Number.isInteger(active) ?
+      `${active}/${expected} active${degraded > 0 ? ` · ${degraded} degraded` : ""}` : "device counts unavailable";
+
+    const members = document.createElement("span");
+    const names = Array.isArray(array.members) ? array.members.map((member) => member.name).filter(Boolean) : [];
+    members.textContent = names.length > 0 ? `Members: ${names.join(", ")}` : "Member list unavailable";
+
+    const sync = document.createElement("span");
+    const progress = Number(array.sync_progress_percent);
+    sync.textContent = array.sync_action && array.sync_action !== "idle" ?
+      `${array.sync_action}${Number.isFinite(progress) ? ` · ${progress.toFixed(1)}%` : " · progress unavailable"}` :
+      "No sync action reported";
+    row.append(title, health, deviceState, members, sync);
+    list.append(row);
+  }
+}
+
 function clearSystemObservation() {
   setText("kernel-value", "Unavailable");
   setText("runtime-value", "No current system observation");
@@ -168,6 +225,14 @@ function clearStorageObservation() {
   byId("device-list").replaceChildren(empty);
 }
 
+function clearArrayObservation() {
+  setText("array-count", "RAID unavailable");
+  const empty = document.createElement("p");
+  empty.className = "empty-state";
+  empty.textContent = "RAID observation unavailable. No current array health is shown.";
+  byId("array-list").replaceChildren(empty);
+}
+
 async function fetchJSON(path) {
   const response = await fetch(path, { method: "GET", headers: { Accept: "application/json" }, cache: "no-store", credentials: "same-origin" });
   if (!response.ok) {
@@ -191,11 +256,12 @@ async function refreshSnapshot() {
   error.hidden = true;
   setConnectionState("Refreshing snapshot…", "loading");
   try {
-    const [systemResult, storageResult] = await Promise.allSettled([
+    const [systemResult, storageResult, arraysResult] = await Promise.allSettled([
       fetchJSON("/api/v1/system"),
       fetchJSON("/api/v1/storage"),
+      fetchJSON("/api/v1/arrays"),
     ]);
-    const results = [systemResult, storageResult];
+    const results = [systemResult, storageResult, arraysResult];
     if (results.some((result) => result.status === "rejected" && result.reason?.status === 401)) {
       status.textContent = "Session expired. Sign in again to view a current snapshot.";
       try {
@@ -208,36 +274,40 @@ async function refreshSnapshot() {
 
     const systemCurrent = systemResult.status === "fulfilled";
     const storageCurrent = storageResult.status === "fulfilled";
+    const arraysCurrent = arraysResult.status === "fulfilled";
     if (systemCurrent) renderSystem(systemResult.value);
     else clearSystemObservation();
     if (storageCurrent) renderStorage(storageResult.value);
     else clearStorageObservation();
+    if (arraysCurrent) renderArrays(arraysResult.value);
+    else clearArrayObservation();
 
-    if (systemCurrent && storageCurrent) {
-      status.textContent = "Read-only system and storage observations updated.";
+    if (systemCurrent && storageCurrent && arraysCurrent) {
+      status.textContent = "Read-only system, storage, and RAID observations updated.";
       return;
     }
 
     const failedDomains = [
       !systemCurrent && "system",
       !storageCurrent && "storage",
+      !arraysCurrent && "RAID",
     ].filter(Boolean);
     const currentDomains = [
       systemCurrent && "system",
       storageCurrent && "storage",
+      arraysCurrent && "RAID",
     ].filter(Boolean);
-    const failureSummary = failedDomains.length === 2 ? "System and storage observations unavailable." :
-      `${failedDomains[0][0].toUpperCase()}${failedDomains[0].slice(1)} observation unavailable.`;
+    const failureSummary = `${failedDomains.join(", ")} observation${failedDomains.length === 1 ? "" : "s"} unavailable.`;
     const currentSummary = currentDomains.length > 0 ?
-      `${currentDomains[0][0].toUpperCase()}${currentDomains[0].slice(1)} observation is current.` :
+      `${currentDomains.join(", ")} observation${currentDomains.length === 1 ? " is" : "s are"} current.` :
       "No observations are current.";
-    setConnectionState(failedDomains.length === 2 ? "API unavailable" : "Partial snapshot", failedDomains.length === 2 ? "unavailable" : "degraded");
-    status.textContent = failedDomains.length === 2 ?
-      "System and storage observations unavailable. Current values were cleared." :
+    setConnectionState(failedDomains.length === 3 ? "API unavailable" : "Partial snapshot", failedDomains.length === 3 ? "unavailable" : "degraded");
+    status.textContent = failedDomains.length === 3 ?
+      "System, storage, and RAID observations unavailable. Current values were cleared." :
       `${currentSummary} ${failureSummary} Failed values were cleared.`;
-    error.textContent = failedDomains.length === 2 ?
-      "System and storage observations are unavailable. No current values are shown." :
-      `${currentSummary} ${failureSummary} No previous ${failedDomains[0]} values are shown.`;
+    error.textContent = failedDomains.length === 3 ?
+      "System, storage, and RAID observations are unavailable. No current values are shown." :
+      `${currentSummary} ${failureSummary} No previous values are shown for the unavailable section.`;
     error.hidden = false;
   } catch (failure) {
     if (failure?.status === 401) {
@@ -251,9 +321,10 @@ async function refreshSnapshot() {
     }
     clearSystemObservation();
     clearStorageObservation();
+    clearArrayObservation();
     setConnectionState("API unavailable", "unavailable");
-    status.textContent = "System and storage observations unavailable. Current values were cleared.";
-    error.textContent = "System and storage observations are unavailable. No current values are shown.";
+    status.textContent = "System, storage, and RAID observations unavailable. Current values were cleared.";
+    error.textContent = "System, storage, and RAID observations are unavailable. No current values are shown.";
     error.hidden = false;
   } finally {
     button.disabled = false;

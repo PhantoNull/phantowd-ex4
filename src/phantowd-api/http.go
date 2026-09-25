@@ -14,8 +14,13 @@ const listenAddress = defaultListenAddress
 
 type collector func() (systemSnapshot, error)
 type storageSnapshotCollector func() (storageSnapshot, error)
+type mdArraySnapshotCollector func() mdArraySnapshot
 
 func newHandler(collect collector, collectStorage storageSnapshotCollector, auth *authController) http.Handler {
+	return newHandlerWithArrays(collect, collectStorage, nil, auth)
+}
+
+func newHandlerWithArrays(collect collector, collectStorage storageSnapshotCollector, collectArrays mdArraySnapshotCollector, auth *authController) http.Handler {
 	active := make(chan struct{}, 8)
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -51,7 +56,7 @@ func newHandler(collect collector, collectStorage storageSnapshotCollector, auth
 			auth.serve(w, r)
 			return
 		}
-		if r.URL.Path != "/api/v1/system" && r.URL.Path != "/api/v1/storage" {
+		if r.URL.Path != "/api/v1/system" && r.URL.Path != "/api/v1/storage" && r.URL.Path != "/api/v1/arrays" {
 			writeJSON(w, http.StatusNotFound, map[string]string{"error": "not_found"})
 			return
 		}
@@ -75,6 +80,14 @@ func newHandler(collect collector, collectStorage storageSnapshotCollector, auth
 				return
 			}
 			writeJSON(w, http.StatusOK, snapshot)
+			return
+		}
+		if r.URL.Path == "/api/v1/arrays" {
+			if collectArrays == nil {
+				writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "array_inventory_unavailable"})
+				return
+			}
+			writeJSON(w, http.StatusOK, collectArrays())
 			return
 		}
 		snapshot, err := collect()

@@ -44,10 +44,12 @@ func main() {
 	if err != nil {
 		log.Fatal("API transport configuration is invalid")
 	}
-	server := newConfiguredServer(newHandler(func() (systemSnapshot, error) {
+	server := newConfiguredServer(newHandlerWithArrays(func() (systemSnapshot, error) {
 		return collectSystem(os.DirFS("/proc"), time.Now())
 	}, func() (storageSnapshot, error) {
 		return collectStorage(os.DirFS("/sys"))
+	}, func() mdArraySnapshot {
+		return collectMDArrayInventory(os.DirFS("/proc"), os.DirFS("/sys"), time.Now())
 	}, newAuthController(accounts, transport.AllowedOrigin)), transport)
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()

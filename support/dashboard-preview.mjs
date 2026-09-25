@@ -47,6 +47,38 @@ const storageFixture = {
   limitations: ["synthetic preview fixture; no device was examined"],
 };
 
+const arraysFixture = {
+  schema_version: 1,
+  observed_at: new Date().toISOString(),
+  status: "available",
+  read_only: true,
+  block_devices_opened: false,
+  disk_content_read: false,
+  mutations_performed: false,
+  array_count: 3,
+  arrays: [
+    {
+      name: "md0", level: "raid1", state: "clean", health: "healthy",
+      expected_devices: 2, active_devices: 2, degraded_devices: 0,
+      sync_action: "idle",
+      members: [{ name: "sda2", state: "active" }, { name: "sdb2", state: "active" }],
+    },
+    {
+      name: "md1", level: "raid1", state: "active", health: "degraded",
+      expected_devices: 2, active_devices: 1, degraded_devices: 1,
+      sync_action: "recover", sync_progress_percent: 62.5,
+      members: [{ name: "sda3", state: "active" }, { name: "sdb3", state: "faulty" }],
+    },
+    {
+      name: "md2", level: "raid1", state: "active", health: "paused",
+      expected_devices: 2, active_devices: 2, degraded_devices: 0,
+      sync_action: "frozen",
+      members: [{ name: "sda4", state: "active" }, { name: "sdb4", state: "active" }],
+    },
+  ],
+  limitations: ["synthetic preview fixture; no device was examined"],
+};
+
 const assets = new Map([
   ["/", ["index.html", "text/html; charset=utf-8"]],
   ["/assets/app.css", ["app.css", "text/css; charset=utf-8"]],
@@ -75,9 +107,11 @@ const server = createServer(async (request, response) => {
     response.end('{"authenticated":true,"setup_required":false}\n');
     return;
   }
-  if (url.pathname === "/api/v1/system" || url.pathname === "/api/v1/storage") {
+  if (["/api/v1/system", "/api/v1/storage", "/api/v1/arrays"].includes(url.pathname)) {
     response.writeHead(200, { "Content-Type": "application/json" });
-    response.end(JSON.stringify(url.pathname.endsWith("/system") ? systemFixture : storageFixture));
+    const fixture = url.pathname.endsWith("/system") ? systemFixture :
+      url.pathname.endsWith("/storage") ? storageFixture : arraysFixture;
+    response.end(JSON.stringify(fixture));
     return;
   }
   const asset = assets.get(url.pathname);

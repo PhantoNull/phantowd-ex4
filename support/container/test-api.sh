@@ -16,4 +16,5 @@ cd "$module_dir"
 # Fixed execution counts avoid false deadline failures in the pinned Go 1.26
 # fuzz coordinator while keeping CI fuzz coverage reproducible across runners.
 "$go_binary" test -run '^$' -fuzz '^FuzzParseMemory$' -fuzztime=100000x -parallel=2 .
+"$go_binary" test -run '^$' -fuzz '^FuzzParseMDStat$' -fuzztime=50000x -parallel=2 .
 "$go_binary" test -run '^$' -fuzz '^FuzzParsePHC$' -fuzztime=250000x -parallel=2 ./passwordhash

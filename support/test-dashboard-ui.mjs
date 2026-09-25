@@ -77,6 +77,22 @@ function systemFixture() {
   };
 }
 
+function arraysFixture() {
+  return {
+    status: "available",
+    array_count: 2,
+    arrays: [{
+      name: "md0", level: "raid1", state: "clean", health: "healthy",
+      expected_devices: 2, active_devices: 2, degraded_devices: 0,
+      sync_action: "idle", members: [{ name: "sda2" }, { name: "sdb2" }],
+    }, {
+      name: "md1", level: "raid1", state: "active", health: "paused",
+      expected_devices: 2, active_devices: 2, degraded_devices: 0,
+      sync_action: "frozen", members: [{ name: "sda3" }, { name: "sdb3" }],
+    }],
+  };
+}
+
 async function createHarness(respond) {
   const ids = [
     "auth-panel", "auth-title", "auth-description", "auth-form", "auth-username",
@@ -85,7 +101,7 @@ async function createHarness(respond) {
     "service-status-dot", "build-label", "kernel-value", "runtime-value", "target-value",
     "memory-value", "memory-detail", "memory-meter", "firmware-value", "firmware-detail",
     "profile-notice-title", "profile-notice-copy", "profile-notice-mark",
-    "observed-at", "device-count", "device-list",
+    "observed-at", "device-count", "device-list", "array-count", "array-list",
   ];
   const elements = Object.fromEntries(ids.map((id) => [id, new FixtureElement()]));
   elements["refresh-label"].textContent = "Refresh snapshot";
@@ -131,6 +147,7 @@ async function testReadOnlySnapshotAndSafeRendering() {
         size_bytes: 2 ** 40, serial_status: "present", wwn_status: "unavailable", read_only: true,
       }] });
     }
+    if (path === "/api/v1/arrays") return jsonResponse(arraysFixture());
     throw new Error(`Unexpected request: ${path}`);
   });
 
@@ -142,10 +159,16 @@ async function testReadOnlySnapshotAndSafeRendering() {
   assert.equal(elements["observed-at"].dateTime, "2026-09-25T12:30:00.000Z");
   assert.equal(elements["profile-notice-title"].textContent, "Emulator only.");
   assert.match(elements["snapshot-status"].textContent, /updated/);
+  assert.equal(elements["array-count"].textContent, "2 arrays");
+  assert.equal(elements["array-list"].children[0].children[0].children[0].textContent, "md0");
+  assert.equal(elements["array-list"].children[0].children[1].textContent, "healthy");
+  assert.equal(elements["array-list"].children[1].children[1].textContent, "paused");
+  assert.match(elements["array-list"].children[1].children[1].className, /array-health-paused/);
+  assert.equal(elements["array-list"].children[1].children[4].textContent, "frozen · progress unavailable");
   assert.equal(elements["device-list"].children[0].children[0].children[1].children[0].textContent, "disk<script>");
   assert.equal(elements["device-list"].children[0].children[3].textContent, "Kernel read-only");
   assert.deepEqual(requests.map(({ path }) => path), [
-    "/api/v1/auth/status", "/api/v1/system", "/api/v1/storage",
+    "/api/v1/auth/status", "/api/v1/system", "/api/v1/storage", "/api/v1/arrays",
   ]);
   assert.ok(requests.every(({ options }) => options.method === "GET"));
 
@@ -186,6 +209,7 @@ async function testExpiredSessionReturnsToLogin() {
     if (expired) return jsonResponse({ error: "unauthorized" }, 401);
     if (path === "/api/v1/system") return jsonResponse(systemFixture());
     if (path === "/api/v1/storage") return jsonResponse({ observations: [] });
+    if (path === "/api/v1/arrays") return jsonResponse(arraysFixture());
     throw new Error(`Unexpected request: ${path}`);
   });
 
@@ -205,6 +229,7 @@ async function testStorageFailureKeepsOnlyCurrentSystemObservation() {
     if (path === "/api/v1/storage") {
       return storageAvailable ? jsonResponse({ observations: [{ name: "sda", kind: "block", major: 8, minor: 0, size_bytes: 2 ** 40 }] }) : jsonResponse({ error: "unavailable" }, 503);
     }
+    if (path === "/api/v1/arrays") return jsonResponse(arraysFixture());
     throw new Error(`Unexpected request: ${path}`);
   });
 
@@ -215,7 +240,7 @@ async function testStorageFailureKeepsOnlyCurrentSystemObservation() {
   assert.match(elements["device-list"].children[0].textContent, /no current device values/i);
   assert.equal(elements["service-status-dot"].className.includes("is-degraded"), true);
   assert.match(elements["snapshot-status"].textContent, /system.*current.*storage.*unavailable/i);
-  assert.match(elements["error-banner"].textContent, /no previous storage values/i);
+  assert.match(elements["error-banner"].textContent, /no previous values are shown for the unavailable section/i);
 }
 
 async function testSystemFailureKeepsOnlyCurrentStorageObservation() {
@@ -224,6 +249,7 @@ async function testSystemFailureKeepsOnlyCurrentStorageObservation() {
     if (path === "/api/v1/auth/status") return jsonResponse({ authenticated: true });
     if (path === "/api/v1/system") return systemAvailable ? jsonResponse(systemFixture()) : jsonResponse({ error: "unavailable" }, 503);
     if (path === "/api/v1/storage") return jsonResponse({ observations: [{ name: "sda", kind: "block", major: 8, minor: 0, size_bytes: 2 ** 40 }] });
+    if (path === "/api/v1/arrays") return jsonResponse(arraysFixture());
     throw new Error(`Unexpected request: ${path}`);
   });
 
@@ -241,12 +267,12 @@ async function testSystemFailureKeepsOnlyCurrentStorageObservation() {
 async function testAllDiagnosticFailuresClearValues() {
   const { context, elements } = await createHarness(async (path) => {
     if (path === "/api/v1/auth/status") return jsonResponse({ authenticated: true });
-    if (path === "/api/v1/system" || path === "/api/v1/storage") return jsonResponse({ error: "unavailable" }, 503);
+    if (path === "/api/v1/system" || path === "/api/v1/storage" || path === "/api/v1/arrays") return jsonResponse({ error: "unavailable" }, 503);
     throw new Error(`Unexpected request: ${path}`);
   });
 
   assert.equal(elements["kernel-value"].textContent, "Unavailable");
-  assert.match(elements["snapshot-status"].textContent, /system and storage.*unavailable.*cleared/i);
+  assert.match(elements["snapshot-status"].textContent, /system, storage, and RAID.*unavailable.*cleared/i);
   assert.equal(elements["error-banner"].hidden, false);
   assert.equal(elements["service-status-dot"].className.includes("is-unavailable"), true);
   assert.match(elements["device-list"].children[0].textContent, /no current device values/i);
