@@ -25,6 +25,9 @@ jobs:
           ref: ${{ github.sha }}
           persist-credentials: false
 
+      - name: Verify pinned Linux versions across firmware profiles
+        run: sh support/test-firmware-version-locks.sh
+
       - name: Test artifact comparison policy
         run: sh support/test-compare-build-artifacts.sh
 
