@@ -45,15 +45,20 @@ const (
 )
 
 const (
-	mdV090Magic           = 0xa92b4efc
-	mdV090SuperblockBytes = 4096
-	mdV090ReservedBytes   = 64 * 1024
-	mdV090ChecksumField   = 152
-	mdV090MaxDevices      = 27
-	mdV090ThisDiskOffset  = 992 * 4
-	mdV090RoleSpare       = 0xffff
-	mdV090RoleFaulty      = 0xfffe
-	mdV090RoleJournal     = 0xfffd
+	mdV090Magic            = 0xa92b4efc
+	mdV090SuperblockBytes  = 4096
+	mdV090ReservedBytes    = 64 * 1024
+	mdV090ChecksumField    = 152
+	mdV090MaxDevices       = 27
+	mdV090ThisDiskOffset   = 992 * 4
+	mdV090RoleSpare        = 0xffff
+	mdV090RoleFaulty       = 0xfffe
+	mdV090RoleJournal      = 0xfffd
+	mdV090StateFaulty      = uint32(1 << 0)
+	mdV090StateActive      = uint32(1 << 1)
+	mdV090StateSync        = uint32(1 << 2)
+	mdV090StateRemoved     = uint32(1 << 3)
+	mdV090StateWriteMostly = uint32(1 << 9)
 )
 
 // MDV090Report is a bounded, read-only observation of a generic Linux MD
@@ -74,6 +79,8 @@ type MDV090Report struct {
 	MemberNumber             uint32       `json:"member_number"`
 	MemberRole               uint32       `json:"member_role"`
 	MemberRoleDescription    string       `json:"member_role_description,omitempty"`
+	MemberState              uint32       `json:"member_state"`
+	MemberStateFlags         []string     `json:"member_state_flags"`
 	Events                   uint64       `json:"events"`
 	SuperblockChecksumStatus string       `json:"superblock_checksum_status"`
 	ArrayIdentityFingerprint string       `json:"array_identity_fingerprint,omitempty"`
@@ -152,6 +159,8 @@ func InspectMDV090Component(image io.ReaderAt, imageSize int64) (MDV090Report, e
 		uint64(binary.LittleEndian.Uint32(superblock[160:164]))<<32
 	report.MemberNumber = binary.LittleEndian.Uint32(superblock[mdV090ThisDiskOffset : mdV090ThisDiskOffset+4])
 	report.MemberRole = binary.LittleEndian.Uint32(superblock[mdV090ThisDiskOffset+12 : mdV090ThisDiskOffset+16])
+	report.MemberState = binary.LittleEndian.Uint32(superblock[mdV090ThisDiskOffset+16 : mdV090ThisDiskOffset+20])
+	report.MemberStateFlags = mdV090StateFlags(report.MemberState)
 
 	if report.NRDisks == 0 || report.NRDisks > mdV090MaxDevices ||
 		report.RAIDDisks == 0 || report.RAIDDisks > report.NRDisks ||
@@ -186,6 +195,28 @@ func InspectMDV090Component(image io.ReaderAt, imageSize int64) (MDV090Report, e
 	return report, nil
 }
 
+// mdV090StateFlags decodes only state bits defined by the Linux 3.2 MD 0.90
+// disk descriptor. The raw field is retained so unrecognized bits remain
+// observable rather than being silently discarded.
+func mdV090StateFlags(state uint32) []string {
+	flags := make([]string, 0, 5)
+	for _, flag := range []struct {
+		mask uint32
+		name string
+	}{
+		{mdV090StateFaulty, "faulty"},
+		{mdV090StateActive, "active"},
+		{mdV090StateSync, "sync"},
+		{mdV090StateRemoved, "removed"},
+		{mdV090StateWriteMostly, "write-mostly"},
+	} {
+		if state&flag.mask != 0 {
+			flags = append(flags, flag.name)
+		}
+	}
+	return flags
+}
+
 func mdV090Checksum(superblock []byte) uint32 {
 	var sum uint64
 	for offset := 0; offset+4 <= len(superblock); offset += 4 {
@@ -200,11 +231,12 @@ func mdV090Checksum(superblock []byte) uint32 {
 func newMDV090Report(imageSize int64) MDV090Report {
 	report := MDV090Report{
 		Format:                   "phantowd-md-v0.90-component-inspection",
-		SchemaVersion:            1,
+		SchemaVersion:            2,
 		Status:                   MDV090StatusUnsupported,
 		WDCompatibility:          "unqualified",
 		SuperblockChecksumStatus: "not-validated",
 		RawIdentityRedacted:      true,
+		MemberStateFlags:         []string{},
 		Findings:                 []string{},
 		Limitations: []string{
 			"input must be a regular image of one component device; a whole-disk image is not automatically partitioned or scanned",

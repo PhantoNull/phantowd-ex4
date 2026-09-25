@@ -192,10 +192,14 @@ array level and RAID-disk count, event counters, member numbers, and assigned
 RAID-slot coverage. It reports each component's `nr_disks` value but does not
 require these values to match: Linux explicitly treats `nr_disks` as
 non-constant MD 0.90 metadata. A `raid-slot` is only an assigned role; the
-comparator does not parse the per-device state table and cannot say whether a
-member is active or synchronized. `metadata-consistent` is a narrow metadata
-result—not evidence of data synchronization, health, WD compatibility,
-migration safety, or safe assembly. Missing roles, duplicate member
+comparator reports the raw `this_disk.state` value plus Linux 3.2-defined
+`faulty`, `active`, `sync`, `removed`, and `write-mostly` flag names. These are
+stored descriptor metadata, not live measurements; the comparator does not
+reconcile the 27-entry array-wide descriptor table. The legacy descriptor
+layout and flag definitions follow the [upstream Linux v3.2 MD header](https://github.com/torvalds/linux/blob/v3.2/include/linux/raid/md_p.h).
+`metadata-consistent` is a narrow metadata result -- not evidence of data
+synchronization, health, WD compatibility, migration safety, or safe assembly.
+Missing roles, duplicate member
 numbers/assigned slots, conflicting geometry, and differing event counters
 are non-success statuses. Unidentified array IDs are counted but never
 grouped. Paths and raw IDs are omitted; inputs are identified by ordinal. The
@@ -234,7 +238,9 @@ supplied Linux MD component device (usually a partition image), not a whole
 disk image to be partitioned automatically. It reads exactly the standard
 4096-byte v0.90 superblock at the end-of-device offset defined by Linux's
 64-KiB reservation/alignment rule, validates its legacy checksum and bounded
-member counts, and fingerprints the array UUID. It supports little-endian
+member counts, reports the stored `this_disk.state` value and recognized
+Linux 3.2 flag names, and fingerprints the array UUID. These flags are not
+live device-health measurements. It supports little-endian
 version 0.90 only; it does not inspect optional bitmap data, other v0 minor
 versions, v1.x or vendor metadata. A candidate establishes neither member
 agreement nor EX4 compatibility or assembly safety. The command never opens a

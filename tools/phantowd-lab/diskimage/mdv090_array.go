@@ -58,13 +58,15 @@ type MDV090ArraySummary struct {
 }
 
 type MDV090ArrayMember struct {
-	InputIndex      int    `json:"input_index"`
-	PartitionNumber int    `json:"partition_number"`
-	MemberNumber    uint32 `json:"member_number"`
-	NRDisks         uint32 `json:"nr_disks"`
-	Role            uint32 `json:"role"`
-	RoleDescription string `json:"role_description"`
-	Events          uint64 `json:"events"`
+	InputIndex       int      `json:"input_index"`
+	PartitionNumber  int      `json:"partition_number"`
+	MemberNumber     uint32   `json:"member_number"`
+	NRDisks          uint32   `json:"nr_disks"`
+	Role             uint32   `json:"role"`
+	RoleDescription  string   `json:"role_description"`
+	MemberState      uint32   `json:"member_state"`
+	MemberStateFlags []string `json:"member_state_flags"`
+	Events           uint64   `json:"events"`
 }
 
 // CompareMDV090ImageSet compares bounded generic MD 0.90 observations from
@@ -74,13 +76,13 @@ type MDV090ArrayMember struct {
 func CompareMDV090ImageSet(components []MDV090ImageComponent) (MDV090ImageSetReport, error) {
 	report := MDV090ImageSetReport{
 		Format:          "phantowd-md-v0.90-image-set-inspection",
-		SchemaVersion:   1,
+		SchemaVersion:   2,
 		WDCompatibility: "unqualified",
 		Arrays:          []MDV090ArraySummary{},
 		Limitations: []string{
 			"only caller-selected regular-file images and their parsed MD 0.90 components are compared; WD XML, other metadata versions, filesystem integrity, disk health, and user data are not inspected",
 			"metadata-consistent means only that observed components agree on selected constant fields and cover assigned RAID slots; it does not establish member operational state, sync state, health, WD compatibility, import safety, or recovery",
-			"the comparator reads the per-component assigned role but not the MD 0.90 disk descriptor state table, so a reported RAID slot is not evidence that a member is active or in sync",
+			"per-component this_disk state bits are reported as stored metadata only; the 27-entry array-wide descriptor table is not reconciled, and flags are not proof of current operational or synchronization state",
 			"member identity and replacement/recovery semantics beyond the legacy member number and role are not available in this report",
 			"raw image paths and on-disk identifiers are not returned; fingerprints are redaction aids, not authenticity checks",
 			"no block device is opened, no array is assembled, no filesystem is mounted, and no input image is modified",
@@ -185,7 +187,8 @@ func compareMDV090ArrayGroup(identity string, components []MDV090ImageComponent)
 		array.Members = append(array.Members, MDV090ArrayMember{
 			InputIndex: component.InputIndex, PartitionNumber: component.PartitionNumber,
 			MemberNumber: current.MemberNumber, NRDisks: current.NRDisks, Role: current.MemberRole,
-			RoleDescription: current.MemberRoleDescription, Events: current.Events,
+			RoleDescription: current.MemberRoleDescription, MemberState: current.MemberState,
+			MemberStateFlags: append([]string{}, current.MemberStateFlags...), Events: current.Events,
 		})
 	}
 	for count := range nrDisksSeen {
