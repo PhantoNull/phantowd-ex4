@@ -3,7 +3,19 @@ name: EX4 Stage B2 compile-only
 on:
   push:
     branches: [main]
+    paths-ignore:
+      - '**/*.md'
+      - 'doc/**'
+      - 'tools/phantowd-lab/**'
+      - 'support/test-lab-tools.ps1'
+      - '.github/workflows/host-tools.yml'
   pull_request:
+    paths-ignore:
+      - '**/*.md'
+      - 'doc/**'
+      - 'tools/phantowd-lab/**'
+      - 'support/test-lab-tools.ps1'
+      - '.github/workflows/host-tools.yml'
   workflow_dispatch:
 
 permissions:
