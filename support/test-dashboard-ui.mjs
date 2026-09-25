@@ -197,16 +197,56 @@ async function testExpiredSessionReturnsToLogin() {
   assert.match(elements["auth-error"].textContent, /session expired/i);
 }
 
-async function testDiagnosticFailureClearsValues() {
+async function testStorageFailureKeepsOnlyCurrentSystemObservation() {
+  let storageAvailable = true;
   const { context, elements } = await createHarness(async (path) => {
     if (path === "/api/v1/auth/status") return jsonResponse({ authenticated: true });
     if (path === "/api/v1/system") return jsonResponse(systemFixture());
-    if (path === "/api/v1/storage") return jsonResponse({ observations: [] }, 503);
+    if (path === "/api/v1/storage") {
+      return storageAvailable ? jsonResponse({ observations: [{ name: "sda", kind: "block", major: 8, minor: 0, size_bytes: 2 ** 40 }] }) : jsonResponse({ error: "unavailable" }, 503);
+    }
+    throw new Error(`Unexpected request: ${path}`);
+  });
+
+  storageAvailable = false;
+  await context.refreshSnapshot();
+  assert.equal(elements["kernel-value"].textContent, "Linux 6.18.53");
+  assert.equal(elements["device-count"].textContent, "Storage unavailable");
+  assert.match(elements["device-list"].children[0].textContent, /no current device values/i);
+  assert.equal(elements["service-status-dot"].className.includes("is-degraded"), true);
+  assert.match(elements["snapshot-status"].textContent, /system.*current.*storage.*unavailable/i);
+  assert.match(elements["error-banner"].textContent, /no previous storage values/i);
+}
+
+async function testSystemFailureKeepsOnlyCurrentStorageObservation() {
+  let systemAvailable = true;
+  const { context, elements } = await createHarness(async (path) => {
+    if (path === "/api/v1/auth/status") return jsonResponse({ authenticated: true });
+    if (path === "/api/v1/system") return systemAvailable ? jsonResponse(systemFixture()) : jsonResponse({ error: "unavailable" }, 503);
+    if (path === "/api/v1/storage") return jsonResponse({ observations: [{ name: "sda", kind: "block", major: 8, minor: 0, size_bytes: 2 ** 40 }] });
+    throw new Error(`Unexpected request: ${path}`);
+  });
+
+  systemAvailable = false;
+  await context.refreshSnapshot();
+  assert.equal(elements["kernel-value"].textContent, "Unavailable");
+  assert.equal(elements["observed-at"].textContent, "No current system observation");
+  assert.equal(elements["profile-notice-title"].textContent, "System profile unavailable.");
+  assert.equal(elements["device-count"].textContent, "1 device");
+  assert.equal(elements["device-list"].children[0].children[0].children[1].children[0].textContent, "sda");
+  assert.equal(elements["service-status-dot"].className.includes("is-degraded"), true);
+  assert.match(elements["snapshot-status"].textContent, /storage.*current.*system.*unavailable/i);
+}
+
+async function testAllDiagnosticFailuresClearValues() {
+  const { context, elements } = await createHarness(async (path) => {
+    if (path === "/api/v1/auth/status") return jsonResponse({ authenticated: true });
+    if (path === "/api/v1/system" || path === "/api/v1/storage") return jsonResponse({ error: "unavailable" }, 503);
     throw new Error(`Unexpected request: ${path}`);
   });
 
   assert.equal(elements["kernel-value"].textContent, "Unavailable");
-  assert.match(elements["snapshot-status"].textContent, /values were cleared/);
+  assert.match(elements["snapshot-status"].textContent, /system and storage.*unavailable.*cleared/i);
   assert.equal(elements["error-banner"].hidden, false);
   assert.equal(elements["service-status-dot"].className.includes("is-unavailable"), true);
   assert.match(elements["device-list"].children[0].textContent, /no current device values/i);
@@ -215,5 +255,7 @@ async function testDiagnosticFailureClearsValues() {
 await testReadOnlySnapshotAndSafeRendering();
 await testUnavailableAuthIsVisibleAndRetryable();
 await testExpiredSessionReturnsToLogin();
-await testDiagnosticFailureClearsValues();
+await testStorageFailureKeepsOnlyCurrentSystemObservation();
+await testSystemFailureKeepsOnlyCurrentStorageObservation();
+await testAllDiagnosticFailuresClearValues();
 process.stdout.write("Dashboard UI interaction smoke tests passed (DOM fixture; no visual browser coverage).\n");

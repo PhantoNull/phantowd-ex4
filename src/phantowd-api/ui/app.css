@@ -50,6 +50,7 @@ a { color: inherit; text-decoration: none; }
 .status-dot, .footer-dot { color: var(--mint); }
 .status-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--mint); box-shadow: 0 0 12px rgb(143 227 202 / 60%); }
 .status-dot.is-loading { background: var(--amber); box-shadow: 0 0 12px rgb(245 199 126 / 45%); }
+.status-dot.is-degraded { background: var(--amber); box-shadow: 0 0 12px rgb(245 199 126 / 45%); }
 .status-dot.is-unavailable { background: var(--red); box-shadow: 0 0 12px rgb(255 155 155 / 45%); }
 
 .intro { display: flex; align-items: end; justify-content: space-between; gap: 28px; padding: 61px 0 34px; }
