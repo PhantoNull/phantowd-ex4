@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-const listenAddress = "127.0.0.1:8080"
+const listenAddress = defaultListenAddress
 
 type collector func() (systemSnapshot, error)
 type storageSnapshotCollector func() (storageSnapshot, error)
@@ -150,8 +150,14 @@ func writeJSON(w http.ResponseWriter, status int, value any) {
 }
 
 func newServer(handler http.Handler) *http.Server {
+	return newConfiguredServer(handler, apiTransportConfig{
+		Address: listenAddress, AllowedOrigin: defaultPublicOrigin,
+	})
+}
+
+func newConfiguredServer(handler http.Handler, transport apiTransportConfig) *http.Server {
 	return &http.Server{
-		Addr: listenAddress, Handler: handler,
+		Addr: transport.Address, Handler: handler, TLSConfig: transport.TLSConfig,
 		ReadHeaderTimeout: 3 * time.Second, ReadTimeout: 5 * time.Second,
 		WriteTimeout: 5 * time.Second, IdleTimeout: 15 * time.Second,
 		MaxHeaderBytes: 8 * 1024, DisableGeneralOptionsHandler: true,

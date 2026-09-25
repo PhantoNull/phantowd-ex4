@@ -66,27 +66,36 @@ func TestSessionCapacityAndCookieFlags(t *testing.T) {
 
 func TestValidLoopbackOriginRejectsDNSRebindingHosts(t *testing.T) {
 	for _, test := range []struct {
-		host, origin string
-		valid        bool
+		host, origin, allowed string
+		valid                 bool
 	}{
-		{"127.0.0.1:8080", "http://127.0.0.1:8080", true},
-		{"localhost:8080", "http://localhost:8080", true},
-		{"attacker.example:8080", "http://attacker.example:8080", false},
-		{"127.0.0.1:8080", "http://attacker.example:8080", false},
-		{"127.0.0.1:8080", "https://127.0.0.1:8080", false},
-		{"127.0.0.1:8080", "http://127.0.0.1:8080/", false},
+		{"127.0.0.1:8080", "http://127.0.0.1:8080", defaultPublicOrigin, true},
+		{"localhost:8080", "http://localhost:8080", "http://localhost:8080", true},
+		{"attacker.example:8080", "http://attacker.example:8080", defaultPublicOrigin, false},
+		{"127.0.0.1:8080", "http://attacker.example:8080", defaultPublicOrigin, false},
+		{"127.0.0.1:8080", "https://127.0.0.1:8080", defaultPublicOrigin, false},
+		{"127.0.0.1:8080", "http://127.0.0.1:8080/", defaultPublicOrigin, false},
 	} {
 		request := httptest.NewRequest("POST", "http://127.0.0.1:8080/api/v1/auth/login", nil)
 		request.Host = test.host
 		request.Header.Set("Origin", test.origin)
-		if got := validLoopbackOrigin(request); got != test.valid {
+		if got := validOrigin(request, test.allowed); got != test.valid {
 			t.Errorf("host=%q origin=%q valid=%t, want %t", test.host, test.origin, got, test.valid)
 		}
 	}
 	tlsRequest := httptest.NewRequest("POST", "https://127.0.0.1:8080/api/v1/auth/login", nil)
 	tlsRequest.TLS = &tls.ConnectionState{}
 	tlsRequest.Header.Set("Origin", "https://127.0.0.1:8080")
-	if !validLoopbackOrigin(tlsRequest) {
+	if !validOrigin(tlsRequest, "https://127.0.0.1:8080") {
 		t.Fatal("valid TLS loopback origin rejected")
+	}
+}
+
+func TestValidOriginRejectsDuplicateOriginHeaders(t *testing.T) {
+	request := httptest.NewRequest("POST", "http://127.0.0.1:8080/api/v1/auth/login", nil)
+	request.Header.Add("Origin", defaultPublicOrigin)
+	request.Header.Add("Origin", defaultPublicOrigin)
+	if validOrigin(request, defaultPublicOrigin) {
+		t.Fatal("duplicate Origin headers were accepted")
 	}
 }

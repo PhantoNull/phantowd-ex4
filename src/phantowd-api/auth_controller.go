@@ -10,8 +10,6 @@ import (
 	"io"
 	"mime"
 	"net/http"
-	"net/url"
-	"strings"
 	"sync"
 	"time"
 )
@@ -28,11 +26,12 @@ const (
 )
 
 type authController struct {
-	accounts *accountStore
-	sessions *sessionStore
-	loginMu  sync.Mutex
-	windowAt time.Time
-	attempts int
+	accounts      *accountStore
+	sessions      *sessionStore
+	allowedOrigin string
+	loginMu       sync.Mutex
+	windowAt      time.Time
+	attempts      int
 }
 
 type authStatus struct {
@@ -50,8 +49,8 @@ type loginRequest struct {
 	Password string `json:"password"`
 }
 
-func newAuthController(accounts *accountStore) *authController {
-	return &authController{accounts: accounts, sessions: newSessionStore()}
+func newAuthController(accounts *accountStore, allowedOrigin string) *authController {
+	return &authController{accounts: accounts, sessions: newSessionStore(), allowedOrigin: allowedOrigin}
 }
 
 func (a *authController) isAuthPath(path string) bool {
@@ -95,7 +94,7 @@ func (a *authController) status(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *authController) setup(w http.ResponseWriter, r *http.Request) {
-	if !requireMethod(w, r, http.MethodPost) || !validLoopbackOrigin(r) {
+	if !requireMethod(w, r, http.MethodPost) || !validOrigin(r, a.allowedOrigin) {
 		if r.Method == http.MethodPost {
 			writeJSON(w, http.StatusForbidden, map[string]string{"error": "origin_not_allowed"})
 		}
@@ -123,7 +122,7 @@ func (a *authController) login(w http.ResponseWriter, r *http.Request) {
 	if !requireMethod(w, r, http.MethodPost) {
 		return
 	}
-	if !validLoopbackOrigin(r) {
+	if !validOrigin(r, a.allowedOrigin) {
 		writeJSON(w, http.StatusForbidden, map[string]string{"error": "origin_not_allowed"})
 		return
 	}
@@ -168,7 +167,7 @@ func (a *authController) logout(w http.ResponseWriter, r *http.Request) {
 	if !requireMethod(w, r, http.MethodPost) {
 		return
 	}
-	if !validLoopbackOrigin(r) {
+	if !validOrigin(r, a.allowedOrigin) {
 		writeJSON(w, http.StatusForbidden, map[string]string{"error": "origin_not_allowed"})
 		return
 	}
@@ -229,22 +228,6 @@ func (a *authController) allowLogin(now time.Time) bool {
 	}
 	a.attempts++
 	return true
-}
-
-func validLoopbackOrigin(r *http.Request) bool {
-	host := strings.ToLower(r.Host)
-	if host != "127.0.0.1:8080" && host != "localhost:8080" {
-		return false
-	}
-	origin, err := url.Parse(r.Header.Get("Origin"))
-	if err != nil || origin.User != nil || origin.Path != "" || origin.RawQuery != "" || origin.Fragment != "" {
-		return false
-	}
-	scheme := "http"
-	if r.TLS != nil {
-		scheme = "https"
-	}
-	return origin.Scheme == scheme && strings.EqualFold(origin.Host, r.Host)
 }
 
 func requireMethod(w http.ResponseWriter, r *http.Request, method string) bool {

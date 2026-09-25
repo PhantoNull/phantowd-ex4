@@ -40,11 +40,15 @@ func main() {
 	if err != nil {
 		log.Fatal("account state is unavailable or insecure")
 	}
-	server := newServer(newHandler(func() (systemSnapshot, error) {
+	transport, err := loadAPITransportConfig()
+	if err != nil {
+		log.Fatal("API transport configuration is invalid")
+	}
+	server := newConfiguredServer(newHandler(func() (systemSnapshot, error) {
 		return collectSystem(os.DirFS("/proc"), time.Now())
 	}, func() (storageSnapshot, error) {
 		return collectStorage(os.DirFS("/sys"))
-	}, newAuthController(accounts)))
+	}, newAuthController(accounts, transport.AllowedOrigin)), transport)
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
 	shutdownDone := make(chan struct{})
@@ -55,8 +59,12 @@ func main() {
 		defer stop()
 		_ = server.Shutdown(shutdown)
 	}()
-	log.Printf("PhantoWD development diagnostics listening on %s", listenAddress)
-	if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+	log.Printf("PhantoWD development diagnostics listening on %s", server.Addr)
+	serve := server.ListenAndServe
+	if transport.TLSConfig != nil {
+		serve = func() error { return server.ListenAndServeTLS("", "") }
+	}
+	if err := serve(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		log.Fatal("diagnostics server failed")
 	}
 	<-shutdownDone
