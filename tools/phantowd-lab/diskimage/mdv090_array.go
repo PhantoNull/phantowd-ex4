@@ -49,10 +49,10 @@ type MDV090ArraySummary struct {
 	WDCompatibility          string              `json:"wd_compatibility"`
 	Status                   MDV090ArrayStatus   `json:"status"`
 	ArrayLevel               int32               `json:"array_level"`
-	DeclaredDevices          uint32              `json:"declared_devices"`
 	RAIDDisks                uint32              `json:"raid_disks"`
-	ObservedActiveRoles      int                 `json:"observed_active_roles"`
-	MissingActiveRoles       []uint32            `json:"missing_active_roles"`
+	ObservedNRDisks          []uint32            `json:"observed_nr_disks"`
+	ObservedRAIDRoles        int                 `json:"observed_raid_roles"`
+	MissingRAIDRoles         []uint32            `json:"missing_raid_roles"`
 	Members                  []MDV090ArrayMember `json:"members"`
 	Findings                 []string            `json:"findings"`
 }
@@ -61,6 +61,7 @@ type MDV090ArrayMember struct {
 	InputIndex      int    `json:"input_index"`
 	PartitionNumber int    `json:"partition_number"`
 	MemberNumber    uint32 `json:"member_number"`
+	NRDisks         uint32 `json:"nr_disks"`
 	Role            uint32 `json:"role"`
 	RoleDescription string `json:"role_description"`
 	Events          uint64 `json:"events"`
@@ -78,7 +79,8 @@ func CompareMDV090ImageSet(components []MDV090ImageComponent) (MDV090ImageSetRep
 		Arrays:          []MDV090ArraySummary{},
 		Limitations: []string{
 			"only caller-selected regular-file images and their parsed MD 0.90 components are compared; WD XML, other metadata versions, filesystem integrity, disk health, and user data are not inspected",
-			"metadata-consistent means only that observed components agree on selected fields and cover active RAID roles; it does not establish sync state, health, WD compatibility, import safety, or recovery",
+			"metadata-consistent means only that observed components agree on selected constant fields and cover assigned RAID slots; it does not establish member operational state, sync state, health, WD compatibility, import safety, or recovery",
+			"the comparator reads the per-component assigned role but not the MD 0.90 disk descriptor state table, so a reported RAID slot is not evidence that a member is active or in sync",
 			"member identity and replacement/recovery semantics beyond the legacy member number and role are not available in this report",
 			"raw image paths and on-disk identifiers are not returned; fingerprints are redaction aids, not authenticity checks",
 			"no block device is opened, no array is assembled, no filesystem is mounted, and no input image is modified",
@@ -138,28 +140,32 @@ func compareMDV090ArrayGroup(identity string, components []MDV090ImageComponent)
 		WDCompatibility:          "unqualified",
 		Status:                   MDV090ArrayMetadataConsistent,
 		ArrayLevel:               first.ArrayLevel,
-		DeclaredDevices:          first.DeclaredDevices,
 		RAIDDisks:                first.RAIDDisks,
-		MissingActiveRoles:       []uint32{},
+		ObservedNRDisks:          []uint32{},
+		MissingRAIDRoles:         []uint32{},
 		Members:                  []MDV090ArrayMember{},
 		Findings:                 []string{},
 	}
-	if array.DeclaredDevices == 0 || array.DeclaredDevices > mdV090MaxDevices ||
-		array.RAIDDisks == 0 || array.RAIDDisks > array.DeclaredDevices {
+	if array.RAIDDisks == 0 || array.RAIDDisks > mdV090MaxDevices {
 		array.Status = MDV090ArrayConflicting
-		array.Findings = []string{"component reports an invalid RAID-disk or declared-device count"}
+		array.Findings = []string{"component reports a RAID-disk count outside the MD 0.90 metadata limit"}
 		return array
 	}
-
 	activeRoles := make(map[uint32]bool, array.RAIDDisks)
 	memberNumbers := make(map[uint32]bool, len(components))
+	declaredDeviceCounts := make(map[uint32]bool, len(components))
 	duplicate := false
 	conflicting := false
 	divergent := false
+	invalidCounts := false
 	for _, component := range components {
 		current := component.Report
-		if current.ArrayLevel != first.ArrayLevel || current.DeclaredDevices != first.DeclaredDevices ||
-			current.RAIDDisks != first.RAIDDisks {
+		if current.NRDisks == 0 || current.NRDisks > mdV090MaxDevices ||
+			current.RAIDDisks == 0 || current.RAIDDisks > current.NRDisks ||
+			current.MemberNumber >= current.NRDisks {
+			invalidCounts = true
+		}
+		if current.ArrayLevel != first.ArrayLevel || current.RAIDDisks != first.RAIDDisks {
 			conflicting = true
 		}
 		if current.Events != first.Events {
@@ -169,7 +175,8 @@ func compareMDV090ArrayGroup(identity string, components []MDV090ImageComponent)
 			duplicate = true
 		}
 		memberNumbers[current.MemberNumber] = true
-		if current.MemberRoleDescription == "active-slot" && current.MemberRole < array.RAIDDisks {
+		declaredDeviceCounts[current.NRDisks] = true
+		if current.MemberRoleDescription == "raid-slot" && current.MemberRole < array.RAIDDisks {
 			if activeRoles[current.MemberRole] {
 				duplicate = true
 			}
@@ -177,41 +184,53 @@ func compareMDV090ArrayGroup(identity string, components []MDV090ImageComponent)
 		}
 		array.Members = append(array.Members, MDV090ArrayMember{
 			InputIndex: component.InputIndex, PartitionNumber: component.PartitionNumber,
-			MemberNumber: current.MemberNumber, Role: current.MemberRole,
+			MemberNumber: current.MemberNumber, NRDisks: current.NRDisks, Role: current.MemberRole,
 			RoleDescription: current.MemberRoleDescription, Events: current.Events,
 		})
 	}
+	for count := range declaredDeviceCounts {
+		array.ObservedNRDisks = append(array.ObservedNRDisks, count)
+	}
+	sort.Slice(array.ObservedNRDisks, func(i, j int) bool {
+		return array.ObservedNRDisks[i] < array.ObservedNRDisks[j]
+	})
 	for role := uint32(0); role < array.RAIDDisks; role++ {
 		if activeRoles[role] {
-			array.ObservedActiveRoles++
+			array.ObservedRAIDRoles++
 		} else {
-			array.MissingActiveRoles = append(array.MissingActiveRoles, role)
+			array.MissingRAIDRoles = append(array.MissingRAIDRoles, role)
 		}
 	}
 	if duplicate {
-		array.Findings = append(array.Findings, "duplicate member number or active RAID role is present")
+		array.Findings = append(array.Findings, "duplicate member number or assigned RAID slot is present")
 	}
 	if conflicting {
 		array.Findings = append(array.Findings, "array-level fields disagree across component superblocks")
 	}
+	if invalidCounts {
+		array.Findings = append(array.Findings, "one or more components report invalid member or RAID-disk counts")
+	}
+	if len(array.ObservedNRDisks) > 1 {
+		array.Findings = append(array.Findings, "component nr_disks values differ; Linux MD 0.90 does not treat nr_disks as a constant array field")
+	}
 	if divergent {
 		array.Findings = append(array.Findings, "component superblock event counters differ; stale or interrupted metadata requires separate analysis")
 	}
-	if len(array.MissingActiveRoles) != 0 {
-		array.Findings = append(array.Findings, fmt.Sprintf("%d active RAID role(s) are missing from the supplied image set", len(array.MissingActiveRoles)))
+	if len(array.MissingRAIDRoles) != 0 {
+		array.Findings = append(array.Findings, fmt.Sprintf("%d assigned RAID slot(s) are missing from the supplied image set", len(array.MissingRAIDRoles)))
 	}
 	switch {
 	case duplicate:
 		array.Status = MDV090ArrayAmbiguous
-	case conflicting:
+	case conflicting || invalidCounts:
 		array.Status = MDV090ArrayConflicting
 	case divergent:
 		array.Status = MDV090ArrayDivergent
-	case len(array.MissingActiveRoles) != 0:
+	case len(array.MissingRAIDRoles) != 0:
 		array.Status = MDV090ArrayIncomplete
 	}
 	if array.Status == MDV090ArrayMetadataConsistent {
-		array.Findings = append(array.Findings, "components agree on selected MD 0.90 metadata fields and cover each active role; this is not proof of data synchronization or array health")
+		array.Findings = append(array.Findings, "components agree on selected constant MD 0.90 fields and cover each assigned RAID slot; device state, data synchronization, and array health remain unqualified")
 	}
 	return array
 }

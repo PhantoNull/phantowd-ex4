@@ -433,7 +433,7 @@ func TestInspectStorageImageAggregatesReadOnlyPartitionObservations(t *testing.T
 func TestInspectMDV090ImageSetIsReadOnlyGenericAndRedactsPaths(t *testing.T) {
 	first := syntheticGPTImageWithMDV090()
 	second := syntheticGPTImageWithMDV090()
-	setSyntheticMDV090GPTMember(second, 1, 1, 42)
+	setSyntheticMDV090GPTMember(second, 1, 1, 42, 3)
 	paths := []string{
 		filepath.Join(t.TempDir(), "private-disk-one.img"),
 		filepath.Join(t.TempDir(), "private-disk-two.img"),
@@ -457,7 +457,8 @@ func TestInspectMDV090ImageSetIsReadOnlyGenericAndRedactsPaths(t *testing.T) {
 		MutationsPerformed bool   `json:"mutations_performed"`
 		Comparison         struct {
 			Arrays []struct {
-				Status string `json:"status"`
+				Status          string   `json:"status"`
+				ObservedNRDisks []uint32 `json:"observed_nr_disks"`
 			} `json:"arrays"`
 		} `json:"md_v0_90_comparison"`
 	}
@@ -466,7 +467,10 @@ func TestInspectMDV090ImageSetIsReadOnlyGenericAndRedactsPaths(t *testing.T) {
 	}
 	if report.Format != "phantowd-md-v0.90-image-set-inspection" || report.WDCompatibility != "unqualified" ||
 		report.AssemblyPerformed || report.MountPerformed || report.MutationsPerformed || len(report.Comparison.Arrays) != 1 ||
-		report.Comparison.Arrays[0].Status != "metadata-consistent" {
+		report.Comparison.Arrays[0].Status != "metadata-consistent" ||
+		len(report.Comparison.Arrays[0].ObservedNRDisks) != 2 ||
+		report.Comparison.Arrays[0].ObservedNRDisks[0] != 2 ||
+		report.Comparison.Arrays[0].ObservedNRDisks[1] != 3 {
 		t.Fatalf("unexpected generic image-set report: %+v; raw=%s", report, output.String())
 	}
 	for index, path := range paths {
@@ -485,7 +489,7 @@ func TestInspectMDV090ImageSetIsReadOnlyGenericAndRedactsPaths(t *testing.T) {
 	}
 	divergentPath := filepath.Join(t.TempDir(), "divergent-disk.img")
 	divergent := syntheticGPTImageWithMDV090()
-	setSyntheticMDV090GPTMember(divergent, 1, 1, 41)
+	setSyntheticMDV090GPTMember(divergent, 1, 1, 41, 2)
 	if err := os.WriteFile(divergentPath, divergent, 0o600); err != nil {
 		t.Fatal(err)
 	}
@@ -709,7 +713,7 @@ func syntheticGPTImageWithMDV090() []byte {
 	return image
 }
 
-func setSyntheticMDV090GPTMember(image []byte, memberNumber, role uint32, events uint64) {
+func setSyntheticMDV090GPTMember(image []byte, memberNumber, role uint32, events uint64, declaredDevices uint32) {
 	const sector = 512
 	const firstLBA = 64
 	const lastLBA = 2048 - 64
@@ -717,6 +721,7 @@ func setSyntheticMDV090GPTMember(image []byte, memberNumber, role uint32, events
 	superblockOffset := int(partitionBytes&^(64*1024-1)) - 64*1024
 	superblockStart := firstLBA*sector + superblockOffset
 	superblock := image[superblockStart : superblockStart+4096]
+	binary.LittleEndian.PutUint32(superblock[36:40], declaredDevices)
 	binary.LittleEndian.PutUint32(superblock[156:160], uint32(events))
 	binary.LittleEndian.PutUint32(superblock[160:164], uint32(events>>32))
 	binary.LittleEndian.PutUint32(superblock[992*4:992*4+4], memberNumber)

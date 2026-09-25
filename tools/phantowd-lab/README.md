@@ -188,14 +188,19 @@ tool does not authorize an import or migration.
 `inspect-md-v0.90-image-set` accepts two to four whole-disk regular image
 files, requires valid generic GPT on each, and groups plausible little-endian
 MD 0.90 component superblocks by redacted array fingerprint. It compares only
-selected array geometry, event counters, member numbers, and active-role
-coverage. `metadata-consistent` is a narrow metadata result—not evidence of
-data synchronization, health, WD compatibility, migration safety, or safe
-assembly. Missing roles, duplicate member numbers/active roles, conflicting
-geometry, and differing event counters are non-success statuses. Unidentified
-array IDs are counted but never grouped. Paths and raw IDs are omitted; inputs
-are identified by ordinal. The command uses regular files only and does not
-open block devices, assemble arrays, mount filesystems, or modify images.
+array level and RAID-disk count, event counters, member numbers, and assigned
+RAID-slot coverage. It reports each component's `nr_disks` value but does not
+require these values to match: Linux explicitly treats `nr_disks` as
+non-constant MD 0.90 metadata. A `raid-slot` is only an assigned role; the
+comparator does not parse the per-device state table and cannot say whether a
+member is active or synchronized. `metadata-consistent` is a narrow metadata
+result—not evidence of data synchronization, health, WD compatibility,
+migration safety, or safe assembly. Missing roles, duplicate member
+numbers/assigned slots, conflicting geometry, and differing event counters
+are non-success statuses. Unidentified array IDs are counted but never
+grouped. Paths and raw IDs are omitted; inputs are identified by ordinal. The
+command uses regular files only and does not open block devices, assemble
+arrays, mount filesystems, or modify images.
 
 `inspect-ext-partition` first requires a structurally valid GPT, then reads
 only the standard 1024-byte ext-family superblock at byte offset 1024 within

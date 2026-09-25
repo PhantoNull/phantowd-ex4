@@ -24,7 +24,8 @@ func TestCompareMDV090ImageSetReportsCompleteGenericArrayMetadata(t *testing.T) 
 	}
 	array := report.Arrays[0]
 	if report.CandidateComponents != 2 || array.Status != MDV090ArrayMetadataConsistent ||
-		array.RAIDDisks != 2 || array.ObservedActiveRoles != 2 || len(array.MissingActiveRoles) != 0 ||
+		array.RAIDDisks != 2 || len(array.ObservedNRDisks) != 1 || array.ObservedNRDisks[0] != 2 ||
+		array.ObservedRAIDRoles != 2 || len(array.MissingRAIDRoles) != 0 ||
 		len(array.Members) != 2 || array.ArrayIdentityFingerprint == "" ||
 		array.WDCompatibility != "unqualified" || report.AssemblyPerformed || report.MountPerformed {
 		t.Fatalf("unexpected generic MD 0.90 comparison: %+v", report)
@@ -40,7 +41,38 @@ func TestCompareMDV090ImageSetReportsCompleteGenericArrayMetadata(t *testing.T) 
 	}
 }
 
-func TestCompareMDV090ImageSetMarksMissingActiveMemberIncomplete(t *testing.T) {
+func TestCompareMDV090ImageSetReportsVariableNonconstantDeviceCounts(t *testing.T) {
+	report, err := CompareMDV090ImageSet([]MDV090ImageComponent{
+		md090ArrayComponent(1, 1, 0, 0, 42),
+		md090ArrayComponentWithNRDisks(2, 1, 1, 1, 42, 3),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(report.Arrays) != 1 || report.Arrays[0].Status != MDV090ArrayMetadataConsistent ||
+		len(report.Arrays[0].ObservedNRDisks) != 2 || report.Arrays[0].ObservedNRDisks[0] != 2 ||
+		report.Arrays[0].ObservedNRDisks[1] != 3 {
+		t.Fatalf("variable nr_disks field was treated as conflicting or hidden: %+v", report)
+	}
+}
+
+func TestCompareMDV090ImageSetSpareDoesNotFillAssignedRAIDSlots(t *testing.T) {
+	spare := md090ArrayComponentWithNRDisks(3, 1, 2, mdV090RoleSpare, 42, 3)
+	report, err := CompareMDV090ImageSet([]MDV090ImageComponent{
+		md090ArrayComponent(1, 1, 0, 0, 42),
+		md090ArrayComponent(2, 1, 1, 1, 42),
+		spare,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(report.Arrays) != 1 || report.Arrays[0].Status != MDV090ArrayMetadataConsistent ||
+		report.Arrays[0].ObservedRAIDRoles != 2 || len(report.Arrays[0].MissingRAIDRoles) != 0 {
+		t.Fatalf("spare role affected assigned-slot coverage: %+v", report)
+	}
+}
+
+func TestCompareMDV090ImageSetMarksMissingRAIDRoleIncomplete(t *testing.T) {
 	report, err := CompareMDV090ImageSet([]MDV090ImageComponent{
 		md090ArrayComponent(1, 1, 0, 0, 42),
 	})
@@ -48,13 +80,13 @@ func TestCompareMDV090ImageSetMarksMissingActiveMemberIncomplete(t *testing.T) {
 		t.Fatal(err)
 	}
 	if len(report.Arrays) != 1 || report.Arrays[0].Status != MDV090ArrayIncomplete ||
-		report.Arrays[0].ObservedActiveRoles != 1 || len(report.Arrays[0].MissingActiveRoles) != 1 ||
-		report.Arrays[0].MissingActiveRoles[0] != 1 {
-		t.Fatalf("single member was not conservatively marked incomplete: %+v", report)
+		report.Arrays[0].ObservedRAIDRoles != 1 || len(report.Arrays[0].MissingRAIDRoles) != 1 ||
+		report.Arrays[0].MissingRAIDRoles[0] != 1 {
+		t.Fatalf("missing assigned RAID slot was not conservatively marked incomplete: %+v", report)
 	}
 }
 
-func TestCompareMDV090ImageSetRejectsDuplicateActiveRole(t *testing.T) {
+func TestCompareMDV090ImageSetRejectsDuplicateAssignedRAIDRole(t *testing.T) {
 	report, err := CompareMDV090ImageSet([]MDV090ImageComponent{
 		md090ArrayComponent(1, 1, 0, 0, 42),
 		md090ArrayComponent(2, 1, 1, 0, 42),
@@ -63,7 +95,7 @@ func TestCompareMDV090ImageSetRejectsDuplicateActiveRole(t *testing.T) {
 		t.Fatal(err)
 	}
 	if len(report.Arrays) != 1 || report.Arrays[0].Status != MDV090ArrayAmbiguous {
-		t.Fatalf("duplicate active role was not marked ambiguous: %+v", report)
+		t.Fatalf("duplicate assigned RAID role was not marked ambiguous: %+v", report)
 	}
 }
 
@@ -113,9 +145,26 @@ func TestCompareMDV090ImageSetRejectsDuplicateInputLocation(t *testing.T) {
 	}
 }
 
+func TestCompareMDV090ImageSetBoundsCallerSuppliedRAIDCount(t *testing.T) {
+	component := md090ArrayComponent(1, 1, 0, 0, 42)
+	component.Report.RAIDDisks = ^uint32(0)
+	report, err := CompareMDV090ImageSet([]MDV090ImageComponent{component})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(report.Arrays) != 1 || report.Arrays[0].Status != MDV090ArrayConflicting {
+		t.Fatalf("out-of-range caller-supplied RAID count was not rejected safely: %+v", report)
+	}
+}
+
 func md090ArrayComponent(inputIndex, partitionNumber int, memberNumber, role uint32, events uint64) MDV090ImageComponent {
+	return md090ArrayComponentWithNRDisks(inputIndex, partitionNumber, memberNumber, role, events, 2)
+}
+
+func md090ArrayComponentWithNRDisks(inputIndex, partitionNumber int, memberNumber, role uint32, events uint64, nrDisks uint32) MDV090ImageComponent {
 	image := syntheticMDV090Component()
 	superblock := mdV090Superblock(image)
+	binary.LittleEndian.PutUint32(superblock[36:40], nrDisks)
 	binary.LittleEndian.PutUint32(superblock[156:160], uint32(events))
 	binary.LittleEndian.PutUint32(superblock[160:164], uint32(events>>32))
 	binary.LittleEndian.PutUint32(superblock[mdV090ThisDiskOffset:mdV090ThisDiskOffset+4], memberNumber)

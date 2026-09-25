@@ -51,6 +51,9 @@ const (
 	mdV090ChecksumField   = 152
 	mdV090MaxDevices      = 27
 	mdV090ThisDiskOffset  = 992 * 4
+	mdV090RoleSpare       = 0xffff
+	mdV090RoleFaulty      = 0xfffe
+	mdV090RoleJournal     = 0xfffd
 )
 
 // MDV090Report is a bounded, read-only observation of a generic Linux MD
@@ -66,7 +69,7 @@ type MDV090Report struct {
 	ComponentBytes           uint64       `json:"component_bytes"`
 	SuperblockOffsetBytes    uint64       `json:"superblock_offset_bytes"`
 	ArrayLevel               int32        `json:"array_level"`
-	DeclaredDevices          uint32       `json:"declared_devices"`
+	NRDisks                  uint32       `json:"nr_disks"`
 	RAIDDisks                uint32       `json:"raid_disks"`
 	MemberNumber             uint32       `json:"member_number"`
 	MemberRole               uint32       `json:"member_role"`
@@ -143,24 +146,31 @@ func InspectMDV090Component(image io.ReaderAt, imageSize int64) (MDV090Report, e
 	report.SuperblockChecksumStatus = "valid"
 
 	report.ArrayLevel = int32(binary.LittleEndian.Uint32(superblock[28:32]))
-	report.DeclaredDevices = binary.LittleEndian.Uint32(superblock[36:40])
+	report.NRDisks = binary.LittleEndian.Uint32(superblock[36:40])
 	report.RAIDDisks = binary.LittleEndian.Uint32(superblock[40:44])
 	report.Events = uint64(binary.LittleEndian.Uint32(superblock[156:160])) |
 		uint64(binary.LittleEndian.Uint32(superblock[160:164]))<<32
 	report.MemberNumber = binary.LittleEndian.Uint32(superblock[mdV090ThisDiskOffset : mdV090ThisDiskOffset+4])
 	report.MemberRole = binary.LittleEndian.Uint32(superblock[mdV090ThisDiskOffset+12 : mdV090ThisDiskOffset+16])
 
-	if report.DeclaredDevices == 0 || report.DeclaredDevices > mdV090MaxDevices ||
-		report.RAIDDisks == 0 || report.RAIDDisks > report.DeclaredDevices ||
-		report.MemberNumber >= report.DeclaredDevices {
+	if report.NRDisks == 0 || report.NRDisks > mdV090MaxDevices ||
+		report.RAIDDisks == 0 || report.RAIDDisks > report.NRDisks ||
+		report.MemberNumber >= report.NRDisks {
 		return damagedMDV090(report, "MD 0.90 member and array counts are inconsistent with the 27-device metadata limit"), nil
 	}
 	if report.MemberRole < report.RAIDDisks {
-		report.MemberRoleDescription = "active-slot"
-	} else if report.MemberRole == ^uint32(0) {
-		report.MemberRoleDescription = "unassigned-or-spare"
+		report.MemberRoleDescription = "raid-slot"
 	} else {
-		return unsupportedMDV090(report, "MD 0.90 member role uses an unrecognized value"), nil
+		switch report.MemberRole {
+		case mdV090RoleSpare:
+			report.MemberRoleDescription = "spare-role"
+		case mdV090RoleFaulty:
+			report.MemberRoleDescription = "faulty-role"
+		case mdV090RoleJournal:
+			report.MemberRoleDescription = "journal-role"
+		default:
+			return unsupportedMDV090(report, "MD 0.90 member role uses an unrecognized value"), nil
+		}
 	}
 
 	arrayUUID := make([]byte, 16)

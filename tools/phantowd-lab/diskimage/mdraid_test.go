@@ -189,8 +189,8 @@ func TestInspectMDV090ComponentReportsRedactedCandidate(t *testing.T) {
 	}
 	if report.Status != MDV090StatusCandidate || report.MetadataVersion != "0.90" ||
 		report.ComponentBytes != uint64(len(image)) || report.SuperblockOffsetBytes != uint64(len(image)-mdV090ReservedBytes) ||
-		report.ArrayLevel != 1 || report.DeclaredDevices != 2 || report.RAIDDisks != 2 ||
-		report.MemberNumber != 0 || report.MemberRole != 0 || report.MemberRoleDescription != "active-slot" ||
+		report.ArrayLevel != 1 || report.NRDisks != 2 || report.RAIDDisks != 2 ||
+		report.MemberNumber != 0 || report.MemberRole != 0 || report.MemberRoleDescription != "raid-slot" ||
 		report.Events != 42 || report.SuperblockChecksumStatus != "valid" || !report.RawIdentityRedacted ||
 		!report.ImageMetadataRead || report.BlockDeviceOpened || report.MutationsPerformed ||
 		report.AssemblyPerformed || report.MountPerformed {
@@ -207,6 +207,25 @@ func TestInspectMDV090ComponentReportsRedactedCandidate(t *testing.T) {
 		if strings.Contains(string(encoded), secret) {
 			t.Fatalf("report leaked %q: %s", secret, encoded)
 		}
+	}
+}
+
+func TestInspectMDV090ComponentRecognizesSpecialRoles(t *testing.T) {
+	for role, wantDescription := range map[uint32]string{
+		mdV090RoleSpare:   "spare-role",
+		mdV090RoleFaulty:  "faulty-role",
+		mdV090RoleJournal: "journal-role",
+	} {
+		t.Run(wantDescription, func(t *testing.T) {
+			image := syntheticMDV090Component()
+			superblock := mdV090Superblock(image)
+			binary.LittleEndian.PutUint32(superblock[mdV090ThisDiskOffset+12:mdV090ThisDiskOffset+16], role)
+			sealMDV090Superblock(superblock)
+			report, err := InspectMDV090Component(bytes.NewReader(image), int64(len(image)))
+			if err != nil || report.Status != MDV090StatusCandidate || report.MemberRoleDescription != wantDescription {
+				t.Fatalf("special role %#x was not recognized: report=%+v err=%v", role, report, err)
+			}
+		})
 	}
 }
 
@@ -252,6 +271,14 @@ func TestInspectMDV090ComponentClassifiesMissingUnsupportedAndDamaged(t *testing
 				sealMDV090Superblock(sb)
 			},
 			status: MDV090StatusDamaged,
+		},
+		{
+			name: "unknown 32-bit role sentinel",
+			mutate: func(sb []byte) {
+				binary.LittleEndian.PutUint32(sb[mdV090ThisDiskOffset+12:mdV090ThisDiskOffset+16], ^uint32(0))
+				sealMDV090Superblock(sb)
+			},
+			status: MDV090StatusUnsupported,
 		},
 		{
 			name: "big-endian metadata",
