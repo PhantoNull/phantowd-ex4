@@ -9,8 +9,10 @@ The project is at the **hardware discovery and non-destructive bring-up**
 stage. It does not yet produce a flashable replacement firmware. It now has a
 separately named ARMv5 QEMU baseline for software-only development.
 Short, diskless RAM boots of serial-only Stage A, Ethernet-enumeration Stage B,
-and the bounded Stage B2 dual-link probe have succeeded on one EX4. These
-results do not qualify storage, cooling, sustained networking or flash updates.
+the bounded Stage B2 dual-link probe, and Stage B3 Linux 6.18.53 have succeeded
+on one EX4. Stage B3 reached its serial readiness marker, sampled link and
+internal temperature, then halted. It does not qualify stable networking,
+factory identity on the second port, cooling, storage, or flash updates.
 
 ## Current work
 
@@ -140,10 +142,15 @@ current policy also rejects malformed, all-zero, multicast, and duplicate MAC
 addresses before raising either link, while the known placeholder remains a
 warning so the isolated link/sensor probe can still run. The focused policy
 tests pass under BusyBox `ash` and the pinned Buildroot container shell. The
-current Linux 6.18.53 head passed the compile-only Stage B3 build on
-[GitHub Actions run 36093115499](https://github.com/PhantoNull/phantowd-ex4/actions/runs/36093115499).
-The expanded policy has not been retested on the EX4. Stage B3 remains
-research-only and non-flashable.
+merged Linux 6.18.53 head passed compile-only CI on
+[GitHub Actions run 36122748929](https://github.com/PhantoNull/phantowd-ex4/actions/runs/36122748929)
+and has since completed one diskless RAM boot on the exact EX4. `eth0` reached
+1 Gbit/s/full duplex in the final brief sample after carrier transitions;
+`eth1` stayed down with a placeholder address. The internal temperature
+sensor was read but not independently calibrated. The image configured no IP,
+DHCP, services, storage, NAND/MTD or persistent state, then halted. This is a
+single hardware handoff observation, not a product qualification. Stage B3
+remains research-only and non-flashable.
 
 `BR2_REPRODUCIBLE` is enabled. GitHub run
 [36097108144](https://github.com/PhantoNull/phantowd-ex4/actions/runs/36097108144)
