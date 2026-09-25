@@ -31,12 +31,12 @@ const (
 )
 
 var (
-	identifierPattern = regexp.MustCompile(`^[a-z0-9][a-z0-9.-]{0,63}$`)
-	filenamePattern   = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._+-]{0,127}$`)
-	rolePattern       = regexp.MustCompile(`^[a-z][a-z0-9-]{0,31}$`)
-	versionPattern    = regexp.MustCompile(`^v[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?$`)
-	commitPattern     = regexp.MustCompile(`^(?:[0-9a-f]{40}|[0-9a-f]{64})$`)
-	digestPattern     = regexp.MustCompile(`^[0-9a-f]{64}$`)
+	identifierPattern       = regexp.MustCompile(`^[a-z0-9][a-z0-9.-]{0,63}$`)
+	filenamePattern         = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._+-]{0,127}$`)
+	rolePattern             = regexp.MustCompile(`^[a-z][a-z0-9-]{0,31}$`)
+	componentVersionPattern = regexp.MustCompile(`^v?[0-9]+\.[0-9]+\.[0-9]+$`)
+	commitPattern           = regexp.MustCompile(`^(?:[0-9a-f]{40}|[0-9a-f]{64})$`)
+	digestPattern           = regexp.MustCompile(`^[0-9a-f]{64}$`)
 )
 
 // Manifest is the versioned, signed metadata accompanying release assets.
@@ -88,8 +88,20 @@ type Report struct {
 	RequestedHardware      string           `json:"requested_hardware_revision,omitempty"`
 	RequestedChannel       string           `json:"requested_channel,omitempty"`
 	Artifacts              []ArtifactResult `json:"artifacts"`
+	UpdatePolicy           *UpdatePolicy    `json:"update_policy,omitempty"`
 	Findings               []string         `json:"findings"`
 	Limitations            []string         `json:"limitations"`
+}
+
+// UpdatePolicy reports only whether a fully verified release is newer than a
+// caller-supplied installed version. It never authorizes installation.
+type UpdatePolicy struct {
+	Evaluated              bool   `json:"evaluated"`
+	CurrentVersion         string `json:"current_version,omitempty"`
+	ReleaseVersion         string `json:"release_version,omitempty"`
+	StrictlyNewer          bool   `json:"strictly_newer"`
+	InstallationAuthorized bool   `json:"installation_authorized"`
+	Finding                string `json:"finding,omitempty"`
 }
 
 // ArtifactResult avoids echoing arbitrary local paths into the report.
@@ -269,6 +281,32 @@ func Inspect(manifestReader, signatureReader io.Reader, publicKey ed25519.Public
 	return verified.VerifyArtifacts(artifactDirectory), nil
 }
 
+// AssessUpgradeVersion adds an optional anti-rollback comparison to a report.
+// A true StrictlyNewer result is only a host-side version-policy observation;
+// the caller-supplied key, hardware qualification, persistent rollback state,
+// install-time re-verification, and installation remain outside this tool.
+func AssessUpgradeVersion(report Report, currentVersion string) Report {
+	policy := &UpdatePolicy{
+		CurrentVersion:         currentVersion,
+		ReleaseVersion:         report.ReleaseVersion,
+		InstallationAuthorized: false,
+	}
+	if !report.Valid {
+		policy.Finding = "full signature, target, channel, and artifact verification is required"
+	} else if currentVersion == "" {
+		policy.Finding = "current installed version is required"
+	} else {
+		policy.Evaluated = true
+		if err := CheckMonotonicUpgrade(currentVersion, report.ReleaseVersion); err != nil {
+			policy.Finding = err.Error()
+		} else {
+			policy.StrictlyNewer = true
+		}
+	}
+	report.UpdatePolicy = policy
+	return report
+}
+
 func validateManifest(manifest Manifest) error {
 	var problems []string
 	if manifest.Format != manifestFormat || manifest.SchemaVersion != manifestVersion {
@@ -277,8 +315,11 @@ func validateManifest(manifest Manifest) error {
 	if manifest.Product != "phantowd" {
 		problems = append(problems, "product must be phantowd")
 	}
-	if !versionPattern.MatchString(manifest.ReleaseVersion) || !versionPattern.MatchString(manifest.MinimumInstaller) {
-		problems = append(problems, "release and minimum-installer versions must use vMAJOR.MINOR.PATCH syntax")
+	if _, err := parseVersion(manifest.ReleaseVersion); err != nil {
+		problems = append(problems, "release_version must use strict v-prefixed SemVer 2.0 syntax without build metadata")
+	}
+	if _, err := parseVersion(manifest.MinimumInstaller); err != nil {
+		problems = append(problems, "minimum_installer must use strict v-prefixed SemVer 2.0 syntax without build metadata")
 	}
 	if manifest.Channel != "stable" && manifest.Channel != "beta" && manifest.Channel != "nightly" {
 		problems = append(problems, "channel must be stable, beta, or nightly")
@@ -289,7 +330,7 @@ func validateManifest(manifest Manifest) error {
 	if !commitPattern.MatchString(manifest.SourceCommit) {
 		problems = append(problems, "source_commit must be a lowercase 40- or 64-character hexadecimal commit")
 	}
-	if !versionPattern.MatchString("v"+strings.TrimPrefix(manifest.BuildrootVersion, "v")) || !versionPattern.MatchString("v"+strings.TrimPrefix(manifest.KernelVersion, "v")) {
+	if !componentVersionPattern.MatchString(manifest.BuildrootVersion) || !componentVersionPattern.MatchString(manifest.KernelVersion) {
 		problems = append(problems, "Buildroot and kernel versions must be numeric dotted versions, optionally prefixed by v")
 	}
 	if len(manifest.HardwareRevisions) == 0 || len(manifest.HardwareRevisions) > 16 {

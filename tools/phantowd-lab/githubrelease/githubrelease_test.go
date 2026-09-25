@@ -91,6 +91,17 @@ func TestInspectRejectsMutableAndMismatchedReleases(t *testing.T) {
 	})
 }
 
+func TestInspectRejectsNonSemVerTagBeforeNetworkAccess(t *testing.T) {
+	_, err := Inspect(context.Background(), Options{
+		APIBase: "http://127.0.0.1:1", Owner: ProjectOwner, Repository: ProjectRepository,
+		Tag: "v01.2.3", PublicKey: make([]byte, ed25519.PublicKeySize),
+		ModelID: "wd-my-cloud-ex4", Revision: "board-r1", Channel: "nightly",
+	})
+	if err == nil || !strings.Contains(err.Error(), "strict v-prefixed SemVer") {
+		t.Fatalf("non-SemVer release tag was not rejected during preflight: %v", err)
+	}
+}
+
 func TestInspectRejectsUnlistedOrTamperedPayload(t *testing.T) {
 	t.Run("unlisted asset", func(t *testing.T) {
 		fixture := newReleaseFixture(t, []byte("payload"))

@@ -18,8 +18,8 @@ children. Captures larger than 16 MiB are rejected where applicable.
 ## Commands
 
 ```text
-phantowd-lab inspect-github-release --tag VERSION --public-key FILE --model ID --revision ID --channel stable|beta|nightly
-phantowd-lab inspect-release --manifest FILE --signature FILE --public-key FILE --artifacts DIR --model ID --revision ID --channel stable|beta|nightly
+phantowd-lab inspect-github-release --tag VERSION --public-key FILE --model ID --revision ID --channel stable|beta|nightly [--current-version VERSION]
+phantowd-lab inspect-release --manifest FILE --signature FILE --public-key FILE --artifacts DIR --model ID --revision ID --channel stable|beta|nightly [--current-version VERSION]
 phantowd-lab inspect-update FILE
 phantowd-lab inspect-mtd3 FILE
 phantowd-lab inspect-rescue FILE
@@ -60,6 +60,15 @@ when the signature, metadata, target, and every artifact pass; `2` means a parse
 release is invalid for that key/target or one or more payloads fail; `1` is
 reserved for usage, input, or structural errors.
 
+Both release-inspection commands optionally accept `--current-version` with the
+installed `vMAJOR.MINOR.PATCH` version. When supplied, a verified report adds an
+`update_policy` assessment that checks strict SemVer precedence and marks only a
+strictly newer release as monotonic. This is an advisory host-side comparison:
+the installed version is caller-supplied, no anti-rollback state is persisted,
+and the result never authorizes installation. A same-version release or
+downgrade is reported as not monotonic but does not change the release-integrity
+exit status.
+
 `inspect-github-release` is a host-side bridge for the planned public GitHub
 distribution path. It requests one exact version tag from the PhantoWD EX4
 repository (it does not follow a mutable `latest` pointer), requires the API to
@@ -79,9 +88,9 @@ endpoint. See GitHub's [REST API rate-limit documentation](https://docs.github.c
 The public release is the distribution location, not the trust anchor. The
 caller still supplies a raw public key, so this host command cannot prove that
 the caller chose PhantoWD's genuine key. A future device updater must use a
-public key pinned in a trusted bootstrap/update component, keep its own
-anti-rollback state, re-verify the staged bytes immediately before install,
-and have a tested recovery path. GitHub immutable releases prevent edits to a
+public key pinned in a trusted bootstrap/update component, persistently enforce
+anti-rollback state, re-verify staged bytes immediately before install, and
+have a tested recovery path. GitHub immutable releases prevent edits to a
 published tag and its attached assets, but do not replace PhantoWD's signature
 or device-side rollback policy. See GitHub's documentation on
 [immutable releases](https://docs.github.com/en/code-security/concepts/supply-chain-security/immutable-releases)
@@ -89,8 +98,9 @@ and [release asset downloads](https://docs.github.com/en/rest/releases/assets).
 
 This is an offline host-side verifier, not the device updater: the caller must
 obtain the public key through a separately trusted channel. Its result always
-sets `installation_authorized` and `hardware_qualified` to false. It does not
-establish key provisioning/rotation, anti-rollback, release expiry, HIL
+sets `installation_authorized` and `hardware_qualified` to false. The optional
+version comparison does not establish persistent anti-rollback enforcement.
+The tool does not establish key provisioning/rotation, release expiry, HIL
 qualification, NAND layout, a safe slot, or an installation/recovery path.
 The signature protects the exact manifest bytes; artifacts are bound by the
 signed size and SHA-256 entries. No files are extracted, modified, installed,

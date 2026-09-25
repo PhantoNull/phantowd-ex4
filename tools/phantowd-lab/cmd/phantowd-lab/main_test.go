@@ -69,6 +69,13 @@ func TestInspectReleaseCLIValidatesSignatureTargetAndPayload(t *testing.T) {
 		t.Fatalf("unexpected verifier report: %s", output.String())
 	}
 
+	upgradeArgs := append(append([]string(nil), args...), "--current-version", "v0.0.9")
+	output.Reset()
+	code, err = run(upgradeArgs, &output)
+	if err != nil || code != 0 || !strings.Contains(output.String(), `"strictly_newer": true`) || !strings.Contains(output.String(), `"installation_authorized": false`) {
+		t.Fatalf("optional monotonic version assessment failed safely: code=%d err=%v output=%s", code, err, output.String())
+	}
+
 	output.Reset()
 	args[len(args)-3] = "board-r2"
 	code, err = run(args, &output)

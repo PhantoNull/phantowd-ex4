@@ -86,6 +86,19 @@ func TestInspectRejectsTraversalAndDuplicateJSONKeys(t *testing.T) {
 	}
 }
 
+func TestInspectRejectsNonSemVerReleaseMetadata(t *testing.T) {
+	fixture := makeBundle(t, "wd-my-cloud-ex4", []string{"board-r1"}, []byte("payload"))
+	manifest := strings.Replace(string(fixture.manifest), `"release_version":"v0.1.0"`, `"release_version":"v00.1.0"`, 1)
+	manifestBytes := []byte(manifest)
+	report, err := Inspect(bytes.NewReader(manifestBytes), bytes.NewReader(ed25519.Sign(fixture.privateKey, manifestBytes)), fixture.publicKey, fixture.directory, "wd-my-cloud-ex4", "board-r1", "nightly")
+	if err != nil || report.Valid || report.ArtifactsChecked || report.ArtifactsValid {
+		t.Fatalf("non-SemVer release version was accepted: report=%+v err=%v", report, err)
+	}
+	if !strings.Contains(strings.Join(report.Findings, " "), "strict v-prefixed SemVer") {
+		t.Fatalf("missing strict version-policy finding: %+v", report.Findings)
+	}
+}
+
 func TestInspectRejectsMissingFileAndWrongKeyID(t *testing.T) {
 	fixture := makeBundle(t, "wd-my-cloud-ex4", []string{"board-r1"}, []byte("payload"))
 	if err := os.Remove(filepath.Join(fixture.directory, "rootfs.swu")); err != nil {
