@@ -32,6 +32,8 @@ CONFIG_MV643XX_ETH=y
 CONFIG_MVMDIO=y
 CONFIG_PHYLIB=y
 CONFIG_OF_MDIO=y
+CONFIG_NET_RX_BUSY_POLL=y
+CONFIG_NET_SELFTESTS=y
 CONFIG_THERMAL=y
 CONFIG_THERMAL_OF=y
 CONFIG_KIRKWOOD_THERMAL=y
@@ -64,6 +66,8 @@ CONFIG_MV643XX_ETH=y
 CONFIG_MVMDIO=y
 CONFIG_PHYLIB=y
 CONFIG_OF_MDIO=y
+CONFIG_NET_RX_BUSY_POLL=y
+CONFIG_NET_SELFTESTS=y
 CONFIG_CMDLINE="console=ttyS0,115200n8 rdinit=/init panic=-1"
 CONFIG_INITRAMFS_SOURCE="${BR_BINARIES_DIR}/rootfs.cpio"
 # CONFIG_THERMAL is not set
@@ -84,6 +88,14 @@ cp "$temp_dir/valid-b3.config" "$temp_dir/packet-generator.config"
 printf '%s\n' 'CONFIG_NET_PKTGEN=y' >> "$temp_dir/packet-generator.config"
 if sh "$audit" b3 "$temp_dir/packet-generator.config" >/dev/null 2>&1; then
     echo 'kernel-config audit accepted the packet generator' >&2
+    exit 1
+fi
+
+cp "$temp_dir/valid-b3.config" "$temp_dir/ptp-classifier.config"
+printf '%s\n' 'CONFIG_PTP_1588_CLOCK=y' \
+    'CONFIG_NET_PTP_CLASSIFY=y' >> "$temp_dir/ptp-classifier.config"
+if sh "$audit" b3 "$temp_dir/ptp-classifier.config" >/dev/null 2>&1; then
+    echo 'kernel-config audit accepted the unused PTP classifier' >&2
     exit 1
 fi
 

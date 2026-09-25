@@ -91,9 +91,10 @@ CONFIG_OF_MDIO=y
 # CONFIG_WIRELESS is not set
 # CONFIG_WLAN is not set
 # CONFIG_NET_DSA is not set
+# multi_v5_defconfig's Ethernet support defaults PTP on, which selects the
+# packet classifier. This bring-up probe does not use hardware timestamping.
+# CONFIG_PTP_1588_CLOCK is not set
 # CONFIG_NET_PTP_CLASSIFY is not set
 # CONFIG_NET_SWITCHDEV is not set
-# CONFIG_NET_RX_BUSY_POLL is not set
 # CONFIG_NET_PKTGEN is not set
-# CONFIG_NET_SELFTESTS is not set
 # CONFIG_NETWORK_FILESYSTEMS is not set
