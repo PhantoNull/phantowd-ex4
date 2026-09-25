@@ -31,7 +31,7 @@ expect_rejection() {
     label=$1
     left=$2
     right=$3
-    if "$comparator" "$left" "$right" > "$temporary/rejection.log" 2>&1; then
+    if sh "$comparator" "$left" "$right" > "$temporary/rejection.log" 2>&1; then
         echo "comparator unexpectedly accepted $label" >&2
         exit 1
     fi
@@ -39,7 +39,7 @@ expect_rejection() {
 
 make_fixture "$temporary/build-a"
 make_fixture "$temporary/build-b"
-"$comparator" "$temporary/build-a" "$temporary/build-b" >/dev/null
+sh "$comparator" "$temporary/build-a" "$temporary/build-b" >/dev/null
 
 cp -a "$temporary/build-b" "$temporary/mismatch"
 printf 'tampered\n' >> "$temporary/mismatch/qemu-armv5/rootfs.ext2"
