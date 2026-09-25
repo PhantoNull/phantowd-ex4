@@ -2,12 +2,16 @@ name: Host research toolkit
 
 on:
   push:
-    branches: [main]
+    branches: [main, develop]
     paths:
       - 'tools/phantowd-lab/**'
       - 'support/test-lab-tools.ps1'
       - 'support/container/test-lab-tools.sh'
       - 'support/test-firmware-workflow-paths.sh'
+      - '.github/workflows/qemu-armv5.yml'
+      - '.github/workflows/ex4-stage-b.yml'
+      - '.github/workflows/ex4-stage-b2.yml'
+      - '.github/workflows/ex4-stage-b3.yml'
       - '.github/workflows/host-tools.yml'
   pull_request:
     paths:
@@ -15,6 +19,10 @@ on:
       - 'support/test-lab-tools.ps1'
       - 'support/container/test-lab-tools.sh'
       - 'support/test-firmware-workflow-paths.sh'
+      - '.github/workflows/qemu-armv5.yml'
+      - '.github/workflows/ex4-stage-b.yml'
+      - '.github/workflows/ex4-stage-b2.yml'
+      - '.github/workflows/ex4-stage-b3.yml'
       - '.github/workflows/host-tools.yml'
   workflow_dispatch:
 

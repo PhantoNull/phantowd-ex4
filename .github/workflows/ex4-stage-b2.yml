@@ -2,7 +2,7 @@ name: EX4 Stage B2 compile-only
 
 on:
   push:
-    branches: [main]
+    branches: [main, develop]
     paths-ignore:
       - '**/*.md'
       - 'doc/**'
@@ -19,6 +19,10 @@ on:
       - 'support/test-api.ps1'
       - 'support/test-dashboard-ui.mjs'
       - 'support/dashboard-preview.mjs'
+      - '.github/workflows/qemu-armv5.yml'
+      - '.github/workflows/ex4-stage-b.yml'
+      - '.github/workflows/ex4-stage-b2.yml'
+      - '.github/workflows/ex4-stage-b3.yml'
       - '.github/workflows/host-tools.yml'
   pull_request:
     paths-ignore:
@@ -37,6 +41,10 @@ on:
       - 'support/test-api.ps1'
       - 'support/test-dashboard-ui.mjs'
       - 'support/dashboard-preview.mjs'
+      - '.github/workflows/qemu-armv5.yml'
+      - '.github/workflows/ex4-stage-b.yml'
+      - '.github/workflows/ex4-stage-b2.yml'
+      - '.github/workflows/ex4-stage-b3.yml'
       - '.github/workflows/host-tools.yml'
   workflow_dispatch:
 

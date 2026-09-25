@@ -63,11 +63,23 @@ require_manual_dispatch() {
     fi
 }
 
+require_develop_push() {
+    workflow=$1
+    if ! grep -F '    branches: [main, develop]' "$workflow" >/dev/null; then
+        printf 'workflow %s must validate both main and develop pushes\n' "$workflow" >&2
+        exit 1
+    fi
+}
+
 host_tool_paths='
 tools/phantowd-lab/**
 support/test-lab-tools.ps1
 support/container/test-lab-tools.sh
 support/test-firmware-workflow-paths.sh
+.github/workflows/qemu-armv5.yml
+.github/workflows/ex4-stage-b.yml
+.github/workflows/ex4-stage-b2.yml
+.github/workflows/ex4-stage-b3.yml
 .github/workflows/host-tools.yml
 '
 documentation_paths='
@@ -87,6 +99,7 @@ support/dashboard-preview.mjs
 '
 
 for workflow in "$qemu_workflow" "$stage_b_workflow" "$stage_b2_workflow" "$stage_b3_workflow"; do
+    require_develop_push "$workflow"
     while IFS= read -r path; do
         [ -n "$path" ] && require_ignored_path "$workflow" "$path"
     done <<EOF
@@ -99,6 +112,8 @@ $documentation_paths
 EOF
     require_manual_dispatch "$workflow"
 done
+
+require_develop_push "$host_workflow"
 
 for workflow in "$stage_b_workflow" "$stage_b2_workflow" "$stage_b3_workflow"; do
     while IFS= read -r path; do
