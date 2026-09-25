@@ -14,6 +14,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"testing/fstest"
 	"time"
 )
 
@@ -167,7 +168,7 @@ func TestDashboardServesReadOnlyDevelopmentUIAndAssets(t *testing.T) {
 	}{
 		{"/", "text/html; charset=utf-8", []string{"PhantoWD", "Development image.", "read-only", "profile-notice-title"}},
 		{"/assets/app.css", "text/css; charset=utf-8", []string{"@media", "prefers-reduced-motion"}},
-		{"/assets/app.js", "text/javascript; charset=utf-8", []string{"/api/v1/system", "/api/v1/storage", "textContent"}},
+		{"/assets/app.js", "text/javascript; charset=utf-8", []string{"/api/v1/system", "/api/v1/storage", "/api/v1/arrays", "textContent"}},
 	} {
 		t.Run(test.path, func(t *testing.T) {
 			response := httptest.NewRecorder()
@@ -261,5 +262,53 @@ func TestStorageEndpointIsReadOnlyAndFailClosed(t *testing.T) {
 	failing.ServeHTTP(response, request)
 	if response.Code != 503 || strings.Contains(response.Body.String(), "private path") || strings.Contains(response.Body.String(), "fixture-secret") {
 		t.Fatal("storage collector error leaked through the API")
+	}
+}
+
+func TestMDArrayEndpointIsAuthenticatedReadOnlyAndBounded(t *testing.T) {
+	auth, cookie := newTestAuth(t)
+	calls := 0
+	handler := newHandlerWithArrays(nil, nil, func() mdArraySnapshot {
+		calls++
+		return collectMDArrayInventory(fstest.MapFS{
+			"mdstat": {Data: []byte("Personalities : [raid1]\nunused devices: <none>\n")},
+		}, emptySysfs(), time.Now())
+	}, auth)
+
+	response := httptest.NewRecorder()
+	request := loopbackRequest(http.MethodGet, "/api/v1/arrays", nil)
+	request.AddCookie(cookie)
+	handler.ServeHTTP(response, request)
+	if response.Code != http.StatusOK || calls != 1 || !json.Valid(response.Body.Bytes()) {
+		t.Fatalf("valid array inventory read failed: status=%d calls=%d body=%s", response.Code, calls, response.Body.String())
+	}
+	var snapshot mdArraySnapshot
+	if err := json.Unmarshal(response.Body.Bytes(), &snapshot); err != nil {
+		t.Fatal(err)
+	}
+	if snapshot.Status != arrayInventoryAvailable || snapshot.ArrayCount != 0 || snapshot.Arrays == nil ||
+		!snapshot.ReadOnly || snapshot.BlockDevicesOpened || snapshot.DiskContentRead || snapshot.MutationsPerformed {
+		t.Fatalf("endpoint misreported the bounded read-only inventory: %+v", snapshot)
+	}
+
+	for _, test := range []struct {
+		method string
+		path   string
+		cookie bool
+		status int
+	}{
+		{method: http.MethodPost, path: "/api/v1/arrays", cookie: true, status: http.StatusMethodNotAllowed},
+		{method: http.MethodGet, path: "/api/v1/arrays?device=/dev/sda", cookie: true, status: http.StatusBadRequest},
+		{method: http.MethodGet, path: "/api/v1/arrays", status: http.StatusUnauthorized},
+	} {
+		response := httptest.NewRecorder()
+		request := loopbackRequest(test.method, test.path, nil)
+		if test.cookie {
+			request.AddCookie(cookie)
+		}
+		handler.ServeHTTP(response, request)
+		if response.Code != test.status || calls != 1 {
+			t.Fatalf("unsafe array request was accepted: method=%s path=%s status=%d calls=%d", test.method, test.path, response.Code, calls)
+		}
 	}
 }

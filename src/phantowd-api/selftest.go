@@ -32,7 +32,7 @@ var qemuDashboardAssets = []struct {
 }{
 	{"/", "text/html; charset=utf-8", []string{"PhantoWD EX4", "Development image.", "profile-notice-title", "NOT RELEASE QUALIFIED"}},
 	{"/assets/app.css", "text/css; charset=utf-8", []string{"@media", "prefers-reduced-motion"}},
-	{"/assets/app.js", "text/javascript; charset=utf-8", []string{"/api/v1/system", "/api/v1/storage", "textContent"}},
+	{"/assets/app.js", "text/javascript; charset=utf-8", []string{"/api/v1/system", "/api/v1/storage", "/api/v1/arrays", "textContent"}},
 	{"/assets/ghost.svg", "image/svg+xml", []string{"<svg", "PhantoWD ghost"}},
 }
 
@@ -131,6 +131,32 @@ func runSelfTest() error {
 	if strings.Contains(string(storageData), qemuTestSerial) || strings.Contains(string(storageData), qemuTestWWN) {
 		return errors.New("raw QEMU storage identifiers leaked through the API")
 	}
+	arraysResponse, err := client.Get("http://" + listenAddress + "/api/v1/arrays")
+	if err != nil {
+		return errors.New("array inventory loopback request failed")
+	}
+	arraysData, readErr := io.ReadAll(io.LimitReader(arraysResponse.Body, 65537))
+	arraysResponse.Body.Close()
+	if readErr != nil || len(arraysData) > 65536 || arraysResponse.StatusCode != http.StatusOK || arraysResponse.Header.Get("Cache-Control") != "no-store" {
+		return errors.New("invalid array inventory response")
+	}
+	var arrays mdArraySnapshot
+	if json.Unmarshal(arraysData, &arrays) != nil || arrays.SchemaVersion != 1 || arrays.ObservedAt.IsZero() ||
+		!validArrayInventoryStatus(arrays.Status) || !arrays.ReadOnly || arrays.BlockDevicesOpened || arrays.DiskContentRead ||
+		arrays.MutationsPerformed || arrays.ArrayCount != len(arrays.Arrays) || arrays.Arrays == nil || arrays.ArrayCount > maxMDArrayEntries {
+		return errors.New("array observation crossed or overstated its read-only boundary")
+	}
+	for _, array := range arrays.Arrays {
+		if !validMDName(array.Name) || !validArrayHealth(array.Health) || len(array.Members) > maxMDMemberEntries {
+			return errors.New("array observation contains an invalid bounded field")
+		}
+		if array.Health == arrayHealthHealthy && (array.DegradedDevices != 0 || array.SyncAction != "idle") {
+			return errors.New("array health was reported healthy despite degraded or sync state")
+		}
+	}
+	if strings.Contains(string(arraysData), qemuTestSerial) || strings.Contains(string(arraysData), qemuTestWWN) {
+		return errors.New("raw QEMU disk identity leaked through the array API")
+	}
 	for _, asset := range qemuDashboardAssets {
 		response, err := client.Get("http://" + listenAddress + asset.path)
 		if err != nil {
@@ -159,6 +185,8 @@ func runSelfTest() error {
 		{http.MethodGet, "/api/v1/system?path=/dev/mtd3", http.StatusBadRequest},
 		{http.MethodPost, "/api/v1/storage", http.StatusMethodNotAllowed},
 		{http.MethodGet, "/api/v1/storage?device=/dev/sda", http.StatusBadRequest},
+		{http.MethodPost, "/api/v1/arrays", http.StatusMethodNotAllowed},
+		{http.MethodGet, "/api/v1/arrays?device=/dev/sda", http.StatusBadRequest},
 		{http.MethodPost, "/", http.StatusMethodNotAllowed},
 		{http.MethodGet, "/assets/app.js?file=/etc/passwd", http.StatusBadRequest},
 		{http.MethodGet, "/api/v1/reboot", http.StatusNotFound},
@@ -178,9 +206,27 @@ func runSelfTest() error {
 	}
 	fmt.Printf("PHANTOWD_UI_READY mode=development read_only=true transport=guest-loopback-only\n")
 	fmt.Printf("PHANTOWD_AUTH_READY algorithm=argon2id kdf_concurrency=1 bootstrap=%s login_enabled=yes transport=guest-loopback-http state=volatile-qemu session=memory-only kdf_cycle_ms=%d\n", bootstrap, argon2CycleMillis)
-	fmt.Printf("PHANTOWD_API_READY target=qemu-armv5 goarm=%s uid=%d memory_total_bytes=%d storage_observations=%d identity_metadata=serial+naa-wwn flashable=no hardware_validated=no\n",
-		snapshot.GOARM, snapshot.EffectiveUID, snapshot.Memory.TotalBytes, storage.DeviceCount)
+	fmt.Printf("PHANTOWD_API_READY target=qemu-armv5 goarm=%s uid=%d memory_total_bytes=%d storage_observations=%d arrays=%d array_status=%s identity_metadata=serial+naa-wwn flashable=no hardware_validated=no\n",
+		snapshot.GOARM, snapshot.EffectiveUID, snapshot.Memory.TotalBytes, storage.DeviceCount, arrays.ArrayCount, arrays.Status)
 	return nil
+}
+
+func validArrayInventoryStatus(status arrayInventoryStatus) bool {
+	switch status {
+	case arrayInventoryAvailable, arrayInventoryPartial, arrayInventoryUnavailable, arrayInventoryUnsupported:
+		return true
+	default:
+		return false
+	}
+}
+
+func validArrayHealth(health arrayHealth) bool {
+	switch health {
+	case arrayHealthHealthy, arrayHealthDegraded, arrayHealthSyncing, arrayHealthInactive, arrayHealthUnknown:
+		return true
+	default:
+		return false
+	}
 }
 
 func newQEMUCookieJar() *cookiejar.Jar {

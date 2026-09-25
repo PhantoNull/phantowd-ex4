@@ -106,6 +106,24 @@
 
       <div class="section-heading storage-heading">
         <div>
+          <p class="eyebrow">KERNEL PROCFS + SYSFS</p>
+          <h2>Software RAID</h2>
+        </div>
+        <span class="count-badge" id="array-count">RAID unknown</span>
+      </div>
+
+      <section class="array-panel" aria-label="Observed software RAID arrays">
+        <div id="array-list" class="array-list" aria-live="polite">
+          <p class="empty-state">Waiting for the read-only RAID observation...</p>
+        </div>
+        <div class="storage-footnote">
+          <span class="footnote-icon" aria-hidden="true">i</span>
+          <p>Health is only the Linux MD status observed at this moment; it does not imply redundancy (RAID0/linear have none) or verified data integrity. Member names are temporary; no block contents are read and no array is assembled, mounted, repaired, or changed.</p>
+        </div>
+      </section>
+
+      <div class="section-heading storage-heading">
+        <div>
           <p class="eyebrow">KERNEL SYSFS ONLY</p>
           <h2>Block devices</h2>
         </div>

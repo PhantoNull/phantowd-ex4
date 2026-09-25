@@ -79,6 +79,7 @@ contains an embedded, read-only browser dashboard over its diagnostic API.
 | `POST /api/v1/auth/logout` | Revoke session; requires configured Origin and CSRF header |
 | `GET /api/v1/system` | Authenticated versioned JSON: observation time, kernel, architecture/GOARM, uptime, total/available memory, effective UID, development safety flags |
 | `GET /api/v1/storage` | Authenticated, sorted, bounded kernel block-node observations from sysfs: name, major/minor, 512-byte-sector capacity, read-only/removable flags, partition number, and whole-disk `serial_status` / `wwn_status` when applicable |
+| `GET /api/v1/arrays` | Authenticated, bounded Linux MD observations from `/proc/mdstat` and `/sys/class/block`: level, state, degraded/active counts, sync action/progress, and transient member names; partial sources never become an empty/healthy claim |
 | Non-GET on a known route | `405`, `Allow: GET` |
 | Query or body on a read route | `400` |
 | Unknown route | `404` |
@@ -93,12 +94,18 @@ bytes each. It returns only `serial_status` and `wwn_status` (`unavailable`,
 `present`, `invalid`, `ambiguous`, or `unreadable`); raw serial/WWN values are
 never returned. These states validate only observed SCSI VPD metadata and do
 not establish a durable PhantoWD identity. Kernel names and major/minor numbers
-remain transient observations. The endpoint does not collect
-partition/filesystem UUIDs, RAID membership, bay mapping, SMART, or device
-health, and does not prove that a WD layout is supported. It opens no `/dev`
-node and reads no disk contents. This is deliberately not a legacy-kernel
-compatibility package. Observations are sampled on demand, not periodically
-cached yet; no potentially drive-waking source is queried.
+remain transient observations. The block inventory does not collect
+partition/filesystem UUIDs, bay mapping, SMART, or device health. The separate
+array endpoint reads bounded `/proc/mdstat` text and MD sysfs metadata only; it
+cross-checks array names, levels, member counts and member names when both
+sources report them. Any mismatch produces partial inventory and unknown
+health, never a healthy claim. “Healthy” means only a consistent operational
+Linux MD state: it does not imply redundancy (for example, RAID0 and linear
+arrays have none) or verified data integrity. Neither endpoint proves that a
+WD layout is supported, opens a `/dev` node, reads disk contents, assembles or
+mounts an array, or queries a source expected to wake a disk. These are
+on-demand kernel observations, not filesystem or data-integrity checks; no
+periodic sampling is implemented yet.
 
 The server limits active handlers to eight, request headers to 8 KiB (Go's
 HTTP parser may permit implementation slop), and sets read/write/idle timeouts.
