@@ -17,15 +17,7 @@ download_dir="$workspace_dir/dl"
 key_file="$workspace_dir/buildroot-release-key.asc"
 gnupg_dir="$workspace_dir/gnupg"
 
-mkdir -p "$workspace_dir" "$download_dir/linux" "$download_dir/cyclonedx" "$ccache_dir"
-
-if [ ! -d "$ccache_dir" ] || [ ! -w "$ccache_dir" ]; then
-    echo "Buildroot compiler cache directory is missing or not writable: $ccache_dir" >&2
-    exit 1
-fi
-BR2_CCACHE_DIR="$ccache_dir"
-CCACHE_UMASK=0022
-export BR2_CCACHE_DIR CCACHE_UMASK
+mkdir -p "$workspace_dir" "$download_dir/linux" "$download_dir/cyclonedx"
 
 shellcheck -s sh \
     "$external_dir/support/compare-build-artifacts.sh" \
@@ -144,6 +136,17 @@ if [ "${PHANTOWD_PREPARE_ONLY:-0}" = 1 ]; then
     printf 'Pinned Buildroot and Linux sources verified; QEMU build skipped.\n'
     exit 0
 fi
+
+# The compile-only EX4 workflow shares source verification above but does not
+# need a compiler cache. Initialize it only for the QEMU image build.
+mkdir -p "$ccache_dir"
+if [ ! -d "$ccache_dir" ] || [ ! -w "$ccache_dir" ]; then
+    echo "Buildroot compiler cache directory is missing or not writable: $ccache_dir" >&2
+    exit 1
+fi
+BR2_CCACHE_DIR="$ccache_dir"
+CCACHE_UMASK=0022
+export BR2_CCACHE_DIR CCACHE_UMASK
 
 cyclonedx_generator="$buildroot_source/utils/generate-cyclonedx"
 grep -F "CYCLONEDX_VERSION = \"$CYCLONEDX_SPEC_VERSION\"" \

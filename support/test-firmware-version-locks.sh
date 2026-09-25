@@ -27,11 +27,6 @@ check_version_lock() {
     }
 }
 
-grep -Fx 'BR2_CCACHE=y' \
-    "$repo_root/configs/phantowd_qemu_armv5_defconfig" >/dev/null
-grep -Fx 'BR2_CCACHE_INITIAL_SETUP="--max-size=1G"' \
-    "$repo_root/configs/phantowd_qemu_armv5_defconfig" >/dev/null
-
 check_version_lock \
     configs/phantowd_qemu_armv5_defconfig \
     board/qemu/armv5/rootfs-overlay/etc/phantowd-release

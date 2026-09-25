@@ -160,6 +160,7 @@ host_tool_paths='
 tools/phantowd-lab/**
 support/test-lab-tools.ps1
 support/container/test-lab-tools.sh
+support/build-qemu.ps1
 support/test-firmware-workflow-paths.sh
 support/tests/test-ex4-stage-b-kernel-config-audit.sh
 .github/workflows/qemu-armv5.yml
@@ -179,6 +180,8 @@ package/phantowd-api/**
 board/qemu/armv5/**
 configs/phantowd_qemu_armv5_defconfig
 support/container/test-api.sh
+support/container/build-qemu.sh
+support/docker/entrypoint.sh
 support/qemu-smoke.sh
 support/test-api.ps1
 support/test-dashboard-ui.mjs
