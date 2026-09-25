@@ -1,7 +1,7 @@
 #!/bin/sh
 set -eu
 
-repo_root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+repo_root=$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)
 qemu_workflow="$repo_root/.github/workflows/qemu-armv5.yml"
 stage_a_workflow="$repo_root/.github/workflows/ex4-stage-a.yml"
 stage_b_workflow="$repo_root/.github/workflows/ex4-stage-b.yml"
@@ -108,10 +108,59 @@ require_checkout_credentials_not_persisted() {
     fi
 }
 
+require_bounded_qemu_ccache() {
+    workflow=$1
+    if ! grep -Fx 'BR2_CCACHE=y' \
+        "$repo_root/configs/phantowd_qemu_armv5_defconfig" >/dev/null; then
+        printf 'QEMU defconfig must enable Buildroot compiler caching\n' >&2
+        exit 1
+    fi
+    if ! grep -Fx 'BR2_CCACHE_INITIAL_SETUP="--max-size=1G"' \
+        "$repo_root/configs/phantowd_qemu_armv5_defconfig" >/dev/null; then
+        printf 'QEMU compiler cache must have a bounded size\n' >&2
+        exit 1
+    fi
+    if ! grep -F 'uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0' \
+        "$workflow" >/dev/null ||
+        ! grep -F 'uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0' \
+        "$workflow" >/dev/null; then
+        printf 'QEMU compiler-cache actions must be pinned to the reviewed revision\n' >&2
+        exit 1
+    fi
+    if ! grep -F 'github.event_name == '\''push'\'' && github.ref == '\''refs/heads/develop'\''' \
+        "$workflow" >/dev/null; then
+        printf 'QEMU compiler-cache writes must be restricted to trusted develop pushes\n' >&2
+        exit 1
+    fi
+    if ! grep -F -- "--mount type=bind,source=\"\$RUNNER_TEMP/phantowd-buildroot-ccache\",target=/ccache" \
+        "$workflow" >/dev/null ||
+        ! grep -F 'PHANTOWD_CCACHE_DIR=/ccache' "$workflow" >/dev/null; then
+        printf 'QEMU build must mount the compiler cache into Buildroot\n' >&2
+        exit 1
+    fi
+}
+
+require_fixed_fuzz_campaigns() {
+    script=$1
+    expected_count=$2
+    if grep -Eq -- '-fuzztime=[0-9]+(ns|us|ms|s|m|h)' "$script"; then
+        printf 'fuzz campaigns in %s must use fixed execution counts, not wall time\n' \
+            "$script" >&2
+        exit 1
+    fi
+    actual_count=$(grep -Ec -- '-fuzztime=[1-9][0-9]*x' "$script" || true)
+    if [ "$actual_count" -ne "$expected_count" ]; then
+        printf 'expected %s fixed fuzz campaigns in %s; found %s\n' \
+            "$expected_count" "$script" "$actual_count" >&2
+        exit 1
+    fi
+}
+
 host_tool_paths='
 tools/phantowd-lab/**
 support/test-lab-tools.ps1
 support/container/test-lab-tools.sh
+support/build-qemu.ps1
 support/test-firmware-workflow-paths.sh
 support/tests/test-ex4-stage-b-kernel-config-audit.sh
 .github/workflows/qemu-armv5.yml
@@ -131,6 +180,8 @@ package/phantowd-api/**
 board/qemu/armv5/**
 configs/phantowd_qemu_armv5_defconfig
 support/container/test-api.sh
+support/container/build-qemu.sh
+support/docker/entrypoint.sh
 support/qemu-smoke.sh
 support/test-api.ps1
 support/test-dashboard-ui.mjs
@@ -165,11 +216,9 @@ require_manual_only "$stage_a_workflow"
 require_manual_only "$stage_b_workflow"
 require_manual_only "$stage_b2_workflow"
 
-for workflow in "$stage_b3_workflow"; do
-    for event in push pull_request; do
-        require_not_ignored_pattern \
-            "$workflow" "$event" support/container/audit-ex4-stage-b-kernel-config.sh
-    done
+for event in push pull_request; do
+    require_not_ignored_pattern \
+        "$stage_b3_workflow" "$event" support/container/audit-ex4-stage-b-kernel-config.sh
 done
 
 while IFS= read -r path; do
@@ -179,19 +228,20 @@ $qemu_unrelated_ex4_stage_paths
 EOF
 
 require_develop_push "$host_workflow"
+require_bounded_qemu_ccache "$qemu_workflow"
+require_fixed_fuzz_campaigns "$repo_root/support/container/test-api.sh" 2
+require_fixed_fuzz_campaigns "$repo_root/support/container/test-lab-tools.sh" 3
 
 for workflow in "$qemu_workflow" "$stage_a_workflow" "$stage_b_workflow" "$stage_b2_workflow" \
     "$stage_b3_workflow" "$host_workflow" "$reproducibility_workflow"; do
     require_checkout_credentials_not_persisted "$workflow"
 done
 
-for workflow in "$stage_b3_workflow"; do
-    while IFS= read -r path; do
-        [ -n "$path" ] && require_ignored_path "$workflow" "$path"
-    done <<EOF
+while IFS= read -r path; do
+    [ -n "$path" ] && require_ignored_path "$stage_b3_workflow" "$path"
+done <<EOF
 $api_and_qemu_paths
 EOF
-done
 
 while IFS= read -r path; do
     [ -n "$path" ] && require_triggered_path "$host_workflow" "$path"

@@ -12,6 +12,8 @@ cd "$module_dir"
 "$go_binary" vet ./...
 "$go_binary" test -count=1 -coverprofile="$report_dir/coverage.out" ./...
 "$go_binary" test -race -count=1 ./...
-"$go_binary" test -run '^$' -fuzz '^FuzzInspect$' -fuzztime=5s -parallel=2 ./vendorupdate
-"$go_binary" test -run '^$' -fuzz '^FuzzStreamDecoder$' -fuzztime=5s -parallel=2 ./mcuproto
-"$go_binary" test -run '^$' -fuzz '^FuzzStorageInventoryAndDryRunNeverBecomeExecutable$' -fuzztime=5s -parallel=2 ./storageinventory
+# Fixed execution counts avoid false deadline failures in the pinned Go 1.26
+# fuzz coordinator while keeping CI fuzz coverage reproducible across runners.
+"$go_binary" test -run '^$' -fuzz '^FuzzInspect$' -fuzztime=100000x -parallel=2 ./vendorupdate
+"$go_binary" test -run '^$' -fuzz '^FuzzStreamDecoder$' -fuzztime=100000x -parallel=2 ./mcuproto
+"$go_binary" test -run '^$' -fuzz '^FuzzStorageInventoryAndDryRunNeverBecomeExecutable$' -fuzztime=100000x -parallel=2 ./storageinventory

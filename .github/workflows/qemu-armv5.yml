@@ -7,6 +7,7 @@ on:
       - '**/*.md'
       - 'doc/**'
       - 'tools/phantowd-lab/**'
+      - 'support/build-qemu.ps1'
       - 'support/test-lab-tools.ps1'
       - 'support/container/test-lab-tools.sh'
       - 'support/test-firmware-workflow-paths.sh'
@@ -29,6 +30,7 @@ on:
       - '**/*.md'
       - 'doc/**'
       - 'tools/phantowd-lab/**'
+      - 'support/build-qemu.ps1'
       - 'support/test-lab-tools.ps1'
       - 'support/container/test-lab-tools.sh'
       - 'support/test-firmware-workflow-paths.sh'
@@ -73,6 +75,29 @@ jobs:
       - name: Exercise dashboard interaction states
         run: node support/test-dashboard-ui.mjs
 
+      - name: Select bounded compiler-cache namespace
+        id: ccache_namespace
+        run: echo "week=$(date -u +%G-W%V)" >> "$GITHUB_OUTPUT"
+
+      - name: Hash Buildroot compiler-cache inputs
+        id: ccache_key
+        env:
+          CCACHE_KEY_HASH: ${{ hashFiles('versions.env', 'configs/phantowd_qemu_armv5_defconfig', 'support/docker/Dockerfile', 'support/docker/debian-snapshot.sources') }}
+        run: echo "base=qemu-ccache-linux-${CCACHE_KEY_HASH}" >> "$GITHUB_OUTPUT"
+
+      - name: Restore Buildroot compiler cache
+        id: ccache_restore
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ runner.temp }}/phantowd-buildroot-ccache
+          key: ${{ steps.ccache_key.outputs.base }}-${{ steps.ccache_namespace.outputs.week }}
+          restore-keys: ${{ steps.ccache_key.outputs.base }}-
+
+      - name: Prepare compiler-cache directory for the container user
+        run: |
+          mkdir -p "$RUNNER_TEMP/phantowd-buildroot-ccache"
+          sudo chown -R 1000:1000 "$RUNNER_TEMP/phantowd-buildroot-ccache"
+
       - name: Build pinned environment
         run: docker build --file support/docker/Dockerfile --tag phantowd/buildroot:ci .
 
@@ -84,6 +109,8 @@ jobs:
           docker run --rm \
             --mount type=bind,source="$PWD",target=/external \
             --mount type=volume,source=phantowd-ci-${{ github.run_id }}-qemu,target=/workspace \
+            --mount type=bind,source="$RUNNER_TEMP/phantowd-buildroot-ccache",target=/ccache \
+            --env PHANTOWD_CCACHE_DIR=/ccache \
             phantowd/buildroot:ci \
             /external/support/container/build-qemu.sh
 
@@ -110,6 +137,13 @@ jobs:
           path: artifacts/ex4-dtb-research/
           if-no-files-found: error
           retention-days: 7
+
+      - name: Save bounded Buildroot compiler cache
+        if: success() && steps.ccache_restore.outputs.cache-hit != 'true' && github.event_name == 'push' && github.ref == 'refs/heads/develop'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ runner.temp }}/phantowd-buildroot-ccache
+          key: ${{ steps.ccache_key.outputs.base }}-${{ steps.ccache_namespace.outputs.week }}
 
       - name: Remove isolated QEMU build volume
         if: always()
