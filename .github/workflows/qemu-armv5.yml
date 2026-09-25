@@ -14,9 +14,9 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build-and-boot:
+  qemu-and-dtb:
+    name: Build QEMU baseline and EX4 research DTB
     runs-on: ubuntu-24.04
-    # The last full hosted run took about 78 minutes; leave room for runner variance.
     timeout-minutes: 120
 
     steps:
@@ -29,14 +29,14 @@ jobs:
       - name: Build pinned environment
         run: docker build --file support/docker/Dockerfile --tag phantowd/buildroot:ci .
 
-      - name: Create isolated build volume
-        run: docker volume create phantowd-ci-${{ github.run_id }}
+      - name: Create isolated QEMU build volume
+        run: docker volume create phantowd-ci-${{ github.run_id }}-qemu
 
       - name: Build and boot ARMv5 image
         run: |
           docker run --rm \
             --mount type=bind,source="$PWD",target=/external \
-            --mount type=volume,source=phantowd-ci-${{ github.run_id }},target=/workspace \
+            --mount type=volume,source=phantowd-ci-${{ github.run_id }}-qemu,target=/workspace \
             phantowd/buildroot:ci \
             /external/support/container/build-qemu.sh
 
@@ -44,17 +44,9 @@ jobs:
         run: |
           docker run --rm \
             --mount type=bind,source="$PWD",target=/external \
-            --mount type=volume,source=phantowd-ci-${{ github.run_id }},target=/workspace \
+            --mount type=volume,source=phantowd-ci-${{ github.run_id }}-qemu,target=/workspace \
             phantowd/buildroot:ci \
             /external/support/container/build-ex4-dtb.sh
-
-      - name: Compile and verify EX4 Stage A image
-        run: |
-          docker run --rm \
-            --mount type=bind,source="$PWD",target=/external \
-            --mount type=volume,source=phantowd-ci-${{ github.run_id }},target=/workspace \
-            phantowd/buildroot:ci \
-            /external/support/container/build-ex4-stage-a.sh
 
       - name: Upload non-flashable QEMU artifacts
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -72,6 +64,42 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
+      - name: Remove isolated QEMU build volume
+        if: always()
+        run: docker volume rm phantowd-ci-${{ github.run_id }}-qemu || true
+
+  compile-stage-a:
+    name: Compile-only EX4 Stage A
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Build pinned environment
+        run: docker build --file support/docker/Dockerfile --tag phantowd/buildroot:ci .
+
+      - name: Create isolated Stage A build volume
+        run: docker volume create phantowd-ci-${{ github.run_id }}-stage-a
+
+      - name: Prepare and verify pinned Buildroot/Linux sources
+        run: |
+          docker run --rm \
+            --mount type=bind,source="$PWD",target=/external \
+            --mount type=volume,source=phantowd-ci-${{ github.run_id }}-stage-a,target=/workspace \
+            --env PHANTOWD_PREPARE_ONLY=1 \
+            phantowd/buildroot:ci \
+            /external/support/container/build-qemu.sh
+
+      - name: Compile and verify EX4 Stage A image
+        run: |
+          docker run --rm \
+            --mount type=bind,source="$PWD",target=/external \
+            --mount type=volume,source=phantowd-ci-${{ github.run_id }}-stage-a,target=/workspace \
+            phantowd/buildroot:ci \
+            /external/support/container/build-ex4-stage-a.sh
+
       - name: Upload compile-only EX4 Stage A artifact
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
@@ -82,4 +110,4 @@ jobs:
 
       - name: Remove isolated build volume
         if: always()
-        run: docker volume rm phantowd-ci-${{ github.run_id }} || true
+        run: docker volume rm phantowd-ci-${{ github.run_id }}-stage-a || true
