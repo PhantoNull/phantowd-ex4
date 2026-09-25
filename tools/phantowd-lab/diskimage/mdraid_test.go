@@ -229,6 +229,24 @@ func TestInspectMDV090ComponentRecognizesSpecialRoles(t *testing.T) {
 	}
 }
 
+func TestInspectMDV090ComponentReportsLinux32DescriptorStateBits(t *testing.T) {
+	state := uint32(1<<0 | 1<<1 | 1<<2 | 1<<3 | 1<<9 | 1<<31)
+	image := syntheticMDV090Component()
+	superblock := mdV090Superblock(image)
+	binary.LittleEndian.PutUint32(superblock[mdV090ThisDiskOffset+16:mdV090ThisDiskOffset+20], state)
+	sealMDV090Superblock(superblock)
+
+	report, err := InspectMDV090Component(bytes.NewReader(image), int64(len(image)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	wantFlags := []string{"faulty", "active", "sync", "removed", "write-mostly"}
+	if report.SchemaVersion != 2 || report.Status != MDV090StatusCandidate || report.MemberState != state ||
+		strings.Join(report.MemberStateFlags, ",") != strings.Join(wantFlags, ",") {
+		t.Fatalf("descriptor state bits were not preserved and decoded conservatively: %+v", report)
+	}
+}
+
 func TestInspectMDV090ComponentClassifiesMissingUnsupportedAndDamaged(t *testing.T) {
 	image := syntheticMDV090Component()
 	withoutMetadata := append([]byte(nil), image...)

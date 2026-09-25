@@ -433,7 +433,7 @@ func TestInspectStorageImageAggregatesReadOnlyPartitionObservations(t *testing.T
 func TestInspectMDV090ImageSetIsReadOnlyGenericAndRedactsPaths(t *testing.T) {
 	first := syntheticGPTImageWithMDV090()
 	second := syntheticGPTImageWithMDV090()
-	setSyntheticMDV090GPTMember(second, 1, 1, 42, 3)
+	setSyntheticMDV090GPTMember(second, 1, 1, 42, 3, 1<<1)
 	paths := []string{
 		filepath.Join(t.TempDir(), "private-disk-one.img"),
 		filepath.Join(t.TempDir(), "private-disk-two.img"),
@@ -451,23 +451,35 @@ func TestInspectMDV090ImageSetIsReadOnlyGenericAndRedactsPaths(t *testing.T) {
 	}
 	var report struct {
 		Format             string `json:"format"`
+		SchemaVersion      int    `json:"schema_version"`
 		WDCompatibility    string `json:"wd_compatibility"`
 		AssemblyPerformed  bool   `json:"assembly_performed"`
 		MountPerformed     bool   `json:"mount_performed"`
 		MutationsPerformed bool   `json:"mutations_performed"`
 		Comparison         struct {
-			Arrays []struct {
+			SchemaVersion int `json:"schema_version"`
+			Arrays        []struct {
 				Status          string   `json:"status"`
 				ObservedNRDisks []uint32 `json:"observed_nr_disks"`
+				Members         []struct {
+					MemberState      uint32   `json:"member_state"`
+					MemberStateFlags []string `json:"member_state_flags"`
+				} `json:"members"`
 			} `json:"arrays"`
 		} `json:"md_v0_90_comparison"`
 	}
 	if err := json.Unmarshal(output.Bytes(), &report); err != nil {
 		t.Fatalf("decode output: %v: %s", err, output.String())
 	}
-	if report.Format != "phantowd-md-v0.90-image-set-inspection" || report.WDCompatibility != "unqualified" ||
+	if report.Format != "phantowd-md-v0.90-image-set-inspection" || report.SchemaVersion != 1 || report.WDCompatibility != "unqualified" ||
 		report.AssemblyPerformed || report.MountPerformed || report.MutationsPerformed || len(report.Comparison.Arrays) != 1 ||
+		report.Comparison.SchemaVersion != 2 ||
 		report.Comparison.Arrays[0].Status != "metadata-consistent" ||
+		len(report.Comparison.Arrays[0].Members) != 2 ||
+		report.Comparison.Arrays[0].Members[0].MemberState != 1<<1|1<<2 ||
+		strings.Join(report.Comparison.Arrays[0].Members[0].MemberStateFlags, ",") != "active,sync" ||
+		report.Comparison.Arrays[0].Members[1].MemberState != 1<<1 ||
+		strings.Join(report.Comparison.Arrays[0].Members[1].MemberStateFlags, ",") != "active" ||
 		len(report.Comparison.Arrays[0].ObservedNRDisks) != 2 ||
 		report.Comparison.Arrays[0].ObservedNRDisks[0] != 2 ||
 		report.Comparison.Arrays[0].ObservedNRDisks[1] != 3 {
@@ -489,7 +501,7 @@ func TestInspectMDV090ImageSetIsReadOnlyGenericAndRedactsPaths(t *testing.T) {
 	}
 	divergentPath := filepath.Join(t.TempDir(), "divergent-disk.img")
 	divergent := syntheticGPTImageWithMDV090()
-	setSyntheticMDV090GPTMember(divergent, 1, 1, 41, 2)
+	setSyntheticMDV090GPTMember(divergent, 1, 1, 41, 2, 1<<1|1<<2)
 	if err := os.WriteFile(divergentPath, divergent, 0o600); err != nil {
 		t.Fatal(err)
 	}
@@ -670,6 +682,7 @@ func syntheticMDV090ComponentForCommand() []byte {
 	binary.LittleEndian.PutUint32(sb[156:160], 42)
 	binary.LittleEndian.PutUint32(sb[992*4:992*4+4], 0)
 	binary.LittleEndian.PutUint32(sb[992*4+12:992*4+16], 0)
+	binary.LittleEndian.PutUint32(sb[992*4+16:992*4+20], 1<<1|1<<2)
 	var sum uint64
 	for offset := 0; offset+4 <= len(sb); offset += 4 {
 		if offset != 152 {
@@ -713,7 +726,7 @@ func syntheticGPTImageWithMDV090() []byte {
 	return image
 }
 
-func setSyntheticMDV090GPTMember(image []byte, memberNumber, role uint32, events uint64, declaredDevices uint32) {
+func setSyntheticMDV090GPTMember(image []byte, memberNumber, role uint32, events uint64, declaredDevices, memberState uint32) {
 	const sector = 512
 	const firstLBA = 64
 	const lastLBA = 2048 - 64
@@ -726,6 +739,7 @@ func setSyntheticMDV090GPTMember(image []byte, memberNumber, role uint32, events
 	binary.LittleEndian.PutUint32(superblock[160:164], uint32(events>>32))
 	binary.LittleEndian.PutUint32(superblock[992*4:992*4+4], memberNumber)
 	binary.LittleEndian.PutUint32(superblock[992*4+12:992*4+16], role)
+	binary.LittleEndian.PutUint32(superblock[992*4+16:992*4+20], memberState)
 	binary.LittleEndian.PutUint32(superblock[152:156], 0)
 	var sum uint64
 	for offset := 0; offset+4 <= len(superblock); offset += 4 {

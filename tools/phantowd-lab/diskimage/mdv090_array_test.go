@@ -12,8 +12,8 @@ import (
 )
 
 func TestCompareMDV090ImageSetReportsCompleteGenericArrayMetadata(t *testing.T) {
-	first := md090ArrayComponent(1, 1, 0, 0, 42)
-	second := md090ArrayComponent(2, 1, 1, 1, 42)
+	first := md090ArrayComponentWithNRDisksAndState(1, 1, 0, 0, 42, 2, 1<<1|1<<2)
+	second := md090ArrayComponentWithNRDisksAndState(2, 1, 1, 1, 42, 2, 1<<1)
 
 	report, err := CompareMDV090ImageSet([]MDV090ImageComponent{first, second})
 	if err != nil {
@@ -23,12 +23,18 @@ func TestCompareMDV090ImageSetReportsCompleteGenericArrayMetadata(t *testing.T) 
 		t.Fatalf("got %d array groups, want one: %+v", len(report.Arrays), report)
 	}
 	array := report.Arrays[0]
-	if report.CandidateComponents != 2 || array.Status != MDV090ArrayMetadataConsistent ||
+	if report.SchemaVersion != 2 || report.CandidateComponents != 2 || array.Status != MDV090ArrayMetadataConsistent ||
 		array.RAIDDisks != 2 || len(array.ObservedNRDisks) != 1 || array.ObservedNRDisks[0] != 2 ||
 		array.ObservedRAIDRoles != 2 || len(array.MissingRAIDRoles) != 0 ||
 		len(array.Members) != 2 || array.ArrayIdentityFingerprint == "" ||
 		array.WDCompatibility != "unqualified" || report.AssemblyPerformed || report.MountPerformed {
 		t.Fatalf("unexpected generic MD 0.90 comparison: %+v", report)
+	}
+	if array.Members[0].MemberState != 1<<1|1<<2 ||
+		strings.Join(array.Members[0].MemberStateFlags, ",") != "active,sync" ||
+		array.Members[1].MemberState != 1<<1 ||
+		strings.Join(array.Members[1].MemberStateFlags, ",") != "active" {
+		t.Fatalf("per-component stored descriptor flags were lost or treated as array health: %+v", array.Members)
 	}
 	encoded, err := json.Marshal(report)
 	if err != nil {
@@ -175,6 +181,10 @@ func md090ArrayComponent(inputIndex, partitionNumber int, memberNumber, role uin
 }
 
 func md090ArrayComponentWithNRDisks(inputIndex, partitionNumber int, memberNumber, role uint32, events uint64, nrDisks uint32) MDV090ImageComponent {
+	return md090ArrayComponentWithNRDisksAndState(inputIndex, partitionNumber, memberNumber, role, events, nrDisks, 0)
+}
+
+func md090ArrayComponentWithNRDisksAndState(inputIndex, partitionNumber int, memberNumber, role uint32, events uint64, nrDisks, memberState uint32) MDV090ImageComponent {
 	image := syntheticMDV090Component()
 	superblock := mdV090Superblock(image)
 	binary.LittleEndian.PutUint32(superblock[36:40], nrDisks)
@@ -182,6 +192,7 @@ func md090ArrayComponentWithNRDisks(inputIndex, partitionNumber int, memberNumbe
 	binary.LittleEndian.PutUint32(superblock[160:164], uint32(events>>32))
 	binary.LittleEndian.PutUint32(superblock[mdV090ThisDiskOffset:mdV090ThisDiskOffset+4], memberNumber)
 	binary.LittleEndian.PutUint32(superblock[mdV090ThisDiskOffset+12:mdV090ThisDiskOffset+16], role)
+	binary.LittleEndian.PutUint32(superblock[mdV090ThisDiskOffset+16:mdV090ThisDiskOffset+20], memberState)
 	sealMDV090Superblock(superblock)
 	report, err := InspectMDV090Component(bytes.NewReader(image), int64(len(image)))
 	if err != nil {
