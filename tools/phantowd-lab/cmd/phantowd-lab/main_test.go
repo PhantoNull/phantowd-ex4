@@ -346,7 +346,7 @@ func TestInspectMDV090ComponentCommandIsReadOnlyAndGeneric(t *testing.T) {
 	if err != nil || sha256.Sum256(after) != sha256.Sum256(fixture) {
 		t.Fatalf("image changed during inspection: err=%v", err)
 	}
-	for _, expected := range []string{`"status": "md-v0.90-superblock-candidate"`, `"metadata_version": "0.90"`, `"superblock_checksum_status": "valid"`, `"raid_disks": 2`, `"member_number": 0`, `"wd_compatibility": "unqualified"`, `"block_device_opened": false`, `"mutations_performed": false`, `"assembly_performed": false`, `"mount_performed": false`} {
+	for _, expected := range []string{`"schema_version": 3`, `"status": "md-v0.90-superblock-candidate"`, `"metadata_version": "0.90"`, `"superblock_checksum_status": "valid"`, `"raid_disks": 2`, `"member_number": 0`, `"wd_compatibility": "unqualified"`, `"block_device_opened": false`, `"mutations_performed": false`, `"assembly_performed": false`, `"mount_performed": false`} {
 		if !strings.Contains(output.String(), expected) {
 			t.Fatalf("missing %q in report: %s", expected, output.String())
 		}
@@ -464,6 +464,13 @@ func TestInspectMDV090ImageSetIsReadOnlyGenericAndRedactsPaths(t *testing.T) {
 				Members         []struct {
 					MemberState      uint32   `json:"member_state"`
 					MemberStateFlags []string `json:"member_state_flags"`
+					DiskDescriptors  []struct {
+						DescriptorIndex      int      `json:"descriptor_index"`
+						HasNonzeroCoreFields bool     `json:"has_nonzero_core_fields"`
+						MemberNumber         uint32   `json:"member_number"`
+						State                uint32   `json:"state"`
+						StateFlags           []string `json:"state_flags"`
+					} `json:"disk_descriptors"`
 				} `json:"members"`
 			} `json:"arrays"`
 		} `json:"md_v0_90_comparison"`
@@ -473,13 +480,18 @@ func TestInspectMDV090ImageSetIsReadOnlyGenericAndRedactsPaths(t *testing.T) {
 	}
 	if report.Format != "phantowd-md-v0.90-image-set-inspection" || report.SchemaVersion != 1 || report.WDCompatibility != "unqualified" ||
 		report.AssemblyPerformed || report.MountPerformed || report.MutationsPerformed || len(report.Comparison.Arrays) != 1 ||
-		report.Comparison.SchemaVersion != 2 ||
+		report.Comparison.SchemaVersion != 3 ||
 		report.Comparison.Arrays[0].Status != "metadata-consistent" ||
 		len(report.Comparison.Arrays[0].Members) != 2 ||
 		report.Comparison.Arrays[0].Members[0].MemberState != 1<<1|1<<2 ||
 		strings.Join(report.Comparison.Arrays[0].Members[0].MemberStateFlags, ",") != "active,sync" ||
 		report.Comparison.Arrays[0].Members[1].MemberState != 1<<1 ||
 		strings.Join(report.Comparison.Arrays[0].Members[1].MemberStateFlags, ",") != "active" ||
+		len(report.Comparison.Arrays[0].Members[0].DiskDescriptors) != 27 ||
+		!report.Comparison.Arrays[0].Members[0].DiskDescriptors[0].HasNonzeroCoreFields ||
+		report.Comparison.Arrays[0].Members[0].DiskDescriptors[0].State != 1<<1|1<<2 ||
+		!report.Comparison.Arrays[0].Members[1].DiskDescriptors[1].HasNonzeroCoreFields ||
+		report.Comparison.Arrays[0].Members[1].DiskDescriptors[1].State != 1<<1 ||
 		len(report.Comparison.Arrays[0].ObservedNRDisks) != 2 ||
 		report.Comparison.Arrays[0].ObservedNRDisks[0] != 2 ||
 		report.Comparison.Arrays[0].ObservedNRDisks[1] != 3 {
@@ -683,6 +695,7 @@ func syntheticMDV090ComponentForCommand() []byte {
 	binary.LittleEndian.PutUint32(sb[992*4:992*4+4], 0)
 	binary.LittleEndian.PutUint32(sb[992*4+12:992*4+16], 0)
 	binary.LittleEndian.PutUint32(sb[992*4+16:992*4+20], 1<<1|1<<2)
+	binary.LittleEndian.PutUint32(sb[128*4+16:128*4+20], 1<<1|1<<2)
 	var sum uint64
 	for offset := 0; offset+4 <= len(sb); offset += 4 {
 		if offset != 152 {
@@ -740,6 +753,12 @@ func setSyntheticMDV090GPTMember(image []byte, memberNumber, role uint32, events
 	binary.LittleEndian.PutUint32(superblock[992*4:992*4+4], memberNumber)
 	binary.LittleEndian.PutUint32(superblock[992*4+12:992*4+16], role)
 	binary.LittleEndian.PutUint32(superblock[992*4+16:992*4+20], memberState)
+	descriptor := 128*4 + int(memberNumber)*32*4
+	binary.LittleEndian.PutUint32(superblock[descriptor:descriptor+4], memberNumber)
+	binary.LittleEndian.PutUint32(superblock[descriptor+4:descriptor+8], 8)
+	binary.LittleEndian.PutUint32(superblock[descriptor+8:descriptor+12], memberNumber+1)
+	binary.LittleEndian.PutUint32(superblock[descriptor+12:descriptor+16], role)
+	binary.LittleEndian.PutUint32(superblock[descriptor+16:descriptor+20], memberState)
 	binary.LittleEndian.PutUint32(superblock[152:156], 0)
 	var sum uint64
 	for offset := 0; offset+4 <= len(superblock); offset += 4 {

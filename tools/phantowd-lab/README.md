@@ -195,8 +195,17 @@ non-constant MD 0.90 metadata. A `raid-slot` is only an assigned role; the
 comparator reports the raw `this_disk.state` value plus Linux 3.2-defined
 `faulty`, `active`, `sync`, `removed`, and `write-mostly` flag names. These are
 stored descriptor metadata, not live measurements; the comparator does not
-reconcile the 27-entry array-wide descriptor table. The legacy descriptor
-layout and flag definitions follow the [upstream Linux v3.2 MD header](https://github.com/torvalds/linux/blob/v3.2/include/linux/raid/md_p.h).
+reconcile the 27-entry array-wide descriptor table. It now returns all 27
+stored descriptors per component, exposing descriptor index, member number,
+role, state and recognized state flags while omitting kernel major/minor
+numbers and reserved words. A nonzero descriptor is not proof of a live or
+valid device, and tables are not reconciled across images or with `this_disk`.
+The component and nested image-set report schemas are version 3; the outer
+whole-disk CLI envelope remains version 1.
+The descriptor layout and flag definitions follow the
+[upstream Linux v3.2 MD header](https://github.com/torvalds/linux/blob/v3.2/include/linux/raid/md_p.h);
+the relationship between the array table and `this_disk` follows its
+[version-matched MD implementation](https://github.com/torvalds/linux/blob/v3.2/drivers/md/md.c).
 `metadata-consistent` is a narrow metadata result -- not evidence of data
 synchronization, health, WD compatibility, migration safety, or safe assembly.
 Missing roles, duplicate member
@@ -238,10 +247,12 @@ supplied Linux MD component device (usually a partition image), not a whole
 disk image to be partitioned automatically. It reads exactly the standard
 4096-byte v0.90 superblock at the end-of-device offset defined by Linux's
 64-KiB reservation/alignment rule, validates its legacy checksum and bounded
-member counts, reports the stored `this_disk.state` value and recognized
-Linux 3.2 flag names, and fingerprints the array UUID. These flags are not
-live device-health measurements. It supports little-endian
-version 0.90 only; it does not inspect optional bitmap data, other v0 minor
+member counts, reports the stored `this_disk.state` and Linux 3.2 flag names,
+and returns the 27-entry array-wide descriptor table as a redacted stored
+snapshot. Major/minor device-node values and reserved words are omitted. A
+descriptor's values and flags are not live device-health measurements or
+proof that an array is complete. It fingerprints the array UUID. It supports
+little-endian version 0.90 only; it does not inspect optional bitmap data, other v0 minor
 versions, v1.x or vendor metadata. A candidate establishes neither member
 agreement nor EX4 compatibility or assembly safety. The command never opens a
 block device, assembles an array, mounts, or modifies the image. Exit status is

@@ -50,6 +50,9 @@ const (
 	mdV090ReservedBytes    = 64 * 1024
 	mdV090ChecksumField    = 152
 	mdV090MaxDevices       = 27
+	mdV090DisksOffsetWords = 128
+	mdV090DescriptorWords  = 32
+	mdV090DescriptorBytes  = mdV090DescriptorWords * 4
 	mdV090ThisDiskOffset   = 992 * 4
 	mdV090RoleSpare        = 0xffff
 	mdV090RoleFaulty       = 0xfffe
@@ -61,37 +64,51 @@ const (
 	mdV090StateWriteMostly = uint32(1 << 9)
 )
 
+// MDV090DiskDescriptor is a redacted projection of one fixed array-wide
+// descriptor. Major/minor device-node numbers and reserved words are omitted.
+// HasNonzeroCoreFields reports whether any of the five defined descriptor
+// fields is nonzero, including the redacted major/minor values.
+type MDV090DiskDescriptor struct {
+	DescriptorIndex      int      `json:"descriptor_index"`
+	HasNonzeroCoreFields bool     `json:"has_nonzero_core_fields"`
+	MemberNumber         uint32   `json:"member_number"`
+	Role                 uint32   `json:"role"`
+	State                uint32   `json:"state"`
+	StateFlags           []string `json:"state_flags"`
+}
+
 // MDV090Report is a bounded, read-only observation of a generic Linux MD
 // 0.90 superblock at the standard end-of-component location. It does not
 // establish that an array is complete, healthy, or compatible with any WD
 // model.
 type MDV090Report struct {
-	Format                   string       `json:"format"`
-	SchemaVersion            int          `json:"schema_version"`
-	Status                   MDV090Status `json:"status"`
-	MetadataVersion          string       `json:"metadata_version"`
-	WDCompatibility          string       `json:"wd_compatibility"`
-	ComponentBytes           uint64       `json:"component_bytes"`
-	SuperblockOffsetBytes    uint64       `json:"superblock_offset_bytes"`
-	ArrayLevel               int32        `json:"array_level"`
-	NRDisks                  uint32       `json:"nr_disks"`
-	RAIDDisks                uint32       `json:"raid_disks"`
-	MemberNumber             uint32       `json:"member_number"`
-	MemberRole               uint32       `json:"member_role"`
-	MemberRoleDescription    string       `json:"member_role_description,omitempty"`
-	MemberState              uint32       `json:"member_state"`
-	MemberStateFlags         []string     `json:"member_state_flags"`
-	Events                   uint64       `json:"events"`
-	SuperblockChecksumStatus string       `json:"superblock_checksum_status"`
-	ArrayIdentityFingerprint string       `json:"array_identity_fingerprint,omitempty"`
-	RawIdentityRedacted      bool         `json:"raw_identity_redacted"`
-	ImageMetadataRead        bool         `json:"image_metadata_read"`
-	BlockDeviceOpened        bool         `json:"block_device_opened"`
-	MutationsPerformed       bool         `json:"mutations_performed"`
-	AssemblyPerformed        bool         `json:"assembly_performed"`
-	MountPerformed           bool         `json:"mount_performed"`
-	Findings                 []string     `json:"findings"`
-	Limitations              []string     `json:"limitations"`
+	Format                   string                 `json:"format"`
+	SchemaVersion            int                    `json:"schema_version"`
+	Status                   MDV090Status           `json:"status"`
+	MetadataVersion          string                 `json:"metadata_version"`
+	WDCompatibility          string                 `json:"wd_compatibility"`
+	ComponentBytes           uint64                 `json:"component_bytes"`
+	SuperblockOffsetBytes    uint64                 `json:"superblock_offset_bytes"`
+	ArrayLevel               int32                  `json:"array_level"`
+	NRDisks                  uint32                 `json:"nr_disks"`
+	RAIDDisks                uint32                 `json:"raid_disks"`
+	MemberNumber             uint32                 `json:"member_number"`
+	MemberRole               uint32                 `json:"member_role"`
+	MemberRoleDescription    string                 `json:"member_role_description,omitempty"`
+	MemberState              uint32                 `json:"member_state"`
+	MemberStateFlags         []string               `json:"member_state_flags"`
+	DiskDescriptors          []MDV090DiskDescriptor `json:"disk_descriptors"`
+	Events                   uint64                 `json:"events"`
+	SuperblockChecksumStatus string                 `json:"superblock_checksum_status"`
+	ArrayIdentityFingerprint string                 `json:"array_identity_fingerprint,omitempty"`
+	RawIdentityRedacted      bool                   `json:"raw_identity_redacted"`
+	ImageMetadataRead        bool                   `json:"image_metadata_read"`
+	BlockDeviceOpened        bool                   `json:"block_device_opened"`
+	MutationsPerformed       bool                   `json:"mutations_performed"`
+	AssemblyPerformed        bool                   `json:"assembly_performed"`
+	MountPerformed           bool                   `json:"mount_performed"`
+	Findings                 []string               `json:"findings"`
+	Limitations              []string               `json:"limitations"`
 }
 
 // InspectMDV090Component inspects only a regular-file image supplied by the
@@ -161,6 +178,7 @@ func InspectMDV090Component(image io.ReaderAt, imageSize int64) (MDV090Report, e
 	report.MemberRole = binary.LittleEndian.Uint32(superblock[mdV090ThisDiskOffset+12 : mdV090ThisDiskOffset+16])
 	report.MemberState = binary.LittleEndian.Uint32(superblock[mdV090ThisDiskOffset+16 : mdV090ThisDiskOffset+20])
 	report.MemberStateFlags = mdV090StateFlags(report.MemberState)
+	report.DiskDescriptors = mdV090DiskDescriptors(superblock)
 
 	if report.NRDisks == 0 || report.NRDisks > mdV090MaxDevices ||
 		report.RAIDDisks == 0 || report.RAIDDisks > report.NRDisks ||
@@ -217,6 +235,27 @@ func mdV090StateFlags(state uint32) []string {
 	return flags
 }
 
+func mdV090DiskDescriptors(superblock []byte) []MDV090DiskDescriptor {
+	descriptors := make([]MDV090DiskDescriptor, 0, mdV090MaxDevices)
+	for index := 0; index < mdV090MaxDevices; index++ {
+		offset := mdV090DisksOffsetWords*4 + index*mdV090DescriptorBytes
+		number := binary.LittleEndian.Uint32(superblock[offset : offset+4])
+		major := binary.LittleEndian.Uint32(superblock[offset+4 : offset+8])
+		minor := binary.LittleEndian.Uint32(superblock[offset+8 : offset+12])
+		role := binary.LittleEndian.Uint32(superblock[offset+12 : offset+16])
+		state := binary.LittleEndian.Uint32(superblock[offset+16 : offset+20])
+		descriptors = append(descriptors, MDV090DiskDescriptor{
+			DescriptorIndex:      index,
+			HasNonzeroCoreFields: number != 0 || major != 0 || minor != 0 || role != 0 || state != 0,
+			MemberNumber:         number,
+			Role:                 role,
+			State:                state,
+			StateFlags:           mdV090StateFlags(state),
+		})
+	}
+	return descriptors
+}
+
 func mdV090Checksum(superblock []byte) uint32 {
 	var sum uint64
 	for offset := 0; offset+4 <= len(superblock); offset += 4 {
@@ -231,16 +270,18 @@ func mdV090Checksum(superblock []byte) uint32 {
 func newMDV090Report(imageSize int64) MDV090Report {
 	report := MDV090Report{
 		Format:                   "phantowd-md-v0.90-component-inspection",
-		SchemaVersion:            2,
+		SchemaVersion:            3,
 		Status:                   MDV090StatusUnsupported,
 		WDCompatibility:          "unqualified",
 		SuperblockChecksumStatus: "not-validated",
 		RawIdentityRedacted:      true,
 		MemberStateFlags:         []string{},
+		DiskDescriptors:          []MDV090DiskDescriptor{},
 		Findings:                 []string{},
 		Limitations: []string{
 			"input must be a regular image of one component device; a whole-disk image is not automatically partitioned or scanned",
-			"only one 4096-byte MD 0.90 superblock at the standard end-of-device location is read; optional bitmap/reserved bytes and alternate layouts are not inspected",
+			"only one 4096-byte MD 0.90 superblock at the standard end-of-device location is read; optional bitmap bytes and alternate layouts are not inspected",
+			"the array-wide 27-entry descriptor table is returned as redacted stored metadata; kernel major/minor fields are omitted, and entries are not reconciled with one another or this_disk",
 			"one plausible component does not prove cross-member event agreement, array health, filesystem integrity, WD compatibility, or safe assembly",
 			"raw array identity and host-supplied paths are not returned; the identity fingerprint is not an authenticity check",
 			"no block device is opened, no array is assembled, no filesystem is mounted, and the input image is never modified",
