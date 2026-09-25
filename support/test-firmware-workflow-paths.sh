@@ -30,6 +30,24 @@ require_ignored_path() {
     require_event_path "$workflow" pull_request "$path"
 }
 
+require_not_ignored_pattern() {
+    workflow=$1
+    event=$2
+    pattern=$3
+    if awk -v event="$event" -v pattern="$pattern" '
+        $0 == "  " event ":" { in_event = 1; next }
+        /^  [a-z_]+:/ { in_event = 0; in_ignore = 0 }
+        in_event && $0 == "    paths-ignore:" { in_ignore = 1; next }
+        in_event && in_ignore && /^    [a-z_]+:/ { in_ignore = 0 }
+        in_event && in_ignore && $0 == "      - \047" pattern "\047" { found = 1 }
+        END { exit !found }
+    ' "$workflow"; then
+        printf 'workflow %s must not ignore build input pattern %s under %s\n' \
+            "$workflow" "$pattern" "$event" >&2
+        exit 1
+    fi
+}
+
 require_triggered_path() {
     workflow=$1
     path=$2
@@ -96,6 +114,28 @@ done <<EOF
 $host_tool_paths
 EOF
 require_manual_dispatch "$host_workflow"
+
+stage_b3_build_inputs='
+board/wd/ex4/stage-b3/**
+board/wd/ex4/**
+board/wd/**
+board/**
+configs/phantowd_ex4_stage_b3_defconfig
+configs/**
+support/container/build-ex4-stage-b3.sh
+support/container/**
+support/**
+versions.env
+**
+'
+for event in push pull_request; do
+    while IFS= read -r pattern; do
+        [ -n "$pattern" ] && require_not_ignored_pattern \
+            "$stage_b3_workflow" "$event" "$pattern"
+    done <<EOF
+$stage_b3_build_inputs
+EOF
+done
 
 if grep -F "      - 'src/phantowd-api/**'" "$qemu_workflow" >/dev/null; then
     printf 'QEMU workflow must still run for API changes\n' >&2
