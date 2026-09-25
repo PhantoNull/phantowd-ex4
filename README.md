@@ -47,11 +47,14 @@ The first product-owned package is a [read-only diagnostics API and browser
 dashboard](src/phantowd-api/README.md). It runs unprivileged on guest loopback
 only; the responsive dashboard displays only the API's bounded observations.
 There are no storage/hardware controls. First-admin authentication exists only
-in the QEMU development profile; product state provisioning, recovery, and TLS
-are not implemented, so this service must not be exposed to a LAN. QEMU checks
-the ARMv5 API, embedded UI assets, GET/negative-request and authentication
-contracts, and a smoke-only RSS ceiling. Guest networking is restricted and no
-ports or physical devices are forwarded.
+in the QEMU development profile; product state provisioning, recovery, and a
+certificate lifecycle are not implemented, so this service must not be exposed
+to a LAN. Development branch `feat/api-tls-config` adds an opt-in,
+fail-closed TLS transport configuration, but the QEMU image still defaults to
+guest loopback and does not provision certificates. That source change is not
+a LAN qualification. QEMU checks the ARMv5 API, embedded UI assets,
+GET/negative-request and authentication contracts, and a smoke-only RSS ceiling.
+Guest networking is restricted and no ports or physical devices are forwarded.
 Run `.\support\test-api.ps1` for fast offline host-native tests; the complete
 build runs those tests again with Buildroot's hash-verified Linux Go compiler.
 
