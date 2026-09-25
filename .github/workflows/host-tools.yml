@@ -8,6 +8,8 @@ on:
       - 'support/test-lab-tools.ps1'
       - 'support/container/test-lab-tools.sh'
       - 'support/test-firmware-workflow-paths.sh'
+      - 'support/container/audit-ex4-stage-b-kernel-config.sh'
+      - 'support/tests/test-ex4-stage-b-kernel-config-audit.sh'
       - '.github/workflows/qemu-armv5.yml'
       - '.github/workflows/ex4-stage-b.yml'
       - '.github/workflows/ex4-stage-b2.yml'
@@ -19,6 +21,8 @@ on:
       - 'support/test-lab-tools.ps1'
       - 'support/container/test-lab-tools.sh'
       - 'support/test-firmware-workflow-paths.sh'
+      - 'support/container/audit-ex4-stage-b-kernel-config.sh'
+      - 'support/tests/test-ex4-stage-b-kernel-config-audit.sh'
       - '.github/workflows/qemu-armv5.yml'
       - '.github/workflows/ex4-stage-b.yml'
       - '.github/workflows/ex4-stage-b2.yml'
@@ -63,3 +67,6 @@ jobs:
 
       - name: Verify firmware workflow path contracts
         run: sh support/test-firmware-workflow-paths.sh
+
+      - name: Test Stage B kernel-config audit policy
+        run: sh support/tests/test-ex4-stage-b-kernel-config-audit.sh

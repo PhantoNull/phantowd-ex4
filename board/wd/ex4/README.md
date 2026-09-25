@@ -165,5 +165,11 @@ placeholder warning appears, fan control, sustained link stability, storage,
 recovery or installation.
 
 Build and audit with `.\support\build-ex4-stage-b3.ps1` on Windows/Docker.
-The output remains explicitly non-flashable and is not authorized for a
-physical boot until its exact artifact and a bounded run procedure are reviewed.
+The output remains explicitly non-flashable. One bounded diskless RAM trial
+of the 6.18.53 B3 image reached its ready marker and halted; that observation
+does not qualify the image for installation, repeat boot or use with disks.
+
+Hosted CI compiles Stage B3 as the single automatic Stage B-family firmware
+build. Stage B and B2 remain available through manual workflow dispatch for
+targeted historical-profile checks. These profiles use isolated clean Buildroot
+workspaces in CI; they do not incrementally reuse one another's build output.

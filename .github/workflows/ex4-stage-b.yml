@@ -1,51 +1,6 @@
 name: EX4 Stage B compile-only
 
 on:
-  push:
-    branches: [main, develop]
-    paths-ignore:
-      - '**/*.md'
-      - 'doc/**'
-      - 'tools/phantowd-lab/**'
-      - 'support/test-lab-tools.ps1'
-      - 'support/container/test-lab-tools.sh'
-      - 'support/test-firmware-workflow-paths.sh'
-      - 'src/phantowd-api/**'
-      - 'package/phantowd-api/**'
-      - 'board/qemu/armv5/**'
-      - 'configs/phantowd_qemu_armv5_defconfig'
-      - 'support/container/test-api.sh'
-      - 'support/qemu-smoke.sh'
-      - 'support/test-api.ps1'
-      - 'support/test-dashboard-ui.mjs'
-      - 'support/dashboard-preview.mjs'
-      - '.github/workflows/qemu-armv5.yml'
-      - '.github/workflows/ex4-stage-b.yml'
-      - '.github/workflows/ex4-stage-b2.yml'
-      - '.github/workflows/ex4-stage-b3.yml'
-      - '.github/workflows/host-tools.yml'
-  pull_request:
-    paths-ignore:
-      - '**/*.md'
-      - 'doc/**'
-      - 'tools/phantowd-lab/**'
-      - 'support/test-lab-tools.ps1'
-      - 'support/container/test-lab-tools.sh'
-      - 'support/test-firmware-workflow-paths.sh'
-      - 'src/phantowd-api/**'
-      - 'package/phantowd-api/**'
-      - 'board/qemu/armv5/**'
-      - 'configs/phantowd_qemu_armv5_defconfig'
-      - 'support/container/test-api.sh'
-      - 'support/qemu-smoke.sh'
-      - 'support/test-api.ps1'
-      - 'support/test-dashboard-ui.mjs'
-      - 'support/dashboard-preview.mjs'
-      - '.github/workflows/qemu-armv5.yml'
-      - '.github/workflows/ex4-stage-b.yml'
-      - '.github/workflows/ex4-stage-b2.yml'
-      - '.github/workflows/ex4-stage-b3.yml'
-      - '.github/workflows/host-tools.yml'
   workflow_dispatch:
 
 permissions:

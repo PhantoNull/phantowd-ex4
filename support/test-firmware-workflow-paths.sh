@@ -71,11 +71,22 @@ require_develop_push() {
     fi
 }
 
+require_manual_only() {
+    workflow=$1
+    if grep -Eq '^  (push|pull_request):' "$workflow"; then
+        printf 'workflow %s must not run automatically; keep it manual-only\n' \
+            "$workflow" >&2
+        exit 1
+    fi
+    require_manual_dispatch "$workflow"
+}
+
 host_tool_paths='
 tools/phantowd-lab/**
 support/test-lab-tools.ps1
 support/container/test-lab-tools.sh
 support/test-firmware-workflow-paths.sh
+support/tests/test-ex4-stage-b-kernel-config-audit.sh
 .github/workflows/qemu-armv5.yml
 .github/workflows/ex4-stage-b.yml
 .github/workflows/ex4-stage-b2.yml
@@ -97,8 +108,17 @@ support/test-api.ps1
 support/test-dashboard-ui.mjs
 support/dashboard-preview.mjs
 '
+qemu_unrelated_ex4_stage_paths='
+board/wd/ex4/stage-b/**
+board/wd/ex4/stage-b2/**
+board/wd/ex4/stage-b3/**
+support/container/build-ex4-stage-b2.sh
+support/container/build-ex4-stage-b3.sh
+support/container/audit-ex4-stage-b-kernel-config.sh
+support/tests/test-ex4-stage-b-kernel-config-audit.sh
+'
 
-for workflow in "$qemu_workflow" "$stage_b_workflow" "$stage_b2_workflow" "$stage_b3_workflow"; do
+for workflow in "$qemu_workflow" "$stage_b3_workflow"; do
     require_develop_push "$workflow"
     while IFS= read -r path; do
         [ -n "$path" ] && require_ignored_path "$workflow" "$path"
@@ -113,9 +133,25 @@ EOF
     require_manual_dispatch "$workflow"
 done
 
+require_manual_only "$stage_b_workflow"
+require_manual_only "$stage_b2_workflow"
+
+for workflow in "$stage_b3_workflow"; do
+    for event in push pull_request; do
+        require_not_ignored_pattern \
+            "$workflow" "$event" support/container/audit-ex4-stage-b-kernel-config.sh
+    done
+done
+
+while IFS= read -r path; do
+    [ -n "$path" ] && require_ignored_path "$qemu_workflow" "$path"
+done <<EOF
+$qemu_unrelated_ex4_stage_paths
+EOF
+
 require_develop_push "$host_workflow"
 
-for workflow in "$stage_b_workflow" "$stage_b2_workflow" "$stage_b3_workflow"; do
+for workflow in "$stage_b3_workflow"; do
     while IFS= read -r path; do
         [ -n "$path" ] && require_ignored_path "$workflow" "$path"
     done <<EOF
@@ -128,6 +164,8 @@ while IFS= read -r path; do
 done <<EOF
 $host_tool_paths
 EOF
+require_triggered_path \
+    "$host_workflow" support/container/audit-ex4-stage-b-kernel-config.sh
 require_manual_dispatch "$host_workflow"
 
 stage_b3_build_inputs='

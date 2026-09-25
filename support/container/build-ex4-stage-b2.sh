@@ -43,6 +43,7 @@ dts_file="$stage_dir/kirkwood-wd-mycloud-ex4-stage-$stage.dts"
 init_file="$stage_dir/rootfs-overlay/init"
 release_file="$stage_dir/rootfs-overlay/etc/phantowd-release"
 mac_policy_file="$stage_dir/rootfs-overlay/usr/lib/phantowd/stage-b3/mac-policy.sh"
+kernel_config_audit="$external_dir/support/container/audit-ex4-stage-b-kernel-config.sh"
 
 test -f "$buildroot_source/.phantowd-source-ready"
 test -s "$download_dir/linux/linux-$LINUX_VERSION.tar.xz"
@@ -57,6 +58,7 @@ grep -Fx '#include "marvell/kirkwood.dtsi"' "$dts_file" >/dev/null
 grep -Fx '#include "marvell/kirkwood-6282.dtsi"' "$dts_file" >/dev/null
 grep -Fx "PHANTOWD_KERNEL_VERSION=$LINUX_VERSION" "$release_file" >/dev/null
 grep -Fx "PHANTOWD_NETWORK_MODE=$network_mode" "$release_file" >/dev/null
+test -s "$kernel_config_audit"
 
 assert_dts_status() {
     node="$1"
@@ -113,14 +115,21 @@ else
 fi
 output_dir="$workspace_dir/stage-$stage/$BUILDROOT_VERSION-$input_hash"
 
+kernel_config="$output_dir/build/linux-$LINUX_VERSION/.config"
+
 make -C "$buildroot_source" BR2_EXTERNAL="$external_dir" \
     BR2_DL_DIR="$download_dir" O="$output_dir" \
     "phantowd_ex4_stage_${stage}_defconfig"
+# Configure and audit the final Kconfig result before paying for a kernel build.
+make -C "$buildroot_source" BR2_EXTERNAL="$external_dir" \
+    BR2_DL_DIR="$download_dir" O="$output_dir" linux-configure
+test -s "$kernel_config"
+sh "$kernel_config_audit" "$stage" "$kernel_config"
+
 make -C "$buildroot_source" BR2_EXTERNAL="$external_dir" \
     BR2_DL_DIR="$download_dir" O="$output_dir" \
     -j"$(getconf _NPROCESSORS_ONLN)"
 
-kernel_config="$output_dir/build/linux-$LINUX_VERSION/.config"
 dtb="$output_dir/images/kirkwood-wd-mycloud-ex4-stage-$stage.dtb"
 zimage="$output_dir/images/zImage"
 cpio="$output_dir/images/rootfs.cpio"
@@ -130,45 +139,7 @@ test -s "$zimage"
 test -s "$cpio"
 test -x "$output_dir/target/init"
 test ! -e "$output_dir/target/etc/network"
-
-assert_enabled() {
-    grep -Fx "CONFIG_$1=y" "$kernel_config" >/dev/null || {
-        echo "Required Stage B kernel option is missing: CONFIG_$1" >&2
-        exit 1
-    }
-}
-assert_disabled() {
-    if grep -Eq "^CONFIG_$1=(y|m)$" "$kernel_config"; then
-        echo "Forbidden Stage B kernel option is enabled: CONFIG_$1" >&2
-        exit 1
-    fi
-}
-
-for option in MACH_KIRKWOOD CPU_FEROCEON SERIAL_8250 SERIAL_8250_CONSOLE \
-    SERIAL_OF_PLATFORM DEVTMPFS PROC_FS SYSFS TMPFS ARM_APPENDED_DTB \
-    ARM_ATAG_DTB_COMPAT CMDLINE_FORCE BLK_DEV_INITRD NET INET NETDEVICES \
-    ETHERNET NET_VENDOR_MARVELL MV643XX_ETH MVMDIO PHYLIB OF_MDIO; do
-    assert_enabled "$option"
-done
-if [ "$stage" = b2 ]; then
-    assert_disabled THERMAL THERMAL_OF KIRKWOOD_THERMAL
-else
-    for option in THERMAL THERMAL_OF KIRKWOOD_THERMAL; do
-        assert_enabled "$option"
-    done
-    assert_disabled THERMAL_HWMON THERMAL_MMIO
-fi
-for option in MODULES BLOCK MTD USB_SUPPORT MMC SCSI ATA MD BLK_DEV_DM \
-    I2C SPI RTC_CLASS WATCHDOG SOUND KEXEC CPU_FREQ CPU_IDLE SUSPEND PM \
-    DEVMEM DEVPORT PCI_MVEBU HWMON DMADEVICES IPV6 NETFILTER \
-    PACKET UNIX WIRELESS WLAN NET_DSA IP_PNP NFS_FS ROOT_NFS SUNRPC; do
-    assert_disabled "$option"
-done
-grep -Fx 'CONFIG_CMDLINE="console=ttyS0,115200n8 rdinit=/init panic=-1"' \
-    "$kernel_config" >/dev/null
-# shellcheck disable=SC2016
-grep -Fx 'CONFIG_INITRAMFS_SOURCE="${BR_BINARIES_DIR}/rootfs.cpio"' \
-    "$kernel_config" >/dev/null
+sh "$kernel_config_audit" "$stage" "$kernel_config"
 
 # These stages add only ifconfig to Stage A's exact minimal BusyBox surface.
 busybox_build_dir="$(find "$output_dir/build" -maxdepth 1 -type d \
