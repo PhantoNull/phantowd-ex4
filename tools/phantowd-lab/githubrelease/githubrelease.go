@@ -35,7 +35,6 @@ const (
 )
 
 var (
-	tagPattern     = regexp.MustCompile(`^v[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?$`)
 	repositoryPart = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9_.-]{0,99}$`)
 )
 
@@ -200,8 +199,8 @@ func validateOptions(options Options) error {
 	if !repositoryPart.MatchString(options.Owner) || !repositoryPart.MatchString(options.Repository) {
 		return errors.New("GitHub owner and repository must be single path components")
 	}
-	if !tagPattern.MatchString(options.Tag) {
-		return errors.New("release tag must use vMAJOR.MINOR.PATCH syntax")
+	if _, err := releaseverify.CompareVersions(options.Tag, options.Tag); err != nil {
+		return errors.New("release tag must use strict v-prefixed SemVer 2.0 syntax")
 	}
 	if len(options.PublicKey) != 32 {
 		return errors.New("trusted Ed25519 public key must be exactly 32 bytes")
