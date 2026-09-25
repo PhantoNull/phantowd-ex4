@@ -23,12 +23,15 @@ func TestCompareMDV090ImageSetReportsCompleteGenericArrayMetadata(t *testing.T) 
 		t.Fatalf("got %d array groups, want one: %+v", len(report.Arrays), report)
 	}
 	array := report.Arrays[0]
-	if report.SchemaVersion != 3 || report.CandidateComponents != 2 || array.Status != MDV090ArrayMetadataConsistent ||
+	if report.SchemaVersion != 4 || report.CandidateComponents != 2 || array.Status != MDV090ArrayMetadataConsistent ||
 		array.RAIDDisks != 2 || len(array.ObservedNRDisks) != 1 || array.ObservedNRDisks[0] != 2 ||
 		array.ObservedRAIDRoles != 2 || len(array.MissingRAIDRoles) != 0 ||
 		len(array.Members) != 2 || array.ArrayIdentityFingerprint == "" ||
 		array.WDCompatibility != "unqualified" || report.AssemblyPerformed || report.MountPerformed {
 		t.Fatalf("unexpected generic MD 0.90 comparison: %+v", report)
+	}
+	if array.DescriptorTableStatus != "consistent" || len(array.DescriptorTableMismatchIndices) != 0 {
+		t.Fatalf("matching per-component descriptor projections were not compared: %+v", array)
 	}
 	if array.Members[0].MemberState != 1<<1|1<<2 ||
 		strings.Join(array.Members[0].MemberStateFlags, ",") != "active,sync" ||
@@ -51,6 +54,39 @@ func TestCompareMDV090ImageSetReportsCompleteGenericArrayMetadata(t *testing.T) 
 		if strings.Contains(string(encoded), secret) {
 			t.Fatalf("comparison leaked %q: %s", secret, encoded)
 		}
+	}
+}
+
+func TestCompareMDV090ImageSetDetectsStoredDescriptorTableConflict(t *testing.T) {
+	first := md090ArrayComponentWithNRDisksAndState(1, 1, 0, 0, 42, 2, 1<<1|1<<2)
+	second := md090ArrayComponentWithNRDisksAndState(2, 1, 1, 1, 42, 2, 1<<1)
+	second.Report.DiskDescriptors[1].Role = 0
+
+	report, err := CompareMDV090ImageSet([]MDV090ImageComponent{first, second})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(report.Arrays) != 1 || report.Arrays[0].Status != MDV090ArrayConflicting ||
+		report.Arrays[0].DescriptorTableStatus != "mismatched" ||
+		len(report.Arrays[0].DescriptorTableMismatchIndices) != 1 ||
+		report.Arrays[0].DescriptorTableMismatchIndices[0] != 1 {
+		t.Fatalf("stored descriptor disagreement was not surfaced as a metadata conflict: %+v", report)
+	}
+}
+
+func TestCompareMDV090ImageSetIgnoresRedactedMajorMinorPresence(t *testing.T) {
+	first := md090ArrayComponentWithNRDisksAndState(1, 1, 0, 0, 42, 2, 1<<1|1<<2)
+	second := md090ArrayComponentWithNRDisksAndState(2, 1, 1, 1, 42, 2, 1<<1)
+	second.Report.DiskDescriptors[3].HasNonzeroCoreFields = true
+
+	report, err := CompareMDV090ImageSet([]MDV090ImageComponent{first, second})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(report.Arrays) != 1 || report.Arrays[0].Status != MDV090ArrayMetadataConsistent ||
+		report.Arrays[0].DescriptorTableStatus != "consistent" ||
+		len(report.Arrays[0].DescriptorTableMismatchIndices) != 0 {
+		t.Fatalf("redacted kernel major/minor presence changed descriptor comparison: %+v", report)
 	}
 }
 
@@ -171,6 +207,18 @@ func TestCompareMDV090ImageSetRejectsDuplicateInputLocation(t *testing.T) {
 	}
 }
 
+func TestCompareMDV090ImageSetRejectsIncompleteDescriptorSnapshot(t *testing.T) {
+	component := md090ArrayComponent(1, 1, 0, 0, 42)
+	component.Report.DiskDescriptors = component.Report.DiskDescriptors[:mdV090MaxDevices-1]
+	report, err := CompareMDV090ImageSet([]MDV090ImageComponent{component})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if report.CandidateComponents != 0 || report.UnqualifiedComponents != 1 || len(report.Arrays) != 0 {
+		t.Fatalf("incomplete descriptor snapshot was treated as a candidate: %+v", report)
+	}
+}
+
 func TestCompareMDV090ImageSetBoundsCallerSuppliedRAIDCount(t *testing.T) {
 	component := md090ArrayComponent(1, 1, 0, 0, 42)
 	component.Report.RAIDDisks = ^uint32(0)
@@ -200,12 +248,18 @@ func md090ArrayComponentWithNRDisksAndState(inputIndex, partitionNumber int, mem
 	binary.LittleEndian.PutUint32(superblock[mdV090ThisDiskOffset:mdV090ThisDiskOffset+4], memberNumber)
 	binary.LittleEndian.PutUint32(superblock[mdV090ThisDiskOffset+12:mdV090ThisDiskOffset+16], role)
 	binary.LittleEndian.PutUint32(superblock[mdV090ThisDiskOffset+16:mdV090ThisDiskOffset+20], memberState)
-	descriptor := mdV090DisksOffsetWords*4 + int(memberNumber)*mdV090DescriptorBytes
-	binary.LittleEndian.PutUint32(superblock[descriptor:descriptor+4], memberNumber)
-	binary.LittleEndian.PutUint32(superblock[descriptor+4:descriptor+8], 8)
-	binary.LittleEndian.PutUint32(superblock[descriptor+8:descriptor+12], memberNumber+1)
-	binary.LittleEndian.PutUint32(superblock[descriptor+12:descriptor+16], role)
-	binary.LittleEndian.PutUint32(superblock[descriptor+16:descriptor+20], memberState)
+	for index := uint32(0); index < 2; index++ {
+		descriptor := mdV090DisksOffsetWords*4 + int(index)*mdV090DescriptorBytes
+		state := uint32(1 << 1)
+		if index == 0 {
+			state |= 1 << 2
+		}
+		binary.LittleEndian.PutUint32(superblock[descriptor:descriptor+4], index)
+		binary.LittleEndian.PutUint32(superblock[descriptor+4:descriptor+8], 8)
+		binary.LittleEndian.PutUint32(superblock[descriptor+8:descriptor+12], index+1)
+		binary.LittleEndian.PutUint32(superblock[descriptor+12:descriptor+16], index)
+		binary.LittleEndian.PutUint32(superblock[descriptor+16:descriptor+20], state)
+	}
 	sealMDV090Superblock(superblock)
 	report, err := InspectMDV090Component(bytes.NewReader(image), int64(len(image)))
 	if err != nil {
