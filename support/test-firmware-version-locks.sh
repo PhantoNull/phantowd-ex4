@@ -39,5 +39,8 @@ check_version_lock \
 check_version_lock \
     configs/phantowd_ex4_stage_b2_defconfig \
     board/wd/ex4/stage-b2/rootfs-overlay/etc/phantowd-release
+check_version_lock \
+    configs/phantowd_ex4_stage_b3_defconfig \
+    board/wd/ex4/stage-b3/rootfs-overlay/etc/phantowd-release
 
 printf 'All firmware Linux version locks match %s.\n' "$LINUX_VERSION"
