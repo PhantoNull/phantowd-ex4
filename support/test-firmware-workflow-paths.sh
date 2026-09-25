@@ -3,6 +3,7 @@ set -eu
 
 repo_root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 qemu_workflow="$repo_root/.github/workflows/qemu-armv5.yml"
+stage_a_workflow="$repo_root/.github/workflows/ex4-stage-a.yml"
 stage_b_workflow="$repo_root/.github/workflows/ex4-stage-b.yml"
 stage_b2_workflow="$repo_root/.github/workflows/ex4-stage-b2.yml"
 stage_b3_workflow="$repo_root/.github/workflows/ex4-stage-b3.yml"
@@ -114,6 +115,7 @@ support/container/test-lab-tools.sh
 support/test-firmware-workflow-paths.sh
 support/tests/test-ex4-stage-b-kernel-config-audit.sh
 .github/workflows/qemu-armv5.yml
+.github/workflows/ex4-stage-a.yml
 .github/workflows/ex4-stage-b.yml
 .github/workflows/ex4-stage-b2.yml
 .github/workflows/ex4-stage-b3.yml
@@ -159,6 +161,7 @@ EOF
     require_manual_dispatch "$workflow"
 done
 
+require_manual_only "$stage_a_workflow"
 require_manual_only "$stage_b_workflow"
 require_manual_only "$stage_b2_workflow"
 
@@ -177,7 +180,7 @@ EOF
 
 require_develop_push "$host_workflow"
 
-for workflow in "$qemu_workflow" "$stage_b_workflow" "$stage_b2_workflow" \
+for workflow in "$qemu_workflow" "$stage_a_workflow" "$stage_b_workflow" "$stage_b2_workflow" \
     "$stage_b3_workflow" "$host_workflow" "$reproducibility_workflow"; do
     require_checkout_credentials_not_persisted "$workflow"
 done

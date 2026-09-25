@@ -30,6 +30,7 @@ function setConnectionState(label, state = "ready") {
   setText("build-label", label);
   const indicator = byId("service-status-dot");
   indicator.classList.toggle("is-loading", state === "loading");
+  indicator.classList.toggle("is-degraded", state === "degraded");
   indicator.classList.toggle("is-unavailable", state === "unavailable");
 }
 
@@ -141,6 +142,32 @@ function renderStorage(storage) {
   }
 }
 
+function clearSystemObservation() {
+  setText("kernel-value", "Unavailable");
+  setText("runtime-value", "No current system observation");
+  setText("target-value", "Target unavailable");
+  setText("memory-value", "Unavailable");
+  setText("memory-detail", "No current memory sample");
+  byId("memory-meter").style.width = "0";
+  byId("memory-meter").parentElement.setAttribute("aria-valuenow", "0");
+  byId("memory-meter").parentElement.setAttribute("aria-label", "Memory availability unavailable");
+  setText("firmware-value", "Unavailable");
+  setText("firmware-detail", "Current hardware and flashability state unavailable");
+  setText("observed-at", "No current system observation");
+  byId("observed-at").removeAttribute("datetime");
+  setText("profile-notice-title", "System profile unavailable.");
+  setText("profile-notice-copy", "System metadata could not be refreshed. No previous system values are shown.");
+  setText("profile-notice-mark", "NO CURRENT SYSTEM DATA");
+}
+
+function clearStorageObservation() {
+  setText("device-count", "Storage unavailable");
+  const empty = document.createElement("p");
+  empty.className = "empty-state";
+  empty.textContent = "Storage observation unavailable. No current device values are shown.";
+  byId("device-list").replaceChildren(empty);
+}
+
 async function fetchJSON(path) {
   const response = await fetch(path, { method: "GET", headers: { Accept: "application/json" }, cache: "no-store", credentials: "same-origin" });
   if (!response.ok) {
@@ -164,10 +191,54 @@ async function refreshSnapshot() {
   error.hidden = true;
   setConnectionState("Refreshing snapshot…", "loading");
   try {
-    const [system, storage] = await Promise.all([fetchJSON("/api/v1/system"), fetchJSON("/api/v1/storage")]);
-    renderSystem(system);
-    renderStorage(storage);
-    status.textContent = "Read-only snapshot updated.";
+    const [systemResult, storageResult] = await Promise.allSettled([
+      fetchJSON("/api/v1/system"),
+      fetchJSON("/api/v1/storage"),
+    ]);
+    const results = [systemResult, storageResult];
+    if (results.some((result) => result.status === "rejected" && result.reason?.status === 401)) {
+      status.textContent = "Session expired. Sign in again to view a current snapshot.";
+      try {
+        await updateAuthView({ refresh: false, notice: "Your session expired. Sign in again to continue." });
+      } catch {
+        showAuthUnavailable();
+      }
+      return;
+    }
+
+    const systemCurrent = systemResult.status === "fulfilled";
+    const storageCurrent = storageResult.status === "fulfilled";
+    if (systemCurrent) renderSystem(systemResult.value);
+    else clearSystemObservation();
+    if (storageCurrent) renderStorage(storageResult.value);
+    else clearStorageObservation();
+
+    if (systemCurrent && storageCurrent) {
+      status.textContent = "Read-only system and storage observations updated.";
+      return;
+    }
+
+    const failedDomains = [
+      !systemCurrent && "system",
+      !storageCurrent && "storage",
+    ].filter(Boolean);
+    const currentDomains = [
+      systemCurrent && "system",
+      storageCurrent && "storage",
+    ].filter(Boolean);
+    const failureSummary = failedDomains.length === 2 ? "System and storage observations unavailable." :
+      `${failedDomains[0][0].toUpperCase()}${failedDomains[0].slice(1)} observation unavailable.`;
+    const currentSummary = currentDomains.length > 0 ?
+      `${currentDomains[0][0].toUpperCase()}${currentDomains[0].slice(1)} observation is current.` :
+      "No observations are current.";
+    setConnectionState(failedDomains.length === 2 ? "API unavailable" : "Partial snapshot", failedDomains.length === 2 ? "unavailable" : "degraded");
+    status.textContent = failedDomains.length === 2 ?
+      "System and storage observations unavailable. Current values were cleared." :
+      `${currentSummary} ${failureSummary} Failed values were cleared.`;
+    error.textContent = failedDomains.length === 2 ?
+      "System and storage observations are unavailable. No current values are shown." :
+      `${currentSummary} ${failureSummary} No previous ${failedDomains[0]} values are shown.`;
+    error.hidden = false;
   } catch (failure) {
     if (failure?.status === 401) {
       status.textContent = "Session expired. Sign in again to view a current snapshot.";
@@ -178,25 +249,11 @@ async function refreshSnapshot() {
       }
       return;
     }
-    setText("kernel-value", "Unavailable");
-    setText("runtime-value", "No current system snapshot");
-    setText("target-value", "Target unavailable");
-    setText("memory-value", "Unavailable");
-    setText("memory-detail", "No current memory sample");
-    byId("memory-meter").style.width = "0";
-    byId("memory-meter").parentElement.setAttribute("aria-valuenow", "0");
-    byId("memory-meter").parentElement.setAttribute("aria-label", "Memory availability unavailable");
-    setText("firmware-value", "Unavailable");
-    setText("firmware-detail", "Current hardware and flashability state unavailable");
-    setText("observed-at", "No current snapshot");
-    setText("device-count", "— devices");
-    const empty = document.createElement("p");
-    empty.className = "empty-state";
-    empty.textContent = "Storage observation unavailable. No current device values are shown.";
-    byId("device-list").replaceChildren(empty);
+    clearSystemObservation();
+    clearStorageObservation();
     setConnectionState("API unavailable", "unavailable");
-    status.textContent = "Snapshot unavailable. Current values were cleared; retry when the local API is available.";
-    error.textContent = "Snapshot unavailable. No current system or storage observations are shown.";
+    status.textContent = "System and storage observations unavailable. Current values were cleared.";
+    error.textContent = "System and storage observations are unavailable. No current values are shown.";
     error.hidden = false;
   } finally {
     button.disabled = false;
