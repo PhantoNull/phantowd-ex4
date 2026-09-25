@@ -76,8 +76,9 @@ scan is not full code analysis. The toolkit has no firmware
 extraction, image construction, flash-device, serial-port, or transmit path.
 Run `.\support\test-lab-tools.ps1` for its generated-fixture test suite. No
 proprietary firmware or device dump is included in the repository.
-All build artifacts currently generated in `artifacts/` are local development
-outputs; they are not downloadable firmware releases.
+Files generated under `artifacts/` and attached to GitHub Actions runs are
+validation outputs only. They are not installable firmware or GitHub Releases;
+users must wait for an explicitly qualified project release.
 
 A separate compile-only Linux 6.18 EX4 device-tree baseline is available with
 `.\support\build-ex4-dtb.ps1`. It intentionally disables raw NAND and SDIO,
