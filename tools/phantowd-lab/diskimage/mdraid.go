@@ -235,6 +235,9 @@ type MDV12Report struct {
 	DiskSectors                uint64   `json:"disk_sectors"`
 	PartitionBytes             uint64   `json:"partition_bytes"`
 	ArrayLevel                 int32    `json:"array_level"`
+	ArrayLayout                uint32   `json:"array_layout"`
+	ArraySizeSectors           uint64   `json:"array_size_sectors"`
+	ChunkSizeSectors           uint32   `json:"chunk_size_sectors"`
 	RAIDDisks                  uint32   `json:"raid_disks"`
 	MaxDevices                 uint32   `json:"max_devices"`
 	MemberNumber               uint32   `json:"member_number"`
@@ -330,6 +333,9 @@ func InspectMDV12Superblock(image io.ReaderAt, imageSize int64, firstLBA, lastLB
 	report.MetadataVersion = "1.2"
 	report.FeatureMap = binary.LittleEndian.Uint32(superblock[8:12])
 	report.ArrayLevel = int32(binary.LittleEndian.Uint32(superblock[72:76]))
+	report.ArrayLayout = binary.LittleEndian.Uint32(superblock[76:80])
+	report.ArraySizeSectors = binary.LittleEndian.Uint64(superblock[80:88])
+	report.ChunkSizeSectors = binary.LittleEndian.Uint32(superblock[88:92])
 	report.RAIDDisks = binary.LittleEndian.Uint32(superblock[92:96])
 	report.ComponentDataOffsetSectors = binary.LittleEndian.Uint64(superblock[128:136])
 	report.ComponentDataSectors = binary.LittleEndian.Uint64(superblock[136:144])

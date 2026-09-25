@@ -16,7 +16,9 @@ separately named ARMv5 QEMU baseline for software-only development.
 - reproduce the vendor kernel and user-space layout from legally obtained
   inputs without redistributing proprietary WD binaries;
 - bring up a Buildroot image in RAM or over the network first;
-- design signed, model-specific updates with rollback protection.
+- design signed, model-specific updates with rollback protection;
+- distribute qualified user firmware through GitHub Releases, not developer
+  workstations. No user-installable PhantoWD release has been published yet.
 
 ## Pinned QEMU baseline
 
@@ -41,11 +43,12 @@ material before a public firmware release.
 The first product-owned package is a [read-only diagnostics API and browser
 dashboard](src/phantowd-api/README.md). It runs unprivileged on guest loopback
 only; the responsive dashboard displays only the API's bounded observations.
-There are no storage/hardware controls, and authentication/TLS are not
-implemented, so this development service must not be exposed to a LAN. QEMU
-checks the ARMv5 API, embedded UI assets, GET/negative-request contract, and a
-smoke-only RSS ceiling. Guest networking is restricted and no ports or
-physical devices are forwarded.
+There are no storage/hardware controls. First-admin authentication exists only
+in the QEMU development profile; product state provisioning, recovery, and TLS
+are not implemented, so this service must not be exposed to a LAN. QEMU checks
+the ARMv5 API, embedded UI assets, GET/negative-request and authentication
+contracts, and a smoke-only RSS ceiling. Guest networking is restricted and no
+ports or physical devices are forwarded.
 Run `.\support\test-api.ps1` for fast offline host-native tests; the complete
 build runs those tests again with Buildroot's hash-verified Linux Go compiler.
 
@@ -59,8 +62,9 @@ It never authorizes installation. The toolkit validates a project-owned,
 versioned synthetic storage-inventory JSON and generic GPT structure in
 caller-supplied image files, with optional read-only ext-family superblock or
 Linux MD v1.2 and v0.90 component-superblock checks for selected GPT
-partitions, plus a combined read-only storage-image metadata report and a
-direct Linux MD 0.90 component-image check. These are not
+partitions, a read-only MD v1.2 comparison across multiple disk images, a
+combined read-only storage-image metadata report, and a direct Linux MD 0.90
+component-image check. These are not
 WD XML parsers or WD disk-layout compatibility detectors; valid partition,
 filesystem, or single-member RAID metadata does not establish that a disk can
 be migrated safely. Artifact inspectors accept regular files only;
@@ -69,6 +73,8 @@ scan is not full code analysis. The toolkit has no firmware
 extraction, image construction, flash-device, serial-port, or transmit path.
 Run `.\support\test-lab-tools.ps1` for its generated-fixture test suite. No
 proprietary firmware or device dump is included in the repository.
+All build artifacts currently generated in `artifacts/` are local development
+outputs; they are not downloadable firmware releases.
 
 A separate compile-only Linux 6.18 EX4 device-tree baseline is available with
 `.\support\build-ex4-dtb.ps1`. It intentionally disables raw NAND and SDIO,

@@ -13,7 +13,7 @@ import (
 
 func TestInspectMDV12SuperblockReportsRedactedCandidate(t *testing.T) {
 	image := syntheticMDV12Image()
-	if checksum := binary.LittleEndian.Uint32(mdV12Superblock(image, 16)[216:220]); checksum != 0xf2fe0b4e {
+	if checksum := binary.LittleEndian.Uint32(mdV12Superblock(image, 16)[216:220]); checksum != 0xf2fe0b8e {
 		t.Fatalf("independently calculated checksum fixture drifted: got %08x", checksum)
 	}
 	report, err := InspectMDV12Superblock(bytes.NewReader(image), int64(len(image)), 16, 95)
@@ -22,7 +22,8 @@ func TestInspectMDV12SuperblockReportsRedactedCandidate(t *testing.T) {
 	}
 	if report.Status != MDStatusCandidate || report.MetadataVersion != "1.2" ||
 		report.PartitionFirstLBA != 16 || report.PartitionLastLBA != 95 ||
-		report.ArrayLevel != 1 || report.RAIDDisks != 2 || report.MemberNumber != 0 ||
+		report.ArrayLevel != 1 || report.ArrayLayout != 0 || report.ArraySizeSectors != 64 ||
+		report.ChunkSizeSectors != 0 || report.RAIDDisks != 2 || report.MemberNumber != 0 ||
 		report.MemberRole != 0 || report.MaxDevices != 3 || report.Events != 42 ||
 		report.ComponentDataOffsetSectors != 16 || report.ComponentDataSectors != 64 ||
 		report.SuperblockChecksumStatus != "valid" || !report.RawIdentityRedacted ||
@@ -143,6 +144,7 @@ func syntheticMDV12Image() []byte {
 	copy(sb[16:32], []byte("fixture-array-uuid"))
 	copy(sb[32:64], []byte("PRIVATE_MD_SET_NAME"))
 	binary.LittleEndian.PutUint32(sb[72:76], 1)
+	binary.LittleEndian.PutUint64(sb[80:88], 64)
 	binary.LittleEndian.PutUint32(sb[92:96], 2)
 	binary.LittleEndian.PutUint64(sb[128:136], 16)
 	binary.LittleEndian.PutUint64(sb[136:144], 64)

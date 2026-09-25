@@ -26,7 +26,10 @@ import (
 	"github.com/PhantoNull/phantowd-ex4/phantowd-lab/vendorupdate"
 )
 
-const maxCaptureSize = int64(16 * 1024 * 1024)
+const (
+	maxCaptureSize           = int64(16 * 1024 * 1024)
+	maxStorageImageSetInputs = 4
+)
 
 func main() {
 	code, err := run(os.Args[1:], os.Stdout)
@@ -168,6 +171,9 @@ func run(args []string, output io.Writer) (int, error) {
 
 	case "inspect-storage-image":
 		return inspectStorageImage(args[1:], output)
+
+	case "inspect-md-v1.2-image-set":
+		return inspectMDV12ImageSet(args[1:], output)
 
 	case "inspect-ext-partition":
 		return inspectExtPartition(args[1:], output)
@@ -625,9 +631,23 @@ func inspectStorageImage(args []string, output io.Writer) (int, error) {
 		return 1, err
 	}
 	defer file.Close()
-	gpt, err := diskimage.Inspect(file, size)
+	result, err := observeStorageImage(file, size)
 	if err != nil {
 		return 1, err
+	}
+	if err := writeJSON(output, result); err != nil {
+		return 1, err
+	}
+	if result.GPTStatus != diskimage.StatusValid {
+		return 2, nil
+	}
+	return 0, nil
+}
+
+func observeStorageImage(file *os.File, size int64) (storageImageReport, error) {
+	gpt, err := diskimage.Inspect(file, size)
+	if err != nil {
+		return storageImageReport{}, err
 	}
 	result := storageImageReport{
 		Format:          "phantowd-read-only-storage-image-observation",
@@ -643,34 +663,122 @@ func inspectStorageImage(args []string, output io.Writer) (int, error) {
 		},
 	}
 	if gpt.Status != diskimage.StatusValid {
-		if err := writeJSON(output, result); err != nil {
-			return 1, err
-		}
-		return 2, nil
+		return result, nil
 	}
 	for _, partition := range gpt.Partitions {
 		extReport, err := diskimage.InspectExtSuperblock(file, size, partition.FirstLBA, partition.LastLBA)
 		if err != nil {
-			return 1, err
+			return storageImageReport{}, err
 		}
 		mdV12Report, err := diskimage.InspectMDV12Superblock(file, size, partition.FirstLBA, partition.LastLBA)
 		if err != nil {
-			return 1, err
+			return storageImageReport{}, err
 		}
 		partitionSectors := partition.LastLBA - partition.FirstLBA + 1
 		partitionBytes := partitionSectors * 512
 		component := io.NewSectionReader(file, int64(partition.FirstLBA*512), int64(partitionBytes))
 		mdV090Report, err := diskimage.InspectMDV090Component(component, int64(partitionBytes))
 		if err != nil {
-			return 1, err
+			return storageImageReport{}, err
 		}
 		result.Partitions = append(result.Partitions, storagePartitionObservation{
 			Number: partition.Number, FirstLBA: partition.FirstLBA, LastLBA: partition.LastLBA,
 			Ext: extReport, MDV12: mdV12Report, MDV090: mdV090Report,
 		})
 	}
+	return result, nil
+}
+
+type storageImageSetInput struct {
+	InputIndex              int              `json:"input_index"`
+	GPTStatus               diskimage.Status `json:"gpt_status"`
+	MDV12Candidates         int              `json:"md_v1_2_candidates"`
+	MDV12Unqualified        int              `json:"md_v1_2_unqualified_partitions"`
+	MDV090CandidatesIgnored int              `json:"md_v0_90_candidates_not_compared"`
+}
+
+type storageImageSetReport struct {
+	Format             string                        `json:"format"`
+	SchemaVersion      int                           `json:"schema_version"`
+	WDCompatibility    string                        `json:"wd_compatibility"`
+	Inputs             []storageImageSetInput        `json:"inputs"`
+	Comparison         diskimage.MDV12ImageSetReport `json:"md_v1_2_comparison"`
+	BlockDeviceOpened  bool                          `json:"block_device_opened"`
+	MutationsPerformed bool                          `json:"mutations_performed"`
+	AssemblyPerformed  bool                          `json:"assembly_performed"`
+	MountPerformed     bool                          `json:"mount_performed"`
+	Limitations        []string                      `json:"limitations"`
+}
+
+func inspectMDV12ImageSet(args []string, output io.Writer) (int, error) {
+	if len(args) < 2 || len(args) > maxStorageImageSetInputs {
+		return 1, errors.New("usage: phantowd-lab inspect-md-v1.2-image-set DISK-IMAGE-1 DISK-IMAGE-2 [DISK-IMAGE-3 [DISK-IMAGE-4]]")
+	}
+	result := storageImageSetReport{
+		Format:          "phantowd-md-v1.2-image-set-inspection",
+		SchemaVersion:   1,
+		WDCompatibility: "unqualified",
+		Inputs:          []storageImageSetInput{},
+		Limitations: []string{
+			"all inputs must be regular whole-disk image files with valid generic GPT; input order is represented only by an ordinal, and no host paths are returned",
+			"only MD v1.2 components are grouped; MD 0.90 candidates are counted but not compared, and other metadata versions are not detected",
+			"metadata consistency does not establish array synchronization, disk health, filesystem integrity, WD layout compatibility, migration safety, or suitability for assembly",
+			"the comparator does not interpret per-device recovery/replacement state, reshape, bitmap, bad-block, journal, or other feature-map semantics",
+			"no block device is opened, no array is assembled, no filesystem is mounted, and no image is modified",
+		},
+	}
+	components := make([]diskimage.MDV12ImageComponent, 0)
+	allGPTValid := true
+	for inputIndex, path := range args {
+		file, size, err := openRegular(path)
+		if err != nil {
+			return 1, err
+		}
+		observed, observeErr := observeStorageImage(file, size)
+		closeErr := file.Close()
+		if observeErr != nil {
+			return 1, observeErr
+		}
+		if closeErr != nil {
+			return 1, closeErr
+		}
+		input := storageImageSetInput{InputIndex: inputIndex + 1, GPTStatus: observed.GPTStatus}
+		if observed.GPTStatus != diskimage.StatusValid {
+			allGPTValid = false
+			result.Inputs = append(result.Inputs, input)
+			continue
+		}
+		for _, partition := range observed.Partitions {
+			switch partition.MDV12.Status {
+			case diskimage.MDStatusCandidate:
+				input.MDV12Candidates++
+				components = append(components, diskimage.MDV12ImageComponent{
+					InputIndex: inputIndex + 1, PartitionNumber: partition.Number, Report: partition.MDV12,
+				})
+			default:
+				input.MDV12Unqualified++
+			}
+			if partition.MDV090.Status == diskimage.MDV090StatusCandidate {
+				input.MDV090CandidatesIgnored++
+			}
+		}
+		result.Inputs = append(result.Inputs, input)
+	}
+	comparison, err := diskimage.CompareMDV12ImageSet(components)
+	if err != nil {
+		return 1, err
+	}
+	result.Comparison = comparison
 	if err := writeJSON(output, result); err != nil {
 		return 1, err
+	}
+	if !allGPTValid || len(comparison.Arrays) == 0 || comparison.UnidentifiedCandidateComponents != 0 {
+		return 2, nil
+	}
+	for _, array := range comparison.Arrays {
+		if array.Status != diskimage.MDV12ArrayMetadataConsistent {
+			return 2, nil
+		}
 	}
 	return 0, nil
 }
