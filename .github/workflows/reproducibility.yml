@@ -1,0 +1,107 @@
+name: Independent build reproducibility
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Clean build ${{ matrix.instance }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        instance: [one, two]
+    env:
+      BUILD_VOLUME: phantowd-repro-${{ github.run_id }}-${{ matrix.instance }}
+      BUILD_IMAGE: phantowd/buildroot:repro-${{ github.run_id }}
+    steps:
+      - name: Check out the exact workflow commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Test artifact comparison policy
+        run: sh support/test-compare-build-artifacts.sh
+
+      - name: Build pinned environment
+        run: docker build --file support/docker/Dockerfile --tag "$BUILD_IMAGE" .
+
+      - name: Create isolated Buildroot workspace
+        run: docker volume create "$BUILD_VOLUME"
+
+      - name: Build and boot non-flashable ARMv5 image
+        run: |
+          docker run --rm \
+            --mount type=bind,source="$PWD",target=/external \
+            --mount type=volume,source="$BUILD_VOLUME",target=/workspace \
+            "$BUILD_IMAGE" \
+            /external/support/container/build-qemu.sh
+
+      - name: Compile non-flashable EX4 DTB research output
+        run: |
+          docker run --rm \
+            --mount type=bind,source="$PWD",target=/external \
+            --mount type=volume,source="$BUILD_VOLUME",target=/workspace \
+            "$BUILD_IMAGE" \
+            /external/support/container/build-ex4-dtb.sh
+
+      - name: Stage deterministic comparison set
+        run: |
+          comparison_dir="$RUNNER_TEMP/phantowd-reproducibility"
+          mkdir -p "$comparison_dir/qemu-armv5" "$comparison_dir/ex4-dtb-research"
+          printf '%s\n' "$(git rev-parse HEAD)" > "$comparison_dir/source-commit.txt"
+          cp artifacts/qemu-armv5/SHA256SUMS \
+            artifacts/qemu-armv5/buildroot-show-info.json \
+            artifacts/qemu-armv5/license-manifest.csv \
+            artifacts/qemu-armv5/phantowd-api \
+            artifacts/qemu-armv5/rootfs.ext2 \
+            artifacts/qemu-armv5/sbom.cdx.json \
+            artifacts/qemu-armv5/versatile-pb.dtb \
+            artifacts/qemu-armv5/zImage "$comparison_dir/qemu-armv5/"
+          cp artifacts/ex4-dtb-research/SHA256SUMS \
+            artifacts/ex4-dtb-research/kirkwood-wd-mycloud-ex4.dtb \
+            "$comparison_dir/ex4-dtb-research/"
+
+      - name: Upload allowlisted artifacts for one-day comparison
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: phantowd-repro-${{ matrix.instance }}
+          path: ${{ runner.temp }}/phantowd-reproducibility/
+          if-no-files-found: error
+          retention-days: 1
+
+      - name: Remove this job's isolated workspace
+        if: always()
+        run: docker volume rm "$BUILD_VOLUME" 2>/dev/null || true
+
+  compare:
+    name: Compare independent outputs
+    runs-on: ubuntu-24.04
+    needs: build
+    timeout-minutes: 10
+    steps:
+      - name: Check out the exact workflow commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Download first build
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
+        with:
+          name: phantowd-repro-one
+          path: ${{ runner.temp }}/build-one
+
+      - name: Download second build
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
+        with:
+          name: phantowd-repro-two
+          path: ${{ runner.temp }}/build-two
+
+      - name: Verify complete inventories and byte-for-byte identity
+        run: sh support/compare-build-artifacts.sh "$RUNNER_TEMP/build-one" "$RUNNER_TEMP/build-two"

@@ -82,8 +82,13 @@ and its output under `artifacts/ex4-dtb-research/` is also non-flashable.
 
 `BR2_REPRODUCIBLE` is enabled, but bit-for-bit reproducibility is not claimed
 until two clean builds in independently provisioned environments have been
-compared. The container base image is digest-pinned and build-dependency
-packages now come from the fixed Debian snapshot in
+compared. The manually triggered
+`.github/workflows/reproducibility.yml` builds the same commit on two isolated
+GitHub-hosted runners and compares an explicit allowlist of QEMU kernel/rootfs,
+API, EX4 research DTB, SBOM, and license outputs; transient smoke logs and
+measurements are excluded. That workflow has not yet passed on GitHub, so
+reproducibility remains unproven. The container base image is digest-pinned and build-dependency
+packages come from the fixed Debian snapshot in
 `support/docker/debian-snapshot.sources`; APT archive signature verification
 remains enabled. This pins package selection but does not itself prove
 bit-for-bit reproducibility.

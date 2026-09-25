@@ -18,6 +18,11 @@ gnupg_dir="$workspace_dir/gnupg"
 
 mkdir -p "$workspace_dir" "$download_dir/linux" "$download_dir/cyclonedx"
 
+shellcheck -s sh \
+    "$external_dir/support/compare-build-artifacts.sh" \
+    "$external_dir/support/test-compare-build-artifacts.sh"
+sh "$external_dir/support/test-compare-build-artifacts.sh"
+
 download_verified() {
     url="$1"
     destination="$2"
