@@ -153,7 +153,7 @@ func compareMDV090ArrayGroup(identity string, components []MDV090ImageComponent)
 	}
 	activeRoles := make(map[uint32]bool, array.RAIDDisks)
 	memberNumbers := make(map[uint32]bool, len(components))
-	declaredDeviceCounts := make(map[uint32]bool, len(components))
+	nrDisksSeen := make(map[uint32]bool, len(components))
 	duplicate := false
 	conflicting := false
 	divergent := false
@@ -175,7 +175,7 @@ func compareMDV090ArrayGroup(identity string, components []MDV090ImageComponent)
 			duplicate = true
 		}
 		memberNumbers[current.MemberNumber] = true
-		declaredDeviceCounts[current.NRDisks] = true
+		nrDisksSeen[current.NRDisks] = true
 		if current.MemberRoleDescription == "raid-slot" && current.MemberRole < array.RAIDDisks {
 			if activeRoles[current.MemberRole] {
 				duplicate = true
@@ -188,7 +188,7 @@ func compareMDV090ArrayGroup(identity string, components []MDV090ImageComponent)
 			RoleDescription: current.MemberRoleDescription, Events: current.Events,
 		})
 	}
-	for count := range declaredDeviceCounts {
+	for count := range nrDisksSeen {
 		array.ObservedNRDisks = append(array.ObservedNRDisks, count)
 	}
 	sort.Slice(array.ObservedNRDisks, func(i, j int) bool {

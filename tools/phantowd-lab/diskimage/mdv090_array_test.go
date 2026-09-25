@@ -99,6 +99,19 @@ func TestCompareMDV090ImageSetRejectsDuplicateAssignedRAIDRole(t *testing.T) {
 	}
 }
 
+func TestCompareMDV090ImageSetRejectsDuplicateMemberNumber(t *testing.T) {
+	report, err := CompareMDV090ImageSet([]MDV090ImageComponent{
+		md090ArrayComponent(1, 1, 0, 0, 42),
+		md090ArrayComponent(2, 1, 0, 1, 42),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(report.Arrays) != 1 || report.Arrays[0].Status != MDV090ArrayAmbiguous {
+		t.Fatalf("duplicate member number was not marked ambiguous: %+v", report)
+	}
+}
+
 func TestCompareMDV090ImageSetFlagsDivergentEvents(t *testing.T) {
 	report, err := CompareMDV090ImageSet([]MDV090ImageComponent{
 		md090ArrayComponent(1, 1, 0, 0, 42),
