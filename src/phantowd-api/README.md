@@ -150,9 +150,9 @@ own fixed-iteration fuzz campaign. ARMv5 race instrumentation is not used.
 
 For a host-browser layout preview, run `node support/dashboard-preview.mjs`.
 It binds only to `127.0.0.1:18081` and serves clearly labelled synthetic
-system/storage fixtures; it is not connected to the NAS and is never packaged
-into firmware. If that port is occupied, choose another unprivileged local port
-with `PHANTOWD_PREVIEW_PORT`.
+system, block-device, and software-RAID fixtures; it is not connected to the
+NAS and is never packaged into firmware. If that port is occupied, choose
+another unprivileged local port with `PHANTOWD_PREVIEW_PORT`.
 
 Guest initialization probes the GET endpoints and QEMU-only authentication
 flow, verifies that QEMU's root block node appears through sysfs without being
