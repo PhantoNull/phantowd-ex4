@@ -66,6 +66,56 @@ func TestCollectMDArrayInventoryStates(t *testing.T) {
 	})
 }
 
+func TestCollectMDArrayInventoryDisagreementStaysUnknown(t *testing.T) {
+	const mdstat = "md0 : active raid1 sda2[0] sdb2[1]\n      1024 blocks super 1.2 [2/2] [UU]\n"
+	tests := []struct {
+		name   string
+		mdstat string
+		mutate func(fstest.MapFS)
+	}{
+		{
+			name: "level mismatch",
+			mutate: func(sysfs fstest.MapFS) {
+				sysfs["class/block/md0/md/level"] = &fstest.MapFile{Data: []byte("raid5\n")}
+			},
+		},
+		{
+			name: "degraded count mismatch",
+			mutate: func(sysfs fstest.MapFS) {
+				sysfs["class/block/md0/md/degraded"] = &fstest.MapFile{Data: []byte("1\n")}
+			},
+		},
+		{
+			name: "member mismatch",
+			mutate: func(sysfs fstest.MapFS) {
+				delete(sysfs, "class/block/md0/slaves/sdb2")
+				sysfs["class/block/md0/slaves/sdc2"] = &fstest.MapFile{Mode: fs.ModeIrregular}
+			},
+		},
+		{
+			name: "sync action mismatch",
+			mutate: func(sysfs fstest.MapFS) {
+				sysfs["class/block/md0/md/sync_action"] = &fstest.MapFile{Data: []byte("idle\n")}
+			},
+			mdstat: "md0 : active raid1 sda2[0] sdb2[1]\n      1024 blocks [2/2] [UU]\n      resync = 10.0% (100/1000) finish=1.0min speed=20K/sec\n",
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			procData := mdstat
+			if test.mdstat != "" {
+				procData = test.mdstat
+			}
+			sysfs := fixtureMDArraySysfs("md0")
+			test.mutate(sysfs)
+			snapshot := collectMDArrayInventory(fstest.MapFS{"mdstat": {Data: []byte(procData)}}, sysfs, time.Now())
+			if snapshot.Status != arrayInventoryPartial || len(snapshot.Arrays) != 1 || snapshot.Arrays[0].Health != arrayHealthUnknown {
+				t.Fatalf("source disagreement produced a health conclusion: %+v", snapshot)
+			}
+		})
+	}
+}
+
 func TestParseMDStatRejectsMalformedOrUnboundedInput(t *testing.T) {
 	for _, test := range []struct {
 		name string
