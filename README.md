@@ -136,22 +136,24 @@ utility; the helper was changed to use the available shell builtin. The
 current policy also rejects malformed, all-zero, multicast, and duplicate MAC
 addresses before raising either link, while the known placeholder remains a
 warning so the isolated link/sensor probe can still run. The focused policy
-tests pass under BusyBox `ash` and the pinned Buildroot container shell; the
-expanded policy is awaiting a fresh full B3 CI build and has not yet been
-retested on the EX4. Stage B3 remains research-only and non-flashable.
+tests pass under BusyBox `ash` and the pinned Buildroot container shell. The
+current Linux 6.18.53 head passed the compile-only Stage B3 build on
+[GitHub Actions run 36093115499](https://github.com/PhantoNull/phantowd-ex4/actions/runs/36093115499).
+The expanded policy has not been retested on the EX4. Stage B3 remains
+research-only and non-flashable.
 
-`BR2_REPRODUCIBLE` is enabled, but bit-for-bit reproducibility is not claimed
-until two clean builds in independently provisioned environments have been
-compared. The manually triggered
-`.github/workflows/reproducibility.yml` builds the same commit on two isolated
-GitHub-hosted runners and compares an explicit allowlist of QEMU kernel/rootfs,
-API, EX4 research DTB, SBOM, and license outputs; transient smoke logs and
-measurements are excluded. That workflow has not yet passed on GitHub, so
-reproducibility remains unproven. The container base image is digest-pinned and build-dependency
-packages come from the fixed Debian snapshot in
+`BR2_REPRODUCIBLE` is enabled. GitHub run
+[36097108144](https://github.com/PhantoNull/phantowd-ex4/actions/runs/36097108144)
+built commit `53a0d65` on two separate clean hosted runners and reported
+byte-for-byte identity across 11 allowlisted paths, including the QEMU image,
+API, research DTBs, SBOM and license manifest. This is evidence for that exact
+commit and artifact set, not a universal reproducibility guarantee; transient
+smoke logs and measurements are excluded. The container base image is
+digest-pinned and build-dependency packages come from the fixed Debian snapshot in
 `support/docker/debian-snapshot.sources`; APT archive signature verification
-remains enabled. This pins package selection but does not itself prove
-bit-for-bit reproducibility.
+remains enabled. See the [workflow](.github/workflows/reproducibility.yml) and
+[comparator](support/compare-build-artifacts.sh) for the public comparison
+scope. These outputs remain non-flashable research artifacts.
 
 The project mascot and future logo are a small ghost: the **PhantoWD**.
 
