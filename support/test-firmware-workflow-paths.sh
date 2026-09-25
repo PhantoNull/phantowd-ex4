@@ -5,6 +5,7 @@ repo_root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 qemu_workflow="$repo_root/.github/workflows/qemu-armv5.yml"
 stage_b_workflow="$repo_root/.github/workflows/ex4-stage-b.yml"
 stage_b2_workflow="$repo_root/.github/workflows/ex4-stage-b2.yml"
+stage_b3_workflow="$repo_root/.github/workflows/ex4-stage-b3.yml"
 host_workflow="$repo_root/.github/workflows/host-tools.yml"
 
 require_event_path() {
@@ -67,7 +68,7 @@ support/test-dashboard-ui.mjs
 support/dashboard-preview.mjs
 '
 
-for workflow in "$qemu_workflow" "$stage_b_workflow" "$stage_b2_workflow"; do
+for workflow in "$qemu_workflow" "$stage_b_workflow" "$stage_b2_workflow" "$stage_b3_workflow"; do
     while IFS= read -r path; do
         [ -n "$path" ] && require_ignored_path "$workflow" "$path"
     done <<EOF
@@ -81,7 +82,7 @@ EOF
     require_manual_dispatch "$workflow"
 done
 
-for workflow in "$stage_b_workflow" "$stage_b2_workflow"; do
+for workflow in "$stage_b_workflow" "$stage_b2_workflow" "$stage_b3_workflow"; do
     while IFS= read -r path; do
         [ -n "$path" ] && require_ignored_path "$workflow" "$path"
     done <<EOF
