@@ -32,7 +32,7 @@ var qemuDashboardAssets = []struct {
 }{
 	{"/", "text/html; charset=utf-8", []string{"PhantoWD EX4", "Development image.", "profile-notice-title", "NOT RELEASE QUALIFIED"}},
 	{"/assets/app.css", "text/css; charset=utf-8", []string{"@media", "prefers-reduced-motion"}},
-	{"/assets/app.js", "text/javascript; charset=utf-8", []string{"/api/v1/system", "/api/v1/storage", "/api/v1/arrays", "textContent"}},
+	{"/assets/app.js", "text/javascript; charset=utf-8", []string{"/api/v1/system", "/api/v1/storage", "/api/v1/arrays", "/api/v1/mounts", "textContent"}},
 	{"/assets/ghost.svg", "image/svg+xml", []string{"<svg", "PhantoWD ghost"}},
 }
 
@@ -157,6 +157,29 @@ func runSelfTest() error {
 	if strings.Contains(string(arraysData), qemuTestSerial) || strings.Contains(string(arraysData), qemuTestWWN) {
 		return errors.New("raw QEMU disk identity leaked through the array API")
 	}
+	mountsResponse, err := client.Get("http://" + listenAddress + "/api/v1/mounts")
+	if err != nil {
+		return errors.New("mount inventory loopback request failed")
+	}
+	mountsData, readErr := io.ReadAll(io.LimitReader(mountsResponse.Body, 65537))
+	mountsResponse.Body.Close()
+	if readErr != nil || len(mountsData) > 65536 || mountsResponse.StatusCode != http.StatusOK || mountsResponse.Header.Get("Cache-Control") != "no-store" {
+		return errors.New("invalid mount inventory response")
+	}
+	var mounts mountSnapshot
+	if json.Unmarshal(mountsData, &mounts) != nil || mounts.SchemaVersion != 1 || mounts.ObservedAt.IsZero() ||
+		mounts.Scope != "current-process-mount-namespace" || !mounts.ReadOnly || mounts.FilesystemContentsRead ||
+		mounts.MountOperationsPerformed || mounts.MountCount != len(mounts.Mounts) || mounts.MountCount > maxMountEntries || mounts.Mounts == nil {
+		return errors.New("mount observation crossed or overstated its read-only boundary")
+	}
+	for _, mount := range mounts.Mounts {
+		if len(mount.MountPoint) == 0 || mount.MountPoint[0] != '/' || !validMountFilesystem(mount.Filesystem) {
+			return errors.New("mount observation contains an invalid bounded field")
+		}
+	}
+	if strings.Contains(string(mountsData), "/dev/sda") || strings.Contains(string(mountsData), "errors=continue") {
+		return errors.New("mount source or raw mount option leaked through the API")
+	}
 	for _, asset := range qemuDashboardAssets {
 		response, err := client.Get("http://" + listenAddress + asset.path)
 		if err != nil {
@@ -187,6 +210,8 @@ func runSelfTest() error {
 		{http.MethodGet, "/api/v1/storage?device=/dev/sda", http.StatusBadRequest},
 		{http.MethodPost, "/api/v1/arrays", http.StatusMethodNotAllowed},
 		{http.MethodGet, "/api/v1/arrays?device=/dev/sda", http.StatusBadRequest},
+		{http.MethodPost, "/api/v1/mounts", http.StatusMethodNotAllowed},
+		{http.MethodGet, "/api/v1/mounts?path=/dev/sda", http.StatusBadRequest},
 		{http.MethodPost, "/", http.StatusMethodNotAllowed},
 		{http.MethodGet, "/assets/app.js?file=/etc/passwd", http.StatusBadRequest},
 		{http.MethodGet, "/api/v1/reboot", http.StatusNotFound},

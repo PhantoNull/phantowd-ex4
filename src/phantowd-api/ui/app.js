@@ -199,6 +199,42 @@ function renderArrays(inventory) {
   }
 }
 
+function renderMounts(inventory) {
+  const list = byId("mount-list");
+  list.replaceChildren();
+  const mounts = Array.isArray(inventory.mounts) ? inventory.mounts : [];
+  const count = Number(inventory.mount_count);
+  const visibleCount = Number.isInteger(count) ? count : mounts.length;
+  setText("mount-count", `${visibleCount} ${visibleCount === 1 ? "mount" : "mounts"}`);
+
+  if (mounts.length === 0) {
+    const empty = document.createElement("p");
+    empty.className = "empty-state";
+    empty.textContent = "No mount entries are currently visible in this process namespace.";
+    list.append(empty);
+    return;
+  }
+
+  for (const mount of mounts) {
+    const row = document.createElement("article");
+    row.className = "mount-row";
+    const point = document.createElement("strong");
+    point.className = "mount-point";
+    point.textContent = mount.mount_point || "Mount point unavailable";
+    const filesystem = document.createElement("span");
+    filesystem.textContent = mount.filesystem || "Filesystem unknown";
+    const device = document.createElement("span");
+    const major = Number(mount.device_major);
+    const minor = Number(mount.device_minor);
+    device.textContent = Number.isInteger(major) && Number.isInteger(minor) ? `${major}:${minor}` : "Device ID unavailable";
+    const access = document.createElement("span");
+    access.className = `mount-access${mount.read_only ? " read-only" : ""}`;
+    access.textContent = mount.read_only ? "Read-only mount flag" : "Read-write mount flag";
+    row.append(point, filesystem, device, access);
+    list.append(row);
+  }
+}
+
 function clearSystemObservation() {
   setText("kernel-value", "Unavailable");
   setText("runtime-value", "No current system observation");
@@ -233,6 +269,14 @@ function clearArrayObservation() {
   byId("array-list").replaceChildren(empty);
 }
 
+function clearMountObservation() {
+  setText("mount-count", "Mounts unavailable");
+  const empty = document.createElement("p");
+  empty.className = "empty-state";
+  empty.textContent = "Mount observation unavailable. No current mount values are shown.";
+  byId("mount-list").replaceChildren(empty);
+}
+
 async function fetchJSON(path) {
   const response = await fetch(path, { method: "GET", headers: { Accept: "application/json" }, cache: "no-store", credentials: "same-origin" });
   if (!response.ok) {
@@ -256,12 +300,13 @@ async function refreshSnapshot() {
   error.hidden = true;
   setConnectionState("Refreshing snapshot…", "loading");
   try {
-    const [systemResult, storageResult, arraysResult] = await Promise.allSettled([
+    const [systemResult, storageResult, arraysResult, mountsResult] = await Promise.allSettled([
       fetchJSON("/api/v1/system"),
       fetchJSON("/api/v1/storage"),
       fetchJSON("/api/v1/arrays"),
+      fetchJSON("/api/v1/mounts"),
     ]);
-    const results = [systemResult, storageResult, arraysResult];
+    const results = [systemResult, storageResult, arraysResult, mountsResult];
     if (results.some((result) => result.status === "rejected" && result.reason?.status === 401)) {
       status.textContent = "Session expired. Sign in again to view a current snapshot.";
       try {
@@ -275,15 +320,18 @@ async function refreshSnapshot() {
     const systemCurrent = systemResult.status === "fulfilled";
     const storageCurrent = storageResult.status === "fulfilled";
     const arraysCurrent = arraysResult.status === "fulfilled";
+    const mountsCurrent = mountsResult.status === "fulfilled";
     if (systemCurrent) renderSystem(systemResult.value);
     else clearSystemObservation();
     if (storageCurrent) renderStorage(storageResult.value);
     else clearStorageObservation();
     if (arraysCurrent) renderArrays(arraysResult.value);
     else clearArrayObservation();
+    if (mountsCurrent) renderMounts(mountsResult.value);
+    else clearMountObservation();
 
-    if (systemCurrent && storageCurrent && arraysCurrent) {
-      status.textContent = "Read-only system, storage, and RAID observations updated.";
+    if (systemCurrent && storageCurrent && arraysCurrent && mountsCurrent) {
+      status.textContent = "Read-only system, storage, RAID, and mount observations updated.";
       return;
     }
 
@@ -291,22 +339,24 @@ async function refreshSnapshot() {
       !systemCurrent && "system",
       !storageCurrent && "storage",
       !arraysCurrent && "RAID",
+      !mountsCurrent && "mount",
     ].filter(Boolean);
     const currentDomains = [
       systemCurrent && "system",
       storageCurrent && "storage",
       arraysCurrent && "RAID",
+      mountsCurrent && "mount",
     ].filter(Boolean);
     const failureSummary = `${failedDomains.join(", ")} observation${failedDomains.length === 1 ? "" : "s"} unavailable.`;
     const currentSummary = currentDomains.length > 0 ?
       `${currentDomains.join(", ")} observation${currentDomains.length === 1 ? " is" : "s are"} current.` :
       "No observations are current.";
-    setConnectionState(failedDomains.length === 3 ? "API unavailable" : "Partial snapshot", failedDomains.length === 3 ? "unavailable" : "degraded");
-    status.textContent = failedDomains.length === 3 ?
-      "System, storage, and RAID observations unavailable. Current values were cleared." :
+    setConnectionState(failedDomains.length === 4 ? "API unavailable" : "Partial snapshot", failedDomains.length === 4 ? "unavailable" : "degraded");
+    status.textContent = failedDomains.length === 4 ?
+      "System, storage, RAID, and mount observations unavailable. Current values were cleared." :
       `${currentSummary} ${failureSummary} Failed values were cleared.`;
-    error.textContent = failedDomains.length === 3 ?
-      "System, storage, and RAID observations are unavailable. No current values are shown." :
+    error.textContent = failedDomains.length === 4 ?
+      "System, storage, RAID, and mount observations are unavailable. No current values are shown." :
       `${currentSummary} ${failureSummary} No previous values are shown for the unavailable section.`;
     error.hidden = false;
   } catch (failure) {
@@ -322,9 +372,10 @@ async function refreshSnapshot() {
     clearSystemObservation();
     clearStorageObservation();
     clearArrayObservation();
+    clearMountObservation();
     setConnectionState("API unavailable", "unavailable");
-    status.textContent = "System, storage, and RAID observations unavailable. Current values were cleared.";
-    error.textContent = "System, storage, and RAID observations are unavailable. No current values are shown.";
+    status.textContent = "System, storage, RAID, and mount observations unavailable. Current values were cleared.";
+    error.textContent = "System, storage, RAID, and mount observations are unavailable. No current values are shown.";
     error.hidden = false;
   } finally {
     button.disabled = false;

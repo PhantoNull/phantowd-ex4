@@ -80,6 +80,7 @@ contains an embedded, read-only browser dashboard over its diagnostic API.
 | `GET /api/v1/system` | Authenticated versioned JSON: observation time, kernel, architecture/GOARM, uptime, total/available memory, effective UID, development safety flags |
 | `GET /api/v1/storage` | Authenticated, sorted, bounded kernel block-node observations from sysfs: name, major/minor, 512-byte-sector capacity, read-only/removable flags, partition number, and whole-disk `serial_status` / `wwn_status` when applicable |
 | `GET /api/v1/arrays` | Authenticated, bounded Linux MD observations from `/proc/mdstat` and `/sys/class/block`: level, state, degraded/active counts, sync action/progress, and transient member names; partial sources never become an empty/healthy claim |
+| `GET /api/v1/mounts` | Authenticated, bounded snapshot of filesystems already mounted in this process's namespace, from `/proc/self/mountinfo`; returns mount point, filesystem type, device major/minor, and the read-only mount flag while omitting source strings and raw options |
 | Non-GET on a known route | `405`, `Allow: GET` |
 | Query or body on a read route | `400` |
 | Unknown route | `404` |
@@ -101,11 +102,14 @@ cross-checks array names, levels, member counts and member names when both
 sources report them. Any mismatch produces partial inventory and unknown
 health, never a healthy claim. “Healthy” means only a consistent operational
 Linux MD state: it does not imply redundancy (for example, RAID0 and linear
-arrays have none) or verified data integrity. Neither endpoint proves that a
-WD layout is supported, opens a `/dev` node, reads disk contents, assembles or
-mounts an array, or queries a source expected to wake a disk. These are
-on-demand kernel observations, not filesystem or data-integrity checks; no
-periodic sampling is implemented yet.
+arrays have none) or verified data integrity. These observers do not establish
+WD-layout support or data integrity. The block and array observers open no
+`/dev` node and read no disk contents; the array observer does not assemble,
+mount, or repair arrays. The mounts endpoint reads only the kernel's
+current-process mount table; it neither mounts nor unmounts anything, cannot
+see unmounted disks, and omits mount source strings, root paths, and raw
+options. These are on-demand kernel observations, not filesystem or
+data-integrity checks; no periodic sampling is implemented yet.
 
 The server limits active handlers to eight, request headers to 8 KiB (Go's
 HTTP parser may permit implementation slop), and sets read/write/idle timeouts.

@@ -15,12 +15,17 @@ const listenAddress = defaultListenAddress
 type collector func() (systemSnapshot, error)
 type storageSnapshotCollector func() (storageSnapshot, error)
 type mdArraySnapshotCollector func() mdArraySnapshot
+type mountSnapshotCollector func() (mountSnapshot, error)
 
 func newHandler(collect collector, collectStorage storageSnapshotCollector, auth *authController) http.Handler {
 	return newHandlerWithArrays(collect, collectStorage, nil, auth)
 }
 
 func newHandlerWithArrays(collect collector, collectStorage storageSnapshotCollector, collectArrays mdArraySnapshotCollector, auth *authController) http.Handler {
+	return newHandlerWithMounts(collect, collectStorage, collectArrays, nil, auth)
+}
+
+func newHandlerWithMounts(collect collector, collectStorage storageSnapshotCollector, collectArrays mdArraySnapshotCollector, collectMounts mountSnapshotCollector, auth *authController) http.Handler {
 	active := make(chan struct{}, 8)
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -56,7 +61,7 @@ func newHandlerWithArrays(collect collector, collectStorage storageSnapshotColle
 			auth.serve(w, r)
 			return
 		}
-		if r.URL.Path != "/api/v1/system" && r.URL.Path != "/api/v1/storage" && r.URL.Path != "/api/v1/arrays" {
+		if r.URL.Path != "/api/v1/system" && r.URL.Path != "/api/v1/storage" && r.URL.Path != "/api/v1/arrays" && r.URL.Path != "/api/v1/mounts" {
 			writeJSON(w, http.StatusNotFound, map[string]string{"error": "not_found"})
 			return
 		}
@@ -88,6 +93,19 @@ func newHandlerWithArrays(collect collector, collectStorage storageSnapshotColle
 				return
 			}
 			writeJSON(w, http.StatusOK, collectArrays())
+			return
+		}
+		if r.URL.Path == "/api/v1/mounts" {
+			if collectMounts == nil {
+				writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "mount_inventory_unavailable"})
+				return
+			}
+			snapshot, err := collectMounts()
+			if err != nil {
+				writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "mount_inventory_unavailable"})
+				return
+			}
+			writeJSON(w, http.StatusOK, snapshot)
 			return
 		}
 		snapshot, err := collect()
