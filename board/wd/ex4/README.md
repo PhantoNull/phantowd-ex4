@@ -143,3 +143,27 @@ retained the known placeholder MAC. The fixed init lowered both interfaces
 and halted automatically. Factory identity, cooling, recovery and repeatability
 remain unverified. These results do not authorize installation or use with
 disks.
+
+## Stage B3 combined network and sensor observation
+
+Stage B3 is a separate, compile-only RAM research target that groups three
+checks into one short run: it checks whether Linux receives two distinct,
+non-placeholder MACs from temporary U-Boot variables; both interfaces are
+raised together and sampled at two-second intervals; and the SoC's internal
+thermal zone is read over serial. It keeps IP autoconfiguration, IPv6, packet
+sockets, network services, storage, MTD, NAND, SATA and the fan controller
+unavailable. The thermal sensor is tripless and observational; it is not a
+thermal safety system.
+
+For an exact-device trial, use that EX4's stock `mac1`/`mac2` values as U-Boot
+`ethaddr`/`eth1addr`, read them back, and never run `saveenv`. The initramfs
+reports placeholder MACs as a warning so the independent link/sensor
+observations can continue, but still rejects duplicate addresses before
+raising interfaces. It configures no IP and starts no network service. Both
+HDDs must remain removed. This test does not qualify MAC handoff when a
+placeholder warning appears, fan control, sustained link stability, storage,
+recovery or installation.
+
+Build and audit with `.\support\build-ex4-stage-b3.ps1` on Windows/Docker.
+The output remains explicitly non-flashable and is not authorized for a
+physical boot until its exact artifact and a bounded run procedure are reviewed.

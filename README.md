@@ -130,6 +130,21 @@ left-port and one right-port link transitions, so sustained stability remains
 unqualified. Both MACs were placeholders. The fixed init lowered both
 interfaces and halted automatically.
 
+Stage B3 is a compile-only follow-up probe for simultaneous two-port carrier,
+the addresses returned by both Ethernet drivers, and the Kirkwood internal
+thermal sensor. It configures no IP address, DHCP client, bridge, storage, or
+MTD and halts after a short observation. One exact-device B3 attempt stopped
+before its readiness marker because the target BusyBox lacked the `printf`
+utility; the helper was changed to use the available shell builtin. The
+current policy also rejects malformed, all-zero, multicast, and duplicate MAC
+addresses before raising either link, while the known placeholder remains a
+warning so the isolated link/sensor probe can still run. The focused policy
+tests pass under BusyBox `ash` and the pinned Buildroot container shell. The
+current Linux 6.18.53 head passed the compile-only Stage B3 build on
+[GitHub Actions run 36093115499](https://github.com/PhantoNull/phantowd-ex4/actions/runs/36093115499).
+The expanded policy has not been retested on the EX4. Stage B3 remains
+research-only and non-flashable.
+
 `BR2_REPRODUCIBLE` is enabled. GitHub run
 [36097108144](https://github.com/PhantoNull/phantowd-ex4/actions/runs/36097108144)
 built commit `53a0d65` on two separate clean hosted runners and reported

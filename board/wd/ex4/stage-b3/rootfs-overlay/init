@@ -1,0 +1,101 @@
+#!/bin/sh
+
+PATH=/sbin:/bin
+export PATH
+
+lower_links() {
+	ifconfig eth0 down >/dev/null 2>&1 || true
+	ifconfig eth1 down >/dev/null 2>&1 || true
+}
+
+fail() {
+	echo "PHANTOWD_EX4_STAGE_B3_ERROR reason=$1"
+	lower_links
+	halt -f
+	while :; do sleep 60; done
+}
+
+mount -t proc proc /proc || fail proc-mount
+mount -t sysfs sysfs /sys || fail sysfs-mount
+
+# shellcheck disable=SC1091
+. /etc/phantowd-release || fail release-metadata
+
+[ "$PHANTOWD_TARGET" = "ex4-stage-b3-compile-only" ] || fail target-metadata
+[ "$PHANTOWD_FLASHABLE" = "no" ] || fail flashable-metadata
+[ "$PHANTOWD_HARDWARE_VALIDATED" = "no" ] || fail hardware-metadata
+[ "$PHANTOWD_STORAGE_ENABLED" = "no" ] || fail storage-metadata
+[ "$PHANTOWD_NETWORK_MODE" = "dual-link-and-internal-thermal-observation-only" ] || fail network-metadata
+[ ! -e /proc/mtd ] || fail mtd-exposed
+
+set -- /sys/class/block/*
+[ ! -e "$1" ] || fail block-device-exposed
+
+running_kernel="$(uname -r)"
+running_arch="$(uname -m)"
+[ "$running_kernel" = "$PHANTOWD_KERNEL_VERSION" ] || fail kernel-version
+case "$running_arch" in armv5*) ;; *) fail architecture ;; esac
+
+[ -d /sys/class/net/eth0 ] || fail eth0-missing
+[ -d /sys/class/net/eth1 ] || fail eth1-missing
+set -- /sys/bus/mdio_bus/devices/*
+[ -e "$1" ] || fail mdio-phys-missing
+[ "$#" -ge 2 ] || fail second-mdio-phy-missing
+
+thermal_zone=/sys/class/thermal/thermal_zone0
+[ -r "$thermal_zone/type" ] || fail thermal-zone-missing
+[ -r "$thermal_zone/temp" ] || fail thermal-reading-missing
+IFS= read -r thermal_type < "$thermal_zone/type" || fail thermal-type
+
+IFS= read -r eth0_mac < /sys/class/net/eth0/address || fail eth0-mac
+IFS= read -r eth1_mac < /sys/class/net/eth1/address || fail eth1-mac
+
+# A placeholder prevents a MAC-handoff pass, but not an isolated link/sensor
+# observation. Keep duplicate addresses fail-closed before bringing links up.
+# shellcheck disable=SC1091
+. /usr/lib/phantowd/stage-b3/mac-policy.sh || fail mac-policy-missing
+if mac_handoff_status="$(stage_b3_mac_handoff_status "$eth0_mac" "$eth1_mac")"; then
+	:
+else
+	fail invalid-or-duplicate-mac
+fi
+if [ "$mac_handoff_status" = 'placeholder-warning' ]; then
+	echo "PHANTOWD_EX4_STAGE_B3_MAC_WARNING eth0_mac=$eth0_mac eth1_mac=$eth1_mac reason=placeholder"
+fi
+
+read_temperature() {
+	IFS= read -r temperature < "$thermal_zone/temp" || fail thermal-read
+	case "$temperature" in ''|*[!0-9]*) fail thermal-value ;; esac
+}
+
+read_interface() {
+	iface="$1"
+	IFS= read -r mac < "/sys/class/net/$iface/address" || fail "$iface-mac"
+	IFS= read -r carrier < "/sys/class/net/$iface/carrier" || fail "$iface-carrier"
+	IFS= read -r operstate < "/sys/class/net/$iface/operstate" || fail "$iface-operstate"
+	IFS= read -r speed < "/sys/class/net/$iface/speed" || speed=unknown
+	IFS= read -r duplex < "/sys/class/net/$iface/duplex" || duplex=unknown
+	echo "PHANTOWD_EX4_STAGE_B3_LINK sample=$sample interface=$iface mac=$mac carrier=$carrier operstate=$operstate speed_mbps=$speed duplex=$duplex"
+}
+
+read_temperature
+echo "PHANTOWD_EX4_STAGE_B3_READY target=$PHANTOWD_TARGET kernel=$running_kernel arch=$running_arch flashable=no storage=no mdio_devices=$# eth0_mac=$eth0_mac eth1_mac=$eth1_mac mac_handoff=$mac_handoff_status thermal_type=$thermal_type temp_millicelsius=$temperature"
+
+ifconfig eth0 up || fail eth0-up
+ifconfig eth1 up || fail eth1-up
+
+# Observe both links at once for eight seconds. No address configuration,
+# packet-generating client, DHCP, bridge or network service is present.
+for sample in 1 2 3 4; do
+	read_temperature
+	echo "PHANTOWD_EX4_STAGE_B3_THERMAL sample=$sample type=$thermal_type temp_millicelsius=$temperature"
+	read_interface eth0
+	read_interface eth1
+	[ "$sample" -eq 4 ] || sleep 2
+done
+
+lower_links
+echo "PHANTOWD_EX4_STAGE_B3_HALT timeout_seconds=10"
+sleep 10
+halt -f
+while :; do sleep 60; done
