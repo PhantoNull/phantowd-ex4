@@ -71,6 +71,16 @@ require_develop_push() {
     fi
 }
 
+require_manual_only() {
+    workflow=$1
+    if grep -Eq '^  (push|pull_request):' "$workflow"; then
+        printf 'workflow %s must not run automatically; keep it manual-only\n' \
+            "$workflow" >&2
+        exit 1
+    fi
+    require_manual_dispatch "$workflow"
+}
+
 host_tool_paths='
 tools/phantowd-lab/**
 support/test-lab-tools.ps1
@@ -108,7 +118,7 @@ support/container/audit-ex4-stage-b-kernel-config.sh
 support/tests/test-ex4-stage-b-kernel-config-audit.sh
 '
 
-for workflow in "$qemu_workflow" "$stage_b_workflow" "$stage_b2_workflow" "$stage_b3_workflow"; do
+for workflow in "$qemu_workflow" "$stage_b3_workflow"; do
     require_develop_push "$workflow"
     while IFS= read -r path; do
         [ -n "$path" ] && require_ignored_path "$workflow" "$path"
@@ -123,7 +133,10 @@ EOF
     require_manual_dispatch "$workflow"
 done
 
-for workflow in "$stage_b_workflow" "$stage_b2_workflow" "$stage_b3_workflow"; do
+require_manual_only "$stage_b_workflow"
+require_manual_only "$stage_b2_workflow"
+
+for workflow in "$stage_b3_workflow"; do
     for event in push pull_request; do
         require_not_ignored_pattern \
             "$workflow" "$event" support/container/audit-ex4-stage-b-kernel-config.sh
@@ -138,7 +151,7 @@ EOF
 
 require_develop_push "$host_workflow"
 
-for workflow in "$stage_b_workflow" "$stage_b2_workflow" "$stage_b3_workflow"; do
+for workflow in "$stage_b3_workflow"; do
     while IFS= read -r path; do
         [ -n "$path" ] && require_ignored_path "$workflow" "$path"
     done <<EOF
