@@ -25,7 +25,7 @@ on:
       - 'support/tests/test-stage-b3-mac-policy.sh'
       - 'versions.env'
   pull_request:
-    types: [opened, reopened]
+    types: [opened, synchronize, reopened, ready_for_review]
     paths:
       - 'board/wd/ex4/stage-a/**'
       - 'board/wd/ex4/stage-b/**'

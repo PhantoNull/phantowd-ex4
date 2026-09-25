@@ -21,7 +21,7 @@ on:
       - 'support/docker/Dockerfile'
       - 'versions.env'
   pull_request:
-    types: [opened, reopened]
+    types: [opened, synchronize, reopened, ready_for_review]
     paths:
       - 'board/qemu/armv5/**'
       - 'configs/phantowd_qemu_armv5_defconfig'
