@@ -298,14 +298,15 @@ releases. No production release or safe in-device updater exists yet.
 
 ### File-share proposal panel
 
-The authenticated panel builds a standalone draft for one volume, one SMB
+The authenticated proposal form builds a standalone draft for one volume, one SMB
 share/user grant and an optional NFS export/client rule. It uses the strict
 [preview endpoint](fileservice/README.md), not a save/apply route. UUIDs are
 operator-entered expectations, not discoveries; revisions are draft-local
-version 1, not revisions loaded from the appliance. The form does not merge,
-load, replace or delete current configuration. Multi-share/account management,
-effective permissions, persistent state and activation remain implementation
-work. The API schema itself supports larger configurations.
+version 1, not revisions loaded from the appliance. The Validate proposal button
+does not load, merge or save current configuration. The separate manager can
+populate these fields from a selected saved item and use them for an explicit
+operation against the loaded revision, as described below. Effective permissions,
+account lifecycle, product state and activation remain implementation work.
 
 Access defaults to read-only; optional NFS defaults to all-squash with numeric
 IDs 65534. The UI explains independent SMB/NFS permissions, AUTH_SYS trust and
@@ -327,7 +328,41 @@ reference; neither operation proves presence or provisions an account. New
 project IDs are deterministic and avoid existing IDs. Duplicate share names
 and export UUIDs are refused locally; the server validates the entire result,
 including limits, overlap and policy compatibility, before a save is enabled.
-All component revisions advance together. Edit/remove controls remain work.
+All component revisions advance together.
+
+After loading, a separate editor selects a saved SMB share or NFS export by
+stable policy ID, not by display name or current list position. Selection
+copies its volume/path into the form; choosing an existing user/CIDR rule
+copies that rule's fields. Only the chosen operation consumes those fields:
+
+| Operation | Changed | Preserved |
+| --- | --- | --- |
+| SMB properties | Name, volume reference, relative path | Share ID, every grant, all NFS policy |
+| SMB grant add/update | One exact username's ro/rw grant; adds a user reference if needed | All other grants, share path, NFS policy |
+| SMB grant remove | One exact username's grant | User reference, other grants, all NFS policy |
+| SMB definition remove | Selected share definition | Files, users, volumes and every NFS export |
+| Independent NFS add | New export UUID, volume/path and first client rule | All SMB shares and existing exports |
+| NFS properties | Volume reference and relative path | Export UUID, every client rule, all SMB policy |
+| NFS client add/update | One exact CIDR's access, squash, anonymous IDs and security flavor | Other client rules, export identity/path, SMB grants |
+| NFS client remove | One exact CIDR rule | Other clients and all SMB policy |
+| NFS definition remove | Selected export definition | Files, volumes, users and all SMB shares |
+
+Changing a client network requires an explicit new rule/removal, not an
+implicit rename of an old CIDR. Removing the last grant/client rule is refused;
+the owner must choose definition removal instead. Unused user/volume references
+are retained, not garbage-collected. Missing targets, mismatched protocol/action,
+duplicate identities/names and no-change edits are refused locally. Remaining
+schema/limit/overlap checks are authoritative on the server. No generated-ID
+choice permits bypassing those checks. Edit operations preserve unrelated
+objects, including existing multi-user and multi-client policy.
+
+Changing a definition's volume/path moves no files. Its old protocol peer does
+not follow automatically: an SMB path edit/removal does not change or revoke
+NFS, and vice versa. The review names the affected object and operation and
+shows the full resulting service text before an explicit revision commit.
+Preserving a desired NFS export UUID across a path change is not evidence of
+safe live filehandle continuity; a future activator must qualify rebind/revocation.
+No service runtime is changed by these development controls.
 
 The current complete document is available as text in an expandable section;
 the candidate review shows resulting SMB/NFS text and the intended revision.
@@ -347,7 +382,8 @@ documents and aborts local requests; cancelling a request cannot undo a server
 commit. A new session must reread state. Late responses cannot restore cleared
 configuration. Network errors never include raw backend response contents.
 
-DOM tests exercise addition/preservation, reference reuse, request/CSRF shape,
+DOM tests exercise addition/edit/removal isolation, stable-ID selection,
+multi-user/client preservation, reference reuse, request/CSRF shape,
 lost replies, conflicts, malformed responses and auth-loss cancellation. These
 use mocked fetch responses; separate QEMU tests exercise the real API/store over
 HTTP/HTTPS. ARMv5 smoke verifies embedded assets, not browser JavaScript

@@ -37,7 +37,7 @@ var qemuDashboardAssets = []struct {
 	{"/", "text/html; charset=utf-8", []string{"PhantoWD EX4", "Development image.", "profile-notice-title", "NOT RELEASE QUALIFIED", "policy-form", "NOT SAVED / NOT APPLIED / RUNTIME NOT VERIFIED", "saved-load", "SAVED POLICY / ACTIVATION NOT AVAILABLE"}},
 	{"/assets/app.css", "text/css; charset=utf-8", []string{"@media", "prefers-reduced-motion"}},
 	{"/assets/app.js", "text/javascript; charset=utf-8", []string{"/api/v1/system", "/api/v1/storage", "/api/v1/arrays", "/api/v1/mounts", "/api/v1/file-services/preview", "invalidatePolicyPreview", "textContent", "/api/v1/shares/configuration", "clearSavedPolicy"}},
-	{"/assets/service-policy.js", "text/javascript; charset=utf-8", []string{"/api/v1/file-services/configuration", "sameServiceDocument", "saveServiceAddition", "clearServicePolicy"}},
+	{"/assets/service-policy.js", "text/javascript; charset=utf-8", []string{"/api/v1/file-services/configuration", "sameServiceDocument", "saveServiceChange", "clearServicePolicy"}},
 	{"/assets/ghost.svg", "image/svg+xml", []string{"<svg", "PhantoWD ghost"}},
 }
 

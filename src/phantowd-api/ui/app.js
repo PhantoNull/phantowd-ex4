@@ -797,7 +797,11 @@ async function loadSavedPolicy() {
 byId("saved-load").addEventListener("click", loadSavedPolicy);
 byId("service-load").addEventListener("click", loadServicePolicy);
 byId("service-prepare").addEventListener("click", prepareServiceAddition);
-byId("service-save").addEventListener("click", saveServiceAddition);
+byId("service-save").addEventListener("click", saveServiceChange);
+byId("service-target").addEventListener("change", selectServiceTarget);
+byId("service-member").addEventListener("change", selectServiceMember);
+byId("service-action").addEventListener("change", selectServiceAction);
+byId("service-edit-preview").addEventListener("click", prepareServiceEdit);
 byId("policy-form").addEventListener("submit", submitPolicyProposal);
 byId("policy-form").addEventListener("input", () => { invalidatePolicyPreview(); syncPolicyNFS(); });
 byId("policy-form").addEventListener("change", () => { invalidatePolicyPreview(); syncPolicyNFS(); });

@@ -60,8 +60,9 @@ or applied, and do not prove runtime storage identity or effective access.
 An optional, compile-gated development API can save a combined SMB/NFS desired
 policy on explicitly supplied test storage, with revision checks; it is disabled
 by default, loopback-only, and never activates services. Its dashboard manager
-can explicitly load that test state, preview an additive share change and save
-the reviewed revision, with no automatic retry after an uncertain result.
+can load that test state, preview additions or explicit SMB/NFS property,
+access-rule and definition removals, and save the reviewed revision. It retains
+unrelated policy and never retries an uncertain save automatically.
 There are no storage/hardware controls. First-admin authentication exists only
 in the QEMU development profile; product state provisioning, recovery, and a
 certificate lifecycle are not implemented, so this service must not be exposed

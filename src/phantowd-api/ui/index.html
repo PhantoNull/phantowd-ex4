@@ -214,7 +214,7 @@
         </div>
         <section class="saved-policy" aria-labelledby="service-title">
           <h3 id="service-title">Development configuration manager</h3>
-          <p class="policy-help">Optional combined SMB/NFS test storage only. Load its current revision, then add the share from the form above without replacing existing shares. This does not migrate the separate share-only store. Saving never activates services, provisions accounts or reconfigures disks.</p>
+          <p class="policy-help">Optional combined SMB/NFS test storage only. Load its current revision, then add from the form or select an existing item and an explicit edit operation. Unrelated shares and rules are retained. This does not migrate the separate share-only store. Saving never activates services, provisions accounts or reconfigures disks.</p>
           <div class="policy-actions">
             <button id="service-load" class="refresh-button" type="button">Load / reconcile saved state</button>
             <button id="service-prepare" class="logout-button" type="button" disabled>Preview addition from form</button>
@@ -223,13 +223,31 @@
           <div id="service-current" hidden>
             <p id="service-summary" class="policy-help"></p>
             <details><summary>Complete saved desired configuration</summary><pre id="service-document"></pre></details>
+            <fieldset id="service-editor" class="policy-grid">
+              <legend>Edit saved desired policy</legend>
+              <label>Share or export<select id="service-target"><option value="">Choose a saved item</option></select></label>
+              <label>Existing access rule<select id="service-member"><option value="">Choose a rule, or enter a new one above</option></select></label>
+              <label>Change to preview<select id="service-action">
+                <option value="smb-properties">SMB: change name, volume or folder</option>
+                <option value="smb-grant-upsert">SMB: add/update the entered user's grant</option>
+                <option value="smb-grant-remove">SMB: remove the entered user's grant</option>
+                <option value="smb-remove">SMB: remove the selected share definition</option>
+                <option value="nfs-add">NFS: add an independent export from the form</option>
+                <option value="nfs-properties">NFS: change volume or folder, retain export UUID</option>
+                <option value="nfs-client-upsert">NFS: add/update the entered CIDR's rule</option>
+                <option value="nfs-client-remove">NFS: remove the entered CIDR's rule</option>
+                <option value="nfs-remove">NFS: remove the selected export definition</option>
+              </select></label>
+              <p class="policy-help">Selecting an item fills its fields above. Selecting an access rule fills that user or CIDR. Only the chosen operation is changed; other grants, clients and the other protocol are retained. Removing SMB does not revoke NFS. Removing definitions never deletes files, volumes or users. Removing the last access rule is refused; remove the definition explicitly instead.</p>
+              <button id="service-edit-preview" class="logout-button" type="button" disabled>Preview selected change</button>
+            </fieldset>
           </div>
           <div id="service-review" hidden>
             <p id="service-change" class="policy-help"></p>
             <p class="pill pill-warning">SAVE ONLY / NO SERVICE ACTIVATION</p>
             <details><summary>Resulting Samba share sections</summary><pre id="service-samba"></pre></details>
             <details><summary>Resulting NFS export table</summary><pre id="service-nfs"></pre></details>
-            <button id="service-save" class="refresh-button" type="button" disabled>Save reviewed addition</button>
+            <button id="service-save" class="refresh-button" type="button" disabled>Save reviewed change</button>
           </div>
         </section>
       </section>

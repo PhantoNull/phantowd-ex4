@@ -13,9 +13,12 @@ function syncServiceControls() {
   byId("service-load").disabled = serviceState.busy;
   byId("service-prepare").disabled = serviceState.busy || serviceState.baseline === undefined || serviceState.attempted !== null;
   byId("service-save").disabled = serviceState.busy || serviceState.candidate === null || serviceState.attempted !== null;
+  byId("service-editor").disabled = serviceState.busy || serviceState.baseline === undefined || serviceState.attempted !== null;
+  byId("service-edit-preview").disabled = byId("service-editor").disabled;
 }
 
 function invalidateServiceDraft() {
+  if (serviceState.candidate !== null) setText("service-status", "Draft changed. Preview the change again before saving.");
   serviceState.candidate = null;
   byId("service-review").hidden = true;
   for (const id of ["service-change", "service-samba", "service-nfs"]) setText(id, "");
@@ -28,6 +31,7 @@ function clearServicePolicy() {
   Object.assign(serviceState, { baseline: undefined, candidate: null, attempted: null, busy: false, controller: null });
   invalidateServiceDraft();
   byId("service-current").hidden = true;
+  renderServiceTargets(null);
   setText("service-summary", ""); setText("service-document", "");
   setText("service-status", "Not loaded. Reload to learn current saved state; an interrupted save may have committed.");
 }
@@ -106,11 +110,170 @@ function sameServiceDocument(a, b) {
   return JSON.stringify(canonical(a)) === JSON.stringify(canonical(b));
 }
 
+// Each operation edits one explicitly identified object/rule. References are
+// retained even when unused: removing policy is not account/volume deletion.
+function buildServiceEdit(baseline, action, target, values) {
+  if (baseline === undefined) throw new Error("Load current configuration first.");
+  const c = baseline === null ? {
+    format: "phantowd-file-service-config", schema_version: 1, revision: 0,
+    shares: { format: "phantowd-share-config", schema_version: 1, revision: 0, volumes: [], users: [], shares: [] },
+    nfs: { format: "phantowd-nfs-policy", schema_version: 1, revision: 0, volume_revision: 0, exports: [] },
+  } : policyCopy(baseline);
+  const next = c.revision + 1;
+  if (!Number.isSafeInteger(next)) throw new Error("Revision exceeds browser precision.");
+  const unique = (items, prefix) => {
+    for (let i = 1; i <= 129; i++) if (!items.some((item) => item.id === `${prefix}-${i}`)) return `${prefix}-${i}`;
+    throw new Error("No identifier available.");
+  };
+  const volume = () => {
+    let v = c.shares.volumes.find((v) => v.filesystem_uuid === values.uuid);
+    if (!v) { v = { id: unique(c.shares.volumes, "volume"), filesystem_uuid: values.uuid }; c.shares.volumes.push(v); }
+    return v.id;
+  };
+  const client = () => {
+    const number = (key) => {
+      if (!/^[1-9][0-9]*$/.test(values[key]) || Number(values[key]) >= 4294967295) throw new Error("Anonymous IDs must be whole numbers from 1 to 4294967294.");
+      return Number(values[key]);
+    };
+    return { network: values.network, access: values["nfs-access"], squash: values.squash,
+      anonymous_uid: number("uid"), anonymous_gid: number("gid"), security: values.security };
+  };
+  let summary;
+  if (action === "nfs-add") {
+    if (c.nfs.exports.some((e) => e.id === values["export-id"])) throw new Error("NFS export UUID already exists.");
+    c.nfs.exports.push({ id: values["export-id"], volume_id: volume(), relative_path: values.path, clients: [client()] });
+    summary = `Add independent NFS export ${values["export-id"]} at ${values.path}; SMB is unchanged.`;
+  } else if (action.startsWith("smb-") && target.startsWith("smb:")) {
+    const s = c.shares.shares.find((s) => s.id === target.slice(4));
+    if (!s) throw new Error("Selected SMB share is no longer in the loaded revision.");
+    if (action === "smb-properties") {
+      if (c.shares.shares.some((other) => other.id !== s.id && other.name.toLowerCase() === values.name.toLowerCase())) throw new Error("Share name already exists.");
+      summary = `Change SMB ${s.name}: name to ${values.name}, folder to ${values.path}, filesystem to ${values.uuid}. Retain all ${s.grants.length} grants; NFS paths and rules are unchanged.`;
+      s.name = values.name; s.relative_path = values.path; s.volume_id = volume();
+    } else if (action === "smb-remove") {
+      c.shares.shares = c.shares.shares.filter((other) => other.id !== s.id);
+      summary = `Remove only SMB share ${s.name} (${s.id}). All NFS exports and data remain unchanged; this does not revoke NFS access.`;
+    } else if (action === "smb-grant-upsert" || action === "smb-grant-remove") {
+      let user = c.shares.users.find((u) => u.name === values.user);
+      if (!user && action === "smb-grant-upsert") {
+        user = { id: unique(c.shares.users, "user"), name: values.user }; c.shares.users.push(user);
+      }
+      const existing = user && s.grants.find((g) => g.user_id === user.id);
+      if (action === "smb-grant-remove") {
+        if (!existing) throw new Error("That user has no grant on the selected share.");
+        if (s.grants.length === 1) throw new Error("Cannot remove the last grant. Remove the share definition explicitly instead.");
+        s.grants = s.grants.filter((g) => g.user_id !== user.id);
+        summary = `Remove ${values.user}'s SMB grant on ${s.name}. Other grants, users and NFS access are retained.`;
+      } else {
+        if (existing) existing.access = values["smb-access"];
+        else s.grants.push({ user_id: user.id, access: values["smb-access"] });
+        summary = `Set ${values.user}'s grant on ${s.name} to ${values["smb-access"]}. All other grants are retained; no account is provisioned and NFS is unchanged.`;
+      }
+    } else throw new Error("Unsupported SMB operation.");
+  } else if (action.startsWith("nfs-") && target.startsWith("nfs:")) {
+    const e = c.nfs.exports.find((e) => e.id === target.slice(4));
+    if (!e) throw new Error("Selected NFS export is no longer in the loaded revision.");
+    if (action === "nfs-properties") {
+      summary = `Change NFS export ${e.id} to ${values.path} on filesystem ${values.uuid}. Retain export UUID and all ${e.clients.length} client rules. SMB paths are unchanged; no files are moved.`;
+      e.volume_id = volume(); e.relative_path = values.path;
+    } else if (action === "nfs-remove") {
+      c.nfs.exports = c.nfs.exports.filter((other) => other.id !== e.id);
+      summary = `Remove only NFS export ${e.id}. SMB definitions, volumes and files are retained.`;
+    } else if (action === "nfs-client-upsert" || action === "nfs-client-remove") {
+      const index = e.clients.findIndex((rule) => rule.network === values.network);
+      if (action === "nfs-client-remove") {
+        if (index < 0) throw new Error("That exact CIDR has no rule on this export.");
+        if (e.clients.length === 1) throw new Error("Cannot remove the last client rule. Remove the export explicitly instead.");
+        e.clients.splice(index, 1);
+        summary = `Remove only client ${values.network} from NFS export ${e.id}. Other clients and SMB grants are retained.`;
+      } else {
+        if (index < 0) e.clients.push(client()); else e.clients[index] = client();
+        summary = `Set NFS client ${values.network} on export ${e.id} to ${values["nfs-access"]}, squash=${values.squash}, anonymous=${values.uid}:${values.gid}, security=${values.security}. Other clients and SMB grants are retained.`;
+      }
+    } else throw new Error("Unsupported NFS operation.");
+  } else throw new Error("Choose the matching saved SMB share or NFS export for this operation.");
+  // Refuse accidental empty transactions. Revisions are compared before advance.
+  if (baseline !== null && sameServiceDocument(c, baseline)) throw new Error("No policy change to save.");
+  c.revision = c.shares.revision = c.nfs.revision = c.nfs.volume_revision = next;
+  if (new TextEncoder().encode(JSON.stringify(c)).length > 524800) throw new Error("Combined configuration exceeds the request limit.");
+  return { configuration: c, summary };
+}
+
+function serviceOptions(id, prompt, entries) {
+  const option = (value, label) => { const node = document.createElement("option"); node.value = value; node.textContent = label; return node; };
+  byId(id).replaceChildren(option("", prompt), ...entries.map(([value, label]) => option(value, label)));
+  byId(id).value = "";
+}
+
+function renderServiceTargets(c) {
+  serviceOptions("service-target", "Choose a saved item", c === null ? [] : [
+    ...c.shares.shares.map((s) => [`smb:${s.id}`, `SMB: ${s.name} (${s.id})`]),
+    ...c.nfs.exports.map((e) => [`nfs:${e.id}`, `NFS: ${e.relative_path} (${e.id})`]),
+  ]);
+  serviceOptions("service-member", "Choose an existing access rule", []);
+}
+
+function selectServiceTarget() {
+  invalidatePolicyPreview();
+  const c = serviceState.baseline, target = byId("service-target").value;
+  serviceOptions("service-member", "Choose an existing access rule", []);
+  if (!c) return;
+  const smb = target.startsWith("smb:");
+  const item = (smb ? c.shares.shares : c.nfs.exports).find((item) => item.id === target.slice(4));
+  if (!item) return;
+  byId("policy-uuid").value = c.shares.volumes.find((v) => v.id === item.volume_id).filesystem_uuid;
+  byId("policy-path").value = item.relative_path;
+  byId("service-action").value = smb ? "smb-properties" : "nfs-properties";
+  byId("policy-nfs-enabled").value = smb ? "off" : "on";
+  if (smb) {
+    byId("policy-name").value = item.name;
+    byId("policy-user").value = "";
+    serviceOptions("service-member", "Choose a user grant", item.grants.map((g) => [g.user_id, `${c.shares.users.find((u) => u.id === g.user_id).name}: ${g.access}`]));
+  } else {
+    byId("policy-export-id").value = item.id;
+    byId("policy-network").value = "";
+    serviceOptions("service-member", "Choose a client rule", item.clients.map((rule) => [rule.network, `${rule.network}: ${rule.access}`]));
+  }
+  syncPolicyNFS();
+  setText("service-status", "Saved fields copied into the form. Select an operation and preview the complete change; nothing was saved.");
+}
+
+function selectServiceMember() {
+  invalidatePolicyPreview();
+  const c = serviceState.baseline, target = byId("service-target").value, member = byId("service-member").value;
+  if (!c) return;
+  if (target.startsWith("smb:")) {
+    const s = c.shares.shares.find((s) => s.id === target.slice(4));
+    const grant = s?.grants.find((g) => g.user_id === member);
+    if (!grant) return;
+    byId("policy-user").value = c.shares.users.find((u) => u.id === member).name;
+    byId("policy-smb-access").value = grant.access;
+  } else {
+    const e = c.nfs.exports.find((e) => e.id === target.slice(4));
+    const rule = e?.clients.find((rule) => rule.network === member);
+    if (!rule) return;
+    for (const [field, value] of Object.entries({ network: rule.network, "nfs-access": rule.access, squash: rule.squash,
+      uid: rule.anonymous_uid, gid: rule.anonymous_gid, security: rule.security })) byId(`policy-${field}`).value = String(value);
+  }
+}
+
+async function prepareServiceEdit() {
+  return previewServiceChange(() => buildServiceEdit(serviceState.baseline, byId("service-action").value,
+    byId("service-target").value, Object.fromEntries(policyFields.map((field) => [field, byId(`policy-${field}`).value]))));
+}
+
+function selectServiceAction() {
+  invalidatePolicyPreview();
+  byId("policy-nfs-enabled").value = byId("service-action").value.startsWith("nfs-") ? "on" : "off";
+  syncPolicyNFS();
+}
+
 function showServiceBaseline(c) {
   byId("service-current").hidden = false;
   setText("service-summary", c === null ? "Storage available, but no configuration initialized." :
     `Saved revision ${c.revision}: ${c.shares.shares.length} SMB share(s), ${c.nfs.exports.length} NFS export(s). Desired state only.`);
   setText("service-document", c === null ? "No saved document." : JSON.stringify(c, null, 2));
+  renderServiceTargets(c);
 }
 
 async function serviceOperation(action) {
@@ -170,6 +333,7 @@ async function serviceOperation(action) {
 async function loadServicePolicy() {
   return serviceOperation(async (request) => {
     serviceState.baseline = undefined; invalidateServiceDraft();
+    renderServiceTargets(null);
     byId("service-current").hidden = true; setText("service-document", ""); setText("service-summary", "");
     setText("service-status", "Reading saved state. Previous values were cleared.");
     const c = validateServiceDocument(await request(servicePath, { method: "GET", headers: { Accept: "application/json" } }));
@@ -184,20 +348,27 @@ async function loadServicePolicy() {
 }
 
 async function prepareServiceAddition() {
+  return previewServiceChange(() => {
+    const c = buildServiceAddition(serviceState.baseline, buildPolicyProposal());
+    const addition = c.shares.shares[c.shares.shares.length - 1];
+    return { configuration: c, summary: `Add ${addition.name} at ${addition.relative_path}; preserve ${c.shares.shares.length - 1} existing SMB share(s).` };
+  });
+}
+
+async function previewServiceChange(build) {
   if (serviceState.baseline === undefined || serviceState.attempted !== null) return;
   return serviceOperation(async (request, session) => {
     invalidateServiceDraft();
     setText("service-status", "Validating the complete resulting configuration. No save has been sent.");
     const draftGeneration = policyGeneration;
-    const c = buildServiceAddition(serviceState.baseline, buildPolicyProposal());
+    const { configuration: c, summary } = build();
     const headers = await session();
     if (draftGeneration !== policyGeneration) { setText("service-status", "Form changed. Preview again before saving."); return; }
     const preview = await request("/api/v1/file-services/preview", { method: "POST", headers, body: JSON.stringify({ shares: c.shares, nfs: c.nfs }) });
     if (draftGeneration !== policyGeneration) { setText("service-status", "Form changed. Preview again before saving."); return; }
     validatePolicyPreview(preview);
     serviceState.candidate = c;
-    const addition = c.shares.shares[c.shares.shares.length - 1];
-    setText("service-change", `Add ${addition.name} at ${addition.relative_path}; preserve ${c.shares.shares.length - 1} existing SMB share(s). Save revision ${c.revision}, including ${c.nfs.exports.length} NFS export(s).`);
+    setText("service-change", `${summary} Save revision ${c.revision}, including ${c.shares.shares.length} SMB share(s) and ${c.nfs.exports.length} NFS export(s). No service activation or file deletion.`);
     setText("service-samba", preview.samba.samba_share_sections || "No SMB sections.");
     setText("service-nfs", preview.nfs.exports_table || "No NFS exports.");
     byId("service-review").hidden = false;
@@ -205,7 +376,7 @@ async function prepareServiceAddition() {
   });
 }
 
-async function saveServiceAddition() {
+async function saveServiceChange() {
   if (serviceState.candidate === null || serviceState.attempted !== null) return;
   return serviceOperation(async (request, session) => {
     const c = serviceState.candidate;
