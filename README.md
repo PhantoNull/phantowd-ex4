@@ -57,6 +57,12 @@ dashboard](src/phantowd-api/README.md). It runs unprivileged on guest loopback
 only; the responsive dashboard displays the API's bounded observations and
 offers a non-mutating SMB/NFS share-proposal preview. Proposals are not saved
 or applied, and do not prove runtime storage identity or effective access.
+An optional, compile-gated development API can save a combined SMB/NFS desired
+policy on explicitly supplied test storage, with revision checks; it is disabled
+by default, loopback-only, and never activates services. Its dashboard manager
+can load that test state, preview additions or explicit SMB/NFS property,
+access-rule and definition removals, and save the reviewed revision. It retains
+unrelated policy and never retries an uncertain save automatically.
 There are no storage/hardware controls. First-admin authentication exists only
 in the QEMU development profile; product state provisioning, recovery, and a
 certificate lifecycle are not implemented, so this service must not be exposed
@@ -95,6 +101,14 @@ proprietary firmware or device dump is included in the repository.
 Files generated under `artifacts/` and attached to GitHub Actions runs are
 validation outputs only. They are not installable firmware or GitHub Releases;
 users must wait for an explicitly qualified project release.
+
+A separate [read-only metadata helper](src/phantowd-volume-probe/README.md)
+uses libblkid on one caller-supplied descriptor, without mounting media or
+selecting a device by name. Generated-image host tests and a static ARMv5
+QEMU fixture have passed, including two unmounted virtual disks. Its package
+is selected in the QEMU development profile; clean Buildroot integration
+remains to be qualified. Trusted complete-device discovery is not implemented,
+and these tests do not authorize importing WD disks.
 
 A separate compile-only Linux 6.18 EX4 device-tree baseline is available with
 `.\support\build-ex4-dtb.ps1`. It intentionally disables raw NAND and SDIO,

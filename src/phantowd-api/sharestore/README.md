@@ -1,9 +1,15 @@
 # Desired share-policy storage (Linux)
 
 This library persists the [versioned share policy](../shareconfig/README.md).
-It is not connected to HTTP endpoints, account provisioning, volume mounting,
-service configuration or the EX4's persistent flash. The QEMU probe uses only
-a newly created temporary directory, which it removes after the test.
+The syscall transaction engine is shared with the separate
+[combined SMB/NFS store](../fileservicestore/README.md); the original
+share-only filename, format and API have not changed. Engine fault tests now
+live under `internal/revisionstore`. No automatic migration occurs.
+Its Load method can back an authenticated read-only management endpoint when
+an explicit private state directory is configured. Commit is not exposed over
+HTTP. It is not connected to account provisioning, volume mounting, service
+activation or the EX4's persistent flash. QEMU checks use temporary
+directories and a separately generated disposable virtual disk, never user media.
 
 ## Contract
 
@@ -46,8 +52,16 @@ before rename without cleanup; reopening confirms lock release and preservation
 of the prior revision. These are software fault tests, **not power-cut tests**.
 
 The ARMv5 QEMU smoke checks revision commit/reopen and lock/conflict behavior
-in temporary guest storage. It does not prove reboot persistence, EX4 flash
-durability, controller write-cache behavior or media-failure recovery. A
+in temporary guest storage. A separate two-boot harness now checks the complete
+saved policy on a fresh ext2 virtual disk across two independently started ARMv5
+kernels. It verifies that staged revision 3 is not promoted over committed
+revision 2, a stale writer is refused, a new revision can be committed/reopened,
+and malformed current state is refused even beside a valid pending file.
+Corrupt evidence stays byte-identical. The harness syncs and ordinarily unmounts
+the data filesystem before each kernel reboot; it does not simulate power loss.
+
+These tests do not prove EX4 flash durability, controller write-cache behavior,
+journal recovery or media-failure recovery. A
 filesystem-qualified crash/power-loss matrix, chosen product state location,
 backup/recovery policy and schema migration remain required. There is no
 automatic fallback to an older revision and no compatibility importer yet.

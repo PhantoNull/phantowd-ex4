@@ -10,6 +10,7 @@
   <title>PhantoWD EX4 — Device overview</title>
   <link rel="icon" href="/assets/ghost.svg" type="image/svg+xml">
   <link rel="stylesheet" href="/assets/app.css">
+  <script src="/assets/service-policy.js" defer></script>
   <script src="/assets/app.js" defer></script>
 </head>
 <body>
@@ -166,8 +167,20 @@
 
       <section class="policy-panel card" aria-labelledby="policy-title">
         <p class="eyebrow">DESIRED POLICY / NOTHING IS APPLIED</p>
-        <h2 id="policy-title">Plan a file share</h2>
-        <p id="policy-help" class="policy-help">Build a standalone proposal for one share. This does not load or replace the current configuration, verify a disk, create an account, or change a service. No password is needed. Drafts stay in this page and are not saved.</p>
+        <h2 id="policy-title">File shares</h2>
+        <section class="saved-policy" aria-labelledby="saved-title">
+          <h3 id="saved-title">Saved share configuration</h3>
+          <p class="policy-help">Desired volumes, users and SMB grants only. This does not establish active shares, disk availability or effective permissions. NFS policy is not included.</p>
+          <button id="saved-load" class="refresh-button" type="button">Load saved configuration</button>
+          <p id="saved-status" class="snapshot-status" role="status" aria-live="polite">Not loaded. No stored configuration is shown.</p>
+          <div id="saved-result" hidden>
+            <p class="pill pill-warning">SAVED POLICY / ACTIVATION NOT AVAILABLE</p>
+            <p id="saved-summary" class="policy-help"></p>
+            <ul id="saved-shares" class="saved-shares"></ul>
+          </div>
+        </section>
+        <h3>Plan a file share</h3>
+        <p id="policy-help" class="policy-help">Build a standalone proposal for one share. Validate proposal only previews it: no save, disk verification, account creation or service change. To add it to explicitly configured development storage, use the separate configuration manager below. No password is needed in this form.</p>
         <form id="policy-form" aria-describedby="policy-help" autocomplete="off">
           <fieldset class="policy-grid">
             <legend>Volume and SMB access</legend>
@@ -199,13 +212,51 @@
           <details><summary>Candidate Samba share sections</summary><pre id="policy-samba"></pre></details>
           <details><summary>Candidate NFS export table</summary><pre id="policy-nfs"></pre></details>
         </div>
+        <section class="saved-policy" aria-labelledby="service-title">
+          <h3 id="service-title">Development configuration manager</h3>
+          <p class="policy-help">Optional combined SMB/NFS test storage only. Load its current revision, then add from the form or select an existing item and an explicit edit operation. Unrelated shares and rules are retained. This does not migrate the separate share-only store. Saving never activates services, provisions accounts or reconfigures disks.</p>
+          <div class="policy-actions">
+            <button id="service-load" class="refresh-button" type="button">Load / reconcile saved state</button>
+            <button id="service-prepare" class="logout-button" type="button" disabled>Preview addition from form</button>
+          </div>
+          <p id="service-status" class="snapshot-status" role="status" aria-live="polite">Not loaded. Save is unavailable until development storage is verified.</p>
+          <div id="service-current" hidden>
+            <p id="service-summary" class="policy-help"></p>
+            <details><summary>Complete saved desired configuration</summary><pre id="service-document"></pre></details>
+            <fieldset id="service-editor" class="policy-grid">
+              <legend>Edit saved desired policy</legend>
+              <label>Share or export<select id="service-target"><option value="">Choose a saved item</option></select></label>
+              <label>Existing access rule<select id="service-member"><option value="">Choose a rule, or enter a new one above</option></select></label>
+              <label>Change to preview<select id="service-action">
+                <option value="smb-properties">SMB: change name, volume or folder</option>
+                <option value="smb-grant-upsert">SMB: add/update the entered user's grant</option>
+                <option value="smb-grant-remove">SMB: remove the entered user's grant</option>
+                <option value="smb-remove">SMB: remove the selected share definition</option>
+                <option value="nfs-add">NFS: add an independent export from the form</option>
+                <option value="nfs-properties">NFS: change volume or folder, retain export UUID</option>
+                <option value="nfs-client-upsert">NFS: add/update the entered CIDR's rule</option>
+                <option value="nfs-client-remove">NFS: remove the entered CIDR's rule</option>
+                <option value="nfs-remove">NFS: remove the selected export definition</option>
+              </select></label>
+              <p class="policy-help">Selecting an item fills its fields above. Selecting an access rule fills that user or CIDR. Only the chosen operation is changed; other grants, clients and the other protocol are retained. Removing SMB does not revoke NFS. Removing definitions never deletes files, volumes or users. Removing the last access rule is refused; remove the definition explicitly instead.</p>
+              <button id="service-edit-preview" class="logout-button" type="button" disabled>Preview selected change</button>
+            </fieldset>
+          </div>
+          <div id="service-review" hidden>
+            <p id="service-change" class="policy-help"></p>
+            <p class="pill pill-warning">SAVE ONLY / NO SERVICE ACTIVATION</p>
+            <details><summary>Resulting Samba share sections</summary><pre id="service-samba"></pre></details>
+            <details><summary>Resulting NFS export table</summary><pre id="service-nfs"></pre></details>
+            <button id="service-save" class="refresh-button" type="button" disabled>Save reviewed change</button>
+          </div>
+        </section>
       </section>
       <p class="error-banner" id="error-banner" role="alert" hidden>Snapshot unavailable. The service did not return usable diagnostics.</p>
       </div>
     </main>
 
     <footer class="footer">
-      <span>PhantoWD EX4 <span aria-hidden="true">·</span> read-only development console</span>
+      <span>PhantoWD EX4 <span aria-hidden="true">·</span> development console</span>
       <span>Local guest loopback only <span class="footer-dot" aria-hidden="true">●</span></span>
     </footer>
   </div>

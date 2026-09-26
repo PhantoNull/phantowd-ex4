@@ -41,42 +41,69 @@ type Preview struct {
 // Nested raw documents go through their own bounded strict decoders; parsing
 // the envelope must not silently collapse duplicate or case-aliased keys.
 func Decode(data []byte) (Preview, error) {
-	if len(data) > MaxInputBytes {
-		return Preview{}, ErrEnvelope
+	fields, err := decodeEnvelope(data, MaxInputBytes, "shares", "nfs")
+	if err != nil {
+		return Preview{}, err
+	}
+	shares, nfs, err := decodePolicies(fields)
+	if err != nil {
+		return Preview{}, err
+	}
+	return Build(shares, nfs)
+}
+
+// decodeEnvelope only interprets exact top-level keys. Nested documents retain
+// their original bytes for their own strict bounded decoders.
+func decodeEnvelope(data []byte, maxBytes int, required ...string) (map[string]json.RawMessage, error) {
+	if len(data) > maxBytes {
+		return nil, ErrEnvelope
+	}
+	allowed := make(map[string]bool, len(required))
+	for _, key := range required {
+		allowed[key] = true
 	}
 	d := json.NewDecoder(bytes.NewReader(data))
 	first, err := d.Token()
 	if err != nil || first != json.Delim('{') {
-		return Preview{}, ErrEnvelope
+		return nil, ErrEnvelope
 	}
 	fields := map[string]json.RawMessage{}
 	for d.More() {
 		token, err := d.Token()
 		key, ok := token.(string)
-		if err != nil || !ok || (key != "shares" && key != "nfs") || fields[key] != nil {
-			return Preview{}, ErrEnvelope
+		if err != nil || !ok || !allowed[key] || fields[key] != nil {
+			return nil, ErrEnvelope
 		}
 		var raw json.RawMessage
 		if err := d.Decode(&raw); err != nil || bytes.Equal(raw, []byte("null")) {
-			return Preview{}, ErrEnvelope
+			return nil, ErrEnvelope
 		}
 		fields[key] = raw
 	}
 	closing, err := d.Token()
-	if err != nil || closing != json.Delim('}') || len(fields) != 2 {
-		return Preview{}, ErrEnvelope
+	if err != nil || closing != json.Delim('}') || len(fields) != len(required) {
+		return nil, ErrEnvelope
 	}
 	if _, err := d.Token(); !errors.Is(err, io.EOF) {
-		return Preview{}, ErrEnvelope
+		return nil, ErrEnvelope
 	}
+	return fields, nil
+}
+
+func decodePolicies(fields map[string]json.RawMessage) (shareconfig.Config, nfsconfig.Policy, error) {
 	shares, err := shareconfig.Decode(bytes.NewReader(fields["shares"]))
 	if err != nil {
-		return Preview{}, ErrShares
+		return shareconfig.Config{}, nfsconfig.Policy{}, ErrShares
 	}
 	nfs, err := nfsconfig.Decode(bytes.NewReader(fields["nfs"]), shares)
 	if err != nil {
-		return Preview{}, ErrNFS
+		return shareconfig.Config{}, nfsconfig.Policy{}, ErrNFS
 	}
+	return shares, nfs, nil
+}
+
+// Build validates and renders desired policy without saving or applying it.
+func Build(shares shareconfig.Config, nfs nfsconfig.Policy) (Preview, error) {
 	sambaPreview, err := smbconfig.Build(shares)
 	if err != nil {
 		return Preview{}, ErrSamba

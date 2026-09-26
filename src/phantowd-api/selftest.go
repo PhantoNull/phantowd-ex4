@@ -22,19 +22,22 @@ import (
 )
 
 const (
-	qemuTestSerial = "PHANTOWD-QEMU-SERIAL-01"
-	qemuTestWWN    = "500f000000000001"
-	qemuDataSerial = "PHANTOWD-QEMU-DATA-01"
-	qemuDataWWN    = "500f000000000002"
+	qemuTestSerial  = "PHANTOWD-QEMU-SERIAL-01"
+	qemuTestWWN     = "500f000000000001"
+	qemuDataSerial  = "PHANTOWD-QEMU-DATA-01"
+	qemuDataWWN     = "500f000000000002"
+	qemuCloneSerial = "PHANTOWD-QEMU-CLONE-01"
+	qemuCloneWWN    = "500f000000000003"
 )
 
 var qemuDashboardAssets = []struct {
 	path, contentType string
 	markers           []string
 }{
-	{"/", "text/html; charset=utf-8", []string{"PhantoWD EX4", "Development image.", "profile-notice-title", "NOT RELEASE QUALIFIED", "policy-form", "NOT SAVED / NOT APPLIED / RUNTIME NOT VERIFIED"}},
+	{"/", "text/html; charset=utf-8", []string{"PhantoWD EX4", "Development image.", "profile-notice-title", "NOT RELEASE QUALIFIED", "policy-form", "NOT SAVED / NOT APPLIED / RUNTIME NOT VERIFIED", "saved-load", "SAVED POLICY / ACTIVATION NOT AVAILABLE"}},
 	{"/assets/app.css", "text/css; charset=utf-8", []string{"@media", "prefers-reduced-motion"}},
-	{"/assets/app.js", "text/javascript; charset=utf-8", []string{"/api/v1/system", "/api/v1/storage", "/api/v1/arrays", "/api/v1/mounts", "/api/v1/file-services/preview", "invalidatePolicyPreview", "textContent"}},
+	{"/assets/app.js", "text/javascript; charset=utf-8", []string{"/api/v1/system", "/api/v1/storage", "/api/v1/arrays", "/api/v1/mounts", "/api/v1/file-services/preview", "invalidatePolicyPreview", "textContent", "/api/v1/shares/configuration", "clearSavedPolicy"}},
+	{"/assets/service-policy.js", "text/javascript; charset=utf-8", []string{"/api/v1/file-services/configuration", "sameServiceDocument", "saveServiceChange", "clearServicePolicy"}},
 	{"/assets/ghost.svg", "image/svg+xml", []string{"<svg", "PhantoWD ghost"}},
 }
 
@@ -151,7 +154,8 @@ func runSelfTest() error {
 		return errors.New("QEMU SCSI identity pages were not observed and validated through sysfs")
 	}
 	if strings.Contains(string(storageData), qemuTestSerial) || strings.Contains(string(storageData), qemuTestWWN) ||
-		strings.Contains(string(storageData), qemuDataSerial) || strings.Contains(string(storageData), qemuDataWWN) {
+		strings.Contains(string(storageData), qemuDataSerial) || strings.Contains(string(storageData), qemuDataWWN) ||
+		strings.Contains(string(storageData), qemuCloneSerial) || strings.Contains(string(storageData), qemuCloneWWN) {
 		return errors.New("raw QEMU storage identifiers leaked through the API")
 	}
 	arraysResponse, err := client.Get("http://" + listenAddress + "/api/v1/arrays")
@@ -252,7 +256,7 @@ func runSelfTest() error {
 			return errors.New("unsafe method, query, or route accepted")
 		}
 	}
-	fmt.Printf("PHANTOWD_UI_READY mode=development read_only=true transport=guest-loopback-only\n")
+	fmt.Printf("PHANTOWD_UI_READY mode=development assets_verified=true activation=false transport=guest-loopback-only\n")
 	fmt.Printf("PHANTOWD_AUTH_READY algorithm=argon2id kdf_concurrency=1 bootstrap=%s login_enabled=yes transport=guest-loopback-http state=volatile-qemu session=memory-only kdf_cycle_ms=%d\n", bootstrap, argon2CycleMillis)
 	fmt.Printf("PHANTOWD_API_READY target=qemu-armv5 goarm=%s uid=%d memory_total_bytes=%d storage_observations=%d arrays=%d array_status=%s identity_metadata=serial+naa-wwn flashable=no hardware_validated=no\n",
 		snapshot.GOARM, snapshot.EffectiveUID, snapshot.Memory.TotalBytes, storage.DeviceCount, arrays.ArrayCount, arrays.Status)

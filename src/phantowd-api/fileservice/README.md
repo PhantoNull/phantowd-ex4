@@ -1,5 +1,10 @@
 # Authenticated file-service preview
 
+The package also defines a distinct versioned combined desired configuration
+for the [atomic SMB/NFS store](../fileservicestore/README.md). That format is
+not the preview request below; it requires one common transaction revision.
+Neither API save nor service activation is enabled by defining that format.
+
 `POST /api/v1/file-services/preview` validates desired SMB/NFS policy and returns
 candidate configuration text. It does not save a revision, inspect storage,
 run a parser or service, create users, mount disks, or authorize activation.

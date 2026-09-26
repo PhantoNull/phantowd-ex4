@@ -43,7 +43,7 @@ func qemuNFSFixture() (nfsconfig.Preview, error) {
 
 func runQEMUNFSTest(mode string) error {
 	switch mode {
-	case "exports", "io", "mount-rw", "mount-ro", "guard", "denied-client", "verify-disk":
+	case "exports", "io", "mount-rw", "mount-ro", "guard", "denied-client", "verify-disk", "probe-unmounted":
 	default:
 		return errors.New("unknown QEMU NFS fixture mode")
 	}
@@ -63,6 +63,9 @@ func runQEMUNFSTest(mode string) error {
 	if mode == "verify-disk" {
 		return verifyQEMUNFSDevice(os.DirFS("/sys"))
 	}
+	if mode == "probe-unmounted" {
+		return probeQEMUUnmountedStorage()
+	}
 	if mode != "exports" {
 		return exerciseQEMUNFSMount(mode)
 	}
@@ -75,12 +78,16 @@ func runQEMUNFSTest(mode string) error {
 }
 
 func verifyQEMUNFSDevice(sysfs fs.FS) error {
-	serialPage, serialStatus := readSCSVPDPage(sysfs, "class/block/sdb/device/vpd_pg80", 0x80)
+	return verifyQEMUBlockDevice(sysfs, "sdb", qemuDataSerial, qemuDataWWN)
+}
+
+func verifyQEMUBlockDevice(sysfs fs.FS, device, expectedSerial, expectedWWN string) error {
+	serialPage, serialStatus := readSCSVPDPage(sysfs, "class/block/"+device+"/device/vpd_pg80", 0x80)
 	serial, valid := vpdPayload(serialPage, 0x80)
-	wwnPage, wwnStatus := readSCSVPDPage(sysfs, "class/block/sdb/device/vpd_pg83", 0x83)
+	wwnPage, wwnStatus := readSCSVPDPage(sysfs, "class/block/"+device+"/device/vpd_pg83", 0x83)
 	wwn, parsed := parseNAAWWNPage(wwnPage)
-	if !valid || serialStatus != identityPresent || string(serial) != qemuDataSerial ||
-		wwnStatus != identityPresent || parsed != identityPresent || wwn != "naa."+qemuDataWWN {
+	if !valid || serialStatus != identityPresent || string(serial) != expectedSerial ||
+		wwnStatus != identityPresent || parsed != identityPresent || wwn != "naa."+expectedWWN {
 		return errors.New("expected disposable QEMU data-disk identity not present")
 	}
 	return nil

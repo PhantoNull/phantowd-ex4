@@ -28,7 +28,7 @@ cleanup() {
     fi
     # Exact regular file in a freshly created private temporary directory.
     # shellcheck disable=SC2317 # invoked through trap
-    rm -f "$fixture_dir/data.ext2"
+    rm -f "$fixture_dir/data.ext2" "$fixture_dir/clone.ext2"
     # shellcheck disable=SC2317 # invoked through trap
     rmdir "$fixture_dir"
 }
@@ -37,6 +37,9 @@ trap 'exit 1' INT TERM
 truncate -s 16M "$fixture_dir/data.ext2"
 mkfs.ext2 -q -F -U 11111111-2222-3333-4444-555555555555 \
     -L PHANTOWD-TEST "$fixture_dir/data.ext2"
+# A separate virtual device with the SAME filesystem UUID exercises ambiguity.
+# Both files are disposable; the clone is presented read-only to the guest.
+cp "$fixture_dir/data.ext2" "$fixture_dir/clone.ext2"
 
 : > "$log_file"
 "$qemu_binary" \
@@ -50,6 +53,8 @@ mkfs.ext2 -q -F -U 11111111-2222-3333-4444-555555555555 \
     -device "scsi-hd,bus=scsi0.0,drive=rootdisk,serial=PHANTOWD-QEMU-SERIAL-01,wwn=0x500f000000000001" \
     -drive "file=$fixture_dir/data.ext2,if=none,id=testdisk,format=raw" \
     -device "scsi-hd,bus=scsi0.0,drive=testdisk,serial=PHANTOWD-QEMU-DATA-01,wwn=0x500f000000000002" \
+    -drive "file=$fixture_dir/clone.ext2,if=none,id=clonedisk,format=raw,readonly=on" \
+    -device "scsi-hd,bus=scsi0.0,drive=clonedisk,serial=PHANTOWD-QEMU-CLONE-01,wwn=0x500f000000000003" \
     -object rng-random,id=rng0,filename=/dev/urandom \
     -device virtio-rng-pci,rng=rng0 \
     -snapshot \
@@ -104,11 +109,35 @@ while [ "$attempt" -lt 120 ]; do
             echo 'Missing generated Samba effective-access assertion' >&2
             exit 1
         fi
+        if ! grep -F 'PHANTOWD_SMB_CREDENTIALS_READY rotated=true old_password_denied=true disabled_denied=true reenabled=true unix_identity_unchanged=true data_preserved=true scope=new-qemu-connections-only' "$log_file" >/dev/null; then
+            echo 'Missing Samba credential lifecycle assertion' >&2
+            exit 1
+        fi
         if ! grep -F 'PHANTOWD_MOUNT_GUARD_READY unique_mount_id=true descriptor_pinned=true symlinks_denied=true nested_mount_denied=true overmount_denied=true readonly_change_denied=true fallback_denied=true scope=qemu-fixture-only' "$log_file" >/dev/null; then
             echo 'Missing descriptor/mount guard assertion' >&2
             exit 1
         fi
-        if ! grep -F 'PHANTOWD_UI_READY mode=development read_only=true transport=guest-loopback-only' "$log_file" >/dev/null; then
+        if ! grep -F 'PHANTOWD_FILESYSTEM_UUID_READY source=kernel-ioctl expected_uuid=true mismatch_denied=true block_device_opened=false scope=qemu-fixture-only' "$log_file" >/dev/null; then
+            echo 'Missing kernel filesystem UUID assertion' >&2
+            exit 1
+        fi
+        if ! grep -F 'PHANTOWD_MOUNTED_AMBIGUITY_READY cloned_uuid=true bind_alias_not_clone=true incomplete_scan_refused=true scope=provided-mounted-ext-only' "$log_file" >/dev/null; then
+            echo 'Missing mounted filesystem ambiguity assertion' >&2
+            exit 1
+        fi
+        if ! grep -F 'PHANTOWD_VOLUME_PROBE_READY backend=libblkid unmounted_devices=2 readonly_descriptors=true expected_uuid=true unidentified_not_empty=true scope=qemu-fixture-only' "$log_file" >/dev/null; then
+            echo 'Missing unmounted metadata probe assertion' >&2
+            exit 1
+        fi
+        if ! grep -F 'PHANTOWD_VOLUME_SET_READY cloned_uuid=true aliases_deduplicated=true unobserved_not_absent=true scope=provided-descriptors-only' "$log_file" >/dev/null; then
+            echo 'Missing unmounted probe-set identity assertions' >&2
+            exit 1
+        fi
+        if ! grep -F 'PHANTOWD_VOLUME_COLLISION_READY ext_control=true xfs_control=true invalid_control=true collision_refused=true partial_set_discarded=true hashes_unchanged=true scope=synthetic-regular-images' "$log_file" >/dev/null; then
+            echo 'Missing ARMv5 competing-signature refusal assertions' >&2
+            exit 1
+        fi
+        if ! grep -F 'PHANTOWD_UI_READY mode=development assets_verified=true activation=false transport=guest-loopback-only' "$log_file" >/dev/null; then
             echo "Missing loopback-only dashboard assertion" >&2
             exit 1
         fi

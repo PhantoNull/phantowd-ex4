@@ -23,6 +23,7 @@ shellcheck -s sh \
     "$external_dir/support/compare-build-artifacts.sh" \
     "$external_dir/support/test-compare-build-artifacts.sh"
 sh "$external_dir/support/test-compare-build-artifacts.sh"
+python3 "$external_dir/support/test-volume-probe-build.py"
 
 download_verified() {
     url="$1"
@@ -175,7 +176,7 @@ make -C "$buildroot_source" \
     BR2_EXTERNAL="$external_dir" \
     BR2_DL_DIR="$download_dir" \
     O="$output_dir" \
-    phantowd-api-dirclean
+    phantowd-api-dirclean phantowd-volume-probe-dirclean
 
 # Clean only the generated local-package directory: rsync alone can retain
 # deleted source files. Dependencies stay cached; all regenerates the rootfs.
@@ -201,8 +202,16 @@ GOCACHE="$workspace_dir/lab-tools-host-cache" \
     "$output_dir/host/bin/go" "$external_dir/tools/phantowd-lab" \
     "$output_dir/lab-tools-host-tests"
 
+# Native generated-image tests use the same hash-checked libblkid source as
+# the target package. No host devices, mounts or privileged mode are needed.
+sh "$external_dir/support/container/test-volume-probe.sh" \
+    "$external_dir" "$download_dir/util-linux/util-linux-2.40.4.tar.xz" \
+    "$buildroot_source/package/util-linux" "$output_dir/host/bin"
+
 "$external_dir/support/qemu-smoke.sh" \
     "$output_dir/images" "$output_dir/qemu-smoke.log" "$LINUX_VERSION"
+sh "$external_dir/support/qemu-state-reboot.sh" \
+    "$output_dir/images" "$output_dir/qemu-state-reboot.log"
 
 artifact_dir="$external_dir/artifacts/qemu-armv5"
 install -d -m 0755 "$artifact_dir"
@@ -239,6 +248,7 @@ install -m 0644 "$output_dir/images/versatile-pb.dtb" "$artifact_dir/versatile-p
 install -m 0644 "$output_dir/images/rootfs.ext2" "$artifact_dir/rootfs.ext2"
 install -m 0644 "$output_dir/legal-info/manifest.csv" "$artifact_dir/license-manifest.csv"
 install -m 0644 "$output_dir/qemu-smoke.log" "$artifact_dir/qemu-smoke.log"
+install -m 0644 "$output_dir/qemu-state-reboot.log" "$artifact_dir/qemu-state-reboot.log"
 install -m 0644 "$output_dir/api-host-tests/coverage.out" "$artifact_dir/api-host-coverage.out"
 install -m 0644 "$output_dir/lab-tools-host-tests/coverage.out" "$artifact_dir/lab-tools-host-coverage.out"
 install -m 0644 "$output_dir/target/usr/bin/phantowd-api" "$artifact_dir/phantowd-api"

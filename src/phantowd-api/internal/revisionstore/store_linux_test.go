@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 PhantoWD EX4 contributors
 
-package sharestore
+package revisionstore
 
 import (
 	"errors"
@@ -22,7 +22,20 @@ func policy(revision uint64) shareconfig.Config {
 		Revision: revision, Volumes: []shareconfig.Volume{}, Users: []shareconfig.User{}, Shares: []shareconfig.Share{}}
 }
 
-func openTest(t *testing.T) (*Store, string) {
+const currentName = "shares.json"
+const pendingName = ".shares.pending"
+
+func shareCodec() Codec[shareconfig.Config] {
+	return Codec[shareconfig.Config]{CurrentName: currentName, PendingName: pendingName,
+		MaxBytes: shareconfig.MaxInputBytes, Decode: shareconfig.Decode, Validate: shareconfig.Config.Validate,
+		Revision: func(c shareconfig.Config) uint64 { return c.Revision }}
+}
+
+func Open(directory string) (*Store[shareconfig.Config], error) {
+	return OpenWithCodec(directory, shareCodec())
+}
+
+func openTest(t *testing.T) (*Store[shareconfig.Config], string) {
 	t.Helper()
 	dir := t.TempDir()
 	if err := os.Chmod(dir, 0700); err != nil {
@@ -331,7 +344,7 @@ func TestProcessExitRecovery(t *testing.T) {
 }
 
 func TestZeroStoreRefusesUse(t *testing.T) {
-	var s Store
+	var s Store[shareconfig.Config]
 	if _, err := s.Load(); !errors.Is(err, ErrClosed) {
 		t.Fatal(err)
 	}
@@ -340,5 +353,28 @@ func TestZeroStoreRefusesUse(t *testing.T) {
 	}
 	if err := s.Close(); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestInvalidCodecRefusedBeforeOpeningDirectory(t *testing.T) {
+	for _, mutate := range []func(*Codec[shareconfig.Config]){
+		func(c *Codec[shareconfig.Config]) { c.CurrentName = "../outside" },
+		func(c *Codec[shareconfig.Config]) { c.PendingName = "/outside" },
+		func(c *Codec[shareconfig.Config]) { c.CurrentName = "." },
+		func(c *Codec[shareconfig.Config]) { c.PendingName = c.CurrentName },
+		func(c *Codec[shareconfig.Config]) { c.MaxBytes = 0 },
+		func(c *Codec[shareconfig.Config]) { c.MaxBytes = 1<<20 + 1 },
+		func(c *Codec[shareconfig.Config]) { c.Decode = nil },
+		func(c *Codec[shareconfig.Config]) { c.Validate = nil },
+		func(c *Codec[shareconfig.Config]) { c.Revision = nil },
+	} {
+		codec := shareCodec()
+		mutate(&codec)
+		if s, err := OpenWithCodec(t.TempDir(), codec); !errors.Is(err, ErrUnsafe) {
+			if s != nil {
+				s.Close()
+			}
+			t.Fatal(err)
+		}
 	}
 }

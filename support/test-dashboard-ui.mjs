@@ -11,10 +11,11 @@ import { createContext, Script } from "node:vm";
 
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
 const source = await readFile(join(repoRoot, "src/phantowd-api/ui/app.js"), "utf8");
+const serviceSource = await readFile(join(repoRoot, "src/phantowd-api/ui/service-policy.js"), "utf8");
 const markup = await readFile(join(repoRoot, "src/phantowd-api/ui/index.html"), "utf8");
 const markupIDs = [...markup.matchAll(/\bid="([^"]+)"/g)].map((match) => match[1]);
 assert.equal(new Set(markupIDs).size, markupIDs.length, "duplicate HTML IDs");
-for (const match of source.matchAll(/(?:byId|setText)\("([^"]+)"/g)) {
+for (const match of (source + serviceSource).matchAll(/(?:byId|setText)\("([^"]+)"/g)) {
   assert.ok(markupIDs.includes(match[1]), `script references missing HTML ID ${match[1]}`);
 }
 assert.match(markup, /id="policy-nfs-fields"[^>]*hidden disabled/);
@@ -125,6 +126,8 @@ async function createHarness(respond) {
     "memory-value", "memory-detail", "memory-meter", "firmware-value", "firmware-detail",
     "profile-notice-title", "profile-notice-copy", "profile-notice-mark",
     "observed-at", "device-count", "device-list", "array-count", "array-list", "mount-count", "mount-list",
+    ...["load", "status", "result", "summary", "shares"].map((id) => `saved-${id}`),
+    ...["load", "prepare", "save", "status", "current", "summary", "document", "review", "change", "samba", "nfs", "editor", "target", "member", "action", "edit-preview"].map((id) => `service-${id}`),
     ...["form", "submit", "clear", "result", "error", "status", "requirements", "samba", "nfs", "nfs-fields", "uuid", "name", "path", "user", "smb-access", "nfs-enabled", "export-id", "network", "nfs-access", "squash", "uid", "gid", "security"].map((id) => `policy-${id}`),
   ];
   const elements = Object.fromEntries(ids.map((id) => [id, new FixtureElement()]));
@@ -158,6 +161,7 @@ async function createHarness(respond) {
     setTimeout,
     clearTimeout,
   });
+  new Script(serviceSource).runInContext(context);
   new Script(source).runInContext(context);
   await new Promise((resolve) => setImmediate(resolve));
   return { context, elements, requests };
@@ -346,8 +350,9 @@ function fillPolicy(elements) {
   for (const [id, value] of Object.entries(values)) elements[`policy-${id}`].value = value;
 }
 
-async function policyHarness(previewResponse = () => jsonResponse(policyFixture()), sessionResponse = () => jsonResponse({ csrf_token: "fixture-only" })) {
+async function policyHarness(previewResponse = () => jsonResponse(policyFixture()), sessionResponse = () => jsonResponse({ csrf_token: "fixture-only" }), savedResponse = () => jsonResponse(savedFixture())) {
   return createHarness(async (path, options) => {
+    if (path === "/api/v1/shares/configuration") return savedResponse(options);
     if (path === "/api/v1/auth/status") return jsonResponse({ authenticated: true });
     if (path === "/api/v1/auth/session") return sessionResponse();
     if (path === "/api/v1/file-services/preview") return previewResponse(options);
@@ -440,6 +445,330 @@ async function testPolicyFailuresAndStaleResponses() {
   }
 }
 
+function savedFixture() {
+  return {
+    schema_version: 1, scope: "stored-desired-share-policy-only", initialized: true,
+    runtime_validated: false, activation_available: false,
+    configuration: {
+      format: "phantowd-share-config", schema_version: 1, revision: 4,
+      volumes: [{ id: "media", filesystem_uuid: "11111111-2222-3333-4444-555555555555" }],
+      users: [{ id: "reader", name: "reader" }],
+      shares: [{ id: "books", name: "Books", volume_id: "media", relative_path: "books", grants: [{ user_id: "reader", access: "ro" }] }],
+    },
+  };
+}
+
+async function testSavedPolicyStatesAndSafeRendering() {
+  let response = jsonResponse(savedFixture());
+  const { context, elements, requests } = await policyHarness(undefined, undefined, () => response);
+  assert.equal(requests.some(({ path }) => path.endsWith("/configuration")), false, "loading must be explicit");
+  await elements["saved-load"].listeners.get("click")();
+  const request = requests.find(({ path }) => path.endsWith("/configuration"));
+  assert.equal(request.options.method, "GET");
+  assert.equal(request.options.credentials, "same-origin");
+  assert.equal(request.options.cache, "no-store");
+  assert.equal(request.options.body, undefined);
+  assert.equal(elements["saved-result"].hidden, false);
+  assert.match(elements["saved-summary"].textContent, /Revision 4/);
+  assert.match(elements["saved-status"].textContent, /Runtime access has not been verified/);
+  const row = elements["saved-shares"].children[0];
+  assert.equal(row.children[0].textContent, "Books");
+  assert.equal(row.children[1].textContent, "media / books");
+  assert.match(row.children[3].children[1].textContent, /reader: read only/);
+
+  // Even a hostile, structurally valid reply is rendered as text, never markup.
+  const hostile = savedFixture();
+  hostile.configuration.shares[0].name = "<img src=x onerror=alert(1)>";
+  hostile.configuration.shares[0].relative_path = "<script>payload</script>";
+  response = jsonResponse(hostile);
+  await context.loadSavedPolicy();
+  assert.equal(elements["saved-shares"].children[0].children[0].textContent, hostile.configuration.shares[0].name);
+  assert.equal(elements["saved-shares"].children[0].children[0].children.length, 0);
+
+  const empty = savedFixture();
+  empty.configuration.shares = [];
+  response = jsonResponse(empty);
+  await context.loadSavedPolicy();
+  assert.equal(elements["saved-result"].hidden, false);
+  assert.equal(elements["saved-shares"].children.length, 0);
+  assert.match(elements["saved-status"].textContent, /no shares are defined/);
+
+  for (const [reply, expected] of [
+    [jsonResponse({ ...savedFixture(), initialized: false, configuration: null }), /no share policy has been initialized/],
+    [jsonResponse({ error: "share_configuration_not_configured" }, 503), /storage is not connected/],
+    [jsonResponse({ error: "share_configuration_unavailable" }, 503), /unavailable or busy/],
+    [jsonResponse({}, 403), /unavailable or busy/],
+    [Object.assign(new Error("private backend details"), { name: "AbortError" }), /timed out/],
+    [new Error("private backend details"), /could not be verified/],
+  ]) {
+    response = jsonResponse(savedFixture());
+    await context.loadSavedPolicy();
+    response = reply;
+    await context.loadSavedPolicy();
+    assert.equal(elements["saved-result"].hidden, true);
+    assert.equal(elements["saved-shares"].children.length, 0);
+    assert.equal(elements["saved-summary"].textContent, "");
+    assert.match(elements["saved-status"].textContent, expected);
+    assert.doesNotMatch(elements["saved-status"].textContent, /private/);
+    assert.equal(elements["saved-load"].disabled, false);
+  }
+}
+
+async function testSavedPolicyMalformedReplies() {
+  for (const mutate of [
+    (r) => { r.schema_version = 2; },
+    (r) => { r.scope = "active-shares"; },
+    (r) => { delete r.runtime_validated; },
+    (r) => { r.activation_available = true; },
+    (r) => { r.initialized = false; },
+    (r) => { r.configuration = null; },
+    (r) => { r.configuration.format = "unknown"; },
+    (r) => { r.configuration.revision = Number.MAX_SAFE_INTEGER + 1; },
+    (r) => { r.configuration.volumes.push(r.configuration.volumes[0]); },
+    (r) => { r.configuration.volumes = Array(17).fill(r.configuration.volumes[0]); },
+    (r) => { r.configuration.volumes[0].filesystem_uuid = "not-a-uuid"; },
+    (r) => { r.configuration.users.push(r.configuration.users[0]); },
+    (r) => { r.configuration.shares[0].volume_id = "missing"; },
+    (r) => { r.configuration.shares[0].grants[0].user_id = "missing"; },
+    (r) => { r.configuration.shares[0].grants[0].access = "admin"; },
+    (r) => { r.configuration.shares[0].grants.push(r.configuration.shares[0].grants[0]); },
+    (r) => { r.configuration.shares[0].relative_path = "x".repeat(1025); },
+  ]) {
+    const reply = savedFixture(); mutate(reply);
+    const { context, elements } = await policyHarness(undefined, undefined, () => jsonResponse(reply));
+    await context.loadSavedPolicy();
+    assert.equal(elements["saved-result"].hidden, true);
+    assert.match(elements["saved-status"].textContent, /could not be verified/);
+    assert.equal(elements["saved-shares"].children.length, 0);
+  }
+}
+
+async function testSavedPolicyLateRepliesAndAuthLoss() {
+  for (const delayedBody of [false, true]) {
+    for (const reset of ["clear", "auth-loss", "logout"]) {
+      let release;
+      const pending = new Promise((resolve) => { release = resolve; });
+      const harness = await policyHarness(undefined, () => jsonResponse({}, 503), () =>
+        delayedBody ? { ok: true, status: 200, json: () => pending } : pending);
+      const { context, elements, requests } = harness;
+      const operation = context.loadSavedPolicy();
+      await new Promise((resolve) => setImmediate(resolve));
+      assert.equal(elements["saved-load"].disabled, true);
+      await context.loadSavedPolicy(); // duplicate ignored
+      if (reset === "clear") context.clearSavedPolicy();
+      if (reset === "auth-loss") context.showAuthUnavailable();
+      if (reset === "logout") await elements.logout.listeners.get("click")();
+      release(delayedBody ? savedFixture() : jsonResponse(savedFixture()));
+      await operation;
+      assert.equal(requests.filter(({ path }) => path.endsWith("/configuration")).length, 1);
+      assert.equal(requests.find(({ path }) => path.endsWith("/configuration")).options.signal.aborted, true);
+      assert.equal(elements["saved-result"].hidden, true);
+      assert.equal(elements["saved-shares"].children.length, 0);
+      assert.equal(elements["saved-load"].disabled, false);
+    }
+  }
+  for (const statusFails of [false, true]) {
+    let expired = false;
+    const { context, elements } = await createHarness(async (path) => {
+      if (path === "/api/v1/auth/status") return jsonResponse({ authenticated: !expired, setup_required: false }, expired && statusFails ? 503 : 200);
+      if (path === "/api/v1/shares/configuration") { expired = true; return jsonResponse({}, 401); }
+      if (path === "/api/v1/system") return jsonResponse(systemFixture());
+      if (path === "/api/v1/storage") return jsonResponse({ observations: [] });
+      if (path === "/api/v1/arrays") return jsonResponse(arraysFixture());
+      if (path === "/api/v1/mounts") return jsonResponse(mountsFixture());
+      throw new Error(`Unexpected request ${path}`);
+    });
+    await context.loadSavedPolicy();
+    assert.equal(elements["dashboard-content"].hidden, true);
+    assert.equal(elements["auth-panel"].hidden, false);
+    assert.equal(elements["saved-result"].hidden, true);
+  }
+}
+
+function serviceReply(configuration) {
+  return { schema_version: 1, scope: "development-stored-file-service-policy-only", initialized: configuration !== null,
+    configuration, applied: false, runtime_validated: false, activation_available: false };
+}
+
+function serviceSaved(revision) {
+  return { schema_version: 1, scope: "development-stored-file-service-policy-only", revision, saved: true,
+    applied: false, runtime_validated: false, activation_available: false };
+}
+
+async function serviceHarness(stateResponse, previewResponse = () => jsonResponse(policyFixture()), sessionResponse = () => jsonResponse({ csrf_token: "fixture-only" })) {
+  return createHarness(async (path, options) => {
+    if (path === "/api/v1/file-services/configuration") return stateResponse(options);
+    if (path === "/api/v1/auth/status") return jsonResponse({ authenticated: true });
+    if (path === "/api/v1/auth/session") return sessionResponse();
+    if (path === "/api/v1/file-services/preview") return previewResponse(options);
+    if (path === "/api/v1/system") return jsonResponse(systemFixture());
+    if (path === "/api/v1/storage") return jsonResponse({ observations: [] });
+    if (path === "/api/v1/arrays") return jsonResponse(arraysFixture());
+    if (path === "/api/v1/mounts") return jsonResponse(mountsFixture());
+    throw new Error(`Unexpected request ${path}`);
+  });
+}
+
+async function testServiceAddAndPreserve() {
+  let saved = null;
+  const { context, elements, requests } = await serviceHarness((options) => {
+    if (options.method === "PUT") { saved = JSON.parse(options.body); return jsonResponse(serviceSaved(saved.revision)); }
+    return jsonResponse(serviceReply(saved));
+  });
+  await context.saveServiceChange();
+  assert.equal(requests.some(({ options }) => options?.method === "PUT"), false);
+  await context.loadServicePolicy();
+  assert.match(elements["service-summary"].textContent, /no configuration initialized/);
+  fillPolicy(elements);
+  await context.prepareServiceAddition();
+  assert.equal(elements["service-save"].disabled, false);
+  assert.equal(elements["service-review"].hidden, false);
+  assert.equal(requests.some(({ options }) => options?.method === "PUT"), false, "preview must not save");
+  assert.match(elements["service-samba"].textContent, /<script>/, "render as text only");
+  await context.saveServiceChange();
+  assert.equal(saved.revision, 1);
+  assert.equal(saved.nfs.volume_revision, 1);
+  assert.equal(saved.shares.volumes.length, 1);
+  const previous = structuredClone(saved);
+  assert.match(elements["service-status"].textContent, /confirmed saved.*No services were activated/);
+  elements["policy-name"].value = "Comics"; elements["policy-path"].value = "comics";
+  elements["policy-export-id"].value = "bbbbbbbb-bbbb-cccc-dddd-eeeeeeeeeeee";
+  context.invalidatePolicyPreview();
+  await context.prepareServiceAddition(); await context.saveServiceChange();
+  assert.equal(saved.revision, 2);
+  assert.deepEqual(saved.shares.shares[0], previous.shares.shares[0]);
+  assert.deepEqual(saved.nfs.exports[0], previous.nfs.exports[0]);
+  assert.equal(saved.shares.volumes.length, 1, "reuse same UUID");
+  assert.equal(saved.shares.users.length, 1, "reuse named account reference");
+  assert.equal(saved.shares.shares.length, 2);
+  assert.notEqual(saved.shares.shares[0].id, saved.shares.shares[1].id);
+  await context.prepareServiceAddition();
+  assert.match(elements["service-status"].textContent, /already exists/);
+  assert.equal(elements["service-save"].disabled, true);
+  assert.equal(requests.filter(({ options }) => options?.method === "PUT").length, 2);
+  for (const { options } of requests.filter(({ options }) => options?.method === "PUT")) {
+    assert.equal(options.headers["X-PhantoWD-CSRF"], "fixture-only");
+    assert.equal(options.credentials, "same-origin");
+    assert.equal(options.cache, "no-store");
+  }
+}
+
+async function testServiceUncertainAndConflict() {
+  for (const result of ["lost-but-saved", "lost-not-saved", "conflict", "invalid-success", "unavailable"]) {
+    let saved = null;
+    const { context, elements, requests } = await serviceHarness((options) => {
+      if (options.method === "PUT") {
+        if (result === "lost-but-saved") saved = JSON.parse(options.body);
+        if (result === "conflict") return jsonResponse({}, 409);
+        if (result === "unavailable") return jsonResponse({}, 503);
+        if (result === "invalid-success") return jsonResponse({ saved: true });
+        return new Error("private transport detail");
+      }
+      // Change object-key order; the full structure, not raw serialization, matters.
+      return jsonResponse(serviceReply(saved === null ? null : Object.fromEntries(Object.entries(saved).reverse())));
+    });
+    fillPolicy(elements); await context.loadServicePolicy(); await context.prepareServiceAddition(); await context.saveServiceChange();
+    assert.match(elements["service-status"].textContent, result === "conflict" ? /Revision conflict.*refused/ : /not confirmed.*may have committed/);
+    assert.equal(elements["service-save"].disabled, true);
+    assert.equal(elements["service-prepare"].disabled, true);
+    await context.saveServiceChange(); await context.prepareServiceAddition();
+    assert.equal(requests.filter(({ options }) => options?.method === "PUT").length, 1);
+    await context.loadServicePolicy();
+    assert.match(elements["service-status"].textContent, result === "lost-but-saved" ? /complete attempted configuration.*confirmed saved/ : /differs.*not retried/);
+    assert.equal(requests.filter(({ options }) => options?.method === "PUT").length, 1);
+    assert.equal(elements["service-prepare"].disabled, false);
+  }
+  // Same revision with different content is never confirmation.
+  const { context, elements } = await serviceHarness(() => jsonResponse(serviceReply(null)));
+  fillPolicy(elements);
+  const proposal = context.buildPolicyProposal();
+  const a = context.buildServiceAddition(null, proposal);
+  const b = structuredClone(a); b.shares.shares[0].name = "Different";
+  assert.equal(context.sameServiceDocument(a, b), false);
+}
+
+async function testServiceRefusalsAndInvalidation() {
+  for (const reply of [jsonResponse({}, 503), jsonResponse(serviceReply({ revision: 1 })), new Error("private failure")]) {
+    const { context, elements, requests } = await serviceHarness(() => reply);
+    fillPolicy(elements); await context.loadServicePolicy(); await context.prepareServiceAddition(); await context.saveServiceChange();
+    assert.equal(elements["service-current"].hidden, true);
+    assert.equal(elements["service-save"].disabled, true);
+    assert.equal(requests.some(({ options }) => options?.method === "PUT"), false);
+    assert.doesNotMatch(elements["service-status"].textContent, /private failure/);
+  }
+  const { context, elements, requests } = await serviceHarness(() => jsonResponse(serviceReply(null)), () => jsonResponse({}, 422));
+  fillPolicy(elements); await context.loadServicePolicy(); await context.prepareServiceAddition(); await context.saveServiceChange();
+  assert.equal(elements["service-save"].disabled, true);
+  assert.equal(requests.some(({ options }) => options?.method === "PUT"), false);
+  for (const boundary of ["preview", "save-session", "save-reply", "load"]) {
+    let release, delay = false;
+    const pending = new Promise((resolve) => { release = resolve; });
+    const h = await serviceHarness((options) => {
+      if (boundary === "load" && delay) return pending;
+      if (options.method === "PUT") return boundary === "save-reply" ? pending : jsonResponse(serviceSaved(1));
+      return jsonResponse(serviceReply(null));
+    }, () => boundary === "preview" ? pending : jsonResponse(policyFixture()),
+    () => boundary === "save-session" && delay ? pending : jsonResponse({ csrf_token: "fixture-only" }));
+    fillPolicy(h.elements); await h.context.loadServicePolicy();
+    if (boundary !== "preview") await h.context.prepareServiceAddition();
+    delay = true;
+    const operation = boundary === "preview" ? h.context.prepareServiceAddition() : boundary === "load" ? h.context.loadServicePolicy() : h.context.saveServiceChange();
+    await new Promise((resolve) => setImmediate(resolve));
+    // Auth loss must cancel and prevent a late response from restoring sensitive data.
+    h.context.showAuthUnavailable();
+    release(jsonResponse(boundary === "preview" ? policyFixture() : boundary === "save-session" ? { csrf_token: "fixture-only" } : boundary === "load" ? serviceReply(null) : serviceSaved(1)));
+    await operation;
+    assert.equal(h.elements["service-review"].hidden, true);
+    assert.equal(h.elements["service-current"].hidden, true);
+    assert.equal(h.elements["service-document"].textContent, "");
+    assert.equal(h.elements["service-save"].disabled, true);
+    assert.equal(h.requests.filter(({ options }) => options?.method === "PUT").length, boundary === "save-reply" ? 1 : 0);
+  }
+}
+
+async function testServiceFormEditsAndReconcileFailure() {
+  for (const phase of ["preview", "save-session"]) {
+    let release, delay = false;
+    const pending = new Promise((resolve) => { release = resolve; });
+    const { context, elements, requests } = await serviceHarness(() => jsonResponse(serviceReply(null)),
+      () => phase === "preview" && delay ? pending : jsonResponse(policyFixture()),
+      () => phase === "save-session" && delay ? pending : jsonResponse({ csrf_token: "fixture-only" }));
+    fillPolicy(elements); await context.loadServicePolicy();
+    if (phase === "save-session") await context.prepareServiceAddition();
+    delay = true;
+    const operation = phase === "preview" ? context.prepareServiceAddition() : context.saveServiceChange();
+    await new Promise((resolve) => setImmediate(resolve));
+    elements["policy-name"].value = "Edited during request";
+    context.invalidatePolicyPreview();
+    release(jsonResponse(phase === "preview" ? policyFixture() : { csrf_token: "fixture-only" }));
+    await operation;
+    assert.equal(elements["service-save"].disabled, true);
+    assert.equal(elements["service-review"].hidden, true);
+    assert.match(elements["service-status"].textContent, /Form changed/);
+    assert.equal(requests.some(({ options }) => options?.method === "PUT"), false);
+  }
+  let failed = false;
+  const { context, elements, requests } = await serviceHarness((options) => {
+    if (options.method === "PUT") { failed = true; return new Error("lost response"); }
+    return failed ? jsonResponse({}, 503) : jsonResponse(serviceReply(null));
+  });
+  fillPolicy(elements); await context.loadServicePolicy(); await context.prepareServiceAddition(); await context.saveServiceChange();
+  await context.loadServicePolicy(); await context.prepareServiceAddition(); await context.saveServiceChange();
+  assert.equal(elements["service-save"].disabled, true);
+  assert.equal(elements["service-prepare"].disabled, true);
+  assert.equal(elements["service-current"].hidden, true);
+  assert.equal(requests.filter(({ options }) => options?.method === "PUT").length, 1);
+}
+
+await testServiceAddAndPreserve();
+await testServiceUncertainAndConflict();
+await testServiceRefusalsAndInvalidation();
+await testServiceFormEditsAndReconcileFailure();
+await testServiceEditingContracts();
+await testServiceEditorInteraction();
+await testSavedPolicyStatesAndSafeRendering();
+await testSavedPolicyMalformedReplies();
+await testSavedPolicyLateRepliesAndAuthLoss();
 await testPolicyBuilderAndSafePreview();
 await testPolicyFailuresAndStaleResponses();
 await testReadOnlySnapshotAndSafeRendering();
@@ -450,3 +779,128 @@ await testSystemFailureKeepsOnlyCurrentStorageObservation();
 await testAllDiagnosticFailuresClearValues();
 await testMountFailureClearsOnlyMountObservation();
 process.stdout.write("Dashboard UI interaction smoke tests passed (DOM fixture; no visual browser coverage).\n");
+
+async function editorFixture() {
+  const h = await serviceHarness(() => jsonResponse(serviceReply(null)));
+  fillPolicy(h.elements);
+  const original = h.context.buildServiceAddition(null, h.context.buildPolicyProposal());
+  const c = JSON.parse(JSON.stringify(original));
+  c.shares.users.push({ id: "user-2", name: "writer" });
+  c.shares.shares[0].grants.push({ user_id: "user-2", access: "rw" });
+  c.shares.shares.push({ id: "share-2", name: "Other", volume_id: "volume-1", relative_path: "other", grants: [{ user_id: "user-2", access: "rw" }] });
+  c.nfs.exports[0].clients.push({ ...c.nfs.exports[0].clients[0], network: "192.0.2.11/32", access: "rw" });
+  c.nfs.exports.push({ ...structuredClone(c.nfs.exports[0]), id: "bbbbbbbb-bbbb-cccc-dddd-eeeeeeeeeeee", relative_path: "other" });
+  const values = Object.fromEntries(Object.entries(h.elements).filter(([id]) => id.startsWith("policy-")).map(([id, element]) => [id.slice(7), element.value]));
+  return { c, values, ...h };
+}
+
+async function testServiceEditingContracts() {
+  const { context, c, values } = await editorFixture();
+  const initial = structuredClone(c);
+  const edit = (action, target, overrides = {}) => JSON.parse(JSON.stringify(context.buildServiceEdit(c, action, target, { ...values, ...overrides }).configuration));
+  const smb = "smb:share-1", nfs = `nfs:${c.nfs.exports[0].id}`;
+  const shared = (result) => {
+    assert.equal(result.revision, 2);
+    assert.equal(result.shares.revision, 2);
+    assert.equal(result.nfs.revision, 2);
+    assert.equal(result.nfs.volume_revision, 2);
+    assert.deepEqual(c, initial, "source snapshot mutated");
+  };
+  let result = edit("smb-properties", smb, { name: "Renamed", path: "new-folder" }); shared(result);
+  assert.equal(result.shares.shares[0].id, "share-1");
+  assert.equal(result.shares.shares[0].relative_path, "new-folder");
+  assert.deepEqual(result.shares.shares[0].grants, c.shares.shares[0].grants);
+  assert.deepEqual(result.shares.shares[1], c.shares.shares[1]);
+  assert.deepEqual(result.nfs.exports, c.nfs.exports);
+  result = edit("smb-grant-upsert", smb, { "smb-access": "rw" }); shared(result);
+  assert.deepEqual(result.shares.shares[0].grants, [{ user_id: "user-1", access: "rw" }, c.shares.shares[0].grants[1]]);
+  assert.deepEqual(result.nfs.exports, c.nfs.exports);
+  result = edit("smb-grant-upsert", smb, { user: "newreader" }); shared(result);
+  assert.equal(result.shares.users[2].name, "newreader");
+  assert.equal(result.shares.shares[0].grants.length, 3);
+  assert.deepEqual(result.shares.shares[0].grants.slice(0, 2), c.shares.shares[0].grants);
+  result = edit("smb-grant-remove", smb); shared(result);
+  assert.deepEqual(result.shares.shares[0].grants, [c.shares.shares[0].grants[1]]);
+  assert.deepEqual(result.shares.users, c.shares.users);
+  result = edit("smb-remove", smb); shared(result);
+  assert.deepEqual(result.shares.shares, [c.shares.shares[1]]);
+  assert.deepEqual(result.shares.volumes, c.shares.volumes);
+  assert.deepEqual(result.shares.users, c.shares.users);
+  assert.deepEqual(result.nfs.exports, c.nfs.exports, "SMB removal touched NFS");
+  result = edit("nfs-properties", nfs, { path: "new-nfs-path" }); shared(result);
+  assert.equal(result.nfs.exports[0].id, c.nfs.exports[0].id);
+  assert.deepEqual(result.nfs.exports[0].clients, c.nfs.exports[0].clients);
+  assert.deepEqual(result.shares.shares, c.shares.shares);
+  result = edit("nfs-client-upsert", nfs, { "nfs-access": "rw", uid: "1000", gid: "1000" }); shared(result);
+  assert.equal(result.nfs.exports[0].clients[0].anonymous_uid, 1000);
+  assert.deepEqual(result.nfs.exports[0].clients[1], c.nfs.exports[0].clients[1]);
+  assert.deepEqual(result.nfs.exports[1], c.nfs.exports[1]);
+  result = edit("nfs-client-upsert", nfs, { network: "192.0.2.12/32" }); shared(result);
+  assert.equal(result.nfs.exports[0].clients.length, 3);
+  assert.deepEqual(result.nfs.exports[0].clients.slice(0, 2), c.nfs.exports[0].clients);
+  result = edit("nfs-client-remove", nfs); shared(result);
+  assert.deepEqual(result.nfs.exports[0].clients, [c.nfs.exports[0].clients[1]]);
+  result = edit("nfs-remove", nfs); shared(result);
+  assert.deepEqual(result.nfs.exports, [c.nfs.exports[1]]);
+  assert.deepEqual(result.shares, { ...c.shares, revision: 2 });
+  result = edit("nfs-add", "", { path: "independent", "export-id": "cccccccc-bbbb-cccc-dddd-eeeeeeeeeeee" }); shared(result);
+  assert.deepEqual(result.nfs.exports.slice(0, 2), c.nfs.exports);
+  assert.deepEqual(result.shares, { ...c.shares, revision: 2 });
+  assert.equal(result.nfs.exports[2].relative_path, "independent");
+  for (const [action, target, overrides] of [
+    ["smb-remove", "smb:missing", {}], ["smb-remove", nfs, {}], ["nfs-remove", smb, {}],
+    ["smb-properties", smb, {}], ["smb-properties", smb, { name: "Other" }],
+    ["smb-grant-remove", smb, { user: "missing" }], ["smb-grant-remove", "smb:share-2", { user: "writer" }],
+    ["nfs-client-remove", nfs, { network: "192.0.2.99/32" }], ["nfs-add", "", {}],
+    ["nfs-client-upsert", nfs, { uid: "0" }], ["nfs-client-upsert", nfs, { gid: "4294967295" }],
+  ]) assert.throws(() => edit(action, target, overrides));
+  const only = structuredClone(c); only.nfs.exports[0].clients.splice(1);
+  assert.throws(() => context.buildServiceEdit(only, "nfs-client-remove", nfs, values), /last client/);
+  const standalone = context.buildServiceEdit(null, "nfs-add", "", values).configuration;
+  assert.equal(standalone.shares.shares.length, 0);
+  assert.equal(standalone.shares.users.length, 0);
+  assert.equal(standalone.nfs.exports.length, 1);
+}
+
+async function testServiceEditorInteraction() {
+  const { c } = await editorFixture();
+  let stored = c;
+  const { context, elements, requests } = await serviceHarness((options) => {
+    if (options.method === "PUT") { stored = JSON.parse(options.body); return jsonResponse(serviceSaved(stored.revision)); }
+    return jsonResponse(serviceReply(stored));
+  });
+  fillPolicy(elements); await context.loadServicePolicy();
+  assert.equal(elements["service-target"].children.length, 5);
+  elements["service-target"].value = "smb:share-1";
+  context.selectServiceTarget();
+  assert.equal(elements["policy-name"].value, "Books");
+  assert.equal(elements["service-member"].children.length, 3);
+  elements["service-member"].value = "user-2"; context.selectServiceMember();
+  assert.equal(elements["policy-user"].value, "writer");
+  assert.equal(elements["policy-smb-access"].value, "rw");
+  elements["service-action"].value = "smb-remove"; context.selectServiceAction();
+  await context.prepareServiceEdit();
+  assert.match(elements["service-change"].textContent, /Remove only SMB.*does not revoke NFS/);
+  assert.equal(requests.some(({ options }) => options?.method === "PUT"), false);
+  await context.saveServiceChange();
+  assert.deepEqual(stored.nfs.exports, c.nfs.exports);
+  assert.equal(stored.shares.shares.length, 1);
+  assert.equal(elements["service-target"].value, "", "selection resets after commit");
+  elements["service-target"].value = `nfs:${c.nfs.exports[0].id}`;
+  context.selectServiceTarget();
+  assert.equal(elements["policy-nfs-enabled"].value, "on");
+  elements["service-member"].value = "192.0.2.11/32"; context.selectServiceMember();
+  assert.equal(elements["policy-network"].value, "192.0.2.11/32");
+  assert.equal(elements["policy-nfs-access"].value, "rw");
+  elements["service-action"].value = "nfs-client-remove"; context.selectServiceAction();
+  await context.prepareServiceEdit();
+  assert.equal(elements["service-save"].disabled, false);
+  // A changed action invalidates the candidate even if the form is untouched.
+  elements["service-action"].value = "nfs-remove"; context.selectServiceAction();
+  await context.saveServiceChange();
+  assert.equal(requests.filter(({ options }) => options?.method === "PUT").length, 1);
+  context.showAuthUnavailable();
+  assert.equal(elements["service-target"].children.length, 1);
+  assert.equal(elements["service-member"].children.length, 1);
+  assert.equal(elements["service-editor"].disabled, true);
+}

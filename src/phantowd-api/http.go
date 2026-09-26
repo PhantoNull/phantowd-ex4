@@ -26,8 +26,18 @@ func newHandlerWithArrays(collect collector, collectStorage storageSnapshotColle
 }
 
 func newHandlerWithMounts(collect collector, collectStorage storageSnapshotCollector, collectArrays mdArraySnapshotCollector, collectMounts mountSnapshotCollector, auth *authController) http.Handler {
+	return newHandlerWithSharePolicy(collect, collectStorage, collectArrays, collectMounts, auth, nil)
+}
+
+func newHandlerWithSharePolicy(collect collector, collectStorage storageSnapshotCollector, collectArrays mdArraySnapshotCollector, collectMounts mountSnapshotCollector, auth *authController, loadPolicy sharePolicyLoader) http.Handler {
+	return newHandlerWithServiceState(collect, collectStorage, collectArrays, collectMounts, auth, loadPolicy, nil)
+}
+
+func newHandlerWithServiceState(collect collector, collectStorage storageSnapshotCollector, collectArrays mdArraySnapshotCollector, collectMounts mountSnapshotCollector, auth *authController, loadPolicy sharePolicyLoader, state *serviceStateBackend) http.Handler {
 	active := make(chan struct{}, 8)
 	preview := newFileServicePreviewHandler(auth)
+	readPolicy := newSharePolicyReadHandler(auth, loadPolicy)
+	serviceState := newServiceStateHandler(auth, state)
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.Header().Set("Cache-Control", "no-store")
@@ -64,6 +74,14 @@ func newHandlerWithMounts(collect collector, collectStorage storageSnapshotColle
 		}
 		if r.URL.Path == fileServicePreviewPath {
 			preview(w, r)
+			return
+		}
+		if r.URL.Path == sharePolicyPath {
+			readPolicy(w, r)
+			return
+		}
+		if r.URL.Path == serviceStatePath {
+			serviceState(w, r)
 			return
 		}
 		if r.URL.Path != "/api/v1/system" && r.URL.Path != "/api/v1/storage" && r.URL.Path != "/api/v1/arrays" && r.URL.Path != "/api/v1/mounts" {
@@ -125,7 +143,7 @@ func newHandlerWithMounts(collect collector, collectStorage storageSnapshotColle
 
 func isDashboardPath(path string) bool {
 	switch path {
-	case "/", "/assets/app.css", "/assets/app.js", "/assets/ghost.svg":
+	case "/", "/assets/app.css", "/assets/app.js", "/assets/service-policy.js", "/assets/ghost.svg":
 		return true
 	default:
 		return false
@@ -173,6 +191,8 @@ func dashboardAsset(path string) (string, string) {
 		return "ui/app.css", "text/css; charset=utf-8"
 	case "/assets/app.js":
 		return "ui/app.js", "text/javascript; charset=utf-8"
+	case "/assets/service-policy.js":
+		return "ui/service-policy.js", "text/javascript; charset=utf-8"
 	case "/assets/ghost.svg":
 		return "ui/ghost.svg", "image/svg+xml"
 	default:

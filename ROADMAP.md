@@ -46,7 +46,7 @@ requirements. Existing analysis does not mean all firmware behavior is known.
 | Management | QEMU administrator setup/login, sessions, optional TLS transport, responsive diagnostics dashboard | Durable configuration, account lifecycle, certificate lifecycle, service controls and recovery |
 | Storage observation | Bounded sysfs block/VPD, Linux MD and existing-mount observations | Actual WD layout recognition, stable volume identities and qualified import |
 | Storage research | Regular-file GPT, ext and MD inspectors, component comparisons, synthetic inventory assessment | Representative sanitized WD metadata corpus and empty-media integration tests |
-| File services | Isolated QEMU SMB3/NFSv3 probes | Users, shares, permissions, exports, lifecycle and multi-client qualification |
+| File services | Strict SMB/NFS policy and previews, atomic revision store, opt-in development save API, isolated QEMU access probes | Product accounts/state provisioning, storage qualification, activation/loss lifecycle and multi-client qualification |
 | Updates | Host verification of signed release metadata, model/channel binding, payload hashes and version policy | Target installer, durable update state, rollback, key recovery and interruption testing |
 
 The [API contract](src/phantowd-api/README.md) and
@@ -211,9 +211,17 @@ Additional NAS models require their own board definitions and qualification.
    validate the new ARMv5 QEMU probes before claiming guest execution evidence.
 3. Extend restart/failure coverage to disposable persistent QEMU filesystems
    and define configuration recovery/migration before exposing writable APIs.
+   Two independent ARMv5 boots now preserve the complete share policy on a
+   generated ext2 disk, ignore a staged revision, reject corrupt state and
+   refuse stale writers. This is clean-reboot evidence, not power-loss testing
+   or qualification of the EX4 persistent-state location.
 4. Extend the implemented standalone browser share-proposal form to full
-   configuration management after persistence/recovery qualification;
-   qualify effective POSIX permissions and runtime volume binding before service
+   configuration management after persistence/recovery qualification.
+   An authenticated, bounded stored-share-policy read endpoint now has an
+   explicit Linux store adapter and post-reboot ARMv5 handler-dispatch tests.
+   Its dashboard integration, HTTP save and product state provisioning remain
+   incomplete; stored policy is never reported as active service state.
+   Qualify effective POSIX permissions and runtime volume binding before service
    activation. Local ARMv5 QEMU has exercised HTTP/HTTPS previews, generated
    Samba grants with real Unix users (write/read/denial/ownership/symlink checks)
    and generated NFS exports on a disposable virtual disk; this does not
@@ -221,8 +229,26 @@ Additional NAS models require their own board definitions and qualification.
 5. Connect trusted filesystem-identity qualification to the implemented Linux
    mount-descriptor guard, then integrate supervised SMB/NFS lifecycle using
    disposable QEMU disks. The guard's expected tuple is not yet produced by a
-   qualified UUID/compatibility resolver; path-based service handoff and volume
-   loss/recovery remain unimplemented.
+   qualified discovery/uniqueness/compatibility resolver. The guard now
+   compares a mounted filesystem's kernel UUID with its expected policy UUID;
+   an internal inventory can detect conflicts among supplied mounted ext
+   devices, but cannot discover cloned identities on unmounted/omitted media.
+   A separate libblkid descriptor helper now has host-native unmounted-image
+   tests and static ARMv5 execution on two unmounted QEMU disks; clean package
+   integration, block I/O-failure fixtures and trusted
+   complete-device discovery must be qualified before connecting it.
+   The native ext2/XFS collision fixture is refused without JSON; pinned
+   libblkid collapses ambiguity into a generic error, never an empty result.
+   The same collision is now refused in ARMv5 QEMU, with isolated signature
+   controls, unchanged generated-image hashes and whole-set failure checks.
+   A Linux single-slot helper supervisor now validates descriptors, bounded
+   responses and cancellation; it is reused by the QEMU fixture. It does not
+   establish eligible-device discovery, exclusivity or compatibility.
+   Descriptor-set snapshots retain and recheck all provided objects, reject
+   incomplete results and distinguish aliases from conflicting UUIDs before
+   mounting. They report only the provided set, not global disk absence.
+   Path-based service
+   handoff and volume loss/recovery remain unimplemented.
 6. Advance network/controller/recovery evidence on a separately reviewed
    hardware schedule; use those results to qualify the software on EX4.
 

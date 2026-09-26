@@ -159,6 +159,11 @@ code { color: #ded5ff; font-family: ui-monospace, SFMono-Regular, Consolas, mono
 .policy-panel details { margin-top: 15px; }
 .policy-panel summary { cursor: pointer; font-size: 13px; }
 .policy-panel pre { max-height: 340px; overflow: auto; padding: 14px; border-radius: 6px; background: var(--canvas); font-size: 12px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.saved-policy { padding: 16px; margin: 20px 0; border: 1px solid var(--line); border-radius: 8px; }
+.saved-shares { padding: 0; list-style: none; }
+.saved-shares li { padding: 12px 0; border-top: 1px solid var(--line); overflow-wrap: anywhere; }
+.saved-shares strong, .saved-shares span { display: block; }
+.saved-shares summary { overflow-wrap: anywhere; }
 
 @media (max-width: 780px) {
   .policy-grid { grid-template-columns: minmax(0, 1fr); padding: 12px; }

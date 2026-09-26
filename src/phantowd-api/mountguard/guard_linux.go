@@ -29,6 +29,8 @@ var (
 // never directly from HTTP or a scan of whatever happens to occupy a path.
 // MountID is STATX_MNT_ID_UNIQUE, NOT the recyclable /proc mountinfo ID.
 // FilesystemType is the statfs magic, not evidence of filesystem integrity.
+// FilesystemUUID must be the canonical UUID from trusted desired policy, not
+// learned from the mount being checked. Matching it does not detect clones.
 // The observation is valid only in the same running kernel/mount namespace;
 // do not persist it as a disk identity or reuse it after reboot.
 type Expected struct {
@@ -37,6 +39,7 @@ type Expected struct {
 	DeviceMajor     uint32
 	DeviceMinor     uint32
 	FilesystemType  uint32
+	FilesystemUUID  string
 	RequireWritable bool
 }
 
@@ -55,14 +58,14 @@ type Root struct {
 // expected tuple and mount-root attribute. It creates nothing, follows no
 // symlinks and never substitutes an older/weaker syscall when unsupported.
 func Open(path string, expected Expected) (*Root, error) {
-	if !validAbsolute(path) || expected.MountID == 0 || expected.RootInode == 0 || expected.FilesystemType == 0 {
+	if !validAbsolute(path) || expected.MountID == 0 || expected.RootInode == 0 || expected.FilesystemType == 0 || !validUUID(expected.FilesystemUUID) {
 		return nil, ErrUnsafe
 	}
 	fd, err := openPath(unix.AT_FDCWD, path, false)
 	if err != nil {
 		return nil, err
 	}
-	if err := matchFD(fd, expected, true); err != nil {
+	if err := matchRootFD(fd, expected); err != nil {
 		unix.Close(fd)
 		return nil, err
 	}
@@ -87,10 +90,10 @@ func (r *Root) verify() error {
 		return err
 	}
 	defer unix.Close(fd)
-	if err := matchFD(fd, r.expected, true); err != nil {
+	if err := matchRootFD(fd, r.expected); err != nil {
 		return err
 	}
-	return matchFD(r.fd, r.expected, true)
+	return matchRootFD(r.fd, r.expected)
 }
 
 // OpenDirectory resolves only existing directories on the retained mount.
