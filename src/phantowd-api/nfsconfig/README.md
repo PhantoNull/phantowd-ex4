@@ -5,7 +5,9 @@ This package validates a separate version-1 NFS policy against an exact
 candidate exports table. It does not call `exportfs`, write `/etc/exports`,
 mount anything or start an NFS server. The authenticated
 [preview API](../fileservice/README.md) exposes the candidate without applying
-it. There is no NFS policy store or HTTP configuration-save endpoint yet.
+it. The separate [combined store](../fileservicestore/README.md) can persist
+NFS and share policy in one transaction. There is no standalone NFS store or
+HTTP configuration-save endpoint yet.
 
 ## Schema and validation
 

@@ -1,6 +1,10 @@
 # Desired share-policy storage (Linux)
 
 This library persists the [versioned share policy](../shareconfig/README.md).
+The syscall transaction engine is shared with the separate
+[combined SMB/NFS store](../fileservicestore/README.md); the original
+share-only filename, format and API have not changed. Engine fault tests now
+live under `internal/revisionstore`. No automatic migration occurs.
 Its Load method can back an authenticated read-only management endpoint when
 an explicit private state directory is configured. Commit is not exposed over
 HTTP. It is not connected to account provisioning, volume mounting, service

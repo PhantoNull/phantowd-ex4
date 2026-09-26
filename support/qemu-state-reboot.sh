@@ -62,4 +62,5 @@ for phase in seed verify; do
     grep -F 'reboot: Restarting system' "$workspace/$phase.log" >/dev/null
 done
 grep -F 'PHANTOWD_SHARE_READ_READY authenticated=true backend=sharestore after_reboot=true mutation=false scope=qemu-handler-dispatch-only' "$log" >/dev/null
+grep -F 'PHANTOWD_SERVICE_STATE_READY protocols=smb,nfs atomic_revision=true after_reboot=true activation=false scope=disposable-qemu-only' "$log" >/dev/null
 echo 'PHANTOWD_STATE_REBOOT_READY boots=2 committed_policy=true pending_not_promoted=true corrupt_refused=true stale_writer_denied=true scope=clean-qemu-reboot-only' | tee -a "$log"

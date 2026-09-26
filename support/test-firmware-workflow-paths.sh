@@ -185,6 +185,7 @@ support/container/build-qemu.sh
 support/docker/entrypoint.sh
 support/qemu-smoke.sh
 support/qemu-state-reboot.sh
+support/test-volume-probe-build.py
 src/phantowd-volume-probe/**
 package/phantowd-volume-probe/**
 support/container/test-volume-probe.sh
@@ -237,7 +238,7 @@ EOF
 
 require_develop_push "$host_workflow"
 require_bounded_qemu_ccache "$qemu_workflow"
-require_fixed_fuzz_campaigns "$repo_root/support/container/test-api.sh" 8
+require_fixed_fuzz_campaigns "$repo_root/support/container/test-api.sh" 9
 require_fixed_fuzz_campaigns "$repo_root/support/container/test-lab-tools.sh" 3
 
 for workflow in "$qemu_workflow" "$stage_a_workflow" "$stage_b_workflow" "$stage_b2_workflow" \

@@ -32,7 +32,8 @@ const (
 )
 
 // VolumeRevision binds the proposal to the exact shared volume configuration.
-// Revision belongs to this separate policy; no persistent NFS store exists yet.
+// Standalone proposals have a separate policy revision. The combined
+// fileservice.Config binds all component revisions to one atomic transaction.
 type Policy struct {
 	Format         string   `json:"format"`
 	SchemaVersion  int      `json:"schema_version"`

@@ -17,6 +17,11 @@ can return that stored desired share policy from an explicitly configured
 Linux store; it does not load NFS policy or claim running-service state. The
 firmware does not yet provision persistent product configuration storage.
 
+The separate [atomic file-service store](fileservicestore/README.md) now keeps
+SMB and NFS desired policy in one strictly coherent revision. It shares the
+tested transaction engine with the original store but has a distinct format
+and filenames, no implicit migration, and no HTTP writer or service activation.
+
 ## Stored share-policy read contract
 
 `GET /api/v1/shares/configuration` requires an administrator session and the

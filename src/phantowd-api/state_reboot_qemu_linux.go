@@ -103,6 +103,13 @@ func qemuPersistentPolicy(revision uint64) shareconfig.Config {
 // Software scenarios are separate from the guarded guest mount for host tests.
 // This harness owns all files here. No recovery code directly writes JSON.
 func exerciseQEMUStatePersistence(root, phase string) error {
+	if err := exerciseQEMUShareStatePersistence(root, phase); err != nil {
+		return err
+	}
+	return exerciseQEMUServiceStatePersistence(root, phase)
+}
+
+func exerciseQEMUShareStatePersistence(root, phase string) error {
 	if phase != "seed" && phase != "verify" {
 		return errors.New("unknown state scenario")
 	}
