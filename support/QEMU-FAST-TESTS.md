@@ -5,6 +5,8 @@ It rebuilds the Go API with the pinned compiler and injects it, the current
 guest readiness script, the NFS fixture helper and the x/sys license into a
 **temporary copy** of a previously built QEMU filesystem. The original
 artifact is never modified. This is not a firmware builder or an installer.
+It also cross-compiles and injects a static ARMv5 volume-probe helper using
+hash-checked util-linux 2.40.4 sources and the pinned Buildroot toolchain.
 
 Use the existing pinned development container with:
 
@@ -17,22 +19,34 @@ Inside that container, the invocation is:
 
 ```sh
 sh /src/support/container/test-qemu-api-overlay.sh \
-    /base /toolchain/bin/go /src
+    /base /toolchain/bin/go /src \
+    /downloads/util-linux-2.40.4.tar.xz \
+    /toolchain/bin/arm-buildroot-linux-gnueabi-gcc
 ```
 
 Here `/base` is one complete `phantowd-qemu-armv5` artifact from an exact,
 trusted successful project CI run; `/toolchain/bin/go` is the actual pinned
 Linux compiler path supplied by the operator, not a downloaded latest compiler.
+The final arguments supply the cached util-linux source archive and target C
+compiler from that trusted Buildroot baseline. Both must be mounted read-only.
 Record the run, commit and toolchain when reporting results. The helper checks
 the base's SHA256SUMS for integrity; this does not authenticate an arbitrary
 download. It refuses special files/symlinks for the principal image inputs.
 
 The normal QEMU smoke driver additionally creates a fresh 16-MiB ext2 data
-image with a fixed **test-only** UUID and synthetic SCSI serial/WWN. Both disks
+image with a fixed **test-only** UUID and synthetic SCSI serial/WWN, plus a
+read-only clone with distinct synthetic device identifiers. All virtual disks
 use QEMU snapshot mode. The guest verifies the synthetic data-disk identifiers
 before mounting it; it never formats a guest block device. The host driver
 removes only its own temporary data image after QEMU exits. The API observer
 remains read-only; fixture mutations are in a separate QEMU-only test path.
+
+Before the first data-disk mount, a fixed guest fixture passes both unmounted
+devices to the metadata helper through O_RDONLY descriptors. It checks exact
+device numbers and the absence of both devices from the mount inventory before
+and after probing. Both must return the known ext2 UUID; a separate blank
+regular file must return unidentified, never an empty/safe-to-provision claim.
+This validates helper execution, not a product device-selection broker.
 
 The NFS fixture renders three policies, applies them with the actual target
 `exportfs`, and checks mounted/unmounted access, an escaped path, a synced

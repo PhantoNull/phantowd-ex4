@@ -12,7 +12,7 @@ The implementation enables superblock and partition signature probing without
 type/usage filters, so filtering does not hide competing RAID/crypto/other
 signatures. It uses no cache, UUID/label lookup, mounting, assembly, repair,
 formatting or update operation. It requests no partition-entry details or
-topology chain. This probes unmounted regular test images now; it does not
+topology chain. Tests probe unmounted regular images and QEMU block objects; it does not
 authorize mounting media to learn its identity.
 
 ## Result contract
@@ -45,8 +45,8 @@ supervision, complete eligible-device discovery and ambiguity handling.
 
 ## Build and tests
 
-The opt-in Buildroot package selects **libblkid only**, not util-linux's basic
-program suite. It is not enabled in the default QEMU image yet. The package
+The Buildroot package selects **libblkid only**, not util-linux's basic
+program suite. It is enabled only in the QEMU development profile. The package
 source is Apache-2.0; libblkid and dependencies keep their upstream licenses
 and require normal Buildroot legal-info/SBOM handling.
 
@@ -59,9 +59,17 @@ privileged mode and no forwarded devices. Tests create ext2/3/4, blank, swap
 and zero-UUID images, verify expected classifications and unchanged data hashes,
 and reject writable descriptors, pipes and unexpected arguments.
 
-Initial evidence is host-native only. ARMv5 package build, actual ambiguous
-signature fixture, QEMU block-device execution, fault injection and discovery
-integration remain required. This is not WD-layout, migration or physical
+The fast QEMU lane cross-compiles a static ARMv5 helper from that same archive
+and injects it into a disposable base-image copy. Before mounting either test
+disk, the guest checks their fixed synthetic VPD identities, exact device
+numbers and absence from its mount inventory, then passes read-only descriptors
+to the helper. Both ext2 UUID results and an unidentified regular-file result
+have passed. The helper does not choose which disk to use or grant activation.
+
+Clean Buildroot package/library/license integration, an actual ambiguous
+signature fixture, fault injection and trusted complete-device discovery
+remain required. Static injection is not a release build and its library is
+not described by the base artifact's SBOM. This is not WD-layout, migration or physical
 storage qualification; do not use it on production disks at this stage.
 
 Contracts: upstream [low-level libblkid probing](https://www.kernel.org/pub/linux/utils/util-linux/v2.40/libblkid-docs/libblkid-Low-level-probing.html)

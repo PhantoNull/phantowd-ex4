@@ -226,7 +226,8 @@ Additional NAS models require their own board definitions and qualification.
    an internal inventory can detect conflicts among supplied mounted ext
    devices, but cannot discover cloned identities on unmounted/omitted media.
    A separate libblkid descriptor helper now has host-native unmounted-image
-   tests; ARMv5 packaging, ambiguous-signature/failure fixtures and trusted
+   tests and static ARMv5 execution on two unmounted QEMU disks; clean package
+   integration, ambiguous-signature/failure fixtures and trusted
    complete-device discovery must be qualified before connecting it.
    Path-based service
    handoff and volume loss/recovery remain unimplemented.

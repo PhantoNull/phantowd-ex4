@@ -43,7 +43,7 @@ func qemuNFSFixture() (nfsconfig.Preview, error) {
 
 func runQEMUNFSTest(mode string) error {
 	switch mode {
-	case "exports", "io", "mount-rw", "mount-ro", "guard", "denied-client", "verify-disk":
+	case "exports", "io", "mount-rw", "mount-ro", "guard", "denied-client", "verify-disk", "probe-unmounted":
 	default:
 		return errors.New("unknown QEMU NFS fixture mode")
 	}
@@ -62,6 +62,9 @@ func runQEMUNFSTest(mode string) error {
 	}
 	if mode == "verify-disk" {
 		return verifyQEMUNFSDevice(os.DirFS("/sys"))
+	}
+	if mode == "probe-unmounted" {
+		return probeQEMUUnmountedStorage()
 	}
 	if mode != "exports" {
 		return exerciseQEMUNFSMount(mode)

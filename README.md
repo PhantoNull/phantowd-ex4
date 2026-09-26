@@ -98,9 +98,11 @@ users must wait for an explicitly qualified project release.
 
 A separate [read-only metadata helper](src/phantowd-volume-probe/README.md)
 uses libblkid on one caller-supplied descriptor, without mounting media or
-selecting a device by name. Initial generated-image tests are host-native;
-ARMv5/discovery integration remains pending. Its optional Buildroot package
-is not enabled in the default image and does not authorize importing WD disks.
+selecting a device by name. Generated-image host tests and a static ARMv5
+QEMU fixture have passed, including two unmounted virtual disks. Its package
+is selected in the QEMU development profile; clean Buildroot integration
+remains to be qualified. Trusted complete-device discovery is not implemented,
+and these tests do not authorize importing WD disks.
 
 A separate compile-only Linux 6.18 EX4 device-tree baseline is available with
 `.\support\build-ex4-dtb.ps1`. It intentionally disables raw NAND and SDIO,

@@ -52,6 +52,7 @@ exportfs -r
 # The smoke runner creates this entire 16-MiB virtual disk from scratch;
 # none of these fixed device/path assumptions are product discovery logic.
 /usr/bin/phantowd-api --qemu-nfs-test=verify-disk
+/usr/bin/phantowd-api --qemu-nfs-test=probe-unmounted
 mount -t ext2 -o rw /dev/sdb "$anchor"
 anchor_mounted=yes
 mkdir "$anchor/$rw_path" "$anchor/read-only" "$anchor/denied-client"

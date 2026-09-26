@@ -121,6 +121,10 @@ while [ "$attempt" -lt 120 ]; do
             echo 'Missing mounted filesystem ambiguity assertion' >&2
             exit 1
         fi
+        if ! grep -F 'PHANTOWD_VOLUME_PROBE_READY backend=libblkid unmounted_devices=2 readonly_descriptors=true expected_uuid=true unidentified_not_empty=true scope=qemu-fixture-only' "$log_file" >/dev/null; then
+            echo 'Missing unmounted metadata probe assertion' >&2
+            exit 1
+        fi
         if ! grep -F 'PHANTOWD_UI_READY mode=development read_only=true transport=guest-loopback-only' "$log_file" >/dev/null; then
             echo "Missing loopback-only dashboard assertion" >&2
             exit 1

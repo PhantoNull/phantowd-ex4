@@ -6,10 +6,12 @@
 # and a disposable writable /tmp. No block device or privileged container.
 set -eu
 
-base=${1:?usage: test-qemu-api-overlay.sh BASE_ARTIFACT_DIR GO_BINARY SOURCE_DIR}
+base=${1:?usage: test-qemu-api-overlay.sh BASE_ARTIFACT_DIR GO_BINARY SOURCE_DIR UTIL_LINUX_ARCHIVE TARGET_CC}
 go_binary=${2:?Go compiler required}
 source_dir=${3:?source directory required}
-for input in "$base" "$go_binary" "$source_dir"; do
+probe_archive=${4:?pinned util-linux archive required}
+target_cc=${5:?pinned Buildroot ARM compiler required}
+for input in "$base" "$go_binary" "$source_dir" "$probe_archive" "$target_cc"; do
     case "$input" in *[!a-zA-Z0-9_./-]*|'') echo 'Unsupported input path' >&2; exit 1 ;; esac
 done
 for file in rootfs.ext2 zImage versatile-pb.dtb SHA256SUMS; do
@@ -40,6 +42,10 @@ replace_file() {
     rm "$temporary/verify"
 }
 replace_file "$temporary/phantowd-api" /usr/bin/phantowd-api 0100755
+sh "$source_dir/support/container/build-volume-probe-fixture.sh" \
+    "$source_dir" "$probe_archive" "$target_cc" "$temporary/phantowd-volume-probe"
+debugfs -w -R 'mkdir /usr/libexec' "$image"
+replace_file "$temporary/phantowd-volume-probe" /usr/libexec/phantowd-volume-probe 0100755
 replace_file "$source_dir/board/qemu/armv5/rootfs-overlay/etc/init.d/S99phantowd-ready" /etc/init.d/S99phantowd-ready 0100755
 debugfs -w -R 'mkdir /usr/lib/phantowd' "$image"
 replace_file "$source_dir/board/qemu/armv5/rootfs-overlay/usr/lib/phantowd/qemu-nfs-policy-smoke.sh" /usr/lib/phantowd/qemu-nfs-policy-smoke.sh 0100644
@@ -49,7 +55,7 @@ replace_file "$source_dir/src/phantowd-api/vendor/golang.org/x/sys/LICENSE" /usr
 result=0
 sh "$source_dir/support/qemu-smoke.sh" "$temporary/images" "$temporary/qemu.log" "$LINUX_VERSION" || result=$?
 cat "$temporary/qemu.log"
-sha256sum "$temporary/phantowd-api" "$temporary/images/rootfs.ext2"
+sha256sum "$temporary/phantowd-api" "$temporary/phantowd-volume-probe" "$temporary/images/rootfs.ext2"
 echo 'Overlay smoke uses the base kernel/packages; it does not replace clean Buildroot CI or regenerate SBOM/legal-info.'
 # The calling ephemeral container owns /tmp; no recursive host cleanup.
 exit "$result"

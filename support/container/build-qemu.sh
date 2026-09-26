@@ -175,7 +175,7 @@ make -C "$buildroot_source" \
     BR2_EXTERNAL="$external_dir" \
     BR2_DL_DIR="$download_dir" \
     O="$output_dir" \
-    phantowd-api-dirclean
+    phantowd-api-dirclean phantowd-volume-probe-dirclean
 
 # Clean only the generated local-package directory: rsync alone can retain
 # deleted source files. Dependencies stay cached; all regenerates the rootfs.
@@ -200,6 +200,11 @@ GOCACHE="$workspace_dir/lab-tools-host-cache" \
     sh "$external_dir/support/container/test-lab-tools.sh" \
     "$output_dir/host/bin/go" "$external_dir/tools/phantowd-lab" \
     "$output_dir/lab-tools-host-tests"
+
+# Native generated-image tests use the same hash-checked libblkid source as
+# the target package. No host devices, mounts or privileged mode are needed.
+sh "$external_dir/support/container/test-volume-probe.sh" \
+    "$external_dir" "$download_dir/util-linux/util-linux-2.40.4.tar.xz"
 
 "$external_dir/support/qemu-smoke.sh" \
     "$output_dir/images" "$output_dir/qemu-smoke.log" "$LINUX_VERSION"
