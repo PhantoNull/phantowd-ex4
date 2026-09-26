@@ -305,6 +305,10 @@ A Linux atomic store exposes only typed transitions, preventing accidental
 tombstone erasure through arbitrary document replacement. It is not connected
 to the HTTP/UI or live Unix/Samba authorities. Legacy import, identity discovery,
 credential reconciliation and actual provisioning remain separate work.
+The [local Unix observer](unixidentity/README.md) supplies bounded exclusions
+and exact/partial/conflict assessment; only its guarded QEMU fixture connects
+allocation to a temporary real Unix user/group. Matching local records never
+authorize account adoption or prove complete NSS/credential state.
 
 ### SMB credential lifecycle boundary
 

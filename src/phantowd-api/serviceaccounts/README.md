@@ -12,6 +12,11 @@ are permanent reservations, including retired records. Rename, UID/GID changes,
 record removal and resurrection are deliberately absent. Enabling/disabling is
 desired state, not evidence that Samba sessions or other protocols changed.
 
+The separate [local identity observer](../unixidentity/README.md) can derive
+exclusions and assess exact/partial/conflicting identities from supplied Unix
+files. It does not establish complete NSS discovery, project ownership or a
+transaction-safe permission to provision/adopt those accounts.
+
 Native ranges must be explicitly selected inside 1000..60000; no default is
 selected by this library. Allocation chooses the first number unused in both
 UID and GID namespaces and assigns a same-number private primary group. Caller
@@ -52,6 +57,6 @@ reconciliation, not a blind retry.
 
 Tests use synthetic identities and private temporary directories. Production
 state provisioning, anti-rollback/recovery, full power-loss qualification,
-passdb lifecycle, real-identity reconciliation, privileged execution, active
+passdb lifecycle, qualified live-identity reconciliation, privileged execution, active
 session revocation, UI integration and legacy migration remain unimplemented.
 Do not treat an enabled desired account as authentication readiness.

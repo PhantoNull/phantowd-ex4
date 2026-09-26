@@ -113,6 +113,10 @@ while [ "$attempt" -lt 120 ]; do
             echo 'Missing Samba credential lifecycle assertion' >&2
             exit 1
         fi
+        if ! grep -F 'PHANTOWD_UNIX_IDENTITY_READY exclusions=true partial_detected=true exact_binding=true conflict_refused=true cleanup_verified=true scope=local-qemu-files-only' "$log_file" >/dev/null; then
+            echo 'Missing local Unix identity reconciliation assertion' >&2
+            exit 1
+        fi
         if ! grep -F 'PHANTOWD_MOUNT_GUARD_READY unique_mount_id=true descriptor_pinned=true symlinks_denied=true nested_mount_denied=true overmount_denied=true readonly_change_denied=true fallback_denied=true scope=qemu-fixture-only' "$log_file" >/dev/null; then
             echo 'Missing descriptor/mount guard assertion' >&2
             exit 1

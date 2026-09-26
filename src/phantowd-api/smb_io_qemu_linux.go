@@ -331,6 +331,10 @@ func runQEMUSMBTest() (result error) {
 	}
 	fmt.Println("PHANTOWD_SMB_CREDENTIALS_READY rotated=true old_password_denied=true disabled_denied=true reenabled=true unix_identity_unchanged=true data_preserved=true scope=new-qemu-connections-only")
 	fmt.Println("PHANTOWD_SMB_POLICY_IO_READY generated=true writer_uid=1801 reader_ro=true outsider_denied=true unix_denied=true symlink_denied=true scope=qemu-fixture-only")
+	if err := exerciseQEMUUnixIdentity(); err != nil {
+		return err
+	}
+	fmt.Println("PHANTOWD_UNIX_IDENTITY_READY exclusions=true partial_detected=true exact_binding=true conflict_refused=true cleanup_verified=true scope=local-qemu-files-only")
 	return nil
 }
 
