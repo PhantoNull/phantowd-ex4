@@ -151,10 +151,11 @@ func TestJournalChannelSequence(t *testing.T) {
 
 func TestRefusalAndReview(t *testing.T) {
 	s, m := fixture(t)
-	if _, err := New(0, s.journal, s.registry, m); err != ErrInvalid {
+	op := s.operation.(journalOperation)
+	if _, err := New(0, op.journal, op.registry, m); err != ErrInvalid {
 		t.Fatal(err)
 	}
-	if _, err := New(1, nil, s.registry, m); err != ErrInvalid {
+	if _, err := New(1, nil, op.registry, m); err != ErrInvalid {
 		t.Fatal(err)
 	}
 	server, client := pair(t)
@@ -189,8 +190,14 @@ func TestBusyCancellationAndLostReply(t *testing.T) {
 	s, m := fixture(t)
 	s.uid = 0
 	s.mu.Lock()
-	if r := exchange(t, s, Request{1, "step", "fixture", 1}); r.Code != "busy" {
-		t.Fatal(r)
+	busyServer, busyClient := pair(t)
+	busyDone := make(chan error, 1)
+	go func() { busyDone <- s.Serve(context.Background(), busyServer) }()
+	if _, err := Call(context.Background(), busyClient, Request{1, "step", "fixture", 1}); err != ErrChannel {
+		t.Fatal(err)
+	}
+	if err := <-busyDone; err != ErrBusy {
+		t.Fatal(err)
 	}
 	s.mu.Unlock()
 	server, client := pair(t)
@@ -221,6 +228,25 @@ func TestBusyCancellationAndLostReply(t *testing.T) {
 	}
 	if r := exchange(t, s, Request{1, "step", "fixture", 1}); r.Code != "conflict" || m.calls != 1 {
 		t.Fatal(r)
+	}
+}
+
+func TestBusyBeforeClientWrite(t *testing.T) {
+	s, m := fixture(t)
+	s.uid = 0
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	server, client := pair(t)
+	// Force the observed ordering: the overloaded server closes its connection
+	// before the client's request write. A structured busy reply is not reliable.
+	if err := s.Serve(context.Background(), server); err != ErrBusy {
+		t.Fatalf("overload must refuse admission, got %v", err)
+	}
+	if _, err := Call(context.Background(), client, Request{1, "step", "fixture", 1}); err != ErrChannel {
+		t.Fatal(err)
+	}
+	if m.calls != 0 {
+		t.Fatal("busy request mutated state")
 	}
 }
 
@@ -419,13 +445,15 @@ func TestWireRefusals(t *testing.T) {
 	if err := <-done; err != nil {
 		t.Fatal(err)
 	}
-	s.registry = func() (serviceaccounts.Registry, error) {
+	op := s.operation.(journalOperation)
+	op.registry = func() (serviceaccounts.Registry, error) {
 		return serviceaccounts.Registry{}, errors.New("PRIVATE registry failure")
 	}
+	s.operation = op
 	if r := exchange(t, s, Request{1, "step", "fixture", 1}); r.Code != "unavailable" || m.calls != 0 {
 		t.Fatal(r)
 	}
-	s.journal.Close()
+	op.journal.Close()
 	if r := exchange(t, s, Request{1, "status", "fixture", 0}); r.Code != "unavailable" {
 		t.Fatal(r)
 	}

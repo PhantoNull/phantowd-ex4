@@ -133,6 +133,10 @@ while [ "$attempt" -lt 120 ]; do
             echo 'QEMU unprivileged identity channel did not complete' >&2
             exit 1
         fi
+        if ! grep -F 'PHANTOWD_IDENTITY_OWNER_READY lease_exclusive=true pending_blocks_reservation=true after_reopen=true scope=isolated-qemu-only' "$log_file" >/dev/null; then
+            echo 'QEMU native identity authority did not complete' >&2
+            exit 1
+        fi
         if ! grep -F 'PHANTOWD_SESSION_REVOCATION_READY peers=2 old_sessions_denied=true fresh_login=true scope=panel-sessions-only' "$log_file" >/dev/null; then
             echo 'Missing global panel session revocation assertion' >&2
             exit 1

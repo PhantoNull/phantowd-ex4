@@ -29,6 +29,7 @@ const timeout = 10 * time.Second
 var (
 	ErrChannel = errors.New("identity channel unavailable; reconcile before further action")
 	ErrInvalid = errors.New("invalid identity channel request")
+	ErrBusy    = errors.New("identity channel admission busy")
 )
 
 // Request never contains commands, paths, credentials or caller-selected UID/GID.
@@ -83,11 +84,34 @@ func (r Response) valid() bool {
 // Server binds trusted in-process dependencies; none comes from the socket.
 // Never copy a Server. Its admission lock is NOT global Unix writer ownership.
 type Server struct {
-	mu       sync.Mutex
-	uid      uint32
+	mu        sync.Mutex
+	uid       uint32
+	operation Operation
+}
+
+// Operation is a trusted in-process authority, not socket input. The bound
+// owner must serialize its registry and Unix changes inside Step, rechecking
+// the expected revision there; Load does not grant an authorization lease.
+type Operation interface {
+	Load(context.Context) (identityprovision.Journal, error)
+	Step(context.Context, uint64) error
+}
+
+type journalOperation struct {
 	journal  *identityprovision.Store
 	registry func() (serviceaccounts.Registry, error)
 	backend  identityprovision.Backend
+}
+
+func (o journalOperation) Load(context.Context) (identityprovision.Journal, error) {
+	return o.journal.Load()
+}
+func (o journalOperation) Step(ctx context.Context, expected uint64) error {
+	r, err := o.registry()
+	if err != nil {
+		return err
+	}
+	return o.journal.Step(ctx, expected, r, o.backend)
 }
 
 // New requires an already-root owner and a dedicated non-root API UID.
@@ -97,7 +121,16 @@ func New(apiUID uint32, journal *identityprovision.Store, registry func() (servi
 	if os.Getuid() != 0 || os.Geteuid() != 0 || apiUID == 0 || apiUID > 65534 || journal == nil || registry == nil || backend == nil {
 		return nil, ErrInvalid
 	}
-	return &Server{uid: apiUID, journal: journal, registry: registry, backend: backend}, nil
+	return NewOperation(apiUID, journalOperation{journal, registry, backend})
+}
+
+// NewOperation binds an existing authority-owned operation. It creates neither
+// a reservation nor a listener and takes no ownership of the authority lifetime.
+func NewOperation(apiUID uint32, operation Operation) (*Server, error) {
+	if os.Getuid() != 0 || os.Geteuid() != 0 || apiUID == 0 || apiUID > 65534 || operation == nil {
+		return nil, ErrInvalid
+	}
+	return &Server{uid: apiUID, operation: operation}, nil
 }
 
 // Serve owns and always closes one accepted Unix STREAM connection. The
@@ -108,7 +141,7 @@ func (s *Server) Serve(ctx context.Context, conn *net.UnixConn) error {
 		return ErrChannel
 	}
 	defer conn.Close()
-	if s == nil || s.journal == nil || s.registry == nil || s.backend == nil || os.Getuid() != 0 || os.Geteuid() != 0 || ctx == nil || ctx.Err() != nil || !peer(conn, s.uid) {
+	if s == nil || s.operation == nil || os.Getuid() != 0 || os.Geteuid() != 0 || ctx == nil || ctx.Err() != nil || !peer(conn, s.uid) {
 		return ErrChannel
 	}
 	ctx, cancel := context.WithTimeout(ctx, timeout)
@@ -121,7 +154,9 @@ func (s *Server) Serve(ctx context.Context, conn *net.UnixConn) error {
 	}
 	// Admit before reading so slow authenticated clients cannot form a queue.
 	if !s.mu.TryLock() {
-		return send(conn, Response{Version: 1, Code: "busy"})
+		// No request was consumed. Closing may reset queued peer data, so a
+		// structured reply here cannot be promised. Refuse admission outright.
+		return ErrBusy
 	}
 	defer s.mu.Unlock()
 	data, err := receive(conn)
@@ -140,7 +175,7 @@ func (s *Server) Serve(ctx context.Context, conn *net.UnixConn) error {
 
 func (s *Server) execute(ctx context.Context, req Request) Response {
 	fail := func(code string) Response { return Response{Version: 1, Code: code} }
-	j, err := s.journal.Load()
+	j, err := s.operation.Load(ctx)
 	if err != nil || j.Validate() != nil {
 		return fail("unavailable")
 	}
@@ -148,11 +183,7 @@ func (s *Server) execute(ctx context.Context, req Request) Response {
 		return fail("conflict")
 	}
 	if req.Action == "step" {
-		r, err := s.registry()
-		if err != nil {
-			return fail("unavailable")
-		}
-		err = s.journal.Step(ctx, req.Revision, r, s.backend)
+		err = s.operation.Step(ctx, req.Revision)
 		switch {
 		case errors.Is(err, identityprovision.ErrConflict):
 			return fail("conflict")
@@ -161,7 +192,7 @@ func (s *Server) execute(ctx context.Context, req Request) Response {
 		case err != nil:
 			return fail("unavailable")
 		}
-		j, err = s.journal.Load()
+		j, err = s.operation.Load(ctx)
 		if err != nil || j.Validate() != nil {
 			return fail("unavailable")
 		}

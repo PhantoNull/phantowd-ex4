@@ -364,12 +364,20 @@ releases. No production release or safe in-device updater exists yet.
 
 ### Native service identity registry
 
+The [native identity authority](identityowner/README.md) now owns one configured
+reservation ledger and its journals under a lifetime lease. It serializes typed
+allocation/creation, freezes allocation behind incomplete work and refuses
+orphaned cross-document state after interruption. The guarded ARMv5 channel now
+uses that owner. Complete imported/offline ownership discovery, qualified state,
+explicit recovery, credential transitions and deployed listener/panel wiring
+remain required; this is not yet a product account-management service.
+
 The [local identity channel](identityrpc/README.md) now connects an actually
 unprivileged ARMv5 fixture child to the root-owned journal/executor using
 kernel-verified Unix-socket peers. It accepts only status or one revision-checked
 step for an already bound operation; no commands, paths or credentials cross
 the interface. Missing replies are never retried automatically. This library
-does not deploy a listener or supply global writer ownership, operation creation,
+does not itself deploy a listener or supply authority ownership, operation creation,
 Samba credential management or a panel account endpoint.
 
 The [typed Linux identity executor](identityexec/README.md) now connects the

@@ -170,9 +170,14 @@ not crash/power-cut recovery, EX4 state provisioning, production account managem
 WD configuration migration or a production-qualified writable management API. The temporary disk is discarded
 afterward. Clean CI retains `qemu-state-reboot.log` with its validation artifacts.
 
-Qualification caveat: one local seed run during password-change development
-reported `EBUSY`; subsequent complete runs passed. The original error lacked
-stage context, so its cause remains unproven. Cleanup now labels state-volume,
+Qualification caveat: intermittent local seed runs have reported `EBUSY`, first
+during password-change development and again during identity-owner development.
+The latest recurrence is specifically **state-volume unmount**, after the main
+identity scenario passed. Subsequent full runs and ten additional two-boot
+cycles passed; failure-only process/descriptor probes and a parent-exit probe
+did not establish the cause. Temporary probes were removed. The cause remains
+unproven, not fixed by the separate identity-channel overload correction.
+Cleanup labels state-volume,
 Samba-data and copied-`/etc` unmount failures, and a host regression checks that
 the state-persistence fixture releases its own descriptors. Neither lazy
 unmounts nor automatic retries mask failures. Investigate any recurrence;

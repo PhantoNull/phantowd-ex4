@@ -9,6 +9,12 @@ backend in the guarded QEMU scenario. A [local identity channel](../identityrpc/
 now transports revision-checked steps from an unprivileged fixture child;
 production global ownership and listener provisioning remain unimplemented.
 
+The [identity authority owner](../identityowner/README.md) now coordinates one
+configured ledger and all its journals under cooperative lifetime leases and
+a non-queuing writer mutex. It freezes allocation behind incomplete operations
+and refuses orphaned cross-document publication. Single-writer deployment,
+complete imported/offline exclusions and explicit recovery remain prerequisites.
+
 One caller-provisioned private directory owns one operation. The Linux store
 reuses the exclusive-lock, fixed-name, fsync/rename revision engine; its public
 methods are Begin, Step, Load and Close, never arbitrary Commit/reset/delete.

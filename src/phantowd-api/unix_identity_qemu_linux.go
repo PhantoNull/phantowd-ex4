@@ -11,9 +11,10 @@ import (
 	"os"
 	"strings"
 
-	"github.com/PhantoNull/phantowd-ex4/phantowd-api/identityexec"
+	"github.com/PhantoNull/phantowd-ex4/phantowd-api/identityowner"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/identityprovision"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/serviceaccounts"
+	"github.com/PhantoNull/phantowd-ex4/phantowd-api/serviceaccountstore"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/unixidentity"
 )
 
@@ -72,27 +73,45 @@ func exerciseQEMUUnixIdentity() (result error) {
 			result = errors.Join(result, errors.New("managed fixture identity remained after cleanup"))
 		}
 	}()
-	journalPath := smbFixtureRoot + "/identity-operation"
-	if err := os.Mkdir(journalPath, 0700); err != nil {
-		return err
+	root := smbFixtureRoot + "/identity-authority"
+	for _, path := range []string{root, root + "/registry", root + "/operations"} {
+		if err := os.Mkdir(path, 0700); err != nil {
+			return err
+		}
 	}
-	journal, err := identityprovision.Open(journalPath)
+	seed, err := serviceaccountstore.Open(root + "/registry")
 	if err != nil {
 		return err
 	}
-	defer journal.Close()
-	if err := journal.Begin(r, a.ID, before); err != nil {
-		return err
+	err = seed.Initialize(1800, 1810)
+	closeErr := seed.Close()
+	if err != nil || closeErr != nil {
+		return errors.Join(err, closeErr)
 	}
-	executor, err := identityexec.Open(a)
+	// The guarded disposable guest has no imported/offline data identities.
+	inventory := func(context.Context) (serviceaccounts.Reservations, error) {
+		return serviceaccounts.Reservations{UIDs: []uint32{}, GIDs: []uint32{}, Names: []string{}}, nil
+	}
+	owner, err := identityowner.Open(root, inventory)
 	if err != nil {
 		return err
 	}
-	defer executor.Close()
-	backend := qemuNativeIdentityBackend{expected: a, executor: executor, groupCreated: &createdGroup, userCreated: &createdUser}
-	if err := exerciseQEMUIdentityChannel(journal, r, backend, "group"); err != nil {
+	defer owner.Close()
+	allocated, err := owner.Reserve(context.Background(), 1, a.ID, a.Name)
+	if err != nil || allocated != a {
+		return errors.New("authority reservation mismatch")
+	}
+	competing, err := identityowner.Open(root, inventory)
+	if competing != nil {
+		competing.Close()
+	}
+	if !errors.Is(err, identityowner.ErrBusy) {
+		return errors.New("authority lifetime lease bypassed")
+	}
+	if err := exerciseQEMUIdentityChannel(owner.Operation(a.ID), "group"); err != nil {
 		return err
 	}
+	createdGroup = true
 	partial, err := observe()
 	if err != nil {
 		return err
@@ -102,18 +121,22 @@ func exerciseQEMUUnixIdentity() (result error) {
 	}
 	// Resume a confirmed group after store close/reopen; this is not an
 	// ambiguous dispatch. The next command still needs fresh group-only state.
-	if err := journal.Close(); err != nil {
+	if _, err := owner.Reserve(context.Background(), 2, "other", "qpother"); !errors.Is(err, identityowner.ErrPending) {
+		return errors.New("pending operation did not freeze allocation")
+	}
+	if err := owner.Close(); err != nil {
 		return err
 	}
-	journal, err = identityprovision.Open(journalPath)
+	owner, err = identityowner.Open(root, inventory)
 	if err != nil {
 		return err
 	}
-	defer journal.Close()
-	if err := exerciseQEMUIdentityChannel(journal, r, backend, "user"); err != nil {
+	defer owner.Close()
+	if err := exerciseQEMUIdentityChannel(owner.Operation(a.ID), "user"); err != nil {
 		return err
 	}
-	completed, err := journal.Load()
+	createdUser = true
+	completed, err := owner.Operation(a.ID).Load(context.Background())
 	if err != nil || completed.Phase != identityprovision.UnixConfirmed || completed.Revision != 5 {
 		return errors.New("managed fixture journal incomplete")
 	}
@@ -167,57 +190,4 @@ func exerciseQEMUUnixIdentity() (result error) {
 		return errors.New("observed fixture name allocated twice")
 	}
 	return nil
-}
-
-// Deliberately fixed QEMU backend, not a deployable privileged executor. The
-// caller serializes this isolated scenario; only its exact new account is valid.
-type qemuNativeIdentityBackend struct {
-	expected                  serviceaccounts.Account
-	executor                  *identityexec.Executor
-	groupCreated, userCreated *bool
-}
-
-func (b qemuNativeIdentityBackend) Observe(ctx context.Context) (unixidentity.Snapshot, error) {
-	if err := ctx.Err(); err != nil {
-		return unixidentity.Snapshot{}, err
-	}
-	if err := guardQEMUDataVolume(); err != nil {
-		return unixidentity.Snapshot{}, err
-	}
-	if b.executor == nil {
-		return unixidentity.Snapshot{}, errors.New("native executor absent")
-	}
-	return b.executor.Observe(ctx)
-}
-
-func (b qemuNativeIdentityBackend) CreateGroup(ctx context.Context, a serviceaccounts.Account) error {
-	if err := b.check(ctx, a); err != nil {
-		return err
-	}
-	err := b.executor.CreateGroup(ctx, a)
-	if err == nil {
-		*b.groupCreated = true
-	}
-	return err
-}
-
-func (b qemuNativeIdentityBackend) CreateUser(ctx context.Context, a serviceaccounts.Account) error {
-	if err := b.check(ctx, a); err != nil {
-		return err
-	}
-	err := b.executor.CreateUser(ctx, a)
-	if err == nil {
-		*b.userCreated = true
-	}
-	return err
-}
-
-func (b qemuNativeIdentityBackend) check(ctx context.Context, a serviceaccounts.Account) error {
-	if err := ctx.Err(); err != nil {
-		return err
-	}
-	if a != b.expected || a.ID != "managed" || a.Name != "qpmanaged" || a.UID <= 1803 || a.UID > 1810 || a.GID != a.UID || a.State != serviceaccounts.Disabled || b.groupCreated == nil || b.userCreated == nil || b.executor == nil {
-		return errors.New("unexpected QEMU native identity")
-	}
-	return guardQEMUDataVolume()
 }

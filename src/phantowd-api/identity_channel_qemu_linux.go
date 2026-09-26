@@ -16,9 +16,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/PhantoNull/phantowd-ex4/phantowd-api/identityprovision"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/identityrpc"
-	"github.com/PhantoNull/phantowd-ex4/phantowd-api/serviceaccounts"
 )
 
 const identitySocketDir = "/run/phantowd-identity-channel-fixture"
@@ -27,7 +25,7 @@ const identitySocket = identitySocketDir + "/channel"
 // Fixed disposable-guest listener, NOT product socket provisioning. The
 // production HTTP server never opens it. Each invocation owns one step and
 // three sequential connections from an actually unprivileged child process.
-func exerciseQEMUIdentityChannel(journal *identityprovision.Store, registry serviceaccounts.Registry, backend identityprovision.Backend, phase string) error {
+func exerciseQEMUIdentityChannel(operation identityrpc.Operation, phase string) error {
 	if err := guardQEMUDataVolume(); err != nil {
 		return err
 	}
@@ -49,7 +47,7 @@ func exerciseQEMUIdentityChannel(journal *identityprovision.Store, registry serv
 	if err := os.Chmod(identitySocket, 0620); err != nil {
 		return err
 	}
-	server, err := identityrpc.New(65534, journal, func() (serviceaccounts.Registry, error) { return registry, nil }, backend)
+	server, err := identityrpc.NewOperation(65534, operation)
 	if err != nil {
 		return err
 	}

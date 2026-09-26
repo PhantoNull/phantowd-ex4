@@ -16,6 +16,12 @@ must be an AF_UNIX stream. Both sides inspect kernel `SO_PEERCRED`: the owner
 requires its configured API UID, the client requires root. An unauthorized
 peer is disconnected before request parsing or state observation.
 
+`NewOperation(apiUID, operation)` instead accepts a trusted bound operation from
+the [native identity owner](../identityowner/README.md), which serializes its
+ledger and Unix changes inside Step. Load is not a lock/authorization lease.
+The original New adapter remains a lower-level primitive for already-owned
+journals; it does not acquire the authority's lease by itself.
+
 Each connection carries exactly one four-byte big-endian length followed by
 one strict JSON request (1..1024 bytes), then one equally bounded response.
 All four request and response fields are mandatory; version is exactly 1.
@@ -46,6 +52,11 @@ and I/O deadline, and close blocked I/O on cancellation. This is not a hard
 bound on kernel storage stalls or uncooperative trusted backends. The listener
 owner must bound accept/goroutine counts separately.
 
+Overload now closes without attempting a structured busy reply. Closing before
+consuming a request can reset unread peer data or precede its write; a reply
+cannot reliably be delivered in that ordering. The server returns local ErrBusy,
+the client reports channel unavailability and never retries automatically.
+
 **No automatic retry.** A lost reply, timeout or cancellation can follow a
 committed native mutation. Read status through a new authenticated connection
 and reconcile. Never translate a transport failure into a fresh operation or
@@ -64,7 +75,8 @@ The protocol uses ordinary reads and accepts no descriptor-passing API.
 
 The caller must retain one global cooperative identity writer authority across
 registry/Unix/journal operations and own qualified durable state and recovery.
-This per-instance admission mutex is not that authority. Other root tools and
+This per-instance admission mutex is not that authority; identityowner now
+coordinates one configured authority's cooperative writers. Other root tools and
 other server instances are not serialized. The in-process dependencies and
 their lifetimes are trusted; do not close/change them during service use.
 Production listener lifecycle, complete allocation exclusions, durable Unix
