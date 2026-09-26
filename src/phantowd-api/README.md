@@ -376,8 +376,11 @@ The [local identity channel](identityrpc/README.md) now connects an actually
 unprivileged ARMv5 fixture child to the root-owned journal/executor using
 kernel-verified Unix-socket peers. It accepts only status or one revision-checked
 step for an already bound operation; no commands, paths or credentials cross
-the interface. Missing replies are never retried automatically. This library
-does not itself deploy a listener or supply authority ownership, operation creation,
+the interface. Missing replies are never retried automatically. Its optional
+protected listener supplies bounded acceptance, cooperative pathname ownership,
+exact stale-socket recovery and worker drain before authority closure; the ARMv5
+fixture now uses it. This library does not deploy a product service or supply
+authority ownership, operation creation,
 Samba credential management or a panel account endpoint.
 
 The [typed Linux identity executor](identityexec/README.md) now connects the

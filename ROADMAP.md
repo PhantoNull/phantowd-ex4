@@ -118,12 +118,14 @@ verification and documented threat-model review before any LAN deployment.
   commands, observed pre/postconditions, locked login, nologin and no home.
   A [peer-authenticated local channel](src/phantowd-api/identityrpc/README.md)
   now carries status/revision-checked steps from an unprivileged QEMU child to
-  that journal/executor, including stale-request refusal. It deploys no listener.
+  that journal/executor, including stale-request refusal. Its opt-in protected
+  listener now bounds workers, retains the directory lease through drain and
+  recovers only exact inactive sockets; it is not deployed on the product.
   A [cooperative authority owner](src/phantowd-api/identityowner/README.md) now
   holds the ledger/journal leases, serializes allocation and creation and refuses
   orphaned publication after process exit. It requires one configured root and
   a trusted complete ownership inventory; it is not yet a deployed daemon.
-  Protected listener/single-writer deployment, complete reservations, durable
+  Single-writer service deployment, complete reservations, durable
   Unix/Samba state and panel integration remain necessary before user creation.
 - Add iSCSI target/LUN policy, authentication and active-session checks.
   Never mount a LUN's filesystem locally while an initiator owns it; capacity,

@@ -8,6 +8,7 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net"
 	"os"
 	"os/exec"
@@ -22,7 +23,7 @@ import (
 const identitySocketDir = "/run/phantowd-identity-channel-fixture"
 const identitySocket = identitySocketDir + "/channel"
 
-// Fixed disposable-guest listener, NOT product socket provisioning. The
+// Fixed disposable-guest directory with the reusable protected listener. The
 // production HTTP server never opens it. Each invocation owns one step and
 // three sequential connections from an actually unprivileged child process.
 func exerciseQEMUIdentityChannel(operation identityrpc.Operation, phase string) error {
@@ -32,27 +33,32 @@ func exerciseQEMUIdentityChannel(operation identityrpc.Operation, phase string) 
 	if phase != "group" && phase != "user" {
 		return errors.New("invalid channel fixture phase")
 	}
-	if err := os.Mkdir(identitySocketDir, 0711); err != nil {
+	if err := os.Mkdir(identitySocketDir, 0710); err != nil {
 		return err
 	}
 	defer os.Remove(identitySocketDir) // exact empty directory created above
-	l, err := net.ListenUnix("unix", &net.UnixAddr{Name: identitySocket, Net: "unix"})
-	if err != nil {
-		return err
-	}
-	defer l.Close()
-	if err := os.Chown(identitySocket, 0, 65534); err != nil {
-		return err
-	}
-	if err := os.Chmod(identitySocket, 0620); err != nil {
+	if err := os.Chown(identitySocketDir, 0, 65534); err != nil {
 		return err
 	}
 	server, err := identityrpc.NewOperation(65534, operation)
 	if err != nil {
 		return err
 	}
+	l, err := identityrpc.Listen(identitySocketDir, 65534, server)
+	if err != nil {
+		return err
+	}
+	defer l.Close()
+	if other, err := identityrpc.Listen(identitySocketDir, 65534, server); err != identityrpc.ErrBusy || other != nil {
+		if other != nil {
+			other.Close()
+		}
+		return errors.New("channel fixture listener lease missing")
+	}
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
+	done := make(chan error, 1)
+	go func() { done <- l.Run(ctx) }()
 	cmd := exec.CommandContext(ctx, "/usr/bin/phantowd-api", "--qemu-identity-client="+phase)
 	cmd.Env = []string{"PATH=/usr/bin:/bin", "LC_ALL=C"}
 	cmd.Dir = "/"
@@ -68,24 +74,21 @@ func exerciseQEMUIdentityChannel(operation identityrpc.Operation, phase string) 
 			cmd.Wait()
 		}
 	}()
-	for i := 0; i < 3; i++ {
-		deadline, _ := ctx.Deadline()
-		if err := l.SetDeadline(deadline); err != nil {
-			return err
-		}
-		conn, err := l.AcceptUnix()
-		if err != nil {
-			return errors.New("channel fixture accept failed")
-		}
-		if err := server.Serve(ctx, conn); err != nil {
-			return err
-		}
-	}
 	err = cmd.Wait()
 	waited = true
 	if err != nil {
 		return errors.New("unprivileged channel fixture failed")
 	}
+	if err := l.Close(); err != nil {
+		return err
+	}
+	if err := <-done; err != nil {
+		return err
+	}
+	if _, err := os.Lstat(identitySocket); !errors.Is(err, os.ErrNotExist) {
+		return errors.New("channel fixture socket retained after drain")
+	}
+	fmt.Printf("PHANTOWD_IDENTITY_LISTENER_READY phase=%s protected=true lease_exclusive=true drained=true scope=isolated-qemu-only\n", phase)
 	return nil
 }
 

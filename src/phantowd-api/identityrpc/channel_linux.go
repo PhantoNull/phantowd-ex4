@@ -2,7 +2,8 @@
 // SPDX-FileCopyrightText: 2026 PhantoWD EX4 contributors
 
 // Package identityrpc supplies a one-request local channel to one already
-// reserved identity operation. It does not provision listeners or own all writers.
+// reserved identity operation, with an optional protected listener lifecycle.
+// It does not provision account state or own all writers.
 package identityrpc
 
 import (

@@ -2,7 +2,7 @@
 
 This library connects an unprivileged caller to one **already reserved and
 journaled** native identity operation. It is not a deployed `privd`, a general
-account API or a socket provisioning service. Production HTTP does not open it.
+account API or a deployed socket service. Production HTTP does not open it.
 The guarded ARMv5 scenario now uses it for actual group/user creation through
 [identityprovision](../identityprovision/README.md) and
 [identityexec](../identityexec/README.md).
@@ -50,7 +50,7 @@ The server admits one connection without queuing per instance, before reading
 its body. Both ends own/close the supplied socket, enforce a ten-second context
 and I/O deadline, and close blocked I/O on cancellation. This is not a hard
 bound on kernel storage stalls or uncooperative trusted backends. The listener
-owner must bound accept/goroutine counts separately.
+owner must bound accept/goroutine counts separately, or use `Listen` below.
 
 Overload now closes without attempting a structured busy reply. Closing before
 consuming a request can reset unread peer data or precede its write; a reply
@@ -62,6 +62,45 @@ committed native mutation. Read status through a new authenticated connection
 and reconcile. Never translate a transport failure into a fresh operation or
 erase an intention record. A stale revision cannot repeat a confirmed command;
 an interrupted intention remains subject to the journal's review requirement.
+
+## Protected listener lifecycle
+
+`Listen(directory, apiGID, server)` is an opt-in Linux lifecycle primitive.
+The caller pre-provisions an exact root:apiGID 0710 directory with trusted
+parents and a dedicated non-root API group. No directory is created, repaired
+or recursively removed. `openat2` refuses symlinks/magic links; a retained
+directory descriptor and advisory lifetime flock identify the cooperating owner.
+The fixed `channel` socket is root:apiGID 0620, single-link, on that filesystem.
+Binding through the retained descriptor does not change process cwd or umask.
+The server still requires its exact API UID through `SO_PEERCRED`; possession of
+the filesystem group alone does not authorize requests.
+
+Only an exact expected socket is eligible for stale-name recovery. A nonblocking
+connect probe must return ECONNREFUSED, followed by a second metadata/inode
+check, before unlink. Files, symlinks, foreign/malformed/hardlinked sockets,
+live listeners and all ambiguous errors are preserved. The probe sends no
+request. This follows Linux [pathname-socket](https://man7.org/linux/man-pages/man7/unix.7.html)
+and [connect](https://man7.org/linux/man-pages/man2/connect.2.html) semantics;
+ECONNREFUSED alone is not sufficient without the type/ownership checks.
+
+`Run(ctx)` starts once, with at most four connection workers and a listen
+backlog of eight (Linux may queue one extra). Overflow closes without parsing;
+kernel backlog saturation can refuse connection with EAGAIN. There is no
+userspace request queue or automatic retry. Socket/directory metadata is
+rechecked after accept. `Close` or cancellation stops accepting, cancels active
+connections and waits for every worker **before** releasing the socket and
+directory lease. Only then may the caller close the bound identity authority.
+Uncooperative trusted backends/kernel stalls can delay shutdown; no hard drain
+deadline is promised. Close before Run, repeated Close and concurrent Run/Close
+are supported. Cleanup checks the captured socket inode and permissions and
+preserves replacement names instead of following them.
+
+The pathname must remain within trusted, stable parents. Other root tools must
+not move/replace its directory or manipulate that socket. This is cooperative
+ownership, not protection against an adversarial root or a differently named
+authority. Client connection paths remain trusted deployment configuration;
+the client always verifies a root peer. No product daemon, auto-start, runtime
+directory provisioning or general multi-account routing is installed here.
 
 ## Trust and remaining integration
 
@@ -79,7 +118,7 @@ This per-instance admission mutex is not that authority; identityowner now
 coordinates one configured authority's cooperative writers. Other root tools and
 other server instances are not serialized. The in-process dependencies and
 their lifetimes are trusted; do not close/change them during service use.
-Production listener lifecycle, complete allocation exclusions, durable Unix
+Production listener deployment, complete allocation exclusions, durable Unix
 layout, recovery UI, HTTP authorization-to-operation binding and Samba password
 coordination remain unimplemented. No production listener or LAN access is
 enabled by this package.
@@ -92,7 +131,11 @@ of an unauthorized root client and a rogue non-root server, stale revisions,
 review-required failures, lost replies, cancellation, unavailable state and
 bounded request fuzzing. The QEMU fixture additionally drops a real child to
 UID/GID 65534 with no supplementary groups, performs both journaled commands,
-and rejects stale requests after each confirmation. Its root-owned 0711 runtime
-directory and root:65534 0620 socket are disposable fixture choices, not product
-deployment settings. Native identity cleanup and prior locked-login/nologin/
+and rejects stale requests after each confirmation. It now uses `Listen` with
+a root:65534 0710 runtime directory and root:65534 0620 socket, verifies the
+exclusive lease and requires drained cleanup after each group/user phase.
+These are disposable fixture choices, not product deployment settings.
+Host tests additionally cover stale recovery, live/foreign/path refusal,
+replacement preservation, slow clients, bounded backlog, retained lease during
+backend drain and concurrent lifecycle calls. Native identity cleanup and prior locked-login/nologin/
 no-home checks remain required by the same scenario.
