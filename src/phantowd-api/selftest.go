@@ -40,6 +40,14 @@ func runSelfTest() error {
 	if runtime.GOARCH != "arm" || strings.Split(buildARMLevel(), ",")[0] != "5" {
 		return errors.New("self-test requires the ARMv5 QEMU target")
 	}
+	if err := exerciseQEMUShareConfig(); err != nil {
+		return err
+	}
+	fmt.Println("PHANTOWD_SHARE_POLICY_READY schema=1 scope=synthetic-policy-only")
+	if err := exerciseQEMUShareStore(); err != nil {
+		return err
+	}
+	fmt.Println("PHANTOWD_SHARE_STORE_READY revision=2 reopen=true scope=temporary-qemu-only")
 	argon2Started := time.Now()
 	verifier, err := passwordhash.Hash(context.Background(), []byte("qemu-self-test-only"))
 	if err != nil {

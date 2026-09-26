@@ -9,6 +9,33 @@ recoverable updates and a conservative migration path for existing disks.
 There is no installable release yet. This roadmap describes the work required
 to get there; entries without linked verification remain planned.
 
+## First-release product contract
+
+The first release targets existing EX4 owners, with migration from the final
+WD 2.13.108 firmware for explicitly qualified layouts and settings. Migration
+must explain what can be preserved, what requires owner action and what is
+unsupported before any mutation. Never imply that every legacy disk layout,
+password representation or application can be imported safely.
+
+Core features must be manageable from the authenticated local web panel:
+
+| Capability | Required product behavior |
+| --- | --- |
+| SMB3 | File-service users, per-share access, permission previews and effective-access checks |
+| NFS | Native exports, explicit client/network policy, UID/GID mapping and volume-safe lifecycle |
+| iSCSI | Target/LUN creation, authentication, initiator/session visibility and guarded resize/removal |
+| RAID | Qualified layouts, creation/import, member status, degraded/rebuild handling and guarded destructive operations |
+| Disk health | Bounded periodic SMART observations/history, user-triggered extended tests, progress and error notifications |
+| Front panel | Qualified status/color LEDs and LCD text, with hardware alarm priority over user preferences |
+| Migration | Read-only assessment, supported data/configuration import, validation and a documented fallback path |
+
+Legacy behavior is evidence to inspect, not code to preserve uncritically.
+Review each capability against the extracted final firmware, its management
+routes, persistent settings and hardware dependencies. Retain a traceable
+replacement/retirement decision and fixture coverage. Manufacturing services,
+unsupported cloud paths and insecure protocol defaults are not compatibility
+requirements. Existing analysis does not mean all firmware behavior is known.
+
 ## Current evidence
 
 | Area | Implemented and checked | Still required |
@@ -70,6 +97,9 @@ verification and documented threat-model review before any LAN deployment.
 
 - Integrate SMB3 users and share permissions, NFS exports with explicit client
   policy, and opt-in administrative SSH/SFTP.
+- Add iSCSI target/LUN policy, authentication and active-session checks.
+  Never mount a LUN's filesystem locally while an initiator owns it; capacity,
+  deletion and backing-volume loss need explicit failure and recovery behavior.
 - Render service configurations from validated objects; verify syntax before
   activation and retain the last working configuration on failure.
 - Start shares only when their intended volume is present. A missing volume
@@ -90,8 +120,17 @@ volume-loss and capacity-failure cases against disposable virtual disks.
   and share references; refuse duplicate, missing, conflicting or unknown data.
 - Parse SMART status with fixtures for unsupported devices, stale data,
   transport errors and failed health. A health warning must remain visible.
+- Retain bounded health history, schedule lightweight checks without needless
+  spin-ups, and provide separately authorized extended self-tests with progress,
+  cancellation semantics and deduplicated error notifications.
+- Model RAID creation/import/member replacement and rebuild as explicit jobs.
+  Preview destructive effects and preserve identities; do not auto-assemble,
+  repair or reshape an unknown array. Qualify supported RAID levels separately.
 - Produce a read-only migration report covering recognized volumes, shares,
   owners/ACLs, free space, required backups and unsupported features.
+- Map legacy users/groups, access rules, export paths and iSCSI backing objects
+  to validated desired configuration. Flag incompatible credentials or ACLs
+  for owner action rather than silently broadening access or dropping settings.
 - Verify journal/recovery and MD assembly behavior before adding an importer;
   a read-only mount option alone is not a complete no-write guarantee.
 - Qualify reorder, bay moves, missing members, degraded arrays and return to
@@ -167,9 +206,11 @@ Additional NAS models require their own board definitions and qualification.
 
 ## Immediate development sequence
 
-1. Finish integration evidence for the read-only mount observer.
-2. Implement the strict configuration and share-policy model with host fixtures.
-3. Add atomic revision storage and failure/restart tests in QEMU.
+1. Confirm post-merge integration evidence for the read-only mount observer.
+2. Integrate the implemented strict share-policy model and Linux revision store;
+   validate the new ARMv5 QEMU probes before claiming guest execution evidence.
+3. Extend restart/failure coverage to disposable persistent QEMU filesystems
+   and define configuration recovery/migration before exposing writable APIs.
 4. Build previewable service configuration and permission checks on that model.
 5. Integrate supervised SMB/NFS lifecycle using disposable QEMU disks.
 6. Advance network/controller/recovery evidence on a separately reviewed
