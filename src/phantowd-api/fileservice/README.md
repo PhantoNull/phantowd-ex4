@@ -3,7 +3,8 @@
 `POST /api/v1/file-services/preview` validates desired SMB/NFS policy and returns
 candidate configuration text. It does not save a revision, inspect storage,
 run a parser or service, create users, mount disks, or authorize activation.
-The embedded browser dashboard does not yet provide controls for this route.
+The embedded browser dashboard provides a standalone one-share proposal form
+for this route. It does not load existing policy, save revisions or apply it.
 
 ## Request
 

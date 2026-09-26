@@ -211,7 +211,8 @@ Additional NAS models require their own board definitions and qualification.
    validate the new ARMv5 QEMU probes before claiming guest execution evidence.
 3. Extend restart/failure coverage to disposable persistent QEMU filesystems
    and define configuration recovery/migration before exposing writable APIs.
-4. Connect the implemented authenticated SMB/NFS preview API to browser controls;
+4. Extend the implemented standalone browser share-proposal form to full
+   configuration management after persistence/recovery qualification;
    qualify effective POSIX permissions and runtime volume binding before service
    activation. Local ARMv5 QEMU has exercised HTTP/HTTPS previews, target Samba
    parsing and generated NFS exports on a disposable virtual disk; this does not

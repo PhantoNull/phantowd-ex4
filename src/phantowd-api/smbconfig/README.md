@@ -4,7 +4,8 @@
 into deterministic share sections and a structured permission preview.
 It does not read files, create accounts, mount storage or start/reload Samba.
 The authenticated [preview API](../fileservice/README.md) exposes the candidate
-without applying it. Browser controls are not implemented yet.
+without applying it. The browser has a standalone one-share proposal form,
+not persistent share/account management or service controls.
 
 ## Contract
 

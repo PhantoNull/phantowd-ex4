@@ -2,7 +2,8 @@
 
 This is the first product-owned Go package, not a complete management plane.
 It is included only in the non-flashable QEMU development configuration and
-contains an embedded, read-only browser dashboard over its diagnostic API.
+contains an embedded browser dashboard with read-only diagnostics and a
+non-mutating desired file-share preview form.
 
 The [share configuration package](shareconfig/README.md) validates the first
 desired-policy schema for volumes, file-service users and share grants. It is
@@ -160,6 +161,28 @@ releases. No production release or safe in-device updater exists yet.
 
 ## Local tests
 
+### File-share proposal panel
+
+The authenticated panel builds a standalone draft for one volume, one SMB
+share/user grant and an optional NFS export/client rule. It uses the strict
+[preview endpoint](fileservice/README.md), not a save/apply route. UUIDs are
+operator-entered expectations, not discoveries; revisions are draft-local
+version 1, not revisions loaded from the appliance. The form does not merge,
+load, replace or delete current configuration. Multi-share/account management,
+effective permissions, persistent state and activation remain implementation
+work. The API schema itself supports larger configurations.
+
+Access defaults to read-only; optional NFS defaults to all-squash with numeric
+IDs 65534. The UI explains independent SMB/NFS permissions, AUTH_SYS trust and
+Kerberos prerequisites. Success displays candidate text and unresolved runtime
+requirements, never an effective-access or activated-service claim. Output is
+rendered as text, not HTML. Edits/clear invalidate prior and in-flight previews;
+logout/auth loss clears drafts. No local/session storage is used. Requests use
+the existing session and CSRF protection, ignore duplicate submission, and
+abort after ten seconds. The browser supplies the request Origin.
+
+### Test commands
+
 From the repository root on Windows, with a local Go 1.26+ installation:
 
 ```powershell
@@ -170,7 +193,8 @@ From the repository root on Windows, with a local Go 1.26+ installation:
 The first command runs `go vet` and fixture-based tests offline and creates a
 coverage report under ignored `artifacts/api-host-tests/`. Both PowerShell
 entrypoints also run dependency-free dashboard DOM interaction checks for the
-authenticated, unavailable-service, expired-session, and cleared-data states;
+authenticated, unavailable-service, expired-session, cleared-data and policy
+preview states (request shape, CSRF, errors, stale replies and safe rendering);
 they do not replace visual browser or assistive-technology testing. The Go
 tests also verify that the QEMU self-test's expected dashboard markers match
 the embedded assets. The build command
@@ -186,6 +210,8 @@ It binds only to `127.0.0.1:18081` and serves clearly labelled synthetic
 system, block-device, and software-RAID fixtures; it is not connected to the
 NAS and is never packaged into firmware. If that port is occupied, choose
 another unprivileged local port with `PHANTOWD_PREVIEW_PORT`.
+This static fixture server does not implement policy validation or sessions;
+the proposal form requires the real authenticated development API for that.
 
 Guest initialization probes the GET endpoints and QEMU-only authentication
 flow, verifies that QEMU's root block node appears through sysfs without being
