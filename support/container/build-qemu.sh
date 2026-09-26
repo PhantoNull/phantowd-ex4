@@ -209,6 +209,8 @@ sh "$external_dir/support/container/test-volume-probe.sh" \
 
 "$external_dir/support/qemu-smoke.sh" \
     "$output_dir/images" "$output_dir/qemu-smoke.log" "$LINUX_VERSION"
+sh "$external_dir/support/qemu-state-reboot.sh" \
+    "$output_dir/images" "$output_dir/qemu-state-reboot.log"
 
 artifact_dir="$external_dir/artifacts/qemu-armv5"
 install -d -m 0755 "$artifact_dir"
@@ -245,6 +247,7 @@ install -m 0644 "$output_dir/images/versatile-pb.dtb" "$artifact_dir/versatile-p
 install -m 0644 "$output_dir/images/rootfs.ext2" "$artifact_dir/rootfs.ext2"
 install -m 0644 "$output_dir/legal-info/manifest.csv" "$artifact_dir/license-manifest.csv"
 install -m 0644 "$output_dir/qemu-smoke.log" "$artifact_dir/qemu-smoke.log"
+install -m 0644 "$output_dir/qemu-state-reboot.log" "$artifact_dir/qemu-state-reboot.log"
 install -m 0644 "$output_dir/api-host-tests/coverage.out" "$artifact_dir/api-host-coverage.out"
 install -m 0644 "$output_dir/lab-tools-host-tests/coverage.out" "$artifact_dir/lab-tools-host-coverage.out"
 install -m 0644 "$output_dir/target/usr/bin/phantowd-api" "$artifact_dir/phantowd-api"

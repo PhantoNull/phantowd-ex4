@@ -211,6 +211,10 @@ Additional NAS models require their own board definitions and qualification.
    validate the new ARMv5 QEMU probes before claiming guest execution evidence.
 3. Extend restart/failure coverage to disposable persistent QEMU filesystems
    and define configuration recovery/migration before exposing writable APIs.
+   Two independent ARMv5 boots now preserve the complete share policy on a
+   generated ext2 disk, ignore a staged revision, reject corrupt state and
+   refuse stale writers. This is clean-reboot evidence, not power-loss testing
+   or qualification of the EX4 persistent-state location.
 4. Extend the implemented standalone browser share-proposal form to full
    configuration management after persistence/recovery qualification;
    qualify effective POSIX permissions and runtime volume binding before service

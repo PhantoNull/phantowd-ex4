@@ -21,15 +21,23 @@ func main() {
 	nfsTest := flag.String("qemu-nfs-test", "", "fixed NFS integration fixture; QEMU only")
 	smbTest := flag.Bool("qemu-smb-test", false, "fixed SMB effective-access fixture; QEMU only")
 	mountGuardTest := flag.Bool("qemu-mount-guard-test", false, "fixed descriptor/mount guard fixture; QEMU only")
+	stateTest := flag.String("qemu-state-test", "", "fixed two-boot state fixture; QEMU only")
 	flag.Parse()
 	modes := 0
-	for _, selected := range []bool{*selfTest, *nfsTest != "", *smbTest, *mountGuardTest} {
+	for _, selected := range []bool{*selfTest, *nfsTest != "", *smbTest, *mountGuardTest, *stateTest != ""} {
 		if selected {
 			modes++
 		}
 	}
 	if flag.NArg() != 0 || modes > 1 {
 		log.Fatal("unexpected arguments")
+	}
+	if *stateTest != "" {
+		if err := runQEMUStateTest(*stateTest); err != nil {
+			fmt.Fprintf(os.Stderr, "PHANTOWD_API_ERROR %v\n", err)
+			os.Exit(1)
+		}
+		return
 	}
 	if *mountGuardTest {
 		if err := runQEMUMountGuardTest(); err != nil {

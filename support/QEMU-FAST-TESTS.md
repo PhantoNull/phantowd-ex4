@@ -114,6 +114,30 @@ does not prove completeness of product disk discovery or WD compatibility.
 
 ## Evidence boundary
 
+### Separate state-persistence boots
+
+After the normal smoke, both the fast lane and clean Buildroot runner execute
+`support/qemu-state-reboot.sh`. It creates a new 16 MiB regular-file ext2 disk,
+starts two independent ARMv5 kernels and retains only that generated data disk
+between them. Each root disk is separately snapshotted; networking is absent.
+A dedicated PID-1 script skips all normal services and accepts only fixed seed
+and verify phases. Compiled machine/VPD/device/UUID checks precede the writable
+mount; the expected mounted identity is verified before touching configuration.
+
+The seed phase commits complete desired share policies, then leaves a valid
+pending revision and a separate deliberately corrupt fixture. Verification
+requires the exact committed policy, refusal of stale revisions and corrupt
+state, no automatic pending-file promotion, and a successful subsequent commit.
+Both phases ordinarily unmount before rebooting. Logs require both phase markers
+and kernel restart messages. A timeout or missing marker fails the lane.
+
+This demonstrates clean-reboot persistence on the generated ext2 filesystem,
+not crash/power-cut recovery, EX4 state provisioning, account credentials,
+schema migration or a writable management API. The temporary disk is discarded
+afterward. Clean CI retains `qemu-state-reboot.log` with its validation artifacts.
+
+### Qualification limits
+
 This lane can exercise current userspace against the base's kernel and
 packages without rebuilding Buildroot. It does **not** validate changed
 kernel, Buildroot, package selections, libraries, complete overlay installation,

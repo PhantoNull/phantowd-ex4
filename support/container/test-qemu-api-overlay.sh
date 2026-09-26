@@ -50,12 +50,17 @@ replace_file "$temporary/phantowd-volume-probe" /usr/libexec/phantowd-volume-pro
 replace_file "$source_dir/board/qemu/armv5/rootfs-overlay/etc/init.d/S99phantowd-ready" /etc/init.d/S99phantowd-ready 0100755
 debugfs -w -R 'mkdir /usr/lib/phantowd' "$image"
 replace_file "$source_dir/board/qemu/armv5/rootfs-overlay/usr/lib/phantowd/qemu-nfs-policy-smoke.sh" /usr/lib/phantowd/qemu-nfs-policy-smoke.sh 0100644
+replace_file "$source_dir/board/qemu/armv5/rootfs-overlay/usr/lib/phantowd/qemu-state-init.sh" /usr/lib/phantowd/qemu-state-init.sh 0100755
 replace_file "$source_dir/src/phantowd-api/vendor/golang.org/x/sys/LICENSE" /usr/share/licenses/phantowd-api/Go-XSys-LICENSE 0100644
 # shellcheck disable=SC1091 # project version-lock input
 . "$source_dir/versions.env"
 result=0
 sh "$source_dir/support/qemu-smoke.sh" "$temporary/images" "$temporary/qemu.log" "$LINUX_VERSION" || result=$?
 cat "$temporary/qemu.log"
+if [ "$result" -eq 0 ]; then
+    sh "$source_dir/support/qemu-state-reboot.sh" "$temporary/images" "$temporary/state-reboot.log" || result=$?
+    cat "$temporary/state-reboot.log"
+fi
 sha256sum "$temporary/phantowd-api" "$temporary/phantowd-volume-probe" "$temporary/images/rootfs.ext2"
 echo 'Overlay smoke uses the base kernel/packages; it does not replace clean Buildroot CI or regenerate SBOM/legal-info.'
 # The calling ephemeral container owns /tmp; no recursive host cleanup.

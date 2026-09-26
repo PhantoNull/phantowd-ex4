@@ -184,6 +184,13 @@ support/container/test-api.sh
 support/container/build-qemu.sh
 support/docker/entrypoint.sh
 support/qemu-smoke.sh
+support/qemu-state-reboot.sh
+src/phantowd-volume-probe/**
+package/phantowd-volume-probe/**
+support/container/test-volume-probe.sh
+support/container/build-volume-probe-fixture.sh
+support/container/patch-volume-probe-fixture.sh
+support/container/test-qemu-api-overlay.sh
 support/test-api.ps1
 support/test-dashboard-ui.mjs
 support/dashboard-preview.mjs
