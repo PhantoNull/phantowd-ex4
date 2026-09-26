@@ -195,6 +195,19 @@ and refuses non-Versatile PB machines. See the
   anti-CSRF header. A process-wide login limiter allows five attempts per
   minute. Secure/`__Host-` cookies are used for TLS requests. Mutating auth
   requests require the configured exact Origin and matching Host/scheme.
+- Global panel sign-out validates its invoking session and CSRF atomically,
+  clears all sessions in this API process and changes an opaque issuance
+  generation. Setup/login capture that generation before credential work:
+  an overlapping old login cannot publish a new session after revocation.
+  Replaying the revoked request cannot invalidate later fresh sessions. This
+  does not cancel requests/jobs already authorized, change credentials, revoke
+  SMB/NFS access or coordinate multiple API processes. The dashboard clears
+  drafts, prevents duplicate requests and does not retry an uncertain outcome.
+  A separate [administrator transaction store](admincredentials/README.md)
+  now supports revision-checked replacement and strict legacy-document reading,
+  with isolated host/ARMv5 persistence tests. The running authentication flow
+  still uses its setup-only store. Password change/reset requires backend,
+  session-barrier and recovery integration; it is not implemented by this control.
 - QEMU alone compiles a `qemu`-tagged self-test with a disposable password so
   the guest can test setup, duplicate-setup rejection, login, denied access,
   CSRF-checked logout, and account reload after daemon restart. The self-test
@@ -234,6 +247,7 @@ and refuses non-Versatile PB machines. See the
 | `POST /api/v1/auth/login` | Authenticate administrator; strict Origin, bounded request, generic credential error and five-per-minute process limit |
 | `GET /api/v1/auth/session` | Authenticated session metadata and CSRF token |
 | `POST /api/v1/auth/logout` | Revoke session; requires configured Origin and CSRF header |
+| `POST /api/v1/auth/logout-all` | Atomically revoke all panel sessions and earlier in-flight session issuance; requires one session cookie, one CSRF header, configured Origin and no input |
 | `POST /api/v1/file-services/preview` | Authenticated, Origin/CSRF-protected desired SMB/NFS preview; no save, runtime validation or activation |
 | `GET /api/v1/shares/configuration` | Authenticated read of the optional original share-only store; not running-service state |
 | `GET /api/v1/file-services/configuration` | Authenticated combined desired policy; development backend only, uninitialized state remains explicit |
@@ -296,6 +310,30 @@ releases. No production release or safe in-device updater exists yet.
 
 ## Local tests
 
+### Native service identity registry
+
+The [serviceaccounts registry](serviceaccounts/README.md) now provides strict
+native UID/private-GID reservations, disabled-by-default creation, permanent
+retired identities, revision-checked transitions and exact share-user binding.
+A Linux atomic store exposes only typed transitions, preventing accidental
+tombstone erasure through arbitrary document replacement. It is not connected
+to the HTTP/UI or live Unix/Samba authorities. Legacy import, identity discovery,
+credential reconciliation and actual provisioning remain separate work.
+The [local Unix observer](unixidentity/README.md) supplies bounded exclusions
+and exact/partial/conflict assessment; only its guarded QEMU fixture connects
+allocation to a temporary real Unix user/group. Matching local records never
+authorize account adoption or prove complete NSS/credential state.
+Its Linux reader now pins/rechecks owned non-writable regular account files and
+requires a files-only identity NSS configuration; all-writer serialization and
+credential/provisioning integration remain open.
+
+The [native identity creation coordinator](identityprovision/README.md) now
+records durable group/user command intentions and observed confirmations for one
+disabled reservation. Resumed intentions require review instead of command
+replay; existing identities are never auto-adopted. Host process-exit/failure
+tests and a fixed ARMv5 backend exercise this path. It is not a production
+privileged executor, global account lock, credential manager or recovery UI.
+
 ### SMB credential lifecycle boundary
 
 The guarded ARMv5 QEMU fixture uses its own loopback Samba daemon, private
@@ -309,8 +347,20 @@ inode/content/mode, new-file ownership and byte-identical Unix account files
 and share configuration are checked. Credentials are public fixture values,
 passed through stdin/private files, never command-line passwords.
 
-This is **not product account provisioning or active-session revocation**.
-It does not prove passdb persistence across reboot, cross-store crash recovery,
+A separate two-boot ARMv5 fixture now retains Unix account files, the native
+identity ledger and Samba private/state databases on a generated ext2 disk.
+Each kernel gets a fresh root snapshot; only the first phase creates users and
+sets/rotates the public test password. The second must recover the same disabled
+account before any credential mutation. Explicit re-enable then accepts the
+retained new password, refuses the old one, reads unchanged original data and
+writes with the original UID/private GID. Unix file hashes and original file
+inode/content/mode/ownership must remain unchanged. No users or credentials are
+recreated in the verification phase. Private lock/cache/PID state is volatile;
+the daemon is stopped and mounts released before the clean reboot.
+
+These are **not product account provisioning or active-session revocation**.
+Clean-reboot persistence is verified only in that isolated fixture, not a
+product state layout. Neither scenario proves cross-store crash recovery,
 Windows client behavior, ACL/migration compatibility or EX4 performance. The
 dashboard administrator's Argon2 verifier, desired-policy user references,
 Unix UID/GID identity and Samba passdb are separate authorities: saving a user

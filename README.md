@@ -106,8 +106,9 @@ A separate [read-only metadata helper](src/phantowd-volume-probe/README.md)
 uses libblkid on one caller-supplied descriptor, without mounting media or
 selecting a device by name. Generated-image host tests and a static ARMv5
 QEMU fixture have passed, including two unmounted virtual disks. Its package
-is selected in the QEMU development profile; clean Buildroot integration
-remains to be qualified. Trusted complete-device discovery is not implemented,
+is selected in the QEMU development profile; clean Buildroot integration passed
+at `cf05e34` in [run 36219833303](https://github.com/PhantoNull/phantowd-ex4/actions/runs/36219833303).
+Trusted complete-device discovery is not implemented,
 and these tests do not authorize importing WD disks.
 
 A separate compile-only Linux 6.18 EX4 device-tree baseline is available with

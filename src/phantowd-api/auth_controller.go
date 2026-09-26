@@ -15,14 +15,15 @@ import (
 )
 
 const (
-	authStatusPath   = "/api/v1/auth/status"
-	authSetupPath    = "/api/v1/auth/setup"
-	authLoginPath    = "/api/v1/auth/login"
-	authSessionPath  = "/api/v1/auth/session"
-	authLogoutPath   = "/api/v1/auth/logout"
-	maxAuthBodySize  = 2048
-	loginWindow      = time.Minute
-	loginMaxAttempts = 5
+	authStatusPath    = "/api/v1/auth/status"
+	authSetupPath     = "/api/v1/auth/setup"
+	authLoginPath     = "/api/v1/auth/login"
+	authSessionPath   = "/api/v1/auth/session"
+	authLogoutPath    = "/api/v1/auth/logout"
+	authLogoutAllPath = "/api/v1/auth/logout-all"
+	maxAuthBodySize   = 2048
+	loginWindow       = time.Minute
+	loginMaxAttempts  = 5
 )
 
 type authController struct {
@@ -55,7 +56,7 @@ func newAuthController(accounts *accountStore, allowedOrigin string) *authContro
 
 func (a *authController) isAuthPath(path string) bool {
 	switch path {
-	case authStatusPath, authSetupPath, authLoginPath, authSessionPath, authLogoutPath:
+	case authStatusPath, authSetupPath, authLoginPath, authSessionPath, authLogoutPath, authLogoutAllPath:
 		return true
 	default:
 		return false
@@ -74,6 +75,8 @@ func (a *authController) serve(w http.ResponseWriter, r *http.Request) bool {
 		a.session(w, r)
 	case authLogoutPath:
 		a.logout(w, r)
+	case authLogoutAllPath:
+		a.logoutAll(w, r)
 	default:
 		return false
 	}
@@ -104,6 +107,7 @@ func (a *authController) setup(w http.ResponseWriter, r *http.Request) {
 	if !decodeAuthJSON(w, r, &request) {
 		return
 	}
+	epoch := a.sessions.currentEpoch()
 	if err := a.accounts.setup(r.Context(), request.Username, request.Password); err != nil {
 		switch {
 		case errors.Is(err, errAccountConfigured):
@@ -115,7 +119,7 @@ func (a *authController) setup(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
-	a.issueSession(w, r, http.StatusCreated)
+	a.issueSession(w, r, http.StatusCreated, epoch)
 }
 
 func (a *authController) login(w http.ResponseWriter, r *http.Request) {
@@ -135,6 +139,7 @@ func (a *authController) login(w http.ResponseWriter, r *http.Request) {
 	if !decodeAuthJSON(w, r, &request) {
 		return
 	}
+	epoch := a.sessions.currentEpoch()
 	valid, err := a.accounts.authenticate(r.Context(), request.Username, request.Password)
 	if errors.Is(err, errAccountMissing) {
 		writeJSON(w, http.StatusConflict, map[string]string{"error": "setup_required"})
@@ -148,7 +153,7 @@ func (a *authController) login(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "invalid_credentials"})
 		return
 	}
-	a.issueSession(w, r, http.StatusOK)
+	a.issueSession(w, r, http.StatusOK, epoch)
 }
 
 func (a *authController) session(w http.ResponseWriter, r *http.Request) {
@@ -203,11 +208,45 @@ func (a *authController) validateCSRF(r *http.Request) bool {
 	return ok && validCSRF(session, r.Header.Get("X-PhantoWD-CSRF"))
 }
 
-func (a *authController) issueSession(w http.ResponseWriter, r *http.Request, status int) {
+func (a *authController) logoutAll(w http.ResponseWriter, r *http.Request) {
+	if !requireMethod(w, r, http.MethodPost) {
+		return
+	}
+	if !validOrigin(r, a.allowedOrigin) {
+		writeJSON(w, http.StatusForbidden, map[string]string{"error": "origin_not_allowed"})
+		return
+	}
+	if !readRequestHasNoInput(w, r) {
+		return
+	}
+	cookies := r.CookiesNamed(cookieName(r))
+	if len(cookies) != 1 {
+		clearSessionCookie(w, r)
+		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "authentication_required"})
+		return
+	}
+	if len(r.Header.Values("X-PhantoWD-CSRF")) != 1 {
+		writeJSON(w, http.StatusForbidden, map[string]string{"error": "csrf_validation_failed"})
+		return
+	}
+	err := a.sessions.revokeAll(cookies[0].Value, r.Header.Get("X-PhantoWD-CSRF"), time.Now())
+	if errors.Is(err, errSessionCSRF) {
+		writeJSON(w, http.StatusForbidden, map[string]string{"error": "csrf_validation_failed"})
+		return
+	}
+	clearSessionCookie(w, r)
+	if err != nil {
+		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "authentication_required"})
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]bool{"all_panel_sessions_revoked": true})
+}
+
+func (a *authController) issueSession(w http.ResponseWriter, r *http.Request, status int, epoch *sessionEpoch) {
 	if token, _, ok := a.sessions.sessionFromRequest(r, time.Now()); ok {
 		a.sessions.revoke(token)
 	}
-	token, _, err := a.sessions.create(time.Now())
+	token, _, err := a.sessions.createForEpoch(time.Now(), epoch)
 	if err != nil {
 		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "session_unavailable"})
 		return

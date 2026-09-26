@@ -24,3 +24,8 @@ cd "$module_dir"
 "$go_binary" test -run '^$' -fuzz '^FuzzPreviewEnvelope$' -fuzztime=25000x -parallel=2 ./fileservice
 "$go_binary" test -run '^$' -fuzz '^FuzzCombinedConfig$' -fuzztime=25000x -parallel=2 ./fileservice
 "$go_binary" test -run '^$' -fuzz '^FuzzDecode$' -fuzztime=25000x -parallel=2 ./volumeprobe
+"$go_binary" test -run '^$' -fuzz '^FuzzRegistry$' -fuzztime=25000x -parallel=2 ./serviceaccounts
+"$go_binary" test -run '^$' -fuzz '^FuzzSnapshot$' -fuzztime=25000x -parallel=2 ./unixidentity
+"$go_binary" test -run '^$' -fuzz '^FuzzFilesOnlyNSS$' -fuzztime=25000x -parallel=2 ./unixidentity
+"$go_binary" test -run '^$' -fuzz '^FuzzJournal$' -fuzztime=25000x -parallel=2 ./identityprovision
+"$go_binary" test -run '^$' -fuzz '^FuzzDocument$' -fuzztime=25000x -parallel=2 ./admincredentials

@@ -46,7 +46,7 @@ requirements. Existing analysis does not mean all firmware behavior is known.
 | Management | QEMU administrator setup/login, sessions, optional TLS transport, responsive diagnostics dashboard | Durable configuration, account lifecycle, certificate lifecycle, service controls and recovery |
 | Storage observation | Bounded sysfs block/VPD, Linux MD and existing-mount observations | Actual WD layout recognition, stable volume identities and qualified import |
 | Storage research | Regular-file GPT, ext and MD inspectors, component comparisons, synthetic inventory assessment | Representative sanitized WD metadata corpus and empty-media integration tests |
-| File services | Strict SMB/NFS policy and previews, atomic revision store, opt-in development save API, isolated QEMU access probes | Product accounts/state provisioning, storage qualification, activation/loss lifecycle and multi-client qualification |
+| File services | Strict SMB/NFS policy, atomic revision store, opt-in development editor, isolated QEMU access/credential probes, native identity reservation ledger | Live account/state provisioning and reconciliation, storage qualification, activation/loss lifecycle and multi-client qualification |
 | Updates | Host verification of signed release metadata, model/channel binding, payload hashes and version policy | Target installer, durable update state, rollback, key recovery and interruption testing |
 
 The [API contract](src/phantowd-api/README.md) and
@@ -80,6 +80,17 @@ persistent state location remains a separate hardware/layout decision.
 
 - Add password changes, logout-all/revocation, expiry and recovery policy;
   preserve bounded password-hashing work and generic authentication errors.
+  Global panel logout now has an atomic session/CSRF revocation boundary and
+  rejects session issuance from credential checks started before revocation.
+  Host/DOM tests and two real ARMv5 HTTP clients verify old-session refusal and
+  fresh login. This is not password rotation, active-job cancellation, SMB/NFS
+  revocation or a multi-process identity service. Administrator password changes
+  now have a separate [transactional credential store](src/phantowd-api/admincredentials/README.md)
+  with strict prototype-v1 compatibility, compare-and-swap replacement and
+  no cached verifier after storage refusal. Host and isolated two-boot ARMv5
+  tests cover old-password denial and retained replacements. The running API
+  still uses its setup-only backend: integrating replacement, authorization,
+  session issuance/revocation and recovery precedes a change-password form.
 - Design first-owner enrollment and recovery without default passwords.
 - Implement HTTPS certificate provisioning, renewal and replacement, with
   clear handling of device clock errors and changed names/addresses.
@@ -215,17 +226,38 @@ Additional NAS models require their own board definitions and qualification.
    generated ext2 disk, ignore a staged revision, reject corrupt state and
    refuse stale writers. This is clean-reboot evidence, not power-loss testing
    or qualification of the EX4 persistent-state location.
-4. Extend the implemented standalone browser share-proposal form to full
-   configuration management after persistence/recovery qualification.
+4. Qualify product configuration management beyond the implemented development
+   browser manager and standalone proposal form.
    An authenticated, bounded stored-share-policy read endpoint now has an
    explicit Linux store adapter and post-reboot ARMv5 handler-dispatch tests.
-   Its dashboard integration, HTTP save and product state provisioning remain
-   incomplete; stored policy is never reported as active service state.
+   Opt-in development HTTP/HTTPS saves and dashboard additions/edits/removals
+   now retain unrelated SMB/NFS policy and reconcile uncertain results without
+   automatic retries. Product state provisioning/recovery remains incomplete;
+   stored policy is never reported as active service state.
    Qualify effective POSIX permissions and runtime volume binding before service
    activation. Local ARMv5 QEMU has exercised HTTP/HTTPS previews, generated
    Samba grants with real Unix users (write/read/denial/ownership/symlink checks)
    and generated NFS exports on a disposable virtual disk; this does not
    qualify arbitrary product configurations or physical EX4 storage.
+   Actual Samba password rotation and disabled-account refusal have passed for
+   fresh QEMU connections, not active-session revocation. The native service
+   identity registry now reserves immutable UID/private-GID identities and
+   retains retired records across close/reopen. Its typed atomic store has no
+   arbitrary replacement API. Live Unix/passdb provisioning, identity inventory,
+   credential reconciliation, imported/shared groups and recovery remain open.
+   Protected Linux collection now qualifies local account-file provenance and
+   files-only NSS, but does not serialize all writers. A separate ARMv5 two-boot
+   fixture retains real Unix identities and Samba private databases without
+   recreating users/passwords: disabled state and rotated credentials survive,
+   old passwords fail, and file ownership/data remain stable. This closes the
+   isolated clean-reboot test gap, not product provisioning or crash recovery;
+   see the [registry contract](src/phantowd-api/serviceaccounts/README.md).
+   A [journaled Unix creation coordinator](src/phantowd-api/identityprovision/README.md)
+   now persists intentions before group/user commands and requires observed
+   postconditions before confirmation. Interrupted intentions demand explicit
+   review, never blind replay or automatic deletion. A fixed ARMv5 backend and
+   host process-exit tests exercise the path; production all-writer ownership,
+   privileged transport, credential transactions and recovery UI still remain.
 5. Connect trusted filesystem-identity qualification to the implemented Linux
    mount-descriptor guard, then integrate supervised SMB/NFS lifecycle using
    disposable QEMU disks. The guard's expected tuple is not yet produced by a
@@ -235,7 +267,7 @@ Additional NAS models require their own board definitions and qualification.
    devices, but cannot discover cloned identities on unmounted/omitted media.
    A separate libblkid descriptor helper now has host-native unmounted-image
    tests and static ARMv5 execution on two unmounted QEMU disks; clean package
-   integration, block I/O-failure fixtures and trusted
+   integration passed at cf05e34, while block I/O-failure fixtures and trusted
    complete-device discovery must be qualified before connecting it.
    The native ext2/XFS collision fixture is refused without JSON; pinned
    libblkid collapses ambiguity into a generic error, never an empty result.

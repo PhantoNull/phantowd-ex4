@@ -121,7 +121,7 @@ async function createHarness(respond) {
   const ids = [
     "auth-panel", "auth-title", "auth-description", "auth-form", "auth-username",
     "auth-password", "auth-submit", "auth-retry", "auth-error", "dashboard-content",
-    "logout", "refresh", "refresh-label", "snapshot-status", "error-banner",
+    "logout", "logout-all", "refresh", "refresh-label", "snapshot-status", "error-banner",
     "service-status-dot", "build-label", "kernel-value", "runtime-value", "target-value",
     "memory-value", "memory-detail", "memory-meter", "firmware-value", "firmware-detail",
     "profile-notice-title", "profile-notice-copy", "profile-notice-mark",
@@ -903,4 +903,42 @@ async function testServiceEditorInteraction() {
   assert.equal(elements["service-target"].children.length, 1);
   assert.equal(elements["service-member"].children.length, 1);
   assert.equal(elements["service-editor"].disabled, true);
+}
+
+// Global panel sign-out is single-flight, authenticated/CSRF-bound, and never
+// automatically retried when its response is lost or rejected.
+for (const outcome of ["success", "uncertain", "rejected"]) {
+  let ended = false;
+  let release;
+  const pending = new Promise((resolve) => { release = resolve; });
+  const { elements, requests } = await createHarness(async (path) => {
+    if (path === "/api/v1/auth/status") return jsonResponse({ authenticated: !ended, setup_required: false });
+    if (path === "/api/v1/auth/session") return jsonResponse({ csrf_token: "x".repeat(43) });
+    if (path === "/api/v1/auth/logout-all") { ended = true; return pending; }
+    if (path === "/api/v1/system") return jsonResponse(systemFixture());
+    if (path === "/api/v1/storage") return jsonResponse({ observations: [] });
+    if (path === "/api/v1/arrays") return jsonResponse(arraysFixture());
+    if (path === "/api/v1/mounts") return jsonResponse(mountsFixture());
+    throw new Error(`Unexpected sign-out request: ${path}`);
+  });
+  const first = elements["logout-all"].listeners.get("click")();
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(elements["logout-all"].disabled, true);
+  assert.equal(elements.logout.disabled, true);
+  await elements["logout-all"].listeners.get("click")();
+  await elements.logout.listeners.get("click")();
+  const writes = requests.filter(({ options }) => options?.method === "POST");
+  assert.equal(writes.length, 1);
+  assert.equal(writes[0].path, "/api/v1/auth/logout-all");
+  assert.equal(writes[0].options.headers["X-PhantoWD-CSRF"], "x".repeat(43));
+  assert.equal(writes[0].options.credentials, "same-origin");
+  assert.ok(writes[0].options.signal);
+  release(outcome === "success" ? jsonResponse({ all_panel_sessions_revoked: true }) :
+    outcome === "rejected" ? jsonResponse({}, 403) : new Error("lost response"));
+  await first;
+  assert.equal(elements["dashboard-content"].hidden, true);
+  assert.equal(elements["auth-panel"].hidden, false);
+  assert.equal(elements["logout-all"].disabled, false);
+  assert.equal(requests.filter(({ options }) => options?.method === "POST").length, 1);
+  if (outcome !== "success") assert.match(elements["auth-error"].textContent, /could not be confirmed/);
 }

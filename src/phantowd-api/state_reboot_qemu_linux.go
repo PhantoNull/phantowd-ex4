@@ -89,7 +89,16 @@ func runQEMUStateTest(phase string) (result error) {
 	if err := guard.Close(); err != nil {
 		return err
 	}
-	return exerciseQEMUStatePersistence(qemuStateAnchor, phase)
+	if err := exerciseQEMUStatePersistence(qemuStateAnchor, phase); err != nil {
+		return err
+	}
+	if err := exerciseQEMUSMBReboot(phase); err != nil {
+		return err
+	}
+	if phase == "verify" {
+		fmt.Println("PHANTOWD_SMB_REBOOT_READY unix_preserved=true rotated_password_retained=true disabled_retained=true explicit_enable=true obsolete_password_denied=true data_preserved=true scope=clean-qemu-reboot-only")
+	}
+	return nil
 }
 
 func qemuPersistentPolicy(revision uint64) shareconfig.Config {
@@ -107,6 +116,12 @@ func exerciseQEMUStatePersistence(root, phase string) error {
 		return err
 	}
 	if err := exerciseQEMUServiceStatePersistence(root, phase); err != nil {
+		return err
+	}
+	if err := exerciseQEMUServiceAccounts(root, phase); err != nil {
+		return err
+	}
+	if err := exerciseQEMUAdminCredentials(root, phase); err != nil {
 		return err
 	}
 	return exerciseQEMUServiceHTTPPersistence(root, phase)
