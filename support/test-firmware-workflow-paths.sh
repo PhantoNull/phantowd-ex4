@@ -173,6 +173,7 @@ support/tests/test-ex4-stage-b-kernel-config-audit.sh
 documentation_paths='
 **/*.md
 doc/**
+.github/assets/**
 '
 api_and_qemu_paths='
 src/phantowd-api/**
@@ -229,7 +230,7 @@ EOF
 
 require_develop_push "$host_workflow"
 require_bounded_qemu_ccache "$qemu_workflow"
-require_fixed_fuzz_campaigns "$repo_root/support/container/test-api.sh" 2
+require_fixed_fuzz_campaigns "$repo_root/support/container/test-api.sh" 3
 require_fixed_fuzz_campaigns "$repo_root/support/container/test-lab-tools.sh" 3
 
 for workflow in "$qemu_workflow" "$stage_a_workflow" "$stage_b_workflow" "$stage_b2_workflow" \

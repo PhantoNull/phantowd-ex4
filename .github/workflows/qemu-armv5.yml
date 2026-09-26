@@ -5,6 +5,7 @@ on:
     branches: [main, develop]
     paths-ignore:
       - '**/*.md'
+      - '.github/assets/**'
       - 'doc/**'
       - 'tools/phantowd-lab/**'
       - 'support/build-qemu.ps1'
@@ -28,6 +29,7 @@ on:
   pull_request:
     paths-ignore:
       - '**/*.md'
+      - '.github/assets/**'
       - 'doc/**'
       - 'tools/phantowd-lab/**'
       - 'support/build-qemu.ps1'

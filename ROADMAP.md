@@ -1,0 +1,179 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- SPDX-FileCopyrightText: 2026 PhantoWD EX4 contributors -->
+
+# Development roadmap
+
+PhantoWD aims to provide a maintainable WD My Cloud EX4 firmware distributed
+through GitHub Releases, with a local web interface, modern file sharing,
+recoverable updates and a conservative migration path for existing disks.
+There is no installable release yet. This roadmap describes the work required
+to get there; entries without linked verification remain planned.
+
+## Current evidence
+
+| Area | Implemented and checked | Still required |
+| --- | --- | --- |
+| Software foundation | Pinned Buildroot/ARMv5 QEMU build, kernel source verification, package SBOM and license collection | Ongoing dependency/security maintenance and release license review |
+| Reproducibility | Two clean builds matched the allowlisted artifacts for [one recorded commit](https://github.com/PhantoNull/phantowd-ex4/actions/runs/36097108144) | Repeat on each release candidate and publish results |
+| EX4 boot | Short diskless RAM boots reached readiness and halted | Stable board support and a tested recovery procedure |
+| Management | QEMU administrator setup/login, sessions, optional TLS transport, responsive diagnostics dashboard | Durable configuration, account lifecycle, certificate lifecycle, service controls and recovery |
+| Storage observation | Bounded sysfs block/VPD, Linux MD and existing-mount observations | Actual WD layout recognition, stable volume identities and qualified import |
+| Storage research | Regular-file GPT, ext and MD inspectors, component comparisons, synthetic inventory assessment | Representative sanitized WD metadata corpus and empty-media integration tests |
+| File services | Isolated QEMU SMB3/NFSv3 probes | Users, shares, permissions, exports, lifecycle and multi-client qualification |
+| Updates | Host verification of signed release metadata, model/channel binding, payload hashes and version policy | Target installer, durable update state, rollback, key recovery and interruption testing |
+
+The [API contract](src/phantowd-api/README.md) and
+[research-tool contract](tools/phantowd-lab/README.md) define the current
+boundaries. A successful parser, emulator boot or signed-payload check does
+not establish disk compatibility, cooling safety or installability.
+
+## Work that can advance on hosts and QEMU
+
+### 1. Configuration and service domain
+
+- Define a strict, versioned configuration for volume references, users,
+  shares, network settings and service policy; reject unknown or ambiguous
+  references. Keep identifiers independent of bay position and `/dev/sdX`.
+- Separate desired configuration, observed state and operation results.
+  Validate and preview a change before applying it.
+- Implement durable configuration transactions and schema migrations on a
+  temporary test filesystem: concurrent updates, interrupted writes, full
+  storage, corrupt state and restart recovery must preserve a valid revision.
+- Give long operations explicit states, cancellation rules and bounded logs.
+  Define which steps can be retried and how incomplete work is recovered.
+- Keep the HTTP service unprivileged. Any privileged helper must accept a
+  small typed request set over a protected local interface, with independent
+  validation and no arbitrary shell execution or caller-chosen executable.
+
+Exit evidence: host failure tests and an ARMv5 QEMU restart test demonstrate
+configuration recovery and refusal of invalid requests. Choosing the EX4's
+persistent state location remains a separate hardware/layout decision.
+
+### 2. Management interface and access
+
+- Add password changes, logout-all/revocation, expiry and recovery policy;
+  preserve bounded password-hashing work and generic authentication errors.
+- Design first-owner enrollment and recovery without default passwords.
+- Implement HTTPS certificate provisioning, renewal and replacement, with
+  clear handling of device clock errors and changed names/addresses.
+- Connect the UI to validated configuration previews and operation status;
+  support keyboard navigation, narrow screens, partial failures and reconnects.
+- Cache shared observations with explicit freshness and error state so
+  additional browser clients do not multiply storage/controller probes.
+- Review authorization, CSRF, request limits, error redaction and audit events
+  for each operation; test service restarts and stale sessions.
+
+Exit evidence: complete setup/login/configure/restart flows in QEMU, browser
+verification and documented threat-model review before any LAN deployment.
+
+### 3. Essential NAS services
+
+- Integrate SMB3 users and share permissions, NFS exports with explicit client
+  policy, and opt-in administrative SSH/SFTP.
+- Render service configurations from validated objects; verify syntax before
+  activation and retain the last working configuration on failure.
+- Start shares only when their intended volume is present. A missing volume
+  must never redirect writes into an empty directory on the system filesystem.
+- Handle service crashes, unavailable volumes, read-only filesystems, full
+  disks and shutdown ordering; report degraded service state in the UI.
+- Add scheduled backup jobs, integrity-verification outcomes and restore
+  workflows after basic sharing is qualified.
+
+Exit evidence: isolated QEMU clients exercise permitted/denied access, restart,
+volume-loss and capacity-failure cases against disposable virtual disks.
+
+### 4. Storage identity, health and migration
+
+- Collect a sanitized corpus for each supported WD single-volume/JBOD/RAID
+  layout. Document the provenance and exact fields used for recognition.
+- Correlate disk identity, partition identity, MD identity, filesystem identity
+  and share references; refuse duplicate, missing, conflicting or unknown data.
+- Parse SMART status with fixtures for unsupported devices, stale data,
+  transport errors and failed health. A health warning must remain visible.
+- Produce a read-only migration report covering recognized volumes, shares,
+  owners/ACLs, free space, required backups and unsupported features.
+- Verify journal/recovery and MD assembly behavior before adding an importer;
+  a read-only mount option alone is not a complete no-write guarantee.
+- Qualify reorder, bay moves, missing members, degraded arrays and return to
+  stock on dedicated empty media before admitting existing user disks.
+
+Exit evidence: fixture corpus plus repeatable empty-media import, rollback and
+data-integrity comparisons for every advertised layout. Unknown layouts stay
+unsupported; no automatic formatting or implicit conversion.
+
+### 5. Release tooling and efficient operation
+
+- Maintain pinned source signatures/hashes and review dependency advisories;
+  keep component selection compatible with ARMv5 and available resources.
+- Measure image size, idle/peak RAM, CPU, boot time and request concurrency in
+  QEMU, then establish hardware budgets from real measurements.
+- Measure multi-client transfers and observation overhead, control log growth
+  and avoid polling that unnecessarily prevents disk standby.
+- Publish source, license material, SBOM, hashes, signed model-specific
+  metadata, release notes, known limitations and validation evidence together.
+- Run fast host checks for domain/tool changes, QEMU for runtime changes and
+  the latest relevant EX4 probe for board changes. Keep clean release builds
+  and reproducibility checks available independently of developer caches.
+
+## Work requiring EX4 hardware evidence
+
+| Gate | Required evidence before advancing |
+| --- | --- |
+| Network | Both physical ports, correct factory identities, simultaneous operation, reconnection and sustained link stability |
+| Controller | Passive internal-UART captures establish framing, fields, checksums, ACK/retry behavior and asynchronous events; validate an open implementation against those captures |
+| Cooling | Independently measured temperature, known safe fan/tach behavior, sensor/controller/daemon failure responses and bounded shutdown behavior |
+| Board peripherals | SATA, USB, RTC, display, LEDs, buttons, watchdog and power behavior mapped and exercised with bounded tests |
+| Recovery and flash | Exact model/revision, NAND geometry, ECC/OOB, bad blocks, boot validation, identity preservation, backup/restore and rescue entry independently reviewed and demonstrated |
+| Storage | Empty expendable media, correct discovery and identity, safe removal/reinsertion, recovery behavior and verified data integrity |
+
+The console UART and the internal controller UART are distinct interfaces.
+No protocol command may be inferred safe merely from a selector name in a
+vendor binary. QEMU cannot prove the EX4's electrical or thermal behavior.
+Existing data disks are excluded from experimental firmware qualification.
+
+## Installer and release qualification
+
+The on-device installer follows the recovery and flash-layout evidence; an
+A/B slot layout must not be assumed to fit or work with the existing bootloader.
+
+1. Select and document a recoverable storage/boot layout and persistent state
+   policy; preserve device identities and user data independently of OS slots.
+2. Verify signatures, exact hardware compatibility, payload hashes, version
+   policy, available space and power prerequisites before an update can start.
+3. Implement durable installation progress, boot-pending state, health commit
+   and rollback. Refuse ambiguous or partially verified states.
+4. Exercise interrupted download, corrupt payload, failed verification, full
+   state storage and restart boundaries in simulation.
+5. On dedicated hardware, interrupt every durable installation/upgrade state
+   and demonstrate recovery to a known system, including failed boot and
+   interrupted state migration. Verify restored data, not just boot success.
+6. Repeat install, upgrade, supported rollback and unbrick procedures from the
+   published instructions on each advertised hardware revision.
+7. Publish a limited opt-in beta with a compatibility matrix and recovery kit;
+   resolve reproducible critical faults before declaring a stable release.
+
+Production readiness requires sustained mixed-client I/O, thermal observation,
+data-integrity checks, recovery drills, security review, upgrade testing and
+reproducible release artifacts. Test duration, loads and numeric budgets must
+be declared before qualification and published with the results.
+
+## Later product features
+
+Resource-qualified signed native applications, download clients, additional
+backup targets, optional remote access and a mobile companion follow the core
+NAS release. Each needs lifecycle, permission, resource and update contracts.
+An application catalog must preserve the host's storage and recovery functions.
+Additional NAS models require their own board definitions and qualification.
+
+## Immediate development sequence
+
+1. Finish integration evidence for the read-only mount observer.
+2. Implement the strict configuration and share-policy model with host fixtures.
+3. Add atomic revision storage and failure/restart tests in QEMU.
+4. Build previewable service configuration and permission checks on that model.
+5. Integrate supervised SMB/NFS lifecycle using disposable QEMU disks.
+6. Advance network/controller/recovery evidence on a separately reviewed
+   hardware schedule; use those results to qualify the software on EX4.
+
+Progress is tracked by demonstrated behavior and remaining release gates.
+Neither a feature count nor a passing CI run substitutes for release qualification.

@@ -1,3 +1,7 @@
+<p align="center">
+  <img src=".github/assets/phantowd-ex4-banner.png" alt="PhantoWD EX4 concept artwork: a black four-bay NAS with orange ghost branding" width="700">
+</p>
+
 # 👻 PhantoWD EX4
 
 PhantoWD EX4 is an unofficial, community-oriented effort to give the
@@ -15,6 +19,9 @@ internal temperature, then halted. It does not qualify stable networking,
 factory identity on the second port, cooling, storage, or flash updates.
 
 ## Current work
+
+The [development roadmap](ROADMAP.md) tracks the implementation, validation
+evidence and remaining requirements for an installable community release.
 
 - document the boot chain, flash layout, NAND/ECC behaviour, and peripherals;
 - preserve a verified recovery path before changing persistent flash;
