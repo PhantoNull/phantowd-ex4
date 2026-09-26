@@ -17,6 +17,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/PhantoNull/phantowd-ex4/phantowd-api/identityowner"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/identityrpc"
 )
 
@@ -24,13 +25,13 @@ const identitySocketDir = "/run/phantowd-identity-channel-fixture"
 const identitySocket = identitySocketDir + "/channel"
 
 // Fixed disposable-guest directory with the reusable protected listener. The
-// production HTTP server never opens it. Each invocation owns one step and
-// three sequential connections from an actually unprivileged child process.
-func exerciseQEMUIdentityChannel(operation identityrpc.Operation, phase string) error {
+// production HTTP server never opens it. An actually unprivileged child drives
+// a fixed phase or the two-account routing scenario through one protected socket.
+func exerciseQEMUIdentityChannel(owner *identityowner.Owner, phase string) error {
 	if err := guardQEMUDataVolume(); err != nil {
 		return err
 	}
-	if phase != "group" && phase != "user" {
+	if phase != "group" && phase != "user" && phase != "second" {
 		return errors.New("invalid channel fixture phase")
 	}
 	if err := os.Mkdir(identitySocketDir, 0710); err != nil {
@@ -40,7 +41,7 @@ func exerciseQEMUIdentityChannel(operation identityrpc.Operation, phase string) 
 	if err := os.Chown(identitySocketDir, 0, 65534); err != nil {
 		return err
 	}
-	server, err := identityrpc.NewOperation(65534, operation)
+	server, err := identityrpc.NewRouter(65534, func(id string) identityrpc.Operation { return owner.Operation(id) })
 	if err != nil {
 		return err
 	}
@@ -96,7 +97,7 @@ func runQEMUIdentityClient(phase string) error {
 	if runtime.GOARCH != "arm" || strings.Split(buildARMLevel(), ",")[0] != "5" || os.Getuid() != 65534 || os.Geteuid() != 65534 {
 		return errors.New("wrong channel fixture process")
 	}
-	if phase != "group" && phase != "user" {
+	if phase != "group" && phase != "user" && phase != "second" {
 		return errors.New("invalid channel fixture phase")
 	}
 	want, next := uint64(1), "group-confirmed"
@@ -105,22 +106,45 @@ func runQEMUIdentityClient(phase string) error {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 12*time.Second)
 	defer cancel()
-	requests := []identityrpc.Request{{Version: 1, Action: "status", AccountID: "managed"},
-		{Version: 1, Action: "step", AccountID: "managed", Revision: want},
-		{Version: 1, Action: "step", AccountID: "managed", Revision: want}}
-	for i, req := range requests {
+	type exchange struct {
+		req      identityrpc.Request
+		code     string
+		revision uint64
+		phase    string
+	}
+	initial := "reserved"
+	if phase == "user" {
+		initial = "group-confirmed"
+	}
+	requests := []exchange{
+		{identityrpc.Request{Version: 1, Action: "status", AccountID: "managed"}, "ok", want, initial},
+		{identityrpc.Request{Version: 1, Action: "step", AccountID: "managed", Revision: want}, "ok", want + 2, next},
+		{identityrpc.Request{Version: 1, Action: "step", AccountID: "managed", Revision: want}, "conflict", 0, ""},
+	}
+	if phase == "second" {
+		requests = []exchange{
+			{identityrpc.Request{1, "status", "managed", 0}, "ok", 5, "unix-confirmed"},
+			{identityrpc.Request{1, "status", "second", 0}, "ok", 1, "reserved"},
+			{identityrpc.Request{1, "step", "unknown", 1}, "unavailable", 0, ""},
+			{identityrpc.Request{1, "step", "managed", 5}, "conflict", 0, ""},
+			{identityrpc.Request{1, "step", "second", 1}, "ok", 3, "group-confirmed"},
+			{identityrpc.Request{1, "step", "second", 1}, "conflict", 0, ""},
+			{identityrpc.Request{1, "status", "managed", 0}, "ok", 5, "unix-confirmed"},
+			{identityrpc.Request{1, "step", "second", 3}, "ok", 5, "unix-confirmed"},
+			{identityrpc.Request{1, "status", "second", 0}, "ok", 5, "unix-confirmed"},
+		}
+	}
+	for _, test := range requests {
 		dialer := net.Dialer{}
 		conn, err := dialer.DialContext(ctx, "unix", identitySocket)
 		if err != nil {
 			return err
 		}
-		reply, err := identityrpc.Call(ctx, conn.(*net.UnixConn), req)
+		reply, err := identityrpc.Call(ctx, conn.(*net.UnixConn), test.req)
 		if err != nil {
 			return err
 		}
-		if i == 0 && (reply.Code != "ok" || reply.Revision != want) ||
-			i == 1 && (reply.Code != "ok" || reply.Revision != want+2 || reply.Phase != next) ||
-			i == 2 && reply.Code != "conflict" {
+		if reply.Code != test.code || reply.Revision != test.revision || reply.Phase != test.phase {
 			return errors.New("channel fixture response mismatch")
 		}
 	}

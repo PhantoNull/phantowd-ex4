@@ -133,12 +133,16 @@ while [ "$attempt" -lt 120 ]; do
             echo 'QEMU unprivileged identity channel did not complete' >&2
             exit 1
         fi
-        for phase in group user; do
+        for phase in group user second; do
             if ! grep -F "PHANTOWD_IDENTITY_LISTENER_READY phase=$phase protected=true lease_exclusive=true drained=true scope=isolated-qemu-only" "$log_file" >/dev/null; then
                 echo "Protected identity listener lifecycle marker missing: $phase" >&2
                 exit 1
             fi
         done
+        if ! grep -F 'PHANTOWD_IDENTITY_ROUTER_READY accounts=2 distinct_ids=true historical_unchanged=true unknown_denied=true scope=isolated-qemu-only' "$log_file" >/dev/null; then
+            echo 'QEMU multi-account identity router did not complete' >&2
+            exit 1
+        fi
         if ! grep -F 'PHANTOWD_IDENTITY_OWNER_READY lease_exclusive=true pending_blocks_reservation=true after_reopen=true scope=isolated-qemu-only' "$log_file" >/dev/null; then
             echo 'QEMU native identity authority did not complete' >&2
             exit 1

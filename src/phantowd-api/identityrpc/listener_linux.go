@@ -41,7 +41,7 @@ type Listener struct {
 // in use. A directory flock excludes cooperating owners of this exact inode,
 // not privileged writers or a second authority configured at another path.
 func Listen(directory string, apiGID uint32, server *Server) (*Listener, error) {
-	if os.Getuid() != 0 || os.Geteuid() != 0 || apiGID == 0 || apiGID > 65534 || server == nil || server.operation == nil ||
+	if os.Getuid() != 0 || os.Geteuid() != 0 || apiGID == 0 || apiGID > 65534 || !server.available() ||
 		!filepath.IsAbs(directory) || filepath.Clean(directory) != directory {
 		return nil, ErrInvalid
 	}

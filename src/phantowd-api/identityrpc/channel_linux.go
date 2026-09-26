@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 PhantoWD EX4 contributors
 
-// Package identityrpc supplies a one-request local channel to one already
-// reserved identity operation, with an optional protected listener lifecycle.
+// Package identityrpc supplies a one-request local channel to already reserved
+// identity operations, with an optional protected listener lifecycle.
 // It does not provision account state or own all writers.
 package identityrpc
 
@@ -88,6 +88,7 @@ type Server struct {
 	mu        sync.Mutex
 	uid       uint32
 	operation Operation
+	resolve   func(string) Operation
 }
 
 // Operation is a trusted in-process authority, not socket input. The bound
@@ -134,6 +135,23 @@ func NewOperation(apiUID uint32, operation Operation) (*Server, error) {
 	return &Server{uid: apiUID, operation: operation}, nil
 }
 
+// NewRouter binds one trusted authority's lookup, not a request-selected backend.
+// Lookup runs only after peer authentication, admission and strict ID validation.
+// It must resolve against the authority's registry before using an ID as a path,
+// never create an operation on lookup, and retain all-writer serialization inside
+// Step. Unknown IDs may return nil or an operation whose Load fails. Keep this
+// authority alive until the listener has drained. No per-ID server/cache is made.
+func NewRouter(apiUID uint32, resolve func(string) Operation) (*Server, error) {
+	if os.Getuid() != 0 || os.Geteuid() != 0 || apiUID == 0 || apiUID > 65534 || resolve == nil {
+		return nil, ErrInvalid
+	}
+	return &Server{uid: apiUID, resolve: resolve}, nil
+}
+
+func (s *Server) available() bool {
+	return s != nil && ((s.operation != nil) != (s.resolve != nil))
+}
+
 // Serve owns and always closes one accepted Unix STREAM connection. The
 // listener owner must bound accept/goroutine counts and protect its pathname.
 // Connection credentials identify the principal, not an HTTP user or executable.
@@ -142,7 +160,7 @@ func (s *Server) Serve(ctx context.Context, conn *net.UnixConn) error {
 		return ErrChannel
 	}
 	defer conn.Close()
-	if s == nil || s.operation == nil || os.Getuid() != 0 || os.Geteuid() != 0 || ctx == nil || ctx.Err() != nil || !peer(conn, s.uid) {
+	if !s.available() || os.Getuid() != 0 || os.Geteuid() != 0 || ctx == nil || ctx.Err() != nil || !peer(conn, s.uid) {
 		return ErrChannel
 	}
 	ctx, cancel := context.WithTimeout(ctx, timeout)
@@ -153,30 +171,52 @@ func (s *Server) Serve(ctx context.Context, conn *net.UnixConn) error {
 	if conn.SetDeadline(deadline) != nil {
 		return ErrChannel
 	}
+	return s.serveRequest(ctx, conn)
+}
+
+func (s *Server) serveRequest(ctx context.Context, conn io.ReadWriter) error {
+	reply, err := s.prepareReply(ctx, conn)
+	if err != nil {
+		return err
+	}
+	// All state work and snapshot validation finish before publishing a reply.
+	// The peer may receive it before Write returns or this goroutine resumes.
+	// Do not make the peer's next sequential request wait for that scheduling.
+	return send(conn, reply)
+}
+
+func (s *Server) prepareReply(ctx context.Context, conn io.Reader) (Response, error) {
 	// Admit before reading so slow authenticated clients cannot form a queue.
 	if !s.mu.TryLock() {
 		// No request was consumed. Closing may reset queued peer data, so a
 		// structured reply here cannot be promised. Refuse admission outright.
-		return ErrBusy
+		return Response{}, ErrBusy
 	}
 	defer s.mu.Unlock()
 	data, err := receive(conn)
 	if err != nil {
-		return ErrChannel
+		return Response{}, ErrChannel
 	}
 	var req Request
 	if decodeRequest(data, &req) != nil {
-		return send(conn, Response{Version: 1, Code: "invalid"})
+		return Response{Version: 1, Code: "invalid"}, nil
 	}
 	if ctx.Err() != nil {
-		return ErrChannel
+		return Response{}, ErrChannel
 	}
-	return send(conn, s.execute(ctx, req))
+	return s.execute(ctx, req), nil
 }
 
 func (s *Server) execute(ctx context.Context, req Request) Response {
 	fail := func(code string) Response { return Response{Version: 1, Code: code} }
-	j, err := s.operation.Load(ctx)
+	op := s.operation
+	if s.resolve != nil {
+		op = s.resolve(req.AccountID)
+	}
+	if op == nil {
+		return fail("unavailable")
+	}
+	j, err := op.Load(ctx)
 	if err != nil || j.Validate() != nil {
 		return fail("unavailable")
 	}
@@ -184,7 +224,10 @@ func (s *Server) execute(ctx context.Context, req Request) Response {
 		return fail("conflict")
 	}
 	if req.Action == "step" {
-		err = s.operation.Step(ctx, req.Revision)
+		// Keep this exact bound operation across Load/Step/Load; never resolve
+		// again after native dispatch, even if the trusted registry changes.
+		bound := j.Account
+		err = op.Step(ctx, req.Revision)
 		switch {
 		case errors.Is(err, identityprovision.ErrConflict):
 			return fail("conflict")
@@ -193,8 +236,8 @@ func (s *Server) execute(ctx context.Context, req Request) Response {
 		case err != nil:
 			return fail("unavailable")
 		}
-		j, err = s.operation.Load(ctx)
-		if err != nil || j.Validate() != nil {
+		j, err = op.Load(ctx)
+		if err != nil || j.Validate() != nil || j.Account != bound {
 			return fail("unavailable")
 		}
 	}

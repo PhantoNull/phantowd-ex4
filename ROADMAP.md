@@ -121,6 +121,9 @@ verification and documented threat-model review before any LAN deployment.
   that journal/executor, including stale-request refusal. Its opt-in protected
   listener now bounds workers, retains the directory lease through drain and
   recovers only exact inactive sockets; it is not deployed on the product.
+  Multiple existing accounts now share one trusted authority router and socket;
+  isolated ARMv5 checks cover two distinct identities and unchanged historical
+  state, not maximum-account performance or panel account creation.
   A [cooperative authority owner](src/phantowd-api/identityowner/README.md) now
   holds the ledger/journal leases, serializes allocation and creation and refuses
   orphaned publication after process exit. It requires one configured root and

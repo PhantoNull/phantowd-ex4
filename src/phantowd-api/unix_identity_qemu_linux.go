@@ -8,6 +8,7 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
 	"strings"
 
@@ -108,10 +109,20 @@ func exerciseQEMUUnixIdentity() (result error) {
 	if !errors.Is(err, identityowner.ErrBusy) {
 		return errors.New("authority lifetime lease bypassed")
 	}
-	if err := exerciseQEMUIdentityChannel(owner.Operation(a.ID), "group"); err != nil {
+	runChannel := func(phase string) error {
+		channelErr := exerciseQEMUIdentityChannel(owner, phase)
+		// A missing response is not a rollback. Reconcile the durable guest-only
+		// journal before choosing cleanup, even when the client reports failure.
+		j, loadErr := owner.Operation(a.ID).Load(context.Background())
+		if loadErr == nil {
+			createdGroup = j.Phase == identityprovision.GroupConfirmed || j.Phase == identityprovision.UnixConfirmed
+			createdUser = j.Phase == identityprovision.UnixConfirmed
+		}
+		return errors.Join(channelErr, loadErr)
+	}
+	if err := runChannel("group"); err != nil {
 		return err
 	}
-	createdGroup = true
 	partial, err := observe()
 	if err != nil {
 		return err
@@ -132,10 +143,9 @@ func exerciseQEMUUnixIdentity() (result error) {
 		return err
 	}
 	defer owner.Close()
-	if err := exerciseQEMUIdentityChannel(owner.Operation(a.ID), "user"); err != nil {
+	if err := runChannel("user"); err != nil {
 		return err
 	}
-	createdUser = true
 	completed, err := owner.Operation(a.ID).Load(context.Background())
 	if err != nil || completed.Phase != identityprovision.UnixConfirmed || completed.Revision != 5 {
 		return errors.New("managed fixture journal incomplete")
@@ -147,33 +157,8 @@ func exerciseQEMUUnixIdentity() (result error) {
 	if status, err := after.Assess(a); err != nil || status != unixidentity.Observed {
 		return errors.New("provisioned fixture identity does not match registry")
 	}
-	// Inspect only this generated guest account. Never return shadow bytes.
-	passwd, err := os.ReadFile("/etc/passwd")
-	if err != nil {
+	if err := verifyQEMUIdentityLogin(a.Name); err != nil {
 		return err
-	}
-	shadow, err := os.ReadFile("/etc/shadow")
-	if err != nil {
-		return err
-	}
-	locked, noLogin := false, false
-	for _, line := range strings.Split(string(passwd), "\n") {
-		fields := strings.Split(line, ":")
-		if len(fields) == 7 && fields[0] == a.Name {
-			noLogin = fields[6] == "/sbin/nologin"
-			if _, err := os.Lstat(fields[5]); !errors.Is(err, os.ErrNotExist) {
-				return errors.New("native fixture unexpectedly created a home")
-			}
-		}
-	}
-	for _, line := range strings.Split(string(shadow), "\n") {
-		fields := strings.Split(line, ":")
-		if len(fields) == 9 && fields[0] == a.Name {
-			locked = strings.HasPrefix(fields[1], "!") || strings.HasPrefix(fields[1], "*")
-		}
-	}
-	if !locked || !noLogin {
-		return errors.New("native fixture login policy mismatch")
 	}
 	conflicting := a
 	conflicting.UID++
@@ -189,5 +174,94 @@ func exerciseQEMUUnixIdentity() (result error) {
 	if _, err := empty.Create(1, "other", a.Name, exclusions); !errors.Is(err, serviceaccounts.ErrCollision) {
 		return errors.New("observed fixture name allocated twice")
 	}
+	return exerciseQEMUSecondIdentity(owner, a)
+}
+
+func verifyQEMUIdentityLogin(name string) error {
+	// Inspect only this generated guest account. Never return shadow bytes.
+	passwd, err := os.ReadFile("/etc/passwd")
+	if err != nil {
+		return err
+	}
+	shadow, err := os.ReadFile("/etc/shadow")
+	if err != nil {
+		return err
+	}
+	locked, noLogin := false, false
+	for _, line := range strings.Split(string(passwd), "\n") {
+		fields := strings.Split(line, ":")
+		if len(fields) == 7 && fields[0] == name {
+			noLogin = fields[6] == "/sbin/nologin"
+			if _, err := os.Lstat(fields[5]); !errors.Is(err, os.ErrNotExist) {
+				return errors.New("native fixture unexpectedly created a home")
+			}
+		}
+	}
+	for _, line := range strings.Split(string(shadow), "\n") {
+		fields := strings.Split(line, ":")
+		if len(fields) == 9 && fields[0] == name {
+			locked = strings.HasPrefix(fields[1], "!") || strings.HasPrefix(fields[1], "*")
+		}
+	}
+	if !locked || !noLogin {
+		return errors.New("native fixture login policy mismatch")
+	}
+	return nil
+}
+
+func exerciseQEMUSecondIdentity(owner *identityowner.Owner, first serviceaccounts.Account) (result error) {
+	ctx := context.Background()
+	second, err := owner.Reserve(ctx, 2, "second", "qpsecond")
+	if err != nil || second.UID == first.UID || second.GID == first.GID {
+		return errors.New("second fixture reservation mismatch")
+	}
+	defer func() {
+		j, err := owner.Operation(second.ID).Load(ctx)
+		if err != nil {
+			result = errors.Join(result, err)
+			return
+		}
+		if j.Phase == identityprovision.UnixConfirmed {
+			_, err = smbFixtureCommand("", "/usr/sbin/deluser", second.Name)
+		} else if j.Phase == identityprovision.GroupConfirmed {
+			_, err = smbFixtureCommand("", "/usr/sbin/delgroup", second.Name)
+		}
+		if err != nil {
+			result = errors.Join(result, errors.New("second identity cleanup failed"))
+			return
+		}
+		observed, err := unixidentity.ReadLocal("/etc", 0)
+		if err != nil {
+			result = errors.Join(result, err)
+			return
+		}
+		if state, err := observed.Assess(second); err != nil || state != unixidentity.Absent {
+			result = errors.Join(result, errors.New("second identity retained after cleanup"))
+		}
+	}()
+	firstBefore, err := owner.Operation(first.ID).Load(ctx)
+	if err != nil {
+		return err
+	}
+	if err := exerciseQEMUIdentityChannel(owner, "second"); err != nil {
+		return err
+	}
+	firstAfter, err := owner.Operation(first.ID).Load(ctx)
+	if err != nil || firstAfter != firstBefore {
+		return errors.New("historical first journal changed")
+	}
+	observed, err := unixidentity.ReadLocal("/etc", 0)
+	if err != nil {
+		return err
+	}
+	for _, a := range []serviceaccounts.Account{first, second} {
+		if state, err := observed.Assess(a); err != nil || state != unixidentity.Observed {
+			return errors.New("routed identity observation mismatch")
+		}
+		if err := verifyQEMUIdentityLogin(a.Name); err != nil {
+			return err
+		}
+	}
+	fmt.Println("PHANTOWD_IDENTITY_ROUTER_READY accounts=2 distinct_ids=true historical_unchanged=true unknown_denied=true scope=isolated-qemu-only")
 	return nil
 }

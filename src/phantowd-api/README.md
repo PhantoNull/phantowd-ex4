@@ -375,11 +375,14 @@ remain required; this is not yet a product account-management service.
 The [local identity channel](identityrpc/README.md) now connects an actually
 unprivileged ARMv5 fixture child to the root-owned journal/executor using
 kernel-verified Unix-socket peers. It accepts only status or one revision-checked
-step for an already bound operation; no commands, paths or credentials cross
+step for an already bound or authority-resolved operation; no commands, paths or credentials cross
 the interface. Missing replies are never retried automatically. Its optional
 protected listener supplies bounded acceptance, cooperative pathname ownership,
 exact stale-socket recovery and worker drain before authority closure; the ARMv5
-fixture now uses it. This library does not deploy a product service or supply
+fixture now uses it. A shared router resolves existing accounts only after peer
+and request validation, pins one operation across each request and checks its
+post-step account binding. The ARMv5 scenario creates a second identity while
+verifying that the first journal remains unchanged. This library does not deploy a product service or supply
 authority ownership, operation creation,
 Samba credential management or a panel account endpoint.
 

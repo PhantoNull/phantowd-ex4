@@ -1,7 +1,7 @@
 # Local identity operation channel (Linux)
 
-This library connects an unprivileged caller to one **already reserved and
-journaled** native identity operation. It is not a deployed `privd`, a general
+This library connects an unprivileged caller to **already reserved and
+journaled** native identity operations. It is not a deployed `privd`, a general
 account API or a deployed socket service. Production HTTP does not open it.
 The guarded ARMv5 scenario now uses it for actual group/user creation through
 [identityprovision](../identityprovision/README.md) and
@@ -22,6 +22,24 @@ ledger and Unix changes inside Step. Load is not a lock/authorization lease.
 The original New adapter remains a lower-level primitive for already-owned
 journals; it does not acquire the authority's lease by itself.
 
+`NewRouter(apiUID, resolve)` binds one trusted authority's operation lookup so
+multiple accounts share the same server, admission lock and protected socket.
+The resolver runs only after peer authentication, admission, strict framing and
+symbolic-ID validation. It must look up existing registry-owned operations, not
+create accounts, interpret the ID as an unchecked path or select another backend.
+For identityowner, bind `func(id string) identityrpc.Operation { return owner.Operation(id) }`.
+That owner validates its registry before path use; the router does not replace
+the owner's state checks or global cooperative serialization.
+
+Each admitted request resolves exactly once and retains the same bound operation
+through Load/Step/Load. The loaded account ID must match the request before Step;
+the complete account binding must remain unchanged in the post-step observation.
+Lookup failures return only unavailable, not raw errors. There is no per-ID
+server/cache, list operation, remote reservation or new wire schema. Completed
+historical journals may remain readable after later reservations even when their
+older registry context prevents another Step. A journal revision belongs to its
+account, not to every account at that revision number.
+
 Each connection carries exactly one four-byte big-endian length followed by
 one strict JSON request (1..1024 bytes), then one equally bounded response.
 All four request and response fields are mandatory; version is exactly 1.
@@ -34,7 +52,7 @@ frames are never dispatched: the connection closes after the first response.
 ```
 
 Only `status` (revision 0) and `step` (positive expected journal revision)
-exist. The symbolic account ID must match the bound journal. The client cannot
+exist. The symbolic account ID must match the bound or resolved journal. The client cannot
 select UID/GID, names, paths, binaries, arguments, passwords, storage or a
 backend. `step` reloads the trusted registry and delegates exact revision and
 account checks to the journal before any native command. There is no Begin,
@@ -46,8 +64,13 @@ diagnostics, credentials or raw input. `status` reads the durable journal; it
 does not prove current Unix/Samba state or service readiness. `ok` can describe
 a review-required journal when reading status; it is not activation permission.
 
-The server admits one connection without queuing per instance, before reading
-its body. Both ends own/close the supplied socket, enforce a ten-second context
+The server admits one request's parsing/state work without queuing per instance,
+before reading its body. The admission lock releases after the response snapshot
+is prepared, **before** writing it: the peer can receive bytes before the writer
+returns to userspace, and its next sequential request must not be rejected merely
+because the previous reply writer has not resumed. Response writes may overlap;
+the listener's worker cap and per-connection deadlines still bound their lifetime.
+Both ends own/close the supplied socket, enforce a ten-second context
 and I/O deadline, and close blocked I/O on cancellation. This is not a hard
 bound on kernel storage stalls or uncooperative trusted backends. The listener
 owner must bound accept/goroutine counts separately, or use `Listen` below.
@@ -100,7 +123,8 @@ not move/replace its directory or manipulate that socket. This is cooperative
 ownership, not protection against an adversarial root or a differently named
 authority. Client connection paths remain trusted deployment configuration;
 the client always verifies a root peer. No product daemon, auto-start, runtime
-directory provisioning or general multi-account routing is installed here.
+directory provisioning is installed here. Multi-account lookup is library/QEMU
+integration only, not a running product account-management service.
 
 ## Trust and remaining integration
 
@@ -139,3 +163,15 @@ Host tests additionally cover stale recovery, live/foreign/path refusal,
 replacement preservation, slow clients, bounded backlog, retained lease during
 backend drain and concurrent lifecycle calls. Native identity cleanup and prior locked-login/nologin/
 no-home checks remain required by the same scenario.
+
+The router tests interleave two modeled accounts, refuse unknown/misbound IDs,
+keep one resolved operation through dispatch, reject changed post-step bindings
+and prove no lookup occurs for unauthorized, malformed, canceled or overloaded
+requests. A deterministic gated-write regression proves a fully delivered reply
+does not keep admission locked against the client's next request. The ARMv5
+fixture allocates a second distinct Unix identity and creates its group/user
+through the same listener while reading the first account's historical journal.
+Unknown IDs and old-context steps are refused; the first journal stays identical
+and both identities retain locked Unix login, nologin and no home. Both generated
+identities are cleaned up based on durable confirmations, including lost replies.
+This verifies two accounts, not maximum-account performance or independent writers.
