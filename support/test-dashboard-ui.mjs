@@ -11,6 +11,14 @@ import { createContext, Script } from "node:vm";
 
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
 const source = await readFile(join(repoRoot, "src/phantowd-api/ui/app.js"), "utf8");
+const markup = await readFile(join(repoRoot, "src/phantowd-api/ui/index.html"), "utf8");
+const markupIDs = [...markup.matchAll(/\bid="([^"]+)"/g)].map((match) => match[1]);
+assert.equal(new Set(markupIDs).size, markupIDs.length, "duplicate HTML IDs");
+for (const match of source.matchAll(/(?:byId|setText)\("([^"]+)"/g)) {
+  assert.ok(markupIDs.includes(match[1]), `script references missing HTML ID ${match[1]}`);
+}
+assert.match(markup, /id="policy-nfs-fields"[^>]*hidden disabled/);
+assert.match(markup, /id="policy-form"[^>]*autocomplete="off"/);
 
 class FixtureElement {
   constructor() {
@@ -117,6 +125,7 @@ async function createHarness(respond) {
     "memory-value", "memory-detail", "memory-meter", "firmware-value", "firmware-detail",
     "profile-notice-title", "profile-notice-copy", "profile-notice-mark",
     "observed-at", "device-count", "device-list", "array-count", "array-list", "mount-count", "mount-list",
+    ...["form", "submit", "clear", "result", "error", "status", "requirements", "samba", "nfs", "nfs-fields", "uuid", "name", "path", "user", "smb-access", "nfs-enabled", "export-id", "network", "nfs-access", "squash", "uid", "gid", "security"].map((id) => `policy-${id}`),
   ];
   const elements = Object.fromEntries(ids.map((id) => [id, new FixtureElement()]));
   elements["refresh-label"].textContent = "Refresh snapshot";
@@ -145,7 +154,9 @@ async function createHarness(respond) {
     Error,
     Promise,
     TextEncoder,
+    AbortController,
     setTimeout,
+    clearTimeout,
   });
   new Script(source).runInContext(context);
   await new Promise((resolve) => setImmediate(resolve));
@@ -324,6 +335,113 @@ async function testMountFailureClearsOnlyMountObservation() {
   assert.match(elements["snapshot-status"].textContent, /system, storage, RAID.*current.*mount.*unavailable/i);
 }
 
+function policyFixture() {
+  return { schema_version: 1, scope: "desired-policy-only", persisted: false, applied: false, runtime_validated: false, activation_available: false,
+    requirements: ["runtime_volume_identity", "path_and_mount_containment", "unix_accounts_and_effective_access", "durable_configuration", "service_activation_lifecycle", "cross_protocol_access_review"],
+    samba: { samba_share_sections: "[Books]\npath = /example/<script>" }, nfs: { exports_table: "/example client(ro)" } };
+}
+
+function fillPolicy(elements) {
+  const values = { uuid: "11111111-2222-3333-4444-555555555555", name: "Books", path: "books", user: "reader", "smb-access": "ro", "nfs-enabled": "on", "export-id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee", network: "192.0.2.10/32", "nfs-access": "ro", squash: "all", uid: "65534", gid: "65534", security: "sys" };
+  for (const [id, value] of Object.entries(values)) elements[`policy-${id}`].value = value;
+}
+
+async function policyHarness(previewResponse = () => jsonResponse(policyFixture()), sessionResponse = () => jsonResponse({ csrf_token: "fixture-only" })) {
+  return createHarness(async (path, options) => {
+    if (path === "/api/v1/auth/status") return jsonResponse({ authenticated: true });
+    if (path === "/api/v1/auth/session") return sessionResponse();
+    if (path === "/api/v1/file-services/preview") return previewResponse(options);
+    if (path === "/api/v1/system") return jsonResponse(systemFixture());
+    if (path === "/api/v1/storage") return jsonResponse({ observations: [] });
+    if (path === "/api/v1/arrays") return jsonResponse(arraysFixture());
+    if (path === "/api/v1/mounts") return jsonResponse(mountsFixture());
+    throw new Error(`Unexpected request ${path}`);
+  });
+}
+
+async function testPolicyBuilderAndSafePreview() {
+  const { context, elements, requests } = await policyHarness();
+  fillPolicy(elements);
+  context.syncPolicyNFS();
+  assert.equal(elements["policy-nfs-fields"].disabled, false);
+  await context.submitPolicyProposal({ preventDefault() {} });
+  const request = requests.find(({ path }) => path.endsWith("/preview"));
+  assert.equal(request.options.method, "POST");
+  assert.equal(request.options.headers["X-PhantoWD-CSRF"], "fixture-only");
+  assert.equal(request.options.credentials, "same-origin");
+  const proposal = JSON.parse(request.options.body);
+  assert.equal(proposal.shares.volumes[0].filesystem_uuid, elements["policy-uuid"].value);
+  assert.equal(proposal.shares.shares[0].grants[0].access, "ro");
+  assert.equal(proposal.nfs.volume_revision, proposal.shares.revision);
+  assert.equal(proposal.nfs.exports[0].clients[0].anonymous_uid, 65534);
+  assert.equal(proposal.nfs.exports[0].clients[0].squash, "all");
+  assert.equal(elements["policy-result"].hidden, false);
+  assert.match(elements["policy-status"].textContent, /Not saved or applied/);
+  assert.equal(elements["policy-samba"].textContent, policyFixture().samba.samba_share_sections);
+  assert.equal(elements["policy-samba"].children.length, 0);
+  elements["policy-form"].listeners.get("input")();
+  assert.equal(elements["policy-result"].hidden, true);
+  assert.equal(elements["policy-samba"].textContent, "");
+  elements["policy-nfs-enabled"].value = "off";
+  elements["policy-uid"].value = "invalid ignored when disabled";
+  context.syncPolicyNFS();
+  assert.equal(elements["policy-nfs-fields"].disabled, true);
+  assert.equal(context.buildPolicyProposal().nfs.exports.length, 0);
+  context.clearPolicyDraft();
+  assert.equal(elements["policy-uuid"].value, "");
+  assert.equal(elements["policy-nfs-enabled"].value, "off");
+  assert.equal(elements["policy-submit"].disabled, false);
+}
+
+async function testPolicyFailuresAndStaleResponses() {
+  for (const response of [jsonResponse({}, 422), jsonResponse({}, 403), jsonResponse({}, 503), jsonResponse({ ...policyFixture(), applied: true }), jsonResponse({ ...policyFixture(), applied: undefined }), jsonResponse({ ...policyFixture(), requirements: ["__proto__"] }), jsonResponse({ ...policyFixture(), requirements: [] })]) {
+    const { context, elements } = await policyHarness(() => response);
+    fillPolicy(elements);
+    await context.submitPolicyProposal({ preventDefault() {} });
+    assert.equal(elements["policy-result"].hidden, true);
+    assert.equal(elements["policy-error"].hidden, false);
+    assert.equal(elements["policy-submit"].disabled, false);
+  }
+  const { context, elements, requests } = await policyHarness();
+  fillPolicy(elements);
+  elements["policy-uid"].value = "1e3";
+  await context.submitPolicyProposal({ preventDefault() {} });
+  assert.match(elements["policy-error"].textContent, /whole numbers/);
+  assert.equal(requests.some(({ path }) => path.endsWith("/session")), false);
+  for (const sessionReply of [jsonResponse({}, 503), jsonResponse({}), jsonResponse({ csrf_token: "" })]) {
+    const harness = await policyHarness(undefined, () => sessionReply);
+    fillPolicy(harness.elements);
+    await harness.context.submitPolicyProposal({ preventDefault() {} });
+    assert.equal(harness.requests.some(({ path }) => path.endsWith("/preview")), false);
+    assert.equal(harness.elements["policy-error"].hidden, false);
+  }
+  const timedOut = await policyHarness(() => { const error = new Error("aborted"); error.name = "AbortError"; throw error; });
+  fillPolicy(timedOut.elements);
+  await timedOut.context.submitPolicyProposal({ preventDefault() {} });
+  assert.match(timedOut.elements["policy-error"].textContent, /timed out/);
+  timedOut.context.showAuthUnavailable();
+  assert.equal(timedOut.elements["policy-user"].value, "");
+
+  for (const duringSession of [false, true]) {
+    let release;
+    const pending = new Promise((resolve) => { release = resolve; });
+    const harness = await policyHarness(duringSession ? undefined : () => pending, duringSession ? () => pending : undefined);
+    fillPolicy(harness.elements);
+    const operation = harness.context.submitPolicyProposal({ preventDefault() {} });
+    await new Promise((resolve) => setImmediate(resolve));
+    await harness.context.submitPolicyProposal({ preventDefault() {} }); // duplicate ignored
+    harness.context.clearPolicyDraft(); // also used at logout/auth loss
+    release(duringSession ? jsonResponse({ csrf_token: "fixture-only" }) : jsonResponse(policyFixture()));
+    await operation;
+    assert.equal(harness.elements["policy-result"].hidden, true);
+    assert.equal(harness.elements["policy-samba"].textContent, "");
+    assert.equal(harness.elements["policy-uuid"].value, "");
+    assert.equal(harness.requests.filter(({ path }) => path.endsWith("/preview")).length, duringSession ? 0 : 1);
+  }
+}
+
+await testPolicyBuilderAndSafePreview();
+await testPolicyFailuresAndStaleResponses();
 await testReadOnlySnapshotAndSafeRendering();
 await testUnavailableAuthIsVisibleAndRetryable();
 await testExpiredSessionReturnsToLogin();

@@ -2,20 +2,35 @@
 
 This is the first product-owned Go package, not a complete management plane.
 It is included only in the non-flashable QEMU development configuration and
-contains an embedded, read-only browser dashboard over its diagnostic API.
+contains an embedded browser dashboard with read-only diagnostics and a
+non-mutating desired file-share preview form.
 
 The [share configuration package](shareconfig/README.md) validates the first
 desired-policy schema for volumes, file-service users and share grants. It is
-exercised with synthetic fixtures in the QEMU self-test; no HTTP configuration
-endpoint or service activation is implemented yet. The Linux-only
+exercised with synthetic fixtures in the QEMU self-test and accepted by the
+authenticated [file-service preview API](fileservice/README.md). No HTTP
+configuration save or service activation is implemented yet. The Linux-only
 [share store](sharestore/README.md) adds validated revision transactions and
 failure handling, exercised only in temporary host/QEMU directories. The
 firmware does not yet provision persistent product configuration storage.
 
+The Linux [qualified-mount guard](mountguard/README.md) retains a previously
+verified mount using a unique mount ID and directory descriptors. It refuses
+symlinks, nested mount traversal, replaced anchors and unexpected read-only
+state. It does not discover filesystem UUIDs, establish WD compatibility or
+activate a share, and is not connected to a privileged HTTP operation.
+
 The [Samba preview renderer](smbconfig/README.md) translates desired policy
 into deterministic share sections and required volume bindings. Its fixed
-QEMU fixture is checked with the target's `testparm`. This is not an HTTP
-configuration endpoint, account provisioner or service activation path.
+QEMU fixture is checked with the target's `testparm`. The preview endpoint
+does not provision accounts, persist configuration or activate services.
+The separate QEMU-only `--qemu-smb-test` fixture uses generated shares and
+temporary Unix accounts to test actual read/write grants, ownership, excluded
+users, bad credentials, Unix-mode denial and symlink refusal on the disposable
+data volume. Its isolated smbd listens only on IPv4 loopback port 1445; the
+normal API gains no account or service-control capability. Non-QEMU builds
+refuse this flag, and the fixture also checks the exact emulated machine and
+mounted synthetic data device. This is not a production volume resolver.
 
 The separate [NFS policy preview](nfsconfig/README.md) defines explicit client
 networks, access, security flavors and numeric ID squashing against an exact
@@ -100,11 +115,12 @@ and refuses non-Versatile PB machines. See the
 | `POST /api/v1/auth/login` | Authenticate administrator; strict Origin, bounded request, generic credential error and five-per-minute process limit |
 | `GET /api/v1/auth/session` | Authenticated session metadata and CSRF token |
 | `POST /api/v1/auth/logout` | Revoke session; requires configured Origin and CSRF header |
+| `POST /api/v1/file-services/preview` | Authenticated, Origin/CSRF-protected desired SMB/NFS preview; no save, runtime validation or activation |
 | `GET /api/v1/system` | Authenticated versioned JSON: observation time, kernel, architecture/GOARM, uptime, total/available memory, effective UID, development safety flags |
 | `GET /api/v1/storage` | Authenticated, sorted, bounded kernel block-node observations from sysfs: name, major/minor, 512-byte-sector capacity, read-only/removable flags, partition number, and whole-disk `serial_status` / `wwn_status` when applicable |
 | `GET /api/v1/arrays` | Authenticated, bounded Linux MD observations from `/proc/mdstat` and `/sys/class/block`: level, state, degraded/active counts, sync action/progress, and transient member names; partial sources never become an empty/healthy claim |
 | `GET /api/v1/mounts` | Authenticated, bounded snapshot of filesystems already mounted in this process's namespace, from `/proc/self/mountinfo`; returns mount point, filesystem type, device major/minor, and the read-only mount flag while omitting source strings and raw options |
-| Non-GET on a known route | `405`, `Allow: GET` |
+| Wrong method on a known route | `405`, route-specific `Allow` |
 | Query or body on a read route | `400` |
 | Unknown route | `404` |
 | Missing, oversized, malformed or inconsistent proc data | `503`, generic diagnostic error without raw data or file paths |
@@ -137,7 +153,11 @@ data-integrity checks; no periodic sampling is implemented yet.
 The server limits active handlers to eight, request headers to 8 KiB (Go's
 HTTP parser may permit implementation slop), and sets read/write/idle timeouts.
 Auth JSON is capped at 2 KiB, rejects duplicate/unknown fields and trailing
-values, and refuses content encodings. This is a bounded development
+values, and refuses content encodings. File-service preview JSON is capped at
+524,544 bytes, with separate 256 KiB nested-policy limits and one active
+preview per handler. It accepts neither content encoding nor query parameters.
+See the [preview contract](fileservice/README.md) for errors and prerequisites.
+This is a bounded development
 prototype, not a security-reviewed LAN service. The QEMU guest binds only to
 `127.0.0.1:8080`. The optional TLS/listener configuration is only a transport
 safety primitive; it does not qualify the API for deployment on an EX4 or make
@@ -154,6 +174,28 @@ releases. No production release or safe in-device updater exists yet.
 
 ## Local tests
 
+### File-share proposal panel
+
+The authenticated panel builds a standalone draft for one volume, one SMB
+share/user grant and an optional NFS export/client rule. It uses the strict
+[preview endpoint](fileservice/README.md), not a save/apply route. UUIDs are
+operator-entered expectations, not discoveries; revisions are draft-local
+version 1, not revisions loaded from the appliance. The form does not merge,
+load, replace or delete current configuration. Multi-share/account management,
+effective permissions, persistent state and activation remain implementation
+work. The API schema itself supports larger configurations.
+
+Access defaults to read-only; optional NFS defaults to all-squash with numeric
+IDs 65534. The UI explains independent SMB/NFS permissions, AUTH_SYS trust and
+Kerberos prerequisites. Success displays candidate text and unresolved runtime
+requirements, never an effective-access or activated-service claim. Output is
+rendered as text, not HTML. Edits/clear invalidate prior and in-flight previews;
+logout/auth loss clears drafts. No local/session storage is used. Requests use
+the existing session and CSRF protection, ignore duplicate submission, and
+abort after ten seconds. The browser supplies the request Origin.
+
+### Test commands
+
 From the repository root on Windows, with a local Go 1.26+ installation:
 
 ```powershell
@@ -164,7 +206,8 @@ From the repository root on Windows, with a local Go 1.26+ installation:
 The first command runs `go vet` and fixture-based tests offline and creates a
 coverage report under ignored `artifacts/api-host-tests/`. Both PowerShell
 entrypoints also run dependency-free dashboard DOM interaction checks for the
-authenticated, unavailable-service, expired-session, and cleared-data states;
+authenticated, unavailable-service, expired-session, cleared-data and policy
+preview states (request shape, CSRF, errors, stale replies and safe rendering);
 they do not replace visual browser or assistive-technology testing. The Go
 tests also verify that the QEMU self-test's expected dashboard markers match
 the embedded assets. The build command
@@ -180,6 +223,8 @@ It binds only to `127.0.0.1:18081` and serves clearly labelled synthetic
 system, block-device, and software-RAID fixtures; it is not connected to the
 NAS and is never packaged into firmware. If that port is occupied, choose
 another unprivileged local port with `PHANTOWD_PREVIEW_PORT`.
+This static fixture server does not implement policy validation or sessions;
+the proposal form requires the real authenticated development API for that.
 
 Guest initialization probes the GET endpoints and QEMU-only authentication
 flow, verifies that QEMU's root block node appears through sysfs without being

@@ -87,6 +87,11 @@ done
 
 /usr/bin/phantowd-api --qemu-nfs-test=denied-client
 
+# A separate loopback smbd instance exercises generated policy and effective
+# Unix permissions while the verified disposable data disk is still mounted.
+/usr/bin/phantowd-api --qemu-smb-test
+/usr/bin/phantowd-api --qemu-mount-guard-test
+
 umount "$workspace/ro-client"
 ro_mounted=no
 umount "$workspace/rw-client"

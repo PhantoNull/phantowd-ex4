@@ -391,6 +391,7 @@ function setAuthError(message) {
 }
 
 function showAuthUnavailable() {
+  clearPolicyDraft();
   byId("auth-panel").hidden = false;
   byId("dashboard-content").hidden = true;
   byId("logout").hidden = true;
@@ -426,6 +427,7 @@ async function updateAuthView({ refresh = true, notice = "" } = {}) {
   }
 
   dashboard.hidden = true;
+  clearPolicyDraft();
   logout.hidden = true;
   authPanel.hidden = false;
   form.dataset.mode = status.setup_required ? "setup" : "login";
@@ -497,6 +499,7 @@ byId("auth-form").addEventListener("submit", async (event) => {
 });
 
 byId("logout").addEventListener("click", async () => {
+  clearPolicyDraft();
   const logout = byId("logout");
   logout.disabled = true;
   try {
@@ -518,5 +521,144 @@ byId("logout").addEventListener("click", async () => {
   }
 });
 
+// Standalone desired-policy builder: no current configuration is loaded,
+// no draft is persisted, and no activation route exists here.
+const policyFields = ["uuid", "name", "path", "user", "smb-access", "nfs-enabled", "export-id", "network", "nfs-access", "squash", "uid", "gid", "security"];
+let policyGeneration = 0;
+let policyBusy = false;
+const requirementLabels = {
+  runtime_volume_identity: "Prove the expected volume is present, unique and compatible.",
+  path_and_mount_containment: "Verify paths stay within the qualified mounted filesystem.",
+  unix_accounts_and_effective_access: "Provision file-service accounts and verify effective filesystem permissions.",
+  durable_configuration: "Provision durable configuration and recovery.",
+  service_activation_lifecycle: "Qualify service activation, failure handling and rollback.",
+  cross_protocol_access_review: "Review SMB and NFS access independently; SMB grants do not restrict NFS.",
+  auth_sys_network_trust: "AUTH_SYS requires trusted clients and network; it does not cryptographically verify client IDs.",
+  kerberos_provisioning: "Provision Kerberos before using this security flavor.",
+};
+
+function invalidatePolicyPreview(message = "Draft changed. Validate again to see a current preview.") {
+  policyGeneration++;
+  byId("policy-result").hidden = true;
+  byId("policy-error").hidden = true;
+  setText("policy-samba", "");
+  setText("policy-nfs", "");
+  byId("policy-requirements").replaceChildren();
+  setText("policy-status", message);
+}
+
+function syncPolicyNFS() {
+  const enabled = byId("policy-nfs-enabled").value === "on";
+  byId("policy-nfs-fields").hidden = !enabled;
+  byId("policy-nfs-fields").disabled = !enabled;
+}
+
+function clearPolicyDraft() {
+  invalidatePolicyPreview("No proposal validated.");
+  const defaults = { "smb-access": "ro", "nfs-enabled": "off", "nfs-access": "ro", squash: "all", uid: "65534", gid: "65534", security: "sys" };
+  for (const field of policyFields) byId(`policy-${field}`).value = defaults[field] ?? "";
+  syncPolicyNFS();
+}
+
+function buildPolicyProposal() {
+  const value = (field) => byId(`policy-${field}`).value;
+  const shares = {
+    format: "phantowd-share-config", schema_version: 1, revision: 1,
+    volumes: [{ id: "draft-volume", filesystem_uuid: value("uuid") }],
+    users: [{ id: "draft-user", name: value("user") }],
+    shares: [{ id: "draft-share", name: value("name"), volume_id: "draft-volume", relative_path: value("path"), grants: [{ user_id: "draft-user", access: value("smb-access") }] }],
+  };
+  const nfs = { format: "phantowd-nfs-policy", schema_version: 1, revision: 1, volume_revision: 1, exports: [] };
+  if (value("nfs-enabled") === "on") {
+    const numericID = (field) => {
+      const raw = value(field);
+      if (!/^[1-9][0-9]*$/.test(raw) || Number(raw) > 4294967294) throw new Error("Anonymous UID and GID must be whole numbers from 1 to 4294967294.");
+      return Number(raw);
+    };
+    nfs.exports.push({ id: value("export-id"), volume_id: "draft-volume", relative_path: value("path"), clients: [{ network: value("network"), access: value("nfs-access"), squash: value("squash"), anonymous_uid: numericID("uid"), anonymous_gid: numericID("gid"), security: value("security") }] });
+  }
+  return { shares, nfs };
+}
+
+function renderPolicyPreview(preview) {
+  if (preview?.schema_version !== 1 || preview.scope !== "desired-policy-only" ||
+      ["persisted", "applied", "runtime_validated", "activation_available"].some((key) => preview[key] !== false) ||
+      !Array.isArray(preview.requirements) || preview.requirements.length > 16 ||
+      !preview.requirements.every((key) => Object.hasOwn(requirementLabels, key)) ||
+      !["runtime_volume_identity", "path_and_mount_containment", "unix_accounts_and_effective_access", "durable_configuration", "service_activation_lifecycle"].every((key) => preview.requirements.includes(key)) ||
+      typeof preview.samba?.samba_share_sections !== "string" || typeof preview.nfs?.exports_table !== "string" ||
+      preview.samba.samba_share_sections.length > 65536 || preview.nfs.exports_table.length > 65536) {
+    throw new Error("The API returned an unsupported preview. Nothing was applied.");
+  }
+  for (const requirement of preview.requirements) {
+    const item = document.createElement("li");
+    item.textContent = requirementLabels[requirement];
+    byId("policy-requirements").append(item);
+  }
+  setText("policy-samba", preview.samba.samba_share_sections || "No SMB sections.");
+  setText("policy-nfs", preview.nfs.exports_table || "No NFS exports.");
+  byId("policy-result").hidden = false;
+  setText("policy-status", "Desired-policy validation passed. Not saved or applied; runtime access remains unverified.");
+}
+
+async function submitPolicyProposal(event) {
+  event.preventDefault();
+  if (policyBusy) return;
+  invalidatePolicyPreview("Validating the proposal...");
+  const generation = policyGeneration;
+  const button = byId("policy-submit");
+  policyBusy = true;
+  button.disabled = true;
+  button.setAttribute("aria-busy", "true");
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 10000);
+  try {
+    const body = JSON.stringify(buildPolicyProposal());
+    if (new TextEncoder().encode(body).length > 524544) throw new Error("The proposal exceeds the request size limit.");
+    const sessionResponse = await fetch("/api/v1/auth/session", { method: "GET", credentials: "same-origin", cache: "no-store", headers: { Accept: "application/json" }, signal: controller.signal });
+    if (sessionResponse.status === 401) {
+      const failure = new Error("Session expired. Sign in again."); failure.status = 401; throw failure;
+    }
+    if (!sessionResponse.ok) throw new Error("Cannot verify the session. Retry after signing in.");
+    const session = await sessionResponse.json();
+    if (typeof session.csrf_token !== "string" || !session.csrf_token) throw new Error("The session token is unavailable.");
+    if (generation !== policyGeneration) return;
+    const response = await fetch("/api/v1/file-services/preview", {
+      method: "POST", credentials: "same-origin", cache: "no-store", signal: controller.signal,
+      headers: { Accept: "application/json", "Content-Type": "application/json", "X-PhantoWD-CSRF": session.csrf_token }, body,
+    });
+    if (generation !== policyGeneration) return;
+    if (!response.ok) {
+      const message = response.status === 422 ? "Policy rejected. Check UUIDs, relative path, username, access and canonical client CIDR. No service was changed." :
+        response.status === 401 ? "Session expired. Sign in again." :
+          response.status === 403 ? "Session security check failed. Reload and sign in again." :
+            response.status === 503 ? "Preview service busy. Retry shortly." : "The proposal could not be validated. Nothing was applied.";
+      const failure = new Error(message); failure.status = response.status; throw failure;
+    }
+    const preview = await response.json();
+    if (generation !== policyGeneration) return;
+    renderPolicyPreview(preview);
+  } catch (failure) {
+    if (generation !== policyGeneration) return;
+    if (failure?.status === 401) {
+      try { await updateAuthView({ refresh: false, notice: "Session expired. Sign in again." }); }
+      catch { showAuthUnavailable(); }
+    } else {
+      setText("policy-error", failure?.name === "AbortError" ? "Preview timed out. Retry; nothing was applied." : failure instanceof Error ? failure.message : "Preview unavailable. Nothing was applied.");
+      byId("policy-error").hidden = false;
+      setText("policy-status", "No current validated preview.");
+    }
+  } finally {
+    clearTimeout(timeout);
+    policyBusy = false;
+    button.disabled = false;
+    button.removeAttribute("aria-busy");
+  }
+}
+
+byId("policy-form").addEventListener("submit", submitPolicyProposal);
+byId("policy-form").addEventListener("input", () => { invalidatePolicyPreview(); syncPolicyNFS(); });
+byId("policy-form").addEventListener("change", () => { invalidatePolicyPreview(); syncPolicyNFS(); });
+byId("policy-clear").addEventListener("click", clearPolicyDraft);
 byId("refresh").addEventListener("click", refreshSnapshot);
 updateAuthView().catch(showAuthUnavailable);

@@ -54,7 +54,9 @@ material before a public firmware release.
 
 The first product-owned package is a [read-only diagnostics API and browser
 dashboard](src/phantowd-api/README.md). It runs unprivileged on guest loopback
-only; the responsive dashboard displays only the API's bounded observations.
+only; the responsive dashboard displays the API's bounded observations and
+offers a non-mutating SMB/NFS share-proposal preview. Proposals are not saved
+or applied, and do not prove runtime storage identity or effective access.
 There are no storage/hardware controls. First-admin authentication exists only
 in the QEMU development profile; product state provisioning, recovery, and a
 certificate lifecycle are not implemented, so this service must not be exposed

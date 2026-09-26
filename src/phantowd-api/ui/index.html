@@ -164,6 +164,42 @@
         </div>
       </section>
 
+      <section class="policy-panel card" aria-labelledby="policy-title">
+        <p class="eyebrow">DESIRED POLICY / NOTHING IS APPLIED</p>
+        <h2 id="policy-title">Plan a file share</h2>
+        <p id="policy-help" class="policy-help">Build a standalone proposal for one share. This does not load or replace the current configuration, verify a disk, create an account, or change a service. No password is needed. Drafts stay in this page and are not saved.</p>
+        <form id="policy-form" aria-describedby="policy-help" autocomplete="off">
+          <fieldset class="policy-grid">
+            <legend>Volume and SMB access</legend>
+            <label>Filesystem UUID<input id="policy-uuid" required maxlength="36" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" spellcheck="false"></label>
+            <label>Share name<input id="policy-name" required maxlength="80" placeholder="Books"></label>
+            <label>Relative folder<input id="policy-path" required maxlength="512" placeholder="books" aria-describedby="policy-path-help"><small id="policy-path-help">Use . for the volume root. No bay or /dev paths.</small></label>
+            <label>File-service username<input id="policy-user" required maxlength="32" pattern="[a-z][a-z0-9_\-]*" placeholder="reader" spellcheck="false"></label>
+            <label>SMB access<select id="policy-smb-access"><option value="ro">Read only</option><option value="rw">Read and write</option></select></label>
+            <label>NFS proposal<select id="policy-nfs-enabled"><option value="off">Not included</option><option value="on">Include NFS export</option></select></label>
+          </fieldset>
+          <fieldset id="policy-nfs-fields" class="policy-grid" hidden disabled>
+            <legend>NFS client and identity mapping</legend>
+            <label>Stable export UUID<input id="policy-export-id" required maxlength="36" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" spellcheck="false"><small>A separate export identifier, not the filesystem UUID.</small></label>
+            <label>Allowed client network (CIDR)<input id="policy-network" required maxlength="64" placeholder="192.0.2.10/32" spellcheck="false"></label>
+            <label>NFS access<select id="policy-nfs-access"><option value="ro">Read only</option><option value="rw">Read and write</option></select></label>
+            <label>Identity mapping<select id="policy-squash"><option value="all">Map all users to anonymous IDs</option><option value="root">Map root only; trust other client IDs</option></select></label>
+            <label>Anonymous UID<input id="policy-uid" type="number" required min="1" max="4294967294" step="1" value="65534"></label>
+            <label>Anonymous GID<input id="policy-gid" type="number" required min="1" max="4294967294" step="1" value="65534"></label>
+            <label>Security flavor<select id="policy-security"><option value="sys">AUTH_SYS (trusted network only)</option><option value="krb5">Kerberos authentication</option><option value="krb5i">Kerberos integrity</option><option value="krb5p">Kerberos privacy</option></select></label>
+            <p class="policy-help">NFS permissions are independent of SMB grants. AUTH_SYS does not authenticate client IDs cryptographically. Kerberos requires separate provisioning that is not implemented yet.</p>
+          </fieldset>
+          <div class="policy-actions"><button id="policy-submit" class="refresh-button" type="submit">Validate proposal</button><button id="policy-clear" class="logout-button" type="button">Clear draft</button></div>
+        </form>
+        <p id="policy-status" class="snapshot-status" role="status" aria-live="polite">No proposal validated.</p>
+        <p id="policy-error" class="error-banner" role="alert" hidden></p>
+        <div id="policy-result" hidden>
+          <p class="pill pill-warning">NOT SAVED / NOT APPLIED / RUNTIME NOT VERIFIED</p>
+          <h3>Required before activation</h3><ul id="policy-requirements"></ul>
+          <details><summary>Candidate Samba share sections</summary><pre id="policy-samba"></pre></details>
+          <details><summary>Candidate NFS export table</summary><pre id="policy-nfs"></pre></details>
+        </div>
+      </section>
       <p class="error-banner" id="error-banner" role="alert" hidden>Snapshot unavailable. The service did not return usable diagnostics.</p>
       </div>
     </main>

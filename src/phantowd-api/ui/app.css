@@ -145,7 +145,23 @@ code { color: #ded5ff; font-family: ui-monospace, SFMono-Regular, Consolas, mono
 .footer { display: flex; justify-content: space-between; gap: 18px; padding: 26px 0 34px; margin-top: 38px; border-top: 1px solid var(--line); color: var(--quiet); font-size: 10px; }
 .footer-dot { padding-left: 5px; font-size: 8px; }
 
+.policy-panel { margin-top: 40px; }
+.policy-help { color: var(--muted); font-size: 12px; line-height: 1.65; }
+.policy-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin: 20px 0; padding: 16px; border: 1px solid var(--line); border-radius: 8px; }
+.policy-grid legend { padding: 0 8px; font-size: 13px; }
+.policy-grid label { display: flex; flex-direction: column; gap: 7px; min-width: 0; font-size: 12px; }
+.policy-grid input, .policy-grid select { width: 100%; min-height: 42px; padding: 10px; border: 1px solid var(--line); border-radius: 6px; color: var(--ink); background: var(--canvas); font: inherit; }
+.policy-grid small { color: var(--muted); line-height: 1.5; }
+.policy-grid input:focus-visible, .policy-grid select:focus-visible, .policy-panel summary:focus-visible { outline: 2px solid var(--violet); outline-offset: 3px; }
+.policy-actions { display: flex; flex-wrap: wrap; gap: 12px; }
+.policy-panel h3 { font-size: 14px; }
+.policy-panel li { color: var(--muted); font-size: 12px; line-height: 1.7; }
+.policy-panel details { margin-top: 15px; }
+.policy-panel summary { cursor: pointer; font-size: 13px; }
+.policy-panel pre { max-height: 340px; overflow: auto; padding: 14px; border-radius: 6px; background: var(--canvas); font-size: 12px; white-space: pre-wrap; overflow-wrap: anywhere; }
+
 @media (max-width: 780px) {
+  .policy-grid { grid-template-columns: minmax(0, 1fr); padding: 12px; }
   .app-shell { width: min(calc(100% - 36px), 620px); }
   .intro { align-items: start; flex-direction: column; padding-top: 45px; }
   .refresh-button { align-self: stretch; justify-content: center; }

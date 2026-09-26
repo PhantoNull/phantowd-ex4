@@ -3,9 +3,17 @@
 `Build` converts a validated [share configuration](../shareconfig/README.md)
 into deterministic share sections and a structured permission preview.
 It does not read files, create accounts, mount storage or start/reload Samba.
-There is no HTTP endpoint or browser control for it yet.
+The authenticated [preview API](../fileservice/README.md) exposes the candidate
+without applying it. The browser has a standalone one-share proposal form,
+not persistent share/account management or service controls.
 
 ## Contract
+
+The separate [QEMU integration fixture](../../../support/QEMU-FAST-TESTS.md)
+uses this renderer with actual Unix users, a disposable data volume and a
+separate loopback smbd. It exercises effective read/write/denied access, not
+just target parsing. It remains test-only; the renderer gains no filesystem,
+credential or process capabilities from that fixture.
 
 - The preview retains the desired revision and required volume IDs/UUIDs.
   Proposed mount anchors are `/srv/phantowd/volumes/<filesystem-uuid>`:

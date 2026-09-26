@@ -3,8 +3,9 @@
 This package validates a separate version-1 NFS policy against an exact
 [shared volume-configuration revision](../shareconfig/README.md) and builds a
 candidate exports table. It does not call `exportfs`, write `/etc/exports`,
-mount anything or start an NFS server. There is no NFS policy store or HTTP
-configuration endpoint yet.
+mount anything or start an NFS server. The authenticated
+[preview API](../fileservice/README.md) exposes the candidate without applying
+it. There is no NFS policy store or HTTP configuration-save endpoint yet.
 
 ## Schema and validation
 
