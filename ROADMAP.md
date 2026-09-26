@@ -211,8 +211,11 @@ Additional NAS models require their own board definitions and qualification.
    validate the new ARMv5 QEMU probes before claiming guest execution evidence.
 3. Extend restart/failure coverage to disposable persistent QEMU filesystems
    and define configuration recovery/migration before exposing writable APIs.
-4. Integrate Samba and NFS policy previews; qualify target parsing, effective
-   POSIX permissions and runtime volume binding before service activation.
+4. Connect the implemented authenticated SMB/NFS preview API to browser controls;
+   qualify effective POSIX permissions and runtime volume binding before service
+   activation. Local ARMv5 QEMU has exercised HTTP/HTTPS previews, target Samba
+   parsing and generated NFS exports on a disposable virtual disk; this does not
+   qualify arbitrary product configurations or physical EX4 storage.
 5. Integrate supervised SMB/NFS lifecycle using disposable QEMU disks.
 6. Advance network/controller/recovery evidence on a separately reviewed
    hardware schedule; use those results to qualify the software on EX4.

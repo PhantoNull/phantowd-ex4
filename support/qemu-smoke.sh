@@ -96,6 +96,10 @@ while [ "$attempt" -lt 120 ]; do
             echo "Missing NFS policy validation assertion" >&2
             exit 1
         fi
+        if ! grep -F 'PHANTOWD_FILE_SERVICE_PREVIEW_READY authenticated=true csrf=true applied=false scope=desired-policy-only' "$log_file" >/dev/null; then
+            echo "Missing authenticated file-service preview assertion" >&2
+            exit 1
+        fi
         if ! grep -F 'PHANTOWD_UI_READY mode=development read_only=true transport=guest-loopback-only' "$log_file" >/dev/null; then
             echo "Missing loopback-only dashboard assertion" >&2
             exit 1

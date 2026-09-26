@@ -6,16 +6,17 @@ contains an embedded, read-only browser dashboard over its diagnostic API.
 
 The [share configuration package](shareconfig/README.md) validates the first
 desired-policy schema for volumes, file-service users and share grants. It is
-exercised with synthetic fixtures in the QEMU self-test; no HTTP configuration
-endpoint or service activation is implemented yet. The Linux-only
+exercised with synthetic fixtures in the QEMU self-test and accepted by the
+authenticated [file-service preview API](fileservice/README.md). No HTTP
+configuration save or service activation is implemented yet. The Linux-only
 [share store](sharestore/README.md) adds validated revision transactions and
 failure handling, exercised only in temporary host/QEMU directories. The
 firmware does not yet provision persistent product configuration storage.
 
 The [Samba preview renderer](smbconfig/README.md) translates desired policy
 into deterministic share sections and required volume bindings. Its fixed
-QEMU fixture is checked with the target's `testparm`. This is not an HTTP
-configuration endpoint, account provisioner or service activation path.
+QEMU fixture is checked with the target's `testparm`. The preview endpoint
+does not provision accounts, persist configuration or activate services.
 
 The separate [NFS policy preview](nfsconfig/README.md) defines explicit client
 networks, access, security flavors and numeric ID squashing against an exact
@@ -100,11 +101,12 @@ and refuses non-Versatile PB machines. See the
 | `POST /api/v1/auth/login` | Authenticate administrator; strict Origin, bounded request, generic credential error and five-per-minute process limit |
 | `GET /api/v1/auth/session` | Authenticated session metadata and CSRF token |
 | `POST /api/v1/auth/logout` | Revoke session; requires configured Origin and CSRF header |
+| `POST /api/v1/file-services/preview` | Authenticated, Origin/CSRF-protected desired SMB/NFS preview; no save, runtime validation or activation |
 | `GET /api/v1/system` | Authenticated versioned JSON: observation time, kernel, architecture/GOARM, uptime, total/available memory, effective UID, development safety flags |
 | `GET /api/v1/storage` | Authenticated, sorted, bounded kernel block-node observations from sysfs: name, major/minor, 512-byte-sector capacity, read-only/removable flags, partition number, and whole-disk `serial_status` / `wwn_status` when applicable |
 | `GET /api/v1/arrays` | Authenticated, bounded Linux MD observations from `/proc/mdstat` and `/sys/class/block`: level, state, degraded/active counts, sync action/progress, and transient member names; partial sources never become an empty/healthy claim |
 | `GET /api/v1/mounts` | Authenticated, bounded snapshot of filesystems already mounted in this process's namespace, from `/proc/self/mountinfo`; returns mount point, filesystem type, device major/minor, and the read-only mount flag while omitting source strings and raw options |
-| Non-GET on a known route | `405`, `Allow: GET` |
+| Wrong method on a known route | `405`, route-specific `Allow` |
 | Query or body on a read route | `400` |
 | Unknown route | `404` |
 | Missing, oversized, malformed or inconsistent proc data | `503`, generic diagnostic error without raw data or file paths |
@@ -137,7 +139,11 @@ data-integrity checks; no periodic sampling is implemented yet.
 The server limits active handlers to eight, request headers to 8 KiB (Go's
 HTTP parser may permit implementation slop), and sets read/write/idle timeouts.
 Auth JSON is capped at 2 KiB, rejects duplicate/unknown fields and trailing
-values, and refuses content encodings. This is a bounded development
+values, and refuses content encodings. File-service preview JSON is capped at
+524,544 bytes, with separate 256 KiB nested-policy limits and one active
+preview per handler. It accepts neither content encoding nor query parameters.
+See the [preview contract](fileservice/README.md) for errors and prerequisites.
+This is a bounded development
 prototype, not a security-reviewed LAN service. The QEMU guest binds only to
 `127.0.0.1:8080`. The optional TLS/listener configuration is only a transport
 safety primitive; it does not qualify the API for deployment on an EX4 or make

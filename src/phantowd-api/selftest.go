@@ -86,6 +86,10 @@ func runSelfTest() error {
 	if err != nil {
 		return err
 	}
+	if err := exerciseQEMUFileServicePreview(client, "http://"+listenAddress); err != nil {
+		return err
+	}
+	fmt.Println("PHANTOWD_FILE_SERVICE_PREVIEW_READY authenticated=true csrf=true applied=false scope=desired-policy-only")
 	if err := exerciseQEMUTLS(); err != nil {
 		return err
 	}

@@ -2,8 +2,9 @@
 
 `shareconfig` defines the first version of the product's desired file-sharing
 policy. It validates volume references, file-service users, relative share
-paths and explicit `ro`/`rw` grants. It is not yet exposed through the HTTP API
-and it does not create users, mount volumes or configure services. The separate
+paths and explicit `ro`/`rw` grants. The authenticated
+[preview API](../fileservice/README.md) accepts this desired policy but does
+not save it, create users, mount volumes or configure services. The separate
 Linux [share store](../sharestore/README.md) persists validated revisions in an
 explicit private directory; no product storage location is provisioned yet.
 

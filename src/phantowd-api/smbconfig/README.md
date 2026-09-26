@@ -3,7 +3,8 @@
 `Build` converts a validated [share configuration](../shareconfig/README.md)
 into deterministic share sections and a structured permission preview.
 It does not read files, create accounts, mount storage or start/reload Samba.
-There is no HTTP endpoint or browser control for it yet.
+The authenticated [preview API](../fileservice/README.md) exposes the candidate
+without applying it. Browser controls are not implemented yet.
 
 ## Contract
 

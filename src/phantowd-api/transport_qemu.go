@@ -131,6 +131,9 @@ func exerciseQEMUTLS() error {
 		return errors.New("HTTPS account setup did not satisfy the TLS and cookie policy")
 	}
 
+	if err := exerciseQEMUFileServicePreview(client, transport.AllowedOrigin); err != nil {
+		return err
+	}
 	request, err = http.NewRequest(http.MethodGet, "https://"+address+authSessionPath, nil)
 	if err != nil {
 		return errors.New("cannot create HTTPS session request")

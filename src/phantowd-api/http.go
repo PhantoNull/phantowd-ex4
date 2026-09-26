@@ -27,6 +27,7 @@ func newHandlerWithArrays(collect collector, collectStorage storageSnapshotColle
 
 func newHandlerWithMounts(collect collector, collectStorage storageSnapshotCollector, collectArrays mdArraySnapshotCollector, collectMounts mountSnapshotCollector, auth *authController) http.Handler {
 	active := make(chan struct{}, 8)
+	preview := newFileServicePreviewHandler(auth)
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.Header().Set("Cache-Control", "no-store")
@@ -59,6 +60,10 @@ func newHandlerWithMounts(collect collector, collectStorage storageSnapshotColle
 		}
 		if auth != nil && auth.isAuthPath(r.URL.Path) {
 			auth.serve(w, r)
+			return
+		}
+		if r.URL.Path == fileServicePreviewPath {
+			preview(w, r)
 			return
 		}
 		if r.URL.Path != "/api/v1/system" && r.URL.Path != "/api/v1/storage" && r.URL.Path != "/api/v1/arrays" && r.URL.Path != "/api/v1/mounts" {
