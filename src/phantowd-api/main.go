@@ -78,16 +78,25 @@ func main() {
 	if err != nil {
 		log.Fatal("account state is unavailable or insecure")
 	}
-	readPolicy, closePolicy, err := openSharePolicyReader(os.Getenv("PHANTOWD_SHARE_STATE_DIR"))
-	if err != nil {
-		log.Fatal("share configuration storage is unavailable or insecure")
-	}
-	defer closePolicy()
 	transport, err := loadAPITransportConfig()
 	if err != nil {
 		log.Fatal("API transport configuration is invalid")
 	}
-	server := newConfiguredServer(newHandlerWithSharePolicy(func() (systemSnapshot, error) {
+	shareDirectory, serviceDirectory := os.Getenv("PHANTOWD_SHARE_STATE_DIR"), os.Getenv("PHANTOWD_SERVICE_STATE_DIR")
+	if validateServiceStateOptions(serviceDirectory, shareDirectory, transport) != nil {
+		log.Fatal("service configuration options are invalid")
+	}
+	readPolicy, closePolicy, err := openSharePolicyReader(shareDirectory)
+	if err != nil {
+		log.Fatal("share configuration storage is unavailable or insecure")
+	}
+	defer closePolicy()
+	serviceState, closeServiceState, err := openDevelopmentServiceState(serviceDirectory)
+	if err != nil {
+		log.Fatal("development service configuration storage is unavailable")
+	}
+	defer closeServiceState()
+	server := newConfiguredServer(newHandlerWithServiceState(func() (systemSnapshot, error) {
 		return collectSystem(os.DirFS("/proc"), time.Now())
 	}, func() (storageSnapshot, error) {
 		return collectStorage(os.DirFS("/sys"))
@@ -95,7 +104,7 @@ func main() {
 		return collectMDArrayInventory(os.DirFS("/proc"), os.DirFS("/sys"), time.Now())
 	}, func() (mountSnapshot, error) {
 		return collectMountInventory(os.DirFS("/proc"), time.Now())
-	}, newAuthController(accounts, transport.AllowedOrigin), readPolicy), transport)
+	}, newAuthController(accounts, transport.AllowedOrigin), readPolicy, serviceState), transport)
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
 	shutdownDone := make(chan struct{})

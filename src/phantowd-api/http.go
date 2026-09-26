@@ -30,9 +30,14 @@ func newHandlerWithMounts(collect collector, collectStorage storageSnapshotColle
 }
 
 func newHandlerWithSharePolicy(collect collector, collectStorage storageSnapshotCollector, collectArrays mdArraySnapshotCollector, collectMounts mountSnapshotCollector, auth *authController, loadPolicy sharePolicyLoader) http.Handler {
+	return newHandlerWithServiceState(collect, collectStorage, collectArrays, collectMounts, auth, loadPolicy, nil)
+}
+
+func newHandlerWithServiceState(collect collector, collectStorage storageSnapshotCollector, collectArrays mdArraySnapshotCollector, collectMounts mountSnapshotCollector, auth *authController, loadPolicy sharePolicyLoader, state *serviceStateBackend) http.Handler {
 	active := make(chan struct{}, 8)
 	preview := newFileServicePreviewHandler(auth)
 	readPolicy := newSharePolicyReadHandler(auth, loadPolicy)
+	serviceState := newServiceStateHandler(auth, state)
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.Header().Set("Cache-Control", "no-store")
@@ -73,6 +78,10 @@ func newHandlerWithSharePolicy(collect collector, collectStorage storageSnapshot
 		}
 		if r.URL.Path == sharePolicyPath {
 			readPolicy(w, r)
+			return
+		}
+		if r.URL.Path == serviceStatePath {
+			serviceState(w, r)
 			return
 		}
 		if r.URL.Path != "/api/v1/system" && r.URL.Path != "/api/v1/storage" && r.URL.Path != "/api/v1/arrays" && r.URL.Path != "/api/v1/mounts" {

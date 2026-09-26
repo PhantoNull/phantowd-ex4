@@ -48,4 +48,8 @@ pending refusal, corrupt-state preservation and another commit after restart.
 
 No hardware disk, NAND, account provisioning or running service is controlled
 by this library. Filesystem-qualified interruption tests, recovery, product
-state placement, migration and HTTP integration are still required.
+state placement and migration are still required. The API now has a separate
+[development-only HTTP adapter](../README.md#development-file-service-configuration-api)
+using this store. It is disabled by default, compiled only for Linux QEMU
+development, restricted to loopback and never connected to activation. This
+does not waive product state provisioning or power-loss qualification gates.

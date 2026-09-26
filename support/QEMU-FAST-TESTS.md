@@ -119,7 +119,8 @@ does not prove completeness of product disk discovery or WD compatibility.
 After the normal smoke, both the fast lane and clean Buildroot runner execute
 `support/qemu-state-reboot.sh`. It creates a new 16 MiB regular-file ext2 disk,
 starts two independent ARMv5 kernels and retains only that generated data disk
-between them. Each root disk is separately snapshotted; networking is absent.
+between them. Each root disk is separately snapshotted; no NIC is attached.
+Only guest loopback is raised for the HTTP/HTTPS state fixture.
 A dedicated PID-1 script skips all normal services and accepts only fixed seed
 and verify phases. Compiled machine/VPD/device/UUID checks precede the writable
 mount; the expected mounted identity is verified before touching configuration.
@@ -131,9 +132,18 @@ state, no automatic pending-file promotion, and a successful subsequent commit.
 Both phases ordinarily unmount before rebooting. Logs require both phase markers
 and kernel restart messages. A timeout or missing marker fails the lane.
 
+A separate directory holds combined SMB/NFS policy saved through the actual
+development HTTP adapter. Each phase starts ephemeral loopback HTTP and HTTPS
+servers, with a synthetic administrator session and test certificate. The
+fixture checks unauthenticated and missing-CSRF refusal, strict TLS cookie
+naming, full revision commits, replay conflicts, GET and explicit store reopen.
+The second kernel must recover the exact policy and commit subsequent revisions.
+`PHANTOWD_SERVICE_HTTP_READY` is required in the verification log. Nothing is
+forwarded to the host, and no file-service activation occurs in these boots.
+
 This demonstrates clean-reboot persistence on the generated ext2 filesystem,
 not crash/power-cut recovery, EX4 state provisioning, account credentials,
-schema migration or a writable management API. The temporary disk is discarded
+schema migration or a production-qualified writable management API. The temporary disk is discarded
 afterward. Clean CI retains `qemu-state-reboot.log` with its validation artifacts.
 
 ### Qualification limits

@@ -46,7 +46,7 @@ requirements. Existing analysis does not mean all firmware behavior is known.
 | Management | QEMU administrator setup/login, sessions, optional TLS transport, responsive diagnostics dashboard | Durable configuration, account lifecycle, certificate lifecycle, service controls and recovery |
 | Storage observation | Bounded sysfs block/VPD, Linux MD and existing-mount observations | Actual WD layout recognition, stable volume identities and qualified import |
 | Storage research | Regular-file GPT, ext and MD inspectors, component comparisons, synthetic inventory assessment | Representative sanitized WD metadata corpus and empty-media integration tests |
-| File services | Isolated QEMU SMB3/NFSv3 probes | Users, shares, permissions, exports, lifecycle and multi-client qualification |
+| File services | Strict SMB/NFS policy and previews, atomic revision store, opt-in development save API, isolated QEMU access probes | Product accounts/state provisioning, storage qualification, activation/loss lifecycle and multi-client qualification |
 | Updates | Host verification of signed release metadata, model/channel binding, payload hashes and version policy | Target installer, durable update state, rollback, key recovery and interruption testing |
 
 The [API contract](src/phantowd-api/README.md) and

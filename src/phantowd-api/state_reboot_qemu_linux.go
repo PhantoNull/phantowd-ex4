@@ -106,7 +106,10 @@ func exerciseQEMUStatePersistence(root, phase string) error {
 	if err := exerciseQEMUShareStatePersistence(root, phase); err != nil {
 		return err
 	}
-	return exerciseQEMUServiceStatePersistence(root, phase)
+	if err := exerciseQEMUServiceStatePersistence(root, phase); err != nil {
+		return err
+	}
+	return exerciseQEMUServiceHTTPPersistence(root, phase)
 }
 
 func exerciseQEMUShareStatePersistence(root, phase string) error {

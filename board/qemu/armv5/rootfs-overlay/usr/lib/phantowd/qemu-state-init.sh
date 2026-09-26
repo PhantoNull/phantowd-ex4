@@ -14,6 +14,9 @@ mount -t tmpfs -o mode=0755,nosuid,nodev tmpfs /run
 # guard passes. In particular, accidental shell invocation is rejected above.
 /usr/bin/phantowd-api --qemu-nfs-test=verify-disk
 trap 'echo PHANTOWD_STATE_ERROR; exec /sbin/reboot -f' EXIT
+# The harness has no NIC. Only guest loopback is raised for bounded HTTP(S)
+# transaction tests; no external interface, DHCP or listener is configured.
+/sbin/ip link set dev lo up
 phase=
 # Kernel arguments are intentionally whitespace-separated words, not lines.
 # shellcheck disable=SC2013

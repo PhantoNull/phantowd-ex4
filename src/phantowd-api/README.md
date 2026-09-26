@@ -8,8 +8,9 @@ non-mutating desired file-share preview form.
 The [share configuration package](shareconfig/README.md) validates the first
 desired-policy schema for volumes, file-service users and share grants. It is
 exercised with synthetic fixtures in the QEMU self-test and accepted by the
-authenticated [file-service preview API](fileservice/README.md). No HTTP
-configuration save or service activation is implemented yet. The Linux-only
+authenticated [file-service preview API](fileservice/README.md). A separate,
+explicitly enabled development-only HTTP save is described below; no service
+activation is implemented. The Linux-only
 [share store](sharestore/README.md) adds validated revision transactions and
 failure handling, exercised in temporary host directories and across two
 independent QEMU boots using a generated disk. An authenticated read endpoint
@@ -20,7 +21,61 @@ firmware does not yet provision persistent product configuration storage.
 The separate [atomic file-service store](fileservicestore/README.md) now keeps
 SMB and NFS desired policy in one strictly coherent revision. It shares the
 tested transaction engine with the original store but has a distinct format
-and filenames, no implicit migration, and no HTTP writer or service activation.
+and filenames, no implicit migration, and no service activation.
+
+## Development file-service configuration API
+
+`GET` and `PUT /api/v1/file-services/configuration` operate on the combined
+[SMB/NFS document](fileservicestore/README.md), not on live services. This
+backend is compiled only with `qemu && linux`, disabled by default, and requires
+explicit `PHANTOWD_SERVICE_STATE_DIR`. Other builds refuse that setting.
+Startup also refuses a non-loopback listener or simultaneous
+`PHANTOWD_SHARE_STATE_DIR`: the two formats must not become competing policy
+authorities. No default directory, automatic creation, migration, initialization
+or pending-file recovery is provided. Use only an existing private 0700 local
+directory owned by the API user, under trusted parents, on disposable test
+storage. The lifetime exclusive store lock prevents another cooperative writer.
+The normal QEMU daemon does not enable this backend, and the browser has no
+save control. Do not expose this development capability through a proxy or LAN.
+
+Both methods require an administrator session and the configured Host/scheme.
+GET accepts an absent Origin, but a supplied Origin must match. PUT requires
+the exact Origin, one valid `X-PhantoWD-CSRF` header and one JSON Content-Type
+(optionally UTF-8). Queries and content encodings are refused. PUT is bounded
+to 524,800 bytes, including unknown-length bodies, and uses the strict combined
+decoder. Authentication is rechecked after body parsing and before commit.
+Reads/writes share one non-queuing slot; contention receives 503 and
+`Retry-After: 1`, without blocking unrelated health requests. Kernel-stalled
+filesystem calls are not made cancellable by HTTP timeouts or this gate.
+
+GET returns schema 1, scope `development-stored-file-service-policy-only`,
+`initialized` and `configuration`; absent state is explicitly false/null,
+not an initialized empty policy. PUT submits the **complete next revision**:
+all four revision fields must match, and current revision must equal next
+minus one. Revision 1 initializes only an absent store. This is whole-document
+compare-and-swap, not a partial update or an automatic last-writer-wins save.
+Two submissions of the same revision cannot both commit; stale writes return
+409 `service_configuration_conflict`. No credential is part of this document.
+
+A successful PUT returns 200 with `saved: true` and the committed revision only
+after file and directory sync complete. Read/save responses always report
+`applied`, `runtime_validated` and `activation_available` as false. They never
+mount storage, change accounts/permissions, start daemons or install exports.
+Missing backend returns 503 `service_configuration_not_configured`; invalid
+policy returns 422; oversized input returns 413. Corruption/I/O failure returns
+503 `service_configuration_unavailable`, never an empty configuration. An
+uncertain rename/sync returns 503 `service_configuration_reconciliation_required`
+and poisons the store until explicit close/reopen and reconciliation. Paths,
+raw storage errors and configuration contents are not echoed in errors.
+
+After a timeout/lost reply, do not automatically retry: GET the stored revision
+and reconcile the **full document** with the attempted change. A revision alone
+does not identify which concurrent client's change committed. Reconciliation
+and recovery are not implemented in the UI. All responses are no-store.
+Host tests and the two-boot QEMU fixture exercise real loopback HTTP/HTTPS,
+authentication/CSRF refusals, stale-write refusal and store reopen. The fixture
+uses a synthetic session and test certificate; it does not qualify credential
+provisioning, power-loss durability, a product state volume or LAN exposure.
 
 ## Stored share-policy read contract
 
@@ -62,8 +117,9 @@ It validates the response shape, bounds and references for display (the server
 remains the policy validator), renders data as text, and clears old values on
 retry, logout or authentication loss. A cancelled or superseded request cannot
 repopulate cleared values. It does not load NFS policy, populate the independent
-proposal form or imply effective access. HTTP save, schema migration, product
-state provisioning and SMB/NFS activation remain separate work.
+proposal form or imply effective access. The separate development save API
+does not update this panel; schema migration, product state provisioning and
+SMB/NFS activation remain separate work.
 
 ## Runtime and development boundaries
 
@@ -159,8 +215,9 @@ and refuses non-Versatile PB machines. See the
   controls. This is not a full NAS management UI.
 - Reads fixed `/proc` diagnostics and basic `/sys/class/block` metadata inside
   the QEMU guest. It never opens a block device, reads disk contents, runs a
-  shell command, assembles or mounts storage, or performs configuration writes,
-  reboot, firmware install, or update operations.
+  shell command, assembles or mounts storage, or performs reboot, firmware
+  install or update operations. Configuration writes are limited to account
+  setup and the explicitly enabled development policy backend described above.
 - `flashable` and `hardware_validated` are always false; the target is explicitly
   `qemu-armv5`. These identifiers are not automatic hardware detection.
 
@@ -175,6 +232,9 @@ and refuses non-Versatile PB machines. See the
 | `GET /api/v1/auth/session` | Authenticated session metadata and CSRF token |
 | `POST /api/v1/auth/logout` | Revoke session; requires configured Origin and CSRF header |
 | `POST /api/v1/file-services/preview` | Authenticated, Origin/CSRF-protected desired SMB/NFS preview; no save, runtime validation or activation |
+| `GET /api/v1/shares/configuration` | Authenticated read of the optional original share-only store; not running-service state |
+| `GET /api/v1/file-services/configuration` | Authenticated combined desired policy; development backend only, uninitialized state remains explicit |
+| `PUT /api/v1/file-services/configuration` | Development-only, Origin/CSRF-protected full revision commit; never activation |
 | `GET /api/v1/system` | Authenticated versioned JSON: observation time, kernel, architecture/GOARM, uptime, total/available memory, effective UID, development safety flags |
 | `GET /api/v1/storage` | Authenticated, sorted, bounded kernel block-node observations from sysfs: name, major/minor, 512-byte-sector capacity, read-only/removable flags, partition number, and whole-disk `serial_status` / `wwn_status` when applicable |
 | `GET /api/v1/arrays` | Authenticated, bounded Linux MD observations from `/proc/mdstat` and `/sys/class/block`: level, state, degraded/active counts, sync action/progress, and transient member names; partial sources never become an empty/healthy claim |
