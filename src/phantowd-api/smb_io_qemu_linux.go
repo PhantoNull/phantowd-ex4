@@ -37,7 +37,7 @@ func qemuSMBPolicy() (smbconfig.Preview, error) {
 }
 
 // This guard is deliberately fixture-specific, not a product volume resolver.
-func guardQEMUSMBFixture() error {
+func guardQEMUDataVolume() error {
 	if runtime.GOARCH != "arm" || strings.Split(buildARMLevel(), ",")[0] != "5" || os.Geteuid() != 0 {
 		return errors.New("SMB fixture requires root inside ARMv5 QEMU")
 	}
@@ -81,7 +81,7 @@ func smbFixtureCommand(input string, name string, args ...string) ([]byte, error
 }
 
 func runQEMUSMBTest() (result error) {
-	if err := guardQEMUSMBFixture(); err != nil {
+	if err := guardQEMUDataVolume(); err != nil {
 		return err
 	}
 	preview, err := qemuSMBPolicy()

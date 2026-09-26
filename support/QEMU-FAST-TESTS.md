@@ -67,6 +67,16 @@ cross-protocol consistency, arbitrary migrations, missing-volume recovery or
 a production volume resolver. Retained guest-only logs/data disappear with
 the disposable QEMU snapshots.
 
+The same mounted disposable disk hosts a separate descriptor-guard fixture.
+It creates private bind mounts and exercises unique mount-ID/inode/device/type
+matching, safe descendant directory opens, symbolic-link and traversal
+refusal, nested bind refusal, read-only transitions and rejection of a second
+mount of the same disk/root over the anchor. After ordinary unmount it verifies
+that the guard does not accept the underlying system directory. All references
+and private mounts are released before the original data volume is unmounted.
+This is not filesystem UUID discovery or a complete service activation lease;
+see the [guard contract](../src/phantowd-api/mountguard/README.md).
+
 ## Evidence boundary
 
 This lane can exercise current userspace against the base's kernel and

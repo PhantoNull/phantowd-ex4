@@ -8,3 +8,7 @@ package main
 import "errors"
 
 func runQEMUSMBTest() error { return errors.New("SMB integration fixture requires Linux ARMv5 QEMU") }
+
+func runQEMUMountGuardTest() error {
+	return errors.New("mount guard fixture requires Linux ARMv5 QEMU")
+}

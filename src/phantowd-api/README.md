@@ -14,6 +14,12 @@ configuration save or service activation is implemented yet. The Linux-only
 failure handling, exercised only in temporary host/QEMU directories. The
 firmware does not yet provision persistent product configuration storage.
 
+The Linux [qualified-mount guard](mountguard/README.md) retains a previously
+verified mount using a unique mount ID and directory descriptors. It refuses
+symlinks, nested mount traversal, replaced anchors and unexpected read-only
+state. It does not discover filesystem UUIDs, establish WD compatibility or
+activate a share, and is not connected to a privileged HTTP operation.
+
 The [Samba preview renderer](smbconfig/README.md) translates desired policy
 into deterministic share sections and required volume bindings. Its fixed
 QEMU fixture is checked with the target's `testparm`. The preview endpoint

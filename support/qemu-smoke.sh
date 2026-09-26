@@ -104,6 +104,10 @@ while [ "$attempt" -lt 120 ]; do
             echo 'Missing generated Samba effective-access assertion' >&2
             exit 1
         fi
+        if ! grep -F 'PHANTOWD_MOUNT_GUARD_READY unique_mount_id=true descriptor_pinned=true symlinks_denied=true nested_mount_denied=true overmount_denied=true readonly_change_denied=true fallback_denied=true scope=qemu-fixture-only' "$log_file" >/dev/null; then
+            echo 'Missing descriptor/mount guard assertion' >&2
+            exit 1
+        fi
         if ! grep -F 'PHANTOWD_UI_READY mode=development read_only=true transport=guest-loopback-only' "$log_file" >/dev/null; then
             echo "Missing loopback-only dashboard assertion" >&2
             exit 1

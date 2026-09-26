@@ -218,7 +218,11 @@ Additional NAS models require their own board definitions and qualification.
    Samba grants with real Unix users (write/read/denial/ownership/symlink checks)
    and generated NFS exports on a disposable virtual disk; this does not
    qualify arbitrary product configurations or physical EX4 storage.
-5. Integrate supervised SMB/NFS lifecycle using disposable QEMU disks.
+5. Connect trusted filesystem-identity qualification to the implemented Linux
+   mount-descriptor guard, then integrate supervised SMB/NFS lifecycle using
+   disposable QEMU disks. The guard's expected tuple is not yet produced by a
+   qualified UUID/compatibility resolver; path-based service handoff and volume
+   loss/recovery remain unimplemented.
 6. Advance network/controller/recovery evidence on a separately reviewed
    hardware schedule; use those results to qualify the software on EX4.
 
