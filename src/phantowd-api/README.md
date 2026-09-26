@@ -364,6 +364,12 @@ releases. No production release or safe in-device updater exists yet.
 
 ### Native service identity registry
 
+The [SMB credential integration gate](SMB-CREDENTIAL-LIFECYCLE.md) documents an
+important pinned-Samba boundary: ordinary password replacement can re-enable a
+disabled account, while combining the disable option suppresses password setting.
+The isolated ARMv5 fixture characterizes actual authentication; no unsafe
+reset-then-disable sequence is authorized as a product credential backend.
+
 The [native identity authority](identityowner/README.md) now owns one configured
 reservation ledger and its journals under a lifetime lease. It serializes typed
 allocation/creation, freezes allocation behind incomplete work and refuses

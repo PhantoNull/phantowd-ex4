@@ -143,6 +143,10 @@ while [ "$attempt" -lt 120 ]; do
             echo 'QEMU multi-account identity router did not complete' >&2
             exit 1
         fi
+        if ! grep -F 'PHANTOWD_SMB_DISABLED_RESET_BOUNDARY legacy_reset_reenables=true combined_disable_skips_password=true product_path_approved=false scope=isolated-qemu-only' "$log_file" >/dev/null; then
+            echo 'Pinned Samba disabled-password behavior was not characterized' >&2
+            exit 1
+        fi
         if ! grep -F 'PHANTOWD_IDENTITY_OWNER_READY lease_exclusive=true pending_blocks_reservation=true after_reopen=true scope=isolated-qemu-only' "$log_file" >/dev/null; then
             echo 'QEMU native identity authority did not complete' >&2
             exit 1

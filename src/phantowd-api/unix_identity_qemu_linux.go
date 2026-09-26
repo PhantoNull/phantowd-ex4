@@ -262,6 +262,9 @@ func exerciseQEMUSecondIdentity(owner *identityowner.Owner, first serviceaccount
 			return err
 		}
 	}
+	if err := exerciseQEMUDisabledPasswordBoundary(second); err != nil {
+		return err
+	}
 	fmt.Println("PHANTOWD_IDENTITY_ROUTER_READY accounts=2 distinct_ids=true historical_unchanged=true unknown_denied=true scope=isolated-qemu-only")
 	return nil
 }

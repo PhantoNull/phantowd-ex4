@@ -124,6 +124,10 @@ verification and documented threat-model review before any LAN deployment.
   Multiple existing accounts now share one trusted authority router and socket;
   isolated ARMv5 checks cover two distinct identities and unchanged historical
   state, not maximum-account performance or panel account creation.
+  The [credential integration gate](src/phantowd-api/SMB-CREDENTIAL-LIFECYCLE.md)
+  now requires a disabled-preserving Samba password-update primitive: existing
+  CLI reset/disable sequences do not provide that boundary. Actual ARMv5
+  characterization must pass before implementing the narrow adapter and journal.
   A [cooperative authority owner](src/phantowd-api/identityowner/README.md) now
   holds the ledger/journal leases, serializes allocation and creation and refuses
   orphaned publication after process exit. It requires one configured root and
