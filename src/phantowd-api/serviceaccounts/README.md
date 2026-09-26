@@ -64,6 +64,10 @@ see the [credential lifecycle contract](../README.md#smb-credential-lifecycle-bo
 
 Production
 state provisioning, anti-rollback/recovery, full power-loss qualification,
-passdb lifecycle, qualified live-identity reconciliation, privileged execution, active
+passdb lifecycle, qualified live-identity reconciliation, privileged ownership/transport, active
 session revocation, UI integration and legacy migration remain unimplemented.
 Do not treat an enabled desired account as authentication readiness.
+
+The separate [typed creation executor](../identityexec/README.md) now provides
+the restricted Linux BusyBox primitive used behind the journal in QEMU. This
+does not close the production ownership/transport or credential lifecycle gaps.

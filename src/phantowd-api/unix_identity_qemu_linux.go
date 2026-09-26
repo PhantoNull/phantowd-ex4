@@ -9,8 +9,9 @@ import (
 	"context"
 	"errors"
 	"os"
-	"strconv"
+	"strings"
 
+	"github.com/PhantoNull/phantowd-ex4/phantowd-api/identityexec"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/identityprovision"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/serviceaccounts"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/unixidentity"
@@ -83,7 +84,12 @@ func exerciseQEMUUnixIdentity() (result error) {
 	if err := journal.Begin(r, a.ID, before); err != nil {
 		return err
 	}
-	backend := qemuNativeIdentityBackend{expected: a, groupCreated: &createdGroup, userCreated: &createdUser}
+	executor, err := identityexec.Open(a)
+	if err != nil {
+		return err
+	}
+	defer executor.Close()
+	backend := qemuNativeIdentityBackend{expected: a, executor: executor, groupCreated: &createdGroup, userCreated: &createdUser}
 	if err := journal.Step(context.Background(), 1, r, backend); err != nil {
 		return err
 	}
@@ -118,6 +124,34 @@ func exerciseQEMUUnixIdentity() (result error) {
 	if status, err := after.Assess(a); err != nil || status != unixidentity.Observed {
 		return errors.New("provisioned fixture identity does not match registry")
 	}
+	// Inspect only this generated guest account. Never return shadow bytes.
+	passwd, err := os.ReadFile("/etc/passwd")
+	if err != nil {
+		return err
+	}
+	shadow, err := os.ReadFile("/etc/shadow")
+	if err != nil {
+		return err
+	}
+	locked, noLogin := false, false
+	for _, line := range strings.Split(string(passwd), "\n") {
+		fields := strings.Split(line, ":")
+		if len(fields) == 7 && fields[0] == a.Name {
+			noLogin = fields[6] == "/sbin/nologin"
+			if _, err := os.Lstat(fields[5]); !errors.Is(err, os.ErrNotExist) {
+				return errors.New("native fixture unexpectedly created a home")
+			}
+		}
+	}
+	for _, line := range strings.Split(string(shadow), "\n") {
+		fields := strings.Split(line, ":")
+		if len(fields) == 9 && fields[0] == a.Name {
+			locked = strings.HasPrefix(fields[1], "!") || strings.HasPrefix(fields[1], "*")
+		}
+	}
+	if !locked || !noLogin {
+		return errors.New("native fixture login policy mismatch")
+	}
 	conflicting := a
 	conflicting.UID++
 	conflicting.GID++
@@ -139,6 +173,7 @@ func exerciseQEMUUnixIdentity() (result error) {
 // caller serializes this isolated scenario; only its exact new account is valid.
 type qemuNativeIdentityBackend struct {
 	expected                  serviceaccounts.Account
+	executor                  *identityexec.Executor
 	groupCreated, userCreated *bool
 }
 
@@ -149,14 +184,17 @@ func (b qemuNativeIdentityBackend) Observe(ctx context.Context) (unixidentity.Sn
 	if err := guardQEMUDataVolume(); err != nil {
 		return unixidentity.Snapshot{}, err
 	}
-	return unixidentity.ReadLocal("/etc", 0)
+	if b.executor == nil {
+		return unixidentity.Snapshot{}, errors.New("native executor absent")
+	}
+	return b.executor.Observe(ctx)
 }
 
 func (b qemuNativeIdentityBackend) CreateGroup(ctx context.Context, a serviceaccounts.Account) error {
 	if err := b.check(ctx, a); err != nil {
 		return err
 	}
-	_, err := smbFixtureCommand("", "/usr/sbin/addgroup", "-g", strconv.FormatUint(uint64(a.GID), 10), a.Name)
+	err := b.executor.CreateGroup(ctx, a)
 	if err == nil {
 		*b.groupCreated = true
 	}
@@ -167,7 +205,7 @@ func (b qemuNativeIdentityBackend) CreateUser(ctx context.Context, a serviceacco
 	if err := b.check(ctx, a); err != nil {
 		return err
 	}
-	_, err := smbFixtureCommand("", "/usr/sbin/adduser", "-D", "-H", "-s", "/sbin/nologin", "-G", a.Name, "-u", strconv.FormatUint(uint64(a.UID), 10), a.Name)
+	err := b.executor.CreateUser(ctx, a)
 	if err == nil {
 		*b.userCreated = true
 	}
@@ -178,7 +216,7 @@ func (b qemuNativeIdentityBackend) check(ctx context.Context, a serviceaccounts.
 	if err := ctx.Err(); err != nil {
 		return err
 	}
-	if a != b.expected || a.ID != "managed" || a.Name != "qpmanaged" || a.UID <= 1803 || a.UID > 1810 || a.GID != a.UID || a.State != serviceaccounts.Disabled || b.groupCreated == nil || b.userCreated == nil {
+	if a != b.expected || a.ID != "managed" || a.Name != "qpmanaged" || a.UID <= 1803 || a.UID > 1810 || a.GID != a.UID || a.State != serviceaccounts.Disabled || b.groupCreated == nil || b.userCreated == nil || b.executor == nil {
 		return errors.New("unexpected QEMU native identity")
 	}
 	return guardQEMUDataVolume()

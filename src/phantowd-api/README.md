@@ -364,6 +364,14 @@ releases. No production release or safe in-device updater exists yet.
 
 ### Native service identity registry
 
+The [typed Linux identity executor](identityexec/README.md) now connects the
+journal to fixed BusyBox group/user creation in the guarded ARMv5 fixture.
+It pins the firmware ELF, binds one disabled identity, rechecks local state,
+supervises bounded commands and accepts no arbitrary command/path/password.
+The generated guest verifies locked Unix login, nologin and no home creation.
+This is not yet a privileged RPC service or a panel account-creation endpoint;
+global writer authority, durable state and recovery remain integration gates.
+
 The [serviceaccounts registry](serviceaccounts/README.md) now provides strict
 native UID/private-GID reservations, disabled-by-default creation, permanent
 retired identities, revision-checked transitions and exact share-user binding.
