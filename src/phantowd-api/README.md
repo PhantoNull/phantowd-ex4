@@ -35,8 +35,9 @@ authorities. No default directory, automatic creation, migration, initialization
 or pending-file recovery is provided. Use only an existing private 0700 local
 directory owned by the API user, under trusted parents, on disposable test
 storage. The lifetime exclusive store lock prevents another cooperative writer.
-The normal QEMU daemon does not enable this backend, and the browser has no
-save control. Do not expose this development capability through a proxy or LAN.
+The normal QEMU daemon does not enable this backend. The browser manager below
+keeps save disabled until a successful explicit state read and complete preview.
+Do not expose this development capability through a proxy or LAN.
 
 Both methods require an administrator session and the configured Host/scheme.
 GET accepts an absent Origin, but a supplied Origin must match. PUT requires
@@ -70,8 +71,9 @@ raw storage errors and configuration contents are not echoed in errors.
 
 After a timeout/lost reply, do not automatically retry: GET the stored revision
 and reconcile the **full document** with the attempted change. A revision alone
-does not identify which concurrent client's change committed. Reconciliation
-and recovery are not implemented in the UI. All responses are no-store.
+does not identify which concurrent client's change committed. The UI supports
+this reread; poisoned-store reopen and administrative recovery remain external
+development operations, not UI controls. All responses are no-store.
 Host tests and the two-boot QEMU fixture exercise real loopback HTTP/HTTPS,
 authentication/CSRF refusals, stale-write refusal and store reopen. The fixture
 uses a synthetic session and test certificate; it does not qualify credential
@@ -211,8 +213,9 @@ and refuses non-Versatile PB machines. See the
 - `GET /` serves embedded HTML, CSS, JavaScript and ghost SVG assets with a
   restrictive Content Security Policy and no-store caching. It presents the
   first-account/login screen before showing diagnostics. The browser uses
-  `textContent` for observations and has no device or configuration mutation
-  controls. This is not a full NAS management UI.
+  `textContent` for observations. The optional development manager saves desired
+  configuration only; it has no device/service-activation controls. This is not
+  a full NAS management UI.
 - Reads fixed `/proc` diagnostics and basic `/sys/class/block` metadata inside
   the QEMU guest. It never opens a block device, reads disk contents, runs a
   shell command, assembles or mounts storage, or performs reboot, firmware
@@ -312,6 +315,45 @@ rendered as text, not HTML. Edits/clear invalidate prior and in-flight previews;
 logout/auth loss clears drafts. No local/session storage is used. Requests use
 the existing session and CSRF protection, ignore duplicate submission, and
 abort after ten seconds. The browser supplies the request Origin.
+
+### Development configuration manager
+
+A separate panel uses only the opt-in combined store; it never imports the
+original share-only state. The workflow is explicit load, fill the existing
+proposal form, preview an **addition to the whole saved policy**, review and
+save. Existing shares/exports/grants remain unchanged. A matching filesystem
+UUID reuses its volume reference, and a matching username reuses its account
+reference; neither operation proves presence or provisions an account. New
+project IDs are deterministic and avoid existing IDs. Duplicate share names
+and export UUIDs are refused locally; the server validates the entire result,
+including limits, overlap and policy compatibility, before a save is enabled.
+All component revisions advance together. Edit/remove controls remain work.
+
+The current complete document is available as text in an expandable section;
+the candidate review shows resulting SMB/NFS text and the intended revision.
+Changing/clearing form inputs invalidates the reviewed candidate. Any change
+while obtaining a save session prevents PUT; after PUT begins the immutable
+reviewed snapshot, not later form edits, is the attempted transaction. The
+server still performs independent validation and compare-and-swap. There is no
+automatic PUT, retry, merge, activation or local/session browser storage.
+
+Any failed or unreadable PUT response blocks another save until an explicit
+Load / reconcile. The full attempted document is compared with the new read,
+ignoring object-key order, not using revision alone. A match confirms the
+desired state is currently saved; a mismatch displays current state and asks
+for a fresh review, without claiming the attempt never committed historically.
+If reconciliation itself fails, saves remain blocked. Logout/auth loss clears
+documents and aborts local requests; cancelling a request cannot undo a server
+commit. A new session must reread state. Late responses cannot restore cleared
+configuration. Network errors never include raw backend response contents.
+
+DOM tests exercise addition/preservation, reference reuse, request/CSRF shape,
+lost replies, conflicts, malformed responses and auth-loss cancellation. These
+use mocked fetch responses; separate QEMU tests exercise the real API/store over
+HTTP/HTTPS. ARMv5 smoke verifies embedded assets, not browser JavaScript
+execution. Visual and assistive-technology testing remain required. The host
+visual-fixture server intentionally reports this backend as unavailable and
+does not emulate saves or validate policy.
 
 ### Test commands
 

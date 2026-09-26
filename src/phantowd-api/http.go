@@ -143,7 +143,7 @@ func newHandlerWithServiceState(collect collector, collectStorage storageSnapsho
 
 func isDashboardPath(path string) bool {
 	switch path {
-	case "/", "/assets/app.css", "/assets/app.js", "/assets/ghost.svg":
+	case "/", "/assets/app.css", "/assets/app.js", "/assets/service-policy.js", "/assets/ghost.svg":
 		return true
 	default:
 		return false
@@ -191,6 +191,8 @@ func dashboardAsset(path string) (string, string) {
 		return "ui/app.css", "text/css; charset=utf-8"
 	case "/assets/app.js":
 		return "ui/app.js", "text/javascript; charset=utf-8"
+	case "/assets/service-policy.js":
+		return "ui/service-policy.js", "text/javascript; charset=utf-8"
 	case "/assets/ghost.svg":
 		return "ui/ghost.svg", "image/svg+xml"
 	default:

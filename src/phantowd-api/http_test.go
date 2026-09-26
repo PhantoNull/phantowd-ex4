@@ -169,6 +169,7 @@ func TestDashboardServesReadOnlyDevelopmentUIAndAssets(t *testing.T) {
 		{"/", "text/html; charset=utf-8", []string{"PhantoWD", "Development image.", "read-only", "profile-notice-title"}},
 		{"/assets/app.css", "text/css; charset=utf-8", []string{"@media", "prefers-reduced-motion"}},
 		{"/assets/app.js", "text/javascript; charset=utf-8", []string{"/api/v1/system", "/api/v1/storage", "/api/v1/arrays", "/api/v1/mounts", "textContent"}},
+		{"/assets/service-policy.js", "text/javascript; charset=utf-8", []string{"sameServiceDocument", "saveServiceAddition"}},
 	} {
 		t.Run(test.path, func(t *testing.T) {
 			response := httptest.NewRecorder()

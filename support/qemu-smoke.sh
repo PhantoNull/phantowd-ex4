@@ -133,7 +133,7 @@ while [ "$attempt" -lt 120 ]; do
             echo 'Missing ARMv5 competing-signature refusal assertions' >&2
             exit 1
         fi
-        if ! grep -F 'PHANTOWD_UI_READY mode=development read_only=true transport=guest-loopback-only' "$log_file" >/dev/null; then
+        if ! grep -F 'PHANTOWD_UI_READY mode=development assets_verified=true activation=false transport=guest-loopback-only' "$log_file" >/dev/null; then
             echo "Missing loopback-only dashboard assertion" >&2
             exit 1
         fi

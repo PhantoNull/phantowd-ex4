@@ -110,6 +110,7 @@ const assets = new Map([
   ["/", ["index.html", "text/html; charset=utf-8"]],
   ["/assets/app.css", ["app.css", "text/css; charset=utf-8"]],
   ["/assets/app.js", ["app.js", "text/javascript; charset=utf-8"]],
+  ["/assets/service-policy.js", ["service-policy.js", "text/javascript; charset=utf-8"]],
   ["/assets/ghost.svg", ["ghost.svg", "image/svg+xml"]],
 ]);
 
@@ -137,6 +138,11 @@ const server = createServer(async (request, response) => {
   if (url.pathname === "/api/v1/shares/configuration") {
     response.writeHead(200, { "Content-Type": "application/json" });
     response.end(JSON.stringify(savedFixture));
+    return;
+  }
+  if (url.pathname === "/api/v1/file-services/configuration") {
+    response.writeHead(503, { "Content-Type": "application/json" });
+    response.end('{"error":"service_configuration_not_configured"}\n');
     return;
   }
   if (["/api/v1/system", "/api/v1/storage", "/api/v1/arrays", "/api/v1/mounts"].includes(url.pathname)) {

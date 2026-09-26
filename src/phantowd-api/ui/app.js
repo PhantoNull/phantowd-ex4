@@ -391,6 +391,7 @@ function setAuthError(message) {
 }
 
 function showAuthUnavailable() {
+  clearServicePolicy();
   clearSavedPolicy();
   clearPolicyDraft();
   byId("auth-panel").hidden = false;
@@ -428,6 +429,7 @@ async function updateAuthView({ refresh = true, notice = "" } = {}) {
   }
 
   dashboard.hidden = true;
+  clearServicePolicy();
   clearSavedPolicy();
   clearPolicyDraft();
   logout.hidden = true;
@@ -501,6 +503,7 @@ byId("auth-form").addEventListener("submit", async (event) => {
 });
 
 byId("logout").addEventListener("click", async () => {
+  clearServicePolicy();
   clearSavedPolicy();
   clearPolicyDraft();
   const logout = byId("logout");
@@ -541,6 +544,7 @@ const requirementLabels = {
 };
 
 function invalidatePolicyPreview(message = "Draft changed. Validate again to see a current preview.") {
+  invalidateServiceDraft();
   policyGeneration++;
   byId("policy-result").hidden = true;
   byId("policy-error").hidden = true;
@@ -583,7 +587,7 @@ function buildPolicyProposal() {
   return { shares, nfs };
 }
 
-function renderPolicyPreview(preview) {
+function validatePolicyPreview(preview) {
   if (preview?.schema_version !== 1 || preview.scope !== "desired-policy-only" ||
       ["persisted", "applied", "runtime_validated", "activation_available"].some((key) => preview[key] !== false) ||
       !Array.isArray(preview.requirements) || preview.requirements.length > 16 ||
@@ -593,6 +597,10 @@ function renderPolicyPreview(preview) {
       preview.samba.samba_share_sections.length > 65536 || preview.nfs.exports_table.length > 65536) {
     throw new Error("The API returned an unsupported preview. Nothing was applied.");
   }
+}
+
+function renderPolicyPreview(preview) {
+  validatePolicyPreview(preview);
   for (const requirement of preview.requirements) {
     const item = document.createElement("li");
     item.textContent = requirementLabels[requirement];
@@ -787,6 +795,9 @@ async function loadSavedPolicy() {
 }
 
 byId("saved-load").addEventListener("click", loadSavedPolicy);
+byId("service-load").addEventListener("click", loadServicePolicy);
+byId("service-prepare").addEventListener("click", prepareServiceAddition);
+byId("service-save").addEventListener("click", saveServiceAddition);
 byId("policy-form").addEventListener("submit", submitPolicyProposal);
 byId("policy-form").addEventListener("input", () => { invalidatePolicyPreview(); syncPolicyNFS(); });
 byId("policy-form").addEventListener("change", () => { invalidatePolicyPreview(); syncPolicyNFS(); });

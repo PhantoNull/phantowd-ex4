@@ -11,10 +11,11 @@ import { createContext, Script } from "node:vm";
 
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
 const source = await readFile(join(repoRoot, "src/phantowd-api/ui/app.js"), "utf8");
+const serviceSource = await readFile(join(repoRoot, "src/phantowd-api/ui/service-policy.js"), "utf8");
 const markup = await readFile(join(repoRoot, "src/phantowd-api/ui/index.html"), "utf8");
 const markupIDs = [...markup.matchAll(/\bid="([^"]+)"/g)].map((match) => match[1]);
 assert.equal(new Set(markupIDs).size, markupIDs.length, "duplicate HTML IDs");
-for (const match of source.matchAll(/(?:byId|setText)\("([^"]+)"/g)) {
+for (const match of (source + serviceSource).matchAll(/(?:byId|setText)\("([^"]+)"/g)) {
   assert.ok(markupIDs.includes(match[1]), `script references missing HTML ID ${match[1]}`);
 }
 assert.match(markup, /id="policy-nfs-fields"[^>]*hidden disabled/);
@@ -126,6 +127,7 @@ async function createHarness(respond) {
     "profile-notice-title", "profile-notice-copy", "profile-notice-mark",
     "observed-at", "device-count", "device-list", "array-count", "array-list", "mount-count", "mount-list",
     ...["load", "status", "result", "summary", "shares"].map((id) => `saved-${id}`),
+    ...["load", "prepare", "save", "status", "current", "summary", "document", "review", "change", "samba", "nfs"].map((id) => `service-${id}`),
     ...["form", "submit", "clear", "result", "error", "status", "requirements", "samba", "nfs", "nfs-fields", "uuid", "name", "path", "user", "smb-access", "nfs-enabled", "export-id", "network", "nfs-access", "squash", "uid", "gid", "security"].map((id) => `policy-${id}`),
   ];
   const elements = Object.fromEntries(ids.map((id) => [id, new FixtureElement()]));
@@ -159,6 +161,7 @@ async function createHarness(respond) {
     setTimeout,
     clearTimeout,
   });
+  new Script(serviceSource).runInContext(context);
   new Script(source).runInContext(context);
   await new Promise((resolve) => setImmediate(resolve));
   return { context, elements, requests };
@@ -582,6 +585,185 @@ async function testSavedPolicyLateRepliesAndAuthLoss() {
   }
 }
 
+function serviceReply(configuration) {
+  return { schema_version: 1, scope: "development-stored-file-service-policy-only", initialized: configuration !== null,
+    configuration, applied: false, runtime_validated: false, activation_available: false };
+}
+
+function serviceSaved(revision) {
+  return { schema_version: 1, scope: "development-stored-file-service-policy-only", revision, saved: true,
+    applied: false, runtime_validated: false, activation_available: false };
+}
+
+async function serviceHarness(stateResponse, previewResponse = () => jsonResponse(policyFixture()), sessionResponse = () => jsonResponse({ csrf_token: "fixture-only" })) {
+  return createHarness(async (path, options) => {
+    if (path === "/api/v1/file-services/configuration") return stateResponse(options);
+    if (path === "/api/v1/auth/status") return jsonResponse({ authenticated: true });
+    if (path === "/api/v1/auth/session") return sessionResponse();
+    if (path === "/api/v1/file-services/preview") return previewResponse(options);
+    if (path === "/api/v1/system") return jsonResponse(systemFixture());
+    if (path === "/api/v1/storage") return jsonResponse({ observations: [] });
+    if (path === "/api/v1/arrays") return jsonResponse(arraysFixture());
+    if (path === "/api/v1/mounts") return jsonResponse(mountsFixture());
+    throw new Error(`Unexpected request ${path}`);
+  });
+}
+
+async function testServiceAddAndPreserve() {
+  let saved = null;
+  const { context, elements, requests } = await serviceHarness((options) => {
+    if (options.method === "PUT") { saved = JSON.parse(options.body); return jsonResponse(serviceSaved(saved.revision)); }
+    return jsonResponse(serviceReply(saved));
+  });
+  await context.saveServiceAddition();
+  assert.equal(requests.some(({ options }) => options?.method === "PUT"), false);
+  await context.loadServicePolicy();
+  assert.match(elements["service-summary"].textContent, /no configuration initialized/);
+  fillPolicy(elements);
+  await context.prepareServiceAddition();
+  assert.equal(elements["service-save"].disabled, false);
+  assert.equal(elements["service-review"].hidden, false);
+  assert.equal(requests.some(({ options }) => options?.method === "PUT"), false, "preview must not save");
+  assert.match(elements["service-samba"].textContent, /<script>/, "render as text only");
+  await context.saveServiceAddition();
+  assert.equal(saved.revision, 1);
+  assert.equal(saved.nfs.volume_revision, 1);
+  assert.equal(saved.shares.volumes.length, 1);
+  const previous = structuredClone(saved);
+  assert.match(elements["service-status"].textContent, /confirmed saved.*No services were activated/);
+  elements["policy-name"].value = "Comics"; elements["policy-path"].value = "comics";
+  elements["policy-export-id"].value = "bbbbbbbb-bbbb-cccc-dddd-eeeeeeeeeeee";
+  context.invalidatePolicyPreview();
+  await context.prepareServiceAddition(); await context.saveServiceAddition();
+  assert.equal(saved.revision, 2);
+  assert.deepEqual(saved.shares.shares[0], previous.shares.shares[0]);
+  assert.deepEqual(saved.nfs.exports[0], previous.nfs.exports[0]);
+  assert.equal(saved.shares.volumes.length, 1, "reuse same UUID");
+  assert.equal(saved.shares.users.length, 1, "reuse named account reference");
+  assert.equal(saved.shares.shares.length, 2);
+  assert.notEqual(saved.shares.shares[0].id, saved.shares.shares[1].id);
+  await context.prepareServiceAddition();
+  assert.match(elements["service-status"].textContent, /already exists/);
+  assert.equal(elements["service-save"].disabled, true);
+  assert.equal(requests.filter(({ options }) => options?.method === "PUT").length, 2);
+  for (const { options } of requests.filter(({ options }) => options?.method === "PUT")) {
+    assert.equal(options.headers["X-PhantoWD-CSRF"], "fixture-only");
+    assert.equal(options.credentials, "same-origin");
+    assert.equal(options.cache, "no-store");
+  }
+}
+
+async function testServiceUncertainAndConflict() {
+  for (const result of ["lost-but-saved", "lost-not-saved", "conflict", "invalid-success", "unavailable"]) {
+    let saved = null;
+    const { context, elements, requests } = await serviceHarness((options) => {
+      if (options.method === "PUT") {
+        if (result === "lost-but-saved") saved = JSON.parse(options.body);
+        if (result === "conflict") return jsonResponse({}, 409);
+        if (result === "unavailable") return jsonResponse({}, 503);
+        if (result === "invalid-success") return jsonResponse({ saved: true });
+        return new Error("private transport detail");
+      }
+      // Change object-key order; the full structure, not raw serialization, matters.
+      return jsonResponse(serviceReply(saved === null ? null : Object.fromEntries(Object.entries(saved).reverse())));
+    });
+    fillPolicy(elements); await context.loadServicePolicy(); await context.prepareServiceAddition(); await context.saveServiceAddition();
+    assert.match(elements["service-status"].textContent, result === "conflict" ? /Revision conflict.*refused/ : /not confirmed.*may have committed/);
+    assert.equal(elements["service-save"].disabled, true);
+    assert.equal(elements["service-prepare"].disabled, true);
+    await context.saveServiceAddition(); await context.prepareServiceAddition();
+    assert.equal(requests.filter(({ options }) => options?.method === "PUT").length, 1);
+    await context.loadServicePolicy();
+    assert.match(elements["service-status"].textContent, result === "lost-but-saved" ? /complete attempted configuration.*confirmed saved/ : /differs.*not retried/);
+    assert.equal(requests.filter(({ options }) => options?.method === "PUT").length, 1);
+    assert.equal(elements["service-prepare"].disabled, false);
+  }
+  // Same revision with different content is never confirmation.
+  const { context, elements } = await serviceHarness(() => jsonResponse(serviceReply(null)));
+  fillPolicy(elements);
+  const proposal = context.buildPolicyProposal();
+  const a = context.buildServiceAddition(null, proposal);
+  const b = structuredClone(a); b.shares.shares[0].name = "Different";
+  assert.equal(context.sameServiceDocument(a, b), false);
+}
+
+async function testServiceRefusalsAndInvalidation() {
+  for (const reply of [jsonResponse({}, 503), jsonResponse(serviceReply({ revision: 1 })), new Error("private failure")]) {
+    const { context, elements, requests } = await serviceHarness(() => reply);
+    fillPolicy(elements); await context.loadServicePolicy(); await context.prepareServiceAddition(); await context.saveServiceAddition();
+    assert.equal(elements["service-current"].hidden, true);
+    assert.equal(elements["service-save"].disabled, true);
+    assert.equal(requests.some(({ options }) => options?.method === "PUT"), false);
+    assert.doesNotMatch(elements["service-status"].textContent, /private failure/);
+  }
+  const { context, elements, requests } = await serviceHarness(() => jsonResponse(serviceReply(null)), () => jsonResponse({}, 422));
+  fillPolicy(elements); await context.loadServicePolicy(); await context.prepareServiceAddition(); await context.saveServiceAddition();
+  assert.equal(elements["service-save"].disabled, true);
+  assert.equal(requests.some(({ options }) => options?.method === "PUT"), false);
+  for (const boundary of ["preview", "save-session", "save-reply", "load"]) {
+    let release, delay = false;
+    const pending = new Promise((resolve) => { release = resolve; });
+    const h = await serviceHarness((options) => {
+      if (boundary === "load" && delay) return pending;
+      if (options.method === "PUT") return boundary === "save-reply" ? pending : jsonResponse(serviceSaved(1));
+      return jsonResponse(serviceReply(null));
+    }, () => boundary === "preview" ? pending : jsonResponse(policyFixture()),
+    () => boundary === "save-session" && delay ? pending : jsonResponse({ csrf_token: "fixture-only" }));
+    fillPolicy(h.elements); await h.context.loadServicePolicy();
+    if (boundary !== "preview") await h.context.prepareServiceAddition();
+    delay = true;
+    const operation = boundary === "preview" ? h.context.prepareServiceAddition() : boundary === "load" ? h.context.loadServicePolicy() : h.context.saveServiceAddition();
+    await new Promise((resolve) => setImmediate(resolve));
+    // Auth loss must cancel and prevent a late response from restoring sensitive data.
+    h.context.showAuthUnavailable();
+    release(jsonResponse(boundary === "preview" ? policyFixture() : boundary === "save-session" ? { csrf_token: "fixture-only" } : boundary === "load" ? serviceReply(null) : serviceSaved(1)));
+    await operation;
+    assert.equal(h.elements["service-review"].hidden, true);
+    assert.equal(h.elements["service-current"].hidden, true);
+    assert.equal(h.elements["service-document"].textContent, "");
+    assert.equal(h.elements["service-save"].disabled, true);
+    assert.equal(h.requests.filter(({ options }) => options?.method === "PUT").length, boundary === "save-reply" ? 1 : 0);
+  }
+}
+
+async function testServiceFormEditsAndReconcileFailure() {
+  for (const phase of ["preview", "save-session"]) {
+    let release, delay = false;
+    const pending = new Promise((resolve) => { release = resolve; });
+    const { context, elements, requests } = await serviceHarness(() => jsonResponse(serviceReply(null)),
+      () => phase === "preview" && delay ? pending : jsonResponse(policyFixture()),
+      () => phase === "save-session" && delay ? pending : jsonResponse({ csrf_token: "fixture-only" }));
+    fillPolicy(elements); await context.loadServicePolicy();
+    if (phase === "save-session") await context.prepareServiceAddition();
+    delay = true;
+    const operation = phase === "preview" ? context.prepareServiceAddition() : context.saveServiceAddition();
+    await new Promise((resolve) => setImmediate(resolve));
+    elements["policy-name"].value = "Edited during request";
+    context.invalidatePolicyPreview();
+    release(jsonResponse(phase === "preview" ? policyFixture() : { csrf_token: "fixture-only" }));
+    await operation;
+    assert.equal(elements["service-save"].disabled, true);
+    assert.equal(elements["service-review"].hidden, true);
+    assert.match(elements["service-status"].textContent, /Form changed/);
+    assert.equal(requests.some(({ options }) => options?.method === "PUT"), false);
+  }
+  let failed = false;
+  const { context, elements, requests } = await serviceHarness((options) => {
+    if (options.method === "PUT") { failed = true; return new Error("lost response"); }
+    return failed ? jsonResponse({}, 503) : jsonResponse(serviceReply(null));
+  });
+  fillPolicy(elements); await context.loadServicePolicy(); await context.prepareServiceAddition(); await context.saveServiceAddition();
+  await context.loadServicePolicy(); await context.prepareServiceAddition(); await context.saveServiceAddition();
+  assert.equal(elements["service-save"].disabled, true);
+  assert.equal(elements["service-prepare"].disabled, true);
+  assert.equal(elements["service-current"].hidden, true);
+  assert.equal(requests.filter(({ options }) => options?.method === "PUT").length, 1);
+}
+
+await testServiceAddAndPreserve();
+await testServiceUncertainAndConflict();
+await testServiceRefusalsAndInvalidation();
+await testServiceFormEditsAndReconcileFailure();
 await testSavedPolicyStatesAndSafeRendering();
 await testSavedPolicyMalformedReplies();
 await testSavedPolicyLateRepliesAndAuthLoss();
