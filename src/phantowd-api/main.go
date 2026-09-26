@@ -78,6 +78,7 @@ func main() {
 	if err != nil {
 		log.Fatal("account state is unavailable or insecure")
 	}
+	defer accounts.Close()
 	transport, err := loadAPITransportConfig()
 	if err != nil {
 		log.Fatal("API transport configuration is invalid")

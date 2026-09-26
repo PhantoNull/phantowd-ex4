@@ -37,7 +37,7 @@ func exerciseQEMUServiceHTTP(directory string, expected, next uint64, secure boo
 		srv.TLS = &tls.Config{MinVersion: tls.VersionTLS12}
 	}
 	origin := scheme + "://" + srv.Listener.Addr().String()
-	auth := newAuthController(&accountStore{admin: &storedAccount{Username: "fixture-admin"}}, origin)
+	auth := newAuthController(&accountStore{backend: qemuStaticAccount{}}, origin)
 	token, session, err := auth.sessions.create(time.Now())
 	if err != nil {
 		return err

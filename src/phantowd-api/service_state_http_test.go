@@ -228,7 +228,7 @@ func TestServiceStateGateAndAuthRecheck(t *testing.T) {
 	}
 	// Expire the account during body reading; the initial authorization passed.
 	r = serviceWriteRequest(auth, cookie, serviceConfigFixture(1))
-	r.Body = &callbackBody{ReadCloser: r.Body, callback: func() { auth.accounts.mu.Lock(); auth.accounts.admin = nil; auth.accounts.mu.Unlock() }}
+	r.Body = &callbackBody{ReadCloser: r.Body, callback: func() { _ = auth.accounts.Close() }}
 	h = newHandlerWithServiceState(nil, nil, nil, nil, auth, nil, backend)
 	w = httptest.NewRecorder()
 	h.ServeHTTP(w, r)

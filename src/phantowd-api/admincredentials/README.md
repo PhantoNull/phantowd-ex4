@@ -1,10 +1,11 @@
 # Administrator credential transactions
 
-This package is the Linux persistence prerequisite for panel password changes.
-It is **not yet the running API's account backend**: the existing setup/login
-flow still uses its setup-only version-1 writer. Do not open both writers on
-the same directory. No password-change endpoint, reset, recovery UI, default
-password, Unix/Samba account operation or hardware mutation is added here.
+This package is the running Linux API's administrator persistence backend and
+the prerequisite for panel password changes. The former setup-only file writer
+has been removed. Do not run older API binaries alongside this backend on the
+same directory: they do not honor its lifetime lock. No password-change endpoint,
+reset, recovery UI, default password, Unix/Samba account operation or hardware
+mutation is added here.
 
 ## Contract
 
@@ -33,16 +34,36 @@ password, Unix/Samba account operation or hardware mutation is added here.
   A successful reopen validates/syncs the current file; it never promotes a
   pending file or repairs corrupt evidence automatically.
 
-## Controller integration still required
+## Controller integration and remaining lifecycle
 
-The store accepts an already-derived verifier, not authorization. The future
-adapter must verify the current password against a particular loaded revision,
-enforce bounded KDF work, commit that revision, and coordinate session revocation
-with login issuance. An uncertain commit must deny authentication/authorization,
-not use an old in-memory account. Existing sessions must not bypass that state.
+The adapter owns the store until shutdown. Initialization writes v2; existing
+v1 accounts remain readable without content rewrites. Each account check loads
+validated state, with no verifier cache. Login rechecks its complete snapshot
+after bounded KDF work and session issuance makes a final account check under
+the adapter lock. Existing sessions do not bypass unavailable credential state.
+An observed storage error, uncertain initialization, invalid document or loss of
+previously configured state latches unavailability for the process lifetime.
+Putting a file back cannot revive its sessions or enable enrollment. Explicit
+process restart reopens/reconciles storage and starts with an empty session map.
+This is refusal behavior, not an automated recovery procedure.
+The latch is process-local: after a restart an absent file in an otherwise
+valid empty directory is still indistinguishable from first enrollment. A
+durable product ownership/bootstrap authority is required before deployment;
+this prototype must not claim to prevent re-enrollment after total state loss.
+
+The store accepts an already-derived verifier, not authorization. A future
+password-change endpoint must verify the current password against a particular
+revision, commit that revision, and atomically coordinate session revocation
+with login issuance. The adapter currently exposes initialization/read only;
+the store's replacement method is exercised by isolated fixtures, not HTTP.
 Lost responses need explicit reconciliation, not a blind retry with a newer
 revision. Recovery, product state provisioning and downgrade rules remain open;
 the old version-1 reader deliberately rejects version 2.
+
+Non-Linux binaries refuse persistent administrator state. Host HTTP/TLS tests
+on those platforms explicitly inject a test-only memory backend; they do not
+prove filesystem durability. Actual Linux/ARMv5 runs use this store, without a
+memory fallback. The normal QEMU profile still chooses volatile `/run` state.
 
 Do not conflate atomic publication with blackout qualification. Store errors
 do not guarantee that a write did not happen. An explicit close/reopen can
@@ -64,3 +85,7 @@ containing the obsolete verifier, then requires the committed replacement to
 survive reboot: the old password fails, the new one succeeds, stale writes and
 reset attempts fail. This is store/KDF evidence, not an HTTP password-change
 flow, power-loss testing, EX4 state-volume qualification or a flashable image.
+Its second boot now additionally enters the real API account adapter and login/
+session handlers: obsolete-password login fails and the retained replacement
+issues a usable panel session. These are handler-dispatch tests; the separate
+standard QEMU smoke covers real HTTP/TLS and API-process restart.

@@ -30,6 +30,12 @@ import (
 // listener to exercise the configured HTTPS path on the ARMv5 guest. Its key
 // and certificate exist only under the test process's temporary directory.
 func exerciseQEMUTLS() error {
+	return exerciseQEMUTLSWithAccountFactory(openAccountStore)
+}
+
+// The non-Linux host test injects memory-only credentials. Actual ARMv5 runs
+// always enter through exerciseQEMUTLS and use the production Linux adapter.
+func exerciseQEMUTLSWithAccountFactory(openAccounts func(string) (*accountStore, error)) error {
 	directory, err := os.MkdirTemp("", "phantowd-qemu-tls-")
 	if err != nil {
 		return errors.New("cannot create temporary TLS test state")
@@ -71,11 +77,12 @@ func exerciseQEMUTLS() error {
 		listener.Close()
 		return errors.New("cannot create temporary TLS account state")
 	}
-	accounts, err := openAccountStore(stateDirectory)
+	accounts, err := openAccounts(stateDirectory)
 	if err != nil {
 		listener.Close()
 		return errors.New("cannot open temporary TLS account state")
 	}
+	defer accounts.Close()
 	server := newConfiguredServer(newHandler(nil, nil, newAuthController(accounts, transport.AllowedOrigin)), transport)
 	serverResult := make(chan error, 1)
 	go func() { serverResult <- server.ServeTLS(listener, "", "") }()

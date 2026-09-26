@@ -187,9 +187,21 @@ and refuses non-Versatile PB machines. See the
   `PHANTOWD_STATE_DIR/accounts.json`; the directory must be explicitly
   configured, already exist, and be private. There is intentionally no implicit
   `/var/lib` fallback until a product state-volume lifecycle is designed. Linux
-  requires directory mode 0700 and file mode 0600. Setup uses an atomic
-  no-replace file link. QEMU explicitly sets `/run/phantowd-state`, so the
+  requires an owned directory mode 0700 and regular single-link file mode 0600.
+  The transactional Linux backend retains an exclusive cooperative lifetime
+  lock. Setup commits v2/revision 1 only to absent state; exact prototype-v1
+  accounts remain readable without content rewrites. Do not run old writers
+  on this directory. QEMU explicitly sets `/run/phantowd-state`, so the
   account survives an API-process restart but is erased by a guest reboot.
+  Non-Linux binaries refuse this backend; Windows HTTP/TLS tests use explicitly
+  injected memory-only fixtures, not a weaker production persistence fallback.
+- Account checks reload validated state. Login rechecks its snapshot after KDF
+  work; issuance performs a final account check under the adapter lock.
+  Missing previously configured state, corruption, unsafe storage or uncertain
+  setup latches unavailability until process restart/reconciliation. Existing
+  sessions then fail authorization and cannot retrieve CSRF/session metadata;
+  enrollment is not reopened. Restoring a file cannot revive that process.
+  There is no automated repair/reset. Already-authorized work is not cancelled.
 - Sessions are random, in-memory only, expire after 30 minutes, and are capped
   at eight. Cookies are HttpOnly and SameSite=Strict; logout requires an
   anti-CSRF header. A process-wide login limiter allows five attempts per
@@ -203,11 +215,11 @@ and refuses non-Versatile PB machines. See the
   does not cancel requests/jobs already authorized, change credentials, revoke
   SMB/NFS access or coordinate multiple API processes. The dashboard clears
   drafts, prevents duplicate requests and does not retry an uncertain outcome.
-  A separate [administrator transaction store](admincredentials/README.md)
-  now supports revision-checked replacement and strict legacy-document reading,
-  with isolated host/ARMv5 persistence tests. The running authentication flow
-  still uses its setup-only store. Password change/reset requires backend,
-  session-barrier and recovery integration; it is not implemented by this control.
+  The [administrator transaction store](admincredentials/README.md) now backs
+  running Linux authentication and supports revision-checked replacement in
+  isolated host/ARMv5 fixtures. Password change/reset still requires the
+  authenticated replacement/session-revocation transaction and recovery flow;
+  it is not implemented by this control.
 - QEMU alone compiles a `qemu`-tagged self-test with a disposable password so
   the guest can test setup, duplicate-setup rejection, login, denied access,
   CSRF-checked logout, and account reload after daemon restart. The self-test
