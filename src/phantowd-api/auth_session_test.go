@@ -5,11 +5,56 @@ package main
 
 import (
 	"crypto/tls"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 	"time"
 )
+
+func TestGlobalRevocationIsAnIssuanceBarrier(t *testing.T) {
+	s := newSessionStore()
+	now := time.Now()
+	epoch := s.currentEpoch()
+	first, session, err := s.createForEpoch(now, epoch)
+	if err != nil {
+		t.Fatal(err)
+	}
+	second, _, err := s.create(now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := s.revokeAll(first, "wrong", now); !errors.Is(err, errSessionCSRF) {
+		t.Fatal(err)
+	}
+	if _, ok := s.find(second, now); !ok {
+		t.Fatal("bad CSRF revoked a session")
+	}
+	if err := s.revokeAll(first, session.csrf, now); err != nil {
+		t.Fatal(err)
+	}
+	for _, token := range []string{first, second} {
+		if _, ok := s.find(token, now); ok {
+			t.Fatal("session survived global revocation")
+		}
+	}
+	if _, _, err := s.createForEpoch(now, epoch); !errors.Is(err, errSessionRevoked) {
+		t.Fatal("in-flight login escaped revocation", err)
+	}
+	fresh, _, err := s.create(now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := s.revokeAll(first, session.csrf, now); !errors.Is(err, errSessionMissing) {
+		t.Fatal(err)
+	}
+	if _, ok := s.find(fresh, now); !ok {
+		t.Fatal("replayed revocation killed a new session")
+	}
+	if _, _, err := s.createForEpoch(now, nil); !errors.Is(err, errSessionRevoked) {
+		t.Fatal(err)
+	}
+}
 
 func TestSessionLifecycleAndExpiry(t *testing.T) {
 	store := newSessionStore()

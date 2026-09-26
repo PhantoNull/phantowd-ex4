@@ -195,6 +195,16 @@ and refuses non-Versatile PB machines. See the
   anti-CSRF header. A process-wide login limiter allows five attempts per
   minute. Secure/`__Host-` cookies are used for TLS requests. Mutating auth
   requests require the configured exact Origin and matching Host/scheme.
+- Global panel sign-out validates its invoking session and CSRF atomically,
+  clears all sessions in this API process and changes an opaque issuance
+  generation. Setup/login capture that generation before credential work:
+  an overlapping old login cannot publish a new session after revocation.
+  Replaying the revoked request cannot invalidate later fresh sessions. This
+  does not cancel requests/jobs already authorized, change credentials, revoke
+  SMB/NFS access or coordinate multiple API processes. The dashboard clears
+  drafts, prevents duplicate requests and does not retry an uncertain outcome.
+  Password change/reset still needs a qualified replacement transaction for
+  the current setup-only account store; it is not implemented by this control.
 - QEMU alone compiles a `qemu`-tagged self-test with a disposable password so
   the guest can test setup, duplicate-setup rejection, login, denied access,
   CSRF-checked logout, and account reload after daemon restart. The self-test
@@ -234,6 +244,7 @@ and refuses non-Versatile PB machines. See the
 | `POST /api/v1/auth/login` | Authenticate administrator; strict Origin, bounded request, generic credential error and five-per-minute process limit |
 | `GET /api/v1/auth/session` | Authenticated session metadata and CSRF token |
 | `POST /api/v1/auth/logout` | Revoke session; requires configured Origin and CSRF header |
+| `POST /api/v1/auth/logout-all` | Atomically revoke all panel sessions and earlier in-flight session issuance; requires one session cookie, one CSRF header, configured Origin and no input |
 | `POST /api/v1/file-services/preview` | Authenticated, Origin/CSRF-protected desired SMB/NFS preview; no save, runtime validation or activation |
 | `GET /api/v1/shares/configuration` | Authenticated read of the optional original share-only store; not running-service state |
 | `GET /api/v1/file-services/configuration` | Authenticated combined desired policy; development backend only, uninitialized state remains explicit |

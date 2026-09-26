@@ -22,6 +22,13 @@ const (
 )
 
 var errSessionCapacity = errors.New("session capacity reached")
+var errSessionRevoked = errors.New("session issuance was revoked")
+var errSessionMissing = errors.New("session is unavailable")
+var errSessionCSRF = errors.New("session CSRF check failed")
+
+// Nonzero size is intentional: pointers to distinct zero-sized values may
+// compare equal in Go. An opaque generation avoids numeric wraparound/reuse.
+type sessionEpoch struct{ marker byte }
 
 type authSession struct {
 	csrf      string
@@ -31,13 +38,26 @@ type authSession struct {
 type sessionStore struct {
 	mu       sync.Mutex
 	sessions map[[sha256.Size]byte]authSession
+	epoch    *sessionEpoch
 }
 
 func newSessionStore() *sessionStore {
-	return &sessionStore{sessions: make(map[[sha256.Size]byte]authSession)}
+	return &sessionStore{sessions: make(map[[sha256.Size]byte]authSession), epoch: &sessionEpoch{}}
 }
 
 func (s *sessionStore) create(now time.Time) (string, authSession, error) {
+	return s.createForEpoch(now, s.currentEpoch())
+}
+
+func (s *sessionStore) currentEpoch() *sessionEpoch {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.epoch
+}
+
+// Capture the epoch BEFORE verifying credentials. A login that overlaps a
+// global revocation cannot publish a session using its earlier authorization.
+func (s *sessionStore) createForEpoch(now time.Time, expected *sessionEpoch) (string, authSession, error) {
 	var tokenBytes, csrfBytes [32]byte
 	if _, err := rand.Read(tokenBytes[:]); err != nil {
 		return "", authSession{}, errors.New("secure session randomness unavailable")
@@ -53,6 +73,9 @@ func (s *sessionStore) create(now time.Time) (string, authSession, error) {
 	key := sha256.Sum256(tokenBytes[:])
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	if expected == nil || expected != s.epoch {
+		return "", authSession{}, errSessionRevoked
+	}
 	for id, current := range s.sessions {
 		if !now.Before(current.expiresAt) {
 			delete(s.sessions, id)
@@ -93,6 +116,28 @@ func (s *sessionStore) revoke(token string) {
 	s.mu.Lock()
 	delete(s.sessions, key)
 	s.mu.Unlock()
+}
+
+// Validate the invoking session and CSRF under the SAME lock as revocation.
+// A replay cannot revoke sessions created after an earlier global revocation.
+func (s *sessionStore) revokeAll(token, csrf string, now time.Time) error {
+	decoded, err := base64.RawURLEncoding.DecodeString(token)
+	if err != nil || len(decoded) != 32 {
+		return errSessionMissing
+	}
+	key := sha256.Sum256(decoded)
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	current, ok := s.sessions[key]
+	if !ok || !now.Before(current.expiresAt) {
+		return errSessionMissing
+	}
+	if !validCSRF(current, csrf) {
+		return errSessionCSRF
+	}
+	s.sessions = make(map[[sha256.Size]byte]authSession)
+	s.epoch = &sessionEpoch{}
+	return nil
 }
 
 func (s *sessionStore) sessionFromRequest(r *http.Request, now time.Time) (string, authSession, bool) {

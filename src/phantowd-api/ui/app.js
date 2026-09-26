@@ -502,30 +502,44 @@ byId("auth-form").addEventListener("submit", async (event) => {
   }
 });
 
-byId("logout").addEventListener("click", async () => {
+let logoutBusy = false;
+async function signOut(all = false) {
+  if (logoutBusy) return;
+  logoutBusy = true;
   clearServicePolicy();
   clearSavedPolicy();
   clearPolicyDraft();
   const logout = byId("logout");
   logout.disabled = true;
+  byId("logout-all").disabled = true;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 10000);
   try {
-    const session = await fetchJSON("/api/v1/auth/session");
-    const response = await fetch("/api/v1/auth/logout", {
+    const sessionResponse = await fetch("/api/v1/auth/session", { credentials: "same-origin", cache: "no-store", signal: controller.signal });
+    if (!sessionResponse.ok) throw new Error("Session unavailable");
+    const session = await sessionResponse.json();
+    if (typeof session.csrf_token !== "string" || session.csrf_token.length !== 43) throw new Error("Session unavailable");
+    const response = await fetch(all ? "/api/v1/auth/logout-all" : "/api/v1/auth/logout", {
       method: "POST",
       headers: { Accept: "application/json", "X-PhantoWD-CSRF": session.csrf_token },
       credentials: "same-origin",
       cache: "no-store",
+      signal: controller.signal,
     });
     if (!response.ok) throw new Error("Could not safely end the session.");
     await updateAuthView();
   } catch {
-    const error = byId("error-banner");
-    error.textContent = "Sign out failed. Reload this page and try again.";
-    error.hidden = false;
+    showAuthUnavailable();
+    setAuthError("Sign-out outcome could not be confirmed. Check connection status before signing in again; the request was not retried.");
   } finally {
+    clearTimeout(timeout);
     logout.disabled = false;
+    byId("logout-all").disabled = false;
+    logoutBusy = false;
   }
-});
+}
+byId("logout").addEventListener("click", () => signOut(false));
+byId("logout-all").addEventListener("click", () => signOut(true));
 
 // Standalone desired-policy builder: no current configuration is loaded,
 // no draft is persisted, and no activation route exists here.

@@ -80,6 +80,13 @@ persistent state location remains a separate hardware/layout decision.
 
 - Add password changes, logout-all/revocation, expiry and recovery policy;
   preserve bounded password-hashing work and generic authentication errors.
+  Global panel logout now has an atomic session/CSRF revocation boundary and
+  rejects session issuance from credential checks started before revocation.
+  Host/DOM tests and two real ARMv5 HTTP clients verify old-session refusal and
+  fresh login. This is not password rotation, active-job cancellation, SMB/NFS
+  revocation or a multi-process identity service. Administrator password changes
+  still require transactional replacement/recovery of the setup-only account
+  document before exposing a change-password form.
 - Design first-owner enrollment and recovery without default passwords.
 - Implement HTTPS certificate provisioning, renewal and replacement, with
   clear handling of device clock errors and changed names/addresses.

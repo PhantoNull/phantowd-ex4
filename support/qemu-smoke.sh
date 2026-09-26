@@ -121,6 +121,10 @@ while [ "$attempt" -lt 120 ]; do
             echo 'Missing journaled Unix provisioning assertion' >&2
             exit 1
         fi
+        if ! grep -F 'PHANTOWD_SESSION_REVOCATION_READY peers=2 old_sessions_denied=true fresh_login=true scope=panel-sessions-only' "$log_file" >/dev/null; then
+            echo 'Missing global panel session revocation assertion' >&2
+            exit 1
+        fi
         if ! grep -F 'PHANTOWD_MOUNT_GUARD_READY unique_mount_id=true descriptor_pinned=true symlinks_denied=true nested_mount_denied=true overmount_denied=true readonly_change_denied=true fallback_denied=true scope=qemu-fixture-only' "$log_file" >/dev/null; then
             echo 'Missing descriptor/mount guard assertion' >&2
             exit 1

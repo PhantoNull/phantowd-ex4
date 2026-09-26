@@ -402,7 +402,66 @@ func exerciseQEMUAuth(client *http.Client) (string, error) {
 	if response.StatusCode != http.StatusOK {
 		return "", errors.New("login after logout failed")
 	}
+	if err := exerciseQEMURevokePanelSessions(client, credentials); err != nil {
+		return "", err
+	}
 	return bootstrap, nil
+}
+
+func exerciseQEMURevokePanelSessions(client *http.Client, credentials loginRequest) error {
+	peer := &http.Client{Timeout: client.Timeout, Jar: newQEMUCookieJar()}
+	defer peer.CloseIdleConnections()
+	body, _ := json.Marshal(credentials)
+	response, err := postQEMUAuth(peer, authLoginPath, body)
+	if err != nil {
+		return err
+	}
+	response.Body.Close()
+	if response.StatusCode != http.StatusOK {
+		return errors.New("peer session login failed")
+	}
+	response, err = peer.Get("http://" + listenAddress + authSessionPath)
+	if err != nil {
+		return err
+	}
+	data, err := readSelfTestResponse(response, 4096)
+	var session struct {
+		CSRFToken string `json:"csrf_token"`
+	}
+	if err != nil || response.StatusCode != http.StatusOK || json.Unmarshal(data, &session) != nil || session.CSRFToken == "" {
+		return errors.New("peer CSRF unavailable")
+	}
+	request, _ := http.NewRequest(http.MethodPost, "http://"+listenAddress+authLogoutAllPath, nil)
+	request.Header.Set("Origin", "http://"+listenAddress)
+	request.Header.Set("X-PhantoWD-CSRF", session.CSRFToken)
+	response, err = peer.Do(request)
+	if err != nil {
+		return err
+	}
+	response.Body.Close()
+	if response.StatusCode != http.StatusOK {
+		return errors.New("global session revocation failed")
+	}
+	for _, c := range []*http.Client{client, peer} {
+		response, err := c.Get("http://" + listenAddress + "/api/v1/system")
+		if err != nil {
+			return err
+		}
+		response.Body.Close()
+		if response.StatusCode != http.StatusUnauthorized {
+			return errors.New("old panel session survived revocation")
+		}
+	}
+	response, err = postQEMUAuth(client, authLoginPath, body)
+	if err != nil {
+		return err
+	}
+	response.Body.Close()
+	if response.StatusCode != http.StatusOK {
+		return errors.New("fresh login after global revocation failed")
+	}
+	fmt.Println("PHANTOWD_SESSION_REVOCATION_READY peers=2 old_sessions_denied=true fresh_login=true scope=panel-sessions-only")
+	return nil
 }
 
 func postQEMUAuth(client *http.Client, path string, body []byte) (*http.Response, error) {
