@@ -296,6 +296,16 @@ releases. No production release or safe in-device updater exists yet.
 
 ## Local tests
 
+### Native service identity registry
+
+The [serviceaccounts registry](serviceaccounts/README.md) now provides strict
+native UID/private-GID reservations, disabled-by-default creation, permanent
+retired identities, revision-checked transitions and exact share-user binding.
+A Linux atomic store exposes only typed transitions, preventing accidental
+tombstone erasure through arbitrary document replacement. It is not connected
+to the HTTP/UI or live Unix/Samba authorities. Legacy import, identity discovery,
+credential reconciliation and actual provisioning remain separate work.
+
 ### SMB credential lifecycle boundary
 
 The guarded ARMv5 QEMU fixture uses its own loopback Samba daemon, private
