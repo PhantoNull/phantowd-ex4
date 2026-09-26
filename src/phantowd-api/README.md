@@ -203,8 +203,11 @@ and refuses non-Versatile PB machines. See the
   does not cancel requests/jobs already authorized, change credentials, revoke
   SMB/NFS access or coordinate multiple API processes. The dashboard clears
   drafts, prevents duplicate requests and does not retry an uncertain outcome.
-  Password change/reset still needs a qualified replacement transaction for
-  the current setup-only account store; it is not implemented by this control.
+  A separate [administrator transaction store](admincredentials/README.md)
+  now supports revision-checked replacement and strict legacy-document reading,
+  with isolated host/ARMv5 persistence tests. The running authentication flow
+  still uses its setup-only store. Password change/reset requires backend,
+  session-barrier and recovery integration; it is not implemented by this control.
 - QEMU alone compiles a `qemu`-tagged self-test with a disposable password so
   the guest can test setup, duplicate-setup rejection, login, denied access,
   CSRF-checked logout, and account reload after daemon restart. The self-test

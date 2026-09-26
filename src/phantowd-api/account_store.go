@@ -12,19 +12,18 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
-	"strings"
 	"sync"
 	"unicode/utf8"
 
+	"github.com/PhantoNull/phantowd-ex4/phantowd-api/admincredentials"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/passwordhash"
 )
 
 const (
-	accountFileName       = "accounts.json"
-	accountStateVersion   = 1
-	maxAccountStateBytes  = 4096
-	minimumPasswordRunes  = 15
-	maximumUsernameLength = 32
+	accountFileName      = "accounts.json"
+	accountStateVersion  = 1
+	maxAccountStateBytes = 4096
+	minimumPasswordRunes = 15
 )
 
 var (
@@ -230,16 +229,7 @@ func privatePermissions(mode os.FileMode, ownerBits os.FileMode) bool {
 }
 
 func validUsername(username string) bool {
-	if username == "" || len(username) > maximumUsernameLength {
-		return false
-	}
-	for _, character := range username {
-		if !((character >= 'a' && character <= 'z') || (character >= 'A' && character <= 'Z') ||
-			(character >= '0' && character <= '9') || strings.ContainsRune("._-", character)) {
-			return false
-		}
-	}
-	return true
+	return admincredentials.ValidUsername(username)
 }
 
 func validSetupPassword(password string) bool {

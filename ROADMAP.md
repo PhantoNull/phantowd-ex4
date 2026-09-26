@@ -85,8 +85,12 @@ persistent state location remains a separate hardware/layout decision.
   Host/DOM tests and two real ARMv5 HTTP clients verify old-session refusal and
   fresh login. This is not password rotation, active-job cancellation, SMB/NFS
   revocation or a multi-process identity service. Administrator password changes
-  still require transactional replacement/recovery of the setup-only account
-  document before exposing a change-password form.
+  now have a separate [transactional credential store](src/phantowd-api/admincredentials/README.md)
+  with strict prototype-v1 compatibility, compare-and-swap replacement and
+  no cached verifier after storage refusal. Host and isolated two-boot ARMv5
+  tests cover old-password denial and retained replacements. The running API
+  still uses its setup-only backend: integrating replacement, authorization,
+  session issuance/revocation and recovery precedes a change-password form.
 - Design first-owner enrollment and recovery without default passwords.
 - Implement HTTPS certificate provisioning, renewal and replacement, with
   clear handling of device clock errors and changed names/addresses.
