@@ -71,7 +71,15 @@ escaping, stale revisions, duplicate/overlapping rules, stable rendering and
 caller-state isolation. The QEMU-only probe checks these synthetic contracts
 on ARMv5; it does not install the candidate or validate it with `exportfs`.
 
-Real target-parser and authenticated/denied-client tests, persistent policy
+The additional QEMU-only integration fixture applies generated candidates
+to a fresh 16-MiB ext2 virtual disk and exercises real exportfs/mountd/NFSv3:
+escaped paths, synced writes and anonymous ownership, server-enforced read-only
+denial, unlisted-client denial and the unmounted-volume guard. It requires a
+separate readiness marker; host unit tests alone do not execute this fixture.
+`exportfs -s` lists configured entries even without a mounted volume, so the
+guard is checked through actual client mount requests, not table absence.
+
+Authenticated multi-client tests, persistent policy
 transactions, protected transport, service supervision, mount-loss handling
 and cross-protocol ACL tests remain required. This table does not select NFS
 protocol versions or create an NFSv4 pseudoroot. The existing guest service

@@ -24,6 +24,8 @@ import (
 const (
 	qemuTestSerial = "PHANTOWD-QEMU-SERIAL-01"
 	qemuTestWWN    = "500f000000000001"
+	qemuDataSerial = "PHANTOWD-QEMU-DATA-01"
+	qemuDataWWN    = "500f000000000002"
 )
 
 var qemuDashboardAssets = []struct {
@@ -144,7 +146,8 @@ func runSelfTest() error {
 	if !rootDiskIdentityPagesFound {
 		return errors.New("QEMU SCSI identity pages were not observed and validated through sysfs")
 	}
-	if strings.Contains(string(storageData), qemuTestSerial) || strings.Contains(string(storageData), qemuTestWWN) {
+	if strings.Contains(string(storageData), qemuTestSerial) || strings.Contains(string(storageData), qemuTestWWN) ||
+		strings.Contains(string(storageData), qemuDataSerial) || strings.Contains(string(storageData), qemuDataWWN) {
 		return errors.New("raw QEMU storage identifiers leaked through the API")
 	}
 	arraysResponse, err := client.Get("http://" + listenAddress + "/api/v1/arrays")

@@ -123,6 +123,11 @@ case "$1" in
         fi
         echo 'PHANTOWD_NFS_SMOKE_READY protocol=nfs3 transport=tcp scope=qemu-loopback-only'
 
+        if ! /bin/sh /usr/lib/phantowd/qemu-nfs-policy-smoke.sh; then
+            echo 'PHANTOWD_QEMU_ERROR generated-nfs-policy-integration-failed'
+            exit 1
+        fi
+
         if pidof nmbd >/dev/null 2>&1; then
             echo 'PHANTOWD_QEMU_ERROR smb-netbios-daemon-running'
             exit 1
