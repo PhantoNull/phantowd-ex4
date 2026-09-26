@@ -64,7 +64,7 @@ func (s *Store) Initialize(username, verifier string) error {
 // plaintext, and performs no authentication, KDF work, or session revocation.
 // Replaying an uncertain response must use Load/reconciliation, never blind
 // retries with an updated revision. ErrUncertain must fail authentication
-// closed in the future controller adapter, not fall back to cached state.
+// closed in the controller adapter, not fall back to cached state.
 func (s *Store) Replace(expected uint64, verifier string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()

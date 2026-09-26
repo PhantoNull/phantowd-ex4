@@ -91,8 +91,11 @@ persistent state location remains a separate hardware/layout decision.
   tests cover old-password denial and retained replacements. The running Linux
   API now owns this backend, rechecks credentials after hashing and quarantines
   the process after storage failure rather than reviving sessions or enrollment.
-  Non-Linux host tests use explicit memory fixtures. The authenticated replacement/
-  session-revocation transaction and recovery still precede a change-password form.
+  Non-Linux host tests use explicit memory fixtures. The password-change endpoint
+  and collapsed panel form now verify the current password and coordinate CAS
+  replacement with revocation, concurrency/rate limits and uncertain-reply refusal.
+  Host/DOM, actual ARMv5 HTTPS and two-boot handler tests exercise that flow.
+  Reset/recovery, durable ownership/bootstrap and physical state qualification remain.
 - Design first-owner enrollment and recovery without default passwords.
 - Implement HTTPS certificate provisioning, renewal and replacement, with
   clear handling of device clock errors and changed names/addresses.

@@ -21,18 +21,22 @@ const (
 	authSessionPath   = "/api/v1/auth/session"
 	authLogoutPath    = "/api/v1/auth/logout"
 	authLogoutAllPath = "/api/v1/auth/logout-all"
+	authPasswordPath  = "/api/v1/auth/password"
 	maxAuthBodySize   = 2048
 	loginWindow       = time.Minute
 	loginMaxAttempts  = 5
 )
 
 type authController struct {
-	accounts      *accountStore
-	sessions      *sessionStore
-	allowedOrigin string
-	loginMu       sync.Mutex
-	windowAt      time.Time
-	attempts      int
+	accounts         *accountStore
+	sessions         *sessionStore
+	allowedOrigin    string
+	loginMu          sync.Mutex
+	windowAt         time.Time
+	attempts         int
+	passwordWindowAt time.Time
+	passwordAttempts int
+	passwordSlot     chan struct{}
 }
 
 type authStatus struct {
@@ -51,12 +55,12 @@ type loginRequest struct {
 }
 
 func newAuthController(accounts *accountStore, allowedOrigin string) *authController {
-	return &authController{accounts: accounts, sessions: newSessionStore(), allowedOrigin: allowedOrigin}
+	return &authController{accounts: accounts, sessions: newSessionStore(), allowedOrigin: allowedOrigin, passwordSlot: make(chan struct{}, 1)}
 }
 
 func (a *authController) isAuthPath(path string) bool {
 	switch path {
-	case authStatusPath, authSetupPath, authLoginPath, authSessionPath, authLogoutPath, authLogoutAllPath:
+	case authStatusPath, authSetupPath, authLoginPath, authSessionPath, authLogoutPath, authLogoutAllPath, authPasswordPath:
 		return true
 	default:
 		return false
@@ -77,6 +81,8 @@ func (a *authController) serve(w http.ResponseWriter, r *http.Request) bool {
 		a.logout(w, r)
 	case authLogoutAllPath:
 		a.logoutAll(w, r)
+	case authPasswordPath:
+		a.changePassword(w, r)
 	default:
 		return false
 	}

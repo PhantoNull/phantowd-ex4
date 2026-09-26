@@ -74,7 +74,11 @@ func runQEMUStateTest(phase string) (result error) {
 	if err := unix.Mount(fmt.Sprintf("/proc/self/fd/%d", fd), qemuStateAnchor, "ext4", unix.MS_NOSUID|unix.MS_NODEV|unix.MS_NOEXEC, ""); err != nil {
 		return err
 	}
-	defer func() { result = errors.Join(result, unix.Unmount(qemuStateAnchor, 0)) }()
+	defer func() {
+		if err := unix.Unmount(qemuStateAnchor, 0); err != nil {
+			result = errors.Join(result, fmt.Errorf("state volume unmount: %w", err))
+		}
+	}()
 	var sx unix.Statx_t
 	if err := unix.Statx(unix.AT_FDCWD, qemuStateAnchor, unix.AT_NO_AUTOMOUNT, unix.STATX_BASIC_STATS|unix.STATX_MNT_ID_UNIQUE, &sx); err != nil {
 		return err
@@ -90,10 +94,10 @@ func runQEMUStateTest(phase string) (result error) {
 		return err
 	}
 	if err := exerciseQEMUStatePersistence(qemuStateAnchor, phase); err != nil {
-		return err
+		return fmt.Errorf("state persistence %s: %w", phase, err)
 	}
 	if err := exerciseQEMUSMBReboot(phase); err != nil {
-		return err
+		return fmt.Errorf("SMB persistence %s: %w", phase, err)
 	}
 	if phase == "verify" {
 		fmt.Println("PHANTOWD_SMB_REBOOT_READY unix_preserved=true rotated_password_retained=true disabled_retained=true explicit_enable=true obsolete_password_denied=true data_preserved=true scope=clean-qemu-reboot-only")

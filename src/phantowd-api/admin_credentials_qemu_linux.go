@@ -14,6 +14,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"time"
 
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/admincredentials"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/revisionstore"
@@ -37,14 +38,10 @@ func exerciseQEMUAdminCredentials(root, phase string) error {
 		return errors.New("unknown administrator fixture phase")
 	}
 	ctx := context.Background()
-	var oldHash, newHash string
+	var oldHash string
 	if phase == "seed" {
 		var err error
 		oldHash, err = passwordhash.Hash(ctx, []byte(qemuAdminBefore))
-		if err != nil {
-			return err
-		}
-		newHash, err = passwordhash.Hash(ctx, []byte(qemuAdminAfter))
 		if err != nil {
 			return err
 		}
@@ -65,7 +62,7 @@ func exerciseQEMUAdminCredentials(root, phase string) error {
 				}
 			}
 		}
-		if err := exerciseQEMUAdminCredentialStore(dir, kind, phase, oldHash, newHash); err != nil {
+		if err := exerciseQEMUAdminCredentialStore(dir, kind, phase, oldHash); err != nil {
 			return err
 		}
 	}
@@ -75,11 +72,12 @@ func exerciseQEMUAdminCredentials(root, phase string) error {
 	if phase == "verify" {
 		fmt.Println("PHANTOWD_ADMIN_CREDENTIALS_READY after_reboot=true legacy_preserved=true old_password_denied=true replacement_verified=true stale_writer_denied=true scope=store-fixture-only")
 		fmt.Println("PHANTOWD_ADMIN_BACKEND_READY after_reboot=true backend=transactional-store login_verified=true scope=qemu-handler-dispatch-only")
+		fmt.Println("PHANTOWD_PASSWORD_REBOOT_READY changed_via=authenticated-handler legacy_and_native=true old_password_denied=true scope=clean-qemu-reboot-only")
 	}
 	return nil
 }
 
-func exerciseQEMUAdminCredentialStore(dir, kind, phase, oldHash, newHash string) error {
+func exerciseQEMUAdminCredentialStore(dir, kind, phase, oldHash string) error {
 	s, err := admincredentials.Open(dir)
 	if err != nil {
 		return err
@@ -104,10 +102,37 @@ func exerciseQEMUAdminCredentialStore(dir, kind, phase, oldHash, newHash string)
 				return errors.New("legacy read rewrote state")
 			}
 		}
-		if err := s.Replace(1, newHash); err != nil {
+		if err := s.Close(); err != nil {
 			return err
 		}
-		if err := s.Close(); err != nil {
+		accounts, err := openAccountStore(dir)
+		if err != nil {
+			return err
+		}
+		defer accounts.Close()
+		auth := newAuthController(accounts, defaultPublicOrigin)
+		token, session, err := auth.sessions.create(time.Now())
+		if err != nil {
+			return err
+		}
+		body, err := json.Marshal(passwordChangeRequest{CurrentPassword: qemuAdminBefore, NewPassword: qemuAdminAfter})
+		if err != nil {
+			return err
+		}
+		r := httptest.NewRequest(http.MethodPost, defaultPublicOrigin+authPasswordPath, bytes.NewReader(body))
+		r.AddCookie(&http.Cookie{Name: sessionCookieName, Value: token})
+		r.Header.Set("Origin", defaultPublicOrigin)
+		r.Header.Set("Content-Type", "application/json")
+		r.Header.Set("X-PhantoWD-CSRF", session.csrf)
+		w := httptest.NewRecorder()
+		auth.serve(w, r)
+		if w.Code != http.StatusOK {
+			return errors.New("persistent administrator password change refused")
+		}
+		if _, ok := auth.sessions.find(token, time.Now()); ok {
+			return errors.New("password change retained a session")
+		}
+		if err := accounts.Close(); err != nil {
 			return err
 		}
 		// Valid, private, fully synced but uncommitted old state must not win.

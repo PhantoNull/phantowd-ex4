@@ -1,11 +1,11 @@
 # Administrator credential transactions
 
 This package is the running Linux API's administrator persistence backend and
-the prerequisite for panel password changes. The former setup-only file writer
+the persistence layer for authenticated panel password changes. The former setup-only file writer
 has been removed. Do not run older API binaries alongside this backend on the
-same directory: they do not honor its lifetime lock. No password-change endpoint,
-reset, recovery UI, default password, Unix/Samba account operation or hardware
-mutation is added here.
+same directory: they do not honor its lifetime lock. The API now provides a
+current-password-verified change endpoint and form. No reset, recovery UI,
+default password, Unix/Samba account operation or hardware mutation is added.
 
 ## Contract
 
@@ -51,11 +51,16 @@ valid empty directory is still indistinguishable from first enrollment. A
 durable product ownership/bootstrap authority is required before deployment;
 this prototype must not claim to prevent re-enrollment after total state loss.
 
-The store accepts an already-derived verifier, not authorization. A future
-password-change endpoint must verify the current password against a particular
-revision, commit that revision, and atomically coordinate session revocation
-with login issuance. The adapter currently exposes initialization/read only;
-the store's replacement method is exercised by isolated fixtures, not HTTP.
+The store accepts an already-derived verifier, not authorization. The API's
+password-change transaction verifies the current password against one snapshot,
+derives a new verifier with the process-wide KDF bound, then locks and rechecks
+that exact snapshot and request cancellation. Under the account lock it rechecks
+the invoking session/CSRF and revokes all sessions/issuance epochs before the
+revision-checked commit. Issuance uses the same account-to-session lock order.
+New logins crossing the commit cannot use an obsolete verifier/issuance epoch.
+Failure after revocation leaves sessions revoked and the account process
+quarantined; it does not restore old sessions or automatically retry a write.
+Previously authorized jobs/requests and SMB/NFS sessions are outside this scope.
 Lost responses need explicit reconciliation, not a blind retry with a newer
 revision. Recovery, product state provisioning and downgrade rules remain open;
 the old version-1 reader deliberately rejects version 2.
@@ -83,9 +88,8 @@ The isolated two-boot ARMv5 fixture tests both native initialization and legacy
 conversion on a generated disk. It retains a newer uncommitted pending file
 containing the obsolete verifier, then requires the committed replacement to
 survive reboot: the old password fails, the new one succeeds, stale writes and
-reset attempts fail. This is store/KDF evidence, not an HTTP password-change
-flow, power-loss testing, EX4 state-volume qualification or a flashable image.
-Its second boot now additionally enters the real API account adapter and login/
-session handlers: obsolete-password login fails and the retained replacement
-issues a usable panel session. These are handler-dispatch tests; the separate
-standard QEMU smoke covers real HTTP/TLS and API-process restart.
+reset attempts fail. Both fixture accounts now change through the authenticated
+HTTP handler on boot one and enter the real login/session handlers on boot two.
+The standard QEMU smoke additionally changes a password over real loopback TLS
+and verifies old-login denial/new-login success. These are software tests, not
+power-loss testing, EX4 state-volume qualification or a flashable image.

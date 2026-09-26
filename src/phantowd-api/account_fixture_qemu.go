@@ -18,3 +18,4 @@ func (qemuStaticAccount) Load() (admincredentials.Document, error) {
 }
 func (qemuStaticAccount) Initialize(string, string) error { return errAccountConfigured }
 func (qemuStaticAccount) Close() error                    { return nil }
+func (qemuStaticAccount) Replace(uint64, string) error    { return errAccountUnavailable }

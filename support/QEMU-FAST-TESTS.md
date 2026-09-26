@@ -141,6 +141,15 @@ The second kernel must recover the exact policy and commit subsequent revisions.
 `PHANTOWD_SERVICE_HTTP_READY` is required in the verification log. Nothing is
 forwarded to the host; this policy API never activates services.
 
+Administrator fixtures cover both native version-2 state and the exact former
+prototype version-1 encoding (not WD accounts). The seed enters the real
+authenticated password-change handler, verifies session revocation and leaves
+an uncommitted pending document. The independent second kernel must retain the
+committed replacement, reject the old password and permit login/session lookup
+with the new one. `PHANTOWD_PASSWORD_REBOOT_READY` is required. The normal smoke
+also requires a real guest-loopback HTTPS password change and old/new login
+checks, separately from the persistent-disk handler test.
+
 A separate fixed Samba fixture in the same two boots copies only the generated
 guest's `/etc` to private test storage on the first boot, then bind-mounts that
 copy for account operations. Both kernels require the fixture user to be absent
@@ -158,8 +167,16 @@ its mounts; it neither changes the base root image nor the default service profi
 
 This demonstrates clean-reboot persistence on the generated ext2 filesystem,
 not crash/power-cut recovery, EX4 state provisioning, production account management,
-schema migration or a production-qualified writable management API. The temporary disk is discarded
+WD configuration migration or a production-qualified writable management API. The temporary disk is discarded
 afterward. Clean CI retains `qemu-state-reboot.log` with its validation artifacts.
+
+Qualification caveat: one local seed run during password-change development
+reported `EBUSY`; subsequent complete runs passed. The original error lacked
+stage context, so its cause remains unproven. Cleanup now labels state-volume,
+Samba-data and copied-`/etc` unmount failures, and a host regression checks that
+the state-persistence fixture releases its own descriptors. Neither lazy
+unmounts nor automatic retries mask failures. Investigate any recurrence;
+successful clean-reboot runs do not establish crash or shutdown robustness.
 
 ### Qualification limits
 

@@ -8,6 +8,7 @@ package main
 import (
 	"os"
 	"runtime"
+	"strings"
 	"testing"
 )
 
@@ -35,6 +36,16 @@ func TestQEMUStatePersistence(t *testing.T) {
 	for _, phase := range []string{"seed", "verify"} {
 		if err := exerciseQEMUStatePersistence(dir, phase); err != nil {
 			t.Fatal(phase, err)
+		}
+		entries, err := os.ReadDir("/proc/self/fd")
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, entry := range entries {
+			target, err := os.Readlink("/proc/self/fd/" + entry.Name())
+			if err == nil && (target == dir || strings.HasPrefix(target, dir+"/")) {
+				t.Fatal("state fixture leaked a descriptor after", phase, entry.Name(), target)
+			}
 		}
 	}
 	if err := exerciseQEMUStatePersistence(dir, "seed"); err == nil {

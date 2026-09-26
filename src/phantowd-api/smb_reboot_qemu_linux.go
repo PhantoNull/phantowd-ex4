@@ -86,7 +86,11 @@ func exerciseQEMUSMBReboot(phase string) (result error) {
 	if err := unix.Mount(smbRebootRoot+"/etc", "/etc", "", unix.MS_BIND, ""); err != nil {
 		return err
 	}
-	defer func() { result = errors.Join(result, unix.Unmount("/etc", 0)) }()
+	defer func() {
+		if err := unix.Unmount("/etc", 0); err != nil {
+			result = errors.Join(result, fmt.Errorf("SMB etc unmount: %w", err))
+		}
+	}()
 	ledger, err := serviceaccountstore.Open(smbRebootRoot + "/ledger")
 	if err != nil {
 		return err
@@ -187,7 +191,11 @@ func exerciseQEMUSMBReboot(phase string) (result error) {
 	if err := unix.Mount(smbRebootRoot+"/data", smbRebootData, "", unix.MS_BIND, ""); err != nil {
 		return err
 	}
-	defer func() { result = errors.Join(result, unix.Unmount(smbRebootData, 0)) }()
+	defer func() {
+		if err := unix.Unmount(smbRebootData, 0); err != nil {
+			result = errors.Join(result, fmt.Errorf("SMB data unmount: %w", err))
+		}
+	}()
 	if err := exerciseSMBRebootConnections(configPath, phase); err != nil {
 		return err
 	}

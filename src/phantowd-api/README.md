@@ -216,10 +216,9 @@ and refuses non-Versatile PB machines. See the
   SMB/NFS access or coordinate multiple API processes. The dashboard clears
   drafts, prevents duplicate requests and does not retry an uncertain outcome.
   The [administrator transaction store](admincredentials/README.md) now backs
-  running Linux authentication and supports revision-checked replacement in
-  isolated host/ARMv5 fixtures. Password change/reset still requires the
-  authenticated replacement/session-revocation transaction and recovery flow;
-  it is not implemented by this control.
+  running Linux authentication. The separate password-change endpoint below
+  verifies the current password and coordinates replacement/session revocation.
+  Reset, recovery and durable ownership/bootstrap authority remain unimplemented.
 - QEMU alone compiles a `qemu`-tagged self-test with a disposable password so
   the guest can test setup, duplicate-setup rejection, login, denied access,
   CSRF-checked logout, and account reload after daemon restart. The self-test
@@ -260,6 +259,7 @@ and refuses non-Versatile PB machines. See the
 | `GET /api/v1/auth/session` | Authenticated session metadata and CSRF token |
 | `POST /api/v1/auth/logout` | Revoke session; requires configured Origin and CSRF header |
 | `POST /api/v1/auth/logout-all` | Atomically revoke all panel sessions and earlier in-flight session issuance; requires one session cookie, one CSRF header, configured Origin and no input |
+| `POST /api/v1/auth/password` | Verify current password, commit a different new password and revoke every panel session; requires the configured Origin, one session cookie and one CSRF header |
 | `POST /api/v1/file-services/preview` | Authenticated, Origin/CSRF-protected desired SMB/NFS preview; no save, runtime validation or activation |
 | `GET /api/v1/shares/configuration` | Authenticated read of the optional original share-only store; not running-service state |
 | `GET /api/v1/file-services/configuration` | Authenticated combined desired policy; development backend only, uninitialized state remains explicit |
@@ -300,8 +300,9 @@ data-integrity checks; no periodic sampling is implemented yet.
 
 The server limits active handlers to eight, request headers to 8 KiB (Go's
 HTTP parser may permit implementation slop), and sets read/write/idle timeouts.
-Auth JSON is capped at 2 KiB, rejects duplicate/unknown fields and trailing
-values, and refuses content encodings. File-service preview JSON is capped at
+Setup/login JSON is capped at 2 KiB, rejects duplicate/unknown fields and trailing
+values, and refuses content encodings. Password-change JSON has the separate
+16 KiB bound described below. File-service preview JSON is capped at
 524,544 bytes, with separate 256 KiB nested-policy limits and one active
 preview per handler. It accepts neither content encoding nor query parameters.
 See the [preview contract](fileservice/README.md) for errors and prerequisites.
@@ -310,9 +311,48 @@ prototype, not a security-reviewed LAN service. The QEMU guest binds only to
 `127.0.0.1:8080`. The optional TLS/listener configuration is only a transport
 safety primitive; it does not qualify the API for deployment on an EX4 or make
 the QEMU listener remotely accessible. There is no first-boot hardware
-pairing, password change/reset/recovery, MFA, persistent session, certificate
+pairing, password reset/recovery, MFA, persistent session, certificate
 provisioning/renewal, production state-volume provisioning, or volume
 migration/rollback.
+
+## Administrator password change
+
+`POST /api/v1/auth/password` accepts only `current_password` and `new_password`.
+It requires the configured Host/scheme/Origin, exactly one live session cookie,
+one CSRF header and one JSON Content-Type (optional UTF-8 charset). Query strings,
+content encodings, unknown/duplicate/non-exact field names, nulls, invalid UTF-8,
+unpaired surrogate escapes, excess nesting and trailing JSON are rejected. The
+16 KiB envelope permits JSON escaping of both 1024-byte password limits. The
+new password must be valid UTF-8, at least 15 code points and different from the
+submitted current password. Neither values nor verifiers enter responses/logs.
+
+One password transaction is admitted at a time, without a KDF queue for other
+password changes. Competing attempts receive 503 with Retry-After 1; a separate
+process-wide five-attempt/minute limit returns 429 with Retry-After 60. Global
+KDF memory/concurrency limits still apply. Current-password verification and new
+hash derivation precede a locked exact-snapshot/context check. Session/CSRF are
+then revalidated atomically with revoking all sessions/issuance epochs, before
+the revision-checked durable commit. Session issuance uses the same lock order.
+An overlapping old login cannot retain authorization across this boundary.
+
+Success returns 200 with `password_changed`, `reauthentication_required` and
+`all_panel_sessions_revoked` true, and clears the invoking cookie. The user
+must sign in again. Wrong current password returns 401 without revocation;
+invalid new password returns 422; a precommit revision conflict returns 409.
+Storage failure after revocation keeps sessions revoked and quarantines account
+access. An uncertain commit returns 503 `password_change_reconciliation_required`.
+Cancellation checked before commit does not undo a commit already in progress.
+Already-authorized requests/jobs and SMB/NFS credentials/sessions are unaffected.
+
+The collapsed form confirms the new value locally, clears password fields on
+submission/authentication loss, prevents duplicate submission and bounds its
+session/POST request to ten seconds. A lost, malformed or uncertain response
+hides authenticated data and is never retried automatically. Explicit sign-in
+reconciliation must establish which password committed; inaccessible credential
+storage requires inspection/recovery, not another setup or forced reset.
+DOM, host refusal/concurrency/error tests, real ARMv5 HTTPS and independent
+two-boot handler tests cover this flow. Visual/accessibility qualification,
+ownership/bootstrap, certificate lifecycle and recovery are still release gates.
 
 Firmware source and test builds are developed and checked locally/QEMU and by
 GitHub Actions. Intended user-facing distribution is through versioned GitHub

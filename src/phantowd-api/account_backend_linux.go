@@ -32,6 +32,8 @@ func accountStorageError(err error) error {
 		return errAccountUncertain
 	case errors.Is(err, revisionstore.ErrClosed):
 		return errAccountClosed
+	case errors.Is(err, revisionstore.ErrConflict):
+		return errAccountConflict
 	default:
 		return errAccountUnavailable
 	}
@@ -51,3 +53,7 @@ func (b *linuxAccountBackend) Initialize(name, verifier string) error {
 }
 
 func (b *linuxAccountBackend) Close() error { return accountStorageError(b.store.Close()) }
+
+func (b *linuxAccountBackend) Replace(expected uint64, verifier string) error {
+	return accountStorageError(b.store.Replace(expected, verifier))
+}

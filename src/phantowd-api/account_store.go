@@ -6,6 +6,7 @@ package main
 import (
 	"context"
 	"errors"
+	"math"
 	"sync"
 	"unicode/utf8"
 
@@ -22,6 +23,8 @@ var (
 	errAccountUncertain   = errors.New("administrator state durability uncertain; restart and reconcile storage")
 	errAccountClosed      = errors.New("administrator state closed")
 	errAccountBusy        = errors.New("administrator state has another owner")
+	errAccountConflict    = errors.New("administrator credential revision conflict")
+	errPasswordUnchanged  = errors.New("new password must differ")
 	errCredentials        = errors.New("invalid credentials")
 	errInvalidUsername    = errors.New("invalid username")
 	errShortPassword      = errors.New("password does not meet the minimum length")
@@ -32,6 +35,7 @@ var (
 type accountBackend interface {
 	Load() (admincredentials.Document, error)
 	Initialize(string, string) error
+	Replace(uint64, string) error
 	Close() error
 }
 
@@ -151,8 +155,7 @@ func (s *accountStore) authenticate(ctx context.Context, username, password stri
 		return false, err
 	}
 	// KDF work does not retain the store lock. Recheck its exact snapshot before
-	// accepting a result; a later password-change endpoint must additionally
-	// coordinate its commit with session issuance/revocation.
+	// accepting a result. Password replacement also revokes issuance epochs.
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	current, err := s.loadLocked()
@@ -163,6 +166,70 @@ func (s *accountStore) authenticate(ctx context.Context, username, password stri
 		return false, errAccountUnavailable
 	}
 	return valid, nil
+}
+
+// changePassword derives the new verifier outside the adapter lock, then
+// rechecks the full snapshot and authorizes/revokes sessions under that lock
+// before committing. Session issuance uses the same account->session lock
+// order. No old-credential session can escape the revocation/commit boundary.
+// Storage failure AFTER revocation keeps sessions revoked and quarantines the
+// process; no rollback to a cached verifier or automatic commit retry occurs.
+func (s *accountStore) changePassword(ctx context.Context, currentPassword, newPassword string, revoke func() error) error {
+	if !validSetupPassword(currentPassword) {
+		return errCredentials
+	}
+	if !validSetupPassword(newPassword) {
+		return errShortPassword
+	}
+	if currentPassword == newPassword {
+		return errPasswordUnchanged
+	}
+	s.mu.Lock()
+	d, err := s.loadLocked()
+	s.mu.Unlock()
+	if err != nil {
+		return err
+	}
+	if d.Revision == math.MaxUint64 {
+		return errAccountConflict
+	}
+	valid, err := passwordhash.Verify(ctx, []byte(currentPassword), d.Admin.PasswordHash)
+	if err != nil {
+		return err
+	}
+	if !valid {
+		return errCredentials
+	}
+	verifier, err := passwordhash.Hash(ctx, []byte(newPassword))
+	if err != nil {
+		return err
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	latest, err := s.loadLocked()
+	if err != nil {
+		return err
+	}
+	if latest != d {
+		return errAccountConflict
+	}
+	if revoke == nil {
+		return errAccountUnavailable
+	}
+	if err := revoke(); err != nil {
+		return err
+	}
+	if err := s.backend.Replace(d.Revision, verifier); err != nil {
+		s.failure = errAccountUnavailable
+		if errors.Is(err, errAccountUncertain) {
+			s.failure = errAccountUncertain
+		}
+		return s.failure
+	}
+	return nil
 }
 
 // Prevent a concurrent failure/Close transition between the final account
