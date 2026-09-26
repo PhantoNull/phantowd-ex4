@@ -41,12 +41,23 @@ func inspect(ctx context.Context, source *os.File, executable string, timeout ti
 		return Result{}, ErrBusy
 	}
 	defer active.Store(false)
+	input, before, kind, err := retain(source)
+	if err != nil {
+		return Result{}, err
+	}
+	defer input.Close()
+	return inspectPinned(ctx, input, before, kind, executable, timeout)
+}
 
+func retain(source *os.File) (*os.File, unix.Stat_t, string, error) {
+	if source == nil {
+		return nil, unix.Stat_t{}, "", ErrUnsafe
+	}
 	// SyscallConn prevents a concurrent Close from recycling the descriptor
 	// between extraction and duplication. The duplicate outlives source.
 	connection, err := source.SyscallConn()
 	if err != nil {
-		return Result{}, ErrUnsafe
+		return nil, unix.Stat_t{}, "", ErrUnsafe
 	}
 	fd := -1
 	var duplicateErr error
@@ -57,14 +68,14 @@ func inspect(ctx context.Context, source *os.File, executable string, timeout ti
 		if fd >= 0 {
 			unix.Close(fd)
 		}
-		return Result{}, ErrUnsafe
+		return nil, unix.Stat_t{}, "", ErrUnsafe
 	}
 	input := os.NewFile(uintptr(fd), "volume-probe-input")
-	defer input.Close()
 	flags, err := unix.FcntlInt(uintptr(fd), unix.F_GETFL, 0)
 	var before unix.Stat_t
 	if err != nil || flags&unix.O_ACCMODE != unix.O_RDONLY || flags&unix.O_PATH != 0 || unix.Fstat(fd, &before) != nil {
-		return Result{}, ErrUnsafe
+		input.Close()
+		return nil, unix.Stat_t{}, "", ErrUnsafe
 	}
 	kind := "regular-image"
 	switch before.Mode & unix.S_IFMT {
@@ -72,9 +83,14 @@ func inspect(ctx context.Context, source *os.File, executable string, timeout ti
 	case unix.S_IFBLK:
 		kind = "block-device"
 	default:
-		return Result{}, ErrUnsafe
+		input.Close()
+		return nil, unix.Stat_t{}, "", ErrUnsafe
 	}
+	return input, before, kind, nil
+}
 
+// The caller retains the descriptor and process-wide slot through this call.
+func inspectPinned(ctx context.Context, input *os.File, before unix.Stat_t, kind, executable string, timeout time.Duration) (Result, error) {
 	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 	cmd := exec.CommandContext(ctx, executable)
@@ -91,7 +107,7 @@ func inspect(ctx context.Context, source *os.File, executable string, timeout ti
 	cmd.WaitDelay = time.Second
 	var output, diagnostic boundedOutput
 	cmd.Stdout, cmd.Stderr = &output, &diagnostic
-	err = cmd.Run()
+	err := cmd.Run()
 	if ctx.Err() != nil {
 		return Result{}, ctx.Err()
 	}
@@ -99,7 +115,7 @@ func inspect(ctx context.Context, source *os.File, executable string, timeout ti
 		return Result{}, ErrProbe
 	}
 	var after unix.Stat_t
-	if unix.Fstat(fd, &after) != nil || !sameObject(before, after) {
+	if unix.Fstat(int(input.Fd()), &after) != nil || !sameObject(before, after) {
 		return Result{}, ErrUnsafe
 	}
 	result, err := decode(bytes.NewReader(output.Bytes()))

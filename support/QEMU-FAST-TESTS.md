@@ -54,6 +54,10 @@ device numbers and the absence of both devices from the mount inventory before
 and after probing. Both must return the known ext2 UUID; a separate blank
 regular file must return unidentified, never an empty/safe-to-provision claim.
 This validates helper execution, not a product device-selection broker.
+The fixture also probes both descriptors together with an alias of the first:
+the cloned UUID must conflict across the two distinct objects, while a set
+containing only aliases must report one object. An unobserved UUID must remain
+unobserved. These point-in-time sets do not establish discovery completeness.
 
 The NFS fixture renders three policies, applies them with the actual target
 `exportfs`, and checks mounted/unmounted access, an escaped path, a synced

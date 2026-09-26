@@ -234,6 +234,9 @@ Additional NAS models require their own board definitions and qualification.
    A Linux single-slot helper supervisor now validates descriptors, bounded
    responses and cancellation; it is reused by the QEMU fixture. It does not
    establish eligible-device discovery, exclusivity or compatibility.
+   Descriptor-set snapshots retain and recheck all provided objects, reject
+   incomplete results and distinguish aliases from conflicting UUIDs before
+   mounting. They report only the provided set, not global disk absence.
    Path-based service
    handoff and volume loss/recovery remain unimplemented.
 6. Advance network/controller/recovery evidence on a separately reviewed

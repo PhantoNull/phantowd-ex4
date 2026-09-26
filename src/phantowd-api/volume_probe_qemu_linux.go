@@ -61,6 +61,12 @@ func probeQEMUUnmountedStorage() error {
 	if err := unmounted(); err != nil {
 		return err
 	}
+	var sources []*os.File
+	defer func() {
+		for _, source := range sources {
+			source.Close()
+		}
+	}()
 	for _, device := range []string{"sdb", "sdc"} {
 		fd, err := unix.Openat2(unix.AT_FDCWD, "/dev/"+device, &unix.OpenHow{
 			Flags:   unix.O_RDONLY | unix.O_NONBLOCK | unix.O_CLOEXEC,
@@ -75,11 +81,35 @@ func probeQEMUUnmountedStorage() error {
 			source.Close()
 			return errors.New("probe descriptor is not an expected virtual block object")
 		}
-		result, err := runProbeFixture(source)
-		source.Close()
-		if err != nil || result.Status != "ext-metadata" || result.SourceKind != "block-device" || result.Filesystem != "ext2" || result.FilesystemUUID != qemuNFSVolumeUUID {
-			return fmt.Errorf("unmounted virtual metadata did not match: %v", err)
+		sources = append(sources, source)
+	}
+	snapshot, err := volumeprobe.ObserveSet(context.Background(), []*os.File{sources[0], sources[1], sources[0]})
+	if err != nil {
+		return err
+	}
+	if len(snapshot.Results()) != 3 {
+		return errors.New("incomplete virtual probe snapshot")
+	}
+	for _, result := range snapshot.Results() {
+		if result.Status != "ext-metadata" || result.SourceKind != "block-device" || result.Filesystem != "ext2" || result.FilesystemUUID != qemuNFSVolumeUUID {
+			return errors.New("unmounted virtual metadata did not match")
 		}
+	}
+	match, err := snapshot.MatchUUID(qemuNFSVolumeUUID)
+	if err != nil || match.State != "conflicting-objects" || len(match.SourceIndices) != 3 {
+		return errors.New("unmounted clone conflict missed")
+	}
+	alias, err := volumeprobe.ObserveSet(context.Background(), []*os.File{sources[0], sources[0]})
+	if err != nil {
+		return err
+	}
+	match, err = alias.MatchUUID(qemuNFSVolumeUUID)
+	if err != nil || match.State != "one-object" || len(match.SourceIndices) != 2 {
+		return errors.New("same block object mistaken for clone")
+	}
+	match, err = snapshot.MatchUUID("00112233-4455-6677-8899-aabbccddeeff")
+	if err != nil || match.State != "not-observed" || len(match.SourceIndices) != 0 {
+		return errors.New("unobserved UUID gained a match")
 	}
 	blank, err := os.CreateTemp("/run", "phantowd-probe-blank-")
 	if err != nil {
@@ -105,5 +135,6 @@ func probeQEMUUnmountedStorage() error {
 		return err
 	}
 	fmt.Println("PHANTOWD_VOLUME_PROBE_READY backend=libblkid unmounted_devices=2 readonly_descriptors=true expected_uuid=true unidentified_not_empty=true scope=qemu-fixture-only")
+	fmt.Println("PHANTOWD_VOLUME_SET_READY cloned_uuid=true aliases_deduplicated=true unobserved_not_absent=true scope=provided-descriptors-only")
 	return nil
 }

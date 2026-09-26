@@ -37,13 +37,33 @@ is added. Result UUIDs are private and must not enter public diagnostics/logs.
 
 ## Verification and remaining integration
 
+`ObserveSet(ctx, sources)` retains up to 32 supplied descriptors, probes them
+sequentially under one process-wide slot, and rechecks every object before
+returning a snapshot. Any failed input/probe/recheck discards the whole result.
+The set has a 30-second context deadline, subject to the same kernel-I/O limit.
+An explicitly empty set is valid; a nil collection is refused. There is no
+device enumeration, automatic omission, weaker retry or mount operation.
+
+`MatchUUID` reports `not-observed`, `one-object` or `conflicting-objects` only
+within that set. Regular-image hard links share an object key (device/inode);
+block-node aliases share a key (rdev). Different objects with the same UUID
+are conflicts. Inconsistent results for one object invalidate the snapshot.
+Names, bays and enumeration order are not treated as persistent identities.
+Returned source indices refer to this call only, not approved mount sources.
+Results are copied; all retained descriptors close before the snapshot returns.
+Even `one-object` cannot prove global uniqueness, health or WD compatibility.
+Physical media replacement, device-number reuse and multipath topology need
+additional broker qualification; these keys are not durable disk identities.
+
 Host tests exercise successful descriptor handoff and caller ownership,
 environment/argument isolation, malformed/missing/unknown fields, output
 overflow, nonzero/stderr failures, source-kind mismatch, descriptor refusal,
 concurrent file modification, interruptible-process cancellation and the
 single-slot rule. A fixed-count fuzz target checks the response decoder.
+Set tests add alias/clone grouping, missing UUIDs, whole-set refusals and a
+competing write to an earlier image during a later probe.
 The QEMU unmounted-disk fixture calls this implementation, not a separate
-copy of the process/JSON code.
+copy of the process/JSON code, including clone/alias distinction before mounting.
 
 The future trusted broker still must establish eligible devices, discovery
 completeness, unmounted state, exclusive access and identity stability before
