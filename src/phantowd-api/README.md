@@ -11,8 +11,47 @@ exercised with synthetic fixtures in the QEMU self-test and accepted by the
 authenticated [file-service preview API](fileservice/README.md). No HTTP
 configuration save or service activation is implemented yet. The Linux-only
 [share store](sharestore/README.md) adds validated revision transactions and
-failure handling, exercised only in temporary host/QEMU directories. The
+failure handling, exercised in temporary host directories and across two
+independent QEMU boots using a generated disk. An authenticated read endpoint
+can return that stored desired share policy from an explicitly configured
+Linux store; it does not load NFS policy or claim running-service state. The
 firmware does not yet provision persistent product configuration storage.
+
+## Stored share-policy read contract
+
+`GET /api/v1/shares/configuration` requires an administrator session and the
+configured request Host/scheme. An Origin header, when present, must match;
+same-origin browser GETs without Origin remain supported. Queries, bodies and
+non-GET methods are refused. Responses are no-store and contain no credentials.
+Filesystem UUIDs and share/user policy are management data available only to
+the authenticated owner, not public diagnostics or logs.
+
+The version-1 response has scope `stored-desired-share-policy-only`, an
+`initialized` boolean and `configuration` (the complete share document, or
+null when the configured store has never been initialized). Runtime validation
+and activation availability are explicitly false. Missing backend, corruption
+or I/O failure returns a generic 503, never an empty appliance configuration.
+One storage read is active per handler; competing reads receive 503 with
+Retry-After, while health checks can still run. Kernel-blocked I/O is not made
+cancellable by this gate.
+
+On Linux, optional `PHANTOWD_SHARE_STATE_DIR` must name an existing private
+0700 local directory owned by the API user, under trusted parents, satisfying
+the store contract. An explicitly invalid directory fails API startup; an unset
+variable leaves this capability unavailable. There is no default path, mkdir,
+automatic initialization or pending-state promotion. Startup validates and
+syncs current state and takes the store's exclusive lock; GET only loads it.
+The lock lasts for the API lifetime, so external writers must not edit this
+directory behind it. Non-Linux builds reject an explicitly configured backend.
+
+The default QEMU daemon does not set this variable. Its separate two-boot test
+dispatches the real handler with a synthetic authenticated session and the
+real store adapter against the persisted fixture. Host tests cover rejection,
+backpressure, error redaction, encoded size and startup/lock behavior. The
+dashboard is not yet connected to this endpoint; HTTP save, schema migration,
+product state provisioning and SMB/NFS activation remain separate work.
+
+## Runtime and development boundaries
 
 The Linux [qualified-mount guard](mountguard/README.md) retains a previously
 verified mount using a unique mount ID and directory descriptors. It refuses

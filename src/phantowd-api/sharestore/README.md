@@ -1,8 +1,10 @@
 # Desired share-policy storage (Linux)
 
 This library persists the [versioned share policy](../shareconfig/README.md).
-It is not connected to HTTP endpoints, account provisioning, volume mounting,
-service configuration or the EX4's persistent flash. QEMU checks use temporary
+Its Load method can back an authenticated read-only management endpoint when
+an explicit private state directory is configured. Commit is not exposed over
+HTTP. It is not connected to account provisioning, volume mounting, service
+activation or the EX4's persistent flash. QEMU checks use temporary
 directories and a separately generated disposable virtual disk, never user media.
 
 ## Contract

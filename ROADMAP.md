@@ -216,8 +216,12 @@ Additional NAS models require their own board definitions and qualification.
    refuse stale writers. This is clean-reboot evidence, not power-loss testing
    or qualification of the EX4 persistent-state location.
 4. Extend the implemented standalone browser share-proposal form to full
-   configuration management after persistence/recovery qualification;
-   qualify effective POSIX permissions and runtime volume binding before service
+   configuration management after persistence/recovery qualification.
+   An authenticated, bounded stored-share-policy read endpoint now has an
+   explicit Linux store adapter and post-reboot ARMv5 handler-dispatch tests.
+   Its dashboard integration, HTTP save and product state provisioning remain
+   incomplete; stored policy is never reported as active service state.
+   Qualify effective POSIX permissions and runtime volume binding before service
    activation. Local ARMv5 QEMU has exercised HTTP/HTTPS previews, generated
    Samba grants with real Unix users (write/read/denial/ownership/symlink checks)
    and generated NFS exports on a disposable virtual disk; this does not

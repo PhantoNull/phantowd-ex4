@@ -34,6 +34,8 @@ for phase in seed verify; do
         -device scsi-hd,bus=scsi0.0,drive=rootdisk,serial=PHANTOWD-QEMU-SERIAL-01,wwn=0x500f000000000001 \
         -drive "file=$workspace/state.ext2,if=none,id=statedisk,format=raw,cache=writethrough" \
         -device scsi-hd,bus=scsi0.0,drive=statedisk,serial=PHANTOWD-QEMU-DATA-01,wwn=0x500f000000000002 \
+        -object rng-random,id=rng0,filename=/dev/urandom \
+        -device virtio-rng-pci,rng=rng0 \
         -append "rootwait root=/dev/sda ro console=ttyAMA0,115200 init=/usr/lib/phantowd/qemu-state-init.sh phantowd.state=$phase" \
         -display none -serial stdio -monitor none -no-reboot -nic none \
         > "$workspace/$phase.log" 2>&1 &
@@ -59,4 +61,5 @@ for phase in seed verify; do
     grep -F "PHANTOWD_STATE_BOOT_READY phase=$phase scope=disposable-qemu-only" "$workspace/$phase.log" >/dev/null
     grep -F 'reboot: Restarting system' "$workspace/$phase.log" >/dev/null
 done
+grep -F 'PHANTOWD_SHARE_READ_READY authenticated=true backend=sharestore after_reboot=true mutation=false scope=qemu-handler-dispatch-only' "$log" >/dev/null
 echo 'PHANTOWD_STATE_REBOOT_READY boots=2 committed_policy=true pending_not_promoted=true corrupt_refused=true stale_writer_denied=true scope=clean-qemu-reboot-only' | tee -a "$log"

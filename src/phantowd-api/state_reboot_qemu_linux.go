@@ -175,6 +175,12 @@ func exerciseQEMUStatePersistence(root, phase string) error {
 	if err != nil || !reflect.DeepEqual(loaded, qemuPersistentPolicy(3)) {
 		return errors.New("post-boot commit did not reopen")
 	}
+	if err := s.Close(); err != nil {
+		return err
+	}
+	if err := exerciseQEMUSharePolicyHTTP(good, qemuPersistentPolicy(3)); err != nil {
+		return err
+	}
 	bad, err := sharestore.Open(corrupt)
 	if bad != nil {
 		bad.Close()
