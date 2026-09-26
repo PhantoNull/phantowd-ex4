@@ -145,6 +145,10 @@ func (a *authController) login(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusConflict, map[string]string{"error": "setup_required"})
 		return
 	}
+	if errors.Is(err, errCredentials) {
+		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "invalid_credentials"})
+		return
+	}
 	if err != nil {
 		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "authentication_unavailable"})
 		return
@@ -158,6 +162,15 @@ func (a *authController) login(w http.ResponseWriter, r *http.Request) {
 
 func (a *authController) session(w http.ResponseWriter, r *http.Request) {
 	if !requireMethod(w, r, http.MethodGet) || !readRequestHasNoInput(w, r) {
+		return
+	}
+	configured, err := a.accounts.configured()
+	if err != nil {
+		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "account_state_unavailable"})
+		return
+	}
+	if !configured {
+		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "authentication_required"})
 		return
 	}
 	_, session, ok := a.sessions.sessionFromRequest(r, time.Now())
@@ -243,15 +256,21 @@ func (a *authController) logoutAll(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *authController) issueSession(w http.ResponseWriter, r *http.Request, status int, epoch *sessionEpoch) {
-	if token, _, ok := a.sessions.sessionFromRequest(r, time.Now()); ok {
-		a.sessions.revoke(token)
-	}
-	token, _, err := a.sessions.createForEpoch(time.Now(), epoch)
+	err := a.accounts.withConfigured(func() error {
+		if token, _, ok := a.sessions.sessionFromRequest(r, time.Now()); ok {
+			a.sessions.revoke(token)
+		}
+		token, _, err := a.sessions.createForEpoch(time.Now(), epoch)
+		if err != nil {
+			return err
+		}
+		a.sessions.setCookie(w, r, token)
+		return nil
+	})
 	if err != nil {
 		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "session_unavailable"})
 		return
 	}
-	a.sessions.setCookie(w, r, token)
 	writeJSON(w, status, map[string]bool{"authenticated": true})
 }
 

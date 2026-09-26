@@ -88,9 +88,11 @@ persistent state location remains a separate hardware/layout decision.
   now have a separate [transactional credential store](src/phantowd-api/admincredentials/README.md)
   with strict prototype-v1 compatibility, compare-and-swap replacement and
   no cached verifier after storage refusal. Host and isolated two-boot ARMv5
-  tests cover old-password denial and retained replacements. The running API
-  still uses its setup-only backend: integrating replacement, authorization,
-  session issuance/revocation and recovery precedes a change-password form.
+  tests cover old-password denial and retained replacements. The running Linux
+  API now owns this backend, rechecks credentials after hashing and quarantines
+  the process after storage failure rather than reviving sessions or enrollment.
+  Non-Linux host tests use explicit memory fixtures. The authenticated replacement/
+  session-revocation transaction and recovery still precede a change-password form.
 - Design first-owner enrollment and recovery without default passwords.
 - Implement HTTPS certificate provisioning, renewal and replacement, with
   clear handling of device clock errors and changed names/addresses.

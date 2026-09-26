@@ -4,14 +4,8 @@
 package main
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"errors"
-	"io"
-	"os"
-	"path/filepath"
-	"runtime"
 	"sync"
 	"unicode/utf8"
 
@@ -19,36 +13,33 @@ import (
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/passwordhash"
 )
 
-const (
-	accountFileName      = "accounts.json"
-	accountStateVersion  = 1
-	maxAccountStateBytes = 4096
-	minimumPasswordRunes = 15
-)
+const minimumPasswordRunes = 15
 
 var (
-	errAccountConfigured = errors.New("administrator account already configured")
-	errAccountMissing    = errors.New("administrator account is not configured")
-	errCredentials       = errors.New("invalid credentials")
-	errInvalidUsername   = errors.New("invalid username")
-	errShortPassword     = errors.New("password does not meet the minimum length")
+	errAccountConfigured  = errors.New("administrator account already configured")
+	errAccountMissing     = errors.New("administrator account is not configured")
+	errAccountUnavailable = errors.New("administrator state unavailable; restart and reconcile storage")
+	errAccountUncertain   = errors.New("administrator state durability uncertain; restart and reconcile storage")
+	errAccountClosed      = errors.New("administrator state closed")
+	errAccountBusy        = errors.New("administrator state has another owner")
+	errCredentials        = errors.New("invalid credentials")
+	errInvalidUsername    = errors.New("invalid username")
+	errShortPassword      = errors.New("password does not meet the minimum length")
 )
 
-type storedAccount struct {
-	Username     string `json:"username"`
-	PasswordHash string `json:"password_hash"`
-}
-
-type accountDocument struct {
-	Version int           `json:"version"`
-	Admin   storedAccount `json:"admin"`
+// Implementations return only the errors above, never private paths/verifiers.
+// The Linux adapter owns its durable backend for the entire API lifetime.
+type accountBackend interface {
+	Load() (admincredentials.Document, error)
+	Initialize(string, string) error
+	Close() error
 }
 
 type accountStore struct {
-	mu    sync.Mutex
-	dir   string
-	file  string
-	admin *storedAccount
+	mu             sync.Mutex
+	backend        accountBackend
+	seenConfigured bool
+	failure        error
 }
 
 func configuredAccountStateDirectory(dir string) (string, error) {
@@ -59,30 +50,51 @@ func configuredAccountStateDirectory(dir string) (string, error) {
 }
 
 func openAccountStore(dir string) (*accountStore, error) {
-	if !filepath.IsAbs(dir) || filepath.Clean(dir) != dir {
-		return nil, errors.New("account state directory must be an absolute clean path")
-	}
-	info, err := os.Lstat(dir)
+	backend, err := openAccountBackend(dir)
 	if err != nil {
-		return nil, errors.New("account state directory is unavailable")
+		return nil, err
 	}
-	if !info.IsDir() || info.Mode()&os.ModeSymlink != 0 || !privatePermissions(info.Mode(), 0o700) {
-		return nil, errors.New("account state directory is not private")
+	s := &accountStore{backend: backend}
+	if _, err := s.loadLocked(); err != nil && !errors.Is(err, errAccountMissing) {
+		_ = backend.Close()
+		return nil, err
 	}
-	store := &accountStore{dir: dir, file: filepath.Join(dir, accountFileName)}
-	document, err := store.loadLocked()
-	if err == nil {
-		store.admin = &document.Admin
-	} else if !errors.Is(err, os.ErrNotExist) {
-		return nil, errors.New("account state is invalid or inaccessible")
+	return s, nil
+}
+
+// loadLocked never returns cached credentials. Once configured state is lost,
+// corrupt or uncertain this process remains unavailable even if someone puts
+// the file back. Restart establishes a new owner and new in-memory sessions.
+func (s *accountStore) loadLocked() (admincredentials.Document, error) {
+	if s.backend == nil {
+		return admincredentials.Document{}, errAccountClosed
 	}
-	return store, nil
+	if s.failure != nil {
+		return admincredentials.Document{}, s.failure
+	}
+	d, err := s.backend.Load()
+	if errors.Is(err, errAccountMissing) && !s.seenConfigured {
+		return admincredentials.Document{}, errAccountMissing
+	}
+	if err != nil || d.Validate() != nil {
+		s.failure = errAccountUnavailable
+		if errors.Is(err, errAccountUncertain) {
+			s.failure = errAccountUncertain
+		}
+		return admincredentials.Document{}, s.failure
+	}
+	s.seenConfigured = true
+	return d, nil
 }
 
 func (s *accountStore) configured() (bool, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	return s.admin != nil, nil
+	_, err := s.loadLocked()
+	if errors.Is(err, errAccountMissing) {
+		return false, nil
+	}
+	return err == nil, err
 }
 
 func (s *accountStore) setup(ctx context.Context, username, password string) error {
@@ -94,17 +106,29 @@ func (s *accountStore) setup(ctx context.Context, username, password string) err
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if s.admin != nil {
+	_, err := s.loadLocked()
+	if err == nil {
 		return errAccountConfigured
+	}
+	if !errors.Is(err, errAccountMissing) {
+		return err
 	}
 	verifier, err := passwordhash.Hash(ctx, []byte(password))
 	if err != nil {
 		return err
 	}
-	document := accountDocument{Version: accountStateVersion, Admin: storedAccount{
-		Username: username, PasswordHash: verifier,
-	}}
-	return s.writeLocked(document)
+	if err := s.backend.Initialize(username, verifier); err != nil {
+		if errors.Is(err, errAccountConfigured) {
+			return errAccountConfigured
+		}
+		s.failure = errAccountUnavailable
+		if errors.Is(err, errAccountUncertain) {
+			s.failure = errAccountUncertain
+		}
+		return s.failure
+	}
+	s.seenConfigured = true
+	return nil
 }
 
 func (s *accountStore) authenticate(ctx context.Context, username, password string) (bool, error) {
@@ -112,125 +136,61 @@ func (s *accountStore) authenticate(ctx context.Context, username, password stri
 		return false, errCredentials
 	}
 	s.mu.Lock()
-	admin := s.admin
+	d, err := s.loadLocked()
 	s.mu.Unlock()
-	if admin == nil {
-		return false, errAccountMissing
-	}
-	if !validUsername(username) || username != admin.Username {
-		_, err := passwordhash.Hash(ctx, []byte(password))
+	if err != nil {
 		return false, err
 	}
-	return passwordhash.Verify(ctx, []byte(password), admin.PasswordHash)
+	var valid bool
+	if !validUsername(username) || username != d.Admin.Username {
+		_, err = passwordhash.Hash(ctx, []byte(password))
+	} else {
+		valid, err = passwordhash.Verify(ctx, []byte(password), d.Admin.PasswordHash)
+	}
+	if err != nil {
+		return false, err
+	}
+	// KDF work does not retain the store lock. Recheck its exact snapshot before
+	// accepting a result; a later password-change endpoint must additionally
+	// coordinate its commit with session issuance/revocation.
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	current, err := s.loadLocked()
+	if err != nil {
+		return false, err
+	}
+	if current != d {
+		return false, errAccountUnavailable
+	}
+	return valid, nil
 }
 
-func (s *accountStore) loadLocked() (accountDocument, error) {
-	var document accountDocument
-	info, err := os.Lstat(s.file)
-	if err != nil {
-		return document, err
+// Prevent a concurrent failure/Close transition between the final account
+// check and session issuance. fn must be short and must not reenter the store.
+func (s *accountStore) withConfigured(fn func() error) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if _, err := s.loadLocked(); err != nil {
+		return err
 	}
-	if !info.Mode().IsRegular() || !privatePermissions(info.Mode(), 0o600) || info.Size() > maxAccountStateBytes {
-		return document, errors.New("account state file is not private or has invalid size")
-	}
-	file, err := os.Open(s.file)
-	if err != nil {
-		return document, err
-	}
-	defer file.Close()
-	data, err := io.ReadAll(io.LimitReader(file, maxAccountStateBytes+1))
-	if err != nil || len(data) == 0 || len(data) > maxAccountStateBytes {
-		return document, errors.New("account state file cannot be read")
-	}
-	decoder := json.NewDecoder(bytes.NewReader(data))
-	decoder.DisallowUnknownFields()
-	if err := decoder.Decode(&document); err != nil {
-		return accountDocument{}, errors.New("account state JSON is invalid")
-	}
-	if err := decoder.Decode(new(any)); !errors.Is(err, io.EOF) {
-		return accountDocument{}, errors.New("account state has trailing data")
-	}
-	canonical, err := json.Marshal(document)
-	if err != nil || !bytes.Equal(canonical, data) || document.Version != accountStateVersion ||
-		!validUsername(document.Admin.Username) || passwordhash.ValidateVerifier(document.Admin.PasswordHash) != nil {
-		return accountDocument{}, errors.New("account state schema or verifier is invalid")
-	}
-	return document, nil
+	return fn()
 }
 
-func (s *accountStore) writeLocked(document accountDocument) error {
-	data, err := json.Marshal(document)
-	if err != nil || len(data) > maxAccountStateBytes {
-		return errors.New("account state cannot be encoded")
-	}
-	file, err := os.CreateTemp(s.dir, ".accounts-*.tmp")
-	if err != nil {
-		return errors.New("account state cannot be staged")
-	}
-	tempName := file.Name()
-	defer func() {
-		if tempName != "" {
-			_ = os.Remove(tempName)
-		}
-	}()
-	if err := file.Chmod(0o600); err != nil {
-		file.Close()
-		return errors.New("account state permissions cannot be set")
-	}
-	if _, err := file.Write(data); err != nil {
-		file.Close()
-		return errors.New("account state cannot be written")
-	}
-	if err := file.Sync(); err != nil {
-		file.Close()
-		return errors.New("account state cannot be synchronized")
-	}
-	if err := file.Close(); err != nil {
-		return errors.New("account state cannot be closed")
-	}
-	if _, err := os.Lstat(s.file); err == nil {
-		return errAccountConfigured
-	} else if !errors.Is(err, os.ErrNotExist) {
-		return errors.New("account state destination is inaccessible")
-	}
-	if err := os.Link(tempName, s.file); err != nil {
-		if errors.Is(err, os.ErrExist) {
-			return errAccountConfigured
-		}
-		return errors.New("account state cannot be committed")
-	}
-	s.admin = &document.Admin
-	if err := os.Remove(tempName); err != nil {
-		return errors.New("account state committed but temporary cleanup failed")
-	}
-	tempName = ""
-	if runtime.GOOS == "windows" {
+func (s *accountStore) Close() error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.backend == nil {
 		return nil
 	}
-	directory, err := os.Open(s.dir)
+	err := s.backend.Close()
+	s.backend = nil
 	if err != nil {
-		return errors.New("account state directory cannot be synchronized")
-	}
-	syncErr := directory.Sync()
-	closeErr := directory.Close()
-	if syncErr != nil || closeErr != nil {
-		return errors.New("account state directory cannot be synchronized")
+		return errAccountUnavailable
 	}
 	return nil
 }
 
-func privatePermissions(mode os.FileMode, ownerBits os.FileMode) bool {
-	if runtime.GOOS == "windows" {
-		// Windows does not expose POSIX owner/group/other mode bits through os.Stat.
-		// Firmware builds target Linux, where these checks are enforced.
-		return true
-	}
-	return mode.Perm()&0o077 == 0 && mode.Perm()&ownerBits == ownerBits
-}
-
-func validUsername(username string) bool {
-	return admincredentials.ValidUsername(username)
-}
+func validUsername(username string) bool { return admincredentials.ValidUsername(username) }
 
 func validSetupPassword(password string) bool {
 	return utf8.ValidString(password) && len(password) <= passwordhash.MaxPasswordLength &&

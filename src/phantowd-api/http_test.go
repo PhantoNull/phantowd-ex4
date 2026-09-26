@@ -26,10 +26,7 @@ func newTestAuth(t *testing.T) (*authController, *http.Cookie) {
 	if err := os.Chmod(dir, 0o700); err != nil {
 		t.Fatal(err)
 	}
-	accounts, err := openAccountStore(dir)
-	if err != nil {
-		t.Fatal(err)
-	}
+	accounts := openTestAccountStore(t, dir)
 	if err := accounts.setup(context.Background(), "test-admin", testAdminPassword); err != nil {
 		t.Fatal(err)
 	}
