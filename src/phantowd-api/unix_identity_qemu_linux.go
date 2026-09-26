@@ -8,11 +8,14 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
-	"strconv"
+	"strings"
 
+	"github.com/PhantoNull/phantowd-ex4/phantowd-api/identityowner"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/identityprovision"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/serviceaccounts"
+	"github.com/PhantoNull/phantowd-ex4/phantowd-api/serviceaccountstore"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/unixidentity"
 )
 
@@ -71,20 +74,53 @@ func exerciseQEMUUnixIdentity() (result error) {
 			result = errors.Join(result, errors.New("managed fixture identity remained after cleanup"))
 		}
 	}()
-	journalPath := smbFixtureRoot + "/identity-operation"
-	if err := os.Mkdir(journalPath, 0700); err != nil {
-		return err
+	root := smbFixtureRoot + "/identity-authority"
+	for _, path := range []string{root, root + "/registry", root + "/operations"} {
+		if err := os.Mkdir(path, 0700); err != nil {
+			return err
+		}
 	}
-	journal, err := identityprovision.Open(journalPath)
+	seed, err := serviceaccountstore.Open(root + "/registry")
 	if err != nil {
 		return err
 	}
-	defer journal.Close()
-	if err := journal.Begin(r, a.ID, before); err != nil {
+	err = seed.Initialize(1800, 1810)
+	closeErr := seed.Close()
+	if err != nil || closeErr != nil {
+		return errors.Join(err, closeErr)
+	}
+	// The guarded disposable guest has no imported/offline data identities.
+	inventory := func(context.Context) (serviceaccounts.Reservations, error) {
+		return serviceaccounts.Reservations{UIDs: []uint32{}, GIDs: []uint32{}, Names: []string{}}, nil
+	}
+	owner, err := identityowner.Open(root, inventory)
+	if err != nil {
 		return err
 	}
-	backend := qemuNativeIdentityBackend{expected: a, groupCreated: &createdGroup, userCreated: &createdUser}
-	if err := journal.Step(context.Background(), 1, r, backend); err != nil {
+	defer owner.Close()
+	allocated, err := owner.Reserve(context.Background(), 1, a.ID, a.Name)
+	if err != nil || allocated != a {
+		return errors.New("authority reservation mismatch")
+	}
+	competing, err := identityowner.Open(root, inventory)
+	if competing != nil {
+		competing.Close()
+	}
+	if !errors.Is(err, identityowner.ErrBusy) {
+		return errors.New("authority lifetime lease bypassed")
+	}
+	runChannel := func(phase string) error {
+		channelErr := exerciseQEMUIdentityChannel(owner, phase)
+		// A missing response is not a rollback. Reconcile the durable guest-only
+		// journal before choosing cleanup, even when the client reports failure.
+		j, loadErr := owner.Operation(a.ID).Load(context.Background())
+		if loadErr == nil {
+			createdGroup = j.Phase == identityprovision.GroupConfirmed || j.Phase == identityprovision.UnixConfirmed
+			createdUser = j.Phase == identityprovision.UnixConfirmed
+		}
+		return errors.Join(channelErr, loadErr)
+	}
+	if err := runChannel("group"); err != nil {
 		return err
 	}
 	partial, err := observe()
@@ -96,18 +132,21 @@ func exerciseQEMUUnixIdentity() (result error) {
 	}
 	// Resume a confirmed group after store close/reopen; this is not an
 	// ambiguous dispatch. The next command still needs fresh group-only state.
-	if err := journal.Close(); err != nil {
+	if _, err := owner.Reserve(context.Background(), 2, "other", "qpother"); !errors.Is(err, identityowner.ErrPending) {
+		return errors.New("pending operation did not freeze allocation")
+	}
+	if err := owner.Close(); err != nil {
 		return err
 	}
-	journal, err = identityprovision.Open(journalPath)
+	owner, err = identityowner.Open(root, inventory)
 	if err != nil {
 		return err
 	}
-	defer journal.Close()
-	if err := journal.Step(context.Background(), 3, r, backend); err != nil {
+	defer owner.Close()
+	if err := runChannel("user"); err != nil {
 		return err
 	}
-	completed, err := journal.Load()
+	completed, err := owner.Operation(a.ID).Load(context.Background())
 	if err != nil || completed.Phase != identityprovision.UnixConfirmed || completed.Revision != 5 {
 		return errors.New("managed fixture journal incomplete")
 	}
@@ -117,6 +156,9 @@ func exerciseQEMUUnixIdentity() (result error) {
 	}
 	if status, err := after.Assess(a); err != nil || status != unixidentity.Observed {
 		return errors.New("provisioned fixture identity does not match registry")
+	}
+	if err := verifyQEMUIdentityLogin(a.Name); err != nil {
+		return err
 	}
 	conflicting := a
 	conflicting.UID++
@@ -132,54 +174,97 @@ func exerciseQEMUUnixIdentity() (result error) {
 	if _, err := empty.Create(1, "other", a.Name, exclusions); !errors.Is(err, serviceaccounts.ErrCollision) {
 		return errors.New("observed fixture name allocated twice")
 	}
+	return exerciseQEMUSecondIdentity(owner, a)
+}
+
+func verifyQEMUIdentityLogin(name string) error {
+	// Inspect only this generated guest account. Never return shadow bytes.
+	passwd, err := os.ReadFile("/etc/passwd")
+	if err != nil {
+		return err
+	}
+	shadow, err := os.ReadFile("/etc/shadow")
+	if err != nil {
+		return err
+	}
+	locked, noLogin := false, false
+	for _, line := range strings.Split(string(passwd), "\n") {
+		fields := strings.Split(line, ":")
+		if len(fields) == 7 && fields[0] == name {
+			noLogin = fields[6] == "/sbin/nologin"
+			if _, err := os.Lstat(fields[5]); !errors.Is(err, os.ErrNotExist) {
+				return errors.New("native fixture unexpectedly created a home")
+			}
+		}
+	}
+	for _, line := range strings.Split(string(shadow), "\n") {
+		fields := strings.Split(line, ":")
+		if len(fields) == 9 && fields[0] == name {
+			locked = strings.HasPrefix(fields[1], "!") || strings.HasPrefix(fields[1], "*")
+		}
+	}
+	if !locked || !noLogin {
+		return errors.New("native fixture login policy mismatch")
+	}
 	return nil
 }
 
-// Deliberately fixed QEMU backend, not a deployable privileged executor. The
-// caller serializes this isolated scenario; only its exact new account is valid.
-type qemuNativeIdentityBackend struct {
-	expected                  serviceaccounts.Account
-	groupCreated, userCreated *bool
-}
-
-func (b qemuNativeIdentityBackend) Observe(ctx context.Context) (unixidentity.Snapshot, error) {
-	if err := ctx.Err(); err != nil {
-		return unixidentity.Snapshot{}, err
+func exerciseQEMUSecondIdentity(owner *identityowner.Owner, first serviceaccounts.Account) (result error) {
+	ctx := context.Background()
+	second, err := owner.Reserve(ctx, 2, "second", "qpsecond")
+	if err != nil || second.UID == first.UID || second.GID == first.GID {
+		return errors.New("second fixture reservation mismatch")
 	}
-	if err := guardQEMUDataVolume(); err != nil {
-		return unixidentity.Snapshot{}, err
-	}
-	return unixidentity.ReadLocal("/etc", 0)
-}
-
-func (b qemuNativeIdentityBackend) CreateGroup(ctx context.Context, a serviceaccounts.Account) error {
-	if err := b.check(ctx, a); err != nil {
+	defer func() {
+		j, err := owner.Operation(second.ID).Load(ctx)
+		if err != nil {
+			result = errors.Join(result, err)
+			return
+		}
+		if j.Phase == identityprovision.UnixConfirmed {
+			_, err = smbFixtureCommand("", "/usr/sbin/deluser", second.Name)
+		} else if j.Phase == identityprovision.GroupConfirmed {
+			_, err = smbFixtureCommand("", "/usr/sbin/delgroup", second.Name)
+		}
+		if err != nil {
+			result = errors.Join(result, errors.New("second identity cleanup failed"))
+			return
+		}
+		observed, err := unixidentity.ReadLocal("/etc", 0)
+		if err != nil {
+			result = errors.Join(result, err)
+			return
+		}
+		if state, err := observed.Assess(second); err != nil || state != unixidentity.Absent {
+			result = errors.Join(result, errors.New("second identity retained after cleanup"))
+		}
+	}()
+	firstBefore, err := owner.Operation(first.ID).Load(ctx)
+	if err != nil {
 		return err
 	}
-	_, err := smbFixtureCommand("", "/usr/sbin/addgroup", "-g", strconv.FormatUint(uint64(a.GID), 10), a.Name)
-	if err == nil {
-		*b.groupCreated = true
-	}
-	return err
-}
-
-func (b qemuNativeIdentityBackend) CreateUser(ctx context.Context, a serviceaccounts.Account) error {
-	if err := b.check(ctx, a); err != nil {
+	if err := exerciseQEMUIdentityChannel(owner, "second"); err != nil {
 		return err
 	}
-	_, err := smbFixtureCommand("", "/usr/sbin/adduser", "-D", "-H", "-s", "/sbin/nologin", "-G", a.Name, "-u", strconv.FormatUint(uint64(a.UID), 10), a.Name)
-	if err == nil {
-		*b.userCreated = true
+	firstAfter, err := owner.Operation(first.ID).Load(ctx)
+	if err != nil || firstAfter != firstBefore {
+		return errors.New("historical first journal changed")
 	}
-	return err
-}
-
-func (b qemuNativeIdentityBackend) check(ctx context.Context, a serviceaccounts.Account) error {
-	if err := ctx.Err(); err != nil {
+	observed, err := unixidentity.ReadLocal("/etc", 0)
+	if err != nil {
 		return err
 	}
-	if a != b.expected || a.ID != "managed" || a.Name != "qpmanaged" || a.UID <= 1803 || a.UID > 1810 || a.GID != a.UID || a.State != serviceaccounts.Disabled || b.groupCreated == nil || b.userCreated == nil {
-		return errors.New("unexpected QEMU native identity")
+	for _, a := range []serviceaccounts.Account{first, second} {
+		if state, err := observed.Assess(a); err != nil || state != unixidentity.Observed {
+			return errors.New("routed identity observation mismatch")
+		}
+		if err := verifyQEMUIdentityLogin(a.Name); err != nil {
+			return err
+		}
 	}
-	return guardQEMUDataVolume()
+	if err := exerciseQEMUDisabledPasswordBoundary(second); err != nil {
+		return err
+	}
+	fmt.Println("PHANTOWD_IDENTITY_ROUTER_READY accounts=2 distinct_ids=true historical_unchanged=true unknown_denied=true scope=isolated-qemu-only")
+	return nil
 }

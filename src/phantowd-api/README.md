@@ -187,9 +187,21 @@ and refuses non-Versatile PB machines. See the
   `PHANTOWD_STATE_DIR/accounts.json`; the directory must be explicitly
   configured, already exist, and be private. There is intentionally no implicit
   `/var/lib` fallback until a product state-volume lifecycle is designed. Linux
-  requires directory mode 0700 and file mode 0600. Setup uses an atomic
-  no-replace file link. QEMU explicitly sets `/run/phantowd-state`, so the
+  requires an owned directory mode 0700 and regular single-link file mode 0600.
+  The transactional Linux backend retains an exclusive cooperative lifetime
+  lock. Setup commits v2/revision 1 only to absent state; exact prototype-v1
+  accounts remain readable without content rewrites. Do not run old writers
+  on this directory. QEMU explicitly sets `/run/phantowd-state`, so the
   account survives an API-process restart but is erased by a guest reboot.
+  Non-Linux binaries refuse this backend; Windows HTTP/TLS tests use explicitly
+  injected memory-only fixtures, not a weaker production persistence fallback.
+- Account checks reload validated state. Login rechecks its snapshot after KDF
+  work; issuance performs a final account check under the adapter lock.
+  Missing previously configured state, corruption, unsafe storage or uncertain
+  setup latches unavailability until process restart/reconciliation. Existing
+  sessions then fail authorization and cannot retrieve CSRF/session metadata;
+  enrollment is not reopened. Restoring a file cannot revive that process.
+  There is no automated repair/reset. Already-authorized work is not cancelled.
 - Sessions are random, in-memory only, expire after 30 minutes, and are capped
   at eight. Cookies are HttpOnly and SameSite=Strict; logout requires an
   anti-CSRF header. A process-wide login limiter allows five attempts per
@@ -203,11 +215,10 @@ and refuses non-Versatile PB machines. See the
   does not cancel requests/jobs already authorized, change credentials, revoke
   SMB/NFS access or coordinate multiple API processes. The dashboard clears
   drafts, prevents duplicate requests and does not retry an uncertain outcome.
-  A separate [administrator transaction store](admincredentials/README.md)
-  now supports revision-checked replacement and strict legacy-document reading,
-  with isolated host/ARMv5 persistence tests. The running authentication flow
-  still uses its setup-only store. Password change/reset requires backend,
-  session-barrier and recovery integration; it is not implemented by this control.
+  The [administrator transaction store](admincredentials/README.md) now backs
+  running Linux authentication. The separate password-change endpoint below
+  verifies the current password and coordinates replacement/session revocation.
+  Reset, recovery and durable ownership/bootstrap authority remain unimplemented.
 - QEMU alone compiles a `qemu`-tagged self-test with a disposable password so
   the guest can test setup, duplicate-setup rejection, login, denied access,
   CSRF-checked logout, and account reload after daemon restart. The self-test
@@ -248,6 +259,7 @@ and refuses non-Versatile PB machines. See the
 | `GET /api/v1/auth/session` | Authenticated session metadata and CSRF token |
 | `POST /api/v1/auth/logout` | Revoke session; requires configured Origin and CSRF header |
 | `POST /api/v1/auth/logout-all` | Atomically revoke all panel sessions and earlier in-flight session issuance; requires one session cookie, one CSRF header, configured Origin and no input |
+| `POST /api/v1/auth/password` | Verify current password, commit a different new password and revoke every panel session; requires the configured Origin, one session cookie and one CSRF header |
 | `POST /api/v1/file-services/preview` | Authenticated, Origin/CSRF-protected desired SMB/NFS preview; no save, runtime validation or activation |
 | `GET /api/v1/shares/configuration` | Authenticated read of the optional original share-only store; not running-service state |
 | `GET /api/v1/file-services/configuration` | Authenticated combined desired policy; development backend only, uninitialized state remains explicit |
@@ -288,8 +300,9 @@ data-integrity checks; no periodic sampling is implemented yet.
 
 The server limits active handlers to eight, request headers to 8 KiB (Go's
 HTTP parser may permit implementation slop), and sets read/write/idle timeouts.
-Auth JSON is capped at 2 KiB, rejects duplicate/unknown fields and trailing
-values, and refuses content encodings. File-service preview JSON is capped at
+Setup/login JSON is capped at 2 KiB, rejects duplicate/unknown fields and trailing
+values, and refuses content encodings. Password-change JSON has the separate
+16 KiB bound described below. File-service preview JSON is capped at
 524,544 bytes, with separate 256 KiB nested-policy limits and one active
 preview per handler. It accepts neither content encoding nor query parameters.
 See the [preview contract](fileservice/README.md) for errors and prerequisites.
@@ -298,9 +311,48 @@ prototype, not a security-reviewed LAN service. The QEMU guest binds only to
 `127.0.0.1:8080`. The optional TLS/listener configuration is only a transport
 safety primitive; it does not qualify the API for deployment on an EX4 or make
 the QEMU listener remotely accessible. There is no first-boot hardware
-pairing, password change/reset/recovery, MFA, persistent session, certificate
+pairing, password reset/recovery, MFA, persistent session, certificate
 provisioning/renewal, production state-volume provisioning, or volume
 migration/rollback.
+
+## Administrator password change
+
+`POST /api/v1/auth/password` accepts only `current_password` and `new_password`.
+It requires the configured Host/scheme/Origin, exactly one live session cookie,
+one CSRF header and one JSON Content-Type (optional UTF-8 charset). Query strings,
+content encodings, unknown/duplicate/non-exact field names, nulls, invalid UTF-8,
+unpaired surrogate escapes, excess nesting and trailing JSON are rejected. The
+16 KiB envelope permits JSON escaping of both 1024-byte password limits. The
+new password must be valid UTF-8, at least 15 code points and different from the
+submitted current password. Neither values nor verifiers enter responses/logs.
+
+One password transaction is admitted at a time, without a KDF queue for other
+password changes. Competing attempts receive 503 with Retry-After 1; a separate
+process-wide five-attempt/minute limit returns 429 with Retry-After 60. Global
+KDF memory/concurrency limits still apply. Current-password verification and new
+hash derivation precede a locked exact-snapshot/context check. Session/CSRF are
+then revalidated atomically with revoking all sessions/issuance epochs, before
+the revision-checked durable commit. Session issuance uses the same lock order.
+An overlapping old login cannot retain authorization across this boundary.
+
+Success returns 200 with `password_changed`, `reauthentication_required` and
+`all_panel_sessions_revoked` true, and clears the invoking cookie. The user
+must sign in again. Wrong current password returns 401 without revocation;
+invalid new password returns 422; a precommit revision conflict returns 409.
+Storage failure after revocation keeps sessions revoked and quarantines account
+access. An uncertain commit returns 503 `password_change_reconciliation_required`.
+Cancellation checked before commit does not undo a commit already in progress.
+Already-authorized requests/jobs and SMB/NFS credentials/sessions are unaffected.
+
+The collapsed form confirms the new value locally, clears password fields on
+submission/authentication loss, prevents duplicate submission and bounds its
+session/POST request to ten seconds. A lost, malformed or uncertain response
+hides authenticated data and is never retried automatically. Explicit sign-in
+reconciliation must establish which password committed; inaccessible credential
+storage requires inspection/recovery, not another setup or forced reset.
+DOM, host refusal/concurrency/error tests, real ARMv5 HTTPS and independent
+two-boot handler tests cover this flow. Visual/accessibility qualification,
+ownership/bootstrap, certificate lifecycle and recovery are still release gates.
 
 Firmware source and test builds are developed and checked locally/QEMU and by
 GitHub Actions. Intended user-facing distribution is through versioned GitHub
@@ -311,6 +363,42 @@ releases. No production release or safe in-device updater exists yet.
 ## Local tests
 
 ### Native service identity registry
+
+The [SMB credential integration gate](SMB-CREDENTIAL-LIFECYCLE.md) documents an
+important pinned-Samba boundary: ordinary password replacement can re-enable a
+disabled account, while combining the disable option suppresses password setting.
+The isolated ARMv5 fixture characterizes actual authentication; no unsafe
+reset-then-disable sequence is authorized as a product credential backend.
+
+The [native identity authority](identityowner/README.md) now owns one configured
+reservation ledger and its journals under a lifetime lease. It serializes typed
+allocation/creation, freezes allocation behind incomplete work and refuses
+orphaned cross-document state after interruption. The guarded ARMv5 channel now
+uses that owner. Complete imported/offline ownership discovery, qualified state,
+explicit recovery, credential transitions and deployed listener/panel wiring
+remain required; this is not yet a product account-management service.
+
+The [local identity channel](identityrpc/README.md) now connects an actually
+unprivileged ARMv5 fixture child to the root-owned journal/executor using
+kernel-verified Unix-socket peers. It accepts only status or one revision-checked
+step for an already bound or authority-resolved operation; no commands, paths or credentials cross
+the interface. Missing replies are never retried automatically. Its optional
+protected listener supplies bounded acceptance, cooperative pathname ownership,
+exact stale-socket recovery and worker drain before authority closure; the ARMv5
+fixture now uses it. A shared router resolves existing accounts only after peer
+and request validation, pins one operation across each request and checks its
+post-step account binding. The ARMv5 scenario creates a second identity while
+verifying that the first journal remains unchanged. This library does not deploy a product service or supply
+authority ownership, operation creation,
+Samba credential management or a panel account endpoint.
+
+The [typed Linux identity executor](identityexec/README.md) now connects the
+journal to fixed BusyBox group/user creation in the guarded ARMv5 fixture.
+It pins the firmware ELF, binds one disabled identity, rechecks local state,
+supervises bounded commands and accepts no arbitrary command/path/password.
+The generated guest verifies locked Unix login, nologin and no home creation.
+This is not yet a deployed privileged service or a panel account-creation endpoint;
+global writer authority, durable state and recovery remain integration gates.
 
 The [serviceaccounts registry](serviceaccounts/README.md) now provides strict
 native UID/private-GID reservations, disabled-by-default creation, permanent

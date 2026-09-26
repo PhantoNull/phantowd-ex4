@@ -66,5 +66,7 @@ grep -F 'PHANTOWD_SERVICE_STATE_READY protocols=smb,nfs atomic_revision=true aft
 grep -F 'PHANTOWD_SERVICE_HTTP_READY protocols=http,https authenticated=true csrf=true stale_write_denied=true after_reboot=true activation=false scope=disposable-qemu-only' "$log" >/dev/null
 grep -F 'PHANTOWD_SERVICE_IDENTITIES_READY after_reboot=true retired_ids_reserved=true stale_writer_denied=true share_binding=true provisioned=false scope=disposable-qemu-only' "$log" >/dev/null
 grep -F 'PHANTOWD_ADMIN_CREDENTIALS_READY after_reboot=true legacy_preserved=true old_password_denied=true replacement_verified=true stale_writer_denied=true scope=store-fixture-only' "$log" >/dev/null
+grep -F 'PHANTOWD_ADMIN_BACKEND_READY after_reboot=true backend=transactional-store login_verified=true scope=qemu-handler-dispatch-only' "$log" >/dev/null
+grep -F 'PHANTOWD_PASSWORD_REBOOT_READY changed_via=authenticated-handler legacy_and_native=true old_password_denied=true scope=clean-qemu-reboot-only' "$log" >/dev/null
 grep -F 'PHANTOWD_SMB_REBOOT_READY unix_preserved=true rotated_password_retained=true disabled_retained=true explicit_enable=true obsolete_password_denied=true data_preserved=true scope=clean-qemu-reboot-only' "$log" >/dev/null
 echo 'PHANTOWD_STATE_REBOOT_READY boots=2 committed_policy=true pending_not_promoted=true corrupt_refused=true stale_writer_denied=true scope=clean-qemu-reboot-only' | tee -a "$log"

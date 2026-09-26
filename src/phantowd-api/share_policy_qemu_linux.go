@@ -26,7 +26,7 @@ func exerciseQEMUSharePolicyHTTP(directory string, expected shareconfig.Config) 
 		return err
 	}
 	defer closeReader()
-	accounts := &accountStore{admin: &storedAccount{Username: "fixture-admin"}}
+	accounts := &accountStore{backend: qemuStaticAccount{}}
 	auth := newAuthController(accounts, defaultPublicOrigin)
 	token, _, err := auth.sessions.create(time.Now())
 	if err != nil {

@@ -2,7 +2,7 @@
 // SPDX-FileCopyrightText: 2026 PhantoWD EX4 contributors
 
 // Package identityprovision coordinates creation of one reserved native Unix
-// identity. It has no production command backend, credential or deletion API.
+// identity. It has no privileged transport, credential or deletion API.
 package identityprovision
 
 import (

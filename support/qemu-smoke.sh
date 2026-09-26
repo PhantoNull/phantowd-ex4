@@ -121,6 +121,36 @@ while [ "$attempt" -lt 120 ]; do
             echo 'Missing journaled Unix provisioning assertion' >&2
             exit 1
         fi
+        if ! grep -F 'PHANTOWD_PASSWORD_TLS_READY changed=true old_login_denied=true new_login=true scope=qemu-loopback-only' "$log_file" >/dev/null; then
+            echo 'QEMU password-change HTTPS test did not complete' >&2
+            exit 1
+        fi
+        if ! grep -F 'PHANTOWD_IDENTITY_EXEC_READY binary=pinned-busybox typed_commands=true unix_login_locked=true nologin=true home_created=false scope=isolated-qemu-only' "$log_file" >/dev/null; then
+            echo 'QEMU typed native identity executor did not complete' >&2
+            exit 1
+        fi
+        if ! grep -F 'PHANTOWD_IDENTITY_CHANNEL_READY peer_uid=65534 server_uid=0 journaled_steps=true stale_replay_denied=true scope=isolated-qemu-only' "$log_file" >/dev/null; then
+            echo 'QEMU unprivileged identity channel did not complete' >&2
+            exit 1
+        fi
+        for phase in group user second; do
+            if ! grep -F "PHANTOWD_IDENTITY_LISTENER_READY phase=$phase protected=true lease_exclusive=true drained=true scope=isolated-qemu-only" "$log_file" >/dev/null; then
+                echo "Protected identity listener lifecycle marker missing: $phase" >&2
+                exit 1
+            fi
+        done
+        if ! grep -F 'PHANTOWD_IDENTITY_ROUTER_READY accounts=2 distinct_ids=true historical_unchanged=true unknown_denied=true scope=isolated-qemu-only' "$log_file" >/dev/null; then
+            echo 'QEMU multi-account identity router did not complete' >&2
+            exit 1
+        fi
+        if ! grep -F 'PHANTOWD_SMB_DISABLED_RESET_BOUNDARY legacy_reset_reenables=true combined_disable_skips_password=true product_path_approved=false scope=isolated-qemu-only' "$log_file" >/dev/null; then
+            echo 'Pinned Samba disabled-password behavior was not characterized' >&2
+            exit 1
+        fi
+        if ! grep -F 'PHANTOWD_IDENTITY_OWNER_READY lease_exclusive=true pending_blocks_reservation=true after_reopen=true scope=isolated-qemu-only' "$log_file" >/dev/null; then
+            echo 'QEMU native identity authority did not complete' >&2
+            exit 1
+        fi
         if ! grep -F 'PHANTOWD_SESSION_REVOCATION_READY peers=2 old_sessions_denied=true fresh_login=true scope=panel-sessions-only' "$log_file" >/dev/null; then
             echo 'Missing global panel session revocation assertion' >&2
             exit 1

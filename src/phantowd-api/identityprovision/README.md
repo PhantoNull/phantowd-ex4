@@ -3,7 +3,17 @@
 This coordinator connects an existing disabled service-account reservation to
 two typed backend actions: create its private group, then create its Unix user.
 It does not create reservations, passwords or homes, activate Samba/NFS, import
-legacy users, expose HTTP, or provide a production privileged command backend.
+legacy users or expose HTTP. The separate Linux
+[typed executor](../identityexec/README.md) now supplies the restricted BusyBox
+backend in the guarded QEMU scenario. A [local identity channel](../identityrpc/README.md)
+now transports revision-checked steps from an unprivileged fixture child;
+production global ownership and listener provisioning remain unimplemented.
+
+The [identity authority owner](../identityowner/README.md) now coordinates one
+configured ledger and all its journals under cooperative lifetime leases and
+a non-queuing writer mutex. It freezes allocation behind incomplete operations
+and refuses orphaned cross-document publication. Single-writer deployment,
+complete imported/offline exclusions and explicit recovery remain prerequisites.
 
 One caller-provisioned private directory owns one operation. The Linux store
 reuses the exclusive-lock, fixed-name, fsync/rename revision engine; its public
@@ -35,9 +45,9 @@ directory lock does not lock `/etc` or the separate registry. The supplied
 registry must remain the exact revision, and observations must come from trusted
 coherent sources. The backend is trusted in-process code, not remote input;
 it must independently validate and supervise fixed bounded commands. No
-network-facing adapter is supplied; the backend interface has no arbitrary
+HTTP-facing adapter is supplied; the backend interface has no arbitrary
 executable/argument or shell-command method.
-Production global ownership, durable Unix layout and privileged transport are
+Production global ownership, durable Unix layout and listener provisioning are
 still unimplemented. A result is not an authorization lease.
 
 Unix-confirmed checks identity, **not** a locked login, shell policy, Samba
@@ -53,8 +63,9 @@ commits. Fixtures explicitly provision 0700 storage; permissive temporary
 directories must remain refused. Journal parsing has a bounded fuzz lane.
 
 The existing ARMv5 QEMU temporary-account scenario uses this coordinator with a
-fixed machine/disk/account-guarded backend. It creates a real group, closes and
+fixed machine/disk/account-guarded wrapper around the typed executor. It creates a real group, closes and
 reopens the confirmed journal, then creates the real no-login/no-home user and
-verifies the completed journal. Its separate fixture cleanup still checks
+verifies the completed journal, locked Unix login, nologin shell and no home
+creation. Its separate fixture cleanup still checks
 absence after removing the disposable account; cleanup is not a coordinator API.
 Host process-interruption tests are not physical power-loss qualification.

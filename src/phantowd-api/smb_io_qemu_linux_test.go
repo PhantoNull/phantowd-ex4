@@ -12,6 +12,8 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+
+	"github.com/PhantoNull/phantowd-ex4/phantowd-api/serviceaccounts"
 )
 
 func TestQEMUSMBDenialEvidence(t *testing.T) {
@@ -53,6 +55,9 @@ func TestQEMUSMBEffectiveFixture(t *testing.T) {
 		}
 		if err := exerciseQEMUUnixIdentity(); err == nil {
 			t.Fatal("Unix identity host mutation guard failed")
+		}
+		if err := exerciseQEMUDisabledPasswordBoundary(serviceaccounts.Account{}); err == nil {
+			t.Fatal("disabled-password host mutation guard failed")
 		}
 	}
 	for _, address := range []string{"0100007F:05A5", "00000000:05A5", "0100000A:05A5", "00000000000000000000000000000000:05A5", "00000000000000000000000001000000:05A5"} {

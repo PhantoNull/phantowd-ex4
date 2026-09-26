@@ -48,6 +48,20 @@
         <p>End all administrator panel sessions, including this one. This does not disconnect SMB/NFS clients or change the password.</p>
         <button class="logout-button" id="logout-all" type="button">Sign out all panel sessions</button>
       </section>
+      <details id="password-panel" class="card policy-panel password-panel">
+        <summary id="password-title">Administrator password</summary>
+        <p id="password-help" class="policy-help">Changing this password signs out every panel session, including this one. SMB/NFS credentials are not changed. Use a different passphrase of at least 15 characters.</p>
+        <form id="password-form" class="auth-form" aria-describedby="password-help password-status">
+          <label for="password-current">Current password</label>
+          <input id="password-current" type="password" autocomplete="current-password" required maxlength="1024">
+          <label for="password-new">New password</label>
+          <input id="password-new" type="password" autocomplete="new-password" required minlength="15" maxlength="1024">
+          <label for="password-confirm">Confirm new password</label>
+          <input id="password-confirm" type="password" autocomplete="new-password" required minlength="15" maxlength="1024">
+          <button id="password-submit" type="submit" class="refresh-button">Change password and sign out</button>
+        </form>
+        <p id="password-status" class="snapshot-status" role="status" aria-live="polite"></p>
+      </details>
       <section class="intro" aria-labelledby="page-title">
         <div>
         <p class="eyebrow">DEVICE CONSOLE <span aria-hidden="true">/</span> OVERVIEW</p>

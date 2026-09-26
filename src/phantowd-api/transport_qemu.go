@@ -16,6 +16,7 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"errors"
+	"fmt"
 	"math/big"
 	"net"
 	"net/http"
@@ -30,6 +31,12 @@ import (
 // listener to exercise the configured HTTPS path on the ARMv5 guest. Its key
 // and certificate exist only under the test process's temporary directory.
 func exerciseQEMUTLS() error {
+	return exerciseQEMUTLSWithAccountFactory(openAccountStore)
+}
+
+// The non-Linux host test injects memory-only credentials. Actual ARMv5 runs
+// always enter through exerciseQEMUTLS and use the production Linux adapter.
+func exerciseQEMUTLSWithAccountFactory(openAccounts func(string) (*accountStore, error)) error {
 	directory, err := os.MkdirTemp("", "phantowd-qemu-tls-")
 	if err != nil {
 		return errors.New("cannot create temporary TLS test state")
@@ -71,11 +78,12 @@ func exerciseQEMUTLS() error {
 		listener.Close()
 		return errors.New("cannot create temporary TLS account state")
 	}
-	accounts, err := openAccountStore(stateDirectory)
+	accounts, err := openAccounts(stateDirectory)
 	if err != nil {
 		listener.Close()
 		return errors.New("cannot open temporary TLS account state")
 	}
+	defer accounts.Close()
 	server := newConfiguredServer(newHandler(nil, nil, newAuthController(accounts, transport.AllowedOrigin)), transport)
 	serverResult := make(chan error, 1)
 	go func() { serverResult <- server.ServeTLS(listener, "", "") }()
@@ -181,6 +189,10 @@ func exerciseQEMUTLS() error {
 		return errors.New("HTTPS listener accepted an unconfigured Origin")
 	}
 
+	if err := exerciseQEMUTLSPasswordChange(client, transport.AllowedOrigin, credentials); err != nil {
+		return err
+	}
+	fmt.Println("PHANTOWD_PASSWORD_TLS_READY changed=true old_login_denied=true new_login=true scope=qemu-loopback-only")
 	if err := server.Close(); err != nil {
 		return errors.New("TLS test server did not close cleanly")
 	}
@@ -188,6 +200,90 @@ func exerciseQEMUTLS() error {
 		return errors.New("TLS test server returned an unexpected result")
 	}
 	serverStopped = true
+	return nil
+}
+
+func exerciseQEMUTLSPasswordChange(client *http.Client, origin string, credentials setupRequest) error {
+	post := func(path string, payload any, csrf string) (*http.Response, error) {
+		body, err := json.Marshal(payload)
+		if err != nil {
+			return nil, err
+		}
+		r, err := http.NewRequest(http.MethodPost, origin+path, bytes.NewReader(body))
+		if err != nil {
+			return nil, err
+		}
+		r.Header.Set("Origin", origin)
+		r.Header.Set("Content-Type", "application/json")
+		if csrf != "" {
+			r.Header.Set("X-PhantoWD-CSRF", csrf)
+		}
+		return client.Do(r)
+	}
+	response, err := post(authLoginPath, credentials, "")
+	if err != nil {
+		return err
+	}
+	response.Body.Close()
+	if response.StatusCode != http.StatusOK {
+		return errors.New("TLS fixture login before password change failed")
+	}
+	priorCookies := response.Cookies()
+	if len(priorCookies) != 1 || priorCookies[0].Name != hostCookieName {
+		return errors.New("TLS password-change fixture session missing")
+	}
+	response, err = client.Get(origin + authSessionPath)
+	if err != nil {
+		return err
+	}
+	data, err := readSelfTestResponse(response, 4096)
+	var session struct {
+		CSRFToken string `json:"csrf_token"`
+	}
+	if err != nil || response.StatusCode != http.StatusOK || json.Unmarshal(data, &session) != nil || len(session.CSRFToken) != 43 {
+		return errors.New("TLS password-change session unavailable")
+	}
+	const next = "public-qemu-tls-replacement-passphrase"
+	response, err = post(authPasswordPath, passwordChangeRequest{CurrentPassword: credentials.Password, NewPassword: next}, session.CSRFToken)
+	if err != nil {
+		return err
+	}
+	data, err = readSelfTestResponse(response, 4096)
+	if err != nil || response.StatusCode != http.StatusOK || !bytes.Contains(data, []byte(`"password_changed":true`)) {
+		return errors.New("TLS password change not confirmed")
+	}
+	cookies := response.Cookies()
+	if len(cookies) != 1 || cookies[0].Name != hostCookieName || !cookies[0].Secure || !cookies[0].HttpOnly || cookies[0].MaxAge != -1 {
+		return errors.New("TLS password change did not clear secure cookie")
+	}
+	replay, err := http.NewRequest(http.MethodGet, origin+authSessionPath, nil)
+	if err != nil {
+		return err
+	}
+	// The jar has cleared its cookie. Explicitly replay the previously valid
+	// cookie to test server-side revocation, not just browser cookie deletion.
+	replay.AddCookie(priorCookies[0])
+	response, err = client.Do(replay)
+	if err != nil {
+		return err
+	}
+	response.Body.Close()
+	if response.StatusCode != http.StatusUnauthorized {
+		return errors.New("TLS old session survived password change")
+	}
+	for _, attempt := range []struct {
+		password string
+		want     int
+	}{{credentials.Password, http.StatusUnauthorized}, {next, http.StatusOK}} {
+		response, err = post(authLoginPath, loginRequest{Username: credentials.Username, Password: attempt.password}, "")
+		if err != nil {
+			return err
+		}
+		response.Body.Close()
+		if response.StatusCode != attempt.want {
+			return errors.New("TLS replacement credential login mismatch")
+		}
+	}
 	return nil
 }
 

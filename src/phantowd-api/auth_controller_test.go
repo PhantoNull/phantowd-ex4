@@ -20,10 +20,7 @@ func newEmptyTestAuth(t *testing.T) (*authController, *accountStore) {
 	if err := os.Chmod(dir, 0o700); err != nil {
 		t.Fatal(err)
 	}
-	accounts, err := openAccountStore(dir)
-	if err != nil {
-		t.Fatal(err)
-	}
+	accounts := openTestAccountStore(t, dir)
 	return newAuthController(accounts, defaultPublicOrigin), accounts
 }
 

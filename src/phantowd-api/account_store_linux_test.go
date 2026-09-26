@@ -13,6 +13,8 @@ import (
 	"testing"
 )
 
+const accountFileName = "accounts.json"
+
 func TestAccountStoreFirstSetupAndReopen(t *testing.T) {
 	dir := t.TempDir()
 	if err := os.Chmod(dir, 0o700); err != nil {
@@ -22,6 +24,7 @@ func TestAccountStoreFirstSetupAndReopen(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	t.Cleanup(func() { store.Close() })
 	configured, err := store.configured()
 	if err != nil || configured {
 		t.Fatalf("initial store configured=%t err=%v", configured, err)
@@ -50,13 +53,17 @@ func TestAccountStoreFirstSetupAndReopen(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !privatePermissions(info.Mode(), 0o600) {
+	if info.Mode().Perm() != 0o600 {
 		t.Fatalf("account file permissions are not private: %v", info.Mode().Perm())
+	}
+	if err := store.Close(); err != nil {
+		t.Fatal(err)
 	}
 	reopened, err := openAccountStore(dir)
 	if err != nil {
 		t.Fatal(err)
 	}
+	defer reopened.Close()
 	configured, err = reopened.configured()
 	if err != nil || !configured {
 		t.Fatalf("reopened store configured=%t err=%v", configured, err)
@@ -91,13 +98,17 @@ func TestAccountStoreConcurrentFirstSetupIsSingleWriter(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	defer first.Close()
 	second, err := openAccountStore(dir)
-	if err != nil {
-		t.Fatal(err)
+	if !errors.Is(err, errAccountBusy) {
+		if second != nil {
+			second.Close()
+		}
+		t.Fatal("accepted another account store owner", err)
 	}
 	start := make(chan struct{})
 	results := make(chan error, 2)
-	for _, store := range []*accountStore{first, second} {
+	for _, store := range []*accountStore{first, first} {
 		go func(store *accountStore) {
 			<-start
 			results <- store.setup(context.Background(), "nas-admin", testAdminPassword)
@@ -115,9 +126,14 @@ func TestAccountStoreConcurrentFirstSetupIsSingleWriter(t *testing.T) {
 	if !errors.Is(loser, errAccountConfigured) {
 		t.Fatalf("losing setup returned %v, want already-configured", loser)
 	}
-	if _, err := openAccountStore(dir); err != nil {
+	if err := first.Close(); err != nil {
+		t.Fatal(err)
+	}
+	reopened, err := openAccountStore(dir)
+	if err != nil {
 		t.Fatalf("winning setup did not leave a valid account: %v", err)
 	}
+	defer reopened.Close()
 }
 
 func TestAccountStoreRejectsUnsafeOrInvalidState(t *testing.T) {
@@ -145,6 +161,9 @@ func TestAccountStoreRejectsUnsafeOrInvalidState(t *testing.T) {
 		t.Fatal(err)
 	}
 	if err := store.setup(context.Background(), "nas-admin", testAdminPassword); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.Close(); err != nil {
 		t.Fatal(err)
 	}
 	path := filepath.Join(dir, accountFileName)
