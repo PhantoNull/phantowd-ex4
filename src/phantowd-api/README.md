@@ -7,7 +7,10 @@ contains an embedded, read-only browser dashboard over its diagnostic API.
 The [share configuration package](shareconfig/README.md) validates the first
 desired-policy schema for volumes, file-service users and share grants. It is
 exercised with synthetic fixtures in the QEMU self-test; no HTTP configuration
-endpoint, persistent share store or service activation is implemented yet.
+endpoint or service activation is implemented yet. The Linux-only
+[share store](sharestore/README.md) adds validated revision transactions and
+failure handling, exercised only in temporary host/QEMU directories. The
+firmware does not yet provision persistent product configuration storage.
 
 - Default IPv4 loopback listener: `127.0.0.1:8080` **inside the guest**.
   Optional listener configuration is fail-closed: non-loopback binds require a

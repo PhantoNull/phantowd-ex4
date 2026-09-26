@@ -3,7 +3,9 @@
 `shareconfig` defines the first version of the product's desired file-sharing
 policy. It validates volume references, file-service users, relative share
 paths and explicit `ro`/`rw` grants. It is not yet exposed through the HTTP API
-or persisted, and it does not create users, mount volumes or configure services.
+and it does not create users, mount volumes or configure services. The separate
+Linux [share store](../sharestore/README.md) persists validated revisions in an
+explicit private directory; no product storage location is provisioned yet.
 
 Volume IDs refer to expected canonical filesystem UUIDs, never bay numbers or
 kernel device paths. The future runtime resolver must prove that a matching
@@ -15,7 +17,7 @@ requires at least one grant. Unknown, duplicate, differently cased, missing or
 null fields are rejected, as are dangling references and conflicting grants.
 The JSON document is limited to 256 KiB, 16 volumes, 128 users and 128 shares.
 An empty configuration can represent an unconfigured appliance. Revision zero
-is invalid; revisions will support store-level optimistic concurrency later.
+is invalid; the store uses revisions for optimistic concurrency.
 
 Share paths are relative to their volume. `.` explicitly selects the volume
 root. Lexical validation rejects absolute paths, traversal and control bytes;
