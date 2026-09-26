@@ -309,6 +309,9 @@ The [local Unix observer](unixidentity/README.md) supplies bounded exclusions
 and exact/partial/conflict assessment; only its guarded QEMU fixture connects
 allocation to a temporary real Unix user/group. Matching local records never
 authorize account adoption or prove complete NSS/credential state.
+Its Linux reader now pins/rechecks owned non-writable regular account files and
+requires a files-only identity NSS configuration; all-writer serialization and
+credential/provisioning integration remain open.
 
 ### SMB credential lifecycle boundary
 

@@ -6,6 +6,43 @@ commands. Password, GECOS, home and shell fields are discarded; retained names
 are copied so they cannot retain a password-bearing input string. This is not
 a secure-memory-erasure guarantee. Errors never echo input or reader messages.
 
+## Verified local reader (Linux)
+
+`ReadLocal(directory, ownerUID)` pins exactly `passwd`, `group` and
+`nsswitch.conf` under an explicitly supplied trusted directory. It refuses
+symlinks in the directory path or children, child mount crossings, non-regular
+files, hardlinks, unexpected ownership, group/other write bits and special mode
+bits. `openat2` protections are mandatory, with no weaker fallback. Special
+objects are first classified using O_PATH, so FIFO/device contents are never
+opened for I/O. Verified regular files are reopened through their retained
+`/proc/self/fd` references, not replaceable directory names.
+
+All three metadata baselines are captured before reading. After parsing, the
+reader checks retained objects, named entries and the directory anchor again:
+device/inode, ownership, mode, link count, size and modification/change times.
+An observed change or error discards the whole snapshot. This is a bounded
+observation window, **not an atomic cross-file transaction or authorization
+lease**. It does not detect changes made after return or qualify a malicious
+privileged writer. Trusted parent directories and serialization of all account
+writers remain caller obligations. Kernel filesystem I/O may block and needs
+supervision in the eventual privileged executor. No retries occur implicitly.
+
+`FilesOnlyNSS` requires exactly one `passwd: files` and `group: files` entry;
+an optional `initgroups` entry must also contain only `files`. Duplicate/case-
+variant identity entries, remote/compat/systemd sources, action clauses and
+malformed or oversized input are refused. Other databases, such as DNS, are not
+restricted. This validates the selected identity configuration, not a daemon's
+cached NSS state or its password-verification source. Shadow is never read.
+See the [NSS format](https://man7.org/linux/man-pages/man5/nsswitch.conf.5.html).
+
+The guarded ARMv5 fixture now uses this reader for every observation of guest
+`/etc`, including its post-cleanup check. Host tests use private temporary
+directories and deterministically replace/rewrite/chmod/remove files and replace
+the directory between content reads and final checks. None of these tests opens
+or modifies production account databases.
+
+## Supplied-document parser and assessment
+
 Input follows the local [passwd](https://man7.org/linux/man-pages/man5/passwd.5.html)
 and [group](https://man7.org/linux/man-pages/man5/group.5.html) field layouts.
 The parser deliberately accepts a conservative subset: exact field counts,
@@ -40,9 +77,10 @@ removed, and partial state is not automatically repaired.
 
 Even a matching result does **not** prove project ownership, authorize adoption,
 verify a login lock/Samba password, or allow service activation. Local files may
-not represent the full NSS view. The future privileged owner must establish
-trusted file provenance, a coherent locked snapshot and files-only NSS (or
-explicitly supported other authorities), recheck before mutations, account for
+not represent the full NSS view. The verified Linux reader adds source and
+files-only configuration checks, but the future privileged owner must establish
+a coherent locked snapshot and qualified daemon identity resolution,
+recheck before mutations, account for
 imported/offline ownership, and handle partial failures. Those integration and
 recovery requirements remain open; no production caller enables mutations.
 

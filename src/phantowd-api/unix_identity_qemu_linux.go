@@ -7,7 +7,6 @@ package main
 
 import (
 	"errors"
-	"os"
 	"strconv"
 
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/serviceaccounts"
@@ -21,17 +20,7 @@ func exerciseQEMUUnixIdentity() (result error) {
 		return err
 	}
 	observe := func() (unixidentity.Snapshot, error) {
-		passwd, err := os.Open("/etc/passwd")
-		if err != nil {
-			return unixidentity.Snapshot{}, err
-		}
-		defer passwd.Close()
-		groups, err := os.Open("/etc/group")
-		if err != nil {
-			return unixidentity.Snapshot{}, err
-		}
-		defer groups.Close()
-		return unixidentity.Parse(passwd, groups)
+		return unixidentity.ReadLocal("/etc", 0)
 	}
 	before, err := observe()
 	if err != nil {
