@@ -136,5 +136,11 @@ func probeQEMUUnmountedStorage() error {
 	}
 	fmt.Println("PHANTOWD_VOLUME_PROBE_READY backend=libblkid unmounted_devices=2 readonly_descriptors=true expected_uuid=true unidentified_not_empty=true scope=qemu-fixture-only")
 	fmt.Println("PHANTOWD_VOLUME_SET_READY cloned_uuid=true aliases_deduplicated=true unobserved_not_absent=true scope=provided-descriptors-only")
+	if err := probeQEMUCollisions(sources[0]); err != nil {
+		return err
+	}
+	if err := unmounted(); err != nil {
+		return err
+	}
 	return nil
 }

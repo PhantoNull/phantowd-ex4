@@ -129,6 +129,10 @@ while [ "$attempt" -lt 120 ]; do
             echo 'Missing unmounted probe-set identity assertions' >&2
             exit 1
         fi
+        if ! grep -F 'PHANTOWD_VOLUME_COLLISION_READY ext_control=true xfs_control=true invalid_control=true collision_refused=true partial_set_discarded=true hashes_unchanged=true scope=synthetic-regular-images' "$log_file" >/dev/null; then
+            echo 'Missing ARMv5 competing-signature refusal assertions' >&2
+            exit 1
+        fi
         if ! grep -F 'PHANTOWD_UI_READY mode=development read_only=true transport=guest-loopback-only' "$log_file" >/dev/null; then
             echo "Missing loopback-only dashboard assertion" >&2
             exit 1

@@ -64,6 +64,11 @@ Set tests add alias/clone grouping, missing UUIDs, whole-set refusals and a
 competing write to an earlier image during a later probe.
 The QEMU unmounted-disk fixture calls this implementation, not a separate
 copy of the process/JSON code, including clone/alias distinction before mounting.
+It also verifies a generated ext2/XFS collision through the real ARMv5 helper:
+individual signature controls succeed, the combined image returns `ErrProbe`
+without identity, and a set containing that image returns no partial results.
+Generated-image hashes stay unchanged. Block I/O failure and device replacement
+remain separate unqualified cases.
 
 The future trusted broker still must establish eligible devices, discovery
 completeness, unmounted state, exclusive access and identity stability before

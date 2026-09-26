@@ -84,10 +84,17 @@ with the same patch set and injects it into a disposable base-image copy. Before
 disk, the guest checks their fixed synthetic VPD identities, exact device
 numbers and absence from its mount inventory, then passes read-only descriptors
 to the helper. Both ext2 UUID results and an unidentified regular-file result
-have passed. The helper does not choose which disk to use or grant activation.
+have passed. Generated guest regular images also exercise the ext-only,
+XFS-only and invalid-XFS controls, plus the ext2/XFS collision through the
+real ARMv5 helper and supervisor. A collision returns no identity and invalidates
+the entire provided-descriptor set even after a successful first probe.
+Streaming SHA-256 comparisons verify unchanged generated-image contents.
+Only the first 4 KiB of the already-qualified synthetic ext2 virtual disk is
+copied into a sparse parser fixture; none of these files may be mounted.
+The helper does not choose which disk to use or grant activation.
 
-Clean Buildroot package/library/license integration, ARMv5 collision/error
-coverage, I/O fault injection and trusted complete-device discovery
+Clean Buildroot package/library/license integration, block I/O fault injection
+and trusted complete-device discovery
 remain required. Static injection is not a release build and its library is
 not described by the base artifact's SBOM. This is not WD-layout, migration or physical
 storage qualification; do not use it on production disks at this stage.

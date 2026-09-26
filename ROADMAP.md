@@ -227,10 +227,12 @@ Additional NAS models require their own board definitions and qualification.
    devices, but cannot discover cloned identities on unmounted/omitted media.
    A separate libblkid descriptor helper now has host-native unmounted-image
    tests and static ARMv5 execution on two unmounted QEMU disks; clean package
-   integration, ARMv5 collision/I/O-failure fixtures and trusted
+   integration, block I/O-failure fixtures and trusted
    complete-device discovery must be qualified before connecting it.
    The native ext2/XFS collision fixture is refused without JSON; pinned
    libblkid collapses ambiguity into a generic error, never an empty result.
+   The same collision is now refused in ARMv5 QEMU, with isolated signature
+   controls, unchanged generated-image hashes and whole-set failure checks.
    A Linux single-slot helper supervisor now validates descriptors, bounded
    responses and cancellation; it is reused by the QEMU fixture. It does not
    establish eligible-device discovery, exclusivity or compatibility.
