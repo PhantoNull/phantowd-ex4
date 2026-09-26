@@ -10,6 +10,12 @@ import (
 	"testing"
 )
 
+func TestQEMUShareConfig(t *testing.T) {
+	if err := exerciseQEMUShareConfig(); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestQEMUDashboardAssetsMatchSelfTest(t *testing.T) {
 	for _, asset := range qemuDashboardAssets {
 		assetPath, _ := dashboardAsset(asset.path)
