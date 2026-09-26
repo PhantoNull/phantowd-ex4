@@ -296,6 +296,29 @@ releases. No production release or safe in-device updater exists yet.
 
 ## Local tests
 
+### SMB credential lifecycle boundary
+
+The guarded ARMv5 QEMU fixture uses its own loopback Samba daemon, private
+passdb, synthetic Unix accounts and disposable data disk. It rotates one
+writer's password, requires the old credential to fail, disables the account,
+requires a new connection to fail with ACCOUNT_DISABLED, and re-enables it
+using only the rotated credential. An unrelated reader must still work while
+the writer is disabled. Every access check starts a fresh client connection;
+the server is not restarted between changes. Successful downloads, original
+inode/content/mode, new-file ownership and byte-identical Unix account files
+and share configuration are checked. Credentials are public fixture values,
+passed through stdin/private files, never command-line passwords.
+
+This is **not product account provisioning or active-session revocation**.
+It does not prove passdb persistence across reboot, cross-store crash recovery,
+Windows client behavior, ACL/migration compatibility or EX4 performance. The
+dashboard administrator's Argon2 verifier, desired-policy user references,
+Unix UID/GID identity and Samba passdb are separate authorities: saving a user
+reference creates none of the others. A production account manager still needs
+stable non-recycled IDs, private persistent passdb, bounded privileged actions,
+reconciliation after partial failure, and explicit existing-session revocation.
+Disabling SMB must not be presented as revoking NFS AUTH_SYS or other protocols.
+
 ### File-share proposal panel
 
 The authenticated proposal form builds a standalone draft for one volume, one SMB

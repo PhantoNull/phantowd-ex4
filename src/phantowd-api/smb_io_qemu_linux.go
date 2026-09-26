@@ -243,8 +243,7 @@ func runQEMUSMBTest() (result error) {
 		{"qpwriter", "PolicyShare", "get escape " + smbFixtureRoot + "/escape-download", "NT_STATUS_STOPPED_ON_SYMLINK"},
 	} {
 		output, err := client(test.user, test.share, test.operation)
-		var exit *exec.ExitError
-		if err == nil || !errors.As(err, &exit) || !strings.Contains(string(output), test.code) {
+		if !smbFixtureDenied(output, err, test.code) {
 			return fmt.Errorf("SMB denial not verified (%s/%s): %s (%v)", test.user, test.share, output, err)
 		}
 	}
@@ -253,8 +252,93 @@ func runQEMUSMBTest() (result error) {
 			return errors.New("SMB denial left an unexpected file")
 		}
 	}
+	// These are new connections, not revocation of already authenticated
+	// sessions. Keep the daemon alive throughout: no restart may hide caching.
+	unchanged := make(map[string][]byte)
+	for _, path := range []string{"/etc/passwd", "/etc/group", "/etc/shadow", configPath} {
+		data, err := os.ReadFile(path)
+		if err != nil {
+			return err
+		}
+		unchanged[path] = data
+	}
+	const rotatedPassword = "rotated-disposable-qemu-fixture-only"
+	if output, err := smbFixtureCommand(rotatedPassword+"\n"+rotatedPassword+"\n", "/usr/bin/smbpasswd", "-s", "-c", configPath, "qpwriter"); err != nil {
+		return fmt.Errorf("SMB fixture password rotation failed: %s (%v)", output, err)
+	}
+	if err := os.WriteFile(smbFixtureRoot+"/qprotated.auth", []byte("username = qpwriter\npassword = "+rotatedPassword+"\n"), 0600); err != nil {
+		return err
+	}
+	output, err = client("qpwriter", "PolicyShare", "ls")
+	if !smbFixtureDenied(output, err, "NT_STATUS_LOGON_FAILURE") {
+		return fmt.Errorf("SMB old password not refused: %s (%v)", output, err)
+	}
+	if output, err := client("qprotated", "PolicyShare", "get created "+smbFixtureRoot+"/rotated-download"); err != nil {
+		return fmt.Errorf("SMB rotated credential rejected: %s (%v)", output, err)
+	}
+	if output, err := smbFixtureCommand("", "/usr/bin/smbpasswd", "-d", "-c", configPath, "qpwriter"); err != nil {
+		return fmt.Errorf("SMB fixture disable failed: %s (%v)", output, err)
+	}
+	output, err = client("qprotated", "PolicyShare", "put "+smbFixtureRoot+"/upload disabled-write")
+	if !smbFixtureDenied(output, err, "NT_STATUS_ACCOUNT_DISABLED") {
+		return fmt.Errorf("SMB disabled credential not refused: %s (%v)", output, err)
+	}
+	if _, err := os.Lstat(shared + "/disabled-write"); !errors.Is(err, os.ErrNotExist) {
+		return errors.New("SMB disabled account left an unexpected file")
+	}
+	// An unrelated user must remain usable while the writer is disabled.
+	if output, err := client("qpreader", "PolicyShare", "get created "+smbFixtureRoot+"/unaffected-download"); err != nil {
+		return fmt.Errorf("SMB unrelated reader affected by disable: %s (%v)", output, err)
+	}
+	if output, err := smbFixtureCommand("", "/usr/bin/smbpasswd", "-e", "-c", configPath, "qpwriter"); err != nil {
+		return fmt.Errorf("SMB fixture enable failed: %s (%v)", output, err)
+	}
+	output, err = client("qpwriter", "PolicyShare", "ls")
+	if !smbFixtureDenied(output, err, "NT_STATUS_LOGON_FAILURE") {
+		return fmt.Errorf("SMB enable restored obsolete password: %s (%v)", output, err)
+	}
+	if output, err := client("qprotated", "PolicyShare", "put "+smbFixtureRoot+"/upload reenabled"); err != nil {
+		return fmt.Errorf("SMB reenabled writer rejected: %s (%v)", output, err)
+	}
+	for _, path := range []string{shared + "/created", shared + "/reenabled"} {
+		data, err := os.ReadFile(path)
+		if err != nil || !bytes.Equal(data, payload) {
+			return errors.New("SMB credential lifecycle changed data")
+		}
+		current, err := os.Lstat(path)
+		if err != nil || !current.Mode().IsRegular() {
+			return errors.New("SMB credential lifecycle file missing")
+		}
+		currentStat, ok := current.Sys().(*syscall.Stat_t)
+		if !ok || currentStat.Uid != 1801 || currentStat.Gid != 1800 || current.Mode().Perm()&0007 != 0 {
+			return errors.New("SMB credential lifecycle ownership/mode mismatch")
+		}
+		if path == shared+"/created" && (!os.SameFile(info, current) || current.Mode() != info.Mode()) {
+			return errors.New("SMB credential lifecycle replaced original inode or permissions")
+		}
+	}
+	for _, name := range []string{"rotated-download", "unaffected-download"} {
+		data, err := os.ReadFile(smbFixtureRoot + "/" + name)
+		if err != nil || !bytes.Equal(data, payload) {
+			return errors.New("SMB credential lifecycle download mismatch")
+		}
+	}
+	for path, before := range unchanged {
+		after, err := os.ReadFile(path)
+		if err != nil || !bytes.Equal(before, after) {
+			return errors.New("SMB credential lifecycle changed Unix identity or share configuration")
+		}
+	}
+	fmt.Println("PHANTOWD_SMB_CREDENTIALS_READY rotated=true old_password_denied=true disabled_denied=true reenabled=true unix_identity_unchanged=true data_preserved=true scope=new-qemu-connections-only")
 	fmt.Println("PHANTOWD_SMB_POLICY_IO_READY generated=true writer_uid=1801 reader_ro=true outsider_denied=true unix_denied=true symlink_denied=true scope=qemu-fixture-only")
 	return nil
+}
+
+// A transport error, timeout or successful exit containing an error-looking
+// string is not evidence that Samba enforced an authentication/access rule.
+func smbFixtureDenied(output []byte, err error, code string) bool {
+	var exit *exec.ExitError
+	return errors.As(err, &exit) && strings.Contains(string(output), code)
 }
 
 func checkSMBFixtureListeners(table string) error {
