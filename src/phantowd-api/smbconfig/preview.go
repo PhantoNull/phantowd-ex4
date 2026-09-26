@@ -16,7 +16,7 @@ import (
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/shareconfig"
 )
 
-const VolumeRoot = "/srv/phantowd/volumes"
+const VolumeRoot = shareconfig.VolumeMountRoot
 
 // Preview describes desired SMB policy, not effective filesystem access.
 // Neither this object nor successful testparm validation authorizes activation.

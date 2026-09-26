@@ -78,6 +78,10 @@ while [ "$attempt" -lt 120 ]; do
             echo "Missing generated Samba policy parser assertion" >&2
             exit 1
         fi
+        if ! grep -F 'PHANTOWD_NFS_POLICY_READY schema=1 mapping=all-squash scope=synthetic-policy-only' "$log_file" >/dev/null; then
+            echo "Missing NFS policy validation assertion" >&2
+            exit 1
+        fi
         if ! grep -F 'PHANTOWD_UI_READY mode=development read_only=true transport=guest-loopback-only' "$log_file" >/dev/null; then
             echo "Missing loopback-only dashboard assertion" >&2
             exit 1

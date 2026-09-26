@@ -27,7 +27,7 @@ try {
     if ($LASTEXITCODE -ne 0) { throw 'Go static checks failed.' }
     go test -count=1 "-coverprofile=$coverageFile" ./...
     if ($LASTEXITCODE -ne 0) { throw 'Diagnostics API tests failed.' }
-    go test -tags=qemu -run '^(TestQEMUDashboardAssetsMatchSelfTest|TestQEMUTLSLoopbackSmoke|TestQEMUShareConfig|TestQEMUShareStore|TestQEMUSMBPreview)$' -count=1 .
+    go test -tags=qemu -run '^(TestQEMUDashboardAssetsMatchSelfTest|TestQEMUTLSLoopbackSmoke|TestQEMUShareConfig|TestQEMUShareStore|TestQEMUSMBPreview|TestQEMUNFSPolicy)$' -count=1 .
     if ($LASTEXITCODE -ne 0) { throw 'QEMU dashboard contract test failed.' }
 } finally {
     Pop-Location

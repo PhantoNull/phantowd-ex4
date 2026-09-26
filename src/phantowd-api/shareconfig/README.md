@@ -32,5 +32,10 @@ File-service account names initially use a bounded lowercase POSIX subset;
 share names use a bounded printable ASCII subset, excluding reserved service
 names and configuration delimiters. This restriction is an initial schema
 choice; international display names can be added through a reviewed revision.
-Credentials, guest access, network settings, NFS client mappings and migration
-instructions are deliberately outside this first share-policy document.
+Credentials, guest access, network settings and migration instructions remain
+outside this first share-policy document. [NFS client policy](../nfsconfig/README.md)
+is a separate versioned document bound to the shared volume revision; it does
+not inherit Samba grants. Both renderers use the same proposed UUID mount root.
+
+Shared bounded JSON decoding rejects duplicate/unknown/null fields and
+unpaired UTF-16 surrogate escapes instead of silently rewriting paths.

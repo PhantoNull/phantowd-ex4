@@ -17,6 +17,12 @@ into deterministic share sections and required volume bindings. Its fixed
 QEMU fixture is checked with the target's `testparm`. This is not an HTTP
 configuration endpoint, account provisioner or service activation path.
 
+The separate [NFS policy preview](nfsconfig/README.md) defines explicit client
+networks, access, security flavors and numeric ID squashing against an exact
+volume revision. Its synthetic ARMv5 probe does not apply exports. NFS host/UID
+rules do not inherit Samba grants, and the product still lacks native managed
+export activation, NFSv4 provisioning and protected-transport qualification.
+
 - Default IPv4 loopback listener: `127.0.0.1:8080` **inside the guest**.
   Optional listener configuration is fail-closed: non-loopback binds require a
   TLS certificate/key pair and one exact HTTPS origin. TLS keys must be regular

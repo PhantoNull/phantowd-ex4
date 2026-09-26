@@ -52,6 +52,10 @@ func runSelfTest() error {
 		return err
 	}
 	fmt.Println("PHANTOWD_SMB_PREVIEW_READY parser=testparm grants=ro,rw scope=synthetic-config-only")
+	if err := exerciseQEMUNFSPolicy(); err != nil {
+		return err
+	}
+	fmt.Println("PHANTOWD_NFS_POLICY_READY schema=1 mapping=all-squash scope=synthetic-policy-only")
 	argon2Started := time.Now()
 	verifier, err := passwordhash.Hash(context.Background(), []byte("qemu-self-test-only"))
 	if err != nil {
