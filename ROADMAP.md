@@ -113,6 +113,11 @@ verification and documented threat-model review before any LAN deployment.
 
 - Integrate SMB3 users and share permissions, NFS exports with explicit client
   policy, and opt-in administrative SSH/SFTP.
+  The journal now has a [typed Linux creation executor](src/phantowd-api/identityexec/README.md),
+  used by the isolated ARMv5 scenario: pinned BusyBox ELF, fixed group/user
+  commands, observed pre/postconditions, locked login, nologin and no home.
+  A production privileged owner/RPC boundary, complete reservations, durable
+  Unix/Samba state and panel integration remain necessary before user creation.
 - Add iSCSI target/LUN policy, authentication and active-session checks.
   Never mount a LUN's filesystem locally while an initiator owns it; capacity,
   deletion and backing-volume loss need explicit failure and recovery behavior.

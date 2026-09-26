@@ -125,6 +125,10 @@ while [ "$attempt" -lt 120 ]; do
             echo 'QEMU password-change HTTPS test did not complete' >&2
             exit 1
         fi
+        if ! grep -F 'PHANTOWD_IDENTITY_EXEC_READY binary=pinned-busybox typed_commands=true unix_login_locked=true nologin=true home_created=false scope=isolated-qemu-only' "$log_file" >/dev/null; then
+            echo 'QEMU typed native identity executor did not complete' >&2
+            exit 1
+        fi
         if ! grep -F 'PHANTOWD_SESSION_REVOCATION_READY peers=2 old_sessions_denied=true fresh_login=true scope=panel-sessions-only' "$log_file" >/dev/null; then
             echo 'Missing global panel session revocation assertion' >&2
             exit 1
