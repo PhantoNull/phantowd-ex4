@@ -45,7 +45,9 @@ The eventual privileged owner must retain a global cooperative writer authority,
 qualified durable `/etc` and registry/journal storage, complete allocation
 exclusions and a reviewed recovery policy. The API must remain unprivileged.
 No production caller currently opens this executor; the only wiring is a
-machine/disk/account-guarded disposable QEMU scenario.
+machine/disk/account-guarded disposable QEMU scenario. That scenario now uses
+the [local identity channel](../identityrpc/README.md) from a separate
+unprivileged client; production listener/global ownership remain unimplemented.
 
 Use it behind [identityprovision](../identityprovision/README.md), which commits
 intent before dispatch and never blindly repeats an uncertain command. **Any

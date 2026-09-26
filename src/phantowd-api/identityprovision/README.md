@@ -5,8 +5,9 @@ two typed backend actions: create its private group, then create its Unix user.
 It does not create reservations, passwords or homes, activate Samba/NFS, import
 legacy users or expose HTTP. The separate Linux
 [typed executor](../identityexec/README.md) now supplies the restricted BusyBox
-backend in the guarded QEMU scenario; production privilege ownership/transport
-is not yet implemented.
+backend in the guarded QEMU scenario. A [local identity channel](../identityrpc/README.md)
+now transports revision-checked steps from an unprivileged fixture child;
+production global ownership and listener provisioning remain unimplemented.
 
 One caller-provisioned private directory owns one operation. The Linux store
 reuses the exclusive-lock, fixed-name, fsync/rename revision engine; its public
@@ -38,9 +39,9 @@ directory lock does not lock `/etc` or the separate registry. The supplied
 registry must remain the exact revision, and observations must come from trusted
 coherent sources. The backend is trusted in-process code, not remote input;
 it must independently validate and supervise fixed bounded commands. No
-network-facing adapter is supplied; the backend interface has no arbitrary
+HTTP-facing adapter is supplied; the backend interface has no arbitrary
 executable/argument or shell-command method.
-Production global ownership, durable Unix layout and privileged transport are
+Production global ownership, durable Unix layout and listener provisioning are
 still unimplemented. A result is not an authorization lease.
 
 Unix-confirmed checks identity, **not** a locked login, shell policy, Samba

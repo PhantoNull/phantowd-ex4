@@ -22,15 +22,23 @@ func main() {
 	smbTest := flag.Bool("qemu-smb-test", false, "fixed SMB effective-access fixture; QEMU only")
 	mountGuardTest := flag.Bool("qemu-mount-guard-test", false, "fixed descriptor/mount guard fixture; QEMU only")
 	stateTest := flag.String("qemu-state-test", "", "fixed two-boot state fixture; QEMU only")
+	identityClient := flag.String("qemu-identity-client", "", "fixed unprivileged identity-channel fixture; QEMU only")
 	flag.Parse()
 	modes := 0
-	for _, selected := range []bool{*selfTest, *nfsTest != "", *smbTest, *mountGuardTest, *stateTest != ""} {
+	for _, selected := range []bool{*selfTest, *nfsTest != "", *smbTest, *mountGuardTest, *stateTest != "", *identityClient != ""} {
 		if selected {
 			modes++
 		}
 	}
 	if flag.NArg() != 0 || modes > 1 {
 		log.Fatal("unexpected arguments")
+	}
+	if *identityClient != "" {
+		if err := runQEMUIdentityClient(*identityClient); err != nil {
+			fmt.Fprintln(os.Stderr, "PHANTOWD_API_ERROR identity channel fixture failed")
+			os.Exit(1)
+		}
+		return
 	}
 	if *stateTest != "" {
 		if err := runQEMUStateTest(*stateTest); err != nil {

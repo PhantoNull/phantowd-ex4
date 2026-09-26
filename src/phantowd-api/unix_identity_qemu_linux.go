@@ -90,7 +90,7 @@ func exerciseQEMUUnixIdentity() (result error) {
 	}
 	defer executor.Close()
 	backend := qemuNativeIdentityBackend{expected: a, executor: executor, groupCreated: &createdGroup, userCreated: &createdUser}
-	if err := journal.Step(context.Background(), 1, r, backend); err != nil {
+	if err := exerciseQEMUIdentityChannel(journal, r, backend, "group"); err != nil {
 		return err
 	}
 	partial, err := observe()
@@ -110,7 +110,7 @@ func exerciseQEMUUnixIdentity() (result error) {
 		return err
 	}
 	defer journal.Close()
-	if err := journal.Step(context.Background(), 3, r, backend); err != nil {
+	if err := exerciseQEMUIdentityChannel(journal, r, backend, "user"); err != nil {
 		return err
 	}
 	completed, err := journal.Load()
