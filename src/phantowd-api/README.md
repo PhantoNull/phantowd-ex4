@@ -326,8 +326,20 @@ inode/content/mode, new-file ownership and byte-identical Unix account files
 and share configuration are checked. Credentials are public fixture values,
 passed through stdin/private files, never command-line passwords.
 
-This is **not product account provisioning or active-session revocation**.
-It does not prove passdb persistence across reboot, cross-store crash recovery,
+A separate two-boot ARMv5 fixture now retains Unix account files, the native
+identity ledger and Samba private/state databases on a generated ext2 disk.
+Each kernel gets a fresh root snapshot; only the first phase creates users and
+sets/rotates the public test password. The second must recover the same disabled
+account before any credential mutation. Explicit re-enable then accepts the
+retained new password, refuses the old one, reads unchanged original data and
+writes with the original UID/private GID. Unix file hashes and original file
+inode/content/mode/ownership must remain unchanged. No users or credentials are
+recreated in the verification phase. Private lock/cache/PID state is volatile;
+the daemon is stopped and mounts released before the clean reboot.
+
+These are **not product account provisioning or active-session revocation**.
+Clean-reboot persistence is verified only in that isolated fixture, not a
+product state layout. Neither scenario proves cross-store crash recovery,
 Windows client behavior, ACL/migration compatibility or EX4 performance. The
 dashboard administrator's Argon2 verifier, desired-policy user references,
 Unix UID/GID identity and Samba passdb are separate authorities: saving a user

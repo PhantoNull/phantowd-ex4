@@ -120,7 +120,7 @@ After the normal smoke, both the fast lane and clean Buildroot runner execute
 `support/qemu-state-reboot.sh`. It creates a new 16 MiB regular-file ext2 disk,
 starts two independent ARMv5 kernels and retains only that generated data disk
 between them. Each root disk is separately snapshotted; no NIC is attached.
-Only guest loopback is raised for the HTTP/HTTPS state fixture.
+Only guest loopback is raised for the HTTP/HTTPS and Samba state fixtures.
 A dedicated PID-1 script skips all normal services and accepts only fixed seed
 and verify phases. Compiled machine/VPD/device/UUID checks precede the writable
 mount; the expected mounted identity is verified before touching configuration.
@@ -139,10 +139,25 @@ fixture checks unauthenticated and missing-CSRF refusal, strict TLS cookie
 naming, full revision commits, replay conflicts, GET and explicit store reopen.
 The second kernel must recover the exact policy and commit subsequent revisions.
 `PHANTOWD_SERVICE_HTTP_READY` is required in the verification log. Nothing is
-forwarded to the host, and no file-service activation occurs in these boots.
+forwarded to the host; this policy API never activates services.
+
+A separate fixed Samba fixture in the same two boots copies only the generated
+guest's `/etc` to private test storage on the first boot, then bind-mounts that
+copy for account operations. Both kernels require the fixture user to be absent
+from their initial, fresh root image. The seed reserves a native UID/private GID,
+creates its no-home/no-login Unix identity, rotates its test SMB password and
+disables it. Samba's private/state databases persist alongside the account files;
+lock/cache/PID directories and client auth files stay in guest RAM. No password
+or account creation occurs on the second boot. Real SMB3 clients must observe
+ACCOUNT_DISABLED before explicit re-enable, then reject the old password and
+read/write using the retained password with unchanged Unix IDs and original data.
+Account-file hashes, file inode/content/mode/ownership and loopback-only listeners
+are checked. `PHANTOWD_SMB_REBOOT_READY` is required after daemon cleanup. The
+fixture stops its own Samba instance, syncs the generated filesystem and releases
+its mounts; it neither changes the base root image nor the default service profile.
 
 This demonstrates clean-reboot persistence on the generated ext2 filesystem,
-not crash/power-cut recovery, EX4 state provisioning, account credentials,
+not crash/power-cut recovery, EX4 state provisioning, production account management,
 schema migration or a production-qualified writable management API. The temporary disk is discarded
 afterward. Clean CI retains `qemu-state-reboot.log` with its validation artifacts.
 

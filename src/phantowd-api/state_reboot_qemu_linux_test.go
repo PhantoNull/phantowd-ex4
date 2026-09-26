@@ -16,6 +16,11 @@ func TestQEMUStatePersistence(t *testing.T) {
 		t.Fatal("unknown mode accepted")
 	}
 	if runtime.GOARCH != "arm" {
+		for _, phase := range []string{"unknown", "seed", "verify"} {
+			if err := exerciseQEMUSMBReboot(phase); err == nil {
+				t.Fatal("SMB reboot host mutation guard failed")
+			}
+		}
 		if err := runQEMUStateTest("seed"); err == nil {
 			t.Fatal("host accepted as QEMU target")
 		}

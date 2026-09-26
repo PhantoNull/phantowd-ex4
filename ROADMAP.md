@@ -233,7 +233,13 @@ Additional NAS models require their own board definitions and qualification.
    identity registry now reserves immutable UID/private-GID identities and
    retains retired records across close/reopen. Its typed atomic store has no
    arbitrary replacement API. Live Unix/passdb provisioning, identity inventory,
-   credential reconciliation, imported/shared groups and recovery remain open;
+   credential reconciliation, imported/shared groups and recovery remain open.
+   Protected Linux collection now qualifies local account-file provenance and
+   files-only NSS, but does not serialize all writers. A separate ARMv5 two-boot
+   fixture retains real Unix identities and Samba private databases without
+   recreating users/passwords: disabled state and rotated credentials survive,
+   old passwords fail, and file ownership/data remain stable. This closes the
+   isolated clean-reboot test gap, not product provisioning or crash recovery;
    see the [registry contract](src/phantowd-api/serviceaccounts/README.md).
 5. Connect trusted filesystem-identity qualification to the implemented Linux
    mount-descriptor guard, then integrate supervised SMB/NFS lifecycle using

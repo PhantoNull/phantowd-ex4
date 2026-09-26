@@ -55,7 +55,14 @@ Generic storage errors retain the revisionstore sentinels; planning errors use
 the serviceaccounts sentinels. An uncertain commit requires close/reopen and
 reconciliation, not a blind retry.
 
-Tests use synthetic identities and private temporary directories. Production
+Tests use synthetic identities and private temporary directories. The guarded
+two-boot ARMv5 fixture also retains a real Unix identity and private Samba passdb:
+it verifies the ledger/UID/GID, disabled state and rotated password after reboot,
+then explicitly enables fresh-client access without recreating credentials.
+This is a fixed test scenario, not a provisioning/reconciliation implementation;
+see the [credential lifecycle contract](../README.md#smb-credential-lifecycle-boundary).
+
+Production
 state provisioning, anti-rollback/recovery, full power-loss qualification,
 passdb lifecycle, qualified live-identity reconciliation, privileged execution, active
 session revocation, UI integration and legacy migration remain unimplemented.
