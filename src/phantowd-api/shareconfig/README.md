@@ -24,7 +24,9 @@ root. Lexical validation rejects absolute paths, traversal and control bytes;
 it cannot establish filesystem containment. The future privileged layer must
 resolve symlinks/mount boundaries safely and refuse a missing volume before
 opening paths. Overlapping shares and ACL inheritance need runtime policy
-before service activation. No service configuration renderer exists here yet.
+before service activation. The separate [Samba preview renderer](../smbconfig/README.md)
+emits candidate share sections and refuses unsafe interpolation and overlapping
+paths; it does not establish runtime containment or apply configuration.
 
 File-service account names initially use a bounded lowercase POSIX subset;
 share names use a bounded printable ASCII subset, excluding reserved service

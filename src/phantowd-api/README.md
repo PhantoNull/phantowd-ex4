@@ -12,6 +12,11 @@ endpoint or service activation is implemented yet. The Linux-only
 failure handling, exercised only in temporary host/QEMU directories. The
 firmware does not yet provision persistent product configuration storage.
 
+The [Samba preview renderer](smbconfig/README.md) translates desired policy
+into deterministic share sections and required volume bindings. Its fixed
+QEMU fixture is checked with the target's `testparm`. This is not an HTTP
+configuration endpoint, account provisioner or service activation path.
+
 - Default IPv4 loopback listener: `127.0.0.1:8080` **inside the guest**.
   Optional listener configuration is fail-closed: non-loopback binds require a
   TLS certificate/key pair and one exact HTTPS origin. TLS keys must be regular

@@ -48,6 +48,10 @@ func runSelfTest() error {
 		return err
 	}
 	fmt.Println("PHANTOWD_SHARE_STORE_READY revision=2 reopen=true scope=temporary-qemu-only")
+	if err := exerciseQEMUSMBPreview(); err != nil {
+		return err
+	}
+	fmt.Println("PHANTOWD_SMB_PREVIEW_READY parser=testparm grants=ro,rw scope=synthetic-config-only")
 	argon2Started := time.Now()
 	verifier, err := passwordhash.Hash(context.Background(), []byte("qemu-self-test-only"))
 	if err != nil {

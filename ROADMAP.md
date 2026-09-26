@@ -211,7 +211,8 @@ Additional NAS models require their own board definitions and qualification.
    validate the new ARMv5 QEMU probes before claiming guest execution evidence.
 3. Extend restart/failure coverage to disposable persistent QEMU filesystems
    and define configuration recovery/migration before exposing writable APIs.
-4. Build previewable service configuration and permission checks on that model.
+4. Integrate the Samba share preview and target-parser checks; add NFS policy,
+   effective POSIX permission checks and runtime volume binding before activation.
 5. Integrate supervised SMB/NFS lifecycle using disposable QEMU disks.
 6. Advance network/controller/recovery evidence on a separately reviewed
    hardware schedule; use those results to qualify the software on EX4.

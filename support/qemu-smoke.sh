@@ -74,6 +74,10 @@ while [ "$attempt" -lt 120 ]; do
             echo "Missing ARMv5 share-store revision/reopen assertion" >&2
             exit 1
         fi
+        if ! grep -F 'PHANTOWD_SMB_PREVIEW_READY parser=testparm grants=ro,rw scope=synthetic-config-only' "$log_file" >/dev/null; then
+            echo "Missing generated Samba policy parser assertion" >&2
+            exit 1
+        fi
         if ! grep -F 'PHANTOWD_UI_READY mode=development read_only=true transport=guest-loopback-only' "$log_file" >/dev/null; then
             echo "Missing loopback-only dashboard assertion" >&2
             exit 1
