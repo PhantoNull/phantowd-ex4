@@ -95,6 +95,17 @@ const mountsFixture = {
   limitations: ["synthetic preview fixture; no device was examined"],
 };
 
+const savedFixture = {
+  schema_version: 1, scope: "stored-desired-share-policy-only", initialized: true,
+  runtime_validated: false, activation_available: false,
+  configuration: {
+    format: "phantowd-share-config", schema_version: 1, revision: 4,
+    volumes: [{ id: "example-volume", filesystem_uuid: "11111111-2222-3333-4444-555555555555" }],
+    users: [{ id: "example-reader", name: "reader" }],
+    shares: [{ id: "example-books", name: "Example books (synthetic)", volume_id: "example-volume", relative_path: "library/books", grants: [{ user_id: "example-reader", access: "ro" }] }],
+  },
+};
+
 const assets = new Map([
   ["/", ["index.html", "text/html; charset=utf-8"]],
   ["/assets/app.css", ["app.css", "text/css; charset=utf-8"]],
@@ -121,6 +132,11 @@ const server = createServer(async (request, response) => {
   if (url.pathname === "/api/v1/auth/status") {
     response.writeHead(200, { "Content-Type": "application/json" });
     response.end('{"authenticated":true,"setup_required":false}\n');
+    return;
+  }
+  if (url.pathname === "/api/v1/shares/configuration") {
+    response.writeHead(200, { "Content-Type": "application/json" });
+    response.end(JSON.stringify(savedFixture));
     return;
   }
   if (["/api/v1/system", "/api/v1/storage", "/api/v1/arrays", "/api/v1/mounts"].includes(url.pathname)) {

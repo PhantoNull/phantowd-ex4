@@ -125,6 +125,7 @@ async function createHarness(respond) {
     "memory-value", "memory-detail", "memory-meter", "firmware-value", "firmware-detail",
     "profile-notice-title", "profile-notice-copy", "profile-notice-mark",
     "observed-at", "device-count", "device-list", "array-count", "array-list", "mount-count", "mount-list",
+    ...["load", "status", "result", "summary", "shares"].map((id) => `saved-${id}`),
     ...["form", "submit", "clear", "result", "error", "status", "requirements", "samba", "nfs", "nfs-fields", "uuid", "name", "path", "user", "smb-access", "nfs-enabled", "export-id", "network", "nfs-access", "squash", "uid", "gid", "security"].map((id) => `policy-${id}`),
   ];
   const elements = Object.fromEntries(ids.map((id) => [id, new FixtureElement()]));
@@ -346,8 +347,9 @@ function fillPolicy(elements) {
   for (const [id, value] of Object.entries(values)) elements[`policy-${id}`].value = value;
 }
 
-async function policyHarness(previewResponse = () => jsonResponse(policyFixture()), sessionResponse = () => jsonResponse({ csrf_token: "fixture-only" })) {
+async function policyHarness(previewResponse = () => jsonResponse(policyFixture()), sessionResponse = () => jsonResponse({ csrf_token: "fixture-only" }), savedResponse = () => jsonResponse(savedFixture())) {
   return createHarness(async (path, options) => {
+    if (path === "/api/v1/shares/configuration") return savedResponse(options);
     if (path === "/api/v1/auth/status") return jsonResponse({ authenticated: true });
     if (path === "/api/v1/auth/session") return sessionResponse();
     if (path === "/api/v1/file-services/preview") return previewResponse(options);
@@ -440,6 +442,149 @@ async function testPolicyFailuresAndStaleResponses() {
   }
 }
 
+function savedFixture() {
+  return {
+    schema_version: 1, scope: "stored-desired-share-policy-only", initialized: true,
+    runtime_validated: false, activation_available: false,
+    configuration: {
+      format: "phantowd-share-config", schema_version: 1, revision: 4,
+      volumes: [{ id: "media", filesystem_uuid: "11111111-2222-3333-4444-555555555555" }],
+      users: [{ id: "reader", name: "reader" }],
+      shares: [{ id: "books", name: "Books", volume_id: "media", relative_path: "books", grants: [{ user_id: "reader", access: "ro" }] }],
+    },
+  };
+}
+
+async function testSavedPolicyStatesAndSafeRendering() {
+  let response = jsonResponse(savedFixture());
+  const { context, elements, requests } = await policyHarness(undefined, undefined, () => response);
+  assert.equal(requests.some(({ path }) => path.endsWith("/configuration")), false, "loading must be explicit");
+  await elements["saved-load"].listeners.get("click")();
+  const request = requests.find(({ path }) => path.endsWith("/configuration"));
+  assert.equal(request.options.method, "GET");
+  assert.equal(request.options.credentials, "same-origin");
+  assert.equal(request.options.cache, "no-store");
+  assert.equal(request.options.body, undefined);
+  assert.equal(elements["saved-result"].hidden, false);
+  assert.match(elements["saved-summary"].textContent, /Revision 4/);
+  assert.match(elements["saved-status"].textContent, /Runtime access has not been verified/);
+  const row = elements["saved-shares"].children[0];
+  assert.equal(row.children[0].textContent, "Books");
+  assert.equal(row.children[1].textContent, "media / books");
+  assert.match(row.children[3].children[1].textContent, /reader: read only/);
+
+  // Even a hostile, structurally valid reply is rendered as text, never markup.
+  const hostile = savedFixture();
+  hostile.configuration.shares[0].name = "<img src=x onerror=alert(1)>";
+  hostile.configuration.shares[0].relative_path = "<script>payload</script>";
+  response = jsonResponse(hostile);
+  await context.loadSavedPolicy();
+  assert.equal(elements["saved-shares"].children[0].children[0].textContent, hostile.configuration.shares[0].name);
+  assert.equal(elements["saved-shares"].children[0].children[0].children.length, 0);
+
+  const empty = savedFixture();
+  empty.configuration.shares = [];
+  response = jsonResponse(empty);
+  await context.loadSavedPolicy();
+  assert.equal(elements["saved-result"].hidden, false);
+  assert.equal(elements["saved-shares"].children.length, 0);
+  assert.match(elements["saved-status"].textContent, /no shares are defined/);
+
+  for (const [reply, expected] of [
+    [jsonResponse({ ...savedFixture(), initialized: false, configuration: null }), /no share policy has been initialized/],
+    [jsonResponse({ error: "share_configuration_not_configured" }, 503), /storage is not connected/],
+    [jsonResponse({ error: "share_configuration_unavailable" }, 503), /unavailable or busy/],
+    [jsonResponse({}, 403), /unavailable or busy/],
+    [Object.assign(new Error("private backend details"), { name: "AbortError" }), /timed out/],
+    [new Error("private backend details"), /could not be verified/],
+  ]) {
+    response = jsonResponse(savedFixture());
+    await context.loadSavedPolicy();
+    response = reply;
+    await context.loadSavedPolicy();
+    assert.equal(elements["saved-result"].hidden, true);
+    assert.equal(elements["saved-shares"].children.length, 0);
+    assert.equal(elements["saved-summary"].textContent, "");
+    assert.match(elements["saved-status"].textContent, expected);
+    assert.doesNotMatch(elements["saved-status"].textContent, /private/);
+    assert.equal(elements["saved-load"].disabled, false);
+  }
+}
+
+async function testSavedPolicyMalformedReplies() {
+  for (const mutate of [
+    (r) => { r.schema_version = 2; },
+    (r) => { r.scope = "active-shares"; },
+    (r) => { delete r.runtime_validated; },
+    (r) => { r.activation_available = true; },
+    (r) => { r.initialized = false; },
+    (r) => { r.configuration = null; },
+    (r) => { r.configuration.format = "unknown"; },
+    (r) => { r.configuration.revision = Number.MAX_SAFE_INTEGER + 1; },
+    (r) => { r.configuration.volumes.push(r.configuration.volumes[0]); },
+    (r) => { r.configuration.volumes = Array(17).fill(r.configuration.volumes[0]); },
+    (r) => { r.configuration.volumes[0].filesystem_uuid = "not-a-uuid"; },
+    (r) => { r.configuration.users.push(r.configuration.users[0]); },
+    (r) => { r.configuration.shares[0].volume_id = "missing"; },
+    (r) => { r.configuration.shares[0].grants[0].user_id = "missing"; },
+    (r) => { r.configuration.shares[0].grants[0].access = "admin"; },
+    (r) => { r.configuration.shares[0].grants.push(r.configuration.shares[0].grants[0]); },
+    (r) => { r.configuration.shares[0].relative_path = "x".repeat(1025); },
+  ]) {
+    const reply = savedFixture(); mutate(reply);
+    const { context, elements } = await policyHarness(undefined, undefined, () => jsonResponse(reply));
+    await context.loadSavedPolicy();
+    assert.equal(elements["saved-result"].hidden, true);
+    assert.match(elements["saved-status"].textContent, /could not be verified/);
+    assert.equal(elements["saved-shares"].children.length, 0);
+  }
+}
+
+async function testSavedPolicyLateRepliesAndAuthLoss() {
+  for (const delayedBody of [false, true]) {
+    for (const reset of ["clear", "auth-loss", "logout"]) {
+      let release;
+      const pending = new Promise((resolve) => { release = resolve; });
+      const harness = await policyHarness(undefined, () => jsonResponse({}, 503), () =>
+        delayedBody ? { ok: true, status: 200, json: () => pending } : pending);
+      const { context, elements, requests } = harness;
+      const operation = context.loadSavedPolicy();
+      await new Promise((resolve) => setImmediate(resolve));
+      assert.equal(elements["saved-load"].disabled, true);
+      await context.loadSavedPolicy(); // duplicate ignored
+      if (reset === "clear") context.clearSavedPolicy();
+      if (reset === "auth-loss") context.showAuthUnavailable();
+      if (reset === "logout") await elements.logout.listeners.get("click")();
+      release(delayedBody ? savedFixture() : jsonResponse(savedFixture()));
+      await operation;
+      assert.equal(requests.filter(({ path }) => path.endsWith("/configuration")).length, 1);
+      assert.equal(requests.find(({ path }) => path.endsWith("/configuration")).options.signal.aborted, true);
+      assert.equal(elements["saved-result"].hidden, true);
+      assert.equal(elements["saved-shares"].children.length, 0);
+      assert.equal(elements["saved-load"].disabled, false);
+    }
+  }
+  for (const statusFails of [false, true]) {
+    let expired = false;
+    const { context, elements } = await createHarness(async (path) => {
+      if (path === "/api/v1/auth/status") return jsonResponse({ authenticated: !expired, setup_required: false }, expired && statusFails ? 503 : 200);
+      if (path === "/api/v1/shares/configuration") { expired = true; return jsonResponse({}, 401); }
+      if (path === "/api/v1/system") return jsonResponse(systemFixture());
+      if (path === "/api/v1/storage") return jsonResponse({ observations: [] });
+      if (path === "/api/v1/arrays") return jsonResponse(arraysFixture());
+      if (path === "/api/v1/mounts") return jsonResponse(mountsFixture());
+      throw new Error(`Unexpected request ${path}`);
+    });
+    await context.loadSavedPolicy();
+    assert.equal(elements["dashboard-content"].hidden, true);
+    assert.equal(elements["auth-panel"].hidden, false);
+    assert.equal(elements["saved-result"].hidden, true);
+  }
+}
+
+await testSavedPolicyStatesAndSafeRendering();
+await testSavedPolicyMalformedReplies();
+await testSavedPolicyLateRepliesAndAuthLoss();
 await testPolicyBuilderAndSafePreview();
 await testPolicyFailuresAndStaleResponses();
 await testReadOnlySnapshotAndSafeRendering();

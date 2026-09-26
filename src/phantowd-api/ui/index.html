@@ -166,8 +166,20 @@
 
       <section class="policy-panel card" aria-labelledby="policy-title">
         <p class="eyebrow">DESIRED POLICY / NOTHING IS APPLIED</p>
-        <h2 id="policy-title">Plan a file share</h2>
-        <p id="policy-help" class="policy-help">Build a standalone proposal for one share. This does not load or replace the current configuration, verify a disk, create an account, or change a service. No password is needed. Drafts stay in this page and are not saved.</p>
+        <h2 id="policy-title">File shares</h2>
+        <section class="saved-policy" aria-labelledby="saved-title">
+          <h3 id="saved-title">Saved share configuration</h3>
+          <p class="policy-help">Desired volumes, users and SMB grants only. This does not establish active shares, disk availability or effective permissions. NFS policy is not included.</p>
+          <button id="saved-load" class="refresh-button" type="button">Load saved configuration</button>
+          <p id="saved-status" class="snapshot-status" role="status" aria-live="polite">Not loaded. No stored configuration is shown.</p>
+          <div id="saved-result" hidden>
+            <p class="pill pill-warning">SAVED POLICY / ACTIVATION NOT AVAILABLE</p>
+            <p id="saved-summary" class="policy-help"></p>
+            <ul id="saved-shares" class="saved-shares"></ul>
+          </div>
+        </section>
+        <h3>Plan a file share</h3>
+        <p id="policy-help" class="policy-help">Build a standalone proposal for one share. This form does not load or replace the saved configuration, verify a disk, create an account, or change a service. No password is needed. Drafts stay in this page and are not saved.</p>
         <form id="policy-form" aria-describedby="policy-help" autocomplete="off">
           <fieldset class="policy-grid">
             <legend>Volume and SMB access</legend>

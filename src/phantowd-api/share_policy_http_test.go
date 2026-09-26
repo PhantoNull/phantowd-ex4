@@ -110,6 +110,15 @@ func TestSharePolicyReadHTTP(t *testing.T) {
 			if w.Code != spec.status || strings.Contains(w.Body.String(), "private") {
 				t.Fatal(w.Code, w.Body.String())
 			}
+			if w.Code == 503 {
+				code := "share_configuration_unavailable"
+				if spec.load == nil {
+					code = "share_configuration_not_configured"
+				}
+				if !strings.Contains(w.Body.String(), `"error":"`+code+`"`) {
+					t.Fatal("backend state classification", w.Body.String())
+				}
+			}
 			if spec.name == "uninitialized" && (!strings.Contains(w.Body.String(), `"initialized":false`) || !strings.Contains(w.Body.String(), `"configuration":null`)) {
 				t.Fatal("absence became empty policy")
 			}

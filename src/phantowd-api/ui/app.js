@@ -391,6 +391,7 @@ function setAuthError(message) {
 }
 
 function showAuthUnavailable() {
+  clearSavedPolicy();
   clearPolicyDraft();
   byId("auth-panel").hidden = false;
   byId("dashboard-content").hidden = true;
@@ -427,6 +428,7 @@ async function updateAuthView({ refresh = true, notice = "" } = {}) {
   }
 
   dashboard.hidden = true;
+  clearSavedPolicy();
   clearPolicyDraft();
   logout.hidden = true;
   authPanel.hidden = false;
@@ -499,6 +501,7 @@ byId("auth-form").addEventListener("submit", async (event) => {
 });
 
 byId("logout").addEventListener("click", async () => {
+  clearSavedPolicy();
   clearPolicyDraft();
   const logout = byId("logout");
   logout.disabled = true;
@@ -656,6 +659,134 @@ async function submitPolicyProposal(event) {
   }
 }
 
+let savedGeneration = 0;
+let savedController = null;
+
+function clearSavedPolicy(message = "Not loaded. No stored configuration is shown.") {
+  savedGeneration += 1;
+  savedController?.abort();
+  savedController = null;
+  byId("saved-result").hidden = true;
+  byId("saved-shares").replaceChildren();
+  setText("saved-summary", "");
+  setText("saved-status", message);
+  byId("saved-load").disabled = false;
+  byId("saved-load").removeAttribute("aria-busy");
+}
+
+function validateSavedPolicy(response) {
+  const invalid = () => { throw new Error("unsupported saved policy"); };
+  if (response?.schema_version !== 1 || response.scope !== "stored-desired-share-policy-only" ||
+      typeof response.initialized !== "boolean" || response.runtime_validated !== false || response.activation_available !== false) invalid();
+  if (!response.initialized) {
+    if (response.configuration !== null) invalid();
+    return null;
+  }
+  const c = response.configuration;
+  if (!c || c.format !== "phantowd-share-config" || c.schema_version !== 1 || !Number.isSafeInteger(c.revision) || c.revision < 1 ||
+      !Array.isArray(c.volumes) || c.volumes.length > 16 || !Array.isArray(c.users) || c.users.length > 128 || !Array.isArray(c.shares) || c.shares.length > 128) invalid();
+  const text = (value, max) => typeof value === "string" && value.length > 0 && value.length <= max;
+  const id = (value) => text(value, 64) && /^[a-z][a-z0-9-]*$/.test(value);
+  const volumes = new Map();
+  const uuids = new Set();
+  const users = new Map();
+  const names = new Set();
+  for (const v of c.volumes) {
+    if (!v || !id(v.id) || volumes.has(v.id) || typeof v.filesystem_uuid !== "string" ||
+        !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(v.filesystem_uuid) ||
+        v.filesystem_uuid === "00000000-0000-0000-0000-000000000000" || uuids.has(v.filesystem_uuid)) invalid();
+    volumes.set(v.id, v); uuids.add(v.filesystem_uuid);
+  }
+  for (const u of c.users) {
+    if (!u || !id(u.id) || users.has(u.id) || !text(u.name, 32) || !/^[a-z][a-z0-9_-]*$/.test(u.name) || names.has(u.name)) invalid();
+    users.set(u.id, u.name); names.add(u.name);
+  }
+  const shareIDs = new Set();
+  const shareNames = new Set();
+  for (const s of c.shares) {
+    if (!s || !id(s.id) || shareIDs.has(s.id) || !text(s.name, 80) || shareNames.has(s.name.toLowerCase()) || !volumes.has(s.volume_id) ||
+        !text(s.relative_path, 1024) || !Array.isArray(s.grants) || s.grants.length === 0 || s.grants.length > 128) invalid();
+    shareIDs.add(s.id); shareNames.add(s.name.toLowerCase());
+    const granted = new Set();
+    for (const g of s.grants) {
+      if (!g || !users.has(g.user_id) || granted.has(g.user_id) || !["ro", "rw"].includes(g.access)) invalid();
+      granted.add(g.user_id);
+    }
+  }
+  return { config: c, volumes, users };
+}
+
+function renderSavedPolicy(response) {
+  const parsed = validateSavedPolicy(response);
+  if (parsed === null) {
+    setText("saved-status", "Storage is configured, but no share policy has been initialized. This is not an empty saved configuration.");
+    return;
+  }
+  const { config, volumes, users } = parsed;
+  const rows = config.shares.map((share) => {
+    const row = document.createElement("li");
+    const title = document.createElement("strong"); title.textContent = share.name;
+    const path = document.createElement("span"); path.textContent = `${share.volume_id} / ${share.relative_path}`;
+    const identity = document.createElement("span"); identity.textContent = `Expected filesystem UUID: ${volumes.get(share.volume_id).filesystem_uuid}`;
+    const grants = document.createElement("details");
+    const summary = document.createElement("summary"); summary.textContent = `${share.grants.length} desired access grant(s)`;
+    const access = document.createElement("p");
+    access.textContent = share.grants.map((grant) => `${users.get(grant.user_id)}: ${grant.access === "ro" ? "read only" : "read and write"}`).join("; ");
+    grants.append(summary, access); row.append(title, path, identity, grants);
+    return row;
+  });
+  byId("saved-shares").replaceChildren(...rows);
+  setText("saved-summary", `Revision ${config.revision} · ${config.volumes.length} volume(s) · ${config.users.length} user(s) · ${config.shares.length} share(s)`);
+  setText("saved-status", config.shares.length === 0 ? "Saved configuration loaded: no shares are defined. No service was changed." : "Saved configuration loaded. Runtime access has not been verified; no service was changed.");
+  byId("saved-result").hidden = false;
+}
+
+async function loadSavedPolicy() {
+  if (savedController) return;
+  clearSavedPolicy("Loading saved configuration… Previous values were cleared.");
+  const generation = savedGeneration;
+  const controller = new AbortController();
+  savedController = controller;
+  const button = byId("saved-load");
+  button.disabled = true; button.setAttribute("aria-busy", "true");
+  const timeout = setTimeout(() => controller.abort(), 10000);
+  try {
+    const response = await fetch("/api/v1/shares/configuration", { method: "GET", credentials: "same-origin", cache: "no-store", headers: { Accept: "application/json" }, signal: controller.signal });
+    if (generation !== savedGeneration) return;
+    if (response.status === 401) {
+      clearSavedPolicy();
+      byId("dashboard-content").hidden = true;
+      try {
+        await updateAuthView({ refresh: false, notice: "Session expired. Sign in again." });
+      } catch {
+        showAuthUnavailable();
+      }
+      return;
+    }
+    if (!response.ok) {
+      const body = await response.json().catch(() => ({}));
+      if (generation !== savedGeneration) return;
+      setText("saved-status", response.status === 503 && body.error === "share_configuration_not_configured" ?
+        "Configuration storage is not connected in this build. No saved policy is available through the API." :
+        "Saved configuration is unavailable or busy. No previous values are shown; retry later. No service was changed.");
+      return;
+    }
+    const body = await response.json();
+    if (generation !== savedGeneration) return;
+    renderSavedPolicy(body);
+  } catch (failure) {
+    if (generation !== savedGeneration) return;
+    setText("saved-status", failure?.name === "AbortError" ? "Configuration read timed out. No saved values are shown." : "Saved configuration could not be verified. No saved values are shown.");
+  } finally {
+    clearTimeout(timeout);
+    if (generation === savedGeneration) {
+      savedController = null;
+      button.disabled = false; button.removeAttribute("aria-busy");
+    }
+  }
+}
+
+byId("saved-load").addEventListener("click", loadSavedPolicy);
 byId("policy-form").addEventListener("submit", submitPolicyProposal);
 byId("policy-form").addEventListener("input", () => { invalidatePolicyPreview(); syncPolicyNFS(); });
 byId("policy-form").addEventListener("change", () => { invalidatePolicyPreview(); syncPolicyNFS(); });

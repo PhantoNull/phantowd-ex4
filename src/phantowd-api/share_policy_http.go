@@ -51,7 +51,7 @@ func newSharePolicyReadHandler(auth *authController, load sharePolicyLoader) htt
 			return
 		}
 		if load == nil {
-			writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "share_configuration_unavailable"})
+			writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "share_configuration_not_configured"})
 			return
 		}
 		select {

@@ -29,8 +29,10 @@ the authenticated owner, not public diagnostics or logs.
 The version-1 response has scope `stored-desired-share-policy-only`, an
 `initialized` boolean and `configuration` (the complete share document, or
 null when the configured store has never been initialized). Runtime validation
-and activation availability are explicitly false. Missing backend, corruption
-or I/O failure returns a generic 503, never an empty appliance configuration.
+and activation availability are explicitly false. Missing backend returns 503
+`share_configuration_not_configured`; corruption or I/O failure returns 503
+`share_configuration_unavailable`, never an empty appliance configuration.
+Neither error exposes paths or underlying storage details.
 One storage read is active per handler; competing reads receive 503 with
 Retry-After, while health checks can still run. Kernel-blocked I/O is not made
 cancellable by this gate.
@@ -48,8 +50,15 @@ The default QEMU daemon does not set this variable. Its separate two-boot test
 dispatches the real handler with a synthetic authenticated session and the
 real store adapter against the persisted fixture. Host tests cover rejection,
 backpressure, error redaction, encoded size and startup/lock behavior. The
-dashboard is not yet connected to this endpoint; HTTP save, schema migration,
-product state provisioning and SMB/NFS activation remain separate work.
+dashboard can load this endpoint explicitly and display the revision, share
+paths, expected volume UUIDs and desired SMB grants. Empty saved configuration,
+uninitialized store, missing backend and failed/busy reads remain distinct.
+It validates the response shape, bounds and references for display (the server
+remains the policy validator), renders data as text, and clears old values on
+retry, logout or authentication loss. A cancelled or superseded request cannot
+repopulate cleared values. It does not load NFS policy, populate the independent
+proposal form or imply effective access. HTTP save, schema migration, product
+state provisioning and SMB/NFS activation remain separate work.
 
 ## Runtime and development boundaries
 
