@@ -5,6 +5,7 @@ on:
     branches: [main, develop]
     paths-ignore:
       - '**/*.md'
+      - '.github/assets/**'
       - 'doc/**'
       - 'tools/phantowd-lab/**'
       - 'support/test-lab-tools.ps1'
@@ -33,6 +34,7 @@ on:
     types: [opened, synchronize, reopened, ready_for_review]
     paths-ignore:
       - '**/*.md'
+      - '.github/assets/**'
       - 'doc/**'
       - 'tools/phantowd-lab/**'
       - 'support/test-lab-tools.ps1'
