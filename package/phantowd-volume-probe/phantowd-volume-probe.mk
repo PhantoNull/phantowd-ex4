@@ -9,10 +9,12 @@ PHANTOWD_VOLUME_PROBE_LICENSE = Apache-2.0
 PHANTOWD_VOLUME_PROBE_LICENSE_FILES = LICENSE
 PHANTOWD_VOLUME_PROBE_DEPENDENCIES = util-linux
 
+# Buildroot owns _FORTIFY_SOURCE through TARGET_CFLAGS. Redefining it here
+# conflicts with its configured level and breaks compilation under -Werror.
 define PHANTOWD_VOLUME_PROBE_BUILD_CMDS
 	$(INSTALL) -m 0644 $(BR2_EXTERNAL_PHANTOWD_EX4_PATH)/LICENSE $(@D)/LICENSE
 	$(TARGET_CC) $(TARGET_CFLAGS) -std=c11 -Wall -Wextra -Werror \
-		-fstack-protector-strong -D_FORTIFY_SOURCE=2 \
+		-fstack-protector-strong \
 		$(@D)/probe.c $(TARGET_LDFLAGS) -Wl,-z,relro,-z,now \
 		-lblkid -o $(@D)/phantowd-volume-probe
 endef

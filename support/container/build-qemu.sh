@@ -23,6 +23,7 @@ shellcheck -s sh \
     "$external_dir/support/compare-build-artifacts.sh" \
     "$external_dir/support/test-compare-build-artifacts.sh"
 sh "$external_dir/support/test-compare-build-artifacts.sh"
+python3 "$external_dir/support/test-volume-probe-build.py"
 
 download_verified() {
     url="$1"
