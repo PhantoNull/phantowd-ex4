@@ -150,7 +150,7 @@ func TestDescriptorResolution(t *testing.T) {
 	if err := unix.Fstatfs(fd, &fs); err != nil {
 		t.Fatal(err)
 	}
-	expected := Expected{MountID: st.Mnt_id, RootInode: st.Ino, DeviceMajor: st.Dev_major, DeviceMinor: st.Dev_minor, FilesystemType: uint32(fs.Type)}
+	expected := Expected{MountID: st.Mnt_id, RootInode: st.Ino, DeviceMajor: st.Dev_major, DeviceMinor: st.Dev_minor, FilesystemType: uint32(fs.Type), FilesystemUUID: "11111111-2222-3333-4444-555555555555"}
 	if err := matchFD(fd, expected, false); st.Mask&unix.STATX_MNT_ID_UNIQUE != 0 {
 		if err != nil {
 			t.Fatal(err)

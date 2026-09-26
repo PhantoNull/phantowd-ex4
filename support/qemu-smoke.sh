@@ -108,6 +108,10 @@ while [ "$attempt" -lt 120 ]; do
             echo 'Missing descriptor/mount guard assertion' >&2
             exit 1
         fi
+        if ! grep -F 'PHANTOWD_FILESYSTEM_UUID_READY source=kernel-ioctl expected_uuid=true mismatch_denied=true block_device_opened=false scope=qemu-fixture-only' "$log_file" >/dev/null; then
+            echo 'Missing kernel filesystem UUID assertion' >&2
+            exit 1
+        fi
         if ! grep -F 'PHANTOWD_UI_READY mode=development read_only=true transport=guest-loopback-only' "$log_file" >/dev/null; then
             echo "Missing loopback-only dashboard assertion" >&2
             exit 1

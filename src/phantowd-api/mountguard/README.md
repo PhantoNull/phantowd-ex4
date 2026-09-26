@@ -1,7 +1,8 @@
 # Qualified-mount descriptor guard (Linux)
 
 This package retains a previously qualified mount and resolves directory
-descriptors on it. It does not discover volumes, read filesystem UUIDs, prove
+descriptors on it. It checks the mounted filesystem UUID through a read-only
+kernel ioctl. It does not discover unmounted volumes, prove
 uniqueness/compatibility, check user permissions, mount/unmount filesystems or
 activate services. There is no HTTP route for it.
 
@@ -12,6 +13,8 @@ filesystem and its compatibility, then supply the expected **unique mount ID**,
 root inode, device major/minor and filesystem magic in the current mount
 namespace/kernel. These values must not come from an HTTP client or simply be
 learned from whatever directory happens to occupy the desired path.
+`FilesystemUUID` must separately come from the intended volume in trusted
+desired policy: canonical lowercase, nonzero, 128-bit UUID text is required.
 `RequireWritable` additionally rejects read-only mounts. Filesystem magic is
 an identity comparison, not an approved-filesystem list or integrity check.
 
@@ -20,13 +23,24 @@ Do not persist this tuple as stable disk identity, reuse it after reboot or
 share it across namespaces. Filesystem UUID collision detection, WD layouts
 and permission qualification are separate prerequisites that remain unfinished.
 
+The expected UUID is compared with `FS_IOC_GETFSUUID` from a safely reopened
+directory descriptor on the pinned mount, not a path name, label, device name,
+udev symlink or blkid cache. The read-only ioctl returns the kernel's external
+filesystem UUID; it does not prove on-disk integrity or uniqueness. Clones can
+have the same UUID. No block device is opened, filesystem mounted, directory
+listed or data file read. Zero or non-128-bit replies and unsupported ioctls
+fail closed. The metadata descriptor is reopened with O_NOATIME, requiring
+appropriate ownership/capability; there is no weaker retry or privilege gain.
+
 ## Operations
 
 - `Open(anchor, expected)` opens a canonical non-root absolute directory with
   `openat2`, rejects symlinks in all components, and checks the expected tuple,
-  directory type and mount-root attribute. It retains an `O_PATH` descriptor.
+  directory type, mount-root attribute and expected filesystem UUID. It retains
+  an `O_PATH` descriptor; the temporary read-only ioctl descriptor is closed.
 - `Verify()` reopens the named anchor and compares its identity/state and the
-  retained descriptor. A missing mount, replacement or changed writable state
+  retained descriptor, including the expected UUID. A missing mount,
+  replacement or changed writable state
   cannot quietly become a directory on the system filesystem.
 - `OpenDirectory(relative)` revalidates the anchor then resolves an existing
   directory relative to the retained descriptor. `RESOLVE_BENEATH`,
@@ -42,6 +56,10 @@ errors fail closed. There is no `realpath`/ordinary-open fallback. The intended
 target kernel is the project-pinned modern Linux; this is not stock EX4 Linux
 3.2 compatibility code. See the upstream [openat2](https://man7.org/linux/man-pages/man2/openat2.2.html)
 and [statx](https://man7.org/linux/man-pages/man2/statx.2.html) contracts.
+The UUID ABI and generic read-only implementation are defined in Linux
+[fs.h](https://github.com/torvalds/linux/blob/v6.18/include/uapi/linux/fs.h)
+and [ioctl.c](https://github.com/torvalds/linux/blob/v6.18/fs/ioctl.c); the same
+definitions were checked in the project-pinned Linux 6.18.53 build sources.
 
 ## Important limits
 
@@ -61,9 +79,12 @@ or write beneath it.
 ## Tests
 
 Linux host tests exercise identity masks/tuple matching, read-only logic,
-unsafe path refusal, real descriptor resolution and closed-state concurrency.
+unsafe path refusal, UUID syntax/byte order/width, unsupported procfs UUID,
+real descriptor resolution and closed-state concurrency.
 Mount-changing tests run only in guarded ARMv5 QEMU on the fresh synthetic
-data disk. The fixture uses private bind mounts to test symlink refusal,
+data disk. It verifies the actual kernel-returned UUID against the fixture's
+known mkfs UUID and rejects a different expected UUID. The fixture uses private
+bind mounts to test symlink refusal,
 same-filesystem nested-mount refusal, read-only transitions, same-device/root
 overmount replacement and refusal to fall back after unmount. Ordinary
 unmounts must succeed after references close; no lazy/forced unmount is used.

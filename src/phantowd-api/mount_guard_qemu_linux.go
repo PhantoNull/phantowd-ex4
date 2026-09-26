@@ -52,12 +52,20 @@ func runQEMUMountGuardTest() (result error) {
 	if err := unix.Statx(unix.AT_FDCWD, anchor, unix.AT_NO_AUTOMOUNT, unix.STATX_BASIC_STATS|unix.STATX_MNT_ID_UNIQUE, &st); err != nil {
 		return err
 	}
-	expected := mountguard.Expected{MountID: st.Mnt_id, RootInode: st.Ino, DeviceMajor: st.Dev_major, DeviceMinor: st.Dev_minor, FilesystemType: unix.EXT4_SUPER_MAGIC, RequireWritable: true}
+	expected := mountguard.Expected{MountID: st.Mnt_id, RootInode: st.Ino, DeviceMajor: st.Dev_major, DeviceMinor: st.Dev_minor, FilesystemType: unix.EXT4_SUPER_MAGIC, FilesystemUUID: "11111111-2222-3333-4444-555555555555", RequireWritable: true}
 	root, err := mountguard.Open(anchor, expected)
 	if err != nil {
 		return fmt.Errorf("qualified test mount rejected: %w", err)
 	}
 	defer root.Close()
+	wrongUUID := expected
+	wrongUUID.FilesystemUUID = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+	if other, err := mountguard.Open(anchor, wrongUUID); !errors.Is(err, mountguard.ErrMismatch) {
+		if other != nil {
+			other.Close()
+		}
+		return fmt.Errorf("wrong filesystem UUID accepted: %v", err)
+	}
 	if other, err := mountguard.Open(workspace, expected); err == nil {
 		other.Close()
 		return errors.New("ordinary directory accepted as qualified mount")
@@ -168,5 +176,6 @@ func runQEMUMountGuardTest() (result error) {
 		return errors.New("fixture wrote to unmounted fallback directory")
 	}
 	fmt.Println("PHANTOWD_MOUNT_GUARD_READY unique_mount_id=true descriptor_pinned=true symlinks_denied=true nested_mount_denied=true overmount_denied=true readonly_change_denied=true fallback_denied=true scope=qemu-fixture-only")
+	fmt.Println("PHANTOWD_FILESYSTEM_UUID_READY source=kernel-ioctl expected_uuid=true mismatch_denied=true block_device_opened=false scope=qemu-fixture-only")
 	return nil
 }

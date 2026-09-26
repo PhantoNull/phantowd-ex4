@@ -74,7 +74,10 @@ refusal, nested bind refusal, read-only transitions and rejection of a second
 mount of the same disk/root over the anchor. After ordinary unmount it verifies
 that the guard does not accept the underlying system directory. All references
 and private mounts are released before the original data volume is unmounted.
-This is not filesystem UUID discovery or a complete service activation lease;
+The kernel UUID ioctl must match the known mkfs UUID; a different expected
+UUID is refused on the same mount. The guard opens no block node and does not
+read directory listings or file contents. This is not unmounted-filesystem
+discovery, clone detection or a complete service activation lease;
 see the [guard contract](../src/phantowd-api/mountguard/README.md).
 
 ## Evidence boundary
