@@ -241,6 +241,12 @@ Additional NAS models require their own board definitions and qualification.
    old passwords fail, and file ownership/data remain stable. This closes the
    isolated clean-reboot test gap, not product provisioning or crash recovery;
    see the [registry contract](src/phantowd-api/serviceaccounts/README.md).
+   A [journaled Unix creation coordinator](src/phantowd-api/identityprovision/README.md)
+   now persists intentions before group/user commands and requires observed
+   postconditions before confirmation. Interrupted intentions demand explicit
+   review, never blind replay or automatic deletion. A fixed ARMv5 backend and
+   host process-exit tests exercise the path; production all-writer ownership,
+   privileged transport, credential transactions and recovery UI still remain.
 5. Connect trusted filesystem-identity qualification to the implemented Linux
    mount-descriptor guard, then integrate supervised SMB/NFS lifecycle using
    disposable QEMU disks. The guard's expected tuple is not yet produced by a

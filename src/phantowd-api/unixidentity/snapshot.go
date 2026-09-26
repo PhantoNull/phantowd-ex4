@@ -197,41 +197,54 @@ func (s Snapshot) Reservations() (serviceaccounts.Reservations, error) {
 // enabled/disabled state. Even Observed is not ownership/adoption, password,
 // login-lock or authorization evidence. Partial/Conflict never imply repair.
 func (s Snapshot) Assess(a serviceaccounts.Account) (string, error) {
+	detail, err := s.Inspect(a)
+	return detail.Status, err
+}
+
+// Assessment separates group-only from user-only partial state. Neither this
+// detail nor a matching result grants adoption, repair or mutation authority.
+type Assessment struct {
+	Status       string
+	UserPresent  bool
+	GroupPresent bool
+}
+
+func (s Snapshot) Inspect(a serviceaccounts.Account) (Assessment, error) {
 	r, err := serviceaccounts.New(a.UID, a.UID)
 	r.Accounts = []serviceaccounts.Account{a}
 	if !s.valid || err != nil || r.Validate() != nil {
-		return "", ErrInvalid
+		return Assessment{}, ErrInvalid
 	}
 	hasUser, hasGroup := false, false
 	for _, u := range s.users {
 		if strings.EqualFold(u.name, a.Name) {
 			if u.name != a.Name || u.uid != a.UID || u.gid != a.GID {
-				return Conflict, nil
+				return Assessment{Status: Conflict}, nil
 			}
 			hasUser = true
 		} else if u.uid == a.UID || u.gid == a.GID {
-			return Conflict, nil
+			return Assessment{Status: Conflict}, nil
 		}
 	}
 	for _, g := range s.groups {
 		own := g.name == a.Name && g.gid == a.GID
 		if strings.EqualFold(g.name, a.Name) || g.gid == a.GID {
 			if !own {
-				return Conflict, nil
+				return Assessment{Status: Conflict}, nil
 			}
 			hasGroup = true
 		}
 		for _, m := range g.members {
 			if own && m != a.Name || !own && strings.EqualFold(m, a.Name) {
-				return Conflict, nil
+				return Assessment{Status: Conflict}, nil
 			}
 		}
 	}
+	result := Assessment{Status: Absent, UserPresent: hasUser, GroupPresent: hasGroup}
 	if hasUser && hasGroup {
-		return Observed, nil
+		result.Status = Observed
+	} else if hasUser || hasGroup {
+		result.Status = Partial
 	}
-	if hasUser || hasGroup {
-		return Partial, nil
-	}
-	return Absent, nil
+	return result, nil
 }

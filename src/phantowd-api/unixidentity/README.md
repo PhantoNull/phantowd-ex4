@@ -43,6 +43,11 @@ or modifies production account databases.
 
 ## Supplied-document parser and assessment
 
+`Inspect` additionally reports user/group presence for non-conflicting
+observations, so group-only and user-only partial states cannot be confused by
+the creation coordinator. `Assess` retains its existing status-only contract.
+Neither form authorizes adoption or repair.
+
 Input follows the local [passwd](https://man7.org/linux/man-pages/man5/passwd.5.html)
 and [group](https://man7.org/linux/man-pages/man5/group.5.html) field layouts.
 The parser deliberately accepts a conservative subset: exact field counts,

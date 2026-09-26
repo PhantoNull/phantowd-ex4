@@ -313,6 +313,13 @@ Its Linux reader now pins/rechecks owned non-writable regular account files and
 requires a files-only identity NSS configuration; all-writer serialization and
 credential/provisioning integration remain open.
 
+The [native identity creation coordinator](identityprovision/README.md) now
+records durable group/user command intentions and observed confirmations for one
+disabled reservation. Resumed intentions require review instead of command
+replay; existing identities are never auto-adopted. Host process-exit/failure
+tests and a fixed ARMv5 backend exercise this path. It is not a production
+privileged executor, global account lock, credential manager or recovery UI.
+
 ### SMB credential lifecycle boundary
 
 The guarded ARMv5 QEMU fixture uses its own loopback Samba daemon, private

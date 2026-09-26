@@ -335,6 +335,7 @@ func runQEMUSMBTest() (result error) {
 		return err
 	}
 	fmt.Println("PHANTOWD_UNIX_IDENTITY_READY exclusions=true partial_detected=true exact_binding=true conflict_refused=true cleanup_verified=true scope=local-qemu-files-only")
+	fmt.Println("PHANTOWD_IDENTITY_PROVISION_READY durable_intents=true confirmed_group_reopened=true unix_confirmed=true scope=isolated-qemu-backend-only")
 	return nil
 }
 
