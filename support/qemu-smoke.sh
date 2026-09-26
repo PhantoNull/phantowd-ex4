@@ -28,7 +28,7 @@ cleanup() {
     fi
     # Exact regular file in a freshly created private temporary directory.
     # shellcheck disable=SC2317 # invoked through trap
-    rm -f "$fixture_dir/data.ext2"
+    rm -f "$fixture_dir/data.ext2" "$fixture_dir/clone.ext2"
     # shellcheck disable=SC2317 # invoked through trap
     rmdir "$fixture_dir"
 }
@@ -37,6 +37,9 @@ trap 'exit 1' INT TERM
 truncate -s 16M "$fixture_dir/data.ext2"
 mkfs.ext2 -q -F -U 11111111-2222-3333-4444-555555555555 \
     -L PHANTOWD-TEST "$fixture_dir/data.ext2"
+# A separate virtual device with the SAME filesystem UUID exercises ambiguity.
+# Both files are disposable; the clone is presented read-only to the guest.
+cp "$fixture_dir/data.ext2" "$fixture_dir/clone.ext2"
 
 : > "$log_file"
 "$qemu_binary" \
@@ -50,6 +53,8 @@ mkfs.ext2 -q -F -U 11111111-2222-3333-4444-555555555555 \
     -device "scsi-hd,bus=scsi0.0,drive=rootdisk,serial=PHANTOWD-QEMU-SERIAL-01,wwn=0x500f000000000001" \
     -drive "file=$fixture_dir/data.ext2,if=none,id=testdisk,format=raw" \
     -device "scsi-hd,bus=scsi0.0,drive=testdisk,serial=PHANTOWD-QEMU-DATA-01,wwn=0x500f000000000002" \
+    -drive "file=$fixture_dir/clone.ext2,if=none,id=clonedisk,format=raw,readonly=on" \
+    -device "scsi-hd,bus=scsi0.0,drive=clonedisk,serial=PHANTOWD-QEMU-CLONE-01,wwn=0x500f000000000003" \
     -object rng-random,id=rng0,filename=/dev/urandom \
     -device virtio-rng-pci,rng=rng0 \
     -snapshot \
@@ -110,6 +115,10 @@ while [ "$attempt" -lt 120 ]; do
         fi
         if ! grep -F 'PHANTOWD_FILESYSTEM_UUID_READY source=kernel-ioctl expected_uuid=true mismatch_denied=true block_device_opened=false scope=qemu-fixture-only' "$log_file" >/dev/null; then
             echo 'Missing kernel filesystem UUID assertion' >&2
+            exit 1
+        fi
+        if ! grep -F 'PHANTOWD_MOUNTED_AMBIGUITY_READY cloned_uuid=true bind_alias_not_clone=true incomplete_scan_refused=true scope=provided-mounted-ext-only' "$log_file" >/dev/null; then
+            echo 'Missing mounted filesystem ambiguity assertion' >&2
             exit 1
         fi
         if ! grep -F 'PHANTOWD_UI_READY mode=development read_only=true transport=guest-loopback-only' "$log_file" >/dev/null; then

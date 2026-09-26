@@ -223,7 +223,9 @@ Additional NAS models require their own board definitions and qualification.
    disposable QEMU disks. The guard's expected tuple is not yet produced by a
    qualified discovery/uniqueness/compatibility resolver. The guard now
    compares a mounted filesystem's kernel UUID with its expected policy UUID;
-   this cannot detect cloned identities on other media. Path-based service
+   an internal inventory can detect conflicts among supplied mounted ext
+   devices, but cannot discover cloned identities on unmounted/omitted media.
+   Path-based service
    handoff and volume loss/recovery remain unimplemented.
 6. Advance network/controller/recovery evidence on a separately reviewed
    hardware schedule; use those results to qualify the software on EX4.

@@ -58,8 +58,19 @@ func filesystemUUID(fd int) (string, error) {
 }
 
 func matchRootFD(fd int, expected Expected) error {
-	if err := matchFD(fd, expected, true); err != nil {
+	uuid, err := readRootUUID(fd, expected)
+	if err != nil {
 		return err
+	}
+	if uuid != expected.FilesystemUUID {
+		return ErrMismatch
+	}
+	return nil
+}
+
+func readRootUUID(fd int, expected Expected) (string, error) {
+	if err := matchFD(fd, expected, true); err != nil {
+		return "", err
 	}
 	// ioctl does not operate on O_PATH handles. Open only "." relative to the
 	// pinned root, without crossing a mount, and compare its complete identity
@@ -69,18 +80,15 @@ func matchRootFD(fd int, expected Expected) error {
 		Resolve: unix.RESOLVE_BENEATH | unix.RESOLVE_NO_XDEV | unix.RESOLVE_NO_SYMLINKS | unix.RESOLVE_NO_MAGICLINKS,
 	})
 	if err != nil {
-		return classify(err)
+		return "", classify(err)
 	}
 	defer unix.Close(readFD)
 	if err := matchFD(readFD, expected, true); err != nil {
-		return err
+		return "", err
 	}
 	uuid, err := filesystemUUID(readFD)
 	if err != nil {
-		return err
+		return "", err
 	}
-	if uuid != expected.FilesystemUUID {
-		return ErrMismatch
-	}
-	return matchFD(readFD, expected, true)
+	return uuid, matchFD(readFD, expected, true)
 }

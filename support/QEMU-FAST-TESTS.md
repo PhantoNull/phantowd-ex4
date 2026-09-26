@@ -80,6 +80,13 @@ read directory listings or file contents. This is not unmounted-filesystem
 discovery, clone detection or a complete service activation lease;
 see the [guard contract](../src/phantowd-api/mountguard/README.md).
 
+A separate read-only virtual clone of the fresh data image carries the same
+filesystem UUID on a different SCSI device. The fixed guest fixture verifies
+its synthetic VPD identity before mounting it read-only, detects the UUID
+conflict across supplied mounted roots, distinguishes the original disk's bind
+alias and rejects an incomplete scan. It unmounts the clone normally. This
+does not prove completeness of product disk discovery or WD compatibility.
+
 ## Evidence boundary
 
 This lane can exercise current userspace against the base's kernel and

@@ -58,6 +58,9 @@ func runQEMUMountGuardTest() (result error) {
 		return fmt.Errorf("qualified test mount rejected: %w", err)
 	}
 	defer root.Close()
+	if err := exerciseQEMUMountedAmbiguity(workspace, anchor); err != nil {
+		return err
+	}
 	wrongUUID := expected
 	wrongUUID.FilesystemUUID = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
 	if other, err := mountguard.Open(anchor, wrongUUID); !errors.Is(err, mountguard.ErrMismatch) {
@@ -177,5 +180,32 @@ func runQEMUMountGuardTest() (result error) {
 	}
 	fmt.Println("PHANTOWD_MOUNT_GUARD_READY unique_mount_id=true descriptor_pinned=true symlinks_denied=true nested_mount_denied=true overmount_denied=true readonly_change_denied=true fallback_denied=true scope=qemu-fixture-only")
 	fmt.Println("PHANTOWD_FILESYSTEM_UUID_READY source=kernel-ioctl expected_uuid=true mismatch_denied=true block_device_opened=false scope=qemu-fixture-only")
+	return nil
+}
+
+func exerciseQEMUMountedAmbiguity(workspace, anchor string) (result error) {
+	if err := verifyQEMUBlockDevice(os.DirFS("/sys"), "sdc", qemuCloneSerial, qemuCloneWWN); err != nil {
+		return err
+	}
+	clone := workspace + "/clone"
+	if err := os.Mkdir(clone, 0700); err != nil {
+		return err
+	}
+	if err := unix.Mount("/dev/sdc", clone, "ext2", unix.MS_RDONLY|unix.MS_NOSUID|unix.MS_NODEV|unix.MS_NOEXEC, ""); err != nil {
+		return err
+	}
+	defer func() { result = errors.Join(result, unix.Unmount(clone, 0)) }()
+	aliases, err := mountguard.ObserveMounted([]string{anchor, smbFixtureAnchor})
+	if err != nil || len(aliases.Mounts) != 2 || len(aliases.ConflictingUUIDs) != 0 {
+		return fmt.Errorf("bind alias incorrectly classified: %v", err)
+	}
+	clones, err := mountguard.ObserveMounted([]string{anchor, clone, smbFixtureAnchor})
+	if err != nil || len(clones.Mounts) != 3 || len(clones.ConflictingUUIDs) != 1 || clones.ConflictingUUIDs[0] != qemuNFSVolumeUUID {
+		return fmt.Errorf("cloned UUID not detected: %v", err)
+	}
+	if snapshot, err := mountguard.ObserveMounted([]string{anchor, workspace}); err == nil || snapshot.Mounts != nil {
+		return errors.New("incomplete mounted scan yielded a usable snapshot")
+	}
+	fmt.Println("PHANTOWD_MOUNTED_AMBIGUITY_READY cloned_uuid=true bind_alias_not_clone=true incomplete_scan_refused=true scope=provided-mounted-ext-only")
 	return nil
 }

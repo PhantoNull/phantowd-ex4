@@ -18,9 +18,13 @@ The Linux [qualified-mount guard](mountguard/README.md) retains a previously
 verified mount using a unique mount ID and directory descriptors. It refuses
 symlinks, nested mount traversal, replaced anchors and unexpected read-only
 state. It also compares the mounted filesystem's kernel-reported UUID with
-trusted desired policy. It does not discover unmounted media, detect cloned
-UUIDs, establish WD compatibility or activate a share, and is not connected
+trusted desired policy. It does not discover unmounted media, establish global
+UUID uniqueness or WD compatibility, or activate a share, and is not connected
 to a privileged HTTP operation.
+Its internal mounted-inventory helper reports conflicting UUIDs across the
+explicitly inspected ext-family devices without mistaking bind aliases for
+clones. This is not global discovery: omitted and unmounted media remain unknown,
+and neither snapshot nor a conflict-free result authorizes service activation.
 
 The [Samba preview renderer](smbconfig/README.md) translates desired policy
 into deterministic share sections and required volume bindings. Its fixed

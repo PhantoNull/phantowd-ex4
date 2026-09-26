@@ -76,6 +76,32 @@ UID mapping, authentication, ACL management or privileged RPC is added.
 An `O_PATH` descriptor is a reference, not proof that an SMB/NFS user can read
 or write beneath it.
 
+## Mounted ambiguity inventory
+
+`ObserveMounted(anchors)` collects an internal, all-or-error snapshot from
+1–64 caller-selected **already mounted, block-backed ext-family** roots. It
+retains directory descriptors, obtains kernel UUIDs and rechecks all anchors
+before returning. Missing, unsupported, inaccessible, non-root and symlink
+entries abort the whole snapshot; none are silently skipped. Results are
+sorted independently of input enumeration order. Raw UUIDs and paths are
+internal data, not public diagnostics output.
+
+The result lists `ConflictingUUIDs` when one UUID appears on distinct kernel
+devices. Bind aliases of the same device are not counted as clones. Different
+UUID observations for the same device invalidate the snapshot. Device numbers
+are used only to compare this retained-descriptor snapshot, never as persisted
+identity. Multipath/stacked-device ambiguity is not automatically resolved.
+
+An empty conflict list does **not** prove global uniqueness: unmounted,
+inaccessible or omitted devices were not discovered. No volume is selected,
+no activation capability is returned and no filesystem compatibility or
+integrity is certified. The caller must control the mount namespace and supply
+local anchors without automount side effects; ordinary pathname traversal is
+not a general no-I/O/time-bound guarantee. The function issues no mount syscall,
+opens no block device and reads no directory listing or data file. It is not
+permission to mount unknown media to inspect it. All retained descriptors are
+closed on return, so this is not a service lease or revocation mechanism.
+
 ## Tests
 
 Linux host tests exercise identity masks/tuple matching, read-only logic,
@@ -89,3 +115,8 @@ same-filesystem nested-mount refusal, read-only transitions, same-device/root
 overmount replacement and refusal to fall back after unmount. Ordinary
 unmounts must succeed after references close; no lazy/forced unmount is used.
 This does not qualify physical EX4 storage, arbitrary mount races or migration.
+
+The QEMU harness also supplies a second disposable virtual disk with a cloned
+UUID, presented read-only. The mounted inventory detects that distinct device
+while accepting the original mount and its bind alias as one filesystem.
+An additional invalid anchor makes the scan fail without partial results.
