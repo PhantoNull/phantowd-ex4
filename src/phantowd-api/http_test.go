@@ -168,7 +168,7 @@ func TestDashboardServesReadOnlyDevelopmentUIAndAssets(t *testing.T) {
 	}{
 		{"/", "text/html; charset=utf-8", []string{"PhantoWD", "Development image.", "read-only", "profile-notice-title"}},
 		{"/assets/app.css", "text/css; charset=utf-8", []string{"@media", "prefers-reduced-motion"}},
-		{"/assets/app.js", "text/javascript; charset=utf-8", []string{"/api/v1/system", "/api/v1/storage", "/api/v1/arrays", "textContent"}},
+		{"/assets/app.js", "text/javascript; charset=utf-8", []string{"/api/v1/system", "/api/v1/storage", "/api/v1/arrays", "/api/v1/mounts", "textContent"}},
 	} {
 		t.Run(test.path, func(t *testing.T) {
 			response := httptest.NewRecorder()
@@ -310,5 +310,65 @@ func TestMDArrayEndpointIsAuthenticatedReadOnlyAndBounded(t *testing.T) {
 		if response.Code != test.status || calls != 1 {
 			t.Fatalf("unsafe array request was accepted: method=%s path=%s status=%d calls=%d", test.method, test.path, response.Code, calls)
 		}
+	}
+}
+
+func TestMountEndpointIsAuthenticatedReadOnlyAndRedacted(t *testing.T) {
+	auth, cookie := newTestAuth(t)
+	calls := 0
+	handler := newHandlerWithMounts(nil, nil, nil, func() (mountSnapshot, error) {
+		calls++
+		return collectMountInventory(fstest.MapFS{
+			"self/mountinfo": {Data: []byte("36 35 8:0 / /media/data rw,relatime - ext4 /dev/sda1 rw\n")},
+		}, time.Now())
+	}, auth)
+
+	response := httptest.NewRecorder()
+	request := loopbackRequest(http.MethodGet, "/api/v1/mounts", nil)
+	request.AddCookie(cookie)
+	handler.ServeHTTP(response, request)
+	if response.Code != http.StatusOK || calls != 1 || !json.Valid(response.Body.Bytes()) ||
+		strings.Contains(response.Body.String(), "/dev/sda1") || strings.Contains(response.Body.String(), "relatime") {
+		t.Fatalf("valid mount inventory leaked or failed: status=%d calls=%d body=%s", response.Code, calls, response.Body.String())
+	}
+	var snapshot mountSnapshot
+	if err := json.Unmarshal(response.Body.Bytes(), &snapshot); err != nil {
+		t.Fatal(err)
+	}
+	if snapshot.SchemaVersion != 1 || snapshot.MountCount != 1 || snapshot.Mounts == nil ||
+		!snapshot.ReadOnly || snapshot.FilesystemContentsRead || snapshot.MountOperationsPerformed {
+		t.Fatalf("mount endpoint overstated the read-only inventory: %+v", snapshot)
+	}
+
+	for _, test := range []struct {
+		method string
+		path   string
+		cookie bool
+		status int
+	}{
+		{method: http.MethodPost, path: "/api/v1/mounts", cookie: true, status: http.StatusMethodNotAllowed},
+		{method: http.MethodGet, path: "/api/v1/mounts?path=/dev/sda", cookie: true, status: http.StatusBadRequest},
+		{method: http.MethodGet, path: "/api/v1/mounts", status: http.StatusUnauthorized},
+	} {
+		response := httptest.NewRecorder()
+		request := loopbackRequest(test.method, test.path, nil)
+		if test.cookie {
+			request.AddCookie(cookie)
+		}
+		handler.ServeHTTP(response, request)
+		if response.Code != test.status || calls != 1 {
+			t.Fatalf("unsafe mount request was accepted: method=%s path=%s status=%d calls=%d", test.method, test.path, response.Code, calls)
+		}
+	}
+
+	failing := newHandlerWithMounts(nil, nil, nil, func() (mountSnapshot, error) {
+		return mountSnapshot{}, errors.New("private path /secret and source /dev/sda1")
+	}, auth)
+	response = httptest.NewRecorder()
+	request = loopbackRequest(http.MethodGet, "/api/v1/mounts", nil)
+	request.AddCookie(cookie)
+	failing.ServeHTTP(response, request)
+	if response.Code != http.StatusServiceUnavailable || strings.Contains(response.Body.String(), "/secret") || strings.Contains(response.Body.String(), "/dev/sda1") {
+		t.Fatal("mount collector error leaked through the API")
 	}
 }

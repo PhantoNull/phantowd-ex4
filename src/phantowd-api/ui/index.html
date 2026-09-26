@@ -143,6 +143,27 @@
         </div>
       </section>
 
+      <div class="section-heading storage-heading">
+        <div>
+          <p class="eyebrow">CURRENT PROCESS MOUNT NAMESPACE</p>
+          <h2>Mounted filesystems</h2>
+        </div>
+        <span class="count-badge" id="mount-count">Mounts unknown</span>
+      </div>
+
+      <section class="mount-panel" aria-label="Observed mounted filesystems">
+        <div class="mount-head" aria-hidden="true">
+          <span>Mount point</span><span>Filesystem</span><span>Device major:minor</span><span>Mount flag</span>
+        </div>
+        <div id="mount-list" class="mount-list" aria-live="polite">
+          <p class="empty-state">Waiting for the read-only mount observation…</p>
+        </div>
+        <div class="storage-footnote">
+          <span class="footnote-icon" aria-hidden="true">i</span>
+          <p>This lists only filesystems already mounted in the API process namespace. Unmounted disks are not probed; mount sources and options are omitted. No mount/unmount operation or file-content read is performed. A visible mount does not establish filesystem integrity or stable bay identity.</p>
+        </div>
+      </section>
+
       <p class="error-banner" id="error-banner" role="alert" hidden>Snapshot unavailable. The service did not return usable diagnostics.</p>
       </div>
     </main>

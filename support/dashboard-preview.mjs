@@ -79,6 +79,22 @@ const arraysFixture = {
   limitations: ["synthetic preview fixture; no device was examined"],
 };
 
+const mountsFixture = {
+  schema_version: 1,
+  observed_at: new Date().toISOString(),
+  scope: "synthetic-preview",
+  read_only: true,
+  filesystem_contents_read: false,
+  mount_operations_performed: false,
+  mount_count: 3,
+  mounts: [
+    { mount_point: "/", filesystem: "ext4", device_major: 8, device_minor: 1, read_only: true },
+    { mount_point: "/srv/media", filesystem: "ext4", device_major: 253, device_minor: 0, read_only: false },
+    { mount_point: "/proc", filesystem: "proc", device_major: 0, device_minor: 44, read_only: true },
+  ],
+  limitations: ["synthetic preview fixture; no device was examined"],
+};
+
 const assets = new Map([
   ["/", ["index.html", "text/html; charset=utf-8"]],
   ["/assets/app.css", ["app.css", "text/css; charset=utf-8"]],
@@ -107,10 +123,11 @@ const server = createServer(async (request, response) => {
     response.end('{"authenticated":true,"setup_required":false}\n');
     return;
   }
-  if (["/api/v1/system", "/api/v1/storage", "/api/v1/arrays"].includes(url.pathname)) {
+  if (["/api/v1/system", "/api/v1/storage", "/api/v1/arrays", "/api/v1/mounts"].includes(url.pathname)) {
     response.writeHead(200, { "Content-Type": "application/json" });
     const fixture = url.pathname.endsWith("/system") ? systemFixture :
-      url.pathname.endsWith("/storage") ? storageFixture : arraysFixture;
+      url.pathname.endsWith("/storage") ? storageFixture :
+        url.pathname.endsWith("/arrays") ? arraysFixture : mountsFixture;
     response.end(JSON.stringify(fixture));
     return;
   }
