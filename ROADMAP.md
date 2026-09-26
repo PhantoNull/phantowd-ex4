@@ -225,6 +225,9 @@ Additional NAS models require their own board definitions and qualification.
    compares a mounted filesystem's kernel UUID with its expected policy UUID;
    an internal inventory can detect conflicts among supplied mounted ext
    devices, but cannot discover cloned identities on unmounted/omitted media.
+   A separate libblkid descriptor helper now has host-native unmounted-image
+   tests; ARMv5 packaging, ambiguous-signature/failure fixtures and trusted
+   complete-device discovery must be qualified before connecting it.
    Path-based service
    handoff and volume loss/recovery remain unimplemented.
 6. Advance network/controller/recovery evidence on a separately reviewed
