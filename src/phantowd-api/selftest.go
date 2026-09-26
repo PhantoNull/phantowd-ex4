@@ -24,6 +24,8 @@ import (
 const (
 	qemuTestSerial = "PHANTOWD-QEMU-SERIAL-01"
 	qemuTestWWN    = "500f000000000001"
+	qemuDataSerial = "PHANTOWD-QEMU-DATA-01"
+	qemuDataWWN    = "500f000000000002"
 )
 
 var qemuDashboardAssets = []struct {
@@ -48,6 +50,14 @@ func runSelfTest() error {
 		return err
 	}
 	fmt.Println("PHANTOWD_SHARE_STORE_READY revision=2 reopen=true scope=temporary-qemu-only")
+	if err := exerciseQEMUSMBPreview(); err != nil {
+		return err
+	}
+	fmt.Println("PHANTOWD_SMB_PREVIEW_READY parser=testparm grants=ro,rw scope=synthetic-config-only")
+	if err := exerciseQEMUNFSPolicy(); err != nil {
+		return err
+	}
+	fmt.Println("PHANTOWD_NFS_POLICY_READY schema=1 mapping=all-squash scope=synthetic-policy-only")
 	argon2Started := time.Now()
 	verifier, err := passwordhash.Hash(context.Background(), []byte("qemu-self-test-only"))
 	if err != nil {
@@ -136,7 +146,8 @@ func runSelfTest() error {
 	if !rootDiskIdentityPagesFound {
 		return errors.New("QEMU SCSI identity pages were not observed and validated through sysfs")
 	}
-	if strings.Contains(string(storageData), qemuTestSerial) || strings.Contains(string(storageData), qemuTestWWN) {
+	if strings.Contains(string(storageData), qemuTestSerial) || strings.Contains(string(storageData), qemuTestWWN) ||
+		strings.Contains(string(storageData), qemuDataSerial) || strings.Contains(string(storageData), qemuDataWWN) {
 		return errors.New("raw QEMU storage identifiers leaked through the API")
 	}
 	arraysResponse, err := client.Get("http://" + listenAddress + "/api/v1/arrays")

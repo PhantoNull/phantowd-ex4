@@ -24,11 +24,18 @@ root. Lexical validation rejects absolute paths, traversal and control bytes;
 it cannot establish filesystem containment. The future privileged layer must
 resolve symlinks/mount boundaries safely and refuse a missing volume before
 opening paths. Overlapping shares and ACL inheritance need runtime policy
-before service activation. No service configuration renderer exists here yet.
+before service activation. The separate [Samba preview renderer](../smbconfig/README.md)
+emits candidate share sections and refuses unsafe interpolation and overlapping
+paths; it does not establish runtime containment or apply configuration.
 
 File-service account names initially use a bounded lowercase POSIX subset;
 share names use a bounded printable ASCII subset, excluding reserved service
 names and configuration delimiters. This restriction is an initial schema
 choice; international display names can be added through a reviewed revision.
-Credentials, guest access, network settings, NFS client mappings and migration
-instructions are deliberately outside this first share-policy document.
+Credentials, guest access, network settings and migration instructions remain
+outside this first share-policy document. [NFS client policy](../nfsconfig/README.md)
+is a separate versioned document bound to the shared volume revision; it does
+not inherit Samba grants. Both renderers use the same proposed UUID mount root.
+
+Shared bounded JSON decoding rejects duplicate/unknown/null fields and
+unpaired UTF-16 surrogate escapes instead of silently rewriting paths.

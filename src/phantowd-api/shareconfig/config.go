@@ -6,14 +6,14 @@
 package shareconfig
 
 import (
-	"bytes"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"io/fs"
 	"strings"
 	"unicode/utf8"
+
+	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/configjson"
 )
 
 const (
@@ -23,6 +23,9 @@ const (
 	MaxVolumes    = 16
 	MaxUsers      = 128
 	MaxShares     = 128
+	// VolumeMountRoot is the proposed shared anchor for service renderers.
+	// It is not provisioned or qualified by configuration validation.
+	VolumeMountRoot = "/srv/phantowd/volumes"
 )
 
 // Config is a desired-policy document, not a claim that its volumes are present
@@ -66,22 +69,8 @@ type Grant struct {
 // Decode rejects oversized input, duplicate/unknown/missing fields, nulls and
 // invalid relationships. Errors intentionally omit caller-supplied values.
 func Decode(input io.Reader) (Config, error) {
-	data, err := io.ReadAll(io.LimitReader(input, MaxInputBytes+1))
-	if err != nil || len(data) > MaxInputBytes || !utf8.Valid(data) {
-		return Config{}, errors.New("cannot read bounded UTF-8 share configuration")
-	}
-	decoder := json.NewDecoder(bytes.NewReader(data))
-	decoder.UseNumber()
-	if err := scanValue(decoder, 0); err != nil {
-		return Config{}, errors.New("invalid share configuration JSON")
-	}
-	if _, err := decoder.Token(); !errors.Is(err, io.EOF) {
-		return Config{}, errors.New("trailing share configuration JSON")
-	}
-	decoder = json.NewDecoder(bytes.NewReader(data))
-	decoder.DisallowUnknownFields()
 	var config Config
-	if err := decoder.Decode(&config); err != nil {
+	if err := configjson.Decode(input, &config, MaxInputBytes, 8, fields); err != nil {
 		return Config{}, errors.New("invalid share configuration fields")
 	}
 	if err := config.Validate(); err != nil {
@@ -212,49 +201,4 @@ var fields = map[string]bool{
 	"users": true, "shares": true, "id": true, "filesystem_uuid": true,
 	"name": true, "volume_id": true, "relative_path": true, "grants": true,
 	"user_id": true, "access": true,
-}
-
-func scanValue(d *json.Decoder, depth int) error {
-	if depth > 8 {
-		return errors.New("excessive nesting")
-	}
-	token, err := d.Token()
-	if err != nil {
-		return err
-	}
-	if token == nil {
-		return errors.New("null is not supported")
-	}
-	delimiter, compound := token.(json.Delim)
-	if !compound {
-		return nil
-	}
-	switch delimiter {
-	case '{':
-		seen := map[string]bool{}
-		for d.More() {
-			keyToken, err := d.Token()
-			if err != nil {
-				return err
-			}
-			key, ok := keyToken.(string)
-			if !ok || seen[key] || !fields[key] {
-				return errors.New("duplicate or unknown field")
-			}
-			seen[key] = true
-			if err := scanValue(d, depth+1); err != nil {
-				return err
-			}
-		}
-	case '[':
-		for d.More() {
-			if err := scanValue(d, depth+1); err != nil {
-				return err
-			}
-		}
-	default:
-		return errors.New("unexpected delimiter")
-	}
-	_, err = d.Token()
-	return err
 }

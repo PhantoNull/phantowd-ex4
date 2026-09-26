@@ -10,3 +10,7 @@ import "errors"
 func runSelfTest() error {
 	return errors.New("self-test harness is available only in the QEMU development build")
 }
+
+func runQEMUNFSTest(string) error {
+	return errors.New("NFS fixture is available only in the QEMU development build")
+}

@@ -18,9 +18,17 @@ import (
 
 func main() {
 	selfTest := flag.Bool("self-test", false, "test the fixed guest-loopback endpoint; QEMU only")
+	nfsTest := flag.String("qemu-nfs-test", "", "fixed NFS integration fixture; QEMU only")
 	flag.Parse()
-	if flag.NArg() != 0 {
+	if flag.NArg() != 0 || (*selfTest && *nfsTest != "") {
 		log.Fatal("unexpected arguments")
+	}
+	if *nfsTest != "" {
+		if err := runQEMUNFSTest(*nfsTest); err != nil {
+			fmt.Fprintf(os.Stderr, "PHANTOWD_API_ERROR %v\n", err)
+			os.Exit(1)
+		}
+		return
 	}
 	if *selfTest {
 		if err := runSelfTest(); err != nil {

@@ -66,6 +66,8 @@ contracts, and a smoke-only RSS ceiling.
 Guest networking is restricted and no ports or physical devices are forwarded.
 Run `.\support\test-api.ps1` for fast offline host-native tests; the complete
 build runs those tests again with Buildroot's hash-verified Linux Go compiler.
+An optional [fast QEMU integration lane](support/QEMU-FAST-TESTS.md) reuses an
+exact trusted base artifact for userspace iteration; clean CI remains required.
 
 The [offline research toolkit](tools/phantowd-lab/README.md) inspects user-supplied
 copies of the legacy WD update, logical-mtd3 and redacted logical-rescue

@@ -18,6 +18,26 @@ for required in zImage versatile-pb.dtb rootfs.ext2; do
     fi
 done
 
+fixture_dir=$(mktemp -d "${TMPDIR:-/tmp}/phantowd-qemu-data.XXXXXX")
+qemu_pid=
+cleanup() {
+    # shellcheck disable=SC2317 # invoked through trap
+    if [ -n "$qemu_pid" ]; then
+        kill "$qemu_pid" 2>/dev/null || true
+        wait "$qemu_pid" 2>/dev/null || true
+    fi
+    # Exact regular file in a freshly created private temporary directory.
+    # shellcheck disable=SC2317 # invoked through trap
+    rm -f "$fixture_dir/data.ext2"
+    # shellcheck disable=SC2317 # invoked through trap
+    rmdir "$fixture_dir"
+}
+trap cleanup EXIT
+trap 'exit 1' INT TERM
+truncate -s 16M "$fixture_dir/data.ext2"
+mkfs.ext2 -q -F -U 11111111-2222-3333-4444-555555555555 \
+    -L PHANTOWD-TEST "$fixture_dir/data.ext2"
+
 : > "$log_file"
 "$qemu_binary" \
     -M versatilepb \
@@ -28,6 +48,8 @@ done
     -drive "file=$images_dir/rootfs.ext2,if=none,id=rootdisk,format=raw" \
     -device lsi53c895a,id=scsi0 \
     -device "scsi-hd,bus=scsi0.0,drive=rootdisk,serial=PHANTOWD-QEMU-SERIAL-01,wwn=0x500f000000000001" \
+    -drive "file=$fixture_dir/data.ext2,if=none,id=testdisk,format=raw" \
+    -device "scsi-hd,bus=scsi0.0,drive=testdisk,serial=PHANTOWD-QEMU-DATA-01,wwn=0x500f000000000002" \
     -object rng-random,id=rng0,filename=/dev/urandom \
     -device virtio-rng-pci,rng=rng0 \
     -snapshot \
@@ -40,14 +62,6 @@ done
     -device rtl8139,netdev=net0,romfile= \
     > "$log_file" 2>&1 &
 qemu_pid=$!
-
-cleanup() {
-    # shellcheck disable=SC2317 # invoked through trap
-    kill "$qemu_pid" 2>/dev/null || true
-    # shellcheck disable=SC2317 # invoked through trap
-    wait "$qemu_pid" 2>/dev/null || true
-}
-trap cleanup EXIT INT TERM
 
 attempt=0
 while [ "$attempt" -lt 120 ]; do
@@ -72,6 +86,14 @@ while [ "$attempt" -lt 120 ]; do
         fi
         if ! grep -F 'PHANTOWD_SHARE_STORE_READY revision=2 reopen=true scope=temporary-qemu-only' "$log_file" >/dev/null; then
             echo "Missing ARMv5 share-store revision/reopen assertion" >&2
+            exit 1
+        fi
+        if ! grep -F 'PHANTOWD_SMB_PREVIEW_READY parser=testparm grants=ro,rw scope=synthetic-config-only' "$log_file" >/dev/null; then
+            echo "Missing generated Samba policy parser assertion" >&2
+            exit 1
+        fi
+        if ! grep -F 'PHANTOWD_NFS_POLICY_READY schema=1 mapping=all-squash scope=synthetic-policy-only' "$log_file" >/dev/null; then
+            echo "Missing NFS policy validation assertion" >&2
             exit 1
         fi
         if ! grep -F 'PHANTOWD_UI_READY mode=development read_only=true transport=guest-loopback-only' "$log_file" >/dev/null; then
@@ -100,6 +122,10 @@ while [ "$attempt" -lt 120 ]; do
         fi
         if ! grep -F 'PHANTOWD_NFS_SMOKE_READY protocol=nfs3 transport=tcp scope=qemu-loopback-only' "$log_file" >/dev/null; then
             echo "Missing loopback-only NFSv3/TCP integration assertion" >&2
+            exit 1
+        fi
+        if ! grep -F 'PHANTOWD_NFS_POLICY_IO_READY generated=exportfs rw=sync-verified ro=EROFS uid=101000 gid=101000 denied_client=true mount_guard=true scope=qemu-fixture-only' "$log_file" >/dev/null; then
+            echo "Missing generated NFS policy access/mapping/mount-guard assertion" >&2
             exit 1
         fi
         if ! grep -F 'PHANTOWD_SMB_LISTENER_READY address=127.0.0.1:445 smb1=disabled netbios=nmbd-disabled' "$log_file" >/dev/null; then
