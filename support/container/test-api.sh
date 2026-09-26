@@ -22,3 +22,4 @@ cd "$module_dir"
 "$go_binary" test -run '^$' -fuzz '^FuzzPreview$' -fuzztime=25000x -parallel=2 ./smbconfig
 "$go_binary" test -run '^$' -fuzz '^FuzzPolicy$' -fuzztime=25000x -parallel=2 ./nfsconfig
 "$go_binary" test -run '^$' -fuzz '^FuzzPreviewEnvelope$' -fuzztime=25000x -parallel=2 ./fileservice
+"$go_binary" test -run '^$' -fuzz '^FuzzDecode$' -fuzztime=25000x -parallel=2 ./volumeprobe

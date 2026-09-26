@@ -231,6 +231,9 @@ Additional NAS models require their own board definitions and qualification.
    complete-device discovery must be qualified before connecting it.
    The native ext2/XFS collision fixture is refused without JSON; pinned
    libblkid collapses ambiguity into a generic error, never an empty result.
+   A Linux single-slot helper supervisor now validates descriptors, bounded
+   responses and cancellation; it is reused by the QEMU fixture. It does not
+   establish eligible-device discovery, exclusivity or compatibility.
    Path-based service
    handoff and volume loss/recovery remain unimplemented.
 6. Advance network/controller/recovery evidence on a separately reviewed

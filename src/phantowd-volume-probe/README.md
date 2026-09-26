@@ -4,9 +4,12 @@ This small Linux helper uses libblkid's low-level safe-probe API on **one
 caller-supplied read-only descriptor on stdin**. It accepts no path or other
 arguments, opens no user-selected path and does not enumerate devices. The
 descriptor must reference a regular image or block object and have O_RDONLY
-access (not O_PATH). A future trusted broker must establish which object may
-be opened, retain its identity, provide a clean process environment and collect
-the result with a deadline. No such broker or HTTP operation exists yet.
+access (not O_PATH). The [Linux supervisor](../phantowd-api/volumeprobe/README.md)
+now supplies a minimal process environment, single-slot scheduling, bounded
+output, deadline/cancellation, descriptor rechecks and strict response decoding.
+A future trusted broker must still establish which object may be opened,
+exclusive access and complete identity discovery. No such broker or HTTP
+operation exists yet.
 
 The implementation enables superblock and partition signature probing without
 type/usage filters, so filtering does not hide competing RAID/crypto/other
@@ -50,8 +53,9 @@ sets no-new-privileges and a five-second alarm. These are defensive limits,
 **not** a seccomp sandbox, a guarantee against kernel uninterruptible I/O, or
 permission to run as a privileged public service. It compares descriptor
 metadata before/after the probe; this does not provide an atomic disk snapshot
-or protect against all concurrent writers. A future broker needs process-group
-supervision, complete eligible-device discovery and ambiguity handling.
+or protect against all concurrent writers. The supervisor is not a sandbox;
+a future broker still needs complete eligible-device discovery, exclusive
+access and ambiguity handling.
 
 ## Build and tests
 

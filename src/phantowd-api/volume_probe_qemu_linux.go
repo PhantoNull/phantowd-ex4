@@ -6,63 +6,20 @@
 package main
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
 	"os"
-	"os/exec"
 	"strings"
 	"time"
 
-	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/configjson"
+	"github.com/PhantoNull/phantowd-ex4/phantowd-api/volumeprobe"
 	"golang.org/x/sys/unix"
 )
 
-type volumeProbeResult struct {
-	SchemaVersion          int    `json:"schema_version"`
-	Status                 string `json:"status"`
-	SourceKind             string `json:"source_kind"`
-	Filesystem             string `json:"filesystem"`
-	FilesystemUUID         string `json:"filesystem_uuid"`
-	MountPerformed         bool   `json:"mount_performed"`
-	CompatibilityQualified bool   `json:"compatibility_qualified"`
-	ActivationAllowed      bool   `json:"activation_allowed"`
-}
-
-type probeOutput struct{ bytes.Buffer }
-
-func (out *probeOutput) Write(data []byte) (int, error) {
-	if out.Len()+len(data) > 1024 {
-		return 0, errors.New("excessive probe output")
-	}
-	return out.Buffer.Write(data)
-}
-
 // Fixed QEMU harness, not the production broker or arbitrary device opener.
-func runProbeFixture(source *os.File) (volumeProbeResult, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 8*time.Second)
-	defer cancel()
-	cmd := exec.CommandContext(ctx, "/usr/libexec/phantowd-volume-probe")
-	cmd.Env = []string{"LC_ALL=C", "PATH=/usr/bin:/bin", "BLKID_DEBUG=0"}
-	cmd.Stdin = source
-	cmd.WaitDelay = time.Second
-	var output, diagnostic probeOutput
-	cmd.Stdout, cmd.Stderr = &output, &diagnostic
-	if err := cmd.Run(); err != nil || diagnostic.Len() != 0 {
-		return volumeProbeResult{}, errors.New("descriptor probe process failed")
-	}
-	var result volumeProbeResult
-	fields := map[string]bool{"schema_version": true, "status": true, "source_kind": true,
-		"filesystem": true, "filesystem_uuid": true, "mount_performed": true,
-		"compatibility_qualified": true, "activation_allowed": true}
-	if err := configjson.Decode(bytes.NewReader(output.Bytes()), &result, 1024, 2, fields); err != nil {
-		return volumeProbeResult{}, errors.New("invalid probe response")
-	}
-	if result.SchemaVersion != 1 || result.MountPerformed || result.CompatibilityQualified || result.ActivationAllowed {
-		return volumeProbeResult{}, errors.New("probe exceeded observation boundary")
-	}
-	return result, nil
+func runProbeFixture(source *os.File) (volumeprobe.Result, error) {
+	return volumeprobe.Inspect(context.Background(), source)
 }
 
 func probeQEMUUnmountedStorage() error {
