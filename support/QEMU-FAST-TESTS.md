@@ -42,6 +42,31 @@ retry settings; absence of a helper or a timeout is not a successful denial.
 Cleanup revokes generated exports and retries ordinary unmounts with a bounded
 guest-only export-cache flush. This is not product service orchestration.
 
+While this disk is mounted, a QEMU-only Samba fixture renders two shares using
+the product renderer and starts a separate smbd on test port 1445. Its state,
+passdb and PID/lock directories are separate from the baseline guest service.
+Three temporary Unix users in one test group distinguish a writable grant,
+a read-only grant and a user excluded from the share. The fixture checks
+written content/Unix ownership, reader access, denied reader writes, excluded
+users, bad credentials, a Unix-denied folder despite an SMB writable grant,
+and refusal to read a symlink target outside the share. It checks no denied
+write/download artifact appeared. Expected server refusal codes and a failed
+client exit are required; timeout or missing tools are not successful denials.
+
+The helper refuses non-ARMv5/non-Versatile PB machines, non-root invocation,
+wrong synthetic data-disk identifiers and a missing/mismatched writable test
+mount. Account names/IDs, paths and commands are fixed, not API inputs.
+Credentials are public disposable fixture values passed through stdin/private
+auth files, not product credentials. Cleanup stops and reaps the separate
+daemon process group, removes only the created Unix accounts/group, then lets
+the NFS fixture unmount the disk. No production account/lifecycle API is added.
+
+These checks cover one generated policy and a simple Unix-mode layout. They
+do not qualify POSIX ACL provisioning/inheritance, Windows ACL editing,
+cross-protocol consistency, arbitrary migrations, missing-volume recovery or
+a production volume resolver. Retained guest-only logs/data disappear with
+the disposable QEMU snapshots.
+
 ## Evidence boundary
 
 This lane can exercise current userspace against the base's kernel and

@@ -214,8 +214,9 @@ Additional NAS models require their own board definitions and qualification.
 4. Extend the implemented standalone browser share-proposal form to full
    configuration management after persistence/recovery qualification;
    qualify effective POSIX permissions and runtime volume binding before service
-   activation. Local ARMv5 QEMU has exercised HTTP/HTTPS previews, target Samba
-   parsing and generated NFS exports on a disposable virtual disk; this does not
+   activation. Local ARMv5 QEMU has exercised HTTP/HTTPS previews, generated
+   Samba grants with real Unix users (write/read/denial/ownership/symlink checks)
+   and generated NFS exports on a disposable virtual disk; this does not
    qualify arbitrary product configurations or physical EX4 storage.
 5. Integrate supervised SMB/NFS lifecycle using disposable QEMU disks.
 6. Advance network/controller/recovery evidence on a separately reviewed

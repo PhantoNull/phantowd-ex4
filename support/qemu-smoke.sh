@@ -100,6 +100,10 @@ while [ "$attempt" -lt 120 ]; do
             echo "Missing authenticated file-service preview assertion" >&2
             exit 1
         fi
+        if ! grep -F 'PHANTOWD_SMB_POLICY_IO_READY generated=true writer_uid=1801 reader_ro=true outsider_denied=true unix_denied=true symlink_denied=true scope=qemu-fixture-only' "$log_file" >/dev/null; then
+            echo 'Missing generated Samba effective-access assertion' >&2
+            exit 1
+        fi
         if ! grep -F 'PHANTOWD_UI_READY mode=development read_only=true transport=guest-loopback-only' "$log_file" >/dev/null; then
             echo "Missing loopback-only dashboard assertion" >&2
             exit 1

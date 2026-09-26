@@ -18,6 +18,13 @@ The [Samba preview renderer](smbconfig/README.md) translates desired policy
 into deterministic share sections and required volume bindings. Its fixed
 QEMU fixture is checked with the target's `testparm`. The preview endpoint
 does not provision accounts, persist configuration or activate services.
+The separate QEMU-only `--qemu-smb-test` fixture uses generated shares and
+temporary Unix accounts to test actual read/write grants, ownership, excluded
+users, bad credentials, Unix-mode denial and symlink refusal on the disposable
+data volume. Its isolated smbd listens only on IPv4 loopback port 1445; the
+normal API gains no account or service-control capability. Non-QEMU builds
+refuse this flag, and the fixture also checks the exact emulated machine and
+mounted synthetic data device. This is not a production volume resolver.
 
 The separate [NFS policy preview](nfsconfig/README.md) defines explicit client
 networks, access, security flavors and numeric ID squashing against an exact
