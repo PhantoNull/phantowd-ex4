@@ -122,6 +122,7 @@ async function createHarness(respond) {
     "auth-panel", "auth-title", "auth-description", "auth-form", "auth-username",
     "auth-password", "auth-submit", "auth-retry", "auth-error", "dashboard-content",
     "logout", "logout-all", "refresh", "refresh-label", "snapshot-status", "error-banner",
+    ...["panel", "form", "current", "new", "confirm", "submit", "status"].map((id) => `password-${id}`),
     "service-status-dot", "build-label", "kernel-value", "runtime-value", "target-value",
     "memory-value", "memory-detail", "memory-meter", "firmware-value", "firmware-detail",
     "profile-notice-title", "profile-notice-copy", "profile-notice-mark",
@@ -941,4 +942,55 @@ for (const outcome of ["success", "uncertain", "rejected"]) {
   assert.equal(elements["logout-all"].disabled, false);
   assert.equal(requests.filter(({ options }) => options?.method === "POST").length, 1);
   if (outcome !== "success") assert.match(elements["auth-error"].textContent, /could not be confirmed/);
+}
+
+// Password changes carry no confirmation field, clear secrets immediately,
+// permit only one POST and treat missing/malformed replies as uncertain.
+for (const outcome of ["success", "wrong-current", "uncertain", "rejected", "malformed"]) {
+  let ended = false;
+  let release;
+  const pending = new Promise((resolve) => { release = resolve; });
+  const { elements, requests } = await createHarness(async (path) => {
+    if (path === "/api/v1/auth/status") return jsonResponse({ authenticated: !ended, setup_required: false });
+    if (path === "/api/v1/auth/session") return jsonResponse({ csrf_token: "x".repeat(43) });
+    if (path === "/api/v1/auth/password") return pending;
+    if (path === "/api/v1/system") return jsonResponse(systemFixture());
+    if (path === "/api/v1/storage") return jsonResponse({ observations: [] });
+    if (path === "/api/v1/arrays") return jsonResponse(arraysFixture());
+    if (path === "/api/v1/mounts") return jsonResponse(mountsFixture());
+    throw new Error(`Unexpected password request: ${path}`);
+  });
+  elements["password-current"].value = "public old long passphrase";
+  elements["password-new"].value = "public new long passphrase";
+  elements["password-confirm"].value = "different confirmation";
+  await elements["password-form"].listeners.get("submit")({ preventDefault() {} });
+  assert.equal(requests.filter(({ options }) => options?.method === "POST").length, 0);
+  elements["password-confirm"].value = elements["password-new"].value;
+  const first = elements["password-form"].listeners.get("submit")({ preventDefault() {} });
+  await new Promise((resolve) => setImmediate(resolve));
+  for (const field of ["current", "new", "confirm"]) assert.equal(elements[`password-${field}`].value, "");
+  assert.equal(elements["password-submit"].disabled, true);
+  await elements["password-form"].listeners.get("submit")({ preventDefault() {} });
+  await elements["logout-all"].listeners.get("click")();
+  const writes = requests.filter(({ options }) => options?.method === "POST");
+  assert.equal(writes.length, 1);
+  assert.equal(writes[0].path, "/api/v1/auth/password");
+  assert.deepEqual(JSON.parse(writes[0].options.body), { current_password: "public old long passphrase", new_password: "public new long passphrase" });
+  assert.equal(writes[0].options.headers["X-PhantoWD-CSRF"], "x".repeat(43));
+  assert.equal(writes[0].options.credentials, "same-origin");
+  assert.ok(writes[0].options.signal);
+  ended = outcome === "success";
+  release(outcome === "success" ? jsonResponse({ password_changed: true, reauthentication_required: true, all_panel_sessions_revoked: true }) :
+    outcome === "wrong-current" ? jsonResponse({ error: "current_password_invalid" }, 401) :
+      outcome === "rejected" ? jsonResponse({}, 403) : outcome === "malformed" ? jsonResponse({}) : new Error("lost reply"));
+  await first;
+  assert.equal(elements["password-submit"].disabled, false);
+  assert.equal(requests.filter(({ options }) => options?.method === "POST").length, 1);
+  if (outcome === "wrong-current") {
+    assert.equal(elements["dashboard-content"].hidden, false);
+    assert.match(elements["password-status"].textContent, /not correct/);
+  } else {
+    assert.equal(elements["dashboard-content"].hidden, true);
+    assert.match(elements["auth-error"].textContent, outcome === "success" ? /Password changed/ : /could not be confirmed/);
+  }
 }

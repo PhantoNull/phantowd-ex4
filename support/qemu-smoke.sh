@@ -121,6 +121,10 @@ while [ "$attempt" -lt 120 ]; do
             echo 'Missing journaled Unix provisioning assertion' >&2
             exit 1
         fi
+        if ! grep -F 'PHANTOWD_PASSWORD_TLS_READY changed=true old_login_denied=true new_login=true scope=qemu-loopback-only' "$log_file" >/dev/null; then
+            echo 'QEMU password-change HTTPS test did not complete' >&2
+            exit 1
+        fi
         if ! grep -F 'PHANTOWD_SESSION_REVOCATION_READY peers=2 old_sessions_denied=true fresh_login=true scope=panel-sessions-only' "$log_file" >/dev/null; then
             echo 'Missing global panel session revocation assertion' >&2
             exit 1

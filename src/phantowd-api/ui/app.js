@@ -54,7 +54,11 @@ function renderSystem(system) {
   setText("profile-notice-title", profileNotice.title);
   setText("profile-notice-copy", profileNotice.copy);
   setText("profile-notice-mark", profileNotice.mark);
-  if (system.target === "ui-preview-fixture") byId("logout").hidden = true;
+  if (system.target === "ui-preview-fixture") {
+    byId("logout").hidden = true;
+    byId("logout-all").hidden = true;
+    byId("password-panel").hidden = true;
+  }
   setText("kernel-value", `Linux ${system.kernel}`);
   setText("runtime-value", `${system.architecture}${system.goarm ? ` · GOARM ${system.goarm}` : ""} · ${formatUptime(system.uptime_seconds)}`);
   setText("target-value", system.target || "Target unspecified");
@@ -391,6 +395,7 @@ function setAuthError(message) {
 }
 
 function showAuthUnavailable() {
+  clearPasswordFields();
   clearServicePolicy();
   clearSavedPolicy();
   clearPolicyDraft();
@@ -429,6 +434,7 @@ async function updateAuthView({ refresh = true, notice = "" } = {}) {
   }
 
   dashboard.hidden = true;
+  clearPasswordFields();
   clearServicePolicy();
   clearSavedPolicy();
   clearPolicyDraft();
@@ -504,11 +510,12 @@ byId("auth-form").addEventListener("submit", async (event) => {
 
 let logoutBusy = false;
 async function signOut(all = false) {
-  if (logoutBusy) return;
+  if (logoutBusy || passwordBusy) return;
   logoutBusy = true;
   clearServicePolicy();
   clearSavedPolicy();
   clearPolicyDraft();
+  clearPasswordFields();
   const logout = byId("logout");
   logout.disabled = true;
   byId("logout-all").disabled = true;
@@ -540,6 +547,64 @@ async function signOut(all = false) {
 }
 byId("logout").addEventListener("click", () => signOut(false));
 byId("logout-all").addEventListener("click", () => signOut(true));
+
+let passwordBusy = false;
+function clearPasswordFields() {
+  for (const id of ["password-current", "password-new", "password-confirm"]) byId(id).value = "";
+}
+
+byId("password-form").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  if (passwordBusy || logoutBusy) return;
+  const currentPassword = byId("password-current").value;
+  const newPassword = byId("password-new").value;
+  const confirmation = byId("password-confirm").value;
+  if (!currentPassword || [...newPassword].length < 15 || newPassword !== confirmation || newPassword === currentPassword ||
+      [currentPassword, newPassword].some((p) => new TextEncoder().encode(p).length > 1024)) {
+    setText("password-status", "Check the current password, use a different new passphrase of 15+ characters (at most 1024 UTF-8 bytes), and repeat it exactly.");
+    return;
+  }
+  passwordBusy = true;
+  clearPasswordFields();
+  clearServicePolicy();
+  clearSavedPolicy();
+  clearPolicyDraft();
+  for (const id of ["password-submit", "logout", "logout-all"]) byId(id).disabled = true;
+  setText("password-status", "Verifying and saving the new password…");
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 10000);
+  try {
+    const sessionResponse = await fetch("/api/v1/auth/session", { credentials: "same-origin", cache: "no-store", signal: controller.signal });
+    if (!sessionResponse.ok) throw new Error("Session unavailable");
+    const session = await sessionResponse.json();
+    if (typeof session.csrf_token !== "string" || session.csrf_token.length !== 43) throw new Error("Session unavailable");
+    const response = await fetch("/api/v1/auth/password", {
+      method: "POST", headers: { Accept: "application/json", "Content-Type": "application/json", "X-PhantoWD-CSRF": session.csrf_token },
+      credentials: "same-origin", cache: "no-store", signal: controller.signal,
+      body: JSON.stringify({ current_password: currentPassword, new_password: newPassword }),
+    });
+    const result = await response.json();
+    if (!response.ok) {
+      const message = response.status === 401 && result.error === "current_password_invalid" ? "Current password is not correct. No password was changed." :
+        response.status === 422 && result.error === "new_password_invalid" ? "The new password does not meet the requirements. No password was changed." :
+          response.status === 429 && result.error === "password_change_rate_limited" ? "Too many attempts. Wait one minute before trying again." : "";
+      if (message) { setText("password-status", message); return; }
+      throw new Error("Unconfirmed password change");
+    }
+    if (result.password_changed !== true || result.reauthentication_required !== true || result.all_panel_sessions_revoked !== true) {
+      throw new Error("Invalid confirmation");
+    }
+    await updateAuthView({ refresh: false, notice: "Password changed. All panel sessions ended. Sign in with the new password." });
+  } catch {
+    showAuthUnavailable();
+    setAuthError("Password-change outcome could not be confirmed. Do not repeat it automatically: reconnect and check sign-in with the new password first. If account storage is unavailable, stop and reconcile it. The request was not retried.");
+  } finally {
+    clearTimeout(timeout);
+    clearPasswordFields();
+    for (const id of ["password-submit", "logout", "logout-all"]) byId(id).disabled = false;
+    passwordBusy = false;
+  }
+});
 
 // Standalone desired-policy builder: no current configuration is loaded,
 // no draft is persisted, and no activation route exists here.

@@ -16,6 +16,7 @@ type memoryAccountBackend struct {
 	document      admincredentials.Document
 	loadErr       error
 	initializeErr error
+	replaceErr    error
 	closed        bool
 }
 
@@ -48,6 +49,26 @@ func (b *memoryAccountBackend) Initialize(name, verifier string) error {
 }
 
 func (b *memoryAccountBackend) Close() error { b.closed = true; return nil }
+
+func (b *memoryAccountBackend) Replace(expected uint64, verifier string) error {
+	if b.closed {
+		return errAccountClosed
+	}
+	if b.replaceErr != nil {
+		return b.replaceErr
+	}
+	if expected != b.document.Revision {
+		return errAccountConflict
+	}
+	next := b.document
+	next.Revision++
+	next.Admin.PasswordHash = verifier
+	if next.Validate() != nil {
+		return errAccountUnavailable
+	}
+	b.document = next
+	return nil
+}
 
 func openTestAccountStore(t *testing.T, dir string) *accountStore {
 	t.Helper()
