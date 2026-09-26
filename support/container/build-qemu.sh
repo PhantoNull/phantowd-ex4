@@ -204,7 +204,8 @@ GOCACHE="$workspace_dir/lab-tools-host-cache" \
 # Native generated-image tests use the same hash-checked libblkid source as
 # the target package. No host devices, mounts or privileged mode are needed.
 sh "$external_dir/support/container/test-volume-probe.sh" \
-    "$external_dir" "$download_dir/util-linux/util-linux-2.40.4.tar.xz"
+    "$external_dir" "$download_dir/util-linux/util-linux-2.40.4.tar.xz" \
+    "$buildroot_source/package/util-linux" "$output_dir/host/bin"
 
 "$external_dir/support/qemu-smoke.sh" \
     "$output_dir/images" "$output_dir/qemu-smoke.log" "$LINUX_VERSION"

@@ -27,6 +27,16 @@ One bounded JSON object has schema version 1, a source kind and status:
 - `unidentified`: no identifying result. This does **not** mean empty, healthy,
   readable in full, safe to erase or available for automatic provisioning.
 
+The pinned util-linux 2.40.4 `blkid_do_safeprobe` implementation maps negative
+chain results to generic `-1`, including an internal ambiguous `-2`. With
+this baseline, a tested ext2/XFS signature collision therefore produces a
+nonzero helper exit **without JSON**, not the `ambiguous` status. Callers must
+reject it; they must not infer no signature, retry with a type filter, or
+reinterpret arbitrary I/O errors as proven ambiguity. The explicit status is
+reserved for backends that preserve `-2` and is not exercised by this baseline.
+Safe probing also gives RAID/crypto signatures precedence instead of reporting
+every overlapping filesystem; those are rejected as `other-signature` here.
+
 All responses hard-code `mount_performed`, `compatibility_qualified` and
 `activation_allowed` to false. Other statuses return empty type/UUID strings;
 there is no candidate selection or mount authorization. Process errors yield
@@ -50,24 +60,30 @@ program suite. It is enabled only in the QEMU development profile. The package
 source is Apache-2.0; libblkid and dependencies keep their upstream licenses
 and require normal Buildroot legal-info/SBOM handling.
 
-`support/container/test-volume-probe.sh SOURCE_DIR UTIL_LINUX_ARCHIVE` builds
+`support/container/test-volume-probe.sh SOURCE_DIR UTIL_LINUX_ARCHIVE PATCH_DIR HOST_BIN` builds
 host libblkid from the hash-checked Buildroot 2025.02.18 archive (util-linux
-2.40.4), then compiles with strict warnings/hardening and runs generated
+2.40.4) and digest-verified Buildroot package patches. It regenerates build
+inputs with the baseline host autoreconf tools, then compiles with strict
+warnings/hardening and runs generated
 regular-image tests. Run it in the existing development container, with
 read-only sources/archive, a disposable executable /tmp, no network, no
 privileged mode and no forwarded devices. Tests create ext2/3/4, blank, swap
 and zero-UUID images, verify expected classifications and unchanged data hashes,
-and reject writable descriptors, pipes and unexpected arguments.
+and reject writable/O_PATH/directory descriptors, pipes and unexpected arguments.
+A generated XFS v4 probe header is recognized alone but conflicts with a fresh
+ext2 superblock; that collision must fail without JSON and without changing
+the image hash. Invalid XFS geometry must not identify a filesystem. These
+headers are parser fixtures, not valid mountable XFS filesystems.
 
 The fast QEMU lane cross-compiles a static ARMv5 helper from that same archive
-and injects it into a disposable base-image copy. Before mounting either test
+with the same patch set and injects it into a disposable base-image copy. Before mounting either test
 disk, the guest checks their fixed synthetic VPD identities, exact device
 numbers and absence from its mount inventory, then passes read-only descriptors
 to the helper. Both ext2 UUID results and an unidentified regular-file result
 have passed. The helper does not choose which disk to use or grant activation.
 
-Clean Buildroot package/library/license integration, an actual ambiguous
-signature fixture, fault injection and trusted complete-device discovery
+Clean Buildroot package/library/license integration, ARMv5 collision/error
+coverage, I/O fault injection and trusted complete-device discovery
 remain required. Static injection is not a release build and its library is
 not described by the base artifact's SBOM. This is not WD-layout, migration or physical
 storage qualification; do not use it on production disks at this stage.

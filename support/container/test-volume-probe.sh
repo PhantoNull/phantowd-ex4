@@ -5,10 +5,15 @@
 set -eu
 source_dir=${1:?source directory}
 archive=${2:?verified Buildroot util-linux archive}
+patch_dir=${3:?trusted Buildroot util-linux package directory}
+host_tools=${4:?pinned Buildroot host tools bin directory}
+export PATH="$host_tools:$PATH"
 expected=5c1daf733b04e9859afdc3bd87cc481180ee0f88b5c0946b16fdec931975fb79
 printf '%s  %s\n' "$expected" "$archive" | sha256sum -c -
 workspace=$(mktemp -d /tmp/phantowd-volume-probe.XXXXXX)
 tar -xf "$archive" -C "$workspace"
+sh "$source_dir/support/container/patch-volume-probe-fixture.sh" \
+    "$workspace/util-linux-2.40.4" "$patch_dir"
 cd "$workspace/util-linux-2.40.4"
 ./configure --disable-all-programs --enable-libblkid --disable-shared \
     --enable-static --disable-nls >"$workspace/configure.log" 2>&1 || {

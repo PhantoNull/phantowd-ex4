@@ -7,13 +7,16 @@ source_dir=${1:?source directory}
 archive=${2:?pinned util-linux archive}
 compiler=${3:?pinned Buildroot ARM compiler}
 destination=${4:?temporary output binary}
+patch_dir=${5:?trusted Buildroot util-linux package directory}
+compiler_dir=$(dirname "$compiler")
+export PATH="$compiler_dir:$PATH"
 expected=5c1daf733b04e9859afdc3bd87cc481180ee0f88b5c0946b16fdec931975fb79
 printf '%s  %s\n' "$expected" "$archive" | sha256sum -c -
 workspace=$(mktemp -d /tmp/phantowd-probe-arm.XXXXXX)
 tar -xf "$archive" -C "$workspace"
+sh "$source_dir/support/container/patch-volume-probe-fixture.sh" \
+    "$workspace/util-linux-2.40.4" "$patch_dir"
 cd "$workspace/util-linux-2.40.4"
-compiler_dir=$(dirname "$compiler")
-export PATH="$compiler_dir:$PATH"
 test "$("$compiler" -dumpmachine)" = arm-buildroot-linux-gnueabi
 CC="$compiler" ./configure --host=arm-buildroot-linux-gnueabi \
     --build="$(cc -dumpmachine)" --disable-all-programs --enable-libblkid \

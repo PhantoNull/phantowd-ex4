@@ -6,7 +6,8 @@ guest readiness script, the NFS fixture helper and the x/sys license into a
 **temporary copy** of a previously built QEMU filesystem. The original
 artifact is never modified. This is not a firmware builder or an installer.
 It also cross-compiles and injects a static ARMv5 volume-probe helper using
-hash-checked util-linux 2.40.4 sources and the pinned Buildroot toolchain.
+hash-checked util-linux 2.40.4 sources, the exact Buildroot package patch set
+(including libblkid partition-probing fixes), and the pinned Buildroot toolchain.
 
 Use the existing pinned development container with:
 
@@ -21,14 +22,20 @@ Inside that container, the invocation is:
 sh /src/support/container/test-qemu-api-overlay.sh \
     /base /toolchain/bin/go /src \
     /downloads/util-linux-2.40.4.tar.xz \
-    /toolchain/bin/arm-buildroot-linux-gnueabi-gcc
+    /toolchain/bin/arm-buildroot-linux-gnueabi-gcc \
+    /buildroot-2025.02.18/package/util-linux
 ```
 
 Here `/base` is one complete `phantowd-qemu-armv5` artifact from an exact,
 trusted successful project CI run; `/toolchain/bin/go` is the actual pinned
 Linux compiler path supplied by the operator, not a downloaded latest compiler.
-The final arguments supply the cached util-linux source archive and target C
-compiler from that trusted Buildroot baseline. Both must be mounted read-only.
+The final arguments supply the cached util-linux source archive, target C
+compiler and util-linux patch directory from that trusted Buildroot baseline.
+All must be mounted read-only. The helper verifies the patch-set digest before
+applying it to a temporary extraction and running the baseline host autoreconf
+tools beside the target compiler. Mount that baseline at its original build
+path too if those tools contain absolute installation paths. Fixture-only
+configure options still differ from the full Buildroot package environment.
 Record the run, commit and toolchain when reporting results. The helper checks
 the base's SHA256SUMS for integrity; this does not authenticate an arbitrary
 download. It refuses special files/symlinks for the principal image inputs.

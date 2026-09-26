@@ -6,12 +6,13 @@
 # and a disposable writable /tmp. No block device or privileged container.
 set -eu
 
-base=${1:?usage: test-qemu-api-overlay.sh BASE_ARTIFACT_DIR GO_BINARY SOURCE_DIR UTIL_LINUX_ARCHIVE TARGET_CC}
+base=${1:?usage: test-qemu-api-overlay.sh BASE_ARTIFACT_DIR GO_BINARY SOURCE_DIR UTIL_LINUX_ARCHIVE TARGET_CC UTIL_LINUX_PATCH_DIR}
 go_binary=${2:?Go compiler required}
 source_dir=${3:?source directory required}
 probe_archive=${4:?pinned util-linux archive required}
 target_cc=${5:?pinned Buildroot ARM compiler required}
-for input in "$base" "$go_binary" "$source_dir" "$probe_archive" "$target_cc"; do
+patch_dir=${6:?trusted Buildroot util-linux package directory required}
+for input in "$base" "$go_binary" "$source_dir" "$probe_archive" "$target_cc" "$patch_dir"; do
     case "$input" in *[!a-zA-Z0-9_./-]*|'') echo 'Unsupported input path' >&2; exit 1 ;; esac
 done
 for file in rootfs.ext2 zImage versatile-pb.dtb SHA256SUMS; do
@@ -43,7 +44,7 @@ replace_file() {
 }
 replace_file "$temporary/phantowd-api" /usr/bin/phantowd-api 0100755
 sh "$source_dir/support/container/build-volume-probe-fixture.sh" \
-    "$source_dir" "$probe_archive" "$target_cc" "$temporary/phantowd-volume-probe"
+    "$source_dir" "$probe_archive" "$target_cc" "$temporary/phantowd-volume-probe" "$patch_dir"
 debugfs -w -R 'mkdir /usr/libexec' "$image"
 replace_file "$temporary/phantowd-volume-probe" /usr/libexec/phantowd-volume-probe 0100755
 replace_file "$source_dir/board/qemu/armv5/rootfs-overlay/etc/init.d/S99phantowd-ready" /etc/init.d/S99phantowd-ready 0100755
