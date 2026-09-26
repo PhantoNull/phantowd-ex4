@@ -1,3 +1,7 @@
+<p align="center">
+  <img src=".github/assets/phantowd-ex4-banner.png" alt="PhantoWD EX4 concept artwork: a black four-bay NAS with orange ghost branding" width="700">
+</p>
+
 # 👻 PhantoWD EX4
 
 PhantoWD EX4 is an unofficial, community-oriented effort to give the
