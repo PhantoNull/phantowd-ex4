@@ -106,7 +106,7 @@ func runQEMUMDStackTest() (result error) {
 		}
 		if !mounted {
 			if _, err := os.Stat("/sys/class/block/md0"); err == nil {
-				if err := runQEMUStorageUtility("mdadm", 10*time.Second, "--config=/dev/null", "--stop", "/dev/md0"); err != nil {
+				if err := runQEMUStorageUtility("mdadm", 10*time.Second, qemuMDStopArguments()...); err != nil {
 					cleanupErr = errors.Join(cleanupErr, errors.New("fixed disposable MD array did not stop"))
 				} else if _, err := os.Stat("/sys/class/block/md0"); !errors.Is(err, os.ErrNotExist) {
 					cleanupErr = errors.Join(cleanupErr, errors.New("fixed MD array remains in sysfs after stop"))
@@ -126,9 +126,7 @@ func runQEMUMDStackTest() (result error) {
 		}
 	}()
 
-	if err := runQEMUStorageUtility("mdadm", 20*time.Second,
-		"--config=/dev/null", "--create", "/dev/md0", "--metadata=1.2", "--name=phantowd-qemu-test",
-		"--level=raid1", "--raid-devices=2", "--assume-clean", "/dev/sde", "/dev/sdf"); err != nil {
+	if err := runQEMUStorageUtility("mdadm", 20*time.Second, qemuMDCreateArguments()...); err != nil {
 		return err
 	}
 	if err := runQEMUStorageUtility("mkfs.ext2", 20*time.Second,

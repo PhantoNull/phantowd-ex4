@@ -638,15 +638,21 @@ These features are separate scope, not shortcuts around core acceptance:
 3. **M1.3 / M2.4:** implement explicit credential intent/reconciliation around the
    qualified primitive. Preserve uncertainty; do not persist/replay secrets.
 4. **M3.1–M3.2:** complete trusted discovery and stable-identity assessment using
-   existing descriptor tools; no automatic mounts/import. PR #41 has passed
-   exact-head host and ARMv5 QEMU CI. It covers duplicate valid SCSI VPD serials
-   and NAA WWNs, redaction, partitions excluded from whole-disk collision
-   grouping, metadata/generation rechecks, all-or-error HTTP behavior, fixed-path
-   read-only source opening, exact source-set matching and partial-FD cleanup.
-   This remains a bounded API/probe slice: discovery completeness, parent and
-   bay topology, mounted-state/exclusive-access qualification, filesystem/MD
-   identity reconciliation and compatibility policy are open. SATA/libata on
-   physical EX4 remains unqualified; no mount or migration authority is added.
+   existing descriptor tools; no automatic mounts/import. PR #41 covers duplicate
+   valid SCSI VPD serials and NAA WWNs, redaction, partitions excluded from
+   whole-disk collision grouping, metadata/generation rechecks, all-or-error
+   schema-v2 HTTP behavior (including transient partition-parent topology),
+   fixed-path read-only source opening, exact source-set matching and partial-FD
+   cleanup. Previous PR #41 head `c91e66f` passed host CI but failed ARMv5 QEMU
+   after about 81 minutes: the disposable RAID fixture passed `--config` before
+   the `mdadm` operation mode. The current correction selects `--create` and
+   `--stop` first; its host regression, full Go suite, vet and ARMv5-tagged
+   cross-build pass. Exact-head CI for the correction is still required before
+   this packet is validated. This remains a bounded API/probe slice: eligibility
+   and complete discovery semantics, bay topology, mounted-state/exclusive-access
+   qualification, filesystem/MD identity reconciliation and compatibility policy
+   are open. SATA/libata on physical EX4 remains unqualified; no mount or
+   migration authority is added.
 5. **M4.1:** define and test the activation plan against qualified fixture volumes;
    add the daemon owner only after preconditions and lifecycle are demonstrable.
 6. **M5:** expose completed backend outcomes incrementally, with disabled controls
