@@ -129,10 +129,13 @@ mount table; a visible mount of a selected whole-disk node or one of its
 direct partitions causes refusal. Parent correlation uses validated sysfs
 class-link targets and remains internal. The fixture does not traverse MD,
 device-mapper, multipath or other holder relationships, prove global
-exclusivity, or perform a mount. The exact-head ARMv5 QEMU CI run for PR #41
-(`5c3a1d4`) passed for the preceding fixture. The partition-parent/mount-guard
-extension above requires exact-head CI. This fixture is not evidence of
-production-complete discovery or EX4 SATA/libata qualification.
+exclusivity, or perform a mount. The exact-head ARMv5 QEMU CI run at code
+commit `2059a93`
+([run `36302718920`](https://github.com/PhantoNull/phantowd-ex4/actions/runs/36302718920))
+passed with the partition-parent/mount-guard extension. Host CI also passed
+([run `36302718909`](https://github.com/PhantoNull/phantowd-ex4/actions/runs/36302718909)).
+This fixture is not evidence of production-complete discovery or EX4 SATA/libata
+qualification.
 It also verifies a generated ext2/XFS collision through the real ARMv5 helper:
 individual signature controls succeed, the combined image returns `ErrProbe`
 without identity, and a set containing that image returns no partial results.
