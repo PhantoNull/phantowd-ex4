@@ -23,13 +23,12 @@ import (
 )
 
 const (
-	qemuTestSerial   = "PHANTOWD-QEMU-SERIAL-01"
-	qemuTestWWN      = "500f000000000001"
-	qemuDataSerial   = "PHANTOWD-QEMU-DATA-01"
-	qemuDataWWN      = "500f000000000002"
-	qemuCloneSerial  = "PHANTOWD-QEMU-CLONE-01"
-	qemuCloneWWN     = "500f000000000003"
-	qemuCollisionWWN = "500f000000000004"
+	qemuTestSerial  = "PHANTOWD-QEMU-SERIAL-01"
+	qemuTestWWN     = "500f000000000001"
+	qemuDataSerial  = "PHANTOWD-QEMU-DATA-01"
+	qemuDataWWN     = "500f000000000002"
+	qemuCloneSerial = "PHANTOWD-QEMU-CLONE-01"
+	qemuCloneWWN    = "500f000000000003"
 )
 
 var qemuDashboardAssets = []struct {
@@ -144,7 +143,7 @@ func runSelfTest() error {
 	if err := verifyQEMUBlockDevice(os.DirFS("/sys"), "sda", qemuTestSerial, qemuTestWWN); err != nil {
 		return errors.New("QEMU root SCSI identity fixture was not present")
 	}
-	if err := verifyQEMUBlockDevice(os.DirFS("/sys"), "sdd", qemuTestSerial, qemuCollisionWWN); err != nil {
+	if err := verifyQEMUBlockDevice(os.DirFS("/sys"), "sdd", qemuTestSerial, qemuTestWWN); err != nil {
 		return errors.New("QEMU duplicate SCSI identity fixture was not present")
 	}
 	var rootDisk, duplicateDisk *blockObservation
@@ -164,17 +163,16 @@ func runSelfTest() error {
 		return errors.New("QEMU duplicate-identity block device was not observed read-only through sysfs")
 	}
 	for _, observation := range []*blockObservation{rootDisk, duplicateDisk} {
-		if observation.SerialStatus != identityAmbiguous || observation.WWNStatus != identityPresent {
-			return errors.New("duplicate QEMU serial was not isolated as ambiguous")
+		if observation.SerialStatus != identityAmbiguous || observation.WWNStatus != identityAmbiguous {
+			return errors.New("duplicate QEMU serial and WWN were not reported as ambiguous")
 		}
 	}
 	if strings.Contains(string(storageData), qemuTestSerial) || strings.Contains(string(storageData), qemuTestWWN) ||
 		strings.Contains(string(storageData), qemuDataSerial) || strings.Contains(string(storageData), qemuDataWWN) ||
-		strings.Contains(string(storageData), qemuCloneSerial) || strings.Contains(string(storageData), qemuCloneWWN) ||
-		strings.Contains(string(storageData), qemuCollisionWWN) {
+		strings.Contains(string(storageData), qemuCloneSerial) || strings.Contains(string(storageData), qemuCloneWWN) {
 		return errors.New("raw QEMU storage identifiers leaked through the API")
 	}
-	fmt.Println("PHANTOWD_STORAGE_COLLISION_READY nodes=2 serial=ambiguous wwn=present redacted=true read_only=true scope=qemu-fixture-only")
+	fmt.Println("PHANTOWD_STORAGE_COLLISION_READY nodes=2 serial=ambiguous wwn=ambiguous redacted=true read_only=true scope=qemu-fixture-only")
 	arraysResponse, err := client.Get("http://" + listenAddress + "/api/v1/arrays")
 	if err != nil {
 		return errors.New("array inventory loopback request failed")

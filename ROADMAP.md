@@ -610,7 +610,12 @@ These features are separate scope, not shortcuts around core acceptance:
    observation; host tests and an ARMv5 test-binary cross-compile pass with the
    installed Go 1.27 compiler. This follow-up still needs the pinned Go 1.26.6
    target build, target QEMU execution, then a clean exact-head Buildroot run.
-   SATA/libata exposure on physical EX4 remains unqualified.
+   SATA/libata exposure on physical EX4 remains unqualified. The authenticated
+   API now also has a combined-collision regression case where both serial and
+   NAA WWN are duplicated. The fixed QEMU virtual-disk fixture and guest
+   assertion now require both statuses to be ambiguous; host/API tests and the
+   ARMv5 `qemu`-tagged executable cross-build pass, but this updated QEMU smoke
+   has not yet been executed.
 5. **M4.1:** define and test the activation plan against qualified fixture volumes;
    add the daemon owner only after preconditions and lifecycle are demonstrable.
 6. **M5:** expose completed backend outcomes incrementally, with disabled controls

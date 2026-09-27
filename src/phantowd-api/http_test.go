@@ -283,6 +283,10 @@ func TestStorageEndpointReportsDuplicateVPDAsAmbiguousWithoutValues(t *testing.T
 			name: "duplicate WWN", serialA: "http-private-serial-a", serialB: "http-private-serial-b",
 			wwnA: naaA, wwnB: naaA, wantSerial: identityPresent, wantWWN: identityAmbiguous,
 		},
+		{
+			name: "duplicate serial and WWN", serialA: "http-private-serial-shared", serialB: "http-private-serial-shared",
+			wwnA: naaA, wwnB: naaA, wantSerial: identityAmbiguous, wantWWN: identityAmbiguous,
+		},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			sysfs := fixtureSysfs()

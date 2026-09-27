@@ -59,7 +59,7 @@ truncate -s 1M "$fixture_dir/collision.raw"
     -drive "file=$fixture_dir/clone.ext2,if=none,id=clonedisk,format=raw,readonly=on" \
     -device "scsi-hd,bus=scsi0.0,drive=clonedisk,serial=PHANTOWD-QEMU-CLONE-01,wwn=0x500f000000000003" \
     -drive "file=$fixture_dir/collision.raw,if=none,id=collisiondisk,format=raw,readonly=on" \
-    -device "scsi-hd,bus=scsi0.0,drive=collisiondisk,serial=PHANTOWD-QEMU-SERIAL-01,wwn=0x500f000000000004" \
+    -device "scsi-hd,bus=scsi0.0,drive=collisiondisk,serial=PHANTOWD-QEMU-SERIAL-01,wwn=0x500f000000000001" \
     -object rng-random,id=rng0,filename=/dev/urandom \
     -device virtio-rng-pci,rng=rng0 \
     -snapshot \
@@ -90,7 +90,7 @@ while [ "$attempt" -lt 120 ]; do
             echo "Missing ARMv5 diagnostics API assertion" >&2
             exit 1
         fi
-        if ! grep -F 'PHANTOWD_STORAGE_COLLISION_READY nodes=2 serial=ambiguous wwn=present redacted=true read_only=true scope=qemu-fixture-only' "$log_file" >/dev/null; then
+        if ! grep -F 'PHANTOWD_STORAGE_COLLISION_READY nodes=2 serial=ambiguous wwn=ambiguous redacted=true read_only=true scope=qemu-fixture-only' "$log_file" >/dev/null; then
             echo "Missing ARMv5 duplicate storage-identity assertion" >&2
             exit 1
         fi
