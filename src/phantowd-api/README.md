@@ -247,6 +247,10 @@ and refuses non-Versatile PB machines. See the
   observed inconsistency. This reduces mixed observations but is not an atomic
   hotplug snapshot. `diskseq` is transient for one kernel lifetime, is not
   returned by the API and is not disk identity.
+  Internal comparisons across separate in-memory inventories include a
+  domain-separated SHA-256 equality digest of each valid VPD value so an
+  identity change cannot hide behind an unchanged `present` status. Neither
+  raw values nor these digests are serialized or treated as stable identity.
   The authenticated HTTP handler never invokes the opener or opens a block
   device; it does not read disk contents, run a shell command, assemble or
   mount storage, or perform reboot, firmware install or update operations.

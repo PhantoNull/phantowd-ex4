@@ -4,6 +4,7 @@
 package main
 
 import (
+	"crypto/sha256"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -48,6 +49,8 @@ type blockObservation struct {
 	ParentMinor     *uint32            `json:"parent_minor,omitempty"`
 	SerialStatus    identityStatus     `json:"serial_status,omitempty"`
 	WWNStatus       identityStatus     `json:"wwn_status,omitempty"`
+	serialEvidence  [32]byte           `json:"-"`
+	wwnEvidence     [32]byte           `json:"-"`
 	diskSequence    uint64             `json:"-"`
 	parentDiskSeq   uint64             `json:"-"`
 	lowerBlocks     []blockTopologyRef `json:"-"`
@@ -149,7 +152,9 @@ func collectStorage(sysfs fs.FS) (snapshot storageSnapshot, err error) {
 			SizeBytes: metadata.sizeBytes, ReadOnly: metadata.readOnly,
 			Removable: metadata.removable, PartitionNumber: metadata.partitionNumber,
 			SerialStatus: metadata.serialStatus, WWNStatus: metadata.wwnStatus,
-			diskSequence: metadata.diskSequence,
+			serialEvidence: vpdObservationEvidence("serial", metadata.serial),
+			wwnEvidence:    vpdObservationEvidence("wwn", metadata.wwn),
+			diskSequence:   metadata.diskSequence,
 		}
 		if metadata.kind == "block" {
 			if metadata.serialStatus == identityPresent {
@@ -186,6 +191,16 @@ func collectStorage(sysfs fs.FS) (snapshot storageSnapshot, err error) {
 	})
 	snapshot.DeviceCount = len(snapshot.Observations)
 	return snapshot, nil
+}
+
+// vpdObservationEvidence is an in-process equality token for re-observation,
+// not a durable device identity. The raw value stays in collection-local
+// metadata and is never retained by the API snapshot or serialized.
+func vpdObservationEvidence(kind, value string) [32]byte {
+	if value == "" {
+		return [32]byte{}
+	}
+	return sha256.Sum256([]byte("phantowd-vpd-observation-v1\x00" + kind + "\x00" + value))
 }
 
 type storageBlockMetadata struct {
@@ -377,7 +392,8 @@ func sameBlockObservation(a, b blockObservation) bool {
 	if a.Name != b.Name || a.Kind != b.Kind || a.Major != b.Major || a.Minor != b.Minor ||
 		a.SizeBytes != b.SizeBytes || a.ReadOnly != b.ReadOnly || a.Removable != b.Removable ||
 		a.PartitionNumber != b.PartitionNumber || a.SerialStatus != b.SerialStatus ||
-		a.WWNStatus != b.WWNStatus || a.diskSequence != b.diskSequence ||
+		a.WWNStatus != b.WWNStatus || a.serialEvidence != b.serialEvidence || a.wwnEvidence != b.wwnEvidence ||
+		a.diskSequence != b.diskSequence ||
 		a.ParentName != b.ParentName || !sameOptionalUint32(a.ParentMajor, b.ParentMajor) ||
 		!sameOptionalUint32(a.ParentMinor, b.ParentMinor) || a.parentDiskSeq != b.parentDiskSeq ||
 		len(a.lowerBlocks) != len(b.lowerBlocks) {

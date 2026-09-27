@@ -660,6 +660,56 @@ func TestObservedBlockDeviceSetRejectsNilUnknownAndPartitionSelections(t *testin
 	}
 }
 
+func TestSameBlockObservationDetectsChangedVPDIdentity(t *testing.T) {
+	for _, test := range []struct {
+		name string
+		path string
+		data []byte
+	}{
+		{
+			name: "serial",
+			path: "devices/virtual/block/sda/device/vpd_pg80",
+			data: makeVPDPage(0x80, []byte("PHANTOWD-QEMU-SERIAL-02")),
+		},
+		{
+			name: "WWN",
+			path: "devices/virtual/block/sda/device/vpd_pg83",
+			data: makeVPDPage(0x83, []byte{0x01, 0x03, 0x00, 0x08, 0x50, 0x0f, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02}),
+		},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			sysfs := fixtureSysfs()
+			before, err := collectStorage(sysfs)
+			if err != nil {
+				t.Fatal(err)
+			}
+			sysfs[test.path] = &fstest.MapFile{Data: test.data}
+			after, err := collectStorage(sysfs)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if before.Observations[0].serialEvidence == ([32]byte{}) || before.Observations[0].wwnEvidence == ([32]byte{}) {
+				t.Fatal("valid VPD values must produce in-memory comparison evidence")
+			}
+			encoded, err := json.Marshal(before)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if strings.Contains(string(encoded), "PHANTOWD-QEMU-SERIAL-01") ||
+				strings.Contains(string(encoded), "naa.500f000000000001") {
+				t.Fatal("private VPD identity material escaped into the JSON snapshot")
+			}
+			if before.Observations[0].SerialStatus != identityPresent || after.Observations[0].SerialStatus != identityPresent ||
+				before.Observations[0].WWNStatus != identityPresent || after.Observations[0].WWNStatus != identityPresent {
+				t.Fatal("fixture must preserve present VPD status across the changed value")
+			}
+			if sameBlockObservation(before.Observations[0], after.Observations[0]) {
+				t.Fatalf("changed private %s identity was treated as the same block observation", test.name)
+			}
+		})
+	}
+}
+
 func TestCollectStorageRejectsMalformedOrUnboundedSysfs(t *testing.T) {
 	for _, test := range []struct {
 		name  string

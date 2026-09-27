@@ -313,6 +313,12 @@ are missing. **Depends on:** M1; M7 for hardware.
   QEMU-tagged fixture consumes this adapter, but its exact-head guest run is
   still pending. This is selection binding only, not physical-disk
   classification or the missing trusted broker.
+  Cross-snapshot consistency comparisons also bind valid VPD status to a
+  private, domain-separated SHA-256 equality digest, so a serial/WWN change
+  cannot pass merely because both observations say `present`. Raw values stay
+  in collector-local metadata; neither values nor digests enter API JSON or
+  become stable identity. Host red/green coverage and the complete no-Docker
+  preflight pass; guest execution remains pending.
 - **M3.2 — Resolve stable identity.** Correlate device, partition, MD and filesystem
   identifiers; distinguish two descriptors for one object from two cloned
   filesystems. Never prove uniqueness from only the devices supplied by a caller.
