@@ -610,8 +610,10 @@ These features are separate scope, not shortcuts around core acceptance:
    attributes, including parsed VPD identity values/status, checks the
    whole-disk `diskseq` around each read, and re-enumerates node names before
    duplicate classification. Any observed change rejects the snapshot; the
-   HTTP endpoint returns only a generic 503 and no partial observations. Host
-   tests, `go vet`, the API host-contract tests and an ARMv5 test-binary
+   collector now returns a zero snapshot with every error, and the HTTP
+   endpoint returns only a generic 503 and no partial observations. Host
+   regression tests cover a mid-pass VPD change at collector and HTTP layers;
+   `go vet`, the API host-contract tests and an ARMv5 test-binary
    cross-compile pass with Go 1.27.0. This remains a best-effort consistency
    check rather than atomic discovery. The exact follow-up still needs the
    pinned Go 1.26.6 target build and QEMU execution, then a clean exact-head

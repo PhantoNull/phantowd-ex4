@@ -194,8 +194,12 @@ func TestCollectStorageRejectsIdentityChangedBeforeDuplicateClassification(t *te
 		first: string(makeVPDPage(0x80, []byte("PHANTOWD-QEMU-SERIAL-01"))),
 		later: string(makeVPDPage(0x80, []byte("replacement-serial"))),
 	}
-	if _, err := collectStorage(sysfs); err == nil {
+	snapshot, err := collectStorage(sysfs)
+	if err == nil {
 		t.Fatal("a VPD change after duplicate discovery was accepted as a consistent inventory")
+	}
+	if snapshot.DeviceCount != 0 || len(snapshot.Observations) != 0 {
+		t.Fatalf("partial discovery escaped with an error: %+v", snapshot)
 	}
 	if sysfs.reads != 2 {
 		t.Fatalf("expected initial and consistency-check VPD reads, got %d", sysfs.reads)

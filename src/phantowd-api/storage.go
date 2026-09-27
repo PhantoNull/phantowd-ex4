@@ -64,8 +64,8 @@ type storageSnapshot struct {
 // check, not an atomic hotplug snapshot; it does not pin device handles. It
 // does not open /dev nodes, read disk contents, inspect filesystems, or mutate
 // state.
-func collectStorage(sysfs fs.FS) (storageSnapshot, error) {
-	snapshot := storageSnapshot{
+func collectStorage(sysfs fs.FS) (snapshot storageSnapshot, err error) {
+	snapshot = storageSnapshot{
 		SchemaVersion:           1,
 		Scope:                   "kernel-sysfs-only",
 		InventoryReadOnly:       true,
@@ -90,6 +90,11 @@ func collectStorage(sysfs fs.FS) (storageSnapshot, error) {
 			"this development endpoint is not a WD-layout support decision or migration authorization",
 		},
 	}
+	defer func() {
+		if err != nil {
+			snapshot = storageSnapshot{}
+		}
+	}()
 	entries, err := fs.ReadDir(sysfs, "class/block")
 	if err != nil {
 		return snapshot, errors.New("cannot enumerate sysfs block entries")

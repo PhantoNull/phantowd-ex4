@@ -278,6 +278,7 @@ and refuses non-Versatile PB machines. See the
 | `PUT /api/v1/file-services/configuration` | Development-only, Origin/CSRF-protected full revision commit; never activation |
 | `GET /api/v1/system` | Authenticated versioned JSON: observation time, kernel, architecture/GOARM, uptime, total/available memory, effective UID, development safety flags |
 | `GET /api/v1/storage` | Authenticated, sorted, bounded kernel block-node observations from sysfs: name, major/minor, 512-byte-sector capacity, read-only/removable flags, partition number, and `serial_status` / `wwn_status` for non-partition block nodes |
+| Incomplete or inconsistent storage inventory | `503 storage_unavailable`; no partial observations, raw identifiers or sysfs paths |
 | `GET /api/v1/arrays` | Authenticated, bounded Linux MD observations from `/proc/mdstat` and `/sys/class/block`: level, state, degraded/active counts, sync action/progress, and transient member names; partial sources never become an empty/healthy claim |
 | `GET /api/v1/mounts` | Authenticated, bounded snapshot of filesystems already mounted in this process's namespace, from `/proc/self/mountinfo`; returns mount point, filesystem type, device major/minor, and the read-only mount flag while omitting source strings and raw options |
 | Wrong method on a known route | `405`, route-specific `Allow` |
@@ -298,6 +299,12 @@ entry. The sysfs category does not prove one-to-one physical-disk topology and
 does not resolve aliases or multipath paths. These states validate only observed
 SCSI VPD metadata and do not establish a durable PhantoWD
 identity. Kernel names and major/minor numbers remain transient observations.
+It re-reads fixed metadata, including parsed whole-disk VPD identity, before
+publication and checks the node-name set last. Any required-attribute read or
+parse error, or observed inconsistency, rejects the entire snapshot; the
+collector returns no partial observation and the HTTP route reports only
+generic `503 storage_unavailable`. An unavailable/unreadable VPD page remains
+an explicit identity status, not a unique-identity claim.
 The block inventory does not collect partition/filesystem UUIDs, bay mapping,
 SMART, or device health. The separate array endpoint reads bounded
 `/proc/mdstat` text and MD sysfs metadata only; it
