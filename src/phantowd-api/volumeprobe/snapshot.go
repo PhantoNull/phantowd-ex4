@@ -3,8 +3,25 @@
 
 package volumeprobe
 
+import "os"
+
 // MaxSources bounds retained descriptors and helper invocations per set.
 const MaxSources = 32
+
+// BlockDeviceGeneration is the transient kernel identity observed for one
+// whole-disk block descriptor. DiskSequence is not a persistent media ID.
+type BlockDeviceGeneration struct {
+	Major        uint32
+	Minor        uint32
+	DiskSequence uint64
+}
+
+// BlockDeviceSource pairs a caller-qualified whole-disk read-only descriptor
+// with the major/minor and disk sequence previously observed for it.
+type BlockDeviceSource struct {
+	File       *os.File
+	Generation BlockDeviceGeneration
+}
 
 type objectKey struct {
 	kind                     string
@@ -70,4 +87,25 @@ func makeSnapshot(entries []observation) (Snapshot, error) {
 		seen[entry.object] = entry.result
 	}
 	return Snapshot{entries: append([]observation{}, entries...)}, nil
+}
+
+func validGenerationSet(generations []BlockDeviceGeneration) bool {
+	type deviceNumber struct{ major, minor uint32 }
+	byDevice := make(map[deviceNumber]uint64, len(generations))
+	bySequence := make(map[uint64]deviceNumber, len(generations))
+	for _, generation := range generations {
+		if (generation.Major == 0 && generation.Minor == 0) || generation.DiskSequence == 0 {
+			return false
+		}
+		device := deviceNumber{generation.Major, generation.Minor}
+		if previous, ok := byDevice[device]; ok && previous != generation.DiskSequence {
+			return false
+		}
+		if previous, ok := bySequence[generation.DiskSequence]; ok && previous != device {
+			return false
+		}
+		byDevice[device] = generation.DiskSequence
+		bySequence[generation.DiskSequence] = device
+	}
+	return true
 }

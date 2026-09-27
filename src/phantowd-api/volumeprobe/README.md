@@ -44,6 +44,28 @@ The set has a 30-second context deadline, subject to the same kernel-I/O limit.
 An explicitly empty set is valid; a nil collection is refused. There is no
 device enumeration, automatic omission, weaker retry or mount operation.
 
+`ObserveBlockSet(ctx, sources)` is the generation-bound variant for callers
+that already opened read-only whole-disk descriptors and captured each object's
+major/minor plus nonzero `diskseq` from trusted kernel observations. The caller
+must establish that entries are whole disks rather than partitions; this
+primitive checks for block descriptors but does not classify sysfs partitions.
+It verifies `fstat()` reports a block device with that exact device number and
+requires `BLKGETDISKSEQ` to return the expected sequence before probing and
+again after the entire set. Invalid/reused expected generations, an ioctl
+error, or any mismatch refuses the complete set. Repeated aliases for one
+device are allowed only with the same device number and generation. Linux
+defines `diskseq` as a unique, monotonically increasing number for a
+block-device instance; see the
+[block-device generation](https://github.com/torvalds/linux/blob/master/block/genhd.c),
+[ioctl definition](https://github.com/torvalds/linux/blob/master/include/uapi/linux/fs.h)
+and [kernel handler](https://github.com/torvalds/linux/blob/master/block/ioctl.c).
+It is transient kernel-lifetime evidence, not persistent media identity. This
+primitive does not reopen/revalidate the caller's pathname or rediscover the
+inventory, and the caller must still establish completeness, eligibility,
+unmounted state and stable topology. It is not mount authorization.
+The set-level timeout, single-slot limit, caller ownership and shared-offset
+requirements are the same as `ObserveSet`.
+
 `MatchUUID` reports `not-observed`, `one-object` or `conflicting-objects` only
 within that set. Regular-image hard links share an object key (device/inode);
 block-node aliases share a key (rdev). Different objects with the same UUID
@@ -63,7 +85,10 @@ single-slot rule. A fixed-count fuzz target checks the response decoder.
 Set tests add alias/clone grouping, missing UUIDs, whole-set refusals and a
 competing write to an earlier image during a later probe.
 The QEMU unmounted-disk fixture calls this implementation, not a separate
-copy of the process/JSON code, including clone/alias distinction before mounting.
+copy of the process/JSON code, including clone/alias distinction before
+mounting. Its generation-bound path also checks a deliberately stale expected
+sequence is rejected without a partial snapshot; this is a fixture assertion,
+not yet evidence that the updated guest smoke has run.
 It also verifies a generated ext2/XFS collision through the real ARMv5 helper:
 individual signature controls succeed, the combined image returns `ErrProbe`
 without identity, and a set containing that image returns no partial results.

@@ -6,7 +6,9 @@ package volumeprobe
 import (
 	"context"
 	"os"
+	"runtime"
 	"time"
+	"unsafe"
 
 	"golang.org/x/sys/unix"
 )
@@ -22,7 +24,42 @@ func ObserveSet(ctx context.Context, sources []*os.File) (Snapshot, error) {
 }
 
 func observeSet(ctx context.Context, sources []*os.File, executable string, timeout time.Duration) (Snapshot, error) {
+	return observeDescriptors(ctx, sources, nil, executable, timeout)
+}
+
+// ObserveBlockSet accepts only block descriptors matching their caller-observed
+// major/minor and disk sequence both before probing and before returning. The
+// caller must prequalify these as whole-disk sources (not partitions), establish
+// discovery completeness, eligibility, stable topology and unmounted state.
+// This does not enumerate paths, establish media identity, or authorize
+// mounting. A held descriptor's unchanged generation does not prove its
+// pathname still names that object; the caller must reconcile the final
+// inventory before handoff.
+// It has the same timeout, single-slot, source-ownership and shared-offset
+// requirements as ObserveSet.
+func ObserveBlockSet(ctx context.Context, sources []BlockDeviceSource) (Snapshot, error) {
+	return observeBlockSet(ctx, sources, "/usr/libexec/phantowd-volume-probe", 30*time.Second)
+}
+
+func observeBlockSet(ctx context.Context, sources []BlockDeviceSource, executable string, timeout time.Duration) (Snapshot, error) {
+	if sources == nil || len(sources) > MaxSources {
+		return Snapshot{}, ErrUnsafe
+	}
+	files := make([]*os.File, len(sources))
+	generations := make([]BlockDeviceGeneration, len(sources))
+	for i, source := range sources {
+		files[i], generations[i] = source.File, source.Generation
+	}
+	return observeDescriptors(ctx, files, generations, executable, timeout)
+}
+
+// A nil generations slice keeps ObserveSet's regular-image behavior. A
+// non-nil slice requires every retained descriptor to match one generation.
+func observeDescriptors(ctx context.Context, sources []*os.File, generations []BlockDeviceGeneration, executable string, timeout time.Duration) (Snapshot, error) {
 	if ctx == nil || sources == nil || len(sources) > MaxSources {
+		return Snapshot{}, ErrUnsafe
+	}
+	if generations != nil && (len(generations) != len(sources) || !validGenerationSet(generations)) {
 		return Snapshot{}, ErrUnsafe
 	}
 	if err := ctx.Err(); err != nil {
@@ -35,9 +72,11 @@ func observeSet(ctx context.Context, sources []*os.File, executable string, time
 	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 	type pinned struct {
-		file *os.File
-		stat unix.Stat_t
-		kind string
+		file       *os.File
+		stat       unix.Stat_t
+		kind       string
+		generation BlockDeviceGeneration
+		bound      bool
 	}
 	inputs := make([]pinned, 0, len(sources))
 	defer func() {
@@ -45,7 +84,7 @@ func observeSet(ctx context.Context, sources []*os.File, executable string, time
 			input.file.Close()
 		}
 	}()
-	for _, source := range sources {
+	for i, source := range sources {
 		if err := ctx.Err(); err != nil {
 			return Snapshot{}, err
 		}
@@ -53,7 +92,15 @@ func observeSet(ctx context.Context, sources []*os.File, executable string, time
 		if err != nil {
 			return Snapshot{}, err
 		}
-		inputs = append(inputs, pinned{file, stat, kind})
+		input := pinned{file: file, stat: stat, kind: kind}
+		if generations != nil {
+			input.generation = generations[i]
+			input.bound = true
+		}
+		inputs = append(inputs, input)
+		if input.bound && !matchesBlockGeneration(file, stat, kind, input.generation) {
+			return Snapshot{}, ErrUnsafe
+		}
 	}
 	entries := make([]observation, 0, len(inputs))
 	for _, input := range inputs {
@@ -72,7 +119,8 @@ func observeSet(ctx context.Context, sources []*os.File, executable string, time
 	// A mutation of an earlier object during a later probe invalidates the set.
 	for _, input := range inputs {
 		var after unix.Stat_t
-		if unix.Fstat(int(input.file.Fd()), &after) != nil || !sameObject(input.stat, after) {
+		if unix.Fstat(int(input.file.Fd()), &after) != nil || !sameObject(input.stat, after) ||
+			(input.bound && !matchesBlockGeneration(input.file, after, input.kind, input.generation)) {
 			return Snapshot{}, ErrUnsafe
 		}
 	}
@@ -80,4 +128,24 @@ func observeSet(ctx context.Context, sources []*os.File, executable string, time
 		return Snapshot{}, err
 	}
 	return makeSnapshot(entries)
+}
+
+func matchesBlockGeneration(file *os.File, stat unix.Stat_t, kind string, expected BlockDeviceGeneration) bool {
+	if kind != "block-device" ||
+		uint32(unix.Major(uint64(stat.Rdev))) != expected.Major ||
+		uint32(unix.Minor(uint64(stat.Rdev))) != expected.Minor {
+		return false
+	}
+	sequence, err := readDiskSequence(int(file.Fd()))
+	return err == nil && sequence != 0 && sequence == expected.DiskSequence
+}
+
+func readDiskSequence(fd int) (uint64, error) {
+	var sequence uint64
+	_, _, errno := unix.Syscall(unix.SYS_IOCTL, uintptr(fd), uintptr(unix.BLKGETDISKSEQ), uintptr(unsafe.Pointer(&sequence)))
+	runtime.KeepAlive(&sequence)
+	if errno != 0 {
+		return 0, errno
+	}
+	return sequence, nil
 }

@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -35,13 +36,28 @@ func probeQEMUUnmountedStorage() error {
 	}
 	deviceIDs := make(map[string]bool)
 	deviceNames := make(map[string]string)
+	deviceGenerations := make(map[string]volumeprobe.BlockDeviceGeneration)
 	for _, device := range []string{"sdb", "sdc"} {
 		id, err := os.ReadFile("/sys/class/block/" + device + "/dev")
 		if err != nil {
 			return err
 		}
-		deviceIDs[strings.TrimSpace(string(id))] = true
-		deviceNames[device] = strings.TrimSpace(string(id))
+		deviceNumber := strings.TrimSpace(string(id))
+		major, minor, err := parseDeviceNumber(deviceNumber)
+		if err != nil {
+			return errors.New("fixture has an invalid virtual device number")
+		}
+		sequenceText, err := os.ReadFile("/sys/class/block/" + device + "/diskseq")
+		if err != nil {
+			return err
+		}
+		sequence, err := strconv.ParseUint(strings.TrimSpace(string(sequenceText)), 10, 64)
+		if err != nil || sequence == 0 {
+			return errors.New("fixture has an invalid virtual device generation")
+		}
+		deviceIDs[deviceNumber] = true
+		deviceNames[device] = deviceNumber
+		deviceGenerations[device] = volumeprobe.BlockDeviceGeneration{Major: major, Minor: minor, DiskSequence: sequence}
 	}
 	if len(deviceIDs) != 2 {
 		return errors.New("fixture requires distinct virtual devices")
@@ -62,6 +78,7 @@ func probeQEMUUnmountedStorage() error {
 		return err
 	}
 	var sources []*os.File
+	var blockSources []volumeprobe.BlockDeviceSource
 	defer func() {
 		for _, source := range sources {
 			source.Close()
@@ -82,8 +99,12 @@ func probeQEMUUnmountedStorage() error {
 			return errors.New("probe descriptor is not an expected virtual block object")
 		}
 		sources = append(sources, source)
+		blockSources = append(blockSources, volumeprobe.BlockDeviceSource{
+			File:       source,
+			Generation: deviceGenerations[device],
+		})
 	}
-	snapshot, err := volumeprobe.ObserveSet(context.Background(), []*os.File{sources[0], sources[1], sources[0]})
+	snapshot, err := volumeprobe.ObserveBlockSet(context.Background(), []volumeprobe.BlockDeviceSource{blockSources[0], blockSources[1], blockSources[0]})
 	if err != nil {
 		return err
 	}
@@ -99,13 +120,19 @@ func probeQEMUUnmountedStorage() error {
 	if err != nil || match.State != "conflicting-objects" || len(match.SourceIndices) != 3 {
 		return errors.New("unmounted clone conflict missed")
 	}
-	alias, err := volumeprobe.ObserveSet(context.Background(), []*os.File{sources[0], sources[0]})
+	alias, err := volumeprobe.ObserveBlockSet(context.Background(), []volumeprobe.BlockDeviceSource{blockSources[0], blockSources[0]})
 	if err != nil {
 		return err
 	}
 	match, err = alias.MatchUUID(qemuNFSVolumeUUID)
 	if err != nil || match.State != "one-object" || len(match.SourceIndices) != 2 {
 		return errors.New("same block object mistaken for clone")
+	}
+	staleGeneration := blockSources[0]
+	staleGeneration.Generation.DiskSequence++
+	stale, err := volumeprobe.ObserveBlockSet(context.Background(), []volumeprobe.BlockDeviceSource{staleGeneration})
+	if !errors.Is(err, volumeprobe.ErrUnsafe) || len(stale.Results()) != 0 {
+		return errors.New("stale block generation was accepted")
 	}
 	match, err = snapshot.MatchUUID("00112233-4455-6677-8899-aabbccddeeff")
 	if err != nil || match.State != "not-observed" || len(match.SourceIndices) != 0 {
@@ -135,7 +162,7 @@ func probeQEMUUnmountedStorage() error {
 		return err
 	}
 	fmt.Println("PHANTOWD_VOLUME_PROBE_READY backend=libblkid unmounted_devices=2 readonly_descriptors=true expected_uuid=true unidentified_not_empty=true scope=qemu-fixture-only")
-	fmt.Println("PHANTOWD_VOLUME_SET_READY cloned_uuid=true aliases_deduplicated=true unobserved_not_absent=true scope=provided-descriptors-only")
+	fmt.Println("PHANTOWD_VOLUME_SET_READY cloned_uuid=true aliases_deduplicated=true generation_bound=true stale_generation_refused=true unobserved_not_absent=true scope=provided-descriptors-only")
 	if err := probeQEMUCollisions(sources[0]); err != nil {
 		return err
 	}

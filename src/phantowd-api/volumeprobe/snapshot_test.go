@@ -9,6 +9,31 @@ import (
 	"testing"
 )
 
+func TestValidGenerationSet(t *testing.T) {
+	deviceA := BlockDeviceGeneration{Major: 8, Minor: 16, DiskSequence: 101}
+	deviceB := BlockDeviceGeneration{Major: 8, Minor: 32, DiskSequence: 102}
+	for _, test := range []struct {
+		name        string
+		generations []BlockDeviceGeneration
+		valid       bool
+	}{
+		{"empty", []BlockDeviceGeneration{}, true},
+		{"one device", []BlockDeviceGeneration{deviceA}, true},
+		{"same descriptor alias", []BlockDeviceGeneration{deviceA, deviceA}, true},
+		{"distinct devices", []BlockDeviceGeneration{deviceA, deviceB}, true},
+		{"same device different generation", []BlockDeviceGeneration{deviceA, {Major: 8, Minor: 16, DiskSequence: 103}}, false},
+		{"different devices same generation", []BlockDeviceGeneration{deviceA, {Major: 8, Minor: 32, DiskSequence: 101}}, false},
+		{"zero device number", []BlockDeviceGeneration{{DiskSequence: 101}}, false},
+		{"zero sequence", []BlockDeviceGeneration{{Major: 8, Minor: 16}}, false},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			if got := validGenerationSet(test.generations); got != test.valid {
+				t.Fatalf("validGenerationSet(%v) = %t, want %t", test.generations, got, test.valid)
+			}
+		})
+	}
+}
+
 func TestSnapshotMatch(t *testing.T) {
 	result, err := decode(strings.NewReader(validResult))
 	if err != nil {

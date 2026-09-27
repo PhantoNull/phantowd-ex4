@@ -76,7 +76,7 @@ Status vocabulary:
 | Desired SMB/NFS policy | Strict models, revision stores and opt-in development editing. Stored policy does not activate services. |
 | Native identities | Reservation ledger, protected local reader, creation journal, typed executor, cooperative owner/listener and multi-account router. Not a deployed account manager. |
 | Samba credentials | Actual guest authentication/rotation/disable and persistence fixtures. Ordinary password reset can re-enable a disabled account; the safe product primitive is not implemented. |
-| Storage | GPT/ext/MD image research, sysfs/mount observations, restricted libblkid helper, supplied-descriptor collision checks and mount guard. No complete discovery, compatibility resolver or importer. |
+| Storage | GPT/ext/MD image research, sysfs/mount observations, restricted libblkid helper, supplied-descriptor collision checks, generation-bound descriptor probing and mount guard. No complete discovery, compatibility resolver or importer; the new generation-bound guest smoke still needs execution. |
 | Hardware | Short diskless serial/RAM and Ethernet/temperature observations. Networking stability, controller/cooling, storage and recovery remain unqualified. |
 | Updates | Host-side signed metadata/payload/version assessment. No on-device installer, update transaction, recovery or installation release. |
 
@@ -616,6 +616,14 @@ These features are separate scope, not shortcuts around core acceptance:
    assertion now require both statuses to be ambiguous; host/API tests and the
    ARMv5 `qemu`-tagged executable cross-build pass, but this updated QEMU smoke
    has not yet been executed.
+   The current feature-branch follow-up adds `ObserveBlockSet`, which matches
+   already-open read-only descriptors against caller-observed major/minor and
+   `BLKGETDISKSEQ` before and after the complete probe set. The portable host
+   test covers generation-set consistency; a Linux-only test covers regular-file
+   refusal. The ARMv5 test binary and QEMU-tagged API cross-compile. The fixed
+   QEMU smoke now checks aliases, cloned UUIDs and stale-generation refusal,
+   but has not yet run; HTTP discovery remains sysfs-only and no mount authority
+   is added.
 5. **M4.1:** define and test the activation plan against qualified fixture volumes;
    add the daemon owner only after preconditions and lifecycle are demonstrable.
 6. **M5:** expose completed backend outcomes incrementally, with disabled controls

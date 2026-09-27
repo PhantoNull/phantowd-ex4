@@ -48,6 +48,22 @@ func TestObserveSetAliasesAndClones(t *testing.T) {
 	}
 }
 
+func TestObserveBlockSetRejectsNonBlockDescriptor(t *testing.T) {
+	source, helper := fixture(t, successScript())
+	snapshot, err := observeBlockSet(context.Background(), []BlockDeviceSource{{
+		File: source,
+		Generation: BlockDeviceGeneration{
+			Major: 8, Minor: 0, DiskSequence: 1,
+		},
+	}}, helper, time.Second)
+	if !errors.Is(err, ErrUnsafe) || len(snapshot.Results()) != 0 {
+		t.Fatal("regular image accepted as a generation-bound block device", snapshot, err)
+	}
+	if _, err := source.Stat(); err != nil {
+		t.Fatal("caller descriptor was closed", err)
+	}
+}
+
 func TestObserveSetNoPartialResults(t *testing.T) {
 	a, helper := fixture(t, successScript())
 	for _, sources := range [][]*os.File{nil, {a, nil}, make([]*os.File, MaxSources+1)} {

@@ -180,7 +180,7 @@ while [ "$attempt" -lt 120 ]; do
             echo 'Missing unmounted metadata probe assertion' >&2
             exit 1
         fi
-        if ! grep -F 'PHANTOWD_VOLUME_SET_READY cloned_uuid=true aliases_deduplicated=true unobserved_not_absent=true scope=provided-descriptors-only' "$log_file" >/dev/null; then
+        if ! grep -F 'PHANTOWD_VOLUME_SET_READY cloned_uuid=true aliases_deduplicated=true generation_bound=true stale_generation_refused=true unobserved_not_absent=true scope=provided-descriptors-only' "$log_file" >/dev/null; then
             echo 'Missing unmounted probe-set identity assertions' >&2
             exit 1
         fi

@@ -249,6 +249,12 @@ and refuses non-Versatile PB machines. See the
   assembles or mounts storage, or performs reboot, firmware install or update
   operations. Configuration writes are limited to account setup and the
   explicitly enabled development policy backend described above.
+- A separate internal descriptor-probe path binds caller-opened, read-only
+  whole-disk descriptors to an observed major/minor and kernel `diskseq` using
+  `BLKGETDISKSEQ`, before and after the set. The caller must classify
+  non-partition devices and establish unmounted state. It is not wired to the
+  HTTP inventory and confers no media-use authorization; see the
+  [probe contract](volumeprobe/README.md).
 - `flashable` and `hardware_validated` are always false; the target is explicitly
   `qemu-armv5`. These identifiers are not automatic hardware detection.
 
