@@ -680,8 +680,14 @@ These features are separate scope, not shortcuts around core acceptance:
    broker requires `no_new_privs`, has no effective/permitted/inheritable
    capabilities and no supplementary groups beyond the read-only device group.
    `support/test-api.ps1` passes, including host tests, `go vet` and ARMv5
-   cross-compilation. Exact-head QEMU run `36351721283` is queued; broker,
-   permission and hotplug assertions have not run yet. The broker
+   cross-compilation. Exact-head run `36351721283` stopped at ShellCheck before
+   Buildroot/QEMU; after that correction, run `36352025545` failed during guest
+   startup after about 81 minutes, before broker assertions. Its log reported
+   the absent broker user/group and `/dev/null` access failure. The working
+   tree now has a multiline Buildroot account table, idempotent BusyBox mdev
+   rule merge and early `/dev/null` mode normalization; focused static and API
+   tests pass, but these fixes are not yet pushed or QEMU-qualified. Broker,
+   permission and hotplug assertions remain outstanding. The broker
    observes only its own mount namespace and does not read disk content; this
    does not imply exclusivity or authorize later probing, mounting, import or
    mutation. Keep SATA/libata hardware qualification, bay mapping, stable

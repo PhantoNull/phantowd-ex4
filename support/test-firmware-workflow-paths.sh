@@ -288,4 +288,6 @@ if grep -F "      - 'src/phantowd-api/**'" "$qemu_workflow" >/dev/null; then
     exit 1
 fi
 
+sh "$repo_root/support/tests/test-storage-broker-buildroot.sh"
+
 printf 'Firmware workflow path-contract tests passed\n'

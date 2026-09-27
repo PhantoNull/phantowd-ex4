@@ -8,6 +8,10 @@ case "$1" in
             echo 'Refusing storage device rules without devtmpfs'
             exit 1
         fi
+        if [ ! -c /dev/null ] || [ -L /dev/null ] || ! chmod 0666 /dev/null; then
+            echo 'Refusing to start services without a usable /dev/null'
+            exit 1
+        fi
         : > /dev/mdev.seq || exit 1
         if ! start-stop-daemon --start --background --make-pidfile \
             --pidfile "$PIDFILE" --exec /sbin/mdev -- -df; then
