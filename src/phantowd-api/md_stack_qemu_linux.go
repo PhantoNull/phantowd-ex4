@@ -283,19 +283,23 @@ func runQEMUStorageUtility(name string, timeout time.Duration, args ...string) e
 		}
 	}
 	if executable == "" {
-		return errors.New("fixed QEMU storage utility is unavailable")
+		return fmt.Errorf("fixed QEMU storage utility %s is unavailable", name)
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 	command := exec.CommandContext(ctx, executable, args...)
 	command.Env = []string{"PATH=/usr/sbin:/sbin:/usr/bin:/bin", "HOME=/", "LC_ALL=C", "MDADM_NO_SYSTEMCTL=1"}
 	command.Stdout = io.Discard
-	command.Stderr = io.Discard
+	var diagnostic qemuUtilityDiagnostic
+	command.Stderr = &diagnostic
 	if err := command.Run(); err != nil {
 		if ctx.Err() != nil {
-			return errors.New("fixed QEMU storage utility timed out")
+			return fmt.Errorf("fixed QEMU storage utility %s timed out", name)
 		}
-		return errors.New("fixed QEMU storage utility failed")
+		if detail := diagnostic.String(); detail != "" {
+			return fmt.Errorf("fixed QEMU storage utility %s failed (%v): %s", name, err, detail)
+		}
+		return fmt.Errorf("fixed QEMU storage utility %s failed: %w", name, err)
 	}
 	return nil
 }
