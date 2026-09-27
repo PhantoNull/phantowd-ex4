@@ -270,6 +270,12 @@ are missing. **Depends on:** M1; M7 for hardware.
   kernel observations; bind open descriptors to the observed generation and
   inventory. Distinguish excluded, absent, unreadable and ambiguous devices.
   An unreadable candidate makes the relevant assessment incomplete, not unique.
+  A host-side `OrderCompleteBlockSources` matcher now checks exact cardinality,
+  unique generation tuples, and one source per observed tuple, then orders
+  sources against the caller-provided list. It does not establish that list's
+  completeness or verify descriptor identity; `ObserveBlockSet` performs the
+  latter generation checks, while trusted enumeration/eligibility/unmounted
+  qualification remain unimplemented.
 - **M3.2 — Resolve stable identity.** Correlate device, partition, MD and filesystem
   identifiers; distinguish two descriptors for one object from two cloned
   filesystems. Never prove uniqueness from only the devices supplied by a caller.
@@ -635,6 +641,13 @@ These features are separate scope, not shortcuts around core acceptance:
    API test binary cross-compiled. The fixed QEMU smoke checks aliases, cloned
    UUIDs and stale-generation refusal, but has not yet run; HTTP discovery
    remains sysfs-only and no mount authority is added.
+   A further host-only matcher now requires one source for every tuple in an
+   explicitly supplied non-nil inventory, rejects duplicate inventory entries,
+   reused Go file objects and omitted/extra sources, and returns inventory order.
+   Its tests pass with the full host suite and ARMv5 cross-compilation. This
+   still does not prove the inventory itself complete or establish descriptor
+   identity; callers must qualify enumeration and pass the result through
+   `ObserveBlockSet`. No discovery broker or mount lifecycle is implemented.
 5. **M4.1:** define and test the activation plan against qualified fixture volumes;
    add the daemon owner only after preconditions and lifecycle are demonstrable.
 6. **M5:** expose completed backend outcomes incrementally, with disabled controls

@@ -23,6 +23,45 @@ type BlockDeviceSource struct {
 	Generation BlockDeviceGeneration
 }
 
+// OrderCompleteBlockSources pairs exactly one descriptor source with every
+// generation in an explicitly observed inventory, preserving inventory order.
+// It only checks caller-provided metadata: callers must still verify each
+// descriptor against the kernel and establish that the inventory is complete,
+// eligible, and safe to inspect before using ObserveBlockSet.
+func OrderCompleteBlockSources(
+	inventory []BlockDeviceGeneration,
+	sources []BlockDeviceSource,
+) ([]BlockDeviceSource, error) {
+	if inventory == nil || sources == nil || len(inventory) > MaxSources || len(sources) > MaxSources || len(inventory) != len(sources) || !validGenerationSet(inventory) {
+		return nil, ErrUnsafe
+	}
+
+	indices := make(map[BlockDeviceGeneration]int, len(inventory))
+	for index, generation := range inventory {
+		if _, exists := indices[generation]; exists {
+			return nil, ErrUnsafe
+		}
+		indices[generation] = index
+	}
+
+	ordered := make([]BlockDeviceSource, len(inventory))
+	seenGenerations := make(map[BlockDeviceGeneration]bool, len(sources))
+	seenFiles := make(map[*os.File]bool, len(sources))
+	for _, source := range sources {
+		index, observed := indices[source.Generation]
+		if !observed || source.File == nil || seenGenerations[source.Generation] || seenFiles[source.File] {
+			return nil, ErrUnsafe
+		}
+		seenGenerations[source.Generation] = true
+		seenFiles[source.File] = true
+		ordered[index] = source
+	}
+	if len(seenGenerations) != len(inventory) {
+		return nil, ErrUnsafe
+	}
+	return ordered, nil
+}
+
 type objectKey struct {
 	kind                     string
 	device, inode, rawDevice uint64

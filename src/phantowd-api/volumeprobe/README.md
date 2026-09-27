@@ -66,6 +66,19 @@ unmounted state and stable topology. It is not mount authorization.
 The set-level timeout, single-slot limit, caller ownership and shared-offset
 requirements are the same as `ObserveSet`.
 
+`OrderCompleteBlockSources(inventory, sources)` is a portable matcher for the
+caller's already-observed generation list and already-open descriptor records.
+It requires non-nil inputs, exact cardinality (bounded by `MaxSources`), valid
+unique inventory generations and exactly one non-nil `*os.File` object per
+generation; it rejects subsets, extras, duplicate generations and a Go file
+object reused for multiple generations. The returned records follow inventory
+order. Explicitly empty non-nil inputs are accepted. This helper compares only
+the supplied metadata: it cannot prove that kernel enumeration was complete,
+that devices are eligible or unmounted, or that a file descriptor actually
+refers to its claimed generation. Callers must establish those discovery
+preconditions and then use `ObserveBlockSet` for the descriptor `fstat` and
+`BLKGETDISKSEQ` checks. It is not itself discovery or mount authorization.
+
 `MatchUUID` reports `not-observed`, `one-object` or `conflicting-objects` only
 within that set. Regular-image hard links share an object key (device/inode);
 block-node aliases share a key (rdev). Different objects with the same UUID

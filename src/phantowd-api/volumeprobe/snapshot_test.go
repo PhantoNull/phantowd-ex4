@@ -4,10 +4,118 @@
 package volumeprobe
 
 import (
+	"errors"
+	"os"
 	"reflect"
 	"strings"
 	"testing"
 )
+
+func TestOrderCompleteBlockSourcesAgainstObservedInventory(t *testing.T) {
+	newSource := func() *os.File {
+		t.Helper()
+		file, err := os.CreateTemp(t.TempDir(), "block-source")
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() { file.Close() })
+		return file
+	}
+	generationA := BlockDeviceGeneration{Major: 8, Minor: 16, DiskSequence: 101}
+	generationB := BlockDeviceGeneration{Major: 8, Minor: 32, DiskSequence: 102}
+	generationC := BlockDeviceGeneration{Major: 8, Minor: 48, DiskSequence: 103}
+	fileA, fileB, fileC := newSource(), newSource(), newSource()
+	for _, test := range []struct {
+		name      string
+		inventory []BlockDeviceGeneration
+		sources   []BlockDeviceSource
+		want      []*os.File
+		wantError bool
+	}{
+		{
+			name:      "reorders a complete set to inventory order",
+			inventory: []BlockDeviceGeneration{generationA, generationB},
+			sources:   []BlockDeviceSource{{File: fileB, Generation: generationB}, {File: fileA, Generation: generationA}},
+			want:      []*os.File{fileA, fileB},
+		},
+		{
+			name:      "rejects an omitted device",
+			inventory: []BlockDeviceGeneration{generationA, generationB},
+			sources:   []BlockDeviceSource{{File: fileA, Generation: generationA}},
+			wantError: true,
+		},
+		{
+			name:      "rejects an unobserved device",
+			inventory: []BlockDeviceGeneration{generationA, generationB},
+			sources:   []BlockDeviceSource{{File: fileA, Generation: generationA}, {File: fileC, Generation: generationC}},
+			wantError: true,
+		},
+		{
+			name:      "rejects an inventory alias",
+			inventory: []BlockDeviceGeneration{generationA, generationA},
+			sources:   []BlockDeviceSource{{File: fileA, Generation: generationA}, {File: fileC, Generation: generationA}},
+			wantError: true,
+		},
+		{
+			name:      "rejects one descriptor assigned to distinct devices",
+			inventory: []BlockDeviceGeneration{generationA, generationB},
+			sources:   []BlockDeviceSource{{File: fileA, Generation: generationA}, {File: fileA, Generation: generationB}},
+			wantError: true,
+		},
+		{
+			name:      "accepts an explicitly empty inventory",
+			inventory: []BlockDeviceGeneration{},
+			sources:   []BlockDeviceSource{},
+			want:      []*os.File{},
+		},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			ordered, err := OrderCompleteBlockSources(test.inventory, test.sources)
+			if test.wantError {
+				if !errors.Is(err, ErrUnsafe) || ordered != nil {
+					t.Fatalf("incomplete or conflicting set was accepted: %+v %v", ordered, err)
+				}
+				return
+			}
+			if err != nil || len(ordered) != len(test.want) {
+				t.Fatalf("complete set failed: %+v %v", ordered, err)
+			}
+			for index, source := range ordered {
+				if source.File != test.want[index] || source.Generation != test.inventory[index] {
+					t.Fatalf("source %d not bound to inventory order: %+v", index, source)
+				}
+			}
+		})
+	}
+	if _, err := OrderCompleteBlockSources(nil, []BlockDeviceSource{}); !errors.Is(err, ErrUnsafe) {
+		t.Fatalf("nil inventory must not stand in for an observed empty set: %v", err)
+	}
+	if _, err := OrderCompleteBlockSources([]BlockDeviceGeneration{}, nil); !errors.Is(err, ErrUnsafe) {
+		t.Fatalf("nil sources must not stand in for an explicitly empty descriptor set: %v", err)
+	}
+}
+
+func TestOrderCompleteBlockSourcesRejectsOversizedInventory(t *testing.T) {
+	inventory := make([]BlockDeviceGeneration, MaxSources+1)
+	sources := make([]BlockDeviceSource, MaxSources+1)
+	for index := range inventory {
+		file, err := os.CreateTemp(t.TempDir(), "block-source")
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() { file.Close() })
+		inventory[index] = BlockDeviceGeneration{
+			Major:        8,
+			Minor:        uint32(index),
+			DiskSequence: uint64(index + 1),
+		}
+		sources[index] = BlockDeviceSource{File: file, Generation: inventory[index]}
+	}
+	ordered, err := OrderCompleteBlockSources(inventory, sources)
+	if !errors.Is(err, ErrUnsafe) || ordered != nil {
+		t.Fatalf("oversized inventory must be refused atomically: %d sources, %v", len(ordered), err)
+	}
+}
 
 func TestValidGenerationSet(t *testing.T) {
 	deviceA := BlockDeviceGeneration{Major: 8, Minor: 16, DiskSequence: 101}
