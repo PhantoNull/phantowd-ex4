@@ -263,6 +263,77 @@ func TestStorageEndpointIsReadOnlyAndFailClosed(t *testing.T) {
 	}
 }
 
+func TestStorageEndpointReportsDuplicateVPDAsAmbiguousWithoutValues(t *testing.T) {
+	naaA := []byte{0x50, 0x0f, 0, 0, 0, 0, 0, 1}
+	naaB := []byte{0x50, 0x0f, 0, 0, 0, 0, 0, 2}
+	for _, test := range []struct {
+		name       string
+		serialA    string
+		serialB    string
+		wwnA       []byte
+		wwnB       []byte
+		wantSerial identityStatus
+		wantWWN    identityStatus
+	}{
+		{
+			name: "duplicate serial", serialA: "http-private-serial-shared", serialB: "http-private-serial-shared",
+			wwnA: naaA, wwnB: naaB, wantSerial: identityAmbiguous, wantWWN: identityPresent,
+		},
+		{
+			name: "duplicate WWN", serialA: "http-private-serial-a", serialB: "http-private-serial-b",
+			wwnA: naaA, wwnB: naaA, wantSerial: identityPresent, wantWWN: identityAmbiguous,
+		},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			sysfs := fixtureSysfs()
+			addNonPartitionBlockNode(sysfs, "sdb", 8, 16, test.serialB, test.wwnB)
+			sysfs["class/block/sda/device/vpd_pg80"] = &fstest.MapFile{Data: makeVPDPage(0x80, []byte(test.serialA))}
+			sysfs["class/block/sda/device/vpd_pg83"] = &fstest.MapFile{Data: makeNAAPage(test.wwnA)}
+			auth, cookie := newTestAuth(t)
+			handler := newHandler(nil, func() (storageSnapshot, error) {
+				return collectStorage(sysfs)
+			}, auth)
+			request := loopbackRequest(http.MethodGet, "/api/v1/storage", nil)
+			request.AddCookie(cookie)
+			response := httptest.NewRecorder()
+			handler.ServeHTTP(response, request)
+			if response.Code != http.StatusOK || !json.Valid(response.Body.Bytes()) {
+				t.Fatalf("storage API request failed: status=%d body=%s", response.Code, response.Body.String())
+			}
+
+			var snapshot storageSnapshot
+			if err := json.Unmarshal(response.Body.Bytes(), &snapshot); err != nil {
+				t.Fatal(err)
+			}
+			if !snapshot.InventoryReadOnly || snapshot.BlockDevicesOpened || snapshot.ContentRead ||
+				snapshot.MutationsPerformed || snapshot.StableIdentityAvailable {
+				t.Fatalf("storage API overstated its observation: %+v", snapshot)
+			}
+			var found int
+			for _, observation := range snapshot.Observations {
+				if observation.Name != "sda" && observation.Name != "sdb" {
+					continue
+				}
+				found++
+				if observation.SerialStatus != test.wantSerial || observation.WWNStatus != test.wantWWN {
+					t.Fatalf("API did not publish duplicate status for %s: %+v", observation.Name, observation)
+				}
+			}
+			if found != 2 {
+				t.Fatalf("expected both fixture block nodes in API response, found %d", found)
+			}
+			for _, secret := range []string{
+				test.serialA, test.serialB,
+				"500f000000000001", "500f000000000002",
+			} {
+				if strings.Contains(response.Body.String(), secret) {
+					t.Fatalf("storage API leaked VPD value %q: %s", secret, response.Body.String())
+				}
+			}
+		})
+	}
+}
+
 func TestMDArrayEndpointIsAuthenticatedReadOnlyAndBounded(t *testing.T) {
 	auth, cookie := newTestAuth(t)
 	calls := 0

@@ -73,6 +73,9 @@ func collectStorage(sysfs fs.FS) (storageSnapshot, error) {
 		Limitations: []string{
 			"kernel names and major/minor numbers are current observations, not stable identities",
 			"raw serial and WWN values are never returned; only SCSI VPD availability and validation states are reported",
+			"duplicate valid serial or NAA WWN values among enumerated " +
+				"non-partition block nodes are marked ambiguous; aliases and " +
+				"multipath topology are not resolved",
 			"PARTUUID, filesystem UUID, RAID membership, health and bay mapping are not collected",
 			"no block device is opened and no disk content is read, assembled, mounted or modified",
 			"this development endpoint is not a WD-layout support decision or migration authorization",
@@ -87,6 +90,8 @@ func collectStorage(sysfs fs.FS) (storageSnapshot, error) {
 	}
 	sort.Slice(entries, func(i, j int) bool { return entries[i].Name() < entries[j].Name() })
 	seen := make(map[string]bool, len(entries))
+	serialObservations := make(map[string][]int)
+	wwnObservations := make(map[string][]int)
 	for _, entry := range entries {
 		name := entry.Name()
 		if !validBlockName(name) || seen[name] {
@@ -135,30 +140,56 @@ func collectStorage(sysfs fs.FS) (storageSnapshot, error) {
 			return snapshot, errors.New("cannot read sysfs partition number")
 		}
 		if observation.Kind == "block" {
-			observation.SerialStatus = observeSCSISerial(sysfs, base+"device/vpd_pg80")
-			observation.WWNStatus = observeSCSIWWN(sysfs, base+"device/vpd_pg83")
+			serial, status := observeSCSISerial(sysfs, base+"device/vpd_pg80")
+			observation.SerialStatus = status
+			if status == identityPresent {
+				serialObservations[serial] = append(serialObservations[serial], len(snapshot.Observations))
+			}
+			wwn, status := observeSCSIWWN(sysfs, base+"device/vpd_pg83")
+			observation.WWNStatus = status
+			if status == identityPresent {
+				wwnObservations[wwn] = append(wwnObservations[wwn], len(snapshot.Observations))
+			}
 		}
 		snapshot.Observations = append(snapshot.Observations, observation)
 	}
+	markDuplicateIdentities(snapshot.Observations, serialObservations, func(observation *blockObservation) *identityStatus {
+		return &observation.SerialStatus
+	})
+	markDuplicateIdentities(snapshot.Observations, wwnObservations, func(observation *blockObservation) *identityStatus {
+		return &observation.WWNStatus
+	})
 	snapshot.DeviceCount = len(snapshot.Observations)
 	return snapshot, nil
 }
 
-func observeSCSISerial(source fs.FS, path string) identityStatus {
-	page, status := readSCSVPDPage(source, path, 0x80)
-	if status != identityPresent {
-		return status
+func markDuplicateIdentities(observations []blockObservation, matches map[string][]int, statusField func(*blockObservation) *identityStatus) {
+	for _, indices := range matches {
+		if len(indices) < 2 {
+			continue
+		}
+		for _, index := range indices {
+			if index >= 0 && index < len(observations) {
+				*statusField(&observations[index]) = identityAmbiguous
+			}
+		}
 	}
-	return parseSerialVPDPage(page)
 }
 
-func observeSCSIWWN(source fs.FS, path string) identityStatus {
+func observeSCSISerial(source fs.FS, path string) (string, identityStatus) {
+	page, status := readSCSVPDPage(source, path, 0x80)
+	if status != identityPresent {
+		return "", status
+	}
+	return parseSerialVPDValue(page)
+}
+
+func observeSCSIWWN(source fs.FS, path string) (string, identityStatus) {
 	page, status := readSCSVPDPage(source, path, 0x83)
 	if status != identityPresent {
-		return status
+		return "", status
 	}
-	_, status = parseNAAWWNPage(page)
-	return status
+	return parseNAAWWNPage(page)
 }
 
 func readSCSVPDPage(source fs.FS, path string, pageCode byte) ([]byte, identityStatus) {
@@ -184,19 +215,25 @@ func readSCSVPDPage(source fs.FS, path string, pageCode byte) ([]byte, identityS
 }
 
 func parseSerialVPDPage(page []byte) identityStatus {
+	_, status := parseSerialVPDValue(page)
+	return status
+}
+
+func parseSerialVPDValue(page []byte) (string, identityStatus) {
 	payload, ok := vpdPayload(page, 0x80)
 	if !ok || len(payload) == 0 {
-		return identityInvalid
+		return "", identityInvalid
 	}
 	for _, value := range payload {
 		if value < 0x20 || value > 0x7e {
-			return identityInvalid
+			return "", identityInvalid
 		}
 	}
-	if strings.TrimSpace(string(payload)) == "" {
-		return identityInvalid
+	value := strings.TrimSpace(string(payload))
+	if value == "" {
+		return "", identityInvalid
 	}
-	return identityPresent
+	return value, identityPresent
 }
 
 // parseNAAWWNPage returns a canonical value only to its caller. Public API

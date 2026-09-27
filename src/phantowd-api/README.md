@@ -265,7 +265,7 @@ and refuses non-Versatile PB machines. See the
 | `GET /api/v1/file-services/configuration` | Authenticated combined desired policy; development backend only, uninitialized state remains explicit |
 | `PUT /api/v1/file-services/configuration` | Development-only, Origin/CSRF-protected full revision commit; never activation |
 | `GET /api/v1/system` | Authenticated versioned JSON: observation time, kernel, architecture/GOARM, uptime, total/available memory, effective UID, development safety flags |
-| `GET /api/v1/storage` | Authenticated, sorted, bounded kernel block-node observations from sysfs: name, major/minor, 512-byte-sector capacity, read-only/removable flags, partition number, and whole-disk `serial_status` / `wwn_status` when applicable |
+| `GET /api/v1/storage` | Authenticated, sorted, bounded kernel block-node observations from sysfs: name, major/minor, 512-byte-sector capacity, read-only/removable flags, partition number, and `serial_status` / `wwn_status` for non-partition block nodes |
 | `GET /api/v1/arrays` | Authenticated, bounded Linux MD observations from `/proc/mdstat` and `/sys/class/block`: level, state, degraded/active counts, sync action/progress, and transient member names; partial sources never become an empty/healthy claim |
 | `GET /api/v1/mounts` | Authenticated, bounded snapshot of filesystems already mounted in this process's namespace, from `/proc/self/mountinfo`; returns mount point, filesystem type, device major/minor, and the read-only mount flag while omitting source strings and raw options |
 | Wrong method on a known route | `405`, route-specific `Allow` |
@@ -276,15 +276,19 @@ and refuses non-Versatile PB machines. See the
 Only `sys/kernel/osrelease`, `uptime`, and `meminfo` beneath `/proc` are read,
 with a 64 KiB limit per file. `MemAvailable` is required; no invented fallback
 is returned. The storage endpoint reads bounded attributes beneath
-`/sys/class/block`, with a 32-entry ceiling. For whole-disk SCSI nodes it also
-reads the kernel's read-only VPD page 0x80/0x83 sysfs files, bounded to 4096
+`/sys/class/block`, with a 32-entry ceiling. For non-partition block nodes it
+also reads the kernel's read-only VPD page 0x80/0x83 sysfs files, bounded to 4096
 bytes each. It returns only `serial_status` and `wwn_status` (`unavailable`,
 `present`, `invalid`, `ambiguous`, or `unreadable`); raw serial/WWN values are
-never returned. These states validate only observed SCSI VPD metadata and do
-not establish a durable PhantoWD identity. Kernel names and major/minor numbers
-remain transient observations. The block inventory does not collect
-partition/filesystem UUIDs, bay mapping, SMART, or device health. The separate
-array endpoint reads bounded `/proc/mdstat` text and MD sysfs metadata only; it
+never returned. Duplicate valid serials or NAA WWNs among the non-partition
+block nodes visible in this snapshot are marked `ambiguous` on every matching
+entry. The sysfs category does not prove one-to-one physical-disk topology and
+does not resolve aliases or multipath paths. These states validate only observed
+SCSI VPD metadata and do not establish a durable PhantoWD
+identity. Kernel names and major/minor numbers remain transient observations.
+The block inventory does not collect partition/filesystem UUIDs, bay mapping,
+SMART, or device health. The separate array endpoint reads bounded
+`/proc/mdstat` text and MD sysfs metadata only; it
 cross-checks array names, levels, member counts and member names when both
 sources report them. Any mismatch produces partial inventory and unknown
 health, never a healthy claim. “Healthy” means only a consistent operational

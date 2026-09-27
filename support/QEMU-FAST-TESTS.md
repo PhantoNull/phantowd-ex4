@@ -48,6 +48,13 @@ before mounting it; it never formats a guest block device. The host driver
 removes only its own temporary data image after QEMU exits. The API observer
 remains read-only; fixture mutations are in a separate QEMU-only test path.
 
+The smoke also attaches a temporary blank 1-MiB read-only block node whose
+SCSI serial duplicates the root disk while its WWN remains distinct. It has no
+filesystem and is never mounted. The ARMv5 API self-test requires both nodes to
+report `serial_status=ambiguous` and `wwn_status=present`, and checks that raw
+identifiers remain redacted. This is a fixture contract until the exact smoke
+run emits `PHANTOWD_STORAGE_COLLISION_READY`.
+
 Before the first data-disk mount, a fixed guest fixture passes both unmounted
 devices to the metadata helper through O_RDONLY descriptors. It checks exact
 device numbers and the absence of both devices from the mount inventory before

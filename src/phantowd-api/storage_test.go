@@ -47,6 +47,71 @@ func TestCollectStorageReportsSysfsOnlyObservations(t *testing.T) {
 	}
 }
 
+func TestCollectStorageMarksCrossNodeVPDIdentityDuplicatesAmbiguous(t *testing.T) {
+	naaA := []byte{0x50, 0x0f, 0, 0, 0, 0, 0, 1}
+	naaB := []byte{0x50, 0x0f, 0, 0, 0, 0, 0, 2}
+	for _, test := range []struct {
+		name       string
+		serialA    string
+		serialB    string
+		wwnA       []byte
+		wwnB       []byte
+		wantSerial identityStatus
+		wantWWN    identityStatus
+	}{
+		{
+			name: "duplicate serial", serialA: "private-serial-shared", serialB: "private-serial-shared",
+			wwnA: naaA, wwnB: naaB, wantSerial: identityAmbiguous, wantWWN: identityPresent,
+		},
+		{
+			name: "duplicate WWN", serialA: "private-serial-a", serialB: "private-serial-b",
+			wwnA: naaA, wwnB: naaA, wantSerial: identityPresent, wantWWN: identityAmbiguous,
+		},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			sysfs := fixtureSysfs()
+			addNonPartitionBlockNode(sysfs, "sdb", 8, 16, test.serialB, test.wwnB)
+			// Replace sda's identifiers so each case controls both observed disks.
+			sysfs["class/block/sda/device/vpd_pg80"] = &fstest.MapFile{Data: makeVPDPage(0x80, []byte(test.serialA))}
+			sysfs["class/block/sda/device/vpd_pg83"] = &fstest.MapFile{Data: makeNAAPage(test.wwnA)}
+			snapshot, err := collectStorage(sysfs)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var nodeA, nodeB *blockObservation
+			for index := range snapshot.Observations {
+				observation := &snapshot.Observations[index]
+				if observation.Name == "sda" {
+					nodeA = observation
+				}
+				if observation.Name == "sdb" {
+					nodeB = observation
+				}
+			}
+			if nodeA == nil || nodeB == nil {
+				t.Fatalf("fixture block nodes missing from snapshot: %+v", snapshot.Observations)
+			}
+			for _, node := range []*blockObservation{nodeA, nodeB} {
+				if node.SerialStatus != test.wantSerial || node.WWNStatus != test.wantWWN {
+					t.Fatalf("duplicate state was not applied to both block nodes: %+v", node)
+				}
+			}
+			encoded, err := json.Marshal(snapshot)
+			if err != nil {
+				t.Fatal(err)
+			}
+			for _, secret := range []string{"private-serial-shared", "private-serial-a", "private-serial-b", "500f000000000001", "500f000000000002"} {
+				if strings.Contains(string(encoded), secret) {
+					t.Fatalf("duplicate-identity report leaked %q: %s", secret, encoded)
+				}
+			}
+			if snapshot.StableIdentityAvailable {
+				t.Fatal("redacted VPD collision checks must not claim stable identity is available")
+			}
+		})
+	}
+}
+
 func TestSCSIVPDIdentityParsing(t *testing.T) {
 	serialPage := makeVPDPage(0x80, []byte("PHANTOWD-QEMU-SERIAL-01"))
 	if status := parseSerialVPDPage(serialPage); status != identityPresent {
@@ -258,6 +323,18 @@ func fixtureSysfs() fstest.MapFS {
 		"class/block/sda1/removable":      {Data: []byte("0\n")},
 		"class/block/sda1/partition":      {Data: []byte("1\n")},
 	}
+}
+
+func addNonPartitionBlockNode(sysfs fstest.MapFS, name string, major, minor uint32, serial string, wwn []byte) {
+	base := "class/block/" + name
+	sysfs[base] = &fstest.MapFile{Mode: fs.ModeDir | 0o555}
+	sysfs[base+"/dev"] = &fstest.MapFile{Data: []byte(fmt.Sprintf("%d:%d\n", major, minor))}
+	sysfs[base+"/size"] = &fstest.MapFile{Data: []byte("2097152\n")}
+	sysfs[base+"/ro"] = &fstest.MapFile{Data: []byte("0\n")}
+	sysfs[base+"/removable"] = &fstest.MapFile{Data: []byte("0\n")}
+	sysfs[base+"/device"] = &fstest.MapFile{Mode: fs.ModeDir | 0o555}
+	sysfs[base+"/device/vpd_pg80"] = &fstest.MapFile{Data: makeVPDPage(0x80, []byte(serial))}
+	sysfs[base+"/device/vpd_pg83"] = &fstest.MapFile{Data: makeNAAPage(wwn)}
 }
 
 func makeVPDPage(code byte, payload []byte) []byte {

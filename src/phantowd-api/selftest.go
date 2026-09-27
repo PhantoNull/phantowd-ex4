@@ -14,6 +14,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/cookiejar"
+	"os"
 	"runtime"
 	"strings"
 	"time"
@@ -22,12 +23,13 @@ import (
 )
 
 const (
-	qemuTestSerial  = "PHANTOWD-QEMU-SERIAL-01"
-	qemuTestWWN     = "500f000000000001"
-	qemuDataSerial  = "PHANTOWD-QEMU-DATA-01"
-	qemuDataWWN     = "500f000000000002"
-	qemuCloneSerial = "PHANTOWD-QEMU-CLONE-01"
-	qemuCloneWWN    = "500f000000000003"
+	qemuTestSerial   = "PHANTOWD-QEMU-SERIAL-01"
+	qemuTestWWN      = "500f000000000001"
+	qemuDataSerial   = "PHANTOWD-QEMU-DATA-01"
+	qemuDataWWN      = "500f000000000002"
+	qemuCloneSerial  = "PHANTOWD-QEMU-CLONE-01"
+	qemuCloneWWN     = "500f000000000003"
+	qemuCollisionWWN = "500f000000000004"
 )
 
 var qemuDashboardAssets = []struct {
@@ -139,25 +141,40 @@ func runSelfTest() error {
 		storage.StableIdentityAvailable || storage.DeviceCount != len(storage.Observations) {
 		return errors.New("storage observation crossed or overstated its read-only boundary")
 	}
-	rootDiskFound := false
-	rootDiskIdentityPagesFound := false
-	for _, observation := range storage.Observations {
-		if observation.Name == "sda" && observation.Kind == "block" && observation.SizeBytes > 0 {
-			rootDiskFound = true
-			rootDiskIdentityPagesFound = observation.SerialStatus == identityPresent && observation.WWNStatus == identityPresent
+	if err := verifyQEMUBlockDevice(os.DirFS("/sys"), "sda", qemuTestSerial, qemuTestWWN); err != nil {
+		return errors.New("QEMU root SCSI identity fixture was not present")
+	}
+	if err := verifyQEMUBlockDevice(os.DirFS("/sys"), "sdd", qemuTestSerial, qemuCollisionWWN); err != nil {
+		return errors.New("QEMU duplicate SCSI identity fixture was not present")
+	}
+	var rootDisk, duplicateDisk *blockObservation
+	for index := range storage.Observations {
+		observation := &storage.Observations[index]
+		if observation.Name == "sda" {
+			rootDisk = observation
+		}
+		if observation.Name == "sdd" {
+			duplicateDisk = observation
 		}
 	}
-	if !rootDiskFound {
+	if rootDisk == nil || rootDisk.Kind != "block" || rootDisk.SizeBytes == 0 {
 		return errors.New("QEMU root block device was not observed through sysfs")
 	}
-	if !rootDiskIdentityPagesFound {
-		return errors.New("QEMU SCSI identity pages were not observed and validated through sysfs")
+	if duplicateDisk == nil || duplicateDisk.Kind != "block" || duplicateDisk.SizeBytes == 0 || !duplicateDisk.ReadOnly {
+		return errors.New("QEMU duplicate-identity block device was not observed read-only through sysfs")
+	}
+	for _, observation := range []*blockObservation{rootDisk, duplicateDisk} {
+		if observation.SerialStatus != identityAmbiguous || observation.WWNStatus != identityPresent {
+			return errors.New("duplicate QEMU serial was not isolated as ambiguous")
+		}
 	}
 	if strings.Contains(string(storageData), qemuTestSerial) || strings.Contains(string(storageData), qemuTestWWN) ||
 		strings.Contains(string(storageData), qemuDataSerial) || strings.Contains(string(storageData), qemuDataWWN) ||
-		strings.Contains(string(storageData), qemuCloneSerial) || strings.Contains(string(storageData), qemuCloneWWN) {
+		strings.Contains(string(storageData), qemuCloneSerial) || strings.Contains(string(storageData), qemuCloneWWN) ||
+		strings.Contains(string(storageData), qemuCollisionWWN) {
 		return errors.New("raw QEMU storage identifiers leaked through the API")
 	}
+	fmt.Println("PHANTOWD_STORAGE_COLLISION_READY nodes=2 serial=ambiguous wwn=present redacted=true read_only=true scope=qemu-fixture-only")
 	arraysResponse, err := client.Get("http://" + listenAddress + "/api/v1/arrays")
 	if err != nil {
 		return errors.New("array inventory loopback request failed")

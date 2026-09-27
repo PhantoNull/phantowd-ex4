@@ -28,7 +28,7 @@ cleanup() {
     fi
     # Exact regular file in a freshly created private temporary directory.
     # shellcheck disable=SC2317 # invoked through trap
-    rm -f "$fixture_dir/data.ext2" "$fixture_dir/clone.ext2"
+    rm -f "$fixture_dir/data.ext2" "$fixture_dir/clone.ext2" "$fixture_dir/collision.raw"
     # shellcheck disable=SC2317 # invoked through trap
     rmdir "$fixture_dir"
 }
@@ -40,6 +40,9 @@ mkfs.ext2 -q -F -U 11111111-2222-3333-4444-555555555555 \
 # A separate virtual device with the SAME filesystem UUID exercises ambiguity.
 # Both files are disposable; the clone is presented read-only to the guest.
 cp "$fixture_dir/data.ext2" "$fixture_dir/clone.ext2"
+# A separate read-only virtual block node intentionally duplicates the root
+# disk's VPD serial but has its own WWN. Its blank backing file is never mounted.
+truncate -s 1M "$fixture_dir/collision.raw"
 
 : > "$log_file"
 "$qemu_binary" \
@@ -55,6 +58,8 @@ cp "$fixture_dir/data.ext2" "$fixture_dir/clone.ext2"
     -device "scsi-hd,bus=scsi0.0,drive=testdisk,serial=PHANTOWD-QEMU-DATA-01,wwn=0x500f000000000002" \
     -drive "file=$fixture_dir/clone.ext2,if=none,id=clonedisk,format=raw,readonly=on" \
     -device "scsi-hd,bus=scsi0.0,drive=clonedisk,serial=PHANTOWD-QEMU-CLONE-01,wwn=0x500f000000000003" \
+    -drive "file=$fixture_dir/collision.raw,if=none,id=collisiondisk,format=raw,readonly=on" \
+    -device "scsi-hd,bus=scsi0.0,drive=collisiondisk,serial=PHANTOWD-QEMU-SERIAL-01,wwn=0x500f000000000004" \
     -object rng-random,id=rng0,filename=/dev/urandom \
     -device virtio-rng-pci,rng=rng0 \
     -snapshot \
@@ -83,6 +88,10 @@ while [ "$attempt" -lt 120 ]; do
         fi
         if ! grep -F 'PHANTOWD_API_READY target=qemu-armv5 goarm=5' "$log_file" >/dev/null; then
             echo "Missing ARMv5 diagnostics API assertion" >&2
+            exit 1
+        fi
+        if ! grep -F 'PHANTOWD_STORAGE_COLLISION_READY nodes=2 serial=ambiguous wwn=present redacted=true read_only=true scope=qemu-fixture-only' "$log_file" >/dev/null; then
+            echo "Missing ARMv5 duplicate storage-identity assertion" >&2
             exit 1
         fi
         if ! grep -F 'PHANTOWD_SHARE_POLICY_READY schema=1 scope=synthetic-policy-only' "$log_file" >/dev/null; then

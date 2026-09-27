@@ -601,7 +601,11 @@ These features are separate scope, not shortcuts around core acceptance:
 3. **M1.3 / M2.4:** implement explicit credential intent/reconciliation around the
    qualified primitive. Preserve uncertainty; do not persist/replay secrets.
 4. **M3.1–M3.2:** implement a complete trusted discovery snapshot and collision
-   assessment using existing descriptor tools; no automatic mounts/import.
+   assessment using existing descriptor tools; no automatic mounts/import. A
+   first slice now marks duplicate valid SCSI VPD serials/NAA WWNs ambiguous in
+   the bounded read-only API, with collector/HTTP host tests and ARMv5 compile
+   checks. The QEMU smoke harness now carries a read-only duplicate-serial test
+   node; its actual target run is still required before claiming runtime coverage.
 5. **M4.1:** define and test the activation plan against qualified fixture volumes;
    add the daemon owner only after preconditions and lifecycle are demonstrable.
 6. **M5:** expose completed backend outcomes incrementally, with disabled controls
