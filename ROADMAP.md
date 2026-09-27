@@ -276,16 +276,21 @@ are missing. **Depends on:** M1; M7 for hardware.
   The read-only API marks every enumerated whole-disk node sharing a valid
   SCSI VPD serial or NAA WWN as `ambiguous`, without returning raw values.
   It rechecks fixed metadata and disk generations before publishing an
-  all-or-error snapshot. `OpenObservedBlockSources` opens only fixed `/dev`
+  all-or-error schema-v2 snapshot. Partition entries expose `parent_name`,
+  `parent_major`, and `parent_minor` as current topology only; parent diskseq
+  remains internal, and these values are not stable identity or authorization.
+  `OpenObservedBlockSources` is a separate fixed-path opener that accepts only
+  kernel names plus major/minor/diskseq from its caller, opens fixed `/dev`
   paths read-only/no-follow, validates major/minor and `BLKGETDISKSEQ`, and
   cleans up every partially opened descriptor on failure. The complete-set
   matcher rejects omitted, extra, duplicate, or reused sources and orders the
   validated set. The storage collector internally resolves each partition to
   exactly one observed whole-disk sysfs target and rechecks that link; the
-  relation is omitted from API v1. The QEMU fixture now detects mounts on a
-  selected virtual disk or its directly observed partitions. This is fixture
-  coverage only. The current feature-branch increment also validates bounded,
-  reciprocal sysfs `holders`/`slaves` links against the complete inventory and
+  relation is exposed only as the schema-v2 partition-parent tuple. The QEMU
+  fixture now detects mounts on a selected virtual disk or its directly
+  observed partitions. This is fixture coverage only. The implementation
+  also validates bounded, reciprocal sysfs `holders`/`slaves` links against
+  the complete inventory and
   follows transient slave/partition-parent links when correlating mountinfo to
   a selected disk. A generated host test covers a synthetic
   disk-to-partition-to-MD-to-device-mapper chain and a multi-member MD mount.
@@ -294,9 +299,9 @@ are missing. **Depends on:** M1; M7 for hardware.
   both backing disks are attributed (and an unrelated disk is not), then
   ordinarily unmounts and stops the array. It is isolated to the QEMU profile;
   it does not instantiate a guest device-mapper chain, prove global unmounted
-  state/exclusive access, or qualify production discovery. The current exact-
-  head CI for this fixture is pending. The prior code commit `2059a93` passed
-  exact-head
+  state/exclusive access, or qualify production discovery. The exact-head
+  QEMU workflow includes this fixture; its current status is shown in the PR
+  checks. The prior code commit `2059a93` passed exact-head
   host and ARMv5 QEMU CI (`36302718909`, `36302718920`). These primitives do not
   establish trusted enumeration, eligibility, inventory completeness, or
   atomic hotplug consistency; no discovery broker or mount authority exists.

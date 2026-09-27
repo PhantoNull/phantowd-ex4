@@ -43,12 +43,12 @@ type blockObservation struct {
 	ReadOnly        bool               `json:"read_only"`
 	Removable       bool               `json:"removable"`
 	PartitionNumber uint32             `json:"partition_number,omitempty"`
+	ParentName      string             `json:"parent_name,omitempty"`
+	ParentMajor     *uint32            `json:"parent_major,omitempty"`
+	ParentMinor     *uint32            `json:"parent_minor,omitempty"`
 	SerialStatus    identityStatus     `json:"serial_status,omitempty"`
 	WWNStatus       identityStatus     `json:"wwn_status,omitempty"`
 	diskSequence    uint64             `json:"-"`
-	parentName      string             `json:"-"`
-	parentMajor     uint32             `json:"-"`
-	parentMinor     uint32             `json:"-"`
 	parentDiskSeq   uint64             `json:"-"`
 	lowerBlocks     []blockTopologyRef `json:"-"`
 }
@@ -81,7 +81,7 @@ type storageSnapshot struct {
 // state.
 func collectStorage(sysfs fs.FS) (snapshot storageSnapshot, err error) {
 	snapshot = storageSnapshot{
-		SchemaVersion:           1,
+		SchemaVersion:           2,
 		Scope:                   "kernel-sysfs-only",
 		InventoryReadOnly:       true,
 		BlockDevicesOpened:      false,
@@ -98,8 +98,9 @@ func collectStorage(sysfs fs.FS) (snapshot storageSnapshot, err error) {
 			"whole-disk kernel generations are checked before and after each " +
 				"observation; the generation is transient and is never returned as " +
 				"persistent identity",
-			"partition parents are correlated through validated sysfs class-link " +
-				"targets internally; this transient topology is not returned",
+			"partition parent name and major/minor are current sysfs topology in " +
+				"schema v2, not durable identity; parent disk sequence is validated " +
+				"internally but not returned",
 			"block holder/slave relationships are validated internally and are " +
 				"not returned as persistent identity or mount authorization",
 			"block metadata is re-read before publication to reject observed " +
@@ -377,8 +378,8 @@ func sameBlockObservation(a, b blockObservation) bool {
 		a.SizeBytes != b.SizeBytes || a.ReadOnly != b.ReadOnly || a.Removable != b.Removable ||
 		a.PartitionNumber != b.PartitionNumber || a.SerialStatus != b.SerialStatus ||
 		a.WWNStatus != b.WWNStatus || a.diskSequence != b.diskSequence ||
-		a.parentName != b.parentName || a.parentMajor != b.parentMajor ||
-		a.parentMinor != b.parentMinor || a.parentDiskSeq != b.parentDiskSeq ||
+		a.ParentName != b.ParentName || !sameOptionalUint32(a.ParentMajor, b.ParentMajor) ||
+		!sameOptionalUint32(a.ParentMinor, b.ParentMinor) || a.parentDiskSeq != b.parentDiskSeq ||
 		len(a.lowerBlocks) != len(b.lowerBlocks) {
 		return false
 	}
@@ -436,12 +437,21 @@ func correlateStoragePartitionParents(observations []blockObservation, metadata 
 		}
 		parentIndex := parents[0]
 		parent := metadata[parentIndex]
-		observations[index].parentName = observations[parentIndex].Name
-		observations[index].parentMajor = parent.major
-		observations[index].parentMinor = parent.minor
+		parentMajor := parent.major
+		parentMinor := parent.minor
+		observations[index].ParentName = observations[parentIndex].Name
+		observations[index].ParentMajor = &parentMajor
+		observations[index].ParentMinor = &parentMinor
 		observations[index].parentDiskSeq = parent.diskSequence
 	}
 	return nil
+}
+
+func sameOptionalUint32(a, b *uint32) bool {
+	if a == nil || b == nil {
+		return a == nil && b == nil
+	}
+	return *a == *b
 }
 
 func sameBlockInventory(before, after []fs.DirEntry) bool {

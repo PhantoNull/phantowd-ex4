@@ -279,7 +279,7 @@ and refuses non-Versatile PB machines. See the
 | `GET /api/v1/file-services/configuration` | Authenticated combined desired policy; development backend only, uninitialized state remains explicit |
 | `PUT /api/v1/file-services/configuration` | Development-only, Origin/CSRF-protected full revision commit; never activation |
 | `GET /api/v1/system` | Authenticated versioned JSON: observation time, kernel, architecture/GOARM, uptime, total/available memory, effective UID, development safety flags |
-| `GET /api/v1/storage` | Authenticated, sorted, bounded kernel block-node observations from sysfs: name, major/minor, 512-byte-sector capacity, read-only/removable flags, partition number, and `serial_status` / `wwn_status` for non-partition block nodes |
+| `GET /api/v1/storage` | Authenticated, sorted, bounded kernel block-node observations, schema v2: name, major/minor, 512-byte-sector capacity, read-only/removable flags, partition number, transient parent name/major/minor for partitions, and `serial_status` / `wwn_status` for non-partition block nodes |
 | Incomplete or inconsistent storage inventory | `503 storage_unavailable`; no partial observations, raw identifiers or sysfs paths |
 | `GET /api/v1/arrays` | Authenticated, bounded Linux MD observations from `/proc/mdstat` and `/sys/class/block`: level, state, degraded/active counts, sync action/progress, and transient member names; partial sources never become an empty/healthy claim |
 | `GET /api/v1/mounts` | Authenticated, bounded snapshot of filesystems already mounted in this process's namespace, from `/proc/self/mountinfo`; returns mount point, filesystem type, device major/minor, and the read-only mount flag while omitting source strings and raw options |
@@ -310,16 +310,19 @@ generic `503 storage_unavailable`. An unavailable/unreadable VPD page remains
 an explicit identity status, not a unique-identity claim.
 Each `/sys/class/block` link target is bounded, validated as a relative path
 inside `/devices/`, and re-read as part of the consistency check. Every
-enumerated partition must resolve to exactly one enumerated whole-disk parent;
-that transient parent name, device number and generation are retained only
-internally and are not part of the API response. Missing, ambiguous or changed
-parent topology rejects the complete snapshot. The collector also reads bounded
-sysfs `holders` links for each block node and `slaves` links for each whole
-block node, resolves both against the complete inventory and requires reciprocal
-relationships. That transient graph is re-read before publication and omitted
-from API v1; missing, unobserved, non-reciprocal or changed links reject the
-complete snapshot. The mount-assessment fixture follows partition parents and
-transitive slave relationships so a visible MD/device-mapper mount can be
+enumerated partition must resolve to exactly one enumerated whole-disk parent.
+Schema v2 exposes that transient relation as `parent_name`, `parent_major`, and
+`parent_minor` on partition entries only. These are current kernel names and
+device numbers, not stable identity; the parent's disk sequence is validated
+internally but not returned. No absolute sysfs path is exposed. Missing,
+ambiguous or changed parent topology rejects the complete snapshot. The
+collector also reads bounded sysfs `holders` links for each block node and
+`slaves` links for each whole block node, resolves both against the complete
+inventory and requires reciprocal relationships. That transient graph is
+re-read before publication and remains omitted from schema v2; missing,
+unobserved, non-reciprocal or changed links reject the complete snapshot. The
+mount-assessment fixture follows partition parents and transitive slave
+relationships so a visible MD/device-mapper mount can be
 associated with its backing disk. Generated host tests cover a synthetic
 disk-to-partition-to-MD-to-device-mapper chain and a multi-member MD mount.
 The QEMU-only fixture creates a real RAID1 from two generated virtual disks,

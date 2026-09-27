@@ -232,8 +232,14 @@ func TestStorageEndpointIsReadOnlyAndFailClosed(t *testing.T) {
 	if err := json.Unmarshal(response.Body.Bytes(), &snapshot); err != nil {
 		t.Fatal(err)
 	}
-	if !snapshot.InventoryReadOnly || snapshot.BlockDevicesOpened || snapshot.ContentRead || snapshot.MutationsPerformed || snapshot.StableIdentityAvailable {
+	if snapshot.SchemaVersion != 2 || !snapshot.InventoryReadOnly || snapshot.BlockDevicesOpened || snapshot.ContentRead || snapshot.MutationsPerformed || snapshot.StableIdentityAvailable {
 		t.Fatalf("endpoint reported an unsafe or overstated storage operation: %+v", snapshot)
+	}
+	if len(snapshot.Observations) != 2 || snapshot.Observations[0].Kind != "block" ||
+		snapshot.Observations[1].Kind != "partition" || snapshot.Observations[1].ParentName != "sda" ||
+		snapshot.Observations[1].ParentMajor == nil || *snapshot.Observations[1].ParentMajor != 8 ||
+		snapshot.Observations[1].ParentMinor == nil || *snapshot.Observations[1].ParentMinor != 0 {
+		t.Fatalf("endpoint omitted the validated partition-parent tuple: %+v", snapshot.Observations)
 	}
 	for _, test := range []struct {
 		method string

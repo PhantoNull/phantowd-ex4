@@ -135,7 +135,7 @@ func runSelfTest() error {
 		return errors.New("invalid storage observation response")
 	}
 	var storage storageSnapshot
-	if json.Unmarshal(storageData, &storage) != nil || storage.SchemaVersion != 1 || storage.Scope != "kernel-sysfs-only" ||
+	if json.Unmarshal(storageData, &storage) != nil || storage.SchemaVersion != 2 || storage.Scope != "kernel-sysfs-only" ||
 		!storage.InventoryReadOnly || storage.BlockDevicesOpened || storage.ContentRead || storage.MutationsPerformed ||
 		storage.StableIdentityAvailable || storage.DeviceCount != len(storage.Observations) {
 		return errors.New("storage observation crossed or overstated its read-only boundary")

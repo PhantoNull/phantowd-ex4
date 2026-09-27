@@ -121,12 +121,12 @@ func observedBlockNodeDependsOnWholeDisk(node, disk blockObservation, inventory 
 		visiting[current.Name] = true
 		defer delete(visiting, current.Name)
 		if current.Kind == "partition" {
-			if current.parentName == "" || current.parentDiskSeq == 0 {
+			if current.ParentName == "" || current.ParentMajor == nil || current.ParentMinor == nil || current.parentDiskSeq == 0 {
 				return false, errors.New("partition has incomplete observed parent topology")
 			}
-			parent, exists := byName[current.parentName]
-			if !exists || parent.Kind != "block" || parent.Major != current.parentMajor ||
-				parent.Minor != current.parentMinor || parent.diskSequence != current.parentDiskSeq {
+			parent, exists := byName[current.ParentName]
+			if !exists || parent.Kind != "block" || parent.Major != *current.ParentMajor ||
+				parent.Minor != *current.ParentMinor || parent.diskSequence != current.parentDiskSeq {
 				return false, errors.New("partition parent no longer matches the observed topology")
 			}
 			found, err := depends(parent)

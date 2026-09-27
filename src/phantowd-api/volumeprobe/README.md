@@ -79,23 +79,28 @@ refers to its claimed generation. Callers must establish those discovery
 preconditions and then use `ObserveBlockSet` for the descriptor `fstat` and
 `BLKGETDISKSEQ` checks. It is not itself discovery or mount authorization.
 
-`OpenObservedBlockSources(devices)` is the Linux fixed-path opening primitive
-for a privileged discovery caller. It accepts only a bounded, explicit list of
-unique kernel block names and unique nonzero device-generation tuples, opens
+`OpenObservedBlockSources(devices)` is a Linux fixed-path opener, not a
+collector. The trusted discovery/broker layer owns sysfs enumeration and
+validation, then supplies a bounded list of `ObservedBlockDevice` records,
+each containing only one kernel component name and its major/minor/diskseq
+tuple. The opener neither reads sysfs nor accepts a filesystem path; it opens
 only `/dev/<name>` beneath a retained `/dev` directory using `openat2` with
-symlinks and magic links forbidden, and requests `O_RDONLY|O_NONBLOCK`. Every
+symlinks and magic links forbidden, requesting `O_RDONLY|O_NONBLOCK`. Every
 descriptor must match the supplied major/minor and `BLKGETDISKSEQ` both when
 opened and after the set is opened. Any failure closes the whole set and
 returns no partial descriptors; an explicit empty list stays distinct from a
 nil/unknown inventory. Returned descriptors belong to the caller and must be
 closed there.
 
-This primitive trusts the caller's observed names/generations. It does not read
-sysfs, prove inventory completeness, establish whole-disk eligibility or
-unmounted state, map partitions/MD/multipath topology, or revalidate the
-pathname after opening. A caller must re-read and reconcile the complete
-inventory and must continue through `OrderCompleteBlockSources` and
-`ObserveBlockSet`; none of these operations authorize mounting or mutation.
+This primitive trusts the caller's observed names/generations. It does not prove
+that the caller is the trusted broker, prove inventory completeness, establish
+whole-disk eligibility or unmounted state, map partitions/MD/multipath topology,
+or revalidate the pathname after opening. Production code must confine calls to
+the future trusted broker, which supplies validated sysfs observations and
+reconciles the inventory around descriptor handoff. The current QEMU fixture is
+test-only and is not that broker. A caller must continue through
+`OrderCompleteBlockSources` and `ObserveBlockSet`; none of these operations
+authorize mounting or mutation.
 
 `MatchUUID` reports `not-observed`, `one-object` or `conflicting-objects` only
 within that set. Regular-image hard links share an object key (device/inode);
@@ -129,7 +134,7 @@ mount table; a visible mount of a selected whole-disk node or any observed
 dependent block node causes refusal. Parent correlation uses validated sysfs
 class-link targets. The collector validates reciprocal `holders`/`slaves`
 links against the complete observed block set (partitions expose `holders`;
-whole block nodes expose both) and keeps this transient graph out of API v1.
+whole block nodes expose both) and keeps this transient graph out of API v2.
 Host-generated tests exercise mount correlation through a disk, partition, MD
 node and device-mapper node. The current QEMU guest does not create a stacked
 MD/device-mapper device, so it checks the guest's actual sysfs graph and direct

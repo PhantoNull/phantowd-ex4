@@ -17,7 +17,7 @@ func TestCollectStorageReportsSysfsOnlyObservations(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if snapshot.SchemaVersion != 1 || snapshot.Scope != "kernel-sysfs-only" ||
+	if snapshot.SchemaVersion != 2 || snapshot.Scope != "kernel-sysfs-only" ||
 		!snapshot.InventoryReadOnly || snapshot.MutationsPerformed || snapshot.StableIdentityAvailable {
 		t.Fatalf("incorrect storage safety boundary: %+v", snapshot)
 	}
@@ -39,8 +39,8 @@ func TestCollectStorageReportsSysfsOnlyObservations(t *testing.T) {
 		partition.Major != 8 || partition.Minor != 1 || partition.SizeBytes != (1<<30)-512 || !partition.ReadOnly {
 		t.Fatalf("incorrect partition observation: %+v", partition)
 	}
-	if partition.parentName != "sda" || partition.parentMajor != disk.Major ||
-		partition.parentMinor != disk.Minor || partition.parentDiskSeq != disk.diskSequence {
+	if partition.ParentName != "sda" || partition.ParentMajor == nil || *partition.ParentMajor != disk.Major ||
+		partition.ParentMinor == nil || *partition.ParentMinor != disk.Minor || partition.parentDiskSeq != disk.diskSequence {
 		t.Fatalf("partition was not bound to its observed whole-disk parent: %+v", partition)
 	}
 	encoded, err := json.Marshal(snapshot)
@@ -49,12 +49,35 @@ func TestCollectStorageReportsSysfsOnlyObservations(t *testing.T) {
 	}
 	for _, forbidden := range []string{
 		"fixture-secret", "PHANTOWD-QEMU-SERIAL-01", "500f000000000001", "fixture-fs-uuid-a",
-		"fixture-partuuid-a", "disk_sequence", "parent_name", "parent_major", "parent_minor", "parent_disk_seq",
+		"fixture-partuuid-a", "disk_sequence", "parent_disk_seq",
 		"lower_blocks", "holder_targets", "slave_targets",
 	} {
 		if strings.Contains(string(encoded), forbidden) {
 			t.Fatalf("observation exposed identity material %q: %s", forbidden, encoded)
 		}
+	}
+	var publicSnapshot struct {
+		SchemaVersion int `json:"schema_version"`
+		Observations  []struct {
+			Name        string  `json:"name"`
+			ParentName  string  `json:"parent_name"`
+			ParentMajor *uint32 `json:"parent_major"`
+			ParentMinor *uint32 `json:"parent_minor"`
+		} `json:"observations"`
+	}
+	if err := json.Unmarshal(encoded, &publicSnapshot); err != nil {
+		t.Fatal(err)
+	}
+	if publicSnapshot.SchemaVersion != 2 || len(publicSnapshot.Observations) != 2 ||
+		publicSnapshot.Observations[0].Name != "sda" || publicSnapshot.Observations[0].ParentName != "" ||
+		publicSnapshot.Observations[0].ParentMajor != nil || publicSnapshot.Observations[0].ParentMinor != nil {
+		t.Fatalf("whole-disk JSON contains a partition parent or wrong schema: %+v", publicSnapshot)
+	}
+	publicPartition := publicSnapshot.Observations[1]
+	if publicPartition.Name != "sda1" || publicPartition.ParentName != "sda" ||
+		publicPartition.ParentMajor == nil || *publicPartition.ParentMajor != 8 ||
+		publicPartition.ParentMinor == nil || *publicPartition.ParentMinor != 0 {
+		t.Fatalf("schema-v2 JSON omitted the validated partition-parent tuple: %+v", publicPartition)
 	}
 }
 

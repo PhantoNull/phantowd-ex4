@@ -14,10 +14,12 @@ import (
 )
 
 // OpenObservedBlockSources opens exactly the already-observed whole-disk
-// candidates beneath the fixed /dev directory. It accepts no caller path,
-// uses read-only descriptors, and returns no partial set. The caller must
-// still establish complete discovery, eligibility, unmounted state and stable
-// topology, then reconcile the sysfs inventory before any handoff or action.
+// candidates beneath the fixed /dev directory. It accepts only names and
+// generation tuples already validated by its caller; it never reads sysfs or
+// accepts a caller path. It uses read-only descriptors and returns no partial
+// set. The caller must still establish complete discovery, eligibility,
+// unmounted state and stable topology, then reconcile the sysfs inventory
+// before any handoff or action.
 func OpenObservedBlockSources(devices []ObservedBlockDevice) ([]BlockDeviceSource, error) {
 	if err := validateObservedBlockDevices(devices); err != nil {
 		return nil, err

@@ -16,8 +16,10 @@ type BlockDeviceGeneration struct {
 	DiskSequence uint64
 }
 
-// ObservedBlockDevice names one whole-disk source from an already-validated
-// kernel inventory. Name is a single /dev entry name, not an arbitrary path.
+// ObservedBlockDevice carries only one kernel component name and its transient
+// major/minor/diskseq tuple from a caller-validated whole-disk inventory. Name
+// is a single /dev entry name, not an arbitrary path; the opener does not
+// enumerate sysfs or establish that the caller is a trusted broker.
 type ObservedBlockDevice struct {
 	Name       string
 	Generation BlockDeviceGeneration
