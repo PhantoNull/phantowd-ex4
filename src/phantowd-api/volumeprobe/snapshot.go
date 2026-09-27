@@ -16,11 +16,52 @@ type BlockDeviceGeneration struct {
 	DiskSequence uint64
 }
 
+// ObservedBlockDevice names one whole-disk source from an already-validated
+// kernel inventory. Name is a single /dev entry name, not an arbitrary path.
+type ObservedBlockDevice struct {
+	Name       string
+	Generation BlockDeviceGeneration
+}
+
 // BlockDeviceSource pairs a caller-qualified whole-disk read-only descriptor
 // with the major/minor and disk sequence previously observed for it.
 type BlockDeviceSource struct {
 	File       *os.File
 	Generation BlockDeviceGeneration
+}
+
+func validateObservedBlockDevices(devices []ObservedBlockDevice) error {
+	if devices == nil || len(devices) > MaxSources {
+		return ErrUnsafe
+	}
+	generations := make([]BlockDeviceGeneration, len(devices))
+	seenNames := make(map[string]bool, len(devices))
+	seenGenerations := make(map[BlockDeviceGeneration]bool, len(devices))
+	for index, device := range devices {
+		if !validKernelBlockName(device.Name) || seenNames[device.Name] || seenGenerations[device.Generation] {
+			return ErrUnsafe
+		}
+		seenNames[device.Name] = true
+		seenGenerations[device.Generation] = true
+		generations[index] = device.Generation
+	}
+	if !validGenerationSet(generations) {
+		return ErrUnsafe
+	}
+	return nil
+}
+
+func validKernelBlockName(name string) bool {
+	if name == "" || name == "." || name == ".." || len(name) > 64 {
+		return false
+	}
+	for _, character := range name {
+		if !((character >= 'a' && character <= 'z') || (character >= 'A' && character <= 'Z') ||
+			(character >= '0' && character <= '9') || character == '.' || character == '_' || character == '-') {
+			return false
+		}
+	}
+	return true
 }
 
 // OrderCompleteBlockSources pairs exactly one descriptor source with every

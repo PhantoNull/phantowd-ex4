@@ -180,8 +180,8 @@ while [ "$attempt" -lt 120 ]; do
             echo 'Missing unmounted metadata probe assertion' >&2
             exit 1
         fi
-        if ! grep -F 'PHANTOWD_VOLUME_SET_READY cloned_uuid=true aliases_deduplicated=true generation_bound=true stale_generation_refused=true unobserved_not_absent=true shuffled_complete_set=true sysfs_rechecked=true scope=qemu-fixture-only' "$log_file" >/dev/null; then
-            echo 'Missing complete QEMU source-set binding assertions' >&2
+        if ! grep -F 'PHANTOWD_VOLUME_SET_READY cloned_uuid=true aliases_deduplicated=true generation_bound=true stale_generation_refused=true unobserved_not_absent=true shuffled_complete_set=true sysfs_rechecked=true observed_opener=true readonly_sources=true all_or_error=true symlink_refused=true scope=qemu-fixture-only' "$log_file" >/dev/null; then
+            echo 'Missing complete QEMU source-set opener assertions' >&2
             exit 1
         fi
         if ! grep -F 'PHANTOWD_VOLUME_COLLISION_READY ext_control=true xfs_control=true invalid_control=true collision_refused=true partial_set_discarded=true hashes_unchanged=true scope=synthetic-regular-images' "$log_file" >/dev/null; then

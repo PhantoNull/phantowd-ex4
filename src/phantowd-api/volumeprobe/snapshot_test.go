@@ -5,11 +5,67 @@ package volumeprobe
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"reflect"
 	"strings"
 	"testing"
 )
+
+func TestObservedBlockInventoryRefusesNamesOutsideOneKernelComponent(t *testing.T) {
+	generation := BlockDeviceGeneration{Major: 8, Minor: 16, DiskSequence: 101}
+	for _, name := range []string{"", ".", "..", "../sda", "sda/partition", "sda\\partition", "sda name"} {
+		t.Run(name, func(t *testing.T) {
+			if err := validateObservedBlockDevices([]ObservedBlockDevice{{Name: name, Generation: generation}}); !errors.Is(err, ErrUnsafe) {
+				t.Fatalf("unsafe kernel device name %q was accepted: %v", name, err)
+			}
+		})
+	}
+	if err := validateObservedBlockDevices([]ObservedBlockDevice{{Name: "sda", Generation: generation}}); err != nil {
+		t.Fatalf("single kernel block name rejected: %v", err)
+	}
+}
+
+func TestObservedBlockInventoryRequiresAnExactUniqueGenerationSet(t *testing.T) {
+	generationA := BlockDeviceGeneration{Major: 8, Minor: 16, DiskSequence: 101}
+	generationB := BlockDeviceGeneration{Major: 8, Minor: 32, DiskSequence: 102}
+	for _, test := range []struct {
+		name     string
+		devices  []ObservedBlockDevice
+		wantFail bool
+	}{
+		{name: "explicit empty", devices: []ObservedBlockDevice{}},
+		{name: "nil is not an observation", devices: nil, wantFail: true},
+		{name: "one observed device", devices: []ObservedBlockDevice{{Name: "sda", Generation: generationA}}},
+		{name: "zero sequence", devices: []ObservedBlockDevice{{Name: "sda", Generation: BlockDeviceGeneration{Major: 8, Minor: 16}}}, wantFail: true},
+		{name: "same generation repeated", devices: []ObservedBlockDevice{{Name: "sda", Generation: generationA}, {Name: "sdb", Generation: generationA}}, wantFail: true},
+		{name: "one device number with conflicting generations", devices: []ObservedBlockDevice{{Name: "sda", Generation: generationA}, {Name: "sdb", Generation: BlockDeviceGeneration{Major: 8, Minor: 16, DiskSequence: 103}}}, wantFail: true},
+		{name: "one sequence assigned to distinct devices", devices: []ObservedBlockDevice{{Name: "sda", Generation: generationA}, {Name: "sdb", Generation: BlockDeviceGeneration{Major: 8, Minor: 32, DiskSequence: 101}}}, wantFail: true},
+		{name: "duplicate path name", devices: []ObservedBlockDevice{{Name: "sda", Generation: generationA}, {Name: "sda", Generation: generationB}}, wantFail: true},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			err := validateObservedBlockDevices(test.devices)
+			if test.wantFail && !errors.Is(err, ErrUnsafe) {
+				t.Fatalf("invalid observed inventory was accepted: %v", err)
+			}
+			if !test.wantFail && err != nil {
+				t.Fatalf("valid observed inventory was refused: %v", err)
+			}
+		})
+	}
+	oversized := make([]ObservedBlockDevice, MaxSources+1)
+	for index := range oversized {
+		oversized[index] = ObservedBlockDevice{
+			Name: fmt.Sprintf("sd%d", index),
+			Generation: BlockDeviceGeneration{
+				Major: 8, Minor: uint32(index + 1), DiskSequence: uint64(index + 1),
+			},
+		}
+	}
+	if err := validateObservedBlockDevices(oversized); !errors.Is(err, ErrUnsafe) {
+		t.Fatalf("oversized inventory was accepted: %v", err)
+	}
+}
 
 func TestOrderCompleteBlockSourcesAgainstObservedInventory(t *testing.T) {
 	newSource := func() *os.File {

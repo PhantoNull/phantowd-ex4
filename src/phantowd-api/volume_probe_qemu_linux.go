@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/volumeprobe"
-	"golang.org/x/sys/unix"
 )
 
 // Fixed QEMU harness, not the production broker or arbitrary device opener.
@@ -37,8 +36,8 @@ func probeQEMUUnmountedStorage() error {
 		return errors.New("complete QEMU sysfs storage inventory was unavailable")
 	}
 	deviceIDs := make(map[string]bool)
-	deviceNames := make(map[string]string)
 	deviceGenerations := make(map[string]volumeprobe.BlockDeviceGeneration)
+	observedDevices := make([]volumeprobe.ObservedBlockDevice, 0, 2)
 	for _, device := range []string{"sdb", "sdc"} {
 		var observation *blockObservation
 		for index := range initialInventory.Observations {
@@ -52,10 +51,12 @@ func probeQEMUUnmountedStorage() error {
 		}
 		deviceNumber := fmt.Sprintf("%d:%d", observation.Major, observation.Minor)
 		deviceIDs[deviceNumber] = true
-		deviceNames[device] = deviceNumber
 		deviceGenerations[device] = volumeprobe.BlockDeviceGeneration{
 			Major: observation.Major, Minor: observation.Minor, DiskSequence: observation.diskSequence,
 		}
+		observedDevices = append(observedDevices, volumeprobe.ObservedBlockDevice{
+			Name: device, Generation: deviceGenerations[device],
+		})
 	}
 	if len(deviceIDs) != 2 {
 		return errors.New("fixture requires distinct virtual devices")
@@ -75,33 +76,34 @@ func probeQEMUUnmountedStorage() error {
 	if err := unmounted(); err != nil {
 		return err
 	}
+	fdEntriesBefore, err := os.ReadDir("/proc/self/fd")
+	if err != nil {
+		return err
+	}
+	incompleteSources, err := volumeprobe.OpenObservedBlockSources([]volumeprobe.ObservedBlockDevice{
+		observedDevices[0],
+		{Name: "phantowd-missing-device", Generation: volumeprobe.BlockDeviceGeneration{Major: 255, Minor: 255, DiskSequence: ^uint64(0)}},
+	})
+	fdEntriesAfter, fdErr := os.ReadDir("/proc/self/fd")
+	if !errors.Is(err, volumeprobe.ErrUnsafe) || incompleteSources != nil || fdErr != nil || len(fdEntriesBefore) != len(fdEntriesAfter) {
+		return errors.New("incomplete QEMU source set leaked a descriptor or returned partial sources")
+	}
+	if err := volumeprobe.VerifyQEMUSymlinkRefusal(observedDevices[0]); err != nil {
+		return errors.New("QEMU source opener followed a /dev symlink")
+	}
 	var sources []*os.File
-	var blockSources []volumeprobe.BlockDeviceSource
+	blockSources, err := volumeprobe.OpenObservedBlockSources(observedDevices)
+	if err != nil {
+		return errors.New("could not open the complete QEMU fixture source set")
+	}
+	for _, blockSource := range blockSources {
+		sources = append(sources, blockSource.File)
+	}
 	defer func() {
 		for _, source := range sources {
 			source.Close()
 		}
 	}()
-	for _, device := range []string{"sdb", "sdc"} {
-		fd, err := unix.Openat2(unix.AT_FDCWD, "/dev/"+device, &unix.OpenHow{
-			Flags:   unix.O_RDONLY | unix.O_NONBLOCK | unix.O_CLOEXEC,
-			Resolve: unix.RESOLVE_NO_SYMLINKS | unix.RESOLVE_NO_MAGICLINKS,
-		})
-		if err != nil {
-			return err
-		}
-		source := os.NewFile(uintptr(fd), "qemu-probe-input")
-		var st unix.Stat_t
-		if err := unix.Fstat(fd, &st); err != nil || st.Mode&unix.S_IFMT != unix.S_IFBLK || fmt.Sprintf("%d:%d", unix.Major(uint64(st.Rdev)), unix.Minor(uint64(st.Rdev))) != deviceNames[device] {
-			source.Close()
-			return errors.New("probe descriptor is not an expected virtual block object")
-		}
-		sources = append(sources, source)
-		blockSources = append(blockSources, volumeprobe.BlockDeviceSource{
-			File:       source,
-			Generation: deviceGenerations[device],
-		})
-	}
 	finalInventory, err := collectStorage(os.DirFS("/sys"))
 	if err != nil || !sameQEMUStorageInventory(initialInventory, finalInventory) {
 		return errors.New("QEMU sysfs inventory changed while opening the fixture source set")
@@ -174,7 +176,7 @@ func probeQEMUUnmountedStorage() error {
 		return err
 	}
 	fmt.Println("PHANTOWD_VOLUME_PROBE_READY backend=libblkid unmounted_devices=2 readonly_descriptors=true expected_uuid=true unidentified_not_empty=true scope=qemu-fixture-only")
-	fmt.Println("PHANTOWD_VOLUME_SET_READY cloned_uuid=true aliases_deduplicated=true generation_bound=true stale_generation_refused=true unobserved_not_absent=true shuffled_complete_set=true sysfs_rechecked=true scope=qemu-fixture-only")
+	fmt.Println("PHANTOWD_VOLUME_SET_READY cloned_uuid=true aliases_deduplicated=true generation_bound=true stale_generation_refused=true unobserved_not_absent=true shuffled_complete_set=true sysfs_rechecked=true observed_opener=true readonly_sources=true all_or_error=true symlink_refused=true scope=qemu-fixture-only")
 	if err := probeQEMUCollisions(sources[0]); err != nil {
 		return err
 	}

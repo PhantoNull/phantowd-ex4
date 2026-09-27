@@ -13,6 +13,75 @@ import (
 	"golang.org/x/sys/unix"
 )
 
+// OpenObservedBlockSources opens exactly the already-observed whole-disk
+// candidates beneath the fixed /dev directory. It accepts no caller path,
+// uses read-only descriptors, and returns no partial set. The caller must
+// still establish complete discovery, eligibility, unmounted state and stable
+// topology, then reconcile the sysfs inventory before any handoff or action.
+func OpenObservedBlockSources(devices []ObservedBlockDevice) ([]BlockDeviceSource, error) {
+	if err := validateObservedBlockDevices(devices); err != nil {
+		return nil, err
+	}
+	if len(devices) == 0 {
+		return []BlockDeviceSource{}, nil
+	}
+	devRootFD, err := unix.Openat2(unix.AT_FDCWD, "/dev", &unix.OpenHow{
+		Flags:   unix.O_PATH | unix.O_DIRECTORY | unix.O_CLOEXEC,
+		Resolve: unix.RESOLVE_NO_SYMLINKS | unix.RESOLVE_NO_MAGICLINKS,
+	})
+	if err != nil {
+		return nil, ErrUnsafe
+	}
+	defer unix.Close(devRootFD)
+	return openObservedBlockSourcesAt(devRootFD, devices)
+}
+
+func openObservedBlockSourcesAt(devRootFD int, devices []ObservedBlockDevice) (sources []BlockDeviceSource, err error) {
+	if devRootFD < 0 || validateObservedBlockDevices(devices) != nil {
+		return nil, ErrUnsafe
+	}
+	if len(devices) == 0 {
+		return []BlockDeviceSource{}, nil
+	}
+	sources = make([]BlockDeviceSource, 0, len(devices))
+	defer func() {
+		if err != nil {
+			for _, source := range sources {
+				source.File.Close()
+			}
+			sources = nil
+		}
+	}()
+	for _, device := range devices {
+		fd, openErr := unix.Openat2(devRootFD, device.Name, &unix.OpenHow{
+			Flags:   unix.O_RDONLY | unix.O_NONBLOCK | unix.O_CLOEXEC | unix.O_NOCTTY,
+			Resolve: unix.RESOLVE_BENEATH | unix.RESOLVE_NO_SYMLINKS | unix.RESOLVE_NO_MAGICLINKS,
+		})
+		if openErr != nil {
+			return nil, ErrUnsafe
+		}
+		file := os.NewFile(uintptr(fd), "observed-block-source")
+		if file == nil {
+			unix.Close(fd)
+			return nil, ErrUnsafe
+		}
+		var stat unix.Stat_t
+		if unix.Fstat(fd, &stat) != nil || !matchesBlockGeneration(file, stat, "block-device", device.Generation) {
+			file.Close()
+			return nil, ErrUnsafe
+		}
+		sources = append(sources, BlockDeviceSource{File: file, Generation: device.Generation})
+	}
+	for _, source := range sources {
+		var stat unix.Stat_t
+		if unix.Fstat(int(source.File.Fd()), &stat) != nil ||
+			!matchesBlockGeneration(source.File, stat, "block-device", source.Generation) {
+			return nil, ErrUnsafe
+		}
+	}
+	return sources, nil
+}
+
 // ObserveSet retains all supplied descriptors, probes sequentially under one
 // process-wide slot, then rechecks every object before returning any result.
 // The 30-second set deadline bounds interruptible work, not kernel D-state I/O.

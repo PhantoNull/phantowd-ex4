@@ -247,16 +247,18 @@ and refuses non-Versatile PB machines. See the
   observed inconsistency. This reduces mixed observations but is not an atomic
   hotplug snapshot. `diskseq` is transient for one kernel lifetime, is not
   returned by the API and is not disk identity.
-  The API never opens a block device, reads disk contents, runs a shell command,
-  assembles or mounts storage, or performs reboot, firmware install or update
-  operations. Configuration writes are limited to account setup and the
-  explicitly enabled development policy backend described above.
-- A separate internal descriptor-probe path binds caller-opened, read-only
-  whole-disk descriptors to an observed major/minor and kernel `diskseq` using
-  `BLKGETDISKSEQ`, before and after the set. The caller must classify
-  non-partition devices and establish unmounted state. It is not wired to the
-  HTTP inventory and confers no media-use authorization; see the
-  [probe contract](volumeprobe/README.md).
+  The authenticated HTTP handler never invokes the opener or opens a block
+  device; it does not read disk contents, run a shell command, assemble or
+  mount storage, or perform reboot, firmware install or update operations.
+  Configuration writes are limited to account setup and the explicitly enabled
+  development policy backend described above.
+- A separate internal Linux path accepts caller-observed kernel block names
+  and generations, safely opens fixed `/dev` entries read-only, and binds the
+  resulting descriptors to major/minor and `diskseq` using `BLKGETDISKSEQ`
+  before and after the set. The caller must establish complete discovery,
+  classify whole disks, and establish eligibility/unmounted state. This path is
+  not wired to the HTTP endpoint and confers no media-use authorization; see
+  the [probe contract](volumeprobe/README.md).
 - `flashable` and `hardware_validated` are always false; the target is explicitly
   `qemu-armv5`. These identifiers are not automatic hardware detection.
 

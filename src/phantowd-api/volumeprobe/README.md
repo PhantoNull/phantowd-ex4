@@ -32,8 +32,8 @@ complete inventory, volume resolver or service activation capability.
 The helper is trusted, non-daemonizing firmware code installed in a directory
 unwritable by untrusted users. This runner is not a supervisor for arbitrary or
 hostile executables, independently escaping descendants, or privilege changes.
-No new privileges, mount operation, device enumeration or source-path opening
-is added. Result UUIDs are private and must not enter public diagnostics/logs.
+`Inspect` and `ObserveBlockSet` do not mount, enumerate or open source paths.
+Result UUIDs are private and must not enter public diagnostics/logs.
 
 ## Verification and remaining integration
 
@@ -79,6 +79,24 @@ refers to its claimed generation. Callers must establish those discovery
 preconditions and then use `ObserveBlockSet` for the descriptor `fstat` and
 `BLKGETDISKSEQ` checks. It is not itself discovery or mount authorization.
 
+`OpenObservedBlockSources(devices)` is the Linux fixed-path opening primitive
+for a privileged discovery caller. It accepts only a bounded, explicit list of
+unique kernel block names and unique nonzero device-generation tuples, opens
+only `/dev/<name>` beneath a retained `/dev` directory using `openat2` with
+symlinks and magic links forbidden, and requests `O_RDONLY|O_NONBLOCK`. Every
+descriptor must match the supplied major/minor and `BLKGETDISKSEQ` both when
+opened and after the set is opened. Any failure closes the whole set and
+returns no partial descriptors; an explicit empty list stays distinct from a
+nil/unknown inventory. Returned descriptors belong to the caller and must be
+closed there.
+
+This primitive trusts the caller's observed names/generations. It does not read
+sysfs, prove inventory completeness, establish whole-disk eligibility or
+unmounted state, map partitions/MD/multipath topology, or revalidate the
+pathname after opening. A caller must re-read and reconcile the complete
+inventory and must continue through `OrderCompleteBlockSources` and
+`ObserveBlockSet`; none of these operations authorize mounting or mutation.
+
 `MatchUUID` reports `not-observed`, `one-object` or `conflicting-objects` only
 within that set. Regular-image hard links share an object key (device/inode);
 block-node aliases share a key (rdev). Different objects with the same UUID
@@ -98,13 +116,17 @@ single-slot rule. A fixed-count fuzz target checks the response decoder.
 Set tests add alias/clone grouping, missing UUIDs, whole-set refusals and a
 competing write to an earlier image during a later probe.
 The complete Linux/amd64 package suite has run successfully, including
-generation-set validation and regular-file refusal. This does not exercise a
-successful disk-sequence ioctl against a block device.
+generation-set validation and regular-file refusal. The QEMU fixture exercises
+successful disk-sequence ioctls against virtual block devices; it does not
+qualify EX4 SATA/libata behavior.
 The QEMU unmounted-disk fixture calls this implementation, not a separate
 copy of the process/JSON code, including clone/alias distinction before
-mounting. Its generation-bound path also checks a deliberately stale expected
-sequence is rejected without a partial snapshot; this is a fixture assertion,
-not yet evidence that the updated guest smoke has run.
+mounting. It derives generations from the read-only sysfs collector, uses the
+fixed-path opener, deliberately shuffles the source records through the
+complete-set matcher, and checks a deliberately stale expected sequence is
+rejected without a partial snapshot. The latest opener integration is pending
+its exact-head QEMU CI run; this fixture is not evidence of production complete
+discovery.
 It also verifies a generated ext2/XFS collision through the real ARMv5 helper:
 individual signature controls succeed, the combined image returns `ErrProbe`
 without identity, and a set containing that image returns no partial results.
