@@ -670,8 +670,8 @@ These features are separate scope, not shortcuts around core acceptance:
    API or automatic mount/import. PR #41 adds duplicate valid SCSI VPD serial/NAA
    WWN reporting, redaction, schema-v2 partition-parent topology, metadata and
    generation rechecks, and the fixed-path opener/source-set primitives. Its
-   exact-head host and ARMv5 QEMU checks pass. The local
-   `feat/storage-readonly-broker` branch adds a fixed, requestless,
+   exact-head host and ARMv5 QEMU checks pass. PR #42 now includes a fixed,
+   requestless,
    peer-authenticated broker service; API remains non-root, and the broker
    accepts no caller paths, names, commands or partial selections, owns/closes
    descriptors and returns only bounded, redacted observations. QEMU
@@ -679,9 +679,9 @@ These features are separate scope, not shortcuts around core acceptance:
    fixture disks; the separate provisional udev rule covers `sd[a-d]`. The
    broker requires `no_new_privs`, has no effective/permitted/inheritable
    capabilities and no supplementary groups beyond the read-only device group.
-   `support/test-api.ps1`
-   passes, including host tests, `go vet` and ARMv5 cross-compilation; exact-head
-   QEMU broker, permission and hotplug assertions have not run yet. The broker
+   `support/test-api.ps1` passes, including host tests, `go vet` and ARMv5
+   cross-compilation. Exact-head QEMU run `36351721283` is queued; broker,
+   permission and hotplug assertions have not run yet. The broker
    observes only its own mount namespace and does not read disk content; this
    does not imply exclusivity or authorize later probing, mounting, import or
    mutation. Keep SATA/libata hardware qualification, bay mapping, stable

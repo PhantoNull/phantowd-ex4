@@ -22,7 +22,7 @@ case "$1" in
                 echo FAIL
                 exit 1
             fi
-            attempt=`expr "$attempt" + 1`
+            attempt=$((attempt + 1))
             if [ "$attempt" -ge 10 ]; then
                 echo FAIL
                 exit 1
