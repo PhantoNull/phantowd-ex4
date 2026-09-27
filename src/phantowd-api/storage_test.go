@@ -165,8 +165,40 @@ func TestCollectStorageRechecksWholeInventoryBeforeReturning(t *testing.T) {
 	if _, err := collectStorage(sysfs); err == nil {
 		t.Fatal("block node replaced after its local check was accepted")
 	}
-	if sysfs.reads != 3 {
-		t.Fatalf("expected local and whole-inventory generation checks, got %d diskseq reads", sysfs.reads)
+	if sysfs.reads != 4 {
+		t.Fatalf("expected generation reads across both complete observations, got %d", sysfs.reads)
+	}
+}
+
+func TestCollectStorageRejectsPartitionMetadataChangedDuringObservation(t *testing.T) {
+	sysfs := &changingStorageAttributeFS{
+		MapFS: fixtureSysfs(),
+		path:  "class/block/sda1/size",
+		first: "2097151\n",
+		later: "1048576\n",
+	}
+	if _, err := collectStorage(sysfs); err == nil {
+		t.Fatal("partition metadata changed during observation without invalidating the snapshot")
+	}
+	if sysfs.reads != 2 {
+		t.Fatalf("expected initial and consistency-check reads, got %d", sysfs.reads)
+	}
+}
+
+func TestCollectStorageRejectsIdentityChangedBeforeDuplicateClassification(t *testing.T) {
+	base := fixtureSysfs()
+	addNonPartitionBlockNode(base, "sdb", 8, 16, "PHANTOWD-QEMU-SERIAL-01", []byte{0x50, 0x0f, 0, 0, 0, 0, 0, 2})
+	sysfs := &changingStorageAttributeFS{
+		MapFS: base,
+		path:  "class/block/sdb/device/vpd_pg80",
+		first: string(makeVPDPage(0x80, []byte("PHANTOWD-QEMU-SERIAL-01"))),
+		later: string(makeVPDPage(0x80, []byte("replacement-serial"))),
+	}
+	if _, err := collectStorage(sysfs); err == nil {
+		t.Fatal("a VPD change after duplicate discovery was accepted as a consistent inventory")
+	}
+	if sysfs.reads != 2 {
+		t.Fatalf("expected initial and consistency-check VPD reads, got %d", sysfs.reads)
 	}
 }
 
@@ -465,6 +497,26 @@ func (source *changingBlockInventoryFS) ReadDir(name string) ([]fs.DirEntry, err
 		}
 	}
 	return filtered, nil
+}
+
+type changingStorageAttributeFS struct {
+	fstest.MapFS
+	path  string
+	first string
+	later string
+	reads int
+}
+
+func (source *changingStorageAttributeFS) Open(name string) (fs.File, error) {
+	if name == source.path {
+		source.reads++
+		value := source.first
+		if source.reads > 1 {
+			value = source.later
+		}
+		return (fstest.MapFS{name: &fstest.MapFile{Data: []byte(value)}}).Open(name)
+	}
+	return source.MapFS.Open(name)
 }
 
 func makeVPDPage(code byte, payload []byte) []byte {

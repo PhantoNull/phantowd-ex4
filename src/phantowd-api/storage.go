@@ -59,11 +59,11 @@ type storageSnapshot struct {
 	Limitations             []string           `json:"limitations"`
 }
 
-// collectStorage reads only fixed sysfs attributes under class/block. It
-// rejects inventory-name or whole-disk generation changes detected during the
-// read, but does not create an atomic hotplug snapshot or pin device handles.
-// It does not open /dev nodes, read disk contents, inspect filesystems, or
-// mutate state.
+// collectStorage reads only fixed sysfs attributes under class/block and
+// rejects metadata changes observed on a second pass. This is a consistency
+// check, not an atomic hotplug snapshot; it does not pin device handles. It
+// does not open /dev nodes, read disk contents, inspect filesystems, or mutate
+// state.
 func collectStorage(sysfs fs.FS) (storageSnapshot, error) {
 	snapshot := storageSnapshot{
 		SchemaVersion:           1,
@@ -83,6 +83,8 @@ func collectStorage(sysfs fs.FS) (storageSnapshot, error) {
 			"whole-disk kernel generations are checked before and after each " +
 				"observation; the generation is transient and is never returned as " +
 				"persistent identity",
+			"block metadata is re-read before publication to reject observed " +
+				"changes, but sysfs reads do not provide an atomic hotplug snapshot",
 			"PARTUUID, filesystem UUID, RAID membership, health and bay mapping are not collected",
 			"no block device is opened and no disk content is read, assembled, mounted or modified",
 			"this development endpoint is not a WD-layout support decision or migration authorization",
@@ -100,91 +102,50 @@ func collectStorage(sysfs fs.FS) (storageSnapshot, error) {
 	serialObservations := make(map[string][]int)
 	wwnObservations := make(map[string][]int)
 	diskSequences := make(map[uint64]bool, len(entries))
+	firstPass := make([]storageBlockMetadata, 0, len(entries))
 	for _, entry := range entries {
 		name := entry.Name()
 		if !validBlockName(name) || seen[name] {
 			return snapshot, errors.New("invalid or duplicate sysfs block name")
 		}
 		seen[name] = true
-		base := "class/block/" + name + "/"
-		partitionText, partitionErr := readSysfsAttribute(sysfs, base+"partition")
-		observation := blockObservation{Name: name, Kind: "block"}
-		if partitionErr == nil {
-			partitionNumber, parseErr := strconv.ParseUint(strings.TrimSpace(partitionText), 10, 32)
-			if parseErr != nil || partitionNumber == 0 {
-				return snapshot, errors.New("invalid sysfs partition number")
-			}
-			observation.Kind = "partition"
-			observation.PartitionNumber = uint32(partitionNumber)
-		} else if !errors.Is(partitionErr, fs.ErrNotExist) {
-			return snapshot, errors.New("cannot read sysfs partition number")
+		metadata, err := observeStorageBlockMetadata(sysfs, name)
+		if err != nil {
+			return snapshot, err
 		}
-		if observation.Kind == "block" {
-			sequence, err := readBlockDiskSequence(sysfs, base+"diskseq")
-			if err != nil || diskSequences[sequence] {
+		if metadata.kind == "block" {
+			if diskSequences[metadata.diskSequence] {
 				return snapshot, errors.New("invalid or duplicate sysfs block generation")
 			}
-			observation.diskSequence = sequence
-			diskSequences[sequence] = true
+			diskSequences[metadata.diskSequence] = true
 		}
-		deviceNumber, err := readSysfsAttribute(sysfs, base+"dev")
-		if err != nil {
-			return snapshot, errors.New("invalid sysfs device number")
+		observation := blockObservation{
+			Name: name, Kind: metadata.kind, Major: metadata.major, Minor: metadata.minor,
+			SizeBytes: metadata.sizeBytes, ReadOnly: metadata.readOnly,
+			Removable: metadata.removable, PartitionNumber: metadata.partitionNumber,
+			SerialStatus: metadata.serialStatus, WWNStatus: metadata.wwnStatus,
+			diskSequence: metadata.diskSequence,
 		}
-		major, minor, err := parseDeviceNumber(deviceNumber)
-		if err != nil {
-			return snapshot, errors.New("invalid sysfs device number")
-		}
-		sectorText, err := readSysfsAttribute(sysfs, base+"size")
-		if err != nil {
-			return snapshot, errors.New("invalid sysfs block size")
-		}
-		sizeBytes, err := parseSectorBytes(sectorText)
-		if err != nil {
-			return snapshot, errors.New("invalid sysfs block size")
-		}
-		readOnly, err := readSysfsFlag(sysfs, base+"ro")
-		if err != nil {
-			return snapshot, errors.New("invalid sysfs read-only flag")
-		}
-		removable, err := readSysfsFlag(sysfs, base+"removable")
-		if err != nil {
-			return snapshot, errors.New("invalid sysfs removable flag")
-		}
-
-		observation.Major, observation.Minor = major, minor
-		observation.SizeBytes = sizeBytes
-		observation.ReadOnly, observation.Removable = readOnly, removable
-		if observation.Kind == "block" {
-			serial, status := observeSCSISerial(sysfs, base+"device/vpd_pg80")
-			observation.SerialStatus = status
-			if status == identityPresent {
-				serialObservations[serial] = append(serialObservations[serial], len(snapshot.Observations))
+		if metadata.kind == "block" {
+			if metadata.serialStatus == identityPresent {
+				serialObservations[metadata.serial] = append(serialObservations[metadata.serial], len(snapshot.Observations))
 			}
-			wwn, status := observeSCSIWWN(sysfs, base+"device/vpd_pg83")
-			observation.WWNStatus = status
-			if status == identityPresent {
-				wwnObservations[wwn] = append(wwnObservations[wwn], len(snapshot.Observations))
-			}
-			sequence, err := readBlockDiskSequence(sysfs, base+"diskseq")
-			if err != nil || sequence != observation.diskSequence {
-				return snapshot, errors.New("sysfs block generation changed during observation")
+			if metadata.wwnStatus == identityPresent {
+				wwnObservations[metadata.wwn] = append(wwnObservations[metadata.wwn], len(snapshot.Observations))
 			}
 		}
 		snapshot.Observations = append(snapshot.Observations, observation)
+		firstPass = append(firstPass, metadata)
+	}
+	for index, observation := range snapshot.Observations {
+		metadata, err := observeStorageBlockMetadata(sysfs, observation.Name)
+		if err != nil || metadata != firstPass[index] {
+			return snapshot, errors.New("sysfs block metadata changed before inventory completion")
+		}
 	}
 	finalEntries, err := fs.ReadDir(sysfs, "class/block")
 	if err != nil || !sameBlockInventory(entries, finalEntries) {
 		return snapshot, errors.New("sysfs block inventory changed during observation")
-	}
-	for _, observation := range snapshot.Observations {
-		if observation.Kind != "block" {
-			continue
-		}
-		sequence, err := readBlockDiskSequence(sysfs, "class/block/"+observation.Name+"/diskseq")
-		if err != nil || sequence != observation.diskSequence {
-			return snapshot, errors.New("sysfs block generation changed before inventory completion")
-		}
 	}
 	markDuplicateIdentities(snapshot.Observations, serialObservations, func(observation *blockObservation) *identityStatus {
 		return &observation.SerialStatus
@@ -194,6 +155,77 @@ func collectStorage(sysfs fs.FS) (storageSnapshot, error) {
 	})
 	snapshot.DeviceCount = len(snapshot.Observations)
 	return snapshot, nil
+}
+
+type storageBlockMetadata struct {
+	kind            string
+	major           uint32
+	minor           uint32
+	sizeBytes       uint64
+	readOnly        bool
+	removable       bool
+	partitionNumber uint32
+	diskSequence    uint64
+	serial          string
+	serialStatus    identityStatus
+	wwn             string
+	wwnStatus       identityStatus
+}
+
+func observeStorageBlockMetadata(sysfs fs.FS, name string) (storageBlockMetadata, error) {
+	base := "class/block/" + name + "/"
+	metadata := storageBlockMetadata{kind: "block"}
+	partitionText, partitionErr := readSysfsAttribute(sysfs, base+"partition")
+	if partitionErr == nil {
+		partitionNumber, parseErr := strconv.ParseUint(strings.TrimSpace(partitionText), 10, 32)
+		if parseErr != nil || partitionNumber == 0 {
+			return metadata, errors.New("invalid sysfs partition number")
+		}
+		metadata.kind = "partition"
+		metadata.partitionNumber = uint32(partitionNumber)
+	} else if !errors.Is(partitionErr, fs.ErrNotExist) {
+		return metadata, errors.New("cannot read sysfs partition number")
+	}
+	if metadata.kind == "block" {
+		sequence, err := readBlockDiskSequence(sysfs, base+"diskseq")
+		if err != nil {
+			return metadata, errors.New("invalid sysfs block generation")
+		}
+		metadata.diskSequence = sequence
+	}
+	deviceNumber, err := readSysfsAttribute(sysfs, base+"dev")
+	if err != nil {
+		return metadata, errors.New("invalid sysfs device number")
+	}
+	metadata.major, metadata.minor, err = parseDeviceNumber(deviceNumber)
+	if err != nil {
+		return metadata, errors.New("invalid sysfs device number")
+	}
+	sectorText, err := readSysfsAttribute(sysfs, base+"size")
+	if err != nil {
+		return metadata, errors.New("invalid sysfs block size")
+	}
+	metadata.sizeBytes, err = parseSectorBytes(sectorText)
+	if err != nil {
+		return metadata, errors.New("invalid sysfs block size")
+	}
+	metadata.readOnly, err = readSysfsFlag(sysfs, base+"ro")
+	if err != nil {
+		return metadata, errors.New("invalid sysfs read-only flag")
+	}
+	metadata.removable, err = readSysfsFlag(sysfs, base+"removable")
+	if err != nil {
+		return metadata, errors.New("invalid sysfs removable flag")
+	}
+	if metadata.kind == "block" {
+		metadata.serial, metadata.serialStatus = observeSCSISerial(sysfs, base+"device/vpd_pg80")
+		metadata.wwn, metadata.wwnStatus = observeSCSIWWN(sysfs, base+"device/vpd_pg83")
+		sequence, err := readBlockDiskSequence(sysfs, base+"diskseq")
+		if err != nil || sequence != metadata.diskSequence {
+			return metadata, errors.New("sysfs block generation changed during observation")
+		}
+	}
+	return metadata, nil
 }
 
 func sameBlockInventory(before, after []fs.DirEntry) bool {
