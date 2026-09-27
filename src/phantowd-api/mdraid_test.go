@@ -67,6 +67,42 @@ func TestCollectMDArrayInventoryStates(t *testing.T) {
 	})
 }
 
+func TestCollectMDArrayInventoryAcceptsNoActiveSyncProgress(t *testing.T) {
+	proc := fstest.MapFS{
+		"mdstat": {Data: []byte("Personalities : [raid1]\nmd0 : active raid1 sda2[0] sdb2[1]\n      1024 blocks super 1.2 [2/2] [UU]\nunused devices: <none>\n")},
+	}
+	sysfs := fixtureMDArraySysfs("md0")
+	sysfs["class/block/md0/md/sync_completed"] = &fstest.MapFile{Data: []byte("none\n")}
+
+	snapshot := collectMDArrayInventory(proc, sysfs, time.Now())
+	if snapshot.Status != arrayInventoryAvailable || snapshot.ArrayCount != 1 {
+		t.Fatalf("idle array with no active sync was marked incomplete: %s", formatMDArrayInventoryDiagnostic(snapshot))
+	}
+	array := snapshot.Arrays[0]
+	if array.Health != arrayHealthHealthy || array.SyncAction != "idle" || array.SyncProgressPercent != nil {
+		t.Fatalf("idle array exposed an invalid sync-progress observation: %+v", array)
+	}
+}
+
+func TestCollectMDArrayInventoryAcceptsDelayedSyncProgress(t *testing.T) {
+	proc := fstest.MapFS{
+		"mdstat": {Data: []byte("Personalities : [raid1]\nmd0 : active raid1 sda2[0] sdb2[1]\n      1024 blocks super 1.2 [2/2] [UU]\n      [>....................] resync = DELAYED\nunused devices: <none>\n")},
+	}
+	sysfs := fixtureMDArraySysfs("md0")
+	sysfs["class/block/md0/md/array_state"] = &fstest.MapFile{Data: []byte("active\n")}
+	sysfs["class/block/md0/md/sync_action"] = &fstest.MapFile{Data: []byte("resync\n")}
+	sysfs["class/block/md0/md/sync_completed"] = &fstest.MapFile{Data: []byte("delayed\n")}
+
+	snapshot := collectMDArrayInventory(proc, sysfs, time.Now())
+	if snapshot.Status != arrayInventoryAvailable || snapshot.ArrayCount != 1 {
+		t.Fatalf("delayed sync was marked incomplete: %s", formatMDArrayInventoryDiagnostic(snapshot))
+	}
+	array := snapshot.Arrays[0]
+	if array.Health != arrayHealthSyncing || array.SyncAction != "resync" || array.SyncProgressPercent != nil {
+		t.Fatalf("delayed sync observation was not preserved conservatively: %+v", array)
+	}
+}
+
 func TestCollectMDArrayInventoryDisagreementStaysUnknown(t *testing.T) {
 	const mdstat = "md0 : active raid1 sda2[0] sdb2[1]\n      1024 blocks super 1.2 [2/2] [UU]\n"
 	tests := []struct {

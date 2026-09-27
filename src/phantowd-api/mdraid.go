@@ -609,6 +609,12 @@ func parseBoundedMDInteger(value string, maximum int) (uint32, error) {
 
 func parseMDSyncCompleted(value string) (*float64, error) {
 	fields := strings.Fields(value)
+	if len(fields) == 1 {
+		switch fields[0] {
+		case "none", "delayed":
+			return nil, nil
+		}
+	}
 	if len(fields) != 3 || fields[1] != "/" {
 		return nil, errors.New("invalid md sync completion")
 	}
