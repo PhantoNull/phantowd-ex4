@@ -62,13 +62,29 @@ func probeQEMUUnmountedStorage() error {
 		return errors.New("fixture requires distinct virtual devices")
 	}
 	unmounted := func() error {
+		currentInventory, err := collectStorage(os.DirFS("/sys"))
+		if err != nil || !sameQEMUStorageInventory(initialInventory, currentInventory) {
+			return errors.New("probe fixture storage topology changed")
+		}
 		mounts, err := collectMountInventory(os.DirFS("/proc"), time.Now())
 		if err != nil {
 			return err
 		}
-		for _, mount := range mounts.Mounts {
-			if deviceIDs[fmt.Sprintf("%d:%d", mount.DeviceMajor, mount.DeviceMinor)] {
-				return errors.New("probe fixture disk is already mounted")
+		for _, device := range []string{"sdb", "sdc"} {
+			var disk *blockObservation
+			for index := range currentInventory.Observations {
+				observation := &currentInventory.Observations[index]
+				if observation.Name == device {
+					disk = observation
+					break
+				}
+			}
+			if disk == nil {
+				return errors.New("probe fixture disk disappeared from sysfs")
+			}
+			mounted, err := observedWholeDiskHasVisibleDirectOrPartitionMount(*disk, currentInventory.Observations, mounts.Mounts)
+			if err != nil || mounted {
+				return errors.New("probe fixture disk or one of its partitions is mounted")
 			}
 		}
 		return nil

@@ -307,6 +307,14 @@ parse error, or observed inconsistency, rejects the entire snapshot; the
 collector returns no partial observation and the HTTP route reports only
 generic `503 storage_unavailable`. An unavailable/unreadable VPD page remains
 an explicit identity status, not a unique-identity claim.
+Each `/sys/class/block` link target is bounded, validated as a relative path
+inside `/devices/`, and re-read as part of the consistency check. Every
+enumerated partition must resolve to exactly one enumerated whole-disk parent;
+that transient parent name, device number and generation are retained only
+internally and are not part of the API response. Missing, ambiguous or changed
+parent topology rejects the complete snapshot. This direct partition mapping
+does not traverse MD, device-mapper, multipath or other holder relationships,
+and does not establish global unmounted state or exclusive access.
 The block inventory does not collect partition/filesystem UUIDs, bay mapping,
 SMART, or device health. The separate array endpoint reads bounded
 `/proc/mdstat` text and MD sysfs metadata only; it

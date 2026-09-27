@@ -292,8 +292,8 @@ func TestStorageEndpointReportsDuplicateVPDAsAmbiguousWithoutValues(t *testing.T
 		t.Run(test.name, func(t *testing.T) {
 			sysfs := fixtureSysfs()
 			addNonPartitionBlockNode(sysfs, "sdb", 8, 16, test.serialB, test.wwnB)
-			sysfs["class/block/sda/device/vpd_pg80"] = &fstest.MapFile{Data: makeVPDPage(0x80, []byte(test.serialA))}
-			sysfs["class/block/sda/device/vpd_pg83"] = &fstest.MapFile{Data: makeNAAPage(test.wwnA)}
+			sysfs["devices/virtual/block/sda/device/vpd_pg80"] = &fstest.MapFile{Data: makeVPDPage(0x80, []byte(test.serialA))}
+			sysfs["devices/virtual/block/sda/device/vpd_pg83"] = &fstest.MapFile{Data: makeNAAPage(test.wwnA)}
 			auth, cookie := newTestAuth(t)
 			handler := newHandler(nil, func() (storageSnapshot, error) {
 				return collectStorage(sysfs)
@@ -379,7 +379,7 @@ func TestStorageEndpointDoesNotCallRepeatedInvalidVPDIdentitiesAmbiguous(t *test
 	invalidSerialPage := makeVPDPage(0x80, []byte("private-invalid-serial\x00"))
 	invalidWWNPage := makeNAAPage(make([]byte, 8))
 	for _, device := range []string{"sda", "sdb"} {
-		base := "class/block/" + device + "/device/"
+		base := "devices/virtual/block/" + device + "/device/"
 		sysfs[base+"vpd_pg80"] = &fstest.MapFile{Data: invalidSerialPage}
 		sysfs[base+"vpd_pg83"] = &fstest.MapFile{Data: invalidWWNPage}
 	}
@@ -423,7 +423,7 @@ func TestStorageEndpointDoesNotCountPartitionVPDAsDiskCollision(t *testing.T) {
 	naaB := []byte{0x50, 0x0f, 0, 0, 0, 0, 0, 2}
 	sysfs := fixtureSysfs()
 	addNonPartitionBlockNode(sysfs, "sdb", 8, 16, "private-serial-b", naaB)
-	partitionBase := "class/block/sda1/device/"
+	partitionBase := "devices/virtual/block/sda/sda1/device/"
 	sysfs[partitionBase] = &fstest.MapFile{Mode: fs.ModeDir | 0o555}
 	sysfs[partitionBase+"vpd_pg80"] = &fstest.MapFile{Data: makeVPDPage(0x80, []byte("PHANTOWD-QEMU-SERIAL-01"))}
 	sysfs[partitionBase+"vpd_pg83"] = &fstest.MapFile{Data: makeNAAPage(naaA)}

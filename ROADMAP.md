@@ -76,17 +76,18 @@ Status vocabulary:
 | Desired SMB/NFS policy | Strict models, revision stores and opt-in development editing. Stored policy does not activate services. |
 | Native identities | Reservation ledger, protected local reader, creation journal, typed executor, cooperative owner/listener and multi-account router. Not a deployed account manager. |
 | Samba credentials | Actual guest authentication/rotation/disable and persistence fixtures. Ordinary password reset can re-enable a disabled account; the safe product primitive is not implemented. |
-| Storage | GPT/ext/MD image research, sysfs/mount observations, restricted libblkid helper, duplicate SCSI VPD identity reporting, generation-bound descriptor probing, complete-set matching and mount guard. The current feature-branch exact-head QEMU smoke passed; complete discovery, compatibility resolution and import remain unimplemented. |
+| Storage | GPT/ext/MD image research, sysfs/mount observations, restricted libblkid helper, duplicate SCSI VPD identity reporting, generation-bound descriptor probing, complete-set matching and direct partition-parent correlation. The QEMU fixture refuses selected disks with visible direct/partition mounts. Complete production discovery, holder-graph/exclusivity checks, compatibility resolution and import remain unimplemented. |
 | Hardware | Short diskless serial/RAM and Ethernet/temperature observations. Networking stability, controller/cooling, storage and recovery remain unqualified. |
 | Updates | Host-side signed metadata/payload/version assessment. No on-device installer, update transaction, recovery or installation release. |
 
-PR [#41](https://github.com/PhantoNull/phantowd-ex4/pull/41) is currently
-validated at `5c3a1d498b3fed7922b77d2929bc88150b04f28e`: [host tests
-passed](https://github.com/PhantoNull/phantowd-ex4/actions/runs/36295967788)
-and the [ARMv5 QEMU baseline passed](https://github.com/PhantoNull/phantowd-ex4/actions/runs/36295967755).
-This is feature-branch evidence, not evidence that the change is integrated
-into `develop` or qualified on EX4 hardware. Consult exact-commit CI for later
-revisions.
+The preceding PR [#41](https://github.com/PhantoNull/phantowd-ex4/pull/41)
+snapshot at `5c3a1d498b3fed7922b77d2929bc88150b04f28e` passed [host
+tests](https://github.com/PhantoNull/phantowd-ex4/actions/runs/36295967788)
+and the [ARMv5 QEMU baseline](https://github.com/PhantoNull/phantowd-ex4/actions/runs/36295967755).
+The current partition-parent and QEMU partition-mount-guard additions are
+pending exact-head CI. Feature-branch evidence is not evidence that the change
+is integrated into `develop` or qualified on EX4 hardware; consult exact-commit
+CI for later revisions.
 
 Known unresolved qualification issue: intermittent state-volume unmount
 `EBUSY` in the two-boot QEMU fixture. Subsequent passes do not establish its
@@ -279,9 +280,13 @@ are missing. **Depends on:** M1; M7 for hardware.
   paths read-only/no-follow, validates major/minor and `BLKGETDISKSEQ`, and
   cleans up every partially opened descriptor on failure. The complete-set
   matcher rejects omitted, extra, duplicate, or reused sources and orders the
-  validated set. Exact-head host and ARMv5 QEMU CI passed for PR #41
-  (`5c3a1d4`). These primitives do not establish trusted enumeration,
-  eligibility, unmounted state, inventory completeness, or atomic hotplug
+  validated set. The storage collector internally resolves each partition to
+  exactly one observed whole-disk sysfs target and rechecks that link; the
+  relation is omitted from API v1. The QEMU fixture now detects mounts on a
+  selected virtual disk or its directly observed partitions. This is fixture
+  coverage only: it does not traverse MD/device-mapper/multipath holders or
+  establish production-wide exclusivity. These primitives do not establish
+  trusted enumeration, eligibility, inventory completeness, or atomic hotplug
   consistency; no discovery broker or mount authority exists.
 - **M3.2 — Resolve stable identity.** Correlate device, partition, MD and filesystem
   identifiers; distinguish two descriptors for one object from two cloned

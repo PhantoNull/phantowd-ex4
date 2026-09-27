@@ -39,14 +39,57 @@ func TestCollectStorageReportsSysfsOnlyObservations(t *testing.T) {
 		partition.Major != 8 || partition.Minor != 1 || partition.SizeBytes != (1<<30)-512 || !partition.ReadOnly {
 		t.Fatalf("incorrect partition observation: %+v", partition)
 	}
+	if partition.parentName != "sda" || partition.parentMajor != disk.Major ||
+		partition.parentMinor != disk.Minor || partition.parentDiskSeq != disk.diskSequence {
+		t.Fatalf("partition was not bound to its observed whole-disk parent: %+v", partition)
+	}
 	encoded, err := json.Marshal(snapshot)
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, forbidden := range []string{"fixture-secret", "PHANTOWD-QEMU-SERIAL-01", "500f000000000001", "fixture-fs-uuid-a", "fixture-partuuid-a", "disk_sequence"} {
+	for _, forbidden := range []string{
+		"fixture-secret", "PHANTOWD-QEMU-SERIAL-01", "500f000000000001", "fixture-fs-uuid-a",
+		"fixture-partuuid-a", "disk_sequence", "parent_name", "parent_major", "parent_minor", "parent_disk_seq",
+	} {
 		if strings.Contains(string(encoded), forbidden) {
 			t.Fatalf("observation exposed identity material %q: %s", forbidden, encoded)
 		}
+	}
+}
+
+func TestCollectStorageRejectsPartitionWithoutUniqueWholeDiskParent(t *testing.T) {
+	sysfs := sysfsWithBlockLinks("orphan")
+	snapshot, err := collectStorage(sysfs)
+	if err == nil {
+		t.Fatal("partition whose sysfs parent is absent from the whole-disk inventory was accepted")
+	}
+	if snapshot.DeviceCount != 0 || len(snapshot.Observations) != 0 {
+		t.Fatalf("incomplete partition topology escaped in a partial snapshot: %+v", snapshot)
+	}
+}
+
+func TestCollectStorageRejectsPartitionLinkChangedBeforeCompletion(t *testing.T) {
+	sysfs := &changingBlockLinkFS{MapFS: fixtureSysfs()}
+	snapshot, err := collectStorage(sysfs)
+	if err == nil {
+		t.Fatal("partition topology changed between collection passes without invalidating the snapshot")
+	}
+	if sysfs.reads != 2 {
+		t.Fatalf("expected the partition link to be observed in both passes, got %d reads", sysfs.reads)
+	}
+	if snapshot.DeviceCount != 0 || len(snapshot.Observations) != 0 {
+		t.Fatalf("a mixed partition topology escaped in a partial snapshot: %+v", snapshot)
+	}
+}
+
+func TestReadSysfsBlockTargetRejectsOversizedLink(t *testing.T) {
+	sysfs := fixtureSysfs()
+	sysfs["class/block/sda1"] = &fstest.MapFile{
+		Mode: fs.ModeSymlink,
+		Data: []byte("../../devices/" + strings.Repeat("x", 4096) + "/sda1"),
+	}
+	if _, err := readSysfsBlockTarget(sysfs, "sda1"); err == nil {
+		t.Fatal("oversized sysfs link target was accepted")
 	}
 }
 
@@ -75,8 +118,8 @@ func TestCollectStorageMarksCrossNodeVPDIdentityDuplicatesAmbiguous(t *testing.T
 			sysfs := fixtureSysfs()
 			addNonPartitionBlockNode(sysfs, "sdb", 8, 16, test.serialB, test.wwnB)
 			// Replace sda's identifiers so each case controls both observed disks.
-			sysfs["class/block/sda/device/vpd_pg80"] = &fstest.MapFile{Data: makeVPDPage(0x80, []byte(test.serialA))}
-			sysfs["class/block/sda/device/vpd_pg83"] = &fstest.MapFile{Data: makeNAAPage(test.wwnA)}
+			sysfs["devices/virtual/block/sda/device/vpd_pg80"] = &fstest.MapFile{Data: makeVPDPage(0x80, []byte(test.serialA))}
+			sysfs["devices/virtual/block/sda/device/vpd_pg83"] = &fstest.MapFile{Data: makeNAAPage(test.wwnA)}
 			snapshot, err := collectStorage(sysfs)
 			if err != nil {
 				t.Fatal(err)
@@ -128,7 +171,7 @@ func TestCollectStorageRejectsBlockNodeReplacedDuringObservation(t *testing.T) {
 func TestCollectStorageRejectsDuplicateBlockGenerations(t *testing.T) {
 	sysfs := fixtureSysfs()
 	addNonPartitionBlockNode(sysfs, "sdb", 8, 16, "private-serial-b", []byte{0x50, 0x0f, 0, 0, 0, 0, 0, 2})
-	sysfs["class/block/sdb/diskseq"] = &fstest.MapFile{Data: []byte("41\n")}
+	sysfs["devices/virtual/block/sdb/diskseq"] = &fstest.MapFile{Data: []byte("41\n")}
 	if _, err := collectStorage(sysfs); err == nil {
 		t.Fatal("two whole-disk nodes with one kernel generation were accepted")
 	}
@@ -149,9 +192,9 @@ func TestCollectStorageRequiresValidBlockGeneration(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			sysfs := fixtureSysfs()
 			if test.omit {
-				delete(sysfs, "class/block/sda/diskseq")
+				delete(sysfs, "devices/virtual/block/sda/diskseq")
 			} else {
-				sysfs["class/block/sda/diskseq"] = &fstest.MapFile{Data: []byte(test.value)}
+				sysfs["devices/virtual/block/sda/diskseq"] = &fstest.MapFile{Data: []byte(test.value)}
 			}
 			if _, err := collectStorage(sysfs); err == nil {
 				t.Fatal("missing or malformed block generation was accepted")
@@ -319,13 +362,13 @@ func TestCollectStorageIdentityStatusesFailClosed(t *testing.T) {
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			sysfs := fixtureSysfs()
-			delete(sysfs, "class/block/sda/device/vpd_pg80")
-			delete(sysfs, "class/block/sda/device/vpd_pg83")
+			delete(sysfs, "devices/virtual/block/sda/device/vpd_pg80")
+			delete(sysfs, "devices/virtual/block/sda/device/vpd_pg83")
 			if test.serialPage != nil {
-				sysfs["class/block/sda/device/vpd_pg80"] = &fstest.MapFile{Data: test.serialPage}
+				sysfs["devices/virtual/block/sda/device/vpd_pg80"] = &fstest.MapFile{Data: test.serialPage}
 			}
 			if test.wwnPage != nil {
-				sysfs["class/block/sda/device/vpd_pg83"] = &fstest.MapFile{Data: test.wwnPage}
+				sysfs["devices/virtual/block/sda/device/vpd_pg83"] = &fstest.MapFile{Data: test.wwnPage}
 			}
 			snapshot, err := collectStorage(sysfs)
 			if err != nil {
@@ -365,7 +408,7 @@ func TestCollectStorageRejectsMalformedOrUnboundedSysfs(t *testing.T) {
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			sysfs := fixtureSysfs()
-			sysfs["class/block/sda/"+test.field] = &fstest.MapFile{Data: []byte(test.value)}
+			sysfs["devices/virtual/block/sda/"+test.field] = &fstest.MapFile{Data: []byte(test.value)}
 			if _, err := collectStorage(sysfs); err == nil {
 				t.Fatal("invalid sysfs observation accepted")
 			}
@@ -374,7 +417,7 @@ func TestCollectStorageRejectsMalformedOrUnboundedSysfs(t *testing.T) {
 
 	t.Run("partition number", func(t *testing.T) {
 		sysfs := fixtureSysfs()
-		sysfs["class/block/sda1/partition"] = &fstest.MapFile{Data: []byte("0\n")}
+		sysfs["devices/virtual/block/sda/sda1/partition"] = &fstest.MapFile{Data: []byte("0\n")}
 		if _, err := collectStorage(sysfs); err == nil {
 			t.Fatal("zero partition number accepted")
 		}
@@ -412,37 +455,74 @@ func TestParseStorageSectorCount(t *testing.T) {
 
 func fixtureSysfs() fstest.MapFS {
 	return fstest.MapFS{
-		"class":                           {Mode: fs.ModeDir | 0o555},
-		"class/block":                     {Mode: fs.ModeDir | 0o555},
-		"class/block/sda":                 {Mode: fs.ModeDir | 0o555},
-		"class/block/sda/dev":             {Data: []byte("8:0\n")},
-		"class/block/sda/size":            {Data: []byte("2097152\n")},
-		"class/block/sda/ro":              {Data: []byte("0\n")},
-		"class/block/sda/removable":       {Data: []byte("0\n")},
-		"class/block/sda/diskseq":         {Data: []byte("41\n")},
-		"class/block/sda/device":          {Mode: fs.ModeDir | 0o555},
-		"class/block/sda/device/vpd_pg80": {Data: makeVPDPage(0x80, []byte("PHANTOWD-QEMU-SERIAL-01"))},
-		"class/block/sda/device/vpd_pg83": {Data: makeVPDPage(0x83, []byte{0x01, 0x03, 0x00, 0x08, 0x50, 0x0f, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01})},
-		"class/block/sda1":                {Mode: fs.ModeDir | 0o555},
-		"class/block/sda1/dev":            {Data: []byte("8:1\n")},
-		"class/block/sda1/size":           {Data: []byte("2097151\n")},
-		"class/block/sda1/ro":             {Data: []byte("1\n")},
-		"class/block/sda1/removable":      {Data: []byte("0\n")},
-		"class/block/sda1/partition":      {Data: []byte("1\n")},
+		"class":                                     {Mode: fs.ModeDir | 0o555},
+		"class/block":                               {Mode: fs.ModeDir | 0o555},
+		"class/block/sda":                           {Mode: fs.ModeSymlink, Data: []byte("../../devices/virtual/block/sda")},
+		"class/block/sda1":                          {Mode: fs.ModeSymlink, Data: []byte("../../devices/virtual/block/sda/sda1")},
+		"devices/virtual/block/sda/dev":             {Data: []byte("8:0\n")},
+		"devices/virtual/block/sda/size":            {Data: []byte("2097152\n")},
+		"devices/virtual/block/sda/ro":              {Data: []byte("0\n")},
+		"devices/virtual/block/sda/removable":       {Data: []byte("0\n")},
+		"devices/virtual/block/sda/diskseq":         {Data: []byte("41\n")},
+		"devices/virtual/block/sda/device":          {Mode: fs.ModeDir | 0o555},
+		"devices/virtual/block/sda/device/vpd_pg80": {Data: makeVPDPage(0x80, []byte("PHANTOWD-QEMU-SERIAL-01"))},
+		"devices/virtual/block/sda/device/vpd_pg83": {Data: makeVPDPage(0x83, []byte{0x01, 0x03, 0x00, 0x08, 0x50, 0x0f, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01})},
+		"devices/virtual/block/sda/sda1/dev":        {Data: []byte("8:1\n")},
+		"devices/virtual/block/sda/sda1/size":       {Data: []byte("2097151\n")},
+		"devices/virtual/block/sda/sda1/ro":         {Data: []byte("1\n")},
+		"devices/virtual/block/sda/sda1/removable":  {Data: []byte("0\n")},
+		"devices/virtual/block/sda/sda1/partition":  {Data: []byte("1\n")},
 	}
 }
 
+func sysfsWithBlockLinks(partitionParent string) fstest.MapFS {
+	sysfs := fixtureSysfs()
+	if partitionParent != "sda" {
+		const oldPrefix = "devices/virtual/block/sda/sda1"
+		newPrefix := "devices/virtual/block/" + partitionParent + "/sda1"
+		for name, file := range sysfs {
+			if name == oldPrefix || strings.HasPrefix(name, oldPrefix+"/") {
+				sysfs[newPrefix+strings.TrimPrefix(name, oldPrefix)] = file
+				delete(sysfs, name)
+			}
+		}
+		sysfs["class/block/sda1"] = &fstest.MapFile{
+			Mode: fs.ModeSymlink,
+			Data: []byte("../../devices/virtual/block/" + partitionParent + "/sda1"),
+		}
+	}
+	return sysfs
+}
+
 func addNonPartitionBlockNode(sysfs fstest.MapFS, name string, major, minor uint32, serial string, wwn []byte) {
+	target := "devices/virtual/block/" + name
 	base := "class/block/" + name
-	sysfs[base] = &fstest.MapFile{Mode: fs.ModeDir | 0o555}
-	sysfs[base+"/dev"] = &fstest.MapFile{Data: []byte(fmt.Sprintf("%d:%d\n", major, minor))}
-	sysfs[base+"/size"] = &fstest.MapFile{Data: []byte("2097152\n")}
-	sysfs[base+"/ro"] = &fstest.MapFile{Data: []byte("0\n")}
-	sysfs[base+"/removable"] = &fstest.MapFile{Data: []byte("0\n")}
-	sysfs[base+"/diskseq"] = &fstest.MapFile{Data: []byte(fmt.Sprintf("%d\n", minor+1))}
-	sysfs[base+"/device"] = &fstest.MapFile{Mode: fs.ModeDir | 0o555}
-	sysfs[base+"/device/vpd_pg80"] = &fstest.MapFile{Data: makeVPDPage(0x80, []byte(serial))}
-	sysfs[base+"/device/vpd_pg83"] = &fstest.MapFile{Data: makeNAAPage(wwn)}
+	sysfs[base] = &fstest.MapFile{Mode: fs.ModeSymlink, Data: []byte("../../" + target)}
+	sysfs[target+"/dev"] = &fstest.MapFile{Data: []byte(fmt.Sprintf("%d:%d\n", major, minor))}
+	sysfs[target+"/size"] = &fstest.MapFile{Data: []byte("2097152\n")}
+	sysfs[target+"/ro"] = &fstest.MapFile{Data: []byte("0\n")}
+	sysfs[target+"/removable"] = &fstest.MapFile{Data: []byte("0\n")}
+	sysfs[target+"/diskseq"] = &fstest.MapFile{Data: []byte(fmt.Sprintf("%d\n", minor+1))}
+	sysfs[target+"/device"] = &fstest.MapFile{Mode: fs.ModeDir | 0o555}
+	sysfs[target+"/device/vpd_pg80"] = &fstest.MapFile{Data: makeVPDPage(0x80, []byte(serial))}
+	sysfs[target+"/device/vpd_pg83"] = &fstest.MapFile{Data: makeNAAPage(wwn)}
+}
+
+type changingBlockLinkFS struct {
+	fstest.MapFS
+	reads int
+}
+
+func (source *changingBlockLinkFS) ReadLink(name string) (string, error) {
+	target, err := source.MapFS.ReadLink(name)
+	if err != nil || name != "class/block/sda1" {
+		return target, err
+	}
+	source.reads++
+	if source.reads > 1 {
+		return "../../devices/virtual/block/orphan/sda1", nil
+	}
+	return target, nil
 }
 
 type changingDiskSequenceFS struct {

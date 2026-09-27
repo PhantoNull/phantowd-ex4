@@ -120,13 +120,19 @@ generation-set validation and regular-file refusal. The QEMU fixture exercises
 successful disk-sequence ioctls against virtual block devices; it does not
 qualify EX4 SATA/libata behavior.
 The QEMU unmounted-disk fixture calls this implementation, not a separate
-copy of the process/JSON code, including clone/alias distinction before
-mounting. It derives generations from the read-only sysfs collector, uses the
-fixed-path opener, deliberately shuffles the source records through the
-complete-set matcher, and checks a deliberately stale expected sequence is
-rejected without a partial snapshot. The exact-head ARMv5 QEMU CI run for
-PR #41 (`5c3a1d4`) passed. This fixture is not evidence of production-complete
-discovery or EX4 SATA/libata qualification.
+copy of the process/JSON code, including clone/alias distinction. It derives
+generations from the read-only sysfs collector, uses the fixed-path opener,
+deliberately shuffles the source records through the complete-set matcher, and
+checks a deliberately stale expected sequence is rejected without a partial
+snapshot. Before each fixture assessment it rechecks the storage inventory and
+mount table; a visible mount of a selected whole-disk node or one of its
+direct partitions causes refusal. Parent correlation uses validated sysfs
+class-link targets and remains internal. The fixture does not traverse MD,
+device-mapper, multipath or other holder relationships, prove global
+exclusivity, or perform a mount. The exact-head ARMv5 QEMU CI run for PR #41
+(`5c3a1d4`) passed for the preceding fixture. The partition-parent/mount-guard
+extension above requires exact-head CI. This fixture is not evidence of
+production-complete discovery or EX4 SATA/libata qualification.
 It also verifies a generated ext2/XFS collision through the real ARMv5 helper:
 individual signature controls succeed, the combined image returns `ErrProbe`
 without identity, and a set containing that image returns no partial results.

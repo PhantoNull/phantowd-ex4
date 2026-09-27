@@ -10,6 +10,7 @@ import (
 	"io"
 	"io/fs"
 	"math"
+	"path"
 	"sort"
 	"strconv"
 	"strings"
@@ -18,6 +19,7 @@ import (
 const (
 	maxBlockEntries        = 32
 	maxSysfsAttributeBytes = 128
+	maxSysfsBlockLinkBytes = 4096
 	maxVPDPageBytes        = 4096
 	linuxSysfsSectorBytes  = 512
 )
@@ -44,6 +46,10 @@ type blockObservation struct {
 	SerialStatus    identityStatus `json:"serial_status,omitempty"`
 	WWNStatus       identityStatus `json:"wwn_status,omitempty"`
 	diskSequence    uint64         `json:"-"`
+	parentName      string         `json:"-"`
+	parentMajor     uint32         `json:"-"`
+	parentMinor     uint32         `json:"-"`
+	parentDiskSeq   uint64         `json:"-"`
 }
 
 type storageSnapshot struct {
@@ -83,6 +89,8 @@ func collectStorage(sysfs fs.FS) (snapshot storageSnapshot, err error) {
 			"whole-disk kernel generations are checked before and after each " +
 				"observation; the generation is transient and is never returned as " +
 				"persistent identity",
+			"partition parents are correlated through validated sysfs class-link " +
+				"targets internally; this transient topology is not returned",
 			"block metadata is re-read before publication to reject observed " +
 				"changes, but sysfs reads do not provide an atomic hotplug snapshot",
 			"PARTUUID, filesystem UUID, RAID membership, health and bay mapping are not collected",
@@ -142,6 +150,9 @@ func collectStorage(sysfs fs.FS) (snapshot storageSnapshot, err error) {
 		snapshot.Observations = append(snapshot.Observations, observation)
 		firstPass = append(firstPass, metadata)
 	}
+	if err := correlateStoragePartitionParents(snapshot.Observations, firstPass); err != nil {
+		return snapshot, errors.New("cannot establish complete partition parent topology")
+	}
 	for index, observation := range snapshot.Observations {
 		metadata, err := observeStorageBlockMetadata(sysfs, observation.Name)
 		if err != nil || metadata != firstPass[index] {
@@ -171,6 +182,7 @@ type storageBlockMetadata struct {
 	removable       bool
 	partitionNumber uint32
 	diskSequence    uint64
+	sysfsTarget     string
 	serial          string
 	serialStatus    identityStatus
 	wwn             string
@@ -180,6 +192,11 @@ type storageBlockMetadata struct {
 func observeStorageBlockMetadata(sysfs fs.FS, name string) (storageBlockMetadata, error) {
 	base := "class/block/" + name + "/"
 	metadata := storageBlockMetadata{kind: "block"}
+	target, err := readSysfsBlockTarget(sysfs, name)
+	if err != nil {
+		return metadata, errors.New("invalid sysfs block link")
+	}
+	metadata.sysfsTarget = target
 	partitionText, partitionErr := readSysfsAttribute(sysfs, base+"partition")
 	if partitionErr == nil {
 		partitionNumber, parseErr := strconv.ParseUint(strings.TrimSpace(partitionText), 10, 32)
@@ -231,6 +248,51 @@ func observeStorageBlockMetadata(sysfs fs.FS, name string) (storageBlockMetadata
 		}
 	}
 	return metadata, nil
+}
+
+func readSysfsBlockTarget(sysfs fs.FS, name string) (string, error) {
+	linkFS, ok := sysfs.(fs.ReadLinkFS)
+	if !ok {
+		return "", errors.New("sysfs filesystem cannot read block links")
+	}
+	target, err := linkFS.ReadLink("class/block/" + name)
+	if err != nil || target == "" || len(target) > maxSysfsBlockLinkBytes ||
+		strings.IndexByte(target, 0) >= 0 || path.IsAbs(target) {
+		return "", errors.New("invalid sysfs block link target")
+	}
+	resolved := path.Clean(path.Join("class/block", target))
+	if !fs.ValidPath(resolved) || !strings.HasPrefix(resolved, "devices/") || path.Base(resolved) != name {
+		return "", errors.New("sysfs block link escaped the device tree")
+	}
+	return resolved, nil
+}
+
+func correlateStoragePartitionParents(observations []blockObservation, metadata []storageBlockMetadata) error {
+	if len(observations) != len(metadata) {
+		return errors.New("storage topology does not match its observations")
+	}
+	wholeDisksByTarget := make(map[string][]int, len(metadata))
+	for index, item := range metadata {
+		if item.kind == "block" {
+			wholeDisksByTarget[item.sysfsTarget] = append(wholeDisksByTarget[item.sysfsTarget], index)
+		}
+	}
+	for index, item := range metadata {
+		if item.kind != "partition" {
+			continue
+		}
+		parents := wholeDisksByTarget[path.Dir(item.sysfsTarget)]
+		if len(parents) != 1 {
+			return errors.New("partition does not resolve to one whole-disk node")
+		}
+		parentIndex := parents[0]
+		parent := metadata[parentIndex]
+		observations[index].parentName = observations[parentIndex].Name
+		observations[index].parentMajor = parent.major
+		observations[index].parentMinor = parent.minor
+		observations[index].parentDiskSeq = parent.diskSequence
+	}
+	return nil
 }
 
 func sameBlockInventory(before, after []fs.DirEntry) bool {

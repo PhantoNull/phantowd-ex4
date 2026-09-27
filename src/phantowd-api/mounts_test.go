@@ -46,6 +46,54 @@ func TestCollectMountInventoryReadOnlyAndRedacted(t *testing.T) {
 	}
 }
 
+func TestObservedWholeDiskMountGuardIncludesItsPartitions(t *testing.T) {
+	sysfs := fixtureSysfs()
+	addNonPartitionBlockNode(sysfs, "sdb", 8, 16, "private-serial-b", []byte{0x50, 0x0f, 0, 0, 0, 0, 0, 2})
+	storage, err := collectStorage(sysfs)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var diskA, diskB blockObservation
+	for _, observation := range storage.Observations {
+		switch observation.Name {
+		case "sda":
+			diskA = observation
+		case "sdb":
+			diskB = observation
+		}
+	}
+	if diskA.Name == "" || diskB.Name == "" {
+		t.Fatalf("whole-disk fixture incomplete: %+v", storage.Observations)
+	}
+	for _, test := range []struct {
+		name   string
+		mounts []mountObservation
+		wantA  bool
+		wantB  bool
+	}{
+		{name: "whole disk", mounts: []mountObservation{{DeviceMajor: 8, DeviceMinor: 0}}, wantA: true},
+		{name: "child partition", mounts: []mountObservation{{DeviceMajor: 8, DeviceMinor: 1}}, wantA: true},
+		{name: "other whole disk", mounts: []mountObservation{{DeviceMajor: 8, DeviceMinor: 16}}, wantB: true},
+		{name: "non-block filesystem", mounts: []mountObservation{{DeviceMajor: 0, DeviceMinor: 42}}},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			gotA, err := observedWholeDiskHasVisibleDirectOrPartitionMount(diskA, storage.Observations, test.mounts)
+			if err != nil || gotA != test.wantA {
+				t.Fatalf("disk A mount assessment = %v, %v; want %v", gotA, err, test.wantA)
+			}
+			gotB, err := observedWholeDiskHasVisibleDirectOrPartitionMount(diskB, storage.Observations, test.mounts)
+			if err != nil || gotB != test.wantB {
+				t.Fatalf("disk B mount assessment = %v, %v; want %v", gotB, err, test.wantB)
+			}
+		})
+	}
+	stale := diskA
+	stale.diskSequence++
+	if _, err := observedWholeDiskHasVisibleDirectOrPartitionMount(stale, storage.Observations, []mountObservation{}); err == nil {
+		t.Fatal("stale whole-disk generation was accepted by the mount guard")
+	}
+}
+
 func TestParseMountInfoRejectsMalformedOrUnboundedInput(t *testing.T) {
 	validLine := "36 35 8:0 / /data rw,relatime - ext4 /dev/sda1 rw"
 	tooManyLines := make([]string, maxMountEntries+1)

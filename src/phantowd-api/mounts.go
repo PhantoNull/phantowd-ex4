@@ -40,6 +40,62 @@ type mountObservation struct {
 	ReadOnly    bool   `json:"read_only"`
 }
 
+// observedWholeDiskHasVisibleDirectOrPartitionMount correlates only direct
+// mountinfo device numbers and their observed partition parents. It does not
+// traverse MD, device-mapper, multipath or other holder relationships and is
+// not a global exclusivity check.
+func observedWholeDiskHasVisibleDirectOrPartitionMount(disk blockObservation, inventory []blockObservation, mounts []mountObservation) (bool, error) {
+	if disk.Kind != "block" || disk.diskSequence == 0 ||
+		(disk.Major == 0 && disk.Minor == 0) || inventory == nil || mounts == nil {
+		return false, errors.New("invalid whole-disk mount assessment input")
+	}
+	diskMatches := 0
+	for _, observation := range inventory {
+		if observation.Name == disk.Name && observation.Kind == "block" &&
+			observation.Major == disk.Major && observation.Minor == disk.Minor &&
+			observation.diskSequence == disk.diskSequence {
+			diskMatches++
+		}
+	}
+	if diskMatches != 1 {
+		return false, errors.New("whole-disk observation is not unique in the inventory")
+	}
+	for _, mount := range mounts {
+		var matched *blockObservation
+		for index := range inventory {
+			observation := &inventory[index]
+			if observation.Major == mount.DeviceMajor && observation.Minor == mount.DeviceMinor {
+				if matched != nil {
+					return false, errors.New("mount device maps to multiple block observations")
+				}
+				matched = observation
+			}
+		}
+		if matched == nil {
+			continue
+		}
+		if matched.Kind == "block" {
+			if matched.Major == disk.Major && matched.Minor == disk.Minor {
+				if matched.diskSequence != disk.diskSequence {
+					return false, errors.New("mounted whole-disk generation changed")
+				}
+				return true, nil
+			}
+			continue
+		}
+		if matched.Kind != "partition" || matched.parentName == "" || matched.parentDiskSeq == 0 {
+			return false, errors.New("mounted block observation has incomplete parent topology")
+		}
+		if matched.parentMajor == disk.Major && matched.parentMinor == disk.Minor {
+			if matched.parentName != disk.Name || matched.parentDiskSeq != disk.diskSequence {
+				return false, errors.New("mounted partition parent generation changed")
+			}
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
 // collectMountInventory reads only the kernel-generated mount table for this
 // process. It does not access mount sources, block nodes, or filesystem data.
 func collectMountInventory(proc fs.FS, now time.Time) (mountSnapshot, error) {
