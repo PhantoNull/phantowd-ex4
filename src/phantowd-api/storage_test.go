@@ -50,6 +50,7 @@ func TestCollectStorageReportsSysfsOnlyObservations(t *testing.T) {
 	for _, forbidden := range []string{
 		"fixture-secret", "PHANTOWD-QEMU-SERIAL-01", "500f000000000001", "fixture-fs-uuid-a",
 		"fixture-partuuid-a", "disk_sequence", "parent_name", "parent_major", "parent_minor", "parent_disk_seq",
+		"lower_blocks", "holder_targets", "slave_targets",
 	} {
 		if strings.Contains(string(encoded), forbidden) {
 			t.Fatalf("observation exposed identity material %q: %s", forbidden, encoded)
@@ -79,6 +80,100 @@ func TestCollectStorageRejectsPartitionLinkChangedBeforeCompletion(t *testing.T)
 	}
 	if snapshot.DeviceCount != 0 || len(snapshot.Observations) != 0 {
 		t.Fatalf("a mixed partition topology escaped in a partial snapshot: %+v", snapshot)
+	}
+}
+
+func TestObservedWholeDiskMountGuardDetectsVisibleStackedDeviceMount(t *testing.T) {
+	sysfs := fixtureSysfs()
+	addNonPartitionBlockNode(sysfs, "md0", 9, 0, "fixture-array-serial", []byte{0x50, 0x0f, 0, 0, 0, 0, 0, 2})
+	addNonPartitionBlockNode(sysfs, "dm-0", 253, 0, "fixture-mapper-serial", []byte{0x50, 0x0f, 0, 0, 0, 0, 0, 3})
+	addNonPartitionBlockNode(sysfs, "sdb", 8, 16, "unrelated-disk-serial", []byte{0x50, 0x0f, 0, 0, 0, 0, 0, 4})
+	sysfs["devices/virtual/block/md0/diskseq"] = &fstest.MapFile{Data: []byte("52\n")}
+	sysfs["devices/virtual/block/dm-0/diskseq"] = &fstest.MapFile{Data: []byte("53\n")}
+	addSysfsBlockRelation(sysfs, "devices/virtual/block/sda/sda1", "holders", "md0", "../../../md0")
+	addSysfsBlockRelation(sysfs, "devices/virtual/block/md0", "slaves", "sda1", "../../sda/sda1")
+	addSysfsBlockRelation(sysfs, "devices/virtual/block/md0", "holders", "dm-0", "../../dm-0")
+	addSysfsBlockRelation(sysfs, "devices/virtual/block/dm-0", "slaves", "md0", "../../md0")
+
+	snapshot, err := collectStorage(sysfs)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var disk *blockObservation
+	for index := range snapshot.Observations {
+		if snapshot.Observations[index].Name == "sda" {
+			disk = &snapshot.Observations[index]
+			break
+		}
+	}
+	if disk == nil {
+		t.Fatal("selected whole disk was not present in the complete inventory")
+	}
+	mounted, err := observedWholeDiskHasVisibleDependentMount(*disk, snapshot.Observations, []mountObservation{{DeviceMajor: 253, DeviceMinor: 0}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !mounted {
+		t.Fatal("mount on a device-mapper node above an MD holder was not attributed to its backing disk")
+	}
+	var unrelatedDisk *blockObservation
+	for index := range snapshot.Observations {
+		if snapshot.Observations[index].Name == "sdb" {
+			unrelatedDisk = &snapshot.Observations[index]
+			break
+		}
+	}
+	if unrelatedDisk == nil {
+		t.Fatal("unrelated whole disk was not present in the complete inventory")
+	}
+	mounted, err = observedWholeDiskHasVisibleDependentMount(*unrelatedDisk, snapshot.Observations, []mountObservation{{DeviceMajor: 253, DeviceMinor: 0}})
+	if err != nil || mounted {
+		t.Fatalf("mount on an unrelated stack was attributed to another disk: mounted=%v err=%v", mounted, err)
+	}
+}
+
+func TestCollectStorageRejectsNonReciprocalBlockRelations(t *testing.T) {
+	sysfs := fixtureSysfs()
+	addNonPartitionBlockNode(sysfs, "md0", 9, 0, "fixture-array-serial", []byte{0x50, 0x0f, 0, 0, 0, 0, 0, 2})
+	addSysfsBlockRelation(sysfs, "devices/virtual/block/sda/sda1", "holders", "md0", "../../../md0")
+
+	snapshot, err := collectStorage(sysfs)
+	if err == nil {
+		t.Fatal("non-reciprocal sysfs holder/slave topology was accepted")
+	}
+	if snapshot.DeviceCount != 0 || len(snapshot.Observations) != 0 {
+		t.Fatalf("incomplete stacked topology escaped as a partial inventory: %+v", snapshot)
+	}
+}
+
+func TestCollectStorageRejectsEscapingBlockRelationLink(t *testing.T) {
+	sysfs := fixtureSysfs()
+	addSysfsBlockRelation(sysfs, "devices/virtual/block/sda", "holders", "sda", "../../../../../../etc/sda")
+	snapshot, err := collectStorage(sysfs)
+	if err == nil {
+		t.Fatal("sysfs holder link escaping the devices tree was accepted")
+	}
+	if snapshot.DeviceCount != 0 || len(snapshot.Observations) != 0 {
+		t.Fatalf("unsafe sysfs relation escaped in a partial inventory: %+v", snapshot)
+	}
+}
+
+func TestCollectStorageRejectsBlockRelationsChangedBeforeCompletion(t *testing.T) {
+	base := fixtureSysfs()
+	addNonPartitionBlockNode(base, "md0", 9, 0, "fixture-array-serial", []byte{0x50, 0x0f, 0, 0, 0, 0, 0, 2})
+	addSysfsBlockRelation(base, "devices/virtual/block/sda/sda1", "holders", "md0", "../../../md0")
+	addSysfsBlockRelation(base, "devices/virtual/block/md0", "slaves", "sda1", "../../sda/sda1")
+	sysfs := &changingBlockRelationFS{MapFS: base, path: "devices/virtual/block/sda/sda1/holders/md0"}
+
+	snapshot, err := collectStorage(sysfs)
+	if err == nil {
+		t.Fatal("block holder relation changed during collection without invalidating the snapshot")
+	}
+	if sysfs.reads != 2 {
+		t.Fatalf("expected the holder relation to be checked twice, got %d reads", sysfs.reads)
+	}
+	if snapshot.DeviceCount != 0 || len(snapshot.Observations) != 0 {
+		t.Fatalf("a mixed block topology escaped in a partial inventory: %+v", snapshot)
 	}
 }
 
@@ -464,6 +559,8 @@ func fixtureSysfs() fstest.MapFS {
 		"devices/virtual/block/sda/ro":              {Data: []byte("0\n")},
 		"devices/virtual/block/sda/removable":       {Data: []byte("0\n")},
 		"devices/virtual/block/sda/diskseq":         {Data: []byte("41\n")},
+		"devices/virtual/block/sda/holders":         {Mode: fs.ModeDir | 0o555},
+		"devices/virtual/block/sda/slaves":          {Mode: fs.ModeDir | 0o555},
 		"devices/virtual/block/sda/device":          {Mode: fs.ModeDir | 0o555},
 		"devices/virtual/block/sda/device/vpd_pg80": {Data: makeVPDPage(0x80, []byte("PHANTOWD-QEMU-SERIAL-01"))},
 		"devices/virtual/block/sda/device/vpd_pg83": {Data: makeVPDPage(0x83, []byte{0x01, 0x03, 0x00, 0x08, 0x50, 0x0f, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01})},
@@ -472,7 +569,12 @@ func fixtureSysfs() fstest.MapFS {
 		"devices/virtual/block/sda/sda1/ro":         {Data: []byte("1\n")},
 		"devices/virtual/block/sda/sda1/removable":  {Data: []byte("0\n")},
 		"devices/virtual/block/sda/sda1/partition":  {Data: []byte("1\n")},
+		"devices/virtual/block/sda/sda1/holders":    {Mode: fs.ModeDir | 0o555},
 	}
+}
+
+func addSysfsBlockRelation(sysfs fstest.MapFS, ownerTarget, relation, name, target string) {
+	sysfs[ownerTarget+"/"+relation+"/"+name] = &fstest.MapFile{Mode: fs.ModeSymlink, Data: []byte(target)}
 }
 
 func sysfsWithBlockLinks(partitionParent string) fstest.MapFS {
@@ -503,6 +605,8 @@ func addNonPartitionBlockNode(sysfs fstest.MapFS, name string, major, minor uint
 	sysfs[target+"/ro"] = &fstest.MapFile{Data: []byte("0\n")}
 	sysfs[target+"/removable"] = &fstest.MapFile{Data: []byte("0\n")}
 	sysfs[target+"/diskseq"] = &fstest.MapFile{Data: []byte(fmt.Sprintf("%d\n", minor+1))}
+	sysfs[target+"/holders"] = &fstest.MapFile{Mode: fs.ModeDir | 0o555}
+	sysfs[target+"/slaves"] = &fstest.MapFile{Mode: fs.ModeDir | 0o555}
 	sysfs[target+"/device"] = &fstest.MapFile{Mode: fs.ModeDir | 0o555}
 	sysfs[target+"/device/vpd_pg80"] = &fstest.MapFile{Data: makeVPDPage(0x80, []byte(serial))}
 	sysfs[target+"/device/vpd_pg83"] = &fstest.MapFile{Data: makeNAAPage(wwn)}
@@ -511,6 +615,24 @@ func addNonPartitionBlockNode(sysfs fstest.MapFS, name string, major, minor uint
 type changingBlockLinkFS struct {
 	fstest.MapFS
 	reads int
+}
+
+type changingBlockRelationFS struct {
+	fstest.MapFS
+	path  string
+	reads int
+}
+
+func (source *changingBlockRelationFS) ReadLink(name string) (string, error) {
+	target, err := source.MapFS.ReadLink(name)
+	if err != nil || name != source.path {
+		return target, err
+	}
+	source.reads++
+	if source.reads > 1 {
+		return "../../../alternate/md0", nil
+	}
+	return target, nil
 }
 
 func (source *changingBlockLinkFS) ReadLink(name string) (string, error) {

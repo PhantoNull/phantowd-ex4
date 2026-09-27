@@ -125,11 +125,16 @@ generations from the read-only sysfs collector, uses the fixed-path opener,
 deliberately shuffles the source records through the complete-set matcher, and
 checks a deliberately stale expected sequence is rejected without a partial
 snapshot. Before each fixture assessment it rechecks the storage inventory and
-mount table; a visible mount of a selected whole-disk node or one of its
-direct partitions causes refusal. Parent correlation uses validated sysfs
-class-link targets and remains internal. The fixture does not traverse MD,
-device-mapper, multipath or other holder relationships, prove global
-exclusivity, or perform a mount. The exact-head ARMv5 QEMU CI run at code
+mount table; a visible mount of a selected whole-disk node or any observed
+dependent block node causes refusal. Parent correlation uses validated sysfs
+class-link targets. The collector validates reciprocal `holders`/`slaves`
+links against the complete observed block set (partitions expose `holders`;
+whole block nodes expose both) and keeps this transient graph out of API v1.
+Host-generated tests exercise mount correlation through a disk, partition, MD
+node and device-mapper node. The current QEMU guest does not create a stacked
+MD/device-mapper device, so it checks the guest's actual sysfs graph and direct
+mount guard but does not qualify a real stacked-device mount. No fixture proves
+global exclusivity or performs an experimental mount. The exact-head ARMv5 QEMU CI run at code
 commit `2059a93`
 ([run `36302718920`](https://github.com/PhantoNull/phantowd-ex4/actions/runs/36302718920))
 passed with the partition-parent/mount-guard extension. Host CI also passed

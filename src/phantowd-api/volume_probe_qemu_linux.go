@@ -82,9 +82,9 @@ func probeQEMUUnmountedStorage() error {
 			if disk == nil {
 				return errors.New("probe fixture disk disappeared from sysfs")
 			}
-			mounted, err := observedWholeDiskHasVisibleDirectOrPartitionMount(*disk, currentInventory.Observations, mounts.Mounts)
+			mounted, err := observedWholeDiskHasVisibleDependentMount(*disk, currentInventory.Observations, mounts.Mounts)
 			if err != nil || mounted {
-				return errors.New("probe fixture disk or one of its partitions is mounted")
+				return errors.New("probe fixture disk has a visible mount through an observed dependent node")
 			}
 		}
 		return nil
@@ -207,7 +207,7 @@ func sameQEMUStorageInventory(a, b storageSnapshot) bool {
 		return false
 	}
 	for index := range a.Observations {
-		if a.Observations[index] != b.Observations[index] {
+		if !sameBlockObservation(a.Observations[index], b.Observations[index]) {
 			return false
 		}
 	}

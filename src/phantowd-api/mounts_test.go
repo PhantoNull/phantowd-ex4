@@ -77,11 +77,11 @@ func TestObservedWholeDiskMountGuardIncludesItsPartitions(t *testing.T) {
 		{name: "non-block filesystem", mounts: []mountObservation{{DeviceMajor: 0, DeviceMinor: 42}}},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			gotA, err := observedWholeDiskHasVisibleDirectOrPartitionMount(diskA, storage.Observations, test.mounts)
+			gotA, err := observedWholeDiskHasVisibleDependentMount(diskA, storage.Observations, test.mounts)
 			if err != nil || gotA != test.wantA {
 				t.Fatalf("disk A mount assessment = %v, %v; want %v", gotA, err, test.wantA)
 			}
-			gotB, err := observedWholeDiskHasVisibleDirectOrPartitionMount(diskB, storage.Observations, test.mounts)
+			gotB, err := observedWholeDiskHasVisibleDependentMount(diskB, storage.Observations, test.mounts)
 			if err != nil || gotB != test.wantB {
 				t.Fatalf("disk B mount assessment = %v, %v; want %v", gotB, err, test.wantB)
 			}
@@ -89,7 +89,7 @@ func TestObservedWholeDiskMountGuardIncludesItsPartitions(t *testing.T) {
 	}
 	stale := diskA
 	stale.diskSequence++
-	if _, err := observedWholeDiskHasVisibleDirectOrPartitionMount(stale, storage.Observations, []mountObservation{}); err == nil {
+	if _, err := observedWholeDiskHasVisibleDependentMount(stale, storage.Observations, []mountObservation{}); err == nil {
 		t.Fatal("stale whole-disk generation was accepted by the mount guard")
 	}
 }

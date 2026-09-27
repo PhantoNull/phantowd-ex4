@@ -290,10 +290,11 @@ and refuses non-Versatile PB machines. See the
 
 Only `sys/kernel/osrelease`, `uptime`, and `meminfo` beneath `/proc` are read,
 with a 64 KiB limit per file. `MemAvailable` is required; no invented fallback
-is returned. The storage endpoint reads bounded attributes beneath
-`/sys/class/block`, with a 32-entry ceiling. For non-partition block nodes it
-also reads the kernel's read-only VPD page 0x80/0x83 sysfs files, bounded to 4096
-bytes each. It returns only `serial_status` and `wwn_status` (`unavailable`,
+is returned. The storage endpoint reads bounded attributes for at most 32 names
+enumerated under `/sys/class/block`, and reads relation directories only under
+their validated canonical `/sys/devices` targets. For non-partition block nodes
+it also reads the kernel's read-only VPD page 0x80/0x83 sysfs files, bounded to
+4096 bytes each. It returns only `serial_status` and `wwn_status` (`unavailable`,
 `present`, `invalid`, `ambiguous`, or `unreadable`); raw serial/WWN values are
 never returned. Duplicate valid serials or NAA WWNs among the non-partition
 block nodes visible in this snapshot are marked `ambiguous` on every matching
@@ -312,9 +313,22 @@ inside `/devices/`, and re-read as part of the consistency check. Every
 enumerated partition must resolve to exactly one enumerated whole-disk parent;
 that transient parent name, device number and generation are retained only
 internally and are not part of the API response. Missing, ambiguous or changed
-parent topology rejects the complete snapshot. This direct partition mapping
-does not traverse MD, device-mapper, multipath or other holder relationships,
-and does not establish global unmounted state or exclusive access.
+parent topology rejects the complete snapshot. The collector also reads bounded
+sysfs `holders` links for each block node and `slaves` links for each whole
+block node, resolves both against the complete inventory and requires reciprocal
+relationships. That transient graph is re-read before publication and omitted
+from API v1; missing, unobserved, non-reciprocal or changed links reject the
+complete snapshot. The mount-assessment fixture follows partition parents and
+transitive slave relationships so a visible MD/device-mapper mount can be
+associated with its backing disk. Generated host tests cover a synthetic
+disk-to-partition-to-MD-to-device-mapper chain. The current QEMU disks are not
+stacked MD/device-mapper devices, so this is not yet evidence for an actual
+guest stack, global unmounted state, or exclusive access. In Linux v6.18, a
+partition gets a `holders` directory while the whole gendisk gets both
+`holders` and `slaves`; the block layer documents the reciprocal link contract
+in [`partitions/core.c`](https://github.com/torvalds/linux/blob/v6.18/block/partitions/core.c#L2258-L2277),
+[`genhd.c`](https://github.com/torvalds/linux/blob/v6.18/block/genhd.c#L3039-L3058),
+and [`holder.c`](https://github.com/torvalds/linux/blob/v6.18/block/holder.c#L548-L579).
 The block inventory does not collect partition/filesystem UUIDs, bay mapping,
 SMART, or device health. The separate array endpoint reads bounded
 `/proc/mdstat` text and MD sysfs metadata only; it

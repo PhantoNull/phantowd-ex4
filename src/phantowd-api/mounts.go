@@ -40,11 +40,11 @@ type mountObservation struct {
 	ReadOnly    bool   `json:"read_only"`
 }
 
-// observedWholeDiskHasVisibleDirectOrPartitionMount correlates only direct
-// mountinfo device numbers and their observed partition parents. It does not
-// traverse MD, device-mapper, multipath or other holder relationships and is
-// not a global exclusivity check.
-func observedWholeDiskHasVisibleDirectOrPartitionMount(disk blockObservation, inventory []blockObservation, mounts []mountObservation) (bool, error) {
+// observedWholeDiskHasVisibleDependentMount correlates mountinfo device
+// numbers with the selected whole disk through observed partition-parent and
+// reciprocal holder/slave relationships. This point-in-time check is not a
+// global exclusivity or mount-authorization decision.
+func observedWholeDiskHasVisibleDependentMount(disk blockObservation, inventory []blockObservation, mounts []mountObservation) (bool, error) {
 	if disk.Kind != "block" || disk.diskSequence == 0 ||
 		(disk.Major == 0 && disk.Minor == 0) || inventory == nil || mounts == nil {
 		return false, errors.New("invalid whole-disk mount assessment input")
@@ -74,26 +74,98 @@ func observedWholeDiskHasVisibleDirectOrPartitionMount(disk blockObservation, in
 		if matched == nil {
 			continue
 		}
-		if matched.Kind == "block" {
-			if matched.Major == disk.Major && matched.Minor == disk.Minor {
-				if matched.diskSequence != disk.diskSequence {
-					return false, errors.New("mounted whole-disk generation changed")
-				}
-				return true, nil
-			}
-			continue
+		depends, err := observedBlockNodeDependsOnWholeDisk(*matched, disk, inventory)
+		if err != nil {
+			return false, err
 		}
-		if matched.Kind != "partition" || matched.parentName == "" || matched.parentDiskSeq == 0 {
-			return false, errors.New("mounted block observation has incomplete parent topology")
-		}
-		if matched.parentMajor == disk.Major && matched.parentMinor == disk.Minor {
-			if matched.parentName != disk.Name || matched.parentDiskSeq != disk.diskSequence {
-				return false, errors.New("mounted partition parent generation changed")
-			}
+		if depends {
 			return true, nil
 		}
 	}
 	return false, nil
+}
+
+func observedBlockNodeDependsOnWholeDisk(node, disk blockObservation, inventory []blockObservation) (bool, error) {
+	byName := make(map[string]blockObservation, len(inventory))
+	for _, observation := range inventory {
+		if observation.Name == "" {
+			return false, errors.New("block topology contains an unnamed node")
+		}
+		if _, exists := byName[observation.Name]; exists {
+			return false, errors.New("block topology contains a duplicate node name")
+		}
+		byName[observation.Name] = observation
+	}
+	if observed, exists := byName[node.Name]; !exists || !sameBlockTopologyIdentity(observed, node) {
+		return false, errors.New("mounted block node is not the observed inventory object")
+	}
+	if observed, exists := byName[disk.Name]; !exists || observed.Kind != "block" || !sameBlockTopologyIdentity(observed, disk) {
+		return false, errors.New("selected whole disk is not the observed inventory object")
+	}
+	visiting := make(map[string]bool, len(inventory))
+	visited := make(map[string]bool, len(inventory))
+	var depends func(blockObservation) (bool, error)
+	depends = func(current blockObservation) (bool, error) {
+		if current.Name == disk.Name {
+			if !sameBlockTopologyIdentity(current, disk) {
+				return false, errors.New("selected disk generation changed in observed topology")
+			}
+			return true, nil
+		}
+		if visiting[current.Name] {
+			return false, errors.New("block dependency topology contains a cycle")
+		}
+		if visited[current.Name] {
+			return false, nil
+		}
+		visiting[current.Name] = true
+		defer delete(visiting, current.Name)
+		if current.Kind == "partition" {
+			if current.parentName == "" || current.parentDiskSeq == 0 {
+				return false, errors.New("partition has incomplete observed parent topology")
+			}
+			parent, exists := byName[current.parentName]
+			if !exists || parent.Kind != "block" || parent.Major != current.parentMajor ||
+				parent.Minor != current.parentMinor || parent.diskSequence != current.parentDiskSeq {
+				return false, errors.New("partition parent no longer matches the observed topology")
+			}
+			found, err := depends(parent)
+			if err != nil || found {
+				return found, err
+			}
+		} else if current.Kind != "block" || current.diskSequence == 0 {
+			return false, errors.New("block dependency has an invalid node type or generation")
+		}
+		seenLower := make(map[string]bool, len(current.lowerBlocks))
+		for _, reference := range current.lowerBlocks {
+			if reference.Name == "" || seenLower[reference.Name] {
+				return false, errors.New("block dependency has an invalid or duplicate slave")
+			}
+			seenLower[reference.Name] = true
+			lower, exists := byName[reference.Name]
+			if !exists || !sameTopologyReference(lower, reference) {
+				return false, errors.New("block slave no longer matches the observed topology")
+			}
+			found, err := depends(lower)
+			if err != nil || found {
+				return found, err
+			}
+		}
+		visited[current.Name] = true
+		return false, nil
+	}
+	return depends(node)
+}
+
+func sameBlockTopologyIdentity(a, b blockObservation) bool {
+	return a.Name == b.Name && a.Kind == b.Kind && a.Major == b.Major && a.Minor == b.Minor &&
+		a.diskSequence == b.diskSequence
+}
+
+func sameTopologyReference(observation blockObservation, reference blockTopologyRef) bool {
+	return observation.Name == reference.Name && observation.Kind == reference.Kind &&
+		observation.Major == reference.Major && observation.Minor == reference.Minor &&
+		observation.diskSequence == reference.DiskSequence
 }
 
 // collectMountInventory reads only the kernel-generated mount table for this

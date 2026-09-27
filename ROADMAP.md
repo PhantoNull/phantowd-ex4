@@ -284,8 +284,14 @@ are missing. **Depends on:** M1; M7 for hardware.
   exactly one observed whole-disk sysfs target and rechecks that link; the
   relation is omitted from API v1. The QEMU fixture now detects mounts on a
   selected virtual disk or its directly observed partitions. This is fixture
-  coverage only: it does not traverse MD/device-mapper/multipath holders or
-  establish production-wide exclusivity. Code commit `2059a93` passed exact-head
+  coverage only. The current feature-branch increment also validates bounded,
+  reciprocal sysfs `holders`/`slaves` links against the complete inventory and
+  follows transient slave/partition-parent links when correlating mountinfo to
+  a selected disk. A generated host test covers a synthetic
+  disk-to-partition-to-MD-to-device-mapper chain. The QEMU guest validates its
+  actual sysfs graph, but does not instantiate a stacked MD/device-mapper
+  device; host fixture coverage is not production-wide exclusivity. Code
+  commit `2059a93` passed exact-head
   host and ARMv5 QEMU CI (`36302718909`, `36302718920`). These primitives do not
   establish trusted enumeration, eligibility, inventory completeness, or
   atomic hotplug consistency; no discovery broker or mount authority exists.
