@@ -44,10 +44,11 @@ func openObservedBlockSourcesAt(devRootFD int, devices []ObservedBlockDevice) (s
 		return []BlockDeviceSource{}, nil
 	}
 	sources = make([]BlockDeviceSource, 0, len(devices))
+	opened := make([]*os.File, 0, len(devices))
 	defer func() {
 		if err != nil {
-			for _, source := range sources {
-				source.File.Close()
+			for _, file := range opened {
+				file.Close()
 			}
 			sources = nil
 		}
@@ -70,7 +71,9 @@ func openObservedBlockSourcesAt(devRootFD int, devices []ObservedBlockDevice) (s
 			file.Close()
 			return nil, ErrUnsafe
 		}
-		sources = append(sources, BlockDeviceSource{File: file, Generation: device.Generation})
+		source := BlockDeviceSource{File: file, Generation: device.Generation}
+		sources = append(sources, source)
+		opened = append(opened, file)
 	}
 	for _, source := range sources {
 		var stat unix.Stat_t
