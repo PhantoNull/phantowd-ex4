@@ -31,13 +31,20 @@ func probeQEMUUnmountedStorage() error {
 	if err := verifyQEMUBlockDevice(os.DirFS("/sys"), "sdc", qemuCloneSerial, qemuCloneWWN); err != nil {
 		return err
 	}
-	initialInventory, err := collectStorage(os.DirFS("/sys"))
+	discovery, err := discoverTrustedStorageWith(os.DirFS("/sys"), os.DirFS("/proc"), volumeprobe.OpenObservedBlockSources)
 	if err != nil {
-		return errors.New("complete QEMU sysfs storage inventory was unavailable")
+		return errors.New("complete QEMU trusted storage discovery was unavailable")
 	}
-	observedDevices, err := observedBlockDeviceSet(initialInventory, []string{"sdb", "sdc"})
-	if err != nil || len(observedDevices) != 2 || observedDevices[0].Name != "sdb" || observedDevices[1].Name != "sdc" {
-		return errors.New("selected QEMU data disks were not bound to the complete sysfs inventory")
+	defer discovery.Close()
+	initialInventory := discovery.inventory
+	observedDevices := make([]volumeprobe.ObservedBlockDevice, 0, len(discovery.candidates))
+	for _, candidate := range discovery.candidates {
+		observedDevices = append(observedDevices, volumeprobe.ObservedBlockDevice{
+			Name: candidate.Name, Generation: candidate.Generation,
+		})
+	}
+	if len(observedDevices) != 2 || observedDevices[0].Name != "sdb" || observedDevices[1].Name != "sdc" {
+		return errors.New("complete QEMU discovery did not classify exactly the two unmounted leaf data disks as candidates")
 	}
 	deviceIDs := make(map[string]bool)
 	deviceGenerations := make(map[string]volumeprobe.BlockDeviceGeneration)
@@ -95,19 +102,11 @@ func probeQEMUUnmountedStorage() error {
 	if err := volumeprobe.VerifyQEMUSymlinkRefusal(observedDevices[0]); err != nil {
 		return errors.New("QEMU source opener followed a /dev symlink")
 	}
+	blockSources := discovery.sources
 	var sources []*os.File
-	blockSources, err := volumeprobe.OpenObservedBlockSources(observedDevices)
-	if err != nil {
-		return errors.New("could not open the complete QEMU fixture source set")
-	}
 	for _, blockSource := range blockSources {
 		sources = append(sources, blockSource.File)
 	}
-	defer func() {
-		for _, source := range sources {
-			source.Close()
-		}
-	}()
 	finalInventory, err := collectStorage(os.DirFS("/sys"))
 	if err != nil || !sameQEMUStorageInventory(initialInventory, finalInventory) {
 		return errors.New("QEMU sysfs inventory changed while opening the fixture source set")
@@ -180,7 +179,7 @@ func probeQEMUUnmountedStorage() error {
 		return err
 	}
 	fmt.Println("PHANTOWD_VOLUME_PROBE_READY backend=libblkid unmounted_devices=2 readonly_descriptors=true expected_uuid=true unidentified_not_empty=true scope=qemu-fixture-only")
-	fmt.Println("PHANTOWD_VOLUME_SET_READY cloned_uuid=true aliases_deduplicated=true generation_bound=true stale_generation_refused=true unobserved_not_absent=true shuffled_complete_set=true sysfs_rechecked=true observed_opener=true readonly_sources=true all_or_error=true symlink_refused=true scope=qemu-fixture-only")
+	fmt.Println("PHANTOWD_VOLUME_SET_READY cloned_uuid=true aliases_deduplicated=true generation_bound=true stale_generation_refused=true unobserved_not_absent=true shuffled_complete_set=true trusted_complete_discovery=true mount_swap_rechecked=true sysfs_rechecked=true observed_opener=true readonly_sources=true all_or_error=true symlink_refused=true scope=qemu-fixture-only")
 	if err := probeQEMUCollisions(sources[0]); err != nil {
 		return err
 	}
@@ -191,13 +190,5 @@ func probeQEMUUnmountedStorage() error {
 }
 
 func sameQEMUStorageInventory(a, b storageSnapshot) bool {
-	if a.DeviceCount != b.DeviceCount || len(a.Observations) != len(b.Observations) {
-		return false
-	}
-	for index := range a.Observations {
-		if !sameBlockObservation(a.Observations[index], b.Observations[index]) {
-			return false
-		}
-	}
-	return true
+	return sameStorageSnapshot(a, b)
 }

@@ -263,15 +263,26 @@ and refuses non-Versatile PB machines. See the
   classify whole disks, and establish eligibility/unmounted state. This path is
   not wired to the HTTP endpoint and confers no media-use authorization; see
   the [probe contract](volumeprobe/README.md).
-- The internal `observedBlockDeviceSet` adapter binds explicitly selected
-  non-partition names to a complete schema-v2 snapshot held in process memory,
-  checking ordered/unique metadata, transient generations and partition-parent
-  relationships before producing opener tuples. It is not a physical-disk
-  classifier: kernel `Kind == "block"` does not prove a SATA disk, nor does
-  this selection prove eligibility, an unmounted/exclusive state or that the
-  caller selected every eligible device. JSON-round-tripped API snapshots are
-  rejected because private generations are not serialized. This adapter is
-  internal, is not connected to HTTP, and is not the missing trusted broker.
+- The private `completeObservedBlockDeviceSet` bridge accepts only the
+  collector's in-memory schema-v2 inventory and emits every whole-disk
+  name/generation tuple; it accepts no caller-selected names. The internal
+  `discoverTrustedStorageWith` coordinator excludes visible mounts, virtual
+  nodes, MD/device-mapper stacks and removable devices, then opens the full
+  candidate set read-only and rechecks sysfs, mount and swap observations.
+  Active/unreadable swap state or any snapshot change makes the whole result
+  unavailable and closes every opened descriptor. Ambiguous VPD identities are
+  preserved as ambiguous, not promoted to unique. This is a point-in-time
+  discovery result only: mount attribution is limited to this process's mount
+  namespace and the observed partition/holder/slave graph, so it does not
+  establish global userspace or mount-namespace exclusivity. Mounted Btrfs,
+  Bcachefs and ZFS currently make discovery fail closed because their full
+  multi-device backing set is not established here. Other filesystem stacks,
+  stable identity, bay mapping, compatibility and mount authority also remain
+  unresolved. Host fixtures pass; the disposable QEMU fixture now includes this
+  coordinator, but exact-head guest execution is pending. It is not wired to
+  HTTP or boot; a least-privilege production broker/service remains
+  outstanding. Serialized snapshots are rejected because private completion
+  markers and generations are not serialized.
 - `flashable` and `hardware_validated` are always false; the target is explicitly
   `qemu-armv5`. These identifiers are not automatic hardware detection.
 

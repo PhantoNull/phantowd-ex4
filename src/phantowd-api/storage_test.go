@@ -50,7 +50,7 @@ func TestCollectStorageReportsSysfsOnlyObservations(t *testing.T) {
 	for _, forbidden := range []string{
 		"fixture-secret", "PHANTOWD-QEMU-SERIAL-01", "500f000000000001", "fixture-fs-uuid-a",
 		"fixture-partuuid-a", "disk_sequence", "parent_disk_seq",
-		"lower_blocks", "holder_targets", "slave_targets",
+		"sysfs_target", "devices/virtual/block", "lower_blocks", "holder_targets", "slave_targets",
 	} {
 		if strings.Contains(string(encoded), forbidden) {
 			t.Fatalf("observation exposed identity material %q: %s", forbidden, encoded)
@@ -545,13 +545,13 @@ func TestCollectStorageAllowsEmptySysfsInventory(t *testing.T) {
 	}
 }
 
-func TestObservedBlockDeviceSetBindsSelectedNodeToCompleteSnapshot(t *testing.T) {
+func TestCompleteObservedBlockDeviceSetBindsWholeDisksToCompleteSnapshot(t *testing.T) {
 	snapshot, err := collectStorage(fixtureSysfs())
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	devices, err := observedBlockDeviceSet(snapshot, []string{"sda"})
+	devices, err := completeObservedBlockDeviceSet(snapshot)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -563,7 +563,7 @@ func TestObservedBlockDeviceSetBindsSelectedNodeToCompleteSnapshot(t *testing.T)
 	}
 }
 
-func TestObservedBlockDeviceSetRejectsJSONRoundTrip(t *testing.T) {
+func TestCompleteObservedBlockDeviceSetRejectsJSONRoundTrip(t *testing.T) {
 	snapshot, err := collectStorage(fixtureSysfs())
 	if err != nil {
 		t.Fatal(err)
@@ -576,39 +576,37 @@ func TestObservedBlockDeviceSetRejectsJSONRoundTrip(t *testing.T) {
 	if err := json.Unmarshal(encoded, &decoded); err != nil {
 		t.Fatal(err)
 	}
-	if devices, err := observedBlockDeviceSet(decoded, []string{"sda"}); err == nil || devices != nil {
+	if devices, err := completeObservedBlockDeviceSet(decoded); err == nil || devices != nil {
 		t.Fatalf("serialized snapshot without private disk generations must be refused: devices=%+v err=%v", devices, err)
 	}
 }
 
-func TestObservedBlockDeviceSetAcceptsExplicitEmptySelection(t *testing.T) {
-	for _, test := range []struct {
-		name  string
-		sysfs fs.FS
-	}{
-		{name: "empty observation", sysfs: fstest.MapFS{
-			"class":       {Mode: fs.ModeDir | 0o555},
-			"class/block": {Mode: fs.ModeDir | 0o555},
-		}},
-		{name: "observations exist but selection is empty", sysfs: fixtureSysfs()},
-	} {
-		t.Run(test.name, func(t *testing.T) {
-			snapshot, err := collectStorage(test.sysfs)
-			if err != nil {
-				t.Fatal(err)
-			}
-			devices, err := observedBlockDeviceSet(snapshot, []string{})
-			if err != nil {
-				t.Fatal(err)
-			}
-			if devices == nil || len(devices) != 0 {
-				t.Fatalf("explicit empty selection must remain distinct from unknown: %+v", devices)
-			}
-		})
+func TestCompleteObservedBlockDeviceSetPreservesCompleteEmptyInventory(t *testing.T) {
+	snapshot, err := collectStorage(fstest.MapFS{
+		"class":       {Mode: fs.ModeDir | 0o555},
+		"class/block": {Mode: fs.ModeDir | 0o555},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	devices, err := completeObservedBlockDeviceSet(snapshot)
+	if err != nil || devices == nil || len(devices) != 0 {
+		t.Fatalf("complete empty inventory must remain explicit: devices=%+v err=%v", devices, err)
+	}
+	encoded, err := json.Marshal(snapshot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var decoded storageSnapshot
+	if err := json.Unmarshal(encoded, &decoded); err != nil {
+		t.Fatal(err)
+	}
+	if devices, err := completeObservedBlockDeviceSet(decoded); err == nil || devices != nil {
+		t.Fatalf("serialized empty inventory must not become trusted: devices=%+v err=%v", devices, err)
 	}
 }
 
-func TestObservedBlockDeviceSetRejectsInconsistentSnapshot(t *testing.T) {
+func TestCompleteObservedBlockDeviceSetRejectsInconsistentSnapshot(t *testing.T) {
 	tests := []struct {
 		name   string
 		mutate func(*storageSnapshot)
@@ -622,9 +620,17 @@ func TestObservedBlockDeviceSetRejectsInconsistentSnapshot(t *testing.T) {
 		{name: "content already read", mutate: func(snapshot *storageSnapshot) { snapshot.ContentRead = true }},
 		{name: "mutation already performed", mutate: func(snapshot *storageSnapshot) { snapshot.MutationsPerformed = true }},
 		{name: "stable identity claim", mutate: func(snapshot *storageSnapshot) { snapshot.StableIdentityAvailable = true }},
+		{name: "snapshot not produced by collector", mutate: func(snapshot *storageSnapshot) { snapshot.collectionComplete = false }},
 		{name: "generation omitted", mutate: func(snapshot *storageSnapshot) { snapshot.Observations[0].diskSequence = 0 }},
+		{name: "sysfs target omitted", mutate: func(snapshot *storageSnapshot) { snapshot.Observations[0].sysfsTarget = "" }},
+		{name: "sysfs target escapes devices", mutate: func(snapshot *storageSnapshot) { snapshot.Observations[0].sysfsTarget = "devices/../../outside/sda" }},
 		{name: "parent major mismatch", mutate: func(snapshot *storageSnapshot) { *snapshot.Observations[1].ParentMajor++ }},
 		{name: "parent generation mismatch", mutate: func(snapshot *storageSnapshot) { snapshot.Observations[1].parentDiskSeq++ }},
+		{name: "partition cycle through lower link", mutate: func(snapshot *storageSnapshot) {
+			snapshot.Observations[0].lowerBlocks = []blockTopologyRef{{
+				Name: "sda1", Kind: "partition", Major: 8, Minor: 1,
+			}}
+		}},
 		{name: "unknown node kind", mutate: func(snapshot *storageSnapshot) { snapshot.Observations[0].Kind = "unknown" }},
 		{name: "duplicate device number", mutate: func(snapshot *storageSnapshot) {
 			snapshot.Observations[1].Major = snapshot.Observations[0].Major
@@ -641,22 +647,10 @@ func TestObservedBlockDeviceSetRejectsInconsistentSnapshot(t *testing.T) {
 				t.Fatal(err)
 			}
 			test.mutate(&snapshot)
-			if devices, err := observedBlockDeviceSet(snapshot, []string{"sda"}); err == nil || devices != nil {
+			if devices, err := completeObservedBlockDeviceSet(snapshot); err == nil || devices != nil {
 				t.Fatalf("inconsistent snapshot accepted: devices=%+v err=%v", devices, err)
 			}
 		})
-	}
-}
-
-func TestObservedBlockDeviceSetRejectsNilUnknownAndPartitionSelections(t *testing.T) {
-	snapshot, err := collectStorage(fixtureSysfs())
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, selected := range [][]string{nil, {"sda1"}, {"sdx"}, {"sda", "sda"}, {"sda", "sda1"}} {
-		if devices, err := observedBlockDeviceSet(snapshot, selected); err == nil || devices != nil {
-			t.Fatalf("invalid selected node set accepted: selected=%v devices=%+v err=%v", selected, devices, err)
-		}
 	}
 }
 
