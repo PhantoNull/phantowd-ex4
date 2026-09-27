@@ -76,7 +76,7 @@ Status vocabulary:
 | Desired SMB/NFS policy | Strict models, revision stores and opt-in development editing. Stored policy does not activate services. |
 | Native identities | Reservation ledger, protected local reader, creation journal, typed executor, cooperative owner/listener and multi-account router. Not a deployed account manager. |
 | Samba credentials | Actual guest authentication/rotation/disable and persistence fixtures. Ordinary password reset can re-enable a disabled account; the safe product primitive is not implemented. |
-| Storage | GPT/ext/MD image research, sysfs/mount observations, restricted libblkid helper, duplicate SCSI VPD identity reporting, generation-bound descriptor probing, complete-set matching and direct partition-parent correlation. Exact-head QEMU verified the fixture refuses selected disks with visible direct/partition mounts. Complete production discovery, holder-graph/exclusivity checks, compatibility resolution and import remain unimplemented. |
+| Storage | GPT/ext/MD image research, sysfs/mount observations, restricted libblkid helper, duplicate SCSI VPD identity reporting, generation-bound descriptor probing, complete-set matching, partition-parent correlation and validated reciprocal holder/slave topology. Host fixtures cover stacked mount attribution; the current PR adds a disposable QEMU RAID1 plus read-only mount-attribution fixture (exact-head CI pending). Complete trusted production discovery, compatibility resolution, import and RAID management remain unimplemented. |
 | Hardware | Short diskless serial/RAM and Ethernet/temperature observations. Networking stability, controller/cooling, storage and recovery remain unqualified. |
 | Updates | Host-side signed metadata/payload/version assessment. No on-device installer, update transaction, recovery or installation release. |
 
@@ -288,10 +288,15 @@ are missing. **Depends on:** M1; M7 for hardware.
   reciprocal sysfs `holders`/`slaves` links against the complete inventory and
   follows transient slave/partition-parent links when correlating mountinfo to
   a selected disk. A generated host test covers a synthetic
-  disk-to-partition-to-MD-to-device-mapper chain. The QEMU guest validates its
-  actual sysfs graph, but does not instantiate a stacked MD/device-mapper
-  device; host fixture coverage is not production-wide exclusivity. Code
-  commit `2059a93` passed exact-head
+  disk-to-partition-to-MD-to-device-mapper chain and a multi-member MD mount.
+  The new QEMU-only fixture creates a real RAID1 from two generated virtual
+  disks, formats it with a synthetic ext2 UUID, mounts it read-only, verifies
+  both backing disks are attributed (and an unrelated disk is not), then
+  ordinarily unmounts and stops the array. It is isolated to the QEMU profile;
+  it does not instantiate a guest device-mapper chain, prove global unmounted
+  state/exclusive access, or qualify production discovery. The current exact-
+  head CI for this fixture is pending. The prior code commit `2059a93` passed
+  exact-head
   host and ARMv5 QEMU CI (`36302718909`, `36302718920`). These primitives do not
   establish trusted enumeration, eligibility, inventory completeness, or
   atomic hotplug consistency; no discovery broker or mount authority exists.

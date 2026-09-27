@@ -28,7 +28,8 @@ cleanup() {
     fi
     # Exact regular file in a freshly created private temporary directory.
     # shellcheck disable=SC2317 # invoked through trap
-    rm -f "$fixture_dir/data.ext2" "$fixture_dir/clone.ext2" "$fixture_dir/collision.raw"
+    rm -f "$fixture_dir/data.ext2" "$fixture_dir/clone.ext2" "$fixture_dir/collision.raw" \
+        "$fixture_dir/md-member-a.raw" "$fixture_dir/md-member-b.raw"
     # shellcheck disable=SC2317 # invoked through trap
     rmdir "$fixture_dir"
 }
@@ -43,6 +44,9 @@ cp "$fixture_dir/data.ext2" "$fixture_dir/clone.ext2"
 # A separate read-only virtual block node intentionally duplicates the root
 # disk's VPD serial but has its own WWN. Its blank backing file is never mounted.
 truncate -s 1M "$fixture_dir/collision.raw"
+# These blank backing files are used only to create a disposable RAID1 in the
+# snapshot-mode guest. mdadm/mkfs writes are discarded with QEMU's overlays.
+truncate -s 32M "$fixture_dir/md-member-a.raw" "$fixture_dir/md-member-b.raw"
 
 : > "$log_file"
 "$qemu_binary" \
@@ -60,6 +64,10 @@ truncate -s 1M "$fixture_dir/collision.raw"
     -device "scsi-hd,bus=scsi0.0,drive=clonedisk,serial=PHANTOWD-QEMU-CLONE-01,wwn=0x500f000000000003" \
     -drive "file=$fixture_dir/collision.raw,if=none,id=collisiondisk,format=raw,readonly=on" \
     -device "scsi-hd,bus=scsi0.0,drive=collisiondisk,serial=PHANTOWD-QEMU-SERIAL-01,wwn=0x500f000000000001" \
+    -drive "file=$fixture_dir/md-member-a.raw,if=none,id=mdmembera,format=raw,snapshot=on" \
+    -device "scsi-hd,bus=scsi0.0,drive=mdmembera,serial=PHANTOWD-QEMU-MD-A,wwn=0x500f000000000004" \
+    -drive "file=$fixture_dir/md-member-b.raw,if=none,id=mdmemberb,format=raw,snapshot=on" \
+    -device "scsi-hd,bus=scsi0.0,drive=mdmemberb,serial=PHANTOWD-QEMU-MD-B,wwn=0x500f000000000005" \
     -object rng-random,id=rng0,filename=/dev/urandom \
     -device virtio-rng-pci,rng=rng0 \
     -snapshot \
@@ -166,6 +174,10 @@ while [ "$attempt" -lt 120 ]; do
         fi
         if ! grep -F 'PHANTOWD_MOUNT_GUARD_READY unique_mount_id=true descriptor_pinned=true symlinks_denied=true nested_mount_denied=true overmount_denied=true readonly_change_denied=true fallback_denied=true scope=qemu-fixture-only' "$log_file" >/dev/null; then
             echo 'Missing descriptor/mount guard assertion' >&2
+            exit 1
+        fi
+        if ! grep -F 'PHANTOWD_MOUNT_GRAPH_READY backing_members=2 actual_raid1=true readonly_mountinfo=true both_members_attributed=true unrelated_disk_clear=true cleanup=true scope=disposable-qemu-only' "$log_file" >/dev/null; then
+            echo 'Missing real disposable RAID1 mount-graph assertion' >&2
             exit 1
         fi
         if ! grep -F 'PHANTOWD_FILESYSTEM_UUID_READY source=kernel-ioctl expected_uuid=true mismatch_denied=true block_device_opened=false scope=qemu-fixture-only' "$log_file" >/dev/null; then

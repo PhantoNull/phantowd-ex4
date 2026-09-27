@@ -321,9 +321,16 @@ from API v1; missing, unobserved, non-reciprocal or changed links reject the
 complete snapshot. The mount-assessment fixture follows partition parents and
 transitive slave relationships so a visible MD/device-mapper mount can be
 associated with its backing disk. Generated host tests cover a synthetic
-disk-to-partition-to-MD-to-device-mapper chain. The current QEMU disks are not
-stacked MD/device-mapper devices, so this is not yet evidence for an actual
-guest stack, global unmounted state, or exclusive access. In Linux v6.18, a
+disk-to-partition-to-MD-to-device-mapper chain and a multi-member MD mount.
+The QEMU-only fixture creates a real RAID1 from two generated virtual disks,
+formats it with a synthetic ext2 UUID, mounts it read-only, verifies both
+backing disks are attributed (and an unrelated disk is not), then ordinarily
+unmounts and stops the array. Only the QEMU profile includes MD RAID1, mdadm
+and e2fsprogs for this test. The backing files and guest block writes are
+disposable and snapshot-isolated. This still does not instantiate a guest
+device-mapper chain, prove global unmounted state or exclusive access, or
+qualify production discovery; exact-head CI for the fixture is pending. In
+Linux v6.18, a
 partition gets a `holders` directory while the whole gendisk gets both
 `holders` and `slaves`; the block layer documents the reciprocal link contract
 in [`partitions/core.c`](https://github.com/torvalds/linux/blob/v6.18/block/partitions/core.c#L2258-L2277),

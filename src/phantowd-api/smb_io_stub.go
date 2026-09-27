@@ -16,3 +16,7 @@ func runQEMUIdentityClient(string) error {
 func runQEMUMountGuardTest() error {
 	return errors.New("mount guard fixture requires Linux ARMv5 QEMU")
 }
+
+func runQEMUMDStackTest() error {
+	return errors.New("MD stack fixture requires Linux ARMv5 QEMU")
+}

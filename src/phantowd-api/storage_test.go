@@ -132,6 +132,39 @@ func TestObservedWholeDiskMountGuardDetectsVisibleStackedDeviceMount(t *testing.
 	}
 }
 
+func TestObservedWholeDiskMountGuardDetectsMultiMemberArrayMount(t *testing.T) {
+	sysfs := fixtureSysfs()
+	addNonPartitionBlockNode(sysfs, "sdb", 8, 16, "fixture-array-member-b", []byte{0x50, 0x0f, 0, 0, 0, 0, 0, 4})
+	addNonPartitionBlockNode(sysfs, "sdc", 8, 32, "unrelated-disk-serial", []byte{0x50, 0x0f, 0, 0, 0, 0, 0, 5})
+	addNonPartitionBlockNode(sysfs, "md0", 9, 0, "fixture-array-serial", []byte{0x50, 0x0f, 0, 0, 0, 0, 0, 6})
+	sysfs["devices/virtual/block/md0/diskseq"] = &fstest.MapFile{Data: []byte("90\n")}
+	addSysfsBlockRelation(sysfs, "devices/virtual/block/sda/sda1", "holders", "md0", "../../../md0")
+	addSysfsBlockRelation(sysfs, "devices/virtual/block/sdb", "holders", "md0", "../../md0")
+	addSysfsBlockRelation(sysfs, "devices/virtual/block/md0", "slaves", "sda1", "../../sda/sda1")
+	addSysfsBlockRelation(sysfs, "devices/virtual/block/md0", "slaves", "sdb", "../../sdb")
+
+	snapshot, err := collectStorage(sysfs)
+	if err != nil {
+		t.Fatal(err)
+	}
+	nodes := make(map[string]blockObservation, len(snapshot.Observations))
+	for _, observation := range snapshot.Observations {
+		nodes[observation.Name] = observation
+	}
+	for _, member := range []string{"sda", "sdb"} {
+		mounted, err := observedWholeDiskHasVisibleDependentMount(nodes[member], snapshot.Observations,
+			[]mountObservation{{DeviceMajor: nodes["md0"].Major, DeviceMinor: nodes["md0"].Minor}})
+		if err != nil || !mounted {
+			t.Fatalf("MD mount was not attributed to backing member %s: mounted=%v err=%v", member, mounted, err)
+		}
+	}
+	mounted, err := observedWholeDiskHasVisibleDependentMount(nodes["sdc"], snapshot.Observations,
+		[]mountObservation{{DeviceMajor: nodes["md0"].Major, DeviceMinor: nodes["md0"].Minor}})
+	if err != nil || mounted {
+		t.Fatalf("multi-member MD mount was attributed to unrelated disk: mounted=%v err=%v", mounted, err)
+	}
+}
+
 func TestCollectStorageRejectsNonReciprocalBlockRelations(t *testing.T) {
 	sysfs := fixtureSysfs()
 	addNonPartitionBlockNode(sysfs, "md0", 9, 0, "fixture-array-serial", []byte{0x50, 0x0f, 0, 0, 0, 0, 0, 2})

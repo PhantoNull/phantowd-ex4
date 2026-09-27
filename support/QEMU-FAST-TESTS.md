@@ -126,6 +126,21 @@ conflict across supplied mounted roots, distinguishes the original disk's bind
 alias and rejects an incomplete scan. It unmounts the clone normally. This
 does not prove completeness of product disk discovery or WD compatibility.
 
+The smoke also creates two fresh 32 MiB sparse raw files and attaches them as
+the only members allowed by a QEMU-only MD fixture. Inside the snapshot-mode
+guest, fixed-identity checks precede `mdadm` RAID1 creation and ext2 formatting;
+the synthetic filesystem is mounted read-only. The test verifies live sysfs
+member links and MD health, mountinfo read-only state, descriptor-guard UUID
+and mount identity, attribution of the mount to both backing disks (not an
+unrelated disk), then ordinary unmount and array stop. The shell trap removes
+only those two files from its private temporary directory. MD RAID1, mdadm and
+e2fsprogs are enabled only in the QEMU profile; the EX4 profile is unchanged.
+All guest writes are isolated by QEMU snapshot mode. This exercises a real
+guest MD stack, not device-mapper, product array discovery, a global exclusivity
+proof, or EX4 storage compatibility. The exact-head run for this fixture must
+emit `PHANTOWD_MOUNT_GRAPH_READY`; until that run passes, this paragraph
+documents the intended test rather than completed evidence.
+
 ## Evidence boundary
 
 ### Separate state-persistence boots
