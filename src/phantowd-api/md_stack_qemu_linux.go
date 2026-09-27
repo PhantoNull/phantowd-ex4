@@ -143,7 +143,7 @@ func runQEMUMDStackTest() (result error) {
 	}
 	mdStatus := collectMDArrayInventory(os.DirFS("/proc"), sysfs, time.Now())
 	if mdStatus.Status != arrayInventoryAvailable || mdStatus.ArrayCount != 1 || len(mdStatus.Arrays) != 1 {
-		return errors.New("created MD array is not completely observable")
+		return fmt.Errorf("created MD array is not completely observable: %s", formatMDArrayInventoryDiagnostic(mdStatus))
 	}
 	observedArray := mdStatus.Arrays[0]
 	if observedArray.Name != "md0" || observedArray.Level != "raid1" || observedArray.ExpectedDevices != 2 ||

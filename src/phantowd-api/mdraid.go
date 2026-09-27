@@ -5,6 +5,7 @@ package main
 
 import (
 	"errors"
+	"fmt"
 	"io/fs"
 	"math"
 	"sort"
@@ -14,9 +15,11 @@ import (
 )
 
 const (
-	maxMDArrayEntries  = 16
-	maxMDMemberEntries = 32
-	maxMDStatLineBytes = 4096
+	maxMDArrayEntries         = 16
+	maxMDMemberEntries        = 32
+	maxMDStatLineBytes        = 4096
+	maxMDArrayDiagnosticBytes = 768
+	maxMDArrayDiagnosticCodes = 16
 )
 
 type arrayInventoryStatus string
@@ -50,6 +53,7 @@ type mdArraySnapshot struct {
 	ArrayCount         int                  `json:"array_count"`
 	Arrays             []mdArrayObservation `json:"arrays"`
 	Limitations        []string             `json:"limitations"`
+	diagnosticCodes    []string
 }
 
 type mdArrayObservation struct {
@@ -63,6 +67,7 @@ type mdArrayObservation struct {
 	SyncAction          string                `json:"sync_action"`
 	SyncProgressPercent *float64              `json:"sync_progress_percent,omitempty"`
 	Members             []mdMemberObservation `json:"members"`
+	diagnosticCodes     []string
 }
 
 type mdMemberObservation struct {
@@ -106,6 +111,7 @@ func collectMDArrayInventory(proc, sysfs fs.FS, now time.Time) mdArraySnapshot {
 
 	blockEntries, err := fs.ReadDir(sysfs, "class/block")
 	if err != nil || len(blockEntries) > maxBlockEntries {
+		appendMDArrayDiagnostic(&snapshot.diagnosticCodes, "block-inventory-unavailable")
 		return snapshot
 	}
 	blockNames := make(map[string]bool, len(blockEntries))
@@ -122,10 +128,12 @@ func collectMDArrayInventory(proc, sysfs fs.FS, now time.Time) mdArraySnapshot {
 	if len(sysfsArrays) > maxMDArrayEntries {
 		sysfsArrays = sysfsArrays[:maxMDArrayEntries]
 		snapshot.Status = arrayInventoryPartial
+		appendMDArrayDiagnostic(&snapshot.diagnosticCodes, "md-array-limit-exceeded")
 	}
 
 	data, err := readBounded(proc, "mdstat")
 	if errors.Is(err, fs.ErrNotExist) {
+		appendMDArrayDiagnostic(&snapshot.diagnosticCodes, "mdstat-unavailable")
 		snapshot.Status = arrayInventoryUnsupported
 		if len(sysfsArrays) > 0 {
 			snapshot.Status = arrayInventoryPartial
@@ -134,6 +142,7 @@ func collectMDArrayInventory(proc, sysfs fs.FS, now time.Time) mdArraySnapshot {
 		return finishMDArraySnapshot(snapshot)
 	}
 	if err != nil {
+		appendMDArrayDiagnostic(&snapshot.diagnosticCodes, "mdstat-unreadable")
 		if len(sysfsArrays) > 0 {
 			snapshot.Status = arrayInventoryPartial
 			appendSysfsOnlyArrays(&snapshot, sysfs, sysfsArrays)
@@ -142,6 +151,7 @@ func collectMDArrayInventory(proc, sysfs fs.FS, now time.Time) mdArraySnapshot {
 	}
 	records, err := parseMDStat(string(data))
 	if err != nil {
+		appendMDArrayDiagnostic(&snapshot.diagnosticCodes, "mdstat-malformed")
 		snapshot.Status = arrayInventoryPartial
 		appendSysfsOnlyArrays(&snapshot, sysfs, sysfsArrays)
 		return finishMDArraySnapshot(snapshot)
@@ -156,6 +166,7 @@ func collectMDArrayInventory(proc, sysfs fs.FS, now time.Time) mdArraySnapshot {
 		observation, complete := readMDArraySysfs(sysfs, record, blockNames[record.name])
 		if !complete {
 			snapshot.Status = arrayInventoryPartial
+			appendMDArrayDiagnostics(&snapshot.diagnosticCodes, observation.diagnosticCodes)
 		}
 		snapshot.Arrays = append(snapshot.Arrays, observation)
 	}
@@ -165,6 +176,8 @@ func collectMDArrayInventory(proc, sysfs fs.FS, now time.Time) mdArraySnapshot {
 			continue
 		}
 		observation, _ := readMDArraySysfs(sysfs, mdstatRecord{name: name}, true)
+		appendMDArrayDiagnostic(&snapshot.diagnosticCodes, "sysfs-array-missing-from-mdstat")
+		appendMDArrayDiagnostics(&snapshot.diagnosticCodes, observation.diagnosticCodes)
 		observation.Health = arrayHealthUnknown
 		if observation.State == "inactive" {
 			observation.Health = arrayHealthInactive
@@ -195,6 +208,7 @@ func finishMDArraySnapshot(snapshot mdArraySnapshot) mdArraySnapshot {
 	if len(snapshot.Arrays) > maxMDArrayEntries {
 		snapshot.Arrays = snapshot.Arrays[:maxMDArrayEntries]
 		snapshot.Status = arrayInventoryPartial
+		appendMDArrayDiagnostic(&snapshot.diagnosticCodes, "md-array-observation-limit-exceeded")
 	}
 	snapshot.ArrayCount = len(snapshot.Arrays)
 	if snapshot.Status != arrayInventoryPartial {
@@ -316,6 +330,7 @@ func readMDArraySysfs(sysfs fs.FS, record mdstatRecord, blockNodePresent bool) (
 		observation.SyncProgressPercent = record.syncProgress
 	}
 	if !blockNodePresent {
+		appendMDArrayDiagnostic(&observation.diagnosticCodes, "md-block-node-missing")
 		return observation, false
 	}
 
@@ -327,7 +342,30 @@ func readMDArraySysfs(sysfs fs.FS, record mdstatRecord, blockNodePresent bool) (
 	syncAction, syncErr := readSysfsAttribute(sysfs, base+"sync_action")
 	syncCompleted, syncCompletedErr := readSysfsAttribute(sysfs, base+"sync_completed")
 	slaves, slavesErr := fs.ReadDir(sysfs, "class/block/"+record.name+"/slaves")
-	if levelErr != nil || stateErr != nil || degradedErr != nil || raidDisksErr != nil || syncErr != nil || syncCompletedErr != nil || slavesErr != nil || len(slaves) > maxMDMemberEntries {
+	if levelErr != nil {
+		appendMDArrayDiagnostic(&observation.diagnosticCodes, "md-level-unavailable")
+	}
+	if stateErr != nil {
+		appendMDArrayDiagnostic(&observation.diagnosticCodes, "md-array-state-unavailable")
+	}
+	if degradedErr != nil {
+		appendMDArrayDiagnostic(&observation.diagnosticCodes, "md-degraded-count-unavailable")
+	}
+	if raidDisksErr != nil {
+		appendMDArrayDiagnostic(&observation.diagnosticCodes, "md-raid-disk-count-unavailable")
+	}
+	if syncErr != nil {
+		appendMDArrayDiagnostic(&observation.diagnosticCodes, "md-sync-action-unavailable")
+	}
+	if syncCompletedErr != nil {
+		appendMDArrayDiagnostic(&observation.diagnosticCodes, "md-sync-progress-unavailable")
+	}
+	if slavesErr != nil {
+		appendMDArrayDiagnostic(&observation.diagnosticCodes, "md-members-unavailable")
+	} else if len(slaves) > maxMDMemberEntries {
+		appendMDArrayDiagnostic(&observation.diagnosticCodes, "md-member-limit-exceeded")
+	}
+	if len(observation.diagnosticCodes) > 0 {
 		return observation, false
 	}
 	levelValue := strings.TrimSpace(level)
@@ -335,7 +373,25 @@ func readMDArraySysfs(sysfs fs.FS, record mdstatRecord, blockNodePresent bool) (
 	degraded, degradedErr := parseBoundedMDInteger(degradedText, maxMDMemberEntries)
 	raidDisks, raidDisksErr := parseBoundedMDInteger(raidDisksText, maxMDMemberEntries)
 	actionValue := strings.TrimSpace(syncAction)
-	if !validMDLevel(levelValue) || !validMDArrayState(stateValue) || degradedErr != nil || raidDisksErr != nil || degraded > raidDisks || !validMDSyncAction(actionValue) {
+	if !validMDLevel(levelValue) {
+		appendMDArrayDiagnostic(&observation.diagnosticCodes, "md-level-invalid")
+	}
+	if !validMDArrayState(stateValue) {
+		appendMDArrayDiagnostic(&observation.diagnosticCodes, "md-array-state-invalid")
+	}
+	if degradedErr != nil {
+		appendMDArrayDiagnostic(&observation.diagnosticCodes, "md-degraded-count-invalid")
+	}
+	if raidDisksErr != nil {
+		appendMDArrayDiagnostic(&observation.diagnosticCodes, "md-raid-disk-count-invalid")
+	}
+	if degradedErr == nil && raidDisksErr == nil && degraded > raidDisks {
+		appendMDArrayDiagnostic(&observation.diagnosticCodes, "md-degraded-count-exceeds-raid-disks")
+	}
+	if !validMDSyncAction(actionValue) {
+		appendMDArrayDiagnostic(&observation.diagnosticCodes, "md-sync-action-invalid")
+	}
+	if len(observation.diagnosticCodes) > 0 {
 		return observation, false
 	}
 	observation.Level = levelValue
@@ -346,6 +402,7 @@ func readMDArraySysfs(sysfs fs.FS, record mdstatRecord, blockNodePresent bool) (
 	observation.SyncAction = actionValue
 	progress, progressErr := parseMDSyncCompleted(syncCompleted)
 	if progressErr != nil {
+		appendMDArrayDiagnostic(&observation.diagnosticCodes, "md-sync-progress-invalid")
 		return observation, false
 	}
 	if progress != nil {
@@ -354,6 +411,7 @@ func readMDArraySysfs(sysfs fs.FS, record mdstatRecord, blockNodePresent bool) (
 	memberNames := make([]string, 0, len(slaves))
 	for _, slave := range slaves {
 		if !validBlockName(slave.Name()) {
+			appendMDArrayDiagnostic(&observation.diagnosticCodes, "md-sysfs-member-name-invalid")
 			return observation, false
 		}
 		memberNames = append(memberNames, slave.Name())
@@ -365,30 +423,88 @@ func readMDArraySysfs(sysfs fs.FS, record mdstatRecord, blockNodePresent bool) (
 	}
 	if len(record.members) != 0 && !sameMDMemberNames(record.members, sysfsMembers) {
 		complete = false
+		appendMDArrayDiagnostic(&observation.diagnosticCodes, "mdstat-sysfs-disagreement")
 	}
 	for _, member := range record.members {
 		if member.State == "faulty" && degraded == 0 {
 			complete = false
+			appendMDArrayDiagnostic(&observation.diagnosticCodes, "mdstat-sysfs-disagreement")
 		}
 	}
 	if record.countsKnown && (record.expectedDevices != raidDisks || record.expectedDevices-record.activeDevices != degraded) {
 		complete = false
+		appendMDArrayDiagnostic(&observation.diagnosticCodes, "mdstat-sysfs-disagreement")
 	}
 	if record.level != "unknown" && record.level != levelValue {
 		complete = false
+		appendMDArrayDiagnostic(&observation.diagnosticCodes, "mdstat-sysfs-disagreement")
 	}
 	if record.syncAction != "" && normalizeMDSyncAction(record.syncAction) != actionValue {
 		complete = false
+		appendMDArrayDiagnostic(&observation.diagnosticCodes, "mdstat-sysfs-disagreement")
 	}
 	if record.state == "inactive" && stateValue != "inactive" && stateValue != "clear" && stateValue != "suspended" ||
 		record.state == "active" && (stateValue == "inactive" || stateValue == "clear" || stateValue == "suspended") {
 		complete = false
+		appendMDArrayDiagnostic(&observation.diagnosticCodes, "mdstat-sysfs-disagreement")
 	}
 	if len(record.members) == 0 {
 		observation.Members = sysfsMembers
 	}
 	observation.Health = classifyMDHealth(stateValue, actionValue, levelValue, raidDisks, degraded, complete)
 	return observation, complete
+}
+
+func appendMDArrayDiagnostic(destination *[]string, code string) {
+	if destination == nil || code == "" || len(*destination) >= maxMDArrayDiagnosticCodes {
+		return
+	}
+	for _, existing := range *destination {
+		if existing == code {
+			return
+		}
+	}
+	*destination = append(*destination, code)
+}
+
+func appendMDArrayDiagnostics(destination *[]string, codes []string) {
+	for _, code := range codes {
+		appendMDArrayDiagnostic(destination, code)
+	}
+}
+
+// formatMDArrayInventoryDiagnostic is for bounded fixture/error logs only.
+// Internal reasons are omitted from JSON API serialization by their
+// unexported fields; no serial, WWN, disk contents or arbitrary paths are
+// included here.
+func formatMDArrayInventoryDiagnostic(snapshot mdArraySnapshot) string {
+	parts := []string{
+		"status=" + string(snapshot.Status),
+		fmt.Sprintf("array_count=%d", snapshot.ArrayCount),
+		fmt.Sprintf("observations=%d", len(snapshot.Arrays)),
+	}
+	if len(snapshot.diagnosticCodes) > 0 {
+		parts = append(parts, "reasons="+strings.Join(snapshot.diagnosticCodes, ","))
+	}
+	for _, array := range snapshot.Arrays {
+		memberNames := make([]string, 0, len(array.Members))
+		for _, member := range array.Members {
+			if validBlockName(member.Name) {
+				memberNames = append(memberNames, member.Name)
+			}
+		}
+		parts = append(parts, fmt.Sprintf(
+			"%s(level=%s state=%s health=%s expected=%d active=%d degraded=%d sync=%s members=%s reasons=%s)",
+			array.Name, array.Level, array.State, array.Health, array.ExpectedDevices, array.ActiveDevices,
+			array.DegradedDevices, array.SyncAction, strings.Join(memberNames, ","),
+			strings.Join(array.diagnosticCodes, ","),
+		))
+	}
+	result := strings.Join(parts, " ")
+	if len(result) > maxMDArrayDiagnosticBytes {
+		return result[:maxMDArrayDiagnosticBytes-3] + "..."
+	}
+	return result
 }
 
 func parseMDStatMember(field string) (mdMemberObservation, bool, error) {
