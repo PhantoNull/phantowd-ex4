@@ -100,9 +100,22 @@ With Docker Desktop running **Linux containers**, run from the repository root:
 ```
 
 The first build downloads verified sources and builds the toolchain, kernel
-and userspace; allow substantial time and disk space. The wrapper retains
-Docker build/cache volumes between runs. Outputs go to
-`artifacts/qemu-armv5/`. The smoke tests use disposable virtual storage;
+and userspace; allow substantial time and disk space. On Windows, the wrapper
+requires at least 40 GiB free on the Docker data drive before starting. It
+reuses two fixed Docker volumes (Buildroot workspace and compiler cache), not
+new volumes per run; their contents persist and can grow as the source,
+downloads, build outputs and cache change. Inspect usage with
+`docker system df -v`. When you no longer need the incremental workspace, run
+`support/clean-qemu-build-volumes.ps1 -WhatIf` to review the exact targets, then
+rerun without `-WhatIf` to remove only those two unreferenced project volumes;
+the script prompts before removal. This discards the local Buildroot workspace
+and compiler cache but keeps repository artifacts and other Docker data. The
+Docker Desktop VHDX may still need separate compaction to return freed space to
+the host. Avoid broad Docker prune commands on a shared installation.
+
+Routine API/UI changes should use the no-Docker host checks above; run the full
+QEMU build only when guest, kernel, package or integration behavior needs it.
+Outputs go to `artifacts/qemu-armv5/`. The smoke tests use disposable virtual storage;
 the supported harness does not forward host ports or physical devices.
 
 QEMU exercises ARMv5 software on VersatilePB, **not the EX4 board**. It cannot

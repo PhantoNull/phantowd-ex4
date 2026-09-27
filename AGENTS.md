@@ -12,6 +12,12 @@ Before making changes:
    `doc/index.md`, then follow the relevant links.
 3. Treat raw files under `doc/sources/` as immutable evidence.
 
+For local iteration, prefer the no-Docker API/UI preflight before any full
+Buildroot/QEMU build. The local QEMU wrapper uses two persistent project
+volumes; inspect their usage and use the project-scoped cleanup helper only
+when discarding its cached workspace is acceptable. Never run broad Docker
+prune operations as routine cleanup.
+
 For every durable discovery or decision, update the nearest canonical wiki
 page, `doc/index.md`, and append a dated entry to `doc/log.md`. Run both normal
 and strict checks with the `maintain-llm-wiki` checker before handing off.

@@ -24,6 +24,15 @@ commit, commands, environment, results and remaining limits. Include negative,
 concurrency and interruption tests for the behavior being changed. Exercise
 effective access and persistence where applicable, not only exit codes.
 
+For API/UI iterations on Windows, start with `support/test-api.ps1`; it does
+not use Docker. The full QEMU builder retains two fixed named Docker volumes
+for incremental Buildroot output and compiler cache. It requires 40 GiB free
+on the Docker data drive, but that is a start-time guard, not a quota. Inspect
+usage with `docker system df -v`; use
+`support/clean-qemu-build-volumes.ps1 -WhatIf` before explicitly removing only
+the unreferenced PhantoWD build volumes. Do not use broad Docker prune commands
+to reclaim this project's space on a shared Docker installation.
+
 The [fast QEMU lane](support/QEMU-FAST-TESTS.md) is an iteration tool, not a
 substitute for clean package/kernel builds or hardware qualification.
 Do not hide failures with retries, relaxed guards, fabricated observations or
