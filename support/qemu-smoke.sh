@@ -28,7 +28,8 @@ cleanup() {
     fi
     # Exact regular file in a freshly created private temporary directory.
     # shellcheck disable=SC2317 # invoked through trap
-    rm -f "$fixture_dir/data.ext2" "$fixture_dir/clone.ext2"
+    rm -f "$fixture_dir/data.ext2" "$fixture_dir/clone.ext2" "$fixture_dir/collision.raw" \
+        "$fixture_dir/md-member-a.raw" "$fixture_dir/md-member-b.raw"
     # shellcheck disable=SC2317 # invoked through trap
     rmdir "$fixture_dir"
 }
@@ -40,6 +41,12 @@ mkfs.ext2 -q -F -U 11111111-2222-3333-4444-555555555555 \
 # A separate virtual device with the SAME filesystem UUID exercises ambiguity.
 # Both files are disposable; the clone is presented read-only to the guest.
 cp "$fixture_dir/data.ext2" "$fixture_dir/clone.ext2"
+# A separate read-only virtual block node intentionally duplicates the root
+# disk's VPD serial but has its own WWN. Its blank backing file is never mounted.
+truncate -s 1M "$fixture_dir/collision.raw"
+# These blank backing files are used only to create a disposable RAID1 in the
+# snapshot-mode guest. mdadm/mkfs writes are discarded with QEMU's overlays.
+truncate -s 32M "$fixture_dir/md-member-a.raw" "$fixture_dir/md-member-b.raw"
 
 : > "$log_file"
 "$qemu_binary" \
@@ -55,6 +62,12 @@ cp "$fixture_dir/data.ext2" "$fixture_dir/clone.ext2"
     -device "scsi-hd,bus=scsi0.0,drive=testdisk,serial=PHANTOWD-QEMU-DATA-01,wwn=0x500f000000000002" \
     -drive "file=$fixture_dir/clone.ext2,if=none,id=clonedisk,format=raw,readonly=on" \
     -device "scsi-hd,bus=scsi0.0,drive=clonedisk,serial=PHANTOWD-QEMU-CLONE-01,wwn=0x500f000000000003" \
+    -drive "file=$fixture_dir/collision.raw,if=none,id=collisiondisk,format=raw,readonly=on" \
+    -device "scsi-hd,bus=scsi0.0,drive=collisiondisk,serial=PHANTOWD-QEMU-SERIAL-01,wwn=0x500f000000000001" \
+    -drive "file=$fixture_dir/md-member-a.raw,if=none,id=mdmembera,format=raw,snapshot=on" \
+    -device "scsi-hd,bus=scsi0.0,drive=mdmembera,serial=PHANTOWD-QEMU-MD-A,wwn=0x500f000000000004" \
+    -drive "file=$fixture_dir/md-member-b.raw,if=none,id=mdmemberb,format=raw,snapshot=on" \
+    -device "scsi-hd,bus=scsi0.0,drive=mdmemberb,serial=PHANTOWD-QEMU-MD-B,wwn=0x500f000000000005" \
     -object rng-random,id=rng0,filename=/dev/urandom \
     -device virtio-rng-pci,rng=rng0 \
     -snapshot \
@@ -83,6 +96,10 @@ while [ "$attempt" -lt 120 ]; do
         fi
         if ! grep -F 'PHANTOWD_API_READY target=qemu-armv5 goarm=5' "$log_file" >/dev/null; then
             echo "Missing ARMv5 diagnostics API assertion" >&2
+            exit 1
+        fi
+        if ! grep -F 'PHANTOWD_STORAGE_COLLISION_READY nodes=2 serial=ambiguous wwn=ambiguous redacted=true read_only=true scope=qemu-fixture-only' "$log_file" >/dev/null; then
+            echo "Missing ARMv5 duplicate storage-identity assertion" >&2
             exit 1
         fi
         if ! grep -F 'PHANTOWD_SHARE_POLICY_READY schema=1 scope=synthetic-policy-only' "$log_file" >/dev/null; then
@@ -159,6 +176,10 @@ while [ "$attempt" -lt 120 ]; do
             echo 'Missing descriptor/mount guard assertion' >&2
             exit 1
         fi
+        if ! grep -F 'PHANTOWD_MOUNT_GRAPH_READY backing_members=2 actual_raid1=true readonly_mountinfo=true both_members_attributed=true unrelated_disk_clear=true cleanup=true scope=disposable-qemu-only' "$log_file" >/dev/null; then
+            echo 'Missing real disposable RAID1 mount-graph assertion' >&2
+            exit 1
+        fi
         if ! grep -F 'PHANTOWD_FILESYSTEM_UUID_READY source=kernel-ioctl expected_uuid=true mismatch_denied=true block_device_opened=false scope=qemu-fixture-only' "$log_file" >/dev/null; then
             echo 'Missing kernel filesystem UUID assertion' >&2
             exit 1
@@ -171,8 +192,8 @@ while [ "$attempt" -lt 120 ]; do
             echo 'Missing unmounted metadata probe assertion' >&2
             exit 1
         fi
-        if ! grep -F 'PHANTOWD_VOLUME_SET_READY cloned_uuid=true aliases_deduplicated=true unobserved_not_absent=true scope=provided-descriptors-only' "$log_file" >/dev/null; then
-            echo 'Missing unmounted probe-set identity assertions' >&2
+        if ! grep -F 'PHANTOWD_VOLUME_SET_READY cloned_uuid=true aliases_deduplicated=true generation_bound=true stale_generation_refused=true unobserved_not_absent=true shuffled_complete_set=true sysfs_rechecked=true observed_opener=true readonly_sources=true all_or_error=true symlink_refused=true scope=qemu-fixture-only' "$log_file" >/dev/null; then
+            echo 'Missing complete QEMU source-set opener assertions' >&2
             exit 1
         fi
         if ! grep -F 'PHANTOWD_VOLUME_COLLISION_READY ext_control=true xfs_control=true invalid_control=true collision_refused=true partial_set_discarded=true hashes_unchanged=true scope=synthetic-regular-images' "$log_file" >/dev/null; then

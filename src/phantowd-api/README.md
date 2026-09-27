@@ -241,10 +241,37 @@ and refuses non-Versatile PB machines. See the
   configuration only; it has no device/service-activation controls. This is not
   a full NAS management UI.
 - Reads fixed `/proc` diagnostics and basic `/sys/class/block` metadata inside
-  the QEMU guest. It never opens a block device, reads disk contents, runs a
-  shell command, assembles or mounts storage, or performs reboot, firmware
-  install or update operations. Configuration writes are limited to account
-  setup and the explicitly enabled development policy backend described above.
+  the QEMU guest. Whole-disk observations require a nonzero unique kernel
+  `diskseq`; the collector rereads block and partition metadata, including VPD
+  identity status, and the block-node name set before returning, refusing any
+  observed inconsistency. This reduces mixed observations but is not an atomic
+  hotplug snapshot. `diskseq` is transient for one kernel lifetime, is not
+  returned by the API and is not disk identity.
+  Internal comparisons across separate in-memory inventories include a
+  domain-separated SHA-256 equality digest of each valid VPD value so an
+  identity change cannot hide behind an unchanged `present` status. Neither
+  raw values nor these digests are serialized or treated as stable identity.
+  The authenticated HTTP handler never invokes the opener or opens a block
+  device; it does not read disk contents, run a shell command, assemble or
+  mount storage, or perform reboot, firmware install or update operations.
+  Configuration writes are limited to account setup and the explicitly enabled
+  development policy backend described above.
+- A separate internal Linux path accepts caller-observed kernel block names
+  and generations, safely opens fixed `/dev` entries read-only, and binds the
+  resulting descriptors to major/minor and `diskseq` using `BLKGETDISKSEQ`
+  before and after the set. The caller must establish complete discovery,
+  classify whole disks, and establish eligibility/unmounted state. This path is
+  not wired to the HTTP endpoint and confers no media-use authorization; see
+  the [probe contract](volumeprobe/README.md).
+- The internal `observedBlockDeviceSet` adapter binds explicitly selected
+  non-partition names to a complete schema-v2 snapshot held in process memory,
+  checking ordered/unique metadata, transient generations and partition-parent
+  relationships before producing opener tuples. It is not a physical-disk
+  classifier: kernel `Kind == "block"` does not prove a SATA disk, nor does
+  this selection prove eligibility, an unmounted/exclusive state or that the
+  caller selected every eligible device. JSON-round-tripped API snapshots are
+  rejected because private generations are not serialized. This adapter is
+  internal, is not connected to HTTP, and is not the missing trusted broker.
 - `flashable` and `hardware_validated` are always false; the target is explicitly
   `qemu-armv5`. These identifiers are not automatic hardware detection.
 
@@ -265,7 +292,8 @@ and refuses non-Versatile PB machines. See the
 | `GET /api/v1/file-services/configuration` | Authenticated combined desired policy; development backend only, uninitialized state remains explicit |
 | `PUT /api/v1/file-services/configuration` | Development-only, Origin/CSRF-protected full revision commit; never activation |
 | `GET /api/v1/system` | Authenticated versioned JSON: observation time, kernel, architecture/GOARM, uptime, total/available memory, effective UID, development safety flags |
-| `GET /api/v1/storage` | Authenticated, sorted, bounded kernel block-node observations from sysfs: name, major/minor, 512-byte-sector capacity, read-only/removable flags, partition number, and whole-disk `serial_status` / `wwn_status` when applicable |
+| `GET /api/v1/storage` | Authenticated, sorted, bounded kernel block-node observations, schema v2: name, major/minor, 512-byte-sector capacity, read-only/removable flags, partition number, transient parent name/major/minor for partitions, and `serial_status` / `wwn_status` for non-partition block nodes |
+| Incomplete or inconsistent storage inventory | `503 storage_unavailable`; no partial observations, raw identifiers or sysfs paths |
 | `GET /api/v1/arrays` | Authenticated, bounded Linux MD observations from `/proc/mdstat` and `/sys/class/block`: level, state, degraded/active counts, sync action/progress, and transient member names; partial sources never become an empty/healthy claim |
 | `GET /api/v1/mounts` | Authenticated, bounded snapshot of filesystems already mounted in this process's namespace, from `/proc/self/mountinfo`; returns mount point, filesystem type, device major/minor, and the read-only mount flag while omitting source strings and raw options |
 | Wrong method on a known route | `405`, route-specific `Allow` |
@@ -275,16 +303,58 @@ and refuses non-Versatile PB machines. See the
 
 Only `sys/kernel/osrelease`, `uptime`, and `meminfo` beneath `/proc` are read,
 with a 64 KiB limit per file. `MemAvailable` is required; no invented fallback
-is returned. The storage endpoint reads bounded attributes beneath
-`/sys/class/block`, with a 32-entry ceiling. For whole-disk SCSI nodes it also
-reads the kernel's read-only VPD page 0x80/0x83 sysfs files, bounded to 4096
-bytes each. It returns only `serial_status` and `wwn_status` (`unavailable`,
+is returned. The storage endpoint reads bounded attributes for at most 32 names
+enumerated under `/sys/class/block`, and reads relation directories only under
+their validated canonical `/sys/devices` targets. For non-partition block nodes
+it also reads the kernel's read-only VPD page 0x80/0x83 sysfs files, bounded to
+4096 bytes each. It returns only `serial_status` and `wwn_status` (`unavailable`,
 `present`, `invalid`, `ambiguous`, or `unreadable`); raw serial/WWN values are
-never returned. These states validate only observed SCSI VPD metadata and do
-not establish a durable PhantoWD identity. Kernel names and major/minor numbers
-remain transient observations. The block inventory does not collect
-partition/filesystem UUIDs, bay mapping, SMART, or device health. The separate
-array endpoint reads bounded `/proc/mdstat` text and MD sysfs metadata only; it
+never returned. Duplicate valid serials or NAA WWNs among the non-partition
+block nodes visible in this snapshot are marked `ambiguous` on every matching
+entry. The sysfs category does not prove one-to-one physical-disk topology and
+does not resolve aliases or multipath paths. These states validate only observed
+SCSI VPD metadata and do not establish a durable PhantoWD
+identity. Kernel names and major/minor numbers remain transient observations.
+It re-reads fixed metadata, including parsed whole-disk VPD identity, before
+publication and checks the node-name set last. Any required-attribute read or
+parse error, or observed inconsistency, rejects the entire snapshot; the
+collector returns no partial observation and the HTTP route reports only
+generic `503 storage_unavailable`. An unavailable/unreadable VPD page remains
+an explicit identity status, not a unique-identity claim.
+Each `/sys/class/block` link target is bounded, validated as a relative path
+inside `/devices/`, and re-read as part of the consistency check. Every
+enumerated partition must resolve to exactly one enumerated whole-disk parent.
+Schema v2 exposes that transient relation as `parent_name`, `parent_major`, and
+`parent_minor` on partition entries only. These are current kernel names and
+device numbers, not stable identity; the parent's disk sequence is validated
+internally but not returned. No absolute sysfs path is exposed. Missing,
+ambiguous or changed parent topology rejects the complete snapshot. The
+collector also reads bounded sysfs `holders` links for each block node and
+`slaves` links for each whole block node, resolves both against the complete
+inventory and requires reciprocal relationships. That transient graph is
+re-read before publication and remains omitted from schema v2; missing,
+unobserved, non-reciprocal or changed links reject the complete snapshot. The
+mount-assessment fixture follows partition parents and transitive slave
+relationships so a visible MD/device-mapper mount can be
+associated with its backing disk. Generated host tests cover a synthetic
+disk-to-partition-to-MD-to-device-mapper chain and a multi-member MD mount.
+The QEMU-only fixture creates a real RAID1 from two generated virtual disks,
+formats it with a synthetic ext2 UUID, mounts it read-only, verifies both
+backing disks are attributed (and an unrelated disk is not), then ordinarily
+unmounts and stops the array. Only the QEMU profile includes MD RAID1, mdadm
+and e2fsprogs for this test. The backing files and guest block writes are
+disposable and snapshot-isolated. This still does not instantiate a guest
+device-mapper chain, prove global unmounted state or exclusive access, or
+qualify production discovery; exact-head CI for the fixture is pending. In
+Linux v6.18, a
+partition gets a `holders` directory while the whole gendisk gets both
+`holders` and `slaves`; the block layer documents the reciprocal link contract
+in [`partitions/core.c`](https://github.com/torvalds/linux/blob/v6.18/block/partitions/core.c#L2258-L2277),
+[`genhd.c`](https://github.com/torvalds/linux/blob/v6.18/block/genhd.c#L3039-L3058),
+and [`holder.c`](https://github.com/torvalds/linux/blob/v6.18/block/holder.c#L548-L579).
+The block inventory does not collect partition/filesystem UUIDs, bay mapping,
+SMART, or device health. The separate array endpoint reads bounded
+`/proc/mdstat` text and MD sysfs metadata only; it
 cross-checks array names, levels, member counts and member names when both
 sources report them. Any mismatch produces partial inventory and unknown
 health, never a healthy claim. “Healthy” means only a consistent operational

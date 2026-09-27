@@ -32,8 +32,8 @@ complete inventory, volume resolver or service activation capability.
 The helper is trusted, non-daemonizing firmware code installed in a directory
 unwritable by untrusted users. This runner is not a supervisor for arbitrary or
 hostile executables, independently escaping descendants, or privilege changes.
-No new privileges, mount operation, device enumeration or source-path opening
-is added. Result UUIDs are private and must not enter public diagnostics/logs.
+`Inspect` and `ObserveBlockSet` do not mount, enumerate or open source paths.
+Result UUIDs are private and must not enter public diagnostics/logs.
 
 ## Verification and remaining integration
 
@@ -43,6 +43,75 @@ returning a snapshot. Any failed input/probe/recheck discards the whole result.
 The set has a 30-second context deadline, subject to the same kernel-I/O limit.
 An explicitly empty set is valid; a nil collection is refused. There is no
 device enumeration, automatic omission, weaker retry or mount operation.
+
+`ObserveBlockSet(ctx, sources)` is the generation-bound variant for callers
+that already opened read-only whole-disk descriptors and captured each object's
+major/minor plus nonzero `diskseq` from trusted kernel observations. The caller
+must establish that entries are whole disks rather than partitions; this
+primitive checks for block descriptors but does not classify sysfs partitions.
+It verifies `fstat()` reports a block device with that exact device number and
+requires `BLKGETDISKSEQ` to return the expected sequence before probing and
+again after the entire set. Invalid/reused expected generations, an ioctl
+error, or any mismatch refuses the complete set. Repeated aliases for one
+device are allowed only with the same device number and generation. Linux
+defines `diskseq` as a unique, monotonically increasing number for a
+block-device instance; see the
+[block-device generation](https://github.com/torvalds/linux/blob/master/block/genhd.c),
+[ioctl definition](https://github.com/torvalds/linux/blob/master/include/uapi/linux/fs.h)
+and [kernel handler](https://github.com/torvalds/linux/blob/master/block/ioctl.c).
+It is transient kernel-lifetime evidence, not persistent media identity. This
+primitive does not reopen/revalidate the caller's pathname or rediscover the
+inventory, and the caller must still establish completeness, eligibility,
+unmounted state and stable topology. It is not mount authorization.
+The set-level timeout, single-slot limit, caller ownership and shared-offset
+requirements are the same as `ObserveSet`.
+
+`OrderCompleteBlockSources(inventory, sources)` is a portable matcher for the
+caller's already-observed generation list and already-open descriptor records.
+It requires non-nil inputs, exact cardinality (bounded by `MaxSources`), valid
+unique inventory generations and exactly one non-nil `*os.File` object per
+generation; it rejects subsets, extras, duplicate generations and a Go file
+object reused for multiple generations. The returned records follow inventory
+order. Explicitly empty non-nil inputs are accepted. This helper compares only
+the supplied metadata: it cannot prove that kernel enumeration was complete,
+that devices are eligible or unmounted, or that a file descriptor actually
+refers to its claimed generation. Callers must establish those discovery
+preconditions and then use `ObserveBlockSet` for the descriptor `fstat` and
+`BLKGETDISKSEQ` checks. It is not itself discovery or mount authorization.
+
+`OpenObservedBlockSources(devices)` is a Linux fixed-path opener, not a
+collector. The trusted discovery/broker layer owns sysfs enumeration and
+validation, then supplies a bounded list of `ObservedBlockDevice` records,
+each containing only one kernel component name and its major/minor/diskseq
+tuple. The opener neither reads sysfs nor accepts a filesystem path; it opens
+only `/dev/<name>` beneath a retained `/dev` directory using `openat2` with
+symlinks and magic links forbidden, requesting `O_RDONLY|O_NONBLOCK`. Every
+descriptor must match the supplied major/minor and `BLKGETDISKSEQ` both when
+opened and after the set is opened. Any failure closes the whole set and
+returns no partial descriptors; an explicit empty list stays distinct from a
+nil/unknown inventory. Returned descriptors belong to the caller and must be
+closed there.
+
+This primitive trusts the caller's observed names/generations. It does not prove
+that the caller is the trusted broker, prove inventory completeness, establish
+whole-disk eligibility or unmounted state, map partitions/MD/multipath topology,
+or revalidate the pathname after opening. Production code must confine calls to
+the future trusted broker, which supplies validated sysfs observations and
+reconciles the inventory around descriptor handoff. The current QEMU fixture is
+test-only and is not that broker. A caller must continue through
+`OrderCompleteBlockSources` and `ObserveBlockSet`; none of these operations
+authorize mounting or mutation.
+
+The internal API helper `observedBlockDeviceSet` binds an explicit selection of
+non-partition kernel names to the API collector's complete, in-memory schema-v2
+snapshot and derives the transient generation tuples for this opener. It checks
+the snapshot's ordering/count/flags and partition-parent-to-disk generation
+relationships; JSON round trips cannot be used because private generations are
+not in the API schema. It does not decide whether a `Kind == "block"` node is a
+physical disk, determine whether it is eligible/unmounted/exclusive, or prove
+that the selection contains every eligible node. The helper is not the future
+broker and grants no storage authority; the QEMU fixture exercises only its
+tuple binding.
 
 `MatchUUID` reports `not-observed`, `one-object` or `conflicting-objects` only
 within that set. Regular-image hard links share an object key (device/inode);
@@ -62,8 +131,32 @@ concurrent file modification, interruptible-process cancellation and the
 single-slot rule. A fixed-count fuzz target checks the response decoder.
 Set tests add alias/clone grouping, missing UUIDs, whole-set refusals and a
 competing write to an earlier image during a later probe.
+The complete Linux/amd64 package suite has run successfully, including
+generation-set validation and regular-file refusal. The QEMU fixture exercises
+successful disk-sequence ioctls against virtual block devices; it does not
+qualify EX4 SATA/libata behavior.
 The QEMU unmounted-disk fixture calls this implementation, not a separate
-copy of the process/JSON code, including clone/alias distinction before mounting.
+copy of the process/JSON code, including clone/alias distinction. It derives
+generations from the read-only sysfs collector, uses the fixed-path opener,
+deliberately shuffles the source records through the complete-set matcher, and
+checks a deliberately stale expected sequence is rejected without a partial
+snapshot. Before each fixture assessment it rechecks the storage inventory and
+mount table; a visible mount of a selected whole-disk node or any observed
+dependent block node causes refusal. Parent correlation uses validated sysfs
+class-link targets. The collector validates reciprocal `holders`/`slaves`
+links against the complete observed block set (partitions expose `holders`;
+whole block nodes expose both) and keeps this transient graph out of API v2.
+Host-generated tests exercise mount correlation through a disk, partition, MD
+node and device-mapper node. The current QEMU guest does not create a stacked
+MD/device-mapper device, so it checks the guest's actual sysfs graph and direct
+mount guard but does not qualify a real stacked-device mount. No fixture proves
+global exclusivity or performs an experimental mount. The exact-head ARMv5 QEMU CI run at code
+commit `2059a93`
+([run `36302718920`](https://github.com/PhantoNull/phantowd-ex4/actions/runs/36302718920))
+passed with the partition-parent/mount-guard extension. Host CI also passed
+([run `36302718909`](https://github.com/PhantoNull/phantowd-ex4/actions/runs/36302718909)).
+This fixture is not evidence of production-complete discovery or EX4 SATA/libata
+qualification.
 It also verifies a generated ext2/XFS collision through the real ARMv5 helper:
 individual signature controls succeed, the combined image returns `ErrProbe`
 without identity, and a set containing that image returns no partial results.

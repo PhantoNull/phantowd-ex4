@@ -92,6 +92,7 @@ done
 # Unix permissions while the verified disposable data disk is still mounted.
 /usr/bin/phantowd-api --qemu-smb-test
 /usr/bin/phantowd-api --qemu-mount-guard-test
+/usr/bin/phantowd-api --qemu-md-stack-test
 
 umount "$workspace/ro-client"
 ro_mounted=no

@@ -4,6 +4,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"io/fs"
 	"strings"
@@ -66,6 +67,42 @@ func TestCollectMDArrayInventoryStates(t *testing.T) {
 	})
 }
 
+func TestCollectMDArrayInventoryAcceptsNoActiveSyncProgress(t *testing.T) {
+	proc := fstest.MapFS{
+		"mdstat": {Data: []byte("Personalities : [raid1]\nmd0 : active raid1 sda2[0] sdb2[1]\n      1024 blocks super 1.2 [2/2] [UU]\nunused devices: <none>\n")},
+	}
+	sysfs := fixtureMDArraySysfs("md0")
+	sysfs["class/block/md0/md/sync_completed"] = &fstest.MapFile{Data: []byte("none\n")}
+
+	snapshot := collectMDArrayInventory(proc, sysfs, time.Now())
+	if snapshot.Status != arrayInventoryAvailable || snapshot.ArrayCount != 1 {
+		t.Fatalf("idle array with no active sync was marked incomplete: %s", formatMDArrayInventoryDiagnostic(snapshot))
+	}
+	array := snapshot.Arrays[0]
+	if array.Health != arrayHealthHealthy || array.SyncAction != "idle" || array.SyncProgressPercent != nil {
+		t.Fatalf("idle array exposed an invalid sync-progress observation: %+v", array)
+	}
+}
+
+func TestCollectMDArrayInventoryAcceptsDelayedSyncProgress(t *testing.T) {
+	proc := fstest.MapFS{
+		"mdstat": {Data: []byte("Personalities : [raid1]\nmd0 : active raid1 sda2[0] sdb2[1]\n      1024 blocks super 1.2 [2/2] [UU]\n      [>....................] resync = DELAYED\nunused devices: <none>\n")},
+	}
+	sysfs := fixtureMDArraySysfs("md0")
+	sysfs["class/block/md0/md/array_state"] = &fstest.MapFile{Data: []byte("active\n")}
+	sysfs["class/block/md0/md/sync_action"] = &fstest.MapFile{Data: []byte("resync\n")}
+	sysfs["class/block/md0/md/sync_completed"] = &fstest.MapFile{Data: []byte("delayed\n")}
+
+	snapshot := collectMDArrayInventory(proc, sysfs, time.Now())
+	if snapshot.Status != arrayInventoryAvailable || snapshot.ArrayCount != 1 {
+		t.Fatalf("delayed sync was marked incomplete: %s", formatMDArrayInventoryDiagnostic(snapshot))
+	}
+	array := snapshot.Arrays[0]
+	if array.Health != arrayHealthSyncing || array.SyncAction != "resync" || array.SyncProgressPercent != nil {
+		t.Fatalf("delayed sync observation was not preserved conservatively: %+v", array)
+	}
+}
+
 func TestCollectMDArrayInventoryDisagreementStaysUnknown(t *testing.T) {
 	const mdstat = "md0 : active raid1 sda2[0] sdb2[1]\n      1024 blocks super 1.2 [2/2] [UU]\n"
 	tests := []struct {
@@ -113,6 +150,58 @@ func TestCollectMDArrayInventoryDisagreementStaysUnknown(t *testing.T) {
 				t.Fatalf("source disagreement produced a health conclusion: %+v", snapshot)
 			}
 		})
+	}
+}
+
+func TestMDArrayInventoryDiagnosticIsBoundedAndInternal(t *testing.T) {
+	const mdstat = "md0 : active raid1 sda2[0] sdb2[1]\n      1024 blocks super 1.2 [2/2] [UU]\n"
+	sysfs := fixtureMDArraySysfs("md0")
+	delete(sysfs, "class/block/md0/md/sync_completed")
+	snapshot := collectMDArrayInventory(fstest.MapFS{"mdstat": {Data: []byte(mdstat)}}, sysfs, time.Now())
+	if snapshot.Status != arrayInventoryPartial || snapshot.ArrayCount != 1 || len(snapshot.Arrays) != 1 {
+		t.Fatalf("fixture did not produce one incomplete MD observation: %+v", snapshot)
+	}
+	diagnostic := formatMDArrayInventoryDiagnostic(snapshot)
+	for _, want := range []string{"status=partial", "array_count=1", "md0", "md-sync-progress-unavailable"} {
+		if !strings.Contains(diagnostic, want) {
+			t.Fatalf("diagnostic %q is missing %q", diagnostic, want)
+		}
+	}
+	if len(diagnostic) > maxMDArrayDiagnosticBytes {
+		t.Fatalf("MD diagnostic exceeded its bound: %d bytes", len(diagnostic))
+	}
+	encoded, err := json.Marshal(snapshot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(encoded), "diagnostic") || strings.Contains(string(encoded), "md-sysfs-attribute-unavailable") {
+		t.Fatalf("internal failure detail escaped into the API response: %s", encoded)
+	}
+}
+
+func TestMDArrayInventoryDiagnosticIdentifiesInvalidSysfsField(t *testing.T) {
+	proc := fstest.MapFS{"mdstat": {Data: []byte("md0 : active raid1 sda2[0] sdb2[1]\n      1024 blocks super 1.2 [2/2] [UU]\n")}}
+	sysfs := fixtureMDArraySysfs("md0")
+	sysfs["class/block/md0/md/sync_action"] = &fstest.MapFile{Data: []byte("resyncing\n")}
+	snapshot := collectMDArrayInventory(proc, sysfs, time.Now())
+	if snapshot.Status != arrayInventoryPartial {
+		t.Fatalf("fixture did not preserve invalid sysfs state: %+v", snapshot)
+	}
+	if diagnostic := formatMDArrayInventoryDiagnostic(snapshot); !strings.Contains(diagnostic, "md-sync-action-invalid") {
+		t.Fatalf("diagnostic did not identify invalid MD field: %q", diagnostic)
+	}
+}
+
+func TestMDArrayInventoryDiagnosticIdentifiesProcSysfsDisagreement(t *testing.T) {
+	proc := fstest.MapFS{"mdstat": {Data: []byte("md0 : active raid1 sda2[0] sdb2[1]\n      1024 blocks super 1.2 [2/2] [UU]\n")}}
+	sysfs := fixtureMDArraySysfs("md0")
+	sysfs["class/block/md0/md/level"] = &fstest.MapFile{Data: []byte("raid5\n")}
+	snapshot := collectMDArrayInventory(proc, sysfs, time.Now())
+	if snapshot.Status != arrayInventoryPartial {
+		t.Fatalf("fixture did not preserve the source disagreement: %+v", snapshot)
+	}
+	if diagnostic := formatMDArrayInventoryDiagnostic(snapshot); !strings.Contains(diagnostic, "mdstat-sysfs-disagreement") {
+		t.Fatalf("diagnostic did not identify the MD source disagreement: %q", diagnostic)
 	}
 }
 

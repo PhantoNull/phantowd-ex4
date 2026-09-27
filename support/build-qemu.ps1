@@ -1,5 +1,9 @@
 [CmdletBinding()]
-param()
+param(
+    [string]$DockerDataVhdxPath = (Join-Path $env:LOCALAPPDATA 'Docker\wsl\disk\docker_data.vhdx'),
+    [ValidateRange(1, 1024)]
+    [int]$MinimumFreeGiB = 40
+)
 
 $ErrorActionPreference = 'Stop'
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
@@ -12,6 +16,17 @@ $dockerfile = Join-Path $repoRoot 'support/docker/Dockerfile'
 node $dashboardTest
 if ($LASTEXITCODE -ne 0) {
     throw 'Dashboard interaction tests failed.'
+}
+
+if (-not (Test-Path -LiteralPath $DockerDataVhdxPath -PathType Leaf)) {
+    throw ('Cannot verify Docker data-disk headroom: VHDX not found at {0}. If Docker Desktop stores it elsewhere, pass -DockerDataVhdxPath with its exact path.' -f $DockerDataVhdxPath)
+}
+
+$dockerDrive = (Get-Item -LiteralPath $DockerDataVhdxPath).PSDrive.Name
+$freeBytes = (Get-PSDrive -Name $dockerDrive).Free
+$minimumFreeBytes = [int64]$MinimumFreeGiB * 1GB
+if ($freeBytes -lt $minimumFreeBytes) {
+    throw ('Docker data drive {0}: has only {1:N1} GiB free; this full Buildroot/QEMU build requires at least {2} GiB of host headroom before starting.' -f $dockerDrive, ($freeBytes / 1GB), $MinimumFreeGiB)
 }
 
 docker info | Out-Null

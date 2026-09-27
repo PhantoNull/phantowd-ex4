@@ -36,7 +36,7 @@ production-ready appliance.
 | Build | Pinned Buildroot 2025.02.18 / Linux 6.18.53; ARMv5 QEMU image, package SBOM and automated tests | Installable EX4 image and release qualification |
 | Web interface | Diagnostics, development administrator authentication/password changes, SMB/NFS policy previews and opt-in policy editing | Product setup/recovery, certificate lifecycle and live service administration |
 | File services | Real isolated SMB3/NFS tests, access checks and clean-reboot fixtures; native identity coordination libraries | End-to-end product account/credential management and safe service activation |
-| Storage | Read-only metadata inspection and descriptor-based identity checks | Complete device discovery, supported WD import, RAID management and data-disk compatibility |
+| Storage | Read-only schema-v2 metadata (including transient partition-parent links) and descriptor checks; host synthetic stacked-device coverage; disposable QEMU RAID1/mount-attribution fixture (CI status is shown in PR checks) | Complete trusted discovery broker, supported WD import, product RAID management and data-disk compatibility |
 | EX4 hardware | Short diskless RAM boots, limited Ethernet and internal-temperature observations | Sustained dual-port networking, cooling/controller, storage and recovery |
 
 The API and dashboard remain development-only and guest-loopback-only by
@@ -87,8 +87,9 @@ cd phantowd-ex4
 .\support\test-lab-tools.ps1
 ```
 
-These checks do not contact the NAS. They do not replace Linux-specific or
-ARMv5 integration tests.
+These checks do not use Docker or contact the NAS. The API check runs Go
+tests/vet and cross-compiles its QEMU-tagged tests for Linux/ARMv5, but does
+not execute that binary; it does not replace the Linux guest integration lane.
 
 ### Build and boot the QEMU target
 
@@ -99,9 +100,22 @@ With Docker Desktop running **Linux containers**, run from the repository root:
 ```
 
 The first build downloads verified sources and builds the toolchain, kernel
-and userspace; allow substantial time and disk space. The wrapper retains
-Docker build/cache volumes between runs. Outputs go to
-`artifacts/qemu-armv5/`. The smoke tests use disposable virtual storage;
+and userspace; allow substantial time and disk space. On Windows, the wrapper
+requires at least 40 GiB free on the Docker data drive before starting. It
+reuses two fixed Docker volumes (Buildroot workspace and compiler cache), not
+new volumes per run; their contents persist and can grow as the source,
+downloads, build outputs and cache change. Inspect usage with
+`docker system df -v`. When you no longer need the incremental workspace, run
+`support/clean-qemu-build-volumes.ps1 -WhatIf` to review the exact targets, then
+rerun without `-WhatIf` to remove only those two unreferenced project volumes;
+the script prompts before removal. This discards the local Buildroot workspace
+and compiler cache but keeps repository artifacts and other Docker data. The
+Docker Desktop VHDX may still need separate compaction to return freed space to
+the host. Avoid broad Docker prune commands on a shared installation.
+
+Routine API/UI changes should use the no-Docker host checks above; run the full
+QEMU build only when guest, kernel, package or integration behavior needs it.
+Outputs go to `artifacts/qemu-armv5/`. The smoke tests use disposable virtual storage;
 the supported harness does not forward host ports or physical devices.
 
 QEMU exercises ARMv5 software on VersatilePB, **not the EX4 board**. It cannot

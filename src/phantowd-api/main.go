@@ -21,11 +21,12 @@ func main() {
 	nfsTest := flag.String("qemu-nfs-test", "", "fixed NFS integration fixture; QEMU only")
 	smbTest := flag.Bool("qemu-smb-test", false, "fixed SMB effective-access fixture; QEMU only")
 	mountGuardTest := flag.Bool("qemu-mount-guard-test", false, "fixed descriptor/mount guard fixture; QEMU only")
+	mdStackTest := flag.Bool("qemu-md-stack-test", false, "fixed disposable MD stack/mount-guard fixture; QEMU only")
 	stateTest := flag.String("qemu-state-test", "", "fixed two-boot state fixture; QEMU only")
 	identityClient := flag.String("qemu-identity-client", "", "fixed unprivileged identity-channel fixture; QEMU only")
 	flag.Parse()
 	modes := 0
-	for _, selected := range []bool{*selfTest, *nfsTest != "", *smbTest, *mountGuardTest, *stateTest != "", *identityClient != ""} {
+	for _, selected := range []bool{*selfTest, *nfsTest != "", *smbTest, *mountGuardTest, *mdStackTest, *stateTest != "", *identityClient != ""} {
 		if selected {
 			modes++
 		}
@@ -49,6 +50,13 @@ func main() {
 	}
 	if *mountGuardTest {
 		if err := runQEMUMountGuardTest(); err != nil {
+			fmt.Fprintf(os.Stderr, "PHANTOWD_API_ERROR %v\n", err)
+			os.Exit(1)
+		}
+		return
+	}
+	if *mdStackTest {
+		if err := runQEMUMDStackTest(); err != nil {
 			fmt.Fprintf(os.Stderr, "PHANTOWD_API_ERROR %v\n", err)
 			os.Exit(1)
 		}

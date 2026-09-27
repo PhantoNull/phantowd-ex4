@@ -7,7 +7,8 @@ $moduleRoot = Join-Path $repoRoot 'src/phantowd-api'
 $dashboardTest = Join-Path $repoRoot 'support/test-dashboard-ui.mjs'
 $reportRoot = Join-Path $repoRoot 'artifacts/api-host-tests'
 $coverageFile = Join-Path $reportRoot 'coverage.out'
-$environmentNames = @('GOPROXY', 'GOTOOLCHAIN', 'GOFLAGS')
+$environmentNames = @('GOPROXY', 'GOTOOLCHAIN', 'GOFLAGS', 'GOOS', 'GOARCH', 'GOARM')
+$armv5TestBinary = Join-Path ([System.IO.Path]::GetTempPath()) "phantowd-api-qemu-armv5-$([guid]::NewGuid().ToString('N')).test"
 $originalEnvironment = @{}
 foreach ($environmentName in $environmentNames) {
     $originalEnvironment[$environmentName] = [Environment]::GetEnvironmentVariable($environmentName, 'Process')
@@ -29,9 +30,19 @@ try {
     if ($LASTEXITCODE -ne 0) { throw 'Diagnostics API tests failed.' }
     go test -tags=qemu -run '^(TestQEMUDashboardAssetsMatchSelfTest|TestQEMUTLSLoopbackSmoke|TestQEMUShareConfig|TestQEMUShareStore|TestQEMUSMBPreview|TestQEMUNFSPolicy|TestQEMUNFSFixture|TestQEMUFileServicePreviewHTTP)$' -count=1 .
     if ($LASTEXITCODE -ne 0) { throw 'QEMU dashboard contract test failed.' }
+
+    $env:GOOS = 'linux'
+    $env:GOARCH = 'arm'
+    $env:GOARM = '5'
+    go test -tags=qemu -c -o $armv5TestBinary .
+    if ($LASTEXITCODE -ne 0) { throw 'ARMv5 QEMU-tagged API tests did not cross-compile.' }
+    Write-Host 'ARMv5 QEMU-tagged API tests cross-compile successfully (not executed).'
 } finally {
     Pop-Location
     foreach ($environmentName in $environmentNames) {
         [Environment]::SetEnvironmentVariable($environmentName, $originalEnvironment[$environmentName], 'Process')
+    }
+    if (Test-Path -LiteralPath $armv5TestBinary) {
+        Remove-Item -LiteralPath $armv5TestBinary -Force
     }
 }

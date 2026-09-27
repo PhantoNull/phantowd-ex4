@@ -48,6 +48,20 @@ before mounting it; it never formats a guest block device. The host driver
 removes only its own temporary data image after QEMU exits. The API observer
 remains read-only; fixture mutations are in a separate QEMU-only test path.
 
+The smoke also attaches a temporary blank 1-MiB read-only block node whose
+SCSI serial duplicates the root disk while its WWN remains distinct. It has no
+filesystem and is never mounted. The ARMv5 API self-test requires both nodes to
+report `serial_status=ambiguous` and `wwn_status=present`, and checks that raw
+identifiers remain redacted. This is a fixture contract until the exact smoke
+run emits `PHANTOWD_STORAGE_COLLISION_READY`.
+
+The read-only storage collector also requires nonzero, unique kernel `diskseq`
+values for whole-disk entries, rechecks each value around its local observation,
+and rechecks the block-node name set and generations before returning. The
+generation is not exposed as a durable identity or returned in API JSON. Host
+fixtures exercise changes during collection; a stable QEMU smoke exercises the
+normal path but does not emulate hotplug races or qualify physical SATA/libata.
+
 Before the first data-disk mount, a fixed guest fixture passes both unmounted
 devices to the metadata helper through O_RDONLY descriptors. It checks exact
 device numbers and the absence of both devices from the mount inventory before
@@ -111,6 +125,21 @@ its synthetic VPD identity before mounting it read-only, detects the UUID
 conflict across supplied mounted roots, distinguishes the original disk's bind
 alias and rejects an incomplete scan. It unmounts the clone normally. This
 does not prove completeness of product disk discovery or WD compatibility.
+
+The smoke also creates two fresh 32 MiB sparse raw files and attaches them as
+the only members allowed by a QEMU-only MD fixture. Inside the snapshot-mode
+guest, fixed-identity checks precede `mdadm` RAID1 creation and ext2 formatting;
+the synthetic filesystem is mounted read-only. The test verifies live sysfs
+member links and MD health, mountinfo read-only state, descriptor-guard UUID
+and mount identity, attribution of the mount to both backing disks (not an
+unrelated disk), then ordinary unmount and array stop. The shell trap removes
+only those two files from its private temporary directory. MD RAID1, mdadm and
+e2fsprogs are enabled only in the QEMU profile; the EX4 profile is unchanged.
+All guest writes are isolated by QEMU snapshot mode. This exercises a real
+guest MD stack, not device-mapper, product array discovery, a global exclusivity
+proof, or EX4 storage compatibility. The exact-head run for this fixture must
+emit `PHANTOWD_MOUNT_GRAPH_READY`; until that run passes, this paragraph
+documents the intended test rather than completed evidence.
 
 ## Evidence boundary
 

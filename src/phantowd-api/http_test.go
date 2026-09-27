@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"io/fs"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -231,8 +232,14 @@ func TestStorageEndpointIsReadOnlyAndFailClosed(t *testing.T) {
 	if err := json.Unmarshal(response.Body.Bytes(), &snapshot); err != nil {
 		t.Fatal(err)
 	}
-	if !snapshot.InventoryReadOnly || snapshot.BlockDevicesOpened || snapshot.ContentRead || snapshot.MutationsPerformed || snapshot.StableIdentityAvailable {
+	if snapshot.SchemaVersion != 2 || !snapshot.InventoryReadOnly || snapshot.BlockDevicesOpened || snapshot.ContentRead || snapshot.MutationsPerformed || snapshot.StableIdentityAvailable {
 		t.Fatalf("endpoint reported an unsafe or overstated storage operation: %+v", snapshot)
+	}
+	if len(snapshot.Observations) != 2 || snapshot.Observations[0].Kind != "block" ||
+		snapshot.Observations[1].Kind != "partition" || snapshot.Observations[1].ParentName != "sda" ||
+		snapshot.Observations[1].ParentMajor == nil || *snapshot.Observations[1].ParentMajor != 8 ||
+		snapshot.Observations[1].ParentMinor == nil || *snapshot.Observations[1].ParentMinor != 0 {
+		t.Fatalf("endpoint omitted the validated partition-parent tuple: %+v", snapshot.Observations)
 	}
 	for _, test := range []struct {
 		method string
@@ -260,6 +267,204 @@ func TestStorageEndpointIsReadOnlyAndFailClosed(t *testing.T) {
 	failing.ServeHTTP(response, request)
 	if response.Code != 503 || strings.Contains(response.Body.String(), "private path") || strings.Contains(response.Body.String(), "fixture-secret") {
 		t.Fatal("storage collector error leaked through the API")
+	}
+}
+
+func TestStorageEndpointReportsDuplicateVPDAsAmbiguousWithoutValues(t *testing.T) {
+	naaA := []byte{0x50, 0x0f, 0, 0, 0, 0, 0, 1}
+	naaB := []byte{0x50, 0x0f, 0, 0, 0, 0, 0, 2}
+	for _, test := range []struct {
+		name       string
+		serialA    string
+		serialB    string
+		wwnA       []byte
+		wwnB       []byte
+		wantSerial identityStatus
+		wantWWN    identityStatus
+	}{
+		{
+			name: "duplicate serial", serialA: "http-private-serial-shared", serialB: "http-private-serial-shared",
+			wwnA: naaA, wwnB: naaB, wantSerial: identityAmbiguous, wantWWN: identityPresent,
+		},
+		{
+			name: "duplicate WWN", serialA: "http-private-serial-a", serialB: "http-private-serial-b",
+			wwnA: naaA, wwnB: naaA, wantSerial: identityPresent, wantWWN: identityAmbiguous,
+		},
+		{
+			name: "duplicate serial and WWN", serialA: "http-private-serial-shared", serialB: "http-private-serial-shared",
+			wwnA: naaA, wwnB: naaA, wantSerial: identityAmbiguous, wantWWN: identityAmbiguous,
+		},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			sysfs := fixtureSysfs()
+			addNonPartitionBlockNode(sysfs, "sdb", 8, 16, test.serialB, test.wwnB)
+			sysfs["devices/virtual/block/sda/device/vpd_pg80"] = &fstest.MapFile{Data: makeVPDPage(0x80, []byte(test.serialA))}
+			sysfs["devices/virtual/block/sda/device/vpd_pg83"] = &fstest.MapFile{Data: makeNAAPage(test.wwnA)}
+			auth, cookie := newTestAuth(t)
+			handler := newHandler(nil, func() (storageSnapshot, error) {
+				return collectStorage(sysfs)
+			}, auth)
+			request := loopbackRequest(http.MethodGet, "/api/v1/storage", nil)
+			request.AddCookie(cookie)
+			response := httptest.NewRecorder()
+			handler.ServeHTTP(response, request)
+			if response.Code != http.StatusOK || !json.Valid(response.Body.Bytes()) {
+				t.Fatalf("storage API request failed: status=%d body=%s", response.Code, response.Body.String())
+			}
+
+			var snapshot storageSnapshot
+			if err := json.Unmarshal(response.Body.Bytes(), &snapshot); err != nil {
+				t.Fatal(err)
+			}
+			if !snapshot.InventoryReadOnly || snapshot.BlockDevicesOpened || snapshot.ContentRead ||
+				snapshot.MutationsPerformed || snapshot.StableIdentityAvailable {
+				t.Fatalf("storage API overstated its observation: %+v", snapshot)
+			}
+			var found int
+			for _, observation := range snapshot.Observations {
+				if observation.Name != "sda" && observation.Name != "sdb" {
+					continue
+				}
+				found++
+				if observation.SerialStatus != test.wantSerial || observation.WWNStatus != test.wantWWN {
+					t.Fatalf("API did not publish duplicate status for %s: %+v", observation.Name, observation)
+				}
+			}
+			if found != 2 {
+				t.Fatalf("expected both fixture block nodes in API response, found %d", found)
+			}
+			for _, secret := range []string{
+				test.serialA, test.serialB,
+				"500f000000000001", "500f000000000002",
+			} {
+				if strings.Contains(response.Body.String(), secret) {
+					t.Fatalf("storage API leaked VPD value %q: %s", secret, response.Body.String())
+				}
+			}
+		})
+	}
+}
+
+func TestStorageEndpointDoesNotPublishInconsistentVPDInventory(t *testing.T) {
+	base := fixtureSysfs()
+	addNonPartitionBlockNode(
+		base, "sdb", 8, 16, "PHANTOWD-QEMU-SERIAL-01", []byte{0x50, 0x0f, 0, 0, 0, 0, 0, 2},
+	)
+	sysfs := &changingStorageAttributeFS{
+		MapFS: base,
+		path:  "class/block/sdb/device/vpd_pg80",
+		first: string(makeVPDPage(0x80, []byte("PHANTOWD-QEMU-SERIAL-01"))),
+		later: string(makeVPDPage(0x80, []byte("replacement-serial"))),
+	}
+	auth, cookie := newTestAuth(t)
+	handler := newHandler(nil, func() (storageSnapshot, error) {
+		return collectStorage(sysfs)
+	}, auth)
+	request := loopbackRequest(http.MethodGet, "/api/v1/storage", nil)
+	request.AddCookie(cookie)
+	response := httptest.NewRecorder()
+	handler.ServeHTTP(response, request)
+	if response.Code != http.StatusServiceUnavailable {
+		t.Fatalf("unstable storage snapshot returned status %d: %s", response.Code, response.Body.String())
+	}
+	var failure map[string]string
+	if err := json.Unmarshal(response.Body.Bytes(), &failure); err != nil {
+		t.Fatalf("storage failure was not JSON: %v", err)
+	}
+	if len(failure) != 1 || failure["error"] != "storage_unavailable" ||
+		strings.Contains(response.Body.String(), "observations") ||
+		strings.Contains(response.Body.String(), "PHANTOWD-QEMU-SERIAL-01") ||
+		strings.Contains(response.Body.String(), "replacement-serial") {
+		t.Fatalf("inconsistent or sensitive storage data escaped the API: %s", response.Body.String())
+	}
+}
+
+func TestStorageEndpointDoesNotCallRepeatedInvalidVPDIdentitiesAmbiguous(t *testing.T) {
+	sysfs := fixtureSysfs()
+	addNonPartitionBlockNode(sysfs, "sdb", 8, 16, "private-invalid-serial\x00", make([]byte, 8))
+	invalidSerialPage := makeVPDPage(0x80, []byte("private-invalid-serial\x00"))
+	invalidWWNPage := makeNAAPage(make([]byte, 8))
+	for _, device := range []string{"sda", "sdb"} {
+		base := "devices/virtual/block/" + device + "/device/"
+		sysfs[base+"vpd_pg80"] = &fstest.MapFile{Data: invalidSerialPage}
+		sysfs[base+"vpd_pg83"] = &fstest.MapFile{Data: invalidWWNPage}
+	}
+
+	auth, cookie := newTestAuth(t)
+	handler := newHandler(nil, func() (storageSnapshot, error) {
+		return collectStorage(sysfs)
+	}, auth)
+	request := loopbackRequest(http.MethodGet, "/api/v1/storage", nil)
+	request.AddCookie(cookie)
+	response := httptest.NewRecorder()
+	handler.ServeHTTP(response, request)
+	if response.Code != http.StatusOK {
+		t.Fatalf("storage API failed: status=%d body=%s", response.Code, response.Body.String())
+	}
+
+	var snapshot storageSnapshot
+	if err := json.Unmarshal(response.Body.Bytes(), &snapshot); err != nil {
+		t.Fatal(err)
+	}
+	var found int
+	for _, observation := range snapshot.Observations {
+		if observation.Name != "sda" && observation.Name != "sdb" {
+			continue
+		}
+		found++
+		if observation.SerialStatus != identityInvalid || observation.WWNStatus != identityInvalid {
+			t.Fatalf("repeated invalid VPD identities were not kept invalid: %+v", observation)
+		}
+	}
+	if found != 2 {
+		t.Fatalf("expected both synthetic disks in API response, found %d", found)
+	}
+	if strings.Contains(response.Body.String(), "private-invalid-serial") || strings.Contains(response.Body.String(), "0000000000000000") {
+		t.Fatalf("invalid raw VPD values leaked through the API: %s", response.Body.String())
+	}
+}
+
+func TestStorageEndpointDoesNotCountPartitionVPDAsDiskCollision(t *testing.T) {
+	naaA := []byte{0x50, 0x0f, 0, 0, 0, 0, 0, 1}
+	naaB := []byte{0x50, 0x0f, 0, 0, 0, 0, 0, 2}
+	sysfs := fixtureSysfs()
+	addNonPartitionBlockNode(sysfs, "sdb", 8, 16, "private-serial-b", naaB)
+	partitionBase := "devices/virtual/block/sda/sda1/device/"
+	sysfs[partitionBase] = &fstest.MapFile{Mode: fs.ModeDir | 0o555}
+	sysfs[partitionBase+"vpd_pg80"] = &fstest.MapFile{Data: makeVPDPage(0x80, []byte("PHANTOWD-QEMU-SERIAL-01"))}
+	sysfs[partitionBase+"vpd_pg83"] = &fstest.MapFile{Data: makeNAAPage(naaA)}
+
+	auth, cookie := newTestAuth(t)
+	handler := newHandler(nil, func() (storageSnapshot, error) {
+		return collectStorage(sysfs)
+	}, auth)
+	request := loopbackRequest(http.MethodGet, "/api/v1/storage", nil)
+	request.AddCookie(cookie)
+	response := httptest.NewRecorder()
+	handler.ServeHTTP(response, request)
+	if response.Code != http.StatusOK {
+		t.Fatalf("storage API failed: status=%d body=%s", response.Code, response.Body.String())
+	}
+
+	var snapshot storageSnapshot
+	if err := json.Unmarshal(response.Body.Bytes(), &snapshot); err != nil {
+		t.Fatal(err)
+	}
+	observations := make(map[string]blockObservation, 3)
+	for _, observation := range snapshot.Observations {
+		if observation.Name == "sda" || observation.Name == "sda1" || observation.Name == "sdb" {
+			observations[observation.Name] = observation
+		}
+	}
+	for _, name := range []string{"sda", "sdb"} {
+		observation, ok := observations[name]
+		if !ok || observation.SerialStatus != identityPresent || observation.WWNStatus != identityPresent {
+			t.Fatalf("partition metadata caused a false whole-disk collision for %s: %+v", name, observation)
+		}
+	}
+	partition, ok := observations["sda1"]
+	if !ok || partition.Kind != "partition" || partition.SerialStatus != "" || partition.WWNStatus != "" {
+		t.Fatalf("partition acquired whole-disk VPD collision status: %+v", partition)
 	}
 }
 

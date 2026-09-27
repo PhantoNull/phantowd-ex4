@@ -12,6 +12,21 @@ import (
 	"time"
 )
 
+func TestOpenObservedBlockSourcesDistinguishesUnknownAndExplicitEmptySets(t *testing.T) {
+	if sources, err := OpenObservedBlockSources(nil); !errors.Is(err, ErrUnsafe) || sources != nil {
+		t.Fatalf("nil inventory must not be treated as an observed empty set: sources=%v err=%v", sources, err)
+	}
+	sources, err := OpenObservedBlockSources([]ObservedBlockDevice{})
+	if err != nil || sources == nil || len(sources) != 0 {
+		t.Fatalf("explicitly empty inventory must return an empty complete set: sources=%v err=%v", sources, err)
+	}
+	if sources, err := OpenObservedBlockSources([]ObservedBlockDevice{{
+		Name: "../sda", Generation: BlockDeviceGeneration{Major: 8, Minor: 0, DiskSequence: 1},
+	}}); !errors.Is(err, ErrUnsafe) || sources != nil {
+		t.Fatalf("unsafe path must fail before opening a device: sources=%v err=%v", sources, err)
+	}
+}
+
 func TestObserveSetAliasesAndClones(t *testing.T) {
 	a, helper := fixture(t, successScript())
 	b, _ := fixture(t, successScript())
@@ -45,6 +60,22 @@ func TestObserveSetAliasesAndClones(t *testing.T) {
 				t.Fatal("closed caller input")
 			}
 		}
+	}
+}
+
+func TestObserveBlockSetRejectsNonBlockDescriptor(t *testing.T) {
+	source, helper := fixture(t, successScript())
+	snapshot, err := observeBlockSet(context.Background(), []BlockDeviceSource{{
+		File: source,
+		Generation: BlockDeviceGeneration{
+			Major: 8, Minor: 0, DiskSequence: 1,
+		},
+	}}, helper, time.Second)
+	if !errors.Is(err, ErrUnsafe) || len(snapshot.Results()) != 0 {
+		t.Fatal("regular image accepted as a generation-bound block device", snapshot, err)
+	}
+	if _, err := source.Stat(); err != nil {
+		t.Fatal("caller descriptor was closed", err)
 	}
 }
 
