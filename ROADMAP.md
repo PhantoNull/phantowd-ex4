@@ -604,8 +604,13 @@ These features are separate scope, not shortcuts around core acceptance:
    assessment using existing descriptor tools; no automatic mounts/import. A
    first slice now marks duplicate valid SCSI VPD serials/NAA WWNs ambiguous in
    the bounded read-only API, with collector/HTTP host tests and ARMv5 compile
-   checks. The QEMU smoke harness now carries a read-only duplicate-serial test
-   node; its actual target run is still required before claiming runtime coverage.
+   checks. An ARMv5 QEMU overlay of commit `c265ab3` passed the duplicate-serial
+   API smoke against the exact successful parent-build artifact. The current
+   follow-up also rejects a changing `diskseq` or block-node set during one
+   observation; host tests and an ARMv5 test-binary cross-compile pass with the
+   installed Go 1.27 compiler. This follow-up still needs the pinned Go 1.26.6
+   target build, target QEMU execution, then a clean exact-head Buildroot run.
+   SATA/libata exposure on physical EX4 remains unqualified.
 5. **M4.1:** define and test the activation plan against qualified fixture volumes;
    add the daemon owner only after preconditions and lifecycle are demonstrable.
 6. **M5:** expose completed backend outcomes incrementally, with disabled controls

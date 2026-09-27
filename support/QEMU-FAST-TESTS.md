@@ -55,6 +55,13 @@ report `serial_status=ambiguous` and `wwn_status=present`, and checks that raw
 identifiers remain redacted. This is a fixture contract until the exact smoke
 run emits `PHANTOWD_STORAGE_COLLISION_READY`.
 
+The read-only storage collector also requires nonzero, unique kernel `diskseq`
+values for whole-disk entries, rechecks each value around its local observation,
+and rechecks the block-node name set and generations before returning. The
+generation is not exposed as a durable identity or returned in API JSON. Host
+fixtures exercise changes during collection; a stable QEMU smoke exercises the
+normal path but does not emulate hotplug races or qualify physical SATA/libata.
+
 Before the first data-disk mount, a fixed guest fixture passes both unmounted
 devices to the metadata helper through O_RDONLY descriptors. It checks exact
 device numbers and the absence of both devices from the mount inventory before

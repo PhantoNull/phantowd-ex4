@@ -32,6 +32,9 @@ func TestCollectStorageReportsSysfsOnlyObservations(t *testing.T) {
 	if disk.SerialStatus != identityPresent || disk.WWNStatus != identityPresent {
 		t.Fatalf("valid synthetic SCSI identity pages not detected: %+v", disk)
 	}
+	if disk.diskSequence != 41 || partition.diskSequence != 0 {
+		t.Fatalf("kernel generation should be retained only for whole block nodes: disk=%d partition=%d", disk.diskSequence, partition.diskSequence)
+	}
 	if partition.Name != "sda1" || partition.Kind != "partition" || partition.PartitionNumber != 1 ||
 		partition.Major != 8 || partition.Minor != 1 || partition.SizeBytes != (1<<30)-512 || !partition.ReadOnly {
 		t.Fatalf("incorrect partition observation: %+v", partition)
@@ -40,7 +43,7 @@ func TestCollectStorageReportsSysfsOnlyObservations(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, forbidden := range []string{"fixture-secret", "PHANTOWD-QEMU-SERIAL-01", "500f000000000001", "fixture-fs-uuid-a", "fixture-partuuid-a"} {
+	for _, forbidden := range []string{"fixture-secret", "PHANTOWD-QEMU-SERIAL-01", "500f000000000001", "fixture-fs-uuid-a", "fixture-partuuid-a", "disk_sequence"} {
 		if strings.Contains(string(encoded), forbidden) {
 			t.Fatalf("observation exposed identity material %q: %s", forbidden, encoded)
 		}
@@ -109,6 +112,73 @@ func TestCollectStorageMarksCrossNodeVPDIdentityDuplicatesAmbiguous(t *testing.T
 				t.Fatal("redacted VPD collision checks must not claim stable identity is available")
 			}
 		})
+	}
+}
+
+func TestCollectStorageRejectsBlockNodeReplacedDuringObservation(t *testing.T) {
+	sysfs := &changingDiskSequenceFS{MapFS: fixtureSysfs(), changeAt: 2}
+	if _, err := collectStorage(sysfs); err == nil {
+		t.Fatal("block node whose kernel generation changed during observation was accepted")
+	}
+	if sysfs.reads != 2 {
+		t.Fatalf("expected to pin and recheck one block-node generation, read diskseq %d times", sysfs.reads)
+	}
+}
+
+func TestCollectStorageRejectsDuplicateBlockGenerations(t *testing.T) {
+	sysfs := fixtureSysfs()
+	addNonPartitionBlockNode(sysfs, "sdb", 8, 16, "private-serial-b", []byte{0x50, 0x0f, 0, 0, 0, 0, 0, 2})
+	sysfs["class/block/sdb/diskseq"] = &fstest.MapFile{Data: []byte("41\n")}
+	if _, err := collectStorage(sysfs); err == nil {
+		t.Fatal("two whole-disk nodes with one kernel generation were accepted")
+	}
+}
+
+func TestCollectStorageRequiresValidBlockGeneration(t *testing.T) {
+	for _, test := range []struct {
+		name  string
+		value string
+		omit  bool
+	}{
+		{name: "missing", omit: true},
+		{name: "zero", value: "0\n"},
+		{name: "signed", value: "+41\n"},
+		{name: "non-decimal", value: "forty-one\n"},
+		{name: "overflow", value: "18446744073709551616\n"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			sysfs := fixtureSysfs()
+			if test.omit {
+				delete(sysfs, "class/block/sda/diskseq")
+			} else {
+				sysfs["class/block/sda/diskseq"] = &fstest.MapFile{Data: []byte(test.value)}
+			}
+			if _, err := collectStorage(sysfs); err == nil {
+				t.Fatal("missing or malformed block generation was accepted")
+			}
+		})
+	}
+}
+
+func TestCollectStorageRechecksWholeInventoryBeforeReturning(t *testing.T) {
+	sysfs := &lateChangingDiskSequenceFS{MapFS: fixtureSysfs()}
+	if _, err := collectStorage(sysfs); err == nil {
+		t.Fatal("block node replaced after its local check was accepted")
+	}
+	if sysfs.reads != 3 {
+		t.Fatalf("expected local and whole-inventory generation checks, got %d diskseq reads", sysfs.reads)
+	}
+}
+
+func TestCollectStorageRejectsBlockNodesAddedDuringObservation(t *testing.T) {
+	base := fixtureSysfs()
+	addNonPartitionBlockNode(base, "sdb", 8, 16, "private-serial-b", []byte{0x50, 0x0f, 0, 0, 0, 0, 0, 2})
+	sysfs := &changingBlockInventoryFS{MapFS: base}
+	if _, err := collectStorage(sysfs); err == nil {
+		t.Fatal("block inventory changed during observation without invalidating the snapshot")
+	}
+	if sysfs.reads != 2 {
+		t.Fatalf("expected initial and final inventory enumeration, got %d reads", sysfs.reads)
 	}
 }
 
@@ -313,6 +383,7 @@ func fixtureSysfs() fstest.MapFS {
 		"class/block/sda/size":            {Data: []byte("2097152\n")},
 		"class/block/sda/ro":              {Data: []byte("0\n")},
 		"class/block/sda/removable":       {Data: []byte("0\n")},
+		"class/block/sda/diskseq":         {Data: []byte("41\n")},
 		"class/block/sda/device":          {Mode: fs.ModeDir | 0o555},
 		"class/block/sda/device/vpd_pg80": {Data: makeVPDPage(0x80, []byte("PHANTOWD-QEMU-SERIAL-01"))},
 		"class/block/sda/device/vpd_pg83": {Data: makeVPDPage(0x83, []byte{0x01, 0x03, 0x00, 0x08, 0x50, 0x0f, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01})},
@@ -332,9 +403,68 @@ func addNonPartitionBlockNode(sysfs fstest.MapFS, name string, major, minor uint
 	sysfs[base+"/size"] = &fstest.MapFile{Data: []byte("2097152\n")}
 	sysfs[base+"/ro"] = &fstest.MapFile{Data: []byte("0\n")}
 	sysfs[base+"/removable"] = &fstest.MapFile{Data: []byte("0\n")}
+	sysfs[base+"/diskseq"] = &fstest.MapFile{Data: []byte(fmt.Sprintf("%d\n", minor+1))}
 	sysfs[base+"/device"] = &fstest.MapFile{Mode: fs.ModeDir | 0o555}
 	sysfs[base+"/device/vpd_pg80"] = &fstest.MapFile{Data: makeVPDPage(0x80, []byte(serial))}
 	sysfs[base+"/device/vpd_pg83"] = &fstest.MapFile{Data: makeNAAPage(wwn)}
+}
+
+type changingDiskSequenceFS struct {
+	fstest.MapFS
+	reads    int
+	changeAt int
+}
+
+func (source *changingDiskSequenceFS) Open(name string) (fs.File, error) {
+	if name == "class/block/sda/diskseq" {
+		source.reads++
+		sequence := "41\n"
+		if source.reads >= source.changeAt {
+			sequence = "42\n"
+		}
+		return (fstest.MapFS{name: &fstest.MapFile{Data: []byte(sequence)}}).Open(name)
+	}
+	return source.MapFS.Open(name)
+}
+
+type lateChangingDiskSequenceFS struct {
+	fstest.MapFS
+	reads int
+}
+
+func (source *lateChangingDiskSequenceFS) Open(name string) (fs.File, error) {
+	if name == "class/block/sda/diskseq" {
+		source.reads++
+		sequence := "41\n"
+		if source.reads >= 3 {
+			sequence = "42\n"
+		}
+		return (fstest.MapFS{name: &fstest.MapFile{Data: []byte(sequence)}}).Open(name)
+	}
+	return source.MapFS.Open(name)
+}
+
+type changingBlockInventoryFS struct {
+	fstest.MapFS
+	reads int
+}
+
+func (source *changingBlockInventoryFS) ReadDir(name string) ([]fs.DirEntry, error) {
+	entries, err := source.MapFS.ReadDir(name)
+	if err != nil || name != "class/block" {
+		return entries, err
+	}
+	source.reads++
+	if source.reads > 1 {
+		return entries, nil
+	}
+	filtered := make([]fs.DirEntry, 0, len(entries))
+	for _, entry := range entries {
+		if entry.Name() != "sdb" {
+			filtered = append(filtered, entry)
+		}
+	}
+	return filtered, nil
 }
 
 func makeVPDPage(code byte, payload []byte) []byte {

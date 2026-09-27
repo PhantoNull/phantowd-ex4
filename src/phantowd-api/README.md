@@ -241,10 +241,14 @@ and refuses non-Versatile PB machines. See the
   configuration only; it has no device/service-activation controls. This is not
   a full NAS management UI.
 - Reads fixed `/proc` diagnostics and basic `/sys/class/block` metadata inside
-  the QEMU guest. It never opens a block device, reads disk contents, runs a
-  shell command, assembles or mounts storage, or performs reboot, firmware
-  install or update operations. Configuration writes are limited to account
-  setup and the explicitly enabled development policy backend described above.
+  the QEMU guest. Whole-disk observations require a nonzero unique kernel
+  `diskseq`; the collector rechecks each sequence and the block-node name set
+  before returning, and refuses an unstable inventory. `diskseq` is transient
+  for one kernel lifetime, is not returned by the API and is not disk identity.
+  The API never opens a block device, reads disk contents, runs a shell command,
+  assembles or mounts storage, or performs reboot, firmware install or update
+  operations. Configuration writes are limited to account setup and the
+  explicitly enabled development policy backend described above.
 - `flashable` and `hardware_validated` are always false; the target is explicitly
   `qemu-armv5`. These identifiers are not automatic hardware detection.
 

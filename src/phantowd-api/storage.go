@@ -43,6 +43,7 @@ type blockObservation struct {
 	PartitionNumber uint32         `json:"partition_number,omitempty"`
 	SerialStatus    identityStatus `json:"serial_status,omitempty"`
 	WWNStatus       identityStatus `json:"wwn_status,omitempty"`
+	diskSequence    uint64         `json:"-"`
 }
 
 type storageSnapshot struct {
@@ -58,8 +59,11 @@ type storageSnapshot struct {
 	Limitations             []string           `json:"limitations"`
 }
 
-// collectStorage reads only fixed sysfs attributes under class/block. It does
-// not open /dev nodes, read disk contents, inspect filesystems, or mutate state.
+// collectStorage reads only fixed sysfs attributes under class/block. It
+// rejects inventory-name or whole-disk generation changes detected during the
+// read, but does not create an atomic hotplug snapshot or pin device handles.
+// It does not open /dev nodes, read disk contents, inspect filesystems, or
+// mutate state.
 func collectStorage(sysfs fs.FS) (storageSnapshot, error) {
 	snapshot := storageSnapshot{
 		SchemaVersion:           1,
@@ -76,6 +80,9 @@ func collectStorage(sysfs fs.FS) (storageSnapshot, error) {
 			"duplicate valid serial or NAA WWN values among enumerated " +
 				"non-partition block nodes are marked ambiguous; aliases and " +
 				"multipath topology are not resolved",
+			"whole-disk kernel generations are checked before and after each " +
+				"observation; the generation is transient and is never returned as " +
+				"persistent identity",
 			"PARTUUID, filesystem UUID, RAID membership, health and bay mapping are not collected",
 			"no block device is opened and no disk content is read, assembled, mounted or modified",
 			"this development endpoint is not a WD-layout support decision or migration authorization",
@@ -92,6 +99,7 @@ func collectStorage(sysfs fs.FS) (storageSnapshot, error) {
 	seen := make(map[string]bool, len(entries))
 	serialObservations := make(map[string][]int)
 	wwnObservations := make(map[string][]int)
+	diskSequences := make(map[uint64]bool, len(entries))
 	for _, entry := range entries {
 		name := entry.Name()
 		if !validBlockName(name) || seen[name] {
@@ -99,6 +107,26 @@ func collectStorage(sysfs fs.FS) (storageSnapshot, error) {
 		}
 		seen[name] = true
 		base := "class/block/" + name + "/"
+		partitionText, partitionErr := readSysfsAttribute(sysfs, base+"partition")
+		observation := blockObservation{Name: name, Kind: "block"}
+		if partitionErr == nil {
+			partitionNumber, parseErr := strconv.ParseUint(strings.TrimSpace(partitionText), 10, 32)
+			if parseErr != nil || partitionNumber == 0 {
+				return snapshot, errors.New("invalid sysfs partition number")
+			}
+			observation.Kind = "partition"
+			observation.PartitionNumber = uint32(partitionNumber)
+		} else if !errors.Is(partitionErr, fs.ErrNotExist) {
+			return snapshot, errors.New("cannot read sysfs partition number")
+		}
+		if observation.Kind == "block" {
+			sequence, err := readBlockDiskSequence(sysfs, base+"diskseq")
+			if err != nil || diskSequences[sequence] {
+				return snapshot, errors.New("invalid or duplicate sysfs block generation")
+			}
+			observation.diskSequence = sequence
+			diskSequences[sequence] = true
+		}
 		deviceNumber, err := readSysfsAttribute(sysfs, base+"dev")
 		if err != nil {
 			return snapshot, errors.New("invalid sysfs device number")
@@ -124,21 +152,9 @@ func collectStorage(sysfs fs.FS) (storageSnapshot, error) {
 			return snapshot, errors.New("invalid sysfs removable flag")
 		}
 
-		observation := blockObservation{
-			Name: name, Kind: "block", Major: major, Minor: minor,
-			SizeBytes: sizeBytes, ReadOnly: readOnly, Removable: removable,
-		}
-		partitionText, err := readSysfsAttribute(sysfs, base+"partition")
-		if err == nil {
-			partitionNumber, parseErr := strconv.ParseUint(strings.TrimSpace(partitionText), 10, 32)
-			if parseErr != nil || partitionNumber == 0 {
-				return snapshot, errors.New("invalid sysfs partition number")
-			}
-			observation.Kind = "partition"
-			observation.PartitionNumber = uint32(partitionNumber)
-		} else if !errors.Is(err, fs.ErrNotExist) {
-			return snapshot, errors.New("cannot read sysfs partition number")
-		}
+		observation.Major, observation.Minor = major, minor
+		observation.SizeBytes = sizeBytes
+		observation.ReadOnly, observation.Removable = readOnly, removable
 		if observation.Kind == "block" {
 			serial, status := observeSCSISerial(sysfs, base+"device/vpd_pg80")
 			observation.SerialStatus = status
@@ -150,8 +166,25 @@ func collectStorage(sysfs fs.FS) (storageSnapshot, error) {
 			if status == identityPresent {
 				wwnObservations[wwn] = append(wwnObservations[wwn], len(snapshot.Observations))
 			}
+			sequence, err := readBlockDiskSequence(sysfs, base+"diskseq")
+			if err != nil || sequence != observation.diskSequence {
+				return snapshot, errors.New("sysfs block generation changed during observation")
+			}
 		}
 		snapshot.Observations = append(snapshot.Observations, observation)
+	}
+	finalEntries, err := fs.ReadDir(sysfs, "class/block")
+	if err != nil || !sameBlockInventory(entries, finalEntries) {
+		return snapshot, errors.New("sysfs block inventory changed during observation")
+	}
+	for _, observation := range snapshot.Observations {
+		if observation.Kind != "block" {
+			continue
+		}
+		sequence, err := readBlockDiskSequence(sysfs, "class/block/"+observation.Name+"/diskseq")
+		if err != nil || sequence != observation.diskSequence {
+			return snapshot, errors.New("sysfs block generation changed before inventory completion")
+		}
 	}
 	markDuplicateIdentities(snapshot.Observations, serialObservations, func(observation *blockObservation) *identityStatus {
 		return &observation.SerialStatus
@@ -161,6 +194,40 @@ func collectStorage(sysfs fs.FS) (storageSnapshot, error) {
 	})
 	snapshot.DeviceCount = len(snapshot.Observations)
 	return snapshot, nil
+}
+
+func sameBlockInventory(before, after []fs.DirEntry) bool {
+	if len(before) != len(after) {
+		return false
+	}
+	sort.Slice(after, func(i, j int) bool { return after[i].Name() < after[j].Name() })
+	for index := range before {
+		if before[index].Name() != after[index].Name() {
+			return false
+		}
+	}
+	return true
+}
+
+func readBlockDiskSequence(source fs.FS, path string) (uint64, error) {
+	value, err := readSysfsAttribute(source, path)
+	if err != nil {
+		return 0, err
+	}
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return 0, errors.New("invalid sysfs disk sequence")
+	}
+	for _, digit := range value {
+		if digit < '0' || digit > '9' {
+			return 0, errors.New("invalid sysfs disk sequence")
+		}
+	}
+	sequence, err := strconv.ParseUint(value, 10, 64)
+	if err != nil || sequence == 0 {
+		return 0, errors.New("invalid sysfs disk sequence")
+	}
+	return sequence, nil
 }
 
 func markDuplicateIdentities(observations []blockObservation, matches map[string][]int, statusField func(*blockObservation) *identityStatus) {
