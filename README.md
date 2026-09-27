@@ -87,8 +87,9 @@ cd phantowd-ex4
 .\support\test-lab-tools.ps1
 ```
 
-These checks do not contact the NAS. They do not replace Linux-specific or
-ARMv5 integration tests.
+These checks do not use Docker or contact the NAS. The API check runs Go
+tests/vet and cross-compiles its QEMU-tagged tests for Linux/ARMv5, but does
+not execute that binary; it does not replace the Linux guest integration lane.
 
 ### Build and boot the QEMU target
 
