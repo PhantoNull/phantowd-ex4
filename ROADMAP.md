@@ -3,7 +3,7 @@
 
 # Implementation roadmap
 
-Reviewed: **2026-09-26**. This is the product specification and work breakdown,
+Reviewed: **2026-09-27**. This is the product specification and work breakdown,
 not a release announcement. The [README](README.md) is the concise entry point;
 component contracts remain authoritative for implemented behavior.
 
@@ -76,15 +76,17 @@ Status vocabulary:
 | Desired SMB/NFS policy | Strict models, revision stores and opt-in development editing. Stored policy does not activate services. |
 | Native identities | Reservation ledger, protected local reader, creation journal, typed executor, cooperative owner/listener and multi-account router. Not a deployed account manager. |
 | Samba credentials | Actual guest authentication/rotation/disable and persistence fixtures. Ordinary password reset can re-enable a disabled account; the safe product primitive is not implemented. |
-| Storage | GPT/ext/MD image research, sysfs/mount observations, restricted libblkid helper, supplied-descriptor collision checks, generation-bound descriptor probing and mount guard. No complete discovery, compatibility resolver or importer; the new generation-bound guest smoke still needs execution. |
+| Storage | GPT/ext/MD image research, sysfs/mount observations, restricted libblkid helper, duplicate SCSI VPD identity reporting, generation-bound descriptor probing, complete-set matching and mount guard. The current feature-branch exact-head QEMU smoke passed; complete discovery, compatibility resolution and import remain unimplemented. |
 | Hardware | Short diskless serial/RAM and Ethernet/temperature observations. Networking stability, controller/cooling, storage and recovery remain unqualified. |
 | Updates | Host-side signed metadata/payload/version assessment. No on-device installer, update transaction, recovery or installation release. |
 
-Clean run [36234101935](https://github.com/PhantoNull/phantowd-ex4/actions/runs/36234101935)
-validated `2c09f81`. Router/race correction `fbaeb4a` and Samba boundary
-characterization `6f3d65f` subsequently passed local host/Linux/ARMv5 tests;
-they require their own clean integration result. This is dated evidence, not
-a moving claim that the current branch is green. Consult exact-commit CI.
+PR [#41](https://github.com/PhantoNull/phantowd-ex4/pull/41) is currently
+validated at `5c3a1d498b3fed7922b77d2929bc88150b04f28e`: [host tests
+passed](https://github.com/PhantoNull/phantowd-ex4/actions/runs/36295967788)
+and the [ARMv5 QEMU baseline passed](https://github.com/PhantoNull/phantowd-ex4/actions/runs/36295967755).
+This is feature-branch evidence, not evidence that the change is integrated
+into `develop` or qualified on EX4 hardware. Consult exact-commit CI for later
+revisions.
 
 Known unresolved qualification issue: intermittent state-volume unmount
 `EBUSY` in the two-boot QEMU fixture. Subsequent passes do not establish its
@@ -270,12 +272,17 @@ are missing. **Depends on:** M1; M7 for hardware.
   kernel observations; bind open descriptors to the observed generation and
   inventory. Distinguish excluded, absent, unreadable and ambiguous devices.
   An unreadable candidate makes the relevant assessment incomplete, not unique.
-  A host-side `OrderCompleteBlockSources` matcher now checks exact cardinality,
-  unique generation tuples, and one source per observed tuple, then orders
-  sources against the caller-provided list. It does not establish that list's
-  completeness or verify descriptor identity; `ObserveBlockSet` performs the
-  latter generation checks, while trusted enumeration/eligibility/unmounted
-  qualification remain unimplemented.
+  The read-only API marks every enumerated whole-disk node sharing a valid
+  SCSI VPD serial or NAA WWN as `ambiguous`, without returning raw values.
+  It rechecks fixed metadata and disk generations before publishing an
+  all-or-error snapshot. `OpenObservedBlockSources` opens only fixed `/dev`
+  paths read-only/no-follow, validates major/minor and `BLKGETDISKSEQ`, and
+  cleans up every partially opened descriptor on failure. The complete-set
+  matcher rejects omitted, extra, duplicate, or reused sources and orders the
+  validated set. Exact-head host and ARMv5 QEMU CI passed for PR #41
+  (`5c3a1d4`). These primitives do not establish trusted enumeration,
+  eligibility, unmounted state, inventory completeness, or atomic hotplug
+  consistency; no discovery broker or mount authority exists.
 - **M3.2 — Resolve stable identity.** Correlate device, partition, MD and filesystem
   identifiers; distinguish two descriptors for one object from two cloned
   filesystems. Never prove uniqueness from only the devices supplied by a caller.
@@ -599,55 +606,25 @@ These features are separate scope, not shortcuts around core acceptance:
 
 ## Next bounded work packets
 
-1. **M0.1:** finish exact-head integration of router/race correction and Samba
-   characterization; keep the existing PR consolidated.
+1. **M0.1:** exact-head integration of router/race correction and Samba
+   boundary characterization is complete in merged PR #40. Continue tracking
+   the unrelated intermittent two-boot QEMU state-volume `EBUSY` issue; a
+   passing run does not prove its cause or resolution.
 2. **M2.3:** compile and test the disabled-preserving Samba primitive in disposable
    QEMU. Deliver source/license review, actual denied-authentication assertions,
    identity preservation and failure behavior; no HTTP password endpoint yet.
 3. **M1.3 / M2.4:** implement explicit credential intent/reconciliation around the
    qualified primitive. Preserve uncertainty; do not persist/replay secrets.
-4. **M3.1–M3.2:** implement a complete trusted discovery snapshot and collision
-   assessment using existing descriptor tools; no automatic mounts/import. A
-   first slice now marks duplicate valid SCSI VPD serials/NAA WWNs ambiguous in
-   the bounded read-only API, with collector/HTTP host tests and ARMv5 compile
-   checks. An ARMv5 QEMU overlay of commit `c265ab3` passed the duplicate-serial
-   API smoke against the exact successful parent-build artifact. The current
-   follow-up at `2c5d886` also rereads all fixed whole-disk and partition
-   attributes, including parsed VPD identity values/status, checks the
-   whole-disk `diskseq` around each read, and re-enumerates node names before
-   duplicate classification. Any observed change rejects the snapshot; the
-   collector now returns a zero snapshot with every error, and the HTTP
-   endpoint returns only a generic 503 and no partial observations. Host
-   regression tests cover a mid-pass VPD change at collector and HTTP layers;
-   `go vet`, the API host-contract tests and an ARMv5 test-binary
-   cross-compile pass with Go 1.27.0. This remains a best-effort consistency
-   check rather than atomic discovery. The exact follow-up still needs the
-   pinned Go 1.26.6 target build and QEMU execution, then a clean exact-head
-   Buildroot run; `qemu-system-arm` is not installed in the current host and
-   no new Docker builder/cache was created for this pass.
-   SATA/libata exposure on physical EX4 remains unqualified. The authenticated
-   API now also has a combined-collision regression case where both serial and
-   NAA WWN are duplicated. The fixed QEMU virtual-disk fixture and guest
-   assertion now require both statuses to be ambiguous; host/API tests and the
-   ARMv5 `qemu`-tagged executable cross-build pass, but this updated QEMU smoke
-   has not yet been executed.
-   The current feature-branch follow-up adds `ObserveBlockSet`, which matches
-   already-open read-only descriptors against caller-observed major/minor and
-   `BLKGETDISKSEQ` before and after the complete probe set. The portable host
-   test covers generation-set consistency; a Linux-only test covers regular-file
-   refusal. The Linux/amd64 `volumeprobe` suite and selected Linux API storage
-   endpoint/collector tests now execute successfully, but they do not exercise
-   a successful block-device ioctl. The Linux/ARMv5 test binary and QEMU-tagged
-   API test binary cross-compiled. The fixed QEMU smoke checks aliases, cloned
-   UUIDs and stale-generation refusal, but has not yet run; HTTP discovery
-   remains sysfs-only and no mount authority is added.
-   A further host-only matcher now requires one source for every tuple in an
-   explicitly supplied non-nil inventory, rejects duplicate inventory entries,
-   reused Go file objects and omitted/extra sources, and returns inventory order.
-   Its tests pass with the full host suite and ARMv5 cross-compilation. This
-   still does not prove the inventory itself complete or establish descriptor
-   identity; callers must qualify enumeration and pass the result through
-   `ObserveBlockSet`. No discovery broker or mount lifecycle is implemented.
+4. **M3.1–M3.2:** complete trusted discovery and stable-identity assessment using
+   existing descriptor tools; no automatic mounts/import. PR #41 has passed
+   exact-head host and ARMv5 QEMU CI. It covers duplicate valid SCSI VPD serials
+   and NAA WWNs, redaction, partitions excluded from whole-disk collision
+   grouping, metadata/generation rechecks, all-or-error HTTP behavior, fixed-path
+   read-only source opening, exact source-set matching and partial-FD cleanup.
+   This remains a bounded API/probe slice: discovery completeness, parent and
+   bay topology, mounted-state/exclusive-access qualification, filesystem/MD
+   identity reconciliation and compatibility policy are open. SATA/libata on
+   physical EX4 remains unqualified; no mount or migration authority is added.
 5. **M4.1:** define and test the activation plan against qualified fixture volumes;
    add the daemon owner only after preconditions and lifecycle are demonstrable.
 6. **M5:** expose completed backend outcomes incrementally, with disabled controls

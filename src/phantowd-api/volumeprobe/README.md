@@ -124,9 +124,9 @@ copy of the process/JSON code, including clone/alias distinction before
 mounting. It derives generations from the read-only sysfs collector, uses the
 fixed-path opener, deliberately shuffles the source records through the
 complete-set matcher, and checks a deliberately stale expected sequence is
-rejected without a partial snapshot. The latest opener integration is pending
-its exact-head QEMU CI run; this fixture is not evidence of production complete
-discovery.
+rejected without a partial snapshot. The exact-head ARMv5 QEMU CI run for
+PR #41 (`5c3a1d4`) passed. This fixture is not evidence of production-complete
+discovery or EX4 SATA/libata qualification.
 It also verifies a generated ext2/XFS collision through the real ARMv5 helper:
 individual signature controls succeed, the combined image returns `ErrProbe`
 without identity, and a set containing that image returns no partial results.
