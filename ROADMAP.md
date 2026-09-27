@@ -620,10 +620,12 @@ These features are separate scope, not shortcuts around core acceptance:
    already-open read-only descriptors against caller-observed major/minor and
    `BLKGETDISKSEQ` before and after the complete probe set. The portable host
    test covers generation-set consistency; a Linux-only test covers regular-file
-   refusal. The ARMv5 test binary and QEMU-tagged API cross-compile. The fixed
-   QEMU smoke now checks aliases, cloned UUIDs and stale-generation refusal,
-   but has not yet run; HTTP discovery remains sysfs-only and no mount authority
-   is added.
+   refusal. The Linux/amd64 `volumeprobe` suite and selected Linux API storage
+   endpoint/collector tests now execute successfully, but they do not exercise
+   a successful block-device ioctl. The Linux/ARMv5 test binary and QEMU-tagged
+   API test binary cross-compiled. The fixed QEMU smoke checks aliases, cloned
+   UUIDs and stale-generation refusal, but has not yet run; HTTP discovery
+   remains sysfs-only and no mount authority is added.
 5. **M4.1:** define and test the activation plan against qualified fixture volumes;
    add the daemon owner only after preconditions and lifecycle are demonstrable.
 6. **M5:** expose completed backend outcomes incrementally, with disabled controls

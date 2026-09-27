@@ -84,6 +84,9 @@ concurrent file modification, interruptible-process cancellation and the
 single-slot rule. A fixed-count fuzz target checks the response decoder.
 Set tests add alias/clone grouping, missing UUIDs, whole-set refusals and a
 competing write to an earlier image during a later probe.
+The complete Linux/amd64 package suite has run successfully, including
+generation-set validation and regular-file refusal. This does not exercise a
+successful disk-sequence ioctl against a block device.
 The QEMU unmounted-disk fixture calls this implementation, not a separate
 copy of the process/JSON code, including clone/alias distinction before
 mounting. Its generation-bound path also checks a deliberately stale expected
