@@ -35,30 +35,18 @@ func probeQEMUUnmountedStorage() error {
 	if err != nil {
 		return errors.New("complete QEMU sysfs storage inventory was unavailable")
 	}
+	observedDevices, err := observedBlockDeviceSet(initialInventory, []string{"sdb", "sdc"})
+	if err != nil || len(observedDevices) != 2 || observedDevices[0].Name != "sdb" || observedDevices[1].Name != "sdc" {
+		return errors.New("selected QEMU data disks were not bound to the complete sysfs inventory")
+	}
 	deviceIDs := make(map[string]bool)
 	deviceGenerations := make(map[string]volumeprobe.BlockDeviceGeneration)
-	observedDevices := make([]volumeprobe.ObservedBlockDevice, 0, 2)
-	for _, device := range []string{"sdb", "sdc"} {
-		var observation *blockObservation
-		for index := range initialInventory.Observations {
-			if initialInventory.Observations[index].Name == device {
-				observation = &initialInventory.Observations[index]
-				break
-			}
-		}
-		if observation == nil || observation.Kind != "block" || observation.diskSequence == 0 {
-			return errors.New("fixture data disk missing from complete sysfs inventory")
-		}
-		deviceNumber := fmt.Sprintf("%d:%d", observation.Major, observation.Minor)
+	for _, device := range observedDevices {
+		deviceNumber := fmt.Sprintf("%d:%d", device.Generation.Major, device.Generation.Minor)
 		deviceIDs[deviceNumber] = true
-		deviceGenerations[device] = volumeprobe.BlockDeviceGeneration{
-			Major: observation.Major, Minor: observation.Minor, DiskSequence: observation.diskSequence,
-		}
-		observedDevices = append(observedDevices, volumeprobe.ObservedBlockDevice{
-			Name: device, Generation: deviceGenerations[device],
-		})
+		deviceGenerations[device.Name] = device.Generation
 	}
-	if len(deviceIDs) != 2 {
+	if len(deviceIDs) != 2 || len(deviceGenerations) != 2 {
 		return errors.New("fixture requires distinct virtual devices")
 	}
 	unmounted := func() error {

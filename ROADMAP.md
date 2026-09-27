@@ -305,6 +305,14 @@ are missing. **Depends on:** M1; M7 for hardware.
   host and ARMv5 QEMU CI (`36302718909`, `36302718920`). These primitives do not
   establish trusted enumeration, eligibility, inventory completeness, or
   atomic hotplug consistency; no discovery broker or mount authority exists.
+  The internal `observedBlockDeviceSet` adapter now binds explicitly selected
+  non-partition names to the complete in-memory schema-v2 snapshot, checking
+  transient generations and partition-parent relationships before it emits
+  opener tuples. It refuses serialized snapshots whose private generations
+  are absent. Host tests and the ARMv5-tagged API cross-compile pass; the
+  QEMU-tagged fixture consumes this adapter, but its exact-head guest run is
+  still pending. This is selection binding only, not physical-disk
+  classification or the missing trusted broker.
 - **M3.2 — Resolve stable identity.** Correlate device, partition, MD and filesystem
   identifiers; distinguish two descriptors for one object from two cloned
   filesystems. Never prove uniqueness from only the devices supplied by a caller.

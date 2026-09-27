@@ -545,6 +545,121 @@ func TestCollectStorageAllowsEmptySysfsInventory(t *testing.T) {
 	}
 }
 
+func TestObservedBlockDeviceSetBindsSelectedNodeToCompleteSnapshot(t *testing.T) {
+	snapshot, err := collectStorage(fixtureSysfs())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	devices, err := observedBlockDeviceSet(snapshot, []string{"sda"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(devices) != 1 || devices[0].Name != "sda" {
+		t.Fatalf("expected only the observed whole-disk node, got %+v", devices)
+	}
+	if generation := devices[0].Generation; generation.Major != 8 || generation.Minor != 0 || generation.DiskSequence != 41 {
+		t.Fatalf("unexpected observed generation: %+v", generation)
+	}
+}
+
+func TestObservedBlockDeviceSetRejectsJSONRoundTrip(t *testing.T) {
+	snapshot, err := collectStorage(fixtureSysfs())
+	if err != nil {
+		t.Fatal(err)
+	}
+	encoded, err := json.Marshal(snapshot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var decoded storageSnapshot
+	if err := json.Unmarshal(encoded, &decoded); err != nil {
+		t.Fatal(err)
+	}
+	if devices, err := observedBlockDeviceSet(decoded, []string{"sda"}); err == nil || devices != nil {
+		t.Fatalf("serialized snapshot without private disk generations must be refused: devices=%+v err=%v", devices, err)
+	}
+}
+
+func TestObservedBlockDeviceSetAcceptsExplicitEmptySelection(t *testing.T) {
+	for _, test := range []struct {
+		name  string
+		sysfs fs.FS
+	}{
+		{name: "empty observation", sysfs: fstest.MapFS{
+			"class":       {Mode: fs.ModeDir | 0o555},
+			"class/block": {Mode: fs.ModeDir | 0o555},
+		}},
+		{name: "observations exist but selection is empty", sysfs: fixtureSysfs()},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			snapshot, err := collectStorage(test.sysfs)
+			if err != nil {
+				t.Fatal(err)
+			}
+			devices, err := observedBlockDeviceSet(snapshot, []string{})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if devices == nil || len(devices) != 0 {
+				t.Fatalf("explicit empty selection must remain distinct from unknown: %+v", devices)
+			}
+		})
+	}
+}
+
+func TestObservedBlockDeviceSetRejectsInconsistentSnapshot(t *testing.T) {
+	tests := []struct {
+		name   string
+		mutate func(*storageSnapshot)
+	}{
+		{name: "nil observations", mutate: func(snapshot *storageSnapshot) { snapshot.Observations = nil }},
+		{name: "count mismatch", mutate: func(snapshot *storageSnapshot) { snapshot.DeviceCount-- }},
+		{name: "wrong schema version", mutate: func(snapshot *storageSnapshot) { snapshot.SchemaVersion++ }},
+		{name: "wrong scope", mutate: func(snapshot *storageSnapshot) { snapshot.Scope = "caller-supplied" }},
+		{name: "not read only", mutate: func(snapshot *storageSnapshot) { snapshot.InventoryReadOnly = false }},
+		{name: "device already opened", mutate: func(snapshot *storageSnapshot) { snapshot.BlockDevicesOpened = true }},
+		{name: "content already read", mutate: func(snapshot *storageSnapshot) { snapshot.ContentRead = true }},
+		{name: "mutation already performed", mutate: func(snapshot *storageSnapshot) { snapshot.MutationsPerformed = true }},
+		{name: "stable identity claim", mutate: func(snapshot *storageSnapshot) { snapshot.StableIdentityAvailable = true }},
+		{name: "generation omitted", mutate: func(snapshot *storageSnapshot) { snapshot.Observations[0].diskSequence = 0 }},
+		{name: "parent major mismatch", mutate: func(snapshot *storageSnapshot) { *snapshot.Observations[1].ParentMajor++ }},
+		{name: "parent generation mismatch", mutate: func(snapshot *storageSnapshot) { snapshot.Observations[1].parentDiskSeq++ }},
+		{name: "unknown node kind", mutate: func(snapshot *storageSnapshot) { snapshot.Observations[0].Kind = "unknown" }},
+		{name: "duplicate device number", mutate: func(snapshot *storageSnapshot) {
+			snapshot.Observations[1].Major = snapshot.Observations[0].Major
+			snapshot.Observations[1].Minor = snapshot.Observations[0].Minor
+		}},
+		{name: "unordered nodes", mutate: func(snapshot *storageSnapshot) {
+			snapshot.Observations[0], snapshot.Observations[1] = snapshot.Observations[1], snapshot.Observations[0]
+		}},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			snapshot, err := collectStorage(fixtureSysfs())
+			if err != nil {
+				t.Fatal(err)
+			}
+			test.mutate(&snapshot)
+			if devices, err := observedBlockDeviceSet(snapshot, []string{"sda"}); err == nil || devices != nil {
+				t.Fatalf("inconsistent snapshot accepted: devices=%+v err=%v", devices, err)
+			}
+		})
+	}
+}
+
+func TestObservedBlockDeviceSetRejectsNilUnknownAndPartitionSelections(t *testing.T) {
+	snapshot, err := collectStorage(fixtureSysfs())
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, selected := range [][]string{nil, {"sda1"}, {"sdx"}, {"sda", "sda"}, {"sda", "sda1"}} {
+		if devices, err := observedBlockDeviceSet(snapshot, selected); err == nil || devices != nil {
+			t.Fatalf("invalid selected node set accepted: selected=%v devices=%+v err=%v", selected, devices, err)
+		}
+	}
+}
+
 func TestCollectStorageRejectsMalformedOrUnboundedSysfs(t *testing.T) {
 	for _, test := range []struct {
 		name  string

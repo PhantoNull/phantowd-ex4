@@ -102,6 +102,17 @@ test-only and is not that broker. A caller must continue through
 `OrderCompleteBlockSources` and `ObserveBlockSet`; none of these operations
 authorize mounting or mutation.
 
+The internal API helper `observedBlockDeviceSet` binds an explicit selection of
+non-partition kernel names to the API collector's complete, in-memory schema-v2
+snapshot and derives the transient generation tuples for this opener. It checks
+the snapshot's ordering/count/flags and partition-parent-to-disk generation
+relationships; JSON round trips cannot be used because private generations are
+not in the API schema. It does not decide whether a `Kind == "block"` node is a
+physical disk, determine whether it is eligible/unmounted/exclusive, or prove
+that the selection contains every eligible node. The helper is not the future
+broker and grants no storage authority; the QEMU fixture exercises only its
+tuple binding.
+
 `MatchUUID` reports `not-observed`, `one-object` or `conflicting-objects` only
 within that set. Regular-image hard links share an object key (device/inode);
 block-node aliases share a key (rdev). Different objects with the same UUID

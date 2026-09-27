@@ -259,6 +259,15 @@ and refuses non-Versatile PB machines. See the
   classify whole disks, and establish eligibility/unmounted state. This path is
   not wired to the HTTP endpoint and confers no media-use authorization; see
   the [probe contract](volumeprobe/README.md).
+- The internal `observedBlockDeviceSet` adapter binds explicitly selected
+  non-partition names to a complete schema-v2 snapshot held in process memory,
+  checking ordered/unique metadata, transient generations and partition-parent
+  relationships before producing opener tuples. It is not a physical-disk
+  classifier: kernel `Kind == "block"` does not prove a SATA disk, nor does
+  this selection prove eligibility, an unmounted/exclusive state or that the
+  caller selected every eligible device. JSON-round-tripped API snapshots are
+  rejected because private generations are not serialized. This adapter is
+  internal, is not connected to HTTP, and is not the missing trusted broker.
 - `flashable` and `hardware_validated` are always false; the target is explicitly
   `qemu-armv5`. These identifiers are not automatic hardware detection.
 
