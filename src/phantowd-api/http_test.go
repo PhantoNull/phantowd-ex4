@@ -339,6 +339,40 @@ func TestStorageEndpointReportsDuplicateVPDAsAmbiguousWithoutValues(t *testing.T
 	}
 }
 
+func TestStorageEndpointDoesNotPublishInconsistentVPDInventory(t *testing.T) {
+	base := fixtureSysfs()
+	addNonPartitionBlockNode(
+		base, "sdb", 8, 16, "PHANTOWD-QEMU-SERIAL-01", []byte{0x50, 0x0f, 0, 0, 0, 0, 0, 2},
+	)
+	sysfs := &changingStorageAttributeFS{
+		MapFS: base,
+		path:  "class/block/sdb/device/vpd_pg80",
+		first: string(makeVPDPage(0x80, []byte("PHANTOWD-QEMU-SERIAL-01"))),
+		later: string(makeVPDPage(0x80, []byte("replacement-serial"))),
+	}
+	auth, cookie := newTestAuth(t)
+	handler := newHandler(nil, func() (storageSnapshot, error) {
+		return collectStorage(sysfs)
+	}, auth)
+	request := loopbackRequest(http.MethodGet, "/api/v1/storage", nil)
+	request.AddCookie(cookie)
+	response := httptest.NewRecorder()
+	handler.ServeHTTP(response, request)
+	if response.Code != http.StatusServiceUnavailable {
+		t.Fatalf("unstable storage snapshot returned status %d: %s", response.Code, response.Body.String())
+	}
+	var failure map[string]string
+	if err := json.Unmarshal(response.Body.Bytes(), &failure); err != nil {
+		t.Fatalf("storage failure was not JSON: %v", err)
+	}
+	if len(failure) != 1 || failure["error"] != "storage_unavailable" ||
+		strings.Contains(response.Body.String(), "observations") ||
+		strings.Contains(response.Body.String(), "PHANTOWD-QEMU-SERIAL-01") ||
+		strings.Contains(response.Body.String(), "replacement-serial") {
+		t.Fatalf("inconsistent or sensitive storage data escaped the API: %s", response.Body.String())
+	}
+}
+
 func TestStorageEndpointDoesNotCallRepeatedInvalidVPDIdentitiesAmbiguous(t *testing.T) {
 	sysfs := fixtureSysfs()
 	addNonPartitionBlockNode(sysfs, "sdb", 8, 16, "private-invalid-serial\x00", make([]byte, 8))

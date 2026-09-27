@@ -606,10 +606,17 @@ These features are separate scope, not shortcuts around core acceptance:
    the bounded read-only API, with collector/HTTP host tests and ARMv5 compile
    checks. An ARMv5 QEMU overlay of commit `c265ab3` passed the duplicate-serial
    API smoke against the exact successful parent-build artifact. The current
-   follow-up also rejects a changing `diskseq` or block-node set during one
-   observation; host tests and an ARMv5 test-binary cross-compile pass with the
-   installed Go 1.27 compiler. This follow-up still needs the pinned Go 1.26.6
-   target build, target QEMU execution, then a clean exact-head Buildroot run.
+   follow-up at `2c5d886` also rereads all fixed whole-disk and partition
+   attributes, including parsed VPD identity values/status, checks the
+   whole-disk `diskseq` around each read, and re-enumerates node names before
+   duplicate classification. Any observed change rejects the snapshot; the
+   HTTP endpoint returns only a generic 503 and no partial observations. Host
+   tests, `go vet`, the API host-contract tests and an ARMv5 test-binary
+   cross-compile pass with Go 1.27.0. This remains a best-effort consistency
+   check rather than atomic discovery. The exact follow-up still needs the
+   pinned Go 1.26.6 target build and QEMU execution, then a clean exact-head
+   Buildroot run; `qemu-system-arm` is not installed in the current host and
+   no new Docker builder/cache was created for this pass.
    SATA/libata exposure on physical EX4 remains unqualified. The authenticated
    API now also has a combined-collision regression case where both serial and
    NAA WWN are duplicated. The fixed QEMU virtual-disk fixture and guest
