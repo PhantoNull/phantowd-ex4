@@ -21,7 +21,9 @@ mkdir -p "$workspace_dir" "$download_dir/linux" "$download_dir/cyclonedx"
 
 shellcheck -s sh \
     "$external_dir/support/compare-build-artifacts.sh" \
-    "$external_dir/support/test-compare-build-artifacts.sh"
+    "$external_dir/support/test-compare-build-artifacts.sh" \
+    "$external_dir/package/phantowd-api/S02phantowd-mdev" \
+    "$external_dir/package/phantowd-api/S40phantowd-storage-broker"
 sh "$external_dir/support/test-compare-build-artifacts.sh"
 python3 "$external_dir/support/test-volume-probe-build.py"
 

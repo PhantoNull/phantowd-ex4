@@ -18,6 +18,7 @@ import (
 
 func main() {
 	selfTest := flag.Bool("self-test", false, "test the fixed guest-loopback endpoint; QEMU only")
+	storageBroker := flag.Bool("storage-broker", false, "serve the local read-only storage broker")
 	nfsTest := flag.String("qemu-nfs-test", "", "fixed NFS integration fixture; QEMU only")
 	smbTest := flag.Bool("qemu-smb-test", false, "fixed SMB effective-access fixture; QEMU only")
 	mountGuardTest := flag.Bool("qemu-mount-guard-test", false, "fixed descriptor/mount guard fixture; QEMU only")
@@ -26,13 +27,23 @@ func main() {
 	identityClient := flag.String("qemu-identity-client", "", "fixed unprivileged identity-channel fixture; QEMU only")
 	flag.Parse()
 	modes := 0
-	for _, selected := range []bool{*selfTest, *nfsTest != "", *smbTest, *mountGuardTest, *mdStackTest, *stateTest != "", *identityClient != ""} {
+	for _, selected := range []bool{
+		*selfTest, *storageBroker, *nfsTest != "", *smbTest, *mountGuardTest,
+		*mdStackTest, *stateTest != "", *identityClient != "",
+	} {
 		if selected {
 			modes++
 		}
 	}
 	if flag.NArg() != 0 || modes > 1 {
 		log.Fatal("unexpected arguments")
+	}
+	if *storageBroker {
+		if err := runStorageBroker(); err != nil {
+			fmt.Fprintln(os.Stderr, "PHANTOWD_STORAGE_BROKER_ERROR startup refused")
+			os.Exit(1)
+		}
+		return
 	}
 	if *identityClient != "" {
 		if err := runQEMUIdentityClient(*identityClient); err != nil {
@@ -116,7 +127,7 @@ func main() {
 	server := newConfiguredServer(newHandlerWithServiceState(func() (systemSnapshot, error) {
 		return collectSystem(os.DirFS("/proc"), time.Now())
 	}, func() (storageSnapshot, error) {
-		return collectStorage(os.DirFS("/sys"))
+		return collectStorageFromBroker()
 	}, func() mdArraySnapshot {
 		return collectMDArrayInventory(os.DirFS("/proc"), os.DirFS("/sys"), time.Now())
 	}, func() (mountSnapshot, error) {

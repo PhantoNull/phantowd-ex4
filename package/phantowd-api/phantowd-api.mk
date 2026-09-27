@@ -16,6 +16,7 @@ ifeq ($(BR2_PACKAGE_PHANTOWD_API_QEMU_SELFTEST),y)
 PHANTOWD_API_TAGS += qemu
 endif
 PHANTOWD_API_USERS = phantowd -1 phantowd -1 * /nonexistent /bin/false - PhantoWD diagnostics
+PHANTOWD_API_USERS += phantowd-storage -1 phantowd-storage-read -1 * /nonexistent /bin/false - PhantoWD read-only storage broker
 PHANTOWD_API_GO_LICENSE_DIR = $(if $(BR2_PACKAGE_HOST_GO_BIN),$(HOST_GO_BIN_DIR),$(HOST_GO_SRC_DIR))
 
 define PHANTOWD_API_COPY_LICENSE
@@ -39,7 +40,19 @@ define PHANTOWD_API_INSTALL_LICENSES
 endef
 PHANTOWD_API_POST_INSTALL_TARGET_HOOKS += PHANTOWD_API_INSTALL_LICENSES
 
+define PHANTOWD_API_INSTALL_STORAGE_DEVICE_RULES
+	$(INSTALL) -D -m 0644 $(PHANTOWD_API_PKGDIR)/mdev.conf \
+		$(TARGET_DIR)/etc/mdev.conf
+	$(INSTALL) -D -m 0644 $(PHANTOWD_API_PKGDIR)/64-phantowd-storage.rules \
+		$(TARGET_DIR)/etc/udev/rules.d/64-phantowd-storage.rules
+endef
+PHANTOWD_API_POST_INSTALL_TARGET_HOOKS += PHANTOWD_API_INSTALL_STORAGE_DEVICE_RULES
+
 define PHANTOWD_API_INSTALL_INIT_SYSV
+	$(INSTALL) -D -m 0755 $(PHANTOWD_API_PKGDIR)/S02phantowd-mdev \
+		$(TARGET_DIR)/etc/init.d/S02phantowd-mdev
+	$(INSTALL) -D -m 0755 $(PHANTOWD_API_PKGDIR)/S40phantowd-storage-broker \
+		$(TARGET_DIR)/etc/init.d/S40phantowd-storage-broker
 	$(INSTALL) -D -m 0755 $(PHANTOWD_API_PKGDIR)/S50phantowd-api \
 		$(TARGET_DIR)/etc/init.d/S50phantowd-api
 endef

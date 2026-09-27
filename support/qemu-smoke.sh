@@ -102,6 +102,10 @@ while [ "$attempt" -lt 120 ]; do
             echo "Missing ARMv5 duplicate storage-identity assertion" >&2
             exit 1
         fi
+        if ! grep -F 'PHANTOWD_STORAGE_BROKER_READY api_outside_device_group=true broker_nnp=true broker_capabilities=none whole_disk_mode=0440 hotplug_rechecked=true nodes=2 serial=ambiguous wwn=ambiguous redacted=true read_only=true scope=qemu-fixture-only' "$log_file" >/dev/null; then
+            echo "Missing ARMv5 least-privilege storage broker assertion" >&2
+            exit 1
+        fi
         if ! grep -F 'PHANTOWD_SHARE_POLICY_READY schema=1 scope=synthetic-policy-only' "$log_file" >/dev/null; then
             echo "Missing ARMv5 share-policy validation assertion" >&2
             exit 1

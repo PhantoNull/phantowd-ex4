@@ -251,17 +251,26 @@ and refuses non-Versatile PB machines. See the
   domain-separated SHA-256 equality digest of each valid VPD value so an
   identity change cannot hide behind an unchanged `present` status. Neither
   raw values nor these digests are serialized or treated as stable identity.
-  The authenticated HTTP handler never invokes the opener or opens a block
-  device; it does not read disk contents, run a shell command, assemble or
-  mount storage, or perform reboot, firmware install or update operations.
+  The HTTP/API process never opens a block device. A storage request instead
+  contacts a fixed local broker channel; the dedicated non-root broker obtains
+  the complete internal inventory, opens eligible whole-disk nodes read-only,
+  closes every descriptor, and returns only a bounded/redacted snapshot. The
+  current path issues no block-data reads, shell commands, assembly, mounts,
+  reboot, firmware install or update operations.
   Configuration writes are limited to account setup and the explicitly enabled
   development policy backend described above.
-- A separate internal Linux path accepts caller-observed kernel block names
-  and generations, safely opens fixed `/dev` entries read-only, and binds the
-  resulting descriptors to major/minor and `diskseq` using `BLKGETDISKSEQ`
-  before and after the set. The caller must establish complete discovery,
-  classify whole disks, and establish eligibility/unmounted state. This path is
-  not wired to the HTTP endpoint and confers no media-use authorization; see
+- The broker's fixed-path opener accepts only the collector's kernel names and
+  generation tuples, safely opens beneath fixed `/dev` read-only/no-follow, and
+  binds descriptors to major/minor and `diskseq` using `BLKGETDISKSEQ`. Device
+  nodes must be root-owned, group-owned by `phantowd-storage-read`, and exactly
+  mode `0440`; the API account is not a member of that group. The broker runs
+  as a separate non-root account, requires `no_new_privs`, rejects effective,
+  permitted or inheritable capabilities, and allows no supplementary group
+  other than the read-only device group. It accepts no caller-supplied path,
+  name, command or partial selection; the API sends no request payload or file
+  descriptors. The bounded Unix-socket response authenticates peer credentials
+  in both directions. This establishes only the implemented read-only
+  point-in-time inventory boundary; it is not mount/import authorization. See
   the [probe contract](volumeprobe/README.md).
 - The private `completeObservedBlockDeviceSet` bridge accepts only the
   collector's in-memory schema-v2 inventory and emits every whole-disk
@@ -278,11 +287,15 @@ and refuses non-Versatile PB machines. See the
   Bcachefs and ZFS currently make discovery fail closed because their full
   multi-device backing set is not established here. Other filesystem stacks,
   stable identity, bay mapping, compatibility and mount authority also remain
-  unresolved. Host fixtures pass; the disposable QEMU fixture now includes this
-  coordinator, but exact-head guest execution is pending. It is not wired to
-  HTTP or boot; a least-privilege production broker/service remains
-  outstanding. Serialized snapshots are rejected because private completion
-  markers and generations are not serialized.
+  unresolved. Host fixtures pass; exact-head QEMU execution of the broker and
+  hotplug permission assertions is pending. The QEMU SysV profile starts mdev
+  before the broker and API, applies mode `0440` only to whole-disk `sd[a-f]`
+  nodes needed by its six-disk fixture, and tests a synthetic `sdd` hotplug.
+  The separate udev rule currently covers `sd[a-d]` provisionally; other init
+  systems and EX4 device naming are not yet qualified. The broker's mount view
+  is only its own namespace and does not exclude other userspace block consumers.
+  Serialized snapshots are rejected because private completion markers and
+  generations are not serialized.
 - `flashable` and `hardware_validated` are always false; the target is explicitly
   `qemu-armv5`. These identifiers are not automatic hardware detection.
 

@@ -76,7 +76,7 @@ Status vocabulary:
 | Desired SMB/NFS policy | Strict models, revision stores and opt-in development editing. Stored policy does not activate services. |
 | Native identities | Reservation ledger, protected local reader, creation journal, typed executor, cooperative owner/listener and multi-account router. Not a deployed account manager. |
 | Samba credentials | Actual guest authentication/rotation/disable and persistence fixtures. Ordinary password reset can re-enable a disabled account; the safe product primitive is not implemented. |
-| Storage | GPT/ext/MD image research, sysfs/mount observations, restricted libblkid helper, duplicate SCSI VPD identity reporting, generation-bound descriptor probing, complete-set matching, partition-parent correlation and validated reciprocal holder/slave topology. PR #41's disposable QEMU RAID1/read-only mount-attribution fixture passed exact-head CI on `ac016b9`; the follow-on complete-discovery coordinator is host-tested, with its updated guest fixture still pending. Complete trusted production broker, compatibility resolution, import and RAID management remain unimplemented. |
+| Storage | GPT/ext/MD image research, sysfs/mount observations, restricted libblkid helper, duplicate SCSI VPD identity reporting, generation-bound descriptor probing, complete-set matching, partition-parent correlation and validated reciprocal holder/slave topology. PR #41's disposable QEMU RAID1/read-only mount-attribution fixture passed exact-head CI on `ac016b9`; the follow-on coordinator and non-root read-only broker pass host tests and ARMv5 cross-compilation, with exact-head QEMU broker/hotplug qualification pending. Stable identity, WD compatibility resolution, import and RAID management remain unimplemented. |
 | Hardware | Short diskless serial/RAM and Ethernet/temperature observations. Networking stability, controller/cooling, storage and recovery remain unqualified. |
 | Updates | Host-side signed metadata/payload/version assessment. No on-device installer, update transaction, recovery or installation release. |
 
@@ -322,13 +322,17 @@ are missing. **Depends on:** M1; M7 for hardware.
   exact-head guest execution for the follow-on remains pending.
   `support/test-api.ps1` passes, including `go vet`, the full Go suite and
   ARMv5 QEMU-tagged cross-compilation.
-  **M3.1 is not complete:** the coordinator is not yet a least-privilege
-  production broker or boot service, the unprivileged HTTP endpoint remains
-  sysfs-only, and global userspace / mount-namespace exclusivity, stable
-  identity, compatibility and mount authority remain out of scope. Before
-  broker use, either account for all mount namespaces and block consumers or
-  make the remaining uncertainty a hard refusal; the coordinator's candidate
-  set is not proof that a disk is unused.
+  **M3.1 is not complete:** this branch now has a dedicated non-root broker,
+  read-only whole-disk device rules, a protected peer-credential-checked local
+  socket, and an API that receives only bounded/redacted snapshots. The broker
+  requires no-new-privileges, zero effective/permitted/inheritable capabilities,
+  and no supplementary group beyond the read-only device group; it opens and
+  closes the complete eligible candidate set without reading disk contents.
+  SysV/mdev startup plus a QEMU hotplug assertion are implemented, but exact-head
+  guest execution remains pending. This point-in-time discovery does not
+  establish global userspace or mount-namespace exclusivity and grants no
+  content-read, mount, import or mutation authority. Those require separate
+  evidence and hard gates, as do stable identity and compatibility.
   Cross-snapshot consistency comparisons also bind valid VPD status to a
   private, domain-separated SHA-256 equality digest, so a serial/WWN change
   cannot pass merely because both observations say `present`. Raw values stay
@@ -666,19 +670,22 @@ These features are separate scope, not shortcuts around core acceptance:
    API or automatic mount/import. PR #41 adds duplicate valid SCSI VPD serial/NAA
    WWN reporting, redaction, schema-v2 partition-parent topology, metadata and
    generation rechecks, and the fixed-path opener/source-set primitives. Its
-   exact-head host and ARMv5 QEMU checks pass. The local follow-on branch adds
-   the private complete-inventory coordinator; `support/test-api.ps1` passes
-   with host tests, `go vet` and ARMv5 cross-compilation, but the updated
-   follow-on guest fixture has not yet run. Next add a fixed,
-   peer-authenticated, least-privilege broker/service: API remains non-root;
-   broker accepts no caller paths, names, commands or partial selections, owns
-   and closes descriptors, and returns only bounded/redacted observations.
-   Before broker use, account for or fail closed on every mounted multi-device
-   filesystem, mount namespace and other block consumer; the current candidate
-   set proves only the current process's observed topology. Prove write/mount
-   capabilities are absent before boot integration. Keep SATA/libata hardware
-   qualification, bay mapping, stable identity and compatibility policy
-   explicitly unresolved; no mount or migration authority is added.
+   exact-head host and ARMv5 QEMU checks pass. The local
+   `feat/storage-readonly-broker` branch adds a fixed, requestless,
+   peer-authenticated broker service; API remains non-root, and the broker
+   accepts no caller paths, names, commands or partial selections, owns/closes
+   descriptors and returns only bounded, redacted observations. QEMU
+   SysV/mdev setup grants only `0440` to whole-disk nodes `sd[a-f]` for its six
+   fixture disks; the separate provisional udev rule covers `sd[a-d]`. The
+   broker requires `no_new_privs`, has no effective/permitted/inheritable
+   capabilities and no supplementary groups beyond the read-only device group.
+   `support/test-api.ps1`
+   passes, including host tests, `go vet` and ARMv5 cross-compilation; exact-head
+   QEMU broker, permission and hotplug assertions have not run yet. The broker
+   observes only its own mount namespace and does not read disk content; this
+   does not imply exclusivity or authorize later probing, mounting, import or
+   mutation. Keep SATA/libata hardware qualification, bay mapping, stable
+   identity and compatibility policy explicitly unresolved.
 3. **M3.2:** resolve stable identity only after the trusted broker has an
    exact-head QEMU pass. Correlate devices, partitions, MD and filesystem IDs;
    distinguish aliases from clones; never infer global uniqueness from a subset.

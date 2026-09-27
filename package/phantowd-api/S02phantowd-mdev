@@ -1,0 +1,37 @@
+#!/bin/sh
+
+PIDFILE=/run/phantowd-mdev.pid
+
+case "$1" in
+    start)
+        if ! grep -q ' /dev devtmpfs ' /proc/mounts; then
+            echo 'Refusing storage device rules without devtmpfs'
+            exit 1
+        fi
+        : > /dev/mdev.seq || exit 1
+        if ! start-stop-daemon --start --background --make-pidfile \
+            --pidfile "$PIDFILE" --exec /sbin/mdev -- -df; then
+            echo 'Unable to start the mdev hotplug listener'
+            exit 1
+        fi
+        if [ ! -s "$PIDFILE" ]; then
+            echo 'mdev hotplug listener did not create its pid file'
+            exit 1
+        fi
+        /sbin/mdev -s || {
+            echo 'Unable to apply mdev rules to existing devices'
+            exit 1
+        }
+        ;;
+    stop)
+        start-stop-daemon --stop --pidfile "$PIDFILE" --exec /sbin/mdev || exit 1
+        rm -f "$PIDFILE"
+        ;;
+    restart)
+        "$0" stop && "$0" start
+        ;;
+    *)
+        echo "Usage: $0 {start|stop|restart}"
+        exit 1
+        ;;
+esac
