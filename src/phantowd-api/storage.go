@@ -53,6 +53,7 @@ type blockObservation struct {
 	wwnEvidence     [32]byte           `json:"-"`
 	diskSequence    uint64             `json:"-"`
 	parentDiskSeq   uint64             `json:"-"`
+	sysfsTarget     string             `json:"-"`
 	lowerBlocks     []blockTopologyRef `json:"-"`
 }
 
@@ -75,6 +76,7 @@ type storageSnapshot struct {
 	DeviceCount             int                `json:"device_count"`
 	Observations            []blockObservation `json:"observations"`
 	Limitations             []string           `json:"limitations"`
+	collectionComplete      bool               `json:"-"`
 }
 
 // collectStorage reads only fixed sysfs attributes under class/block and
@@ -155,6 +157,7 @@ func collectStorage(sysfs fs.FS) (snapshot storageSnapshot, err error) {
 			serialEvidence: vpdObservationEvidence("serial", metadata.serial),
 			wwnEvidence:    vpdObservationEvidence("wwn", metadata.wwn),
 			diskSequence:   metadata.diskSequence,
+			sysfsTarget:    metadata.sysfsTarget,
 		}
 		if metadata.kind == "block" {
 			if metadata.serialStatus == identityPresent {
@@ -190,6 +193,7 @@ func collectStorage(sysfs fs.FS) (snapshot storageSnapshot, err error) {
 		return &observation.WWNStatus
 	})
 	snapshot.DeviceCount = len(snapshot.Observations)
+	snapshot.collectionComplete = true
 	return snapshot, nil
 }
 
@@ -393,7 +397,7 @@ func sameBlockObservation(a, b blockObservation) bool {
 		a.SizeBytes != b.SizeBytes || a.ReadOnly != b.ReadOnly || a.Removable != b.Removable ||
 		a.PartitionNumber != b.PartitionNumber || a.SerialStatus != b.SerialStatus ||
 		a.WWNStatus != b.WWNStatus || a.serialEvidence != b.serialEvidence || a.wwnEvidence != b.wwnEvidence ||
-		a.diskSequence != b.diskSequence ||
+		a.diskSequence != b.diskSequence || a.sysfsTarget != b.sysfsTarget ||
 		a.ParentName != b.ParentName || !sameOptionalUint32(a.ParentMajor, b.ParentMajor) ||
 		!sameOptionalUint32(a.ParentMinor, b.ParentMinor) || a.parentDiskSeq != b.parentDiskSeq ||
 		len(a.lowerBlocks) != len(b.lowerBlocks) {

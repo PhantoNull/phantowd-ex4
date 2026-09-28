@@ -76,7 +76,7 @@ Status vocabulary:
 | Desired SMB/NFS policy | Strict models, revision stores and opt-in development editing. Stored policy does not activate services. |
 | Native identities | Reservation ledger, protected local reader, creation journal, typed executor, cooperative owner/listener and multi-account router. Not a deployed account manager. |
 | Samba credentials | Actual guest authentication/rotation/disable and persistence fixtures. Ordinary password reset can re-enable a disabled account; the safe product primitive is not implemented. |
-| Storage | GPT/ext/MD image research, sysfs/mount observations, restricted libblkid helper, duplicate SCSI VPD identity reporting, generation-bound descriptor probing, complete-set matching, partition-parent correlation and validated reciprocal holder/slave topology. Host fixtures cover stacked mount attribution; the current PR adds a disposable QEMU RAID1 plus read-only mount-attribution fixture (exact-head CI pending). Complete trusted production discovery, compatibility resolution, import and RAID management remain unimplemented. |
+| Storage | GPT/ext/MD image research, sysfs/mount observations, restricted libblkid helper, duplicate SCSI VPD identity reporting, generation-bound descriptor probing, complete-set matching, partition-parent correlation and validated reciprocal holder/slave topology. PR #41's disposable QEMU RAID1/read-only mount-attribution fixture passed exact-head CI on `ac016b9`; the follow-on coordinator and non-root read-only broker pass host tests and ARMv5 cross-compilation, with exact-head QEMU broker/hotplug qualification pending. Stable identity, WD compatibility resolution, import and RAID management remain unimplemented. |
 | Hardware | Short diskless serial/RAM and Ethernet/temperature observations. Networking stability, controller/cooling, storage and recovery remain unqualified. |
 | Updates | Host-side signed metadata/payload/version assessment. No on-device installer, update transaction, recovery or installation release. |
 
@@ -299,20 +299,48 @@ are missing. **Depends on:** M1; M7 for hardware.
   both backing disks are attributed (and an unrelated disk is not), then
   ordinarily unmounts and stops the array. It is isolated to the QEMU profile;
   it does not instantiate a guest device-mapper chain, prove global unmounted
-  state/exclusive access, or qualify production discovery. The exact-head
-  QEMU workflow includes this fixture; its current status is shown in the PR
-  checks. The prior code commit `2059a93` passed exact-head
-  host and ARMv5 QEMU CI (`36302718909`, `36302718920`). These primitives do not
-  establish trusted enumeration, eligibility, inventory completeness, or
-  atomic hotplug consistency; no discovery broker or mount authority exists.
-  The internal `observedBlockDeviceSet` adapter now binds explicitly selected
-  non-partition names to the complete in-memory schema-v2 snapshot, checking
-  transient generations and partition-parent relationships before it emits
-  opener tuples. It refuses serialized snapshots whose private generations
-  are absent. Host tests and the ARMv5-tagged API cross-compile pass; the
-  QEMU-tagged fixture consumes this adapter, but its exact-head guest run is
-  still pending. This is selection binding only, not physical-disk
-  classification or the missing trusted broker.
+  state/exclusive access, or qualify production discovery. The prior code
+  commit `2059a93` passed exact-head host and ARMv5 QEMU CI
+  (`36302718909`, `36302718920`). PR #41 points at `ac016b9`; exact-head host,
+  QEMU and compile-only CI passed (`36340076242`, `36340076246`,
+  `36340076277`). Those runs do not validate the local follow-on branch
+  described below.
+  The local follow-on branch adds an internal `completeObservedBlockDeviceSet`
+  bridge: only a collector-produced, in-memory inventory with private
+  completion evidence is accepted, all whole-disk generations are emitted in
+  inventory order, and no caller-selected name list is accepted. Its internal
+  discovery coordinator excludes visible mounts, virtual nodes, active
+  MD/device-mapper stacks and removable devices. It refuses active or
+  unreadable swap state and mounted Btrfs/Bcachefs/ZFS, opens the full
+  read-only candidate set, and then rechecks sysfs, the current process mount
+  namespace and swap observations; every partial descriptor is closed on
+  error. VPD ambiguity is preserved and missing identity evidence is
+  explicitly not considered uniqueness. Host fixtures cover eligibility,
+  unsupported multi-device filesystems, complete-set ordering, active swap,
+  mutation/replacement, topology cycles and descriptor cleanup. The disposable
+  QEMU storage fixture now includes this coordinator and fixed `/dev` opener;
+  exact-head guest execution for the follow-on remains pending.
+  `support/test-api.ps1` passes, including `go vet`, the full Go suite and
+  ARMv5 QEMU-tagged cross-compilation.
+  **M3.1 is not complete:** this branch now has a dedicated non-root broker,
+  read-only whole-disk device rules, a protected peer-credential-checked local
+  socket, and an API that receives only bounded/redacted snapshots. The broker
+  requires no-new-privileges, zero effective/permitted/inheritable capabilities,
+  and no supplementary group beyond the read-only device group; it opens and
+  closes the complete eligible candidate set without reading disk contents.
+  SysV/mdev startup plus a QEMU hotplug assertion are implemented. Commit
+  `6554eaf` fixes the prior Buildroot account/mdev startup failure and is pushed
+  to PR #42; exact-head host workflow `36358758623` and compile-only EX4 Stage
+  B3 workflow `36358758607` pass. The Stage B3 artifact is not a boot/runtime
+  result. QEMU run `36358758630` failed after 83m58s before guest boot because
+  the smoke script expected an outdated source-set readiness marker. A local
+  correction synchronizes that marker and adds a static producer/consumer check
+  before Docker Buildroot setup; local focused and workflow path-contract tests
+  pass, but the fix is not pushed or QEMU-qualified yet.
+  This point-in-time discovery does not
+  establish global userspace or mount-namespace exclusivity and grants no
+  content-read, mount, import or mutation authority. Those require separate
+  evidence and hard gates, as do stable identity and compatibility.
   Cross-snapshot consistency comparisons also bind valid VPD status to a
   private, domain-separated SHA-256 equality digest, so a serial/WWN change
   cannot pass merely because both observations say `present`. Raw values stay
@@ -646,30 +674,49 @@ These features are separate scope, not shortcuts around core acceptance:
    boundary characterization is complete in merged PR #40. Continue tracking
    the unrelated intermittent two-boot QEMU state-volume `EBUSY` issue; a
    passing run does not prove its cause or resolution.
-2. **M2.3:** compile and test the disabled-preserving Samba primitive in disposable
+2. **M3.1b:** finish trusted discovery without adding a public storage-selection
+   API or automatic mount/import. PR #41 adds duplicate valid SCSI VPD serial/NAA
+   WWN reporting, redaction, schema-v2 partition-parent topology, metadata and
+   generation rechecks, and the fixed-path opener/source-set primitives. Its
+   exact-head host and ARMv5 QEMU checks pass. PR #42 now includes a fixed,
+   requestless,
+   peer-authenticated broker service; API remains non-root, and the broker
+   accepts no caller paths, names, commands or partial selections, owns/closes
+   descriptors and returns only bounded, redacted observations. QEMU
+   SysV/mdev setup grants only `0440` to whole-disk nodes `sd[a-f]` for its six
+   fixture disks; the separate provisional udev rule covers `sd[a-d]`. The
+   broker requires `no_new_privs`, has no effective/permitted/inheritable
+   capabilities and no supplementary groups beyond the read-only device group.
+   `support/test-api.ps1` passes, including host tests, `go vet` and ARMv5
+   cross-compilation. Exact-head run `36351721283` stopped at ShellCheck before
+   Buildroot/QEMU; after that correction, run `36352025545` failed during guest
+   startup after about 81 minutes, before broker assertions. Its log reported
+   the absent broker user/group and `/dev/null` access failure. The working
+   commit `6554eaf` now has a multiline Buildroot account table, idempotent
+   BusyBox mdev rule merge and early `/dev/null` mode normalization. The exact-
+   head host workflow `36358758623` and compile-only Stage B3 run `36358758607`
+   pass; the latter built Linux 6.18.53 and passed the kernel-config audit but
+   does not execute a guest. QEMU run `36358758630` failed before guest boot on
+   a stale source-set marker. The local correction adds marker synchronization
+   and a pre-Docker fast contract check; it is not yet pushed or QEMU-qualified.
+   No broker guest assertions have passed yet. Broker,
+   permission and hotplug assertions remain outstanding. The broker
+   observes only its own mount namespace and does not read disk content; this
+   does not imply exclusivity or authorize later probing, mounting, import or
+   mutation. Keep SATA/libata hardware qualification, bay mapping, stable
+   identity and compatibility policy explicitly unresolved.
+3. **M3.2:** resolve stable identity only after the trusted broker has an
+   exact-head QEMU pass. Correlate devices, partitions, MD and filesystem IDs;
+   distinguish aliases from clones; never infer global uniqueness from a subset.
+   Report bay location separately from logical volume identity.
+4. **M2.3:** compile and test the disabled-preserving Samba primitive in disposable
    QEMU. Deliver source/license review, actual denied-authentication assertions,
    identity preservation and failure behavior; no HTTP password endpoint yet.
-3. **M1.3 / M2.4:** implement explicit credential intent/reconciliation around the
+5. **M1.3 / M2.4:** implement explicit credential intent/reconciliation around the
    qualified primitive. Preserve uncertainty; do not persist/replay secrets.
-4. **M3.1–M3.2:** complete trusted discovery and stable-identity assessment using
-   existing descriptor tools; no automatic mounts/import. PR #41 covers duplicate
-   valid SCSI VPD serials and NAA WWNs, redaction, partitions excluded from
-   whole-disk collision grouping, metadata/generation rechecks, all-or-error
-   schema-v2 HTTP behavior (including transient partition-parent topology),
-   fixed-path read-only source opening, exact source-set matching and partial-FD
-   cleanup. Previous PR #41 head `c91e66f` passed host CI but failed ARMv5 QEMU
-   after about 81 minutes: the disposable RAID fixture passed `--config` before
-   the `mdadm` operation mode. The current correction selects `--create` and
-   `--stop` first; its host regression, full Go suite, vet and ARMv5-tagged
-   cross-build pass. Exact-head CI for the correction is still required before
-   this packet is validated. This remains a bounded API/probe slice: eligibility
-   and complete discovery semantics, bay topology, mounted-state/exclusive-access
-   qualification, filesystem/MD identity reconciliation and compatibility policy
-   are open. SATA/libata on physical EX4 remains unqualified; no mount or
-   migration authority is added.
-5. **M4.1:** define and test the activation plan against qualified fixture volumes;
+6. **M4.1:** define and test the activation plan against qualified fixture volumes;
    add the daemon owner only after preconditions and lifecycle are demonstrable.
-6. **M5:** expose completed backend outcomes incrementally, with disabled controls
+7. **M5:** expose completed backend outcomes incrementally, with disabled controls
    and honest unavailable/review states for capabilities not yet implemented.
 
 M0.2 reliability work and passive M7 evidence preparation can advance alongside

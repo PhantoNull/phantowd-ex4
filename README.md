@@ -36,7 +36,7 @@ production-ready appliance.
 | Build | Pinned Buildroot 2025.02.18 / Linux 6.18.53; ARMv5 QEMU image, package SBOM and automated tests | Installable EX4 image and release qualification |
 | Web interface | Diagnostics, development administrator authentication/password changes, SMB/NFS policy previews and opt-in policy editing | Product setup/recovery, certificate lifecycle and live service administration |
 | File services | Real isolated SMB3/NFS tests, access checks and clean-reboot fixtures; native identity coordination libraries | End-to-end product account/credential management and safe service activation |
-| Storage | Read-only schema-v2 metadata (including transient partition-parent links) and descriptor checks; host synthetic stacked-device coverage; disposable QEMU RAID1/mount-attribution fixture (CI status is shown in PR checks) | Complete trusted discovery broker, supported WD import, product RAID management and data-disk compatibility |
+| Storage | Read-only schema-v2 metadata, generation-bound descriptor checks and internal complete-inventory discovery; a separate non-root broker requiring `no_new_privs` and zero effective/permitted/inheritable capabilities, with read-only device rules, is implemented on the current development branch; host tests and ARMv5 cross-compilation pass | Exact-head QEMU broker/hotplug qualification, any authority to read contents or mount/import, global-use accounting, stable identity, supported WD import and product RAID management |
 | EX4 hardware | Short diskless RAM boots, limited Ethernet and internal-temperature observations | Sustained dual-port networking, cooling/controller, storage and recovery |
 
 The API and dashboard remain development-only and guest-loopback-only by

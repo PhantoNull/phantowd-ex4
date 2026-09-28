@@ -135,10 +135,13 @@ func runSelfTest() error {
 		return errors.New("invalid storage observation response")
 	}
 	var storage storageSnapshot
-	if json.Unmarshal(storageData, &storage) != nil || storage.SchemaVersion != 2 || storage.Scope != "kernel-sysfs-only" ||
-		!storage.InventoryReadOnly || storage.BlockDevicesOpened || storage.ContentRead || storage.MutationsPerformed ||
+	if json.Unmarshal(storageData, &storage) != nil || storage.SchemaVersion != 2 || storage.Scope != "broker-read-only-point-in-time" ||
+		!storage.InventoryReadOnly || !storage.BlockDevicesOpened || storage.ContentRead || storage.MutationsPerformed ||
 		storage.StableIdentityAvailable || storage.DeviceCount != len(storage.Observations) {
 		return errors.New("storage observation crossed or overstated its read-only boundary")
+	}
+	if err := verifyQEMUStorageBrokerFixture(); err != nil {
+		return errors.New("read-only storage device rules or hotplug fixture did not hold")
 	}
 	if err := verifyQEMUBlockDevice(os.DirFS("/sys"), "sda", qemuTestSerial, qemuTestWWN); err != nil {
 		return errors.New("QEMU root SCSI identity fixture was not present")
@@ -173,6 +176,7 @@ func runSelfTest() error {
 		return errors.New("raw QEMU storage identifiers leaked through the API")
 	}
 	fmt.Println("PHANTOWD_STORAGE_COLLISION_READY nodes=2 serial=ambiguous wwn=ambiguous redacted=true read_only=true scope=qemu-fixture-only")
+	fmt.Println("PHANTOWD_STORAGE_BROKER_READY api_outside_device_group=true broker_nnp=true broker_capabilities=none whole_disk_mode=0440 hotplug_rechecked=true nodes=2 serial=ambiguous wwn=ambiguous redacted=true read_only=true scope=qemu-fixture-only")
 	arraysResponse, err := client.Get("http://" + listenAddress + "/api/v1/arrays")
 	if err != nil {
 		return errors.New("array inventory loopback request failed")

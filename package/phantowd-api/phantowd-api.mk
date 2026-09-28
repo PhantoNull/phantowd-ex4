@@ -9,13 +9,17 @@ PHANTOWD_API_SITE = $(BR2_EXTERNAL_PHANTOWD_EX4_PATH)/src/phantowd-api
 PHANTOWD_API_SITE_METHOD = local
 PHANTOWD_API_LICENSE = Apache-2.0, BSD-3-Clause
 PHANTOWD_API_LICENSE_FILES = LICENSE Go-LICENSE Go-XCrypto-LICENSE Go-XSys-LICENSE
+PHANTOWD_API_DEPENDENCIES += busybox
 PHANTOWD_API_GOMOD = github.com/PhantoNull/phantowd-ex4/phantowd-api
 PHANTOWD_API_GO_ENV = CGO_ENABLED=0
 PHANTOWD_API_LDFLAGS = -s -w
 ifeq ($(BR2_PACKAGE_PHANTOWD_API_QEMU_SELFTEST),y)
 PHANTOWD_API_TAGS += qemu
 endif
-PHANTOWD_API_USERS = phantowd -1 phantowd -1 * /nonexistent /bin/false - PhantoWD diagnostics
+define PHANTOWD_API_USERS
+phantowd -1 phantowd -1 * /nonexistent /bin/false - PhantoWD diagnostics
+phantowd-storage -1 phantowd-storage-read -1 * /nonexistent /bin/false - PhantoWD read-only storage broker
+endef
 PHANTOWD_API_GO_LICENSE_DIR = $(if $(BR2_PACKAGE_HOST_GO_BIN),$(HOST_GO_BIN_DIR),$(HOST_GO_SRC_DIR))
 
 define PHANTOWD_API_COPY_LICENSE
@@ -39,7 +43,31 @@ define PHANTOWD_API_INSTALL_LICENSES
 endef
 PHANTOWD_API_POST_INSTALL_TARGET_HOOKS += PHANTOWD_API_INSTALL_LICENSES
 
+define PHANTOWD_API_INSTALL_STORAGE_DEVICE_RULES
+	mdev_conf="$(TARGET_DIR)/etc/mdev.conf"; \
+	mdev_tmp="$$mdev_conf.phantowd-tmp"; \
+	if [ ! -f "$$mdev_conf" ]; then \
+		$(INSTALL) -D -m 0644 "$(TOPDIR)/package/busybox/mdev.conf" "$$mdev_conf"; \
+	fi; \
+	if [ -L "$$mdev_conf" ]; then \
+		echo 'Refusing symlinked /etc/mdev.conf'; exit 1; \
+	fi; \
+	{ \
+		cat "$(PHANTOWD_API_PKGDIR)/mdev.conf" && \
+		awk '$$0 != "# PhantoWD storage broker: QEMU whole-disk fixtures only." && $$0 != "^sd[a-f]$$ root:phantowd-storage-read 0440" { print }' \
+			"$$mdev_conf"; \
+	} >"$$mdev_tmp" || exit 1; \
+	chmod 0644 "$$mdev_tmp" && mv "$$mdev_tmp" "$$mdev_conf" || exit 1
+	$(INSTALL) -D -m 0644 $(PHANTOWD_API_PKGDIR)/64-phantowd-storage.rules \
+		$(TARGET_DIR)/etc/udev/rules.d/64-phantowd-storage.rules
+endef
+PHANTOWD_API_POST_INSTALL_TARGET_HOOKS += PHANTOWD_API_INSTALL_STORAGE_DEVICE_RULES
+
 define PHANTOWD_API_INSTALL_INIT_SYSV
+	$(INSTALL) -D -m 0755 $(PHANTOWD_API_PKGDIR)/S02phantowd-mdev \
+		$(TARGET_DIR)/etc/init.d/S02phantowd-mdev
+	$(INSTALL) -D -m 0755 $(PHANTOWD_API_PKGDIR)/S40phantowd-storage-broker \
+		$(TARGET_DIR)/etc/init.d/S40phantowd-storage-broker
 	$(INSTALL) -D -m 0755 $(PHANTOWD_API_PKGDIR)/S50phantowd-api \
 		$(TARGET_DIR)/etc/init.d/S50phantowd-api
 endef

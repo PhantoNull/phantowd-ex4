@@ -30,6 +30,7 @@ type mountSnapshot struct {
 	MountCount               int                `json:"mount_count"`
 	Mounts                   []mountObservation `json:"mounts"`
 	Limitations              []string           `json:"limitations"`
+	collectionComplete       bool               `json:"-"`
 }
 
 type mountObservation struct {
@@ -196,6 +197,7 @@ func collectMountInventory(proc fs.FS, now time.Time) (mountSnapshot, error) {
 	}
 	snapshot.Mounts = observations
 	snapshot.MountCount = len(observations)
+	snapshot.collectionComplete = true
 	return snapshot, nil
 }
 

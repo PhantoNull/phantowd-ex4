@@ -102,16 +102,24 @@ test-only and is not that broker. A caller must continue through
 `OrderCompleteBlockSources` and `ObserveBlockSet`; none of these operations
 authorize mounting or mutation.
 
-The internal API helper `observedBlockDeviceSet` binds an explicit selection of
-non-partition kernel names to the API collector's complete, in-memory schema-v2
-snapshot and derives the transient generation tuples for this opener. It checks
-the snapshot's ordering/count/flags and partition-parent-to-disk generation
-relationships; JSON round trips cannot be used because private generations are
-not in the API schema. It does not decide whether a `Kind == "block"` node is a
-physical disk, determine whether it is eligible/unmounted/exclusive, or prove
-that the selection contains every eligible node. The helper is not the future
-broker and grants no storage authority; the QEMU fixture exercises only its
-tuple binding.
+The internal API bridge `completeObservedBlockDeviceSet` derives transient
+generation tuples for every whole-disk node in a collector-produced,
+in-memory schema-v2 inventory; it accepts no selected-name list. Its
+`discoverTrustedStorageWith` coordinator excludes visible mounts, virtual and
+stacked nodes, removable devices, and refuses active or unreadable swap state.
+It opens the complete remaining candidate set, then compares fresh sysfs,
+mount and swap observations before returning any descriptor. Mount attribution
+is limited to the current process's mount namespace and observed partition /
+holder / slave graph; mounted Btrfs, Bcachefs and ZFS currently refuse the
+assessment because their complete multi-device backing sets are not resolved.
+This is a point-in-time inventory/opening check, not proof of global userspace
+or mount-namespace exclusivity, stable identity, filesystem compatibility or
+mount authority. Raw VPD collisions remain marked ambiguous; incomplete identity
+evidence is never treated as uniqueness. The internal completion markers /
+generations do not survive JSON serialization. Host tests pass and the
+disposable QEMU fixture now includes this path, but exact-head guest execution
+is pending; it is not yet a least-privilege production broker or connected to
+the HTTP endpoint / boot sequence.
 
 `MatchUUID` reports `not-observed`, `one-object` or `conflicting-objects` only
 within that set. Regular-image hard links share an object key (device/inode);

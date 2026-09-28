@@ -102,6 +102,10 @@ while [ "$attempt" -lt 120 ]; do
             echo "Missing ARMv5 duplicate storage-identity assertion" >&2
             exit 1
         fi
+        if ! grep -F 'PHANTOWD_STORAGE_BROKER_READY api_outside_device_group=true broker_nnp=true broker_capabilities=none whole_disk_mode=0440 hotplug_rechecked=true nodes=2 serial=ambiguous wwn=ambiguous redacted=true read_only=true scope=qemu-fixture-only' "$log_file" >/dev/null; then
+            echo "Missing ARMv5 least-privilege storage broker assertion" >&2
+            exit 1
+        fi
         if ! grep -F 'PHANTOWD_SHARE_POLICY_READY schema=1 scope=synthetic-policy-only' "$log_file" >/dev/null; then
             echo "Missing ARMv5 share-policy validation assertion" >&2
             exit 1
@@ -192,7 +196,7 @@ while [ "$attempt" -lt 120 ]; do
             echo 'Missing unmounted metadata probe assertion' >&2
             exit 1
         fi
-        if ! grep -F 'PHANTOWD_VOLUME_SET_READY cloned_uuid=true aliases_deduplicated=true generation_bound=true stale_generation_refused=true unobserved_not_absent=true shuffled_complete_set=true sysfs_rechecked=true observed_opener=true readonly_sources=true all_or_error=true symlink_refused=true scope=qemu-fixture-only' "$log_file" >/dev/null; then
+        if ! grep -F 'PHANTOWD_VOLUME_SET_READY cloned_uuid=true aliases_deduplicated=true generation_bound=true stale_generation_refused=true unobserved_not_absent=true shuffled_complete_set=true trusted_complete_discovery=true mount_swap_rechecked=true sysfs_rechecked=true observed_opener=true readonly_sources=true all_or_error=true symlink_refused=true scope=qemu-fixture-only' "$log_file" >/dev/null; then
             echo 'Missing complete QEMU source-set opener assertions' >&2
             exit 1
         fi
