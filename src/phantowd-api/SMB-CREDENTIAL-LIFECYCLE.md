@@ -1,9 +1,10 @@
 # SMB credential lifecycle: integration gate
 
 Status: **M2.3 adapter passed exact-head hosted ARMv5 QEMU and Stage B3 checks
-and merged as PR #46 (`33df1ed`). The M2.4 first-enrollment coordinator, fixed
-Linux Samba executor, and internal credential-bearing Unix-socket v2 channel
-pass Windows/host Linux tests, ARMv5 cross-compilation and local Buildroot/QEMU.**
+and merged as PR #46 (`33df1ed`). M2.4 now includes first enrollment, a fixed
+Linux Samba executor, an explicit journaled enable operation and an internal
+credential-bearing Unix-socket v2 fixture; host/race/fuzz and local Buildroot/
+ARMv5 QEMU checks pass.**
 The channel remains a fixture integration only and is not wired to
 product startup, an HTTP endpoint or persistent EX4 Samba state. Production
 authorization binding, review/recovery and hardware qualification remain open.
@@ -92,19 +93,27 @@ observation, journal commits and each backend command. An entry must be absent;
 the coordinator never adopts a pre-existing passdb account. It journals intent,
 creates the entry disabled without supplying a password, confirms the exact
 account/SID and disabled flag, then sets the bounded password through the
-backend's stdin-only contract and confirms the same SID is still disabled.
+backend's stdin-only contract and confirms the same SID is still disabled. A
+separate revision-checked `Enable` operation accepts only
+`credential-set-disabled`: it confirms the same account/SID is disabled,
+commits `enable-intent`, invokes fixed `smbpasswd -e`, then confirms the same
+SID is enabled before recording `enabled`. Creation and password assignment
+never enable implicitly.
 
 The journal contains no password, NT/LM hash, command output or derived secret.
-It has no automatic retry, reset, enable, replacement, disable or retirement
-operation. After reopening, a durable create/password intent is committed to
+It has no automatic retry, reset, replacement, disable or retirement operation.
+After reopening, a durable create/password/enable intent is committed to
 `review-required` without querying or rerunning Samba. The trusted backend is
 bound once at Owner open; individual operations cannot replace it. The existing
 credential-free JSON v1 identity protocol remains unchanged. The separately
 versioned internal binary v2 socket carries a bounded password only as raw
-bytes for `set-password-disabled`; it returns the same restricted, secret-free
-state vocabulary and does not expose an HTTP endpoint. QEMU uses the protected
-socket only with its disposable fixture account. Production listener/startup
-wiring and HTTP-session authorization binding remain unimplemented.
+bytes for `set-password-disabled`; a distinct `enable` action carries no
+password and reaches the bound Owner operation. It returns the same restricted,
+secret-free state vocabulary and does not expose an HTTP endpoint. QEMU uses
+the protected socket only with its disposable fixture account and verifies the
+valid credential fails before enable and works after same-SID confirmation.
+Production listener/startup wiring and HTTP-session authorization binding
+remain unimplemented.
 
 Local verification on 2026-09-28 passed root-run `go vet`, all API Go tests and
 race tests, the fixed-count journal fuzz lane, and the full Buildroot 2025.02.18
@@ -119,10 +128,14 @@ Buildroot ARMv5 QEMU smoke/two-boot rerun passed. The executor is not yet wired
 to product startup or persistent Samba configuration. The 2026-09-29 internal
 credential-channel follow-up passed the Windows API suite/cross-compilation,
 root Linux `go vet` and full API race suite, then the full Buildroot 2025.02.18 /
-Linux 6.18.53 ARMv5 QEMU smoke. Its log records successful protected-listener
+Linux 6.18.53 ARMv5 QEMU smoke. Its log records protected-listener
 `smb-create` and `smb-password` phases and the
 `PHANTOWD_SMB_DISABLED_ENROLLMENT_READY` check; fixed-count fuzz lanes also
-passed. This does not qualify
+passed. The current explicit-enable follow-up adds Owner, journal, executor and
+version-2 channel actions; it verifies valid credential denial before enable,
+same-SID enabled confirmation, successful authentication afterward, and empty
+credential denial. Root-run Linux package tests and a fresh local full QEMU
+build/smoke plus two-boot fixture pass on this working tree. This does not qualify
 real EX4 state placement, tdbsam
 crash/power-loss durability, password history, other root writers or hardware
 behavior.
@@ -142,8 +155,10 @@ behavior.
    prove the intended secret was applied.
 4. Persist `credential-set-disabled`. Enabling is a separate explicitly
    authorized, revision-checked operation with its own durable intent and result.
-   The panel must distinguish desired state, observed state and review-required
-   uncertainty rather than display unconfirmed enabled/disabled claims.
+   The internal Owner/QEMU path now implements and tests this transition, but
+   product HTTP authorization is not wired. The panel must distinguish desired
+   state, observed state and review-required uncertainty rather than display
+   unconfirmed enabled/disabled claims.
 5. On failure or interruption, retain intent/evidence and deny automatic service
    activation until reconciliation. Never reset the ledger, recycle identity IDs,
    delete an ambiguous account, or store/replay its password to make tests pass.
@@ -153,7 +168,9 @@ behavior.
 
 ## Acceptance tests before panel wiring
 
-- New disabled enrollment never authenticates before explicit enable.
+- New disabled enrollment never authenticates before explicit enable; after the
+  journal confirms the same account/SID enabled, its new password works and an
+  empty password remains denied.
 - Replacing a disabled password never authenticates during or after the update;
   after explicit enable only the replacement succeeds.
 - Existing unrelated accounts, SIDs, data ownership and permissions are unchanged.

@@ -31,7 +31,7 @@ func exerciseQEMUIdentityChannel(owner *identityowner.Owner, phase string) error
 	if err := guardQEMUDataVolume(); err != nil {
 		return err
 	}
-	if phase != "group" && phase != "user" && phase != "second" && phase != "smb-create" && phase != "smb-password" {
+	if phase != "group" && phase != "user" && phase != "second" && phase != "smb-create" && phase != "smb-password" && phase != "smb-enable" {
 		return errors.New("invalid channel fixture phase")
 	}
 	if err := os.Mkdir(identitySocketDir, 0710); err != nil {
@@ -99,12 +99,12 @@ func runQEMUIdentityClient(phase string) error {
 	if runtime.GOARCH != "arm" || strings.Split(buildARMLevel(), ",")[0] != "5" || os.Getuid() != 65534 || os.Geteuid() != 65534 {
 		return errors.New("wrong channel fixture process")
 	}
-	if phase != "group" && phase != "user" && phase != "second" && phase != "smb-create" && phase != "smb-password" {
+	if phase != "group" && phase != "user" && phase != "second" && phase != "smb-create" && phase != "smb-password" && phase != "smb-enable" {
 		return errors.New("invalid channel fixture phase")
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 12*time.Second)
 	defer cancel()
-	if phase == "smb-create" || phase == "smb-password" {
+	if phase == "smb-create" || phase == "smb-password" || phase == "smb-enable" {
 		requests := []struct {
 			request identityrpc.SMBRequest
 			phase   string
@@ -125,6 +125,18 @@ func runQEMUIdentityClient(phase string) error {
 				{identityrpc.SMBRequest{Action: "set-password-disabled", AccountID: "second", Revision: 3, Password: secret}, "credential-set-disabled", 5},
 				{identityrpc.SMBRequest{Action: "status", AccountID: "second"}, "credential-set-disabled", 5},
 				{identityrpc.SMBRequest{Action: "set-password-disabled", AccountID: "second", Revision: 3, Password: secret}, "", 0},
+			}
+		}
+		if phase == "smb-enable" {
+			requests = []struct {
+				request identityrpc.SMBRequest
+				phase   string
+				rev     uint64
+			}{
+				{identityrpc.SMBRequest{Action: "enable", AccountID: "second", Revision: 4}, "", 0},
+				{identityrpc.SMBRequest{Action: "enable", AccountID: "second", Revision: 5}, "enabled", 7},
+				{identityrpc.SMBRequest{Action: "status", AccountID: "second"}, "enabled", 7},
+				{identityrpc.SMBRequest{Action: "enable", AccountID: "second", Revision: 5}, "", 0},
 			}
 		}
 		for _, test := range requests {

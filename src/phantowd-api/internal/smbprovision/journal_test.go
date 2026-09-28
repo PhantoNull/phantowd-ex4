@@ -32,8 +32,10 @@ func TestJournalPhasesAndSecretBoundary(t *testing.T) {
 		{DisabledNoPassword, 3, "S-1-5-21-1-2-3-1001"},
 		{PasswordIntent, 4, "S-1-5-21-1-2-3-1001"},
 		{CredentialSetDisabled, 5, "S-1-5-21-1-2-3-1001"},
+		{EnableIntent, 6, "S-1-5-21-1-2-3-1001"}, {Enabled, 7, "S-1-5-21-1-2-3-1001"},
 		{ReviewRequired, 2, ""}, {ReviewRequired, 3, ""}, {ReviewRequired, 3, "S-1-5-21-1-2-3-1001"},
 		{ReviewRequired, 4, "S-1-5-21-1-2-3-1001"}, {ReviewRequired, 6, "S-1-5-21-1-2-3-1001"},
+		{ReviewRequired, 7, "S-1-5-21-1-2-3-1001"},
 	} {
 		if err := validJournal(item.phase, item.revision, item.sid).Validate(); err != nil {
 			t.Fatalf("valid phase %s/%d rejected: %v", item.phase, item.revision, err)
@@ -45,6 +47,9 @@ func TestJournalPhasesAndSecretBoundary(t *testing.T) {
 	}{
 		{"revision skips", validJournal(PasswordIntent, 5, "S-1-5-21-1-2-3-1001")},
 		{"missing SID", validJournal(DisabledNoPassword, 3, "")},
+		{"missing enable-intent SID", validJournal(EnableIntent, 6, "")},
+		{"wrong enabled revision", validJournal(Enabled, 6, "S-1-5-21-1-2-3-1001")},
+		{"review missing enabled SID", validJournal(ReviewRequired, 7, "")},
 		{"malformed SID", validJournal(CredentialSetDisabled, 5, "S-1-5-21-1-2-3-0")},
 		{"enabled account", func() Journal {
 			j := validJournal(Reserved, 1, "")
@@ -110,7 +115,7 @@ func TestValidPasswordBoundedStdinLine(t *testing.T) {
 	}
 }
 
-func TestObservationMustBindTheExactDisabledAccount(t *testing.T) {
+func TestObservationMustBindTheExactAccountAndRequestedState(t *testing.T) {
 	if err := (Observation{}).validateFor(testAccount, true); err != nil {
 		t.Fatal("explicit absence refused", err)
 	}
@@ -118,6 +123,11 @@ func TestObservationMustBindTheExactDisabledAccount(t *testing.T) {
 		GID: testAccount.GID, SID: "S-1-5-21-1-2-3-1001", Disabled: true}
 	if err := valid.validateFor(testAccount, true); err != nil {
 		t.Fatal("exact disabled account refused", err)
+	}
+	enabled := valid
+	enabled.Disabled = false
+	if err := enabled.validateFor(testAccount, false); err != nil {
+		t.Fatal("exact enabled account refused", err)
 	}
 	for _, invalid := range []Observation{
 		{Present: true, Name: "other", UID: testAccount.UID, GID: testAccount.GID, SID: valid.SID, Disabled: true},

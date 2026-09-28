@@ -22,12 +22,14 @@ const (
 	smbActionBegin   = 2
 	smbActionStep    = 3
 	smbActionSetPass = 4
+	smbActionEnable  = 5
 )
 
 var smbRPCMagic = [4]byte{'P', 'W', 'D', 'S'}
 
 // SMBRequest is the version-2 local credential channel. Password is encoded
 // as raw bounded bytes in a fixed binary frame, never JSON or a process value.
+// Enable is a separate revision-checked action and has no password payload.
 // CallSMB does not modify or retain caller-owned password memory.
 type SMBRequest struct {
 	Action    string
@@ -37,12 +39,13 @@ type SMBRequest struct {
 }
 
 // SMBOperation is the Owner-bound in-process capability used by the protected
-// local channel. It is never selected by a request and has no enable operation.
+// local channel. Requests select only fixed typed operations, never a backend.
 type SMBOperation interface {
 	Load(context.Context) (smbprovision.Journal, error)
 	Begin(context.Context, uint64) error
 	Step(context.Context, uint64) error
 	SetPasswordDisabled(context.Context, uint64, []byte) error
+	Enable(context.Context, uint64) error
 }
 
 func (r SMBRequest) valid() bool {
@@ -52,7 +55,7 @@ func (r SMBRequest) valid() bool {
 	switch r.Action {
 	case "status":
 		return r.Revision == 0 && len(r.Password) == 0
-	case "begin", "step":
+	case "begin", "step", "enable":
 		return r.Revision > 0 && len(r.Password) == 0
 	case "set-password-disabled":
 		return r.Revision > 0 && smbprovision.ValidPassword(r.Password)
@@ -108,6 +111,8 @@ func (s *Server) executeSMB(ctx context.Context, req SMBRequest) Response {
 		err = op.Step(ctx, req.Revision)
 	case "set-password-disabled":
 		err = op.SetPasswordDisabled(ctx, req.Revision, req.Password)
+	case "enable":
+		err = op.Enable(ctx, req.Revision)
 	default:
 		return fail("invalid")
 	}
@@ -155,8 +160,12 @@ func validSMBResponse(response Response) bool {
 		return response.Revision == 4
 	case smbprovision.CredentialSetDisabled:
 		return response.Revision == 5
+	case smbprovision.EnableIntent:
+		return response.Revision == 6
+	case smbprovision.Enabled:
+		return response.Revision == 7
 	case smbprovision.ReviewRequired:
-		return response.Revision >= 2 && response.Revision <= 6
+		return response.Revision >= 2 && response.Revision <= 7
 	default:
 		return false
 	}
@@ -176,6 +185,8 @@ func smbActionCode(action string) byte {
 		return smbActionStep
 	case "set-password-disabled":
 		return smbActionSetPass
+	case "enable":
+		return smbActionEnable
 	default:
 		return 0
 	}
@@ -191,6 +202,8 @@ func smbActionName(action byte) string {
 		return "step"
 	case smbActionSetPass:
 		return "set-password-disabled"
+	case smbActionEnable:
+		return "enable"
 	default:
 		return ""
 	}

@@ -2,8 +2,8 @@
 // SPDX-FileCopyrightText: 2026 PhantoWD EX4 contributors
 
 // Package smbprovision is an internal journal for enrolling one already-
-// provisioned native identity into Samba. It never enables accounts or persists
-// credentials.
+// provisioned native identity into Samba and explicitly enabling its confirmed
+// credential. It never persists credentials or enables implicitly.
 package smbprovision
 
 import (
@@ -26,6 +26,8 @@ const (
 	DisabledNoPassword    = "disabled-no-password"
 	PasswordIntent        = "set-password-disabled-intent"
 	CredentialSetDisabled = "credential-set-disabled"
+	EnableIntent          = "enable-intent"
+	Enabled               = "enabled"
 	ReviewRequired        = "review-required"
 	MinPasswordBytes      = 12
 	MaxPasswordBytes      = 256
@@ -102,7 +104,9 @@ func (j Journal) Validate() error {
 		j.Phase == DisabledNoPassword && j.Revision == 3 ||
 		j.Phase == PasswordIntent && j.Revision == 4 ||
 		j.Phase == CredentialSetDisabled && j.Revision == 5 ||
-		j.Phase == ReviewRequired && j.Revision >= 2 && j.Revision <= 6
+		j.Phase == EnableIntent && j.Revision == 6 ||
+		j.Phase == Enabled && j.Revision == 7 ||
+		j.Phase == ReviewRequired && j.Revision >= 2 && j.Revision <= 7
 	requireSID := sidRequired(j.Phase) || j.Phase == ReviewRequired && j.Revision >= 4
 	validReviewSID := j.Phase == ReviewRequired && j.Revision == 3 && j.SID != "" && validSID(j.SID)
 	if !validPhase || !requireSID && j.SID != "" && !validReviewSID ||
@@ -114,7 +118,7 @@ func (j Journal) Validate() error {
 
 func sidRequired(phase string) bool {
 	return phase == DisabledNoPassword || phase == PasswordIntent ||
-		phase == CredentialSetDisabled
+		phase == CredentialSetDisabled || phase == EnableIntent || phase == Enabled
 }
 
 func Decode(input io.Reader) (Journal, error) {

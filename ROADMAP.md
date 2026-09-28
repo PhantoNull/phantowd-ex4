@@ -75,7 +75,7 @@ Status vocabulary:
 | Admin management | Host/DOM and ARMv5 authentication, password-change, revocation and clean-reboot tests. Product enrollment, state placement, recovery and certificates remain open. |
 | Desired SMB/NFS policy | Strict models, revision stores and opt-in development editing. Stored policy does not activate services. |
 | Native identities | Reservation ledger, protected local reader, creation journal, typed executor, cooperative owner/listener and multi-account router. Not a deployed account manager. |
-| Samba credentials | M2.3 root-only disabled-password patch passed exact-head hosted ARMv5 QEMU and Stage B3 checks, merging as `33df1ed`. M2.4 first enrollment is coordinated by `identityowner`; the fixed root-side executor, journal and internal binary Unix-socket v2 secret transport are implemented and locally exercised by ARMv5 QEMU against disposable Samba state. Product startup/config binding, HTTP authorization binding and lifecycle APIs remain open. |
+| Samba credentials | M2.3 root-only disabled-password patch passed exact-head hosted ARMv5 QEMU and Stage B3 checks, merging as `33df1ed`. M2.4 now journals disabled-first enrollment and a separate explicit enable through `identityowner`; the fixed executor and internal binary Unix-socket v2 fixture prove authentication denial before enable and success only after same-SID confirmation. Product startup/config binding, HTTP authorization binding, review workflow and remaining lifecycle operations are open. |
 | Storage | GPT/ext/MD image research, sysfs/mount observations, restricted libblkid helper, duplicate SCSI VPD identity reporting, generation-bound descriptor probing, complete-set matching, partition-parent correlation, holder/slave topology and trusted read-only broker. PR #42 passed exact-head host and ARMv5 QEMU checks on `7254555` and merged as `059fa24`; PR #44 added read-only mounted filesystem UUID / MD identity correlation and passed host, Stage B3 and QEMU checks before merging as `db9fd33`. These are QEMU-fixture results only. Persistent volume identity, EX4 device-rule qualification, global-use accounting, WD compatibility resolution, import/mount authority and product RAID management remain unqualified or unimplemented. |
 | Hardware | Short diskless serial/RAM and Ethernet/temperature observations. Networking stability, controller/cooling, storage and recovery remain unqualified. |
 | Updates | Host-side signed metadata/payload/version assessment. No on-device installer, update transaction, recovery or installation release. |
@@ -222,17 +222,16 @@ on disposable QEMU media, then on the selected physical state medium.
 ## M2: Native identities and Samba credentials
 
 **State:** native identity libraries are tested; the M2.3 Samba CLI patch is
-merged and passed exact-head hosted ARMv5 QEMU and Stage B3 checks. The bounded
-M2.4 first-enrollment journal and fixed Linux passdb executor are integrated
-under `identityowner` and passed local Go host/race/fuzz plus ARMv5 QEMU on
-2026-09-28. A 2026-09-29 hardening rerun verifies the opened Samba config inode
-is pinned and released with the Owner and again passes local ARMv5 QEMU. QEMU
-exercises the same executor against a private disposable
-configuration. The credential-free JSON v1 identity protocol remains unchanged;
-an internal binary Unix-socket v2 channel now carries bounded SMB password bytes
-only for typed enrollment operations and is exercised by the ARMv5 fixture.
-Production startup/config binding, HTTP authorization binding, operator
-recovery and hardware qualification remain open.
+merged and passed exact-head hosted ARMv5 QEMU and Stage B3 checks. M2.4 now
+implements disabled-first enrollment plus a separate revision-checked enable
+under `identityowner`, with durable intent/result phases and review on ambiguous
+outcomes. The fixed Linux executor and internal binary Unix-socket v2 fixture
+are tested against disposable Samba state: valid authentication fails before
+enable and succeeds only after the same SID is observed enabled. The
+credential-free JSON v1 protocol remains unchanged. No HTTP API or product
+startup/configuration/authorization wiring exists; password replacement,
+disable/retirement, operator recovery, session revocation and hardware
+qualification remain open.
 **Depends on:** M1; M3/M8 supply storage/import exclusions.
 
 - **M2.1 — Complete allocation inventory.** Reconcile local Unix accounts,
@@ -258,24 +257,27 @@ recovery and hardware qualification remain open.
   serialization remain gates. This is not a product credential service.
 - **M2.4 — Journal credential operations.** Enrollment, password replacement,
   enable, disable and retirement have separate authorized intent/result states.
-  **Implemented slice:** first enrollment only, through internal
+  **Implemented slice:** disabled-first enrollment and one separate explicit
+  enable action, through internal
   `identityowner.SMB(id)` methods under the same global lock as Unix identity
   creation. It revalidates the live Unix identity, refuses a pre-existing
-  passdb entry, journals create/password intent, confirms the SID and disabled
-  flag after each mutation, sends a bounded password via backend stdin, and
-  never persists the secret. One fixed backend is bound once to the Owner and
+  passdb entry, journals create/password/enable intent, confirms the SID and
+  disabled state before enable and enabled state afterward, sends a bounded
+  password via backend stdin, and never persists the secret. One fixed backend
+  is bound once to the Owner and
   journal at open; the validated config inode stays pinned for the Owner
   lifetime and is closed after active operations drain. Operation calls cannot
   substitute the backend. Reopened intent becomes
   review-required without command replay. The internal credential-bearing
-  version-2 Unix-socket method is bound to the Owner resolver and used only by
-  the disposable QEMU fixture; no HTTP endpoint or enable path exists. The
-  executor is exercised in local QEMU using only disposable
+  version-2 Unix-socket methods, including explicit `enable`, are bound to the
+  Owner resolver and used only by the disposable QEMU fixture; no HTTP endpoint
+  exists and enable is never automatic. The executor is exercised in local
+  QEMU using only disposable
   passdb/config state; it is not yet wired to product startup or persistent
   Samba state. **Still required:** production listener/startup wiring and
   HTTP-session-to-owner authorization binding; explicit
-  review/operator recovery; separate password
-  replacement, enable, disable and retirement intent/result states. Retain
+  review/operator recovery; separate password replacement, disable and
+  retirement intent/result states. Retain
   tombstones; retirement must not silently reassign existing file ownership.
 - **M2.5 — Distinguish connection and session revocation.** Current disabled-user
   fixtures prove denial of new connections only. Specify and test active SMB
@@ -743,13 +745,13 @@ These features are separate scope, not shortcuts around core acceptance:
    volume IDs and bay-location separation without granting mount/import
    authority. The fixture does not qualify real EX4 layouts.
 4. **M2.3/M2.4:** the disabled-preserving Samba primitive is merged as PR #46
-   (`33df1ed`) after exact-head hosted ARMv5 QEMU and Stage B3 checks. The local
-   M2.4 owner coordinator and fixed executor prove first enrollment in QEMU
-   only. Next bind the executor and fixture-only local v2 channel to an
-   approved product Samba config at service startup and the HTTP authorization
-   boundary, then qualify tdbsam/password
-   history, SID/RID binding, recovery and non-cooperating writer behavior. No
-   HTTP credential endpoint or automatic enable.
+   (`33df1ed`) after exact-head hosted ARMv5 QEMU and Stage B3 checks. Local M2.4
+   QEMU now proves disabled enrollment and explicit journaled enable, including
+   pre/post authentication and same-SID confirmation. Next bind the executor
+   and fixture-only local v2 channel to approved product Samba state/startup and
+   the HTTP authorization boundary, then qualify tdbsam/password history,
+   power-failure recovery, SID/RID binding and non-cooperating writer behavior.
+   There is no HTTP credential endpoint, and enable is never automatic.
 5. **M1.3 / M2.4 follow-on:** connect the internal credential channel to a
    production-owned listener and authorized operator workflow; add review
    reconciliation around the qualified primitive. Preserve uncertainty; never

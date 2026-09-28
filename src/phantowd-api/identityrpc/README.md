@@ -73,21 +73,23 @@ The request body is cleared after dispatch; the caller's input slice is not
 modified. This reduces exposure but is not a guarantee that the Go runtime or
 kernel held no transient copies.
 
-The only version-2 actions are `status`, `begin`, `step`, and
-`set-password-disabled`. Their authority is the trusted SMB resolver bound by
+The version-2 actions are `status`, `begin`, `step`, `set-password-disabled`,
+and `enable`. The `enable` action carries no credential; it is a separate
+revision-checked request accepted only after password assignment is confirmed
+while disabled. Their authority is the trusted SMB resolver bound by
 the root process; QEMU resolves only `identityowner.Owner.SMB(id)`, whose
 backend was itself pinned when that Owner opened. No per-request backend or
 executor is accepted. The response is the same four-field, credential-free
 JSON shape with version 2 and a restricted phase/revision vocabulary. Errors
-are reduced to fixed codes; commands and enablement are not remotely
-selectable.
+are reduced to fixed codes. No request can select a command or backend.
 
 The channel is currently library/QEMU functionality, not a product service:
-the ARMv5 test child drives disposable accounts through the protected socket,
-including a password assignment while Samba keeps the account disabled.
-Production socket/startup wiring, HTTP authorization-to-operation binding,
-operator recovery, explicit enablement, and real-device/persistent-state
-qualification remain open. No HTTP endpoint is added by this channel.
+the ARMv5 test child drives a disposable account through disabled enrollment,
+then sends one explicit enable request and verifies authentication changes only
+after the same SID is observed enabled. Production socket/startup wiring,
+HTTP authorization-to-operation binding, operator recovery, disable/retirement,
+and real-device/persistent-state qualification remain open. No HTTP endpoint is
+added by this channel.
 
 Successful replies carry a validated journal phase/revision. Version 1 errors
 are only `busy`, `conflict`, `review`, `unavailable` or `invalid`; version 2

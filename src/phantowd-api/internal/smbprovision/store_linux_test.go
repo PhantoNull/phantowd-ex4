@@ -24,8 +24,10 @@ type modeledBackend struct {
 	observeErr  error
 	createErr   error
 	passwordErr error
+	enableErr   error
 	createCalls int
 	setCalls    int
+	enableCalls int
 	received    []byte
 }
 
@@ -60,6 +62,15 @@ func (b *modeledBackend) SetPasswordDisabled(_ context.Context, account serviceA
 	}
 	b.received = append([]byte{}, secret...)
 	return b.passwordErr
+}
+
+func (b *modeledBackend) Enable(_ context.Context, account serviceAccount) error {
+	b.enableCalls++
+	if !b.observation.Present || !b.observation.Disabled || b.observation.Name != account.Name {
+		return errors.New("PRIVATE account is not the expected disabled entry")
+	}
+	b.observation.Disabled = false
+	return b.enableErr
 }
 
 func privateStore(t *testing.T, backend Backend) (*Store, string) {
@@ -127,6 +138,91 @@ func TestEnrollmentLifecycleStaysDisabledAndNeverPersistsPassword(t *testing.T) 
 	}
 	if err := reopened.SetPasswordDisabled(ctx, 4, []byte("another-local-fixture-secret")); !errors.Is(err, ErrConflict) {
 		t.Fatal("stale credential revision accepted", err)
+	}
+}
+
+func TestEnableIsExplicitRevisionCheckedAndConfirmsSameSID(t *testing.T) {
+	ctx := context.Background()
+	b := &modeledBackend{}
+	s, _ := privateStore(t, b)
+	if err := s.Begin(ctx, 5, testAccount); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Step(ctx, 1); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.SetPasswordDisabled(ctx, 3, []byte("a-local-fixture-secret")); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Enable(ctx, 4); !errors.Is(err, ErrConflict) || b.enableCalls != 0 {
+		t.Fatal("stale enable revision was dispatched", err, b.enableCalls)
+	}
+	if err := s.Enable(ctx, 5); err != nil {
+		t.Fatal("explicit enable failed", err)
+	}
+	j, err := s.Load()
+	if err != nil || j.Phase != Enabled || j.Revision != 7 || j.SID != testSID || b.observation.Disabled || b.enableCalls != 1 {
+		t.Fatal("enabled state was not confirmed against the same SID", j, err, b.observation, b.enableCalls)
+	}
+	if err := s.Enable(ctx, 5); !errors.Is(err, ErrConflict) || b.enableCalls != 1 {
+		t.Fatal("confirmed enable could be repeated", err, b.enableCalls)
+	}
+}
+
+func TestEnableQuarantinesUnexpectedStateWithoutDispatch(t *testing.T) {
+	b := &modeledBackend{}
+	s, _ := privateStore(t, b)
+	if err := s.Begin(context.Background(), 5, testAccount); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Step(context.Background(), 1); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.SetPasswordDisabled(context.Background(), 3, []byte("a-local-fixture-secret")); err != nil {
+		t.Fatal(err)
+	}
+	b.observation.Disabled = false // A non-cooperating writer enabled it.
+	if err := s.Enable(context.Background(), 5); !errors.Is(err, ErrReview) || b.enableCalls != 0 {
+		t.Fatal("unexpected enabled state was adopted or mutated", err, b.enableCalls)
+	}
+	j, err := s.Load()
+	if err != nil || j.Phase != ReviewRequired || j.Revision != 6 || j.SID != testSID {
+		t.Fatal("external state change was not quarantined", j, err)
+	}
+}
+
+func TestAmbiguousEnableRequiresReviewAndNeverReplays(t *testing.T) {
+	b := &modeledBackend{enableErr: errors.New("PRIVATE enable result uncertain")}
+	s, directory := privateStore(t, b)
+	if err := s.Begin(context.Background(), 5, testAccount); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Step(context.Background(), 1); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.SetPasswordDisabled(context.Background(), 3, []byte("private-fixture-password")); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Enable(context.Background(), 5); !errors.Is(err, ErrReview) || strings.Contains(err.Error(), "PRIVATE") {
+		t.Fatal("ambiguous enable was not redacted review", err)
+	}
+	j, err := s.Load()
+	if err != nil || j.Phase != ReviewRequired || j.Revision != 7 || j.SID != testSID || b.enableCalls != 1 {
+		t.Fatal("ambiguous enable evidence was not retained", j, err, b.enableCalls)
+	}
+	if err := s.Close(); err != nil {
+		t.Fatal(err)
+	}
+	reopened, err := Open(directory, b)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer reopened.Close()
+	if _, err := reopened.RecoverInterrupted(); err != nil {
+		t.Fatal(err)
+	}
+	if err := reopened.Enable(context.Background(), 7); !errors.Is(err, ErrReview) || b.enableCalls != 1 {
+		t.Fatal("ambiguous enable was retried after reopen", err, b.enableCalls)
 	}
 }
 
@@ -281,6 +377,9 @@ func (*exitAfterIntentBackend) CreateDisabled(context.Context, serviceaccounts.A
 func (*exitAfterIntentBackend) SetPasswordDisabled(context.Context, serviceaccounts.Account, []byte) error {
 	return errors.New("unexpected password command")
 }
+func (*exitAfterIntentBackend) Enable(context.Context, serviceaccounts.Account) error {
+	return errors.New("unexpected enable command")
+}
 
 func TestProcessExitAfterIntentRequiresReviewWithoutReplay(t *testing.T) {
 	if os.Getenv("PHANTOWD_SMBPROVISION_CRASH_DIR") != "" {
@@ -330,6 +429,21 @@ func TestHelperCrashAfterPasswordIntent(t *testing.T) {
 	os.Exit(91)
 }
 
+func TestHelperCrashAfterEnableIntent(t *testing.T) {
+	directory := os.Getenv("PHANTOWD_SMBPROVISION_ENABLE_CRASH_DIR")
+	if directory == "" {
+		return
+	}
+	backend := &exitAfterEnableIntentBackend{observation: Observation{Present: true, Name: testAccount.Name,
+		UID: testAccount.UID, GID: testAccount.GID, SID: testSID, Disabled: true}}
+	s, err := Open(directory, backend)
+	if err != nil {
+		os.Exit(100)
+	}
+	_ = s.Enable(context.Background(), 5)
+	os.Exit(101)
+}
+
 type exitAfterPasswordIntentBackend struct {
 	observation Observation
 }
@@ -342,6 +456,25 @@ func (*exitAfterPasswordIntentBackend) CreateDisabled(context.Context, serviceac
 }
 func (*exitAfterPasswordIntentBackend) SetPasswordDisabled(context.Context, serviceaccounts.Account, []byte) error {
 	os.Exit(43)
+	return nil
+}
+func (*exitAfterPasswordIntentBackend) Enable(context.Context, serviceaccounts.Account) error {
+	return errors.New("unexpected enable command")
+}
+
+type exitAfterEnableIntentBackend struct{ observation Observation }
+
+func (b *exitAfterEnableIntentBackend) Observe(context.Context, serviceaccounts.Account) (Observation, error) {
+	return b.observation, nil
+}
+func (*exitAfterEnableIntentBackend) CreateDisabled(context.Context, serviceaccounts.Account) error {
+	return errors.New("unexpected create command")
+}
+func (*exitAfterEnableIntentBackend) SetPasswordDisabled(context.Context, serviceaccounts.Account, []byte) error {
+	return errors.New("unexpected password command")
+}
+func (*exitAfterEnableIntentBackend) Enable(context.Context, serviceaccounts.Account) error {
+	os.Exit(44)
 	return nil
 }
 
@@ -379,6 +512,42 @@ func TestInterruptedPasswordIntentIsRecoveredToReviewWithoutRetry(t *testing.T) 
 	data, err := os.ReadFile(directory + "/smb-operation.json")
 	if err != nil || strings.Contains(string(data), "private-crash-fixture-secret") {
 		t.Fatal("interrupted password secret entered the journal", string(data), err)
+	}
+}
+
+func TestInterruptedEnableIntentIsRecoveredToReviewWithoutRetry(t *testing.T) {
+	backend := &modeledBackend{}
+	s, directory := privateStore(t, backend)
+	if err := s.Begin(context.Background(), 5, testAccount); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Step(context.Background(), 1); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.SetPasswordDisabled(context.Background(), 3, []byte("private-crash-fixture-secret")); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Close(); err != nil {
+		t.Fatal(err)
+	}
+	command := exec.Command(os.Args[0], "-test.run=^TestHelperCrashAfterEnableIntent$")
+	command.Env = append(os.Environ(), "PHANTOWD_SMBPROVISION_ENABLE_CRASH_DIR="+directory)
+	if err := command.Run(); err == nil {
+		t.Fatal("child unexpectedly survived enable dispatch")
+	} else if exit, ok := err.(*exec.ExitError); !ok || exit.ExitCode() != 44 {
+		t.Fatal("unexpected enable interruption outcome", err)
+	}
+	reopened, err := Open(directory, backend)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer reopened.Close()
+	journal, err := reopened.RecoverInterrupted()
+	if err != nil || journal.Phase != ReviewRequired || journal.Revision != 7 || journal.SID != testSID {
+		t.Fatal("interrupted enable intent was not quarantined", journal, err)
+	}
+	if err := reopened.Enable(context.Background(), 7); !errors.Is(err, ErrReview) || backend.enableCalls != 0 {
+		t.Fatal("interrupted enable was automatically replayed", err, backend.enableCalls)
 	}
 }
 

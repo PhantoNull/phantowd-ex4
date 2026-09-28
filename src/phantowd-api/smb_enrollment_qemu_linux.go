@@ -65,5 +65,24 @@ func exerciseQEMUOwnerSMBEnrollment(owner *identityowner.Owner, account servicea
 		return errors.New("owner-managed initial credential authenticated before explicit enable")
 	}
 	clear(output)
+	if err := exerciseQEMUIdentityChannel(owner, "smb-enable"); err != nil {
+		return fmt.Errorf("protected channel refused explicitly authorized enable: %w", err)
+	}
+	journal, err = operation.Load(ctx)
+	if err != nil || journal.Phase != smbprovision.Enabled || journal.Revision != 7 {
+		return errors.New("owner did not confirm explicit Samba enable")
+	}
+	output, err = smbFixtureCommand("", "/usr/bin/smbclient", "-t", "2", "-m", "SMB3_11", "-p", "1445", "-A", initialAuth, "//127.0.0.1/IPC$", "-c", "quit")
+	if err != nil {
+		clear(output)
+		return errors.New("new credential failed after explicit enable")
+	}
+	clear(output)
+	output, err = smbFixtureCommand("", "/usr/bin/smbclient", "-t", "2", "-m", "SMB3_11", "-p", "1445", "-A", emptyAuth, "//127.0.0.1/IPC$", "-c", "quit")
+	if !smbFixtureDenied(output, err, "NT_STATUS_LOGON_FAILURE") {
+		clear(output)
+		return errors.New("empty credential authenticated after explicit enable")
+	}
+	clear(output)
 	return nil
 }

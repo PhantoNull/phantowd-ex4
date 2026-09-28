@@ -1,7 +1,8 @@
 # Internal Samba account enrollment journal
 
-This Linux-only library coordinates the first enrollment of one owner-created,
-disabled Unix identity into Samba. `identityowner` is the required parent: it
+This Linux-only library coordinates first enrollment and separate explicit
+enablement of one owner-created Unix identity in Samba. `identityowner` is the
+required parent: it
 holds the authority lifetime lease and the same non-queuing lock used by Unix
 identity creation for every Samba observation, journal transition and mutation.
 This is an in-process contract, not an HTTP/RPC endpoint or a complete account
@@ -17,6 +18,8 @@ reserved
   -> disabled-no-password
   -> set-password-disabled-intent
   -> credential-set-disabled
+  -> enable-intent
+  -> enabled
 ```
 
 The backend must first report the exact passdb identity absent. An existing
@@ -25,12 +28,15 @@ Unix identity and the operation compares the exact account/revision. Creation
 and password setting each have a durable intent before their native command;
 the resulting passdb SID and disabled state must be observed before confirmation.
 
-An interrupted intent, command error, lost response or uncertain post-command
-observation becomes `review-required`. Reopening through `identityowner` makes
-that transition without querying or rerunning the command. It has no reset,
-retry, delete, enable, replacement, disable or retirement operation. Reaching
-`credential-set-disabled` does not enable access; a separately designed and
-authorized lifecycle is required for that.
+Enabling is a distinct revision-checked call accepted only from
+`credential-set-disabled`. It verifies the exact account, SID and disabled
+state, commits `enable-intent`, invokes the fixed trusted executor, then confirms
+the same SID is present and enabled before recording `enabled`. Account creation
+and password assignment never enable as a side effect. An interrupted intent,
+command error, lost response or uncertain post-command observation becomes
+`review-required`; reopening through `identityowner` quarantines it without
+querying or rerunning the command. There is no automatic retry, reset, delete,
+replacement, disable or retirement operation.
 
 The journal stores only the owner-bound Unix account, native journal revision,
 Samba SID, phase and revision. It never stores password bytes, NT/LM hashes,
@@ -50,7 +56,8 @@ authority/operations/<validated-account-id>/smb/
 
 `Store` is a single-operation journal and does not own the global identity lock.
 Only call it through `identityowner.Owner.SMB(id)`, whose `Begin`, `Step`,
-`SetPasswordDisabled` and `Load` hold the shared authority lock. The trusted
+`SetPasswordDisabled`, `Enable` and `Load` hold the shared authority lock. The
+trusted
 adapter is bound once when the owner opens and copied into each journal handle
 at `smbprovision.Open`; no operation accepts a replacement backend. Opening
 without one permits recovery/inspection but fails closed for mutations. The ID
@@ -70,8 +77,11 @@ non-cooperating root writers, tdbsam crash durability, password history,
 session revocation or hardware power-loss behavior.
 
 Tests cover strict journal decoding, password/journal separation, disabled-state
-confirmation, no adoption, shared owner locking, changed Unix identities,
-process exit after command intent and recovery without command replay. Full
-product integration still needs to bind the executor and local channel to an
-approved persistent Samba configuration during service startup, HTTP
-policy/authorization and the separate explicit enable/disable lifecycle.
+confirmation, explicit enable/revision checks, same-SID postcondition,
+no-adoption, shared owner locking, changed Unix identities, process exit after
+create/password/enable intent and recovery without command replay. QEMU verifies
+authentication is denied before explicit enable, accepted afterward with the
+new credential and still denied for an empty password. This is fixture-only:
+product integration still needs persistent Samba configuration/startup,
+HTTP-session authorization, operator review handling, disable/retirement and
+active-session revocation.

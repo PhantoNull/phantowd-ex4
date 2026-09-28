@@ -99,6 +99,11 @@ Credentials are public disposable fixture values passed through stdin/private
 auth files, not product credentials. Cleanup stops and reaps the separate
 daemon process group, removes only the created Unix accounts/group, then lets
 the NFS fixture unmount the disk. No production account/lifecycle API is added.
+The Owner-managed M2.4 enrollment fixture additionally routes one explicit
+revision-checked enable through the local test socket: valid authentication is
+denied while disabled, accepted after same-SID confirmation, and empty-password
+authentication remains denied. This is QEMU-only behavior, not product startup
+or HTTP authorization.
 
 These checks cover one generated policy and a simple Unix-mode layout. They
 do not qualify POSIX ACL provisioning/inheritance, Windows ACL editing,

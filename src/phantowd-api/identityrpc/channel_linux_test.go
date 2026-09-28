@@ -125,6 +125,7 @@ type smbRPCModel struct {
 	begun        bool
 	createCalls  int
 	passwordCall int
+	enableCalls  int
 	secretView   []byte
 	secretCopy   []byte
 	setError     error
@@ -182,6 +183,16 @@ func (m *smbRPCModel) SetPasswordDisabled(_ context.Context, expected uint64, se
 	return nil
 }
 
+func (m *smbRPCModel) Enable(_ context.Context, expected uint64) error {
+	if !m.begun || expected != m.journal.Revision || m.journal.Phase != smbprovision.CredentialSetDisabled {
+		return smbprovision.ErrConflict
+	}
+	m.enableCalls++
+	m.journal.Revision = 7
+	m.journal.Phase = smbprovision.Enabled
+	return nil
+}
+
 func exchangeSMB(t *testing.T, s *Server, req SMBRequest) Response {
 	t.Helper()
 	server, client := pair(t)
@@ -195,6 +206,24 @@ func exchangeSMB(t *testing.T, s *Server, req SMBRequest) Response {
 		t.Fatal(err)
 	}
 	return r
+}
+
+func TestSMBEnableFrameIsTypedAndCredentialFree(t *testing.T) {
+	request := SMBRequest{Action: "enable", AccountID: "fixture", Revision: 5}
+	encoded, err := encodeSMBFrame(request)
+	if err != nil {
+		t.Fatal("valid explicit enable request rejected", err)
+	}
+	defer clear(encoded)
+	decoded, err := decodeSMBRequest(encoded[4:])
+	if err != nil || decoded.Action != request.Action || decoded.AccountID != request.AccountID ||
+		decoded.Revision != request.Revision || len(decoded.Password) != 0 {
+		t.Fatal("enable frame decoded with the wrong typed fields", decoded, err)
+	}
+	request.Password = []byte("must-not-accompany-enable")
+	if _, err := encodeSMBFrame(request); !errors.Is(err, ErrInvalid) {
+		t.Fatal("enable action accepted a password payload", err)
+	}
 }
 
 func TestSMBCredentialChannelLifecycleAndSecretErasure(t *testing.T) {
@@ -248,7 +277,17 @@ func TestSMBCredentialChannelLifecycleAndSecretErasure(t *testing.T) {
 	if !bytes.Equal(model.secretView, make([]byte, len(secret))) {
 		t.Fatal("server did not clear the received secret buffer after dispatch")
 	}
-	response, _ := json.Marshal(got)
+	if got := exchangeSMB(t, s, SMBRequest{Action: "enable", AccountID: "fixture", Revision: 4}); got.Code != "conflict" || model.enableCalls != 0 {
+		t.Fatal("stale enable request was dispatched", got, model.enableCalls)
+	}
+	enabled := exchangeSMB(t, s, SMBRequest{Action: "enable", AccountID: "fixture", Revision: 5})
+	if enabled.Code != "ok" || enabled.Phase != smbprovision.Enabled || enabled.Revision != 7 || model.enableCalls != 1 {
+		t.Fatal("explicit enable action was not routed through the Owner capability", enabled, model.enableCalls)
+	}
+	if got := exchangeSMB(t, s, SMBRequest{Action: "enable", AccountID: "fixture", Revision: 5}); got.Code != "conflict" || model.enableCalls != 1 {
+		t.Fatal("stale/repeated enable request was dispatched", got, model.enableCalls)
+	}
+	response, _ := json.Marshal(enabled)
 	if bytes.Contains(response, secret) {
 		t.Fatal("credential appeared in the RPC response")
 	}
