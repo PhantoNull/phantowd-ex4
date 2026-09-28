@@ -328,8 +328,16 @@ are missing. **Depends on:** M1; M7 for hardware.
   requires no-new-privileges, zero effective/permitted/inheritable capabilities,
   and no supplementary group beyond the read-only device group; it opens and
   closes the complete eligible candidate set without reading disk contents.
-  SysV/mdev startup plus a QEMU hotplug assertion are implemented, but exact-head
-  guest execution remains pending. This point-in-time discovery does not
+  SysV/mdev startup plus a QEMU hotplug assertion are implemented. Commit
+  `6554eaf` fixes the prior Buildroot account/mdev startup failure and is pushed
+  to PR #42; exact-head host workflow `36358758623` and compile-only EX4 Stage
+  B3 workflow `36358758607` pass. The Stage B3 artifact is not a boot/runtime
+  result. QEMU run `36358758630` failed after 83m58s before guest boot because
+  the smoke script expected an outdated source-set readiness marker. A local
+  correction synchronizes that marker and adds a static producer/consumer check
+  before Docker Buildroot setup; local focused and workflow path-contract tests
+  pass, but the fix is not pushed or QEMU-qualified yet.
+  This point-in-time discovery does not
   establish global userspace or mount-namespace exclusivity and grants no
   content-read, mount, import or mutation authority. Those require separate
   evidence and hard gates, as do stable identity and compatibility.
@@ -684,9 +692,14 @@ These features are separate scope, not shortcuts around core acceptance:
    Buildroot/QEMU; after that correction, run `36352025545` failed during guest
    startup after about 81 minutes, before broker assertions. Its log reported
    the absent broker user/group and `/dev/null` access failure. The working
-   tree now has a multiline Buildroot account table, idempotent BusyBox mdev
-   rule merge and early `/dev/null` mode normalization; focused static and API
-   tests pass, but these fixes are not yet pushed or QEMU-qualified. Broker,
+   commit `6554eaf` now has a multiline Buildroot account table, idempotent
+   BusyBox mdev rule merge and early `/dev/null` mode normalization. The exact-
+   head host workflow `36358758623` and compile-only Stage B3 run `36358758607`
+   pass; the latter built Linux 6.18.53 and passed the kernel-config audit but
+   does not execute a guest. QEMU run `36358758630` failed before guest boot on
+   a stale source-set marker. The local correction adds marker synchronization
+   and a pre-Docker fast contract check; it is not yet pushed or QEMU-qualified.
+   No broker guest assertions have passed yet. Broker,
    permission and hotplug assertions remain outstanding. The broker
    observes only its own mount namespace and does not read disk content; this
    does not imply exclusivity or authorize later probing, mounting, import or

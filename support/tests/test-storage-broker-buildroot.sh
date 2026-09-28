@@ -60,4 +60,14 @@ grep -F -- '--chuid phantowd-storage:phantowd-storage-read' \
 grep -F -- '--chuid phantowd:phantowd' "$package_dir/S50phantowd-api" >/dev/null ||
     fail 'API init must keep its separate non-root identity'
 
+# Keep the QEMU smoke driver's expected marker synchronized with the guest
+# self-test. A typo here otherwise costs a full ARMv5 build before the guest
+# can even boot.
+source_set_marker=$(sed -n 's/.*fmt\.Println("\(PHANTOWD_VOLUME_SET_READY[^"]*\)").*/\1/p' \
+    "$repo_root/src/phantowd-api/volume_probe_qemu_linux.go")
+[ -n "$source_set_marker" ] ||
+    fail 'guest self-test must define one source-set readiness marker'
+grep -F "$source_set_marker" "$repo_root/support/qemu-smoke.sh" >/dev/null ||
+    fail 'QEMU smoke assertion must match the guest source-set readiness marker'
+
 printf 'Read-only storage broker Buildroot contracts passed\n'
