@@ -192,6 +192,10 @@ while [ "$attempt" -lt 120 ]; do
             echo 'Missing mounted filesystem ambiguity assertion' >&2
             exit 1
         fi
+        if ! grep -F 'PHANTOWD_MOUNTED_STORAGE_CORRELATION_READY anchors=3 uuid_conflict_entries=3 bind_alias_same_device=true complete_sysfs=true scope=qemu-fixture-only' "$log_file" >/dev/null; then
+            echo 'Missing mounted filesystem to complete storage identity assertion' >&2
+            exit 1
+        fi
         if ! grep -F 'PHANTOWD_VOLUME_PROBE_READY backend=libblkid unmounted_devices=2 readonly_descriptors=true expected_uuid=true unidentified_not_empty=true scope=qemu-fixture-only' "$log_file" >/dev/null; then
             echo 'Missing unmounted metadata probe assertion' >&2
             exit 1

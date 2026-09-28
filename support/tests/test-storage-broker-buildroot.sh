@@ -60,6 +60,25 @@ grep -F -- '--chuid phantowd-storage:phantowd-storage-read' \
 grep -F -- '--chuid phantowd:phantowd' "$package_dir/S50phantowd-api" >/dev/null ||
     fail 'API init must keep its separate non-root identity'
 
+qemu_ready_script="$repo_root/board/qemu/armv5/rootfs-overlay/etc/init.d/S99phantowd-ready"
+grep -F 'PHANTOWD_QEMU_API_SELFTEST_FAILURE detail=' "$qemu_ready_script" >/dev/null ||
+    fail 'QEMU diagnostics failures must print a bounded self-test error summary'
+grep -F 'index($0, "PHANTOWD_API_ERROR ") == 1' "$qemu_ready_script" >/dev/null ||
+    fail 'QEMU diagnostics must only summarize the API self-test error marker'
+
+error_summary=$(printf '%s\n' \
+    'PHANTOWD_API_ERROR authentication status request failed; address=127.0.0.1:8080' \
+    'unrelated secret-looking text must be ignored' |
+    awk 'index($0, "PHANTOWD_API_ERROR ") == 1 { gsub(/[^A-Za-z0-9 _-]/, "?"); print substr($0, 1, 160); exit }')
+[ "$error_summary" = 'PHANTOWD_API_ERROR authentication status request failed? address?127?0?0?1?8080' ] ||
+    fail 'QEMU API self-test error summary must be bounded and sanitized'
+
+mounted_identity_marker='PHANTOWD_MOUNTED_STORAGE_CORRELATION_READY anchors=3 uuid_conflict_entries=3 bind_alias_same_device=true complete_sysfs=true scope=qemu-fixture-only'
+grep -F "$mounted_identity_marker" "$repo_root/src/phantowd-api/mount_guard_qemu_linux.go" >/dev/null ||
+    fail 'QEMU mounted-identity integration must define its complete fixture marker'
+grep -F "$mounted_identity_marker" "$repo_root/support/qemu-smoke.sh" >/dev/null ||
+    fail 'QEMU smoke must require mounted filesystem identity correlation'
+
 # Keep the QEMU smoke driver's expected marker synchronized with the guest
 # self-test. A typo here otherwise costs a full ARMv5 build before the guest
 # can even boot.

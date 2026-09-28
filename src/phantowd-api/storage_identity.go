@@ -95,20 +95,32 @@ type mdArrayStorageIdentity struct {
 // identifier, or generation changes; it remains a point-in-time check rather
 // than an atomic kernel snapshot, storage lease, or mount authorization.
 func collectMDStorageIdentity(sysfs, proc fs.FS) ([]mdArrayStorageIdentity, error) {
+	_, identities, err := collectMDStorageIdentitySnapshot(sysfs, proc)
+	return identities, err
+}
+
+// collectMDStorageIdentitySnapshot returns the same complete storage sample
+// used for the MD bindings so a downstream in-memory join can avoid pairing a
+// binding with an unrelated inventory generation.
+func collectMDStorageIdentitySnapshot(sysfs, proc fs.FS) (storageSnapshot, []mdArrayStorageIdentity, error) {
 	if sysfs == nil || proc == nil {
-		return nil, errMDIdentityInventoryIncomplete
+		return storageSnapshot{}, nil, errMDIdentityInventoryIncomplete
 	}
 	storageBefore, err := collectStorage(sysfs)
 	if err != nil {
-		return nil, errMDIdentityInventoryIncomplete
+		return storageSnapshot{}, nil, errMDIdentityInventoryIncomplete
 	}
 	arraysBefore := collectMDArrayInventory(proc, sysfs, time.Now())
 	arraysAfter := collectMDArrayInventory(proc, sysfs, time.Now())
 	storageAfter, err := collectStorage(sysfs)
 	if err != nil || !sameStorageSnapshot(storageBefore, storageAfter) || !sameMDIdentitySnapshot(arraysBefore, arraysAfter) {
-		return nil, errMDIdentityInventoryIncomplete
+		return storageSnapshot{}, nil, errMDIdentityInventoryIncomplete
 	}
-	return correlateMDStorageIdentity(storageBefore, arraysBefore)
+	identities, err := correlateMDStorageIdentity(storageBefore, arraysBefore)
+	if err != nil {
+		return storageSnapshot{}, nil, err
+	}
+	return storageBefore, identities, nil
 }
 
 func sameMDIdentitySnapshot(a, b mdArraySnapshot) bool {

@@ -203,6 +203,36 @@ func exerciseQEMUMountedAmbiguity(workspace, anchor string) (result error) {
 	if err != nil || len(clones.Mounts) != 3 || len(clones.ConflictingUUIDs) != 1 || clones.ConflictingUUIDs[0] != qemuNFSVolumeUUID {
 		return fmt.Errorf("cloned UUID not detected: %v", err)
 	}
+	storage, mdIdentities, err := collectMDStorageIdentitySnapshot(os.DirFS("/sys"), os.DirFS("/proc"))
+	if err != nil {
+		return fmt.Errorf("complete mounted-storage identity inputs unavailable: %w", err)
+	}
+	correlated, err := correlateObservedMountedStorageIdentity(storage, mdIdentities, clones)
+	if err != nil || len(correlated) != 3 {
+		return fmt.Errorf("mounted filesystem did not join to complete storage identity: %v", err)
+	}
+	var bindObservation, cloneObservation, originalObservation *mountedStorageIdentity
+	for index := range correlated {
+		observation := &correlated[index]
+		if !observation.filesystemUUIDConflict {
+			return errors.New("cloned filesystem UUID was not marked conflicting")
+		}
+		switch observation.anchor {
+		case anchor:
+			bindObservation = observation
+		case clone:
+			cloneObservation = observation
+		case smbFixtureAnchor:
+			originalObservation = observation
+		}
+	}
+	if bindObservation == nil || cloneObservation == nil || originalObservation == nil ||
+		bindObservation.sourceMajor != originalObservation.sourceMajor || bindObservation.sourceMinor != originalObservation.sourceMinor ||
+		bindObservation.sourceName != originalObservation.sourceName ||
+		cloneObservation.sourceMajor == originalObservation.sourceMajor && cloneObservation.sourceMinor == originalObservation.sourceMinor {
+		return errors.New("mounted UUID alias/clone source mapping was not preserved")
+	}
+	fmt.Println("PHANTOWD_MOUNTED_STORAGE_CORRELATION_READY anchors=3 uuid_conflict_entries=3 bind_alias_same_device=true complete_sysfs=true scope=qemu-fixture-only")
 	if snapshot, err := mountguard.ObserveMounted([]string{anchor, workspace}); err == nil || snapshot.Mounts != nil {
 		return errors.New("incomplete mounted scan yielded a usable snapshot")
 	}
