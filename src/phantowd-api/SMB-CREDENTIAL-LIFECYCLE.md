@@ -1,8 +1,11 @@
 # SMB credential lifecycle: integration gate
 
-Status: **design with pinned-upstream characterization; no product credential
-executor or panel account-password endpoint is enabled**. Dashboard administrator
-credentials are a separate system and are not affected by this Samba behavior.
+Status: **M2.3 adapter prototype passed a local full Buildroot/ARMv5 QEMU
+authentication fixture; no product credential executor or panel
+account-password endpoint is enabled**. Hosted feature-commit CI/review,
+failure/restart and persistence qualification remain open. Dashboard
+administrator credentials are a separate system and are not affected by this
+Samba behavior.
 
 ## Why the existing CLI sequence is insufficient
 
@@ -24,37 +27,54 @@ The upstream [smbpasswd manual](https://www.samba.org/samba/docs/current/man-htm
 and [pinned source](https://github.com/samba-team/samba/blob/samba-4.22.11/source3/passdb/passdb.c)
 are the reference, not assumptions based on command names or exit status.
 
-`smb_disabled_password_qemu_linux.go` characterizes those paths on a disposable
-ARMv5 guest and the running loopback-only Samba daemon. It uses a newly reserved
-test account, proves initial login, explicit disable, unchanged credential after
-combined `-s -d`, and re-enabled login after ordinary password rotation. It then
-disables the account again and removes its test passdb entry. Authentication is
-tested through IPC$, without granting access to data shares. Unix account files
-and configuration must stay identical. The marker is explicitly a **boundary**,
-not an approval of the unsafe sequence; it must be reviewed after Samba upgrades.
+The `smb_disabled_password_qemu_linux.go` characterization uses a disposable
+ARMv5 guest and loopback-only Samba daemon. It demonstrated that the old CLI
+cannot safely express the requested transition. The new fixture requires the
+downstream option and checks actual authentication for the intended state
+transition. It passed against patched ARMv5 Samba in a local full Buildroot
+2025.02.18 / Linux 6.18.53 build, including the root-only and stdin guards,
+denial of the previous credential after explicit enable, and unchanged Unix
+account files. One fixture expectation was corrected: Samba returns generic
+`NT_STATUS_LOGON_FAILURE` for a wrong password even when the account is disabled;
+the test now checks `NT_STATUS_ACCOUNT_DISABLED` only with the valid credential.
+This local result is not hosted exact-head CI, crash/power-loss evidence,
+product-state persistence or EX4 hardware qualification. Re-review the boundary
+after every Samba upgrade.
 
 Never treat a subsequent disable, daemon restart, or successful CLI exit as proof
 that no enabled interval occurred. Do not use `pdbedit --set-nt-hash` as a shortcut:
 password-equivalent material in process arguments is outside the secret boundary.
 No NT/LM hash, password or passdb dump belongs in a journal, log, response or wiki.
 
-## Selected implementation direction, not yet qualified
+## Selected adapter prototype; qualification pending
 
 Use Samba's existing password/SAM machinery, not a new implementation of SMB
-cryptography or direct TDB editing. Implement a narrow, root-only, fixed-config
-adapter that requests `LOCAL_SET_PASSWORD | LOCAL_DISABLE_USER` for an existing
-managed identity in one `local_password_change` call. A small maintained upstream
-CLI extension or an in-tree helper is the candidate; the current CLI cannot
-express that combination. This choice still needs compiled implementation,
-source/ABI/license review and actual ARMv5 failure tests. No downstream Samba
-patch is installed by this increment.
+cryptography or direct TDB editing. The selected prototype is a narrow
+`smbpasswd --set-password-disabled` extension, maintained as a versioned
+Buildroot patch under `board/qemu/armv5/patches/samba4/4.22.11/`. It is root-only,
+requires `-s` so the new password is read from stdin, and requires one explicit
+local username. It rejects incompatible account operations and only accepts an
+already-existing, already-disabled passdb account. The adapter requests
+`LOCAL_SET_PASSWORD | LOCAL_DISABLE_USER | LOCAL_REQUIRE_DISABLED`; the common
+password-change path validates the initial state, applies both changes to the
+same SAM object and reaches one final `pdb_update_sam_account` call.
 
-The inspected function orders password changes and the disabled flag before its
-SAM update, making this a promising boundary, **not proof of cross-database or
-power-fail atomicity**. Qualify the selected tdbsam backend, password history,
-SID/RID ownership, durable state and multi-process serialization independently.
-An already enabled account must not silently enter this path: the product owner
-must first complete explicit disable/revocation according to its policy.
+The exact Samba 4.22.11 source archive/hash was verified, the patch applies with
+zero fuzz, a native Samba configure/build completed locally, and the patched
+ARMv5/QEMU authentication fixture passed locally. The native host authentication
+harness has not completed successfully; hosted feature-commit CI, failure and
+restart cases, persistence, tdbsam/password-history, SID/RID binding and
+single-writer behavior remain open. This is not a product credential service
+or deployed firmware feature. The patch is GPL-3.0-or-later derivative work and
+is not installed on the NAS.
+
+The source path reaching one SAM update is **not proof of cross-database,
+concurrent-writer or power-fail atomicity**. Qualify the selected tdbsam backend,
+password history, SID/RID ownership, durable state and multi-process
+serialization independently. An already enabled account must not silently enter
+this path: the product owner must first complete explicit disable/revocation
+according to its policy. A separate identity owner must serialize all writers;
+the CLI flag is not itself a global lock or journal.
 
 ## Required owner workflow
 

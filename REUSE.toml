@@ -33,6 +33,12 @@ SPDX-FileCopyrightText = "2026 PhantoWD EX4 contributors"
 SPDX-License-Identifier = "Apache-2.0"
 
 [[annotations]]
+path = "board/qemu/armv5/patches/samba4/**"
+precedence = "closest"
+SPDX-FileCopyrightText = "2026 PhantoWD EX4 contributors"
+SPDX-License-Identifier = "GPL-3.0-or-later"
+
+[[annotations]]
 path = "board/wd/ex4/patches/linux/**"
 precedence = "closest"
 SPDX-FileCopyrightText = [

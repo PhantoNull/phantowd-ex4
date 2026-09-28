@@ -210,12 +210,31 @@ sh "$external_dir/support/container/test-volume-probe.sh" \
     "$external_dir" "$download_dir/util-linux/util-linux-2.40.4.tar.xz" \
     "$buildroot_source/package/util-linux" "$output_dir/host/bin"
 
-"$external_dir/support/qemu-smoke.sh" \
-    "$output_dir/images" "$output_dir/qemu-smoke.log" "$LINUX_VERSION"
-sh "$external_dir/support/qemu-state-reboot.sh" \
-    "$output_dir/images" "$output_dir/qemu-state-reboot.log"
-
 artifact_dir="$external_dir/artifacts/qemu-armv5"
+save_qemu_failure_log() {
+    failure_name="$1"
+    source_log="$2"
+    install -d -m 0755 "$artifact_dir"
+    if [ -f "$source_log" ]; then
+        install -m 0644 "$source_log" "$artifact_dir/$failure_name"
+    else
+        printf '%s\n' "QEMU test did not create its log: $source_log" > "$artifact_dir/$failure_name"
+    fi
+}
+
+if ! "$external_dir/support/qemu-smoke.sh" \
+    "$output_dir/images" "$output_dir/qemu-smoke.log" "$LINUX_VERSION"; then
+    save_qemu_failure_log qemu-smoke-failure.log "$output_dir/qemu-smoke.log"
+    echo "Preserved failed QEMU smoke diagnostics at $artifact_dir/qemu-smoke-failure.log" >&2
+    exit 1
+fi
+if ! sh "$external_dir/support/qemu-state-reboot.sh" \
+    "$output_dir/images" "$output_dir/qemu-state-reboot.log"; then
+    save_qemu_failure_log qemu-state-reboot-failure.log "$output_dir/qemu-state-reboot.log"
+    echo "Preserved failed state-reboot diagnostics at $artifact_dir/qemu-state-reboot-failure.log" >&2
+    exit 1
+fi
+
 install -d -m 0755 "$artifact_dir"
 make --no-print-directory -C "$buildroot_source" \
     BR2_EXTERNAL="$external_dir" \
