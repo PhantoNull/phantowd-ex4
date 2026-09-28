@@ -75,8 +75,8 @@ Status vocabulary:
 | Admin management | Host/DOM and ARMv5 authentication, password-change, revocation and clean-reboot tests. Product enrollment, state placement, recovery and certificates remain open. |
 | Desired SMB/NFS policy | Strict models, revision stores and opt-in development editing. Stored policy does not activate services. |
 | Native identities | Reservation ledger, protected local reader, creation journal, typed executor, cooperative owner/listener and multi-account router. Not a deployed account manager. |
-| Samba credentials | Actual guest authentication/rotation/disable and persistence fixtures. Ordinary password reset can re-enable a disabled account; the safe product primitive is not implemented. |
-| Storage | GPT/ext/MD image research, sysfs/mount observations, restricted libblkid helper, duplicate SCSI VPD identity reporting, generation-bound descriptor probing, complete-set matching, partition-parent correlation, holder/slave topology and trusted read-only broker. PR #42 exact-head host and ARMv5 QEMU smoke passed on `7254555` and was merged to `develop` as `059fa24`; broker credential/capability separation, read-only whole-disk rules, hotplug recheck and redacted ambiguity are QEMU-fixture verified only. Stable identity, EX4 device-rule qualification, global-use accounting, WD compatibility resolution, import and RAID management remain unimplemented or unqualified. |
+| Samba credentials | Actual guest authentication/rotation/disable and persistence fixtures; the root-only disabled-password Samba patch passes a local Buildroot/ARMv5 QEMU auth fixture. The product credential backend, failure/restart recovery and hosted M2.3 checks remain open. |
+| Storage | GPT/ext/MD image research, sysfs/mount observations, restricted libblkid helper, duplicate SCSI VPD identity reporting, generation-bound descriptor probing, complete-set matching, partition-parent correlation, holder/slave topology and trusted read-only broker. PR #42 passed exact-head host and ARMv5 QEMU checks on `7254555` and merged as `059fa24`; PR #44 added read-only mounted filesystem UUID / MD identity correlation and passed host, Stage B3 and QEMU checks before merging as `db9fd33`. These are QEMU-fixture results only. Persistent volume identity, EX4 device-rule qualification, global-use accounting, WD compatibility resolution, import/mount authority and product RAID management remain unqualified or unimplemented. |
 | Hardware | Short diskless serial/RAM and Ethernet/temperature observations. Networking stability, controller/cooling, storage and recovery remain unqualified. |
 | Updates | Host-side signed metadata/payload/version assessment. No on-device installer, update transaction, recovery or installation release. |
 
@@ -222,7 +222,11 @@ on disposable QEMU media, then on the selected physical state medium.
 ## M2: Native identities and Samba credentials
 
 **State:** coordination libraries tested; credential executor/product daemon
-not implemented. **Depends on:** M1; M3/M8 supply storage/import exclusions.
+not implemented. The M2.3 Samba CLI patch passes a local full Buildroot/ARMv5
+QEMU authentication fixture, but has no hosted feature-commit result or product
+integration. Failure/restart, persistent operation recovery, and hardware
+qualification remain open.
+**Depends on:** M1; M3/M8 supply storage/import exclusions.
 
 - **M2.1 — Complete allocation inventory.** Reconcile local Unix accounts,
   reserved/tombstoned IDs, imported ownership and offline-volume reservations.
@@ -235,11 +239,15 @@ not implemented. **Depends on:** M1; M3/M8 supply storage/import exclusions.
   crash, restart, readiness and drain order. HTTP never opens root stores directly.
 - **M2.3 — Implement disabled-preserving credentials.** Follow the
   [credential integration specification](src/phantowd-api/SMB-CREDENTIAL-LIFECYCLE.md).
-  Investigate a narrow Samba-native adapter that sets a password and retains
-  disabled state in one SAM update. The current CLI cannot express the required
-  combination; resetting then disabling exposes an enabled interval. Verify
-  tdbsam behavior, source/ABI/license implications, SID/RID binding and writer
-  serialization before choosing a maintained patch/helper.
+  The selected prototype adds root-only
+  `smbpasswd --set-password-disabled`, requires `-s`/stdin and an existing
+  disabled account, then applies password and disabled state in one SAM update.
+  Its Samba 4.22.11 patch applies cleanly, builds, and passes the local ARMv5
+  QEMU authentication fixture: replacement remains disabled until explicit
+  enable, the old credential is denied, and Unix account files remain unchanged.
+  Hosted feature-commit CI/review, failure/restart behavior, persistent operation
+  recovery, tdbsam/password-history, SID/RID binding and single-writer
+  serialization remain gates. This is not a product credential service.
 - **M2.4 — Journal credential operations.** Enrollment, password replacement,
   enable, disable and retirement have separate authorized intent/result states.
   Transport bounded secrets through protected memory/stdin only. Refuse adoption
@@ -353,6 +361,12 @@ are missing. **Depends on:** M1; M7 for hardware.
   identifiers; distinguish two descriptors for one object from two cloned
   filesystems. Never prove uniqueness from only the devices supplied by a caller.
   Report bay location separately from logical volume identity.
+  PR #44 merged the first read-only slice: correlate mounted filesystem UUID
+  anchors with MD topology and verify the path against a disposable RAID1 guest
+  fixture; it also fixes broker per-thread `no_new_privs` initialization. Exact
+  host, Stage B3 and ARMv5 QEMU checks passed on head `f7bdc68`, merged as
+  `db9fd33`. This does not provide persistent volume IDs, a bay map, a product
+  resolver, import/mount authority or EX4 qualification; those remain M3 work.
 - **M3.3 — Gate compatibility and mounting.** Define a per-layout/filesystem
   allowlist with evidence. Inspect before assembly/mounting; journal replay and
   automatic MD actions can write even during a supposedly read-only assessment.
@@ -699,13 +713,15 @@ These features are separate scope, not shortcuts around core acceptance:
    exclusivity or authorize probing, mounting, import or mutation. Keep
    production init, EX4 SATA/device naming, bay mapping, stable identity and
    compatibility explicitly unresolved.
-3. **M3.2:** with the trusted broker's exact-head QEMU gate now passed, resolve
-   stable identity next. Correlate devices, partitions, MD and filesystem IDs;
-   distinguish aliases from clones; never infer global uniqueness from a subset.
-   Report bay location separately from logical volume identity.
-4. **M2.3:** compile and test the disabled-preserving Samba primitive in disposable
-   QEMU. Deliver source/license review, actual denied-authentication assertions,
-   identity preservation and failure behavior; no HTTP password endpoint yet.
+3. **M3.2:** PR #44 has merged the read-only mounted-filesystem/MD correlation
+   slice and its disposable RAID1 QEMU fixture. Next, complete identity
+   classification for aliases/clones and partitions, then define persistent
+   volume IDs and bay-location separation without granting mount/import
+   authority. The fixture does not qualify real EX4 layouts.
+4. **M2.3:** local full Buildroot/ARMv5 QEMU authentication now passes on the
+   temporary PR #44 baseline plus the local Samba patch. Next: source/license
+   review and hosted checks on the exact feature commit; qualify failure/restart,
+   tdbsam/password-history and durable reconciliation. No HTTP password endpoint.
 5. **M1.3 / M2.4:** implement explicit credential intent/reconciliation around the
    qualified primitive. Preserve uncertainty; do not persist/replay secrets.
 6. **M4.1:** define and test the activation plan against qualified fixture volumes;

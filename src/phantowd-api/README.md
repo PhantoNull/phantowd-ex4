@@ -464,8 +464,13 @@ releases. No production release or safe in-device updater exists yet.
 The [SMB credential integration gate](SMB-CREDENTIAL-LIFECYCLE.md) documents an
 important pinned-Samba boundary: ordinary password replacement can re-enable a
 disabled account, while combining the disable option suppresses password setting.
-The isolated ARMv5 fixture characterizes actual authentication; no unsafe
-reset-then-disable sequence is authorized as a product credential backend.
+A local Buildroot patch prototype adds a root-only, stdin-only
+`smbpasswd --set-password-disabled` path for accounts already disabled; it has
+now passed the full local Buildroot ARMv5 QEMU authentication fixture. The
+fixture verifies the disabled-state transition, denial of the old credential,
+the root-only/stdin guards and unchanged Unix account files. This is local test
+evidence only: no hosted feature-commit check or product credential backend has
+been completed, and the option is not used by this Go API.
 
 The [native identity authority](identityowner/README.md) now owns one configured
 reservation ledger and its journals under a lifetime lease. It serializes typed

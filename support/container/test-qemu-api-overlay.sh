@@ -25,7 +25,10 @@ temporary=$(mktemp -d /tmp/phantowd-qemu-overlay.XXXXXX)
 export TMPDIR="$temporary"
 mkdir "$temporary/images"
 cp "$base/rootfs.ext2" "$base/zImage" "$base/versatile-pb.dtb" "$temporary/images/"
-export GOPROXY=off GOTOOLCHAIN=local GOFLAGS=-mod=vendor CGO_ENABLED=0 GOOS=linux GOARCH=arm GOARM=5
+# Avoid asking Git for VCS metadata from a read-only Windows bind mount. The
+# overlay is a temporary, reproducible test binary; source identity is recorded
+# by the caller and does not belong in the binary's build metadata.
+export GOPROXY=off GOTOOLCHAIN=local GOFLAGS='-mod=vendor -buildvcs=false' CGO_ENABLED=0 GOOS=linux GOARCH=arm GOARM=5
 export GOCACHE="$temporary/go-cache" GOPATH="$temporary/go-path"
 "$go_binary" version
 (cd "$source_dir/src/phantowd-api" && "$go_binary" build -tags=qemu -trimpath -ldflags='-s -w' -o "$temporary/phantowd-api" .)
