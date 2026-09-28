@@ -12,6 +12,7 @@ import (
 	"os"
 	"os/signal"
 	"os/user"
+	"runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -50,6 +51,9 @@ type storageBrokerListener struct {
 func runStorageBroker() error {
 	// Prevent a compromised broker from regaining privilege through a future
 	// setuid/file-capability executable, even if one is added to the image.
+	if ensureStorageBrokerNoNewPrivileges() != nil {
+		return errStorageBrokerUnavailable
+	}
 	if unix.Prctl(unix.PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0) != nil {
 		return errStorageBrokerUnavailable
 	}
@@ -67,6 +71,66 @@ func runStorageBroker() error {
 		return errStorageBrokerUnavailable
 	}
 	return nil
+}
+
+func ensureStorageBrokerNoNewPrivileges() error {
+	allThreadsRestricted, err := storageBrokerTasksHaveNoNewPrivileges("/proc/self/task")
+	if err != nil {
+		return errStorageBrokerUnavailable
+	}
+	if allThreadsRestricted {
+		return nil
+	}
+
+	// PR_SET_NO_NEW_PRIVS is per-thread. Pin this goroutine, set the attribute,
+	// then exec the same binary; exec destroys the old Go thread group and the
+	// replacement runtime starts with the attribute inherited by every thread.
+	runtime.LockOSThread()
+	defer runtime.UnlockOSThread()
+	if unix.Prctl(unix.PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0) != nil {
+		return errStorageBrokerUnavailable
+	}
+	executable, err := os.Executable()
+	if err != nil || executable == "" {
+		return errStorageBrokerUnavailable
+	}
+	if unix.Exec(executable, os.Args, os.Environ()) != nil {
+		return errStorageBrokerUnavailable
+	}
+	return errStorageBrokerUnavailable
+}
+
+func storageBrokerTasksHaveNoNewPrivileges(taskDirectory string) (bool, error) {
+	tasks, err := os.ReadDir(taskDirectory)
+	if err != nil || len(tasks) == 0 || len(tasks) > 256 {
+		return false, errStorageBrokerUnavailable
+	}
+	for _, task := range tasks {
+		if !task.IsDir() {
+			return false, errStorageBrokerUnavailable
+		}
+		status, err := os.ReadFile(taskDirectory + "/" + task.Name() + "/status")
+		if err != nil || len(status) == 0 || len(status) > 8192 {
+			return false, errStorageBrokerUnavailable
+		}
+		found := false
+		for _, line := range strings.Split(string(status), "\n") {
+			key, value, ok := strings.Cut(line, ":")
+			if ok && key == "NoNewPrivs" {
+				if found {
+					return false, errStorageBrokerUnavailable
+				}
+				found = true
+				if strings.TrimSpace(value) != "1" {
+					return false, nil
+				}
+			}
+		}
+		if !found {
+			return false, errStorageBrokerUnavailable
+		}
+	}
+	return true, nil
 }
 
 func lookupStorageBrokerPrincipals() (storageBrokerPrincipals, error) {
@@ -503,6 +567,15 @@ func verifyQEMUStorageBrokerFixture() error {
 		}
 	}
 	const node = "sdd"
+	// Force the QEMU mdev hotplug rule to create the node. Leaving the already
+	// correctly-moded devtmpfs node in place lets the polling loop succeed before
+	// the asynchronous add event is handled, racing the following API restart.
+	var stat unix.Stat_t
+	if unix.Lstat("/dev/"+node, &stat) != nil || stat.Mode&unix.S_IFMT != unix.S_IFBLK ||
+		stat.Uid != 0 || stat.Gid != principals.deviceGID || stat.Mode&07777 != 0440 ||
+		os.Remove("/dev/"+node) != nil {
+		return errStorageBrokerUnavailable
+	}
 	if err := os.WriteFile("/sys/class/block/"+node+"/uevent", []byte("add\n"), 0600); err != nil {
 		return errStorageBrokerUnavailable
 	}
@@ -526,10 +599,25 @@ func verifyQEMUStorageBrokerProcess(principals storageBrokerPrincipals) bool {
 	if err != nil || pid == 0 {
 		return false
 	}
-	status, err := os.ReadFile("/proc/" + strconv.FormatUint(pid, 10) + "/status")
-	if err != nil || len(status) == 0 || len(status) > 8192 {
+	taskDirectory := "/proc/" + strconv.FormatUint(pid, 10) + "/task"
+	tasks, err := os.ReadDir(taskDirectory)
+	if err != nil || len(tasks) == 0 || len(tasks) > 256 {
 		return false
 	}
+	for _, task := range tasks {
+		if !task.IsDir() {
+			return false
+		}
+		status, err := os.ReadFile(taskDirectory + "/" + task.Name() + "/status")
+		if err != nil || len(status) == 0 || len(status) > 8192 ||
+			!validQEMUStorageBrokerTaskStatus(status, principals) {
+			return false
+		}
+	}
+	return true
+}
+
+func validQEMUStorageBrokerTaskStatus(status []byte, principals storageBrokerPrincipals) bool {
 	fields := make(map[string]string)
 	for _, line := range strings.Split(string(status), "\n") {
 		key, value, ok := strings.Cut(line, ":")

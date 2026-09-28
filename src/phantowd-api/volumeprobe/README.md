@@ -95,12 +95,21 @@ closed there.
 This primitive trusts the caller's observed names/generations. It does not prove
 that the caller is the trusted broker, prove inventory completeness, establish
 whole-disk eligibility or unmounted state, map partitions/MD/multipath topology,
-or revalidate the pathname after opening. Production code must confine calls to
-the future trusted broker, which supplies validated sysfs observations and
-reconciles the inventory around descriptor handoff. The current QEMU fixture is
-test-only and is not that broker. A caller must continue through
-`OrderCompleteBlockSources` and `ObserveBlockSet`; none of these operations
-authorize mounting or mutation.
+or revalidate the pathname after opening. The Linux integration confines calls
+to a dedicated non-root storage-broker process. The broker consumes a complete
+validated sysfs inventory, excludes visible mounts and other ineligible
+devices, opens the complete candidate set read-only, and reconciles sysfs,
+mount and swap observations around descriptor handoff. Disk nodes are granted
+only to its dedicated group with mode `0440`; the ordinary API account is not a
+member. The broker requires empty effective, permitted and inheritable
+capability sets plus `no_new_privs`, and serves a bounded metadata-only
+response to the API over a peer-credential-checked Unix socket. It does not
+read disk contents. The API exposes the result through
+authenticated `GET /api/v1/storage`, and the broker is started separately by
+the system init script. The QEMU fixtures exercise this boundary, but do not
+qualify real EX4 hardware or authorize mounting or mutation. A caller must
+continue through `OrderCompleteBlockSources` and `ObserveBlockSet`; none of
+these operations authorize mounting or mutation.
 
 The internal API bridge `completeObservedBlockDeviceSet` derives transient
 generation tuples for every whole-disk node in a collector-produced,
@@ -116,10 +125,10 @@ This is a point-in-time inventory/opening check, not proof of global userspace
 or mount-namespace exclusivity, stable identity, filesystem compatibility or
 mount authority. Raw VPD collisions remain marked ambiguous; incomplete identity
 evidence is never treated as uniqueness. The internal completion markers /
-generations do not survive JSON serialization. Host tests pass and the
-disposable QEMU fixture now includes this path, but exact-head guest execution
-is pending; it is not yet a least-privilege production broker or connected to
-the HTTP endpoint / boot sequence.
+generations do not survive JSON serialization. Host tests and the disposable
+QEMU fixture exercise this path and the broker boundary; QEMU evidence does not
+qualify EX4 SATA/libata behavior, device naming on every hardware revision,
+global access exclusivity, or deployment and recovery on the NAS.
 
 `MatchUUID` reports `not-observed`, `one-object` or `conflicting-objects` only
 within that set. Regular-image hard links share an object key (device/inode);
@@ -171,9 +180,12 @@ without identity, and a set containing that image returns no partial results.
 Generated-image hashes stay unchanged. Block I/O failure and device replacement
 remain separate unqualified cases.
 
-The future trusted broker still must establish eligible devices, discovery
-completeness, unmounted state, exclusive access and identity stability before
-and after this primitive. It must reconcile duplicate UUIDs and qualify WD
-layouts before any mounting or SMB/NFS lifecycle action. No such activation
-path is implemented. See the [native helper](../../phantowd-volume-probe/README.md)
-and [mounted identity guard](../mountguard/README.md).
+The broker currently establishes candidate eligibility, complete point-in-time
+discovery and unmounted state only within its mount namespace, then rechecks
+transient kernel generations around read-only descriptor opening. This does not
+establish global exclusive access, durable physical identity, WD disk-layout
+compatibility or permission to mount. Duplicate filesystem UUIDs remain
+ambiguous. The native metadata-probe helper is not wired into the broker, and
+no volume activation or SMB/NFS lifecycle path is implemented. See the
+[native helper](../../phantowd-volume-probe/README.md) and
+[mounted identity guard](../mountguard/README.md).

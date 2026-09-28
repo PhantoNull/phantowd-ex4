@@ -7,6 +7,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -108,7 +109,7 @@ func runQEMUMDStackTest() (result error) {
 			if _, err := os.Stat("/sys/class/block/md0"); err == nil {
 				if err := runQEMUStorageUtility("mdadm", 10*time.Second, qemuMDStopArguments()...); err != nil {
 					cleanupErr = errors.Join(cleanupErr, errors.New("fixed disposable MD array did not stop"))
-				} else if _, err := os.Stat("/sys/class/block/md0"); !errors.Is(err, os.ErrNotExist) {
+				} else if err := waitForQEMUBlockNodeRemoval("/sys/class/block/md0", 5*time.Second); err != nil {
 					cleanupErr = errors.Join(cleanupErr, errors.New("fixed MD array remains in sysfs after stop"))
 				}
 			} else if !errors.Is(err, os.ErrNotExist) {
@@ -150,6 +151,23 @@ func runQEMUMDStackTest() (result error) {
 		observedArray.ActiveDevices != 2 || observedArray.DegradedDevices != 0 || observedArray.Health != arrayHealthHealthy ||
 		!sameMDMemberNames(observedArray.Members, []mdMemberObservation{{Name: "sde"}, {Name: "sdf"}}) {
 		return errors.New("created MD RAID1 member/health observation did not match the fixed fixture")
+	}
+	if !mdStatus.identityInventoryComplete || observedArray.uuidStatus != identityPresent || !canonicalPrivateMDUUID(observedArray.arrayUUID) {
+		return errors.New("MD sysfs inventory did not produce one valid private array UUID")
+	}
+	arrayMatch, err := matchMDArrayUUID(mdStatus, observedArray.arrayUUID)
+	if err != nil || arrayMatch.State != "one-object" || len(arrayMatch.ArrayIndices) != 1 || arrayMatch.ArrayIndices[0] != 0 {
+		return errors.New("complete MD UUID inventory did not resolve the fixed array")
+	}
+	identityGraph, err := collectMDStorageIdentity(sysfs, os.DirFS("/proc"))
+	if err != nil || len(identityGraph) != 1 || identityGraph[0].arrayUUID != observedArray.arrayUUID ||
+		len(identityGraph[0].memberDisks) != 2 || identityGraph[0].memberDisks[0].serialEvidence == ([32]byte{}) ||
+		identityGraph[0].memberDisks[1].wwnEvidence == ([32]byte{}) {
+		return errors.New("MD UUID did not correlate with the complete member-disk identity graph")
+	}
+	encodedArrayStatus, err := json.Marshal(mdStatus)
+	if err != nil || strings.Contains(string(encodedArrayStatus), observedArray.arrayUUID) {
+		return errors.New("MD UUID escaped the internal read-only identity boundary")
 	}
 
 	if err := unix.Mount("/dev/md0", mountPoint, "ext2", unix.MS_RDONLY|unix.MS_NOSUID|unix.MS_NODEV|unix.MS_NOEXEC, ""); err != nil {
@@ -195,6 +213,51 @@ func runQEMUMDStackTest() (result error) {
 	if !mdMountFound {
 		return errors.New("read-only MD mount was not observed through mountinfo")
 	}
+	observedMount, err := mountguard.ObserveMounted([]string{mountPoint})
+	if err != nil || len(observedMount.Mounts) != 1 || len(observedMount.ConflictingUUIDs) != 0 {
+		return errors.New("mounted MD filesystem identity is not completely observable")
+	}
+	identityStorage, identityArrays, err := collectMDStorageIdentitySnapshot(sysfs, os.DirFS("/proc"))
+	if err != nil {
+		return errors.New("mounted MD storage identity inputs are incomplete")
+	}
+	correlated, err := correlateObservedMountedStorageIdentity(identityStorage, identityArrays, observedMount)
+	if err != nil || len(correlated) != 1 {
+		return errors.New("mounted filesystem did not resolve to its complete MD/member identity")
+	}
+	identity := correlated[0]
+	if identity.anchor != mountPoint || identity.filesystemUUID != qemuMDFilesystemUUID || identity.filesystemUUIDConflict ||
+		identity.sourceName != "md0" || identity.sourceMajor != array.Major || identity.sourceMinor != array.Minor ||
+		len(identity.arrays) != 1 || identity.arrays[0].arrayName != "md0" ||
+		identity.arrays[0].arrayUUID != observedArray.arrayUUID || identity.arrays[0].arrayDiskSeq != array.diskSequence ||
+		identity.arrays[0].level != "raid1" ||
+		len(identity.arrays[0].memberDisks) != 2 || len(identity.physicalDisks) != 2 {
+		return errors.New("mounted MD filesystem, array UUID and member disks did not correlate")
+	}
+	for index, member := range identity.arrays[0].memberDisks {
+		if member != identityGraph[0].memberDisks[index] {
+			return errors.New("mounted MD identity changed its previously observed member binding")
+		}
+	}
+	seenIdentityDisks := make(map[string]bool, len(identity.physicalDisks))
+	for _, disk := range identity.physicalDisks {
+		if (disk.diskName != "sde" && disk.diskName != "sdf") || seenIdentityDisks[disk.diskName] || disk.diskSequence == 0 ||
+			!((disk.serialStatus == identityPresent && disk.serialEvidence != ([32]byte{})) ||
+				(disk.wwnStatus == identityPresent && disk.wwnEvidence != ([32]byte{}))) {
+			return errors.New("mounted MD filesystem resolved to an unexpected or unidentified member disk")
+		}
+		initial, exists := initialMembers[disk.diskName]
+		if !exists || initial.Major != disk.major || initial.Minor != disk.minor ||
+			initial.diskSequence != disk.diskSequence || initial.SerialStatus != disk.serialStatus ||
+			initial.WWNStatus != disk.wwnStatus || initial.serialEvidence != disk.serialEvidence ||
+			initial.wwnEvidence != disk.wwnEvidence {
+			return errors.New("mounted MD identity changed the member disk generation or VPD evidence")
+		}
+		seenIdentityDisks[disk.diskName] = true
+	}
+	if !seenIdentityDisks["sde"] || !seenIdentityDisks["sdf"] {
+		return errors.New("mounted MD filesystem did not resolve both fixed member disks")
+	}
 	for _, name := range memberNames {
 		member, ok := findWholeBlockObservation(mountedInventory.Observations, name)
 		if !ok || !sameBlockTopologyIdentity(initialMembers[name], member) || member.SizeBytes != initialMembers[name].SizeBytes {
@@ -213,6 +276,7 @@ func runQEMUMDStackTest() (result error) {
 	if err != nil || dependent {
 		return errors.New("MD mount was incorrectly attributed to an unrelated QEMU disk")
 	}
+	fmt.Println("PHANTOWD_MD_FILESYSTEM_IDENTITY_READY filesystem_to_md=true md_uuid_internal=true members=2 readonly_mount=true conflict_free=true scope=disposable-qemu-only")
 
 	if err := cleanup(); err != nil {
 		cleaned = true
@@ -231,6 +295,23 @@ func runQEMUMDStackTest() (result error) {
 	}
 	fmt.Println("PHANTOWD_MOUNT_GRAPH_READY backing_members=2 actual_raid1=true readonly_mountinfo=true both_members_attributed=true unrelated_disk_clear=true cleanup=true scope=disposable-qemu-only")
 	return nil
+}
+
+func waitForQEMUBlockNodeRemoval(path string, timeout time.Duration) error {
+	deadline := time.Now().Add(timeout)
+	for {
+		_, err := os.Stat(path)
+		if errors.Is(err, os.ErrNotExist) {
+			return nil
+		}
+		if err != nil {
+			return errors.New("QEMU block-node removal state could not be checked")
+		}
+		if !time.Now().Before(deadline) {
+			return errors.New("QEMU block node remained present through the removal deadline")
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
 }
 
 func findWholeBlockObservation(observations []blockObservation, name string) (blockObservation, bool) {

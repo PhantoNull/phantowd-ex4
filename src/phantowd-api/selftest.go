@@ -86,6 +86,9 @@ func runSelfTest() error {
 		CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse },
 	}
 	defer client.CloseIdleConnections()
+	if err := waitQEMUAPIReady(client, "http://"+listenAddress); err != nil {
+		return err
+	}
 	bootstrap, err := exerciseQEMUAuth(client)
 	if err != nil {
 		return err
@@ -102,20 +105,20 @@ func runSelfTest() error {
 	for _, path := range []string{"/healthz", "/api/v1/system"} {
 		response, err := client.Get("http://" + listenAddress + path)
 		if err != nil {
-			return errors.New("loopback request failed")
+			return fmt.Errorf("loopback request failed path=%s", path)
 		}
 		data, readErr := io.ReadAll(io.LimitReader(response.Body, 4097))
 		response.Body.Close()
 		if readErr != nil || len(data) > 4096 || response.StatusCode != http.StatusOK || response.Header.Get("Cache-Control") != "no-store" {
-			return errors.New("invalid read response")
+			return fmt.Errorf("invalid read response path=%s status=%d bytes=%d read_error=%t", path, response.StatusCode, len(data), readErr != nil)
 		}
 		if path == "/healthz" {
 			var health map[string]string
 			if json.Unmarshal(data, &health) != nil || health["status"] != "ok" || health["scope"] != "process_only" {
-				return errors.New("invalid process health")
+				return errors.New("invalid process health response")
 			}
 		} else if json.Unmarshal(data, &snapshot) != nil {
-			return errors.New("invalid system JSON")
+			return fmt.Errorf("invalid system JSON bytes=%d", len(data))
 		}
 	}
 	if snapshot.SchemaVersion != 1 || snapshot.Target != "qemu-armv5" || snapshot.Mode != "development" ||
@@ -125,6 +128,7 @@ func runSelfTest() error {
 		snapshot.Memory.AvailableBytes == 0 || snapshot.Memory.AvailableBytes > snapshot.Memory.TotalBytes {
 		return errors.New("invalid development snapshot or privileged server")
 	}
+	fmt.Println("PHANTOWD_SYSTEM_SNAPSHOT_READY schema=1 nonroot=true authenticated=true scope=qemu-loopback-only")
 	storageResponse, err := client.Get("http://" + listenAddress + "/api/v1/storage")
 	if err != nil {
 		return errors.New("storage loopback request failed")
@@ -132,14 +136,18 @@ func runSelfTest() error {
 	storageData, readErr := io.ReadAll(io.LimitReader(storageResponse.Body, 4097))
 	storageResponse.Body.Close()
 	if readErr != nil || len(storageData) > 4096 || storageResponse.StatusCode != http.StatusOK || storageResponse.Header.Get("Cache-Control") != "no-store" {
-		return errors.New("invalid storage observation response")
+		return fmt.Errorf("invalid storage observation response status=%d bytes=%d read_error=%t", storageResponse.StatusCode, len(storageData), readErr != nil)
 	}
 	var storage storageSnapshot
-	if json.Unmarshal(storageData, &storage) != nil || storage.SchemaVersion != 2 || storage.Scope != "broker-read-only-point-in-time" ||
+	if err := json.Unmarshal(storageData, &storage); err != nil {
+		return fmt.Errorf("invalid storage observation JSON bytes=%d", len(storageData))
+	}
+	if storage.SchemaVersion != 2 || storage.Scope != "broker-read-only-point-in-time" ||
 		!storage.InventoryReadOnly || !storage.BlockDevicesOpened || storage.ContentRead || storage.MutationsPerformed ||
 		storage.StableIdentityAvailable || storage.DeviceCount != len(storage.Observations) {
-		return errors.New("storage observation crossed or overstated its read-only boundary")
+		return fmt.Errorf("storage observation contract invalid schema=%d scope=%s opened=%t count=%d observations=%d", storage.SchemaVersion, storage.Scope, storage.BlockDevicesOpened, storage.DeviceCount, len(storage.Observations))
 	}
+	fmt.Println("PHANTOWD_STORAGE_RESPONSE_READY schema=2 broker=true opened=true content_read=false scope=qemu-fixture-only")
 	if err := verifyQEMUStorageBrokerFixture(); err != nil {
 		return errors.New("read-only storage device rules or hotplug fixture did not hold")
 	}
@@ -176,7 +184,7 @@ func runSelfTest() error {
 		return errors.New("raw QEMU storage identifiers leaked through the API")
 	}
 	fmt.Println("PHANTOWD_STORAGE_COLLISION_READY nodes=2 serial=ambiguous wwn=ambiguous redacted=true read_only=true scope=qemu-fixture-only")
-	fmt.Println("PHANTOWD_STORAGE_BROKER_READY api_outside_device_group=true broker_nnp=true broker_capabilities=none whole_disk_mode=0440 hotplug_rechecked=true nodes=2 serial=ambiguous wwn=ambiguous redacted=true read_only=true scope=qemu-fixture-only")
+	fmt.Println("PHANTOWD_STORAGE_BROKER_READY api_outside_device_group=true broker_nnp_all_threads=true broker_capabilities=none whole_disk_mode=0440 hotplug_rechecked=true nodes=2 serial=ambiguous wwn=ambiguous redacted=true read_only=true scope=qemu-fixture-only")
 	arraysResponse, err := client.Get("http://" + listenAddress + "/api/v1/arrays")
 	if err != nil {
 		return errors.New("array inventory loopback request failed")
@@ -303,6 +311,36 @@ func validArrayHealth(health arrayHealth) bool {
 func newQEMUCookieJar() *cookiejar.Jar {
 	jar, _ := cookiejar.New(nil)
 	return jar
+}
+
+func waitQEMUAPIReady(client *http.Client, baseURL string) error {
+	const attempts = 20
+	for attempt := 0; attempt < attempts; attempt++ {
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		request, err := http.NewRequestWithContext(ctx, http.MethodGet, baseURL+"/healthz", nil)
+		if err != nil {
+			cancel()
+			return errors.New("invalid API readiness URL")
+		}
+		response, requestErr := client.Do(request)
+		if requestErr == nil {
+			data, readErr := io.ReadAll(io.LimitReader(response.Body, 257))
+			response.Body.Close()
+			if readErr == nil && len(data) <= 256 && response.StatusCode == http.StatusOK &&
+				response.Header.Get("Cache-Control") == "no-store" {
+				var health map[string]string
+				if json.Unmarshal(data, &health) == nil && health["status"] == "ok" && health["scope"] == "process_only" {
+					cancel()
+					return nil
+				}
+			}
+		}
+		cancel()
+		if attempt+1 < attempts {
+			time.Sleep(250 * time.Millisecond)
+		}
+	}
+	return errors.New("read-only API readiness probe timed out")
 }
 
 func exerciseQEMUAuth(client *http.Client) (string, error) {

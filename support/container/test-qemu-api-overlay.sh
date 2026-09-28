@@ -49,6 +49,7 @@ debugfs -w -R 'mkdir /usr/libexec' "$image"
 replace_file "$temporary/phantowd-volume-probe" /usr/libexec/phantowd-volume-probe 0100755
 replace_file "$source_dir/board/qemu/armv5/rootfs-overlay/etc/init.d/S99phantowd-ready" /etc/init.d/S99phantowd-ready 0100755
 debugfs -w -R 'mkdir /usr/lib/phantowd' "$image"
+replace_file "$source_dir/board/qemu/armv5/rootfs-overlay/usr/lib/phantowd/qemu-selftest-once.sh" /usr/lib/phantowd/qemu-selftest-once.sh 0100755
 replace_file "$source_dir/board/qemu/armv5/rootfs-overlay/usr/lib/phantowd/qemu-nfs-policy-smoke.sh" /usr/lib/phantowd/qemu-nfs-policy-smoke.sh 0100644
 replace_file "$source_dir/board/qemu/armv5/rootfs-overlay/usr/lib/phantowd/qemu-state-init.sh" /usr/lib/phantowd/qemu-state-init.sh 0100755
 replace_file "$source_dir/src/phantowd-api/vendor/golang.org/x/sys/LICENSE" /usr/share/licenses/phantowd-api/Go-XSys-LICENSE 0100644

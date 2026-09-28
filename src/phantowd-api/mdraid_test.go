@@ -26,11 +26,77 @@ func TestCollectMDArrayInventoryReadOnly(t *testing.T) {
 	if !snapshot.ObservedAt.Equal(now.UTC()) || snapshot.ArrayCount != 2 || len(snapshot.Arrays) != 2 {
 		t.Fatalf("unexpected inventory metadata: %+v", snapshot)
 	}
-	if first := snapshot.Arrays[0]; first.Name != "md0" || first.Level != "raid1" || first.State != "clean" || first.ExpectedDevices != 2 || first.ActiveDevices != 2 || first.DegradedDevices != 0 || first.Health != arrayHealthHealthy || first.SyncAction != "idle" || len(first.Members) != 2 || first.Members[0].Name != "sda2" {
+	first := snapshot.Arrays[0]
+	if first.Name != "md0" || first.Level != "raid1" || first.State != "clean" || first.ExpectedDevices != 2 || first.ActiveDevices != 2 || first.DegradedDevices != 0 || first.Health != arrayHealthHealthy || first.SyncAction != "idle" || len(first.Members) != 2 || first.Members[0].Name != "sda2" {
 		t.Fatalf("unexpected healthy array observation: %+v", first)
+	}
+	if !snapshot.identityInventoryComplete || first.uuidStatus != identityPresent || first.arrayUUID != "11111111-2222-3333-4444-555555555555" {
+		t.Fatalf("complete sysfs inventory did not provide a private stable array identity: %+v", first)
 	}
 	if second := snapshot.Arrays[1]; second.Name != "md1" || second.Health != arrayHealthDegraded || second.DegradedDevices != 1 || second.SyncAction != "recover" || second.SyncProgressPercent == nil || *second.SyncProgressPercent != 40 || second.Members[1].State != "faulty" {
 		t.Fatalf("unexpected degraded/recovery observation: %+v", second)
+	}
+}
+
+func TestMDArrayUUIDMatchingRequiresCompleteInventoryAndDistinguishesClones(t *testing.T) {
+	proc := fstest.MapFS{"mdstat": {Data: []byte("md0 : active raid1 sda2[0] sdb2[1]\n      1024 blocks super 1.2 [2/2] [UU]\nmd1 : active raid1 sda3[0] sdb3[1]\n      1024 blocks super 1.2 [2/2] [UU]\n")}}
+	const uuid = "11111111-2222-3333-4444-555555555555"
+	sysfs := fixtureMDArraySysfs("md0", "md1")
+	sysfs["class/block/md1/md/uuid"] = &fstest.MapFile{Data: []byte("aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee\n")}
+	snapshot := collectMDArrayInventory(proc, sysfs, time.Now())
+	if match, err := matchMDArrayUUID(snapshot, uuid); err != nil || match.State != "one-object" || len(match.ArrayIndices) != 1 || match.ArrayIndices[0] != 0 {
+		t.Fatalf("complete inventory did not resolve its unique MD UUID: %+v, %v", match, err)
+	}
+	subset := snapshot
+	subset.Arrays = subset.Arrays[:1]
+	if _, err := matchMDArrayUUID(subset, uuid); err == nil {
+		t.Fatal("selected array subset was accepted as the complete inventory")
+	}
+
+	cloned := fixtureMDArraySysfs("md0", "md1")
+	cloned["class/block/md1/md/uuid"] = &fstest.MapFile{Data: []byte(uuid + "\n")}
+	cloneSnapshot := collectMDArrayInventory(proc, cloned, time.Now())
+	if !cloneSnapshot.identityInventoryComplete || cloneSnapshot.Arrays[0].uuidStatus != identityAmbiguous || cloneSnapshot.Arrays[1].uuidStatus != identityAmbiguous {
+		t.Fatalf("duplicate array UUIDs were not marked ambiguous: %+v", cloneSnapshot.Arrays)
+	}
+	if match, err := matchMDArrayUUID(cloneSnapshot, uuid); err != nil || match.State != "conflicting-objects" || len(match.ArrayIndices) != 2 {
+		t.Fatalf("duplicate MD UUIDs were not resolved as distinct conflicting objects: %+v, %v", match, err)
+	}
+
+	alias := fixtureMDArraySysfs("md0", "md1")
+	alias["class/block/md1/dev"] = &fstest.MapFile{Data: []byte("9:0\n")}
+	alias["class/block/md1/md/uuid"] = &fstest.MapFile{Data: []byte(uuid + "\n")}
+	aliasSnapshot := collectMDArrayInventory(proc, alias, time.Now())
+	if match, err := matchMDArrayUUID(aliasSnapshot, uuid); err != nil || match.State != "one-object" || len(match.ArrayIndices) != 2 {
+		t.Fatalf("aliases of one major/minor object were misclassified as clones: %+v, %v", match, err)
+	}
+
+	conflictingAlias := fixtureMDArraySysfs("md0", "md1")
+	conflictingAlias["class/block/md1/dev"] = &fstest.MapFile{Data: []byte("9:0\n")}
+	conflictingAliasSnapshot := collectMDArrayInventory(proc, conflictingAlias, time.Now())
+	if conflictingAliasSnapshot.identityInventoryComplete {
+		t.Fatal("one kernel object with conflicting observed MD UUIDs was treated as complete")
+	}
+	if _, err := matchMDArrayUUID(conflictingAliasSnapshot, uuid); err == nil {
+		t.Fatal("one kernel object with conflicting MD UUID observations was resolved")
+	}
+
+	incomplete := fixtureMDArraySysfs("md0", "md1")
+	delete(incomplete, "class/block/md1/md/uuid")
+	incompleteSnapshot := collectMDArrayInventory(proc, incomplete, time.Now())
+	if incompleteSnapshot.identityInventoryComplete || incompleteSnapshot.Arrays[0].uuidStatus != identityUnavailable || incompleteSnapshot.Arrays[0].arrayUUID != "" {
+		t.Fatalf("incomplete inventory leaked a one-array uniqueness claim: %+v", incompleteSnapshot)
+	}
+	if _, err := matchMDArrayUUID(incompleteSnapshot, uuid); err == nil {
+		t.Fatal("caller-visible array subset was accepted as a complete identity inventory")
+	}
+
+	encoded, err := json.Marshal(snapshot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(encoded), uuid) || strings.Contains(string(encoded), "arrayUUID") || strings.Contains(string(encoded), "identityInventoryComplete") {
+		t.Fatalf("private array identity escaped in JSON: %s", encoded)
 	}
 }
 
@@ -284,7 +350,17 @@ func fixtureMDArraySysfs(names ...string) fstest.MapFS {
 			members = []string{"sda3", "sdb3"}
 		}
 		sysfs[base] = &fstest.MapFile{Mode: fs.ModeDir | 0o555}
+		devNumber := "9:0\n"
+		if name == "md1" {
+			devNumber = "9:1\n"
+		}
+		sysfs[base+"/dev"] = &fstest.MapFile{Data: []byte(devNumber)}
 		sysfs[base+"/md"] = &fstest.MapFile{Mode: fs.ModeDir | 0o555}
+		arrayUUID := "11111111-2222-3333-4444-555555555555\n"
+		if name == "md1" {
+			arrayUUID = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee\n"
+		}
+		sysfs[base+"/md/uuid"] = &fstest.MapFile{Data: []byte(arrayUUID)}
 		sysfs[base+"/md/level"] = &fstest.MapFile{Data: []byte("raid1\n")}
 		sysfs[base+"/md/array_state"] = &fstest.MapFile{Data: []byte("clean\n")}
 		sysfs[base+"/md/degraded"] = &fstest.MapFile{Data: []byte("0\n")}
@@ -303,4 +379,25 @@ func fixtureMDArraySysfs(names ...string) fstest.MapFS {
 		}
 	}
 	return sysfs
+}
+
+func TestCanonicalMDArrayUUIDRejectsWhitespaceAndNormalizesCase(t *testing.T) {
+	const lower = "11111111-2222-3333-4444-555555555555"
+	for _, test := range []struct {
+		value string
+		want  string
+		ok    bool
+	}{
+		{value: lower, want: lower, ok: true},
+		{value: "11111111-2222-3333-4444-555555555555\n", want: lower, ok: true},
+		{value: "11111111-2222-3333-4444-55555555555G", ok: false},
+		{value: "  " + lower, ok: false},
+		{value: lower + " \n", ok: false},
+		{value: "00000000-0000-0000-0000-000000000000", ok: false},
+	} {
+		got, ok := canonicalMDArrayUUID(test.value)
+		if got != test.want || ok != test.ok {
+			t.Fatalf("canonicalMDArrayUUID(%q) = %q,%t, want %q,%t", test.value, got, ok, test.want, test.ok)
+		}
+	}
 }

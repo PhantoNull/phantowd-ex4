@@ -102,7 +102,7 @@ while [ "$attempt" -lt 120 ]; do
             echo "Missing ARMv5 duplicate storage-identity assertion" >&2
             exit 1
         fi
-        if ! grep -F 'PHANTOWD_STORAGE_BROKER_READY api_outside_device_group=true broker_nnp=true broker_capabilities=none whole_disk_mode=0440 hotplug_rechecked=true nodes=2 serial=ambiguous wwn=ambiguous redacted=true read_only=true scope=qemu-fixture-only' "$log_file" >/dev/null; then
+        if ! grep -F 'PHANTOWD_STORAGE_BROKER_READY api_outside_device_group=true broker_nnp_all_threads=true broker_capabilities=none whole_disk_mode=0440 hotplug_rechecked=true nodes=2 serial=ambiguous wwn=ambiguous redacted=true read_only=true scope=qemu-fixture-only' "$log_file" >/dev/null; then
             echo "Missing ARMv5 least-privilege storage broker assertion" >&2
             exit 1
         fi
@@ -146,6 +146,14 @@ while [ "$attempt" -lt 120 ]; do
             echo 'QEMU password-change HTTPS test did not complete' >&2
             exit 1
         fi
+        if ! grep -F 'PHANTOWD_SYSTEM_SNAPSHOT_READY schema=1 nonroot=true authenticated=true scope=qemu-loopback-only' "$log_file" >/dev/null; then
+            echo 'QEMU authenticated system snapshot assertion did not complete' >&2
+            exit 1
+        fi
+        if ! grep -F 'PHANTOWD_STORAGE_RESPONSE_READY schema=2 broker=true opened=true content_read=false scope=qemu-fixture-only' "$log_file" >/dev/null; then
+            echo 'QEMU authenticated read-only storage broker response assertion did not complete' >&2
+            exit 1
+        fi
         if ! grep -F 'PHANTOWD_IDENTITY_EXEC_READY binary=pinned-busybox typed_commands=true unix_login_locked=true nologin=true home_created=false scope=isolated-qemu-only' "$log_file" >/dev/null; then
             echo 'QEMU typed native identity executor did not complete' >&2
             exit 1
@@ -184,12 +192,20 @@ while [ "$attempt" -lt 120 ]; do
             echo 'Missing real disposable RAID1 mount-graph assertion' >&2
             exit 1
         fi
+        if ! grep -F 'PHANTOWD_MD_FILESYSTEM_IDENTITY_READY filesystem_to_md=true md_uuid_internal=true members=2 readonly_mount=true conflict_free=true scope=disposable-qemu-only' "$log_file" >/dev/null; then
+            echo 'Missing mounted filesystem to MD/member identity assertion' >&2
+            exit 1
+        fi
         if ! grep -F 'PHANTOWD_FILESYSTEM_UUID_READY source=kernel-ioctl expected_uuid=true mismatch_denied=true block_device_opened=false scope=qemu-fixture-only' "$log_file" >/dev/null; then
             echo 'Missing kernel filesystem UUID assertion' >&2
             exit 1
         fi
         if ! grep -F 'PHANTOWD_MOUNTED_AMBIGUITY_READY cloned_uuid=true bind_alias_not_clone=true incomplete_scan_refused=true scope=provided-mounted-ext-only' "$log_file" >/dev/null; then
             echo 'Missing mounted filesystem ambiguity assertion' >&2
+            exit 1
+        fi
+        if ! grep -F 'PHANTOWD_MOUNTED_STORAGE_CORRELATION_READY anchors=3 uuid_conflict_entries=3 bind_alias_same_device=true complete_sysfs=true scope=qemu-fixture-only' "$log_file" >/dev/null; then
+            echo 'Missing mounted filesystem to complete storage identity assertion' >&2
             exit 1
         fi
         if ! grep -F 'PHANTOWD_VOLUME_PROBE_READY backend=libblkid unmounted_devices=2 readonly_descriptors=true expected_uuid=true unidentified_not_empty=true scope=qemu-fixture-only' "$log_file" >/dev/null; then

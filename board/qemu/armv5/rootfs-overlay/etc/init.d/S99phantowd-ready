@@ -27,15 +27,8 @@ case "$1" in
                 exit 1
             fi
         done
-        api_attempt=0
-        while ! /usr/bin/phantowd-api --self-test 2>/dev/null; do
-            api_attempt=$((api_attempt + 1))
-            if [ "$api_attempt" -ge 5 ]; then
-                echo 'PHANTOWD_QEMU_ERROR diagnostics-api-unavailable'
-                exit 1
-            fi
-            sleep 1
-        done
+        api_error_log=/run/phantowd-api-selftest.stderr
+        /usr/lib/phantowd/qemu-selftest-once.sh /usr/bin/phantowd-api "$api_error_log" || exit 1
         api_pid="$(cat /run/phantowd-api.pid)"
         /etc/init.d/S50phantowd-api stop || {
             echo 'PHANTOWD_QEMU_ERROR diagnostics-api-stop-failed'
@@ -54,15 +47,7 @@ case "$1" in
             echo 'PHANTOWD_QEMU_ERROR diagnostics-api-restart-failed'
             exit 1
         }
-        api_attempt=0
-        while ! /usr/bin/phantowd-api --self-test 2>/dev/null; do
-            api_attempt=$((api_attempt + 1))
-            if [ "$api_attempt" -ge 10 ]; then
-                echo 'PHANTOWD_QEMU_ERROR diagnostics-api-state-restart-check-failed'
-                exit 1
-            fi
-            sleep 1
-        done
+        /usr/lib/phantowd/qemu-selftest-once.sh /usr/bin/phantowd-api "$api_error_log" || exit 1
         api_pid="$(cat /run/phantowd-api.pid)"
         echo 'PHANTOWD_AUTH_STATE_READY account_survives=daemon-restart sessions_memory_only=true scope=qemu-loopback-only'
         api_rss="$(awk '/^VmRSS:/ { print $2 }' "/proc/$api_pid/status")"

@@ -43,21 +43,27 @@ const (
 )
 
 type mdArraySnapshot struct {
-	SchemaVersion      int                  `json:"schema_version"`
-	ObservedAt         time.Time            `json:"observed_at"`
-	Status             arrayInventoryStatus `json:"status"`
-	ReadOnly           bool                 `json:"read_only"`
-	BlockDevicesOpened bool                 `json:"block_devices_opened"`
-	DiskContentRead    bool                 `json:"disk_content_read"`
-	MutationsPerformed bool                 `json:"mutations_performed"`
-	ArrayCount         int                  `json:"array_count"`
-	Arrays             []mdArrayObservation `json:"arrays"`
-	Limitations        []string             `json:"limitations"`
-	diagnosticCodes    []string
+	SchemaVersion             int                  `json:"schema_version"`
+	ObservedAt                time.Time            `json:"observed_at"`
+	Status                    arrayInventoryStatus `json:"status"`
+	identityInventoryComplete bool                 `json:"-"`
+	ReadOnly                  bool                 `json:"read_only"`
+	BlockDevicesOpened        bool                 `json:"block_devices_opened"`
+	DiskContentRead           bool                 `json:"disk_content_read"`
+	MutationsPerformed        bool                 `json:"mutations_performed"`
+	ArrayCount                int                  `json:"array_count"`
+	Arrays                    []mdArrayObservation `json:"arrays"`
+	Limitations               []string             `json:"limitations"`
+	diagnosticCodes           []string
+	identityCollected         bool `json:"-"`
 }
 
 type mdArrayObservation struct {
 	Name                string                `json:"name"`
+	major               uint32                `json:"-"`
+	minor               uint32                `json:"-"`
+	arrayUUID           string                `json:"-"`
+	uuidStatus          identityStatus        `json:"-"`
 	Level               string                `json:"level"`
 	State               string                `json:"state"`
 	Health              arrayHealth           `json:"health"`
@@ -67,7 +73,8 @@ type mdArrayObservation struct {
 	SyncAction          string                `json:"sync_action"`
 	SyncProgressPercent *float64              `json:"sync_progress_percent,omitempty"`
 	Members             []mdMemberObservation `json:"members"`
-	diagnosticCodes     []string
+	diagnosticCodes     []string              `json:"-"`
+	identityComplete    bool                  `json:"-"`
 }
 
 type mdMemberObservation struct {
@@ -114,6 +121,7 @@ func collectMDArrayInventory(proc, sysfs fs.FS, now time.Time) mdArraySnapshot {
 		appendMDArrayDiagnostic(&snapshot.diagnosticCodes, "block-inventory-unavailable")
 		return snapshot
 	}
+	snapshot.identityInventoryComplete = true
 	blockNames := make(map[string]bool, len(blockEntries))
 	for _, entry := range blockEntries {
 		blockNames[entry.Name()] = true
@@ -127,6 +135,7 @@ func collectMDArrayInventory(proc, sysfs fs.FS, now time.Time) mdArraySnapshot {
 	sort.Strings(sysfsArrays)
 	if len(sysfsArrays) > maxMDArrayEntries {
 		sysfsArrays = sysfsArrays[:maxMDArrayEntries]
+		snapshot.identityInventoryComplete = false
 		snapshot.Status = arrayInventoryPartial
 		appendMDArrayDiagnostic(&snapshot.diagnosticCodes, "md-array-limit-exceeded")
 	}
@@ -207,8 +216,35 @@ func finishMDArraySnapshot(snapshot mdArraySnapshot) mdArraySnapshot {
 	sort.Slice(snapshot.Arrays, func(i, j int) bool { return snapshot.Arrays[i].Name < snapshot.Arrays[j].Name })
 	if len(snapshot.Arrays) > maxMDArrayEntries {
 		snapshot.Arrays = snapshot.Arrays[:maxMDArrayEntries]
+		snapshot.identityInventoryComplete = false
 		snapshot.Status = arrayInventoryPartial
 		appendMDArrayDiagnostic(&snapshot.diagnosticCodes, "md-array-observation-limit-exceeded")
+	}
+	if snapshot.identityInventoryComplete {
+		for _, array := range snapshot.Arrays {
+			if !array.identityComplete {
+				snapshot.identityInventoryComplete = false
+				break
+			}
+		}
+	}
+	if !snapshot.identityInventoryComplete {
+		for index := range snapshot.Arrays {
+			if snapshot.Arrays[index].uuidStatus == identityPresent {
+				snapshot.Arrays[index].uuidStatus = identityUnavailable
+				snapshot.Arrays[index].arrayUUID = ""
+			}
+		}
+	} else {
+		if !markDuplicateMDArrayUUIDs(snapshot.Arrays) {
+			snapshot.identityInventoryComplete = false
+			for index := range snapshot.Arrays {
+				if snapshot.Arrays[index].uuidStatus == identityPresent || snapshot.Arrays[index].uuidStatus == identityAmbiguous {
+					snapshot.Arrays[index].uuidStatus = identityUnavailable
+					snapshot.Arrays[index].arrayUUID = ""
+				}
+			}
+		}
 	}
 	snapshot.ArrayCount = len(snapshot.Arrays)
 	if snapshot.Status != arrayInventoryPartial {
@@ -216,7 +252,72 @@ func finishMDArraySnapshot(snapshot mdArraySnapshot) mdArraySnapshot {
 			snapshot.Status = arrayInventoryAvailable
 		}
 	}
+	snapshot.identityCollected = true
 	return snapshot
+}
+
+func canonicalMDArrayUUID(value string) (string, bool) {
+	if strings.HasSuffix(value, "\n") {
+		value = strings.TrimSuffix(value, "\n")
+	}
+	if len(value) != 36 {
+		return "", false
+	}
+	canonical := []byte(value)
+	nonzero := false
+	for index, character := range canonical {
+		if index == 8 || index == 13 || index == 18 || index == 23 {
+			if character != '-' {
+				return "", false
+			}
+			continue
+		}
+		if character >= 'A' && character <= 'F' {
+			character += 'a' - 'A'
+			canonical[index] = character
+		}
+		if !(character >= '0' && character <= '9' || character >= 'a' && character <= 'f') {
+			return "", false
+		}
+		nonzero = nonzero || character != '0'
+	}
+	if !nonzero {
+		return "", false
+	}
+	return string(canonical), true
+}
+
+func markDuplicateMDArrayUUIDs(arrays []mdArrayObservation) bool {
+	indicesByUUID := make(map[string][]int, len(arrays))
+	objectsByUUID := make(map[string]map[observedDeviceNumber]bool, len(arrays))
+	uuidByDevice := make(map[observedDeviceNumber]string, len(arrays))
+	for index, array := range arrays {
+		if !array.identityComplete || array.arrayUUID == "" {
+			continue
+		}
+		device := observedDeviceNumber{major: array.major, minor: array.minor}
+		if prior, exists := uuidByDevice[device]; exists && prior != array.arrayUUID {
+			return false
+		}
+		uuidByDevice[device] = array.arrayUUID
+		indicesByUUID[array.arrayUUID] = append(indicesByUUID[array.arrayUUID], index)
+		if objectsByUUID[array.arrayUUID] == nil {
+			objectsByUUID[array.arrayUUID] = make(map[observedDeviceNumber]bool)
+		}
+		objectsByUUID[array.arrayUUID][device] = true
+	}
+	for uuid, indices := range indicesByUUID {
+		if len(objectsByUUID[uuid]) < 2 {
+			for _, index := range indices {
+				arrays[index].uuidStatus = identityPresent
+			}
+			continue
+		}
+		for _, index := range indices {
+			arrays[index].uuidStatus = identityAmbiguous
+		}
+	}
+	return true
 }
 
 func parseMDStat(data string) ([]mdstatRecord, error) {
@@ -316,7 +417,8 @@ func readMDArraySysfs(sysfs fs.FS, record mdstatRecord, blockNodePresent bool) (
 	observation := mdArrayObservation{
 		Name: record.name, Level: record.level, State: record.state,
 		Health: arrayHealthUnknown, SyncAction: record.syncAction,
-		Members: append([]mdMemberObservation{}, record.members...),
+		uuidStatus: identityUnavailable,
+		Members:    append([]mdMemberObservation{}, record.members...),
 	}
 	complete := blockNodePresent
 	if record.countsKnown {
@@ -332,6 +434,27 @@ func readMDArraySysfs(sysfs fs.FS, record mdstatRecord, blockNodePresent bool) (
 	if !blockNodePresent {
 		appendMDArrayDiagnostic(&observation.diagnosticCodes, "md-block-node-missing")
 		return observation, false
+	}
+	deviceText, deviceErr := readSysfsAttribute(sysfs, "class/block/"+record.name+"/dev")
+	uuidText, uuidErr := readSysfsAttribute(sysfs, "class/block/"+record.name+"/md/uuid")
+	if deviceErr != nil {
+		observation.uuidStatus = identityUnreadable
+	} else {
+		major, minor, parseErr := parseDeviceNumber(deviceText)
+		if parseErr != nil || (major == 0 && minor == 0) {
+			observation.uuidStatus = identityInvalid
+		} else {
+			observation.major, observation.minor = major, minor
+			if uuidErr != nil {
+				observation.uuidStatus = identityUnreadable
+			} else if uuid, ok := canonicalMDArrayUUID(uuidText); !ok {
+				observation.uuidStatus = identityInvalid
+			} else {
+				observation.arrayUUID = uuid
+				observation.uuidStatus = identityPresent
+				observation.identityComplete = true
+			}
+		}
 	}
 
 	base := "class/block/" + record.name + "/md/"
