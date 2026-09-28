@@ -7,6 +7,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -150,6 +151,23 @@ func runQEMUMDStackTest() (result error) {
 		observedArray.ActiveDevices != 2 || observedArray.DegradedDevices != 0 || observedArray.Health != arrayHealthHealthy ||
 		!sameMDMemberNames(observedArray.Members, []mdMemberObservation{{Name: "sde"}, {Name: "sdf"}}) {
 		return errors.New("created MD RAID1 member/health observation did not match the fixed fixture")
+	}
+	if !mdStatus.identityInventoryComplete || observedArray.uuidStatus != identityPresent || !canonicalPrivateMDUUID(observedArray.arrayUUID) {
+		return errors.New("MD sysfs inventory did not produce one valid private array UUID")
+	}
+	arrayMatch, err := matchMDArrayUUID(mdStatus, observedArray.arrayUUID)
+	if err != nil || arrayMatch.State != "one-object" || len(arrayMatch.ArrayIndices) != 1 || arrayMatch.ArrayIndices[0] != 0 {
+		return errors.New("complete MD UUID inventory did not resolve the fixed array")
+	}
+	identityGraph, err := collectMDStorageIdentity(sysfs, os.DirFS("/proc"))
+	if err != nil || len(identityGraph) != 1 || identityGraph[0].arrayUUID != observedArray.arrayUUID ||
+		len(identityGraph[0].memberDisks) != 2 || identityGraph[0].memberDisks[0].serialEvidence == ([32]byte{}) ||
+		identityGraph[0].memberDisks[1].wwnEvidence == ([32]byte{}) {
+		return errors.New("MD UUID did not correlate with the complete member-disk identity graph")
+	}
+	encodedArrayStatus, err := json.Marshal(mdStatus)
+	if err != nil || strings.Contains(string(encodedArrayStatus), observedArray.arrayUUID) {
+		return errors.New("MD UUID escaped the internal read-only identity boundary")
 	}
 
 	if err := unix.Mount("/dev/md0", mountPoint, "ext2", unix.MS_RDONLY|unix.MS_NOSUID|unix.MS_NODEV|unix.MS_NOEXEC, ""); err != nil {
