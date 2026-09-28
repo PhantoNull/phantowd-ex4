@@ -287,8 +287,11 @@ and refuses non-Versatile PB machines. See the
   Bcachefs and ZFS currently make discovery fail closed because their full
   multi-device backing set is not established here. Other filesystem stacks,
   stable identity, bay mapping, compatibility and mount authority also remain
-  unresolved. Host fixtures pass; exact-head QEMU execution of the broker and
-  hotplug permission assertions is pending. The QEMU SysV profile starts mdev
+  unresolved. Exact-head ARMv5 QEMU run
+  [36364383677](https://github.com/PhantoNull/phantowd-ex4/actions/runs/36364383677)
+  passed for PR #42's tested head `7254555`; it exercised the broker and
+  hotplug-permission assertions in the disposable guest. This is not EX4 board
+  or production device-rule qualification. The QEMU SysV profile starts mdev
   before the broker and API, applies mode `0440` only to whole-disk `sd[a-f]`
   nodes needed by its six-disk fixture, and tests a synthetic `sdd` hotplug.
   The separate udev rule currently covers `sd[a-d]` provisionally; other init
