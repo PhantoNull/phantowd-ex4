@@ -79,6 +79,12 @@ grep -F "$mounted_identity_marker" "$repo_root/src/phantowd-api/mount_guard_qemu
 grep -F "$mounted_identity_marker" "$repo_root/support/qemu-smoke.sh" >/dev/null ||
     fail 'QEMU smoke must require mounted filesystem identity correlation'
 
+md_filesystem_identity_marker='PHANTOWD_MD_FILESYSTEM_IDENTITY_READY filesystem_to_md=true md_uuid_internal=true members=2 readonly_mount=true conflict_free=true scope=disposable-qemu-only'
+grep -F "$md_filesystem_identity_marker" "$repo_root/src/phantowd-api/md_stack_qemu_linux.go" >/dev/null ||
+    fail 'QEMU MD fixture must correlate a mounted filesystem to its transient MD/member identity'
+grep -F "$md_filesystem_identity_marker" "$repo_root/support/qemu-smoke.sh" >/dev/null ||
+    fail 'QEMU smoke must require mounted MD/filesystem identity correlation'
+
 # Keep the QEMU smoke driver's expected marker synchronized with the guest
 # self-test. A typo here otherwise costs a full ARMv5 build before the guest
 # can even boot.

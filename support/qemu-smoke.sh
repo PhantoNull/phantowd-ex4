@@ -184,6 +184,10 @@ while [ "$attempt" -lt 120 ]; do
             echo 'Missing real disposable RAID1 mount-graph assertion' >&2
             exit 1
         fi
+        if ! grep -F 'PHANTOWD_MD_FILESYSTEM_IDENTITY_READY filesystem_to_md=true md_uuid_internal=true members=2 readonly_mount=true conflict_free=true scope=disposable-qemu-only' "$log_file" >/dev/null; then
+            echo 'Missing mounted filesystem to MD/member identity assertion' >&2
+            exit 1
+        fi
         if ! grep -F 'PHANTOWD_FILESYSTEM_UUID_READY source=kernel-ioctl expected_uuid=true mismatch_denied=true block_device_opened=false scope=qemu-fixture-only' "$log_file" >/dev/null; then
             echo 'Missing kernel filesystem UUID assertion' >&2
             exit 1

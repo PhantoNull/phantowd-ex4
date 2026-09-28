@@ -213,6 +213,51 @@ func runQEMUMDStackTest() (result error) {
 	if !mdMountFound {
 		return errors.New("read-only MD mount was not observed through mountinfo")
 	}
+	observedMount, err := mountguard.ObserveMounted([]string{mountPoint})
+	if err != nil || len(observedMount.Mounts) != 1 || len(observedMount.ConflictingUUIDs) != 0 {
+		return errors.New("mounted MD filesystem identity is not completely observable")
+	}
+	identityStorage, identityArrays, err := collectMDStorageIdentitySnapshot(sysfs, os.DirFS("/proc"))
+	if err != nil {
+		return errors.New("mounted MD storage identity inputs are incomplete")
+	}
+	correlated, err := correlateObservedMountedStorageIdentity(identityStorage, identityArrays, observedMount)
+	if err != nil || len(correlated) != 1 {
+		return errors.New("mounted filesystem did not resolve to its complete MD/member identity")
+	}
+	identity := correlated[0]
+	if identity.anchor != mountPoint || identity.filesystemUUID != qemuMDFilesystemUUID || identity.filesystemUUIDConflict ||
+		identity.sourceName != "md0" || identity.sourceMajor != array.Major || identity.sourceMinor != array.Minor ||
+		len(identity.arrays) != 1 || identity.arrays[0].arrayName != "md0" ||
+		identity.arrays[0].arrayUUID != observedArray.arrayUUID || identity.arrays[0].arrayDiskSeq != array.diskSequence ||
+		identity.arrays[0].level != "raid1" ||
+		len(identity.arrays[0].memberDisks) != 2 || len(identity.physicalDisks) != 2 {
+		return errors.New("mounted MD filesystem, array UUID and member disks did not correlate")
+	}
+	for index, member := range identity.arrays[0].memberDisks {
+		if member != identityGraph[0].memberDisks[index] {
+			return errors.New("mounted MD identity changed its previously observed member binding")
+		}
+	}
+	seenIdentityDisks := make(map[string]bool, len(identity.physicalDisks))
+	for _, disk := range identity.physicalDisks {
+		if (disk.diskName != "sde" && disk.diskName != "sdf") || seenIdentityDisks[disk.diskName] || disk.diskSequence == 0 ||
+			!((disk.serialStatus == identityPresent && disk.serialEvidence != ([32]byte{})) ||
+				(disk.wwnStatus == identityPresent && disk.wwnEvidence != ([32]byte{}))) {
+			return errors.New("mounted MD filesystem resolved to an unexpected or unidentified member disk")
+		}
+		initial, exists := initialMembers[disk.diskName]
+		if !exists || initial.Major != disk.major || initial.Minor != disk.minor ||
+			initial.diskSequence != disk.diskSequence || initial.SerialStatus != disk.serialStatus ||
+			initial.WWNStatus != disk.wwnStatus || initial.serialEvidence != disk.serialEvidence ||
+			initial.wwnEvidence != disk.wwnEvidence {
+			return errors.New("mounted MD identity changed the member disk generation or VPD evidence")
+		}
+		seenIdentityDisks[disk.diskName] = true
+	}
+	if !seenIdentityDisks["sde"] || !seenIdentityDisks["sdf"] {
+		return errors.New("mounted MD filesystem did not resolve both fixed member disks")
+	}
 	for _, name := range memberNames {
 		member, ok := findWholeBlockObservation(mountedInventory.Observations, name)
 		if !ok || !sameBlockTopologyIdentity(initialMembers[name], member) || member.SizeBytes != initialMembers[name].SizeBytes {
@@ -231,6 +276,7 @@ func runQEMUMDStackTest() (result error) {
 	if err != nil || dependent {
 		return errors.New("MD mount was incorrectly attributed to an unrelated QEMU disk")
 	}
+	fmt.Println("PHANTOWD_MD_FILESYSTEM_IDENTITY_READY filesystem_to_md=true md_uuid_internal=true members=2 readonly_mount=true conflict_free=true scope=disposable-qemu-only")
 
 	if err := cleanup(); err != nil {
 		cleaned = true
