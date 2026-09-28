@@ -27,11 +27,15 @@ type Backend interface {
 // private directory. It exposes no reset, delete, enable, or secret persistence.
 // Never copy a Store.
 type Store struct {
-	mu     sync.Mutex
-	engine *revisionstore.Store[Journal]
+	mu      sync.Mutex
+	engine  *revisionstore.Store[Journal]
+	backend Backend
 }
 
-func Open(directory string) (*Store, error) {
+// Open binds one trusted in-process backend for the lifetime of the journal
+// handle. A nil backend permits recovery and inspection only; native mutations
+// require a backend fixed when this Store is opened.
+func Open(directory string, backend Backend) (*Store, error) {
 	e, err := revisionstore.OpenWithCodec(directory, revisionstore.Codec[Journal]{
 		CurrentName: "smb-operation.json", PendingName: ".smb-operation.pending",
 		MaxBytes: MaxBytes, Decode: Decode, Validate: Journal.Validate,
@@ -40,7 +44,7 @@ func Open(directory string) (*Store, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Store{engine: e}, nil
+	return &Store{engine: e, backend: backend}, nil
 }
 
 func (s *Store) Close() error {
@@ -91,19 +95,19 @@ func (s *Store) RecoverInterrupted() (Journal, error) {
 // Begin binds a fresh journal to an existing owner-created Unix identity and
 // refuses any pre-existing passdb entry. The parent identity authority must
 // already have confirmed Unix creation and hold its global all-writer lock.
-func (s *Store) Begin(ctx context.Context, nativeRevision uint64, account serviceaccounts.Account, backend Backend) error {
+func (s *Store) Begin(ctx context.Context, nativeRevision uint64, account serviceaccounts.Account) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if s.engine == nil {
 		return revisionstore.ErrClosed
 	}
-	if ctx == nil || backend == nil || nativeRevision == 0 || !validAccount(account) {
+	if ctx == nil || s.backend == nil || nativeRevision == 0 || !validAccount(account) {
 		return ErrInvalid
 	}
 	if ctx.Err() != nil {
 		return ctx.Err()
 	}
-	observed, err := backend.Observe(ctx, account)
+	observed, err := s.backend.Observe(ctx, account)
 	if err != nil {
 		return ErrObservation
 	}
@@ -132,13 +136,13 @@ func validAccount(account serviceaccounts.Account) bool {
 
 // Step creates at most the passdb entry. Durable intent precedes the native
 // command; resumed intent is ambiguous and moves to review, never replay.
-func (s *Store) Step(ctx context.Context, expected uint64, backend Backend) error {
+func (s *Store) Step(ctx context.Context, expected uint64) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if s.engine == nil {
 		return revisionstore.ErrClosed
 	}
-	if ctx == nil || backend == nil {
+	if ctx == nil {
 		return ErrInvalid
 	}
 	j, err := s.engine.Load()
@@ -157,7 +161,10 @@ func (s *Store) Step(ctx context.Context, expected uint64, backend Backend) erro
 	if ctx.Err() != nil {
 		return ctx.Err()
 	}
-	observed, err := backend.Observe(ctx, j.Account)
+	if s.backend == nil {
+		return ErrInvalid
+	}
+	observed, err := s.backend.Observe(ctx, j.Account)
 	if err != nil {
 		return ErrObservation
 	}
@@ -175,10 +182,10 @@ func (s *Store) Step(ctx context.Context, expected uint64, backend Backend) erro
 		if ctx.Err() != nil {
 			return s.review(intent)
 		}
-		if backend.CreateDisabled(ctx, j.Account) != nil || ctx.Err() != nil {
+		if s.backend.CreateDisabled(ctx, j.Account) != nil || ctx.Err() != nil {
 			return s.review(intent)
 		}
-		after, err := backend.Observe(ctx, j.Account)
+		after, err := s.backend.Observe(ctx, j.Account)
 		if err != nil || after.validateFor(j.Account, true) != nil || !after.Present {
 			return s.review(intent)
 		}
@@ -206,13 +213,13 @@ func (s *Store) Step(ctx context.Context, expected uint64, backend Backend) erro
 // commits intent, then calls a stdin-only backend, verifies the same SID remains
 // disabled, and records confirmation without persisting the password. Any
 // command error, cancellation after intent or uncertain observation is review.
-func (s *Store) SetPasswordDisabled(ctx context.Context, expected uint64, secret []byte, backend Backend) error {
+func (s *Store) SetPasswordDisabled(ctx context.Context, expected uint64, secret []byte) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if s.engine == nil {
 		return revisionstore.ErrClosed
 	}
-	if ctx == nil || backend == nil || !ValidPassword(secret) {
+	if ctx == nil || !ValidPassword(secret) {
 		return ErrInvalid
 	}
 	j, err := s.engine.Load()
@@ -234,7 +241,10 @@ func (s *Store) SetPasswordDisabled(ctx context.Context, expected uint64, secret
 	if ctx.Err() != nil {
 		return ctx.Err()
 	}
-	observed, err := backend.Observe(ctx, j.Account)
+	if s.backend == nil {
+		return ErrInvalid
+	}
+	observed, err := s.backend.Observe(ctx, j.Account)
 	if err != nil {
 		return ErrObservation
 	}
@@ -249,10 +259,10 @@ func (s *Store) SetPasswordDisabled(ctx context.Context, expected uint64, secret
 	}
 	copyOfSecret := bytes.Clone(secret)
 	defer clear(copyOfSecret)
-	if ctx.Err() != nil || backend.SetPasswordDisabled(ctx, j.Account, copyOfSecret) != nil || ctx.Err() != nil {
+	if ctx.Err() != nil || s.backend.SetPasswordDisabled(ctx, j.Account, copyOfSecret) != nil || ctx.Err() != nil {
 		return s.review(intent)
 	}
-	after, err := backend.Observe(ctx, j.Account)
+	after, err := s.backend.Observe(ctx, j.Account)
 	if err != nil || after.validateFor(j.Account, true) != nil || !after.Present || after.SID != j.SID {
 		return s.review(intent)
 	}

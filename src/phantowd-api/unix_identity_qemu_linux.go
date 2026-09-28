@@ -14,6 +14,7 @@ import (
 
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/identityowner"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/identityprovision"
+	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/smbexec"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/serviceaccounts"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/serviceaccountstore"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/unixidentity"
@@ -93,7 +94,11 @@ func exerciseQEMUUnixIdentity() (result error) {
 	inventory := func(context.Context) (serviceaccounts.Reservations, error) {
 		return serviceaccounts.Reservations{UIDs: []uint32{}, GIDs: []uint32{}, Names: []string{}}, nil
 	}
-	owner, err := identityowner.OpenWithSMBBackend(root, inventory, &qemuSMBEnrollmentBackend{config: smbFixtureRoot + "/smb.conf"})
+	smbBackend, err := smbexec.New(smbFixtureRoot + "/smb.conf")
+	if err != nil {
+		return err
+	}
+	owner, err := identityowner.OpenWithSMBBackend(root, inventory, smbBackend)
 	if err != nil {
 		return err
 	}
@@ -138,7 +143,11 @@ func exerciseQEMUUnixIdentity() (result error) {
 	if err := owner.Close(); err != nil {
 		return err
 	}
-	owner, err = identityowner.OpenWithSMBBackend(root, inventory, &qemuSMBEnrollmentBackend{config: smbFixtureRoot + "/smb.conf"})
+	smbBackend, err = smbexec.New(smbFixtureRoot + "/smb.conf")
+	if err != nil {
+		return err
+	}
+	owner, err = identityowner.OpenWithSMBBackend(root, inventory, smbBackend)
 	if err != nil {
 		return err
 	}

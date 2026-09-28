@@ -75,6 +75,8 @@ func Open(directory string, inventory Inventory) (*Owner, error) {
 // OpenWithSMBBackend binds a trusted in-process Samba executor to the Owner for
 // its lifetime. Pass only a fixed implementation created by the firmware
 // service, never a per-request adapter; client protocols cannot configure it.
+// This transfers ownership: if opening fails, a closeable backend is closed;
+// otherwise Owner.Close closes it after draining active operations.
 // The internal package type intentionally keeps this constructor inside the
 // phantowd-api module subtree.
 func OpenWithSMBBackend(directory string, inventory Inventory, smbBackend smbprovision.Backend) (*Owner, error) {
@@ -101,6 +103,7 @@ func ownerDependencies(inventory Inventory) dependencies {
 
 func open(directory string, deps dependencies) (*Owner, error) {
 	if os.Getuid() != 0 || os.Geteuid() != 0 || deps.inventory == nil || deps.observe == nil || deps.executor == nil || !filepath.IsAbs(directory) || filepath.Clean(directory) != directory {
+		closeSMBBackend(deps.smbBackend)
 		return nil, ErrInvalid
 	}
 	fd, err := unix.Openat2(unix.AT_FDCWD, directory, &unix.OpenHow{
@@ -108,6 +111,7 @@ func open(directory string, deps dependencies) (*Owner, error) {
 		Resolve: unix.RESOLVE_NO_SYMLINKS | unix.RESOLVE_NO_MAGICLINKS,
 	})
 	if err != nil {
+		closeSMBBackend(deps.smbBackend)
 		return nil, ErrUnavailable
 	}
 	o := &Owner{root: fd, operations: -1, deps: deps, smbBackend: deps.smbBackend,
@@ -150,6 +154,12 @@ func open(directory string, deps dependencies) (*Owner, error) {
 	return o, nil
 }
 
+func closeSMBBackend(smbBackend smbprovision.Backend) {
+	if closer, ok := smbBackend.(interface{ Close() error }); ok {
+		_ = closer.Close()
+	}
+}
+
 func privateDirectory(st unix.Stat_t) bool {
 	return st.Mode&unix.S_IFMT == unix.S_IFDIR && st.Mode&07777 == 0700 && st.Uid == 0
 }
@@ -187,6 +197,11 @@ func (o *Owner) Close() error {
 	for _, journal := range o.smbJournals {
 		err = errors.Join(err, journal.Close())
 	}
+	if closer, ok := o.smbBackend.(interface{ Close() error }); ok {
+		err = errors.Join(err, closer.Close())
+	}
+	o.smbBackend = nil
+	o.deps.smbBackend = nil
 	for _, journal := range o.journals {
 		err = errors.Join(err, journal.Close())
 	}
@@ -311,7 +326,7 @@ func (o *Owner) loadSMBForAccount(account serviceaccounts.Account, native identi
 		return ErrUnavailable
 	}
 	if store == nil {
-		store, err = smbprovision.Open(fmt.Sprintf("/proc/self/fd/%d/smb", accountFD))
+		store, err = smbprovision.Open(fmt.Sprintf("/proc/self/fd/%d/smb", accountFD), o.smbBackend)
 		if err != nil {
 			return err
 		}
@@ -554,7 +569,7 @@ func (op *SMBOperation) Begin(ctx context.Context, nativeRevision uint64) error 
 		o.failed = true
 		return ErrUnavailable
 	}
-	store, err := smbprovision.Open(fmt.Sprintf("/proc/self/fd/%d/smb", accountFD))
+	store, err := smbprovision.Open(fmt.Sprintf("/proc/self/fd/%d/smb", accountFD), o.smbBackend)
 	closeErr := unix.Close(accountFD)
 	if err != nil || closeErr != nil {
 		if store != nil {
@@ -565,7 +580,7 @@ func (op *SMBOperation) Begin(ctx context.Context, nativeRevision uint64) error 
 	}
 	o.smbJournals[op.id] = store
 	o.smbInodes[op.id] = st.Ino
-	err = store.Begin(ctx, native.Revision, native.Account, o.smbBackend)
+	err = store.Begin(ctx, native.Revision, native.Account)
 	if err == nil {
 		return nil
 	}
@@ -653,7 +668,7 @@ func (op *SMBOperation) Step(ctx context.Context, expected uint64) error {
 	if o.smbBackend == nil {
 		return smbprovision.ErrInvalid
 	}
-	err = store.Step(ctx, expected, o.smbBackend)
+	err = store.Step(ctx, expected)
 	return o.smbFailure(err)
 }
 
@@ -682,7 +697,7 @@ func (op *SMBOperation) SetPasswordDisabled(ctx context.Context, expected uint64
 	if o.smbBackend == nil {
 		return smbprovision.ErrInvalid
 	}
-	err = store.SetPasswordDisabled(ctx, expected, secret, o.smbBackend)
+	err = store.SetPasswordDisabled(ctx, expected, secret)
 	return o.smbFailure(err)
 }
 

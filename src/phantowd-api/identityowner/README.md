@@ -69,19 +69,22 @@ later reservation advances the ledger, old completed journals remain readable
 but their old Step context is refused. State corruption or uncertain storage
 quarantines the owner; no automatic repair or deletion is provided.
 
-`OpenWithSMBBackend` binds one trusted in-process adapter for the Owner's
-lifetime. `Open` without that adapter keeps SMB mutations unavailable.
+`OpenWithSMBBackend` binds and takes lifetime ownership of one trusted
+in-process adapter. `Open` without that adapter keeps SMB mutations
+unavailable.
 `SMB(id)` exposes in-process `Begin`, `Load`, one-step disabled entry creation,
 and stdin-only `SetPasswordDisabled`; the operation methods cannot accept or
 substitute a backend. Each method takes the same authority lock, revalidates the
 exact Unix identity before mutation, and binds the Samba journal to the
 confirmed Unix account/revision. Existing passdb entries are never adopted.
 Uncertain/interrupted Samba intents become review-required and are never
-replayed. This is not HTTP/RPC, exposes no enable method, and has no production
-passdb executor yet. See the
+replayed. A fixed Linux Samba executor exists and the QEMU fixture exercises
+that exact adapter with a private disposable config; it is not yet bound into
+product service startup. This is not HTTP/RPC and exposes no enable method. See the
 [internal `smbprovision` contract](../internal/smbprovision/README.md).
 
-Close waits for the active operation, closes all stores and releases the lease.
+Close waits for the active operation, closes all stores and the bound Samba
+executor/config descriptor exactly once, then releases the lease.
 Context cancellation is cooperative and does not undo committed mutations or
 bound uninterruptible filesystem I/O. Do not copy an Owner. Return values and
 snapshots do not grant lasting Unix/Samba authorization.
@@ -89,8 +92,8 @@ snapshots do not grant lasting Unix/Samba authorization.
 ## Remaining product work
 
 Protected listener/service provisioning, complete inventory and supported legacy
-import, durable EX4 state placement, native orphan recovery, a fixed production
-Samba executor, protected secret ingress, explicit orphan/review workflows,
+import, durable EX4 state placement, native orphan recovery, production startup
+binding/configuration for the Samba executor, protected secret ingress, explicit orphan/review workflows,
 credential-aware enable/disable/retire transitions, HTTP/user authorization and
 panel account management remain necessary. No firmware or production storage
 deployment is authorized by this library.
@@ -101,6 +104,6 @@ store writers, stale revisions, pending-operation allocation refusal, quarantine
 and concurrent requests. The guarded ARMv5 scenario uses the actual owner,
 typed BusyBox executor and unprivileged socket client, closes/reopens the owner
 between group and user creation, and verifies the no-login identity and cleanup.
-Its Samba-enrollment fixture uses the same owner lock/journal with a test-only
-adapter bound to the loopback fixture `smb.conf`; it does not qualify or install
-a production passdb executor.
+Its Samba-enrollment fixture uses the same owner lock/journal and fixed Linux
+executor with a disposable loopback `smb.conf`; it does not qualify product
+startup/configuration, persistent passdb placement, or EX4 behavior.

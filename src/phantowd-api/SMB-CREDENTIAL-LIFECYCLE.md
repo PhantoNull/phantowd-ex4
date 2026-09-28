@@ -1,12 +1,13 @@
 # SMB credential lifecycle: integration gate
 
 Status: **M2.3 adapter passed exact-head hosted ARMv5 QEMU and Stage B3 checks
-and merged as PR #46 (`33df1ed`). The M2.4 first-enrollment coordinator now
-passes local ARMv5 QEMU under `identityowner`; its Samba adapter is test-only**.
-There is still no production credential executor or panel account-password
-endpoint. Protected secret ingress, production state placement, review/recovery,
-and hardware qualification remain open. Dashboard administrator credentials
-are separate and are not affected by this Samba behavior.
+and merged as PR #46 (`33df1ed`). The M2.4 first-enrollment coordinator and
+fixed Linux Samba executor pass local ARMv5 QEMU under `identityowner`; QEMU
+uses the same executor with disposable passdb/config state.** The executor is
+not yet wired into product startup or persistent Samba state. Protected secret
+ingress, product state placement, review/recovery and hardware qualification
+remain open. Dashboard administrator credentials are separate and are not
+affected by this Samba behavior.
 
 ## Why the existing CLI sequence is insufficient
 
@@ -99,14 +100,20 @@ operation. After reopening, a durable create/password intent is committed to
 bound once at Owner open; individual operations cannot replace it. The methods
 are not wired to HTTP or the existing identity socket.
 
-Local verification on 2026-09-28 passed `go vet`, all API Go tests, race tests,
-the 25,000-case journal fuzz lane, and the full Buildroot 2025.02.18 / Linux
-6.18.53 ARMv5 QEMU build and smoke. The QEMU enrollment adapter is deliberately
-test-only: it is fixed to one disposable fixture account and private `smb.conf`,
-uses the guest Samba CLI, and proves empty credentials fail and the new valid
-credential remains denied while disabled. This does not qualify a production
-passdb parser/executor, real EX4 state placement, tdbsam crash/power-loss
-durability, password history, other root writers or hardware behavior.
+Local verification on 2026-09-28 passed root-run `go vet`, all API Go tests and
+race tests, the fixed-count journal fuzz lane, and the full Buildroot 2025.02.18
+/ Linux 6.18.53 ARMv5 QEMU build and smoke. QEMU exercises the same fixed Linux
+`internal/smbexec` executor used for trusted runtime integration, but only with
+one disposable fixture account and private `smb.conf`; it proves empty
+credentials fail and the new valid credential remains denied while disabled.
+The 2026-09-29 follow-up pins the validated configuration inode for the Owner
+lifetime, rejects pathname replacement as a retargeting mechanism, and verifies
+single-close lifecycle behavior. Root-run vet/race tests and a full local
+Buildroot ARMv5 QEMU smoke/two-boot rerun passed. The executor is not yet wired
+to product startup or persistent Samba configuration. This does not qualify
+real EX4 state placement, tdbsam
+crash/power-loss durability, password history, other root writers or hardware
+behavior.
 
 ## Required owner workflow
 

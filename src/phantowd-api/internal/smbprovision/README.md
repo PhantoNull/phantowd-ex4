@@ -50,24 +50,26 @@ authority/operations/<validated-account-id>/smb/
 
 `Store` is a single-operation journal and does not own the global identity lock.
 Only call it through `identityowner.Owner.SMB(id)`, whose `Begin`, `Step`,
-`SetPasswordDisabled` and `Load` hold the shared authority lock. A trusted
-adapter is bound once when the owner opens; no operation accepts a replacement
-backend, and opening without one fails closed for mutations. The ID is resolved
-against the owner ledger before path construction. No Samba methods are wired
-to HTTP or the existing identity socket.
+`SetPasswordDisabled` and `Load` hold the shared authority lock. The trusted
+adapter is bound once when the owner opens and copied into each journal handle
+at `smbprovision.Open`; no operation accepts a replacement backend. Opening
+without one permits recovery/inspection but fails closed for mutations. The ID
+is resolved against the owner ledger before path construction. No Samba methods
+are wired to HTTP or the existing identity socket.
 
 ## Qualification and limits
 
-The interface deliberately has no production passdb command adapter yet. The
-ARMv5 QEMU fixture uses a fixed disposable account and private `smb.conf` to
-exercise the owner coordinator with the pinned Buildroot Samba tools. That
-fixture is not deployable code. It does not qualify the real EX4 Samba state
-location, passdb backend, concurrent non-cooperating root writers, tdbsam crash
-durability, password history, session revocation or hardware power-loss behavior.
+The fixed Linux passdb executor is implemented in the sibling
+[`smbexec` package](../smbexec/README.md). The ARMv5 QEMU fixture exercises that
+same executor against a disposable account and private `smb.conf`; fixture
+configuration and test wiring are not production startup code. This does not
+qualify the real EX4 Samba state location/passdb backend, concurrent
+non-cooperating root writers, tdbsam crash durability, password history,
+session revocation or hardware power-loss behavior.
 
 Tests cover strict journal decoding, password/journal separation, disabled-state
 confirmation, no adoption, shared owner locking, changed Unix identities,
 process exit after command intent and recovery without command replay. Full
-product integration still needs a fixed root-side executor, startup/storage
-placement, protected secret ingress, policy/authorization and the separate
-explicit enable/disable lifecycle.
+product integration still needs to bind the executor to an approved persistent
+Samba configuration during service startup, protected secret ingress,
+policy/authorization and the separate explicit enable/disable lifecycle.

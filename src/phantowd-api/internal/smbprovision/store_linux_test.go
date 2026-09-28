@@ -62,13 +62,13 @@ func (b *modeledBackend) SetPasswordDisabled(_ context.Context, account serviceA
 	return b.passwordErr
 }
 
-func privateStore(t *testing.T) (*Store, string) {
+func privateStore(t *testing.T, backend Backend) (*Store, string) {
 	t.Helper()
 	directory := t.TempDir()
 	if err := os.Chmod(directory, 0700); err != nil {
 		t.Fatal(err)
 	}
-	store, err := Open(directory)
+	store, err := Open(directory, backend)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -78,23 +78,23 @@ func privateStore(t *testing.T) (*Store, string) {
 
 func TestEnrollmentLifecycleStaysDisabledAndNeverPersistsPassword(t *testing.T) {
 	ctx := context.Background()
-	s, directory := privateStore(t)
 	b := &modeledBackend{}
-	if err := s.Begin(ctx, 5, testAccount, b); err != nil {
+	s, directory := privateStore(t, b)
+	if err := s.Begin(ctx, 5, testAccount); err != nil {
 		t.Fatal(err)
 	}
-	if err := s.Step(ctx, 1, b); err != nil {
+	if err := s.Step(ctx, 1); err != nil {
 		t.Fatal(err)
 	}
 	j, err := s.Load()
 	if err != nil || j.Phase != DisabledNoPassword || j.Revision != 3 || j.SID != testSID || !b.observation.Disabled {
 		t.Fatal("new account was not durably confirmed disabled", j, err, b.observation)
 	}
-	if err := s.Step(ctx, 3, b); !errors.Is(err, ErrPending) || b.createCalls != 1 {
+	if err := s.Step(ctx, 3); !errors.Is(err, ErrPending) || b.createCalls != 1 {
 		t.Fatal("disabled account step retried or hid pending password work", err, b.createCalls)
 	}
 	secret := []byte("a-local-fixture-secret")
-	if err := s.SetPasswordDisabled(ctx, 3, secret, b); err != nil {
+	if err := s.SetPasswordDisabled(ctx, 3, secret); err != nil {
 		t.Fatal(err)
 	}
 	for i := range secret {
@@ -114,7 +114,7 @@ func TestEnrollmentLifecycleStaysDisabledAndNeverPersistsPassword(t *testing.T) 
 	if err := s.Close(); err != nil {
 		t.Fatal(err)
 	}
-	reopened, err := Open(directory)
+	reopened, err := Open(directory, b)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -122,19 +122,29 @@ func TestEnrollmentLifecycleStaysDisabledAndNeverPersistsPassword(t *testing.T) 
 	if j, err := reopened.Load(); err != nil || j.Phase != CredentialSetDisabled || j.Revision != 5 {
 		t.Fatal("confirmed enrollment did not survive reopen", j, err)
 	}
-	if err := reopened.Step(ctx, 5, b); err != nil || b.createCalls != 1 || b.setCalls != 1 {
+	if err := reopened.Step(ctx, 5); err != nil || b.createCalls != 1 || b.setCalls != 1 {
 		t.Fatal("completed enrollment repeated a native operation", err, b.createCalls, b.setCalls)
 	}
-	if err := reopened.SetPasswordDisabled(ctx, 4, []byte("another-local-fixture-secret"), b); !errors.Is(err, ErrConflict) {
+	if err := reopened.SetPasswordDisabled(ctx, 4, []byte("another-local-fixture-secret")); !errors.Is(err, ErrConflict) {
 		t.Fatal("stale credential revision accepted", err)
 	}
 }
 
+func TestStoreBackendIsFixedAtOpen(t *testing.T) {
+	s, _ := privateStore(t, nil)
+	if err := s.Begin(context.Background(), 5, testAccount); !errors.Is(err, ErrInvalid) {
+		t.Fatal("read-only store opened without a bound trusted backend became mutating", err)
+	}
+	if j, err := s.Load(); !errors.Is(err, revisionstore.ErrNotInitialized) || j != (Journal{}) {
+		t.Fatal("backend refusal created an enrollment journal", j, err)
+	}
+}
+
 func TestPreexistingPassdbEntryIsNotAdopted(t *testing.T) {
-	s, _ := privateStore(t)
 	b := &modeledBackend{observation: Observation{Present: true, Name: testAccount.Name,
 		UID: testAccount.UID, GID: testAccount.GID, SID: testSID, Disabled: true}}
-	if err := s.Begin(context.Background(), 5, testAccount, b); !errors.Is(err, ErrReview) {
+	s, _ := privateStore(t, b)
+	if err := s.Begin(context.Background(), 5, testAccount); !errors.Is(err, ErrReview) {
 		t.Fatal("pre-existing passdb account was adopted", err)
 	}
 	if _, err := s.Load(); !errors.Is(err, revisionstore.ErrNotInitialized) || b.createCalls != 0 || b.setCalls != 0 {
@@ -143,14 +153,14 @@ func TestPreexistingPassdbEntryIsNotAdopted(t *testing.T) {
 }
 
 func TestPassdbEntryAppearingBeforeCreateIntentIsQuarantined(t *testing.T) {
-	s, directory := privateStore(t)
 	b := &modeledBackend{}
-	if err := s.Begin(context.Background(), 5, testAccount, b); err != nil {
+	s, directory := privateStore(t, b)
+	if err := s.Begin(context.Background(), 5, testAccount); err != nil {
 		t.Fatal(err)
 	}
 	b.observation = Observation{Present: true, Name: testAccount.Name, UID: testAccount.UID,
 		GID: testAccount.GID, SID: testSID, Disabled: true}
-	if err := s.Step(context.Background(), 1, b); !errors.Is(err, ErrReview) || b.createCalls != 0 {
+	if err := s.Step(context.Background(), 1); !errors.Is(err, ErrReview) || b.createCalls != 0 {
 		t.Fatal("a passdb entry that appeared after Begin was adopted or mutated", err, b.createCalls)
 	}
 	journal, err := s.Load()
@@ -160,24 +170,24 @@ func TestPassdbEntryAppearingBeforeCreateIntentIsQuarantined(t *testing.T) {
 	if err := s.Close(); err != nil {
 		t.Fatal(err)
 	}
-	reopened, err := Open(directory)
+	reopened, err := Open(directory, b)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer reopened.Close()
-	if err := reopened.Step(context.Background(), 2, b); !errors.Is(err, ErrReview) || b.createCalls != 0 {
+	if err := reopened.Step(context.Background(), 2); !errors.Is(err, ErrReview) || b.createCalls != 0 {
 		t.Fatal("pre-intent passdb collision was retried after reopen", err, b.createCalls)
 	}
 }
 
 func TestPreCommandObservationFailureLeavesReservedState(t *testing.T) {
-	s, _ := privateStore(t)
 	b := &modeledBackend{}
-	if err := s.Begin(context.Background(), 5, testAccount, b); err != nil {
+	s, _ := privateStore(t, b)
+	if err := s.Begin(context.Background(), 5, testAccount); err != nil {
 		t.Fatal(err)
 	}
 	b.observeErr = errors.New("PRIVATE passdb details")
-	if err := s.Step(context.Background(), 1, b); !errors.Is(err, ErrObservation) {
+	if err := s.Step(context.Background(), 1); !errors.Is(err, ErrObservation) {
 		t.Fatal("unavailable pre-command observation was not refused", err)
 	}
 	b.observeErr = nil
@@ -187,12 +197,12 @@ func TestPreCommandObservationFailureLeavesReservedState(t *testing.T) {
 }
 
 func TestAmbiguousCreateIsReviewAndNeverReplayed(t *testing.T) {
-	s, directory := privateStore(t)
 	b := &modeledBackend{createErr: errors.New("PRIVATE command response lost")}
-	if err := s.Begin(context.Background(), 5, testAccount, b); err != nil {
+	s, directory := privateStore(t, b)
+	if err := s.Begin(context.Background(), 5, testAccount); err != nil {
 		t.Fatal(err)
 	}
-	if err := s.Step(context.Background(), 1, b); !errors.Is(err, ErrReview) || strings.Contains(err.Error(), "PRIVATE") {
+	if err := s.Step(context.Background(), 1); !errors.Is(err, ErrReview) || strings.Contains(err.Error(), "PRIVATE") {
 		t.Fatal("ambiguous command did not return redacted review", err)
 	}
 	if j, err := s.Load(); err != nil || j.Phase != ReviewRequired || j.Revision != 3 {
@@ -201,27 +211,27 @@ func TestAmbiguousCreateIsReviewAndNeverReplayed(t *testing.T) {
 	if err := s.Close(); err != nil {
 		t.Fatal(err)
 	}
-	reopened, err := Open(directory)
+	reopened, err := Open(directory, b)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer reopened.Close()
-	if err := reopened.Step(context.Background(), 3, b); !errors.Is(err, ErrReview) || b.createCalls != 1 {
+	if err := reopened.Step(context.Background(), 3); !errors.Is(err, ErrReview) || b.createCalls != 1 {
 		t.Fatal("ambiguous create was replayed after reopen", err, b.createCalls)
 	}
 }
 
 func TestAmbiguousPasswordSetIsReviewAndNeverReplayed(t *testing.T) {
-	s, directory := privateStore(t)
 	b := &modeledBackend{}
-	if err := s.Begin(context.Background(), 5, testAccount, b); err != nil {
+	s, directory := privateStore(t, b)
+	if err := s.Begin(context.Background(), 5, testAccount); err != nil {
 		t.Fatal(err)
 	}
-	if err := s.Step(context.Background(), 1, b); err != nil {
+	if err := s.Step(context.Background(), 1); err != nil {
 		t.Fatal(err)
 	}
 	b.passwordErr = errors.New("PRIVATE password result uncertain")
-	if err := s.SetPasswordDisabled(context.Background(), 3, []byte("private-fixture-password"), b); !errors.Is(err, ErrReview) || strings.Contains(err.Error(), "PRIVATE") {
+	if err := s.SetPasswordDisabled(context.Background(), 3, []byte("private-fixture-password")); !errors.Is(err, ErrReview) || strings.Contains(err.Error(), "PRIVATE") {
 		t.Fatal("ambiguous password result was not redacted review", err)
 	}
 	if j, err := s.Load(); err != nil || j.Phase != ReviewRequired || j.Revision != 5 || j.SID != testSID {
@@ -234,12 +244,12 @@ func TestAmbiguousPasswordSetIsReviewAndNeverReplayed(t *testing.T) {
 	if err := s.Close(); err != nil {
 		t.Fatal(err)
 	}
-	reopened, err := Open(directory)
+	reopened, err := Open(directory, b)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer reopened.Close()
-	if err := reopened.SetPasswordDisabled(context.Background(), 5, []byte("private-fixture-password"), b); !errors.Is(err, ErrReview) || b.setCalls != 1 {
+	if err := reopened.SetPasswordDisabled(context.Background(), 5, []byte("private-fixture-password")); !errors.Is(err, ErrReview) || b.setCalls != 1 {
 		t.Fatal("ambiguous password was replayed after reopen", err, b.setCalls)
 	}
 }
@@ -249,11 +259,11 @@ func TestHelperCrashAfterCreateIntent(t *testing.T) {
 	if directory == "" {
 		return
 	}
-	s, err := Open(directory)
+	s, err := Open(directory, &exitAfterIntentBackend{})
 	if err != nil {
 		os.Exit(80)
 	}
-	if err := s.Step(context.Background(), 1, &exitAfterIntentBackend{}); err != nil {
+	if err := s.Step(context.Background(), 1); err != nil {
 		os.Exit(81)
 	}
 	os.Exit(82)
@@ -276,8 +286,9 @@ func TestProcessExitAfterIntentRequiresReviewWithoutReplay(t *testing.T) {
 	if os.Getenv("PHANTOWD_SMBPROVISION_CRASH_DIR") != "" {
 		return
 	}
-	s, directory := privateStore(t)
-	if err := s.Begin(context.Background(), 5, testAccount, &modeledBackend{}); err != nil {
+	backend := &modeledBackend{}
+	s, directory := privateStore(t, backend)
+	if err := s.Begin(context.Background(), 5, testAccount); err != nil {
 		t.Fatal(err)
 	}
 	if err := s.Close(); err != nil {
@@ -290,13 +301,13 @@ func TestProcessExitAfterIntentRequiresReviewWithoutReplay(t *testing.T) {
 	} else if exit, ok := err.(*exec.ExitError); !ok || exit.ExitCode() != 42 {
 		t.Fatal("unexpected child process outcome", err)
 	}
-	reopened, err := Open(directory)
+	backend = &modeledBackend{}
+	reopened, err := Open(directory, backend)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer reopened.Close()
-	backend := &modeledBackend{}
-	if err := reopened.Step(context.Background(), 2, backend); !errors.Is(err, ErrReview) || backend.createCalls != 0 {
+	if err := reopened.Step(context.Background(), 2); !errors.Is(err, ErrReview) || backend.createCalls != 0 {
 		t.Fatal("resumed create intent was not quarantined", err, backend.createCalls)
 	}
 	if j, err := reopened.Load(); err != nil || j.Phase != ReviewRequired || j.Revision != 3 {
@@ -309,13 +320,13 @@ func TestHelperCrashAfterPasswordIntent(t *testing.T) {
 	if directory == "" {
 		return
 	}
-	s, err := Open(directory)
+	backend := &exitAfterPasswordIntentBackend{observation: Observation{Present: true, Name: testAccount.Name,
+		UID: testAccount.UID, GID: testAccount.GID, SID: testSID, Disabled: true}}
+	s, err := Open(directory, backend)
 	if err != nil {
 		os.Exit(90)
 	}
-	backend := &exitAfterPasswordIntentBackend{observation: Observation{Present: true, Name: testAccount.Name,
-		UID: testAccount.UID, GID: testAccount.GID, SID: testSID, Disabled: true}}
-	_ = s.SetPasswordDisabled(context.Background(), 3, []byte("private-crash-fixture-secret"), backend)
+	_ = s.SetPasswordDisabled(context.Background(), 3, []byte("private-crash-fixture-secret"))
 	os.Exit(91)
 }
 
@@ -335,12 +346,12 @@ func (*exitAfterPasswordIntentBackend) SetPasswordDisabled(context.Context, serv
 }
 
 func TestInterruptedPasswordIntentIsRecoveredToReviewWithoutRetry(t *testing.T) {
-	s, directory := privateStore(t)
 	backend := &modeledBackend{}
-	if err := s.Begin(context.Background(), 5, testAccount, backend); err != nil {
+	s, directory := privateStore(t, backend)
+	if err := s.Begin(context.Background(), 5, testAccount); err != nil {
 		t.Fatal(err)
 	}
-	if err := s.Step(context.Background(), 1, backend); err != nil {
+	if err := s.Step(context.Background(), 1); err != nil {
 		t.Fatal(err)
 	}
 	if err := s.Close(); err != nil {
@@ -353,7 +364,7 @@ func TestInterruptedPasswordIntentIsRecoveredToReviewWithoutRetry(t *testing.T) 
 	} else if exit, ok := err.(*exec.ExitError); !ok || exit.ExitCode() != 43 {
 		t.Fatal("unexpected child process outcome", err)
 	}
-	reopened, err := Open(directory)
+	reopened, err := Open(directory, backend)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -362,8 +373,7 @@ func TestInterruptedPasswordIntentIsRecoveredToReviewWithoutRetry(t *testing.T) 
 	if err != nil || journal.Phase != ReviewRequired || journal.Revision != 5 || journal.SID != testSID {
 		t.Fatal("password intent was not recovered as review", journal, err)
 	}
-	backend = &modeledBackend{}
-	if err := reopened.SetPasswordDisabled(context.Background(), 5, []byte("private-crash-fixture-secret"), backend); !errors.Is(err, ErrReview) || backend.setCalls != 0 {
+	if err := reopened.SetPasswordDisabled(context.Background(), 5, []byte("private-crash-fixture-secret")); !errors.Is(err, ErrReview) || backend.setCalls != 0 {
 		t.Fatal("interrupted password command was replayed", err, backend.setCalls)
 	}
 	data, err := os.ReadFile(directory + "/smb-operation.json")
@@ -373,15 +383,15 @@ func TestInterruptedPasswordIntentIsRecoveredToReviewWithoutRetry(t *testing.T) 
 }
 
 func TestInvalidPasswordDoesNotAdvanceJournal(t *testing.T) {
-	s, _ := privateStore(t)
 	b := &modeledBackend{}
-	if err := s.Begin(context.Background(), 5, testAccount, b); err != nil {
+	s, _ := privateStore(t, b)
+	if err := s.Begin(context.Background(), 5, testAccount); err != nil {
 		t.Fatal(err)
 	}
-	if err := s.Step(context.Background(), 1, b); err != nil {
+	if err := s.Step(context.Background(), 1); err != nil {
 		t.Fatal(err)
 	}
-	if err := s.SetPasswordDisabled(context.Background(), 3, []byte("bad\npassword"), b); !errors.Is(err, ErrInvalid) || b.setCalls != 0 {
+	if err := s.SetPasswordDisabled(context.Background(), 3, []byte("bad\npassword")); !errors.Is(err, ErrInvalid) || b.setCalls != 0 {
 		t.Fatal("invalid password was dispatched", err, b.setCalls)
 	}
 	if j, err := s.Load(); err != nil || j.Phase != DisabledNoPassword || j.Revision != 3 {

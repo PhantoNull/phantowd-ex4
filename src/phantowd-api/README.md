@@ -473,11 +473,15 @@ old credential, the root-only/stdin guards and unchanged Unix account files.
 The separate [M2.4 enrollment coordinator](internal/smbprovision/README.md) now
 journals the absent -> created-disabled -> credential-set-disabled flow under
 the shared `identityowner` lock. One trusted adapter is bound when the owner
-opens; operation calls cannot replace it. Local Go host/race/fuzz checks and the full local
-Buildroot ARMv5 QEMU smoke passed on 2026-09-28, including real fixture Samba
-commands and process-interruption recovery. QEMU uses a fixed disposable user,
-private `smb.conf` and test-only adapter: this is not a production credential
-backend, protected secret-ingress path or deployed account API.
+opens; operation calls cannot replace it. Local Go host/race/fuzz checks and the
+full local Buildroot ARMv5 QEMU smoke passed on 2026-09-28, including the fixed
+Linux Samba executor against real fixture commands and process-interruption
+recovery. QEMU uses a disposable user and private `smb.conf`; no product service
+startup/configuration or protected secret-ingress path is wired, and no account
+API is exposed. A 2026-09-29 hardening rerun confirms the config inode remains
+pinned for the Owner lifetime, pathname replacement cannot retarget the
+executor, and owner shutdown closes that executor once; local host checks and
+full ARMv5 QEMU smoke/two-boot tests pass.
 
 The [native identity authority](identityowner/README.md) now owns one configured
 reservation ledger and its journals under a lifetime lease. It serializes typed
@@ -485,9 +489,8 @@ allocation/creation, freezes allocation behind incomplete work and refuses
 orphaned cross-document state after interruption. The guarded ARMv5 channel now
 uses that owner. Complete imported/offline ownership discovery, qualified state,
 explicit recovery, credential transitions and deployed listener/panel wiring
-remain required. No enable method, HTTP/RPC credential endpoint or production
-Samba command adapter is provided by the M2.4 slice; this is not yet a product
-account-management service.
+remain required. No enable method or HTTP/RPC credential endpoint is provided
+by the M2.4 slice; this is not yet a product account-management service.
 
 The [local identity channel](identityrpc/README.md) now connects an actually
 unprivileged ARMv5 fixture child to the root-owned journal/executor using

@@ -83,6 +83,16 @@ type modeledSMB struct {
 	onCreate    func()
 }
 
+type closeCountingSMB struct {
+	modeledSMB
+	closeCalls int
+}
+
+func (b *closeCountingSMB) Close() error {
+	b.closeCalls++
+	return nil
+}
+
 func (b *modeledSMB) Observe(_ context.Context, account serviceaccounts.Account) (smbprovision.Observation, error) {
 	if b.observation.Present && (b.observation.Name != account.Name || b.observation.UID != account.UID || b.observation.GID != account.GID) {
 		return smbprovision.Observation{}, errors.New("PRIVATE SMB account mismatch")
@@ -161,6 +171,39 @@ func fixtureWithSMB(t *testing.T, smbBackend smbprovision.Backend) (*Owner, *mod
 	}
 	t.Cleanup(func() { o.Close() })
 	return o, m, dir
+}
+
+func TestOpenWithSMBBackendTransfersAndClosesOwnershipExactlyOnce(t *testing.T) {
+	if os.Getuid() != 0 {
+		t.Skip("root authority test runs only in isolated container")
+	}
+	inventory := Inventory(func(context.Context) (serviceaccounts.Reservations, error) {
+		return serviceaccounts.Reservations{UIDs: []uint32{}, GIDs: []uint32{}, Names: []string{}}, nil
+	})
+
+	failedBackend := &closeCountingSMB{}
+	invalidDirectory := t.TempDir()
+	if err := os.Chmod(invalidDirectory, 0700); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := OpenWithSMBBackend(invalidDirectory, inventory, failedBackend); err == nil || failedBackend.closeCalls != 1 {
+		t.Fatalf("failed open must close the transferred backend exactly once: closes=%d error=%v", failedBackend.closeCalls, err)
+	}
+
+	backend := &closeCountingSMB{}
+	owner, err := OpenWithSMBBackend(provision(t), inventory, backend)
+	if err != nil {
+		t.Fatal("open owner with bound SMB backend:", err)
+	}
+	if owner.smbBackend != backend || owner.deps.smbBackend != backend {
+		t.Fatal("Owner did not retain the one startup-bound SMB backend")
+	}
+	if err := owner.Close(); err != nil {
+		t.Fatal("close owner:", err)
+	}
+	if backend.closeCalls != 1 || owner.smbBackend != nil || owner.deps.smbBackend != nil {
+		t.Fatalf("owner did not release the backend once: closes=%d owner=%p deps=%p", backend.closeCalls, owner.smbBackend, owner.deps.smbBackend)
+	}
 }
 
 func TestOwnerLifecycleAndExclusiveStores(t *testing.T) {
