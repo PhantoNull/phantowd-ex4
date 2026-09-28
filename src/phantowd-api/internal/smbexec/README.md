@@ -50,6 +50,7 @@ power-loss durability, or an installed firmware service.
 
 The executor is not wired to product service startup. Before that, the project
 must choose and provision the persistent Samba configuration/passdb paths,
-define ownership and startup ordering, and design protected secret ingress and
-operator handling for review-required state. No credential HTTP/RPC API or
-automatic enable path exists in this slice.
+define ownership and startup ordering, connect the fixture-only internal v2
+channel to product startup and HTTP authorization, and define operator handling
+for review-required state. No HTTP credential endpoint or automatic enable path
+exists in this slice.

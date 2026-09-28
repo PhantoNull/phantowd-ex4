@@ -75,7 +75,7 @@ Status vocabulary:
 | Admin management | Host/DOM and ARMv5 authentication, password-change, revocation and clean-reboot tests. Product enrollment, state placement, recovery and certificates remain open. |
 | Desired SMB/NFS policy | Strict models, revision stores and opt-in development editing. Stored policy does not activate services. |
 | Native identities | Reservation ledger, protected local reader, creation journal, typed executor, cooperative owner/listener and multi-account router. Not a deployed account manager. |
-| Samba credentials | M2.3 root-only disabled-password patch passed exact-head hosted ARMv5 QEMU and Stage B3 checks, merging as `33df1ed`. M2.4 first enrollment is coordinated by `identityowner`; the fixed root-side executor and passdb parser are implemented and locally exercised by the same ARMv5 QEMU adapter against disposable Samba state. Production startup/config binding, protected secret ingress and lifecycle APIs remain open. |
+| Samba credentials | M2.3 root-only disabled-password patch passed exact-head hosted ARMv5 QEMU and Stage B3 checks, merging as `33df1ed`. M2.4 first enrollment is coordinated by `identityowner`; the fixed root-side executor, journal and internal binary Unix-socket v2 secret transport are implemented and locally exercised by ARMv5 QEMU against disposable Samba state. Product startup/config binding, HTTP authorization binding and lifecycle APIs remain open. |
 | Storage | GPT/ext/MD image research, sysfs/mount observations, restricted libblkid helper, duplicate SCSI VPD identity reporting, generation-bound descriptor probing, complete-set matching, partition-parent correlation, holder/slave topology and trusted read-only broker. PR #42 passed exact-head host and ARMv5 QEMU checks on `7254555` and merged as `059fa24`; PR #44 added read-only mounted filesystem UUID / MD identity correlation and passed host, Stage B3 and QEMU checks before merging as `db9fd33`. These are QEMU-fixture results only. Persistent volume identity, EX4 device-rule qualification, global-use accounting, WD compatibility resolution, import/mount authority and product RAID management remain unqualified or unimplemented. |
 | Hardware | Short diskless serial/RAM and Ethernet/temperature observations. Networking stability, controller/cooling, storage and recovery remain unqualified. |
 | Updates | Host-side signed metadata/payload/version assessment. No on-device installer, update transaction, recovery or installation release. |
@@ -228,8 +228,11 @@ under `identityowner` and passed local Go host/race/fuzz plus ARMv5 QEMU on
 2026-09-28. A 2026-09-29 hardening rerun verifies the opened Samba config inode
 is pinned and released with the Owner and again passes local ARMv5 QEMU. QEMU
 exercises the same executor against a private disposable
-configuration. Production startup/config binding, protected secret ingress,
-account API/daemon, operator recovery and hardware qualification remain open.
+configuration. The credential-free JSON v1 identity protocol remains unchanged;
+an internal binary Unix-socket v2 channel now carries bounded SMB password bytes
+only for typed enrollment operations and is exercised by the ARMv5 fixture.
+Production startup/config binding, HTTP authorization binding, operator
+recovery and hardware qualification remain open.
 **Depends on:** M1; M3/M8 supply storage/import exclusions.
 
 - **M2.1 — Complete allocation inventory.** Reconcile local Unix accounts,
@@ -264,10 +267,13 @@ account API/daemon, operator recovery and hardware qualification remain open.
   journal at open; the validated config inode stays pinned for the Owner
   lifetime and is closed after active operations drain. Operation calls cannot
   substitute the backend. Reopened intent becomes
-  review-required without command replay. No HTTP/RPC method or enable path
-  exists. The executor is exercised in local QEMU using only disposable
+  review-required without command replay. The internal credential-bearing
+  version-2 Unix-socket method is bound to the Owner resolver and used only by
+  the disposable QEMU fixture; no HTTP endpoint or enable path exists. The
+  executor is exercised in local QEMU using only disposable
   passdb/config state; it is not yet wired to product startup or persistent
-  Samba state. **Still required:** protected secret ingress; explicit
+  Samba state. **Still required:** production listener/startup wiring and
+  HTTP-session-to-owner authorization binding; explicit
   review/operator recovery; separate password
   replacement, enable, disable and retirement intent/result states. Retain
   tombstones; retirement must not silently reassign existing file ownership.
@@ -739,11 +745,13 @@ These features are separate scope, not shortcuts around core acceptance:
 4. **M2.3/M2.4:** the disabled-preserving Samba primitive is merged as PR #46
    (`33df1ed`) after exact-head hosted ARMv5 QEMU and Stage B3 checks. The local
    M2.4 owner coordinator and fixed executor prove first enrollment in QEMU
-   only. Next bind the executor to an approved product Samba config at service
-   startup and design protected secret ingress, then qualify tdbsam/password
+   only. Next bind the executor and fixture-only local v2 channel to an
+   approved product Samba config at service startup and the HTTP authorization
+   boundary, then qualify tdbsam/password
    history, SID/RID binding, recovery and non-cooperating writer behavior. No
    HTTP credential endpoint or automatic enable.
-5. **M1.3 / M2.4 follow-on:** implement protected secret ingress and operator
+5. **M1.3 / M2.4 follow-on:** connect the internal credential channel to a
+   production-owned listener and authorized operator workflow; add review
    reconciliation around the qualified primitive. Preserve uncertainty; never
    persist or replay secrets.
 6. **M4.1:** define and test the activation plan against qualified fixture volumes;

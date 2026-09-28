@@ -135,10 +135,12 @@ func ValidPassword(secret []byte) bool {
 	if len(secret) < MinPasswordBytes || len(secret) > MaxPasswordBytes || !utf8.Valid(secret) {
 		return false
 	}
-	for _, r := range string(secret) {
+	for remaining := secret; len(remaining) > 0; {
+		r, size := utf8.DecodeRune(remaining)
 		if unicode.IsControl(r) {
 			return false
 		}
+		remaining = remaining[size:]
 	}
 	return true
 }

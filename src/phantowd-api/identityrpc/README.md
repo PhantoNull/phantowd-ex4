@@ -1,8 +1,9 @@
 # Local identity operation channel (Linux)
 
 This library connects an unprivileged caller to **already reserved and
-journaled** native identity operations. It is not a deployed `privd`, a general
-account API or a deployed socket service. Production HTTP does not open it.
+journaled** native identity operations and a separately versioned internal
+Samba credential channel. It is not a deployed `privd`, a general account API
+or a deployed socket service. Production HTTP does not open it.
 The guarded ARMv5 scenario now uses it for actual group/user creation through
 [identityprovision](../identityprovision/README.md) and
 [identityexec](../identityexec/README.md).
@@ -40,8 +41,9 @@ historical journals may remain readable after later reservations even when their
 older registry context prevents another Step. A journal revision belongs to its
 account, not to every account at that revision number.
 
-Each connection carries exactly one four-byte big-endian length followed by
-one strict JSON request (1..1024 bytes), then one equally bounded response.
+The native identity protocol carries exactly one four-byte big-endian length
+followed by one strict JSON request (1..1024 bytes), then one equally bounded
+response.
 All four request and response fields are mandatory; version is exactly 1.
 Duplicate/unknown/case-variant keys, nulls, invalid UTF-8/surrogates, nested
 objects, trailing JSON and invalid actions/revisions are refused. Subsequent
@@ -52,17 +54,47 @@ frames are never dispatched: the connection closes after the first response.
 ```
 
 Only `status` (revision 0) and `step` (positive expected journal revision)
-exist. The symbolic account ID must match the bound or resolved journal. The client cannot
-select UID/GID, names, paths, binaries, arguments, passwords, storage or a
-backend. `step` reloads the trusted registry and delegates exact revision and
-account checks to the journal before any native command. There is no Begin,
-reset, rollback, delete, adoption, repair or arbitrary execution operation.
+exist in version 1. The symbolic account ID must match the bound or resolved
+journal. The client cannot select UID/GID, names, paths, binaries, arguments,
+passwords, storage or a backend. `step` reloads the trusted registry and
+delegates exact revision and account checks to the journal before any native
+command. There is no reset, rollback, delete, adoption, repair or arbitrary
+execution operation.
 
-Successful replies carry a validated journal phase/revision. Other codes are
-only `busy`, `conflict`, `review`, `unavailable` or `invalid`, with no backend
-diagnostics, credentials or raw input. `status` reads the durable journal; it
-does not prove current Unix/Samba state or service readiness. `ok` can describe
-a review-required journal when reading status; it is not activation permission.
+## Internal Samba credential channel (version 2)
+
+The same protected Unix listener can route a second, explicitly versioned
+binary frame identified by `PWDS`. Version 1 remains strict JSON and never
+accepts a password field. Version 2 has a fixed header, bounded symbolic
+account ID, expected revision, action code and (only for
+`set-password-disabled`) at most 256 raw password bytes. JSON, argv,
+environment variables, logs, responses and journals never carry the secret.
+The request body is cleared after dispatch; the caller's input slice is not
+modified. This reduces exposure but is not a guarantee that the Go runtime or
+kernel held no transient copies.
+
+The only version-2 actions are `status`, `begin`, `step`, and
+`set-password-disabled`. Their authority is the trusted SMB resolver bound by
+the root process; QEMU resolves only `identityowner.Owner.SMB(id)`, whose
+backend was itself pinned when that Owner opened. No per-request backend or
+executor is accepted. The response is the same four-field, credential-free
+JSON shape with version 2 and a restricted phase/revision vocabulary. Errors
+are reduced to fixed codes; commands and enablement are not remotely
+selectable.
+
+The channel is currently library/QEMU functionality, not a product service:
+the ARMv5 test child drives disposable accounts through the protected socket,
+including a password assignment while Samba keeps the account disabled.
+Production socket/startup wiring, HTTP authorization-to-operation binding,
+operator recovery, explicit enablement, and real-device/persistent-state
+qualification remain open. No HTTP endpoint is added by this channel.
+
+Successful replies carry a validated journal phase/revision. Version 1 errors
+are only `busy`, `conflict`, `review`, `unavailable` or `invalid`; version 2
+additionally reports `pending`. There are no backend diagnostics, credentials
+or raw input in replies. `status` reads the durable journal; it does not prove
+current Unix/Samba state or service readiness. `ok` can describe a
+review-required journal when reading status; it is not activation permission.
 
 The server admits one request's parsing/state work without queuing per instance,
 before reading its body. The admission lock releases after the response snapshot

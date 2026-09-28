@@ -482,7 +482,7 @@ func (op *SMBOperation) current(ctx context.Context) (*Owner, identityprovision.
 		if native.Phase == identityprovision.ReviewRequired {
 			return nil, identityprovision.Journal{}, nil, ErrReview
 		}
-		return nil, identityprovision.Journal{}, nil, ErrPending
+		return nil, identityprovision.Journal{}, nil, errors.Join(ErrPending, smbprovision.ErrPending)
 	}
 	store := o.smbJournals[op.id]
 	if store == nil {
@@ -516,7 +516,7 @@ func (op *SMBOperation) Begin(ctx context.Context, nativeRevision uint64) error 
 		if native.Phase == identityprovision.ReviewRequired {
 			return ErrReview
 		}
-		return ErrPending
+		return errors.Join(ErrPending, smbprovision.ErrPending)
 	}
 	if native.Revision != nativeRevision {
 		return ErrConflict

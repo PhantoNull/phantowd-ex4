@@ -54,8 +54,10 @@ Only call it through `identityowner.Owner.SMB(id)`, whose `Begin`, `Step`,
 adapter is bound once when the owner opens and copied into each journal handle
 at `smbprovision.Open`; no operation accepts a replacement backend. Opening
 without one permits recovery/inspection but fails closed for mutations. The ID
-is resolved against the owner ledger before path construction. No Samba methods
-are wired to HTTP or the existing identity socket.
+is resolved against the owner ledger before path construction. The separate
+`identityrpc` version-2 local channel transports these typed Owner operations
+only in the disposable QEMU fixture. No HTTP method or production listener
+startup is supplied here.
 
 ## Qualification and limits
 
@@ -70,6 +72,6 @@ session revocation or hardware power-loss behavior.
 Tests cover strict journal decoding, password/journal separation, disabled-state
 confirmation, no adoption, shared owner locking, changed Unix identities,
 process exit after command intent and recovery without command replay. Full
-product integration still needs to bind the executor to an approved persistent
-Samba configuration during service startup, protected secret ingress,
+product integration still needs to bind the executor and local channel to an
+approved persistent Samba configuration during service startup, HTTP
 policy/authorization and the separate explicit enable/disable lifecycle.

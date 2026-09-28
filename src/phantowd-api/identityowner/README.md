@@ -80,8 +80,11 @@ confirmed Unix account/revision. Existing passdb entries are never adopted.
 Uncertain/interrupted Samba intents become review-required and are never
 replayed. A fixed Linux Samba executor exists and the QEMU fixture exercises
 that exact adapter with a private disposable config; it is not yet bound into
-product service startup. This is not HTTP/RPC and exposes no enable method. See the
-[internal `smbprovision` contract](../internal/smbprovision/README.md).
+product service startup. The internal version-2 Unix channel can transport
+typed enrollment operations but adds no HTTP endpoint and exposes no enable
+method; production listener/startup wiring remains absent. See the
+[internal `smbprovision` contract](../internal/smbprovision/README.md) and
+[channel boundary](../identityrpc/README.md).
 
 Close waits for the active operation, closes all stores and the bound Samba
 executor/config descriptor exactly once, then releases the lease.
@@ -93,7 +96,7 @@ snapshots do not grant lasting Unix/Samba authorization.
 
 Protected listener/service provisioning, complete inventory and supported legacy
 import, durable EX4 state placement, native orphan recovery, production startup
-binding/configuration for the Samba executor, protected secret ingress, explicit orphan/review workflows,
+binding/configuration for the Samba executor and credential channel, explicit orphan/review workflows,
 credential-aware enable/disable/retire transitions, HTTP/user authorization and
 panel account management remain necessary. No firmware or production storage
 deployment is authorized by this library.

@@ -1,13 +1,14 @@
 # SMB credential lifecycle: integration gate
 
 Status: **M2.3 adapter passed exact-head hosted ARMv5 QEMU and Stage B3 checks
-and merged as PR #46 (`33df1ed`). The M2.4 first-enrollment coordinator and
-fixed Linux Samba executor pass local ARMv5 QEMU under `identityowner`; QEMU
-uses the same executor with disposable passdb/config state.** The executor is
-not yet wired into product startup or persistent Samba state. Protected secret
-ingress, product state placement, review/recovery and hardware qualification
-remain open. Dashboard administrator credentials are separate and are not
-affected by this Samba behavior.
+and merged as PR #46 (`33df1ed`). The M2.4 first-enrollment coordinator, fixed
+Linux Samba executor, and internal credential-bearing Unix-socket v2 channel
+pass Windows/host Linux tests, ARMv5 cross-compilation and local Buildroot/QEMU.**
+The channel remains a fixture integration only and is not wired to
+product startup, an HTTP endpoint or persistent EX4 Samba state. Production
+authorization binding, review/recovery and hardware qualification remain open.
+Dashboard administrator credentials are separate and are not affected by this
+Samba behavior.
 
 ## Why the existing CLI sequence is insufficient
 
@@ -97,8 +98,13 @@ The journal contains no password, NT/LM hash, command output or derived secret.
 It has no automatic retry, reset, enable, replacement, disable or retirement
 operation. After reopening, a durable create/password intent is committed to
 `review-required` without querying or rerunning Samba. The trusted backend is
-bound once at Owner open; individual operations cannot replace it. The methods
-are not wired to HTTP or the existing identity socket.
+bound once at Owner open; individual operations cannot replace it. The existing
+credential-free JSON v1 identity protocol remains unchanged. The separately
+versioned internal binary v2 socket carries a bounded password only as raw
+bytes for `set-password-disabled`; it returns the same restricted, secret-free
+state vocabulary and does not expose an HTTP endpoint. QEMU uses the protected
+socket only with its disposable fixture account. Production listener/startup
+wiring and HTTP-session authorization binding remain unimplemented.
 
 Local verification on 2026-09-28 passed root-run `go vet`, all API Go tests and
 race tests, the fixed-count journal fuzz lane, and the full Buildroot 2025.02.18
@@ -110,7 +116,13 @@ The 2026-09-29 follow-up pins the validated configuration inode for the Owner
 lifetime, rejects pathname replacement as a retargeting mechanism, and verifies
 single-close lifecycle behavior. Root-run vet/race tests and a full local
 Buildroot ARMv5 QEMU smoke/two-boot rerun passed. The executor is not yet wired
-to product startup or persistent Samba configuration. This does not qualify
+to product startup or persistent Samba configuration. The 2026-09-29 internal
+credential-channel follow-up passed the Windows API suite/cross-compilation,
+root Linux `go vet` and full API race suite, then the full Buildroot 2025.02.18 /
+Linux 6.18.53 ARMv5 QEMU smoke. Its log records successful protected-listener
+`smb-create` and `smb-password` phases and the
+`PHANTOWD_SMB_DISABLED_ENROLLMENT_READY` check; fixed-count fuzz lanes also
+passed. This does not qualify
 real EX4 state placement, tdbsam
 crash/power-loss durability, password history, other root writers or hardware
 behavior.

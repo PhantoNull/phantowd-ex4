@@ -489,22 +489,25 @@ allocation/creation, freezes allocation behind incomplete work and refuses
 orphaned cross-document state after interruption. The guarded ARMv5 channel now
 uses that owner. Complete imported/offline ownership discovery, qualified state,
 explicit recovery, credential transitions and deployed listener/panel wiring
-remain required. No enable method or HTTP/RPC credential endpoint is provided
-by the M2.4 slice; this is not yet a product account-management service.
+remain required. No enable method or HTTP credential endpoint is provided by
+the M2.4 slice; the internal credential-bearing v2 socket is fixture-only and
+not a product account-management service.
 
 The [local identity channel](identityrpc/README.md) now connects an actually
 unprivileged ARMv5 fixture child to the root-owned journal/executor using
-kernel-verified Unix-socket peers. It accepts only status or one revision-checked
-step for an already bound or authority-resolved operation; no commands, paths or credentials cross
-the interface. Missing replies are never retried automatically. Its optional
+kernel-verified Unix-socket peers. Native identity version 1 accepts only
+status or one revision-checked step. The separate SMB version-2 frame carries a
+bounded password only as raw bytes for the typed `set-password-disabled`
+operation; the Owner-bound backend is never selected by request input. Missing
+replies are never retried automatically. Its optional
 protected listener supplies bounded acceptance, cooperative pathname ownership,
 exact stale-socket recovery and worker drain before authority closure; the ARMv5
 fixture now uses it. A shared router resolves existing accounts only after peer
 and request validation, pins one operation across each request and checks its
 post-step account binding. The ARMv5 scenario creates a second identity while
 verifying that the first journal remains unchanged. This library does not deploy a product service or supply
-authority ownership, operation creation,
-Samba credential management or a panel account endpoint.
+authority ownership, operation creation, production Samba integration or a
+panel account endpoint.
 
 The [typed Linux identity executor](identityexec/README.md) now connects the
 journal to fixed BusyBox group/user creation in the guarded ARMv5 fixture.

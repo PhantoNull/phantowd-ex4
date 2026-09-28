@@ -25,13 +25,10 @@ func exerciseQEMUOwnerSMBEnrollment(owner *identityowner.Owner, account servicea
 		return errors.New("owner-managed SMB fixture identity refused")
 	}
 	ctx := context.Background()
+	if err := exerciseQEMUIdentityChannel(owner, "smb-create"); err != nil {
+		return fmt.Errorf("protected channel refused Samba enrollment setup: %w", err)
+	}
 	operation := owner.SMB(account.ID)
-	if err := operation.Begin(ctx, 5); err != nil {
-		return fmt.Errorf("owner refused to begin Samba enrollment: %w", err)
-	}
-	if err := operation.Step(ctx, 1); err != nil {
-		return fmt.Errorf("owner refused disabled Samba account creation: %w", err)
-	}
 	journal, err := operation.Load(ctx)
 	if err != nil || journal.Phase != smbprovision.DisabledNoPassword || journal.Revision != 3 {
 		return errors.New("owner did not confirm the new disabled Samba entry")
@@ -47,12 +44,9 @@ func exerciseQEMUOwnerSMBEnrollment(owner *identityowner.Owner, account servicea
 		return errors.New("new disabled owner-managed account accepted an empty credential")
 	}
 	clear(output)
-	secret := []byte("public-qemu-owner-enrollment")
-	if err := operation.SetPasswordDisabled(ctx, 3, secret); err != nil {
-		clear(secret)
-		return fmt.Errorf("owner refused disabled-password enrollment: %w", err)
+	if err := exerciseQEMUIdentityChannel(owner, "smb-password"); err != nil {
+		return fmt.Errorf("protected channel refused disabled-password enrollment: %w", err)
 	}
-	clear(secret)
 	journal, err = operation.Load(ctx)
 	if err != nil || journal.Phase != smbprovision.CredentialSetDisabled || journal.Revision != 5 {
 		return errors.New("owner did not confirm credentials while the Samba account stayed disabled")
