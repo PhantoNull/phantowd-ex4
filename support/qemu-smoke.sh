@@ -176,6 +176,10 @@ while [ "$attempt" -lt 120 ]; do
             echo 'Samba disabled-password update did not complete safely' >&2
             exit 1
         fi
+        if ! grep -F 'PHANTOWD_SMB_DISABLED_ENROLLMENT_READY owner_lock=true intent_journal=true created_disabled=true empty_credential_denied=true password_set_disabled=true explicit_enable_required=true scope=isolated-qemu-only' "$log_file" >/dev/null; then
+            echo 'Samba disabled-account enrollment did not complete safely' >&2
+            exit 1
+        fi
         if ! grep -F 'PHANTOWD_IDENTITY_OWNER_READY lease_exclusive=true pending_blocks_reservation=true after_reopen=true scope=isolated-qemu-only' "$log_file" >/dev/null; then
             echo 'QEMU native identity authority did not complete' >&2
             exit 1

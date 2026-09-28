@@ -69,6 +69,13 @@ func guardQEMUDataVolume() error {
 func smbFixtureCommand(input string, name string, args ...string) ([]byte, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
+	return smbFixtureCommandContext(ctx, input, name, args...)
+}
+
+func smbFixtureCommandContext(ctx context.Context, input string, name string, args ...string) ([]byte, error) {
+	if ctx == nil {
+		return nil, errors.New("SMB fixture command context missing")
+	}
 	command := exec.CommandContext(ctx, name, args...)
 	command.Env = []string{"PATH=/usr/sbin:/usr/bin:/sbin:/bin", "LC_ALL=C"}
 	command.Stdin = strings.NewReader(input)

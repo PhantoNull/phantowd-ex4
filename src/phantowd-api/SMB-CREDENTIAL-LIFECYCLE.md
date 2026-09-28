@@ -1,11 +1,12 @@
 # SMB credential lifecycle: integration gate
 
-Status: **M2.3 adapter prototype passed a local full Buildroot/ARMv5 QEMU
-authentication fixture; no product credential executor or panel
-account-password endpoint is enabled**. Hosted feature-commit CI/review,
-failure/restart and persistence qualification remain open. Dashboard
-administrator credentials are a separate system and are not affected by this
-Samba behavior.
+Status: **M2.3 adapter passed exact-head hosted ARMv5 QEMU and Stage B3 checks
+and merged as PR #46 (`33df1ed`). The M2.4 first-enrollment coordinator now
+passes local ARMv5 QEMU under `identityowner`; its Samba adapter is test-only**.
+There is still no production credential executor or panel account-password
+endpoint. Protected secret ingress, production state placement, review/recovery,
+and hardware qualification remain open. Dashboard administrator credentials
+are separate and are not affected by this Samba behavior.
 
 ## Why the existing CLI sequence is insufficient
 
@@ -39,7 +40,11 @@ account files. One fixture expectation was corrected: Samba returns generic
 the test now checks `NT_STATUS_ACCOUNT_DISABLED` only with the valid credential.
 This local result is not hosted exact-head CI, crash/power-loss evidence,
 product-state persistence or EX4 hardware qualification. Re-review the boundary
-after every Samba upgrade.
+after every Samba upgrade. The exact feature commit `8866614` passed hosted
+[ARMv5 QEMU run 36461848337](https://github.com/PhantoNull/phantowd-ex4/actions/runs/36461848337)
+and [Stage B3 run 36461848317](https://github.com/PhantoNull/phantowd-ex4/actions/runs/36461848317),
+then merged to `develop` as `33df1ed`. These checks validate the fixture/build
+boundary, not a product credential service or EX4 storage/hardware behavior.
 
 Never treat a subsequent disable, daemon restart, or successful CLI exit as proof
 that no enabled interval occurred. Do not use `pdbedit --set-nt-hash` as a shortcut:
@@ -61,12 +66,11 @@ same SAM object and reaches one final `pdb_update_sam_account` call.
 
 The exact Samba 4.22.11 source archive/hash was verified, the patch applies with
 zero fuzz, a native Samba configure/build completed locally, and the patched
-ARMv5/QEMU authentication fixture passed locally. The native host authentication
-harness has not completed successfully; hosted feature-commit CI, failure and
-restart cases, persistence, tdbsam/password-history, SID/RID binding and
-single-writer behavior remain open. This is not a product credential service
-or deployed firmware feature. The patch is GPL-3.0-or-later derivative work and
-is not installed on the NAS.
+ARMv5/QEMU authentication fixture passed both locally and on exact-head hosted
+CI. Failure and restart cases, persistence, tdbsam/password-history, SID/RID
+binding and single-writer behavior remain open. This is not a product credential
+service or deployed firmware feature. The patch is GPL-3.0-or-later derivative
+work and is not installed on the NAS.
 
 The source path reaching one SAM update is **not proof of cross-database,
 concurrent-writer or power-fail atomicity**. Qualify the selected tdbsam backend,
@@ -75,6 +79,34 @@ serialization independently. An already enabled account must not silently enter
 this path: the product owner must first complete explicit disable/revocation
 according to its policy. A separate identity owner must serialize all writers;
 the CLI flag is not itself a global lock or journal.
+
+## M2.4 initial-enrollment coordinator
+
+The bounded first-enrollment slice now lives in the internal `smbprovision`
+package and is reachable only through in-process `identityowner.Owner.SMB(id)`
+methods. The owner takes
+its existing global lock across live Unix-identity revalidation, passdb
+observation, journal commits and each backend command. An entry must be absent;
+the coordinator never adopts a pre-existing passdb account. It journals intent,
+creates the entry disabled without supplying a password, confirms the exact
+account/SID and disabled flag, then sets the bounded password through the
+backend's stdin-only contract and confirms the same SID is still disabled.
+
+The journal contains no password, NT/LM hash, command output or derived secret.
+It has no automatic retry, reset, enable, replacement, disable or retirement
+operation. After reopening, a durable create/password intent is committed to
+`review-required` without querying or rerunning Samba. The trusted backend is
+bound once at Owner open; individual operations cannot replace it. The methods
+are not wired to HTTP or the existing identity socket.
+
+Local verification on 2026-09-28 passed `go vet`, all API Go tests, race tests,
+the 25,000-case journal fuzz lane, and the full Buildroot 2025.02.18 / Linux
+6.18.53 ARMv5 QEMU build and smoke. The QEMU enrollment adapter is deliberately
+test-only: it is fixed to one disposable fixture account and private `smb.conf`,
+uses the guest Samba CLI, and proves empty credentials fail and the new valid
+credential remains denied while disabled. This does not qualify a production
+passdb parser/executor, real EX4 state placement, tdbsam crash/power-loss
+durability, password history, other root writers or hardware behavior.
 
 ## Required owner workflow
 

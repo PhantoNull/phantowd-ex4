@@ -16,6 +16,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/PhantoNull/phantowd-ex4/phantowd-api/identityowner"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/serviceaccounts"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/unixidentity"
 )
@@ -24,7 +25,7 @@ import (
 // credential owner. This is a fixed, disposable guest experiment, NOT an
 // approved password update implementation. All passwords below are public
 // fixture values; no production credential, caller path or user is accepted.
-func exerciseQEMUDisabledPasswordBoundary(a serviceaccounts.Account) (result error) {
+func exerciseQEMUDisabledPasswordBoundary(owner *identityowner.Owner, a serviceaccounts.Account) (result error) {
 	if err := guardQEMUDataVolume(); err != nil {
 		return err
 	}
@@ -52,7 +53,7 @@ func exerciseQEMUDisabledPasswordBoundary(a serviceaccounts.Account) (result err
 	const initial = "public-qemu-disabled-initial"
 	const replacement = "public-qemu-disabled-replacement"
 	const rejected = "public-qemu-disabled-rejected"
-	for _, item := range []struct{ name, password string }{{"disabled-initial", initial}, {"disabled-replacement", replacement}, {"disabled-rejected", rejected}} {
+	for _, item := range []struct{ name, password string }{{"disabled-initial", initial}, {"disabled-replacement", replacement}, {"disabled-rejected", rejected}, {"disabled-empty", ""}} {
 		path := smbFixtureRoot + "/" + item.name + ".auth"
 		if err := os.WriteFile(path, []byte("username = qpsecond\npassword = "+item.password+"\n"), 0600); err != nil {
 			return err
@@ -185,13 +186,84 @@ func exerciseQEMUDisabledPasswordBoundary(a serviceaccounts.Account) (result err
 	if !smbFixtureDenied(out, err, "NT_STATUS_ACCOUNT_DISABLED") {
 		return errors.New("disabled-password fixture cleanup did not retain disabled state")
 	}
+	// Characterize the first-enrollment CLI boundary, then repeat the absent to
+	// disabled to credential-set-disabled flow through identityowner below.
+	if err := command("", "-x"); err != nil {
+		return errors.New("disabled-enrollment fixture could not reset its disposable passdb entry")
+	}
+	if err := command("", "-a", "-d"); err != nil {
+		return errors.New("smbpasswd could not create a disabled no-password fixture account")
+	}
+	if err := smbFixtureRequireDisabledAccount(config, a.Name); err != nil {
+		return err
+	}
+	out, err = client("disabled-empty")
+	if !smbFixtureDenied(out, err, "NT_STATUS_LOGON_FAILURE") {
+		return errors.New("empty credential unexpectedly authenticated for new passdb account")
+	}
+	if err := command(initial+"\n"+initial+"\n", "-s", "--set-password-disabled"); err != nil {
+		return errors.New("first password assignment to new disabled fixture account failed")
+	}
+	if err := smbFixtureRequireDisabledAccount(config, a.Name); err != nil {
+		return err
+	}
+	out, err = client("disabled-initial")
+	if !smbFixtureDenied(out, err, "NT_STATUS_ACCOUNT_DISABLED") {
+		return errors.New("first password assignment did not retain disabled state")
+	}
+	out, err = client("disabled-empty")
+	if !smbFixtureDenied(out, err, "NT_STATUS_LOGON_FAILURE") {
+		return errors.New("first password assignment left an empty credential usable")
+	}
+	if err := command("", "-e"); err != nil {
+		return errors.New("disabled-enrollment fixture could not perform its explicit enable")
+	}
+	if _, err := client("disabled-initial"); err != nil {
+		return errors.New("first password assignment was not retained after explicit enable")
+	}
+	out, err = client("disabled-empty")
+	if !smbFixtureDenied(out, err, "NT_STATUS_LOGON_FAILURE") {
+		return errors.New("empty credential authenticated after explicit enable")
+	}
+	if err := command("", "-d"); err != nil {
+		return errors.New("disabled-enrollment fixture could not restore disabled state")
+	}
+	out, err = client("disabled-initial")
+	if !smbFixtureDenied(out, err, "NT_STATUS_ACCOUNT_DISABLED") {
+		return errors.New("disabled-enrollment fixture did not restore disabled state")
+	}
+	if err := command("", "-x"); err != nil {
+		return errors.New("could not reset the passdb entry before owner integration")
+	}
+	if err := exerciseQEMUOwnerSMBEnrollment(owner, a); err != nil {
+		return err
+	}
 	for path, before := range unchanged {
 		after, err := os.ReadFile(path)
 		if err != nil || !bytes.Equal(before, after) {
 			return errors.New("disabled-password fixture changed Unix state or config")
 		}
 	}
-	fmt.Println("PHANTOWD_SMB_DISABLED_RESET_BOUNDARY legacy_reset_reenables=true combined_disable_skips_password=true product_path_approved=false scope=isolated-qemu-only")
+	fmt.Println("PHANTOWD_SMB_DISABLED_RESET_BOUNDARY legacy_reset_reenables=true combined_disable_skips_password=true scope=isolated-qemu-only")
 	fmt.Println("PHANTOWD_SMB_DISABLED_PASSWORD_SET_READY replacement_set=true disabled_until_explicit_enable=true obsolete_password_denied=true unix_identity_unchanged=true scope=isolated-qemu-only")
+	fmt.Println("PHANTOWD_SMB_DISABLED_ENROLLMENT_READY owner_lock=true intent_journal=true created_disabled=true empty_credential_denied=true password_set_disabled=true explicit_enable_required=true scope=isolated-qemu-only")
 	return nil
+}
+
+func smbFixtureRequireDisabledAccount(config, username string) error {
+	output, err := smbFixtureCommand("", "/usr/bin/pdbedit", "-L", "-v", "-s", config, "-u", username)
+	if err != nil {
+		return fmt.Errorf("pdbedit could not observe disposable account state: %s", strings.TrimSpace(string(output)))
+	}
+	for _, line := range strings.Split(string(output), "\n") {
+		line = strings.TrimSpace(line)
+		if strings.HasPrefix(line, "Account Flags:") {
+			start, end := strings.IndexByte(line, '['), strings.LastIndexByte(line, ']')
+			if start < 0 || end <= start || !strings.Contains(line[start+1:end], "D") {
+				return fmt.Errorf("pdbedit did not report the disposable account disabled: %s", line)
+			}
+			return nil
+		}
+	}
+	return errors.New("pdbedit output did not contain account flags for the disposable user")
 }
