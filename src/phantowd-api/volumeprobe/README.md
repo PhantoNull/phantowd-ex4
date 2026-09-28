@@ -101,9 +101,10 @@ validated sysfs inventory, excludes visible mounts and other ineligible
 devices, opens the complete candidate set read-only, and reconciles sysfs,
 mount and swap observations around descriptor handoff. Disk nodes are granted
 only to its dedicated group with mode `0440`; the ordinary API account is not a
-member. The broker drops capabilities, requires `no_new_privs`, and serves a
-bounded metadata-only response to the API over a peer-credential-checked Unix
-socket. It does not read disk contents. The API exposes the result through
+member. The broker requires empty effective, permitted and inheritable
+capability sets plus `no_new_privs`, and serves a bounded metadata-only
+response to the API over a peer-credential-checked Unix socket. It does not
+read disk contents. The API exposes the result through
 authenticated `GET /api/v1/storage`, and the broker is started separately by
 the system init script. The QEMU fixtures exercise this boundary, but do not
 qualify real EX4 hardware or authorize mounting or mutation. A caller must
