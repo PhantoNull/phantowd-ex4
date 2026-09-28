@@ -57,6 +57,14 @@ grep -Fq 'chmod 0666 /dev/null' "$package_dir/S02phantowd-mdev" ||
 grep -F -- '--chuid phantowd-storage:phantowd-storage-read' \
     "$package_dir/S40phantowd-storage-broker" >/dev/null ||
     fail 'broker init must use its dedicated non-root identity'
+grep -F 'ensureStorageBrokerNoNewPrivileges()' \
+    "$repo_root/src/phantowd-api/storage_broker_linux.go" >/dev/null ||
+    fail 'broker startup must normalize no_new_privs across the Go runtime threads before opening its socket'
+grep -F 'runtime.LockOSThread()' "$repo_root/src/phantowd-api/storage_broker_linux.go" >/dev/null ||
+    fail 'broker startup must keep its no_new_privs thread fixed during self-exec'
+grep -F 'unix.Exec(executable, os.Args, os.Environ())' \
+    "$repo_root/src/phantowd-api/storage_broker_linux.go" >/dev/null ||
+    fail 'broker startup must restart the process before exposing the storage socket'
 grep -F -- '--chuid phantowd:phantowd' "$package_dir/S50phantowd-api" >/dev/null ||
     fail 'API init must keep its separate non-root identity'
 

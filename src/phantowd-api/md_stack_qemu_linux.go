@@ -109,7 +109,7 @@ func runQEMUMDStackTest() (result error) {
 			if _, err := os.Stat("/sys/class/block/md0"); err == nil {
 				if err := runQEMUStorageUtility("mdadm", 10*time.Second, qemuMDStopArguments()...); err != nil {
 					cleanupErr = errors.Join(cleanupErr, errors.New("fixed disposable MD array did not stop"))
-				} else if _, err := os.Stat("/sys/class/block/md0"); !errors.Is(err, os.ErrNotExist) {
+				} else if err := waitForQEMUBlockNodeRemoval("/sys/class/block/md0", 5*time.Second); err != nil {
 					cleanupErr = errors.Join(cleanupErr, errors.New("fixed MD array remains in sysfs after stop"))
 				}
 			} else if !errors.Is(err, os.ErrNotExist) {
@@ -295,6 +295,23 @@ func runQEMUMDStackTest() (result error) {
 	}
 	fmt.Println("PHANTOWD_MOUNT_GRAPH_READY backing_members=2 actual_raid1=true readonly_mountinfo=true both_members_attributed=true unrelated_disk_clear=true cleanup=true scope=disposable-qemu-only")
 	return nil
+}
+
+func waitForQEMUBlockNodeRemoval(path string, timeout time.Duration) error {
+	deadline := time.Now().Add(timeout)
+	for {
+		_, err := os.Stat(path)
+		if errors.Is(err, os.ErrNotExist) {
+			return nil
+		}
+		if err != nil {
+			return errors.New("QEMU block-node removal state could not be checked")
+		}
+		if !time.Now().Before(deadline) {
+			return errors.New("QEMU block node remained present through the removal deadline")
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
 }
 
 func findWholeBlockObservation(observations []blockObservation, name string) (blockObservation, bool) {
