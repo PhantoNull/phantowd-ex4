@@ -61,10 +61,17 @@ grep -F -- '--chuid phantowd:phantowd' "$package_dir/S50phantowd-api" >/dev/null
     fail 'API init must keep its separate non-root identity'
 
 qemu_ready_script="$repo_root/board/qemu/armv5/rootfs-overlay/etc/init.d/S99phantowd-ready"
-grep -F 'PHANTOWD_QEMU_API_SELFTEST_FAILURE detail=' "$qemu_ready_script" >/dev/null ||
-    fail 'QEMU diagnostics failures must print a bounded self-test error summary'
-grep -F 'index($0, "PHANTOWD_API_ERROR ") == 1' "$qemu_ready_script" >/dev/null ||
+qemu_selftest_helper="$repo_root/board/qemu/armv5/rootfs-overlay/usr/lib/phantowd/qemu-selftest-once.sh"
+grep -F 'PHANTOWD_QEMU_API_SELFTEST_FAILURE detail=' "$qemu_selftest_helper" >/dev/null ||
+    fail 'QEMU diagnostics failures must print a bounded first self-test error summary'
+grep -F 'index($0, "PHANTOWD_API_ERROR ") == 1' "$qemu_selftest_helper" >/dev/null ||
     fail 'QEMU diagnostics must only summarize the API self-test error marker'
+[ "$(grep -Fc '/usr/lib/phantowd/qemu-selftest-once.sh /usr/bin/phantowd-api "$api_error_log"' "$qemu_ready_script")" -eq 2 ] ||
+    fail 'QEMU readiness init must run one-shot self-tests before and after the daemon restart'
+if grep -F 'while ! /usr/bin/phantowd-api --self-test' "$qemu_ready_script" >/dev/null; then
+    fail 'QEMU readiness init must not retry state-mutating API self-tests'
+fi
+sh "$repo_root/support/tests/test-qemu-selftest-helper.sh"
 
 error_summary=$(printf '%s\n' \
     'PHANTOWD_API_ERROR authentication status request failed; address=127.0.0.1:8080' \

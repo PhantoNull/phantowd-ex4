@@ -6,8 +6,13 @@
 package main
 
 import (
+	"io"
+	"net/http"
+	"net/http/httptest"
 	"strings"
+	"sync/atomic"
 	"testing"
+	"time"
 )
 
 func TestQEMUShareConfig(t *testing.T) {
@@ -28,5 +33,36 @@ func TestQEMUDashboardAssetsMatchSelfTest(t *testing.T) {
 				t.Errorf("QEMU self-test marker %q is absent from embedded asset %q", marker, asset.path)
 			}
 		}
+	}
+}
+
+func TestQEMUAPIReadinessWaitsWithoutMutatingBeforeReady(t *testing.T) {
+	var healthRequests atomic.Int32
+	var otherRequests atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/healthz" || r.Method != http.MethodGet {
+			otherRequests.Add(1)
+			http.NotFound(w, r)
+			return
+		}
+		if healthRequests.Add(1) < 3 {
+			http.Error(w, "starting", http.StatusServiceUnavailable)
+			return
+		}
+		w.Header().Set("Cache-Control", "no-store")
+		w.WriteHeader(http.StatusOK)
+		_, _ = io.WriteString(w, `{"status":"ok","scope":"process_only"}`)
+	}))
+	defer server.Close()
+
+	client := &http.Client{Timeout: time.Second, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
+	if err := waitQEMUAPIReady(client, server.URL); err != nil {
+		t.Fatalf("readiness wait failed: %v", err)
+	}
+	if got := healthRequests.Load(); got != 3 {
+		t.Fatalf("expected three read-only readiness probes, got %d", got)
+	}
+	if got := otherRequests.Load(); got != 0 {
+		t.Fatalf("readiness probe reached a non-health endpoint %d times", got)
 	}
 }

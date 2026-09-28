@@ -146,6 +146,14 @@ while [ "$attempt" -lt 120 ]; do
             echo 'QEMU password-change HTTPS test did not complete' >&2
             exit 1
         fi
+        if ! grep -F 'PHANTOWD_SYSTEM_SNAPSHOT_READY schema=1 nonroot=true authenticated=true scope=qemu-loopback-only' "$log_file" >/dev/null; then
+            echo 'QEMU authenticated system snapshot assertion did not complete' >&2
+            exit 1
+        fi
+        if ! grep -F 'PHANTOWD_STORAGE_RESPONSE_READY schema=2 broker=true opened=true content_read=false scope=qemu-fixture-only' "$log_file" >/dev/null; then
+            echo 'QEMU authenticated read-only storage broker response assertion did not complete' >&2
+            exit 1
+        fi
         if ! grep -F 'PHANTOWD_IDENTITY_EXEC_READY binary=pinned-busybox typed_commands=true unix_login_locked=true nologin=true home_created=false scope=isolated-qemu-only' "$log_file" >/dev/null; then
             echo 'QEMU typed native identity executor did not complete' >&2
             exit 1
