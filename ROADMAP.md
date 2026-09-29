@@ -506,8 +506,11 @@ are missing. **Depends on:** M1; M7 for hardware.
   The subsequent local integration run on `1358202` passed the Buildroot
   image/package integration, ARMv5 QEMU smoke and state-reboot fixture; artifact
   SHA-256 checks passed. It reused the existing fixed Buildroot and compiler-cache
-  volumes, so independent clean-room reproducibility is still open. Hosted CI and
-  EX4/product qualification remain pending. Keep raw IDs out of
+  volumes, so independent clean-room reproducibility is still open. A later
+  current-source API overlay on `0f2e44e` also passed QEMU smoke and the separate
+  two-boot state-reboot fixture over cached kernel/packages; this is not a clean
+  Buildroot rebuild. Hosted CI and EX4/product qualification remain pending.
+  Keep raw IDs out of
   HTTP, MBR unsupported, and mount/import/repair/write authority absent.
   PR #44 merged the first read-only slice: correlate mounted filesystem UUID
   anchors with MD topology and verify the path against a disposable RAID1 guest
@@ -521,15 +524,19 @@ are missing. **Depends on:** M1; M7 for hardware.
   Unknown signatures, mixed generations and degraded cases require refusal or a
   separately qualified policy, not best-effort mounting.
   The host-only `phantowd-lab inspect-storage-image-set` now correlates bounded
-  GPT, ext, MD v1.2 and MD 0.90 metadata across up to four supplied regular-file
-  images, detects duplicate disk/partition/filesystem identity fingerprints,
+  GPT, ext, MD v1.2, MD v1.0 and MD 0.90 metadata across up to four supplied
+  regular-file images, detects duplicate disk/partition/filesystem identity fingerprints,
   and withholds cross-image conclusions when any GPT input is invalid. It
   reports mixed filesystem/array signatures and inconsistent or incomplete
   metadata for review (including ext state not marked clean or requesting
   journal recovery); even a clean `metadata-observed` result remains
   `wd_compatibility=unqualified` and cannot authorize migration, assembly or
-  mount. This advances offline evidence tooling only. A sanitized corpus of
-  exact EX4 data-disk layouts and an evidence-backed allowlist remain required.
+  mount. Static review of the extracted stock installer found data-array
+  creation paths using MD metadata 1.0 (root-array paths use 0.90); the generic
+  host inspector now reads and compares 1.0 components from offline images. This
+  advances format observation only, not WD layout qualification. A sanitized
+  corpus of exact EX4 data-disk layouts and an evidence-backed allowlist remain
+  required.
 - **M3.4 — Own mount lifecycle.** Model absent, discovered, rejected, qualified,
   mounting, mounted, unavailable, draining and review-required outcomes.
   Derive the transient mount tuple from trusted observations, not HTTP or an

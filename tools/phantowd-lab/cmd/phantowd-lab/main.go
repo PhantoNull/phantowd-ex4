@@ -187,6 +187,9 @@ func run(args []string, output io.Writer) (int, error) {
 	case "inspect-md-v1.2-partition":
 		return inspectMDV12Partition(args[1:], output)
 
+	case "inspect-md-v1.0-partition":
+		return inspectMDV10Partition(args[1:], output)
+
 	case "inspect-md-v0.90-component":
 		if len(args) != 2 {
 			return 1, errors.New("usage: phantowd-lab inspect-md-v0.90-component COMPONENT-IMAGE-FILE")
@@ -527,6 +530,89 @@ func inspectMDV12Partition(args []string, output io.Writer) (int, error) {
 	return 0, nil
 }
 
+type mdV10ImageReport struct {
+	Format          string                 `json:"format"`
+	SchemaVersion   int                    `json:"schema_version"`
+	Status          diskimage.MDV10Status  `json:"status"`
+	PartitionNumber int                    `json:"partition_number"`
+	WDCompatibility string                 `json:"wd_compatibility"`
+	GPT             diskimage.Report       `json:"gpt"`
+	MD              *diskimage.MDV10Report `json:"md_superblock,omitempty"`
+	Findings        []string               `json:"findings"`
+	Limitations     []string               `json:"limitations"`
+}
+
+func inspectMDV10Partition(args []string, output io.Writer) (int, error) {
+	if len(args) != 2 {
+		return 1, errors.New("usage: phantowd-lab inspect-md-v1.0-partition IMAGE-FILE GPT-PARTITION-NUMBER")
+	}
+	partitionNumber, err := strconv.ParseUint(args[1], 10, 32)
+	if err != nil || partitionNumber == 0 || partitionNumber > 128 {
+		return 1, errors.New("GPT partition number must be between 1 and 128")
+	}
+	file, size, err := openRegular(args[0])
+	if err != nil {
+		return 1, err
+	}
+	defer file.Close()
+	gpt, err := diskimage.Inspect(file, size)
+	if err != nil {
+		return 1, err
+	}
+	result := mdV10ImageReport{
+		Format:          "phantowd-md-v1.0-gpt-partition-inspection",
+		SchemaVersion:   1,
+		Status:          diskimage.MDV10StatusUnsupported,
+		PartitionNumber: int(partitionNumber),
+		WDCompatibility: "unqualified",
+		GPT:             gpt,
+		Findings:        []string{},
+		Limitations: []string{
+			"only one generic Linux MD v1.0 component superblock at the end-of-component location is inspected after generic GPT validation; other MD layouts, WD metadata, filesystem metadata, health and file data are not read",
+			"one plausible member does not prove array-wide consistency, a supported WD layout, filesystem integrity, or safe assembly",
+			"the supplied regular file is never mounted, modified, or treated as a block device",
+		},
+	}
+	if gpt.Status != diskimage.StatusValid {
+		if gpt.Status == diskimage.StatusDamaged {
+			result.Status = diskimage.MDV10StatusDamaged
+		}
+		result.Findings = []string{"GPT metadata must be valid before a partition superblock can be selected"}
+		if err := writeJSON(output, result); err != nil {
+			return 1, err
+		}
+		return 2, nil
+	}
+	var selected *diskimage.Partition
+	for index := range gpt.Partitions {
+		if gpt.Partitions[index].Number == int(partitionNumber) {
+			selected = &gpt.Partitions[index]
+			break
+		}
+	}
+	if selected == nil {
+		result.Findings = []string{"requested GPT partition number is not present"}
+		if err := writeJSON(output, result); err != nil {
+			return 1, err
+		}
+		return 2, nil
+	}
+	metadata, err := diskimage.InspectMDV10Superblock(file, size, selected.FirstLBA, selected.LastLBA)
+	if err != nil {
+		return 1, err
+	}
+	result.MD = &metadata
+	result.Status = metadata.Status
+	result.Findings = metadata.Findings
+	if err := writeJSON(output, result); err != nil {
+		return 1, err
+	}
+	if result.Status != diskimage.MDV10StatusCandidate {
+		return 2, nil
+	}
+	return 0, nil
+}
+
 type mdV090ImageReport struct {
 	Format          string                  `json:"format"`
 	SchemaVersion   int                     `json:"schema_version"`
@@ -619,6 +705,7 @@ type storagePartitionObservation struct {
 	LastLBA  uint64                 `json:"last_lba"`
 	Ext      diskimage.ExtReport    `json:"ext_superblock"`
 	MDV12    diskimage.MDV12Report  `json:"md_v1_2_superblock"`
+	MDV10    diskimage.MDV10Report  `json:"md_v1_0_superblock"`
 	MDV090   diskimage.MDV090Report `json:"md_v0_90_superblock"`
 }
 
@@ -665,13 +752,13 @@ func observeStorageImage(file *os.File, size int64) (storageImageReport, error) 
 	}
 	result := storageImageReport{
 		Format:          "phantowd-read-only-storage-image-observation",
-		SchemaVersion:   1,
+		SchemaVersion:   2,
 		WDCompatibility: "unqualified",
 		GPTStatus:       gpt.Status,
 		GPT:             gpt,
 		Partitions:      []storagePartitionObservation{},
 		Limitations: []string{
-			"reports only generic GPT plus bounded ext, Linux MD v1.2, and little-endian MD 0.90 superblock observations for each partition; it does not detect other filesystems, MD versions, WD XML, health, or file data",
+			"reports only generic GPT plus bounded ext and Linux MD v1.2, v1.0, and little-endian v0.90 superblock observations for each partition; it does not detect other filesystems, MD versions, WD XML, health, or file data",
 			"observations are independent and are not reconciled into an array or volume; a plausible superblock does not establish WD compatibility, filesystem integrity, or safe assembly/mounting",
 			"the supplied regular file is never mounted, modified, or treated as a block device",
 		},
@@ -688,6 +775,10 @@ func observeStorageImage(file *os.File, size int64) (storageImageReport, error) 
 		if err != nil {
 			return storageImageReport{}, err
 		}
+		mdV10Report, err := diskimage.InspectMDV10Superblock(file, size, partition.FirstLBA, partition.LastLBA)
+		if err != nil {
+			return storageImageReport{}, err
+		}
 		partitionSectors := partition.LastLBA - partition.FirstLBA + 1
 		partitionBytes := partitionSectors * 512
 		component := io.NewSectionReader(file, int64(partition.FirstLBA*512), int64(partitionBytes))
@@ -697,7 +788,7 @@ func observeStorageImage(file *os.File, size int64) (storageImageReport, error) 
 		}
 		result.Partitions = append(result.Partitions, storagePartitionObservation{
 			Number: partition.Number, FirstLBA: partition.FirstLBA, LastLBA: partition.LastLBA,
-			Ext: extReport, MDV12: mdV12Report, MDV090: mdV090Report,
+			Ext: extReport, MDV12: mdV12Report, MDV10: mdV10Report, MDV090: mdV090Report,
 		})
 	}
 	return result, nil
@@ -710,6 +801,7 @@ type storageImageSetPartitionSummary struct {
 	ExtCleanUnmount       bool                   `json:"ext_clean_unmount_flag"`
 	ExtNeedsJournalRepair bool                   `json:"ext_needs_journal_recovery"`
 	MDV12Status           diskimage.MDStatus     `json:"md_v1_2_status"`
+	MDV10Status           diskimage.MDV10Status  `json:"md_v1_0_status"`
 	MDV090Status          diskimage.MDV090Status `json:"md_v0_90_status"`
 }
 
@@ -718,6 +810,7 @@ type storageImageSetInputSummary struct {
 	GPTStatus             diskimage.Status                  `json:"gpt_status"`
 	PartitionCount        int                               `json:"partition_count"`
 	MDV12CandidateCount   int                               `json:"md_v1_2_candidate_count"`
+	MDV10CandidateCount   int                               `json:"md_v1_0_candidate_count"`
 	MDV090CandidateCount  int                               `json:"md_v0_90_candidate_count"`
 	PartitionObservations []storageImageSetPartitionSummary `json:"partition_observations"`
 }
@@ -738,6 +831,7 @@ type storageImageSetAssessment struct {
 	Inputs              []storageImageSetInputSummary   `json:"inputs"`
 	IdentityScan        *storageImageSetIdentityScan    `json:"identity_scan,omitempty"`
 	MDV12Comparison     *diskimage.MDV12ImageSetReport  `json:"md_v1_2_comparison,omitempty"`
+	MDV10Comparison     *diskimage.MDV10ImageSetReport  `json:"md_v1_0_comparison,omitempty"`
 	MDV090Comparison    *diskimage.MDV090ImageSetReport `json:"md_v0_90_comparison,omitempty"`
 	BlockDeviceOpened   bool                            `json:"block_device_opened"`
 	MutationsPerformed  bool                            `json:"mutations_performed"`
@@ -753,13 +847,13 @@ func inspectStorageImageSet(args []string, output io.Writer) (int, error) {
 	}
 	result := storageImageSetAssessment{
 		Format:          "phantowd-read-only-storage-image-set-observation",
-		SchemaVersion:   1,
+		SchemaVersion:   2,
 		Status:          "incomplete",
 		WDCompatibility: "unqualified",
 		Inputs:          []storageImageSetInputSummary{},
 		Findings:        []string{},
 		Limitations: []string{
-			"only caller-supplied regular whole-disk images with generic GPT, ext-family, MD v1.2 and little-endian MD 0.90 metadata are inspected; other formats and WD XML are not interpreted",
+			"only caller-supplied regular whole-disk images with generic GPT, ext-family, MD v1.2, MD v1.0, and little-endian MD 0.90 metadata are inspected; other formats and WD XML are not interpreted",
 			"the supplied image set is not proof of the complete four-bay inventory; missing or unprovided devices cannot be inferred absent",
 			"duplicate identity counts apply only to the supplied GPT-valid images; generic metadata agreement is not a WD layout, health, synchronization, filesystem-integrity or migration qualification",
 			"partition type GUIDs are on-disk declarations, not proof of contents, role or compatibility; ext results inspect only one bounded superblock, not file data or full filesystem integrity",
@@ -773,6 +867,7 @@ func inspectStorageImageSet(args []string, output io.Writer) (int, error) {
 	partitionFingerprints := make([]string, 0)
 	extFingerprints := make([]string, 0)
 	mdV12Components := make([]diskimage.MDV12ImageComponent, 0)
+	mdV10Components := make([]diskimage.MDV10ImageComponent, 0)
 	mdV090Components := make([]diskimage.MDV090ImageComponent, 0)
 	allGPTValid := true
 	gptDamaged := false
@@ -808,11 +903,13 @@ func inspectStorageImageSet(args []string, output io.Writer) (int, error) {
 		diskFingerprints = append(diskFingerprints, observed.GPT.DiskIdentityFingerprint)
 		input.PartitionCount = len(observed.Partitions)
 		for _, partition := range observed.Partitions {
+			candidateStorageLayers := 0
 			partitionSummary := storageImageSetPartitionSummary{
 				Number: partition.Number, ExtStatus: partition.Ext.Status,
 				ExtCleanUnmount:       partition.Ext.CleanUnmount,
 				ExtNeedsJournalRepair: partition.Ext.NeedsJournalRecovery,
-				MDV12Status:           partition.MDV12.Status, MDV090Status: partition.MDV090.Status,
+				MDV12Status:           partition.MDV12.Status, MDV10Status: partition.MDV10.Status,
+				MDV090Status: partition.MDV090.Status,
 			}
 			for _, gptPartition := range observed.GPT.Partitions {
 				if gptPartition.Number == partition.Number {
@@ -824,6 +921,7 @@ func inspectStorageImageSet(args []string, output io.Writer) (int, error) {
 			input.PartitionObservations = append(input.PartitionObservations, partitionSummary)
 
 			if partition.Ext.Status == diskimage.ExtStatusCandidate {
+				candidateStorageLayers++
 				if partition.Ext.FilesystemIdentityFingerprint == "" {
 					needsReview = true
 				} else {
@@ -837,26 +935,34 @@ func inspectStorageImageSet(args []string, output io.Writer) (int, error) {
 				needsReview = true
 			}
 			if partition.MDV12.Status == diskimage.MDStatusCandidate {
+				candidateStorageLayers++
 				input.MDV12CandidateCount++
 				mdV12Components = append(mdV12Components, diskimage.MDV12ImageComponent{
 					InputIndex: inputIndex + 1, PartitionNumber: partition.Number, Report: partition.MDV12,
 				})
-				if partition.Ext.Status == diskimage.ExtStatusCandidate {
-					layerConflict = true
-				}
 			} else if partition.MDV12.Status == diskimage.MDStatusDamaged || partition.MDV12.Status == diskimage.MDStatusUnsupported {
 				needsReview = true
 			}
+			if partition.MDV10.Status == diskimage.MDV10StatusCandidate {
+				candidateStorageLayers++
+				input.MDV10CandidateCount++
+				mdV10Components = append(mdV10Components, diskimage.MDV10ImageComponent{
+					InputIndex: inputIndex + 1, PartitionNumber: partition.Number, Report: partition.MDV10,
+				})
+			} else if partition.MDV10.Status == diskimage.MDV10StatusDamaged || partition.MDV10.Status == diskimage.MDV10StatusUnsupported {
+				needsReview = true
+			}
 			if partition.MDV090.Status == diskimage.MDV090StatusCandidate {
+				candidateStorageLayers++
 				input.MDV090CandidateCount++
 				mdV090Components = append(mdV090Components, diskimage.MDV090ImageComponent{
 					InputIndex: inputIndex + 1, PartitionNumber: partition.Number, Report: partition.MDV090,
 				})
-				if partition.Ext.Status == diskimage.ExtStatusCandidate {
-					layerConflict = true
-				}
 			} else if partition.MDV090.Status == diskimage.MDV090StatusDamaged || partition.MDV090.Status == diskimage.MDV090StatusUnsupported {
 				needsReview = true
+			}
+			if candidateStorageLayers > 1 {
+				layerConflict = true
 			}
 		}
 		result.Inputs = append(result.Inputs, input)
@@ -891,6 +997,11 @@ func inspectStorageImageSet(args []string, output io.Writer) (int, error) {
 		return 1, err
 	}
 	result.MDV12Comparison = &mdV12Comparison
+	mdV10Comparison, err := diskimage.CompareMDV10ImageSet(mdV10Components)
+	if err != nil {
+		return 1, err
+	}
+	result.MDV10Comparison = &mdV10Comparison
 	mdV090Comparison, err := diskimage.CompareMDV090ImageSet(mdV090Components)
 	if err != nil {
 		return 1, err
@@ -900,6 +1011,7 @@ func inspectStorageImageSet(args []string, output io.Writer) (int, error) {
 	ambiguous := identity.DuplicateDiskGUIDGroups != 0 || identity.DuplicatePARTUUIDGroups != 0 ||
 		identity.DuplicateFilesystemUUIDGroups != 0 || layerConflict
 	incomplete := needsReview || mdV12Comparison.UnqualifiedComponents != 0 || mdV12Comparison.UnidentifiedCandidateComponents != 0 ||
+		mdV10Comparison.UnqualifiedComponents != 0 || mdV10Comparison.UnidentifiedCandidateComponents != 0 ||
 		mdV090Comparison.UnqualifiedComponents != 0 || mdV090Comparison.UnidentifiedCandidateComponents != 0
 	for _, array := range mdV12Comparison.Arrays {
 		switch array.Status {
@@ -914,6 +1026,14 @@ func inspectStorageImageSet(args []string, output io.Writer) (int, error) {
 		case diskimage.MDV090ArrayAmbiguous, diskimage.MDV090ArrayConflicting, diskimage.MDV090ArrayDivergent:
 			ambiguous = true
 		case diskimage.MDV090ArrayIncomplete:
+			incomplete = true
+		}
+	}
+	for _, array := range mdV10Comparison.Arrays {
+		switch array.Status {
+		case diskimage.MDV10ArrayAmbiguous, diskimage.MDV10ArrayConflicting, diskimage.MDV10ArrayDivergent:
+			ambiguous = true
+		case diskimage.MDV10ArrayIncomplete:
 			incomplete = true
 		}
 	}

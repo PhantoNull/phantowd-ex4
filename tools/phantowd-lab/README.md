@@ -30,6 +30,7 @@ phantowd-lab inspect-md-v1.2-image-set DISK-IMAGE-1 DISK-IMAGE-2 [DISK-IMAGE-3 [
 phantowd-lab inspect-md-v0.90-image-set DISK-IMAGE-1 DISK-IMAGE-2 [DISK-IMAGE-3 [DISK-IMAGE-4]]
 phantowd-lab inspect-ext-partition IMAGE-FILE GPT-PARTITION-NUMBER
 phantowd-lab inspect-md-v1.2-partition IMAGE-FILE GPT-PARTITION-NUMBER
+phantowd-lab inspect-md-v1.0-partition IMAGE-FILE GPT-PARTITION-NUMBER
 phantowd-lab inspect-md-v0.90-component COMPONENT-IMAGE-FILE
 phantowd-lab inspect-md-v0.90-partition DISK-IMAGE-FILE GPT-PARTITION-NUMBER
 phantowd-lab inventory-rootfs [--summary] DIRECTORY
@@ -162,8 +163,8 @@ status is `0` for a structurally valid GPT and `2` for parsed damaged or
 unsupported input; usage, I/O, and file-open errors return `1`.
 
 `inspect-storage-image` produces one read-only JSON snapshot by applying the
-existing GPT, ext-superblock, MD v1.2, and MD 0.90 readers to a regular whole-
-disk image. The filesystem and RAID observations remain independent per
+existing GPT, ext-superblock, MD v1.2, MD v1.0, and MD 0.90 readers to a regular
+whole-disk image. The filesystem and RAID observations remain independent per
 partition: the command does not reconcile members, infer a WD layout, examine
 file data, or establish health, integrity, compatibility, or mount safety.
 Every parser remains bounded to its relevant metadata. Invalid or unsupported
@@ -175,9 +176,9 @@ mounts, assembles, or writes the image.
 `inspect-storage-image-set` accepts one to four whole-disk regular image files
 and correlates only their bounded generic metadata. It reports duplicate GPT
 disk GUID, PARTUUID and ext filesystem UUID fingerprints within the supplied
-set; per-partition declaration/signature summaries; and the existing MD v1.2
-and MD 0.90 image-set comparisons. If any GPT is invalid or unsupported, it
-withholds all cross-image identity and array comparisons instead of presenting
+set; per-partition declaration/signature summaries; and the existing MD v1.2,
+MD v1.0, and MD 0.90 image-set comparisons. If any GPT is invalid or
+unsupported, it withholds all cross-image identity and array comparisons instead of presenting
 a partial set as complete. Mixed ext/MD signatures, duplicated identities,
 conflicting/divergent arrays, or incomplete/unsupported probes require manual
 review. `metadata-observed` means only that the supplied generic observations
@@ -205,6 +206,19 @@ from the report and inputs are identified by ordinal only. MD 0.90 candidates
 are counted but not compared by this command. No block device is opened, no
 array is assembled, no filesystem is mounted, and no image is changed. This
 tool does not authorize an import or migration.
+
+`inspect-md-v1.0-partition` first requires a structurally valid GPT and then
+reads one generic Linux MD metadata 1.0 component superblock at its standard
+end-of-component location plus the bounded member-role array. It checks the v1
+checksum and component bounds, and returns only redacted identity fingerprints.
+Metadata 1.0 is an end-of-device format, unlike v1.2's fixed offset near the
+start. A candidate does not prove that other members agree, that the array is
+complete or healthy, or that the EX4 supports the layout. It does not assemble,
+mount, write, or authorize migration. Sets whose feature map is nonzero remain
+`incomplete` because the corresponding optional semantics are not qualified.
+Exit status is `0` for one plausible
+component, `2` for absent/damaged/unsupported metadata and `1` for usage, I/O
+or file-open errors.
 
 `inspect-md-v0.90-image-set` accepts two to four whole-disk regular image
 files, requires valid generic GPT on each, and groups plausible little-endian
