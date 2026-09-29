@@ -82,6 +82,10 @@ if grep -F 'while ! /usr/bin/phantowd-api --self-test' "$qemu_ready_script" >/de
     fail 'QEMU readiness init must not retry state-mutating API self-tests'
 fi
 [ -f "$qemu_owner_init" ] || fail 'QEMU identity-owner init service is missing'
+qemu_owner_mode=$(git -C "$repo_root" ls-files --stage -- \
+    board/qemu/armv5/rootfs-overlay/etc/init.d/S49phantowd-identity-owner | awk '{print $1}')
+[ "$qemu_owner_mode" = 100755 ] ||
+    fail 'QEMU identity-owner init service must be executable in the tracked rootfs overlay'
 grep -F -- '--qemu-identity-owner-service' "$qemu_owner_init" >/dev/null ||
     fail 'QEMU init must start the fixed owner-service mode'
 if grep -F -- '--chuid' "$qemu_owner_init" >/dev/null; then
