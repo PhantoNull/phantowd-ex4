@@ -5,12 +5,18 @@
 
 package main
 
+import "context"
+
 func runStorageBroker() error {
 	return errStorageBrokerUnavailable
 }
 
 func collectStorageFromBroker() (storageSnapshot, error) {
 	return storageSnapshot{}, errStorageBrokerUnavailable
+}
+
+func observeGPTPartitionIdentityFromBroker(context.Context) (storageGPTObservationSummary, error) {
+	return storageGPTObservationSummary{}, errStorageBrokerUnavailable
 }
 
 func verifyQEMUStorageBrokerFixture() error {

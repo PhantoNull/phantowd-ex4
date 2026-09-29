@@ -49,6 +49,47 @@ func TestStorageBrokerFrameRoundTripIsBoundedAndRedacted(t *testing.T) {
 	}
 }
 
+func TestStorageBrokerProtocolUsesOnlyFixedOperationsAndRedactedGPTResults(t *testing.T) {
+	for _, operation := range []string{storageBrokerOperationInventory, storageBrokerOperationGPT} {
+		frame, err := encodeStorageBrokerRequest(operation)
+		if err != nil {
+			t.Fatal("fixed broker operation was rejected", operation)
+		}
+		request, err := decodeStorageBrokerRequest(bytes.NewReader(frame))
+		if err != nil || request.Version != storageBrokerProtocolVersion || request.Operation != operation {
+			t.Fatalf("fixed request did not round-trip: %+v %v", request, err)
+		}
+	}
+	if _, err := encodeStorageBrokerRequest("/dev/sda"); err == nil {
+		t.Fatal("caller-controlled device request was accepted")
+	}
+	for _, malformed := range []string{
+		`{"version":2,"operation":"observe-gpt","path":"/dev/sda"}`,
+		`{"version":2,"version":2,"operation":"observe-gpt"}`,
+		`{"version":2,"operation":"mount"}`,
+	} {
+		if _, err := decodeStorageBrokerRequest(bytes.NewReader(frameJSON(malformed))); err == nil {
+			t.Fatal("malformed or arbitrary broker request was accepted", malformed)
+		}
+	}
+
+	summary := validStorageGPTSummaryForTest()
+	response := storageBrokerResponse{Version: storageBrokerProtocolVersion, Status: "ok", GPTObservation: &summary}
+	frame, err := encodeStorageBrokerFrame(response)
+	if err != nil {
+		t.Fatal("valid redacted GPT result was rejected", err)
+	}
+	decoded, err := decodeStorageBrokerFrame(bytes.NewReader(frame))
+	if err != nil || decoded.GPTObservation == nil || decoded.Snapshot != nil ||
+		!validStorageGPTObservationSummary(*decoded.GPTObservation) {
+		t.Fatalf("redacted GPT result did not round-trip: %+v %v", decoded, err)
+	}
+	response.Snapshot = validStorageBrokerTestResponse().Snapshot
+	if validStorageBrokerResponse(response) {
+		t.Fatal("ambiguous response containing both inventory and GPT result was accepted")
+	}
+}
+
 func TestStorageBrokerResponseValidatesPublicPartitionTopology(t *testing.T) {
 	response := validStorageBrokerTestResponse()
 	response.Snapshot.DeviceCount = 2
@@ -77,12 +118,12 @@ func TestStorageBrokerFrameRejectsMalformedAndAmbiguousJSON(t *testing.T) {
 		"zero-length":           {0, 0, 0, 0},
 		"oversized":             {0, 1, 0, 1},
 		"truncated-body":        append([]byte{0, 0, 0, 10}, []byte(`{"x":`)...),
-		"duplicate-key":         frameJSON(`{"version":1,"version":1,"status":"ok","snapshot":{}}`),
-		"unknown-key":           frameJSON(`{"version":1,"status":"ok","snapshot":{},"path":"/dev/sda"}`),
-		"case-variant-key":      frameJSON(`{"Version":1,"status":"ok","snapshot":{}}`),
+		"duplicate-key":         frameJSON(`{"version":2,"version":2,"status":"ok","snapshot":{}}`),
+		"unknown-key":           frameJSON(`{"version":2,"status":"ok","snapshot":{},"path":"/dev/sda"}`),
+		"case-variant-key":      frameJSON(`{"Version":2,"status":"ok","snapshot":{}}`),
 		"trailing-document":     append(append([]byte(nil), valid...), []byte(`{}`)...),
 		"invalid-snapshot":      frameJSON(`{"version":1,"status":"ok","snapshot":null}`),
-		"unavailable-with-data": frameJSON(`{"version":1,"status":"unavailable","snapshot":{}}`),
+		"unavailable-with-data": frameJSON(`{"version":2,"status":"unavailable","snapshot":{}}`),
 	}
 	for name, frame := range cases {
 		t.Run(name, func(t *testing.T) {

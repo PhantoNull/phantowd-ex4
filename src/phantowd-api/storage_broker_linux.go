@@ -16,6 +16,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"syscall"
 	"time"
 
@@ -24,13 +25,16 @@ import (
 )
 
 const (
-	storageBrokerDirectory  = "/run/phantowd-storage"
-	storageBrokerSocket     = storageBrokerDirectory + "/channel"
-	storageBrokerSocketName = "channel"
-	storageBrokerDeadline   = 15 * time.Second
-	storageBrokerBacklog    = 1
-	storageBrokerWorkers    = 1
+	storageBrokerDirectory   = "/run/phantowd-storage"
+	storageBrokerSocket      = storageBrokerDirectory + "/channel"
+	storageBrokerSocketName  = "channel"
+	storageBrokerDeadline    = 15 * time.Second
+	storageGPTBrokerDeadline = 45 * time.Second
+	storageBrokerBacklog     = 1
+	storageBrokerWorkers     = 2
 )
+
+var storageGPTObservationActive atomic.Bool
 
 type storageBrokerPrincipals struct {
 	apiUID    uint32
@@ -416,12 +420,29 @@ func serveStorageBrokerConnection(ctx context.Context, connection *net.UnixConn,
 	}
 	stop := context.AfterFunc(ctx, func() { _ = connection.Close() })
 	defer stop()
-	_ = connection.SetDeadline(time.Now().Add(storageBrokerDeadline))
+	_ = connection.SetReadDeadline(time.Now().Add(2 * time.Second))
 	response := storageBrokerResponse{Version: storageBrokerProtocolVersion, Status: "unavailable"}
-	if ctx.Err() == nil {
-		if snapshot, err := collectTrustedStorageForBroker(); err == nil {
-			response.Status = "ok"
-			response.Snapshot = &snapshot
+	request, requestErr := decodeStorageBrokerRequest(connection)
+	if ctx.Err() == nil && requestErr == nil {
+		if request.Operation == storageBrokerOperationInventory {
+			_ = connection.SetDeadline(time.Now().Add(storageBrokerDeadline))
+			if snapshot, err := collectTrustedStorageForBroker(); err == nil {
+				response.Status = "ok"
+				response.Snapshot = &snapshot
+			}
+		} else if request.Operation == storageBrokerOperationGPT {
+			if !storageGPTObservationActive.CompareAndSwap(false, true) {
+				response.Status = "busy"
+			} else {
+				defer storageGPTObservationActive.Store(false)
+				_ = connection.SetDeadline(time.Now().Add(storageGPTBrokerDeadline))
+				probeContext, cancel := context.WithTimeout(ctx, storageGPTBrokerDeadline)
+				defer cancel()
+				if summary, err := observeTrustedGPTForBroker(probeContext); err == nil {
+					response.Status = "ok"
+					response.GPTObservation = &summary
+				}
+			}
 		}
 	}
 	frame, err := encodeStorageBrokerFrame(response)
@@ -472,6 +493,56 @@ func collectTrustedStorageForBroker() (storageSnapshot, error) {
 	return snapshot, nil
 }
 
+func observeTrustedGPTForBroker(ctx context.Context) (storageGPTObservationSummary, error) {
+	if ctx == nil || ctx.Err() != nil {
+		return storageGPTObservationSummary{}, errStorageDiscoveryIncomplete
+	}
+	principals, err := lookupStorageBrokerPrincipals()
+	if err != nil || !validStorageBrokerCredentials(principals) {
+		return storageGPTObservationSummary{}, errStorageBrokerUnavailable
+	}
+	opener := func(devices []volumeprobe.ObservedBlockDevice) ([]volumeprobe.BlockDeviceSource, error) {
+		return openBrokerReadOnlySources(devices, principals.deviceGID)
+	}
+	discovery, err := discoverTrustedStorageWith(os.DirFS("/sys"), os.DirFS("/proc"), opener)
+	if err != nil {
+		return storageGPTObservationSummary{}, errStorageDiscoveryIncomplete
+	}
+	defer discovery.Close()
+	if len(discovery.candidates) > storageGPTObservationMaxDisks || len(discovery.sources) != len(discovery.candidates) {
+		return storageGPTObservationSummary{}, errStorageDiscoveryIncomplete
+	}
+	observed, err := volumeprobe.ObserveGPTBlockSet(ctx, discovery.sources)
+	if err != nil {
+		return storageGPTObservationSummary{}, errStorageDiscoveryIncomplete
+	}
+	currentStorage, err := collectStorage(os.DirFS("/sys"))
+	if err != nil || !sameStorageSnapshot(discovery.inventory, currentStorage) {
+		return storageGPTObservationSummary{}, errStorageDiscoveryIncomplete
+	}
+	currentMounts, err := collectMountInventory(os.DirFS("/proc"), time.Now())
+	if err != nil || !sameMountSnapshot(discovery.mounts, currentMounts) {
+		return storageGPTObservationSummary{}, errStorageDiscoveryIncomplete
+	}
+	currentSwap, err := collectSwapObservation(os.DirFS("/proc"))
+	if err != nil || currentSwap.entries != 0 {
+		return storageGPTObservationSummary{}, errStorageDiscoveryIncomplete
+	}
+	currentPlan, err := planTrustedStorageDiscovery(currentStorage, currentMounts)
+	if err != nil || !sameStorageDiscoveryPlan(currentPlan, discovery) {
+		return storageGPTObservationSummary{}, errStorageDiscoveryIncomplete
+	}
+	identityObservation, err := observeCandidateGPTIdentities(discovery, currentStorage, observed.Results())
+	if err != nil {
+		return storageGPTObservationSummary{}, errStorageDiscoveryIncomplete
+	}
+	summary, err := summarizeGPTIdentityObservation(identityObservation)
+	if err != nil || discovery.Close() != nil {
+		return storageGPTObservationSummary{}, errStorageDiscoveryIncomplete
+	}
+	return summary, nil
+}
+
 func openBrokerReadOnlySources(devices []volumeprobe.ObservedBlockDevice, deviceGID uint32) ([]volumeprobe.BlockDeviceSource, error) {
 	sources, err := volumeprobe.OpenObservedBlockSources(devices)
 	if err != nil {
@@ -517,25 +588,76 @@ func storageBrokerPeer(connection *net.UnixConn, uid, gid uint32) bool {
 }
 
 func collectStorageFromBroker() (storageSnapshot, error) {
-	principals, err := lookupStorageBrokerPrincipals()
-	if err != nil {
-		return storageSnapshot{}, errStorageBrokerUnavailable
-	}
-	connection, err := net.DialTimeout("unix", storageBrokerSocket, 2*time.Second)
-	if err != nil {
-		return storageSnapshot{}, errStorageBrokerUnavailable
-	}
-	defer connection.Close()
-	unixConnection, ok := connection.(*net.UnixConn)
-	if !ok || !storageBrokerPeer(unixConnection, principals.brokerUID, principals.deviceGID) {
-		return storageSnapshot{}, errStorageBrokerUnavailable
-	}
-	_ = connection.SetDeadline(time.Now().Add(storageBrokerDeadline))
-	response, err := decodeStorageBrokerFrame(connection)
+	response, err := requestStorageBroker(context.Background(), storageBrokerOperationInventory)
 	if err != nil || response.Status != "ok" || response.Snapshot == nil {
 		return storageSnapshot{}, errStorageBrokerUnavailable
 	}
 	return *response.Snapshot, nil
+}
+
+func observeGPTPartitionIdentityFromBroker(ctx context.Context) (storageGPTObservationSummary, error) {
+	response, err := requestStorageBroker(ctx, storageBrokerOperationGPT)
+	if err != nil {
+		return storageGPTObservationSummary{}, errStorageBrokerUnavailable
+	}
+	switch response.Status {
+	case "ok":
+		if response.GPTObservation == nil {
+			return storageGPTObservationSummary{}, errStorageBrokerUnavailable
+		}
+		return *response.GPTObservation, nil
+	case "busy":
+		return storageGPTObservationSummary{}, errStorageGPTObservationBusy
+	default:
+		return storageGPTObservationSummary{}, errStorageBrokerUnavailable
+	}
+}
+
+func requestStorageBroker(ctx context.Context, operation string) (storageBrokerResponse, error) {
+	if ctx == nil || (operation != storageBrokerOperationInventory && operation != storageBrokerOperationGPT) {
+		return storageBrokerResponse{}, errStorageBrokerUnavailable
+	}
+	principals, err := lookupStorageBrokerPrincipals()
+	if err != nil {
+		return storageBrokerResponse{}, errStorageBrokerUnavailable
+	}
+	dialer := net.Dialer{Timeout: 2 * time.Second}
+	connection, err := dialer.DialContext(ctx, "unix", storageBrokerSocket)
+	if err != nil {
+		return storageBrokerResponse{}, errStorageBrokerUnavailable
+	}
+	defer connection.Close()
+	unixConnection, ok := connection.(*net.UnixConn)
+	if !ok || !storageBrokerPeer(unixConnection, principals.brokerUID, principals.deviceGID) {
+		return storageBrokerResponse{}, errStorageBrokerUnavailable
+	}
+	deadline := time.Now().Add(storageBrokerDeadline)
+	if operation == storageBrokerOperationGPT {
+		deadline = time.Now().Add(storageGPTBrokerDeadline)
+	}
+	if contextDeadline, exists := ctx.Deadline(); exists && contextDeadline.Before(deadline) {
+		deadline = contextDeadline
+	}
+	_ = connection.SetDeadline(deadline)
+	frame, err := encodeStorageBrokerRequest(operation)
+	if err != nil {
+		return storageBrokerResponse{}, errStorageBrokerUnavailable
+	}
+	for len(frame) > 0 {
+		n, writeErr := connection.Write(frame)
+		if writeErr != nil || n == 0 {
+			return storageBrokerResponse{}, errStorageBrokerUnavailable
+		}
+		frame = frame[n:]
+	}
+	if unixConnection.CloseWrite() != nil {
+		return storageBrokerResponse{}, errStorageBrokerUnavailable
+	}
+	response, err := decodeStorageBrokerFrame(connection)
+	if err != nil {
+		return storageBrokerResponse{}, errStorageBrokerUnavailable
+	}
+	return response, nil
 }
 
 func verifyQEMUStorageBrokerFixture() error {

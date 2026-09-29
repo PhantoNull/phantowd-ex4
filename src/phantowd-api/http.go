@@ -34,10 +34,15 @@ func newHandlerWithSharePolicy(collect collector, collectStorage storageSnapshot
 }
 
 func newHandlerWithServiceState(collect collector, collectStorage storageSnapshotCollector, collectArrays mdArraySnapshotCollector, collectMounts mountSnapshotCollector, auth *authController, loadPolicy sharePolicyLoader, state *serviceStateBackend) http.Handler {
+	return newHandlerWithStorageGPTObservation(collect, collectStorage, collectArrays, collectMounts, auth, loadPolicy, state, nil)
+}
+
+func newHandlerWithStorageGPTObservation(collect collector, collectStorage storageSnapshotCollector, collectArrays mdArraySnapshotCollector, collectMounts mountSnapshotCollector, auth *authController, loadPolicy sharePolicyLoader, state *serviceStateBackend, collectGPT storageGPTObservationCollector) http.Handler {
 	active := make(chan struct{}, 8)
 	preview := newFileServicePreviewHandler(auth)
 	readPolicy := newSharePolicyReadHandler(auth, loadPolicy)
 	serviceState := newServiceStateHandler(auth, state)
+	gptObservation := newStorageGPTObservationHandler(auth, collectGPT)
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.Header().Set("Cache-Control", "no-store")
@@ -82,6 +87,10 @@ func newHandlerWithServiceState(collect collector, collectStorage storageSnapsho
 		}
 		if r.URL.Path == serviceStatePath {
 			serviceState(w, r)
+			return
+		}
+		if r.URL.Path == storageGPTObservationPath {
+			gptObservation(w, r)
 			return
 		}
 		if r.URL.Path != "/api/v1/system" && r.URL.Path != "/api/v1/storage" && r.URL.Path != "/api/v1/arrays" && r.URL.Path != "/api/v1/mounts" {

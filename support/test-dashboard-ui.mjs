@@ -127,6 +127,7 @@ async function createHarness(respond) {
     "memory-value", "memory-detail", "memory-meter", "firmware-value", "firmware-detail",
     "profile-notice-title", "profile-notice-copy", "profile-notice-mark",
     "observed-at", "device-count", "device-list", "array-count", "array-list", "mount-count", "mount-list",
+    "gpt-observe", "gpt-observation-status",
     ...["load", "status", "result", "summary", "shares"].map((id) => `saved-${id}`),
     ...["load", "prepare", "save", "status", "current", "summary", "document", "review", "change", "samba", "nfs", "editor", "target", "member", "action", "edit-preview"].map((id) => `service-${id}`),
     ...["form", "submit", "clear", "result", "error", "status", "requirements", "samba", "nfs", "nfs-fields", "uuid", "name", "path", "user", "smb-access", "nfs-enabled", "export-id", "network", "nfs-access", "squash", "uid", "gid", "security"].map((id) => `policy-${id}`),
@@ -338,6 +339,50 @@ async function testMountFailureClearsOnlyMountObservation() {
   assert.match(elements["mount-list"].children[0].textContent, /no current mount values/i);
   assert.equal(elements["service-status-dot"].className.includes("is-degraded"), true);
   assert.match(elements["snapshot-status"].textContent, /system, storage, RAID.*current.*mount.*unavailable/i);
+}
+
+async function testGPTObservationRunsOnlyOnExplicitClickAndUsesRedactedCSRFRequest() {
+  const summary = {
+    schema_version: 1, status: "complete", scope: "manual-gpt-metadata-read-only",
+    eligible_candidate_count: 2, gpt_disk_count: 2, partition_count: 4,
+    unsupported_or_non_gpt_count: 0, gpt_coverage: "all-candidates-gpt",
+    ambiguous_disk_guid_count: 0, ambiguous_partuuid_count: 0, identity_evidence_incomplete: false,
+    content_read: false, mount_performed: false, assembly_performed: false, import_performed: false,
+    mutations_performed: false, limitations: ["one", "two", "three", "four", "five"],
+  };
+  const { elements, requests } = await createHarness(async (path, options) => {
+    if (path === "/api/v1/auth/status") return jsonResponse({ authenticated: true });
+    if (path === "/api/v1/auth/session") return jsonResponse({ csrf_token: "x".repeat(43) });
+    if (path === "/api/v1/storage/gpt-observation") return jsonResponse(summary);
+    if (path === "/api/v1/system") return jsonResponse(systemFixture());
+    if (path === "/api/v1/storage") return jsonResponse({ observations: [] });
+    if (path === "/api/v1/arrays") return jsonResponse(arraysFixture());
+    if (path === "/api/v1/mounts") return jsonResponse(mountsFixture());
+    throw new Error(`Unexpected request: ${path} ${JSON.stringify(options)}`);
+  });
+
+  assert.equal(elements["gpt-observation-status"].textContent.includes("Complete observation"), false);
+  assert.equal(requests.some(({ path }) => path === "/api/v1/storage/gpt-observation"), false,
+    "page load and the ordinary refresh must not probe GPT metadata");
+  await elements["gpt-observe"].listeners.get("click")();
+  const request = requests.find(({ path }) => path === "/api/v1/storage/gpt-observation");
+  assert.ok(request);
+  assert.equal(request.options.method, "POST");
+  assert.equal(request.options.headers["X-PhantoWD-CSRF"], "x".repeat(43));
+  assert.equal(request.options.headers["Content-Type"], undefined);
+  assert.equal(request.options.body, undefined);
+  assert.equal(request.options.credentials, "same-origin");
+  assert.match(elements["gpt-observation-status"].textContent, /2 eligible candidates; 2 GPT disks; 4 GPT partitions/);
+  assert.equal(elements["gpt-observation-status"].textContent.includes("12345678-1234"), false);
+  assert.equal(elements["gpt-observe"].disabled, false);
+
+  Object.assign(summary, {
+    eligible_candidate_count: 6, gpt_disk_count: 6, partition_count: 1536,
+    ambiguous_partuuid_count: 1536, unsupported_or_non_gpt_count: 0,
+  });
+  await elements["gpt-observe"].listeners.get("click")();
+  assert.match(elements["gpt-observation-status"].textContent, /6 eligible candidates; 6 GPT disks; 1536 GPT partitions/,
+    "the UI must accept the bounded six-device QEMU fixture without weakening validation");
 }
 
 function policyFixture() {
@@ -779,6 +824,7 @@ await testStorageFailureKeepsOnlyCurrentSystemObservation();
 await testSystemFailureKeepsOnlyCurrentStorageObservation();
 await testAllDiagnosticFailuresClearValues();
 await testMountFailureClearsOnlyMountObservation();
+await testGPTObservationRunsOnlyOnExplicitClickAndUsesRedactedCSRFRequest();
 process.stdout.write("Dashboard UI interaction smoke tests passed (DOM fixture; no visual browser coverage).\n");
 
 async function editorFixture() {

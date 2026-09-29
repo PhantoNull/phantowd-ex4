@@ -478,16 +478,29 @@ are missing. **Depends on:** M1; M7 for hardware.
   expected lower-layer identity for a future resolver, not a check performed
   by the renderer. No anchor is provisioned and no mount/export authority is
   added.
-  These observations are
-  private and excluded from JSON; they confer no persistent identity, mount,
-  import, compatibility or write authority. Host tests/vet and the local
-  ARMv5 QEMU smoke pass, including the updated VolumeID-based NFS fixture. This
-  was an overlay on the verified base kernel/package image; the separate
-  two-boot fixture, clean Buildroot and hosted CI are not part of this evidence.
-  The observer is still test-only: the normal broker/API path does not read
-  partition-table metadata. Product integration must first define bounded
-  request scheduling, timeout/failure semantics and a redacted disclosure;
-  raw IDs must remain out of HTTP and MBR must remain unsupported for identity.
+  These observations are private and excluded from JSON; they confer no
+  persistent identity, mount, import, compatibility or write authority. A
+  separate authenticated, CSRF-protected manual `POST
+  /api/v1/storage/gpt-observation` now invokes the trusted broker's fixed
+  `observe-gpt` operation. It does not run during page load or ordinary storage
+  refresh; those remain sysfs-only. The helper reads first-sector partition
+  metadata and valid GPT headers/entry arrays only, never filesystem
+  signatures, partition contents or file data. Exact generation-bound
+  candidates are correlated to the complete current kernel partition set by
+  partition number/start/size. The API receives only candidate/GPT/partition
+  counts, coverage and duplicate counts; disk GUIDs, PARTUUIDs, geometry,
+  kernel names and paths stay in the broker. MBR/DOS, other partition schemes
+  and candidates without a valid GPT table remain explicit coverage gaps.
+  The HTTP and broker each admit at most one GPT observation, and the broker
+  retains one additional worker so ordinary inventory can remain available.
+  Bounded request deadlines and redacted error handling return no partial
+  result, but kernel uninterruptible I/O can outlive the timeout. Host/API
+  tests, generated regular-image C tests, ARMv5 API-test cross-compilation and
+  an ARMv5 helper link against the cached Buildroot sysroot/libblkid pass
+  locally; no full Buildroot package-target rebuild, QEMU boot or hosted CI has
+  yet validated this increment. It is not EX4/product
+  qualification. Keep raw IDs out of
+  HTTP, MBR unsupported, and mount/import/repair/write authority absent.
   PR #44 merged the first read-only slice: correlate mounted filesystem UUID
   anchors with MD topology and verify the path against a disposable RAID1 guest
   fixture; it also fixes broker per-thread `no_new_privs` initialization. Exact

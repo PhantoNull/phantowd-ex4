@@ -106,6 +106,12 @@ h2 { margin-bottom: 0; font-size: 22px; letter-spacing: -.035em; font-weight: 65
 .storage-heading { margin-top: 46px; }
 .count-badge { padding: 6px 10px; border: 1px solid var(--line); border-radius: 99px; background: var(--surface); }
 .storage-panel { overflow: hidden; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
+.gpt-observation-panel { padding: 18px; margin-top: 14px; }
+.gpt-observation-actions { display: flex; align-items: center; justify-content: space-between; gap: 18px; }
+.gpt-observation-actions .eyebrow { margin-bottom: 6px; }
+.gpt-observation-actions h3 { margin: 0; font-size: 15px; }
+.gpt-observation-help { max-width: 860px; margin: 14px 0 0; }
+.gpt-observation-panel .snapshot-status { margin-top: 12px; }
 .array-panel { overflow: hidden; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
 .mount-panel { overflow: hidden; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
 .array-list { display: grid; }

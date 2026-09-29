@@ -91,9 +91,14 @@ func retain(source *os.File) (*os.File, unix.Stat_t, string, error) {
 
 // The caller retains the descriptor and process-wide slot through this call.
 func inspectPinned(ctx context.Context, input *os.File, before unix.Stat_t, kind, executable string, timeout time.Duration) (Result, error) {
+	return inspectPinnedWithArguments(ctx, input, before, kind, executable, nil, timeout)
+}
+
+func inspectPinnedWithArguments(ctx context.Context, input *os.File, before unix.Stat_t, kind, executable string, arguments []string, timeout time.Duration) (Result, error) {
 	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
-	cmd := exec.CommandContext(ctx, executable)
+	command := append([]string{executable}, arguments...)
+	cmd := exec.CommandContext(ctx, command[0], command[1:]...)
 	cmd.Stdin = input
 	cmd.Env = []string{"LC_ALL=C", "PATH=/usr/bin:/bin", "LIBBLKID_DEBUG=0"}
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}

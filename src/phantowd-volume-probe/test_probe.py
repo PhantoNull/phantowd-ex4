@@ -173,6 +173,22 @@ with tempfile.TemporaryDirectory(prefix="phantowd-probe-") as workspace:
         output.truncate(16 * 1024 * 1024)
     with empty.open("rb") as source:
         assert probe(source, "unidentified")["filesystem_uuid"] == ""
+    # GPT-only mode must not inspect a filesystem signature or return its UUID.
+    filesystem_signature = root / "filesystem-signature.img"
+    image = bytearray(16 * 1024 * 1024)
+    struct.pack_into("<H", image, 1024 + 56, 0xEF53)
+    image[1024 + 104:1024 + 120] = bytes.fromhex("00112233445566778899aabbccddeeff")
+    filesystem_signature.write_bytes(image)
+    original = hashlib.sha256(filesystem_signature.read_bytes()).digest()
+    with filesystem_signature.open("rb") as source:
+        observed = probe(source, "unsupported-table", "--gpt-only")
+    assert observed["filesystem"] == "" and observed["filesystem_uuid"] == "", observed
+    assert observed["partition_table"] == "" and observed["partition_table_id"] == "" and observed["partitions"] == [], observed
+    assert hashlib.sha256(filesystem_signature.read_bytes()).digest() == original
+    invalid_geometry = root / "invalid-geometry.img"
+    invalid_geometry.write_bytes(bytes(513))
+    with invalid_geometry.open("rb") as source:
+        probe(source, None, "--gpt-only")
     # A valid GPT must expose its whole-disk and partition identities, not just
     # classify the protective MBR/GPT as another signature.
     gpt = root / "valid-gpt.img"
@@ -190,6 +206,10 @@ with tempfile.TemporaryDirectory(prefix="phantowd-probe-") as workspace:
         "type_id": "c12a7328-f81f-11d2-ba4b-00a0c93ec93b",
         "extended": False,
     }], observed
+    with gpt.open("rb") as source:
+        gpt_only = probe(source, "other-signature", "--gpt-only")
+    assert gpt_only["filesystem"] == "" and gpt_only["filesystem_uuid"] == "", gpt_only
+    assert gpt_only["partition_table_id"] == observed["partition_table_id"] and gpt_only["partitions"] == observed["partitions"], gpt_only
     assert hashlib.sha256(gpt.read_bytes()).digest() == original
     malformed_gpt_empty_slot = root / "malformed-gpt-empty-mbr-slot.img"
     synthetic_gpt(malformed_gpt_empty_slot)
@@ -213,6 +233,8 @@ with tempfile.TemporaryDirectory(prefix="phantowd-probe-") as workspace:
     original = hashlib.sha256(mismatched_gpt.read_bytes()).digest()
     with mismatched_gpt.open("rb") as source:
         probe(source, None)
+    with mismatched_gpt.open("rb") as source:
+        probe(source, None, "--gpt-only")
     assert hashlib.sha256(mismatched_gpt.read_bytes()).digest() == original
     out_of_range_gpt = root / "out-of-range-gpt-entry.img"
     synthetic_gpt(out_of_range_gpt, partition_start=95, partition_end=110)
@@ -264,6 +286,9 @@ with tempfile.TemporaryDirectory(prefix="phantowd-probe-") as workspace:
         {"number": 6, "start_512b_sectors": 5121, "size_512b_sectors": 256,
          "uuid": "12345678-06", "type_id": "0x83", "extended": False},
     ], observed
+    with mbr.open("rb") as source:
+        gpt_only = probe(source, "unsupported-table", "--gpt-only")
+    assert gpt_only["partition_table"] == "" and gpt_only["partition_table_id"] == "" and gpt_only["partitions"] == [], gpt_only
     assert hashlib.sha256(mbr.read_bytes()).digest() == original
     malformed_dos_empty_slot = root / "malformed-dos-empty-mbr-slot.img"
     synthetic_dos_ebr_image(malformed_dos_empty_slot)
@@ -308,6 +333,10 @@ with tempfile.TemporaryDirectory(prefix="phantowd-probe-") as workspace:
             observed = probe(source, "ext-metadata")
         assert observed["filesystem"] == filesystem, observed
         assert observed["filesystem_uuid"] == expected_uuid, observed
+        with image.open("rb") as source:
+            gpt_only = probe(source, "unsupported-table", "--gpt-only")
+        assert gpt_only["filesystem"] == "" and gpt_only["filesystem_uuid"] == "", gpt_only
+        assert gpt_only["partition_table"] == "" and gpt_only["partitions"] == [], gpt_only
         assert hashlib.sha256(image.read_bytes()).digest() == original
     # A real low-level safeprobe collision, not a mocked return. In pinned
     # 2.40.4, probe.c converts every negative chain result (including -2) to

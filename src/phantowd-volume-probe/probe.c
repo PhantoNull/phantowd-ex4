@@ -5,14 +5,17 @@
 #define _FILE_OFFSET_BITS 64
 #endif
 #include <blkid/blkid.h>
+#include <errno.h>
 #include <fcntl.h>
 #include <signal.h>
 #include <stdio.h>
 #include <string.h>
 #include "partition_table.h"
+#include <linux/fs.h>
 #include <sys/prctl.h>
 #include <sys/resource.h>
 #include <sys/stat.h>
+#include <sys/ioctl.h>
 #include <unistd.h>
 
 /* No path arguments, device enumeration, cache API, mount or repair operation.
@@ -92,14 +95,97 @@ static int emit(const char *status, const char *kind, const char *filesystem,
                   "\"activation_allowed\":false}\n") < 0 || fflush(stdout) == EOF ? 1 : 0;
 }
 
+static int protective_gpt_mbr_state(int fd, uint64_t disk_bytes, uint32_t sector_size)
+{
+    unsigned char mbr[512];
+    if (sector_size < 512 || disk_bytes < sizeof(mbr) || disk_bytes % sector_size != 0)
+        return -1;
+    size_t read_bytes = 0;
+    while (read_bytes < sizeof(mbr)) {
+        ssize_t count = pread(fd, mbr + read_bytes, sizeof(mbr) - read_bytes, (off_t)read_bytes);
+        if (count < 0 && errno == EINTR)
+            continue;
+        if (count <= 0)
+            return -1;
+        read_bytes += (size_t)count;
+    }
+    if (mbr[510] != 0x55 || mbr[511] != 0xaa)
+        return 0;
+
+    uint64_t last_lba = disk_bytes / sector_size - 1;
+    unsigned int protective_count = 0;
+    for (unsigned int i = 0; i < 4; ++i) {
+        const unsigned char *entry = mbr + 446 + i * 16;
+        uint8_t type = entry[4];
+        uint32_t start = (uint32_t)entry[8] | ((uint32_t)entry[9] << 8) |
+            ((uint32_t)entry[10] << 16) | ((uint32_t)entry[11] << 24);
+        uint32_t size = (uint32_t)entry[12] | ((uint32_t)entry[13] << 8) |
+            ((uint32_t)entry[14] << 16) | ((uint32_t)entry[15] << 24);
+        if (type == 0) {
+            for (unsigned int j = 0; j < 16; ++j) {
+                if (entry[j] != 0)
+                    return 0;
+            }
+            continue;
+        }
+        if (type != 0xee || entry[0] != 0 || start != 1 || size == 0 ||
+            size != (last_lba > UINT32_MAX ? UINT32_MAX : (uint32_t)last_lba))
+            return 0;
+        ++protective_count;
+    }
+    return protective_count == 1 ? 1 : 0;
+}
+
+static int descriptor_unchanged(int fd, const struct stat *before)
+{
+    struct stat after;
+    return fstat(fd, &after) == 0 && before->st_dev == after.st_dev &&
+        before->st_ino == after.st_ino && before->st_rdev == after.st_rdev &&
+        before->st_size == after.st_size && before->st_mode == after.st_mode &&
+        before->st_mtim.tv_sec == after.st_mtim.tv_sec && before->st_mtim.tv_nsec == after.st_mtim.tv_nsec &&
+        before->st_ctim.tv_sec == after.st_ctim.tv_sec && before->st_ctim.tv_nsec == after.st_ctim.tv_nsec;
+}
+
+static int observe_gpt_only(int fd, const struct stat *before, const char *kind)
+{
+    uint64_t disk_bytes = 0;
+    uint32_t sector_size = 512;
+    if (S_ISBLK(before->st_mode)) {
+        unsigned int logical_sector_size = 0;
+        if (ioctl(fd, BLKGETSIZE64, &disk_bytes) != 0 ||
+            ioctl(fd, BLKSSZGET, &logical_sector_size) != 0)
+            return fail();
+        sector_size = logical_sector_size;
+    } else if (S_ISREG(before->st_mode) && before->st_size > 0) {
+        disk_bytes = (uint64_t)before->st_size;
+    } else {
+        return fail();
+    }
+
+    phantowd_partition_table_t table = {0};
+    int mbr_state = protective_gpt_mbr_state(fd, disk_bytes, sector_size);
+    if (mbr_state < 0)
+        return fail();
+    if (mbr_state == 0) {
+        if (!descriptor_unchanged(fd, before))
+            return fail();
+        return emit("unsupported-table", kind, "", "", &table);
+    }
+    if (phantowd_partition_table_read(fd, disk_bytes, sector_size, "gpt", &table) != 0)
+        return fail();
+    if (!descriptor_unchanged(fd, before))
+        return fail();
+    return emit("other-signature", kind, "", "", &table);
+}
+
 int main(int argc, char **argv)
 {
-    (void)argv;
     struct stat before, after;
     struct rlimit memory = {64U * 1024U * 1024U, 64U * 1024U * 1024U};
     struct rlimit cpu = {2, 2}, core = {0, 0};
     int flags = fcntl(STDIN_FILENO, F_GETFL);
-    if (argc != 1 || flags < 0 || (flags & O_ACCMODE) != O_RDONLY ||
+    int gpt_only = argc == 2 && strcmp(argv[1], "--gpt-only") == 0;
+    if ((!gpt_only && argc != 1) || flags < 0 || (flags & O_ACCMODE) != O_RDONLY ||
         (flags & O_PATH) || fstat(STDIN_FILENO, &before) != 0 ||
         (!S_ISREG(before.st_mode) && !S_ISBLK(before.st_mode)))
         return fail();
@@ -110,6 +196,8 @@ int main(int argc, char **argv)
         return fail();
     alarm(5); /* Not a guarantee against kernel uninterruptible device I/O. */
     const char *kind = S_ISREG(before.st_mode) ? "regular-image" : "block-device";
+    if (gpt_only)
+        return observe_gpt_only(STDIN_FILENO, &before, kind);
     blkid_probe probe = blkid_new_probe();
     if (!probe)
         return fail();

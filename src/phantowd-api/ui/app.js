@@ -263,6 +263,104 @@ function clearStorageObservation() {
   empty.className = "empty-state";
   empty.textContent = "Storage observation unavailable. No current device values are shown.";
   byId("device-list").replaceChildren(empty);
+  clearGPTObservation("Storage is unavailable. No GPT observation is shown.");
+}
+
+let gptObservationBusy = false;
+let gptObservationGeneration = 0;
+let gptObservationController = null;
+
+function clearGPTObservation(message = "Not run. The ordinary snapshot and page load never invoke this observation.") {
+  gptObservationGeneration++;
+  gptObservationController?.abort();
+  gptObservationController = null;
+  gptObservationBusy = false;
+  const button = byId("gpt-observe");
+  button.disabled = false;
+  button.removeAttribute("aria-busy");
+  setText("gpt-observation-status", message);
+}
+
+function validGPTObservationSummary(value) {
+  if (!value || value.schema_version !== 1 || value.status !== "complete" ||
+      value.scope !== "manual-gpt-metadata-read-only" ||
+      !Number.isInteger(value.eligible_candidate_count) || value.eligible_candidate_count < 0 || value.eligible_candidate_count > 6 ||
+      !Number.isInteger(value.gpt_disk_count) || value.gpt_disk_count < 0 || value.gpt_disk_count > value.eligible_candidate_count ||
+      !Number.isInteger(value.partition_count) || value.partition_count < 0 || value.partition_count > 1536 ||
+      !Number.isInteger(value.unsupported_or_non_gpt_count) || value.unsupported_or_non_gpt_count < 0 || value.unsupported_or_non_gpt_count > value.eligible_candidate_count - value.gpt_disk_count ||
+      !Number.isInteger(value.ambiguous_disk_guid_count) || value.ambiguous_disk_guid_count < 0 || value.ambiguous_disk_guid_count > value.gpt_disk_count ||
+      !Number.isInteger(value.ambiguous_partuuid_count) || value.ambiguous_partuuid_count < 0 || value.ambiguous_partuuid_count > value.partition_count ||
+      !["empty-candidate-set", "no-gpt-candidates", "partial-gpt-candidates", "all-candidates-gpt"].includes(value.gpt_coverage) ||
+      typeof value.identity_evidence_incomplete !== "boolean" || value.content_read !== false ||
+      value.mount_performed !== false || value.assembly_performed !== false || value.import_performed !== false ||
+      value.mutations_performed !== false || !Array.isArray(value.limitations) || value.limitations.length !== 5) return false;
+  const keys = ["schema_version", "status", "scope", "eligible_candidate_count", "gpt_disk_count", "partition_count",
+    "unsupported_or_non_gpt_count", "gpt_coverage", "ambiguous_disk_guid_count", "ambiguous_partuuid_count",
+    "identity_evidence_incomplete", "content_read", "mount_performed", "assembly_performed", "import_performed",
+    "mutations_performed", "limitations"].sort();
+  return Object.keys(value).sort().join("\n") === keys.join("\n");
+}
+
+function renderGPTObservation(value) {
+  if (!validGPTObservationSummary(value)) throw new Error("GPT observation response is invalid.");
+  const coverage = value.gpt_coverage.replaceAll("-", " ");
+  let message = `Complete observation: ${value.eligible_candidate_count} eligible candidates; ${value.gpt_disk_count} GPT disks; ${value.partition_count} GPT partitions; coverage ${coverage}; ${value.ambiguous_disk_guid_count} ambiguous disk GUIDs; ${value.ambiguous_partuuid_count} ambiguous PARTUUIDs.`;
+  if (value.identity_evidence_incomplete) message += " Some independent device-identity evidence is incomplete.";
+  setText("gpt-observation-status", message);
+}
+
+async function observeGPTMetadata() {
+  if (gptObservationBusy) return;
+  gptObservationBusy = true;
+  const generation = ++gptObservationGeneration;
+  const button = byId("gpt-observe");
+  const status = byId("gpt-observation-status");
+  button.disabled = true;
+  button.setAttribute("aria-busy", "true");
+  status.textContent = "Starting one explicit GPT-only metadata observation. This may take up to 45 seconds.";
+  const controller = new AbortController();
+  gptObservationController = controller;
+  const timeout = setTimeout(() => controller.abort(), 55000);
+  try {
+    const sessionResponse = await fetch("/api/v1/auth/session", { method: "GET", credentials: "same-origin", cache: "no-store", headers: { Accept: "application/json" }, signal: controller.signal });
+    if (sessionResponse.status === 401) {
+      const failure = new Error("Session expired."); failure.status = 401; throw failure;
+    }
+    if (!sessionResponse.ok) throw new Error("Could not verify the administrator session.");
+    const session = await sessionResponse.json();
+    if (typeof session.csrf_token !== "string" || session.csrf_token.length !== 43) throw new Error("The session token is unavailable.");
+    if (generation !== gptObservationGeneration) return;
+    const response = await fetch("/api/v1/storage/gpt-observation", {
+      method: "POST", credentials: "same-origin", cache: "no-store", signal: controller.signal,
+      headers: { Accept: "application/json", "X-PhantoWD-CSRF": session.csrf_token },
+    });
+    if (generation !== gptObservationGeneration) return;
+    if (!response.ok) {
+      const message = response.status === 401 ? "Session expired. Sign in again." :
+        response.status === 403 ? "Session security check failed. Reload and sign in again." :
+          response.status === 503 ? "GPT observation unavailable or busy. No partial result is shown; a later attempt must be explicit." :
+            "GPT observation failed. No partial result is shown.";
+      const failure = new Error(message); failure.status = response.status; throw failure;
+    }
+    renderGPTObservation(await response.json());
+  } catch (failure) {
+    if (generation !== gptObservationGeneration) return;
+    if (failure?.status === 401) {
+      try { await updateAuthView({ refresh: false, notice: "Session expired. Sign in again." }); }
+      catch { showAuthUnavailable(); }
+    } else {
+      status.textContent = failure?.name === "AbortError" ? "GPT observation timed out. No partial result is shown; it was not retried." :
+        failure instanceof Error ? failure.message : "GPT observation failed. No partial result is shown.";
+    }
+  } finally {
+    clearTimeout(timeout);
+    if (generation === gptObservationGeneration) {
+      gptObservationBusy = false;
+      gptObservationController = null;
+      button.disabled = false;
+      button.removeAttribute("aria-busy");
+    }
+  }
 }
 
 function clearArrayObservation() {
@@ -395,6 +493,7 @@ function setAuthError(message) {
 }
 
 function showAuthUnavailable() {
+  clearGPTObservation("Administrator session unavailable. No GPT observation is shown.");
   clearPasswordFields();
   clearServicePolicy();
   clearSavedPolicy();
@@ -434,6 +533,7 @@ async function updateAuthView({ refresh = true, notice = "" } = {}) {
   }
 
   dashboard.hidden = true;
+  clearGPTObservation("Sign in to run a manual GPT metadata observation.");
   clearPasswordFields();
   clearServicePolicy();
   clearSavedPolicy();
@@ -886,4 +986,5 @@ byId("policy-form").addEventListener("input", () => { invalidatePolicyPreview();
 byId("policy-form").addEventListener("change", () => { invalidatePolicyPreview(); syncPolicyNFS(); });
 byId("policy-clear").addEventListener("click", clearPolicyDraft);
 byId("refresh").addEventListener("click", refreshSnapshot);
+byId("gpt-observe").addEventListener("click", observeGPTMetadata);
 updateAuthView().catch(showAuthUnavailable);

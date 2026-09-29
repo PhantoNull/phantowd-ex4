@@ -116,6 +116,23 @@ func ObserveBlockSet(ctx context.Context, sources []BlockDeviceSource) (Snapshot
 }
 
 func observeBlockSet(ctx context.Context, sources []BlockDeviceSource, executable string, timeout time.Duration) (Snapshot, error) {
+	return observeBlockSetWithArguments(ctx, sources, executable, nil, timeout)
+}
+
+// ObserveGPTBlockSet invokes the helper's GPT-only mode against the complete
+// caller-qualified source set. Unlike ObserveBlockSet it does not run blkid or
+// inspect filesystem/RAID signatures. An unsupported/non-GPT table is returned
+// without IDs; malformed protective GPT or an I/O error invalidates the set.
+// This remains a metadata read and can still be delayed by kernel D-state I/O.
+func ObserveGPTBlockSet(ctx context.Context, sources []BlockDeviceSource) (Snapshot, error) {
+	return observeGPTBlockSet(ctx, sources, "/usr/libexec/phantowd-volume-probe", 45*time.Second)
+}
+
+func observeGPTBlockSet(ctx context.Context, sources []BlockDeviceSource, executable string, timeout time.Duration) (Snapshot, error) {
+	return observeBlockSetWithArguments(ctx, sources, executable, []string{"--gpt-only"}, timeout)
+}
+
+func observeBlockSetWithArguments(ctx context.Context, sources []BlockDeviceSource, executable string, arguments []string, timeout time.Duration) (Snapshot, error) {
 	if sources == nil || len(sources) > MaxSources {
 		return Snapshot{}, ErrUnsafe
 	}
@@ -124,12 +141,16 @@ func observeBlockSet(ctx context.Context, sources []BlockDeviceSource, executabl
 	for i, source := range sources {
 		files[i], generations[i] = source.File, source.Generation
 	}
-	return observeDescriptors(ctx, files, generations, executable, timeout)
+	return observeDescriptorsWithArguments(ctx, files, generations, executable, arguments, timeout)
 }
 
 // A nil generations slice keeps ObserveSet's regular-image behavior. A
 // non-nil slice requires every retained descriptor to match one generation.
 func observeDescriptors(ctx context.Context, sources []*os.File, generations []BlockDeviceGeneration, executable string, timeout time.Duration) (Snapshot, error) {
+	return observeDescriptorsWithArguments(ctx, sources, generations, executable, nil, timeout)
+}
+
+func observeDescriptorsWithArguments(ctx context.Context, sources []*os.File, generations []BlockDeviceGeneration, executable string, arguments []string, timeout time.Duration) (Snapshot, error) {
 	if ctx == nil || sources == nil || len(sources) > MaxSources {
 		return Snapshot{}, ErrUnsafe
 	}
@@ -178,7 +199,7 @@ func observeDescriptors(ctx context.Context, sources []*os.File, generations []B
 	}
 	entries := make([]observation, 0, len(inputs))
 	for _, input := range inputs {
-		result, err := inspectPinned(ctx, input.file, input.stat, input.kind, executable, 8*time.Second)
+		result, err := inspectPinnedWithArguments(ctx, input.file, input.stat, input.kind, executable, arguments, 8*time.Second)
 		if err != nil {
 			return Snapshot{}, err
 		}

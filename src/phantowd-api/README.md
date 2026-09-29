@@ -125,6 +125,34 @@ SMB/NFS activation remain separate work.
 
 ## Runtime and development boundaries
 
+### Manual GPT metadata observation
+
+The development dashboard offers one separate, explicit
+`POST /api/v1/storage/gpt-observation`. It requires the current administrator
+session, exact configured Origin, one valid `X-PhantoWD-CSRF` header, and an
+empty request with no query or content type. It is never called by page load or
+the ordinary `GET /api/v1/storage` refresh. The route asks the local storage
+broker for the fixed `observe-gpt` operation; callers cannot select a disk,
+path, command, or subset. HTTP and broker gates allow only one GPT observation
+at a time, while a second broker worker keeps normal inventory independent.
+
+The broker may inspect only the first-sector partition map and valid GPT
+headers/entry metadata on its complete eligible read-only whole-disk candidate
+set. It does not run filesystem-signature probing, read partition contents or
+file data, assemble, mount, import, repair, or write. GPT disk GUIDs, PARTUUIDs,
+partition geometry, kernel names and paths remain broker-private. The response
+contains only bounded aggregate candidate/GPT/partition counts, coverage,
+duplicate counts, and fixed limitations. MBR/DOS, other partition schemes and
+candidates without a valid GPT table remain unsupported coverage gaps; a
+singleton is not proof of global uniqueness. Failures produce no partial
+result. The operation has a 50-second request bound, but a kernel-stalled
+uninterruptible block I/O may outlive cancellation. This development-only
+observation is not EX4/product qualification and grants no storage authority.
+The host/API suite and generated regular-image C tests pass locally; ARMv5
+API-test cross-compilation and a target-style helper link against the cached
+Buildroot sysroot/libblkid pass, but a full Buildroot package-target rebuild,
+QEMU boot and hosted CI for this increment remain pending.
+
 The Linux [qualified-mount guard](mountguard/README.md) retains a previously
 verified mount using a unique mount ID and directory descriptors. It refuses
 symlinks, nested mount traversal, replaced anchors and unexpected read-only

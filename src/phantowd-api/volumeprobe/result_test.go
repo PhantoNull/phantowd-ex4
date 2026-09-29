@@ -39,6 +39,23 @@ func TestDecodeValidDOSPartitionMetadata(t *testing.T) {
 	}
 }
 
+func TestDecodeGPTOnlyUnsupportedTableDropsEveryIdentifier(t *testing.T) {
+	const unsupported = `{"schema_version":2,"status":"unsupported-table","source_kind":"block-device","filesystem":"","filesystem_uuid":"","partition_table":"","partition_table_id":"","partitions":[],"mount_performed":false,"compatibility_qualified":false,"activation_allowed":false}`
+	result, err := decode(strings.NewReader(unsupported))
+	if err != nil || result.Status != "unsupported-table" || result.PartitionTable != nil ||
+		result.Filesystem != "" || result.FilesystemUUID != "" {
+		t.Fatalf("unsupported table did not remain identity-free: %+v %v", result, err)
+	}
+	for _, malformed := range []string{
+		strings.Replace(unsupported, `"partition_table_id":""`, `"partition_table_id":"12345678-1234-4234-8234-123456789abc"`, 1),
+		strings.Replace(unsupported, `"partitions":[]`, `"partitions":[{}]`, 1),
+	} {
+		if result, err := decode(strings.NewReader(malformed)); err == nil || result != (Result{}) {
+			t.Fatalf("accepted unsupported-table result carrying a wider claim: %+v", result)
+		}
+	}
+}
+
 func TestDecodeRejectsInconsistentPartitionMetadata(t *testing.T) {
 	duplicateUUID := strings.Replace(validGPTResult,
 		`],"mount_performed":false`,

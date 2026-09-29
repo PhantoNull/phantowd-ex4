@@ -114,6 +114,11 @@ func decode(input io.Reader) (Result, error) {
 			*wire.PartitionTable != "" || *wire.PartitionTableID != "" || len(*wire.Partitions) != 0 {
 			return Result{}, ErrResponse
 		}
+	case "unsupported-table":
+		if result.Filesystem != "" || result.FilesystemUUID != "" ||
+			*wire.PartitionTable != "" || *wire.PartitionTableID != "" || len(*wire.Partitions) != 0 {
+			return Result{}, ErrResponse
+		}
 	default:
 		return Result{}, ErrResponse
 	}

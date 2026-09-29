@@ -162,6 +162,18 @@
         </div>
       </section>
 
+      <section class="storage-panel gpt-observation-panel" aria-labelledby="gpt-observation-title">
+        <div class="gpt-observation-actions">
+          <div>
+            <p class="eyebrow">MANUAL / METADATA ONLY</p>
+            <h3 id="gpt-observation-title">GPT partition identities</h3>
+          </div>
+          <button class="refresh-button" id="gpt-observe" type="button" aria-describedby="gpt-observation-help gpt-observation-status">Observe GPT metadata</button>
+        </div>
+        <p class="policy-help gpt-observation-help" id="gpt-observation-help">This separate, explicit action reads only GPT headers and partition-entry metadata from eligible read-only whole-disk candidates. It does not read filesystem signatures or partition contents, and it never assembles, mounts, imports, repairs, or writes. It may be delayed if the kernel is stuck on block I/O. This development diagnostic is not EX4-qualified; do not run it on valuable disks before a separate safety review.</p>
+        <p class="snapshot-status" id="gpt-observation-status" role="status" aria-live="polite" aria-atomic="true">Not run. The ordinary snapshot and page load never invoke this observation.</p>
+      </section>
+
       <div class="section-heading storage-heading">
         <div>
           <p class="eyebrow">CURRENT PROCESS MOUNT NAMESPACE</p>

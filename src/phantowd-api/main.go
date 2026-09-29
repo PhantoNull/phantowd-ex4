@@ -132,7 +132,7 @@ func main() {
 		log.Fatal("development service configuration storage is unavailable")
 	}
 	defer closeServiceState()
-	server := newConfiguredServer(newHandlerWithServiceState(func() (systemSnapshot, error) {
+	server := newConfiguredServer(newHandlerWithStorageGPTObservation(func() (systemSnapshot, error) {
 		return collectSystem(os.DirFS("/proc"), time.Now())
 	}, func() (storageSnapshot, error) {
 		return collectStorageFromBroker()
@@ -140,7 +140,9 @@ func main() {
 		return collectMDArrayInventory(os.DirFS("/proc"), os.DirFS("/sys"), time.Now())
 	}, func() (mountSnapshot, error) {
 		return collectMountInventory(os.DirFS("/proc"), time.Now())
-	}, newAuthController(accounts, transport.AllowedOrigin), readPolicy, serviceState), transport)
+	}, newAuthController(accounts, transport.AllowedOrigin), readPolicy, serviceState, func(ctx context.Context) (storageGPTObservationSummary, error) {
+		return observeGPTPartitionIdentityFromBroker(ctx)
+	}), transport)
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
 	shutdownDone := make(chan struct{})

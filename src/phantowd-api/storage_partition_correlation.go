@@ -108,6 +108,13 @@ func correlateDiskPartitionTable(
 		TableDisposition: partitionTableNoTable,
 		Partitions:       []kernelPartitionBinding{},
 	}
+	if result.Status == "unsupported-table" {
+		// GPT-only observation deliberately discards MBR/DOS and no-table
+		// identifiers. Current kernel partitions may still exist, so their
+		// geometry is not used to invent stable IDs for an unsupported scheme.
+		binding.TableDisposition = partitionTableUnsupported
+		return binding, nil
+	}
 	if result.PartitionTable == nil {
 		if len(kernelByNumber) != 0 {
 			return diskPartitionBinding{}, errStorageDiscoveryIncomplete
