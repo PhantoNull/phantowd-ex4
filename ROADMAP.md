@@ -484,6 +484,10 @@ are missing. **Depends on:** M1; M7 for hardware.
   ARMv5 QEMU smoke pass, including the updated VolumeID-based NFS fixture. This
   was an overlay on the verified base kernel/package image; the separate
   two-boot fixture, clean Buildroot and hosted CI are not part of this evidence.
+  The observer is still test-only: the normal broker/API path does not read
+  partition-table metadata. Product integration must first define bounded
+  request scheduling, timeout/failure semantics and a redacted disclosure;
+  raw IDs must remain out of HTTP and MBR must remain unsupported for identity.
   PR #44 merged the first read-only slice: correlate mounted filesystem UUID
   anchors with MD topology and verify the path against a disposable RAID1 guest
   fixture; it also fixes broker per-thread `no_new_privs` initialization. Exact
