@@ -298,10 +298,20 @@ remain open.
   review/operator recovery; retirement intent/result states and session
   revocation policy. Retain
   tombstones; retirement must not silently reassign existing file ownership.
-- **M2.5 — Distinguish connection and session revocation.** Current disabled-user
-  fixtures prove denial of new connections only. Specify and test active SMB
-  sessions, open handles and durable reconnects. Show incomplete revocation as
-  pending/degraded; a panel logout does not revoke file-service credentials.
+- **M2.5 — Distinguish connection and session revocation.** A disposable exact-
+  build QEMU fixture now confirms that disabling an account blocks a fresh login
+  but an already-authenticated writer can still complete a write. It holds two
+  target sessions and one unrelated same-IP peer, then verifies QEMU-only
+  PID-targeted shutdown removes the target sessions while the peer remains
+  usable. This is characterization, not a product revocation primitive: this
+  Buildroot Samba build has `--without-json`, `smbstatus -j` reports that JSON
+  support is unavailable, and the human table exposes only PIDs without process
+  generations. PID-only targeting is unsafe for production. Next provide and
+  validate a supported generation-bearing inventory/target path; then test
+  open handles, reconnect/durable handles, stale observations and uncertain
+  command outcomes. Until qualified, disable means only blocking new
+  authentication; incomplete revocation must remain pending/degraded. A panel
+  logout does not revoke file-service credentials.
 - **M2.6 — Add account API/UI only after the backend.** Authorize typed account
   IDs and revisions; reject caller-selected UIDs, paths, shells and executables.
   Read status after uncertain replies rather than resubmitting mutations.
@@ -767,20 +777,22 @@ These features are separate scope, not shortcuts around core acceptance:
    enrollment and explicit enable/disable use that backend, and invalid/missing
    Samba configuration is rejected before Owner state creation. PRs #47 and #48
    are merged to `develop`; host checks and exact-tree ARMv5 QEMU checks pass.
-   M2.5 is next: in disposable QEMU, characterize revoking an already-open
-   session for one disabled account without disconnecting other accounts. The
-    pinned `smbstatus -j` reports UID/server-ID data; exact Samba 4.22.11
-    source accepts a generation-qualified `PID/unique_id` destination in
-    `smbcontrol` ([destination parser](https://github.com/samba-team/samba/blob/samba-4.22.11/source3/utils/smbcontrol.c),
-    [server-ID parser](https://github.com/samba-team/samba/blob/samba-4.22.11/lib/util/server_id.c)).
-    Its parent forks workers per incoming connection ([source](https://github.com/samba-team/samba/blob/samba-4.22.11/source3/smbd/server.c)),
-    so revoke every verified target connection, not just one PID. This is still
-    only a candidate until exact-build QEMU validates it. Include open handles,
-    multiple connections, reconnects/durable handles, stale observations,
-    command failure and post-action verification.
-   Until those checks pass, disable means only denial of new
-   authentication; incomplete revocation must remain visibly pending/degraded.
-   No HTTP credential endpoint exists, and enable is never automatic.
+   Exact-build QEMU now characterizes the disable boundary: existing SMB writes
+   continue after disable; new authentication is refused; a fixed fixture can
+   shut down two target sessions by PID while preserving another account from
+   the same client address. This deliberately uses PID-only targeting inside a
+   disposable server and is not safe product behavior. The pinned Buildroot
+   Samba package compiles with `--without-json` outside its AD-DC configuration,
+   so `smbstatus -j` is unavailable and the text table does not expose the
+   generation needed to safely target a process. The exact Samba 4.22.11 source
+   accepts `PID/unique_id` in `smbcontrol` ([destination parser](https://github.com/samba-team/samba/blob/samba-4.22.11/source3/utils/smbcontrol.c),
+   [server-ID parser](https://github.com/samba-team/samba/blob/samba-4.22.11/lib/util/server_id.c)),
+   and forks workers per incoming connection ([source](https://github.com/samba-team/samba/blob/samba-4.22.11/source3/smbd/server.c)); that does not make a bare PID safe.
+   Next choose and validate a supported generation-bearing inventory for the
+   firmware, then add open-handle, reconnect/durable-handle, stale-observation,
+   command-failure and post-action checks before any product revocation claim.
+   No HTTP credential endpoint exists, enable is never automatic, and until
+   this gate is qualified disable means denial of new authentication only.
 5. **M1.3 / M5 follow-on:** only after the owner/revocation contract is stable,
    connect the internal credential channel to a production-owned listener and
    explicitly authorized operator workflow. Add review reconciliation around

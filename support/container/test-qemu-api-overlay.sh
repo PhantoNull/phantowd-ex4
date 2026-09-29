@@ -12,6 +12,12 @@ source_dir=${3:?source directory required}
 probe_archive=${4:?pinned util-linux archive required}
 target_cc=${5:?pinned Buildroot ARM compiler required}
 patch_dir=${6:?trusted Buildroot util-linux package directory required}
+reuse_base_probe=${PHANTOWD_QEMU_OVERLAY_REUSE_BASE_VOLUME_PROBE:-0}
+smoke_only=${PHANTOWD_QEMU_OVERLAY_SMOKE_ONLY:-0}
+case "$reuse_base_probe:$smoke_only" in
+    0:0|0:1|1:0|1:1) ;;
+    *) echo 'QEMU overlay mode flags must be 0 or 1' >&2; exit 1 ;;
+esac
 for input in "$base" "$go_binary" "$source_dir" "$probe_archive" "$target_cc" "$patch_dir"; do
     case "$input" in *[!a-zA-Z0-9_./-]*|'') echo 'Unsupported input path' >&2; exit 1 ;; esac
 done
@@ -46,10 +52,19 @@ replace_file() {
     rm "$temporary/verify"
 }
 replace_file "$temporary/phantowd-api" /usr/bin/phantowd-api 0100755
-sh "$source_dir/support/container/build-volume-probe-fixture.sh" \
-    "$source_dir" "$probe_archive" "$target_cc" "$temporary/phantowd-volume-probe" "$patch_dir"
-debugfs -w -R 'mkdir /usr/libexec' "$image"
-replace_file "$temporary/phantowd-volume-probe" /usr/libexec/phantowd-volume-probe 0100755
+if [ "$reuse_base_probe" = 1 ]; then
+    debugfs -R "dump /usr/libexec/phantowd-volume-probe $temporary/phantowd-volume-probe" "$image"
+    [ -s "$temporary/phantowd-volume-probe" ] || {
+        echo 'Requested base volume-probe reuse, but the exact artifact has no helper' >&2
+        exit 1
+    }
+    echo 'Reusing the verified base volume-probe; source changes to that helper are not included.'
+else
+    sh "$source_dir/support/container/build-volume-probe-fixture.sh" \
+        "$source_dir" "$probe_archive" "$target_cc" "$temporary/phantowd-volume-probe" "$patch_dir"
+    debugfs -w -R 'mkdir /usr/libexec' "$image"
+    replace_file "$temporary/phantowd-volume-probe" /usr/libexec/phantowd-volume-probe 0100755
+fi
 replace_file "$source_dir/board/qemu/armv5/rootfs-overlay/etc/init.d/S99phantowd-ready" /etc/init.d/S99phantowd-ready 0100755
 debugfs -w -R 'mkdir /usr/lib/phantowd' "$image"
 replace_file "$source_dir/board/qemu/armv5/rootfs-overlay/usr/lib/phantowd/qemu-selftest-once.sh" /usr/lib/phantowd/qemu-selftest-once.sh 0100755
@@ -62,8 +77,12 @@ result=0
 sh "$source_dir/support/qemu-smoke.sh" "$temporary/images" "$temporary/qemu.log" "$LINUX_VERSION" || result=$?
 cat "$temporary/qemu.log"
 if [ "$result" -eq 0 ]; then
-    sh "$source_dir/support/qemu-state-reboot.sh" "$temporary/images" "$temporary/state-reboot.log" || result=$?
-    cat "$temporary/state-reboot.log"
+    if [ "$smoke_only" = 1 ]; then
+        echo 'SMOKE_ONLY=1: the separate two-boot state-persistence fixture was not run.'
+    else
+        sh "$source_dir/support/qemu-state-reboot.sh" "$temporary/images" "$temporary/state-reboot.log" || result=$?
+        cat "$temporary/state-reboot.log"
+    fi
 fi
 sha256sum "$temporary/phantowd-api" "$temporary/phantowd-volume-probe" "$temporary/images/rootfs.ext2"
 echo 'Overlay smoke uses the base kernel/packages; it does not replace clean Buildroot CI or regenerate SBOM/legal-info.'

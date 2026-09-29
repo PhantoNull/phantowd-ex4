@@ -40,6 +40,27 @@ Record the run, commit and toolchain when reporting results. The helper checks
 the base's SHA256SUMS for integrity; this does not authenticate an arbitrary
 download. It refuses special files/symlinks for the principal image inputs.
 
+For repeated local API-only iterations, the same overlay runner accepts two
+opt-in environment flags:
+
+```sh
+PHANTOWD_QEMU_OVERLAY_REUSE_BASE_VOLUME_PROBE=1 \
+PHANTOWD_QEMU_OVERLAY_SMOKE_ONLY=1 \
+sh /src/support/container/test-qemu-api-overlay.sh \
+    /base /toolchain/bin/go /src \
+    /downloads/util-linux-2.40.4.tar.xz \
+    /toolchain/bin/arm-buildroot-linux-gnueabi-gcc \
+    /buildroot-2025.02.18/package/util-linux
+```
+
+The first flag verifies and reuses the volume-probe helper already inside the
+trusted base artifact; use it only when that helper's source has not changed.
+The second omits the separate two-boot state-persistence fixture and runs only
+the single-boot smoke. Both default to `0`, so the ordinary invocation still
+rebuilds/injects the helper and runs both fixtures. This fast mode is local
+feedback only and cannot qualify storage-helper changes, reboot persistence,
+or the complete Buildroot output.
+
 The normal QEMU smoke driver additionally creates a fresh 16-MiB ext2 data
 image with a fixed **test-only** UUID and synthetic SCSI serial/WWN, plus a
 read-only clone with distinct synthetic device identifiers. All virtual disks
@@ -99,6 +120,23 @@ Credentials are public disposable fixture values passed through stdin/private
 auth files, not product credentials. Cleanup stops and reaps the separate
 daemon process group, removes only the created Unix accounts/group, then lets
 the NFS fixture unmount the disk. No production account/lifecycle API is added.
+
+The same guest has a separate disabled-account boundary test with two already-
+authenticated writer clients and one unrelated reader from the same peer
+address. It confirms that disabling the account rejects a fresh login but does
+not revoke existing access (one active writer can still write); a QEMU-only
+`smbcontrol PID shutdown` then removes the two controlled writer sessions while
+the reader session remains usable. The pinned non-AD-DC Samba build is compiled
+with `--without-json`, so `smbstatus -j` is unavailable and its text session
+table has no process-generation token. PID-only targeting is used only as a
+test stimulus against this fixed disposable server; the fixture does not test
+or establish safety against PID reuse, and it is not a product revocation
+implementation.
+Open handles and reconnect/durable-handle semantics are explicitly untested;
+the smoke marker records these false. This characterization does not choose
+whether a future product action should combine account disable and session
+revocation or expose revocation separately.
+
 The Owner-managed M2.4 enrollment fixture additionally routes one explicit
 revision-checked enable through the local test socket: valid authentication is
 denied while disabled, accepted after same-SID confirmation, and empty-password

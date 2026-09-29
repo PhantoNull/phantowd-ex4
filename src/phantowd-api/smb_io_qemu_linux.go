@@ -283,17 +283,11 @@ func runQEMUSMBTest() (result error) {
 	if output, err := client("qprotated", "PolicyShare", "get created "+smbFixtureRoot+"/rotated-download"); err != nil {
 		return fmt.Errorf("SMB rotated credential rejected: %s (%v)", output, err)
 	}
-	if output, err := smbFixtureCommand("", "/usr/bin/smbpasswd", "-d", "-c", configPath, "qpwriter"); err != nil {
-		return fmt.Errorf("SMB fixture disable failed: %s (%v)", output, err)
+	if err := exerciseQEMUSMBSessionRevocation(configPath, smbFixtureRoot+"/qprotated.auth", smbFixtureRoot+"/qpreader.auth", shared, smbFixtureRoot+"/upload", payload); err != nil {
+		return err
 	}
-	output, err = client("qprotated", "PolicyShare", "put "+smbFixtureRoot+"/upload disabled-write")
-	if !smbFixtureDenied(output, err, "NT_STATUS_ACCOUNT_DISABLED") {
-		return fmt.Errorf("SMB disabled credential not refused: %s (%v)", output, err)
-	}
-	if _, err := os.Lstat(shared + "/disabled-write"); !errors.Is(err, os.ErrNotExist) {
-		return errors.New("SMB disabled account left an unexpected file")
-	}
-	// An unrelated user must remain usable while the writer is disabled.
+	// A separate new reader connection must remain usable after the targeted
+	// session shutdown of the disabled writer.
 	if output, err := client("qpreader", "PolicyShare", "get created "+smbFixtureRoot+"/unaffected-download"); err != nil {
 		return fmt.Errorf("SMB unrelated reader affected by disable: %s (%v)", output, err)
 	}
