@@ -184,7 +184,7 @@ while [ "$attempt" -lt 120 ]; do
             echo 'QEMU native identity authority did not complete' >&2
             exit 1
         fi
-        if ! grep -F 'PHANTOWD_IDENTITY_OWNER_BOOT_READY service_uid=0 socket_mode=0620 api_uid=nonroot config_missing_rejected=true config_invalid_rejected=true no_side_effects=true process_restart=true drained=true runtime=run http=false scope=qemu-only' "$log_file" >/dev/null; then
+        if ! grep -F 'PHANTOWD_IDENTITY_OWNER_BOOT_READY service_uid=0 socket_mode=0620 api_uid=nonroot config_validated_before_owner_state=true config_missing_rejected=true config_invalid_rejected=true no_side_effects=true process_restart=true drained=true runtime=run http=false scope=qemu-only' "$log_file" >/dev/null; then
             echo 'QEMU boot identity-owner service contract did not complete' >&2
             exit 1
         fi

@@ -43,15 +43,16 @@ const (
 
 const qemuOwnerSMBConfiguration = "[global]\n" +
 	"server role = standalone server\n" +
+	"netbios name = PHANTOWDQEMU\n" +
 	"security = user\n" +
 	"map to guest = Never\n" +
-	"private dir = " + qemuOwnerRoot + "/private\n" +
-	"lock directory = " + qemuOwnerRoot + "/lock\n" +
-	"state directory = " + qemuOwnerRoot + "/state\n" +
-	"cache directory = " + qemuOwnerRoot + "/cache\n" +
-	"pid directory = " + qemuOwnerRoot + "/pid\n" +
-	"ncalrpc dir = " + qemuOwnerRoot + "/rpc\n" +
-	"passdb backend = tdbsam:" + qemuOwnerRoot + "/private/passdb.tdb\n"
+	"private dir = " + qemuOwnerRoot + "\n" +
+	"lock directory = " + qemuOwnerRoot + "\n" +
+	"state directory = " + qemuOwnerRoot + "\n" +
+	"cache directory = " + qemuOwnerRoot + "\n" +
+	"pid directory = " + qemuOwnerRoot + "\n" +
+	"ncalrpc dir = " + qemuOwnerRoot + "\n" +
+	"passdb backend = tdbsam:" + qemuOwnerRoot + "/passdb.tdb\n"
 
 // runQEMUIdentityOwnerService is wired only into the disposable ARMv5 QEMU
 // image. It deliberately accepts no paths, UID ranges, commands or environment
@@ -66,12 +67,16 @@ func runQEMUIdentityOwnerService() error {
 	if err != nil {
 		return err
 	}
-	if err := prepareQEMUIdentityOwnerRuntime(apiGID); err != nil {
-		return errors.New("QEMU identity-owner runtime is unsafe or unavailable")
+	if err := prepareQEMUIdentityOwnerConfig(); err != nil {
+		return errors.New("QEMU identity-owner Samba fixture is unsafe or unavailable")
 	}
 	smbBackend, err := smbexec.New(qemuOwnerSMBConfig)
 	if err != nil {
 		return errors.New("QEMU identity-owner Samba backend is unavailable")
+	}
+	if err := prepareQEMUIdentityOwnerRuntime(apiGID); err != nil {
+		_ = smbBackend.Close()
+		return errors.New("QEMU identity-owner runtime is unsafe or unavailable")
 	}
 	if err := initializeQEMUIdentityOwnerRegistry(); err != nil {
 		_ = smbBackend.Close()
@@ -146,15 +151,22 @@ func qemuIdentityOwnerAPIIdentity() (uint32, uint32, error) {
 
 func prepareQEMUIdentityOwnerRuntime(apiGID uint32) error {
 	for _, path := range []string{qemuOwnerRoot, qemuOwnerAuthority,
-		filepath.Join(qemuOwnerAuthority, "registry"), filepath.Join(qemuOwnerAuthority, "operations"),
-		filepath.Join(qemuOwnerRoot, "private"), filepath.Join(qemuOwnerRoot, "lock"),
-		filepath.Join(qemuOwnerRoot, "state"), filepath.Join(qemuOwnerRoot, "cache"),
-		filepath.Join(qemuOwnerRoot, "pid"), filepath.Join(qemuOwnerRoot, "rpc")} {
+		filepath.Join(qemuOwnerAuthority, "registry"), filepath.Join(qemuOwnerAuthority, "operations")} {
 		if err := ensureQEMUOwnerDirectory(path, 0700, 0); err != nil {
 			return err
 		}
 	}
 	if err := ensureQEMUOwnerDirectory(qemuOwnerSocketDir, 0710, apiGID); err != nil {
+		return err
+	}
+	return nil
+}
+
+// prepareQEMUIdentityOwnerConfig provisions only the disposable fixture's
+// fixed config before validation. Owner authority directories are prepared
+// only after smbexec.New accepts the pinned config.
+func prepareQEMUIdentityOwnerConfig() error {
+	if err := ensureQEMUOwnerDirectory(qemuOwnerRoot, 0700, 0); err != nil {
 		return err
 	}
 	return ensureQEMUOwnerConfig()
@@ -426,7 +438,7 @@ func exerciseQEMUBootIdentityOwnerService() error {
 	if _, err := os.Stat("/run/phantowd-identity-owner.pid"); !errors.Is(err, os.ErrNotExist) {
 		return errors.New("QEMU boot owner pidfile remained after clean stop")
 	}
-	fmt.Println("PHANTOWD_IDENTITY_OWNER_BOOT_READY service_uid=0 socket_mode=0620 api_uid=nonroot config_missing_rejected=true config_invalid_rejected=true no_side_effects=true process_restart=true drained=true runtime=run http=false scope=qemu-only")
+	fmt.Println("PHANTOWD_IDENTITY_OWNER_BOOT_READY service_uid=0 socket_mode=0620 api_uid=nonroot config_validated_before_owner_state=true config_missing_rejected=true config_invalid_rejected=true no_side_effects=true process_restart=true drained=true runtime=run http=false scope=qemu-only")
 	return nil
 }
 
