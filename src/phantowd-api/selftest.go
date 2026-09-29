@@ -592,20 +592,20 @@ func exerciseQEMUGPTObservation(client *http.Client, origin string) error {
 	}
 	var summary storageGPTObservationSummary
 	if json.Unmarshal(data, &summary) != nil || !validStorageGPTObservationSummary(summary) ||
-		summary.EligibleCandidateCount == 0 || summary.GPTDiskCount != 1 || summary.PartitionCount != 1 ||
-		summary.AmbiguousDiskGUIDCount != 0 || summary.AmbiguousPARTUUIDCount != 0 {
-		return errors.New("GPT observation did not summarize the single synthetic GPT candidate")
+		summary.EligibleCandidateCount != storageGPTObservationMaxDisks || summary.GPTDiskCount != 2 || summary.PartitionCount != 2 ||
+		summary.AmbiguousDiskGUIDCount != 2 || summary.AmbiguousPARTUUIDCount != 2 {
+		return errors.New("GPT observation did not summarize the complete cloned-GPT fixture as ambiguous")
 	}
 	for _, private := range []string{
 		qemuGPTDiskGUID, qemuGPTPartUUID, qemuGPTTypeGUID,
 		"2048", "63455",
-		"sdd", "/dev/", `"disk_guid":`, `"partuuid":`, `"partition_number":`,
+		"sdd", "sdg", "/dev/", `"disk_guid":`, `"partuuid":`, `"partition_number":`,
 		`"start_512b_sectors":`, `"kernel_name":`,
 	} {
 		if strings.Contains(string(data), private) {
 			return errors.New("explicit GPT observation exposed private identifiers or geometry")
 		}
 	}
-	fmt.Println("PHANTOWD_GPT_OBSERVATION_READY eligible=true gpt_disks=1 partitions=1 summary_only=true normal_refresh_redacted=true auth=true csrf=true manual=true read_only=true no_mount=true no_mutation=true scope=qemu-fixture-only")
+	fmt.Println("PHANTOWD_GPT_OBSERVATION_READY eligible=6 gpt_disks=2 partitions=2 duplicate_disk_guids=2 duplicate_partuuids=2 summary_only=true normal_refresh_redacted=true auth=true csrf=true manual=true read_only=true no_mount=true no_mutation=true scope=qemu-fixture-only")
 	return nil
 }

@@ -5,7 +5,7 @@ images_dir="${1:?usage: qemu-smoke.sh IMAGES_DIR [LOG_FILE [EXPECTED_KERNEL]]}"
 log_file="${2:-$images_dir/qemu-smoke.log}"
 expected_kernel="${3:-}"
 qemu_binary="${QEMU_SYSTEM_ARM:-qemu-system-arm}"
-script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+script_dir=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
 
 ready_marker='PHANTOWD_QEMU_READY target=qemu-armv5 kernel='
 if [ -n "$expected_kernel" ]; then
@@ -30,6 +30,7 @@ cleanup() {
     # Exact regular file in a freshly created private temporary directory.
     # shellcheck disable=SC2317 # invoked through trap
     rm -f "$fixture_dir/data.ext2" "$fixture_dir/clone.ext2" "$fixture_dir/collision.raw" \
+        "$fixture_dir/collision-clone.raw" \
         "$fixture_dir/md-member-a.raw" "$fixture_dir/md-member-b.raw"
     # shellcheck disable=SC2317 # invoked through trap
     rmdir "$fixture_dir"
@@ -46,6 +47,9 @@ cp "$fixture_dir/data.ext2" "$fixture_dir/clone.ext2"
 # disk's VPD serial but has its own WWN. Its GPT is used only to verify parser
 # output against the kernel's complete partition-child inventory.
 python3 "$script_dir/make-qemu-gpt-fixture.py" "$fixture_dir/collision.raw"
+# A second independent device is an exact GPT clone with distinct VPD identity.
+# Both GPT disks stay read-only and are never mounted by the GPT observation.
+cp "$fixture_dir/collision.raw" "$fixture_dir/collision-clone.raw"
 # These blank backing files are used only to create a disposable RAID1 in the
 # snapshot-mode guest. mdadm/mkfs writes are discarded with QEMU's overlays.
 truncate -s 32M "$fixture_dir/md-member-a.raw" "$fixture_dir/md-member-b.raw"
@@ -70,6 +74,8 @@ truncate -s 32M "$fixture_dir/md-member-a.raw" "$fixture_dir/md-member-b.raw"
     -device "scsi-hd,bus=scsi0.0,drive=mdmembera,serial=PHANTOWD-QEMU-MD-A,wwn=0x500f000000000004" \
     -drive "file=$fixture_dir/md-member-b.raw,if=none,id=mdmemberb,format=raw,snapshot=on" \
     -device "scsi-hd,bus=scsi0.0,drive=mdmemberb,serial=PHANTOWD-QEMU-MD-B,wwn=0x500f000000000005" \
+    -drive "file=$fixture_dir/collision-clone.raw,if=none,id=collisionclone,format=raw,readonly=on" \
+    -device "scsi-hd,bus=scsi0.0,drive=collisionclone,serial=PHANTOWD-GPT-CLONE-01,wwn=0x500f000000000006" \
     -object rng-random,id=rng0,filename=/dev/urandom \
     -device virtio-rng-pci,rng=rng0 \
     -snapshot \
@@ -156,7 +162,7 @@ while [ "$attempt" -lt 120 ]; do
             echo 'QEMU authenticated read-only storage broker response assertion did not complete' >&2
             exit 1
         fi
-        if ! grep -F 'PHANTOWD_GPT_OBSERVATION_READY eligible=true gpt_disks=1 partitions=1 summary_only=true normal_refresh_redacted=true auth=true csrf=true manual=true read_only=true no_mount=true no_mutation=true scope=qemu-fixture-only' "$log_file" >/dev/null; then
+        if ! grep -F 'PHANTOWD_GPT_OBSERVATION_READY eligible=6 gpt_disks=2 partitions=2 duplicate_disk_guids=2 duplicate_partuuids=2 summary_only=true normal_refresh_redacted=true auth=true csrf=true manual=true read_only=true no_mount=true no_mutation=true scope=qemu-fixture-only' "$log_file" >/dev/null; then
             echo 'QEMU explicit authenticated GPT observation or HTTP redaction assertion did not complete' >&2
             exit 1
         fi
@@ -234,11 +240,11 @@ while [ "$attempt" -lt 120 ]; do
             echo 'Missing sparse large-GPT partition-table probe assertion' >&2
             exit 1
         fi
-        if ! grep -F 'PHANTOWD_PARTITION_SYSFS_CORRELATION_READY candidates_complete=true table_disks=1 partitions=1 start_size_match=true type_guid_preserved=true generic_type_hint=linux-data mismatch_refused=true scope=qemu-fixture-only' "$log_file" >/dev/null; then
+        if ! grep -F 'PHANTOWD_PARTITION_SYSFS_CORRELATION_READY candidates_complete=true table_disks=2 partitions=2 start_size_match=true type_guid_preserved=true generic_type_hint=linux-data mismatch_refused=true cloned_pair=true scope=qemu-fixture-only' "$log_file" >/dev/null; then
             echo 'Missing parser-to-kernel partition reconciliation assertion' >&2
             exit 1
         fi
-        if ! grep -F 'PHANTOWD_PARTITION_IDENTITY_CLASSIFICATION_READY candidates_complete=true observed_gpt_disks=1 coverage=partial synthetic_clone_pair=2 duplicate_disk_guid=ambiguous duplicate_partuuid=ambiguous scope=qemu-fixture-only' "$log_file" >/dev/null; then
+        if ! grep -F 'PHANTOWD_PARTITION_IDENTITY_CLASSIFICATION_READY candidates_complete=true observed_gpt_disks=2 coverage=partial cloned_guest_disks=2 duplicate_disk_guid=ambiguous duplicate_partuuid=ambiguous scope=qemu-fixture-only' "$log_file" >/dev/null; then
             echo 'Missing complete-set GPT clone-identity classification assertion' >&2
             exit 1
         fi

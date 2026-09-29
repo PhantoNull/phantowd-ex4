@@ -4,8 +4,9 @@
 package main
 
 const (
-	// The disposable QEMU broker fixture includes six SCSI devices; real EX4
-	// hardware has four bays. Never truncate a larger complete candidate set.
+	// The disposable QEMU broker fixture has six eligible SCSI candidates (plus
+	// its mounted root disk); real EX4 hardware has four bays. Never truncate a
+	// larger complete candidate set.
 	storageGPTObservationMaxDisks = 6
 	storageGPTObservationPath     = "/api/v1/storage/gpt-observation"
 )

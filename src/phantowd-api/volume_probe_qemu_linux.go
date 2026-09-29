@@ -161,38 +161,40 @@ func probeQEMUUnmountedStorage() error {
 	correlatedGPTDisks := 0
 	correlatedPartitions := 0
 	mismatchRefused := false
-	var qemuGPTBinding diskPartitionBinding
+	var qemuGPTBindings []diskPartitionBinding
 	for index, binding := range partitionBindings {
 		if binding.TableDisposition == partitionTableGPT {
 			correlatedGPTDisks++
-			if binding.DiskName != "sdd" || binding.Scheme != "gpt" ||
+			if (binding.DiskName != "sdd" && binding.DiskName != "sdg") || binding.Scheme != "gpt" ||
 				binding.TableID != "fedcba98-7654-3210-fedc-ba9876543210" ||
-				len(binding.Partitions) != 1 || binding.Partitions[0].KernelName != "sdd1" ||
+				len(binding.Partitions) != 1 || binding.Partitions[0].KernelName != binding.DiskName+"1" ||
 				binding.Partitions[0].Number != 1 || binding.Partitions[0].Start512B != 2048 ||
 				binding.Partitions[0].Size512B != 63455 ||
 				binding.Partitions[0].TypeGUID != "0fc63daf-8483-4772-8e79-3d69d8477de4" ||
 				binding.Partitions[0].TypeHint != gptTypeHintLinuxData ||
-				binding.TableIDStatus != gptIdentitySingletonObserved ||
-				binding.Partitions[0].UUIDStatus != gptIdentitySingletonObserved {
-				return errors.New("QEMU GPT partition did not match its exact kernel child geometry")
+				binding.TableIDStatus != gptIdentityAmbiguousObserved ||
+				binding.Partitions[0].UUIDStatus != gptIdentityAmbiguousObserved {
+				return errors.New("QEMU cloned GPT observation did not match exact kernel geometry and ambiguous IDs")
 			}
-			qemuGPTBinding = binding
+			qemuGPTBindings = append(qemuGPTBindings, binding)
 			correlatedPartitions += len(binding.Partitions)
 			if index >= len(results) || index >= len(discovery.candidates) {
 				return errors.New("QEMU GPT result lost its complete candidate binding")
 			}
-			mismatchedResult := results[index]
-			mismatchedTable := *mismatchedResult.PartitionTable
-			mismatchedTable.Partitions = append([]volumeprobe.Partition(nil), mismatchedTable.Partitions...)
-			mismatchedTable.Partitions[0].Start512B++
-			mismatchedResult.PartitionTable = &mismatchedTable
-			for _, observed := range partitionInventory.Observations {
-				if observed.Name == discovery.candidates[index].Name {
-					if _, err := correlateDiskPartitionTable(observed, partitionInventory.Observations, mismatchedResult); err == nil {
-						return errors.New("QEMU accepted a GPT/sysfs partition start mismatch")
+			if !mismatchRefused {
+				mismatchedResult := results[index]
+				mismatchedTable := *mismatchedResult.PartitionTable
+				mismatchedTable.Partitions = append([]volumeprobe.Partition(nil), mismatchedTable.Partitions...)
+				mismatchedTable.Partitions[0].Start512B++
+				mismatchedResult.PartitionTable = &mismatchedTable
+				for _, observed := range partitionInventory.Observations {
+					if observed.Name == discovery.candidates[index].Name {
+						if _, err := correlateDiskPartitionTable(observed, partitionInventory.Observations, mismatchedResult); err == nil {
+							return errors.New("QEMU accepted a GPT/sysfs partition start mismatch")
+						}
+						mismatchRefused = true
+						break
 					}
-					mismatchRefused = true
-					break
 				}
 			}
 		} else if binding.TableDisposition != partitionTableNoTable &&
@@ -200,27 +202,16 @@ func probeQEMUUnmountedStorage() error {
 			return errors.New("QEMU partition table received an unknown private disposition")
 		}
 	}
-	if correlatedGPTDisks != 1 || correlatedPartitions != 1 || !mismatchRefused ||
+	if correlatedGPTDisks != 2 || correlatedPartitions != 2 || !mismatchRefused ||
 		identityObservation.CandidateCount != len(discovery.candidates) ||
-		identityObservation.GPTDiskCount != 1 || identityObservation.Coverage != gptIdentityCoveragePartial {
-		return errors.New("QEMU did not reconcile the complete candidate set's single GPT disk")
+		identityObservation.GPTDiskCount != 2 || identityObservation.Coverage != gptIdentityCoveragePartial ||
+		len(qemuGPTBindings) != 2 || qemuGPTBindings[0].TableID != qemuGPTBindings[1].TableID ||
+		qemuGPTBindings[0].Partitions[0].UUID != qemuGPTBindings[1].Partitions[0].UUID ||
+		qemuGPTBindings[0].Generation == qemuGPTBindings[1].Generation {
+		return errors.New("QEMU did not reconcile two distinct cloned GPT disks in the complete candidate set")
 	}
-	fmt.Println("PHANTOWD_PARTITION_SYSFS_CORRELATION_READY candidates_complete=true table_disks=1 partitions=1 start_size_match=true type_guid_preserved=true generic_type_hint=linux-data mismatch_refused=true scope=qemu-fixture-only")
-	clone := qemuGPTBinding
-	clone.DiskName = "sdg"
-	clone.Generation = volumeprobe.BlockDeviceGeneration{Major: 65, Minor: 0, DiskSequence: 999}
-	clone.Partitions = append([]kernelPartitionBinding(nil), qemuGPTBinding.Partitions...)
-	clone.Partitions[0].KernelName = "sdg1"
-	clone.Partitions[0].Major = 65
-	clone.Partitions[0].Minor = 1
-	clonedIdentityObservation, err := classifyGPTPartitionIdentities([]diskPartitionBinding{qemuGPTBinding, clone})
-	if err != nil || clonedIdentityObservation.Bindings[0].TableIDStatus != gptIdentityAmbiguousObserved ||
-		clonedIdentityObservation.Bindings[1].TableIDStatus != gptIdentityAmbiguousObserved ||
-		clonedIdentityObservation.Bindings[0].Partitions[0].UUIDStatus != gptIdentityAmbiguousObserved ||
-		clonedIdentityObservation.Bindings[1].Partitions[0].UUIDStatus != gptIdentityAmbiguousObserved {
-		return errors.New("QEMU did not classify cloned GPT identifiers as ambiguous")
-	}
-	fmt.Println("PHANTOWD_PARTITION_IDENTITY_CLASSIFICATION_READY candidates_complete=true observed_gpt_disks=1 coverage=partial synthetic_clone_pair=2 duplicate_disk_guid=ambiguous duplicate_partuuid=ambiguous scope=qemu-fixture-only")
+	fmt.Println("PHANTOWD_PARTITION_SYSFS_CORRELATION_READY candidates_complete=true table_disks=2 partitions=2 start_size_match=true type_guid_preserved=true generic_type_hint=linux-data mismatch_refused=true cloned_pair=true scope=qemu-fixture-only")
+	fmt.Println("PHANTOWD_PARTITION_IDENTITY_CLASSIFICATION_READY candidates_complete=true observed_gpt_disks=2 coverage=partial cloned_guest_disks=2 duplicate_disk_guid=ambiguous duplicate_partuuid=ambiguous scope=qemu-fixture-only")
 	resultByName := make(map[string]volumeprobe.Result, len(results))
 	for index, candidate := range discovery.candidates {
 		resultByName[candidate.Name] = results[index]

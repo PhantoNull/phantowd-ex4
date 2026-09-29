@@ -304,6 +304,11 @@ if ! grep -F 'grep -aF' "$overlay_script" >/dev/null ||
     printf 'QEMU overlay must reject reused volume-probe helpers with an obsolete schema\n' >&2
     exit 1
 fi
+if ! grep -F 'package/phantowd-api/mdev.conf' "$overlay_script" >/dev/null ||
+    ! grep -F 'Mirror the current package-owned mdev rule' "$overlay_script" >/dev/null; then
+    printf 'QEMU overlay must apply the current package-owned broker device rule\n' >&2
+    exit 1
+fi
 
 sh "$repo_root/support/tests/test-storage-broker-buildroot.sh"
 

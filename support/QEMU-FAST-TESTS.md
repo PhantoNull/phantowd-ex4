@@ -2,8 +2,8 @@
 
 `container/test-qemu-api-overlay.sh` is an optional developer feedback lane.
 It rebuilds the Go API with the pinned compiler and injects it, the current
-guest readiness script, the NFS fixture helper and the x/sys license into a
-**temporary copy** of a previously built QEMU filesystem. The original
+broker mdev rule, guest readiness script, NFS fixture helper and x/sys license
+into a **temporary copy** of a previously built QEMU filesystem. The original
 artifact is never modified. This is not a firmware builder or an installer.
 It also cross-compiles and injects a static ARMv5 volume-probe helper using
 hash-checked util-linux 2.40.4 sources, the exact Buildroot package patch set
@@ -72,38 +72,37 @@ before mounting it; it never formats a guest block device. The host driver
 removes only its own temporary data image after QEMU exits. The API observer
 remains read-only; fixture mutations are in a separate QEMU-only test path.
 
-The smoke also attaches a temporary 32-MiB read-only synthetic GPT disk whose
-SCSI serial duplicates the root disk while its WWN remains distinct. Its one
-partition is generated with a fixed test-only disk GUID and PARTUUID; it has no
-filesystem and is never mounted. The ARMv5 self-test requires both nodes to
-report `serial_status=ambiguous` and `wwn_status=present`, with raw VPD values
-redacted. It also reconciles the parsed GPT disk GUID, PARTUUID, partition
-number, start/size and GPT type GUID against the complete generation-bound
-sysfs inventory. It also checks a conservative generic hint (`linux-data`) for
-the fixture's declared GPT type GUID. This describes neither the bytes stored
-in that partition nor any WD/EX4 role or compatibility.
+The smoke attaches two temporary 32-MiB read-only GPT disks with identical
+partition tables and identifiers, but distinct virtual-device VPD identities.
+Their one partition has a fixed test-only disk GUID and PARTUUID, no filesystem,
+and is never mounted. The ARMv5 self-test reconciles each parsed disk GUID,
+PARTUUID, partition number, start/size and GPT type GUID against the complete
+generation-bound sysfs inventory, then classifies the cloned identifiers as
+ambiguous. It also checks a conservative generic hint (`linux-data`) for the
+declared GPT type GUID. This describes neither bytes stored in the partitions
+nor any WD/EX4 role or compatibility.
 Only GPT is currently accepted for this private identity observation. DOS/MBR
 is explicitly unsupported and its disk/partition IDs are discarded. The
 correlation struct is excluded from JSON serialization; no raw disk GUID,
 PARTUUID, geometry, kernel name or path is an API field. The marker
 `PHANTOWD_PARTITION_SYSFS_CORRELATION_READY` is fixture evidence only.
-The self-test then passes the one real GPT binding and a second synthetic
-in-memory copy to the private classifier. It requires duplicate disk GUID and
-PARTUUID statuses to be ambiguous independently. The cloned binding is not a
-second QEMU disk and does not change the complete guest candidate set; the
-marker `PHANTOWD_PARTITION_IDENTITY_CLASSIFICATION_READY` reports both the
-complete original-set coverage (`observed_gpt_disks=1`, `coverage=partial`)
-and the separate synthetic pair. Host tests additionally exercise duplicate
-disk GUID/PARTUUIDs across two candidates admitted by complete discovery, plus
-disk-only and PARTUUID-only collisions. MBR and no-table candidates are coverage
+The self-test uses both complete candidate-set GPT observations directly; it
+requires duplicate disk GUID and PARTUUID statuses to be ambiguous independently
+while their sysfs generations remain distinct. The marker
+`PHANTOWD_PARTITION_IDENTITY_CLASSIFICATION_READY` reports the complete-set
+coverage (`observed_gpt_disks=2`, `coverage=partial`) and the cloned guest pair.
+Host tests additionally exercise duplicate disk GUID/PARTUUIDs across two
+candidates admitted by complete discovery, plus disk-only and PARTUUID-only
+collisions. MBR and no-table candidates are coverage
 gaps, not proof of uniqueness. The private singleton/ambiguous labels are not
 serialized; only aggregate duplicate counts are returned by the separate manual
 observation endpoint. The smoke-only M3.2a API check sends one authenticated,
 CSRF-protected POST through the running ARMv5 API to the real guest broker. It
-requires one GPT disk and partition in the summary, verifies raw identifiers,
-partition geometry, kernel names and paths are absent from HTTP, and confirms
-the ordinary storage response remains redacted. It uses only the disposable
-synthetic GPT disk and never mounts/imports/writes. This exercises the current
+requires two cloned GPT disks/partitions and duplicate counts in the summary,
+verifies raw identifiers, partition geometry, kernel names and paths are absent
+from HTTP, and confirms the ordinary storage response remains redacted. It
+uses only disposable read-only synthetic GPT disks and never mounts/imports/
+writes. This exercises the current
 API/helper overlay on the cached kernel/package base; it is not a clean
 Buildroot, two-boot, hosted-CI or EX4 qualification. The observation is not
 persisted or used to mount/import.

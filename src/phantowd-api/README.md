@@ -151,8 +151,9 @@ observation is not EX4/product qualification and grants no storage authority.
 The host/API suite and generated regular-image C tests pass locally; ARMv5
 API-test cross-compilation and a target-style helper link against the cached
 Buildroot sysroot/libblkid pass. A smoke-only local ARMv5 QEMU overlay also
-passes the explicit authenticated POST through the guest broker against its
-synthetic GPT disk, checking the aggregate-only HTTP response. It reuses the
+passes the explicit authenticated POST through the guest broker against two
+distinct read-only synthetic GPT clones, verifies duplicate GUID/PARTUUID
+classification, and checks the aggregate-only HTTP response. It reuses the
 cached kernel/packages and a disposable rootfs copy; the separate two-boot
 fixture, clean Buildroot/package integration and hosted CI remain pending.
 
@@ -323,8 +324,9 @@ and refuses non-Versatile PB machines. See the
   passed for PR #42's tested head `7254555`; it exercised the broker and
   hotplug-permission assertions in the disposable guest. This is not EX4 board
   or production device-rule qualification. The QEMU SysV profile starts mdev
-  before the broker and API, applies mode `0440` only to whole-disk `sd[a-f]`
-  nodes needed by its six-disk fixture, and tests a synthetic `sdd` hotplug.
+  before the broker and API, applies mode `0440` only to whole-disk `sd[a-g]`
+  nodes needed by its six-candidate fixture (plus the mounted root disk), and
+  tests a synthetic `sdd` hotplug.
   The separate udev rule currently covers `sd[a-d]` provisionally; other init
   systems and EX4 device naming are not yet qualified. The broker's mount view
   is only its own namespace and does not exclude other userspace block consumers.

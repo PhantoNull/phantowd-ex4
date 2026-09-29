@@ -51,6 +51,17 @@ replace_file() {
     cmp "$from" "$temporary/verify"
     rm "$temporary/verify"
 }
+# Mirror the current package-owned mdev rule into this disposable rootfs copy.
+# The prebuilt base can have an older device-name range than the source tree;
+# leaving its rule untouched makes a newly added fixture disk inaccessible to
+# the read-only broker and tests the old image, not the current source.
+debugfs -R "dump /etc/mdev.conf $temporary/mdev.conf.base" "$image"
+awk '$0 != "# PhantoWD storage broker: QEMU whole-disk fixtures only." &&
+    $0 !~ /^\^sd.*\$ root:phantowd-storage-read 0440$/' \
+    "$temporary/mdev.conf.base" > "$temporary/mdev.conf.defaults"
+cat "$source_dir/package/phantowd-api/mdev.conf" "$temporary/mdev.conf.defaults" > "$temporary/mdev.conf"
+replace_file "$temporary/mdev.conf" /etc/mdev.conf 0100644
+rm "$temporary/mdev.conf.base" "$temporary/mdev.conf.defaults" "$temporary/mdev.conf"
 replace_file "$temporary/phantowd-api" /usr/bin/phantowd-api 0100755
 if [ "$reuse_base_probe" = 1 ]; then
     debugfs -R "dump /usr/libexec/phantowd-volume-probe $temporary/phantowd-volume-probe" "$image"

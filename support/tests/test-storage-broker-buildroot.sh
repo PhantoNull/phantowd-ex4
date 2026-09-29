@@ -41,7 +41,7 @@ printf '%s\n' "$users" | awk '
 
 # mdev must grant only read access to whole-disk fixture nodes; /dev/null is
 # normalized before any unprivileged service is launched.
-grep -Fx '^sd[a-f]$ root:phantowd-storage-read 0440' "$mdev_file" >/dev/null ||
+grep -Fx '^sd[a-g]$ root:phantowd-storage-read 0440' "$mdev_file" >/dev/null ||
     fail 'mdev must grant the broker read-only access to whole-disk fixture nodes'
 grep -F 'PHANTOWD_API_DEPENDENCIES += busybox' "$package_makefile" >/dev/null ||
     fail 'storage init integration must depend on BusyBox'
