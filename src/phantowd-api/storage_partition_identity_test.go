@@ -12,6 +12,121 @@ import (
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/volumeprobe"
 )
 
+func TestGPTIdentityClassificationMarksClonedGUIDsAmbiguousWithinObservedSet(t *testing.T) {
+	bindings := []diskPartitionBinding{
+		gptBindingFixture("sda", 8, 0, 11,
+			"fedcba98-7654-3210-fedc-ba9876543210", "00112233-4455-6677-8899-aabbccddeeff"),
+		gptBindingFixture("sdb", 8, 16, 12,
+			"fedcba98-7654-3210-fedc-ba9876543210", "00112233-4455-6677-8899-aabbccddeeff"),
+	}
+
+	observed, err := classifyGPTPartitionIdentities(bindings)
+	if err != nil {
+		t.Fatalf("complete observed GPT set should classify: %v", err)
+	}
+	if observed.CandidateCount != 2 || observed.GPTDiskCount != 2 ||
+		observed.Coverage != gptIdentityCoverageAllCandidates ||
+		len(observed.Bindings) != 2 {
+		t.Fatalf("classification lost complete GPT-set coverage: %+v", observed)
+	}
+	for index, binding := range observed.Bindings {
+		if binding.TableIDStatus != gptIdentityAmbiguousObserved || len(binding.Partitions) != 1 ||
+			binding.Partitions[0].UUIDStatus != gptIdentityAmbiguousObserved {
+			t.Fatalf("cloned GPT identifiers were not marked ambiguous at index %d: %+v", index, binding)
+		}
+	}
+	encoded, err := json.Marshal(observed)
+	if err != nil || string(encoded) != "{}" {
+		t.Fatalf("GPT collision observations must remain private: %s (err=%v)", encoded, err)
+	}
+}
+
+func TestGPTIdentityClassificationSeparatesDiskAndPartitionCollisions(t *testing.T) {
+	for _, test := range []struct {
+		name                string
+		secondDiskGUID      string
+		secondPartUUID      string
+		expectDiskAmbiguous bool
+		expectPartAmbiguous bool
+	}{
+		{
+			name: "duplicate disk GUID only", secondDiskGUID: "fedcba98-7654-3210-fedc-ba9876543210",
+			secondPartUUID:      "10112233-4455-6677-8899-aabbccddeeff",
+			expectDiskAmbiguous: true,
+		},
+		{
+			name: "duplicate PARTUUID only", secondDiskGUID: "00112233-7654-3210-fedc-ba9876543210",
+			secondPartUUID:      "00112233-4455-6677-8899-aabbccddeeff",
+			expectPartAmbiguous: true,
+		},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			bindings := []diskPartitionBinding{
+				gptBindingFixture("sda", 8, 0, 11,
+					"fedcba98-7654-3210-fedc-ba9876543210", "00112233-4455-6677-8899-aabbccddeeff"),
+				gptBindingFixture("sdb", 8, 16, 12, test.secondDiskGUID, test.secondPartUUID),
+			}
+			observed, err := classifyGPTPartitionIdentities(bindings)
+			if err != nil {
+				t.Fatalf("two complete GPT observations should classify: %v", err)
+			}
+			wantDiskStatus := gptIdentitySingletonObserved
+			if test.expectDiskAmbiguous {
+				wantDiskStatus = gptIdentityAmbiguousObserved
+			}
+			wantPartStatus := gptIdentitySingletonObserved
+			if test.expectPartAmbiguous {
+				wantPartStatus = gptIdentityAmbiguousObserved
+			}
+			for _, binding := range observed.Bindings {
+				if binding.TableIDStatus != wantDiskStatus || binding.Partitions[0].UUIDStatus != wantPartStatus {
+					t.Fatalf("disk and partition collisions were conflated: %+v", observed.Bindings)
+				}
+			}
+		})
+	}
+}
+
+func TestGPTIdentityClassificationRejectsRepeatedKernelGeneration(t *testing.T) {
+	first := gptBindingFixture("sda", 8, 0, 11,
+		"fedcba98-7654-3210-fedc-ba9876543210", "00112233-4455-6677-8899-aabbccddeeff")
+	second := gptBindingFixture("sdb", 8, 0, 11,
+		"00112233-7654-3210-fedc-ba9876543210", "10112233-4455-6677-8899-aabbccddeeff")
+	if _, err := classifyGPTPartitionIdentities([]diskPartitionBinding{first, second}); err == nil {
+		t.Fatal("same transient block generation was accepted as two disks or a clone")
+	}
+}
+
+func TestGPTIdentityCoverageKeepsUnsupportedMBROutsideSupportedSubset(t *testing.T) {
+	bindings := []diskPartitionBinding{
+		{
+			DiskName: "sda", Generation: volumeprobe.BlockDeviceGeneration{Major: 8, Minor: 0, DiskSequence: 11},
+			TableDisposition: partitionTableGPT, Scheme: "gpt",
+			TableID: "fedcba98-7654-3210-fedc-ba9876543210",
+		},
+		{
+			DiskName: "sdb", Generation: volumeprobe.BlockDeviceGeneration{Major: 8, Minor: 16, DiskSequence: 12},
+			TableDisposition: partitionTableUnsupported,
+		},
+	}
+
+	observed, err := classifyGPTPartitionIdentities(bindings)
+	if err != nil {
+		t.Fatalf("GPT plus explicitly unsupported MBR should classify as partial coverage: %v", err)
+	}
+	if observed.CandidateCount != 2 || observed.GPTDiskCount != 1 ||
+		observed.UnsupportedTableCount != 1 || observed.NoTableCount != 0 ||
+		observed.Coverage != gptIdentityCoveragePartial ||
+		observed.Bindings[0].TableIDStatus != gptIdentitySingletonObserved ||
+		observed.Bindings[1].TableID != "" || observed.Bindings[1].Scheme != "" ||
+		observed.Bindings[1].TableIDStatus != "" || len(observed.Bindings[1].Partitions) != 0 {
+		t.Fatalf("unsupported MBR was treated as GPT identity evidence: %+v", observed)
+	}
+	if bindings[0].TableIDStatus != "" {
+		t.Fatal("classification mutated the input GPT binding")
+	}
+}
+
 func TestCorrelateDiskGPTPartitionsWithCompleteKernelChildren(t *testing.T) {
 	storage, err := collectStorage(fixtureSysfs())
 	if err != nil {
@@ -158,8 +273,17 @@ func TestCorrelateCandidatePartitionTablesRequiresCompleteGenerationBoundSet(t *
 	if err != nil || len(bindings) != len(discovery.candidates) {
 		t.Fatalf("complete generation-bound candidate result set was rejected: bindings=%+v err=%v", bindings, err)
 	}
+	identitySet, err := observeCandidateGPTIdentities(discovery, current, results)
+	if err != nil || identitySet.CandidateCount != len(discovery.candidates) ||
+		identitySet.GPTDiskCount != 0 || identitySet.NoTableCount != 2 ||
+		identitySet.Coverage != gptIdentityCoverageNone {
+		t.Fatalf("complete no-GPT candidate set was misclassified: observation=%+v err=%v", identitySet, err)
+	}
 	if _, err := correlateCandidatePartitionTables(discovery, current, results[:1]); err == nil {
 		t.Fatal("partial parser-result set was accepted")
+	}
+	if _, err := observeCandidateGPTIdentities(discovery, current, results[:1]); err == nil {
+		t.Fatal("partial parser-result set was accepted by the identity classifier")
 	}
 	changedInventory := current
 	changedInventory.Observations = append([]blockObservation(nil), current.Observations...)
@@ -193,4 +317,20 @@ func sysfsWithoutPartition(t *testing.T) fstest.MapFS {
 		}
 	}
 	return sysfs
+}
+
+func gptBindingFixture(name string, major, minor uint32, diskSequence uint64, diskGUID, partUUID string) diskPartitionBinding {
+	return diskPartitionBinding{
+		DiskName: name,
+		Generation: volumeprobe.BlockDeviceGeneration{
+			Major: major, Minor: minor, DiskSequence: diskSequence,
+		},
+		TableDisposition: partitionTableGPT,
+		Scheme:           "gpt",
+		TableID:          diskGUID,
+		Partitions: []kernelPartitionBinding{{
+			KernelName: name + "1", Major: major, Minor: minor + 1, Number: 1,
+			Start512B: 2048, Size512B: 4096, UUID: partUUID,
+		}},
+	}
 }

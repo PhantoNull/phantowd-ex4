@@ -18,6 +18,7 @@ type kernelPartitionBinding struct {
 	Start512B  uint64 `json:"-"`
 	Size512B   uint64 `json:"-"`
 	UUID       string `json:"-"`
+	UUIDStatus string `json:"-"`
 }
 
 const (
@@ -33,6 +34,7 @@ type diskPartitionBinding struct {
 	TableDisposition string                            `json:"-"`
 	Scheme           string                            `json:"-"`
 	TableID          string                            `json:"-"`
+	TableIDStatus    string                            `json:"-"`
 	Partitions       []kernelPartitionBinding          `json:"-"`
 }
 

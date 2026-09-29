@@ -76,7 +76,7 @@ Status vocabulary:
 | Desired SMB/NFS policy | Strict models, revision stores and opt-in development editing. Stored policy does not activate services. |
 | Native identities | Reservation ledger, protected local reader, creation journal, typed executor, cooperative owner/listener and multi-account router. Not a deployed account manager. |
 | Samba credentials | M2.3 root-only disabled-password patch passed exact-head hosted ARMv5 QEMU and Stage B3 checks, merging as `33df1ed`. M2.4 journals disabled-first enrollment and separate explicit enable through `identityowner`; its fixed executor and internal binary Unix-socket v2 fixture prove authentication denial before enable and success only after same-SID confirmation. A QEMU-selftest-only root Owner boot service now passes init start, protected socket, authorized/denied peers, process restart and drain checks; it is not product startup. Product config/state binding, HTTP authorization, review workflow and remaining lifecycle operations are open. |
-| Storage | GPT/ext/MD image research, sysfs/mount observations, restricted libblkid helper, duplicate SCSI VPD identity reporting, generation-bound descriptor probing, complete-set matching, partition-parent correlation, holder/slave topology and trusted read-only broker. PR #42 passed exact-head host and ARMv5 QEMU checks on `7254555` and merged as `059fa24`; PR #44 added read-only mounted filesystem UUID / MD identity correlation and passed host, Stage B3 and QEMU checks before merging as `db9fd33`. The unpushed M3.2a increment privately reconciles GPT disk GUID/PARTUUID and partition number/start/size against the full generation-bound sysfs set; MBR remains unsupported, IDs are excluded from JSON, and no mount/import authority is added. Host tests/vet and local ARMv5 QEMU smoke passed; this reused a verified base image and skipped the two-boot fixture. Persistent volume identity, EX4 device-rule qualification, global-use accounting, WD compatibility resolution, import/mount authority and product RAID management remain unqualified or unimplemented. |
+| Storage | GPT/ext/MD image research, sysfs/mount observations, restricted libblkid helper, duplicate SCSI VPD identity reporting, generation-bound descriptor probing, complete-set matching, partition-parent correlation, holder/slave topology and trusted read-only broker. PR #42 passed exact-head host and ARMv5 QEMU checks on `7254555` and merged as `059fa24`; PR #44 added read-only mounted filesystem UUID / MD identity correlation and passed host, Stage B3 and QEMU checks before merging as `db9fd33`. Local M3.2a privately reconciles GPT disk GUID/PARTUUID and partition number/start/size against the full generation-bound sysfs set. Local M3.2b marks duplicate disk GUIDs/PARTUUIDs ambiguous only within the observed GPT-candidate subset; MBR stays unsupported and incomplete GPT coverage is explicit. IDs are excluded from JSON, and no mount/import authority is added. Host tests/vet and smoke-only local ARMv5 QEMU overlay passed; its cloned-identity pair is synthetic in-memory and the separate two-boot fixture was skipped. Persistent volume identity, EX4 device-rule qualification, global-use accounting, WD compatibility resolution, import/mount authority and product RAID management remain unqualified or unimplemented. |
 | Hardware | Short diskless serial/RAM and Ethernet/temperature observations. Networking stability, controller/cooling, storage and recovery remain unqualified. |
 | Updates | Host-side signed metadata/payload/version assessment. No on-device installer, update transaction, recovery or installation release. |
 
@@ -456,10 +456,16 @@ are missing. **Depends on:** M1; M7 for hardware.
   The local M3.2a slice observes GPT only: its disk GUID and PARTUUIDs are joined
   to the complete generation-bound kernel partition set by partition number and
   exact start/size. DOS/MBR is unsupported and yields no disk/partition IDs.
-  These are private observations excluded from JSON; they confer no mount,
+  M3.2b classifies repeated disk GUIDs and PARTUUIDs independently as ambiguous
+  within the observed GPT-candidate subset; singleton means only "seen once in
+  this GPT subset," never globally unique. Non-GPT candidates remain explicit
+  coverage gaps, so unsupported MBR and no-table candidates cannot be mistaken
+  for GPT uniqueness. A QEMU synthetic in-memory clone pair tests the collision
+  classifier without attaching another cloned disk. These observations are
+  private and excluded from JSON; they confer no persistent identity, mount,
   import, compatibility or write authority. Host tests/vet and the local
   ARMv5 QEMU smoke pass. This was an overlay on the verified base kernel/package
-  image; the separate two-boot fixture and clean Buildroot/hosted CI are not
+  image; the separate two-boot fixture, clean Buildroot and hosted CI are not
   part of this evidence.
   PR #44 merged the first read-only slice: correlate mounted filesystem UUID
   anchors with MD topology and verify the path against a disposable RAID1 guest
@@ -814,12 +820,16 @@ These features are separate scope, not shortcuts around core acceptance:
    production init, EX4 SATA/device naming, bay mapping, stable identity and
    compatibility explicitly unresolved.
 3. **M3.2:** PR #44 has merged the read-only mounted-filesystem/MD correlation
-   slice and its disposable RAID1 QEMU fixture. The local M3.2a increment adds
-   private GPT-only GUID/PARTUUID-to-sysfs correlation; local host and QEMU
-   smoke pass, but this is not clean Buildroot or release qualification. Next,
-   complete identity classification for aliases/clones and define persistent
-   volume IDs separately from bay location, without granting mount/import
-   authority. Fixtures do not qualify real EX4 layouts.
+   slice and its disposable RAID1 QEMU fixture. Local M3.2a correlates private
+   GPT-only GUID/PARTUUID observations to the complete generation-bound
+   sysfs partition set. M3.2b classifies duplicate IDs within the observed GPT
+   subset and retains explicit MBR/no-table coverage gaps; host tests and one
+   smoke-only local ARMv5 QEMU overlay pass. The QEMU clone collision is
+   synthetic in memory, not a second guest disk. This is not clean Buildroot,
+   two-boot or release qualification. Next, define product-owned persistent
+   volume IDs separately from bay location and specify safe transaction/recovery
+   semantics, without granting mount/import authority. Fixtures do not qualify
+   real EX4 layouts.
 4. **M2.4 / M2.5:** M2.4's trusted backend is bound once to `identityowner.Owner`;
    enrollment and explicit enable/disable use that backend, and invalid/missing
    Samba configuration is rejected before Owner state creation. PRs #47 and #48

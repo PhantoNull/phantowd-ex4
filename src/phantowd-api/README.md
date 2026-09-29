@@ -299,6 +299,16 @@ and refuses non-Versatile PB machines. See the
   is only its own namespace and does not exclude other userspace block consumers.
   Serialized snapshots are rejected because private completion markers and
   generations are not serialized.
+- A further internal GPT-only observer correlates the complete parser results
+  with the complete generation-bound sysfs partition set by partition number
+  and exact start/size. It classifies disk-GUID and PARTUUID collisions
+  independently only within the observed GPT-candidate subset; unsupported
+  MBR and no-table candidates remain coverage gaps, and a singleton is not a
+  global uniqueness claim. IDs and classifications are excluded from JSON.
+  Host contracts and a smoke-only ARMv5 overlay exercise an in-memory synthetic
+  clone pair; no additional cloned guest disk, persistent ID, HTTP field,
+  compatibility decision, mount or import path is added. See `ROADMAP.md` for
+  current qualification limits.
 - `flashable` and `hardware_validated` are always false; the target is explicitly
   `qemu-armv5`. These identifiers are not automatic hardware detection.
 

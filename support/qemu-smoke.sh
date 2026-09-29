@@ -234,6 +234,10 @@ while [ "$attempt" -lt 120 ]; do
             echo 'Missing parser-to-kernel partition reconciliation assertion' >&2
             exit 1
         fi
+        if ! grep -F 'PHANTOWD_PARTITION_IDENTITY_CLASSIFICATION_READY candidates_complete=true observed_gpt_disks=1 coverage=partial synthetic_clone_pair=2 duplicate_disk_guid=ambiguous duplicate_partuuid=ambiguous scope=qemu-fixture-only' "$log_file" >/dev/null; then
+            echo 'Missing complete-set GPT clone-identity classification assertion' >&2
+            exit 1
+        fi
         if ! grep -F 'PHANTOWD_VOLUME_SET_READY cloned_uuid=true aliases_deduplicated=true generation_bound=true stale_generation_refused=true unobserved_not_absent=true shuffled_complete_set=true trusted_complete_discovery=true mount_swap_rechecked=true sysfs_rechecked=true observed_opener=true readonly_sources=true all_or_error=true symlink_refused=true scope=qemu-fixture-only' "$log_file" >/dev/null; then
             echo 'Missing complete QEMU source-set opener assertions' >&2
             exit 1

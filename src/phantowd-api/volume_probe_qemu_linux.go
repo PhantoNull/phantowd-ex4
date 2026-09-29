@@ -153,13 +153,15 @@ func probeQEMUUnmountedStorage() error {
 	if err != nil || !sameQEMUStorageInventory(initialInventory, partitionInventory) {
 		return errors.New("QEMU inventory changed before partition-table correlation")
 	}
-	partitionBindings, err := correlateCandidatePartitionTables(discovery, partitionInventory, results)
+	identityObservation, err := observeCandidateGPTIdentities(discovery, partitionInventory, results)
 	if err != nil {
 		return errors.New("complete QEMU parser-to-kernel partition correlation failed")
 	}
+	partitionBindings := identityObservation.Bindings
 	correlatedGPTDisks := 0
 	correlatedPartitions := 0
 	mismatchRefused := false
+	var qemuGPTBinding diskPartitionBinding
 	for index, binding := range partitionBindings {
 		if binding.TableDisposition == partitionTableGPT {
 			correlatedGPTDisks++
@@ -167,9 +169,12 @@ func probeQEMUUnmountedStorage() error {
 				binding.TableID != "fedcba98-7654-3210-fedc-ba9876543210" ||
 				len(binding.Partitions) != 1 || binding.Partitions[0].KernelName != "sdd1" ||
 				binding.Partitions[0].Number != 1 || binding.Partitions[0].Start512B != 2048 ||
-				binding.Partitions[0].Size512B != 63455 {
+				binding.Partitions[0].Size512B != 63455 ||
+				binding.TableIDStatus != gptIdentitySingletonObserved ||
+				binding.Partitions[0].UUIDStatus != gptIdentitySingletonObserved {
 				return errors.New("QEMU GPT partition did not match its exact kernel child geometry")
 			}
+			qemuGPTBinding = binding
 			correlatedPartitions += len(binding.Partitions)
 			if index >= len(results) || index >= len(discovery.candidates) {
 				return errors.New("QEMU GPT result lost its complete candidate binding")
@@ -193,10 +198,27 @@ func probeQEMUUnmountedStorage() error {
 			return errors.New("QEMU partition table received an unknown private disposition")
 		}
 	}
-	if correlatedGPTDisks != 1 || correlatedPartitions != 1 || !mismatchRefused {
+	if correlatedGPTDisks != 1 || correlatedPartitions != 1 || !mismatchRefused ||
+		identityObservation.CandidateCount != len(discovery.candidates) ||
+		identityObservation.GPTDiskCount != 1 || identityObservation.Coverage != gptIdentityCoveragePartial {
 		return errors.New("QEMU did not reconcile the complete candidate set's single GPT disk")
 	}
 	fmt.Println("PHANTOWD_PARTITION_SYSFS_CORRELATION_READY candidates_complete=true table_disks=1 partitions=1 start_size_match=true mismatch_refused=true scope=qemu-fixture-only")
+	clone := qemuGPTBinding
+	clone.DiskName = "sdg"
+	clone.Generation = volumeprobe.BlockDeviceGeneration{Major: 65, Minor: 0, DiskSequence: 999}
+	clone.Partitions = append([]kernelPartitionBinding(nil), qemuGPTBinding.Partitions...)
+	clone.Partitions[0].KernelName = "sdg1"
+	clone.Partitions[0].Major = 65
+	clone.Partitions[0].Minor = 1
+	clonedIdentityObservation, err := classifyGPTPartitionIdentities([]diskPartitionBinding{qemuGPTBinding, clone})
+	if err != nil || clonedIdentityObservation.Bindings[0].TableIDStatus != gptIdentityAmbiguousObserved ||
+		clonedIdentityObservation.Bindings[1].TableIDStatus != gptIdentityAmbiguousObserved ||
+		clonedIdentityObservation.Bindings[0].Partitions[0].UUIDStatus != gptIdentityAmbiguousObserved ||
+		clonedIdentityObservation.Bindings[1].Partitions[0].UUIDStatus != gptIdentityAmbiguousObserved {
+		return errors.New("QEMU did not classify cloned GPT identifiers as ambiguous")
+	}
+	fmt.Println("PHANTOWD_PARTITION_IDENTITY_CLASSIFICATION_READY candidates_complete=true observed_gpt_disks=1 coverage=partial synthetic_clone_pair=2 duplicate_disk_guid=ambiguous duplicate_partuuid=ambiguous scope=qemu-fixture-only")
 	resultByName := make(map[string]volumeprobe.Result, len(results))
 	for index, candidate := range discovery.candidates {
 		resultByName[candidate.Name] = results[index]
