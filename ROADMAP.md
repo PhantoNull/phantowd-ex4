@@ -520,6 +520,16 @@ are missing. **Depends on:** M1; M7 for hardware.
   automatic MD actions can write even during a supposedly read-only assessment.
   Unknown signatures, mixed generations and degraded cases require refusal or a
   separately qualified policy, not best-effort mounting.
+  The host-only `phantowd-lab inspect-storage-image-set` now correlates bounded
+  GPT, ext, MD v1.2 and MD 0.90 metadata across up to four supplied regular-file
+  images, detects duplicate disk/partition/filesystem identity fingerprints,
+  and withholds cross-image conclusions when any GPT input is invalid. It
+  reports mixed filesystem/array signatures and inconsistent or incomplete
+  metadata for review (including ext state not marked clean or requesting
+  journal recovery); even a clean `metadata-observed` result remains
+  `wd_compatibility=unqualified` and cannot authorize migration, assembly or
+  mount. This advances offline evidence tooling only. A sanitized corpus of
+  exact EX4 data-disk layouts and an evidence-backed allowlist remain required.
 - **M3.4 — Own mount lifecycle.** Model absent, discovered, rejected, qualified,
   mounting, mounted, unavailable, draining and review-required outcomes.
   Derive the transient mount tuple from trusted observations, not HTTP or an

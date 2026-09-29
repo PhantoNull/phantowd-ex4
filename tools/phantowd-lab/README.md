@@ -25,6 +25,7 @@ phantowd-lab inspect-mtd3 FILE
 phantowd-lab inspect-rescue FILE
 phantowd-lab inspect-gpt-image FILE
 phantowd-lab inspect-storage-image DISK-IMAGE-FILE
+phantowd-lab inspect-storage-image-set DISK-IMAGE-1 [DISK-IMAGE-2 [DISK-IMAGE-3 [DISK-IMAGE-4]]]
 phantowd-lab inspect-md-v1.2-image-set DISK-IMAGE-1 DISK-IMAGE-2 [DISK-IMAGE-3 [DISK-IMAGE-4]]
 phantowd-lab inspect-md-v0.90-image-set DISK-IMAGE-1 DISK-IMAGE-2 [DISK-IMAGE-3 [DISK-IMAGE-4]]
 phantowd-lab inspect-ext-partition IMAGE-FILE GPT-PARTITION-NUMBER
@@ -170,6 +171,26 @@ GPT returns `2` without partition observations; a valid GPT returns `0` even
 when individual generic superblocks are absent, unsupported, or damaged, so
 inspect those per-format statuses in the JSON. It never opens a block device,
 mounts, assembles, or writes the image.
+
+`inspect-storage-image-set` accepts one to four whole-disk regular image files
+and correlates only their bounded generic metadata. It reports duplicate GPT
+disk GUID, PARTUUID and ext filesystem UUID fingerprints within the supplied
+set; per-partition declaration/signature summaries; and the existing MD v1.2
+and MD 0.90 image-set comparisons. If any GPT is invalid or unsupported, it
+withholds all cross-image identity and array comparisons instead of presenting
+a partial set as complete. Mixed ext/MD signatures, duplicated identities,
+conflicting/divergent arrays, or incomplete/unsupported probes require manual
+review. `metadata-observed` means only that the supplied generic observations
+passed these limited checks; `wd_compatibility` remains `unqualified` and
+`migration_authorized` is always false. The tool cannot prove all four bays
+were supplied, determine health or filesystem integrity, or authorize
+assembly, mounting, import, or migration. It emits no input paths or unique
+disk GUIDs, PARTUUIDs, filesystem UUIDs, or raw array IDs; generic GPT type
+GUIDs may appear as declarations only. It never opens a block device or
+modifies an image. An ext-family candidate not marked clean, recording errors,
+or advertising journal recovery is held as `incomplete`; the tool never runs
+repair or recovery. Inputs are not locked or snapshotted, so callers must use
+stable offline copies and prevent concurrent modification during inspection.
 
 `inspect-md-v1.2-image-set` accepts two to four whole-disk regular image files,
 requires valid generic GPT on each, and groups candidate MD v1.2 component

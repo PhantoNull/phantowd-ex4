@@ -172,6 +172,9 @@ func run(args []string, output io.Writer) (int, error) {
 	case "inspect-storage-image":
 		return inspectStorageImage(args[1:], output)
 
+	case "inspect-storage-image-set":
+		return inspectStorageImageSet(args[1:], output)
+
 	case "inspect-md-v1.2-image-set":
 		return inspectMDV12ImageSet(args[1:], output)
 
@@ -698,6 +701,262 @@ func observeStorageImage(file *os.File, size int64) (storageImageReport, error) 
 		})
 	}
 	return result, nil
+}
+
+type storageImageSetPartitionSummary struct {
+	Number                int                    `json:"partition_number"`
+	DeclaredTypeGUID      string                 `json:"declared_type_guid"`
+	ExtStatus             diskimage.ExtStatus    `json:"ext_status"`
+	ExtCleanUnmount       bool                   `json:"ext_clean_unmount_flag"`
+	ExtNeedsJournalRepair bool                   `json:"ext_needs_journal_recovery"`
+	MDV12Status           diskimage.MDStatus     `json:"md_v1_2_status"`
+	MDV090Status          diskimage.MDV090Status `json:"md_v0_90_status"`
+}
+
+type storageImageSetInputSummary struct {
+	InputIndex            int                               `json:"input_index"`
+	GPTStatus             diskimage.Status                  `json:"gpt_status"`
+	PartitionCount        int                               `json:"partition_count"`
+	MDV12CandidateCount   int                               `json:"md_v1_2_candidate_count"`
+	MDV090CandidateCount  int                               `json:"md_v0_90_candidate_count"`
+	PartitionObservations []storageImageSetPartitionSummary `json:"partition_observations"`
+}
+
+type storageImageSetIdentityScan struct {
+	Complete                      bool `json:"complete"`
+	DuplicateDiskGUIDGroups       int  `json:"duplicate_disk_guid_groups"`
+	DuplicatePARTUUIDGroups       int  `json:"duplicate_partuuid_groups"`
+	DuplicateFilesystemUUIDGroups int  `json:"duplicate_filesystem_uuid_groups"`
+}
+
+type storageImageSetAssessment struct {
+	Format              string                          `json:"format"`
+	SchemaVersion       int                             `json:"schema_version"`
+	Status              string                          `json:"status"`
+	WDCompatibility     string                          `json:"wd_compatibility"`
+	MigrationAuthorized bool                            `json:"migration_authorized"`
+	Inputs              []storageImageSetInputSummary   `json:"inputs"`
+	IdentityScan        *storageImageSetIdentityScan    `json:"identity_scan,omitempty"`
+	MDV12Comparison     *diskimage.MDV12ImageSetReport  `json:"md_v1_2_comparison,omitempty"`
+	MDV090Comparison    *diskimage.MDV090ImageSetReport `json:"md_v0_90_comparison,omitempty"`
+	BlockDeviceOpened   bool                            `json:"block_device_opened"`
+	MutationsPerformed  bool                            `json:"mutations_performed"`
+	AssemblyPerformed   bool                            `json:"assembly_performed"`
+	MountPerformed      bool                            `json:"mount_performed"`
+	Findings            []string                        `json:"findings"`
+	Limitations         []string                        `json:"limitations"`
+}
+
+func inspectStorageImageSet(args []string, output io.Writer) (int, error) {
+	if len(args) < 1 || len(args) > maxStorageImageSetInputs {
+		return 1, errors.New("usage: phantowd-lab inspect-storage-image-set DISK-IMAGE-1 [DISK-IMAGE-2 [DISK-IMAGE-3 [DISK-IMAGE-4]]]")
+	}
+	result := storageImageSetAssessment{
+		Format:          "phantowd-read-only-storage-image-set-observation",
+		SchemaVersion:   1,
+		Status:          "incomplete",
+		WDCompatibility: "unqualified",
+		Inputs:          []storageImageSetInputSummary{},
+		Findings:        []string{},
+		Limitations: []string{
+			"only caller-supplied regular whole-disk images with generic GPT, ext-family, MD v1.2 and little-endian MD 0.90 metadata are inspected; other formats and WD XML are not interpreted",
+			"the supplied image set is not proof of the complete four-bay inventory; missing or unprovided devices cannot be inferred absent",
+			"duplicate identity counts apply only to the supplied GPT-valid images; generic metadata agreement is not a WD layout, health, synchronization, filesystem-integrity or migration qualification",
+			"partition type GUIDs are on-disk declarations, not proof of contents, role or compatibility; ext results inspect only one bounded superblock, not file data or full filesystem integrity",
+			"the tool does not lock or snapshot source files; callers must supply stable offline copies and avoid concurrent modification during inspection",
+			"all inputs are regular files; no block device is opened, no array is assembled, no filesystem is mounted, and no input is modified",
+		},
+	}
+	result.Findings = append(result.Findings, "WD compatibility and migration remain unqualified; this report is metadata evidence only")
+
+	diskFingerprints := make([]string, 0, len(args))
+	partitionFingerprints := make([]string, 0)
+	extFingerprints := make([]string, 0)
+	mdV12Components := make([]diskimage.MDV12ImageComponent, 0)
+	mdV090Components := make([]diskimage.MDV090ImageComponent, 0)
+	allGPTValid := true
+	gptDamaged := false
+	gptUnsupported := false
+	needsReview := false
+	extFilesystemNeedsReview := false
+	layerConflict := false
+
+	for inputIndex, path := range args {
+		file, size, err := openRegular(path)
+		if err != nil {
+			return 1, err
+		}
+		observed, observeErr := observeStorageImage(file, size)
+		closeErr := file.Close()
+		if observeErr != nil {
+			return 1, observeErr
+		}
+		if closeErr != nil {
+			return 1, closeErr
+		}
+		input := storageImageSetInputSummary{
+			InputIndex: inputIndex + 1, GPTStatus: observed.GPTStatus,
+			PartitionObservations: []storageImageSetPartitionSummary{},
+		}
+		if observed.GPTStatus != diskimage.StatusValid {
+			allGPTValid = false
+			gptDamaged = gptDamaged || observed.GPTStatus == diskimage.StatusDamaged
+			gptUnsupported = gptUnsupported || observed.GPTStatus == diskimage.StatusUnsupported
+			result.Inputs = append(result.Inputs, input)
+			continue
+		}
+		diskFingerprints = append(diskFingerprints, observed.GPT.DiskIdentityFingerprint)
+		input.PartitionCount = len(observed.Partitions)
+		for _, partition := range observed.Partitions {
+			partitionSummary := storageImageSetPartitionSummary{
+				Number: partition.Number, ExtStatus: partition.Ext.Status,
+				ExtCleanUnmount:       partition.Ext.CleanUnmount,
+				ExtNeedsJournalRepair: partition.Ext.NeedsJournalRecovery,
+				MDV12Status:           partition.MDV12.Status, MDV090Status: partition.MDV090.Status,
+			}
+			for _, gptPartition := range observed.GPT.Partitions {
+				if gptPartition.Number == partition.Number {
+					partitionSummary.DeclaredTypeGUID = gptPartition.TypeGUID
+					partitionFingerprints = append(partitionFingerprints, gptPartition.IdentityFingerprint)
+					break
+				}
+			}
+			input.PartitionObservations = append(input.PartitionObservations, partitionSummary)
+
+			if partition.Ext.Status == diskimage.ExtStatusCandidate {
+				if partition.Ext.FilesystemIdentityFingerprint == "" {
+					needsReview = true
+				} else {
+					extFingerprints = append(extFingerprints, partition.Ext.FilesystemIdentityFingerprint)
+				}
+				if !partition.Ext.CleanUnmount || partition.Ext.NeedsJournalRecovery || partition.Ext.FilesystemState == "errors-recorded" {
+					needsReview = true
+					extFilesystemNeedsReview = true
+				}
+			} else if partition.Ext.Status == diskimage.ExtStatusDamaged || partition.Ext.Status == diskimage.ExtStatusUnsupported {
+				needsReview = true
+			}
+			if partition.MDV12.Status == diskimage.MDStatusCandidate {
+				input.MDV12CandidateCount++
+				mdV12Components = append(mdV12Components, diskimage.MDV12ImageComponent{
+					InputIndex: inputIndex + 1, PartitionNumber: partition.Number, Report: partition.MDV12,
+				})
+				if partition.Ext.Status == diskimage.ExtStatusCandidate {
+					layerConflict = true
+				}
+			} else if partition.MDV12.Status == diskimage.MDStatusDamaged || partition.MDV12.Status == diskimage.MDStatusUnsupported {
+				needsReview = true
+			}
+			if partition.MDV090.Status == diskimage.MDV090StatusCandidate {
+				input.MDV090CandidateCount++
+				mdV090Components = append(mdV090Components, diskimage.MDV090ImageComponent{
+					InputIndex: inputIndex + 1, PartitionNumber: partition.Number, Report: partition.MDV090,
+				})
+				if partition.Ext.Status == diskimage.ExtStatusCandidate {
+					layerConflict = true
+				}
+			} else if partition.MDV090.Status == diskimage.MDV090StatusDamaged || partition.MDV090.Status == diskimage.MDV090StatusUnsupported {
+				needsReview = true
+			}
+		}
+		result.Inputs = append(result.Inputs, input)
+	}
+
+	if !allGPTValid {
+		switch {
+		case gptDamaged:
+			result.Status = "damaged"
+			result.Findings = append(result.Findings, "at least one supplied image has damaged or inconsistent GPT metadata; cross-image identity and array comparisons were withheld")
+		case gptUnsupported:
+			result.Status = "unsupported"
+			result.Findings = append(result.Findings, "at least one supplied image is not a supported GPT image; cross-image identity and array comparisons were withheld")
+		default:
+			result.Status = "incomplete"
+		}
+		if err := writeJSON(output, result); err != nil {
+			return 1, err
+		}
+		return 2, nil
+	}
+
+	identity := &storageImageSetIdentityScan{
+		Complete:                      true,
+		DuplicateDiskGUIDGroups:       duplicateFingerprintGroupCount(diskFingerprints),
+		DuplicatePARTUUIDGroups:       duplicateFingerprintGroupCount(partitionFingerprints),
+		DuplicateFilesystemUUIDGroups: duplicateFingerprintGroupCount(extFingerprints),
+	}
+	result.IdentityScan = identity
+	mdV12Comparison, err := diskimage.CompareMDV12ImageSet(mdV12Components)
+	if err != nil {
+		return 1, err
+	}
+	result.MDV12Comparison = &mdV12Comparison
+	mdV090Comparison, err := diskimage.CompareMDV090ImageSet(mdV090Components)
+	if err != nil {
+		return 1, err
+	}
+	result.MDV090Comparison = &mdV090Comparison
+
+	ambiguous := identity.DuplicateDiskGUIDGroups != 0 || identity.DuplicatePARTUUIDGroups != 0 ||
+		identity.DuplicateFilesystemUUIDGroups != 0 || layerConflict
+	incomplete := needsReview || mdV12Comparison.UnqualifiedComponents != 0 || mdV12Comparison.UnidentifiedCandidateComponents != 0 ||
+		mdV090Comparison.UnqualifiedComponents != 0 || mdV090Comparison.UnidentifiedCandidateComponents != 0
+	for _, array := range mdV12Comparison.Arrays {
+		switch array.Status {
+		case diskimage.MDV12ArrayAmbiguous, diskimage.MDV12ArrayConflicting, diskimage.MDV12ArrayDivergent:
+			ambiguous = true
+		case diskimage.MDV12ArrayIncomplete:
+			incomplete = true
+		}
+	}
+	for _, array := range mdV090Comparison.Arrays {
+		switch array.Status {
+		case diskimage.MDV090ArrayAmbiguous, diskimage.MDV090ArrayConflicting, diskimage.MDV090ArrayDivergent:
+			ambiguous = true
+		case diskimage.MDV090ArrayIncomplete:
+			incomplete = true
+		}
+	}
+	switch {
+	case ambiguous:
+		result.Status = "ambiguous"
+		result.Findings = append(result.Findings, "duplicate identities, conflicting storage-layer signatures, or divergent array metadata require operator review")
+	case incomplete:
+		result.Status = "incomplete"
+		result.Findings = append(result.Findings, "one or more bounded filesystem or array observations are incomplete, damaged, unsupported, or unidentified")
+	default:
+		result.Status = "metadata-observed"
+		result.Findings = append(result.Findings, "no duplicate observed identifiers or inconsistent supported array metadata were found within the supplied images; this does not imply global uniqueness")
+	}
+	if layerConflict {
+		result.Findings = append(result.Findings, "one or more partitions contain both an ext-family filesystem candidate and an MD component candidate")
+	}
+	if extFilesystemNeedsReview {
+		result.Findings = append(result.Findings, "an ext-family superblock is not marked clean, records filesystem errors, or advertises journal recovery; no repair or recovery was attempted")
+	}
+	if err := writeJSON(output, result); err != nil {
+		return 1, err
+	}
+	if result.Status != "metadata-observed" {
+		return 2, nil
+	}
+	return 0, nil
+}
+
+func duplicateFingerprintGroupCount(fingerprints []string) int {
+	counts := make(map[string]int, len(fingerprints))
+	for _, fingerprint := range fingerprints {
+		if fingerprint != "" {
+			counts[fingerprint]++
+		}
+	}
+	duplicates := 0
+	for _, count := range counts {
+		if count > 1 {
+			duplicates++
+		}
+	}
+	return duplicates
 }
 
 type storageImageSetInput struct {

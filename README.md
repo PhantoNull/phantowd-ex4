@@ -44,6 +44,12 @@ candidate disks if a nonzero mount device number cannot be mapped to the
 complete sysfs block inventory. This is still a point-in-time, current-namespace
 check, not proof of global storage-use exclusivity or EX4 qualification.
 
+The host-only `phantowd-lab inspect-storage-image-set` tool now correlates
+bounded GPT, ext and Linux MD metadata across supplied whole-disk image files,
+redacts identities, and withholds cross-image conclusions when a GPT input is
+invalid. Its results are generic evidence only: WD compatibility stays
+unqualified and migration, assembly and mounting are never authorized.
+
 The API and dashboard remain development-only and guest-loopback-only by
 default. Do not expose them through a LAN listener or reverse proxy.
 [Component contracts](src/phantowd-api/README.md) explain the precise boundaries.

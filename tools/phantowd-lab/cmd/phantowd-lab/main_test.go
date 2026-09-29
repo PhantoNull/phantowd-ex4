@@ -430,6 +430,228 @@ func TestInspectStorageImageAggregatesReadOnlyPartitionObservations(t *testing.T
 	}
 }
 
+func TestInspectStorageImageSetDetectsClonesWithoutAuthorizingMigration(t *testing.T) {
+	first := syntheticGPTImageForMDV12Member(0, 0, 41)
+	second := syntheticGPTImageForMDV12Member(1, 1, 41)
+	paths := []string{
+		filepath.Join(t.TempDir(), "private-whole-disk-one.img"),
+		filepath.Join(t.TempDir(), "private-whole-disk-two.img"),
+	}
+	fixtures := [][]byte{first, second}
+	for index, path := range paths {
+		if err := os.WriteFile(path, fixtures[index], 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	var output bytes.Buffer
+	code, err := run([]string{"inspect-storage-image-set", paths[0], paths[1]}, &output)
+	if err != nil || code != 2 {
+		t.Fatalf("cloned synthetic storage image set: code=%d err=%v output=%s", code, err, output.String())
+	}
+	var report struct {
+		Format              string `json:"format"`
+		Status              string `json:"status"`
+		WDCompatibility     string `json:"wd_compatibility"`
+		MigrationAuthorized bool   `json:"migration_authorized"`
+		MutationsPerformed  bool   `json:"mutations_performed"`
+		AssemblyPerformed   bool   `json:"assembly_performed"`
+		MountPerformed      bool   `json:"mount_performed"`
+		IdentityScan        struct {
+			Complete                      bool `json:"complete"`
+			DuplicateDiskGUIDGroups       int  `json:"duplicate_disk_guid_groups"`
+			DuplicatePARTUUIDGroups       int  `json:"duplicate_partuuid_groups"`
+			DuplicateFilesystemUUIDGroups int  `json:"duplicate_filesystem_uuid_groups"`
+		} `json:"identity_scan"`
+		MDV12Comparison struct {
+			Arrays []struct {
+				Status string `json:"status"`
+			} `json:"arrays"`
+		} `json:"md_v1_2_comparison"`
+	}
+	if err := json.Unmarshal(output.Bytes(), &report); err != nil {
+		t.Fatalf("invalid JSON report: %v: %s", err, output.String())
+	}
+	if report.Format != "phantowd-read-only-storage-image-set-observation" || report.Status != "ambiguous" ||
+		report.WDCompatibility != "unqualified" || report.MigrationAuthorized || report.MutationsPerformed ||
+		report.AssemblyPerformed || report.MountPerformed || !report.IdentityScan.Complete ||
+		report.IdentityScan.DuplicateDiskGUIDGroups != 1 || report.IdentityScan.DuplicatePARTUUIDGroups != 1 ||
+		report.IdentityScan.DuplicateFilesystemUUIDGroups != 1 || len(report.MDV12Comparison.Arrays) != 1 ||
+		report.MDV12Comparison.Arrays[0].Status != "metadata-consistent" {
+		t.Fatalf("clone set was not completely diagnosed or remained actionable: %+v", report)
+	}
+	for _, secret := range []string{filepath.ToSlash(paths[0]), filepath.ToSlash(paths[1]), "PRIVATE_ARRAY_ID", "synthetic-partition", "/dev/sda"} {
+		if strings.Contains(output.String(), secret) {
+			t.Fatalf("image-set report leaked %q: %s", secret, output.String())
+		}
+	}
+	for index, path := range paths {
+		after, err := os.ReadFile(path)
+		if err != nil || sha256.Sum256(after) != sha256.Sum256(fixtures[index]) {
+			t.Fatalf("image %d changed during assessment: err=%v", index+1, err)
+		}
+	}
+}
+
+func TestInspectStorageImageSetWithholdsCrossImageIdentityOnIncompleteGPT(t *testing.T) {
+	validPath := filepath.Join(t.TempDir(), "valid-disk.img")
+	unsupportedPath := filepath.Join(t.TempDir(), "unsupported-disk.img")
+	damagedPath := filepath.Join(t.TempDir(), "damaged-disk.img")
+	if err := os.WriteFile(validPath, syntheticGPTImageForMDV12Member(0, 0, 41), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(unsupportedPath, []byte("not a supported GPT image"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	damaged := syntheticGPTImageForMDV12Member(1, 1, 41)
+	damaged[len(damaged)-512+16] ^= 1
+	if err := os.WriteFile(damagedPath, damaged, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	for _, test := range []struct {
+		name string
+		path string
+		want string
+	}{{"unsupported", unsupportedPath, "unsupported"}, {"damaged", damagedPath, "damaged"}} {
+		t.Run(test.name, func(t *testing.T) {
+			var output bytes.Buffer
+			code, err := run([]string{"inspect-storage-image-set", validPath, test.path}, &output)
+			if err != nil || code != 2 {
+				t.Fatalf("incomplete GPT image set: code=%d err=%v output=%s", code, err, output.String())
+			}
+			var report map[string]json.RawMessage
+			if err := json.Unmarshal(output.Bytes(), &report); err != nil {
+				t.Fatalf("invalid JSON report: %v: %s", err, output.String())
+			}
+			var status string
+			if err := json.Unmarshal(report["status"], &status); err != nil || status != test.want {
+				t.Fatalf("status=%q err=%v output=%s", status, err, output.String())
+			}
+			for _, field := range []string{"identity_scan", "md_v1_2_comparison", "md_v0_90_comparison"} {
+				if _, ok := report[field]; ok {
+					t.Fatalf("partial cross-image result %q was exposed: %s", field, output.String())
+				}
+			}
+			for _, secret := range []string{filepath.ToSlash(validPath), filepath.ToSlash(test.path), "PRIVATE_ARRAY_ID"} {
+				if strings.Contains(output.String(), secret) {
+					t.Fatalf("incomplete report leaked %q: %s", secret, output.String())
+				}
+			}
+		})
+	}
+}
+
+func TestInspectStorageImageSetIncludesLegacyMD090Comparison(t *testing.T) {
+	first := syntheticGPTImageWithMDV090()
+	second := syntheticGPTImageWithMDV090()
+	setSyntheticMDV090GPTDescriptor(first, 1, 1, 1, 1<<1)
+	setSyntheticMDV090GPTMember(second, 1, 1, 42, 3, 1<<1)
+	paths := []string{
+		filepath.Join(t.TempDir(), "legacy-member-one.img"),
+		filepath.Join(t.TempDir(), "legacy-member-two.img"),
+	}
+	for index, path := range paths {
+		fixture := first
+		if index == 1 {
+			fixture = second
+		}
+		if err := os.WriteFile(path, fixture, 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	var output bytes.Buffer
+	code, err := run([]string{"inspect-storage-image-set", paths[0], paths[1]}, &output)
+	if err != nil || code != 2 {
+		t.Fatalf("legacy MD 0.90 image set: code=%d err=%v output=%s", code, err, output.String())
+	}
+	var report struct {
+		MDV090Comparison struct {
+			Arrays []struct {
+				Status string `json:"status"`
+			} `json:"arrays"`
+		} `json:"md_v0_90_comparison"`
+	}
+	if err := json.Unmarshal(output.Bytes(), &report); err != nil {
+		t.Fatal(err)
+	}
+	if len(report.MDV090Comparison.Arrays) != 1 || report.MDV090Comparison.Arrays[0].Status != "metadata-consistent" {
+		t.Fatalf("MD 0.90 cross-image comparison missing or inconsistent: %s", output.String())
+	}
+}
+
+func TestInspectStorageImageSetDoesNotPromoteGenericObservationToCompatibility(t *testing.T) {
+	fixture := syntheticGPTImageWithMDV090()
+	clear(fixture[64*512 : 1984*512])
+	path := filepath.Join(t.TempDir(), "metadata-only-disk.img")
+	if err := os.WriteFile(path, fixture, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	var output bytes.Buffer
+	code, err := run([]string{"inspect-storage-image-set", path}, &output)
+	if err != nil || code != 0 {
+		t.Fatalf("generic metadata observation: code=%d err=%v output=%s", code, err, output.String())
+	}
+	for _, expected := range []string{`"status": "metadata-observed"`, `"wd_compatibility": "unqualified"`,
+		`"migration_authorized": false`, `"complete": true`, `"duplicate_disk_guid_groups": 0`,
+		`"duplicate_partuuid_groups": 0`, `"duplicate_filesystem_uuid_groups": 0`,
+		`"block_device_opened": false`, `"mutations_performed": false`, `"assembly_performed": false`, `"mount_performed": false`} {
+		if !strings.Contains(output.String(), expected) {
+			t.Fatalf("missing %q in observation: %s", expected, output.String())
+		}
+	}
+	if strings.Contains(output.String(), filepath.ToSlash(path)) {
+		t.Fatalf("image path leaked from report: %s", output.String())
+	}
+}
+
+func TestInspectStorageImageSetRequiresReviewForDirtyExtState(t *testing.T) {
+	fixture := syntheticGPTImageWithMDV090()
+	const partitionStartLBA = 64
+	const partitionLastLBA = 1984
+	const sectorSize = 512
+	partitionBytes := (partitionLastLBA - partitionStartLBA + 1) * sectorSize
+	md090Offset := partitionStartLBA*sectorSize + (partitionBytes &^ (64*1024 - 1)) - 64*1024
+	clear(fixture[md090Offset : md090Offset+4096]) // Keep ext metadata, remove the synthetic MD 0.90 signature.
+	extOffset := partitionStartLBA*sectorSize + 1024
+	extSuperblock := fixture[extOffset : extOffset+1024]
+	binary.LittleEndian.PutUint32(extSuperblock[0:4], 4)
+	binary.LittleEndian.PutUint32(extSuperblock[4:8], 2)
+	binary.LittleEndian.PutUint32(extSuperblock[12:16], 1)
+	binary.LittleEndian.PutUint32(extSuperblock[20:24], 1)
+	binary.LittleEndian.PutUint32(extSuperblock[32:36], 2)
+	binary.LittleEndian.PutUint32(extSuperblock[40:44], 4)
+	binary.LittleEndian.PutUint16(extSuperblock[56:58], 0xef53)
+	binary.LittleEndian.PutUint32(extSuperblock[76:80], 1)
+	binary.LittleEndian.PutUint32(extSuperblock[92:96], 4)
+	binary.LittleEndian.PutUint16(extSuperblock[58:60], 0)            // Not marked clean.
+	binary.LittleEndian.PutUint32(extSuperblock[96:100], 0x40|0x0004) // Dynamic revision plus journal recovery.
+	copy(extSuperblock[104:120], []byte("SYNTHETIC-EXT-ID"))
+	path := filepath.Join(t.TempDir(), "dirty-ext-disk.img")
+	if err := os.WriteFile(path, fixture, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	var output bytes.Buffer
+	code, err := run([]string{"inspect-storage-image-set", path}, &output)
+	if err != nil || code != 2 {
+		t.Fatalf("dirty ext image set: code=%d err=%v output=%s", code, err, output.String())
+	}
+	var report struct {
+		Status string `json:"status"`
+		Inputs []struct {
+			PartitionObservations []struct {
+				ExtCleanUnmount       bool `json:"ext_clean_unmount_flag"`
+				ExtNeedsJournalRepair bool `json:"ext_needs_journal_recovery"`
+			} `json:"partition_observations"`
+		} `json:"inputs"`
+	}
+	if err := json.Unmarshal(output.Bytes(), &report); err != nil {
+		t.Fatalf("invalid dirty ext report: %v: %s", err, output.String())
+	}
+	if report.Status != "incomplete" || len(report.Inputs) != 1 || len(report.Inputs[0].PartitionObservations) != 1 ||
+		report.Inputs[0].PartitionObservations[0].ExtCleanUnmount || !report.Inputs[0].PartitionObservations[0].ExtNeedsJournalRepair {
+		t.Fatalf("dirty ext state was not held for review: %+v", report)
+	}
+}
+
 func TestInspectMDV090ImageSetIsReadOnlyGenericAndRedactsPaths(t *testing.T) {
 	first := syntheticGPTImageWithMDV090()
 	second := syntheticGPTImageWithMDV090()
