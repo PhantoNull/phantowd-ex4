@@ -39,6 +39,11 @@ production-ready appliance.
 | Storage | Read-only schema-v2 metadata and complete-inventory discovery; separate non-root broker with read-only device rules, `no_new_privs` and zero capabilities. PR #44's mounted filesystem UUID / MD correlation passed exact-head host, Stage B3 and ARMv5 QEMU checks and merged as `db9fd33`. Local M3.2a/b/c/d adds private GPT correlation and duplicate classification, generic declaration hints, plus a dashboard-triggered, authenticated manual `POST /api/v1/storage/gpt-observation`; page load and ordinary refresh never scan GPT metadata. It uses a fixed broker operation and displays only redacted aggregate results. The local ARMv5 QEMU smoke exercises this POST through the real broker on two distinct read-only synthetic GPT clones, verifies duplicate GUID/PARTUUID classification, and checks aggregate-only redaction. Full local Buildroot/package integration, QEMU smoke and the state-reboot fixture passed on `1358202`; artifact SHA-256 checks passed. The run reused the fixed Buildroot/cache volumes and does not establish independent clean-build reproducibility. MBR remains unsupported; errors return no partial result. No mount/import/repair/write action is authorized. Desired SMB/NFS policy uses distinct logical `VolumeID` and expected `FilesystemUUID` types, but no persistent resolver exists. | Hosted CI and EX4 qualification remain pending; host/QEMU fixtures are not hardware qualification. Content reads, mount/import, global-use accounting, persistent identity, supported WD import and product RAID management remain unqualified or unimplemented |
 | EX4 hardware | Short diskless RAM boots, limited Ethernet and internal-temperature observations | Sustained dual-port networking, cooling/controller, storage and recovery |
 
+Read-only storage discovery now refuses the entire assessment before opening
+candidate disks if a nonzero mount device number cannot be mapped to the
+complete sysfs block inventory. This is still a point-in-time, current-namespace
+check, not proof of global storage-use exclusivity or EX4 qualification.
+
 The API and dashboard remain development-only and guest-loopback-only by
 default. Do not expose them through a LAN listener or reverse proxy.
 [Component contracts](src/phantowd-api/README.md) explain the precise boundaries.

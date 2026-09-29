@@ -313,11 +313,14 @@ and refuses non-Versatile PB machines. See the
   Active/unreadable swap state or any snapshot change makes the whole result
   unavailable and closes every opened descriptor. Ambiguous VPD identities are
   preserved as ambiguous, not promoted to unique. This is a point-in-time
-  discovery result only: mount attribution is limited to this process's mount
-  namespace and the observed partition/holder/slave graph, so it does not
-  establish global userspace or mount-namespace exclusivity. Mounted Btrfs,
-  Bcachefs and ZFS currently make discovery fail closed because their full
-  multi-device backing set is not established here. Other filesystem stacks,
+  preflight: before opening any candidate, every mountinfo entry with a
+  nonzero device major must map to exactly one node in the complete sysfs block
+  inventory. An unmapped nonzero device number makes the assessment unavailable;
+  major-zero pseudo-filesystems remain uncorrelated. This still does not prove
+  global userspace or mount-namespace exclusivity. Mount attribution is limited
+  to this process's namespace and the observed partition/holder/slave graph.
+  Mounted Btrfs, Bcachefs and ZFS currently make discovery fail closed because
+  their full multi-device backing set is not established here. Other filesystem stacks,
   stable identity, bay mapping, compatibility and mount authority also remain
   unresolved. Exact-head ARMv5 QEMU run
   [36364383677](https://github.com/PhantoNull/phantowd-ex4/actions/runs/36364383677)

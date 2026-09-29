@@ -59,6 +59,26 @@ func TestPlanTrustedStorageDiscoverySelectsCompleteUnmountedLeafSet(t *testing.T
 	}
 }
 
+func TestDiscoverTrustedStorageRefusesUnmappedBlockBackedMountBeforeOpening(t *testing.T) {
+	proc := discoveryProc(
+		"36 0 8:1 / / rw,relatime - ext4 /dev/sda1 rw\n"+
+			"37 36 259:12 / /unmapped rw,relatime - ext4 /dev/unknown rw\n",
+		emptySwaps,
+	)
+	openerCalled := false
+	_, err := discoverTrustedStorageWith(
+		fixtureDiscoverySysfs(),
+		proc,
+		func([]volumeprobe.ObservedBlockDevice) ([]volumeprobe.BlockDeviceSource, error) {
+			openerCalled = true
+			return nil, nil
+		},
+	)
+	if !errors.Is(err, errStorageDiscoveryIncomplete) || openerCalled {
+		t.Fatalf("unmapped block-backed mount must fail before any candidate is opened: err=%v opener=%v", err, openerCalled)
+	}
+}
+
 func TestPlanTrustedStorageDiscoveryRequiresPrivateCompleteSnapshots(t *testing.T) {
 	storage, err := collectStorage(fixtureDiscoverySysfs())
 	if err != nil {

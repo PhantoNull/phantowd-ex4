@@ -73,6 +73,12 @@ func observedWholeDiskHasVisibleDependentMount(disk blockObservation, inventory 
 			}
 		}
 		if matched == nil {
+			// A nonzero mount device number should resolve to a block node in
+			// the complete sysfs inventory. Treat an orphan as incomplete rather
+			// than opening candidate disks without knowing whether one backs it.
+			if mount.DeviceMajor != 0 {
+				return false, errors.New("nonzero mount device number is absent from the complete block inventory")
+			}
 			continue
 		}
 		depends, err := observedBlockNodeDependsOnWholeDisk(*matched, disk, inventory)

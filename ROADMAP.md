@@ -538,6 +538,9 @@ are missing. **Depends on:** M1; M7 for hardware.
 devices, signature collisions, mid-probe replacement, reordered discovery,
 stale generation, filesystem refusal and volume loss. Assert no unexpected mounts,
 writes or fallback directories. Physical bay moves require dedicated media tests.
+Before any candidate descriptor is opened, a mountinfo device with nonzero major
+must map to exactly one object in complete sysfs inventory; an unmapped nonzero
+device fails closed. Major-zero pseudo-filesystems do not imply a block source.
 
 ## M4: Supervised SMB and NFS
 
