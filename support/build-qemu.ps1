@@ -68,6 +68,7 @@ $volumeMount = "type=volume,source=$workspaceVolume,target=/workspace"
 $ccacheMount = "type=volume,source=$ccacheVolume,target=/ccache"
 
 docker run --rm `
+    --tmpfs /phantowd-qemu-fixture-tmp:rw,exec,nosuid,nodev,size=128m `
     --mount $bindMount `
     --mount $volumeMount `
     --mount $ccacheMount `

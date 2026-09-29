@@ -361,6 +361,41 @@ func TestInspectMDV10PartitionCommandIsReadOnlyAndGeneric(t *testing.T) {
 	}
 }
 
+func TestInspectMDV10ComponentCommandReadsRawComponentWithoutWriting(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "raw-md-v1.0-component.img")
+	wholeDisk := syntheticGPTImageForMDV10Member(0, 0, 42)
+	const sectorBytes = 512
+	const firstLBA = 3
+	const lastLBA = 60
+	component := append([]byte(nil), wholeDisk[firstLBA*sectorBytes:(lastLBA+1)*sectorBytes]...)
+	if err := os.WriteFile(path, component, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	before := sha256.Sum256(component)
+	var output bytes.Buffer
+	code, err := run([]string{"inspect-md-v1.0-component", path}, &output)
+	if err != nil || code != 0 {
+		t.Fatalf("valid raw md 1.0 component: code=%d err=%v output=%s", code, err, output.String())
+	}
+	after, err := os.ReadFile(path)
+	if err != nil || sha256.Sum256(after) != before {
+		t.Fatalf("component changed during inspection: err=%v", err)
+	}
+	for _, expected := range []string{`"status": "md-v1.0-superblock-candidate"`, `"metadata_version": "1.0"`, `"partition_first_lba": 0`, `"partition_last_lba": 57`, `"superblock_checksum_status": "valid"`, `"raid_disks": 2`, `"member_number": 0`, `"image_metadata_read": true`, `"block_device_opened": false`, `"mutations_performed": false`, `"assembly_performed": false`, `"mount_performed": false`} {
+		if !strings.Contains(output.String(), expected) {
+			t.Fatalf("missing %q in report: %s", expected, output.String())
+		}
+	}
+	for _, secret := range []string{filepath.ToSlash(path), "MD_V10_PRIVATE_ARRAY_ID", "PRIVATE_MD_SET_NAME"} {
+		if strings.Contains(output.String(), secret) {
+			t.Fatalf("report leaked %q: %s", secret, output.String())
+		}
+	}
+	if code, err = run([]string{"inspect-md-v1.0-component", path, "extra"}, &bytes.Buffer{}); code != 1 || err == nil {
+		t.Fatalf("unexpected component argument: code=%d err=%v", code, err)
+	}
+}
+
 func TestInspectStorageImageSetComparesMDV10ComponentsWithoutWriting(t *testing.T) {
 	directory := t.TempDir()
 	firstPath := filepath.Join(directory, "first-private-disk.img")

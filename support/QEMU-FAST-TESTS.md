@@ -217,6 +217,34 @@ proof, or EX4 storage compatibility. The exact-head run for this fixture must
 emit `PHANTOWD_MOUNT_GRAPH_READY`; until that run passes, this paragraph
 documents the intended test rather than completed evidence.
 
+### MD v1.0 writer-to-host-parser fixture
+
+On Windows, run `support/test-qemu-md-v10.ps1` for a focused check of the
+offline MD v1.0 parser. It requires the already-present pinned Docker image,
+Buildroot workspace/cache, QEMU base artifact, toolchain and util-linux source
+archive; it uses `--pull never`, mounts the repository/base/cache read-only,
+disables networking, and does not create persistent images or volumes. The
+ephemeral container uses `/tmp` tmpfs for generated files and is removed on
+exit. It rebuilds only the API, the static volume-probe fixture helper and the
+host parser from current source into a temporary copy of the base rootfs.
+
+The guest uses a snapshot-backed root disk and exactly two writable 32 MiB
+raw member files in tmpfs, attached with fixed synthetic SCSI identities. The
+bounded QEMU-only entry point asks ARMv5 `mdadm` to create a two-member RAID1
+with metadata 1.0, verifies array/member topology, stops it, and reboots. The
+host then invokes `phantowd-lab inspect-md-v1.0-component` on each regular
+component image. The harness checks valid checksums, a shared redacted array
+fingerprint, distinct member fingerprints, active roles 0/1, unchanged member
+hashes, and an unchanged base rootfs hash. It never formats a filesystem,
+mounts, imports, assembles on the host, reads a NAS/physical disk, or writes
+NAND/MTD. The two member files and reports are removed from the private temp
+directory by the test trap.
+
+The local fixture passed on 2026-09-30 using cached Linux 6.18.53 ARMv5 QEMU
+artifacts. This is a generic parser-agreement test only; it does not establish
+EX4 hardware, WD metadata, migration, recovery or compatibility qualification.
+It is also not a clean Buildroot/SBOM/legal-info rebuild or hosted CI result.
+
 ## Evidence boundary
 
 ### Separate state-persistence boots

@@ -190,6 +190,9 @@ func run(args []string, output io.Writer) (int, error) {
 	case "inspect-md-v1.0-partition":
 		return inspectMDV10Partition(args[1:], output)
 
+	case "inspect-md-v1.0-component":
+		return inspectMDV10Component(args[1:], output)
+
 	case "inspect-md-v0.90-component":
 		if len(args) != 2 {
 			return 1, errors.New("usage: phantowd-lab inspect-md-v0.90-component COMPONENT-IMAGE-FILE")
@@ -608,6 +611,32 @@ func inspectMDV10Partition(args []string, output io.Writer) (int, error) {
 		return 1, err
 	}
 	if result.Status != diskimage.MDV10StatusCandidate {
+		return 2, nil
+	}
+	return 0, nil
+}
+
+func inspectMDV10Component(args []string, output io.Writer) (int, error) {
+	if len(args) != 1 {
+		return 1, errors.New("usage: phantowd-lab inspect-md-v1.0-component COMPONENT-IMAGE-FILE")
+	}
+	file, size, err := openRegular(args[0])
+	if err != nil {
+		return 1, err
+	}
+	defer file.Close()
+	lastLBA := uint64(0)
+	if size >= 512 {
+		lastLBA = uint64(size/512) - 1
+	}
+	report, err := diskimage.InspectMDV10Superblock(file, size, 0, lastLBA)
+	if err != nil {
+		return 1, err
+	}
+	if err := writeJSON(output, report); err != nil {
+		return 1, err
+	}
+	if report.Status != diskimage.MDV10StatusCandidate {
 		return 2, nil
 	}
 	return 0, nil

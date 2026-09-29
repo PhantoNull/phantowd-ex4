@@ -185,6 +185,8 @@ support/container/build-qemu.sh
 support/docker/entrypoint.sh
 support/qemu-smoke.sh
 support/qemu-state-reboot.sh
+support/qemu-md-v10-fixture.sh
+support/test-qemu-md-v10.ps1
 support/test-volume-probe-build.py
 src/phantowd-volume-probe/**
 package/phantowd-volume-probe/**

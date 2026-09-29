@@ -31,6 +31,7 @@ phantowd-lab inspect-md-v0.90-image-set DISK-IMAGE-1 DISK-IMAGE-2 [DISK-IMAGE-3 
 phantowd-lab inspect-ext-partition IMAGE-FILE GPT-PARTITION-NUMBER
 phantowd-lab inspect-md-v1.2-partition IMAGE-FILE GPT-PARTITION-NUMBER
 phantowd-lab inspect-md-v1.0-partition IMAGE-FILE GPT-PARTITION-NUMBER
+phantowd-lab inspect-md-v1.0-component COMPONENT-IMAGE-FILE
 phantowd-lab inspect-md-v0.90-component COMPONENT-IMAGE-FILE
 phantowd-lab inspect-md-v0.90-partition DISK-IMAGE-FILE GPT-PARTITION-NUMBER
 phantowd-lab inventory-rootfs [--summary] DIRECTORY
@@ -219,6 +220,14 @@ mount, write, or authorize migration. Sets whose feature map is nonzero remain
 Exit status is `0` for one plausible
 component, `2` for absent/damaged/unsupported metadata and `1` for usage, I/O
 or file-open errors.
+
+`inspect-md-v1.0-component` performs the same bounded read on a caller-supplied
+regular-file component image, treating the complete file as one MD component.
+Use it for extracted partition images or other offline component copies. It
+does not accept block devices, assemble arrays, mount filesystems or modify the
+input. `support/test-qemu-md-v10.ps1` exercises this same host command against
+two mdadm-authored ARMv5 QEMU components held in tmpfs; that fixture verifies
+the reports and input hashes without qualifying any WD/EX4 layout.
 
 `inspect-md-v0.90-image-set` accepts two to four whole-disk regular image
 files, requires valid generic GPT on each, and groups plausible little-endian

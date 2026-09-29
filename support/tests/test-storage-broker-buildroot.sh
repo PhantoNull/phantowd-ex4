@@ -176,6 +176,40 @@ grep -F "$md_filesystem_identity_marker" "$repo_root/src/phantowd-api/md_stack_q
 grep -F "$md_filesystem_identity_marker" "$repo_root/support/qemu-smoke.sh" >/dev/null ||
     fail 'QEMU smoke must require mounted MD/filesystem identity correlation'
 
+md_v10_api="$repo_root/src/phantowd-api/md_v10_qemu_linux.go"
+md_v10_init="$repo_root/board/qemu/armv5/rootfs-overlay/usr/lib/phantowd/qemu-md-v10-init.sh"
+md_v10_fixture="$repo_root/support/qemu-md-v10-fixture.sh"
+md_v10_marker='PHANTOWD_MD_V10_READY metadata=1.0 raid1=true members=2 fixed_devices=true array_stopped=true root_snapshot=true scope=disposable-qemu-only'
+md_v10_host_marker='PHANTOWD_MD_V10_HOST_READY components=2 metadata=1.0 checksums=valid same_array=true distinct_members=true active_roles=complete input_unchanged=true scope=tmpfs-qemu-only'
+[ -f "$md_v10_api" ] && [ -f "$md_v10_init" ] && [ -f "$md_v10_fixture" ] ||
+    fail 'MD v1.0 QEMU/host fixture source files are incomplete'
+grep -F "$md_v10_marker" "$md_v10_api" >/dev/null ||
+    fail 'guest MD v1.0 fixture must report only its bounded synthetic RAID1 result'
+grep -F "$md_v10_host_marker" "$md_v10_fixture" >/dev/null ||
+    fail 'host MD v1.0 fixture must verify both parser reports and unchanged inputs'
+grep -F -- '--metadata=1.0' "$repo_root/src/phantowd-api/qemu_md_arguments.go" >/dev/null ||
+    fail 'guest fixture must explicitly create metadata version 1.0'
+grep -F -- '"/dev/sdb", "/dev/sdc"' "$repo_root/src/phantowd-api/qemu_md_arguments.go" >/dev/null ||
+    fail 'guest mdadm command must target only its two fixed disposable data disks'
+grep -F 'truncate -s 32M "$workspace/member-a.raw" "$workspace/member-b.raw"' "$md_v10_fixture" >/dev/null ||
+    fail 'host fixture must create exactly two 32 MiB member files'
+grep -F 'refuses non-tmpfs temporary storage' "$md_v10_fixture" >/dev/null ||
+    fail 'host fixture must fail closed unless its member files live in tmpfs'
+grep -F 'snapshot=on' "$md_v10_fixture" >/dev/null ||
+    fail 'guest root disk must use a temporary QEMU snapshot'
+grep -F -- '-nic none' "$md_v10_fixture" >/dev/null ||
+    fail 'MD v1.0 fixture must not attach a network interface'
+grep -F 'inspect-md-v1.0-component' "$md_v10_fixture" >/dev/null ||
+    fail 'host-side production parser must read both generated component files'
+grep -F 'sha256sum "$images/rootfs.ext2"' "$md_v10_fixture" >/dev/null ||
+    fail 'MD v1.0 QEMU run must assert the root image remained unchanged'
+grep -F 'TMPDIR=/phantowd-qemu-fixture-tmp' "$build_qemu_script" >/dev/null ||
+    fail 'full QEMU runner must place generated component files on its dedicated tmpfs'
+grep -F 'qemu-md-v10-fixture.sh' "$repo_root/support/container/test-qemu-api-overlay.sh" >/dev/null ||
+    fail 'current-source local overlay runner must be able to exercise the MD v1.0 fixture'
+grep -F 'PHANTOWD_QEMU_OVERLAY_MD_V10_ONLY=1' "$repo_root/support/test-qemu-md-v10.ps1" >/dev/null ||
+    fail 'local MD v1.0 preflight must omit unrelated long QEMU fixtures'
+
 # Keep the QEMU smoke driver's expected marker synchronized with the guest
 # self-test. A typo here otherwise costs a full ARMv5 build before the guest
 # can even boot.

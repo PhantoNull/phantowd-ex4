@@ -14,8 +14,9 @@ target_cc=${5:?pinned Buildroot ARM compiler required}
 patch_dir=${6:?trusted Buildroot util-linux package directory required}
 reuse_base_probe=${PHANTOWD_QEMU_OVERLAY_REUSE_BASE_VOLUME_PROBE:-0}
 smoke_only=${PHANTOWD_QEMU_OVERLAY_SMOKE_ONLY:-0}
-case "$reuse_base_probe:$smoke_only" in
-    0:0|0:1|1:0|1:1) ;;
+md_v10_only=${PHANTOWD_QEMU_OVERLAY_MD_V10_ONLY:-0}
+case "$reuse_base_probe:$smoke_only:$md_v10_only" in
+    0:0:0|0:1:0|1:0:0|1:1:0|0:0:1|1:0:1) ;;
     *) echo 'QEMU overlay mode flags must be 0 or 1' >&2; exit 1 ;;
 esac
 for input in "$base" "$go_binary" "$source_dir" "$probe_archive" "$target_cc" "$patch_dir"; do
@@ -85,18 +86,25 @@ debugfs -w -R 'mkdir /usr/lib/phantowd' "$image"
 replace_file "$source_dir/board/qemu/armv5/rootfs-overlay/usr/lib/phantowd/qemu-selftest-once.sh" /usr/lib/phantowd/qemu-selftest-once.sh 0100755
 replace_file "$source_dir/board/qemu/armv5/rootfs-overlay/usr/lib/phantowd/qemu-nfs-policy-smoke.sh" /usr/lib/phantowd/qemu-nfs-policy-smoke.sh 0100644
 replace_file "$source_dir/board/qemu/armv5/rootfs-overlay/usr/lib/phantowd/qemu-state-init.sh" /usr/lib/phantowd/qemu-state-init.sh 0100755
+replace_file "$source_dir/board/qemu/armv5/rootfs-overlay/usr/lib/phantowd/qemu-md-v10-init.sh" /usr/lib/phantowd/qemu-md-v10-init.sh 0100755
 replace_file "$source_dir/src/phantowd-api/vendor/golang.org/x/sys/LICENSE" /usr/share/licenses/phantowd-api/Go-XSys-LICENSE 0100644
 # shellcheck disable=SC1091 # project version-lock input
 . "$source_dir/versions.env"
 result=0
-sh "$source_dir/support/qemu-smoke.sh" "$temporary/images" "$temporary/qemu.log" "$LINUX_VERSION" || result=$?
-cat "$temporary/qemu.log"
-if [ "$result" -eq 0 ]; then
-    if [ "$smoke_only" = 1 ]; then
-        echo 'SMOKE_ONLY=1: the separate two-boot state-persistence fixture was not run.'
-    else
-        sh "$source_dir/support/qemu-state-reboot.sh" "$temporary/images" "$temporary/state-reboot.log" || result=$?
-        cat "$temporary/state-reboot.log"
+if [ "$md_v10_only" = 1 ]; then
+    sh "$source_dir/support/qemu-md-v10-fixture.sh" \
+        "$temporary/images" "$go_binary" "$source_dir" "$temporary/md-v10.log" || result=$?
+    cat "$temporary/md-v10.log"
+else
+    sh "$source_dir/support/qemu-smoke.sh" "$temporary/images" "$temporary/qemu.log" "$LINUX_VERSION" || result=$?
+    cat "$temporary/qemu.log"
+    if [ "$result" -eq 0 ]; then
+        if [ "$smoke_only" = 1 ]; then
+            echo 'SMOKE_ONLY=1: the separate two-boot state-persistence fixture was not run.'
+        else
+            sh "$source_dir/support/qemu-state-reboot.sh" "$temporary/images" "$temporary/state-reboot.log" || result=$?
+            cat "$temporary/state-reboot.log"
+        fi
     fi
 fi
 sha256sum "$temporary/phantowd-api" "$temporary/phantowd-volume-probe" "$temporary/images/rootfs.ext2"

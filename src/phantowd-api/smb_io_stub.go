@@ -20,3 +20,7 @@ func runQEMUMountGuardTest() error {
 func runQEMUMDStackTest() error {
 	return errors.New("MD stack fixture requires Linux ARMv5 QEMU")
 }
+
+func runQEMUMDV10Fixture() error {
+	return errors.New("MD v1.0 fixture requires Linux ARMv5 QEMU")
+}

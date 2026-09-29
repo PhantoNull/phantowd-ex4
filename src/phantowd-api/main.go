@@ -23,6 +23,7 @@ func main() {
 	smbTest := flag.Bool("qemu-smb-test", false, "fixed SMB effective-access fixture; QEMU only")
 	mountGuardTest := flag.Bool("qemu-mount-guard-test", false, "fixed descriptor/mount guard fixture; QEMU only")
 	mdStackTest := flag.Bool("qemu-md-stack-test", false, "fixed disposable MD stack/mount-guard fixture; QEMU only")
+	mdV10Fixture := flag.Bool("qemu-md-v10-fixture", false, "write fixed MD v1.0 metadata to two disposable QEMU disks; QEMU only")
 	stateTest := flag.String("qemu-state-test", "", "fixed two-boot state fixture; QEMU only")
 	identityClient := flag.String("qemu-identity-client", "", "fixed unprivileged identity-channel fixture; QEMU only")
 	identityOwnerService := flag.Bool("qemu-identity-owner-service", false, "fixed root identity-owner service fixture; QEMU only")
@@ -30,7 +31,7 @@ func main() {
 	modes := 0
 	for _, selected := range []bool{
 		*selfTest, *storageBroker, *nfsTest != "", *smbTest, *mountGuardTest,
-		*mdStackTest, *stateTest != "", *identityClient != "", *identityOwnerService,
+		*mdStackTest, *mdV10Fixture, *stateTest != "", *identityClient != "", *identityOwnerService,
 	} {
 		if selected {
 			modes++
@@ -77,6 +78,13 @@ func main() {
 	if *mdStackTest {
 		if err := runQEMUMDStackTest(); err != nil {
 			fmt.Fprintf(os.Stderr, "PHANTOWD_API_ERROR %v\n", err)
+			os.Exit(1)
+		}
+		return
+	}
+	if *mdV10Fixture {
+		if err := runQEMUMDV10Fixture(); err != nil {
+			fmt.Fprintf(os.Stderr, "PHANTOWD_API_ERROR MD v1.0 QEMU fixture failed: %v\n", err)
 			os.Exit(1)
 		}
 		return

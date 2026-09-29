@@ -26,7 +26,9 @@ shellcheck -s sh \
 	"$external_dir/support/tests/test-buildroot-samba-json-patch.sh" \
 	"$external_dir/package/phantowd-api/S02phantowd-mdev" \
 	"$external_dir/package/phantowd-api/S40phantowd-storage-broker" \
-	"$external_dir/board/qemu/armv5/rootfs-overlay/etc/init.d/S49phantowd-identity-owner"
+	"$external_dir/board/qemu/armv5/rootfs-overlay/etc/init.d/S49phantowd-identity-owner" \
+	"$external_dir/board/qemu/armv5/rootfs-overlay/usr/lib/phantowd/qemu-md-v10-init.sh" \
+	"$external_dir/support/qemu-md-v10-fixture.sh"
 sh "$external_dir/support/test-compare-build-artifacts.sh"
 python3 "$external_dir/support/test-volume-probe-build.py"
 
@@ -308,6 +310,15 @@ if ! "$external_dir/support/qemu-smoke.sh" \
     echo "Preserved failed QEMU smoke diagnostics at $artifact_dir/qemu-smoke-failure.log" >&2
     exit 1
 fi
+if ! TMPDIR=/phantowd-qemu-fixture-tmp \
+    GOCACHE="$workspace_dir/lab-tools-host-cache" \
+    sh "$external_dir/support/qemu-md-v10-fixture.sh" \
+    "$output_dir/images" "$output_dir/host/bin/go" "$external_dir" \
+    "$output_dir/qemu-md-v10.log"; then
+    save_qemu_failure_log qemu-md-v10-failure.log "$output_dir/qemu-md-v10.log"
+    echo "Preserved failed MD v1.0 diagnostics at $artifact_dir/qemu-md-v10-failure.log" >&2
+    exit 1
+fi
 if ! sh "$external_dir/support/qemu-state-reboot.sh" \
     "$output_dir/images" "$output_dir/qemu-state-reboot.log"; then
     save_qemu_failure_log qemu-state-reboot-failure.log "$output_dir/qemu-state-reboot.log"
@@ -349,6 +360,7 @@ install -m 0644 "$output_dir/images/versatile-pb.dtb" "$artifact_dir/versatile-p
 install -m 0644 "$output_dir/images/rootfs.ext2" "$artifact_dir/rootfs.ext2"
 install -m 0644 "$output_dir/legal-info/manifest.csv" "$artifact_dir/license-manifest.csv"
 install -m 0644 "$output_dir/qemu-smoke.log" "$artifact_dir/qemu-smoke.log"
+install -m 0644 "$output_dir/qemu-md-v10.log" "$artifact_dir/qemu-md-v10.log"
 install -m 0644 "$output_dir/qemu-state-reboot.log" "$artifact_dir/qemu-state-reboot.log"
 install -m 0644 "$output_dir/api-host-tests/coverage.out" "$artifact_dir/api-host-coverage.out"
 install -m 0644 "$output_dir/lab-tools-host-tests/coverage.out" "$artifact_dir/lab-tools-host-coverage.out"
