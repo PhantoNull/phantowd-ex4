@@ -315,7 +315,15 @@ func TestObserveCandidateGPTIdentitiesClassifiesClonesAcrossCompleteCandidateSet
 	discovery, err := discoverTrustedStorageWith(sysfs, proc, func(devices []volumeprobe.ObservedBlockDevice) ([]volumeprobe.BlockDeviceSource, error) {
 		sources := make([]volumeprobe.BlockDeviceSource, 0, len(devices))
 		for _, device := range devices {
-			file, err := os.CreateTemp(t.TempDir(), "gpt-clone-observation-")
+			writable, err := os.CreateTemp(t.TempDir(), "gpt-clone-observation-")
+			if err != nil {
+				return sources, err
+			}
+			name := writable.Name()
+			if err := writable.Close(); err != nil {
+				return sources, err
+			}
+			file, err := os.Open(name)
 			if err != nil {
 				return sources, err
 			}
