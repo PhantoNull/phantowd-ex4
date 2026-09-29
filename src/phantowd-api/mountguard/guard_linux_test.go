@@ -179,3 +179,32 @@ func TestZeroValueDoesNotOwnDescriptorZero(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestVerifyFailurePermanentlyRevokesTheMountLease(t *testing.T) {
+	workspace := t.TempDir()
+	anchor := filepath.Join(workspace, "volume")
+	fd, err := unix.Open(workspace, unix.O_PATH|unix.O_DIRECTORY|unix.O_CLOEXEC, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	root := &Root{fd: fd, path: anchor, expected: Expected{MountID: 1, RootInode: 2, FilesystemType: unix.EXT4_SUPER_MAGIC,
+		FilesystemUUID: "11111111-2222-3333-4444-555555555555"}, ready: true}
+	if err := root.Verify(); !errors.Is(err, ErrUnavailable) {
+		t.Fatalf("missing anchor returned %v, want unavailable", err)
+	}
+	if err := os.Mkdir(anchor, 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := root.Verify(); !errors.Is(err, ErrClosed) {
+		t.Fatalf("revoked lease became usable again after anchor reappeared: %v", err)
+	}
+	if _, err := root.OpenDirectory("."); !errors.Is(err, ErrClosed) {
+		t.Fatalf("revoked lease opened a directory: %v", err)
+	}
+	if err := root.Close(); err != nil {
+		t.Fatalf("revoked lease was not idempotently closed: %v", err)
+	}
+	if _, err := unix.FcntlInt(uintptr(fd), unix.F_GETFD, 0); !errors.Is(err, unix.EBADF) {
+		t.Fatalf("revoked lease retained its descriptor: %v", err)
+	}
+}

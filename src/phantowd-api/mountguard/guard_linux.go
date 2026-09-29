@@ -73,12 +73,18 @@ func Open(path string, expected Expected) (*Root, error) {
 }
 
 // Verify checks that the named anchor still resolves to this qualified mount.
-// This is a point-in-time check, not a revocation mechanism for descriptors
-// already handed to callers or an authorization to launch path-based daemons.
+// Any verification failure permanently revokes this Root and closes its pinned
+// descriptor; reappearance requires a newly opened Root after fresh
+// qualification. This cannot revoke descriptors already handed to callers and
+// does not authorize launching path-based daemons.
 func (r *Root) Verify() error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	return r.verify()
+	err := r.verify()
+	if err != nil && !errors.Is(err, ErrClosed) {
+		return errors.Join(err, r.closeLocked())
+	}
+	return err
 }
 
 func (r *Root) verify() error {
@@ -111,7 +117,7 @@ func (r *Root) OpenDirectory(relative string) (*os.File, error) {
 		return nil, ErrUnsafe
 	}
 	if err := r.verify(); err != nil {
-		return nil, err
+		return nil, errors.Join(err, r.closeLocked())
 	}
 	fd, err := openPath(r.fd, relative, true)
 	if err != nil {
@@ -119,7 +125,7 @@ func (r *Root) OpenDirectory(relative string) (*os.File, error) {
 	}
 	if err := matchFD(fd, r.expected, false); err != nil {
 		unix.Close(fd)
-		return nil, err
+		return nil, errors.Join(err, r.closeLocked())
 	}
 	return os.NewFile(uintptr(fd), "qualified-directory"), nil
 }
@@ -127,11 +133,18 @@ func (r *Root) OpenDirectory(relative string) (*os.File, error) {
 func (r *Root) Close() error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
+	return r.closeLocked()
+}
+
+func (r *Root) closeLocked() error {
 	if r.closed || !r.ready {
 		return nil
 	}
 	r.closed = true
-	if unix.Close(r.fd) != nil {
+	r.ready = false
+	fd := r.fd
+	r.fd = -1
+	if fd < 0 || unix.Close(fd) != nil {
 		return ErrUnavailable
 	}
 	return nil

@@ -182,13 +182,17 @@ The same mounted disposable disk hosts a separate descriptor-guard fixture.
 It creates private bind mounts and exercises unique mount-ID/inode/device/type
 matching, safe descendant directory opens, symbolic-link and traversal
 refusal, nested bind refusal, read-only transitions and rejection of a second
-mount of the same disk/root over the anchor. After ordinary unmount it verifies
-that the guard does not accept the underlying system directory. All references
-and private mounts are released before the original data volume is unmounted.
+mount of the same disk/root over the anchor. An identity/state mismatch
+permanently closes the existing guard; after the original anchor reappears,
+only a fresh tuple and new guard are accepted. After ordinary unmount the
+fixture verifies that the guard does not accept the underlying system
+directory. All references and private mounts are released before the original
+data volume is unmounted.
 The kernel UUID ioctl must match the known mkfs UUID; a different expected
 UUID is refused on the same mount. The guard opens no block node and does not
 read directory listings or file contents. This is not unmounted-filesystem
-discovery, clone detection or a complete service activation lease;
+discovery, clone detection or a complete service activation lease; descriptors
+already returned to callers are not revoked by the guard;
 see the [guard contract](../src/phantowd-api/mountguard/README.md).
 
 A separate read-only virtual clone of the fresh data image carries the same

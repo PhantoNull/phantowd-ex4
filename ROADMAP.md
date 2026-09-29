@@ -528,6 +528,13 @@ are missing. **Depends on:** M1; M7 for hardware.
   lost, changed, read-only or unqualified. Never fall back to rootfs directories.
   Reappearance requires fresh identity/compatibility checks; a matching pathname
   or UUID alone is insufficient.
+  The local `mountguard.Root` primitive now closes its own retained descriptor
+  permanently after a failed identity/state check, so the same guard cannot be
+  reused after the anchor reappears; opening a replacement requires a new
+  trusted tuple. Host regression and ARMv5 QEMU mount-change coverage passed.
+  This is only a caller-side reference-safety primitive: it does not revoke
+  descriptors already returned, stop dependent services, own mount lifecycle,
+  or establish product behavior. M3.5 remains incomplete.
 
 **Start in:** [volume probe](src/phantowd-volume-probe/README.md),
 [supervisor](src/phantowd-api/volumeprobe/README.md),

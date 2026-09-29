@@ -39,15 +39,19 @@ appropriate ownership/capability; there is no weaker retry or privilege gain.
   directory type, mount-root attribute and expected filesystem UUID. It retains
   an `O_PATH` descriptor; the temporary read-only ioctl descriptor is closed.
 - `Verify()` reopens the named anchor and compares its identity/state and the
-  retained descriptor, including the expected UUID. A missing mount,
-  replacement or changed writable state
-  cannot quietly become a directory on the system filesystem.
+  retained descriptor, including the expected UUID. A failed anchor identity
+  or state check permanently revokes this `Root` and closes its retained
+  descriptor. A missing mount, replacement or changed writable state cannot
+  quietly become a directory on the system filesystem; after the mount is
+  requalified, the caller must open a new `Root`.
 - `OpenDirectory(relative)` revalidates the anchor then resolves an existing
   directory relative to the retained descriptor. `RESOLVE_BENEATH`,
   `RESOLVE_NO_SYMLINKS`, `RESOLVE_NO_MAGICLINKS` and `RESOLVE_NO_XDEV` reject
   traversal, links and nested mounts, including binds of the same filesystem.
-  The result is a caller-owned `O_PATH` file that must be closed; it does not
-  read or write file contents. `.` means the mount root.
+  A failed identity/state revalidation or a resolved descriptor that no longer
+  matches the expected mount permanently revokes the `Root`; a rejected
+  relative path does not. The result is a caller-owned `O_PATH` file that must
+  be closed; it does not read or write file contents. `.` means the mount root.
 - `Close()` releases the guard; repeat close and zero-value close are safe.
   Methods are serialized, but the object must not be copied.
 
@@ -63,13 +67,17 @@ definitions were checked in the project-pinned Linux 6.18.53 build sources.
 
 ## Important limits
 
-Checks are point-in-time observations. Opened descriptors pin the original
-objects; they do not automatically revoke when the namespace changes. A
-directory can be renamed after it is opened. The eventual activator must own
-the mount lifecycle/namespace, retain and safely hand off these references,
-and revoke services on storage loss. It must not throw away the descriptor
-and hand a newly resolved, unchecked textual path to Samba/exportfs. That
-service handoff/lifecycle is not implemented by this package.
+Checks are point-in-time observations. On an identity/state check failure,
+`Root` permanently closes its own retained descriptor, so that same guard
+cannot become usable again merely because the pathname later looks valid. Any
+directory descriptors already returned by `OpenDirectory` remain caller-owned
+and are not automatically revoked; they can continue to pin the old mount.
+A directory can also be renamed after it is opened. The eventual activator
+must own the mount lifecycle/namespace, safely hand off references, and revoke
+dependent services and handles on storage loss. It must not throw away a
+qualified descriptor and hand a newly resolved, unchecked textual path to
+Samba/exportfs. This package does not implement that service handoff/lifecycle
+and is not a complete service lease.
 
 Only directories are resolved. No data-file API, recursive permission change,
 UID mapping, authentication, ACL management or privileged RPC is added.
@@ -112,8 +120,10 @@ data disk. It verifies the actual kernel-returned UUID against the fixture's
 known mkfs UUID and rejects a different expected UUID. The fixture uses private
 bind mounts to test symlink refusal,
 same-filesystem nested-mount refusal, read-only transitions, same-device/root
-overmount replacement and refusal to fall back after unmount. Ordinary
-unmounts must succeed after references close; no lazy/forced unmount is used.
+overmount replacement and refusal to fall back after unmount. Identity/state
+mismatch revokes the existing `Root`; restoration is accepted only after a
+fresh tuple and new `Root` are obtained. Ordinary unmounts must succeed after
+references close; no lazy/forced unmount is used.
 This does not qualify physical EX4 storage, arbitrary mount races or migration.
 
 The QEMU harness also supplies a second disposable virtual disk with a cloned

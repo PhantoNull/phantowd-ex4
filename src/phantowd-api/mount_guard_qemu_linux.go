@@ -144,6 +144,22 @@ func runQEMUMountGuardTest() (result error) {
 	if err := unix.Mount("", anchor, "", unix.MS_REMOUNT|unix.MS_BIND, ""); err != nil {
 		return err
 	}
+	if err := root.Verify(); !errors.Is(err, mountguard.ErrClosed) {
+		return fmt.Errorf("lease remained usable after the read-only mismatch: %v", err)
+	}
+	var writableMount unix.Statx_t
+	if err := unix.Statx(unix.AT_FDCWD, anchor, unix.AT_NO_AUTOMOUNT,
+		unix.STATX_BASIC_STATS|unix.STATX_MNT_ID_UNIQUE, &writableMount); err != nil {
+		return err
+	}
+	writableExpected := expected
+	writableExpected.MountID, writableExpected.RootInode = writableMount.Mnt_id, writableMount.Ino
+	writableExpected.DeviceMajor, writableExpected.DeviceMinor = writableMount.Dev_major, writableMount.Dev_minor
+	root, err = mountguard.Open(anchor, writableExpected)
+	if err != nil {
+		return fmt.Errorf("fresh writable mount qualification failed: %w", err)
+	}
+	defer root.Close()
 	// A second bind of the SAME disk/root has a distinct unique mount ID.
 	// Device major/minor + inode + filesystem type alone must not accept it.
 	if err := unix.Mount(smbFixtureAnchor, anchor, "", unix.MS_BIND, ""); err != nil {
@@ -161,7 +177,26 @@ func runQEMUMountGuardTest() (result error) {
 		return err
 	}
 	overMounted = false
-	if err := root.Verify(); err != nil {
+	if err := root.Verify(); !errors.Is(err, mountguard.ErrClosed) {
+		return fmt.Errorf("revoked mount lease was reused after the original anchor reappeared: %v", err)
+	}
+	var restored unix.Statx_t
+	if err := unix.Statx(unix.AT_FDCWD, anchor, unix.AT_NO_AUTOMOUNT,
+		unix.STATX_BASIC_STATS|unix.STATX_MNT_ID_UNIQUE, &restored); err != nil {
+		return err
+	}
+	requalifiedExpected := writableExpected
+	requalifiedExpected.MountID, requalifiedExpected.RootInode = restored.Mnt_id, restored.Ino
+	requalifiedExpected.DeviceMajor, requalifiedExpected.DeviceMinor = restored.Dev_major, restored.Dev_minor
+	requalified, err := mountguard.Open(anchor, requalifiedExpected)
+	if err != nil {
+		return fmt.Errorf("fresh qualification could not open the restored original mount: %w", err)
+	}
+	if err := requalified.Verify(); err != nil {
+		requalified.Close()
+		return fmt.Errorf("new mount lease did not verify: %w", err)
+	}
+	if err := requalified.Close(); err != nil {
 		return err
 	}
 	if err := root.Close(); err != nil {
@@ -178,7 +213,7 @@ func runQEMUMountGuardTest() (result error) {
 	if _, err := os.Lstat(anchor + "/guard-child"); !errors.Is(err, os.ErrNotExist) {
 		return errors.New("fixture wrote to unmounted fallback directory")
 	}
-	fmt.Println("PHANTOWD_MOUNT_GUARD_READY unique_mount_id=true descriptor_pinned=true symlinks_denied=true nested_mount_denied=true overmount_denied=true readonly_change_denied=true fallback_denied=true scope=qemu-fixture-only")
+	fmt.Println("PHANTOWD_MOUNT_GUARD_READY unique_mount_id=true descriptor_pinned=true symlinks_denied=true nested_mount_denied=true overmount_denied=true readonly_change_denied=true lease_revoked_on_identity_failure=true fresh_root_required=true fallback_denied=true scope=qemu-fixture-only")
 	fmt.Println("PHANTOWD_FILESYSTEM_UUID_READY source=kernel-ioctl expected_uuid=true mismatch_denied=true block_device_opened=false scope=qemu-fixture-only")
 	return nil
 }
