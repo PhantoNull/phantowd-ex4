@@ -45,7 +45,9 @@ with tempfile.TemporaryDirectory(prefix="phantowd-probe-flags-") as directory:
             if arg == "-o":
                 skip = True
                 continue
-            if arg.endswith("/probe.c") or arg == "probe.c" or arg == "-lblkid":
+            if (arg.endswith("/probe.c") or arg == "probe.c" or
+                    arg.endswith("/partition_table.c") or arg == "partition_table.c" or
+                    arg == "-lblkid"):
                 continue
             args.append(arg)
         result = subprocess.run(args + ["-E", "-dM", "-x", "c", "/dev/null"],

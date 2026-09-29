@@ -13,18 +13,31 @@ operation exists yet.
 
 The implementation enables superblock and partition signature probing without
 type/usage filters, so filtering does not hide competing RAID/crypto/other
-signatures. It uses no cache, UUID/label lookup, mounting, assembly, repair,
-formatting or update operation. It requests no partition-entry details or
-topology chain. Tests probe unmounted regular images and QEMU block objects; it does not
-authorize mounting media to learn its identity.
+signatures. libblkid is used to classify the top-level signature; an in-project
+strict reader then parses GPT or DOS/MBR metadata directly from the same
+descriptor. GPT is accepted only when both headers and entry arrays pass CRC
+and agree; malformed, skipped, overlapping, duplicate, hybrid, truncated or
+over-bound tables fail without JSON. DOS extended chains are bounded and must
+terminate cleanly. Unsupported table schemes return no partition identity.
+The helper uses no cache, UUID/label lookup, mounting, assembly, repair,
+formatting or update operation. It does not establish kernel/sysfs completeness
+or authorize mounting media to learn its identity.
 
 ## Result contract
 
-One bounded JSON object has schema version 1, a source kind and status:
+One bounded JSON object has schema version 2. It always includes a source kind,
+status, empty-or-supported partition-table scheme and ID, a partition array,
+and the three false authority flags:
 
 - `ext-metadata`: libblkid recognized ext2/3/4, filesystem usage, no partition
   table result and a nonzero 128-bit UUID. Type/UUID are returned.
 - `other-signature`: another recognized usage/type or a partition table.
+- `partition_table`: empty unless the strict reader validated a supported GPT
+  or DOS table. GPT IDs are disk/partition GUIDs. DOS partition UUIDs are the
+  conventional table-signature-plus-partition-number pseudo-IDs.
+- Each partition entry carries table number, start/size in 512-byte sectors,
+  UUID, type ID and whether it is an extended DOS container. Empty table fields
+  are not evidence of an empty or safe-to-provision disk.
 - `unusable-signature`: ext-family signature but no usable UUID.
 - `ambiguous`: libblkid's safe-probe reports competing signatures.
 - `unidentified`: no identifying result. This does **not** mean empty, healthy,
@@ -41,12 +54,12 @@ Safe probing also gives RAID/crypto signatures precedence instead of reporting
 every overlapping filesystem; those are rejected as `other-signature` here.
 
 All responses hard-code `mount_performed`, `compatibility_qualified` and
-`activation_allowed` to false. Other statuses return empty type/UUID strings;
-there is no candidate selection or mount authorization. Process errors yield
-nonzero exit and a generic diagnostic, not a successful metadata result.
-UUIDs are internal identity data, not public diagnostics. Labels and arbitrary
-library output are never printed. Output values are fixed literals or a
-validated UUID, not interpolated untrusted metadata.
+`activation_allowed` to false. Filesystem UUIDs and partition IDs are internal
+identity data and must not be logged or exposed through public diagnostics.
+There is no candidate selection, compatibility decision or mount authorization.
+Process errors yield nonzero exit and a generic diagnostic, not a successful
+metadata result. Labels and arbitrary library output are never printed; emitted
+IDs are normalized and validated by the strict table reader.
 
 The helper caps address space at 64 MiB, CPU at two seconds, core dumps at zero,
 sets no-new-privileges and a five-second alarm. These are defensive limits,
@@ -74,6 +87,10 @@ read-only sources/archive, a disposable executable /tmp, no network, no
 privileged mode and no forwarded devices. Tests create ext2/3/4, blank, swap
 and zero-UUID images, verify expected classifications and unchanged data hashes,
 and reject writable/O_PATH/directory descriptors, pipes and unexpected arguments.
+A valid mirrored GPT and a DOS/EBR chain are enumerated. Valid-CRC GPT copies
+that disagree, a corrupt backup header, an out-of-usable-range entry, duplicate
+partition UUIDs and overlapping entries all fail without JSON and without
+changing generated-image hashes.
 A generated XFS v4 probe header is recognized alone but conflicts with a fresh
 ext2 superblock; that collision must fail without JSON and without changing
 the image hash. Invalid XFS geometry must not identify a filesystem. These
@@ -91,7 +108,9 @@ the entire provided-descriptor set even after a successful first probe.
 Streaming SHA-256 comparisons verify unchanged generated-image contents.
 Only the first 4 KiB of the already-qualified synthetic ext2 virtual disk is
 copied into a sparse parser fixture; none of these files may be mounted.
-The helper does not choose which disk to use or grant activation.
+The helper does not choose which disk to use or grant activation. This schema-v2
+partition-reader change still requires exact-head ARMv5/QEMU validation; the
+existing guest evidence applies to the earlier helper contract.
 
 Clean Buildroot package/library/license integration, block I/O fault injection
 and trusted complete-device discovery

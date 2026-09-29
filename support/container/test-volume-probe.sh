@@ -28,7 +28,8 @@ mkdir -p "$workspace/include/blkid"
 cp libblkid/src/blkid.h "$workspace/include/blkid/blkid.h"
 cc -std=c11 -O2 -Wall -Wextra -Werror -fstack-protector-strong \
     -D_FORTIFY_SOURCE=2 -I"$workspace/include" \
-    "$source_dir/src/phantowd-volume-probe/probe.c" .libs/libblkid.a \
+    "$source_dir/src/phantowd-volume-probe/probe.c" \
+    "$source_dir/src/phantowd-volume-probe/partition_table.c" .libs/libblkid.a \
     -Wl,-z,relro,-z,now -o "$workspace/phantowd-volume-probe"
 python3 "$source_dir/src/phantowd-volume-probe/test_probe.py" "$workspace/phantowd-volume-probe"
 sha256sum "$workspace/phantowd-volume-probe"

@@ -7,8 +7,10 @@ package main
 
 import (
 	"context"
+	"encoding/binary"
 	"errors"
 	"fmt"
+	"hash/crc32"
 	"os"
 	"time"
 
@@ -203,6 +205,9 @@ func probeQEMUUnmountedStorage() error {
 	if err := unmounted(); err != nil {
 		return err
 	}
+	if err := probeQEMUSparseGPT(); err != nil {
+		return err
+	}
 	fmt.Println("PHANTOWD_VOLUME_PROBE_READY backend=libblkid unmounted_devices=2 readonly_descriptors=true expected_uuid=true unidentified_not_empty=true scope=qemu-fixture-only")
 	fmt.Println("PHANTOWD_VOLUME_SET_READY cloned_uuid=true aliases_deduplicated=true generation_bound=true stale_generation_refused=true unobserved_not_absent=true shuffled_complete_set=true trusted_complete_discovery=true mount_swap_rechecked=true sysfs_rechecked=true observed_opener=true readonly_sources=true all_or_error=true symlink_refused=true scope=qemu-fixture-only")
 	if err := probeQEMUCollisions(dataSource.File); err != nil {
@@ -211,6 +216,101 @@ func probeQEMUUnmountedStorage() error {
 	if err := unmounted(); err != nil {
 		return err
 	}
+	return nil
+}
+
+// probeQEMUSparseGPT exercises the ARMv5 helper at a real >2 GiB pread offset
+// without allocating or writing bulk fixture data. This is a regular image,
+// never a block device, and it is opened read-only before probing.
+func probeQEMUSparseGPT() error {
+	const sectorSize = 512
+	const entryArraySectors = 32
+	const sectorCount = uint64(8_388_608) // 4 GiB at 512 bytes per sector
+	backupHeaderLBA := sectorCount - 1
+	backupEntriesLBA := backupHeaderLBA - entryArraySectors
+	lastUsableLBA := backupEntriesLBA - 1
+
+	image, err := os.CreateTemp("/run", "phantowd-probe-gpt-")
+	if err != nil {
+		return err
+	}
+	path := image.Name()
+	defer os.Remove(path)
+	if err := image.Truncate(int64(sectorCount * sectorSize)); err != nil {
+		image.Close()
+		return err
+	}
+
+	protectiveMBR := make([]byte, sectorSize)
+	protectiveMBR[450] = 0xee
+	binary.LittleEndian.PutUint32(protectiveMBR[454:458], 1)
+	binary.LittleEndian.PutUint32(protectiveMBR[458:462], uint32(sectorCount-1))
+	protectiveMBR[510], protectiveMBR[511] = 0x55, 0xaa
+	if _, err := image.WriteAt(protectiveMBR, 0); err != nil {
+		image.Close()
+		return err
+	}
+
+	entries := make([]byte, 128*128)
+	copy(entries[0:16], []byte{0x28, 0x73, 0x2a, 0xc1, 0xf8, 0x1f, 0xd2, 0x11, 0xba, 0x4b, 0x00, 0xa0, 0xc9, 0x3e, 0xc9, 0x3b})
+	copy(entries[16:32], []byte{0x33, 0x22, 0x11, 0x00, 0x55, 0x44, 0x77, 0x66, 0x88, 0x99, 0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff})
+	binary.LittleEndian.PutUint64(entries[32:40], 34)
+	binary.LittleEndian.PutUint64(entries[40:48], 49)
+	entriesCRC := crc32.ChecksumIEEE(entries)
+	if _, err := image.WriteAt(entries, 2*sectorSize); err != nil {
+		image.Close()
+		return err
+	}
+	if _, err := image.WriteAt(entries, int64(backupEntriesLBA*sectorSize)); err != nil {
+		image.Close()
+		return err
+	}
+
+	writeHeader := func(currentLBA, alternateLBA, entriesLBA uint64) []byte {
+		header := make([]byte, sectorSize)
+		copy(header[0:8], []byte("EFI PART"))
+		binary.LittleEndian.PutUint32(header[8:12], 0x00010000)
+		binary.LittleEndian.PutUint32(header[12:16], 92)
+		binary.LittleEndian.PutUint64(header[24:32], currentLBA)
+		binary.LittleEndian.PutUint64(header[32:40], alternateLBA)
+		binary.LittleEndian.PutUint64(header[40:48], 34)
+		binary.LittleEndian.PutUint64(header[48:56], lastUsableLBA)
+		copy(header[56:72], []byte{0x98, 0xba, 0xdc, 0xfe, 0x54, 0x76, 0x10, 0x32, 0xfe, 0xdc, 0xba, 0x98, 0x76, 0x54, 0x32, 0x10})
+		binary.LittleEndian.PutUint64(header[72:80], entriesLBA)
+		binary.LittleEndian.PutUint32(header[80:84], 128)
+		binary.LittleEndian.PutUint32(header[84:88], 128)
+		binary.LittleEndian.PutUint32(header[88:92], entriesCRC)
+		binary.LittleEndian.PutUint32(header[16:20], crc32.ChecksumIEEE(header[:92]))
+		return header
+	}
+	if _, err := image.WriteAt(writeHeader(1, backupHeaderLBA, 2), sectorSize); err != nil {
+		image.Close()
+		return err
+	}
+	if _, err := image.WriteAt(writeHeader(backupHeaderLBA, 1, backupEntriesLBA), int64(backupHeaderLBA*sectorSize)); err != nil {
+		image.Close()
+		return err
+	}
+	if err := image.Close(); err != nil {
+		return err
+	}
+
+	readOnly, err := os.Open(path)
+	if err != nil {
+		return err
+	}
+	result, probeErr := runProbeFixture(readOnly)
+	closeErr := readOnly.Close()
+	if probeErr != nil || closeErr != nil || result.Status != "other-signature" ||
+		result.SourceKind != "regular-image" || result.PartitionTable == nil ||
+		result.PartitionTable.Scheme != "gpt" ||
+		result.PartitionTable.ID != "fedcba98-7654-3210-fedc-ba9876543210" ||
+		len(result.PartitionTable.Partitions) != 1 ||
+		result.PartitionTable.Partitions[0].Start512B != 34 ||
+		result.PartitionTable.Partitions[0].Size512B != 16 {
+		return fmt.Errorf("sparse GPT backup-header probe failed: %v", probeErr)
+	}
+	fmt.Println("PHANTOWD_PARTITION_TABLE_READY gpt=true backup_header_offset_gt_2g=true sparse_regular_image=true read_only=true scope=qemu-fixture-only")
 	return nil
 }
 

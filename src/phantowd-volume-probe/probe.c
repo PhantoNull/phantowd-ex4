@@ -1,11 +1,15 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /* SPDX-FileCopyrightText: 2026 PhantoWD EX4 contributors */
 #define _GNU_SOURCE
+#ifndef _FILE_OFFSET_BITS
+#define _FILE_OFFSET_BITS 64
+#endif
 #include <blkid/blkid.h>
 #include <fcntl.h>
 #include <signal.h>
 #include <stdio.h>
 #include <string.h>
+#include "partition_table.h"
 #include <sys/prctl.h>
 #include <sys/resource.h>
 #include <sys/stat.h>
@@ -61,16 +65,31 @@ static int read_uuid(blkid_probe probe, char out[37])
 }
 
 static int emit(const char *status, const char *kind, const char *filesystem,
-                const char *uuid)
+                const char *uuid, const phantowd_partition_table_t *table)
 {
-    /* Every substituted value is a fixed literal or validated UUID. No labels,
-     * serial numbers, source paths or arbitrary library tokens are emitted. */
-    int written = printf("{\"schema_version\":1,\"status\":\"%s\","
+    /* Table/partition values are validated by the strict table reader. No
+     * labels, serials, paths or arbitrary library tokens are emitted. */
+    int written = printf("{\"schema_version\":2,\"status\":\"%s\","
                          "\"source_kind\":\"%s\",\"filesystem\":\"%s\","
-                         "\"filesystem_uuid\":\"%s\",\"mount_performed\":false,"
-                         "\"compatibility_qualified\":false,\"activation_allowed\":false}\n",
-                         status, kind, filesystem, uuid);
-    return written < 0 || fflush(stdout) == EOF ? 1 : 0;
+                         "\"filesystem_uuid\":\"%s\",\"partition_table\":\"%s\","
+                         "\"partition_table_id\":\"%s\",\"partitions\":[",
+                         status, kind, filesystem, uuid,
+                         table->scheme, table->id);
+    if (written < 0)
+        return 1;
+    for (size_t i = 0; i < table->count; ++i) {
+        const phantowd_partition_t *part = &table->partitions[i];
+        if (printf("%s{\"number\":%u,\"start_512b_sectors\":%llu,"
+                   "\"size_512b_sectors\":%llu,\"uuid\":\"%s\","
+                   "\"type_id\":\"%s\",\"extended\":%s}",
+                   i ? "," : "", part->number,
+                   (unsigned long long)part->start_512b_sectors,
+                   (unsigned long long)part->size_512b_sectors,
+                   part->uuid, part->type_id, part->extended ? "true" : "false") < 0)
+            return 1;
+    }
+    return printf("],\"mount_performed\":false,\"compatibility_qualified\":false,"
+                  "\"activation_allowed\":false}\n") < 0 || fflush(stdout) == EOF ? 1 : 0;
 }
 
 int main(int argc, char **argv)
@@ -106,24 +125,24 @@ int main(int argc, char **argv)
     /* Do not filter signatures by type/usage: colliding RAID/filesystem
      * signatures must not disappear just because ext is our first profile. */
     int result = blkid_do_safeprobe(probe);
-    if (fstat(STDIN_FILENO, &after) != 0 || before.st_dev != after.st_dev ||
-        before.st_ino != after.st_ino || before.st_rdev != after.st_rdev ||
-        before.st_size != after.st_size || before.st_mode != after.st_mode ||
-        before.st_mtim.tv_sec != after.st_mtim.tv_sec || before.st_mtim.tv_nsec != after.st_mtim.tv_nsec ||
-        before.st_ctim.tv_sec != after.st_ctim.tv_sec || before.st_ctim.tv_nsec != after.st_ctim.tv_nsec) {
-        blkid_free_probe(probe);
-        return fail();
-    }
     const char *status = "unidentified", *filesystem = "";
+    phantowd_partition_table_t table = {0};
     char uuid[37] = "";
     if (result == -2) {
         status = "ambiguous";
     } else if (result == 0) {
-        const char *partition = NULL;
-        size_t length = 0;
         status = "other-signature";
-        if (blkid_probe_lookup_value(probe, "PTTYPE", &partition, &length) != 0 &&
-            token_is(probe, "USAGE", "filesystem")) {
+        if (token_is(probe, "PTTYPE", "gpt") || token_is(probe, "PTTYPE", "dos")) {
+            const char *scheme = token_is(probe, "PTTYPE", "gpt") ? "gpt" : "dos";
+            blkid_loff_t size = blkid_probe_get_size(probe);
+            unsigned long sector_size = blkid_probe_get_sectorsize(probe);
+            if (size <= 0 || sector_size > UINT32_MAX ||
+                phantowd_partition_table_read(STDIN_FILENO, (uint64_t)size,
+                                              (uint32_t)sector_size, scheme, &table) != 0) {
+                blkid_free_probe(probe);
+                return fail();
+            }
+        } else if (token_is(probe, "USAGE", "filesystem")) {
             if (token_is(probe, "TYPE", "ext2")) filesystem = "ext2";
             if (token_is(probe, "TYPE", "ext3")) filesystem = "ext3";
             if (token_is(probe, "TYPE", "ext4")) filesystem = "ext4";
@@ -140,6 +159,14 @@ int main(int argc, char **argv)
         blkid_free_probe(probe);
         return fail();
     }
+    if (fstat(STDIN_FILENO, &after) != 0 || before.st_dev != after.st_dev ||
+        before.st_ino != after.st_ino || before.st_rdev != after.st_rdev ||
+        before.st_size != after.st_size || before.st_mode != after.st_mode ||
+        before.st_mtim.tv_sec != after.st_mtim.tv_sec || before.st_mtim.tv_nsec != after.st_mtim.tv_nsec ||
+        before.st_ctim.tv_sec != after.st_ctim.tv_sec || before.st_ctim.tv_nsec != after.st_ctim.tv_nsec) {
+        blkid_free_probe(probe);
+        return fail();
+    }
     blkid_free_probe(probe);
-    return emit(status, kind, filesystem, uuid);
+    return emit(status, kind, filesystem, uuid, &table);
 }

@@ -32,7 +32,8 @@ mkdir -p "$workspace/include/blkid"
 cp libblkid/src/blkid.h "$workspace/include/blkid/blkid.h"
 "$compiler" -std=c11 -O2 -Wall -Wextra -Werror -fstack-protector-strong \
     -D_FORTIFY_SOURCE=2 -I"$workspace/include" \
-    "$source_dir/src/phantowd-volume-probe/probe.c" .libs/libblkid.a \
+    "$source_dir/src/phantowd-volume-probe/probe.c" \
+    "$source_dir/src/phantowd-volume-probe/partition_table.c" .libs/libblkid.a \
     -static -Wl,-z,relro,-z,now -o "$destination"
 readelf -h "$destination" | grep -E 'Machine:.*ARM' >/dev/null
 readelf -A "$destination" | grep -E 'Tag_CPU_arch: v5TEJ?$' >/dev/null

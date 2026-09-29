@@ -224,6 +224,10 @@ while [ "$attempt" -lt 120 ]; do
             echo 'Missing unmounted metadata probe assertion' >&2
             exit 1
         fi
+        if ! grep -F 'PHANTOWD_PARTITION_TABLE_READY gpt=true backup_header_offset_gt_2g=true sparse_regular_image=true read_only=true scope=qemu-fixture-only' "$log_file" >/dev/null; then
+            echo 'Missing sparse large-GPT partition-table probe assertion' >&2
+            exit 1
+        fi
         if ! grep -F 'PHANTOWD_VOLUME_SET_READY cloned_uuid=true aliases_deduplicated=true generation_bound=true stale_generation_refused=true unobserved_not_absent=true shuffled_complete_set=true trusted_complete_discovery=true mount_swap_rechecked=true sysfs_rechecked=true observed_opener=true readonly_sources=true all_or_error=true symlink_refused=true scope=qemu-fixture-only' "$log_file" >/dev/null; then
             echo 'Missing complete QEMU source-set opener assertions' >&2
             exit 1

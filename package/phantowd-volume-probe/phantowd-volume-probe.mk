@@ -15,7 +15,7 @@ define PHANTOWD_VOLUME_PROBE_BUILD_CMDS
 	$(INSTALL) -m 0644 $(BR2_EXTERNAL_PHANTOWD_EX4_PATH)/LICENSE $(@D)/LICENSE
 	$(TARGET_CC) $(TARGET_CFLAGS) -std=c11 -Wall -Wextra -Werror \
 		-fstack-protector-strong \
-		$(@D)/probe.c $(TARGET_LDFLAGS) -Wl,-z,relro,-z,now \
+		$(@D)/probe.c $(@D)/partition_table.c $(TARGET_LDFLAGS) -Wl,-z,relro,-z,now \
 		-lblkid -o $(@D)/phantowd-volume-probe
 endef
 

@@ -18,13 +18,14 @@ complete inventory, volume resolver or service activation capability.
   one-second pipe-wait limit. Cancellation kills the process group and waits
   for the helper to be reaped before releasing the slot. Kernel uninterruptible
   I/O can delay reaping: this is not a hard wall-clock guarantee or a sandbox.
-- Both output streams have a 1024-byte retained-data limit, including `io.Copy`
+- Standard output is bounded to 64 KiB and stderr to 1 KiB, including `io.Copy`
   paths. Any stderr, unsuccessful exit, timeout or malformed response fails
   without returning identity. Underlying diagnostics are not echoed.
 - Require every schema field, exact names/types, bounded UTF-8 JSON, no nulls,
   duplicates, unknown fields or trailing documents. All three authority flags
-  must be present and false. Validate status/type/UUID relationships and check
-  the reported source kind against the supplied descriptor.
+  must be present and false. Schema v2 validates partition scheme, table ID,
+  per-entry type/UUID/number/range, duplicate IDs and overlap relationships;
+  check the reported source kind against the supplied descriptor.
 - Compare device/inode/rdev/size/mode/mtime/ctime before and after a successful
   child. This catches some changes, not all concurrent writes or device swaps,
   and does not provide an atomic or continuously valid storage snapshot.
@@ -34,6 +35,9 @@ unwritable by untrusted users. This runner is not a supervisor for arbitrary or
 hostile executables, independently escaping descendants, or privilege changes.
 `Inspect` and `ObserveBlockSet` do not mount, enumerate or open source paths.
 Result UUIDs are private and must not enter public diagnostics/logs.
+`PartitionTable` and its raw IDs are equally private. This package currently
+does not expose them through HTTP and does not authorize compatibility,
+assembly, import or mount.
 
 ## Verification and remaining integration
 

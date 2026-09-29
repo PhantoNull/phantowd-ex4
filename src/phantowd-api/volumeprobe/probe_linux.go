@@ -105,7 +105,8 @@ func inspectPinned(ctx context.Context, input *os.File, before unix.Stat_t, kind
 		return err
 	}
 	cmd.WaitDelay = time.Second
-	var output, diagnostic boundedOutput
+	output := boundedOutput{limit: maxOutput}
+	diagnostic := boundedOutput{limit: maxDiagnostic}
 	cmd.Stdout, cmd.Stderr = &output, &diagnostic
 	err := cmd.Run()
 	if ctx.Err() != nil {
@@ -135,13 +136,20 @@ func sameObject(a, b unix.Stat_t) bool {
 
 // Do not embed bytes.Buffer: its promoted ReadFrom would let io.Copy bypass
 // Write's limit when collecting child pipes.
-type boundedOutput struct{ buffer bytes.Buffer }
+type boundedOutput struct {
+	buffer bytes.Buffer
+	limit  int
+}
 
 func (out *boundedOutput) Len() int      { return out.buffer.Len() }
 func (out *boundedOutput) Bytes() []byte { return out.buffer.Bytes() }
 
 func (out *boundedOutput) Write(data []byte) (int, error) {
-	if len(data) > maxOutput-out.Len() {
+	limit := out.limit
+	if limit == 0 {
+		limit = maxOutput
+	}
+	if limit < out.Len() || len(data) > limit-out.Len() {
 		return 0, ErrResponse
 	}
 	return out.buffer.Write(data)
