@@ -29,6 +29,9 @@ const (
 	qemuDataWWN     = "500f000000000002"
 	qemuCloneSerial = "PHANTOWD-QEMU-CLONE-01"
 	qemuCloneWWN    = "500f000000000003"
+	qemuGPTDiskGUID = "fedcba98-7654-3210-fedc-ba9876543210"
+	qemuGPTPartUUID = "8fd20a43-e550-4632-9a8e-5241c40c0861"
+	qemuGPTTypeGUID = "0fc63daf-8483-4772-8e79-3d69d8477de4"
 )
 
 var qemuDashboardAssets = []struct {
@@ -37,7 +40,7 @@ var qemuDashboardAssets = []struct {
 }{
 	{"/", "text/html; charset=utf-8", []string{"PhantoWD EX4", "Development image.", "profile-notice-title", "NOT RELEASE QUALIFIED", "policy-form", "NOT SAVED / NOT APPLIED / RUNTIME NOT VERIFIED", "saved-load", "SAVED POLICY / ACTIVATION NOT AVAILABLE"}},
 	{"/assets/app.css", "text/css; charset=utf-8", []string{"@media", "prefers-reduced-motion"}},
-	{"/assets/app.js", "text/javascript; charset=utf-8", []string{"/api/v1/system", "/api/v1/storage", "/api/v1/arrays", "/api/v1/mounts", "/api/v1/file-services/preview", "invalidatePolicyPreview", "textContent", "/api/v1/shares/configuration", "clearSavedPolicy"}},
+	{"/assets/app.js", "text/javascript; charset=utf-8", []string{"/api/v1/system", "/api/v1/storage", "/api/v1/storage/gpt-observation", "gpt-observe", "/api/v1/arrays", "/api/v1/mounts", "/api/v1/file-services/preview", "invalidatePolicyPreview", "textContent", "/api/v1/shares/configuration", "clearSavedPolicy"}},
 	{"/assets/service-policy.js", "text/javascript; charset=utf-8", []string{"/api/v1/file-services/configuration", "sameServiceDocument", "saveServiceChange", "clearServicePolicy"}},
 	{"/assets/ghost.svg", "image/svg+xml", []string{"<svg", "PhantoWD ghost"}},
 }
@@ -196,6 +199,14 @@ func runSelfTest() error {
 	}
 	fmt.Println("PHANTOWD_STORAGE_COLLISION_READY nodes=2 serial=ambiguous wwn=ambiguous redacted=true read_only=true scope=qemu-fixture-only")
 	fmt.Println("PHANTOWD_STORAGE_BROKER_READY api_outside_device_group=true broker_nnp_all_threads=true broker_capabilities=none whole_disk_mode=0440 hotplug_rechecked=true nodes=2 serial=ambiguous wwn=ambiguous redacted=true read_only=true scope=qemu-fixture-only")
+	for _, private := range []string{qemuGPTDiskGUID, qemuGPTPartUUID, qemuGPTTypeGUID} {
+		if strings.Contains(string(storageData), private) {
+			return errors.New("ordinary storage refresh exposed private GPT metadata")
+		}
+	}
+	if err := exerciseQEMUGPTObservation(client, "http://"+listenAddress); err != nil {
+		return err
+	}
 	arraysResponse, err := client.Get("http://" + listenAddress + "/api/v1/arrays")
 	if err != nil {
 		return errors.New("array inventory loopback request failed")
@@ -551,4 +562,50 @@ func readSelfTestResponse(response *http.Response, limit int64) ([]byte, error) 
 		return nil, errors.New("response exceeded the self-test bound")
 	}
 	return data, nil
+}
+
+func exerciseQEMUGPTObservation(client *http.Client, origin string) error {
+	sessionResponse, err := client.Get(origin + authSessionPath)
+	if err != nil {
+		return errors.New("GPT observation session request failed")
+	}
+	sessionData, err := readSelfTestResponse(sessionResponse, 4096)
+	var session struct {
+		CSRFToken string `json:"csrf_token"`
+	}
+	if err != nil || sessionResponse.StatusCode != http.StatusOK || json.Unmarshal(sessionData, &session) != nil || session.CSRFToken == "" {
+		return errors.New("GPT observation session was unavailable")
+	}
+	request, err := http.NewRequest(http.MethodPost, origin+storageGPTObservationPath, nil)
+	if err != nil {
+		return errors.New("GPT observation request could not be created")
+	}
+	request.Header.Set("Origin", origin)
+	request.Header.Set("X-PhantoWD-CSRF", session.CSRFToken)
+	response, err := client.Do(request)
+	if err != nil {
+		return errors.New("explicit GPT observation request failed")
+	}
+	data, err := readSelfTestResponse(response, 16384)
+	if err != nil || response.StatusCode != http.StatusOK || response.Header.Get("Cache-Control") != "no-store" {
+		return errors.New("explicit GPT observation returned an invalid response")
+	}
+	var summary storageGPTObservationSummary
+	if json.Unmarshal(data, &summary) != nil || !validStorageGPTObservationSummary(summary) ||
+		summary.EligibleCandidateCount == 0 || summary.GPTDiskCount != 1 || summary.PartitionCount != 1 ||
+		summary.AmbiguousDiskGUIDCount != 0 || summary.AmbiguousPARTUUIDCount != 0 {
+		return errors.New("GPT observation did not summarize the single synthetic GPT candidate")
+	}
+	for _, private := range []string{
+		qemuGPTDiskGUID, qemuGPTPartUUID, qemuGPTTypeGUID,
+		"2048", "63455",
+		"sdd", "/dev/", `"disk_guid":`, `"partuuid":`, `"partition_number":`,
+		`"start_512b_sectors":`, `"kernel_name":`,
+	} {
+		if strings.Contains(string(data), private) {
+			return errors.New("explicit GPT observation exposed private identifiers or geometry")
+		}
+	}
+	fmt.Println("PHANTOWD_GPT_OBSERVATION_READY eligible=true gpt_disks=1 partitions=1 summary_only=true normal_refresh_redacted=true auth=true csrf=true manual=true read_only=true no_mount=true no_mutation=true scope=qemu-fixture-only")
+	return nil
 }

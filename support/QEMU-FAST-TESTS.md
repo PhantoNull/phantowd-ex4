@@ -84,8 +84,8 @@ the fixture's declared GPT type GUID. This describes neither the bytes stored
 in that partition nor any WD/EX4 role or compatibility.
 Only GPT is currently accepted for this private identity observation. DOS/MBR
 is explicitly unsupported and its disk/partition IDs are discarded. The
-correlation struct is excluded from JSON serialization; no API field, mount,
-import or write authority is added. The marker
+correlation struct is excluded from JSON serialization; no raw disk GUID,
+PARTUUID, geometry, kernel name or path is an API field. The marker
 `PHANTOWD_PARTITION_SYSFS_CORRELATION_READY` is fixture evidence only.
 The self-test then passes the one real GPT binding and a second synthetic
 in-memory copy to the private classifier. It requires duplicate disk GUID and
@@ -96,8 +96,17 @@ complete original-set coverage (`observed_gpt_disks=1`, `coverage=partial`)
 and the separate synthetic pair. Host tests additionally exercise duplicate
 disk GUID/PARTUUIDs across two candidates admitted by complete discovery, plus
 disk-only and PARTUUID-only collisions. MBR and no-table candidates are coverage
-gaps, not proof of uniqueness. No identity classification is serialized or
-exposed over HTTP, persisted, or used to mount/import.
+gaps, not proof of uniqueness. The private singleton/ambiguous labels are not
+serialized; only aggregate duplicate counts are returned by the separate manual
+observation endpoint. The smoke-only M3.2a API check sends one authenticated,
+CSRF-protected POST through the running ARMv5 API to the real guest broker. It
+requires one GPT disk and partition in the summary, verifies raw identifiers,
+partition geometry, kernel names and paths are absent from HTTP, and confirms
+the ordinary storage response remains redacted. It uses only the disposable
+synthetic GPT disk and never mounts/imports/writes. This exercises the current
+API/helper overlay on the cached kernel/package base; it is not a clean
+Buildroot, two-boot, hosted-CI or EX4 qualification. The observation is not
+persisted or used to mount/import.
 
 The read-only storage collector also requires nonzero, unique kernel `diskseq`
 values for whole-disk entries, rechecks each value around its local observation,

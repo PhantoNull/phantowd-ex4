@@ -156,6 +156,10 @@ while [ "$attempt" -lt 120 ]; do
             echo 'QEMU authenticated read-only storage broker response assertion did not complete' >&2
             exit 1
         fi
+        if ! grep -F 'PHANTOWD_GPT_OBSERVATION_READY eligible=true gpt_disks=1 partitions=1 summary_only=true normal_refresh_redacted=true auth=true csrf=true manual=true read_only=true no_mount=true no_mutation=true scope=qemu-fixture-only' "$log_file" >/dev/null; then
+            echo 'QEMU explicit authenticated GPT observation or HTTP redaction assertion did not complete' >&2
+            exit 1
+        fi
         if ! grep -F 'PHANTOWD_IDENTITY_EXEC_READY binary=pinned-busybox typed_commands=true unix_login_locked=true nologin=true home_created=false scope=isolated-qemu-only' "$log_file" >/dev/null; then
             echo 'QEMU typed native identity executor did not complete' >&2
             exit 1
