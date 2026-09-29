@@ -246,7 +246,7 @@ func exerciseQEMUDisabledPasswordBoundary(owner *identityowner.Owner, a servicea
 	}
 	fmt.Println("PHANTOWD_SMB_DISABLED_RESET_BOUNDARY legacy_reset_reenables=true combined_disable_skips_password=true scope=isolated-qemu-only")
 	fmt.Println("PHANTOWD_SMB_DISABLED_PASSWORD_SET_READY replacement_set=true disabled_until_explicit_enable=true obsolete_password_denied=true unix_identity_unchanged=true scope=isolated-qemu-only")
-	fmt.Println("PHANTOWD_SMB_DISABLED_ENROLLMENT_READY owner_lock=true intent_journal=true created_disabled=true empty_credential_denied=true password_set_disabled=true pre_enable_valid_denied=true enable_explicit=true same_sid_revalidated=true post_enable_valid_accepted=true post_enable_empty_denied=true scope=isolated-qemu-only")
+	fmt.Println("PHANTOWD_SMB_DISABLED_ENROLLMENT_READY owner_lock=true intent_journal=true created_disabled=true empty_credential_denied=true password_set_disabled=true pre_enable_valid_denied=true enable_explicit=true same_sid_revalidated=true post_enable_valid_accepted=true post_enable_empty_denied=true disable_explicit=true disabled_new_auth_denied=true reenable_explicit=true reenabled_auth_accepted=true scope=isolated-qemu-only")
 	return nil
 }
 

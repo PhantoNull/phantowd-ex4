@@ -176,7 +176,7 @@ while [ "$attempt" -lt 120 ]; do
             echo 'Samba disabled-password update did not complete safely' >&2
             exit 1
         fi
-        if ! grep -F 'PHANTOWD_SMB_DISABLED_ENROLLMENT_READY owner_lock=true intent_journal=true created_disabled=true empty_credential_denied=true password_set_disabled=true pre_enable_valid_denied=true enable_explicit=true same_sid_revalidated=true post_enable_valid_accepted=true post_enable_empty_denied=true scope=isolated-qemu-only' "$log_file" >/dev/null; then
+        if ! grep -F 'PHANTOWD_SMB_DISABLED_ENROLLMENT_READY owner_lock=true intent_journal=true created_disabled=true empty_credential_denied=true password_set_disabled=true pre_enable_valid_denied=true enable_explicit=true same_sid_revalidated=true post_enable_valid_accepted=true post_enable_empty_denied=true disable_explicit=true disabled_new_auth_denied=true reenable_explicit=true reenabled_auth_accepted=true scope=isolated-qemu-only' "$log_file" >/dev/null; then
             echo 'Samba disabled-account enrollment did not complete safely' >&2
             exit 1
         fi

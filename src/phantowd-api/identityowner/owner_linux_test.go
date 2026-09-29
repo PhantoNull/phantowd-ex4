@@ -76,12 +76,13 @@ func (m *model) dependencies() dependencies {
 }
 
 type modeledSMB struct {
-	observation smbprovision.Observation
-	createCalls int
-	setCalls    int
-	enableCalls int
-	secret      []byte
-	onCreate    func()
+	observation  smbprovision.Observation
+	createCalls  int
+	setCalls     int
+	enableCalls  int
+	disableCalls int
+	secret       []byte
+	onCreate     func()
 }
 
 type closeCountingSMB struct {
@@ -124,6 +125,15 @@ func (b *modeledSMB) Enable(_ context.Context, account serviceaccounts.Account) 
 		return errors.New("PRIVATE SMB account not disabled")
 	}
 	b.observation.Disabled = false
+	return nil
+}
+func (b *modeledSMB) Disable(_ context.Context, account serviceaccounts.Account) error {
+	b.disableCalls++
+	if !b.observation.Present || b.observation.Disabled || b.observation.Name != account.Name ||
+		b.observation.UID != account.UID || b.observation.GID != account.GID {
+		return errors.New("PRIVATE SMB account not enabled")
+	}
+	b.observation.Disabled = true
 	return nil
 }
 
@@ -390,6 +400,47 @@ func TestSMBEnableIsExplicitAndRevalidatesUnixOwner(t *testing.T) {
 	}
 }
 
+func TestSMBDisableUsesOwnerBackendAndCanReenable(t *testing.T) {
+	backend := &modeledSMB{}
+	o, _, _ := fixtureWithSMB(t, backend)
+	ctx := context.Background()
+	account, err := o.Reserve(ctx, 1, "first", "firstuser")
+	if err != nil {
+		t.Fatal(err)
+	}
+	completeUnixIdentity(t, o, account.ID)
+	smb := o.SMB(account.ID)
+	if err := smb.Begin(ctx, 5); err != nil {
+		t.Fatal(err)
+	}
+	if err := smb.Step(ctx, 1); err != nil {
+		t.Fatal(err)
+	}
+	if err := smb.SetPasswordDisabled(ctx, 3, []byte("test-only-private-secret")); err != nil {
+		t.Fatal(err)
+	}
+	if err := smb.Enable(ctx, 5); err != nil {
+		t.Fatal(err)
+	}
+	if err := smb.Disable(ctx, 6); !errors.Is(err, smbprovision.ErrConflict) || backend.disableCalls != 0 {
+		t.Fatal("stale disable revision reached the Owner backend", err, backend.disableCalls)
+	}
+	if err := smb.Disable(ctx, 7); err != nil {
+		t.Fatal("explicit disable failed through the Owner", err)
+	}
+	if err := smb.Enable(ctx, 8); !errors.Is(err, smbprovision.ErrConflict) || backend.enableCalls != 1 {
+		t.Fatal("stale re-enable revision reached the Owner backend", err, backend.enableCalls)
+	}
+	if err := smb.Enable(ctx, 9); err != nil {
+		t.Fatal("explicit re-enable failed through the Owner", err)
+	}
+	journal, err := smb.Load(ctx)
+	if err != nil || journal.Phase != smbprovision.Enabled || journal.Revision != 11 ||
+		journal.SID != "S-1-5-21-1-2-3-1001" || backend.disableCalls != 1 || backend.enableCalls != 2 || backend.observation.Disabled {
+		t.Fatal("Owner did not retain and use its bound backend for the disable/re-enable cycle", journal, err, backend)
+	}
+}
+
 func TestSMBEnableRefusesChangedUnixIdentityBeforeDispatch(t *testing.T) {
 	backend := &modeledSMB{}
 	o, model, _ := fixtureWithSMB(t, backend)
@@ -543,6 +594,10 @@ func (*exitAfterSMBIntent) SetPasswordDisabled(context.Context, serviceaccounts.
 }
 func (*exitAfterSMBIntent) Enable(context.Context, serviceaccounts.Account) error {
 	os.Exit(44)
+	return nil
+}
+func (*exitAfterSMBIntent) Disable(context.Context, serviceaccounts.Account) error {
+	os.Exit(45)
 	return nil
 }
 

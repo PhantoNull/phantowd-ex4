@@ -20,15 +20,17 @@ import (
 const testSID = "S-1-5-21-1-2-3-1001"
 
 type modeledBackend struct {
-	observation Observation
-	observeErr  error
-	createErr   error
-	passwordErr error
-	enableErr   error
-	createCalls int
-	setCalls    int
-	enableCalls int
-	received    []byte
+	observation  Observation
+	observeErr   error
+	createErr    error
+	passwordErr  error
+	enableErr    error
+	disableErr   error
+	createCalls  int
+	setCalls     int
+	enableCalls  int
+	disableCalls int
+	received     []byte
 }
 
 func (b *modeledBackend) Observe(_ context.Context, account serviceAccount) (Observation, error) {
@@ -71,6 +73,15 @@ func (b *modeledBackend) Enable(_ context.Context, account serviceAccount) error
 	}
 	b.observation.Disabled = false
 	return b.enableErr
+}
+
+func (b *modeledBackend) Disable(_ context.Context, account serviceAccount) error {
+	b.disableCalls++
+	if !b.observation.Present || b.observation.Disabled || b.observation.Name != account.Name {
+		return errors.New("PRIVATE account is not the expected enabled entry")
+	}
+	b.observation.Disabled = true
+	return b.disableErr
 }
 
 func privateStore(t *testing.T, backend Backend) (*Store, string) {
@@ -169,6 +180,44 @@ func TestEnableIsExplicitRevisionCheckedAndConfirmsSameSID(t *testing.T) {
 	}
 }
 
+func TestDisableIsExplicitRevisionCheckedAndCanBeReenabled(t *testing.T) {
+	ctx := context.Background()
+	b := &modeledBackend{}
+	s, _ := privateStore(t, b)
+	if err := s.Begin(ctx, 5, testAccount); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Step(ctx, 1); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.SetPasswordDisabled(ctx, 3, []byte("a-local-fixture-secret")); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Enable(ctx, 5); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Disable(ctx, 6); !errors.Is(err, ErrConflict) || b.disableCalls != 0 {
+		t.Fatal("stale disable revision reached the backend", err, b.disableCalls)
+	}
+	if err := s.Disable(ctx, 7); err != nil {
+		t.Fatal("explicit disable failed", err)
+	}
+	j, err := s.Load()
+	if err != nil || j.Phase != Disabled || j.Revision != 9 || j.SID != testSID || !b.observation.Disabled || b.disableCalls != 1 {
+		t.Fatal("disable was not confirmed for the same SID", j, err, b)
+	}
+	if err := s.Enable(ctx, 8); !errors.Is(err, ErrConflict) || b.enableCalls != 1 {
+		t.Fatal("stale re-enable revision reached the backend", err, b.enableCalls)
+	}
+	if err := s.Enable(ctx, 9); err != nil {
+		t.Fatal("explicit re-enable failed", err)
+	}
+	j, err = s.Load()
+	if err != nil || j.Phase != Enabled || j.Revision != 11 || j.SID != testSID || b.observation.Disabled || b.enableCalls != 2 {
+		t.Fatal("re-enable was not confirmed for the same SID", j, err, b)
+	}
+}
+
 func TestEnableQuarantinesUnexpectedStateWithoutDispatch(t *testing.T) {
 	b := &modeledBackend{}
 	s, _ := privateStore(t, b)
@@ -188,6 +237,35 @@ func TestEnableQuarantinesUnexpectedStateWithoutDispatch(t *testing.T) {
 	j, err := s.Load()
 	if err != nil || j.Phase != ReviewRequired || j.Revision != 6 || j.SID != testSID {
 		t.Fatal("external state change was not quarantined", j, err)
+	}
+}
+
+func TestAmbiguousDisableRequiresReviewAndNeverReplays(t *testing.T) {
+	b := &modeledBackend{}
+	s, _ := privateStore(t, b)
+	ctx := context.Background()
+	if err := s.Begin(ctx, 5, testAccount); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Step(ctx, 1); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.SetPasswordDisabled(ctx, 3, []byte("a-local-fixture-secret")); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Enable(ctx, 5); err != nil {
+		t.Fatal(err)
+	}
+	b.disableErr = errors.New("PRIVATE disable reply lost after mutation")
+	if err := s.Disable(ctx, 7); !errors.Is(err, ErrReview) || strings.Contains(err.Error(), "PRIVATE") {
+		t.Fatal("uncertain disable was not converted to redacted review", err)
+	}
+	j, err := s.Load()
+	if err != nil || j.Phase != ReviewRequired || j.Revision != 9 || j.SID != testSID || b.disableCalls != 1 {
+		t.Fatal("uncertain disable evidence was not retained", j, err, b.disableCalls)
+	}
+	if err := s.Disable(ctx, 9); !errors.Is(err, ErrReview) || b.disableCalls != 1 {
+		t.Fatal("uncertain disable was replayed", err, b.disableCalls)
 	}
 }
 
@@ -380,6 +458,9 @@ func (*exitAfterIntentBackend) SetPasswordDisabled(context.Context, serviceaccou
 func (*exitAfterIntentBackend) Enable(context.Context, serviceaccounts.Account) error {
 	return errors.New("unexpected enable command")
 }
+func (*exitAfterIntentBackend) Disable(context.Context, serviceaccounts.Account) error {
+	return errors.New("unexpected disable command")
+}
 
 func TestProcessExitAfterIntentRequiresReviewWithoutReplay(t *testing.T) {
 	if os.Getenv("PHANTOWD_SMBPROVISION_CRASH_DIR") != "" {
@@ -461,6 +542,9 @@ func (*exitAfterPasswordIntentBackend) SetPasswordDisabled(context.Context, serv
 func (*exitAfterPasswordIntentBackend) Enable(context.Context, serviceaccounts.Account) error {
 	return errors.New("unexpected enable command")
 }
+func (*exitAfterPasswordIntentBackend) Disable(context.Context, serviceaccounts.Account) error {
+	return errors.New("unexpected disable command")
+}
 
 type exitAfterEnableIntentBackend struct{ observation Observation }
 
@@ -476,6 +560,9 @@ func (*exitAfterEnableIntentBackend) SetPasswordDisabled(context.Context, servic
 func (*exitAfterEnableIntentBackend) Enable(context.Context, serviceaccounts.Account) error {
 	os.Exit(44)
 	return nil
+}
+func (*exitAfterEnableIntentBackend) Disable(context.Context, serviceaccounts.Account) error {
+	return errors.New("unexpected disable command")
 }
 
 func TestInterruptedPasswordIntentIsRecoveredToReviewWithoutRetry(t *testing.T) {

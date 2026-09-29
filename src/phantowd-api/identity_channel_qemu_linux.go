@@ -31,7 +31,7 @@ func exerciseQEMUIdentityChannel(owner *identityowner.Owner, phase string) error
 	if err := guardQEMUDataVolume(); err != nil {
 		return err
 	}
-	if phase != "group" && phase != "user" && phase != "second" && phase != "smb-create" && phase != "smb-password" && phase != "smb-enable" {
+	if phase != "group" && phase != "user" && phase != "second" && phase != "smb-create" && phase != "smb-password" && phase != "smb-enable" && phase != "smb-disable" && phase != "smb-reenable" {
 		return errors.New("invalid channel fixture phase")
 	}
 	if err := os.Mkdir(identitySocketDir, 0710); err != nil {
@@ -112,12 +112,12 @@ func runQEMUIdentityClient(phase string) error {
 	if os.Getuid() != 65534 || os.Geteuid() != 65534 {
 		return errors.New("wrong channel fixture process")
 	}
-	if phase != "group" && phase != "user" && phase != "second" && phase != "smb-create" && phase != "smb-password" && phase != "smb-enable" {
+	if phase != "group" && phase != "user" && phase != "second" && phase != "smb-create" && phase != "smb-password" && phase != "smb-enable" && phase != "smb-disable" && phase != "smb-reenable" {
 		return errors.New("invalid channel fixture phase")
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 12*time.Second)
 	defer cancel()
-	if phase == "smb-create" || phase == "smb-password" || phase == "smb-enable" {
+	if phase == "smb-create" || phase == "smb-password" || phase == "smb-enable" || phase == "smb-disable" || phase == "smb-reenable" {
 		requests := []struct {
 			request identityrpc.SMBRequest
 			phase   string
@@ -150,6 +150,29 @@ func runQEMUIdentityClient(phase string) error {
 				{identityrpc.SMBRequest{Action: "enable", AccountID: "second", Revision: 5}, "enabled", 7},
 				{identityrpc.SMBRequest{Action: "status", AccountID: "second"}, "enabled", 7},
 				{identityrpc.SMBRequest{Action: "enable", AccountID: "second", Revision: 5}, "", 0},
+			}
+		}
+		if phase == "smb-disable" {
+			requests = []struct {
+				request identityrpc.SMBRequest
+				phase   string
+				rev     uint64
+			}{
+				{identityrpc.SMBRequest{Action: "disable", AccountID: "second", Revision: 6}, "", 0},
+				{identityrpc.SMBRequest{Action: "disable", AccountID: "second", Revision: 7}, "disabled", 9},
+				{identityrpc.SMBRequest{Action: "status", AccountID: "second"}, "disabled", 9},
+			}
+		}
+		if phase == "smb-reenable" {
+			requests = []struct {
+				request identityrpc.SMBRequest
+				phase   string
+				rev     uint64
+			}{
+				{identityrpc.SMBRequest{Action: "enable", AccountID: "second", Revision: 8}, "", 0},
+				{identityrpc.SMBRequest{Action: "enable", AccountID: "second", Revision: 9}, "enabled", 11},
+				{identityrpc.SMBRequest{Action: "status", AccountID: "second"}, "enabled", 11},
+				{identityrpc.SMBRequest{Action: "enable", AccountID: "second", Revision: 9}, "", 0},
 			}
 		}
 		for _, test := range requests {
