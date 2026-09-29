@@ -91,6 +91,14 @@ These checks do not use Docker or contact the NAS. The API check runs Go
 tests/vet and cross-compiles its QEMU-tagged tests for Linux/ARMv5, but does
 not execute that binary; it does not replace the Linux guest integration lane.
 
+When the pinned Buildroot image and workspace are already present, run
+`support/test-api-linux.ps1` as an additional fast Linux-native check. It runs
+`go vet` and the complete API test suite, including Linux-only packages. It
+mounts the repository and existing Buildroot workspace read-only, disables
+network access, uses only an ephemeral container/tmpfs, and fails rather than
+pulling an image or creating a volume if the cache is absent. It does not boot
+QEMU or replace the full guest integration lane.
+
 ### Build and boot the QEMU target
 
 With Docker Desktop running **Linux containers**, run from the repository root:

@@ -173,9 +173,12 @@ button to an unqualified backend simply because the screen exists.
   cleanup. Do not assume parent process exit proves descendant exit. A fix needs
   a deterministic regression and a declared repeated two-boot campaign.
 - **M0.3 — Keep CI proportional.** Host/domain changes use fast checks; runtime
-  changes use QEMU; board changes use the relevant current probe. Preserve
-  isolation, exact-source hashes and clean-build/reproducibility lanes. Cache
-  hits are an optimization, never qualification evidence.
+  changes use QEMU; board changes use the relevant current probe. Windows host
+  iteration has a no-Docker preflight and an optional Linux/amd64 test runner
+  that reuses only an already-present read-only Buildroot cache; it must not
+  pull/build an image or create a volume. Preserve isolation, exact-source
+  hashes and clean-build/reproducibility lanes. Cache hits are an optimization,
+  never qualification evidence.
 - **M0.4 — Maintain release inputs.** Dependency update changes include source
   signatures/hashes, ARMv5 compatibility, package configuration, vulnerability
   review, license material and regenerated SBOM. Test the selected package set.

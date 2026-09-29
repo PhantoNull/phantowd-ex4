@@ -25,9 +25,14 @@ concurrency and interruption tests for the behavior being changed. Exercise
 effective access and persistence where applicable, not only exit codes.
 
 For API/UI iterations on Windows, start with `support/test-api.ps1`; it does
-not use Docker. The full QEMU builder retains two fixed named Docker volumes
-for incremental Buildroot output and compiler cache. It requires 40 GiB free
-on the Docker data drive, but that is a start-time guard, not a quota. Inspect
+not use Docker. If the pinned Buildroot image and workspace are already
+available, `support/test-api-linux.ps1` additionally runs the full API vet/test
+suite on Linux/amd64, including Linux-only tests; it reuses the workspace
+read-only and never pulls/builds an image or creates a volume. This remains
+host execution, not ARMv5/QEMU qualification. The full QEMU builder retains two
+fixed named Docker volumes for incremental Buildroot output and compiler cache.
+It requires 40 GiB free on the Docker data drive, but that is a start-time
+guard, not a quota. Inspect
 usage with `docker system df -v`; use
 `support/clean-qemu-build-volumes.ps1 -WhatIf` before explicitly removing only
 the unreferenced PhantoWD build volumes. Do not use broad Docker prune commands
