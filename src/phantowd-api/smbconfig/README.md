@@ -15,8 +15,10 @@ separate loopback smbd. It exercises effective read/write/denied access, not
 just target parsing. It remains test-only; the renderer gains no filesystem,
 credential or process capabilities from that fixture.
 
-- The preview retains the desired revision and required volume IDs/UUIDs.
-  Proposed mount anchors are `/srv/phantowd/volumes/<filesystem-uuid>`:
+- The preview retains the desired revision and required logical volume IDs and
+  filesystem UUIDs as distinct fields. `volume_id` references `shareconfig`
+  `Volume.ID`; the proposed anchor is derived from its separate
+  `FilesystemUUID` as `/srv/phantowd/volumes/<filesystem-uuid>`. It is
   independent of bay enumeration, but **not yet provisioned or verified**.
 - Only referenced volumes appear in the requirements. Collections and grant
   lists are sorted, without modifying the caller's configuration.

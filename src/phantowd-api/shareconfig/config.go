@@ -28,6 +28,14 @@ const (
 	VolumeMountRoot = "/srv/phantowd/volumes"
 )
 
+// VolumeID is a logical reference in desired share policy. It is distinct from
+// the filesystem identity and has no authority to locate or mount a device.
+type VolumeID string
+
+// FilesystemUUID is a lower-layer expected identity anchor, not proof of global
+// uniqueness, ownership, health, compatibility, or persistent adoption.
+type FilesystemUUID string
+
 // Config is a desired-policy document, not a claim that its volumes are present
 // or compatible. Revision is reserved for optimistic concurrency in the store.
 type Config struct {
@@ -42,8 +50,8 @@ type Config struct {
 // Volume binds a project ID to the filesystem identity expected by a future
 // resolver. The resolver must separately refuse absent or duplicate identities.
 type Volume struct {
-	ID             string `json:"id"`
-	FilesystemUUID string `json:"filesystem_uuid"`
+	ID             VolumeID       `json:"id"`
+	FilesystemUUID FilesystemUUID `json:"filesystem_uuid"`
 }
 
 // User references a future file-service account. It contains no credentials and
@@ -54,11 +62,11 @@ type User struct {
 }
 
 type Share struct {
-	ID           string  `json:"id"`
-	Name         string  `json:"name"`
-	VolumeID     string  `json:"volume_id"`
-	RelativePath string  `json:"relative_path"`
-	Grants       []Grant `json:"grants"`
+	ID           string   `json:"id"`
+	Name         string   `json:"name"`
+	VolumeID     VolumeID `json:"volume_id"`
+	RelativePath string   `json:"relative_path"`
+	Grants       []Grant  `json:"grants"`
 }
 
 type Grant struct {
@@ -90,9 +98,10 @@ func (c Config) Validate() error {
 		len(c.Volumes) > MaxVolumes || len(c.Users) > MaxUsers || len(c.Shares) > MaxShares {
 		return errors.New("missing or excessive configuration collections")
 	}
-	volumes, uuids := map[string]bool{}, map[string]bool{}
+	volumes, uuids := map[VolumeID]bool{}, map[FilesystemUUID]bool{}
 	for i, volume := range c.Volumes {
-		if !identifier(volume.ID) || volumes[volume.ID] || !filesystemUUID(volume.FilesystemUUID) || uuids[volume.FilesystemUUID] {
+		if !identifier(string(volume.ID)) || volumes[volume.ID] ||
+			!filesystemUUID(string(volume.FilesystemUUID)) || uuids[volume.FilesystemUUID] {
 			return fmt.Errorf("invalid or duplicate volume at index %d", i)
 		}
 		volumes[volume.ID], uuids[volume.FilesystemUUID] = true, true

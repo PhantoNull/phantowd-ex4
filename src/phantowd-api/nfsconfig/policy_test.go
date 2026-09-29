@@ -48,7 +48,10 @@ func TestPreviewClientMappingAndMountGuard(t *testing.T) {
 			t.Fatalf("unsafe output %q", forbidden)
 		}
 	}
-	if !preview.UsesAUTH_SYS || !preview.RequiresKerberos || preview.VolumeRevision != 3 || preview.Exports[0].FilesystemUUID != volumes().Volumes[0].FilesystemUUID {
+	if !preview.UsesAUTH_SYS || !preview.RequiresKerberos || preview.VolumeRevision != 3 ||
+		preview.Exports[0].VolumeID != "bulk" ||
+		preview.Exports[0].FilesystemUUID != volumes().Volumes[0].FilesystemUUID ||
+		preview.Exports[0].MountPath != VolumeRoot+"/"+string(volumes().Volumes[0].FilesystemUUID) {
 		t.Fatal("lost prerequisites")
 	}
 	after, _ := json.Marshal(p)

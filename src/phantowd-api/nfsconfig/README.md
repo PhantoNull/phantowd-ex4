@@ -16,6 +16,11 @@ its own `revision`, the referenced `volume_revision`, and `exports`. Each
 export has a unique stable UUID `id` (used as its NFS fsid), `volume_id`,
 `relative_path` and one or more `clients`. Each client explicitly supplies:
 
+`volume_id` references the logical `Volume.ID` key from `shareconfig`; it is
+not the filesystem UUID. The renderer derives its proposed mount anchor from
+the separate `Volume.FilesystemUUID`. These are distinct typed fields in the
+Go model, and neither a configured key nor a UUID authorizes mounting/export.
+
 | Field | Supported values |
 | --- | --- |
 | `network` | Canonical IPv4/IPv6 CIDR, including /32 or /128 for a single host |

@@ -44,10 +44,10 @@ type Policy struct {
 
 type Export struct {
 	// ID is a stable, unique UUID used as the NFS fsid, not the volume UUID.
-	ID           string   `json:"id"`
-	VolumeID     string   `json:"volume_id"`
-	RelativePath string   `json:"relative_path"`
-	Clients      []Client `json:"clients"`
+	ID           string               `json:"id"`
+	VolumeID     shareconfig.VolumeID `json:"volume_id"`
+	RelativePath string               `json:"relative_path"`
+	Clients      []Client             `json:"clients"`
 }
 
 // NFS clients and numeric UNIX identities are not Samba account grants.
@@ -88,7 +88,7 @@ func (p Policy) Validate(volumes shareconfig.Config) error {
 	if p.Exports == nil || len(p.Exports) > MaxExports {
 		return errors.New("missing or excessive NFS exports")
 	}
-	known := make(map[string]bool, len(volumes.Volumes))
+	known := make(map[shareconfig.VolumeID]bool, len(volumes.Volumes))
 	for _, volume := range volumes.Volumes {
 		known[volume.ID] = true
 	}
@@ -181,12 +181,12 @@ type Preview struct {
 }
 
 type ExportPreview struct {
-	ID             string   `json:"id"`
-	VolumeID       string   `json:"volume_id"`
-	FilesystemUUID string   `json:"filesystem_uuid"`
-	MountPath      string   `json:"mount_path"`
-	Path           string   `json:"path"`
-	Clients        []Client `json:"clients"`
+	ID             string                     `json:"id"`
+	VolumeID       shareconfig.VolumeID       `json:"volume_id"`
+	FilesystemUUID shareconfig.FilesystemUUID `json:"filesystem_uuid"`
+	MountPath      string                     `json:"mount_path"`
+	Path           string                     `json:"path"`
+	Clients        []Client                   `json:"clients"`
 }
 
 // Build produces candidate exports text, not an installed or authorized
@@ -195,16 +195,17 @@ func Build(p Policy, volumes shareconfig.Config) (Preview, error) {
 	if err := p.Validate(volumes); err != nil {
 		return Preview{}, err
 	}
-	known := make(map[string]string, len(volumes.Volumes))
+	known := make(map[shareconfig.VolumeID]shareconfig.FilesystemUUID, len(volumes.Volumes))
 	for _, volume := range volumes.Volumes {
 		known[volume.ID] = volume.FilesystemUUID
 	}
 	preview := Preview{SchemaVersion: 1, Revision: p.Revision, VolumeRevision: p.VolumeRevision, Exports: []ExportPreview{}}
 	for _, export := range p.Exports {
-		mount := path.Join(VolumeRoot, known[export.VolumeID])
+		filesystemUUID := known[export.VolumeID]
+		mount := path.Join(VolumeRoot, string(filesystemUUID))
 		clients := slices.Clone(export.Clients)
 		slices.SortFunc(clients, func(a, b Client) int { return strings.Compare(a.Network, b.Network) })
-		preview.Exports = append(preview.Exports, ExportPreview{export.ID, export.VolumeID, known[export.VolumeID], mount,
+		preview.Exports = append(preview.Exports, ExportPreview{export.ID, export.VolumeID, filesystemUUID, mount,
 			path.Join(mount, export.RelativePath), clients})
 	}
 	slices.SortFunc(preview.Exports, func(a, b ExportPreview) int { return strings.Compare(a.ID, b.ID) })

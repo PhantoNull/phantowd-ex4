@@ -31,18 +31,18 @@ type Preview struct {
 // The activation layer must prove the exact, unique filesystem identity is
 // mounted here, retain that binding and prevent fallback into the system disk.
 type VolumeRequirement struct {
-	VolumeID       string `json:"volume_id"`
-	FilesystemUUID string `json:"filesystem_uuid"`
-	MountPath      string `json:"mount_path"`
+	VolumeID       shareconfig.VolumeID       `json:"volume_id"`
+	FilesystemUUID shareconfig.FilesystemUUID `json:"filesystem_uuid"`
+	MountPath      string                     `json:"mount_path"`
 }
 
 type SharePreview struct {
-	ID        string   `json:"id"`
-	Name      string   `json:"name"`
-	VolumeID  string   `json:"volume_id"`
-	Path      string   `json:"path"`
-	ReadOnly  []string `json:"read_only_users"`
-	ReadWrite []string `json:"read_write_users"`
+	ID        string               `json:"id"`
+	Name      string               `json:"name"`
+	VolumeID  shareconfig.VolumeID `json:"volume_id"`
+	Path      string               `json:"path"`
+	ReadOnly  []string             `json:"read_only_users"`
+	ReadWrite []string             `json:"read_write_users"`
 }
 
 // Build is deterministic for semantically equivalent collection orderings.
@@ -58,15 +58,16 @@ func Build(config shareconfig.Config) (Preview, error) {
 	}
 	preview := Preview{SchemaVersion: 1, Revision: config.Revision,
 		Volumes: []VolumeRequirement{}, Shares: []SharePreview{}}
-	volumes := make(map[string]VolumeRequirement, len(config.Volumes))
+	volumes := make(map[shareconfig.VolumeID]VolumeRequirement, len(config.Volumes))
 	for _, volume := range config.Volumes {
-		volumes[volume.ID] = VolumeRequirement{volume.ID, volume.FilesystemUUID, path.Join(VolumeRoot, volume.FilesystemUUID)}
+		volumes[volume.ID] = VolumeRequirement{volume.ID, volume.FilesystemUUID,
+			path.Join(VolumeRoot, string(volume.FilesystemUUID))}
 	}
 	names := make(map[string]string, len(config.Users))
 	for _, user := range config.Users {
 		names[user.ID] = user.Name
 	}
-	used := make(map[string]bool)
+	used := make(map[shareconfig.VolumeID]bool)
 	for i, share := range config.Shares {
 		if unsafeValue(share.Name) || unsafeValue(share.RelativePath) {
 			return Preview{}, fmt.Errorf("share %d cannot be represented safely in Samba", i)
@@ -100,7 +101,9 @@ func Build(config shareconfig.Config) (Preview, error) {
 	for id := range used {
 		preview.Volumes = append(preview.Volumes, volumes[id])
 	}
-	slices.SortFunc(preview.Volumes, func(a, b VolumeRequirement) int { return strings.Compare(a.VolumeID, b.VolumeID) })
+	slices.SortFunc(preview.Volumes, func(a, b VolumeRequirement) int {
+		return strings.Compare(string(a.VolumeID), string(b.VolumeID))
+	})
 	slices.SortFunc(preview.Shares, func(a, b SharePreview) int { return strings.Compare(a.ID, b.ID) })
 	var output strings.Builder
 	output.WriteString("# PhantoWD candidate share sections; not an activation authorization.\n")

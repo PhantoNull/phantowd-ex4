@@ -8,10 +8,13 @@ not save it, create users, mount volumes or configure services. The separate
 Linux [share store](../sharestore/README.md) persists validated revisions in an
 explicit private directory; no product storage location is provisioned yet.
 
-Volume IDs refer to expected canonical filesystem UUIDs, never bay numbers or
-kernel device paths. The future runtime resolver must prove that a matching
-volume is present, unique and qualified. UUID text in configuration alone does
-not establish ownership, device health or migration compatibility.
+`Volume.ID` is the logical key referenced by shares and NFS exports. It is a
+different type and field from `Volume.FilesystemUUID`, the expected filesystem
+identity anchor. Neither value is a bay number or kernel device path. The key
+is not itself proof that a product-owned volume identity has been durably
+adopted; the future trusted resolver must prove the backing volume is present,
+unique and qualified before activation. UUID text in policy alone establishes
+neither ownership nor device health or migration compatibility.
 
 All fields are required. Empty top-level arrays are valid; a configured share
 requires at least one grant. Unknown, duplicate, differently cased, missing or

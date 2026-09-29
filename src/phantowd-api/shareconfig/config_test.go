@@ -21,6 +21,11 @@ func TestPolicyRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	if c.Volumes[0].ID != VolumeID("media") ||
+		c.Volumes[0].FilesystemUUID != FilesystemUUID("11111111-2222-3333-4444-555555555555") ||
+		c.Shares[0].VolumeID != c.Volumes[0].ID {
+		t.Fatal("logical volume reference was conflated with filesystem identity")
+	}
 	if c.Shares[0].Grants[0].Access != "ro" || c.Shares[0].Grants[1].Access != "rw" {
 		t.Fatal("lost explicit grant policy")
 	}

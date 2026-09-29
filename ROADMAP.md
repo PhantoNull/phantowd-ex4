@@ -470,7 +470,10 @@ are missing. **Depends on:** M1; M7 for hardware.
   separately uses a synthetic in-memory clone pair, not another guest disk.
   The classifier revalidates canonical, nonzero lowercase disk/PARTUUID/type
   GUIDs and checks generic-hint consistency; malformed private bindings fail
-  closed rather than weakening duplicate classification.
+  closed rather than weakening duplicate classification. Desired SMB/NFS
+  policy now represents its logical `VolumeID` reference separately from the
+  expected `FilesystemUUID` with distinct Go types; this does not imply a
+  persistent resolver, physical identity proof, or mount/export authority.
   These observations are
   private and excluded from JSON; they confer no persistent identity, mount,
   import, compatibility or write authority. Host tests/vet and the local

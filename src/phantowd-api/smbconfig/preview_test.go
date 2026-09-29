@@ -28,7 +28,11 @@ func TestPreviewAccessAndIdentity(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if p.Revision != 7 || len(p.Volumes) != 1 || p.Volumes[0].FilesystemUUID != c.Volumes[0].FilesystemUUID {
+	if p.Revision != 7 || len(p.Volumes) != 1 ||
+		p.Volumes[0].VolumeID != c.Volumes[0].ID ||
+		p.Volumes[0].FilesystemUUID != c.Volumes[0].FilesystemUUID ||
+		p.Volumes[0].MountPath != VolumeRoot+"/"+string(c.Volumes[0].FilesystemUUID) ||
+		p.Shares[0].VolumeID != c.Volumes[0].ID {
 		t.Fatal("lost identity/revision")
 	}
 	for _, want := range []string{"[Books & Comics]", "path = /srv/phantowd/volumes/11111111-2222-3333-4444-555555555555/Library/Technical Books",
