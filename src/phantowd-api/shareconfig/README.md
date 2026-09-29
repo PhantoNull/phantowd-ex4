@@ -16,6 +16,11 @@ adopted; the future trusted resolver must prove the backing volume is present,
 unique and qualified before activation. UUID text in policy alone establishes
 neither ownership nor device health or migration compatibility.
 
+SMB/NFS previews derive the proposed stable mount anchor from `Volume.ID` as
+`/srv/phantowd/volumes/<volume-id>`. The filesystem UUID remains a separate
+expected lower-layer identity and is not embedded in that service path. No
+component currently provisions this anchor or authorizes mounting/export.
+
 All fields are required. Empty top-level arrays are valid; a configured share
 requires at least one grant. Unknown, duplicate, differently cased, missing or
 null fields are rejected, as are dangling references and conflicting grants.
@@ -39,7 +44,8 @@ choice; international display names can be added through a reviewed revision.
 Credentials, guest access, network settings and migration instructions remain
 outside this first share-policy document. [NFS client policy](../nfsconfig/README.md)
 is a separate versioned document bound to the shared volume revision; it does
-not inherit Samba grants. Both renderers use the same proposed UUID mount root.
+not inherit Samba grants. Both renderers use the same proposed VolumeID mount
+root.
 
 Shared bounded JSON decoding rejects duplicate/unknown/null fields and
 unpaired UTF-16 surrogate escapes instead of silently rewriting paths.

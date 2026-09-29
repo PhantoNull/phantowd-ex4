@@ -27,7 +27,7 @@ func exerciseQEMUNFSMount(mode string) error {
 	} else if mode != "mount-rw" && mode != "guard" {
 		return errors.New("unknown NFS mount probe")
 	}
-	source := "127.0.0.1:/srv/phantowd/volumes/" + qemuNFSVolumeUUID + "/" + relative
+	source := "127.0.0.1:/srv/phantowd/volumes/" + qemuNFSVolumeID + "/" + relative
 	target := "/srv/phantowd-nfs-policy-smoke/" + client
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
@@ -66,7 +66,7 @@ func exerciseQEMUNFSMount(mode string) error {
 // input. Both client mounts are rw: EROFS must come from the server export.
 func exerciseQEMUNFSIO() error {
 	const workspace = "/srv/phantowd-nfs-policy-smoke"
-	const anchor = "/srv/phantowd/volumes/" + qemuNFSVolumeUUID
+	const anchor = "/srv/phantowd/volumes/" + qemuNFSVolumeID
 	payload := []byte("phantowd-generated-nfs-policy-v1\n")
 	client := filepath.Join(workspace, "rw-client", "created")
 	file, err := os.OpenFile(client, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0600)

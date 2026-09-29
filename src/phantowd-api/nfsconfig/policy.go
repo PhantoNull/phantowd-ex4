@@ -202,7 +202,7 @@ func Build(p Policy, volumes shareconfig.Config) (Preview, error) {
 	preview := Preview{SchemaVersion: 1, Revision: p.Revision, VolumeRevision: p.VolumeRevision, Exports: []ExportPreview{}}
 	for _, export := range p.Exports {
 		filesystemUUID := known[export.VolumeID]
-		mount := path.Join(VolumeRoot, string(filesystemUUID))
+		mount := path.Join(VolumeRoot, string(export.VolumeID))
 		clients := slices.Clone(export.Clients)
 		slices.SortFunc(clients, func(a, b Client) int { return strings.Compare(a.Network, b.Network) })
 		preview.Exports = append(preview.Exports, ExportPreview{export.ID, export.VolumeID, filesystemUUID, mount,

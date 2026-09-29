@@ -31,11 +31,11 @@ func TestPreviewAccessAndIdentity(t *testing.T) {
 	if p.Revision != 7 || len(p.Volumes) != 1 ||
 		p.Volumes[0].VolumeID != c.Volumes[0].ID ||
 		p.Volumes[0].FilesystemUUID != c.Volumes[0].FilesystemUUID ||
-		p.Volumes[0].MountPath != VolumeRoot+"/"+string(c.Volumes[0].FilesystemUUID) ||
+		p.Volumes[0].MountPath != VolumeRoot+"/"+string(c.Volumes[0].ID) ||
 		p.Shares[0].VolumeID != c.Volumes[0].ID {
 		t.Fatal("lost identity/revision")
 	}
-	for _, want := range []string{"[Books & Comics]", "path = /srv/phantowd/volumes/11111111-2222-3333-4444-555555555555/Library/Technical Books",
+	for _, want := range []string{"[Books & Comics]", "path = /srv/phantowd/volumes/books/Library/Technical Books",
 		"valid users = alice bob\n", "read list = alice\n", "write list = bob\n", "guest ok = no", "read only = yes", "wide links = no", "follow symlinks = no"} {
 		if !strings.Contains(p.Sections, want) {
 			t.Fatalf("missing %q", want)

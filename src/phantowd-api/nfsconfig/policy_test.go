@@ -35,8 +35,8 @@ func TestPreviewClientMappingAndMountGuard(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, want := range []string{
-		"/srv/phantowd/volumes/11111111-2222-3333-4444-555555555555/Books\\040&\\040Comics",
-		"192.0.2.10/32(rw,sync,secure,root_squash,all_squash,subtree_check,nocrossmnt,sec=sys,anonuid=101000,anongid=101000,fsid=aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee,mountpoint=/srv/phantowd/volumes/11111111-2222-3333-4444-555555555555)",
+		"/srv/phantowd/volumes/bulk/Books\\040&\\040Comics",
+		"192.0.2.10/32(rw,sync,secure,root_squash,all_squash,subtree_check,nocrossmnt,sec=sys,anonuid=101000,anongid=101000,fsid=aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee,mountpoint=/srv/phantowd/volumes/bulk)",
 		"2001:db8::/64(ro,sync,secure,root_squash,subtree_check,nocrossmnt,sec=krb5p,anonuid=65534,anongid=65534",
 	} {
 		if !strings.Contains(preview.Table, want) {
@@ -51,7 +51,7 @@ func TestPreviewClientMappingAndMountGuard(t *testing.T) {
 	if !preview.UsesAUTH_SYS || !preview.RequiresKerberos || preview.VolumeRevision != 3 ||
 		preview.Exports[0].VolumeID != "bulk" ||
 		preview.Exports[0].FilesystemUUID != volumes().Volumes[0].FilesystemUUID ||
-		preview.Exports[0].MountPath != VolumeRoot+"/"+string(volumes().Volumes[0].FilesystemUUID) {
+		preview.Exports[0].MountPath != VolumeRoot+"/bulk" {
 		t.Fatal("lost prerequisites")
 	}
 	after, _ := json.Marshal(p)

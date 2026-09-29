@@ -23,8 +23,9 @@ const (
 	MaxVolumes    = 16
 	MaxUsers      = 128
 	MaxShares     = 128
-	// VolumeMountRoot is the proposed shared anchor for service renderers.
-	// It is not provisioned or qualified by configuration validation.
+	// VolumeMountRoot is the proposed shared stable anchor root. Renderers append
+	// the validated logical VolumeID, never a filesystem or kernel identifier.
+	// Configuration validation does not provision or qualify the anchor.
 	VolumeMountRoot = "/srv/phantowd/volumes"
 )
 

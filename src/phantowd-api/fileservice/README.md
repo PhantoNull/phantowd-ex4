@@ -62,8 +62,9 @@ Requirements name unresolved runtime volume identity, path/mount containment,
 Unix accounts/effective access, durable configuration and service lifecycle.
 Combined SMB/NFS configurations also require cross-protocol access review.
 AUTH_SYS network trust and Kerberos provisioning are flagged when applicable;
-Samba grants do not restrict NFS clients. UUID mount anchors are proposals,
-not evidence that the expected filesystem is present or safe to use.
+Samba grants do not restrict NFS clients. Logical `VolumeID` mount anchors
+are proposals; the expected filesystem UUID is not verified by this preview
+and does not prove that the backing filesystem is present or safe to use.
 
 Errors return a generic `error` code without echoing submitted policy:
 

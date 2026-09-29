@@ -18,13 +18,14 @@ import (
 )
 
 const qemuNFSVolumeUUID = "11111111-2222-3333-4444-555555555555"
+const qemuNFSVolumeID = "qemu-only"
 const qemuNFSWritablePath = `RW #1 "quoted"`
 
 // Fixed synthetic inputs only: no caller-selected paths, policy, or commands.
 // This renderer does not install exports; the guest-only shell harness does.
 func qemuNFSFixture() (nfsconfig.Preview, error) {
 	volumes := shareconfig.Config{Format: shareconfig.Format, SchemaVersion: 1, Revision: 1,
-		Volumes: []shareconfig.Volume{{ID: "qemu-only", FilesystemUUID: qemuNFSVolumeUUID}},
+		Volumes: []shareconfig.Volume{{ID: qemuNFSVolumeID, FilesystemUUID: qemuNFSVolumeUUID}},
 		Users:   []shareconfig.User{}, Shares: []shareconfig.Share{}}
 	policy := nfsconfig.Policy{Format: nfsconfig.Format, SchemaVersion: 1, Revision: 1, VolumeRevision: 1,
 		Exports: []nfsconfig.Export{}}
@@ -34,7 +35,7 @@ func qemuNFSFixture() (nfsconfig.Preview, error) {
 		{"denied-client", "rw", "192.0.2.1/32"},
 	} {
 		policy.Exports = append(policy.Exports, nfsconfig.Export{
-			ID: fmt.Sprintf("aaaaaaaa-bbbb-cccc-dddd-%012d", i+1), VolumeID: "qemu-only", RelativePath: spec.path,
+			ID: fmt.Sprintf("aaaaaaaa-bbbb-cccc-dddd-%012d", i+1), VolumeID: qemuNFSVolumeID, RelativePath: spec.path,
 			Clients: []nfsconfig.Client{{Network: spec.network, Access: spec.access, Squash: "all",
 				AnonymousUID: 101000, AnonymousGID: 101000, Security: "sys"}}})
 	}

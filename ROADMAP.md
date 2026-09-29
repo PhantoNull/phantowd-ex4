@@ -473,13 +473,17 @@ are missing. **Depends on:** M1; M7 for hardware.
   closed rather than weakening duplicate classification. Desired SMB/NFS
   policy now represents its logical `VolumeID` reference separately from the
   expected `FilesystemUUID` with distinct Go types; this does not imply a
-  persistent resolver, physical identity proof, or mount/export authority.
+  persistent resolver or physical identity proof. SMB/NFS previews derive
+  proposed anchors from that logical ID; the filesystem UUID remains the
+  expected lower-layer identity for a future resolver, not a check performed
+  by the renderer. No anchor is provisioned and no mount/export authority is
+  added.
   These observations are
   private and excluded from JSON; they confer no persistent identity, mount,
   import, compatibility or write authority. Host tests/vet and the local
-  ARMv5 QEMU smoke pass. This was an overlay on the verified base kernel/package
-  image; the separate two-boot fixture, clean Buildroot and hosted CI are not
-  part of this evidence.
+  ARMv5 QEMU smoke pass, including the updated VolumeID-based NFS fixture. This
+  was an overlay on the verified base kernel/package image; the separate
+  two-boot fixture, clean Buildroot and hosted CI are not part of this evidence.
   PR #44 merged the first read-only slice: correlate mounted filesystem UUID
   anchors with MD topology and verify the path against a disposable RAID1 guest
   fixture; it also fixes broker per-thread `no_new_privs` initialization. Exact

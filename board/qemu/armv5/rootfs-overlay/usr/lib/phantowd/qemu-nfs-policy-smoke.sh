@@ -11,7 +11,7 @@ set -eu
 candidate=$(/usr/bin/phantowd-api --qemu-nfs-test=exports) || exit 1
 
 workspace=/srv/phantowd-nfs-policy-smoke
-anchor=/srv/phantowd/volumes/11111111-2222-3333-4444-555555555555
+anchor=/srv/phantowd/volumes/qemu-only
 exports_file=/etc/exports.d/phantowd-policy-smoke.exports
 rw_path='RW #1 "quoted"'
 for unused in "$workspace" "$anchor" "$exports_file"; do

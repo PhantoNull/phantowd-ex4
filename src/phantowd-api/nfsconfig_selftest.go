@@ -26,7 +26,7 @@ func exerciseQEMUNFSPolicy() error {
 	}
 	preview, err := nfsconfig.Build(policy, volumes)
 	if err != nil || !strings.Contains(preview.Table, "127.0.0.1/32(rw,sync,secure,root_squash,all_squash,subtree_check,nocrossmnt,sec=sys,anonuid=101000,anongid=101000") ||
-		!strings.Contains(preview.Table, "mountpoint=/srv/phantowd/volumes/11111111-2222-3333-4444-555555555555") || !preview.UsesAUTH_SYS {
+		!strings.Contains(preview.Table, "mountpoint=/srv/phantowd/volumes/test-volume") || !preview.UsesAUTH_SYS {
 		return errors.New("NFS preview lost client/mapping/mount constraints")
 	}
 	for _, invalid := range []string{

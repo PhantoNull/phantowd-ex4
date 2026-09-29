@@ -23,7 +23,7 @@ import (
 )
 
 const smbFixtureRoot = "/run/phantowd-smb-policy-test"
-const smbFixtureAnchor = "/srv/phantowd/volumes/" + qemuNFSVolumeUUID
+const smbFixtureAnchor = "/srv/phantowd/volumes/" + qemuNFSVolumeID
 
 func qemuSMBPolicy() (smbconfig.Preview, error) {
 	config := shareconfig.Config{Format: shareconfig.Format, SchemaVersion: 1, Revision: 1,

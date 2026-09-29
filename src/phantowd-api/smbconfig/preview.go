@@ -61,7 +61,7 @@ func Build(config shareconfig.Config) (Preview, error) {
 	volumes := make(map[shareconfig.VolumeID]VolumeRequirement, len(config.Volumes))
 	for _, volume := range config.Volumes {
 		volumes[volume.ID] = VolumeRequirement{volume.ID, volume.FilesystemUUID,
-			path.Join(VolumeRoot, string(volume.FilesystemUUID))}
+			path.Join(VolumeRoot, string(volume.ID))}
 	}
 	names := make(map[string]string, len(config.Users))
 	for _, user := range config.Users {

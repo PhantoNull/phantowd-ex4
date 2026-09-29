@@ -17,9 +17,10 @@ credential or process capabilities from that fixture.
 
 - The preview retains the desired revision and required logical volume IDs and
   filesystem UUIDs as distinct fields. `volume_id` references `shareconfig`
-  `Volume.ID`; the proposed anchor is derived from its separate
-  `FilesystemUUID` as `/srv/phantowd/volumes/<filesystem-uuid>`. It is
-  independent of bay enumeration, but **not yet provisioned or verified**.
+  `Volume.ID`; the proposed anchor is derived from it as
+  `/srv/phantowd/volumes/<volume-id>`. The filesystem UUID stays a separate
+  expected lower-layer identity. This is independent of bay enumeration, but
+  **not yet provisioned or verified**.
 - Only referenced volumes appear in the requirements. Collections and grant
   lists are sorted, without modifying the caller's configuration.
 - `valid users` contains exactly the explicitly granted local account names;

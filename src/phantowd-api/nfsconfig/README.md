@@ -18,8 +18,10 @@ export has a unique stable UUID `id` (used as its NFS fsid), `volume_id`,
 
 `volume_id` references the logical `Volume.ID` key from `shareconfig`; it is
 not the filesystem UUID. The renderer derives its proposed mount anchor from
-the separate `Volume.FilesystemUUID`. These are distinct typed fields in the
-Go model, and neither a configured key nor a UUID authorizes mounting/export.
+the `Volume.ID` as `/srv/phantowd/volumes/<volume-id>`. The separate
+`Volume.FilesystemUUID` remains the expected lower-layer identity. These are
+distinct typed fields in the Go model, and neither a configured key nor a UUID
+authorizes mounting/export.
 
 | Field | Supported values |
 | --- | --- |
@@ -43,8 +45,8 @@ for an unrelated export or filesystem.
 
 ## Rendering and access boundaries
 
-The deterministic preview uses the same UUID-based mount-anchor proposal as
-Samba and emits explicit `sync`, reserved-source-port policy, root squashing,
+The deterministic preview uses the same VolumeID-based mount-anchor proposal
+as Samba and emits explicit `sync`, reserved-source-port policy, root squashing,
 anonymous IDs, security flavor, fsid, no-cross-mount and mountpoint guard.
 Spaces, quotes and comment characters in paths use octal escaping.
 Whole-volume exports use `no_subtree_check`; subdirectory candidates use
