@@ -468,6 +468,9 @@ are missing. **Depends on:** M1; M7 for hardware.
   for GPT uniqueness. A host integration fixture verifies duplicate IDs across
   two correlated candidates in a complete discovery snapshot. The QEMU smoke
   separately uses a synthetic in-memory clone pair, not another guest disk.
+  The classifier revalidates canonical, nonzero lowercase disk/PARTUUID/type
+  GUIDs and checks generic-hint consistency; malformed private bindings fail
+  closed rather than weakening duplicate classification.
   These observations are
   private and excluded from JSON; they confer no persistent identity, mount,
   import, compatibility or write authority. Host tests/vet and the local

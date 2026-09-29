@@ -311,7 +311,10 @@ and refuses non-Versatile PB machines. See the
   `linux-swap`, or `linux-lvm`); unknown/vendor GUIDs remain `unknown`. These
   hints describe only the GPT declaration, not partition contents, WD role, or
   import compatibility. IDs, type GUIDs and classifications are excluded
-  from JSON.
+  from JSON. Before collision classification, the internal aggregator also
+  revalidates that disk GUID, PARTUUID and type GUID values are canonical,
+  nonzero lowercase UUIDs, and that each generic hint matches its type GUID;
+  malformed or inconsistent bindings fail closed.
   Host fixtures exercise a complete two-candidate cloned-GPT observation with
   aligned synthetic sysfs children. A separate smoke-only ARMv5 overlay tests
   the collision classifier with an in-memory clone pair, not an additional

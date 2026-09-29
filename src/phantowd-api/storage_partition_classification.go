@@ -105,7 +105,7 @@ func classifyGPTPartitionIdentities(bindings []diskPartitionBinding) (gptIdentit
 			}
 			observation.UnsupportedTableCount++
 		case partitionTableGPT:
-			if binding.Scheme != "gpt" || binding.TableID == "" {
+			if binding.Scheme != "gpt" || !validCanonicalGPTGUID(binding.TableID) {
 				return gptIdentitySetObservation{}, errStorageDiscoveryIncomplete
 			}
 			observation.GPTDiskCount++
@@ -118,7 +118,9 @@ func classifyGPTPartitionIdentities(bindings []diskPartitionBinding) (gptIdentit
 				partitionDeviceNumber := observedDeviceNumber{major: partition.Major, minor: partition.Minor}
 				if !validBlockName(partition.KernelName) || seenPartitionNames[partition.KernelName] ||
 					(partition.Major == 0 && partition.Minor == 0) || seenDeviceNumbers[partitionDeviceNumber] ||
-					partition.UUID == "" || partition.Number == 0 || seenPartUUIDs[partition.UUID] {
+					!validCanonicalGPTGUID(partition.UUID) || !validCanonicalGPTGUID(partition.TypeGUID) ||
+					partition.TypeHint != classifyGPTPartitionTypeGUID(partition.TypeGUID) ||
+					partition.Number == 0 || seenPartUUIDs[partition.UUID] {
 					return gptIdentitySetObservation{}, errStorageDiscoveryIncomplete
 				}
 				seenPartitionNames[partition.KernelName] = true
@@ -162,4 +164,13 @@ func classifyGPTPartitionIdentities(bindings []diskPartitionBinding) (gptIdentit
 		observation.Coverage = gptIdentityCoveragePartial
 	}
 	return observation, nil
+}
+
+// validCanonicalGPTGUID enforces the exact lowercase UUID representation
+// emitted by the private volume-probe schema. The classifier consumes only
+// parser-correlated observations; this second check makes malformed or
+// unexpectedly transformed internal bindings fail closed before comparisons.
+func validCanonicalGPTGUID(value string) bool {
+	canonical, valid := canonicalMDArrayUUID(value)
+	return valid && canonical == value
 }

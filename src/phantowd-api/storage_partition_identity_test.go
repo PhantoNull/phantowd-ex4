@@ -99,6 +99,68 @@ func TestGPTIdentityClassificationRejectsRepeatedKernelGeneration(t *testing.T) 
 	}
 }
 
+func TestGPTIdentityClassificationRejectsNonCanonicalOrInvalidGUIDs(t *testing.T) {
+	valid := gptBindingFixture("sda", 8, 0, 11,
+		"fedcba98-7654-3210-fedc-ba9876543210", "00112233-4455-6677-8899-aabbccddeeff")
+	for _, test := range []struct {
+		name   string
+		mutate func(*diskPartitionBinding)
+	}{
+		{
+			name: "zero disk GUID",
+			mutate: func(binding *diskPartitionBinding) {
+				binding.TableID = "00000000-0000-0000-0000-000000000000"
+			},
+		},
+		{
+			name: "uppercase disk GUID",
+			mutate: func(binding *diskPartitionBinding) {
+				binding.TableID = "FEDCBA98-7654-3210-FEDC-BA9876543210"
+			},
+		},
+		{
+			name: "malformed PARTUUID",
+			mutate: func(binding *diskPartitionBinding) {
+				binding.Partitions[0].UUID = "not-a-guid"
+			},
+		},
+		{
+			name: "zero PARTUUID",
+			mutate: func(binding *diskPartitionBinding) {
+				binding.Partitions[0].UUID = "00000000-0000-0000-0000-000000000000"
+			},
+		},
+		{
+			name: "newline-terminated PARTUUID",
+			mutate: func(binding *diskPartitionBinding) {
+				binding.Partitions[0].UUID += "\n"
+			},
+		},
+		{
+			name: "malformed type GUID",
+			mutate: func(binding *diskPartitionBinding) {
+				binding.Partitions[0].TypeGUID = "0x83"
+				binding.Partitions[0].TypeHint = gptTypeHintUnknown
+			},
+		},
+		{
+			name: "inconsistent generic type hint",
+			mutate: func(binding *diskPartitionBinding) {
+				binding.Partitions[0].TypeGUID = "0fc63daf-8483-4772-8e79-3d69d8477de4"
+			},
+		},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			binding := gptBindingFixture("sda", 8, 0, 11,
+				valid.TableID, valid.Partitions[0].UUID)
+			test.mutate(&binding)
+			if _, err := classifyGPTPartitionIdentities([]diskPartitionBinding{binding}); err == nil {
+				t.Fatal("invalid or noncanonical GPT identifier was accepted")
+			}
+		})
+	}
+}
+
 func TestGPTIdentityCoverageKeepsUnsupportedMBROutsideSupportedSubset(t *testing.T) {
 	bindings := []diskPartitionBinding{
 		{
@@ -400,7 +462,9 @@ func gptBindingFixture(name string, major, minor uint32, diskSequence uint64, di
 		TableID:          diskGUID,
 		Partitions: []kernelPartitionBinding{{
 			KernelName: name + "1", Major: major, Minor: minor + 1, Number: 1,
-			Start512B: 2048, Size512B: 4096, UUID: partUUID,
+			Start512B: 2048, Size512B: 4096,
+			TypeGUID: "c12a7328-f81f-11d2-ba4b-00a0c93ec93b", TypeHint: gptTypeHintEFISystem,
+			UUID: partUUID,
 		}},
 	}
 }
