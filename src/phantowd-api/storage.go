@@ -36,25 +36,26 @@ const (
 )
 
 type blockObservation struct {
-	Name            string             `json:"name"`
-	Kind            string             `json:"kind"`
-	Major           uint32             `json:"major"`
-	Minor           uint32             `json:"minor"`
-	SizeBytes       uint64             `json:"size_bytes"`
-	ReadOnly        bool               `json:"read_only"`
-	Removable       bool               `json:"removable"`
-	PartitionNumber uint32             `json:"partition_number,omitempty"`
-	ParentName      string             `json:"parent_name,omitempty"`
-	ParentMajor     *uint32            `json:"parent_major,omitempty"`
-	ParentMinor     *uint32            `json:"parent_minor,omitempty"`
-	SerialStatus    identityStatus     `json:"serial_status,omitempty"`
-	WWNStatus       identityStatus     `json:"wwn_status,omitempty"`
-	serialEvidence  [32]byte           `json:"-"`
-	wwnEvidence     [32]byte           `json:"-"`
-	diskSequence    uint64             `json:"-"`
-	parentDiskSeq   uint64             `json:"-"`
-	sysfsTarget     string             `json:"-"`
-	lowerBlocks     []blockTopologyRef `json:"-"`
+	Name               string             `json:"name"`
+	Kind               string             `json:"kind"`
+	Major              uint32             `json:"major"`
+	Minor              uint32             `json:"minor"`
+	SizeBytes          uint64             `json:"size_bytes"`
+	ReadOnly           bool               `json:"read_only"`
+	Removable          bool               `json:"removable"`
+	PartitionNumber    uint32             `json:"partition_number,omitempty"`
+	partitionStart512B uint64             `json:"-"`
+	ParentName         string             `json:"parent_name,omitempty"`
+	ParentMajor        *uint32            `json:"parent_major,omitempty"`
+	ParentMinor        *uint32            `json:"parent_minor,omitempty"`
+	SerialStatus       identityStatus     `json:"serial_status,omitempty"`
+	WWNStatus          identityStatus     `json:"wwn_status,omitempty"`
+	serialEvidence     [32]byte           `json:"-"`
+	wwnEvidence        [32]byte           `json:"-"`
+	diskSequence       uint64             `json:"-"`
+	parentDiskSeq      uint64             `json:"-"`
+	sysfsTarget        string             `json:"-"`
+	lowerBlocks        []blockTopologyRef `json:"-"`
 }
 
 type blockTopologyRef struct {
@@ -153,7 +154,8 @@ func collectStorage(sysfs fs.FS) (snapshot storageSnapshot, err error) {
 			Name: name, Kind: metadata.kind, Major: metadata.major, Minor: metadata.minor,
 			SizeBytes: metadata.sizeBytes, ReadOnly: metadata.readOnly,
 			Removable: metadata.removable, PartitionNumber: metadata.partitionNumber,
-			SerialStatus: metadata.serialStatus, WWNStatus: metadata.wwnStatus,
+			partitionStart512B: metadata.partitionStart512B,
+			SerialStatus:       metadata.serialStatus, WWNStatus: metadata.wwnStatus,
 			serialEvidence: vpdObservationEvidence("serial", metadata.serial),
 			wwnEvidence:    vpdObservationEvidence("wwn", metadata.wwn),
 			diskSequence:   metadata.diskSequence,
@@ -208,21 +210,22 @@ func vpdObservationEvidence(kind, value string) [32]byte {
 }
 
 type storageBlockMetadata struct {
-	kind            string
-	major           uint32
-	minor           uint32
-	sizeBytes       uint64
-	readOnly        bool
-	removable       bool
-	partitionNumber uint32
-	diskSequence    uint64
-	sysfsTarget     string
-	holderTargets   []string
-	slaveTargets    []string
-	serial          string
-	serialStatus    identityStatus
-	wwn             string
-	wwnStatus       identityStatus
+	kind               string
+	major              uint32
+	minor              uint32
+	sizeBytes          uint64
+	readOnly           bool
+	removable          bool
+	partitionNumber    uint32
+	partitionStart512B uint64
+	diskSequence       uint64
+	sysfsTarget        string
+	holderTargets      []string
+	slaveTargets       []string
+	serial             string
+	serialStatus       identityStatus
+	wwn                string
+	wwnStatus          identityStatus
 }
 
 func observeStorageBlockMetadata(sysfs fs.FS, name string) (storageBlockMetadata, error) {
@@ -246,6 +249,14 @@ func observeStorageBlockMetadata(sysfs fs.FS, name string) (storageBlockMetadata
 		}
 		metadata.kind = "partition"
 		metadata.partitionNumber = uint32(partitionNumber)
+		startText, startErr := readSysfsAttribute(sysfs, base+"start")
+		if startErr != nil {
+			return metadata, errors.New("invalid sysfs partition start")
+		}
+		metadata.partitionStart512B, err = parseSectorCount(startText)
+		if err != nil {
+			return metadata, errors.New("invalid sysfs partition start")
+		}
 	} else if !errors.Is(partitionErr, fs.ErrNotExist) {
 		return metadata, errors.New("cannot read sysfs partition number")
 	}
@@ -281,9 +292,11 @@ func observeStorageBlockMetadata(sysfs fs.FS, name string) (storageBlockMetadata
 	if err != nil {
 		return metadata, errors.New("invalid sysfs read-only flag")
 	}
-	metadata.removable, err = readSysfsFlag(sysfs, base+"removable")
-	if err != nil {
-		return metadata, errors.New("invalid sysfs removable flag")
+	if metadata.kind == "block" {
+		metadata.removable, err = readSysfsFlag(sysfs, base+"removable")
+		if err != nil {
+			return metadata, errors.New("invalid sysfs removable flag")
+		}
 	}
 	if metadata.kind == "block" {
 		metadata.serial, metadata.serialStatus = observeSCSISerial(sysfs, base+"device/vpd_pg80")
@@ -374,7 +387,8 @@ func correlateStorageBlockRelations(observations []blockObservation, metadata []
 func sameStorageBlockMetadata(a, b storageBlockMetadata) bool {
 	return a.kind == b.kind && a.major == b.major && a.minor == b.minor &&
 		a.sizeBytes == b.sizeBytes && a.readOnly == b.readOnly && a.removable == b.removable &&
-		a.partitionNumber == b.partitionNumber && a.diskSequence == b.diskSequence &&
+		a.partitionNumber == b.partitionNumber && a.partitionStart512B == b.partitionStart512B &&
+		a.diskSequence == b.diskSequence &&
 		a.sysfsTarget == b.sysfsTarget && a.serial == b.serial && a.serialStatus == b.serialStatus &&
 		a.wwn == b.wwn && a.wwnStatus == b.wwnStatus &&
 		sameStringList(a.holderTargets, b.holderTargets) && sameStringList(a.slaveTargets, b.slaveTargets)
@@ -395,7 +409,8 @@ func sameStringList(a, b []string) bool {
 func sameBlockObservation(a, b blockObservation) bool {
 	if a.Name != b.Name || a.Kind != b.Kind || a.Major != b.Major || a.Minor != b.Minor ||
 		a.SizeBytes != b.SizeBytes || a.ReadOnly != b.ReadOnly || a.Removable != b.Removable ||
-		a.PartitionNumber != b.PartitionNumber || a.SerialStatus != b.SerialStatus ||
+		a.PartitionNumber != b.PartitionNumber || a.partitionStart512B != b.partitionStart512B ||
+		a.SerialStatus != b.SerialStatus ||
 		a.WWNStatus != b.WWNStatus || a.serialEvidence != b.serialEvidence || a.wwnEvidence != b.wwnEvidence ||
 		a.diskSequence != b.diskSequence || a.sysfsTarget != b.sysfsTarget ||
 		a.ParentName != b.ParentName || !sameOptionalUint32(a.ParentMajor, b.ParentMajor) ||
@@ -460,6 +475,7 @@ func correlateStoragePartitionParents(observations []blockObservation, metadata 
 		parentMajor := parent.major
 		parentMinor := parent.minor
 		observations[index].ParentName = observations[parentIndex].Name
+		observations[index].Removable = observations[parentIndex].Removable
 		observations[index].ParentMajor = &parentMajor
 		observations[index].ParentMinor = &parentMinor
 		observations[index].parentDiskSeq = parent.diskSequence
@@ -692,7 +708,7 @@ func parseDeviceNumber(value string) (uint32, uint32, error) {
 }
 
 func parseSectorBytes(value string) (uint64, error) {
-	sectors, err := strconv.ParseUint(strings.TrimSpace(value), 10, 64)
+	sectors, err := parseSectorCount(value)
 	if err != nil {
 		return 0, err
 	}
@@ -700,6 +716,10 @@ func parseSectorBytes(value string) (uint64, error) {
 		return 0, errors.New("sysfs sector count overflows byte capacity")
 	}
 	return sectors * linuxSysfsSectorBytes, nil
+}
+
+func parseSectorCount(value string) (uint64, error) {
+	return strconv.ParseUint(strings.TrimSpace(value), 10, 64)
 }
 
 func validBlockName(name string) bool {

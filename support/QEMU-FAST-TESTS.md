@@ -69,12 +69,18 @@ before mounting it; it never formats a guest block device. The host driver
 removes only its own temporary data image after QEMU exits. The API observer
 remains read-only; fixture mutations are in a separate QEMU-only test path.
 
-The smoke also attaches a temporary blank 1-MiB read-only block node whose
-SCSI serial duplicates the root disk while its WWN remains distinct. It has no
-filesystem and is never mounted. The ARMv5 API self-test requires both nodes to
-report `serial_status=ambiguous` and `wwn_status=present`, and checks that raw
-identifiers remain redacted. This is a fixture contract until the exact smoke
-run emits `PHANTOWD_STORAGE_COLLISION_READY`.
+The smoke also attaches a temporary 32-MiB read-only synthetic GPT disk whose
+SCSI serial duplicates the root disk while its WWN remains distinct. Its one
+partition is generated with a fixed test-only disk GUID and PARTUUID; it has no
+filesystem and is never mounted. The ARMv5 self-test requires both nodes to
+report `serial_status=ambiguous` and `wwn_status=present`, with raw VPD values
+redacted. It also reconciles the parsed GPT disk GUID, PARTUUID, partition
+number and start/size against the complete generation-bound sysfs inventory.
+Only GPT is currently accepted for this private identity observation. DOS/MBR
+is explicitly unsupported and its disk/partition IDs are discarded. The
+correlation struct is excluded from JSON serialization; no API field, mount,
+import or write authority is added. The marker
+`PHANTOWD_PARTITION_SYSFS_CORRELATION_READY` is fixture evidence only.
 
 The read-only storage collector also requires nonzero, unique kernel `diskseq`
 values for whole-disk entries, rechecks each value around its local observation,
@@ -125,25 +131,15 @@ Current local follow-up (2026-09-29; not yet pushed): Buildroot Samba now has
 Jansson-backed JSON enabled without AD-DC. The QEMU fixture validates complete
 session server IDs and uses PID/unique_id for smbcontrol, with no PID-only
 fallback. The current marker confirms two target sessions removed and an
-unrelated same-IP reader preserved. This remains test-fixture behavior only;
-open handles, reconnect/durable handles and product action semantics are
-unqualified.
+unrelated same-IP reader preserved. The owner-approved contract combines
+account disable and session revocation; uncertain revocation enters review
+without retry. This remains fixture-only. Open handles and reconnect/durable
+handles remain unqualified.
 
-Earlier pre-JSON baseline: the same guest has a separate disabled-account
-boundary test with two already-authenticated writer clients and one unrelated reader from the same peer
-address. It confirms that disabling the account rejects a fresh login but does
-not revoke existing access (one active writer can still write); a QEMU-only
-`smbcontrol PID shutdown` then removes the two controlled writer sessions while
-the reader session remains usable. The pinned non-AD-DC Samba build is compiled
-with `--without-json`, so `smbstatus -j` is unavailable and its text session
-table has no process-generation token. PID-only targeting is used only as a
-test stimulus against this fixed disposable server; the fixture does not test
-or establish safety against PID reuse, and it is not a product revocation
-implementation.
-Open handles and reconnect/durable-handle semantics are explicitly untested;
-the smoke marker records these false. This characterization does not choose
-whether a future product action should combine account disable and session
-revocation or expose revocation separately.
+Historical pre-JSON characterization (superseded): an earlier disposable
+fixture showed that disabling an account alone did not revoke existing SMB
+sessions, and used PID-only `smbcontrol` as a test stimulus. Its old
+`--without-json` and PID-only limitations do not describe the current fixture.
 
 The Owner-managed M2.4 enrollment fixture additionally routes one explicit
 revision-checked enable through the local test socket: valid authentication is

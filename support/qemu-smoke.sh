@@ -5,6 +5,7 @@ images_dir="${1:?usage: qemu-smoke.sh IMAGES_DIR [LOG_FILE [EXPECTED_KERNEL]]}"
 log_file="${2:-$images_dir/qemu-smoke.log}"
 expected_kernel="${3:-}"
 qemu_binary="${QEMU_SYSTEM_ARM:-qemu-system-arm}"
+script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 
 ready_marker='PHANTOWD_QEMU_READY target=qemu-armv5 kernel='
 if [ -n "$expected_kernel" ]; then
@@ -42,8 +43,9 @@ mkfs.ext2 -q -F -U 11111111-2222-3333-4444-555555555555 \
 # Both files are disposable; the clone is presented read-only to the guest.
 cp "$fixture_dir/data.ext2" "$fixture_dir/clone.ext2"
 # A separate read-only virtual block node intentionally duplicates the root
-# disk's VPD serial but has its own WWN. Its blank backing file is never mounted.
-truncate -s 1M "$fixture_dir/collision.raw"
+# disk's VPD serial but has its own WWN. Its GPT is used only to verify parser
+# output against the kernel's complete partition-child inventory.
+python3 "$script_dir/make-qemu-gpt-fixture.py" "$fixture_dir/collision.raw"
 # These blank backing files are used only to create a disposable RAID1 in the
 # snapshot-mode guest. mdadm/mkfs writes are discarded with QEMU's overlays.
 truncate -s 32M "$fixture_dir/md-member-a.raw" "$fixture_dir/md-member-b.raw"
@@ -228,6 +230,10 @@ while [ "$attempt" -lt 120 ]; do
             echo 'Missing sparse large-GPT partition-table probe assertion' >&2
             exit 1
         fi
+        if ! grep -F 'PHANTOWD_PARTITION_SYSFS_CORRELATION_READY candidates_complete=true table_disks=1 partitions=1 start_size_match=true mismatch_refused=true scope=qemu-fixture-only' "$log_file" >/dev/null; then
+            echo 'Missing parser-to-kernel partition reconciliation assertion' >&2
+            exit 1
+        fi
         if ! grep -F 'PHANTOWD_VOLUME_SET_READY cloned_uuid=true aliases_deduplicated=true generation_bound=true stale_generation_refused=true unobserved_not_absent=true shuffled_complete_set=true trusted_complete_discovery=true mount_swap_rechecked=true sysfs_rechecked=true observed_opener=true readonly_sources=true all_or_error=true symlink_refused=true scope=qemu-fixture-only' "$log_file" >/dev/null; then
             echo 'Missing complete QEMU source-set opener assertions' >&2
             exit 1
@@ -238,6 +244,10 @@ while [ "$attempt" -lt 120 ]; do
         fi
         if ! grep -F 'PHANTOWD_UI_READY mode=development assets_verified=true activation=false transport=guest-loopback-only' "$log_file" >/dev/null; then
             echo "Missing loopback-only dashboard assertion" >&2
+            exit 1
+        fi
+        if ! grep -F 'PHANTOWD_SYSFS_STORAGE_READY complete=true' "$log_file" >/dev/null; then
+            echo 'Missing complete QEMU sysfs storage collector assertion' >&2
             exit 1
         fi
         if ! grep -E 'PHANTOWD_AUTH_READY algorithm=argon2id kdf_concurrency=1 bootstrap=created login_enabled=yes transport=guest-loopback-http state=volatile-qemu session=memory-only kdf_cycle_ms=[0-9]+' "$log_file" >/dev/null; then

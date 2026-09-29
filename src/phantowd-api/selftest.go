@@ -129,6 +129,17 @@ func runSelfTest() error {
 		return errors.New("invalid development snapshot or privileged server")
 	}
 	fmt.Println("PHANTOWD_SYSTEM_SNAPSHOT_READY schema=1 nonroot=true authenticated=true scope=qemu-loopback-only")
+	sysfsStorage, err := collectStorage(os.DirFS("/sys"))
+	if err != nil {
+		return fmt.Errorf("QEMU sysfs storage collection failed: %w", err)
+	}
+	partitionNodes := 0
+	for _, observation := range sysfsStorage.Observations {
+		if observation.Kind == "partition" {
+			partitionNodes++
+		}
+	}
+	fmt.Printf("PHANTOWD_SYSFS_STORAGE_READY complete=true nodes=%d partitions=%d scope=qemu-fixture-only\n", sysfsStorage.DeviceCount, partitionNodes)
 	storageResponse, err := client.Get("http://" + listenAddress + "/api/v1/storage")
 	if err != nil {
 		return errors.New("storage loopback request failed")

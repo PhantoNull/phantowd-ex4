@@ -36,12 +36,16 @@ func TestCollectStorageReportsSysfsOnlyObservations(t *testing.T) {
 		t.Fatalf("kernel generation should be retained only for whole block nodes: disk=%d partition=%d", disk.diskSequence, partition.diskSequence)
 	}
 	if partition.Name != "sda1" || partition.Kind != "partition" || partition.PartitionNumber != 1 ||
-		partition.Major != 8 || partition.Minor != 1 || partition.SizeBytes != (1<<30)-512 || !partition.ReadOnly {
+		partition.Major != 8 || partition.Minor != 1 || partition.SizeBytes != (1<<30)-34*512 || !partition.ReadOnly ||
+		partition.partitionStart512B != 34 {
 		t.Fatalf("incorrect partition observation: %+v", partition)
 	}
 	if partition.ParentName != "sda" || partition.ParentMajor == nil || *partition.ParentMajor != disk.Major ||
 		partition.ParentMinor == nil || *partition.ParentMinor != disk.Minor || partition.parentDiskSeq != disk.diskSequence {
 		t.Fatalf("partition was not bound to its observed whole-disk parent: %+v", partition)
+	}
+	if partition.Removable != disk.Removable {
+		t.Fatalf("partition did not inherit its whole-disk removable state: %+v", partition)
 	}
 	encoded, err := json.Marshal(snapshot)
 	if err != nil {
@@ -50,7 +54,7 @@ func TestCollectStorageReportsSysfsOnlyObservations(t *testing.T) {
 	for _, forbidden := range []string{
 		"fixture-secret", "PHANTOWD-QEMU-SERIAL-01", "500f000000000001", "fixture-fs-uuid-a",
 		"fixture-partuuid-a", "disk_sequence", "parent_disk_seq",
-		"sysfs_target", "devices/virtual/block", "lower_blocks", "holder_targets", "slave_targets",
+		"partition_start512b", "sysfs_target", "devices/virtual/block", "lower_blocks", "holder_targets", "slave_targets",
 	} {
 		if strings.Contains(string(encoded), forbidden) {
 			t.Fatalf("observation exposed identity material %q: %s", forbidden, encoded)
@@ -78,6 +82,19 @@ func TestCollectStorageReportsSysfsOnlyObservations(t *testing.T) {
 		publicPartition.ParentMajor == nil || *publicPartition.ParentMajor != 8 ||
 		publicPartition.ParentMinor == nil || *publicPartition.ParentMinor != 0 {
 		t.Fatalf("schema-v2 JSON omitted the validated partition-parent tuple: %+v", publicPartition)
+	}
+}
+
+func TestCollectStorageInheritsRemovableStateFromPartitionParent(t *testing.T) {
+	sysfs := fixtureSysfs()
+	sysfs["devices/virtual/block/sda/removable"] = &fstest.MapFile{Data: []byte("1\n")}
+	delete(sysfs, "devices/virtual/block/sda/sda1/removable")
+	snapshot, err := collectStorage(sysfs)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(snapshot.Observations) != 2 || !snapshot.Observations[0].Removable || !snapshot.Observations[1].Removable {
+		t.Fatalf("partition should inherit removable state from its whole-disk parent: %+v", snapshot.Observations)
 	}
 }
 
@@ -780,9 +797,9 @@ func fixtureSysfs() fstest.MapFS {
 		"devices/virtual/block/sda/device/vpd_pg80": {Data: makeVPDPage(0x80, []byte("PHANTOWD-QEMU-SERIAL-01"))},
 		"devices/virtual/block/sda/device/vpd_pg83": {Data: makeVPDPage(0x83, []byte{0x01, 0x03, 0x00, 0x08, 0x50, 0x0f, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01})},
 		"devices/virtual/block/sda/sda1/dev":        {Data: []byte("8:1\n")},
-		"devices/virtual/block/sda/sda1/size":       {Data: []byte("2097151\n")},
+		"devices/virtual/block/sda/sda1/size":       {Data: []byte("2097118\n")},
+		"devices/virtual/block/sda/sda1/start":      {Data: []byte("34\n")},
 		"devices/virtual/block/sda/sda1/ro":         {Data: []byte("1\n")},
-		"devices/virtual/block/sda/sda1/removable":  {Data: []byte("0\n")},
 		"devices/virtual/block/sda/sda1/partition":  {Data: []byte("1\n")},
 		"devices/virtual/block/sda/sda1/holders":    {Mode: fs.ModeDir | 0o555},
 	}

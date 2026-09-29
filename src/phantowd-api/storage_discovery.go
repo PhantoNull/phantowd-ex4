@@ -41,12 +41,14 @@ type storageDiscoveryPlan struct {
 // It is an internal, point-in-time assessment, not a storage lease, stable
 // identity, compatibility decision, or authorization to mount or mutate.
 type trustedStorageDiscovery struct {
-	inventory  storageSnapshot
-	mounts     mountSnapshot
-	candidates []storageDiscoveryCandidate
-	excluded   []storageDiscoveryExclusion
-	sources    []volumeprobe.BlockDeviceSource
-	closed     bool
+	inventory                  storageSnapshot
+	mounts                     mountSnapshot
+	candidates                 []storageDiscoveryCandidate
+	excluded                   []storageDiscoveryExclusion
+	hasAmbiguousIdentity       bool
+	identityEvidenceIncomplete bool
+	sources                    []volumeprobe.BlockDeviceSource
+	closed                     bool
 }
 
 func (discovery *trustedStorageDiscovery) Close() error {
@@ -291,7 +293,10 @@ func discoverTrustedStorageWith(sysfs, proc fs.FS, open storageSourceOpener) (*t
 	}
 	return &trustedStorageDiscovery{
 		inventory: beforeStorage, mounts: beforeMounts,
-		candidates: plan.Candidates, excluded: plan.Excluded, sources: orderedSources,
+		candidates: plan.Candidates, excluded: plan.Excluded,
+		hasAmbiguousIdentity:       plan.HasAmbiguousIdentity,
+		identityEvidenceIncomplete: plan.IdentityEvidenceIncomplete,
+		sources:                    orderedSources,
 	}, nil
 }
 

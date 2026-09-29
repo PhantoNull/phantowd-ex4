@@ -149,6 +149,54 @@ func probeQEMUUnmountedStorage() error {
 	if len(results) != len(orderedSources) {
 		return errors.New("incomplete virtual probe snapshot")
 	}
+	partitionInventory, err := collectStorage(os.DirFS("/sys"))
+	if err != nil || !sameQEMUStorageInventory(initialInventory, partitionInventory) {
+		return errors.New("QEMU inventory changed before partition-table correlation")
+	}
+	partitionBindings, err := correlateCandidatePartitionTables(discovery, partitionInventory, results)
+	if err != nil {
+		return errors.New("complete QEMU parser-to-kernel partition correlation failed")
+	}
+	correlatedGPTDisks := 0
+	correlatedPartitions := 0
+	mismatchRefused := false
+	for index, binding := range partitionBindings {
+		if binding.TableDisposition == partitionTableGPT {
+			correlatedGPTDisks++
+			if binding.DiskName != "sdd" || binding.Scheme != "gpt" ||
+				binding.TableID != "fedcba98-7654-3210-fedc-ba9876543210" ||
+				len(binding.Partitions) != 1 || binding.Partitions[0].KernelName != "sdd1" ||
+				binding.Partitions[0].Number != 1 || binding.Partitions[0].Start512B != 2048 ||
+				binding.Partitions[0].Size512B != 63455 {
+				return errors.New("QEMU GPT partition did not match its exact kernel child geometry")
+			}
+			correlatedPartitions += len(binding.Partitions)
+			if index >= len(results) || index >= len(discovery.candidates) {
+				return errors.New("QEMU GPT result lost its complete candidate binding")
+			}
+			mismatchedResult := results[index]
+			mismatchedTable := *mismatchedResult.PartitionTable
+			mismatchedTable.Partitions = append([]volumeprobe.Partition(nil), mismatchedTable.Partitions...)
+			mismatchedTable.Partitions[0].Start512B++
+			mismatchedResult.PartitionTable = &mismatchedTable
+			for _, observed := range partitionInventory.Observations {
+				if observed.Name == discovery.candidates[index].Name {
+					if _, err := correlateDiskPartitionTable(observed, partitionInventory.Observations, mismatchedResult); err == nil {
+						return errors.New("QEMU accepted a GPT/sysfs partition start mismatch")
+					}
+					mismatchRefused = true
+					break
+				}
+			}
+		} else if binding.TableDisposition != partitionTableNoTable &&
+			binding.TableDisposition != partitionTableUnsupported {
+			return errors.New("QEMU partition table received an unknown private disposition")
+		}
+	}
+	if correlatedGPTDisks != 1 || correlatedPartitions != 1 || !mismatchRefused {
+		return errors.New("QEMU did not reconcile the complete candidate set's single GPT disk")
+	}
+	fmt.Println("PHANTOWD_PARTITION_SYSFS_CORRELATION_READY candidates_complete=true table_disks=1 partitions=1 start_size_match=true mismatch_refused=true scope=qemu-fixture-only")
 	resultByName := make(map[string]volumeprobe.Result, len(results))
 	for index, candidate := range discovery.candidates {
 		resultByName[candidate.Name] = results[index]
