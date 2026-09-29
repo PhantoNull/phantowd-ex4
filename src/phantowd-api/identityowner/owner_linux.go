@@ -439,7 +439,7 @@ type Operation struct {
 func (o *Owner) Operation(id string) *Operation { return &Operation{owner: o, id: id} }
 
 // SMBOperation is an in-process capability for managing the already-created
-// Unix identity's initial Samba enrollment. Every method enters the same Owner
+// Unix identity's Samba account lifecycle. Every method enters the same Owner
 // mutex used by registry and Unix writers. It is not an HTTP or client API.
 type SMBOperation struct {
 	owner *Owner
@@ -727,6 +727,36 @@ func (op *SMBOperation) Enable(ctx context.Context, expected uint64) error {
 		return smbprovision.ErrInvalid
 	}
 	return o.smbFailure(store.Enable(ctx, expected))
+}
+
+// Disable is a separate explicit, revision-checked action. The Owner keeps
+// the single trusted Samba backend bound at Open time; callers cannot supply
+// or replace a backend for this operation. Disabling passdb blocks new
+// authentications but does not revoke already-established SMB sessions.
+func (op *SMBOperation) Disable(ctx context.Context, expected uint64) error {
+	o, native, store, err := op.current(ctx)
+	if err != nil {
+		return err
+	}
+	defer o.mu.Unlock()
+	journal, err := store.Load()
+	if err != nil {
+		return o.smbFailure(err)
+	}
+	if journal.NativeRevision != native.Revision || journal.Account != native.Account {
+		o.failed = true
+		return ErrUnavailable
+	}
+	if err := o.verifyUnixLocked(ctx, native.Account); err != nil {
+		return err
+	}
+	if journal.Phase == smbprovision.ReviewRequired {
+		return smbprovision.ErrReview
+	}
+	if o.smbBackend == nil {
+		return smbprovision.ErrInvalid
+	}
+	return o.smbFailure(store.Disable(ctx, expected))
 }
 
 func (o *Owner) verifyUnixLocked(ctx context.Context, account serviceaccounts.Account) error {

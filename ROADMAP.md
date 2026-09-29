@@ -223,11 +223,14 @@ on disposable QEMU media, then on the selected physical state medium.
 
 **State:** native identity libraries are tested; the M2.3 Samba CLI patch is
 merged and passed exact-head hosted ARMv5 QEMU and Stage B3 checks. M2.4
-implements disabled-first enrollment plus a separate revision-checked enable
-under `identityowner`, with durable intent/result phases and review on ambiguous
-outcomes. The fixed Linux executor and internal binary Unix-socket v2 fixture
-are tested against disposable Samba state: valid authentication fails before
-enable and succeeds only after the same SID is observed enabled. A new M2.2
+implements disabled-first enrollment, disabled password assignment, and
+separate revision-checked enable/disable/re-enable under `identityowner`, with
+durable intent/result phases and review on ambiguous outcomes. The fixed Linux
+executor and internal binary Unix-socket v2 fixture are tested against
+disposable Samba state: valid authentication fails before enable, succeeds
+after same-SID confirmation, fails for new connections after disable, and
+succeeds after a separate re-enable. Active-session revocation is not claimed.
+A new M2.2
 integration starts one root Owner from the QEMU-only init hook and verifies
 protected-socket peer checks, process restart and listener drain before Owner
 close. Its authority and Samba state are fixture-only; it does not provide
@@ -236,8 +239,8 @@ configuration before initializing Owner state and proves a missing config and
 a `testparm`-rejected config are rejected without side effects. The
 credential-free JSON v1 protocol remains
 unchanged. No HTTP authorization binding or product startup/configuration exists;
-password replacement, disable/retirement, operator recovery, session revocation
-and hardware qualification remain open.
+retirement, operator recovery, session revocation and hardware qualification
+remain open.
 **Depends on:** M1; M3/M8 supply storage/import exclusions.
 
 - **M2.1 — Complete allocation inventory.** Reconcile local Unix accounts,
@@ -272,27 +275,28 @@ and hardware qualification remain open.
   serialization remain gates. This is not a product credential service.
 - **M2.4 — Journal credential operations.** Enrollment, password replacement,
   enable, disable and retirement have separate authorized intent/result states.
-  **Implemented slice:** disabled-first enrollment and one separate explicit
-  enable action, through internal
+  **Implemented slice:** disabled-first enrollment, password assignment while
+  disabled, and separate explicit enable/disable/re-enable actions, through internal
   `identityowner.SMB(id)` methods under the same global lock as Unix identity
   creation. It revalidates the live Unix identity, refuses a pre-existing
-  passdb entry, journals create/password/enable intent, confirms the SID and
-  disabled state before enable and enabled state afterward, sends a bounded
+  passdb entry, journals create/password/enable/disable intent, confirms the SID
+  and disabled state before enable and enabled/disabled state afterward, sends a bounded
   password via backend stdin, and never persists the secret. One fixed backend
   is bound once to the Owner and
   journal at open; the validated config inode stays pinned for the Owner
   lifetime and is closed after active operations drain. Operation calls cannot
   substitute the backend. Reopened intent becomes
   review-required without command replay. The internal credential-bearing
-  version-2 Unix-socket methods, including explicit `enable`, are bound to the
+  version-2 Unix-socket methods, including explicit `enable` and `disable`, are bound to the
   Owner resolver and used only by the disposable QEMU fixture; no HTTP endpoint
-  exists and enable is never automatic. The executor is exercised in local
-  QEMU using only disposable
+  exists; enable and disable are never implicit. New-connection authentication
+  denial after disable is tested, but existing SMB sessions are not revoked.
+  The executor is exercised in local QEMU using only disposable
   passdb/config state; it is not yet wired to product startup or persistent
   Samba state. **Still required:** production listener/startup wiring and
   HTTP-session-to-owner authorization binding; explicit
-  review/operator recovery; separate password replacement, disable and
-  retirement intent/result states. Retain
+  review/operator recovery; retirement intent/result states and session
+  revocation policy. Retain
   tombstones; retirement must not silently reassign existing file ownership.
 - **M2.5 — Distinguish connection and session revocation.** Current disabled-user
   fixtures prove denial of new connections only. Specify and test active SMB

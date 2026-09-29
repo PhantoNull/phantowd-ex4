@@ -4,7 +4,7 @@
 // SPDX-FileCopyrightText: 2026 PhantoWD EX4 contributors
 
 // Package smbexec is a narrow root-side Samba passdb executor. It implements
-// only the journaled disabled-first-enrollment lifecycle required by smbprovision.
+// only the journaled account lifecycle required by smbprovision.
 package smbexec
 
 import (
@@ -172,8 +172,8 @@ func (b *Backend) SetPasswordDisabled(ctx context.Context, account serviceaccoun
 }
 
 // Enable performs the separate explicit enable operation. The parent journal
-// requires a confirmed disabled credential, records intent before this call,
-// and verifies the same SID is enabled before reporting success.
+// requires a confirmed disabled account/credential, records intent before this
+// call, and verifies the same SID is enabled before reporting success.
 func (b *Backend) Enable(ctx context.Context, account serviceaccounts.Account) error {
 	if b == nil || ctx == nil || !validAccount(account) {
 		return ErrInvalid
@@ -185,6 +185,27 @@ func (b *Backend) Enable(ctx context.Context, account serviceaccounts.Account) e
 	}
 	output, err := b.runner.Run(ctx, smbpasswdPath,
 		[]string{"-e", "-c", configArgument, account.Name}, b.config, []byte{}, false)
+	clear(output)
+	if err != nil {
+		return ErrUnavailable
+	}
+	return nil
+}
+
+// Disable performs the separate passdb disable operation. The parent journal
+// records intent before this call and confirms that the same SID is disabled
+// afterward. Existing SMB sessions are not revoked by this command.
+func (b *Backend) Disable(ctx context.Context, account serviceaccounts.Account) error {
+	if b == nil || ctx == nil || !validAccount(account) {
+		return ErrInvalid
+	}
+	b.mu.RLock()
+	defer b.mu.RUnlock()
+	if b.runner == nil || b.config == nil {
+		return ErrInvalid
+	}
+	output, err := b.runner.Run(ctx, smbpasswdPath,
+		[]string{"-d", "-c", configArgument, account.Name}, b.config, []byte{}, false)
 	clear(output)
 	if err != nil {
 		return ErrUnavailable

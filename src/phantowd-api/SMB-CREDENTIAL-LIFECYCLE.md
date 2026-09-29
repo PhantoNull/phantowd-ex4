@@ -1,10 +1,12 @@
 # SMB credential lifecycle: integration gate
 
 Status: **M2.3 adapter passed exact-head hosted ARMv5 QEMU and Stage B3 checks
-and merged as PR #46 (`33df1ed`). M2.4 now includes first enrollment, a fixed
-Linux Samba executor, an explicit journaled enable operation and an internal
-credential-bearing Unix-socket v2 fixture; host/race/fuzz and local Buildroot/
-ARMv5 QEMU checks pass.**
+and merged as PR #46 (`33df1ed`). M2.4 now includes first enrollment,
+password assignment while disabled, separate journaled enable/disable/re-enable,
+a fixed Linux Samba executor and an internal credential-bearing Unix-socket v2
+fixture. Host/race/fuzz checks and the full local Buildroot/ARMv5 QEMU smoke
+and two-boot checks pass on this worktree. These are local results, not hosted
+exact-head CI for the lifecycle follow-up.**
 The channel remains a fixture integration only and is not wired to
 product startup, an HTTP endpoint or persistent EX4 Samba state. Production
 authorization binding, review/recovery and hardware qualification remain open.
@@ -83,9 +85,9 @@ this path: the product owner must first complete explicit disable/revocation
 according to its policy. A separate identity owner must serialize all writers;
 the CLI flag is not itself a global lock or journal.
 
-## M2.4 initial-enrollment coordinator
+## M2.4 journaled SMB account lifecycle
 
-The bounded first-enrollment slice now lives in the internal `smbprovision`
+The journaled account-lifecycle slice now lives in the internal `smbprovision`
 package and is reachable only through in-process `identityowner.Owner.SMB(id)`
 methods. The owner takes
 its existing global lock across live Unix-identity revalidation, passdb
@@ -94,21 +96,26 @@ the coordinator never adopts a pre-existing passdb account. It journals intent,
 creates the entry disabled without supplying a password, confirms the exact
 account/SID and disabled flag, then sets the bounded password through the
 backend's stdin-only contract and confirms the same SID is still disabled. A
-separate revision-checked `Enable` operation accepts only
-`credential-set-disabled`: it confirms the same account/SID is disabled,
-commits `enable-intent`, invokes fixed `smbpasswd -e`, then confirms the same
-SID is enabled before recording `enabled`. Creation and password assignment
-never enable implicitly.
+separate revision-checked `Enable` operation accepts only a confirmed disabled
+state: it confirms the same account/SID is disabled, commits `enable-intent`,
+invokes fixed `smbpasswd -e`, then confirms the same SID is enabled before
+recording `enabled`. A separate `Disable` accepts only a confirmed enabled
+state, commits `disable-intent`, invokes fixed `smbpasswd -d`, and confirms the
+same SID is disabled. Re-enable is another explicit `Enable` action. Disable
+prevents new authentications but does not revoke already-established SMB
+sessions; the fixture tests new connections only. Creation, password
+assignment, enable and disable never happen as implicit side effects.
 
 The journal contains no password, NT/LM hash, command output or derived secret.
-It has no automatic retry, reset, replacement, disable or retirement operation.
-After reopening, a durable create/password/enable intent is committed to
+It has no automatic retry, reset or retirement operation. Password assignment
+may replace credentials only while the account is confirmed disabled. After
+reopening, a durable create/password/enable/disable intent is committed to
 `review-required` without querying or rerunning Samba. The trusted backend is
 bound once at Owner open; individual operations cannot replace it. The existing
 credential-free JSON v1 identity protocol remains unchanged. The separately
 versioned internal binary v2 socket carries a bounded password only as raw
-bytes for `set-password-disabled`; a distinct `enable` action carries no
-password and reaches the bound Owner operation. It returns the same restricted,
+bytes for `set-password-disabled`; distinct `enable` and `disable` actions carry
+no password and reach the bound Owner operation. It returns the same restricted,
 secret-free state vocabulary and does not expose an HTTP endpoint. QEMU uses
 the protected socket only with its disposable fixture account and verifies the
 valid credential fails before enable and works after same-SID confirmation.
@@ -131,12 +138,17 @@ root Linux `go vet` and full API race suite, then the full Buildroot 2025.02.18 
 Linux 6.18.53 ARMv5 QEMU smoke. Its log records protected-listener
 `smb-create` and `smb-password` phases and the
 `PHANTOWD_SMB_DISABLED_ENROLLMENT_READY` check; fixed-count fuzz lanes also
-passed. The current explicit-enable follow-up adds Owner, journal, executor and
-version-2 channel actions; it verifies valid credential denial before enable,
-same-SID enabled confirmation, successful authentication afterward, and empty
-credential denial. Root-run Linux package tests and a fresh local full QEMU
-build/smoke plus two-boot fixture pass on this working tree. This does not qualify
-real EX4 state placement, tdbsam
+passed. The current lifecycle follow-up adds Owner, journal, executor and
+version-2 channel enable/disable actions; it verifies stale revisions do not
+dispatch, same-SID state confirmation, valid credential denial before enable,
+successful authentication after enable, denial of new authentication after
+disable and successful authentication after re-enable. The full local Buildroot
+2025.02.18 / Linux 6.18.53 ARMv5 QEMU build/smoke and two-boot suite passed on
+2026-09-29, along with API/tool-host tests, race tests and fixed-count fuzz
+campaigns. The log includes `PHANTOWD_IDENTITY_OWNER_BOOT_READY` with
+`http=false`, and `PHANTOWD_SMB_DISABLED_ENROLLMENT_READY` with
+`disabled_new_auth_denied=true` and `reenabled_auth_accepted=true`. This does
+not qualify real EX4 state placement, tdbsam
 crash/power-loss durability, password history, other root writers or hardware
 behavior.
 
@@ -153,10 +165,10 @@ behavior.
    Set the password while retaining disabled state in the same SAM update and
    confirm the resulting metadata. A password-change timestamp alone does not
    prove the intended secret was applied.
-4. Persist `credential-set-disabled`. Enabling is a separate explicitly
-   authorized, revision-checked operation with its own durable intent and result.
-   The internal Owner/QEMU path now implements and tests this transition, but
-   product HTTP authorization is not wired. The panel must distinguish desired
+4. Persist `credential-set-disabled`. Enabling and disabling are separate
+   explicitly authorized, revision-checked operations with their own durable
+   intent and result. Internal Owner/QEMU paths implement these transitions,
+   but product HTTP authorization is not wired. The panel must distinguish desired
    state, observed state and review-required uncertainty rather than display
    unconfirmed enabled/disabled claims.
 5. On failure or interruption, retain intent/evidence and deny automatic service
@@ -171,6 +183,8 @@ behavior.
 - New disabled enrollment never authenticates before explicit enable; after the
   journal confirms the same account/SID enabled, its new password works and an
   empty password remains denied.
+- Disable blocks new connections and a separate re-enable restores the same
+  credential. These operations do not imply revocation of live sessions.
 - Replacing a disabled password never authenticates during or after the update;
   after explicit enable only the replacement succeeds.
 - Existing unrelated accounts, SIDs, data ownership and permissions are unchanged.

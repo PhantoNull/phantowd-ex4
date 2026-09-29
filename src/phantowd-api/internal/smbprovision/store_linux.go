@@ -22,6 +22,7 @@ type Backend interface {
 	CreateDisabled(context.Context, serviceaccounts.Account) error
 	SetPasswordDisabled(context.Context, serviceaccounts.Account, []byte) error
 	Enable(context.Context, serviceaccounts.Account) error
+	Disable(context.Context, serviceaccounts.Account) error
 }
 
 // Store owns one account's Samba credential journal in a caller-provisioned
@@ -81,7 +82,7 @@ func (s *Store) RecoverInterrupted() (Journal, error) {
 	if err != nil {
 		return Journal{}, err
 	}
-	if j.Phase != CreateIntent && j.Phase != PasswordIntent && j.Phase != EnableIntent {
+	if j.Phase != CreateIntent && j.Phase != PasswordIntent && j.Phase != EnableIntent && j.Phase != DisableIntent {
 		return j, nil
 	}
 	next := j
@@ -156,7 +157,7 @@ func (s *Store) Step(ctx context.Context, expected uint64) error {
 	if j.Phase == ReviewRequired {
 		return ErrReview
 	}
-	if j.Phase == CreateIntent || j.Phase == PasswordIntent || j.Phase == EnableIntent {
+	if j.Phase == CreateIntent || j.Phase == PasswordIntent || j.Phase == EnableIntent || j.Phase == DisableIntent {
 		return s.review(j)
 	}
 	if ctx.Err() != nil {
@@ -236,7 +237,7 @@ func (s *Store) Enable(ctx context.Context, expected uint64) error {
 	if j.Phase == EnableIntent {
 		return s.review(j)
 	}
-	if j.Phase != CredentialSetDisabled {
+	if j.Phase != CredentialSetDisabled && j.Phase != Disabled {
 		return ErrConflict
 	}
 	if ctx.Err() != nil {
@@ -276,6 +277,71 @@ func (s *Store) Enable(ctx context.Context, expected uint64) error {
 	return s.engine.Commit(intent.Revision, confirmed)
 }
 
+// Disable durably disables one confirmed enabled account without changing its
+// credential. A separate Enable action may restore access; active SMB sessions
+// are outside this passdb contract and must be assessed independently.
+func (s *Store) Disable(ctx context.Context, expected uint64) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.engine == nil {
+		return revisionstore.ErrClosed
+	}
+	if ctx == nil {
+		return ErrInvalid
+	}
+	j, err := s.engine.Load()
+	if err != nil {
+		return err
+	}
+	if expected != j.Revision {
+		return ErrConflict
+	}
+	if j.Phase == ReviewRequired {
+		return ErrReview
+	}
+	if j.Phase == DisableIntent {
+		return s.review(j)
+	}
+	if j.Phase != Enabled {
+		return ErrConflict
+	}
+	if ctx.Err() != nil {
+		return ctx.Err()
+	}
+	if s.backend == nil {
+		return ErrInvalid
+	}
+	observed, err := s.backend.Observe(ctx, j.Account)
+	if err != nil {
+		return ErrObservation
+	}
+	if observed.validateFor(j.Account, false) != nil || !observed.Present ||
+		observed.SID != j.SID || observed.Disabled {
+		return s.review(j)
+	}
+	if ctx.Err() != nil {
+		return ctx.Err()
+	}
+	intent := j
+	intent.Revision++
+	intent.Phase = DisableIntent
+	if err := s.engine.Commit(j.Revision, intent); err != nil {
+		return err
+	}
+	if ctx.Err() != nil || s.backend.Disable(ctx, j.Account) != nil || ctx.Err() != nil {
+		return s.review(intent)
+	}
+	after, err := s.backend.Observe(ctx, j.Account)
+	if err != nil || after.validateFor(j.Account, true) != nil || !after.Present ||
+		after.SID != j.SID || !after.Disabled {
+		return s.review(intent)
+	}
+	confirmed := intent
+	confirmed.Revision++
+	confirmed.Phase = Disabled
+	return s.engine.Commit(intent.Revision, confirmed)
+}
+
 // SetPasswordDisabled applies one bounded secret from memory only. It first
 // commits intent, then calls a stdin-only backend, verifies the same SID remains
 // disabled, and records confirmation without persisting the password. Any
@@ -299,10 +365,10 @@ func (s *Store) SetPasswordDisabled(ctx context.Context, expected uint64, secret
 	if j.Phase == ReviewRequired {
 		return ErrReview
 	}
-	if j.Phase == CreateIntent || j.Phase == PasswordIntent || j.Phase == EnableIntent {
+	if j.Phase == CreateIntent || j.Phase == PasswordIntent || j.Phase == EnableIntent || j.Phase == DisableIntent {
 		return s.review(j)
 	}
-	if j.Phase != DisabledNoPassword {
+	if j.Phase != DisabledNoPassword && j.Phase != CredentialSetDisabled && j.Phase != Disabled {
 		return ErrConflict
 	}
 	if ctx.Err() != nil {

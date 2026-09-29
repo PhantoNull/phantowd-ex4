@@ -126,6 +126,7 @@ type smbRPCModel struct {
 	createCalls  int
 	passwordCall int
 	enableCalls  int
+	disableCalls int
 	secretView   []byte
 	secretCopy   []byte
 	setError     error
@@ -184,12 +185,23 @@ func (m *smbRPCModel) SetPasswordDisabled(_ context.Context, expected uint64, se
 }
 
 func (m *smbRPCModel) Enable(_ context.Context, expected uint64) error {
-	if !m.begun || expected != m.journal.Revision || m.journal.Phase != smbprovision.CredentialSetDisabled {
+	if !m.begun || expected != m.journal.Revision ||
+		(m.journal.Phase != smbprovision.CredentialSetDisabled && m.journal.Phase != smbprovision.Disabled) {
 		return smbprovision.ErrConflict
 	}
 	m.enableCalls++
-	m.journal.Revision = 7
+	m.journal.Revision += 2
 	m.journal.Phase = smbprovision.Enabled
+	return nil
+}
+
+func (m *smbRPCModel) Disable(_ context.Context, expected uint64) error {
+	if !m.begun || expected != m.journal.Revision || m.journal.Phase != smbprovision.Enabled {
+		return smbprovision.ErrConflict
+	}
+	m.disableCalls++
+	m.journal.Revision += 2
+	m.journal.Phase = smbprovision.Disabled
 	return nil
 }
 
@@ -223,6 +235,24 @@ func TestSMBEnableFrameIsTypedAndCredentialFree(t *testing.T) {
 	request.Password = []byte("must-not-accompany-enable")
 	if _, err := encodeSMBFrame(request); !errors.Is(err, ErrInvalid) {
 		t.Fatal("enable action accepted a password payload", err)
+	}
+}
+
+func TestSMBDisableFrameIsTypedAndCredentialFree(t *testing.T) {
+	request := SMBRequest{Action: "disable", AccountID: "fixture", Revision: 7}
+	encoded, err := encodeSMBFrame(request)
+	if err != nil {
+		t.Fatal("valid explicit disable request rejected", err)
+	}
+	defer clear(encoded)
+	decoded, err := decodeSMBRequest(encoded[4:])
+	if err != nil || decoded.Action != request.Action || decoded.AccountID != request.AccountID ||
+		decoded.Revision != request.Revision || len(decoded.Password) != 0 {
+		t.Fatal("disable frame decoded with the wrong typed fields", decoded, err)
+	}
+	request.Password = []byte("must-not-accompany-disable")
+	if _, err := encodeSMBFrame(request); !errors.Is(err, ErrInvalid) {
+		t.Fatal("disable action accepted a password payload", err)
 	}
 }
 
@@ -286,6 +316,20 @@ func TestSMBCredentialChannelLifecycleAndSecretErasure(t *testing.T) {
 	}
 	if got := exchangeSMB(t, s, SMBRequest{Action: "enable", AccountID: "fixture", Revision: 5}); got.Code != "conflict" || model.enableCalls != 1 {
 		t.Fatal("stale/repeated enable request was dispatched", got, model.enableCalls)
+	}
+	if got := exchangeSMB(t, s, SMBRequest{Action: "disable", AccountID: "fixture", Revision: 6}); got.Code != "conflict" || model.disableCalls != 0 {
+		t.Fatal("stale disable request was dispatched", got, model.disableCalls)
+	}
+	disabled := exchangeSMB(t, s, SMBRequest{Action: "disable", AccountID: "fixture", Revision: 7})
+	if disabled.Code != "ok" || disabled.Phase != smbprovision.Disabled || disabled.Revision != 9 || model.disableCalls != 1 {
+		t.Fatal("explicit disable was not routed through the Owner capability", disabled, model.disableCalls)
+	}
+	if got := exchangeSMB(t, s, SMBRequest{Action: "enable", AccountID: "fixture", Revision: 8}); got.Code != "conflict" || model.enableCalls != 1 {
+		t.Fatal("stale re-enable request was dispatched", got, model.enableCalls)
+	}
+	reenabled := exchangeSMB(t, s, SMBRequest{Action: "enable", AccountID: "fixture", Revision: 9})
+	if reenabled.Code != "ok" || reenabled.Phase != smbprovision.Enabled || reenabled.Revision != 11 || model.enableCalls != 2 {
+		t.Fatal("explicit re-enable after disable failed", reenabled, model.enableCalls)
 	}
 	response, _ := json.Marshal(enabled)
 	if bytes.Contains(response, secret) {

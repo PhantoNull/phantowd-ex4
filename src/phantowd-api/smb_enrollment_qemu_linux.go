@@ -84,5 +84,31 @@ func exerciseQEMUOwnerSMBEnrollment(owner *identityowner.Owner, account servicea
 		return errors.New("empty credential authenticated after explicit enable")
 	}
 	clear(output)
+	if err := exerciseQEMUIdentityChannel(owner, "smb-disable"); err != nil {
+		return fmt.Errorf("protected channel refused explicit disable: %w", err)
+	}
+	journal, err = operation.Load(ctx)
+	if err != nil || journal.Phase != smbprovision.Disabled || journal.Revision != 9 {
+		return errors.New("owner did not confirm explicit Samba disable")
+	}
+	output, err = smbFixtureCommand("", "/usr/bin/smbclient", "-t", "2", "-m", "SMB3_11", "-p", "1445", "-A", initialAuth, "//127.0.0.1/IPC$", "-c", "quit")
+	if !smbFixtureDenied(output, err, "NT_STATUS_ACCOUNT_DISABLED") {
+		clear(output)
+		return errors.New("explicitly disabled account accepted a new authenticated connection")
+	}
+	clear(output)
+	if err := exerciseQEMUIdentityChannel(owner, "smb-reenable"); err != nil {
+		return fmt.Errorf("protected channel refused explicit re-enable: %w", err)
+	}
+	journal, err = operation.Load(ctx)
+	if err != nil || journal.Phase != smbprovision.Enabled || journal.Revision != 11 {
+		return errors.New("owner did not confirm explicit Samba re-enable")
+	}
+	output, err = smbFixtureCommand("", "/usr/bin/smbclient", "-t", "2", "-m", "SMB3_11", "-p", "1445", "-A", initialAuth, "//127.0.0.1/IPC$", "-c", "quit")
+	if err != nil {
+		clear(output)
+		return errors.New("new credential failed after explicit re-enable")
+	}
+	clear(output)
 	return nil
 }

@@ -316,6 +316,35 @@ func TestEnableUsesOnlyTheFixedExplicitCommand(t *testing.T) {
 	}
 }
 
+func TestDisableUsesOnlyTheFixedExplicitCommand(t *testing.T) {
+	if os.Geteuid() != 0 {
+		t.Skip("trusted Samba adapter tests require root-owned fixture config")
+	}
+	config := secureConfig(t)
+	account := serviceaccounts.Account{ID: "first", Name: "alice", UID: 11001, GID: 11001, State: serviceaccounts.Disabled}
+	calls := 0
+	commandOutput := []byte("must be discarded")
+	var pinnedConfig *os.File
+	backend, err := testBackend(t, config, runnerFunc(func(_ context.Context, executable string, args []string, gotConfig *os.File, stdin []byte, capture bool) ([]byte, error) {
+		calls++
+		if executable != smbpasswdPath || gotConfig != pinnedConfig ||
+			!slices.Equal(args, []string{"-d", "-c", configArgument, account.Name}) || len(stdin) != 0 || capture {
+			t.Fatal("disable escaped the fixed, credential-free command contract")
+		}
+		return commandOutput, nil
+	}))
+	if err != nil {
+		t.Fatal("secure Samba backend configuration refused", err)
+	}
+	pinnedConfig = backend.config
+	if err := backend.Disable(context.Background(), account); err != nil || calls != 1 {
+		t.Fatalf("disable calls=%d error=%v", calls, err)
+	}
+	if !bytes.Equal(commandOutput, make([]byte, len(commandOutput))) {
+		t.Fatal("discarded command output was not cleared")
+	}
+}
+
 func TestCommandFailureDoesNotExposeDiagnostics(t *testing.T) {
 	if os.Geteuid() != 0 {
 		t.Skip("trusted Samba adapter tests require root-owned fixture config")
