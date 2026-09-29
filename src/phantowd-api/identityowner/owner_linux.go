@@ -17,6 +17,7 @@ import (
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/identityexec"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/identityprovision"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/revisionstore"
+	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/smbprovision"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/serviceaccounts"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/serviceaccountstore"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/unixidentity"
@@ -46,6 +47,7 @@ type dependencies struct {
 	observe      func(context.Context) (unixidentity.Snapshot, error)
 	executor     func(serviceaccounts.Account) (backend, error)
 	inventory    Inventory
+	smbBackend   smbprovision.Backend
 	afterJournal func() // private process-interruption test seam
 }
 
@@ -55,7 +57,10 @@ type Owner struct {
 	device                uint64
 	registry              *serviceaccountstore.Store
 	journals              map[string]*identityprovision.Store
+	smbJournals           map[string]*smbprovision.Store
+	smbBackend            smbprovision.Backend
 	inodes                map[string]uint64
+	smbInodes             map[string]uint64
 	deps                  dependencies
 	failed, closed, ready bool
 }
@@ -64,7 +69,27 @@ type Owner struct {
 // directories on one local filesystem and an explicitly initialized empty or
 // previously owner-managed registry. It never bootstraps, imports or repairs.
 func Open(directory string, inventory Inventory) (*Owner, error) {
-	return open(directory, dependencies{
+	return open(directory, ownerDependencies(inventory))
+}
+
+// OpenWithSMBBackend binds a trusted in-process Samba executor to the Owner for
+// its lifetime. Pass only a fixed implementation created by the firmware
+// service, never a per-request adapter; client protocols cannot configure it.
+// This transfers ownership: if opening fails, a closeable backend is closed;
+// otherwise Owner.Close closes it after draining active operations.
+// The internal package type intentionally keeps this constructor inside the
+// phantowd-api module subtree.
+func OpenWithSMBBackend(directory string, inventory Inventory, smbBackend smbprovision.Backend) (*Owner, error) {
+	if smbBackend == nil {
+		return nil, ErrInvalid
+	}
+	deps := ownerDependencies(inventory)
+	deps.smbBackend = smbBackend
+	return open(directory, deps)
+}
+
+func ownerDependencies(inventory Inventory) dependencies {
+	return dependencies{
 		inventory: inventory,
 		observe: func(ctx context.Context) (unixidentity.Snapshot, error) {
 			if err := ctx.Err(); err != nil {
@@ -73,11 +98,12 @@ func Open(directory string, inventory Inventory) (*Owner, error) {
 			return unixidentity.ReadLocal("/etc", 0)
 		},
 		executor: func(a serviceaccounts.Account) (backend, error) { return identityexec.Open(a) },
-	})
+	}
 }
 
 func open(directory string, deps dependencies) (*Owner, error) {
 	if os.Getuid() != 0 || os.Geteuid() != 0 || deps.inventory == nil || deps.observe == nil || deps.executor == nil || !filepath.IsAbs(directory) || filepath.Clean(directory) != directory {
+		closeSMBBackend(deps.smbBackend)
 		return nil, ErrInvalid
 	}
 	fd, err := unix.Openat2(unix.AT_FDCWD, directory, &unix.OpenHow{
@@ -85,9 +111,12 @@ func open(directory string, deps dependencies) (*Owner, error) {
 		Resolve: unix.RESOLVE_NO_SYMLINKS | unix.RESOLVE_NO_MAGICLINKS,
 	})
 	if err != nil {
+		closeSMBBackend(deps.smbBackend)
 		return nil, ErrUnavailable
 	}
-	o := &Owner{root: fd, operations: -1, deps: deps, journals: make(map[string]*identityprovision.Store), inodes: make(map[string]uint64), ready: true}
+	o := &Owner{root: fd, operations: -1, deps: deps, smbBackend: deps.smbBackend,
+		journals: make(map[string]*identityprovision.Store), smbJournals: make(map[string]*smbprovision.Store),
+		inodes: make(map[string]uint64), smbInodes: make(map[string]uint64), ready: true}
 	success := false
 	defer func() {
 		if !success {
@@ -125,6 +154,12 @@ func open(directory string, deps dependencies) (*Owner, error) {
 	return o, nil
 }
 
+func closeSMBBackend(smbBackend smbprovision.Backend) {
+	if closer, ok := smbBackend.(interface{ Close() error }); ok {
+		_ = closer.Close()
+	}
+}
+
 func privateDirectory(st unix.Stat_t) bool {
 	return st.Mode&unix.S_IFMT == unix.S_IFDIR && st.Mode&07777 == 0700 && st.Uid == 0
 }
@@ -159,6 +194,14 @@ func (o *Owner) Close() error {
 	}
 	o.closed = true
 	var err error
+	for _, journal := range o.smbJournals {
+		err = errors.Join(err, journal.Close())
+	}
+	if closer, ok := o.smbBackend.(interface{ Close() error }); ok {
+		err = errors.Join(err, closer.Close())
+	}
+	o.smbBackend = nil
+	o.deps.smbBackend = nil
 	for _, journal := range o.journals {
 		err = errors.Join(err, journal.Close())
 	}
@@ -237,6 +280,9 @@ func (o *Owner) snapshot() (serviceaccounts.Registry, []identityprovision.Journa
 		if loadErr != nil || j.Account != a || j.RegistryRevision != uint64(i)+2 {
 			return fail()
 		}
+		if o.loadSMBForAccount(a, j) != nil {
+			return fail()
+		}
 		if j.Phase != identityprovision.UnixConfirmed {
 			active++
 			if j.RegistryRevision != r.Revision || active > 1 {
@@ -246,6 +292,52 @@ func (o *Owner) snapshot() (serviceaccounts.Registry, []identityprovision.Journa
 		result = append(result, j)
 	}
 	return r, result, nil
+}
+
+// loadSMBForAccount validates an optional child journal. Reopening an intent
+// records review-required without observing or invoking Samba; the previous
+// command's result can no longer be safely inferred or retried.
+func (o *Owner) loadSMBForAccount(account serviceaccounts.Account, native identityprovision.Journal) error {
+	accountFD, err := unix.Openat(o.operations, account.ID, unix.O_RDONLY|unix.O_DIRECTORY|unix.O_NOFOLLOW|unix.O_CLOEXEC, 0)
+	if err != nil {
+		return ErrUnavailable
+	}
+	defer unix.Close(accountFD)
+	var parent unix.Stat_t
+	if unix.Fstat(accountFD, &parent) != nil || !privateDirectory(parent) || uint64(parent.Dev) != o.device || o.inodes[account.ID] != parent.Ino {
+		return ErrUnavailable
+	}
+	var st unix.Stat_t
+	err = unix.Fstatat(accountFD, "smb", &st, unix.AT_SYMLINK_NOFOLLOW)
+	if errors.Is(err, unix.ENOENT) {
+		if o.smbJournals[account.ID] != nil || o.smbInodes[account.ID] != 0 {
+			return ErrUnavailable
+		}
+		return nil
+	}
+	if err != nil || !privateDirectory(st) || uint64(st.Dev) != o.device {
+		return ErrUnavailable
+	}
+	if native.Phase != identityprovision.UnixConfirmed {
+		return ErrUnavailable
+	}
+	store := o.smbJournals[account.ID]
+	if store != nil && o.smbInodes[account.ID] != st.Ino {
+		return ErrUnavailable
+	}
+	if store == nil {
+		store, err = smbprovision.Open(fmt.Sprintf("/proc/self/fd/%d/smb", accountFD), o.smbBackend)
+		if err != nil {
+			return err
+		}
+		o.smbJournals[account.ID] = store
+		o.smbInodes[account.ID] = st.Ino
+	}
+	j, err := store.RecoverInterrupted()
+	if err != nil || j.Account != account || j.NativeRevision != native.Revision {
+		return ErrUnavailable
+	}
+	return nil
 }
 
 // Reserve persists the initial journal BEFORE publishing the reservation. A
@@ -345,6 +437,331 @@ type Operation struct {
 }
 
 func (o *Owner) Operation(id string) *Operation { return &Operation{owner: o, id: id} }
+
+// SMBOperation is an in-process capability for managing the already-created
+// Unix identity's initial Samba enrollment. Every method enters the same Owner
+// mutex used by registry and Unix writers. It is not an HTTP or client API.
+type SMBOperation struct {
+	owner *Owner
+	id    string
+}
+
+// SMB returns a lookup capability only; the identifier is resolved against
+// the owner-validated registry before any filesystem path is formed.
+func (o *Owner) SMB(id string) *SMBOperation { return &SMBOperation{owner: o, id: id} }
+
+func findNative(journals []identityprovision.Journal, id string) (identityprovision.Journal, bool) {
+	for _, journal := range journals {
+		if journal.Account.ID == id {
+			return journal, true
+		}
+	}
+	return identityprovision.Journal{}, false
+}
+
+func (op *SMBOperation) current(ctx context.Context) (*Owner, identityprovision.Journal, *smbprovision.Store, error) {
+	if op == nil || op.owner == nil {
+		return nil, identityprovision.Journal{}, nil, ErrUnavailable
+	}
+	o := op.owner
+	if err := o.enter(ctx); err != nil {
+		return nil, identityprovision.Journal{}, nil, err
+	}
+	_, journals, err := o.snapshot()
+	if err != nil {
+		o.mu.Unlock()
+		return nil, identityprovision.Journal{}, nil, err
+	}
+	native, ok := findNative(journals, op.id)
+	if !ok {
+		o.mu.Unlock()
+		return nil, identityprovision.Journal{}, nil, ErrConflict
+	}
+	if native.Phase != identityprovision.UnixConfirmed {
+		o.mu.Unlock()
+		if native.Phase == identityprovision.ReviewRequired {
+			return nil, identityprovision.Journal{}, nil, ErrReview
+		}
+		return nil, identityprovision.Journal{}, nil, errors.Join(ErrPending, smbprovision.ErrPending)
+	}
+	store := o.smbJournals[op.id]
+	if store == nil {
+		o.mu.Unlock()
+		return nil, identityprovision.Journal{}, nil, smbprovision.ErrConflict
+	}
+	return o, native, store, nil
+}
+
+// Begin performs only read-only passdb observation and durable journal setup;
+// the caller must pass the exact confirmed Unix journal revision. It refuses
+// an existing passdb identity and never adopts it.
+func (op *SMBOperation) Begin(ctx context.Context, nativeRevision uint64) error {
+	if op == nil || op.owner == nil {
+		return ErrUnavailable
+	}
+	o := op.owner
+	if err := o.enter(ctx); err != nil {
+		return err
+	}
+	defer o.mu.Unlock()
+	_, journals, err := o.snapshot()
+	if err != nil {
+		return err
+	}
+	native, ok := findNative(journals, op.id)
+	if !ok {
+		return ErrConflict
+	}
+	if native.Phase != identityprovision.UnixConfirmed {
+		if native.Phase == identityprovision.ReviewRequired {
+			return ErrReview
+		}
+		return errors.Join(ErrPending, smbprovision.ErrPending)
+	}
+	if native.Revision != nativeRevision {
+		return ErrConflict
+	}
+	if err := o.verifyUnixLocked(ctx, native.Account); err != nil {
+		return err
+	}
+	if existing := o.smbJournals[op.id]; existing != nil {
+		journal, loadErr := existing.Load()
+		if loadErr != nil {
+			return o.smbFailure(loadErr)
+		}
+		if journal.Phase == smbprovision.ReviewRequired {
+			return smbprovision.ErrReview
+		}
+		return smbprovision.ErrConflict
+	}
+	if o.smbInodes[op.id] != 0 {
+		o.failed = true
+		return ErrUnavailable
+	}
+	if ctx == nil || o.smbBackend == nil {
+		return smbprovision.ErrInvalid
+	}
+	accountFD, err := unix.Openat(o.operations, op.id, unix.O_RDONLY|unix.O_DIRECTORY|unix.O_NOFOLLOW|unix.O_CLOEXEC, 0)
+	if err != nil {
+		return ErrUnavailable
+	}
+	var parent unix.Stat_t
+	if unix.Fstat(accountFD, &parent) != nil || !privateDirectory(parent) || uint64(parent.Dev) != o.device || o.inodes[op.id] != parent.Ino {
+		unix.Close(accountFD)
+		o.failed = true
+		return ErrUnavailable
+	}
+	if err := unix.Mkdirat(accountFD, "smb", 0700); err != nil {
+		unix.Close(accountFD)
+		if errors.Is(err, unix.EEXIST) {
+			o.failed = true
+		}
+		return ErrUnavailable
+	}
+	if unix.Fsync(accountFD) != nil {
+		unix.Close(accountFD)
+		o.failed = true
+		return ErrUnavailable
+	}
+	var st unix.Stat_t
+	if unix.Fstatat(accountFD, "smb", &st, unix.AT_SYMLINK_NOFOLLOW) != nil || !privateDirectory(st) || uint64(st.Dev) != o.device {
+		unix.Close(accountFD)
+		o.failed = true
+		return ErrUnavailable
+	}
+	store, err := smbprovision.Open(fmt.Sprintf("/proc/self/fd/%d/smb", accountFD), o.smbBackend)
+	closeErr := unix.Close(accountFD)
+	if err != nil || closeErr != nil {
+		if store != nil {
+			store.Close()
+		}
+		o.failed = true
+		return ErrUnavailable
+	}
+	o.smbJournals[op.id] = store
+	o.smbInodes[op.id] = st.Ino
+	err = store.Begin(ctx, native.Revision, native.Account)
+	if err == nil {
+		return nil
+	}
+	// These errors occur before the store commits its first journal; remove only
+	// the exact fresh, still-empty directory. Any uncertain commit is preserved.
+	if errors.Is(err, smbprovision.ErrReview) || errors.Is(err, smbprovision.ErrObservation) ||
+		errors.Is(err, smbprovision.ErrInvalid) || ctx.Err() != nil {
+		if cleanupErr := o.discardFreshSMB(op.id, store, st.Ino); cleanupErr != nil {
+			o.failed = true
+			return ErrUnavailable
+		}
+		return err
+	}
+	o.failed = true
+	return ErrUnavailable
+}
+
+func (o *Owner) discardFreshSMB(id string, store *smbprovision.Store, inode uint64) error {
+	if _, err := store.Load(); !errors.Is(err, revisionstore.ErrNotInitialized) {
+		return ErrUnavailable
+	}
+	if err := store.Close(); err != nil {
+		return ErrUnavailable
+	}
+	delete(o.smbJournals, id)
+	delete(o.smbInodes, id)
+	accountFD, err := unix.Openat(o.operations, id, unix.O_RDONLY|unix.O_DIRECTORY|unix.O_NOFOLLOW|unix.O_CLOEXEC, 0)
+	if err != nil {
+		return ErrUnavailable
+	}
+	defer unix.Close(accountFD)
+	var st unix.Stat_t
+	if unix.Fstatat(accountFD, "smb", &st, unix.AT_SYMLINK_NOFOLLOW) != nil || st.Ino != inode || !privateDirectory(st) || uint64(st.Dev) != o.device {
+		return ErrUnavailable
+	}
+	smbFD, err := unix.Openat(accountFD, "smb", unix.O_RDONLY|unix.O_DIRECTORY|unix.O_NOFOLLOW|unix.O_CLOEXEC, 0)
+	if err != nil {
+		return ErrUnavailable
+	}
+	entries, readErr := os.ReadDir(fmt.Sprintf("/proc/self/fd/%d", smbFD))
+	var opened unix.Stat_t
+	statErr := unix.Fstat(smbFD, &opened)
+	closeErr := unix.Close(smbFD)
+	if readErr != nil || statErr != nil || closeErr != nil || opened.Ino != inode || len(entries) != 0 {
+		return ErrUnavailable
+	}
+	if unix.Unlinkat(accountFD, "smb", unix.AT_REMOVEDIR) != nil || unix.Fsync(accountFD) != nil {
+		return ErrUnavailable
+	}
+	return nil
+}
+
+// Load returns the Samba-specific state through the owner lock.
+func (op *SMBOperation) Load(ctx context.Context) (smbprovision.Journal, error) {
+	o, _, store, err := op.current(ctx)
+	if err != nil {
+		return smbprovision.Journal{}, err
+	}
+	defer o.mu.Unlock()
+	return store.Load()
+}
+
+// Step creates at most one disabled passdb record; a recovered/ambiguous intent
+// is converted to review by the snapshot and is never dispatched again.
+func (op *SMBOperation) Step(ctx context.Context, expected uint64) error {
+	o, native, store, err := op.current(ctx)
+	if err != nil {
+		return err
+	}
+	defer o.mu.Unlock()
+	journal, err := store.Load()
+	if err != nil {
+		return o.smbFailure(err)
+	}
+	if journal.NativeRevision != native.Revision || journal.Account != native.Account {
+		o.failed = true
+		return ErrUnavailable
+	}
+	if err := o.verifyUnixLocked(ctx, native.Account); err != nil {
+		return err
+	}
+	if journal.Phase == smbprovision.ReviewRequired {
+		return smbprovision.ErrReview
+	}
+	if o.smbBackend == nil {
+		return smbprovision.ErrInvalid
+	}
+	err = store.Step(ctx, expected)
+	return o.smbFailure(err)
+}
+
+// SetPasswordDisabled sends one secret through the trusted backend's stdin-only
+// path; no credential bytes enter the owner journal or any client protocol.
+func (op *SMBOperation) SetPasswordDisabled(ctx context.Context, expected uint64, secret []byte) error {
+	o, native, store, err := op.current(ctx)
+	if err != nil {
+		return err
+	}
+	defer o.mu.Unlock()
+	journal, err := store.Load()
+	if err != nil {
+		return o.smbFailure(err)
+	}
+	if journal.NativeRevision != native.Revision || journal.Account != native.Account {
+		o.failed = true
+		return ErrUnavailable
+	}
+	if err := o.verifyUnixLocked(ctx, native.Account); err != nil {
+		return err
+	}
+	if journal.Phase == smbprovision.ReviewRequired {
+		return smbprovision.ErrReview
+	}
+	if o.smbBackend == nil {
+		return smbprovision.ErrInvalid
+	}
+	err = store.SetPasswordDisabled(ctx, expected, secret)
+	return o.smbFailure(err)
+}
+
+// Enable is a separate explicit, revision-checked action. It never runs as a
+// side effect of account creation or password assignment.
+func (op *SMBOperation) Enable(ctx context.Context, expected uint64) error {
+	o, native, store, err := op.current(ctx)
+	if err != nil {
+		return err
+	}
+	defer o.mu.Unlock()
+	journal, err := store.Load()
+	if err != nil {
+		return o.smbFailure(err)
+	}
+	if journal.NativeRevision != native.Revision || journal.Account != native.Account {
+		o.failed = true
+		return ErrUnavailable
+	}
+	if err := o.verifyUnixLocked(ctx, native.Account); err != nil {
+		return err
+	}
+	if journal.Phase == smbprovision.ReviewRequired {
+		return smbprovision.ErrReview
+	}
+	if o.smbBackend == nil {
+		return smbprovision.ErrInvalid
+	}
+	return o.smbFailure(store.Enable(ctx, expected))
+}
+
+func (o *Owner) verifyUnixLocked(ctx context.Context, account serviceaccounts.Account) error {
+	if err := ctx.Err(); err != nil {
+		return ErrUnavailable
+	}
+	observed, err := o.deps.observe(ctx)
+	if err != nil {
+		return ErrUnavailable
+	}
+	state, err := observed.Assess(account)
+	if err != nil || state != unixidentity.Observed {
+		return ErrReview
+	}
+	return nil
+}
+
+func (o *Owner) smbFailure(err error) error {
+	if err == nil {
+		return err
+	}
+	if errors.Is(err, revisionstore.ErrIO) || errors.Is(err, revisionstore.ErrUncertain) ||
+		errors.Is(err, revisionstore.ErrUnsafe) || errors.Is(err, revisionstore.ErrInvalid) ||
+		errors.Is(err, revisionstore.ErrNotInitialized) || errors.Is(err, revisionstore.ErrClosed) ||
+		errors.Is(err, revisionstore.ErrConflict) {
+		o.failed = true
+		return ErrUnavailable
+	}
+	if errors.Is(err, smbprovision.ErrConflict) || errors.Is(err, smbprovision.ErrInvalid) ||
+		errors.Is(err, smbprovision.ErrObservation) || errors.Is(err, smbprovision.ErrPending) || errors.Is(err, smbprovision.ErrReview) {
+		return err
+	}
+	o.failed = true
+	return ErrUnavailable
+}
 
 func (op *Operation) Load(ctx context.Context) (identityprovision.Journal, error) {
 	if op == nil || op.owner == nil {

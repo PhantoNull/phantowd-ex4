@@ -176,8 +176,16 @@ while [ "$attempt" -lt 120 ]; do
             echo 'Samba disabled-password update did not complete safely' >&2
             exit 1
         fi
+        if ! grep -F 'PHANTOWD_SMB_DISABLED_ENROLLMENT_READY owner_lock=true intent_journal=true created_disabled=true empty_credential_denied=true password_set_disabled=true pre_enable_valid_denied=true enable_explicit=true same_sid_revalidated=true post_enable_valid_accepted=true post_enable_empty_denied=true scope=isolated-qemu-only' "$log_file" >/dev/null; then
+            echo 'Samba disabled-account enrollment did not complete safely' >&2
+            exit 1
+        fi
         if ! grep -F 'PHANTOWD_IDENTITY_OWNER_READY lease_exclusive=true pending_blocks_reservation=true after_reopen=true scope=isolated-qemu-only' "$log_file" >/dev/null; then
             echo 'QEMU native identity authority did not complete' >&2
+            exit 1
+        fi
+        if ! grep -F 'PHANTOWD_IDENTITY_OWNER_BOOT_READY service_uid=0 socket_mode=0620 api_uid=nonroot config_validated_before_owner_state=true config_missing_rejected=true config_invalid_rejected=true no_side_effects=true process_restart=true drained=true runtime=run http=false scope=qemu-only' "$log_file" >/dev/null; then
+            echo 'QEMU boot identity-owner service contract did not complete' >&2
             exit 1
         fi
         if ! grep -F 'PHANTOWD_SESSION_REVOCATION_READY peers=2 old_sessions_denied=true fresh_login=true scope=panel-sessions-only' "$log_file" >/dev/null; then

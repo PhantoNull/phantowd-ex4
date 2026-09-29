@@ -15,6 +15,7 @@ import (
 
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/identityprovision"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/revisionstore"
+	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/smbprovision"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/serviceaccounts"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/serviceaccountstore"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/unixidentity"
@@ -73,6 +74,69 @@ func (m *model) dependencies() dependencies {
 			return serviceaccounts.Reservations{UIDs: []uint32{21000}, GIDs: []uint32{21001}, Names: []string{"offlineuser"}}, nil
 		}}
 }
+
+type modeledSMB struct {
+	observation smbprovision.Observation
+	createCalls int
+	setCalls    int
+	enableCalls int
+	secret      []byte
+	onCreate    func()
+}
+
+type closeCountingSMB struct {
+	modeledSMB
+	closeCalls int
+}
+
+func (b *closeCountingSMB) Close() error {
+	b.closeCalls++
+	return nil
+}
+
+func (b *modeledSMB) Observe(_ context.Context, account serviceaccounts.Account) (smbprovision.Observation, error) {
+	if b.observation.Present && (b.observation.Name != account.Name || b.observation.UID != account.UID || b.observation.GID != account.GID) {
+		return smbprovision.Observation{}, errors.New("PRIVATE SMB account mismatch")
+	}
+	return b.observation, nil
+}
+func (b *modeledSMB) CreateDisabled(_ context.Context, account serviceaccounts.Account) error {
+	b.createCalls++
+	if b.onCreate != nil {
+		b.onCreate()
+	}
+	b.observation = smbprovision.Observation{Present: true, Name: account.Name, UID: account.UID,
+		GID: account.GID, SID: "S-1-5-21-1-2-3-1001", Disabled: true}
+	return nil
+}
+func (b *modeledSMB) SetPasswordDisabled(_ context.Context, account serviceaccounts.Account, secret []byte) error {
+	b.setCalls++
+	if !b.observation.Present || !b.observation.Disabled || b.observation.Name != account.Name {
+		return errors.New("PRIVATE SMB account not disabled")
+	}
+	b.secret = append([]byte(nil), secret...)
+	return nil
+}
+func (b *modeledSMB) Enable(_ context.Context, account serviceaccounts.Account) error {
+	b.enableCalls++
+	if !b.observation.Present || !b.observation.Disabled || b.observation.Name != account.Name ||
+		b.observation.UID != account.UID || b.observation.GID != account.GID {
+		return errors.New("PRIVATE SMB account not disabled")
+	}
+	b.observation.Disabled = false
+	return nil
+}
+
+func completeUnixIdentity(t *testing.T, o *Owner, id string) {
+	t.Helper()
+	ctx := context.Background()
+	if err := o.Operation(id).Step(ctx, 1); err != nil {
+		t.Fatal(err)
+	}
+	if err := o.Operation(id).Step(ctx, 3); err != nil {
+		t.Fatal(err)
+	}
+}
 func newModel() *model {
 	return &model{groups: map[string]serviceaccounts.Account{}, users: map[string]serviceaccounts.Account{}}
 }
@@ -103,14 +167,53 @@ func provision(t *testing.T) string {
 	return dir
 }
 func fixture(t *testing.T) (*Owner, *model, string) {
+	return fixtureWithSMB(t, nil)
+}
+
+func fixtureWithSMB(t *testing.T, smbBackend smbprovision.Backend) (*Owner, *model, string) {
 	t.Helper()
 	dir, m := provision(t), newModel()
-	o, err := open(dir, m.dependencies())
+	deps := m.dependencies()
+	deps.smbBackend = smbBackend
+	o, err := open(dir, deps)
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { o.Close() })
 	return o, m, dir
+}
+
+func TestOpenWithSMBBackendTransfersAndClosesOwnershipExactlyOnce(t *testing.T) {
+	if os.Getuid() != 0 {
+		t.Skip("root authority test runs only in isolated container")
+	}
+	inventory := Inventory(func(context.Context) (serviceaccounts.Reservations, error) {
+		return serviceaccounts.Reservations{UIDs: []uint32{}, GIDs: []uint32{}, Names: []string{}}, nil
+	})
+
+	failedBackend := &closeCountingSMB{}
+	invalidDirectory := t.TempDir()
+	if err := os.Chmod(invalidDirectory, 0700); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := OpenWithSMBBackend(invalidDirectory, inventory, failedBackend); err == nil || failedBackend.closeCalls != 1 {
+		t.Fatalf("failed open must close the transferred backend exactly once: closes=%d error=%v", failedBackend.closeCalls, err)
+	}
+
+	backend := &closeCountingSMB{}
+	owner, err := OpenWithSMBBackend(provision(t), inventory, backend)
+	if err != nil {
+		t.Fatal("open owner with bound SMB backend:", err)
+	}
+	if owner.smbBackend != backend || owner.deps.smbBackend != backend {
+		t.Fatal("Owner did not retain the one startup-bound SMB backend")
+	}
+	if err := owner.Close(); err != nil {
+		t.Fatal("close owner:", err)
+	}
+	if backend.closeCalls != 1 || owner.smbBackend != nil || owner.deps.smbBackend != nil {
+		t.Fatalf("owner did not release the backend once: closes=%d owner=%p deps=%p", backend.closeCalls, owner.smbBackend, owner.deps.smbBackend)
+	}
 }
 
 func TestOwnerLifecycleAndExclusiveStores(t *testing.T) {
@@ -202,6 +305,288 @@ func TestOwnerLifecycleAndExclusiveStores(t *testing.T) {
 	defer o.Close()
 	if _, journals, err := o.Snapshot(ctx); err != nil || len(journals) != 2 || journals[0].Phase != identityprovision.UnixConfirmed || journals[1].Phase != identityprovision.UnixConfirmed {
 		t.Fatal(journals, err)
+	}
+}
+
+func TestSMBEnrollmentRequiresUnixConfirmationAndRemainsDisabled(t *testing.T) {
+	backend := &modeledSMB{}
+	o, _, _ := fixtureWithSMB(t, backend)
+	ctx := context.Background()
+	account, err := o.Reserve(ctx, 1, "first", "firstuser")
+	if err != nil {
+		t.Fatal(err)
+	}
+	smb := o.SMB(account.ID)
+	if err := smb.Begin(ctx, 5); !errors.Is(err, ErrPending) || backend.createCalls != 0 || backend.setCalls != 0 {
+		t.Fatal("Samba enrollment started before native identity confirmation", err, backend)
+	}
+	completeUnixIdentity(t, o, account.ID)
+	if err := smb.Begin(ctx, 4); !errors.Is(err, ErrConflict) {
+		t.Fatal("stale native identity revision accepted", err)
+	}
+	if err := smb.Begin(ctx, 5); err != nil {
+		t.Fatal(err)
+	}
+	if j, err := smb.Load(ctx); err != nil || j.Phase != smbprovision.Reserved || j.NativeRevision != 5 {
+		t.Fatal("Samba journal was not bound to the confirmed Unix identity", j, err)
+	}
+	if err := smb.Step(ctx, 1); err != nil {
+		t.Fatal(err)
+	}
+	if j, err := smb.Load(ctx); err != nil || j.Phase != smbprovision.DisabledNoPassword || j.Revision != 3 || !backend.observation.Disabled {
+		t.Fatal("passdb entry was not created disabled", j, err, backend.observation)
+	}
+	if err := smb.Step(ctx, 3); !errors.Is(err, smbprovision.ErrPending) || backend.createCalls != 1 {
+		t.Fatal("disabled account creation was retried", err, backend.createCalls)
+	}
+	secret := []byte("test-only-private-secret")
+	if err := smb.SetPasswordDisabled(ctx, 3, secret); err != nil {
+		t.Fatal(err)
+	}
+	j, err := smb.Load(ctx)
+	if err != nil || j.Phase != smbprovision.CredentialSetDisabled || j.Revision != 5 || !backend.observation.Disabled {
+		t.Fatal("credential was not set while disabled", j, err, backend.observation)
+	}
+	if backend.createCalls != 1 || backend.setCalls != 1 || string(backend.secret) != string(secret) {
+		t.Fatal("unexpected Samba command sequence", backend)
+	}
+	if _, err := smb.Load(ctx); err != nil {
+		t.Fatal("completed enrollment could not be read", err)
+	}
+}
+
+func TestSMBEnableIsExplicitAndRevalidatesUnixOwner(t *testing.T) {
+	backend := &modeledSMB{}
+	o, _, _ := fixtureWithSMB(t, backend)
+	ctx := context.Background()
+	account, err := o.Reserve(ctx, 1, "first", "firstuser")
+	if err != nil {
+		t.Fatal(err)
+	}
+	completeUnixIdentity(t, o, account.ID)
+	smb := o.SMB(account.ID)
+	if err := smb.Begin(ctx, 5); err != nil {
+		t.Fatal(err)
+	}
+	if err := smb.Step(ctx, 1); err != nil {
+		t.Fatal(err)
+	}
+	if err := smb.SetPasswordDisabled(ctx, 3, []byte("test-only-private-secret")); err != nil {
+		t.Fatal(err)
+	}
+	if err := smb.Enable(ctx, 4); !errors.Is(err, smbprovision.ErrConflict) || backend.enableCalls != 0 {
+		t.Fatal("stale enable revision reached the backend", err, backend.enableCalls)
+	}
+	if err := smb.Enable(ctx, 5); err != nil {
+		t.Fatal("explicit enable failed", err)
+	}
+	journal, err := smb.Load(ctx)
+	if err != nil || journal.Phase != smbprovision.Enabled || journal.Revision != 7 || journal.SID != "S-1-5-21-1-2-3-1001" ||
+		backend.observation.Disabled || backend.enableCalls != 1 {
+		t.Fatal("Owner did not confirm explicit enable", journal, err, backend)
+	}
+	if err := smb.Enable(ctx, 5); !errors.Is(err, smbprovision.ErrConflict) || backend.enableCalls != 1 {
+		t.Fatal("confirmed enable could be replayed", err, backend.enableCalls)
+	}
+}
+
+func TestSMBEnableRefusesChangedUnixIdentityBeforeDispatch(t *testing.T) {
+	backend := &modeledSMB{}
+	o, model, _ := fixtureWithSMB(t, backend)
+	ctx := context.Background()
+	account, err := o.Reserve(ctx, 1, "first", "firstuser")
+	if err != nil {
+		t.Fatal(err)
+	}
+	completeUnixIdentity(t, o, account.ID)
+	smb := o.SMB(account.ID)
+	if err := smb.Begin(ctx, 5); err != nil {
+		t.Fatal(err)
+	}
+	if err := smb.Step(ctx, 1); err != nil {
+		t.Fatal(err)
+	}
+	if err := smb.SetPasswordDisabled(ctx, 3, []byte("test-only-private-secret")); err != nil {
+		t.Fatal(err)
+	}
+	delete(model.users, account.ID)
+	if err := smb.Enable(ctx, 5); !errors.Is(err, ErrReview) || backend.enableCalls != 0 {
+		t.Fatal("enable did not revalidate Unix identity before dispatch", err, backend.enableCalls)
+	}
+}
+
+func TestSMBEnrollmentFailsClosedWithoutOwnerConfiguredBackend(t *testing.T) {
+	o, _, dir := fixture(t)
+	ctx := context.Background()
+	account, err := o.Reserve(ctx, 1, "first", "firstuser")
+	if err != nil {
+		t.Fatal(err)
+	}
+	completeUnixIdentity(t, o, account.ID)
+	if err := o.SMB(account.ID).Begin(ctx, 5); !errors.Is(err, smbprovision.ErrInvalid) {
+		t.Fatal("owner without a bound trusted backend accepted enrollment", err)
+	}
+	if _, err := os.Stat(filepath.Join(dir, "operations", account.ID, "smb")); !errors.Is(err, os.ErrNotExist) {
+		t.Fatal("missing backend left an enrollment journal directory", err)
+	}
+}
+
+func TestSMBEnrollmentUsesTheGlobalOwnerLock(t *testing.T) {
+	backend := &modeledSMB{}
+	o, _, _ := fixtureWithSMB(t, backend)
+	ctx := context.Background()
+	account, err := o.Reserve(ctx, 1, "first", "firstuser")
+	if err != nil {
+		t.Fatal(err)
+	}
+	completeUnixIdentity(t, o, account.ID)
+	if err := o.SMB(account.ID).Begin(ctx, 5); err != nil {
+		t.Fatal(err)
+	}
+	entered, release := make(chan struct{}), make(chan struct{})
+	backend.onCreate = func() { close(entered); <-release }
+	stepDone := make(chan error, 1)
+	go func() { stepDone <- o.SMB(account.ID).Step(ctx, 1) }()
+	<-entered
+	if _, err := o.Operation(account.ID).Load(ctx); !errors.Is(err, ErrBusy) {
+		t.Fatal("Unix identity operation bypassed an in-flight Samba mutation", err)
+	}
+	close(release)
+	if err := <-stepDone; err != nil {
+		t.Fatal(err)
+	}
+	if backend.createCalls != 1 {
+		t.Fatal("unexpected Samba create count", backend.createCalls)
+	}
+}
+
+func TestSMBPreexistingPassdbAccountIsRefusedWithoutCreatingJournal(t *testing.T) {
+	backend := &modeledSMB{}
+	o, _, dir := fixtureWithSMB(t, backend)
+	ctx := context.Background()
+	account, err := o.Reserve(ctx, 1, "first", "firstuser")
+	if err != nil {
+		t.Fatal(err)
+	}
+	completeUnixIdentity(t, o, account.ID)
+	backend.observation = smbprovision.Observation{Present: true, Name: account.Name,
+		UID: account.UID, GID: account.GID, SID: "S-1-5-21-1-2-3-1001", Disabled: true}
+	if err := o.SMB(account.ID).Begin(ctx, 5); !errors.Is(err, smbprovision.ErrReview) {
+		t.Fatal("pre-existing passdb entry was adopted", err)
+	}
+	if backend.createCalls != 0 || backend.setCalls != 0 {
+		t.Fatal("pre-existing passdb entry caused mutation", backend)
+	}
+	if _, _, err := o.Snapshot(ctx); err != nil {
+		t.Fatal("refused existing entry left an orphan journal directory", err)
+	}
+	if _, err := os.Stat(filepath.Join(dir, "operations", account.ID, "smb")); !errors.Is(err, os.ErrNotExist) {
+		t.Fatal("empty enrollment directory was not safely removed", err)
+	}
+}
+
+func TestSMBMutationRefusesChangedUnixIdentity(t *testing.T) {
+	backend := &modeledSMB{}
+	o, model, _ := fixtureWithSMB(t, backend)
+	ctx := context.Background()
+	account, err := o.Reserve(ctx, 1, "first", "firstuser")
+	if err != nil {
+		t.Fatal(err)
+	}
+	completeUnixIdentity(t, o, account.ID)
+	if err := o.SMB(account.ID).Begin(ctx, 5); err != nil {
+		t.Fatal(err)
+	}
+	delete(model.users, account.ID)
+	if err := o.SMB(account.ID).Step(ctx, 1); !errors.Is(err, ErrReview) || backend.createCalls != 0 {
+		t.Fatal("Samba mutation did not revalidate the live Unix identity", err, backend.createCalls)
+	}
+	if journal, err := o.SMB(account.ID).Load(ctx); err != nil || journal.Phase != smbprovision.Reserved {
+		t.Fatal("pre-command Unix mismatch unexpectedly advanced Samba state", journal, err)
+	}
+}
+
+func TestHelperSMBIntentExit(t *testing.T) {
+	dir := os.Getenv("PHANTOWD_OWNER_SMB_CRASH_DIR")
+	if dir == "" {
+		return
+	}
+	m := newModel()
+	deps := m.dependencies()
+	deps.smbBackend = &exitAfterSMBIntent{}
+	o, err := open(dir, deps)
+	if err != nil {
+		os.Exit(81)
+	}
+	journal, err := o.Operation("first").Load(context.Background())
+	if err != nil {
+		os.Exit(82)
+	}
+	m.groups[journal.Account.ID] = journal.Account
+	m.users[journal.Account.ID] = journal.Account
+	_ = o.SMB("first").Step(context.Background(), 1)
+	os.Exit(83)
+}
+
+type exitAfterSMBIntent struct{}
+
+func (*exitAfterSMBIntent) Observe(context.Context, serviceaccounts.Account) (smbprovision.Observation, error) {
+	return smbprovision.Observation{}, nil
+}
+func (*exitAfterSMBIntent) CreateDisabled(context.Context, serviceaccounts.Account) error {
+	os.Exit(42)
+	return nil
+}
+func (*exitAfterSMBIntent) SetPasswordDisabled(context.Context, serviceaccounts.Account, []byte) error {
+	os.Exit(43)
+	return nil
+}
+func (*exitAfterSMBIntent) Enable(context.Context, serviceaccounts.Account) error {
+	os.Exit(44)
+	return nil
+}
+
+func TestOwnerReopensInterruptedSMBIntentAsReviewWithoutRetry(t *testing.T) {
+	backend := &modeledSMB{}
+	o, _, dir := fixtureWithSMB(t, backend)
+	ctx := context.Background()
+	account, err := o.Reserve(ctx, 1, "first", "firstuser")
+	if err != nil {
+		t.Fatal(err)
+	}
+	completeUnixIdentity(t, o, account.ID)
+	if err := o.SMB(account.ID).Begin(ctx, 5); err != nil {
+		t.Fatal(err)
+	}
+	if err := o.Close(); err != nil {
+		t.Fatal(err)
+	}
+	command := exec.Command(os.Args[0], "-test.run=^TestHelperSMBIntentExit$")
+	command.Env = append(os.Environ(), "PHANTOWD_OWNER_SMB_CRASH_DIR="+dir)
+	if err := command.Run(); err == nil {
+		t.Fatal("child unexpectedly survived the interrupted SMB operation")
+	} else if exit, ok := err.(*exec.ExitError); !ok || exit.ExitCode() != 42 {
+		t.Fatal("unexpected interrupted SMB child result", err)
+	}
+	m := newModel()
+	m.groups[account.ID] = account
+	m.users[account.ID] = account
+	deps := m.dependencies()
+	deps.smbBackend = backend
+	reopened, err := open(dir, deps)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer reopened.Close()
+	journal, err := reopened.SMB(account.ID).Load(ctx)
+	if err != nil || journal.Phase != smbprovision.ReviewRequired || journal.Revision != 3 {
+		t.Fatal("owner did not durably quarantine the interrupted intent", journal, err)
+	}
+	if native, err := reopened.Operation(account.ID).Load(ctx); err != nil || native.Phase != identityprovision.UnixConfirmed {
+		t.Fatal("Samba recovery changed the Unix identity journal", native, err)
+	}
+	if err := reopened.SMB(account.ID).Step(ctx, 3); !errors.Is(err, smbprovision.ErrReview) || backend.createCalls != 0 {
+		t.Fatal("interrupted Samba command was automatically retried", err, backend.createCalls)
 	}
 }
 

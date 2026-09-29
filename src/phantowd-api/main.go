@@ -25,11 +25,12 @@ func main() {
 	mdStackTest := flag.Bool("qemu-md-stack-test", false, "fixed disposable MD stack/mount-guard fixture; QEMU only")
 	stateTest := flag.String("qemu-state-test", "", "fixed two-boot state fixture; QEMU only")
 	identityClient := flag.String("qemu-identity-client", "", "fixed unprivileged identity-channel fixture; QEMU only")
+	identityOwnerService := flag.Bool("qemu-identity-owner-service", false, "fixed root identity-owner service fixture; QEMU only")
 	flag.Parse()
 	modes := 0
 	for _, selected := range []bool{
 		*selfTest, *storageBroker, *nfsTest != "", *smbTest, *mountGuardTest,
-		*mdStackTest, *stateTest != "", *identityClient != "",
+		*mdStackTest, *stateTest != "", *identityClient != "", *identityOwnerService,
 	} {
 		if selected {
 			modes++
@@ -48,6 +49,13 @@ func main() {
 	if *identityClient != "" {
 		if err := runQEMUIdentityClient(*identityClient); err != nil {
 			fmt.Fprintln(os.Stderr, "PHANTOWD_API_ERROR identity channel fixture failed")
+			os.Exit(1)
+		}
+		return
+	}
+	if *identityOwnerService {
+		if err := runQEMUIdentityOwnerService(); err != nil {
+			fmt.Fprintln(os.Stderr, "PHANTOWD_IDENTITY_OWNER_ERROR startup refused")
 			os.Exit(1)
 		}
 		return

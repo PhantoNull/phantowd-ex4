@@ -31,7 +31,7 @@ func exerciseQEMUIdentityChannel(owner *identityowner.Owner, phase string) error
 	if err := guardQEMUDataVolume(); err != nil {
 		return err
 	}
-	if phase != "group" && phase != "user" && phase != "second" {
+	if phase != "group" && phase != "user" && phase != "second" && phase != "smb-create" && phase != "smb-password" && phase != "smb-enable" {
 		return errors.New("invalid channel fixture phase")
 	}
 	if err := os.Mkdir(identitySocketDir, 0710); err != nil {
@@ -41,7 +41,9 @@ func exerciseQEMUIdentityChannel(owner *identityowner.Owner, phase string) error
 	if err := os.Chown(identitySocketDir, 0, 65534); err != nil {
 		return err
 	}
-	server, err := identityrpc.NewRouter(65534, func(id string) identityrpc.Operation { return owner.Operation(id) })
+	server, err := identityrpc.NewRouterWithSMB(65534,
+		func(id string) identityrpc.Operation { return owner.Operation(id) },
+		func(id string) identityrpc.SMBOperation { return owner.SMB(id) })
 	if err != nil {
 		return err
 	}
@@ -94,18 +96,86 @@ func exerciseQEMUIdentityChannel(owner *identityowner.Owner, phase string) error
 }
 
 func runQEMUIdentityClient(phase string) error {
-	if runtime.GOARCH != "arm" || strings.Split(buildARMLevel(), ",")[0] != "5" || os.Getuid() != 65534 || os.Geteuid() != 65534 {
+	clientUID, clientGID, ownerServiceClient, principalErr := qemuIdentityOwnerClientPrincipal(phase)
+	if principalErr != nil {
+		return principalErr
+	}
+	if runtime.GOARCH != "arm" || strings.Split(buildARMLevel(), ",")[0] != "5" {
 		return errors.New("wrong channel fixture process")
 	}
-	if phase != "group" && phase != "user" && phase != "second" {
+	if ownerServiceClient {
+		if os.Getuid() != int(clientUID) || os.Geteuid() != int(clientUID) || os.Getgid() != int(clientGID) {
+			return errors.New("wrong boot owner fixture peer")
+		}
+		return runQEMUIdentityOwnerClient(phase)
+	}
+	if os.Getuid() != 65534 || os.Geteuid() != 65534 {
+		return errors.New("wrong channel fixture process")
+	}
+	if phase != "group" && phase != "user" && phase != "second" && phase != "smb-create" && phase != "smb-password" && phase != "smb-enable" {
 		return errors.New("invalid channel fixture phase")
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 12*time.Second)
+	defer cancel()
+	if phase == "smb-create" || phase == "smb-password" || phase == "smb-enable" {
+		requests := []struct {
+			request identityrpc.SMBRequest
+			phase   string
+			rev     uint64
+		}{
+			{identityrpc.SMBRequest{Action: "begin", AccountID: "second", Revision: 5}, "reserved", 1},
+			{identityrpc.SMBRequest{Action: "step", AccountID: "second", Revision: 1}, "disabled-no-password", 3},
+			{identityrpc.SMBRequest{Action: "status", AccountID: "second"}, "disabled-no-password", 3},
+		}
+		if phase == "smb-password" {
+			secret := []byte("public-qemu-owner-enrollment")
+			defer clear(secret)
+			requests = []struct {
+				request identityrpc.SMBRequest
+				phase   string
+				rev     uint64
+			}{
+				{identityrpc.SMBRequest{Action: "set-password-disabled", AccountID: "second", Revision: 3, Password: secret}, "credential-set-disabled", 5},
+				{identityrpc.SMBRequest{Action: "status", AccountID: "second"}, "credential-set-disabled", 5},
+				{identityrpc.SMBRequest{Action: "set-password-disabled", AccountID: "second", Revision: 3, Password: secret}, "", 0},
+			}
+		}
+		if phase == "smb-enable" {
+			requests = []struct {
+				request identityrpc.SMBRequest
+				phase   string
+				rev     uint64
+			}{
+				{identityrpc.SMBRequest{Action: "enable", AccountID: "second", Revision: 4}, "", 0},
+				{identityrpc.SMBRequest{Action: "enable", AccountID: "second", Revision: 5}, "enabled", 7},
+				{identityrpc.SMBRequest{Action: "status", AccountID: "second"}, "enabled", 7},
+				{identityrpc.SMBRequest{Action: "enable", AccountID: "second", Revision: 5}, "", 0},
+			}
+		}
+		for _, test := range requests {
+			dialer := net.Dialer{}
+			conn, err := dialer.DialContext(ctx, "unix", identitySocket)
+			if err != nil {
+				return err
+			}
+			reply, err := identityrpc.CallSMB(ctx, conn.(*net.UnixConn), test.request)
+			if err != nil {
+				return err
+			}
+			wantCode := "ok"
+			if test.phase == "" {
+				wantCode = "conflict"
+			}
+			if reply.Code != wantCode || reply.Phase != test.phase || reply.Revision != test.rev {
+				return errors.New("SMB channel fixture response mismatch")
+			}
+		}
+		return nil
 	}
 	want, next := uint64(1), "group-confirmed"
 	if phase == "user" {
 		want, next = 3, "unix-confirmed"
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 12*time.Second)
-	defer cancel()
 	type exchange struct {
 		req      identityrpc.Request
 		code     string

@@ -466,11 +466,24 @@ important pinned-Samba boundary: ordinary password replacement can re-enable a
 disabled account, while combining the disable option suppresses password setting.
 A local Buildroot patch prototype adds a root-only, stdin-only
 `smbpasswd --set-password-disabled` path for accounts already disabled; it has
-now passed the full local Buildroot ARMv5 QEMU authentication fixture. The
-fixture verifies the disabled-state transition, denial of the old credential,
-the root-only/stdin guards and unchanged Unix account files. This is local test
-evidence only: no hosted feature-commit check or product credential backend has
-been completed, and the option is not used by this Go API.
+passed the full local Buildroot ARMv5 QEMU authentication fixture and exact-head
+hosted ARMv5 QEMU and Stage B3 checks. PR #46 merged it to `develop` as
+`33df1ed`. The fixture verifies the disabled-state transition, denial of the
+old credential, the root-only/stdin guards and unchanged Unix account files.
+The separate [M2.4 credential coordinator](internal/smbprovision/README.md) now
+journals absent -> created-disabled -> credential-set-disabled -> enabled,
+with enablement a separate revision-checked action. One trusted adapter is
+bound when `Owner` opens; operation calls cannot replace it. Host/race/fuzz
+checks, Linux package tests and the full local Buildroot ARMv5 QEMU smoke pass,
+including real Samba fixture authentication denied before enable and accepted
+after same-SID confirmation. QEMU uses a disposable user and private `smb.conf`;
+the fixed executor validates that already-pinned configuration descriptor with
+`testparm` before it can be bound to an Owner. Missing or invalid configuration
+is rejected without creating Owner state or modifying the config. Product
+service startup/configuration, HTTP authorization and operator review handling
+remain unwired, and no HTTP account API is exposed. The config inode
+remains pinned for the Owner lifetime, pathname replacement cannot retarget the
+executor, and owner shutdown closes that executor once.
 
 The [native identity authority](identityowner/README.md) now owns one configured
 reservation ledger and its journals under a lifetime lease. It serializes typed
@@ -478,21 +491,29 @@ allocation/creation, freezes allocation behind incomplete work and refuses
 orphaned cross-document state after interruption. The guarded ARMv5 channel now
 uses that owner. Complete imported/offline ownership discovery, qualified state,
 explicit recovery, credential transitions and deployed listener/panel wiring
-remain required; this is not yet a product account-management service.
+remain required. Explicit enable is implemented only through the internal
+Owner-bound method and fixture-only v2 channel; no HTTP credential endpoint or
+product account-management service is provided by the M2.4 slice.
+The QEMU-selftest profile now separately boots a root Owner service against
+guest-local fixture state and verifies protected-socket authorization, process
+restart and drain. This does not change the M2.4 product integration status.
 
 The [local identity channel](identityrpc/README.md) now connects an actually
 unprivileged ARMv5 fixture child to the root-owned journal/executor using
-kernel-verified Unix-socket peers. It accepts only status or one revision-checked
-step for an already bound or authority-resolved operation; no commands, paths or credentials cross
-the interface. Missing replies are never retried automatically. Its optional
+kernel-verified Unix-socket peers. Native identity version 1 accepts only
+status or one revision-checked step. The separate SMB version-2 frame carries a
+bounded password only as raw bytes for the typed `set-password-disabled`
+operation, and a credential-free `enable` action that requires a separate
+revision and prior password confirmation; the Owner-bound backend is never
+selected by request input. Missing replies are never retried automatically. Its optional
 protected listener supplies bounded acceptance, cooperative pathname ownership,
 exact stale-socket recovery and worker drain before authority closure; the ARMv5
 fixture now uses it. A shared router resolves existing accounts only after peer
 and request validation, pins one operation across each request and checks its
 post-step account binding. The ARMv5 scenario creates a second identity while
 verifying that the first journal remains unchanged. This library does not deploy a product service or supply
-authority ownership, operation creation,
-Samba credential management or a panel account endpoint.
+authority ownership, operation creation, production Samba integration or a
+panel account endpoint.
 
 The [typed Linux identity executor](identityexec/README.md) now connects the
 journal to fixed BusyBox group/user creation in the guarded ARMv5 fixture.

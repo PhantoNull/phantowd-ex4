@@ -70,6 +70,8 @@ grep -F -- '--chuid phantowd:phantowd' "$package_dir/S50phantowd-api" >/dev/null
 
 qemu_ready_script="$repo_root/board/qemu/armv5/rootfs-overlay/etc/init.d/S99phantowd-ready"
 qemu_selftest_helper="$repo_root/board/qemu/armv5/rootfs-overlay/usr/lib/phantowd/qemu-selftest-once.sh"
+qemu_owner_init="$repo_root/board/qemu/armv5/rootfs-overlay/etc/init.d/S49phantowd-identity-owner"
+qemu_owner_service="$repo_root/src/phantowd-api/identity_owner_service_qemu_linux.go"
 grep -F 'PHANTOWD_QEMU_API_SELFTEST_FAILURE detail=' "$qemu_selftest_helper" >/dev/null ||
     fail 'QEMU diagnostics failures must print a bounded first self-test error summary'
 grep -F 'index($0, "PHANTOWD_API_ERROR ") == 1' "$qemu_selftest_helper" >/dev/null ||
@@ -79,6 +81,34 @@ grep -F 'index($0, "PHANTOWD_API_ERROR ") == 1' "$qemu_selftest_helper" >/dev/nu
 if grep -F 'while ! /usr/bin/phantowd-api --self-test' "$qemu_ready_script" >/dev/null; then
     fail 'QEMU readiness init must not retry state-mutating API self-tests'
 fi
+[ -f "$qemu_owner_init" ] || fail 'QEMU identity-owner init service is missing'
+qemu_owner_mode=$(git -C "$repo_root" ls-files --stage -- \
+    board/qemu/armv5/rootfs-overlay/etc/init.d/S49phantowd-identity-owner | awk '{print $1}')
+[ "$qemu_owner_mode" = 100755 ] ||
+    fail 'QEMU identity-owner init service must be executable in the tracked rootfs overlay'
+grep -F -- '--qemu-identity-owner-service' "$qemu_owner_init" >/dev/null ||
+    fail 'QEMU init must start the fixed owner-service mode'
+if grep -F -- '--chuid' "$qemu_owner_init" >/dev/null; then
+    fail 'QEMU identity-owner service must remain root'
+fi
+grep -F 'BR2_PACKAGE_PHANTOWD_API_QEMU_SELFTEST' "$package_makefile" >/dev/null ||
+    fail 'owner init script must be gated to the QEMU self-test image'
+grep -F 'qemuOwnerSocketDir' "$qemu_owner_service" >/dev/null ||
+    fail 'QEMU owner service must use its fixed protected socket path'
+grep -F 'qemuOwnerRoot       = "/run/phantowd-identity-owner-fixture"' "$qemu_owner_service" >/dev/null ||
+    fail 'QEMU owner state must remain under volatile /run'
+config_prepare_line=$(grep -n 'prepareQEMUIdentityOwnerConfig(); err != nil' "$qemu_owner_service" | head -n 1 | cut -d: -f1)
+backend_validate_line=$(grep -n 'smbBackend, err := smbexec.New(qemuOwnerSMBConfig)' "$qemu_owner_service" | head -n 1 | cut -d: -f1)
+runtime_prepare_line=$(grep -n 'prepareQEMUIdentityOwnerRuntime(apiGID); err != nil' "$qemu_owner_service" | head -n 1 | cut -d: -f1)
+registry_init_line=$(grep -n 'initializeQEMUIdentityOwnerRegistry(); err != nil' "$qemu_owner_service" | head -n 1 | cut -d: -f1)
+[ -n "$config_prepare_line" ] && [ -n "$backend_validate_line" ] &&
+    [ -n "$runtime_prepare_line" ] && [ -n "$registry_init_line" ] &&
+    [ "$config_prepare_line" -lt "$backend_validate_line" ] &&
+    [ "$backend_validate_line" -lt "$runtime_prepare_line" ] &&
+    [ "$runtime_prepare_line" -lt "$registry_init_line" ] ||
+    fail 'QEMU must validate its Samba backend before creating Owner runtime/authority state'
+grep -F 'PHANTOWD_IDENTITY_OWNER_BOOT_READY service_uid=0 socket_mode=0620 api_uid=nonroot config_validated_before_owner_state=true config_missing_rejected=true config_invalid_rejected=true no_side_effects=true process_restart=true drained=true runtime=run http=false scope=qemu-only' "$repo_root/support/qemu-smoke.sh" >/dev/null ||
+    fail 'QEMU smoke must require the boot owner service lifecycle marker'
 sh "$repo_root/support/tests/test-qemu-selftest-helper.sh"
 
 error_summary=$(printf '%s\n' \

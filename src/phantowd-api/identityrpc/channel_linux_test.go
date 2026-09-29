@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/binary"
+	"encoding/json"
 	"errors"
 	"net"
 	"os"
@@ -19,6 +20,7 @@ import (
 	"time"
 
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/identityprovision"
+	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/smbprovision"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/serviceaccounts"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/unixidentity"
 )
@@ -116,6 +118,236 @@ func exchange(t *testing.T, s *Server, req Request) Response {
 		t.Fatal(err)
 	}
 	return r
+}
+
+type smbRPCModel struct {
+	journal      smbprovision.Journal
+	begun        bool
+	createCalls  int
+	passwordCall int
+	enableCalls  int
+	secretView   []byte
+	secretCopy   []byte
+	setError     error
+}
+
+func newSMBRPCModel() *smbRPCModel {
+	return &smbRPCModel{journal: smbprovision.Journal{
+		Format: smbprovision.Format, SchemaVersion: 1, Revision: 1, NativeRevision: 5,
+		Account: serviceaccounts.Account{ID: "fixture", Name: "rpcfixture", UID: 21000, GID: 21000, State: serviceaccounts.Disabled},
+		Phase:   smbprovision.Reserved,
+	}}
+}
+
+func (m *smbRPCModel) Load(context.Context) (smbprovision.Journal, error) {
+	if !m.begun {
+		return smbprovision.Journal{}, smbprovision.ErrConflict
+	}
+	return m.journal, nil
+}
+
+func (m *smbRPCModel) Begin(_ context.Context, nativeRevision uint64) error {
+	if m.begun || nativeRevision != m.journal.NativeRevision {
+		return smbprovision.ErrConflict
+	}
+	m.begun = true
+	return nil
+}
+
+func (m *smbRPCModel) Step(_ context.Context, expected uint64) error {
+	if !m.begun || expected != m.journal.Revision {
+		return smbprovision.ErrConflict
+	}
+	if m.journal.Phase != smbprovision.Reserved {
+		return smbprovision.ErrPending
+	}
+	m.createCalls++
+	m.journal.Revision = 3
+	m.journal.Phase = smbprovision.DisabledNoPassword
+	m.journal.SID = "S-1-5-21-1-2-3-1001"
+	return nil
+}
+
+func (m *smbRPCModel) SetPasswordDisabled(_ context.Context, expected uint64, secret []byte) error {
+	m.secretView = secret
+	m.secretCopy = append([]byte(nil), secret...)
+	if !m.begun || expected != m.journal.Revision || m.journal.Phase != smbprovision.DisabledNoPassword {
+		return smbprovision.ErrConflict
+	}
+	m.passwordCall++
+	if m.setError != nil {
+		return m.setError
+	}
+	m.journal.Revision = 5
+	m.journal.Phase = smbprovision.CredentialSetDisabled
+	return nil
+}
+
+func (m *smbRPCModel) Enable(_ context.Context, expected uint64) error {
+	if !m.begun || expected != m.journal.Revision || m.journal.Phase != smbprovision.CredentialSetDisabled {
+		return smbprovision.ErrConflict
+	}
+	m.enableCalls++
+	m.journal.Revision = 7
+	m.journal.Phase = smbprovision.Enabled
+	return nil
+}
+
+func exchangeSMB(t *testing.T, s *Server, req SMBRequest) Response {
+	t.Helper()
+	server, client := pair(t)
+	done := make(chan error, 1)
+	go func() { done <- s.Serve(context.Background(), server) }()
+	r, err := CallSMB(context.Background(), client, req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := <-done; err != nil {
+		t.Fatal(err)
+	}
+	return r
+}
+
+func TestSMBEnableFrameIsTypedAndCredentialFree(t *testing.T) {
+	request := SMBRequest{Action: "enable", AccountID: "fixture", Revision: 5}
+	encoded, err := encodeSMBFrame(request)
+	if err != nil {
+		t.Fatal("valid explicit enable request rejected", err)
+	}
+	defer clear(encoded)
+	decoded, err := decodeSMBRequest(encoded[4:])
+	if err != nil || decoded.Action != request.Action || decoded.AccountID != request.AccountID ||
+		decoded.Revision != request.Revision || len(decoded.Password) != 0 {
+		t.Fatal("enable frame decoded with the wrong typed fields", decoded, err)
+	}
+	request.Password = []byte("must-not-accompany-enable")
+	if _, err := encodeSMBFrame(request); !errors.Is(err, ErrInvalid) {
+		t.Fatal("enable action accepted a password payload", err)
+	}
+}
+
+func TestSMBCredentialChannelLifecycleAndSecretErasure(t *testing.T) {
+	if os.Getuid() != 0 {
+		t.Skip("root-owned channel integration runs in isolated container")
+	}
+	model := newSMBRPCModel()
+	s, err := NewRouterWithSMB(65534,
+		func(id string) Operation {
+			if id == "fixture" {
+				return &routedOperation{}
+			}
+			return nil
+		},
+		func(id string) SMBOperation {
+			if id == "fixture" {
+				return model
+			}
+			return nil
+		})
+	if err != nil {
+		t.Fatal(err)
+	}
+	s.uid = 0
+
+	for _, tc := range []struct {
+		req      SMBRequest
+		code     string
+		phase    string
+		revision uint64
+	}{
+		{SMBRequest{Action: "begin", AccountID: "fixture", Revision: 5}, "ok", smbprovision.Reserved, 1},
+		{SMBRequest{Action: "step", AccountID: "fixture", Revision: 1}, "ok", smbprovision.DisabledNoPassword, 3},
+		{SMBRequest{Action: "status", AccountID: "fixture"}, "ok", smbprovision.DisabledNoPassword, 3},
+	} {
+		got := exchangeSMB(t, s, tc.req)
+		if got.Version != 2 || got.Code != tc.code || got.Phase != tc.phase || got.Revision != tc.revision {
+			t.Fatalf("SMB RPC response = %+v, want %#v", got, tc)
+		}
+	}
+
+	secret := []byte("rpc-channel-fixture-password")
+	got := exchangeSMB(t, s, SMBRequest{Action: "set-password-disabled", AccountID: "fixture", Revision: 3, Password: secret})
+	if got.Version != 2 || got.Code != "ok" || got.Phase != smbprovision.CredentialSetDisabled || got.Revision != 5 {
+		t.Fatal(got)
+	}
+	if !bytes.Equal(secret, []byte("rpc-channel-fixture-password")) || !bytes.Equal(model.secretCopy, secret) {
+		t.Fatal("client-owned password bytes were mutated or changed in transit")
+	}
+	defer clear(model.secretCopy)
+	if !bytes.Equal(model.secretView, make([]byte, len(secret))) {
+		t.Fatal("server did not clear the received secret buffer after dispatch")
+	}
+	if got := exchangeSMB(t, s, SMBRequest{Action: "enable", AccountID: "fixture", Revision: 4}); got.Code != "conflict" || model.enableCalls != 0 {
+		t.Fatal("stale enable request was dispatched", got, model.enableCalls)
+	}
+	enabled := exchangeSMB(t, s, SMBRequest{Action: "enable", AccountID: "fixture", Revision: 5})
+	if enabled.Code != "ok" || enabled.Phase != smbprovision.Enabled || enabled.Revision != 7 || model.enableCalls != 1 {
+		t.Fatal("explicit enable action was not routed through the Owner capability", enabled, model.enableCalls)
+	}
+	if got := exchangeSMB(t, s, SMBRequest{Action: "enable", AccountID: "fixture", Revision: 5}); got.Code != "conflict" || model.enableCalls != 1 {
+		t.Fatal("stale/repeated enable request was dispatched", got, model.enableCalls)
+	}
+	response, _ := json.Marshal(enabled)
+	if bytes.Contains(response, secret) {
+		t.Fatal("credential appeared in the RPC response")
+	}
+	if got := exchangeSMB(t, s, SMBRequest{Action: "step", AccountID: "fixture", Revision: 3}); got.Code != "conflict" || model.createCalls != 1 {
+		t.Fatal("stale SMB step was accepted or replayed", got, model.createCalls)
+	}
+}
+
+func TestSMBCredentialChannelRedactsNativeErrorAndRejectsCredentialJSON(t *testing.T) {
+	if os.Getuid() != 0 {
+		t.Skip("root-owned channel integration runs in isolated container")
+	}
+	model := newSMBRPCModel()
+	secret := "rpc-private-diagnostic-secret"
+	model.begun = true
+	model.journal.Revision = 3
+	model.journal.Phase = smbprovision.DisabledNoPassword
+	model.journal.SID = "S-1-5-21-1-2-3-1001"
+	model.setError = errors.New("private backend detail: " + secret)
+	s, err := NewRouterWithSMB(65534, func(string) Operation { return &routedOperation{} }, func(string) SMBOperation { return model })
+	if err != nil {
+		t.Fatal(err)
+	}
+	s.uid = 0
+	secretBytes := []byte(secret)
+	defer clear(secretBytes)
+	got := exchangeSMB(t, s, SMBRequest{Action: "set-password-disabled", AccountID: "fixture", Revision: 3, Password: secretBytes})
+	defer clear(model.secretCopy)
+	wire, _ := json.Marshal(got)
+	if got.Code != "unavailable" || bytes.Contains(wire, []byte(secret)) || bytes.Contains(wire, []byte("private backend detail")) {
+		t.Fatal("SMB diagnostics escaped the RPC boundary", got)
+	}
+	for _, malformed := range []string{
+		`{"version":1,"action":"status","account_id":"fixture","revision":0,"password":"not-allowed"}`,
+		`{"version":2,"action":"set-password-disabled","account_id":"fixture","revision":3,"password":"not-allowed"}`,
+	} {
+		var req Request
+		if decodeRequest([]byte(malformed), &req) == nil {
+			t.Fatal("JSON credential transport accepted", malformed)
+		}
+	}
+
+	server, client := pair(t)
+	done := make(chan error, 1)
+	passwordCallsBefore := model.passwordCall
+	go func() { done <- s.Serve(context.Background(), server) }()
+	if err := send(client, json.RawMessage(`{"version":2,"action":"set-password-disabled","account_id":"fixture","revision":3,"password":"not-allowed"}`)); err != nil {
+		t.Fatal(err)
+	}
+	wireReply, err := receive(client)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var rejected Response
+	if decodeResponse(wireReply, &rejected, 1) != nil || rejected.Code != "invalid" || model.passwordCall != passwordCallsBefore {
+		t.Fatal("JSON credential request was not rejected before backend dispatch", rejected, err)
+	}
+	if err := <-done; err != nil {
+		t.Fatal(err)
+	}
 }
 
 func TestJournalChannelSequence(t *testing.T) {
@@ -275,7 +507,7 @@ func TestMalformedFramesAndReplies(t *testing.T) {
 	if err := send(shortWriter{}, Request{1, "status", "fixture", 0}); err != ErrChannel {
 		t.Fatal(err)
 	}
-	for _, r := range []Response{{1, "ok", 1, "unix-confirmed"}, {1, "review", 2, "reserved"}, {2, "ok", 1, "reserved"}, {1, "PRIVATE", 0, ""}} {
+	for _, r := range []Response{{1, "ok", 1, "unix-confirmed"}, {1, "review", 2, "reserved"}, {1, "pending", 0, ""}, {2, "ok", 1, "unix-confirmed"}, {1, "PRIVATE", 0, ""}} {
 		if r.valid() {
 			t.Fatal(r)
 		}

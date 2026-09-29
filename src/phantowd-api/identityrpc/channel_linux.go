@@ -64,15 +64,20 @@ func (r Request) valid() bool {
 }
 
 func (r Response) valid() bool {
-	if r.Version != 1 {
+	if r.Version != 1 && r.Version != 2 {
 		return false
 	}
 	if r.Code != "ok" {
 		switch r.Code {
 		case "busy", "conflict", "review", "unavailable", "invalid":
 			return r.Revision == 0 && r.Phase == ""
+		case "pending":
+			return r.Version == 2 && r.Revision == 0 && r.Phase == ""
 		}
 		return false
+	}
+	if r.Version == 2 {
+		return validSMBResponse(r)
 	}
 	return r.Phase == identityprovision.Reserved && r.Revision == 1 ||
 		r.Phase == identityprovision.GroupIntent && r.Revision == 2 ||
@@ -85,10 +90,11 @@ func (r Response) valid() bool {
 // Server binds trusted in-process dependencies; none comes from the socket.
 // Never copy a Server. Its admission lock is NOT global Unix writer ownership.
 type Server struct {
-	mu        sync.Mutex
-	uid       uint32
-	operation Operation
-	resolve   func(string) Operation
+	mu         sync.Mutex
+	uid        uint32
+	operation  Operation
+	resolve    func(string) Operation
+	resolveSMB func(string) SMBOperation
 }
 
 // Operation is a trusted in-process authority, not socket input. The bound
@@ -149,7 +155,8 @@ func NewRouter(apiUID uint32, resolve func(string) Operation) (*Server, error) {
 }
 
 func (s *Server) available() bool {
-	return s != nil && ((s.operation != nil) != (s.resolve != nil))
+	return s != nil && ((s.operation != nil && s.resolve == nil && s.resolveSMB == nil) ||
+		(s.operation == nil && s.resolve != nil))
 }
 
 // Serve owns and always closes one accepted Unix STREAM connection. The
@@ -196,6 +203,17 @@ func (s *Server) prepareReply(ctx context.Context, conn io.Reader) (Response, er
 	data, err := receive(conn)
 	if err != nil {
 		return Response{}, ErrChannel
+	}
+	defer clear(data)
+	if isSMBFrame(data) {
+		req, decodeErr := decodeSMBRequest(data)
+		if decodeErr != nil {
+			return Response{Version: 2, Code: "invalid"}, nil
+		}
+		if ctx.Err() != nil {
+			return Response{}, ErrChannel
+		}
+		return s.executeSMB(ctx, req), nil
 	}
 	var req Request
 	if decodeRequest(data, &req) != nil {
@@ -271,12 +289,20 @@ func Call(ctx context.Context, conn *net.UnixConn, req Request) (Response, error
 		return Response{}, ErrChannel
 	}
 	var reply Response
-	if configjson.Decode(bytes.NewReader(data), &reply, maxFrame, 1, map[string]bool{
-		"version": true, "code": true, "revision": true, "phase": true,
-	}) != nil || !fourFields(data) || !reply.valid() || ctx.Err() != nil {
+	defer clear(data)
+	if decodeResponse(data, &reply, 1) != nil || ctx.Err() != nil {
 		return Response{}, ErrChannel
 	}
 	return reply, nil
+}
+
+func decodeResponse(data []byte, reply *Response, version int) error {
+	if configjson.Decode(bytes.NewReader(data), reply, maxFrame, 1, map[string]bool{
+		"version": true, "code": true, "revision": true, "phase": true,
+	}) != nil || !fourFields(data) || reply.Version != version || !reply.valid() {
+		return ErrChannel
+	}
+	return nil
 }
 
 func decodeRequest(data []byte, req *Request) error {
@@ -321,6 +347,7 @@ func receive(r io.Reader) ([]byte, error) {
 	}
 	data := make([]byte, n)
 	if _, err := io.ReadFull(r, data); err != nil {
+		clear(data)
 		return nil, ErrChannel
 	}
 	return data, nil

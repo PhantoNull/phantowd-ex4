@@ -75,7 +75,7 @@ Status vocabulary:
 | Admin management | Host/DOM and ARMv5 authentication, password-change, revocation and clean-reboot tests. Product enrollment, state placement, recovery and certificates remain open. |
 | Desired SMB/NFS policy | Strict models, revision stores and opt-in development editing. Stored policy does not activate services. |
 | Native identities | Reservation ledger, protected local reader, creation journal, typed executor, cooperative owner/listener and multi-account router. Not a deployed account manager. |
-| Samba credentials | Actual guest authentication/rotation/disable and persistence fixtures; the root-only disabled-password Samba patch passes a local Buildroot/ARMv5 QEMU auth fixture. The product credential backend, failure/restart recovery and hosted M2.3 checks remain open. |
+| Samba credentials | M2.3 root-only disabled-password patch passed exact-head hosted ARMv5 QEMU and Stage B3 checks, merging as `33df1ed`. M2.4 journals disabled-first enrollment and separate explicit enable through `identityowner`; its fixed executor and internal binary Unix-socket v2 fixture prove authentication denial before enable and success only after same-SID confirmation. A QEMU-selftest-only root Owner boot service now passes init start, protected socket, authorized/denied peers, process restart and drain checks; it is not product startup. Product config/state binding, HTTP authorization, review workflow and remaining lifecycle operations are open. |
 | Storage | GPT/ext/MD image research, sysfs/mount observations, restricted libblkid helper, duplicate SCSI VPD identity reporting, generation-bound descriptor probing, complete-set matching, partition-parent correlation, holder/slave topology and trusted read-only broker. PR #42 passed exact-head host and ARMv5 QEMU checks on `7254555` and merged as `059fa24`; PR #44 added read-only mounted filesystem UUID / MD identity correlation and passed host, Stage B3 and QEMU checks before merging as `db9fd33`. These are QEMU-fixture results only. Persistent volume identity, EX4 device-rule qualification, global-use accounting, WD compatibility resolution, import/mount authority and product RAID management remain unqualified or unimplemented. |
 | Hardware | Short diskless serial/RAM and Ethernet/temperature observations. Networking stability, controller/cooling, storage and recovery remain unqualified. |
 | Updates | Host-side signed metadata/payload/version assessment. No on-device installer, update transaction, recovery or installation release. |
@@ -221,11 +221,23 @@ on disposable QEMU media, then on the selected physical state medium.
 
 ## M2: Native identities and Samba credentials
 
-**State:** coordination libraries tested; credential executor/product daemon
-not implemented. The M2.3 Samba CLI patch passes a local full Buildroot/ARMv5
-QEMU authentication fixture, but has no hosted feature-commit result or product
-integration. Failure/restart, persistent operation recovery, and hardware
-qualification remain open.
+**State:** native identity libraries are tested; the M2.3 Samba CLI patch is
+merged and passed exact-head hosted ARMv5 QEMU and Stage B3 checks. M2.4
+implements disabled-first enrollment plus a separate revision-checked enable
+under `identityowner`, with durable intent/result phases and review on ambiguous
+outcomes. The fixed Linux executor and internal binary Unix-socket v2 fixture
+are tested against disposable Samba state: valid authentication fails before
+enable and succeeds only after the same SID is observed enabled. A new M2.2
+integration starts one root Owner from the QEMU-only init hook and verifies
+protected-socket peer checks, process restart and listener drain before Owner
+close. Its authority and Samba state are fixture-only; it does not provide
+product startup or persistence. The fixture validates the pinned Samba
+configuration before initializing Owner state and proves a missing config and
+a `testparm`-rejected config are rejected without side effects. The
+credential-free JSON v1 protocol remains
+unchanged. No HTTP authorization binding or product startup/configuration exists;
+password replacement, disable/retirement, operator recovery, session revocation
+and hardware qualification remain open.
 **Depends on:** M1; M3/M8 supply storage/import exclusions.
 
 - **M2.1 — Complete allocation inventory.** Reconcile local Unix accounts,
@@ -235,8 +247,17 @@ qualification remain open.
   independent of display names; define rename and group-membership semantics.
 - **M2.2 — Deploy one authority.** Provision protected paths/socket through an
   explicit startup contract; enforce one writer for Unix/Samba identity state.
-  Existing advisory leases do not exclude arbitrary root tools. Define startup,
-  crash, restart, readiness and drain order. HTTP never opens root stores directly.
+  Existing advisory leases do not exclude arbitrary root tools. A QEMU-selftest-
+  only prototype now starts a root service at boot, creates fixed `/run` fixture
+  paths, binds one `identityowner.Owner` and its trusted SMB backend at open,
+  and serves only the protected AF_UNIX router (no HTTP). ARMv5 QEMU verifies
+  non-root API UID admission, rejection of a different UID even when DAC permits
+  socket access, operation state across process restart, and listener drain
+  before Owner close. This is not production startup: durable state/config
+  placement, product boot ordering, readiness/failure policy, crash/recovery,
+  installed-service authorization binding and real-device qualification remain
+  open. Arbitrary root tools remain outside cooperative single-writer exclusion;
+  HTTP must never open root stores directly.
 - **M2.3 — Implement disabled-preserving credentials.** Follow the
   [credential integration specification](src/phantowd-api/SMB-CREDENTIAL-LIFECYCLE.md).
   The selected prototype adds root-only
@@ -245,13 +266,33 @@ qualification remain open.
   Its Samba 4.22.11 patch applies cleanly, builds, and passes the local ARMv5
   QEMU authentication fixture: replacement remains disabled until explicit
   enable, the old credential is denied, and Unix account files remain unchanged.
-  Hosted feature-commit CI/review, failure/restart behavior, persistent operation
+  Exact-head hosted ARMv5 QEMU and Stage B3 checks passed; PR #46 merged to
+  `develop` as `33df1ed`. Failure/restart behavior, persistent operation
   recovery, tdbsam/password-history, SID/RID binding and single-writer
   serialization remain gates. This is not a product credential service.
 - **M2.4 — Journal credential operations.** Enrollment, password replacement,
   enable, disable and retirement have separate authorized intent/result states.
-  Transport bounded secrets through protected memory/stdin only. Refuse adoption
-  of unrelated passdb entries and do not persist secrets for retry. Retain
+  **Implemented slice:** disabled-first enrollment and one separate explicit
+  enable action, through internal
+  `identityowner.SMB(id)` methods under the same global lock as Unix identity
+  creation. It revalidates the live Unix identity, refuses a pre-existing
+  passdb entry, journals create/password/enable intent, confirms the SID and
+  disabled state before enable and enabled state afterward, sends a bounded
+  password via backend stdin, and never persists the secret. One fixed backend
+  is bound once to the Owner and
+  journal at open; the validated config inode stays pinned for the Owner
+  lifetime and is closed after active operations drain. Operation calls cannot
+  substitute the backend. Reopened intent becomes
+  review-required without command replay. The internal credential-bearing
+  version-2 Unix-socket methods, including explicit `enable`, are bound to the
+  Owner resolver and used only by the disposable QEMU fixture; no HTTP endpoint
+  exists and enable is never automatic. The executor is exercised in local
+  QEMU using only disposable
+  passdb/config state; it is not yet wired to product startup or persistent
+  Samba state. **Still required:** production listener/startup wiring and
+  HTTP-session-to-owner authorization binding; explicit
+  review/operator recovery; separate password replacement, disable and
+  retirement intent/result states. Retain
   tombstones; retirement must not silently reassign existing file ownership.
 - **M2.5 — Distinguish connection and session revocation.** Current disabled-user
   fixtures prove denial of new connections only. Specify and test active SMB
@@ -718,12 +759,18 @@ These features are separate scope, not shortcuts around core acceptance:
    classification for aliases/clones and partitions, then define persistent
    volume IDs and bay-location separation without granting mount/import
    authority. The fixture does not qualify real EX4 layouts.
-4. **M2.3:** local full Buildroot/ARMv5 QEMU authentication now passes on the
-   temporary PR #44 baseline plus the local Samba patch. Next: source/license
-   review and hosted checks on the exact feature commit; qualify failure/restart,
-   tdbsam/password-history and durable reconciliation. No HTTP password endpoint.
-5. **M1.3 / M2.4:** implement explicit credential intent/reconciliation around the
-   qualified primitive. Preserve uncertainty; do not persist/replay secrets.
+4. **M2.3/M2.4:** the disabled-preserving Samba primitive is merged as PR #46
+   (`33df1ed`) after exact-head hosted ARMv5 QEMU and Stage B3 checks. Local M2.4
+   QEMU now proves disabled enrollment and explicit journaled enable, including
+   pre/post authentication and same-SID confirmation. Next bind the executor
+   and fixture-only local v2 channel to approved product Samba state/startup and
+   the HTTP authorization boundary, then qualify tdbsam/password history,
+   power-failure recovery, SID/RID binding and non-cooperating writer behavior.
+   There is no HTTP credential endpoint, and enable is never automatic.
+5. **M1.3 / M2.4 follow-on:** connect the internal credential channel to a
+   production-owned listener and authorized operator workflow; add review
+   reconciliation around the qualified primitive. Preserve uncertainty; never
+   persist or replay secrets.
 6. **M4.1:** define and test the activation plan against qualified fixture volumes;
    add the daemon owner only after preconditions and lifecycle are demonstrable.
 7. **M5:** expose completed backend outcomes incrementally, with disabled controls
