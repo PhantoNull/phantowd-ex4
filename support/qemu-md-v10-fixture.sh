@@ -32,7 +32,7 @@ cleanup() {
         wait "$qemu_pid" 2>/dev/null || true
     fi
     rm -f "$workspace/member-a.raw" "$workspace/member-b.raw" \
-        "$workspace/member-a.json" "$workspace/member-b.json" \
+        "$workspace/member-a.json" "$workspace/member-b.json" "$workspace/member-set.json" \
         "$workspace/phantowd-lab" "$workspace/qemu.log"
     rmdir "$workspace"
 }
@@ -103,6 +103,8 @@ member_a_hash=$(sha256sum "$workspace/member-a.raw" | awk '{print $1}')
 member_b_hash=$(sha256sum "$workspace/member-b.raw" | awk '{print $1}')
 "$workspace/phantowd-lab" inspect-md-v1.0-component "$workspace/member-a.raw" > "$workspace/member-a.json"
 "$workspace/phantowd-lab" inspect-md-v1.0-component "$workspace/member-b.raw" > "$workspace/member-b.json"
+"$workspace/phantowd-lab" inspect-md-v1.0-component-set \
+    "$workspace/member-a.raw" "$workspace/member-b.raw" > "$workspace/member-set.json"
 [ "$(sha256sum "$workspace/member-a.raw" | awk '{print $1}')" = "$member_a_hash" ] || {
     echo 'Host parser modified MD v1.0 component A' >&2
     exit 1
@@ -111,7 +113,7 @@ member_b_hash=$(sha256sum "$workspace/member-b.raw" | awk '{print $1}')
     echo 'Host parser modified MD v1.0 component B' >&2
     exit 1
 }
-python3 - "$workspace/member-a.json" "$workspace/member-b.json" <<'PY'
+python3 - "$workspace/member-a.json" "$workspace/member-b.json" "$workspace/member-set.json" <<'PY'
 import json
 import sys
 
@@ -120,6 +122,8 @@ try:
         first = json.load(stream)
     with open(sys.argv[2], encoding="utf-8") as stream:
         second = json.load(stream)
+    with open(sys.argv[3], encoding="utf-8") as stream:
+        component_set = json.load(stream)
     reports = [first, second]
 except (OSError, json.JSONDecodeError):
     raise SystemExit("host MD v1.0 parser returned invalid JSON")
@@ -162,9 +166,31 @@ if sorted(report["member_number"] for report in reports) != [0, 1] or \
         sorted(report["member_role"] for report in reports) != [0, 1]:
     raise SystemExit("mdadm MD v1.0 components did not contain both active RAID roles: "
                      + json.dumps(summary, sort_keys=True))
+comparison = component_set.get("comparison", {})
+arrays = comparison.get("arrays", [])
+members = arrays[0].get("members", []) if len(arrays) == 1 else []
+if (component_set.get("format") != "phantowd-md-v1.0-component-set-inspection"
+        or component_set.get("schema_version") != 1
+        or component_set.get("status") != "metadata-consistent"
+        or component_set.get("wd_compatibility") != "unqualified"
+        or len(component_set.get("components", [])) != 2
+        or comparison.get("candidate_components") != 2
+        or comparison.get("unqualified_components") != 0
+        or comparison.get("unidentified_candidate_components") != 0
+        or len(arrays) != 1
+        or arrays[0].get("status") != "metadata-consistent"
+        or arrays[0].get("observed_active_roles") != 2
+        or [member.get("input_index") for member in members] != [1, 2]
+        or any("partition_number" in member for member in members)
+        or component_set.get("block_device_opened") is not False
+        or component_set.get("mutations_performed") is not False
+        or component_set.get("assembly_performed") is not False
+        or component_set.get("mount_performed") is not False):
+    raise SystemExit("host component-set comparison did not confirm a generic complete read-only array: "
+                     + json.dumps(component_set, sort_keys=True))
 serialized = json.dumps(reports, sort_keys=True)
 for private_value in ("PHANTOWD-QEMU-MDV10-A", "PHANTOWD-QEMU-MDV10-B", "PHANTOWD-QEMU-MDV10-ROOT"):
     if private_value in serialized:
         raise SystemExit("host parser report leaked a QEMU-only VPD identity")
 PY
-echo 'PHANTOWD_MD_V10_HOST_READY components=2 metadata=1.0 checksums=valid same_array=true distinct_members=true active_roles=complete input_unchanged=true scope=tmpfs-qemu-only' | tee -a "$log"
+echo 'PHANTOWD_MD_V10_HOST_READY components=2 metadata=1.0 checksums=valid same_array=true distinct_members=true active_roles=complete set_comparison=metadata-consistent input_unchanged=true scope=tmpfs-qemu-only' | tee -a "$log"

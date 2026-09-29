@@ -232,10 +232,11 @@ The guest uses a snapshot-backed root disk and exactly two writable 32 MiB
 raw member files in tmpfs, attached with fixed synthetic SCSI identities. The
 bounded QEMU-only entry point asks ARMv5 `mdadm` to create a two-member RAID1
 with metadata 1.0, verifies array/member topology, stops it, and reboots. The
-host then invokes `phantowd-lab inspect-md-v1.0-component` on each regular
-component image. The harness checks valid checksums, a shared redacted array
-fingerprint, distinct member fingerprints, active roles 0/1, unchanged member
-hashes, and an unchanged base rootfs hash. It never formats a filesystem,
+host invokes `phantowd-lab inspect-md-v1.0-component` on each regular
+component image and `inspect-md-v1.0-component-set` on the pair. The harness
+checks valid checksums, a shared redacted array fingerprint, distinct member
+fingerprints, active roles 0/1, a metadata-consistent set comparison, unchanged
+member hashes, and an unchanged base rootfs hash. It never formats a filesystem,
 mounts, imports, assembles on the host, reads a NAS/physical disk, or writes
 NAND/MTD. The two member files and reports are removed from the private temp
 directory by the test trap.

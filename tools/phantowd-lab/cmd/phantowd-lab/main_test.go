@@ -396,6 +396,129 @@ func TestInspectMDV10ComponentCommandReadsRawComponentWithoutWriting(t *testing.
 	}
 }
 
+func TestInspectMDV10ComponentSetComparesRawComponentsWithoutWriting(t *testing.T) {
+	directory := t.TempDir()
+	paths := []string{
+		filepath.Join(directory, "private-member-a.img"),
+		filepath.Join(directory, "private-member-b.img"),
+	}
+	fixtures := [][]byte{
+		syntheticMDV10Component(0, 0, 42),
+		syntheticMDV10Component(1, 1, 42),
+	}
+	before := make([][32]byte, len(paths))
+	for index, path := range paths {
+		if err := os.WriteFile(path, fixtures[index], 0o600); err != nil {
+			t.Fatal(err)
+		}
+		before[index] = sha256.Sum256(fixtures[index])
+	}
+
+	var output bytes.Buffer
+	code, err := run([]string{"inspect-md-v1.0-component-set", paths[0], paths[1]}, &output)
+	if err != nil || code != 0 {
+		t.Fatalf("complete synthetic raw component set: code=%d err=%v output=%s", code, err, output.String())
+	}
+	var report struct {
+		Format             string `json:"format"`
+		SchemaVersion      int    `json:"schema_version"`
+		Status             string `json:"status"`
+		WDCompatibility    string `json:"wd_compatibility"`
+		BlockDeviceOpened  bool   `json:"block_device_opened"`
+		MutationsPerformed bool   `json:"mutations_performed"`
+		AssemblyPerformed  bool   `json:"assembly_performed"`
+		MountPerformed     bool   `json:"mount_performed"`
+		Components         []struct {
+			InputIndex int    `json:"input_index"`
+			Status     string `json:"status"`
+		} `json:"components"`
+		Comparison struct {
+			CandidateComponents int `json:"candidate_components"`
+			Arrays              []struct {
+				Status              string `json:"status"`
+				ObservedActiveRoles int    `json:"observed_active_roles"`
+				Members             []struct {
+					InputIndex      int `json:"input_index"`
+					PartitionNumber int `json:"partition_number"`
+				} `json:"members"`
+			} `json:"arrays"`
+		} `json:"comparison"`
+	}
+	if err := json.Unmarshal(output.Bytes(), &report); err != nil {
+		t.Fatalf("invalid JSON report: %v: %s", err, output.String())
+	}
+	if report.Format != "phantowd-md-v1.0-component-set-inspection" || report.SchemaVersion != 1 ||
+		report.Status != "metadata-consistent" || report.WDCompatibility != "unqualified" ||
+		report.BlockDeviceOpened || report.MutationsPerformed || report.AssemblyPerformed || report.MountPerformed ||
+		len(report.Components) != 2 || report.Components[0].InputIndex != 1 || report.Components[0].Status != "md-v1.0-superblock-candidate" ||
+		report.Components[1].InputIndex != 2 || report.Components[1].Status != "md-v1.0-superblock-candidate" ||
+		report.Comparison.CandidateComponents != 2 || len(report.Comparison.Arrays) != 1 ||
+		report.Comparison.Arrays[0].Status != "metadata-consistent" || report.Comparison.Arrays[0].ObservedActiveRoles != 2 ||
+		len(report.Comparison.Arrays[0].Members) != 2 || report.Comparison.Arrays[0].Members[0].InputIndex != 1 ||
+		report.Comparison.Arrays[0].Members[1].InputIndex != 2 || report.Comparison.Arrays[0].Members[0].PartitionNumber != 0 ||
+		report.Comparison.Arrays[0].Members[1].PartitionNumber != 0 {
+		t.Fatalf("unexpected raw component-set report: %+v output=%s", report, output.String())
+	}
+	for index, path := range paths {
+		after, err := os.ReadFile(path)
+		if err != nil || sha256.Sum256(after) != before[index] {
+			t.Fatalf("component %d changed during inspection: err=%v", index+1, err)
+		}
+	}
+	for _, secret := range []string{filepath.ToSlash(paths[0]), filepath.ToSlash(paths[1]), "MD_V10_PRIVATE_ARRAY_ID", "PRIVATE_MD_SET_NAME", "/dev/sda"} {
+		if strings.Contains(output.String(), secret) {
+			t.Fatalf("report leaked %q: %s", secret, output.String())
+		}
+	}
+}
+
+func TestInspectMDV10ComponentSetRequiresCompleteUnambiguousCandidateSet(t *testing.T) {
+	directory := t.TempDir()
+	firstPath := filepath.Join(directory, "private-member-a.img")
+	secondPath := filepath.Join(directory, "invalid-member.img")
+	first := syntheticMDV10Component(0, 0, 42)
+	invalid := make([]byte, len(first))
+	for path, data := range map[string][]byte{firstPath: first, secondPath: invalid} {
+		if err := os.WriteFile(path, data, 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	var output bytes.Buffer
+	code, err := run([]string{"inspect-md-v1.0-component-set", firstPath, secondPath}, &output)
+	if err != nil || code != 2 || !strings.Contains(output.String(), `"status": "review-required"`) ||
+		!strings.Contains(output.String(), `"status": "incomplete"`) ||
+		!strings.Contains(output.String(), `"unqualified_components": 1`) ||
+		!strings.Contains(output.String(), `"assembly_performed": false`) ||
+		!strings.Contains(output.String(), `"mount_performed": false`) {
+		t.Fatalf("partial component set must require review: code=%d err=%v output=%s", code, err, output.String())
+	}
+	for _, paths := range [][]string{{firstPath}, {firstPath, secondPath, firstPath, secondPath, firstPath}} {
+		if code, err := run(append([]string{"inspect-md-v1.0-component-set"}, paths...), &bytes.Buffer{}); code != 1 || err == nil {
+			t.Fatalf("invalid component-set size %d: code=%d err=%v", len(paths), code, err)
+		}
+	}
+
+	duplicateRolePath := filepath.Join(directory, "duplicate-active-role.img")
+	if err := os.WriteFile(duplicateRolePath, syntheticMDV10Component(1, 0, 42), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	output.Reset()
+	code, err = run([]string{"inspect-md-v1.0-component-set", firstPath, duplicateRolePath}, &output)
+	if err != nil || code != 2 || !strings.Contains(output.String(), `"status": "review-required"`) ||
+		!strings.Contains(output.String(), `"status": "ambiguous"`) ||
+		!strings.Contains(output.String(), `"assembly_performed": false`) {
+		t.Fatalf("duplicate active member role must require review: code=%d err=%v output=%s", code, err, output.String())
+	}
+}
+
+func syntheticMDV10Component(memberNumber uint32, role uint16, events uint64) []byte {
+	wholeDisk := syntheticGPTImageForMDV10Member(memberNumber, role, events)
+	const sectorBytes = 512
+	const firstLBA = 3
+	const lastLBA = 60
+	return append([]byte(nil), wholeDisk[firstLBA*sectorBytes:(lastLBA+1)*sectorBytes]...)
+}
+
 func TestInspectStorageImageSetComparesMDV10ComponentsWithoutWriting(t *testing.T) {
 	directory := t.TempDir()
 	firstPath := filepath.Join(directory, "first-private-disk.img")

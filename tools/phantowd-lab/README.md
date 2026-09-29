@@ -32,6 +32,7 @@ phantowd-lab inspect-ext-partition IMAGE-FILE GPT-PARTITION-NUMBER
 phantowd-lab inspect-md-v1.2-partition IMAGE-FILE GPT-PARTITION-NUMBER
 phantowd-lab inspect-md-v1.0-partition IMAGE-FILE GPT-PARTITION-NUMBER
 phantowd-lab inspect-md-v1.0-component COMPONENT-IMAGE-FILE
+phantowd-lab inspect-md-v1.0-component-set COMPONENT-IMAGE-1 COMPONENT-IMAGE-2 [COMPONENT-IMAGE-3 [COMPONENT-IMAGE-4]]
 phantowd-lab inspect-md-v0.90-component COMPONENT-IMAGE-FILE
 phantowd-lab inspect-md-v0.90-partition DISK-IMAGE-FILE GPT-PARTITION-NUMBER
 phantowd-lab inventory-rootfs [--summary] DIRECTORY
@@ -225,9 +226,19 @@ or file-open errors.
 regular-file component image, treating the complete file as one MD component.
 Use it for extracted partition images or other offline component copies. It
 does not accept block devices, assemble arrays, mount filesystems or modify the
-input. `support/test-qemu-md-v10.ps1` exercises this same host command against
-two mdadm-authored ARMv5 QEMU components held in tmpfs; that fixture verifies
-the reports and input hashes without qualifying any WD/EX4 layout.
+input. `inspect-md-v1.0-component-set` compares two to four such standalone
+component files. It omits GPT partition numbers because these inputs are
+already-extracted components; ordinal input indexes are not physical identities.
+Exit `0` requires exactly one identified array, checksummed candidates with no
+unqualified components, and complete active-role coverage. Other parsed sets
+return `2` with `review-required`; usage/I/O errors return `1`. A successful
+comparison still says only `wd_compatibility=unqualified` and does not establish
+data synchronization, health, import safety or recovery. The command never
+opens block devices, assembles arrays, mounts, or writes input images.
+
+`support/test-qemu-md-v10.ps1` exercises individual and set comparison against
+two mdadm-authored ARMv5 QEMU components held in tmpfs; the fixture verifies
+their reports and input hashes without qualifying any WD/EX4 layout.
 
 `inspect-md-v0.90-image-set` accepts two to four whole-disk regular image
 files, requires valid generic GPT on each, and groups plausible little-endian

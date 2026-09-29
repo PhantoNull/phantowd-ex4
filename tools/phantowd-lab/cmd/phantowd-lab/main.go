@@ -193,6 +193,9 @@ func run(args []string, output io.Writer) (int, error) {
 	case "inspect-md-v1.0-component":
 		return inspectMDV10Component(args[1:], output)
 
+	case "inspect-md-v1.0-component-set":
+		return inspectMDV10ComponentSet(args[1:], output)
+
 	case "inspect-md-v0.90-component":
 		if len(args) != 2 {
 			return 1, errors.New("usage: phantowd-lab inspect-md-v0.90-component COMPONENT-IMAGE-FILE")
@@ -637,6 +640,94 @@ func inspectMDV10Component(args []string, output io.Writer) (int, error) {
 		return 1, err
 	}
 	if report.Status != diskimage.MDV10StatusCandidate {
+		return 2, nil
+	}
+	return 0, nil
+}
+
+type mdV10ComponentSetInput struct {
+	InputIndex int                   `json:"input_index"`
+	Status     diskimage.MDV10Status `json:"status"`
+	Report     diskimage.MDV10Report `json:"report"`
+}
+
+type mdV10ComponentSetInspection struct {
+	Format             string                        `json:"format"`
+	SchemaVersion      int                           `json:"schema_version"`
+	Status             string                        `json:"status"`
+	WDCompatibility    string                        `json:"wd_compatibility"`
+	Components         []mdV10ComponentSetInput      `json:"components"`
+	Comparison         diskimage.MDV10ImageSetReport `json:"comparison"`
+	BlockDeviceOpened  bool                          `json:"block_device_opened"`
+	MutationsPerformed bool                          `json:"mutations_performed"`
+	AssemblyPerformed  bool                          `json:"assembly_performed"`
+	MountPerformed     bool                          `json:"mount_performed"`
+	Findings           []string                      `json:"findings"`
+	Limitations        []string                      `json:"limitations"`
+}
+
+func inspectMDV10ComponentSet(args []string, output io.Writer) (int, error) {
+	if len(args) < 2 || len(args) > maxStorageImageSetInputs {
+		return 1, errors.New("usage: phantowd-lab inspect-md-v1.0-component-set COMPONENT-IMAGE-1 COMPONENT-IMAGE-2 [COMPONENT-IMAGE-3 [COMPONENT-IMAGE-4]]")
+	}
+	result := mdV10ComponentSetInspection{
+		Format: "phantowd-md-v1.0-component-set-inspection", SchemaVersion: 1,
+		Status: "review-required", WDCompatibility: "unqualified",
+		Components: []mdV10ComponentSetInput{}, Findings: []string{},
+		Limitations: []string{
+			"each input is a caller-selected regular file containing one generic MD v1.0 component; GPT, WD XML, other metadata versions, filesystems, disk health, and user data are not inspected",
+			"metadata-consistent means only that checksummed components agree on selected fields and cover active RAID roles; it does not establish synchronization, health, WD compatibility, import safety, or recovery",
+			"no block device is opened, no array is assembled, no filesystem is mounted, and no input image is modified",
+		},
+	}
+	components := make([]diskimage.MDV10ImageComponent, 0, len(args))
+	for index, path := range args {
+		file, size, err := openRegular(path)
+		if err != nil {
+			return 1, err
+		}
+		lastLBA := uint64(0)
+		if size >= 512 {
+			lastLBA = uint64(size/512) - 1
+		}
+		component, inspectErr := diskimage.InspectMDV10Superblock(file, size, 0, lastLBA)
+		closeErr := file.Close()
+		if inspectErr != nil {
+			return 1, inspectErr
+		}
+		if closeErr != nil {
+			return 1, errors.New("could not close component image")
+		}
+		inputIndex := index + 1
+		result.Components = append(result.Components, mdV10ComponentSetInput{
+			InputIndex: inputIndex, Status: component.Status, Report: component,
+		})
+		components = append(components, diskimage.MDV10ImageComponent{
+			InputIndex: inputIndex, PartitionNumber: 0, Report: component,
+		})
+	}
+	comparison, err := diskimage.CompareMDV10ImageSet(components)
+	if err != nil {
+		return 1, err
+	}
+	result.Comparison = comparison
+	switch {
+	case comparison.UnqualifiedComponents != 0:
+		result.Findings = append(result.Findings, "one or more supplied component images are damaged, unsupported, or not a valid MD v1.0 candidate")
+	case comparison.UnidentifiedCandidateComponents != 0:
+		result.Findings = append(result.Findings, "one or more component candidates lack a usable array identity")
+	case len(comparison.Arrays) != 1:
+		result.Findings = append(result.Findings, "the supplied components do not identify exactly one MD array")
+	case comparison.Arrays[0].Status != diskimage.MDV10ArrayMetadataConsistent:
+		result.Findings = append(result.Findings, "the supplied components are incomplete, conflicting, divergent, ambiguous, or require feature review")
+	default:
+		result.Status = string(diskimage.MDV10ArrayMetadataConsistent)
+		result.Findings = append(result.Findings, "the supplied generic MD v1.0 components agree on selected metadata and cover active roles; WD compatibility and data synchronization remain unqualified")
+	}
+	if err := writeJSON(output, result); err != nil {
+		return 1, err
+	}
+	if result.Status != string(diskimage.MDV10ArrayMetadataConsistent) {
 		return 2, nil
 	}
 	return 0, nil

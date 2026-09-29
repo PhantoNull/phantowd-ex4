@@ -536,11 +536,12 @@ are missing. **Depends on:** M1; M7 for hardware.
   host inspector now reads and compares 1.0 components from offline images. This
   advances format observation only, not WD layout qualification. A dedicated
   local ARMv5 QEMU fixture now creates two 32 MiB MD v1.0 RAID1 members with
-  mdadm in tmpfs and has the host parser read both components without changing
-  them; the QEMU root is snapshot-backed and the array is stopped before exit.
-  This validates parser agreement with a generic mdadm-authored sample, not an
-  EX4 disk or WD layout. A sanitized corpus of exact EX4 data-disk layouts and
-  an evidence-backed allowlist remain required.
+  mdadm in tmpfs; the host reads both raw components and compares their
+  checksummed metadata as a set, requiring complete active-role coverage and
+  unchanged inputs. The QEMU root is snapshot-backed and the array is stopped
+  before exit. This validates parser agreement with a generic mdadm-authored
+  sample, not an EX4 disk or WD layout. A sanitized corpus of exact EX4
+  data-disk layouts and an evidence-backed allowlist remain required.
 - **M3.4 — Own mount lifecycle.** Model absent, discovered, rejected, qualified,
   mounting, mounted, unavailable, draining and review-required outcomes.
   Derive the transient mount tuple from trusted observations, not HTTP or an
@@ -893,22 +894,20 @@ These features are separate scope, not shortcuts around core acceptance:
    exclusivity or authorize probing, mounting, import or mutation. Keep
    production init, EX4 SATA/device naming, bay mapping, stable identity and
    compatibility explicitly unresolved.
-3. **M3.2:** PR #44 has merged the read-only mounted-filesystem/MD correlation
-   slice and its disposable RAID1 QEMU fixture. Local M3.2a correlates private
-   GPT-only GUID/PARTUUID observations to the complete generation-bound
-   sysfs partition set. M3.2b classifies duplicate IDs within the observed GPT
-   subset and retains explicit MBR/no-table coverage gaps. M3.2c preserves the
-   GPT type GUID privately; M3.2d maps five common values to generic declaration
-   hints only, never content or WD compatibility. Host tests include a complete
-   two-candidate GPT collision. The smoke-only local ARMv5 QEMU overlay passes
-   the explicit authenticated GPT-observation POST through the guest broker
-   against two distinct read-only cloned GPT disks, verifies duplicate-ID
-   classification and asserts summary-only HTTP redaction.
-   This is not clean Buildroot, two-boot, hosted CI or release qualification. Next,
-   define product-owned persistent
-   volume IDs separately from bay location and specify safe transaction/recovery
-   semantics, without granting mount/import authority. Fixtures do not qualify
-   real EX4 layouts.
+3. **M3.3 / M8.1:** Keep image inspection offline and generic until exact WD
+   layouts have attributable evidence. The host toolkit now compares raw MD
+   v1.0 component sets; the focused ARMv5 QEMU fixture exercises that command
+   with two mdadm-authored 32 MiB tmpfs components and requires checksum,
+   identity and complete-role agreement. Host tests, vet and the focused QEMU
+   wrapper pass locally; the wrapper reuses existing caches and creates no
+   persistent container or volume. The result still says
+   `wd_compatibility=unqualified` and grants no mount/import authority. Next,
+   build a sanitized, versioned corpus for actual EX4 data-volume layouts by
+   reconciling stock firmware parsing logic with a separately approved,
+   read-only data-volume observation when expendable media is available. Never
+   infer an allowlist from synthetic or unrelated-model samples. Then define
+   persistent logical volume identity separately from bay location and specify
+   safe adoption/recovery semantics; mounting remains gated on those proofs.
 4. **M2.4 / M2.5:** M2.4's trusted backend is bound once to `identityowner.Owner`;
    enrollment and explicit enable/disable use that backend, and invalid/missing
    Samba configuration is rejected before Owner state creation. PRs #47 and #48

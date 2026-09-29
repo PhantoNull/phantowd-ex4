@@ -180,7 +180,7 @@ md_v10_api="$repo_root/src/phantowd-api/md_v10_qemu_linux.go"
 md_v10_init="$repo_root/board/qemu/armv5/rootfs-overlay/usr/lib/phantowd/qemu-md-v10-init.sh"
 md_v10_fixture="$repo_root/support/qemu-md-v10-fixture.sh"
 md_v10_marker='PHANTOWD_MD_V10_READY metadata=1.0 raid1=true members=2 fixed_devices=true array_stopped=true root_snapshot=true scope=disposable-qemu-only'
-md_v10_host_marker='PHANTOWD_MD_V10_HOST_READY components=2 metadata=1.0 checksums=valid same_array=true distinct_members=true active_roles=complete input_unchanged=true scope=tmpfs-qemu-only'
+md_v10_host_marker='PHANTOWD_MD_V10_HOST_READY components=2 metadata=1.0 checksums=valid same_array=true distinct_members=true active_roles=complete set_comparison=metadata-consistent input_unchanged=true scope=tmpfs-qemu-only'
 [ -f "$md_v10_api" ] && [ -f "$md_v10_init" ] && [ -f "$md_v10_fixture" ] ||
     fail 'MD v1.0 QEMU/host fixture source files are incomplete'
 grep -F "$md_v10_marker" "$md_v10_api" >/dev/null ||
@@ -201,6 +201,8 @@ grep -F -- '-nic none' "$md_v10_fixture" >/dev/null ||
     fail 'MD v1.0 fixture must not attach a network interface'
 grep -F 'inspect-md-v1.0-component' "$md_v10_fixture" >/dev/null ||
     fail 'host-side production parser must read both generated component files'
+sed -n '/^cleanup()/,/^}/p' "$md_v10_fixture" | grep -F '"$workspace/member-set.json"' >/dev/null ||
+    fail 'MD v1.0 fixture cleanup must remove the generated component-set report'
 grep -F 'sha256sum "$images/rootfs.ext2"' "$md_v10_fixture" >/dev/null ||
     fail 'MD v1.0 QEMU run must assert the root image remained unchanged'
 grep -F 'TMPDIR=/phantowd-qemu-fixture-tmp' "$build_qemu_script" >/dev/null ||

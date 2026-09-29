@@ -12,7 +12,10 @@ import (
 const maxMDV10ImageSetComponents = 512
 
 type MDV10ImageComponent struct {
-	InputIndex      int
+	InputIndex int
+	// PartitionNumber is the GPT partition location when comparing whole-disk
+	// images. Zero denotes one standalone raw component image selected as a
+	// complete input; it is never a real GPT partition number.
 	PartitionNumber int
 	Report          MDV10Report
 }
@@ -61,7 +64,7 @@ type MDV10ArraySummary struct {
 
 type MDV10ArrayMember struct {
 	InputIndex                int    `json:"input_index"`
-	PartitionNumber           int    `json:"partition_number"`
+	PartitionNumber           int    `json:"partition_number,omitempty"`
 	MemberNumber              uint32 `json:"member_number"`
 	Role                      uint16 `json:"role"`
 	MemberIdentityFingerprint string `json:"member_identity_fingerprint,omitempty"`
@@ -69,7 +72,9 @@ type MDV10ArrayMember struct {
 }
 
 // CompareMDV10ImageSet groups bounded generic MD 1.0 observations from
-// caller-owned whole-disk images and reports selected metadata agreement only.
+// caller-owned whole-disk images or standalone component images and reports
+// selected metadata agreement only. PartitionNumber is zero only for a
+// standalone component image, which contains one already-extracted component.
 // It never opens devices, assembles arrays, mounts filesystems, modifies images,
 // or qualifies WD compatibility.
 func CompareMDV10ImageSet(components []MDV10ImageComponent) (MDV10ImageSetReport, error) {
@@ -94,7 +99,7 @@ func CompareMDV10ImageSet(components []MDV10ImageComponent) (MDV10ImageSetReport
 	groups := make(map[string][]MDV10ImageComponent)
 	for _, component := range components {
 		if component.InputIndex < 1 || component.InputIndex > 4 ||
-			component.PartitionNumber < 1 || component.PartitionNumber > 128 {
+			component.PartitionNumber < 0 || component.PartitionNumber > 128 {
 			return report, errors.New("MD v1.0 component location is outside the bounded EX4 image-set range")
 		}
 		location := [2]int{component.InputIndex, component.PartitionNumber}
