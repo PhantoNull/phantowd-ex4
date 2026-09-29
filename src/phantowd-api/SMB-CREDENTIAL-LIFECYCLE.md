@@ -5,8 +5,11 @@ and merged as PR #46 (`33df1ed`). M2.4 now includes first enrollment,
 password assignment while disabled, separate journaled enable/disable/re-enable,
 a fixed Linux Samba executor and an internal credential-bearing Unix-socket v2
 fixture. Host/race/fuzz checks and the full local Buildroot/ARMv5 QEMU smoke
-and two-boot checks pass on this worktree. These are local results, not hosted
-exact-head CI for the lifecycle follow-up.**
+and two-boot checks pass on this worktree. M2.5 now extends the same journaled
+`Disable` operation to log off that account's active SMB sessions and verify
+their absence. These are local results, not hosted exact-head CI for this
+follow-up. The fixture is not a product service and has not qualified
+in-flight writes, open-file or durable-reconnect semantics.**
 The channel remains a fixture integration only and is not wired to
 product startup, an HTTP endpoint or persistent EX4 Samba state. Production
 authorization binding, review/recovery and hardware qualification remain open.
@@ -100,11 +103,16 @@ separate revision-checked `Enable` operation accepts only a confirmed disabled
 state: it confirms the same account/SID is disabled, commits `enable-intent`,
 invokes fixed `smbpasswd -e`, then confirms the same SID is enabled before
 recording `enabled`. A separate `Disable` accepts only a confirmed enabled
-state, commits `disable-intent`, invokes fixed `smbpasswd -d`, and confirms the
-same SID is disabled. Re-enable is another explicit `Enable` action. Disable
-prevents new authentications but does not revoke already-established SMB
-sessions; the fixture tests new connections only. Creation, password
-assignment, enable and disable never happen as implicit side effects.
+state and commits `disable-intent`, invokes fixed `smbpasswd -d`, then uses
+complete `smbstatus -j` observations and one account-scoped
+`smbcontrol smbd logoff-user` to close any existing sessions for that Unix
+account. It records `disabled` only after the same SID is disabled and two
+consecutive inventories show no target sessions. No client-IP-wide or PID-only
+termination is used. This may interrupt active transfers/writes. If command or
+verification state is uncertain, the durable operation becomes
+`review-required`; no disable or logoff mutation is replayed. Re-enable is
+another explicit `Enable` action. Creation, password assignment, enable and
+disable never happen as implicit side effects.
 
 The journal contains no password, NT/LM hash, command output or derived secret.
 It has no automatic retry, reset or retirement operation. Password assignment
@@ -145,12 +153,14 @@ successful authentication after enable, denial of new authentication after
 disable and successful authentication after re-enable. The full local Buildroot
 2025.02.18 / Linux 6.18.53 ARMv5 QEMU build/smoke and two-boot suite passed on
 2026-09-29, along with API/tool-host tests, race tests and fixed-count fuzz
-campaigns. The log includes `PHANTOWD_IDENTITY_OWNER_BOOT_READY` with
-`http=false`, and `PHANTOWD_SMB_DISABLED_ENROLLMENT_READY` with
-`disabled_new_auth_denied=true` and `reenabled_auth_accepted=true`. This does
-not qualify real EX4 state placement, tdbsam
-crash/power-loss durability, password history, other root writers or hardware
-behavior.
+campaigns. M2.5 additionally tests two live target sessions and an unrelated
+same-IP peer: `Disable` sends one account-scoped logoff, verifies target-session
+absence, rejects a fresh login and leaves the peer able to read. A stale
+process-generation control is also proven not to affect that peer. The full
+local ARMv5 QEMU build/smoke passed on 2026-09-29. This does not qualify real
+EX4 state placement, tdbsam crash/power-loss durability, password history,
+other root writers, in-flight write/open-handle/durable-reconnect behavior or
+hardware behavior.
 
 ## Required owner workflow
 
@@ -174,17 +184,23 @@ behavior.
 5. On failure or interruption, retain intent/evidence and deny automatic service
    activation until reconciliation. Never reset the ledger, recycle identity IDs,
    delete an ambiguous account, or store/replay its password to make tests pass.
-6. Keep share grants and account enablement coordinated. Disabling a passdb entry
-   was tested only for **new connections**; revocation of authenticated sessions,
-   open files and durable handles requires separate implementation/qualification.
+6. Keep share grants and account enablement coordinated. The QEMU-only M2.5
+   `Disable` closes sessions for the target account; this can interrupt active
+   transfers/writes. Product deployment still needs authorization and recovery
+   UX, while open-file and durable-reconnect semantics require qualification.
 
 ## Acceptance tests before panel wiring
 
 - New disabled enrollment never authenticates before explicit enable; after the
   journal confirms the same account/SID enabled, its new password works and an
   empty password remains denied.
-- Disable blocks new connections and a separate re-enable restores the same
-  credential. These operations do not imply revocation of live sessions.
+- Disable blocks new connections and, in the same journaled operation, revokes
+  existing sessions for the target account. Verify two complete absent-session
+  inventories, preserve an unrelated same-IP peer, and confirm a separate
+  re-enable restores the same credential. Any command or verification
+  uncertainty enters `review-required` without retry. Test and document that
+  disabling may interrupt transfers; open handles and durable reconnect remain
+  unqualified.
 - Replacing a disabled password never authenticates during or after the update;
   after explicit enable only the replacement succeeds.
 - Existing unrelated accounts, SIDs, data ownership and permissions are unchanged.

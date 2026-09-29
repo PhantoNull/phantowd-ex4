@@ -10,6 +10,7 @@ package smbexec
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"io"
 	"os"
@@ -26,17 +27,23 @@ import (
 )
 
 const (
-	pdbeditPath        = "/usr/bin/pdbedit"
-	smbpasswdPath      = "/usr/bin/smbpasswd"
-	testparmPath       = "/usr/bin/testparm"
-	configArgument     = "@PHANTOWD_TRUSTED_SMB_CONFIG@"
-	childConfigPath    = "/proc/self/fd/3"
-	maxConfigBytes     = 1 << 20
-	maxObserveBytes    = 1 << 20
-	configCheckTimeout = 5 * time.Second
-	commandTimeout     = 10 * time.Second
-	commandWaitDelay   = time.Second
-	allowedAccountOps  = "NDHTUMWSLXI "
+	pdbeditPath                    = "/usr/bin/pdbedit"
+	smbpasswdPath                  = "/usr/bin/smbpasswd"
+	smbstatusPath                  = "/usr/bin/smbstatus"
+	smbcontrolPath                 = "/usr/bin/smbcontrol"
+	testparmPath                   = "/usr/bin/testparm"
+	configArgument                 = "@PHANTOWD_TRUSTED_SMB_CONFIG@"
+	childConfigPath                = "/proc/self/fd/3"
+	maxConfigBytes                 = 1 << 20
+	maxObserveBytes                = 1 << 20
+	configCheckTimeout             = 5 * time.Second
+	commandTimeout                 = 10 * time.Second
+	commandWaitDelay               = time.Second
+	sessionPollInterval            = 100 * time.Millisecond
+	sessionStatusTimeout           = 2 * time.Second
+	sessionRevocationTimeout       = 5 * time.Second
+	stableAbsentSessionInventories = 2
+	allowedAccountOps              = "NDHTUMWSLXI "
 )
 
 var (
@@ -192,9 +199,11 @@ func (b *Backend) Enable(ctx context.Context, account serviceaccounts.Account) e
 	return nil
 }
 
-// Disable performs the separate passdb disable operation. The parent journal
-// records intent before this call and confirms that the same SID is disabled
-// afterward. Existing SMB sessions are not revoked by this command.
+// Disable disables the passdb identity, logs off that user's current SMB
+// sessions, and returns only after bounded smbstatus observations confirm the
+// target session set is empty. The parent journal durably records intent before
+// this composite operation; any uncertain command or incomplete observation
+// is returned as failure so the journal can quarantine it without replay.
 func (b *Backend) Disable(ctx context.Context, account serviceaccounts.Account) error {
 	if b == nil || ctx == nil || !validAccount(account) {
 		return ErrInvalid
@@ -207,8 +216,215 @@ func (b *Backend) Disable(ctx context.Context, account serviceaccounts.Account) 
 	output, err := b.runner.Run(ctx, smbpasswdPath,
 		[]string{"-d", "-c", configArgument, account.Name}, b.config, []byte{}, false)
 	clear(output)
-	if err != nil {
+	if err != nil || ctx.Err() != nil {
 		return ErrUnavailable
+	}
+	return b.revokeUserSessions(ctx, account.Name)
+}
+
+// revokeUserSessions invokes Samba's account-scoped session-logoff control at
+// most once, then requires two consecutive complete inventories without the
+// target account. Read-only status polling is bounded; ambiguous output,
+// timeout, cancellation or a failed control command is never retried here.
+func (b *Backend) revokeUserSessions(ctx context.Context, username string) error {
+	if ctx == nil || username == "" {
+		return ErrInvalid
+	}
+	deadline := time.Now().Add(sessionRevocationTimeout)
+	controlSent := false
+	stableAbsent := 0
+	for {
+		remaining := time.Until(deadline)
+		if remaining <= 0 || ctx.Err() != nil {
+			return ErrUnavailable
+		}
+		statusTimeout := sessionStatusTimeout
+		if remaining < statusTimeout {
+			statusTimeout = remaining
+		}
+		statusCtx, cancel := context.WithTimeout(ctx, statusTimeout)
+		output, err := b.runner.Run(statusCtx, smbstatusPath,
+			[]string{"-j", "-s", configArgument}, b.config, []byte{}, true)
+		cancel()
+		if err != nil || ctx.Err() != nil {
+			clear(output)
+			return ErrUnavailable
+		}
+		present, parseErr := parseSMBStatusHasUser(output, username)
+		clear(output)
+		if parseErr != nil {
+			return ErrUnavailable
+		}
+		if present {
+			stableAbsent = 0
+			if !controlSent {
+				controlTimeout := time.Until(deadline)
+				if controlTimeout <= 0 {
+					return ErrUnavailable
+				}
+				controlCtx, cancel := context.WithTimeout(ctx, controlTimeout)
+				controlOutput, controlErr := b.runner.Run(controlCtx, smbcontrolPath,
+					[]string{"-s", configArgument, "smbd", "logoff-user", username},
+					b.config, []byte{}, false)
+				controlCtxErr := controlCtx.Err()
+				cancel()
+				clear(controlOutput)
+				if controlErr != nil || controlCtxErr != nil || ctx.Err() != nil {
+					return ErrUnavailable
+				}
+				controlSent = true
+			}
+		} else {
+			stableAbsent++
+			if stableAbsent >= stableAbsentSessionInventories {
+				return nil
+			}
+		}
+
+		remaining = time.Until(deadline)
+		if remaining <= 0 {
+			return ErrUnavailable
+		}
+		wait := sessionPollInterval
+		if remaining < wait {
+			wait = remaining
+		}
+		timer := time.NewTimer(wait)
+		select {
+		case <-ctx.Done():
+			if !timer.Stop() {
+				select {
+				case <-timer.C:
+				default:
+				}
+			}
+			return ErrUnavailable
+		case <-timer.C:
+		}
+	}
+}
+
+type smbStatusServerID struct {
+	PID      string `json:"pid"`
+	TaskID   string `json:"task_id"`
+	VNN      string `json:"vnn"`
+	UniqueID string `json:"unique_id"`
+}
+
+type smbStatusSession struct {
+	SessionID string            `json:"session_id"`
+	Username  string            `json:"username"`
+	ServerID  smbStatusServerID `json:"server_id"`
+}
+
+// parseSMBStatusHasUser accepts only the pinned 4.22 JSON inventory shape and
+// validates every session, not only the target record: partial/ambiguous state
+// must never be mistaken for a successful revocation.
+func parseSMBStatusHasUser(output []byte, username string) (bool, error) {
+	if len(output) == 0 || len(output) > maxObserveBytes || username == "" {
+		return false, ErrInvalid
+	}
+	if err := validateUniqueJSONKeys(output); err != nil {
+		return false, ErrInvalid
+	}
+	var root map[string]json.RawMessage
+	if err := json.Unmarshal(output, &root); err != nil || root == nil {
+		return false, ErrInvalid
+	}
+	rawSessions, ok := root["sessions"]
+	if !ok {
+		return false, ErrInvalid
+	}
+	var sessions map[string]json.RawMessage
+	if err := json.Unmarshal(rawSessions, &sessions); err != nil || sessions == nil {
+		return false, ErrInvalid
+	}
+	const nonclusterVNN = ^uint32(0)
+	const unqualifiedUniqueID = ^uint64(0)
+	targetPresent := false
+	for key, raw := range sessions {
+		var session smbStatusSession
+		if err := json.Unmarshal(raw, &session); err != nil || session.SessionID == "" ||
+			session.SessionID != key || session.Username == "" || strings.ContainsAny(session.Username, "\x00\r\n") {
+			return false, ErrInvalid
+		}
+		id, err := strconv.ParseUint(session.SessionID, 10, 64)
+		if err != nil || id == 0 || strconv.FormatUint(id, 10) != session.SessionID {
+			return false, ErrInvalid
+		}
+		pid, pidErr := strconv.ParseUint(session.ServerID.PID, 10, 32)
+		taskID, taskErr := strconv.ParseUint(session.ServerID.TaskID, 10, 32)
+		vnn, vnnErr := strconv.ParseUint(session.ServerID.VNN, 10, 32)
+		uniqueID, uniqueErr := strconv.ParseUint(session.ServerID.UniqueID, 10, 64)
+		if pidErr != nil || pid == 0 || taskErr != nil || taskID != 0 ||
+			vnnErr != nil || uint32(vnn) != nonclusterVNN ||
+			uniqueErr != nil || uniqueID == 0 || uniqueID == unqualifiedUniqueID {
+			return false, ErrInvalid
+		}
+		if session.Username == username {
+			targetPresent = true
+		}
+	}
+	return targetPresent, nil
+}
+
+func validateUniqueJSONKeys(data []byte) error {
+	decoder := json.NewDecoder(bytes.NewReader(data))
+	decoder.UseNumber()
+	if err := scanSMBStatusJSONValue(decoder, 0); err != nil {
+		return err
+	}
+	if _, err := decoder.Token(); !errors.Is(err, io.EOF) {
+		return ErrInvalid
+	}
+	return nil
+}
+
+func scanSMBStatusJSONValue(decoder *json.Decoder, depth int) error {
+	if depth > 16 {
+		return ErrInvalid
+	}
+	token, err := decoder.Token()
+	if err != nil {
+		return ErrInvalid
+	}
+	delimiter, compound := token.(json.Delim)
+	if !compound {
+		return nil
+	}
+	switch delimiter {
+	case '{':
+		seen := make(map[string]struct{})
+		for decoder.More() {
+			keyToken, err := decoder.Token()
+			key, ok := keyToken.(string)
+			if err != nil || !ok {
+				return ErrInvalid
+			}
+			if _, exists := seen[key]; exists {
+				return ErrInvalid
+			}
+			seen[key] = struct{}{}
+			if err := scanSMBStatusJSONValue(decoder, depth+1); err != nil {
+				return err
+			}
+		}
+		end, err := decoder.Token()
+		if err != nil || end != json.Delim('}') {
+			return ErrInvalid
+		}
+	case '[':
+		for decoder.More() {
+			if err := scanSMBStatusJSONValue(decoder, depth+1); err != nil {
+				return err
+			}
+		}
+		end, err := decoder.Token()
+		if err != nil || end != json.Delim(']') {
+			return ErrInvalid
+		}
+	default:
+		return ErrInvalid
 	}
 	return nil
 }
@@ -386,7 +602,7 @@ func validateConfig(config *os.File) error {
 
 func runCommand(ctx context.Context, executable string, args []string, config *os.File, stdin []byte, capture bool) ([]byte, error) {
 	if ctx == nil || config == nil || os.Getuid() != 0 || os.Geteuid() != 0 ||
-		(executable != pdbeditPath && executable != smbpasswdPath) {
+		(executable != pdbeditPath && executable != smbpasswdPath && executable != smbstatusPath && executable != smbcontrolPath) {
 		return nil, ErrInvalid
 	}
 	if !replaceConfigArgument(args) {

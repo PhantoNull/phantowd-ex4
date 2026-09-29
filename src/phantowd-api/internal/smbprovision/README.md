@@ -74,14 +74,20 @@ same executor against a disposable account and private `smb.conf`; fixture
 configuration and test wiring are not production startup code. This does not
 qualify the real EX4 Samba state location/passdb backend, concurrent
 non-cooperating root writers, tdbsam crash durability, password history,
-session revocation or hardware power-loss behavior.
+in-flight transfer/open-handle/durable-reconnect behavior or hardware
+power-loss behavior. The local QEMU fixture does exercise account-scoped
+session revocation for `Disable`; it is not yet product startup/runtime
+integration.
 
 Tests cover strict journal decoding, password/journal separation, disabled-state
 confirmation, explicit enable/revision checks, same-SID postcondition,
 no-adoption, shared owner locking, changed Unix identities, process exit after
 create/password/enable intent and recovery without command replay. QEMU verifies
 authentication is denied before explicit enable, accepted afterward with the
-new credential and still denied for an empty password. This is fixture-only:
-product integration still needs persistent Samba configuration/startup,
-HTTP-session authorization, operator review handling, disable/retirement and
-active-session revocation.
+new credential and still denied for an empty password. `Disable` also denies
+new logins, requests one account-scoped logoff and confirms no target sessions
+remain; an unrelated account from the same client IP remains usable. This is
+fixture-only: product integration still needs persistent Samba
+configuration/startup, HTTP-session authorization and operator review handling;
+retirement, in-flight transfer/open-handle behavior and durable reconnect
+remain unqualified.

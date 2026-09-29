@@ -1,8 +1,8 @@
 # Internal trusted Samba passdb executor
 
 This Linux-only internal package implements the fixed command adapter for
-M2.4 first enrollment and a separate explicit enable transition. It is not a
-service, HTTP/RPC endpoint, or account manager. The caller must be the root-side
+M2.4 enrollment/credential transitions and M2.5 account-scoped disable plus
+session revocation. It is not a service, HTTP/RPC endpoint, or account manager. The caller must be the root-side
 `identityowner.Owner`; it binds one
 executor when the owner opens and holds the existing owner lock around every
 observation, journal transition, and mutation.
@@ -10,7 +10,8 @@ observation, journal transition, and mutation.
 ## Command boundary
 
 - Executables are fixed absolute paths: `/usr/bin/testparm`,
-  `/usr/bin/pdbedit` and `/usr/bin/smbpasswd`.
+  `/usr/bin/pdbedit`, `/usr/bin/smbpasswd`, `/usr/bin/smbstatus` and
+  `/usr/bin/smbcontrol`.
 - The startup-supplied Samba configuration path is not request data. It must be
   absolute, non-symlinked, a root-owned regular file, not group/other writable,
   and no larger than 1 MiB. The child receives it through an inherited file
@@ -43,11 +44,23 @@ observation, journal transition, and mutation.
   SID/account to be disabled before dispatch, and confirms that same SID is
   enabled before recording success. It is never called implicitly by create or
   password assignment.
+- `Disable` first invokes `smbpasswd -d`, then parses the complete pinned
+  Samba `smbstatus -j` session inventory. If the target Unix account still has
+  sessions, one account-scoped `smbcontrol smbd logoff-user <name>` is sent;
+  no PID-only or client-IP-wide termination is used. Success requires two
+  consecutive complete inventories with no target sessions, at least 100 ms
+  apart and within a five-second revocation deadline. The parser rejects
+  malformed/ambiguous session records instead of treating them as absence.
+  Status reads may repeat for verification; the disable mutation and logoff
+  control are each sent at most once. A command error, malformed inventory,
+  cancellation or timeout is returned as an uncertain failure so the journal
+  moves to `review-required` and will not replay it. Revoking a live SMB session
+  can interrupt transfers or writes in progress.
 
 The executor does not create Unix accounts, automatically enable Samba
-accounts, implement replacement/disable/retirement, repair pre-existing state,
-retry an uncertain command, or serve client protocols. A missing reply or uncertain result remains a
-`review-required` operation under `smbprovision`.
+accounts, implement retirement, repair pre-existing state, retry an uncertain
+command, or serve client protocols. A missing reply or uncertain result remains
+a `review-required` operation under `smbprovision`.
 
 ## Verification and remaining integration
 
@@ -57,11 +70,14 @@ stdin-only secret delivery, output clearing, and redacted failures. Tests verify
 that missing configuration creates no files and invalid configuration remains
 unchanged. The ARMv5 QEMU fixture runs
 this same executor against a disposable Samba passdb and private test
-configuration. It verifies that valid
-credentials fail before explicit journaled enable and succeed only after
-same-SID confirmation. This does not qualify the real EX4 Samba
-configuration/passdb location, concurrent non-cooperating root writers,
-power-loss durability, or an installed firmware service.
+configuration. It verifies disabled-first enrollment, same-SID enable, and
+disable that denies new logins, disconnects only the target account's active
+sessions, verifies their absence, and leaves another account from the same IP
+usable. Stale process generations are rejected by the pinned Samba message
+receiver guard. This does not qualify the real EX4 Samba configuration/passdb
+location, concurrent non-cooperating root writers, in-flight write/handle or
+durable-reconnect semantics, power-loss durability, or an installed firmware
+service.
 
 The executor is not wired to product service startup. Before that, the project
 must choose and provision the persistent Samba configuration/passdb paths,

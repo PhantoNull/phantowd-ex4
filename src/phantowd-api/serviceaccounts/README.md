@@ -9,8 +9,11 @@ revision and account records (project ID, name, UID, private primary GID and
 desired state). It contains no credential, password hash or shell/home settings.
 Every new account starts disabled. Names, project IDs and numeric identities
 are permanent reservations, including retired records. Rename, UID/GID changes,
-record removal and resurrection are deliberately absent. Enabling/disabling is
-desired state, not evidence that Samba sessions or other protocols changed.
+record removal and resurrection are deliberately absent. Registry desired state
+alone does not establish Samba state. Separately, the QEMU-only Owner-bound
+credential journal now tests explicit disable as both denying new logins and
+revoking existing sessions for that Unix account; uncertain results require
+review without retry. This does not revoke NFS AUTH_SYS or other protocols.
 
 The separate [local identity observer](../unixidentity/README.md) can derive
 exclusions and assess exact/partial/conflicting identities from supplied Unix
@@ -64,8 +67,11 @@ see the [credential lifecycle contract](../README.md#smb-credential-lifecycle-bo
 
 Production
 state provisioning, anti-rollback/recovery, full power-loss qualification,
-passdb lifecycle, qualified live-identity reconciliation, privileged ownership/transport, active
-session revocation, UI integration and legacy migration remain unimplemented.
+passdb lifecycle, qualified live-identity reconciliation, privileged ownership/transport,
+product startup/authorization and review UX, UI integration and legacy migration
+remain unimplemented. Active SMB session revocation is exercised only in the
+disposable QEMU fixture; open-handle and durable-reconnect behavior remain
+unqualified.
 Do not treat an enabled desired account as authentication readiness.
 
 The separate [typed creation executor](../identityexec/README.md) now provides

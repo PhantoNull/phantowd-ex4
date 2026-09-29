@@ -18,6 +18,9 @@ import (
 	"strconv"
 	"syscall"
 	"time"
+
+	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/smbexec"
+	"github.com/PhantoNull/phantowd-ex4/phantowd-api/serviceaccounts"
 )
 
 type qemuSMBServerID struct {
@@ -85,7 +88,7 @@ func parseQEMUSMBStatusJSON(output []byte, username string) ([]qemuSMBServerID, 
 		uniqueID, uniqueErr := strconv.ParseUint(uniqueText, 10, 64)
 		if !pidOK || pidErr != nil || pid == 0 || !taskOK || taskErr != nil ||
 			taskID != 0 || !vnnOK || vnnErr != nil || uint32(vnn) != nonclusterVNN ||
-			!uniqueOK || uniqueErr != nil || uniqueID == unqualifiedUniqueID {
+			!uniqueOK || uniqueErr != nil || uniqueID == 0 || uniqueID == unqualifiedUniqueID {
 			return nil, errors.New("SMB fixture session has no usable process generation")
 		}
 		if sessionUsername == username {
@@ -268,11 +271,10 @@ func waitForQEMUFileContent(path string, expected []byte) error {
 	return errors.New("SMB fixture result file did not reach its expected content")
 }
 
-// exerciseQEMUSMBSessionRevocation characterizes the disabled-account boundary
-// and tests generation-qualified worker shutdown in a controlled disposable
-// server. This remains QEMU-only qualification, not product policy: it does not
-// define whether product Disable should revoke sessions separately or as part
-// of the same user action, and it does not address open handles or reconnect.
+// exerciseQEMUSMBSessionRevocation verifies the fixed Samba backend's combined
+// disable-and-revoke behavior in a controlled disposable server. A mismatched
+// process generation must not affect a peer; the subsequent account-scoped
+// logoff must remove the target sessions and preserve the peer from the same IP.
 func exerciseQEMUSMBSessionRevocation(config, writerAuth, readerAuth, shared, upload string, payload []byte) (result error) {
 	writerA, err := startQEMUSMBActiveClient(writerAuth, "active-writer-a")
 	if err != nil {
@@ -300,21 +302,8 @@ func exerciseQEMUSMBSessionRevocation(config, writerAuth, readerAuth, shared, up
 	if err != nil {
 		return err
 	}
-	if output, err := smbFixtureCommand("", "/usr/bin/smbpasswd", "-d", "-c", config, "qpwriter"); err != nil {
-		return fmt.Errorf("SMB fixture could not disable the active account: %s", output)
-	}
-	targetAfterDisable, err := waitForQEMUSMBStatusSessions(config, "qpwriter", len(targetBefore))
-	if err != nil {
-		return errors.New("disabling the account unexpectedly removed its authenticated sessions")
-	}
-	if !sameQEMUSMBServerIDs(targetBefore, targetAfterDisable) {
-		return errors.New("disabling the account changed its active worker identities")
-	}
-	output, err := smbFixtureCommand("", "/usr/bin/smbclient", "-t", "2", "-m", "SMB3_11", "-p", "1445", "-A", writerAuth, "//127.0.0.1/PolicyShare", "-c", "ls")
-	if !smbFixtureDenied(output, err, "NT_STATUS_ACCOUNT_DISABLED") {
-		return errors.New("disabled account accepted a new SMB connection")
-	}
-	activeWrite := shared + "/disabled-active-session-write"
+	const activeWriteName = "disabled-active-session-write"
+	activeWrite := shared + "/" + activeWriteName
 	if _, err := os.Lstat(activeWrite); !os.IsNotExist(err) {
 		return errors.New("SMB active-session test path was not fresh")
 	}
@@ -323,28 +312,56 @@ func exerciseQEMUSMBSessionRevocation(config, writerAuth, readerAuth, shared, up
 			result = errors.Join(result, errors.New("SMB active-session test file cleanup failed"))
 		}
 	}()
-	if err := writerA.send("put " + upload + " disabled-active-session-write"); err != nil {
-		return errors.New("disabling the account revoked an existing writer before explicit shutdown")
+	if err := writerA.send("put " + upload + " " + activeWriteName); err != nil {
+		return errors.New("active SMB writer could not accept a command before disable")
 	}
 	if err := waitForQEMUFileContent(activeWrite, payload); err != nil {
-		return errors.New("disabled account's existing SMB session could not complete its write")
+		return errors.New("active SMB writer could not complete its pre-disable write")
 	}
 
-	signaled := make(map[qemuSMBServerID]struct{}, len(targetBefore))
-	for _, serverID := range targetBefore {
-		if _, exists := signaled[serverID]; exists {
-			continue
-		}
-		signaled[serverID] = struct{}{}
-		destination := strconv.FormatUint(uint64(serverID.PID), 10) + "/" +
-			strconv.FormatUint(serverID.UniqueID, 10)
-		output, err := smbFixtureCommand("", "/usr/bin/smbcontrol", "-s", config, destination, "shutdown")
-		if err != nil {
-			return fmt.Errorf("SMB fixture could not signal target process generation: %s", output)
-		}
+	// Reuse a live peer PID with a different generation token to characterize
+	// the stale-observation boundary. The command's exit status is not trusted:
+	// compare the complete target and peer inventories before any valid signal.
+	stalePeerID := peerBefore[0]
+	if stalePeerID.UniqueID == ^uint64(0)-1 {
+		stalePeerID.UniqueID--
+	} else {
+		stalePeerID.UniqueID++
+	}
+	staleDestination := strconv.FormatUint(uint64(stalePeerID.PID), 10) + "/" +
+		strconv.FormatUint(stalePeerID.UniqueID, 10)
+	staleOutput, _ := smbFixtureCommand("", "/usr/bin/smbcontrol", "-s", config, staleDestination, "shutdown")
+	clear(staleOutput)
+	targetAfterStale, err := waitForQEMUSMBStatusSessions(config, "qpwriter", len(targetBefore))
+	if err != nil || !sameQEMUSMBServerIDs(targetBefore, targetAfterStale) {
+		return errors.New("stale SMB process generation disturbed target sessions")
+	}
+	peerAfterStale, err := waitForQEMUSMBStatusSessions(config, "qpreader", len(peerBefore))
+	if err != nil || !sameQEMUSMBServerIDs(peerBefore, peerAfterStale) {
+		return errors.New("stale SMB process generation disturbed the live peer")
+	}
+
+	account := serviceaccounts.Account{ID: "qemu-writer", Name: "qpwriter", UID: 1801, GID: 1801, State: serviceaccounts.Disabled}
+	backend, err := smbexec.New(config)
+	if err != nil {
+		return errors.New("SMB fixture could not open the fixed trusted Samba backend")
+	}
+	if err := backend.Disable(context.Background(), account); err != nil {
+		_ = backend.Close()
+		return errors.New("SMB fixture backend could not verify disable and user-session revocation")
+	}
+	observation, observeErr := backend.Observe(context.Background(), account)
+	closeErr := backend.Close()
+	if observeErr != nil || closeErr != nil || !observation.Present || !observation.Disabled ||
+		observation.Name != account.Name || observation.UID != account.UID || observation.GID != account.GID {
+		return errors.New("SMB fixture did not confirm the same disabled passdb identity")
+	}
+	output, err := smbFixtureCommand("", "/usr/bin/smbclient", "-t", "2", "-m", "SMB3_11", "-p", "1445", "-A", writerAuth, "//127.0.0.1/PolicyShare", "-c", "ls")
+	if !smbFixtureDenied(output, err, "NT_STATUS_ACCOUNT_DISABLED") {
+		return errors.New("disabled account accepted a new SMB connection")
 	}
 	if _, err := waitForQEMUSMBStatusSessions(config, "qpwriter", 0); err != nil {
-		return errors.New("target account sessions remained after QEMU-only PID shutdown")
+		return errors.New("target account sessions remained after the combined disable operation")
 	}
 	peerAfter, err := waitForQEMUSMBStatusSessions(config, "qpreader", 1)
 	if err != nil || !sameQEMUSMBServerIDs(peerBefore, peerAfter) {
@@ -365,6 +382,6 @@ func exerciseQEMUSMBSessionRevocation(config, writerAuth, readerAuth, shared, up
 	if err := waitForQEMUFileContent(peerDownload, payload); err != nil {
 		return errors.New("unrelated existing SMB session stopped working after targeted shutdown")
 	}
-	fmt.Println("PHANTOWD_SMB_CONNECTION_REVOCATION_READY disable_preserves_active_write=true target_connections=2 target_sessions_absent=true same_ip_peer_preserved=true peer_session_verified=true fresh_login_denied=true process_generation_available=true generation_targeting=qemu-only pid_targeting=false open_handles=false durable_reconnect=false scope=isolated-qemu-only")
+	fmt.Println("PHANTOWD_SMB_CONNECTION_REVOCATION_READY pre_disable_active_write=true disable_revokes_active_sessions=true target_connections=2 target_sessions_absent=true same_ip_peer_preserved=true peer_session_verified=true fresh_login_denied=true process_generation_available=true generation_targeting=qemu-only stale_generation_nonmatch_safe=true pid_targeting=false open_handles=false durable_reconnect=false scope=isolated-qemu-only")
 	return nil
 }

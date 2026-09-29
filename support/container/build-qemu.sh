@@ -187,12 +187,32 @@ if [ -f "$output_dir/.config" ] &&
 	grep -Fx 'BR2_PACKAGE_JANSSON=y' "$output_dir/.config" >/dev/null; then
 	previous_jansson_enabled=1
 fi
-samba_json_rebuild=$samba_json_patch_new
+samba_package_rebuild=$samba_json_patch_new
 if [ -f "$output_dir/build/samba4-4.22.11/bin/.lock-wscript" ] &&
 	grep -F -- '--without-json' "$output_dir/build/samba4-4.22.11/bin/.lock-wscript" >/dev/null; then
 	# Recover cleanly if an earlier run applied the source patch but stopped
 	# before Samba completed its reconfigure/rebuild.
-	samba_json_rebuild=1
+	samba_package_rebuild=1
+fi
+cached_samba_source="$output_dir/build/samba4-4.22.11"
+if [ -d "$cached_samba_source" ] && {
+	! grep -F 'Ignoring message with stale destination generation' \
+		"$cached_samba_source/source3/lib/messages.c" >/dev/null ||
+	! grep -F 'smbXsrv_session_logoff_user' \
+		"$cached_samba_source/source3/smbd/smbXsrv_session.c" >/dev/null ||
+	! grep -F 'unix_info->unix_name' \
+		"$cached_samba_source/source3/smbd/smbXsrv_session.c" >/dev/null ||
+	! grep -F 'MSG_SMB_LOGOFF_USER' \
+		"$cached_samba_source/source3/smbd/server.c" >/dev/null ||
+	! grep -F 'msg_logoff_user' \
+		"$cached_samba_source/source3/smbd/smb2_process.c" >/dev/null ||
+	! grep -F 'logoff-user' \
+		"$cached_samba_source/source3/utils/smbcontrol.c" >/dev/null;
+}; then
+	# The package source is cached independently of the repository's global
+	# patches. Re-extract and apply the exact pinned patch series once when a
+	# patch is new; do not clean unrelated Buildroot dependencies or volumes.
+	samba_package_rebuild=1
 fi
 
 make -C "$buildroot_source" \
@@ -208,7 +228,7 @@ if grep -Fx 'BR2_PACKAGE_SAMBA4_AD_DC=y' "$output_dir/.config" >/dev/null; then
 	exit 1
 fi
 if [ "$previous_jansson_enabled" = 0 ]; then
-	samba_json_rebuild=1
+	samba_package_rebuild=1
 fi
 
 make -C "$buildroot_source" \
@@ -217,7 +237,7 @@ make -C "$buildroot_source" \
 	O="$output_dir" \
 	phantowd-api-dirclean phantowd-volume-probe-dirclean
 
-if [ "$samba_json_rebuild" = 1 ]; then
+if [ "$samba_package_rebuild" = 1 ]; then
 	make -C "$buildroot_source" \
 		BR2_EXTERNAL="$external_dir" \
 		BR2_DL_DIR="$download_dir" \

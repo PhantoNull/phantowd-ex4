@@ -569,15 +569,20 @@ inode/content/mode/ownership must remain unchanged. No users or credentials are
 recreated in the verification phase. Private lock/cache/PID state is volatile;
 the daemon is stopped and mounts released before the clean reboot.
 
-These are **not product account provisioning or active-session revocation**.
-Clean-reboot persistence is verified only in that isolated fixture, not a
-product state layout. Neither scenario proves cross-store crash recovery,
-Windows client behavior, ACL/migration compatibility or EX4 performance. The
-dashboard administrator's Argon2 verifier, desired-policy user references,
-Unix UID/GID identity and Samba passdb are separate authorities: saving a user
-reference creates none of the others. A production account manager still needs
-stable non-recycled IDs, private persistent passdb, bounded privileged actions,
-reconciliation after partial failure, and explicit existing-session revocation.
+The local M2.5 QEMU fixture now exercises an Owner-journaled `Disable` that
+blocks new Samba authentication and requests account-scoped revocation of
+existing sessions, verifying their absence before success. Uncertain outcomes
+enter review without replay; revocation can interrupt transfers or writes. This
+is not product account provisioning or deployed session revocation. Clean-reboot
+persistence is verified only in the separate isolated fixture, not a product
+state layout. Neither scenario proves cross-store crash recovery, Windows client
+behavior, ACL/migration compatibility, EX4 performance, open-file-handle
+behavior or durable reconnect semantics. The dashboard administrator's Argon2
+verifier, desired-policy user references, Unix UID/GID identity and Samba passdb
+are separate authorities: saving a user reference creates none of the others.
+Production still needs stable non-recycled IDs, private persistent passdb,
+bounded privileged actions, reconciliation after partial failure, and product
+startup/authorization/recovery integration for the tested revocation path.
 Disabling SMB must not be presented as revoking NFS AUTH_SYS or other protocols.
 
 ### File-share proposal panel

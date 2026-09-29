@@ -40,6 +40,7 @@ func TestQEMUSMBStatusJSONRejectsUnavailableOrUnqualifiedSessions(t *testing.T) 
 		[]byte("{\"sessions\":{\"1\":{\"session_id\":\"1\",\"server_id\":{\"pid\":\"71\",\"task_id\":\"1\",\"vnn\":\"4294967295\",\"unique_id\":\"9001\"},\"username\":\"qpwriter\"}}}"),
 		[]byte("{\"sessions\":{\"1\":{\"session_id\":\"1\",\"server_id\":{\"pid\":\"71\",\"task_id\":\"0\",\"vnn\":\"0\",\"unique_id\":\"9001\"},\"username\":\"qpwriter\"}}}"),
 		[]byte("{\"sessions\":{\"1\":{\"session_id\":\"1\",\"server_id\":{\"pid\":\"71\",\"task_id\":\"0\",\"vnn\":\"4294967295\",\"unique_id\":\"18446744073709551615\"},\"username\":\"qpwriter\"}}}"),
+		[]byte("{\"sessions\":{\"1\":{\"session_id\":\"1\",\"server_id\":{\"pid\":\"71\",\"task_id\":\"0\",\"vnn\":\"4294967295\",\"unique_id\":\"0\"},\"username\":\"qpwriter\"}}}"),
 	} {
 		if got, err := parseQEMUSMBStatusJSON(status, "qpwriter"); err == nil || got != nil {
 			t.Fatalf("incomplete or unqualified status accepted: sessions=%#v error=%v", got, err)

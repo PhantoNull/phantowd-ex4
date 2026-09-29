@@ -229,7 +229,11 @@ durable intent/result phases and review on ambiguous outcomes. The fixed Linux
 executor and internal binary Unix-socket v2 fixture are tested against
 disposable Samba state: valid authentication fails before enable, succeeds
 after same-SID confirmation, fails for new connections after disable, and
-succeeds after a separate re-enable. Active-session revocation is not claimed.
+succeeds after a separate re-enable. M2.5 now extends the same journaled
+`Disable` operation to revoke the target account's existing sessions and
+verify absence in disposable QEMU; uncertain execution becomes review-required
+without replay. This can interrupt active transfers. Open-handle/durable-
+reconnect semantics and product integration remain unqualified.
 A new M2.2
 integration starts one root Owner from the QEMU-only init hook and verifies
 protected-socket peer checks, process restart and listener drain before Owner
@@ -239,8 +243,8 @@ configuration before initializing Owner state and proves a missing config and
 a `testparm`-rejected config are rejected without side effects. The
 credential-free JSON v1 protocol remains
 unchanged. No HTTP authorization binding or product startup/configuration exists;
-retirement, operator recovery, session revocation and hardware qualification
-remain open.
+retirement, operator recovery, revocation integration/recovery and hardware
+qualification remain open. The revocation primitive is currently QEMU-only.
 **Depends on:** M1; M3/M8 supply storage/import exclusions.
 
 - **M2.1 — Complete allocation inventory.** Reconcile local Unix accounts,
@@ -289,15 +293,17 @@ remain open.
   review-required without command replay. The internal credential-bearing
   version-2 Unix-socket methods, including explicit `enable` and `disable`, are bound to the
   Owner resolver and used only by the disposable QEMU fixture; no HTTP endpoint
-  exists; enable and disable are never implicit. New-connection authentication
-  denial after disable is tested, but existing SMB sessions are not revoked.
+  exists; enable and disable are never implicit. M2.5 extends journaled
+  `Disable` to account-scoped session revocation and confirms target-session
+  absence in QEMU while preserving an unrelated same-IP peer. Uncertain results
+  enter review-required without replay; active transfers may be interrupted.
   The executor is exercised in local QEMU using only disposable
   passdb/config state; it is not yet wired to product startup or persistent
   Samba state. **Still required:** production listener/startup wiring and
   HTTP-session-to-owner authorization binding; explicit
-  review/operator recovery; retirement intent/result states and session
-  revocation policy. Retain
-  tombstones; retirement must not silently reassign existing file ownership.
+  review/operator recovery and production integration/recovery for session
+  revocation. Retain tombstones;
+  retirement must not silently reassign existing file ownership.
 - **M2.5 — Initial pre-JSON boundary (superseded by local QEMU follow-up below).** A disposable exact-
   build QEMU fixture now confirms that disabling an account blocks a fresh login
   but an already-authenticated writer can still complete a write. It holds two
@@ -313,17 +319,29 @@ remain open.
   authentication; incomplete revocation must remain pending/degraded. A panel
   logout does not revoke file-service credentials.
 
-  **Superseding local validation (2026-09-29; not yet pushed):** The current
-  working tree enables Samba JSON with Jansson while keeping AD-DC disabled.
+  **Intermediate local validation (2026-09-29; superseded by the account-scoped operation below):** At that intermediate stage, the
+  tree enabled Samba JSON with Jansson while keeping AD-DC disabled.
   The QEMU fixture validates complete session server IDs and sends only
   PID/unique_id to smbcontrol; two target writer sessions are removed while an
   unrelated same-IP reader remains usable. Disable still allows an existing
   writer to finish a write before targeted shutdown, and denies fresh login.
   This qualifies generation-bearing targeting only in the disposable QEMU
-  fixture. Open handles, reconnect/durable handles, stale observations,
-  uncertain commands, process-exit races, post-action states and product action
-  semantics remain open. Until they pass, disable means blocking new
-  authentication only; established sessions may remain active.
+  fixture. This PID/unique-ID targeting experiment was replaced by the
+  account-scoped logoff operation below; its intermediate new-login-only
+  behavior is not the current contract.
+
+  **Current account-scoped operation (local QEMU passed 2026-09-29):** the
+  trusted backend disables the passdb entry, reads a complete JSON session
+  inventory, sends one `smbcontrol smbd logoff-user <unix-name>` if any target
+  sessions remain, then requires two complete inventories without that user
+  within five seconds. Malformed status, command failure, cancellation or
+  timeout returns uncertainty; the already-journaled `Disable` enters
+  `review-required` and is never replayed. Only read-only status verification
+  may poll. QEMU verified two target sessions disappear, a new login is denied
+  and a same-IP peer remains usable; the pre-disable active write was confirmed.
+  Disabling can interrupt in-flight transfers. Product startup/configuration,
+  review UX, EX4 state placement, open-handle and durable-reconnect semantics
+  remain unqualified; no HTTP route exists.
 - **M2.6 — Add account API/UI only after the backend.** Authorize typed account
   IDs and revisions; reject caller-selected UIDs, paths, shells and executables.
   Read status after uncertain replies rather than resubmitting mutations.
@@ -335,9 +353,13 @@ remain open.
 
 **Acceptance:** real guest clients cannot authenticate during disabled enrollment
 or replacement; after explicit enable only the intended new credential works.
-Other accounts/SIDs/files remain unchanged. Test stale revisions, unknown IDs,
+An explicit disable must also revoke that account's existing sessions and verify
+absence while preserving unrelated accounts, including a peer from the same IP.
+Ambiguous control/verification results must enter review without replay; document
+that in-flight transfers can be interrupted. Test stale revisions, unknown IDs,
 concurrent requests, owner restart, lost replies, command failure and orphaned
-intent. Hardware durability and imported identities remain separate gates.
+intent. Open-file/durable-reconnect semantics, hardware durability and imported
+identities remain separate gates.
 
 ## M3: Complete storage discovery and volume lifecycle
 
@@ -742,7 +764,7 @@ These features are separate scope, not shortcuts around core acceptance:
 | --- | --- |
 | Product state medium and filesystem | Capacity/wear/durability/recovery review, M1 + M7 |
 | Complete ownership inventory and legacy ID policy | Read-only corpus and offline-volume policy, M2 + M8 |
-| Samba credential adapter and active-session revocation | Native source/runtime/failure tests, M2 |
+| Samba credential adapter and active-session revocation | Native source/runtime/failure tests, M2; account-scoped disable/revoke is QEMU-verified, product integration/handle semantics remain open |
 | Supported new/legacy filesystems and RAID modes | Corpus plus empty-media validation, M3 + M8 |
 | First-enrollment/reset presence and certificate trust | Threat model and recovery UX, M5 |
 | Dual-port modes and safe network rollback | Isolated policy tests + exact-device evidence, M6 + M7 |
@@ -789,18 +811,16 @@ These features are separate scope, not shortcuts around core acceptance:
    enrollment and explicit enable/disable use that backend, and invalid/missing
    Samba configuration is rejected before Owner state creation. PRs #47 and #48
    are merged to `develop`; host checks and exact-tree ARMv5 QEMU checks pass.
-   The earlier PID-only QEMU characterization and Buildroot `--without-json`
-   limitation below are historical and superseded by the local follow-up:
-   Jansson JSON is enabled without AD-DC, and the disposable QEMU fixture now
-   parses Samba `server_id` values and targets sessions by PID plus `unique_id`.
-   Local ARMv5 QEMU and host API checks pass; these changes remain uncommitted
-   and unpushed. The fixture still only proves the isolated scenario: existing
-   SMB writes continue after account disable, new authentication is refused,
-   targeted sessions are removed, and a same-IP peer remains usable. This does
-   not qualify product revocation. Open handles, durable reconnect, stale
-   observations, uncertain command outcomes and post-action verification remain
-   open; no HTTP credential endpoint exists, enable is never automatic, and
-   disable currently promises only denial of new authentication.
+   The earlier PID-only characterization and Buildroot `--without-json`
+   limitation are historical. Local Buildroot enables Jansson JSON without
+   AD-DC; the account-scoped logoff is sent at most once and complete session
+   inventories verify target absence, while a stale-generation control is
+   ignored. The fixture confirms active target sessions are revoked, new
+   authentication is denied and a same-IP peer remains usable. Host/race/fuzz
+   tests plus full local ARMv5 QEMU and two-boot checks passed on 2026-09-29.
+   Product startup/config, HTTP authorization, review/recovery UX, open-handle
+   and durable-reconnect semantics remain unqualified; no HTTP endpoint exists
+   and enable is never automatic. Disabling may interrupt active transfers.
 5. **M1.3 / M5 follow-on:** only after the owner/revocation contract is stable,
    connect the internal credential channel to a production-owned listener and
    explicitly authorized operator workflow. Add review reconciliation around

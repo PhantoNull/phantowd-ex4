@@ -278,8 +278,10 @@ func (s *Store) Enable(ctx context.Context, expected uint64) error {
 }
 
 // Disable durably disables one confirmed enabled account without changing its
-// credential. A separate Enable action may restore access; active SMB sessions
-// are outside this passdb contract and must be assessed independently.
+// credential. The trusted backend must also revoke that account's existing
+// SMB sessions and verify their absence before returning; any uncertainty is
+// recorded as review-required without replay. A separate Enable action may
+// restore access for new connections.
 func (s *Store) Disable(ctx context.Context, expected uint64) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()

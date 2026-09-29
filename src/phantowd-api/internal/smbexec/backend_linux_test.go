@@ -316,32 +316,169 @@ func TestEnableUsesOnlyTheFixedExplicitCommand(t *testing.T) {
 	}
 }
 
-func TestDisableUsesOnlyTheFixedExplicitCommand(t *testing.T) {
+func TestDisableWithoutSessionsUsesFixedCommandsAndVerifiesStableAbsence(t *testing.T) {
 	if os.Geteuid() != 0 {
 		t.Skip("trusted Samba adapter tests require root-owned fixture config")
 	}
 	config := secureConfig(t)
 	account := serviceaccounts.Account{ID: "first", Name: "alice", UID: 11001, GID: 11001, State: serviceaccounts.Disabled}
-	calls := 0
+	calls, statusReads := 0, 0
 	commandOutput := []byte("must be discarded")
 	var pinnedConfig *os.File
 	backend, err := testBackend(t, config, runnerFunc(func(_ context.Context, executable string, args []string, gotConfig *os.File, stdin []byte, capture bool) ([]byte, error) {
 		calls++
-		if executable != smbpasswdPath || gotConfig != pinnedConfig ||
-			!slices.Equal(args, []string{"-d", "-c", configArgument, account.Name}) || len(stdin) != 0 || capture {
-			t.Fatal("disable escaped the fixed, credential-free command contract")
+		if gotConfig != pinnedConfig {
+			t.Fatal("disable did not use the pinned Samba configuration")
 		}
-		return commandOutput, nil
+		switch executable {
+		case smbpasswdPath:
+			if !slices.Equal(args, []string{"-d", "-c", configArgument, account.Name}) || len(stdin) != 0 || capture {
+				t.Fatal("disable escaped the fixed, credential-free passdb command contract")
+			}
+			return commandOutput, nil
+		case smbstatusPath:
+			statusReads++
+			if !slices.Equal(args, []string{"-j", "-s", configArgument}) || len(stdin) != 0 || !capture {
+				t.Fatal("empty-session verification escaped the fixed read-only command contract")
+			}
+			return testSMBStatusJSON(false), nil
+		default:
+			t.Fatalf("unexpected command when no target session exists: %s", executable)
+			return nil, ErrUnavailable
+		}
 	}))
 	if err != nil {
 		t.Fatal("secure Samba backend configuration refused", err)
 	}
 	pinnedConfig = backend.config
-	if err := backend.Disable(context.Background(), account); err != nil || calls != 1 {
-		t.Fatalf("disable calls=%d error=%v", calls, err)
+	if err := backend.Disable(context.Background(), account); err != nil || calls != 3 || statusReads != 2 {
+		t.Fatalf("disable calls=%d status reads=%d error=%v", calls, statusReads, err)
 	}
 	if !bytes.Equal(commandOutput, make([]byte, len(commandOutput))) {
 		t.Fatal("discarded command output was not cleared")
+	}
+}
+
+func TestDisableRevokesOnlyTheTargetUsersSessionsAndVerifiesAbsence(t *testing.T) {
+	if os.Geteuid() != 0 {
+		t.Skip("trusted Samba adapter tests require root-owned fixture config")
+	}
+	config := secureConfig(t)
+	account := serviceaccounts.Account{ID: "first", Name: "alice", UID: 11001, GID: 11001, State: serviceaccounts.Disabled}
+	var pinnedConfig *os.File
+	statusReads := 0
+	commandNames := make([]string, 0, 5)
+	backend, err := testBackend(t, config, runnerFunc(func(_ context.Context, executable string, args []string, gotConfig *os.File, stdin []byte, capture bool) ([]byte, error) {
+		commandNames = append(commandNames, filepath.Base(executable))
+		if gotConfig != pinnedConfig {
+			t.Fatal("session revocation did not use the pinned Samba configuration")
+		}
+		switch executable {
+		case smbpasswdPath:
+			if !slices.Equal(args, []string{"-d", "-c", configArgument, account.Name}) || len(stdin) != 0 || capture {
+				t.Fatal("disable escaped the fixed passdb command contract")
+			}
+			return []byte("discarded passdb output"), nil
+		case smbstatusPath:
+			if !slices.Equal(args, []string{"-j", "-s", configArgument}) || len(stdin) != 0 || !capture {
+				t.Fatal("session inventory escaped the fixed read-only command contract")
+			}
+			statusReads++
+			if statusReads == 1 {
+				return testSMBStatusJSON(true), nil
+			}
+			return testSMBStatusJSON(false), nil
+		case smbcontrolPath:
+			if !slices.Equal(args, []string{"-s", configArgument, "smbd", "logoff-user", account.Name}) || len(stdin) != 0 || capture {
+				t.Fatal("session revocation escaped the fixed per-user control command")
+			}
+			return []byte("discarded control output"), nil
+		default:
+			t.Fatalf("unexpected Samba executable: %s", executable)
+			return nil, ErrUnavailable
+		}
+	}))
+	if err != nil {
+		t.Fatal("secure Samba backend configuration refused", err)
+	}
+	pinnedConfig = backend.config
+	if err := backend.Disable(context.Background(), account); err != nil {
+		t.Fatal("disable did not confirm revocation of the exact account's sessions", err)
+	}
+	if !slices.Equal(commandNames, []string{"smbpasswd", "smbstatus", "smbcontrol", "smbstatus", "smbstatus"}) || statusReads != 3 {
+		t.Fatalf("disable command sequence = %v, status reads = %d", commandNames, statusReads)
+	}
+}
+
+func testSMBStatusJSON(includeAlice bool) []byte {
+	alice := ""
+	if includeAlice {
+		alice = `,"1000000000001":{"session_id":"1000000000001","username":"alice","server_id":{"pid":"1001","task_id":"0","vnn":"4294967295","unique_id":"123456789"}}`
+	}
+	return []byte(`{"version":"4.22.11","sessions":{"1000000000002":{"session_id":"1000000000002","username":"bob","server_id":{"pid":"1002","task_id":"0","vnn":"4294967295","unique_id":"987654321"}}` + alice + `}}`)
+}
+
+func TestDisableRefusesUnverifiableSessionInventoryBeforeControlDispatch(t *testing.T) {
+	if os.Geteuid() != 0 {
+		t.Skip("trusted Samba adapter tests require root-owned fixture config")
+	}
+	account := serviceaccounts.Account{ID: "first", Name: "alice", UID: 11001, GID: 11001, State: serviceaccounts.Disabled}
+	calls := 0
+	backend, err := testBackend(t, secureConfig(t), runnerFunc(func(_ context.Context, executable string, _ []string, _ *os.File, _ []byte, _ bool) ([]byte, error) {
+		calls++
+		if executable == smbstatusPath {
+			return []byte(`{"sessions":null}`), nil
+		}
+		if executable == smbpasswdPath {
+			return nil, nil
+		}
+		t.Fatalf("unverified SMB inventory must not dispatch another command: %s", executable)
+		return nil, ErrUnavailable
+	}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := backend.Disable(context.Background(), account); err != ErrUnavailable || calls != 2 {
+		t.Fatalf("unverifiable active-session inventory did not fail closed: calls=%d error=%v", calls, err)
+	}
+}
+
+func TestDisableNeverRepeatsSessionControlAfterUncertainVerification(t *testing.T) {
+	if os.Geteuid() != 0 {
+		t.Skip("trusted Samba adapter tests require root-owned fixture config")
+	}
+	account := serviceaccounts.Account{ID: "first", Name: "alice", UID: 11001, GID: 11001, State: serviceaccounts.Disabled}
+	var pinnedConfig *os.File
+	commandNames := make([]string, 0, 4)
+	backend, err := testBackend(t, secureConfig(t), runnerFunc(func(_ context.Context, executable string, _ []string, config *os.File, _ []byte, _ bool) ([]byte, error) {
+		commandNames = append(commandNames, filepath.Base(executable))
+		if config != pinnedConfig {
+			t.Fatal("disable did not use the pinned Samba configuration")
+		}
+		switch executable {
+		case smbpasswdPath:
+			return nil, nil
+		case smbstatusPath:
+			if len(commandNames) == 2 {
+				return testSMBStatusJSON(true), nil
+			}
+			return []byte(`{"sessions":null}`), nil
+		case smbcontrolPath:
+			return nil, nil
+		default:
+			t.Fatalf("unexpected Samba executable: %s", executable)
+			return nil, ErrUnavailable
+		}
+	}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	pinnedConfig = backend.config
+	if err := backend.Disable(context.Background(), account); err != ErrUnavailable {
+		t.Fatalf("uncertain post-control inventory was not rejected: %v", err)
+	}
+	if !slices.Equal(commandNames, []string{"smbpasswd", "smbstatus", "smbcontrol", "smbstatus"}) {
+		t.Fatalf("uncertain revocation was retried or dispatched out of order: %v", commandNames)
 	}
 }
 
