@@ -64,7 +64,7 @@ define PHANTOWD_API_INSTALL_STORAGE_DEVICE_RULES
 	fi; \
 	{ \
 		cat "$(PHANTOWD_API_PKGDIR)/mdev.conf" && \
-		awk '$$0 != "# PhantoWD storage broker: QEMU whole-disk fixtures only." && $$0 != "^sd[a-g]$$ root:phantowd-storage-read 0440" { print }' \
+		awk '$$0 != "# PhantoWD storage broker: QEMU whole-disk fixtures only." && $$0 !~ /^\^sd.*\$$ root:phantowd-storage-read 0440$$/ { print }' \
 			"$$mdev_conf"; \
 	} >"$$mdev_tmp" || exit 1; \
 	chmod 0644 "$$mdev_tmp" && mv "$$mdev_tmp" "$$mdev_conf" || exit 1

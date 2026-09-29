@@ -253,6 +253,21 @@ make -C "$buildroot_source" \
     O="$output_dir" \
     -j"$(getconf _NPROCESSORS_ONLN)"
 
+# The cached Buildroot TARGET_DIR may contain an mdev rule from an earlier
+# PhantoWD package revision. Require the package hook to replace it atomically,
+# not merely add a new range alongside the stale one.
+installed_mdev_conf="$output_dir/target/etc/mdev.conf"
+if ! awk '
+    $0 ~ /^\^sd.*\$ root:phantowd-storage-read 0440$/ {
+        rule_count++
+        if ($0 != "^sd[a-g]$ root:phantowd-storage-read 0440") invalid = 1
+    }
+    END { if (rule_count != 1 || invalid) exit 1 }
+' "$installed_mdev_conf"; then
+    echo "Buildroot TARGET_DIR has stale or duplicate PhantoWD mdev rules: $installed_mdev_conf" >&2
+    exit 1
+fi
+
 make -C "$buildroot_source" \
     BR2_EXTERNAL="$external_dir" \
     BR2_DL_DIR="$download_dir" \

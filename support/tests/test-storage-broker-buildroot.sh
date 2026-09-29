@@ -5,6 +5,7 @@ repo_root=$(CDPATH='' cd -- "$(dirname -- "$0")/../.." && pwd)
 package_dir="$repo_root/package/phantowd-api"
 package_makefile="$package_dir/phantowd-api.mk"
 mdev_file="$package_dir/mdev.conf"
+build_qemu_script="$repo_root/support/container/build-qemu.sh"
 
 fail() {
     printf '%s\n' "$*" >&2
@@ -51,6 +52,46 @@ grep -F 'cat "$(PHANTOWD_API_PKGDIR)/mdev.conf" &&' "$package_makefile" >/dev/nu
     fail 'storage rules must precede defaults so the whole-disk whitelist wins'
 grep -F 'mv "$$mdev_tmp" "$$mdev_conf"' "$package_makefile" >/dev/null ||
     fail 'mdev integration must atomically install its merged, idempotent rules'
+# The dollar signs here are literal Makefile syntax, not shell expansion.
+# shellcheck disable=SC2016
+stale_mdev_filter='$$0 != "# PhantoWD storage broker: QEMU whole-disk fixtures only." && $$0 !~ /^\^sd.*\$$ root:phantowd-storage-read 0440$$/ { print }'
+grep -F "$stale_mdev_filter" "$package_makefile" >/dev/null ||
+    fail 'mdev install must remove an older PhantoWD whole-disk rule before adding the current one'
+grep -F 'rule_count != 1 || invalid' "$build_qemu_script" >/dev/null ||
+    fail 'the full Buildroot runner must reject stale or duplicate PhantoWD mdev rules in TARGET_DIR'
+
+# Model reinstall over a target rootfs left by the previous package revision.
+# Keep the current and legacy patterns distinct so stale rules cannot silently
+# survive only in Buildroot's cached TARGET_DIR.
+fixture_dir=$(mktemp -d)
+trap 'rm -rf "$fixture_dir"' EXIT HUP INT TERM
+printf '%s\n' \
+    '# PhantoWD storage broker: QEMU whole-disk fixtures only.' \
+    '^sd[a-f]$ root:phantowd-storage-read 0440' \
+    'UNRELATED_BUSYBOX_RULE_KEEP_ME' > "$fixture_dir/defaults"
+merge_mdev_fixture() {
+    defaults="$1"
+    output="$2"
+    awk '$0 != "# PhantoWD storage broker: QEMU whole-disk fixtures only." &&
+        $0 !~ /^\^sd.*\$ root:phantowd-storage-read 0440$/ { print }' \
+        "$defaults" > "$fixture_dir/filtered"
+    {
+        cat "$mdev_file"
+        cat "$fixture_dir/filtered"
+    } > "$output"
+}
+merge_mdev_fixture "$fixture_dir/defaults" "$fixture_dir/merged-once"
+merge_mdev_fixture "$fixture_dir/merged-once" "$fixture_dir/merged-twice"
+for merged in "$fixture_dir/merged-once" "$fixture_dir/merged-twice"; do
+    [ "$(grep -Fxc '^sd[a-g]$ root:phantowd-storage-read 0440' "$merged")" -eq 1 ] ||
+        fail 'mdev reinstall must leave exactly one current PhantoWD whole-disk rule'
+    if grep -Fqx '^sd[a-f]$ root:phantowd-storage-read 0440' "$merged"; then
+        fail 'mdev reinstall must remove the stale PhantoWD whole-disk rule'
+    fi
+    grep -Fx 'UNRELATED_BUSYBOX_RULE_KEEP_ME' "$merged" >/dev/null ||
+        fail 'mdev reinstall must preserve unrelated BusyBox rules'
+done
+
 grep -Fq 'chmod 0666 /dev/null' "$package_dir/S02phantowd-mdev" ||
     fail 'mdev init must restore standard /dev/null access before launching services'
 
