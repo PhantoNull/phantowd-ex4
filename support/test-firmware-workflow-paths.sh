@@ -192,6 +192,9 @@ support/container/test-volume-probe.sh
 support/container/build-volume-probe-fixture.sh
 support/container/patch-volume-probe-fixture.sh
 support/container/test-qemu-api-overlay.sh
+support/container/apply-buildroot-samba-json-patch.sh
+support/tests/test-buildroot-samba-json-patch.sh
+support/buildroot-patches/**
 support/test-api.ps1
 support/test-dashboard-ui.mjs
 support/dashboard-preview.mjs
@@ -226,8 +229,14 @@ require_manual_only "$stage_b_workflow"
 require_manual_only "$stage_b2_workflow"
 
 for event in push pull_request; do
-    require_not_ignored_pattern \
-        "$stage_b3_workflow" "$event" support/container/audit-ex4-stage-b-kernel-config.sh
+	require_not_ignored_pattern \
+		"$stage_b3_workflow" "$event" support/container/audit-ex4-stage-b-kernel-config.sh
+	require_not_ignored_pattern \
+		"$qemu_workflow" "$event" support/buildroot-patches/**
+	require_not_ignored_pattern \
+		"$qemu_workflow" "$event" support/container/apply-buildroot-samba-json-patch.sh
+	require_not_ignored_pattern \
+		"$qemu_workflow" "$event" support/tests/test-buildroot-samba-json-patch.sh
 done
 
 while IFS= read -r path; do

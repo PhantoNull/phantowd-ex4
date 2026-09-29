@@ -180,7 +180,7 @@ while [ "$attempt" -lt 120 ]; do
             echo 'Samba disabled-account enrollment did not complete safely' >&2
             exit 1
         fi
-        if ! grep -F 'PHANTOWD_SMB_CONNECTION_REVOCATION_READY disable_preserves_active_write=true target_connections=2 target_sessions_absent=true same_ip_peer_preserved=true peer_session_verified=true fresh_login_denied=true process_generation_available=false pid_targeting=qemu-only open_handles=false durable_reconnect=false scope=isolated-qemu-only' "$log_file" >/dev/null; then
+        if ! grep -F 'PHANTOWD_SMB_CONNECTION_REVOCATION_READY disable_preserves_active_write=true target_connections=2 target_sessions_absent=true same_ip_peer_preserved=true peer_session_verified=true fresh_login_denied=true process_generation_available=true generation_targeting=qemu-only pid_targeting=false open_handles=false durable_reconnect=false scope=isolated-qemu-only' "$log_file" >/dev/null; then
             echo 'Samba active-session revocation characterization did not complete safely' >&2
             exit 1
         fi

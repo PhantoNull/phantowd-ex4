@@ -22,6 +22,8 @@ mkdir -p "$workspace_dir" "$download_dir/linux" "$download_dir/cyclonedx"
 shellcheck -s sh \
 	"$external_dir/support/compare-build-artifacts.sh" \
 	"$external_dir/support/test-compare-build-artifacts.sh" \
+	"$external_dir/support/container/apply-buildroot-samba-json-patch.sh" \
+	"$external_dir/support/tests/test-buildroot-samba-json-patch.sh" \
 	"$external_dir/package/phantowd-api/S02phantowd-mdev" \
 	"$external_dir/package/phantowd-api/S40phantowd-storage-broker" \
 	"$external_dir/board/qemu/armv5/rootfs-overlay/etc/init.d/S49phantowd-identity-owner"
@@ -141,6 +143,18 @@ if [ "${PHANTOWD_PREPARE_ONLY:-0}" = 1 ]; then
     exit 0
 fi
 
+# Add structured Samba server IDs without enabling the much larger AD-DC role.
+# This patch is pinned to the Buildroot release and is idempotent in the cache.
+sh "$external_dir/support/tests/test-buildroot-samba-json-patch.sh" "$buildroot_source"
+samba_patch_state=$(sh "$external_dir/support/container/apply-buildroot-samba-json-patch.sh" \
+	"$buildroot_source" \
+	"$external_dir/support/buildroot-patches/$BUILDROOT_VERSION/0002-samba4-json-without-ad-dc.patch")
+case "$samba_patch_state" in
+	applied) samba_json_patch_new=1 ;;
+	already-applied) samba_json_patch_new=0 ;;
+	*) echo "Unexpected Samba JSON patch state: $samba_patch_state" >&2; exit 1 ;;
+esac
+
 # The compile-only EX4 workflow shares source verification above but does not
 # need a compiler cache. Initialize it only for the QEMU image build.
 mkdir -p "$ccache_dir"
@@ -168,18 +182,48 @@ grep -F "BR2_LINUX_KERNEL_CUSTOM_VERSION_VALUE=\"$LINUX_VERSION\"" \
 grep -F "PHANTOWD_KERNEL_VERSION=$LINUX_VERSION" "$release_file" >/dev/null
 config_hash="$(sha256sum "$config_file" | cut -c1-16)"
 output_dir="$workspace_dir/output/$BUILDROOT_VERSION-$config_hash"
+previous_jansson_enabled=0
+if [ -f "$output_dir/.config" ] &&
+	grep -Fx 'BR2_PACKAGE_JANSSON=y' "$output_dir/.config" >/dev/null; then
+	previous_jansson_enabled=1
+fi
+samba_json_rebuild=$samba_json_patch_new
+if [ -f "$output_dir/build/samba4-4.22.11/bin/.lock-wscript" ] &&
+	grep -F -- '--without-json' "$output_dir/build/samba4-4.22.11/bin/.lock-wscript" >/dev/null; then
+	# Recover cleanly if an earlier run applied the source patch but stopped
+	# before Samba completed its reconfigure/rebuild.
+	samba_json_rebuild=1
+fi
 
 make -C "$buildroot_source" \
     BR2_EXTERNAL="$external_dir" \
     BR2_DL_DIR="$download_dir" \
-    O="$output_dir" \
-    phantowd_qemu_armv5_defconfig
+	O="$output_dir" \
+	phantowd_qemu_armv5_defconfig
+
+grep -Fx 'BR2_PACKAGE_SAMBA4=y' "$output_dir/.config" >/dev/null
+grep -Fx 'BR2_PACKAGE_JANSSON=y' "$output_dir/.config" >/dev/null
+if grep -Fx 'BR2_PACKAGE_SAMBA4_AD_DC=y' "$output_dir/.config" >/dev/null; then
+	echo 'Samba JSON support must not enable the Active Directory Domain Controller' >&2
+	exit 1
+fi
+if [ "$previous_jansson_enabled" = 0 ]; then
+	samba_json_rebuild=1
+fi
 
 make -C "$buildroot_source" \
     BR2_EXTERNAL="$external_dir" \
     BR2_DL_DIR="$download_dir" \
-    O="$output_dir" \
-    phantowd-api-dirclean phantowd-volume-probe-dirclean
+	O="$output_dir" \
+	phantowd-api-dirclean phantowd-volume-probe-dirclean
+
+if [ "$samba_json_rebuild" = 1 ]; then
+	make -C "$buildroot_source" \
+		BR2_EXTERNAL="$external_dir" \
+		BR2_DL_DIR="$download_dir" \
+		O="$output_dir" \
+		samba4-dirclean
+fi
 
 # Clean only the generated local-package directory: rsync alone can retain
 # deleted source files. Dependencies stay cached; all regenerates the rootfs.

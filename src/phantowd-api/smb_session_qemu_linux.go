@@ -8,6 +8,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -15,72 +16,88 @@ import (
 	"os/exec"
 	"sort"
 	"strconv"
-	"strings"
 	"syscall"
 	"time"
 )
 
 type qemuSMBServerID struct {
-	PID uint32
+	PID      uint32
+	UniqueID uint64
 }
 
-// parseQEMUSMBStatusTable is a QEMU-only compatibility parser for Buildroot's
-// Samba package, which is currently compiled with --without-json. Samba's
-// pinned text layout exposes only a PID, so this parser deliberately returns
-// no generation token; callers must keep PID-only shutdown in the disposable
-// fixture and must not promote it to the product owner.
-func parseQEMUSMBStatusTable(output []byte, username string) ([]qemuSMBServerID, error) {
+// parseQEMUSMBStatusJSON consumes the pinned Samba 4.22.11 sessions JSON
+// shape. The target includes both PID and Samba's process unique_id; incomplete
+// or incompatible identities fail closed before any process signal is sent.
+func parseQEMUSMBStatusJSON(output []byte, username string) ([]qemuSMBServerID, error) {
 	if username == "" {
 		return nil, errors.New("SMB fixture account is missing")
 	}
-	const sessionHeader = "PID Username Group Machine Protocol Version Encryption Signing"
-	headerFound := false
-	separatorFound := false
-	seen := make(map[uint32]struct{})
-	for _, line := range strings.Split(string(output), "\n") {
-		trimmed := strings.TrimSpace(line)
-		if !headerFound {
-			if strings.Join(strings.Fields(line), " ") == sessionHeader {
-				headerFound = true
-			}
-			continue
+	decodeString := func(fields map[string]json.RawMessage, name string) (string, bool) {
+		raw, exists := fields[name]
+		if !exists {
+			return "", false
 		}
-		if !separatorFound {
-			if trimmed == "" {
-				continue
-			}
-			if strings.Trim(trimmed, "-") == "" {
-				separatorFound = true
-				continue
-			}
-			return nil, errors.New("SMB fixture session table separator is missing")
+		var value string
+		if err := json.Unmarshal(raw, &value); err != nil {
+			return "", false
 		}
-		if trimmed == "" {
-			break
+		return value, true
+	}
+	var root map[string]json.RawMessage
+	if err := json.Unmarshal(output, &root); err != nil || root == nil {
+		return nil, errors.New("SMB fixture session JSON is unavailable or changed")
+	}
+	rawSessions, exists := root["sessions"]
+	if !exists {
+		return nil, errors.New("SMB fixture session JSON has no sessions object")
+	}
+	var sessions map[string]json.RawMessage
+	if err := json.Unmarshal(rawSessions, &sessions); err != nil || sessions == nil {
+		return nil, errors.New("SMB fixture session JSON has an invalid sessions object")
+	}
+
+	const nonclusterVNN = ^uint32(0)
+	const unqualifiedUniqueID = ^uint64(0)
+	result := make([]qemuSMBServerID, 0, len(sessions))
+	for id, rawSession := range sessions {
+		var session map[string]json.RawMessage
+		if err := json.Unmarshal(rawSession, &session); err != nil || session == nil {
+			return nil, errors.New("SMB fixture session record is invalid")
 		}
-		if strings.Trim(trimmed, "-") == "" {
-			break
+		sessionID, sessionIDOK := decodeString(session, "session_id")
+		sessionUsername, usernameOK := decodeString(session, "username")
+		rawServerID, serverIDOK := session["server_id"]
+		if !sessionIDOK || id == "" || sessionID != id || !usernameOK ||
+			sessionUsername == "" || !serverIDOK {
+			return nil, errors.New("SMB fixture session record is incomplete")
 		}
-		fields := strings.Fields(line)
-		if len(fields) < 2 {
-			return nil, errors.New("SMB fixture session table row is incomplete")
+		var serverID map[string]json.RawMessage
+		if err := json.Unmarshal(rawServerID, &serverID); err != nil || serverID == nil {
+			return nil, errors.New("SMB fixture session process identity is invalid")
 		}
-		pid, err := strconv.ParseUint(fields[0], 10, 32)
-		if err != nil || pid == 0 {
-			return nil, errors.New("SMB fixture session table PID is invalid")
+		pidText, pidOK := decodeString(serverID, "pid")
+		taskText, taskOK := decodeString(serverID, "task_id")
+		vnnText, vnnOK := decodeString(serverID, "vnn")
+		uniqueText, uniqueOK := decodeString(serverID, "unique_id")
+		pid, pidErr := strconv.ParseUint(pidText, 10, 32)
+		taskID, taskErr := strconv.ParseUint(taskText, 10, 32)
+		vnn, vnnErr := strconv.ParseUint(vnnText, 10, 32)
+		uniqueID, uniqueErr := strconv.ParseUint(uniqueText, 10, 64)
+		if !pidOK || pidErr != nil || pid == 0 || !taskOK || taskErr != nil ||
+			taskID != 0 || !vnnOK || vnnErr != nil || uint32(vnn) != nonclusterVNN ||
+			!uniqueOK || uniqueErr != nil || uniqueID == unqualifiedUniqueID {
+			return nil, errors.New("SMB fixture session has no usable process generation")
 		}
-		if fields[1] == username {
-			seen[uint32(pid)] = struct{}{}
+		if sessionUsername == username {
+			result = append(result, qemuSMBServerID{PID: uint32(pid), UniqueID: uniqueID})
 		}
 	}
-	if !headerFound || !separatorFound {
-		return nil, errors.New("SMB fixture session table is unavailable or changed")
-	}
-	result := make([]qemuSMBServerID, 0, len(seen))
-	for pid := range seen {
-		result = append(result, qemuSMBServerID{PID: pid})
-	}
-	sort.Slice(result, func(i, j int) bool { return result[i].PID < result[j].PID })
+	sort.Slice(result, func(i, j int) bool {
+		if result[i].PID == result[j].PID {
+			return result[i].UniqueID < result[j].UniqueID
+		}
+		return result[i].PID < result[j].PID
+	})
 	return result, nil
 }
 
@@ -196,11 +213,11 @@ func (client *qemuSMBActiveClient) close() error {
 func qemuSMBStatusSessions(config, username string) ([]qemuSMBServerID, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
-	output, err := smbFixtureCommandContext(ctx, "", "/usr/bin/smbstatus", "-s", config)
+	output, err := smbFixtureCommandContext(ctx, "", "/usr/bin/smbstatus", "-j", "-s", config)
 	if err != nil {
 		return nil, errors.New("SMB fixture could not obtain the live session inventory")
 	}
-	sessions, err := parseQEMUSMBStatusTable(output, username)
+	sessions, err := parseQEMUSMBStatusJSON(output, username)
 	if err != nil {
 		return nil, fmt.Errorf("SMB fixture could not parse live session inventory: %q", qemuSMBStatusExcerpt(output))
 	}
@@ -252,11 +269,10 @@ func waitForQEMUFileContent(path string, expected []byte) error {
 }
 
 // exerciseQEMUSMBSessionRevocation characterizes the disabled-account boundary
-// and tests PID-only worker shutdown in a controlled disposable server. This
-// pinned Samba build has no process-generation identity in its status output;
-// this fixture must never be reused as a product revocation implementation.
-// It does not define whether product Disable should revoke sessions separately
-// or as part of the same user action.
+// and tests generation-qualified worker shutdown in a controlled disposable
+// server. This remains QEMU-only qualification, not product policy: it does not
+// define whether product Disable should revoke sessions separately or as part
+// of the same user action, and it does not address open handles or reconnect.
 func exerciseQEMUSMBSessionRevocation(config, writerAuth, readerAuth, shared, upload string, payload []byte) (result error) {
 	writerA, err := startQEMUSMBActiveClient(writerAuth, "active-writer-a")
 	if err != nil {
@@ -314,15 +330,17 @@ func exerciseQEMUSMBSessionRevocation(config, writerAuth, readerAuth, shared, up
 		return errors.New("disabled account's existing SMB session could not complete its write")
 	}
 
+	signaled := make(map[qemuSMBServerID]struct{}, len(targetBefore))
 	for _, serverID := range targetBefore {
-		// This fixture's pinned Buildroot Samba lacks Jansson, so its human
-		// status output cannot provide unique_id. PID-only targeting is used here
-		// only as a test stimulus against a disposable server; product code must
-		// not reuse it or infer that PID-reuse safety has been established.
-		destination := strconv.FormatUint(uint64(serverID.PID), 10)
+		if _, exists := signaled[serverID]; exists {
+			continue
+		}
+		signaled[serverID] = struct{}{}
+		destination := strconv.FormatUint(uint64(serverID.PID), 10) + "/" +
+			strconv.FormatUint(serverID.UniqueID, 10)
 		output, err := smbFixtureCommand("", "/usr/bin/smbcontrol", "-s", config, destination, "shutdown")
 		if err != nil {
-			return fmt.Errorf("SMB fixture could not signal target PID: %s", output)
+			return fmt.Errorf("SMB fixture could not signal target process generation: %s", output)
 		}
 	}
 	if _, err := waitForQEMUSMBStatusSessions(config, "qpwriter", 0); err != nil {
@@ -347,6 +365,6 @@ func exerciseQEMUSMBSessionRevocation(config, writerAuth, readerAuth, shared, up
 	if err := waitForQEMUFileContent(peerDownload, payload); err != nil {
 		return errors.New("unrelated existing SMB session stopped working after targeted shutdown")
 	}
-	fmt.Println("PHANTOWD_SMB_CONNECTION_REVOCATION_READY disable_preserves_active_write=true target_connections=2 target_sessions_absent=true same_ip_peer_preserved=true peer_session_verified=true fresh_login_denied=true process_generation_available=false pid_targeting=qemu-only open_handles=false durable_reconnect=false scope=isolated-qemu-only")
+	fmt.Println("PHANTOWD_SMB_CONNECTION_REVOCATION_READY disable_preserves_active_write=true target_connections=2 target_sessions_absent=true same_ip_peer_preserved=true peer_session_verified=true fresh_login_denied=true process_generation_available=true generation_targeting=qemu-only pid_targeting=false open_handles=false durable_reconnect=false scope=isolated-qemu-only")
 	return nil
 }

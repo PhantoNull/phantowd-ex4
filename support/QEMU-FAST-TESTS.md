@@ -121,8 +121,16 @@ auth files, not product credentials. Cleanup stops and reaps the separate
 daemon process group, removes only the created Unix accounts/group, then lets
 the NFS fixture unmount the disk. No production account/lifecycle API is added.
 
-The same guest has a separate disabled-account boundary test with two already-
-authenticated writer clients and one unrelated reader from the same peer
+Current local follow-up (2026-09-29; not yet pushed): Buildroot Samba now has
+Jansson-backed JSON enabled without AD-DC. The QEMU fixture validates complete
+session server IDs and uses PID/unique_id for smbcontrol, with no PID-only
+fallback. The current marker confirms two target sessions removed and an
+unrelated same-IP reader preserved. This remains test-fixture behavior only;
+open handles, reconnect/durable handles and product action semantics are
+unqualified.
+
+Earlier pre-JSON baseline: the same guest has a separate disabled-account
+boundary test with two already-authenticated writer clients and one unrelated reader from the same peer
 address. It confirms that disabling the account rejects a fresh login but does
 not revoke existing access (one active writer can still write); a QEMU-only
 `smbcontrol PID shutdown` then removes the two controlled writer sessions while

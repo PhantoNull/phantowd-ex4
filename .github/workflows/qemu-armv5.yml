@@ -89,7 +89,7 @@ jobs:
       - name: Hash Buildroot compiler-cache inputs
         id: ccache_key
         env:
-          CCACHE_KEY_HASH: ${{ hashFiles('versions.env', 'configs/phantowd_qemu_armv5_defconfig', 'support/docker/Dockerfile', 'support/docker/debian-snapshot.sources') }}
+          CCACHE_KEY_HASH: ${{ hashFiles('versions.env', 'configs/phantowd_qemu_armv5_defconfig', 'support/buildroot-patches/**', 'support/docker/Dockerfile', 'support/docker/debian-snapshot.sources') }}
         run: echo "base=qemu-ccache-linux-${CCACHE_KEY_HASH}" >> "$GITHUB_OUTPUT"
 
       - name: Restore Buildroot compiler cache
