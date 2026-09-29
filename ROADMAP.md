@@ -3,7 +3,7 @@
 
 # Implementation roadmap
 
-Reviewed: **2026-09-27**. This is the product specification and work breakdown,
+Reviewed: **2026-09-29**. This is the product specification and work breakdown,
 not a release announcement. The [README](README.md) is the concise entry point;
 component contracts remain authoritative for implemented behavior.
 
@@ -763,18 +763,28 @@ These features are separate scope, not shortcuts around core acceptance:
    classification for aliases/clones and partitions, then define persistent
    volume IDs and bay-location separation without granting mount/import
    authority. The fixture does not qualify real EX4 layouts.
-4. **M2.3/M2.4:** the disabled-preserving Samba primitive is merged as PR #46
-   (`33df1ed`) after exact-head hosted ARMv5 QEMU and Stage B3 checks. Local M2.4
-   QEMU now proves disabled enrollment and explicit journaled enable, including
-   pre/post authentication and same-SID confirmation. Next bind the executor
-   and fixture-only local v2 channel to approved product Samba state/startup and
-   the HTTP authorization boundary, then qualify tdbsam/password history,
-   power-failure recovery, SID/RID binding and non-cooperating writer behavior.
-   There is no HTTP credential endpoint, and enable is never automatic.
-5. **M1.3 / M2.4 follow-on:** connect the internal credential channel to a
-   production-owned listener and authorized operator workflow; add review
-   reconciliation around the qualified primitive. Preserve uncertainty; never
-   persist or replay secrets.
+4. **M2.4 / M2.5:** M2.4's trusted backend is bound once to `identityowner.Owner`;
+   enrollment and explicit enable/disable use that backend, and invalid/missing
+   Samba configuration is rejected before Owner state creation. PRs #47 and #48
+   are merged to `develop`; host checks and exact-tree ARMv5 QEMU checks pass.
+   M2.5 is next: in disposable QEMU, characterize revoking an already-open
+   session for one disabled account without disconnecting other accounts. The
+    pinned `smbstatus -j` reports UID/server-ID data; exact Samba 4.22.11
+    source accepts a generation-qualified `PID/unique_id` destination in
+    `smbcontrol` ([destination parser](https://github.com/samba-team/samba/blob/samba-4.22.11/source3/utils/smbcontrol.c),
+    [server-ID parser](https://github.com/samba-team/samba/blob/samba-4.22.11/lib/util/server_id.c)).
+    Its parent forks workers per incoming connection ([source](https://github.com/samba-team/samba/blob/samba-4.22.11/source3/smbd/server.c)),
+    so revoke every verified target connection, not just one PID. This is still
+    only a candidate until exact-build QEMU validates it. Include open handles,
+    multiple connections, reconnects/durable handles, stale observations,
+    command failure and post-action verification.
+   Until those checks pass, disable means only denial of new
+   authentication; incomplete revocation must remain visibly pending/degraded.
+   No HTTP credential endpoint exists, and enable is never automatic.
+5. **M1.3 / M5 follow-on:** only after the owner/revocation contract is stable,
+   connect the internal credential channel to a production-owned listener and
+   explicitly authorized operator workflow. Add review reconciliation around
+   qualified primitives; preserve uncertainty and never persist or replay secrets.
 6. **M4.1:** define and test the activation plan against qualified fixture volumes;
    add the daemon owner only after preconditions and lifecycle are demonstrable.
 7. **M5:** expose completed backend outcomes incrementally, with disabled controls
