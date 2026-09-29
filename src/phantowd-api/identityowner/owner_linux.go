@@ -731,8 +731,10 @@ func (op *SMBOperation) Enable(ctx context.Context, expected uint64) error {
 
 // Disable is a separate explicit, revision-checked action. The Owner keeps
 // the single trusted Samba backend bound at Open time; callers cannot supply
-// or replace a backend for this operation. Disabling passdb blocks new
-// authentications but does not revoke already-established SMB sessions.
+// or replace a backend for this operation. The journaled operation blocks new
+// authentications, revokes this account's established SMB sessions and
+// confirms their absence. Uncertain revocation is quarantined without replay;
+// terminating sessions may interrupt active transfers or writes.
 func (op *SMBOperation) Disable(ctx context.Context, expected uint64) error {
 	o, native, store, err := op.current(ctx)
 	if err != nil {

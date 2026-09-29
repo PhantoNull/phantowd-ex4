@@ -73,9 +73,12 @@ quarantines the owner; no automatic repair or deletion is provided.
 in-process adapter. `Open` without that adapter keeps SMB mutations
 unavailable.
 `SMB(id)` exposes in-process `Begin`, `Load`, one-step disabled entry creation,
-stdin-only `SetPasswordDisabled`, and a separate revision-checked `Enable`; the
-operation methods cannot accept or substitute a backend. Each method takes the
-same authority lock, revalidates the
+stdin-only `SetPasswordDisabled`, and separate revision-checked `Enable` and
+`Disable` actions; the operation methods cannot accept or substitute a
+backend. `Disable` blocks new authentication, revokes only the account's
+existing sessions and verifies their absence, or records review-required on
+uncertainty without replay. It can interrupt active transfers. Each method
+takes the same authority lock, revalidates the
 exact Unix identity before mutation, and binds the Samba journal to the
 confirmed Unix account/revision. Existing passdb entries are never adopted.
 Uncertain/interrupted Samba intents become review-required and are never
@@ -83,9 +86,10 @@ replayed. A fixed Linux Samba executor exists and the QEMU fixture exercises
 that exact adapter with a private disposable config. It verifies valid
 credentials fail before explicit enable and succeed only after the same SID is
 observed enabled. The executor is not yet bound into product service startup.
-The internal version-2 Unix channel can transport the typed enable action in
-QEMU but adds no HTTP endpoint; production listener/startup/authorization
-wiring remains absent. See the
+The internal version-2 Unix channel can transport the typed enable/disable
+actions in QEMU but adds no HTTP endpoint; production
+listener/startup/authorization wiring remains absent. Open-handle and durable
+reconnect semantics are unqualified. See the
 [internal `smbprovision` contract](../internal/smbprovision/README.md) and
 [channel boundary](../identityrpc/README.md).
 
@@ -109,10 +113,11 @@ snapshots do not grant lasting Unix/Samba authorization.
 
 Production listener/service provisioning and startup, complete inventory and
 supported legacy import, durable EX4 state placement, native orphan recovery,
-binding/configuration for the Samba executor and credential channel, explicit orphan/review workflows,
-credential replacement/disable/retirement, HTTP/user authorization and
-panel account management remain necessary. No firmware or production storage
-deployment is authorized by this library.
+binding/configuration for the Samba executor and credential channel, explicit
+orphan/review workflows, production integration of credential replacement and
+disable/revocation, retirement, HTTP/user authorization and panel account
+management remain necessary. No firmware or production storage deployment is
+authorized by this library.
 
 Tests use generated temporary metadata and modeled Unix identities, including
 real process exit between journal and ledger publication, competing owners and

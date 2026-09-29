@@ -74,21 +74,28 @@ modified. This reduces exposure but is not a guarantee that the Go runtime or
 kernel held no transient copies.
 
 The version-2 actions are `status`, `begin`, `step`, `set-password-disabled`,
-and `enable`. The `enable` action carries no credential; it is a separate
-revision-checked request accepted only after password assignment is confirmed
-while disabled. Their authority is the trusted SMB resolver bound by
+`enable` and `disable`. The `enable` and `disable` actions carry no credential
+and are separate revision-checked requests. `enable` is accepted only after
+password assignment is confirmed while disabled. `disable` blocks fresh SMB
+authentication and revokes that account's existing sessions in the same
+journaled operation; uncertain results require review without replay. Their
+authority is the trusted SMB resolver bound by
 the root process; QEMU resolves only `identityowner.Owner.SMB(id)`, whose
 backend was itself pinned when that Owner opened. No per-request backend or
 executor is accepted. The response is the same four-field, credential-free
 JSON shape with version 2 and a restricted phase/revision vocabulary. Errors
-are reduced to fixed codes. No request can select a command or backend.
+are reduced to fixed codes. No request can select a command or backend. Each
+request uses one connection and is never replayed: after a mutation is sent,
+a lost transport reply requires a fresh `status` request before any further
+action.
 
 The channel is currently library/QEMU functionality, not a product service:
 the ARMv5 test child drives a disposable account through disabled enrollment,
-then sends one explicit enable request and verifies authentication changes only
-after the same SID is observed enabled. Production socket/startup wiring,
-HTTP authorization-to-operation binding, operator recovery, disable/retirement,
-and real-device/persistent-state qualification remain open. No HTTP endpoint is
+explicit enable, then disable with fresh-login denial and account-scoped
+revocation while preserving an unrelated same-IP peer. Production
+socket/startup wiring, HTTP authorization-to-operation binding, review and
+recovery workflow, retirement, durable reconnect/open-handle semantics and
+real-device/persistent-state qualification remain open. No HTTP endpoint is
 added by this channel.
 
 The disposable ARMv5 QEMU self-test profile starts the root Owner through an

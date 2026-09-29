@@ -10,6 +10,7 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"errors"
+	"io"
 	"net"
 	"os"
 	"os/exec"
@@ -337,6 +338,62 @@ func TestSMBCredentialChannelLifecycleAndSecretErasure(t *testing.T) {
 	}
 	if got := exchangeSMB(t, s, SMBRequest{Action: "step", AccountID: "fixture", Revision: 3}); got.Code != "conflict" || model.createCalls != 1 {
 		t.Fatal("stale SMB step was accepted or replayed", got, model.createCalls)
+	}
+}
+
+type dropRPCReply struct{ io.ReadWriter }
+
+func (dropRPCReply) Write([]byte) (int, error) {
+	return 0, errors.New("injected lost RPC reply")
+}
+
+func TestSMBDisableLostReplyRequiresStatusBeforeStaleReplay(t *testing.T) {
+	if os.Getuid() != 0 {
+		t.Skip("root-owned channel integration runs in isolated container")
+	}
+	model := newSMBRPCModel()
+	model.begun = true
+	model.journal.Revision = 7
+	model.journal.Phase = smbprovision.Enabled
+	model.journal.SID = "S-1-5-21-1-2-3-1001"
+	s, err := NewRouterWithSMB(65534,
+		func(string) Operation { return &routedOperation{} },
+		func(id string) SMBOperation {
+			if id == "fixture" {
+				return model
+			}
+			return nil
+		})
+	if err != nil {
+		t.Fatal(err)
+	}
+	s.uid = 0
+
+	server, client := pair(t)
+	serverDone := make(chan error, 1)
+	go func() {
+		defer server.Close()
+		serverDone <- s.serveRequest(context.Background(), dropRPCReply{server})
+	}()
+	if _, err := CallSMB(context.Background(), client, SMBRequest{
+		Action: "disable", AccountID: "fixture", Revision: 7,
+	}); !errors.Is(err, ErrChannel) {
+		t.Fatalf("lost disable reply should be reported as uncertain transport state: %v", err)
+	}
+	if err := <-serverDone; !errors.Is(err, ErrChannel) {
+		t.Fatalf("server did not observe the injected reply loss: %v", err)
+	}
+	if model.disableCalls != 1 || model.journal.Phase != smbprovision.Disabled || model.journal.Revision != 9 {
+		t.Fatalf("disable was not applied exactly once before reply loss: calls=%d journal=%+v", model.disableCalls, model.journal)
+	}
+
+	status := exchangeSMB(t, s, SMBRequest{Action: "status", AccountID: "fixture"})
+	if status.Code != "ok" || status.Phase != smbprovision.Disabled || status.Revision != 9 {
+		t.Fatalf("fresh status did not reconcile the lost reply: %+v", status)
+	}
+	stale := exchangeSMB(t, s, SMBRequest{Action: "disable", AccountID: "fixture", Revision: 7})
+	if stale.Code != "conflict" || model.disableCalls != 1 {
+		t.Fatalf("old revision replayed disable after status reconciliation: reply=%+v calls=%d", stale, model.disableCalls)
 	}
 }
 
