@@ -36,6 +36,15 @@ func TestQEMUSMBDenialEvidence(t *testing.T) {
 	}
 }
 
+func TestQEMUIdentityOwnerServiceHostGuard(t *testing.T) {
+	if runtime.GOARCH == "arm" {
+		t.Skip("owner-service runtime is tested only inside the ARMv5 QEMU image")
+	}
+	if err := runQEMUIdentityOwnerService(); err == nil {
+		t.Fatal("QEMU identity-owner service ran outside the ARMv5 guest")
+	}
+}
+
 func TestQEMUSMBEffectiveFixture(t *testing.T) {
 	p, err := qemuSMBPolicy()
 	if err != nil || len(p.Shares) != 2 {

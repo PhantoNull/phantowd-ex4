@@ -491,6 +491,9 @@ explicit recovery, credential transitions and deployed listener/panel wiring
 remain required. Explicit enable is implemented only through the internal
 Owner-bound method and fixture-only v2 channel; no HTTP credential endpoint or
 product account-management service is provided by the M2.4 slice.
+The QEMU-selftest profile now separately boots a root Owner service against
+guest-local fixture state and verifies protected-socket authorization, process
+restart and drain. This does not change the M2.4 product integration status.
 
 The [local identity channel](identityrpc/README.md) now connects an actually
 unprivileged ARMv5 fixture child to the root-owned journal/executor using

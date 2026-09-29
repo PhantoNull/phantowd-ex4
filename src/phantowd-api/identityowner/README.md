@@ -89,6 +89,16 @@ wiring remains absent. See the
 [internal `smbprovision` contract](../internal/smbprovision/README.md) and
 [channel boundary](../identityrpc/README.md).
 
+The disposable ARMv5 QEMU profile now starts a root Owner service from its
+`S49phantowd-identity-owner` init hook. It opens the fixture's trusted SMB
+backend once with the Owner, creates only guest-local `/run` state, and exposes
+the Owner resolver through the protected Unix listener; it does not install a
+product daemon or HTTP route. The boot fixture checks exact socket ownership and
+modes, rejects a different UID that can reach the socket by DAC, preserves the
+operation journal across a service-process restart, and verifies listener drain
+before Owner close. This proves a QEMU startup/lifecycle slice, not reboot
+durability or product state placement.
+
 Close waits for the active operation, closes all stores and the bound Samba
 executor/config descriptor exactly once, then releases the lease.
 Context cancellation is cooperative and does not undo committed mutations or
@@ -97,8 +107,8 @@ snapshots do not grant lasting Unix/Samba authorization.
 
 ## Remaining product work
 
-Protected listener/service provisioning, complete inventory and supported legacy
-import, durable EX4 state placement, native orphan recovery, production startup
+Production listener/service provisioning and startup, complete inventory and
+supported legacy import, durable EX4 state placement, native orphan recovery,
 binding/configuration for the Samba executor and credential channel, explicit orphan/review workflows,
 credential replacement/disable/retirement, HTTP/user authorization and
 panel account management remain necessary. No firmware or production storage

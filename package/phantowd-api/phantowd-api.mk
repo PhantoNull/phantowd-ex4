@@ -22,6 +22,16 @@ phantowd-storage -1 phantowd-storage-read -1 * /nonexistent /bin/false - PhantoW
 endef
 PHANTOWD_API_GO_LICENSE_DIR = $(if $(BR2_PACKAGE_HOST_GO_BIN),$(HOST_GO_BIN_DIR),$(HOST_GO_SRC_DIR))
 
+ifeq ($(BR2_PACKAGE_PHANTOWD_API_QEMU_SELFTEST),y)
+PHANTOWD_API_QEMU_IDENTITY_OWNER_INIT = \
+	$(INSTALL) -D -m 0755 $(BR2_EXTERNAL_PHANTOWD_EX4_PATH)/board/qemu/armv5/rootfs-overlay/etc/init.d/S49phantowd-identity-owner \
+		$(TARGET_DIR)/etc/init.d/S49phantowd-identity-owner && \
+	$(INSTALL) -D -m 0755 $(BR2_EXTERNAL_PHANTOWD_EX4_PATH)/board/qemu/armv5/rootfs-overlay/etc/init.d/S49phantowd-identity-owner \
+		$(TARGET_DIR)/etc/init.d/K49phantowd-identity-owner
+else
+PHANTOWD_API_QEMU_IDENTITY_OWNER_INIT = true
+endif
+
 define PHANTOWD_API_COPY_LICENSE
 	$(INSTALL) -m 0644 $(BR2_EXTERNAL_PHANTOWD_EX4_PATH)/LICENSE $(@D)/LICENSE
 	$(INSTALL) -m 0644 $(PHANTOWD_API_GO_LICENSE_DIR)/LICENSE $(@D)/Go-LICENSE
@@ -70,6 +80,7 @@ define PHANTOWD_API_INSTALL_INIT_SYSV
 		$(TARGET_DIR)/etc/init.d/S40phantowd-storage-broker
 	$(INSTALL) -D -m 0755 $(PHANTOWD_API_PKGDIR)/S50phantowd-api \
 		$(TARGET_DIR)/etc/init.d/S50phantowd-api
+	$(PHANTOWD_API_QEMU_IDENTITY_OWNER_INIT)
 endef
 
 $(eval $(golang-package))

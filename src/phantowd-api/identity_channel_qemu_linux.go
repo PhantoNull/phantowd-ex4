@@ -96,7 +96,20 @@ func exerciseQEMUIdentityChannel(owner *identityowner.Owner, phase string) error
 }
 
 func runQEMUIdentityClient(phase string) error {
-	if runtime.GOARCH != "arm" || strings.Split(buildARMLevel(), ",")[0] != "5" || os.Getuid() != 65534 || os.Geteuid() != 65534 {
+	clientUID, clientGID, ownerServiceClient, principalErr := qemuIdentityOwnerClientPrincipal(phase)
+	if principalErr != nil {
+		return principalErr
+	}
+	if runtime.GOARCH != "arm" || strings.Split(buildARMLevel(), ",")[0] != "5" {
+		return errors.New("wrong channel fixture process")
+	}
+	if ownerServiceClient {
+		if os.Getuid() != int(clientUID) || os.Geteuid() != int(clientUID) || os.Getgid() != int(clientGID) {
+			return errors.New("wrong boot owner fixture peer")
+		}
+		return runQEMUIdentityOwnerClient(phase)
+	}
+	if os.Getuid() != 65534 || os.Geteuid() != 65534 {
 		return errors.New("wrong channel fixture process")
 	}
 	if phase != "group" && phase != "user" && phase != "second" && phase != "smb-create" && phase != "smb-password" && phase != "smb-enable" {

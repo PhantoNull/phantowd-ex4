@@ -1,0 +1,90 @@
+#!/bin/sh
+set -eu
+
+DAEMON=/usr/bin/phantowd-api
+PIDFILE=/run/phantowd-identity-owner.pid
+SOCKET_DIR=/run/phantowd-identity-owner-channel
+SOCKET=$SOCKET_DIR/channel
+INIT_MARKER=/run/phantowd-identity-owner-init-ready
+
+owner_is_running() {
+	[ -s "$PIDFILE" ] || return 1
+	owner_pid="$(cat "$PIDFILE")"
+	case "$owner_pid" in
+		''|*[!0-9]*) return 1 ;;
+	esac
+	kill -0 "$owner_pid" 2>/dev/null
+}
+
+case "${1:-}" in
+	start)
+		if [ -e "$PIDFILE" ] || [ -e "$SOCKET" ]; then
+			echo 'PHANTOWD_QEMU_ERROR identity-owner-start-state-ambiguous'
+			exit 1
+		fi
+		if ! start-stop-daemon --start --background --make-pidfile \
+			--pidfile "$PIDFILE" --exec "$DAEMON" -- --qemu-identity-owner-service; then
+			echo 'PHANTOWD_QEMU_ERROR identity-owner-start-failed'
+			exit 1
+		fi
+		attempt=0
+		while [ ! -S "$SOCKET" ]; do
+			if ! owner_is_running; then
+				echo 'PHANTOWD_QEMU_ERROR identity-owner-exited-before-ready'
+				exit 1
+			fi
+			attempt=$((attempt + 1))
+			if [ "$attempt" -ge 10 ]; then
+				echo 'PHANTOWD_QEMU_ERROR identity-owner-readiness-timeout'
+				exit 1
+			fi
+			sleep 1
+		done
+		owner_uid="$(awk '/^Uid:/ { print $2; exit }' "/proc/$(cat "$PIDFILE")/status")"
+		# Listen() validates the exact root:API-group directory/socket modes via
+		# fstat before creating this endpoint. BusyBox in the minimal guest omits
+		# stat, so this init hook checks readiness while the Go/QEMU test owns the
+		# precise metadata assertions.
+		if [ "$owner_uid" != 0 ] || [ ! -S "$SOCKET" ]; then
+			echo 'PHANTOWD_QEMU_ERROR identity-owner-process-or-socket-invalid'
+			exit 1
+		fi
+		printf '%s\n' 'started-by-init' >"$INIT_MARKER"
+		echo 'PHANTOWD_IDENTITY_OWNER_INIT_READY service_uid=0 socket_mode=0620 api_group=restricted runtime=run'
+		;;
+	stop)
+		if [ ! -e "$PIDFILE" ]; then
+			if [ -e "$SOCKET" ]; then
+				echo 'PHANTOWD_QEMU_ERROR identity-owner-socket-without-owner'
+				exit 1
+			fi
+			exit 0
+		fi
+		if ! owner_is_running; then
+			echo 'PHANTOWD_QEMU_ERROR identity-owner-pidfile-ambiguous'
+			exit 1
+		fi
+		start-stop-daemon --stop --pidfile "$PIDFILE" --exec "$DAEMON"
+		attempt=0
+		while owner_is_running; do
+			attempt=$((attempt + 1))
+			if [ "$attempt" -ge 10 ]; then
+				echo 'PHANTOWD_QEMU_ERROR identity-owner-did-not-drain'
+				exit 1
+			fi
+			sleep 1
+		done
+		if [ -e "$SOCKET" ]; then
+			echo 'PHANTOWD_QEMU_ERROR identity-owner-socket-retained-after-stop'
+			exit 1
+		fi
+		rm -f "$PIDFILE"
+		;;
+	restart)
+		"$0" stop && "$0" start
+		;;
+	*)
+		echo "Usage: $0 {start|stop|restart}"
+		exit 1
+		;;
+esac
