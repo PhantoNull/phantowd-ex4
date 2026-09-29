@@ -170,6 +170,7 @@ func probeQEMUUnmountedStorage() error {
 				len(binding.Partitions) != 1 || binding.Partitions[0].KernelName != "sdd1" ||
 				binding.Partitions[0].Number != 1 || binding.Partitions[0].Start512B != 2048 ||
 				binding.Partitions[0].Size512B != 63455 ||
+				binding.Partitions[0].TypeGUID != "0fc63daf-8483-4772-8e79-3d69d8477de4" ||
 				binding.TableIDStatus != gptIdentitySingletonObserved ||
 				binding.Partitions[0].UUIDStatus != gptIdentitySingletonObserved {
 				return errors.New("QEMU GPT partition did not match its exact kernel child geometry")
@@ -203,7 +204,7 @@ func probeQEMUUnmountedStorage() error {
 		identityObservation.GPTDiskCount != 1 || identityObservation.Coverage != gptIdentityCoveragePartial {
 		return errors.New("QEMU did not reconcile the complete candidate set's single GPT disk")
 	}
-	fmt.Println("PHANTOWD_PARTITION_SYSFS_CORRELATION_READY candidates_complete=true table_disks=1 partitions=1 start_size_match=true mismatch_refused=true scope=qemu-fixture-only")
+	fmt.Println("PHANTOWD_PARTITION_SYSFS_CORRELATION_READY candidates_complete=true table_disks=1 partitions=1 start_size_match=true type_guid_preserved=true mismatch_refused=true scope=qemu-fixture-only")
 	clone := qemuGPTBinding
 	clone.DiskName = "sdg"
 	clone.Generation = volumeprobe.BlockDeviceGeneration{Major: 65, Minor: 0, DiskSequence: 999}

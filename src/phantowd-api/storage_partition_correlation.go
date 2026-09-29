@@ -17,6 +17,7 @@ type kernelPartitionBinding struct {
 	Number     uint32 `json:"-"`
 	Start512B  uint64 `json:"-"`
 	Size512B   uint64 `json:"-"`
+	TypeGUID   string `json:"-"`
 	UUID       string `json:"-"`
 	UUIDStatus string `json:"-"`
 }
@@ -41,7 +42,8 @@ type diskPartitionBinding struct {
 // correlateDiskPartitionTable joins private helper output to one complete,
 // collector-produced kernel inventory. A table entry is accepted only when
 // the kernel has the exact partition child with the same number, start and
-// size. The result is private metadata, not stable identity or mount authority.
+// size. The GPT type GUID is retained for a future explicit layout policy; this
+// result is private metadata, not compatibility qualification or mount authority.
 func correlateDiskPartitionTable(
 	disk blockObservation,
 	inventory []blockObservation,
@@ -144,7 +146,7 @@ func correlateDiskPartitionTable(
 		binding.Partitions = append(binding.Partitions, kernelPartitionBinding{
 			KernelName: kernel.Name, Major: kernel.Major, Minor: kernel.Minor,
 			Number: partition.Number, Start512B: partition.Start512B,
-			Size512B: partition.Size512B, UUID: partition.UUID,
+			Size512B: partition.Size512B, TypeGUID: partition.TypeID, UUID: partition.UUID,
 		})
 	}
 	if len(seenNumbers) != len(kernelByNumber) {

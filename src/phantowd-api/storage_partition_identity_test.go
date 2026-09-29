@@ -154,7 +154,8 @@ func TestCorrelateDiskGPTPartitionsWithCompleteKernelChildren(t *testing.T) {
 		matched.TableID != "fedcba98-7654-3210-fedc-ba9876543210" ||
 		len(matched.Partitions) != 1 || matched.Partitions[0].KernelName != "sda1" ||
 		matched.Partitions[0].Start512B != 34 || matched.Partitions[0].Size512B != 2097118 ||
-		matched.Partitions[0].UUID != "00112233-4455-6677-8899-aabbccddeeff" {
+		matched.Partitions[0].UUID != "00112233-4455-6677-8899-aabbccddeeff" ||
+		matched.Partitions[0].TypeGUID != "c12a7328-f81f-11d2-ba4b-00a0c93ec93b" {
 		t.Fatalf("disk/table/kernel partition binding is incomplete: %+v", matched)
 	}
 	encoded, err := json.Marshal(matched)

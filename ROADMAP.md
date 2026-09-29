@@ -458,7 +458,9 @@ are missing. **Depends on:** M1; M7 for hardware.
   exact start/size. DOS/MBR is unsupported and yields no disk/partition IDs.
   M3.2b classifies repeated disk GUIDs and PARTUUIDs independently as ambiguous
   within the observed GPT-candidate subset; singleton means only "seen once in
-  this GPT subset," never globally unique. Non-GPT candidates remain explicit
+  this GPT subset," never globally unique. M3.2c also retains the parser's GPT
+  partition type GUID privately, without interpreting it as a WD-supported
+  role. Non-GPT candidates remain explicit
   coverage gaps, so unsupported MBR and no-table candidates cannot be mistaken
   for GPT uniqueness. A host integration fixture verifies duplicate IDs across
   two correlated candidates in a complete discovery snapshot. The QEMU smoke
@@ -825,7 +827,8 @@ These features are separate scope, not shortcuts around core acceptance:
    slice and its disposable RAID1 QEMU fixture. Local M3.2a correlates private
    GPT-only GUID/PARTUUID observations to the complete generation-bound
    sysfs partition set. M3.2b classifies duplicate IDs within the observed GPT
-   subset and retains explicit MBR/no-table coverage gaps; host tests include a
+   subset, retains explicit MBR/no-table coverage gaps and privately preserves
+   GPT partition type GUID for future layout classification; host tests include a
    complete two-candidate GPT collision, and one smoke-only local ARMv5 QEMU
    overlay passes with its clone collision synthetic in memory, not a second
    guest disk. This is not clean Buildroot,

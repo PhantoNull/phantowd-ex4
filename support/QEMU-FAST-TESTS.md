@@ -75,7 +75,8 @@ partition is generated with a fixed test-only disk GUID and PARTUUID; it has no
 filesystem and is never mounted. The ARMv5 self-test requires both nodes to
 report `serial_status=ambiguous` and `wwn_status=present`, with raw VPD values
 redacted. It also reconciles the parsed GPT disk GUID, PARTUUID, partition
-number and start/size against the complete generation-bound sysfs inventory.
+number, start/size and GPT type GUID against the complete generation-bound
+sysfs inventory.
 Only GPT is currently accepted for this private identity observation. DOS/MBR
 is explicitly unsupported and its disk/partition IDs are discarded. The
 correlation struct is excluded from JSON serialization; no API field, mount,

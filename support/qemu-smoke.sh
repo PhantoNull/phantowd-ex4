@@ -230,7 +230,7 @@ while [ "$attempt" -lt 120 ]; do
             echo 'Missing sparse large-GPT partition-table probe assertion' >&2
             exit 1
         fi
-        if ! grep -F 'PHANTOWD_PARTITION_SYSFS_CORRELATION_READY candidates_complete=true table_disks=1 partitions=1 start_size_match=true mismatch_refused=true scope=qemu-fixture-only' "$log_file" >/dev/null; then
+        if ! grep -F 'PHANTOWD_PARTITION_SYSFS_CORRELATION_READY candidates_complete=true table_disks=1 partitions=1 start_size_match=true type_guid_preserved=true mismatch_refused=true scope=qemu-fixture-only' "$log_file" >/dev/null; then
             echo 'Missing parser-to-kernel partition reconciliation assertion' >&2
             exit 1
         fi
