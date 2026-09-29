@@ -297,6 +297,14 @@ if grep -F "      - 'src/phantowd-api/**'" "$qemu_workflow" >/dev/null; then
     exit 1
 fi
 
+overlay_script="$repo_root/support/container/test-qemu-api-overlay.sh"
+if ! grep -F 'grep -aF' "$overlay_script" >/dev/null ||
+    ! grep -F 'schema_version":2' "$overlay_script" >/dev/null ||
+    ! grep -F 'does not advertise schema_version 2' "$overlay_script" >/dev/null; then
+    printf 'QEMU overlay must reject reused volume-probe helpers with an obsolete schema\n' >&2
+    exit 1
+fi
+
 sh "$repo_root/support/tests/test-storage-broker-buildroot.sh"
 
 printf 'Firmware workflow path-contract tests passed\n'

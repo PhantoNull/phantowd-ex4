@@ -305,8 +305,13 @@ and refuses non-Versatile PB machines. See the
   independently only within the observed GPT-candidate subset; unsupported
   MBR and no-table candidates remain coverage gaps, and a singleton is not a
   global uniqueness claim. The parsed GPT partition type GUID is also retained
-  privately as a future layout-policy input, not a compatibility verdict. IDs,
-  type GUIDs and classifications are excluded from JSON.
+  privately as a future layout-policy input, not a compatibility verdict. A
+  small allowlisted classifier maps known EFI/Linux GPT type GUIDs to generic
+  declaration hints (`efi-system`, `linux-data`, `linux-raid-member`,
+  `linux-swap`, or `linux-lvm`); unknown/vendor GUIDs remain `unknown`. These
+  hints describe only the GPT declaration, not partition contents, WD role, or
+  import compatibility. IDs, type GUIDs and classifications are excluded
+  from JSON.
   Host fixtures exercise a complete two-candidate cloned-GPT observation with
   aligned synthetic sysfs children. A separate smoke-only ARMv5 overlay tests
   the collision classifier with an in-memory clone pair, not an additional

@@ -54,7 +54,10 @@ sh /src/support/container/test-qemu-api-overlay.sh \
 ```
 
 The first flag verifies and reuses the volume-probe helper already inside the
-trusted base artifact; use it only when that helper's source has not changed.
+trusted base artifact. It rejects the obsolete schema-v1 helper, but that
+schema check is not provenance or byte-for-byte source verification; reuse it
+only when the helper source and patch set are unchanged. Otherwise leave it
+disabled so the helper is rebuilt from pinned sources.
 The second omits the separate two-boot state-persistence fixture and runs only
 the single-boot smoke. Both default to `0`, so the ordinary invocation still
 rebuilds/injects the helper and runs both fixtures. This fast mode is local
@@ -76,7 +79,9 @@ filesystem and is never mounted. The ARMv5 self-test requires both nodes to
 report `serial_status=ambiguous` and `wwn_status=present`, with raw VPD values
 redacted. It also reconciles the parsed GPT disk GUID, PARTUUID, partition
 number, start/size and GPT type GUID against the complete generation-bound
-sysfs inventory.
+sysfs inventory. It also checks a conservative generic hint (`linux-data`) for
+the fixture's declared GPT type GUID. This describes neither the bytes stored
+in that partition nor any WD/EX4 role or compatibility.
 Only GPT is currently accepted for this private identity observation. DOS/MBR
 is explicitly unsupported and its disk/partition IDs are discarded. The
 correlation struct is excluded from JSON serialization; no API field, mount,

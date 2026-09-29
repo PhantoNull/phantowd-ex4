@@ -11,15 +11,16 @@ import (
 )
 
 type kernelPartitionBinding struct {
-	KernelName string `json:"-"`
-	Major      uint32 `json:"-"`
-	Minor      uint32 `json:"-"`
-	Number     uint32 `json:"-"`
-	Start512B  uint64 `json:"-"`
-	Size512B   uint64 `json:"-"`
-	TypeGUID   string `json:"-"`
-	UUID       string `json:"-"`
-	UUIDStatus string `json:"-"`
+	KernelName string               `json:"-"`
+	Major      uint32               `json:"-"`
+	Minor      uint32               `json:"-"`
+	Number     uint32               `json:"-"`
+	Start512B  uint64               `json:"-"`
+	Size512B   uint64               `json:"-"`
+	TypeGUID   string               `json:"-"`
+	TypeHint   gptPartitionTypeHint `json:"-"`
+	UUID       string               `json:"-"`
+	UUIDStatus string               `json:"-"`
 }
 
 const (
@@ -146,7 +147,8 @@ func correlateDiskPartitionTable(
 		binding.Partitions = append(binding.Partitions, kernelPartitionBinding{
 			KernelName: kernel.Name, Major: kernel.Major, Minor: kernel.Minor,
 			Number: partition.Number, Start512B: partition.Start512B,
-			Size512B: partition.Size512B, TypeGUID: partition.TypeID, UUID: partition.UUID,
+			Size512B: partition.Size512B, TypeGUID: partition.TypeID,
+			TypeHint: classifyGPTPartitionTypeGUID(partition.TypeID), UUID: partition.UUID,
 		})
 	}
 	if len(seenNumbers) != len(kernelByNumber) {

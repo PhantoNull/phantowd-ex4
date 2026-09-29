@@ -58,6 +58,10 @@ if [ "$reuse_base_probe" = 1 ]; then
         echo 'Requested base volume-probe reuse, but the exact artifact has no helper' >&2
         exit 1
     }
+    if ! grep -aF '"schema_version":2' "$temporary/phantowd-volume-probe" >/dev/null; then
+        echo 'Reused base volume-probe does not advertise schema_version 2; disable REUSE_BASE_VOLUME_PROBE to rebuild it from pinned sources.' >&2
+        exit 1
+    fi
     echo 'Reusing the verified base volume-probe; source changes to that helper are not included.'
 else
     sh "$source_dir/support/container/build-volume-probe-fixture.sh" \
