@@ -5,6 +5,8 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
+	"io/fs"
 	"os"
 	"testing"
 	"testing/fstest"
@@ -305,6 +307,64 @@ func TestCorrelateCandidatePartitionTablesRequiresCompleteGenerationBoundSet(t *
 	}
 }
 
+func TestObserveCandidateGPTIdentitiesClassifiesClonesAcrossCompleteCandidateSet(t *testing.T) {
+	sysfs := fixtureDiscoverySysfs()
+	addDiscoveryGPTPartition(sysfs, "sdb", 8, 17)
+	addDiscoveryGPTPartition(sysfs, "sdc", 8, 33)
+	proc := discoveryProc("36 0 8:1 / / rw - ext4 /dev/sda1 rw\n", emptySwaps)
+	discovery, err := discoverTrustedStorageWith(sysfs, proc, func(devices []volumeprobe.ObservedBlockDevice) ([]volumeprobe.BlockDeviceSource, error) {
+		sources := make([]volumeprobe.BlockDeviceSource, 0, len(devices))
+		for _, device := range devices {
+			file, err := os.CreateTemp(t.TempDir(), "gpt-clone-observation-")
+			if err != nil {
+				return sources, err
+			}
+			sources = append(sources, volumeprobe.BlockDeviceSource{File: file, Generation: device.Generation})
+		}
+		return sources, nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer discovery.Close()
+	current, err := collectStorage(sysfs)
+	if err != nil {
+		t.Fatal(err)
+	}
+	const diskGUID = "fedcba98-7654-3210-fedc-ba9876543210"
+	const partUUID = "00112233-4455-6677-8899-aabbccddeeff"
+	result := func() volumeprobe.Result {
+		return volumeprobe.Result{
+			Status: "other-signature", SourceKind: "block-device",
+			PartitionTable: &volumeprobe.PartitionTable{
+				Scheme: "gpt", ID: diskGUID,
+				Partitions: []volumeprobe.Partition{{
+					Number: 1, Start512B: 2048, Size512B: 63455, UUID: partUUID,
+					TypeID: "c12a7328-f81f-11d2-ba4b-00a0c93ec93b",
+				}},
+			},
+		}
+	}
+	observed, err := observeCandidateGPTIdentities(discovery, current, []volumeprobe.Result{result(), result()})
+	if err != nil {
+		t.Fatalf("complete cloned GPT candidate set should classify: %v", err)
+	}
+	if observed.CandidateCount != 2 || observed.GPTDiskCount != 2 ||
+		observed.Coverage != gptIdentityCoverageAllCandidates || len(observed.Bindings) != 2 {
+		t.Fatalf("classification did not retain the complete GPT candidate set: %+v", observed)
+	}
+	for index, binding := range observed.Bindings {
+		if binding.TableIDStatus != gptIdentityAmbiguousObserved || len(binding.Partitions) != 1 ||
+			binding.Partitions[0].UUIDStatus != gptIdentityAmbiguousObserved {
+			t.Fatalf("complete-set clone collision was missed at index %d: %+v", index, binding)
+		}
+	}
+	encoded, err := json.Marshal(observed)
+	if err != nil || string(encoded) != "{}" {
+		t.Fatalf("complete-set GPT identities must remain private: %s (err=%v)", encoded, err)
+	}
+}
+
 func sysfsWithoutPartition(t *testing.T) fstest.MapFS {
 	t.Helper()
 	sysfs := fixtureSysfs()
@@ -333,4 +393,19 @@ func gptBindingFixture(name string, major, minor uint32, diskSequence uint64, di
 			Start512B: 2048, Size512B: 4096, UUID: partUUID,
 		}},
 	}
+}
+
+func addDiscoveryGPTPartition(sysfs fstest.MapFS, disk string, major, minor uint32) {
+	partition := disk + "1"
+	parentPath := "devices/pci0000:00/block/" + disk
+	partitionPath := parentPath + "/" + partition
+	sysfs["class/block/"+partition] = &fstest.MapFile{
+		Mode: fs.ModeSymlink, Data: []byte("../../" + partitionPath),
+	}
+	sysfs[partitionPath+"/dev"] = &fstest.MapFile{Data: []byte(fmt.Sprintf("%d:%d\n", major, minor))}
+	sysfs[partitionPath+"/size"] = &fstest.MapFile{Data: []byte("63455\n")}
+	sysfs[partitionPath+"/start"] = &fstest.MapFile{Data: []byte("2048\n")}
+	sysfs[partitionPath+"/ro"] = &fstest.MapFile{Data: []byte("1\n")}
+	sysfs[partitionPath+"/partition"] = &fstest.MapFile{Data: []byte("1\n")}
+	sysfs[partitionPath+"/holders"] = &fstest.MapFile{Mode: fs.ModeDir | 0o555}
 }

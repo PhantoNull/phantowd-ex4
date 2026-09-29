@@ -460,8 +460,10 @@ are missing. **Depends on:** M1; M7 for hardware.
   within the observed GPT-candidate subset; singleton means only "seen once in
   this GPT subset," never globally unique. Non-GPT candidates remain explicit
   coverage gaps, so unsupported MBR and no-table candidates cannot be mistaken
-  for GPT uniqueness. A QEMU synthetic in-memory clone pair tests the collision
-  classifier without attaching another cloned disk. These observations are
+  for GPT uniqueness. A host integration fixture verifies duplicate IDs across
+  two correlated candidates in a complete discovery snapshot. The QEMU smoke
+  separately uses a synthetic in-memory clone pair, not another guest disk.
+  These observations are
   private and excluded from JSON; they confer no persistent identity, mount,
   import, compatibility or write authority. Host tests/vet and the local
   ARMv5 QEMU smoke pass. This was an overlay on the verified base kernel/package
@@ -823,9 +825,10 @@ These features are separate scope, not shortcuts around core acceptance:
    slice and its disposable RAID1 QEMU fixture. Local M3.2a correlates private
    GPT-only GUID/PARTUUID observations to the complete generation-bound
    sysfs partition set. M3.2b classifies duplicate IDs within the observed GPT
-   subset and retains explicit MBR/no-table coverage gaps; host tests and one
-   smoke-only local ARMv5 QEMU overlay pass. The QEMU clone collision is
-   synthetic in memory, not a second guest disk. This is not clean Buildroot,
+   subset and retains explicit MBR/no-table coverage gaps; host tests include a
+   complete two-candidate GPT collision, and one smoke-only local ARMv5 QEMU
+   overlay passes with its clone collision synthetic in memory, not a second
+   guest disk. This is not clean Buildroot,
    two-boot or release qualification. Next, define product-owned persistent
    volume IDs separately from bay location and specify safe transaction/recovery
    semantics, without granting mount/import authority. Fixtures do not qualify

@@ -87,10 +87,11 @@ PARTUUID statuses to be ambiguous independently. The cloned binding is not a
 second QEMU disk and does not change the complete guest candidate set; the
 marker `PHANTOWD_PARTITION_IDENTITY_CLASSIFICATION_READY` reports both the
 complete original-set coverage (`observed_gpt_disks=1`, `coverage=partial`)
-and the separate synthetic pair. Host tests also cover disk-only and
-PARTUUID-only collisions. MBR and no-table candidates are coverage gaps, not
-proof of uniqueness. No identity classification is serialized or exposed over
-HTTP, persisted, or used to mount/import.
+and the separate synthetic pair. Host tests additionally exercise duplicate
+disk GUID/PARTUUIDs across two candidates admitted by complete discovery, plus
+disk-only and PARTUUID-only collisions. MBR and no-table candidates are coverage
+gaps, not proof of uniqueness. No identity classification is serialized or
+exposed over HTTP, persisted, or used to mount/import.
 
 The read-only storage collector also requires nonzero, unique kernel `diskseq`
 values for whole-disk entries, rechecks each value around its local observation,

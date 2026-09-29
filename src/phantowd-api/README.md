@@ -305,10 +305,11 @@ and refuses non-Versatile PB machines. See the
   independently only within the observed GPT-candidate subset; unsupported
   MBR and no-table candidates remain coverage gaps, and a singleton is not a
   global uniqueness claim. IDs and classifications are excluded from JSON.
-  Host contracts and a smoke-only ARMv5 overlay exercise an in-memory synthetic
-  clone pair; no additional cloned guest disk, persistent ID, HTTP field,
-  compatibility decision, mount or import path is added. See `ROADMAP.md` for
-  current qualification limits.
+  Host fixtures exercise a complete two-candidate cloned-GPT observation with
+  aligned synthetic sysfs children. A separate smoke-only ARMv5 overlay tests
+  the collision classifier with an in-memory clone pair, not an additional
+  guest disk. Neither path adds a persistent ID, HTTP field, compatibility
+  decision, mount or import path. See `ROADMAP.md` for current limits.
 - `flashable` and `hardware_validated` are always false; the target is explicitly
   `qemu-armv5`. These identifiers are not automatic hardware detection.
 
