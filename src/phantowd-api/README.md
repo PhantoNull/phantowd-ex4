@@ -477,8 +477,11 @@ bound when `Owner` opens; operation calls cannot replace it. Host/race/fuzz
 checks, Linux package tests and the full local Buildroot ARMv5 QEMU smoke pass,
 including real Samba fixture authentication denied before enable and accepted
 after same-SID confirmation. QEMU uses a disposable user and private `smb.conf`;
-product service startup/configuration, HTTP authorization and operator review
-handling remain unwired, and no HTTP account API is exposed. The config inode
+the fixed executor validates that already-pinned configuration descriptor with
+`testparm` before it can be bound to an Owner. Missing or invalid configuration
+is rejected without creating Owner state or modifying the config. Product
+service startup/configuration, HTTP authorization and operator review handling
+remain unwired, and no HTTP account API is exposed. The config inode
 remains pinned for the Owner lifetime, pathname replacement cannot retarget the
 executor, and owner shutdown closes that executor once.
 

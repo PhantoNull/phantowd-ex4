@@ -231,7 +231,10 @@ enable and succeeds only after the same SID is observed enabled. A new M2.2
 integration starts one root Owner from the QEMU-only init hook and verifies
 protected-socket peer checks, process restart and listener drain before Owner
 close. Its authority and Samba state are fixture-only; it does not provide
-product startup or persistence. The credential-free JSON v1 protocol remains
+product startup or persistence. The fixture validates the pinned Samba
+configuration before initializing Owner state and proves a missing config and
+a `testparm`-rejected config are rejected without side effects. The
+credential-free JSON v1 protocol remains
 unchanged. No HTTP authorization binding or product startup/configuration exists;
 password replacement, disable/retirement, operator recovery, session revocation
 and hardware qualification remain open.

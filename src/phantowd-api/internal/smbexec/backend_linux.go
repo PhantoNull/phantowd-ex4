@@ -26,15 +26,17 @@ import (
 )
 
 const (
-	pdbeditPath       = "/usr/bin/pdbedit"
-	smbpasswdPath     = "/usr/bin/smbpasswd"
-	configArgument    = "@PHANTOWD_TRUSTED_SMB_CONFIG@"
-	childConfigPath   = "/proc/self/fd/3"
-	maxConfigBytes    = 1 << 20
-	maxObserveBytes   = 1 << 20
-	commandTimeout    = 10 * time.Second
-	commandWaitDelay  = time.Second
-	allowedAccountOps = "NDHTUMWSLXI "
+	pdbeditPath        = "/usr/bin/pdbedit"
+	smbpasswdPath      = "/usr/bin/smbpasswd"
+	testparmPath       = "/usr/bin/testparm"
+	configArgument     = "@PHANTOWD_TRUSTED_SMB_CONFIG@"
+	childConfigPath    = "/proc/self/fd/3"
+	maxConfigBytes     = 1 << 20
+	maxObserveBytes    = 1 << 20
+	configCheckTimeout = 5 * time.Second
+	commandTimeout     = 10 * time.Second
+	commandWaitDelay   = time.Second
+	allowedAccountOps  = "NDHTUMWSLXI "
 )
 
 var (
@@ -64,7 +66,15 @@ type Backend struct {
 // New creates a production command adapter for one trusted Samba config path.
 // The path is a startup dependency, never a request or registry field.
 func New(configPath string) (*Backend, error) {
-	return newBackend(configPath, commandRunnerFunc(runCommand))
+	config, err := openConfig(configPath)
+	if err != nil {
+		return nil, ErrInvalid
+	}
+	if err := validateConfig(config); err != nil {
+		_ = config.Close()
+		return nil, ErrInvalid
+	}
+	return &Backend{config: config, runner: commandRunnerFunc(runCommand)}, nil
 }
 
 func newBackend(configPath string, runner commandRunner) (*Backend, error) {
@@ -328,6 +338,29 @@ func openConfig(path string) (*os.File, error) {
 		return nil, ErrInvalid
 	}
 	return file, nil
+}
+
+// validateConfig parses the same pinned inode that commands will use. A bad
+// or unavailable testparm binary fails closed before the backend is bound to an
+// Owner or any identity operation can create journal state.
+func validateConfig(config *os.File) error {
+	if config == nil {
+		return ErrInvalid
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), configCheckTimeout)
+	defer cancel()
+	command := exec.CommandContext(ctx, testparmPath, "-s", childConfigPath)
+	command.Dir = "/"
+	command.Env = []string{"PATH=/usr/bin:/bin", "LC_ALL=C"}
+	command.ExtraFiles = []*os.File{config}
+	command.Stdin = bytes.NewReader(nil)
+	command.Stdout = io.Discard
+	command.Stderr = io.Discard
+	command.WaitDelay = commandWaitDelay
+	if err := command.Run(); err != nil || ctx.Err() != nil {
+		return ErrInvalid
+	}
+	return nil
 }
 
 func runCommand(ctx context.Context, executable string, args []string, config *os.File, stdin []byte, capture bool) ([]byte, error) {

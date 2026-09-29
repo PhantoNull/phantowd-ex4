@@ -69,15 +69,13 @@ func runQEMUIdentityOwnerService() error {
 	if err := prepareQEMUIdentityOwnerRuntime(apiGID); err != nil {
 		return errors.New("QEMU identity-owner runtime is unsafe or unavailable")
 	}
-	if err := initializeQEMUIdentityOwnerRegistry(); err != nil {
-		return errors.New("QEMU identity-owner registry initialization failed")
-	}
-	if err := validateQEMUIdentityOwnerSMBConfig(); err != nil {
-		return errors.New("QEMU identity-owner Samba fixture is invalid")
-	}
 	smbBackend, err := smbexec.New(qemuOwnerSMBConfig)
 	if err != nil {
 		return errors.New("QEMU identity-owner Samba backend is unavailable")
+	}
+	if err := initializeQEMUIdentityOwnerRegistry(); err != nil {
+		_ = smbBackend.Close()
+		return errors.New("QEMU identity-owner registry initialization failed")
 	}
 	inventory := func(context.Context) (serviceaccounts.Reservations, error) {
 		return serviceaccounts.Reservations{UIDs: []uint32{}, GIDs: []uint32{}, Names: []string{}}, nil
@@ -215,19 +213,6 @@ func ensureQEMUOwnerConfig() error {
 		return errors.New("QEMU identity-owner Samba config changed")
 	}
 	clear(contents)
-	return nil
-}
-
-func validateQEMUIdentityOwnerSMBConfig() error {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-	command := exec.CommandContext(ctx, "/usr/bin/testparm", "-s", qemuOwnerSMBConfig)
-	command.Env = []string{"PATH=/usr/sbin:/usr/bin:/sbin:/bin", "LC_ALL=C"}
-	output, err := command.CombinedOutput()
-	clear(output)
-	if err != nil || ctx.Err() != nil {
-		return errors.New("QEMU identity-owner Samba config did not validate")
-	}
 	return nil
 }
 
@@ -392,6 +377,9 @@ func exerciseQEMUBootIdentityOwnerService() error {
 	if err != nil {
 		return err
 	}
+	if err := exerciseQEMURejectedSMBConfigsHaveNoSideEffects(); err != nil {
+		return err
+	}
 	beforePID, err := verifyQEMUIdentityOwnerService(apiGID)
 	if err != nil {
 		return err
@@ -438,7 +426,71 @@ func exerciseQEMUBootIdentityOwnerService() error {
 	if _, err := os.Stat("/run/phantowd-identity-owner.pid"); !errors.Is(err, os.ErrNotExist) {
 		return errors.New("QEMU boot owner pidfile remained after clean stop")
 	}
-	fmt.Println("PHANTOWD_IDENTITY_OWNER_BOOT_READY service_uid=0 socket_mode=0620 api_uid=nonroot process_restart=true drained=true runtime=run http=false scope=qemu-only")
+	fmt.Println("PHANTOWD_IDENTITY_OWNER_BOOT_READY service_uid=0 socket_mode=0620 api_uid=nonroot config_missing_rejected=true config_invalid_rejected=true no_side_effects=true process_restart=true drained=true runtime=run http=false scope=qemu-only")
+	return nil
+}
+
+func exerciseQEMURejectedSMBConfigsHaveNoSideEffects() (result error) {
+	directory := filepath.Join(qemuOwnerRoot, "config-rejection-test")
+	if err := os.Mkdir(directory, 0700); err != nil {
+		return errors.New("QEMU Samba config rejection fixture could not start")
+	}
+	defer func() { result = errors.Join(result, os.Remove(directory)) }()
+
+	missing := filepath.Join(directory, "missing.conf")
+	backend, err := smbexec.New(missing)
+	if backend != nil {
+		_ = backend.Close()
+	}
+	if err == nil {
+		return errors.New("missing Samba config was accepted")
+	}
+	if _, err := os.Lstat(missing); !errors.Is(err, os.ErrNotExist) {
+		return errors.New("missing Samba config rejection created the path")
+	}
+
+	invalid := filepath.Join(directory, "invalid.conf")
+	contents := []byte("[global]\nserver role = phantowd-invalid-role\n")
+	file, err := os.OpenFile(invalid, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0600)
+	if err != nil {
+		return errors.New("invalid Samba config fixture could not be created")
+	}
+	_, writeErr := file.Write(contents)
+	if writeErr == nil {
+		writeErr = file.Sync()
+	}
+	err = errors.Join(writeErr, file.Close())
+	if err != nil {
+		_ = os.Remove(invalid)
+		return errors.New("invalid Samba config fixture could not be saved")
+	}
+	defer func() { result = errors.Join(result, os.Remove(invalid)) }()
+	before, err := os.Stat(invalid)
+	if err != nil {
+		return errors.New("invalid Samba config metadata could not be captured")
+	}
+	backend, err = smbexec.New(invalid)
+	if backend != nil {
+		_ = backend.Close()
+	}
+	if err == nil {
+		return errors.New("syntactically invalid Samba config was accepted")
+	}
+	after, statErr := os.Stat(invalid)
+	afterContents, readErr := os.ReadFile(invalid)
+	if statErr != nil || readErr != nil || !os.SameFile(before, after) ||
+		before.Mode() != after.Mode() || string(afterContents) != string(contents) {
+		clear(afterContents)
+		return errors.New("invalid Samba config rejection changed its input")
+	}
+	clear(afterContents)
+	entries, err := os.ReadDir(directory)
+	if err != nil || len(entries) != 1 || entries[0].Name() != "invalid.conf" {
+		return errors.New("rejected Samba configs left unexpected filesystem state")
+	}
+	if _, err := os.Lstat(filepath.Join(directory, "authority")); !errors.Is(err, os.ErrNotExist) {
+		return errors.New("rejected Samba config created owner authority state")
+	}
 	return nil
 }
 

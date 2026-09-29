@@ -93,7 +93,7 @@ grep -F 'qemuOwnerSocketDir' "$qemu_owner_service" >/dev/null ||
     fail 'QEMU owner service must use its fixed protected socket path'
 grep -F 'qemuOwnerRoot       = "/run/phantowd-identity-owner-fixture"' "$qemu_owner_service" >/dev/null ||
     fail 'QEMU owner state must remain under volatile /run'
-grep -F 'PHANTOWD_IDENTITY_OWNER_BOOT_READY service_uid=0 socket_mode=0620 api_uid=nonroot process_restart=true drained=true runtime=run http=false scope=qemu-only' "$repo_root/support/qemu-smoke.sh" >/dev/null ||
+grep -F 'PHANTOWD_IDENTITY_OWNER_BOOT_READY service_uid=0 socket_mode=0620 api_uid=nonroot config_missing_rejected=true config_invalid_rejected=true no_side_effects=true process_restart=true drained=true runtime=run http=false scope=qemu-only' "$repo_root/support/qemu-smoke.sh" >/dev/null ||
     fail 'QEMU smoke must require the boot owner service lifecycle marker'
 sh "$repo_root/support/tests/test-qemu-selftest-helper.sh"
 

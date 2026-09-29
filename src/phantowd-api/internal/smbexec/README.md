@@ -9,18 +9,23 @@ observation, journal transition, and mutation.
 
 ## Command boundary
 
-- Executables are fixed absolute paths: `/usr/bin/pdbedit` and
-  `/usr/bin/smbpasswd`.
+- Executables are fixed absolute paths: `/usr/bin/testparm`,
+  `/usr/bin/pdbedit` and `/usr/bin/smbpasswd`.
 - The startup-supplied Samba configuration path is not request data. It must be
   absolute, non-symlinked, a root-owned regular file, not group/other writable,
   and no larger than 1 MiB. The child receives it through an inherited file
   descriptor (`/proc/self/fd/3`), not a client-selected path. The executor pins
-that opened inode until `Owner.Close`; later replacement of the path cannot
-retarget an operation. The `Owner` takes ownership of the executor at open and
-closes it after operations drain, or immediately if open fails.
-- Child environment is restricted to a fixed `PATH` and `LC_ALL=C`. Commands
-  have a ten-second deadline; observation output is capped at 1 MiB. Mutation
-  output and stderr are discarded, and errors are redacted.
+  that opened inode until `Owner.Close`; later replacement of the path cannot
+  retarget an operation. Before returning a backend, `New` runs `testparm -s`
+  against that same descriptor with a five-second deadline and fixed
+  environment. Missing or semantically invalid configuration, or an unavailable
+  validator, fails closed before the backend can be bound to an Owner. The
+  `Owner` takes ownership of the executor at open and closes it after operations
+  drain, or immediately if open fails.
+- Child environments are restricted to fixed `PATH` and `LC_ALL=C`. Validation
+  has a five-second deadline; account commands have a ten-second deadline;
+  observation output is capped at 1 MiB. Mutation output and stderr are
+  discarded, and errors are redacted.
 - `Observe` lists passdb metadata with `pdbedit -L -v -s`, then returns only the
   exact requested Unix name, owner-supplied UID/GID, SID, and disabled bit.
   Missing or ambiguous/malformed target records fail closed. Password hashes
@@ -47,8 +52,10 @@ retry an uncertain command, or serve client protocols. A missing reply or uncert
 ## Verification and remaining integration
 
 Root-run Go/race tests exercise fixed arguments, exact-record parsing,
-configuration checks and path-replacement resistance, stdin-only secret
-delivery, output clearing, and redacted failures. The ARMv5 QEMU fixture runs
+configuration ownership/mode/syntax checks and path-replacement resistance,
+stdin-only secret delivery, output clearing, and redacted failures. Tests verify
+that missing configuration creates no files and invalid configuration remains
+unchanged. The ARMv5 QEMU fixture runs
 this same executor against a disposable Samba passdb and private test
 configuration. It verifies that valid
 credentials fail before explicit journaled enable and succeed only after

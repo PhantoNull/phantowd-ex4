@@ -157,6 +157,27 @@ func TestNewRejectsWritableAndSymlinkedConfig(t *testing.T) {
 	}
 }
 
+func TestNewRejectsMissingConfigWithoutCreatingAnything(t *testing.T) {
+	if os.Geteuid() != 0 {
+		t.Skip("trusted Samba adapter tests require root-owned fixture config")
+	}
+	directory := t.TempDir()
+	config := filepath.Join(directory, "missing.conf")
+	if backend, err := New(config); err == nil || backend != nil {
+		if backend != nil {
+			_ = backend.Close()
+		}
+		t.Fatal("missing trusted Samba config was accepted")
+	}
+	if _, err := os.Stat(config); !os.IsNotExist(err) {
+		t.Fatalf("opening missing config created or changed the path: %v", err)
+	}
+	entries, err := os.ReadDir(directory)
+	if err != nil || len(entries) != 0 {
+		t.Fatalf("missing config rejection left filesystem side effects: entries=%v error=%v", entries, err)
+	}
+}
+
 func TestObserveTreatsMissingTargetAsExactAbsence(t *testing.T) {
 	if os.Geteuid() != 0 {
 		t.Skip("trusted Samba adapter tests require root-owned fixture config")
