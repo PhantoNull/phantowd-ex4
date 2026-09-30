@@ -307,10 +307,13 @@ afterward. Clean CI retains `qemu-state-reboot.log` with its validation artifact
 Qualification caveat: intermittent local seed runs have reported `EBUSY`, first
 during password-change development and again during identity-owner development.
 The latest recurrence is specifically **state-volume unmount**, after the main
-identity scenario passed. Subsequent full runs and ten additional two-boot
-cycles passed; failure-only process/descriptor probes and a parent-exit probe
-did not establish the cause. Temporary probes were removed. The cause remains
-unproven, not fixed by the separate identity-channel overload correction.
+identity scenario passed. Ten additional instrumented pairs and ten more local
+repetitions on 2026-09-30 passed without reproducing it; the latter used the
+manifest-verified cached rootfs (`7a45b86344ee36c60441efbe4adb6632dc76ce3baac610ad5b7e89b59fd06d6c`)
+and current shell harness, not a clean source rebuild. Failure-only
+process/descriptor probes and a parent-exit probe did not establish the cause.
+Temporary probes were removed. This is non-reproduction, not a fix; the cause
+remains unproven and unrelated to the identity-channel overload correction.
 Cleanup labels state-volume,
 Samba-data and copied-`/etc` unmount failures, and a host regression checks that
 the state-persistence fixture releases its own descriptors. Neither lazy

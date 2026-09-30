@@ -171,7 +171,10 @@ button to an unqualified backend simply because the screen exists.
   state-volume unmount refusal; capture only bounded, redacted process/FD/mount
   ownership evidence. Test the concrete owner/lifecycle defect before changing
   cleanup. Do not assume parent process exit proves descendant exit. A fix needs
-  a deterministic regression and a declared repeated two-boot campaign.
+  a deterministic regression and a declared repeated two-boot campaign. Ten
+  more local repetitions on 2026-09-30, using the current harness and existing
+  manifest-verified rootfs artifact, passed without reproducing EBUSY; this does
+  not establish a fix or replace exact-source instrumentation on recurrence.
 - **M0.3 — Keep CI proportional.** Host/domain changes use fast checks; runtime
   changes use QEMU; board changes use the relevant current probe. Windows host
   iteration has a no-Docker preflight and an optional Linux/amd64 test runner
