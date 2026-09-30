@@ -77,10 +77,13 @@ func (m *model) dependencies() dependencies {
 
 type modeledSMB struct {
 	observation  smbprovision.Observation
+	observeCalls int
+	observeErr   bool
 	createCalls  int
 	setCalls     int
 	enableCalls  int
 	disableCalls int
+	enableErr    bool
 	secret       []byte
 	onCreate     func()
 }
@@ -96,6 +99,10 @@ func (b *closeCountingSMB) Close() error {
 }
 
 func (b *modeledSMB) Observe(_ context.Context, account serviceaccounts.Account) (smbprovision.Observation, error) {
+	b.observeCalls++
+	if b.observeErr {
+		return smbprovision.Observation{}, errors.New("PRIVATE SMB observation failure")
+	}
 	if b.observation.Present && (b.observation.Name != account.Name || b.observation.UID != account.UID || b.observation.GID != account.GID) {
 		return smbprovision.Observation{}, errors.New("PRIVATE SMB account mismatch")
 	}
@@ -123,6 +130,9 @@ func (b *modeledSMB) Enable(_ context.Context, account serviceaccounts.Account) 
 	if !b.observation.Present || !b.observation.Disabled || b.observation.Name != account.Name ||
 		b.observation.UID != account.UID || b.observation.GID != account.GID {
 		return errors.New("PRIVATE SMB account not disabled")
+	}
+	if b.enableErr {
+		return errors.New("PRIVATE ambiguous SMB enable result")
 	}
 	b.observation.Disabled = false
 	return nil
@@ -362,6 +372,158 @@ func TestSMBEnrollmentRequiresUnixConfirmationAndRemainsDisabled(t *testing.T) {
 	}
 	if _, err := smb.Load(ctx); err != nil {
 		t.Fatal("completed enrollment could not be read", err)
+	}
+}
+
+func reviewRequiredSMB(t *testing.T) (*Owner, *model, *modeledSMB, serviceaccounts.Account, string) {
+	t.Helper()
+	backend := &modeledSMB{}
+	o, m, dir := fixtureWithSMB(t, backend)
+	ctx := context.Background()
+	account, err := o.Reserve(ctx, 1, "first", "firstuser")
+	if err != nil {
+		t.Fatal(err)
+	}
+	completeUnixIdentity(t, o, account.ID)
+	smb := o.SMB(account.ID)
+	if err := smb.Begin(ctx, 5); err != nil {
+		t.Fatal(err)
+	}
+	if err := smb.Step(ctx, 1); err != nil {
+		t.Fatal(err)
+	}
+	if err := smb.SetPasswordDisabled(ctx, 3, []byte("test-only-private-secret")); err != nil {
+		t.Fatal(err)
+	}
+	backend.enableErr = true
+	if err := smb.Enable(ctx, 5); !errors.Is(err, smbprovision.ErrReview) {
+		t.Fatalf("ambiguous enable was not quarantined: %v", err)
+	}
+	return o, m, backend, account, dir
+}
+
+func TestSMBReviewReadsRedactedObservationWithoutMutation(t *testing.T) {
+	o, _, backend, account, dir := reviewRequiredSMB(t)
+	ctx := context.Background()
+	journalPath := filepath.Join(dir, "operations", account.ID, "smb", "smb-operation.json")
+	before, err := os.ReadFile(journalPath)
+	if err != nil {
+		t.Fatal("read journal before review:", err)
+	}
+	journal, err := o.smbJournals[account.ID].Load()
+	if err != nil || journal.Phase != smbprovision.ReviewRequired {
+		t.Fatal("fixture is not in review-required:", journal, err)
+	}
+	mutators := [4]int{backend.createCalls, backend.setCalls, backend.enableCalls, backend.disableCalls}
+	observes := backend.observeCalls
+	observed, err := o.SMB(account.ID).Review(ctx)
+	if err != nil {
+		t.Fatal("read-only review failed:", err)
+	}
+	if !observed.Present || observed.Name != account.Name || observed.UID != account.UID || observed.GID != account.GID ||
+		observed.SID != backend.observation.SID || observed.Disabled != backend.observation.Disabled {
+		t.Fatal("review returned an unexpected redacted observation:", observed)
+	}
+	if backend.observeCalls != observes+1 || mutators != [4]int{backend.createCalls, backend.setCalls, backend.enableCalls, backend.disableCalls} {
+		t.Fatal("review did not perform exactly one observation and zero mutations")
+	}
+	after, err := os.ReadFile(journalPath)
+	if err != nil || string(after) != string(before) {
+		t.Fatal("review changed its durable journal", err)
+	}
+	journal, err = o.smbJournals[account.ID].Load()
+	if err != nil || journal.Phase != smbprovision.ReviewRequired {
+		t.Fatal("review cleared or changed quarantine:", journal, err)
+	}
+}
+
+func TestSMBReviewRefusesNonReviewStateWithoutObservation(t *testing.T) {
+	backend := &modeledSMB{}
+	o, _, _ := fixtureWithSMB(t, backend)
+	ctx := context.Background()
+	account, err := o.Reserve(ctx, 1, "first", "firstuser")
+	if err != nil {
+		t.Fatal(err)
+	}
+	completeUnixIdentity(t, o, account.ID)
+	if err := o.SMB(account.ID).Begin(ctx, 5); err != nil {
+		t.Fatal(err)
+	}
+	observes := backend.observeCalls
+	if _, err := o.SMB(account.ID).Review(ctx); !errors.Is(err, smbprovision.ErrConflict) {
+		t.Fatal("review was allowed outside review-required:", err)
+	}
+	if backend.observeCalls != observes {
+		t.Fatal("review observed Samba outside review-required")
+	}
+}
+
+func TestSMBReviewRespectsOwnerLock(t *testing.T) {
+	o, _, backend, account, _ := reviewRequiredSMB(t)
+	observes := backend.observeCalls
+	o.mu.Lock()
+	_, err := o.SMB(account.ID).Review(context.Background())
+	o.mu.Unlock()
+	if !errors.Is(err, ErrBusy) || backend.observeCalls != observes {
+		t.Fatal("review bypassed the Owner lock:", err)
+	}
+}
+
+func TestSMBReviewRefusesReplacedAccountDirectory(t *testing.T) {
+	o, _, backend, account, dir := reviewRequiredSMB(t)
+	path := filepath.Join(dir, "operations", account.ID)
+	moved := filepath.Join(dir, "operations", "moved-account")
+	if err := os.Rename(path, moved); err != nil {
+		t.Fatal("move original account directory:", err)
+	}
+	if err := os.Mkdir(path, 0700); err != nil {
+		if restoreErr := os.Rename(moved, path); restoreErr != nil {
+			t.Fatal("restore original account directory:", restoreErr)
+		}
+		t.Fatal("create replacement account directory:", err)
+	}
+	observes := backend.observeCalls
+	if _, err := o.SMB(account.ID).Review(context.Background()); !errors.Is(err, ErrUnavailable) {
+		t.Fatal("review accepted a replaced account directory:", err)
+	}
+	if backend.observeCalls != observes {
+		t.Fatal("review observed Samba through a replaced account directory")
+	}
+	if err := os.Remove(path); err != nil {
+		t.Fatal("remove test replacement directory:", err)
+	}
+	if err := os.Rename(moved, path); err != nil {
+		t.Fatal("restore original account directory:", err)
+	}
+}
+
+func TestSMBReviewRequiresConfirmedUnixIdentity(t *testing.T) {
+	o, m, backend, account, _ := reviewRequiredSMB(t)
+	delete(m.users, account.ID)
+	observes := backend.observeCalls
+	if _, err := o.SMB(account.ID).Review(context.Background()); !errors.Is(err, ErrReview) {
+		t.Fatal("review proceeded after the Unix identity disappeared:", err)
+	}
+	if backend.observeCalls != observes {
+		t.Fatal("review observed Samba after Unix identity verification failed")
+	}
+}
+
+func TestSMBReviewRedactsBackendFailure(t *testing.T) {
+	o, _, backend, account, _ := reviewRequiredSMB(t)
+	backend.observeErr = true
+	observed, err := o.SMB(account.ID).Review(context.Background())
+	if !errors.Is(err, smbprovision.ErrObservation) || strings.Contains(fmt.Sprint(err), "PRIVATE") || observed != (smbprovision.Observation{}) {
+		t.Fatal("review leaked a private backend failure:", observed, err)
+	}
+}
+
+func TestSMBReviewRejectsInvalidRedactedObservation(t *testing.T) {
+	o, _, backend, account, _ := reviewRequiredSMB(t)
+	backend.observation.SID = "not-a-sid"
+	observed, err := o.SMB(account.ID).Review(context.Background())
+	if !errors.Is(err, smbprovision.ErrObservation) || observed != (smbprovision.Observation{}) {
+		t.Fatal("review returned invalid Samba identity metadata:", observed, err)
 	}
 }
 

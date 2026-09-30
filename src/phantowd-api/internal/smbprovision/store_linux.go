@@ -94,6 +94,35 @@ func (s *Store) RecoverInterrupted() (Journal, error) {
 	return next, nil
 }
 
+// ObserveReview performs one redacted, read-only Samba observation only for an
+// already quarantined journal. It never recovers or changes durable state.
+// The caller must serialize it with all other identity and Samba writers.
+func (s *Store) ObserveReview(ctx context.Context) (Observation, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.engine == nil {
+		return Observation{}, revisionstore.ErrClosed
+	}
+	if ctx == nil || ctx.Err() != nil {
+		return Observation{}, ErrObservation
+	}
+	j, err := s.engine.Load()
+	if err != nil {
+		return Observation{}, ErrObservation
+	}
+	if j.Phase != ReviewRequired {
+		return Observation{}, ErrConflict
+	}
+	if s.backend == nil {
+		return Observation{}, ErrObservation
+	}
+	observed, err := s.backend.Observe(ctx, j.Account)
+	if ctx.Err() != nil || err != nil || observed.validateFor(j.Account, false) != nil {
+		return Observation{}, ErrObservation
+	}
+	return observed, nil
+}
+
 // Begin binds a fresh journal to an existing owner-created Unix identity and
 // refuses any pre-existing passdb entry. The parent identity authority must
 // already have confirmed Unix creation and hold its global all-writer lock.

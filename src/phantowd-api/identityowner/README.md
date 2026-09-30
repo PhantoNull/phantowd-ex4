@@ -74,13 +74,17 @@ in-process adapter. `Open` without that adapter keeps SMB mutations
 unavailable.
 `SMB(id)` exposes in-process `Begin`, `Load`, one-step disabled entry creation,
 stdin-only `SetPasswordDisabled`, and separate revision-checked `Enable` and
-`Disable` actions; the operation methods cannot accept or substitute a
-backend. `Disable` blocks new authentication, revokes only the account's
+`Disable` actions, plus a read-only `Review` observation gated to an existing
+`review-required` Samba journal. `Review` revalidates the Unix identity under
+the Owner lock and returns only validated redacted passdb metadata; it never
+recovers or changes a journal, invokes a mutator, or clears quarantine. These
+operation methods cannot accept or substitute a backend. `Disable` blocks new authentication, revokes only the account's
 existing sessions and verifies their absence, or records review-required on
 uncertainty without replay. It can interrupt active transfers. Each method
-takes the same authority lock, revalidates the
-exact Unix identity before mutation, and binds the Samba journal to the
-confirmed Unix account/revision. Existing passdb entries are never adopted.
+uses the same authority lock. Mutations revalidate the exact Unix identity
+before dispatch, and every Samba journal is bound to the confirmed Unix
+account/revision; `Review` independently verifies the current identity.
+Existing passdb entries are never adopted.
 Uncertain/interrupted Samba intents become review-required and are never
 replayed. A fixed Linux Samba executor exists and the QEMU fixture exercises
 that exact adapter with a private disposable config. It verifies valid

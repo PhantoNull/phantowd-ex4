@@ -320,12 +320,16 @@ qualification remain open. The revocation primitive is currently QEMU-only.
   enter review-required without replay; active transfers may be interrupted.
   The executor is exercised in local QEMU using only disposable
   passdb/config state; it is not yet wired to product startup or persistent
-  Samba state. The next approved review slice is internal and read-only: permit
-  `Review` only for `review-required` operations, verify the current Unix
-  identity, read only a redacted Samba observation under the Owner lock, and
-  perform no mutation or RPC/HTTP operation. **Still required:** production
-  listener/startup wiring and HTTP-session-to-owner authorization binding; explicit
-  review/operator recovery and production integration/recovery for session
+  Samba state. The local Owner now permits an in-process read-only `Review`
+  only for `review-required` operations. It verifies the current Unix identity
+  under the Owner lock, reads a validated redacted Samba observation through
+  the bound backend, never invokes recovery or a mutator, and leaves quarantine
+  unchanged. Linux-host tests cover the phase gate, identity gate, lock,
+  redaction and unchanged journal; ARMv5 QEMU-tagged tests cross-compile but
+  this new method has not yet run in guest QEMU. No RPC/HTTP path exposes it.
+  **Still required:** production listener/startup wiring and HTTP-session-to-owner
+  authorization binding; a human operator workflow to reconcile or resolve
+  review-required state; and production integration/recovery for session
   revocation. Retain tombstones;
   retirement must not silently reassign existing file ownership.
 - **M2.5 — Initial pre-JSON boundary (superseded by local QEMU follow-up below).** A disposable exact-

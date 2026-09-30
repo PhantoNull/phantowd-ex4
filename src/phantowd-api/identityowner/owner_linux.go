@@ -643,6 +643,104 @@ func (op *SMBOperation) Load(ctx context.Context) (smbprovision.Journal, error) 
 	return store.Load()
 }
 
+// Review reads one redacted Samba observation only when the durable Samba
+// journal is already review-required. Unlike normal operations it deliberately
+// does not call snapshot or RecoverInterrupted: review must never advance or
+// repair a journal as a side effect. It verifies the Unix identity and uses
+// only the backend bound to this Owner; it does not clear quarantine.
+func (op *SMBOperation) Review(ctx context.Context) (smbprovision.Observation, error) {
+	if op == nil || op.owner == nil {
+		return smbprovision.Observation{}, ErrUnavailable
+	}
+	o := op.owner
+	if err := o.enter(ctx); err != nil {
+		return smbprovision.Observation{}, err
+	}
+	defer o.mu.Unlock()
+
+	registry, err := o.registry.Load()
+	if err != nil || registry.Revision != uint64(len(registry.Accounts))+1 {
+		return smbprovision.Observation{}, ErrUnavailable
+	}
+	var account serviceaccounts.Account
+	var accountIndex int
+	found := false
+	for i, candidate := range registry.Accounts {
+		if candidate.ID == op.id {
+			account, accountIndex, found = candidate, i, true
+			break
+		}
+	}
+	if !found {
+		return smbprovision.Observation{}, ErrConflict
+	}
+
+	// Use only stores and directory identities validated during Owner.Open.
+	// Reopening either store here could run crash recovery, which is forbidden
+	// for this observation-only operation.
+	nativeStore := o.journals[op.id]
+	smbStore := o.smbJournals[op.id]
+	if nativeStore == nil || smbStore == nil {
+		return smbprovision.Observation{}, smbprovision.ErrConflict
+	}
+	accountFD, err := unix.Openat(o.operations, op.id, unix.O_RDONLY|unix.O_DIRECTORY|unix.O_NOFOLLOW|unix.O_CLOEXEC, 0)
+	if err != nil {
+		return smbprovision.Observation{}, ErrUnavailable
+	}
+	defer unix.Close(accountFD)
+	var directory unix.Stat_t
+	if unix.Fstat(accountFD, &directory) != nil || !privateDirectory(directory) ||
+		uint64(directory.Dev) != o.device || o.inodes[op.id] != directory.Ino {
+		return smbprovision.Observation{}, ErrUnavailable
+	}
+	smbFD, err := unix.Openat(accountFD, "smb", unix.O_RDONLY|unix.O_DIRECTORY|unix.O_NOFOLLOW|unix.O_CLOEXEC, 0)
+	if err != nil {
+		return smbprovision.Observation{}, ErrUnavailable
+	}
+	defer unix.Close(smbFD)
+	var smbDirectory unix.Stat_t
+	if unix.Fstat(smbFD, &smbDirectory) != nil ||
+		!privateDirectory(smbDirectory) || uint64(smbDirectory.Dev) != o.device || o.smbInodes[op.id] != smbDirectory.Ino {
+		return smbprovision.Observation{}, ErrUnavailable
+	}
+
+	native, err := nativeStore.Load()
+	if err != nil || native.Account != account || native.RegistryRevision != uint64(accountIndex)+2 {
+		return smbprovision.Observation{}, ErrUnavailable
+	}
+	if native.Phase != identityprovision.UnixConfirmed {
+		if native.Phase == identityprovision.ReviewRequired {
+			return smbprovision.Observation{}, ErrReview
+		}
+		return smbprovision.Observation{}, ErrPending
+	}
+	journal, err := smbStore.Load()
+	if err != nil || journal.Account != account || journal.NativeRevision != native.Revision {
+		return smbprovision.Observation{}, ErrUnavailable
+	}
+	if journal.Phase != smbprovision.ReviewRequired {
+		return smbprovision.Observation{}, smbprovision.ErrConflict
+	}
+	if err := o.verifyUnixLocked(ctx, account); err != nil {
+		return smbprovision.Observation{}, err
+	}
+	observed, err := smbStore.ObserveReview(ctx)
+	if errors.Is(err, smbprovision.ErrConflict) {
+		return smbprovision.Observation{}, err
+	}
+	if err != nil {
+		return smbprovision.Observation{}, smbprovision.ErrObservation
+	}
+	var currentDirectory, currentSMBDirectory unix.Stat_t
+	if unix.Fstatat(o.operations, op.id, &currentDirectory, unix.AT_SYMLINK_NOFOLLOW) != nil ||
+		!privateDirectory(currentDirectory) || currentDirectory.Ino != directory.Ino || uint64(currentDirectory.Dev) != o.device ||
+		unix.Fstatat(accountFD, "smb", &currentSMBDirectory, unix.AT_SYMLINK_NOFOLLOW) != nil ||
+		!privateDirectory(currentSMBDirectory) || currentSMBDirectory.Ino != smbDirectory.Ino || uint64(currentSMBDirectory.Dev) != o.device {
+		return smbprovision.Observation{}, ErrUnavailable
+	}
+	return observed, nil
+}
+
 // Step creates at most one disabled passdb record; a recovered/ambiguous intent
 // is converted to review by the snapshot and is never dispatched again.
 func (op *SMBOperation) Step(ctx context.Context, expected uint64) error {

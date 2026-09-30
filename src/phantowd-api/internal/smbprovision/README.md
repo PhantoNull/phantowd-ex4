@@ -56,15 +56,24 @@ authority/operations/<validated-account-id>/smb/
 
 `Store` is a single-operation journal and does not own the global identity lock.
 Only call it through `identityowner.Owner.SMB(id)`, whose `Begin`, `Step`,
-`SetPasswordDisabled`, `Enable` and `Load` hold the shared authority lock. The
-trusted
-adapter is bound once when the owner opens and copied into each journal handle
+`SetPasswordDisabled`, `Enable`, `Disable`, `Load` and `Review` hold the shared
+authority lock. The trusted adapter is bound once when the owner opens and
+copied into each journal handle
 at `smbprovision.Open`; no operation accepts a replacement backend. Opening
 without one permits recovery/inspection but fails closed for mutations. The ID
 is resolved against the owner ledger before path construction. The separate
 `identityrpc` version-2 local channel transports these typed Owner operations
 only in the disposable QEMU fixture. No HTTP method or production listener
 startup is supplied here.
+
+`identityowner.SMB(id).Review` is the sole read-only observation path for an
+already `review-required` journal. It first verifies the matching current Unix
+identity under the Owner lock, then `Store.ObserveReview` reloads the journal
+without invoking `RecoverInterrupted`, calls only the Owner-bound backend's
+redacted `Observe`, and validates the result. It returns no observation on
+error, does not modify or clear the journal, and cannot invoke a Samba
+mutator. This is an in-process diagnostic capability, not an RPC/HTTP endpoint
+or an operator reconciliation workflow.
 
 ## Qualification and limits
 
