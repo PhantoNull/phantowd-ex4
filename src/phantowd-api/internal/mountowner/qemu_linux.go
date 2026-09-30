@@ -48,7 +48,16 @@ func RunQEMUFixture(source string) error {
 	if err := exerciseMismatchedMountRefusal(source); err != nil {
 		return fmt.Errorf("mismatched mount refusal: %w", err)
 	}
-	fmt.Println("PHANTOWD_MOUNT_OWNER_READY qualified_before_lease=true identity_change_blocks_new_access=true owner_handles_revoked=true ambiguous_mount_no_retry=true ambiguous_unmount_no_retry=true mismatch_no_lease=true scope=disposable-qemu-only")
+	if err := exerciseTargetReplacementRace(source); err != nil {
+		return fmt.Errorf("mount target replacement race: %w", err)
+	}
+	if err := exerciseLateTargetReplacementRace(source); err != nil {
+		return fmt.Errorf("late mount target replacement race: %w", err)
+	}
+	if err := exerciseSourceReplacementRace(source); err != nil {
+		return fmt.Errorf("mount source replacement race: %w", err)
+	}
+	fmt.Println("PHANTOWD_MOUNT_OWNER_READY qualified_before_lease=true identity_change_blocks_new_access=true owner_handles_revoked=true ambiguous_mount_no_retry=true ambiguous_unmount_no_retry=true mismatch_no_lease=true target_fd_anchored=true target_replacement_not_used=true late_target_race_pinned_object_only=true late_target_race_quarantined=true source_fd_anchored=true source_replacement_quarantined=true scope=disposable-qemu-only")
 	return nil
 }
 
@@ -84,6 +93,10 @@ func (linuxObserver) ObserveTarget(path string) (TargetIdentity, error) {
 		return TargetIdentity{}, err
 	}
 	defer unix.Close(fd)
+	return observeTargetFD(fd)
+}
+
+func observeTargetFD(fd int) (TargetIdentity, error) {
 	var st unix.Statx_t
 	if err := unix.Statx(fd, "", unix.AT_EMPTY_PATH|unix.AT_NO_AUTOMOUNT,
 		unix.STATX_TYPE|unix.STATX_INO|unix.STATX_MNT_ID_UNIQUE|unix.STATX_BASIC_STATS, &st); err != nil {
@@ -100,6 +113,64 @@ func (linuxObserver) ObserveTarget(path string) (TargetIdentity, error) {
 	return TargetIdentity{MountID: st.Mnt_id, RootInode: st.Ino, DeviceMajor: st.Dev_major,
 		DeviceMinor: st.Dev_minor, FilesystemType: uint32(filesystem.Type),
 		MountRoot: st.Attributes&unix.STATX_ATTR_MOUNT_ROOT != 0, MountRootKnown: true}, nil
+}
+
+func (linuxObserver) PinTarget(path string) (targetHandle, error) {
+	fd, err := openPath(path, unix.O_PATH|unix.O_DIRECTORY|unix.O_CLOEXEC)
+	if err != nil {
+		return nil, err
+	}
+	pin := &linuxTargetPin{file: os.NewFile(uintptr(fd), "mount-owner-target-pin")}
+	if _, err := pin.Identity(); err != nil {
+		_ = pin.Close()
+		return nil, err
+	}
+	return pin, nil
+}
+
+type linuxTargetPin struct{ file *os.File }
+
+func (p *linuxTargetPin) Identity() (TargetIdentity, error) {
+	if p == nil || p.file == nil {
+		return TargetIdentity{}, mountguard.ErrUnavailable
+	}
+	return observeTargetFD(int(p.file.Fd()))
+}
+
+func (p *linuxTargetPin) Empty() (bool, error) {
+	if p == nil || p.file == nil {
+		return false, mountguard.ErrUnavailable
+	}
+	fd, err := unix.Openat(int(p.file.Fd()), ".", unix.O_RDONLY|unix.O_DIRECTORY|unix.O_CLOEXEC, 0)
+	if err != nil {
+		return false, mountguard.ErrUnavailable
+	}
+	directory := os.NewFile(uintptr(fd), "mount-owner-target-empty-check")
+	defer directory.Close()
+	entries, err := directory.ReadDir(1)
+	if err == io.EOF {
+		return true, nil
+	}
+	if err != nil {
+		return false, mountguard.ErrUnavailable
+	}
+	return len(entries) == 0, nil
+}
+
+func (p *linuxTargetPin) File() *os.File {
+	if p == nil {
+		return nil
+	}
+	return p.file
+}
+
+func (p *linuxTargetPin) Close() error {
+	if p == nil || p.file == nil {
+		return nil
+	}
+	err := p.file.Close()
+	p.file = nil
+	return err
 }
 
 func (linuxObserver) TargetEmpty(path string) (bool, error) {
@@ -129,27 +200,56 @@ func openPath(path string, flags int) (int, error) {
 }
 
 type qemuBindDriver struct {
-	source             string
 	target             string
 	bindSourceOverride string
+	beforeMount        func() error
+	beforeAttach       func() error
 	loseMountResult    bool
 	loseUnmountResult  bool
 	mountCalls         int
 	unmountCalls       int
+	mountAttached      bool
 }
 
-func (d *qemuBindDriver) MountBind(source, target string) error {
+func (d *qemuBindDriver) MountBind(source, target *os.File) error {
 	d.mountCalls++
-	if source != d.source || target != d.target {
+	if source == nil || target == nil {
 		return ErrInvalid
 	}
-	actualSource := source
-	if d.bindSourceOverride != "" {
-		actualSource = d.bindSourceOverride
+	if d.beforeMount != nil {
+		if err := d.beforeMount(); err != nil {
+			return err
+		}
 	}
-	if err := unix.Mount(actualSource, target, "", unix.MS_BIND, ""); err != nil {
+	pinnedTarget, err := observeTargetFD(int(target.Fd()))
+	pathTarget, pathErr := (linuxObserver{}).ObserveTarget(d.target)
+	if pathErr != nil || pinnedTarget != pathTarget {
+		return errors.Join(mountguard.ErrMismatch, pathErr)
+	}
+	sourceFD := int(source.Fd())
+	var overrideFD int
+	if d.bindSourceOverride != "" {
+		overrideFD, err = openPath(d.bindSourceOverride, unix.O_PATH|unix.O_DIRECTORY|unix.O_CLOEXEC)
+		if err != nil {
+			return err
+		}
+		defer unix.Close(overrideFD)
+		sourceFD = overrideFD
+	}
+	mountFD, err := unix.OpenTree(sourceFD, "", uint(unix.AT_EMPTY_PATH|unix.OPEN_TREE_CLONE|unix.OPEN_TREE_CLOEXEC))
+	if err != nil {
 		return err
 	}
+	defer unix.Close(mountFD)
+	if d.beforeAttach != nil {
+		if err := d.beforeAttach(); err != nil {
+			return err
+		}
+	}
+	if err := unix.MoveMount(mountFD, "", int(target.Fd()), "", unix.MOVE_MOUNT_F_EMPTY_PATH|unix.MOVE_MOUNT_T_EMPTY_PATH); err != nil {
+		return err
+	}
+	d.mountAttached = true
 	if d.loseMountResult {
 		return errors.New("fixture lost the completed bind-mount result")
 	}
@@ -204,7 +304,7 @@ func newQEMUMountFixture(source string) (*qemuMountFixture, error) {
 		return nil, err
 	}
 	qualification := &Qualification{volumeID: "qemu-only", source: source, expected: sourceExpected, sourceRoot: sourceRoot}
-	driver := &qemuBindDriver{source: source, target: target}
+	driver := &qemuBindDriver{target: target}
 	owner, err := newOwner(target, driver, observer, func(path string, expected mountguard.Expected) (rootGuard, error) {
 		return mountguard.Open(path, expected)
 	})
@@ -359,7 +459,7 @@ func exerciseAmbiguousMountResult(source string) (result error) {
 	if err := f.owner.Qualify(f.qualification); err != nil {
 		return err
 	}
-	if err := f.owner.Mount(contextBackground()); !errors.Is(err, ErrReview) || f.owner.State() != StateReviewRequired {
+	if err := f.owner.Mount(contextBackground()); !errors.Is(err, ErrReview) || f.owner.State() != StateReviewRequired || !f.driver.mountAttached {
 		return errors.New("lost completed mount result was not quarantined")
 	}
 	if err := f.owner.Mount(contextBackground()); !errors.Is(err, ErrReview) || f.driver.mountCalls != 1 {
@@ -408,6 +508,181 @@ func exerciseMismatchedMountRefusal(source string) (result error) {
 	}
 	if _, err := f.owner.Acquire(contextBackground()); !errors.Is(err, ErrReview) || f.driver.mountCalls != 1 {
 		return errors.New("mismatched filesystem received a lease or was retried")
+	}
+	return nil
+}
+
+func exerciseTargetReplacementRace(source string) (result error) {
+	f, err := newQEMUMountFixture(source)
+	if err != nil {
+		return err
+	}
+	pinnedPath := f.target + "-pinned"
+	var moved, replacementCreated bool
+	var replacementIdentity TargetIdentity
+	var injectionErr error
+	f.driver.beforeMount = func() error {
+		if injectionErr = os.Rename(f.target, pinnedPath); injectionErr != nil {
+			return injectionErr
+		}
+		moved = true
+		if injectionErr = os.Mkdir(f.target, 0700); injectionErr != nil {
+			return injectionErr
+		}
+		replacementCreated = true
+		replacementIdentity, injectionErr = (linuxObserver{}).ObserveTarget(f.target)
+		return injectionErr
+	}
+	defer func() {
+		result = errors.Join(result, f.owner.Close())
+		observer := linuxObserver{}
+		for _, path := range []string{f.target, pinnedPath} {
+			current, observeErr := observer.ObserveTarget(path)
+			if observeErr == nil && current.MountRoot {
+				if unmountErr := unix.Unmount(path, 0); unmountErr != nil {
+					result = errors.Join(result, fmt.Errorf("fixture unmount %s: %w", path, unmountErr))
+				}
+			}
+		}
+		if replacementCreated {
+			if removeErr := os.Remove(f.target); removeErr != nil {
+				result = errors.Join(result, removeErr)
+			}
+		}
+		if moved {
+			if renameErr := os.Rename(pinnedPath, f.target); renameErr != nil {
+				result = errors.Join(result, renameErr)
+			}
+		}
+		result = errors.Join(result, f.close())
+	}()
+	if err := f.owner.Qualify(f.qualification); err != nil {
+		return err
+	}
+	err = f.owner.Mount(contextBackground())
+	if injectionErr != nil {
+		return fmt.Errorf("could not inject target replacement: %w", injectionErr)
+	}
+	if !errors.Is(err, ErrReview) || f.owner.State() != StateReviewRequired || f.driver.mountCalls != 1 {
+		return fmt.Errorf("replacement target was mounted or outcome was not quarantined: state=%s calls=%d err=%v", f.owner.State(), f.driver.mountCalls, err)
+	}
+	if _, err := f.owner.Acquire(contextBackground()); !errors.Is(err, ErrReview) {
+		return errors.New("target substitution received a lease")
+	}
+	current, err := (linuxObserver{}).ObserveTarget(f.target)
+	if err != nil || current != replacementIdentity {
+		return errors.Join(errors.New("mount used the substituted target path"), err)
+	}
+	original, err := (linuxObserver{}).ObserveTarget(pinnedPath)
+	if err != nil || original.MountRoot {
+		return errors.Join(errors.New("target path race attached a mount before the pinned-target check"), err)
+	}
+	return nil
+}
+
+func exerciseLateTargetReplacementRace(source string) (result error) {
+	f, err := newQEMUMountFixture(source)
+	if err != nil {
+		return err
+	}
+	pinnedPath := f.target + "-late-pinned"
+	var moved, replacementCreated bool
+	var replacementIdentity TargetIdentity
+	var injectionErr error
+	f.driver.beforeAttach = func() error {
+		if injectionErr = os.Rename(f.target, pinnedPath); injectionErr != nil {
+			return injectionErr
+		}
+		moved = true
+		if injectionErr = os.Mkdir(f.target, 0700); injectionErr != nil {
+			return injectionErr
+		}
+		replacementCreated = true
+		replacementIdentity, injectionErr = (linuxObserver{}).ObserveTarget(f.target)
+		return injectionErr
+	}
+	defer func() {
+		result = errors.Join(result, f.owner.Close())
+		observer := linuxObserver{}
+		for _, path := range []string{f.target, pinnedPath} {
+			current, observeErr := observer.ObserveTarget(path)
+			if observeErr == nil && current.MountRoot {
+				if unmountErr := unix.Unmount(path, 0); unmountErr != nil {
+					result = errors.Join(result, fmt.Errorf("fixture unmount %s: %w", path, unmountErr))
+				}
+			}
+		}
+		if replacementCreated {
+			if removeErr := os.Remove(f.target); removeErr != nil {
+				result = errors.Join(result, removeErr)
+			}
+		}
+		if moved {
+			if renameErr := os.Rename(pinnedPath, f.target); renameErr != nil {
+				result = errors.Join(result, renameErr)
+			}
+		}
+		result = errors.Join(result, f.close())
+	}()
+	if err := f.owner.Qualify(f.qualification); err != nil {
+		return err
+	}
+	err = f.owner.Mount(contextBackground())
+	if injectionErr != nil {
+		return fmt.Errorf("could not inject late target replacement: %w", injectionErr)
+	}
+	if !errors.Is(err, ErrReview) || f.owner.State() != StateReviewRequired || f.driver.mountCalls != 1 || !f.driver.mountAttached {
+		return fmt.Errorf("late target replacement was accepted or not quarantined: state=%s calls=%d attached=%t err=%v",
+			f.owner.State(), f.driver.mountCalls, f.driver.mountAttached, err)
+	}
+	if _, err := f.owner.Acquire(contextBackground()); !errors.Is(err, ErrReview) {
+		return errors.New("late target replacement received a lease")
+	}
+	replacement, err := (linuxObserver{}).ObserveTarget(f.target)
+	if err != nil || replacement != replacementIdentity || replacement.MountRoot {
+		return errors.Join(errors.New("late target replacement was used as the mount destination"), err)
+	}
+	pinned, err := (linuxObserver{}).ObserveMount(pinnedPath)
+	if err != nil || !sameMountedFilesystem(pinned, f.qualification.expected) {
+		return errors.Join(errors.New("late target race did not attach only to the pinned object"), err)
+	}
+	return nil
+}
+
+func exerciseSourceReplacementRace(source string) (result error) {
+	f, err := newQEMUMountFixture(source)
+	if err != nil {
+		return err
+	}
+	var overmounted bool
+	var injectionErr error
+	f.driver.beforeMount = func() error {
+		injectionErr = unix.Mount("/run", source, "", unix.MS_BIND, "")
+		overmounted = injectionErr == nil
+		return injectionErr
+	}
+	defer func() {
+		result = errors.Join(result, f.close())
+		if overmounted {
+			result = errors.Join(result, unix.Unmount(source, 0))
+		}
+	}()
+	if err := f.owner.Qualify(f.qualification); err != nil {
+		return err
+	}
+	err = f.owner.Mount(contextBackground())
+	if injectionErr != nil {
+		return fmt.Errorf("could not inject source replacement: %w", injectionErr)
+	}
+	if !errors.Is(err, ErrReview) || f.owner.State() != StateReviewRequired || f.driver.mountCalls != 1 {
+		return fmt.Errorf("source replacement was accepted or not quarantined: state=%s calls=%d err=%v", f.owner.State(), f.driver.mountCalls, err)
+	}
+	if _, err := f.owner.Acquire(contextBackground()); !errors.Is(err, ErrReview) {
+		return errors.New("source substitution received a lease")
+	}
+	mounted, err := (linuxObserver{}).ObserveMount(f.target)
+	if err != nil || !sameMountedFilesystem(mounted, f.qualification.expected) {
+		return errors.Join(errors.New("bind source was not the pinned qualified filesystem"), err)
 	}
 	return nil
 }

@@ -56,17 +56,27 @@ type TargetIdentity struct {
 // reviewed, fixed-path implementation; request handlers must never provide or
 // substitute it. Mount and unmount errors are treated as ambiguous outcomes.
 type Driver interface {
-	MountBind(source, target string) error
+	MountBind(source, target *os.File) error
 	Unmount(target string) error
 }
 
-// Observer reads only current kernel mount identity and the emptiness of the
-// pre-created mountpoint. It must not mount, open block devices, or infer the
-// intended filesystem identity from the target being checked.
+// Observer reads only current kernel mount identity and pins the pre-created
+// mountpoint for identity/emptiness checks. It must not mount, open block
+// devices, or infer intended filesystem identity from the target.
 type Observer interface {
 	ObserveMount(path string) (mountguard.Expected, error)
 	ObserveTarget(path string) (TargetIdentity, error)
-	TargetEmpty(path string) (bool, error)
+	PinTarget(path string) (targetHandle, error)
+}
+
+// targetHandle pins the exact pre-created mountpoint object. Its file is an
+// O_PATH directory descriptor used only by the fixed mount driver; it is not
+// returned to callers or used to resolve arbitrary child paths.
+type targetHandle interface {
+	Identity() (TargetIdentity, error)
+	Empty() (bool, error)
+	File() *os.File
+	Close() error
 }
 
 type rootGuard interface {
@@ -101,6 +111,7 @@ type Owner struct {
 	state         State
 	qualification *Qualification
 	targetBefore  TargetIdentity
+	targetPin     targetHandle
 	expected      mountguard.Expected
 	root          rootGuard
 	leases        map[*Lease]struct{}
@@ -168,7 +179,19 @@ func (o *Owner) Qualify(qualification *Qualification) error {
 	if err != nil || !target.MountRootKnown || target.MountRoot || target.MountID == 0 || target.RootInode == 0 {
 		return o.rejectQualification(qualification)
 	}
-	empty, err := o.observer.TargetEmpty(o.target)
+	pin, err := o.observer.PinTarget(o.target)
+	if err != nil || pin == nil {
+		if pin != nil {
+			_ = pin.Close()
+		}
+		return o.rejectQualification(qualification)
+	}
+	o.targetPin = pin
+	pinnedIdentity, err := pin.Identity()
+	if err != nil || pinnedIdentity != target {
+		return o.rejectQualification(qualification)
+	}
+	empty, err := pin.Empty()
 	if err != nil || !empty {
 		return o.rejectQualification(qualification)
 	}
@@ -197,8 +220,17 @@ func (o *Owner) Mount(ctx context.Context) error {
 	if err := o.qualification.sourceRoot.Verify(); err != nil || !o.targetUnchangedAndEmptyLocked() {
 		return o.rejectQualification(o.qualification)
 	}
+	source, err := o.qualification.sourceRoot.OpenDirectory(".")
+	if err != nil || source == nil || o.targetPin == nil || o.targetPin.File() == nil {
+		if source != nil {
+			_ = source.Close()
+		}
+		return o.rejectQualification(o.qualification)
+	}
 	o.state = StateMounting
-	if err := o.driver.MountBind(o.qualification.source, o.target); err != nil || ctx.Err() != nil {
+	mountErr := o.driver.MountBind(source, o.targetPin.File())
+	sourceCloseErr := source.Close()
+	if mountErr != nil || sourceCloseErr != nil || ctx.Err() != nil {
 		return o.reviewLocked()
 	}
 	observed, err := o.observer.ObserveMount(o.target)
@@ -322,8 +354,18 @@ func (o *Owner) Unmount(ctx context.Context) error {
 	if err != nil || after != o.targetBefore {
 		return o.reviewLocked()
 	}
-	empty, err := o.observer.TargetEmpty(o.target)
+	if o.targetPin == nil {
+		return o.reviewLocked()
+	}
+	pinnedIdentity, err := o.targetPin.Identity()
+	if err != nil || pinnedIdentity != o.targetBefore {
+		return o.reviewLocked()
+	}
+	empty, err := o.targetPin.Empty()
 	if err != nil || !empty {
+		return o.reviewLocked()
+	}
+	if err := o.closeTargetLocked(); err != nil {
 		return o.reviewLocked()
 	}
 	o.state = StateUnavailable
@@ -348,6 +390,7 @@ func (o *Owner) Close() error {
 		o.root.Close()
 		o.root = nil
 	}
+	_ = o.closeTargetLocked()
 	if o.state != StateReviewRequired {
 		o.state = StateUnavailable
 	}
@@ -447,7 +490,14 @@ func (o *Owner) targetUnchangedAndEmptyLocked() bool {
 	if err != nil || target != o.targetBefore || target.MountRoot || !target.MountRootKnown {
 		return false
 	}
-	empty, err := o.observer.TargetEmpty(o.target)
+	if o.targetPin == nil {
+		return false
+	}
+	pinnedIdentity, err := o.targetPin.Identity()
+	if err != nil || pinnedIdentity != o.targetBefore {
+		return false
+	}
+	empty, err := o.targetPin.Empty()
 	return err == nil && empty
 }
 
@@ -458,6 +508,7 @@ func (o *Owner) rejectQualification(qualification *Qualification) error {
 		qualification.sourceRoot = nil
 		qualification.consumed = true
 	}
+	_ = o.closeTargetLocked()
 	o.qualification = nil
 	return ErrRejected
 }
@@ -469,8 +520,21 @@ func (o *Owner) reviewLocked() error {
 		o.root.Close()
 		o.root = nil
 	}
+	_ = o.closeTargetLocked()
 	o.closeLeasedFilesLocked()
 	return ErrReview
+}
+
+func (o *Owner) closeTargetLocked() error {
+	if o.targetPin == nil {
+		return nil
+	}
+	pin := o.targetPin
+	o.targetPin = nil
+	if err := pin.Close(); err != nil {
+		return ErrUnavailable
+	}
+	return nil
 }
 
 func (o *Owner) closeQualificationLocked() {

@@ -600,15 +600,27 @@ are missing. **Depends on:** M1; M7 for hardware.
   consumes one-use qualification, issues directory leases only after mounted
   identity verification, blocks new access during drain, revokes Owner-tracked
   handles after identity change, and sends uncertain mount/unmount outcomes to
-  `review-required` without retry or implicit cleanup. Linux host tests and the
-  local ARMv5 QEMU overlay pass for normal lifecycle, overmount/revocation,
-  ambiguous mount/unmount result, and filesystem mismatch. The QEMU-only driver
-  accepts only its fixed disposable fixture. This prototype is not wired to
-  product startup, the storage broker, a production qualifier or service
-  handoff; no real NAS/disk test is in scope. It does not establish EX4 media
-  compatibility or a deployable mount service. M3.4 remains incomplete until
-  trusted production qualification, fixed mount-point ownership, service
-  handoff, and operator review/recovery are specified and qualified.
+  `review-required` without retry or implicit cleanup. Its QEMU-only driver
+  pins the source and destination directory descriptors, rechecks that the
+  fixed target pathname still names the pinned destination, and attaches the
+  cloned mount with Linux `open_tree(AT_EMPTY_PATH)` / `move_mount(EMPTY_PATH)`;
+  it has no path-based mount fallback. Deterministic QEMU races replace the
+  target after owner preflight, again in the narrow interval after the driver's
+  final pathname check but before `move_mount`, and the source after its
+  descriptor is opened. The replacement target is never used: in the late
+  race the mount attaches only to the renamed, pinned original object, then
+  enters `review-required` before any lease is issued. The source test likewise
+  uses only the pinned qualified filesystem before quarantine. Linux host tests
+  and the current-source local ARMv5 QEMU overlay pass for normal lifecycle,
+  overmount/revocation, ambiguous mount/unmount results, filesystem mismatch,
+  and all three path-replacement cases.
+  These tests do not make unmount descriptor-based or establish production
+  mount-point ownership. The prototype is not wired to product startup, the
+  storage broker, a production qualifier or service handoff; no real NAS/disk
+  test is in scope. It does not establish EX4 media compatibility or a
+  deployable mount service. M3.4 remains incomplete until trusted production
+  qualification, fixed mount-point ownership, service handoff, and operator
+  review/recovery are specified and qualified.
 - **M3.5 — Handle loss and return.** Stop new dependent access when a volume is
   lost, changed, read-only or unqualified. Never fall back to rootfs directories.
   Reappearance requires fresh identity/compatibility checks; a matching pathname

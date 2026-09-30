@@ -21,7 +21,10 @@ type modeledDriver struct {
 	unmountError bool
 }
 
-func (d *modeledDriver) MountBind(_, _ string) error {
+func (d *modeledDriver) MountBind(source, target *os.File) error {
+	if source == nil || target == nil {
+		return ErrInvalid
+	}
 	d.mountCalls++
 	d.inspector.mounted = true
 	if d.mountError {
@@ -78,8 +81,45 @@ func (i *modeledInspector) ObserveTarget(string) (TargetIdentity, error) {
 		FilesystemType: i.targetExpected.FilesystemType, MountRoot: true}, nil
 }
 
-func (i *modeledInspector) TargetEmpty(string) (bool, error) {
-	return i.empty && !i.mounted, nil
+func (i *modeledInspector) PinTarget(string) (targetHandle, error) {
+	fd, err := unix.Open(".", unix.O_PATH|unix.O_DIRECTORY|unix.O_CLOEXEC, 0)
+	if err != nil {
+		return nil, err
+	}
+	return &modeledTarget{inspector: i, file: os.NewFile(uintptr(fd), "modeled-target")}, nil
+}
+
+type modeledTarget struct {
+	inspector *modeledInspector
+	file      *os.File
+}
+
+func (t *modeledTarget) Identity() (TargetIdentity, error) {
+	if t.file == nil {
+		return TargetIdentity{}, mountguard.ErrClosed
+	}
+	if _, err := t.file.Stat(); err != nil {
+		return TargetIdentity{}, err
+	}
+	return t.inspector.targetBefore, nil
+}
+
+func (t *modeledTarget) Empty() (bool, error) {
+	if t.file == nil {
+		return false, mountguard.ErrClosed
+	}
+	return t.inspector.empty && !t.inspector.mounted, nil
+}
+
+func (t *modeledTarget) File() *os.File { return t.file }
+
+func (t *modeledTarget) Close() error {
+	if t.file == nil {
+		return nil
+	}
+	err := t.file.Close()
+	t.file = nil
+	return err
 }
 
 type modeledRoot struct {
@@ -114,10 +154,12 @@ func (r *modeledRoot) OpenDirectory(string) (*os.File, error) {
 	if err := r.Verify(); err != nil {
 		return nil, err
 	}
-	file, err := os.Open(".")
-	if err == nil {
-		r.files = append(r.files, file)
+	fd, err := unix.Open(".", unix.O_PATH|unix.O_DIRECTORY|unix.O_CLOEXEC, 0)
+	if err != nil {
+		return nil, err
 	}
+	file := os.NewFile(uintptr(fd), "modeled-qualified-directory")
+	r.files = append(r.files, file)
 	return file, err
 }
 
