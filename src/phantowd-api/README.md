@@ -577,6 +577,11 @@ product account-management service is provided by the M2.4 slice.
 The QEMU-selftest profile now separately boots a root Owner service against
 guest-local fixture state and verifies protected-socket authorization, process
 restart and drain. This does not change the M2.4 product integration status.
+The current-source ARMv5 smoke also round-trips the Owner registry's desired
+service-account state under the lifetime lease, while proving that the native
+identity journal remains immutable and no Samba child journal, authentication
+mutation, RPC/HTTP action or service activation occurs. This remains an internal
+library/test behavior, not a product account-management surface.
 
 The [local identity channel](identityrpc/README.md) now connects an actually
 unprivileged ARMv5 fixture child to the root-owned journal/executor using

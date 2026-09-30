@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/identityowner"
+	"github.com/PhantoNull/phantowd-ex4/phantowd-api/identityprovision"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/identityrpc"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/revisionstore"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/smbexec"
@@ -266,15 +267,69 @@ func ensureQEMUIdentityOwnerReservation(owner *identityowner.Owner) error {
 		}
 		return nil
 	}
-	if len(registry.Accounts) != 1 || len(journals) != 1 || registry.Revision != 2 {
+	if len(registry.Accounts) != 1 || len(journals) != 1 || registry.Revision < 2 {
 		return errors.New("QEMU identity-owner fixture has unexpected records")
 	}
 	account := registry.Accounts[0]
 	journal := journals[0]
 	if account.ID != qemuOwnerAccountID || account.Name != qemuOwnerAccount ||
-		account.UID < qemuOwnerFirstUID || account.UID > qemuOwnerLastUID || journal.Account != account {
+		(account.State != serviceaccounts.Disabled && account.State != serviceaccounts.Enabled) ||
+		account.UID < qemuOwnerFirstUID || account.UID > qemuOwnerLastUID ||
+		(journal.Phase != identityprovision.GroupConfirmed && journal.Phase != identityprovision.UnixConfirmed) ||
+		journal.RegistryRevision != 2 || journal.RegistryRevision > registry.Revision ||
+		!sameQEMUAccountIdentity(journal.Account, account) {
 		return errors.New("QEMU identity-owner fixture identity changed")
 	}
+	return nil
+}
+
+func sameQEMUAccountIdentity(first, second serviceaccounts.Account) bool {
+	return first.ID == second.ID && first.Name == second.Name && first.UID == second.UID && first.GID == second.GID
+}
+
+func exerciseQEMUIdentityOwnerDesiredState() error {
+	inventory := func(context.Context) (serviceaccounts.Reservations, error) {
+		return serviceaccounts.Reservations{UIDs: []uint32{}, GIDs: []uint32{}, Names: []string{}}, nil
+	}
+	owner, err := identityowner.Open(qemuOwnerAuthority, inventory)
+	if err != nil {
+		return errors.New("QEMU identity-owner desired-state authority could not reopen")
+	}
+	defer owner.Close()
+	ctx := context.Background()
+	registry, journals, err := owner.Snapshot(ctx)
+	if err != nil || registry.Revision != 2 || len(registry.Accounts) != 1 || len(journals) != 1 ||
+		registry.Accounts[0].State != serviceaccounts.Disabled || journals[0].Phase != identityprovision.UnixConfirmed ||
+		journals[0].RegistryRevision != 2 || !sameQEMUAccountIdentity(registry.Accounts[0], journals[0].Account) {
+		return errors.New("QEMU identity-owner desired-state fixture did not start from a confirmed disabled identity")
+	}
+	if err := owner.SetDesiredState(ctx, registry.Revision, qemuOwnerAccountID, serviceaccounts.Enabled); err != nil {
+		return errors.New("QEMU identity-owner desired-state enable failed")
+	}
+	registry, journals, err = owner.Snapshot(ctx)
+	if err != nil || registry.Revision != 3 || len(registry.Accounts) != 1 || len(journals) != 1 ||
+		registry.Accounts[0].State != serviceaccounts.Enabled || journals[0].Phase != identityprovision.UnixConfirmed ||
+		journals[0].RegistryRevision != 2 || journals[0].Account.State != serviceaccounts.Disabled ||
+		!sameQEMUAccountIdentity(registry.Accounts[0], journals[0].Account) {
+		return errors.New("QEMU desired-state enable changed the native identity journal")
+	}
+	if err := owner.SetDesiredState(ctx, registry.Revision, qemuOwnerAccountID, serviceaccounts.Disabled); err != nil {
+		return errors.New("QEMU identity-owner desired-state disable failed")
+	}
+	registry, journals, err = owner.Snapshot(ctx)
+	if err != nil || registry.Revision != 4 || len(registry.Accounts) != 1 || len(journals) != 1 ||
+		registry.Accounts[0].State != serviceaccounts.Disabled || journals[0].Phase != identityprovision.UnixConfirmed ||
+		journals[0].RegistryRevision != 2 || journals[0].Account.State != serviceaccounts.Disabled ||
+		!sameQEMUAccountIdentity(registry.Accounts[0], journals[0].Account) {
+		return errors.New("QEMU desired-state disable changed the native identity journal")
+	}
+	if _, err := os.Lstat(filepath.Join(qemuOwnerAuthority, "operations", qemuOwnerAccountID, "smb")); !errors.Is(err, os.ErrNotExist) {
+		return errors.New("QEMU desired-state transition created Samba state")
+	}
+	if err := owner.Close(); err != nil {
+		return errors.New("QEMU identity-owner desired-state authority did not close cleanly")
+	}
+	fmt.Println("PHANTOWD_IDENTITY_OWNER_DESIRED_STATE_READY enabled=true disabled=true registry_revisioned=true native_journal_immutable=true smb_journal=false auth_mutation=false service_activation=false http=false scope=qemu-only")
 	return nil
 }
 
@@ -426,6 +481,9 @@ func exerciseQEMUBootIdentityOwnerService() error {
 	if stopErr != nil {
 		return errors.New("QEMU identity-owner listener did not drain before authority close")
 	}
+	if err := exerciseQEMUIdentityOwnerDesiredState(); err != nil {
+		return err
+	}
 	if _, err := smbFixtureCommand("", "/usr/sbin/deluser", qemuOwnerAccount); err != nil {
 		return errors.New("QEMU boot owner identity cleanup failed")
 	}
@@ -438,7 +496,7 @@ func exerciseQEMUBootIdentityOwnerService() error {
 	if _, err := os.Stat("/run/phantowd-identity-owner.pid"); !errors.Is(err, os.ErrNotExist) {
 		return errors.New("QEMU boot owner pidfile remained after clean stop")
 	}
-	fmt.Println("PHANTOWD_IDENTITY_OWNER_BOOT_READY service_uid=0 socket_mode=0620 api_uid=nonroot config_validated_before_owner_state=true config_missing_rejected=true config_invalid_rejected=true no_side_effects=true process_restart=true drained=true runtime=run http=false scope=qemu-only")
+	fmt.Println("PHANTOWD_IDENTITY_OWNER_BOOT_READY service_uid=0 socket_mode=0620 api_uid=nonroot config_validated_before_owner_state=true config_missing_rejected=true config_invalid_rejected=true no_side_effects=true process_restart=true drained=true desired_state_roundtrip=true native_journal_immutable=true smb_journal=false service_activation=false runtime=run http=false scope=qemu-only")
 	return nil
 }
 

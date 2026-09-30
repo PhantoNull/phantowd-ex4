@@ -77,7 +77,7 @@ Status vocabulary:
 | Build/tooling | Pinned Buildroot 2025.02.18 LTS / Linux 6.18.54 LTS; source verification, package metadata, SBOM and clean CI. Independent reproducibility was demonstrated for one earlier commit, not every revision. |
 | Admin management | Host/DOM and ARMv5 authentication, password-change, revocation and clean-reboot tests. Product enrollment, state placement, recovery and certificates remain open. |
 | Desired SMB/NFS policy | Strict models, revision stores and opt-in development editing. Stored policy does not activate services. |
-| Native identities | Reservation ledger, protected local reader, creation journal, typed executor, cooperative owner/listener and multi-account router. Not a deployed account manager. |
+| Native identities | Reservation ledger, protected local reader, creation journal, typed executor, cooperative owner/listener and multi-account router; Owner now supports a revisioned internal desired-state toggle that does not change Unix/Samba authentication or activate services. Not a deployed account manager. |
 | Samba credentials | M2.3 root-only disabled-password patch passed exact-head hosted ARMv5 QEMU and Stage B3 checks, merging as `33df1ed`. M2.4 journals disabled-first enrollment and separate explicit enable through `identityowner`; its fixed executor and internal binary Unix-socket v2 fixture prove authentication denial before enable and success only after same-SID confirmation. A QEMU-selftest-only root Owner boot service now passes init start, protected socket, authorized/denied peers, process restart and drain checks; it is not product startup. Product config/state binding, HTTP authorization, review workflow and remaining lifecycle operations are open. |
 | Storage | GPT/ext/MD image research, sysfs/mount observations, restricted libblkid helper, duplicate SCSI VPD identity reporting, generation-bound descriptor probing, complete-set matching, partition-parent correlation, holder/slave topology and trusted read-only broker. PR #42 passed exact-head host and ARMv5 QEMU checks on `7254555` and merged as `059fa24`; PR #44 added read-only mounted filesystem UUID / MD identity correlation and passed host, Stage B3 and QEMU checks before merging as `db9fd33`. Local M3.2a privately reconciles GPT disk GUID/PARTUUID and partition number/start/size against the full generation-bound sysfs set. Local M3.2b marks duplicate disk GUIDs/PARTUUIDs ambiguous only within the observed GPT-candidate subset; MBR stays unsupported and incomplete GPT coverage is explicit. M3.2c retains GPT type GUIDs privately; M3.2d derives only generic hints for a small known set, not content or WD compatibility. Raw IDs, type GUIDs and hints stay out of JSON; no mount/import authority is added. The dashboard exposes a separate authenticated explicit observation action; page load and ordinary refresh do not scan disk partition metadata, and the result contains aggregate counts only. Host tests/vet, smoke-only ARMv5 overlay and full local Buildroot/package integration passed on `1358202`; QEMU smoke and the state-reboot fixture passed and generated artifact hashes verified. The run reused existing fixed Buildroot/cache volumes, so clean independent reproducibility is not established. Hosted CI and EX4 qualification remain pending. Persistent volume identity, EX4 device-rule qualification, global-use accounting, WD compatibility resolution, import/mount authority and product RAID management remain unqualified or unimplemented. |
 | Hardware | Short diskless serial/RAM and Ethernet/temperature observations. Networking stability, controller/cooling, storage and recovery remain unqualified. |
@@ -262,7 +262,14 @@ close. Its authority and Samba state are fixture-only; it does not provide
 product startup or persistence. The fixture validates the pinned Samba
 configuration before initializing Owner state and proves a missing config and
 a `testparm`-rejected config are rejected without side effects. The
-credential-free JSON v1 protocol remains
+current-source QEMU smoke also exercises a revisioned registry desired-state
+round-trip `disabled -> enabled -> disabled` (revisions 2 -> 3 -> 4) after the
+listener drains.
+The native identity journal remains unchanged; no Samba child journal,
+authentication mutation, or service activation occurs. The process-restart
+fixture deliberately resumes after `group-confirmed` and before Unix-user
+creation. These are internal library/QEMU contracts, not account APIs.
+The credential-free JSON v1 protocol remains
 unchanged. No HTTP authorization binding or product startup/configuration exists;
 retirement, operator recovery, revocation integration/recovery and hardware
 qualification remain open. The revocation primitive is currently QEMU-only.
@@ -281,7 +288,13 @@ qualification remain open. The revocation primitive is currently QEMU-only.
   and serves only the protected AF_UNIX router (no HTTP). ARMv5 QEMU verifies
   non-root API UID admission, rejection of a different UID even when DAC permits
   socket access, operation state across process restart, and listener drain
-  before Owner close. This is not production startup: durable state/config
+  before Owner close. Current-source smoke additionally round-trips the
+  registry's internal desired service-account state disabled→enabled→disabled
+  at revisions 2→3→4 after listener drain; the native creation journal stays
+  immutable, no SMB child journal/passdb mutation occurs, and no service is
+  activated. The fixture also restarts at `group-confirmed` before the Unix-user
+  step. These are library/QEMU-test contracts, not socket, HTTP, or product
+  account APIs. This is not production startup: durable state/config
   placement, product boot ordering, readiness/failure policy, crash/recovery,
   installed-service authorization binding and real-device qualification remain
   open. Arbitrary root tools remain outside cooperative single-writer exclusion;
@@ -664,6 +677,10 @@ snapshots. It is not connected to runtime owners or product activation.
   local ARMv5 QEMU fixture now checks the combined SMB candidate with target
   `testparm` and the NFS candidate with target `exportfs`; the temporary NFS
   export is applied only to the disposable guest fixture and then withdrawn.
+  `identityowner.SetDesiredState` now supplies a separately revisioned,
+  in-process registry desired-state toggle under the Owner lock and live Unix
+  identity check; this does not mutate authentication, Samba state, share
+  grants, or services. It is not yet a trusted identity snapshot provider.
   The planner still consumes synthetic in-memory snapshots and has no trusted
   collector, product service owner, HTTP route or activation transaction. M4.1
   remains incomplete until trusted M3.4/M2 providers supply fresh all-or-error

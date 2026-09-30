@@ -2,7 +2,8 @@
 // SPDX-FileCopyrightText: 2026 PhantoWD EX4 contributors
 
 // Package identityowner owns a native reservation ledger and its creation
-// journals under one cooperative lifetime lease. It does not provision storage.
+// journals under one cooperative lifetime lease. It does not provision storage
+// or enable file-service protocols.
 package identityowner
 
 import (
@@ -229,8 +230,67 @@ func (o *Owner) Snapshot(ctx context.Context) (serviceaccounts.Registry, []ident
 	return o.snapshot()
 }
 
-// snapshot refuses missing/orphan/mismatched journals. Native account enablement,
-// retirement and legacy import need a later credential-aware coordinator.
+// SetDesiredState changes only the registry's desired service-account state.
+// It does not enable or disable Unix/Samba authentication, change share grants,
+// revoke sessions, or apply daemon configuration. Those observations and any
+// eventual activation must be coordinated by a separate file-service owner.
+// State changes are serialized with native identity operations; no change is
+// allowed while any account's native creation journal is incomplete.
+func (o *Owner) SetDesiredState(ctx context.Context, expected uint64, id, state string) error {
+	if state != serviceaccounts.Disabled && state != serviceaccounts.Enabled {
+		return serviceaccounts.ErrTransition
+	}
+	if err := o.enter(ctx); err != nil {
+		return err
+	}
+	defer o.mu.Unlock()
+
+	r, journals, err := o.snapshot()
+	if err != nil {
+		return err
+	}
+	if r.Revision != expected {
+		return ErrConflict
+	}
+	if _, err := r.SetState(expected, id, state); err != nil {
+		return err
+	}
+	for _, journal := range journals {
+		if journal.Phase == identityprovision.UnixConfirmed {
+			continue
+		}
+		if journal.Phase == identityprovision.ReviewRequired {
+			return ErrReview
+		}
+		return ErrPending
+	}
+
+	var native identityprovision.Journal
+	found := false
+	for _, journal := range journals {
+		if journal.Account.ID == id {
+			native, found = journal, true
+			break
+		}
+	}
+	if !found {
+		return serviceaccounts.ErrTransition
+	}
+	if err := o.verifyUnixLocked(ctx, native.Account); err != nil {
+		return err
+	}
+	if err := o.registry.SetState(expected, id, state); err != nil {
+		// A failed durable commit can have an uncertain outcome. Do not accept
+		// another operation until the owner is closed and reopened to reconcile.
+		o.failed = true
+		return ErrUnavailable
+	}
+	return nil
+}
+
+// snapshot refuses missing/orphan/mismatched journals. Registry desired state
+// is independent from the immutable disabled native-identity journal record;
+// retirement and legacy import still require a later coordinator.
 func (o *Owner) snapshot() (serviceaccounts.Registry, []identityprovision.Journal, error) {
 	fail := func() (serviceaccounts.Registry, []identityprovision.Journal, error) {
 		o.failed = true
@@ -247,7 +307,7 @@ func (o *Owner) snapshot() (serviceaccounts.Registry, []identityprovision.Journa
 	entries, readErr := dir.ReadDir(serviceaccounts.MaxRecords + 1)
 	closeErr := dir.Close()
 	// ReadDir(n) returns EOF for an empty directory, which is valid for an empty ledger.
-	if readErr != nil && !errors.Is(readErr, io.EOF) || closeErr != nil || len(entries) != len(r.Accounts) || r.Revision != uint64(len(r.Accounts))+1 {
+	if readErr != nil && !errors.Is(readErr, io.EOF) || closeErr != nil || len(entries) != len(r.Accounts) || r.Revision < uint64(len(r.Accounts))+1 {
 		return fail()
 	}
 	known := make(map[string]bool, len(entries))
@@ -256,8 +316,9 @@ func (o *Owner) snapshot() (serviceaccounts.Registry, []identityprovision.Journa
 	}
 	result := make([]identityprovision.Journal, 0, len(r.Accounts))
 	active := 0
+	var priorCreationRevision uint64
 	for i, a := range r.Accounts {
-		if !known[a.ID] || a.State != serviceaccounts.Disabled {
+		if !known[a.ID] || (a.State != serviceaccounts.Disabled && a.State != serviceaccounts.Enabled) {
 			return fail()
 		}
 		var st unix.Stat_t
@@ -277,9 +338,13 @@ func (o *Owner) snapshot() (serviceaccounts.Registry, []identityprovision.Journa
 			o.inodes[a.ID] = st.Ino
 		}
 		j, loadErr := s.Load()
-		if loadErr != nil || j.Account != a || j.RegistryRevision != uint64(i)+2 {
+		minimumCreationRevision := uint64(i) + 2
+		if loadErr != nil || !sameAccountIdentity(j.Account, a) ||
+			j.RegistryRevision < minimumCreationRevision || j.RegistryRevision > r.Revision ||
+			(i > 0 && j.RegistryRevision <= priorCreationRevision) {
 			return fail()
 		}
+		priorCreationRevision = j.RegistryRevision
 		if o.loadSMBForAccount(a, j) != nil {
 			return fail()
 		}
@@ -292,6 +357,10 @@ func (o *Owner) snapshot() (serviceaccounts.Registry, []identityprovision.Journa
 		result = append(result, j)
 	}
 	return r, result, nil
+}
+
+func sameAccountIdentity(first, second serviceaccounts.Account) bool {
+	return first.ID == second.ID && first.Name == second.Name && first.UID == second.UID && first.GID == second.GID
 }
 
 // loadSMBForAccount validates an optional child journal. Reopening an intent
@@ -334,7 +403,7 @@ func (o *Owner) loadSMBForAccount(account serviceaccounts.Account, native identi
 		o.smbInodes[account.ID] = st.Ino
 	}
 	j, err := store.RecoverInterrupted()
-	if err != nil || j.Account != account || j.NativeRevision != native.Revision {
+	if err != nil || !sameAccountIdentity(j.Account, account) || j.NativeRevision != native.Revision {
 		return ErrUnavailable
 	}
 	return nil
@@ -659,7 +728,7 @@ func (op *SMBOperation) Review(ctx context.Context) (smbprovision.Observation, e
 	defer o.mu.Unlock()
 
 	registry, err := o.registry.Load()
-	if err != nil || registry.Revision != uint64(len(registry.Accounts))+1 {
+	if err != nil || registry.Revision < uint64(len(registry.Accounts))+1 {
 		return smbprovision.Observation{}, ErrUnavailable
 	}
 	var account serviceaccounts.Account
@@ -667,6 +736,9 @@ func (op *SMBOperation) Review(ctx context.Context) (smbprovision.Observation, e
 	found := false
 	for i, candidate := range registry.Accounts {
 		if candidate.ID == op.id {
+			if candidate.State != serviceaccounts.Disabled && candidate.State != serviceaccounts.Enabled {
+				return smbprovision.Observation{}, ErrUnavailable
+			}
 			account, accountIndex, found = candidate, i, true
 			break
 		}
@@ -705,7 +777,9 @@ func (op *SMBOperation) Review(ctx context.Context) (smbprovision.Observation, e
 	}
 
 	native, err := nativeStore.Load()
-	if err != nil || native.Account != account || native.RegistryRevision != uint64(accountIndex)+2 {
+	minimumCreationRevision := uint64(accountIndex) + 2
+	if err != nil || !sameAccountIdentity(native.Account, account) ||
+		native.RegistryRevision < minimumCreationRevision || native.RegistryRevision > registry.Revision {
 		return smbprovision.Observation{}, ErrUnavailable
 	}
 	if native.Phase != identityprovision.UnixConfirmed {
@@ -715,7 +789,7 @@ func (op *SMBOperation) Review(ctx context.Context) (smbprovision.Observation, e
 		return smbprovision.Observation{}, ErrPending
 	}
 	journal, err := smbStore.Load()
-	if err != nil || journal.Account != account || journal.NativeRevision != native.Revision {
+	if err != nil || !sameAccountIdentity(journal.Account, account) || journal.NativeRevision != native.Revision {
 		return smbprovision.Observation{}, ErrUnavailable
 	}
 	if journal.Phase != smbprovision.ReviewRequired {

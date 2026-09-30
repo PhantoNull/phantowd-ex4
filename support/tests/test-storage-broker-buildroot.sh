@@ -148,7 +148,9 @@ registry_init_line=$(grep -n 'initializeQEMUIdentityOwnerRegistry(); err != nil'
     [ "$backend_validate_line" -lt "$runtime_prepare_line" ] &&
     [ "$runtime_prepare_line" -lt "$registry_init_line" ] ||
     fail 'QEMU must validate its Samba backend before creating Owner runtime/authority state'
-grep -F 'PHANTOWD_IDENTITY_OWNER_BOOT_READY service_uid=0 socket_mode=0620 api_uid=nonroot config_validated_before_owner_state=true config_missing_rejected=true config_invalid_rejected=true no_side_effects=true process_restart=true drained=true runtime=run http=false scope=qemu-only' "$repo_root/support/qemu-smoke.sh" >/dev/null ||
+grep -F 'PHANTOWD_IDENTITY_OWNER_DESIRED_STATE_READY enabled=true disabled=true registry_revisioned=true native_journal_immutable=true smb_journal=false auth_mutation=false service_activation=false http=false scope=qemu-only' "$repo_root/support/qemu-smoke.sh" >/dev/null ||
+    fail 'QEMU smoke must require the non-activating Owner desired-state roundtrip'
+grep -F 'PHANTOWD_IDENTITY_OWNER_BOOT_READY service_uid=0 socket_mode=0620 api_uid=nonroot config_validated_before_owner_state=true config_missing_rejected=true config_invalid_rejected=true no_side_effects=true process_restart=true drained=true desired_state_roundtrip=true native_journal_immutable=true smb_journal=false service_activation=false runtime=run http=false scope=qemu-only' "$repo_root/support/qemu-smoke.sh" >/dev/null ||
     fail 'QEMU smoke must require the boot owner service lifecycle marker'
 smb_revoke_marker='PHANTOWD_SMB_CONNECTION_REVOCATION_READY pre_disable_active_write=true disable_revokes_active_sessions=true target_connections=2 target_sessions_absent=true same_ip_peer_preserved=true peer_session_verified=true fresh_login_denied=true process_generation_available=true generation_targeting=qemu-only stale_generation_nonmatch_safe=true pid_targeting=false open_handles=false durable_reconnect=false scope=isolated-qemu-only'
 grep -F "$smb_revoke_marker" "$repo_root/src/phantowd-api/smb_session_qemu_linux.go" >/dev/null ||

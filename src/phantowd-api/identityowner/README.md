@@ -32,15 +32,16 @@ No directory may be independently moved, replaced or modified during ownership.
 
 Snapshots freshly decode the ledger/journals and refuse missing/orphan entries,
 wrong ownership/modes, symlinks, device changes, replaced known operation
-directories, account mismatches or inconsistent revision histories. On reopen,
-an interrupted Samba command intent is durably converted to `review-required`
-without observing Samba or replaying a command. This initial owner supports only
-disabled native reservations created through its own flow; legacy/foreign
-ledgers and later enable/retire histories are not imported. One incomplete or
-review-required native creation freezes further allocations. Ordinary
-reserved/group-confirmed native work reports ErrPending; interrupted native
-intent or review-required native work reports ErrReview. Pending does not imply
-corruption.
+directories, account mismatches or inconsistent revision histories. Registry
+desired state may be `disabled` or `enabled`, while the immutable native journal
+continues to describe the disabled identity originally reserved and created. On
+reopen, an interrupted Samba command intent is durably converted to
+`review-required` without observing Samba or replaying a command. Legacy/foreign
+ledgers, retired accounts and unsupported native-identity histories are not
+imported. One incomplete or review-required native creation freezes further
+allocations. Ordinary reserved/group-confirmed native work reports ErrPending;
+interrupted native intent or review-required native work reports ErrReview.
+Pending does not imply corruption.
 
 ## Creation and interruption
 
@@ -68,6 +69,17 @@ mid-command. Resumed intentions require review, never command replay. After a
 later reservation advances the ledger, old completed journals remain readable
 but their old Step context is refused. State corruption or uncertain storage
 quarantines the owner; no automatic repair or deletion is provided.
+
+`SetDesiredState(ctx, expectedRevision, id, state)` is an in-process, revisioned
+transition for the registry's desired service-account state. It accepts only
+`enabled` or `disabled`, runs under the same Owner lease, refuses while any
+native creation is incomplete/review-required, and revalidates the exact Unix
+identity before committing. The native journal remains an immutable record of
+the original disabled identity. This method does **not** enable/disable Unix or
+Samba authentication, change share grants, revoke sessions, write daemon config,
+or activate any service; enabled desired state is not evidence that SMB is
+usable. It is not exposed through the Owner socket, HTTP, or UI. Retirement and
+legacy identity migration still require a later coordinator.
 
 `OpenWithSMBBackend` binds and takes lifetime ownership of one trusted
 in-process adapter. `Open` without that adapter keeps SMB mutations
@@ -104,8 +116,14 @@ the Owner resolver through the protected Unix listener; it does not install a
 product daemon or HTTP route. The boot fixture checks exact socket ownership and
 modes, rejects a different UID that can reach the socket by DAC, preserves the
 operation journal across a service-process restart, and verifies listener drain
-before Owner close. This proves a QEMU startup/lifecycle slice, not reboot
-durability or product state placement.
+before Owner close. After listener drain, a separate root Owner round-trips the
+registry desired state disabled→enabled→disabled (revisions 2→3→4), verifies the
+native journal remains disabled/unchanged, and confirms no Samba child journal
+was created. The test causes no authentication mutation or service activation.
+The QEMU validator also accepts the deliberately tested
+`group-confirmed`-then-restart phase while continuing to reject other
+incomplete/review-required phases. This proves a QEMU startup/lifecycle slice,
+not reboot durability or product state placement.
 
 Close waits for the active operation, closes all stores and the bound Samba
 executor/config descriptor exactly once, then releases the lease.

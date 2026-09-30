@@ -328,6 +328,81 @@ func TestOwnerLifecycleAndExclusiveStores(t *testing.T) {
 	}
 }
 
+func TestOwnerDesiredStateTransitionsAreRevisionedAndKeepNativeIdentityImmutable(t *testing.T) {
+	o, model, dir := fixture(t)
+	ctx := context.Background()
+	first, err := o.Reserve(ctx, 1, "first", "firstuser")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := o.SetDesiredState(ctx, 2, first.ID, serviceaccounts.Enabled); !errors.Is(err, ErrPending) {
+		t.Fatal("desired state changed during incomplete native creation", err)
+	}
+	completeUnixIdentity(t, o, first.ID)
+	if err := o.SetDesiredState(ctx, 2, first.ID, serviceaccounts.Enabled); err != nil {
+		t.Fatal("enable desired state", err)
+	}
+
+	second, err := o.Reserve(ctx, 3, "second", "seconduser")
+	if err != nil {
+		t.Fatal("reserve after desired-state revision", err)
+	}
+	if err := o.SetDesiredState(ctx, 4, first.ID, serviceaccounts.Disabled); !errors.Is(err, ErrPending) {
+		t.Fatal("desired state changed while another native creation was pending", err)
+	}
+	completeUnixIdentity(t, o, second.ID)
+	if err := o.SetDesiredState(ctx, 4, first.ID, serviceaccounts.Disabled); err != nil {
+		t.Fatal("disable first desired state", err)
+	}
+	if err := o.SetDesiredState(ctx, 5, second.ID, serviceaccounts.Enabled); err != nil {
+		t.Fatal("enable second desired state", err)
+	}
+
+	registry, journals, err := o.Snapshot(ctx)
+	if err != nil || registry.Revision != 6 || len(registry.Accounts) != 2 || len(journals) != 2 {
+		t.Fatal("owner did not preserve revisioned desired state", registry, journals, err)
+	}
+	if registry.Accounts[0].State != serviceaccounts.Disabled || registry.Accounts[1].State != serviceaccounts.Enabled ||
+		journals[0].Account.State != serviceaccounts.Disabled || journals[1].Account.State != serviceaccounts.Disabled ||
+		journals[0].RegistryRevision != 2 || journals[1].RegistryRevision != 4 {
+		t.Fatal("desired state rewrote immutable native journals or lost creation revisions", registry, journals)
+	}
+	if model.calls != 4 {
+		t.Fatalf("desired-state updates dispatched native commands: calls=%d", model.calls)
+	}
+	if store, err := serviceaccountstore.Open(dir + "/registry"); !errors.Is(err, revisionstore.ErrBusy) || store != nil {
+		t.Fatal("separate registry writer bypassed the Owner lease", store, err)
+	}
+	if err := o.SetDesiredState(ctx, 4, first.ID, serviceaccounts.Enabled); !errors.Is(err, ErrConflict) {
+		t.Fatal("stale desired-state revision was accepted", err)
+	}
+	if err := o.SetDesiredState(ctx, 6, first.ID, serviceaccounts.Retired); !errors.Is(err, serviceaccounts.ErrTransition) {
+		t.Fatal("unsupported retirement was accepted", err)
+	}
+}
+
+func TestOwnerDesiredStateRejectsChangedUnixIdentityWithoutMutation(t *testing.T) {
+	o, model, _ := fixture(t)
+	ctx := context.Background()
+	account, err := o.Reserve(ctx, 1, "first", "firstuser")
+	if err != nil {
+		t.Fatal(err)
+	}
+	completeUnixIdentity(t, o, account.ID)
+	changed := account
+	changed.UID++
+	model.users[account.ID] = changed
+	if err := o.SetDesiredState(ctx, 2, account.ID, serviceaccounts.Enabled); !errors.Is(err, ErrReview) {
+		t.Fatal("desired state changed after Unix identity drift", err)
+	}
+	registry, journals, err := o.Snapshot(ctx)
+	if err != nil || registry.Revision != 2 || len(registry.Accounts) != 1 ||
+		registry.Accounts[0].State != serviceaccounts.Disabled || len(journals) != 1 ||
+		journals[0].RegistryRevision != 2 || journals[0].Phase != identityprovision.UnixConfirmed || model.calls != 2 {
+		t.Fatal("Unix identity mismatch mutated desired/native state", registry, journals, model.calls, err)
+	}
+}
+
 func TestSMBEnrollmentRequiresUnixConfirmationAndRemainsDisabled(t *testing.T) {
 	backend := &modeledSMB{}
 	o, _, _ := fixtureWithSMB(t, backend)
@@ -552,6 +627,9 @@ func TestSMBEnableIsExplicitAndRevalidatesUnixOwner(t *testing.T) {
 	if err := smb.Enable(ctx, 5); err != nil {
 		t.Fatal("explicit enable failed", err)
 	}
+	if err := o.SetDesiredState(ctx, 2, account.ID, serviceaccounts.Enabled); err != nil {
+		t.Fatal("separate desired-state enable failed", err)
+	}
 	journal, err := smb.Load(ctx)
 	if err != nil || journal.Phase != smbprovision.Enabled || journal.Revision != 7 || journal.SID != "S-1-5-21-1-2-3-1001" ||
 		backend.observation.Disabled || backend.enableCalls != 1 {
@@ -584,11 +662,17 @@ func TestSMBDisableUsesOwnerBackendAndCanReenable(t *testing.T) {
 	if err := smb.Enable(ctx, 5); err != nil {
 		t.Fatal(err)
 	}
+	if err := o.SetDesiredState(ctx, 2, account.ID, serviceaccounts.Enabled); err != nil {
+		t.Fatal("separate desired-state enable failed", err)
+	}
 	if err := smb.Disable(ctx, 6); !errors.Is(err, smbprovision.ErrConflict) || backend.disableCalls != 0 {
 		t.Fatal("stale disable revision reached the Owner backend", err, backend.disableCalls)
 	}
 	if err := smb.Disable(ctx, 7); err != nil {
 		t.Fatal("explicit disable failed through the Owner", err)
+	}
+	if err := o.SetDesiredState(ctx, 3, account.ID, serviceaccounts.Disabled); err != nil {
+		t.Fatal("separate desired-state disable failed", err)
 	}
 	if err := smb.Enable(ctx, 8); !errors.Is(err, smbprovision.ErrConflict) || backend.enableCalls != 1 {
 		t.Fatal("stale re-enable revision reached the Owner backend", err, backend.enableCalls)
