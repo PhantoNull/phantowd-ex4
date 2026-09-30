@@ -100,6 +100,7 @@ func runSelfTest() error {
 		return err
 	}
 	fmt.Println("PHANTOWD_FILE_SERVICE_PREVIEW_READY authenticated=true csrf=true applied=false scope=desired-policy-only")
+	fmt.Println("PHANTOWD_FILE_SERVICE_PLAN_READY snapshot=synthetic-complete revisions=bound fresh_check=passed json=false activation=false scope=qemu-fixture-only")
 	if err := exerciseQEMUTLS(); err != nil {
 		return err
 	}

@@ -97,3 +97,17 @@ decoder has a bounded fuzz campaign. QEMU tests exercise a nonempty preview
 over HTTP and HTTPS, including missing CSRF, foreign Origin and stale volume
 revisions. Those tests do not establish arbitrary runtime permissions,
 hardware compatibility or production service activation.
+
+## Internal M4.1 plan prototype
+
+The separate [internal candidate-plan package](../internal/fileserviceplan/README.md)
+is a fixture-only step toward M4.1. It compiles combined desired policy against
+explicit identity and storage snapshots, binds the candidate to policy/active/
+identity/storage revisions, and refuses stale observations. It does not collect
+those snapshots, verify them against live mounts/accounts, run `testparm` or
+`exportfs`, persist daemon configuration, or start/reload services. The plan
+cannot be marshaled or unmarshaled as JSON and has no apply method. Its host
+tests and QEMU smoke use synthetic in-memory observations; the package is not
+called by an HTTP route or product runtime owner. See the package's
+[implementation and limits](../internal/fileserviceplan/README.md) and
+[M4 roadmap](../../../ROADMAP.md#m4-supervised-smb-and-nfs).

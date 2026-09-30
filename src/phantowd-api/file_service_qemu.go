@@ -26,6 +26,9 @@ const qemuFileServicePreviewFixture = `{"shares":{"format":"phantowd-share-confi
 "clients":[{"network":"127.0.0.1/32","access":"rw","squash":"all","anonymous_uid":101000,"anonymous_gid":101000,"security":"sys"}]}]}}`
 
 func exerciseQEMUFileServicePreview(client *http.Client, origin string) error {
+	if err := exerciseQEMUFileServicePlan(); err != nil {
+		return err
+	}
 	response, err := client.Get(origin + authSessionPath)
 	if err != nil {
 		return errors.New("preview session request failed")

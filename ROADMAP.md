@@ -607,13 +607,23 @@ device fails closed. Major-zero pseudo-filesystems do not imply a block source.
 
 ## M4: Supervised SMB and NFS
 
-**State:** policy/rendering and isolated service fixtures tested; no product
-activation. **Depends on:** M1, M2, M3; M6/M7 before LAN qualification.
+**State:** policy/rendering and isolated service fixtures tested; an internal
+candidate-plan prototype passes host and local ARMv5 smoke checks with synthetic
+snapshots. It is not connected to runtime owners or product activation.
+**Depends on:** M1, M2, M3; M6/M7 before LAN qualification.
 
 - **M4.1 — Typed activation plan.** Resolve validated policy against qualified
   volumes and actual identities; compile a bounded plan with expected revisions
   and observations. Refuse stale plans. Validate generated daemon configuration
-  before replacing active configuration.
+  before replacing active configuration. The current internal
+  `fileserviceplan` prototype checks complete synthetic identity/storage
+  snapshots, qualified volume/UUID/anchor bindings, SMB account/passdb identity,
+  NFS numeric identities, readonly constraints and exact revision/generation
+  freshness. Its candidate is non-serializable and has no apply operation; the
+  QEMU fixture constructs the snapshots in memory and does not use a collector,
+  daemon parser, mount or HTTP route. M4.1 remains incomplete until trusted
+  M3.4/M2 providers supply fresh all-or-error observations and native parsers
+  validate candidates before any service-owner transaction.
 - **M4.2 — Single service owner.** Define start/reload/stop and child-process
   ownership; bound diagnostics and verify readiness. Preserve the last known
   working configuration on syntax/start failure without claiming an unapplied
