@@ -15,6 +15,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/PhantoNull/phantowd-ex4/phantowd-api/mdmetadata"
+	"github.com/PhantoNull/phantowd-ex4/phantowd-api/volumeprobe"
 	"golang.org/x/sys/unix"
 )
 
@@ -92,7 +94,68 @@ func runQEMUMDV10Fixture() (result error) {
 			return errors.New("MD v1.0 fixture component identity changed during array creation")
 		}
 	}
+	if err := verifyQEMUMDV10ProductParser(); err != nil {
+		return err
+	}
 	fmt.Println("PHANTOWD_MD_V10_READY metadata=1.0 raid1=true members=2 gpt=true partition=1 fixed_devices=true array_stopped=true root_snapshot=true scope=disposable-qemu-only")
+	return nil
+}
+
+func verifyQEMUMDV10ProductParser() error {
+	if err := ensureQEMUMDV10MembersUnmounted(); err != nil {
+		return errors.New("MD v1.0 product parser requires stopped, unmounted fixture members")
+	}
+	observations := make([]mdmetadata.Observation, 0, 2)
+	for _, member := range []struct {
+		name   string
+		serial string
+		wwn    string
+	}{{"sdb", qemuMDV10MemberASerial, qemuMDV10MemberAWWN}, {"sdc", qemuMDV10MemberBSerial, qemuMDV10MemberBWWN}} {
+		if err := verifyQEMUMDV10Member(member.name, member.serial, member.wwn); err != nil {
+			return errors.New("MD v1.0 product parser refused an unverified fixture member")
+		}
+		deviceNumber, err := os.ReadFile("/sys/class/block/" + member.name + "/dev")
+		if err != nil {
+			return errors.New("MD v1.0 product parser could not read fixture device number")
+		}
+		parts := strings.Split(strings.TrimSpace(string(deviceNumber)), ":")
+		if len(parts) != 2 {
+			return errors.New("MD v1.0 product parser found a malformed fixture device number")
+		}
+		major, majorErr := strconv.ParseUint(parts[0], 10, 32)
+		minor, minorErr := strconv.ParseUint(parts[1], 10, 32)
+		sequence, sequenceErr := readBlockDiskSequence(os.DirFS("/sys"), "class/block/"+member.name+"/diskseq")
+		if majorErr != nil || minorErr != nil || sequenceErr != nil || sequence == 0 {
+			return errors.New("MD v1.0 product parser could not bind the fixture disk generation")
+		}
+		source, err := os.Open("/dev/" + member.name)
+		if err != nil {
+			return errors.New("MD v1.0 product parser could not open the fixed fixture block node")
+		}
+		observation, inspectErr := mdmetadata.InspectBlock(source,
+			volumeprobe.BlockDeviceGeneration{Major: uint32(major), Minor: uint32(minor), DiskSequence: sequence},
+			65536*512, mdmetadata.Partition{Number: 1, StartLBA: 2048, SizeLBA: 63455})
+		closeErr := source.Close()
+		if inspectErr != nil || closeErr != nil {
+			return errors.New("MD v1.0 product parser failed its read-only generation-bound probe")
+		}
+		if observation.Status != mdmetadata.StatusCandidate || observation.MetadataVersion != "1.0" ||
+			observation.SuperblockChecksumStatus != "valid" || observation.RAIDDisks != 2 ||
+			observation.MemberRoleDescription != "active-slot" || observation.FeatureMap != 0 ||
+			observation.ArrayIdentityFingerprint == "" || observation.MemberIdentityFingerprint == "" {
+			return errors.New("MD v1.0 product parser returned an incomplete or unsupported member observation")
+		}
+		observations = append(observations, observation)
+	}
+	first, second := observations[0], observations[1]
+	if first.ArrayIdentityFingerprint != second.ArrayIdentityFingerprint ||
+		first.MemberIdentityFingerprint == second.MemberIdentityFingerprint ||
+		first.MemberNumber == second.MemberNumber || first.MemberRole == second.MemberRole ||
+		first.Events != second.Events || first.ArrayLevel != second.ArrayLevel ||
+		first.ArrayLayout != second.ArrayLayout || first.ArraySizeSectors != second.ArraySizeSectors {
+		return errors.New("MD v1.0 product parser members do not form one consistent fixture array")
+	}
+	fmt.Println("PHANTOWD_MD_V10_PRODUCT_PROBE_READY disks=2 metadata=1.0 checksums=valid same_array=true distinct_members=true active_roles=complete descriptor_readonly=true diskseq_bound=true assembly=false mount=false scope=disposable-qemu-only")
 	return nil
 }
 

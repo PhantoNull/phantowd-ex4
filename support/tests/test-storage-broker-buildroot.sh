@@ -179,12 +179,17 @@ grep -F "$md_filesystem_identity_marker" "$repo_root/support/qemu-smoke.sh" >/de
 md_v10_api="$repo_root/src/phantowd-api/md_v10_qemu_linux.go"
 md_v10_init="$repo_root/board/qemu/armv5/rootfs-overlay/usr/lib/phantowd/qemu-md-v10-init.sh"
 md_v10_fixture="$repo_root/support/qemu-md-v10-fixture.sh"
+md_v10_product_marker='PHANTOWD_MD_V10_PRODUCT_PROBE_READY disks=2 metadata=1.0 checksums=valid same_array=true distinct_members=true active_roles=complete descriptor_readonly=true diskseq_bound=true assembly=false mount=false scope=disposable-qemu-only'
 md_v10_marker='PHANTOWD_MD_V10_READY metadata=1.0 raid1=true members=2 gpt=true partition=1 fixed_devices=true array_stopped=true root_snapshot=true scope=disposable-qemu-only'
 md_v10_host_marker='PHANTOWD_MD_V10_HOST_READY disks=2 gpt=valid partition=1 type=linux-raid metadata=1.0 checksums=valid same_array=true distinct_members=true active_roles=complete set_comparison=metadata-observed input_unchanged=true scope=tmpfs-qemu-only'
 [ -f "$md_v10_api" ] && [ -f "$md_v10_init" ] && [ -f "$md_v10_fixture" ] ||
     fail 'MD v1.0 QEMU/host fixture source files are incomplete'
 grep -F "$md_v10_marker" "$md_v10_api" >/dev/null ||
     fail 'guest MD v1.0 fixture must report only its bounded synthetic RAID1 result'
+grep -F "$md_v10_product_marker" "$md_v10_api" >/dev/null ||
+    fail 'guest MD v1.0 fixture must exercise the generation-bound read-only firmware parser'
+grep -F 'mdmetadata.InspectBlock' "$md_v10_api" >/dev/null ||
+    fail 'guest MD v1.0 fixture must call the firmware metadata parser on read-only block descriptors'
 grep -F "$md_v10_host_marker" "$md_v10_fixture" >/dev/null ||
     fail 'host MD v1.0 fixture must verify both parser reports and unchanged inputs'
 grep -F -- '--metadata=1.0' "$repo_root/src/phantowd-api/qemu_md_arguments.go" >/dev/null ||

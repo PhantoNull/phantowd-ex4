@@ -542,10 +542,14 @@ are missing. **Depends on:** M1; M7 for hardware.
   then uses mdadm to create MD v1.0 RAID1 on partition 1 of each. The host reads
   both GPT images, validates each selected partition and reconciles the
   checksummed metadata as a set, requiring complete active-role coverage and
-  unchanged parser inputs. The QEMU root is snapshot-backed and the array is
-  stopped before exit. This validates parser agreement with a generic
-  mdadm-authored sample, not an EX4 disk or WD layout. A sanitized corpus of exact EX4
-  data-disk layouts and an evidence-backed allowlist remain required.
+  unchanged parser inputs. The guest now also exercises the firmware's bounded
+  MD v1.0 parser against both stopped, unmounted members using O_RDONLY
+  generation-bound descriptors; this parser is not yet connected to the broker
+  or a product observation endpoint. The QEMU root is snapshot-backed and the
+  array is stopped before exit. This validates two independent parser paths
+  against a generic mdadm-authored sample, not an EX4 disk or WD layout. A
+  sanitized corpus of exact EX4 data-disk layouts and an evidence-backed
+  allowlist remain required.
 - **M3.4 — Own mount lifecycle.** Model absent, discovered, rejected, qualified,
   mounting, mounted, unavailable, draining and review-required outcomes.
   Derive the transient mount tuple from trusted observations, not HTTP or an

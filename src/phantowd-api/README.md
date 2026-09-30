@@ -157,6 +157,17 @@ classification, and checks the aggregate-only HTTP response. It reuses the
 cached kernel/packages and a disposable rootfs copy; the separate two-boot
 fixture, clean Buildroot/package integration and hosted CI remain pending.
 
+### Internal MD v1.0 metadata reader (QEMU-only)
+
+The `mdmetadata` package contains a bounded parser for one generic Linux MD
+metadata 1.0 superblock at the end of a caller-selected 512-byte-sector
+partition range. Its Linux block adapter accepts a caller-owned O_RDONLY
+whole-disk descriptor and rechecks block type, major/minor, `diskseq`, capacity
+and logical sector size before and after the read. It opens no path and never
+assembles, mounts, imports, repairs or writes. The parser is currently exercised
+only by the disposable ARMv5 QEMU fixture and is not wired to the storage broker
+or a product observation endpoint. See [mdmetadata](mdmetadata/README.md).
+
 The Linux [qualified-mount guard](mountguard/README.md) retains a previously
 verified mount using a unique mount ID and directory descriptors. It refuses
 symlinks, nested mount traversal, replaced anchors and unexpected read-only

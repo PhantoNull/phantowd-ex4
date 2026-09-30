@@ -233,8 +233,13 @@ GPT disk images in tmpfs, attached with fixed synthetic SCSI identities. Each
 image contains one synthetic Linux RAID GPT partition with distinct disk and
 partition GUIDs. The bounded QEMU-only entry point asks ARMv5 `mdadm` to create
 a two-member RAID1 with metadata 1.0 on `/dev/sdb1` and `/dev/sdc1`, verifies
-partition geometry and array/member topology, stops it, and reboots. The host
-invokes `phantowd-lab inspect-md-v1.0-partition` on each image, then
+partition geometry and array/member topology, then stops the array. The
+firmware's `mdmetadata.InspectBlock` reads each selected partition from an
+O_RDONLY whole-disk descriptor, checking major/minor, diskseq, byte capacity
+and 512-byte logical sector size around the bounded metadata read. It requires
+valid checksums, one shared array fingerprint, distinct members and active
+roles 0/1; it does not assemble or mount. The guest then reboots. The host
+independently invokes `phantowd-lab inspect-md-v1.0-partition` on each image, then
 `inspect-storage-image-set` on both whole-disk images. The harness checks valid
 GPT and MD checksums, distinct GPT identities, a shared redacted array
 fingerprint, distinct member fingerprints, active roles 0/1, partition-1
@@ -244,13 +249,15 @@ imports, assembles on the host, reads a NAS/physical disk, or writes NAND/MTD.
 The two member files and reports are removed from the private temp directory by
 the test trap.
 
-The GPT-partition-contained fixture passed locally on 2026-09-30 against the
-pinned Linux 6.18.54 QEMU artifact. It used the current-source developer overlay,
-not a new clean Buildroot/SBOM build or hosted CI. This synthetic
-parser-agreement test does not establish that real EX4 disks use this GPT
-type/layout, nor does it establish EX4 hardware, WD metadata, migration,
-recovery or compatibility qualification. See the private
-`doc/sources/md-v1.0-gpt-partition-qemu-rerun-2026-09-30.md` evidence record.
+The GPT-partition-contained fixture, including the firmware parser, passed
+locally on 2026-09-30 against the pinned Linux 6.18.54 QEMU artifact. It used
+the current-source developer overlay, not a new clean Buildroot/SBOM build or
+hosted CI. This synthetic parser-agreement test does not establish that real
+EX4 disks use this GPT type/layout, nor does it establish EX4 hardware, WD
+metadata, migration, recovery or compatibility qualification. The firmware
+parser is not yet wired to the production broker or management API. See the
+private [partition-fixture record](../doc/sources/md-v1.0-gpt-partition-qemu-rerun-2026-09-30.md)
+and [firmware-parser record](../doc/sources/md-v1.0-firmware-probe-qemu-2026-09-30.md).
 
 ## Evidence boundary
 
