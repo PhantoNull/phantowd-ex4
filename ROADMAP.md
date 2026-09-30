@@ -526,6 +526,12 @@ are missing. **Depends on:** M1; M7 for hardware.
   automatic MD actions can write even during a supposedly read-only assessment.
   Unknown signatures, mixed generations and degraded cases require refusal or a
   separately qualified policy, not best-effort mounting.
+  Static review of WD 2.13.108 also found a RAID1 monitor path that may remove
+  fault-marked members and attempt to add expected-but-unlisted partitions using
+  SATA-connector mapping to current `/dev/sdX` devices. The extracted runtime
+  mapping values and invocation schedule are unavailable, so no bay-move
+  outcome is claimed. Migration discovery must not run this implicit repair
+  policy; member removal/re-add/resync needs its own explicit, qualified workflow.
   The host-only `phantowd-lab inspect-storage-image-set` now correlates bounded
   GPT, ext, MD v1.2, MD v1.0 and MD 0.90 metadata across up to four supplied
   regular-file images, detects duplicate disk/partition/filesystem identity fingerprints,
