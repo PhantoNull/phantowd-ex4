@@ -134,7 +134,7 @@ while [ "$attempt" -lt 120 ]; do
             echo "Missing authenticated file-service preview assertion" >&2
             exit 1
         fi
-        if ! grep -F 'PHANTOWD_FILE_SERVICE_PLAN_READY snapshot=synthetic-complete revisions=bound fresh_check=passed json=false activation=false scope=qemu-fixture-only' "$log_file" >/dev/null; then
+        if ! grep -F 'PHANTOWD_FILE_SERVICE_PLAN_READY snapshot=synthetic-complete revisions=bound fresh_check=passed parser=testparm json=false activation=false scope=qemu-fixture-only' "$log_file" >/dev/null; then
             echo "Missing internal file-service plan assertion" >&2
             exit 1
         fi
@@ -296,7 +296,7 @@ while [ "$attempt" -lt 120 ]; do
             echo "Missing loopback-only NFSv3/TCP integration assertion" >&2
             exit 1
         fi
-        if ! grep -F 'PHANTOWD_NFS_POLICY_IO_READY generated=exportfs rw=sync-verified ro=EROFS uid=101000 gid=101000 denied_client=true mount_guard=true scope=qemu-fixture-only' "$log_file" >/dev/null; then
+        if ! grep -F 'PHANTOWD_NFS_POLICY_IO_READY generated=exportfs plan_parser=accepted-and-withdrawn rw=sync-verified ro=EROFS uid=101000 gid=101000 denied_client=true mount_guard=true scope=qemu-fixture-only' "$log_file" >/dev/null; then
             echo "Missing generated NFS policy access/mapping/mount-guard assertion" >&2
             exit 1
         fi

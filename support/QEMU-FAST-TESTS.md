@@ -132,6 +132,10 @@ unlisted-client denial. Mount requests have a Go-enforced deadline and bounded
 retry settings; absence of a helper or a timeout is not a successful denial.
 Cleanup revokes generated exports and retries ordinary unmounts with a bounded
 guest-only export-cache flush. This is not product service orchestration.
+The combined internal M4.1 SMB/NFS candidate is also checked by the target
+`testparm` and `exportfs` parsers. Its export is limited to a fixed loopback
+rule on the disposable QEMU volume and is withdrawn immediately after the
+parser/output check; no product config or service owner consumes it.
 
 While this disk is mounted, a QEMU-only Samba fixture renders two shares using
 the product renderer and starts a separate smbd on test port 1445. Its state,

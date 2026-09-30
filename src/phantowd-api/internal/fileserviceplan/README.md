@@ -21,19 +21,23 @@ snapshot.
 - `FreshAgainst` is an equality check over revisions/generations, not an atomic
   lease. A future owner must recheck immediately before any transaction and
   close intervening races.
-- Returned Samba/NFS text is candidate output only. This package does not run
-  native `testparm`/`exportfs` validation, write a live file, or claim a service
-  revision is applied or runtime-validated.
+- Returned Samba/NFS text is candidate output only. This package itself does
+  not run native `testparm`/`exportfs`, write a live file, or claim a service
+  revision is applied or runtime-validated. A separate local ARMv5 QEMU
+  integration fixture feeds the combined candidates to those target parsers;
+  it uses a private temporary Samba file and a short-lived NFS export on a
+  disposable synthetic guest volume, then withdraws that export. This is not
+  product-owner validation or activation.
 - `Plan` rejects JSON marshaling and unmarshaling. There is deliberately no
   apply/activate operation and no product HTTP exposure.
 
 ## Remaining M4.1 work
 
 Trusted M3.4 storage and M2 identity providers must produce complete,
-generation-bound observations. The service owner must validate candidates with
-the pinned native parsers, preserve last-known-good configuration on any
-failure, and recheck policy, active revision, identity and mount state at the
-handoff boundary. Mount/path lifetime, process supervision, failure/reboot
+generation-bound observations. The product service owner must integrate the
+pinned native parsers transactionally, preserve last-known-good configuration
+on any failure, and recheck policy, active revision, identity and mount state at
+the handoff boundary. Mount/path lifetime, process supervision, failure/reboot
 semantics and data preservation remain separate M4.2/M4.4/M4.5/M4.6 gates.
 
 See the [implementation](plan.go), its

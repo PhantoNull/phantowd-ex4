@@ -9,12 +9,14 @@ set -eu
 [ "$PHANTOWD_TARGET" = qemu-armv5 ] && [ "$PHANTOWD_FLASHABLE" = no ] || exit 1
 # The Go fixture additionally refuses non-ARMv5 / non-Versatile PB machines.
 candidate=$(/usr/bin/phantowd-api --qemu-nfs-test=exports) || exit 1
+plan_candidate=$(/usr/bin/phantowd-api --qemu-nfs-test=file-service-plan-exports) || exit 1
 
 workspace=/srv/phantowd-nfs-policy-smoke
 anchor=/srv/phantowd/volumes/qemu-only
 exports_file=/etc/exports.d/phantowd-policy-smoke.exports
+plan_exports_file=/etc/exports.d/phantowd-file-service-plan.exports
 rw_path='RW #1 "quoted"'
-for unused in "$workspace" "$anchor" "$exports_file"; do
+for unused in "$workspace" "$anchor" "$exports_file" "$plan_exports_file"; do
     if [ -e "$unused" ] || [ -L "$unused" ]; then
         echo 'PHANTOWD_QEMU_ERROR nfs-policy-fixture-already-exists'
         exit 1
@@ -35,6 +37,7 @@ cleanup() {
     if [ "$ro_mounted" = yes ]; then umount "$workspace/ro-client" || result=1; fi
     if [ "$rw_mounted" = yes ]; then umount "$workspace/rw-client" || result=1; fi
     rm -f "$exports_file" || result=1
+    rm -f "$plan_exports_file" || result=1
     exportfs -r || result=1
     if [ "$anchor_mounted" = yes ]; then umount "$anchor" || result=1; fi
     if [ "$result" -ne 0 ]; then echo 'PHANTOWD_QEMU_ERROR nfs-policy-fixture-failed'; fi
@@ -55,9 +58,9 @@ exportfs -r
 /usr/bin/phantowd-api --qemu-nfs-test=probe-unmounted
 mount -t ext2 -o rw /dev/sdb "$anchor"
 anchor_mounted=yes
-mkdir "$anchor/$rw_path" "$anchor/read-only" "$anchor/denied-client"
-chown 101000:101000 "$anchor/$rw_path" "$anchor/read-only" "$anchor/denied-client"
-chmod 0770 "$anchor/$rw_path" "$anchor/read-only" "$anchor/denied-client"
+mkdir "$anchor/$rw_path" "$anchor/read-only" "$anchor/denied-client" "$anchor/books"
+chown 101000:101000 "$anchor/$rw_path" "$anchor/read-only" "$anchor/denied-client" "$anchor/books"
+chmod 0770 "$anchor/$rw_path" "$anchor/read-only" "$anchor/denied-client" "$anchor/books"
 printf '%s\n' phantowd-nfs-ro-marker >"$anchor/read-only/marker"
 chmod 0644 "$anchor/read-only/marker"
 exportfs -r
@@ -65,6 +68,27 @@ exportfs -s >"$workspace/export-table"
 if [ "$(grep -c 'fsid=aaaaaaaa-bbbb-cccc-dddd-' "$workspace/export-table")" -ne 3 ]; then
     echo 'PHANTOWD_QEMU_ERROR nfs-policy-export-count-mismatch'
     cat "$workspace/export-table"
+    exit 1
+fi
+
+# Validate the combined fileserviceplan output with the guest's actual
+# exportfs parser in this disposable guest, then withdraw it before continuing.
+printf '%s\n' "$plan_candidate" >"$plan_exports_file"
+exportfs -r
+exportfs -s >"$workspace/plan-export-table"
+if ! grep -F "$anchor/books" "$workspace/plan-export-table" >/dev/null ||
+    ! grep -F 'fsid=aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee' "$workspace/plan-export-table" >/dev/null ||
+    ! grep -F 'anonuid=1000,anongid=1000' "$workspace/plan-export-table" >/dev/null; then
+    echo 'PHANTOWD_QEMU_ERROR combined-file-service-plan-rejected-by-exportfs'
+    cat "$workspace/plan-export-table"
+    exit 1
+fi
+rm -f "$plan_exports_file"
+exportfs -r
+exportfs -s >"$workspace/plan-export-table"
+if grep -F 'fsid=aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee' "$workspace/plan-export-table" >/dev/null; then
+    echo 'PHANTOWD_QEMU_ERROR combined-file-service-plan-export-not-withdrawn'
+    cat "$workspace/plan-export-table"
     exit 1
 fi
 
@@ -121,4 +145,4 @@ exportfs -r
 rm -f "$exports_file"
 exportfs -r
 trap - EXIT INT TERM
-echo 'PHANTOWD_NFS_POLICY_IO_READY generated=exportfs rw=sync-verified ro=EROFS uid=101000 gid=101000 denied_client=true mount_guard=true scope=qemu-fixture-only'
+echo 'PHANTOWD_NFS_POLICY_IO_READY generated=exportfs plan_parser=accepted-and-withdrawn rw=sync-verified ro=EROFS uid=101000 gid=101000 denied_client=true mount_guard=true scope=qemu-fixture-only'

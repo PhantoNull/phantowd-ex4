@@ -660,11 +660,15 @@ snapshots. It is not connected to runtime owners or product activation.
   `fileserviceplan` prototype checks complete synthetic identity/storage
   snapshots, qualified volume/UUID/anchor bindings, SMB account/passdb identity,
   NFS numeric identities, readonly constraints and exact revision/generation
-  freshness. Its candidate is non-serializable and has no apply operation; the
-  QEMU fixture constructs the snapshots in memory and does not use a collector,
-  daemon parser, mount or HTTP route. M4.1 remains incomplete until trusted
-  M3.4/M2 providers supply fresh all-or-error observations and native parsers
-  validate candidates before any service-owner transaction.
+  freshness. Its candidate is non-serializable and has no apply operation. A
+  local ARMv5 QEMU fixture now checks the combined SMB candidate with target
+  `testparm` and the NFS candidate with target `exportfs`; the temporary NFS
+  export is applied only to the disposable guest fixture and then withdrawn.
+  The planner still consumes synthetic in-memory snapshots and has no trusted
+  collector, product service owner, HTTP route or activation transaction. M4.1
+  remains incomplete until trusted M3.4/M2 providers supply fresh all-or-error
+  observations and an owner integrates native validation transactionally
+  before any product service change.
 - **M4.2 — Single service owner.** Define start/reload/stop and child-process
   ownership; bound diagnostics and verify readiness. Preserve the last known
   working configuration on syntax/start failure without claiming an unapplied

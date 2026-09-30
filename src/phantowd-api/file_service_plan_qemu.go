@@ -20,20 +20,20 @@ import (
 
 // This synthetic plan fixture tests only the internal compiler. It constructs
 // no mount, reads no disk, and never connects candidate text to a service.
-func exerciseQEMUFileServicePlan() error {
+func buildQEMUFileServicePlan() (fileserviceplan.Plan, error) {
 	registry, err := serviceaccounts.New(1000, 2000)
 	if err != nil {
-		return errors.New("QEMU plan fixture registry initialization failed")
+		return fileserviceplan.Plan{}, errors.New("QEMU plan fixture registry initialization failed")
 	}
 	registry, err = registry.Create(registry.Revision, "writer", "alice", serviceaccounts.Reservations{
 		UIDs: []uint32{}, GIDs: []uint32{}, Names: []string{},
 	})
 	if err != nil {
-		return errors.New("QEMU plan fixture account reservation failed")
+		return fileserviceplan.Plan{}, errors.New("QEMU plan fixture account reservation failed")
 	}
 	registry, err = registry.SetState(registry.Revision, "writer", serviceaccounts.Enabled)
 	if err != nil {
-		return errors.New("QEMU plan fixture account activation failed")
+		return fileserviceplan.Plan{}, errors.New("QEMU plan fixture account activation failed")
 	}
 	account := registry.Accounts[0]
 	sambaAccount := account
@@ -53,26 +53,34 @@ func exerciseQEMUFileServicePlan() error {
 	}
 	shares := shareconfig.Config{
 		Format: shareconfig.Format, SchemaVersion: shareconfig.SchemaVersion, Revision: 4,
-		Volumes: []shareconfig.Volume{{ID: "bulk", FilesystemUUID: "11111111-2222-3333-4444-555555555555"}},
+		Volumes: []shareconfig.Volume{{ID: qemuNFSVolumeID, FilesystemUUID: qemuNFSVolumeUUID}},
 		Users:   []shareconfig.User{{ID: account.ID, Name: account.Name}},
-		Shares: []shareconfig.Share{{ID: "books", Name: "Books", VolumeID: "bulk", RelativePath: "books",
+		Shares: []shareconfig.Share{{ID: "books", Name: "Books", VolumeID: qemuNFSVolumeID, RelativePath: "books",
 			Grants: []shareconfig.Grant{{UserID: account.ID, Access: "rw"}}}},
 	}
 	nfs := nfsconfig.Policy{
 		Format: nfsconfig.Format, SchemaVersion: 1, Revision: 4, VolumeRevision: 4,
-		Exports: []nfsconfig.Export{{ID: "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee", VolumeID: "bulk", RelativePath: "books",
+		Exports: []nfsconfig.Export{{ID: "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee", VolumeID: qemuNFSVolumeID, RelativePath: "books",
 			Clients: []nfsconfig.Client{{Network: "127.0.0.1/32", Access: "rw", Squash: "all",
 				AnonymousUID: account.UID, AnonymousGID: account.GID, Security: "sys"}}}},
 	}
 	config := fileservice.Config{Format: fileservice.ConfigFormat, SchemaVersion: 1, Revision: 4, Shares: shares, NFS: nfs}
 	storage := fileserviceplan.StorageSnapshot{Complete: true, Generation: 12, Volumes: []fileserviceplan.ObservedVolume{{
-		VolumeID: "bulk", FilesystemUUID: "11111111-2222-3333-4444-555555555555",
-		MountPath: shareconfig.VolumeMountRoot + "/bulk", Compatibility: fileserviceplan.CompatibilityQualified,
+		VolumeID: qemuNFSVolumeID, FilesystemUUID: qemuNFSVolumeUUID,
+		MountPath: shareconfig.VolumeMountRoot + "/" + string(qemuNFSVolumeID), Compatibility: fileserviceplan.CompatibilityQualified,
 		MountID: 31, DeviceMajor: 8, DeviceMinor: 17,
 	}}}
 	plan, err := fileserviceplan.Build(config, 2, identity, storage)
 	if err != nil {
-		return errors.New("QEMU file-service candidate-plan compilation failed")
+		return fileserviceplan.Plan{}, errors.New("QEMU file-service candidate-plan compilation failed")
+	}
+	return plan, nil
+}
+
+func exerciseQEMUFileServicePlan() error {
+	plan, err := buildQEMUFileServicePlan()
+	if err != nil {
+		return err
 	}
 	samba, exports := plan.RenderedCandidates()
 	if !strings.Contains(samba, "write list = alice") || !strings.Contains(exports, "anonuid=1000,anongid=1000") ||
@@ -83,5 +91,5 @@ func exerciseQEMUFileServicePlan() error {
 	if _, err := json.Marshal(plan); err == nil {
 		return errors.New("QEMU file-service internal plan became serializable")
 	}
-	return nil
+	return validateQEMUPlanSambaWithTestparm(samba)
 }
