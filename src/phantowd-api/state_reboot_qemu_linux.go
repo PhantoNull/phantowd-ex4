@@ -76,6 +76,7 @@ func runQEMUStateTest(phase string) (result error) {
 	}
 	defer func() {
 		if err := unix.Unmount(qemuStateAnchor, 0); err != nil {
+			emitQEMUStateUnmountDiagnostic(err)
 			result = errors.Join(result, fmt.Errorf("state volume unmount: %w", err))
 		}
 	}()

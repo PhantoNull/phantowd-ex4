@@ -255,9 +255,7 @@ the current-source developer overlay, not a new clean Buildroot/SBOM build or
 hosted CI. This synthetic parser-agreement test does not establish that real
 EX4 disks use this GPT type/layout, nor does it establish EX4 hardware, WD
 metadata, migration, recovery or compatibility qualification. The firmware
-parser is not yet wired to the production broker or management API. See the
-private [partition-fixture record](../doc/sources/md-v1.0-gpt-partition-qemu-rerun-2026-09-30.md)
-and [firmware-parser record](../doc/sources/md-v1.0-firmware-probe-qemu-2026-09-30.md).
+parser is not yet wired to the production broker or management API.
 
 ## Evidence boundary
 
@@ -332,6 +330,24 @@ Samba-data and copied-`/etc` unmount failures, and a host regression checks that
 the state-persistence fixture releases its own descriptors. Neither lazy
 unmounts nor automatic retries mask failures. Investigate any recurrence;
 successful clean-reboot runs do not establish crash or shutdown robustness.
+
+The QEMU-only failure path now emits `PHANTOWD_STATE_UNMOUNT_DIAG` before
+returning the original unmount error. Its JSON is capped at 4096 bytes and
+limits process records to the fixture owner and descendants. The `/proc`
+enumerator reads at most 160 names plus one truncation sentinel, then caps
+numeric PID records at 128. Normal PID-exit races are skipped; permission and
+I/O failures remain visible as incomplete evidence. FD/cwd/root
+references are reduced to fixed-anchor or synthetic-source categories, and
+mount records expose only matching mount IDs and device numbers. Raw paths,
+filenames, command lines, environments and unrelated processes are omitted.
+Missing/capped observations are marked incomplete/truncated. This adds no retry
+or alternate unmount behavior. Host fake-proc/bounded-scan tests, QEMU-tagged
+`go vet`, a Linux-native `/proc` collection check and ARMv5 cross-compilation
+pass. A current-source ARMv5 MD v1.0 overlay after the scanner refinement
+passed, but did not execute this state-unmount path. A full two-boot state
+overlay has not yet been rerun after the refinement; the historical EBUSY
+remains unresolved rather than fixed.
+See M0.2 in [the roadmap](../ROADMAP.md).
 
 ### Qualification limits
 

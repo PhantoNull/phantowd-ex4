@@ -174,7 +174,18 @@ button to an unqualified backend simply because the screen exists.
   a deterministic regression and a declared repeated two-boot campaign. Ten
   more local repetitions on 2026-09-30, using the current harness and existing
   manifest-verified rootfs artifact, passed without reproducing EBUSY; this does
-  not establish a fix or replace exact-source instrumentation on recurrence.
+  not establish a fix. A QEMU-only failure hook emits a 4-KiB-capped, redacted
+  process/FD/mount snapshot if ordinary unmount fails. Its `/proc` reader now
+  consumes at most 160 directory names plus one truncation sentinel and retains
+  at most 128 numeric PIDs; normal process-exit races do not make the whole
+  snapshot incomplete, while other collection errors remain explicit. Host
+  fake-proc and bounded-enumeration tests, an actual Linux `/proc` redaction test,
+  the no-Docker host suite, Linux-native tests and ARMv5 cross-compilation pass.
+  A current-source ARMv5 MD v1.0 guest overlay also passed after this refinement,
+  but it did not execute the state-unmount path. No full two-boot state overlay
+  has been rerun after the refinement. The diagnostic has not captured a
+  recurrence and the cause remains unknown. Cleanup is unchanged: no retry or
+  lazy/forced unmount. See the test-lane evidence.
 - **M0.3 — Keep CI proportional.** Host/domain changes use fast checks; runtime
   changes use QEMU; board changes use the relevant current probe. Windows host
   iteration has a no-Docker preflight and an optional Linux/amd64 test runner

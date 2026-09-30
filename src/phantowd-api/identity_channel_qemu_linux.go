@@ -216,15 +216,15 @@ func runQEMUIdentityClient(phase string) error {
 	}
 	if phase == "second" {
 		requests = []exchange{
-			{identityrpc.Request{1, "status", "managed", 0}, "ok", 5, "unix-confirmed"},
-			{identityrpc.Request{1, "status", "second", 0}, "ok", 1, "reserved"},
-			{identityrpc.Request{1, "step", "unknown", 1}, "unavailable", 0, ""},
-			{identityrpc.Request{1, "step", "managed", 5}, "conflict", 0, ""},
-			{identityrpc.Request{1, "step", "second", 1}, "ok", 3, "group-confirmed"},
-			{identityrpc.Request{1, "step", "second", 1}, "conflict", 0, ""},
-			{identityrpc.Request{1, "status", "managed", 0}, "ok", 5, "unix-confirmed"},
-			{identityrpc.Request{1, "step", "second", 3}, "ok", 5, "unix-confirmed"},
-			{identityrpc.Request{1, "status", "second", 0}, "ok", 5, "unix-confirmed"},
+			{identityrpc.Request{Version: 1, Action: "status", AccountID: "managed"}, "ok", 5, "unix-confirmed"},
+			{identityrpc.Request{Version: 1, Action: "status", AccountID: "second"}, "ok", 1, "reserved"},
+			{identityrpc.Request{Version: 1, Action: "step", AccountID: "unknown", Revision: 1}, "unavailable", 0, ""},
+			{identityrpc.Request{Version: 1, Action: "step", AccountID: "managed", Revision: 5}, "conflict", 0, ""},
+			{identityrpc.Request{Version: 1, Action: "step", AccountID: "second", Revision: 1}, "ok", 3, "group-confirmed"},
+			{identityrpc.Request{Version: 1, Action: "step", AccountID: "second", Revision: 1}, "conflict", 0, ""},
+			{identityrpc.Request{Version: 1, Action: "status", AccountID: "managed"}, "ok", 5, "unix-confirmed"},
+			{identityrpc.Request{Version: 1, Action: "step", AccountID: "second", Revision: 3}, "ok", 5, "unix-confirmed"},
+			{identityrpc.Request{Version: 1, Action: "status", AccountID: "second"}, "ok", 5, "unix-confirmed"},
 		}
 	}
 	for _, test := range requests {

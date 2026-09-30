@@ -54,7 +54,9 @@ cd /external/src/phantowd-api
 "$go_binary" version
 "$go_binary" vet ./...
 "$go_binary" test -count=1 ./...
-printf 'PHANTOWD_LINUX_API_TESTS_READY buildroot=%s scope=all-api-packages host=linux-amd64 network=none\n' "$BUILDROOT_VERSION"
+"$go_binary" vet -tags=qemu ./...
+"$go_binary" test -tags=qemu -run '^TestQEMUStateProcReaderObservesAndRedactsOwnerCWD$' -count=1 .
+printf 'PHANTOWD_LINUX_API_TESTS_READY buildroot=%s scope=all-api-packages-qemu-vet-and-proc-diagnostic host=linux-amd64 network=none\n' "$BUILDROOT_VERSION"
 '@
 $linuxScript = $linuxScript.Replace("`r`n", "`n")
 $encodedLinuxScript = [Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes($linuxScript))

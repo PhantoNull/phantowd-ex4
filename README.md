@@ -124,7 +124,8 @@ not execute that binary; it does not replace the Linux guest integration lane.
 When the pinned Buildroot image and workspace are already present, run
 `support/test-api-linux.ps1` as an additional fast Linux-native check. It runs
 `go vet` and the complete API test suite, including Linux-only packages. It
-mounts the repository and existing Buildroot workspace read-only, disables
+also runs QEMU-tagged `go vet` and a focused Linux `/proc` diagnostic contract.
+It mounts the repository and existing Buildroot workspace read-only, disables
 network access, uses only an ephemeral container/tmpfs, and fails rather than
 pulling an image or creating a volume if the cache is absent. It does not boot
 QEMU or replace the full guest integration lane.
