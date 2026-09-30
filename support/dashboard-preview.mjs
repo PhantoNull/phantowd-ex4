@@ -24,7 +24,7 @@ const systemFixture = {
   observed_at: new Date().toISOString(),
   architecture: "arm",
   goarm: "5",
-  kernel: "6.18.53-preview",
+  kernel: "6.18.54-preview",
   uptime_seconds: 123456,
   memory: { total_bytes: 257912832, available_bytes: 120000000 },
   effective_uid: 100,

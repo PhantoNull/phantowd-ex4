@@ -15,7 +15,6 @@ buildroot_signature="$buildroot_archive.sign"
 buildroot_source="$workspace_dir/buildroot-$BUILDROOT_VERSION"
 download_dir="$workspace_dir/dl"
 key_file="$workspace_dir/buildroot-release-key.asc"
-gnupg_dir="$workspace_dir/gnupg"
 
 mkdir -p "$workspace_dir" "$download_dir/linux" "$download_dir/cyclonedx"
 
@@ -60,7 +59,8 @@ if [ ! -f "$workspace_dir/$buildroot_signature" ]; then
         "$workspace_dir/$buildroot_signature"
 fi
 
-rm -rf "$gnupg_dir"
+gnupg_dir="$(mktemp -d /tmp/phantowd-build-gnupg.XXXXXX)"
+trap 'rm -rf -- "$gnupg_dir"' EXIT
 install -d -m 0700 "$gnupg_dir"
 GNUPGHOME="$gnupg_dir" gpg --batch --quiet --import "$key_file"
 signature_status="$(GNUPGHOME="$gnupg_dir" gpg --batch --status-fd=1 \
@@ -116,23 +116,23 @@ if [ ! -f "$buildroot_source/.phantowd-source-ready" ]; then
 fi
 
 # Buildroot 2025.02.18's linux package license-file hash predates the GPL-2.0
-# text shipped in Linux 6.18.53. The archive itself is separately SHA-256 and
+# text shipped in Linux 6.18.54. The archive itself is separately SHA-256 and
 # PGP verified above; update only that expected license-text hash, fail closed
 # if the pinned Buildroot source no longer matches either known state.
-if [ "$BUILDROOT_VERSION" != "2025.02.18" ] || [ "$LINUX_VERSION" != "6.18.53" ]; then
-    echo "The Buildroot GPL-2.0 hash refresh is qualified only for Buildroot 2025.02.18 and Linux 6.18.53" >&2
+if [ "$BUILDROOT_VERSION" != "2025.02.18" ] || [ "$LINUX_VERSION" != "6.18.54" ]; then
+    echo "The Buildroot GPL-2.0 hash refresh is qualified only for Buildroot 2025.02.18 and Linux 6.18.54" >&2
     exit 1
 fi
 linux_hash_file="$buildroot_source/linux/linux.hash"
 old_gpl_text_hash="f6b78c087c3ebdf0f3c13415070dd480a3f35d8fc76f3d02180a407c1c812f79"
-linux_gpl_text_hash="8780e78a1a737e127f25a65f6d95269bffd36158dc261114de7859b490bfc5aa"
+linux_gpl_text_hash="$LINUX_GPL_TEXT_SHA256"
 old_gpl_hash_count="$(grep -F -c \
     "$old_gpl_text_hash  LICENSES/preferred/GPL-2.0" "$linux_hash_file" || true)"
 linux_gpl_hash_count="$(grep -F -c \
     "$linux_gpl_text_hash  LICENSES/preferred/GPL-2.0" "$linux_hash_file" || true)"
 if [ "$old_gpl_hash_count" -eq 1 ] && [ "$linux_gpl_hash_count" -eq 0 ]; then
     patch --directory "$buildroot_source" --strip=1 --fuzz=0 --forward \
-        < "$external_dir/support/buildroot-patches/$BUILDROOT_VERSION/0001-linux-gpl-text-hash-for-linux-6.18.53.patch"
+        < "$external_dir/support/buildroot-patches/$BUILDROOT_VERSION/0001-linux-gpl-text-hash-for-linux-6.18.54.patch"
 elif [ "$old_gpl_hash_count" -ne 0 ] || [ "$linux_gpl_hash_count" -ne 1 ]; then
     echo "Unexpected GPL-2.0 license hash in $linux_hash_file" >&2
     exit 1

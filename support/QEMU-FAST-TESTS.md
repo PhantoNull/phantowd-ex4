@@ -241,10 +241,14 @@ mounts, imports, assembles on the host, reads a NAS/physical disk, or writes
 NAND/MTD. The two member files and reports are removed from the private temp
 directory by the test trap.
 
-The local fixture passed on 2026-09-30 using cached Linux 6.18.53 ARMv5 QEMU
-artifacts. This is a generic parser-agreement test only; it does not establish
-EX4 hardware, WD metadata, migration, recovery or compatibility qualification.
-It is also not a clean Buildroot/SBOM/legal-info rebuild or hosted CI result.
+The focused fixture passed on 2026-09-30 using cached Linux 6.18.53 ARMv5 QEMU
+artifacts. On 2026-09-30, the full local Buildroot 2025.02.18/Linux 6.18.54
+QEMU build also passed and emitted the fixture marker with both 32 MiB members,
+host set comparison, and unchanged input hashes. That run built in a fresh
+output directory while reusing the pinned image, Buildroot source/download
+cache and compiler cache; it was not an independent clean-source or hosted CI
+build. This is a generic parser-agreement test only; it does not establish EX4
+hardware, WD metadata, migration, recovery or compatibility qualification.
 
 ## Evidence boundary
 

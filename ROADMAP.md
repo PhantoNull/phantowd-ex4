@@ -3,7 +3,7 @@
 
 # Implementation roadmap
 
-Reviewed: **2026-09-29**. This is the product specification and work breakdown,
+Reviewed: **2026-09-30**. This is the product specification and work breakdown,
 not a release announcement. The [README](README.md) is the concise entry point;
 component contracts remain authoritative for implemented behavior.
 
@@ -71,7 +71,7 @@ Status vocabulary:
 
 | Area | Evidence and limits |
 | --- | --- |
-| Build/tooling | Pinned Buildroot 2025.02.18 / Linux 6.18.53; source verification, package metadata, SBOM and clean CI. Independent reproducibility was demonstrated for one earlier commit, not every revision. |
+| Build/tooling | Pinned Buildroot 2025.02.18 LTS / Linux 6.18.54 LTS; source verification, package metadata, SBOM and clean CI. Independent reproducibility was demonstrated for one earlier commit, not every revision. |
 | Admin management | Host/DOM and ARMv5 authentication, password-change, revocation and clean-reboot tests. Product enrollment, state placement, recovery and certificates remain open. |
 | Desired SMB/NFS policy | Strict models, revision stores and opt-in development editing. Stored policy does not activate services. |
 | Native identities | Reservation ledger, protected local reader, creation journal, typed executor, cooperative owner/listener and multi-account router. Not a deployed account manager. |

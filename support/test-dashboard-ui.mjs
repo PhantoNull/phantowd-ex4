@@ -80,7 +80,7 @@ function systemFixture() {
     observed_at: "2026-09-25T12:30:00Z",
     architecture: "arm",
     goarm: "5",
-    kernel: "6.18.53",
+    kernel: "6.18.54",
     uptime_seconds: 123456,
     memory: { total_bytes: 256 * 1024 * 1024, available_bytes: 96 * 1024 * 1024 },
   };
@@ -186,7 +186,7 @@ async function testReadOnlySnapshotAndSafeRendering() {
 
   assert.equal(elements["auth-panel"].hidden, true);
   assert.equal(elements["dashboard-content"].hidden, false);
-  assert.equal(elements["kernel-value"].textContent, "Linux 6.18.53");
+  assert.equal(elements["kernel-value"].textContent, "Linux 6.18.54");
   assert.equal(elements["target-value"].textContent, "qemu-armv5");
   assert.match(elements["observed-at"].textContent, /^Last observed /);
   assert.equal(elements["observed-at"].dateTime, "2026-09-25T12:30:00.000Z");
@@ -275,7 +275,7 @@ async function testStorageFailureKeepsOnlyCurrentSystemObservation() {
 
   storageAvailable = false;
   await context.refreshSnapshot();
-  assert.equal(elements["kernel-value"].textContent, "Linux 6.18.53");
+  assert.equal(elements["kernel-value"].textContent, "Linux 6.18.54");
   assert.equal(elements["device-count"].textContent, "Storage unavailable");
   assert.match(elements["device-list"].children[0].textContent, /no current device values/i);
   assert.equal(elements["service-status-dot"].className.includes("is-degraded"), true);
@@ -332,7 +332,7 @@ async function testMountFailureClearsOnlyMountObservation() {
 
   mountsAvailable = false;
   await context.refreshSnapshot();
-  assert.equal(elements["kernel-value"].textContent, "Linux 6.18.53");
+  assert.equal(elements["kernel-value"].textContent, "Linux 6.18.54");
   assert.equal(elements["device-count"].textContent, "1 device");
   assert.equal(elements["array-count"].textContent, "2 arrays");
   assert.equal(elements["mount-count"].textContent, "Mounts unavailable");
