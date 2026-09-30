@@ -37,9 +37,12 @@ assemble/mount/import.
 
 The implementation is currently exercised in the fixed ARMv5 QEMU fixture,
 not by the storage broker or a product endpoint. QEMU `mdadm` creates metadata
-on two synthetic GPT partitions in tmpfs; the firmware parser examines each
-through generation-bound O_RDONLY descriptors, then the independent offline
-host parser checks the same images. The firmware-side component comparer now
-also confirms the same two active RAID1 roles and rejects inconsistent test
-evidence. The guest array is stopped before parsing. No physical device or NAS
-is involved.
+on two synthetic GPT partitions in tmpfs. The firmware's internal coordinator
+then performs complete trusted discovery, correlates the full GPT set, selects
+only Linux-RAID-declared partitions, parses them through generation-bound
+O_RDONLY descriptors and rechecks storage, mounts and swap. The guest array is
+stopped before parsing. Its pure component comparer checks the same two active
+RAID1 roles; the independent offline host parser reads the same regular files
+and confirms their hashes did not change. No physical device or NAS is
+involved. This remains a QEMU-only test path, not a broker operation or product
+observation API.

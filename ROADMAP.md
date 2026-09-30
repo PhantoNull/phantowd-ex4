@@ -320,8 +320,11 @@ qualification remain open. The revocation primitive is currently QEMU-only.
   enter review-required without replay; active transfers may be interrupted.
   The executor is exercised in local QEMU using only disposable
   passdb/config state; it is not yet wired to product startup or persistent
-  Samba state. **Still required:** production listener/startup wiring and
-  HTTP-session-to-owner authorization binding; explicit
+  Samba state. The next approved review slice is internal and read-only: permit
+  `Review` only for `review-required` operations, verify the current Unix
+  identity, read only a redacted Samba observation under the Owner lock, and
+  perform no mutation or RPC/HTTP operation. **Still required:** production
+  listener/startup wiring and HTTP-session-to-owner authorization binding; explicit
   review/operator recovery and production integration/recovery for session
   revocation. Retain tombstones;
   retirement must not silently reassign existing file ownership.
@@ -570,16 +573,27 @@ are missing. **Depends on:** M1; M7 for hardware.
   fingerprints, common array fields/component sizes and event counters, unique
   members/roles, and complete active-role coverage; host tests cover incomplete,
   conflicting, divergent and ambiguous sets. It is not yet connected to the
-  broker or a product observation endpoint. The QEMU root is snapshot-backed
-  and the array is stopped before exit. This validates two independent
-  parser/comparison paths against a generic mdadm-authored sample, not an EX4
-  disk or WD layout. A
+  broker or a product observation endpoint. The current internal coordinator
+  additionally performs complete trusted inventory discovery, correlates GPT
+  identities to the complete candidate set, invokes the metadata parser only
+  for validated Linux RAID member partitions, and rechecks storage, mounts and
+  swap before and after reads. Its only caller is the disposable QEMU
+  self-test; it is not connected to the broker protocol or a product
+  observation endpoint. The QEMU root is snapshot-backed and the array is
+  stopped before parsing/exit. The host parser then reads the same two regular
+  files read-only and checks that their hashes did not change. This validates
+  the internal coordinator and independent host parser against a generic
+  mdadm-authored sample, not an EX4 disk or WD layout. A
   sanitized corpus of exact EX4 data-disk layouts and an evidence-backed
   allowlist remain required.
 - **M3.4 — Own mount lifecycle.** Model absent, discovered, rejected, qualified,
   mounting, mounted, unavailable, draining and review-required outcomes.
   Derive the transient mount tuple from trusted observations, not HTTP or an
-  arbitrary directory. Revalidate descriptors/generation before handoff.
+  arbitrary directory. Revalidate descriptors/generation before handoff. The
+  next approved design slice is an internal mount owner exercised only with
+  disposable QEMU storage: issue leases only after trusted qualification,
+  block new access when identity changes, and move uncertain mount/unmount
+  outcomes to review. No HTTP operation or real NAS/disk test is in scope.
 - **M3.5 — Handle loss and return.** Stop new dependent access when a volume is
   lost, changed, read-only or unqualified. Never fall back to rootfs directories.
   Reappearance requires fresh identity/compatibility checks; a matching pathname
@@ -632,8 +646,9 @@ snapshots. It is not connected to runtime owners or product activation.
   disabled. Support explicit NFS client/network rules, export paths and numeric
   identity/squash policy. NFSv3 compatibility has guest evidence; NFSv4 is a
   separate protocol/identity/recovery qualification, not an assumed feature.
-  The combined desired-policy preview now flags equal or ancestor/descendant
+  The combined desired-policy preview flags equal or ancestor/descendant
   SMB/NFS relative paths on the same logical volume for focused review. This is
+  consultative only and does not block, mount or activate services. It is
   lexical policy evidence only: aliases, effective permissions and service
   behavior still require runtime qualification.
 - **M4.4 — Storage-safe handoff.** Document how pathname-consuming daemons remain

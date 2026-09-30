@@ -50,8 +50,12 @@ firmware component correlator also requires matching array fields and event
 counters, component data sizes, unique member identities/roles, and complete
 active-role coverage.
 The host independently validates each selected partition and reconciles both
-whole-disk images; input hashes remain unchanged. It does not format or mount a
-filesystem and is not EX4 compatibility or hardware qualification; see the
+whole-disk images; input hashes remain unchanged. An internal firmware
+coordinator also performs complete trusted discovery, GPT correlation,
+RAID-partition-only reads and storage/mount/swap rechecks. It is exercised only
+by this disposable QEMU self-test, not by the broker protocol or an HTTP
+endpoint. The test does not format or mount a filesystem and is not EX4
+compatibility or hardware qualification; see the
 [fast test instructions](support/QEMU-FAST-TESTS.md).
 
 Read-only storage discovery now refuses the entire assessment before opening

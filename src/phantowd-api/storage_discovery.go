@@ -43,6 +43,7 @@ type storageDiscoveryPlan struct {
 type trustedStorageDiscovery struct {
 	inventory                  storageSnapshot
 	mounts                     mountSnapshot
+	swap                       swapObservation
 	candidates                 []storageDiscoveryCandidate
 	excluded                   []storageDiscoveryExclusion
 	hasAmbiguousIdentity       bool
@@ -292,7 +293,7 @@ func discoverTrustedStorageWith(sysfs, proc fs.FS, open storageSourceOpener) (*t
 		return nil, errStorageDiscoveryIncomplete
 	}
 	return &trustedStorageDiscovery{
-		inventory: beforeStorage, mounts: beforeMounts,
+		inventory: beforeStorage, mounts: beforeMounts, swap: beforeSwap,
 		candidates: plan.Candidates, excluded: plan.Excluded,
 		hasAmbiguousIdentity:       plan.HasAmbiguousIdentity,
 		identityEvidenceIncomplete: plan.IdentityEvidenceIncomplete,

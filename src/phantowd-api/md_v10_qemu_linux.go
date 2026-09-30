@@ -6,6 +6,7 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -158,6 +159,28 @@ func verifyQEMUMDV10ProductParser() error {
 		return errors.New("MD v1.0 product parser members do not form one consistent fixture array")
 	}
 	fmt.Println("PHANTOWD_MD_V10_PRODUCT_PROBE_READY disks=2 metadata=1.0 checksums=valid comparison=metadata-consistent same_array=true distinct_members=true active_roles=complete descriptor_readonly=true diskseq_bound=true assembly=false mount=false scope=disposable-qemu-only")
+	if err := verifyQEMUMDV10TrustedDiscovery(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func verifyQEMUMDV10TrustedDiscovery() error {
+	ctx, cancel := context.WithTimeout(context.Background(), storageGPTBrokerDeadline)
+	defer cancel()
+	observation, err := observeTrustedMDV10With(ctx, os.DirFS("/sys"), os.DirFS("/proc"),
+		volumeprobe.OpenObservedBlockSources, mdmetadata.InspectBlock)
+	if err != nil || observation.CandidateDiskCount != 2 || observation.GPTDiskCount != 2 ||
+		observation.RAIDPartitionCount != 2 || observation.Comparison.CandidateComponents != 2 ||
+		observation.Comparison.UnqualifiedComponents != 0 ||
+		observation.Comparison.UnidentifiedCandidateComponents != 0 ||
+		len(observation.Comparison.Arrays) != 1 ||
+		observation.Comparison.Arrays[0].Status != mdmetadata.ArrayMetadataConsistent ||
+		observation.Comparison.Arrays[0].ObservedActiveRoles != 2 ||
+		len(observation.Comparison.Arrays[0].MissingActiveRoles) != 0 {
+		return errors.New("trusted complete-storage discovery did not reconcile the two synthetic MD members")
+	}
+	fmt.Println("PHANTOWD_MD_V10_TRUSTED_DISCOVERY_READY candidates=2 gpt=2 raid_partitions=2 metadata_candidates=2 arrays=1 status=metadata-consistent sources_readonly=true generation_rechecked=true assembly=false mount=false scope=disposable-qemu-only")
 	return nil
 }
 

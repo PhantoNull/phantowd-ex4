@@ -74,13 +74,15 @@ different slot.
   expendable-media tests.
 
 The host-only `phantowd-lab` image inspectors never open block devices. The
-firmware exposes an explicit, manual GPT metadata observation; its MD v1.0
-reader is currently exercised only by a disposable QEMU fixture and is not
-connected to a product observation endpoint. Both paths are bounded and
-read-only. Neither mounts, assembles, imports, repairs, or writes media. An
-observation is not a health check. Unsupported or incomplete coverage must
-remain visible and fail closed; the software must not silently fall back to an
-empty directory or initialize a disk.
+firmware exposes an explicit, manual GPT metadata observation. A separate
+internal MD v1.0 coordinator composes complete trusted discovery, GPT
+correlation and bounded metadata reads; it is currently exercised only by a
+disposable QEMU fixture and is not connected to the broker or a product
+observation endpoint. Both firmware paths are bounded and read-only. Neither
+mounts, assembles, imports, repairs, or writes media. An observation is not a
+health check. Unsupported or incomplete coverage must remain visible and fail
+closed; the software must not silently fall back to an empty directory or
+initialize a disk.
 
 ## Evidence required to change a status
 
