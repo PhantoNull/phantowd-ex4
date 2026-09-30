@@ -35,6 +35,32 @@ The documented example partition geometry is not a device profile. The actual
 runtime `DVC_MDS` member data, complete disk corpus, and bay-to-member mapping
 remain unavailable.
 
+## Bay, device-name and logical-volume mapping
+
+Static inspection of the exact 2.13.108 tree shows two distinct naming layers.
+The RAID helper reads configured SATA-connector/partition pairs and resolves a
+connector to the current Linux `/dev/sdX` name through sysfs. The stock
+`userDataRAIDMonitor.sh` has an active RAID1 reinsert path that can remove a
+fault-marked member and add a configured expected partition absent from the
+array; this may start a resync. It is recovery behavior, not passive discovery,
+and should not be copied into PhantoWD's migration path.
+
+Separately, the stock data-volume initializer mounts a configured device at the
+logical `/DataVolume` root. Analysis of the `hdVerify` metadata path suggests
+that `HD_a2` through `HD_d2` are selected by a stored logical volume number,
+not simply by the physical bay. A healthy single-disk volume is therefore
+expected to retain its logical data mountpoint after a bay move, but this is a
+static-code inference, not a hardware-verified guarantee. For multi-disk RAID,
+the live `DVC_MDS` connector/partition records and a verified data-disk sample
+are unavailable, so bay-move and replacement behavior remains unqualified.
+
+Accordingly, `/dev/sdX`, a SATA connector, and an `HD_*` path are not accepted
+as persistent PhantoWD volume identity. PhantoWD must reconcile validated disk,
+partition, MD and filesystem identities independently of enumeration order;
+bay is a separately reported location. Do not silently assemble, re-add,
+resync or rewrite metadata when an expected member is missing or appears in a
+different slot.
+
 ## What parser results mean
 
 - **Generic metadata observed**: bounded structures passed the specific

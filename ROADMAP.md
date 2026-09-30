@@ -761,6 +761,11 @@ not host/QEMU progress.
   ownership and access policy across bay moves. Refuse collisions. Incompatible
   credentials need explicit reset/re-enrollment, never silent permissive access.
   Define how stock export paths/names map to stable product references.
+  Static WD 2.13.108 analysis distinguishes connector-based MD member mapping
+  (connector/partition pairs resolved to the current `/dev/sdX`) from the
+  logical `/DataVolume` mount. The live `DVC_MDS` mapping and bay-move behavior
+  remain unverified; the legacy RAID1 auto-reinsert path is mutating and must
+  not be reused for discovery. See the [storage compatibility matrix](STORAGE-COMPATIBILITY.md).
 - **M8.4 — RAID jobs.** For each supported mode specify create/import, degraded
   operation, replace/rebuild, resync, scrub and removal. Plan destructive extents
   before confirmation; reject wrong members and conflicting generations.
