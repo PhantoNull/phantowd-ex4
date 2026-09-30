@@ -105,7 +105,7 @@ func verifyQEMUMDV10ProductParser() error {
 	if err := ensureQEMUMDV10MembersUnmounted(); err != nil {
 		return errors.New("MD v1.0 product parser requires stopped, unmounted fixture members")
 	}
-	observations := make([]mdmetadata.Observation, 0, 2)
+	evidence := make([]mdmetadata.ComponentEvidence, 0, 2)
 	for _, member := range []struct {
 		name   string
 		serial string
@@ -145,17 +145,19 @@ func verifyQEMUMDV10ProductParser() error {
 			observation.ArrayIdentityFingerprint == "" || observation.MemberIdentityFingerprint == "" {
 			return errors.New("MD v1.0 product parser returned an incomplete or unsupported member observation")
 		}
-		observations = append(observations, observation)
+		evidence = append(evidence, mdmetadata.ComponentEvidence{
+			DiskIndex: uint32(len(evidence) + 1), PartitionNumber: 1, Observation: observation,
+		})
 	}
-	first, second := observations[0], observations[1]
-	if first.ArrayIdentityFingerprint != second.ArrayIdentityFingerprint ||
-		first.MemberIdentityFingerprint == second.MemberIdentityFingerprint ||
-		first.MemberNumber == second.MemberNumber || first.MemberRole == second.MemberRole ||
-		first.Events != second.Events || first.ArrayLevel != second.ArrayLevel ||
-		first.ArrayLayout != second.ArrayLayout || first.ArraySizeSectors != second.ArraySizeSectors {
+	comparison, err := mdmetadata.CompareComponents(evidence)
+	if err != nil || comparison.CandidateComponents != 2 || comparison.UnqualifiedComponents != 0 ||
+		comparison.UnidentifiedCandidateComponents != 0 || len(comparison.Arrays) != 1 ||
+		comparison.Arrays[0].Status != mdmetadata.ArrayMetadataConsistent ||
+		comparison.Arrays[0].MemberCount != 2 || comparison.Arrays[0].ObservedActiveRoles != 2 ||
+		len(comparison.Arrays[0].MissingActiveRoles) != 0 {
 		return errors.New("MD v1.0 product parser members do not form one consistent fixture array")
 	}
-	fmt.Println("PHANTOWD_MD_V10_PRODUCT_PROBE_READY disks=2 metadata=1.0 checksums=valid same_array=true distinct_members=true active_roles=complete descriptor_readonly=true diskseq_bound=true assembly=false mount=false scope=disposable-qemu-only")
+	fmt.Println("PHANTOWD_MD_V10_PRODUCT_PROBE_READY disks=2 metadata=1.0 checksums=valid comparison=metadata-consistent same_array=true distinct_members=true active_roles=complete descriptor_readonly=true diskseq_bound=true assembly=false mount=false scope=disposable-qemu-only")
 	return nil
 }
 

@@ -43,10 +43,12 @@ A focused local ARMv5 QEMU check now compares mdadm-authored MD v1.0 metadata
 created on partition 1 of two synthetic GPT disk images, each backed by a
 temporary 32 MiB tmpfs file. In the guest, the firmware's bounded MD reader
 checks each partition through generation-bound, read-only descriptors; the
-host independently validates each selected partition and reconciles both
-whole-disk images, requiring complete active-role coverage and unchanged parser
-inputs. It does not format or mount a filesystem and is not EX4 compatibility
-or hardware qualification; see the
+firmware component correlator also requires matching array fields and event
+counters, component data sizes, unique member identities/roles, and complete
+active-role coverage.
+The host independently validates each selected partition and reconciles both
+whole-disk images; input hashes remain unchanged. It does not format or mount a
+filesystem and is not EX4 compatibility or hardware qualification; see the
 [fast test instructions](support/QEMU-FAST-TESTS.md).
 
 Read-only storage discovery now refuses the entire assessment before opening

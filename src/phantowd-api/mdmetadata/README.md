@@ -22,9 +22,24 @@ not authenticators or persistent identities. Only 512-byte logical sectors are
 accepted. Other metadata versions, feature semantics and WD-specific layouts
 remain unsupported/unqualified.
 
+`CompareComponents` correlates a bounded caller-supplied set of parser results
+from at most four disk indexes and 128 partition indexes per disk. It rejects
+duplicate/out-of-range locations and parser results rebound to another
+partition; only checksummed candidates with canonical array and member
+fingerprints enter comparison. It classifies generic metadata as consistent,
+incomplete, divergent by event counter, conflicting in array-level fields, or
+ambiguous from repeated member identity/number/active role. Every active RAID
+role must be present for `metadata-consistent`; the array fields and component
+data size must agree across members. It requires no device access, and all
+comparison fields are excluded from JSON. As with the single-member parser,
+that status is not health, synchronization, WD compatibility, or permission to
+assemble/mount/import.
+
 The implementation is currently exercised in the fixed ARMv5 QEMU fixture,
 not by the storage broker or a product endpoint. QEMU `mdadm` creates metadata
 on two synthetic GPT partitions in tmpfs; the firmware parser examines each
 through generation-bound O_RDONLY descriptors, then the independent offline
-host parser checks the same images. The guest array is stopped before parsing.
-No physical device or NAS is involved.
+host parser checks the same images. The firmware-side component comparer now
+also confirms the same two active RAID1 roles and rejects inconsistent test
+evidence. The guest array is stopped before parsing. No physical device or NAS
+is involved.
