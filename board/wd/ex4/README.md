@@ -178,3 +178,16 @@ Hosted CI compiles Stage B3 as the single automatic Stage B-family firmware
 build. Stage B and B2 remain available through manual workflow dispatch for
 targeted historical-profile checks. These profiles use isolated clean Buildroot
 workspaces in CI; they do not incrementally reuse one another's build output.
+
+## Installer and recovery status
+
+No installer or flashable firmware is produced. Static review of the final
+stock 2.13.108 update path found legacy XOR/CRC checks rather than cryptographic
+authenticity, component writers for the kernel/ramdisk/rootfs MTD regions, and
+optional rescue/front-controller update paths. The rootfs component is a
+bad-block-aware logical NAND stream that omits OOB; it is not a flat raw-MTD
+image. The stock rescue/error branches have not been exercised as a recovery
+procedure on hardware. PhantoWD has no selected install layout, NAND writer,
+A/B boot transaction, or proven rollback path. Do not write NAND/MTD or treat a
+vendor rescue image as a generic unbrick artifact. The remaining decision and
+qualification gates are tracked under [M10 in the roadmap](../../../ROADMAP.md#m10-signed-installer-upgrades-and-recovery).

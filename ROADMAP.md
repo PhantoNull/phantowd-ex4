@@ -813,7 +813,17 @@ Then qualify the selected backend and migration objects on expendable EX4 media.
 
 - **M10.1 — Installation layout decision.** Document space, wear, bootloader and
   rescue constraints, state/data separation and device identity preservation.
-  A/B slots are a candidate, not an assumed fit or implementation.
+  A/B slots are a candidate, not an assumed fit or implementation. Static
+  analysis of the final stock updater confirms legacy XOR/CRC checks rather
+  than cryptographic authenticity, destructive writes to the kernel/ramdisk/
+  rootfs MTD targets, and optional rescue/front-controller paths. The packed
+  rootfs stream is bad-block-aware and omits OOB; it is not a flat raw-NAND
+  image. Stock rescue and error recovery have not been demonstrated at runtime,
+  so none is an installer or rollback plan. No production layout is selected:
+  it must preserve user data and per-unit identity, tolerate data disks being
+  absent/replaced, and have bootloader-readable rollback proven on sacrificial
+  exact-model hardware before a writer is implemented. See the
+  [EX4 board research status](board/wd/ex4/README.md).
 - **M10.2 — Trust and release discovery.** Retrieve immutable GitHub Release
   metadata/assets; verify signatures against pinned trust roots, exact model/
   revision/channel, hashes and version policy before writes. HTTPS alone is
