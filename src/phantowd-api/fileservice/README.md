@@ -61,6 +61,12 @@ cannot become an activation request through this endpoint.
 Requirements name unresolved runtime volume identity, path/mount containment,
 Unix accounts/effective access, durable configuration and service lifecycle.
 Combined SMB/NFS configurations also require cross-protocol access review.
+When a share and export use the same logical volume and their configured
+relative paths are equal or ancestor/descendant paths, the preview adds
+`cross_protocol_path_overlap` for focused review. This is a lexical warning,
+not path canonicalization: symlinks, hard links, bind mounts, runtime aliases
+and effective permissions remain unresolved. The general cross-protocol review
+requirement is retained, and the warning never blocks, saves or activates policy.
 AUTH_SYS network trust and Kerberos provisioning are flagged when applicable;
 Samba grants do not restrict NFS clients. Logical `VolumeID` mount anchors
 are proposals; the expected filesystem UUID is not verified by this preview

@@ -53,6 +53,52 @@ func TestCombinedPreviewIsNotActivation(t *testing.T) {
 	}
 }
 
+func TestCombinedPreviewReportsSameVolumeCrossProtocolPathOverlap(t *testing.T) {
+	shares, nfs := fixture()
+	p, err := Decode(encode(shares, nfs))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !slices.Contains(p.Requirements, "cross_protocol_path_overlap") {
+		t.Fatal("same-volume SMB/NFS path overlap was not called out for review")
+	}
+}
+
+func TestCombinedPreviewPathOverlapIsVolumeScopedAndSegmentAware(t *testing.T) {
+	cases := []struct {
+		name      string
+		sharePath string
+		nfsPath   string
+		sameVol   bool
+		want      bool
+	}{
+		{name: "SMB parent", sharePath: "media", nfsPath: "media/books", sameVol: true, want: true},
+		{name: "NFS parent", sharePath: "media/books", nfsPath: "media", sameVol: true, want: true},
+		{name: "root", sharePath: ".", nfsPath: "media", sameVol: true, want: true},
+		{name: "segment prefix is not overlap", sharePath: "media", nfsPath: "media-old", sameVol: true},
+		{name: "different logical volume", sharePath: "media", nfsPath: "media", sameVol: false},
+	}
+	for _, test := range cases {
+		t.Run(test.name, func(t *testing.T) {
+			shares, nfs := fixture()
+			shares.Shares[0].RelativePath = test.sharePath
+			nfs.Exports[0].RelativePath = test.nfsPath
+			if !test.sameVol {
+				shares.Volumes = append(shares.Volumes, shareconfig.Volume{ID: "archive", FilesystemUUID: "22222222-3333-4444-5555-666666666666"})
+				nfs.Exports[0].VolumeID = "archive"
+			}
+			preview, err := Decode(encode(shares, nfs))
+			if err != nil {
+				t.Fatal(err)
+			}
+			got := slices.Contains(preview.Requirements, "cross_protocol_path_overlap")
+			if got != test.want {
+				t.Fatalf("overlap requirement = %t, want %t", got, test.want)
+			}
+		})
+	}
+}
+
 func TestRejectEnvelopeAndPolicyAmbiguities(t *testing.T) {
 	shares, nfs := fixture()
 	data := encode(shares, nfs)

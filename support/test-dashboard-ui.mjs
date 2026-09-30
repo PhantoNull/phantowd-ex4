@@ -411,7 +411,9 @@ async function policyHarness(previewResponse = () => jsonResponse(policyFixture(
 }
 
 async function testPolicyBuilderAndSafePreview() {
-  const { context, elements, requests } = await policyHarness();
+  const overlapPreview = policyFixture();
+  overlapPreview.requirements.push("cross_protocol_path_overlap");
+  const { context, elements, requests } = await policyHarness(() => jsonResponse(overlapPreview));
   fillPolicy(elements);
   context.syncPolicyNFS();
   assert.equal(elements["policy-nfs-fields"].disabled, false);
@@ -428,6 +430,8 @@ async function testPolicyBuilderAndSafePreview() {
   assert.equal(proposal.nfs.exports[0].clients[0].squash, "all");
   assert.equal(elements["policy-result"].hidden, false);
   assert.match(elements["policy-status"].textContent, /Not saved or applied/);
+  assert.ok(elements["policy-requirements"].children.some((item) => /configured SMB\/NFS paths overlap/i.test(item.textContent)),
+    "the preview should explain configured cross-protocol path overlap");
   assert.equal(elements["policy-samba"].textContent, policyFixture().samba.samba_share_sections);
   assert.equal(elements["policy-samba"].children.length, 0);
   elements["policy-form"].listeners.get("input")();

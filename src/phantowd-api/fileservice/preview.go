@@ -10,6 +10,8 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"path"
+	"strings"
 
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/nfsconfig"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/shareconfig"
@@ -115,6 +117,9 @@ func Build(shares shareconfig.Config, nfs nfsconfig.Policy) (Preview, error) {
 	requirements := []string{"runtime_volume_identity", "path_and_mount_containment", "unix_accounts_and_effective_access", "durable_configuration", "service_activation_lifecycle"}
 	if len(shares.Shares) != 0 && len(nfs.Exports) != 0 {
 		requirements = append(requirements, "cross_protocol_access_review")
+		if configuredCrossProtocolPathOverlap(shares, nfs) {
+			requirements = append(requirements, "cross_protocol_path_overlap")
+		}
 	}
 	if nfsPreview.UsesAUTH_SYS {
 		requirements = append(requirements, "auth_sys_network_trust")
@@ -123,4 +128,25 @@ func Build(shares shareconfig.Config, nfs nfsconfig.Policy) (Preview, error) {
 		requirements = append(requirements, "kerberos_provisioning")
 	}
 	return Preview{SchemaVersion: 1, Scope: "desired-policy-only", Requirements: requirements, Samba: sambaPreview, NFS: nfsPreview}, nil
+}
+
+// configuredCrossProtocolPathOverlap reports lexical path relationships only.
+// It does not resolve symlinks, hard links, bind mounts or runtime aliases, so
+// the result is a review hint and never an effective-access or safety proof.
+func configuredCrossProtocolPathOverlap(shares shareconfig.Config, nfs nfsconfig.Policy) bool {
+	for _, share := range shares.Shares {
+		for _, export := range nfs.Exports {
+			if share.VolumeID == export.VolumeID && configuredPathsOverlap(share.RelativePath, export.RelativePath) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func configuredPathsOverlap(first, second string) bool {
+	first = path.Join("/", first)
+	second = path.Join("/", second)
+	return first == second || first == "/" || second == "/" ||
+		strings.HasPrefix(first, second+"/") || strings.HasPrefix(second, first+"/")
 }

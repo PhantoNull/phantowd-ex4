@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"slices"
 	"strings"
 
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/fileservice"
@@ -66,6 +67,7 @@ func exerciseQEMUFileServicePreview(client *http.Client, origin string) error {
 			var p fileservice.Preview
 			if json.Unmarshal(data, &p) != nil || p.SchemaVersion != 1 || p.Scope != "desired-policy-only" || p.Persisted || p.Applied || p.RuntimeValidated || p.ActivationAvailable ||
 				len(p.Samba.Shares) != 1 || len(p.NFS.Exports) != 1 || p.Samba.Shares[0].Path != p.NFS.Exports[0].Path || !p.NFS.UsesAUTH_SYS ||
+				!slices.Contains(p.Requirements, "cross_protocol_path_overlap") ||
 				!strings.Contains(p.Samba.Sections, "write list = alice") || !strings.Contains(p.NFS.Table, "anonuid=101000,anongid=101000") {
 				return errors.New("file-service preview lost policy or overstated activation")
 			}

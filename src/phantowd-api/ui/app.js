@@ -718,6 +718,7 @@ const requirementLabels = {
   durable_configuration: "Provision durable configuration and recovery.",
   service_activation_lifecycle: "Qualify service activation, failure handling and rollback.",
   cross_protocol_access_review: "Review SMB and NFS access independently; SMB grants do not restrict NFS.",
+  cross_protocol_path_overlap: "Configured SMB/NFS paths overlap or nest on the same volume; review both access paths and runtime aliases.",
   auth_sys_network_trust: "AUTH_SYS requires trusted clients and network; it does not cryptographically verify client IDs.",
   kerberos_provisioning: "Provision Kerberos before using this security flavor.",
 };

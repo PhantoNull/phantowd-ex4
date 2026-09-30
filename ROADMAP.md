@@ -619,6 +619,10 @@ activation. **Depends on:** M1, M2, M3; M6/M7 before LAN qualification.
   disabled. Support explicit NFS client/network rules, export paths and numeric
   identity/squash policy. NFSv3 compatibility has guest evidence; NFSv4 is a
   separate protocol/identity/recovery qualification, not an assumed feature.
+  The combined desired-policy preview now flags equal or ancestor/descendant
+  SMB/NFS relative paths on the same logical volume for focused review. This is
+  lexical policy evidence only: aliases, effective permissions and service
+  behavior still require runtime qualification.
 - **M4.4 — Storage-safe handoff.** Document how pathname-consuming daemons remain
   bound to the qualified volume after descriptor checks. Close replacement,
   symlink and unmount windows; a held descriptor alone does not secure every
