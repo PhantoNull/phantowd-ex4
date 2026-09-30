@@ -21,6 +21,9 @@ upgrade procedure.** CI artifacts are development/test outputs, not WD
 dashboard updates. Do not flash them, replace NAND partitions, or attach
 valuable disks to an experimental image.
 
+No legacy disk layout is currently product-qualified for migration; see the
+[storage compatibility matrix](STORAGE-COMPATIBILITY.md).
+
 You can develop and test the software in QEMU without connecting a NAS.
 Physical EX4 work is still restricted to separately reviewed research tests.
 A public installer will require qualified board support, storage compatibility,

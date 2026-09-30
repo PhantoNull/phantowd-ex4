@@ -57,6 +57,9 @@ format record: recognized / importable / requires owner action / unsupported.
 Single-volume, multi-volume, JBOD and RAID layouts must be evaluated individually;
 no RAID level or legacy layout is promised merely because Linux can parse it.
 Unknown formats require an explicit backup-and-restore route, not conversion.
+The initial evidence-backed status is tracked in
+[`STORAGE-COMPATIBILITY.md`](STORAGE-COMPATIBILITY.md); no legacy layout is
+currently product-qualified for migration.
 
 ## Current baseline
 
