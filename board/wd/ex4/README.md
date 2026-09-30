@@ -168,6 +168,11 @@ Build and audit with `.\support\build-ex4-stage-b3.ps1` on Windows/Docker.
 The output remains explicitly non-flashable. One bounded diskless RAM trial
 of the 6.18.53 B3 image reached its ready marker and halted; that observation
 does not qualify the image for installation, repeat boot or use with disks.
+A separate local compile-only build of the Stage B3 profile with Linux 6.18.54
+passed its kernel-configuration audit and all 11 MAC-policy cases on
+2026-09-30. Its manifest still says `flashable=no` and
+`hardware_validated=no`; Linux 6.18.54 has not been booted on the EX4. The only
+Stage B3 physical observation remains the bounded 6.18.53 trial above.
 
 Hosted CI compiles Stage B3 as the single automatic Stage B-family firmware
 build. Stage B and B2 remain available through manual workflow dispatch for

@@ -242,12 +242,13 @@ NAND/MTD. The two member files and reports are removed from the private temp
 directory by the test trap.
 
 The focused fixture passed on 2026-09-30 using cached Linux 6.18.53 ARMv5 QEMU
-artifacts. On 2026-09-30, the full local Buildroot 2025.02.18/Linux 6.18.54
-QEMU build also passed and emitted the fixture marker with both 32 MiB members,
-host set comparison, and unchanged input hashes. That run built in a fresh
-output directory while reusing the pinned image, Buildroot source/download
-cache and compiler cache; it was not an independent clean-source or hosted CI
-build. This is a generic parser-agreement test only; it does not establish EX4
+artifacts. It was then rerun from `develop` head `399c01f` against the pinned
+Linux 6.18.54 QEMU artifact; the guest and host markers passed, including the
+component-set comparison and unchanged member/base-image hashes. The full local
+Buildroot 2025.02.18/Linux 6.18.54 QEMU build also passed in a fresh output
+directory while reusing the pinned image, Buildroot source/download cache and
+compiler cache; this was not an independent clean-source or hosted CI build.
+This is a generic parser-agreement test only; it does not establish EX4
 hardware, WD metadata, migration, recovery or compatibility qualification.
 
 ## Evidence boundary
