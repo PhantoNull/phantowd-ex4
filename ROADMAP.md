@@ -181,11 +181,12 @@ button to an unqualified backend simply because the screen exists.
   snapshot incomplete, while other collection errors remain explicit. Host
   fake-proc and bounded-enumeration tests, an actual Linux `/proc` redaction test,
   the no-Docker host suite, Linux-native tests and ARMv5 cross-compilation pass.
-  A current-source ARMv5 MD v1.0 guest overlay also passed after this refinement,
-  but it did not execute the state-unmount path. No full two-boot state overlay
-  has been rerun after the refinement. The diagnostic has not captured a
-  recurrence and the cause remains unknown. Cleanup is unchanged: no retry or
-  lazy/forced unmount. See the test-lane evidence.
+  A current-source overlay on `aedd22e` subsequently passed the ordinary ARMv5
+  QEMU smoke and the complete two-phase state-reboot fixture after this
+  refinement. Both unmounts succeeded; the diagnostic did not fire and EBUSY
+  did not recur. This closes the post-refinement regression run, not the
+  historical root-cause investigation or repeated qualification. Cleanup is
+  unchanged: no retry or lazy/forced unmount. See the test-lane evidence.
 - **M0.3 — Keep CI proportional.** Host/domain changes use fast checks; runtime
   changes use QEMU; board changes use the relevant current probe. Windows host
   iteration has a no-Docker preflight and an optional Linux/amd64 test runner

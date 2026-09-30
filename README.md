@@ -56,11 +56,12 @@ candidate disks if a nonzero mount device number cannot be mapped to the
 complete sysfs block inventory. This is still a point-in-time, current-namespace
 check, not proof of global storage-use exclusivity or EX4 qualification.
 
-The current-source local ARMv5 API overlay on `develop` `0f2e44e` subsequently
-passed the M3.2a and mount-guard QEMU smoke plus the separate two-boot
-state-reboot fixture, using cached kernel/packages and a schema-v2 helper. This
-is fast local overlay evidence, not a clean Buildroot rebuild, hosted CI, or EX4
-qualification.
+After the bounded state-unmount diagnostic refinement, a current-source API/
+volume-probe overlay on `develop` `aedd22e` passed the full ARMv5 QEMU smoke and
+the complete two-boot state-reboot fixture. Both state-volume unmounts succeeded
+and the diagnostic did not fire; the historical `EBUSY` remains unexplained,
+not fixed. This used an existing manifest-verified base and is overlay evidence,
+not a clean Buildroot rebuild, hosted CI, or EX4 qualification.
 
 The host-only `phantowd-lab inspect-storage-image-set` tool now correlates
 bounded GPT, ext and Linux MD v1.2, v1.0 and 0.90 metadata across supplied
