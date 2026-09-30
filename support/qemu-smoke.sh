@@ -216,6 +216,10 @@ while [ "$attempt" -lt 120 ]; do
             echo 'Missing descriptor/mount guard assertion' >&2
             exit 1
         fi
+        if ! grep -F 'PHANTOWD_MOUNT_OWNER_READY qualified_before_lease=true identity_change_blocks_new_access=true owner_handles_revoked=true ambiguous_mount_no_retry=true ambiguous_unmount_no_retry=true mismatch_no_lease=true scope=disposable-qemu-only' "$log_file" >/dev/null; then
+            echo 'Missing trusted mount-owner lifecycle assertion' >&2
+            exit 1
+        fi
         if ! grep -F 'PHANTOWD_MOUNT_GRAPH_READY backing_members=2 actual_raid1=true readonly_mountinfo=true both_members_attributed=true unrelated_disk_clear=true cleanup=true scope=disposable-qemu-only' "$log_file" >/dev/null; then
             echo 'Missing real disposable RAID1 mount-graph assertion' >&2
             exit 1

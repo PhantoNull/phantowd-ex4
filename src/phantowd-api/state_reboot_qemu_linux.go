@@ -56,7 +56,21 @@ func runQEMUStateTest(phase string) (result error) {
 		return err
 	}
 	source := os.NewFile(uintptr(fd), "qemu-state-disk")
-	defer source.Close()
+	var mounted bool
+	defer func() {
+		// Keep the verified block-device descriptor pinned through fixture work,
+		// then close it before unmounting: an open source-device FD can keep the
+		// kernel block device busy even after the filesystem is otherwise idle.
+		if err := source.Close(); err != nil {
+			result = errors.Join(result, err)
+		}
+		if mounted {
+			if err := unix.Unmount(qemuStateAnchor, 0); err != nil {
+				emitQEMUStateUnmountDiagnostic(err)
+				result = errors.Join(result, fmt.Errorf("state volume unmount: %w", err))
+			}
+		}
+	}()
 	var st unix.Stat_t
 	if unix.Fstat(fd, &st) != nil || st.Mode&unix.S_IFMT != unix.S_IFBLK ||
 		fmt.Sprintf("%d:%d", unix.Major(uint64(st.Rdev)), unix.Minor(uint64(st.Rdev))) != strings.TrimSpace(string(device)) {
@@ -74,12 +88,7 @@ func runQEMUStateTest(phase string) (result error) {
 	if err := unix.Mount(fmt.Sprintf("/proc/self/fd/%d", fd), qemuStateAnchor, "ext4", unix.MS_NOSUID|unix.MS_NODEV|unix.MS_NOEXEC, ""); err != nil {
 		return err
 	}
-	defer func() {
-		if err := unix.Unmount(qemuStateAnchor, 0); err != nil {
-			emitQEMUStateUnmountDiagnostic(err)
-			result = errors.Join(result, fmt.Errorf("state volume unmount: %w", err))
-		}
-	}()
+	mounted = true
 	var sx unix.Statx_t
 	if err := unix.Statx(unix.AT_FDCWD, qemuStateAnchor, unix.AT_NO_AUTOMOUNT, unix.STATX_BASIC_STATS|unix.STATX_MNT_ID_UNIQUE, &sx); err != nil {
 		return err

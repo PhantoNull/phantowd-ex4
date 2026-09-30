@@ -10,12 +10,16 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/mountowner"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/mountguard"
 	"golang.org/x/sys/unix"
 )
 
 func runQEMUMountGuardTest() (result error) {
 	if err := guardQEMUDataVolume(); err != nil {
+		return err
+	}
+	if err := mountowner.RunQEMUFixture(smbFixtureAnchor); err != nil {
 		return err
 	}
 	workspace, err := os.MkdirTemp("/run", "phantowd-mount-guard-")

@@ -596,10 +596,19 @@ are missing. **Depends on:** M1; M7 for hardware.
   mounting, mounted, unavailable, draining and review-required outcomes.
   Derive the transient mount tuple from trusted observations, not HTTP or an
   arbitrary directory. Revalidate descriptors/generation before handoff. The
-  next approved design slice is an internal mount owner exercised only with
-  disposable QEMU storage: issue leases only after trusted qualification,
-  block new access when identity changes, and move uncertain mount/unmount
-  outcomes to review. No HTTP operation or real NAS/disk test is in scope.
+  internal `mountowner` prototype now binds one fixed driver and observer,
+  consumes one-use qualification, issues directory leases only after mounted
+  identity verification, blocks new access during drain, revokes Owner-tracked
+  handles after identity change, and sends uncertain mount/unmount outcomes to
+  `review-required` without retry or implicit cleanup. Linux host tests and the
+  local ARMv5 QEMU overlay pass for normal lifecycle, overmount/revocation,
+  ambiguous mount/unmount result, and filesystem mismatch. The QEMU-only driver
+  accepts only its fixed disposable fixture. This prototype is not wired to
+  product startup, the storage broker, a production qualifier or service
+  handoff; no real NAS/disk test is in scope. It does not establish EX4 media
+  compatibility or a deployable mount service. M3.4 remains incomplete until
+  trusted production qualification, fixed mount-point ownership, service
+  handoff, and operator review/recovery are specified and qualified.
 - **M3.5 — Handle loss and return.** Stop new dependent access when a volume is
   lost, changed, read-only or unqualified. Never fall back to rootfs directories.
   Reappearance requires fresh identity/compatibility checks; a matching pathname

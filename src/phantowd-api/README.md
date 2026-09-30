@@ -184,6 +184,14 @@ explicitly inspected ext-family devices without mistaking bind aliases for
 clones. This is not global discovery: omitted and unmounted media remain unknown,
 and neither snapshot nor a conflict-free result authorizes service activation.
 
+The internal [mount owner](internal/mountowner/README.md) is an M3.4 lifecycle
+prototype. Its real bind-mount driver and trusted qualifier exist only in the
+disposable ARMv5 QEMU fixture. Linux host tests and the local ARMv5 QEMU overlay
+exercise one-use qualification, lease gating, identity-change revocation and
+review-required handling of uncertain mount/unmount outcomes. It is not wired
+to product startup, the storage broker, or any HTTP/RPC operation; no physical
+disk or NAS is in scope.
+
 The [Samba preview renderer](smbconfig/README.md) translates desired policy
 into deterministic share sections and required volume bindings. Its fixed
 QEMU fixture is checked with the target's `testparm`. The preview endpoint

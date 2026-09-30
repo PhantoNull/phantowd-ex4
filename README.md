@@ -49,6 +49,15 @@ Samba metadata; it cannot clear quarantine, mutate Samba, or be invoked through
 RPC/HTTP. Local Linux API tests and ARMv5 test cross-compilation pass; this is
 not product operator recovery or EX4 qualification.
 
+M3.3 keeps the trusted MD v1.0 reader connected to discovery only through an
+internal provider exercised on disposable QEMU media; there is no manual
+endpoint that scans real disks. The M3.4 mount-owner is an internal prototype
+with a QEMU-only qualifier and bind-mount driver. Local Linux tests and a
+cached ARMv5 QEMU overlay cover lease gating, identity-change revocation, and
+review-required handling of ambiguous mount/unmount outcomes. This was not a
+clean Buildroot build or hosted CI run. The code is not wired to product
+startup or the storage broker and does not qualify physical EX4 media.
+
 A focused local ARMv5 QEMU check now compares mdadm-authored MD v1.0 metadata
 created on partition 1 of two synthetic GPT disk images, each backed by a
 temporary 32 MiB tmpfs file. In the guest, the firmware's bounded MD reader
