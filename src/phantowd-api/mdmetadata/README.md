@@ -43,6 +43,8 @@ only Linux-RAID-declared partitions, parses them through generation-bound
 O_RDONLY descriptors and rechecks storage, mounts and swap. The guest array is
 stopped before parsing. Its pure component comparer checks the same two active
 RAID1 roles; the independent offline host parser reads the same regular files
-and confirms their hashes did not change. No physical device or NAS is
-involved. This remains a QEMU-only test path, not a broker operation or product
-observation API.
+and confirms their hashes did not change. The host also extracts the exact GPT
+partition ranges into temporary regular files and exercises the standalone
+`inspect-md-v1.0-component-set` command; those files are hashed before and
+after parsing. No physical device or NAS is involved. This remains a QEMU-only
+test path, not a broker operation or product observation API.

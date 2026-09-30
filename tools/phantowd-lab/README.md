@@ -237,13 +237,15 @@ data synchronization, health, import safety or recovery. The command never
 opens block devices, assembles arrays, mounts, or writes input images.
 
 `support/test-qemu-md-v10.ps1` exercises the firmware's internal bounded MD
-v1.0 reader and the offline GPT-partition/whole-disk set comparators against
-ARMv5 mdadm-authored metadata. The QEMU guest writes only to partition 1 of
-two 32 MiB disk images held in tmpfs; after stopping the array, the firmware
-parser reads each member through a generation-bound O_RDONLY block descriptor.
-The host independently verifies both reports and unchanged input hashes. This
-does not qualify any WD/EX4 layout; the firmware parser is not connected to
-the storage broker or a product endpoint.
+v1.0 reader and the offline GPT-partition/whole-disk/component-set comparators
+against ARMv5 mdadm-authored metadata. The QEMU guest writes only to partition
+1 of two 32 MiB disk images held in tmpfs; after stopping the array, the
+firmware parser reads each member through a generation-bound O_RDONLY block
+descriptor. The host independently verifies both GPT-disk reports, extracts
+the exact partition ranges into temporary regular files, and checks the
+standalone component-set report plus unchanged hashes. This does not qualify
+any WD/EX4 layout; the firmware parser is not connected to the storage broker
+or a product endpoint.
 
 `inspect-md-v0.90-image-set` accepts two to four whole-disk regular image
 files, requires valid generic GPT on each, and groups plausible little-endian

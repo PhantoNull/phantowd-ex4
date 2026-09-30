@@ -581,9 +581,11 @@ are missing. **Depends on:** M1; M7 for hardware.
   self-test; it is not connected to the broker protocol or a product
   observation endpoint. The QEMU root is snapshot-backed and the array is
   stopped before parsing/exit. The host parser then reads the same two regular
-  files read-only and checks that their hashes did not change. This validates
-  the internal coordinator and independent host parser against a generic
-  mdadm-authored sample, not an EX4 disk or WD layout. A
+  files read-only, extracts each exact GPT partition range to another temporary
+  regular file, and also runs the standalone `inspect-md-v1.0-component-set`
+  comparison; source and extracted-component hashes must remain unchanged.
+  This validates the internal coordinator and independent host parser against a
+  generic mdadm-authored sample, not an EX4 disk or WD layout. A
   sanitized corpus of exact EX4 data-disk layouts and an evidence-backed
   allowlist remain required.
 - **M3.4 — Own mount lifecycle.** Model absent, discovered, rejected, qualified,

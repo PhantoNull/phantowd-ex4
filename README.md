@@ -50,7 +50,10 @@ firmware component correlator also requires matching array fields and event
 counters, component data sizes, unique member identities/roles, and complete
 active-role coverage.
 The host independently validates each selected partition and reconciles both
-whole-disk images; input hashes remain unchanged. An internal firmware
+whole-disk images. It also extracts the two exact GPT partition ranges to
+temporary regular files and runs `inspect-md-v1.0-component-set`; checksum,
+array identity, distinct members, complete active roles and unchanged source
+hashes are required. An internal firmware
 coordinator also performs complete trusted discovery, GPT correlation,
 RAID-partition-only reads and storage/mount/swap rechecks. It is exercised only
 by this disposable QEMU self-test, not by the broker protocol or an HTTP

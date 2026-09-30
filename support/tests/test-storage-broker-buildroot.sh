@@ -183,6 +183,7 @@ md_v10_fixture="$repo_root/support/qemu-md-v10-fixture.sh"
 md_v10_product_marker='PHANTOWD_MD_V10_PRODUCT_PROBE_READY disks=2 metadata=1.0 checksums=valid comparison=metadata-consistent same_array=true distinct_members=true active_roles=complete descriptor_readonly=true diskseq_bound=true assembly=false mount=false scope=disposable-qemu-only'
 md_v10_trusted_marker='PHANTOWD_MD_V10_TRUSTED_DISCOVERY_READY candidates=2 gpt=2 raid_partitions=2 metadata_candidates=2 arrays=1 status=metadata-consistent sources_readonly=true generation_rechecked=true assembly=false mount=false scope=disposable-qemu-only'
 md_v10_marker='PHANTOWD_MD_V10_READY metadata=1.0 raid1=true members=2 gpt=true partition=1 fixed_devices=true array_stopped=true root_snapshot=true scope=disposable-qemu-only'
+md_v10_component_set_host_marker='PHANTOWD_MD_V10_COMPONENT_SET_HOST_READY components=2 metadata=1.0 checksums=valid status=metadata-consistent active_roles=complete descriptor_readonly=true input_unchanged=true wd_compatibility=unqualified assembly=false mount=false scope=tmpfs-qemu-only'
 md_v10_host_marker='PHANTOWD_MD_V10_HOST_READY disks=2 gpt=valid partition=1 type=linux-raid metadata=1.0 checksums=valid same_array=true distinct_members=true active_roles=complete set_comparison=metadata-observed input_unchanged=true scope=tmpfs-qemu-only'
 [ -f "$md_v10_api" ] && [ -f "$md_v10_init" ] && [ -f "$md_v10_fixture" ] ||
     fail 'MD v1.0 QEMU/host fixture source files are incomplete'
@@ -216,10 +217,20 @@ grep -F 'inspect-md-v1.0-partition' "$md_v10_fixture" >/dev/null ||
     fail 'host-side partition parser must read each generated GPT member'
 grep -F 'inspect-storage-image-set' "$md_v10_fixture" >/dev/null ||
     fail 'host-side whole-disk parser must compare the GPT partition members'
+grep -F 'inspect-md-v1.0-component-set' "$md_v10_fixture" >/dev/null ||
+    fail 'host-side component-set parser must compare the extracted mdadm-authored partition images'
+grep -F 'bs=512 skip=2048 count=63455' "$md_v10_fixture" >/dev/null ||
+    fail 'host fixture must extract the exact synthetic GPT partition ranges for the standalone component test'
+grep -F "$md_v10_component_set_host_marker" "$md_v10_fixture" >/dev/null ||
+    fail 'host fixture must require the extracted MD v1.0 component-set result and unchanged inputs'
 grep -F 'a19d880f-05fc-4d3b-a006-743f0f84911e' "$md_v10_fixture" >/dev/null ||
     fail 'host fixture must declare the standard Linux RAID partition type GUID'
 sed -n '/^cleanup()/,/^}/p' "$md_v10_fixture" | grep -F '"$workspace/member-set.json"' >/dev/null ||
     fail 'MD v1.0 fixture cleanup must remove the generated component-set report'
+sed -n '/^cleanup()/,/^}/p' "$md_v10_fixture" | grep -F '"$workspace/member-a-component.raw"' >/dev/null ||
+    fail 'MD v1.0 fixture cleanup must remove extracted standalone component images'
+sed -n '/^cleanup()/,/^}/p' "$md_v10_fixture" | grep -F '"$workspace/component-set.json"' >/dev/null ||
+    fail 'MD v1.0 fixture cleanup must remove the extracted component-set report'
 grep -F 'sha256sum "$images/rootfs.ext2"' "$md_v10_fixture" >/dev/null ||
     fail 'MD v1.0 QEMU run must assert the root image remained unchanged'
 grep -F 'TMPDIR=/phantowd-qemu-fixture-tmp' "$build_qemu_script" >/dev/null ||

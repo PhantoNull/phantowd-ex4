@@ -1,7 +1,7 @@
 #!/bin/sh
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 PhantoWD EX4 contributors
-# Host-owned end-to-end GPT-partitioned MD 1.0 test: two 32 MiB tmpfs files only.
+# Host-owned GPT-partitioned MD 1.0 test; mdadm writes only two 32 MiB tmpfs files.
 set -eu
 
 images=${1:?usage: qemu-md-v10-fixture.sh IMAGES_DIR GO_BINARY SOURCE_DIR OUTPUT_LOG}
@@ -32,7 +32,9 @@ cleanup() {
         wait "$qemu_pid" 2>/dev/null || true
     fi
     rm -f "$workspace/member-a.raw" "$workspace/member-b.raw" \
+        "$workspace/member-a-component.raw" "$workspace/member-b-component.raw" \
         "$workspace/member-a.json" "$workspace/member-b.json" "$workspace/member-set.json" \
+        "$workspace/component-set.json" \
         "$workspace/phantowd-lab" "$workspace/qemu.log"
     rmdir "$workspace"
 }
@@ -113,10 +115,23 @@ fi
 }
 member_a_hash=$(sha256sum "$workspace/member-a.raw" | awk '{print $1}')
 member_b_hash=$(sha256sum "$workspace/member-b.raw" | awk '{print $1}')
+dd if="$workspace/member-a.raw" of="$workspace/member-a-component.raw" bs=512 skip=2048 count=63455 2>/dev/null
+dd if="$workspace/member-b.raw" of="$workspace/member-b-component.raw" bs=512 skip=2048 count=63455 2>/dev/null
+[ -f "$workspace/member-a-component.raw" ] && [ ! -L "$workspace/member-a-component.raw" ]
+[ -f "$workspace/member-b-component.raw" ] && [ ! -L "$workspace/member-b-component.raw" ]
+[ "$(stat -c '%s' "$workspace/member-a-component.raw")" = 32488960 ] || exit 1
+[ "$(stat -c '%s' "$workspace/member-b-component.raw")" = 32488960 ] || exit 1
+component_a_hash=$(sha256sum "$workspace/member-a-component.raw" | awk '{print $1}')
+component_b_hash=$(sha256sum "$workspace/member-b-component.raw" | awk '{print $1}')
 "$workspace/phantowd-lab" inspect-md-v1.0-partition "$workspace/member-a.raw" 1 > "$workspace/member-a.json"
 "$workspace/phantowd-lab" inspect-md-v1.0-partition "$workspace/member-b.raw" 1 > "$workspace/member-b.json"
 "$workspace/phantowd-lab" inspect-storage-image-set \
     "$workspace/member-a.raw" "$workspace/member-b.raw" > "$workspace/member-set.json"
+if ! "$workspace/phantowd-lab" inspect-md-v1.0-component-set \
+    "$workspace/member-a-component.raw" "$workspace/member-b-component.raw" > "$workspace/component-set.json"; then
+    cat "$workspace/component-set.json" >&2
+    exit 1
+fi
 [ "$(sha256sum "$workspace/member-a.raw" | awk '{print $1}')" = "$member_a_hash" ] || {
     echo 'Host parser modified MD v1.0 component A' >&2
     exit 1
@@ -125,7 +140,16 @@ member_b_hash=$(sha256sum "$workspace/member-b.raw" | awk '{print $1}')
     echo 'Host parser modified MD v1.0 component B' >&2
     exit 1
 }
-python3 - "$workspace/member-a.json" "$workspace/member-b.json" "$workspace/member-set.json" <<'PY'
+[ "$(sha256sum "$workspace/member-a-component.raw" | awk '{print $1}')" = "$component_a_hash" ] || {
+    echo 'Host parser modified extracted MD v1.0 component A' >&2
+    exit 1
+}
+[ "$(sha256sum "$workspace/member-b-component.raw" | awk '{print $1}')" = "$component_b_hash" ] || {
+    echo 'Host parser modified extracted MD v1.0 component B' >&2
+    exit 1
+}
+python3 - "$workspace/member-a.json" "$workspace/member-b.json" "$workspace/member-set.json" \
+    "$workspace/component-set.json" <<'PY'
 import json
 import sys
 
@@ -136,6 +160,8 @@ try:
         second = json.load(stream)
     with open(sys.argv[3], encoding="utf-8") as stream:
         component_set = json.load(stream)
+    with open(sys.argv[4], encoding="utf-8") as stream:
+        extracted_set = json.load(stream)
     reports = [first, second]
 except (OSError, json.JSONDecodeError):
     raise SystemExit("host MD v1.0 parser returned invalid JSON")
@@ -226,9 +252,37 @@ if (component_set.get("format") != "phantowd-read-only-storage-image-set-observa
         or component_set.get("mount_performed") is not False):
     raise SystemExit("host whole-disk parser did not confirm a generic GPT-partitioned read-only array: "
                      + json.dumps(component_set, sort_keys=True))
-serialized = json.dumps([reports, component_set], sort_keys=True)
+extracted_components = extracted_set.get("components", [])
+extracted_comparison = extracted_set.get("comparison", {})
+extracted_arrays = extracted_comparison.get("arrays", [])
+if (extracted_set.get("format") != "phantowd-md-v1.0-component-set-inspection"
+        or extracted_set.get("schema_version") != 1
+        or extracted_set.get("status") != "metadata-consistent"
+        or extracted_set.get("wd_compatibility") != "unqualified"
+        or len(extracted_components) != 2
+        or any(item.get("status") != "md-v1.0-superblock-candidate"
+               or item.get("report", {}).get("superblock_checksum_status") != "valid"
+               for item in extracted_components)
+        or extracted_comparison.get("candidate_components") != 2
+        or extracted_comparison.get("unqualified_components") != 0
+        or extracted_comparison.get("unidentified_candidate_components") != 0
+        or len(extracted_arrays) != 1
+        or extracted_arrays[0].get("status") != "metadata-consistent"
+        or extracted_arrays[0].get("observed_active_roles") != 2
+        or extracted_arrays[0].get("missing_active_roles") != []
+        or sorted(item.get("report", {}).get("member_number") for item in extracted_components) != [0, 1]
+        or sorted(item.get("report", {}).get("member_role") for item in extracted_components) != [0, 1]
+        or extracted_set.get("block_device_opened") is not False
+        or extracted_set.get("mutations_performed") is not False
+        or extracted_set.get("assembly_performed") is not False
+        or extracted_set.get("mount_performed") is not False):
+    raise SystemExit("host extracted-component parser did not confirm a generic read-only array: "
+                     + json.dumps(extracted_set, sort_keys=True))
+serialized = json.dumps([reports, component_set, extracted_set], sort_keys=True)
 for private_value in ("PHANTOWD-QEMU-MDV10-A", "PHANTOWD-QEMU-MDV10-B", "PHANTOWD-QEMU-MDV10-ROOT"):
     if private_value in serialized:
         raise SystemExit("host parser report leaked a QEMU-only VPD identity")
 PY
+echo 'PHANTOWD_MD_V10_COMPONENT_SET_HOST_READY components=2 metadata=1.0 checksums=valid status=metadata-consistent active_roles=complete descriptor_readonly=true input_unchanged=true wd_compatibility=unqualified assembly=false mount=false scope=tmpfs-qemu-only' | tee -a "$log"
 echo 'PHANTOWD_MD_V10_HOST_READY disks=2 gpt=valid partition=1 type=linux-raid metadata=1.0 checksums=valid same_array=true distinct_members=true active_roles=complete set_comparison=metadata-observed input_unchanged=true scope=tmpfs-qemu-only' | tee -a "$log"
+grep -F 'PHANTOWD_MD_V10_COMPONENT_SET_HOST_READY components=2 metadata=1.0 checksums=valid status=metadata-consistent active_roles=complete descriptor_readonly=true input_unchanged=true wd_compatibility=unqualified assembly=false mount=false scope=tmpfs-qemu-only' "$log" >/dev/null
