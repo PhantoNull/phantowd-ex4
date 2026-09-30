@@ -23,7 +23,7 @@ func TestQEMUMDCommandsSelectModeBeforeConfig(t *testing.T) {
 	}
 }
 
-func TestQEMUMDV10CreateTargetsOnlyTheTwoFixedDisposableComponents(t *testing.T) {
+func TestQEMUMDV10CreateTargetsOnlyTheTwoFixedDisposableGPTPartitions(t *testing.T) {
 	args := qemuMDV10CreateArguments()
 	if len(args) < 2 || args[0] != "--create" || args[1] != "--config=/dev/null" {
 		t.Fatalf("mdadm must select create before disabling its system config: args=%q", args)
@@ -33,12 +33,12 @@ func TestQEMUMDV10CreateTargetsOnlyTheTwoFixedDisposableComponents(t *testing.T)
 			t.Fatalf("MD v1.0 fixture omitted %q: args=%q", required, args)
 		}
 	}
-	if args[len(args)-2] != "/dev/sdb" || args[len(args)-1] != "/dev/sdc" {
-		t.Fatalf("MD v1.0 creation must target only its two fixed QEMU components: args=%q", args)
+	if args[len(args)-2] != "/dev/sdb1" || args[len(args)-1] != "/dev/sdc1" {
+		t.Fatalf("MD v1.0 creation must target only partition 1 of its two fixed QEMU disks: args=%q", args)
 	}
-	for _, forbidden := range []string{"/dev/sda", "/dev/sdd", "/dev/sde", "/dev/sdf"} {
+	for _, forbidden := range []string{"/dev/sda", "/dev/sda1", "/dev/sdb", "/dev/sdc", "/dev/sdd", "/dev/sde", "/dev/sdf"} {
 		if containsString(args, forbidden) {
-			t.Fatalf("MD v1.0 fixture included unrelated device %q: args=%q", forbidden, args)
+			t.Fatalf("MD v1.0 fixture included a whole disk or unrelated device %q: args=%q", forbidden, args)
 		}
 	}
 }

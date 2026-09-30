@@ -1,7 +1,7 @@
 #!/bin/sh
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 PhantoWD EX4 contributors
-# Host-owned end-to-end MD 1.0 test: two 32 MiB tmpfs files only.
+# Host-owned end-to-end GPT-partitioned MD 1.0 test: two 32 MiB tmpfs files only.
 set -eu
 
 images=${1:?usage: qemu-md-v10-fixture.sh IMAGES_DIR GO_BINARY SOURCE_DIR OUTPUT_LOG}
@@ -44,6 +44,16 @@ truncate -s 32M "$workspace/member-a.raw" "$workspace/member-b.raw"
 [ -f "$workspace/member-b.raw" ] && [ ! -L "$workspace/member-b.raw" ]
 [ "$(stat -c '%s' "$workspace/member-a.raw")" = 33554432 ]
 [ "$(stat -c '%s' "$workspace/member-b.raw")" = 33554432 ]
+python3 "$source_dir/support/make-qemu-gpt-fixture.py" \
+    "$workspace/member-a.raw" \
+    "500f0000-0000-0000-0000-000000000102" \
+    "8fd20a43-e550-4632-9a8e-5241c40c0861" \
+    "a19d880f-05fc-4d3b-a006-743f0f84911e"
+python3 "$source_dir/support/make-qemu-gpt-fixture.py" \
+    "$workspace/member-b.raw" \
+    "500f0000-0000-0000-0000-000000000103" \
+    "8fd20a43-e550-4632-9a8e-5241c40c0862" \
+    "a19d880f-05fc-4d3b-a006-743f0f84911e"
 root_hash=$(sha256sum "$images/rootfs.ext2" | awk '{print $1}')
 
 export GOPROXY=off GOTOOLCHAIN=local GOFLAGS='-mod=vendor -buildvcs=false'
@@ -91,7 +101,7 @@ wait "$qemu_pid" || status=$?
 qemu_pid=
 cat "$workspace/qemu.log" >> "$log"
 [ "$status" -eq 0 ] || exit 1
-grep -F 'PHANTOWD_MD_V10_READY metadata=1.0 raid1=true members=2 fixed_devices=true array_stopped=true root_snapshot=true scope=disposable-qemu-only' "$workspace/qemu.log" >/dev/null
+grep -F 'PHANTOWD_MD_V10_READY metadata=1.0 raid1=true members=2 gpt=true partition=1 fixed_devices=true array_stopped=true root_snapshot=true scope=disposable-qemu-only' "$workspace/qemu.log" >/dev/null
 if grep -E 'PHANTOWD_MD_V10_ERROR|PHANTOWD_API_ERROR|Kernel panic' "$workspace/qemu.log" >/dev/null; then
     exit 1
 fi
@@ -101,9 +111,9 @@ fi
 }
 member_a_hash=$(sha256sum "$workspace/member-a.raw" | awk '{print $1}')
 member_b_hash=$(sha256sum "$workspace/member-b.raw" | awk '{print $1}')
-"$workspace/phantowd-lab" inspect-md-v1.0-component "$workspace/member-a.raw" > "$workspace/member-a.json"
-"$workspace/phantowd-lab" inspect-md-v1.0-component "$workspace/member-b.raw" > "$workspace/member-b.json"
-"$workspace/phantowd-lab" inspect-md-v1.0-component-set \
+"$workspace/phantowd-lab" inspect-md-v1.0-partition "$workspace/member-a.raw" 1 > "$workspace/member-a.json"
+"$workspace/phantowd-lab" inspect-md-v1.0-partition "$workspace/member-b.raw" 1 > "$workspace/member-b.json"
+"$workspace/phantowd-lab" inspect-storage-image-set \
     "$workspace/member-a.raw" "$workspace/member-b.raw" > "$workspace/member-set.json"
 [ "$(sha256sum "$workspace/member-a.raw" | awk '{print $1}')" = "$member_a_hash" ] || {
     echo 'Host parser modified MD v1.0 component A' >&2
@@ -137,43 +147,69 @@ summary_fields = (
     "member_identity_fingerprint", "wd_compatibility", "raw_identity_redacted",
     "block_device_opened", "mutations_performed", "assembly_performed", "mount_performed",
 )
-summary = [{key: report.get(key) for key in summary_fields} for report in reports]
+summaries = []
+for disk_report in reports:
+    md = disk_report.get("md_superblock", {})
+    summaries.append({
+        "gpt_status": disk_report.get("gpt", {}).get("status"),
+        "partition_number": disk_report.get("partition_number"),
+        **{key: md.get(key) for key in summary_fields},
+    })
 for report in reports:
-    if (report.get("status") != "md-v1.0-superblock-candidate"
-            or report.get("metadata_version") != "1.0"
-            or report.get("superblock_checksum_status") != "valid"
-            or report.get("array_level") != 1
-            or report.get("raid_disks") != 2
-            or not 2 <= report.get("max_devices", 0) <= 128
-            or report.get("member_role_description") != "active-slot"
-            or not report.get("array_identity_fingerprint")
-            or not report.get("member_identity_fingerprint")
-            or report.get("wd_compatibility") != "unqualified"
-            or report.get("raw_identity_redacted") is not True
-            or report.get("block_device_opened") is not False
-            or report.get("mutations_performed") is not False
-            or report.get("assembly_performed") is not False
-            or report.get("mount_performed") is not False):
-        raise SystemExit("host MD v1.0 parser report did not meet the generic read-only contract: "
-                         + json.dumps(summary, sort_keys=True))
-if reports[0]["array_identity_fingerprint"] != reports[1]["array_identity_fingerprint"]:
-    raise SystemExit("mdadm MD v1.0 members did not share an array identity: "
-                     + json.dumps(summary, sort_keys=True))
-if reports[0]["member_identity_fingerprint"] == reports[1]["member_identity_fingerprint"]:
-    raise SystemExit("mdadm MD v1.0 components did not have distinct member identities: "
-                     + json.dumps(summary, sort_keys=True))
-if sorted(report["member_number"] for report in reports) != [0, 1] or \
-        sorted(report["member_role"] for report in reports) != [0, 1]:
-    raise SystemExit("mdadm MD v1.0 components did not contain both active RAID roles: "
-                     + json.dumps(summary, sort_keys=True))
-comparison = component_set.get("comparison", {})
+    md = report.get("md_superblock", {})
+    if (report.get("format") != "phantowd-md-v1.0-gpt-partition-inspection"
+            or report.get("partition_number") != 1
+            or report.get("gpt", {}).get("status") != "valid-gpt"
+            or md.get("status") != "md-v1.0-superblock-candidate"
+            or md.get("metadata_version") != "1.0"
+            or md.get("superblock_checksum_status") != "valid"
+            or md.get("array_level") != 1
+            or md.get("raid_disks") != 2
+            or not 2 <= md.get("max_devices", 0) <= 128
+            or md.get("member_role_description") != "active-slot"
+            or not md.get("array_identity_fingerprint")
+            or not md.get("member_identity_fingerprint")
+            or md.get("wd_compatibility") != "unqualified"
+            or md.get("raw_identity_redacted") is not True
+            or md.get("block_device_opened") is not False
+            or md.get("mutations_performed") is not False
+            or md.get("assembly_performed") is not False
+            or md.get("mount_performed") is not False):
+        raise SystemExit("host MD v1.0 partition parser report did not meet the generic read-only contract: "
+                         + json.dumps(summaries, sort_keys=True))
+if reports[0]["md_superblock"]["array_identity_fingerprint"] != \
+        reports[1]["md_superblock"]["array_identity_fingerprint"]:
+    raise SystemExit("mdadm MD v1.0 partitions did not share an array identity: "
+                     + json.dumps(summaries, sort_keys=True))
+if reports[0]["md_superblock"]["member_identity_fingerprint"] == \
+        reports[1]["md_superblock"]["member_identity_fingerprint"]:
+    raise SystemExit("mdadm MD v1.0 partitions did not have distinct member identities: "
+                     + json.dumps(summaries, sort_keys=True))
+if sorted(report["md_superblock"]["member_number"] for report in reports) != [0, 1] or \
+        sorted(report["md_superblock"]["member_role"] for report in reports) != [0, 1]:
+    raise SystemExit("mdadm MD v1.0 partitions did not contain both active RAID roles: "
+                     + json.dumps(summaries, sort_keys=True))
+comparison = component_set.get("md_v1_0_comparison", {})
 arrays = comparison.get("arrays", [])
 members = arrays[0].get("members", []) if len(arrays) == 1 else []
-if (component_set.get("format") != "phantowd-md-v1.0-component-set-inspection"
-        or component_set.get("schema_version") != 1
-        or component_set.get("status") != "metadata-consistent"
+inputs = component_set.get("inputs", [])
+identity_scan = component_set.get("identity_scan", {})
+if (component_set.get("format") != "phantowd-read-only-storage-image-set-observation"
+        or component_set.get("schema_version") != 2
+        or component_set.get("status") != "metadata-observed"
         or component_set.get("wd_compatibility") != "unqualified"
-        or len(component_set.get("components", [])) != 2
+        or len(inputs) != 2
+        or any(item.get("gpt_status") != "valid-gpt"
+               or item.get("partition_count") != 1
+               or item.get("md_v1_0_candidate_count") != 1
+               or len(item.get("partition_observations", [])) != 1
+               or item["partition_observations"][0].get("partition_number") != 1
+               or item["partition_observations"][0].get("declared_type_guid") != "a19d880f-05fc-4d3b-a006-743f0f84911e"
+               or item["partition_observations"][0].get("md_v1_0_status") != "md-v1.0-superblock-candidate"
+               for item in inputs)
+        or identity_scan.get("complete") is not True
+        or identity_scan.get("duplicate_disk_guid_groups") != 0
+        or identity_scan.get("duplicate_partuuid_groups") != 0
         or comparison.get("candidate_components") != 2
         or comparison.get("unqualified_components") != 0
         or comparison.get("unidentified_candidate_components") != 0
@@ -181,16 +217,16 @@ if (component_set.get("format") != "phantowd-md-v1.0-component-set-inspection"
         or arrays[0].get("status") != "metadata-consistent"
         or arrays[0].get("observed_active_roles") != 2
         or [member.get("input_index") for member in members] != [1, 2]
-        or any("partition_number" in member for member in members)
+        or [member.get("partition_number") for member in members] != [1, 1]
         or component_set.get("block_device_opened") is not False
         or component_set.get("mutations_performed") is not False
         or component_set.get("assembly_performed") is not False
         or component_set.get("mount_performed") is not False):
-    raise SystemExit("host component-set comparison did not confirm a generic complete read-only array: "
+    raise SystemExit("host whole-disk parser did not confirm a generic GPT-partitioned read-only array: "
                      + json.dumps(component_set, sort_keys=True))
-serialized = json.dumps(reports, sort_keys=True)
+serialized = json.dumps([reports, component_set], sort_keys=True)
 for private_value in ("PHANTOWD-QEMU-MDV10-A", "PHANTOWD-QEMU-MDV10-B", "PHANTOWD-QEMU-MDV10-ROOT"):
     if private_value in serialized:
         raise SystemExit("host parser report leaked a QEMU-only VPD identity")
 PY
-echo 'PHANTOWD_MD_V10_HOST_READY components=2 metadata=1.0 checksums=valid same_array=true distinct_members=true active_roles=complete set_comparison=metadata-consistent input_unchanged=true scope=tmpfs-qemu-only' | tee -a "$log"
+echo 'PHANTOWD_MD_V10_HOST_READY disks=2 gpt=valid partition=1 type=linux-raid metadata=1.0 checksums=valid same_array=true distinct_members=true active_roles=complete set_comparison=metadata-observed input_unchanged=true scope=tmpfs-qemu-only' | tee -a "$log"

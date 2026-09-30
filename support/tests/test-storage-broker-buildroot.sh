@@ -179,8 +179,8 @@ grep -F "$md_filesystem_identity_marker" "$repo_root/support/qemu-smoke.sh" >/de
 md_v10_api="$repo_root/src/phantowd-api/md_v10_qemu_linux.go"
 md_v10_init="$repo_root/board/qemu/armv5/rootfs-overlay/usr/lib/phantowd/qemu-md-v10-init.sh"
 md_v10_fixture="$repo_root/support/qemu-md-v10-fixture.sh"
-md_v10_marker='PHANTOWD_MD_V10_READY metadata=1.0 raid1=true members=2 fixed_devices=true array_stopped=true root_snapshot=true scope=disposable-qemu-only'
-md_v10_host_marker='PHANTOWD_MD_V10_HOST_READY components=2 metadata=1.0 checksums=valid same_array=true distinct_members=true active_roles=complete set_comparison=metadata-consistent input_unchanged=true scope=tmpfs-qemu-only'
+md_v10_marker='PHANTOWD_MD_V10_READY metadata=1.0 raid1=true members=2 gpt=true partition=1 fixed_devices=true array_stopped=true root_snapshot=true scope=disposable-qemu-only'
+md_v10_host_marker='PHANTOWD_MD_V10_HOST_READY disks=2 gpt=valid partition=1 type=linux-raid metadata=1.0 checksums=valid same_array=true distinct_members=true active_roles=complete set_comparison=metadata-observed input_unchanged=true scope=tmpfs-qemu-only'
 [ -f "$md_v10_api" ] && [ -f "$md_v10_init" ] && [ -f "$md_v10_fixture" ] ||
     fail 'MD v1.0 QEMU/host fixture source files are incomplete'
 grep -F "$md_v10_marker" "$md_v10_api" >/dev/null ||
@@ -189,8 +189,8 @@ grep -F "$md_v10_host_marker" "$md_v10_fixture" >/dev/null ||
     fail 'host MD v1.0 fixture must verify both parser reports and unchanged inputs'
 grep -F -- '--metadata=1.0' "$repo_root/src/phantowd-api/qemu_md_arguments.go" >/dev/null ||
     fail 'guest fixture must explicitly create metadata version 1.0'
-grep -F -- '"/dev/sdb", "/dev/sdc"' "$repo_root/src/phantowd-api/qemu_md_arguments.go" >/dev/null ||
-    fail 'guest mdadm command must target only its two fixed disposable data disks'
+grep -F -- '"/dev/sdb1", "/dev/sdc1"' "$repo_root/src/phantowd-api/qemu_md_arguments.go" >/dev/null ||
+    fail 'guest mdadm command must target only partition 1 on its two fixed disposable GPT disks'
 grep -F 'truncate -s 32M "$workspace/member-a.raw" "$workspace/member-b.raw"' "$md_v10_fixture" >/dev/null ||
     fail 'host fixture must create exactly two 32 MiB member files'
 grep -F 'refuses non-tmpfs temporary storage' "$md_v10_fixture" >/dev/null ||
@@ -199,8 +199,12 @@ grep -F 'snapshot=on' "$md_v10_fixture" >/dev/null ||
     fail 'guest root disk must use a temporary QEMU snapshot'
 grep -F -- '-nic none' "$md_v10_fixture" >/dev/null ||
     fail 'MD v1.0 fixture must not attach a network interface'
-grep -F 'inspect-md-v1.0-component' "$md_v10_fixture" >/dev/null ||
-    fail 'host-side production parser must read both generated component files'
+grep -F 'inspect-md-v1.0-partition' "$md_v10_fixture" >/dev/null ||
+    fail 'host-side partition parser must read each generated GPT member'
+grep -F 'inspect-storage-image-set' "$md_v10_fixture" >/dev/null ||
+    fail 'host-side whole-disk parser must compare the GPT partition members'
+grep -F 'a19d880f-05fc-4d3b-a006-743f0f84911e' "$md_v10_fixture" >/dev/null ||
+    fail 'host fixture must declare the standard Linux RAID partition type GUID'
 sed -n '/^cleanup()/,/^}/p' "$md_v10_fixture" | grep -F '"$workspace/member-set.json"' >/dev/null ||
     fail 'MD v1.0 fixture cleanup must remove the generated component-set report'
 grep -F 'sha256sum "$images/rootfs.ext2"' "$md_v10_fixture" >/dev/null ||

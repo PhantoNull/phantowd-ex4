@@ -40,10 +40,11 @@ production-ready appliance.
 | EX4 hardware | Short diskless RAM boots, limited Ethernet and internal-temperature observations | Sustained dual-port networking, cooling/controller, storage and recovery |
 
 A focused local ARMv5 QEMU check now compares mdadm-authored MD v1.0 metadata
-against the host parser using only two temporary 32 MiB members in tmpfs; the
-host also compares the extracted components as a set and requires complete
-active-role coverage. It does not format or mount a filesystem and is not EX4
-compatibility or hardware qualification; see the
+created on partition 1 of two synthetic GPT disk images, each backed by a
+temporary 32 MiB tmpfs file. The host validates each selected partition and
+reconciles both whole-disk images, requiring complete active-role coverage and
+unchanged parser inputs. It does not format or mount a filesystem and is not
+EX4 compatibility or hardware qualification; see the
 [fast test instructions](support/QEMU-FAST-TESTS.md).
 
 Read-only storage discovery now refuses the entire assessment before opening

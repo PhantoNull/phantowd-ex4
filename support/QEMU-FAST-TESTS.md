@@ -229,27 +229,28 @@ exit. It rebuilds only the API, the static volume-probe fixture helper and the
 host parser from current source into a temporary copy of the base rootfs.
 
 The guest uses a snapshot-backed root disk and exactly two writable 32 MiB
-raw member files in tmpfs, attached with fixed synthetic SCSI identities. The
-bounded QEMU-only entry point asks ARMv5 `mdadm` to create a two-member RAID1
-with metadata 1.0, verifies array/member topology, stops it, and reboots. The
-host invokes `phantowd-lab inspect-md-v1.0-component` on each regular
-component image and `inspect-md-v1.0-component-set` on the pair. The harness
-checks valid checksums, a shared redacted array fingerprint, distinct member
-fingerprints, active roles 0/1, a metadata-consistent set comparison, unchanged
-member hashes, and an unchanged base rootfs hash. It never formats a filesystem,
-mounts, imports, assembles on the host, reads a NAS/physical disk, or writes
-NAND/MTD. The two member files and reports are removed from the private temp
-directory by the test trap.
+GPT disk images in tmpfs, attached with fixed synthetic SCSI identities. Each
+image contains one synthetic Linux RAID GPT partition with distinct disk and
+partition GUIDs. The bounded QEMU-only entry point asks ARMv5 `mdadm` to create
+a two-member RAID1 with metadata 1.0 on `/dev/sdb1` and `/dev/sdc1`, verifies
+partition geometry and array/member topology, stops it, and reboots. The host
+invokes `phantowd-lab inspect-md-v1.0-partition` on each image, then
+`inspect-storage-image-set` on both whole-disk images. The harness checks valid
+GPT and MD checksums, distinct GPT identities, a shared redacted array
+fingerprint, distinct member fingerprints, active roles 0/1, partition-1
+correlation in the metadata-consistent set comparison, unchanged member hashes,
+and an unchanged base rootfs hash. It never formats a filesystem, mounts,
+imports, assembles on the host, reads a NAS/physical disk, or writes NAND/MTD.
+The two member files and reports are removed from the private temp directory by
+the test trap.
 
-The focused fixture passed on 2026-09-30 using cached Linux 6.18.53 ARMv5 QEMU
-artifacts. It was then rerun from `develop` head `399c01f` against the pinned
-Linux 6.18.54 QEMU artifact; the guest and host markers passed, including the
-component-set comparison and unchanged member/base-image hashes. The full local
-Buildroot 2025.02.18/Linux 6.18.54 QEMU build also passed in a fresh output
-directory while reusing the pinned image, Buildroot source/download cache and
-compiler cache; this was not an independent clean-source or hosted CI build.
-This is a generic parser-agreement test only; it does not establish EX4
-hardware, WD metadata, migration, recovery or compatibility qualification.
+The GPT-partition-contained fixture passed locally on 2026-09-30 against the
+pinned Linux 6.18.54 QEMU artifact. It used the current-source developer overlay,
+not a new clean Buildroot/SBOM build or hosted CI. This synthetic
+parser-agreement test does not establish that real EX4 disks use this GPT
+type/layout, nor does it establish EX4 hardware, WD metadata, migration,
+recovery or compatibility qualification. See the private
+`doc/sources/md-v1.0-gpt-partition-qemu-rerun-2026-09-30.md` evidence record.
 
 ## Evidence boundary
 

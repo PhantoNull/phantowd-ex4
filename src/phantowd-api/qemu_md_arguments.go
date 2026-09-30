@@ -14,7 +14,7 @@ func qemuMDCreateArguments() []string {
 func qemuMDV10CreateArguments() []string {
 	return []string{
 		"--create", "--config=/dev/null", "/dev/md0", "--metadata=1.0", "--name=phantowd-qemu-v10-test",
-		"--level=raid1", "--raid-devices=2", "--assume-clean", "/dev/sdb", "/dev/sdc",
+		"--level=raid1", "--raid-devices=2", "--assume-clean", "/dev/sdb1", "/dev/sdc1",
 	}
 }
 

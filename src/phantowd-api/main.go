@@ -23,7 +23,7 @@ func main() {
 	smbTest := flag.Bool("qemu-smb-test", false, "fixed SMB effective-access fixture; QEMU only")
 	mountGuardTest := flag.Bool("qemu-mount-guard-test", false, "fixed descriptor/mount guard fixture; QEMU only")
 	mdStackTest := flag.Bool("qemu-md-stack-test", false, "fixed disposable MD stack/mount-guard fixture; QEMU only")
-	mdV10Fixture := flag.Bool("qemu-md-v10-fixture", false, "write fixed MD v1.0 metadata to two disposable QEMU disks; QEMU only")
+	mdV10Fixture := flag.Bool("qemu-md-v10-fixture", false, "write fixed MD v1.0 metadata to partition 1 on two disposable GPT QEMU disks; QEMU only")
 	stateTest := flag.String("qemu-state-test", "", "fixed two-boot state fixture; QEMU only")
 	identityClient := flag.String("qemu-identity-client", "", "fixed unprivileged identity-channel fixture; QEMU only")
 	identityOwnerService := flag.Bool("qemu-identity-owner-service", false, "fixed root identity-owner service fixture; QEMU only")

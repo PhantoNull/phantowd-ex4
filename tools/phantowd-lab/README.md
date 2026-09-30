@@ -236,9 +236,10 @@ comparison still says only `wd_compatibility=unqualified` and does not establish
 data synchronization, health, import safety or recovery. The command never
 opens block devices, assembles arrays, mounts, or writes input images.
 
-`support/test-qemu-md-v10.ps1` exercises individual and set comparison against
-two mdadm-authored ARMv5 QEMU components held in tmpfs; the fixture verifies
-their reports and input hashes without qualifying any WD/EX4 layout.
+`support/test-qemu-md-v10.ps1` exercises the GPT-partition reader and whole-disk
+set comparison against ARMv5 mdadm-authored MD v1.0 metadata. The QEMU guest
+writes only to partition 1 of two 32 MiB disk images held in tmpfs; the host
+verifies both reports and input hashes without qualifying any WD/EX4 layout.
 
 `inspect-md-v0.90-image-set` accepts two to four whole-disk regular image
 files, requires valid generic GPT on each, and groups plausible little-endian

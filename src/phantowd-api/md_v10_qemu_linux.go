@@ -25,12 +25,12 @@ const (
 	qemuMDV10MemberAWWN    = "500f000000000102"
 	qemuMDV10MemberBSerial = "PHANTOWD-QEMU-MDV10-B"
 	qemuMDV10MemberBWWN    = "500f000000000103"
-	qemuMDV10MemberSectors = "65536"
+	qemuMDV10DiskSectors   = "65536"
 )
 
-// runQEMUMDV10Fixture writes MD 1.0 metadata only to the two fixed virtual
-// components attached by the disposable QEMU harness. The root disk is a
-// QEMU snapshot; this path is not product storage discovery or activation.
+// runQEMUMDV10Fixture writes MD 1.0 metadata only to partition 1 on the two
+// fixed virtual GPT disks attached by the disposable QEMU harness. The root
+// disk is a QEMU snapshot; this is not product discovery or activation.
 func runQEMUMDV10Fixture() (result error) {
 	if os.Geteuid() != 0 || runtime.GOOS != "linux" || runtime.GOARCH != "arm" ||
 		strings.Split(buildARMLevel(), ",")[0] != "5" {
@@ -92,7 +92,7 @@ func runQEMUMDV10Fixture() (result error) {
 			return errors.New("MD v1.0 fixture component identity changed during array creation")
 		}
 	}
-	fmt.Println("PHANTOWD_MD_V10_READY metadata=1.0 raid1=true members=2 fixed_devices=true array_stopped=true root_snapshot=true scope=disposable-qemu-only")
+	fmt.Println("PHANTOWD_MD_V10_READY metadata=1.0 raid1=true members=2 gpt=true partition=1 fixed_devices=true array_stopped=true root_snapshot=true scope=disposable-qemu-only")
 	return nil
 }
 
@@ -100,13 +100,23 @@ func verifyQEMUMDV10Member(name, serial, wwn string) error {
 	if err := verifyQEMUBlockDevice(os.DirFS("/sys"), name, serial, wwn); err != nil {
 		return err
 	}
-	size, err := os.ReadFile("/sys/class/block/" + name + "/size")
-	if err != nil || strings.TrimSpace(string(size)) != qemuMDV10MemberSectors {
-		return errors.New("MD v1.0 component has unexpected size")
+	diskSize, err := os.ReadFile("/sys/class/block/" + name + "/size")
+	if err != nil || strings.TrimSpace(string(diskSize)) != qemuMDV10DiskSectors {
+		return errors.New("MD v1.0 fixture disk has unexpected GPT backing size")
+	}
+	if _, err := os.Stat("/sys/class/block/" + name + "2"); err == nil || !errors.Is(err, os.ErrNotExist) {
+		return errors.New("MD v1.0 fixture disk has an unexpected second partition")
 	}
 	partition := "/sys/class/block/" + name + "/" + name + "1"
-	if _, err := os.Stat(partition); err == nil || !errors.Is(err, os.ErrNotExist) {
-		return errors.New("MD v1.0 fixture requires whole-disk components without partitions")
+	for path, expected := range map[string]string{
+		partition + "/partition": "1",
+		partition + "/start":     "2048",
+		partition + "/size":      "63455",
+	} {
+		value, err := os.ReadFile(path)
+		if err != nil || strings.TrimSpace(string(value)) != expected {
+			return errors.New("MD v1.0 fixture GPT partition geometry differs from its fixed synthetic layout")
+		}
 	}
 	return nil
 }
@@ -116,7 +126,7 @@ func ensureQEMUMDV10MembersUnmounted() error {
 	if err != nil {
 		return errors.New("MD v1.0 fixture mount inventory is unavailable")
 	}
-	for _, name := range []string{"sdb", "sdc"} {
+	for _, name := range []string{"sdb", "sdb1", "sdc", "sdc1"} {
 		device, err := os.ReadFile("/sys/class/block/" + name + "/dev")
 		if err != nil {
 			return errors.New("MD v1.0 fixture device identity is unavailable")
@@ -160,7 +170,7 @@ func verifyQEMUMDV10Array() error {
 		names = append(names, slave.Name())
 	}
 	sort.Strings(names)
-	if len(names) != 2 || names[0] != "sdb" || names[1] != "sdc" {
+	if len(names) != 2 || names[0] != "sdb1" || names[1] != "sdc1" {
 		return errors.New("MD v1.0 fixture array did not contain only the two fixed members")
 	}
 	return nil

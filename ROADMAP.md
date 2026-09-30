@@ -538,12 +538,13 @@ are missing. **Depends on:** M1; M7 for hardware.
   creation paths using MD metadata 1.0 (root-array paths use 0.90); the generic
   host inspector now reads and compares 1.0 components from offline images. This
   advances format observation only, not WD layout qualification. A dedicated
-  local ARMv5 QEMU fixture now creates two 32 MiB MD v1.0 RAID1 members with
-  mdadm in tmpfs; the host reads both raw components and compares their
+  local ARMv5 QEMU fixture now creates GPT on two 32 MiB disk images in tmpfs,
+  then uses mdadm to create MD v1.0 RAID1 on partition 1 of each. The host reads
+  both GPT images, validates each selected partition and reconciles the
   checksummed metadata as a set, requiring complete active-role coverage and
-  unchanged inputs. The QEMU root is snapshot-backed and the array is stopped
-  before exit. This validates parser agreement with a generic mdadm-authored
-  sample, not an EX4 disk or WD layout. A sanitized corpus of exact EX4
+  unchanged parser inputs. The QEMU root is snapshot-backed and the array is
+  stopped before exit. This validates parser agreement with a generic
+  mdadm-authored sample, not an EX4 disk or WD layout. A sanitized corpus of exact EX4
   data-disk layouts and an evidence-backed allowlist remain required.
 - **M3.4 — Own mount lifecycle.** Model absent, discovered, rejected, qualified,
   mounting, mounted, unavailable, draining and review-required outcomes.
