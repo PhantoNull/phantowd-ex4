@@ -161,6 +161,7 @@ tools/phantowd-lab/**
 support/test-lab-tools.ps1
 support/container/test-lab-tools.sh
 support/build-qemu.ps1
+support/clean-qemu-build-volumes.ps1
 support/test-firmware-workflow-paths.sh
 support/tests/test-ex4-stage-b-kernel-config-audit.sh
 .github/workflows/qemu-armv5.yml
