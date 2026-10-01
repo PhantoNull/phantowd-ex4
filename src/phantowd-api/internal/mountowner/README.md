@@ -16,6 +16,17 @@ the disposable Versatile PB guest.
   performs one bind mount, then requires the target to have a new unique mount
   ID while matching the qualified filesystem's inode, device, type, writable
   state and kernel-checked UUID before issuing a lease.
+- `Owner.ObserveMountedVolume` revalidates that same live identity while holding
+  the lifecycle lock and returns a process-local, non-serializable tuple for
+  this one volume. It does not grant a lease or assert discovery completeness;
+  an aggregate storage provider must prove its complete scope separately.
+- `MountedVolumeSet` holds every member Owner lock in canonical target order,
+  revalidates every member and returns no partial evidence. Duplicate logical
+  IDs, filesystem UUIDs, mount IDs or device numbers are rejected. Its
+  generation advances when any member tuple or Owner generation changes. A
+  snapshot is complete only relative to the immutable roster supplied at
+  construction; the current constructor is used by host tests and a one-volume
+  QEMU fixture, not product discovery.
 - A `Lease` opens existing directories only through the pinned mountguard.
   Returned `O_PATH` handles are tracked by the Owner and revoked when identity
   verification fails. They cannot read file contents. Draining denies new
@@ -36,10 +47,12 @@ normal lease/drain/unmount sequence, an overmount with handle revocation, lost
 mount/unmount results, and a mismatched filesystem. Teardown may unmount only
 the exact private fixture target it created.
 
-The token currently comes only from the QEMU fixture. There is no production
-qualifier, mount-point allocator, durable volume identity, service handoff, or
-operator review/recovery workflow. Passing QEMU tests does not qualify physical
-EX4 disks or authorize mounting user media.
+The qualification token currently comes only from the QEMU fixture. There is
+no production qualifier or production roster source, no EX4-complete mounted-
+volume collector, mount-point allocator, durable volume identity, service handoff, or operator
+review/recovery workflow. Passing QEMU tests does not qualify physical EX4
+disks or authorize mounting user media.
 
 See [M3.4 roadmap acceptance](../../../../ROADMAP.md#m3-complete-storage-discovery-and-volume-lifecycle) and the private
-dated evidence record in `doc/sources/m34-owner-lifecycle-local-qemu-2026-09-30.md`.
+dated evidence records in `doc/sources/m34-owner-lifecycle-local-qemu-2026-09-30.md`
+and `doc/sources/m34-owner-mounted-evidence-local-qemu-2026-09-30.md`.

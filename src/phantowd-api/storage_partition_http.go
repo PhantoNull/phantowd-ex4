@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-var errStorageGPTObservationBusy = errors.New("storage GPT observation busy")
+var errStorageGPTObservationBusy = errStorageBlockObservationBusy
 
 const (
 	storageGPTObservationTimeout         = 50 * time.Second

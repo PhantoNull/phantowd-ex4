@@ -17,7 +17,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/fileserviceplan"
+	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/mountowner"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/mountguard"
+	"github.com/PhantoNull/phantowd-ex4/phantowd-api/shareconfig"
 	"golang.org/x/sys/unix"
 )
 
@@ -90,9 +93,12 @@ func runQEMUMDStackTest() (result error) {
 		return errors.New("fixed unrelated QEMU disk is unexpectedly mounted before the fixture")
 	}
 
-	mountPoint, err := os.MkdirTemp("/run", "phantowd-md-stack-")
-	if err != nil {
-		return errors.New("could not create private MD mount point")
+	mountPoint := mountowner.QEMUMDStackFixtureSource
+	if _, err := os.Lstat(mountPoint); !errors.Is(err, os.ErrNotExist) {
+		return errors.New("fixed QEMU MD stack mount point already exists")
+	}
+	if err := os.Mkdir(mountPoint, 0700); err != nil {
+		return errors.New("could not create fixed private MD mount point")
 	}
 	mounted := false
 	cleaned := false
@@ -234,6 +240,9 @@ func runQEMUMDStackTest() (result error) {
 		len(identity.arrays[0].memberDisks) != 2 || len(identity.physicalDisks) != 2 {
 		return errors.New("mounted MD filesystem, array UUID and member disks did not correlate")
 	}
+	if err := exerciseQEMUMDToMountedOwnerProvider(mountPoint, identity); err != nil {
+		return fmt.Errorf("M3.3 to M3.4 trusted provider bridge: %w", err)
+	}
 	for index, member := range identity.arrays[0].memberDisks {
 		if member != identityGraph[0].memberDisks[index] {
 			return errors.New("mounted MD identity changed its previously observed member binding")
@@ -295,6 +304,42 @@ func runQEMUMDStackTest() (result error) {
 	}
 	fmt.Println("PHANTOWD_MOUNT_GRAPH_READY backing_members=2 actual_raid1=true readonly_mountinfo=true both_members_attributed=true unrelated_disk_clear=true cleanup=true scope=disposable-qemu-only")
 	return nil
+}
+
+func exerciseQEMUMDToMountedOwnerProvider(source string, identity mountedStorageIdentity) error {
+	if source != mountowner.QEMUMDStackFixtureSource || identity.anchor != source ||
+		identity.filesystemUUID != qemuMDFilesystemUUID || identity.filesystemUUIDConflict ||
+		identity.sourceName != "md0" || identity.sourceMajor == 0 || identity.arrays == nil || len(identity.arrays) != 1 ||
+		identity.arrays[0].arrayName != "md0" || identity.arrays[0].arrayUUID == "" || len(identity.physicalDisks) != 2 {
+		return errors.New("M3.3 identity is not the fixed complete QEMU MD/filesystem observation")
+	}
+	return mountowner.WithQEMUMDStackSetEvidence(source, func(evidence mountowner.MountedVolumeSetEvidence) error {
+		volumes := evidence.Volumes()
+		if !evidence.Complete() || evidence.Generation() == 0 || evidence.Fingerprint() == ([32]byte{}) || len(volumes) != 1 {
+			return errors.New("M3.4 Owner returned an incomplete mounted-volume roster")
+		}
+		volume := volumes[0]
+		if volume.VolumeID() != mountowner.QEMUMDStackFixtureVolumeID ||
+			volume.FilesystemUUID() != identity.filesystemUUID || volume.MountPath() != shareconfig.VolumeMountRoot+"/"+mountowner.QEMUMDStackFixtureVolumeID ||
+			volume.Compatibility() != fileserviceplan.CompatibilityQualified || volume.Generation() == 0 ||
+			volume.MountID() == 0 || volume.DeviceMajor() != identity.sourceMajor ||
+			volume.DeviceMinor() != identity.sourceMinor || !volume.ReadOnly() {
+			return errors.New("M3.4 Owner tuple does not match the M3.3 read-only mounted MD filesystem")
+		}
+		storage, err := fileserviceplan.StorageFromMountedOwnerSet(evidence)
+		if err != nil || !storage.Complete || storage.Generation != evidence.Generation() ||
+			storage.OwnerFingerprint != evidence.Fingerprint() || len(storage.Volumes) != 1 ||
+			storage.Volumes[0].VolumeID != mountowner.QEMUMDStackFixtureVolumeID ||
+			storage.Volumes[0].FilesystemUUID != shareconfig.FilesystemUUID(identity.filesystemUUID) ||
+			storage.Volumes[0].MountPath != volume.MountPath() || !storage.Volumes[0].ReadOnly {
+			return errors.New("M3.3/M3.4 storage provider did not preserve complete read-only identity evidence")
+		}
+		if _, err := json.Marshal(evidence); err == nil {
+			return errors.New("M3.4 provider evidence unexpectedly became serializable")
+		}
+		fmt.Println("PHANTOWD_M33_M34_PROVIDER_READY source=complete_md_filesystem_identity owner=live_mount_revalidated roster=complete_for_fixture_only uuid=true device_tuple=true read_only=true planner_snapshot=true activation=false http=false scope=disposable-qemu-only")
+		return nil
+	})
 }
 
 func waitForQEMUBlockNodeRemoval(path string, timeout time.Duration) error {

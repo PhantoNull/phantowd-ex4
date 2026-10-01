@@ -30,11 +30,12 @@ const (
 	storageBrokerSocketName  = "channel"
 	storageBrokerDeadline    = 15 * time.Second
 	storageGPTBrokerDeadline = 45 * time.Second
+	storageMDV10Deadline     = 60 * time.Second
 	storageBrokerBacklog     = 1
 	storageBrokerWorkers     = 2
 )
 
-var storageGPTObservationActive atomic.Bool
+var storageBlockObservationActive atomic.Bool
 
 type storageBrokerPrincipals struct {
 	apiUID    uint32
@@ -430,17 +431,26 @@ func serveStorageBrokerConnection(ctx context.Context, connection *net.UnixConn,
 				response.Status = "ok"
 				response.Snapshot = &snapshot
 			}
-		} else if request.Operation == storageBrokerOperationGPT {
-			if !storageGPTObservationActive.CompareAndSwap(false, true) {
+		} else if request.Operation == storageBrokerOperationGPT || request.Operation == storageBrokerOperationMDV10 {
+			if !storageBlockObservationActive.CompareAndSwap(false, true) {
 				response.Status = "busy"
 			} else {
-				defer storageGPTObservationActive.Store(false)
-				_ = connection.SetDeadline(time.Now().Add(storageGPTBrokerDeadline))
-				probeContext, cancel := context.WithTimeout(ctx, storageGPTBrokerDeadline)
+				defer storageBlockObservationActive.Store(false)
+				deadline := storageGPTBrokerDeadline
+				if request.Operation == storageBrokerOperationMDV10 {
+					deadline = storageMDV10Deadline
+				}
+				_ = connection.SetDeadline(time.Now().Add(deadline))
+				probeContext, cancel := context.WithTimeout(ctx, deadline)
 				defer cancel()
-				if summary, err := observeTrustedGPTForBroker(probeContext); err == nil {
+				if request.Operation == storageBrokerOperationGPT {
+					if summary, err := observeTrustedGPTForBroker(probeContext); err == nil {
+						response.Status = "ok"
+						response.GPTObservation = &summary
+					}
+				} else if summary, err := observeTrustedMDV10ForBroker(probeContext); err == nil {
 					response.Status = "ok"
-					response.GPTObservation = &summary
+					response.MDV10Observation = &summary
 				}
 			}
 		}
@@ -613,8 +623,29 @@ func observeGPTPartitionIdentityFromBroker(ctx context.Context) (storageGPTObser
 	}
 }
 
+// observeMDV10FromBroker is deliberately an internal provider, not an HTTP
+// handler. It requests only the fixed operation and receives a redacted count
+// summary; no caller can choose a path, device, parser or metadata offset.
+func observeMDV10FromBroker(ctx context.Context) (storageMDV10ObservationSummary, error) {
+	response, err := requestStorageBroker(ctx, storageBrokerOperationMDV10)
+	if err != nil {
+		return storageMDV10ObservationSummary{}, errStorageBrokerUnavailable
+	}
+	switch response.Status {
+	case "ok":
+		if response.MDV10Observation == nil {
+			return storageMDV10ObservationSummary{}, errStorageBrokerUnavailable
+		}
+		return *response.MDV10Observation, nil
+	case "busy":
+		return storageMDV10ObservationSummary{}, errStorageBlockObservationBusy
+	default:
+		return storageMDV10ObservationSummary{}, errStorageBrokerUnavailable
+	}
+}
+
 func requestStorageBroker(ctx context.Context, operation string) (storageBrokerResponse, error) {
-	if ctx == nil || (operation != storageBrokerOperationInventory && operation != storageBrokerOperationGPT) {
+	if ctx == nil || !validStorageBrokerOperation(operation) {
 		return storageBrokerResponse{}, errStorageBrokerUnavailable
 	}
 	principals, err := lookupStorageBrokerPrincipals()
@@ -634,6 +665,8 @@ func requestStorageBroker(ctx context.Context, operation string) (storageBrokerR
 	deadline := time.Now().Add(storageBrokerDeadline)
 	if operation == storageBrokerOperationGPT {
 		deadline = time.Now().Add(storageGPTBrokerDeadline)
+	} else if operation == storageBrokerOperationMDV10 {
+		deadline = time.Now().Add(storageMDV10Deadline)
 	}
 	if contextDeadline, exists := ctx.Deadline(); exists && contextDeadline.Before(deadline) {
 		deadline = contextDeadline

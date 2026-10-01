@@ -79,6 +79,75 @@ func TestObserveReturnsOnlyTheExactRequestedPassdbIdentity(t *testing.T) {
 	}
 }
 
+func TestObserveAccountsReadsPassdbOnceAndReturnsOnlyRedactedRequestedRows(t *testing.T) {
+	if os.Geteuid() != 0 {
+		t.Skip("trusted Samba adapter tests require root-owned fixture config")
+	}
+	config := secureConfig(t)
+	accounts := []serviceaccounts.Account{
+		{ID: "alice", Name: "alice", UID: 11001, GID: 11001, State: serviceaccounts.Disabled},
+		{ID: "bob", Name: "bob", UID: 11002, GID: 11002, State: serviceaccounts.Enabled},
+		{ID: "carol", Name: "carol", UID: 11003, GID: 11003, State: serviceaccounts.Disabled},
+	}
+	fixture := []byte("Unix username: bob\nUser SID: S-1-5-21-1-2-3-1002\nAccount Flags: [U          ]\nNT Hash: PRIVATE-HASH-B\n\n" +
+		"Unix username: unrelated\nUser SID: S-1-5-21-1-2-3-1004\nAccount Flags: [U          ]\nNT Hash: PRIVATE-HASH-X\n\n" +
+		"Unix username: alice\nUser SID: S-1-5-21-1-2-3-1001\nAccount Flags: [UD         ]\nNT Hash: PRIVATE-HASH-A\n")
+	calls := 0
+	var pinnedConfig *os.File
+	backend, err := testBackend(t, config, runnerFunc(func(_ context.Context, executable string, args []string, gotConfig *os.File, stdin []byte, capture bool) ([]byte, error) {
+		calls++
+		if executable != pdbeditPath || gotConfig != pinnedConfig || !slices.Equal(args, []string{"-L", "-v", "-s", configArgument}) || len(stdin) != 0 || !capture {
+			t.Fatal("passdb census escaped its fixed read-only command contract")
+		}
+		return fixture, nil
+	}))
+	if err != nil {
+		t.Fatal("secure Samba backend configuration refused", err)
+	}
+	pinnedConfig = backend.config
+	got, err := backend.ObserveAccounts(context.Background(), accounts)
+	want := []smbprovision.Observation{
+		{Present: true, Name: "alice", UID: 11001, GID: 11001, SID: "S-1-5-21-1-2-3-1001", Disabled: true},
+		{Present: true, Name: "bob", UID: 11002, GID: 11002, SID: "S-1-5-21-1-2-3-1002"},
+		{},
+	}
+	if err != nil || !slices.Equal(got, want) || calls != 1 {
+		t.Fatalf("one-pass redacted observations = %#v, calls=%d, error=%v", got, calls, err)
+	}
+	if strings.Contains(string(fixture), "PRIVATE-HASH") {
+		t.Fatal("passdb fixture was not cleared after redaction")
+	}
+}
+
+func TestObserveAccountsRejectsDuplicateTargetAndSIDWithoutPartialResults(t *testing.T) {
+	if os.Geteuid() != 0 {
+		t.Skip("trusted Samba adapter tests require root-owned fixture config")
+	}
+	accounts := []serviceaccounts.Account{
+		{ID: "alice", Name: "alice", UID: 11001, GID: 11001, State: serviceaccounts.Disabled},
+		{ID: "bob", Name: "bob", UID: 11002, GID: 11002, State: serviceaccounts.Disabled},
+	}
+	for _, test := range []struct{ name, fixture string }{
+		{"duplicate target name", "Unix username: alice\nUser SID: S-1-5-21-1-2-3-1001\nAccount Flags: [UD]\n" +
+			"Unix username: alice\nUser SID: S-1-5-21-1-2-3-1002\nAccount Flags: [UD]\n"},
+		{"case-variant target name", "Unix username: ALICE\nUser SID: S-1-5-21-1-2-3-1001\nAccount Flags: [UD]\n"},
+		{"duplicate requested SID", "Unix username: alice\nUser SID: S-1-5-21-1-2-3-1001\nAccount Flags: [UD]\n" +
+			"Unix username: bob\nUser SID: S-1-5-21-1-2-3-1001\nAccount Flags: [UD]\n"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			backend, err := testBackend(t, secureConfig(t), runnerFunc(func(_ context.Context, _ string, _ []string, _ *os.File, _ []byte, _ bool) ([]byte, error) {
+				return []byte(test.fixture), nil
+			}))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got, err := backend.ObserveAccounts(context.Background(), accounts); err == nil || got != nil {
+				t.Fatalf("ambiguous all-account observation returned partial data: %#v, error=%v", got, err)
+			}
+		})
+	}
+}
+
 func TestBackendKeepsTheConfigurationFileOpenedAtConstruction(t *testing.T) {
 	if os.Geteuid() != 0 {
 		t.Skip("trusted Samba adapter tests require root-owned fixture config")

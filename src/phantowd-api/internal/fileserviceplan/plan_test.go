@@ -4,6 +4,7 @@
 package fileserviceplan
 
 import (
+	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"strings"
@@ -66,7 +67,7 @@ func planInputs(t *testing.T) (fileservice.Config, uint64, IdentitySnapshot, Sto
 	config := fileservice.Config{Format: fileservice.ConfigFormat, SchemaVersion: 1, Revision: 7, Shares: shares, NFS: nfs}
 
 	identity := IdentitySnapshot{
-		Complete: true, Generation: 29, Registry: registry,
+		Complete: true, Generation: 29, Fingerprint: sha256.Sum256([]byte("fileserviceplan-test-identity-v1")), Registry: registry,
 		UnixUIDs: []uint32{account.UID},
 		UnixGIDs: []uint32{account.GID},
 		Samba:    []SambaIdentity{{Journal: journal, Observation: observation}},
@@ -89,7 +90,8 @@ func TestBuildPlanResolvesCombinedPolicyWithoutActivationAuthority(t *testing.T)
 		t.Fatalf("plan overstated its authority: %+v", plan)
 	}
 	if plan.freshness.PolicyRevision != config.Revision || plan.freshness.ActiveRevision != activeRevision ||
-		plan.freshness.IdentityGeneration != identity.Generation || plan.freshness.StorageGeneration != storage.Generation {
+		plan.freshness.IdentityGeneration != identity.Generation || plan.freshness.StorageGeneration != storage.Generation ||
+		plan.freshness.StorageFingerprint != fingerprintStorageSnapshot(storage) {
 		t.Fatalf("plan lost revision bindings: %+v", plan)
 	}
 	if len(plan.volumes) != 1 || plan.volumes[0].VolumeID != "bulk" ||
@@ -98,7 +100,7 @@ func TestBuildPlanResolvesCombinedPolicyWithoutActivationAuthority(t *testing.T)
 	}
 	if !strings.Contains(plan.sambaConfig, "write list = alice") ||
 		!strings.Contains(plan.nfsConfig, "anonuid=1000,anongid=1000") ||
-		!plan.FreshAgainst(Freshness{PolicyRevision: 7, ActiveRevision: 5, IdentityGeneration: 29, StorageGeneration: 41}) {
+		!plan.FreshAgainst(plan.Freshness()) {
 		t.Fatalf("plan lost service configuration or freshness contract: %+v", plan)
 	}
 }
@@ -116,6 +118,9 @@ func TestBuildPlanRejectsIncompleteSnapshots(t *testing.T) {
 		}},
 		{"identity generation missing", func(_ *fileservice.Config, _ *uint64, identity *IdentitySnapshot, _ *StorageSnapshot) {
 			identity.Generation = 0
+		}},
+		{"identity fingerprint missing", func(_ *fileservice.Config, _ *uint64, identity *IdentitySnapshot, _ *StorageSnapshot) {
+			identity.Fingerprint = [32]byte{}
 		}},
 		{"storage generation missing", func(_ *fileservice.Config, _ *uint64, _ *IdentitySnapshot, storage *StorageSnapshot) {
 			storage.Generation = 0
@@ -240,18 +245,112 @@ func TestPlanFreshnessRejectsEveryChangedRevision(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	base := Freshness{PolicyRevision: 7, ActiveRevision: 5, IdentityGeneration: 29, StorageGeneration: 41}
-	for name, stale := range map[string]Freshness{
-		"policy":   {PolicyRevision: 8, ActiveRevision: 5, IdentityGeneration: 29, StorageGeneration: 41},
-		"active":   {PolicyRevision: 7, ActiveRevision: 6, IdentityGeneration: 29, StorageGeneration: 41},
-		"identity": {PolicyRevision: 7, ActiveRevision: 5, IdentityGeneration: 30, StorageGeneration: 41},
-		"storage":  {PolicyRevision: 7, ActiveRevision: 5, IdentityGeneration: 29, StorageGeneration: 42},
-	} {
+	base := plan.Freshness()
+	changed := make(map[string]Freshness)
+	value := base
+	value.PolicyRevision++
+	changed["policy"] = value
+	value = base
+	value.ActiveRevision++
+	changed["active"] = value
+	value = base
+	value.IdentityGeneration++
+	changed["identity generation"] = value
+	value = base
+	value.IdentityFingerprint = sha256.Sum256([]byte("changed-identity"))
+	changed["identity fingerprint"] = value
+	value = base
+	value.StorageGeneration++
+	changed["storage generation"] = value
+	value = base
+	value.StorageFingerprint[0] ^= 1
+	changed["storage fingerprint"] = value
+	for name, stale := range changed {
 		if plan.FreshAgainst(stale) {
 			t.Errorf("stale %s snapshot accepted", name)
 		}
 	}
 	if !plan.FreshAgainst(base) {
 		t.Fatal("current exact snapshot rejected")
+	}
+}
+
+func TestStorageFingerprintBindsMountTupleWhenGenerationIsReused(t *testing.T) {
+	config, activeRevision, identity, storage := planInputs(t)
+	original, err := Build(config, activeRevision, identity, storage)
+	if err != nil {
+		t.Fatal(err)
+	}
+	originalFreshness := original.Freshness()
+
+	for name, mutate := range map[string]func(*ObservedVolume){
+		"mount ID":     func(volume *ObservedVolume) { volume.MountID++ },
+		"device tuple": func(volume *ObservedVolume) { volume.DeviceMinor++ },
+	} {
+		t.Run(name, func(t *testing.T) {
+			changedStorage := storage
+			changedStorage.Volumes = append([]ObservedVolume(nil), storage.Volumes...)
+			mutate(&changedStorage.Volumes[0])
+			changedPlan, err := Build(config, activeRevision, identity, changedStorage)
+			if err != nil {
+				t.Fatal("changed but valid storage evidence did not compile:", err)
+			}
+			changedFreshness := changedPlan.Freshness()
+			if changedFreshness.StorageGeneration != originalFreshness.StorageGeneration ||
+				changedFreshness.StorageFingerprint == originalFreshness.StorageFingerprint ||
+				original.FreshAgainst(changedFreshness) {
+				t.Fatalf("same generation hid a changed storage tuple: original=%+v changed=%+v", originalFreshness, changedFreshness)
+			}
+		})
+	}
+}
+
+func TestStorageFingerprintIsOrderIndependentAndBindsReadOnlyState(t *testing.T) {
+	first := StorageSnapshot{Complete: true, Generation: 9, Volumes: []ObservedVolume{
+		{VolumeID: "bulk", FilesystemUUID: "11111111-2222-3333-4444-555555555555", MountPath: "/srv/phantowd/volumes/bulk",
+			Compatibility: CompatibilityQualified, MountID: 101, DeviceMajor: 8, DeviceMinor: 1},
+		{VolumeID: "archive", FilesystemUUID: "22222222-3333-4444-5555-666666666666", MountPath: "/srv/phantowd/volumes/archive",
+			Compatibility: CompatibilityUnqualified, MountID: 102, DeviceMajor: 8, DeviceMinor: 2, ReadOnly: true},
+	}}
+	second := first
+	second.Volumes = []ObservedVolume{first.Volumes[1], first.Volumes[0]}
+	if fingerprintStorageSnapshot(first) != fingerprintStorageSnapshot(second) {
+		t.Fatal("storage fingerprint depends on volume enumeration order")
+	}
+	second.Volumes = append([]ObservedVolume(nil), first.Volumes...)
+	second.Volumes[1].ReadOnly = false
+	if fingerprintStorageSnapshot(first) == fingerprintStorageSnapshot(second) {
+		t.Fatal("storage fingerprint ignored read-only state")
+	}
+	second = first
+	first.OwnerFingerprint = sha256.Sum256([]byte("owner-set-a"))
+	second.OwnerFingerprint = sha256.Sum256([]byte("owner-set-b"))
+	if fingerprintStorageSnapshot(first) == fingerprintStorageSnapshot(second) {
+		t.Fatal("storage fingerprint ignored the mounted-owner set evidence")
+	}
+}
+
+func TestIdentityAndStorageEvidenceCannotBeSerialized(t *testing.T) {
+	config, activeRevision, identity, storage := planInputs(t)
+	plan, err := Build(config, activeRevision, identity, storage)
+	if err != nil {
+		t.Fatal("build serialization fixture:", err)
+	}
+	for name, value := range map[string]any{"identity": identity, "storage": storage, "freshness": plan.Freshness()} {
+		if _, err := json.Marshal(value); err == nil {
+			t.Errorf("%s evidence was serialized", name)
+		}
+	}
+	var decodedIdentity IdentitySnapshot
+	if err := json.Unmarshal([]byte(`{"complete":true}`), &decodedIdentity); err == nil {
+		t.Fatal("identity evidence was deserialized")
+	}
+	var decodedStorage StorageSnapshot
+	if err := json.Unmarshal([]byte(`{"complete":true}`), &decodedStorage); err == nil {
+		t.Fatal("storage evidence was deserialized")
+	}
+	var decodedFreshness Freshness
+	if err := json.Unmarshal([]byte(`{"storage_generation":1}`), &decodedFreshness); err == nil {
+		t.Fatal("freshness evidence was deserialized")
 	}
 }

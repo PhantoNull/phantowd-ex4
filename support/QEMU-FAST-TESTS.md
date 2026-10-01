@@ -135,7 +135,29 @@ guest-only export-cache flush. This is not product service orchestration.
 The combined internal M4.1 SMB/NFS candidate is also checked by the target
 `testparm` and `exportfs` parsers. Its export is limited to a fixed loopback
 rule on the disposable QEMU volume and is withdrawn immediately after the
-parser/output check; no product config or service owner consumes it.
+parser/output check; no product config or service owner consumes it. The
+Owner-backed candidates obtain storage from a fixed-roster M3.4 set
+observation: every member Owner is locked in canonical order and revalidated
+before an all-or-error snapshot is returned. The fixture roster contains one
+synthetic volume; “complete” is scoped to that roster and is not proof of
+complete physical storage discovery or EX4 compatibility. A separate
+Owner-backed NFS-only candidate is also passed through the target `exportfs`
+parser while its synthetic mount-owner tuple is live. That fixture writes only
+one fixed guest export file, checks the loopback/read-only/all-squash/
+anonymous-ID/fsid result and preservation of prior exports, removes the file,
+reloads and requires the normalized export table to match its baseline. This
+temporary parser round trip is distinct from product activation; no product
+service owner consumes the candidate.
+
+The same ARMv5 Owner fixture makes one direct `FileServiceSnapshot` call after
+its existing disposable SMB enrollment/re-enable path. It checks that the
+snapshot observes the one managed passdb entry only as redacted metadata,
+reports both Owner accounts and local UID/GID reservations, and leaves the
+captured native and Samba journals unchanged. The marker
+`PHANTOWD_M41_OWNER_PASSDB_OBSERVATION_READY` is required by the smoke driver.
+This assertion covers the observation call, not the surrounding fixture's
+test-only account lifecycle; neither is product startup, an endpoint, or
+service activation. The fixed QEMU backend is not a production passdb source.
 
 While this disk is mounted, a QEMU-only Samba fixture renders two shares using
 the product renderer and starts a separate smbd on test port 1445. Its state,
@@ -152,9 +174,11 @@ The helper refuses non-ARMv5/non-Versatile PB machines, non-root invocation,
 wrong synthetic data-disk identifiers and a missing/mismatched writable test
 mount. Account names/IDs, paths and commands are fixed, not API inputs.
 Credentials are public disposable fixture values passed through stdin/private
-auth files, not product credentials. Cleanup stops and reaps the separate
-daemon process group, removes only the created Unix accounts/group, then lets
-the NFS fixture unmount the disk. No production account/lifecycle API is added.
+auth files, not product credentials. The fixture-owned daemon remains running
+through the subsequent disposable Owner identity/passdb observations, then its
+process group is stopped and reaped before the NFS fixture unmounts the disk.
+Cleanup removes only the created Unix accounts/group. No production
+account/lifecycle API is added.
 
 Current local follow-up (2026-09-29; not yet pushed): Buildroot Samba now has
 Jansson-backed JSON enabled without AD-DC. The QEMU fixture validates complete
@@ -221,6 +245,24 @@ proof, or EX4 storage compatibility. The exact-head run for this fixture must
 emit `PHANTOWD_MOUNT_GRAPH_READY`; until that run passes, this paragraph
 documents the intended test rather than completed evidence.
 
+### M3.3-to-M3.4 mounted-storage evidence bridge
+
+The full current-source ARMv5 smoke also carries the synthetic filesystem
+identity from the read-only MD v1.2 mounted-array fixture through the
+M3.4 mount Owner. The fixed QEMU-only Owner roster revalidates the live mount,
+and its non-serializable evidence is adapted to a planner `StorageSnapshot`.
+The check requires the expected filesystem UUID and device tuple, read-only
+state, and no activation or HTTP surface; it emits
+`PHANTOWD_M33_M34_PROVIDER_READY`. Run `support/test-api.ps1` for host checks
+and ARMv5 cross-compilation, then the local ARMv5 QEMU overlay smoke for guest
+execution. The recorded one-boot run passed; its separate two-boot persistence
+fixture was skipped. This is a composed disposable-fixture test, not a
+production M3.3 inventory-to-roster adapter, EX4 media qualification, or
+service activation. The earlier run record mislabeled this fixture as MD v1.0;
+source inspection confirms its `mdadm` arguments request metadata 1.2. See the
+[version correction](../doc/sources/m33-m34-md-metadata-version-correction-2026-10-01.md)
+and [immutable run record](../doc/sources/m33-m34-mounted-storage-provider-local-qemu-2026-10-01.md).
+
 ### MD v1.0 writer-to-host-parser fixture
 
 On Windows, run `support/test-qemu-md-v10.ps1` for a focused check of the
@@ -229,37 +271,62 @@ Buildroot workspace/cache, QEMU base artifact, toolchain and util-linux source
 archive; it uses `--pull never`, mounts the repository/base/cache read-only,
 disables networking, and does not create persistent images or volumes. The
 ephemeral container uses `/tmp` tmpfs for generated files and is removed on
-exit. It rebuilds only the API, the static volume-probe fixture helper and the
-host parser from current source into a temporary copy of the base rootfs.
+exit. It rebuilds the API and host parser from current source into a temporary
+copy of the base rootfs, and reuses the base volume-probe helper only after
+checking that it advertises schema version 2. The current-source mdev rules
+are overlaid into that temporary copy.
 
 The guest uses a snapshot-backed root disk and exactly two writable 32 MiB
 GPT disk images in tmpfs, attached with fixed synthetic SCSI identities. Each
 image contains one synthetic Linux RAID GPT partition with distinct disk and
 partition GUIDs. The bounded QEMU-only entry point asks ARMv5 `mdadm` to create
 a two-member RAID1 with metadata 1.0 on `/dev/sdb1` and `/dev/sdc1`, verifies
-partition geometry and array/member topology, then stops the array. The
-firmware's `mdmetadata.InspectBlock` reads each selected partition from an
-O_RDONLY whole-disk descriptor, checking major/minor, diskseq, byte capacity
-and 512-byte logical sector size around the bounded metadata read. It requires
-valid checksums, one shared array fingerprint, distinct members and active
-roles 0/1; it does not assemble or mount. The guest then reboots. The host
+partition geometry and array/member topology, then stops the array. The fixture
+applies the fixed mdev device permissions and starts the same non-root,
+`no_new_privs`, zero-capability broker service used by other QEMU checks. A
+separate client running as the API UID sends only the fixed `observe-md-v1.0`
+operation. The broker performs complete trusted discovery, GPT/sysfs
+correlation, O_RDONLY generation-bound whole-disk opens and the firmware
+`mdmetadata.InspectBlock` parser on selected RAID partitions; it rechecks
+storage, mount and swap observations before returning. The API client receives
+only redacted counts/status/limitations. The test requires two GPT disks, two
+MD partitions, one metadata-consistent array and full active-role coverage.
+No filesystem data is read, and the broker does not assemble or mount. There
+is no HTTP endpoint for this operation. The block-reading provider exists only
+in the `qemu && linux` test build; normal firmware returns unavailable without
+opening disks. The guest then reboots. The host
 independently invokes `phantowd-lab inspect-md-v1.0-partition` on each image, then
 `inspect-storage-image-set` on both whole-disk images. The harness checks valid
 GPT and MD checksums, distinct GPT identities, a shared redacted array
 fingerprint, distinct member fingerprints, active roles 0/1, partition-1
-correlation in the metadata-consistent set comparison, unchanged member hashes,
-and an unchanged base rootfs hash. It never formats a filesystem, mounts,
-imports, assembles on the host, reads a NAS/physical disk, or writes NAND/MTD.
-The two member files and reports are removed from the private temp directory by
-the test trap.
+correlation in the MD metadata comparison, unchanged member hashes,
+and an unchanged base rootfs hash. The separate M3.4 stage formats only the
+disposable MD array, reassembles it read-only, and verifies a read-only ext2
+mount. The subsequent generic whole-disk scan is expected to return review
+status because both RAID1 member images contain the same ext2 filesystem UUID
+and both ext and MD signatures; its redacted JSON must show that one expected
+duplicate while the MD metadata comparison remains consistent. The host never
+formats, assembles or mounts. The two member files and reports are removed from
+the private temp directory by the test trap. No NAS/physical disk or NAND/MTD
+is read or written.
 
-The GPT-partition-contained fixture, including the firmware parser, passed
-locally on 2026-09-30 against the pinned Linux 6.18.54 QEMU artifact. It used
-the current-source developer overlay, not a new clean Buildroot/SBOM build or
-hosted CI. This synthetic parser-agreement test does not establish that real
-EX4 disks use this GPT type/layout, nor does it establish EX4 hardware, WD
-metadata, migration, recovery or compatibility qualification. The firmware
-parser is not yet wired to the production broker or management API.
+The GPT-partition-contained fixture, including the non-root broker operation,
+passed locally on 2026-09-30 against the pinned Linux 6.18.54 QEMU artifact. On
+2026-10-01 the focused wrapper passed again with an additional MD v1.0-to-M3.4
+composition: after broker observation, the guest reassembled the synthetic
+array read-only, mounted its ext2 filesystem read-only, revalidated the live
+mount through the M3.4 Owner, and produced the planner snapshot. The host
+component comparison passed; whole-image reconciliation returned the expected
+review status for the shared ext UUID while MD metadata stayed consistent.
+This run used the current working tree based on `develop` `74ca3f9` with
+uncommitted changes, so it is not exact-head or hosted-CI evidence. It reused
+the pinned Linux 6.18.54 base and verified inputs, not a new clean Buildroot/
+SBOM build, and did not run the separate two-boot fixture. This synthetic
+parser/provider/Owner test does not establish that real EX4 disks use this GPT
+type/layout, nor does it establish EX4 hardware, WD metadata, migration,
+recovery or compatibility qualification. The firmware provider remains
+internal and is not wired to product startup or management HTTP. No real disk
+or NAS was read.
 
 ## Evidence boundary
 

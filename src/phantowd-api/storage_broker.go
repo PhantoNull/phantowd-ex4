@@ -13,13 +13,14 @@ import (
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/configjson"
 )
 
-const storageBrokerProtocolVersion = 2
+const storageBrokerProtocolVersion = 3
 const storageBrokerMaxFrameBytes = 64 * 1024
 
 var errStorageBrokerUnavailable = errors.New("storage broker unavailable")
+var errStorageBlockObservationBusy = errors.New("storage block observation busy")
 
 var storageBrokerJSONKeys = map[string]bool{
-	"version": true, "status": true, "snapshot": true, "gpt_observation": true,
+	"version": true, "status": true, "snapshot": true, "gpt_observation": true, "md_v10_observation": true,
 	"eligible_candidate_count": true, "gpt_disk_count": true, "partition_count": true,
 	"unsupported_or_non_gpt_count": true, "gpt_coverage": true,
 	"ambiguous_disk_guid_count": true, "ambiguous_partuuid_count": true,
@@ -31,6 +32,13 @@ var storageBrokerJSONKeys = map[string]bool{
 	"size_bytes": true, "read_only": true, "removable": true,
 	"partition_number": true, "parent_name": true, "parent_major": true,
 	"parent_minor": true, "serial_status": true, "wwn_status": true,
+	"candidate_disk_count": true, "raid_partition_count": true,
+	"candidate_components": true, "unqualified_components": true,
+	"unidentified_candidate_components": true, "array_count": true,
+	"metadata_consistent_array_count": true, "incomplete_array_count": true,
+	"divergent_event_array_count": true, "conflicting_array_count": true,
+	"ambiguous_array_count": true, "metadata_active_role_coverage_complete": true,
+	"block_metadata_read": true, "md_v1_0_superblocks_read": true, "filesystem_data_read": true,
 }
 
 var storageBrokerRequestJSONKeys = map[string]bool{"version": true, "operation": true}
@@ -38,6 +46,7 @@ var storageBrokerRequestJSONKeys = map[string]bool{"version": true, "operation":
 const (
 	storageBrokerOperationInventory = "inventory"
 	storageBrokerOperationGPT       = "observe-gpt"
+	storageBrokerOperationMDV10     = "observe-md-v1.0"
 )
 
 type storageBrokerRequest struct {
@@ -49,14 +58,15 @@ type storageBrokerRequest struct {
 // request body, device name, path, command, or descriptor; connecting asks for
 // one bounded read-only inventory response.
 type storageBrokerResponse struct {
-	Version        int                           `json:"version"`
-	Status         string                        `json:"status"`
-	Snapshot       *storageSnapshot              `json:"snapshot,omitempty"`
-	GPTObservation *storageGPTObservationSummary `json:"gpt_observation,omitempty"`
+	Version          int                             `json:"version"`
+	Status           string                          `json:"status"`
+	Snapshot         *storageSnapshot                `json:"snapshot,omitempty"`
+	GPTObservation   *storageGPTObservationSummary   `json:"gpt_observation,omitempty"`
+	MDV10Observation *storageMDV10ObservationSummary `json:"md_v10_observation,omitempty"`
 }
 
 func encodeStorageBrokerRequest(operation string) ([]byte, error) {
-	if operation != storageBrokerOperationInventory && operation != storageBrokerOperationGPT {
+	if !validStorageBrokerOperation(operation) {
 		return nil, errStorageBrokerUnavailable
 	}
 	data, err := json.Marshal(storageBrokerRequest{Version: storageBrokerProtocolVersion, Operation: operation})
@@ -77,10 +87,15 @@ func decodeStorageBrokerRequest(reader io.Reader) (storageBrokerRequest, error) 
 	var request storageBrokerRequest
 	if configjson.Decode(bytes.NewReader(data), &request, storageBrokerMaxFrameBytes, 4, storageBrokerRequestJSONKeys) != nil ||
 		request.Version != storageBrokerProtocolVersion ||
-		(request.Operation != storageBrokerOperationInventory && request.Operation != storageBrokerOperationGPT) {
+		!validStorageBrokerOperation(request.Operation) {
 		return storageBrokerRequest{}, errStorageBrokerUnavailable
 	}
 	return request, nil
+}
+
+func validStorageBrokerOperation(operation string) bool {
+	return operation == storageBrokerOperationInventory || operation == storageBrokerOperationGPT ||
+		operation == storageBrokerOperationMDV10
 }
 
 func encodeStorageBrokerFrame(response storageBrokerResponse) ([]byte, error) {
@@ -136,10 +151,23 @@ func validStorageBrokerResponse(response storageBrokerResponse) bool {
 	}
 	switch response.Status {
 	case "unavailable", "busy":
-		return response.Snapshot == nil && response.GPTObservation == nil
+		return response.Snapshot == nil && response.GPTObservation == nil && response.MDV10Observation == nil
 	case "ok":
-		if (response.Snapshot == nil) == (response.GPTObservation == nil) {
+		payloadCount := 0
+		if response.Snapshot != nil {
+			payloadCount++
+		}
+		if response.GPTObservation != nil {
+			payloadCount++
+		}
+		if response.MDV10Observation != nil {
+			payloadCount++
+		}
+		if payloadCount != 1 {
 			return false
+		}
+		if response.MDV10Observation != nil {
+			return validStorageMDV10ObservationSummary(*response.MDV10Observation)
 		}
 		if response.GPTObservation != nil {
 			return validStorageGPTObservationSummary(*response.GPTObservation)

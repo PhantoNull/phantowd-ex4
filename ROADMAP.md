@@ -583,28 +583,42 @@ are missing. **Depends on:** M1; M7 for hardware.
   then uses mdadm to create MD v1.0 RAID1 on partition 1 of each. The host reads
   both GPT images, validates each selected partition and reconciles the
   checksummed metadata as a set, requiring complete active-role coverage and
-  unchanged parser inputs. The guest also exercises the firmware's bounded
-  MD v1.0 parser against both stopped, unmounted members using O_RDONLY
-  generation-bound descriptors, then invokes its pure component-set correlator.
-  The correlator checks parser/location agreement, canonical array/member
-  fingerprints, common array fields/component sizes and event counters, unique
-  members/roles, and complete active-role coverage; host tests cover incomplete,
-  conflicting, divergent and ambiguous sets. It is not yet connected to the
-  broker or a product observation endpoint. The current internal coordinator
-  additionally performs complete trusted inventory discovery, correlates GPT
-  identities to the complete candidate set, invokes the metadata parser only
-  for validated Linux RAID member partitions, and rechecks storage, mounts and
-  swap before and after reads. Its only caller is the disposable QEMU
-  self-test; it is not connected to the broker protocol or a product
-  observation endpoint. The QEMU root is snapshot-backed and the array is
-  stopped before parsing/exit. The host parser then reads the same two regular
-  files read-only, extracts each exact GPT partition range to another temporary
-  regular file, and also runs the standalone `inspect-md-v1.0-component-set`
-  comparison; source and extracted-component hashes must remain unchanged.
-  This validates the internal coordinator and independent host parser against a
-  generic mdadm-authored sample, not an EX4 disk or WD layout. A
+  unchanged parser inputs. The bounded firmware parser and complete trusted
+  coordinator now run behind fixed storage-broker operation `observe-md-v1.0`.
+  The broker performs full candidate discovery, GPT-to-sysfs correlation,
+  generation-bound O_RDONLY opens, parser reads only on GPT-declared Linux RAID
+  partitions, and storage/mount/swap rechecks before and after reading. Its
+  client sends no path, device name or selection; the response contains only
+  validated counts, redacted coverage/status and fixed limitations. Protocol
+  v3 strictly validates this payload; no MD HTTP endpoint or automatic scan was
+  added. The block-reading provider is compiled only in the Linux QEMU test
+  build; normal firmware builds contain a fail-closed unavailable stub, so a
+  local broker request cannot trigger MD reads on an EX4. The focused ARMv5
+  QEMU fixture starts the non-root broker after mdev
+  coldplug, writes MD metadata only with mdadm to two tmpfs-backed synthetic
+  members, stops the array, then runs a separate API-UID client. It requires two
+  GPT candidates, two RAID partitions, one metadata-consistent array and
+  complete active-role coverage. The broker operation itself reads no
+  filesystem content and does not assemble or mount. Host tests cover incomplete, conflicting, divergent and ambiguous
+  sets. The host parser then reads the same two regular files read-only,
+  extracts each exact GPT partition range to another temporary regular file,
+  and also runs the standalone `inspect-md-v1.0-component-set` comparison;
+  source and extracted-component hashes must remain unchanged. This validates
+  broker isolation and generic parser agreement against a mdadm-authored
+  synthetic sample, not an EX4 disk or WD layout. The same focused local
+  wrapper now also runs a separate M3.4 stage: it formats only the disposable
+  MD array as ext2, stops it, reassembles it read-only, mounts ext2 read-only,
+  and passes the live Owner observation into a planner snapshot. This passed on
+  the 2026-10-01 working tree based on `74ca3f9`; it is not exact-head or
+  hosted-CI evidence. The host whole-image check reports the expected shared
+  ext UUID as review while MD metadata remains consistent. A
   sanitized corpus of exact EX4 data-disk layouts and an evidence-backed
-  allowlist remain required.
+  allowlist remain required. Linux host regressions now inject storage-
+  generation, mount-inventory and active-swap changes after GPT observation
+  and during MD reads: pre-read changes prevent the MD parser from running;
+  changes during a set read discard the entire result and close every source
+  descriptor. An incomplete GPT result set is likewise rejected before MD
+  parsing. These test-only observers do not change the fixed production probe.
 - **M3.4 — Own mount lifecycle.** Model absent, discovered, rejected, qualified,
   mounting, mounted, unavailable, draining and review-required outcomes.
   Derive the transient mount tuple from trusted observations, not HTTP or an
@@ -626,7 +640,23 @@ are missing. **Depends on:** M1; M7 for hardware.
   uses only the pinned qualified filesystem before quarantine. Linux host tests
   and the current-source local ARMv5 QEMU overlay pass for normal lifecycle,
   overmount/revocation, ambiguous mount/unmount results, filesystem mismatch,
-  and all three path-replacement cases.
+  and all three path-replacement cases. The Owner now also exposes
+  `ObserveMountedVolume()`: under the lifecycle lock it revalidates and returns
+  a non-serializable tuple for its one active volume. The QEMU service-planner
+  fixture consumes this method instead of reading private Owner fields. A
+  fixed-roster `MountedVolumeSet` now locks every member Owner in canonical
+  target order, revalidates all members, rejects duplicate device/UUID/mount
+  identity, and emits an all-or-error aggregate fingerprint/generation. The
+  current QEMU roster is one synthetic volume; completeness applies only to the
+  roster supplied by trusted construction and does not establish physical
+  inventory completeness. No production roster source or adapter exists. A
+  QEMU-only composed fixture feeds the synthetic MD v1.2 identity from the
+  separate MD-stack fixture through a fixed M3.4 Owner roster and planner
+  snapshot. A separate focused fixture now also composes the MD v1.0 broker
+  observation with read-only reassembly/mount and the same Owner/planner path.
+  Both prove only fixture bridges, not production discovery. The MD v1.0
+  composition passed locally on the 2026-10-01 dirty working tree based on
+  `74ca3f9`, not on exact-head hosted CI.
   These tests do not make unmount descriptor-based or establish production
   mount-point ownership. The prototype is not wired to product startup, the
   storage broker, a production qualifier or service handoff; no real NAS/disk
@@ -661,9 +691,23 @@ device fails closed. Major-zero pseudo-filesystems do not imply a block source.
 
 ## M4: Supervised SMB and NFS
 
-**State:** policy/rendering and isolated service fixtures tested; an internal
-candidate-plan prototype passes host and local ARMv5 smoke checks with synthetic
-snapshots. It is not connected to runtime owners or product activation.
+**State:** policy/rendering and isolated service fixtures tested. The internal
+candidate planner has target parser evidence. A Linux adapter now obtains
+identity evidence directly from `identityowner.Owner`; host tests and a local
+ARMv5 QEMU Owner→adapter→planner fixture verify fingerprint freshness using an
+empty policy and synthetic empty storage. A Linux adapter now converts a
+lock-coherent, all-or-error snapshot from a fixed set of M3.4 mount Owners into
+planner storage evidence. A local ARMv5 QEMU fixture uses a one-volume
+synthetic roster to build non-empty candidates and validates the SMB candidate
+with target `testparm`; the Owner-backed NFS candidate also binds the local
+UID/GID census. Target `exportfs` separately accepts and withdraws this
+Owner-backed NFS candidate in the disposable guest, requiring the prior export
+table to be restored. The synthetic combined-plan `exportfs` fixture remains
+separate. These tests reject stale identity/storage fingerprints and do not
+enroll Samba identities or activate a product service. Roster completeness
+means only that all Owners in that trusted roster were observed while their
+locks were held; the QEMU fixture does not prove completeness over appliance
+storage. No production roster provider or activation path exists.
 **Depends on:** M1, M2, M3; M6/M7 before LAN qualification.
 
 - **M4.1 — Typed activation plan.** Resolve validated policy against qualified
@@ -680,16 +724,66 @@ snapshots. It is not connected to runtime owners or product activation.
   `identityowner.SetDesiredState` now supplies a separately revisioned,
   in-process registry desired-state toggle under the Owner lock and live Unix
   identity check; this does not mutate authentication, Samba state, share
-  grants, or services. It is not yet a trusted identity snapshot provider.
-  The planner still consumes synthetic in-memory snapshots and has no trusted
-  collector, product service owner, HTTP route or activation transaction. M4.1
-  remains incomplete until trusted M3.4/M2 providers supply fresh all-or-error
-  observations and an owner integrates native validation transactionally
-  before any product service change.
+  grants, or services. `identityowner.FileServiceSnapshot` now provides
+  all-or-error registry/native/Samba evidence and local Unix UID/GID/name
+  reservations under that lock; it uses one redacted batch passdb observation
+  for Owner-ledger accounts (not a global Samba/foreign-identity inventory),
+  rejects unjournaled existing entries and fails closed on interrupted or
+  review-required SMB state before querying passdb, without rewriting journal
+  evidence; it is non-serializable. Linux host tests cover this slice, and the
+  Linux `fileserviceplan.IdentityFromOwner` adapter now turns that
+  fresh observation into a planner input. ARMv5 QEMU exercises the real
+  disposable Owner/passdb observation path, builds an empty-policy candidate,
+  then changes desired identity state and verifies the old candidate is stale
+  while a rebuilt candidate is fresh. Planner freshness now binds the registry
+  revision and full SHA-256 identity fingerprint plus storage generation and a
+  canonical SHA-256 fingerprint over the sorted complete mounted-volume tuple
+  (logical VolumeID, expected filesystem UUID, fixed anchor, compatibility,
+  mount ID, device major/minor and read-only state). Host regressions show that
+  a changed mount ID or device tuple with a reused generation invalidates the
+  old candidate, while volume enumeration order does not affect the fingerprint.
+  Freshness, identity/storage evidence and plans reject JSON serialization.
+  Current-source ARMv5 QEMU passes the planner and Owner-staleness markers; the
+  isolated Owner freshness control still uses synthetic empty storage. A
+  separate candidate now combines the disposable Owner's identity snapshot
+  with the M3.4 fixed-roster snapshot, which acquires all Owner locks in
+  canonical order and revalidates every member before yielding any evidence.
+  A `fileserviceplan.StorageFromMountedOwnerSet` adapter converts that opaque,
+  non-serializable set evidence into a snapshot carrying its owner fingerprint
+  and generation. The QEMU roster contains one synthetic ext2 volume; its
+  read-only NFS candidate uses the account's local UID/GID census. Host tests
+  cover incomplete/ambiguous rosters, all-or-error behavior and lock ordering;
+  the fixture rejects altered identity/storage fingerprints and performs no
+  Samba enrollment or service activation. `fileserviceplan.BuildFromOwners`
+  obtains the complete mounted-set evidence first and the identity snapshot
+  second, holding both locks through evidence adaptation and deterministic
+  candidate construction. External parsers and filesystem/process/service
+  work remain outside those nested callbacks. Its ARMv5 NFS-only fixture also
+  requires the Samba candidate to contain no share section. Roster completeness is only as sound
+  as trusted roster construction. The combined SMB target-`testparm` and
+  synthetic NFS target-`exportfs` checks remain separate fixtures. In addition,
+  the Owner-backed NFS-only candidate is briefly loaded into a fixed temporary
+  export file in the disposable guest; target `exportfs` accepts it, then
+  withdrawal must restore the exact pre-test table. This validates parser
+  compatibility for the combined Owner/mount tuple, not product activation.
+  The production storage inventory-to-roster provider, legacy identity import,
+  product service owner, HTTP route and transactional activation are absent.
+  M4.1 remains incomplete until fresh storage and identity evidence are
+  collected together through production owners and native validation plus
+  configuration replacement are owned transactionally before product service
+  changes.
 - **M4.2 — Single service owner.** Define start/reload/stop and child-process
   ownership; bound diagnostics and verify readiness. Preserve the last known
   working configuration on syntax/start failure without claiming an unapplied
-  requested revision is active.
+  requested revision is active. A Linux-only internal `processowner` primitive
+  now pins and launches one foreground executable in an owned process group,
+  bounds readiness, stop and diagnostics, and supports explicit lifecycle
+  observation. If a process that passed readiness exits unexpectedly, the
+  owner enters `review-required` and will not restart it implicitly. Linux API
+  tests pass; Windows API checks and ARMv5 QEMU-tagged cross-compilation pass,
+  but this primitive has not been executed in ARMv5 QEMU. It is not yet the
+  aggregate SMB/NFS service owner, durable service state, or transactional
+  last-known-good configuration replacement.
 - **M4.3 — Access semantics.** Specify SMB3 grants and denied cases; keep SMB1
   disabled. Support explicit NFS client/network rules, export paths and numeric
   identity/squash policy. NFSv3 compatibility has guest evidence; NFSv4 is a
@@ -1052,8 +1146,14 @@ These features are separate scope, not shortcuts around core acceptance:
    connect the internal credential channel to a production-owned listener and
    explicitly authorized operator workflow. Add review reconciliation around
    qualified primitives; preserve uncertainty and never persist or replay secrets.
-6. **M4.1:** define and test the activation plan against qualified fixture volumes;
-   add the daemon owner only after preconditions and lifecycle are demonstrable.
+6. **M4.1:** identity and storage evidence now compose in local QEMU through a
+   lock-coherent fixed-roster collector and non-serializable planner adapter.
+   Next, derive the production roster from complete M3.3 discovery plus an
+   evidence-backed layout/compatibility qualifier, persist and supervise the
+   M3.4 owners, then add native candidate validation. Do not mark M4.1 done or
+   activate services until physical inventory completeness, compatibility,
+   storage/identity freshness and transactional configuration replacement are
+   owned together.
 7. **M5:** expose completed backend outcomes incrementally, with disabled controls
    and honest unavailable/review states for capabilities not yet implemented.
 

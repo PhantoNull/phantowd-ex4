@@ -102,10 +102,20 @@ status=0
 wait "$qemu_pid" || status=$?
 qemu_pid=
 cat "$workspace/qemu.log" >> "$log"
-[ "$status" -eq 0 ] || exit 1
-grep -F 'PHANTOWD_MD_V10_READY metadata=1.0 raid1=true members=2 gpt=true partition=1 fixed_devices=true array_stopped=true root_snapshot=true scope=disposable-qemu-only' "$workspace/qemu.log" >/dev/null
-grep -F 'PHANTOWD_MD_V10_PRODUCT_PROBE_READY disks=2 metadata=1.0 checksums=valid comparison=metadata-consistent same_array=true distinct_members=true active_roles=complete descriptor_readonly=true diskseq_bound=true assembly=false mount=false scope=disposable-qemu-only' "$workspace/qemu.log" >/dev/null
-grep -F 'PHANTOWD_MD_V10_TRUSTED_DISCOVERY_READY candidates=2 gpt=2 raid_partitions=2 metadata_candidates=2 arrays=1 status=metadata-consistent sources_readonly=true generation_rechecked=true assembly=false mount=false scope=disposable-qemu-only' "$workspace/qemu.log" >/dev/null
+if [ "$status" -ne 0 ]; then
+    echo "MD v1.0 QEMU guest exited with status $status after its run log was captured" >&2
+    exit 1
+fi
+require_guest_marker() {
+    marker=$1
+    if ! grep -F "$marker" "$workspace/qemu.log" >/dev/null; then
+        echo "MD v1.0 QEMU guest omitted required marker: $marker" >&2
+        exit 1
+    fi
+}
+require_guest_marker 'PHANTOWD_MD_V10_READY metadata=1.0 raid1=true members=2 gpt=true partition=1 filesystem=ext2 array_stopped=true root_snapshot=true scope=disposable-qemu-only'
+require_guest_marker 'PHANTOWD_MD_V10_BROKER_READY candidates=2 gpt=2 raid_partitions=2 metadata_candidates=2 arrays=1 status=metadata-consistent active_roles=complete peer_nonroot=true broker_readonly=true generation_rechecked=true assembly=false mount=false filesystem_data=false scope=disposable-qemu-only'
+require_guest_marker 'PHANTOWD_MD_V10_M34_OWNER_READY metadata=1.0 raid1=true candidates=2 active_roles=complete filesystem_uuid=true member_topology=true assembly_readonly=true mount_readonly=true owner_live_revalidated=true planner_snapshot=true activation=false http=false scope=disposable-qemu-only'
 if grep -E 'PHANTOWD_MD_V10_ERROR|PHANTOWD_API_ERROR|Kernel panic' "$workspace/qemu.log" >/dev/null; then
     exit 1
 fi
@@ -119,14 +129,29 @@ dd if="$workspace/member-a.raw" of="$workspace/member-a-component.raw" bs=512 sk
 dd if="$workspace/member-b.raw" of="$workspace/member-b-component.raw" bs=512 skip=2048 count=63455 2>/dev/null
 [ -f "$workspace/member-a-component.raw" ] && [ ! -L "$workspace/member-a-component.raw" ]
 [ -f "$workspace/member-b-component.raw" ] && [ ! -L "$workspace/member-b-component.raw" ]
-[ "$(stat -c '%s' "$workspace/member-a-component.raw")" = 32488960 ] || exit 1
-[ "$(stat -c '%s' "$workspace/member-b-component.raw")" = 32488960 ] || exit 1
+[ "$(stat -c '%s' "$workspace/member-a-component.raw")" = 32488960 ] || {
+    echo 'Extracted MD v1.0 component A has unexpected size' >&2
+    exit 1
+}
+[ "$(stat -c '%s' "$workspace/member-b-component.raw")" = 32488960 ] || {
+    echo 'Extracted MD v1.0 component B has unexpected size' >&2
+    exit 1
+}
 component_a_hash=$(sha256sum "$workspace/member-a-component.raw" | awk '{print $1}')
 component_b_hash=$(sha256sum "$workspace/member-b-component.raw" | awk '{print $1}')
 "$workspace/phantowd-lab" inspect-md-v1.0-partition "$workspace/member-a.raw" 1 > "$workspace/member-a.json"
 "$workspace/phantowd-lab" inspect-md-v1.0-partition "$workspace/member-b.raw" 1 > "$workspace/member-b.json"
+image_set_status=0
+# Each RAID1 member contains the same synthetic ext2 filesystem UUID. The
+# whole-disk tool correctly requests review for that cross-member duplicate;
+# its JSON is still checked below for complete GPT and consistent MD metadata.
 "$workspace/phantowd-lab" inspect-storage-image-set \
-    "$workspace/member-a.raw" "$workspace/member-b.raw" > "$workspace/member-set.json"
+    "$workspace/member-a.raw" "$workspace/member-b.raw" > "$workspace/member-set.json" || image_set_status=$?
+if [ "$image_set_status" -ne 2 ]; then
+    cat "$workspace/member-set.json" >&2
+    echo "Host whole-disk parser returned status $image_set_status; expected review status 2 for the mirrored filesystem UUID" >&2
+    exit 1
+fi
 if ! "$workspace/phantowd-lab" inspect-md-v1.0-component-set \
     "$workspace/member-a-component.raw" "$workspace/member-b-component.raw" > "$workspace/component-set.json"; then
     cat "$workspace/component-set.json" >&2
@@ -224,7 +249,7 @@ inputs = component_set.get("inputs", [])
 identity_scan = component_set.get("identity_scan", {})
 if (component_set.get("format") != "phantowd-read-only-storage-image-set-observation"
         or component_set.get("schema_version") != 2
-        or component_set.get("status") != "metadata-observed"
+        or component_set.get("status") != "ambiguous"
         or component_set.get("wd_compatibility") != "unqualified"
         or len(inputs) != 2
         or any(item.get("gpt_status") != "valid-gpt"
@@ -238,6 +263,7 @@ if (component_set.get("format") != "phantowd-read-only-storage-image-set-observa
         or identity_scan.get("complete") is not True
         or identity_scan.get("duplicate_disk_guid_groups") != 0
         or identity_scan.get("duplicate_partuuid_groups") != 0
+        or identity_scan.get("duplicate_filesystem_uuid_groups") != 1
         or comparison.get("candidate_components") != 2
         or comparison.get("unqualified_components") != 0
         or comparison.get("unidentified_candidate_components") != 0
@@ -249,8 +275,11 @@ if (component_set.get("format") != "phantowd-read-only-storage-image-set-observa
         or component_set.get("block_device_opened") is not False
         or component_set.get("mutations_performed") is not False
         or component_set.get("assembly_performed") is not False
-        or component_set.get("mount_performed") is not False):
-    raise SystemExit("host whole-disk parser did not confirm a generic GPT-partitioned read-only array: "
+        or component_set.get("mount_performed") is not False
+        or not any("duplicate identities" in finding for finding in component_set.get("findings", []))
+        or not any("both an ext-family filesystem candidate and an MD component candidate" in finding
+                   for finding in component_set.get("findings", []))):
+    raise SystemExit("host whole-disk parser did not report only the expected mirrored-filesystem review condition: "
                      + json.dumps(component_set, sort_keys=True))
 extracted_components = extracted_set.get("components", [])
 extracted_comparison = extracted_set.get("comparison", {})
@@ -284,5 +313,5 @@ for private_value in ("PHANTOWD-QEMU-MDV10-A", "PHANTOWD-QEMU-MDV10-B", "PHANTOW
         raise SystemExit("host parser report leaked a QEMU-only VPD identity")
 PY
 echo 'PHANTOWD_MD_V10_COMPONENT_SET_HOST_READY components=2 metadata=1.0 checksums=valid status=metadata-consistent active_roles=complete descriptor_readonly=true input_unchanged=true wd_compatibility=unqualified assembly=false mount=false scope=tmpfs-qemu-only' | tee -a "$log"
-echo 'PHANTOWD_MD_V10_HOST_READY disks=2 gpt=valid partition=1 type=linux-raid metadata=1.0 checksums=valid same_array=true distinct_members=true active_roles=complete set_comparison=metadata-observed input_unchanged=true scope=tmpfs-qemu-only' | tee -a "$log"
+echo 'PHANTOWD_MD_V10_HOST_READY disks=2 gpt=valid partition=1 type=linux-raid metadata=1.0 checksums=valid same_array=true distinct_members=true active_roles=complete set_comparison=expected-filesystem-uuid-review md_metadata_consistent=true input_unchanged=true scope=tmpfs-qemu-only' | tee -a "$log"
 grep -F 'PHANTOWD_MD_V10_COMPONENT_SET_HOST_READY components=2 metadata=1.0 checksums=valid status=metadata-consistent active_roles=complete descriptor_readonly=true input_unchanged=true wd_compatibility=unqualified assembly=false mount=false scope=tmpfs-qemu-only' "$log" >/dev/null

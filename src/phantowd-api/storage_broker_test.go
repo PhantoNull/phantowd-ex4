@@ -50,7 +50,7 @@ func TestStorageBrokerFrameRoundTripIsBoundedAndRedacted(t *testing.T) {
 }
 
 func TestStorageBrokerProtocolUsesOnlyFixedOperationsAndRedactedGPTResults(t *testing.T) {
-	for _, operation := range []string{storageBrokerOperationInventory, storageBrokerOperationGPT} {
+	for _, operation := range []string{storageBrokerOperationInventory, storageBrokerOperationGPT, storageBrokerOperationMDV10} {
 		frame, err := encodeStorageBrokerRequest(operation)
 		if err != nil {
 			t.Fatal("fixed broker operation was rejected", operation)
@@ -64,9 +64,9 @@ func TestStorageBrokerProtocolUsesOnlyFixedOperationsAndRedactedGPTResults(t *te
 		t.Fatal("caller-controlled device request was accepted")
 	}
 	for _, malformed := range []string{
-		`{"version":2,"operation":"observe-gpt","path":"/dev/sda"}`,
-		`{"version":2,"version":2,"operation":"observe-gpt"}`,
-		`{"version":2,"operation":"mount"}`,
+		`{"version":3,"operation":"observe-gpt","path":"/dev/sda"}`,
+		`{"version":3,"version":3,"operation":"observe-gpt"}`,
+		`{"version":3,"operation":"mount"}`,
 	} {
 		if _, err := decodeStorageBrokerRequest(bytes.NewReader(frameJSON(malformed))); err == nil {
 			t.Fatal("malformed or arbitrary broker request was accepted", malformed)
@@ -87,6 +87,72 @@ func TestStorageBrokerProtocolUsesOnlyFixedOperationsAndRedactedGPTResults(t *te
 	response.Snapshot = validStorageBrokerTestResponse().Snapshot
 	if validStorageBrokerResponse(response) {
 		t.Fatal("ambiguous response containing both inventory and GPT result was accepted")
+	}
+}
+
+func TestStorageBrokerCarriesOnlyRedactedMDV10Summary(t *testing.T) {
+	operation, err := encodeStorageBrokerRequest(storageBrokerOperationMDV10)
+	if err != nil {
+		t.Fatal("fixed MD v1.0 observation request was rejected")
+	}
+	request, err := decodeStorageBrokerRequest(bytes.NewReader(operation))
+	if err != nil || request.Operation != storageBrokerOperationMDV10 || request.Version != storageBrokerProtocolVersion {
+		t.Fatalf("fixed MD v1.0 operation did not round-trip: %+v %v", request, err)
+	}
+
+	summary := validStorageMDV10SummaryForTest()
+	response := storageBrokerResponse{Version: storageBrokerProtocolVersion, Status: "ok", MDV10Observation: &summary}
+	frame, err := encodeStorageBrokerFrame(response)
+	if err != nil {
+		t.Fatal("valid redacted MD v1.0 summary was rejected:", err)
+	}
+	for _, sensitive := range []string{"PHANTOWD-QEMU-MDV10-A", "500f0000", "a19d880f", "/dev/sdb1", "sdb"} {
+		if strings.Contains(string(frame), sensitive) {
+			t.Fatalf("broker response exposed storage identity %q", sensitive)
+		}
+	}
+	decoded, err := decodeStorageBrokerFrame(bytes.NewReader(frame))
+	if err != nil || decoded.MDV10Observation == nil || decoded.Snapshot != nil || decoded.GPTObservation != nil ||
+		!validStorageMDV10ObservationSummary(*decoded.MDV10Observation) {
+		t.Fatalf("redacted MD v1.0 summary did not round-trip: %+v %v", decoded, err)
+	}
+	response.GPTObservation = &storageGPTObservationSummary{}
+	if validStorageBrokerResponse(response) {
+		t.Fatal("ambiguous response containing both MD v1.0 and GPT observations was accepted")
+	}
+}
+
+func validStorageMDV10SummaryForTest() storageMDV10ObservationSummary {
+	return storageMDV10ObservationSummary{
+		SchemaVersion: 1, Status: "complete", Scope: "broker-read-only-md-v1.0",
+		CandidateDiskCount: 2, GPTDiskCount: 2, RAIDPartitionCount: 2,
+		CandidateComponents: 2, MetadataConsistentArrayCount: 1,
+		ArrayCount: 1, MetadataActiveRoleCoverageComplete: true,
+		BlockMetadataRead: true, MDV10SuperblocksRead: true,
+		Limitations: append([]string{}, storageMDV10ObservationLimitations[:]...),
+	}
+}
+
+func TestStorageMDV10SummaryRejectsIncompleteOrUnsafeClaims(t *testing.T) {
+	cases := map[string]func(*storageMDV10ObservationSummary){
+		"partial GPT coverage":                 func(s *storageMDV10ObservationSummary) { s.GPTDiskCount-- },
+		"unreconciled partition count":         func(s *storageMDV10ObservationSummary) { s.RAIDPartitionCount++ },
+		"unidentified member claimed complete": func(s *storageMDV10ObservationSummary) { s.UnidentifiedCandidateComponents = 1 },
+		"array counts do not add up":           func(s *storageMDV10ObservationSummary) { s.AmbiguousArrayCount = 1 },
+		"coverage claim without consistency":   func(s *storageMDV10ObservationSummary) { s.MetadataConsistentArrayCount = 0 },
+		"filesystem data read":                 func(s *storageMDV10ObservationSummary) { s.FilesystemDataRead = true },
+		"mount claim":                          func(s *storageMDV10ObservationSummary) { s.MountPerformed = true },
+		"mutation claim":                       func(s *storageMDV10ObservationSummary) { s.MutationsPerformed = true },
+		"changed fixed limitation":             func(s *storageMDV10ObservationSummary) { s.Limitations[0] = "private path /dev/sdb" },
+	}
+	for name, mutate := range cases {
+		t.Run(name, func(t *testing.T) {
+			summary := validStorageMDV10SummaryForTest()
+			mutate(&summary)
+			if validStorageMDV10ObservationSummary(summary) {
+				t.Fatal("unsafe or incomplete MD v1.0 summary was accepted")
+			}
+		})
 	}
 }
 

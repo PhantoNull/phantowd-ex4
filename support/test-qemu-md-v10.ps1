@@ -60,6 +60,8 @@ done
 export GOPROXY=off GOTOOLCHAIN=local GOCACHE=/tmp/go-cache GOPATH=/tmp/go-path
 export TMPDIR=/tmp
 export PHANTOWD_QEMU_OVERLAY_MD_V10_ONLY=1
+export PHANTOWD_QEMU_OVERLAY_REUSE_BASE_VOLUME_PROBE=1
+sh /src/support/tests/test-storage-broker-buildroot.sh
 exec sh /src/support/container/test-qemu-api-overlay.sh \
     /base "$go_binary" /src "$probe_archive" "$target_cc" "$patch_dir"
 '@

@@ -87,6 +87,10 @@ replace_file "$source_dir/board/qemu/armv5/rootfs-overlay/usr/lib/phantowd/qemu-
 replace_file "$source_dir/board/qemu/armv5/rootfs-overlay/usr/lib/phantowd/qemu-nfs-policy-smoke.sh" /usr/lib/phantowd/qemu-nfs-policy-smoke.sh 0100644
 replace_file "$source_dir/board/qemu/armv5/rootfs-overlay/usr/lib/phantowd/qemu-state-init.sh" /usr/lib/phantowd/qemu-state-init.sh 0100755
 replace_file "$source_dir/board/qemu/armv5/rootfs-overlay/usr/lib/phantowd/qemu-md-v10-init.sh" /usr/lib/phantowd/qemu-md-v10-init.sh 0100755
+debugfs -w -R 'mkdir /srv/phantowd' "$image" >/dev/null 2>&1 || true
+debugfs -w -R 'mkdir /srv/phantowd/volumes' "$image" >/dev/null 2>&1 || true
+debugfs -R 'stat /srv/phantowd/volumes' "$image" >/dev/null
+replace_file "$source_dir/board/qemu/armv5/rootfs-overlay/srv/phantowd/volumes/.keep" /srv/phantowd/volumes/.keep 0100644
 replace_file "$source_dir/src/phantowd-api/vendor/golang.org/x/sys/LICENSE" /usr/share/licenses/phantowd-api/Go-XSys-LICENSE 0100644
 # shellcheck disable=SC1091 # project version-lock input
 . "$source_dir/versions.env"

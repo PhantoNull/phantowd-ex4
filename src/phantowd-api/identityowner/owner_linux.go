@@ -292,9 +292,18 @@ func (o *Owner) SetDesiredState(ctx context.Context, expected uint64, id, state 
 // is independent from the immutable disabled native-identity journal record;
 // retirement and legacy import still require a later coordinator.
 func (o *Owner) snapshot() (serviceaccounts.Registry, []identityprovision.Journal, error) {
-	fail := func() (serviceaccounts.Registry, []identityprovision.Journal, error) {
+	registry, native, _, err := o.scanSnapshot(true)
+	return registry, native, err
+}
+
+// scanSnapshot validates the complete registry/native-journal set and every
+// optional Samba child journal. Ordinary Owner operations retain the existing
+// startup recovery behavior; internal evidence readers pass false and never
+// open unknown stores or rewrite interrupted intents.
+func (o *Owner) scanSnapshot(recoverSMB bool) (serviceaccounts.Registry, []identityprovision.Journal, []smbprovision.Journal, error) {
+	fail := func() (serviceaccounts.Registry, []identityprovision.Journal, []smbprovision.Journal, error) {
 		o.failed = true
-		return serviceaccounts.Registry{}, nil, ErrUnavailable
+		return serviceaccounts.Registry{}, nil, nil, ErrUnavailable
 	}
 	r, err := o.registry.Load()
 	if err != nil {
@@ -315,6 +324,7 @@ func (o *Owner) snapshot() (serviceaccounts.Registry, []identityprovision.Journa
 		known[entry.Name()] = true
 	}
 	result := make([]identityprovision.Journal, 0, len(r.Accounts))
+	smbResult := make([]smbprovision.Journal, 0, len(r.Accounts))
 	active := 0
 	var priorCreationRevision uint64
 	for i, a := range r.Accounts {
@@ -330,6 +340,9 @@ func (o *Owner) snapshot() (serviceaccounts.Registry, []identityprovision.Journa
 			return fail()
 		}
 		if s == nil {
+			if !recoverSMB {
+				return fail()
+			}
 			s, err = identityprovision.Open(o.operationPath(a.ID))
 			if err != nil {
 				return fail()
@@ -345,8 +358,12 @@ func (o *Owner) snapshot() (serviceaccounts.Registry, []identityprovision.Journa
 			return fail()
 		}
 		priorCreationRevision = j.RegistryRevision
-		if o.loadSMBForAccount(a, j) != nil {
+		smbJournal, hasSMB, smbErr := o.loadSMBForAccount(a, j, recoverSMB)
+		if smbErr != nil {
 			return fail()
+		}
+		if hasSMB {
+			smbResult = append(smbResult, smbJournal)
 		}
 		if j.Phase != identityprovision.UnixConfirmed {
 			active++
@@ -356,7 +373,7 @@ func (o *Owner) snapshot() (serviceaccounts.Registry, []identityprovision.Journa
 		}
 		result = append(result, j)
 	}
-	return r, result, nil
+	return r, result, smbResult, nil
 }
 
 func sameAccountIdentity(first, second serviceaccounts.Account) bool {
@@ -366,47 +383,55 @@ func sameAccountIdentity(first, second serviceaccounts.Account) bool {
 // loadSMBForAccount validates an optional child journal. Reopening an intent
 // records review-required without observing or invoking Samba; the previous
 // command's result can no longer be safely inferred or retried.
-func (o *Owner) loadSMBForAccount(account serviceaccounts.Account, native identityprovision.Journal) error {
+func (o *Owner) loadSMBForAccount(account serviceaccounts.Account, native identityprovision.Journal, recoverInterrupted bool) (smbprovision.Journal, bool, error) {
 	accountFD, err := unix.Openat(o.operations, account.ID, unix.O_RDONLY|unix.O_DIRECTORY|unix.O_NOFOLLOW|unix.O_CLOEXEC, 0)
 	if err != nil {
-		return ErrUnavailable
+		return smbprovision.Journal{}, false, ErrUnavailable
 	}
 	defer unix.Close(accountFD)
 	var parent unix.Stat_t
 	if unix.Fstat(accountFD, &parent) != nil || !privateDirectory(parent) || uint64(parent.Dev) != o.device || o.inodes[account.ID] != parent.Ino {
-		return ErrUnavailable
+		return smbprovision.Journal{}, false, ErrUnavailable
 	}
 	var st unix.Stat_t
 	err = unix.Fstatat(accountFD, "smb", &st, unix.AT_SYMLINK_NOFOLLOW)
 	if errors.Is(err, unix.ENOENT) {
 		if o.smbJournals[account.ID] != nil || o.smbInodes[account.ID] != 0 {
-			return ErrUnavailable
+			return smbprovision.Journal{}, false, ErrUnavailable
 		}
-		return nil
+		return smbprovision.Journal{}, false, nil
 	}
 	if err != nil || !privateDirectory(st) || uint64(st.Dev) != o.device {
-		return ErrUnavailable
+		return smbprovision.Journal{}, false, ErrUnavailable
 	}
 	if native.Phase != identityprovision.UnixConfirmed {
-		return ErrUnavailable
+		return smbprovision.Journal{}, false, ErrUnavailable
 	}
 	store := o.smbJournals[account.ID]
 	if store != nil && o.smbInodes[account.ID] != st.Ino {
-		return ErrUnavailable
+		return smbprovision.Journal{}, false, ErrUnavailable
 	}
 	if store == nil {
+		if !recoverInterrupted {
+			return smbprovision.Journal{}, false, ErrUnavailable
+		}
 		store, err = smbprovision.Open(fmt.Sprintf("/proc/self/fd/%d/smb", accountFD), o.smbBackend)
 		if err != nil {
-			return err
+			return smbprovision.Journal{}, false, err
 		}
 		o.smbJournals[account.ID] = store
 		o.smbInodes[account.ID] = st.Ino
 	}
-	j, err := store.RecoverInterrupted()
-	if err != nil || !sameAccountIdentity(j.Account, account) || j.NativeRevision != native.Revision {
-		return ErrUnavailable
+	var j smbprovision.Journal
+	if recoverInterrupted {
+		j, err = store.RecoverInterrupted()
+	} else {
+		j, err = store.Load()
 	}
-	return nil
+	if err != nil || !sameAccountIdentity(j.Account, account) || j.NativeRevision != native.Revision {
+		return smbprovision.Journal{}, false, ErrUnavailable
+	}
+	return j, true, nil
 }
 
 // Reserve persists the initial journal BEFORE publishing the reservation. A

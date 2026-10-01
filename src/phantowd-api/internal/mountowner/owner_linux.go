@@ -27,6 +27,8 @@ var (
 
 type State string
 
+const qualifiedCompatibility = "qualified"
+
 const (
 	StateAbsent         State = "absent"
 	StateDiscovered     State = "discovered"
@@ -92,12 +94,45 @@ type rootOpener func(string, mountguard.Expected) (rootGuard, error)
 // constructor, and the only current constructor is compiled into QEMU tests.
 // The tuple is transient to one kernel/mount namespace; never serialize it.
 type Qualification struct {
-	mu         sync.Mutex
-	volumeID   string
-	source     string
-	expected   mountguard.Expected
-	sourceRoot rootGuard
-	consumed   bool
+	mu            sync.Mutex
+	volumeID      string
+	compatibility string
+	source        string
+	expected      mountguard.Expected
+	sourceRoot    rootGuard
+	consumed      bool
+}
+
+// MountedVolumeEvidence is a process-local, non-serializable observation of
+// one currently mounted volume owned by this lifecycle coordinator. It does
+// not assert that the caller has discovered every volume and grants no file or
+// mount authority. Construct it only by revalidating a mounted Owner.
+type MountedVolumeEvidence struct {
+	volumeID       string
+	filesystemUUID string
+	mountPath      string
+	compatibility  string
+	generation     uint64
+	mountID        uint64
+	deviceMajor    uint32
+	deviceMinor    uint32
+	readOnly       bool
+}
+
+func (e MountedVolumeEvidence) VolumeID() string       { return e.volumeID }
+func (e MountedVolumeEvidence) FilesystemUUID() string { return e.filesystemUUID }
+func (e MountedVolumeEvidence) MountPath() string      { return e.mountPath }
+func (e MountedVolumeEvidence) Compatibility() string  { return e.compatibility }
+func (e MountedVolumeEvidence) Generation() uint64     { return e.generation }
+func (e MountedVolumeEvidence) MountID() uint64        { return e.mountID }
+func (e MountedVolumeEvidence) DeviceMajor() uint32    { return e.deviceMajor }
+func (e MountedVolumeEvidence) DeviceMinor() uint32    { return e.deviceMinor }
+func (e MountedVolumeEvidence) ReadOnly() bool         { return e.readOnly }
+func (MountedVolumeEvidence) MarshalJSON() ([]byte, error) {
+	return nil, errors.New("internal mounted-volume evidence is not serializable")
+}
+func (*MountedVolumeEvidence) UnmarshalJSON([]byte) error {
+	return errors.New("internal mounted-volume evidence cannot be deserialized")
 }
 
 // Mounts are not inferred from directory names. The owner retains all authority
@@ -116,6 +151,8 @@ type Owner struct {
 	root          rootGuard
 	leases        map[*Lease]struct{}
 	generation    uint64
+	volumeID      string
+	compatibility string
 }
 
 // Lease is an Owner-tracked, revocable metadata-only handle. A lease cannot
@@ -163,7 +200,7 @@ func (o *Owner) Qualify(qualification *Qualification) error {
 		o.state = StateRejected
 		return ErrRejected
 	}
-	if !validVolumeID(qualification.volumeID) ||
+	if !validVolumeID(qualification.volumeID) || qualification.compatibility != qualifiedCompatibility ||
 		!validAbsolute(qualification.source) || qualification.source == o.target ||
 		qualification.sourceRoot == nil || !validExpected(qualification.expected) || sameOrNestedPath(qualification.source, o.target) {
 		return o.rejectQualification(qualification)
@@ -256,6 +293,8 @@ func (o *Owner) Mount(ctx context.Context) error {
 	o.qualification.sourceRoot = nil
 	o.root = root
 	o.expected = observed
+	o.volumeID = o.qualification.volumeID
+	o.compatibility = o.qualification.compatibility
 	o.qualification = nil
 	o.generation++
 	o.state = StateMounted
@@ -369,6 +408,7 @@ func (o *Owner) Unmount(ctx context.Context) error {
 		return o.reviewLocked()
 	}
 	o.state = StateUnavailable
+	o.volumeID, o.compatibility = "", ""
 	return nil
 }
 
@@ -404,6 +444,41 @@ func (o *Owner) State() State {
 	o.mu.Lock()
 	defer o.mu.Unlock()
 	return o.state
+}
+
+// ObserveMountedVolume rechecks the live kernel mount identity while holding
+// the lifecycle lock and returns only this Owner's current per-volume tuple.
+// It is intentionally not a complete storage inventory and returns no lease.
+func (o *Owner) ObserveMountedVolume() (MountedVolumeEvidence, error) {
+	if o == nil {
+		return MountedVolumeEvidence{}, ErrInvalid
+	}
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	return o.observeMountedVolumeLocked()
+}
+
+// observeMountedVolumeLocked must be called with o.mu held. Keeping the
+// revalidation in this helper lets MountedVolumeSet lock every member before
+// observing any of them, producing one coherent all-or-error snapshot.
+func (o *Owner) observeMountedVolumeLocked() (MountedVolumeEvidence, error) {
+	if o.state != StateMounted {
+		return MountedVolumeEvidence{}, stateError(o.state)
+	}
+	if err := o.verifyMountedLocked(); err != nil {
+		return MountedVolumeEvidence{}, err
+	}
+	if !validVolumeID(o.volumeID) || o.compatibility != qualifiedCompatibility ||
+		!validAbsolute(o.target) || o.generation == 0 || !validExpected(o.expected) ||
+		o.expected.MountID == 0 || o.expected.DeviceMajor == 0 {
+		return MountedVolumeEvidence{}, o.reviewLocked()
+	}
+	return MountedVolumeEvidence{
+		volumeID: o.volumeID, filesystemUUID: o.expected.FilesystemUUID, mountPath: o.target,
+		compatibility: o.compatibility, generation: o.generation, mountID: o.expected.MountID,
+		deviceMajor: o.expected.DeviceMajor, deviceMinor: o.expected.DeviceMinor,
+		readOnly: !o.expected.RequireWritable,
+	}, nil
 }
 
 // OpenDirectory resolves an existing metadata-only directory through the
@@ -503,6 +578,7 @@ func (o *Owner) targetUnchangedAndEmptyLocked() bool {
 
 func (o *Owner) rejectQualification(qualification *Qualification) error {
 	o.state = StateRejected
+	o.volumeID, o.compatibility = "", ""
 	if qualification != nil && qualification.sourceRoot != nil {
 		qualification.sourceRoot.Close()
 		qualification.sourceRoot = nil
@@ -515,6 +591,7 @@ func (o *Owner) rejectQualification(qualification *Qualification) error {
 
 func (o *Owner) reviewLocked() error {
 	o.state = StateReviewRequired
+	o.volumeID, o.compatibility = "", ""
 	o.closeQualificationLocked()
 	if o.root != nil {
 		o.root.Close()

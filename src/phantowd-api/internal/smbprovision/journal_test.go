@@ -7,6 +7,7 @@ package smbprovision
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"strings"
 	"testing"
 
@@ -139,6 +140,38 @@ func TestObservationMustBindTheExactAccountAndRequestedState(t *testing.T) {
 		if err := invalid.validateFor(testAccount, true); err == nil {
 			t.Fatal("mismatched passdb observation accepted", invalid)
 		}
+	}
+}
+
+func TestJournalValidatesReadOnlyPassdbEvidenceWithoutRecoveringIntents(t *testing.T) {
+	sid := "S-1-5-21-1-2-3-1001"
+	disabled := Observation{Present: true, Name: testAccount.Name, UID: testAccount.UID,
+		GID: testAccount.GID, SID: sid, Disabled: true}
+	enabled := disabled
+	enabled.Disabled = false
+	wrongSID := enabled
+	wrongSID.SID = "S-1-5-21-1-2-3-1002"
+	for _, test := range []struct {
+		name        string
+		journal     Journal
+		observation Observation
+		want        error
+	}{
+		{"reserved absent", validJournal(Reserved, 1, ""), Observation{}, nil},
+		{"reserved unexpectedly present", validJournal(Reserved, 1, ""), disabled, ErrObservation},
+		{"confirmed disabled", validJournal(CredentialSetDisabled, 5, sid), disabled, nil},
+		{"confirmed disabled but passdb enabled", validJournal(CredentialSetDisabled, 5, sid), enabled, ErrObservation},
+		{"confirmed enabled", validJournal(Enabled, 7, sid), enabled, nil},
+		{"confirmed enabled but passdb disabled", validJournal(Enabled, 7, sid), disabled, ErrObservation},
+		{"review remains observable", validJournal(ReviewRequired, 7, sid), enabled, nil},
+		{"review SID mismatch", validJournal(ReviewRequired, 7, sid), wrongSID, ErrObservation},
+		{"intent is refused without recovery", validJournal(EnableIntent, 6, sid), disabled, ErrReview},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			if err := test.journal.ValidateObservation(test.observation); !errors.Is(err, test.want) {
+				t.Fatalf("ValidateObservation error = %v, want %v", err, test.want)
+			}
+		})
 	}
 }
 

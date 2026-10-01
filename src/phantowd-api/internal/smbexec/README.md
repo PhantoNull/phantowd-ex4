@@ -31,6 +31,12 @@ observation, journal transition, and mutation.
   exact requested Unix name, owner-supplied UID/GID, SID, and disabled bit.
   Missing or ambiguous/malformed target records fail closed. Password hashes
   and the full command output are not exposed.
+- `ObserveAccounts` serves the internal Owner evidence snapshot with one
+  bounded listing for up to the live-account limit, returns rows in request
+  order, and clears captured output before returning. It refuses duplicate
+  requests, repeated target names/SIDs, and case-variant matches rather than
+  treating them as an absent account. Any malformed requested row fails the
+  whole batch; unrelated rows and their authentication material are discarded.
 - `CreateDisabled` invokes `smbpasswd -a -d` with no password input. The parent
   journal verifies that the new entry is present and disabled before recording
   confirmation.
@@ -64,7 +70,8 @@ a `review-required` operation under `smbprovision`.
 
 ## Verification and remaining integration
 
-Root-run Go/race tests exercise fixed arguments, exact-record parsing,
+Root-run Go/race tests exercise fixed arguments, exact-record and batched
+parsing,
 configuration ownership/mode/syntax checks and path-replacement resistance,
 stdin-only secret delivery, output clearing, and redacted failures. Tests verify
 that missing configuration creates no files and invalid configuration remains

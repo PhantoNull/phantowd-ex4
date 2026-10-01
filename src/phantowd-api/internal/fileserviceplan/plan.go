@@ -7,6 +7,8 @@
 package fileserviceplan
 
 import (
+	"crypto/sha256"
+	"encoding/binary"
 	"encoding/json"
 	"errors"
 	"path"
@@ -52,9 +54,10 @@ type ObservedVolume struct {
 // mounted logical volume in its scope and checked identity/compatibility. The
 // generation changes whenever any binding or relevant mount state changes.
 type StorageSnapshot struct {
-	Complete   bool
-	Generation uint64
-	Volumes    []ObservedVolume
+	Complete         bool
+	Generation       uint64
+	OwnerFingerprint [32]byte
+	Volumes          []ObservedVolume
 }
 
 // SambaIdentity pairs one Owner journal with a fresh redacted passdb
@@ -65,11 +68,14 @@ type SambaIdentity struct {
 }
 
 // IdentitySnapshot is an all-or-error view from the identity owner plus the
-// complete local UID/GID census used for NFS squash mappings. It is not built
-// from desired JSON or supplied by an HTTP client.
+// complete local UID/GID census used for NFS squash mappings. Generation is
+// the desired-registry revision; Fingerprint also binds native/Samba journals,
+// local reservations and current passdb observations. It is not built from
+// desired JSON or supplied by an HTTP client.
 type IdentitySnapshot struct {
 	Complete      bool
 	Generation    uint64
+	Fingerprint   [32]byte
 	Registry      serviceaccounts.Registry
 	UnixUIDs      []uint32
 	UnixGIDs      []uint32
@@ -78,12 +84,23 @@ type IdentitySnapshot struct {
 }
 
 // Freshness binds a candidate to the current policy, active service revision,
-// identity census and complete volume/mount observation.
+// identity generation plus complete evidence fingerprint, and complete
+// volume/mount observation.
 type Freshness struct {
-	PolicyRevision     uint64
-	ActiveRevision     uint64
-	IdentityGeneration uint64
-	StorageGeneration  uint64
+	PolicyRevision      uint64
+	ActiveRevision      uint64
+	IdentityGeneration  uint64
+	IdentityFingerprint [32]byte
+	StorageGeneration   uint64
+	StorageFingerprint  [32]byte
+}
+
+func (Freshness) MarshalJSON() ([]byte, error) {
+	return nil, errors.New("internal file-service freshness evidence is not serializable")
+}
+
+func (*Freshness) UnmarshalJSON([]byte) error {
+	return errors.New("internal file-service freshness evidence cannot be deserialized")
 }
 
 type VolumeBinding struct {
@@ -170,7 +187,8 @@ func Build(config fileservice.Config, activeRevision uint64, identities Identity
 		schemaVersion: 1,
 		freshness: Freshness{
 			PolicyRevision: config.Revision, ActiveRevision: activeRevision,
-			IdentityGeneration: identities.Generation, StorageGeneration: storage.Generation,
+			IdentityGeneration: identities.Generation, IdentityFingerprint: identities.Fingerprint,
+			StorageGeneration: storage.Generation, StorageFingerprint: fingerprintStorageSnapshot(storage),
 		},
 		scope: "candidate-only", activationAvailable: false, applied: false, runtimeValidated: false,
 		volumes: bindings, sambaConfig: preview.Samba.Sections, nfsConfig: preview.NFS.Table,
@@ -183,6 +201,53 @@ func Build(config fileservice.Config, activeRevision uint64, identities Identity
 // operation; it is not itself an atomic lease or a substitute for M4.4.
 func (p Plan) FreshAgainst(current Freshness) bool {
 	return p.scope == "candidate-only" && p.freshness == current
+}
+
+// Freshness returns the exact revision/evidence tuple bound to this candidate.
+// The service owner must build a new candidate from freshly collected inputs
+// and compare its tuple before any future transactional handoff.
+func (p Plan) Freshness() Freshness { return p.freshness }
+
+func fingerprintStorageSnapshot(snapshot StorageSnapshot) [32]byte {
+	h := sha256.New()
+	writeUint64 := func(value uint64) {
+		var encoded [8]byte
+		binary.BigEndian.PutUint64(encoded[:], value)
+		_, _ = h.Write(encoded[:])
+	}
+	writeString := func(value string) {
+		writeUint64(uint64(len(value)))
+		_, _ = h.Write([]byte(value))
+	}
+	writeUint64(uint64(snapshot.Generation))
+	_, _ = h.Write(snapshot.OwnerFingerprint[:])
+	if snapshot.Complete {
+		_, _ = h.Write([]byte{1})
+	} else {
+		_, _ = h.Write([]byte{0})
+	}
+	volumes := slices.Clone(snapshot.Volumes)
+	slices.SortFunc(volumes, func(left, right ObservedVolume) int {
+		return strings.Compare(string(left.VolumeID), string(right.VolumeID))
+	})
+	writeUint64(uint64(len(volumes)))
+	for _, volume := range volumes {
+		writeString(string(volume.VolumeID))
+		writeString(string(volume.FilesystemUUID))
+		writeString(volume.MountPath)
+		writeString(volume.Compatibility)
+		writeUint64(volume.MountID)
+		writeUint64(uint64(volume.DeviceMajor))
+		writeUint64(uint64(volume.DeviceMinor))
+		if volume.ReadOnly {
+			_, _ = h.Write([]byte{1})
+		} else {
+			_, _ = h.Write([]byte{0})
+		}
+	}
+	var fingerprint [32]byte
+	copy(fingerprint[:], h.Sum(nil))
+	return fingerprint
 }
 
 // RenderedCandidates returns copies of the deterministic config strings. The
@@ -206,6 +271,25 @@ func (Plan) MarshalJSON() ([]byte, error) {
 // with incomplete evidence. Plans must be rebuilt from trusted owner snapshots.
 func (*Plan) UnmarshalJSON([]byte) error {
 	return errors.New("internal file-service plan cannot be deserialized")
+}
+
+// IdentitySnapshot contains host-local account reservations and Samba IDs.
+// StorageSnapshot contains transient mount/device bindings. Keep both within
+// the trusted process boundary instead of allowing accidental API/log output.
+func (IdentitySnapshot) MarshalJSON() ([]byte, error) {
+	return nil, errors.New("internal file-service identity evidence is not serializable")
+}
+
+func (*IdentitySnapshot) UnmarshalJSON([]byte) error {
+	return errors.New("internal file-service identity evidence cannot be deserialized")
+}
+
+func (StorageSnapshot) MarshalJSON() ([]byte, error) {
+	return nil, errors.New("internal file-service storage evidence is not serializable")
+}
+
+func (*StorageSnapshot) UnmarshalJSON([]byte) error {
+	return errors.New("internal file-service storage evidence cannot be deserialized")
 }
 
 func referencedVolumes(config fileservice.Config) (map[shareconfig.VolumeID]bool, map[shareconfig.VolumeID]bool) {
@@ -241,6 +325,7 @@ func desiredVolume(config shareconfig.Config, id shareconfig.VolumeID) (sharecon
 
 func validateIdentitySnapshot(snapshot IdentitySnapshot) error {
 	if !snapshot.Complete || snapshot.Generation == 0 || snapshot.Registry.Validate() != nil ||
+		snapshot.Fingerprint == [32]byte{} ||
 		snapshot.UnixUIDs == nil || snapshot.UnixGIDs == nil || snapshot.Samba == nil ||
 		len(snapshot.UnixUIDs) > MaxUnixIdentities || len(snapshot.UnixGIDs) > MaxUnixIdentities ||
 		len(snapshot.Samba) > serviceaccounts.MaxRecords {

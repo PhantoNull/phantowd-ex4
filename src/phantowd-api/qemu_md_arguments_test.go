@@ -42,3 +42,21 @@ func TestQEMUMDV10CreateTargetsOnlyTheTwoFixedDisposableGPTPartitions(t *testing
 		}
 	}
 }
+
+func TestQEMUMDV10ReadonlyAssemblyTargetsOnlyTheTwoFixedGPTPartitions(t *testing.T) {
+	args := qemuMDV10AssembleReadonlyArguments()
+	if len(args) < 2 || args[0] != "--assemble" || args[1] != "--config=/dev/null" {
+		t.Fatalf("mdadm must select assemble before disabling its system config: args=%q", args)
+	}
+	if !containsString(args, "--readonly") {
+		t.Fatalf("MD v1.0 QEMU reassembly must be read-only: args=%q", args)
+	}
+	if args[len(args)-3] != "/dev/md0" || args[len(args)-2] != "/dev/sdb1" || args[len(args)-1] != "/dev/sdc1" {
+		t.Fatalf("MD v1.0 reassembly must use only its fixed array and two GPT partitions: args=%q", args)
+	}
+	for _, forbidden := range []string{"/dev/sda", "/dev/sda1", "/dev/sdb", "/dev/sdc", "/dev/sdd", "/dev/sde", "/dev/sdf"} {
+		if containsString(args, forbidden) {
+			t.Fatalf("MD v1.0 reassembly included a whole disk or unrelated device %q: args=%q", forbidden, args)
+		}
+	}
+}

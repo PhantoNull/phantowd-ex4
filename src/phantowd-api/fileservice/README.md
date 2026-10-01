@@ -102,12 +102,34 @@ hardware compatibility or production service activation.
 
 The separate [internal candidate-plan package](../internal/fileserviceplan/README.md)
 is a fixture-only step toward M4.1. It compiles combined desired policy against
-explicit identity and storage snapshots, binds the candidate to policy/active/
-identity/storage revisions, and refuses stale observations. It does not collect
-those snapshots, verify them against live mounts/accounts, run `testparm` or
-`exportfs`, persist daemon configuration, or start/reload services. The plan
-cannot be marshaled or unmarshaled as JSON and has no apply method. Its host
-tests and QEMU smoke use synthetic in-memory observations; the package is not
-called by an HTTP route or product runtime owner. See the package's
+identity and storage snapshots, binds the candidate to policy/active/identity/
+storage revisions and the identity evidence fingerprint, and refuses stale
+observations. A Linux-only adapter now obtains identity evidence from
+`identityowner.Owner`; the disposable ARMv5 QEMU Owner fixture exercises it
+using an empty policy and synthetic empty storage, and checks that a registry
+change invalidates the old candidate. There is still no production storage
+roster provider. A separate synthetic combined-plan QEMU fixture validates
+candidates with `testparm`/`exportfs`; this is not validation against a product
+mount. The non-empty Owner/mount-owner NFS candidate also has a distinct
+target-`exportfs` accept/withdraw round trip in the disposable ARMv5 guest,
+which verifies the candidate against one actual synthetic mount tuple. No
+daemon configuration is persisted and no product service is started/reloaded.
+Plans and evidence snapshots cannot be marshaled/unmarshaled as JSON and have
+no apply method. The package is not called by an HTTP route or product runtime
+owner. See the package's
 [implementation and limits](../internal/fileserviceplan/README.md) and
 [M4 roadmap](../../../ROADMAP.md#m4-supervised-smb-and-nfs).
+
+The current-source ARMv5 QEMU follow-up also builds a separate NFS-only,
+read-only candidate from the disposable Owner's identity/local UID/GID snapshot
+and the mount-owner fixed-roster snapshot of one synthetic ext2 volume. The
+collector locks/revalidates every owner in its declared roster and returns no
+partial snapshot; the planner binds the roster fingerprint into freshness. It
+rejects altered identity or storage evidence without Samba enrollment or export
+activation. This does not supply the missing production roster source or prove
+complete appliance storage inventory.
+
+The target parser fixture briefly loads that candidate into the disposable
+guest's export table, validates the parsed rule and exact restoration of the
+baseline after withdrawal. This is parser integration only, not product
+activation or an export installed by the planner.

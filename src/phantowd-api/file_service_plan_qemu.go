@@ -6,9 +6,8 @@
 package main
 
 import (
-	"encoding/json"
+	"crypto/sha256"
 	"errors"
-	"strings"
 
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/fileservice"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/fileserviceplan"
@@ -18,9 +17,31 @@ import (
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/shareconfig"
 )
 
+func emptyQEMUFileServiceConfig() fileservice.Config {
+	shares := shareconfig.Config{
+		Format: shareconfig.Format, SchemaVersion: shareconfig.SchemaVersion, Revision: 1,
+		Volumes: []shareconfig.Volume{}, Users: []shareconfig.User{}, Shares: []shareconfig.Share{},
+	}
+	nfs := nfsconfig.Policy{
+		Format: nfsconfig.Format, SchemaVersion: 1, Revision: 1, VolumeRevision: 1,
+		Exports: []nfsconfig.Export{},
+	}
+	return fileservice.Config{Format: fileservice.ConfigFormat, SchemaVersion: 1, Revision: 1, Shares: shares, NFS: nfs}
+}
+
 // This synthetic plan fixture tests only the internal compiler. It constructs
 // no mount, reads no disk, and never connects candidate text to a service.
-func buildQEMUFileServicePlan() (fileserviceplan.Plan, error) {
+const qemuPlannerVolumeID shareconfig.VolumeID = "qemu-plan"
+
+func syntheticQEMUStorageSnapshot(volumeID shareconfig.VolumeID, generation uint64) fileserviceplan.StorageSnapshot {
+	return fileserviceplan.StorageSnapshot{Complete: true, Generation: generation, Volumes: []fileserviceplan.ObservedVolume{{
+		VolumeID: volumeID, FilesystemUUID: qemuNFSVolumeUUID,
+		MountPath:     shareconfig.VolumeMountRoot + "/" + string(volumeID),
+		Compatibility: fileserviceplan.CompatibilityQualified, MountID: 31, DeviceMajor: 8, DeviceMinor: 17,
+	}}}
+}
+
+func buildQEMUFileServicePlan(volumeID shareconfig.VolumeID, storage fileserviceplan.StorageSnapshot) (fileserviceplan.Plan, error) {
 	registry, err := serviceaccounts.New(1000, 2000)
 	if err != nil {
 		return fileserviceplan.Plan{}, errors.New("QEMU plan fixture registry initialization failed")
@@ -44,7 +65,7 @@ func buildQEMUFileServicePlan() (fileserviceplan.Plan, error) {
 		SID: "S-1-5-21-1-2-3-1001", Phase: smbprovision.Enabled,
 	}
 	identity := fileserviceplan.IdentitySnapshot{
-		Complete: true, Generation: 9, Registry: registry,
+		Complete: true, Generation: 9, Fingerprint: sha256.Sum256([]byte("phantowd-qemu-synthetic-identity-v1")), Registry: registry,
 		UnixUIDs: []uint32{account.UID}, UnixGIDs: []uint32{account.GID},
 		Samba: []fileserviceplan.SambaIdentity{{Journal: journal, Observation: smbprovision.Observation{
 			Present: true, Name: account.Name, UID: account.UID, GID: account.GID,
@@ -53,23 +74,18 @@ func buildQEMUFileServicePlan() (fileserviceplan.Plan, error) {
 	}
 	shares := shareconfig.Config{
 		Format: shareconfig.Format, SchemaVersion: shareconfig.SchemaVersion, Revision: 4,
-		Volumes: []shareconfig.Volume{{ID: qemuNFSVolumeID, FilesystemUUID: qemuNFSVolumeUUID}},
+		Volumes: []shareconfig.Volume{{ID: volumeID, FilesystemUUID: qemuNFSVolumeUUID}},
 		Users:   []shareconfig.User{{ID: account.ID, Name: account.Name}},
-		Shares: []shareconfig.Share{{ID: "books", Name: "Books", VolumeID: qemuNFSVolumeID, RelativePath: "books",
+		Shares: []shareconfig.Share{{ID: "books", Name: "Books", VolumeID: volumeID, RelativePath: "books",
 			Grants: []shareconfig.Grant{{UserID: account.ID, Access: "rw"}}}},
 	}
 	nfs := nfsconfig.Policy{
 		Format: nfsconfig.Format, SchemaVersion: 1, Revision: 4, VolumeRevision: 4,
-		Exports: []nfsconfig.Export{{ID: "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee", VolumeID: qemuNFSVolumeID, RelativePath: "books",
+		Exports: []nfsconfig.Export{{ID: "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee", VolumeID: volumeID, RelativePath: "books",
 			Clients: []nfsconfig.Client{{Network: "127.0.0.1/32", Access: "rw", Squash: "all",
 				AnonymousUID: account.UID, AnonymousGID: account.GID, Security: "sys"}}}},
 	}
 	config := fileservice.Config{Format: fileservice.ConfigFormat, SchemaVersion: 1, Revision: 4, Shares: shares, NFS: nfs}
-	storage := fileserviceplan.StorageSnapshot{Complete: true, Generation: 12, Volumes: []fileserviceplan.ObservedVolume{{
-		VolumeID: qemuNFSVolumeID, FilesystemUUID: qemuNFSVolumeUUID,
-		MountPath: shareconfig.VolumeMountRoot + "/" + string(qemuNFSVolumeID), Compatibility: fileserviceplan.CompatibilityQualified,
-		MountID: 31, DeviceMajor: 8, DeviceMinor: 17,
-	}}}
 	plan, err := fileserviceplan.Build(config, 2, identity, storage)
 	if err != nil {
 		return fileserviceplan.Plan{}, errors.New("QEMU file-service candidate-plan compilation failed")
@@ -77,19 +93,6 @@ func buildQEMUFileServicePlan() (fileserviceplan.Plan, error) {
 	return plan, nil
 }
 
-func exerciseQEMUFileServicePlan() error {
-	plan, err := buildQEMUFileServicePlan()
-	if err != nil {
-		return err
-	}
-	samba, exports := plan.RenderedCandidates()
-	if !strings.Contains(samba, "write list = alice") || !strings.Contains(exports, "anonuid=1000,anongid=1000") ||
-		!plan.FreshAgainst(fileserviceplan.Freshness{PolicyRevision: 4, ActiveRevision: 2, IdentityGeneration: 9, StorageGeneration: 12}) ||
-		plan.FreshAgainst(fileserviceplan.Freshness{PolicyRevision: 4, ActiveRevision: 2, IdentityGeneration: 9, StorageGeneration: 13}) {
-		return errors.New("QEMU file-service plan lost rendering or stale-snapshot protections")
-	}
-	if _, err := json.Marshal(plan); err == nil {
-		return errors.New("QEMU file-service internal plan became serializable")
-	}
-	return validateQEMUPlanSambaWithTestparm(samba)
+func identityFingerprintForQEMUPlan() [32]byte {
+	return sha256.Sum256([]byte("phantowd-qemu-synthetic-identity-v1"))
 }

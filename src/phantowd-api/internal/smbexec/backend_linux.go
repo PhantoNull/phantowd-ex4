@@ -114,21 +114,50 @@ func (b *Backend) Close() error {
 // Observe returns only the requested account's Unix name, owner-supplied UID/GID,
 // SID and disabled bit. Password hashes and command output never escape.
 func (b *Backend) Observe(ctx context.Context, account serviceaccounts.Account) (smbprovision.Observation, error) {
-	if b == nil || ctx == nil || !validAccount(account) {
-		return smbprovision.Observation{}, ErrInvalid
+	observations, err := b.ObserveAccounts(ctx, []serviceaccounts.Account{account})
+	if err != nil {
+		return smbprovision.Observation{}, err
+	}
+	return observations[0], nil
+}
+
+// ObserveAccounts obtains one bounded passdb listing and returns only the
+// requested identities in caller order. The full command output, including
+// password hashes emitted by pdbedit, is cleared before returning.
+func (b *Backend) ObserveAccounts(ctx context.Context, accounts []serviceaccounts.Account) ([]smbprovision.Observation, error) {
+	if b == nil || ctx == nil || len(accounts) > serviceaccounts.MaxLive {
+		return nil, ErrInvalid
+	}
+	if ctx.Err() != nil {
+		return nil, ErrUnavailable
+	}
+	observations := make([]smbprovision.Observation, len(accounts))
+	if len(accounts) == 0 {
+		return observations, nil
+	}
+	seenIDs, seenNames := make(map[string]bool, len(accounts)), make(map[string]bool, len(accounts))
+	for _, account := range accounts {
+		if !validObservedAccount(account) || seenIDs[account.ID] || seenNames[account.Name] {
+			return nil, ErrInvalid
+		}
+		seenIDs[account.ID], seenNames[account.Name] = true, true
 	}
 	b.mu.RLock()
 	defer b.mu.RUnlock()
 	if b.runner == nil || b.config == nil {
-		return smbprovision.Observation{}, ErrInvalid
+		return nil, ErrInvalid
 	}
 	output, err := b.runner.Run(ctx, pdbeditPath, []string{"-L", "-v", "-s", configArgument}, b.config, nil, true)
 	if err != nil {
 		clear(output)
-		return smbprovision.Observation{}, ErrUnavailable
+		return nil, ErrUnavailable
 	}
 	defer clear(output)
-	return parseObservation(output, account)
+	observations, err = parseObservations(output, accounts)
+	if err != nil || ctx.Err() != nil {
+		return nil, ErrUnavailable
+	}
+	return observations, nil
 }
 
 // CreateDisabled adds one existing Unix identity to passdb without supplying
@@ -438,86 +467,117 @@ func validAccount(account serviceaccounts.Account) bool {
 	return r.Validate() == nil && account.State == serviceaccounts.Disabled
 }
 
+// Read-only passdb observation must accept the registry's current desired
+// enabled state as well as disabled identities. Mutating executor operations
+// continue to require the immutable disabled native-journal account instead.
+func validObservedAccount(account serviceaccounts.Account) bool {
+	if account.State != serviceaccounts.Disabled && account.State != serviceaccounts.Enabled {
+		return false
+	}
+	account.State = serviceaccounts.Disabled
+	return validAccount(account)
+}
+
 type passdbRecord struct {
-	name, sid, flags string
+	sid, flags       string
 	hasSID, hasFlags bool
+	requested        bool
+	index            int
 }
 
 func parseObservation(output []byte, account serviceaccounts.Account) (smbprovision.Observation, error) {
-	var matches []passdbRecord
+	observations, err := parseObservations(output, []serviceaccounts.Account{account})
+	if err != nil {
+		return smbprovision.Observation{}, err
+	}
+	return observations[0], nil
+}
+
+func parseObservations(output []byte, accounts []serviceaccounts.Account) ([]smbprovision.Observation, error) {
+	wanted, foldedWanted := make(map[string]int, len(accounts)), make(map[string]int, len(accounts))
+	for i, account := range accounts {
+		if !validObservedAccount(account) {
+			return nil, smbprovision.ErrObservation
+		}
+		folded := strings.ToLower(account.Name)
+		if _, exists := wanted[account.Name]; exists {
+			return nil, smbprovision.ErrObservation
+		}
+		if _, exists := foldedWanted[folded]; exists {
+			return nil, smbprovision.ErrObservation
+		}
+		wanted[account.Name] = i
+		foldedWanted[folded] = i
+	}
+	observations := make([]smbprovision.Observation, len(accounts))
+	found := make([]bool, len(accounts))
+	seenSIDs := make(map[string]bool, len(accounts))
 	var current *passdbRecord
 	finish := func() error {
-		if current == nil {
+		if current == nil || !current.requested {
+			current = nil
 			return nil
 		}
-		if current.name == account.Name {
-			if !current.hasSID || !validSID(current.sid) || !current.hasFlags || !validAccountFlags(current.flags) {
-				return smbprovision.ErrObservation
-			}
-			matches = append(matches, *current)
+		if !current.hasSID || !validSID(current.sid) || !current.hasFlags || !validAccountFlags(current.flags) ||
+			found[current.index] || seenSIDs[current.sid] {
+			return smbprovision.ErrObservation
 		}
+		flags := strings.ReplaceAll(current.flags, " ", "")
+		account := accounts[current.index]
+		observations[current.index] = smbprovision.Observation{
+			Present: true, Name: account.Name, UID: account.UID, GID: account.GID,
+			SID: current.sid, Disabled: strings.Contains(flags, "D"),
+		}
+		found[current.index], seenSIDs[current.sid] = true, true
 		current = nil
 		return nil
 	}
-	for _, rawLine := range strings.Split(string(output), "\n") {
-		line := strings.TrimSpace(rawLine)
-		if strings.HasPrefix(line, "Unix username:") {
+	for _, rawLine := range bytes.Split(output, []byte{'\n'}) {
+		line := bytes.TrimSpace(rawLine)
+		if bytes.HasPrefix(line, []byte("Unix username:")) {
 			if err := finish(); err != nil {
-				return smbprovision.Observation{}, err
+				return nil, err
 			}
-			name := strings.TrimSpace(strings.TrimPrefix(line, "Unix username:"))
+			name := strings.TrimSpace(string(bytes.TrimSpace(bytes.TrimPrefix(line, []byte("Unix username:")))))
 			if name == "" || strings.ContainsAny(name, "\x00\r\n") {
-				return smbprovision.Observation{}, smbprovision.ErrObservation
+				return nil, smbprovision.ErrObservation
 			}
-			current = &passdbRecord{name: name}
-			continue
-		}
-		if current == nil {
-			continue
-		}
-		if strings.HasPrefix(line, "User SID:") {
-			if current.hasSID {
-				if current.name == account.Name {
-					return smbprovision.Observation{}, smbprovision.ErrObservation
+			index, requested := wanted[name]
+			if !requested {
+				if _, caseCollision := foldedWanted[strings.ToLower(name)]; caseCollision {
+					return nil, smbprovision.ErrObservation
 				}
-				continue
 			}
-			current.sid = strings.TrimSpace(strings.TrimPrefix(line, "User SID:"))
+			current = &passdbRecord{requested: requested, index: index}
+			continue
+		}
+		if current == nil || !current.requested {
+			continue
+		}
+		if bytes.HasPrefix(line, []byte("User SID:")) {
+			if current.hasSID {
+				return nil, smbprovision.ErrObservation
+			}
+			current.sid = strings.TrimSpace(string(bytes.TrimSpace(bytes.TrimPrefix(line, []byte("User SID:")))))
 			current.hasSID = true
 		}
-		if strings.HasPrefix(line, "Account Flags:") {
+		if bytes.HasPrefix(line, []byte("Account Flags:")) {
 			if current.hasFlags {
-				if current.name == account.Name {
-					return smbprovision.Observation{}, smbprovision.ErrObservation
-				}
-				continue
+				return nil, smbprovision.ErrObservation
 			}
-			value := strings.TrimSpace(strings.TrimPrefix(line, "Account Flags:"))
+			value := strings.TrimSpace(string(bytes.TrimSpace(bytes.TrimPrefix(line, []byte("Account Flags:")))))
 			start, end := strings.IndexByte(value, '['), strings.LastIndexByte(value, ']')
 			if start < 0 || end <= start || strings.TrimSpace(value[end+1:]) != "" {
-				if current.name == account.Name {
-					return smbprovision.Observation{}, smbprovision.ErrObservation
-				}
-				continue
+				return nil, smbprovision.ErrObservation
 			}
 			current.flags = value[start+1 : end]
 			current.hasFlags = true
 		}
 	}
 	if err := finish(); err != nil {
-		return smbprovision.Observation{}, err
+		return nil, err
 	}
-	if len(matches) == 0 {
-		return smbprovision.Observation{}, nil
-	}
-	if len(matches) != 1 {
-		return smbprovision.Observation{}, smbprovision.ErrObservation
-	}
-	flags := strings.ReplaceAll(matches[0].flags, " ", "")
-	return smbprovision.Observation{
-		Present: true, Name: account.Name, UID: account.UID, GID: account.GID,
-		SID: matches[0].sid, Disabled: strings.Contains(flags, "D"),
-	}, nil
+	return observations, nil
 }
 
 func validAccountFlags(flags string) bool {

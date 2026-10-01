@@ -7,11 +7,14 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
+	"slices"
 
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/identityowner"
+	"github.com/PhantoNull/phantowd-ex4/phantowd-api/identityprovision"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/smbprovision"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/serviceaccounts"
 )
@@ -110,5 +113,66 @@ func exerciseQEMUOwnerSMBEnrollment(owner *identityowner.Owner, account servicea
 		return errors.New("new credential failed after explicit re-enable")
 	}
 	clear(output)
+
+	// Exercise the M4.1 observation against the same fixed Owner/backend after
+	// the existing disposable enrollment fixture reaches a stable enabled state.
+	// This call itself must not alter either journal or authentication state.
+	nativeBefore, err := owner.Operation(account.ID).Load(ctx)
+	if err != nil {
+		return errors.New("could not read native journal before Owner evidence collection")
+	}
+	sambaBefore, err := operation.Load(ctx)
+	if err != nil {
+		return errors.New("could not read Samba journal before Owner evidence collection")
+	}
+	evidence, err := owner.FileServiceSnapshot(ctx)
+	if err != nil {
+		return errors.New("ARMv5 Owner identity/passdb observation failed")
+	}
+	if evidence.Registry.Validate() != nil || len(evidence.Registry.Accounts) != 2 ||
+		len(evidence.Native) != len(evidence.Registry.Accounts) || len(evidence.Passdb) != len(evidence.Registry.Accounts) ||
+		len(evidence.Samba) != 1 || evidence.Fingerprint == ([32]byte{}) ||
+		!slices.Contains(evidence.UIDs, account.UID) || !slices.Contains(evidence.GIDs, account.GID) {
+		return errors.New("ARMv5 Owner identity evidence omitted its complete local identity census")
+	}
+	for index, managed := range evidence.Registry.Accounts {
+		journal := evidence.Native[index]
+		passdb := evidence.Passdb[index]
+		if journal.Validate() != nil || journal.Phase != identityprovision.UnixConfirmed ||
+			journal.Account.ID != managed.ID || passdb.AccountID != managed.ID {
+			return errors.New("ARMv5 Owner identity evidence lost ledger/journal/passdb alignment")
+		}
+		if managed.ID == account.ID {
+			if !passdb.Observation.Present || passdb.Observation.Name != account.Name ||
+				passdb.Observation.UID != account.UID || passdb.Observation.GID != account.GID ||
+				passdb.Observation.SID == "" || passdb.Observation.Disabled {
+				return errors.New("ARMv5 Owner passdb observation lost redacted enabled identity fields")
+			}
+		} else if passdb.Observation != (smbprovision.Observation{}) {
+			return errors.New("ARMv5 Owner passdb observation adopted an unrelated identity")
+		}
+	}
+	observedSamba := evidence.Samba[0]
+	if observedSamba.Journal.Account.ID != account.ID || observedSamba.Journal.Phase != smbprovision.Enabled ||
+		observedSamba.Journal != sambaBefore || observedSamba.Observation.Name != account.Name ||
+		observedSamba.Observation.UID != account.UID || observedSamba.Observation.GID != account.GID ||
+		observedSamba.Observation.SID == "" || observedSamba.Observation.Disabled {
+		return errors.New("ARMv5 Owner evidence did not correlate the enabled journal with redacted passdb state")
+	}
+	if _, err := json.Marshal(evidence); err == nil {
+		return errors.New("ARMv5 Owner identity evidence became serializable")
+	}
+	nativeAfter, err := owner.Operation(account.ID).Load(ctx)
+	if err != nil || nativeAfter != nativeBefore {
+		return errors.New("ARMv5 Owner identity observation changed the native journal")
+	}
+	sambaAfter, err := operation.Load(ctx)
+	if err != nil || sambaAfter != sambaBefore {
+		return errors.New("ARMv5 Owner identity observation changed the Samba journal")
+	}
+	fmt.Println("PHANTOWD_M41_OWNER_PASSDB_OBSERVATION_READY owner_locked=true ledger=true native_journals=true samba_journal=true passdb=redacted uid_gid=local_census no_adoption=true journals_unchanged=true auth_mutation=false activation=false http=false scope=disposable-qemu-only")
+	if err := exerciseQEMUOwnerLockCoherentNFSPlan(ctx, owner, account); err != nil {
+		return err
+	}
 	return nil
 }

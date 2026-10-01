@@ -18,8 +18,17 @@ import (
 )
 
 const (
-	qemuFixtureSource = "/srv/phantowd/volumes/qemu-only"
-	qemuFixtureUUID   = "11111111-2222-3333-4444-555555555555"
+	qemuFixtureSource      = "/srv/phantowd/volumes/qemu-only"
+	qemuFixtureUUID        = "11111111-2222-3333-4444-555555555555"
+	qemuPlannerVolumeID    = "qemu-plan"
+	qemuPlannerMountAnchor = "/srv/phantowd/volumes/qemu-plan"
+	qemuMDStackMountAnchor = "/srv/phantowd/volumes/qemu-md-stack"
+	qemuMDStackFilesystem  = "66666666-7777-8888-9999-aaaaaaaaaaaa"
+)
+
+const (
+	QEMUMDStackFixtureSource   = "/run/phantowd-md-stack"
+	QEMUMDStackFixtureVolumeID = "qemu-md-stack"
 )
 
 // RunQEMUFixture exercises real bind-mount operations only against the
@@ -59,6 +68,141 @@ func RunQEMUFixture(source string) error {
 	}
 	fmt.Println("PHANTOWD_MOUNT_OWNER_READY qualified_before_lease=true identity_change_blocks_new_access=true owner_handles_revoked=true ambiguous_mount_no_retry=true ambiguous_unmount_no_retry=true mismatch_no_lease=true target_fd_anchored=true target_replacement_not_used=true late_target_race_pinned_object_only=true late_target_race_quarantined=true source_fd_anchored=true source_replacement_quarantined=true scope=disposable-qemu-only")
 	return nil
+}
+
+// WithQEMUMountedEvidence keeps a fixed-identity QEMU bind mount alive while a
+// caller builds a candidate from its actual kernel mount tuple. It is compiled
+// only into the disposable Linux/ARM QEMU guest and refuses every other path.
+func WithQEMUMountedEvidence(source string, inspect func(MountedVolumeEvidence) error) (result error) {
+	if inspect == nil {
+		return errors.New("file-service mount integration requires an observer")
+	}
+	return withQEMUMountedOwner(source, func(owner *Owner) error {
+		evidence, err := owner.ObserveMountedVolume()
+		if err != nil || evidence.VolumeID() != qemuPlannerVolumeID || evidence.FilesystemUUID() != qemuFixtureUUID ||
+			evidence.Compatibility() != qualifiedCompatibility || evidence.Generation() == 0 ||
+			evidence.MountID() == 0 || evidence.DeviceMajor() == 0 {
+			return errors.New("QEMU mount owner returned incomplete mounted evidence")
+		}
+		return inspect(evidence)
+	})
+}
+
+// WithQEMUMountedSet exposes the fixed disposable QEMU roster to one internal
+// integration callback. The roster constructor and mount remain private to
+// this QEMU-only path; this does not establish production inventory or
+// compatibility policy.
+func WithQEMUMountedSet(source string, inspect func(*MountedVolumeSet) error) error {
+	if inspect == nil {
+		return errors.New("file-service mount-set integration requires an observer")
+	}
+	return withQEMUMountedOwner(source, func(owner *Owner) error {
+		set, err := newMountedVolumeSet([]string{qemuPlannerVolumeID}, []*Owner{owner})
+		if err != nil {
+			return errors.New("QEMU mount-owner roster could not be created")
+		}
+		return inspect(set)
+	})
+}
+
+// WithQEMUMountedSetEvidence runs a snapshot observer under all roster locks
+// using the one fixed logical volume in the disposable guest.
+func WithQEMUMountedSetEvidence(source string, inspect func(MountedVolumeSetEvidence) error) error {
+	if inspect == nil {
+		return errors.New("file-service mount-set integration requires an observer")
+	}
+	return WithQEMUMountedSet(source, func(set *MountedVolumeSet) error {
+		evidence, err := set.Observe()
+		if err != nil || !evidence.Complete() || evidence.Generation() == 0 || len(evidence.Volumes()) != 1 {
+			return errors.New("QEMU mount-owner set returned incomplete evidence")
+		}
+		return inspect(evidence)
+	})
+}
+
+// WithQEMUMDStackSetEvidence connects the separately verified M3.3 disposable
+// MD/filesystem fixture to the M3.4 mount Owner. Its source, UUID, logical ID
+// and destination are fixed; only the QEMU caller may invoke it, and the
+// callback receives evidence while the one-member set and Owner are locked.
+// It never opens a block device, assembles an array, or accesses user media.
+func WithQEMUMDStackSetEvidence(source string, inspect func(MountedVolumeSetEvidence) error) error {
+	if source != QEMUMDStackFixtureSource || inspect == nil {
+		return errors.New("M3.3/M3.4 bridge requires its fixed disposable MD source")
+	}
+	return withQEMUMountedOwnerAt(source, qemuMDStackMountAnchor, QEMUMDStackFixtureVolumeID,
+		qemuMDStackFilesystem, false, func(owner *Owner) error {
+			set, err := newMountedVolumeSet([]string{QEMUMDStackFixtureVolumeID}, []*Owner{owner})
+			if err != nil {
+				return errors.New("QEMU MD mounted-volume roster could not be created")
+			}
+			return set.WithEvidence(inspect)
+		})
+}
+
+func withQEMUMountedOwner(source string, inspect func(*Owner) error) (result error) {
+	return withQEMUMountedOwnerAt(source, qemuPlannerMountAnchor, qemuPlannerVolumeID,
+		qemuFixtureUUID, true, inspect)
+}
+
+func withQEMUMountedOwnerAt(source, target, volumeID, filesystemUUID string, requireWritable bool, inspect func(*Owner) error) (result error) {
+	fixedSource := source == qemuFixtureSource && target == qemuPlannerMountAnchor &&
+		volumeID == qemuPlannerVolumeID && filesystemUUID == qemuFixtureUUID && requireWritable
+	fixedMDSource := source == QEMUMDStackFixtureSource && target == qemuMDStackMountAnchor &&
+		volumeID == QEMUMDStackFixtureVolumeID && filesystemUUID == qemuMDStackFilesystem && !requireWritable
+	if (!fixedSource && !fixedMDSource) || inspect == nil || runtime.GOOS != "linux" || runtime.GOARCH != "arm" {
+		return errors.New("file-service mount integration requires its fixed QEMU source")
+	}
+	model, err := os.ReadFile("/sys/firmware/devicetree/base/model")
+	if err != nil || string(model) != "ARM Versatile PB\x00" {
+		return errors.New("file-service mount integration requires the disposable Versatile PB guest")
+	}
+	if _, err := os.Lstat(target); !errors.Is(err, os.ErrNotExist) {
+		return errors.New("fixed QEMU planner mount anchor already exists")
+	}
+	if err := os.Mkdir(target, 0700); err != nil {
+		return errors.New("fixed QEMU planner mount anchor could not be created")
+	}
+	f, err := newQEMUMountFixtureAtExpected(source, target, volumeID, "", filesystemUUID, requireWritable)
+	if err != nil {
+		_ = os.Remove(target)
+		return err
+	}
+	mounted := false
+	defer func() {
+		if mounted && f.owner.State() == StateMounted {
+			if drainErr := f.owner.Drain(); drainErr == nil {
+				if unmountErr := f.owner.Unmount(context.Background()); unmountErr != nil {
+					result = errors.Join(result, unmountErr)
+				} else {
+					mounted = false
+				}
+			} else {
+				result = errors.Join(result, drainErr)
+			}
+		}
+		result = errors.Join(result, f.close())
+	}()
+	if err := f.owner.Qualify(f.qualification); err != nil {
+		return err
+	}
+	if err := f.owner.Mount(context.Background()); err != nil {
+		return err
+	}
+	mounted = true
+	if err := f.owner.Verify(); err != nil {
+		return err
+	}
+	inspectErr := inspect(f.owner)
+	verifyErr := f.owner.Verify()
+	drainErr := f.owner.Drain()
+	var unmountErr error
+	if drainErr == nil {
+		unmountErr = f.owner.Unmount(context.Background())
+		if unmountErr == nil {
+			mounted = false
+		}
+	}
+	return errors.Join(inspectErr, verifyErr, drainErr, unmountErr)
 }
 
 type linuxObserver struct{}
@@ -289,21 +433,30 @@ func newQEMUMountFixture(source string) (*qemuMountFixture, error) {
 		os.Remove(workspace)
 		return nil, err
 	}
+	return newQEMUMountFixtureAt(source, target, "qemu-only", workspace)
+}
+
+func newQEMUMountFixtureAt(source, target, volumeID, workspace string) (*qemuMountFixture, error) {
+	return newQEMUMountFixtureAtExpected(source, target, volumeID, workspace, qemuFixtureUUID, true)
+}
+
+func newQEMUMountFixtureAtExpected(source, target, volumeID, workspace, filesystemUUID string, requireWritable bool) (*qemuMountFixture, error) {
 	observer := linuxObserver{}
 	sourceExpected, err := observer.ObserveMount(source)
-	if err != nil || sourceExpected.FilesystemType != uint32(unix.EXT4_SUPER_MAGIC) || !sourceExpected.RequireWritable {
+	if err != nil || sourceExpected.FilesystemType != uint32(unix.EXT4_SUPER_MAGIC) || sourceExpected.RequireWritable != requireWritable {
 		os.Remove(target)
 		os.Remove(workspace)
 		return nil, mountguard.ErrMismatch
 	}
-	sourceExpected.FilesystemUUID = qemuFixtureUUID
+	sourceExpected.FilesystemUUID = filesystemUUID
 	sourceRoot, err := mountguard.Open(source, sourceExpected)
 	if err != nil {
 		os.Remove(target)
 		os.Remove(workspace)
 		return nil, err
 	}
-	qualification := &Qualification{volumeID: "qemu-only", source: source, expected: sourceExpected, sourceRoot: sourceRoot}
+	qualification := &Qualification{volumeID: volumeID, compatibility: qualifiedCompatibility,
+		source: source, expected: sourceExpected, sourceRoot: sourceRoot}
 	driver := &qemuBindDriver{target: target}
 	owner, err := newOwner(target, driver, observer, func(path string, expected mountguard.Expected) (rootGuard, error) {
 		return mountguard.Open(path, expected)
@@ -357,6 +510,9 @@ func (f *qemuMountFixture) close() error {
 	}
 	if err := os.Remove(f.target); err != nil {
 		return err
+	}
+	if f.workspace == "" {
+		return nil
 	}
 	return os.Remove(f.workspace)
 }

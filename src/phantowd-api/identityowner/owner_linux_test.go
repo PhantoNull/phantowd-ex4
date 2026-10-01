@@ -5,6 +5,7 @@ package identityowner
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -76,16 +77,17 @@ func (m *model) dependencies() dependencies {
 }
 
 type modeledSMB struct {
-	observation  smbprovision.Observation
-	observeCalls int
-	observeErr   bool
-	createCalls  int
-	setCalls     int
-	enableCalls  int
-	disableCalls int
-	enableErr    bool
-	secret       []byte
-	onCreate     func()
+	observation     smbprovision.Observation
+	observeCalls    int
+	observeSetCalls int
+	observeErr      bool
+	createCalls     int
+	setCalls        int
+	enableCalls     int
+	disableCalls    int
+	enableErr       bool
+	secret          []byte
+	onCreate        func()
 }
 
 type closeCountingSMB struct {
@@ -107,6 +109,20 @@ func (b *modeledSMB) Observe(_ context.Context, account serviceaccounts.Account)
 		return smbprovision.Observation{}, errors.New("PRIVATE SMB account mismatch")
 	}
 	return b.observation, nil
+}
+func (b *modeledSMB) ObserveAccounts(_ context.Context, accounts []serviceaccounts.Account) ([]smbprovision.Observation, error) {
+	b.observeSetCalls++
+	if b.observeErr {
+		return nil, errors.New("PRIVATE SMB observation failure")
+	}
+	observations := make([]smbprovision.Observation, len(accounts))
+	for i, account := range accounts {
+		if b.observation.Present && (b.observation.Name != account.Name || b.observation.UID != account.UID || b.observation.GID != account.GID) {
+			return nil, errors.New("PRIVATE SMB account mismatch")
+		}
+		observations[i] = b.observation
+	}
+	return observations, nil
 }
 func (b *modeledSMB) CreateDisabled(_ context.Context, account serviceaccounts.Account) error {
 	b.createCalls++
@@ -378,6 +394,294 @@ func TestOwnerDesiredStateTransitionsAreRevisionedAndKeepNativeIdentityImmutable
 	}
 	if err := o.SetDesiredState(ctx, 6, first.ID, serviceaccounts.Retired); !errors.Is(err, serviceaccounts.ErrTransition) {
 		t.Fatal("unsupported retirement was accepted", err)
+	}
+}
+
+func TestFileServiceSnapshotCollectsReadOnlyIdentityEvidence(t *testing.T) {
+	backend := &modeledSMB{}
+	o, _, _ := fixtureWithSMB(t, backend)
+	ctx := context.Background()
+	account, err := o.Reserve(ctx, 1, "first", "firstuser")
+	if err != nil {
+		t.Fatal("reserve account:", err)
+	}
+	completeUnixIdentity(t, o, account.ID)
+	if err := o.SetDesiredState(ctx, 2, account.ID, serviceaccounts.Enabled); err != nil {
+		t.Fatal("set desired account state:", err)
+	}
+	smb := o.SMB(account.ID)
+	if err := smb.Begin(ctx, 5); err != nil {
+		t.Fatal("begin Samba enrollment:", err)
+	}
+	if err := smb.Step(ctx, 1); err != nil {
+		t.Fatal("create disabled Samba entry:", err)
+	}
+	if err := smb.SetPasswordDisabled(ctx, 3, []byte("test-only-private-secret")); err != nil {
+		t.Fatal("set disabled Samba credential:", err)
+	}
+	if err := smb.Enable(ctx, 5); err != nil {
+		t.Fatal("explicitly enable Samba entry:", err)
+	}
+
+	mutations := [4]int{backend.createCalls, backend.setCalls, backend.enableCalls, backend.disableCalls}
+	first, err := o.FileServiceSnapshot(ctx)
+	if err != nil {
+		t.Fatal("read file-service identity snapshot:", err)
+	}
+	if first.Registry.Revision != 3 || len(first.Registry.Accounts) != 1 ||
+		first.Registry.Accounts[0].State != serviceaccounts.Enabled || len(first.Native) != 1 ||
+		first.Native[0].Phase != identityprovision.UnixConfirmed || len(first.UIDs) != 2 ||
+		len(first.GIDs) != 2 || len(first.Samba) != 1 || len(first.Passdb) != 1 ||
+		first.Passdb[0].AccountID != account.ID || first.Samba[0].Journal.Phase != smbprovision.Enabled ||
+		!first.Samba[0].Observation.Present || first.Samba[0].Observation.Disabled ||
+		first.Samba[0].Observation.SID != first.Samba[0].Journal.SID || first.Fingerprint == ([32]byte{}) {
+		t.Fatalf("snapshot omitted or misrepresented trusted identity evidence: %+v", first)
+	}
+	second, err := o.FileServiceSnapshot(ctx)
+	if err != nil || first.Fingerprint != second.Fingerprint {
+		t.Fatalf("unchanged evidence did not produce a stable fingerprint: first=%x second=%x err=%v", first.Fingerprint, second.Fingerprint, err)
+	}
+	if backend.observeSetCalls != 2 || [4]int{backend.createCalls, backend.setCalls, backend.enableCalls, backend.disableCalls} != mutations {
+		t.Fatalf("snapshot did not use one batched read-only observation or caused a Samba mutation: batch=%d mutations=%v", backend.observeSetCalls, [4]int{backend.createCalls, backend.setCalls, backend.enableCalls, backend.disableCalls})
+	}
+	if _, err := json.Marshal(first); err == nil {
+		t.Fatal("host identity evidence must not be serializable")
+	}
+	var decoded FileServiceSnapshot
+	if err := json.Unmarshal([]byte(`{"registry":{"revision":1}}`), &decoded); err == nil {
+		t.Fatal("host identity evidence must not be deserializable")
+	}
+	backend.observeErr = true
+	if _, err := o.FileServiceSnapshot(ctx); !errors.Is(err, ErrUnavailable) {
+		t.Fatalf("failed batch observation must refuse the entire snapshot: %v", err)
+	}
+	backend.observeErr = false
+
+	if err := o.SetDesiredState(ctx, 3, account.ID, serviceaccounts.Disabled); err != nil {
+		t.Fatal("change desired state for fingerprint check:", err)
+	}
+	third, err := o.FileServiceSnapshot(ctx)
+	if err != nil || third.Fingerprint == first.Fingerprint {
+		t.Fatalf("changed identity state did not change evidence fingerprint: first=%x third=%x err=%v", first.Fingerprint, third.Fingerprint, err)
+	}
+	first.Registry.Accounts[0].Name = "caller-mutated-copy"
+	if latest, err := o.FileServiceSnapshot(ctx); err != nil || latest.Registry.Accounts[0].Name != account.Name {
+		t.Fatalf("caller mutation altered Owner state: latest=%+v err=%v", latest, err)
+	}
+}
+
+func TestFileServiceSnapshotRefusesInterruptedSMBIntentWithoutRecovery(t *testing.T) {
+	backend := &modeledSMB{}
+	o, _, directory := fixtureWithSMB(t, backend)
+	ctx := context.Background()
+	account, err := o.Reserve(ctx, 1, "first", "firstuser")
+	if err != nil {
+		t.Fatal("reserve account:", err)
+	}
+	completeUnixIdentity(t, o, account.ID)
+	if err := o.SMB(account.ID).Begin(ctx, 5); err != nil {
+		t.Fatal("begin SMB journal:", err)
+	}
+
+	// Model process interruption exactly after a durable command-intent write.
+	// This fixture replacement is test-only; production reads never open or
+	// initialize a store they did not already own.
+	storePath := filepath.Join(directory, "operations", account.ID, "smb")
+	store := o.smbJournals[account.ID]
+	if err := store.Close(); err != nil {
+		t.Fatal("close fixture SMB store:", err)
+	}
+	intent := smbprovision.Journal{Format: smbprovision.Format, SchemaVersion: 1, Revision: 2,
+		NativeRevision: 5, Account: account, Phase: smbprovision.CreateIntent}
+	data, err := json.Marshal(intent)
+	if err != nil {
+		t.Fatal("encode fixture intent:", err)
+	}
+	journalPath := filepath.Join(storePath, "smb-operation.json")
+	if err := os.WriteFile(journalPath, data, 0600); err != nil {
+		t.Fatal("write fixture intent:", err)
+	}
+	reopened, err := smbprovision.Open(storePath, nil)
+	if err != nil {
+		t.Fatal("open fixture intent read-only store:", err)
+	}
+	o.smbJournals[account.ID] = reopened
+
+	before, err := os.ReadFile(journalPath)
+	if err != nil {
+		t.Fatal("read fixture intent before evidence collection:", err)
+	}
+	mutations := [4]int{backend.createCalls, backend.setCalls, backend.enableCalls, backend.disableCalls}
+	if _, err := o.FileServiceSnapshot(ctx); !errors.Is(err, ErrReview) {
+		t.Fatalf("interrupted intent must be surfaced for review: %v", err)
+	}
+	after, err := os.ReadFile(journalPath)
+	if err != nil || string(after) != string(before) {
+		t.Fatalf("read-only snapshot changed interrupted intent: before=%s after=%s error=%v", before, after, err)
+	}
+	if [4]int{backend.createCalls, backend.setCalls, backend.enableCalls, backend.disableCalls} != mutations {
+		t.Fatal("read-only snapshot invoked a Samba mutation")
+	}
+	if backend.observeSetCalls != 0 {
+		t.Fatal("uncertain SMB intent reached the passdb observer")
+	}
+}
+
+func TestFileServiceSnapshotFailsClosedOnReviewRequiredSMBJournal(t *testing.T) {
+	backend := &modeledSMB{}
+	o, _, directory := fixtureWithSMB(t, backend)
+	ctx := context.Background()
+	account, err := o.Reserve(ctx, 1, "first", "firstuser")
+	if err != nil {
+		t.Fatal("reserve account:", err)
+	}
+	completeUnixIdentity(t, o, account.ID)
+	if err := o.SMB(account.ID).Begin(ctx, 5); err != nil {
+		t.Fatal("begin Samba journal:", err)
+	}
+
+	const sid = "S-1-5-21-1-2-3-1001"
+	backend.observation = smbprovision.Observation{Present: true, Name: account.Name,
+		UID: account.UID, GID: account.GID, SID: sid, Disabled: false}
+	storePath := filepath.Join(directory, "operations", account.ID, "smb")
+	if err := o.smbJournals[account.ID].Close(); err != nil {
+		t.Fatal("close fixture Samba store:", err)
+	}
+	review := smbprovision.Journal{Format: smbprovision.Format, SchemaVersion: 1, Revision: 9,
+		NativeRevision: 5, Account: account, SID: sid, Phase: smbprovision.ReviewRequired}
+	data, err := json.Marshal(review)
+	if err != nil {
+		t.Fatal("encode review-required fixture:", err)
+	}
+	journalPath := filepath.Join(storePath, "smb-operation.json")
+	if err := os.WriteFile(journalPath, data, 0600); err != nil {
+		t.Fatal("write review-required fixture:", err)
+	}
+	reopened, err := smbprovision.Open(storePath, nil)
+	if err != nil {
+		t.Fatal("reopen review-required store:", err)
+	}
+	o.smbJournals[account.ID] = reopened
+	before, err := os.ReadFile(journalPath)
+	if err != nil {
+		t.Fatal("read review-required journal before observation:", err)
+	}
+
+	if _, err := o.FileServiceSnapshot(ctx); !errors.Is(err, ErrReview) {
+		t.Fatalf("review-required identity must refuse the complete evidence snapshot: %v", err)
+	}
+	after, err := os.ReadFile(journalPath)
+	if err != nil || string(after) != string(before) {
+		t.Fatalf("read-only snapshot changed review-required journal: before=%s after=%s error=%v", before, after, err)
+	}
+	if backend.observeSetCalls != 0 || backend.createCalls != 0 || backend.setCalls != 0 || backend.enableCalls != 0 || backend.disableCalls != 0 {
+		t.Fatal("review-required snapshot performed a passdb query or Samba mutation")
+	}
+}
+
+func TestFileServiceSnapshotRefusesNativeIntentWithoutRecovery(t *testing.T) {
+	backend := &modeledSMB{}
+	o, _, directory := fixtureWithSMB(t, backend)
+	ctx := context.Background()
+	account, err := o.Reserve(ctx, 1, "first", "firstuser")
+	if err != nil {
+		t.Fatal("reserve account:", err)
+	}
+	if err := o.Close(); err != nil {
+		t.Fatal("close fixture Owner before interruption:", err)
+	}
+
+	// Model a process exit after the native command intent was durably written.
+	// Opening the Owner may read this state, but the evidence-only operation
+	// must neither advance it to review nor retry the native command.
+	intent := identityprovision.Journal{Format: identityprovision.Format, SchemaVersion: 1,
+		Revision: 2, RegistryRevision: 2, Account: account, Phase: identityprovision.GroupIntent}
+	data, err := json.Marshal(intent)
+	if err != nil {
+		t.Fatal("encode native intent fixture:", err)
+	}
+	journalPath := filepath.Join(directory, "operations", account.ID, "identity-operation.json")
+	if err := os.WriteFile(journalPath, data, 0600); err != nil {
+		t.Fatal("write native intent fixture:", err)
+	}
+	before, err := os.ReadFile(journalPath)
+	if err != nil {
+		t.Fatal("read native intent before evidence collection:", err)
+	}
+
+	model := newModel()
+	deps := model.dependencies()
+	deps.smbBackend = backend
+	reopened, err := open(directory, deps)
+	if err != nil {
+		t.Fatal("reopen Owner with native intent:", err)
+	}
+	defer reopened.Close()
+	if _, err := reopened.FileServiceSnapshot(ctx); !errors.Is(err, ErrPending) {
+		t.Fatalf("native intent must be reported as pending, not recovered: %v", err)
+	}
+	after, err := os.ReadFile(journalPath)
+	if err != nil || string(after) != string(before) {
+		t.Fatalf("read-only snapshot changed native intent: before=%s after=%s error=%v", before, after, err)
+	}
+	if backend.observeSetCalls != 0 {
+		t.Fatal("native intent triggered a Samba passdb observation")
+	}
+}
+
+func TestFileServiceSnapshotUsesOwnerLock(t *testing.T) {
+	backend := &modeledSMB{}
+	o, _, _ := fixtureWithSMB(t, backend)
+	defer o.Close()
+
+	o.mu.Lock()
+	_, err := o.FileServiceSnapshot(context.Background())
+	o.mu.Unlock()
+	if !errors.Is(err, ErrBusy) {
+		t.Fatalf("file-service evidence bypassed the Owner lock: %v", err)
+	}
+	if backend.observeSetCalls != 0 {
+		t.Fatal("busy Owner still performed a passdb observation")
+	}
+}
+
+func TestWithFileServiceSnapshotKeepsOwnerLockedDuringInspection(t *testing.T) {
+	backend := &modeledSMB{}
+	o, _, _ := fixtureWithSMB(t, backend)
+	defer o.Close()
+	ctx := context.Background()
+	called := false
+	err := o.WithFileServiceSnapshot(ctx, func(snapshot FileServiceSnapshot) error {
+		called = true
+		if snapshot.Registry.Validate() != nil {
+			return errors.New("inspection received invalid Owner snapshot")
+		}
+		if _, err := o.FileServiceSnapshot(ctx); !errors.Is(err, ErrBusy) {
+			return errors.New("nested Owner snapshot did not observe held identity lock")
+		}
+		return nil
+	})
+	if err != nil || !called {
+		t.Fatalf("Owner inspection did not run under its lock: called=%v err=%v", called, err)
+	}
+}
+
+func TestFileServiceSnapshotRefusesUnjournaledExistingPassdbIdentity(t *testing.T) {
+	backend := &modeledSMB{}
+	o, _, _ := fixtureWithSMB(t, backend)
+	ctx := context.Background()
+	account, err := o.Reserve(ctx, 1, "first", "firstuser")
+	if err != nil {
+		t.Fatal("reserve account:", err)
+	}
+	completeUnixIdentity(t, o, account.ID)
+	backend.observation = smbprovision.Observation{Present: true, Name: account.Name, UID: account.UID,
+		GID: account.GID, SID: "S-1-5-21-1-2-3-1001", Disabled: true}
+	if _, err := o.FileServiceSnapshot(ctx); !errors.Is(err, ErrReview) {
+		t.Fatalf("passdb identity without an Owner journal must require review: %v", err)
+	}
+	if backend.createCalls != 0 || backend.setCalls != 0 || backend.enableCalls != 0 || backend.disableCalls != 0 {
+		t.Fatal("unexpected existing passdb entry triggered a mutation")
 	}
 }
 

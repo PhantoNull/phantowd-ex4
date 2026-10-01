@@ -180,27 +180,56 @@ grep -F "$md_filesystem_identity_marker" "$repo_root/support/qemu-smoke.sh" >/de
 
 md_v10_api="$repo_root/src/phantowd-api/md_v10_qemu_linux.go"
 md_v10_discovery="$repo_root/src/phantowd-api/storage_md_v10.go"
+md_v10_provider="$repo_root/src/phantowd-api/storage_broker_md_v10_qemu_linux.go"
+md_v10_stub="$repo_root/src/phantowd-api/smb_io_stub.go"
 md_v10_init="$repo_root/board/qemu/armv5/rootfs-overlay/usr/lib/phantowd/qemu-md-v10-init.sh"
 md_v10_fixture="$repo_root/support/qemu-md-v10-fixture.sh"
-md_v10_product_marker='PHANTOWD_MD_V10_PRODUCT_PROBE_READY disks=2 metadata=1.0 checksums=valid comparison=metadata-consistent same_array=true distinct_members=true active_roles=complete descriptor_readonly=true diskseq_bound=true assembly=false mount=false scope=disposable-qemu-only'
-md_v10_trusted_marker='PHANTOWD_MD_V10_TRUSTED_DISCOVERY_READY candidates=2 gpt=2 raid_partitions=2 metadata_candidates=2 arrays=1 status=metadata-consistent sources_readonly=true generation_rechecked=true assembly=false mount=false scope=disposable-qemu-only'
-md_v10_marker='PHANTOWD_MD_V10_READY metadata=1.0 raid1=true members=2 gpt=true partition=1 fixed_devices=true array_stopped=true root_snapshot=true scope=disposable-qemu-only'
+md_v10_broker_marker='PHANTOWD_MD_V10_BROKER_READY candidates=2 gpt=2 raid_partitions=2 metadata_candidates=2 arrays=1 status=metadata-consistent active_roles=complete peer_nonroot=true broker_readonly=true generation_rechecked=true assembly=false mount=false filesystem_data=false scope=disposable-qemu-only'
+md_v10_marker='PHANTOWD_MD_V10_READY metadata=1.0 raid1=true members=2 gpt=true partition=1 filesystem=ext2 array_stopped=true root_snapshot=true scope=disposable-qemu-only'
+md_v10_m34_marker='PHANTOWD_MD_V10_M34_OWNER_READY metadata=1.0 raid1=true candidates=2 active_roles=complete filesystem_uuid=true member_topology=true assembly_readonly=true mount_readonly=true owner_live_revalidated=true planner_snapshot=true activation=false http=false scope=disposable-qemu-only'
 md_v10_component_set_host_marker='PHANTOWD_MD_V10_COMPONENT_SET_HOST_READY components=2 metadata=1.0 checksums=valid status=metadata-consistent active_roles=complete descriptor_readonly=true input_unchanged=true wd_compatibility=unqualified assembly=false mount=false scope=tmpfs-qemu-only'
-md_v10_host_marker='PHANTOWD_MD_V10_HOST_READY disks=2 gpt=valid partition=1 type=linux-raid metadata=1.0 checksums=valid same_array=true distinct_members=true active_roles=complete set_comparison=metadata-observed input_unchanged=true scope=tmpfs-qemu-only'
+md_v10_host_marker='PHANTOWD_MD_V10_HOST_READY disks=2 gpt=valid partition=1 type=linux-raid metadata=1.0 checksums=valid same_array=true distinct_members=true active_roles=complete set_comparison=expected-filesystem-uuid-review md_metadata_consistent=true input_unchanged=true scope=tmpfs-qemu-only'
 [ -f "$md_v10_api" ] && [ -f "$md_v10_init" ] && [ -f "$md_v10_fixture" ] ||
     fail 'MD v1.0 QEMU/host fixture source files are incomplete'
 grep -F "$md_v10_marker" "$md_v10_api" >/dev/null ||
     fail 'guest MD v1.0 fixture must report only its bounded synthetic RAID1 result'
-grep -F "$md_v10_product_marker" "$md_v10_api" >/dev/null ||
-    fail 'guest MD v1.0 fixture must exercise the generation-bound read-only firmware parser'
-grep -F "$md_v10_trusted_marker" "$md_v10_api" >/dev/null ||
-    fail 'guest MD v1.0 fixture must exercise trusted complete-candidate discovery and generation rechecks'
+grep -F "$md_v10_broker_marker" "$md_v10_api" >/dev/null ||
+    fail 'guest MD v1.0 fixture must require a redacted broker observation from its non-root client'
+grep -F 'mkfs.ext2' "$md_v10_api" >/dev/null ||
+    fail 'guest MD v1.0 fixture must format only the fixed disposable array before read-only reassembly'
+grep -F "$md_v10_m34_marker" "$repo_root/src/phantowd-api/md_v10_m34_qemu_linux.go" >/dev/null ||
+    fail 'guest MD v1.0 fixture must require read-only assembly/mount and M3.4 Owner evidence'
+grep -F 'runQEMUMDV10BrokerClientAsAPIUser' "$repo_root/src/phantowd-api/md_v10_m34_qemu_linux.go" >/dev/null ||
+    fail 'M3.4 fixture must gate on a fresh broker observation through the API-UID client'
+if grep -F 'observeTrustedMDV10ForBroker' "$repo_root/src/phantowd-api/md_v10_m34_qemu_linux.go" >/dev/null; then
+    fail 'root M3.4 fixture must not bypass the non-root broker to read block devices'
+fi
+grep -F "$md_v10_m34_marker" "$md_v10_fixture" >/dev/null ||
+    fail 'host wrapper must require the MD v1.0-to-M3.4 QEMU marker'
+grep -F "mkdir /srv/phantowd/volumes" "$repo_root/support/container/test-qemu-api-overlay.sh" >/dev/null ||
+    fail 'current-source MD overlay must create the dedicated mount-root directory in its temporary rootfs copy'
+grep -F "stat /srv/phantowd/volumes" "$repo_root/support/container/test-qemu-api-overlay.sh" >/dev/null ||
+    fail 'current-source MD overlay must verify the temporary mount-root directory before installing the fixture'
+grep -F 'mount -t tmpfs -o mode=0755,nosuid,nodev,size=1m tmpfs /srv/phantowd/volumes' "$md_v10_init" >/dev/null ||
+    fail 'MD v1.0 M3.4 fixture must keep its mount-owner target on disposable tmpfs'
+grep -F 'runQEMUMDV10BrokerClientAsAPIUser' "$md_v10_api" >/dev/null ||
+    fail 'guest MD v1.0 fixture must exercise the API-credential broker client'
+grep -F 'observeTrustedMDV10With' "$md_v10_provider" >/dev/null ||
+    fail 'trusted MD v1.0 provider must run behind the QEMU storage broker'
+grep -Fx '//go:build qemu && linux' "$md_v10_provider" >/dev/null ||
+    fail 'real-device MD v1.0 broker reads must be compiled only into the QEMU fixture'
+grep -F 'return storageMDV10ObservationSummary{}, errStorageBrokerUnavailable' "$md_v10_stub" >/dev/null ||
+    fail 'non-QEMU firmware builds must refuse the MD v1.0 broker operation without reading devices'
 grep -F 'inspectTrustedMDV10Candidates' "$md_v10_discovery" >/dev/null ||
     fail 'trusted MD v1.0 observation must correlate only GPT-declared RAID partitions'
 grep -F 'revalidateTrustedStorageDiscovery' "$repo_root/src/phantowd-api/storage_md_v10_linux.go" >/dev/null ||
     fail 'trusted MD v1.0 observation must recheck storage, mounts and swap before returning'
-grep -F 'mdmetadata.InspectBlock' "$md_v10_api" >/dev/null ||
-    fail 'guest MD v1.0 fixture must call the firmware metadata parser on read-only block descriptors'
+grep -F 'mdmetadata.InspectBlock' "$md_v10_provider" >/dev/null ||
+    fail 'broker MD v1.0 operation must call the parser on its fixed read-only block sources'
+grep -F '/sbin/mdev -s' "$md_v10_init" >/dev/null ||
+    fail 'MD v1.0 QEMU init must apply read-only device permissions before broker startup'
+grep -F 'S40phantowd-storage-broker start' "$md_v10_init" >/dev/null ||
+    fail 'MD v1.0 QEMU fixture must start the non-root storage broker'
 grep -F "$md_v10_host_marker" "$md_v10_fixture" >/dev/null ||
     fail 'host MD v1.0 fixture must verify both parser reports and unchanged inputs'
 grep -F -- '--metadata=1.0' "$repo_root/src/phantowd-api/qemu_md_arguments.go" >/dev/null ||
@@ -219,6 +248,10 @@ grep -F 'inspect-md-v1.0-partition' "$md_v10_fixture" >/dev/null ||
     fail 'host-side partition parser must read each generated GPT member'
 grep -F 'inspect-storage-image-set' "$md_v10_fixture" >/dev/null ||
     fail 'host-side whole-disk parser must compare the GPT partition members'
+grep -F 'duplicate_filesystem_uuid_groups") != 1' "$md_v10_fixture" >/dev/null ||
+    fail 'whole-disk fixture must account for the expected mirrored ext filesystem UUID review result'
+grep -F 'image_set_status" -ne 2' "$md_v10_fixture" >/dev/null ||
+    fail 'whole-disk fixture must accept only the specific redacted review exit status'
 grep -F 'inspect-md-v1.0-component-set' "$md_v10_fixture" >/dev/null ||
     fail 'host-side component-set parser must compare the extracted mdadm-authored partition images'
 grep -F 'bs=512 skip=2048 count=63455' "$md_v10_fixture" >/dev/null ||

@@ -134,11 +134,19 @@ while [ "$attempt" -lt 120 ]; do
             echo "Missing authenticated file-service preview assertion" >&2
             exit 1
         fi
-        if ! grep -F 'PHANTOWD_FILE_SERVICE_PLAN_READY snapshot=synthetic-complete revisions=bound fresh_check=passed parser=testparm json=false activation=false scope=qemu-fixture-only' "$log_file" >/dev/null; then
+        if ! grep -F 'PHANTOWD_FILE_SERVICE_PLAN_READY snapshot=complete-mounted-owner-set-nonempty owner_scope=fixture_complete volume_count=1 revisions=bound fresh_check=passed parser=testparm json=false activation=false compatibility=synthetic-ext2 scope=disposable-qemu-only' "$log_file" >/dev/null; then
             echo "Missing internal file-service plan assertion" >&2
             exit 1
         fi
-        if ! grep -F 'PHANTOWD_SMB_POLICY_IO_READY generated=true writer_uid=1801 reader_ro=true outsider_denied=true unix_denied=true symlink_denied=true scope=qemu-fixture-only' "$log_file" >/dev/null; then
+        if ! grep -F 'PHANTOWD_FILE_SERVICE_OWNER_MOUNTED_PLAN_READY identity=owner_observed storage=complete_mounted_owner_set owner_scope=fixture_complete volume_count=1 uid_gid=local_census nfs=read_only identity_stale=true mount_stale=true candidate_only=true auth_mutation=false activation=false http=false scope=disposable-qemu-only' "$log_file" >/dev/null; then
+            echo 'Missing combined Owner identity and mounted-storage planner assertion' >&2
+            exit 1
+        fi
+        if ! grep -F 'PHANTOWD_FILE_SERVICE_OWNER_MOUNTED_EXPORTFS_READY target_parser=accepted_and_withdrawn owner_tuple=true read_only=true identity_mapping=true persistent_export=false scope=disposable-qemu-only' "$log_file" >/dev/null; then
+            echo 'Missing Owner-mounted NFS exportfs acceptance/withdrawal assertion' >&2
+            exit 1
+        fi
+        if ! grep -F 'PHANTOWD_SMB_POLICY_IO_READY generated=true writer_uid=1801 reader_ro=true outsider_denied=true unix_denied=true symlink_denied=true process_owner=started-ready-stopped scope=qemu-fixture-only' "$log_file" >/dev/null; then
             echo 'Missing generated Samba effective-access assertion' >&2
             exit 1
         fi
@@ -188,6 +196,14 @@ while [ "$attempt" -lt 120 ]; do
             echo 'QEMU multi-account identity router did not complete' >&2
             exit 1
         fi
+        if ! grep -F 'PHANTOWD_M41_OWNER_PASSDB_OBSERVATION_READY owner_locked=true ledger=true native_journals=true samba_journal=true passdb=redacted uid_gid=local_census no_adoption=true journals_unchanged=true auth_mutation=false activation=false http=false scope=disposable-qemu-only' "$log_file" >/dev/null; then
+            echo 'ARMv5 Owner-backed read-only identity/passdb observation did not complete' >&2
+            exit 1
+        fi
+        if ! grep -F 'PHANTOWD_M41_OWNER_STORAGE_COHERENT_READY identity=owner_passdb_fingerprint storage=mounted_roster locks=ordered nfs=readonly samba=empty_policy candidate=true activation=false endpoint=false auth_mutation=false scope=disposable-qemu-only' "$log_file" >/dev/null; then
+            echo 'ARMv5 M4.1 lock-coherent Owner identity and storage plan did not complete' >&2
+            exit 1
+        fi
         if ! grep -F 'PHANTOWD_SMB_DISABLED_PASSWORD_SET_READY replacement_set=true disabled_until_explicit_enable=true obsolete_password_denied=true unix_identity_unchanged=true scope=isolated-qemu-only' "$log_file" >/dev/null; then
             echo 'Samba disabled-password update did not complete safely' >&2
             exit 1
@@ -230,6 +246,10 @@ while [ "$attempt" -lt 120 ]; do
         fi
         if ! grep -F 'PHANTOWD_MD_FILESYSTEM_IDENTITY_READY filesystem_to_md=true md_uuid_internal=true members=2 readonly_mount=true conflict_free=true scope=disposable-qemu-only' "$log_file" >/dev/null; then
             echo 'Missing mounted filesystem to MD/member identity assertion' >&2
+            exit 1
+        fi
+        if ! grep -F 'PHANTOWD_M33_M34_PROVIDER_READY source=complete_md_filesystem_identity owner=live_mount_revalidated roster=complete_for_fixture_only uuid=true device_tuple=true read_only=true planner_snapshot=true activation=false http=false scope=disposable-qemu-only' "$log_file" >/dev/null; then
+            echo 'Missing M3.3-to-M3.4 trusted mounted-volume provider assertion' >&2
             exit 1
         fi
         if ! grep -F 'PHANTOWD_FILESYSTEM_UUID_READY source=kernel-ioctl expected_uuid=true mismatch_denied=true block_device_opened=false scope=qemu-fixture-only' "$log_file" >/dev/null; then

@@ -18,6 +18,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/processowner"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/shareconfig"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/smbconfig"
 )
@@ -168,42 +169,39 @@ func runQEMUSMBTest() (result error) {
 	if err := os.WriteFile(smbFixtureRoot+"/upload", payload, 0600); err != nil {
 		return err
 	}
-	log, err := os.OpenFile(smbFixtureRoot+"/smbd.log", os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0600)
-	if err != nil {
-		return err
+	clientWithContext := func(ctx context.Context, user, share, operation string) ([]byte, error) {
+		return smbFixtureCommandContext(ctx, "", "/usr/bin/smbclient", "-t", "2", "-m", "SMB3_11", "-p", "1445", "-A", smbFixtureRoot+"/"+user+".auth", "//127.0.0.1/"+share, "-c", operation)
 	}
-	defer log.Close()
-	daemon := exec.Command("/usr/sbin/smbd", "-F", "--no-process-group", "-s", configPath)
-	daemon.Stdout, daemon.Stderr = log, log
-	daemon.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
-	if err := daemon.Start(); err != nil {
-		return err
+	client := func(user, share, operation string) ([]byte, error) {
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		return clientWithContext(ctx, user, share, operation)
 	}
-	done := make(chan error, 1)
-	go func() { done <- daemon.Wait() }()
+	owner := processowner.New()
+	if _, err := owner.Start(context.Background(), processowner.Spec{
+		Executable: "/usr/sbin/smbd",
+		Args:       []string{"-F", "--no-process-group", "-s", configPath},
+		Ready: func(ctx context.Context) (bool, error) {
+			_, err := clientWithContext(ctx, "qpwriter", "PolicyShare", "ls")
+			return err == nil, nil
+		},
+		ReadyTimeout: 5 * time.Second, ProbeInterval: 200 * time.Millisecond, StopTimeout: 3 * time.Second,
+	}); err != nil {
+		return fmt.Errorf("SMB fixture did not become ready: %s", string(owner.Diagnostics()))
+	}
+	ownerStopped := false
 	defer func() {
-		// Signal only the process group created by this fixture, not the stock
-		// guest smbd or any host daemon. Reap before the NFS harness unmounts.
-		_ = syscall.Kill(-daemon.Process.Pid, syscall.SIGTERM)
-		select {
-		case <-done:
-		case <-time.After(3 * time.Second):
-			_ = syscall.Kill(-daemon.Process.Pid, syscall.SIGKILL)
-			<-done
-			result = errors.Join(result, errors.New("SMB fixture daemon needed forced termination"))
+		// Only the process group started by this fixture is owned; the stock
+		// guest smbd is never discovered, adopted or signalled.
+		if ownerStopped {
+			return
+		}
+		if _, err := owner.Stop(context.Background()); err != nil {
+			result = errors.Join(result, errors.New("SMB fixture daemon stop requires review"))
 		}
 	}()
-	client := func(user, share, operation string) ([]byte, error) {
-		return smbFixtureCommand("", "/usr/bin/smbclient", "-t", "2", "-m", "SMB3_11", "-p", "1445", "-A", smbFixtureRoot+"/"+user+".auth", "//127.0.0.1/"+share, "-c", operation)
-	}
 	var output []byte
-	for attempt := 0; attempt < 10; attempt++ {
-		output, err = client("qpwriter", "PolicyShare", "ls")
-		if err == nil {
-			break
-		}
-		time.Sleep(200 * time.Millisecond)
-	}
+	output, err = client("qpwriter", "PolicyShare", "ls")
 	if err != nil {
 		return fmt.Errorf("SMB fixture not ready: %s", output)
 	}
@@ -331,7 +329,6 @@ func runQEMUSMBTest() (result error) {
 		}
 	}
 	fmt.Println("PHANTOWD_SMB_CREDENTIALS_READY rotated=true old_password_denied=true disabled_denied=true reenabled=true unix_identity_unchanged=true data_preserved=true scope=new-qemu-connections-only")
-	fmt.Println("PHANTOWD_SMB_POLICY_IO_READY generated=true writer_uid=1801 reader_ro=true outsider_denied=true unix_denied=true symlink_denied=true scope=qemu-fixture-only")
 	if err := exerciseQEMUBootIdentityOwnerService(); err != nil {
 		return err
 	}
@@ -343,6 +340,13 @@ func runQEMUSMBTest() (result error) {
 	fmt.Println("PHANTOWD_IDENTITY_EXEC_READY binary=pinned-busybox typed_commands=true unix_login_locked=true nologin=true home_created=false scope=isolated-qemu-only")
 	fmt.Println("PHANTOWD_IDENTITY_CHANNEL_READY peer_uid=65534 server_uid=0 journaled_steps=true stale_replay_denied=true scope=isolated-qemu-only")
 	fmt.Println("PHANTOWD_IDENTITY_OWNER_READY lease_exclusive=true pending_blocks_reservation=true after_reopen=true scope=isolated-qemu-only")
+	// The identity/passdb integration above shares this disposable smbd instance.
+	// Stop the fixture-owned process group only after all such observations finish.
+	if _, err := owner.Stop(context.Background()); err != nil {
+		return errors.New("SMB fixture daemon stop requires review")
+	}
+	ownerStopped = true
+	fmt.Println("PHANTOWD_SMB_POLICY_IO_READY generated=true writer_uid=1801 reader_ro=true outsider_denied=true unix_denied=true symlink_denied=true process_owner=started-ready-stopped scope=qemu-fixture-only")
 	return nil
 }
 

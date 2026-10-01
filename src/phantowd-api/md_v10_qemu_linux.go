@@ -10,14 +10,14 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"os/exec"
 	"runtime"
 	"sort"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
 
-	"github.com/PhantoNull/phantowd-ex4/phantowd-api/mdmetadata"
-	"github.com/PhantoNull/phantowd-ex4/phantowd-api/volumeprobe"
 	"golang.org/x/sys/unix"
 )
 
@@ -81,6 +81,14 @@ func runQEMUMDV10Fixture() (result error) {
 	if err := verifyQEMUMDV10Array(); err != nil {
 		return err
 	}
+	if err := runQEMUStorageUtility("mkfs.ext2", 20*time.Second,
+		"-q", "-F", "-U", qemuMDFilesystemUUID, "/dev/md0"); err != nil {
+		return errors.New("synthetic ext2 filesystem creation on the fixed QEMU MD v1.0 array failed")
+	}
+	unix.Sync()
+	if err := verifyQEMUMDV10Array(); err != nil {
+		return errors.New("MD v1.0 array did not remain healthy after synthetic filesystem creation")
+	}
 	if err := runQEMUStorageUtility("mdadm", 10*time.Second, qemuMDV10StopArguments()...); err != nil {
 		return err
 	}
@@ -95,92 +103,49 @@ func runQEMUMDV10Fixture() (result error) {
 			return errors.New("MD v1.0 fixture component identity changed during array creation")
 		}
 	}
-	if err := verifyQEMUMDV10ProductParser(); err != nil {
-		return err
-	}
-	fmt.Println("PHANTOWD_MD_V10_READY metadata=1.0 raid1=true members=2 gpt=true partition=1 fixed_devices=true array_stopped=true root_snapshot=true scope=disposable-qemu-only")
-	return nil
-}
-
-func verifyQEMUMDV10ProductParser() error {
-	if err := ensureQEMUMDV10MembersUnmounted(); err != nil {
-		return errors.New("MD v1.0 product parser requires stopped, unmounted fixture members")
-	}
-	evidence := make([]mdmetadata.ComponentEvidence, 0, 2)
-	for _, member := range []struct {
-		name   string
-		serial string
-		wwn    string
-	}{{"sdb", qemuMDV10MemberASerial, qemuMDV10MemberAWWN}, {"sdc", qemuMDV10MemberBSerial, qemuMDV10MemberBWWN}} {
-		if err := verifyQEMUMDV10Member(member.name, member.serial, member.wwn); err != nil {
-			return errors.New("MD v1.0 product parser refused an unverified fixture member")
-		}
-		deviceNumber, err := os.ReadFile("/sys/class/block/" + member.name + "/dev")
-		if err != nil {
-			return errors.New("MD v1.0 product parser could not read fixture device number")
-		}
-		parts := strings.Split(strings.TrimSpace(string(deviceNumber)), ":")
-		if len(parts) != 2 {
-			return errors.New("MD v1.0 product parser found a malformed fixture device number")
-		}
-		major, majorErr := strconv.ParseUint(parts[0], 10, 32)
-		minor, minorErr := strconv.ParseUint(parts[1], 10, 32)
-		sequence, sequenceErr := readBlockDiskSequence(os.DirFS("/sys"), "class/block/"+member.name+"/diskseq")
-		if majorErr != nil || minorErr != nil || sequenceErr != nil || sequence == 0 {
-			return errors.New("MD v1.0 product parser could not bind the fixture disk generation")
-		}
-		source, err := os.Open("/dev/" + member.name)
-		if err != nil {
-			return errors.New("MD v1.0 product parser could not open the fixed fixture block node")
-		}
-		observation, inspectErr := mdmetadata.InspectBlock(source,
-			volumeprobe.BlockDeviceGeneration{Major: uint32(major), Minor: uint32(minor), DiskSequence: sequence},
-			65536*512, mdmetadata.Partition{Number: 1, StartLBA: 2048, SizeLBA: 63455})
-		closeErr := source.Close()
-		if inspectErr != nil || closeErr != nil {
-			return errors.New("MD v1.0 product parser failed its read-only generation-bound probe")
-		}
-		if observation.Status != mdmetadata.StatusCandidate || observation.MetadataVersion != "1.0" ||
-			observation.SuperblockChecksumStatus != "valid" || observation.RAIDDisks != 2 ||
-			observation.MemberRoleDescription != "active-slot" || observation.FeatureMap != 0 ||
-			observation.ArrayIdentityFingerprint == "" || observation.MemberIdentityFingerprint == "" {
-			return errors.New("MD v1.0 product parser returned an incomplete or unsupported member observation")
-		}
-		evidence = append(evidence, mdmetadata.ComponentEvidence{
-			DiskIndex: uint32(len(evidence) + 1), PartitionNumber: 1, Observation: observation,
-		})
-	}
-	comparison, err := mdmetadata.CompareComponents(evidence)
-	if err != nil || comparison.CandidateComponents != 2 || comparison.UnqualifiedComponents != 0 ||
-		comparison.UnidentifiedCandidateComponents != 0 || len(comparison.Arrays) != 1 ||
-		comparison.Arrays[0].Status != mdmetadata.ArrayMetadataConsistent ||
-		comparison.Arrays[0].MemberCount != 2 || comparison.Arrays[0].ObservedActiveRoles != 2 ||
-		len(comparison.Arrays[0].MissingActiveRoles) != 0 {
-		return errors.New("MD v1.0 product parser members do not form one consistent fixture array")
-	}
-	fmt.Println("PHANTOWD_MD_V10_PRODUCT_PROBE_READY disks=2 metadata=1.0 checksums=valid comparison=metadata-consistent same_array=true distinct_members=true active_roles=complete descriptor_readonly=true diskseq_bound=true assembly=false mount=false scope=disposable-qemu-only")
-	if err := verifyQEMUMDV10TrustedDiscovery(); err != nil {
-		return err
+	fmt.Println("PHANTOWD_MD_V10_READY metadata=1.0 raid1=true members=2 gpt=true partition=1 filesystem=ext2 array_stopped=true root_snapshot=true scope=disposable-qemu-only")
+	if err := runQEMUMDV10BrokerClientAsAPIUser(); err != nil {
+		return errors.New("non-root MD v1.0 broker client did not receive the expected redacted observation")
 	}
 	return nil
 }
 
-func verifyQEMUMDV10TrustedDiscovery() error {
-	ctx, cancel := context.WithTimeout(context.Background(), storageGPTBrokerDeadline)
+func runQEMUMDV10BrokerClientAsAPIUser() error {
+	principals, err := lookupStorageBrokerPrincipals()
+	if err != nil || os.Geteuid() != 0 || principals.apiUID == 0 || principals.apiGID == 0 {
+		return errStorageBrokerUnavailable
+	}
+	executable, err := os.Executable()
+	if err != nil || executable == "" {
+		return errStorageBrokerUnavailable
+	}
+	command := exec.Command(executable, "--qemu-md-v10-broker-client")
+	command.SysProcAttr = &syscall.SysProcAttr{Credential: &syscall.Credential{
+		Uid: principals.apiUID, Gid: principals.apiGID,
+	}}
+	command.Stdout, command.Stderr = os.Stdout, os.Stderr
+	if err := command.Run(); err != nil {
+		return errStorageBrokerUnavailable
+	}
+	return nil
+}
+
+func runQEMUMDV10BrokerClient() error {
+	if os.Geteuid() == 0 {
+		return errStorageBrokerUnavailable
+	}
+	principals, err := lookupStorageBrokerPrincipals()
+	if err != nil || os.Getuid() != int(principals.apiUID) || os.Getgid() != int(principals.apiGID) ||
+		!verifyQEMUStorageBrokerProcess(principals) {
+		return errStorageBrokerUnavailable
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), storageMDV10Deadline)
 	defer cancel()
-	observation, err := observeTrustedMDV10With(ctx, os.DirFS("/sys"), os.DirFS("/proc"),
-		volumeprobe.OpenObservedBlockSources, mdmetadata.InspectBlock)
-	if err != nil || observation.CandidateDiskCount != 2 || observation.GPTDiskCount != 2 ||
-		observation.RAIDPartitionCount != 2 || observation.Comparison.CandidateComponents != 2 ||
-		observation.Comparison.UnqualifiedComponents != 0 ||
-		observation.Comparison.UnidentifiedCandidateComponents != 0 ||
-		len(observation.Comparison.Arrays) != 1 ||
-		observation.Comparison.Arrays[0].Status != mdmetadata.ArrayMetadataConsistent ||
-		observation.Comparison.Arrays[0].ObservedActiveRoles != 2 ||
-		len(observation.Comparison.Arrays[0].MissingActiveRoles) != 0 {
-		return errors.New("trusted complete-storage discovery did not reconcile the two synthetic MD members")
+	summary, err := observeMDV10FromBroker(ctx)
+	if err != nil || !validQEMUMDV10FixtureSummary(summary) {
+		return errStorageBrokerUnavailable
 	}
-	fmt.Println("PHANTOWD_MD_V10_TRUSTED_DISCOVERY_READY candidates=2 gpt=2 raid_partitions=2 metadata_candidates=2 arrays=1 status=metadata-consistent sources_readonly=true generation_rechecked=true assembly=false mount=false scope=disposable-qemu-only")
+	fmt.Println("PHANTOWD_MD_V10_BROKER_READY candidates=2 gpt=2 raid_partitions=2 metadata_candidates=2 arrays=1 status=metadata-consistent active_roles=complete peer_nonroot=true broker_readonly=true generation_rechecked=true assembly=false mount=false filesystem_data=false scope=disposable-qemu-only")
 	return nil
 }
 

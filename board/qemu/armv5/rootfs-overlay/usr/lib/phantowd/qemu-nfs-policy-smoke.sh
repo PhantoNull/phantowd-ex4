@@ -63,6 +63,11 @@ chown 101000:101000 "$anchor/$rw_path" "$anchor/read-only" "$anchor/denied-clien
 chmod 0770 "$anchor/$rw_path" "$anchor/read-only" "$anchor/denied-client" "$anchor/books"
 printf '%s\n' phantowd-nfs-ro-marker >"$anchor/read-only/marker"
 chmod 0644 "$anchor/read-only/marker"
+
+# Exercise the planner only after this disposable data volume is mounted; the
+# API boot self-test runs earlier and must not infer storage from a bare path.
+/usr/bin/phantowd-api --qemu-nfs-test=file-service-plan-mounted
+
 exportfs -r
 exportfs -s >"$workspace/export-table"
 if [ "$(grep -c 'fsid=aaaaaaaa-bbbb-cccc-dddd-' "$workspace/export-table")" -ne 3 ]; then

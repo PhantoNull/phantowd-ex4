@@ -5,7 +5,10 @@
 
 package main
 
-import "errors"
+import (
+	"context"
+	"errors"
+)
 
 func runQEMUSMBTest() error { return errors.New("SMB integration fixture requires Linux ARMv5 QEMU") }
 
@@ -23,4 +26,16 @@ func runQEMUMDStackTest() error {
 
 func runQEMUMDV10Fixture() error {
 	return errors.New("MD v1.0 fixture requires Linux ARMv5 QEMU")
+}
+
+func runQEMUMDV10M34Fixture() error {
+	return errors.New("MD v1.0/M3.4 fixture requires Linux ARMv5 QEMU")
+}
+
+func runQEMUMDV10BrokerClient() error {
+	return errors.New("MD v1.0 broker client fixture requires Linux ARMv5 QEMU")
+}
+
+func observeTrustedMDV10ForBroker(_ context.Context) (storageMDV10ObservationSummary, error) {
+	return storageMDV10ObservationSummary{}, errStorageBrokerUnavailable
 }

@@ -22,6 +22,10 @@ func qemuMDV10StopArguments() []string {
 	return []string{"--stop", "--config=/dev/null", "/dev/md0"}
 }
 
+func qemuMDV10AssembleReadonlyArguments() []string {
+	return []string{"--assemble", "--config=/dev/null", "--readonly", "/dev/md0", "/dev/sdb1", "/dev/sdc1"}
+}
+
 func qemuMDStopArguments() []string {
 	return []string{"--stop", "--config=/dev/null", "/dev/md0"}
 }

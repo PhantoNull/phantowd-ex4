@@ -9,7 +9,11 @@ mount -t sysfs sysfs /sys
 # The pinned kernel auto-mounts devtmpfs before execing init.
 grep -q ' /dev devtmpfs ' /proc/mounts
 mount -t tmpfs -o mode=0755,nosuid,nodev tmpfs /run
-trap 'echo PHANTOWD_MD_V10_ERROR; exec /sbin/reboot -f' EXIT
+mount -t tmpfs -o mode=0755,nosuid,nodev,size=1m tmpfs /srv/phantowd/volumes
+trap 'echo PHANTOWD_MD_V10_ERROR; /etc/init.d/S40phantowd-storage-broker stop >/dev/null 2>&1 || true; exec /sbin/reboot -f' EXIT
+/sbin/mdev -s
+/etc/init.d/S40phantowd-storage-broker start
 /usr/bin/phantowd-api --qemu-md-v10-fixture
+/etc/init.d/S40phantowd-storage-broker stop
 trap - EXIT
 exec /sbin/reboot -f

@@ -24,6 +24,7 @@ import (
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/identityowner"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/identityprovision"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/identityrpc"
+	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/fileserviceplan"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/revisionstore"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/smbexec"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/serviceaccounts"
@@ -291,7 +292,11 @@ func exerciseQEMUIdentityOwnerDesiredState() error {
 	inventory := func(context.Context) (serviceaccounts.Reservations, error) {
 		return serviceaccounts.Reservations{UIDs: []uint32{}, GIDs: []uint32{}, Names: []string{}}, nil
 	}
-	owner, err := identityowner.Open(qemuOwnerAuthority, inventory)
+	smbBackend, err := smbexec.New(qemuOwnerSMBConfig)
+	if err != nil {
+		return errors.New("QEMU identity-owner Samba observation backend could not open")
+	}
+	owner, err := identityowner.OpenWithSMBBackend(qemuOwnerAuthority, inventory, smbBackend)
 	if err != nil {
 		return errors.New("QEMU identity-owner desired-state authority could not reopen")
 	}
@@ -303,6 +308,10 @@ func exerciseQEMUIdentityOwnerDesiredState() error {
 		journals[0].RegistryRevision != 2 || !sameQEMUAccountIdentity(registry.Accounts[0], journals[0].Account) {
 		return errors.New("QEMU identity-owner desired-state fixture did not start from a confirmed disabled identity")
 	}
+	oldPlan, oldIdentity, err := exerciseQEMUOwnerFileServicePlan(ctx, owner)
+	if err != nil {
+		return err
+	}
 	if err := owner.SetDesiredState(ctx, registry.Revision, qemuOwnerAccountID, serviceaccounts.Enabled); err != nil {
 		return errors.New("QEMU identity-owner desired-state enable failed")
 	}
@@ -312,6 +321,23 @@ func exerciseQEMUIdentityOwnerDesiredState() error {
 		journals[0].RegistryRevision != 2 || journals[0].Account.State != serviceaccounts.Disabled ||
 		!sameQEMUAccountIdentity(registry.Accounts[0], journals[0].Account) {
 		return errors.New("QEMU desired-state enable changed the native identity journal")
+	}
+	newIdentity, err := fileserviceplan.IdentityFromOwner(ctx, owner)
+	if err != nil || newIdentity.Fingerprint == oldIdentity.Fingerprint || newIdentity.Generation != registry.Revision {
+		return errors.New("QEMU desired identity transition did not change Owner-bound evidence")
+	}
+	storage := fileserviceplan.StorageSnapshot{Complete: true, Generation: 1, Volumes: []fileserviceplan.ObservedVolume{}}
+	newPlan, err := fileserviceplan.Build(emptyQEMUFileServiceConfig(), 0, newIdentity, storage)
+	if err != nil {
+		return errors.New("QEMU planner rejected current Owner-bound identity evidence")
+	}
+	current := newPlan.Freshness()
+	if oldPlan.FreshAgainst(current) || !newPlan.FreshAgainst(current) {
+		return errors.New("QEMU planner rejected current Owner-bound identity evidence")
+	}
+	fmt.Println("PHANTOWD_FILE_SERVICE_OWNER_PLAN_STALENESS_READY registry_changed=true fingerprint_changed=true old_candidate_rejected=true new_candidate_fresh=true storage=synthetic_empty activation=false scope=qemu-only")
+	if err := exerciseQEMUOwnerMountedNFSPlan(ctx, owner); err != nil {
+		return err
 	}
 	if err := owner.SetDesiredState(ctx, registry.Revision, qemuOwnerAccountID, serviceaccounts.Disabled); err != nil {
 		return errors.New("QEMU identity-owner desired-state disable failed")

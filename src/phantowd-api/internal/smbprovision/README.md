@@ -75,6 +75,13 @@ error, does not modify or clear the journal, and cannot invoke a Samba
 mutator. This is an in-process diagnostic capability, not an RPC/HTTP endpoint
 or an operator reconciliation workflow.
 
+`Journal.ValidateObservation` is the pure correlation used by the Owner's
+file-service evidence snapshot. It validates a redacted live passdb row against
+the recorded phase and SID without recovering or changing the journal. An
+intent phase returns review-required. `BatchObserver` is an optional backend
+capability for one bounded, ordered read of all requested Owner accounts; the
+Owner requires it rather than issuing one full passdb listing per identity.
+
 ## Qualification and limits
 
 The fixed Linux passdb executor is implemented in the sibling

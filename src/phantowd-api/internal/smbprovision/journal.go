@@ -8,6 +8,7 @@
 package smbprovision
 
 import (
+	"context"
 	"errors"
 	"io"
 	"strconv"
@@ -67,6 +68,15 @@ type Observation struct {
 	Disabled bool
 }
 
+// BatchObserver reads one bounded passdb view for the requested Owner-managed
+// identities. Results are in request order and contain only redacted metadata;
+// an implementation must fail the whole observation rather than return a
+// partial slice. This optional capability avoids running a full passdb listing
+// once per account when the Owner builds a file-service evidence snapshot.
+type BatchObserver interface {
+	ObserveAccounts(context.Context, []serviceaccounts.Account) ([]Observation, error)
+}
+
 func (o Observation) validateFor(a serviceaccounts.Account, requireDisabled bool) error {
 	if !o.Present {
 		if o.Name != "" || o.UID != 0 || o.GID != 0 || o.SID != "" || o.Disabled {
@@ -77,6 +87,38 @@ func (o Observation) validateFor(a serviceaccounts.Account, requireDisabled bool
 	if o.Name != a.Name || o.UID != a.UID || o.GID != a.GID || !validSID(o.SID) ||
 		(requireDisabled && !o.Disabled) {
 		return ErrObservation
+	}
+	return nil
+}
+
+// ValidateObservation correlates a redacted live passdb result with this
+// journal without changing it. An intent phase is uncertain and remains
+// review-required; a read must never call recovery or replay that transition.
+func (j Journal) ValidateObservation(observed Observation) error {
+	if j.Validate() != nil || observed.validateFor(j.Account, false) != nil {
+		return ErrObservation
+	}
+	switch j.Phase {
+	case Reserved:
+		if observed.Present {
+			return ErrObservation
+		}
+	case CreateIntent, PasswordIntent, EnableIntent, DisableIntent:
+		return ErrReview
+	case DisabledNoPassword, CredentialSetDisabled, Disabled:
+		if !observed.Present || !observed.Disabled || observed.SID != j.SID {
+			return ErrObservation
+		}
+	case Enabled:
+		if !observed.Present || observed.Disabled || observed.SID != j.SID {
+			return ErrObservation
+		}
+	case ReviewRequired:
+		if observed.Present && j.SID != "" && observed.SID != j.SID {
+			return ErrObservation
+		}
+	default:
+		return ErrInvalid
 	}
 	return nil
 }

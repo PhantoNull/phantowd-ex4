@@ -43,6 +43,45 @@ allocations. Ordinary reserved/group-confirmed native work reports ErrPending;
 interrupted native intent or review-required native work reports ErrReview.
 Pending does not imply corruption.
 
+`FileServiceSnapshot(ctx)` is a separate in-process, all-or-error evidence
+reader for a future file-service planner. Under the same Owner lock, it checks
+the complete registry and known journals, re-observes every managed Unix
+identity, takes one batched redacted passdb observation for every managed
+account name, and correlates each result with its Samba journal. This is not a
+global inventory of unrelated Samba accounts or external identity providers.
+A pre-existing passdb entry without an Owner journal, a mismatch, an
+interrupted command intent, or any review-required Samba journal refuses the
+whole snapshot before passdb observation; uncertain intents are not recovered
+or rewritten. It returns sorted local UID/GID/name reservations
+plus a SHA-256 evidence fingerprint. The snapshot blocks JSON marshal/unmarshal
+because the evidence is host-private. The
+Linux-only `fileserviceplan.IdentityFromOwner` adapter now maps this evidence
+into a non-serializable planner snapshot; a disposable ARMv5 QEMU Owner fixture
+checks the adapter and verifies identity changes invalidate old plans. The
+fixture uses an empty policy and synthetic empty storage. This is not product
+startup, RPC/HTTP wiring, activation or a fence against unrelated root writers.
+A current-source ARMv5 QEMU smoke also exercises `FileServiceSnapshot` itself
+after the existing disposable SMB fixture has explicitly enabled one of its
+two Owner-ledger accounts: the snapshot correlates the redacted passdb row,
+confirms the second account has no adopted passdb entry, checks local UID/GID
+reservations, and proves both native and Samba journals are unchanged across
+observation. The snapshot call adds no authentication transition; the
+surrounding fixture's SMB lifecycle remains disposable test state only.
+A separate ARMv5 fixture composes the same Owner identity/local UID/GID
+evidence with the mount-owner-observed tuple of a disposable ext2 volume in an
+NFS-only read-only candidate. It rejects stale identity or storage fingerprints
+and performs no Samba enrollment or export activation; inputs remain test
+fixtures, not production storage qualification.
+
+`WithFileServiceSnapshot(ctx, inspect)` keeps the same lock through a bounded
+trusted in-process inspection callback, for example when a future planner must
+compose identity evidence with independently locked storage evidence. Callbacks
+must not re-enter this Owner or perform process, filesystem, network, or
+activation I/O. The snapshot itself uses the non-recovering scan path; ordinary
+`Owner.Open` startup recovery remains unchanged. Interrupted or review-required
+intent makes the complete observation fail closed without passdb reads, replay,
+or journal rewrites.
+
 ## Creation and interruption
 
 `Reserve(ctx, expectedRevision, id, name)` merges protected local Unix exclusions
@@ -136,15 +175,20 @@ snapshots do not grant lasting Unix/Samba authorization.
 Production listener/service provisioning and startup, complete inventory and
 supported legacy import, durable EX4 state placement, native orphan recovery,
 binding/configuration for the Samba executor and credential channel, explicit
-orphan/review workflows, production integration of credential replacement and
-disable/revocation, retirement, HTTP/user authorization and panel account
-management remain necessary. No firmware or production storage deployment is
-authorized by this library.
+orphan/review workflows, production collection of trusted storage evidence and
+its transactional planner/service integration, production integration of
+credential replacement and disable/revocation,
+retirement, HTTP/user authorization and panel account management remain
+necessary. No firmware or production storage deployment is authorized by this
+library.
 
 Tests use generated temporary metadata and modeled Unix identities, including
 real process exit between journal and ledger publication, competing owners and
 store writers, stale revisions, pending-operation allocation refusal, quarantine
-and concurrent requests. The guarded ARMv5 scenario uses the actual owner,
+and concurrent requests. The file-service evidence tests verify batched
+read-only observation, stable evidence fingerprints, copy isolation, refused
+serialization, and that an interrupted SMB intent remains byte-for-byte
+unchanged. The guarded ARMv5 scenario uses the actual owner,
 typed BusyBox executor and unprivileged socket client, closes/reopens the owner
 between group and user creation, and verifies the no-login identity and cleanup.
 Its Samba-enrollment fixture uses the same owner lock/journal and fixed Linux

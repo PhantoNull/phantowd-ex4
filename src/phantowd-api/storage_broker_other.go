@@ -19,6 +19,10 @@ func observeGPTPartitionIdentityFromBroker(context.Context) (storageGPTObservati
 	return storageGPTObservationSummary{}, errStorageBrokerUnavailable
 }
 
+func observeMDV10FromBroker(context.Context) (storageMDV10ObservationSummary, error) {
+	return storageMDV10ObservationSummary{}, errStorageBrokerUnavailable
+}
+
 func verifyQEMUStorageBrokerFixture() error {
 	return errStorageBrokerUnavailable
 }

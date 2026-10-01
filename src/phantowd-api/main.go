@@ -24,6 +24,7 @@ func main() {
 	mountGuardTest := flag.Bool("qemu-mount-guard-test", false, "fixed descriptor/mount guard fixture; QEMU only")
 	mdStackTest := flag.Bool("qemu-md-stack-test", false, "fixed disposable MD stack/mount-guard fixture; QEMU only")
 	mdV10Fixture := flag.Bool("qemu-md-v10-fixture", false, "write fixed MD v1.0 metadata to partition 1 on two disposable GPT QEMU disks; QEMU only")
+	mdV10BrokerClient := flag.Bool("qemu-md-v10-broker-client", false, "fixed internal MD v1.0 broker client fixture; QEMU only")
 	stateTest := flag.String("qemu-state-test", "", "fixed two-boot state fixture; QEMU only")
 	identityClient := flag.String("qemu-identity-client", "", "fixed unprivileged identity-channel fixture; QEMU only")
 	identityOwnerService := flag.Bool("qemu-identity-owner-service", false, "fixed root identity-owner service fixture; QEMU only")
@@ -31,7 +32,7 @@ func main() {
 	modes := 0
 	for _, selected := range []bool{
 		*selfTest, *storageBroker, *nfsTest != "", *smbTest, *mountGuardTest,
-		*mdStackTest, *mdV10Fixture, *stateTest != "", *identityClient != "", *identityOwnerService,
+		*mdStackTest, *mdV10Fixture, *mdV10BrokerClient, *stateTest != "", *identityClient != "", *identityOwnerService,
 	} {
 		if selected {
 			modes++
@@ -85,6 +86,17 @@ func main() {
 	if *mdV10Fixture {
 		if err := runQEMUMDV10Fixture(); err != nil {
 			fmt.Fprintf(os.Stderr, "PHANTOWD_API_ERROR MD v1.0 QEMU fixture failed: %v\n", err)
+			os.Exit(1)
+		}
+		if err := runQEMUMDV10M34Fixture(); err != nil {
+			fmt.Fprintf(os.Stderr, "PHANTOWD_API_ERROR MD v1.0/M3.4 QEMU fixture failed: %v\n", err)
+			os.Exit(1)
+		}
+		return
+	}
+	if *mdV10BrokerClient {
+		if err := runQEMUMDV10BrokerClient(); err != nil {
+			fmt.Fprintln(os.Stderr, "PHANTOWD_MD_V10_BROKER_ERROR fixed read-only broker observation failed")
 			os.Exit(1)
 		}
 		return
