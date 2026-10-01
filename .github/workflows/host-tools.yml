@@ -20,6 +20,7 @@ on:
       - '.github/workflows/ex4-stage-b3.yml'
       - '.github/workflows/host-tools.yml'
   pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
     paths:
       - 'tools/phantowd-lab/**'
       - 'support/build-qemu.ps1'

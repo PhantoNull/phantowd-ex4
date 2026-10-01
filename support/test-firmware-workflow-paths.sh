@@ -57,6 +57,22 @@ require_triggered_path() {
     require_event_path "$workflow" pull_request "$path"
 }
 
+require_pr_ready_for_review() {
+    workflow=$1
+    if ! awk '
+        $0 == "  pull_request:" { in_event = 1; next }
+        /^  [a-z_]+:/ { in_event = 0 }
+        in_event && $0 == "    types: [opened, synchronize, reopened, ready_for_review]" {
+            found = 1
+        }
+        END { exit !found }
+    ' "$workflow"; then
+        printf 'workflow %s must run when a draft PR becomes ready for review\n' \
+            "$workflow" >&2
+        exit 1
+    fi
+}
+
 require_manual_dispatch() {
     workflow=$1
     if ! grep -F '  workflow_dispatch:' "$workflow" >/dev/null; then
@@ -225,6 +241,10 @@ EOF
 $documentation_paths
 EOF
     require_manual_dispatch "$workflow"
+done
+
+for workflow in "$qemu_workflow" "$stage_b3_workflow" "$host_workflow"; do
+    require_pr_ready_for_review "$workflow"
 done
 
 require_manual_only "$stage_a_workflow"
