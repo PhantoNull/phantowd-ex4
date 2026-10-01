@@ -780,9 +780,14 @@ storage. No production roster provider or activation path exists.
   bounds readiness, stop and diagnostics, and supports explicit lifecycle
   observation. If a process that passed readiness exits unexpectedly, the
   owner enters `review-required` and will not restart it implicitly. Linux API
-  tests pass; Windows API checks and ARMv5 QEMU-tagged cross-compilation pass,
-  but this primitive has not been executed in ARMv5 QEMU. It is not yet the
-  aggregate SMB/NFS service owner, durable service state, or transactional
+  tests cover review/quarantine after unexpected exit; the one-boot ARMv5 QEMU
+  smoke now also executes it around a disposable foreground `smbd`, waits for a
+  real SMB readiness request, verifies generated access policy, and cleanly
+  stops only the owned process group. The smoke passed locally on API source
+  commit `11b380b`; `qemu-smoke.sh` requires the
+  `process_owner=started-ready-stopped` marker. QEMU has not yet exercised the
+  unexpected-exit/forced-stop quarantine branch. This is not yet the aggregate
+  SMB/NFS service owner, durable service state, reload, or transactional
   last-known-good configuration replacement.
 - **M4.3 — Access semantics.** Specify SMB3 grants and denied cases; keep SMB1
   disabled. Support explicit NFS client/network rules, export paths and numeric

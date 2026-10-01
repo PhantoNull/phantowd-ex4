@@ -274,6 +274,8 @@ grep -F 'qemu-md-v10-fixture.sh' "$repo_root/support/container/test-qemu-api-ove
     fail 'current-source local overlay runner must be able to exercise the MD v1.0 fixture'
 grep -F 'PHANTOWD_QEMU_OVERLAY_MD_V10_ONLY=1' "$repo_root/support/test-qemu-md-v10.ps1" >/dev/null ||
     fail 'local MD v1.0 preflight must omit unrelated long QEMU fixtures'
+grep -F 'PHANTOWD_QEMU_OVERLAY_SMOKE_ONLY=1' "$repo_root/support/test-qemu-md-v10.ps1" >/dev/null ||
+    fail 'local standard-smoke mode must skip only the separate two-boot fixture'
 
 # Keep the QEMU smoke driver's expected marker synchronized with the guest
 # self-test. A typo here otherwise costs a full ARMv5 build before the guest

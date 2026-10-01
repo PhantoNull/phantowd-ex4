@@ -328,6 +328,21 @@ recovery or compatibility qualification. The firmware provider remains
 internal and is not wired to product startup or management HTTP. No real disk
 or NAS was read.
 
+To run the complete one-boot API/service smoke against the current source using
+the same pinned image, cache volume and verified base artifact, use:
+
+```powershell
+.\support\test-qemu-md-v10.ps1 -StandardSmokeOnly
+```
+
+This mode runs `qemu-smoke.sh` (including the `processowner`-managed Samba
+readiness/access/stop fixture) and skips only the separate two-boot state
+fixture. It passed locally on 2026-10-02 with API/QEMU sources at `11b380b`;
+the marker verifies a live SMB readiness request and clean stop of the owned
+`smbd` process group. It does not exercise guest unexpected-exit quarantine,
+pull/build an image, create a Docker volume, or contact the NAS. The default
+command remains the focused MD v1.0/M3.4 check described above.
+
 ## Evidence boundary
 
 ### Separate state-persistence boots

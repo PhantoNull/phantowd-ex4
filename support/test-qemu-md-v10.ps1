@@ -1,6 +1,7 @@
 [CmdletBinding()]
 param(
-    [string]$BaseArtifactDir = (Join-Path (Split-Path -Parent $PSScriptRoot) 'artifacts/qemu-armv5')
+    [string]$BaseArtifactDir = (Join-Path (Split-Path -Parent $PSScriptRoot) 'artifacts/qemu-armv5'),
+    [switch]$StandardSmokeOnly
 )
 
 $ErrorActionPreference = 'Stop'
@@ -59,12 +60,19 @@ done
 
 export GOPROXY=off GOTOOLCHAIN=local GOCACHE=/tmp/go-cache GOPATH=/tmp/go-path
 export TMPDIR=/tmp
-export PHANTOWD_QEMU_OVERLAY_MD_V10_ONLY=1
+if [ '__STANDARD_SMOKE_ONLY__' = 1 ]; then
+    export PHANTOWD_QEMU_OVERLAY_SMOKE_ONLY=1
+    export PHANTOWD_QEMU_OVERLAY_MD_V10_ONLY=0
+else
+    export PHANTOWD_QEMU_OVERLAY_MD_V10_ONLY=1
+fi
 export PHANTOWD_QEMU_OVERLAY_REUSE_BASE_VOLUME_PROBE=1
 sh /src/support/tests/test-storage-broker-buildroot.sh
 exec sh /src/support/container/test-qemu-api-overlay.sh \
     /base "$go_binary" /src "$probe_archive" "$target_cc" "$patch_dir"
 '@
+$smokeMode = if ($StandardSmokeOnly) { '1' } else { '0' }
+$linuxScript = $linuxScript.Replace('__STANDARD_SMOKE_ONLY__', $smokeMode)
 $linuxScript = $linuxScript.Replace("`r`n", "`n")
 $encodedLinuxScript = [Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes($linuxScript))
 $linuxCommand = "set -eu; printf '%s' '$encodedLinuxScript' | base64 -d > /tmp/phantowd-test-qemu-md-v10.sh; exec /bin/sh /tmp/phantowd-test-qemu-md-v10.sh"
@@ -81,5 +89,5 @@ docker run --rm --pull never `
     -ec $linuxCommand
 
 if ($LASTEXITCODE -ne 0) {
-    throw 'MD v1.0 QEMU fixture failed. No NAS or physical disk was used; no image was pulled and no volume was created.'
+    throw 'QEMU API overlay fixture failed. No NAS or physical disk was used; no image was pulled and no volume was created.'
 }
