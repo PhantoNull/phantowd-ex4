@@ -313,7 +313,7 @@ func exerciseQEMUMDToMountedOwnerProvider(source string, identity mountedStorage
 		identity.arrays[0].arrayName != "md0" || identity.arrays[0].arrayUUID == "" || len(identity.physicalDisks) != 2 {
 		return errors.New("M3.3 identity is not the fixed complete QEMU MD/filesystem observation")
 	}
-	return mountowner.WithQEMUMDStackSetEvidence(source, func(evidence mountowner.MountedVolumeSetEvidence) error {
+	if err := mountowner.WithQEMUMDStackSetEvidence(source, func(evidence mountowner.MountedVolumeSetEvidence) error {
 		volumes := evidence.Volumes()
 		if !evidence.Complete() || evidence.Generation() == 0 || evidence.Fingerprint() == ([32]byte{}) || len(volumes) != 1 {
 			return errors.New("M3.4 Owner returned an incomplete mounted-volume roster")
@@ -339,7 +339,13 @@ func exerciseQEMUMDToMountedOwnerProvider(source string, identity mountedStorage
 		}
 		fmt.Println("PHANTOWD_M33_M34_PROVIDER_READY source=complete_md_filesystem_identity owner=live_mount_revalidated roster=complete_for_fixture_only uuid=true device_tuple=true read_only=true planner_snapshot=true activation=false http=false scope=disposable-qemu-only")
 		return nil
-	})
+	}); err != nil {
+		return err
+	}
+	if err := mountowner.RunQEMUMultiVolumeLeaseLossFixture(); err != nil {
+		return fmt.Errorf("M3.5 two-volume lease-loss fixture: %w", err)
+	}
+	return nil
 }
 
 func waitForQEMUBlockNodeRemoval(path string, timeout time.Duration) error {

@@ -680,9 +680,18 @@ are missing. **Depends on:** M1; M7 for hardware.
   permanently after a failed identity/state check, so the same guard cannot be
   reused after the anchor reappears; opening a replacement requires a new
   trusted tuple. Host regression and ARMv5 QEMU mount-change coverage passed.
-  This is only a caller-side reference-safety primitive: it does not revoke
-  descriptors already returned, stop dependent services, own mount lifecycle,
-  or establish product behavior. M3.5 remains incomplete.
+  A separate two-volume ARMv5 QEMU fixture now composes the M3.4 roster lease
+  with distinct synthetic ext2 and read-only MD-backed filesystems. When the
+  MD mount identity changes, that Owner enters `review-required`, its tracked
+  handles are revoked, and the healthy volume's existing group-lease access
+  survives. Returning the old MD anchor does not revive it; complete-roster
+  reacquisition still fails all-or-error, while the independent healthy Owner
+  can issue a fresh direct lease. This is disposable fixture evidence only.
+  The group lease is not a production volume monitor or a per-service routing
+  mechanism: dependent services are not yet owned, selectively withdrawn, or
+  recovered by volume identity. M3.5 remains incomplete until production
+  monitoring, per-volume service access revocation, fresh qualification on
+  return, and operator review/recovery are integrated and qualified.
 
 **Start in:** [volume probe](src/phantowd-volume-probe/README.md),
 [supervisor](src/phantowd-api/volumeprobe/README.md),

@@ -139,6 +139,52 @@ func WithQEMUMDStackSetEvidence(source string, inspect func(MountedVolumeSetEvid
 		})
 }
 
+// RunQEMUMultiVolumeLeaseLossFixture composes two distinct disposable
+// filesystems into a fixed roster: the synthetic writable ext2 fixture and a
+// read-only synthetic MD filesystem. It is available only to QEMU-tagged
+// integration code; it is not a production roster or recovery path.
+func RunQEMUMultiVolumeLeaseLossFixture() error {
+	var innerReviewObserved bool
+	err := withQEMUMountedOwner(qemuFixtureSource, func(healthy *Owner) error {
+		innerErr := withQEMUMountedOwnerAt(QEMUMDStackFixtureSource, qemuMDStackMountAnchor,
+			QEMUMDStackFixtureVolumeID, qemuMDStackFilesystem, false,
+			func(lost *Owner) error {
+				return exerciseQEMUMultiVolumeLeaseLoss(healthy, lost)
+			})
+		if !errors.Is(innerErr, ErrReview) {
+			return errors.Join(errors.New("lost-volume fixture did not preserve review quarantine during exact teardown"), innerErr)
+		}
+		innerReviewObserved = true
+		if healthy.State() != StateMounted {
+			return errors.New("lost MD volume quarantined the independent healthy Owner")
+		}
+		lease, err := healthy.Acquire(contextBackground())
+		if err != nil {
+			return fmt.Errorf("healthy Owner could not issue a fresh independent lease: %w", err)
+		}
+		file, err := lease.OpenDirectory(".")
+		if err != nil {
+			_ = lease.Close()
+			return fmt.Errorf("fresh healthy Owner lease could not open its root: %w", err)
+		}
+		if err := lease.Close(); err != nil {
+			return fmt.Errorf("fresh healthy Owner lease did not release: %w", err)
+		}
+		if _, err := file.Stat(); !errors.Is(err, os.ErrClosed) {
+			return errors.New("fresh healthy Owner lease did not revoke its tracked descriptor")
+		}
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+	if !innerReviewObserved {
+		return errors.New("two-volume fixture did not observe quarantined teardown")
+	}
+	fmt.Println("PHANTOWD_M35_TWO_VOLUME_READY distinct_filesystems=true lost_volume_quarantined=true lost_handles_revoked=true healthy_group_lease_survived=true fresh_healthy_owner_lease=true roster_reacquire=all_or_error scope=disposable-qemu-only")
+	return nil
+}
+
 func withQEMUMountedOwner(source string, inspect func(*Owner) error) (result error) {
 	return withQEMUMountedOwnerAt(source, qemuPlannerMountAnchor, qemuPlannerVolumeID,
 		qemuFixtureUUID, true, inspect)
@@ -620,6 +666,66 @@ func exerciseChangedIdentityRevocation(source string) error {
 	}
 	if _, err := os.Lstat(qemuPlannerMountAnchor); !errors.Is(err, os.ErrNotExist) {
 		return errors.New("identity-loss fixture did not remove its exact QEMU mount anchor")
+	}
+	return nil
+}
+
+func exerciseQEMUMultiVolumeLeaseLoss(healthy, lost *Owner) error {
+	set, err := newMountedVolumeSet(
+		[]string{qemuPlannerVolumeID, QEMUMDStackFixtureVolumeID},
+		[]*Owner{healthy, lost},
+	)
+	if err != nil {
+		return errors.New("two-volume fixture could not construct its fixed roster")
+	}
+	lease, evidence, err := set.Acquire(contextBackground())
+	if err != nil {
+		return fmt.Errorf("two-volume fixture could not acquire the complete roster: %w", err)
+	}
+	if !evidence.Complete() || len(evidence.Volumes()) != 2 {
+		_ = lease.Close()
+		return errors.New("two-volume fixture acquired incomplete roster evidence")
+	}
+	healthyHandle, err := lease.OpenDirectory(qemuPlannerVolumeID, ".")
+	if err != nil {
+		_ = lease.Close()
+		return fmt.Errorf("healthy member was not usable before loss: %w", err)
+	}
+	lostHandle, err := lease.OpenDirectory(QEMUMDStackFixtureVolumeID, ".")
+	if err != nil {
+		_ = lease.Close()
+		return fmt.Errorf("MD member was not usable before loss: %w", err)
+	}
+	if err := unix.Mount(qemuFixtureSource, lost.target, "", unix.MS_BIND, ""); err != nil {
+		_ = lease.Close()
+		return fmt.Errorf("could not create the exact disposable MD-target overmount: %w", err)
+	}
+	if _, err := lease.OpenDirectory(QEMUMDStackFixtureVolumeID, "."); !errors.Is(err, ErrReview) || lost.State() != StateReviewRequired {
+		return errors.New("changed MD mount identity was not quarantined")
+	}
+	if _, err := lostHandle.Stat(); !errors.Is(err, os.ErrClosed) {
+		return errors.New("changed MD volume did not revoke its tracked descriptor")
+	}
+	if _, err := healthyHandle.Stat(); err != nil {
+		return fmt.Errorf("MD loss revoked an unrelated healthy-volume descriptor: %w", err)
+	}
+	if _, err := lease.OpenDirectory(qemuPlannerVolumeID, "."); err != nil {
+		return fmt.Errorf("MD loss blocked an existing lease from the healthy volume: %w", err)
+	}
+	if err := unix.Unmount(lost.target, 0); err != nil {
+		return fmt.Errorf("could not remove the exact disposable MD-target overmount: %w", err)
+	}
+	if _, err := lease.OpenDirectory(QEMUMDStackFixtureVolumeID, "."); !errors.Is(err, ErrReview) {
+		return errors.New("return of the old MD anchor revived its quarantined lease")
+	}
+	if _, evidence, err := set.Acquire(contextBackground()); !errors.Is(err, ErrReview) || evidence.Complete() {
+		return errors.New("return of one anchor restored complete-roster lease authority")
+	}
+	if err := lease.Close(); err != nil {
+		return fmt.Errorf("two-volume lease did not close after member quarantine: %w", err)
+	}
+	if err := lost.Unmount(contextBackground()); !errors.Is(err, ErrReview) {
+		return errors.New("quarantined MD Owner retried or performed implicit unmount")
 	}
 	return nil
 }

@@ -264,6 +264,10 @@ while [ "$attempt" -lt 120 ]; do
             echo 'Missing M3.3-to-M3.4 trusted mounted-volume provider assertion' >&2
             exit 1
         fi
+        if ! grep -F 'PHANTOWD_M35_TWO_VOLUME_READY distinct_filesystems=true lost_volume_quarantined=true lost_handles_revoked=true healthy_group_lease_survived=true fresh_healthy_owner_lease=true roster_reacquire=all_or_error scope=disposable-qemu-only' "$log_file" >/dev/null; then
+            echo 'Missing M3.5 two-volume lease-loss assertion' >&2
+            exit 1
+        fi
         if ! grep -F 'PHANTOWD_FILESYSTEM_UUID_READY source=kernel-ioctl expected_uuid=true mismatch_denied=true block_device_opened=false scope=qemu-fixture-only' "$log_file" >/dev/null; then
             echo 'Missing kernel filesystem UUID assertion' >&2
             exit 1

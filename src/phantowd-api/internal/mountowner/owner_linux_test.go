@@ -405,6 +405,17 @@ func TestMountedVolumeSetLeaseRevokesOnlyTheChangedVolume(t *testing.T) {
 	if _, err := lease.OpenDirectory("alpha", "."); err != nil {
 		t.Fatalf("beta identity failure blocked independent alpha access: %v", err)
 	}
+	alphaIndependentLease, err := alpha.Acquire(context.Background())
+	if err != nil {
+		t.Fatalf("beta identity failure blocked an independent alpha lease: %v", err)
+	}
+	if _, err := alphaIndependentLease.OpenDirectory("."); err != nil {
+		_ = alphaIndependentLease.Close()
+		t.Fatalf("independent alpha lease could not open its qualified root: %v", err)
+	}
+	if err := alphaIndependentLease.Close(); err != nil {
+		t.Fatalf("close independent alpha lease after beta quarantine: %v", err)
+	}
 
 	// Restoring the observer models the anchor returning. The old Owner and
 	// child lease must remain quarantined; recovery needs fresh qualification.

@@ -60,14 +60,22 @@ internal provider exercised on disposable QEMU media; there is no manual
 endpoint that scans real disks. The M3.4 mount-owner is likewise an internal
 prototype, not connected to the broker, product startup, or service handoff.
 Its fixed-roster collector now locks and revalidates every declared Owner
-before returning an all-or-error snapshot; the QEMU fixture contains one
-synthetic volume, so “complete” does not mean complete appliance discovery.
+before returning an all-or-error snapshot; the M4.1 planner fixture contains
+one synthetic volume, so “complete” does not mean complete appliance
+discovery. A separate M3.5 ARMv5 QEMU fixture uses two distinct synthetic
+filesystems and verifies that loss of one quarantines only that Owner and
+revokes its tracked handles, while the healthy volume remains usable. The old
+anchor's return does not revive the lost Owner, and reacquiring the complete
+roster remains all-or-error.
 An internal roster lease now acquires every member under the same canonical
 lock order or returns no lease, rolls back partial acquisition on revalidation
 failure, routes directory opens by logical volume ID, and closes tracked
 descriptors on group release. Host tests cover two-member drain exclusion and
-failed-acquisition rollback; the one-boot local ARMv5 QEMU smoke exercises the
-lease/open/revoke path on disposable ext2 media.
+failed-acquisition rollback. The one-boot local ARMv5 QEMU smoke exercises the
+group lease and two-volume loss path on disposable ext2/MD-backed media; a
+separate healthy Owner can still issue a fresh direct lease after the peer is
+quarantined. This is fixture behavior only, not product service isolation or
+volume-loss monitoring.
 Its QEMU-only driver uses the pinned source and target descriptors with the
 Linux `open_tree`/`move_mount` API; if that API fails, it does not fall back to
 a path-based mount. Host tests and a current-source ARMv5 QEMU overlay cover
