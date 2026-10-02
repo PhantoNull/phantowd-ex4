@@ -89,7 +89,7 @@ func (o Observation) Flags() Flags {
 func (Observation) MarshalJSON() ([]byte, error) { return nil, ErrPrivate }
 func (*Observation) UnmarshalJSON([]byte) error  { return ErrPrivate }
 
-// Parse accepts the deliberately narrow smartctl 7.4 release / JSON 1.0 ATA
+// Parse accepts the deliberately narrow smartctl 7.4/7.5 release / JSON 1.0 ATA
 // info+health report profile. observedExit must come separately from the process
 // result, not from this JSON. Neither matching values nor version strings prove
 // the report's provenance. Unknown fields are discarded after bounded syntax
@@ -132,7 +132,7 @@ func Parse(data []byte, observedExit int) (Observation, error) {
 	if err != nil || exit != observedExit {
 		return Observation{}, ErrInvalid
 	}
-	if format != [2]int{1, 0} || version != [2]int{7, 4} || prerelease {
+	if format != [2]int{1, 0} || (version != [2]int{7, 4} && version != [2]int{7, 5}) || prerelease {
 		return Observation{}, ErrUnsupportedFormat
 	}
 

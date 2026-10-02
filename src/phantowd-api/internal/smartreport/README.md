@@ -8,9 +8,10 @@ observed process exit value; it never executes `smartctl`, opens a device,
 sends an ioctl or starts a self-test. No HTTP endpoint, scheduler, history,
 notification, product installation or privilege expansion is added.
 
-The initial profile is release smartctl **7.4**, JSON **1.0**, ATA info+health
-fields. This matches the stock recipe in pinned Buildroot 2025.02.18; the
-package is not selected in the firmware. Version strings do not authenticate
+The explicit profiles are release smartctl **7.4 and 7.5**, JSON **1.0**, ATA
+info+health fields. 7.4 matches the stock recipe in pinned Buildroot 2025.02.18;
+7.5 is admitted after separate upstream/archive and actual native-producer
+verification. Neither package is selected in the firmware. Version strings do not authenticate
 an executable or prove provenance. Other versions/formats require separately
 verified profiles rather than silently inheriting support.
 
@@ -30,6 +31,8 @@ must be separate and describe collection scope, device generation and age.
   it with `Partial`; do not replace it with a reassuring blank report.
 - `ReportedPass` means only the tool reported pass. It is not verified disk
   health, filesystem/RAID health, complete check coverage or data integrity.
+- Process exit zero alone is not pass: upstream can return zero when SMART is
+  disabled, with no health result. This remains `Disabled` / `NoAssessment`.
 - Missing mandatory health fields, contradictory `passed`/bit 3, mismatched
   embedded/process exit, null/wrong-type known fields and contradictory
   support state refuse with no observation and a fixed, redacted error.
@@ -55,9 +58,23 @@ states, bounded history, vendor-aware counters, self-test authorization/progress
 deduplicated notifications and UI only after those boundaries are verified.
 No NAS/disks, recovery or thermal gate is bypassed.
 
+The opt-in [CPU-only producer fixture](../../../../support/SMART-REPLAY.md)
+checks real upstream native 7.4/7.5 JSON from seven invented ATA stdin responses
+per release, with explicitly pinned archives and identical refusal bounds.
+It compiles only the generic backend, not a Linux device collector; no
+physical transport/standby compatibility is established. The separate static
+7.5 generic producer and Go projection fixture now passes in an ARM926 guest
+against an unchanged manifest-verified base. Complete local rebuilt-image/
+package/SBOM and guest/service integration subsequently passed on `dd55481`,
+including this producer against the new base. Independent clean builds and
+hosted feature qualification remain separate. Neither replay lane executes
+physical ATA commands.
+
 ## Primary semantics
 
 - [smartctl 7.4 exit status and no-check behavior](https://raw.githubusercontent.com/smartmontools/smartmontools/RELEASE_7_4/smartmontools/smartctl.8.in)
 - [JSON initialization and emitted exit status](https://raw.githubusercontent.com/smartmontools/smartmontools/RELEASE_7_4/smartmontools/smartctl.cpp)
 - [ATA support/assessment and partial-read fallback](https://raw.githubusercontent.com/smartmontools/smartmontools/RELEASE_7_4/smartmontools/ataprint.cpp)
 - [Pinned Buildroot recipe](https://raw.githubusercontent.com/buildroot/buildroot/2025.02.18/package/smartmontools/smartmontools.mk)
+- [7.5 JSON profile](https://raw.githubusercontent.com/smartmontools/smartmontools/RELEASE_7_5/smartmontools/smartctl.cpp)
+- [7.5 ATA assessment/support](https://raw.githubusercontent.com/smartmontools/smartmontools/RELEASE_7_5/smartmontools/ataprint.cpp)

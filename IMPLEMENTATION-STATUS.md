@@ -156,8 +156,57 @@ rebased to `8a3b95a` with an identical complete tree. This cache-reusing result
 is not independent clean-build, hosted follow-up, legal or physical/product
 qualification; known legal-info warnings remain release work. No smartmontools package,
 device command, ioctl, self-test job, history, notification or endpoint is enabled.
-Actual tool reports/transport/standby/device generation and product UI remain
+Physical tool reports/transport/standby/device generation and product UI remain
 unqualified; see the [SMART contract](src/phantowd-api/internal/smartreport/README.md).
+
+The next `feat/smart-replay-corpus` test-only follow-up builds native upstream
+smartctl 7.4 with only its generic backend and feeds seven invented ATA debug
+transcripts through the documented stdin pseudo-device. The real JSON and
+independent Go projections pass pinned Linux vet/race, including exit-zero
+SMART-disabled, empty input and partial collection with reported fail. The
+synthetic oracle initially expected disabled exit 4 and a device field after
+empty stdin; actual execution/source review corrected those expectations. The
+product parser required no behavioral change. Windows API/UI and the current
+pure-parser ARMv5 suite also pass, with base hashes unchanged. Compilation and
+reports stay in a bounded disposable tmpfs; no image/volume/package/device
+authority or installed binary is added. This qualifies native synthetic
+producer compatibility, not physical/ARM transport, standby or full integration
+of this follow-up. See [scope and invocation](support/SMART-REPLAY.md).
+
+The subsequent profile update separately verifies the current stable 7.5 release
+archive/hash and native producer, then admits only exact release 7.4/7.5 with
+JSON 1.0. The original 7.5 corpus fails before the allowlist change and passes
+after; the 7.4 producer remains green. Both profiles get all 256 synthetic exit
+projections and malformed/contradictory-input refusals, including older/future/
+major/patch/prerelease rejection. Windows API/UI, pinned Linux ordinary/QEMU
+vet/all API race and 10,000 fuzz executions pass; the updated parser passes on
+ARMv5 with base hashes unchanged. None of these runs executes smartctl on ARM.
+The tested C-only toolchain has no cross g++/cc1plus/libstdc++; actual
+ARM producer testing requires a complete C++-enabled rebuild, bounded cache
+transition and guest/service requalification. No such rebuild or collector is
+claimed by this profile update; no obsolete cache was deleted merely to test JSON.
+
+The follow-up adds a C++-enabled QEMU defconfig and a diskless ARM producer
+fixture for pinned smartctl 7.5. It statically builds only the generic stdin
+backend in bounded scratch, checks ARMv5TE/ARMv5TEJ soft-float linkage, and executes seven
+invented inputs plus the Go projection tests in a read-only QEMU snapshot. A
+focused wrapper refuses a missing compiler before launch; fast regression tests
+cover the real `g++` filename and reject unsafe paths. Native 7.4/7.5 regressions
+pass after sharing the trace generator. **The C++ toolchain is rebuilt and the
+focused actual ARM producer fixture passes** against the manifest-verified
+earlier base, with all seven exits/projections and unchanged base hashes.
+The test exposed and corrected an overly narrow v5TE tag check and QEMU7.2's
+/tmp-to-/var/tmp snapshot fallback; snapshots now use the owned tmpfs subdirectory.
+The initial full build was stopped after the reproducible runner failure;
+complete C++ image/service/SBOM integration subsequently passed locally on
+`dd55481`: standard boot, MD/two-boot persistence, isolated launcher, loader,
+restricted-root Samba, pure SMART parser and actual ARM producer all passed.
+The seven final artifacts were independently rehashed. The generated rootfs
+is 80 MiB, kernel 4,009,408 bytes and API 9,460,244 bytes. This reused verified
+sources/compiler caches; it is not independent clean-build reproducibility,
+hosted feature qualification or complete license/distribution review.
+This is not a product collector, physical transport/standby qualification or
+closed release gate.
 
 Percentages are **engineering planning estimates**, not measured test coverage,
 probabilities of success, release readiness, or a delivery-date promise. Credit
