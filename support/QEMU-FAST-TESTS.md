@@ -1,5 +1,55 @@
 # Fast API and file-service integration checks
 
+## Smoke duration and cache scope
+
+The complete one-boot smoke now has a **240-second** polling budget, not the
+older 120 seconds. `PHANTOWD_QEMU_SMOKE_TIMEOUT_SECONDS` may explicitly select
+1..300 canonical whole seconds; invalid values fail before creating fixtures.
+The harness prints bounded progress every 30 polls. It still starts QEMU once,
+fails immediately on a guest error/death, requires every existing readiness
+assertion and retains its finite timeout/cleanup; it does not retry tests.
+
+A local CPU-limited differential on an unchanged manifest-verified base
+reproduced timeout at 121 seconds with the old budget and completed the full
+smoke at 162 seconds with the new budget. This supports a resource-dependent
+budget issue, not proof that every historical hosted failure has that cause.
+Exact-head hosted qualification remains separate.
+
+CI prefers the exact input/week compiler-cache key, then older keys for those
+inputs, then the older QEMU/Linux compiler-cache namespace. It never restores
+a prebuilt workspace/image or skips compilation/tests. The pinned Buildroot
+wrapper hashes GCC configuration/source inputs for compiler identity, and
+[ccache 4.10.2](https://ccache.dev/manual/4.10.2.html#_how_ccache_works) compares
+compilation inputs before reusing results. Cache writes still require a fresh
+completed-compile checkpoint on a non-cancelled trusted develop push; the
+existing 1 GiB bound remains. A broader cache lookup does not demonstrate
+speedup, independent reproducibility or release qualification.
+
+## Guest entrypoint mode regression
+
+Docker Desktop source mounts can make scripts executable even when Git records
+them as `100644`. That can mask a cold Linux build's PID-1 boot failure. The
+early feedback test checks the Git modes of directly executed guest entrypoints
+(or actual executable access for a source archive), before compilation.
+
+An optional differential ARMv5 regression uses the same pinned read-only
+base/toolchain mounts and executable disposable `/tmp` described below:
+
+```sh
+sh /src/support/tests/test-qemu-md-v10-init-mode.sh \
+    /base /toolchain/bin/go /src /toolchain/sbin/debugfs
+```
+
+It copies the base images into tmpfs, sets only the MD fixture init's inode
+mode to `0644`, requires kernel `EACCES`/panic, then sets `0755` and requires
+the full MD v1.0/Owner fixture to pass. The original rootfs hash must remain
+unchanged. Temporary images/logs and guest processes are cleaned up. It
+never attaches host devices or qualifies hardware. Normal CI needs no extra
+negative boot: the fast source-mode contract and standard positive MD fixture
+cover this regression's boundary.
+
+## Current-source overlay lane
+
 `container/test-qemu-api-overlay.sh` is an optional developer feedback lane.
 It rebuilds the Go API with the pinned compiler and injects it, the current
 broker mdev rule, guest readiness script, NFS fixture helper and x/sys license

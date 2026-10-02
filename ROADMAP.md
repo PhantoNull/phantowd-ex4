@@ -7,6 +7,10 @@ Reviewed: **2026-10-02**. This is the product specification and work breakdown,
 not a release announcement. The [README](README.md) is the concise entry point;
 component contracts remain authoritative for implemented behavior.
 
+The dated [code-to-roadmap comparison](IMPLEMENTATION-STATUS.md) records
+implemented evidence, missing product integration, planning estimate bands and
+the immediate execution sequence. Estimates are not release qualification.
+
 ## Product contract
 
 Build a maintained, efficient, local-first replacement for the **WD My Cloud
@@ -197,6 +201,32 @@ button to an unqualified backend simply because the screen exists.
   pull/build an image or create a volume. Preserve isolation, exact-source
   hashes and clean-build/reproducibility lanes. Cache hits are an optimization,
   never qualification evidence.
+  The build feedback refinement runs pinned native Go vet/unit/race/fuzz tests
+  before the full kernel/Samba compilation. Failed guest logs are preserved and
+  their final 120 lines printed; failure-only artifacts are uploaded separately
+  from successful image artifacts. A fresh completed-compile checkpoint permits
+  only trusted, non-cancelled `develop` pushes to seed the bounded compiler cache
+  even if later tests fail. This does not establish a fix for historical fixture
+  failures or independent clean-build reproducibility. Cancel obsolete merged-PR
+  runs only after confirming that the integration run covers them.
+  A differential ARMv5 regression found the MD fixture PID-1 script recorded
+  non-executable in Git, masked by Docker Desktop source permissions. Mode
+  `0644` produces kernel `EACCES`/panic; changing only the inode to `0755`
+  passes the MD/Owner fixture with the base image unchanged. Correct the Git
+  mode and check direct guest entrypoint modes before compilation. Hosted
+  exact-head confirmation remains necessary; historical state-unmount EBUSY
+  is a separate unresolved issue.
+  The later hosted standard smoke hit its 120-second readiness budget after
+  compilation; local CPU-limited testing reproduced that timeout and completed
+  the full smoke at 162 seconds with a bounded 240-second budget. Preserve all
+  assertions, one-shot startup, prompt error/death handling and retained logs.
+  Explicit override is limited to 1..300 whole seconds; report bounded progress
+  every 30 polls. Exact-head hosted confirmation remains required, including
+  the MD/state fixtures not reached by the timed-out run. Compiler-cache
+  restore may try older QEMU/Linux entries after exact inputs; never restore
+  prebuilt workspaces/images, weaken ccache input checks or change the trusted
+  develop-only write/checkpoint/1 GiB policy. Measure actual hosted savings;
+  a broader lookup is not reproducibility or a release qualification.
 - **M0.4 — Maintain release inputs.** Dependency update changes include source
   signatures/hashes, ARMv5 compatibility, package configuration, vulnerability
   review, license material and regenerated SBOM. Test the selected package set.
@@ -1158,6 +1188,12 @@ These features are separate scope, not shortcuts around core acceptance:
 | Performance targets and qualification duration | Baseline hardware measurements and declared protocol, M11 |
 
 ## Next bounded work packets
+
+Current priority (2026-10-02): **M0.3 feedback reliability → M4.4 private service
+namespace/restricted root → M3 production roster/qualification + M4 activation
+owner**. PR #53 is integrated; no feature commits were waiting to be pushed at
+this audit. The packets below retain earlier dependency context, not a list of
+unmerged PRs. See [current gaps and acceptance sequence](IMPLEMENTATION-STATUS.md#next-implementation-sequence).
 
 1. **M0.1:** exact-head integration of router/race correction and Samba
    boundary characterization is complete in merged PR #40. Continue tracking

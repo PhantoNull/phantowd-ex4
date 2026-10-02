@@ -10,7 +10,7 @@ sharing, recoverable updates, and a conservative migration path for existing
 disks.
 
 [![QEMU integration build](https://github.com/PhantoNull/phantowd-ex4/actions/workflows/qemu-armv5.yml/badge.svg?branch=develop)](https://github.com/PhantoNull/phantowd-ex4/actions/workflows/qemu-armv5.yml?query=branch%3Adevelop)
-[Roadmap](ROADMAP.md) · [Contributing](CONTRIBUTING.md) ·
+[Roadmap](ROADMAP.md) · [Implementation status](IMPLEMENTATION-STATUS.md) · [Contributing](CONTRIBUTING.md) ·
 [Builds](https://github.com/PhantoNull/phantowd-ex4/actions/workflows/qemu-armv5.yml) ·
 [Releases](https://github.com/PhantoNull/phantowd-ex4/releases)
 

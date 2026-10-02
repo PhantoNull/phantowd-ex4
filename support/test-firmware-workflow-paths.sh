@@ -199,6 +199,9 @@ board/qemu/armv5/**
 configs/phantowd_qemu_armv5_defconfig
 support/container/test-api.sh
 support/container/build-qemu.sh
+support/container/save-qemu-failure-log.sh
+support/tests/test-qemu-build-feedback.py
+support/tests/test-qemu-md-v10-init-mode.sh
 support/docker/entrypoint.sh
 support/qemu-smoke.sh
 support/qemu-state-reboot.sh
@@ -292,6 +295,8 @@ EOF
 require_triggered_path \
     "$host_workflow" support/container/audit-ex4-stage-b-kernel-config.sh
 require_manual_dispatch "$host_workflow"
+require_triggered_path "$host_workflow" support/tests/test-qemu-build-feedback.py
+require_triggered_path "$host_workflow" support/container/save-qemu-failure-log.sh
 
 stage_b3_build_inputs='
 board/wd/ex4/stage-b3/**
