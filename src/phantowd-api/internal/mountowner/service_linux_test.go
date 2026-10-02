@@ -20,7 +20,7 @@ func TestServiceRuntimeStopsConsumersBeforeClosingHandoffOnSourceLoss(t *testing
 		events: &events,
 		verify: []error{nil, nil, ErrHandoffReview},
 		bindings: []ServicePathBinding{{
-			VolumeID: "media", SourceMountID: 21, DeviceMajor: 8,
+			ShareID: "media", VolumeID: "volume-a", RelativePath: "media", SourceMountID: 21, DeviceMajor: 8,
 			Path: "/run/phantowd/service-handoff/test/media",
 		}},
 		closeErr: ErrHandoffReview,
@@ -59,7 +59,7 @@ func TestServiceRuntimeRetainsHandoffWhenConsumerStopIsUncertain(t *testing.T) {
 		events: &events,
 		verify: []error{nil, nil, ErrHandoffReview},
 		bindings: []ServicePathBinding{{
-			VolumeID: "media", SourceMountID: 21, DeviceMajor: 8,
+			ShareID: "media", VolumeID: "volume-a", RelativePath: "media", SourceMountID: 21, DeviceMajor: 8,
 			Path: "/run/phantowd/service-handoff/test/media",
 		}},
 	}
@@ -90,6 +90,22 @@ func TestServiceRuntimeRetainsHandoffWhenConsumerStopIsUncertain(t *testing.T) {
 	}
 	if want := []string{"mount", "bindings", "verify", "set-start", "verify", "verify", "set-stop"}; !reflect.DeepEqual(events, want) {
 		t.Fatalf("uncertain stop did not retain handoff in order: got %v, want %v", events, want)
+	}
+}
+
+func TestValidServiceBindingsAllowsDistinctSharesFromOneVolume(t *testing.T) {
+	bindings := []ServicePathBinding{
+		{ShareID: "books", VolumeID: "volume-a", RelativePath: "media/books", SourceMountID: 21,
+			DeviceMajor: 8, Path: "/run/phantowd/service-handoff/test/books"},
+		{ShareID: "comics", VolumeID: "volume-a", RelativePath: "media/comics", SourceMountID: 21,
+			DeviceMajor: 8, Path: "/run/phantowd/service-handoff/test/comics"},
+	}
+	if !validServiceBindings(bindings) {
+		t.Fatal("distinct share roots from one fixed volume were rejected")
+	}
+	bindings[1].ShareID = bindings[0].ShareID
+	if validServiceBindings(bindings) {
+		t.Fatal("duplicate share IDs were accepted")
 	}
 }
 

@@ -9,11 +9,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"slices"
 	"strings"
 	"sync"
+	"unicode/utf8"
 
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/shareconfig"
 	"golang.org/x/sys/unix"
@@ -42,10 +44,14 @@ type handoffIdentity struct {
 	deviceMinor uint32
 	filesystem  uint32
 	mountRoot   bool
+	readOnly    bool
 }
 
 type handoffMember struct {
+	shareID      string
 	volumeID     string
+	relativePath string
+	readOnly     bool
 	evidence     MountedVolumeEvidence
 	targetBefore handoffIdentity
 	bound        handoffIdentity
@@ -55,7 +61,7 @@ type handoffMember struct {
 	uncertain    bool
 }
 
-// ServiceHandoff clones qualified mount roots into one private volatile path
+// ServiceHandoff clones qualified share roots into one private volatile path
 // tree. It retains the complete roster lease until every clone is explicitly
 // detached. It does not start or stop daemons; its caller must stop all
 // pathname-consuming children before Close.
@@ -66,7 +72,7 @@ type ServiceHandoff struct {
 	rootIdentity    handoffIdentity
 	serviceGroupID  uint32
 	set             *MountedVolumeSet
-	required        []string
+	required        []ServiceShare
 	state           ServiceHandoffState
 	generation      uint64
 	evidence        MountedVolumeSetEvidence
@@ -76,15 +82,28 @@ type ServiceHandoff struct {
 	resourcesClosed bool
 }
 
+// ServiceShare is a fixed internal request for one share root. It is not an
+// HTTP input and grants no authority by itself. RelativePath must name an
+// existing directory below the qualified volume root; "." is rejected.
+type ServiceShare struct {
+	ID           string
+	VolumeID     string
+	RelativePath string
+	ReadOnly     bool
+}
+
 // ServicePathBinding ties a service path to the exact source-volume evidence
-// from which its bind-mounted clone was created. It is internal evidence.
+// and selected share root from which its mount clone was created. It is
+// internal evidence.
 type ServicePathBinding struct {
+	ShareID        string
 	VolumeID       string
 	FilesystemUUID string
 	SourcePath     string
 	SourceMountID  uint64
 	DeviceMajor    uint32
 	DeviceMinor    uint32
+	RelativePath   string
 	ReadOnly       bool
 	Path           string
 }
@@ -115,26 +134,26 @@ func (*ServicePaths) UnmarshalJSON([]byte) error {
 // be root-owned by the supplied service group and mode 0710, so only processes
 // explicitly launched in that group can traverse it. Every ancestor must be
 // root-owned, searchable by service identities, and not writable by
-// group/other. Stale contents are never adopted.
-func NewServiceHandoff(root string, set *MountedVolumeSet, volumeIDs []string, serviceGroupID uint32) (*ServiceHandoff, error) {
+// group/other. Stale contents are never adopted. Only declared subdirectories
+// are cloned; this does not isolate a service from the original volume mount
+// in its process mount namespace and is not, by itself, an authorization
+// boundary.
+func NewServiceHandoff(root string, set *MountedVolumeSet, shares []ServiceShare, serviceGroupID uint32) (*ServiceHandoff, error) {
 	if os.Getuid() != 0 || os.Geteuid() != 0 || set == nil || !validHandoffRoot(root) ||
-		volumeIDs == nil || len(volumeIDs) == 0 || len(volumeIDs) > shareconfig.MaxVolumes ||
+		shares == nil || len(shares) == 0 || len(shares) > shareconfig.MaxShares ||
 		serviceGroupID < 1000 || serviceGroupID > 60000 {
 		return nil, ErrHandoffInvalid
 	}
 	if err := validateHandoffAncestors(root); err != nil {
 		return nil, ErrHandoffInvalid
 	}
-	required := slices.Clone(volumeIDs)
-	slices.Sort(required)
 	available := make(map[string]bool, len(set.members))
 	for _, member := range set.members {
 		available[member.volumeID] = true
 	}
-	for index, id := range required {
-		if !validVolumeID(id) || !available[id] || (index > 0 && required[index-1] == id) {
-			return nil, ErrHandoffInvalid
-		}
+	required, valid := normalizeServiceShares(shares, available)
+	if !valid {
+		return nil, ErrHandoffInvalid
 	}
 	fd, err := unix.Openat2(unix.AT_FDCWD, root, &unix.OpenHow{
 		Flags:   unix.O_RDONLY | unix.O_DIRECTORY | unix.O_CLOEXEC,
@@ -201,12 +220,15 @@ func (h *ServiceHandoff) Mount(ctx context.Context) (ServicePaths, error) {
 	for _, volume := range evidence.Volumes() {
 		byID[volume.VolumeID()] = volume
 	}
-	for _, id := range h.required {
-		volume, exists := byID[id]
+	for _, share := range h.required {
+		volume, exists := byID[share.VolumeID]
 		if !exists || volume.Compatibility() != qualifiedCompatibility || volume.MountID() == 0 || volume.DeviceMajor() == 0 {
 			return ServicePaths{}, h.rejectRosterLocked(ErrHandoffReview)
 		}
-		h.members = append(h.members, handoffMember{volumeID: id, evidence: volume})
+		h.members = append(h.members, handoffMember{
+			shareID: share.ID, volumeID: share.VolumeID, relativePath: share.RelativePath,
+			readOnly: share.ReadOnly || volume.readOnly, evidence: volume,
+		})
 	}
 	for index := range h.members {
 		if err := ctx.Err(); err != nil {
@@ -233,11 +255,11 @@ func (h *ServiceHandoff) rejectRosterLocked(cause error) error {
 
 func (h *ServiceHandoff) attachLocked(index int) error {
 	member := &h.members[index]
-	if err := unix.Mkdirat(int(h.root.Fd()), member.volumeID, 0700); err != nil {
+	if err := unix.Mkdirat(int(h.root.Fd()), member.shareID, 0700); err != nil {
 		return ErrHandoffUnavailable
 	}
 	member.directory = true
-	target, err := openHandoffTarget(int(h.root.Fd()), member.volumeID)
+	target, err := openHandoffTarget(int(h.root.Fd()), member.shareID)
 	if err != nil {
 		return ErrHandoffUnavailable
 	}
@@ -247,12 +269,12 @@ func (h *ServiceHandoff) attachLocked(index int) error {
 		return ErrHandoffUnavailable
 	}
 	member.targetBefore = before
-	source, err := h.lease.OpenDirectory(member.volumeID, ".")
+	source, err := h.lease.OpenDirectory(member.volumeID, member.relativePath)
 	if err != nil {
 		return err
 	}
 	sourceIdentity, err := handoffIdentityForFD(int(source.Fd()))
-	if err != nil || !sourceIdentity.mountRoot || sourceIdentity.mountID != member.evidence.mountID ||
+	if err != nil || sourceIdentity.mountRoot || sourceIdentity.mountID != member.evidence.mountID ||
 		sourceIdentity.deviceMajor != member.evidence.deviceMajor || sourceIdentity.deviceMinor != member.evidence.deviceMinor {
 		return ErrHandoffReview
 	}
@@ -261,6 +283,14 @@ func (h *ServiceHandoff) attachLocked(index int) error {
 		return ErrHandoffUnavailable
 	}
 	tree := os.NewFile(uintptr(treeFD), "qualified-volume-mount-tree")
+	attributes := uint64(unix.MOUNT_ATTR_NOSUID | unix.MOUNT_ATTR_NODEV | unix.MOUNT_ATTR_NOEXEC)
+	if member.readOnly {
+		attributes |= unix.MOUNT_ATTR_RDONLY
+	}
+	if err := unix.MountSetattr(int(tree.Fd()), "", unix.AT_EMPTY_PATH, &unix.MountAttr{Attr_set: attributes}); err != nil {
+		_ = tree.Close()
+		return ErrHandoffUnavailable
+	}
 	member.attempted = true
 	moveErr := unix.MoveMount(int(tree.Fd()), "", int(target.Fd()), "",
 		unix.MOVE_MOUNT_F_EMPTY_PATH|unix.MOVE_MOUNT_T_EMPTY_PATH)
@@ -269,7 +299,7 @@ func (h *ServiceHandoff) attachLocked(index int) error {
 		member.uncertain = true
 		return ErrHandoffReview
 	}
-	attached, err := openHandoffTarget(int(h.root.Fd()), member.volumeID)
+	attached, err := openHandoffTarget(int(h.root.Fd()), member.shareID)
 	if err != nil {
 		member.uncertain = true
 		return ErrHandoffReview
@@ -278,6 +308,10 @@ func (h *ServiceHandoff) attachLocked(index int) error {
 	closeAttachedErr := attached.Close()
 	if identityErr != nil || closeAttachedErr != nil || !sameHandoffFilesystem(sourceIdentity, identity) ||
 		identity.mountID == sourceIdentity.mountID || !identity.mountRoot {
+		member.uncertain = true
+		return ErrHandoffReview
+	}
+	if member.readOnly && !identity.readOnly {
 		member.uncertain = true
 		return ErrHandoffReview
 	}
@@ -323,7 +357,7 @@ func (h *ServiceHandoff) verifyBoundPathsLocked() error {
 		return ErrHandoffReview
 	}
 	for _, member := range h.members {
-		current, err := h.observeTargetLocked(member.volumeID)
+		current, err := h.observeTargetLocked(member.shareID)
 		if err != nil || current != member.bound {
 			return ErrHandoffReview
 		}
@@ -396,10 +430,11 @@ func (paths ServicePaths) Bindings() ([]ServicePathBinding, error) {
 			return nil, ErrHandoffReview
 		}
 		bindings = append(bindings, ServicePathBinding{
-			VolumeID: member.volumeID, FilesystemUUID: member.evidence.filesystemUUID,
+			ShareID: member.shareID, VolumeID: member.volumeID, FilesystemUUID: member.evidence.filesystemUUID,
 			SourcePath: member.evidence.mountPath, SourceMountID: member.evidence.mountID,
 			DeviceMajor: member.evidence.deviceMajor, DeviceMinor: member.evidence.deviceMinor,
-			ReadOnly: member.evidence.readOnly, Path: filepath.Join(h.rootPath, member.volumeID),
+			RelativePath: member.relativePath, ReadOnly: member.readOnly,
+			Path: filepath.Join(h.rootPath, member.shareID),
 		})
 	}
 	return bindings, nil
@@ -442,20 +477,20 @@ func (h *ServiceHandoff) Close() error {
 			continue
 		}
 		if member.mounted {
-			current, err := h.observeTargetLocked(member.volumeID)
+			current, err := h.observeTargetLocked(member.shareID)
 			if err != nil || current != member.bound {
 				member.uncertain = true
 				cleanupErr = errors.Join(cleanupErr, ErrHandoffReview)
 				continue
 			}
-			targetPath := fmt.Sprintf("/proc/self/fd/%d/%s", h.root.Fd(), member.volumeID)
+			targetPath := fmt.Sprintf("/proc/self/fd/%d/%s", h.root.Fd(), member.shareID)
 			if err := unix.Unmount(targetPath, 0); err != nil {
 				member.uncertain = true
 				cleanupErr = errors.Join(cleanupErr, ErrHandoffReview)
 				continue
 			}
 			member.mounted = false
-			current, err = h.observeTargetLocked(member.volumeID)
+			current, err = h.observeTargetLocked(member.shareID)
 			if err != nil || current != member.targetBefore {
 				member.uncertain = true
 				cleanupErr = errors.Join(cleanupErr, ErrHandoffReview)
@@ -463,7 +498,7 @@ func (h *ServiceHandoff) Close() error {
 			}
 		}
 		if member.directory {
-			if err := unix.Unlinkat(int(h.root.Fd()), member.volumeID, unix.AT_REMOVEDIR); err != nil {
+			if err := unix.Unlinkat(int(h.root.Fd()), member.shareID, unix.AT_REMOVEDIR); err != nil {
 				member.uncertain = true
 				cleanupErr = errors.Join(cleanupErr, ErrHandoffReview)
 				continue
@@ -513,7 +548,7 @@ func (h *ServiceHandoff) failBeforeOrDuringAttachLocked(cause error) error {
 		for index := len(h.members) - 1; index >= 0; index-- {
 			member := &h.members[index]
 			if member.directory {
-				if err := unix.Unlinkat(int(h.root.Fd()), member.volumeID, unix.AT_REMOVEDIR); err != nil {
+				if err := unix.Unlinkat(int(h.root.Fd()), member.shareID, unix.AT_REMOVEDIR); err != nil {
 					member.uncertain = true
 					cleanupErr = errors.Join(cleanupErr, err)
 				} else {
@@ -526,6 +561,9 @@ func (h *ServiceHandoff) failBeforeOrDuringAttachLocked(cause error) error {
 			h.lease = nil
 		}
 		if cleanupErr == nil {
+			h.members = nil
+			h.evidence = MountedVolumeSetEvidence{}
+			h.generation = 0
 			if errors.Is(cause, ErrReview) || errors.Is(cause, ErrHandoffReview) {
 				h.reviewRequired = true
 				h.state = ServiceHandoffReview
@@ -560,11 +598,11 @@ func handoffDirectoryEmpty(fd int) (bool, error) {
 	return len(names) == 0, err
 }
 
-func openHandoffTarget(rootFD int, volumeID string) (*os.File, error) {
-	if !validVolumeID(volumeID) {
+func openHandoffTarget(rootFD int, shareID string) (*os.File, error) {
+	if !validHandoffShareID(shareID) {
 		return nil, ErrHandoffInvalid
 	}
-	fd, err := unix.Openat2(rootFD, volumeID, &unix.OpenHow{
+	fd, err := unix.Openat2(rootFD, shareID, &unix.OpenHow{
 		Flags:   unix.O_PATH | unix.O_DIRECTORY | unix.O_CLOEXEC,
 		Resolve: unix.RESOLVE_BENEATH | unix.RESOLVE_NO_SYMLINKS | unix.RESOLVE_NO_MAGICLINKS,
 	})
@@ -572,6 +610,66 @@ func openHandoffTarget(rootFD int, volumeID string) (*os.File, error) {
 		return nil, ErrHandoffUnavailable
 	}
 	return os.NewFile(uintptr(fd), "service-volume-handoff"), nil
+}
+
+func normalizeServiceShares(shares []ServiceShare, availableVolumes map[string]bool) ([]ServiceShare, bool) {
+	if len(shares) == 0 || len(shares) > shareconfig.MaxShares {
+		return nil, false
+	}
+	result := slices.Clone(shares)
+	for _, share := range result {
+		if !validHandoffShareID(share.ID) || !validVolumeID(share.VolumeID) || !availableVolumes[share.VolumeID] ||
+			!validHandoffRelativePath(share.RelativePath) {
+			return nil, false
+		}
+	}
+	slices.SortFunc(result, func(left, right ServiceShare) int {
+		return strings.Compare(left.ID, right.ID)
+	})
+	for index := 1; index < len(result); index++ {
+		if result[index-1].ID == result[index].ID {
+			return nil, false
+		}
+	}
+	for left := 0; left < len(result); left++ {
+		for right := left + 1; right < len(result); right++ {
+			if result[left].VolumeID == result[right].VolumeID &&
+				handoffPathsOverlap(result[left].RelativePath, result[right].RelativePath) {
+				return nil, false
+			}
+		}
+	}
+	return result, true
+}
+
+func handoffPathsOverlap(left, right string) bool {
+	return left == right || strings.HasPrefix(left, right+"/") || strings.HasPrefix(right, left+"/")
+}
+
+func validHandoffShareID(value string) bool {
+	if len(value) == 0 || len(value) > 64 || value[0] < 'a' || value[0] > 'z' {
+		return false
+	}
+	for index := 1; index < len(value); index++ {
+		character := value[index]
+		if (character < 'a' || character > 'z') && (character < '0' || character > '9') && character != '-' {
+			return false
+		}
+	}
+	return true
+}
+
+func validHandoffRelativePath(value string) bool {
+	if len(value) == 0 || len(value) > 1024 || value == "." || !utf8.ValidString(value) ||
+		!fs.ValidPath(value) || strings.ContainsAny(value, "\\:") || strings.ContainsRune(value, 0) {
+		return false
+	}
+	for _, character := range value {
+		if character < 32 || character == 127 {
+			return false
+		}
+	}
+	return true
 }
 
 func handoffIdentityForFD(fd int) (handoffIdentity, error) {
@@ -589,6 +687,7 @@ func handoffIdentityForFD(fd int) (handoffIdentity, error) {
 	return handoffIdentity{
 		mountID: st.Mnt_id, inode: st.Ino, deviceMajor: st.Dev_major, deviceMinor: st.Dev_minor,
 		filesystem: uint32(fs.Type), mountRoot: st.Attributes&unix.STATX_ATTR_MOUNT_ROOT != 0,
+		readOnly: fs.Flags&unix.ST_RDONLY != 0,
 	}, nil
 }
 

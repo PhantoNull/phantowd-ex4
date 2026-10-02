@@ -98,32 +98,28 @@ pass. The QEMU run reused read-only cached inputs and temporary overlay space;
 it was not a clean Buildroot build, two-boot persistence run, or hosted CI run.
 No real EX4 media was touched, and this does not qualify physical EX4 behavior.
 
-The current-source M4.4 QEMU-only `ServiceHandoff` clones a qualified mount
-tree from its pinned source descriptor into a volatile per-runtime pathname,
-verifies the clone's mount identity, and retains a lease over the complete
-fixed volume roster. Its root is pre-provisioned as root-owned
-`root:<service-gid>` mode `0710`. `processowner` applies each fixed UID/GID and
-exact supplementary-group set before exec; `ServiceRuntime` rejects implicit,
-root, or group-mismatched process sets. ARMv5 QEMU proves that the permitted
-1000:1000 consumer can read a synthetic marker and that UID 65534 with no
-service group receives `EACCES`; a mismatched process group is rejected.
-Replacing the original source anchor moves the Owner and handoff to
-`review-required`; the service pathname remains on the original clone. On
-source loss the runtime stops its fixed process set before closing the
-handoff; an uncertain stop retains the lease without retry. Its caller must
-poll `Observe`; there is no automatic monitor or restart.
+The current-source M4.4 QEMU-only `ServiceHandoff` accepts fixed internal
+`ServiceShare` roots and clones only those declared subdirectories from pinned
+`O_PATH` descriptors into a volatile handoff. It rejects whole-volume `.`,
+invalid or overlapping roots, pins the source roster, and applies
+`nosuid,nodev,noexec` plus read-only mount attributes when requested. ARMv5
+QEMU proves the consumer can read a synthetic file inside the share, cannot
+see a sibling outside the cloned subtree, and gets `EROFS` when writing through
+a read-only binding. The handoff still validates clone identity, and
+`ServiceRuntime` stops its fixed process set before teardown on source loss;
+uncertain stops retain the lease without retry.
 
-This closes path traversal for identities outside the configured service
-group, not file-level authorization. The prototype exposes a selected whole
-volume, so access inside it still follows source ownership, modes and ACLs.
-Per-share service grants/ACL provisioning, service-account/group provisioning,
-trusted production storage construction, daemon wiring and EX4 qualification
-remain unimplemented. It makes no automatic `chown`/`chmod` changes and is not
-yet a production service manager. Local Windows/Linux API checks and the
-current-source one-boot ARMv5 smoke pass using existing read-only Buildroot
-inputs and a temporary overlay; the two-boot, clean-build and hosted exact-head
-checks are separate. No NAS, physical disk, NAND/MTD, flash, or user data was
-accessed.
+This is only a share-scoped pathname view, not yet an authorization boundary:
+services still share the host mount namespace, so the original volume path may
+remain reachable and could bypass the read-only clone if Unix permissions
+allow. All shares in one handoff are visible to its fixed service group. There
+is no per-service grant/ACL enforcement, private service mount namespace,
+production storage constructor, or daemon wiring. Do not enable this prototype
+on user data. Local Windows/Linux API tests, ARMv5 cross-compilation and the
+one-boot ARMv5 QEMU smoke pass with existing read-only Buildroot inputs and
+temporary overlay space; clean-build, two-boot, hosted exact-head and EX4
+qualification remain separate. No NAS, physical disk, NAND/MTD, flash, or user
+data was accessed.
 
 A focused local ARMv5 QEMU check now compares mdadm-authored MD v1.0 metadata
 created on partition 1 of two synthetic GPT disk images, each backed by a

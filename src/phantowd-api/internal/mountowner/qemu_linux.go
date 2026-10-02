@@ -89,6 +89,8 @@ func exerciseServiceHandoff(source string) (result error) {
 		serviceControl     = "/run/phantowd/service-control"
 		serviceControlRoot = serviceControl + "/mountowner-qemu"
 		markerName         = ".phantowd-service-handoff-proof"
+		privateMarkerName  = ".phantowd-service-handoff-outside"
+		shareDirectory     = qemuFixtureSource + "/media"
 		serviceReady       = serviceControlRoot + "/ready"
 		serviceStopped     = serviceControlRoot + "/stopped"
 	)
@@ -152,22 +154,22 @@ func exerciseServiceHandoff(source string) (result error) {
 		_ = os.Remove(handoffRoot)
 		return errors.New("could not restrict the QEMU service-control path")
 	}
-	markerPath := source + "/" + markerName
-	marker, err := os.OpenFile(markerPath, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0644)
-	if err != nil {
+	if err := os.Mkdir(shareDirectory, 0755); err != nil {
 		_ = os.Remove(handoffRoot)
-		return errors.New("could not create the disposable handoff marker on QEMU ext2")
+		return errors.New("could not create the disposable service-share directory on QEMU ext2")
 	}
-	if _, err := marker.WriteString("qualified-source\n"); err != nil {
-		_ = marker.Close()
-		_ = os.Remove(markerPath)
+	markerPath := shareDirectory + "/" + markerName
+	privateMarkerPath := source + "/" + privateMarkerName
+	if err := createExclusiveQEMUMarker(markerPath, "qualified-source\n"); err != nil {
+		_ = os.Remove(shareDirectory)
 		_ = os.Remove(handoffRoot)
-		return errors.New("could not write the disposable handoff marker")
+		return errors.New("could not create the disposable marker inside the service share")
 	}
-	if err := marker.Close(); err != nil {
+	if err := createExclusiveQEMUMarker(privateMarkerPath, "outside-share\n"); err != nil {
 		_ = os.Remove(markerPath)
+		_ = os.Remove(shareDirectory)
 		_ = os.Remove(handoffRoot)
-		return errors.New("could not close the disposable handoff marker")
+		return errors.New("could not create the disposable marker outside the service share")
 	}
 	var handoff *ServiceHandoff
 	handoffClosed := false
@@ -182,7 +184,13 @@ func exerciseServiceHandoff(source string) (result error) {
 			}
 		}
 		if err := os.Remove(markerPath); err != nil {
-			result = errors.Join(result, errors.New("could not remove the QEMU source marker"))
+			result = errors.Join(result, errors.New("could not remove the QEMU share marker"))
+		}
+		if err := os.Remove(privateMarkerPath); err != nil {
+			result = errors.Join(result, errors.New("could not remove the QEMU out-of-share marker"))
+		}
+		if err := os.Remove(shareDirectory); err != nil {
+			result = errors.Join(result, errors.New("could not remove the QEMU service-share directory"))
 		}
 		if err := os.Remove(handoffRoot); err != nil {
 			result = errors.Join(result, errors.New("could not remove the empty QEMU service-handoff root"))
@@ -194,7 +202,7 @@ func exerciseServiceHandoff(source string) (result error) {
 		}
 	}()
 
-	err = withQEMUMountedOwner(source, func(owner *Owner) (callbackErr error) {
+	err := withQEMUMountedOwner(source, func(owner *Owner) (callbackErr error) {
 		defer func() {
 			if handoff != nil && !handoffClosed {
 				closeErr := handoff.Close()
@@ -216,7 +224,9 @@ func exerciseServiceHandoff(source string) (result error) {
 		if err != nil {
 			return errors.New("could not create the fixed QEMU mounted-volume roster")
 		}
-		handoff, err = NewServiceHandoff(handoffRoot, set, []string{qemuPlannerVolumeID}, qemuServiceGroupID)
+		handoff, err = NewServiceHandoff(handoffRoot, set, []ServiceShare{{
+			ID: "media", VolumeID: qemuPlannerVolumeID, RelativePath: "media", ReadOnly: true,
+		}}, qemuServiceGroupID)
 		if err != nil {
 			return errors.New("could not open the private QEMU service-handoff owner")
 		}
@@ -249,7 +259,7 @@ while :; do sleep 0.05; done`
 				Executable: "/bin/busybox",
 				RunAs:      &processowner.Credentials{UID: 1000, GID: qemuServiceGroupID},
 				Args: []string{"sh", "-c", child, "phantowd-handoff-consumer",
-					handoffRoot + "/" + qemuPlannerVolumeID, markerName, serviceReady, serviceStopped},
+					handoffRoot + "/media", markerName, serviceReady, serviceStopped},
 				Ready: func(ctx context.Context) (bool, error) {
 					if err := ctx.Err(); err != nil {
 						return false, err
@@ -281,15 +291,32 @@ while :; do sleep 0.05; done`
 		if data, err := os.ReadFile(serviceReady); err != nil || string(data) != "ready" {
 			return errors.New("consumer did not read the qualified service path before readiness")
 		}
-		if err := requireUnprivilegedServicePathDenied(handoffRoot + "/" + qemuPlannerVolumeID + "/" + markerName); err != nil {
+		if err := requireUnprivilegedServicePathDenied(handoffRoot + "/media/" + markerName); err != nil {
 			return fmt.Errorf("service handoff did not deny an ungranted principal: %w", err)
 		}
 		bindings, err := handoff.Bindings()
-		if err != nil || len(bindings) != 1 || bindings[0].VolumeID != qemuPlannerVolumeID ||
+		if err != nil || len(bindings) != 1 || bindings[0].ShareID != "media" ||
+			bindings[0].VolumeID != qemuPlannerVolumeID || bindings[0].RelativePath != "media" || !bindings[0].ReadOnly ||
 			bindings[0].FilesystemUUID != qemuFixtureUUID || bindings[0].SourcePath != qemuPlannerMountAnchor ||
-			bindings[0].SourceMountID == 0 || bindings[0].Path != handoffRoot+"/"+qemuPlannerVolumeID {
+			bindings[0].SourceMountID == 0 || bindings[0].Path != handoffRoot+"/media" {
 			_, _ = runtime.Stop(context.Background())
-			return errors.New("service path did not retain the exact qualified source-volume tuple")
+			return errors.New("service path did not retain the exact qualified share and source tuple")
+		}
+		if _, err := os.Lstat(bindings[0].Path + "/" + privateMarkerName); !errors.Is(err, os.ErrNotExist) {
+			_, _ = runtime.Stop(context.Background())
+			return errors.New("service-share clone exposed a file outside its configured subtree")
+		}
+		writeFD, writeErr := unix.Open(bindings[0].Path+"/.phantowd-readonly-probe",
+			unix.O_WRONLY|unix.O_CREAT|unix.O_EXCL|unix.O_CLOEXEC, 0600)
+		if writeFD >= 0 {
+			_ = unix.Close(writeFD)
+			_ = os.Remove(bindings[0].Path + "/.phantowd-readonly-probe")
+			_, _ = runtime.Stop(context.Background())
+			return errors.New("read-only service-share clone accepted a write")
+		}
+		if !errors.Is(writeErr, unix.EROFS) {
+			_, _ = runtime.Stop(context.Background())
+			return errors.New("read-only service-share write did not fail with EROFS")
 		}
 		owner.mu.Lock()
 		leaseCount := len(owner.leases)
@@ -322,7 +349,7 @@ while :; do sleep 0.05; done`
 			return errors.New("could not remove the exact source-anchor overmount after handoff cleanup")
 		}
 		overMounted = false
-		fmt.Println("PHANTOWD_SERVICE_HANDOFF_READY descriptor_clone=true target_bound=true service_uid=1000 service_gid=1000 exact_groups=true ungranted_uid=65534_denied=true mismatched_group_rejected=true source_replacement_not_used=true source_loss_quarantined=true set_lease_held=true explicit_unmount=true scope=disposable-qemu-only")
+		fmt.Println("PHANTOWD_SERVICE_HANDOFF_READY share_subtree_clone=true read_only_enforced=true target_bound=true service_uid=1000 service_gid=1000 exact_groups=true ungranted_uid=65534_denied=true mismatched_group_rejected=true source_replacement_not_used=true source_loss_quarantined=true set_lease_held=true explicit_unmount=true scope=disposable-qemu-only")
 		return errQEMUExpectedMountedOwnerReview
 	})
 	if err == errQEMUExpectedMountedOwnerReview {
@@ -343,6 +370,23 @@ func requireUnprivilegedServicePathDenied(path string) error {
 	var exitErr *exec.ExitError
 	if !errors.As(err, &exitErr) || exitErr.ExitCode() != 1 || !strings.Contains(strings.ToLower(string(output)), "permission denied") {
 		return fmt.Errorf("ungranted-reader probe failed unexpectedly: %w", err)
+	}
+	return nil
+}
+
+func createExclusiveQEMUMarker(path, contents string) error {
+	file, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0644)
+	if err != nil {
+		return err
+	}
+	if _, err := file.WriteString(contents); err != nil {
+		_ = file.Close()
+		_ = os.Remove(path)
+		return err
+	}
+	if err := file.Close(); err != nil {
+		_ = os.Remove(path)
+		return err
 	}
 	return nil
 }

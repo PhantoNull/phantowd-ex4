@@ -256,7 +256,9 @@ func validServiceBindings(bindings []ServicePathBinding) bool {
 	ids := make([]string, 0, len(bindings))
 	paths := make(map[string]struct{}, len(bindings))
 	for _, binding := range bindings {
-		if !validVolumeID(binding.VolumeID) || !filepath.IsAbs(binding.Path) || filepath.Clean(binding.Path) != binding.Path ||
+		if !validHandoffShareID(binding.ShareID) || !validVolumeID(binding.VolumeID) ||
+			!validHandoffRelativePath(binding.RelativePath) || !filepath.IsAbs(binding.Path) ||
+			filepath.Clean(binding.Path) != binding.Path || filepath.Base(binding.Path) != binding.ShareID ||
 			binding.SourceMountID == 0 || binding.DeviceMajor == 0 {
 			return false
 		}
@@ -264,7 +266,7 @@ func validServiceBindings(bindings []ServicePathBinding) bool {
 			return false
 		}
 		paths[binding.Path] = struct{}{}
-		ids = append(ids, binding.VolumeID)
+		ids = append(ids, binding.ShareID)
 	}
 	slices.Sort(ids)
 	for index := 1; index < len(ids); index++ {

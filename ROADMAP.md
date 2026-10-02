@@ -3,7 +3,7 @@
 
 # Implementation roadmap
 
-Reviewed: **2026-09-30**. This is the product specification and work breakdown,
+Reviewed: **2026-10-02**. This is the product specification and work breakdown,
 not a release announcement. The [README](README.md) is the concise entry point;
 component contracts remain authoritative for implemented behavior.
 
@@ -830,47 +830,46 @@ storage. No production roster provider or activation path exists.
   consultative only and does not block, mount or activate services. It is
   lexical policy evidence only: aliases, effective permissions and service
   behavior still require runtime qualification.
-- **M4.4 — Storage-safe handoff (prototype; not complete).** An internal Linux
-  `mountowner.ServiceHandoff` now requires a root-controlled volatile directory
-  under `/run/phantowd/service-handoff`, retains a lease over the complete
-  fixed roster, and clones each qualified mount tree from its pinned `O_PATH`
-  descriptor with `open_tree`/`move_mount`. It validates the handoff root and
-  ancestors, source tuple, distinct cloned mount ID and target identity before
-  issuing opaque service-path bindings; there is no path-based fallback. The
-  local ARMv5 standard QEMU smoke proves that replacing the source anchor
-  quarantines the Owner/handoff while the pathname stays on the original clone
-  instead of following the replacement. An internal `ServiceRuntime` now
-  holds one fixed `processowner.Set` around that handoff: it verifies the
-  complete bindings before startup, verifies storage after readiness, and on
-  source loss stops consumers before explicit teardown. Linux tests verify
-  that an uncertain stop retains the lease and is not retried; QEMU exercises
-  one disposable BusyBox consumer reading the service path and stopping before
-  teardown. The caller must poll `Observe` at a bounded cadence; no monitor,
-  restart or production daemon wiring exists. The handoff root is now
-  pre-provisioned `root:<service-gid>` mode `0710`; the fixed process set must
-  supply explicit non-root credentials in the reserved service-ID range and
-  every process must have that group as primary or supplementary. `processowner`
-  applies the exact UID/GID/supplementary-group tuple before exec. The current-
-  source ARMv5 smoke proves a permitted 1000:1000 consumer can read its marker,
-  UID 65534 without the service group receives `EACCES`, and a mismatched process
-  group is rejected before startup. This is path-traversal isolation only: the
-  prototype still clones whole selected volumes, and access inside each clone
-  follows source filesystem ownership, modes and ACLs. No per-share service
-  grants, ACL provisioning, automatic ownership changes, service-account
-  provisioning or production wiring exists. Windows/Linux API tests, the local
-  one-boot ARMv5 standard smoke and focused MD v1.0 fixture pass with existing
-  read-only Buildroot inputs and transient overlay/container storage. The
-  standard smoke skips the two-boot fixture; clean-build, exact-head hosted CI
-  and physical EX4 behavior are not qualified. No NAS or production media was
-  used.
+- **M4.4 — Storage-safe handoff (prototype; not complete).** The internal Linux
+  `mountowner.ServiceHandoff` accepts fixed `ServiceShare` roots, retains a
+  lease over the complete fixed volume roster, and clones only declared
+  subdirectories from pinned `O_PATH` descriptors with `open_tree`/`move_mount`.
+  It rejects whole-volume `.`, malformed paths, duplicate IDs and overlapping
+  paths on one volume. Detached clones receive `nosuid,nodev,noexec`; a
+  read-only request is applied with `mount_setattr` and verified through the
+  attached mount. The private volatile handoff root remains
+  `root:<service-gid>` mode `0710`. QEMU proves a 1000:1000 consumer can read
+  inside the declared subtree, a sibling marker is absent from that clone, a
+  read-only binding rejects writes with `EROFS`, UID 65534 cannot traverse the
+  handoff root, and a mismatched process group is rejected. Source-anchor loss
+  quarantines the Owner/handoff; the pathname does not follow a replacement.
+  `ServiceRuntime` verifies bindings before startup, verifies storage after
+  readiness, and stops its fixed process set before teardown. An uncertain
+  stop retains the lease without retry. Callers must poll `Observe`; there is
+  no automatic monitor, restart or production daemon wiring.
 
-  Next: connect each runtime to a product-owned service identity, define
-  explicit per-share service grants and denied cases, safely provision and
-  recover file-level ACLs without silently changing legacy ownership, and
-  expose only the granted share roots to that service. Then specify the bounded
-  source-loss supervisor and build a fail-closed production storage constructor.
-  Keep real disks and services disabled until the complete permission,
-  recovery, and compatibility matrices pass.
+  Security limit: this is a share-scoped pathname view, not a complete service
+  authorization boundary. Consumers still run in the host mount namespace and
+  may reach the original volume path if its Unix metadata permits; that path
+  could also bypass a read-only clone. Every process in the one fixed handoff
+  group can traverse every share root in that handoff. No per-service grants,
+  ACL enforcement/recovery, private process mount namespace, product identity
+  provisioning or production storage constructor exists. Do not expose user
+  data to this prototype and do not change source ownership/modes. Windows API
+  tests, Linux API/vet, ARMv5 cross-compilation and the local one-boot ARMv5
+  standard smoke pass with existing read-only Buildroot inputs and transient
+  overlay/container space. The two-boot fixture, clean build, exact-head hosted
+  CI and physical EX4 behavior are not qualified. No NAS or production media
+  was used.
+
+  Next: give each service an isolated private mount namespace whose only
+  storage roots are its explicit grants; prove the original volume anchors and
+  ungranted shares are unreachable and that read-only access cannot be bypassed.
+  Then define product-owned service identities and safe ACL provisioning and
+  recovery without silently changing legacy ownership. Add the bounded
+  source-loss supervisor and a fail-closed production storage constructor only
+  after these denied cases pass. Keep real disks and services disabled until
+  permission, recovery and compatibility matrices pass.
 - **M4.5 — Failure and shutdown.** Cover startup with absent disks, service crash,
   read-only/full volume, client reconnect, stale NFS handles, shutdown with open
   files and restart ordering. Distinguish safely unavailable from healthy.
