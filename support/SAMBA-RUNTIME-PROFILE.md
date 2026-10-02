@@ -84,6 +84,26 @@ before mounting it. No physical block-device path is formatted or attached.
   writes and outsider reads, then effective revocation through the ACL mask.
   The distinct original file payload must remain unchanged. This is not an
   HTTP ACL editor, Windows ACL import or a persistent/reboot ACL campaign.
+- A second fixed subtree has exact access/default POSIX ACLs created by the
+  writer UID with zero effective/permitted capabilities. Real SMB creates a
+  child directory and file; native readback requires owner/group `1801:1800`,
+  setgid directory mode `2750`, file mode `0640`, exact directory access/default
+  ACL bytes and the file's mode-limited inherited access ACL. The reader can
+  retrieve the file but cannot overwrite it with different bytes or create a
+  directory; the outsider cannot read or create. Metadata and data remain
+  unchanged after denial. This is one synthetic inheritance policy, not an ACL
+  editor, all inheritance combinations, legacy import or reboot qualification.
+- The profile explicitly stores DOS attributes and disables archive/system/
+  hidden-to-Unix-execute-bit mapping. The pinned default archive mapping was
+  reproduced as file mode `0740`; disabling it produces the required `0640`
+  without relaxing the ACL. SMB `allinfo` still reports archive `A (20)`.
+  This proves only that one attribute case, not complete Windows metadata.
+- Pinned `smbclient` can exit zero after printing a denied `mkdir`. Only two
+  fixed reader/outsider mkdir cases use a separate evidence rule: status 0 or 1,
+  exactly the expected NT access-denied line and no created directory. Timeout,
+  signal, other errors, duplicate/mismatched lines or an existing target fail.
+  Other denial checks still require status 1. Linux shell contracts and the real
+  ARMv5 guest both exercise the exception; it is not product error handling.
 - Stop signals only the fixture-created group, waits for the parent and requires
   the group to disappear. BusyBox may report the requested SIGTERM as status143;
   that is accepted only after group absence. Other outcomes fail. There is no
@@ -115,6 +135,8 @@ overlay with that selected module and the upstream-generated catalog passes
 the conversion, SMB, stream and ext4 ACL tests. That overlay does not verify
 the new defconfig's clean installation, regenerated SBOM or full integration;
 these remain distinct until the full new-config build succeeds.
+The inherited ACL/mode/DOS-attribute checks likewise pass only in a separate
+disposable current-source overlay; they have not yet passed full exact-head CI.
 Quota observations on disposable tmpfs are not RAID/storage-health evidence.
 Do not change encodings or silently relax legacy ACLs to mask missing runtime.
 

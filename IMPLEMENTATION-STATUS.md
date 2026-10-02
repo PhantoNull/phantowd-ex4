@@ -27,6 +27,15 @@ options. Fast negative manifests, catalog refusals and lint pass. This is
 working-tree overlay evidence; full new-config integration and exact-head CI
 are not yet established. It enables neither SMB1 nor product service startup.
 
+A separate `feat/samba-acl-inheritance` fixture increment passes an ext4
+default-ACL inheritance overlay: Samba-created directory/file ACL bytes,
+`2750`/`0640` modes, setgid owner/group, reader access and write/outsider denials.
+Explicit DOS metadata settings avoid archive-to-Unix-execute mapping while one
+archive flag remains visible through SMB. A dedicated fixed-command shell
+contract accounts for smbclient's zero exit on denied mkdir without relaxing
+generic denial checks. This is not full integration, a product permission
+workflow, legacy metadata preservation or all inheritance policies.
+
 The subsequent local Samba fixture adds one fixed dynamic
 `streams_xattr` module, exact alternate-stream xattr bytes, and reader/kernel-RO
 overwrite denials. It now also uses a disposable 16 MiB ext4 image to verify

@@ -971,6 +971,14 @@ storage. No production roster provider or activation path exists.
   replacement. Qualify the actual new-config installation and full integration
   separately. This does not enable SMB1 or establish complete legacy name,
   case-folding or Unicode-normalization compatibility.
+  A separate ext4 inheritance fixture now creates a directory and file through
+  real SMB and verifies exact access/default ACL bytes, setgid group ownership,
+  `2750`/`0640` modes and reader/outsider denials without metadata/data mutation.
+  Disable DOS-to-Unix execute-bit mappings in the explicit runtime profile while
+  storing DOS metadata; the synthetic archive flag remains visible via SMB.
+  Do not infer all policies, legacy import, reboot persistence or trusted
+  product construction from this disposable overlay. Global policy is still
+  separate from the share-section renderer and requires complete validation.
 - **M4.5 — Failure and shutdown.** Cover startup with absent disks, service crash,
   read-only/full volume, client reconnect, stale NFS handles, shutdown with open
   files and restart ordering. Distinguish safely unavailable from healthy.

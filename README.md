@@ -213,8 +213,11 @@ This does not qualify Windows ACLs or migration. A separate selected-converter
 overlay covers exact CP850/UTF-8 bytes
 inside the restricted root without ASCII fallback. The QEMU configuration
 selects only the required IBM850 converter; the overlay is not clean-build or
-complete filename-migration evidence. Local integration
-and focused test results are not independent clean builds, hosted feature
+complete filename-migration evidence. An additional inheritance overlay verifies
+exact ext4 directory/default/file
+ACLs, Unix modes/group ownership and reader/outsider denials. DOS archive
+metadata remains visible without adding Unix execute permission. Local
+incremental integration and focused test results are not independent clean builds, hosted feature
 results or EX4 qualification;
 [implementation status](IMPLEMENTATION-STATUS.md) separates them.
 

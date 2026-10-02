@@ -123,7 +123,13 @@ static int client(const char *user, const char *share, const char *operation)
         "put /run/upload-stream created:fixture",
         "put /run/upload created:fixture",
         "get created:fixture /run/download-stream",
-        "get acl-created /run/download-acl", "put /run/upload acl-created"};
+        "get acl-created /run/download-acl", "put /run/upload acl-created",
+        "mkdir inherited/child",
+        "put /run/upload inherited/child/data",
+        "put /run/upload-stream inherited/child/data",
+        "get inherited/child/data /run/download-inherited",
+        "allinfo inherited/child/data",
+        "mkdir inherited/reader-denied", "mkdir inherited/outsider-denied"};
     int matched = 0;
     for (size_t i = 0; i < sizeof(operations) / sizeof(operations[0]); ++i)
         matched |= !strcmp(operation, operations[i]);
@@ -167,17 +173,8 @@ static int client(const char *user, const char *share, const char *operation)
     }
 }
 
-static int acl_fixture(const char *operation)
+static int writer_identity(void)
 {
-    const char path[] = "/run/phantowd-samba-source/approved/acl-created";
-    const char payload[] = "posix-acl-fixture\n";
-    int prepare = !strcmp(operation, "acl-prepare");
-    int grant_acl = !strcmp(operation, "acl-grant");
-    int revoke_acl = !strcmp(operation, "acl-revoke");
-    if (!prepare && !grant_acl && !revoke_acl)
-        return fail();
-    /* The fixed test file is owned by the writer; metadata changes use only
-     * that Unix user's authority, not the server's DAC/root capabilities. */
     if (setgroups(0, NULL) || setgid(1800) || setuid(1801) ||
         prctl(PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0))
         return fail();
@@ -185,6 +182,97 @@ static int acl_fixture(const char *operation)
     struct __user_cap_data_struct caps[2] = {{0}, {0}};
     if (syscall(SYS_capget, &header, caps) || caps[0].effective ||
         caps[0].permitted || caps[1].effective || caps[1].permitted)
+        return fail();
+    return 0;
+}
+
+struct fixed_acl {
+    struct posix_acl_xattr_header header;
+    struct posix_acl_xattr_entry entries[5];
+};
+
+static struct fixed_acl inherited_acl(unsigned int owner, unsigned int mask)
+{
+    struct fixed_acl acl = {
+        .header = {.a_version = htole32(POSIX_ACL_XATTR_VERSION)},
+        .entries = {
+            {.e_tag = htole16(0x01), .e_perm = htole16(owner), .e_id = htole32(~0U)},
+            {.e_tag = htole16(0x02), .e_perm = htole16(5), .e_id = htole32(1802)},
+            {.e_tag = htole16(0x04), .e_perm = 0, .e_id = htole32(~0U)},
+            {.e_tag = htole16(0x10), .e_perm = htole16(mask), .e_id = htole32(~0U)},
+            {.e_tag = htole16(0x20), .e_perm = 0, .e_id = htole32(~0U)},
+        },
+    };
+    return acl;
+}
+
+static int verify_acl(int fd, const char *name, const struct fixed_acl *expected)
+{
+    unsigned char bytes[sizeof(*expected) + 1];
+    return fgetxattr(fd, name, bytes, sizeof(bytes)) != (ssize_t)sizeof(*expected) ||
+        memcmp(bytes, expected, sizeof(*expected)) ? -1 : 0;
+}
+
+static int inherited_object(const char *path, int directory,
+                            const struct fixed_acl *expected)
+{
+    int fd = open(path, O_RDONLY | O_NOFOLLOW | O_CLOEXEC |
+                  (directory ? O_DIRECTORY : 0));
+    struct stat info;
+    struct fixed_acl defaults = inherited_acl(7, 5);
+    if (fd < 0 || fstat(fd, &info))
+        return fail();
+    if ((directory ? !S_ISDIR(info.st_mode) : !S_ISREG(info.st_mode)) ||
+        info.st_uid != 1801 || info.st_gid != 1800 ||
+        (info.st_mode & 07777) != (directory ? 02750 : 0640) ||
+        verify_acl(fd, "system.posix_acl_access", expected))
+        return fail();
+    if (directory) {
+        if (verify_acl(fd, "system.posix_acl_default", &defaults))
+            return fail();
+    } else {
+        unsigned char bytes[sizeof(defaults) + 1];
+        if (fgetxattr(fd, "system.posix_acl_default", bytes, sizeof(bytes)) != -1 ||
+            errno != ENODATA)
+            return fail();
+    }
+    return close(fd) ? fail() : 0;
+}
+
+static int inheritance_fixture(int prepare)
+{
+    const char path[] = "/run/phantowd-samba-source/approved/inherited";
+    if (writer_identity())
+        return fail();
+    struct fixed_acl directory = inherited_acl(7, 5);
+    struct fixed_acl file = inherited_acl(6, 4);
+    if (prepare) {
+        if (mkdir(path, 02770))
+            return fail();
+        int fd = open(path, O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC);
+        if (fd < 0 ||
+            fsetxattr(fd, "system.posix_acl_access", &directory, sizeof(directory), 0) ||
+            fsetxattr(fd, "system.posix_acl_default", &directory, sizeof(directory), 0) ||
+            close(fd))
+            return fail();
+        return inherited_object(path, 1, &directory);
+    }
+    if (inherited_object(path, 1, &directory) ||
+        inherited_object("/run/phantowd-samba-source/approved/inherited/child", 1, &directory) ||
+        inherited_object("/run/phantowd-samba-source/approved/inherited/child/data", 0, &file))
+        return fail();
+    return 0;
+}
+
+static int acl_fixture(const char *operation)
+{
+    const char path[] = "/run/phantowd-samba-source/approved/acl-created";
+    const char payload[] = "posix-acl-fixture\n";
+    int prepare = !strcmp(operation, "acl-prepare");
+    int grant_acl = !strcmp(operation, "acl-grant");
+    int revoke_acl = !strcmp(operation, "acl-revoke");
+    /* Metadata changes use the writer UID with zero effective/permitted caps. */
+    if ((!prepare && !grant_acl && !revoke_acl) || writer_identity())
         return fail();
     int fd = open(path, O_RDWR | O_NOFOLLOW | O_CLOEXEC |
         (prepare ? O_CREAT | O_EXCL : 0), 0600);
@@ -232,6 +320,10 @@ int main(int argc, char **argv)
     if (argc == 2 && (!strcmp(argv[1], "acl-prepare") ||
         !strcmp(argv[1], "acl-grant") || !strcmp(argv[1], "acl-revoke")))
         return acl_fixture(argv[1]);
+    if (argc == 2 && !strcmp(argv[1], "inheritance-prepare"))
+        return inheritance_fixture(1);
+    if (argc == 2 && !strcmp(argv[1], "inheritance-verify"))
+        return inheritance_fixture(0);
     if (argc == 2 && !strcmp(argv[1], "ownership")) {
         struct stat created;
         if (lstat("/run/phantowd-samba-source/approved/created", &created) ||

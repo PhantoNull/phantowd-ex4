@@ -4,7 +4,10 @@
 """Negative manifests and source-contract checks for a QEMU-only experiment."""
 import copy
 import hashlib
+import os
 from pathlib import Path
+import subprocess
+import tempfile
 import unittest
 
 import samba_root_fixture as fixture
@@ -38,6 +41,45 @@ def reports():
 
 
 class SambaRootFixture(unittest.TestCase):
+    @unittest.skipUnless(os.name == "posix", "POSIX shell contract")
+    def test_fixed_mkdir_error_evidence_and_absence(self):
+        root = Path(__file__).resolve().parents[2]
+        source = (root / "support/tests/samba-root-init.sh").read_text()
+        start = source.index("denied_mkdir() {")
+        end = source.index("run_fixture() {", start)
+        helper = source[start:end]
+        prefix = "/run/phantowd-samba-source/approved/inherited/"
+        self.assertEqual(helper.count(prefix), 1)
+        with tempfile.TemporaryDirectory() as scratch:
+            helper = helper.replace(prefix, scratch + "/")
+            script = (helper + '\nclient_status=$3; evidence=$4\n'
+                      'client() { return "$client_status"; }\n'
+                      'grep() { printf "%s\\n" "$evidence"; }\n'
+                      'denied_mkdir "$1" "$2"\n')
+            expected = ("NT_STATUS_ACCESS_DENIED making remote directory "
+                        "\\inherited\\reader-denied")
+
+            def run(status, evidence, user="qpreader", folder="reader-denied"):
+                return subprocess.run(
+                    ["/bin/sh", "-c", script, "fixture", user, folder,
+                     str(status), evidence], timeout=5, check=False,
+                    env={"PATH": "/usr/bin:/bin", "LC_ALL": "C"}
+                ).returncode
+
+            for status in (0, 1):
+                self.assertEqual(run(status, expected), 0)
+            for status in (2, 124, 143):
+                self.assertNotEqual(run(status, expected), 0)
+            for evidence in ("", "NT_STATUS_LOGON_FAILURE", "success",
+                             expected + "\n" + expected,
+                             expected.replace("reader-denied", "other"),
+                             expected + "\nNT_STATUS_UNSUCCESSFUL"):
+                self.assertNotEqual(run(0, evidence), 0)
+            self.assertNotEqual(run(0, expected, user="qpwriter"), 0)
+            self.assertNotEqual(run(0, expected, folder="other"), 0)
+            Path(scratch, "reader-denied").mkdir()
+            self.assertNotEqual(run(0, expected), 0)
+
     def test_deduplicated_fixed_roster(self):
         manifest = merge(reports())
         self.assertEqual(len(manifest.splitlines()), 7)
@@ -147,6 +189,9 @@ class SambaRootFixture(unittest.TestCase):
             "PHANTOWD_SAMBA_ROOT_POSIX_ACL_READY fs=ext4 bytes=true "
             "named_reader=true outsider_denied=true mask_revocation=true "
             "scope=qemu-only",
+            "PHANTOWD_SAMBA_ROOT_INHERITANCE_READY fs=ext4 directory_acl=true "
+            "file_acl=true setgid=true reader_write_denied=true "
+            "outsider_denied=true scope=qemu-only",
             "PHANTOWD_SAMBA_ROOT_POLICY_READY writer_uid=1801 "
             "reader_uid=1802 outsider_denied=true kernel_ro=true "
             "original_denied=true unix_ownership=true unix_denial=true "
@@ -154,10 +199,11 @@ class SambaRootFixture(unittest.TestCase):
             "PHANTOWD_SAMBA_ROOT_STOPPED", "PHANTOWD_SAMBA_ROOT_DONE",
         ]
         fixture.check_guest("\r\n".join(lines))
-        for invalid in (lines[:-1], lines[:1] + lines[2:],
-                        lines + [lines[0]], lines[::-1],
-                        lines + ["PHANTOWD_SAMBA_ROOT_FAILED"],
-                        lines + ["PHANTOWD_SAMBA_ROOT_LAUNCH_REFUSED"]):
+        invalid_logs = [lines[:i] + lines[i + 1:] for i in range(len(lines))]
+        invalid_logs += [lines + [lines[0]], lines[::-1],
+                         lines + ["PHANTOWD_SAMBA_ROOT_FAILED"],
+                         lines + ["PHANTOWD_SAMBA_ROOT_LAUNCH_REFUSED"]]
+        for invalid in invalid_logs:
             with self.assertRaises(ValueError):
                 fixture.check_guest("\n".join(invalid))
 
@@ -208,6 +254,13 @@ class SambaRootFixture(unittest.TestCase):
         self.assertIn("lgetxattr", native)
         self.assertNotIn("CAP_SYS_ADMIN)", native)
         self.assertIn('"system.posix_acl_access"', native)
+        self.assertIn('"system.posix_acl_default"', native)
+        self.assertIn('directory ? 02750 : 0640', native)
+        self.assertIn('inheritance-verify', init)
+        self.assertIn('map archive = no', init)
+        self.assertIn('store dos attributes = yes', init)
+        self.assertIn('put /run/upload-stream inherited/child/data', init)
+        self.assertIn('denied_mkdir qpreader reader-denied', init)
         self.assertIn('mount -t ext4 -o acl,nosuid,nodev,noexec', init)
         self.assertIn('file=$scratch/acl.ext4,format=raw,if=scsi,snapshot=on',
                       driver)
