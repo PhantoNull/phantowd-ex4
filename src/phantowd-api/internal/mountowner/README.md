@@ -49,24 +49,26 @@ the disposable Versatile PB guest.
   not retry or implicitly clean up. `Close` never unmounts.
 - `ServiceHandoff` is a Linux-only internal prototype. It requires an empty,
   root-owned `root:<service-gid>` mode-0710 directory under
-  `/run/phantowd/service-handoff`; every
-  ancestor must be root-owned, searchable by the fixed service identity and not
-  group/other writable. Only the configured service group can traverse the
-  handoff root. The current-source ARMv5 test confirms UID 65534 with GID 65534
-  and no supplementary groups receives `EACCES`, while the fixed service
-  consumer succeeds. The pre-mount child directory's mode 0700 is hidden by the
-  mounted filesystem; access inside a clone still follows the source
-  filesystem's ownership, modes and ACLs. The current runtime exposes a whole
-  selected volume, not individually granted share roots. It does not provision
-  service accounts/groups or file-level ACLs and must not be treated as
-  production share authorization. The handoff pins its root and retains one lease for the
-  complete fixed roster. Each cloned mount tree is created from the qualified
-  `O_PATH` source descriptor with `open_tree`/`move_mount`, then checked for a
-  distinct mount ID and matching filesystem identity. Opaque path bindings
-  are issued only while the source roster, root pathname and clone identities
-  still match. Teardown is explicit and may be called only after consumers
-  stop; it unmounts a clone once and only while its exact mount identity still
-  matches. It never falls back to source path resolution or lazy unmount.
+  `/run/phantowd/service-handoff`; every ancestor must be root-owned,
+  searchable by the fixed service identity and not group/other writable. Only
+  the configured service group can traverse the handoff root. A fixed internal
+  `ServiceShare` list names each share ID, volume ID, relative directory and
+  read-only intent. Whole-volume `.`, invalid paths, duplicate IDs and
+  ancestor/descendant overlaps on one volume are rejected. Each root is opened
+  through the pinned volume lease and cloned with `open_tree`/`move_mount`, then
+  checked for a distinct mount ID and matching filesystem identity. Clones get
+  `nosuid,nodev,noexec`; requested read-only clones receive `MOUNT_ATTR_RDONLY`
+  before attach and are verified afterward. Opaque bindings carry the selected
+  share root and source evidence; teardown is explicit and only detaches a
+  clone whose exact mount identity still matches. No path-based fallback or
+  lazy unmount is used.
+
+  This is a share-scoped pathname view, not a complete authorization boundary.
+  Consumers remain in the host mount namespace and may reach the original
+  volume anchor if its Unix metadata allows; writes there can bypass a
+  read-only clone. Every process in one fixed handoff group can traverse all
+  roots in that handoff. The prototype does not provision service accounts or
+  file-level ACLs and must not be treated as production share authorization.
 - `ServiceRuntime` is the internal coordinator for one fixed handoff and one
   fixed `processowner.Set`. `Start` mounts, verifies the complete binding set,
   starts all consumers and verifies storage again after readiness. `Observe`
@@ -82,25 +84,24 @@ The state machine and Linux fake-driver tests are in `owner_linux.go` and
 `owner_linux_test.go`. The QEMU-only integration runs real bind mounts from the
 fixed synthetic ext2 fixture into root-controlled `/run` paths. It covers the
 normal lease/drain/unmount sequence, an overmount with handle revocation, lost
-mount/unmount results, and a mismatched filesystem. The M4.4 QEMU fixture also
-clones the mount from its qualified descriptor into the root-controlled service
-pathname, holds the full roster lease, replaces the source anchor and verifies
-that the service pathname remains on the original clone while the Owner and
-handoff enter review. It starts a fixed BusyBox consumer as UID/GID 1000 with
-no supplementary groups, checks its effective credentials and proves it can
-read the synthetic marker through the group-gated path. A separate UID
-65534/GID 65534 probe confirms access is denied, and runtime construction
-rejects a process set without the configured handoff group. On source loss the
-child stops before the exact clone is detached. File-level access still
-follows the whole cloned volume's original metadata, so share ACL authorization
-remains open work. A host fake-process test verifies that an uncertain stop
-leaves the handoff open and is not retried. The local ARMv5 standard smoke and Linux
-API/vet checks pass on current source using the existing read-only Buildroot
-cache and temporary overlays. A focused MD v1.0 fixture also passes; its
-two-volume M3.5 test was separated because that guest intentionally has no
-independent healthy ext2 volume. Linux tests exercise multiple members, drain
-exclusion, idempotent release and rollback when the second member changes
-during acquisition.
+mount/unmount results, and a mismatched filesystem. The M4.4 QEMU fixture now
+clones one declared `media` subtree, proves a sibling marker is absent from the
+clone, and confirms a read-only write fails with `EROFS`. It holds the full
+roster lease, replaces the source anchor and verifies that the service pathname
+remains on the original clone while the Owner and handoff enter review. A fixed
+BusyBox consumer as UID/GID 1000 reads the marker; a separate UID/GID 65534
+probe is denied, and runtime construction rejects a process set without the
+configured handoff group. On source loss the child stops before the exact clone
+is detached. The fixture does not prove the original anchor is unreachable to
+the child; subtree and read-only access remain bypassable until a private
+service mount namespace exists. A host fake-process test verifies that an
+uncertain stop leaves the handoff open and is not retried. Windows API tests,
+ARMv5 cross-compilation, Linux API/vet and the local one-boot ARMv5 standard
+smoke pass with existing read-only Buildroot inputs and a temporary overlay. A
+focused MD v1.0 fixture also passes; its two-volume M3.5 test was separated
+because that guest intentionally has no independent healthy ext2 volume. Linux
+tests exercise multiple members, drain exclusion, idempotent release and
+rollback when the second member changes during acquisition.
 
 The qualification token currently comes only from the QEMU fixture. There is
 no production qualifier or production roster source, no EX4-complete mounted-

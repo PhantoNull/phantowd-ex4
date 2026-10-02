@@ -264,7 +264,7 @@ while [ "$attempt" -lt 120 ]; do
             echo 'Missing trusted mount-owner lifecycle assertion' >&2
             exit 1
         fi
-        if ! grep -F 'PHANTOWD_SERVICE_HANDOFF_READY descriptor_clone=true target_bound=true service_uid=1000 service_gid=1000 exact_groups=true ungranted_uid=65534_denied=true mismatched_group_rejected=true source_replacement_not_used=true source_loss_quarantined=true set_lease_held=true explicit_unmount=true scope=disposable-qemu-only' "$log_file" >/dev/null; then
+        if ! grep -F 'PHANTOWD_SERVICE_HANDOFF_READY share_subtree_clone=true read_only_enforced=true target_bound=true service_uid=1000 service_gid=1000 exact_groups=true ungranted_uid=65534_denied=true mismatched_group_rejected=true source_replacement_not_used=true source_loss_quarantined=true set_lease_held=true explicit_unmount=true scope=disposable-qemu-only' "$log_file" >/dev/null; then
             echo 'Missing non-root service handoff access-boundary assertion' >&2
             exit 1
         fi
