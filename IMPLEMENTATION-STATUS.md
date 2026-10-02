@@ -227,6 +227,13 @@ hosted feature qualification or complete license/distribution review.
 This is not a product collector, physical transport/standby qualification or
 closed release gate.
 
+The separate native boundary follow-up adds eight actual-producer tests per
+release for checksum policy and power-query errors/default continuation.
+Both 7.4/7.5 suites and the existing seven report projections/vet/race pass
+locally. Version-specific power JSON is checked explicitly; sentinel power
+exits are not treated as ordinary health bitmasks. No ARM runner, package,
+product parser or collector authority changes; this is characterization only.
+
 Percentages are **engineering planning estimates**, not measured test coverage,
 probabilities of success, release readiness, or a delivery-date promise. Credit
 includes source, negative tests and fixture integration; the remaining scope
