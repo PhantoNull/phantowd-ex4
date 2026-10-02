@@ -155,19 +155,22 @@ sockets, network services, storage, MTD, NAND, SATA and the fan controller
 unavailable. The thermal sensor is tripless and observational; it is not a
 thermal safety system.
 
-For an exact-device trial, use that EX4's stock `mac1`/`mac2` values as U-Boot
-`ethaddr`/`eth1addr`, read them back, and never run `saveenv`. The initramfs
-reports placeholder MACs as a warning so the independent link/sensor
-observations can continue, but still rejects duplicate addresses before
-raising interfaces. It configures no IP and starts no network service. Both
-HDDs must remain removed. This test does not qualify MAC handoff when a
-placeholder warning appears, fan control, sustained link stability, storage,
-recovery or installation.
+The bounded exact-device trial on 2026-09-24 used the unit's stock `mac1` and
+`mac2` values as temporary U-Boot `ethaddr`/`eth1addr`, read them back, and did
+not run `saveenv`. `eth0` reported the factory MAC; `eth1` still reported its
+placeholder. Both links reached 1 Gbit/s/full duplex by sample 4 after brief
+transitions. The short sample does not prove sustained stability or explain
+the MAC2 handoff. Five internal temperature readings were observational only;
+no independent thermometer or fan control was used. The probe configured no
+IP, started no network service, and halted automatically with both HDDs absent.
+This single trial is complete; a repeat requires fresh review and explicit
+authorization. It does not qualify MAC handoff, cooling, stable networking,
+storage, recovery or installation.
 
 Build and audit with `.\support\build-ex4-stage-b3.ps1` on Windows/Docker.
-The output remains explicitly non-flashable. One bounded diskless RAM trial
-of the 6.18.53 B3 image reached its ready marker and halted; that observation
-does not qualify the image for installation, repeat boot or use with disks.
+The output remains explicitly non-flashable and research-only. The single
+bounded RAM trial is complete; it does not authorize another boot or
+installation.
 A separate local compile-only build of the Stage B3 profile with Linux 6.18.54
 passed its kernel-configuration audit and all 11 MAC-policy cases on
 2026-09-30. Its manifest still says `flashable=no` and
