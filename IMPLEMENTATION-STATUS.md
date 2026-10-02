@@ -63,6 +63,22 @@ rebuild; actual board/build input changes remain covered.
 
 ## Roadmap comparison
 
+The subsequent code-permission audit reproduced an undeclared root access ACL
+being accepted by `runtimebundle.Inspect` despite unchanged mode bits and hashes.
+Inspection and QEMU-only staging now share the same ACL/capability refusal check.
+The focused local ARMv5 fixture passes an ACL-free positive control and five
+actual-kernel ACL refusals (root access/default, inner-directory access/default,
+file access), followed by every existing Samba/CP850/stream/ext4 data-ACL/
+inheritance/client/stop regression. Miniature code trees and read-only binds
+exist only in the disposable guest's private namespace; data-grant ACLs remain
+supported and untouched. This is focused local evidence on the working source,
+not new full Buildroot/two-boot/hosted or physical EX4 qualification.
+Pinned Linux Go 1.26.6 ordinary/QEMU-tagged vet, all API race tests and the
+QEMU-tagged runtime package race tests pass; Windows API/UI preflight and
+ARMv5 API test cross-compilation also pass. The focused wrapper reuses only
+read-only base/cache inputs and auto-removes its container/tmpfs; no new
+persistent image, volume or output namespace was created.
+
 The separate `feat/runtime-bundle-verification` follow-up adds an internal,
 read-only code-tree inspection prerequisite for M4.4. A privately copied plan
 checks complete census, read-only mount identity, hashes, file permissions and

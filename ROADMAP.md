@@ -928,8 +928,12 @@ storage. No production roster provider or activation path exists.
   The internal [runtime-bundle inspector](src/phantowd-api/internal/runtimebundle/README.md)
   now supplies a read-only prerequisite: a privately copied bounded code-only
   roster, complete descriptor-relative census, kernel-enforced read-only mount,
-  exact hashes/modes/aliases and no cross-mount/symlink traversal. A disposable
-  ARMv5 Samba-root fixture verifies this before adding configuration/state/
+  exact hashes/modes/aliases and no cross-mount/symlink traversal. The disposable
+  code-only permission regression additionally requires access/default ACL
+  refusal on the root/directories and access-ACL refusal on regular files,
+  even when mode bits and hashes match. Keep this distinct from supported
+  data-grant ACLs; never strip users' permissions to satisfy code validation.
+  The ARMv5 Samba-root fixture verifies this before adding configuration/state/
   grants and refuses altered plans. Its observation is not a lease, signed
   manifest, root constructor or execution token. The future constructor must
   obtain expected bytes from the trusted release boundary, serialize other

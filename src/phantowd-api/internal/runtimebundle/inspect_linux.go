@@ -123,6 +123,18 @@ func localCodeFilesystem(kind int64) bool {
 	}
 }
 
+// Code permissions come only from the fixed plan and controlled directories,
+// never from undeclared access/default ACLs or executable file capabilities.
+// Unsupported attributes are absent; permission/I/O/other uncertainty refuses.
+func codeNoExtendedPermissions(fd int) error {
+	for _, name := range []string{"system.posix_acl_access", "system.posix_acl_default", "security.capability"} {
+		if _, err := unix.Fgetxattr(fd, name, nil); !errors.Is(err, unix.ENODATA) && !errors.Is(err, unix.ENOTSUP) {
+			return ErrMismatch
+		}
+	}
+	return nil
+}
+
 func (p *Plan) census(ctx context.Context, root int, name string, mount uint64, seen map[string]bool) error {
 	if ctx.Err() != nil {
 		return ctx.Err()
@@ -137,6 +149,9 @@ func (p *Plan) census(ctx context.Context, root int, name string, mount uint64, 
 	directory := os.NewFile(uintptr(fd), "runtime-census")
 	defer directory.Close()
 	if _, err := inspectMetadata(fd, unix.S_IFDIR, mount); err != nil {
+		return err
+	}
+	if err := codeNoExtendedPermissions(fd); err != nil {
 		return err
 	}
 	seen[name] = true
@@ -186,9 +201,8 @@ func inspectFile(ctx context.Context, root int, mount uint64, expected File) err
 	if err != nil || before.Size != uint64(expected.Size) || uint32(before.Mode&07777) != expected.Mode || before.Nlink != 1 {
 		return ErrMismatch
 	}
-	_, err = unix.Fgetxattr(fd, "security.capability", nil)
-	if !errors.Is(err, unix.ENODATA) && !errors.Is(err, unix.ENOTSUP) {
-		return ErrMismatch
+	if err := codeNoExtendedPermissions(fd); err != nil {
+		return err
 	}
 	hash := sha256.New()
 	buffer := make([]byte, 32<<10)

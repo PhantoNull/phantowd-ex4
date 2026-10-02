@@ -25,8 +25,11 @@ special files, symlink traversal and crossing mounts. Directory traversal and
 regular reads use descriptor-relative `openat2` with no weaker fallback.
 Only declared aliases are read as text; their exact absolute in-root target
 must match the fixed plan. Regular files require exact permissions, single
-links, no file capabilities, bounded hash reads and stable metadata. Any error
-returns no partial observation. Non-Linux inspection is unavailable.
+links, bounded hash reads and stable metadata. The root, every directory and
+every regular file must have no access/default POSIX ACL or file-capability
+attribute; unsupported attributes are absent, while other query errors refuse.
+This code-only rule does not apply to ACLs on separately composed data grants.
+Any error returns no partial observation. Non-Linux inspection is unavailable.
 
 The result contains internal counts only, cannot be serialized and holds no
 descriptors or leases after return. This is a point-in-time check: privileged
@@ -47,6 +50,14 @@ probe. It never changes the parent mount namespace. The probe checks the real
 roster and refuses five altered plans: digest, mode, alias target, omitted
 daemon and symlink retyped as file. Cancellation must return no observation.
 This fixture manifest is research evidence, not a signed product manifest.
+
+A separate fixed root-only QEMU permission regression uses miniature tmpfs
+code trees, its own private mount namespace and read-only binds. It reads back
+actual kernel ACL bytes and proves Unix modes remain unchanged. An ACL-free
+positive control must pass; access/default ACLs on the root and an inner
+directory, plus a regular-file access ACL, must return no observation. This
+regression is excluded from product builds and does not modify the Samba tree,
+data-grant ACLs, parent mount namespace or physical storage.
 
 ## Disposable construction prototype
 

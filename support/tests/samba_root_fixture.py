@@ -24,6 +24,8 @@ CATALOG_ROWS = frozenset({
 MARKERS = (
     "PHANTOWD_SAMBA_ROOT_STAGE_READY fresh=true hashes_during_copy=true "
     "no_overwrite=true refusals=5 scope=qemu-only",
+    "PHANTOWD_SAMBA_ROOT_CODE_ACL_READY baseline=true root=true "
+    "directories=true files=true refusals=5 scope=qemu-only",
     "PHANTOWD_SAMBA_ROOT_BUNDLE_READY readonly=true complete_census=true "
     "hashes=true aliases=true refusals=5 scope=qemu-only",
     "PHANTOWD_SAMBA_ROOT_CHARSET_READY charset=CP850 bytes=true "

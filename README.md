@@ -220,7 +220,8 @@ builds, hosted feature results or EX4 qualification;
 [implementation status](IMPLEMENTATION-STATUS.md) separates them.
 
 An internal code-only runtime inspector additionally checks the isolated test
-tree's complete census, hashes, permissions and aliases before fixture state
+tree's complete census, hashes, permissions (including absence of code ACLs)
+and aliases before fixture state
 and share grants are added. This is a read-only construction prerequisite,
 not an approved manifest, product service activation or installation path.
 The separate QEMU-only construction prototype creates fresh tmpfs copies,
