@@ -38,10 +38,13 @@ python3 -B "$external_dir/support/tests/test-qemu-build-feedback.py"
 python3 -B "$external_dir/support/tests/test-service-launcher.py"
 python3 -B "$external_dir/support/tests/test-runtime-loader-fixture.py"
 python3 -B "$external_dir/support/tests/test-samba-root-fixture.py"
+python3 -B "$external_dir/support/tests/test-qemu-kernel-inputs.py"
 python3 -B -m flake8 "$external_dir/support/tests/runtime_loader_fixture.py" \
     "$external_dir/support/tests/test-runtime-loader-fixture.py" \
     "$external_dir/support/tests/samba_root_fixture.py" \
     "$external_dir/support/tests/test-samba-root-fixture.py"
+python3 -B -m flake8 "$external_dir/support/container/qemu_kernel_inputs.py" \
+    "$external_dir/support/tests/test-qemu-kernel-inputs.py"
 shellcheck "$external_dir/support/tests/test-qemu-runtime-loader.sh"
 shellcheck "$external_dir/support/tests/test-qemu-samba-root.sh" \
     "$external_dir/support/tests/samba-root-init.sh"
@@ -286,11 +289,38 @@ fi
 
 # Clean only the generated local-package directory: rsync alone can retain
 # deleted source files. Dependencies stay cached; all regenerates the rootfs.
+# Buildroot does not invalidate a configured kernel when only a fragment
+# changes. Refresh just Linux, reusing the same output/cache namespace. A
+# missing legacy stamp also refreshes once; stamp only audited successful work.
+kernel_inputs_helper="$external_dir/support/container/qemu_kernel_inputs.py"
+linux_inputs_digest=$(python3 -B "$kernel_inputs_helper" fingerprint \
+    "$external_dir" "$buildroot_source")
+linux_inputs_stamp="$output_dir/.phantowd-linux-inputs.sha256"
+linux_inputs_previous=
+if [ -f "$linux_inputs_stamp" ]; then
+    linux_inputs_previous=$(cat "$linux_inputs_stamp")
+fi
+if [ -f "$output_dir/build/linux-$LINUX_VERSION/.stamp_configured" ] && \
+    [ "$linux_inputs_previous" != "$linux_inputs_digest" ]; then
+    make -C "$buildroot_source" BR2_EXTERNAL="$external_dir" \
+        BR2_DL_DIR="$download_dir" O="$output_dir" \
+        -j"$(getconf _NPROCESSORS_ONLN)" linux-reconfigure
+fi
 make -C "$buildroot_source" \
     BR2_EXTERNAL="$external_dir" \
     BR2_DL_DIR="$download_dir" \
     O="$output_dir" \
     -j"$(getconf _NPROCESSORS_ONLN)"
+
+python3 -B "$kernel_inputs_helper" audit \
+    "$output_dir/build/linux-$LINUX_VERSION/.config"
+[ "$(python3 -B "$kernel_inputs_helper" fingerprint \
+    "$external_dir" "$buildroot_source")" = "$linux_inputs_digest" ] || {
+    echo 'QEMU kernel inputs changed during the build; no checkpoint recorded' >&2
+    exit 1
+}
+printf '%s\n' "$linux_inputs_digest" > "$linux_inputs_stamp.part"
+mv "$linux_inputs_stamp.part" "$linux_inputs_stamp"
 
 # Compiler-cache readiness is not test or release qualification. Trusted CI
 # can retain completed compiler work even when a later guest fixture fails.

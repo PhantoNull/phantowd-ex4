@@ -29,7 +29,7 @@ cleanup() {
         wait "$child_pid" 2>/dev/null || true
     fi
     # Only this exact newly-created tmpfs directory owns these files.
-    rm -f "$scratch/rootfs.ext2" "$scratch/lab" "$scratch/smbd.json" \
+    rm -f "$scratch/rootfs.ext2" "$scratch/acl.ext4" "$scratch/lab" "$scratch/smbd.json" \
         "$scratch/smbpasswd.json" "$scratch/testparm.json" \
         "$scratch/streams_xattr.json" "$scratch/manifest" \
         "$scratch/launcher" "$scratch/guest.log"
@@ -55,6 +55,12 @@ python3 -B "$source_dir/support/tests/samba_root_fixture.py" prepare \
     -o "$scratch/launcher" "$source_dir/support/tests/samba-root-launcher-fixture.c"
 rm -rf "$scratch/go-cache" "$scratch/go-path"
 cp "$base/rootfs.ext2" "$scratch/rootfs.ext2"
+# Format only this newly-created regular tmpfs file, never a block-device path.
+truncate -s 16M "$scratch/acl.ext4"
+[ -f "$scratch/acl.ext4" ] && [ ! -L "$scratch/acl.ext4" ] || exit 1
+"$(dirname "$debugfs")/mke2fs" -q -F -t ext4 \
+    -U c395f03e-60ea-4ea1-9f47-08fb0aabfa72 \
+    -E lazy_itable_init=0,lazy_journal_init=0 "$scratch/acl.ext4"
 for pair in "launcher phantowd-samba-root-launcher" \
     "$source_dir/support/tests/samba-root-init.sh phantowd-samba-root-init"; do
     input=${pair%% *}
@@ -69,8 +75,9 @@ done
 timeout --signal=TERM --kill-after=5 180 qemu-system-arm \
     -M versatilepb -cpu arm926 -m 256M -nographic -no-reboot -nic none \
     -kernel "$base/zImage" -dtb "$base/versatile-pb.dtb" \
-    -append 'console=ttyAMA0 root=/dev/sda rootwait ro panic=-1 init=/usr/sbin/phantowd-samba-root-init' \
+    -append 'console=ttyAMA0 root=/dev/sda rootwait ro panic=-1 phantowd_samba_ext4_fixture=1 init=/usr/sbin/phantowd-samba-root-init' \
     -drive "file=$scratch/rootfs.ext2,format=raw,if=scsi,snapshot=on" \
+    -drive "file=$scratch/acl.ext4,format=raw,if=scsi,snapshot=on" \
     >"$scratch/guest.log" 2>&1 &
 child_pid=$!
 status=0

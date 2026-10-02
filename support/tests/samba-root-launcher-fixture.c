@@ -5,7 +5,9 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <grp.h>
+#include <endian.h>
 #include <linux/capability.h>
+#include <linux/posix_acl_xattr.h>
 #include <sched.h>
 #include <signal.h>
 #include <stdint.h>
@@ -110,7 +112,8 @@ static int client(const char *user, const char *share, const char *operation)
     if ((strcmp(user, "qpwriter") && strcmp(user, "qpreader") &&
          strcmp(user, "qpoutsider") && strcmp(user, "qpwrong")) ||
         (strcmp(share, "ReadWrite") && strcmp(share, "KernelReadOnly") &&
-         strcmp(share, "OriginalAnchor") && strcmp(share, "UnixDenied")))
+         strcmp(share, "OriginalAnchor") && strcmp(share, "UnixDenied") &&
+         strcmp(share, "PosixACL")))
         return fail();
     const char *operations[] = {"ls", "put /run/upload created",
         "get created /run/download", "put /run/upload reader-denied",
@@ -119,7 +122,8 @@ static int client(const char *user, const char *share, const char *operation)
         "get created-é-β /run/download-unicode",
         "put /run/upload-stream created:fixture",
         "put /run/upload created:fixture",
-        "get created:fixture /run/download-stream"};
+        "get created:fixture /run/download-stream",
+        "get acl-created /run/download-acl", "put /run/upload acl-created"};
     int matched = 0;
     for (size_t i = 0; i < sizeof(operations) / sizeof(operations[0]); ++i)
         matched |= !strcmp(operation, operations[i]);
@@ -163,10 +167,71 @@ static int client(const char *user, const char *share, const char *operation)
     }
 }
 
+static int acl_fixture(const char *operation)
+{
+    const char path[] = "/run/phantowd-samba-source/approved/acl-created";
+    const char payload[] = "posix-acl-fixture\n";
+    int prepare = !strcmp(operation, "acl-prepare");
+    int grant_acl = !strcmp(operation, "acl-grant");
+    int revoke_acl = !strcmp(operation, "acl-revoke");
+    if (!prepare && !grant_acl && !revoke_acl)
+        return fail();
+    /* The fixed test file is owned by the writer; metadata changes use only
+     * that Unix user's authority, not the server's DAC/root capabilities. */
+    if (setgroups(0, NULL) || setgid(1800) || setuid(1801) ||
+        prctl(PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0))
+        return fail();
+    struct __user_cap_header_struct header = {_LINUX_CAPABILITY_VERSION_3, 0};
+    struct __user_cap_data_struct caps[2] = {{0}, {0}};
+    if (syscall(SYS_capget, &header, caps) || caps[0].effective ||
+        caps[0].permitted || caps[1].effective || caps[1].permitted)
+        return fail();
+    int fd = open(path, O_RDWR | O_NOFOLLOW | O_CLOEXEC |
+        (prepare ? O_CREAT | O_EXCL : 0), 0600);
+    struct stat info;
+    if (fd < 0 || fstat(fd, &info) || !S_ISREG(info.st_mode) ||
+        info.st_uid != 1801 || info.st_gid != 1800)
+        return fail();
+    if (prepare) {
+        if (write(fd, payload, sizeof(payload) - 1) != (ssize_t)sizeof(payload) - 1 ||
+            close(fd))
+            return fail();
+        return 0;
+    }
+    struct {
+        struct posix_acl_xattr_header header;
+        struct posix_acl_xattr_entry entries[5];
+    } acl = {
+        .header = {.a_version = htole32(POSIX_ACL_XATTR_VERSION)},
+        .entries = {
+            {.e_tag = htole16(0x01), .e_perm = htole16(6), .e_id = htole32(~0U)},
+            {.e_tag = htole16(0x02), .e_perm = htole16(4), .e_id = htole32(1802)},
+            {.e_tag = htole16(0x04), .e_perm = 0, .e_id = htole32(~0U)},
+            {.e_tag = htole16(0x10), .e_perm = htole16(grant_acl ? 4 : 0),
+             .e_id = htole32(~0U)},
+            {.e_tag = htole16(0x20), .e_perm = 0, .e_id = htole32(~0U)},
+        },
+    };
+    if (fsetxattr(fd, "system.posix_acl_access", &acl, sizeof(acl), 0)) {
+        perror("fixture POSIX ACL fsetxattr");
+        return fail();
+    }
+    unsigned char bytes[sizeof(acl) + 1];
+    if (fgetxattr(fd, "system.posix_acl_access", bytes, sizeof(bytes)) !=
+        (ssize_t)sizeof(acl) || memcmp(bytes, &acl, sizeof(acl)) || close(fd))
+        return fail();
+    return 0;
+}
+
 int main(int argc, char **argv)
 {
     if (guard())
         return fail();
+    if (argc == 2 && !strcmp(argv[1], "guard"))
+        return 0;
+    if (argc == 2 && (!strcmp(argv[1], "acl-prepare") ||
+        !strcmp(argv[1], "acl-grant") || !strcmp(argv[1], "acl-revoke")))
+        return acl_fixture(argv[1]);
     if (argc == 2 && !strcmp(argv[1], "ownership")) {
         struct stat created;
         if (lstat("/run/phantowd-samba-source/approved/created", &created) ||

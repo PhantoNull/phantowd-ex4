@@ -958,8 +958,11 @@ storage. No production roster provider or activation path exists.
   when constructing the trusted runtime and service-specific lifecycle.
   Before claiming ACL support, qualify the actual storage filesystem's POSIX
   ACL configuration and Windows ACL persistence/denials under the same bounded
-  privilege profile. Current QEMU tmpfs ACL support cannot substitute for its
-  disabled ext4 POSIX ACL option. Do not silently choose permissive masks,
+  privilege profile. A disposable ext4 fixture now checks exact POSIX ACL bytes,
+  named-reader access, denied writes/outsider reads and mask-based revocation.
+  The missing ext4 kernel option was reproduced and corrected; kernel-input
+  fingerprinting prevents cached fragments being silently ignored. This is
+  not Windows ACL or migration qualification. Do not silently choose permissive masks,
   ignore system ACLs, change xattr namespaces or add mount-admin privileges.
 - **M4.5 — Failure and shutdown.** Cover startup with absent disks, service crash,
   read-only/full volume, client reconnect, stale NFS handles, shutdown with open

@@ -44,12 +44,18 @@ denied() {
 run_fixture() {
     mount -t proc proc /proc || return 1
     mount -t sysfs sysfs /sys || return 1
+    /usr/sbin/phantowd-samba-root-launcher guard || return 1
+    grep -Eq '(^| )phantowd_samba_ext4_fixture=1( |$)' /proc/cmdline || return 1
     mount -t tmpfs -o mode=0755,size=96m tmpfs /run || return 1
     ifconfig lo up || return 1
     root=/run/phantowd-samba-root
     source=/run/phantowd-samba-source
     state=/run/phantowd-samba-state
     mkdir -m 0755 "$root" "$source" || return 1
+    [ "$(cat /sys/block/sdb/size)" = 32768 ] || return 1
+    [ -b /dev/sdb ] || return 1
+    mount -t ext4 -o acl,nosuid,nodev,noexec /dev/sdb "$source" || return 1
+    grep -F " /run/phantowd-samba-source ext4 " /proc/mounts >/dev/null || return 1
     mkdir -m 0700 "$state" || return 1
     mkdir -p "$root/etc/samba" "$root/dev" "$root/state" "$root/tmp" \
         "$root/shares/rw" "$root/shares/ro" "$root/shares/denied" \
@@ -113,6 +119,8 @@ run_fixture() {
         'read only = no' 'valid users = qpwriter' 'follow symlinks = no' \
         '[UnixDenied]' 'path = /shares/denied' 'guest ok = no' \
         'read only = no' 'valid users = qpwriter' \
+        '[PosixACL]' 'path = /shares/rw' 'guest ok = no' \
+        'read only = no' 'valid users = qpwriter qpreader qpoutsider' \
         '[OriginalAnchor]' 'path = /run/phantowd-samba-source/approved' \
         'guest ok = no' 'read only = no' 'valid users = qpwriter' \
         >"$root/etc/samba/smb.conf"
@@ -123,6 +131,7 @@ run_fixture() {
     ln -s "$source/ungranted" "$source/approved/escape" || return 1
     echo 'distinct-unix-writer-test' >/run/upload
     echo 'distinct-stream-fixture' >/run/upload-stream
+    echo 'posix-acl-fixture' >/run/acl-expected
     for user in qpwriter qpreader qpoutsider; do
         # Public disposable credential, stdin/auth files only, never argv.
         printf '%s\n' 'disposable-qemu-only' 'disposable-qemu-only' | \
@@ -173,6 +182,21 @@ run_fixture() {
     /usr/sbin/phantowd-samba-root-launcher stream-bytes || return 1
     cmp /run/upload "$source/approved/created" || return 1
     echo 'PHANTOWD_SAMBA_ROOT_STREAMS_READY module=streams_xattr xattr_bytes=true reader_write_denied=true kernel_ro=true scope=qemu-only'
+    /usr/sbin/phantowd-samba-root-launcher acl-prepare || return 1
+    denied qpreader PosixACL 'get acl-created /run/download-acl' \
+        'NT_STATUS_ACCESS_DENIED' || return 1
+    /usr/sbin/phantowd-samba-root-launcher acl-grant || return 1
+    client qpreader PosixACL 'get acl-created /run/download-acl' || return 1
+    cmp /run/acl-expected /run/download-acl || return 1
+    denied qpreader PosixACL 'put /run/upload acl-created' \
+        'NT_STATUS_ACCESS_DENIED' || return 1
+    denied qpoutsider PosixACL 'get acl-created /run/download-acl' \
+        'NT_STATUS_ACCESS_DENIED' || return 1
+    /usr/sbin/phantowd-samba-root-launcher acl-revoke || return 1
+    denied qpreader PosixACL 'get acl-created /run/download-acl' \
+        'NT_STATUS_ACCESS_DENIED' || return 1
+    cmp /run/acl-expected "$source/approved/acl-created" || return 1
+    echo 'PHANTOWD_SAMBA_ROOT_POSIX_ACL_READY fs=ext4 bytes=true named_reader=true outsider_denied=true mask_revocation=true scope=qemu-only'
     denied qpwrong ReadWrite ls 'NT_STATUS_LOGON_FAILURE' || return 1
     denied qpreader ReadWrite 'put /run/upload reader-denied' 'NT_STATUS_ACCESS_DENIED' || return 1
     denied qpoutsider ReadWrite ls 'NT_STATUS_ACCESS_DENIED' || return 1

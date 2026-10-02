@@ -17,11 +17,16 @@ These additions are not yet integrated into
 `develop`; do not confuse feature evidence with an integration/release result.
 Planning bands remain unchanged: no new product acceptance gate has closed.
 
-The subsequent focused local Samba fixture adds one fixed dynamic
+The subsequent local Samba fixture adds one fixed dynamic
 `streams_xattr` module, exact alternate-stream xattr bytes, and reader/kernel-RO
-overwrite denials on temporary QEMU tmpfs. Its original rootfs remains
-unchanged. This focused check is separate from the complete incremental result
-on `fba213d`; it does not qualify Windows ACLs, storage-filesystem ACLs, stream
+overwrite denials. It now also uses a disposable 16 MiB ext4 image to verify
+exact POSIX ACL bytes, named-reader access, write/outsider denials and mask-based
+revocation. The formerly disabled ext4 ACL option reproduced `EOPNOTSUPP`;
+the corrected kernel and full working-tree incremental integration passed.
+Fixed kernel-fragment fingerprinting refreshes only Linux and audits the
+result before recording a compiler checkpoint. The original base rootfs remains
+unchanged. This result is separate from the earlier complete integration
+on `fba213d`; it does not qualify Windows ACLs, complete filesystem ACLs, stream
 migration, product integration or physical EX4 behavior.
 
 ## Roadmap comparison
@@ -238,7 +243,7 @@ The separate [Samba restricted-root fixture](support/SAMBA-RUNTIME-PROFILE.md)
 now passes locally with real distinct-user SMB3 access, owner/mode checks,
 kernel read-only enforcement, original-path/symlink denial, one UTF-8 filename
 and process-group stop. It retains only six root capabilities for Samba identity
-switching; the generic non-root helper is unchanged. This is disposable tmpfs
+switching; the generic non-root helper is unchanged. This is disposable ext4
 and a cached image overlay, not an Owner-backed product root, daemon activation,
 full dynamic-module/encoding/ACL qualification. The whole updated incremental
 pipeline also passed on unchanged `fba213d`, including Linux race/fuzz,

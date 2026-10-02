@@ -207,10 +207,11 @@ helper, trusted product manifest or live-service activation; see the
 [profile and remaining qualification gates](support/SAMBA-RUNTIME-PROFILE.md).
 The fixed `streams_xattr` plugin is separately hash-verified and exercised by
 an SMB alternate-stream roundtrip with exact xattr bytes and denied reader/
-kernel-read-only overwrites. This does not qualify Windows ACLs or migration.
-The complete local incremental pipeline passed on feature commit `fba213d`,
-including these checks, native isolation and the two-boot state fixture. This
-is not an independent clean build, hosted feature result or EX4 qualification;
+kernel-read-only overwrites. A disposable ext4 fixture also verifies named-user
+POSIX ACLs, write/outsider denials and mask-based revocation through real SMB3.
+This does not qualify Windows ACLs or migration. Local incremental integration
+and focused test results are not independent clean builds, hosted feature
+results or EX4 qualification;
 [implementation status](IMPLEMENTATION-STATUS.md) separates them.
 
 The badge tracks the `develop` integration branch, not every feature branch.

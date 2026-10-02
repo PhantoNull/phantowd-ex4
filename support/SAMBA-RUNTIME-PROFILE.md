@@ -18,6 +18,10 @@ and 128 MiB `/var/tmp` tmpfs. Compiler scratch is removed before the image copy.
 One ARM926/VersatilePB boot is bounded to 180 seconds, without retries, guest
 NICs, host ports or physical-device attachments. The base image hash must remain
 unchanged. Generated images and state are destroyed when the fixture exits.
+The host formats only a newly created 16 MiB regular tmpfs file as ext4 and
+attaches it as a second QEMU snapshot disk. Guest PID1 requires the exact
+VersatilePB guard, explicit fixture cmdline flag and expected virtual-disk size
+before mounting it. No physical block-device path is formatted or attached.
 
 ## What the experiment does
 
@@ -61,7 +65,14 @@ unchanged. Generated images and state are destroyed when the fixture exits.
   while the ordinary file data remains unchanged. Reader and kernel-read-only
   overwrites with different payloads must be denied without changing either
   stream or file; no literal `created:fixture` file may appear. This is a small
-  tmpfs/SMB3 plugin proof, not complete NTFS-stream migration or ACL evidence.
+  ext4/SMB3 plugin proof, not complete NTFS-stream migration or Windows ACL evidence.
+- POSIX ACL checks now use that actual ext4 fixture, not tmpfs. The native
+  test helper drops to the writer's Unix UID with zero effective/permitted
+  capabilities, creates one fixed file and sets/reads back exact ACL bytes.
+  Real SMB clients prove baseline denial, named-reader success, denied reader
+  writes and outsider reads, then effective revocation through the ACL mask.
+  The distinct original file payload must remain unchanged. This is not an
+  HTTP ACL editor, Windows ACL import or a persistent/reboot ACL campaign.
 - Stop signals only the fixture-created group, waits for the parent and requires
   the group to disappear. BusyBox may report the requested SIGTERM as status143;
   that is accepted only after group absence. Other outcomes fail. There is no
@@ -80,8 +91,11 @@ Samba's source supports configuration-selected `dlopen` modules; the pinned
 target contains 39 VFS modules. This deliberately small baseline does not
 qualify `acl_xattr`, Windows ACL preservation, durable stream migration,
 recycle or other plugins. Only the fixed temporary `streams_xattr` case above
-is exercised. The current QEMU kernel enables tmpfs POSIX ACLs but not ext4
-POSIX ACLs; the tmpfs fixture cannot qualify ACLs on a storage filesystem.
+is exercised. The QEMU kernel now requires ext4 POSIX ACLs; the previous
+disabled option was reproduced as kernel `EOPNOTSUPP` before being corrected.
+The build fingerprints its fixed fragment roster and reconfigures only the
+cached kernel on change, then audits required storage options before recording
+the compilation checkpoint. It never treats tmpfs support as ext4 evidence.
 The public target lacks the CP850 conversion module and logs an ASCII fallback;
 the observed SMB3 UTF-8 case does not resolve that separate compatibility gap.
 Quota observations on disposable tmpfs are not RAID/storage-health evidence.

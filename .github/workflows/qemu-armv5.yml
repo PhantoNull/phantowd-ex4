@@ -97,6 +97,9 @@ jobs:
       - name: Verify Samba-root experiment refusals before the full build
         run: python3 -B support/tests/test-samba-root-fixture.py
 
+      - name: Verify kernel-input invalidation and ACL requirements
+        run: python3 -B support/tests/test-qemu-kernel-inputs.py
+
       - name: Select bounded compiler-cache namespace
         id: ccache_namespace
         run: echo "week=$(date -u +%G-W%V)" >> "$GITHUB_OUTPUT"

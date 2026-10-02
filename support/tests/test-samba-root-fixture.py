@@ -101,6 +101,9 @@ class SambaRootFixture(unittest.TestCase):
             "PHANTOWD_SAMBA_ROOT_STREAMS_READY module=streams_xattr "
             "xattr_bytes=true reader_write_denied=true kernel_ro=true "
             "scope=qemu-only",
+            "PHANTOWD_SAMBA_ROOT_POSIX_ACL_READY fs=ext4 bytes=true "
+            "named_reader=true outsider_denied=true mask_revocation=true "
+            "scope=qemu-only",
             "PHANTOWD_SAMBA_ROOT_POLICY_READY writer_uid=1801 "
             "reader_uid=1802 outsider_denied=true kernel_ro=true "
             "original_denied=true unix_ownership=true unix_denial=true "
@@ -148,6 +151,10 @@ class SambaRootFixture(unittest.TestCase):
         self.assertIn("user.DosStream.fixture:$DATA", native)
         self.assertIn("lgetxattr", native)
         self.assertNotIn("CAP_SYS_ADMIN)", native)
+        self.assertIn('"system.posix_acl_access"', native)
+        self.assertIn('mount -t ext4 -o acl,nosuid,nodev,noexec', init)
+        self.assertIn('file=$scratch/acl.ext4,format=raw,if=scsi,snapshot=on',
+                      driver)
 
 
 if __name__ == "__main__":
