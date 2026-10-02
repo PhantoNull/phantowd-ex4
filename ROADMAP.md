@@ -1161,12 +1161,12 @@ not host/QEMU progress.
     or physical collector test. No device commands,
     public endpoint or installed collector exist yet. Newer tool/schema profiles
     need upstream review and attributed generated reports before selection.
-    The tested C-only QEMU toolchain lacks C++. The new defconfig enables that
-    dependency; the implemented ARM producer fixture still requires a complete
-    rebuild and terminal guest evidence, then
-    checking ABI/runtime/footprint and running the generic fixture in QEMU.
-    Retire the obsolete generated output, reuse downloads/bounded ccache and
-    requalify the existing guest/service tests; do not add a daemon or physical
+    The earlier C-only output was retired and the new C++ toolchain rebuilt.
+    Actual static7.5 producer/projection tests pass on the ARM926 guest against
+    the unchanged manifest-verified earlier base; v5TE/v5TEJ soft-float are the
+    explicit guest profiles. Complete C++ image integration, footprint/SBOM
+    and existing guest/service requalification still need a terminal full run.
+    Reuse downloads/bounded ccache and a single generated output; do not add a daemon or physical
     collector authority as a side effect of that prerequisite.
   - **M8.5b — Trusted collection.** Bind each report to the retained disk's
     generation and recheck it before publication; refuse replacement, disappearance,

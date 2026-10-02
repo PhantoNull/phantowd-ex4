@@ -83,7 +83,7 @@ the same read-only/non-root/no-network container boundary as the native lane.
 ```
 
 The runner statically cross-compiles only the generic stdin executable, checks
-ELF32/ARM/v5TE/soft-float and absence of a dynamic interpreter, generates seven
+ELF32/ARM/v5TE-or-v5TEJ/soft-float and absence of a dynamic interpreter, generates seven
 invented traces, and executes the actual producer and tagged Go projection
 tests in a disposable ARM926 QEMU guest. The base is unchanged; its copied
 root is read-only with a snapshot, there are no data disks or networking, and
@@ -91,9 +91,17 @@ reports live in private guest tmpfs. Configure/build/test/guest execution have
 finite deadlines; the fixture cleans scratch on success or failure.
 Full integration runs this lane against its just-built base and toolchain.
 
-**Implementation is not a passing ARM result:** this lane remains pending
-terminal local full-build/guest evidence. The native oracle and pure ARM
-parser passes do not prove the ARM producer. The test-only executable is not
+The pinned ARM926 toolchain's static libraries can label the linked executable
+`v5TEJ`, including when its own objects use `-march=armv5te`. The fixture admits
+only the explicit `v5TE`/`v5TEJ` ARM926 guest profiles, not ARMv6/7 or hard-float.
+Successful emulated execution does not qualify the EX4's physical CPU/board.
+
+**Focused ARM execution now passes:** the rebuilt C++ toolchain's actual static
+7.5 producer and all seven Go projections passed in the ARM926 guest using the
+manifest-verified earlier base, whose hashes stayed unchanged. This is not
+complete C++ image/service/SBOM integration, which still needs a terminal full
+build. The native oracle and pure parser passes alone do not prove the producer.
+The test-only executable is not
 installed in the product image, SBOM or service startup. C++ runtime libraries
 selected by the toolchain are ordinary Buildroot dependencies and must be
 reflected by the rebuilt artifacts. Product collection has separate

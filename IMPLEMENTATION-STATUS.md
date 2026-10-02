@@ -186,15 +186,21 @@ ARM producer testing requires a complete C++-enabled rebuild, bounded cache
 transition and guest/service requalification. No such rebuild or collector is
 claimed by this profile update; no obsolete cache was deleted merely to test JSON.
 
-The next increment adds a C++-enabled QEMU defconfig and a diskless ARM producer
+The follow-up adds a C++-enabled QEMU defconfig and a diskless ARM producer
 fixture for pinned smartctl 7.5. It statically builds only the generic stdin
-backend in bounded scratch, checks ARMv5TE/soft-float linkage, and executes seven
+backend in bounded scratch, checks ARMv5TE/ARMv5TEJ soft-float linkage, and executes seven
 invented inputs plus the Go projection tests in a read-only QEMU snapshot. A
 focused wrapper refuses a missing compiler before launch; fast regression tests
 cover the real `g++` filename and reject unsafe paths. Native 7.4/7.5 regressions
-pass after sharing the trace generator. **Full toolchain rebuild and actual ARM
-producer execution remain pending**, so this is not an ARM producer PASS, product
-collector, standby qualification or closed release gate.
+pass after sharing the trace generator. **The C++ toolchain is rebuilt and the
+focused actual ARM producer fixture passes** against the manifest-verified
+earlier base, with all seven exits/projections and unchanged base hashes.
+The test exposed and corrected an overly narrow v5TE tag check and QEMU7.2's
+/tmp-to-/var/tmp snapshot fallback; snapshots now use the owned tmpfs subdirectory.
+The initial full build was stopped after the reproducible runner failure;
+complete C++ image/service/SBOM integration still needs a terminal full run.
+This is not a product collector, physical transport/standby qualification or
+closed release gate.
 
 Percentages are **engineering planning estimates**, not measured test coverage,
 probabilities of success, release readiness, or a delivery-date promise. Credit

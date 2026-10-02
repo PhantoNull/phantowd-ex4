@@ -27,6 +27,9 @@ done
 (cd "$base" && sha256sum -c SHA256SUMS)
 base_hash=$(sha256sum "$base/rootfs.ext2" | awk '{print $1}')
 scratch=$(mktemp -d "$tmpdir/phantowd-smart-arm-replay.XXXXXX")
+# QEMU 7.2 rewrites exactly /tmp to /var/tmp for snapshots. Use the owned
+# subdirectory so snapshot overlays stay inside the checked tmpfs and cleanup.
+export TMPDIR="$scratch"
 child_pid=
 cleanup() {
     if [ -n "$child_pid" ] && kill -0 "$child_pid" 2>/dev/null; then
@@ -59,11 +62,14 @@ grep -E 'Class: *ELF32' "$scratch/elf-header" >/dev/null
 grep -E 'Machine: *ARM' "$scratch/elf-header" >/dev/null
 grep -E 'Flags:.*soft-float ABI' "$scratch/elf-header" >/dev/null
 "$readelf" -A smartctl >"$scratch/elf-attributes"
-grep -E 'Tag_CPU_arch: v5TE$' "$scratch/elf-attributes" >/dev/null
+# The ARM926 Buildroot libraries carry v5TEJ even when the producer's own
+# objects request -march=armv5te. Both are explicit ARM926 guest profiles;
+# this is not permission for v6/v7 or physical EX4 qualification.
+grep -E 'Tag_CPU_arch: v5TE(J)?$' "$scratch/elf-attributes" >/dev/null
 if grep -E 'Tag_ABI_VFP_args: VFP registers' "$scratch/elf-attributes" >/dev/null; then exit 1; fi
 "$readelf" -l smartctl >"$scratch/elf-segments"
 if grep -E 'INTERP|DYNAMIC' "$scratch/elf-segments" >/dev/null; then exit 1; fi
-echo 'PHANTOWD_SMART_ARM_REPLAY_ELF_READY abi=armv5te-soft-float linkage=static backend=generic'
+echo 'PHANTOWD_SMART_ARM_REPLAY_ELF_READY abi=armv5te-or-v5tej-soft-float linkage=static backend=generic'
 mkdir "$scratch/traces"
 python3 -B "$source_dir/support/tests/smart-replay-corpus.py" --traces "$scratch/traces" 7.5
 export GOPROXY=off GOTOOLCHAIN=local GOFLAGS='-mod=vendor -buildvcs=false -p=2' GOMAXPROCS=2
