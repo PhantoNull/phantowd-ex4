@@ -3,19 +3,29 @@
 
 # Implementation status
 
-Code audit: **2026-10-02**, integrated `develop` baseline
-`086e717dc7b3f1103a82a53d025d4adc49587a48` (PR #57).
+Code audit: **2026-10-03**, integrated `develop` baseline
+`2bf71fa405343f828af03b5d0c9a2889d5e5e2fd` (PR #59).
 Use [ROADMAP.md](ROADMAP.md) for the acceptance specification. This snapshot
 distinguishes tested components from deployed product workflows. It is not
 installation approval, a security certification, or an exhaustive line-by-line audit.
 
-PR #57 integrated the read-only code-bundle inspector and QEMU-only fresh
+PR #59 integrated the C++ toolchain and native/ARMv5 producer replay after exact
+head `e22828d` passed both hosted B3 and
+[QEMU/DTB](https://github.com/PhantoNull/phantowd-ex4/actions/runs/37062393358)
+checks. Its complete merged tree equals the checked head and the merged branch
+was removed. Retained-code Owner and later native-boundary/MCU/Perl followups
+below remain feature work, not qualified merely by that earlier CI result.
+PR #58 previously integrated the code-ACL refusal correction and offline SMART
+parser after exact head `2e8eb6d` passed all host/B3/QEMU checks. Neither merge
+qualifies the EX4 product or physical SMART collection.
+
+PR #57 previously integrated the read-only code-bundle inspector and QEMU-only fresh
 stager after exact head `870ea9d` passed
 [host](https://github.com/PhantoNull/phantowd-ex4/actions/runs/37039612689) and
 [QEMU/DTB](https://github.com/PhantoNull/phantowd-ex4/actions/runs/37039612553)
 checks. Its merged branch was removed after complete-tree equivalence was
-verified. The separate ACL correction and offline SMART follow-up described
-below are not yet integrated/hosted-qualified merely because PR #57 passed.
+verified. Its result alone did not qualify the later ACL and SMART increments;
+their integration is now separately established by PR #58.
 
 PR #55 integrated the native launcher, internal isolated runtime, host ELF
 dependency candidate, actual ARMv5 loader differential and separate Samba-root
@@ -70,6 +80,50 @@ removed. QEMU-only experiment paths no longer trigger an unchanged EX4 kernel
 rebuild; actual board/build input changes remain covered.
 
 ## Roadmap comparison
+
+The retained runtime-code Owner prototype privately holds the verified root and
+all regular code files, plus fixed independently pinned process executables.
+Its initial adapter supports only static ELF/non-root children; it does not
+authorize dynamic Samba or NFS. Host/race and disposable ARMv5 fixtures cover
+caller descriptor closure, immutable launch inputs, duplicate Start without
+side effects, canceled teardown with group reaping, identical-byte executable
+replacement and live root drift with permanent review after restoration.
+Forced process cleanup keeps pins until explicit group-reap verification.
+The dedicated local wrapper and full QEMU fixture reuse cached read-only inputs,
+bounded tmpfs and unchanged base hashes. This is component evidence, not hosted
+qualification, persistent review/recovery, complete service activation or EX4
+hardware qualification. See the
+[Owner contract](src/phantowd-api/internal/runtimebundle/README.md).
+
+Complete cached local integration passed on unchanged published `c93d936`:
+the actual non-root builder's API/tool tests, vet, race and fixed-count fuzz,
+package/image/legal-info/SBOM, native regular-image probe, standard/MD/two-boot
+guests, isolated launcher, retained-code Owner, real loader, restricted-root
+Samba and pure/actual-producer SMART lanes all passed. Seven exported artifact
+hashes were independently checked. The earlier full attempt correctly refused
+builder-owned positive fixture executables; the corrected tests use existing
+root-owned system programs and explicitly retain the ownership refusal. No
+production guard was weakened or target Python dependency introduced. The
+full container auto-removed; two existing volumes and the current output/cache
+were reused. This local result is not hosted feature qualification, independent
+reproducibility, license/recovery closure or product installation approval.
+
+A subsequent test-only ARMv5 increment covers forced cleanup at the aggregate
+code-Owner boundary, not just its pinned process set. A static child ignores
+SIGTERM; the first canceled-context Close retains ownership/pins and requires
+review despite kernel-confirmed group absence. Normal unmount of the disposable
+code bind returns `EBUSY`; after explicit reap verification it succeeds, while
+review is never cleared and restart remains refused. Focused guest execution
+passes against the manifest-checked cached base; production Owner code and
+physical storage remain unchanged. Complete cached local integration then
+passed on unchanged published `ad18fff` (tree `969a6459`), including this forced
+cleanup proof, actual non-root builder host/vet/race/fuzz checks, image/legal/SBOM,
+native probe, standard/MD/two-boot guests, launcher/loader/Samba and both SMART
+lanes. All seven exported artifact hashes were independently verified and match
+the preceding local integration. The temporary full container auto-removed;
+the existing image, two volumes and single output/cache were reused. This is
+not hosted feature qualification, clean reproducibility, complete license
+compliance or permission to install or activate services on the EX4.
 
 The subsequent code-permission audit reproduced an undeclared root access ACL
 being accepted by `runtimebundle.Inspect` despite unchanged mode bits and hashes.
@@ -207,6 +261,13 @@ sources/compiler caches; it is not independent clean-build reproducibility,
 hosted feature qualification or complete license/distribution review.
 This is not a product collector, physical transport/standby qualification or
 closed release gate.
+
+The separate native boundary follow-up adds eight actual-producer tests per
+release for checksum policy and power-query errors/default continuation.
+Both 7.4/7.5 suites and the existing seven report projections/vet/race pass
+locally. Version-specific power JSON is checked explicitly; sentinel power
+exits are not treated as ordinary health bitmasks. No ARM runner, package,
+product parser or collector authority changes; this is characterization only.
 
 Percentages are **engineering planning estimates**, not measured test coverage,
 probabilities of success, release readiness, or a delivery-date promise. Credit

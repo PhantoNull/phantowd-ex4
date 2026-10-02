@@ -12,7 +12,6 @@ import (
 	"io"
 	"os"
 	"path"
-	"runtime"
 
 	"golang.org/x/sys/unix"
 )
@@ -28,16 +27,12 @@ func (p *Plan) Inspect(ctx context.Context, root *os.File) (Observation, error) 
 	if ctx.Err() != nil {
 		return Observation{}, ctx.Err()
 	}
-	defer runtime.KeepAlive(root)
-	fd, err := unix.FcntlInt(root.Fd(), unix.F_DUPFD_CLOEXEC, 0)
+	ownedRoot, err := duplicateRoot(root)
 	if err != nil {
-		return Observation{}, ErrUnavailable
+		return Observation{}, err
 	}
-	defer unix.Close(fd)
-	flags, err := unix.FcntlInt(uintptr(fd), unix.F_GETFL, 0)
-	if err != nil || flags&unix.O_PATH == 0 || flags&unix.O_DIRECTORY == 0 {
-		return Observation{}, ErrInvalid
-	}
+	defer ownedRoot.Close()
+	fd := int(ownedRoot.Fd())
 	initial, err := inspectMetadata(fd, unix.S_IFDIR, 0)
 	if err != nil {
 		return Observation{}, err
@@ -197,6 +192,11 @@ func inspectFile(ctx context.Context, root int, mount uint64, expected File) err
 	}
 	file := os.NewFile(uintptr(fd), "runtime-object")
 	defer file.Close()
+	return verifyOpenFile(ctx, file, mount, expected)
+}
+
+func verifyOpenFile(ctx context.Context, file *os.File, mount uint64, expected File) error {
+	fd := int(file.Fd())
 	before, err := inspectMetadata(fd, unix.S_IFREG, mount)
 	if err != nil || before.Size != uint64(expected.Size) || uint32(before.Mode&07777) != expected.Mode || before.Nlink != 1 {
 		return ErrMismatch

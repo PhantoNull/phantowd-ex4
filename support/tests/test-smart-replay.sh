@@ -39,6 +39,8 @@ fi
 mkdir "$scratch/corpus"
 python3 -B "$source_dir/support/tests/smart-replay-corpus.py" \
     "$scratch/smartmontools-$version/smartctl" "$scratch/corpus" "$version"
+python3 -B "$source_dir/support/tests/test-smart-replay-boundaries.py" \
+    "$scratch/smartmontools-$version/smartctl" "$version"
 export GOPROXY=off GOTOOLCHAIN=local GOFLAGS='-mod=vendor -buildvcs=false -p=2' GOMAXPROCS=2
 export GOCACHE="$scratch/go-cache" GOPATH="$scratch/go-path"
 export PHANTOWD_SMART_REPLAY_CORPUS="$scratch/corpus"

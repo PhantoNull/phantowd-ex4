@@ -14,6 +14,9 @@ on:
       - 'support/tests/service-launcher-fixture.c'
       - 'support/tests/service-launcher-init.sh'
       - 'support/test-runtime-loader.ps1'
+      - 'support/test-runtime-owner.ps1'
+      - 'support/tests/runtime-owner-init.sh'
+      - 'support/tests/test-qemu-runtime-owner.sh'
       - 'support/test-samba-root.ps1'
       - 'support/tests/samba-root-*'
       - 'support/tests/samba-charset-fixture.c'
@@ -54,6 +57,9 @@ on:
       - 'support/tests/service-launcher-fixture.c'
       - 'support/tests/service-launcher-init.sh'
       - 'support/test-runtime-loader.ps1'
+      - 'support/test-runtime-owner.ps1'
+      - 'support/tests/runtime-owner-init.sh'
+      - 'support/tests/test-qemu-runtime-owner.sh'
       - 'support/test-samba-root.ps1'
       - 'support/tests/samba-root-*'
       - 'support/tests/samba-charset-fixture.c'
@@ -117,8 +123,9 @@ jobs:
           go version
           go vet ./...
           go test -race -count=1 ./...
-          go test -run '^$' -fuzz '^FuzzInspect$' -fuzztime=5s -parallel=2 ./vendorupdate
-          go test -run '^$' -fuzz '^FuzzStreamDecoder$' -fuzztime=5s -parallel=2 ./mcuproto
+          go test -run '^$' -fuzz '^FuzzInspect$' -fuzztime=10000x -parallel=2 -timeout=120s ./vendorupdate
+          go test -run '^$' -fuzz '^FuzzStreamDecoder$' -fuzztime=10000x -parallel=2 -timeout=120s ./mcuproto
+          go test -run '^$' -fuzz '^FuzzDecodeReceiveDiagnosticBounds$' -fuzztime=10000x -parallel=2 -timeout=120s ./mcuproto
 
       - name: Verify firmware workflow path contracts
         run: sh support/test-firmware-workflow-paths.sh

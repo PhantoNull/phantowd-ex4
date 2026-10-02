@@ -13,7 +13,8 @@ cd "$module_dir"
 "$go_binary" test -count=1 -coverprofile="$report_dir/coverage.out" ./...
 "$go_binary" test -race -count=1 ./...
 # Fixed execution counts avoid false deadline failures in the pinned Go 1.26
-# fuzz coordinator while keeping CI fuzz coverage reproducible across runners.
+# fuzz coordinator while bounding campaign work independently of runner speed.
 "$go_binary" test -run '^$' -fuzz '^FuzzInspect$' -fuzztime=100000x -parallel=2 ./vendorupdate
 "$go_binary" test -run '^$' -fuzz '^FuzzStreamDecoder$' -fuzztime=100000x -parallel=2 ./mcuproto
+"$go_binary" test -run '^$' -fuzz '^FuzzDecodeReceiveDiagnosticBounds$' -fuzztime=100000x -parallel=2 -timeout=120s ./mcuproto
 "$go_binary" test -run '^$' -fuzz '^FuzzStorageInventoryAndDryRunNeverBecomeExecutable$' -fuzztime=100000x -parallel=2 ./storageinventory

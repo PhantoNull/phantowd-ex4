@@ -1,17 +1,22 @@
 # Read-only volume metadata helper
 
-This small Linux helper uses libblkid's low-level safe-probe API on **one
-caller-supplied read-only descriptor on stdin**. It accepts no path or other
-arguments, opens no user-selected path and does not enumerate devices. The
+This small Linux helper observes **one caller-supplied read-only descriptor
+on stdin**. Its default mode uses libblkid's low-level safe-probe API; the only
+optional argument is the fixed `--gpt-only` mode. It accepts no path, opens no
+user-selected path and does not enumerate devices. The
 descriptor must reference a regular image or block object and have O_RDONLY
 access (not O_PATH). The [Linux supervisor](../phantowd-api/volumeprobe/README.md)
 now supplies a minimal process environment, single-slot scheduling, bounded
 output, deadline/cancellation, descriptor rechecks and strict response decoding.
-A future trusted broker must still establish which object may be opened,
-exclusive access and complete identity discovery. No such broker or HTTP
-operation exists yet.
+The dedicated non-root broker establishes the complete eligible candidate set
+and rechecks sysfs, mounts and swap around fixed-path read-only opening. Its
+explicit administrator-only GPT observation calls the GPT-only mode and exposes
+only redacted counts through the development panel. Ordinary inventory refreshes
+remain sysfs-only. This is not global exclusivity, EX4 disk compatibility or
+permission to assemble, mount, import or write; see the
+[development operation](../phantowd-api/README.md#manual-gpt-metadata-observation).
 
-The implementation enables superblock and partition signature probing without
+The default mode enables superblock and partition signature probing without
 type/usage filters, so filtering does not hide competing RAID/crypto/other
 signatures. libblkid is used to classify the top-level signature; an in-project
 strict reader then parses GPT or DOS/MBR metadata directly from the same
@@ -22,6 +27,12 @@ terminate cleanly. Unsupported table schemes return no partition identity.
 The helper uses no cache, UUID/label lookup, mounting, assembly, repair,
 formatting or update operation. It does not establish kernel/sysfs completeness
 or authorize mounting media to learn its identity.
+
+`--gpt-only` bypasses filesystem-signature probing. It reads the first-sector
+partition map and, for protective GPT candidates, validates both GPT headers
+and entry arrays directly. Unsupported/non-GPT maps return `unsupported-table`;
+malformed GPT fails without JSON. It does not read filesystem signatures,
+partition contents or user files. Raw IDs remain private broker metadata.
 
 ## Result contract
 
@@ -42,6 +53,8 @@ and the three false authority flags:
 - `ambiguous`: libblkid's safe-probe reports competing signatures.
 - `unidentified`: no identifying result. This does **not** mean empty, healthy,
   readable in full, safe to erase or available for automatic provisioning.
+- `unsupported-table`: GPT-only mode found no qualifying protective GPT map;
+  this is a coverage gap, not proof that the disk is empty or unused.
 
 The pinned util-linux 2.40.4 `blkid_do_safeprobe` implementation maps negative
 chain results to generic `-1`, including an internal ambiguous `-2`. With
@@ -67,8 +80,8 @@ sets no-new-privileges and a five-second alarm. These are defensive limits,
 permission to run as a privileged public service. It compares descriptor
 metadata before/after the probe; this does not provide an atomic disk snapshot
 or protect against all concurrent writers. The supervisor is not a sandbox;
-a future broker still needs complete eligible-device discovery, exclusive
-access and ambiguity handling.
+the current broker's point-in-time candidate checks do not establish exclusive
+access across namespaces or all userspace consumers.
 
 ## Build and tests
 
@@ -108,15 +121,17 @@ the entire provided-descriptor set even after a successful first probe.
 Streaming SHA-256 comparisons verify unchanged generated-image contents.
 Only the first 4 KiB of the already-qualified synthetic ext2 virtual disk is
 copied into a sparse parser fixture; none of these files may be mounted.
-The helper does not choose which disk to use or grant activation. This schema-v2
-partition-reader change still requires exact-head ARMv5/QEMU validation; the
-existing guest evidence applies to the earlier helper contract.
+The helper does not choose which disk to use or grant activation. Schema-v2,
+manual GPT clone/redaction and MD fixtures now participate in the current
+Buildroot/QEMU integration lane; see [implementation status](../../IMPLEMENTATION-STATUS.md)
+for the verified source and remaining product gates.
 
-Clean Buildroot package/library/license integration, block I/O fault injection
-and trusted complete-device discovery
-remain required. Static injection is not a release build and its library is
-not described by the base artifact's SBOM. This is not WD-layout, migration or physical
-storage qualification; do not use it on production disks at this stage.
+Block I/O fault injection, physical-device replacement, global-use accounting
+and independent release-build/legal qualification remain required. A static
+overlay is not a release build and its injected library is not described by
+the reused base artifact's SBOM. Full local Buildroot integration is separate
+evidence, not WD-layout, migration or physical-storage qualification; do not
+use this development image on production disks.
 
 Contracts: upstream [low-level libblkid probing](https://www.kernel.org/pub/linux/utils/util-linux/v2.40/libblkid-docs/libblkid-Low-level-probing.html)
 and [blkid safe-probe behavior](https://man7.org/linux/man-pages/man8/blkid.8.html).

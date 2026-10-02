@@ -154,8 +154,11 @@ Buildroot sysroot/libblkid pass. A smoke-only local ARMv5 QEMU overlay also
 passes the explicit authenticated POST through the guest broker against two
 distinct read-only synthetic GPT clones, verifies duplicate GUID/PARTUUID
 classification, and checks the aggregate-only HTTP response. It reuses the
-cached kernel/packages and a disposable rootfs copy; the separate two-boot
-fixture, clean Buildroot/package integration and hosted CI remain pending.
+cached kernel/packages and a disposable rootfs copy. Subsequent full local
+Buildroot/package integration and hosted baseline checks include these
+observations and the separate two-boot fixture; see
+[implementation status](../../IMPLEMENTATION-STATUS.md) for exact evidence.
+Independent clean release qualification and EX4 compatibility remain separate.
 
 ### Internal MD v1.0 metadata reader (QEMU-only)
 
@@ -169,8 +172,12 @@ partition bindings, matching array fields/component sizes/events, unique member
 identities and roles, and complete active-role coverage before reporting only
 generic `metadata-consistent`. It opens no path and never assembles, mounts,
 imports, repairs or writes. Parser and correlator are exercised only by the
-disposable ARMv5 QEMU fixture and are not wired to the storage broker or a
-product observation endpoint. See [mdmetadata](mdmetadata/README.md).
+disposable ARMv5 QEMU fixture. The fixed `observe-md-v1.0` broker operation is
+connected only in `qemu && linux` builds: it starts from complete trusted
+discovery, correlates validated GPT partitions and reads only declared Linux
+RAID members before returning a redacted summary. Non-QEMU builds return
+unavailable without reading disks. There is no MD HTTP endpoint, automatic
+scan or product activation. See [mdmetadata](mdmetadata/README.md).
 
 The Linux [qualified-mount guard](mountguard/README.md) retains a previously
 verified mount using a unique mount ID and directory descriptors. It refuses

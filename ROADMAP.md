@@ -949,6 +949,28 @@ storage. No production roster provider or activation path exists.
   incomplete trees, never resumed or published. This replaces shell copying in
   the test fixture only; authenticated expected inputs, production root
   ownership/serialization, sealing and activation/recovery remain open.
+
+  The internal retained-code Owner now privately holds the verified root and
+  all regular files, plus independently pinned executables from a fixed process
+  set. Its first adapter accepts only static ELF/non-root children: it does not
+  authorize dynamic Samba or kernel NFS. Before/after launch and on explicit
+  observation it checks the complete roster, hashes and original inode/mount/
+  metadata identities. Drift or uncertainty requires permanent review and a
+  bounded stop; restoring inputs never restarts. Explicit teardown stops/reaps
+  every owned group before releasing pins, including accepted canceled cleanup.
+  Unknown process ownership blocks release; later explicit verification cannot
+  resend signals or clear review. Host/race and a separate finite ARMv5 fixture
+  cover caller close, immutable inputs, duplicate Start, canceled teardown,
+  same-byte replacement and live root drift. A subsequent ARMv5 fixture also
+  proves aggregate Owner forced-stop retention through kernel `EBUSY`, followed
+  by explicit reap verification/release without clearing review. This operates
+  only on a private disposable code bind, not user data. Full cached local
+  integration on
+  `c93d936` passes; clean/hosted and EX4 qualification remain separate. Next
+  compose the separately reviewed dynamic Samba root/privilege adapter with
+  fixed configuration/state and Owner-held storage grants, then qualify durable
+  review/recovery and source-loss supervision. Do not weaken the static adapter
+  or treat a fixture-derived roster as a signed product manifest.
   Then define product-owned service identities and safe ACL provisioning and
   recovery without silently changing legacy ownership. Add the bounded
   source-loss supervisor and a fail-closed production storage constructor only

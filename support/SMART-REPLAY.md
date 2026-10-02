@@ -48,6 +48,28 @@ replay-order/coverage warnings or output fields fail the test. Independently
 specified Go expectations consume the actual JSON through `smartreport.Parse`.
 The Go test is opt-in via the `smartreplay` test build tag, never a product CLI.
 
+The same native wrapper additionally runs eight actual-producer boundary tests
+for each explicitly selected release. These use only invented stdin replies:
+
+| Case | Fixed options beyond info/health/stdin | Expected result |
+| --- | --- | --- |
+| Corrupt SMART attribute checksum | `--json` | Exit 0/reported pass; no checksum warning in JSON |
+| Same corrupt input with original text | `--json=o` | Exit 0/pass; checksum warning only in nested original output |
+| Corrupt attributes, strict checksum | `--json -b exit` | Exit 4/no health; no later ATA requests expected |
+| Valid strict control | `--json -b exit` | Exit 0/pass |
+| Power query EIO | `--json -n standby,3,5` | Exit 3/no health; 7.5 reports -1/SLEEP, not independent sleep proof |
+| Power query ENOSYS, explicit stop | `--json -n standby,3,5` | Exit 5/no health |
+| ENOSYS with default continuation | `--json -n standby` | Exit 0/pass after subsequent synthetic health reads |
+| Successful generic power query | `--json -n standby,3,5` | Exit 0/pass; generic backend hardcodes 255, not standby coverage |
+
+7.4 is checked independently and must omit `power_mode`; only 7.5's two
+applicable cases contain that object. All cases require matching embedded/
+observed exits, exact release/schema, bounded output, no stderr and complete
+replay order. Power-option sentinel exits are **not** sent to the ordinary
+health-bitmask parser. Tests inspect warning text only to characterize upstream
+output selection, never to authorize a product collection result. These tests
+do not approve a checksum/wake CLI, privilege or disk-command policy.
+
 Notably, upstream returns **exit 0 with no health assessment** when SMART is
 reported disabled in this profile. A successful process exit must not become
 `ReportedPass`. Empty input returns exit 2 without device evidence. The fixture

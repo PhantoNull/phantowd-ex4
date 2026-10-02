@@ -204,6 +204,9 @@ done
 # Runtime experiments and their QEMU kernel-input helper are not EX4 build
 # inputs. Keep native refusals and ARMv5 integration without a redundant B3.
 for path in 'support/test-runtime-loader.ps1' \
+    'support/test-runtime-owner.ps1' \
+    'support/tests/runtime-owner-init.sh' \
+    'support/tests/test-qemu-runtime-owner.sh' \
     'support/test-samba-root.ps1' \
     'support/tests/runtime_loader_fixture.py' \
     'support/tests/test-runtime-loader-fixture.py' \
@@ -258,6 +261,7 @@ support/container/patch-volume-probe-fixture.sh
 support/container/test-qemu-api-overlay.sh
 support/container/apply-buildroot-samba-json-patch.sh
 support/tests/test-buildroot-samba-json-patch.sh
+support/tests/test-perl-configure-date.py
 support/buildroot-patches/**
 support/test-api.ps1
 support/test-dashboard-ui.mjs
@@ -316,7 +320,8 @@ EOF
 require_develop_push "$host_workflow"
 require_bounded_qemu_ccache "$qemu_workflow"
 require_fixed_fuzz_campaigns "$repo_root/support/container/test-api.sh" 16
-require_fixed_fuzz_campaigns "$repo_root/support/container/test-lab-tools.sh" 3
+require_fixed_fuzz_campaigns "$repo_root/support/container/test-lab-tools.sh" 4
+require_fixed_fuzz_campaigns "$host_workflow" 3
 
 for workflow in "$qemu_workflow" "$stage_a_workflow" "$stage_b_workflow" "$stage_b2_workflow" \
     "$stage_b3_workflow" "$host_workflow" "$reproducibility_workflow"; do

@@ -15,6 +15,12 @@ block/character devices and pipes are rejected. Rootfs inventory accepts an
 already extracted directory, never follows its symlinks and opens only regular
 children. Captures larger than 16 MiB are rejected where applicable.
 
+The passive MCU decoder accepts only the researched 7/13/15-byte envelopes.
+Unsupported lengths return the observed length without retaining or encoding
+raw bytes; supported-length diagnostics contain at most 30 hex characters.
+Checksum status remains explicitly unknown. This is a host-only research
+boundary, not a qualified controller driver or permission to transmit commands.
+
 ## Commands
 
 ```text
@@ -472,6 +478,8 @@ From the repository root with Go 1.24 or newer:
 
 Tests use generated redistributable fixtures. No WD firmware, device dump,
 network connection, NAS address, or credential is required.
-The hosted container suite also performs bounded fuzz campaigns for the vendor
-update parser, passive MCU decoder, and synthetic storage-inventory/dry-run
-boundary; arbitrary inventory input must never become executable.
+The container suite also performs four fixed-count fuzz campaigns for the
+vendor update parser, passive MCU stream decoder, receive diagnostic bounds
+and synthetic storage-inventory/dry-run boundary; arbitrary inventory input
+must never become executable. The lightweight host CI runs the first three
+with 10,000 executions each and two workers, without building a firmware image.
