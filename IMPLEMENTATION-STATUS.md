@@ -115,8 +115,15 @@ review despite kernel-confirmed group absence. Normal unmount of the disposable
 code bind returns `EBUSY`; after explicit reap verification it succeeds, while
 review is never cleared and restart remains refused. Focused guest execution
 passes against the manifest-checked cached base; production Owner code and
-physical storage remain unchanged. This focused result alone is not a new
-full-build or hosted qualification.
+physical storage remain unchanged. Complete cached local integration then
+passed on unchanged published `ad18fff` (tree `969a6459`), including this forced
+cleanup proof, actual non-root builder host/vet/race/fuzz checks, image/legal/SBOM,
+native probe, standard/MD/two-boot guests, launcher/loader/Samba and both SMART
+lanes. All seven exported artifact hashes were independently verified and match
+the preceding local integration. The temporary full container auto-removed;
+the existing image, two volumes and single output/cache were reused. This is
+not hosted feature qualification, clean reproducibility, complete license
+compliance or permission to install or activate services on the EX4.
 
 The subsequent code-permission audit reproduced an undeclared root access ACL
 being accepted by `runtimebundle.Inspect` despite unchanged mode bits and hashes.
