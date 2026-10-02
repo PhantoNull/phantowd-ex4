@@ -173,6 +173,14 @@ The API and dashboard remain development-only and guest-loopback-only by
 default. Do not expose them through a LAN listener or reverse proxy.
 [Component contracts](src/phantowd-api/README.md) explain the precise boundaries.
 
+An independent [native service-launcher prototype](src/phantowd-service-launcher/README.md)
+now passes local ARMv5 QEMU tests with a restricted root, private mount namespace,
+non-root credentials, zero capabilities, inherited-FD/signal cleanup and preserved
+PID/process-group ownership. Seven invalid-launch cases are refused. It uses a
+static synthetic child only; it is not wired to the existing service handoff,
+Samba, kernel NFS control or product init. No additional live service capability
+is enabled by this prototype.
+
 The badge tracks the `develop` integration branch, not every feature branch.
 For build evidence, open the relevant workflow run and check its **commit,
 conclusion and artifacts**. A previous green run does not validate a newer

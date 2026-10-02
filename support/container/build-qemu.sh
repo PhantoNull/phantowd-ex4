@@ -35,6 +35,9 @@ shellcheck -s sh \
 	"$external_dir/support/qemu-md-v10-fixture.sh"
 shellcheck -s sh "$external_dir/support/container/save-qemu-failure-log.sh"
 python3 -B "$external_dir/support/tests/test-qemu-build-feedback.py"
+python3 -B "$external_dir/support/tests/test-service-launcher.py"
+shellcheck "$external_dir/support/tests/test-qemu-service-launcher.sh" \
+    "$external_dir/support/tests/service-launcher-init.sh"
 sh "$external_dir/support/test-compare-build-artifacts.sh"
 python3 "$external_dir/support/test-volume-probe-build.py"
 
@@ -384,5 +387,12 @@ install -m 0644 "$output_dir/target/usr/bin/phantowd-api" "$artifact_dir/phantow
     sha256sum zImage versatile-pb.dtb rootfs.ext2 phantowd-api \
         buildroot-show-info.json sbom.cdx.json license-manifest.csv > SHA256SUMS
 )
+
+# Isolated native launcher test reuses this exact qualified QEMU baseline.
+# Its static probe/helper live only in a temporary copy, not the firmware image.
+TMPDIR=/phantowd-qemu-fixture-tmp sh "$external_dir/support/tests/test-qemu-service-launcher.sh" \
+    "$artifact_dir" "$output_dir/host/bin/arm-buildroot-linux-gnueabi-gcc" \
+    "$output_dir/host/sbin/debugfs" "$external_dir" \
+    "$artifact_dir/qemu-service-launcher-failure.log"
 
 printf 'Build and smoke test passed. Artifacts: %s\n' "$artifact_dir"

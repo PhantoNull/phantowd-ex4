@@ -121,9 +121,18 @@ are unchanged. This is not a cached workspace or an established speedup.
 
 ## Next implementation sequence
 
+Local follow-up on `feat/service-namespace-launcher` implements a separate
+native static-ELF launcher and passes a disposable ARMv5 namespace/root/FD/
+privilege/signal/PID/read-only fixture plus seven refused launches. See its
+[contract](src/phantowd-service-launcher/README.md). It is not connected to
+the existing handoff/runtime and does not complete M4.4 or change the planning
+bands above. Runtime manifests, product root construction, leases, native
+daemon integration and kernel NFS authority remain unresolved.
+
 1. **M0.3:** validate the feedback changes locally and in exact-head CI; retain
    failed-guest evidence. Investigate any recurrence before changing semantics.
-2. **M4.4:** one trusted, fixed launcher per service, preserving supervised PID/
+2. **M4.4:** integrate the independently tested launcher into one trusted,
+   fixed process boundary per service, preserving supervised PID/
    process-group ownership; private mount namespace with private propagation
    and restricted root. Pin only the granted share roots and necessary runtime
    inputs; remove access to original volume paths, inherited host root/FDs,

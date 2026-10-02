@@ -892,7 +892,19 @@ storage. No production roster provider or activation path exists.
   CI and physical EX4 behavior are not qualified. No NAS or production media
   was used.
 
-  Next: give each service an isolated private mount namespace whose only
+  Local follow-up: a separate native static-ELF launcher prototype passes a
+  disposable ARMv5 QEMU fixture with a pinned restricted root, private mount
+  namespace/propagation, zero capabilities, exact non-root credentials, FD and
+  inherited-signal cleanup, preserved PID/PGID, and a read-only share. Seven
+  invalid launch cases are refused. The source is
+  [phantowd-service-launcher](src/phantowd-service-launcher/README.md); run
+  `support/test-service-launcher.ps1` using existing read-only cache/base
+  inputs. It is not connected to ServiceRuntime/processowner, does not prepare
+  product roots or runtime manifests, and does not control kernel NFS. This
+  does not resolve the existing handoff's bypass or enable any real service.
+
+  Next: integrate a trusted fixed launcher and root-manifest constructor,
+  giving each service an isolated private mount namespace whose only
   storage roots are its explicit grants; prove the original volume anchors and
   ungranted shares are unreachable and that read-only access cannot be bypassed.
   Then define product-owned service identities and safe ACL provisioning and

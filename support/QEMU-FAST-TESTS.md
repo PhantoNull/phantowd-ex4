@@ -400,6 +400,28 @@ The default command remains the focused MD v1.0/M3.4 check described above.
 
 ## Evidence boundary
 
+### Native service-launcher boundary fixture
+
+Run `support/test-service-launcher.ps1` for the independent M4.4 launcher
+prototype. It uses the already-present pinned image/toolchain and checks every
+base artifact hash, copies the rootfs to tmpfs, builds two static ARMv5 programs
+there and runs one networkless snapshot-mode guest. Only the private copy has
+the helper/probe/init injected; the firmware artifact and its SBOM are unchanged.
+Host refusal tests, static analysis and seven guest refused-launch cases precede
+the positive namespace/root/credential/capability/FD/signal/PID/read-only proof.
+Temporary root/share objects contain only generated markers. Original data
+paths, sibling paths, `/proc`, `/dev` and an inherited host-root descriptor are
+not visible to the child. The guest remains distinguishable from physical EX4
+through its exact DT model and ARM architecture check.
+
+The wrapper refuses missing existing caches, never pulls/builds an image or
+creates a persistent volume, mounts inputs read-only, and removes its container
+and tmpfs on exit. Full QEMU CI runs this same bounded fixture after producing
+the baseline, retaining a synthetic failure log if it fails. It is not a
+product root constructor, processowner/ServiceRuntime integration, live SMB/NFS
+test, clean image qualification or hardware evidence. Successful syscall-level
+isolation alone does not prove a complete service authorization model.
+
 ### Separate state-persistence boots
 
 After the normal smoke, both the fast lane and clean Buildroot runner execute
