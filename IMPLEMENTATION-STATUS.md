@@ -79,6 +79,17 @@ ARMv5 API test cross-compilation also pass. The focused wrapper reuses only
 read-only base/cache inputs and auto-removes its container/tmpfs; no new
 persistent image, volume or output namespace was created.
 
+Full local incremental integration subsequently passed on unchanged published
+`9d6eb03`: complete API/tool vet/race/fuzz, package/legal-info/SBOM, native probe,
+standard ARMv5 smoke, MD, two-boot state, isolated launcher, loader and final
+Samba/code-ACL fixture. All seven artifacts were independently rehashed and
+match the preceding baseline, consistent with the code-only helper remaining
+uninstalled. This cached exact-source run is not independent clean-build,
+hosted feature, hardware or legal-distribution qualification. The existing
+license-hash/source-packaging warnings remain release work. The README now
+summarizes current capabilities and contributors' entry points; detailed
+verification and internal lifecycle contracts remain in the linked documents.
+
 The separate `feat/runtime-bundle-verification` follow-up adds an internal,
 read-only code-tree inspection prerequisite for M4.4. A privately copied plan
 checks complete census, read-only mount identity, hashes, file permissions and
