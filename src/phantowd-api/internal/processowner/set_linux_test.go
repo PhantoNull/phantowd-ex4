@@ -26,16 +26,25 @@ func TestSetStartupFailureStopsPreviouslyReadyMembers(t *testing.T) {
 	}
 	stopOrderPath := t.TempDir() + "/stop-order"
 	child := func(name string, ready ReadinessProbe, timeout time.Duration) Spec {
+		readyPath := stopOrderPath + "." + name + ".ready"
 		return Spec{
 			Executable: executable,
-			Args:       []string{"-test.run=^TestSetStartupFailureStopsPreviouslyReadyMembers$", "--", "stop-marker", stopOrderPath, name},
-			Ready:      ready, ReadyTimeout: timeout, ProbeInterval: 10 * time.Millisecond,
-			StopTimeout: time.Second,
+			Args:       []string{"-test.run=^TestSetStartupFailureStopsPreviouslyReadyMembers$", "--", "stop-marker", stopOrderPath, name, readyPath},
+			Ready: func(ctx context.Context) (bool, error) {
+				if _, err := os.Stat(readyPath); err != nil {
+					return false, nil
+				}
+				return ready(ctx)
+			},
+			ReadyTimeout: timeout, ProbeInterval: 10 * time.Millisecond,
+			StopTimeout: 5 * time.Second,
 		}
 	}
 	set, err := NewSet([]MemberSpec{
-		{Name: "smb", Process: child("smb", func(context.Context) (bool, error) { return true, nil }, time.Second)},
-		{Name: "nfs", Process: child("nfs", func(context.Context) (bool, error) { return false, nil }, 80*time.Millisecond)},
+		{Name: "smb", Process: child("smb", func(context.Context) (bool, error) { return true, nil }, 5*time.Second)},
+		{Name: "nfs", Process: child("nfs", func(context.Context) (bool, error) {
+			return false, errors.New("controlled readiness failure")
+		}, 5*time.Second)},
 	})
 	if err != nil {
 		t.Fatal("create fixed service set:", err)
@@ -140,7 +149,7 @@ func TestSetObservationQuarantinesUnexpectedMemberWithoutStoppingPeer(t *testing
 					_, err := os.Stat(readyPath)
 					return err == nil, nil
 				},
-				ReadyTimeout: time.Second, ProbeInterval: 10 * time.Millisecond, StopTimeout: time.Second,
+				ReadyTimeout: 5 * time.Second, ProbeInterval: 10 * time.Millisecond, StopTimeout: 5 * time.Second,
 			},
 		},
 		{
@@ -149,8 +158,8 @@ func TestSetObservationQuarantinesUnexpectedMemberWithoutStoppingPeer(t *testing
 				Executable:   executable,
 				Args:         []string{"-test.run=^TestSetObservationQuarantinesUnexpectedMemberWithoutStoppingPeer$", "--", "wait"},
 				Ready:        func(context.Context) (bool, error) { return true, nil },
-				ReadyTimeout: time.Second, ProbeInterval: 10 * time.Millisecond,
-				StopTimeout: time.Second,
+				ReadyTimeout: 5 * time.Second, ProbeInterval: 10 * time.Millisecond,
+				StopTimeout: 5 * time.Second,
 			},
 		},
 	})
@@ -165,7 +174,7 @@ func TestSetObservationQuarantinesUnexpectedMemberWithoutStoppingPeer(t *testing
 	if err := os.WriteFile(releasePath, []byte("exit"), 0600); err != nil {
 		t.Fatal("release controlled member:", err)
 	}
-	deadline := time.Now().Add(time.Second)
+	deadline := time.Now().Add(5 * time.Second)
 	for {
 		if _, err := os.Stat(exitedPath); err == nil {
 			break

@@ -83,7 +83,7 @@ func TestUnexpectedExitObservedAfterReadinessRequiresReview(t *testing.T) {
 			_, err := os.Stat(readyPath)
 			return err == nil, nil
 		},
-		ReadyTimeout: time.Second, ProbeInterval: 10 * time.Millisecond, StopTimeout: time.Second,
+		ReadyTimeout: 5 * time.Second, ProbeInterval: 10 * time.Millisecond, StopTimeout: 5 * time.Second,
 	})
 	if err != nil || started.State != StateReady || started.Generation != 1 {
 		t.Fatalf("candidate did not start before the controlled exit: snapshot=%+v err=%v", started, err)
@@ -91,7 +91,7 @@ func TestUnexpectedExitObservedAfterReadinessRequiresReview(t *testing.T) {
 	if err := os.WriteFile(releasePath, []byte("exit"), 0600); err != nil {
 		t.Fatal("release child process:", err)
 	}
-	deadline := time.Now().Add(time.Second)
+	deadline := time.Now().Add(5 * time.Second)
 	for {
 		if _, err := os.Stat(exitedPath); err == nil {
 			break
@@ -195,16 +195,42 @@ func TestUnexpectedExitRequiresReviewAndBlocksRestart(t *testing.T) {
 		return
 	}
 	owner := New()
-	_, err := owner.Start(context.Background(), Spec{
-		Executable:   os.Args[0],
-		Args:         []string{"-test.run=^TestUnexpectedExitRequiresReviewAndBlocksRestart$", "--", "exit-after"},
-		Ready:        func(context.Context) (bool, error) { return true, nil },
-		ReadyTimeout: time.Second, ProbeInterval: 10 * time.Millisecond, StopTimeout: time.Second,
+	directory := t.TempDir()
+	readyPath := filepath.Join(directory, "ready")
+	releasePath := filepath.Join(directory, "release")
+	exitedPath := filepath.Join(directory, "exited")
+	started, err := owner.Start(context.Background(), Spec{
+		Executable: os.Args[0],
+		Args: []string{"-test.run=^TestUnexpectedExitRequiresReviewAndBlocksRestart$", "--", "ready-exit",
+			readyPath, releasePath, exitedPath},
+		Ready: func(context.Context) (bool, error) {
+			_, err := os.Stat(readyPath)
+			return err == nil, nil
+		},
+		ReadyTimeout: 5 * time.Second, ProbeInterval: 10 * time.Millisecond, StopTimeout: 5 * time.Second,
 	})
-	if err != nil {
-		t.Fatal("start candidate:", err)
+	if err != nil || started.State != StateReady || started.Generation != 1 {
+		t.Fatalf("candidate did not start before the controlled exit: snapshot=%+v err=%v", started, err)
 	}
-	time.Sleep(150 * time.Millisecond)
+	if err := os.WriteFile(releasePath, []byte("exit"), 0600); err != nil {
+		t.Fatal("release child process:", err)
+	}
+	deadline := time.Now().Add(5 * time.Second)
+	for {
+		if _, err := os.Stat(exitedPath); err == nil {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatal("child process did not reach its controlled exit")
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+	process := owner.current
+	select {
+	case <-process.done:
+	case <-time.After(5 * time.Second):
+		t.Fatal("owner did not reap the unexpectedly exited service")
+	}
 	stopped, err := owner.Stop(context.Background())
 	if !errors.Is(err, ErrReviewRequired) || stopped.State != StateReviewRequired || stopped.Generation != 1 {
 		t.Fatalf("unexpected service exit was reported as clean: snapshot=%+v err=%v", stopped, err)
@@ -367,11 +393,14 @@ func runProcessOwnerChild(t *testing.T, mode string) {
 	switch mode {
 	case "stop-marker":
 		paths := processOwnerChildArguments(os.Args)
-		if len(paths) != 2 {
-			t.Fatalf("stop marker requires a path and member name, got %d", len(paths))
+		if len(paths) != 3 {
+			t.Fatalf("stop marker requires a path, member name and readiness path, got %d", len(paths))
 		}
 		stopped := make(chan os.Signal, 1)
 		signal.Notify(stopped, syscall.SIGTERM)
+		if err := os.WriteFile(paths[2], []byte("ready"), 0600); err != nil {
+			t.Fatal("write child readiness marker:", err)
+		}
 		<-stopped
 		signal.Stop(stopped)
 		file, err := os.OpenFile(paths[0], os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0600)
@@ -406,8 +435,6 @@ func runProcessOwnerChild(t *testing.T, mode string) {
 		time.Sleep(time.Minute)
 	case "exit":
 		return
-	case "exit-after":
-		time.Sleep(100 * time.Millisecond)
 	case "ignore-term":
 		signal.Ignore(syscall.SIGTERM)
 		_, _ = fmt.Fprintln(os.Stdout, "PROCESS_OWNER_CHILD_IGNORES_TERM")
