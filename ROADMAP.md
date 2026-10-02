@@ -945,6 +945,14 @@ storage. No production roster provider or activation path exists.
   the remaining
   Samba runtime and implement a separately trusted root constructor. Do not
   treat this candidate as the product manifest or mark M4.4 complete.
+
+  A separate [Samba restricted-root QEMU profile](support/SAMBA-RUNTIME-PROFILE.md)
+  now verifies distinct-user SMB3, Unix file ownership/mode denial, kernel
+  read-only grants, denied original paths, one Unicode filename and group stop
+  under six bounded root capabilities. It is a fixed disposable experiment,
+  not a production constructor, per-client privilege certification, Owner-backed
+  activation or full module/ACL/encoding qualification. Preserve that separation
+  when constructing the trusted runtime and service-specific lifecycle.
 - **M4.5 — Failure and shutdown.** Cover startup with absent disks, service crash,
   read-only/full volume, client reconnect, stale NFS handles, shutdown with open
   files and restart ordering. Distinguish safely unavailable from healthy.

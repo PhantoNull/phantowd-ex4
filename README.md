@@ -204,6 +204,13 @@ The complete local incremental Buildroot pipeline passed on feature commit
 fixture. This is not a clean independent build, hosted-CI result or EX4
 qualification; [implementation status](IMPLEMENTATION-STATUS.md) separates them.
 
+A separate disposable ARMv5 Samba fixture now exercises a restricted root,
+private mount namespace and bounded root capabilities while preserving distinct
+Unix users. Real SMB3 clients verify ownership, access denials, read-only grants,
+denied original paths and one Unicode filename roundtrip. It is not an installed
+helper, trusted product manifest or live-service activation; see the
+[profile and remaining qualification gates](support/SAMBA-RUNTIME-PROFILE.md).
+
 The badge tracks the `develop` integration branch, not every feature branch.
 For build evidence, open the relevant workflow run and check its **commit,
 conclusion and artifacts**. A previous green run does not validate a newer

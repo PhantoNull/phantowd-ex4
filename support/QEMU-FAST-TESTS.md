@@ -555,6 +555,15 @@ See M0.2 in [the roadmap](../ROADMAP.md).
 
 ### Qualification limits
 
+`support/test-samba-root.ps1` additionally tests actual multi-user Samba inside
+a restricted read-only root/private mount namespace, using only fixture state
+and explicit subdirectory grants. UID 0 retains six bounded capabilities for
+Unix client impersonation, not the generic launcher's non-root profile.
+Ownership, wrong-password/access denials, Unix-mode enforcement, kernel RO,
+original-path/symlink denial, one Unicode filename and owned-group stop are
+checked. This is a distinct test-only native fixture, never installed into the
+product image. See [runtime profile and remaining gates](SAMBA-RUNTIME-PROFILE.md).
+
 The standalone `support/test-service-launcher.ps1` lane also composes a single
 fixed static child with `mountowner.IsolatedServiceRuntime`. It creates one
 16 MiB ext2 fixture in bounded tmpfs and attaches it with a QEMU snapshot; the

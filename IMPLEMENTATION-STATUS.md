@@ -216,14 +216,23 @@ Continue M4.4 with these concrete acceptance steps:
 4. Integrate a service-specific owner and recovery transaction only after the
    complete production storage qualifier/roster and state authority exist.
 
-Hosted CI snapshot: PR #54 head `d827026` has a successful host check
-(`37001276886`); ARMv5 run `37001276464` is still in progress at this audit.
-The API reports an active combined build/boot step, not a completed failure;
-live internal compiler progress is not available from this snapshot. The
-120-minute job ceiling and finite guest timeout remain enforced. There is no
-duplicate active run to cancel. Historical timeout, executable-mode and state
-unmount failures are distinct; exact-head hosted confirmation is still needed.
+Hosted update: PR #54 head `d827026` passed both host (`37001276886`) and
+ARMv5/DTB (`37001276464`) checks and merged into `develop` as `3902f97`.
+The successful hosted smoke took about 124 seconds under the new 240-second
+bound; the old 120-second budget would not cover it. The roughly 84-minute job
+spent most time compiling. Older compiler cache restored, but its speedup is
+not measured. The normal `develop` run is separate from this exact-head result.
+Historical timeout, executable-mode and state-unmount failures remain distinct;
+this pass does not resolve intermittent EBUSY or qualify physical hardware.
 No new image or named volume was created for the dependency research.
+
+The separate [Samba restricted-root fixture](support/SAMBA-RUNTIME-PROFILE.md)
+now passes locally with real distinct-user SMB3 access, owner/mode checks,
+kernel read-only enforcement, original-path/symlink denial, one UTF-8 filename
+and process-group stop. It retains only six root capabilities for Samba identity
+switching; the generic non-root helper is unchanged. This is disposable tmpfs
+and a cached image overlay, not an Owner-backed product root, daemon activation,
+full dynamic-module/encoding/ACL qualification or the new full-build result.
 
 Host/QEMU work can continue now. Valuable disks, the live NAS and NAND/MTD
 remain outside this implementation/test scope.

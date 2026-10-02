@@ -21,13 +21,16 @@ def safe_path(value):
             and str(PurePosixPath(value)) == value)
 
 
-def validate(report):
+def validate(report, *, fixed_entry=FIXED_ENTRY):
+    if fixed_entry not in (
+            FIXED_ENTRY, "usr/bin/smbpasswd", "usr/bin/testparm"):
+        raise ValueError("unsupported fixed fixture entry")
     if not isinstance(report, dict):
         raise ValueError("invalid candidate")
     if (report.get("format") != "phantowd-elf-runtime-candidate"
             or type(report.get("schema_version")) is not int
             or report["schema_version"] != 1
-            or report.get("entry") != FIXED_ENTRY
+            or report.get("entry") != fixed_entry
             or report.get("static_dependencies_resolved") is not True
             or report.get("runtime_qualified") is not False
             or report.get("execution_authorized") is not False):
@@ -59,15 +62,15 @@ def validate(report):
     if (total > 64 * 1024 * 1024 or bindings > 1024
             or type(report.get("total_bytes")) is not int
             or report["total_bytes"] != total
-            or FIXED_ENTRY not in paths
-            or aliases.get(FIXED_ENTRY) != FIXED_ENTRY
+            or fixed_entry not in paths
+            or aliases.get(fixed_entry) != fixed_entry
             or aliases.get("lib/ld-linux.so.3") != "lib/ld-linux.so.3"):
         raise ValueError("candidate budget or fixed entry refused")
     for name in paths:
         if name in aliases and aliases[name] != name:
             raise ValueError("canonical path conflicts with alias")
         aliases[name] = name
-    return objects, aliases, paths - {FIXED_ENTRY}
+    return objects, aliases, paths - {fixed_entry}
 
 
 def prepare(report):
