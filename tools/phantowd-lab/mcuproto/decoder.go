@@ -32,11 +32,13 @@ type DecodedFrame struct {
 
 // DecodeReceive validates the known envelope and performs the same
 // first-three-byte selector classification established by static analysis.
+// Unsupported lengths retain only the observed length, never raw input.
 func DecodeReceive(frame []byte) (DecodedFrame, error) {
-	decoded := DecodedFrame{RawHex: hex.EncodeToString(frame), Length: len(frame), ChecksumStatus: "unknown-not-validated"}
+	decoded := DecodedFrame{Length: len(frame), ChecksumStatus: "unknown-not-validated"}
 	if !validLengths[len(frame)] {
 		return decoded, fmt.Errorf("unsupported frame length %d", len(frame))
 	}
+	decoded.RawHex = hex.EncodeToString(frame)
 	if frame[0] != FrameStart || frame[len(frame)-1] != FrameEnd {
 		return decoded, errors.New("invalid frame boundary")
 	}
