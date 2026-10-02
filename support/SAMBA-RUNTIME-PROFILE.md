@@ -27,10 +27,14 @@ before mounting it. No physical block-device path is formatted or attached.
 
 - Derives non-authorizing ELF candidates for three fixed public Buildroot
   programs (`smbd`, `smbpasswd`, `testparm`) and the single fixed
-  `usr/lib/samba/vfs/streams_xattr.so` module. Merging refuses conflicts, unknown
+  `usr/lib/samba/vfs/streams_xattr.so` module plus the fixed glibc
+  `usr/lib/gconv/IBM850.so` converter. Merging refuses conflicts, unknown
   paths, missing entries, partial graphs or asserted execution authority.
 - Inside the guest, verifies every selected SHA-256 and canonical alias before
   copying regular ELFs and generating symlinks into a root-controlled tmpfs.
+  The bounded conversion catalog is separately validated against exactly four
+  IBM850 aliases and two conversion rows, then SHA-256 verified with the runtime.
+  Additional modules, relative module paths, duplicates or missing rows fail.
   The ordinary target filesystem and original image remain read-only.
 - Creates only fixture-owned Unix account/group files and passdb. The profile
   uses standalone SMB3 with required signing, three separate accounts, local
@@ -56,6 +60,13 @@ before mounting it. No physical block-device path is formatted or attached.
   write denial through the kernel read-only grant, original-anchor denial and
   symlink denial with no residual files. One accented/Greek filename roundtrip
   is checked; it is not a complete encoding/normalization campaign.
+- A dynamic glibc probe executes inside that same restricted root under the
+  fixture launcher. It checks exact non-ASCII CP850/UTF-8 bytes in both directions
+  for IBM850 and all four catalog aliases. Unrepresentable, malformed and
+  truncated UTF-8 must fail without substitution. Samba explicitly uses CP850
+  and UTF-8, and converter-error/ASCII-fallback logs fail the fixture. This adds
+  no SMB1 support or weaker protocol setting. The probe is test-only, not
+  installed by the product packages or a proof of complete legacy-name migration.
 - Fixed client operations have a native ten-second deadline; timeout/signal
   exits cannot count as access denials. The native wrapper accepts no arbitrary
   executable, hostname, credential pathname or SMB command.
@@ -96,8 +107,14 @@ disabled option was reproduced as kernel `EOPNOTSUPP` before being corrected.
 The build fingerprints its fixed fragment roster and reconfigures only the
 cached kernel on change, then audits required storage options before recording
 the compilation checkpoint. It never treats tmpfs support as ext4 evidence.
-The public target lacks the CP850 conversion module and logs an ASCII fallback;
-the observed SMB3 UTF-8 case does not resolve that separate compatibility gap.
+The previous public target lacked CP850 and logged an ASCII fallback; direct
+ARMv5 conversion reproduced `iconv_open: Invalid argument` in the isolated root.
+The QEMU defconfig now selects Buildroot's standard glibc converter installation
+with only `IBM850`, not the entire converter collection. A local disposable
+overlay with that selected module and the upstream-generated catalog passes
+the conversion, SMB, stream and ext4 ACL tests. That overlay does not verify
+the new defconfig's clean installation, regenerated SBOM or full integration;
+these remain distinct until the full new-config build succeeds.
 Quota observations on disposable tmpfs are not RAID/storage-health evidence.
 Do not change encodings or silently relax legacy ACLs to mask missing runtime.
 

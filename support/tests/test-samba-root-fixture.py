@@ -3,10 +3,24 @@
 # SPDX-FileCopyrightText: 2026 PhantoWD EX4 contributors
 """Negative manifests and source-contract checks for a QEMU-only experiment."""
 import copy
+import hashlib
 from pathlib import Path
 import unittest
 
 import samba_root_fixture as fixture
+
+CATALOG = """# Modules and aliases for: IBM850
+alias CP850// IBM850//
+alias 850// IBM850//
+alias CSPC850MULTILINGUAL// IBM850//
+alias OSF10020352// IBM850//
+module IBM850// INTERNAL IBM850 1
+module INTERNAL IBM850// IBM850 1
+"""
+
+
+def merge(values):
+    return fixture.merge(values, CATALOG)
 
 
 def reports():
@@ -25,12 +39,14 @@ def reports():
 
 class SambaRootFixture(unittest.TestCase):
     def test_deduplicated_fixed_roster(self):
-        manifest = fixture.merge(reports())
-        self.assertEqual(len(manifest.splitlines()), 5)
+        manifest = merge(reports())
+        self.assertEqual(len(manifest.splitlines()), 7)
         self.assertEqual(manifest.count("b" * 64), 1)
+        self.assertIn(hashlib.sha256(CATALOG.encode()).hexdigest(), manifest)
+        self.assertNotEqual(manifest, fixture.merge(reports(), CATALOG + "# x\n"))
 
     def test_partial_reordered_or_authorized_inputs_refused(self):
-        values = [reports()[:2], reports()[:3], reports()[::-1]]
+        values = [reports()[:2], reports()[:3], reports()[:4], reports()[::-1]]
         for field, value in (("execution_authorized", True),
                              ("runtime_qualified", True),
                              ("static_dependencies_resolved", False),
@@ -40,7 +56,7 @@ class SambaRootFixture(unittest.TestCase):
             values.append(changed)
         for value in values:
             with self.assertRaises(ValueError):
-                fixture.merge(value)
+                merge(value)
 
     def test_only_fixed_stream_module_entry_admitted(self):
         changed = reports()
@@ -48,27 +64,51 @@ class SambaRootFixture(unittest.TestCase):
         changed[3]["objects"][1]["path"] = "usr/lib/libc.so.6"
         changed[3]["objects"][1]["bindings"] = ["usr/lib/libc.so.6"]
         self.assertIn("/usr/lib/samba/vfs/streams_xattr.so",
-                      fixture.merge(changed))
+                      merge(changed))
         for entry in ("usr/lib/samba/vfs/acl_xattr.so",
                       "usr/lib/untrusted.so"):
             value = copy.deepcopy(changed)
             value[3]["entry"] = entry
             with self.assertRaises(ValueError):
-                fixture.merge(value)
+                merge(value)
         changed[0]["objects"][1]["path"] = "usr/lib/libc.so.6"
         changed[0]["objects"][1]["bindings"] = ["usr/lib/libc.so.6"]
         with self.assertRaises(ValueError):
-            fixture.merge(changed)
+            merge(changed)
+
+    def test_only_fixed_gconv_module_and_catalog_admitted(self):
+        changed = reports()
+        changed[4]["objects"][1]["path"] = "usr/lib/libc.so.6"
+        changed[4]["objects"][1]["bindings"] = ["usr/lib/libc.so.6"]
+        self.assertIn("/usr/lib/gconv/IBM850.so", merge(changed))
+        for entry in ("usr/lib/gconv/IBM437.so", "usr/lib/gconv/../IBM850.so"):
+            value = copy.deepcopy(changed)
+            value[4]["entry"] = entry
+            with self.assertRaises(ValueError):
+                merge(value)
+        catalogs = ["", "x" * 4097, CATALOG + "\x00", CATALOG + "\u00e9",
+                    CATALOG + "alias CP850// IBM850//\n",
+                    CATALOG.replace("IBM850 1", "../../untrusted 1"),
+                    CATALOG.replace("CP850//", "untrusted//"),
+                    CATALOG.replace("module INTERNAL IBM850// IBM850 1", ""),
+                    CATALOG + "module UTF-8// INTERNAL UTF8 1\n"]
+        for catalog in catalogs:
+            with self.assertRaises(ValueError):
+                fixture.merge(reports(), catalog)
+        changed = reports()
+        changed[4]["objects"][0]["bindings"].append(fixture.CATALOG_PATH)
+        with self.assertRaises(ValueError):
+            merge(changed)
 
     def test_cross_candidate_byte_alias_conflict_refused(self):
         changed = reports()
         changed[1]["objects"][1]["sha256"] = "c" * 64
         with self.assertRaises(ValueError):
-            fixture.merge(changed)
+            merge(changed)
         changed = reports()
         changed[1]["objects"][0]["bindings"].append("usr/sbin/smbd")
         with self.assertRaises(ValueError):
-            fixture.merge(changed)
+            merge(changed)
 
     def test_shell_and_path_injection_refused(self):
         for alias in ("../state", "etc/passwd", "lib/x;reboot", "lib/$x"):
@@ -76,12 +116,12 @@ class SambaRootFixture(unittest.TestCase):
             changed = reports()
             changed[0]["objects"][0]["bindings"].append(alias)
             with self.assertRaises(ValueError):
-                fixture.merge(changed)
+                merge(changed)
 
     def test_copy_does_not_mutate_candidates(self):
         values = reports()
         saved = copy.deepcopy(values)
-        fixture.merge(values)
+        merge(values)
         self.assertEqual(values, saved)
 
     def test_merged_budget_and_guest_log_size_refused(self):
@@ -90,12 +130,14 @@ class SambaRootFixture(unittest.TestCase):
             report["objects"][0]["size"] = 24 * 1024 * 1024
             report["total_bytes"] = 24 * 1024 * 1024 + 100
         with self.assertRaises(ValueError):
-            fixture.merge(values)
+            merge(values)
         with self.assertRaises(ValueError):
             fixture.check_guest("x" * (512 * 1024 + 1))
 
     def test_guest_crlf_and_strict_complete_markers(self):
         lines = [
+            "PHANTOWD_SAMBA_ROOT_CHARSET_READY charset=CP850 bytes=true "
+            "roundtrip=true isolated_root=true scope=qemu-only",
             "PHANTOWD_SAMBA_ROOT_BOUNDARY_READY caps=00000000000000db "
             "nnp=true original_denied=true kernel_ro=true",
             "PHANTOWD_SAMBA_ROOT_STREAMS_READY module=streams_xattr "
@@ -147,6 +189,19 @@ class SambaRootFixture(unittest.TestCase):
         self.assertIn('[ "$stop_status" -ne 143 ]', init)
         self.assertIn('[ "$stop_attempted" -eq 0 ]', init)
         self.assertIn("usr/lib/samba/vfs/streams_xattr.so", driver)
+        self.assertIn("usr/lib/gconv/IBM850.so", driver)
+        self.assertIn("gconv-modules", driver)
+        self.assertIn("dos charset = CP850", init)
+        self.assertIn("phantowd-samba-root-launcher charset", init)
+        probe = (root / "support/tests/samba-charset-fixture.c").read_text()
+        self.assertIn('convert("UTF-8", aliases[i]', probe)
+        self.assertIn('convert(aliases[i], "UTF-8"', probe)
+        self.assertIn('EILSEQ, EILSEQ, EINVAL', probe)
+        self.assertIn('"LC_ALL=C"', native)
+        self.assertNotIn("GCONV_PATH=", native)
+        config = (root / "configs/phantowd_qemu_armv5_defconfig").read_text()
+        self.assertIn('BR2_TOOLCHAIN_GLIBC_GCONV_LIBS_COPY=y', config)
+        self.assertIn('BR2_TOOLCHAIN_GLIBC_GCONV_LIBS_LIST="IBM850"', config)
         self.assertIn("vfs objects = streams_xattr", init)
         self.assertIn("user.DosStream.fixture:$DATA", native)
         self.assertIn("lgetxattr", native)

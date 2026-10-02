@@ -71,6 +71,9 @@ run_fixture() {
         fi
         [ "$(sha256sum "$root$canonical" | cut -d ' ' -f1)" = "$digest" ] || return 1
     done </usr/lib/phantowd/qemu-samba-root.manifest
+    cp /usr/sbin/phantowd-samba-charset-probe \
+        "$root/usr/sbin/phantowd-samba-charset-probe" || return 1
+    chmod 0555 "$root/usr/sbin/phantowd-samba-charset-probe" || return 1
     while read -r digest canonical alias; do
         if [ "$alias" != "$canonical" ]; then
             mkdir -p "$root$(dirname "$alias")" || return 1
@@ -103,6 +106,7 @@ run_fixture() {
         'interfaces = 127.0.0.1' 'bind interfaces only = yes' 'smb ports = 1445' \
         'server min protocol = SMB3_00' 'server max protocol = SMB3_11' \
         'server signing = mandatory' 'load printers = no' 'printing = bsd' \
+        'dos charset = CP850' 'unix charset = UTF-8' \
         'printcap name = /dev/null' 'disable spoolss = yes' 'dns proxy = no' \
         'name resolve order = host' 'vfs objects = streams_xattr' \
         'streams_xattr:prefix = user.DosStream.' \
@@ -129,6 +133,7 @@ run_fixture() {
     chmod 2770 "$source/approved" || return 1
     echo 'outside-selected-subtree' >"$source/ungranted"
     ln -s "$source/ungranted" "$source/approved/escape" || return 1
+    /usr/sbin/phantowd-samba-root-launcher charset || return 1
     echo 'distinct-unix-writer-test' >/run/upload
     echo 'distinct-stream-fixture' >/run/upload-stream
     echo 'posix-acl-fixture' >/run/acl-expected
@@ -212,6 +217,13 @@ run_fixture() {
     [ ! -e "$source/denied/unix-denied" ] || return 1
     echo 'PHANTOWD_SAMBA_ROOT_POLICY_READY writer_uid=1801 reader_uid=1802 outsider_denied=true kernel_ro=true original_denied=true unix_ownership=true unix_denial=true utf8_roundtrip=true scope=qemu-only'
     stop_daemon || return 1
+    # Neither the direct conversion nor Samba may hide missing runtime support.
+    for log in /run/server.log /run/enroll.log "$state/log.smbd"; do
+        [ -f "$log" ] || return 1
+        if grep -Ei 'ASCII|conversion.*(not supported|failed)|unable to convert' "$log"; then
+            return 1
+        fi
+    done
     echo PHANTOWD_SAMBA_ROOT_DONE
 }
 if ! run_fixture; then

@@ -254,10 +254,11 @@ int main(int argc, char **argv)
     if (argc == 5 && !strcmp(argv[1], "client"))
         return client(argv[2], argv[3], argv[4]);
     int server = argc == 2 && !strcmp(argv[1], "server");
+    int charset = argc == 2 && !strcmp(argv[1], "charset");
     int enroll = argc == 3 && !strcmp(argv[1], "enroll") &&
         (!strcmp(argv[2], "qpwriter") || !strcmp(argv[2], "qpreader") ||
          !strcmp(argv[2], "qpoutsider"));
-    if (!server && !enroll)
+    if (!server && !enroll && !charset)
         return fail();
     struct stat info;
     int rootfd = open(root, O_PATH | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC);
@@ -311,6 +312,9 @@ int main(int argc, char **argv)
         fflush(stdout);
         char *args[] = {"smbd", "-F", "--no-process-group", "-s", "/etc/samba/smb.conf", "-l", "/state", NULL};
         execve("/usr/sbin/smbd", args, environment);
+    } else if (charset) {
+        char *args[] = {"phantowd-samba-charset-probe", NULL};
+        execve("/usr/sbin/phantowd-samba-charset-probe", args, environment);
     } else {
         char *args[] = {"smbpasswd", "-s", "-a", "-c", "/etc/samba/smb.conf", argv[2], NULL};
         execve("/usr/bin/smbpasswd", args, environment);

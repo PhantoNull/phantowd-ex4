@@ -17,6 +17,16 @@ These additions are not yet integrated into
 `develop`; do not confuse feature evidence with an integration/release result.
 Planning bands remain unchanged: no new product acceptance gate has closed.
 
+A subsequent `feat/samba-charset-runtime` increment reproduces missing CP850
+as a real ARMv5 `iconv_open` failure in the isolated root. With only IBM850 and
+the upstream-generated minimal catalog injected into disposable copies, the
+fixed experiment passes exact bidirectional bytes, four aliases, unsupported/
+malformed/truncated input denials and every prior SMB/streams/ext4 ACL case.
+The QEMU defconfig now selects that converter through standard Buildroot glibc
+options. Fast negative manifests, catalog refusals and lint pass. This is
+working-tree overlay evidence; full new-config integration and exact-head CI
+are not yet established. It enables neither SMB1 nor product service startup.
+
 The subsequent local Samba fixture adds one fixed dynamic
 `streams_xattr` module, exact alternate-stream xattr bytes, and reader/kernel-RO
 overwrite denials. It now also uses a disposable 16 MiB ext4 image to verify
