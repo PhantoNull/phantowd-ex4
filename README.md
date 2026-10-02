@@ -205,6 +205,9 @@ Unix users. Real SMB3 clients verify ownership, access denials, read-only grants
 denied original paths and one Unicode filename roundtrip. It is not an installed
 helper, trusted product manifest or live-service activation; see the
 [profile and remaining qualification gates](support/SAMBA-RUNTIME-PROFILE.md).
+The fixed `streams_xattr` plugin is separately hash-verified and exercised by
+an SMB alternate-stream roundtrip with exact xattr bytes and denied reader/
+kernel-read-only overwrites. This does not qualify Windows ACLs or migration.
 The complete local incremental pipeline passed on feature commit `fba213d`,
 including these checks, native isolation and the two-boot state fixture. This
 is not an independent clean build, hosted feature result or EX4 qualification;

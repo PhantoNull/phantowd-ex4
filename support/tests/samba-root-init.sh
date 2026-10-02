@@ -90,15 +90,17 @@ run_fixture() {
     for name in private lock state cache pid rpc; do
         mkdir -m 0700 "$state/$name" || return 1
     done
-    # Generated fixture config: no includes, dynamic VFS plugins, DNS or AD.
-    # This is a native Unix ownership baseline, not Windows ACL qualification.
+    # Generated fixture config: one fixed, hash-verified streams module only.
+    # This remains native Unix ownership, not Windows ACL qualification.
     printf '%s\n' '[global]' 'server role = standalone server' \
         'security = user' 'map to guest = Never' \
         'interfaces = 127.0.0.1' 'bind interfaces only = yes' 'smb ports = 1445' \
         'server min protocol = SMB3_00' 'server max protocol = SMB3_11' \
         'server signing = mandatory' 'load printers = no' 'printing = bsd' \
         'printcap name = /dev/null' 'disable spoolss = yes' 'dns proxy = no' \
-        'name resolve order = host' 'vfs objects =' 'log file = /state/log.smbd' \
+        'name resolve order = host' 'vfs objects = streams_xattr' \
+        'streams_xattr:prefix = user.DosStream.' \
+        'streams_xattr:store_stream_type = yes' 'log file = /state/log.smbd' \
         'private dir = /state/private' 'lock directory = /state/lock' \
         'state directory = /state/state' 'cache directory = /state/cache' \
         'pid directory = /state/pid' 'ncalrpc dir = /state/rpc' \
@@ -120,6 +122,7 @@ run_fixture() {
     echo 'outside-selected-subtree' >"$source/ungranted"
     ln -s "$source/ungranted" "$source/approved/escape" || return 1
     echo 'distinct-unix-writer-test' >/run/upload
+    echo 'distinct-stream-fixture' >/run/upload-stream
     for user in qpwriter qpreader qpoutsider; do
         # Public disposable credential, stdin/auth files only, never argv.
         printf '%s\n' 'disposable-qemu-only' 'disposable-qemu-only' | \
@@ -156,6 +159,20 @@ run_fixture() {
     client qpwriter ReadWrite 'put /run/upload created-é-β' || return 1
     client qpreader ReadWrite 'get created-é-β /run/download-unicode' || return 1
     cmp /run/upload /run/download-unicode || return 1
+    client qpwriter ReadWrite 'put /run/upload-stream created:fixture' || return 1
+    client qpreader ReadWrite 'get created:fixture /run/download-stream' || return 1
+    cmp /run/upload-stream /run/download-stream || return 1
+    cmp /run/upload "$source/approved/created" || return 1
+    /usr/sbin/phantowd-samba-root-launcher stream-bytes || return 1
+    [ ! -e "$source/approved/created:fixture" ] || return 1
+    # Different rejected bytes make an accidental overwrite observable.
+    denied qpreader ReadWrite 'put /run/upload created:fixture' \
+        'NT_STATUS_ACCESS_DENIED' || return 1
+    denied qpwriter KernelReadOnly 'put /run/upload created:fixture' \
+        'NT_STATUS_(MEDIA_WRITE_PROTECTED|ACCESS_DENIED)' || return 1
+    /usr/sbin/phantowd-samba-root-launcher stream-bytes || return 1
+    cmp /run/upload "$source/approved/created" || return 1
+    echo 'PHANTOWD_SAMBA_ROOT_STREAMS_READY module=streams_xattr xattr_bytes=true reader_write_denied=true kernel_ro=true scope=qemu-only'
     denied qpwrong ReadWrite ls 'NT_STATUS_LOGON_FAILURE' || return 1
     denied qpreader ReadWrite 'put /run/upload reader-denied' 'NT_STATUS_ACCESS_DENIED' || return 1
     denied qpoutsider ReadWrite ls 'NT_STATUS_ACCESS_DENIED' || return 1

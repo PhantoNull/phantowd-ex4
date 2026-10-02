@@ -23,7 +23,8 @@ def safe_path(value):
 
 def validate(report, *, fixed_entry=FIXED_ENTRY):
     if fixed_entry not in (
-            FIXED_ENTRY, "usr/bin/smbpasswd", "usr/bin/testparm"):
+            FIXED_ENTRY, "usr/bin/smbpasswd", "usr/bin/testparm",
+            "usr/lib/samba/vfs/streams_xattr.so"):
         raise ValueError("unsupported fixed fixture entry")
     if not isinstance(report, dict):
         raise ValueError("invalid candidate")
@@ -64,7 +65,8 @@ def validate(report, *, fixed_entry=FIXED_ENTRY):
             or report["total_bytes"] != total
             or fixed_entry not in paths
             or aliases.get(fixed_entry) != fixed_entry
-            or aliases.get("lib/ld-linux.so.3") != "lib/ld-linux.so.3"):
+            or (fixed_entry != "usr/lib/samba/vfs/streams_xattr.so"
+                and aliases.get("lib/ld-linux.so.3") != "lib/ld-linux.so.3")):
         raise ValueError("candidate budget or fixed entry refused")
     for name in paths:
         if name in aliases and aliases[name] != name:

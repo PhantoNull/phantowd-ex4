@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 PhantoWD EX4 contributors
-"""Merge three fixed public-runtime candidates for a QEMU-only Samba test."""
+"""Merge fixed programs and one VFS module for a QEMU-only Samba test."""
 import argparse
 import json
 from pathlib import Path
@@ -9,10 +9,13 @@ from pathlib import Path
 from runtime_loader_fixture import MAX_LOG, MAX_REPORT, read_bounded, validate
 
 
-ENTRIES = ("usr/sbin/smbd", "usr/bin/smbpasswd", "usr/bin/testparm")
+ENTRIES = ("usr/sbin/smbd", "usr/bin/smbpasswd", "usr/bin/testparm",
+           "usr/lib/samba/vfs/streams_xattr.so")
 MARKERS = (
     "PHANTOWD_SAMBA_ROOT_BOUNDARY_READY caps=00000000000000db "
     "nnp=true original_denied=true kernel_ro=true",
+    "PHANTOWD_SAMBA_ROOT_STREAMS_READY module=streams_xattr "
+    "xattr_bytes=true reader_write_denied=true kernel_ro=true scope=qemu-only",
     "PHANTOWD_SAMBA_ROOT_POLICY_READY writer_uid=1801 reader_uid=1802 "
     "outsider_denied=true kernel_ro=true original_denied=true "
     "unix_ownership=true unix_denial=true utf8_roundtrip=true scope=qemu-only",
@@ -65,13 +68,14 @@ def main():
     prepare.add_argument("smbd")
     prepare.add_argument("smbpasswd")
     prepare.add_argument("testparm")
+    prepare.add_argument("streams_xattr")
     prepare.add_argument("manifest")
     verify = sub.add_parser("verify")
     verify.add_argument("log")
     args = parser.parse_args()
     if args.command == "prepare":
         reports = [json.loads(read_bounded(name, MAX_REPORT)) for name in (
-            args.smbd, args.smbpasswd, args.testparm)]
+            args.smbd, args.smbpasswd, args.testparm, args.streams_xattr)]
         Path(args.manifest).write_text(merge(reports))
     else:
         check_guest(read_bounded(args.log, MAX_LOG))

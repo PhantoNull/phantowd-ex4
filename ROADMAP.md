@@ -949,10 +949,18 @@ storage. No production roster provider or activation path exists.
   A separate [Samba restricted-root QEMU profile](support/SAMBA-RUNTIME-PROFILE.md)
   now verifies distinct-user SMB3, Unix file ownership/mode denial, kernel
   read-only grants, denied original paths, one Unicode filename and group stop
-  under six bounded root capabilities. It is a fixed disposable experiment,
+  under six bounded root capabilities. One explicitly selected, hash-verified
+  `streams_xattr` module also passes an SMB alternate-stream roundtrip, exact
+  native xattr-byte checks and denied reader/kernel-read-only overwrites without
+  modifying ordinary file data. It is a fixed disposable experiment,
   not a production constructor, per-client privilege certification, Owner-backed
   activation or full module/ACL/encoding qualification. Preserve that separation
   when constructing the trusted runtime and service-specific lifecycle.
+  Before claiming ACL support, qualify the actual storage filesystem's POSIX
+  ACL configuration and Windows ACL persistence/denials under the same bounded
+  privilege profile. Current QEMU tmpfs ACL support cannot substitute for its
+  disabled ext4 POSIX ACL option. Do not silently choose permissive masks,
+  ignore system ACLs, change xattr namespaces or add mount-admin privileges.
 - **M4.5 — Failure and shutdown.** Cover startup with absent disks, service crash,
   read-only/full volume, client reconnect, stale NFS handles, shutdown with open
   files and restart ordering. Distinguish safely unavailable from healthy.

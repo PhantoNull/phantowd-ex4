@@ -22,14 +22,17 @@ unchanged. Generated images and state are destroyed when the fixture exits.
 ## What the experiment does
 
 - Derives non-authorizing ELF candidates for three fixed public Buildroot
-  programs: `smbd`, `smbpasswd`, `testparm`. Merging refuses conflicts, unknown
+  programs (`smbd`, `smbpasswd`, `testparm`) and the single fixed
+  `usr/lib/samba/vfs/streams_xattr.so` module. Merging refuses conflicts, unknown
   paths, missing entries, partial graphs or asserted execution authority.
 - Inside the guest, verifies every selected SHA-256 and canonical alias before
   copying regular ELFs and generating symlinks into a root-controlled tmpfs.
   The ordinary target filesystem and original image remain read-only.
 - Creates only fixture-owned Unix account/group files and passdb. The profile
   uses standalone SMB3 with required signing, three separate accounts, local
-  file-based NSS, no guest, DNS, AD, arbitrary includes or dynamic VFS plugins.
+  file-based NSS, no guest, DNS, AD or arbitrary includes. The only selected
+  dynamic VFS plugin is hash-verified `streams_xattr`; it is not inferred from
+  the executable's `DT_NEEDED` graph.
   Password setup is a disposable test setup, not the product identity Owner.
 - A fixed ARM/VersatilePB-guarded native fixture creates a private mount
   namespace and restricted root. Only declared subdirectories and fixture state
@@ -52,6 +55,13 @@ unchanged. Generated images and state are destroyed when the fixture exits.
 - Fixed client operations have a native ten-second deadline; timeout/signal
   exits cannot count as access denials. The native wrapper accepts no arbitrary
   executable, hostname, credential pathname or SMB command.
+- A real SMB alternate-stream roundtrip exercises the selected VFS plugin.
+  A native bounded `lgetxattr` on one fixed fixture file checks the exact
+  `user.DosStream.fixture:$DATA` bytes (including Samba's terminating NUL),
+  while the ordinary file data remains unchanged. Reader and kernel-read-only
+  overwrites with different payloads must be denied without changing either
+  stream or file; no literal `created:fixture` file may appear. This is a small
+  tmpfs/SMB3 plugin proof, not complete NTFS-stream migration or ACL evidence.
 - Stop signals only the fixture-created group, waits for the parent and requires
   the group to disappear. BusyBox may report the requested SIGTERM as status143;
   that is accepted only after group absence. Other outcomes fail. There is no
@@ -68,7 +78,10 @@ mount namespace plus limited root is not a security certification.
 
 Samba's source supports configuration-selected `dlopen` modules; the pinned
 target contains 39 VFS modules. This deliberately small baseline does not
-qualify `acl_xattr`, Windows ACL preservation, streams, recycle or other plugins.
+qualify `acl_xattr`, Windows ACL preservation, durable stream migration,
+recycle or other plugins. Only the fixed temporary `streams_xattr` case above
+is exercised. The current QEMU kernel enables tmpfs POSIX ACLs but not ext4
+POSIX ACLs; the tmpfs fixture cannot qualify ACLs on a storage filesystem.
 The public target lacks the CP850 conversion module and logs an ASCII fallback;
 the observed SMB3 UTF-8 case does not resolve that separate compatibility gap.
 Quota observations on disposable tmpfs are not RAID/storage-health evidence.

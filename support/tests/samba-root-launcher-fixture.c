@@ -17,6 +17,7 @@
 #include <sys/statvfs.h>
 #include <sys/syscall.h>
 #include <sys/wait.h>
+#include <sys/xattr.h>
 #include <time.h>
 #include <unistd.h>
 
@@ -115,7 +116,10 @@ static int client(const char *user, const char *share, const char *operation)
         "get created /run/download", "put /run/upload reader-denied",
         "put /run/upload readonly-denied", "get escape /run/escaped",
         "put /run/upload unix-denied", "put /run/upload created-é-β",
-        "get created-é-β /run/download-unicode"};
+        "get created-é-β /run/download-unicode",
+        "put /run/upload-stream created:fixture",
+        "put /run/upload created:fixture",
+        "get created:fixture /run/download-stream"};
     int matched = 0;
     for (size_t i = 0; i < sizeof(operations) / sizeof(operations[0]); ++i)
         matched |= !strcmp(operation, operations[i]);
@@ -168,6 +172,17 @@ int main(int argc, char **argv)
         if (lstat("/run/phantowd-samba-source/approved/created", &created) ||
             !S_ISREG(created.st_mode) || created.st_uid != 1801 ||
             created.st_gid != 1800 || (created.st_mode & 0007))
+            return fail();
+        return 0;
+    }
+    if (argc == 2 && !strcmp(argv[1], "stream-bytes")) {
+        /* Fixed test-owned tmpfs file; no arbitrary xattr path or raw device. */
+        const char expected[] = "distinct-stream-fixture\n";
+        char bytes[sizeof(expected) + 1];
+        ssize_t count = lgetxattr("/run/phantowd-samba-source/approved/created",
+            "user.DosStream.fixture:$DATA", bytes, sizeof(bytes));
+        if (count != (ssize_t)sizeof(expected) ||
+            memcmp(bytes, expected, sizeof(expected)))
             return fail();
         return 0;
     }

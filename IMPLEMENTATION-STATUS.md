@@ -17,6 +17,13 @@ These additions are not yet integrated into
 `develop`; do not confuse feature evidence with an integration/release result.
 Planning bands remain unchanged: no new product acceptance gate has closed.
 
+The subsequent focused local Samba fixture adds one fixed dynamic
+`streams_xattr` module, exact alternate-stream xattr bytes, and reader/kernel-RO
+overwrite denials on temporary QEMU tmpfs. Its original rootfs remains
+unchanged. This focused check is separate from the complete incremental result
+on `fba213d`; it does not qualify Windows ACLs, storage-filesystem ACLs, stream
+migration, product integration or physical EX4 behavior.
+
 ## Roadmap comparison
 
 Percentages are **engineering planning estimates**, not measured test coverage,

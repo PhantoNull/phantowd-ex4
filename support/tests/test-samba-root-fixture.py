@@ -26,11 +26,11 @@ def reports():
 class SambaRootFixture(unittest.TestCase):
     def test_deduplicated_fixed_roster(self):
         manifest = fixture.merge(reports())
-        self.assertEqual(len(manifest.splitlines()), 4)
+        self.assertEqual(len(manifest.splitlines()), 5)
         self.assertEqual(manifest.count("b" * 64), 1)
 
     def test_partial_reordered_or_authorized_inputs_refused(self):
-        values = [reports()[:2], reports()[::-1]]
+        values = [reports()[:2], reports()[:3], reports()[::-1]]
         for field, value in (("execution_authorized", True),
                              ("runtime_qualified", True),
                              ("static_dependencies_resolved", False),
@@ -41,6 +41,24 @@ class SambaRootFixture(unittest.TestCase):
         for value in values:
             with self.assertRaises(ValueError):
                 fixture.merge(value)
+
+    def test_only_fixed_stream_module_entry_admitted(self):
+        changed = reports()
+        # A DSO has no PT_INTERP; require it only for the fixed programs.
+        changed[3]["objects"][1]["path"] = "usr/lib/libc.so.6"
+        changed[3]["objects"][1]["bindings"] = ["usr/lib/libc.so.6"]
+        self.assertIn("/usr/lib/samba/vfs/streams_xattr.so",
+                      fixture.merge(changed))
+        for entry in ("usr/lib/samba/vfs/acl_xattr.so",
+                      "usr/lib/untrusted.so"):
+            value = copy.deepcopy(changed)
+            value[3]["entry"] = entry
+            with self.assertRaises(ValueError):
+                fixture.merge(value)
+        changed[0]["objects"][1]["path"] = "usr/lib/libc.so.6"
+        changed[0]["objects"][1]["bindings"] = ["usr/lib/libc.so.6"]
+        with self.assertRaises(ValueError):
+            fixture.merge(changed)
 
     def test_cross_candidate_byte_alias_conflict_refused(self):
         changed = reports()
@@ -80,6 +98,9 @@ class SambaRootFixture(unittest.TestCase):
         lines = [
             "PHANTOWD_SAMBA_ROOT_BOUNDARY_READY caps=00000000000000db "
             "nnp=true original_denied=true kernel_ro=true",
+            "PHANTOWD_SAMBA_ROOT_STREAMS_READY module=streams_xattr "
+            "xattr_bytes=true reader_write_denied=true kernel_ro=true "
+            "scope=qemu-only",
             "PHANTOWD_SAMBA_ROOT_POLICY_READY writer_uid=1801 "
             "reader_uid=1802 outsider_denied=true kernel_ro=true "
             "original_denied=true unix_ownership=true unix_denial=true "
@@ -87,7 +108,8 @@ class SambaRootFixture(unittest.TestCase):
             "PHANTOWD_SAMBA_ROOT_STOPPED", "PHANTOWD_SAMBA_ROOT_DONE",
         ]
         fixture.check_guest("\r\n".join(lines))
-        for invalid in (lines[:-1], lines + [lines[0]], lines[::-1],
+        for invalid in (lines[:-1], lines[:1] + lines[2:],
+                        lines + [lines[0]], lines[::-1],
                         lines + ["PHANTOWD_SAMBA_ROOT_FAILED"],
                         lines + ["PHANTOWD_SAMBA_ROOT_LAUNCH_REFUSED"]):
             with self.assertRaises(ValueError):
@@ -121,6 +143,11 @@ class SambaRootFixture(unittest.TestCase):
         self.assertIn('/bin/busybox kill -TERM "-$daemon_pid"', init)
         self.assertIn('[ "$stop_status" -ne 143 ]', init)
         self.assertIn('[ "$stop_attempted" -eq 0 ]', init)
+        self.assertIn("usr/lib/samba/vfs/streams_xattr.so", driver)
+        self.assertIn("vfs objects = streams_xattr", init)
+        self.assertIn("user.DosStream.fixture:$DATA", native)
+        self.assertIn("lgetxattr", native)
+        self.assertNotIn("CAP_SYS_ADMIN)", native)
 
 
 if __name__ == "__main__":
