@@ -572,9 +572,12 @@ image/volume and does not replace ARM execution or any physical collector gate.
 The new C++-enabled defconfig requires a complete toolchain rebuild. The separate
 `support/test-smart-replay-arm.ps1` lane then executes a statically linked
 generic-only smartctl 7.5 and the same seven invented-input projections inside
-ARMv5 QEMU. Missing C++ fails before guest launch. Its implementation still
-requires terminal full-build/guest evidence; do not count the pure-parser or
-native lanes as an ARM producer pass. See [the producer contract](SMART-REPLAY.md).
+ARMv5 QEMU. Missing C++ fails before guest launch. The complete local rebuilt
+image and existing guest/service suites passed on `dd55481`, including this
+actual producer and independent final artifact hash verification. This cached
+run is not hosted feature or independent clean-build qualification; do not
+count the pure-parser or native lanes as an ARM producer pass.
+See [the producer contract](SMART-REPLAY.md).
 
 `support/test-samba-root.ps1` additionally tests actual multi-user Samba inside
 a restricted read-only root/private mount namespace, using only fixture state

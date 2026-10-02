@@ -198,7 +198,13 @@ earlier base, with all seven exits/projections and unchanged base hashes.
 The test exposed and corrected an overly narrow v5TE tag check and QEMU7.2's
 /tmp-to-/var/tmp snapshot fallback; snapshots now use the owned tmpfs subdirectory.
 The initial full build was stopped after the reproducible runner failure;
-complete C++ image/service/SBOM integration still needs a terminal full run.
+complete C++ image/service/SBOM integration subsequently passed locally on
+`dd55481`: standard boot, MD/two-boot persistence, isolated launcher, loader,
+restricted-root Samba, pure SMART parser and actual ARM producer all passed.
+The seven final artifacts were independently rehashed. The generated rootfs
+is 80 MiB, kernel 4,009,408 bytes and API 9,460,244 bytes. This reused verified
+sources/compiler caches; it is not independent clean-build reproducibility,
+hosted feature qualification or complete license/distribution review.
 This is not a product collector, physical transport/standby qualification or
 closed release gate.
 

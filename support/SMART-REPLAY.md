@@ -98,9 +98,13 @@ Successful emulated execution does not qualify the EX4's physical CPU/board.
 
 **Focused ARM execution now passes:** the rebuilt C++ toolchain's actual static
 7.5 producer and all seven Go projections passed in the ARM926 guest using the
-manifest-verified earlier base, whose hashes stayed unchanged. This is not
-complete C++ image/service/SBOM integration, which still needs a terminal full
-build. The native oracle and pure parser passes alone do not prove the producer.
+manifest-verified earlier base, whose hashes stayed unchanged. The subsequent
+complete local run on `dd55481` also passed rebuilt-image/package/legal-info/
+SBOM integration, all existing guest/service fixtures and this actual producer
+against the newly generated base; seven artifact hashes were independently
+verified. It reused verified source/compiler caches, not independent clean
+builds. Hosted feature qualification and license/distribution review remain
+separate. The native oracle and pure parser passes alone do not prove the producer.
 The test-only executable is not
 installed in the product image, SBOM or service startup. C++ runtime libraries
 selected by the toolchain are ordinary Buildroot dependencies and must be

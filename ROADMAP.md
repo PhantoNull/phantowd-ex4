@@ -1164,8 +1164,10 @@ not host/QEMU progress.
     The earlier C-only output was retired and the new C++ toolchain rebuilt.
     Actual static7.5 producer/projection tests pass on the ARM926 guest against
     the unchanged manifest-verified earlier base; v5TE/v5TEJ soft-float are the
-    explicit guest profiles. Complete C++ image integration, footprint/SBOM
-    and existing guest/service requalification still need a terminal full run.
+    explicit guest profiles. Complete local C++ image/package/legal-info/SBOM
+    integration and existing guest/service requalification passed on `dd55481`,
+    including seven final artifact hash checks. This cached run is not clean
+    independent reproducibility, hosted feature or physical qualification.
     Reuse downloads/bounded ccache and a single generated output; do not add a daemon or physical
     collector authority as a side effect of that prerequisite.
   - **M8.5b — Trusted collection.** Bind each report to the retained disk's

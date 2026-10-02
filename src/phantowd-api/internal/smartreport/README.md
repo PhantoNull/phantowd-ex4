@@ -64,8 +64,11 @@ per release, with explicitly pinned archives and identical refusal bounds.
 It compiles only the generic backend, not a Linux device collector; no
 physical transport/standby compatibility is established. The separate static
 7.5 generic producer and Go projection fixture now passes in an ARM926 guest
-against an unchanged manifest-verified base; full rebuilt-image integration
-remains separate. Neither replay lane executes physical ATA commands.
+against an unchanged manifest-verified base. Complete local rebuilt-image/
+package/SBOM and guest/service integration subsequently passed on `dd55481`,
+including this producer against the new base. Independent clean builds and
+hosted feature qualification remain separate. Neither replay lane executes
+physical ATA commands.
 
 ## Primary semantics
 
