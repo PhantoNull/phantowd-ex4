@@ -4,15 +4,20 @@
 # Implementation status
 
 Code audit: **2026-10-03**, integrated `develop` baseline
-`59f28bea5f2fe377f52f8c8b0e123129f3939a89` (PR #58).
+`2bf71fa405343f828af03b5d0c9a2889d5e5e2fd` (PR #59).
 Use [ROADMAP.md](ROADMAP.md) for the acceptance specification. This snapshot
 distinguishes tested components from deployed product workflows. It is not
 installation approval, a security certification, or an exhaustive line-by-line audit.
 
-PR #58 integrated the code-ACL refusal correction and offline SMART parser
-after exact head `2e8eb6d` passed all host/B3/QEMU checks. The producer replay
-and retained-code Owner increments described below remain feature work; this
-integrated baseline does not qualify their hosted results or the EX4 product.
+PR #59 integrated the C++ toolchain and native/ARMv5 producer replay after exact
+head `e22828d` passed both hosted B3 and
+[QEMU/DTB](https://github.com/PhantoNull/phantowd-ex4/actions/runs/37062393358)
+checks. Its complete merged tree equals the checked head and the merged branch
+was removed. Retained-code Owner and later native-boundary/MCU/Perl followups
+below remain feature work, not qualified merely by that earlier CI result.
+PR #58 previously integrated the code-ACL refusal correction and offline SMART
+parser after exact head `2e8eb6d` passed all host/B3/QEMU checks. Neither merge
+qualifies the EX4 product or physical SMART collection.
 
 PR #57 previously integrated the read-only code-bundle inspector and QEMU-only fresh
 stager after exact head `870ea9d` passed
@@ -102,6 +107,16 @@ production guard was weakened or target Python dependency introduced. The
 full container auto-removed; two existing volumes and the current output/cache
 were reused. This local result is not hosted feature qualification, independent
 reproducibility, license/recovery closure or product installation approval.
+
+A subsequent test-only ARMv5 increment covers forced cleanup at the aggregate
+code-Owner boundary, not just its pinned process set. A static child ignores
+SIGTERM; the first canceled-context Close retains ownership/pins and requires
+review despite kernel-confirmed group absence. Normal unmount of the disposable
+code bind returns `EBUSY`; after explicit reap verification it succeeds, while
+review is never cleared and restart remains refused. Focused guest execution
+passes against the manifest-checked cached base; production Owner code and
+physical storage remain unchanged. This focused result alone is not a new
+full-build or hosted qualification.
 
 The subsequent code-permission audit reproduced an undeclared root access ACL
 being accepted by `runtimebundle.Inspect` despite unchanged mode bits and hashes.

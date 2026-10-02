@@ -132,7 +132,11 @@ calls this Owner; non-Linux construction/lifecycle is unavailable.
 static test child, private guest mount namespace and tmpfs code tree. It verifies
 caller-close survival, immutable spec/snapshot, pinned launch, duplicate Start,
 canceled teardown, group reaping, identical-byte inode replacement before
-launch, live root drift and permanent review after restoration. This separate
+launch, live root drift and permanent review after restoration. The guest also
+exercises a child that ignores SIGTERM: forced stop requires review, normal
+unmount remains kernel-EBUSY while pins are retained, and only a later explicit
+reap verification allows release/unmount without clearing review. These checks
+use only the guest's disposable code bind, never a data mount. This separate
 120-second guest does not inherit Samba entropy/network readiness waits. It uses
 only a read-only cached base/workspace and a 512 MiB disposable tmpfs, removes
 the compile cache before copying rootfs, checks base hashes, and creates no

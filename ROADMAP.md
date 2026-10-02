@@ -961,7 +961,11 @@ storage. No production roster provider or activation path exists.
   Unknown process ownership blocks release; later explicit verification cannot
   resend signals or clear review. Host/race and a separate finite ARMv5 fixture
   cover caller close, immutable inputs, duplicate Start, canceled teardown,
-  same-byte replacement and live root drift. Full cached local integration on
+  same-byte replacement and live root drift. A subsequent ARMv5 fixture also
+  proves aggregate Owner forced-stop retention through kernel `EBUSY`, followed
+  by explicit reap verification/release without clearing review. This operates
+  only on a private disposable code bind, not user data. Full cached local
+  integration on
   `c93d936` passes; clean/hosted and EX4 qualification remain separate. Next
   compose the separately reviewed dynamic Samba root/privilege adapter with
   fixed configuration/state and Owner-held storage grants, then qualify durable

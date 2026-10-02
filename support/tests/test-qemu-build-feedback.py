@@ -36,6 +36,8 @@ class BuildFeedbackTests(unittest.TestCase):
         self.assertIn('timeout --signal=TERM --kill-after=5 120', fixture)
         self.assertEqual(fixture.count('qemu-system-arm \\\n'), 1)
         self.assertIn('PHANTOWD_CODE_OWNER_BASE_UNCHANGED', fixture)
+        self.assertIn('PHANTOWD_CODE_OWNER_FORCED_REVIEW_READY', fixture)
+        self.assertIn('"$expected" "$review" "$forced"', fixture)
         release = fixture.index('rm -rf "$scratch/go-cache"',
                                 fixture.index('"$go_binary" build'))
         self.assertLess(release, fixture.index('cp "$base/rootfs.ext2"'))

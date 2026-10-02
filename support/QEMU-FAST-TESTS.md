@@ -12,7 +12,11 @@ The separate guest has a finite 120-second budget, no retries and no Samba
 entropy/network readiness dependency. A copied static fixture checks code/root
 pin lifetime, caller close, immutable launch inputs, duplicate-start refusal,
 stop/reap before release, same-byte inode replacement before launch, live root
-drift and permanent review after restoration. Original base hashes must remain
+drift and permanent review after restoration. A child that ignores SIGTERM
+also proves that forced cleanup keeps code pins: normal unmount returns the
+expected kernel `EBUSY` before explicit reap verification, then succeeds after
+release without clearing review. This deliberate code-pin check is not the
+unresolved intermittent state-volume unmount issue below. Original base hashes must remain
 unchanged. This tests no product HTTP/service activation, dynamic Samba profile,
 NFS export authority, physical disk or EX4 hardware.
 

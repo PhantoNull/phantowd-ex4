@@ -128,6 +128,7 @@ func ownerFixture() error {
 		return err
 	}
 	fmt.Println("PHANTOWD_CODE_OWNER_REVIEW_READY same_bytes_replacement=true before_child=true live_root_drift=true group_reaped=true restoration_not_retried=true scope=qemu-only")
+	fmt.Println("PHANTOWD_CODE_OWNER_FORCED_REVIEW_READY forced=true pins_retained=true explicit_reap=true released_after_verification=true review_not_cleared=true scope=qemu-only")
 	return nil
 }
 
@@ -138,6 +139,10 @@ func ownerReviewFixtures(plan *runtimebundle.Plan, data []byte) error {
 			return nil, err
 		}
 		defer root.Close()
+		stopTimeout := 5 * time.Second
+		if marker == "forced" {
+			stopTimeout = 100 * time.Millisecond
+		}
 		return plan.NewOwner(context.Background(), root, []processowner.MemberSpec{{Name: "static-fixture", Process: processowner.Spec{
 			Executable: "/bin/fixture", Args: []string{"owner-child", ownerFixtureBase + "/control/" + marker},
 			RunAs: &processowner.Credentials{UID: 1801, GID: 1800},
@@ -145,7 +150,7 @@ func ownerReviewFixtures(plan *runtimebundle.Plan, data []byte) error {
 				_, err := os.Stat(ownerFixtureBase + "/control/" + marker + ".ready")
 				return err == nil, nil
 			},
-			ReadyTimeout: 10 * time.Second, ProbeInterval: 50 * time.Millisecond, StopTimeout: 5 * time.Second,
+			ReadyTimeout: 10 * time.Second, ProbeInterval: 50 * time.Millisecond, StopTimeout: stopTimeout,
 		}}})
 	}
 	before, err := newOwner("before")
@@ -220,15 +225,61 @@ func ownerReviewFixtures(plan *runtimebundle.Plan, data []byte) error {
 	if err := live.Close(context.Background()); !errors.Is(err, runtimebundle.ErrReviewRequired) {
 		return errors.New("live review disappeared during input release")
 	}
+	forced, err := newOwner("forced")
+	if err != nil {
+		return err
+	}
+	defer forced.Close(context.Background())
+	started, err = forced.Start(context.Background())
+	if err != nil || started.State != processowner.StateReady {
+		return errors.Join(errors.New("forced-stop control did not start"), err)
+	}
+	pid = started.Processes.Members[0].Process.PID
+	if pid <= 1 {
+		return errors.New("missing forced-stop child")
+	}
+	closeCtx, cancel := context.WithCancel(context.Background())
+	cancel()
+	if err := forced.Close(closeCtx); !errors.Is(err, runtimebundle.ErrReviewRequired) {
+		return errors.New("forced stop released inputs or cleared review")
+	}
+	observed, err = forced.Observe(context.Background())
+	if !errors.Is(err, runtimebundle.ErrReviewRequired) || observed.State != processowner.StateReviewRequired || observed.Processes.Members[0].Process.PID != pid {
+		return errors.New("uncertain ownership was discarded")
+	}
+	if !errors.Is(unix.Kill(-pid, 0), unix.ESRCH) {
+		return errors.New("forced-stop group is still present")
+	}
+	// No caller root descriptor or live process remains. A normal unmount must
+	// still be busy solely because the Owner retains its code/root references.
+	if err := unix.Unmount(ownerFixtureBase+"/view", 0); !errors.Is(err, unix.EBUSY) {
+		return errors.New("uncertain cleanup did not retain code mount pins")
+	}
+	if _, err := forced.Start(context.Background()); !errors.Is(err, runtimebundle.ErrReviewRequired) {
+		return errors.New("forced stop allowed a restart")
+	}
+	if err := forced.Close(context.Background()); !errors.Is(err, runtimebundle.ErrReviewRequired) {
+		return errors.New("explicit reap verification cleared review")
+	}
+	if _, err := forced.Start(context.Background()); !errors.Is(err, runtimebundle.ErrUnavailable) {
+		return errors.New("verified release left an executable Owner")
+	}
+	if err := unix.Unmount(ownerFixtureBase+"/view", 0); err != nil {
+		return errors.Join(errors.New("verified cleanup retained mount pins"), err)
+	}
 	return nil
 }
 
 func ownerFixtureChild() error {
-	if os.Getgid() != 1800 || (os.Args[2] != ownerFixtureBase+"/control/normal" && os.Args[2] != ownerFixtureBase+"/control/before" && os.Args[2] != ownerFixtureBase+"/control/live") {
+	if os.Getgid() != 1800 || (os.Args[2] != ownerFixtureBase+"/control/normal" && os.Args[2] != ownerFixtureBase+"/control/before" && os.Args[2] != ownerFixtureBase+"/control/live" && os.Args[2] != ownerFixtureBase+"/control/forced") {
 		return errors.New("fixed child guard")
 	}
 	stop := make(chan os.Signal, 1)
-	signal.Notify(stop, syscall.SIGTERM)
+	if os.Args[2] == ownerFixtureBase+"/control/forced" {
+		signal.Ignore(syscall.SIGTERM)
+	} else {
+		signal.Notify(stop, syscall.SIGTERM)
+	}
 	defer signal.Stop(stop)
 	if err := os.WriteFile(os.Args[2]+".ready", []byte("ready"), 0600); err != nil {
 		return err
