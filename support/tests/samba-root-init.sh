@@ -71,9 +71,7 @@ run_fixture() {
     mount -t ext4 -o acl,nosuid,nodev,noexec /dev/sdb "$source" || return 1
     grep -F " /run/phantowd-samba-source ext4 " /proc/mounts >/dev/null || return 1
     mkdir -m 0700 "$state" || return 1
-    mkdir -p "$root/etc/samba" "$root/dev" "$root/state" "$root/tmp" \
-        "$root/shares/rw" "$root/shares/ro" "$root/shares/denied" \
-        "$source/approved" || return 1
+    mkdir -p "$source/approved" || return 1
     mkdir -m 0700 "$source/denied" || return 1
     while read -r digest canonical alias; do
         [ "$(readlink -f "$alias")" = "$canonical" ] || return 1
@@ -85,15 +83,19 @@ run_fixture() {
         fi
         [ "$(sha256sum "$root$canonical" | cut -d ' ' -f1)" = "$digest" ] || return 1
     done </usr/lib/phantowd/qemu-samba-root.manifest
-    cp /usr/sbin/phantowd-samba-charset-probe \
-        "$root/usr/sbin/phantowd-samba-charset-probe" || return 1
-    chmod 0555 "$root/usr/sbin/phantowd-samba-charset-probe" || return 1
     while read -r digest canonical alias; do
         if [ "$alias" != "$canonical" ]; then
             mkdir -p "$root$(dirname "$alias")" || return 1
             ln -s "$canonical" "$root$alias" || return 1
         fi
     done </usr/lib/phantowd/qemu-samba-root.manifest
+    /usr/sbin/phantowd-samba-root-launcher runtime-bundle || return 1
+    # Inspection does not authorize these separately generated state/grants.
+    mkdir -p "$root/etc/samba" "$root/dev" "$root/state" "$root/tmp" \
+        "$root/shares/rw" "$root/shares/ro" "$root/shares/denied" || return 1
+    cp /usr/sbin/phantowd-samba-charset-probe \
+        "$root/usr/sbin/phantowd-samba-charset-probe" || return 1
+    chmod 0555 "$root/usr/sbin/phantowd-samba-charset-probe" || return 1
     printf '%s\n' 'root:x:0:0:root:/:/sbin/nologin' \
         'nobody:x:65534:65534:nobody:/:/sbin/nologin' \
         'qpwriter:x:1801:1800:writer:/:/sbin/nologin' \

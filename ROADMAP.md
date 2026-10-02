@@ -925,6 +925,17 @@ storage. No production roster provider or activation path exists.
   bounded Samba-specific runtime/privilege contract, preserving per-client
   Unix identities/ACLs; never substitute `force user` or shared credentials to
   make isolation tests pass. Kernel NFS remains a separate typed authority.
+  The internal [runtime-bundle inspector](src/phantowd-api/internal/runtimebundle/README.md)
+  now supplies a read-only prerequisite: a privately copied bounded code-only
+  roster, complete descriptor-relative census, kernel-enforced read-only mount,
+  exact hashes/modes/aliases and no cross-mount/symlink traversal. A disposable
+  ARMv5 Samba-root fixture verifies this before adding configuration/state/
+  grants and refuses altered plans. Its observation is not a lease, signed
+  manifest, root constructor or execution token. The future constructor must
+  obtain expected bytes from the trusted release boundary, serialize other
+  writable views, retain pins and revalidate through start/stop/source loss;
+  compose configuration, state, devices and Owner-held grants explicitly.
+  Do not promote fixture text or the offline ELF candidate into authority.
   Then define product-owned service identities and safe ACL provisioning and
   recovery without silently changing legacy ownership. Add the bounded
   source-loss supervisor and a fail-closed production storage constructor only

@@ -179,6 +179,9 @@ class SambaRootFixture(unittest.TestCase):
 
     def test_guest_crlf_and_strict_complete_markers(self):
         lines = [
+            "PHANTOWD_SAMBA_ROOT_BUNDLE_READY readonly=true "
+            "complete_census=true hashes=true aliases=true refusals=5 "
+            "scope=qemu-only",
             "PHANTOWD_SAMBA_ROOT_CHARSET_READY charset=CP850 bytes=true "
             "roundtrip=true isolated_root=true scope=qemu-only",
             "PHANTOWD_SAMBA_ROOT_BOUNDARY_READY caps=00000000000000db "
@@ -237,6 +240,14 @@ class SambaRootFixture(unittest.TestCase):
         self.assertIn('[ "$stop_attempted" -eq 0 ]', init)
         self.assertIn("usr/lib/samba/vfs/streams_xattr.so", driver)
         self.assertIn("usr/lib/gconv/IBM850.so", driver)
+        self.assertIn('./cmd/qemu-runtime-bundle', driver)
+        self.assertIn('"bundle phantowd-runtime-bundle-probe"', driver)
+        self.assertIn('inspect_runtime_bundle()', native)
+        self.assertIn('PR_CAPBSET_DROP, cap, 0, 0, 0', native)
+        bundle_call = init.index('phantowd-samba-root-launcher runtime-bundle')
+        self.assertLess(bundle_call, init.index('mkdir -p "$root/etc/samba"'))
+        charset_copy = init.index('cp /usr/sbin/phantowd-samba-charset-probe')
+        self.assertLess(bundle_call, charset_copy)
         self.assertIn("gconv-modules", driver)
         self.assertIn("dos charset = CP850", init)
         self.assertIn("phantowd-samba-root-launcher charset", init)

@@ -22,6 +22,8 @@ CATALOG_ROWS = frozenset({
     ("module", "INTERNAL", "IBM850//", "IBM850", "1"),
 })
 MARKERS = (
+    "PHANTOWD_SAMBA_ROOT_BUNDLE_READY readonly=true complete_census=true "
+    "hashes=true aliases=true refusals=5 scope=qemu-only",
     "PHANTOWD_SAMBA_ROOT_CHARSET_READY charset=CP850 bytes=true "
     "roundtrip=true isolated_root=true scope=qemu-only",
     "PHANTOWD_SAMBA_ROOT_BOUNDARY_READY caps=00000000000000db "

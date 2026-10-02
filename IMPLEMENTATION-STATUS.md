@@ -56,6 +56,16 @@ migration, product integration or physical EX4 behavior.
 
 ## Roadmap comparison
 
+The separate `feat/runtime-bundle-verification` follow-up adds an internal,
+read-only code-tree inspection prerequisite for M4.4. A privately copied plan
+checks complete census, read-only mount identity, hashes, file permissions and
+exact direct aliases without symlink traversal or cross-mount opens. A focused
+working-tree ARMv5 Samba fixture passes the actual tree and five altered-plan
+refusals before adding test configuration/state/grants; all prior CP850/stream/
+ACL/inheritance/client/group-stop cases still pass. It is not an approved
+manifest, retained lease, root builder, service activation or hosted result.
+See the [internal contract](src/phantowd-api/internal/runtimebundle/README.md).
+
 Percentages are **engineering planning estimates**, not measured test coverage,
 probabilities of success, release readiness, or a delivery-date promise. Credit
 includes source, negative tests and fixture integration; the remaining scope

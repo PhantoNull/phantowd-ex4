@@ -219,6 +219,11 @@ incremental integration and focused test results are not independent clean
 builds, hosted feature results or EX4 qualification;
 [implementation status](IMPLEMENTATION-STATUS.md) separates them.
 
+An internal code-only runtime inspector additionally checks the isolated test
+tree's complete census, hashes, permissions and aliases before fixture state
+and share grants are added. This is a read-only construction prerequisite,
+not an approved manifest, product service activation or installation path.
+
 The badge tracks the `develop` integration branch, not every feature branch.
 For build evidence, open the relevant workflow run and check its **commit,
 conclusion and artifacts**. A previous green run does not validate a newer

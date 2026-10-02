@@ -186,6 +186,42 @@ static int writer_identity(void)
     return 0;
 }
 
+/* Inspect only the generated code tree, before config/state/share grants.
+ * The read-only bind exists only in this child namespace; no parent mount is
+ * changed. Drop all bounding/ambient/effective authority before the Go probe. */
+static int inspect_runtime_bundle(void)
+{
+    if (unshare(CLONE_NEWNS) ||
+        mount(NULL, "/", NULL, MS_REC | MS_PRIVATE, NULL) ||
+        mount(root, root, NULL, MS_BIND, NULL) ||
+        mount(NULL, root, NULL, MS_BIND | MS_REMOUNT | MS_RDONLY | MS_NOSUID |
+              MS_NODEV, NULL))
+        return fail();
+    int fd = open(root, O_PATH | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC);
+    if (fd < 0 || dup2(fd, 3) != 3 || fcntl(3, F_SETFD, 0) ||
+        syscall(SYS_close_range, 4U, ~0U, 0) ||
+        prctl(PR_CAP_AMBIENT, PR_CAP_AMBIENT_CLEAR_ALL, 0, 0, 0))
+        return fail();
+    unsigned int last = 0;
+    for (unsigned int cap = 0; cap < 64; ++cap) {
+        int present = prctl(PR_CAPBSET_READ, cap, 0, 0, 0);
+        if (present < 0) {
+            if (errno != EINVAL || cap <= CAP_LAST_CAP)
+                return fail();
+            last = cap;
+            break;
+        }
+        if (prctl(PR_CAPBSET_DROP, cap, 0, 0, 0))
+            return fail();
+    }
+    if (!last || writer_identity())
+        return fail();
+    char *args[] = {"qemu-runtime-bundle", NULL};
+    char *environment[] = {"PATH=/usr/sbin:/usr/bin:/sbin:/bin", "LC_ALL=C", NULL};
+    execve("/usr/sbin/phantowd-runtime-bundle-probe", args, environment);
+    return fail();
+}
+
 struct fixed_acl {
     struct posix_acl_xattr_header header;
     struct posix_acl_xattr_entry entries[5];
@@ -317,6 +353,8 @@ int main(int argc, char **argv)
         return fail();
     if (argc == 2 && !strcmp(argv[1], "guard"))
         return 0;
+    if (argc == 2 && !strcmp(argv[1], "runtime-bundle"))
+        return inspect_runtime_bundle();
     if (argc == 2 && (!strcmp(argv[1], "acl-prepare") ||
         !strcmp(argv[1], "acl-grant") || !strcmp(argv[1], "acl-revoke")))
         return acl_fixture(argv[1]);
