@@ -9,9 +9,10 @@ Use [ROADMAP.md](ROADMAP.md) for the acceptance specification. This snapshot
 distinguishes tested components from deployed product workflows. It is not
 installation approval, a security certification, or an exhaustive line-by-line audit.
 
-Follow-up audit includes published feature head `f7571ea` on
-`feat/service-namespace-launcher` and the tested host-only ELF dependency
-candidate described below. These additions are not yet integrated into
+Follow-up audit includes published feature head `357be1d` on
+`feat/service-namespace-launcher`, the host-only ELF dependency candidate and
+actual ARMv5 loader differential described below. The full local incremental
+pipeline passed on this unchanged feature commit. These additions are not yet integrated into
 `develop`; do not confuse feature evidence with an integration/release result.
 Planning bands remain unchanged: no new product acceptance gate has closed.
 
@@ -201,7 +202,11 @@ Continue M4.4 with these concrete acceptance steps:
    both default and 1000:1000 builders pass, original rootfs unchanged. This does
    not start Samba or qualify its runtime/privileges. Seven host refusal/budget
    tests, lint and existing feedback/workflow contracts pass. Full-build hooks
-   now reuse this comparison; their exact-head integration remains pending.
+   now reuse this comparison; the complete local incremental pipeline passed
+   on unchanged `357be1d`: Linux vet/unit/race/fuzz, package/license/SBOM checks,
+   standard ARMv5 smoke, MD v1.0 comparison, two-boot state, native isolation and
+   loader match. Seven generated-artifact hashes passed. This reused existing
+   caches, not an independent clean build, hosted run or hardware qualification.
 2. Inventory Samba's required `dlopen`/NSS modules, configuration, state, sockets
    and privilege transitions. Keep root/UID switching distinct from the generic
    zero-capability child; do not widen that helper or use shared client identity.

@@ -199,6 +199,11 @@ candidate's hashes, aliases and 104 dependencies (105 ELFs including smbd), with
 starting the daemon or changing the original image. Daemon-root/state/privilege
 qualification remains open; see the [fast test instructions](support/QEMU-FAST-TESTS.md#fixed-samba-elf-loader-differential).
 
+The complete local incremental Buildroot pipeline passed on feature commit
+`357be1d`, including this loader check, native isolation and the two-boot state
+fixture. This is not a clean independent build, hosted-CI result or EX4
+qualification; [implementation status](IMPLEMENTATION-STATUS.md) separates them.
+
 The badge tracks the `develop` integration branch, not every feature branch.
 For build evidence, open the relevant workflow run and check its **commit,
 conclusion and artifacts**. A previous green run does not validate a newer
