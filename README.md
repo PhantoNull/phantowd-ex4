@@ -48,6 +48,15 @@ only, `review-required` persists and restart remains blocked. This is a
 synthetic child-process regression, not product service activation or a real
 `smbd` crash test.
 
+An internal Linux `processowner.Set` now sequences a fixed set of child
+processes: every member must pass readiness, a later startup failure rolls back
+earlier members in reverse order, and the aggregate generation advances only
+when the whole set is ready. If one member exits unexpectedly, the set blocks
+restart but leaves healthy peers running until explicit `Stop`; cleanup does
+not clear review. Local ARMv5 QEMU exercises these transitions with disposable
+BusyBox children. This is not yet an SMB/NFS service manager, configuration
+transaction, persistent owner or product activation path.
+
 The local M2.4 Owner implementation now has an in-process, read-only
 `identityowner.SMB(id).Review` for an already quarantined `review-required`
 operation. It verifies the current Unix identity and returns only redacted

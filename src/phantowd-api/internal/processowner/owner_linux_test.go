@@ -365,6 +365,26 @@ func processOwnerChildArguments(args []string) []string {
 
 func runProcessOwnerChild(t *testing.T, mode string) {
 	switch mode {
+	case "stop-marker":
+		paths := processOwnerChildArguments(os.Args)
+		if len(paths) != 2 {
+			t.Fatalf("stop marker requires a path and member name, got %d", len(paths))
+		}
+		stopped := make(chan os.Signal, 1)
+		signal.Notify(stopped, syscall.SIGTERM)
+		<-stopped
+		signal.Stop(stopped)
+		file, err := os.OpenFile(paths[0], os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0600)
+		if err != nil {
+			t.Fatal("open stop-order marker:", err)
+		}
+		if _, err := fmt.Fprintln(file, paths[1]); err != nil {
+			_ = file.Close()
+			t.Fatal("write stop-order marker:", err)
+		}
+		if err := file.Close(); err != nil {
+			t.Fatal("close stop-order marker:", err)
+		}
 	case "ready-exit":
 		paths := processOwnerChildArguments(os.Args)
 		if len(paths) != 3 {

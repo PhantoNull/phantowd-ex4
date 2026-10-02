@@ -356,6 +356,165 @@ func runQEMUSMBTest() (result error) {
 	if err := exerciseQEMUProcessOwnerFailedStartCleanup(); err != nil {
 		return err
 	}
+	if err := exerciseQEMUProcessOwnerSet(); err != nil {
+		return err
+	}
+	return nil
+}
+
+// exerciseQEMUProcessOwnerSet qualifies all-ready startup, rollback and
+// member-level quarantine using only fixed BusyBox children in the disposable
+// guest. It does not launch or control product SMB/NFS daemons.
+func exerciseQEMUProcessOwnerSet() error {
+	const (
+		readyPath   = smbFixtureRoot + "/process-set-ready"
+		releasePath = smbFixtureRoot + "/process-set-release"
+		exitPath    = smbFixtureRoot + "/process-set-exited"
+	)
+	for _, path := range []string{readyPath, releasePath, exitPath} {
+		if err := os.Remove(path); err != nil && !errors.Is(err, os.ErrNotExist) {
+			return err
+		}
+	}
+	defer func() {
+		for _, path := range []string{readyPath, releasePath, exitPath} {
+			_ = os.Remove(path)
+		}
+	}()
+
+	waiting := func(timeout time.Duration) processowner.Spec {
+		return processowner.Spec{
+			Executable: "/bin/busybox", Args: []string{"sleep", "30"},
+			Ready:        func(context.Context) (bool, error) { return true, nil },
+			ReadyTimeout: timeout, ProbeInterval: 10 * time.Millisecond,
+			StopTimeout: time.Second,
+		}
+	}
+
+	complete, err := processowner.NewSet([]processowner.MemberSpec{
+		{Name: "smb", Process: waiting(time.Second)},
+		{Name: "nfs", Process: waiting(time.Second)},
+	})
+	if err != nil {
+		return errors.New("could not construct fixed two-service process set")
+	}
+	started, err := complete.Start(context.Background())
+	if err != nil || started.State != processowner.StateReady || started.Generation != 1 || len(started.Members) != 2 {
+		_, _ = complete.Stop(context.Background())
+		return errors.New("two-service process set did not report ready after both children")
+	}
+	for _, member := range started.Members {
+		if member.Process.State != processowner.StateReady || member.Process.PID <= 1 {
+			_, _ = complete.Stop(context.Background())
+			return errors.New("two-service process set hid a member before readiness")
+		}
+	}
+	stopped, err := complete.Stop(context.Background())
+	if err != nil || stopped.State != processowner.StateStopped || stopped.Generation != 1 {
+		_, _ = complete.Stop(context.Background())
+		return errors.New("two-service process set did not stop cleanly")
+	}
+	for _, member := range stopped.Members {
+		if member.Process.State != processowner.StateStopped || member.Process.PID != 0 || member.Process.Generation != 1 {
+			return errors.New("two-service process set left a child or changed its generation")
+		}
+	}
+	fmt.Println("PHANTOWD_PROCESS_SET_READY members=2 all_ready=true generation=1 clean_stop=true stop_generation=1 scope=qemu-fixture-only")
+
+	failed, err := processowner.NewSet([]processowner.MemberSpec{
+		{Name: "smb", Process: waiting(time.Second)},
+		{Name: "nfs", Process: processowner.Spec{
+			Executable: "/bin/busybox", Args: []string{"sleep", "30"},
+			Ready:        func(context.Context) (bool, error) { return false, nil },
+			ReadyTimeout: 80 * time.Millisecond, ProbeInterval: 10 * time.Millisecond,
+			StopTimeout: time.Second,
+		}},
+	})
+	if err != nil {
+		return errors.New("could not construct process-set rollback fixture")
+	}
+	rolledBack, err := failed.Start(context.Background())
+	if !errors.Is(err, processowner.ErrNotReady) || rolledBack.State != processowner.StateStopped ||
+		rolledBack.Generation != 0 || len(rolledBack.Members) != 2 ||
+		rolledBack.Members[0].Process.State != processowner.StateStopped ||
+		rolledBack.Members[0].Process.Generation != 1 || rolledBack.Members[0].Process.PID != 0 ||
+		rolledBack.Members[1].Process.State != processowner.StateStopped ||
+		rolledBack.Members[1].Process.Generation != 0 || rolledBack.Members[1].Process.PID != 0 {
+		_, _ = failed.Stop(context.Background())
+		return errors.New("later service failure did not roll back the earlier ready child")
+	}
+	fmt.Println("PHANTOWD_PROCESS_SET_ROLLBACK_READY members=2 later_start_failed=true earlier_stopped=true generation=0 review=false scope=qemu-fixture-only")
+
+	const child = `printf ready > "$1"; while [ ! -e "$2" ]; do sleep 0.01; done; printf exited > "$3"; exit 23`
+	observedSet, err := processowner.NewSet([]processowner.MemberSpec{
+		{Name: "smb", Process: processowner.Spec{
+			Executable: "/bin/busybox",
+			Args:       []string{"sh", "-c", child, "phantowd-process-set", readyPath, releasePath, exitPath},
+			Ready: func(ctx context.Context) (bool, error) {
+				if err := ctx.Err(); err != nil {
+					return false, err
+				}
+				_, err := os.Stat(readyPath)
+				return err == nil, nil
+			},
+			ReadyTimeout: time.Second, ProbeInterval: 10 * time.Millisecond,
+			StopTimeout: time.Second,
+		}},
+		{Name: "nfs", Process: waiting(time.Second)},
+	})
+	if err != nil {
+		return errors.New("could not construct process-set observation fixture")
+	}
+	ready, err := observedSet.Start(context.Background())
+	if err != nil || ready.State != processowner.StateReady || len(ready.Members) != 2 {
+		_, _ = observedSet.Stop(context.Background())
+		return errors.New("process-set observation members did not become ready")
+	}
+	if err := os.WriteFile(releasePath, []byte("exit"), 0600); err != nil {
+		_, _ = observedSet.Stop(context.Background())
+		return errors.New("could not release the controlled process-set child")
+	}
+	deadline := time.Now().Add(time.Second)
+	for {
+		if _, err := os.Stat(exitPath); err == nil {
+			break
+		}
+		if time.Now().After(deadline) {
+			_, _ = observedSet.Stop(context.Background())
+			return errors.New("controlled process-set child did not exit")
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+	for {
+		quarantined, observeErr := observedSet.Observe(context.Background())
+		if errors.Is(observeErr, processowner.ErrReviewRequired) {
+			if quarantined.State != processowner.StateReviewRequired || quarantined.Members[0].Process.State != processowner.StateReviewRequired ||
+				quarantined.Members[1].Process.State != processowner.StateReady || quarantined.Members[1].Process.PID <= 1 {
+				_, _ = observedSet.Stop(context.Background())
+				return errors.New("one member exit did not preserve only the healthy peer")
+			}
+			break
+		}
+		if observeErr != nil || time.Now().After(deadline) {
+			_, _ = observedSet.Stop(context.Background())
+			return errors.New("process-set did not detect unexpected member exit")
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+	if _, err := observedSet.Start(context.Background()); !errors.Is(err, processowner.ErrReviewRequired) {
+		_, _ = observedSet.Stop(context.Background())
+		return errors.New("process-set restarted after member review was required")
+	}
+	quarantined, err := observedSet.Stop(context.Background())
+	if !errors.Is(err, processowner.ErrReviewRequired) || quarantined.State != processowner.StateReviewRequired || quarantined.Generation != 1 {
+		return errors.New("explicit process-set stop cleared review after member exit")
+	}
+	for _, member := range quarantined.Members {
+		if member.Process.PID != 0 {
+			return errors.New("explicit process-set stop left a member process running")
+		}
+	}
+	fmt.Println("PHANTOWD_PROCESS_SET_MEMBER_REVIEW_READY exited_member_review=true healthy_peer_preserved=true restart_blocked=true explicit_stop=true review_persistent=true peers_reaped=true scope=qemu-fixture-only")
 	return nil
 }
 

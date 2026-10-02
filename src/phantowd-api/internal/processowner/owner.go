@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 PhantoWD EX4 contributors
 
-// Package processowner provides an internal owner for one foreground service
-// process group. It does not adopt arbitrary processes or persist service
-// state. Callers must supply fixed commands and a service-specific readiness
-// probe; raw diagnostics are trusted in-process data and must never be exposed
-// directly through HTTP or RPC.
+// Package processowner provides internal owners for fixed foreground service
+// processes and ordered process sets. It does not adopt arbitrary processes or
+// persist service state. Callers must supply fixed commands and service-
+// specific readiness probes; raw diagnostics are trusted in-process data and
+// must never be exposed directly through HTTP or RPC.
 package processowner
 
 import (
@@ -61,12 +61,40 @@ type Snapshot struct {
 	DiagnosticsTruncated bool
 }
 
+// MemberSpec binds one fixed service name to its private launch specification.
+// It is accepted only when constructing an internal Set, never from HTTP/RPC.
+type MemberSpec struct {
+	Name    string
+	Process Spec
+}
+
+type MemberSnapshot struct {
+	Name    string
+	Process Snapshot
+}
+
+// SetSnapshot is an internal aggregate observation. Member order is the fixed
+// start order; stop and rollback use its reverse.
+type SetSnapshot struct {
+	State      State
+	Generation uint64
+	Members    []MemberSnapshot
+}
+
 func (Snapshot) MarshalJSON() ([]byte, error) {
 	return nil, errors.New("managed process state is internal and not serializable")
 }
 
 func (*Snapshot) UnmarshalJSON([]byte) error {
 	return errors.New("managed process state cannot be deserialized")
+}
+
+func (SetSnapshot) MarshalJSON() ([]byte, error) {
+	return nil, errors.New("managed process set state is internal and not serializable")
+}
+
+func (*SetSnapshot) UnmarshalJSON([]byte) error {
+	return errors.New("managed process set state cannot be deserialized")
 }
 
 // Owner serializes lifecycle transitions for one process. It intentionally

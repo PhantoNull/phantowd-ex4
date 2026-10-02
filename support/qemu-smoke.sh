@@ -162,6 +162,18 @@ while [ "$attempt" -lt 120 ]; do
             echo 'QEMU did not verify failed-start review persistence after forced cleanup' >&2
             exit 1
         fi
+        if ! grep -F 'PHANTOWD_PROCESS_SET_READY members=2 all_ready=true generation=1 clean_stop=true stop_generation=1 scope=qemu-fixture-only' "$log_file" >/dev/null; then
+            echo 'QEMU did not verify all-ready multi-service startup and clean stop' >&2
+            exit 1
+        fi
+        if ! grep -F 'PHANTOWD_PROCESS_SET_ROLLBACK_READY members=2 later_start_failed=true earlier_stopped=true generation=0 review=false scope=qemu-fixture-only' "$log_file" >/dev/null; then
+            echo 'QEMU did not verify rollback after a later service failed readiness' >&2
+            exit 1
+        fi
+        if ! grep -F 'PHANTOWD_PROCESS_SET_MEMBER_REVIEW_READY exited_member_review=true healthy_peer_preserved=true restart_blocked=true explicit_stop=true review_persistent=true peers_reaped=true scope=qemu-fixture-only' "$log_file" >/dev/null; then
+            echo 'QEMU did not verify member-level process-set review and peer cleanup' >&2
+            exit 1
+        fi
         if ! grep -F 'PHANTOWD_SMB_CREDENTIALS_READY rotated=true old_password_denied=true disabled_denied=true reenabled=true unix_identity_unchanged=true data_preserved=true scope=new-qemu-connections-only' "$log_file" >/dev/null; then
             echo 'Missing Samba credential lifecycle assertion' >&2
             exit 1

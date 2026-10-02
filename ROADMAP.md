@@ -807,13 +807,20 @@ storage. No production roster provider or activation path exists.
   cleanup. A third child times out before readiness while ignoring `SIGTERM`;
   after forced cleanup, a later `Stop` only verifies that its process group is
   gone and preserves `review-required` with restart blocked. The standard
-  smoke passed locally against the working tree based on `e0dc29e` plus the
-  uncommitted regression fix; `qemu-smoke.sh` requires markers for normal
-  start/ready/stop, unexpected exit, forced stop and failed-start quarantine.
-  These synthetic children do not simulate an unexpected crash or forced stop
-  of `smbd` itself. This is
-  not yet the aggregate SMB/NFS service owner, durable service state, reload,
-  or transactional last-known-good configuration replacement.
+  smoke passed locally on the current source tree; `qemu-smoke.sh` requires
+  markers for normal start/ready/stop, unexpected exit, forced stop and
+  failed-start quarantine. A Linux-only `processowner.Set` now owns a fixed,
+  ordered set of child specs: all members must pass readiness before the set
+  advances generation; a later startup failure rolls prior members back in
+  reverse order, and uncertain cleanup quarantines the set. If a member exits
+  unexpectedly, observation quarantines restart but leaves healthy peers
+  running until an explicit stop; stop cleans all peers without clearing
+  review. Host tests cover rollback order, immutable args, serialization
+  refusal, member-level review and peer cleanup. The local ARMv5 QEMU smoke
+  runs the same lifecycle with disposable BusyBox children. These synthetic
+  children do not simulate an unexpected crash or forced stop of `smbd` itself.
+  This is still not an SMB/NFS service manager, persistent service state,
+  configuration reload, last-known-good transaction, or product startup.
 - **M4.3 — Access semantics.** Specify SMB3 grants and denied cases; keep SMB1
   disabled. Support explicit NFS client/network rules, export paths and numeric
   identity/squash policy. NFSv3 compatibility has guest evidence; NFSv4 is a
