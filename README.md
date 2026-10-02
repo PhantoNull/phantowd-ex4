@@ -199,17 +199,16 @@ candidate's hashes, aliases and 104 dependencies (105 ELFs including smbd), with
 starting the daemon or changing the original image. Daemon-root/state/privilege
 qualification remains open; see the [fast test instructions](support/QEMU-FAST-TESTS.md#fixed-samba-elf-loader-differential).
 
-The complete local incremental Buildroot pipeline passed on feature commit
-`357be1d`, including this loader check, native isolation and the two-boot state
-fixture. This is not a clean independent build, hosted-CI result or EX4
-qualification; [implementation status](IMPLEMENTATION-STATUS.md) separates them.
-
 A separate disposable ARMv5 Samba fixture now exercises a restricted root,
 private mount namespace and bounded root capabilities while preserving distinct
 Unix users. Real SMB3 clients verify ownership, access denials, read-only grants,
 denied original paths and one Unicode filename roundtrip. It is not an installed
 helper, trusted product manifest or live-service activation; see the
 [profile and remaining qualification gates](support/SAMBA-RUNTIME-PROFILE.md).
+The complete local incremental pipeline passed on feature commit `fba213d`,
+including these checks, native isolation and the two-boot state fixture. This
+is not an independent clean build, hosted feature result or EX4 qualification;
+[implementation status](IMPLEMENTATION-STATUS.md) separates them.
 
 The badge tracks the `develop` integration branch, not every feature branch.
 For build evidence, open the relevant workflow run and check its **commit,

@@ -4,15 +4,16 @@
 # Implementation status
 
 Code audit: **2026-10-02**, integrated `develop` baseline
-`82998af11a2cacac1e768e0f9cb098938a26c645` (PR #53).
+`3902f9735737b9708022014b1e4703d8d53d6358` (PR #54).
 Use [ROADMAP.md](ROADMAP.md) for the acceptance specification. This snapshot
 distinguishes tested components from deployed product workflows. It is not
 installation approval, a security certification, or an exhaustive line-by-line audit.
 
-Follow-up audit includes published feature head `357be1d` on
+Follow-up audit includes published feature head `fba213d` on
 `feat/service-namespace-launcher`, the host-only ELF dependency candidate and
-actual ARMv5 loader differential described below. The full local incremental
-pipeline passed on this unchanged feature commit. These additions are not yet integrated into
+actual ARMv5 loader differential and separate Samba-root fixture described below.
+The full local incremental pipeline passed on this unchanged feature commit.
+These additions are not yet integrated into
 `develop`; do not confuse feature evidence with an integration/release result.
 Planning bands remain unchanged: no new product acceptance gate has closed.
 
@@ -232,7 +233,11 @@ kernel read-only enforcement, original-path/symlink denial, one UTF-8 filename
 and process-group stop. It retains only six root capabilities for Samba identity
 switching; the generic non-root helper is unchanged. This is disposable tmpfs
 and a cached image overlay, not an Owner-backed product root, daemon activation,
-full dynamic-module/encoding/ACL qualification or the new full-build result.
+full dynamic-module/encoding/ACL qualification. The whole updated incremental
+pipeline also passed on unchanged `fba213d`, including Linux race/fuzz,
+package/license/SBOM, standard ARMv5, MD, two-boot state, native Owner/handoff,
+loader and this Samba experiment. This is not hosted feature CI or an
+independent clean build; existing fixed caches were reused.
 
 Host/QEMU work can continue now. Valuable disks, the live NAS and NAND/MTD
 remain outside this implementation/test scope.
