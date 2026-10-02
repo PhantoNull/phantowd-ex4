@@ -203,3 +203,42 @@ func TestSetObservationQuarantinesUnexpectedMemberWithoutStoppingPeer(t *testing
 		}
 	}
 }
+
+func TestSetRequiresEveryNonRootMemberToUseTheHandoffGroup(t *testing.T) {
+	groups := []uint32{1000}
+	makeProcess := func(runAs *Credentials) Spec {
+		return Spec{
+			Executable: "/bin/busybox", RunAs: runAs,
+			Ready:        func(context.Context) (bool, error) { return false, nil },
+			ReadyTimeout: time.Second, ProbeInterval: 10 * time.Millisecond, StopTimeout: time.Second,
+		}
+	}
+	set, err := NewSet([]MemberSpec{
+		{Name: "primary-group", Process: makeProcess(&Credentials{UID: 1000, GID: 1000})},
+		{Name: "supplementary-group", Process: makeProcess(&Credentials{UID: 1001, GID: 1001, SupplementaryGIDs: groups})},
+	})
+	if err != nil {
+		t.Fatal("create fixed non-root service set:", err)
+	}
+	groups[0] = 1002
+	if !set.AllMembersRunAsNonRootWithGroup(1000) {
+		t.Fatal("set lost its copied handoff-group membership or rejected a primary-group member")
+	}
+	if set.AllMembersRunAsNonRootWithGroup(1001) {
+		t.Fatal("set authorized a group not shared by every member")
+	}
+
+	for name, runAs := range map[string]*Credentials{
+		"implicit":     nil,
+		"root":         {UID: 0, GID: 1000},
+		"system-group": {UID: 1000, GID: 1000, SupplementaryGIDs: []uint32{0}},
+	} {
+		invalid, err := NewSet([]MemberSpec{{Name: "candidate", Process: makeProcess(runAs)}})
+		if err != nil {
+			t.Fatalf("create %s test set: %v", name, err)
+		}
+		if invalid.AllMembersRunAsNonRootWithGroup(1000) {
+			t.Fatalf("set authorized %s for a service handoff", name)
+		}
+	}
+}

@@ -11,7 +11,10 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
 	"runtime"
+	"strings"
+	"syscall"
 	"time"
 
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/processowner"
@@ -27,6 +30,8 @@ const (
 	qemuMDStackMountAnchor = "/srv/phantowd/volumes/qemu-md-stack"
 	qemuMDStackFilesystem  = "66666666-7777-8888-9999-aaaaaaaaaaaa"
 )
+
+const qemuServiceGroupID uint32 = 1000
 
 const (
 	QEMUMDStackFixtureSource   = "/run/phantowd-md-stack"
@@ -79,12 +84,25 @@ func RunQEMUFixture(source string) error {
 
 func exerciseServiceHandoff(source string) (result error) {
 	const (
-		handoffParent  = "/run/phantowd/service-handoff"
-		handoffRoot    = handoffParent + "/mountowner-qemu"
-		markerName     = ".phantowd-service-handoff-proof"
-		serviceReady   = handoffParent + "/mountowner-qemu-ready"
-		serviceStopped = handoffParent + "/mountowner-qemu-stopped"
+		handoffParent      = "/run/phantowd/service-handoff"
+		handoffRoot        = handoffParent + "/mountowner-qemu"
+		serviceControl     = "/run/phantowd/service-control"
+		serviceControlRoot = serviceControl + "/mountowner-qemu"
+		markerName         = ".phantowd-service-handoff-proof"
+		serviceReady       = serviceControlRoot + "/ready"
+		serviceStopped     = serviceControlRoot + "/stopped"
 	)
+	controlPathsCreated := false
+	defer func() {
+		if !controlPathsCreated {
+			return
+		}
+		for _, path := range []string{serviceReady, serviceStopped, serviceControlRoot, serviceControl} {
+			if err := os.Remove(path); err != nil && !errors.Is(err, os.ErrNotExist) {
+				result = errors.Join(result, errors.New("could not remove QEMU service-control fixture path"))
+			}
+		}
+	}()
 	if source != qemuFixtureSource {
 		return errors.New("service handoff requires the fixed disposable ext2 source")
 	}
@@ -97,20 +115,42 @@ func exerciseServiceHandoff(source string) (result error) {
 	if err := os.Chmod(handoffParent, 0711); err != nil {
 		return err
 	}
-	if info, err := os.Lstat(handoffRoot); err == nil || !errors.Is(err, os.ErrNotExist) {
-		if err == nil || info != nil {
-			return errors.New("service-handoff QEMU root already exists")
+	for _, path := range []string{handoffRoot, serviceControl, serviceControlRoot, serviceReady, serviceStopped} {
+		if _, err := os.Lstat(path); err == nil || !errors.Is(err, os.ErrNotExist) {
+			return errors.New("service-handoff QEMU root or acknowledgement path already exists")
 		}
+	}
+	if err := os.Mkdir(handoffRoot, 0710); err != nil {
 		return err
 	}
-	if err := os.Mkdir(handoffRoot, 0711); err != nil {
+	if err := os.Chown(handoffRoot, 0, int(qemuServiceGroupID)); err != nil {
+		_ = os.Remove(handoffRoot)
+		return errors.New("could not assign the QEMU service-handoff group")
+	}
+	if err := os.Chmod(handoffRoot, 0710); err != nil {
+		_ = os.Remove(handoffRoot)
+		return errors.New("could not restrict the QEMU service-handoff path")
+	}
+	if err := os.Mkdir(serviceControl, 0711); err != nil {
+		_ = os.Remove(handoffRoot)
 		return err
 	}
-	for _, path := range []string{serviceReady, serviceStopped} {
-		if _, err := os.Lstat(path); !errors.Is(err, os.ErrNotExist) {
-			_ = os.Remove(handoffRoot)
-			return errors.New("service-runtime QEMU acknowledgement path already exists")
-		}
+	controlPathsCreated = true
+	if err := os.Chmod(serviceControl, 0711); err != nil {
+		_ = os.Remove(handoffRoot)
+		return errors.New("could not prepare the QEMU service-control parent")
+	}
+	if err := os.Mkdir(serviceControlRoot, 0730); err != nil {
+		_ = os.Remove(handoffRoot)
+		return err
+	}
+	if err := os.Chown(serviceControlRoot, 0, int(qemuServiceGroupID)); err != nil {
+		_ = os.Remove(handoffRoot)
+		return errors.New("could not assign the QEMU service-control group")
+	}
+	if err := os.Chmod(serviceControlRoot, 01730); err != nil {
+		_ = os.Remove(handoffRoot)
+		return errors.New("could not restrict the QEMU service-control path")
 	}
 	markerPath := source + "/" + markerName
 	marker, err := os.OpenFile(markerPath, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0644)
@@ -176,11 +216,30 @@ func exerciseServiceHandoff(source string) (result error) {
 		if err != nil {
 			return errors.New("could not create the fixed QEMU mounted-volume roster")
 		}
-		handoff, err = NewServiceHandoff(handoffRoot, set, []string{qemuPlannerVolumeID})
+		handoff, err = NewServiceHandoff(handoffRoot, set, []string{qemuPlannerVolumeID}, qemuServiceGroupID)
 		if err != nil {
 			return errors.New("could not open the private QEMU service-handoff owner")
 		}
+		wrongGroupSet, err := processowner.NewSet([]processowner.MemberSpec{{
+			Name: "wrong-group",
+			Process: processowner.Spec{
+				Executable: "/bin/busybox",
+				RunAs:      &processowner.Credentials{UID: 1000, GID: 1001},
+				Ready: func(ctx context.Context) (bool, error) {
+					return ctx.Err() == nil, ctx.Err()
+				},
+				ReadyTimeout: time.Second, ProbeInterval: 10 * time.Millisecond,
+				StopTimeout: time.Second,
+			},
+		}})
+		if err != nil {
+			return errors.New("could not construct the mismatched-identity QEMU test set")
+		}
+		if _, err := NewServiceRuntime(handoff, wrongGroupSet); !errors.Is(err, ErrServiceRuntimeInvalid) {
+			return errors.New("service runtime accepted a process outside the handoff group")
+		}
 		const child = `trap 'printf stopped > "$4"; exit 0' TERM
+[ "$(id -u)" = 1000 ] && [ "$(id -g)" = 1000 ] && [ "$(id -G)" = 1000 ] || exit 13
 [ "$(cat "$1/$2")" = qualified-source ] || exit 12
 printf ready > "$3"
 while :; do sleep 0.05; done`
@@ -188,6 +247,7 @@ while :; do sleep 0.05; done`
 			Name: "media-consumer",
 			Process: processowner.Spec{
 				Executable: "/bin/busybox",
+				RunAs:      &processowner.Credentials{UID: 1000, GID: qemuServiceGroupID},
 				Args: []string{"sh", "-c", child, "phantowd-handoff-consumer",
 					handoffRoot + "/" + qemuPlannerVolumeID, markerName, serviceReady, serviceStopped},
 				Ready: func(ctx context.Context) (bool, error) {
@@ -220,6 +280,9 @@ while :; do sleep 0.05; done`
 		}
 		if data, err := os.ReadFile(serviceReady); err != nil || string(data) != "ready" {
 			return errors.New("consumer did not read the qualified service path before readiness")
+		}
+		if err := requireUnprivilegedServicePathDenied(handoffRoot + "/" + qemuPlannerVolumeID + "/" + markerName); err != nil {
+			return fmt.Errorf("service handoff did not deny an ungranted principal: %w", err)
 		}
 		bindings, err := handoff.Bindings()
 		if err != nil || len(bindings) != 1 || bindings[0].VolumeID != qemuPlannerVolumeID ||
@@ -259,13 +322,29 @@ while :; do sleep 0.05; done`
 			return errors.New("could not remove the exact source-anchor overmount after handoff cleanup")
 		}
 		overMounted = false
-		fmt.Println("PHANTOWD_SERVICE_HANDOFF_READY descriptor_clone=true target_bound=true source_replacement_not_used=true source_loss_quarantined=true set_lease_held=true explicit_unmount=true scope=disposable-qemu-only")
+		fmt.Println("PHANTOWD_SERVICE_HANDOFF_READY descriptor_clone=true target_bound=true service_uid=1000 service_gid=1000 exact_groups=true ungranted_uid=65534_denied=true mismatched_group_rejected=true source_replacement_not_used=true source_loss_quarantined=true set_lease_held=true explicit_unmount=true scope=disposable-qemu-only")
 		return errQEMUExpectedMountedOwnerReview
 	})
 	if err == errQEMUExpectedMountedOwnerReview {
 		return nil
 	}
 	return err
+}
+
+func requireUnprivilegedServicePathDenied(path string) error {
+	command := exec.Command("/bin/busybox", "cat", path)
+	command.SysProcAttr = &syscall.SysProcAttr{Credential: &syscall.Credential{
+		Uid: 65534, Gid: 65534, Groups: []uint32{},
+	}}
+	output, err := command.CombinedOutput()
+	if err == nil {
+		return fmt.Errorf("uid 65534 unexpectedly read the service marker %q", output)
+	}
+	var exitErr *exec.ExitError
+	if !errors.As(err, &exitErr) || exitErr.ExitCode() != 1 || !strings.Contains(strings.ToLower(string(output)), "permission denied") {
+		return fmt.Errorf("ungranted-reader probe failed unexpectedly: %w", err)
+	}
+	return nil
 }
 
 // WithQEMUMountedEvidence keeps a fixed-identity QEMU bind mount alive while a

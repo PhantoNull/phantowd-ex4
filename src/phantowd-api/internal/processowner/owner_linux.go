@@ -291,7 +291,8 @@ func validateSpec(spec Spec) error {
 		strings.ContainsRune(spec.Executable, '\x00') || spec.Ready == nil ||
 		spec.ReadyTimeout <= 0 || spec.ReadyTimeout > maxReadyTimeout ||
 		spec.ProbeInterval < 10*time.Millisecond || spec.ProbeInterval > maxProbePeriod ||
-		spec.StopTimeout <= 0 || spec.StopTimeout > maxStopTimeout || len(spec.Args) > 64 {
+		spec.StopTimeout <= 0 || spec.StopTimeout > maxStopTimeout || len(spec.Args) > 64 ||
+		!validCredentials(spec.RunAs) {
 		return ErrInvalid
 	}
 	for _, arg := range spec.Args {
@@ -300,6 +301,26 @@ func validateSpec(spec Spec) error {
 		}
 	}
 	return nil
+}
+
+func validCredentials(credentials *Credentials) bool {
+	if credentials == nil {
+		return true
+	}
+	if credentials.UID > 60000 || credentials.GID > 60000 || len(credentials.SupplementaryGIDs) > 32 {
+		return false
+	}
+	seen := make(map[uint32]struct{}, len(credentials.SupplementaryGIDs))
+	for _, gid := range credentials.SupplementaryGIDs {
+		if gid > 60000 {
+			return false
+		}
+		if _, exists := seen[gid]; exists {
+			return false
+		}
+		seen[gid] = struct{}{}
+	}
+	return true
 }
 
 func startProcess(spec Spec) (*managedProcess, error) {
@@ -314,7 +335,14 @@ func startProcess(spec Spec) (*managedProcess, error) {
 	command.Env = []string{"PATH=/usr/sbin:/usr/bin:/sbin:/bin", "LC_ALL=C"}
 	command.ExtraFiles = []*os.File{executable}
 	command.Stdout, command.Stderr = diagnostics, diagnostics
-	command.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+	attributes := &syscall.SysProcAttr{Setpgid: true}
+	if spec.RunAs != nil {
+		attributes.Credential = &syscall.Credential{
+			Uid: spec.RunAs.UID, Gid: spec.RunAs.GID,
+			Groups: append([]uint32(nil), spec.RunAs.SupplementaryGIDs...),
+		}
+	}
+	command.SysProcAttr = attributes
 	command.WaitDelay = time.Second
 	if err := command.Start(); err != nil {
 		_ = executable.Close()

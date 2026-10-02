@@ -41,12 +41,23 @@ const (
 // re-enter the same Owner.
 type ReadinessProbe func(context.Context) (ready bool, err error)
 
+// Credentials fixes the Unix identity and exact supplementary-group set for
+// one child. A nil slice deliberately means no supplementary groups, not
+// "inherit the owner's groups".
+type Credentials struct {
+	UID               uint32
+	GID               uint32
+	SupplementaryGIDs []uint32
+}
+
 // Spec is an internal fixed launch description, not an HTTP/RPC input. The
 // owner validates and pins Executable before launch, passes a minimal fixed
-// environment, and creates a new process group for the child.
+// environment, creates a new process group for the child, and applies
+// Credentials before exec when RunAs is non-nil.
 type Spec struct {
 	Executable    string
 	Args          []string
+	RunAs         *Credentials
 	Ready         ReadinessProbe
 	ReadyTimeout  time.Duration
 	ProbeInterval time.Duration

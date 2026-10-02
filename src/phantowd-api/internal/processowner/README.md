@@ -11,6 +11,15 @@ bounded 32 KiB diagnostics tail, and reports `ready` only after the supplied
 probe succeeds. The probe must be service-specific, bounded and must not
 re-enter the same owner.
 
+`Spec.RunAs` optionally fixes a numeric UID, primary GID and exact
+supplementary-group list for the child before exec; `NewSet` copies that
+credential tuple and group slice. A nil `RunAs` retains the caller's current
+credentials and is not accepted by the storage-backed `ServiceRuntime`.
+`ServiceRuntime` also requires every fixed member to be non-root, use reserved
+service IDs 1000..60000, and belong to its handoff group. This establishes
+process identity and handoff-path traversal only; it does not provision Unix
+accounts, groups, or file-level share ACLs.
+
 `Observe` does not start, stop, adopt or restart a process. If a process that
 previously reached readiness has exited, observation moves the owner to
 `review-required`; a new start is blocked. `Stop` performs bounded graceful
