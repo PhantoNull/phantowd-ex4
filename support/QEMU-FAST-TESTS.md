@@ -1,5 +1,30 @@
 # Fast API and file-service integration checks
 
+## Guest entrypoint mode regression
+
+Docker Desktop source mounts can make scripts executable even when Git records
+them as `100644`. That can mask a cold Linux build's PID-1 boot failure. The
+early feedback test checks the Git modes of directly executed guest entrypoints
+(or actual executable access for a source archive), before compilation.
+
+An optional differential ARMv5 regression uses the same pinned read-only
+base/toolchain mounts and executable disposable `/tmp` described below:
+
+```sh
+sh /src/support/tests/test-qemu-md-v10-init-mode.sh \
+    /base /toolchain/bin/go /src /toolchain/sbin/debugfs
+```
+
+It copies the base images into tmpfs, sets only the MD fixture init's inode
+mode to `0644`, requires kernel `EACCES`/panic, then sets `0755` and requires
+the full MD v1.0/Owner fixture to pass. The original rootfs hash must remain
+unchanged. Temporary images/logs and guest processes are cleaned up. It
+never attaches host devices or qualifies hardware. Normal CI needs no extra
+negative boot: the fast source-mode contract and standard positive MD fixture
+cover this regression's boundary.
+
+## Current-source overlay lane
+
 `container/test-qemu-api-overlay.sh` is an optional developer feedback lane.
 It rebuilds the Go API with the pinned compiler and injects it, the current
 broker mdev rule, guest readiness script, NFS fixture helper and x/sys license

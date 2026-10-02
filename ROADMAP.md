@@ -209,6 +209,13 @@ button to an unqualified backend simply because the screen exists.
   even if later tests fail. This does not establish a fix for historical fixture
   failures or independent clean-build reproducibility. Cancel obsolete merged-PR
   runs only after confirming that the integration run covers them.
+  A differential ARMv5 regression found the MD fixture PID-1 script recorded
+  non-executable in Git, masked by Docker Desktop source permissions. Mode
+  `0644` produces kernel `EACCES`/panic; changing only the inode to `0755`
+  passes the MD/Owner fixture with the base image unchanged. Correct the Git
+  mode and check direct guest entrypoint modes before compilation. Hosted
+  exact-head confirmation remains necessary; historical state-unmount EBUSY
+  is a separate unresolved issue.
 - **M0.4 — Maintain release inputs.** Dependency update changes include source
   signatures/hashes, ARMv5 compatibility, package configuration, vulnerability
   review, license material and regenerated SBOM. Test the selected package set.

@@ -85,6 +85,14 @@ Hosted evidence is separate:
   passed standard guest smoke and failed the MD v1.0 fixture. The workflow did
   not upload its saved failure log. The current baseline passes locally; the
   hosted fixture failure's precise root cause remains unresolved.
+  Follow-up differential QEMU testing found a concrete clean-checkout defect:
+  the MD fixture's PID-1 script was recorded as Git mode `100644`, while Docker
+  Desktop local builds installed it executable. Setting only the copied image's
+  init inode to `0644` reproduced kernel `EACCES`/panic; `0755` passed the complete
+  MD/Owner fixture. The executable Git-mode correction and an early source-mode
+  regression now address this discrepancy. Exact-head hosted confirmation is
+  still required; the old run's missing detailed log prevents proving that no
+  additional defect was involved.
 - Current workflow concurrency separates PR and branch refs: a merged PR can
   continue compiling alongside its `develop` integration. Cancel only a
   confirmed superseded run, not a still-needed qualification run.

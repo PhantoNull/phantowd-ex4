@@ -2,6 +2,7 @@
 """Regression contracts for early feedback and failed-guest diagnostics."""
 
 import pathlib
+import os
 import subprocess
 import tempfile
 import unittest
@@ -24,6 +25,31 @@ def save_log(destination, source):
 
 
 class BuildFeedbackTests(unittest.TestCase):
+    def test_direct_guest_entrypoints_have_executable_source_mode(self):
+        # Docker Desktop bind mounts can mask a non-executable Git mode.
+        # Check the index when available, not the Windows-host file mode.
+        paths = [
+            "board/qemu/armv5/rootfs-overlay/usr/lib/phantowd/"
+            + filename for filename in (
+                "qemu-md-v10-init.sh", "qemu-state-init.sh",
+                "qemu-selftest-once.sh",
+            )
+        ]
+        for path in paths:
+            with self.subTest(path=path):
+                if (ROOT / ".git").exists():
+                    result = subprocess.run(
+                        ["git", "-c", f"safe.directory={ROOT}",
+                         "-C", str(ROOT), "ls-files", "--stage",
+                         "--", path], check=True, text=True,
+                        capture_output=True,
+                    )
+                    self.assertTrue(result.stdout.startswith("100755 "))
+                else:
+                    # Source archives have no index; check their Unix mode.
+                    self.assertTrue((ROOT / path).is_file())
+                    self.assertTrue(os.access(ROOT / path, os.X_OK))
+
     def test_pinned_host_tests_precede_full_build(self):
         script = (ROOT / "support/container/build-qemu.sh").read_text()
         toolchain = script.index("    host-go-bin\n")

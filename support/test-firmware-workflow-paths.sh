@@ -201,6 +201,7 @@ support/container/test-api.sh
 support/container/build-qemu.sh
 support/container/save-qemu-failure-log.sh
 support/tests/test-qemu-build-feedback.py
+support/tests/test-qemu-md-v10-init-mode.sh
 support/docker/entrypoint.sh
 support/qemu-smoke.sh
 support/qemu-state-reboot.sh
