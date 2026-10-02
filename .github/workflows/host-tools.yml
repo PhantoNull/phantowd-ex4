@@ -4,6 +4,8 @@ on:
   push:
     branches: [main, develop]
     paths:
+      - 'support/tests/test-smart-replay.sh'
+      - 'support/tests/test-smart-replay-boundaries.py'
       - 'tools/phantowd-lab/**'
       - 'src/phantowd-service-launcher/**'
       - 'support/test-service-launcher.ps1'
@@ -42,6 +44,8 @@ on:
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
     paths:
+      - 'support/tests/test-smart-replay.sh'
+      - 'support/tests/test-smart-replay-boundaries.py'
       - 'tools/phantowd-lab/**'
       - 'src/phantowd-service-launcher/**'
       - 'support/test-service-launcher.ps1'
