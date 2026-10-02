@@ -60,10 +60,13 @@ The separate `feat/runtime-bundle-verification` follow-up adds an internal,
 read-only code-tree inspection prerequisite for M4.4. A privately copied plan
 checks complete census, read-only mount identity, hashes, file permissions and
 exact direct aliases without symlink traversal or cross-mount opens. A focused
-working-tree ARMv5 Samba fixture passes the actual tree and five altered-plan
+exact-commit `e8d347d` ARMv5 Samba fixture passes the actual tree and five altered-plan
 refusals before adding test configuration/state/grants; all prior CP850/stream/
 ACL/inheritance/client/group-stop cases still pass. It is not an approved
 manifest, retained lease, root builder, service activation or hosted result.
+Linux package vet/race, 25,000 bounded fuzz executions and ARMv5 test cross-
+compilation also pass on that commit. The earlier broader working-tree Linux
+API vet/race suite passed; neither result is a full new Buildroot integration.
 See the [internal contract](src/phantowd-api/internal/runtimebundle/README.md).
 
 Percentages are **engineering planning estimates**, not measured test coverage,
