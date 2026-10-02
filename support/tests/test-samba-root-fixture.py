@@ -43,7 +43,8 @@ class SambaRootFixture(unittest.TestCase):
         self.assertEqual(len(manifest.splitlines()), 7)
         self.assertEqual(manifest.count("b" * 64), 1)
         self.assertIn(hashlib.sha256(CATALOG.encode()).hexdigest(), manifest)
-        self.assertNotEqual(manifest, fixture.merge(reports(), CATALOG + "# x\n"))
+        self.assertNotEqual(
+            manifest, fixture.merge(reports(), CATALOG + "# x\n"))
 
     def test_partial_reordered_or_authorized_inputs_refused(self):
         values = [reports()[:2], reports()[:3], reports()[:4], reports()[::-1]]
