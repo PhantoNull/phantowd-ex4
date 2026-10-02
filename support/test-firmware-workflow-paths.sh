@@ -204,6 +204,9 @@ done
 # Runtime experiments and their QEMU kernel-input helper are not EX4 build
 # inputs. Keep native refusals and ARMv5 integration without a redundant B3.
 for path in 'support/test-runtime-loader.ps1' \
+    'support/test-runtime-owner.ps1' \
+    'support/tests/runtime-owner-init.sh' \
+    'support/tests/test-qemu-runtime-owner.sh' \
     'support/test-samba-root.ps1' \
     'support/tests/runtime_loader_fixture.py' \
     'support/tests/test-runtime-loader-fixture.py' \

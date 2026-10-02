@@ -45,6 +45,17 @@ network client without a separate redaction boundary. Non-Linux builds return
 
 ## Fixed restricted-root child
 
+`NewPinnedSet` is a separate internal constructor that copies fixed specs and
+duplicates corresponding read-only, root-owned executable descriptors. Start
+uses those pins directly rather than reopening a pathname; the constructor
+does not verify hashes, loader closure, a manifest or an isolated root.
+Its private Set is not exposed. `Close` refuses while any member still owns a
+process, including forced/uncertain cleanup; explicit Stop must confirm every
+group reaped before descriptors can be released. Review persists and no
+automatic restart is added. The retained code-tree Owner in `runtimebundle`
+provides stricter fixed-tree/static/non-root composition; existing New/NewSet
+and IsolatedOwner behavior is otherwise unchanged.
+
 Linux `NewIsolated` constructs an `IsolatedOwner` around the separate native
 launcher. It fixes and copies the spec/credentials once, pins independent
 read-only executable/helper and `O_PATH` root descriptors, validates root-owned

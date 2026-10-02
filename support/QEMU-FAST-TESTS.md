@@ -1,5 +1,21 @@
 # Fast API and file-service integration checks
 
+## Retained static-code Owner
+
+`support/test-runtime-owner.ps1` uses the existing pinned image/workspace and
+hash-verified QEMU base, with read-only mounts and no network/host-device
+attachment. It never builds/pulls an image or creates a volume. Its rootfs copy,
+compiler cache and guest data are disposable; the compile cache is removed
+before the image copy to fit the 512 MiB tmpfs budget.
+
+The separate guest has a finite 120-second budget, no retries and no Samba
+entropy/network readiness dependency. A copied static fixture checks code/root
+pin lifetime, caller close, immutable launch inputs, duplicate-start refusal,
+stop/reap before release, same-byte inode replacement before launch, live root
+drift and permanent review after restoration. Original base hashes must remain
+unchanged. This tests no product HTTP/service activation, dynamic Samba profile,
+NFS export authority, physical disk or EX4 hardware.
+
 ## Fixed Samba ELF loader differential
 
 `support/test-runtime-loader.ps1` is a local fast lane using only an existing

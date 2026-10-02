@@ -337,6 +337,13 @@ func startProcess(spec Spec) (*managedProcess, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer executable.Close()
+	return startPinnedProcess(spec, executable)
+}
+
+// The caller owns executable and keeps it open through command.Start. ExtraFiles
+// gives the child an independent descriptor; this function never closes the pin.
+func startPinnedProcess(spec Spec, executable *os.File) (*managedProcess, error) {
 	diagnostics := newDiagnosticRing()
 	command := exec.Command("/proc/self/fd/3")
 	command.Args = append([]string{spec.Executable}, spec.Args...)
@@ -354,10 +361,8 @@ func startProcess(spec Spec) (*managedProcess, error) {
 	command.SysProcAttr = attributes
 	command.WaitDelay = time.Second
 	if err := command.Start(); err != nil {
-		_ = executable.Close()
 		return nil, err
 	}
-	_ = executable.Close()
 	process := &managedProcess{command: command, pid: command.Process.Pid,
 		done: make(chan struct{}), stopTimeout: spec.StopTimeout, diagnostics: diagnostics}
 	go process.wait()

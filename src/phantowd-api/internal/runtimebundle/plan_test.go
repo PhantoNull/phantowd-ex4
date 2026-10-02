@@ -15,6 +15,15 @@ func exampleFile(name string) File {
 	return File{Path: name, SHA256: sha256.Sum256([]byte("fixed")), Size: 5, Mode: 0555}
 }
 
+func TestOwnerObservationCannotBecomeANetworkToken(t *testing.T) {
+	if _, err := json.Marshal(OwnerSnapshot{}); err == nil {
+		t.Fatal("internal Owner observation became serializable")
+	}
+	if err := json.Unmarshal([]byte(`{"State":"ready"}`), &OwnerSnapshot{}); err == nil {
+		t.Fatal("network data could construct Owner evidence")
+	}
+}
+
 func TestPlanCopiesCanonicalCodeOnlyInputs(t *testing.T) {
 	files := []File{exampleFile("usr/bin/service"), exampleFile("lib/libfixed.so")}
 	aliases := []Alias{{"lib/libfixed.so.1", "lib/libfixed.so"}}

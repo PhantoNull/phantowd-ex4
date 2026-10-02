@@ -25,6 +25,21 @@ def save_log(destination, source):
 
 
 class BuildFeedbackTests(unittest.TestCase):
+    def test_runtime_code_owner_disposable_lane_is_bounded(self):
+        script = (ROOT / "support/container/build-qemu.sh").read_text()
+        self.assertIn('support/tests/test-qemu-runtime-owner.sh', script)
+        self.assertIn('qemu-runtime-owner-failure.log', script)
+        fixture = (ROOT / "support/tests/test-qemu-runtime-owner.sh")
+        fixture = fixture.read_text()
+        self.assertIn('format=raw,if=scsi,snapshot=on', fixture)
+        self.assertIn('rootwait ro panic=-1', fixture)
+        self.assertIn('timeout --signal=TERM --kill-after=5 120', fixture)
+        self.assertEqual(fixture.count('qemu-system-arm \\\n'), 1)
+        self.assertIn('PHANTOWD_CODE_OWNER_BASE_UNCHANGED', fixture)
+        release = fixture.index('rm -rf "$scratch/go-cache"',
+                                fixture.index('"$go_binary" build'))
+        self.assertLess(release, fixture.index('cp "$base/rootfs.ext2"'))
+
     def test_smoke_budget_is_explicit_finite_and_not_a_retry(self):
         script = (ROOT / "support/qemu-smoke.sh").read_text()
         self.assertIn(

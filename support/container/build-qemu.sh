@@ -50,6 +50,8 @@ shellcheck "$external_dir/support/tests/test-qemu-samba-root.sh" \
     "$external_dir/support/tests/samba-root-init.sh"
 shellcheck "$external_dir/support/tests/test-qemu-service-launcher.sh" \
     "$external_dir/support/tests/service-launcher-init.sh"
+shellcheck "$external_dir/support/tests/test-qemu-runtime-owner.sh" \
+    "$external_dir/support/tests/runtime-owner-init.sh"
 shellcheck "$external_dir/support/tests/test-qemu-smart-report.sh" \
     "$external_dir/support/tests/smart-report-init.sh"
 shellcheck "$external_dir/support/tests/test-qemu-smart-replay.sh" \
@@ -448,6 +450,15 @@ TMPDIR=/phantowd-qemu-fixture-tmp sh "$external_dir/support/tests/test-qemu-serv
     "$artifact_dir" "$output_dir/host/bin/arm-buildroot-linux-gnueabi-gcc" \
     "$output_dir/host/sbin/debugfs" "$external_dir" \
     "$artifact_dir/qemu-service-launcher-failure.log" "$output_dir/host/bin/go"
+
+# Verify retained code ownership separately from Samba to avoid its entropy/
+# network readiness waits hiding or inflating static lifecycle test feedback.
+if ! TMPDIR=/phantowd-qemu-fixture-tmp sh "$external_dir/support/tests/test-qemu-runtime-owner.sh" \
+    "$artifact_dir" "$output_dir/host/bin/go" "$output_dir/host/sbin/debugfs" \
+    "$external_dir" "$artifact_dir/qemu-runtime-owner-failure.log"; then
+    echo "Preserved failed runtime-code Owner diagnostics in $artifact_dir" >&2
+    exit 1
+fi
 
 # Compare only the just-built public Samba dependencies with the real loader.
 # This does not start smbd or approve a daemon-root/privilege profile.

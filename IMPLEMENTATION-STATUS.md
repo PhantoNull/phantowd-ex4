@@ -4,18 +4,23 @@
 # Implementation status
 
 Code audit: **2026-10-02**, integrated `develop` baseline
-`086e717dc7b3f1103a82a53d025d4adc49587a48` (PR #57).
+`59f28bea5f2fe377f52f8c8b0e123129f3939a89` (PR #58).
 Use [ROADMAP.md](ROADMAP.md) for the acceptance specification. This snapshot
 distinguishes tested components from deployed product workflows. It is not
 installation approval, a security certification, or an exhaustive line-by-line audit.
 
-PR #57 integrated the read-only code-bundle inspector and QEMU-only fresh
+PR #58 integrated the code-ACL refusal correction and offline SMART parser
+after exact head `2e8eb6d` passed all host/B3/QEMU checks. The producer replay
+and retained-code Owner increments described below remain feature work; this
+integrated baseline does not qualify their hosted results or the EX4 product.
+
+PR #57 previously integrated the read-only code-bundle inspector and QEMU-only fresh
 stager after exact head `870ea9d` passed
 [host](https://github.com/PhantoNull/phantowd-ex4/actions/runs/37039612689) and
 [QEMU/DTB](https://github.com/PhantoNull/phantowd-ex4/actions/runs/37039612553)
 checks. Its merged branch was removed after complete-tree equivalence was
-verified. The separate ACL correction and offline SMART follow-up described
-below are not yet integrated/hosted-qualified merely because PR #57 passed.
+verified. Its result alone did not qualify the later ACL and SMART increments;
+their integration is now separately established by PR #58.
 
 PR #55 integrated the native launcher, internal isolated runtime, host ELF
 dependency candidate, actual ARMv5 loader differential and separate Samba-root
@@ -70,6 +75,20 @@ removed. QEMU-only experiment paths no longer trigger an unchanged EX4 kernel
 rebuild; actual board/build input changes remain covered.
 
 ## Roadmap comparison
+
+The retained runtime-code Owner prototype privately holds the verified root and
+all regular code files, plus fixed independently pinned process executables.
+Its initial adapter supports only static ELF/non-root children; it does not
+authorize dynamic Samba or NFS. Host/race and disposable ARMv5 fixtures cover
+caller descriptor closure, immutable launch inputs, duplicate Start without
+side effects, canceled teardown with group reaping, identical-byte executable
+replacement and live root drift with permanent review after restoration.
+Forced process cleanup keeps pins until explicit group-reap verification.
+The dedicated local wrapper and full QEMU fixture reuse cached read-only inputs,
+bounded tmpfs and unchanged base hashes. This is component evidence, not hosted
+qualification, persistent review/recovery, complete service activation or EX4
+hardware qualification. See the
+[Owner contract](src/phantowd-api/internal/runtimebundle/README.md).
 
 The subsequent code-permission audit reproduced an undeclared root access ACL
 being accepted by `runtimebundle.Inspect` despite unchanged mode bits and hashes.

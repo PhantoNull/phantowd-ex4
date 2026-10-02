@@ -3,8 +3,8 @@
 
 # Internal code-only runtime bundle inspection
 
-`runtimebundle` is a read-only prerequisite for M4.4 root construction, not a
-builder, approved runtime manifest or execution/installation token. Ordinary
+`runtimebundle` provides code verification and an internal retained-code Owner
+prototype for M4.4, not an approved runtime manifest or installation token. Ordinary
 product startup does not call it. It has no HTTP/RPC or JSON input/output.
 The separate `qemu && linux` staging prototype below is excluded from ordinary
 builds; it does not turn the read-only inspector into a product write service.
@@ -83,8 +83,8 @@ The fixed QEMU fixture now uses this prototype instead of shell `cp`. Actual
 guest checks require fresh independent inodes, five refusals (occupied tree,
 wrong digest, writable source, canceled context and source symlink) plus dirty
 tree re-entry refusal. The failed digest's file remains 0600 and root 0700.
-This source-only prototype has no authenticated manifest, persistent recovery,
-retained root owner/lease, service activation or installable product API.
+The stager itself has no authenticated manifest, persistent recovery, retained
+root ownership, service activation or installable product API.
 
 The generic service launcher and Samba's bounded root profile are unchanged.
 Neither this test helper nor probe is installed by a firmware package. Use the
@@ -92,3 +92,53 @@ existing [focused Samba wrapper](../../../../support/test-samba-root.ps1);
 it reuses read-only cache/base inputs and bounded temporary space, without new
 images or persistent volumes. Host tests cover plan copying/budgets/hierarchy,
 serialization refusal, writable-root refusal and safe Linux open flags.
+
+## Retained code and static-process Owner
+
+Linux `Plan.NewOwner(ctx, root, specs)` privately duplicates the root and retains
+every verified regular file. It copies a fixed set of 1..8 process specifications
+and owns their independently pinned executable descriptors. There is no handle
+getter, borrowed close authority, backend substitution or path selection at
+`Start`. Descriptor duplication uses `SyscallConn.Control`, protecting it from
+concurrent caller close/reuse. `Inspect` uses the same safe root duplication.
+
+The initial process adapter accepts only declared **static ELF** executables,
+with explicit non-root service credentials (IDs 1000..60000). It executes the
+pinned descriptor, not a reopened pathname. This is not the dynamic Samba
+adapter: no host loader, root impersonation, namespace, storage grant, NFS
+control, configuration or extra capabilities are approved by this constructor.
+The original generic/isolated process-owner profiles remain separate.
+
+Before launch, after readiness and during explicit `Observe`, the Owner checks
+the complete bounded census/hashes and original metadata/inode/mount identities,
+including directories and aliases. A same-byte replacement is not the original
+retained object. Drift or an uncertain lifecycle result permanently requires
+review and triggers one bounded process-set stop. Restoring inputs does not
+clear review or restart. A duplicate Start reports already-running without
+stopping healthy processes. Snapshot member slices are independent and JSON
+serialization is refused.
+
+`Close(ctx)` explicitly stops and waits for all owned groups before releasing
+any code/root pin, even if that accepted teardown context is canceled. Unknown
+process ownership blocks all pin release. A later explicit close may verify
+earlier termination, without resending signals or clearing review. This is
+in-memory ownership only: review is not a durable recovery journal, and a
+privileged writer through another mount still requires external serialization.
+Revalidation is bounded local I/O, not asynchronous integrity enforcement or a
+guarantee that a kernel stall is interruptible. No polling/HTTP/product startup
+calls this Owner; non-Linux construction/lifecycle is unavailable.
+
+`support/test-runtime-owner.ps1` runs its own finite ARMv5 QEMU fixture with a
+static test child, private guest mount namespace and tmpfs code tree. It verifies
+caller-close survival, immutable spec/snapshot, pinned launch, duplicate Start,
+canceled teardown, group reaping, identical-byte inode replacement before
+launch, live root drift and permanent review after restoration. This separate
+120-second guest does not inherit Samba entropy/network readiness waits. It uses
+only a read-only cached base/workspace and a 512 MiB disposable tmpfs, removes
+the compile cache before copying rootfs, checks base hashes, and creates no
+persistent image/volume or physical-device attachment. Full QEMU integration
+includes the same fixture and preserves a bounded failure log.
+
+Trusted signed/model/ABI inputs, dynamic Samba-specific composition and
+privileges, storage leases, durable recovery and EX4/product qualification
+remain open. Passing this prototype does not activate SMB or NFS.
