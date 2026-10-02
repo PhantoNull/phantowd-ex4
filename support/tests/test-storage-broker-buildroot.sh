@@ -301,4 +301,11 @@ process_owner_force_stop_marker=$(sed -n 's/.*fmt\.Println("\(PHANTOWD_PROCESS_O
 grep -F "$process_owner_force_stop_marker" "$repo_root/support/qemu-smoke.sh" >/dev/null ||
     fail 'QEMU smoke assertion must match the process-owner forced-stop marker'
 
+process_owner_failed_start_marker=$(sed -n 's/.*fmt\.Println("\(PHANTOWD_PROCESS_OWNER_FAILED_START_REVIEW_READY[^\"]*\)").*/\1/p' \
+    "$repo_root/src/phantowd-api/smb_io_qemu_linux.go")
+[ -n "$process_owner_failed_start_marker" ] ||
+    fail 'guest self-test must define the process-owner failed-start review marker'
+grep -F "$process_owner_failed_start_marker" "$repo_root/support/qemu-smoke.sh" >/dev/null ||
+    fail 'QEMU smoke assertion must match the failed-start review marker'
+
 printf 'Read-only storage broker Buildroot contracts passed\n'

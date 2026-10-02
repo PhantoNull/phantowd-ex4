@@ -353,6 +353,9 @@ func runQEMUSMBTest() (result error) {
 	if err := exerciseQEMUProcessOwnerForcedStop(); err != nil {
 		return err
 	}
+	if err := exerciseQEMUProcessOwnerFailedStartCleanup(); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -510,6 +513,55 @@ func exerciseQEMUProcessOwnerForcedStop() (result error) {
 	}
 	cleanupNeeded = false
 	fmt.Println("PHANTOWD_PROCESS_OWNER_FORCE_STOP_READY sigterm_ignored=true forced_termination=true review_required=true restart_blocked=true group_reaped=true scope=qemu-fixture-only")
+	return nil
+}
+
+// Verify that a forced cleanup while readiness never succeeds remains
+// quarantined when a caller later asks to stop again. This catches review
+// state being lost merely because a second observation finds the group gone.
+func exerciseQEMUProcessOwnerFailedStartCleanup() (result error) {
+	readyPath := filepath.Join(smbFixtureRoot, "process-owner-failed-start-ready")
+	if err := os.Remove(readyPath); err != nil && !errors.Is(err, os.ErrNotExist) {
+		return err
+	}
+	defer os.Remove(readyPath)
+
+	owner := processowner.New()
+	started, startErr := owner.Start(context.Background(), processowner.Spec{
+		Executable: "/bin/busybox",
+		Args: []string{"sh", "-c", `trap '' TERM; printf ready > "$1"; while :; do :; done`,
+			"phantowd-process-owner", readyPath},
+		Ready: func(ctx context.Context) (bool, error) {
+			if err := ctx.Err(); err != nil {
+				return false, err
+			}
+			_, err := os.Stat(readyPath)
+			if errors.Is(err, os.ErrNotExist) {
+				return false, nil
+			}
+			return false, err
+		},
+		ReadyTimeout: 250 * time.Millisecond, ProbeInterval: 20 * time.Millisecond,
+		StopTimeout: 50 * time.Millisecond,
+	})
+	if !errors.Is(startErr, processowner.ErrNotReady) ||
+		!errors.Is(startErr, processowner.ErrReviewRequired) ||
+		started.State != processowner.StateReviewRequired || started.Generation != 0 || started.PID <= 1 {
+		return fmt.Errorf("failed start did not quarantine forced cleanup: snapshot=%+v err=%v", started, startErr)
+	}
+
+	stopped, stopErr := owner.Stop(context.Background())
+	if !errors.Is(stopErr, processowner.ErrReviewRequired) ||
+		stopped.State != processowner.StateReviewRequired || stopped.Generation != 0 || stopped.PID != 0 {
+		return fmt.Errorf("a later stop cleared failed-start review state: snapshot=%+v err=%v", stopped, stopErr)
+	}
+	if err := syscall.Kill(-started.PID, 0); !errors.Is(err, syscall.ESRCH) {
+		return fmt.Errorf("failed-start process group remains or is uncertain: %v", err)
+	}
+	if _, err := owner.Start(context.Background(), processowner.Spec{}); !errors.Is(err, processowner.ErrReviewRequired) {
+		return fmt.Errorf("process owner restarted after failed-start cleanup: %v", err)
+	}
+	fmt.Println("PHANTOWD_PROCESS_OWNER_FAILED_START_REVIEW_READY failed_start=true forced_cleanup=true review_persistent=true restart_blocked=true group_reaped=true scope=qemu-fixture-only")
 	return nil
 }
 

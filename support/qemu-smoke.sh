@@ -158,6 +158,10 @@ while [ "$attempt" -lt 120 ]; do
             echo 'QEMU did not verify process-owner forced-stop quarantine' >&2
             exit 1
         fi
+        if ! grep -F 'PHANTOWD_PROCESS_OWNER_FAILED_START_REVIEW_READY failed_start=true forced_cleanup=true review_persistent=true restart_blocked=true group_reaped=true scope=qemu-fixture-only' "$log_file" >/dev/null; then
+            echo 'QEMU did not verify failed-start review persistence after forced cleanup' >&2
+            exit 1
+        fi
         if ! grep -F 'PHANTOWD_SMB_CREDENTIALS_READY rotated=true old_password_denied=true disabled_denied=true reenabled=true unix_identity_unchanged=true data_preserved=true scope=new-qemu-connections-only' "$log_file" >/dev/null; then
             echo 'Missing Samba credential lifecycle assertion' >&2
             exit 1

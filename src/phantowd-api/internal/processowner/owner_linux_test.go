@@ -241,6 +241,36 @@ func TestForcedTerminationCleansChildButRequiresReview(t *testing.T) {
 	}
 }
 
+func TestFailedStartForcedCleanupCannotClearReview(t *testing.T) {
+	if mode, ok := processOwnerChildMode(os.Args); ok {
+		runProcessOwnerChild(t, mode)
+		return
+	}
+	owner := New()
+	started, err := owner.Start(context.Background(), Spec{
+		Executable:   os.Args[0],
+		Args:         []string{"-test.run=^TestFailedStartForcedCleanupCannotClearReview$", "--", "ignore-term"},
+		Ready:        func(context.Context) (bool, error) { return false, nil },
+		ReadyTimeout: 100 * time.Millisecond, ProbeInterval: 10 * time.Millisecond,
+		StopTimeout: 50 * time.Millisecond,
+	})
+	if !errors.Is(err, ErrReviewRequired) || !errors.Is(err, ErrNotReady) ||
+		started.State != StateReviewRequired || started.Generation != 0 || started.PID <= 1 {
+		t.Fatalf("failed start did not retain uncertain cleanup for review: snapshot=%+v err=%v", started, err)
+	}
+
+	stopped, err := owner.Stop(context.Background())
+	if !errors.Is(err, ErrReviewRequired) || stopped.State != StateReviewRequired || stopped.Generation != 0 || stopped.PID != 0 {
+		t.Fatalf("later stop cleared the failed-start review state: snapshot=%+v err=%v", stopped, err)
+	}
+	if err := syscall.Kill(-started.PID, 0); !errors.Is(err, syscall.ESRCH) {
+		t.Fatalf("failed-start process group remains or is uncertain: %v", err)
+	}
+	if _, err := owner.Start(context.Background(), Spec{}); !errors.Is(err, ErrReviewRequired) {
+		t.Fatalf("owner restarted after failed-start cleanup required review: %v", err)
+	}
+}
+
 func TestReadinessFailureRetainsOnlyBoundedPrivateDiagnostics(t *testing.T) {
 	if mode, ok := processOwnerChildMode(os.Args); ok {
 		runProcessOwnerChild(t, mode)

@@ -24,8 +24,12 @@ network client without a separate redaction boundary. Non-Linux builds return
 This primitive has no adoption of pre-existing processes, durable state,
 automatic recovery, aggregate SMB/NFS lifecycle, last-known-good configuration
 transaction, or production startup wiring. Host unit tests exercise unexpected
-exit/quarantine and forced-stop cleanup. The one-boot ARMv5 QEMU smoke exercises
-normal ownership of disposable `smbd` plus two controlled BusyBox children: one
-exits unexpectedly and one ignores `SIGTERM` until bounded forced termination.
-Both guest cases require `review-required`, blocked restart and a reaped process
-group. They do not simulate a real `smbd` crash or forced termination of `smbd`.
+exit/quarantine, forced-stop cleanup, and review persistence after forced
+cleanup of a process that never reached readiness. The one-boot ARMv5 QEMU
+smoke exercises normal ownership of disposable `smbd` plus three controlled
+BusyBox children: one exits unexpectedly, one ignores `SIGTERM` until bounded
+forced termination, and one ignores it after its readiness deadline. The last
+case verifies a later `Stop` performs no further signaling, confirms the group
+is gone, preserves `review-required`, and blocks restart. All guest fixtures
+require the process group to be reaped. They do not simulate a real `smbd`
+crash or forced termination of `smbd`.

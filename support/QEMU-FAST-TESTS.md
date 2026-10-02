@@ -336,16 +336,17 @@ the same pinned image, cache volume and verified base artifact, use:
 ```
 
 This mode runs `qemu-smoke.sh` (including the `processowner`-managed Samba
-readiness/access/stop fixture, unexpected-exit case and forced-stop case) and
-skips only the separate two-boot state fixture. It passed locally on 2026-10-02
-against the working tree based on `7e2e52d`. One controlled BusyBox child exits
-unexpectedly; another ignores `SIGTERM` and requires bounded forced
-termination. Both paths enter `review-required`, block restart and leave no
-process group behind. These children do not simulate an unexpected crash or
-forced termination of `smbd` itself. The run verifies the existing pinned
-artifacts, does not pull/build an image or create a Docker volume, and does not
-contact the NAS. The default command remains the focused MD v1.0/M3.4 check
-described above.
+readiness/access/stop fixture, unexpected-exit, forced-stop and failed-start
+cleanup cases) and skips only the separate two-boot state fixture. It passed
+locally on 2026-10-02 against the working tree based on `e0dc29e` plus the
+uncommitted M4.2 regression fix. One controlled BusyBox child exits
+unexpectedly; another ignores `SIGTERM` during stop; a third ignores it while
+readiness times out. The last case verifies that subsequent cleanup does not
+erase `review-required` or permit restart. Every fixture requires the child
+group to be gone. These children do not simulate an unexpected crash or forced
+stop of `smbd` itself. The run verifies the existing pinned artifacts, does not
+pull/build an image or create a Docker volume, and does not contact the NAS.
+The default command remains the focused MD v1.0/M3.4 check described above.
 
 ## Evidence boundary
 

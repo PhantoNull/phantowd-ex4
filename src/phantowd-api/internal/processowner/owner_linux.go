@@ -30,14 +30,15 @@ const (
 )
 
 type managedProcess struct {
-	command     *exec.Cmd
-	pid         int
-	done        chan struct{}
-	waitErr     error
-	waitMu      sync.Mutex
-	ready       bool
-	stopTimeout time.Duration
-	diagnostics *diagnosticRing
+	command       *exec.Cmd
+	pid           int
+	done          chan struct{}
+	waitErr       error
+	waitMu        sync.Mutex
+	ready         bool
+	stopTimeout   time.Duration
+	stopAttempted bool
+	diagnostics   *diagnosticRing
 }
 
 func (p *managedProcess) exited() bool {
@@ -185,6 +186,20 @@ func (o *Owner) Stop(ctx context.Context) (Snapshot, error) {
 		return o.snapshot(), nil
 	}
 	process := o.current
+	if process.stopAttempted {
+		// The earlier stop already had an uncertain or forced outcome. Only
+		// verify that the owned group is gone; never signal it a second time,
+		// and never let cleanup erase the review state.
+		if verifyProcessGroupExited(process) != nil {
+			o.reviewRequired = true
+			o.state = StateReviewRequired
+			return o.snapshot(), ErrReviewRequired
+		}
+		o.current = nil
+		o.reviewRequired = true
+		o.state = StateReviewRequired
+		return o.snapshot(), ErrReviewRequired
+	}
 	unexpectedExit := process.ready && process.exited()
 	o.state = StateStopping
 	stopErr := stopProcess(process)
@@ -338,6 +353,10 @@ func stopProcess(process *managedProcess) error {
 	if process == nil {
 		return nil
 	}
+	if process.stopAttempted {
+		return ErrReviewRequired
+	}
+	process.stopAttempted = true
 	alive, err := processGroupAlive(process.pid)
 	if err != nil {
 		return ErrReviewRequired
@@ -368,6 +387,17 @@ func stopProcess(process *managedProcess) error {
 		return ErrReviewRequired
 	}
 	return ErrReviewRequired
+}
+
+func verifyProcessGroupExited(process *managedProcess) error {
+	if process == nil || process.pid <= 1 || !process.exited() {
+		return ErrReviewRequired
+	}
+	alive, err := processGroupAlive(process.pid)
+	if err != nil || alive {
+		return ErrReviewRequired
+	}
+	return nil
 }
 
 func awaitProcessGroupExit(process *managedProcess, timeout time.Duration) (bool, error) {

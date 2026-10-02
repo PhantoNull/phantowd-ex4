@@ -787,10 +787,14 @@ storage. No production roster provider or activation path exists.
   an unexpected nonzero exit moves `Observe` to `review-required`, preserves
   the generation and blocks restart; a second child ignores `SIGTERM`, forcing
   bounded `SIGKILL` escalation, review state, blocked restart and process-group
-  cleanup. The smoke passed locally against the working tree based on
-  `7e2e52d`; `qemu-smoke.sh` requires the normal start/ready/stop marker and
-  separate unexpected-exit and forced-stop markers. These synthetic children
-  do not simulate an unexpected crash or forced stop of `smbd` itself. This is
+  cleanup. A third child times out before readiness while ignoring `SIGTERM`;
+  after forced cleanup, a later `Stop` only verifies that its process group is
+  gone and preserves `review-required` with restart blocked. The standard
+  smoke passed locally against the working tree based on `e0dc29e` plus the
+  uncommitted regression fix; `qemu-smoke.sh` requires markers for normal
+  start/ready/stop, unexpected exit, forced stop and failed-start quarantine.
+  These synthetic children do not simulate an unexpected crash or forced stop
+  of `smbd` itself. This is
   not yet the aggregate SMB/NFS service owner, durable service state, reload,
   or transactional last-known-good configuration replacement.
 - **M4.3 — Access semantics.** Specify SMB3 grants and denied cases; keep SMB1
