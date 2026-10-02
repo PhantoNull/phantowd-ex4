@@ -41,6 +41,20 @@ denied() {
     [ "$status" -eq 1 ] || return 1
     grep -E "$4" /run/client.log >/dev/null || return 1
 }
+denied_mkdir() {
+    # Pinned smbclient reports a failed mkdir in stdout but can exit zero.
+    # This exception is only for these two fixed commands, not generic denial.
+    case "$1:$2" in
+        qpreader:reader-denied|qpoutsider:outsider-denied) ;;
+        *) return 1 ;;
+    esac
+    client "$1" PosixACL "mkdir inherited/$2"
+    status=$?
+    case "$status" in 0|1) ;; *) return 1 ;; esac
+    expected="NT_STATUS_ACCESS_DENIED making remote directory \\inherited\\$2"
+    [ "$(grep '^NT_STATUS_' /run/client.log)" = "$expected" ] || return 1
+    [ ! -e "/run/phantowd-samba-source/approved/inherited/$2" ] || return 1
+}
 run_fixture() {
     mount -t proc proc /proc || return 1
     mount -t sysfs sysfs /sys || return 1
@@ -71,6 +85,9 @@ run_fixture() {
         fi
         [ "$(sha256sum "$root$canonical" | cut -d ' ' -f1)" = "$digest" ] || return 1
     done </usr/lib/phantowd/qemu-samba-root.manifest
+    cp /usr/sbin/phantowd-samba-charset-probe \
+        "$root/usr/sbin/phantowd-samba-charset-probe" || return 1
+    chmod 0555 "$root/usr/sbin/phantowd-samba-charset-probe" || return 1
     while read -r digest canonical alias; do
         if [ "$alias" != "$canonical" ]; then
             mkdir -p "$root$(dirname "$alias")" || return 1
@@ -103,6 +120,9 @@ run_fixture() {
         'interfaces = 127.0.0.1' 'bind interfaces only = yes' 'smb ports = 1445' \
         'server min protocol = SMB3_00' 'server max protocol = SMB3_11' \
         'server signing = mandatory' 'load printers = no' 'printing = bsd' \
+        'dos charset = CP850' 'unix charset = UTF-8' \
+        'map archive = no' 'map system = no' 'map hidden = no' \
+        'store dos attributes = yes' \
         'printcap name = /dev/null' 'disable spoolss = yes' 'dns proxy = no' \
         'name resolve order = host' 'vfs objects = streams_xattr' \
         'streams_xattr:prefix = user.DosStream.' \
@@ -129,6 +149,7 @@ run_fixture() {
     chmod 2770 "$source/approved" || return 1
     echo 'outside-selected-subtree' >"$source/ungranted"
     ln -s "$source/ungranted" "$source/approved/escape" || return 1
+    /usr/sbin/phantowd-samba-root-launcher charset || return 1
     echo 'distinct-unix-writer-test' >/run/upload
     echo 'distinct-stream-fixture' >/run/upload-stream
     echo 'posix-acl-fixture' >/run/acl-expected
@@ -197,6 +218,23 @@ run_fixture() {
         'NT_STATUS_ACCESS_DENIED' || return 1
     cmp /run/acl-expected "$source/approved/acl-created" || return 1
     echo 'PHANTOWD_SAMBA_ROOT_POSIX_ACL_READY fs=ext4 bytes=true named_reader=true outsider_denied=true mask_revocation=true scope=qemu-only'
+    /usr/sbin/phantowd-samba-root-launcher inheritance-prepare || return 1
+    client qpwriter PosixACL 'mkdir inherited/child' || return 1
+    client qpwriter PosixACL 'put /run/upload inherited/child/data' || return 1
+    /usr/sbin/phantowd-samba-root-launcher inheritance-verify || return 1
+    client qpreader PosixACL 'get inherited/child/data /run/download-inherited' || return 1
+    cmp /run/upload /run/download-inherited || return 1
+    client qpreader PosixACL 'allinfo inherited/child/data' || return 1
+    grep -Ex 'attributes: A \(20\)' /run/client.log >/dev/null || return 1
+    denied qpreader PosixACL 'put /run/upload-stream inherited/child/data' 'NT_STATUS_ACCESS_DENIED' || return 1
+    denied_mkdir qpreader reader-denied || return 1
+    denied qpoutsider PosixACL 'get inherited/child/data /run/download-inherited' 'NT_STATUS_ACCESS_DENIED' || return 1
+    denied_mkdir qpoutsider outsider-denied || return 1
+    /usr/sbin/phantowd-samba-root-launcher inheritance-verify || return 1
+    cmp /run/upload "$source/approved/inherited/child/data" || return 1
+    [ ! -e "$source/approved/inherited/reader-denied" ] || return 1
+    [ ! -e "$source/approved/inherited/outsider-denied" ] || return 1
+    echo 'PHANTOWD_SAMBA_ROOT_INHERITANCE_READY fs=ext4 directory_acl=true file_acl=true setgid=true reader_write_denied=true outsider_denied=true scope=qemu-only'
     denied qpwrong ReadWrite ls 'NT_STATUS_LOGON_FAILURE' || return 1
     denied qpreader ReadWrite 'put /run/upload reader-denied' 'NT_STATUS_ACCESS_DENIED' || return 1
     denied qpoutsider ReadWrite ls 'NT_STATUS_ACCESS_DENIED' || return 1
@@ -212,6 +250,13 @@ run_fixture() {
     [ ! -e "$source/denied/unix-denied" ] || return 1
     echo 'PHANTOWD_SAMBA_ROOT_POLICY_READY writer_uid=1801 reader_uid=1802 outsider_denied=true kernel_ro=true original_denied=true unix_ownership=true unix_denial=true utf8_roundtrip=true scope=qemu-only'
     stop_daemon || return 1
+    # Neither the direct conversion nor Samba may hide missing runtime support.
+    for log in /run/server.log /run/enroll.log "$state/log.smbd"; do
+        [ -f "$log" ] || return 1
+        if grep -Ei 'ASCII|conversion.*(not supported|failed)|unable to convert' "$log"; then
+            return 1
+        fi
+    done
     echo PHANTOWD_SAMBA_ROOT_DONE
 }
 if ! run_fixture; then

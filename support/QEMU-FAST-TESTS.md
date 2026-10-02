@@ -563,6 +563,11 @@ Ownership, wrong-password/access denials, Unix-mode enforcement, kernel RO,
 original-path/symlink denial, one Unicode filename and owned-group stop are
 checked. This is a distinct test-only native fixture, never installed into the
 product image. See [runtime profile and remaining gates](SAMBA-RUNTIME-PROFILE.md).
+Its fixed runtime now includes IBM850 plus a strictly bounded, hash-verified
+conversion catalog. A dynamic probe tests exact non-ASCII CP850/UTF-8 conversions
+and refusals inside the restricted root; the fixture rejects ASCII fallback.
+Use a matching new-config target/base after rebuilding. An old cache without
+the converter is expected to fail, not silently borrow host/staging converters.
 
 The standalone `support/test-service-launcher.ps1` lane also composes a single
 fixed static child with `mountowner.IsolatedServiceRuntime`. It creates one

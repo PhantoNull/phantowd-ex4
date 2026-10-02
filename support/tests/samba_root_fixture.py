@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 PhantoWD EX4 contributors
-"""Merge fixed programs and one VFS module for a QEMU-only Samba test."""
+"""Merge fixed programs/modules/catalog for a QEMU-only Samba test."""
 import argparse
+import hashlib
 import json
 from pathlib import Path
 
@@ -10,14 +11,28 @@ from runtime_loader_fixture import MAX_LOG, MAX_REPORT, read_bounded, validate
 
 
 ENTRIES = ("usr/sbin/smbd", "usr/bin/smbpasswd", "usr/bin/testparm",
-           "usr/lib/samba/vfs/streams_xattr.so")
+           "usr/lib/samba/vfs/streams_xattr.so", "usr/lib/gconv/IBM850.so")
+CATALOG_PATH = "usr/lib/gconv/gconv-modules"
+CATALOG_ROWS = frozenset({
+    ("alias", "CP850//", "IBM850//"),
+    ("alias", "850//", "IBM850//"),
+    ("alias", "CSPC850MULTILINGUAL//", "IBM850//"),
+    ("alias", "OSF10020352//", "IBM850//"),
+    ("module", "IBM850//", "INTERNAL", "IBM850", "1"),
+    ("module", "INTERNAL", "IBM850//", "IBM850", "1"),
+})
 MARKERS = (
+    "PHANTOWD_SAMBA_ROOT_CHARSET_READY charset=CP850 bytes=true "
+    "roundtrip=true isolated_root=true scope=qemu-only",
     "PHANTOWD_SAMBA_ROOT_BOUNDARY_READY caps=00000000000000db "
     "nnp=true original_denied=true kernel_ro=true",
     "PHANTOWD_SAMBA_ROOT_STREAMS_READY module=streams_xattr "
     "xattr_bytes=true reader_write_denied=true kernel_ro=true scope=qemu-only",
     "PHANTOWD_SAMBA_ROOT_POSIX_ACL_READY fs=ext4 bytes=true named_reader=true "
     "outsider_denied=true mask_revocation=true scope=qemu-only",
+    "PHANTOWD_SAMBA_ROOT_INHERITANCE_READY fs=ext4 directory_acl=true "
+    "file_acl=true setgid=true reader_write_denied=true outsider_denied=true "
+    "scope=qemu-only",
     "PHANTOWD_SAMBA_ROOT_POLICY_READY writer_uid=1801 reader_uid=1802 "
     "outsider_denied=true kernel_ro=true original_denied=true "
     "unix_ownership=true unix_denial=true utf8_roundtrip=true scope=qemu-only",
@@ -34,7 +49,19 @@ def check_guest(log):
         raise ValueError("incomplete, failed or repeated guest evidence")
 
 
-def merge(reports):
+def validate_catalog(catalog):
+    if (not isinstance(catalog, str) or not catalog.isascii()
+            or not 0 < len(catalog) <= 4096 or "\x00" in catalog):
+        raise ValueError("invalid fixed conversion catalog")
+    rows = [tuple(line.split()) for line in catalog.splitlines()
+            if line.strip() and not line.lstrip().startswith("#")]
+    if len(rows) != len(CATALOG_ROWS) or set(rows) != CATALOG_ROWS:
+        raise ValueError("unexpected conversion aliases or modules")
+    return hashlib.sha256(catalog.encode("ascii")).hexdigest()
+
+
+def merge(reports, catalog):
+    catalog_digest = validate_catalog(catalog)
     if not isinstance(reports, list) or len(reports) != len(ENTRIES):
         raise ValueError("complete fixed runtime set required")
     objects, aliases = {}, {}
@@ -53,13 +80,17 @@ def merge(reports):
             previous = aliases.setdefault(alias, canonical)
             if previous != canonical:
                 raise ValueError("conflicting runtime alias")
-    if (len(objects) > 256 or len(aliases) > 1024
-            or sum(size for _, size in objects.values()) > 64 * 1024 * 1024):
+    if CATALOG_PATH in aliases or CATALOG_PATH in objects:
+        raise ValueError("conversion catalog overlaps ELF roster")
+    if (len(objects) + 1 > 256 or len(aliases) + 1 > 1024
+            or sum(size for _, size in objects.values()) + len(catalog)
+            > 64 * 1024 * 1024):
         raise ValueError("merged runtime budget exceeded")
     rows = []
     for alias, canonical in sorted(aliases.items()):
         digest, _ = objects[canonical]
         rows.append(f"{digest} /{canonical} /{alias}\n")
+    rows.append(f"{catalog_digest} /{CATALOG_PATH} /{CATALOG_PATH}\n")
     return "".join(rows)
 
 
@@ -71,14 +102,20 @@ def main():
     prepare.add_argument("smbpasswd")
     prepare.add_argument("testparm")
     prepare.add_argument("streams_xattr")
+    prepare.add_argument("ibm850")
+    prepare.add_argument("catalog")
     prepare.add_argument("manifest")
     verify = sub.add_parser("verify")
     verify.add_argument("log")
     args = parser.parse_args()
     if args.command == "prepare":
         reports = [json.loads(read_bounded(name, MAX_REPORT)) for name in (
-            args.smbd, args.smbpasswd, args.testparm, args.streams_xattr)]
-        Path(args.manifest).write_text(merge(reports))
+            args.smbd, args.smbpasswd, args.testparm, args.streams_xattr,
+            args.ibm850)]
+        if Path(args.catalog).is_symlink() or not Path(args.catalog).is_file():
+            raise ValueError("regular fixed conversion catalog required")
+        catalog = read_bounded(args.catalog, 4096)
+        Path(args.manifest).write_text(merge(reports, catalog))
     else:
         check_guest(read_bounded(args.log, MAX_LOG))
         print("\n".join(MARKERS))

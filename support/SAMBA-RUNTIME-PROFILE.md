@@ -27,10 +27,14 @@ before mounting it. No physical block-device path is formatted or attached.
 
 - Derives non-authorizing ELF candidates for three fixed public Buildroot
   programs (`smbd`, `smbpasswd`, `testparm`) and the single fixed
-  `usr/lib/samba/vfs/streams_xattr.so` module. Merging refuses conflicts, unknown
+  `usr/lib/samba/vfs/streams_xattr.so` module plus the fixed glibc
+  `usr/lib/gconv/IBM850.so` converter. Merging refuses conflicts, unknown
   paths, missing entries, partial graphs or asserted execution authority.
 - Inside the guest, verifies every selected SHA-256 and canonical alias before
   copying regular ELFs and generating symlinks into a root-controlled tmpfs.
+  The bounded conversion catalog is separately validated against exactly four
+  IBM850 aliases and two conversion rows, then SHA-256 verified with the runtime.
+  Additional modules, relative module paths, duplicates or missing rows fail.
   The ordinary target filesystem and original image remain read-only.
 - Creates only fixture-owned Unix account/group files and passdb. The profile
   uses standalone SMB3 with required signing, three separate accounts, local
@@ -56,6 +60,13 @@ before mounting it. No physical block-device path is formatted or attached.
   write denial through the kernel read-only grant, original-anchor denial and
   symlink denial with no residual files. One accented/Greek filename roundtrip
   is checked; it is not a complete encoding/normalization campaign.
+- A dynamic glibc probe executes inside that same restricted root under the
+  fixture launcher. It checks exact non-ASCII CP850/UTF-8 bytes in both directions
+  for IBM850 and all four catalog aliases. Unrepresentable, malformed and
+  truncated UTF-8 must fail without substitution. Samba explicitly uses CP850
+  and UTF-8, and converter-error/ASCII-fallback logs fail the fixture. This adds
+  no SMB1 support or weaker protocol setting. The probe is test-only, not
+  installed by the product packages or a proof of complete legacy-name migration.
 - Fixed client operations have a native ten-second deadline; timeout/signal
   exits cannot count as access denials. The native wrapper accepts no arbitrary
   executable, hostname, credential pathname or SMB command.
@@ -73,6 +84,26 @@ before mounting it. No physical block-device path is formatted or attached.
   writes and outsider reads, then effective revocation through the ACL mask.
   The distinct original file payload must remain unchanged. This is not an
   HTTP ACL editor, Windows ACL import or a persistent/reboot ACL campaign.
+- A second fixed subtree has exact access/default POSIX ACLs created by the
+  writer UID with zero effective/permitted capabilities. Real SMB creates a
+  child directory and file; native readback requires owner/group `1801:1800`,
+  setgid directory mode `2750`, file mode `0640`, exact directory access/default
+  ACL bytes and the file's mode-limited inherited access ACL. The reader can
+  retrieve the file but cannot overwrite it with different bytes or create a
+  directory; the outsider cannot read or create. Metadata and data remain
+  unchanged after denial. This is one synthetic inheritance policy, not an ACL
+  editor, all inheritance combinations, legacy import or reboot qualification.
+- The profile explicitly stores DOS attributes and disables archive/system/
+  hidden-to-Unix-execute-bit mapping. The pinned default archive mapping was
+  reproduced as file mode `0740`; disabling it produces the required `0640`
+  without relaxing the ACL. SMB `allinfo` still reports archive `A (20)`.
+  This proves only that one attribute case, not complete Windows metadata.
+- Pinned `smbclient` can exit zero after printing a denied `mkdir`. Only two
+  fixed reader/outsider mkdir cases use a separate evidence rule: status 0 or 1,
+  exactly the expected NT access-denied line and no created directory. Timeout,
+  signal, other errors, duplicate/mismatched lines or an existing target fail.
+  Other denial checks still require status 1. Linux shell contracts and the real
+  ARMv5 guest both exercise the exception; it is not product error handling.
 - Stop signals only the fixture-created group, waits for the parent and requires
   the group to disappear. BusyBox may report the requested SIGTERM as status143;
   that is accepted only after group absence. Other outcomes fail. There is no
@@ -96,8 +127,17 @@ disabled option was reproduced as kernel `EOPNOTSUPP` before being corrected.
 The build fingerprints its fixed fragment roster and reconfigures only the
 cached kernel on change, then audits required storage options before recording
 the compilation checkpoint. It never treats tmpfs support as ext4 evidence.
-The public target lacks the CP850 conversion module and logs an ASCII fallback;
-the observed SMB3 UTF-8 case does not resolve that separate compatibility gap.
+The previous public target lacked CP850 and logged an ASCII fallback; direct
+ARMv5 conversion reproduced `iconv_open: Invalid argument` in the isolated root.
+The QEMU defconfig now selects Buildroot's standard glibc converter installation
+with only `IBM850`, not the entire converter collection. Full local new-config
+integration on `b7e06b4` verifies the actual target installation, regenerated
+rootfs and package/legal/SBOM steps. Full local combined integration on
+`41c90c9` also passes the inherited ACL/mode/DOS-attribute checks, standard/MD/
+two-boot guest tests and all prior loader/Samba cases without manual converter
+injection. Rebasing onto merged PR #55 retained the complete source tree as
+`bedfec4`. These runs reuse source/compiler caches, so they are not independent
+clean-build reproducibility or hosted feature qualification.
 Quota observations on disposable tmpfs are not RAID/storage-health evidence.
 Do not change encodings or silently relax legacy ACLs to mask missing runtime.
 

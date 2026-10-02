@@ -964,6 +964,23 @@ storage. No production roster provider or activation path exists.
   fingerprinting prevents cached fragments being silently ignored. This is
   not Windows ACL or migration qualification. Do not silently choose permissive masks,
   ignore system ACLs, change xattr namespaces or add mount-admin privileges.
+  The separate CP850 gap is now reproduced by a dynamic ARMv5 conversion probe
+  inside the same restricted root. QEMU selects only IBM850 through Buildroot;
+  the fixed graph/canonical catalog validator and disposable overlay pass exact
+  bidirectional bytes/aliases and reject unsupported or malformed UTF-8 without
+  replacement. Full local new-config and combined integration now pass with
+  the actual installed converter; exact-head feature CI remains separate.
+  This does not enable SMB1 or establish complete legacy name,
+  case-folding or Unicode-normalization compatibility.
+  A separate ext4 inheritance fixture now creates a directory and file through
+  real SMB and verifies exact access/default ACL bytes, setgid group ownership,
+  `2750`/`0640` modes and reader/outsider denials without metadata/data mutation.
+  Disable DOS-to-Unix execute-bit mappings in the explicit runtime profile while
+  storing DOS metadata; the synthetic archive flag remains visible via SMB.
+  Do not infer all policies, legacy import, reboot persistence or trusted
+  product construction from these disposable tests, even after full local
+  integration passes. Global policy is still
+  separate from the share-section renderer and requires complete validation.
 - **M4.5 — Failure and shutdown.** Cover startup with absent disks, service crash,
   read-only/full volume, client reconnect, stale NFS handles, shutdown with open
   files and restart ordering. Distinguish safely unavailable from healthy.

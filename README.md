@@ -209,9 +209,14 @@ The fixed `streams_xattr` plugin is separately hash-verified and exercised by
 an SMB alternate-stream roundtrip with exact xattr bytes and denied reader/
 kernel-read-only overwrites. A disposable ext4 fixture also verifies named-user
 POSIX ACLs, write/outsider denials and mask-based revocation through real SMB3.
-This does not qualify Windows ACLs or migration. Local incremental integration
-and focused test results are not independent clean builds, hosted feature
-results or EX4 qualification;
+This does not qualify Windows ACLs or migration. The QEMU configuration
+installs only the required IBM850 converter. Full local integration covers
+exact CP850/UTF-8 bytes inside the restricted root without ASCII fallback and
+exact ext4 directory/default/file
+ACLs, Unix modes/group ownership and reader/outsider denials. DOS archive
+metadata remains visible without adding Unix execute permission. Local
+incremental integration and focused test results are not independent clean
+builds, hosted feature results or EX4 qualification;
 [implementation status](IMPLEMENTATION-STATUS.md) separates them.
 
 The badge tracks the `develop` integration branch, not every feature branch.
