@@ -61,7 +61,8 @@ type ServiceRuntime struct {
 // NewServiceRuntime constructs the internal coordinator for an already-fixed
 // handoff and process set. It launches no process and performs no mount.
 func NewServiceRuntime(handoff *ServiceHandoff, processes *processowner.Set) (*ServiceRuntime, error) {
-	if handoff == nil || processes == nil {
+	if handoff == nil || processes == nil ||
+		!processes.AllMembersRunAsNonRootWithGroup(handoff.serviceGroupID) {
 		return nil, ErrServiceRuntimeInvalid
 	}
 	return newServiceRuntime(handoff, processes)

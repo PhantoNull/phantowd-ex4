@@ -48,15 +48,18 @@ the disposable Versatile PB guest.
   transitions to `review-required`. The Owner blocks further access and does
   not retry or implicitly clean up. `Close` never unmounts.
 - `ServiceHandoff` is a Linux-only internal prototype. It requires an empty,
-  root-owned mode-0711 directory under `/run/phantowd/service-handoff`; every
-  ancestor must be root-owned, searchable and not group/other writable. This
-  pathname is not an access-control boundary: the local ARMv5 probe ran as
-  UID/GID 65534 with no supplementary groups and read a synthetic 0644 marker
-  through the clone. The pre-mount child directory's mode 0700 is hidden by the
-  mounted filesystem; access then follows the source filesystem root and file
-  modes/ACLs, while the 0711 pathname permits traversal. No service UID/GID or
-  share grant is bound to a handoff yet. Do not pass these paths to untrusted
-  non-root processes. The handoff pins its root and retains one lease for the
+  root-owned `root:<service-gid>` mode-0710 directory under
+  `/run/phantowd/service-handoff`; every
+  ancestor must be root-owned, searchable by the fixed service identity and not
+  group/other writable. Only the configured service group can traverse the
+  handoff root. The current-source ARMv5 test confirms UID 65534 with GID 65534
+  and no supplementary groups receives `EACCES`, while the fixed service
+  consumer succeeds. The pre-mount child directory's mode 0700 is hidden by the
+  mounted filesystem; access inside a clone still follows the source
+  filesystem's ownership, modes and ACLs. The current runtime exposes a whole
+  selected volume, not individually granted share roots. It does not provision
+  service accounts/groups or file-level ACLs and must not be treated as
+  production share authorization. The handoff pins its root and retains one lease for the
   complete fixed roster. Each cloned mount tree is created from the qualified
   `O_PATH` source descriptor with `open_tree`/`move_mount`, then checked for a
   distinct mount ID and matching filesystem identity. Opaque path bindings
@@ -83,14 +86,15 @@ mount/unmount results, and a mismatched filesystem. The M4.4 QEMU fixture also
 clones the mount from its qualified descriptor into the root-controlled service
 pathname, holds the full roster lease, replaces the source anchor and verifies
 that the service pathname remains on the original clone while the Owner and
-handoff enter review. It then starts a fixed root-run BusyBox consumer only
-after binding validation, verifies that the child reads the service pathname
-before readiness, and on source loss confirms the child stops before the exact
-clone is detached. A separate exploratory non-root probe demonstrated that
-the current pathname and source permissions allow UID/GID 65534 to read a
-world-readable marker; this is a security gap, not a supported grant. A host
-fake-process test verifies that an uncertain stop leaves the handoff open and
-is not retried. The local ARMv5 standard smoke and Linux
+handoff enter review. It starts a fixed BusyBox consumer as UID/GID 1000 with
+no supplementary groups, checks its effective credentials and proves it can
+read the synthetic marker through the group-gated path. A separate UID
+65534/GID 65534 probe confirms access is denied, and runtime construction
+rejects a process set without the configured handoff group. On source loss the
+child stops before the exact clone is detached. File-level access still
+follows the whole cloned volume's original metadata, so share ACL authorization
+remains open work. A host fake-process test verifies that an uncertain stop
+leaves the handoff open and is not retried. The local ARMv5 standard smoke and Linux
 API/vet checks pass on current source using the existing read-only Buildroot
 cache and temporary overlays. A focused MD v1.0 fixture also passes; its
 two-volume M3.5 test was separated because that guest intentionally has no
@@ -101,8 +105,9 @@ during acquisition.
 The qualification token currently comes only from the QEMU fixture. There is
 no production qualifier or production roster source, no EX4-complete mounted-
 volume collector, mount-point allocator, durable volume identity, product
-service handoff/start/stop integration, non-root service permission matrix,
-automatic source-loss monitor, or operator review/recovery workflow. The
+service handoff/start/stop integration, per-share service ACL matrix,
+service-account/group provisioning, automatic source-loss monitor, or operator
+review/recovery workflow. The
 lower-level `ServiceHandoff` does not stop pathname consumers by itself;
 `ServiceRuntime` does so only for the one fixed process set it controls, and
 only after its caller invokes `Observe`. Passing QEMU tests does not qualify

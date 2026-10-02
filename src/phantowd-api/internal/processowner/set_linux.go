@@ -51,12 +51,53 @@ func NewSet(specs []MemberSpec) (*Set, error) {
 		names[spec.Name] = struct{}{}
 		process := spec.Process
 		process.Args = append([]string(nil), process.Args...)
+		if process.RunAs != nil {
+			credentials := *process.RunAs
+			credentials.SupplementaryGIDs = append([]uint32(nil), credentials.SupplementaryGIDs...)
+			process.RunAs = &credentials
+		}
 		set.members = append(set.members, setMember{
 			name: spec.Name, spec: process, owner: New(),
 			snapshot: Snapshot{State: StateStopped},
 		})
 	}
 	return set, nil
+}
+
+// AllMembersRunAsNonRootWithGroup reports whether every fixed process has an
+// explicit non-root service identity in the reserved service-ID range and
+// belongs to the requested handoff group. Specifications are immutable after
+// NewSet, so this observation needs no lifecycle transition or process start.
+func (s *Set) AllMembersRunAsNonRootWithGroup(gid uint32) bool {
+	if s == nil || len(s.members) == 0 || gid < 1000 || gid > 60000 {
+		return false
+	}
+	for _, member := range s.members {
+		credentials := member.spec.RunAs
+		if credentials == nil || credentials.UID < 1000 || credentials.UID > 60000 ||
+			credentials.GID < 1000 || credentials.GID > 60000 {
+			return false
+		}
+		for _, supplementary := range credentials.SupplementaryGIDs {
+			if supplementary < 1000 || supplementary > 60000 {
+				return false
+			}
+		}
+		if credentials.GID == gid {
+			continue
+		}
+		found := false
+		for _, supplementary := range credentials.SupplementaryGIDs {
+			if supplementary == gid {
+				found = true
+				break
+			}
+		}
+		if !found {
+			return false
+		}
+	}
+	return true
 }
 
 // Start brings members up in declaration order. The set is reported ready and

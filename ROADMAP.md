@@ -846,25 +846,31 @@ storage. No production roster provider or activation path exists.
   that an uncertain stop retains the lease and is not retried; QEMU exercises
   one disposable BusyBox consumer reading the service path and stopping before
   teardown. The caller must poll `Observe` at a bounded cadence; no monitor,
-  restart or production daemon wiring exists. Windows/Linux API checks and
-  both local ARMv5 standard and focused MD v1.0 QEMU fixtures pass using cached
-  read-only Buildroot inputs. A fixture-composition bug found during this work
-  was corrected: the MD v1.0-only guest has no independent healthy ext2 volume,
-  so its test now exercises the MD provider bridge alone; M3.5 two-volume loss
-  remains in the standard guest that supplies both volumes. No trusted
-  production storage-to-Owner constructor, non-root service-user permission
-  matrix, persistent handoff, production volume-loss supervision or EX4 media
-  qualification exists. A local ARMv5 probe also demonstrated that UID/GID
-  65534 can read a synthetic world-readable marker through the clone: the
-  pre-mount target's mode 0700 is hidden after mounting, and the current mode
-  0711 handoff pathname is searchable by unrelated local users. This is a
-  demonstrated access-control gap, not a passing permission test. Do not expose
-  handoff paths to untrusted processes. Next: choose and implement a service-
-  identity boundary (group-gated parent or private mount namespaces) plus
-  explicit data ACL/grant semantics; then exercise both permitted and denied
-  identities in QEMU. After that specify the bounded supervisor contract and
-  design fail-closed production storage construction. Do not enable real disks
-  or services yet.
+  restart or production daemon wiring exists. The handoff root is now
+  pre-provisioned `root:<service-gid>` mode `0710`; the fixed process set must
+  supply explicit non-root credentials in the reserved service-ID range and
+  every process must have that group as primary or supplementary. `processowner`
+  applies the exact UID/GID/supplementary-group tuple before exec. The current-
+  source ARMv5 smoke proves a permitted 1000:1000 consumer can read its marker,
+  UID 65534 without the service group receives `EACCES`, and a mismatched process
+  group is rejected before startup. This is path-traversal isolation only: the
+  prototype still clones whole selected volumes, and access inside each clone
+  follows source filesystem ownership, modes and ACLs. No per-share service
+  grants, ACL provisioning, automatic ownership changes, service-account
+  provisioning or production wiring exists. Windows/Linux API tests, the local
+  one-boot ARMv5 standard smoke and focused MD v1.0 fixture pass with existing
+  read-only Buildroot inputs and transient overlay/container storage. The
+  standard smoke skips the two-boot fixture; clean-build, exact-head hosted CI
+  and physical EX4 behavior are not qualified. No NAS or production media was
+  used.
+
+  Next: connect each runtime to a product-owned service identity, define
+  explicit per-share service grants and denied cases, safely provision and
+  recover file-level ACLs without silently changing legacy ownership, and
+  expose only the granted share roots to that service. Then specify the bounded
+  source-loss supervisor and build a fail-closed production storage constructor.
+  Keep real disks and services disabled until the complete permission,
+  recovery, and compatibility matrices pass.
 - **M4.5 — Failure and shutdown.** Cover startup with absent disks, service crash,
   read-only/full volume, client reconnect, stale NFS handles, shutdown with open
   files and restart ordering. Distinguish safely unavailable from healthy.

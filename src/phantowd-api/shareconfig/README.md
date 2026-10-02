@@ -28,6 +28,13 @@ The JSON document is limited to 256 KiB, 16 volumes, 128 users and 128 shares.
 An empty configuration can represent an unconfigured appliance. Revision zero
 is invalid; the store uses revisions for optimistic concurrency.
 
+File-service user grants do not yet define access for background service
+processes. The internal M4.4 QEMU prototype gates a whole-volume handoff path by
+a fixed Unix group, but does not expose only individual share roots or apply
+file-level ACLs. It makes no automatic ownership/mode changes. A separate,
+explicit service-to-share grant and recoverable ACL-provisioning contract is
+required before non-root applications may consume user data.
+
 Share paths are relative to their volume. `.` explicitly selects the volume
 root. Lexical validation rejects absolute paths, traversal and control bytes;
 it cannot establish filesystem containment. The future privileged layer must

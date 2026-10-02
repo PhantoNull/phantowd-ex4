@@ -64,6 +64,7 @@ type ServiceHandoff struct {
 	root            *os.File
 	rootPath        string
 	rootIdentity    handoffIdentity
+	serviceGroupID  uint32
 	set             *MountedVolumeSet
 	required        []string
 	state           ServiceHandoffState
@@ -111,13 +112,14 @@ func (*ServicePaths) UnmarshalJSON([]byte) error {
 }
 
 // NewServiceHandoff requires a pre-provisioned empty root below /run. It must
-// be root-owned mode 0711: service identities may traverse the directory but
-// cannot list or replace entries. Every ancestor must be root-owned, searchable
-// by service identities, and not writable by group/other. Stale contents are
-// never adopted.
-func NewServiceHandoff(root string, set *MountedVolumeSet, volumeIDs []string) (*ServiceHandoff, error) {
+// be root-owned by the supplied service group and mode 0710, so only processes
+// explicitly launched in that group can traverse it. Every ancestor must be
+// root-owned, searchable by service identities, and not writable by
+// group/other. Stale contents are never adopted.
+func NewServiceHandoff(root string, set *MountedVolumeSet, volumeIDs []string, serviceGroupID uint32) (*ServiceHandoff, error) {
 	if os.Getuid() != 0 || os.Geteuid() != 0 || set == nil || !validHandoffRoot(root) ||
-		volumeIDs == nil || len(volumeIDs) == 0 || len(volumeIDs) > shareconfig.MaxVolumes {
+		volumeIDs == nil || len(volumeIDs) == 0 || len(volumeIDs) > shareconfig.MaxVolumes ||
+		serviceGroupID < 1000 || serviceGroupID > 60000 {
 		return nil, ErrHandoffInvalid
 	}
 	if err := validateHandoffAncestors(root); err != nil {
@@ -150,7 +152,7 @@ func NewServiceHandoff(root string, set *MountedVolumeSet, volumeIDs []string) (
 	}()
 	var st unix.Stat_t
 	if unix.Fstat(fd, &st) != nil || st.Mode&unix.S_IFMT != unix.S_IFDIR ||
-		st.Mode&07777 != 0711 || st.Uid != 0 {
+		st.Mode&07777 != 0710 || st.Uid != 0 || st.Gid != serviceGroupID {
 		return nil, ErrHandoffInvalid
 	}
 	rootIdentity, err := handoffIdentityForFD(fd)
@@ -167,7 +169,8 @@ func NewServiceHandoff(root string, set *MountedVolumeSet, volumeIDs []string) (
 	if err != nil || !empty {
 		return nil, ErrHandoffReview
 	}
-	handoff := &ServiceHandoff{root: file, rootPath: root, rootIdentity: rootIdentity, set: set, required: required,
+	handoff := &ServiceHandoff{root: file, rootPath: root, rootIdentity: rootIdentity,
+		serviceGroupID: serviceGroupID, set: set, required: required,
 		state: ServiceHandoffPrepared}
 	failed = false
 	return handoff, nil
@@ -618,7 +621,7 @@ func (h *ServiceHandoff) rootPathStillPinnedLocked() bool {
 	identity, err := handoffIdentityForFD(fd)
 	var st unix.Stat_t
 	return err == nil && identity == h.rootIdentity && unix.Fstat(fd, &st) == nil &&
-		st.Uid == 0 && st.Mode&unix.S_IFMT == unix.S_IFDIR && st.Mode&07777 == 0711
+		st.Uid == 0 && st.Gid == h.serviceGroupID && st.Mode&unix.S_IFMT == unix.S_IFDIR && st.Mode&07777 == 0710
 }
 
 func validateHandoffAncestors(root string) error {
