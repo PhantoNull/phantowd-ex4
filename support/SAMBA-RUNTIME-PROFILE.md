@@ -30,8 +30,13 @@ before mounting it. No physical block-device path is formatted or attached.
   `usr/lib/samba/vfs/streams_xattr.so` module plus the fixed glibc
   `usr/lib/gconv/IBM850.so` converter. Merging refuses conflicts, unknown
   paths, missing entries, partial graphs or asserted execution authority.
-- Inside the guest, verifies every selected SHA-256 and canonical alias before
-  copying regular ELFs and generating symlinks into a root-controlled tmpfs.
+- Inside the guest, the QEMU-only staging prototype makes fresh exclusive
+  regular-file copies, verifies selected SHA-256 during copying and generates
+  direct symlinks from the fixed plan into a new root-controlled tmpfs tree.
+  It refuses symlink/cross-mount source traversal, occupied destinations,
+  writable sources and cancellation. Hash-failed files remain non-executable
+  under a private root, and incomplete trees cannot be resumed. Neither shell
+  copying nor source xattrs/ACLs/hardlinks are used to construct the code tree.
   The bounded conversion catalog is separately validated against exactly four
   IBM850 aliases and two conversion rows, then SHA-256 verified with the runtime.
   Additional modules, relative module paths, duplicates or missing rows fail.

@@ -936,6 +936,15 @@ storage. No production roster provider or activation path exists.
   writable views, retain pins and revalidate through start/stop/source loss;
   compose configuration, state, devices and Owner-held grants explicitly.
   Do not promote fixture text or the offline ELF candidate into authority.
+  A separate `qemu && linux` prototype now stages fresh regular files from a
+  pinned local read-only source into an exclusively owned empty 0700 tmpfs
+  root. It uses descriptor-relative no-traversal/no-cross-mount operations,
+  `O_EXCL`, hashes during bounded copies and exact final modes, then generates
+  declared direct aliases. It rejects occupied trees, symlink source files,
+  writable sources and canceled operations. Interrupted copies are disposable
+  incomplete trees, never resumed or published. This replaces shell copying in
+  the test fixture only; authenticated expected inputs, production root
+  ownership/serialization, sealing and activation/recovery remain open.
   Then define product-owned service identities and safe ACL provisioning and
   recovery without silently changing legacy ownership. Add the bounded
   source-loss supervisor and a fail-closed production storage constructor only

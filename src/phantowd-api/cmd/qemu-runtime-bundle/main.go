@@ -17,6 +17,7 @@ import (
 	"strings"
 
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/runtimebundle"
+	"golang.org/x/sys/unix"
 )
 
 func main() {
@@ -28,7 +29,13 @@ func main() {
 
 func run() error {
 	model, err := os.ReadFile("/sys/firmware/devicetree/base/model")
-	if err != nil || string(model) != "ARM Versatile PB\x00" || len(os.Args) != 1 || os.Getuid() != 1801 || os.Geteuid() != 1801 {
+	if err != nil || string(model) != "ARM Versatile PB\x00" {
+		return errors.New("fixture guard")
+	}
+	if len(os.Args) == 2 && os.Args[1] == "stage" && os.Getuid() == 0 && os.Geteuid() == 0 {
+		return stageFixture()
+	}
+	if len(os.Args) != 1 || os.Getuid() != 1801 || os.Geteuid() != 1801 {
 		return errors.New("fixture guard")
 	}
 	status, err := os.ReadFile("/proc/self/status")
@@ -188,13 +195,7 @@ func inputs() ([]runtimebundle.File, []runtimebundle.Alias, error) {
 				return nil, nil, errors.New("conflicting object")
 			}
 		} else {
-			// Sizes are from the original manifest-verified guest base, not from
-			// the copy under inspection. This fixture still grants no trust.
-			info, err := os.Lstat("/" + canonical)
-			if err != nil || !info.Mode().IsRegular() {
-				return nil, nil, errors.New("base object")
-			}
-			objects[canonical] = runtimebundle.File{Path: canonical, SHA256: hash, Size: info.Size(), Mode: 0555}
+			objects[canonical] = runtimebundle.File{Path: canonical, SHA256: hash, Size: 1, Mode: 0555}
 		}
 		if alias != canonical {
 			aliases = append(aliases, runtimebundle.Alias{Path: alias, Target: canonical})
@@ -206,6 +207,35 @@ func inputs() ([]runtimebundle.File, []runtimebundle.Alias, error) {
 	var files []runtimebundle.File
 	for _, file := range objects {
 		files = append(files, file)
+	}
+	// Validate all manifest paths/conflicts before any base-object lookup. The
+	// placeholder sizes validate topology only; actual bounded sizes are checked
+	// again by the final Plan. No canonical-file lookup may traverse a symlink.
+	if _, err := runtimebundle.NewPlan(files, aliases); err != nil {
+		return nil, nil, err
+	}
+	base, err := stageRoot("/")
+	if err != nil {
+		return nil, nil, err
+	}
+	defer base.Close()
+	for i := range files {
+		fd, err := unix.Openat2(int(base.Fd()), files[i].Path, &unix.OpenHow{
+			Flags:   unix.O_PATH | unix.O_CLOEXEC | unix.O_NOFOLLOW,
+			Resolve: unix.RESOLVE_BENEATH | unix.RESOLVE_NO_SYMLINKS | unix.RESOLVE_NO_MAGICLINKS | unix.RESOLVE_NO_XDEV,
+		})
+		if err != nil {
+			return nil, nil, errors.New("base object lookup")
+		}
+		object := os.NewFile(uintptr(fd), "fixed-base-object")
+		info, statErr := object.Stat()
+		closeErr := object.Close()
+		if statErr != nil || closeErr != nil || !info.Mode().IsRegular() {
+			return nil, nil, errors.New("base object")
+		}
+		// This is the original guest base, not the copy under inspection. These
+		// observed fixture sizes still do not authenticate a product manifest.
+		files[i].Size = info.Size()
 	}
 	return files, aliases, nil
 }

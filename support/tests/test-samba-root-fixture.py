@@ -179,6 +179,9 @@ class SambaRootFixture(unittest.TestCase):
 
     def test_guest_crlf_and_strict_complete_markers(self):
         lines = [
+            "PHANTOWD_SAMBA_ROOT_STAGE_READY fresh=true "
+            "hashes_during_copy=true "
+            "no_overwrite=true refusals=5 scope=qemu-only",
             "PHANTOWD_SAMBA_ROOT_BUNDLE_READY readonly=true "
             "complete_census=true hashes=true aliases=true refusals=5 "
             "scope=qemu-only",
@@ -245,6 +248,16 @@ class SambaRootFixture(unittest.TestCase):
         self.assertIn('inspect_runtime_bundle()', native)
         self.assertIn('PR_CAPBSET_DROP, cap, 0, 0, 0', native)
         bundle_call = init.index('phantowd-samba-root-launcher runtime-bundle')
+        self.assertLess(init.index('phantowd-runtime-bundle-probe stage'),
+                        bundle_call)
+        self.assertNotIn('cp "$canonical"', init)
+        stage = (root / "src/phantowd-api/internal/runtimebundle/"
+                 "stage_qemu_linux.go").read_text()
+        self.assertTrue(stage.startswith('//go:build qemu && linux'))
+        self.assertIn('unix.O_EXCL', stage)
+        self.assertIn('ErrStageIncomplete', stage)
+        self.assertIn('unix.TMPFS_MAGIC', stage)
+        self.assertNotIn('RemoveAll(', stage)
         self.assertLess(bundle_call, init.index('mkdir -p "$root/etc/samba"'))
         charset_copy = init.index('cp /usr/sbin/phantowd-samba-charset-probe')
         self.assertLess(bundle_call, charset_copy)

@@ -6,6 +6,8 @@
 `runtimebundle` is a read-only prerequisite for M4.4 root construction, not a
 builder, approved runtime manifest or execution/installation token. Ordinary
 product startup does not call it. It has no HTTP/RPC or JSON input/output.
+The separate `qemu && linux` staging prototype below is excluded from ordinary
+builds; it does not turn the read-only inspector into a product write service.
 
 `NewPlan` privately copies a fixed in-process file/alias roster supplied by a
 future trusted build/release owner. It limits the plan to 256 regular files,
@@ -45,6 +47,33 @@ probe. It never changes the parent mount namespace. The probe checks the real
 roster and refuses five altered plans: digest, mode, alias target, omitted
 daemon and symlink retyped as file. Cancellation must return no observation.
 This fixture manifest is research evidence, not a signed product manifest.
+
+## Disposable construction prototype
+
+`Plan.StageQEMU` independently pins source/destination `O_PATH` descriptors.
+It requires root credentials, a local read-only source and a freshly empty
+root:root 0700 writable tmpfs destination with no ACL/capability attributes.
+Only canonical files from the copied plan are opened, with no symlink,
+magic-link or cross-mount traversal and no fallback. New directories are 0700;
+files are created with `O_EXCL` and mode 0600. Bounded SHA-256 verification runs
+during copying, with exact size and stable source metadata. It does not copy
+xattrs, source modes/ownership or hardlinks. Only fully verified files receive
+their declared 0444/0555 mode. Direct aliases are generated from the plan, never
+copied from the source symlink graph. Traversable directory modes are set last.
+
+Any potentially mutating failure includes `ErrStageIncomplete`: discard the
+entire disposable tree; no rollback, publication, automatic retry or resume.
+Occupied destinations are refused before copying, never cleaned or overwritten.
+Exclusive ownership/serialization by the root caller is a prerequisite; this
+does not resist another privileged writer or seal every writable view. Success
+still requires the separate kernel read-only bind and non-root `Inspect`.
+
+The fixed QEMU fixture now uses this prototype instead of shell `cp`. Actual
+guest checks require fresh independent inodes, five refusals (occupied tree,
+wrong digest, writable source, canceled context and source symlink) plus dirty
+tree re-entry refusal. The failed digest's file remains 0600 and root 0700.
+This source-only prototype has no authenticated manifest, persistent recovery,
+retained root owner/lease, service activation or installable product API.
 
 The generic service launcher and Samba's bounded root profile are unchanged.
 Neither this test helper nor probe is installed by a firmware package. Use the

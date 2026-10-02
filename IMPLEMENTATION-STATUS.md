@@ -69,6 +69,19 @@ compilation also pass on that commit. The earlier broader working-tree Linux
 API vet/race suite passed; neither result is a full new Buildroot integration.
 See the [internal contract](src/phantowd-api/internal/runtimebundle/README.md).
 
+The next source-only prototype, excluded from ordinary builds by `qemu && linux`,
+now constructs the fixture's code tree from pinned read-only source descriptors
+into an exclusively owned empty 0700 tmpfs root. Fresh `O_EXCL` copies verify
+bounded hashes during copying; only verified files get final modes, and direct
+aliases are generated from the fixed plan. The local final-source ARMv5 fixture
+passes five staging refusals (occupied destination, wrong hash, writable source,
+cancellation and source symlink), dirty-tree re-entry refusal, failed-copy
+0600/0700 confinement and the following read-only inspector/Samba regressions.
+The original base hashes remain unchanged. Host API/vet/cross-compile and Linux
+QEMU-tag vet/package race tests pass. This is disposable construction evidence,
+not an authenticated product manifest, retained root/lease, production Owner,
+installer, full new Buildroot integration or hosted feature result.
+
 Percentages are **engineering planning estimates**, not measured test coverage,
 probabilities of success, release readiness, or a delivery-date promise. Credit
 includes source, negative tests and fixture integration; the remaining scope
