@@ -367,6 +367,62 @@ func TestMountedVolumeSetLeaseRollsBackIfMemberChangesDuringAcquire(t *testing.T
 	}
 }
 
+func TestMountedVolumeSetLeaseRevokesOnlyTheChangedVolume(t *testing.T) {
+	alpha, _ := mountedOwnerFixtureForSet(t, "alpha", "/srv/phantowd/volumes/alpha",
+		"11111111-2222-3333-4444-555555555555", 101, 102, 17)
+	beta, betaInspector := mountedOwnerFixtureForSet(t, "beta", "/srv/phantowd/volumes/beta",
+		"aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee", 201, 202, 33)
+	set, err := newMountedVolumeSet([]string{"alpha", "beta"}, []*Owner{alpha, beta})
+	if err != nil {
+		t.Fatal("create fixed mounted-volume roster:", err)
+	}
+	lease, evidence, err := set.Acquire(context.Background())
+	if err != nil || lease == nil || !evidence.Complete() {
+		t.Fatalf("acquire complete mounted-volume roster: lease=%v complete=%v err=%v", lease != nil, evidence.Complete(), err)
+	}
+	alphaHandle, err := lease.OpenDirectory("alpha", ".")
+	if err != nil {
+		t.Fatal("open independent alpha volume:", err)
+	}
+	betaHandle, err := lease.OpenDirectory("beta", ".")
+	if err != nil {
+		t.Fatal("open beta volume before identity loss:", err)
+	}
+
+	betaInspector.observeError = true
+	if _, err := lease.OpenDirectory("beta", "."); !errors.Is(err, ErrReview) {
+		t.Fatalf("changed beta volume did not fail closed: %v", err)
+	}
+	if beta.State() != StateReviewRequired {
+		t.Fatalf("changed beta Owner was not quarantined: %s", beta.State())
+	}
+	if _, err := betaHandle.Stat(); !errors.Is(err, os.ErrClosed) {
+		t.Fatalf("beta identity failure did not revoke beta's tracked descriptor: %v", err)
+	}
+	if _, err := alphaHandle.Stat(); err != nil {
+		t.Fatalf("beta identity failure revoked an unrelated alpha descriptor: %v", err)
+	}
+	if _, err := lease.OpenDirectory("alpha", "."); err != nil {
+		t.Fatalf("beta identity failure blocked independent alpha access: %v", err)
+	}
+
+	// Restoring the observer models the anchor returning. The old Owner and
+	// child lease must remain quarantined; recovery needs fresh qualification.
+	betaInspector.observeError = false
+	if _, err := lease.OpenDirectory("beta", "."); !errors.Is(err, ErrReview) {
+		t.Fatalf("returned beta anchor revived its old child lease: %v", err)
+	}
+	if err := lease.Close(); err != nil {
+		t.Fatal("close group lease after member quarantine:", err)
+	}
+	if err := alpha.Drain(); err != nil {
+		t.Fatalf("release independent alpha after group close: %v", err)
+	}
+	if err := alpha.Unmount(context.Background()); err != nil {
+		t.Fatal("unmount independent alpha after group close:", err)
+	}
+}
+
 func TestMountedVolumeSetWithEvidenceKeepsRosterLockedDuringInspection(t *testing.T) {
 	alpha, _ := mountedOwnerFixtureForSet(t, "alpha", "/srv/phantowd/volumes/alpha",
 		"11111111-2222-3333-4444-555555555555", 101, 102, 17)

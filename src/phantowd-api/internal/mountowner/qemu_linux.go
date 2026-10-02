@@ -66,7 +66,7 @@ func RunQEMUFixture(source string) error {
 	if err := exerciseSourceReplacementRace(source); err != nil {
 		return fmt.Errorf("mount source replacement race: %w", err)
 	}
-	fmt.Println("PHANTOWD_MOUNT_OWNER_READY qualified_before_lease=true identity_change_blocks_new_access=true owner_handles_revoked=true ambiguous_mount_no_retry=true ambiguous_unmount_no_retry=true mismatch_no_lease=true target_fd_anchored=true target_replacement_not_used=true late_target_race_pinned_object_only=true late_target_race_quarantined=true source_fd_anchored=true source_replacement_quarantined=true scope=disposable-qemu-only")
+	fmt.Println("PHANTOWD_MOUNT_OWNER_READY qualified_before_lease=true identity_change_blocks_new_access=true owner_handles_revoked=true set_lease_identity_loss=true returned_anchor_no_reuse=true ambiguous_mount_no_retry=true ambiguous_unmount_no_retry=true mismatch_no_lease=true target_fd_anchored=true target_replacement_not_used=true late_target_race_pinned_object_only=true late_target_race_quarantined=true source_fd_anchored=true source_replacement_quarantined=true scope=disposable-qemu-only")
 	return nil
 }
 
@@ -569,38 +569,57 @@ func exerciseQualifiedLifecycle(source string) (result error) {
 	return nil
 }
 
-func exerciseChangedIdentityRevocation(source string) (result error) {
-	f, err := newQEMUMountFixture(source)
-	if err != nil {
-		return err
+func exerciseChangedIdentityRevocation(source string) error {
+	callbackCompleted := false
+	result := withQEMUMountedOwner(source, func(owner *Owner) error {
+		set, err := newMountedVolumeSet([]string{qemuPlannerVolumeID}, []*Owner{owner})
+		if err != nil {
+			return errors.New("identity-change fixture could not create its fixed volume roster")
+		}
+		lease, evidence, err := set.Acquire(contextBackground())
+		if err != nil {
+			return err
+		}
+		if !evidence.Complete() || len(evidence.Volumes()) != 1 {
+			return errors.New("identity-change fixture received incomplete volume-set evidence")
+		}
+		file, err := lease.OpenDirectory(qemuPlannerVolumeID, ".")
+		if err != nil {
+			_ = lease.Close()
+			return err
+		}
+		if err := unix.Mount(source, owner.target, "", unix.MS_BIND, ""); err != nil {
+			return err
+		}
+		if _, err := lease.OpenDirectory(qemuPlannerVolumeID, "."); !errors.Is(err, ErrReview) || owner.State() != StateReviewRequired {
+			return errors.New("changed mount identity was not quarantined")
+		}
+		if _, err := file.Stat(); !errors.Is(err, os.ErrClosed) {
+			return errors.New("group lease quarantine did not revoke its tracked descriptor")
+		}
+		if err := unix.Unmount(owner.target, 0); err != nil {
+			return errors.New("identity-change fixture could not remove its exact overmount")
+		}
+		if _, err := lease.OpenDirectory(qemuPlannerVolumeID, "."); !errors.Is(err, ErrReview) {
+			return errors.New("returned mount anchor revived the quarantined group lease")
+		}
+		if _, evidence, err := set.Acquire(contextBackground()); !errors.Is(err, ErrReview) || evidence.Complete() {
+			return errors.New("returned mount anchor revived the quarantined Owner roster")
+		}
+		if err := lease.Close(); err != nil {
+			return errors.New("quarantined group lease did not release cleanly")
+		}
+		if err := owner.Unmount(contextBackground()); !errors.Is(err, ErrReview) {
+			return errors.New("quarantined Owner retried or performed cleanup")
+		}
+		callbackCompleted = true
+		return nil
+	})
+	if !callbackCompleted || !errors.Is(result, ErrReview) {
+		return errors.Join(errors.New("group-lease identity-loss fixture did not complete quarantine"), result)
 	}
-	defer func() { result = errors.Join(result, f.close()) }()
-	if err := f.owner.Qualify(f.qualification); err != nil || f.owner.Mount(contextBackground()) != nil {
-		return errors.Join(errors.New("identity-change fixture mount failed"), err)
-	}
-	lease, err := f.owner.Acquire(contextBackground())
-	if err != nil {
-		return err
-	}
-	file, err := lease.OpenDirectory(".")
-	if err != nil {
-		lease.Close()
-		return err
-	}
-	if err := unix.Mount(source, f.target, "", unix.MS_BIND, ""); err != nil {
-		return err
-	}
-	if _, err := f.owner.Acquire(contextBackground()); !errors.Is(err, ErrReview) || f.owner.State() != StateReviewRequired {
-		return errors.New("changed mount identity was not quarantined")
-	}
-	if _, err := file.Stat(); err == nil {
-		return errors.New("quarantine did not revoke an Owner-held descriptor")
-	}
-	if _, err := f.owner.Acquire(contextBackground()); !errors.Is(err, ErrReview) {
-		return errors.New("quarantined Owner issued another lease")
-	}
-	if err := f.owner.Unmount(contextBackground()); !errors.Is(err, ErrReview) || f.driver.unmountCalls != 0 {
-		return errors.New("quarantined Owner retried or performed cleanup")
+	if _, err := os.Lstat(qemuPlannerMountAnchor); !errors.Is(err, os.ErrNotExist) {
+		return errors.New("identity-loss fixture did not remove its exact QEMU mount anchor")
 	}
 	return nil
 }
