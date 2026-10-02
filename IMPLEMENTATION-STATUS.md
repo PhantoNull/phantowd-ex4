@@ -4,7 +4,7 @@
 # Implementation status
 
 Code audit: **2026-10-02**, integrated `develop` baseline
-`3a753066d17bcbe60bb80e1f0aecdfce526cab44` (PR #55).
+`9daacfd42df5c8af7d3bf0c1410c2bb98574a580` (PR #56).
 Use [ROADMAP.md](ROADMAP.md) for the acceptance specification. This snapshot
 distinguishes tested components from deployed product workflows. It is not
 installation approval, a security certification, or an exhaustive line-by-line audit.
@@ -53,6 +53,13 @@ result before recording a compiler checkpoint. The original base rootfs remains
 unchanged. This result is separate from the earlier complete integration
 on `fba213d`; it does not qualify Windows ACLs, complete filesystem ACLs, stream
 migration, product integration or physical EX4 behavior.
+
+PR #56 subsequently passed exact-head `7f108d2` hosted
+[host](https://github.com/PhantoNull/phantowd-ex4/actions/runs/37028964742) and
+[QEMU](https://github.com/PhantoNull/phantowd-ex4/actions/runs/37028965197)
+checks and was squash-merged as the current baseline. Its merged branch was
+removed. QEMU-only experiment paths no longer trigger an unchanged EX4 kernel
+rebuild; actual board/build input changes remain covered.
 
 ## Roadmap comparison
 
