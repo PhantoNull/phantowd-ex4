@@ -99,28 +99,31 @@ it was not a clean Buildroot build, two-boot persistence run, or hosted CI run.
 No real EX4 media was touched, and this does not qualify physical EX4 behavior.
 
 The current-source M4.4 QEMU-only `ServiceHandoff` clones a qualified mount
-tree from its pinned source descriptor into a root-controlled volatile
-pathname, verifies the clone's mount identity, and retains a lease over the
-entire fixed volume roster. Replacing the original source anchor moves the
-Owner and handoff to `review-required`; the service pathname continues to
-refer to the original clone rather than following the replacement. The new
-internal `ServiceRuntime` orders one fixed `processowner.Set` around this
-handoff: it verifies bindings before startup, and on source loss it stops the
-consumer before closing the handoff. An uncertain stop keeps the lease in
-review without retry. Its caller must poll `Observe`; there is no automatic
-monitor or restart. The disposable ARMv5 QEMU fixture exercises one synthetic
-BusyBox consumer, while Linux tests cover the uncertain-stop boundary. This is
-not a production service manager: no trusted production storage provider,
-daemon wiring, non-root service access matrix, real-media use, or EX4
-qualification exists. An exploratory ARMv5 probe found that UID/GID 65534
-could read a synthetic 0644 marker through the clone: the pre-mount target
-directory's 0700 mode is hidden by the mounted filesystem, and the current
-0711 handoff path is not a non-root access-control boundary. The probe failed
-its default-deny assertion and exposed an unresolved security gap; do not use
-this prototype for untrusted non-root consumers. Local Windows/Linux API
-checks and the unmodified standard ARMv5 smoke and focused MD v1.0 fixture pass
-using existing read-only Buildroot inputs and temporary overlays; the two-boot
-and hosted exact-head checks are separate.
+tree from its pinned source descriptor into a volatile per-runtime pathname,
+verifies the clone's mount identity, and retains a lease over the complete
+fixed volume roster. Its root is pre-provisioned as root-owned
+`root:<service-gid>` mode `0710`. `processowner` applies each fixed UID/GID and
+exact supplementary-group set before exec; `ServiceRuntime` rejects implicit,
+root, or group-mismatched process sets. ARMv5 QEMU proves that the permitted
+1000:1000 consumer can read a synthetic marker and that UID 65534 with no
+service group receives `EACCES`; a mismatched process group is rejected.
+Replacing the original source anchor moves the Owner and handoff to
+`review-required`; the service pathname remains on the original clone. On
+source loss the runtime stops its fixed process set before closing the
+handoff; an uncertain stop retains the lease without retry. Its caller must
+poll `Observe`; there is no automatic monitor or restart.
+
+This closes path traversal for identities outside the configured service
+group, not file-level authorization. The prototype exposes a selected whole
+volume, so access inside it still follows source ownership, modes and ACLs.
+Per-share service grants/ACL provisioning, service-account/group provisioning,
+trusted production storage construction, daemon wiring and EX4 qualification
+remain unimplemented. It makes no automatic `chown`/`chmod` changes and is not
+yet a production service manager. Local Windows/Linux API checks and the
+current-source one-boot ARMv5 smoke pass using existing read-only Buildroot
+inputs and a temporary overlay; the two-boot, clean-build and hosted exact-head
+checks are separate. No NAS, physical disk, NAND/MTD, flash, or user data was
+accessed.
 
 A focused local ARMv5 QEMU check now compares mdadm-authored MD v1.0 metadata
 created on partition 1 of two synthetic GPT disk images, each backed by a
