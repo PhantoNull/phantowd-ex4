@@ -35,9 +35,10 @@ unwritable by untrusted users. This runner is not a supervisor for arbitrary or
 hostile executables, independently escaping descendants, or privilege changes.
 `Inspect` and `ObserveBlockSet` do not mount, enumerate or open source paths.
 Result UUIDs are private and must not enter public diagnostics/logs.
-`PartitionTable` and its raw IDs are equally private. This package currently
-does not expose them through HTTP and does not authorize compatibility,
-assembly, import or mount.
+`PartitionTable` and its raw IDs are equally private. This package does not
+expose them through HTTP and does not authorize compatibility, assembly, import
+or mount. The broker's separate manual GPT operation returns only a redacted
+aggregate summary, never this raw result.
 
 ## Verification and remaining integration
 
@@ -107,8 +108,8 @@ mount and swap observations around descriptor handoff. Disk nodes are granted
 only to its dedicated group with mode `0440`; the ordinary API account is not a
 member. The broker requires empty effective, permitted and inheritable
 capability sets plus `no_new_privs`, and serves a bounded metadata-only
-response to the API over a peer-credential-checked Unix socket. It does not
-read disk contents. The API exposes the result through
+response to the API over a peer-credential-checked Unix socket. Ordinary
+inventory does not read disk contents. The API exposes that inventory through
 authenticated `GET /api/v1/storage`, and the broker is started separately by
 the system init script. The QEMU fixtures exercise this boundary, but do not
 qualify real EX4 hardware or authorize mounting or mutation. A caller must
@@ -189,7 +190,14 @@ discovery and unmounted state only within its mount namespace, then rechecks
 transient kernel generations around read-only descriptor opening. This does not
 establish global exclusive access, durable physical identity, WD disk-layout
 compatibility or permission to mount. Duplicate filesystem UUIDs remain
-ambiguous. The native metadata-probe helper is not wired into the broker, and
-no volume activation or SMB/NFS lifecycle path is implemented. See the
+ambiguous. `ObserveGPTBlockSet` is wired into the broker's fixed `observe-gpt`
+operation: it runs the helper with only `--gpt-only`, retains the complete
+generation-bound set, and rechecks discovery around the scan. The development
+`POST /api/v1/storage/gpt-observation` requires an explicit authenticated,
+Origin/CSRF-checked request and returns aggregate counts only; no automatic
+polling, filesystem probing, assembly or activation is implied. The QEMU-only
+MD v1.0 provider also uses this GPT observation before reading declared RAID
+member metadata; ordinary non-QEMU builds refuse that MD operation. Product
+volume activation and SMB/NFS lifecycle integration remain incomplete. See the
 [native helper](../../phantowd-volume-probe/README.md) and
 [mounted identity guard](../mountguard/README.md).
