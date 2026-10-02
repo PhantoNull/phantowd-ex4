@@ -1,5 +1,39 @@
 # Fast API and file-service integration checks
 
+## Fixed Samba ELF loader differential
+
+`support/test-runtime-loader.ps1` is a local fast lane using only an existing
+pinned image/workspace and manifest-verified QEMU base. It never pulls/builds an
+image or creates a volume. Source, target and base are mounted read-only; the
+rootfs copy lives in bounded 512 MiB tmpfs, while QEMU snapshots have separate
+128 MiB temporary space. The compiler cache is removed before copying rootfs.
+No network, host devices or forwarded ports are provided.
+
+The host candidate fixes `usr/sbin/smbd`; it cannot select another program.
+The generated PID1 has an explicit executable inode, mounts only temporary
+runtime filesystems, checks each selected ELF SHA-256 and alias's canonical
+target against the guest image, then invokes its actual ARMv5 glibc loader
+with an empty environment and `--inhibit-cache --list`. It refuses an existing
+`ld.so.preload`. This lists dependencies **without starting the Samba daemon**.
+The host requires the exact candidate dependency roster, ordered unique success
+markers and no unknown/failed resolution; a guest failure retains diagnostics.
+There is one boot, no retry, a finite 90-second timeout, a read-only snapshot
+root device and unchanged original-rootfs verification.
+
+Local tests on 2026-10-02 passed with both the default builder and UID/GID 1000.
+The real loader resolved 104 dependencies, matching 105 candidate ELF objects
+including the main executable (27,110,832 bytes). Seven host tests cover
+missing/extra/unknown resolutions, marker failures, conflicting aliases,
+unsafe paths, budgets and temporary-space/cleanup contracts. Parser lint,
+shellcheck, existing 13 feedback contracts and workflow path tests also pass.
+This is cached overlay evidence, not a fresh Buildroot/hosted run, signed
+runtime manifest, NSS/dlopen/privilege qualification or physical EX4 test.
+
+The full Buildroot lane runs the same comparison after producing/verifying
+its artifact set, and fast refusal tests run before the expensive compilation.
+The candidate CLI itself remains host-only and never executes an ELF; only
+this separately scoped fixture invokes the known public Buildroot loader.
+
 ## Smoke duration and cache scope
 
 The complete one-boot smoke now has a **240-second** polling budget, not the
@@ -400,6 +434,35 @@ The default command remains the focused MD v1.0/M3.4 check described above.
 
 ## Evidence boundary
 
+### Native service-launcher boundary fixture
+
+Run `support/test-service-launcher.ps1` for the independent M4.4 launcher
+prototype. It uses the already-present pinned image/toolchain and checks every
+base artifact hash, copies the rootfs to tmpfs, builds two static ARMv5 programs
+there and runs one networkless snapshot-mode guest. Only the private copy has
+the helper/probe/init injected; the firmware artifact and its SBOM are unchanged.
+Host refusal tests, static analysis and seven guest refused-launch cases precede
+the positive namespace/root/credential/capability/FD/signal/PID/read-only proof.
+Temporary root/share objects contain only generated markers. Original data
+paths, sibling paths, `/proc`, `/dev` and an inherited host-root descriptor are
+not visible to the child. The guest remains distinguishable from physical EX4
+through its exact DT model and ARM architecture check.
+
+The wrapper refuses missing existing caches, never pulls/builds an image or
+creates a persistent volume, mounts inputs read-only, and removes its container
+and tmpfs on exit. Full QEMU CI runs this same bounded fixture after producing
+the baseline, retaining a synthetic failure log if it fails. It now also
+compiles a QEMU-only Go fixture that invokes the real fixed-input IsolatedOwner
+and checks readiness/stop/reap, argument/credential mutation, close gating and
+pre-launch/live root-drift quarantine. Cold Go compilation exceeded the former
+128 MiB fixture budget: full local/CI wrappers now use the same bounded 512 MiB
+tmpfs, and the disposable compiler cache is removed before the rootfs copy.
+This does not create a persistent volume.
+
+It is not a product root constructor, process Set/ServiceRuntime integration,
+live SMB/NFS test, clean image qualification or hardware evidence. Successful syscall-level
+isolation alone does not prove a complete service authorization model.
+
 ### Separate state-persistence boots
 
 After the normal smoke, both the fast lane and clean Buildroot runner execute
@@ -491,6 +554,27 @@ remains unresolved rather than fixed.
 See M0.2 in [the roadmap](../ROADMAP.md).
 
 ### Qualification limits
+
+`support/test-samba-root.ps1` additionally tests actual multi-user Samba inside
+a restricted read-only root/private mount namespace, using only fixture state
+and explicit subdirectory grants. UID 0 retains six bounded capabilities for
+Unix client impersonation, not the generic launcher's non-root profile.
+Ownership, wrong-password/access denials, Unix-mode enforcement, kernel RO,
+original-path/symlink denial, one Unicode filename and owned-group stop are
+checked. This is a distinct test-only native fixture, never installed into the
+product image. See [runtime profile and remaining gates](SAMBA-RUNTIME-PROFILE.md).
+
+The standalone `support/test-service-launcher.ps1` lane also composes a single
+fixed static child with `mountowner.IsolatedServiceRuntime`. It creates one
+16 MiB ext2 fixture in bounded tmpfs and attaches it with a QEMU snapshot; the
+manifest-verified base is read-only. Normal and substituted-source cases must
+prove exact grant-only roots, denied original paths/read-only writes, root-pin
+close exclusion, stop/reap before release and no restart from review. The guest
+requires ordinary ext2 unmount success before completion. Its `/run` tmpfs is
+explicitly mode0755: permissive default ancestors must not be worked around by
+weakening the handoff's checks. Local builder1000 verification passed with the
+same512 MiB budget used by the full local/CI wrapper. No image/named volume is
+created; this lane neither installs the helper nor tests a real daemon profile.
 
 This lane can exercise current userspace against the base's kernel and
 packages without rebuilding Buildroot. It does **not** validate changed

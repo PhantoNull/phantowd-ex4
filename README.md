@@ -121,6 +121,15 @@ temporary overlay space; clean-build, two-boot, hosted exact-head and EX4
 qualification remain separate. No NAS, physical disk, NAND/MTD, flash, or user
 data was accessed.
 
+A separate single-static-child `IsolatedServiceRuntime` now joins a dedicated
+grant-only handoff to the pinned native launcher. Its ARMv5 QEMU fixture proves
+original volume paths are unreachable, read-only writes are denied, direct
+teardown is blocked while the child runs, and normal/source-loss cleanup reaps
+the child before releasing grants. This does not change the ordinary process
+set's limitation above, install the helper into product startup or qualify
+Samba/NFS daemon profiles. See the
+[mount-owner contract](src/phantowd-api/internal/mountowner/README.md).
+
 A focused local ARMv5 QEMU check now compares mdadm-authored MD v1.0 metadata
 created on partition 1 of two synthetic GPT disk images, each backed by a
 temporary 32 MiB tmpfs file. In the guest, the firmware's bounded MD reader
@@ -172,6 +181,38 @@ hosted-CI run; the tested changes were still uncommitted.
 The API and dashboard remain development-only and guest-loopback-only by
 default. Do not expose them through a LAN listener or reverse proxy.
 [Component contracts](src/phantowd-api/README.md) explain the precise boundaries.
+
+An independent [native service-launcher prototype](src/phantowd-service-launcher/README.md)
+now passes local ARMv5 QEMU tests with a restricted root, private mount namespace,
+non-root credentials, zero capabilities, inherited-FD/signal cleanup and preserved
+PID/process-group ownership. Seven invalid-launch cases are refused. The internal
+`IsolatedOwner` now pins its fixed inputs and supervises a static synthetic child;
+input drift stops/quarantines it and restoration never clears review. The
+separate single-static-child handoff composition described above is tested;
+trusted daemon-root construction, isolated multi-process Set integration, Samba
+privilege profiles, kernel NFS control and product init remain missing. The
+host-only research toolkit can derive a restricted ELF dependency candidate;
+this is not a trusted runtime manifest. No live product service is enabled.
+
+A separate local ARMv5 loader differential now confirms the cached Samba
+candidate's hashes, aliases and 104 dependencies (105 ELFs including smbd), without
+starting the daemon or changing the original image. Daemon-root/state/privilege
+qualification remains open; see the [fast test instructions](support/QEMU-FAST-TESTS.md#fixed-samba-elf-loader-differential).
+
+A separate disposable ARMv5 Samba fixture now exercises a restricted root,
+private mount namespace and bounded root capabilities while preserving distinct
+Unix users. Real SMB3 clients verify ownership, access denials, read-only grants,
+denied original paths and one Unicode filename roundtrip. It is not an installed
+helper, trusted product manifest or live-service activation; see the
+[profile and remaining qualification gates](support/SAMBA-RUNTIME-PROFILE.md).
+The fixed `streams_xattr` plugin is separately hash-verified and exercised by
+an SMB alternate-stream roundtrip with exact xattr bytes and denied reader/
+kernel-read-only overwrites. A disposable ext4 fixture also verifies named-user
+POSIX ACLs, write/outsider denials and mask-based revocation through real SMB3.
+This does not qualify Windows ACLs or migration. Local incremental integration
+and focused test results are not independent clean builds, hosted feature
+results or EX4 qualification;
+[implementation status](IMPLEMENTATION-STATUS.md) separates them.
 
 The badge tracks the `develop` integration branch, not every feature branch.
 For build evidence, open the relevant workflow run and check its **commit,

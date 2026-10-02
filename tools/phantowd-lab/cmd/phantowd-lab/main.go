@@ -117,6 +117,26 @@ func run(args []string, output io.Writer) (int, error) {
 	case "inventory-rootfs":
 		return inventoryRootfs(args[1:], output)
 
+	case "inspect-runtime-closure":
+		if len(args) != 3 {
+			return 1, errors.New("usage: phantowd-lab inspect-runtime-closure DIRECTORY IMAGE-RELATIVE-ELF")
+		}
+		inventory, err := rootfsinventory.Inspect(args[1])
+		if err != nil {
+			return 1, err
+		}
+		closure, err := inventory.RuntimeClosure(args[2])
+		if err != nil {
+			return 1, err
+		}
+		if err := writeJSON(output, closure); err != nil {
+			return 1, err
+		}
+		if !closure.StaticDependenciesResolved {
+			return 2, nil
+		}
+		return 0, nil
+
 	case "scan-storage-refs":
 		if len(args) != 2 {
 			return 1, errors.New("usage: phantowd-lab scan-storage-refs EXTRACTED-ROOT")

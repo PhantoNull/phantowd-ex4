@@ -65,6 +65,15 @@ func NewServiceRuntime(handoff *ServiceHandoff, processes *processowner.Set) (*S
 		!processes.AllMembersRunAsNonRootWithGroup(handoff.serviceGroupID) {
 		return nil, ErrServiceRuntimeInvalid
 	}
+	handoff.mu.Lock()
+	claimed := handoff.runtimeReserved
+	if !claimed {
+		handoff.runtimeReserved = true
+	}
+	handoff.mu.Unlock()
+	if claimed {
+		return nil, ErrServiceRuntimeInvalid
+	}
 	return newServiceRuntime(handoff, processes)
 }
 

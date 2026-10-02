@@ -5,12 +5,29 @@ on:
     branches: [main, develop]
     paths:
       - 'tools/phantowd-lab/**'
+      - 'src/phantowd-service-launcher/**'
+      - 'support/test-service-launcher.ps1'
+      - 'support/tests/test-service-launcher.py'
+      - 'support/tests/test-qemu-service-launcher.sh'
+      - 'support/tests/service-launcher-fixture.c'
+      - 'support/tests/service-launcher-init.sh'
+      - 'support/test-runtime-loader.ps1'
+      - 'support/test-samba-root.ps1'
+      - 'support/tests/samba-root-*'
+      - 'support/tests/samba_root_fixture.py'
+      - 'support/tests/test-samba-root-fixture.py'
+      - 'support/tests/test-qemu-samba-root.sh'
+      - 'support/tests/runtime_loader_fixture.py'
+      - 'support/tests/test-runtime-loader-fixture.py'
+      - 'support/tests/test-qemu-runtime-loader.sh'
       - 'support/build-qemu.ps1'
       - 'support/clean-qemu-build-volumes.ps1'
       - 'support/test-lab-tools.ps1'
       - 'support/container/test-lab-tools.sh'
       - 'support/test-firmware-workflow-paths.sh'
       - 'support/tests/test-qemu-build-feedback.py'
+      - 'support/tests/test-qemu-kernel-inputs.py'
+      - 'support/container/qemu_kernel_inputs.py'
       - 'support/container/save-qemu-failure-log.sh'
       - 'support/tests/test-storage-broker-buildroot.sh'
       - 'support/container/audit-ex4-stage-b-kernel-config.sh'
@@ -25,12 +42,29 @@ on:
     types: [opened, synchronize, reopened, ready_for_review]
     paths:
       - 'tools/phantowd-lab/**'
+      - 'src/phantowd-service-launcher/**'
+      - 'support/test-service-launcher.ps1'
+      - 'support/tests/test-service-launcher.py'
+      - 'support/tests/test-qemu-service-launcher.sh'
+      - 'support/tests/service-launcher-fixture.c'
+      - 'support/tests/service-launcher-init.sh'
+      - 'support/test-runtime-loader.ps1'
+      - 'support/test-samba-root.ps1'
+      - 'support/tests/samba-root-*'
+      - 'support/tests/samba_root_fixture.py'
+      - 'support/tests/test-samba-root-fixture.py'
+      - 'support/tests/test-qemu-samba-root.sh'
+      - 'support/tests/runtime_loader_fixture.py'
+      - 'support/tests/test-runtime-loader-fixture.py'
+      - 'support/tests/test-qemu-runtime-loader.sh'
       - 'support/build-qemu.ps1'
       - 'support/clean-qemu-build-volumes.ps1'
       - 'support/test-lab-tools.ps1'
       - 'support/container/test-lab-tools.sh'
       - 'support/test-firmware-workflow-paths.sh'
       - 'support/tests/test-qemu-build-feedback.py'
+      - 'support/tests/test-qemu-kernel-inputs.py'
+      - 'support/container/qemu_kernel_inputs.py'
       - 'support/container/save-qemu-failure-log.sh'
       - 'support/tests/test-storage-broker-buildroot.sh'
       - 'support/container/audit-ex4-stage-b-kernel-config.sh'
@@ -85,6 +119,18 @@ jobs:
 
       - name: Verify QEMU build feedback contracts
         run: python3 -B support/tests/test-qemu-build-feedback.py
+
+      - name: Verify native service launcher refusals
+        run: python3 -B support/tests/test-service-launcher.py
+
+      - name: Verify runtime-loader comparison refusals
+        run: python3 -B support/tests/test-runtime-loader-fixture.py
+
+      - name: Verify Samba-root experiment refusals
+        run: python3 -B support/tests/test-samba-root-fixture.py
+
+      - name: Verify kernel-input invalidation and ACL requirements
+        run: python3 -B support/tests/test-qemu-kernel-inputs.py
 
       - name: Test Stage B kernel-config audit policy
         run: sh support/tests/test-ex4-stage-b-kernel-config-audit.sh

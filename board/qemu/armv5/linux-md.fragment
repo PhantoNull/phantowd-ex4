@@ -4,3 +4,6 @@ CONFIG_BLK_DEV_MD=y
 CONFIG_MD_RAID1=y
 # Never auto-assemble fixture or attached storage at boot.
 # CONFIG_MD_AUTODETECT is not set
+# Synthetic ext-backed storage must enforce named-user permissions too.
+# Tmpfs ACL support alone cannot qualify storage-filesystem permissions.
+CONFIG_EXT4_FS_POSIX_ACL=y

@@ -187,6 +187,20 @@ support/tests/test-ex4-stage-b-kernel-config-audit.sh
 .github/workflows/ex4-stage-b3.yml
 .github/workflows/host-tools.yml
 '
+
+# Internal launcher tests must not rebuild EX4 research profiles, but must
+# retain the one QEMU lane and cheap native host refusals.
+for path in 'src/phantowd-service-launcher/**' \
+    'support/test-service-launcher.ps1' \
+    'support/tests/test-service-launcher.py' \
+    'support/tests/test-qemu-service-launcher.sh' \
+    'support/tests/service-launcher-fixture.c' \
+    'support/tests/service-launcher-init.sh'; do
+    require_triggered_path "$host_workflow" "$path"
+    require_ignored_path "$stage_b3_workflow" "$path"
+    require_not_ignored_pattern "$qemu_workflow" push "$path"
+    require_not_ignored_pattern "$qemu_workflow" pull_request "$path"
+done
 documentation_paths='
 **/*.md
 doc/**

@@ -36,6 +36,7 @@ phantowd-lab inspect-md-v1.0-component-set COMPONENT-IMAGE-1 COMPONENT-IMAGE-2 [
 phantowd-lab inspect-md-v0.90-component COMPONENT-IMAGE-FILE
 phantowd-lab inspect-md-v0.90-partition DISK-IMAGE-FILE GPT-PARTITION-NUMBER
 phantowd-lab inventory-rootfs [--summary] DIRECTORY
+phantowd-lab inspect-runtime-closure DIRECTORY IMAGE-RELATIVE-ELF
 phantowd-lab scan-storage-refs EXTRACTED-ROOT
 phantowd-lab inspect-storage-inventory FILE
 phantowd-lab plan-storage-inventory FILE
@@ -47,6 +48,33 @@ phantowd-lab replay-mcu [--format raw|hex] FILE
 Artifact inspectors return exit status `0` when all currently understood
 structure and XOR checks pass, `2` when a parsed artifact fails validation,
 and `1` for usage, I/O, or structural errors. Results are JSON.
+
+`inspect-runtime-closure` reuses the extracted-tree inventory to derive a
+**research-only** ARM32 little-endian ELF dependency candidate. The entry is a
+canonical image-relative path, for example `usr/sbin/smbd`. It records hashes,
+sizes and required aliases for the interpreter and recursive `DT_NEEDED`
+objects. Symlink text is resolved inside the inventoried image; host targets
+are never followed. Per-object literal `RUNPATH` precedes `/lib` and `/usr/lib`
+and is not inherited by children. An entirely empty RUNPATH is ignored;
+empty components of a nonempty list, RPATH, tokens, loader modifiers, conflicting
+libraries and unresolved evidence are refused. See [loader search semantics](https://man7.org/linux/man-pages/man8/ld.so.8.html)
+and [glibc's empty-path handling](https://github.com/bminor/glibc/blob/glibc-2.41/elf/dl-load.c).
+
+The graph is capped at 256 objects, 1,024 bindings, 4,096 dependency edges and
+64 MiB of selected regular-file bytes; source inventory retains its existing
+250,000-entry limit and scans/hashes the whole extracted tree, not just the
+candidate. Failure returns no partial object roster. Exit `0` means only that
+this restricted graph resolved; `2` means refusal and `1` means usage/I/O error.
+`runtime_qualified` and `execution_authorized` are always false. This does not
+emulate loader caches, environment, hardware-capability directories, symbol/load
+order, NSS or `dlopen`, or qualify ABI compatibility, trusted ownership,
+configuration, writable state or privileges. It mounts/copies/executes nothing
+and is not an approved service-root manifest or installer.
+
+A separate [disposable ARMv5 loader differential](../../support/QEMU-FAST-TESTS.md#fixed-samba-elf-loader-differential)
+compares candidate hashes, aliases and the dependency roster with the actual
+public Buildroot loader, without starting Samba. It is not part of this CLI's
+authority and does not qualify dynamic modules, state or privileges.
 
 `inspect-release` checks a version-1 JSON manifest signed over its exact bytes
 with a detached raw 64-byte Ed25519 signature. The caller supplies a raw

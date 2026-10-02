@@ -892,14 +892,78 @@ storage. No production roster provider or activation path exists.
   CI and physical EX4 behavior are not qualified. No NAS or production media
   was used.
 
-  Next: give each service an isolated private mount namespace whose only
+  Local follow-up: a separate native static-ELF launcher prototype passes a
+  disposable ARMv5 QEMU fixture with a pinned restricted root, private mount
+  namespace/propagation, zero capabilities, exact non-root credentials, FD and
+  inherited-signal cleanup, preserved PID/PGID, and a read-only share. Seven
+  invalid launch cases are refused. The source is
+  [phantowd-service-launcher](src/phantowd-service-launcher/README.md); run
+  `support/test-service-launcher.ps1` using existing read-only cache/base
+  inputs. It now runs through a fixed-input `processowner.IsolatedOwner` and
+  proves readiness, descriptor/spec independence, normal stop/reap, refused
+  close while running and pre-launch/live input-loss quarantine without retry.
+  A separate `mountowner.IsolatedServiceRuntime` now composes exactly one
+  static non-root child with a dedicated grant-only handoff root. A bounded
+  root census refuses undeclared entries; an explicit pin blocks direct close
+  while live. ARMv5 QEMU proves the original storage anchors are unreachable,
+  writes through the grant fail with `EROFS`, and normal/source-loss cleanup
+  reaps the group before releasing descriptors/clones/roster leases. Review
+  never permits restart. This does not isolate the ordinary process Set,
+  prepare daemon runtime manifests, implement per-client Samba privileges or
+  control kernel NFS. Existing ordinary handoff behavior remains unchanged;
+  no product service is enabled.
+
+  Next: implement a trusted per-service root-manifest constructor and connect
+  isolated owners to the multi-process Set/service-specific lifecycle,
+  giving each service an isolated private mount namespace whose only
   storage roots are its explicit grants; prove the original volume anchors and
   ungranted shares are unreachable and that read-only access cannot be bypassed.
+  Keep daemon privilege profiles distinct: the real multi-user Samba QEMU
+  fixture currently runs with root credentials and the pinned implementation
+  performs Unix identity/group switches. The generic fixed-UID zero-capability
+  child is not an implementation of those semantics. Define and validate a
+  bounded Samba-specific runtime/privilege contract, preserving per-client
+  Unix identities/ACLs; never substitute `force user` or shared credentials to
+  make isolation tests pass. Kernel NFS remains a separate typed authority.
   Then define product-owned service identities and safe ACL provisioning and
   recovery without silently changing legacy ownership. Add the bounded
   source-loss supervisor and a fail-closed production storage constructor only
   after these denied cases pass. Keep real disks and services disabled until
   permission, recovery and compatibility matrices pass.
+
+  Host-only prerequisite: `phantowd-lab inspect-runtime-closure` now derives a
+  bounded ARM32 ELF candidate from the existing extracted-tree inventory.
+  Pinned Linux unit/vet/race and 50,000 fuzz executions pass; the current cached
+  target's `smbd` graph contains 105 distinct objects (27,110,832 bytes). It
+  grants no execution authority and does not qualify loader caches, dynamic
+  modules/NSS, runtime state, ABI or privilege semantics. The fixed disposable
+  QEMU loader differential now passes with the default and 1000:1000 builders:
+  all selected hashes/aliases match, 104 dependencies equal the candidate roster
+  excluding smbd itself, and no daemon is started. The original rootfs stays
+  unchanged. Fast parser/refusal contracts and full-build comparison hooks are
+  implemented; exact-head full/hosted integration remains separate. Next inventory
+  the remaining
+  Samba runtime and implement a separately trusted root constructor. Do not
+  treat this candidate as the product manifest or mark M4.4 complete.
+
+  A separate [Samba restricted-root QEMU profile](support/SAMBA-RUNTIME-PROFILE.md)
+  now verifies distinct-user SMB3, Unix file ownership/mode denial, kernel
+  read-only grants, denied original paths, one Unicode filename and group stop
+  under six bounded root capabilities. One explicitly selected, hash-verified
+  `streams_xattr` module also passes an SMB alternate-stream roundtrip, exact
+  native xattr-byte checks and denied reader/kernel-read-only overwrites without
+  modifying ordinary file data. It is a fixed disposable experiment,
+  not a production constructor, per-client privilege certification, Owner-backed
+  activation or full module/ACL/encoding qualification. Preserve that separation
+  when constructing the trusted runtime and service-specific lifecycle.
+  Before claiming ACL support, qualify the actual storage filesystem's POSIX
+  ACL configuration and Windows ACL persistence/denials under the same bounded
+  privilege profile. A disposable ext4 fixture now checks exact POSIX ACL bytes,
+  named-reader access, denied writes/outsider reads and mask-based revocation.
+  The missing ext4 kernel option was reproduced and corrected; kernel-input
+  fingerprinting prevents cached fragments being silently ignored. This is
+  not Windows ACL or migration qualification. Do not silently choose permissive masks,
+  ignore system ACLs, change xattr namespaces or add mount-admin privileges.
 - **M4.5 — Failure and shutdown.** Cover startup with absent disks, service crash,
   read-only/full volume, client reconnect, stale NFS handles, shutdown with open
   files and restart ordering. Distinguish safely unavailable from healthy.

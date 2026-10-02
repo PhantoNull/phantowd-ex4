@@ -35,6 +35,21 @@ shellcheck -s sh \
 	"$external_dir/support/qemu-md-v10-fixture.sh"
 shellcheck -s sh "$external_dir/support/container/save-qemu-failure-log.sh"
 python3 -B "$external_dir/support/tests/test-qemu-build-feedback.py"
+python3 -B "$external_dir/support/tests/test-service-launcher.py"
+python3 -B "$external_dir/support/tests/test-runtime-loader-fixture.py"
+python3 -B "$external_dir/support/tests/test-samba-root-fixture.py"
+python3 -B "$external_dir/support/tests/test-qemu-kernel-inputs.py"
+python3 -B -m flake8 "$external_dir/support/tests/runtime_loader_fixture.py" \
+    "$external_dir/support/tests/test-runtime-loader-fixture.py" \
+    "$external_dir/support/tests/samba_root_fixture.py" \
+    "$external_dir/support/tests/test-samba-root-fixture.py"
+python3 -B -m flake8 "$external_dir/support/container/qemu_kernel_inputs.py" \
+    "$external_dir/support/tests/test-qemu-kernel-inputs.py"
+shellcheck "$external_dir/support/tests/test-qemu-runtime-loader.sh"
+shellcheck "$external_dir/support/tests/test-qemu-samba-root.sh" \
+    "$external_dir/support/tests/samba-root-init.sh"
+shellcheck "$external_dir/support/tests/test-qemu-service-launcher.sh" \
+    "$external_dir/support/tests/service-launcher-init.sh"
 sh "$external_dir/support/test-compare-build-artifacts.sh"
 python3 "$external_dir/support/test-volume-probe-build.py"
 
@@ -274,11 +289,38 @@ fi
 
 # Clean only the generated local-package directory: rsync alone can retain
 # deleted source files. Dependencies stay cached; all regenerates the rootfs.
+# Buildroot does not invalidate a configured kernel when only a fragment
+# changes. Refresh just Linux, reusing the same output/cache namespace. A
+# missing legacy stamp also refreshes once; stamp only audited successful work.
+kernel_inputs_helper="$external_dir/support/container/qemu_kernel_inputs.py"
+linux_inputs_digest=$(python3 -B "$kernel_inputs_helper" fingerprint \
+    "$external_dir" "$buildroot_source")
+linux_inputs_stamp="$output_dir/.phantowd-linux-inputs.sha256"
+linux_inputs_previous=
+if [ -f "$linux_inputs_stamp" ]; then
+    linux_inputs_previous=$(cat "$linux_inputs_stamp")
+fi
+if [ -f "$output_dir/build/linux-$LINUX_VERSION/.stamp_configured" ] && \
+    [ "$linux_inputs_previous" != "$linux_inputs_digest" ]; then
+    make -C "$buildroot_source" BR2_EXTERNAL="$external_dir" \
+        BR2_DL_DIR="$download_dir" O="$output_dir" \
+        -j"$(getconf _NPROCESSORS_ONLN)" linux-reconfigure
+fi
 make -C "$buildroot_source" \
     BR2_EXTERNAL="$external_dir" \
     BR2_DL_DIR="$download_dir" \
     O="$output_dir" \
     -j"$(getconf _NPROCESSORS_ONLN)"
+
+python3 -B "$kernel_inputs_helper" audit \
+    "$output_dir/build/linux-$LINUX_VERSION/.config"
+[ "$(python3 -B "$kernel_inputs_helper" fingerprint \
+    "$external_dir" "$buildroot_source")" = "$linux_inputs_digest" ] || {
+    echo 'QEMU kernel inputs changed during the build; no checkpoint recorded' >&2
+    exit 1
+}
+printf '%s\n' "$linux_inputs_digest" > "$linux_inputs_stamp.part"
+mv "$linux_inputs_stamp.part" "$linux_inputs_stamp"
 
 # Compiler-cache readiness is not test or release qualification. Trusted CI
 # can retain completed compiler work even when a later guest fixture fails.
@@ -384,5 +426,31 @@ install -m 0644 "$output_dir/target/usr/bin/phantowd-api" "$artifact_dir/phantow
     sha256sum zImage versatile-pb.dtb rootfs.ext2 phantowd-api \
         buildroot-show-info.json sbom.cdx.json license-manifest.csv > SHA256SUMS
 )
+
+# Isolated native launcher test reuses this exact qualified QEMU baseline.
+# Its static probe/helper live only in a temporary copy, not the firmware image.
+TMPDIR=/phantowd-qemu-fixture-tmp sh "$external_dir/support/tests/test-qemu-service-launcher.sh" \
+    "$artifact_dir" "$output_dir/host/bin/arm-buildroot-linux-gnueabi-gcc" \
+    "$output_dir/host/sbin/debugfs" "$external_dir" \
+    "$artifact_dir/qemu-service-launcher-failure.log" "$output_dir/host/bin/go"
+
+# Compare only the just-built public Samba dependencies with the real loader.
+# This does not start smbd or approve a daemon-root/privilege profile.
+if ! TMPDIR=/phantowd-qemu-fixture-tmp sh "$external_dir/support/tests/test-qemu-runtime-loader.sh" \
+    "$artifact_dir" "$output_dir/target" "$output_dir/host/bin/go" \
+    "$output_dir/host/sbin/debugfs" "$external_dir" \
+    "$artifact_dir/qemu-runtime-loader-failure.log"; then
+    echo "Preserved failed loader differential diagnostics in $artifact_dir" >&2
+    exit 1
+fi
+
+# Fixed multi-user Samba experiment, not a product helper/profile installation.
+if ! TMPDIR=/phantowd-qemu-fixture-tmp sh "$external_dir/support/tests/test-qemu-samba-root.sh" \
+    "$artifact_dir" "$output_dir/target" "$output_dir/host/bin/go" \
+    "$output_dir/host/sbin/debugfs" "$output_dir/host/bin/arm-buildroot-linux-gnueabi-gcc" \
+    "$external_dir" "$artifact_dir/qemu-samba-root-failure.log"; then
+    echo "Preserved failed Samba-root diagnostics in $artifact_dir" >&2
+    exit 1
+fi
 
 printf 'Build and smoke test passed. Artifacts: %s\n' "$artifact_dir"

@@ -88,6 +88,18 @@ jobs:
       - name: Verify early feedback and failure-diagnostic contracts
         run: python3 -B support/tests/test-qemu-build-feedback.py
 
+      - name: Verify native service launcher refusals before the full build
+        run: python3 -B support/tests/test-service-launcher.py
+
+      - name: Verify runtime-loader comparison refusals before the full build
+        run: python3 -B support/tests/test-runtime-loader-fixture.py
+
+      - name: Verify Samba-root experiment refusals before the full build
+        run: python3 -B support/tests/test-samba-root-fixture.py
+
+      - name: Verify kernel-input invalidation and ACL requirements
+        run: python3 -B support/tests/test-qemu-kernel-inputs.py
+
       - name: Select bounded compiler-cache namespace
         id: ccache_namespace
         run: echo "week=$(date -u +%G-W%V)" >> "$GITHUB_OUTPUT"
@@ -124,7 +136,7 @@ jobs:
       - name: Build and boot ARMv5 image
         run: |
           docker run --rm \
-            --tmpfs /phantowd-qemu-fixture-tmp:rw,exec,nosuid,nodev,size=128m \
+            --tmpfs /phantowd-qemu-fixture-tmp:rw,exec,nosuid,nodev,size=512m \
             --mount type=bind,source="$PWD",target=/external \
             --mount type=volume,source=phantowd-ci-${{ github.run_id }}-qemu,target=/workspace \
             --mount type=bind,source="$RUNNER_TEMP/phantowd-buildroot-ccache",target=/ccache \

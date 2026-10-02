@@ -43,6 +43,45 @@ may contain paths or account names and must not be logged or returned to a
 network client without a separate redaction boundary. Non-Linux builds return
 `ErrUnavailable`.
 
+## Fixed restricted-root child
+
+Linux `NewIsolated` constructs an `IsolatedOwner` around the separate native
+launcher. It fixes and copies the spec/credentials once, pins independent
+read-only executable/helper and `O_PATH` root descriptors, validates root-owned
+non-writable metadata and captures the root mount ID. `Start(ctx)` accepts no
+new spec, root, path or backend. The owner starts the pinned helper as root in
+its supervised child group; the helper, not Go's multithreaded parent, creates
+the private namespace/chroot and removes privileges before executing the
+pinned static child. The same PID/group remains owned. Ordinary `New`/`NewSet`
+behavior and the existing `ServiceRuntime` remain unchanged.
+
+Before launch, after readiness and during `Observe`, pinned input metadata is
+revalidated. Drift permanently requires review; a live child gets one bounded
+stop attempt before input release. Restoration cannot clear review or retry
+launch. `Close` never stops a process and refuses while any child is still
+owned, including uncertain termination. It only releases its descriptors; it
+does not unmount, release an external storage lease or prove grant completeness.
+
+The caller must construct the entire trusted root/runtime manifest, hold and
+revalidate all storage grants/leases, serialize executable updates, supply a
+service-specific readiness check and poll source loss. This adapter does not
+create per-service roots, join the existing process Set/runtime, provision
+permissions, install a daemon or authorize kernel NFS exports. Static ELF only.
+Host tests cover fixed input copying/validation, non-serialization and launch-
+input quarantine. The disposable ARMv5 fixture proves actual constructor/
+readiness/stop behavior, caller-FD closure, argument/credential mutation,
+metadata loss before launch and live root drift. EX4 remains unqualified.
+
+Important Samba boundary: the existing real multi-user QEMU `smbd` fixture
+starts with the caller's root identity (`RunAs` is nil), unlike the synthetic
+handoff child. Pinned Samba 4.22.11 `source3/smbd/sec_ctx.c` and `uid.c` use
+root/context and Unix UID/GID/group switches for impersonation. A fixed UID
+with zero capabilities is not evidence for that multi-user ownership model.
+Do not replace it with `force user`, shared credentials or permission widening.
+The product needs a separately reviewed Samba-specific privilege/runtime
+contract; NFS kernel control likewise needs its own typed authority. This
+generic non-root helper deliberately does not gain either authority.
+
 The package has no adoption of pre-existing processes, durable state,
 automatic recovery, aggregate SMB/NFS configuration lifecycle, last-known-good
 configuration transaction, or production startup wiring. Host tests exercise
