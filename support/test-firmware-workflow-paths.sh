@@ -201,6 +201,25 @@ for path in 'src/phantowd-service-launcher/**' \
     require_not_ignored_pattern "$qemu_workflow" push "$path"
     require_not_ignored_pattern "$qemu_workflow" pull_request "$path"
 done
+# Runtime experiments and their QEMU kernel-input helper are not EX4 build
+# inputs. Keep native refusals and ARMv5 integration without a redundant B3.
+for path in 'support/test-runtime-loader.ps1' \
+    'support/test-samba-root.ps1' \
+    'support/tests/runtime_loader_fixture.py' \
+    'support/tests/test-runtime-loader-fixture.py' \
+    'support/tests/test-qemu-runtime-loader.sh' \
+    'support/tests/samba-root-*' \
+    'support/tests/samba-charset-fixture.c' \
+    'support/tests/samba_root_fixture.py' \
+    'support/tests/test-samba-root-fixture.py' \
+    'support/tests/test-qemu-samba-root.sh' \
+    'support/container/qemu_kernel_inputs.py' \
+    'support/tests/test-qemu-kernel-inputs.py'; do
+    require_triggered_path "$host_workflow" "$path"
+    require_ignored_path "$stage_b3_workflow" "$path"
+    require_not_ignored_pattern "$qemu_workflow" push "$path"
+    require_not_ignored_pattern "$qemu_workflow" pull_request "$path"
+done
 documentation_paths='
 **/*.md
 doc/**

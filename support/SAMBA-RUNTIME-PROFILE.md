@@ -130,13 +130,14 @@ the compilation checkpoint. It never treats tmpfs support as ext4 evidence.
 The previous public target lacked CP850 and logged an ASCII fallback; direct
 ARMv5 conversion reproduced `iconv_open: Invalid argument` in the isolated root.
 The QEMU defconfig now selects Buildroot's standard glibc converter installation
-with only `IBM850`, not the entire converter collection. A local disposable
-overlay with that selected module and the upstream-generated catalog passes
-the conversion, SMB, stream and ext4 ACL tests. That overlay does not verify
-the new defconfig's clean installation, regenerated SBOM or full integration;
-these remain distinct until the full new-config build succeeds.
-The inherited ACL/mode/DOS-attribute checks likewise pass only in a separate
-disposable current-source overlay; they have not yet passed full exact-head CI.
+with only `IBM850`, not the entire converter collection. Full local new-config
+integration on `b7e06b4` verifies the actual target installation, regenerated
+rootfs and package/legal/SBOM steps. Full local combined integration on
+`41c90c9` also passes the inherited ACL/mode/DOS-attribute checks, standard/MD/
+two-boot guest tests and all prior loader/Samba cases without manual converter
+injection. Rebasing onto merged PR #55 retained the complete source tree as
+`bedfec4`. These runs reuse source/compiler caches, so they are not independent
+clean-build reproducibility or hosted feature qualification.
 Quota observations on disposable tmpfs are not RAID/storage-health evidence.
 Do not change encodings or silently relax legacy ACLs to mask missing runtime.
 

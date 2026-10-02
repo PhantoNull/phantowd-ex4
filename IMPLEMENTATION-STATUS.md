@@ -4,39 +4,45 @@
 # Implementation status
 
 Code audit: **2026-10-02**, integrated `develop` baseline
-`3902f9735737b9708022014b1e4703d8d53d6358` (PR #54).
+`3a753066d17bcbe60bb80e1f0aecdfce526cab44` (PR #55).
 Use [ROADMAP.md](ROADMAP.md) for the acceptance specification. This snapshot
 distinguishes tested components from deployed product workflows. It is not
 installation approval, a security certification, or an exhaustive line-by-line audit.
 
-Follow-up audit includes published feature head `fba213d` on
-`feat/service-namespace-launcher`, the host-only ELF dependency candidate and
-actual ARMv5 loader differential and separate Samba-root fixture described below.
-The full local incremental pipeline passed on this unchanged feature commit.
-These additions are not yet integrated into
-`develop`; do not confuse feature evidence with an integration/release result.
-Planning bands remain unchanged: no new product acceptance gate has closed.
+PR #55 integrated the native launcher, internal isolated runtime, host ELF
+dependency candidate, actual ARMv5 loader differential and separate Samba-root
+fixture. Its exact head `e9a7f34` passed hosted
+[host](https://github.com/PhantoNull/phantowd-ex4/actions/runs/37018283304),
+[Stage B3 compile](https://github.com/PhantoNull/phantowd-ex4/actions/runs/37018283205)
+and [QEMU](https://github.com/PhantoNull/phantowd-ex4/actions/runs/37018283374)
+checks before squash merge. Planning bands remain unchanged: no new product
+acceptance gate has closed.
 
 A subsequent `feat/samba-charset-runtime` increment reproduces missing CP850
-as a real ARMv5 `iconv_open` failure in the isolated root. With only IBM850 and
-the upstream-generated minimal catalog injected into disposable copies, the
-fixed experiment passes exact bidirectional bytes, four aliases, unsupported/
-malformed/truncated input denials and every prior SMB/streams/ext4 ACL case.
-The QEMU defconfig now selects that converter through standard Buildroot glibc
-options. Fast negative manifests, catalog refusals and lint pass. This is
-working-tree overlay evidence; full new-config integration and exact-head CI
-are not yet established. It enables neither SMB1 nor product service startup.
+as a real ARMv5 `iconv_open` failure in the isolated root. Standard Buildroot
+glibc options now install only IBM850 (13,496 bytes) and its minimal catalog
+(214 bytes). Full local new-config integration passed on unchanged `b7e06b4`;
+full combined integration passed on unchanged `41c90c9`, including exact
+bidirectional bytes, four aliases, unsupported/malformed/truncated input
+denials, Linux tests/race/fuzz, packages/legal/SBOM, standard/MD/two-boot guest
+tests and the loader/Samba experiments. After PR #55 merged, the feature was
+rebased to `bedfec4` with an identical complete source tree. The local runs
+reuse source/compiler caches; they are not independent reproducibility or
+hosted feature results. This enables neither SMB1 nor product service startup.
 
-A separate `feat/samba-acl-inheritance` fixture increment passes an ext4
-default-ACL inheritance overlay: Samba-created directory/file ACL bytes,
+The same follow-up includes an ext4 default-ACL inheritance fixture:
+Samba-created directory/file ACL bytes,
 `2750`/`0640` modes, setgid owner/group, reader access and write/outsider denials.
 Explicit DOS metadata settings avoid archive-to-Unix-execute mapping while one
 archive flag remains visible through SMB. A dedicated fixed-command shell
 contract accounts for smbclient's zero exit on denied mkdir without relaxing
-generic denial checks. This is not full integration, a product permission
-workflow, legacy metadata preservation or all inheritance policies.
+generic denial checks. Focused and full combined local integration pass with
+the actual installed converter, not a manually injected staging module. The
+temporary inheritance worktree/branch and obsolete 13 GiB output were retired;
+only the current output and bounded compiler cache remain. This is not a
+product permission workflow, legacy metadata preservation or all policies.
 
-The subsequent local Samba fixture adds one fixed dynamic
+The integrated Samba fixture adds one fixed dynamic
 `streams_xattr` module, exact alternate-stream xattr bytes, and reader/kernel-RO
 overwrite denials. It now also uses a disposable 16 MiB ext4 image to verify
 exact POSIX ACL bytes, named-reader access, write/outsider denials and mask-based
@@ -126,7 +132,8 @@ Hosted evidence is separate:
   This supports budget exhaustion; it does not conclusively rule out another
   hosted problem. No assertion is removed and QEMU is not retried. This run
   never reached the separate MD/state fixtures, so it does not confirm the
-  executable-mode correction below. Exact-head hosted validation is pending.
+  executable-mode correction below. Later exact-head validation passed in
+  PR #54 and PR #55; this does not retrospectively validate the failed run.
 - [Run 36967317155](https://github.com/PhantoNull/phantowd-ex4/actions/runs/36967317155)
   failed Linux process lifecycle tests after the expensive build. Later
   handshake/timing test changes and current local race checks pass; they do not
@@ -140,9 +147,9 @@ Hosted evidence is separate:
   Desktop local builds installed it executable. Setting only the copied image's
   init inode to `0644` reproduced kernel `EACCES`/panic; `0755` passed the complete
   MD/Owner fixture. The executable Git-mode correction and an early source-mode
-  regression now address this discrepancy. Exact-head hosted confirmation is
-  still required; the old run's missing detailed log prevents proving that no
-  additional defect was involved.
+  regression now address this discrepancy. The old run's missing detailed log
+  prevents proving that no additional defect was involved. PR #55 passed the complete
+  exact-head hosted QEMU lane, including the MD fixture.
 - Current workflow concurrency separates PR and branch refs: a merged PR can
   continue compiling alongside its `develop` integration. Cancel only a
   confirmed superseded run, not a still-needed qualification run.
@@ -162,13 +169,13 @@ are unchanged. This is not a cached workspace or an established speedup.
 
 ## Next implementation sequence
 
-Local follow-up on `feat/service-namespace-launcher` implements a native
+The integrated PR #55 implements a native
 static-ELF launcher and internal fixed-input `IsolatedOwner`, passing disposable
 ARMv5 namespace/root/FD/privilege/signal/PID/read-only tests, seven refused
 launches, real readiness/stop, and pre-launch/live input-loss quarantine. See its
 [contract](src/phantowd-service-launcher/README.md). It is not connected to
-the existing handoff/Set/runtime and does not complete M4.4 or change the planning
-bands above. Runtime manifests, product root construction, leases, native
+product startup or ordinary process Set and does not complete M4.4 or change
+the planning bands above. Runtime manifests, product root construction, leases, native
 daemon integration and kernel NFS authority remain unresolved.
 
 Published follow-up `aecfdb4` passed the full **local incremental** pinned
@@ -178,7 +185,8 @@ two-boot state fixture and native/Go isolated Owner fixture. All seven artifact
 hashes were rechecked. The standalone launcher and its Go fixture are injected
 only into a temporary test image, not installed by the firmware package.
 This does not qualify a clean build, hosted integration, physical EX4 or
-Samba/kernel-NFS activation. PR #54's exact-head hosted QEMU remains pending.
+Samba/kernel-NFS activation. PR #54 and PR #55 later passed their exact-head
+hosted QEMU checks; those are separate evidence, not release approval.
 
 1. **M0.3:** validate the feedback changes locally and in exact-head CI; retain
    failed-guest evidence. Investigate any recurrence before changing semantics.
