@@ -71,6 +71,11 @@ order, NSS or `dlopen`, or qualify ABI compatibility, trusted ownership,
 configuration, writable state or privileges. It mounts/copies/executes nothing
 and is not an approved service-root manifest or installer.
 
+A separate [disposable ARMv5 loader differential](../../support/QEMU-FAST-TESTS.md#fixed-samba-elf-loader-differential)
+compares candidate hashes, aliases and the dependency roster with the actual
+public Buildroot loader, without starting Samba. It is not part of this CLI's
+authority and does not qualify dynamic modules, state or privileges.
+
 `inspect-release` checks a version-1 JSON manifest signed over its exact bytes
 with a detached raw 64-byte Ed25519 signature. The caller supplies a raw
 32-byte public key, the requested model/revision, and a directory containing

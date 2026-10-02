@@ -194,6 +194,11 @@ privilege profiles, kernel NFS control and product init remain missing. The
 host-only research toolkit can derive a restricted ELF dependency candidate;
 this is not a trusted runtime manifest. No live product service is enabled.
 
+A separate local ARMv5 loader differential now confirms the cached Samba
+candidate's hashes, aliases and 104 dependencies (105 ELFs including smbd), without
+starting the daemon or changing the original image. Daemon-root/state/privilege
+qualification remains open; see the [fast test instructions](support/QEMU-FAST-TESTS.md#fixed-samba-elf-loader-differential).
+
 The badge tracks the `develop` integration branch, not every feature branch.
 For build evidence, open the relevant workflow run and check its **commit,
 conclusion and artifacts**. A previous green run does not validate a newer

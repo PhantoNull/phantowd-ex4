@@ -1,5 +1,39 @@
 # Fast API and file-service integration checks
 
+## Fixed Samba ELF loader differential
+
+`support/test-runtime-loader.ps1` is a local fast lane using only an existing
+pinned image/workspace and manifest-verified QEMU base. It never pulls/builds an
+image or creates a volume. Source, target and base are mounted read-only; the
+rootfs copy lives in bounded 512 MiB tmpfs, while QEMU snapshots have separate
+128 MiB temporary space. The compiler cache is removed before copying rootfs.
+No network, host devices or forwarded ports are provided.
+
+The host candidate fixes `usr/sbin/smbd`; it cannot select another program.
+The generated PID1 has an explicit executable inode, mounts only temporary
+runtime filesystems, checks each selected ELF SHA-256 and alias's canonical
+target against the guest image, then invokes its actual ARMv5 glibc loader
+with an empty environment and `--inhibit-cache --list`. It refuses an existing
+`ld.so.preload`. This lists dependencies **without starting the Samba daemon**.
+The host requires the exact candidate dependency roster, ordered unique success
+markers and no unknown/failed resolution; a guest failure retains diagnostics.
+There is one boot, no retry, a finite 90-second timeout, a read-only snapshot
+root device and unchanged original-rootfs verification.
+
+Local tests on 2026-10-02 passed with both the default builder and UID/GID 1000.
+The real loader resolved 104 dependencies, matching 105 candidate ELF objects
+including the main executable (27,110,832 bytes). Seven host tests cover
+missing/extra/unknown resolutions, marker failures, conflicting aliases,
+unsafe paths, budgets and temporary-space/cleanup contracts. Parser lint,
+shellcheck, existing 13 feedback contracts and workflow path tests also pass.
+This is cached overlay evidence, not a fresh Buildroot/hosted run, signed
+runtime manifest, NSS/dlopen/privilege qualification or physical EX4 test.
+
+The full Buildroot lane runs the same comparison after producing/verifying
+its artifact set, and fast refusal tests run before the expensive compilation.
+The candidate CLI itself remains host-only and never executes an ELF; only
+this separately scoped fixture invokes the known public Buildroot loader.
+
 ## Smoke duration and cache scope
 
 The complete one-boot smoke now has a **240-second** polling budget, not the

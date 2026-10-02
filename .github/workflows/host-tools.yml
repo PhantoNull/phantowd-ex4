@@ -11,6 +11,10 @@ on:
       - 'support/tests/test-qemu-service-launcher.sh'
       - 'support/tests/service-launcher-fixture.c'
       - 'support/tests/service-launcher-init.sh'
+      - 'support/test-runtime-loader.ps1'
+      - 'support/tests/runtime_loader_fixture.py'
+      - 'support/tests/test-runtime-loader-fixture.py'
+      - 'support/tests/test-qemu-runtime-loader.sh'
       - 'support/build-qemu.ps1'
       - 'support/clean-qemu-build-volumes.ps1'
       - 'support/test-lab-tools.ps1'
@@ -37,6 +41,10 @@ on:
       - 'support/tests/test-qemu-service-launcher.sh'
       - 'support/tests/service-launcher-fixture.c'
       - 'support/tests/service-launcher-init.sh'
+      - 'support/test-runtime-loader.ps1'
+      - 'support/tests/runtime_loader_fixture.py'
+      - 'support/tests/test-runtime-loader-fixture.py'
+      - 'support/tests/test-qemu-runtime-loader.sh'
       - 'support/build-qemu.ps1'
       - 'support/clean-qemu-build-volumes.ps1'
       - 'support/test-lab-tools.ps1'
@@ -100,6 +108,9 @@ jobs:
 
       - name: Verify native service launcher refusals
         run: python3 -B support/tests/test-service-launcher.py
+
+      - name: Verify runtime-loader comparison refusals
+        run: python3 -B support/tests/test-runtime-loader-fixture.py
 
       - name: Test Stage B kernel-config audit policy
         run: sh support/tests/test-ex4-stage-b-kernel-config-audit.sh

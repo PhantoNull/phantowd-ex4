@@ -36,6 +36,10 @@ shellcheck -s sh \
 shellcheck -s sh "$external_dir/support/container/save-qemu-failure-log.sh"
 python3 -B "$external_dir/support/tests/test-qemu-build-feedback.py"
 python3 -B "$external_dir/support/tests/test-service-launcher.py"
+python3 -B "$external_dir/support/tests/test-runtime-loader-fixture.py"
+python3 -B -m flake8 "$external_dir/support/tests/runtime_loader_fixture.py" \
+    "$external_dir/support/tests/test-runtime-loader-fixture.py"
+shellcheck "$external_dir/support/tests/test-qemu-runtime-loader.sh"
 shellcheck "$external_dir/support/tests/test-qemu-service-launcher.sh" \
     "$external_dir/support/tests/service-launcher-init.sh"
 sh "$external_dir/support/test-compare-build-artifacts.sh"
@@ -394,5 +398,15 @@ TMPDIR=/phantowd-qemu-fixture-tmp sh "$external_dir/support/tests/test-qemu-serv
     "$artifact_dir" "$output_dir/host/bin/arm-buildroot-linux-gnueabi-gcc" \
     "$output_dir/host/sbin/debugfs" "$external_dir" \
     "$artifact_dir/qemu-service-launcher-failure.log" "$output_dir/host/bin/go"
+
+# Compare only the just-built public Samba dependencies with the real loader.
+# This does not start smbd or approve a daemon-root/privilege profile.
+if ! TMPDIR=/phantowd-qemu-fixture-tmp sh "$external_dir/support/tests/test-qemu-runtime-loader.sh" \
+    "$artifact_dir" "$output_dir/target" "$output_dir/host/bin/go" \
+    "$output_dir/host/sbin/debugfs" "$external_dir" \
+    "$artifact_dir/qemu-runtime-loader-failure.log"; then
+    echo "Preserved failed loader differential diagnostics in $artifact_dir" >&2
+    exit 1
+fi
 
 printf 'Build and smoke test passed. Artifacts: %s\n' "$artifact_dir"

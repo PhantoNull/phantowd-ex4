@@ -195,8 +195,13 @@ qualification. All candidate outputs explicitly deny execution authority.
 
 Continue M4.4 with these concrete acceptance steps:
 
-1. Compare candidate bindings against the actual ARMv5 loader in a disposable
-   QEMU image; investigate mismatches without enabling arbitrary fallback paths.
+1. **Local differential complete:** actual ARMv5 loader in a disposable QEMU
+   image resolves 104 dependencies, exactly matching the 105-object candidate
+   excluding the main executable. Guest hashes and canonical aliases match;
+   both default and 1000:1000 builders pass, original rootfs unchanged. This does
+   not start Samba or qualify its runtime/privileges. Seven host refusal/budget
+   tests, lint and existing feedback/workflow contracts pass. Full-build hooks
+   now reuse this comparison; their exact-head integration remains pending.
 2. Inventory Samba's required `dlopen`/NSS modules, configuration, state, sockets
    and privilege transitions. Keep root/UID switching distinct from the generic
    zero-capability child; do not widen that helper or use shared client identity.

@@ -936,8 +936,13 @@ storage. No production roster provider or activation path exists.
   Pinned Linux unit/vet/race and 50,000 fuzz executions pass; the current cached
   target's `smbd` graph contains 105 distinct objects (27,110,832 bytes). It
   grants no execution authority and does not qualify loader caches, dynamic
-  modules/NSS, runtime state, ABI or privilege semantics. Next compare it with
-  the actual ARMv5 loader in disposable QEMU, then inventory the remaining
+  modules/NSS, runtime state, ABI or privilege semantics. The fixed disposable
+  QEMU loader differential now passes with the default and 1000:1000 builders:
+  all selected hashes/aliases match, 104 dependencies equal the candidate roster
+  excluding smbd itself, and no daemon is started. The original rootfs stays
+  unchanged. Fast parser/refusal contracts and full-build comparison hooks are
+  implemented; exact-head full/hosted integration remains separate. Next inventory
+  the remaining
   Samba runtime and implement a separately trusted root constructor. Do not
   treat this candidate as the product manifest or mark M4.4 complete.
 - **M4.5 — Failure and shutdown.** Cover startup with absent disks, service crash,
