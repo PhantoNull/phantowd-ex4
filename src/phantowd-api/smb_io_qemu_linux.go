@@ -347,6 +347,169 @@ func runQEMUSMBTest() (result error) {
 	}
 	ownerStopped = true
 	fmt.Println("PHANTOWD_SMB_POLICY_IO_READY generated=true writer_uid=1801 reader_ro=true outsider_denied=true unix_denied=true symlink_denied=true process_owner=started-ready-stopped scope=qemu-fixture-only")
+	if err := exerciseQEMUProcessOwnerUnexpectedExit(owner); err != nil {
+		return err
+	}
+	if err := exerciseQEMUProcessOwnerForcedStop(); err != nil {
+		return err
+	}
+	return nil
+}
+
+// Exercise the process-owner quarantine path with a disposable, controlled
+// child. The production-facing SMB fixture above separately owns a real smbd;
+// this child makes the unexpected-exit boundary deterministic without
+// signalling any guest service outside its private process group.
+func exerciseQEMUProcessOwnerUnexpectedExit(owner *processowner.Owner) (result error) {
+	readyPath := filepath.Join(smbFixtureRoot, "process-owner-ready")
+	exitPath := filepath.Join(smbFixtureRoot, "process-owner-exit")
+	for _, path := range []string{readyPath, exitPath} {
+		if err := os.Remove(path); err != nil && !errors.Is(err, os.ErrNotExist) {
+			return err
+		}
+	}
+	defer os.Remove(readyPath)
+	defer os.Remove(exitPath)
+
+	cleanupNeeded := false
+	defer func() {
+		if !cleanupNeeded {
+			return
+		}
+		_ = os.WriteFile(exitPath, []byte("exit"), 0600)
+		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+		defer cancel()
+		_, err := owner.Stop(ctx)
+		if err != nil && !errors.Is(err, processowner.ErrReviewRequired) {
+			result = errors.Join(result, fmt.Errorf("controlled process cleanup failed: %w", err))
+		}
+	}()
+
+	const child = `printf ready > "$1"; while [ ! -e "$2" ]; do :; done; exit 23`
+	started, err := owner.Start(context.Background(), processowner.Spec{
+		Executable: "/bin/busybox",
+		Args:       []string{"sh", "-c", child, "phantowd-process-owner", readyPath, exitPath},
+		Ready: func(ctx context.Context) (bool, error) {
+			if err := ctx.Err(); err != nil {
+				return false, err
+			}
+			_, err := os.Stat(readyPath)
+			if errors.Is(err, os.ErrNotExist) {
+				return false, nil
+			}
+			return err == nil, err
+		},
+		ReadyTimeout: 3 * time.Second, ProbeInterval: 20 * time.Millisecond,
+		StopTimeout: time.Second,
+	})
+	if err != nil {
+		return fmt.Errorf("controlled process did not become ready: %w", err)
+	}
+	cleanupNeeded = true
+	if started.State != processowner.StateReady || started.Generation != 2 || started.PID <= 1 {
+		return fmt.Errorf("controlled process readiness was not recorded: %+v", started)
+	}
+	if err := os.WriteFile(exitPath, []byte("exit"), 0600); err != nil {
+		return err
+	}
+
+	deadline := time.Now().Add(2 * time.Second)
+	for {
+		observed, observeErr := owner.Observe(context.Background())
+		if errors.Is(observeErr, processowner.ErrReviewRequired) {
+			if observed.State != processowner.StateReviewRequired ||
+				observed.Generation != started.Generation || observed.PID != started.PID {
+				return fmt.Errorf("unexpected exit produced the wrong review state: %+v", observed)
+			}
+			break
+		}
+		if observeErr != nil {
+			return fmt.Errorf("observe controlled process exit: %w", observeErr)
+		}
+		if time.Now().After(deadline) {
+			return errors.New("process owner did not quarantine the unexpected exit")
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	if _, err := owner.Start(context.Background(), processowner.Spec{}); !errors.Is(err, processowner.ErrReviewRequired) {
+		return fmt.Errorf("process owner restarted after an unexpected exit: %v", err)
+	}
+	stopped, stopErr := owner.Stop(context.Background())
+	if !errors.Is(stopErr, processowner.ErrReviewRequired) ||
+		stopped.State != processowner.StateReviewRequired ||
+		stopped.Generation != started.Generation || stopped.PID != 0 {
+		return fmt.Errorf("unexpected-exit cleanup lost review state: snapshot=%+v err=%v", stopped, stopErr)
+	}
+	if err := syscall.Kill(-started.PID, 0); !errors.Is(err, syscall.ESRCH) {
+		return fmt.Errorf("unexpected-exit process group remains or is uncertain: %v", err)
+	}
+	cleanupNeeded = false
+	fmt.Println("PHANTOWD_PROCESS_OWNER_REVIEW_READY unexpected_exit=true review_required=true restart_blocked=true group_reaped=true scope=qemu-fixture-only")
+	return nil
+}
+
+// Verify that the Owner escalates a bounded stop when its private child ignores
+// SIGTERM. The child is intentionally synthetic; no guest service is signalled.
+func exerciseQEMUProcessOwnerForcedStop() (result error) {
+	readyPath := filepath.Join(smbFixtureRoot, "process-owner-ignore-term-ready")
+	if err := os.Remove(readyPath); err != nil && !errors.Is(err, os.ErrNotExist) {
+		return err
+	}
+	defer os.Remove(readyPath)
+
+	owner := processowner.New()
+	cleanupNeeded := false
+	defer func() {
+		if !cleanupNeeded {
+			return
+		}
+		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+		defer cancel()
+		_, err := owner.Stop(ctx)
+		if err != nil && !errors.Is(err, processowner.ErrReviewRequired) {
+			result = errors.Join(result, fmt.Errorf("forced-stop child cleanup failed: %w", err))
+		}
+	}()
+
+	const child = `trap '' TERM; printf ready > "$1"; while :; do :; done`
+	started, err := owner.Start(context.Background(), processowner.Spec{
+		Executable: "/bin/busybox",
+		Args:       []string{"sh", "-c", child, "phantowd-process-owner", readyPath},
+		Ready: func(ctx context.Context) (bool, error) {
+			if err := ctx.Err(); err != nil {
+				return false, err
+			}
+			_, err := os.Stat(readyPath)
+			if errors.Is(err, os.ErrNotExist) {
+				return false, nil
+			}
+			return err == nil, err
+		},
+		ReadyTimeout: 3 * time.Second, ProbeInterval: 20 * time.Millisecond,
+		StopTimeout: 50 * time.Millisecond,
+	})
+	if err != nil {
+		return fmt.Errorf("SIGTERM-ignoring child did not become ready: %w", err)
+	}
+	cleanupNeeded = true
+	if started.State != processowner.StateReady || started.Generation != 1 || started.PID <= 1 {
+		return fmt.Errorf("SIGTERM-ignoring child readiness was not recorded: %+v", started)
+	}
+
+	stopped, stopErr := owner.Stop(context.Background())
+	if !errors.Is(stopErr, processowner.ErrReviewRequired) ||
+		stopped.State != processowner.StateReviewRequired ||
+		stopped.Generation != started.Generation || stopped.PID != started.PID {
+		return fmt.Errorf("forced termination was not quarantined: snapshot=%+v err=%v", stopped, stopErr)
+	}
+	if err := syscall.Kill(-started.PID, 0); !errors.Is(err, syscall.ESRCH) {
+		return fmt.Errorf("forced-stop process group remains or is uncertain: %v", err)
+	}
+	if _, err := owner.Start(context.Background(), processowner.Spec{}); !errors.Is(err, processowner.ErrReviewRequired) {
+		return fmt.Errorf("process owner restarted after forced termination: %v", err)
+	}
+	cleanupNeeded = false
+	fmt.Println("PHANTOWD_PROCESS_OWNER_FORCE_STOP_READY sigterm_ignored=true forced_termination=true review_required=true restart_blocked=true group_reaped=true scope=qemu-fixture-only")
 	return nil
 }
 

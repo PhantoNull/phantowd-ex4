@@ -150,6 +150,14 @@ while [ "$attempt" -lt 120 ]; do
             echo 'Missing generated Samba effective-access assertion' >&2
             exit 1
         fi
+        if ! grep -F 'PHANTOWD_PROCESS_OWNER_REVIEW_READY unexpected_exit=true review_required=true restart_blocked=true group_reaped=true scope=qemu-fixture-only' "$log_file" >/dev/null; then
+            echo 'QEMU did not verify process-owner quarantine after an unexpected exit' >&2
+            exit 1
+        fi
+        if ! grep -F 'PHANTOWD_PROCESS_OWNER_FORCE_STOP_READY sigterm_ignored=true forced_termination=true review_required=true restart_blocked=true group_reaped=true scope=qemu-fixture-only' "$log_file" >/dev/null; then
+            echo 'QEMU did not verify process-owner forced-stop quarantine' >&2
+            exit 1
+        fi
         if ! grep -F 'PHANTOWD_SMB_CREDENTIALS_READY rotated=true old_password_denied=true disabled_denied=true reenabled=true unix_identity_unchanged=true data_preserved=true scope=new-qemu-connections-only' "$log_file" >/dev/null; then
             echo 'Missing Samba credential lifecycle assertion' >&2
             exit 1

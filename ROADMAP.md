@@ -780,15 +780,19 @@ storage. No production roster provider or activation path exists.
   bounds readiness, stop and diagnostics, and supports explicit lifecycle
   observation. If a process that passed readiness exits unexpectedly, the
   owner enters `review-required` and will not restart it implicitly. Linux API
-  tests cover review/quarantine after unexpected exit; the one-boot ARMv5 QEMU
-  smoke now also executes it around a disposable foreground `smbd`, waits for a
-  real SMB readiness request, verifies generated access policy, and cleanly
-  stops only the owned process group. The smoke passed locally on API source
-  commit `11b380b`; `qemu-smoke.sh` requires the
-  `process_owner=started-ready-stopped` marker. QEMU has not yet exercised the
-  unexpected-exit/forced-stop quarantine branch. This is not yet the aggregate
-  SMB/NFS service owner, durable service state, reload, or transactional
-  last-known-good configuration replacement.
+  tests cover review/quarantine after unexpected exit; a local one-boot ARMv5
+  QEMU smoke also starts disposable foreground `smbd`, waits for a real SMB
+  readiness request, verifies generated access policy, and stops only the owned
+  process group. Controlled BusyBox children then cover both recovery hazards:
+  an unexpected nonzero exit moves `Observe` to `review-required`, preserves
+  the generation and blocks restart; a second child ignores `SIGTERM`, forcing
+  bounded `SIGKILL` escalation, review state, blocked restart and process-group
+  cleanup. The smoke passed locally against the working tree based on
+  `7e2e52d`; `qemu-smoke.sh` requires the normal start/ready/stop marker and
+  separate unexpected-exit and forced-stop markers. These synthetic children
+  do not simulate an unexpected crash or forced stop of `smbd` itself. This is
+  not yet the aggregate SMB/NFS service owner, durable service state, reload,
+  or transactional last-known-good configuration replacement.
 - **M4.3 — Access semantics.** Specify SMB3 grants and denied cases; keep SMB1
   disabled. Support explicit NFS client/network rules, export paths and numeric
   identity/squash policy. NFSv3 compatibility has guest evidence; NFSv4 is a
