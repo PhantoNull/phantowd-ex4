@@ -971,6 +971,11 @@ storage. No production roster provider or activation path exists.
   fixed configuration/state and Owner-held storage grants, then qualify durable
   review/recovery and source-loss supervision. Do not weaken the static adapter
   or treat a fixture-derived roster as a signed product manifest.
+  The static supervisor and its focused-wrapper feedback contract also pass
+  complete cached integration on `8e3ce63`, including actual ARMv5 fault cases
+  and all existing image/guest lanes. Independent exported hashes match the
+  preceding image: this remains a separately compiled probe, not product
+  startup or hosted/physical qualification.
   The existing `NewIsolated` root pin now uses `SyscallConn.Control`, refusing
   caller Close-in-progress even when its kernel FD remains alive. A real
   deterministic constructor RED/GREEN, repeated host race checks and the

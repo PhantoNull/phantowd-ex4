@@ -146,6 +146,10 @@ if [ ! -f "$buildroot_source/.phantowd-source-ready" ]; then
     mv "$source_stage" "$buildroot_source"
 fi
 
+python3 -B "$external_dir/support/tests/test-volume-probe-license.py" \
+    "$buildroot_source/support/download/check-hash"
+python3 -B -m flake8 "$external_dir/support/tests/test-volume-probe-license.py"
+
 # Buildroot 2025.02.18's linux package license-file hash predates the GPL-2.0
 # text shipped in Linux 6.18.54. The archive itself is separately SHA-256 and
 # PGP verified above; update only that expected license-text hash, fail closed

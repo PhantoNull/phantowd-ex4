@@ -86,10 +86,24 @@ Owner only. Complete scans are serialized with a fixed idle interval and no
 catch-up burst. Actual disposable ARMv5 fixtures cover rejected admission,
 concurrent close refusal, accepted cancellation/stop, live code drift, unexpected
 exit and forced-stop review. Code pins remain until explicit close and review
-never permits automatic restart. This focused result is not a new full/hosted
-build or service/product activation. The separate Samba fixture measures its
+never permits automatic restart. Complete cached local integration on unchanged
+`8e3ce63` subsequently passed source verification, host/vet/race/fuzz,
+image/legal-info/SBOM and every existing/new guest lane, including supervision,
+actual Samba permissions and the seven-case ARMv5 SMART producer. Seven exported
+artifact hashes independently match the preceding image: the internal
+supervisor is tested by a separately compiled disposable probe, not product
+startup. A stale runner-marker contract failed before compilation and was
+corrected; the focused wrapper now checks that contract first. Hosted and clean
+qualification remain separate. The separate Samba fixture measures its
 existing positive scan with bounded redacted evidence; emulation timing is not
 physical EX4 qualification or a production polling recommendation.
+
+The storage probe's previously missing license hash is now supplied and tested
+through pinned Buildroot's real checker: the repository license verifies, and
+an altered temporary copy is refused. Its actual scoped `legal-info` target
+also passes, without rebuilding an image. This metadata/test-only follow-up
+does not imply a full build of the newer head or close source-distribution and
+complete licensing review. Earlier full-run license warnings remain historical.
 
 A separate follow-up fixes a reproduced `NewIsolated` constructor lifetime
 defect: direct `Fd()` duplication accepted a caller root after Close had begun
