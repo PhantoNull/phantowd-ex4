@@ -3,7 +3,7 @@
 
 # Implementation status
 
-Code audit: **2026-10-02**, integrated `develop` baseline
+Code audit: **2026-10-03**, integrated `develop` baseline
 `59f28bea5f2fe377f52f8c8b0e123129f3939a89` (PR #58).
 Use [ROADMAP.md](ROADMAP.md) for the acceptance specification. This snapshot
 distinguishes tested components from deployed product workflows. It is not
@@ -89,6 +89,19 @@ bounded tmpfs and unchanged base hashes. This is component evidence, not hosted
 qualification, persistent review/recovery, complete service activation or EX4
 hardware qualification. See the
 [Owner contract](src/phantowd-api/internal/runtimebundle/README.md).
+
+Complete cached local integration passed on unchanged published `c93d936`:
+the actual non-root builder's API/tool tests, vet, race and fixed-count fuzz,
+package/image/legal-info/SBOM, native regular-image probe, standard/MD/two-boot
+guests, isolated launcher, retained-code Owner, real loader, restricted-root
+Samba and pure/actual-producer SMART lanes all passed. Seven exported artifact
+hashes were independently checked. The earlier full attempt correctly refused
+builder-owned positive fixture executables; the corrected tests use existing
+root-owned system programs and explicitly retain the ownership refusal. No
+production guard was weakened or target Python dependency introduced. The
+full container auto-removed; two existing volumes and the current output/cache
+were reused. This local result is not hosted feature qualification, independent
+reproducibility, license/recovery closure or product installation approval.
 
 The subsequent code-permission audit reproduced an undeclared root access ACL
 being accepted by `runtimebundle.Inspect` despite unchanged mode bits and hashes.
