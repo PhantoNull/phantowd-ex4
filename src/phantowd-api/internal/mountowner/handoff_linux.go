@@ -66,20 +66,23 @@ type handoffMember struct {
 // detached. It does not start or stop daemons; its caller must stop all
 // pathname-consuming children before Close.
 type ServiceHandoff struct {
-	mu              sync.Mutex
-	root            *os.File
-	rootPath        string
-	rootIdentity    handoffIdentity
-	serviceGroupID  uint32
-	set             *MountedVolumeSet
-	required        []ServiceShare
-	state           ServiceHandoffState
-	generation      uint64
-	evidence        MountedVolumeSetEvidence
-	lease           *MountedVolumeSetLease
-	members         []handoffMember
-	reviewRequired  bool
-	resourcesClosed bool
+	mu               sync.Mutex
+	root             *os.File
+	rootPath         string
+	rootIdentity     handoffIdentity
+	serviceGroupID   uint32
+	set              *MountedVolumeSet
+	required         []ServiceShare
+	state            ServiceHandoffState
+	generation       uint64
+	evidence         MountedVolumeSetEvidence
+	lease            *MountedVolumeSetLease
+	members          []handoffMember
+	reviewRequired   bool
+	resourcesClosed  bool
+	runtimeReserved  bool
+	isolatedReserved bool
+	isolatedPins     int
 }
 
 // ServiceShare is a fixed internal request for one share root. It is not an
@@ -362,6 +365,9 @@ func (h *ServiceHandoff) verifyBoundPathsLocked() error {
 			return ErrHandoffReview
 		}
 	}
+	if h.isolatedReserved && h.verifyRestrictedContentsLocked() != nil {
+		return ErrHandoffReview
+	}
 	return nil
 }
 
@@ -458,6 +464,9 @@ func (h *ServiceHandoff) Close() error {
 	}
 	h.mu.Lock()
 	defer h.mu.Unlock()
+	if h.isolatedPins != 0 {
+		return ErrHandoffBusy
+	}
 	if h.resourcesClosed {
 		if h.reviewRequired {
 			return ErrHandoffReview

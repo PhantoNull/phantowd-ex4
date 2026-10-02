@@ -37,6 +37,13 @@ class LauncherRefusal(unittest.TestCase):
     def test_missing_descriptors(self):
         self.refused(["v1", "1000", "1000", "1000", "--", "/probe"])
 
+    def test_disposable_handoff_root_has_trusted_tmpfs_ancestor(self):
+        root = Path(__file__).resolve().parents[2]
+        init = (root / "support/tests/service-launcher-init.sh").read_text()
+        # The real handoff requires every ancestor non-writable by group/other.
+        # Bare tmpfs defaults to 1777, causing a correct pre-child refusal.
+        self.assertIn("mount -t tmpfs -o mode=0755 tmpfs /run", init)
+
     def test_invalid_credentials_and_groups(self):
         for uid in ("0", "999", "60001", "01000", "+1000", "1e3", "1000x"):
             with self.subTest(uid=uid):

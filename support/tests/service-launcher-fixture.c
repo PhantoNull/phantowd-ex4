@@ -64,7 +64,9 @@ static int probe(const char *pid_text)
         if (fcntl(fd, F_GETFD) != -1 || errno != EBADF)
             return 5;
     }
-    const char *denied[] = {ORIGINAL "/marker", "/sibling", "/proc", "/dev"};
+    const char *denied[] = {ORIGINAL "/marker", "/sibling", "/proc", "/dev",
+        "/private", "/srv/phantowd/volumes/qemu-only/public/marker",
+        "/srv/phantowd/volumes/qemu-plan/public/marker"};
     for (size_t i = 0; i < sizeof(denied) / sizeof(denied[0]); ++i) {
         errno = 0;
         int fd = open(denied[i], O_RDONLY | O_CLOEXEC);

@@ -15,6 +15,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/mountowner"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/processowner"
 	"golang.org/x/sys/unix"
 )
@@ -189,5 +190,5 @@ func run() error {
 		return err
 	}
 	fmt.Println("PHANTOWD_SERVICE_LAUNCHER_LIVE_REVIEW_READY stop_before_close=true group_reaped=true restoration_not_retried=true")
-	return nil
+	return mountowner.RunQEMUIsolatedHandoffFixture()
 }

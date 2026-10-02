@@ -902,12 +902,19 @@ storage. No production roster provider or activation path exists.
   inputs. It now runs through a fixed-input `processowner.IsolatedOwner` and
   proves readiness, descriptor/spec independence, normal stop/reap, refused
   close while running and pre-launch/live input-loss quarantine without retry.
-  It is not connected to the process Set/ServiceRuntime, does not prepare
-  product roots or runtime manifests, and does not control kernel NFS. This
-  does not resolve the existing handoff's bypass or enable any real service.
+  A separate `mountowner.IsolatedServiceRuntime` now composes exactly one
+  static non-root child with a dedicated grant-only handoff root. A bounded
+  root census refuses undeclared entries; an explicit pin blocks direct close
+  while live. ARMv5 QEMU proves the original storage anchors are unreachable,
+  writes through the grant fail with `EROFS`, and normal/source-loss cleanup
+  reaps the group before releasing descriptors/clones/roster leases. Review
+  never permits restart. This does not isolate the ordinary process Set,
+  prepare daemon runtime manifests, implement per-client Samba privileges or
+  control kernel NFS. Existing ordinary handoff behavior remains unchanged;
+  no product service is enabled.
 
   Next: implement a trusted per-service root-manifest constructor and connect
-  isolated owners to the fixed service Set/handoff lease lifecycle,
+  isolated owners to the multi-process Set/service-specific lifecycle,
   giving each service an isolated private mount namespace whose only
   storage roots are its explicit grants; prove the original volume anchors and
   ungranted shares are unreachable and that read-only access cannot be bypassed.

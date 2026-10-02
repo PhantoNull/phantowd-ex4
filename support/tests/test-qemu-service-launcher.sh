@@ -30,7 +30,7 @@ cleanup() {
         wait "$child_pid" 2>/dev/null || true
     fi
     # Everything here was generated under this exact mktemp tmpfs directory.
-    rm -f "$scratch/rootfs.ext2" "$scratch/launcher" "$scratch/fixture" "$scratch/init.sh" "$scratch/owner-fixture" "$scratch/guest.log"
+    rm -f "$scratch/rootfs.ext2" "$scratch/storage.ext2" "$scratch/launcher" "$scratch/fixture" "$scratch/init.sh" "$scratch/owner-fixture" "$scratch/guest.log"
     # Go's bounded per-test compiler cache is not a persistent Docker volume.
     rm -rf "$scratch/go-cache" "$scratch/go-path"
     rmdir "$scratch"
@@ -52,6 +52,8 @@ export GOCACHE="$scratch/go-cache" GOPATH="$scratch/go-path"
 rm -rf "$scratch/go-cache" "$scratch/go-path"
 # Do not retain compiler cache and a rootfs copy at the same time.
 cp "$base/rootfs.ext2" "$scratch/rootfs.ext2"
+truncate -s 16M "$scratch/storage.ext2"
+mkfs.ext2 -q -F -U 11111111-2222-3333-4444-555555555555 "$scratch/storage.ext2"
 for pair in 'launcher phantowd-service-launcher' 'fixture phantowd-service-launcher-fixture' 'init.sh phantowd-service-launcher-init' 'owner-fixture phantowd-service-launcher-owner-fixture'; do
     source_name=${pair%% *}
     target_name=${pair#* }
@@ -66,6 +68,7 @@ timeout --signal=TERM --kill-after=5 90 qemu-system-arm \
     -kernel "$base/zImage" -dtb "$base/versatile-pb.dtb" \
     -append 'console=ttyAMA0 root=/dev/sda rootwait rw panic=-1 init=/usr/sbin/phantowd-service-launcher-init' \
     -drive "file=$scratch/rootfs.ext2,format=raw,if=scsi,snapshot=on" \
+    -drive "file=$scratch/storage.ext2,format=raw,if=scsi,snapshot=on" \
     >"$scratch/guest.log" 2>&1 &
 child_pid=$!
 status=0
@@ -83,9 +86,15 @@ grep -F 'PHANTOWD_SERVICE_LAUNCHER_READY private_namespace=true root_restricted=
 grep -F 'PHANTOWD_SERVICE_LAUNCHER_OWNER_READY pinned_inputs=true immutable_spec=true readiness=true same_pid=true private_namespace=true stop_reaped=true close_gated=true' "$scratch/guest.log" >/dev/null
 grep -F 'PHANTOWD_SERVICE_LAUNCHER_INPUT_REVIEW_READY before_child=true restoration_not_retried=true' "$scratch/guest.log" >/dev/null
 grep -F 'PHANTOWD_SERVICE_LAUNCHER_LIVE_REVIEW_READY stop_before_close=true group_reaped=true restoration_not_retried=true' "$scratch/guest.log" >/dev/null
+grep -F 'PHANTOWD_ISOLATED_HANDOFF_READY grant_only_root=true original_path_denied=true nonroot=true read_only=true close_gated=true stop_before_release=true source_loss_review=true no_restart=true scope=disposable-qemu-only' "$scratch/guest.log" >/dev/null
+if grep -F PHANTOWD_SERVICE_LAUNCHER_UNMOUNT_FAILED "$scratch/guest.log" >/dev/null; then
+    tail -n 120 "$scratch/guest.log" >&2
+    exit 1
+fi
 grep -F PHANTOWD_SERVICE_LAUNCHER_OWNER_READY "$scratch/guest.log"
 grep -F PHANTOWD_SERVICE_LAUNCHER_INPUT_REVIEW_READY "$scratch/guest.log"
 grep -F PHANTOWD_SERVICE_LAUNCHER_LIVE_REVIEW_READY "$scratch/guest.log"
+grep -F PHANTOWD_ISOLATED_HANDOFF_READY "$scratch/guest.log"
 grep -F PHANTOWD_SERVICE_LAUNCHER_READY "$scratch/guest.log"
 grep -F PHANTOWD_SERVICE_LAUNCHER_DONE "$scratch/guest.log"
 [ "$(sha256sum "$base/rootfs.ext2" | awk '{print $1}')" = "$base_hash" ]

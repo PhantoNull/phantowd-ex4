@@ -121,6 +121,15 @@ temporary overlay space; clean-build, two-boot, hosted exact-head and EX4
 qualification remain separate. No NAS, physical disk, NAND/MTD, flash, or user
 data was accessed.
 
+A separate single-static-child `IsolatedServiceRuntime` now joins a dedicated
+grant-only handoff to the pinned native launcher. Its ARMv5 QEMU fixture proves
+original volume paths are unreachable, read-only writes are denied, direct
+teardown is blocked while the child runs, and normal/source-loss cleanup reaps
+the child before releasing grants. This does not change the ordinary process
+set's limitation above, install the helper into product startup or qualify
+Samba/NFS daemon profiles. See the
+[mount-owner contract](src/phantowd-api/internal/mountowner/README.md).
+
 A focused local ARMv5 QEMU check now compares mdadm-authored MD v1.0 metadata
 created on partition 1 of two synthetic GPT disk images, each backed by a
 temporary 32 MiB tmpfs file. In the guest, the firmware's bounded MD reader

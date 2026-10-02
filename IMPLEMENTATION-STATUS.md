@@ -24,7 +24,7 @@ substantial redesign. Rows overlap and must not be added.
 | M1 — Durable state | Revision stores, intent/result journals, refusal of uncertain state, synthetic clean-reboot tests | Product state placement, bootstrap/schema migration, operator reconciliation, real durability/power-loss qualification | 30–45% |
 | M2 — Identities | Unix allocation/creation; Owner-bound Samba disabled-first enrollment, explicit enable/disable and account-session revocation in QEMU | Complete ownership/import inventory, product boot authority, account API/UI, retirement and recovery | 50–65% |
 | M3 — Storage lifecycle | Complete sysfs census, generation-bound read-only broker, GPT/ext/MD observations, collision checks, internal mount/lease fixtures | Persistent logical VolumeID resolver, global-use accounting, production qualifier/roster, supported layouts and EX4 media qualification | 40–55% |
-| M4 — SMB/NFS | Real loopback clients, desired policies, coherent candidate planner, process-set supervision, share-scoped cloned handoff; independent isolated-child Owner fixtures | Trusted service-root/grant construction and isolation composition, daemon privilege profiles/ACLs, transactional activation/recovery, production wiring and loss monitoring | 35–50% |
+| M4 — SMB/NFS | Real loopback clients, desired policies, coherent candidate planner, process-set supervision, share-scoped handoff and a single-static-child grant-only isolated runtime in QEMU | Approved daemon runtime manifests, isolated process sets, privilege profiles/ACLs, transactional activation/recovery, production wiring and loss monitoring | 35–50% |
 | M5 — Management UI/security | Development authentication/TLS, sessions/password changes, diagnostics dashboard and policy preview/editing | Product enrollment/reset/certificate lifecycle, authorized live workflows, recovery UX, browser/accessibility/security qualification | 25–40% |
 | M6 — Network/system | Diagnostic observations and brief two-port board research | Safe network transactions/rollback, supported dual-port modes, time/discovery, notifications and administrative jobs | 5–15% |
 | M7 — Board/cooling/recovery | DTS and bounded diskless RAM trials; passive MCU framing/catalog tooling | Qualified factory identities, fan/tach/fail-safe, LCD/LED/buttons/power/watchdog, SATA/USB and NAND recovery | 15–25% |
@@ -55,7 +55,9 @@ excluded. No calendar estimate is defensible before the hardware/recovery gates.
   The mount qualification/driver remains QEMU-only. The fixed roster is not
   an appliance discovery provider. The handoff's original volume path remains
   reachable in the host mount namespace; a read-only clone alone is not an
-  authorization boundary. Ordinary API startup does not activate this runtime.
+  authorization boundary. A separate single-static-child isolated runtime now
+  closes that bypass in its disposable grant-only fixture, not for ordinary
+  process sets or real daemons. Ordinary API startup activates neither runtime.
 - M5/M6: [management component](src/phantowd-api/README.md) and
   [startup code](src/phantowd-api/main.go). Saving desired policy is not applying it.
 - M7: [board research](board/wd/ex4/README.md) and

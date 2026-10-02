@@ -103,6 +103,32 @@ because that guest intentionally has no independent healthy ext2 volume. Linux
 tests exercise multiple members, drain exclusion, idempotent release and
 rollback when the second member changes during acquisition.
 
+The separate internal `IsolatedServiceRuntime` exclusively claims one prepared
+handoff for **one static non-root process**, not a process Set or Samba daemon.
+The handoff is that process's grant-only root: a bounded census rejects any
+undeclared root entry, symlink or missing share. After verifying the complete
+roster, it pins the root and launches the fixed `processowner.IsolatedOwner`.
+Direct handoff teardown returns busy while this pin is retained. Normal stop
+confirms process/group reap before closing launch descriptors, releasing the
+root pin, detaching clones and returning the roster lease. Source loss follows
+the same stop-before-release ordering and remains quarantined; uncertainty
+retains resources and is not retried. The caller must still poll `Observe`.
+
+Local ARMv5 QEMU now composes that path using one disposable ext2 filesystem,
+one UID/GID1000 static probe and a read-only `public` grant. The probe reads the
+marker, cannot open either original volume anchor, `/private`, `/proc`, `/dev`
+or leaked FDs, and gets `EROFS` on writes. It verifies distinct mount namespaces,
+busy close while live, normal stop/reap and clone removal, then source-anchor
+substitution with stop/reap and retained review/no restart. Host census,
+immutable-input/exclusive-owner and race tests pass. This does not change the
+ordinary `ServiceRuntime`'s host-path bypass limitation described above.
+
+There are no approved runtime files, dynamic-library/interpreter manifests,
+multi-process isolated Set, per-client Samba identity/ACL profile or kernel NFS
+authority in this increment. It is fixture-only, not installed by product init,
+and exposes no HTTP/RPC operation. The helper's presence in a copied QEMU image
+is not Buildroot package installation or product authorization.
+
 The qualification token currently comes only from the QEMU fixture. There is
 no production qualifier or production roster source, no EX4-complete mounted-
 volume collector, mount-point allocator, durable volume identity, product

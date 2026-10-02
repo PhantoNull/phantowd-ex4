@@ -521,6 +521,18 @@ See M0.2 in [the roadmap](../ROADMAP.md).
 
 ### Qualification limits
 
+The standalone `support/test-service-launcher.ps1` lane also composes a single
+fixed static child with `mountowner.IsolatedServiceRuntime`. It creates one
+16 MiB ext2 fixture in bounded tmpfs and attaches it with a QEMU snapshot; the
+manifest-verified base is read-only. Normal and substituted-source cases must
+prove exact grant-only roots, denied original paths/read-only writes, root-pin
+close exclusion, stop/reap before release and no restart from review. The guest
+requires ordinary ext2 unmount success before completion. Its `/run` tmpfs is
+explicitly mode0755: permissive default ancestors must not be worked around by
+weakening the handoff's checks. Local builder1000 verification passed with the
+same512 MiB budget used by the full local/CI wrapper. No image/named volume is
+created; this lane neither installs the helper nor tests a real daemon profile.
+
 This lane can exercise current userspace against the base's kernel and
 packages without rebuilding Buildroot. It does **not** validate changed
 kernel, Buildroot, package selections, libraries, complete overlay installation,

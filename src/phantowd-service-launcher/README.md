@@ -35,8 +35,11 @@ seccomp, daemon integration and kernel-side exports. `chroot` plus a private
 mount namespace is not a security boundary for a privileged process; this
 prototype requires zero capabilities, non-root saved IDs and no inherited
 filesystem handles. Network/process privileges still follow the service UID.
-It is now connected to the internal `processowner.IsolatedOwner` constructor,
-not to `ServiceRuntime`, product init, Samba, kernel NFS or HTTP.
+It is connected to `processowner.IsolatedOwner` and the separate internal
+single-static-child `mountowner.IsolatedServiceRuntime`, not to the ordinary
+process Set, product init, Samba, kernel NFS or HTTP. The isolated handoff adds
+an exact grant-only root census and retains its root pin/roster lease until
+confirmed stop/reap; it still supplies no approved daemon runtime manifest.
 
 Tests use host refusal cases and a static disposable ARMv5 probe in QEMU, never
 real disks or the NAS. The QEMU fixture prepares a private tmpfs root and one
@@ -61,6 +64,14 @@ while running stops/reaps the owned group before closing inputs. Restoration
 does not clear review. The ARMv5 fixture verifies real Owner readiness,
 immutable arguments/credentials, same PID/namespace, close-before-stop refusal,
 normal stop, pre-launch input loss and live input-loss quarantine.
+
+The same disposable guest also joins a separately generated 16 MiB ext2 disk
+to the QEMU-only mounted-volume roster and one read-only subtree. It proves
+original storage anchors are absent from the static child's root, direct close
+is blocked while live, and normal/source-loss cleanup stops the group before
+releasing grants. The source-loss runtime remains in review and cannot restart.
+Inputs are read-only, both virtual disks use snapshots and only generated tmpfs
+files are discarded. This qualifies no physical media or production daemon.
 
 The cold Go fixture compilation exceeded the former 128 MiB temporary budget
 locally. Local/CI full-build wrappers now agree on a bounded 512 MiB tmpfs;
