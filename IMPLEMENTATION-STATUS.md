@@ -156,8 +156,22 @@ rebased to `8a3b95a` with an identical complete tree. This cache-reusing result
 is not independent clean-build, hosted follow-up, legal or physical/product
 qualification; known legal-info warnings remain release work. No smartmontools package,
 device command, ioctl, self-test job, history, notification or endpoint is enabled.
-Actual tool reports/transport/standby/device generation and product UI remain
+Physical tool reports/transport/standby/device generation and product UI remain
 unqualified; see the [SMART contract](src/phantowd-api/internal/smartreport/README.md).
+
+The next `feat/smart-replay-corpus` test-only follow-up builds native upstream
+smartctl 7.4 with only its generic backend and feeds seven invented ATA debug
+transcripts through the documented stdin pseudo-device. The real JSON and
+independent Go projections pass pinned Linux vet/race, including exit-zero
+SMART-disabled, empty input and partial collection with reported fail. The
+synthetic oracle initially expected disabled exit 4 and a device field after
+empty stdin; actual execution/source review corrected those expectations. The
+product parser required no behavioral change. Windows API/UI and the current
+pure-parser ARMv5 suite also pass, with base hashes unchanged. Compilation and
+reports stay in a bounded disposable tmpfs; no image/volume/package/device
+authority or installed binary is added. This qualifies native synthetic
+producer compatibility, not physical/ARM transport, standby or full integration
+of this follow-up. See [scope and invocation](support/SMART-REPLAY.md).
 
 Percentages are **engineering planning estimates**, not measured test coverage,
 probabilities of success, release readiness, or a delivery-date promise. Credit

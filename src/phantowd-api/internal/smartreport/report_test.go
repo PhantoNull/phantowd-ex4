@@ -53,6 +53,7 @@ func TestUnobservedAndUnsupportedStates(t *testing.T) {
 		{"SMART-command-no-result", 4, `,"device":{"protocol":"ATA"},"smart_support":{"available":true,"enabled":true}`, Unavailable},
 		{"capability-absent", 4, `,"device":{"protocol":"ATA"},"smart_support":{"available":false}`, UnsupportedSMART},
 		{"disabled", 4, `,"device":{"protocol":"ATA"},"smart_support":{"available":true,"enabled":false}`, Disabled},
+		{"disabled-success-not-pass", 0, `,"device":{"protocol":"ATA"},"smart_support":{"available":true,"enabled":false}`, Disabled},
 		{"SCSI", 0, `,"device":{"protocol":"SCSI"},"smart_status":{"passed":true}`, UnsupportedProtocol},
 		{"NVMe-with-exit-flags", 128, `,"device":{"protocol":"NVMe"},"smart_status":{"passed":true}`, UnsupportedProtocol},
 	}

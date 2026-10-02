@@ -30,6 +30,8 @@ must be separate and describe collection scope, device generation and age.
   it with `Partial`; do not replace it with a reassuring blank report.
 - `ReportedPass` means only the tool reported pass. It is not verified disk
   health, filesystem/RAID health, complete check coverage or data integrity.
+- Process exit zero alone is not pass: upstream can return zero when SMART is
+  disabled, with no health result. This remains `Disabled` / `NoAssessment`.
 - Missing mandatory health fields, contradictory `passed`/bit 3, mismatched
   embedded/process exit, null/wrong-type known fields and contradictory
   support state refuse with no observation and a fixed, redacted error.
@@ -54,6 +56,11 @@ drive); an offline parser proves none of these. Add truthful freshness/error
 states, bounded history, vendor-aware counters, self-test authorization/progress,
 deduplicated notifications and UI only after those boundaries are verified.
 No NAS/disks, recovery or thermal gate is bypassed.
+
+The opt-in [CPU-only producer fixture](../../../../support/SMART-REPLAY.md)
+checks real upstream native 7.4 JSON from seven invented ATA stdin responses.
+It compiles only the generic backend, not a Linux device collector; neither an
+ARM producer nor physical transport/standby compatibility is established.
 
 ## Primary semantics
 

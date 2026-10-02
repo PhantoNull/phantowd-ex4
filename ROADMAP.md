@@ -1154,7 +1154,11 @@ not host/QEMU progress.
     embedded status to the separate process exit; preserve collection errors,
     reported status and current/historical flags independently. Reject
     ambiguous/inconsistent input atomically. Host/fuzz and synthetic ARMv5 tests
-    are not device, transport or executable qualification. No device commands,
+    are not device, transport or executable qualification. A separate
+    [native producer oracle](support/SMART-REPLAY.md) runs actual upstream 7.4
+    with the generic backend and seven synthetic ATA stdin transcripts, including
+    exit-zero disabled and partial failing status. This is not an ARM producer
+    or physical collector test. No device commands,
     public endpoint or installed collector exist yet. Newer tool/schema profiles
     need upstream review and attributed generated reports before selection.
   - **M8.5b — Trusted collection.** Bind each report to the retained disk's
