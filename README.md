@@ -187,9 +187,12 @@ now passes local ARMv5 QEMU tests with a restricted root, private mount namespac
 non-root credentials, zero capabilities, inherited-FD/signal cleanup and preserved
 PID/process-group ownership. Seven invalid-launch cases are refused. The internal
 `IsolatedOwner` now pins its fixed inputs and supervises a static synthetic child;
-input drift stops/quarantines it and restoration never clears review. Trusted
-root construction, existing service handoff/Set integration, Samba, kernel NFS
-control and product init remain missing. No live product service is enabled.
+input drift stops/quarantines it and restoration never clears review. The
+separate single-static-child handoff composition described above is tested;
+trusted daemon-root construction, isolated multi-process Set integration, Samba
+privilege profiles, kernel NFS control and product init remain missing. The
+host-only research toolkit can derive a restricted ELF dependency candidate;
+this is not a trusted runtime manifest. No live product service is enabled.
 
 The badge tracks the `develop` integration branch, not every feature branch.
 For build evidence, open the relevant workflow run and check its **commit,

@@ -40,14 +40,17 @@ type Summary struct {
 // ELFInfo captures loader-facing facts without disassembling or executing the
 // binary.
 type ELFInfo struct {
-	Class       string   `json:"class"`
-	ByteOrder   string   `json:"byte_order"`
-	Type        string   `json:"type"`
-	Machine     string   `json:"machine"`
-	OSABI       string   `json:"os_abi"`
-	Interpreter string   `json:"interpreter,omitempty"`
-	SONAME      string   `json:"soname,omitempty"`
-	Needed      []string `json:"needed,omitempty"`
+	Class           string   `json:"class"`
+	ByteOrder       string   `json:"byte_order"`
+	Type            string   `json:"type"`
+	Machine         string   `json:"machine"`
+	OSABI           string   `json:"os_abi"`
+	Interpreter     string   `json:"interpreter,omitempty"`
+	SONAME          string   `json:"soname,omitempty"`
+	Needed          []string `json:"needed,omitempty"`
+	RPath           []string `json:"rpath,omitempty"`
+	RunPath         []string `json:"runpath,omitempty"`
+	LoaderModifiers []string `json:"loader_modifiers,omitempty"`
 }
 
 // File records one regular file. Hashes and paths belong in private analysis
@@ -314,23 +317,61 @@ func inspectELF(reader io.ReaderAt) (*ELFInfo, error) {
 		Machine:   parsed.Machine.String(),
 		OSABI:     parsed.OSABI.String(),
 	}
-	if values, err := parsed.DynString(elf.DT_NEEDED); err == nil {
-		info.Needed = append(info.Needed, values...)
-		sort.Strings(info.Needed)
+	for _, field := range []struct {
+		tag   elf.DynTag
+		value *[]string
+	}{
+		{elf.DT_NEEDED, &info.Needed}, {elf.DT_RPATH, &info.RPath}, {elf.DT_RUNPATH, &info.RunPath},
+	} {
+		values, err := parsed.DynString(field.tag)
+		if err != nil {
+			return nil, err
+		}
+		*field.value = values
 	}
-	if values, err := parsed.DynString(elf.DT_SONAME); err == nil && len(values) > 0 {
-		info.SONAME = values[0]
+	sort.Strings(info.Needed)
+	sonames, err := parsed.DynString(elf.DT_SONAME)
+	if err != nil || len(sonames) > 1 {
+		return nil, errors.New("invalid ELF SONAME metadata")
+	}
+	if len(sonames) == 1 {
+		info.SONAME = sonames[0]
+	}
+	for _, tag := range []elf.DynTag{elf.DT_AUDIT, elf.DT_DEPAUDIT, elf.DT_FILTER, elf.DT_AUXILIARY} {
+		// Presence is enough to refuse this loader feature. Go 1.26 does not
+		// support every string-valued loader tag through DynString.
+		values, err := parsed.DynValue(tag)
+		if err != nil {
+			return nil, err
+		}
+		if len(values) != 0 {
+			info.LoaderModifiers = append(info.LoaderModifiers, tag.String())
+		}
+	}
+	flags, err := parsed.DynValue(elf.DT_FLAGS_1)
+	if err != nil {
+		return nil, err
+	}
+	for _, flag := range flags {
+		if flag&uint64(elf.DF_1_NODEFLIB|elf.DF_1_CONFALT|elf.DF_1_GLOBAUDIT) != 0 {
+			info.LoaderModifiers = append(info.LoaderModifiers, "non-default-loader-flags")
+		}
 	}
 	for _, program := range parsed.Progs {
-		if program.Type != elf.PT_INTERP || program.Filesz == 0 || program.Filesz > 4096 {
+		if program.Type != elf.PT_INTERP {
 			continue
+		}
+		if info.Interpreter != "" || program.Filesz < 2 || program.Filesz > 4096 {
+			return nil, errors.New("invalid ELF interpreter metadata")
 		}
 		value, err := io.ReadAll(io.LimitReader(program.Open(), int64(program.Filesz)))
 		if err != nil {
 			return nil, err
 		}
-		info.Interpreter = strings.TrimRight(string(value), "\x00")
-		break
+		if len(value) != int(program.Filesz) || value[len(value)-1] != 0 || bytes.IndexByte(value[:len(value)-1], 0) >= 0 {
+			return nil, errors.New("invalid ELF interpreter string")
+		}
+		info.Interpreter = string(value[:len(value)-1])
 	}
 	return info, nil
 }

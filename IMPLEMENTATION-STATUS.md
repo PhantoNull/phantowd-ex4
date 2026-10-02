@@ -9,6 +9,12 @@ Use [ROADMAP.md](ROADMAP.md) for the acceptance specification. This snapshot
 distinguishes tested components from deployed product workflows. It is not
 installation approval, a security certification, or an exhaustive line-by-line audit.
 
+Follow-up audit includes published feature head `f7571ea` on
+`feat/service-namespace-launcher` and the tested host-only ELF dependency
+candidate described below. These additions are not yet integrated into
+`develop`; do not confuse feature evidence with an integration/release result.
+Planning bands remain unchanged: no new product acceptance gate has closed.
+
 ## Roadmap comparison
 
 Percentages are **engineering planning estimates**, not measured test coverage,
@@ -158,6 +164,56 @@ Samba/kernel-NFS activation. PR #54's exact-head hosted QEMU remains pending.
    reconciliation, then authorized account/share management workflows.
 5. **M7/M8/M10:** separately reviewed exact-model hardware, cooling, healthy
    disposable-media migration and recovery evidence before installation.
+
+## Re-audit: execution path, backlog and next deliverable
+
+The ordinary API entrypoint (`src/phantowd-api/main.go`) wires diagnostics,
+authentication, desired policy and manual read-only GPT observations. It does
+not instantiate the mount/process/identity Owners as a persistent product
+activation manager. `package/phantowd-api/S50phantowd-api` likewise starts only
+the non-root development API. The isolated launcher remains a fixture-injected
+helper, not an installed package. This is the main difference between our many
+tested building blocks and a usable appliance, not a missing cosmetic screen.
+
+The earlier statement above that the launcher has no handoff/runtime
+composition is superseded by `f7571ea` **only for a dedicated grant-only handoff
+and one static non-root child**. Ordinary process sets, multi-user Samba and
+kernel NFS control retain their separate gaps. The feature is already pushed;
+at this audit it has seven commits beyond integrated `develop`, zero committed
+changes waiting for push, and PR #54 is the only open PR. Do not manufacture
+extra PRs or merge a still-pending exact-head check to reduce the count.
+
+The host-only `inspect-runtime-closure` now reuses the existing ELF inventory
+instead of a second parser. Pinned Linux Go 1.26.6 vet/unit/race checks and
+50,000 fuzz executions pass. On the existing Buildroot target, the restricted
+candidate for `usr/sbin/smbd` resolves **105 distinct regular ELF objects,
+27,110,832 bytes**. A regression distinguishes an entirely empty RUNPATH
+(ignored by glibc) from unsafe empty components of a nonempty search list.
+Windows API/UI and lab-tool preflights also pass. This is an offline extracted
+view, not a fresh image build, ARMv5 loader comparison or permission/ABI/runtime
+qualification. All candidate outputs explicitly deny execution authority.
+
+Continue M4.4 with these concrete acceptance steps:
+
+1. Compare candidate bindings against the actual ARMv5 loader in a disposable
+   QEMU image; investigate mismatches without enabling arbitrary fallback paths.
+2. Inventory Samba's required `dlopen`/NSS modules, configuration, state, sockets
+   and privilege transitions. Keep root/UID switching distinct from the generic
+   zero-capability child; do not widen that helper or use shared client identity.
+3. Construct the trusted per-service root from independently pinned, validated
+   runtime inputs and explicit share grants; prove denied original paths,
+   ungranted shares and read-only bypass attempts, then stop-before-release.
+4. Integrate a service-specific owner and recovery transaction only after the
+   complete production storage qualifier/roster and state authority exist.
+
+Hosted CI snapshot: PR #54 head `d827026` has a successful host check
+(`37001276886`); ARMv5 run `37001276464` is still in progress at this audit.
+The API reports an active combined build/boot step, not a completed failure;
+live internal compiler progress is not available from this snapshot. The
+120-minute job ceiling and finite guest timeout remain enforced. There is no
+duplicate active run to cancel. Historical timeout, executable-mode and state
+unmount failures are distinct; exact-head hosted confirmation is still needed.
+No new image or named volume was created for the dependency research.
 
 Host/QEMU work can continue now. Valuable disks, the live NAS and NAND/MTD
 remain outside this implementation/test scope.

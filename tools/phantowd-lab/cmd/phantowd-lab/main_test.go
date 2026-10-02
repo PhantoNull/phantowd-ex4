@@ -187,6 +187,29 @@ func TestInventoryRootfsCommandDoesNotExposeHostRoot(t *testing.T) {
 	}
 }
 
+func TestRuntimeClosureCommandRefusesPartialPlanAndHostPaths(t *testing.T) {
+	root := t.TempDir()
+	if err := os.WriteFile(filepath.Join(root, "non-elf"), []byte("not executable"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	var output bytes.Buffer
+	code, err := run([]string{"inspect-runtime-closure", root, "non-elf"}, &output)
+	if err != nil || code != 2 || strings.Contains(output.String(), filepath.ToSlash(root)) ||
+		!strings.Contains(output.String(), `"execution_authorized": false`) ||
+		!strings.Contains(output.String(), `"runtime_qualified": false`) || strings.Contains(output.String(), `"objects"`) {
+		t.Fatal("unsafe or path-leaking closure:", code, err, output.String())
+	}
+	for _, args := range [][]string{
+		{"inspect-runtime-closure"}, {"inspect-runtime-closure", root},
+		{"inspect-runtime-closure", root, "../outside"}, {"inspect-runtime-closure", root, "/usr/sbin/smbd"},
+	} {
+		output.Reset()
+		if code, err := run(args, &output); code != 1 || err == nil || output.Len() != 0 {
+			t.Fatal(code, err, output.String())
+		}
+	}
+}
+
 func TestScanStorageReferencesCommandReportsOnlyRelativeMatches(t *testing.T) {
 	root := t.TempDir()
 	configDir := filepath.Join(root, "config")
