@@ -89,9 +89,15 @@ Deterministic root-host RED/GREEN, ten race repetitions, non-root Linux API/vet
 and package race checks, Windows API/UI/cross-compile and the actual ARMv5
 isolated-launcher fixture pass. Existing readiness, namespace, input-loss,
 stop/reap and grant-only handoff cases still pass with unchanged base hashes.
-This is local focused evidence, not a new full-build/hosted result or proof
-of an exploit. No static-child privilege or HTTP/storage/product authority
-changes. The earlier retained-code Owner full result remains scoped separately.
+Complete cached local integration subsequently passed on unchanged published
+`6cb8d46` (tree `a1f1a35d`): actual builder host/vet/race/fuzz, refreshed image,
+legal-info/SBOM and all existing guest lanes, including this root-close refusal,
+retained Owner teardown, restricted-root Samba and actual SMART producer.
+Seven exported artifact hashes were independently verified; the temporary
+container auto-removed, reusing existing volumes/output/cache. This is neither
+hosted/clean-build qualification nor proof of an exploit. No static-child
+privilege or HTTP/storage/product authority changes. The earlier retained-code
+Owner full result remains scoped separately.
 
 The retained runtime-code Owner prototype privately holds the verified root and
 all regular code files, plus fixed independently pinned process executables.

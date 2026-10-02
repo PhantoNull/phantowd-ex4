@@ -976,8 +976,10 @@ storage. No production roster provider or activation path exists.
   deterministic constructor RED/GREEN, repeated host race checks and the
   actual ARMv5 launcher fixture cover this lifetime defect without starting
   any child with the invalid input or widening the static-child profile.
-  This follow-up has focused local evidence; full/hosted qualification remains
-  separate from the preceding retained-Owner integration.
+  This follow-up also passes complete cached local integration on unchanged
+  `6cb8d46`, including all existing host/image/guest lanes and independent
+  seven-artifact verification. Hosted and clean-build qualification remain
+  separate; it does not grant service activation or EX4/product authority.
   Then define product-owned service identities and safe ACL provisioning and
   recovery without silently changing legacy ownership. Add the bounded
   source-loss supervisor and a fail-closed production storage constructor only
