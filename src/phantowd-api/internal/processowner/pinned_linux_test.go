@@ -9,23 +9,18 @@ import (
 	"context"
 	"errors"
 	"os"
-	"os/signal"
-	"syscall"
 	"testing"
 	"time"
 )
 
 func TestPinnedSetSurvivesCallerCloseAndReapsBeforeRelease(t *testing.T) {
-	if mode, ok := processOwnerChildMode(os.Args); ok {
-		runProcessOwnerChild(t, mode)
-		return
-	}
-	file, err := os.Open(os.Args[0])
+	// Root-owned system fixture, not the builder-owned Go test executable.
+	file, err := os.Open("/usr/bin/sleep")
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer file.Close()
-	args := []string{"-test.run=^TestPinnedSetSurvivesCallerCloseAndReapsBeforeRelease$", "--", "wait"}
+	args := []string{"60"}
 	set, err := NewPinnedSet([]MemberSpec{{Name: "fixture", Process: Spec{
 		Executable: "/fixed/fixture", Args: args,
 		Ready:        func(context.Context) (bool, error) { return true, nil },
@@ -38,7 +33,7 @@ func TestPinnedSetSurvivesCallerCloseAndReapsBeforeRelease(t *testing.T) {
 	if err := file.Close(); err != nil {
 		t.Fatal(err)
 	}
-	args[2] = "exit"
+	args[0] = "0"
 	started, err := set.Start(context.Background())
 	if err != nil || started.State != StateReady || started.Members[0].Process.PID <= 1 {
 		t.Fatal("independent pinned executable did not start", started, err)
@@ -62,15 +57,9 @@ func TestPinnedSetSurvivesCallerCloseAndReapsBeforeRelease(t *testing.T) {
 }
 
 func TestPinnedSetUncertainStopRetainsPinsUntilExplicitReapVerification(t *testing.T) {
-	if mode, ok := processOwnerChildMode(os.Args); ok && mode == "pin-ignore" {
-		signal.Ignore(syscall.SIGTERM)
-		if err := os.WriteFile(os.Args[len(os.Args)-1], []byte("ready"), 0600); err != nil {
-			t.Fatal(err)
-		}
-		time.Sleep(time.Minute)
-		return
-	}
-	file, err := os.Open(os.Args[0])
+	// The fixed root-owned interpreter runs only this disposable native fixture;
+	// this is not runtimebundle's separately constrained static execution adapter.
+	file, err := os.Open("/usr/bin/python3")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -78,7 +67,7 @@ func TestPinnedSetUncertainStopRetainsPinsUntilExplicitReapVerification(t *testi
 	marker := t.TempDir() + "/ready"
 	set, err := NewPinnedSet([]MemberSpec{{Name: "fixture", Process: Spec{
 		Executable:   "/fixed/fixture",
-		Args:         []string{"-test.run=^TestPinnedSetUncertainStopRetainsPinsUntilExplicitReapVerification$", "--", "pin-ignore", marker},
+		Args:         []string{"-I", "-S", "-c", "import os,signal,sys,time; signal.signal(signal.SIGTERM,signal.SIG_IGN); fd=os.open(sys.argv[1],os.O_WRONLY|os.O_CREAT|os.O_EXCL,0o600); os.write(fd,b'ready'); os.close(fd); time.sleep(60)", marker},
 		Ready:        func(context.Context) (bool, error) { _, err := os.Stat(marker); return err == nil, nil },
 		ReadyTimeout: 5 * time.Second, ProbeInterval: 10 * time.Millisecond, StopTimeout: 20 * time.Millisecond,
 	}}}, []*os.File{file})
@@ -109,7 +98,7 @@ func TestPinnedSetUncertainStopRetainsPinsUntilExplicitReapVerification(t *testi
 }
 
 func TestPinnedSetRejectedConstructionReleasesPartialPins(t *testing.T) {
-	file, err := os.Open(os.Args[0])
+	file, err := os.Open("/usr/bin/sleep")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -129,5 +118,25 @@ func TestPinnedSetRejectedConstructionReleasesPartialPins(t *testing.T) {
 	after, err := os.ReadDir("/proc/self/fd")
 	if err != nil || len(after) != len(before) {
 		t.Fatal("refused constructor leaked an independent pin", len(before), len(after), err)
+	}
+}
+
+func TestPinnedSetRefusesBuilderOwnedExecutableWithoutWeakeningRootTrust(t *testing.T) {
+	if os.Getuid() == 0 {
+		t.Skip("non-root ownership refusal is exercised by the Buildroot builder")
+	}
+	name := t.TempDir() + "/untrusted"
+	if err := os.WriteFile(name, []byte("not trusted code"), 0555); err != nil {
+		t.Fatal(err)
+	}
+	file, err := os.Open(name)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer file.Close()
+	spec := Spec{Executable: "/fixed/fixture", Ready: func(context.Context) (bool, error) { return true, nil },
+		ReadyTimeout: time.Second, ProbeInterval: 10 * time.Millisecond, StopTimeout: time.Second}
+	if owner, err := NewPinnedSet([]MemberSpec{{Name: "fixture", Process: spec}}, []*os.File{file}); owner != nil || !errors.Is(err, ErrInvalid) {
+		t.Fatal("builder-owned executable was trusted", owner, err)
 	}
 }

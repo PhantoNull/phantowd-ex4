@@ -55,6 +55,10 @@ group reaped before descriptors can be released. Review persists and no
 automatic restart is added. The retained code-tree Owner in `runtimebundle`
 provides stricter fixed-tree/static/non-root composition; existing New/NewSet
 and IsolatedOwner behavior is otherwise unchanged.
+Native lifecycle tests use the pinned build environment's root-owned `sleep`
+and isolated Python3, not its builder-owned Go test executable; this keeps the
+root-ownership guard intact while exercising the real non-root builder. Python
+is only a disposable host test fixture, not a target runtime dependency.
 
 Linux `NewIsolated` constructs an `IsolatedOwner` around the separate native
 launcher. It fixes and copies the spec/credentials once, pins independent
