@@ -4,7 +4,7 @@
 # Implementation status
 
 Code audit: **2026-10-02**, integrated `develop` baseline
-`3a753066d17bcbe60bb80e1f0aecdfce526cab44` (PR #55).
+`9daacfd42df5c8af7d3bf0c1410c2bb98574a580` (PR #56).
 Use [ROADMAP.md](ROADMAP.md) for the acceptance specification. This snapshot
 distinguishes tested components from deployed product workflows. It is not
 installation approval, a security certification, or an exhaustive line-by-line audit.
@@ -54,7 +54,51 @@ unchanged. This result is separate from the earlier complete integration
 on `fba213d`; it does not qualify Windows ACLs, complete filesystem ACLs, stream
 migration, product integration or physical EX4 behavior.
 
+PR #56 subsequently passed exact-head `7f108d2` hosted
+[host](https://github.com/PhantoNull/phantowd-ex4/actions/runs/37028964742) and
+[QEMU](https://github.com/PhantoNull/phantowd-ex4/actions/runs/37028965197)
+checks and was squash-merged as the current baseline. Its merged branch was
+removed. QEMU-only experiment paths no longer trigger an unchanged EX4 kernel
+rebuild; actual board/build input changes remain covered.
+
 ## Roadmap comparison
+
+The separate `feat/runtime-bundle-verification` follow-up adds an internal,
+read-only code-tree inspection prerequisite for M4.4. A privately copied plan
+checks complete census, read-only mount identity, hashes, file permissions and
+exact direct aliases without symlink traversal or cross-mount opens. A focused
+exact-commit `e8d347d` ARMv5 Samba fixture passes the actual tree and five altered-plan
+refusals before adding test configuration/state/grants; all prior CP850/stream/
+ACL/inheritance/client/group-stop cases still pass. It is not an approved
+manifest, retained lease, root builder, service activation or hosted result.
+Linux package vet/race, 25,000 bounded fuzz executions and ARMv5 test cross-
+compilation also pass on that commit. The earlier broader working-tree Linux
+API vet/race suite passed; neither result is a full new Buildroot integration.
+See the [internal contract](src/phantowd-api/internal/runtimebundle/README.md).
+
+The next source-only prototype, excluded from ordinary builds by `qemu && linux`,
+now constructs the fixture's code tree from pinned read-only source descriptors
+into an exclusively owned empty 0700 tmpfs root. Fresh `O_EXCL` copies verify
+bounded hashes during copying; only verified files get final modes, and direct
+aliases are generated from the fixed plan. The local final-source ARMv5 fixture
+passes five staging refusals (occupied destination, wrong hash, writable source,
+cancellation and source symlink), dirty-tree re-entry refusal, failed-copy
+0600/0700 confinement and the following read-only inspector/Samba regressions.
+The original base hashes remain unchanged. Host API/vet/cross-compile and Linux
+QEMU-tag vet/package race tests pass. This is disposable construction evidence,
+not an authenticated product manifest, retained root/lease, production Owner,
+installer, full new Buildroot integration or hosted feature result.
+
+Subsequent full local incremental integration on unchanged `7c6048c` passed
+the complete Buildroot/package/legal-info run, Linux API/tool vet/race/fuzz,
+native image-probe tests, standard ARMv5 smoke, MD fixture, two-boot state,
+native launcher, real loader differential and combined Samba staging/inspection/
+CP850/stream/ACL/inheritance/client/stop fixture. All seven published artifact
+hashes equal the previous baseline, consistent with this prototype not being
+installed in the firmware. This exact-source cache-reusing result is not an
+independent clean build, hosted feature pass, complete legal certification or
+EX4/product qualification. The pre-existing legal-info source-packaging warnings
+remain release work, not evidence that distribution obligations are complete.
 
 Percentages are **engineering planning estimates**, not measured test coverage,
 probabilities of success, release readiness, or a delivery-date promise. Credit
