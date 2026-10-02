@@ -49,8 +49,14 @@ the disposable Versatile PB guest.
   not retry or implicitly clean up. `Close` never unmounts.
 - `ServiceHandoff` is a Linux-only internal prototype. It requires an empty,
   root-owned mode-0711 directory under `/run/phantowd/service-handoff`; every
-  ancestor must be root-owned, searchable by service identities and not
-  group/other writable. It pins the handoff root and retains one lease for the
+  ancestor must be root-owned, searchable and not group/other writable. This
+  pathname is not an access-control boundary: the local ARMv5 probe ran as
+  UID/GID 65534 with no supplementary groups and read a synthetic 0644 marker
+  through the clone. The pre-mount child directory's mode 0700 is hidden by the
+  mounted filesystem; access then follows the source filesystem root and file
+  modes/ACLs, while the 0711 pathname permits traversal. No service UID/GID or
+  share grant is bound to a handoff yet. Do not pass these paths to untrusted
+  non-root processes. The handoff pins its root and retains one lease for the
   complete fixed roster. Each cloned mount tree is created from the qualified
   `O_PATH` source descriptor with `open_tree`/`move_mount`, then checked for a
   distinct mount ID and matching filesystem identity. Opaque path bindings
@@ -71,17 +77,20 @@ the disposable Versatile PB guest.
 
 The state machine and Linux fake-driver tests are in `owner_linux.go` and
 `owner_linux_test.go`. The QEMU-only integration runs real bind mounts from the
-fixed synthetic ext2 fixture into private `/run` directories. It covers the
+fixed synthetic ext2 fixture into root-controlled `/run` paths. It covers the
 normal lease/drain/unmount sequence, an overmount with handle revocation, lost
 mount/unmount results, and a mismatched filesystem. The M4.4 QEMU fixture also
-clones the mount from its qualified descriptor into the protected service
+clones the mount from its qualified descriptor into the root-controlled service
 pathname, holds the full roster lease, replaces the source anchor and verifies
 that the service pathname remains on the original clone while the Owner and
-handoff enter review. It then starts a fixed BusyBox consumer only after
-binding validation, verifies that the child reads the service pathname before
-readiness, and on source loss confirms the child stops before the exact clone
-is detached. A host fake-process test verifies that an uncertain stop leaves
-the handoff open and is not retried. The local ARMv5 standard smoke and Linux
+handoff enter review. It then starts a fixed root-run BusyBox consumer only
+after binding validation, verifies that the child reads the service pathname
+before readiness, and on source loss confirms the child stops before the exact
+clone is detached. A separate exploratory non-root probe demonstrated that
+the current pathname and source permissions allow UID/GID 65534 to read a
+world-readable marker; this is a security gap, not a supported grant. A host
+fake-process test verifies that an uncertain stop leaves the handoff open and
+is not retried. The local ARMv5 standard smoke and Linux
 API/vet checks pass on current source using the existing read-only Buildroot
 cache and temporary overlays. A focused MD v1.0 fixture also passes; its
 two-volume M3.5 test was separated because that guest intentionally has no
