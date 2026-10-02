@@ -1,5 +1,30 @@
 # Fast API and file-service integration checks
 
+## Smoke duration and cache scope
+
+The complete one-boot smoke now has a **240-second** polling budget, not the
+older 120 seconds. `PHANTOWD_QEMU_SMOKE_TIMEOUT_SECONDS` may explicitly select
+1..300 canonical whole seconds; invalid values fail before creating fixtures.
+The harness prints bounded progress every 30 polls. It still starts QEMU once,
+fails immediately on a guest error/death, requires every existing readiness
+assertion and retains its finite timeout/cleanup; it does not retry tests.
+
+A local CPU-limited differential on an unchanged manifest-verified base
+reproduced timeout at 121 seconds with the old budget and completed the full
+smoke at 162 seconds with the new budget. This supports a resource-dependent
+budget issue, not proof that every historical hosted failure has that cause.
+Exact-head hosted qualification remains separate.
+
+CI prefers the exact input/week compiler-cache key, then older keys for those
+inputs, then the older QEMU/Linux compiler-cache namespace. It never restores
+a prebuilt workspace/image or skips compilation/tests. The pinned Buildroot
+wrapper hashes GCC configuration/source inputs for compiler identity, and
+[ccache 4.10.2](https://ccache.dev/manual/4.10.2.html#_how_ccache_works) compares
+compilation inputs before reusing results. Cache writes still require a fresh
+completed-compile checkpoint on a non-cancelled trusted develop push; the
+existing 1 GiB bound remains. A broader cache lookup does not demonstrate
+speedup, independent reproducibility or release qualification.
+
 ## Guest entrypoint mode regression
 
 Docker Desktop source mounts can make scripts executable even when Git records

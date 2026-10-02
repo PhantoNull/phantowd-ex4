@@ -104,7 +104,11 @@ jobs:
         with:
           path: ${{ runner.temp }}/phantowd-buildroot-ccache
           key: ${{ steps.ccache_key.outputs.base }}-${{ steps.ccache_namespace.outputs.week }}
-          restore-keys: ${{ steps.ccache_key.outputs.base }}-
+          # Prefer exact inputs, then let ccache revalidate older QEMU objects.
+          # This is compiler cache only, never a prebuilt workspace/image.
+          restore-keys: |
+            ${{ steps.ccache_key.outputs.base }}-
+            qemu-ccache-linux-
 
       - name: Prepare compiler-cache directory for the container user
         run: |

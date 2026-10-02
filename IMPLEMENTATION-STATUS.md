@@ -77,6 +77,15 @@ This is not an independent clean build or EX4 qualification.
 
 Hosted evidence is separate:
 
+- [Run 36990449160](https://github.com/PhantoNull/phantowd-ex4/actions/runs/36990449160)
+  compiled successfully but hit the standard smoke's 120-second readiness
+  deadline. Its detailed failed-guest artifact is now retained. A local
+  CPU-limited differential reproduced timeout at 121 seconds and completed
+  the same full smoke at 162 seconds with the new bounded 240-second budget.
+  This supports budget exhaustion; it does not conclusively rule out another
+  hosted problem. No assertion is removed and QEMU is not retried. This run
+  never reached the separate MD/state fixtures, so it does not confirm the
+  executable-mode correction below. Exact-head hosted validation is pending.
 - [Run 36967317155](https://github.com/PhantoNull/phantowd-ex4/actions/runs/36967317155)
   failed Linux process lifecycle tests after the expensive build. Later
   handshake/timing test changes and current local race checks pass; they do not
@@ -105,6 +114,10 @@ prints the last 120 guest-log lines on failure, uploads failure-only diagnostics
 and permits only non-cancelled trusted `develop` pushes with a fresh completed-
 compile checkpoint to seed the bounded compiler cache. It does not suppress
 tests, retry mutations, or claim the historical MD/state failures are fixed.
+The exact cache key was absent on the latest failed run. Restore now tries
+older QEMU/Linux compiler-cache entries only after exact-input keys; ccache
+still revalidates compilation inputs and the trusted-only write/size rules
+are unchanged. This is not a cached workspace or an established speedup.
 
 ## Next implementation sequence
 

@@ -6,6 +6,17 @@ log_file="${2:-$images_dir/qemu-smoke.log}"
 expected_kernel="${3:-}"
 qemu_binary="${QEMU_SYSTEM_ARM:-qemu-system-arm}"
 script_dir=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
+smoke_timeout=${PHANTOWD_QEMU_SMOKE_TIMEOUT_SECONDS:-240}
+case "$smoke_timeout" in
+    ''|*[!0-9]*|0*)
+        echo 'QEMU smoke timeout must be 1..300 canonical whole seconds' >&2
+        exit 1
+        ;;
+esac
+if [ "${#smoke_timeout}" -gt 3 ] || [ "$smoke_timeout" -gt 300 ]; then
+    echo 'QEMU smoke timeout must be 1..300 canonical whole seconds' >&2
+    exit 1
+fi
 
 ready_marker='PHANTOWD_QEMU_READY target=qemu-armv5 kernel='
 if [ -n "$expected_kernel" ]; then
@@ -88,9 +99,14 @@ truncate -s 32M "$fixture_dir/md-member-a.raw" "$fixture_dir/md-member-b.raw"
     -device rtl8139,netdev=net0,romfile= \
     > "$log_file" 2>&1 &
 qemu_pid=$!
+echo "QEMU smoke budget: timeout_seconds=$smoke_timeout poll_seconds=1"
 
 attempt=0
-while [ "$attempt" -lt 120 ]; do
+while [ "$attempt" -lt "$smoke_timeout" ]; do
+    if [ "$attempt" -gt 0 ] && [ "$((attempt % 30))" -eq 0 ]; then
+        last_marker=$(awk '/^PHANTOWD_/ { line=substr($0, 1, 180) } END { print line }' "$log_file")
+        echo "QEMU smoke progress: waited_seconds=$attempt last_marker=$last_marker"
+    fi
     if grep -F 'PHANTOWD_QEMU_ERROR' "$log_file" >/dev/null; then
         echo "QEMU reported a boot readiness failure" >&2
         tail -n 80 "$log_file" >&2
@@ -386,6 +402,6 @@ while [ "$attempt" -lt 120 ]; do
     sleep 1
 done
 
-echo "Timed out waiting for the QEMU readiness marker" >&2
+echo "Timed out waiting for the QEMU readiness marker: timeout_seconds=$smoke_timeout" >&2
 tail -n 80 "$log_file" >&2
 exit 1

@@ -216,6 +216,17 @@ button to an unqualified backend simply because the screen exists.
   mode and check direct guest entrypoint modes before compilation. Hosted
   exact-head confirmation remains necessary; historical state-unmount EBUSY
   is a separate unresolved issue.
+  The later hosted standard smoke hit its 120-second readiness budget after
+  compilation; local CPU-limited testing reproduced that timeout and completed
+  the full smoke at 162 seconds with a bounded 240-second budget. Preserve all
+  assertions, one-shot startup, prompt error/death handling and retained logs.
+  Explicit override is limited to 1..300 whole seconds; report bounded progress
+  every 30 polls. Exact-head hosted confirmation remains required, including
+  the MD/state fixtures not reached by the timed-out run. Compiler-cache
+  restore may try older QEMU/Linux entries after exact inputs; never restore
+  prebuilt workspaces/images, weaken ccache input checks or change the trusted
+  develop-only write/checkpoint/1 GiB policy. Measure actual hosted savings;
+  a broader lookup is not reproducibility or a release qualification.
 - **M0.4 — Maintain release inputs.** Dependency update changes include source
   signatures/hashes, ARMv5 compatibility, package configuration, vulnerability
   review, license material and regenerated SBOM. Test the selected package set.

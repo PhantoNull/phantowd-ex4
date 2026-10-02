@@ -25,6 +25,44 @@ def save_log(destination, source):
 
 
 class BuildFeedbackTests(unittest.TestCase):
+    def test_smoke_budget_is_explicit_finite_and_not_a_retry(self):
+        script = (ROOT / "support/qemu-smoke.sh").read_text()
+        self.assertIn(
+            'smoke_timeout=${PHANTOWD_QEMU_SMOKE_TIMEOUT_SECONDS:-240}', script
+        )
+        self.assertIn('while [ "$attempt" -lt "$smoke_timeout" ]', script)
+        self.assertIn('timeout_seconds=$smoke_timeout', script)
+        self.assertEqual(script.count('"$qemu_binary" \\\n'), 1)
+
+    def test_invalid_smoke_budget_fails_before_fixture_or_qemu(self):
+        for value in ("0", "301", "-1", "+120", "001", "2.5", "x", " ",
+                      "9" * 30):
+            with self.subTest(value=value):
+                result = subprocess.run(
+                    ["sh", str(ROOT / "support/qemu-smoke.sh"),
+                     "/nonexistent-budget-test"], capture_output=True,
+                    text=True, timeout=3,
+                    env={**os.environ,
+                         "PHANTOWD_QEMU_SMOKE_TIMEOUT_SECONDS": value},
+                )
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn("QEMU smoke timeout must", result.stderr)
+                self.assertNotIn("Missing QEMU artifact", result.stderr)
+
+    def test_valid_smoke_budget_does_not_bypass_artifact_validation(self):
+        for value in ("1", "120", "240", "300"):
+            with self.subTest(value=value):
+                result = subprocess.run(
+                    ["sh", str(ROOT / "support/qemu-smoke.sh"),
+                     "/nonexistent-budget-test"], capture_output=True,
+                    text=True, timeout=3,
+                    env={**os.environ,
+                         "PHANTOWD_QEMU_SMOKE_TIMEOUT_SECONDS": value},
+                )
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn("Missing QEMU artifact", result.stderr)
+                self.assertNotIn("QEMU smoke timeout must", result.stderr)
+
     def test_direct_guest_entrypoints_have_executable_source_mode(self):
         # Docker Desktop bind mounts can mask a non-executable Git mode.
         # Check the index when available, not the Windows-host file mode.
@@ -105,6 +143,16 @@ class BuildFeedbackTests(unittest.TestCase):
             "github.ref == 'refs/heads/develop'", save
         )
         self.assertNotIn("if: success()", save)
+
+    def test_restore_prefers_exact_inputs_before_qemu_only_fallback(self):
+        restore = workflow_step("Restore Buildroot compiler cache")
+        self.assertIn(
+            "restore-keys: |\n"
+            "            ${{ steps.ccache_key.outputs.base }}-\n"
+            "            qemu-ccache-linux-", restore
+        )
+        self.assertNotIn("ex4", restore)
+        self.assertIn("${{ steps.ccache_namespace.outputs.week }}", restore)
 
     def test_log_copy_and_bounded_console_tail(self):
         with tempfile.TemporaryDirectory() as temporary:
