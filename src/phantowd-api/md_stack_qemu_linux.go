@@ -243,6 +243,12 @@ func runQEMUMDStackTest() (result error) {
 	if err := exerciseQEMUMDToMountedOwnerProvider(mountPoint, identity); err != nil {
 		return fmt.Errorf("M3.3 to M3.4 trusted provider bridge: %w", err)
 	}
+	// This broader smoke has the independent qemu-only ext2 volume required by
+	// the two-volume loss fixture. The focused MD v1.0 smoke intentionally has
+	// only the two array members, so it exercises the provider bridge alone.
+	if err := mountowner.RunQEMUMultiVolumeLeaseLossFixture(); err != nil {
+		return fmt.Errorf("M3.5 two-volume lease-loss fixture: %w", err)
+	}
 	for index, member := range identity.arrays[0].memberDisks {
 		if member != identityGraph[0].memberDisks[index] {
 			return errors.New("mounted MD identity changed its previously observed member binding")
@@ -341,9 +347,6 @@ func exerciseQEMUMDToMountedOwnerProvider(source string, identity mountedStorage
 		return nil
 	}); err != nil {
 		return err
-	}
-	if err := mountowner.RunQEMUMultiVolumeLeaseLossFixture(); err != nil {
-		return fmt.Errorf("M3.5 two-volume lease-loss fixture: %w", err)
 	}
 	return nil
 }

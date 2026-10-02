@@ -12,7 +12,9 @@ import (
 	"io"
 	"os"
 	"runtime"
+	"time"
 
+	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/processowner"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/mountguard"
 	"golang.org/x/sys/unix"
 )
@@ -77,9 +79,11 @@ func RunQEMUFixture(source string) error {
 
 func exerciseServiceHandoff(source string) (result error) {
 	const (
-		handoffParent = "/run/phantowd/service-handoff"
-		handoffRoot   = handoffParent + "/mountowner-qemu"
-		markerName    = ".phantowd-service-handoff-proof"
+		handoffParent  = "/run/phantowd/service-handoff"
+		handoffRoot    = handoffParent + "/mountowner-qemu"
+		markerName     = ".phantowd-service-handoff-proof"
+		serviceReady   = handoffParent + "/mountowner-qemu-ready"
+		serviceStopped = handoffParent + "/mountowner-qemu-stopped"
 	)
 	if source != qemuFixtureSource {
 		return errors.New("service handoff requires the fixed disposable ext2 source")
@@ -101,6 +105,12 @@ func exerciseServiceHandoff(source string) (result error) {
 	}
 	if err := os.Mkdir(handoffRoot, 0711); err != nil {
 		return err
+	}
+	for _, path := range []string{serviceReady, serviceStopped} {
+		if _, err := os.Lstat(path); !errors.Is(err, os.ErrNotExist) {
+			_ = os.Remove(handoffRoot)
+			return errors.New("service-runtime QEMU acknowledgement path already exists")
+		}
 	}
 	markerPath := source + "/" + markerName
 	marker, err := os.OpenFile(markerPath, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0644)
@@ -137,6 +147,11 @@ func exerciseServiceHandoff(source string) (result error) {
 		if err := os.Remove(handoffRoot); err != nil {
 			result = errors.Join(result, errors.New("could not remove the empty QEMU service-handoff root"))
 		}
+		for _, path := range []string{serviceReady, serviceStopped} {
+			if err := os.Remove(path); err != nil && !errors.Is(err, os.ErrNotExist) {
+				result = errors.Join(result, errors.New("could not remove the QEMU service-runtime acknowledgement"))
+			}
+		}
 	}()
 
 	err = withQEMUMountedOwner(source, func(owner *Owner) (callbackErr error) {
@@ -165,43 +180,78 @@ func exerciseServiceHandoff(source string) (result error) {
 		if err != nil {
 			return errors.New("could not open the private QEMU service-handoff owner")
 		}
-		paths, err := handoff.Mount(contextBackground())
-		if err != nil || handoff.State() != ServiceHandoffActive {
-			return errors.Join(errors.New("qualified QEMU volume did not enter service handoff"), err)
+		const child = `trap 'printf stopped > "$4"; exit 0' TERM
+[ "$(cat "$1/$2")" = qualified-source ] || exit 12
+printf ready > "$3"
+while :; do sleep 0.05; done`
+		processes, err := processowner.NewSet([]processowner.MemberSpec{{
+			Name: "media-consumer",
+			Process: processowner.Spec{
+				Executable: "/bin/busybox",
+				Args: []string{"sh", "-c", child, "phantowd-handoff-consumer",
+					handoffRoot + "/" + qemuPlannerVolumeID, markerName, serviceReady, serviceStopped},
+				Ready: func(ctx context.Context) (bool, error) {
+					if err := ctx.Err(); err != nil {
+						return false, err
+					}
+					data, err := os.ReadFile(serviceReady)
+					if errors.Is(err, os.ErrNotExist) {
+						return false, nil
+					}
+					if err != nil {
+						return false, err
+					}
+					return string(data) == "ready", nil
+				},
+				ReadyTimeout: time.Second, ProbeInterval: 10 * time.Millisecond,
+				StopTimeout: time.Second,
+			},
+		}})
+		if err != nil {
+			return errors.New("could not construct fixed QEMU service process set")
 		}
-		bindings, err := paths.Bindings()
+		runtime, err := NewServiceRuntime(handoff, processes)
+		if err != nil {
+			return errors.New("could not construct storage-backed QEMU service runtime")
+		}
+		state, err := runtime.Start(context.Background())
+		if err != nil || state != ServiceRuntimeReady {
+			return errors.Join(errors.New("service process did not start after verified storage bindings"), err)
+		}
+		if data, err := os.ReadFile(serviceReady); err != nil || string(data) != "ready" {
+			return errors.New("consumer did not read the qualified service path before readiness")
+		}
+		bindings, err := handoff.Bindings()
 		if err != nil || len(bindings) != 1 || bindings[0].VolumeID != qemuPlannerVolumeID ||
 			bindings[0].FilesystemUUID != qemuFixtureUUID || bindings[0].SourcePath != qemuPlannerMountAnchor ||
 			bindings[0].SourceMountID == 0 || bindings[0].Path != handoffRoot+"/"+qemuPlannerVolumeID {
+			_, _ = runtime.Stop(context.Background())
 			return errors.New("service path did not retain the exact qualified source-volume tuple")
-		}
-		if data, err := os.ReadFile(bindings[0].Path + "/" + markerName); err != nil || string(data) != "qualified-source\n" {
-			return errors.New("handoff clone did not expose the marker from its qualified ext2 source")
 		}
 		owner.mu.Lock()
 		leaseCount := len(owner.leases)
 		owner.mu.Unlock()
-		if leaseCount != 1 || handoff.Verify() != nil {
+		if leaseCount != 1 || runtime.State() != ServiceRuntimeReady {
 			return errors.New("service handoff did not retain and verify its complete roster lease")
 		}
 		if err := unix.Mount("/run", owner.target, "", unix.MS_BIND, ""); err != nil {
 			return errors.New("could not create the disposable source-anchor replacement")
 		}
 		overMounted = true
-		if !errors.Is(handoff.Verify(), ErrHandoffReview) || owner.State() != StateReviewRequired {
+		state, err = runtime.Observe(context.Background())
+		if !errors.Is(err, ErrServiceRuntimeReview) || state != ServiceRuntimeReview || owner.State() != StateReviewRequired {
 			return errors.New("source-anchor substitution did not quarantine the handoff and its Owner")
 		}
-		if data, err := os.ReadFile(bindings[0].Path + "/" + markerName); err != nil || string(data) != "qualified-source\n" {
-			return errors.New("service pathname followed the replaced source anchor instead of its cloned mount")
+		if data, err := os.ReadFile(serviceStopped); err != nil || string(data) != "stopped" {
+			return errors.New("service consumer was not stopped before handoff teardown")
 		}
-		if _, err := handoff.Paths(); !errors.Is(err, ErrHandoffUnavailable) {
-			return errors.New("quarantined service handoff issued a fresh path capability")
-		}
-		closeErr := handoff.Close()
-		if !errors.Is(closeErr, ErrHandoffReview) || handoff.State() != ServiceHandoffReview || !handoff.resourcesClosed {
-			return errors.New("explicit cleanup detached the exact handoff but cleared review or leaked resources")
+		if handoff.State() != ServiceHandoffReview || !handoff.resourcesClosed {
+			return errors.New("service runtime did not close the reviewed handoff after stopping consumers")
 		}
 		handoffClosed = true
+		if _, err := handoff.Bindings(); !errors.Is(err, ErrHandoffUnavailable) {
+			return errors.New("closed handoff issued a fresh service path capability")
+		}
 		if _, err := os.Lstat(bindings[0].Path); !errors.Is(err, os.ErrNotExist) {
 			return errors.New("explicit handoff cleanup left the service-volume path mounted or present")
 		}
@@ -649,10 +699,16 @@ func newQEMUMountFixtureAt(source, target, volumeID, workspace string) (*qemuMou
 func newQEMUMountFixtureAtExpected(source, target, volumeID, workspace, filesystemUUID string, requireWritable bool) (*qemuMountFixture, error) {
 	observer := linuxObserver{}
 	sourceExpected, err := observer.ObserveMount(source)
-	if err != nil || sourceExpected.FilesystemType != uint32(unix.EXT4_SUPER_MAGIC) || sourceExpected.RequireWritable != requireWritable {
+	if err != nil {
 		os.Remove(target)
 		os.Remove(workspace)
-		return nil, mountguard.ErrMismatch
+		return nil, fmt.Errorf("QEMU fixture source mount could not be observed: %w", err)
+	}
+	if sourceExpected.FilesystemType != uint32(unix.EXT4_SUPER_MAGIC) || sourceExpected.RequireWritable != requireWritable {
+		os.Remove(target)
+		os.Remove(workspace)
+		return nil, fmt.Errorf("QEMU fixture source identity mismatch: filesystem_type=%#x writable=%t expected_writable=%t: %w",
+			sourceExpected.FilesystemType, sourceExpected.RequireWritable, requireWritable, mountguard.ErrMismatch)
 	}
 	sourceExpected.FilesystemUUID = filesystemUUID
 	sourceRoot, err := mountguard.Open(source, sourceExpected)

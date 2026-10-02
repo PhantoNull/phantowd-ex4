@@ -839,17 +839,24 @@ storage. No production roster provider or activation path exists.
   issuing opaque service-path bindings; there is no path-based fallback. The
   local ARMv5 standard QEMU smoke proves that replacing the source anchor
   quarantines the Owner/handoff while the pathname stays on the original clone
-  instead of following the replacement, and that explicit teardown removes
-  only the known clone after the caller has stopped consumers. Windows/Linux
-  API checks and local ARMv5 QEMU pass using cached read-only Buildroot inputs.
-  This does **not** automatically revoke pathname consumers: the cloned mount
-  remains accessible until the service owner stops them and closes the
-  handoff. No trusted production storage-to-Owner constructor, daemon startup/
-  stop integration, service-user permission matrix, persistent handoff,
-  volume-loss supervision or EX4 media qualification exists. Continue by
-  integrating handoff lifetime with `processowner.Set` in QEMU, testing
-  non-root service access and loss/stop ordering, then design fail-closed
-  production storage construction. Do not enable real disks or services yet.
+  instead of following the replacement. An internal `ServiceRuntime` now
+  holds one fixed `processowner.Set` around that handoff: it verifies the
+  complete bindings before startup, verifies storage after readiness, and on
+  source loss stops consumers before explicit teardown. Linux tests verify
+  that an uncertain stop retains the lease and is not retried; QEMU exercises
+  one disposable BusyBox consumer reading the service path and stopping before
+  teardown. The caller must poll `Observe` at a bounded cadence; no monitor,
+  restart or production daemon wiring exists. Windows/Linux API checks and
+  both local ARMv5 standard and focused MD v1.0 QEMU fixtures pass using cached
+  read-only Buildroot inputs. A fixture-composition bug found during this work
+  was corrected: the MD v1.0-only guest has no independent healthy ext2 volume,
+  so its test now exercises the MD provider bridge alone; M3.5 two-volume loss
+  remains in the standard guest that supplies both volumes. No trusted
+  production storage-to-Owner constructor, non-root service-user permission
+  matrix, persistent handoff, production volume-loss supervision or EX4 media
+  qualification exists. Next: qualify non-root service access, specify an
+  explicit bounded supervisor contract, then design fail-closed production
+  storage construction. Do not enable real disks or services yet.
 - **M4.5 — Failure and shutdown.** Cover startup with absent disks, service crash,
   read-only/full volume, client reconnect, stale NFS handles, shutdown with open
   files and restart ordering. Distinguish safely unavailable from healthy.

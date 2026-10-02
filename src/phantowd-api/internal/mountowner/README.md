@@ -58,6 +58,16 @@ the disposable Versatile PB guest.
   still match. Teardown is explicit and may be called only after consumers
   stop; it unmounts a clone once and only while its exact mount identity still
   matches. It never falls back to source path resolution or lazy unmount.
+- `ServiceRuntime` is the internal coordinator for one fixed handoff and one
+  fixed `processowner.Set`. `Start` mounts, verifies the complete binding set,
+  starts all consumers and verifies storage again after readiness. `Observe`
+  checks storage before process state; source loss causes one process-set stop
+  before handoff close. If stop is uncertain, the handoff lease remains held
+  for review and no cleanup retry or restart occurs. `Stop` follows the same
+  stop-before-close order. The caller must poll `Observe` at a bounded cadence;
+  there is no monitor goroutine or automatic restart. Callers must treat the
+  handoff and process set as exclusively owned by the runtime after
+  construction.
 
 The state machine and Linux fake-driver tests are in `owner_linux.go` and
 `owner_linux_test.go`. The QEMU-only integration runs real bind mounts from the
@@ -67,21 +77,27 @@ mount/unmount results, and a mismatched filesystem. The M4.4 QEMU fixture also
 clones the mount from its qualified descriptor into the protected service
 pathname, holds the full roster lease, replaces the source anchor and verifies
 that the service pathname remains on the original clone while the Owner and
-handoff enter review. It then explicitly detaches the exact clone and tears
-down the quarantined synthetic Owner. The local ARMv5 standard smoke and Linux
-API/vet checks pass on the current source using the existing read-only
-Buildroot cache and temporary overlays. Linux tests exercise multiple
-members, drain exclusion, idempotent release and rollback when the second
-member changes during acquisition.
+handoff enter review. It then starts a fixed BusyBox consumer only after
+binding validation, verifies that the child reads the service pathname before
+readiness, and on source loss confirms the child stops before the exact clone
+is detached. A host fake-process test verifies that an uncertain stop leaves
+the handoff open and is not retried. The local ARMv5 standard smoke and Linux
+API/vet checks pass on current source using the existing read-only Buildroot
+cache and temporary overlays. A focused MD v1.0 fixture also passes; its
+two-volume M3.5 test was separated because that guest intentionally has no
+independent healthy ext2 volume. Linux tests exercise multiple members, drain
+exclusion, idempotent release and rollback when the second member changes
+during acquisition.
 
 The qualification token currently comes only from the QEMU fixture. There is
 no production qualifier or production roster source, no EX4-complete mounted-
 volume collector, mount-point allocator, durable volume identity, product
-service handoff/start/stop integration, or operator review/recovery workflow.
-The prototype does not stop pathname-consuming daemons when the source Owner
-enters review; a cloned handoff path can remain accessible until the future
-service owner stops consumers and explicitly closes it. Passing QEMU tests
-does not qualify physical EX4 disks or authorize mounting user media.
+service handoff/start/stop integration, non-root service permission matrix,
+automatic source-loss monitor, or operator review/recovery workflow. The
+lower-level `ServiceHandoff` does not stop pathname consumers by itself;
+`ServiceRuntime` does so only for the one fixed process set it controls, and
+only after its caller invokes `Observe`. Passing QEMU tests does not qualify
+physical EX4 disks or authorize mounting user media.
 
 See [M3.4 roadmap acceptance](../../../../ROADMAP.md#m3-complete-storage-discovery-and-volume-lifecycle) and the private
 dated evidence records in `doc/sources/m34-owner-lifecycle-local-qemu-2026-09-30.md`

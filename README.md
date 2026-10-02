@@ -103,13 +103,19 @@ tree from its pinned source descriptor into a root-controlled volatile
 pathname, verifies the clone's mount identity, and retains a lease over the
 entire fixed volume roster. Replacing the original source anchor moves the
 Owner and handoff to `review-required`; the service pathname continues to
-refer to the original clone rather than following the replacement. This does
-not automatically revoke pathname access: a future service owner must stop
-all consumers before explicit handoff teardown. No production storage
-provider, daemon wiring, real-media use, or EX4 qualification exists. Local
-Windows/Linux API checks and the integrated ARMv5 standard smoke passed using
-existing read-only Buildroot inputs and temporary overlays; the two-boot and
-hosted exact-head checks are separate.
+refer to the original clone rather than following the replacement. The new
+internal `ServiceRuntime` orders one fixed `processowner.Set` around this
+handoff: it verifies bindings before startup, and on source loss it stops the
+consumer before closing the handoff. An uncertain stop keeps the lease in
+review without retry. Its caller must poll `Observe`; there is no automatic
+monitor or restart. The disposable ARMv5 QEMU fixture exercises one synthetic
+BusyBox consumer, while Linux tests cover the uncertain-stop boundary. This is
+not a production service manager: no trusted production storage provider,
+daemon wiring, non-root service access matrix, real-media use, or EX4
+qualification exists. Local Windows/Linux API checks and both the standard
+ARMv5 smoke and focused MD v1.0 fixture pass using existing read-only Buildroot
+inputs and temporary overlays; the two-boot and hosted exact-head checks are
+separate.
 
 A focused local ARMv5 QEMU check now compares mdadm-authored MD v1.0 metadata
 created on partition 1 of two synthetic GPT disk images, each backed by a

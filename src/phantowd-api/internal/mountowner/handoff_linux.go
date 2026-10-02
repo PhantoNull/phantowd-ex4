@@ -355,6 +355,16 @@ func (h *ServiceHandoff) Paths() (ServicePaths, error) {
 	return ServicePaths{handoff: h, generation: h.generation}, nil
 }
 
+// Bindings returns a fresh verification of the service paths. Coordinators
+// should use this immediately before starting pathname-consuming processes.
+func (h *ServiceHandoff) Bindings() ([]ServicePathBinding, error) {
+	paths, err := h.Paths()
+	if err != nil {
+		return nil, err
+	}
+	return paths.Bindings()
+}
+
 // Bindings returns source-bound paths only while the owner remains active.
 func (paths ServicePaths) Bindings() ([]ServicePathBinding, error) {
 	if paths.handoff == nil {
