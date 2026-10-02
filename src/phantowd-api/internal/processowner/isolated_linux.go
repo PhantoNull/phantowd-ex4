@@ -83,8 +83,18 @@ func NewIsolated(spec Spec, isolation Isolation) (*IsolatedOwner, error) {
 	if err != nil || trustedExecutable(launch.launcher) != nil {
 		return nil, ErrInvalid
 	}
-	fd, err := unix.FcntlInt(isolation.Root.Fd(), unix.F_DUPFD_CLOEXEC, 0)
+	raw, err := isolation.Root.SyscallConn()
 	if err != nil {
+		return nil, ErrInvalid
+	}
+	fd := -1
+	var duplicateErr error
+	// Hold os.File's descriptor reference across the syscall. Fd() alone can
+	// observe a closing descriptor or race with kernel FD-number reuse.
+	err = raw.Control(func(value uintptr) {
+		fd, duplicateErr = unix.FcntlInt(value, unix.F_DUPFD_CLOEXEC, 0)
+	})
+	if err != nil || duplicateErr != nil || fd < 0 {
 		return nil, ErrInvalid
 	}
 	launch.root = os.NewFile(uintptr(fd), "isolated-service-root")

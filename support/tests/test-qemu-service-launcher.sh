@@ -86,6 +86,7 @@ grep -F 'PHANTOWD_SERVICE_LAUNCHER_READY private_namespace=true root_restricted=
 grep -F 'PHANTOWD_SERVICE_LAUNCHER_OWNER_READY pinned_inputs=true immutable_spec=true readiness=true same_pid=true private_namespace=true stop_reaped=true close_gated=true' "$scratch/guest.log" >/dev/null
 grep -F 'PHANTOWD_SERVICE_LAUNCHER_INPUT_REVIEW_READY before_child=true restoration_not_retried=true' "$scratch/guest.log" >/dev/null
 grep -F 'PHANTOWD_SERVICE_LAUNCHER_LIVE_REVIEW_READY stop_before_close=true group_reaped=true restoration_not_retried=true' "$scratch/guest.log" >/dev/null
+grep -F 'PHANTOWD_SERVICE_LAUNCHER_CLOSING_ROOT_READY rejected=true caller_close=true scope=disposable-qemu-only' "$scratch/guest.log" >/dev/null
 grep -F 'PHANTOWD_ISOLATED_HANDOFF_READY grant_only_root=true original_path_denied=true nonroot=true read_only=true close_gated=true stop_before_release=true source_loss_review=true no_restart=true scope=disposable-qemu-only' "$scratch/guest.log" >/dev/null
 if grep -F PHANTOWD_SERVICE_LAUNCHER_UNMOUNT_FAILED "$scratch/guest.log" >/dev/null; then
     tail -n 120 "$scratch/guest.log" >&2
@@ -94,6 +95,7 @@ fi
 grep -F PHANTOWD_SERVICE_LAUNCHER_OWNER_READY "$scratch/guest.log"
 grep -F PHANTOWD_SERVICE_LAUNCHER_INPUT_REVIEW_READY "$scratch/guest.log"
 grep -F PHANTOWD_SERVICE_LAUNCHER_LIVE_REVIEW_READY "$scratch/guest.log"
+grep -F PHANTOWD_SERVICE_LAUNCHER_CLOSING_ROOT_READY "$scratch/guest.log"
 grep -F PHANTOWD_ISOLATED_HANDOFF_READY "$scratch/guest.log"
 grep -F PHANTOWD_SERVICE_LAUNCHER_READY "$scratch/guest.log"
 grep -F PHANTOWD_SERVICE_LAUNCHER_DONE "$scratch/guest.log"

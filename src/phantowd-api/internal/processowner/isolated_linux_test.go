@@ -9,9 +9,13 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"os"
 	"reflect"
+	"runtime"
 	"testing"
 	"time"
+
+	"golang.org/x/sys/unix"
 )
 
 func isolationTestSpec() Spec {
@@ -19,6 +23,60 @@ func isolationTestSpec() Spec {
 		RunAs:        &Credentials{UID: 1000, GID: 1000, SupplementaryGIDs: []uint32{1002, 1001}},
 		Ready:        func(context.Context) (bool, error) { return false, nil },
 		ReadyTimeout: time.Second, ProbeInterval: 10 * time.Millisecond, StopTimeout: time.Second}
+}
+
+func TestNewIsolatedRefusesRootWhoseCallerCloseHasBegun(t *testing.T) {
+	if os.Getuid() != 0 || os.Geteuid() != 0 {
+		t.Skip("constructor requires root; exercised in disposable host/QEMU fixture")
+	}
+	fd, err := unix.Open(t.TempDir(), unix.O_PATH|unix.O_DIRECTORY|unix.O_CLOEXEC, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	root := os.NewFile(uintptr(fd), "closing-isolation-root")
+	defer root.Close()
+	raw, err := root.SyscallConn()
+	if err != nil {
+		t.Fatal(err)
+	}
+	entered, release := make(chan struct{}), make(chan struct{})
+	controlled := make(chan error, 1)
+	go func() {
+		controlled <- raw.Control(func(uintptr) { close(entered); <-release })
+	}()
+	<-entered
+	closed := make(chan error, 1)
+	go func() { closed <- root.Close() }()
+	defer func() {
+		close(release)
+		if err := <-controlled; err != nil {
+			t.Error("held root control:", err)
+		}
+		if err := <-closed; err != nil {
+			t.Error("caller root close:", err)
+		}
+	}()
+	// A real active Control keeps the kernel FD alive, while Close makes the
+	// caller's os.File unavailable. No syscall or fake descriptor is injected.
+	deadline := time.Now().Add(time.Second)
+	for {
+		if _, err := root.Stat(); errors.Is(err, os.ErrClosed) {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatal("caller Close did not become observable")
+		}
+		runtime.Gosched()
+	}
+	spec := isolationTestSpec()
+	spec.Executable = "/usr/bin/sleep"
+	owner, err := NewIsolated(spec, Isolation{LauncherExecutable: "/usr/bin/sleep", Root: root})
+	if owner != nil {
+		_ = owner.Close()
+	}
+	if owner != nil || !errors.Is(err, ErrInvalid) {
+		t.Fatal("constructor accepted caller root after Close began:", err)
+	}
 }
 
 func TestIsolatedSpecIsCopiedAndGroupsAreCanonical(t *testing.T) {

@@ -64,6 +64,12 @@ Linux `NewIsolated` constructs an `IsolatedOwner` around the separate native
 launcher. It fixes and copies the spec/credentials once, pins independent
 read-only executable/helper and `O_PATH` root descriptors, validates root-owned
 non-writable metadata and captures the root mount ID. `Start(ctx)` accepts no
+replacement root or inputs. Root duplication holds the caller's `os.File`
+reference through `SyscallConn.Control`: a caller Close that has already begun
+is refused even if another active Control keeps the kernel FD alive. This
+avoids acquisition from a closing or reused FD number. A deterministic root
+constructor regression and the disposable ARMv5 fixture verify the refusal;
+no service is started with that invalid root. `Start(ctx)` accepts no
 new spec, root, path or backend. The owner starts the pinned helper as root in
 its supervised child group; the helper, not Go's multithreaded parent, creates
 the private namespace/chroot and removes privileges before executing the

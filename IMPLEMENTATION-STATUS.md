@@ -81,6 +81,18 @@ rebuild; actual board/build input changes remain covered.
 
 ## Roadmap comparison
 
+A separate follow-up fixes a reproduced `NewIsolated` constructor lifetime
+defect: direct `Fd()` duplication accepted a caller root after Close had begun
+while an active Control kept its kernel FD alive. The constructor now duplicates
+through `SyscallConn.Control`, preserving `os.File` lifetime across the syscall.
+Deterministic root-host RED/GREEN, ten race repetitions, non-root Linux API/vet
+and package race checks, Windows API/UI/cross-compile and the actual ARMv5
+isolated-launcher fixture pass. Existing readiness, namespace, input-loss,
+stop/reap and grant-only handoff cases still pass with unchanged base hashes.
+This is local focused evidence, not a new full-build/hosted result or proof
+of an exploit. No static-child privilege or HTTP/storage/product authority
+changes. The earlier retained-code Owner full result remains scoped separately.
+
 The retained runtime-code Owner prototype privately holds the verified root and
 all regular code files, plus fixed independently pinned process executables.
 Its initial adapter supports only static ELF/non-root children; it does not
