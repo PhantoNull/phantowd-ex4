@@ -63,7 +63,7 @@ func (p *Plan) StageQEMU(ctx context.Context, source, destination *os.File) (res
 	}
 	dir := os.NewFile(uintptr(root), "disposable-stage-directory")
 	defer dir.Close()
-	if err := stageNoACL(root); err != nil {
+	if err := codeNoExtendedPermissions(root); err != nil {
 		return err
 	}
 	entries, err := dir.ReadDir(1)
@@ -136,7 +136,7 @@ func (p *Plan) StageQEMU(ctx context.Context, source, destination *os.File) (res
 		}
 		_, err = stageDestinationMetadata(fd, unix.S_IFDIR, destinationRoot.Mnt_id)
 		if err == nil {
-			err = stageNoACL(fd)
+			err = codeNoExtendedPermissions(fd)
 		}
 		if err == nil {
 			mutating = true
@@ -186,15 +186,6 @@ func stageDestinationMetadata(fd int, kind uint16, mount uint64) (unix.Statx_t, 
 	return st, nil
 }
 
-func stageNoACL(fd int) error {
-	for _, name := range []string{"system.posix_acl_access", "system.posix_acl_default", "security.capability"} {
-		if _, err := unix.Fgetxattr(fd, name, nil); !errors.Is(err, unix.ENODATA) && !errors.Is(err, unix.ENOTSUP) {
-			return ErrMismatch
-		}
-	}
-	return nil
-}
-
 func stageFile(ctx context.Context, source, destination int, sourceMount, destinationMount uint64, expected File) error {
 	src, err := openBeneath(source, expected.Path, unix.O_RDONLY)
 	if err != nil {
@@ -206,7 +197,7 @@ func stageFile(ctx context.Context, source, destination int, sourceMount, destin
 	if err != nil || before.Size != uint64(expected.Size) || before.Nlink != 1 {
 		return ErrMismatch
 	}
-	if err := stageNoACL(src); err != nil {
+	if err := codeNoExtendedPermissions(src); err != nil {
 		return err
 	}
 	dst, err := unix.Openat2(destination, expected.Path, &unix.OpenHow{
@@ -219,7 +210,7 @@ func stageFile(ctx context.Context, source, destination int, sourceMount, destin
 	out := os.NewFile(uintptr(dst), "disposable-stage-copy")
 	defer out.Close()
 	created, err := stageDestinationMetadata(dst, unix.S_IFREG, destinationMount)
-	if err != nil || created.Nlink != 1 || stageNoACL(dst) != nil {
+	if err != nil || created.Nlink != 1 || codeNoExtendedPermissions(dst) != nil {
 		return ErrMismatch
 	}
 	hash := sha256.New()
@@ -257,7 +248,7 @@ func stageFile(ctx context.Context, source, destination int, sourceMount, destin
 	}
 	final, err := stageDestinationMetadata(dst, unix.S_IFREG, destinationMount)
 	if err != nil || final.Size != uint64(expected.Size) || final.Mode&07777 != uint16(expected.Mode) ||
-		final.Nlink != 1 || stageNoACL(dst) != nil {
+		final.Nlink != 1 || codeNoExtendedPermissions(dst) != nil {
 		return ErrMismatch
 	}
 	return out.Close()

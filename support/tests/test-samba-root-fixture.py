@@ -182,6 +182,8 @@ class SambaRootFixture(unittest.TestCase):
             "PHANTOWD_SAMBA_ROOT_STAGE_READY fresh=true "
             "hashes_during_copy=true "
             "no_overwrite=true refusals=5 scope=qemu-only",
+            "PHANTOWD_SAMBA_ROOT_CODE_ACL_READY baseline=true root=true "
+            "directories=true files=true refusals=5 scope=qemu-only",
             "PHANTOWD_SAMBA_ROOT_BUNDLE_READY readonly=true "
             "complete_census=true hashes=true aliases=true refusals=5 "
             "scope=qemu-only",
@@ -250,6 +252,20 @@ class SambaRootFixture(unittest.TestCase):
         bundle_call = init.index('phantowd-samba-root-launcher runtime-bundle')
         self.assertLess(init.index('phantowd-runtime-bundle-probe stage'),
                         bundle_call)
+        acl_call = init.index('phantowd-runtime-bundle-probe inspect-acl')
+        self.assertLess(init.index('phantowd-runtime-bundle-probe stage'),
+                        acl_call)
+        self.assertLess(acl_call, bundle_call)
+        acl = (root / 'src/phantowd-api/cmd/qemu-runtime-bundle/acl.go'
+               ).read_text()
+        self.assertTrue(acl.startswith('//go:build qemu && linux'))
+        self.assertIn('unix.Unshare(unix.CLONE_NEWNS)', acl)
+        self.assertIn('unix.MS_REC|unix.MS_PRIVATE', acl)
+        self.assertIn('runtime.LockOSThread()', acl)
+        self.assertIn('unix.Getxattr', acl)
+        self.assertIn('plan.Inspect(context.Background(), root)', acl)
+        self.assertNotIn('UnlockOSThread', acl)
+        self.assertNotIn('RemoveAll(', acl)
         self.assertNotIn('cp "$canonical"', init)
         stage = (root / "src/phantowd-api/internal/runtimebundle/"
                  "stage_qemu_linux.go").read_text()

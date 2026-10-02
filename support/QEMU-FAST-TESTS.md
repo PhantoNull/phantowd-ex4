@@ -555,6 +555,15 @@ See M0.2 in [the roadmap](../ROADMAP.md).
 
 ### Qualification limits
 
+`support/test-smart-report.ps1` runs the pure internal SMART report parser's
+tests on ARMv5 using only synthetic JSON. It reuses the pinned image/workspace
+read-only, compiles in bounded tmpfs, verifies the base hashes and injects the
+test binary into a disposable snapshot; no SMART executable, additional data
+disk, network or physical device is supplied. No new image/volume is created.
+The full integration wrapper runs the same fixture against its just-built base.
+This qualifies report interpretation only, not actual smartctl output, transport,
+standby policy, collection, history, test jobs or physical disk health.
+
 `support/test-samba-root.ps1` additionally tests actual multi-user Samba inside
 a restricted read-only root/private mount namespace, using only fixture state
 and explicit subdirectory grants. UID 0 retains six bounded capabilities for

@@ -35,6 +35,9 @@ func run() error {
 	if len(os.Args) == 2 && os.Args[1] == "stage" && os.Getuid() == 0 && os.Geteuid() == 0 {
 		return stageFixture()
 	}
+	if len(os.Args) == 2 && os.Args[1] == "inspect-acl" && os.Getuid() == 0 && os.Geteuid() == 0 {
+		return inspectACLFixture()
+	}
 	if len(os.Args) != 1 || os.Getuid() != 1801 || os.Geteuid() != 1801 {
 		return errors.New("fixture guard")
 	}

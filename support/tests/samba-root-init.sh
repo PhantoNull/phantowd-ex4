@@ -75,6 +75,7 @@ run_fixture() {
     mkdir -p "$source/approved" || return 1
     mkdir -m 0700 "$source/denied" || return 1
     /usr/sbin/phantowd-runtime-bundle-probe stage || return 1
+    /usr/sbin/phantowd-runtime-bundle-probe inspect-acl || return 1
     /usr/sbin/phantowd-samba-root-launcher runtime-bundle || return 1
     # Inspection does not authorize these separately generated state/grants.
     mkdir -p "$root/etc/samba" "$root/dev" "$root/state" "$root/tmp" \

@@ -928,8 +928,12 @@ storage. No production roster provider or activation path exists.
   The internal [runtime-bundle inspector](src/phantowd-api/internal/runtimebundle/README.md)
   now supplies a read-only prerequisite: a privately copied bounded code-only
   roster, complete descriptor-relative census, kernel-enforced read-only mount,
-  exact hashes/modes/aliases and no cross-mount/symlink traversal. A disposable
-  ARMv5 Samba-root fixture verifies this before adding configuration/state/
+  exact hashes/modes/aliases and no cross-mount/symlink traversal. The disposable
+  code-only permission regression additionally requires access/default ACL
+  refusal on the root/directories and access-ACL refusal on regular files,
+  even when mode bits and hashes match. Keep this distinct from supported
+  data-grant ACLs; never strip users' permissions to satisfy code validation.
+  The ARMv5 Samba-root fixture verifies this before adding configuration/state/
   grants and refuses altered plans. Its observation is not a lease, signed
   manifest, root constructor or execution token. The future constructor must
   obtain expected bytes from the trusted release boundary, serialize other
@@ -1144,6 +1148,52 @@ not host/QEMU progress.
 - **M8.5 — SMART and health.** Bounded collection/history, stale/unsupported/error
   states, scheduled checks that respect standby, authorized extended tests,
   progress and deduplicated alerts. A SMART pass is not an integrity guarantee.
+  - **M8.5a — Report semantics (partial implementation).** The internal
+    [offline parser](src/phantowd-api/internal/smartreport/README.md) projects
+    bounded smartctl 7.4 / JSON 1.0 ATA reports into fixed states. Match the
+    embedded status to the separate process exit; preserve collection errors,
+    reported status and current/historical flags independently. Reject
+    ambiguous/inconsistent input atomically. Host/fuzz and synthetic ARMv5 tests
+    are not device, transport or executable qualification. No device commands,
+    public endpoint or installed collector exist yet. Newer tool/schema profiles
+    need upstream review and attributed generated reports before selection.
+  - **M8.5b — Trusted collection.** Bind each report to the retained disk's
+    generation and recheck it before publication; refuse replacement, disappearance,
+    duplicate identity and stale observations. Review a separate least-privilege
+    SMART command boundary: the raw read-only metadata broker does not already
+    authorize ATA/SMART ioctls. Pin executable/runtime/options, bound stdout/stderr,
+    concurrency, duration and memory; distinguish process signals/timeouts from
+    8-bit exits. Unsupported transport and command/checksum errors must not become
+    healthy states. First test fakes/QEMU only; physical qualification is separate.
+  - **M8.5c — Wake policy.** Specify exact no-check/device-detection behavior per
+    tool and transport. Low-power skip must have explicit evidence; exit bit 1
+    alone is ambiguous. Do not parse tool prose to claim standby. Verify that
+    scheduled checks/autodetection do not wake supported drives on sacrificial
+    hardware, with cooling and recovery gates satisfied. Unknown power state
+    cannot authorize a heavy check or force SMART enablement.
+  - **M8.5d — Bounded history.** Store versioned observations by trusted stable
+    identity plus generation, with collection age/scope and explicit unknown,
+    partial, stale and unavailable states. Cap records/retention/writes; do not
+    join unrelated disks after a bay move or identity collision. Treat vendor
+    raw counters and units as model-dependent; no universal Seagate counter or
+    power-on-time interpretation. Test boot-clock changes and disk replacement.
+  - **M8.5e — Self-test jobs.** Separate observation from authorized short/extended
+    test mutations. Plan exact disk/generation, thermal/load limits and interaction
+    with active arrays/clients before consent. Record intent/progress and terminal
+    observations; interruption or uncertain effect requires review, not automatic
+    retry/restart. Cancellation must have supported observed semantics. Never use
+    production media to qualify the first mutation path.
+  - **M8.5f — Alerts and panel.** Show reported status, collection reliability,
+    current vs historical flags, observation age, scope and next safe action.
+    Keep SMART, filesystem, RAID and backup assessments separate. Deduplicate
+    alerts by stable event identity with bounded history; redact raw tool output,
+    serials/WWNs, paths and secrets. LED/display alerts depend on M7 qualification.
+  - **M8.5g — Acceptance.** Cover pass with historical warnings, explicit fail
+    during partial collection, unsupported/disabled/low-power ambiguity,
+    missing/truncated/oversized/duplicate fields, status contradictions, signals,
+    timeouts, races, vendor units and stale observations. Qualify actual tool
+    reports and standby/self-test behavior independently of synthetic parser
+    fixtures. Measure CPU/RAM, idle writes/wakeups and mixed-load thermal behavior.
 - **M8.6 — Backup/restore and stock return.** Define verifiable data/configuration
   backup and restore paths, and constraints on returning to stock after metadata
   changes. Removing disks protects them during diskless tests; it is not a
