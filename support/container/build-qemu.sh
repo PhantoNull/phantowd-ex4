@@ -58,6 +58,7 @@ shellcheck "$external_dir/support/tests/test-qemu-smart-replay.sh" \
     "$external_dir/support/tests/smart-replay-arm-init.sh"
 python3 -B "$external_dir/support/tests/test-smart-replay-contract.py"
 python3 -B -m flake8 "$external_dir/support/tests/test-smart-replay-contract.py"
+python3 -B -m flake8 "$external_dir/support/tests/test-perl-configure-date.py"
 sh "$external_dir/support/test-compare-build-artifacts.sh"
 python3 "$external_dir/support/test-volume-probe-build.py"
 
@@ -187,6 +188,20 @@ case "$samba_patch_state" in
 	*) echo "Unexpected Samba JSON patch state: $samba_patch_state" >&2; exit 1 ;;
 esac
 
+# Test the real pinned Configure before the expensive build. The source date
+# wrapper needs no already-installed host tools; only a disposable tmpfs copy.
+grep -Fx 'PERL_VERSION_MAJOR = 40' "$buildroot_source/package/perl/perl.mk" >/dev/null
+# Literal upstream Make syntax, not a command substitution.
+# shellcheck disable=SC2016
+grep -Fx 'PERL_VERSION = 5.$(PERL_VERSION_MAJOR).5' "$buildroot_source/package/perl/perl.mk" >/dev/null
+perl_archive="$download_dir/perl/perl-5.40.5.tar.xz"
+mkdir -p "$download_dir/perl"
+download_verified "https://www.cpan.org/src/5.0/perl-5.40.5.tar.xz" \
+    "$perl_archive" 1fe6f825b487d26c35aa51a35f52fe494d4cfc77b8051f8b1ee3391bf0289bc6
+TMPDIR=/phantowd-qemu-fixture-tmp python3 -B \
+    "$external_dir/support/tests/test-perl-configure-date.py" \
+    "$perl_archive" "$buildroot_source/package/fakedate/fakedate"
+
 # The compile-only EX4 workflow shares source verification above but does not
 # need a compiler cache. Initialize it only for the QEMU image build.
 mkdir -p "$ccache_dir"
@@ -222,6 +237,20 @@ grep -F "BR2_LINUX_KERNEL_CUSTOM_VERSION_VALUE=\"$LINUX_VERSION\"" \
 grep -F "PHANTOWD_KERNEL_VERSION=$LINUX_VERSION" "$release_file" >/dev/null
 config_hash="$(sha256sum "$config_file" | cut -c1-16)"
 output_dir="$workspace_dir/output/$BUILDROOT_VERSION-$config_hash"
+perl_patch="$external_dir/board/qemu/armv5/patches/perl/5.40.5/0001-Configure-date-stderr.patch"
+perl_patch_digest=$(sha256sum "$perl_patch" | cut -d ' ' -f 1)
+perl_inputs_stamp="$output_dir/.phantowd-host-perl-inputs.sha256"
+perl_inputs_previous=
+if [ -f "$perl_inputs_stamp" ]; then
+    perl_inputs_previous=$(cat "$perl_inputs_stamp")
+fi
+perl_package_rebuild=0
+if [ -d "$output_dir/build/host-perl-5.40.5" ] && \
+    [ "$perl_inputs_previous" != "$perl_patch_digest" ]; then
+    # Buildroot's package stamp does not track global-patch changes. Refresh
+    # only this generated host package; preserve dependencies/output volumes.
+    perl_package_rebuild=1
+fi
 previous_jansson_enabled=0
 if [ -f "$output_dir/.config" ] &&
 	grep -Fx 'BR2_PACKAGE_JANSSON=y' "$output_dir/.config" >/dev/null; then
@@ -304,6 +333,11 @@ if [ "$samba_package_rebuild" = 1 ]; then
 		samba4-dirclean
 fi
 
+if [ "$perl_package_rebuild" = 1 ]; then
+    make -C "$buildroot_source" BR2_EXTERNAL="$external_dir" \
+        BR2_DL_DIR="$download_dir" O="$output_dir" host-perl-dirclean
+fi
+
 # Clean only the generated local-package directory: rsync alone can retain
 # deleted source files. Dependencies stay cached; all regenerates the rootfs.
 # Buildroot does not invalidate a configured kernel when only a fragment
@@ -328,6 +362,17 @@ make -C "$buildroot_source" \
     BR2_DL_DIR="$download_dir" \
     O="$output_dir" \
     -j"$(getconf _NPROCESSORS_ONLN)"
+
+# Compare literal Configure source, not the build shell's variables.
+# shellcheck disable=SC2016
+grep -Fx 'cf_time=`LC_ALL=C; LANGUAGE=C; export LC_ALL; export LANGUAGE; $date`' \
+    "$output_dir/build/host-perl-5.40.5/Configure" >/dev/null
+[ "$(sha256sum "$perl_patch" | cut -d ' ' -f 1)" = "$perl_patch_digest" ] || {
+    echo 'Perl patch changed during the build; no checkpoint recorded' >&2
+    exit 1
+}
+printf '%s\n' "$perl_patch_digest" > "$perl_inputs_stamp.part"
+mv "$perl_inputs_stamp.part" "$perl_inputs_stamp"
 
 python3 -B "$kernel_inputs_helper" audit \
     "$output_dir/build/linux-$LINUX_VERSION/.config"

@@ -40,6 +40,25 @@ class BuildFeedbackTests(unittest.TestCase):
                                 fixture.index('"$go_binary" build'))
         self.assertLess(release, fixture.index('cp "$base/rootfs.ext2"'))
 
+    def test_perl_regression_precedes_build_and_scoped_refresh(self):
+        script = (ROOT / "support/container/build-qemu.sh").read_text()
+        regression = script.index(
+            '"$external_dir/support/tests/test-perl-configure-date.py" \\\n'
+        )
+        full_build = script.index('    -j"$(getconf _NPROCESSORS_ONLN)"')
+        self.assertLess(regression, full_build)
+        self.assertIn('O="$output_dir" host-perl-dirclean', script)
+        self.assertIn('"$perl_inputs_previous" != "$perl_patch_digest"',
+                      script)
+        self.assertIn('Perl patch changed during the build', script)
+        audited_source = script.index(
+            '"$output_dir/build/host-perl-5.40.5/Configure" >/dev/null'
+        )
+        stamp = script.index(
+            'mv "$perl_inputs_stamp.part" "$perl_inputs_stamp"')
+        self.assertLess(full_build, audited_source)
+        self.assertLess(audited_source, stamp)
+
     def test_smoke_budget_is_explicit_finite_and_not_a_retry(self):
         script = (ROOT / "support/qemu-smoke.sh").read_text()
         self.assertIn(

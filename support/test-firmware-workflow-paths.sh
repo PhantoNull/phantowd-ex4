@@ -252,6 +252,7 @@ support/container/patch-volume-probe-fixture.sh
 support/container/test-qemu-api-overlay.sh
 support/container/apply-buildroot-samba-json-patch.sh
 support/tests/test-buildroot-samba-json-patch.sh
+support/tests/test-perl-configure-date.py
 support/buildroot-patches/**
 support/test-api.ps1
 support/test-dashboard-ui.mjs
