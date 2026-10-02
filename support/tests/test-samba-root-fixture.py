@@ -21,6 +21,9 @@ module IBM850// INTERNAL IBM850 1
 module INTERNAL IBM850// IBM850 1
 """
 
+SCAN_COST = ("PHANTOWD_RUNTIME_SCAN_COST files=104 bytes=12000000 "
+             "elapsed_ns=123456789 scope=qemu-emulation-only")
+
 
 def merge(values):
     return fixture.merge(values, CATALOG)
@@ -206,14 +209,35 @@ class SambaRootFixture(unittest.TestCase):
             "utf8_roundtrip=true scope=qemu-only",
             "PHANTOWD_SAMBA_ROOT_STOPPED", "PHANTOWD_SAMBA_ROOT_DONE",
         ]
-        fixture.check_guest("\r\n".join(lines))
+        fixture.check_guest("\r\n".join(lines + [SCAN_COST]))
+        self.assertEqual(fixture.scan_cost("\r\n".join(lines + [SCAN_COST])),
+                         (104, 12000000, 123456789))
         invalid_logs = [lines[:i] + lines[i + 1:] for i in range(len(lines))]
         invalid_logs += [lines + [lines[0]], lines[::-1],
                          lines + ["PHANTOWD_SAMBA_ROOT_FAILED"],
                          lines + ["PHANTOWD_SAMBA_ROOT_LAUNCH_REFUSED"]]
         for invalid in invalid_logs:
             with self.assertRaises(ValueError):
-                fixture.check_guest("\n".join(invalid))
+                fixture.check_guest("\n".join(invalid + [SCAN_COST]))
+
+    def test_inspection_cost_is_single_bounded_emulation_evidence(self):
+        good = "\n".join(fixture.MARKERS)
+        with self.assertRaises(ValueError):
+            fixture.check_guest(good)
+        invalid = [SCAN_COST + "\n" + SCAN_COST]
+        for old, new in (("files=104", "files=0"),
+                         ("files=104", "files=257"),
+                         ("bytes=12000000", "bytes=0"),
+                         ("bytes=12000000", "bytes=67108865"),
+                         ("elapsed_ns=123456789", "elapsed_ns=0"),
+                         ("elapsed_ns=123456789", "elapsed_ns=-1"),
+                         ("elapsed_ns=123456789", "elapsed_ns=01"),
+                         ("elapsed_ns=123456789", "elapsed_ns=" + "9" * 1000),
+                         ("qemu-emulation-only", "physical-ex4")):
+            invalid.append(SCAN_COST.replace(old, new))
+        for cost in invalid:
+            with self.assertRaises(ValueError):
+                fixture.check_guest(good + "\n" + cost)
 
     def test_fixed_experiment_scope_and_runtime_assertions(self):
         root = Path(__file__).resolve().parents[2]

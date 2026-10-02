@@ -11,6 +11,7 @@ import (
 	"errors"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/processowner"
 	"golang.org/x/sys/unix"
@@ -231,6 +232,10 @@ func (o *Owner) Observe(ctx context.Context) (OwnerSnapshot, error) {
 		return OwnerSnapshot{}, err
 	}
 	defer func() { <-o.gate }()
+	return o.observeLocked(ctx)
+}
+
+func (o *Owner) observeLocked(ctx context.Context) (OwnerSnapshot, error) {
 	if o.review {
 		return o.observation(), ErrReviewRequired
 	}
@@ -244,6 +249,57 @@ func (o *Owner) Observe(ctx context.Context) (OwnerSnapshot, error) {
 		return o.quarantine(err)
 	}
 	return o.observation(), nil
+}
+
+// Supervise exclusively owns the ready lifecycle, with one complete scan after
+// each fixed idle interval (1 second..1 hour). It never starts or restarts.
+// Accepted cancellation stops the set; pins remain until an explicit Close.
+func (o *Owner) Supervise(ctx context.Context, interval time.Duration) (OwnerSnapshot, error) {
+	if interval < time.Second || interval > time.Hour {
+		return OwnerSnapshot{}, ErrInvalid
+	}
+	if err := o.enter(ctx); err != nil {
+		return OwnerSnapshot{}, err
+	}
+	defer func() { <-o.gate }()
+	if o.review {
+		return o.observation(), ErrReviewRequired
+	}
+	if o.snapshot.State != processowner.StateReady {
+		return o.observation(), ErrInvalid
+	}
+	timer := time.NewTimer(interval)
+	defer timer.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			processes, stopErr := o.processes.Stop(context.Background())
+			o.snapshot.Processes = processes
+			o.snapshot.State = processes.State
+			if stopErr != nil {
+				o.review = true
+				o.snapshot.State = processowner.StateReviewRequired
+				return o.observation(), errors.Join(ctx.Err(), ErrReviewRequired, stopErr)
+			}
+			return o.observation(), ctx.Err()
+		case <-timer.C:
+			if ctx.Err() != nil {
+				// A simultaneously ready timer must not begin a new scan after
+				// cancellation; return through the accepted stop branch instead.
+				continue
+			}
+			observed, err := o.observeLocked(ctx)
+			if err != nil {
+				return observed, err
+			}
+			if observed.State != processowner.StateReady {
+				return o.quarantine(ErrMismatch)
+			}
+			// Reset only after completion: slow verification cannot accumulate
+			// scans or create a burst of catch-up work.
+			timer.Reset(interval)
+		}
+	}
 }
 
 func (o *Owner) quarantine(cause error) (OwnerSnapshot, error) {

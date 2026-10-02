@@ -986,6 +986,20 @@ storage. No production roster provider or activation path exists.
   after these denied cases pass. Keep real disks and services disabled until
   permission, recovery and compatibility matrices pass.
 
+  An internal `runtimebundle.Owner.Supervise` now accepts only an already-ready
+  static/non-root Owner. It serializes complete code/process observations,
+  waiting a fixed bounded idle interval after each completed scan, without
+  catch-up work or automatic restart. Accepted cancellation stops before return;
+  code pins remain until explicit close, and uncertainty preserves review.
+  The finite ARMv5 Owner fixture covers invalid/stopped/pre-canceled admission,
+  exclusive lifecycle, clean cancellation, code drift, unexpected exit and forced
+  stop, kernel group absence, pin retention and blocked restart. This is not
+  production source-loss wiring or a dynamic Samba/NFS supervisor. Kernel stalls
+  are not proven interruptible and physical polling budgets remain unqualified.
+  A measurement around the existing Samba code scan produces redacted file/byte/
+  monotonic-time evidence, without adding work. Treat QEMU time as emulation
+  evidence only, never an EX4 throughput or resource-saving claim.
+
   Host-only prerequisite: `phantowd-lab inspect-runtime-closure` now derives a
   bounded ARM32 ELF candidate from the existing extracted-tree inventory.
   Pinned Linux unit/vet/race and 50,000 fuzz executions pass; the current cached

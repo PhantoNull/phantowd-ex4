@@ -124,9 +124,23 @@ process ownership blocks all pin release. A later explicit close may verify
 earlier termination, without resending signals or clearing review. This is
 in-memory ownership only: review is not a durable recovery journal, and a
 privileged writer through another mount still requires external serialization.
-Revalidation is bounded local I/O, not asynchronous integrity enforcement or a
-guarantee that a kernel stall is interruptible. No polling/HTTP/product startup
-calls this Owner; non-Linux construction/lifecycle is unavailable.
+`Supervise(ctx, interval)` is an explicit blocking operation for an already-ready
+static Owner. It holds the same lifecycle gate for its whole accepted lifetime;
+concurrent lifecycle calls fail busy. One timer schedules a complete observation
+after each fixed idle interval (1 second..1 hour), reset only after that scan
+finishes. Drift, unexpected exit or uncertainty stops the set and retains review;
+there is no automatic start/restart. A context canceled before admission has no
+effect. Accepted cancellation stops before returning, retaining all code pins
+until explicit `Close`; uncertain stop remains review. Cancellation during a
+scan can require review because observation is incomplete. Stop is bounded by
+the existing member budgets, not by ignoring cancellation or clearing ownership.
+
+Revalidation is bounded local I/O, not continuous integrity enforcement or a
+guarantee that a kernel stall is interruptible. The idle interval is not a
+maximum detection latency: scan/stop time and kernel stalls also matter. No timer
+starts at construction/ordinary Start, and no HTTP/product startup calls this
+Owner. Non-Linux construction/lifecycle remains unavailable. The prototype's
+interval limits do not qualify an EX4 production polling cadence.
 
 `support/test-runtime-owner.ps1` runs its own finite ARMv5 QEMU fixture with a
 static test child, private guest mount namespace and tmpfs code tree. It verifies
@@ -141,7 +155,18 @@ use only the guest's disposable code bind, never a data mount. This separate
 only a read-only cached base/workspace and a 512 MiB disposable tmpfs, removes
 the compile cache before copying rootfs, checks base hashes, and creates no
 persistent image/volume or physical-device attachment. Full QEMU integration
-includes the same fixture and preserves a bounded failure log.
+includes the same fixture and preserves a bounded failure log. The same guest
+also covers invalid/stopped/pre-canceled supervision admission, exclusive
+lifecycle ownership, accepted cancellation, live code drift, unexpected child
+exit and forced-stop review, with kernel group absence and retained mount pins.
+Restoring code cannot restart the reviewed Owner.
+
+The separate Samba fixture emits a bounded scan-cost measurement around its
+existing positive code-only inspection (no additional scan): file/byte counts
+and monotonic elapsed time. Its log validator rejects missing, duplicate,
+malformed or over-budget evidence and labels it `qemu-emulation-only`. This
+does not measure physical EX4 CPU/I/O, production responsiveness or efficiency
+relative to the legacy firmware.
 
 Trusted signed/model/ABI inputs, dynamic Samba-specific composition and
 privileges, storage leases, durable recovery and EX4/product qualification

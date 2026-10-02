@@ -81,6 +81,16 @@ rebuild; actual board/build input changes remain covered.
 
 ## Roadmap comparison
 
+An explicit blocking supervisor now extends the internal static/non-root code
+Owner only. Complete scans are serialized with a fixed idle interval and no
+catch-up burst. Actual disposable ARMv5 fixtures cover rejected admission,
+concurrent close refusal, accepted cancellation/stop, live code drift, unexpected
+exit and forced-stop review. Code pins remain until explicit close and review
+never permits automatic restart. This focused result is not a new full/hosted
+build or service/product activation. The separate Samba fixture measures its
+existing positive scan with bounded redacted evidence; emulation timing is not
+physical EX4 qualification or a production polling recommendation.
+
 A separate follow-up fixes a reproduced `NewIsolated` constructor lifetime
 defect: direct `Fd()` duplication accepted a caller root after Close had begun
 while an active Control kept its kernel FD alive. The constructor now duplicates
@@ -300,7 +310,7 @@ substantial redesign. Rows overlap and must not be added.
 | M1 — Durable state | Revision stores, intent/result journals, refusal of uncertain state, synthetic clean-reboot tests | Product state placement, bootstrap/schema migration, operator reconciliation, real durability/power-loss qualification | 30–45% |
 | M2 — Identities | Unix allocation/creation; Owner-bound Samba disabled-first enrollment, explicit enable/disable and account-session revocation in QEMU | Complete ownership/import inventory, product boot authority, account API/UI, retirement and recovery | 50–65% |
 | M3 — Storage lifecycle | Complete sysfs census, generation-bound read-only broker, GPT/ext/MD observations, collision checks, internal mount/lease fixtures | Persistent logical VolumeID resolver, global-use accounting, production qualifier/roster, supported layouts and EX4 media qualification | 40–55% |
-| M4 — SMB/NFS | Real loopback clients, desired policies, coherent candidate planner, process-set supervision, share-scoped handoff and a single-static-child grant-only isolated runtime in QEMU | Approved daemon runtime manifests, isolated process sets, privilege profiles/ACLs, transactional activation/recovery, production wiring and loss monitoring | 35–50% |
+| M4 — SMB/NFS | Real loopback clients, desired policies, coherent candidate planner, process-set supervision, share-scoped handoff, grant-only isolated runtime and retained static-code Owner with explicit supervised lifecycle in QEMU | Approved daemon runtime manifests, isolated process sets, privilege profiles/ACLs, transactional activation/recovery, production wiring and storage-loss monitoring | 35–50% |
 | M5 — Management UI/security | Development authentication/TLS, sessions/password changes, diagnostics dashboard and policy preview/editing | Product enrollment/reset/certificate lifecycle, authorized live workflows, recovery UX, browser/accessibility/security qualification | 25–40% |
 | M6 — Network/system | Diagnostic observations and brief two-port board research | Safe network transactions/rollback, supported dual-port modes, time/discovery, notifications and administrative jobs | 5–15% |
 | M7 — Board/cooling/recovery | DTS and bounded diskless RAM trials; passive MCU framing/catalog tooling | Qualified factory identities, fan/tach/fail-safe, LCD/LED/buttons/power/watchdog, SATA/USB and NAND recovery | 15–25% |

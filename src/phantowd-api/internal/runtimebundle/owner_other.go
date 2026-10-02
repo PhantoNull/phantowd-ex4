@@ -8,6 +8,7 @@ package runtimebundle
 import (
 	"context"
 	"os"
+	"time"
 
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/processowner"
 )
@@ -20,3 +21,6 @@ func (*Plan) NewOwner(context.Context, *os.File, []processowner.MemberSpec) (*Ow
 func (*Owner) Start(context.Context) (OwnerSnapshot, error)   { return OwnerSnapshot{}, ErrUnavailable }
 func (*Owner) Observe(context.Context) (OwnerSnapshot, error) { return OwnerSnapshot{}, ErrUnavailable }
 func (*Owner) Close(context.Context) error                    { return ErrUnavailable }
+func (*Owner) Supervise(context.Context, time.Duration) (OwnerSnapshot, error) {
+	return OwnerSnapshot{}, ErrUnavailable
+}
