@@ -1161,8 +1161,9 @@ not host/QEMU progress.
     or physical collector test. No device commands,
     public endpoint or installed collector exist yet. Newer tool/schema profiles
     need upstream review and attributed generated reports before selection.
-    The current QEMU cross toolchain has C++ disabled. An actual ARM producer
-    requires enabling that dependency and rebuilding the complete system, then
+    The tested C-only QEMU toolchain lacks C++. The new defconfig enables that
+    dependency; the implemented ARM producer fixture still requires a complete
+    rebuild and terminal guest evidence, then
     checking ABI/runtime/footprint and running the generic fixture in QEMU.
     Retire the obsolete generated output, reuse downloads/bounded ccache and
     requalify the existing guest/service tests; do not add a daemon or physical

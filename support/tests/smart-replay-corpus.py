@@ -59,9 +59,9 @@ def trace(available=True, enabled=True, failed=False, read_error=False):
     return text.encode("ascii")
 
 
-def run(binary, output, version):
+def fixture_cases():
     # Expected producer results, independent of the Go projection expectations.
-    cases = (
+    return (
         ("pass", trace(), 0, True, True, True),
         ("fail", trace(failed=True), 8, True, True, False),
         ("partial-fail", trace(failed=True, read_error=True), 12, True, True, False),
@@ -71,7 +71,10 @@ def run(binary, output, version):
         ("disabled", trace(enabled=False), 0, True, False, None),
         ("empty", b"", 2, None, None, None),
     )
-    for name, data, exit_status, available, enabled, passed in cases:
+
+
+def run(binary, output, version):
+    for name, data, exit_status, available, enabled, passed in fixture_cases():
         assert len(data) < 65536
         # '-' selects upstream's parsed ATA pseudo-device. -d is deliberately absent.
         result = subprocess.run([str(binary), "-j", "-i", "-H", "-"],
@@ -109,4 +112,9 @@ if __name__ == "__main__":
     output = Path(sys.argv[2])
     if not output.is_dir() or any(output.iterdir()):
         raise SystemExit("output must be an empty temporary directory")
-    run(Path(sys.argv[1]), output, [int(part) for part in sys.argv[3].split(".")])
+    if sys.argv[1] == "--traces":
+        for name, data, *_ in fixture_cases():
+            (output / f"{name}.trace").write_bytes(data)
+        print("PHANTOWD_SMART_SYNTHETIC_TRACES_READY cases=7")
+    else:
+        run(Path(sys.argv[1]), output, [int(part) for part in sys.argv[3].split(".")])

@@ -569,8 +569,12 @@ smartctl 7.4 or 7.5 with its generic (no hardware) backend and invented stdin AT
 responses. Each selected version checks seven actual native reports against the same Go parser,
 including exit-zero SMART-disabled and partial failing status. It creates no
 image/volume and does not replace ARM execution or any physical collector gate.
-The existing cross toolchain lacks C++; an ARM producer requires a full
-toolchain rebuild. Do not count the pure-parser lane as that producer proof.
+The new C++-enabled defconfig requires a complete toolchain rebuild. The separate
+`support/test-smart-replay-arm.ps1` lane then executes a statically linked
+generic-only smartctl 7.5 and the same seven invented-input projections inside
+ARMv5 QEMU. Missing C++ fails before guest launch. Its implementation still
+requires terminal full-build/guest evidence; do not count the pure-parser or
+native lanes as an ARM producer pass. See [the producer contract](SMART-REPLAY.md).
 
 `support/test-samba-root.ps1` additionally tests actual multi-user Samba inside
 a restricted read-only root/private mount namespace, using only fixture state

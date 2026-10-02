@@ -65,20 +65,39 @@ replay implementation hardcodes the CHECK POWER MODE result; do not use it to
 claim a standby-preserving collector. The independent pure-parser ARMv5 lane
 remains in [the fast checks guide](QEMU-FAST-TESTS.md).
 
-## ARM producer prerequisite
+## ARM producer lane
 
-The current QEMU toolchain has C++ disabled and has no cross `g++`, `cc1plus`
-or target `libstdc++`. smartmontools requires C++. The native oracle and ARM
-parser are therefore distinct proofs, not an actual ARM producer test.
+The QEMU defconfig now requests the Buildroot C++ toolchain. This changes the
+configuration namespace and requires a **complete rebuild**, not reuse of an
+older C-only output or an unreviewed standalone compiler. Keep downloads and
+the bounded compiler cache; retire obsolete generated outputs after verifying
+ownership and no active builder. Requalify normal guest/service fixtures.
 
-A real ARM producer fixture needs C++ enabled and a complete Buildroot rebuild,
-not an unreviewed standalone replacement compiler. Keep the existing downloads
-and bounded compiler cache, retire the obsolete generated output rather than
-accumulating namespaces, and requalify all normal guest/service fixtures. Then
-build only the generic stdin executable in disposable scratch, verify its
-ARMv5 ABI/runtime closure, and run the fixed seven cases inside QEMU before
-claiming an ARM producer pass. Do not install/start a real collector as a
-side effect. Product collection has separate generation/privilege/wake gates.
+`support/test-smart-replay-arm.ps1` requires that rebuilt workspace, the
+manifest-verified QEMU base and the pinned 7.5 archive. Missing cross `g++`
+refuses before compilation or QEMU. It creates no image/named volume and uses
+the same read-only/non-root/no-network container boundary as the native lane.
+
+```powershell
+.\support\test-smart-replay-arm.ps1 -SourceArchive C:\path\smartmontools-7.5.tar.gz
+```
+
+The runner statically cross-compiles only the generic stdin executable, checks
+ELF32/ARM/v5TE/soft-float and absence of a dynamic interpreter, generates seven
+invented traces, and executes the actual producer and tagged Go projection
+tests in a disposable ARM926 QEMU guest. The base is unchanged; its copied
+root is read-only with a snapshot, there are no data disks or networking, and
+reports live in private guest tmpfs. Configure/build/test/guest execution have
+finite deadlines; the fixture cleans scratch on success or failure.
+Full integration runs this lane against its just-built base and toolchain.
+
+**Implementation is not a passing ARM result:** this lane remains pending
+terminal local full-build/guest evidence. The native oracle and pure ARM
+parser passes do not prove the ARM producer. The test-only executable is not
+installed in the product image, SBOM or service startup. C++ runtime libraries
+selected by the toolchain are ordinary Buildroot dependencies and must be
+reflected by the rebuilt artifacts. Product collection has separate
+generation/privilege/wake gates; no collector or SMART job is activated.
 
 Primary implementation references: [stdin pseudo-device](https://raw.githubusercontent.com/smartmontools/smartmontools/RELEASE_7_4/smartmontools/atacmds.cpp),
 [generic backend](https://raw.githubusercontent.com/smartmontools/smartmontools/RELEASE_7_4/smartmontools/os_generic.cpp),

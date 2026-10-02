@@ -181,10 +181,20 @@ projections and malformed/contradictory-input refusals, including older/future/
 major/patch/prerelease rejection. Windows API/UI, pinned Linux ordinary/QEMU
 vet/all API race and 10,000 fuzz executions pass; the updated parser passes on
 ARMv5 with base hashes unchanged. None of these runs executes smartctl on ARM.
-The current toolchain has C++ disabled, no cross g++/cc1plus/libstdc++; actual
+The tested C-only toolchain has no cross g++/cc1plus/libstdc++; actual
 ARM producer testing requires a complete C++-enabled rebuild, bounded cache
 transition and guest/service requalification. No such rebuild or collector is
 claimed by this profile update; no obsolete cache was deleted merely to test JSON.
+
+The next increment adds a C++-enabled QEMU defconfig and a diskless ARM producer
+fixture for pinned smartctl 7.5. It statically builds only the generic stdin
+backend in bounded scratch, checks ARMv5TE/soft-float linkage, and executes seven
+invented inputs plus the Go projection tests in a read-only QEMU snapshot. A
+focused wrapper refuses a missing compiler before launch; fast regression tests
+cover the real `g++` filename and reject unsafe paths. Native 7.4/7.5 regressions
+pass after sharing the trace generator. **Full toolchain rebuild and actual ARM
+producer execution remain pending**, so this is not an ARM producer PASS, product
+collector, standby qualification or closed release gate.
 
 Percentages are **engineering planning estimates**, not measured test coverage,
 probabilities of success, release readiness, or a delivery-date promise. Credit

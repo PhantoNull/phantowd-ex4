@@ -6,6 +6,8 @@
 package smartreport
 
 import (
+	"encoding/json"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -18,6 +20,10 @@ func TestUpstreamReplayCorpus(t *testing.T) {
 	root := os.Getenv("PHANTOWD_SMART_REPLAY_CORPUS")
 	if root == "" {
 		t.Fatal("explicit temporary replay corpus required")
+	}
+	version := os.Getenv("PHANTOWD_REPLAY_VERSION")
+	if version != "7.4" && version != "7.5" {
+		t.Fatal("explicit known producer version required")
 	}
 	cases := []struct {
 		name       string
@@ -56,6 +62,15 @@ func TestUpstreamReplayCorpus(t *testing.T) {
 			o, err := Parse(data, tc.exit)
 			if err != nil || o.State() != tc.state || o.Assessment() != tc.assessment {
 				t.Fatalf("unexpected redacted projection: state=%d assessment=%d error=%v", o.State(), o.Assessment(), err)
+			}
+			var metadata struct {
+				Smartctl struct {
+					Version []int `json:"version"`
+				} `json:"smartctl"`
+			}
+			if json.Unmarshal(data, &metadata) != nil || len(metadata.Smartctl.Version) != 2 ||
+				fmt.Sprintf("%d.%d", metadata.Smartctl.Version[0], metadata.Smartctl.Version[1]) != version {
+				t.Fatal("wrong actual producer version")
 			}
 			if o.Flags().SMARTCommandError != (tc.exit&4 != 0) || o.Flags().FailingStatus != (tc.exit&8 != 0) {
 				t.Fatal("collection/failure distinction lost")

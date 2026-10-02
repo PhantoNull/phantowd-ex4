@@ -52,6 +52,10 @@ shellcheck "$external_dir/support/tests/test-qemu-service-launcher.sh" \
     "$external_dir/support/tests/service-launcher-init.sh"
 shellcheck "$external_dir/support/tests/test-qemu-smart-report.sh" \
     "$external_dir/support/tests/smart-report-init.sh"
+shellcheck "$external_dir/support/tests/test-qemu-smart-replay.sh" \
+    "$external_dir/support/tests/smart-replay-arm-init.sh"
+python3 -B "$external_dir/support/tests/test-smart-replay-contract.py"
+python3 -B -m flake8 "$external_dir/support/tests/test-smart-replay-contract.py"
 sh "$external_dir/support/test-compare-build-artifacts.sh"
 python3 "$external_dir/support/test-volume-probe-build.py"
 
@@ -201,6 +205,14 @@ download_verified \
     "$cyclonedx_schema" \
     "$CYCLONEDX_SPDX_SCHEMA_SHA256"
 
+# A standalone, generic-only SMART producer oracle, never a target package.
+[ "$SMART_REPLAY_VERSION" = 7.5 ]
+mkdir -p "$download_dir/smartmontools"
+smart_replay_archive="$download_dir/smartmontools/smartmontools-$SMART_REPLAY_VERSION.tar.gz"
+download_verified \
+    "https://sources.buildroot.net/smartmontools/smartmontools-$SMART_REPLAY_VERSION.tar.gz" \
+    "$smart_replay_archive" "$SMART_REPLAY_ARCHIVE_SHA256"
+
 config_file="$external_dir/configs/phantowd_qemu_armv5_defconfig"
 release_file="$external_dir/board/qemu/armv5/rootfs-overlay/etc/phantowd-release"
 grep -F "BR2_LINUX_KERNEL_CUSTOM_VERSION_VALUE=\"$LINUX_VERSION\"" \
@@ -249,6 +261,7 @@ make -C "$buildroot_source" \
 
 grep -Fx 'BR2_PACKAGE_SAMBA4=y' "$output_dir/.config" >/dev/null
 grep -Fx 'BR2_PACKAGE_JANSSON=y' "$output_dir/.config" >/dev/null
+grep -Fx 'BR2_TOOLCHAIN_BUILDROOT_CXX=y' "$output_dir/.config" >/dev/null
 if grep -Fx 'BR2_PACKAGE_SAMBA4_AD_DC=y' "$output_dir/.config" >/dev/null; then
 	echo 'Samba JSON support must not enable the Active Directory Domain Controller' >&2
 	exit 1
@@ -459,5 +472,14 @@ fi
 TMPDIR=/phantowd-qemu-fixture-tmp sh "$external_dir/support/tests/test-qemu-smart-report.sh" \
     "$artifact_dir" "$output_dir/host/bin/go" "$output_dir/host/sbin/debugfs" \
     "$external_dir" "$artifact_dir/qemu-smart-report-failure.log"
+
+# Real ARM producer, invented stdin ATA replies and no hardware backend/disks.
+if ! TMPDIR=/phantowd-qemu-fixture-tmp sh "$external_dir/support/tests/test-qemu-smart-replay.sh" \
+    "$artifact_dir" "$output_dir/host/bin/arm-buildroot-linux-gnueabi-g++" \
+    "$output_dir/host/bin/go" "$output_dir/host/sbin/debugfs" "$external_dir" \
+    "$smart_replay_archive" "$artifact_dir/qemu-smart-replay-failure.log"; then
+    echo "SMART ARM producer fixture failed; any guest diagnostics are in $artifact_dir" >&2
+    exit 1
+fi
 
 printf 'Build and smoke test passed. Artifacts: %s\n' "$artifact_dir"
