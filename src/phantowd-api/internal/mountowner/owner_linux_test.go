@@ -286,6 +286,87 @@ func TestMountedVolumeSetObservesFixedRosterAndAdvancesGeneration(t *testing.T) 
 	}
 }
 
+func TestMountedVolumeSetLeaseRetainsAllOwnersUntilClosed(t *testing.T) {
+	alpha, _ := mountedOwnerFixtureForSet(t, "alpha", "/srv/phantowd/volumes/alpha",
+		"11111111-2222-3333-4444-555555555555", 101, 102, 17)
+	beta, _ := mountedOwnerFixtureForSet(t, "beta", "/srv/phantowd/volumes/beta",
+		"aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee", 201, 202, 33)
+	set, err := newMountedVolumeSet([]string{"beta", "alpha"}, []*Owner{beta, alpha})
+	if err != nil {
+		t.Fatal("create fixed mounted-volume roster:", err)
+	}
+
+	lease, evidence, err := set.Acquire(context.Background())
+	if err != nil || lease == nil || !evidence.Complete() || evidence.Generation() != 1 || len(evidence.Volumes()) != 2 {
+		t.Fatalf("acquire complete fixed-roster lease: lease=%v evidence=%+v err=%v", lease != nil, evidence, err)
+	}
+	if got := evidence.Volumes(); got[0].VolumeID() != "alpha" || got[1].VolumeID() != "beta" {
+		t.Fatalf("lease evidence is not in canonical order: %q, %q", got[0].VolumeID(), got[1].VolumeID())
+	}
+	opened, err := lease.OpenDirectory("alpha", ".")
+	if err != nil {
+		t.Fatal("open through the matching volume lease:", err)
+	}
+	if _, err := lease.OpenDirectory("unknown", "."); !errors.Is(err, ErrInvalid) {
+		t.Fatalf("set lease opened an unrostered volume: %v", err)
+	}
+
+	for _, owner := range []*Owner{alpha, beta} {
+		if err := owner.Drain(); !errors.Is(err, ErrBusy) || owner.State() != StateDraining {
+			t.Fatalf("active set lease did not block drain for %q: state=%s err=%v", owner.target, owner.State(), err)
+		}
+	}
+	if _, err := lease.OpenDirectory("alpha", "."); !errors.Is(err, ErrUnavailable) {
+		t.Fatalf("draining volume still admitted directory access: %v", err)
+	}
+	if err := lease.Close(); err != nil {
+		t.Fatal("close every volume lease:", err)
+	}
+	if _, err := opened.Stat(); !errors.Is(err, os.ErrClosed) {
+		t.Fatalf("set lease close did not close its tracked directory descriptor: %v", err)
+	}
+	if err := lease.Close(); err != nil {
+		t.Fatalf("repeated set lease close was not idempotent: %v", err)
+	}
+	for _, owner := range []*Owner{alpha, beta} {
+		if err := owner.Unmount(context.Background()); err != nil {
+			t.Fatalf("unmount %q after the all-volume lease closed: %v", owner.target, err)
+		}
+	}
+}
+
+func TestMountedVolumeSetLeaseRollsBackIfMemberChangesDuringAcquire(t *testing.T) {
+	alpha, _ := mountedOwnerFixtureForSet(t, "alpha", "/srv/phantowd/volumes/alpha",
+		"11111111-2222-3333-4444-555555555555", 101, 102, 17)
+	beta, betaInspector := mountedOwnerFixtureForSet(t, "beta", "/srv/phantowd/volumes/beta",
+		"aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee", 201, 202, 33)
+	set, err := newMountedVolumeSet([]string{"alpha", "beta"}, []*Owner{alpha, beta})
+	if err != nil {
+		t.Fatal("create fixed mounted-volume roster:", err)
+	}
+	observations := 0
+	betaInspector.observeHook = func(observedPath string) {
+		if observedPath == beta.target {
+			observations++
+			if observations == 2 {
+				betaInspector.observeError = true
+			}
+		}
+	}
+	if lease, evidence, err := set.Acquire(context.Background()); !errors.Is(err, ErrReview) || lease != nil || evidence.Complete() {
+		t.Fatalf("changed member returned partial group authority: lease=%v evidence=%+v err=%v", lease != nil, evidence, err)
+	}
+	if err := alpha.Drain(); err != nil {
+		t.Fatalf("failed acquisition leaked the earlier member's lease: %v", err)
+	}
+	if beta.State() != StateReviewRequired {
+		t.Fatalf("changed member was not quarantined: state=%s", beta.State())
+	}
+	if err := alpha.Unmount(context.Background()); err != nil {
+		t.Fatal("unmount first member after atomic rollback:", err)
+	}
+}
+
 func TestMountedVolumeSetWithEvidenceKeepsRosterLockedDuringInspection(t *testing.T) {
 	alpha, _ := mountedOwnerFixtureForSet(t, "alpha", "/srv/phantowd/volumes/alpha",
 		"11111111-2222-3333-4444-555555555555", 101, 102, 17)

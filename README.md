@@ -62,6 +62,12 @@ prototype, not connected to the broker, product startup, or service handoff.
 Its fixed-roster collector now locks and revalidates every declared Owner
 before returning an all-or-error snapshot; the QEMU fixture contains one
 synthetic volume, so “complete” does not mean complete appliance discovery.
+An internal roster lease now acquires every member under the same canonical
+lock order or returns no lease, rolls back partial acquisition on revalidation
+failure, routes directory opens by logical volume ID, and closes tracked
+descriptors on group release. Host tests cover two-member drain exclusion and
+failed-acquisition rollback; the one-boot local ARMv5 QEMU smoke exercises the
+lease/open/revoke path on disposable ext2 media.
 Its QEMU-only driver uses the pinned source and target descriptors with the
 Linux `open_tree`/`move_mount` API; if that API fails, it does not fall back to
 a path-based mount. Host tests and a current-source ARMv5 QEMU overlay cover
@@ -69,10 +75,11 @@ lease gating, identity-change revocation, ambiguous mount/unmount outcomes,
 and injected source/target path replacements. A late target replacement is
 never used as the mount destination: the descriptor-pinned original object is
 used, then the Owner enters `review-required` without a lease. Source
-substitution is likewise quarantined before lease issuance. The run reused
-read-only cached inputs and tmpfs work space; it was not a clean Buildroot
-build, two-boot persistence run, or hosted CI run. No real EX4 media was
-touched, and this does not qualify physical EX4 behavior.
+substitution is likewise quarantined before lease issuance. Current-source
+Windows API tests, Linux API tests and the local ARMv5 one-boot QEMU overlay
+pass. The QEMU run reused read-only cached inputs and temporary overlay space;
+it was not a clean Buildroot build, two-boot persistence run, or hosted CI run.
+No real EX4 media was touched, and this does not qualify physical EX4 behavior.
 
 A focused local ARMv5 QEMU check now compares mdadm-authored MD v1.0 metadata
 created on partition 1 of two synthetic GPT disk images, each backed by a

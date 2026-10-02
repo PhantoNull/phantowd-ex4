@@ -6,9 +6,11 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/fileserviceplan"
@@ -16,7 +18,22 @@ import (
 )
 
 func exerciseQEMUFileServicePlan() error {
-	return mountowner.WithQEMUMountedSetEvidence(smbFixtureAnchor, func(evidence mountowner.MountedVolumeSetEvidence) error {
+	return mountowner.WithQEMUMountedSet(smbFixtureAnchor, func(set *mountowner.MountedVolumeSet) error {
+		lease, evidence, err := set.Acquire(context.Background())
+		if err != nil || lease == nil {
+			return errors.New("QEMU mounted-volume roster did not issue a complete group lease")
+		}
+		opened, err := lease.OpenDirectory(string(qemuPlannerVolumeID), ".")
+		if err != nil {
+			_ = lease.Close()
+			return errors.New("QEMU group lease did not open its qualified volume")
+		}
+		if err := lease.Close(); err != nil {
+			return errors.New("QEMU group lease could not release every member")
+		}
+		if _, err := opened.Stat(); !errors.Is(err, os.ErrClosed) {
+			return errors.New("QEMU group lease did not revoke its tracked directory descriptor")
+		}
 		observed := evidence.Volumes()
 		if !evidence.Complete() || evidence.Generation() == 0 || len(observed) != 1 {
 			return errors.New("QEMU mount owner did not return its complete fixed roster")
@@ -61,6 +78,6 @@ func runQEMUMountedFileServicePlanFixture() error {
 	if err := exerciseQEMUFileServicePlan(); err != nil {
 		return err
 	}
-	fmt.Println("PHANTOWD_FILE_SERVICE_PLAN_READY snapshot=complete-mounted-owner-set-nonempty owner_scope=fixture_complete volume_count=1 revisions=bound fresh_check=passed parser=testparm json=false activation=false compatibility=synthetic-ext2 scope=disposable-qemu-only")
+	fmt.Println("PHANTOWD_FILE_SERVICE_PLAN_READY snapshot=complete-mounted-owner-set-nonempty roster_lease=all_member_owned descriptor_revoked=true owner_scope=fixture_complete volume_count=1 revisions=bound fresh_check=passed parser=testparm json=false activation=false compatibility=synthetic-ext2 scope=disposable-qemu-only")
 	return nil
 }
