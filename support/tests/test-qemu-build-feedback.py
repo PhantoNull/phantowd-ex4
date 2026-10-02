@@ -37,7 +37,16 @@ class BuildFeedbackTests(unittest.TestCase):
         self.assertEqual(fixture.count('qemu-system-arm \\\n'), 1)
         self.assertIn('PHANTOWD_CODE_OWNER_BASE_UNCHANGED', fixture)
         self.assertIn('PHANTOWD_CODE_OWNER_FORCED_REVIEW_READY', fixture)
-        self.assertIn('"$expected" "$review" "$forced"', fixture)
+        self.assertIn(
+            "supervised='PHANTOWD_CODE_OWNER_SUPERVISION_READY "
+            "canceled=true drift=true unexpected_exit=true forced_review=true "
+            "group_reaped=true pins_retained=true concurrent_refused=true "
+            "scope=qemu-only'", fixture
+        )
+        self.assertIn(
+            '"$expected" "$supervised" "$review" "$forced" '
+            'PHANTOWD_CODE_OWNER_DONE', fixture
+        )
         release = fixture.index('rm -rf "$scratch/go-cache"',
                                 fixture.index('"$go_binary" build'))
         self.assertLess(release, fixture.index('cp "$base/rootfs.ext2"'))

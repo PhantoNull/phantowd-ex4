@@ -25,6 +25,7 @@ set -eu
 . /src/versions.env
 config_hash="$(sha256sum /src/configs/phantowd_qemu_armv5_defconfig | cut -c1-16)"
 output="/workspace/output/$BUILDROOT_VERSION-$config_hash"
+python3 -B /src/support/tests/test-qemu-build-feedback.py
 shellcheck /src/support/tests/runtime-owner-init.sh /src/support/tests/test-qemu-runtime-owner.sh
 exec sh /src/support/tests/test-qemu-runtime-owner.sh /base "$output/host/bin/go" \
     "$output/host/sbin/debugfs" /src
