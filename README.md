@@ -112,10 +112,15 @@ monitor or restart. The disposable ARMv5 QEMU fixture exercises one synthetic
 BusyBox consumer, while Linux tests cover the uncertain-stop boundary. This is
 not a production service manager: no trusted production storage provider,
 daemon wiring, non-root service access matrix, real-media use, or EX4
-qualification exists. Local Windows/Linux API checks and both the standard
-ARMv5 smoke and focused MD v1.0 fixture pass using existing read-only Buildroot
-inputs and temporary overlays; the two-boot and hosted exact-head checks are
-separate.
+qualification exists. An exploratory ARMv5 probe found that UID/GID 65534
+could read a synthetic 0644 marker through the clone: the pre-mount target
+directory's 0700 mode is hidden by the mounted filesystem, and the current
+0711 handoff path is not a non-root access-control boundary. The probe failed
+its default-deny assertion and exposed an unresolved security gap; do not use
+this prototype for untrusted non-root consumers. Local Windows/Linux API
+checks and the unmodified standard ARMv5 smoke and focused MD v1.0 fixture pass
+using existing read-only Buildroot inputs and temporary overlays; the two-boot
+and hosted exact-head checks are separate.
 
 A focused local ARMv5 QEMU check now compares mdadm-authored MD v1.0 metadata
 created on partition 1 of two synthetic GPT disk images, each backed by a

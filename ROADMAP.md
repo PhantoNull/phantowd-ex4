@@ -854,9 +854,17 @@ storage. No production roster provider or activation path exists.
   remains in the standard guest that supplies both volumes. No trusted
   production storage-to-Owner constructor, non-root service-user permission
   matrix, persistent handoff, production volume-loss supervision or EX4 media
-  qualification exists. Next: qualify non-root service access, specify an
-  explicit bounded supervisor contract, then design fail-closed production
-  storage construction. Do not enable real disks or services yet.
+  qualification exists. A local ARMv5 probe also demonstrated that UID/GID
+  65534 can read a synthetic world-readable marker through the clone: the
+  pre-mount target's mode 0700 is hidden after mounting, and the current mode
+  0711 handoff pathname is searchable by unrelated local users. This is a
+  demonstrated access-control gap, not a passing permission test. Do not expose
+  handoff paths to untrusted processes. Next: choose and implement a service-
+  identity boundary (group-gated parent or private mount namespaces) plus
+  explicit data ACL/grant semantics; then exercise both permitted and denied
+  identities in QEMU. After that specify the bounded supervisor contract and
+  design fail-closed production storage construction. Do not enable real disks
+  or services yet.
 - **M4.5 — Failure and shutdown.** Cover startup with absent disks, service crash,
   read-only/full volume, client reconnect, stale NFS handles, shutdown with open
   files and restart ordering. Distinguish safely unavailable from healthy.
