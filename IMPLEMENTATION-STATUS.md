@@ -89,6 +89,17 @@ QEMU-tag vet/package race tests pass. This is disposable construction evidence,
 not an authenticated product manifest, retained root/lease, production Owner,
 installer, full new Buildroot integration or hosted feature result.
 
+Subsequent full local incremental integration on unchanged `7c6048c` passed
+the complete Buildroot/package/legal-info run, Linux API/tool vet/race/fuzz,
+native image-probe tests, standard ARMv5 smoke, MD fixture, two-boot state,
+native launcher, real loader differential and combined Samba staging/inspection/
+CP850/stream/ACL/inheritance/client/stop fixture. All seven published artifact
+hashes equal the previous baseline, consistent with this prototype not being
+installed in the firmware. This exact-source cache-reusing result is not an
+independent clean build, hosted feature pass, complete legal certification or
+EX4/product qualification. The pre-existing legal-info source-packaging warnings
+remain release work, not evidence that distribution obligations are complete.
+
 Percentages are **engineering planning estimates**, not measured test coverage,
 probabilities of success, release readiness, or a delivery-date promise. Credit
 includes source, negative tests and fixture integration; the remaining scope
