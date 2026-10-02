@@ -308,7 +308,17 @@ func (o *Owner) Acquire(ctx context.Context) (*Lease, error) {
 	}
 	o.mu.Lock()
 	defer o.mu.Unlock()
-	if o.state != StateMounted || ctx.Err() != nil {
+	return o.acquireLocked(ctx)
+}
+
+// acquireLocked requires o.mu. MountedVolumeSet uses it while every member
+// Owner is held, so a caller receives either a lease for the complete roster
+// or no leases at all.
+func (o *Owner) acquireLocked(ctx context.Context) (*Lease, error) {
+	if ctx.Err() != nil {
+		return nil, ErrUnavailable
+	}
+	if o.state != StateMounted {
 		return nil, stateError(o.state)
 	}
 	if err := o.verifyMountedLocked(); err != nil {
@@ -528,6 +538,16 @@ func (l *Lease) Close() error {
 	o := l.owner
 	o.mu.Lock()
 	defer o.mu.Unlock()
+	return l.closeLocked()
+}
+
+// closeLocked requires l.owner.mu. It removes the lease even when descriptor
+// close reports an error; the caller must quarantine that Owner on uncertainty.
+func (l *Lease) closeLocked() error {
+	if l == nil || l.owner == nil {
+		return nil
+	}
+	o := l.owner
 	if l.closed {
 		return nil
 	}

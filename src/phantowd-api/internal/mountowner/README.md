@@ -27,6 +27,14 @@ the disposable Versatile PB guest.
   snapshot is complete only relative to the immutable roster supplied at
   construction; the current constructor is used by host tests and a one-volume
   QEMU fixture, not product discovery.
+- `MountedVolumeSet.Acquire` takes that same all-owner lock set, obtains a
+  complete fresh observation and retains one child lease per roster member
+  before releasing any lock. If a member fails revalidation, already acquired
+  leases are rolled back and no partial group authority is returned; cleanup
+  uncertainty quarantines the affected Owner. `MountedVolumeSetLease` routes
+  directory opens by roster ID and closes every tracked descriptor when the
+  group lease is closed. Drain blocks new opens while existing group leases
+  keep every member from unmounting.
 - A `Lease` opens existing directories only through the pinned mountguard.
   Returned `O_PATH` handles are tracked by the Owner and revoked when identity
   verification fails. They cannot read file contents. Draining denies new
@@ -45,7 +53,11 @@ The state machine and Linux fake-driver tests are in `owner_linux.go` and
 fixed synthetic ext2 fixture into a private `/run` directory. It covers the
 normal lease/drain/unmount sequence, an overmount with handle revocation, lost
 mount/unmount results, and a mismatched filesystem. Teardown may unmount only
-the exact private fixture target it created.
+the exact private fixture target it created. The current-source local ARMv5
+QEMU file-service fixture also acquires a roster lease, opens the qualified
+root directory and verifies that closing the group revokes the tracked handle.
+Linux tests exercise multiple members, drain exclusion, idempotent release and
+rollback when the second member changes during acquisition.
 
 The qualification token currently comes only from the QEMU fixture. There is
 no production qualifier or production roster source, no EX4-complete mounted-

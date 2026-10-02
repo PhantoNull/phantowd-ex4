@@ -650,6 +650,14 @@ are missing. **Depends on:** M1; M7 for hardware.
   current QEMU roster is one synthetic volume; completeness applies only to the
   roster supplied by trusted construction and does not establish physical
   inventory completeness. No production roster source or adapter exists. A
+  `MountedVolumeSet.Acquire` operation now retains leases for every member
+  under the same canonical lock set and returns no partial authority: failed
+  member revalidation rolls earlier leases back, and uncertain cleanup moves
+  the affected Owner to `review-required`. Grouped directory opens are routed
+  by logical volume ID; closing the set lease revokes all Owner-tracked handles.
+  Linux tests cover multi-member drain blocking and rollback; the one-volume
+  current-source ARMv5 QEMU overlay exercises acquire/open/release on synthetic
+  ext2. A
   QEMU-only composed fixture feeds the synthetic MD v1.2 identity from the
   separate MD-stack fixture through a fixed M3.4 Owner roster and planner
   snapshot. A separate focused fixture now also composes the MD v1.0 broker
