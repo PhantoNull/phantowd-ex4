@@ -4,6 +4,11 @@ set -eu
 external_dir="${PHANTOWD_EXTERNAL_DIR:-/external}"
 workspace_dir="${PHANTOWD_WORKSPACE_DIR:-/workspace}"
 ccache_dir="${PHANTOWD_CCACHE_DIR:-$workspace_dir/ccache}"
+compile_checkpoint="$external_dir/artifacts/qemu-build-checkpoints/compile-complete"
+# A checkpoint describes this invocation, never a previous cached build.
+if [ "${PHANTOWD_PREPARE_ONLY:-0}" != 1 ]; then
+    rm -f "$compile_checkpoint"
+fi
 
 # This file is maintained by the project and contains no executable secrets.
 # shellcheck disable=SC1091
@@ -28,6 +33,8 @@ shellcheck -s sh \
 	"$external_dir/board/qemu/armv5/rootfs-overlay/etc/init.d/S49phantowd-identity-owner" \
 	"$external_dir/board/qemu/armv5/rootfs-overlay/usr/lib/phantowd/qemu-md-v10-init.sh" \
 	"$external_dir/support/qemu-md-v10-fixture.sh"
+shellcheck -s sh "$external_dir/support/container/save-qemu-failure-log.sh"
+python3 -B "$external_dir/support/tests/test-qemu-build-feedback.py"
 sh "$external_dir/support/test-compare-build-artifacts.sh"
 python3 "$external_dir/support/test-volume-probe-build.py"
 
@@ -233,6 +240,24 @@ if [ "$previous_jansson_enabled" = 0 ]; then
 	samba_package_rebuild=1
 fi
 
+# Obtain the pinned native Go toolchain first. Linux lifecycle/race failures
+# must fail before the expensive kernel/Samba/target build, not an hour later.
+make -C "$buildroot_source" \
+    BR2_EXTERNAL="$external_dir" \
+    BR2_DL_DIR="$download_dir" \
+    O="$output_dir" \
+    host-go-bin
+
+GOCACHE="$workspace_dir/api-host-cache" \
+    sh "$external_dir/support/container/test-api.sh" \
+    "$output_dir/host/bin/go" "$external_dir/src/phantowd-api" \
+    "$output_dir/api-host-tests"
+
+GOCACHE="$workspace_dir/lab-tools-host-cache" \
+    sh "$external_dir/support/container/test-lab-tools.sh" \
+    "$output_dir/host/bin/go" "$external_dir/tools/phantowd-lab" \
+    "$output_dir/lab-tools-host-tests"
+
 make -C "$buildroot_source" \
     BR2_EXTERNAL="$external_dir" \
     BR2_DL_DIR="$download_dir" \
@@ -255,6 +280,11 @@ make -C "$buildroot_source" \
     O="$output_dir" \
     -j"$(getconf _NPROCESSORS_ONLN)"
 
+# Compiler-cache readiness is not test or release qualification. Trusted CI
+# can retain completed compiler work even when a later guest fixture fails.
+install -d -m 0755 "$(dirname "$compile_checkpoint")"
+printf 'complete\n' > "$compile_checkpoint"
+
 # The cached Buildroot TARGET_DIR may contain an mdev rule from an earlier
 # PhantoWD package revision. Require the package hook to replace it atomically,
 # not merely add a new range alongside the stale one.
@@ -276,16 +306,6 @@ make -C "$buildroot_source" \
     O="$output_dir" \
     legal-info
 
-GOCACHE="$workspace_dir/api-host-cache" \
-    sh "$external_dir/support/container/test-api.sh" \
-    "$output_dir/host/bin/go" "$external_dir/src/phantowd-api" \
-    "$output_dir/api-host-tests"
-
-GOCACHE="$workspace_dir/lab-tools-host-cache" \
-    sh "$external_dir/support/container/test-lab-tools.sh" \
-    "$output_dir/host/bin/go" "$external_dir/tools/phantowd-lab" \
-    "$output_dir/lab-tools-host-tests"
-
 # Native generated-image tests use the same hash-checked libblkid source as
 # the target package. No host devices, mounts or privileged mode are needed.
 sh "$external_dir/support/container/test-volume-probe.sh" \
@@ -294,14 +314,8 @@ sh "$external_dir/support/container/test-volume-probe.sh" \
 
 artifact_dir="$external_dir/artifacts/qemu-armv5"
 save_qemu_failure_log() {
-    failure_name="$1"
-    source_log="$2"
-    install -d -m 0755 "$artifact_dir"
-    if [ -f "$source_log" ]; then
-        install -m 0644 "$source_log" "$artifact_dir/$failure_name"
-    else
-        printf '%s\n' "QEMU test did not create its log: $source_log" > "$artifact_dir/$failure_name"
-    fi
+    sh "$external_dir/support/container/save-qemu-failure-log.sh" \
+        "$artifact_dir/$1" "$2"
 }
 
 if ! "$external_dir/support/qemu-smoke.sh" \

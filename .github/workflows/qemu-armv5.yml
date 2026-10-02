@@ -85,6 +85,9 @@ jobs:
       - name: Verify storage broker and QEMU smoke marker contracts
         run: sh support/tests/test-storage-broker-buildroot.sh
 
+      - name: Verify early feedback and failure-diagnostic contracts
+        run: python3 -B support/tests/test-qemu-build-feedback.py
+
       - name: Select bounded compiler-cache namespace
         id: ccache_namespace
         run: echo "week=$(date -u +%G-W%V)" >> "$GITHUB_OUTPUT"
@@ -149,8 +152,25 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
+      - name: Upload failed QEMU diagnostics
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: phantowd-qemu-failure-logs
+          path: artifacts/qemu-armv5/*-failure.log
+          if-no-files-found: ignore
+          retention-days: 7
+
+      - name: Observe completed compiler checkpoint
+        id: compiler_checkpoint
+        if: ${{ !cancelled() }}
+        run: |
+          if [ "$(cat artifacts/qemu-build-checkpoints/compile-complete 2>/dev/null)" = "complete" ]; then
+            echo 'ready=true' >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Save bounded Buildroot compiler cache
-        if: success() && steps.ccache_restore.outputs.cache-hit != 'true' && github.event_name == 'push' && github.ref == 'refs/heads/develop'
+        if: ${{ !cancelled() && steps.compiler_checkpoint.outputs.ready == 'true' && steps.ccache_restore.outputs.cache-hit != 'true' && github.event_name == 'push' && github.ref == 'refs/heads/develop' }}
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ${{ runner.temp }}/phantowd-buildroot-ccache
