@@ -127,6 +127,24 @@ independent clean build, hosted feature pass, complete legal certification or
 EX4/product qualification. The pre-existing legal-info source-packaging warnings
 remain release work, not evidence that distribution obligations are complete.
 
+The separate `feat/smart-report-observation` increment adds the first M8.5
+prerequisite: a pure internal smartctl 7.4 / JSON 1.0 ATA report parser, not a
+collector. It matches embedded/process exit values, preserves collection errors
+and current/historical flags separately, retains explicit failure during partial
+collection, and rejects contradictory/ambiguous/oversized input without retaining
+raw identities or tool messages. Internal observations cannot be serialized or
+constructed from JSON. Local Windows API/UI preflight, pinned Linux ordinary/
+QEMU-tagged vet and all API race tests pass; 10,021 fuzz executions pass.
+Actual ARMv5 QEMU runs the package's synthetic 256-mask/state/refusal/privacy
+tests and fuzz seeds, with the base hashes unchanged. The runner was corrected
+from unsupported poweroff to reboot-with-no-reboot exit and exact optional-CR
+serial marker matching; earlier failed runner attempts are not green runs.
+The fixture is now wired into the full integration wrapper, but a full new
+integration result must be established separately. No smartmontools package,
+device command, ioctl, self-test job, history, notification or endpoint is enabled.
+Actual tool reports/transport/standby/device generation and product UI remain
+unqualified; see the [SMART contract](src/phantowd-api/internal/smartreport/README.md).
+
 Percentages are **engineering planning estimates**, not measured test coverage,
 probabilities of success, release readiness, or a delivery-date promise. Credit
 includes source, negative tests and fixture integration; the remaining scope
@@ -144,7 +162,7 @@ substantial redesign. Rows overlap and must not be added.
 | M5 — Management UI/security | Development authentication/TLS, sessions/password changes, diagnostics dashboard and policy preview/editing | Product enrollment/reset/certificate lifecycle, authorized live workflows, recovery UX, browser/accessibility/security qualification | 25–40% |
 | M6 — Network/system | Diagnostic observations and brief two-port board research | Safe network transactions/rollback, supported dual-port modes, time/discovery, notifications and administrative jobs | 5–15% |
 | M7 — Board/cooling/recovery | DTS and bounded diskless RAM trials; passive MCU framing/catalog tooling | Qualified factory identities, fan/tach/fail-safe, LCD/LED/buttons/power/watchdog, SATA/USB and NAND recovery | 15–25% |
-| M8 — RAID/health/migration | Generic offline GPT/ext/MD inspectors and static WD layout analysis | Attributable EX4 layout corpus/importer, ownership/ACL migration, RAID jobs, SMART product collection, backup/restore tests | 15–25% |
+| M8 — RAID/health/migration | Generic offline GPT/ext/MD inspectors, static WD layout analysis and synthetic offline SMART report interpretation | Attributable EX4 layout corpus/importer, ownership/ACL migration, RAID jobs, trusted SMART collection/history/jobs/UI, backup/restore tests | 15–25% |
 | M9 — iSCSI | Specification and legacy research; no product target implementation | ARMv5 backend selection, LUN model, session/ownership guard, migration and failure campaigns | 0–5% |
 | M10 — Installer/upgrades | Host-only signed release/payload/version verification | Reviewed boot/state/install layout, target installer, signing-key lifecycle, boot health/rollback and demonstrated unbrick | 10–20% |
 | M11 — Public release | Portions of test infrastructure, package SBOM and earlier reproducibility evidence | Measured EX4 budgets/mixed load, independent security/legal review, physical recovery campaign and signed release assets | 5–15% |
@@ -182,6 +200,8 @@ excluded. No calendar estimate is defensible before the hardware/recovery gates.
 - M8/M9: [compatibility matrix](STORAGE-COMPATIBILITY.md) and
   [offline inspectors](tools/phantowd-lab/diskimage/). All legacy migration
   layouts remain unqualified; metadata consistency is not health or mount authority.
+  [SMART report interpretation](src/phantowd-api/internal/smartreport/README.md)
+  is offline only; no report provenance, freshness or device control is established.
 - M10/M11: [host verifier](tools/phantowd-lab/releaseverify/) and
   [GitHub release reader](tools/phantowd-lab/githubrelease/). Neither installs firmware.
 

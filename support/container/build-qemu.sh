@@ -50,6 +50,8 @@ shellcheck "$external_dir/support/tests/test-qemu-samba-root.sh" \
     "$external_dir/support/tests/samba-root-init.sh"
 shellcheck "$external_dir/support/tests/test-qemu-service-launcher.sh" \
     "$external_dir/support/tests/service-launcher-init.sh"
+shellcheck "$external_dir/support/tests/test-qemu-smart-report.sh" \
+    "$external_dir/support/tests/smart-report-init.sh"
 sh "$external_dir/support/test-compare-build-artifacts.sh"
 python3 "$external_dir/support/test-volume-probe-build.py"
 
@@ -452,5 +454,10 @@ if ! TMPDIR=/phantowd-qemu-fixture-tmp sh "$external_dir/support/tests/test-qemu
     echo "Preserved failed Samba-root diagnostics in $artifact_dir" >&2
     exit 1
 fi
+
+# Pure report interpretation only: no SMART executable or device commands.
+TMPDIR=/phantowd-qemu-fixture-tmp sh "$external_dir/support/tests/test-qemu-smart-report.sh" \
+    "$artifact_dir" "$output_dir/host/bin/go" "$output_dir/host/sbin/debugfs" \
+    "$external_dir" "$artifact_dir/qemu-smart-report-failure.log"
 
 printf 'Build and smoke test passed. Artifacts: %s\n' "$artifact_dir"
