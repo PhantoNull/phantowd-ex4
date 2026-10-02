@@ -899,14 +899,25 @@ storage. No production roster provider or activation path exists.
   invalid launch cases are refused. The source is
   [phantowd-service-launcher](src/phantowd-service-launcher/README.md); run
   `support/test-service-launcher.ps1` using existing read-only cache/base
-  inputs. It is not connected to ServiceRuntime/processowner, does not prepare
+  inputs. It now runs through a fixed-input `processowner.IsolatedOwner` and
+  proves readiness, descriptor/spec independence, normal stop/reap, refused
+  close while running and pre-launch/live input-loss quarantine without retry.
+  It is not connected to the process Set/ServiceRuntime, does not prepare
   product roots or runtime manifests, and does not control kernel NFS. This
   does not resolve the existing handoff's bypass or enable any real service.
 
-  Next: integrate a trusted fixed launcher and root-manifest constructor,
+  Next: implement a trusted per-service root-manifest constructor and connect
+  isolated owners to the fixed service Set/handoff lease lifecycle,
   giving each service an isolated private mount namespace whose only
   storage roots are its explicit grants; prove the original volume anchors and
   ungranted shares are unreachable and that read-only access cannot be bypassed.
+  Keep daemon privilege profiles distinct: the real multi-user Samba QEMU
+  fixture currently runs with root credentials and the pinned implementation
+  performs Unix identity/group switches. The generic fixed-UID zero-capability
+  child is not an implementation of those semantics. Define and validate a
+  bounded Samba-specific runtime/privilege contract, preserving per-client
+  Unix identities/ACLs; never substitute `force user` or shared credentials to
+  make isolation tests pass. Kernel NFS remains a separate typed authority.
   Then define product-owned service identities and safe ACL provisioning and
   recovery without silently changing legacy ownership. Add the bounded
   source-loss supervisor and a fail-closed production storage constructor only

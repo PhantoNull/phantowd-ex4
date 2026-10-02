@@ -3,14 +3,15 @@
 # SPDX-FileCopyrightText: 2026 PhantoWD EX4 contributors
 # Build and boot only disposable copies using an existing pinned toolchain/base.
 set -eu
-base=${1:?usage: test-qemu-service-launcher.sh BASE TARGET_CC DEBUGFS SOURCE}
+base=${1:?usage: test-qemu-service-launcher.sh BASE TARGET_CC DEBUGFS SOURCE FAILURE_LOG GO_BINARY}
 target_cc=${2:?pinned compiler required}
 debugfs=${3:?pinned debugfs required}
 source_dir=${4:?source required}
 failure_log=${5:-}
+go_binary=${6:?pinned Go required}
 tmpdir=${TMPDIR:-/tmp}
 export TMPDIR="$tmpdir"
-case "$base:$target_cc:$debugfs:$source_dir:$failure_log:$tmpdir" in
+case "$base:$target_cc:$debugfs:$source_dir:$failure_log:$tmpdir:$go_binary" in
     *[!a-zA-Z0-9_./:-]*) echo 'Unsupported fixture path' >&2; exit 1 ;;
 esac
 case "$tmpdir" in /*) ;; *) exit 1 ;; esac
@@ -28,20 +29,30 @@ cleanup() {
         kill "$child_pid" 2>/dev/null || true
         wait "$child_pid" 2>/dev/null || true
     fi
-    rm -f "$scratch/rootfs.ext2" "$scratch/launcher" "$scratch/fixture" "$scratch/init.sh" "$scratch/guest.log"
+    # Everything here was generated under this exact mktemp tmpfs directory.
+    rm -f "$scratch/rootfs.ext2" "$scratch/launcher" "$scratch/fixture" "$scratch/init.sh" "$scratch/owner-fixture" "$scratch/guest.log"
+    # Go's bounded per-test compiler cache is not a persistent Docker volume.
+    rm -rf "$scratch/go-cache" "$scratch/go-path"
     rmdir "$scratch"
 }
 trap cleanup EXIT
 trap 'exit 1' INT TERM
 base_hash=$(sha256sum "$base/rootfs.ext2" | awk '{print $1}')
 (cd "$base" && sha256sum -c SHA256SUMS)
-cp "$base/rootfs.ext2" "$scratch/rootfs.ext2"
 "$target_cc" -std=c11 -O2 -static -Wall -Wextra -Werror \
     -o "$scratch/launcher" "$source_dir/src/phantowd-service-launcher/launcher.c"
 "$target_cc" -std=c11 -O2 -static -Wall -Wextra -Werror \
     -o "$scratch/fixture" "$source_dir/support/tests/service-launcher-fixture.c"
 cp "$source_dir/support/tests/service-launcher-init.sh" "$scratch/init.sh"
-for pair in 'launcher phantowd-service-launcher' 'fixture phantowd-service-launcher-fixture' 'init.sh phantowd-service-launcher-init'; do
+export GOPROXY=off GOTOOLCHAIN=local GOFLAGS='-mod=vendor -buildvcs=false'
+export GOCACHE="$scratch/go-cache" GOPATH="$scratch/go-path"
+(cd "$source_dir/src/phantowd-api" && \
+    CGO_ENABLED=0 GOOS=linux GOARCH=arm GOARM=5 "$go_binary" build -tags=qemu \
+    -trimpath -ldflags='-s -w' -o "$scratch/owner-fixture" ./cmd/qemu-service-launcher-fixture)
+rm -rf "$scratch/go-cache" "$scratch/go-path"
+# Do not retain compiler cache and a rootfs copy at the same time.
+cp "$base/rootfs.ext2" "$scratch/rootfs.ext2"
+for pair in 'launcher phantowd-service-launcher' 'fixture phantowd-service-launcher-fixture' 'init.sh phantowd-service-launcher-init' 'owner-fixture phantowd-service-launcher-owner-fixture'; do
     source_name=${pair%% *}
     target_name=${pair#* }
     "$debugfs" -w -R "write $scratch/$source_name /usr/sbin/$target_name" "$scratch/rootfs.ext2" >/dev/null 2>&1
@@ -69,6 +80,12 @@ if [ "$status" -ne 0 ] || ! grep -F PHANTOWD_SERVICE_LAUNCHER_DONE "$scratch/gue
     exit 1
 fi
 grep -F 'PHANTOWD_SERVICE_LAUNCHER_READY private_namespace=true root_restricted=true nonroot=true capabilities_zero=true fd_cleanup=true pid_preserved=true read_only=true signals_reset=true denied_cases=7' "$scratch/guest.log" >/dev/null
+grep -F 'PHANTOWD_SERVICE_LAUNCHER_OWNER_READY pinned_inputs=true immutable_spec=true readiness=true same_pid=true private_namespace=true stop_reaped=true close_gated=true' "$scratch/guest.log" >/dev/null
+grep -F 'PHANTOWD_SERVICE_LAUNCHER_INPUT_REVIEW_READY before_child=true restoration_not_retried=true' "$scratch/guest.log" >/dev/null
+grep -F 'PHANTOWD_SERVICE_LAUNCHER_LIVE_REVIEW_READY stop_before_close=true group_reaped=true restoration_not_retried=true' "$scratch/guest.log" >/dev/null
+grep -F PHANTOWD_SERVICE_LAUNCHER_OWNER_READY "$scratch/guest.log"
+grep -F PHANTOWD_SERVICE_LAUNCHER_INPUT_REVIEW_READY "$scratch/guest.log"
+grep -F PHANTOWD_SERVICE_LAUNCHER_LIVE_REVIEW_READY "$scratch/guest.log"
 grep -F PHANTOWD_SERVICE_LAUNCHER_READY "$scratch/guest.log"
 grep -F PHANTOWD_SERVICE_LAUNCHER_DONE "$scratch/guest.log"
 [ "$(sha256sum "$base/rootfs.ext2" | awk '{print $1}')" = "$base_hash" ]

@@ -417,9 +417,16 @@ through its exact DT model and ARM architecture check.
 The wrapper refuses missing existing caches, never pulls/builds an image or
 creates a persistent volume, mounts inputs read-only, and removes its container
 and tmpfs on exit. Full QEMU CI runs this same bounded fixture after producing
-the baseline, retaining a synthetic failure log if it fails. It is not a
-product root constructor, processowner/ServiceRuntime integration, live SMB/NFS
-test, clean image qualification or hardware evidence. Successful syscall-level
+the baseline, retaining a synthetic failure log if it fails. It now also
+compiles a QEMU-only Go fixture that invokes the real fixed-input IsolatedOwner
+and checks readiness/stop/reap, argument/credential mutation, close gating and
+pre-launch/live root-drift quarantine. Cold Go compilation exceeded the former
+128 MiB fixture budget: full local/CI wrappers now use the same bounded 512 MiB
+tmpfs, and the disposable compiler cache is removed before the rootfs copy.
+This does not create a persistent volume.
+
+It is not a product root constructor, process Set/ServiceRuntime integration,
+live SMB/NFS test, clean image qualification or hardware evidence. Successful syscall-level
 isolation alone does not prove a complete service authorization model.
 
 ### Separate state-persistence boots

@@ -393,6 +393,6 @@ install -m 0644 "$output_dir/target/usr/bin/phantowd-api" "$artifact_dir/phantow
 TMPDIR=/phantowd-qemu-fixture-tmp sh "$external_dir/support/tests/test-qemu-service-launcher.sh" \
     "$artifact_dir" "$output_dir/host/bin/arm-buildroot-linux-gnueabi-gcc" \
     "$output_dir/host/sbin/debugfs" "$external_dir" \
-    "$artifact_dir/qemu-service-launcher-failure.log"
+    "$artifact_dir/qemu-service-launcher-failure.log" "$output_dir/host/bin/go"
 
 printf 'Build and smoke test passed. Artifacts: %s\n' "$artifact_dir"

@@ -176,10 +176,11 @@ default. Do not expose them through a LAN listener or reverse proxy.
 An independent [native service-launcher prototype](src/phantowd-service-launcher/README.md)
 now passes local ARMv5 QEMU tests with a restricted root, private mount namespace,
 non-root credentials, zero capabilities, inherited-FD/signal cleanup and preserved
-PID/process-group ownership. Seven invalid-launch cases are refused. It uses a
-static synthetic child only; it is not wired to the existing service handoff,
-Samba, kernel NFS control or product init. No additional live service capability
-is enabled by this prototype.
+PID/process-group ownership. Seven invalid-launch cases are refused. The internal
+`IsolatedOwner` now pins its fixed inputs and supervises a static synthetic child;
+input drift stops/quarantines it and restoration never clears review. Trusted
+root construction, existing service handoff/Set integration, Samba, kernel NFS
+control and product init remain missing. No live product service is enabled.
 
 The badge tracks the `develop` integration branch, not every feature branch.
 For build evidence, open the relevant workflow run and check its **commit,

@@ -127,7 +127,7 @@ jobs:
       - name: Build and boot ARMv5 image
         run: |
           docker run --rm \
-            --tmpfs /phantowd-qemu-fixture-tmp:rw,exec,nosuid,nodev,size=128m \
+            --tmpfs /phantowd-qemu-fixture-tmp:rw,exec,nosuid,nodev,size=512m \
             --mount type=bind,source="$PWD",target=/external \
             --mount type=volume,source=phantowd-ci-${{ github.run_id }}-qemu,target=/workspace \
             --mount type=bind,source="$RUNNER_TEMP/phantowd-buildroot-ccache",target=/ccache \

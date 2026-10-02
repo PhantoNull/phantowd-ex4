@@ -123,8 +123,17 @@ func (o *Owner) Start(ctx context.Context, spec Spec) (Snapshot, error) {
 	if validateSpec(spec) != nil {
 		return o.snapshot(), ErrInvalid
 	}
-	process, err := startProcess(spec)
+	launch := startProcess
+	if o.launch != nil {
+		launch = o.launch
+	}
+	process, err := launch(spec)
 	if err != nil {
+		if errors.Is(err, ErrReviewRequired) {
+			o.reviewRequired = true
+			o.state = StateReviewRequired
+			return o.snapshot(), ErrReviewRequired
+		}
 		o.state = StateStopped
 		if errors.Is(err, ErrInvalid) {
 			return o.snapshot(), ErrInvalid

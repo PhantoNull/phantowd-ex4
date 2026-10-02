@@ -63,6 +63,23 @@ class BuildFeedbackTests(unittest.TestCase):
                 self.assertIn("Missing QEMU artifact", result.stderr)
                 self.assertNotIn("QEMU smoke timeout must", result.stderr)
 
+    def test_local_and_ci_fixture_tmpfs_fit_native_owner_compilation(self):
+        # A real cold owner-fixture compile exhausted the former 128 MiB.
+        # The final native/Go probe passes with this bounded 512 MiB budget.
+        mount = "/phantowd-qemu-fixture-tmp:rw,exec,nosuid,nodev,size=512m"
+        for file in ("support/build-qemu.ps1",
+                     ".github/workflows/qemu-armv5.yml"):
+            with self.subTest(file=file):
+                self.assertIn(mount, (ROOT / file).read_text())
+        fixture = ROOT / "support/tests/test-qemu-service-launcher.sh"
+        script = fixture.read_text()
+        build = script.index('"$go_binary" build -tags=qemu')
+        release = script.index('rm -rf "$scratch/go-cache" "$scratch/go-path"',
+                               build)
+        image_copy = script.index('cp "$base/rootfs.ext2"')
+        self.assertLess(build, release)
+        self.assertLess(release, image_copy)
+
     def test_direct_guest_entrypoints_have_executable_source_mode(self):
         # Docker Desktop bind mounts can mask a non-executable Git mode.
         # Check the index when available, not the Windows-host file mode.

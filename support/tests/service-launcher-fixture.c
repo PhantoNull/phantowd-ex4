@@ -201,17 +201,25 @@ int main(int argc, char **argv)
 {
     if (argc == 3 && !strcmp(argv[1], "--probe"))
         return probe(argv[2]);
+    if (argc == 2 && !strcmp(argv[1], "--owner-probe")) {
+        char pid_text[24];
+        snprintf(pid_text, sizeof(pid_text), "%ld", (long)getpid());
+        return probe(pid_text);
+    }
 #if !defined(__arm__)
     return 1;
 #else
-    if (argc != 1 || getuid() || geteuid())
+    if ((argc != 1 && !(argc == 2 &&
+        (!strcmp(argv[1], "--prepare") || !strcmp(argv[1], "--cleanup")))) ||
+        getuid() || geteuid())
         return 1;
     char machine[32] = {0};
     FILE *model = fopen("/sys/firmware/devicetree/base/model", "r");
     if (!model || fread(machine, 1, sizeof(machine), model) != sizeof("ARM Versatile PB") ||
         fclose(model) || memcmp(machine, "ARM Versatile PB", sizeof("ARM Versatile PB")))
         return 1;
-    if (mkdir(BASE, 0755) || mkdir(ROOT, 0755) || mkdir(ORIGINAL, 0755) ||
+    int cleanup_only = argc == 2 && !strcmp(argv[1], "--cleanup");
+    if (!cleanup_only && (mkdir(BASE, 0755) || mkdir(ROOT, 0755) || mkdir(ORIGINAL, 0755) ||
         chown(ORIGINAL, 1000, 1000) ||
         write_marker(ORIGINAL "/marker") || write_marker(BASE "/sibling") ||
         write_marker(BASE "/bad-elf") || chmod(BASE "/bad-elf", 0755) ||
@@ -220,15 +228,17 @@ int main(int argc, char **argv)
         mount(ORIGINAL, ROOT "/share", NULL, MS_BIND, NULL) ||
         mount(NULL, ROOT "/share", NULL,
               MS_BIND | MS_REMOUNT | MS_RDONLY | MS_NOSUID | MS_NODEV | MS_NOEXEC,
-              NULL))
+              NULL)))
         return 1;
+    if (argc == 2 && !strcmp(argv[1], "--prepare"))
+        return 0;
     int failed = 0;
-    for (int invalid = 1; invalid <= 7; ++invalid)
+    for (int invalid = 1; !cleanup_only && invalid <= 7; ++invalid)
         if (case_child(invalid)) {
             failed = 1;
             break;
         }
-    if (!failed && case_child(0))
+    if (!cleanup_only && !failed && case_child(0))
         failed = 1;
     struct stat untouched;
     if (stat(ORIGINAL "/marker", &untouched) ||
@@ -240,6 +250,8 @@ int main(int argc, char **argv)
         failed = 1;
     if (failed)
         return 1;
+    if (cleanup_only)
+        return 0;
     puts("PHANTOWD_SERVICE_LAUNCHER_READY private_namespace=true root_restricted=true nonroot=true capabilities_zero=true fd_cleanup=true pid_preserved=true read_only=true signals_reset=true denied_cases=7");
     return 0;
 #endif

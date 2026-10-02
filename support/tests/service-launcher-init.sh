@@ -8,7 +8,10 @@ prepare() {
     grep -q ' /dev devtmpfs ' /proc/mounts || mount -t devtmpfs devtmpfs /dev || return 1
     mount -t tmpfs tmpfs /run || return 1
 }
-if prepare && /usr/sbin/phantowd-service-launcher-fixture; then
+if prepare && /usr/sbin/phantowd-service-launcher-fixture &&
+    /usr/sbin/phantowd-service-launcher-fixture --prepare &&
+    /usr/sbin/phantowd-service-launcher-owner-fixture &&
+    /usr/sbin/phantowd-service-launcher-fixture --cleanup; then
     echo PHANTOWD_SERVICE_LAUNCHER_DONE
 else
     echo PHANTOWD_SERVICE_LAUNCHER_FAILED

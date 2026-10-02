@@ -32,7 +32,7 @@ python3 -B /src/support/tests/test-service-launcher.py
 python3 -B -m flake8 /src/support/tests/test-service-launcher.py
 shellcheck /src/support/tests/test-qemu-service-launcher.sh /src/support/tests/service-launcher-init.sh
 exec sh /src/support/tests/test-qemu-service-launcher.sh /base \
-    "$output/host/bin/arm-buildroot-linux-gnueabi-gcc" "$output/host/sbin/debugfs" /src
+    "$output/host/bin/arm-buildroot-linux-gnueabi-gcc" "$output/host/sbin/debugfs" /src '' "$output/host/bin/go"
 '@
 $encoded = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($linuxScript.Replace("`r`n", "`n")))
 docker run --rm --pull never --network none --read-only `

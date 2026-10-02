@@ -121,11 +121,12 @@ are unchanged. This is not a cached workspace or an established speedup.
 
 ## Next implementation sequence
 
-Local follow-up on `feat/service-namespace-launcher` implements a separate
-native static-ELF launcher and passes a disposable ARMv5 namespace/root/FD/
-privilege/signal/PID/read-only fixture plus seven refused launches. See its
+Local follow-up on `feat/service-namespace-launcher` implements a native
+static-ELF launcher and internal fixed-input `IsolatedOwner`, passing disposable
+ARMv5 namespace/root/FD/privilege/signal/PID/read-only tests, seven refused
+launches, real readiness/stop, and pre-launch/live input-loss quarantine. See its
 [contract](src/phantowd-service-launcher/README.md). It is not connected to
-the existing handoff/runtime and does not complete M4.4 or change the planning
+the existing handoff/Set/runtime and does not complete M4.4 or change the planning
 bands above. Runtime manifests, product root construction, leases, native
 daemon integration and kernel NFS authority remain unresolved.
 

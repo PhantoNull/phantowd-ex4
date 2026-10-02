@@ -118,6 +118,8 @@ type Owner struct {
 	reviewRequired  bool
 	diagnosticsMu   sync.RWMutex
 	lastDiagnostics *diagnosticRing
+	// Bound only by internal constructors, never by a lifecycle operation.
+	launch func(Spec) (*managedProcess, error)
 }
 
 func New() *Owner {

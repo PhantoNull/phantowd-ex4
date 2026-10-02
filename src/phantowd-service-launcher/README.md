@@ -35,7 +35,8 @@ seccomp, daemon integration and kernel-side exports. `chroot` plus a private
 mount namespace is not a security boundary for a privileged process; this
 prototype requires zero capabilities, non-root saved IDs and no inherited
 filesystem handles. Network/process privileges still follow the service UID.
-It is not connected to `processowner`, `ServiceRuntime`, product init or HTTP.
+It is now connected to the internal `processowner.IsolatedOwner` constructor,
+not to `ServiceRuntime`, product init, Samba, kernel NFS or HTTP.
 
 Tests use host refusal cases and a static disposable ARMv5 probe in QEMU, never
 real disks or the NAS. The QEMU fixture prepares a private tmpfs root and one
@@ -51,4 +52,18 @@ root, and a child that is not its process-group leader. The positive probe
 also verifies inherited blocked/ignored `SIGTERM` does not prevent a clean
 stop. Run `support/test-service-launcher.ps1` with existing pinned cache/base
 inputs; no image or persistent volume is created. This is an overlay test,
-not a clean product build, service integration or hardware qualification.
+not a clean product build, daemon integration or hardware qualification.
+
+The Go adapter fixes and copies its spec at construction, independently pins
+the executable/helper/root descriptors, and accepts no new launch input in
+`Start`. Root metadata/mount-ID drift quarantines launch, and observing drift
+while running stops/reaps the owned group before closing inputs. Restoration
+does not clear review. The ARMv5 fixture verifies real Owner readiness,
+immutable arguments/credentials, same PID/namespace, close-before-stop refusal,
+normal stop, pre-launch input loss and live input-loss quarantine.
+
+The cold Go fixture compilation exceeded the former 128 MiB temporary budget
+locally. Local/CI full-build wrappers now agree on a bounded 512 MiB tmpfs;
+compiler cache is deleted before copying the rootfs. This is temporary RAM,
+not another persistent Docker volume or image. The owner fixture itself is
+QEMU-tagged and injected only into the disposable rootfs copy.
