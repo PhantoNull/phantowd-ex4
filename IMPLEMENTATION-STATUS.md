@@ -4,10 +4,18 @@
 # Implementation status
 
 Code audit: **2026-10-02**, integrated `develop` baseline
-`9daacfd42df5c8af7d3bf0c1410c2bb98574a580` (PR #56).
+`086e717dc7b3f1103a82a53d025d4adc49587a48` (PR #57).
 Use [ROADMAP.md](ROADMAP.md) for the acceptance specification. This snapshot
 distinguishes tested components from deployed product workflows. It is not
 installation approval, a security certification, or an exhaustive line-by-line audit.
+
+PR #57 integrated the read-only code-bundle inspector and QEMU-only fresh
+stager after exact head `870ea9d` passed
+[host](https://github.com/PhantoNull/phantowd-ex4/actions/runs/37039612689) and
+[QEMU/DTB](https://github.com/PhantoNull/phantowd-ex4/actions/runs/37039612553)
+checks. Its merged branch was removed after complete-tree equivalence was
+verified. The separate ACL correction and offline SMART follow-up described
+below are not yet integrated/hosted-qualified merely because PR #57 passed.
 
 PR #55 integrated the native launcher, internal isolated runtime, host ELF
 dependency candidate, actual ARMv5 loader differential and separate Samba-root
@@ -139,8 +147,14 @@ Actual ARMv5 QEMU runs the package's synthetic 256-mask/state/refusal/privacy
 tests and fuzz seeds, with the base hashes unchanged. The runner was corrected
 from unsupported poweroff to reboot-with-no-reboot exit and exact optional-CR
 serial marker matching; earlier failed runner attempts are not green runs.
-The fixture is now wired into the full integration wrapper, but a full new
-integration result must be established separately. No smartmontools package,
+Full local incremental integration then passed on unchanged published `2d4ab45`:
+API/tool vet/race/fuzz, packages/legal-info/SBOM, native probe, standard ARMv5
+smoke, MD, two-boot state, launcher/loader, combined Samba/code-ACL/data-ACL
+and the new SMART fixture. All seven manifest artifacts were independently
+rehashed and match the preceding baseline. After PR #57 merged, the follow-up
+rebased to `8a3b95a` with an identical complete tree. This cache-reusing result
+is not independent clean-build, hosted follow-up, legal or physical/product
+qualification; known legal-info warnings remain release work. No smartmontools package,
 device command, ioctl, self-test job, history, notification or endpoint is enabled.
 Actual tool reports/transport/standby/device generation and product UI remain
 unqualified; see the [SMART contract](src/phantowd-api/internal/smartreport/README.md).
