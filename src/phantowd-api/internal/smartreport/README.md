@@ -8,9 +8,10 @@ observed process exit value; it never executes `smartctl`, opens a device,
 sends an ioctl or starts a self-test. No HTTP endpoint, scheduler, history,
 notification, product installation or privilege expansion is added.
 
-The initial profile is release smartctl **7.4**, JSON **1.0**, ATA info+health
-fields. This matches the stock recipe in pinned Buildroot 2025.02.18; the
-package is not selected in the firmware. Version strings do not authenticate
+The explicit profiles are release smartctl **7.4 and 7.5**, JSON **1.0**, ATA
+info+health fields. 7.4 matches the stock recipe in pinned Buildroot 2025.02.18;
+7.5 is admitted after separate upstream/archive and actual native-producer
+verification. Neither package is selected in the firmware. Version strings do not authenticate
 an executable or prove provenance. Other versions/formats require separately
 verified profiles rather than silently inheriting support.
 
@@ -58,7 +59,8 @@ deduplicated notifications and UI only after those boundaries are verified.
 No NAS/disks, recovery or thermal gate is bypassed.
 
 The opt-in [CPU-only producer fixture](../../../../support/SMART-REPLAY.md)
-checks real upstream native 7.4 JSON from seven invented ATA stdin responses.
+checks real upstream native 7.4/7.5 JSON from seven invented ATA stdin responses
+per release, with explicitly pinned archives and identical refusal bounds.
 It compiles only the generic backend, not a Linux device collector; neither an
 ARM producer nor physical transport/standby compatibility is established.
 
@@ -68,3 +70,5 @@ ARM producer nor physical transport/standby compatibility is established.
 - [JSON initialization and emitted exit status](https://raw.githubusercontent.com/smartmontools/smartmontools/RELEASE_7_4/smartmontools/smartctl.cpp)
 - [ATA support/assessment and partial-read fallback](https://raw.githubusercontent.com/smartmontools/smartmontools/RELEASE_7_4/smartmontools/ataprint.cpp)
 - [Pinned Buildroot recipe](https://raw.githubusercontent.com/buildroot/buildroot/2025.02.18/package/smartmontools/smartmontools.mk)
+- [7.5 JSON profile](https://raw.githubusercontent.com/smartmontools/smartmontools/RELEASE_7_5/smartmontools/smartctl.cpp)
+- [7.5 ATA assessment/support](https://raw.githubusercontent.com/smartmontools/smartmontools/RELEASE_7_5/smartmontools/ataprint.cpp)

@@ -565,10 +565,12 @@ This qualifies report interpretation only, not actual smartctl output, transport
 standby policy, collection, history, test jobs or physical disk health.
 
 The separate [CPU-only producer oracle](SMART-REPLAY.md) runs real upstream
-smartctl 7.4 with its generic (no hardware) backend and invented stdin ATA
-responses. It checks seven actual native reports against the same Go parser,
+smartctl 7.4 or 7.5 with its generic (no hardware) backend and invented stdin ATA
+responses. Each selected version checks seven actual native reports against the same Go parser,
 including exit-zero SMART-disabled and partial failing status. It creates no
 image/volume and does not replace ARM execution or any physical collector gate.
+The existing cross toolchain lacks C++; an ARM producer requires a full
+toolchain rebuild. Do not count the pure-parser lane as that producer proof.
 
 `support/test-samba-root.ps1` additionally tests actual multi-user Samba inside
 a restricted read-only root/private mount namespace, using only fixture state

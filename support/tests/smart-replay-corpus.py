@@ -59,7 +59,7 @@ def trace(available=True, enabled=True, failed=False, read_error=False):
     return text.encode("ascii")
 
 
-def run(binary, output):
+def run(binary, output, version):
     # Expected producer results, independent of the Go projection expectations.
     cases = (
         ("pass", trace(), 0, True, True, True),
@@ -81,7 +81,7 @@ def run(binary, output):
             raise RuntimeError(f"producer boundary failed for {name}: exit={result.returncode}")
         report = json.loads(result.stdout)
         tool = report["smartctl"]
-        if (report["json_format_version"] != [1, 0] or tool["version"] != [7, 4]
+        if (report["json_format_version"] != [1, 0] or tool["version"] != version
                 or tool["pre_release"] is not False or tool["exit_status"] != exit_status
                 or report.get("device", {}).get("protocol") != (None if name == "empty" else "ATA")):
             raise RuntimeError(f"producer profile failed for {name}")
@@ -104,9 +104,9 @@ def run(binary, output):
 
 
 if __name__ == "__main__":
-    if len(sys.argv) != 3:
-        raise SystemExit("usage: smart-replay-corpus.py GENERIC_SMARTCTL EMPTY_TEMP_DIR")
+    if len(sys.argv) != 4 or sys.argv[3] not in ("7.4", "7.5"):
+        raise SystemExit("usage: smart-replay-corpus.py GENERIC_SMARTCTL EMPTY_TEMP_DIR 7.4|7.5")
     output = Path(sys.argv[2])
     if not output.is_dir() or any(output.iterdir()):
         raise SystemExit("output must be an empty temporary directory")
-    run(Path(sys.argv[1]), output)
+    run(Path(sys.argv[1]), output, [int(part) for part in sys.argv[3].split(".")])

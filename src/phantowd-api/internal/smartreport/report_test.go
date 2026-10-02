@@ -18,25 +18,28 @@ func fixture(exit int, passed bool) string {
 
 func TestATAExitBitsAndAssessment(t *testing.T) {
 	// Synthetic exhaustive mapping, not proof of real transport/check coverage.
-	for exit := 0; exit < 256; exit++ {
-		t.Run(fmt.Sprint(exit), func(t *testing.T) {
-			o, err := Parse([]byte(fixture(exit, exit&8 == 0)), exit)
-			if err != nil {
-				t.Fatal(err)
-			}
-			wantState := Complete
-			if exit&7 != 0 {
-				wantState = Partial
-			}
-			wantAssessment := ReportedPass
-			if exit&8 != 0 {
-				wantAssessment = ReportedFail
-			}
-			wantFlags := Flags{exit&1 != 0, exit&2 != 0, exit&4 != 0, exit&8 != 0, exit&16 != 0, exit&32 != 0, exit&64 != 0, exit&128 != 0}
-			if o.State() != wantState || o.Assessment() != wantAssessment || o.Flags() != wantFlags {
-				t.Fatalf("wrong projection: %#v", o)
-			}
-		})
+	for _, version := range []string{"7,4", "7,5"} {
+		for exit := 0; exit < 256; exit++ {
+			t.Run(version+"/"+fmt.Sprint(exit), func(t *testing.T) {
+				input := strings.Replace(fixture(exit, exit&8 == 0), `"version":[7,4]`, `"version":[`+version+`]`, 1)
+				o, err := Parse([]byte(input), exit)
+				if err != nil {
+					t.Fatal(err)
+				}
+				wantState := Complete
+				if exit&7 != 0 {
+					wantState = Partial
+				}
+				wantAssessment := ReportedPass
+				if exit&8 != 0 {
+					wantAssessment = ReportedFail
+				}
+				wantFlags := Flags{exit&1 != 0, exit&2 != 0, exit&4 != 0, exit&8 != 0, exit&16 != 0, exit&32 != 0, exit&64 != 0, exit&128 != 0}
+				if o.State() != wantState || o.Assessment() != wantAssessment || o.Flags() != wantFlags {
+					t.Fatalf("wrong projection: %#v", o)
+				}
+			})
+		}
 	}
 }
 
@@ -105,7 +108,9 @@ func TestRejectInvalidAndAmbiguousReports(t *testing.T) {
 		{"missing-support-field", strings.Replace(good, `"enabled":true`, `"other":true`, 1), 0, ErrInvalid},
 		{"no-assessment-success", strings.Replace(good, `,"smart_status":{"passed":true}`, "", 1), 0, ErrInvalid},
 		{"new-format", strings.Replace(good, `[1,0]`, `[2,0]`, 1), 0, ErrUnsupportedFormat},
-		{"new-version", strings.Replace(good, `[7,4]`, `[7,5]`, 1), 0, ErrUnsupportedFormat},
+		{"old-version", strings.Replace(good, `[7,4]`, `[7,3]`, 1), 0, ErrUnsupportedFormat},
+		{"new-version", strings.Replace(good, `[7,4]`, `[7,6]`, 1), 0, ErrUnsupportedFormat},
+		{"new-major", strings.Replace(good, `[7,4]`, `[8,0]`, 1), 0, ErrUnsupportedFormat},
 		{"patch-version", strings.Replace(good, `[7,4]`, `[7,4,1]`, 1), 0, ErrInvalid},
 		{"pre-release", strings.Replace(good, `"pre_release":false`, `"pre_release":true`, 1), 0, ErrUnsupportedFormat},
 		{"bytes-limit", strings.Repeat(" ", MaxBytes) + good, 0, ErrInvalid},
@@ -114,16 +119,19 @@ func TestRejectInvalidAndAmbiguousReports(t *testing.T) {
 		{"string-limit", strings.Replace(good, `"text"`, `"`+strings.Repeat("x", maxString+1)+`"`, 1), 0, ErrInvalid},
 		{"key-limit", strings.Replace(good, `"ignored"`, `"`+strings.Repeat("x", maxKey+1)+`"`, 1), 0, ErrInvalid},
 	}
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			o, err := Parse([]byte(tc.input), tc.exit)
-			if !errors.Is(err, tc.want) || o != (Observation{}) {
-				t.Fatalf("non-atomic refusal: %#v %v", o, err)
-			}
-			if err.Error() != tc.want.Error() {
-				t.Fatal("non-redacted error")
-			}
-		})
+	for _, version := range []string{"7,4", "7,5"} {
+		for _, tc := range cases {
+			t.Run(version+"/"+tc.name, func(t *testing.T) {
+				input := strings.Replace(tc.input, `"version":[7,4`, `"version":[`+version, 1)
+				o, err := Parse([]byte(input), tc.exit)
+				if !errors.Is(err, tc.want) || o != (Observation{}) {
+					t.Fatalf("non-atomic refusal: %#v %v", o, err)
+				}
+				if err.Error() != tc.want.Error() {
+					t.Fatal("non-redacted error")
+				}
+			})
+		}
 	}
 }
 
@@ -164,6 +172,7 @@ func TestRedactionAndInputNotRetained(t *testing.T) {
 
 func FuzzParse(f *testing.F) {
 	f.Add([]byte(fixture(0, true)), 0)
+	f.Add([]byte(strings.Replace(fixture(0, true), `"version":[7,4]`, `"version":[7,5]`, 1)), 0)
 	f.Add([]byte(fixture(12, false)), 12)
 	f.Add([]byte(`{"json_format_version":[1,0],"smartctl":{"version":[7,4],"pre_release":false,"exit_status":2}}`), 2)
 	f.Fuzz(func(t *testing.T, data []byte, exit int) {

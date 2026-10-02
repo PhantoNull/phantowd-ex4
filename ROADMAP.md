@@ -1150,17 +1150,23 @@ not host/QEMU progress.
   progress and deduplicated alerts. A SMART pass is not an integrity guarantee.
   - **M8.5a — Report semantics (partial implementation).** The internal
     [offline parser](src/phantowd-api/internal/smartreport/README.md) projects
-    bounded smartctl 7.4 / JSON 1.0 ATA reports into fixed states. Match the
+    bounded smartctl 7.4/7.5 / JSON 1.0 ATA reports into fixed states. Match the
     embedded status to the separate process exit; preserve collection errors,
     reported status and current/historical flags independently. Reject
     ambiguous/inconsistent input atomically. Host/fuzz and synthetic ARMv5 tests
     are not device, transport or executable qualification. A separate
-    [native producer oracle](support/SMART-REPLAY.md) runs actual upstream 7.4
-    with the generic backend and seven synthetic ATA stdin transcripts, including
+    [native producer oracle](support/SMART-REPLAY.md) runs actual upstream 7.4/7.5
+    with the generic backend and seven synthetic ATA stdin transcripts per release, including
     exit-zero disabled and partial failing status. This is not an ARM producer
     or physical collector test. No device commands,
     public endpoint or installed collector exist yet. Newer tool/schema profiles
     need upstream review and attributed generated reports before selection.
+    The current QEMU cross toolchain has C++ disabled. An actual ARM producer
+    requires enabling that dependency and rebuilding the complete system, then
+    checking ABI/runtime/footprint and running the generic fixture in QEMU.
+    Retire the obsolete generated output, reuse downloads/bounded ccache and
+    requalify the existing guest/service tests; do not add a daemon or physical
+    collector authority as a side effect of that prerequisite.
   - **M8.5b — Trusted collection.** Bind each report to the retained disk's
     generation and recheck it before publication; refuse replacement, disappearance,
     duplicate identity and stale observations. Review a separate least-privilege

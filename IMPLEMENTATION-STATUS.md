@@ -173,6 +173,19 @@ authority or installed binary is added. This qualifies native synthetic
 producer compatibility, not physical/ARM transport, standby or full integration
 of this follow-up. See [scope and invocation](support/SMART-REPLAY.md).
 
+The subsequent profile update separately verifies the current stable 7.5 release
+archive/hash and native producer, then admits only exact release 7.4/7.5 with
+JSON 1.0. The original 7.5 corpus fails before the allowlist change and passes
+after; the 7.4 producer remains green. Both profiles get all 256 synthetic exit
+projections and malformed/contradictory-input refusals, including older/future/
+major/patch/prerelease rejection. Windows API/UI, pinned Linux ordinary/QEMU
+vet/all API race and 10,000 fuzz executions pass; the updated parser passes on
+ARMv5 with base hashes unchanged. None of these runs executes smartctl on ARM.
+The current toolchain has C++ disabled, no cross g++/cc1plus/libstdc++; actual
+ARM producer testing requires a complete C++-enabled rebuild, bounded cache
+transition and guest/service requalification. No such rebuild or collector is
+claimed by this profile update; no obsolete cache was deleted merely to test JSON.
+
 Percentages are **engineering planning estimates**, not measured test coverage,
 probabilities of success, release readiness, or a delivery-date promise. Credit
 includes source, negative tests and fixture integration; the remaining scope
