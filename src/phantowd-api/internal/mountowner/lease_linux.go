@@ -15,11 +15,12 @@ import (
 // MountedVolumeSetLease retains one lease for every member of a fixed mounted
 // volume roster. It is process-local authority and cannot be serialized.
 type MountedVolumeSetLease struct {
-	mu      sync.Mutex
-	closed  bool
-	set     *MountedVolumeSet
-	leases  map[string]*Lease
-	ordered []*Lease
+	mu       sync.Mutex
+	closed   bool
+	set      *MountedVolumeSet
+	evidence MountedVolumeSetEvidence
+	leases   map[string]*Lease
+	ordered  []*Lease
 }
 
 // Acquire atomically observes the complete fixed roster and retains a lease
@@ -48,7 +49,8 @@ func (s *MountedVolumeSet) Acquire(ctx context.Context) (*MountedVolumeSetLease,
 		return nil, MountedVolumeSetEvidence{}, err
 	}
 	result := &MountedVolumeSetLease{
-		set: s, leases: make(map[string]*Lease, len(s.members)), ordered: make([]*Lease, 0, len(s.members)),
+		set: s, evidence: evidence, leases: make(map[string]*Lease, len(s.members)),
+		ordered: make([]*Lease, 0, len(s.members)),
 	}
 	for _, member := range s.members {
 		if ctx.Err() != nil {
@@ -68,6 +70,51 @@ func (s *MountedVolumeSet) Acquire(ctx context.Context) (*MountedVolumeSetLease,
 		return nil, MountedVolumeSetEvidence{}, err
 	}
 	return result, evidence, nil
+}
+
+// Verify revalidates every member of the exact roster while all Owner locks
+// are held. It succeeds only while the complete evidence remains identical to
+// the evidence captured when this lease was issued. It opens no descriptors
+// and never repairs, releases or reacquires authority.
+func (l *MountedVolumeSetLease) Verify() (MountedVolumeSetEvidence, error) {
+	if l == nil || l.set == nil {
+		return MountedVolumeSetEvidence{}, ErrUnavailable
+	}
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	if l.closed {
+		return MountedVolumeSetEvidence{}, ErrUnavailable
+	}
+	s := l.set
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for _, owner := range s.lockOrder {
+		owner.mu.Lock()
+	}
+	defer func() {
+		for index := len(s.lockOrder) - 1; index >= 0; index-- {
+			s.lockOrder[index].mu.Unlock()
+		}
+	}()
+
+	evidence, err := s.observeLocked()
+	if err != nil {
+		return MountedVolumeSetEvidence{}, err
+	}
+	if evidence.generation != l.evidence.generation || evidence.fingerprint != l.evidence.fingerprint ||
+		len(l.ordered) != len(s.members) {
+		return MountedVolumeSetEvidence{}, ErrReview
+	}
+	for _, member := range s.members {
+		child := l.leases[member.volumeID]
+		if child == nil || child.closed {
+			return MountedVolumeSetEvidence{}, ErrUnavailable
+		}
+		if _, active := member.owner.leases[child]; !active {
+			return MountedVolumeSetEvidence{}, ErrUnavailable
+		}
+	}
+	return evidence, nil
 }
 
 // rollbackLocked requires all Owners in set.lockOrder to be locked.

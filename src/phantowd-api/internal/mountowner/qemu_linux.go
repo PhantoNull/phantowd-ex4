@@ -31,6 +31,8 @@ const (
 	QEMUMDStackFixtureVolumeID = "qemu-md-stack"
 )
 
+var errQEMUExpectedMountedOwnerReview = errors.New("QEMU fixture intentionally quarantined its mounted owner")
+
 // RunQEMUFixture exercises real bind-mount operations only against the
 // synthetic ext2 volume in the disposable Versatile PB QEMU guest. It is
 // absent from normal builds and deliberately rejects physical EX4 hardware.
@@ -66,8 +68,154 @@ func RunQEMUFixture(source string) error {
 	if err := exerciseSourceReplacementRace(source); err != nil {
 		return fmt.Errorf("mount source replacement race: %w", err)
 	}
+	if err := exerciseServiceHandoff(source); err != nil {
+		return fmt.Errorf("service-volume handoff: %w", err)
+	}
 	fmt.Println("PHANTOWD_MOUNT_OWNER_READY qualified_before_lease=true identity_change_blocks_new_access=true owner_handles_revoked=true set_lease_identity_loss=true returned_anchor_no_reuse=true ambiguous_mount_no_retry=true ambiguous_unmount_no_retry=true mismatch_no_lease=true target_fd_anchored=true target_replacement_not_used=true late_target_race_pinned_object_only=true late_target_race_quarantined=true source_fd_anchored=true source_replacement_quarantined=true scope=disposable-qemu-only")
 	return nil
+}
+
+func exerciseServiceHandoff(source string) (result error) {
+	const (
+		handoffParent = "/run/phantowd/service-handoff"
+		handoffRoot   = handoffParent + "/mountowner-qemu"
+		markerName    = ".phantowd-service-handoff-proof"
+	)
+	if source != qemuFixtureSource {
+		return errors.New("service handoff requires the fixed disposable ext2 source")
+	}
+	if err := os.MkdirAll(handoffParent, 0711); err != nil {
+		return err
+	}
+	if err := os.Chmod("/run/phantowd", 0711); err != nil {
+		return err
+	}
+	if err := os.Chmod(handoffParent, 0711); err != nil {
+		return err
+	}
+	if info, err := os.Lstat(handoffRoot); err == nil || !errors.Is(err, os.ErrNotExist) {
+		if err == nil || info != nil {
+			return errors.New("service-handoff QEMU root already exists")
+		}
+		return err
+	}
+	if err := os.Mkdir(handoffRoot, 0711); err != nil {
+		return err
+	}
+	markerPath := source + "/" + markerName
+	marker, err := os.OpenFile(markerPath, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0644)
+	if err != nil {
+		_ = os.Remove(handoffRoot)
+		return errors.New("could not create the disposable handoff marker on QEMU ext2")
+	}
+	if _, err := marker.WriteString("qualified-source\n"); err != nil {
+		_ = marker.Close()
+		_ = os.Remove(markerPath)
+		_ = os.Remove(handoffRoot)
+		return errors.New("could not write the disposable handoff marker")
+	}
+	if err := marker.Close(); err != nil {
+		_ = os.Remove(markerPath)
+		_ = os.Remove(handoffRoot)
+		return errors.New("could not close the disposable handoff marker")
+	}
+	var handoff *ServiceHandoff
+	handoffClosed := false
+	overMounted := false
+	defer func() {
+		if handoff != nil && !handoffClosed {
+			result = errors.Join(result, handoff.Close())
+		}
+		if overMounted {
+			if err := unix.Unmount(qemuPlannerMountAnchor, 0); err != nil {
+				result = errors.Join(result, errors.New("could not remove the exact QEMU source-anchor overmount"))
+			}
+		}
+		if err := os.Remove(markerPath); err != nil {
+			result = errors.Join(result, errors.New("could not remove the QEMU source marker"))
+		}
+		if err := os.Remove(handoffRoot); err != nil {
+			result = errors.Join(result, errors.New("could not remove the empty QEMU service-handoff root"))
+		}
+	}()
+
+	err = withQEMUMountedOwner(source, func(owner *Owner) (callbackErr error) {
+		defer func() {
+			if handoff != nil && !handoffClosed {
+				closeErr := handoff.Close()
+				if errors.Is(closeErr, ErrHandoffReview) && handoff.resourcesClosed {
+					handoffClosed = true
+				} else if closeErr != nil {
+					callbackErr = errors.Join(callbackErr, closeErr)
+				}
+			}
+			if overMounted {
+				if err := unix.Unmount(qemuPlannerMountAnchor, 0); err != nil {
+					callbackErr = errors.Join(callbackErr, errors.New("could not remove the QEMU source-anchor overmount during cleanup"))
+				} else {
+					overMounted = false
+				}
+			}
+		}()
+		set, err := newMountedVolumeSet([]string{qemuPlannerVolumeID}, []*Owner{owner})
+		if err != nil {
+			return errors.New("could not create the fixed QEMU mounted-volume roster")
+		}
+		handoff, err = NewServiceHandoff(handoffRoot, set, []string{qemuPlannerVolumeID})
+		if err != nil {
+			return errors.New("could not open the private QEMU service-handoff owner")
+		}
+		paths, err := handoff.Mount(contextBackground())
+		if err != nil || handoff.State() != ServiceHandoffActive {
+			return errors.Join(errors.New("qualified QEMU volume did not enter service handoff"), err)
+		}
+		bindings, err := paths.Bindings()
+		if err != nil || len(bindings) != 1 || bindings[0].VolumeID != qemuPlannerVolumeID ||
+			bindings[0].FilesystemUUID != qemuFixtureUUID || bindings[0].SourcePath != qemuPlannerMountAnchor ||
+			bindings[0].SourceMountID == 0 || bindings[0].Path != handoffRoot+"/"+qemuPlannerVolumeID {
+			return errors.New("service path did not retain the exact qualified source-volume tuple")
+		}
+		if data, err := os.ReadFile(bindings[0].Path + "/" + markerName); err != nil || string(data) != "qualified-source\n" {
+			return errors.New("handoff clone did not expose the marker from its qualified ext2 source")
+		}
+		owner.mu.Lock()
+		leaseCount := len(owner.leases)
+		owner.mu.Unlock()
+		if leaseCount != 1 || handoff.Verify() != nil {
+			return errors.New("service handoff did not retain and verify its complete roster lease")
+		}
+		if err := unix.Mount("/run", owner.target, "", unix.MS_BIND, ""); err != nil {
+			return errors.New("could not create the disposable source-anchor replacement")
+		}
+		overMounted = true
+		if !errors.Is(handoff.Verify(), ErrHandoffReview) || owner.State() != StateReviewRequired {
+			return errors.New("source-anchor substitution did not quarantine the handoff and its Owner")
+		}
+		if data, err := os.ReadFile(bindings[0].Path + "/" + markerName); err != nil || string(data) != "qualified-source\n" {
+			return errors.New("service pathname followed the replaced source anchor instead of its cloned mount")
+		}
+		if _, err := handoff.Paths(); !errors.Is(err, ErrHandoffUnavailable) {
+			return errors.New("quarantined service handoff issued a fresh path capability")
+		}
+		closeErr := handoff.Close()
+		if !errors.Is(closeErr, ErrHandoffReview) || handoff.State() != ServiceHandoffReview || !handoff.resourcesClosed {
+			return errors.New("explicit cleanup detached the exact handoff but cleared review or leaked resources")
+		}
+		handoffClosed = true
+		if _, err := os.Lstat(bindings[0].Path); !errors.Is(err, os.ErrNotExist) {
+			return errors.New("explicit handoff cleanup left the service-volume path mounted or present")
+		}
+		if err := unix.Unmount(owner.target, 0); err != nil {
+			return errors.New("could not remove the exact source-anchor overmount after handoff cleanup")
+		}
+		overMounted = false
+		fmt.Println("PHANTOWD_SERVICE_HANDOFF_READY descriptor_clone=true target_bound=true source_replacement_not_used=true source_loss_quarantined=true set_lease_held=true explicit_unmount=true scope=disposable-qemu-only")
+		return errQEMUExpectedMountedOwnerReview
+	})
+	if err == errQEMUExpectedMountedOwnerReview {
+		return nil
+	}
+	return err
 }
 
 // WithQEMUMountedEvidence keeps a fixed-identity QEMU bind mount alive while a
@@ -214,6 +362,7 @@ func withQEMUMountedOwnerAt(source, target, volumeID, filesystemUUID string, req
 		return err
 	}
 	mounted := false
+	fixtureClosed := false
 	defer func() {
 		if mounted && f.owner.State() == StateMounted {
 			if drainErr := f.owner.Drain(); drainErr == nil {
@@ -226,7 +375,9 @@ func withQEMUMountedOwnerAt(source, target, volumeID, filesystemUUID string, req
 				result = errors.Join(result, drainErr)
 			}
 		}
-		result = errors.Join(result, f.close())
+		if !fixtureClosed {
+			result = errors.Join(result, f.close())
+		}
 	}()
 	if err := f.owner.Qualify(f.qualification); err != nil {
 		return err
@@ -239,6 +390,15 @@ func withQEMUMountedOwnerAt(source, target, volumeID, filesystemUUID string, req
 		return err
 	}
 	inspectErr := inspect(f.owner)
+	if inspectErr == errQEMUExpectedMountedOwnerReview {
+		closeErr := f.close()
+		fixtureClosed = true
+		mounted = false
+		if closeErr != nil {
+			return errors.Join(inspectErr, closeErr)
+		}
+		return inspectErr
+	}
 	verifyErr := f.owner.Verify()
 	drainErr := f.owner.Drain()
 	var unmountErr error

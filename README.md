@@ -67,7 +67,7 @@ not product operator recovery or EX4 qualification.
 M3.3 keeps the trusted MD v1.0 reader connected to discovery only through an
 internal provider exercised on disposable QEMU media; there is no manual
 endpoint that scans real disks. The M3.4 mount-owner is likewise an internal
-prototype, not connected to the broker, product startup, or service handoff.
+prototype, not connected to the broker or product startup.
 Its fixed-roster collector now locks and revalidates every declared Owner
 before returning an all-or-error snapshot; the M4.1 planner fixture contains
 one synthetic volume, so “complete” does not mean complete appliance
@@ -97,6 +97,19 @@ Windows API tests, Linux API tests and the local ARMv5 one-boot QEMU overlay
 pass. The QEMU run reused read-only cached inputs and temporary overlay space;
 it was not a clean Buildroot build, two-boot persistence run, or hosted CI run.
 No real EX4 media was touched, and this does not qualify physical EX4 behavior.
+
+The current-source M4.4 QEMU-only `ServiceHandoff` clones a qualified mount
+tree from its pinned source descriptor into a root-controlled volatile
+pathname, verifies the clone's mount identity, and retains a lease over the
+entire fixed volume roster. Replacing the original source anchor moves the
+Owner and handoff to `review-required`; the service pathname continues to
+refer to the original clone rather than following the replacement. This does
+not automatically revoke pathname access: a future service owner must stop
+all consumers before explicit handoff teardown. No production storage
+provider, daemon wiring, real-media use, or EX4 qualification exists. Local
+Windows/Linux API checks and the integrated ARMv5 standard smoke passed using
+existing read-only Buildroot inputs and temporary overlays; the two-boot and
+hosted exact-head checks are separate.
 
 A focused local ARMv5 QEMU check now compares mdadm-authored MD v1.0 metadata
 created on partition 1 of two synthetic GPT disk images, each backed by a

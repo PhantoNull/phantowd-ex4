@@ -335,6 +335,37 @@ func TestMountedVolumeSetLeaseRetainsAllOwnersUntilClosed(t *testing.T) {
 	}
 }
 
+func TestMountedVolumeSetLeaseVerifyRechecksExactRosterWithoutReopening(t *testing.T) {
+	owner, inspector := mountedOwnerFixtureForSet(t, "alpha", "/srv/phantowd/volumes/alpha",
+		"11111111-2222-3333-4444-555555555555", 101, 102, 17)
+	set, err := newMountedVolumeSet([]string{"alpha"}, []*Owner{owner})
+	if err != nil {
+		t.Fatal("create mounted-volume roster:", err)
+	}
+	lease, original, err := set.Acquire(context.Background())
+	if err != nil {
+		t.Fatal("acquire mounted-volume lease:", err)
+	}
+	opened, err := lease.OpenDirectory("alpha", ".")
+	if err != nil {
+		t.Fatal("open tracked directory through the lease:", err)
+	}
+	observed, err := lease.Verify()
+	if err != nil || observed.Generation() != original.Generation() || observed.Fingerprint() != original.Fingerprint() {
+		t.Fatalf("unchanged complete roster failed lease verification: evidence=%+v err=%v", observed, err)
+	}
+	inspector.wrongMount = true
+	if _, err := lease.Verify(); !errors.Is(err, ErrReview) || owner.State() != StateReviewRequired {
+		t.Fatalf("replaced source anchor was not quarantined: owner=%s err=%v", owner.State(), err)
+	}
+	if _, err := opened.Stat(); !errors.Is(err, os.ErrClosed) {
+		t.Fatalf("source-identity loss did not revoke the tracked directory: %v", err)
+	}
+	if err := lease.Close(); err != nil {
+		t.Fatal("release quarantined roster lease after its handles were revoked:", err)
+	}
+}
+
 func TestMountedVolumeSetLeaseRollsBackIfMemberChangesDuringAcquire(t *testing.T) {
 	alpha, _ := mountedOwnerFixtureForSet(t, "alpha", "/srv/phantowd/volumes/alpha",
 		"11111111-2222-3333-4444-555555555555", 101, 102, 17)

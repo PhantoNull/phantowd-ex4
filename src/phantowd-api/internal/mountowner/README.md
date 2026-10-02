@@ -47,23 +47,41 @@ the disposable Versatile PB guest.
 - Any uncertain mount/unmount result, changed identity, or failed postcondition
   transitions to `review-required`. The Owner blocks further access and does
   not retry or implicitly clean up. `Close` never unmounts.
+- `ServiceHandoff` is a Linux-only internal prototype. It requires an empty,
+  root-owned mode-0711 directory under `/run/phantowd/service-handoff`; every
+  ancestor must be root-owned, searchable by service identities and not
+  group/other writable. It pins the handoff root and retains one lease for the
+  complete fixed roster. Each cloned mount tree is created from the qualified
+  `O_PATH` source descriptor with `open_tree`/`move_mount`, then checked for a
+  distinct mount ID and matching filesystem identity. Opaque path bindings
+  are issued only while the source roster, root pathname and clone identities
+  still match. Teardown is explicit and may be called only after consumers
+  stop; it unmounts a clone once and only while its exact mount identity still
+  matches. It never falls back to source path resolution or lazy unmount.
 
 The state machine and Linux fake-driver tests are in `owner_linux.go` and
 `owner_linux_test.go`. The QEMU-only integration runs real bind mounts from the
-fixed synthetic ext2 fixture into a private `/run` directory. It covers the
+fixed synthetic ext2 fixture into private `/run` directories. It covers the
 normal lease/drain/unmount sequence, an overmount with handle revocation, lost
-mount/unmount results, and a mismatched filesystem. Teardown may unmount only
-the exact private fixture target it created. The current-source local ARMv5
-QEMU file-service fixture also acquires a roster lease, opens the qualified
-root directory and verifies that closing the group revokes the tracked handle.
-Linux tests exercise multiple members, drain exclusion, idempotent release and
-rollback when the second member changes during acquisition.
+mount/unmount results, and a mismatched filesystem. The M4.4 QEMU fixture also
+clones the mount from its qualified descriptor into the protected service
+pathname, holds the full roster lease, replaces the source anchor and verifies
+that the service pathname remains on the original clone while the Owner and
+handoff enter review. It then explicitly detaches the exact clone and tears
+down the quarantined synthetic Owner. The local ARMv5 standard smoke and Linux
+API/vet checks pass on the current source using the existing read-only
+Buildroot cache and temporary overlays. Linux tests exercise multiple
+members, drain exclusion, idempotent release and rollback when the second
+member changes during acquisition.
 
 The qualification token currently comes only from the QEMU fixture. There is
 no production qualifier or production roster source, no EX4-complete mounted-
-volume collector, mount-point allocator, durable volume identity, service handoff, or operator
-review/recovery workflow. Passing QEMU tests does not qualify physical EX4
-disks or authorize mounting user media.
+volume collector, mount-point allocator, durable volume identity, product
+service handoff/start/stop integration, or operator review/recovery workflow.
+The prototype does not stop pathname-consuming daemons when the source Owner
+enters review; a cloned handoff path can remain accessible until the future
+service owner stops consumers and explicitly closes it. Passing QEMU tests
+does not qualify physical EX4 disks or authorize mounting user media.
 
 See [M3.4 roadmap acceptance](../../../../ROADMAP.md#m3-complete-storage-discovery-and-volume-lifecycle) and the private
 dated evidence records in `doc/sources/m34-owner-lifecycle-local-qemu-2026-09-30.md`

@@ -264,6 +264,10 @@ while [ "$attempt" -lt 120 ]; do
             echo 'Missing trusted mount-owner lifecycle assertion' >&2
             exit 1
         fi
+        if ! grep -F 'PHANTOWD_SERVICE_HANDOFF_READY descriptor_clone=true target_bound=true source_replacement_not_used=true source_loss_quarantined=true set_lease_held=true explicit_unmount=true scope=disposable-qemu-only' "$log_file" >/dev/null; then
+            echo 'Missing storage-safe service-path handoff assertion' >&2
+            exit 1
+        fi
         if ! grep -F 'PHANTOWD_MOUNT_GRAPH_READY backing_members=2 actual_raid1=true readonly_mountinfo=true both_members_attributed=true unrelated_disk_clear=true cleanup=true scope=disposable-qemu-only' "$log_file" >/dev/null; then
             echo 'Missing real disposable RAID1 mount-graph assertion' >&2
             exit 1

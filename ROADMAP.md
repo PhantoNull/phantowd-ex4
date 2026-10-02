@@ -830,10 +830,26 @@ storage. No production roster provider or activation path exists.
   consultative only and does not block, mount or activate services. It is
   lexical policy evidence only: aliases, effective permissions and service
   behavior still require runtime qualification.
-- **M4.4 — Storage-safe handoff.** Document how pathname-consuming daemons remain
-  bound to the qualified volume after descriptor checks. Close replacement,
-  symlink and unmount windows; a held descriptor alone does not secure every
-  future daemon pathname lookup.
+- **M4.4 — Storage-safe handoff (prototype; not complete).** An internal Linux
+  `mountowner.ServiceHandoff` now requires a root-controlled volatile directory
+  under `/run/phantowd/service-handoff`, retains a lease over the complete
+  fixed roster, and clones each qualified mount tree from its pinned `O_PATH`
+  descriptor with `open_tree`/`move_mount`. It validates the handoff root and
+  ancestors, source tuple, distinct cloned mount ID and target identity before
+  issuing opaque service-path bindings; there is no path-based fallback. The
+  local ARMv5 standard QEMU smoke proves that replacing the source anchor
+  quarantines the Owner/handoff while the pathname stays on the original clone
+  instead of following the replacement, and that explicit teardown removes
+  only the known clone after the caller has stopped consumers. Windows/Linux
+  API checks and local ARMv5 QEMU pass using cached read-only Buildroot inputs.
+  This does **not** automatically revoke pathname consumers: the cloned mount
+  remains accessible until the service owner stops them and closes the
+  handoff. No trusted production storage-to-Owner constructor, daemon startup/
+  stop integration, service-user permission matrix, persistent handoff,
+  volume-loss supervision or EX4 media qualification exists. Continue by
+  integrating handoff lifetime with `processowner.Set` in QEMU, testing
+  non-root service access and loss/stop ordering, then design fail-closed
+  production storage construction. Do not enable real disks or services yet.
 - **M4.5 — Failure and shutdown.** Cover startup with absent disks, service crash,
   read-only/full volume, client reconnect, stale NFS handles, shutdown with open
   files and restart ordering. Distinguish safely unavailable from healthy.
