@@ -24,7 +24,7 @@ substantial redesign. Rows overlap and must not be added.
 | M1 — Durable state | Revision stores, intent/result journals, refusal of uncertain state, synthetic clean-reboot tests | Product state placement, bootstrap/schema migration, operator reconciliation, real durability/power-loss qualification | 30–45% |
 | M2 — Identities | Unix allocation/creation; Owner-bound Samba disabled-first enrollment, explicit enable/disable and account-session revocation in QEMU | Complete ownership/import inventory, product boot authority, account API/UI, retirement and recovery | 50–65% |
 | M3 — Storage lifecycle | Complete sysfs census, generation-bound read-only broker, GPT/ext/MD observations, collision checks, internal mount/lease fixtures | Persistent logical VolumeID resolver, global-use accounting, production qualifier/roster, supported layouts and EX4 media qualification | 40–55% |
-| M4 — SMB/NFS | Real loopback clients, desired policies, coherent candidate planner, process-set supervision, share-scoped cloned handoff | Private service namespace/restricted root, per-service grants/ACLs, transactional activation/recovery, production wiring and loss monitoring | 35–50% |
+| M4 — SMB/NFS | Real loopback clients, desired policies, coherent candidate planner, process-set supervision, share-scoped cloned handoff; independent isolated-child Owner fixtures | Trusted service-root/grant construction and isolation composition, daemon privilege profiles/ACLs, transactional activation/recovery, production wiring and loss monitoring | 35–50% |
 | M5 — Management UI/security | Development authentication/TLS, sessions/password changes, diagnostics dashboard and policy preview/editing | Product enrollment/reset/certificate lifecycle, authorized live workflows, recovery UX, browser/accessibility/security qualification | 25–40% |
 | M6 — Network/system | Diagnostic observations and brief two-port board research | Safe network transactions/rollback, supported dual-port modes, time/discovery, notifications and administrative jobs | 5–15% |
 | M7 — Board/cooling/recovery | DTS and bounded diskless RAM trials; passive MCU framing/catalog tooling | Qualified factory identities, fan/tach/fail-safe, LCD/LED/buttons/power/watchdog, SATA/USB and NAND recovery | 15–25% |
@@ -129,6 +129,15 @@ launches, real readiness/stop, and pre-launch/live input-loss quarantine. See it
 the existing handoff/Set/runtime and does not complete M4.4 or change the planning
 bands above. Runtime manifests, product root construction, leases, native
 daemon integration and kernel NFS authority remain unresolved.
+
+Published follow-up `aecfdb4` passed the full **local incremental** pinned
+Buildroot pipeline on 2026-10-02: Linux vet/unit/race/fuzz, target/legal/SBOM,
+native regular-image probe, standard ARMv5 smoke, MD v1.0 comparison, separate
+two-boot state fixture and native/Go isolated Owner fixture. All seven artifact
+hashes were rechecked. The standalone launcher and its Go fixture are injected
+only into a temporary test image, not installed by the firmware package.
+This does not qualify a clean build, hosted integration, physical EX4 or
+Samba/kernel-NFS activation. PR #54's exact-head hosted QEMU remains pending.
 
 1. **M0.3:** validate the feedback changes locally and in exact-head CI; retain
    failed-guest evidence. Investigate any recurrence before changing semantics.
