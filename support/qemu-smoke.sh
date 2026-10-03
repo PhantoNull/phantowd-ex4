@@ -336,6 +336,10 @@ while [ "$attempt" -lt "$smoke_timeout" ]; do
             echo 'Missing reader-bound registry change-history and restoration refusal assertion' >&2
             exit 1
         fi
+        if ! grep -F 'PHANTOWD_REGISTRY_CENSUS_READY complete_scope=true revisions_separate=true restored_registry_refused=true private=true continued_freshness=false activation=false scope=disposable-qemu-only' "$log_file" >/dev/null; then
+            echo 'Missing composed registry and full census restoration refusal assertion' >&2
+            exit 1
+        fi
         if ! grep -F 'PHANTOWD_M35_TWO_VOLUME_READY distinct_filesystems=true lost_volume_quarantined=true lost_handles_revoked=true healthy_group_lease_survived=true fresh_healthy_owner_lease=true roster_reacquire=all_or_error scope=disposable-qemu-only' "$log_file" >/dev/null; then
             echo 'Missing M3.5 two-volume lease-loss assertion' >&2
             exit 1

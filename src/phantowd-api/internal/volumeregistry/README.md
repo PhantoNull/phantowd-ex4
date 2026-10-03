@@ -169,3 +169,38 @@ the native overflow-record and bounded-drain sources are test-only. There is
 one additional private watch descriptor per Reader, no background worker and
 at most64KiB event reads per observation. Data remains point-in-time: privileged
 observer/namespace manipulation and global-use qualification are out of scope.
+
+## Registry/census composition contract (before implementation)
+
+1. **Input/authority:** one still-open protected Reader, a validated combined
+   desired policy and the trusted complete sysfs/proc readers. A private Linux
+   collector takes no prior caller snapshot, chosen root subset or request path.
+   Callers must own the policy slices and not mutate them during collection.
+2. **Transition:** observe registry, collect the entire mounted-ext census and
+   compute the existing private policy/backing reviews from that same pair.
+   Recheck the whole census, then recheck the original registry on its same
+   Reader before returning. Preserve separate revisions and scoped uncertainty.
+3. **Failure:** invalid input/cancellation, reader closure, any collection or
+   recheck uncertainty returns one redacted error and a zero composite result.
+   No retry, partial publication, automatic restore/adoption or source fallback.
+4. **Boundary:** read-only internal composition, not an atomic global snapshot,
+   continued freshness, lease, compatibility qualifier or planner/activation
+   authority. Existing pure reviewers retain their point-in-time contract.
+   No registry writer, product wiring, HTTP, mount/import or new privilege.
+5. **Acceptance:** native real registry plus existing complete synthetic census
+   exercises stable/empty/unknown/conflict, early refusal and restored registry,
+   root and unclaimed/excluded census drift, without partial results. Actual
+   ARMv5 existing disposable MD/tmpfs fixture exercises the composed fixed
+   reader and same-byte registry restoration during collection. Whole Windows,
+   native tagged race and standard/two-boot overlay; no persistent Docker input.
+
+The composition passes whole Windows preflight/cross-build, pinned Linux tagged
+vet/race and actual ARMv5 standard/two-boot overlay. Native real registry files
+exercise restoration during the first and second census, directory ABA, reader
+closure, cancellation, early refusal and root/excluded/unclaimed scope drift;
+zero composite output is mandatory on failure. The existing actual ARMv5 MD
+fixture confirms separate policy/registry revisions and missing-unselected
+backing, and restores its tmpfs registry during the second complete census:
+no review escapes. Original base artifacts remain unchanged. Kernel census
+observations remain sequential and namespace-scoped; this is not a product
+authority, event history for kernel topology or independent clean qualification.

@@ -115,8 +115,20 @@ Watch loss/overflow/bounded-drain uncertainty fails closed without retry.
 No schema, writer, HTTP, storage lease or physical/service authority is added;
 cached overlay, clean hosted integration and product qualification remain distinct.
 
-This snapshot
-distinguishes tested components from deployed product workflows. It is not
+The internal registry/census composition now validates combined desired policy
+before collection, derives private policy/backing reviews from the same
+protected registry and complete census, then rechecks both sources before
+publication. Invalid/canceled/closed inputs or drift return one redacted error
+and no partial result. Native tests cover same-byte restoration during either
+census pass, directory ABA, changed roots/excluded/unclaimed scope and early
+refusal. Whole Windows, pinned tagged Linux vet/race and actual ARMv5 standard/
+two-boot overlay pass. The guest observes its existing two-leaf MD fixture and
+refuses registry restoration during the second complete census. Source/base
+hashes agree and no persistent Docker resource is added. This is sequential
+read-only observation, not an atomic global snapshot, continued freshness,
+retained lease, compatibility qualifier, planner input or activation authority.
+
+This snapshot distinguishes tested components from deployed product workflows. It is not
 installation approval, a security certification, or an exhaustive line-by-line audit.
 
 PR #79 passed its own exact `a185e0f` host and QEMU/DTB checks, including

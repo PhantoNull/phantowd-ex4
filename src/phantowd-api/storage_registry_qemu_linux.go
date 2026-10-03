@@ -15,6 +15,7 @@ import (
 
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/fileservice"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/volumeregistry"
+	"github.com/PhantoNull/phantowd-ex4/phantowd-api/mountguard"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/nfsconfig"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/shareconfig"
 	"golang.org/x/sys/unix"
@@ -105,6 +106,35 @@ func exerciseQEMUVolumeRegistry(census trustedMountedExtCensus) error {
 	if _, err := json.Marshal(bound); err == nil {
 		return errors.New("private combined registry review serialized")
 	}
+	composed, err := collectRegisteredStorageReview(context.Background(), policy, r, os.DirFS("/sys"), os.DirFS("/proc"))
+	if err != nil || composed.policy.policyRevision != 7 || composed.policy.registryRevision != 1 ||
+		composed.backing.registryRevision != 1 || composed.policy.coverage != composed.backing.coverage ||
+		len(composed.policy.volumes) != 2 || len(composed.backing.volumes) != 2 ||
+		composed.policy.volumes[1].smbShareCount != 1 || composed.policy.volumes[1].nfsExportCount != 1 ||
+		composed.backing.volumes[1].kind != "md-device" || composed.backing.volumes[1].physicalDiskCount != 2 ||
+		composed.backing.volumes[0].kind != "" {
+		return errors.New("composed registry and actual complete census review failed")
+	}
+	if _, err := json.Marshal(composed); err == nil {
+		return errors.New("composed registry and census review serialized")
+	}
+	observations := 0
+	changed, err := collectRegisteredStorageReviewWith(context.Background(), policy, r, os.DirFS("/sys"), os.DirFS("/proc"),
+		func(anchors []string) (mountguard.MountedInventory, error) {
+			observations++
+			if observations == 3 {
+				// Restore only the existing tmpfs fixture while the second complete
+				// census is being checked. The reader must retain that mutation.
+				if os.WriteFile(file, []byte("{}"), 0600) != nil || os.WriteFile(file, data, 0600) != nil {
+					return mountguard.MountedInventory{}, volumeregistry.ErrObservation
+				}
+			}
+			return mountguard.ObserveMounted(anchors)
+		})
+	if err != volumeregistry.ErrObservation || observations != 4 || changed.policy.volumes != nil || changed.backing.volumes != nil {
+		return errors.New("registry restoration during full census published a partial review")
+	}
+	fmt.Println("PHANTOWD_REGISTRY_CENSUS_READY complete_scope=true revisions_separate=true restored_registry_refused=true private=true continued_freshness=false activation=false scope=disposable-qemu-only")
 	// Valid desired policies cannot reassign a registry ID or infer one by UUID.
 	policy.Shares.Volumes[0].FilesystemUUID = "88888888-9999-aaaa-bbbb-cccccccccccc"
 	conflict, err := reviewRegisteredPolicyVolumes(policy, snapshot, census)
