@@ -114,6 +114,21 @@ rebuild; actual board/build input changes remain covered.
 
 ## Roadmap comparison
 
+A subsequent M8.5b prerequisite adds `processowner.NewCapture` for one retained
+fixed command and one bounded regular read-only stdin, never a device. Complete
+Windows API/UI and pinned Linux process-owner/coordinator vet/race pass. Native
+negative tests cover separate stream bounds, signals vs genuine ordinary exits,
+input drift, forced cleanup, copied handles and persistent release uncertainty.
+The existing actual ARM926 generic-producer boot now also passes seven real
+capture/coordinator projections and a fake source-change/refusal case. Both
+success markers and unchanged original-base hash are required. Adding the second
+test binary first reproduced image-space exhaustion hidden by debugfs's zero
+exit; exact injected-byte comparison now fails before boot, and debug-free test
+binaries pass within the unchanged 80 MiB copy. This is focused local evidence,
+not new full-image/hosted qualification, authenticated runtime/device provenance,
+an isolated physical SMART collector, standby or product activation. All milestone
+bands and the first-release scope remain unchanged.
+
 The M8.5b internal generation-bound coordinator now passes the complete Windows
 API/UI preflight (Go 1.27.0), pinned Linux Go 1.26.6 vet/race checks and a
 25,000-execution publication fuzz campaign. Fake-backend state-machine tests

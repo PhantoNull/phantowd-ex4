@@ -45,6 +45,42 @@ network client without a separate redaction boundary. Non-Linux builds return
 
 ## Fixed restricted-root child
 
+### Single-use regular-stdin capture
+
+`NewCapture` fixes copied arguments/credentials and independently retains one
+root-owned executable and one regular `O_RDONLY` stdin descriptor. Inputs must
+start at offset zero; devices, directories, pipes, writable descriptors and
+oversized inputs are refused. The caller exclusively owns the shared stdin
+offset/content and serializes executable updates. Bounded before/after descriptor
+digests detect observed drift, including same-size changes within a filesystem
+timestamp tick; these are not authenticated release hashes or atomic snapshots.
+
+`Capture(ctx)` has no per-call paths/options. It executes the retained descriptor
+once, with a minimal environment, fixed credentials and an owned foreground
+process group. Separate stdout/stderr buffers enforce 64 KiB/4 KiB during copy;
+stdin is at most 64 KiB and executable observation at most 16 MiB. Normal wait
+joins output workers and distinguishes genuine 0..255 ordinary exit codes from
+signals; signals expose no report. Cancellation reuses the existing bounded
+group cleanup and publishes no result. Failed exec consumes the instance too.
+Observed input drift or canceled/uncertain ownership cannot authorize retry.
+
+`Settled` only verifies absence; `Close` releases pins only after verified
+absence and never signals/retries a process. Failed descriptor release remains
+an error on subsequent Close, without a second close attempt. Constructors and
+results are private/non-serializable; value-copied handles are refused.
+
+This is a trusted cooperative foreground-command primitive, not hostile-process
+containment, a privilege profile, authenticated runtime closure, restricted root,
+device provider or physical SMART authority. Nil credentials retain the caller's
+identity, as with `Spec`; product startup never calls this constructor. Native
+Linux tests cover bounds, signal/ordinary exits, drift, busy/canceled/forced
+cleanup and release uncertainty. The tagged `smartcapture` QEMU adapter runs the
+actual static generic-only producer through the SMART coordinator with regular
+synthetic traces and an explicitly fake census, including source-change refusal.
+No disk/ioctl, HTTP endpoint, scheduler or product service is enabled.
+
+### Retained service and isolated-child adapters
+
 `NewPinnedSet` is a separate internal constructor that copies fixed specs and
 duplicates corresponding read-only, root-owned executable descriptors. Start
 uses those pins directly rather than reopening a pathname; the constructor

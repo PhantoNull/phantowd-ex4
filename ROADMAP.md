@@ -1279,7 +1279,17 @@ not host/QEMU progress.
     diskless ARMv5 parser boot test these semantics with fake backends only;
     this supplies no executable/device provenance, streaming output bound,
     physical SMART authority or product startup. Implement the separately
-    reviewed fixed command boundary and trusted provider next. Do not add
+    reviewed fixed command boundary and trusted provider next. A separate
+    Linux single-use capture primitive now retains fixed code/regular-stdin
+    descriptors, copies options, observes bounded before/after drift digests,
+    stream-bounds stdout/stderr and distinguishes real ordinary exits/signals.
+    Host lifecycle tests and a test-only adapter in the existing ARM926 producer
+    boot pass seven genuine generic-producer projections and fake-source-change
+    refusal. This closes neither authenticated/isolated runtime nor device
+    provenance, ioctl, standby or physical qualification; no product startup
+    uses the primitive. Debug-free guest tests fit the existing copied image;
+    injected bytes are verified before boot even if debugfs reports success.
+    Do not add
     history/UI by treating this transient tuple as a stable media identity.
   - **M8.5c — Wake policy.** Specify exact no-check/device-detection behavior per
     tool and transport. Low-power skip must have explicit evidence; exit bit 1

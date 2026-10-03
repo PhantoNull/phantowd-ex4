@@ -1,6 +1,6 @@
 # Internal generation-bound SMART collection coordinator
 
-M8.5b prerequisite, **synthetic host/ARMv5 state-machine tests only**. This package runs
+M8.5b prerequisite, **synthetic host/ARMv5 fixtures only**. This package runs
 no process, opens no path/device, sends no ioctl and installs no service. Normal
 startup does not call it; there is no HTTP/RPC, scheduler, history or persistent
 write. It does not grant the metadata broker SMART authority.
@@ -30,7 +30,14 @@ deadline. Returned buffers transfer exclusively to the coordinator until return.
 The coordinator checks stdout<=64KiB/stderr<=4KiB **after return**; this is an
 acceptance bound, not proof that the backend limits allocation or kernel stalls.
 Context deadlines require backend cooperation; no goroutine pretends to cancel
-an uninterruptible device operation. The current backend is only a test fake.
+an uninterruptible device operation. State-machine tests use fakes. A separate
+opt-in `smartcapture` adapter uses the actual `processowner.NewCapture` and
+generic-only static producer in the existing ARM926 replay boot: fixed regular
+stdin, independent pins, genuine ordinary exit, stream-bounded stdout/stderr,
+settled process verification and seven report projections. An additional
+source-change case discards the genuine report and keeps review after restoration.
+Its source census/generation is explicitly invented; the adapter is test-only,
+not a device backend, authenticated runtime, isolated root or product service.
 
 After accepted capture, settled ownership is checked with a separate bounded
 one-second verification context, even when collection was canceled. Uncertain
@@ -47,8 +54,9 @@ paths and census token do not escape. Reported pass remains reported pass, not
 disk/data/RAID health. Partial reported failure and historical flags remain
 separate. There is no boot-persistent age or historical identity claim.
 
-Next implement/review the fixed command boundary and actual trusted provider,
-then test real producer/descriptor/exit/cleanup behavior in disposable QEMU.
+Next qualify the isolated fixed-command/runtime and actual trusted device provider.
+The regular-stdin replay proves process/exit/cleanup behavior for this synthetic
+fixture only; it does not establish physical ATA transport or ioctl authority.
 Only after collection/standby qualification add history, alerts, jobs and UI.
 Physical disks, thermal/recovery, self-test mutation and product activation
 remain separately gated. Host state-machine evidence is not device provenance.

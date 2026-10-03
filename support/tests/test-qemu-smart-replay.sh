@@ -75,20 +75,39 @@ python3 -B "$source_dir/support/tests/smart-replay-corpus.py" --traces "$scratch
 export GOPROXY=off GOTOOLCHAIN=local GOFLAGS='-mod=vendor -buildvcs=false -p=2' GOMAXPROCS=2
 export GOCACHE="$scratch/go-cache" GOPATH="$scratch/go-path"
 (cd "$source_dir/src/phantowd-api" && CGO_ENABLED=0 GOOS=linux GOARCH=arm GOARM=5 \
-    timeout --signal=TERM --kill-after=5 180 "$go_binary" test -tags smartreplay -c -trimpath \
+    timeout --signal=TERM --kill-after=5 180 "$go_binary" test -tags smartreplay -c -trimpath -ldflags '-s -w' \
     -o "$scratch/replay.test" ./internal/smartreport)
+(cd "$source_dir/src/phantowd-api" && CGO_ENABLED=0 GOOS=linux GOARCH=arm GOARM=5 \
+    timeout --signal=TERM --kill-after=5 180 "$go_binary" test -tags smartcapture -c -trimpath -ldflags '-s -w' \
+    -o "$scratch/capture.test" ./internal/smartcollect)
 rm -rf "$scratch/go-cache" "$scratch/go-path"
 cp "$base/rootfs.ext2" "$scratch/rootfs.ext2"
+echo "PHANTOWD_SMART_ARM_REPLAY_PAYLOAD_BYTES producer=$(wc -c <smartctl) parser=$(wc -c <"$scratch/replay.test") capture=$(wc -c <"$scratch/capture.test")"
+# debugfs can return zero after a failed allocation. Verify exact injected bytes
+# before booting; a successful command status alone is not injection evidence.
+inject_checked() (
+    input=$1
+    output=$2
+    "$debugfs" -w -R "write $input $output" "$scratch/rootfs.ext2" >"$scratch/inject.log" 2>&1
+    "$debugfs" -R "dump $output $scratch/injected-file" "$scratch/rootfs.ext2" >>"$scratch/inject.log" 2>&1
+    if ! cmp -s "$input" "$scratch/injected-file"; then
+        echo 'PHANTOWD_SMART_ARM_REPLAY_INJECTION_FAILED exact-bytes=false' >&2
+        tail -n 12 "$scratch/inject.log" >&2
+        exit 1
+    fi
+    rm -f "$scratch/injected-file"
+)
 "$debugfs" -w -R 'mkdir /usr/share/phantowd-smart-replay' "$scratch/rootfs.ext2" >/dev/null 2>&1
 for name in pass fail partial-fail partial-pass unsupported disabled empty; do
-    "$debugfs" -w -R "write $scratch/traces/$name.trace /usr/share/phantowd-smart-replay/$name.trace" "$scratch/rootfs.ext2" >/dev/null 2>&1
+    inject_checked "$scratch/traces/$name.trace" "/usr/share/phantowd-smart-replay/$name.trace"
 done
 for pair in "$scratch/smartmontools-7.5/smartctl phantowd-smartctl-replay" \
     "$scratch/replay.test phantowd-smart-replay-test" \
+    "$scratch/capture.test phantowd-smart-capture-test" \
     "$source_dir/support/tests/smart-replay-arm-init.sh phantowd-smart-replay-init"; do
     input=${pair%% *}
     output=${pair#* }
-    "$debugfs" -w -R "write $input /usr/sbin/$output" "$scratch/rootfs.ext2" >/dev/null 2>&1
+    inject_checked "$input" "/usr/sbin/$output"
     "$debugfs" -w -R "set_inode_field /usr/sbin/$output mode 0100755" "$scratch/rootfs.ext2" >/dev/null 2>&1
     "$debugfs" -w -R "set_inode_field /usr/sbin/$output uid 0" "$scratch/rootfs.ext2" >/dev/null 2>&1
     "$debugfs" -w -R "set_inode_field /usr/sbin/$output gid 0" "$scratch/rootfs.ext2" >/dev/null 2>&1
@@ -104,7 +123,8 @@ status=0
 wait "$child_pid" || status=$?
 child_pid=
 cr=$(printf '\r')
-if [ "$status" -ne 0 ] || ! grep -E "^PHANTOWD_SMART_ARM_REPLAY_READY scope=generic-synthetic-only version=7.5 cases=7${cr}?$" "$scratch/guest.log" >/dev/null; then
+if [ "$status" -ne 0 ] || ! grep -E "^PHANTOWD_SMART_ARM_REPLAY_READY scope=generic-synthetic-only version=7.5 cases=7${cr}?$" "$scratch/guest.log" >/dev/null || \
+    ! grep -E "^PHANTOWD_SMART_ARM_CAPTURE_READY scope=generic-synthetic-only source=fake cases=7${cr}?$" "$scratch/guest.log" >/dev/null; then
     printf 'PHANTOWD_SMART_ARM_REPLAY_RUNNER_FAILED exit=%s\n' "$status" >&2
     if [ -n "$failure_log" ]; then
         mkdir -p "$(dirname "$failure_log")"
@@ -116,6 +136,7 @@ fi
 grep -E "^PASS${cr}?$" "$scratch/guest.log" >/dev/null
 [ "$(grep -c '^PHANTOWD_SMART_ARM_PRODUCER case=' "$scratch/guest.log")" = 7 ]
 grep -E '^--- PASS: TestUpstreamReplayCorpus ' "$scratch/guest.log" >/dev/null
-grep -E '^PHANTOWD_SMART_ARM_(PRODUCER|REPLAY_READY)' "$scratch/guest.log"
+grep -E '^--- PASS: TestFixedProducerCapture ' "$scratch/guest.log" >/dev/null
+grep -E '^PHANTOWD_SMART_ARM_(PRODUCER|REPLAY_READY|CAPTURE_READY)' "$scratch/guest.log"
 [ "$(sha256sum "$base/rootfs.ext2" | awk '{print $1}')" = "$base_hash" ]
 echo 'PHANTOWD_SMART_ARM_REPLAY_BASE_UNCHANGED'
