@@ -53,8 +53,13 @@ two-boot overlay pass. The actual namespace may have zero nexthop objects:
 generated objects do not prove live nonempty kernel-group behavior. Guest
 self-test is root, not non-root ARM privilege qualification. All seven base
 hashes verify; the overlay changes a disposable regular-file image only,
-reusing kernel/packages/probe. No full image/SBOM rebuild, independent clean
-reproduction, hosted topic, physical interface or product qualification.
+reusing kernel/packages/probe. Subsequent complete cached integration on
+unchanged `cec1527` / tree `61a8391` passes all native/race/fixed-fuzz,
+package/rootfs/legal-info/SBOM, standard/MD/two-boot and launcher/Owner/loader/
+atomic/Samba/SMART guest stages. Independent seven hashes, actual resolved
+policy-routing kernel options and exact image/export/target API equality pass.
+This reuses one existing output/two volumes, not independent clean reproduction,
+hosted topic, physical interface or product qualification.
 
 The same ordered-semantics boundary includes correcting inline RTA_MULTIPATH:
 do not sort its members before comparing observations. Pinned fib_rebalance

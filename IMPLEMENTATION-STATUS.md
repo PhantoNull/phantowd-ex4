@@ -158,9 +158,15 @@ vet/race, actual UID1000/zero-capability capture/recheck/FD census, 5,000 mutati
 25,000-execution object/route fuzz, real workflow and 7 kernel/21 feedback tests
 pass. Actual ARMv5 kernel observation plus nonempty generated weighted-group
 assertions and clean two-boot overlay pass; seven base hashes verify and the
-base remains unchanged. This reuses the existing kernel/packages/probe, not a
-new full image/SBOM, independent clean reproduction, hosted topic or physical
-qualification. No live nonempty kernel-group campaign, evaluator, network
+base remains unchanged. A subsequent complete cached integration on unchanged
+`cec1527` (tree `61a8391`, five Markdown-only changes from `319a331`) also passes
+whole native/vet/race/fixed-fuzz, package/rootfs/legal-info/SBOM, regular-image
+probe and all standard/MD/two-boot/launcher/Owner/loader/atomic/Samba/SMART guest
+lanes. Independent post-run checks verify all seven exported hashes, resolved
+policy-routing kernel options and exact exported/image/target API bytes. One
+existing output and two fixed volumes are reused; temporary containers removed.
+This is cached local integration, not independent clean reproduction, hosted
+topic or physical qualification. No live nonempty kernel-group campaign, evaluator, network
 application, new privilege, HTTP or product startup. Planning bands unchanged.
 
 M6.1d adds two fixed strict IPv4/IPv6 routing-rule dumps to the existing private
