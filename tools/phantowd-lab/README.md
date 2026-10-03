@@ -128,12 +128,18 @@ with a detached raw 64-byte Ed25519 signature. The caller supplies a raw
 32-byte public key, the requested model/revision, and a directory containing
 the named payload files. The requested channel is explicit too, so a valid
 nightly signature cannot be mistaken for a stable-channel match. It rejects
-duplicate/unknown JSON fields, unsupported schema values, non-exact hardware
+duplicate/unknown/non-exact JSON fields, missing/null fields, wrong object/list
+shapes, invalid UTF-8/surrogate repair, unsupported schema values, non-exact hardware
 revision matches, unsafe artifact names, symlink/non-regular payloads, and
 size or SHA-256 mismatches. The key ID is the
 SHA-256 fingerprint of the supplied public key. Artifact reads happen only
 after the signature, key ID, schema, exact model/revision, and requested
 channel pass. Each file is capped at 1 GiB and the signed bundle at 2 GiB.
+The fixed schema structure is checked before Go's case-insensitive struct
+decoding: `Model_ID` is not `model_id`, including inside signed input. Canonical
+decoded key names may use valid JSON escaping. Hashing consumes at most the
+signed payload size plus one detection byte, even if the opened file grows;
+changed opened size, short/long reads and observed metadata drift fail closed.
 The report covers bytes read during that check only; a future device updater
 must verify again immediately before installation. Exit status is `0` only
 when the signature, metadata, target, and every artifact pass; `2` means a parsed

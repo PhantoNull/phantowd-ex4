@@ -41,6 +41,36 @@ func TestInspectDownloadsOnlySignedExactGitHubReleaseAssets(t *testing.T) {
 	}
 }
 
+func TestInspectSignedMalformedStructureNeverDownloadsPayload(t *testing.T) {
+	for _, mutation := range []struct{ name, old, replacement string }{
+		{"root case alias", `"model_id":`, `"Model_ID":`},
+		{"artifact case alias", `"size_bytes":`, `"SIZE_BYTES":`},
+		{"case duplicate", `"model_id":"wd-my-cloud-ex4"`, `"model_id":"other-model","MODEL_ID":"wd-my-cloud-ex4"`},
+		{"artifact missing", `"role":"swupdate-bundle",`, ``},
+		{"null list", `"hardware_revisions":["board-r1"]`, `"hardware_revisions":null`},
+		{"wrong shape", `"model_id":"wd-my-cloud-ex4"`, `"model_id":{"model_id":"wd-my-cloud-ex4"}`},
+		{"surrogate repair", `"model_id":"wd-my-cloud-ex4"`, `"model_id":"wd-\ud800"`},
+	} {
+		t.Run(mutation.name, func(t *testing.T) {
+			fixture := newReleaseFixture(t, []byte("synthetic payload"))
+			original := string(fixture.manifest)
+			fixture.manifest = []byte(strings.Replace(original, mutation.old, mutation.replacement, 1))
+			if string(fixture.manifest) == original {
+				t.Fatal("HTTP regression mutation did not apply")
+			}
+			seed := sha256.Sum256([]byte("githubrelease deterministic synthetic fixture key"))
+			fixture.signature = ed25519.Sign(ed25519.NewKeyFromSeed(seed[:]), fixture.manifest)
+			fixture.serve(t, true, nil)
+			result, err := Inspect(context.Background(), fixture.options())
+			if err == nil || !result.Verification.SignatureValid || result.Verification.Valid || result.Verification.ArtifactsChecked ||
+				fixture.manifestRequests != 1 || fixture.signatureRequests != 1 || fixture.payloadRequests != 0 {
+				t.Fatalf("malformed signed metadata crossed payload gate: report=%+v requests=%d/%d/%d err=%v",
+					result.Verification, fixture.manifestRequests, fixture.signatureRequests, fixture.payloadRequests, err)
+			}
+		})
+	}
+}
+
 func TestInspectInstallerPreflightBeforePayloadDownload(t *testing.T) {
 	for _, test := range []struct {
 		version     string
