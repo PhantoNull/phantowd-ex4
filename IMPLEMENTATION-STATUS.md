@@ -4,10 +4,16 @@
 # Implementation status
 
 Code audit: **2026-10-03**, integrated `develop` baseline
-`dda8624351a77e9de5711d147eedd30058c9be1b` (PR #71).
+`43711023ff8dcd050ec1cd4298e15abe784a19e0` (PR #72).
 Use [ROADMAP.md](ROADMAP.md) for the acceptance specification. This snapshot
 distinguishes tested components from deployed product workflows. It is not
 installation approval, a security certification, or an exhaustive line-by-line audit.
+
+PR #72 passed exact `1dca772` host and QEMU/DTB checks and merged as `4371102`;
+the expected, checked and integrated complete tree is identical. Its local and
+remote topic was retired with exact-head guards and no linked-worktree changes.
+This qualifies desired-network and link/address component integration, not the
+separate configured-route/routing-rule increments below or product networking.
 
 PR #70 passed exact head `1178820` host and QEMU checks and merged as
 `dd49e4` with complete qualified/expected/integrated tree equality. Its topic
@@ -138,6 +144,25 @@ removed. QEMU-only experiment paths no longer trigger an unchanged EX4 kernel
 rebuild; actual board/build input changes remain covered.
 
 ## Roadmap comparison
+
+M6.1d adds two fixed strict IPv4/IPv6 routing-rule dumps to the existing private
+collector. A generic request first reproduced an extra family128; a failing
+request-shape regression now requires the actual IP family in the packet and
+response-family checks. No silent skipping or arbitrary caller selectors.
+Rule order within a family and duplicate multiplicity are preserved, including
+equal priorities; only cross-family order is normalized. Source/destination,
+table/priority/action/flags, interface references and bounded attribute/range
+shape are checked. Detached, complex or unknown semantics remain explicitly
+unresolved; summary exposes counts only. Final native package vet/race, actual
+UID1000/zero-capability capture/recheck/FD counts, 5,000 rule mutations, a bounded
+1,000-execution rule fuzz campaign, 7 kernel-input and 20 feedback contracts,
+lint/ShellCheck and Windows preflight/ARMv5 cross-compilation pass. The QEMU
+kernel did not have FIB_RULES: the existing networked-storage fragment now
+requests IPv4/IPv6 multiple tables, with resolved-kernel audit and normal
+fingerprint-triggered Linux refresh in the SAME workspace. Complete new-kernel
+Buildroot/ARMv5 qualification is still pending; the prior overlay cannot qualify
+these inputs. No routing evaluation, application, HTTP, product startup or EX4
+authority. Planning bands unchanged.
 
 M6.1c local follow-up extends the same private namespace/socket collector to
 configured IPv4/IPv6 FIB routes in all returned tables. Checked prefixes,

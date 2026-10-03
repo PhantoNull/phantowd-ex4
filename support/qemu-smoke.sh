@@ -142,7 +142,7 @@ while [ "$attempt" -lt "$smoke_timeout" ]; do
             echo "Missing generated Samba policy parser assertion" >&2
             exit 1
         fi
-        if ! grep -F 'PHANTOWD_NETWORK_INVENTORY_READY kernel=true repeated=true routes=true fib_only=true counts_redacted=true json_refused=true apply=false scope=qemu-namespace-only' "$log_file" >/dev/null; then
+        if ! grep -F 'PHANTOWD_NETWORK_INVENTORY_READY kernel=true repeated=true routes=true fib_only=true rules=true counts_redacted=true json_refused=true apply=false scope=qemu-namespace-only' "$log_file" >/dev/null; then
             echo "Kernel network inventory self-test marker missing" >&2
             exit 1
         fi

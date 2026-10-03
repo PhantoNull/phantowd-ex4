@@ -22,6 +22,8 @@ type dump struct {
 	addresses        []ipAddress
 	routes           []route
 	configuredRoutes bool
+	rules            []rule
+	family           byte
 }
 
 // consume validates complete datagrams; socket sender/truncation checks precede
@@ -91,6 +93,15 @@ func (d *dump) consume(data []byte) error {
 				return ErrUnavailable
 			}
 			d.routes = append(d.routes, r)
+		case unix.RTM_NEWRULE:
+			if len(d.rules) >= MaxRules {
+				return ErrUnavailable
+			}
+			r, err := parseRule(payload)
+			if err != nil || r.family != d.family {
+				return ErrUnavailable
+			}
+			d.rules = append(d.rules, r)
 		default:
 			return ErrUnavailable
 		}

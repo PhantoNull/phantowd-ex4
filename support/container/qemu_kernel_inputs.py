@@ -22,6 +22,8 @@ REQUIRED = (
     "CONFIG_EXT4_FS=y", "CONFIG_EXT4_FS_POSIX_ACL=y",
     "CONFIG_TMPFS_POSIX_ACL=y", "CONFIG_MD=y", "CONFIG_MD_RAID1=y",
     "# CONFIG_MD_AUTODETECT is not set",
+    "CONFIG_IP_ADVANCED_ROUTER=y", "CONFIG_IP_MULTIPLE_TABLES=y",
+    "CONFIG_IPV6_MULTIPLE_TABLES=y", "CONFIG_FIB_RULES=y",
 )
 
 
@@ -60,7 +62,8 @@ def audit(config):
         observed = [line for line in lines if line.startswith(key + "=")
                     or line == f"# {key} is not set"]
         if observed != [expected]:
-            raise ValueError(f"QEMU storage kernel requires {expected}")
+            raise ValueError(
+                f"QEMU storage/network kernel requires {expected}")
 
 
 def main():

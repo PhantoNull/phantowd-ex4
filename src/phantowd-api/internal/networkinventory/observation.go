@@ -17,6 +17,7 @@ import (
 const MaxInterfaces = 64
 const MaxAddresses = 256
 const MaxRoutes = 512
+const MaxRules = 256
 const maxNextHops = 32
 
 var ErrUnavailable = errors.New("network observation unavailable")
@@ -41,6 +42,16 @@ type snapshot struct {
 	links     []link
 	addresses []ipAddress
 	routes    []route
+	rules     []rule
+}
+
+type rule struct {
+	family, action, tos            uint8
+	destination, source            netip.Prefix
+	table, priority, target, flags uint32
+	input, output                  string
+	semantic                       [32]byte
+	unresolved                     bool
 }
 
 // Digests retain bounded, canonical wire semantics privately. They are equality
@@ -75,6 +86,8 @@ type Summary struct {
 	Addresses        int
 	Routes           int
 	UnresolvedRoutes int
+	Rules            int
+	UnresolvedRules  int
 }
 
 func (o *Observation) Summary() (Summary, error) {
@@ -87,7 +100,13 @@ func (o *Observation) Summary() (Summary, error) {
 			unresolved++
 		}
 	}
-	return Summary{Interfaces: len(o.state.links), Addresses: len(o.state.addresses), Routes: len(o.state.routes), UnresolvedRoutes: unresolved}, nil
+	unresolvedRules := 0
+	for _, r := range o.state.rules {
+		if r.unresolved {
+			unresolvedRules++
+		}
+	}
+	return Summary{Interfaces: len(o.state.links), Addresses: len(o.state.addresses), Routes: len(o.state.routes), UnresolvedRoutes: unresolved, Rules: len(o.state.rules), UnresolvedRules: unresolvedRules}, nil
 }
 func (Observation) MarshalJSON() ([]byte, error) { return nil, ErrUnavailable }
 func (*Observation) UnmarshalJSON([]byte) error  { return ErrUnavailable }
@@ -127,13 +146,14 @@ func observe(ctx context.Context, r reader) (*Observation, error) {
 }
 
 func normalize(s *snapshot) error {
-	if len(s.links) == 0 || len(s.links) > MaxInterfaces || s.addresses == nil || len(s.addresses) > MaxAddresses || s.routes == nil || len(s.routes) > MaxRoutes {
+	if len(s.links) == 0 || len(s.links) > MaxInterfaces || s.addresses == nil || len(s.addresses) > MaxAddresses || s.routes == nil || len(s.routes) > MaxRoutes || s.rules == nil || len(s.rules) > MaxRules {
 		return ErrUnavailable
 	}
 	// Clone provider-owned data so a result does not alias an injected reader.
 	s.links = slices.Clone(s.links)
 	s.addresses = slices.Clone(s.addresses)
 	s.routes = slices.Clone(s.routes)
+	s.rules = slices.Clone(s.rules)
 	slices.SortFunc(s.links, func(a, b link) int {
 		if a.index < b.index {
 			return -1
@@ -191,6 +211,36 @@ func normalize(s *snapshot) error {
 			return ErrUnavailable
 		}
 	}
+	// Family dump order is irrelevant. Within a family, equal-priority ordering
+	// and even duplicate multiplicity affect kernel policy; never digest-sort it.
+	slices.SortStableFunc(s.rules, func(a, b rule) int { return int(a.family) - int(b.family) })
+	for i := range s.rules {
+		r := &s.rules[i]
+		if !r.destination.IsValid() || !r.source.IsValid() || r.destination != r.destination.Masked() || r.source != r.source.Masked() || r.source.Addr().BitLen() != r.destination.Addr().BitLen() {
+			return ErrUnavailable
+		}
+		if i > 0 && s.rules[i-1].family == r.family && s.rules[i-1].priority > r.priority {
+			return ErrUnavailable
+		}
+		for _, ref := range []struct {
+			name     string
+			detached uint32
+		}{{r.input, 8}, {r.output, 16}} {
+			if ref.name == "" {
+				continue
+			}
+			found := false
+			for _, l := range s.links {
+				found = found || l.name == ref.name
+			}
+			if !found {
+				if r.flags&ref.detached == 0 {
+					return ErrUnavailable
+				}
+				r.unresolved = true
+			}
+		}
+	}
 	return nil
 }
 
@@ -235,7 +285,7 @@ func compareAddress(a, b ipAddress) int {
 }
 func sameAddressIdentity(a, b ipAddress) bool { return compareAddress(a, b) == 0 }
 func equal(a, b snapshot) bool {
-	return slices.Equal(a.links, b.links) && slices.Equal(a.addresses, b.addresses) && slices.EqualFunc(a.routes, b.routes, func(a, b route) bool {
+	return slices.Equal(a.links, b.links) && slices.Equal(a.addresses, b.addresses) && slices.Equal(a.rules, b.rules) && slices.EqualFunc(a.routes, b.routes, func(a, b route) bool {
 		return a.destination == b.destination && a.source == b.source && a.table == b.table && a.metric == b.metric && a.input == b.input && a.output == b.output && a.flags == b.flags && a.protocol == b.protocol && a.scope == b.scope && a.kind == b.kind && a.tos == b.tos && a.gateway == b.gateway && a.preferred == b.preferred && a.via == b.via && a.semantic == b.semantic && a.unresolved == b.unresolved && slices.Equal(a.next, b.next)
 	})
 }

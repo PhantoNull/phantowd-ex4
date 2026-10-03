@@ -3,6 +3,41 @@
 
 # Private kernel network observation — M6.1b/M6.1c task contract
 
+## M6.1d routing-rule task contract
+
+Extend the same fixed socket/namespace boundary with two strict GETRULE requests,
+fixed AF_INET and AF_INET6; no caller/table/interface selectors or mutation.
+Require complete IPv4/IPv6 rule observations in each
+sample; missing subsystem, filtered/interrupted/truncated/error replies refuse
+the whole observation. Keep family/header, source/destination, priority/table,
+action/flags, interface names, marks, UID/port ranges, suppressors and unknown
+attributes private. Check framing/scalar/range/name shape; unresolved/detached
+references and unknown semantics remain explicitly unresolved, not usable policy.
+
+Bound rule count to 256 and retain the existing byte/time budget. Attribute order
+is irrelevant, but kernel rule order within each family (especially equal
+priorities) is meaningful: preserve order and duplicate multiplicity. Only
+cross-family dump ordering is normalized. Two samples must match. Summary adds
+rule and unresolved counts only, no paths/IDs/selectors or HTTP. Rule observation
+is not policy evaluation, route/object resolution, reachability or freshness.
+
+The generic AF_UNSPEC proposal was corrected after native diagnosis reproduced
+an extra family128 in the same dump. The collector does NOT silently skip such
+records: it now emits exactly the two IP-family requests and validates the
+response family. A RED/GREEN request-shape regression proves the family is
+actually in the packet. Unknown families/requests and arbitrary selectors are
+not accepted. See the [pinned rule UAPI](https://github.com/gregkh/linux/blob/v6.18.54/include/uapi/linux/fib_rules.h)
+and [dump/order implementation](https://github.com/gregkh/linux/blob/v6.18.54/net/core/fib_rules.c).
+
+The existing QEMU kernel lacks FIB_RULES/multiple-table support. Enable only
+that network capability in its existing networked-storage fragment, audit the
+resolved kernel configuration and refresh Linux in the SAME cached workspace.
+No new Buildroot configuration namespace, image/volume or physical profile.
+Old-kernel fast overlays cannot qualify this change. Acceptance requires native
+actual rule collection and malformed/order/drift/privacy/fuzz tests, Windows
+preflight, then complete cached Buildroot/ARMv5 qualification with a positive
+actual rule count in the existing mandatory same-boot assertion and two-boot.
+
 ## M6.1c configured-route observation
 
 Extend the SAME collector/socket/namespace checks with a fixed strict

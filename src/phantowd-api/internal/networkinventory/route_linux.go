@@ -26,6 +26,10 @@ type routeAttribute struct {
 // routeAttributes retains unknown types (including their flags) for private
 // comparison rather than silently discarding semantics we cannot interpret.
 func routeAttributes(data []byte, padding bool) ([]routeAttribute, error) {
+	return framedAttributes(data, padding, unix.RTA_PAD)
+}
+
+func framedAttributes(data []byte, padding bool, pad uint16) ([]routeAttribute, error) {
 	result := []routeAttribute{}
 	seen := make(map[uint16]bool)
 	for len(data) > 0 {
@@ -39,7 +43,7 @@ func routeAttributes(data []byte, padding bool) ([]routeAttribute, error) {
 			return nil, ErrUnavailable
 		}
 		// Padding is not route semantics; repeated empty PAD is harmless.
-		if padding && kind == unix.RTA_PAD && n == 4 {
+		if padding && kind == pad && n == 4 {
 			data = data[align(n):]
 			continue
 		}

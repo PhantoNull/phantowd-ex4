@@ -30,13 +30,18 @@ class BuildFeedbackTests(unittest.TestCase):
         selftest = (ROOT / "src/phantowd-api/selftest.go").read_text()
         fixture = (ROOT / "src/phantowd-api/network_inventory_qemu_linux.go").read_text()
         for claim in ("PHANTOWD_NETWORK_INVENTORY_READY", "kernel=true",
-                      "repeated=true", "routes=true", "fib_only=true", "counts_redacted=true", "json_refused=true"):
+                      "repeated=true", "routes=true", "fib_only=true", "rules=true", "counts_redacted=true", "json_refused=true"):
             self.assertIn(claim, smoke)
             self.assertIn(claim, selftest)
         self.assertIn("exerciseQEMUNetworkInventory()", selftest)
         self.assertIn("networkinventory.Collect(context.Background())", fixture)
         self.assertIn("networkinventory.Recheck(context.Background(),o)", fixture.replace(" ", ""))
         self.assertIn("summary.Routes < 1", fixture)
+        self.assertIn("summary.Rules < 1", fixture)
+        runner = (ROOT / "support/container/test-api.sh").read_text()
+        for gate in ("TestQEMUNetworkPolicy", "TestQEMUNetworkInventory",
+                     "FuzzWireConsume", "FuzzRoute", "FuzzRule"):
+            self.assertIn(gate, runner)
 
     def test_network_policy_requires_same_boot_guest_assertion(self):
         smoke = (ROOT / "support/qemu-smoke.sh").read_text()
