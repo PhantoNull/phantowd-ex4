@@ -758,6 +758,11 @@ An unsupported or missing system tool fails early instead of unexpectedly
 rebuilding host-cmake, which cannot benefit from ccache itself. The source-only
 preparation lane does not run this QEMU-specific probe.
 
+After pulling a build-environment change, run the ordinary
+`support/build-qemu.ps1` wrapper once before `-CachedOnly`. It refreshes the
+fixed image tag while reusing the same two project volumes; cached-only mode
+never rebuilds an outdated image automatically.
+
 This changes the host environment, not the target configuration or validation
 ladder. Measure hosted timings rather than assuming a cache hit implies a
 fast build. Keep clean builds separate from reused local outputs.
