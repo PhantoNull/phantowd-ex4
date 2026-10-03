@@ -22,7 +22,7 @@ func sample() snapshot {
 		{index: 1, prefix: netip.MustParsePrefix("127.0.0.1/8"), peer: netip.MustParseAddr("127.0.0.1")},
 		{index: 2, prefix: netip.MustParsePrefix("192.0.2.10/16"), peer: netip.MustParseAddr("192.0.2.10")},
 		{index: 2, prefix: netip.MustParsePrefix("fe80::10/64"), peer: netip.MustParseAddr("fe80::10"), scope: 253},
-	}, routes: []route{}, rules: []rule{}}
+	}, routes: []route{}, rules: []rule{}, objects: []nextHopObject{}}
 }
 
 type fixtureReader struct {

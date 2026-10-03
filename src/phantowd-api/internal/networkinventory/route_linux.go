@@ -176,7 +176,8 @@ func parseRoute(data []byte) (route, error) {
 				if scalar == 0 {
 					return route{}, ErrUnavailable
 				}
-				r.unresolved = true // The referenced nexthop object was not dumped.
+				r.objectID = scalar
+				r.unresolved = true // Object correlation is not routing admission.
 			}
 		case unix.RTA_VIA:
 			r.via, err = routeVia(value)
@@ -282,11 +283,14 @@ func parseNextHops(data []byte, size int) ([]nextHop, []byte, error) {
 	if len(result) == 0 {
 		return nil, nil, ErrUnavailable
 	}
-	slices.SortFunc(result, func(a, b nextHop) int { return bytes.Compare(a.semantic[:], b.semantic[:]) })
 	canonical := []byte{}
 	for i, n := range result {
-		if i > 0 && result[i-1].semantic == n.semantic {
-			return nil, nil, ErrUnavailable
+		// fib_rebalance assigns cumulative hash ranges in kernel member order.
+		// Only attribute order is canonicalized; sorting members hides drift.
+		for _, old := range result[:i] {
+			if old.semantic == n.semantic {
+				return nil, nil, ErrUnavailable
+			}
 		}
 		canonical = append(canonical, n.semantic[:]...)
 	}

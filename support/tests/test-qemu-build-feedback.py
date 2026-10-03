@@ -41,7 +41,8 @@ class BuildFeedbackTests(unittest.TestCase):
                 ("FuzzDecode", "networkpolicy"),
                 ("FuzzWireConsume", "networkinventory"),
                 ("FuzzRoute", "networkinventory"),
-                ("FuzzRule", "networkinventory")):
+                ("FuzzRule", "networkinventory"),
+                ("FuzzNextHopObject", "networkinventory")):
             expected = (
                 '"$go_binary" test -run \'^$\' '
                 f"-fuzz '^{target}$' -fuzztime=25000x -parallel=2 "
@@ -59,7 +60,7 @@ class BuildFeedbackTests(unittest.TestCase):
         selftest = (ROOT / "src/phantowd-api/selftest.go").read_text()
         fixture = (ROOT / "src/phantowd-api/network_inventory_qemu_linux.go").read_text()
         for claim in ("PHANTOWD_NETWORK_INVENTORY_READY", "kernel=true",
-                      "repeated=true", "routes=true", "fib_only=true", "rules=true", "counts_redacted=true", "json_refused=true"):
+                      "repeated=true", "routes=true", "fib_only=true", "rules=true", "nexthops=true", "object_fixture=true", "counts_redacted=true", "json_refused=true"):
             self.assertIn(claim, smoke)
             self.assertIn(claim, selftest)
         self.assertIn("exerciseQEMUNetworkInventory()", selftest)
@@ -67,9 +68,12 @@ class BuildFeedbackTests(unittest.TestCase):
         self.assertIn("networkinventory.Recheck(context.Background(),o)", fixture.replace(" ", ""))
         self.assertIn("summary.Routes < 1", fixture)
         self.assertIn("summary.Rules < 1", fixture)
+        self.assertIn("networkinventory.QEMUObjectFixture()", fixture)
+        collector = (ROOT / "src/phantowd-api/internal/networkinventory/collect_linux.go").read_text()
+        self.assertIn("r.query(ctx, unix.RTM_GETNEXTHOP, unix.RTM_NEWNEXTHOP, unix.AF_UNSPEC)", collector)
         runner = (ROOT / "support/container/test-api.sh").read_text()
         for gate in ("TestQEMUNetworkPolicy", "TestQEMUNetworkInventory",
-                     "FuzzWireConsume", "FuzzRoute", "FuzzRule"):
+                     "FuzzWireConsume", "FuzzRoute", "FuzzRule", "FuzzNextHopObject"):
             self.assertIn(gate, runner)
 
     def test_network_policy_requires_same_boot_guest_assertion(self):

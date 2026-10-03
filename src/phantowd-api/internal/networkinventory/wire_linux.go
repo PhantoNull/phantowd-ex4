@@ -24,6 +24,7 @@ type dump struct {
 	configuredRoutes bool
 	rules            []rule
 	family           byte
+	objects          []nextHopObject
 }
 
 // consume validates complete datagrams; socket sender/truncation checks precede
@@ -102,6 +103,15 @@ func (d *dump) consume(data []byte) error {
 				return ErrUnavailable
 			}
 			d.rules = append(d.rules, r)
+		case unix.RTM_NEWNEXTHOP:
+			if len(d.objects) >= MaxNextHopObjects {
+				return ErrUnavailable
+			}
+			n, err := parseNextHopObject(payload)
+			if err != nil {
+				return ErrUnavailable
+			}
+			d.objects = append(d.objects, n)
 		default:
 			return ErrUnavailable
 		}

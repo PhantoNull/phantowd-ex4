@@ -95,7 +95,7 @@ func TestRouteCanonicalOrderingMultipathAndVolatileCache(t *testing.T) {
 	first := nh(1, unix.RTNH_F_ONLINK, 0, attr(unix.RTA_GATEWAY, []byte{192, 0, 2, 1}))
 	second := nh(2, unix.RTNH_F_LINKDOWN, 2, attr(unix.RTA_GATEWAY, []byte{192, 0, 2, 2}))
 	r, e := parseRoute(routePayload(unix.AF_INET, 0, attr(unix.RTA_PRIORITY, u32(10)), attr(unix.RTA_MULTIPATH, append(bytes.Clone(first), second...))))
-	other, e2 := parseRoute(routePayload(unix.AF_INET, 0, attr(unix.RTA_MULTIPATH, append(bytes.Clone(second), first...)), attr(unix.RTA_PRIORITY, u32(10))))
+	other, e2 := parseRoute(routePayload(unix.AF_INET, 0, attr(unix.RTA_MULTIPATH, append(bytes.Clone(first), second...)), attr(unix.RTA_PRIORITY, u32(10))))
 	if e != nil || e2 != nil || r.semantic != other.semantic || !slices.Equal(r.next, other.next) || len(r.next) != 2 || r.unresolved {
 		t.Fatal("ECMP ordering/fields lost")
 	}
@@ -126,6 +126,29 @@ func TestRouteCanonicalOrderingMultipathAndVolatileCache(t *testing.T) {
 	c, e = parseRoute(routePayload(unix.AF_INET, 0, attr(unix.RTA_PRIORITY, u32(10)), attr(unix.RTA_MULTIPATH, append(bytes.Clone(first), second...))))
 	if e != nil || c.semantic == r.semantic {
 		t.Fatal("ECMP semantic drift discarded")
+	}
+}
+
+func TestInlineNextHopOrderChangesObservedRouteSemantics(t *testing.T) {
+	first := nh(1, 0, 0, attr(unix.RTA_GATEWAY, []byte{192, 0, 2, 1}))
+	second := nh(2, 0, 0, attr(unix.RTA_GATEWAY, []byte{192, 0, 2, 2}))
+	a, ea := parseRoute(routePayload(unix.AF_INET, 0, attr(unix.RTA_MULTIPATH, append(bytes.Clone(first), second...))))
+	b, eb := parseRoute(routePayload(unix.AF_INET, 0, attr(unix.RTA_MULTIPATH, append(bytes.Clone(second), first...))))
+	if ea != nil || eb != nil {
+		t.Fatal("valid multipath framing")
+	}
+	if a.semantic == b.semantic || slices.Equal(a.next, b.next) || a.next[0].index != 1 || b.next[0].index != 2 {
+		t.Fatal("ordered inline ECMP changes hidden by normalization")
+	}
+	r := readerFixture()
+	r.samples[0].routes = []route{a}
+	r.samples[1].routes = []route{b}
+	if got, e := observe(context.Background(), r); got != nil || e != ErrUnavailable {
+		t.Fatal("ECMP reordering accepted as stable observation")
+	}
+	duplicate := append(append(bytes.Clone(first), second...), first...)
+	if _, e := parseRoute(routePayload(unix.AF_INET, 0, attr(unix.RTA_MULTIPATH, duplicate))); e != ErrUnavailable {
+		t.Fatal("non-adjacent duplicate member accepted")
 	}
 }
 
