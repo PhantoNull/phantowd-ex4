@@ -21,7 +21,7 @@ func TestActualUnprivilegedKernelCollectionAndRecheck(t *testing.T) {
 			t.Fatal(err)
 		}
 		s, err := o.Summary()
-		if err != nil || s.Interfaces < 1 {
+		if err != nil || s.Interfaces < 1 || s.Routes < 1 || s.Rules < 1 || s.UnresolvedRoutes > s.Routes || s.UnresolvedRules > s.Rules {
 			t.Fatal("missing interfaces")
 		}
 		if err := Recheck(context.Background(), o); err != nil {
@@ -51,7 +51,7 @@ func TestKernelCollectorCancellationAndDeadline(t *testing.T) {
 	if r.available(context.Background()) || r.available(nil) {
 		t.Fatal("expired/nil budget admitted")
 	}
-	if _, e := r.query(context.Background(), 18, 16); e != ErrUnavailable {
+	if _, e := r.query(context.Background(), 18, 16, 0); e != ErrUnavailable {
 		t.Fatal("expired query accepted")
 	}
 	r.deadline = time.Now().Add(time.Second)

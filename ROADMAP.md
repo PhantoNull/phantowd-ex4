@@ -215,6 +215,12 @@ button to an unqualified backend simply because the screen exists.
   pull/build an image or create a volume. Preserve isolation, exact-source
   hashes and clean-build/reproducibility lanes. Cache hits are an optimization,
   never qualification evidence.
+  The full builder now runs the same workflow/fixed-fuzz-roster contract as
+  hosted host CI before compilation. A locally reproduced stale 17-versus-21
+  count after adding four network campaigns is corrected without weakening
+  the exact roster/count guard. The regression also requires each new campaign
+  exactly once and the early local invocation; real non-root fixed-repository
+  Git mode checks and 21 feedback tests pass. Firmware runtime is unchanged.
   The build feedback refinement runs pinned native Go vet/unit/race/fuzz tests
   before the full kernel/Samba compilation. Failed guest logs are preserved and
   their final 120 lines printed; failure-only artifacts are uploaded separately
@@ -1195,6 +1201,34 @@ board network observations limited.
   subscription, generation lease, factory identity or atomic snapshot. Remaining
   M6.1 work: board-qualified slot bindings, route/use/conflict and DAD admission,
   fresh authority and production integration. No policy application or HTTP.
+  **M6.1c — configured FIB observation (partial):** the same private collector
+  now includes bounded IPv4/IPv6 configured routes across all returned tables,
+  terminal/local routes, source/destination prefixes, effective table, metric,
+  gateway/via, preferred source and correlated interface/ECMP references.
+  Attribute/member ordering is normalized; unknown attributes, nested metrics
+  and referenced nexthop IDs remain private and explicitly unresolved. Semantic
+  changes refuse matching samples; volatile cache usage/expiry is excluded,
+  reported cache error retained. Fixed strict requests exclude cached exceptions;
+  only the declared route scope accepts Linux's FILTERED response flag.
+  Link/address filters and interrupted/truncated dumps remain refused.
+  Windows preflight, pinned Linux whole-API vet/race, generated wire tests,
+  bounded fuzz and actual ARMv5 route assertion plus two-boot overlay pass locally.
+  No route lookup/evaluation, rule/object dump, event lease, reachability,
+  persistence, application, HTTP or physical qualification follows.
+  **M6.1d — private IP routing rules (partial; locally tested):**
+  two fixed strict IP-family dumps, checked response family, prefix/scalar/range
+  framing and bounded private semantic equality. Preserve within-family order,
+  same-priority ordering and duplicate multiplicity; normalize only family dump
+  order. Detached interface, goto/complex/unknown semantics remain unresolved.
+  Native actual unprivileged capture/race/fuzz and Windows preflight pass.
+  QEMU multiple-table support is requested/audited in the existing network
+  fragment; refresh Linux within the same cache, not a new output namespace.
+  Complete cached new-kernel integration passes on unchanged `e0986fc`, including
+  actual same-boot positive rule assertion, clean two-boot and all other guest
+  lanes. Seven exported hashes and image/export/target API equality are checked
+  independently; resolved kernel options are audited. This is local cached
+  evidence, not hosted topic or independent clean-build qualification. Production
+  EX4 profile/configuration remains a separate gate. No rule evaluation or apply.
 - **M6.2 — Recoverable changes.** Apply changes as a trial with explicit confirmation
   and a safe timeout/recovery route. Loss of the management connection must not
   strand the owner permanently. Qualify reboot mid-trial and address conflicts.

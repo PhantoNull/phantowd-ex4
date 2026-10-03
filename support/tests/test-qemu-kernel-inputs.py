@@ -99,6 +99,21 @@ class KernelInputs(unittest.TestCase):
         self.assertLess(audit, stamp)
         self.assertLess(stamp, checkpoint)
 
+    def test_policy_routing_support_cannot_be_silently_absent(self):
+        with tempfile.TemporaryDirectory() as temp:
+            config = Path(temp) / "config"
+            good = "\n".join(inputs.REQUIRED) + "\n"
+            for key in ("CONFIG_IP_ADVANCED_ROUTER",
+                        "CONFIG_IP_MULTIPLE_TABLES",
+                        "CONFIG_IPV6_MULTIPLE_TABLES", "CONFIG_FIB_RULES"):
+                self.assertIn(key + "=y", inputs.REQUIRED)
+                for replacement in ("", key + "=n", key + "=m",
+                                    "# " + key + " is not set"):
+                    config.write_text(
+                        good.replace(key + "=y", replacement))
+                    with self.assertRaises(ValueError):
+                        inputs.audit(config)
+
 
 if __name__ == "__main__":
     unittest.main()

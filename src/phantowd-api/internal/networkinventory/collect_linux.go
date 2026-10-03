@@ -80,38 +80,76 @@ func (*kernelReader) namespace() (namespaceID, error) {
 }
 
 func (r *kernelReader) read(ctx context.Context) (snapshot, error) {
-	links, err := r.query(ctx, unix.RTM_GETLINK, unix.RTM_NEWLINK)
+	links, err := r.query(ctx, unix.RTM_GETLINK, unix.RTM_NEWLINK, unix.AF_UNSPEC)
 	if err != nil {
 		return snapshot{}, ErrUnavailable
 	}
-	addresses, err := r.query(ctx, unix.RTM_GETADDR, unix.RTM_NEWADDR)
+	addresses, err := r.query(ctx, unix.RTM_GETADDR, unix.RTM_NEWADDR, unix.AF_UNSPEC)
 	if err != nil {
 		return snapshot{}, ErrUnavailable
 	}
-	return snapshot{links: links.links, addresses: addresses.addresses}, nil
+	routes, err := r.query(ctx, unix.RTM_GETROUTE, unix.RTM_NEWROUTE, unix.AF_UNSPEC)
+	if err != nil {
+		return snapshot{}, ErrUnavailable
+	}
+	rules, err := r.query(ctx, unix.RTM_GETRULE, unix.RTM_NEWRULE, unix.AF_INET)
+	if err != nil {
+		return snapshot{}, ErrUnavailable
+	}
+	rules6, err := r.query(ctx, unix.RTM_GETRULE, unix.RTM_NEWRULE, unix.AF_INET6)
+	if err != nil || len(rules.rules)+len(rules6.rules) > MaxRules {
+		return snapshot{}, ErrUnavailable
+	}
+	rules.rules = append(rules.rules, rules6.rules...)
+	return snapshot{links: links.links, addresses: addresses.addresses, routes: routes.routes, rules: rules.rules}, nil
 }
 
-func (r *kernelReader) query(ctx context.Context, request, response uint16) (dump, error) {
-	if !r.available(ctx) {
-		return dump{}, ErrUnavailable
-	}
+func requestMessage(request, response uint16, family byte, seq uint32) ([]byte, error) {
 	size := 32
 	if request == unix.RTM_GETADDR {
+		if response != unix.RTM_NEWADDR || family != unix.AF_UNSPEC {
+			return nil, ErrUnavailable
+		}
 		size = 24
-	} else if request != unix.RTM_GETLINK {
-		return dump{}, ErrUnavailable
+	} else if request == unix.RTM_GETROUTE {
+		if response != unix.RTM_NEWROUTE || family != unix.AF_UNSPEC {
+			return nil, ErrUnavailable
+		}
+		size = 28
+	} else if request == unix.RTM_GETRULE {
+		if response != unix.RTM_NEWRULE || family != unix.AF_INET && family != unix.AF_INET6 {
+			return nil, ErrUnavailable
+		}
+		size = 28
+	} else if request != unix.RTM_GETLINK || response != unix.RTM_NEWLINK || family != unix.AF_UNSPEC {
+		return nil, ErrUnavailable
 	}
-	r.seq++
 	message := make([]byte, size)
 	binary.NativeEndian.PutUint32(message[:4], uint32(size))
 	binary.NativeEndian.PutUint16(message[4:6], request)
 	binary.NativeEndian.PutUint16(message[6:8], unix.NLM_F_REQUEST|unix.NLM_F_DUMP)
-	binary.NativeEndian.PutUint32(message[8:12], r.seq)
-	// AF_UNSPEC, zeroed family-specific fields, no selectors/attributes/ACK.
+	binary.NativeEndian.PutUint32(message[8:12], seq)
+	message[16] = family
+	return message, nil
+}
+
+func (r *kernelReader) query(ctx context.Context, request, response uint16, family byte) (dump, error) {
+	if !r.available(ctx) {
+		return dump{}, ErrUnavailable
+	}
+	r.seq++
+	message, err := requestMessage(request, response, family, r.seq)
+	if err != nil {
+		return dump{}, ErrUnavailable
+	}
+	// Fixed family, zeroed remaining fields, no caller selectors/attributes/ACK.
 	if unix.Sendto(r.fd, message, unix.MSG_DONTWAIT, &unix.SockaddrNetlink{Family: unix.AF_NETLINK}) != nil {
 		return dump{}, ErrUnavailable
 	}
-	d := dump{seq: r.seq, port: r.port, kind: response, links: []link{}, addresses: []ipAddress{}}
+	d := dump{seq: r.seq, port: r.port, kind: response, links: []link{}, addresses: []ipAddress{}, routes: []route{}}
+	d.configuredRoutes = request == unix.RTM_GETROUTE && response == unix.RTM_NEWROUTE
+	d.rules = []rule{}
+	d.family = family
 	buffer := make([]byte, maxDatagramBytes)
 	for !d.done {
 		if !r.available(ctx) {

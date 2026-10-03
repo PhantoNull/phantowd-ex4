@@ -22,7 +22,7 @@ func sample() snapshot {
 		{index: 1, prefix: netip.MustParsePrefix("127.0.0.1/8"), peer: netip.MustParseAddr("127.0.0.1")},
 		{index: 2, prefix: netip.MustParsePrefix("192.0.2.10/16"), peer: netip.MustParseAddr("192.0.2.10")},
 		{index: 2, prefix: netip.MustParsePrefix("fe80::10/64"), peer: netip.MustParseAddr("fe80::10"), scope: 253},
-	}}
+	}, routes: []route{}, rules: []rule{}}
 }
 
 type fixtureReader struct {
@@ -65,7 +65,7 @@ func TestCompleteObservationIsPrivateImmutableAndOrderIndependent(t *testing.T) 
 		t.Fatal("complete capture failed")
 	}
 	summary, err := o.Summary()
-	if err != nil || summary != (Summary{2, 3}) {
+	if err != nil || summary != (Summary{Interfaces: 2, Addresses: 3}) {
 		t.Fatal("wrong redacted counts")
 	}
 	r.samples[0].links[0].name = "changed"

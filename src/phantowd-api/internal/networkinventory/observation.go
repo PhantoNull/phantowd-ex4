@@ -6,6 +6,7 @@
 package networkinventory
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"net/netip"
@@ -15,6 +16,9 @@ import (
 
 const MaxInterfaces = 64
 const MaxAddresses = 256
+const MaxRoutes = 512
+const MaxRules = 256
+const maxNextHops = 32
 
 var ErrUnavailable = errors.New("network observation unavailable")
 var ErrChanged = errors.New("network observation changed")
@@ -37,6 +41,36 @@ type ipAddress struct {
 type snapshot struct {
 	links     []link
 	addresses []ipAddress
+	routes    []route
+	rules     []rule
+}
+
+type rule struct {
+	family, action, tos            uint8
+	destination, source            netip.Prefix
+	table, priority, target, flags uint32
+	input, output                  string
+	semantic                       [32]byte
+	unresolved                     bool
+}
+
+// Digests retain bounded, canonical wire semantics privately. They are equality
+// evidence only, not authenticated identity, reachability or route authority.
+type route struct {
+	destination, source                 netip.Prefix
+	table, metric, input, output, flags uint32
+	protocol, scope, kind, tos          uint8
+	gateway, preferred, via             netip.Addr
+	next                                []nextHop
+	semantic                            [32]byte
+	unresolved                          bool
+}
+type nextHop struct {
+	index        uint32
+	flags, hops  uint8
+	gateway, via netip.Addr
+	semantic     [32]byte
+	unresolved   bool
 }
 
 // Observation is immutable; no raw namespace IDs, names, MACs or addresses leave
@@ -48,15 +82,31 @@ type Observation struct {
 }
 
 type Summary struct {
-	Interfaces int
-	Addresses  int
+	Interfaces       int
+	Addresses        int
+	Routes           int
+	UnresolvedRoutes int
+	Rules            int
+	UnresolvedRules  int
 }
 
 func (o *Observation) Summary() (Summary, error) {
 	if o == nil || o.self != o {
 		return Summary{}, ErrUnavailable
 	}
-	return Summary{len(o.state.links), len(o.state.addresses)}, nil
+	unresolved := 0
+	for _, r := range o.state.routes {
+		if r.unresolved {
+			unresolved++
+		}
+	}
+	unresolvedRules := 0
+	for _, r := range o.state.rules {
+		if r.unresolved {
+			unresolvedRules++
+		}
+	}
+	return Summary{Interfaces: len(o.state.links), Addresses: len(o.state.addresses), Routes: len(o.state.routes), UnresolvedRoutes: unresolved, Rules: len(o.state.rules), UnresolvedRules: unresolvedRules}, nil
 }
 func (Observation) MarshalJSON() ([]byte, error) { return nil, ErrUnavailable }
 func (*Observation) UnmarshalJSON([]byte) error  { return ErrUnavailable }
@@ -96,12 +146,14 @@ func observe(ctx context.Context, r reader) (*Observation, error) {
 }
 
 func normalize(s *snapshot) error {
-	if len(s.links) == 0 || len(s.links) > MaxInterfaces || s.addresses == nil || len(s.addresses) > MaxAddresses {
+	if len(s.links) == 0 || len(s.links) > MaxInterfaces || s.addresses == nil || len(s.addresses) > MaxAddresses || s.routes == nil || len(s.routes) > MaxRoutes || s.rules == nil || len(s.rules) > MaxRules {
 		return ErrUnavailable
 	}
 	// Clone provider-owned data so a result does not alias an injected reader.
 	s.links = slices.Clone(s.links)
 	s.addresses = slices.Clone(s.addresses)
+	s.routes = slices.Clone(s.routes)
+	s.rules = slices.Clone(s.rules)
 	slices.SortFunc(s.links, func(a, b link) int {
 		if a.index < b.index {
 			return -1
@@ -136,7 +188,69 @@ func normalize(s *snapshot) error {
 			return ErrUnavailable
 		}
 	}
+	for i := range s.routes {
+		r := &s.routes[i]
+		if !r.destination.IsValid() || !r.source.IsValid() || r.destination != r.destination.Masked() || r.source != r.source.Masked() || r.destination.Addr().BitLen() != r.source.Addr().BitLen() || len(r.next) > maxNextHops {
+			return ErrUnavailable
+		}
+		r.next = slices.Clone(r.next)
+		for _, index := range []uint32{r.input, r.output} {
+			if index != 0 && !hasInterface(s.links, index) {
+				return ErrUnavailable
+			}
+		}
+		for _, n := range r.next {
+			if !hasInterface(s.links, n.index) {
+				return ErrUnavailable
+			}
+		}
+	}
+	slices.SortFunc(s.routes, func(a, b route) int { return bytes.Compare(a.semantic[:], b.semantic[:]) })
+	for i := 1; i < len(s.routes); i++ {
+		if s.routes[i-1].semantic == s.routes[i].semantic {
+			return ErrUnavailable
+		}
+	}
+	// Family dump order is irrelevant. Within a family, equal-priority ordering
+	// and even duplicate multiplicity affect kernel policy; never digest-sort it.
+	slices.SortStableFunc(s.rules, func(a, b rule) int { return int(a.family) - int(b.family) })
+	for i := range s.rules {
+		r := &s.rules[i]
+		if !r.destination.IsValid() || !r.source.IsValid() || r.destination != r.destination.Masked() || r.source != r.source.Masked() || r.source.Addr().BitLen() != r.destination.Addr().BitLen() {
+			return ErrUnavailable
+		}
+		if i > 0 && s.rules[i-1].family == r.family && s.rules[i-1].priority > r.priority {
+			return ErrUnavailable
+		}
+		for _, ref := range []struct {
+			name     string
+			detached uint32
+		}{{r.input, 8}, {r.output, 16}} {
+			if ref.name == "" {
+				continue
+			}
+			found := false
+			for _, l := range s.links {
+				found = found || l.name == ref.name
+			}
+			if !found {
+				if r.flags&ref.detached == 0 {
+					return ErrUnavailable
+				}
+				r.unresolved = true
+			}
+		}
+	}
 	return nil
+}
+
+func hasInterface(links []link, index uint32) bool {
+	for _, l := range links {
+		if l.index == index {
+			return true
+		}
+	}
+	return false
 }
 
 func kernelName(v string) bool {
@@ -171,7 +285,9 @@ func compareAddress(a, b ipAddress) int {
 }
 func sameAddressIdentity(a, b ipAddress) bool { return compareAddress(a, b) == 0 }
 func equal(a, b snapshot) bool {
-	return slices.Equal(a.links, b.links) && slices.Equal(a.addresses, b.addresses)
+	return slices.Equal(a.links, b.links) && slices.Equal(a.addresses, b.addresses) && slices.Equal(a.rules, b.rules) && slices.EqualFunc(a.routes, b.routes, func(a, b route) bool {
+		return a.destination == b.destination && a.source == b.source && a.table == b.table && a.metric == b.metric && a.input == b.input && a.output == b.output && a.flags == b.flags && a.protocol == b.protocol && a.scope == b.scope && a.kind == b.kind && a.tos == b.tos && a.gateway == b.gateway && a.preferred == b.preferred && a.via == b.via && a.semantic == b.semantic && a.unresolved == b.unresolved && slices.Equal(a.next, b.next)
+	})
 }
 
 // Recheck is another observation, not an Owner recovery or sticky-state reset.
