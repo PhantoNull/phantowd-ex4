@@ -4,10 +4,18 @@
 # Implementation status
 
 Code audit: **2026-10-03**, integrated `develop` baseline
-`43711023ff8dcd050ec1cd4298e15abe784a19e0` (PR #72).
+`0bf3f91d385b8c11c4ce8062589d90ffa17b688a` (PR #73).
 Use [ROADMAP.md](ROADMAP.md) for the acceptance specification. This snapshot
 distinguishes tested components from deployed product workflows. It is not
 installation approval, a security certification, or an exhaustive line-by-line audit.
+
+PR #73 passed exact `834ccce` host and QEMU/DTB checks, including final isolated
+build-volume cleanup, and merged as `0bf3f91`. Its expected, checked and
+integrated complete trees are identical. The route/rule topic refs were retired
+with exact-SHA guards after complete inclusion and worktree checks. The nexthop
+follow-up was rebased onto this actual merge with its complete source tree and
+three patches unchanged (`319a331` becomes `37e766a`). Its complete local proof
+below remains valid; PR #73 does not qualify that follow-up as hosted.
 
 PR #72 passed exact `1dca772` host and QEMU/DTB checks and merged as `4371102`;
 the expected, checked and integrated complete tree is identical. Its local and
