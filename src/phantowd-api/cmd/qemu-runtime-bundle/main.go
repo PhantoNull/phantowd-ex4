@@ -15,6 +15,7 @@ import (
 	"io"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/runtimebundle"
 	"golang.org/x/sys/unix"
@@ -81,7 +82,9 @@ func run() error {
 	}
 	root := os.NewFile(3, "fixed-readonly-runtime-root")
 	defer root.Close()
+	started := time.Now()
 	got, err := p.Inspect(context.Background(), root)
+	elapsed := time.Since(started)
 	if err != nil || got.Files != len(files) || got.Aliases != len(aliases) {
 		return errors.Join(errors.New("positive inspection"), err)
 	}
@@ -92,6 +95,7 @@ func run() error {
 	if got.Bytes != total {
 		return errors.New("byte accounting")
 	}
+	fmt.Printf("PHANTOWD_RUNTIME_SCAN_COST files=%d bytes=%d elapsed_ns=%d scope=qemu-emulation-only\n", got.Files, got.Bytes, elapsed.Nanoseconds())
 	refuse := func(f []runtimebundle.File, a []runtimebundle.Alias) error {
 		bad, err := runtimebundle.NewPlan(f, a)
 		if err != nil {

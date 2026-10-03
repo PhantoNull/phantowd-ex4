@@ -124,6 +124,9 @@ func ownerFixture() error {
 		return errors.New("closed Owner restarted")
 	}
 	fmt.Println("PHANTOWD_CODE_OWNER_READY caller_close=true fixed_spec=true pinned_exec=true duplicate_start_no_effect=true stop_reaped=true scope=qemu-only")
+	if err := ownerSupervisionFixtures(plan); err != nil {
+		return err
+	}
 	if err := ownerReviewFixtures(plan, data); err != nil {
 		return err
 	}
@@ -271,11 +274,17 @@ func ownerReviewFixtures(plan *runtimebundle.Plan, data []byte) error {
 }
 
 func ownerFixtureChild() error {
-	if os.Getgid() != 1800 || (os.Args[2] != ownerFixtureBase+"/control/normal" && os.Args[2] != ownerFixtureBase+"/control/before" && os.Args[2] != ownerFixtureBase+"/control/live" && os.Args[2] != ownerFixtureBase+"/control/forced") {
+	if os.Getgid() != 1800 {
+		return errors.New("fixed child guard")
+	}
+	switch os.Args[2] {
+	case ownerFixtureBase + "/control/normal", ownerFixtureBase + "/control/before", ownerFixtureBase + "/control/live", ownerFixtureBase + "/control/forced",
+		ownerFixtureBase + "/control/supervised", ownerFixtureBase + "/control/supervised-drift", ownerFixtureBase + "/control/supervised-exit", ownerFixtureBase + "/control/supervised-forced":
+	default:
 		return errors.New("fixed child guard")
 	}
 	stop := make(chan os.Signal, 1)
-	if os.Args[2] == ownerFixtureBase+"/control/forced" {
+	if os.Args[2] == ownerFixtureBase+"/control/forced" || os.Args[2] == ownerFixtureBase+"/control/supervised-forced" {
 		signal.Ignore(syscall.SIGTERM)
 	} else {
 		signal.Notify(stop, syscall.SIGTERM)

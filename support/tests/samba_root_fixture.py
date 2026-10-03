@@ -5,6 +5,7 @@
 import argparse
 import hashlib
 import json
+import re
 from pathlib import Path
 
 from runtime_loader_fixture import MAX_LOG, MAX_REPORT, read_bounded, validate
@@ -45,6 +46,23 @@ MARKERS = (
     "PHANTOWD_SAMBA_ROOT_STOPPED", "PHANTOWD_SAMBA_ROOT_DONE",
 )
 
+SCAN_PREFIX = "PHANTOWD_RUNTIME_SCAN_COST"
+
+
+def scan_cost(log):
+    rows = [line for line in log.splitlines() if line.startswith(SCAN_PREFIX)]
+    if len(rows) != 1:
+        raise ValueError("exactly one runtime scan measurement required")
+    match = re.fullmatch(
+        SCAN_PREFIX + r" files=([1-9][0-9]{0,2}) bytes=([1-9][0-9]{0,7}) "
+        r"elapsed_ns=([1-9][0-9]{0,18}) scope=qemu-emulation-only", rows[0])
+    if match is None:
+        raise ValueError("invalid runtime scan measurement")
+    files, size, elapsed = map(int, match.groups())
+    if files > 256 or size > 64 * 1024 * 1024:
+        raise ValueError("runtime scan exceeds fixed bundle budget")
+    return files, size, elapsed
+
 
 def check_guest(log):
     if not isinstance(log, str) or len(log.encode("utf-8")) > MAX_LOG:
@@ -53,6 +71,7 @@ def check_guest(log):
                if line.startswith("PHANTOWD_SAMBA_ROOT_")]
     if markers != list(MARKERS):
         raise ValueError("incomplete, failed or repeated guest evidence")
+    scan_cost(log)
 
 
 def validate_catalog(catalog):
@@ -123,7 +142,11 @@ def main():
         catalog = read_bounded(args.catalog, 4096)
         Path(args.manifest).write_text(merge(reports, catalog))
     else:
-        check_guest(read_bounded(args.log, MAX_LOG))
+        log = read_bounded(args.log, MAX_LOG)
+        check_guest(log)
+        files, size, elapsed = scan_cost(log)
+        print(f"{SCAN_PREFIX} files={files} bytes={size} elapsed_ns={elapsed} "
+              "scope=qemu-emulation-only")
         print("\n".join(MARKERS))
 
 

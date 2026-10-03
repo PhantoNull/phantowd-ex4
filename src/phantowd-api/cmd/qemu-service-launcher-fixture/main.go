@@ -190,5 +190,57 @@ func run() error {
 		return err
 	}
 	fmt.Println("PHANTOWD_SERVICE_LAUNCHER_LIVE_REVIEW_READY stop_before_close=true group_reaped=true restoration_not_retried=true")
+	if err := closingRootRefused(spec); err != nil {
+		return err
+	}
+	fmt.Println("PHANTOWD_SERVICE_LAUNCHER_CLOSING_ROOT_READY rejected=true caller_close=true scope=disposable-qemu-only")
 	return mountowner.RunQEMUIsolatedHandoffFixture()
+}
+
+// Keep a real kernel FD alive while os.File Close has made the caller handle
+// unavailable. Construction must refuse it, not capture the stale FD number.
+// This checks only construction; no service is started with the closing root.
+func closingRootRefused(spec processowner.Spec) (result error) {
+	fd, err := unix.Open(fixtureRoot, unix.O_PATH|unix.O_DIRECTORY|unix.O_CLOEXEC, 0)
+	if err != nil {
+		return err
+	}
+	root := os.NewFile(uintptr(fd), "qemu-closing-launcher-root")
+	defer root.Close()
+	raw, err := root.SyscallConn()
+	if err != nil {
+		return err
+	}
+	entered, release := make(chan struct{}), make(chan struct{})
+	controlled := make(chan error, 1)
+	go func() {
+		controlled <- raw.Control(func(uintptr) { close(entered); <-release })
+	}()
+	<-entered
+	closed := make(chan error, 1)
+	go func() { closed <- root.Close() }()
+	defer func() {
+		close(release)
+		result = errors.Join(result, <-controlled, <-closed)
+	}()
+	deadline := time.Now().Add(time.Second)
+	for {
+		if _, err := root.Stat(); errors.Is(err, os.ErrClosed) {
+			break
+		}
+		if time.Now().After(deadline) {
+			return errors.New("caller root close did not become observable")
+		}
+		runtime.Gosched()
+	}
+	owner, err := processowner.NewIsolated(spec, processowner.Isolation{
+		LauncherExecutable: "/usr/sbin/phantowd-service-launcher", Root: root,
+	})
+	if owner != nil {
+		result = errors.Join(result, owner.Close())
+	}
+	if owner != nil || !errors.Is(err, processowner.ErrInvalid) {
+		return errors.Join(result, errors.New("isolated owner accepted closing caller root"))
+	}
+	return result
 }

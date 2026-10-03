@@ -39,3 +39,18 @@ func TestRetainedOwnerRefusesWritableOrMissingRootBeforeAnyProcess(t *testing.T)
 		t.Fatal("writable root published an owner", owner, err)
 	}
 }
+
+func TestRetainedOwnerSupervisionRefusesInvalidAdmission(t *testing.T) {
+	var owner *Owner
+	for _, interval := range []time.Duration{-time.Second, 0, time.Second - 1, time.Hour + 1} {
+		observed, err := owner.Supervise(context.Background(), interval)
+		if !errors.Is(err, ErrInvalid) || observed.State != "" || len(observed.Processes.Members) != 0 {
+			t.Fatal("invalid interval published supervision evidence", interval, observed, err)
+		}
+	}
+	for _, interval := range []time.Duration{time.Second, time.Hour} {
+		if _, err := owner.Supervise(context.Background(), interval); !errors.Is(err, ErrUnavailable) {
+			t.Fatal("missing owner gained supervision authority", err)
+		}
+	}
+}

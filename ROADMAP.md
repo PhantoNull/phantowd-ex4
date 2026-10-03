@@ -971,11 +971,39 @@ storage. No production roster provider or activation path exists.
   fixed configuration/state and Owner-held storage grants, then qualify durable
   review/recovery and source-loss supervision. Do not weaken the static adapter
   or treat a fixture-derived roster as a signed product manifest.
+  The static supervisor and its focused-wrapper feedback contract also pass
+  complete cached integration on `8e3ce63`, including actual ARMv5 fault cases
+  and all existing image/guest lanes. Independent exported hashes match the
+  preceding image: this remains a separately compiled probe, not product
+  startup or hosted/physical qualification.
+  The existing `NewIsolated` root pin now uses `SyscallConn.Control`, refusing
+  caller Close-in-progress even when its kernel FD remains alive. A real
+  deterministic constructor RED/GREEN, repeated host race checks and the
+  actual ARMv5 launcher fixture cover this lifetime defect without starting
+  any child with the invalid input or widening the static-child profile.
+  This follow-up also passes complete cached local integration on unchanged
+  `6cb8d46`, including all existing host/image/guest lanes and independent
+  seven-artifact verification. Hosted and clean-build qualification remain
+  separate; it does not grant service activation or EX4/product authority.
   Then define product-owned service identities and safe ACL provisioning and
   recovery without silently changing legacy ownership. Add the bounded
   source-loss supervisor and a fail-closed production storage constructor only
   after these denied cases pass. Keep real disks and services disabled until
   permission, recovery and compatibility matrices pass.
+
+  An internal `runtimebundle.Owner.Supervise` now accepts only an already-ready
+  static/non-root Owner. It serializes complete code/process observations,
+  waiting a fixed bounded idle interval after each completed scan, without
+  catch-up work or automatic restart. Accepted cancellation stops before return;
+  code pins remain until explicit close, and uncertainty preserves review.
+  The finite ARMv5 Owner fixture covers invalid/stopped/pre-canceled admission,
+  exclusive lifecycle, clean cancellation, code drift, unexpected exit and forced
+  stop, kernel group absence, pin retention and blocked restart. This is not
+  production source-loss wiring or a dynamic Samba/NFS supervisor. Kernel stalls
+  are not proven interruptible and physical polling budgets remain unqualified.
+  A measurement around the existing Samba code scan produces redacted file/byte/
+  monotonic-time evidence, without adding work. Treat QEMU time as emulation
+  evidence only, never an EX4 throughput or resource-saving claim.
 
   Host-only prerequisite: `phantowd-lab inspect-runtime-closure` now derives a
   bounded ARM32 ELF candidate from the existing extracted-tree inventory.

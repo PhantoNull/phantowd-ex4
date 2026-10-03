@@ -81,6 +81,48 @@ rebuild; actual board/build input changes remain covered.
 
 ## Roadmap comparison
 
+An explicit blocking supervisor now extends the internal static/non-root code
+Owner only. Complete scans are serialized with a fixed idle interval and no
+catch-up burst. Actual disposable ARMv5 fixtures cover rejected admission,
+concurrent close refusal, accepted cancellation/stop, live code drift, unexpected
+exit and forced-stop review. Code pins remain until explicit close and review
+never permits automatic restart. Complete cached local integration on unchanged
+`8e3ce63` subsequently passed source verification, host/vet/race/fuzz,
+image/legal-info/SBOM and every existing/new guest lane, including supervision,
+actual Samba permissions and the seven-case ARMv5 SMART producer. Seven exported
+artifact hashes independently match the preceding image: the internal
+supervisor is tested by a separately compiled disposable probe, not product
+startup. A stale runner-marker contract failed before compilation and was
+corrected; the focused wrapper now checks that contract first. Hosted and clean
+qualification remain separate. The separate Samba fixture measures its
+existing positive scan with bounded redacted evidence; emulation timing is not
+physical EX4 qualification or a production polling recommendation.
+
+The storage probe's previously missing license hash is now supplied and tested
+through pinned Buildroot's real checker: the repository license verifies, and
+an altered temporary copy is refused. Its actual scoped `legal-info` target
+also passes, without rebuilding an image. This metadata/test-only follow-up
+does not imply a full build of the newer head or close source-distribution and
+complete licensing review. Earlier full-run license warnings remain historical.
+
+A separate follow-up fixes a reproduced `NewIsolated` constructor lifetime
+defect: direct `Fd()` duplication accepted a caller root after Close had begun
+while an active Control kept its kernel FD alive. The constructor now duplicates
+through `SyscallConn.Control`, preserving `os.File` lifetime across the syscall.
+Deterministic root-host RED/GREEN, ten race repetitions, non-root Linux API/vet
+and package race checks, Windows API/UI/cross-compile and the actual ARMv5
+isolated-launcher fixture pass. Existing readiness, namespace, input-loss,
+stop/reap and grant-only handoff cases still pass with unchanged base hashes.
+Complete cached local integration subsequently passed on unchanged published
+`6cb8d46` (tree `a1f1a35d`): actual builder host/vet/race/fuzz, refreshed image,
+legal-info/SBOM and all existing guest lanes, including this root-close refusal,
+retained Owner teardown, restricted-root Samba and actual SMART producer.
+Seven exported artifact hashes were independently verified; the temporary
+container auto-removed, reusing existing volumes/output/cache. This is neither
+hosted/clean-build qualification nor proof of an exploit. No static-child
+privilege or HTTP/storage/product authority changes. The earlier retained-code
+Owner full result remains scoped separately.
+
 The retained runtime-code Owner prototype privately holds the verified root and
 all regular code files, plus fixed independently pinned process executables.
 Its initial adapter supports only static ELF/non-root children; it does not
@@ -282,7 +324,7 @@ substantial redesign. Rows overlap and must not be added.
 | M1 — Durable state | Revision stores, intent/result journals, refusal of uncertain state, synthetic clean-reboot tests | Product state placement, bootstrap/schema migration, operator reconciliation, real durability/power-loss qualification | 30–45% |
 | M2 — Identities | Unix allocation/creation; Owner-bound Samba disabled-first enrollment, explicit enable/disable and account-session revocation in QEMU | Complete ownership/import inventory, product boot authority, account API/UI, retirement and recovery | 50–65% |
 | M3 — Storage lifecycle | Complete sysfs census, generation-bound read-only broker, GPT/ext/MD observations, collision checks, internal mount/lease fixtures | Persistent logical VolumeID resolver, global-use accounting, production qualifier/roster, supported layouts and EX4 media qualification | 40–55% |
-| M4 — SMB/NFS | Real loopback clients, desired policies, coherent candidate planner, process-set supervision, share-scoped handoff and a single-static-child grant-only isolated runtime in QEMU | Approved daemon runtime manifests, isolated process sets, privilege profiles/ACLs, transactional activation/recovery, production wiring and loss monitoring | 35–50% |
+| M4 — SMB/NFS | Real loopback clients, desired policies, coherent candidate planner, process-set supervision, share-scoped handoff, grant-only isolated runtime and retained static-code Owner with explicit supervised lifecycle in QEMU | Approved daemon runtime manifests, isolated process sets, privilege profiles/ACLs, transactional activation/recovery, production wiring and storage-loss monitoring | 35–50% |
 | M5 — Management UI/security | Development authentication/TLS, sessions/password changes, diagnostics dashboard and policy preview/editing | Product enrollment/reset/certificate lifecycle, authorized live workflows, recovery UX, browser/accessibility/security qualification | 25–40% |
 | M6 — Network/system | Diagnostic observations and brief two-port board research | Safe network transactions/rollback, supported dual-port modes, time/discovery, notifications and administrative jobs | 5–15% |
 | M7 — Board/cooling/recovery | DTS and bounded diskless RAM trials; passive MCU framing/catalog tooling | Qualified factory identities, fan/tach/fail-safe, LCD/LED/buttons/power/watchdog, SATA/USB and NAND recovery | 15–25% |
