@@ -153,6 +153,23 @@ rebuild; actual board/build input changes remain covered.
 
 ## Roadmap comparison
 
+Fixture-only Samba inherited-context increment on `bd9ae3f` deliberately passes
+original-root/ungranted-file descriptors and blocked/ignored signals through
+the existing guarded standalone launcher. Direct pre-exec checks require
+descriptor closure, a completely empty mask and default altered dispositions;
+live Samba checks add zero inheritable/ambient capabilities. A separate native
+executable includes the actual checker, never its privileged bootstrap, and
+refuses eight individual leak/signal cases before explicit test-local recovery.
+Fourteen Linux fixture tests, seven loader contracts, linters/ARM compilation
+and actual ARMv5 distinct-user/streams/ext4 ACL/inheritance/group-stop campaign
+pass. The verifier first rejected the older guest solely for missing new
+evidence. All seven base hashes are independently unchanged afterward. Existing
+image/packages/kernel remain untouched; the local container is UID1000,
+cap-drop ALL/NNP with bounded CPU/RAM/PIDs and disposable RAM scratch. No new
+full-image/SBOM, hosted topic or product qualification. The separately proposed
+privileged Samba Owner composition still requires its explicit scope decision;
+neither it nor a new product/helper/HTTP privilege is implemented. Bands unchanged.
+
 M6.1e local follow-up on code `319a331` / tree `333e81d` adds one fixed strict
 AF_UNSPEC nexthop-object dump per matching sample, complete even when empty.
 It observes unreferenced objects, correlates route/group IDs and local OIF,

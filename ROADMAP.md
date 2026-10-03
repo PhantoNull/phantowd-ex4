@@ -1086,7 +1086,16 @@ storage. No production roster provider or activation path exists.
   A separate [Samba restricted-root QEMU profile](support/SAMBA-RUNTIME-PROFILE.md)
   now verifies distinct-user SMB3, Unix file ownership/mode denial, kernel
   read-only grants, denied original paths, one Unicode filename and group stop
-  under six bounded root capabilities. One explicitly selected, hash-verified
+  under six bounded root capabilities. A fixture-only follow-up deliberately
+  inherits original-root/ungranted-file
+  descriptors and altered signal state, then checks actual closure, complete
+  mask clearing and default dispositions before exec. Eight native negative/
+  restoration cases exercise the actual checker before heavy builds. The live
+  daemon additionally has zero inheritable/ambient capabilities; all prior
+  distinct-user/ACL/streams/kernel-RO and verified group-stop tests still pass
+  in the same actual ARMv5 boot. This is not the proposed separate Samba Owner,
+  additional bootstrap authority or product startup qualification. One explicitly
+  selected, hash-verified
   `streams_xattr` module also passes an SMB alternate-stream roundtrip, exact
   native xattr-byte checks and denied reader/kernel-read-only overwrites without
   modifying ordinary file data. It is a fixed disposable experiment,

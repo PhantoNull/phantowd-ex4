@@ -54,6 +54,20 @@ only in the test's temporary directory. These checks run before the expensive
 guest/build stage and exercise real kernel descriptor/signal observations, not
 mocked marker strings. Host execution is not ARMv5 qualification.
 
+Local qualification (2026-10-03), code `bd9ae3f`: the new verifier first refuses
+the unchanged ARMv5 fixture solely for missing context evidence; all its other
+Samba markers complete. The adversarial launcher then passes actual ARM926
+execution with direct `fcntl`/signal-state assertions, live zero inheritable/
+ambient capabilities, real distinct-user SMB/streams/ACL/inheritance denials
+and whole-group stop. Final combined local validation passes 14 Linux fixture
+tests (including eight real native refusal/restoration cases), seven loader
+contracts, linters, ARM compilation and the same full Samba guest campaign.
+All seven base artifact hashes verify independently afterward. The wrapper
+runs UID1000 with all capabilities dropped, NNP, two CPUs, 2 GiB RAM and 256
+PIDs; privilege exists only inside the already authorized disposable guest.
+No new full image/package/SBOM build, hosted topic, EX4 or product qualification.
+The separate proposed privileged Owner remains unapproved and unimplemented.
+
 ### Existing fixture behavior
 
 - Derives non-authorizing ELF candidates for three fixed public Buildroot
