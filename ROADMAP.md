@@ -1299,6 +1299,18 @@ not host/QEMU progress.
     This point-in-time observation is not `SourceAdmitted`, a census token,
     retained device binding, SMART-capable transport or command authority.
     Product startup, broker operations and HTTP remain unchanged.
+    A separate Linux-only [descriptor witness](src/phantowd-api/internal/smartdevice/README.md)
+    retains a supplied read-only block FD with CLOEXEC duplication protected
+    against caller-close/reuse. It rechecks type/access, major/minor and the
+    kernel's BLKGETDISKSEQ, refusing value copies/concurrent operations and
+    retaining permanent review after failed observation. Native race/refusal/
+    no-leak tests and actual generation checks on the existing temporary QEMU
+    MD members pass. Closing the caller FD leaves the independent pin usable;
+    an intentionally changed expected tuple tests sticky review, not hotplug.
+    It opens no path, reads no disk content, exposes no FD and admits no SMART
+    command. This is neither report attribution nor a provider/capture lease;
+    complete census reconciliation, fixed opener, transport/runtime authority
+    and physical qualification remain separate. No product/broker wiring changes.
     Do not add
     history/UI by treating this transient tuple as a stable media identity.
   - **M8.5c — Wake policy.** Specify exact no-check/device-detection behavior per

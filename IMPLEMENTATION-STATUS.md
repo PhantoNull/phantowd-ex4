@@ -130,6 +130,23 @@ rebuild; actual board/build input changes remain covered.
 
 ## Roadmap comparison
 
+A separate M8.5b prerequisite adds the Linux-only internal `smartdevice.Witness`.
+It duplicates an already-open O_RDONLY block descriptor under SyscallConn,
+checks CLOEXEC/type/access/major/minor and BLKGETDISKSEQ and revalidates that
+same retained FD. A failed observation keeps review permanently; copied/busy
+handles are refused and only explicit Close releases the duplicate. Windows
+API/UI/vet and ARMv5 cross-compilation pass. Pinned Linux Go 1.26.6 tagged
+vet/main+package race, 17 runner contracts and actual existing ARMv5 smoke pass
+after final cleanup changes. Native refusal preserves caller flags/offset and
+leaks no duplicate across 128 attempts. Existing active disposable MD members
+prove real kernel generation checks, stale tuple refusal, caller-close survival,
+sticky review and explicit release; expected-tuple drift is simulated, not
+physical replacement. The manifest-verified base/helper remain unchanged; no
+new image/volume or boot stage. This is a smoke-only cached overlay, not full
+Buildroot/hosted or physical qualification. No contents, SMART transport command,
+SourceAdmitted, report attribution, descriptor-to-child handoff, HTTP or product
+startup is added. Full integration remains pending; planning bands unchanged.
+
 An additional M8.5b prerequisite provides a private complete sysfs census for
 future health-source binding. It uses the existing bounded collector and
 complete schema-v2 validator, not the import/mount candidate filter. Mounted

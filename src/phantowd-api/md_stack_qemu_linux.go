@@ -193,6 +193,10 @@ func runQEMUMDStackTest() (result error) {
 		return errors.New("SMART census lost the active MD fixture topology")
 	}
 	fmt.Println("PHANTOWD_SMART_MD_CENSUS_READY complete=true leaves=7 active_md_members=2 mounted_root_included=true device_opened=false command_admitted=false scope=qemu-fixture-only")
+	if err := exerciseQEMUSMARTGenerationWitnesses(); err != nil {
+		return err
+	}
+	fmt.Println("PHANTOWD_SMART_FD_WITNESS_READY active_md_members=2 retained_fd=true caller_close=true mismatch_refused=true review_sticky=true metadata_ioctl=BLKGETDISKSEQ content_read=false smart_command=false scope=qemu-fixture-only")
 	var mountStat unix.Statx_t
 	if err := unix.Statx(unix.AT_FDCWD, mountPoint, unix.AT_NO_AUTOMOUNT,
 		unix.STATX_BASIC_STATS|unix.STATX_MNT_ID_UNIQUE, &mountStat); err != nil {

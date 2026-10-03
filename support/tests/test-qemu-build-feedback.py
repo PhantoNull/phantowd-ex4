@@ -25,6 +25,19 @@ def save_log(destination, source):
 
 
 class BuildFeedbackTests(unittest.TestCase):
+    def test_smart_generation_witness_requires_actual_md_guest_assertion(self):
+        marker = "PHANTOWD_SMART_FD_WITNESS_READY"
+        smoke = (ROOT / "support/qemu-smoke.sh").read_text()
+        md = (ROOT / "src/phantowd-api/md_stack_qemu_linux.go").read_text()
+        fixture = (ROOT / "src/phantowd-api/smart_witness_qemu_linux.go").read_text()
+        self.assertIn(marker, smoke)
+        self.assertIn(marker, md)
+        self.assertIn("metadata_ioctl=BLKGETDISKSEQ", smoke)
+        self.assertIn("smart_command=false", smoke)
+        self.assertIn("VerifyQEMUStickyReview", fixture)
+        self.assertIn('[]string{"sde", "sdf"}', fixture)
+        self.assertIn("sameSMARTDiskCensus(before, after)", fixture)
+
     def test_smart_census_requires_both_actual_guest_assertions(self):
         smoke = (ROOT / "support/qemu-smoke.sh").read_text()
         census = (ROOT / "src/phantowd-api/selftest.go").read_text()

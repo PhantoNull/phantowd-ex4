@@ -793,7 +793,14 @@ two active disposable MD members. The private census opens no device and admits
 no `smartcollect.SourceAdmitted`, command, ioctl or stable history identity.
 It is not yet connected to the synthetic producer replay or product startup;
 retained device/runtime provenance, transport qualification and command
-boundaries remain separate. No HTTP endpoint or recurring scan is added.
+  boundaries remain separate. No HTTP endpoint or recurring scan is added.
+
+A separate Linux-only [private descriptor witness](internal/smartdevice/README.md)
+retains and rechecks an already-open read-only block FD using fstat/access flags
+and BLKGETDISKSEQ. It opens no path, reads no content and admits no SMART command.
+Native race/refusal/no-leak and actual disposable ARMv5 MD-member tests pass;
+this is not a complete provider, report attribution, transport authorization or
+production wiring. The sysfs-only census above remains device-open-free.
 
 ### Test commands
 
