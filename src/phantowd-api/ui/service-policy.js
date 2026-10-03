@@ -21,6 +21,8 @@ function invalidateServiceDraft() {
   if (serviceState.candidate !== null) setText("service-status", "Draft changed. Preview the change again before saving.");
   serviceState.candidate = null;
   byId("service-review").hidden = true;
+  byId("service-diff").replaceChildren();
+  setText("service-diff-summary", "");
   for (const id of ["service-change", "service-samba", "service-nfs"]) setText(id, "");
   syncServiceControls();
 }
@@ -108,6 +110,65 @@ function sameServiceDocument(a, b) {
   const canonical = (value) => Array.isArray(value) ? value.map(canonical) :
     value !== null && typeof value === "object" ? Object.fromEntries(Object.keys(value).sort().map((key) => [key, canonical(value[key])])) : value;
   return JSON.stringify(canonical(a)) === JSON.stringify(canonical(b));
+}
+
+// Display-only semantic comparison of validated desired policy. This is not
+// effective access, an authorization decision or proof of a running service.
+function describeServiceChanges(before, after) {
+  const checked = (c) => validateServiceDocument({ schema_version: 1,
+    scope: "development-stored-file-service-policy-only", initialized: c !== null,
+    configuration: c, applied: false, runtime_validated: false, activation_available: false });
+  checked(before);
+  if (checked(after) === null) throw new Error("A complete desired candidate is required for review.");
+  const entries = (c) => {
+    const result = new Map();
+    if (c === null) return result;
+    const put = (kind, parts, value) => {
+      const key = JSON.stringify([kind, ...parts]);
+      if (result.has(key)) throw new Error("Ambiguous desired entries. Review is unavailable.");
+      result.set(key, { kind, object: parts.join(" / "), value });
+    };
+    const access = (value) => value === "ro" ? "Read only" : "Read and write";
+    const users = new Map(c.shares.users.map((u) => [u.id, u.name]));
+    for (const v of c.shares.volumes) put("Volume reference", [v.id], `Expected filesystem UUID: ${v.filesystem_uuid}`);
+    for (const u of c.shares.users) put("User reference", [u.id], `Username: ${u.name} (not provisioned by this policy)`);
+    for (const s of c.shares.shares) {
+      put("SMB definition", [s.id], `Name: ${s.name}\nVolume reference: ${s.volume_id}\nRelative folder: ${s.relative_path}`);
+      for (const g of s.grants) put("SMB grant", [s.id, g.user_id], `${users.get(g.user_id)}: ${access(g.access)}`);
+    }
+    const security = { sys: "AUTH_SYS (trusted network only)", krb5: "Kerberos authentication",
+      krb5i: "Kerberos integrity", krb5p: "Kerberos privacy" };
+    for (const e of c.nfs.exports) {
+      put("NFS definition", [e.id], `Volume reference: ${e.volume_id}\nRelative folder: ${e.relative_path}`);
+      for (const client of e.clients) put("NFS client", [e.id, client.network],
+        `${access(client.access)}\nMap ${client.squash === "all" ? "all users" : "root only"} to ${client.anonymous_uid}:${client.anonymous_gid}\nSecurity: ${security[client.security]}`);
+    }
+    return result;
+  };
+  const oldEntries = entries(before), newEntries = entries(after), rows = [];
+  for (const key of [...new Set([...oldEntries.keys(), ...newEntries.keys()])].sort()) {
+    const old = oldEntries.get(key), next = newEntries.get(key);
+    if (old?.value === next?.value) continue;
+    if (rows.length === 512) throw new Error("More than 512 desired entries changed. Complete review is unavailable; reduce the change before saving.");
+    rows.push({ kind: (next ?? old).kind, object: (next ?? old).object,
+      before: old?.value ?? "Not defined", after: next?.value ?? "Not defined" });
+  }
+  return rows;
+}
+
+function renderServiceChanges(rows) {
+  const nodes = rows.map((change) => {
+    const row = document.createElement("tr");
+    const label = document.createElement("th");
+    label.setAttribute("scope", "row");
+    label.textContent = `${change.kind}: ${change.object}`;
+    const before = document.createElement("td"), after = document.createElement("td");
+    before.textContent = change.before; after.textContent = change.after;
+    row.append(label, before, after);
+    return row;
+  });
+  byId("service-diff").replaceChildren(...nodes);
+  setText("service-diff-summary", `${rows.length} changed desired ${rows.length === 1 ? "entry" : "entries"}. This is not effective access or running-service state. Unchanged entries are omitted; no files or credentials are changed.`);
 }
 
 // Each operation edits one explicitly identified object/rule. References are
@@ -367,6 +428,8 @@ async function previewServiceChange(build) {
     const preview = await request("/api/v1/file-services/preview", { method: "POST", headers, body: JSON.stringify({ shares: c.shares, nfs: c.nfs }) });
     if (draftGeneration !== policyGeneration) { setText("service-status", "Form changed. Preview again before saving."); return; }
     validatePolicyPreview(preview);
+    const changes = describeServiceChanges(serviceState.baseline, c);
+    renderServiceChanges(changes);
     serviceState.candidate = c;
     setText("service-change", `${summary} Save revision ${c.revision}, including ${c.shares.shares.length} SMB share(s) and ${c.nfs.exports.length} NFS export(s). No service activation or file deletion.`);
     setText("service-samba", preview.samba.samba_share_sections || "No SMB sections.");

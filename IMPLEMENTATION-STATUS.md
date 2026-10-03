@@ -9,6 +9,22 @@ Use [ROADMAP.md](ROADMAP.md) for the acceptance specification. This snapshot
 distinguishes tested components from deployed product workflows. It is not
 installation approval, a security certification, or an exhaustive line-by-line audit.
 
+M5.4a adds a bounded semantic before/after review to the existing development
+SMB/NFS policy editor. It compares stable IDs/CIDRs, includes every NFS mapping/
+security field, ignores order/revision-only differences and renders text into
+semantic cells. More than512 changed entries or ambiguous rules refuse the
+complete review and Save; form/auth invalidation clears it. No endpoint,
+request, browser persistence, account provisioning, activation or filesystem
+operation is added. The actual-source feature regression first fails with the
+comparison absent, then complete DOM/Windows checks pass. Pinned Linux whole
+tagged API vet/race, existing fixed fuzz/feedback checks and actual ARMv5 asset
+integration plus clean two-boot overlay pass on unchanged kernel/packages/probe.
+This is cached local evidence, not browser JS/visual/accessibility, clean new
+firmware/SBOM, hosted feature, physical EX4 or effective-access qualification.
+The original PR77 still qualifies only its frozen panel-lifecycle head; it
+cannot establish hosted acceptance for this subsequent change. Planning bands
+remain unchanged; no installable firmware exists.
+
 PR #76 passed its own exact `f247139` host check and merged as `bb9802e`.
 Expected, checked and integrated whole trees equal `238dbd00`; its topic was
 retired with exact ref/remote guards after switching to integrated `develop`.

@@ -275,6 +275,14 @@
           <div id="service-review" hidden>
             <p id="service-change" class="policy-help"></p>
             <p class="pill pill-warning">SAVE ONLY / NO SERVICE ACTIVATION</p>
+            <p id="service-diff-summary" class="policy-help"></p>
+            <div class="policy-diff-scroll" role="region" aria-label="Desired policy before and after" tabindex="0">
+              <table class="policy-diff-table">
+                <caption>Desired policy changes — not effective access</caption>
+                <thead><tr><th scope="col">Desired entry</th><th scope="col">Loaded baseline</th><th scope="col">Reviewed candidate</th></tr></thead>
+                <tbody id="service-diff"></tbody>
+              </table>
+            </div>
             <details><summary>Resulting Samba share sections</summary><pre id="service-samba"></pre></details>
             <details><summary>Resulting NFS export table</summary><pre id="service-nfs"></pre></details>
             <button id="service-save" class="refresh-button" type="button" disabled>Save reviewed change</button>

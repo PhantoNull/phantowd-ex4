@@ -1162,6 +1162,18 @@ milestone before enabling its controls; M1/M6 for deployment.
   identities, iSCSI, network, updates and recovery screens must show freshness,
   partial failure, confirmation/preview and observed results. Do not display
   configuration-only saves as successful service changes.
+  **M5.4a — desired-policy change review (partial; locally tested):** after the
+  existing whole-policy preview, compare explicitly loaded baseline/candidate
+  by stable definition/user IDs and exact NFS CIDRs. Semantic before/after
+  rows cover volume/user references, SMB definitions/grants and NFS definitions/
+  client access, squash, anonymous IDs and security. Reordering/revisions alone
+  are not access changes. At most 512 changed entries; larger/ambiguous reviews
+  refuse without partial output or Save. Text-only semantic table and candidate
+  lifecycle clearing add no endpoint, request, automatic save, activation or
+  browser persistence. Complete DOM/Windows/native tests and actual ARMv5
+  embedded-asset standard/two-boot overlay pass. Real-browser/accessibility,
+  hosted feature and production management remain separate gates; no current
+  service or filesystem permission is inferred from this desired comparison.
 - **M5.5 — Accessible efficient UI.** Keyboard operation, labels/focus, narrow
   viewports, screen-reader status and high contrast; bounded static assets and
   shared observations. Avoid per-client hardware polling, stale-response

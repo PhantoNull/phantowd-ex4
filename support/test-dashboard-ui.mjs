@@ -129,7 +129,7 @@ async function createHarness(respond, timing = {}) {
     "observed-at", "device-count", "device-list", "array-count", "array-list", "mount-count", "mount-list",
     "gpt-observe", "gpt-observation-status",
     ...["load", "status", "result", "summary", "shares"].map((id) => `saved-${id}`),
-    ...["load", "prepare", "save", "status", "current", "summary", "document", "review", "change", "samba", "nfs", "editor", "target", "member", "action", "edit-preview"].map((id) => `service-${id}`),
+    ...["load", "prepare", "save", "status", "current", "summary", "document", "review", "change", "samba", "nfs", "editor", "target", "member", "action", "edit-preview", "diff", "diff-summary"].map((id) => `service-${id}`),
     ...["form", "submit", "clear", "result", "error", "status", "requirements", "samba", "nfs", "nfs-fields", "uuid", "name", "path", "user", "smb-access", "nfs-enabled", "export-id", "network", "nfs-access", "squash", "uid", "gid", "security"].map((id) => `policy-${id}`),
   ];
   const elements = Object.fromEntries(ids.map((id) => [id, new FixtureElement()]));
@@ -931,6 +931,8 @@ async function testServiceRefusalsAndInvalidation() {
     assert.equal(h.elements["service-review"].hidden, true);
     assert.equal(h.elements["service-current"].hidden, true);
     assert.equal(h.elements["service-document"].textContent, "");
+    assert.equal(h.elements["service-diff"].children.length, 0);
+    assert.equal(h.elements["service-diff-summary"].textContent, "");
     assert.equal(h.elements["service-save"].disabled, true);
     assert.equal(h.requests.filter(({ options }) => options?.method === "PUT").length, boundary === "save-reply" ? 1 : 0);
   }
@@ -1209,4 +1211,111 @@ for (const outcome of ["success", "wrong-current", "uncertain", "rejected", "mal
   }
 }
 
+async function testDesiredChangeReview() {
+  const { context, elements, requests } = await serviceHarness(() => jsonResponse(serviceReply(null)));
+  fillPolicy(elements);
+  const proposal = context.buildPolicyProposal();
+  const c = context.buildServiceAddition(null, proposal);
+  const changes = context.describeServiceChanges(null, c);
+  assert.equal(changes.length, 6, "first policy includes volume, user, SMB definition/grant and NFS definition/client");
+  assert.equal(new Set(changes.map((r) => r.kind)).size, 6);
+  assert.ok(changes.every((r) => r.before === "Not defined"));
+  await context.loadServicePolicy();
+  await context.prepareServiceAddition();
+  assert.equal(elements["service-diff"].children.length, 6);
+  assert.match(elements["service-diff-summary"].textContent, /6.*desired.*not effective/i);
+  assert.equal(requests.filter((r) => r.options?.method === "PUT").length, 0, "review never saves");
+  context.invalidateServiceDraft();
+  assert.equal(elements["service-diff"].children.length, 0);
+  assert.equal(elements["service-diff-summary"].textContent, "");
+}
+
+async function testDesiredChangeReviewEdits() {
+  const { context, c, values } = await editorFixture();
+  const initial = JSON.stringify(c);
+  const smb = "smb:share-1", nfs = `nfs:${c.nfs.exports[0].id}`;
+  for (const [action, target, overrides, kinds] of [
+    ["smb-properties", smb, { name: "Renamed", path: "new-folder" }, ["SMB definition"]],
+    ["smb-properties", smb, { uuid: "22222222-2222-3333-4444-555555555555" }, ["SMB definition", "Volume reference"]],
+    ["smb-grant-upsert", smb, { "smb-access": "rw" }, ["SMB grant"]],
+    ["smb-grant-upsert", smb, { user: "newreader" }, ["SMB grant", "User reference"]],
+    ["smb-grant-remove", smb, {}, ["SMB grant"]],
+    ["smb-remove", smb, {}, ["SMB definition", "SMB grant", "SMB grant"]],
+    ["nfs-properties", nfs, { path: "new-folder" }, ["NFS definition"]],
+    ["nfs-client-upsert", nfs, { "nfs-access": "rw", squash: "root", uid: "1000", gid: "1001", security: "krb5p" }, ["NFS client"]],
+    ["nfs-client-upsert", nfs, { network: "2001:db8::/64" }, ["NFS client"]],
+    ["nfs-client-remove", nfs, {}, ["NFS client"]],
+    ["nfs-remove", nfs, {}, ["NFS definition", "NFS client", "NFS client"]],
+    ["nfs-add", "", { "export-id": "cccccccc-bbbb-cccc-dddd-eeeeeeeeeeee" }, ["NFS definition", "NFS client"]],
+  ]) {
+    const next = context.buildServiceEdit(c, action, target, { ...values, ...overrides }).configuration;
+    const rows = JSON.parse(JSON.stringify(context.describeServiceChanges(c, next)));
+    assert.deepEqual(rows.map((r) => r.kind).sort(), kinds.sort(), action);
+    assert.equal(JSON.stringify(c), initial, "comparison never mutates baseline");
+    if (action.endsWith("remove")) assert.ok(rows.every((r) => r.after === "Not defined"));
+    if (action === "nfs-client-upsert" && overrides.security) {
+      assert.match(rows[0].before, /Read only.*\nMap all users to 65534:65534.*\nSecurity: AUTH_SYS/s);
+      assert.match(rows[0].after, /Read and write.*\nMap root only to 1000:1001.*\nSecurity: Kerberos privacy/s);
+    }
+  }
+  const reordered = structuredClone(c);
+  reordered.shares.volumes.reverse(); reordered.shares.users.reverse(); reordered.shares.shares.reverse();
+  reordered.shares.shares.forEach((s) => s.grants.reverse());
+  reordered.nfs.exports.reverse(); reordered.nfs.exports.forEach((e) => e.clients.reverse());
+  reordered.revision = reordered.shares.revision = reordered.nfs.revision = reordered.nfs.volume_revision = 2;
+  assert.equal(context.describeServiceChanges(c, reordered).length, 0, "order and revision alone are not access changes");
+  const ambiguous = structuredClone(c);
+  ambiguous.nfs.exports[0].clients.push(structuredClone(ambiguous.nfs.exports[0].clients[0]));
+  assert.throws(() => context.describeServiceChanges(c, ambiguous), /Ambiguous/);
+  assert.throws(() => context.describeServiceChanges(undefined, c));
+  assert.throws(() => context.describeServiceChanges(c, null));
+  const renamedUser = structuredClone(c); renamedUser.shares.users[0].name = "renamed";
+  const renamedRows = JSON.parse(JSON.stringify(context.describeServiceChanges(c, renamedUser)));
+  assert.deepEqual(renamedRows.map((r) => r.kind).sort(), ["SMB grant", "User reference"].sort());
+}
+
+async function testDesiredChangeReviewBoundsAndRendering() {
+  const { context, c, elements } = await editorFixture();
+  const before = structuredClone(c);
+  before.shares.users = Array.from({ length: 16 }, (_, i) => ({ id: `user-${i}`, name: `reader${i}` }));
+  before.shares.shares = Array.from({ length: 32 }, (_, i) => ({ id: `share-${i}`, name: `Share${i}`,
+    volume_id: before.shares.volumes[0].id, relative_path: `folder${i}`,
+    grants: before.shares.users.slice(0, 15).map((u) => ({ user_id: u.id, access: "ro" })) }));
+  const after = structuredClone(before);
+  after.shares.shares.forEach((s) => { s.name += "Changed"; s.grants.forEach((g) => { g.access = "rw"; }); });
+  const rows = context.describeServiceChanges(before, after);
+  assert.equal(rows.length, 512, "complete bounded review at exact limit");
+  context.renderServiceChanges(rows);
+  assert.equal(elements["service-diff"].children.length, 512);
+  before.shares.shares[0].grants.push({ user_id: "user-15", access: "ro" });
+  after.shares.shares[0].grants.push({ user_id: "user-15", access: "rw" });
+  assert.throws(() => context.describeServiceChanges(before, after), /More than 512/);
+  const h = await serviceHarness(() => jsonResponse(serviceReply(before)));
+  await h.context.loadServicePolicy();
+  await h.context.previewServiceChange(() => ({ configuration: after, summary: "synthetic bulk change" }));
+  assert.equal(h.elements["service-save"].disabled, true);
+  assert.equal(h.elements["service-review"].hidden, true);
+  assert.equal(h.elements["service-diff"].children.length, 0, "refusal never exposes a truncated review");
+  assert.match(h.elements["service-status"].textContent, /More than 512/);
+  assert.equal(h.requests.some((r) => r.options?.method === "PUT"), false);
+
+  const unsafeText = structuredClone(c);
+  unsafeText.shares.shares[0].name = "<img src=x onerror=alert(1)>";
+  unsafeText.shares.shares[0].relative_path = "<script>fixture only</script>";
+  context.renderServiceChanges(context.describeServiceChanges(c, unsafeText));
+  assert.equal(elements["service-diff"].children.length, 1);
+  const cells = elements["service-diff"].children[0].children;
+  assert.equal(cells.length, 3);
+  assert.equal(cells[0].attributes.get("scope"), "row");
+  assert.match(cells[2].textContent, /<img.*<script>/s);
+  assert.equal(cells[2].children.length, 0, "policy markup remains literal text, not child elements");
+  assert.match(markup, /<caption>Desired policy changes/);
+  assert.match(markup, /role="region" aria-label="Desired policy before and after" tabindex="0"/);
+  context.clearServicePolicy();
+  assert.equal(elements["service-diff"].children.length, 0);
+}
+
+await testDesiredChangeReview();
+await testDesiredChangeReviewEdits();
+await testDesiredChangeReviewBoundsAndRendering();
 process.stdout.write("Dashboard UI interaction smoke tests passed (DOM fixture; no visual browser coverage).\n");
