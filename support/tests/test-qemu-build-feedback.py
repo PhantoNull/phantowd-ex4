@@ -25,6 +25,18 @@ def save_log(destination, source):
 
 
 class BuildFeedbackTests(unittest.TestCase):
+    def test_network_inventory_requires_actual_kernel_assertion(self):
+        smoke = (ROOT / "support/qemu-smoke.sh").read_text()
+        selftest = (ROOT / "src/phantowd-api/selftest.go").read_text()
+        fixture = (ROOT / "src/phantowd-api/network_inventory_qemu_linux.go").read_text()
+        for claim in ("PHANTOWD_NETWORK_INVENTORY_READY", "kernel=true",
+                      "repeated=true", "counts_redacted=true", "json_refused=true"):
+            self.assertIn(claim, smoke)
+            self.assertIn(claim, selftest)
+        self.assertIn("exerciseQEMUNetworkInventory()", selftest)
+        self.assertIn("networkinventory.Collect(context.Background())", fixture)
+        self.assertIn("networkinventory.Recheck(context.Background(),o)", fixture.replace(" ", ""))
+
     def test_network_policy_requires_same_boot_guest_assertion(self):
         smoke = (ROOT / "support/qemu-smoke.sh").read_text()
         selftest = (ROOT / "src/phantowd-api/selftest.go").read_text()

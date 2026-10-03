@@ -843,6 +843,16 @@ are not physical identity proof. Persistent state, actual interface admission,
 runtime conflict observation, trial/confirmation/rollback and API/UI integration
 remain open; no management-network change is enabled.
 
+[Private networkinventory](internal/networkinventory/README.md) separately
+collects bounded complete link/address dumps from the current Linux namespace,
+checking kernel reply provenance/completion and matching two observations. It
+retains address flags/scope/peers privately, refuses JSON and exposes counts only.
+Native UID1000/zero-capability and actual ARMv5 kernel observations pass; the
+standard root guest fixture does not qualify non-root ARM privileges. The
+namespace pin lasts only for collection; Recheck is not an interface generation
+lease, event monitor or Owner recovery. Factory slot identity, DAD/external
+conflict/route admission and product collector startup remain unimplemented.
+
 ### Test commands
 
 From the repository root on Windows, with a local Go 1.26+ installation:
