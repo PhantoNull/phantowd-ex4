@@ -243,6 +243,13 @@ This reuses one fixed image/two volumes with bounded auto-removed RAM scratch;
 no new persistent output. Hosted/clean-build/physical acceptance remains open.
 This is a point-in-time recheck, not a retained lease or activation authority.
 
+Next acceptance extension: in the same disposable ARMv5 MD fixture, ordinarily
+unmount and remount only the already-created fixed read-only filesystem. The
+old complete census must refuse both absent mount and same-path/device/UUID
+remount; a newly collected census must pass. Reuse existing cleanup ownership
+and fixed VersatilePB/member guards, with no extra virtual disk or boot. This
+does not introduce a product unmount/remount operation or NAS authority.
+
 ### M3.2f scoped desired-volume observation task contract
 
 Add one private, side-effect-free review joining a validated desired share

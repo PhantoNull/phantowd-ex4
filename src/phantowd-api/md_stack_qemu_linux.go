@@ -261,6 +261,50 @@ func runQEMUMDStackTest() (result error) {
 		return errors.New("complete mounted-ext recheck accepted stale MD identity")
 	}
 	fmt.Println("PHANTOWD_MOUNTED_CENSUS_RECHECK_READY complete_scope=true actual_md_members=2 fixed_reader=true coherent_stale_mount_refused=true coherent_stale_md_refused=true retained_lease=false activation=false scope=disposable-qemu-only")
+	// Exercise actual loss and return of this fixed disposable mount, not
+	// just altered in-memory evidence. No new array or filesystem is created.
+	if err := unix.Unmount(mountPoint, 0); err != nil {
+		return errors.New("ordinary disposable MD recheck fixture unmount failed")
+	}
+	mounted = false
+	if err := recheckTrustedMountedExtCensus(context.Background(), census, sysfs, os.DirFS("/proc")); !errors.Is(err, errMountedStorageIdentityIncomplete) {
+		return errors.New("mounted census recheck accepted an actually absent mount")
+	}
+	if err := unix.Mount("/dev/md0", mountPoint, "ext2", unix.MS_RDONLY|unix.MS_NOSUID|unix.MS_NODEV|unix.MS_NOEXEC, ""); err != nil {
+		return errors.New("fixed disposable MD read-only remount failed")
+	}
+	mounted = true
+	if err := recheckTrustedMountedExtCensus(context.Background(), census, sysfs, os.DirFS("/proc")); !errors.Is(err, errMountedStorageIdentityIncomplete) {
+		return errors.New("mounted census recheck accepted actual same-path remount")
+	}
+	freshCensus, err := collectTrustedMountedExtCensus(context.Background(), sysfs, os.DirFS("/proc"))
+	if err != nil || freshCensus.coverage != census.coverage ||
+		!sameStorageSnapshot(freshCensus.storage, census.storage) || !sameMountedCensusArrays(freshCensus.arrays, census.arrays) {
+		return errors.New("actual read-only remount changed expected coverage or MD/storage identity")
+	}
+	oldMountID, freshMountID := uint64(0), uint64(0)
+	for _, root := range census.roots.Mounts {
+		if root.Anchor == mountPoint {
+			oldMountID = root.MountID
+		}
+	}
+	for _, root := range freshCensus.roots.Mounts {
+		if root.Anchor == mountPoint && root.FilesystemUUID == qemuMDFilesystemUUID && root.DeviceMajor == array.Major && root.DeviceMinor == array.Minor {
+			freshMountID = root.MountID
+		}
+	}
+	remountedReadOnly := false
+	for _, mount := range freshCensus.mounts.Mounts {
+		if mount.MountPoint == mountPoint && mount.ReadOnly && mount.DeviceMajor == array.Major && mount.DeviceMinor == array.Minor {
+			remountedReadOnly = true
+		}
+	}
+	if oldMountID == 0 || freshMountID == 0 || oldMountID == freshMountID || !remountedReadOnly ||
+		recheckTrustedMountedExtCensus(context.Background(), freshCensus, sysfs, os.DirFS("/proc")) != nil {
+		return errors.New("actual remount did not require fresh valid unique-mount evidence")
+	}
+	census = freshCensus
+	fmt.Println("PHANTOWD_MOUNTED_CENSUS_REMOUNT_READY absent_refused=true same_path_device_uuid=true stale_mount_refused=true unique_id_changed=true fresh_census_accepted=true readonly=true scope=disposable-qemu-only")
 	volumeReview, err := reviewDesiredMountedVolumes(shareconfig.Config{
 		Format: shareconfig.Format, SchemaVersion: shareconfig.SchemaVersion, Revision: 1,
 		Volumes: []shareconfig.Volume{{ID: "observed-md", FilesystemUUID: qemuMDFilesystemUUID}},

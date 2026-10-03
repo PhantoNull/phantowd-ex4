@@ -312,6 +312,10 @@ while [ "$attempt" -lt "$smoke_timeout" ]; do
             echo 'Missing complete mounted-census freshness recheck assertion' >&2
             exit 1
         fi
+        if ! grep -F 'PHANTOWD_MOUNTED_CENSUS_REMOUNT_READY absent_refused=true same_path_device_uuid=true stale_mount_refused=true unique_id_changed=true fresh_census_accepted=true readonly=true scope=disposable-qemu-only' "$log_file" >/dev/null; then
+            echo 'Missing actual mounted-census loss/return assertion' >&2
+            exit 1
+        fi
         if ! grep -F 'PHANTOWD_SCOPED_VOLUME_REVIEW_READY desired_ids_only=true complete_census=true actual_md=true unclaimed_explicit=true private=true qualification=false activation=false scope=disposable-qemu-only' "$log_file" >/dev/null; then
             echo 'Missing private scoped desired-volume review assertion' >&2
             exit 1

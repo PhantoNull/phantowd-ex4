@@ -174,6 +174,9 @@ mounted_recheck_marker='PHANTOWD_MOUNTED_CENSUS_RECHECK_READY complete_scope=tru
 grep -F "$mounted_recheck_marker" "$repo_root/src/phantowd-api/md_stack_qemu_linux.go" >/dev/null || fail 'QEMU must exercise the complete fixed-reader census recheck'
 grep -F "$mounted_recheck_marker" "$repo_root/support/qemu-smoke.sh" >/dev/null || fail 'QEMU smoke must require the stale-identity refusal assertion'
 mounted_review_marker='PHANTOWD_SCOPED_VOLUME_REVIEW_READY desired_ids_only=true complete_census=true actual_md=true unclaimed_explicit=true private=true qualification=false activation=false scope=disposable-qemu-only'
+mounted_remount_marker='PHANTOWD_MOUNTED_CENSUS_REMOUNT_READY absent_refused=true same_path_device_uuid=true stale_mount_refused=true unique_id_changed=true fresh_census_accepted=true readonly=true scope=disposable-qemu-only'
+grep -F "$mounted_remount_marker" "$repo_root/src/phantowd-api/md_stack_qemu_linux.go" >/dev/null || fail 'QEMU must exercise actual fixed disposable mount loss and return'
+grep -F "$mounted_remount_marker" "$repo_root/support/qemu-smoke.sh" >/dev/null || fail 'QEMU smoke must require actual remount stale-census refusal'
 grep -F "$mounted_review_marker" "$repo_root/src/phantowd-api/md_stack_qemu_linux.go" >/dev/null || fail 'QEMU must exercise private scoped desired-volume review'
 grep -F "$mounted_review_marker" "$repo_root/support/qemu-smoke.sh" >/dev/null || fail 'QEMU smoke must require scoped desired-volume review'
 grep -F "$mounted_identity_marker" "$repo_root/src/phantowd-api/mount_guard_qemu_linux.go" >/dev/null ||
