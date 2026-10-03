@@ -4,10 +4,17 @@
 # Implementation status
 
 Code audit: **2026-10-03**, integrated `develop` baseline
-`9d2a0bc9bb0a563aac18672c0e2154046f24544d` (PR #75).
+`bb9802e3779f608dcf77bc1d590236c0f4a246d1` (PR #76).
 Use [ROADMAP.md](ROADMAP.md) for the acceptance specification. This snapshot
 distinguishes tested components from deployed product workflows. It is not
 installation approval, a security certification, or an exhaustive line-by-line audit.
+
+PR #76 passed its own exact `f247139` host check and merged as `bb9802e`.
+Expected, checked and integrated whole trees equal `238dbd00`; its topic was
+retired with exact ref/remote guards after switching to integrated `develop`.
+This host-tool/Markdown-only increment correctly requires no firmware QEMU
+build; it does not qualify a target installer or physical device. The duplicate
+PR75 merge-triggered QEMU run is confirmed cancelled, not failed or restarted.
 
 PR #75 passed exact `c51d452` host and QEMU/DTB checks, including final
 isolated-volume cleanup, and merged as `9d2a0bc`. Expected, checked and integrated
@@ -200,6 +207,12 @@ in a real browser and do not qualify accessibility, target installation or
 product authentication. No HTTP authorization, endpoint, privileged operation
 or storage behavior changes. One existing image/output and bounded disposable
 RAM scratch reused; no second heavy PR. M5/overall planning bands unchanged.
+The correction rebases as `b8e8814` onto qualified PR #76 with both original
+patches unchanged, API subtree `2871d3b1` and the same dashboard test blob.
+The complete expected composition uses the proven tree-equivalent original
+PR75 head as its explicit squash base; actual rebased tree equals `2bffe030`.
+Repeated current-source Windows API/UI/vet/tagged tests and ARMv5 test
+cross-compilation pass. This is not a new QEMU execution or real-browser proof.
 
 M6.1f local follow-up on code `68fae6b`, tree-identically rebased as `8bf993d`
 (complete tree `3055351`), joins a validated desired policy to the existing

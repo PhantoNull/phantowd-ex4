@@ -1556,7 +1556,7 @@ Then qualify the selected backend and migration objects on expendable EX4 media.
   programmatic cancellation/cause checks. API metadata URLs remain query-free.
   This is a tested transport primitive, not device trust-root provisioning,
   target installation or a published firmware qualification.
-  **M10.2a — host installer prerequisite (partial; locally tested):** optional
+  **M10.2a — host installer prerequisite (partial; host-integrated):** optional
   `--installer-version` uses the existing bounded SemVer comparison against the
   authenticated `minimum_installer`. It runs after signature/schema/exact-target/
   channel checks (and immutable signed tag matching for GitHub), before payload
@@ -1569,6 +1569,8 @@ Then qualify the selected backend and migration objects on expendable EX4 media.
   This caller-supplied version is not device attestation, installation permission,
   persistent anti-rollback, or a target transaction. No signing/schema/trust-root
   change, firmware build, physical operation or release qualification follows.
+  PR #76 subsequently passes its own exact `f247139` host check and integrates
+  as `bb9802e` with expected/checked/integrated complete tree `238dbd00`.
 - **M10.3 — Target transaction.** Explicit preflight, staged, verified, installing,
   boot-pending, health-confirmed and recovery states. Journal durable boundaries;
   check space/power prerequisites. An ambiguous state must not restart installation
