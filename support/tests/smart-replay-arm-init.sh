@@ -27,6 +27,12 @@ for entry in pass:0 fail:8 partial-fail:12 partial-pass:4 unsupported:4 disabled
 done
 if [ "$failed" = 0 ] && /usr/sbin/phantowd-smart-replay-test -test.v -test.timeout=45s; then
     echo 'PHANTOWD_SMART_ARM_REPLAY_READY scope=generic-synthetic-only version=7.5 cases=7'
+    export PHANTOWD_SMART_CAPTURE_FIXTURE=generic-only
+    if /usr/sbin/phantowd-smart-capture-test -test.v -test.run '^TestFixedProducerCapture$' -test.timeout=30s; then
+        echo 'PHANTOWD_SMART_ARM_CAPTURE_READY scope=generic-synthetic-only source=fake cases=7'
+    else
+        echo 'PHANTOWD_SMART_ARM_CAPTURE_FAILED'
+    fi
 else
     echo 'PHANTOWD_SMART_ARM_REPLAY_FAILED'
 fi

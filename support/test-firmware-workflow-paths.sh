@@ -246,6 +246,19 @@ for path in 'support/tests/test-smart-replay.sh' \
     require_not_ignored_pattern "$qemu_workflow" push "$path"
     require_not_ignored_pattern "$qemu_workflow" pull_request "$path"
 done
+
+# Generic-producer replay is a disposable QEMU userspace fixture, not an EX4
+# kernel input. Keep actual guest execution selected and fast host checks too.
+for path in 'support/test-smart-replay-arm.ps1' \
+    'support/tests/test-qemu-smart-replay.sh' \
+    'support/tests/smart-replay-arm-init.sh' \
+    'support/tests/smart-replay-corpus.py'; do
+    require_ignored_path "$stage_b3_workflow" "$path"
+    require_triggered_path "$host_workflow" "$path"
+    for event in push pull_request; do
+        require_not_ignored_pattern "$qemu_workflow" "$event" "$path"
+    done
+done
 require_ignored_path "$stage_b3_workflow" 'support/tests/test-smart-report-wrapper.ps1'
 require_ignored_path "$qemu_workflow" 'support/tests/test-smart-report-wrapper.ps1'
 require_triggered_path "$host_workflow" 'support/tests/test-smart-report-wrapper.ps1'

@@ -687,6 +687,16 @@ run is not hosted feature or independent clean-build qualification; do not
 count the pure-parser or native lanes as an ARM producer pass.
 See [the producer contract](SMART-REPLAY.md).
 
+The same producer boot now additionally executes the fixed single-use capture
+Owner and SMART coordinator through a test-only `smartcapture` adapter. Seven
+actual generic reports retain their genuine exits/assessment, while fake source
+replacement discards the report and restoration cannot clear review. A second
+exact success marker is mandatory. Inputs are regular synthetic stdin files,
+not devices, and source provenance remains fake. Guest test debug symbols are
+omitted to fit the existing snapshot; injected bytes are independently checked
+before boot rather than trusting debugfs status. No new image, volume, boot stage,
+hardware backend or product authority is added.
+
 `support/test-samba-root.ps1` additionally tests actual multi-user Samba inside
 a restricted read-only root/private mount namespace, using only fixture state
 and explicit subdirectory grants. UID 0 retains six bounded capabilities for

@@ -71,7 +71,8 @@ type Result struct {
 }
 
 // Backend is fixed at construction. The provider owns descriptor/runtime
-// provenance, capture/output bounds and process cleanup; tests use fakes only.
+// provenance, capture/output bounds and process cleanup. Synthetic test providers
+// do not establish device provenance or grant physical command authority.
 // Settled must freshly verify no still-owned child, not merely a returned reply.
 type Backend interface {
 	Observe(context.Context) (Source, error)

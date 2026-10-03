@@ -113,6 +113,22 @@ reports live in private guest tmpfs. Configure/build/test/guest execution have
 finite deadlines; the fixture cleans scratch on success or failure.
 Full integration runs this lane against its just-built base and toolchain.
 
+The same boot also runs the `smartcapture` test-only coordinator adapter through
+`processowner.NewCapture`: independent fixed code/stdin pins, fixed arguments,
+UID/GID 1000, separate streaming output bounds, real ordinary exit status,
+settled owned-group verification and seven redacted report projections. A fake
+source-generation change after successful capture must discard the sample and
+retain review even after restoration. The source observations are explicitly
+synthetic, not disk identity/provenance. Both parser and capture success markers
+are required; neither test is replaced by a cross-compilation assertion.
+
+The two Go guest test binaries omit debug symbols to fit the existing 80 MiB
+temporary filesystem without enlarging the base or removing product files.
+Every injected trace/binary/init is dumped back and compared byte-for-byte before
+boot. This matters because debugfs can return zero after an allocation failure.
+Exact-byte refusal and the final unchanged-base hash are independent checks.
+The primitive's Linux lifecycle/negative tests run separately, not in this guest.
+
 The pinned ARM926 toolchain's static libraries can label the linked executable
 `v5TEJ`, including when its own objects use `-march=armv5te`. The fixture admits
 only the explicit `v5TE`/`v5TEJ` ARM926 guest profiles, not ARMv6/7 or hard-float.

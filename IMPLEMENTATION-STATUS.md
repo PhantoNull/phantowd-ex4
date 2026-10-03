@@ -4,7 +4,7 @@
 # Implementation status
 
 Code audit: **2026-10-03**, integrated `develop` baseline
-`d8707aa8a909e10a2430fe4e78e85c0cc035e1ce` (PR #66).
+`8579e428d1a0abc876d665640cff68a0d8f6e573` (PR #67).
 Use [ROADMAP.md](ROADMAP.md) for the acceptance specification. This snapshot
 distinguishes tested components from deployed product workflows. It is not
 installation approval, a security certification, or an exhaustive line-by-line audit.
@@ -18,6 +18,13 @@ commit with its complete tree unchanged, passed final-head `fa6969a`
 and merged as `d8707aa` with complete expected-tree equality. Both topic branches
 were retired with exact-SHA guards after inclusion proof. The new SMART
 coordinator below is not covered by those earlier CI results.
+
+PR #67 subsequently passed final head `2aa933a` host and
+[QEMU/DTB](https://github.com/PhantoNull/phantowd-ex4/actions/runs/37098182141)
+checks and was squash-merged as `8579e42`. Its entire expected merge tree equals
+the checked head; the integrated topic was retired with exact-SHA guards.
+This qualifies the coordinator/fake-backend integration, not the separate
+fixed-capture increment below or physical SMART authority.
 
 PR #60 integrated the retained static-code Owner after exact head `7c96f41`
 passed hosted host, B3 and QEMU checks. The complete expected merge tree was
@@ -113,6 +120,36 @@ removed. QEMU-only experiment paths no longer trigger an unchanged EX4 kernel
 rebuild; actual board/build input changes remain covered.
 
 ## Roadmap comparison
+
+A subsequent M8.5b prerequisite adds `processowner.NewCapture` for one retained
+fixed command and one bounded regular read-only stdin, never a device. Complete
+Windows API/UI and pinned Linux process-owner/coordinator vet/race pass. Native
+negative tests cover separate stream bounds, signals vs genuine ordinary exits,
+input drift, forced cleanup, copied handles and persistent release uncertainty.
+The existing actual ARM926 generic-producer boot now also passes seven real
+capture/coordinator projections and a fake source-change/refusal case. Both
+success markers and unchanged original-base hash are required. Adding the second
+test binary first reproduced image-space exhaustion hidden by debugfs's zero
+exit; exact injected-byte comparison now fails before boot, and debug-free test
+binaries pass within the unchanged 80 MiB copy. The complete cached local lane
+then passed on frozen `6bd3995` (tree `883d9d1f`), including all host/race/fuzz,
+image/legal-info/SBOM, native probe and standard/MD/two-boot/launcher/Owner/loader/
+atomic/Samba/SMART guest tests. The rebase to `6c25cec` preserves that entire tree.
+Independent hashes find five artifacts unchanged, while the API and rootfs have
+new hashes. A separate API rebuild with Buildroot's target stripping matches the
+exported API, target file and image-contained API byte-for-byte. Only the existing
+two volumes, one 14 GiB output and 971 MiB cache remain. This is cached local
+integration, not hosted topic or independent full clean-build qualification,
+authenticated runtime/device provenance,
+an isolated physical SMART collector, standby or product activation. All milestone
+bands and the first-release scope remain unchanged.
+
+The first fixed-capture PR selection exposed missing producer-fixture path
+coverage: it selected unchanged EX4 B3 and omitted the fast host workflow.
+A path regression now requires those files to select host/QEMU and exclude B3;
+host adds POSIX syntax checks, while actual ARM execution remains in QEMU.
+The correction changes only CI/contracts/status, not the full-tested command,
+coordinator, guest runner, firmware input or product authority.
 
 The M8.5b internal generation-bound coordinator now passes the complete Windows
 API/UI preflight (Go 1.27.0), pinned Linux Go 1.26.6 vet/race checks and a

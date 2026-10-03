@@ -11,6 +11,10 @@ on:
       - 'support/tests/test-qemu-smart-report.sh'
       - 'support/tests/smart-report-init.sh'
       - 'support/tests/test-smart-replay-contract.py'
+      - 'support/test-smart-replay-arm.ps1'
+      - 'support/tests/test-qemu-smart-replay.sh'
+      - 'support/tests/smart-replay-arm-init.sh'
+      - 'support/tests/smart-replay-corpus.py'
       - 'tools/phantowd-lab/**'
       - 'src/phantowd-service-launcher/**'
       - 'support/test-service-launcher.ps1'
@@ -66,6 +70,10 @@ on:
       - 'support/tests/test-qemu-smart-report.sh'
       - 'support/tests/smart-report-init.sh'
       - 'support/tests/test-smart-replay-contract.py'
+      - 'support/test-smart-replay-arm.ps1'
+      - 'support/tests/test-qemu-smart-replay.sh'
+      - 'support/tests/smart-replay-arm-init.sh'
+      - 'support/tests/smart-replay-corpus.py'
       - 'tools/phantowd-lab/**'
       - 'src/phantowd-service-launcher/**'
       - 'support/test-service-launcher.ps1'
@@ -171,6 +179,12 @@ jobs:
 
       - name: Verify SMART runner markers and disposable cleanup
         run: python3 -B support/tests/test-smart-replay-contract.py
+
+      - name: Verify SMART producer runner and guest init syntax
+        run: |
+          for script in support/tests/test-qemu-smart-replay.sh support/tests/smart-replay-arm-init.sh; do
+            sh -n "$script"
+          done
 
       - name: Verify native service launcher refusals
         run: python3 -B support/tests/test-service-launcher.py

@@ -53,6 +53,20 @@ func NewPinnedSet(specs []MemberSpec, executables []*os.File) (*PinnedSet, error
 }
 
 func duplicateExecutable(source *os.File) (*os.File, error) {
+	pin, err := duplicateReadOnlyRegular(source)
+	if err != nil {
+		return nil, err
+	}
+	if trustedExecutable(pin) != nil {
+		_ = pin.Close()
+		return nil, ErrInvalid
+	}
+	return pin, nil
+}
+
+// Duplicates a regular O_RDONLY descriptor while holding the caller's file
+// reference. This is retention only; callers separately qualify code or input.
+func duplicateReadOnlyRegular(source *os.File) (*os.File, error) {
 	if source == nil {
 		return nil, ErrInvalid
 	}
@@ -66,9 +80,11 @@ func duplicateExecutable(source *os.File) (*os.File, error) {
 	if err != nil || duplicateErr != nil || fd < 0 {
 		return nil, ErrInvalid
 	}
-	pin := os.NewFile(uintptr(fd), "fixed-pinned-executable")
+	pin := os.NewFile(uintptr(fd), "fixed-readonly-regular-input")
 	flags, err := unix.FcntlInt(uintptr(fd), unix.F_GETFL, 0)
-	if err != nil || flags&unix.O_ACCMODE != unix.O_RDONLY || flags&unix.O_PATH != 0 || trustedExecutable(pin) != nil {
+	var stat unix.Stat_t
+	if err != nil || flags&unix.O_ACCMODE != unix.O_RDONLY || flags&unix.O_PATH != 0 ||
+		unix.Fstat(fd, &stat) != nil || stat.Mode&unix.S_IFMT != unix.S_IFREG {
 		_ = pin.Close()
 		return nil, ErrInvalid
 	}
