@@ -131,9 +131,17 @@ Windows API/UI/vet and ARMv5 cross-compilation pass; pinned Linux Go 1.26.6
 QEMU-tagged vet/race and 16 feedback contracts pass. The actual existing ARMv5
 single-boot overlay also passes mandatory mounted-root and active-MD-member
 assertions with the original base unchanged. It reuses the unchanged metadata
-helper and skips the separate two-boot fixture. This is not a new complete
-Buildroot/legal/SBOM run, hosted topic qualification, source admission, report-
-to-device binding, SMART transport/ioctl authority or product integration.
+helper and skips the separate two-boot fixture. Subsequently, the complete
+cached local lane passed on unchanged published `c3f017a` (tree `082be769`):
+all host/race/fuzz, image/packages/legal-info/SBOM, native probe and existing
+standard/MD/two-boot/launcher/retained-Owner/loader/atomic/Samba/SMART guest lanes.
+Independent hashes find five exported artifacts unchanged from the capture
+baseline, while the API and rootfs have new hashes. A separate API-only rebuild
+with the pinned builder and target stripping matches the target, export and
+image-contained API byte-for-byte. This is not independent full clean-build or
+hosted topic qualification, source admission, report-to-device binding, SMART
+transport/ioctl authority or product integration. Existing two volumes, one
+14 GiB output and 971 MiB compiler cache were reused; test containers removed.
 No HTTP, broker/device rules, privilege profile or normal startup is changed.
 Milestone estimates remain unchanged.
 
