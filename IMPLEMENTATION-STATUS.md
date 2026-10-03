@@ -4,10 +4,18 @@
 # Implementation status
 
 Code audit: **2026-10-03**, integrated `develop` baseline
-`0bf3f91d385b8c11c4ce8062589d90ffa17b688a` (PR #73).
+`f19e6eb2938689d05ab8542d8d0e892272b31624` (PR #74).
 Use [ROADMAP.md](ROADMAP.md) for the acceptance specification. This snapshot
 distinguishes tested components from deployed product workflows. It is not
 installation approval, a security certification, or an exhaustive line-by-line audit.
+
+PR #74 passed exact `02bdb0c` host and QEMU/DTB checks, including final
+isolated-volume cleanup, and merged as `f19e6eb`. The entire expected,
+checked and integrated trees equal `933fc32`. Its local/remote branch was
+retired with exact-SHA guards and no linked-worktree changes. This qualifies
+the nexthop component integration, not the Samba inherited-context or local
+address-preflight increments below. Those increments were rebased onto the
+actual merge with their complete tree and all three patches unchanged.
 
 PR #73 passed exact `834ccce` host and QEMU/DTB checks, including final isolated
 build-volume cleanup, and merged as `0bf3f91`. Its expected, checked and
@@ -152,6 +160,27 @@ removed. QEMU-only experiment paths no longer trigger an unchanged EX4 kernel
 rebuild; actual board/build input changes remain covered.
 
 ## Roadmap comparison
+
+M6.1f local follow-up on code `68fae6b`, tree-identically rebased as `8bf993d`
+(complete tree `3055351`), joins a validated desired policy to the existing
+immutable inventory through two internal transient interface bindings. Private
+overlapping counts report exact/missing static prefixes, same-address/peer use
+and subnet overlaps across the full local inventory, blocked link/address flags,
+scoped locally assigned gateways, unresolved dynamic families and disabled
+unbound slots. Unsupported bindings and invalid/canceled inputs return zero
+output; there is no ready/eligible/apply result, I/O, HTTP or new privilege.
+Windows API/UI/vet/tagged tests and ARMv5 cross-compilation pass. Pinned Linux
+whole API tagged vet/race, fixed 2,000-case mutation/order tests, existing bounded
+wire/route/object fuzz campaigns, 7 kernel/21 feedback tests and real workflow
+contracts pass. Actual ARMv5 standard smoke requires the generated positive/
+negative address fixture as well as separate real kernel collection; clean
+two-boot checks pass. All seven base hashes independently remain unchanged.
+One existing image/output and read-only workspace are reused, with bounded
+auto-removed RAM scratch. This is cached overlay evidence, not a new full
+image/SBOM, hosted topic or physical qualification. Local absence of conflict
+does not prove address ownership, external availability, lifetimes, DAD or
+routing/DNS reachability. Factory binding, freshness and safe application remain
+open; M6 and overall estimate bands are unchanged.
 
 Fixture-only Samba inherited-context increment on `bd9ae3f` deliberately passes
 original-root/ungranted-file descriptors and blocked/ignored signals through
@@ -804,7 +833,7 @@ substantial redesign. Rows overlap and must not be added.
 | M3 — Storage lifecycle | Complete sysfs census, generation-bound read-only broker, GPT/ext/MD observations, collision checks, internal mount/lease fixtures | Persistent logical VolumeID resolver, global-use accounting, production qualifier/roster, supported layouts and EX4 media qualification | 40–55% |
 | M4 — SMB/NFS | Real loopback clients, desired policies, coherent candidate planner, process-set supervision, share-scoped handoff, grant-only isolated runtime and retained static-code Owner with explicit supervised lifecycle in QEMU | Approved daemon runtime manifests, isolated process sets, privilege profiles/ACLs, transactional activation/recovery, production wiring and storage-loss monitoring | 35–50% |
 | M5 — Management UI/security | Development authentication/TLS, sessions/password changes, diagnostics dashboard and policy preview/editing | Product enrollment/reset/certificate lifecycle, authorized live workflows, recovery UX, browser/accessibility/security qualification | 25–40% |
-| M6 — Network/system | Dual-stack desired-policy model and private bounded read-only kernel interface/address/configured-FIB/IP-rule collector in host/ARMv5 QEMU; brief two-port board research | Qualified interface/runtime-conflict and routing admission, safe network transactions/rollback, supported dual-port modes, time/discovery, notifications and administrative jobs | 5–15% |
+| M6 — Network/system | Dual-stack desired-policy model, private bounded read-only kernel inventories and internal local-address diagnostics in host/ARMv5 QEMU; brief two-port board research | Qualified interface/external-conflict and routing admission, safe network transactions/rollback, supported dual-port modes, time/discovery, notifications and administrative jobs | 5–15% |
 | M7 — Board/cooling/recovery | DTS and bounded diskless RAM trials; passive MCU framing/catalog tooling | Qualified factory identities, fan/tach/fail-safe, LCD/LED/buttons/power/watchdog, SATA/USB and NAND recovery | 15–25% |
 | M8 — RAID/health/migration | Generic offline GPT/ext/MD inspectors, static WD layout analysis and synthetic offline SMART report interpretation | Attributable EX4 layout corpus/importer, ownership/ACL migration, RAID jobs, trusted SMART collection/history/jobs/UI, backup/restore tests | 15–25% |
 | M9 — iSCSI | Specification and legacy research; no product target implementation | ARMv5 backend selection, LUN model, session/ownership guard, migration and failure campaigns | 0–5% |

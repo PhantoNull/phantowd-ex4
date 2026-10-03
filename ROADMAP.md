@@ -1257,6 +1257,23 @@ board network observations limited.
   pass on code `319a331`; verified existing kernel/packages are reused, not a
   full image/SBOM build or independent clean/hosted/physical qualification.
   Live nonempty kernel-group behavior remains a separate acceptance gap.
+  **M6.1f — local address preflight (partial; locally tested):** privately join
+  a validated policy and complete immutable inventory through exactly two
+  transient slot-to-ifindex bindings. Return overlapping diagnostic counts,
+  never admission: exact/missing prefixes, same-address/peer use and subnet
+  overlap anywhere locally, conservative link/address flag blockers, scoped
+  local gateways, unresolved dynamic families and disabled unbound slots.
+  Validate every bound link, including disabled slots; reject invalid/copied/
+  canceled inputs with zero output. Observe interfaces outside the bindings;
+  handle /16,/31,/32 and IPv6, alias flags and link-local gateway scope explicitly.
+  Windows preflight, complete native tagged vet/race, fixed 2,000-case mutations,
+  existing bounded fuzz/feedback contracts and actual ARMv5 standard/two-boot
+  overlay pass on code `68fae6b`, tree-identically rebased as `8bf993d`.
+  The generated fixture is mandatory in the existing boot, with actual kernel
+  collection checked separately. No new stage, parser, syscall, privilege,
+  endpoint or network change. Counts do not prove external address availability,
+  policy ownership, address lifetimes/DAD or routing/DNS reachability. Factory
+  binding, fresh authority and M6.2 recovery/application remain open.
 - **M6.2 — Recoverable changes.** Apply changes as a trial with explicit confirmation
   and a safe timeout/recovery route. Loss of the management connection must not
   strand the owner permanently. Qualify reboot mid-trial and address conflicts.

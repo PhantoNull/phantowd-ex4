@@ -44,6 +44,17 @@ mandatory generated ARMv5 positive/negative fixture in the existing boot, with
 the actual kernel collector remaining a separate assertion. No new stage or
 kernel/package build input. This is a prerequisite, not completed M6.1/M6.2.
 
+Local qualification (2026-10-03), code `68fae6b` / tree-identical rebased
+`8bf993d`, complete tree `3055351`: Windows API/UI/vet/tagged checks and ARMv5
+cross-compilation; pinned Linux complete API tagged vet/race, 2,000 fixed
+mutation/order cases, 1,000 wire plus 25,000 route/object fuzz executions each,
+7 kernel/21 feedback tests and actual workflow contracts pass. Standard ARMv5
+smoke requires `address_fixture=true` after generated positive/negative checks
+and separate actual kernel collection; the clean two-boot overlay also passes.
+All seven base hashes independently remain unchanged. Same existing pinned
+image/output, read-only inputs and bounded disposable tmpfs; no new full
+image/SBOM, clean hosted qualification, external conflict probe or EX4 test.
+
 ## M6.1e nexthop-object task contract (locally host/ARMv5 tested)
 
 Extend the existing private collector with one fixed strict GETNEXTHOP
