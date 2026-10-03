@@ -461,14 +461,22 @@ prototype. It uses the already-present pinned image/toolchain and checks every
 base artifact hash, copies the rootfs to tmpfs, builds two static ARMv5 programs
 there and runs one networkless snapshot-mode guest. Only the private copy has
 the helper/probe/init injected; the firmware artifact and its SBOM are unchanged.
-Host refusal tests, static analysis and seven guest refused-launch cases precede
+Host refusal tests, static analysis and eleven guest refused-launch cases precede
 the positive namespace/root/credential/capability/FD/signal/PID/read-only proof.
 Temporary root/share objects contain only generated markers. Original data
-paths, sibling paths, `/proc`, `/dev` and an inherited host-root descriptor are
+paths, sibling paths, `/proc`, `/dev` and inherited host-root descriptors,
+including FD 511, are
 not visible to the child. The guest remains distinguishable from physical EX4
 through its exact DT model and ARM architecture check.
 
-The wrapper refuses missing existing caches, never pulls/builds an image or
+Both diagnostic descriptors must be writable anonymous pipe ends; named
+filesystem FIFOs and read-only pipe ends are rejected. The successful static
+probe must actually write and flush its readiness line. Invalid stderr cases
+still require refusal exit status and absence of probe readiness, even when
+the rejected descriptor cannot carry an error line.
+
+The wrapper caps four CPUs, 2 GiB memory and 512 PIDs. It refuses missing
+existing caches, never pulls/builds an image or
 creates a persistent volume, mounts inputs read-only, and removes its container
 and tmpfs on exit. Full QEMU CI runs this same bounded fixture after producing
 the baseline, retaining a synthetic failure log if it fails. It now also

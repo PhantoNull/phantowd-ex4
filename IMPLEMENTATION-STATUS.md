@@ -4,17 +4,26 @@
 # Implementation status
 
 Code audit: **2026-10-03**, integrated `develop` baseline
-`2bf71fa405343f828af03b5d0c9a2889d5e5e2fd` (PR #59).
+`3da9b8ef37ff352172719fd2bf9abd654315a7bf` (PR #62).
 Use [ROADMAP.md](ROADMAP.md) for the acceptance specification. This snapshot
 distinguishes tested components from deployed product workflows. It is not
 installation approval, a security certification, or an exhaustive line-by-line audit.
+
+PR #60 integrated the retained static-code Owner after exact head `7c96f41`
+passed hosted host, B3 and QEMU checks. The complete expected merge tree was
+verified before removing its branch. PR #62 subsequently integrated the
+root-lifetime, supervision and license-checker work after exact head `6ab66f4`
+passed all three independent hosted checks, including
+[QEMU/DTB](https://github.com/PhantoNull/phantowd-ex4/actions/runs/37079287654).
+Its expected complete squash tree was verified before removing that branch.
+This is component integration, not product service or EX4 qualification.
 
 PR #59 integrated the C++ toolchain and native/ARMv5 producer replay after exact
 head `e22828d` passed both hosted B3 and
 [QEMU/DTB](https://github.com/PhantoNull/phantowd-ex4/actions/runs/37062393358)
 checks. Its complete merged tree equals the checked head and the merged branch
-was removed. Retained-code Owner and later native-boundary/MCU/Perl followups
-below remain feature work, not qualified merely by that earlier CI result.
+was removed. That earlier CI result alone does not qualify later Owner,
+native-boundary, MCU or Perl followups; their evidence is recorded separately.
 PR #58 previously integrated the code-ACL refusal correction and offline SMART
 parser after exact head `2e8eb6d` passed all host/B3/QEMU checks. Neither merge
 qualifies the EX4 product or physical SMART collection.
@@ -80,6 +89,33 @@ removed. QEMU-only experiment paths no longer trigger an unchanged EX4 kernel
 rebuild; actual board/build input changes remain covered.
 
 ## Roadmap comparison
+
+The native static-child launcher now verifies that stdout and stderr are
+writable anonymous `pipefs` pipe ends. Actual ARMv5 tests first reproduced
+acceptance of a named stdout FIFO and then a read-only stdout pipe; the fixes
+pass eleven refusal cases and existing positive Owner/handoff checks. Both
+stderr variants are covered, and a high inherited original-root FD is verified
+closed before execution. This is focused development-helper evidence, not
+complete integration, a legacy WD finding or product activation. Its local
+runner has explicit CPU/memory/PID caps and no new persistent Docker resources.
+
+Complete cached local integration subsequently passed on unchanged `febc799`
+(tree `eadb2f3e`): source verification, Linux host/vet/race/fuzz, image/legal-info,
+native probe and every standard/MD/two-boot/launcher/Owner/loader/Samba/SMART
+guest lane. The eleven launcher refusals and inherited high-FD check are
+actually executed in the disposable ARMv5 guest. Seven exported artifacts were
+independently verified; only `buildroot-show-info.json` differs from the prior
+full result, now recording the probe's license-hash file. The uninstalled
+launcher is tested by fixture injection, so unchanged product binaries are
+not service-activation evidence. The temporary container auto-removed; one
+existing output and the two fixed volumes/caches were reused. This is not an
+independent clean build, hosted result, physical qualification or installable
+release. The Buildroot source-packaging warning remains open.
+
+The subsequent workflow-only correction excludes the probe license-checker
+test from unchanged EX4 B3 kernel compilation, while requiring its QEMU
+coverage for both push and PR. The path contract first failed on the missing
+exclusion; its validation is separate from the full runtime result above.
 
 An explicit blocking supervisor now extends the internal static/non-root code
 Owner only. Complete scans are serialized with a fixed idle interval and no

@@ -35,7 +35,7 @@ exec sh /src/support/tests/test-qemu-service-launcher.sh /base \
     "$output/host/bin/arm-buildroot-linux-gnueabi-gcc" "$output/host/sbin/debugfs" /src '' "$output/host/bin/go"
 '@
 $encoded = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($linuxScript.Replace("`r`n", "`n")))
-docker run --rm --pull never --network none --read-only `
+docker run --rm --pull never --network none --read-only --cpus 4 --memory 2g --pids-limit 512 `
     --tmpfs /tmp:rw,exec,nosuid,nodev,size=1024m `
     --tmpfs /var/tmp:rw,noexec,nosuid,nodev,size=128m `
     --entrypoint /bin/sh `

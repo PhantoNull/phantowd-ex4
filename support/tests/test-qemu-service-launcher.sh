@@ -82,7 +82,7 @@ if [ "$status" -ne 0 ] || ! grep -F PHANTOWD_SERVICE_LAUNCHER_DONE "$scratch/gue
     tail -n 120 "$scratch/guest.log" >&2
     exit 1
 fi
-grep -F 'PHANTOWD_SERVICE_LAUNCHER_READY private_namespace=true root_restricted=true nonroot=true capabilities_zero=true fd_cleanup=true pid_preserved=true read_only=true signals_reset=true denied_cases=7' "$scratch/guest.log" >/dev/null
+grep -F 'PHANTOWD_SERVICE_LAUNCHER_READY private_namespace=true root_restricted=true nonroot=true capabilities_zero=true fd_cleanup=true high_fd_cleanup=true diagnostic_pipes=true pid_preserved=true read_only=true signals_reset=true denied_cases=11' "$scratch/guest.log" >/dev/null
 grep -F 'PHANTOWD_SERVICE_LAUNCHER_OWNER_READY pinned_inputs=true immutable_spec=true readiness=true same_pid=true private_namespace=true stop_reaped=true close_gated=true' "$scratch/guest.log" >/dev/null
 grep -F 'PHANTOWD_SERVICE_LAUNCHER_INPUT_REVIEW_READY before_child=true restoration_not_retried=true' "$scratch/guest.log" >/dev/null
 grep -F 'PHANTOWD_SERVICE_LAUNCHER_LIVE_REVIEW_READY stop_before_close=true group_reaped=true restoration_not_retried=true' "$scratch/guest.log" >/dev/null
