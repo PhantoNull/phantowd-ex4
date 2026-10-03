@@ -145,6 +145,24 @@ rebuild; actual board/build input changes remain covered.
 
 ## Roadmap comparison
 
+M6.1e local follow-up on code `319a331` / tree `333e81d` adds one fixed strict
+AF_UNSPEC nexthop-object dump per matching sample, complete even when empty.
+It observes unreferenced objects, correlates route/group IDs and local OIF,
+checks bounded ordered groups/effective 16-bit weights and refuses incomplete
+rosters. Resilient buckets, FDB and encapsulation are not evaluated; complex
+objects and referenced routes remain unresolved. IDs stay private; summary is
+counts only. A real parser RED/GREEN corrects inline ECMP sorting that hid
+member-order drift; pinned no-flag LWT framing has a separate regression.
+Windows API/UI/vet/ARMv5 cross-compilation, pinned Linux whole API tagged
+vet/race, actual UID1000/zero-capability capture/recheck/FD census, 5,000 mutations,
+25,000-execution object/route fuzz, real workflow and 7 kernel/21 feedback tests
+pass. Actual ARMv5 kernel observation plus nonempty generated weighted-group
+assertions and clean two-boot overlay pass; seven base hashes verify and the
+base remains unchanged. This reuses the existing kernel/packages/probe, not a
+new full image/SBOM, independent clean reproduction, hosted topic or physical
+qualification. No live nonempty kernel-group campaign, evaluator, network
+application, new privilege, HTTP or product startup. Planning bands unchanged.
+
 M6.1d adds two fixed strict IPv4/IPv6 routing-rule dumps to the existing private
 collector. A generic request first reproduced an extra family128; a failing
 request-shape regression now requires the actual IP family in the packet and
@@ -184,8 +202,9 @@ checks remain necessary; the original host failure is not a firmware failure.
 M6.1c local follow-up extends the same private namespace/socket collector to
 configured IPv4/IPv6 FIB routes in all returned tables. Checked prefixes,
 scalars, table overrides, gateway/via, preferred source, interface references
-and bounded ECMP members are retained privately; canonical semantic comparison
-normalizes attribute/member order. Unknown attributes, nested metrics and
+and bounded ECMP members are retained privately; canonical comparison
+normalizes attribute order. M6.1e above supersedes the earlier member-order
+sorting assumption and qualifies the correction locally. Unknown attributes, nested metrics and
 unread nexthop objects remain explicitly unresolved. Cache usage/expiry does
 not establish configuration drift or freshness; reported cache error is retained.
 Native failure reproduced the strict IPv6 FILTERED response. Pinned kernel

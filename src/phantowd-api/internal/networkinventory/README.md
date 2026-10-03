@@ -3,7 +3,7 @@
 
 # Private kernel network observation — M6.1b/M6.1c task contract
 
-## M6.1e nexthop-object task contract (implementation pending)
+## M6.1e nexthop-object task contract (locally host/ARMv5 tested)
 
 Extend the existing private collector with one fixed strict GETNEXTHOP
 AF_UNSPEC dump per sample: zeroed eight-byte nhmsg, no selectors, statistics,
@@ -41,6 +41,20 @@ ABI references: [nexthop UAPI](https://github.com/gregkh/linux/blob/v6.18.54/inc
 and [dump implementation](https://github.com/gregkh/linux/blob/v6.18.54/net/ipv4/nexthop.c).
 The pinned IPv4 Makefile builds nexthop.o with INET; no new kernel option is
 proposed. Actual guest collection must prove support, not source inspection.
+
+Local evidence (2026-10-03), code `319a331` / tree `333e81d`: Windows
+API/UI/vet/tagged tests and ARMv5 cross-compilation pass; pinned Linux Go 1.26.6
+whole API tagged vet/race, actual UID1000/zero-capability collection/recheck
+and FD census, 5,000 object mutations, fixed 25,000-execution object and route
+fuzz campaigns, workflow contracts and 7 kernel/21 feedback tests pass.
+Actual ARMv5 same-boot kernel collection AND a nonempty generated ordered,
+weighted IPv4/IPv6 group fixture are mandatory; standard smoke and clean
+two-boot overlay pass. The actual namespace may have zero nexthop objects:
+generated objects do not prove live nonempty kernel-group behavior. Guest
+self-test is root, not non-root ARM privilege qualification. All seven base
+hashes verify; the overlay changes a disposable regular-file image only,
+reusing kernel/packages/probe. No full image/SBOM rebuild, independent clean
+reproduction, hosted topic, physical interface or product qualification.
 
 The same ordered-semantics boundary includes correcting inline RTA_MULTIPATH:
 do not sort its members before comparing observations. Pinned fib_rebalance
@@ -115,7 +129,7 @@ Bound routes to 512 and ECMP members to 32 per route, keeping existing byte/time
 budgets. Observe all returned table entries, including local/broadcast and
 terminal routes; no main-table-only shortcut. Checked prefixes, attribute
 lengths/duplicates, scalar bounds, via-family and nexthop framing fail closed.
-Normalize dump order/ECMP member order; reject exact duplicates and between-
+Normalize dump and attribute order, preserving ECMP member order; reject exact duplicates and between-
 sample route drift. Preserve a canonical private digest of non-lifetime
 attributes so unimplemented semantic changes are not discarded. Kernel cache
 usage/expiry counters are excluded from equality; cache error is retained.
@@ -205,7 +219,7 @@ ARMv5 QEMU: actual kernel collection, redacted counts, forged/serialization
 refusal in the existing boot. No new stage, privileged host namespace or device.
 
 M6.1 still requires qualified EX4 slot/factory-identity bindings, kernel address
-state/DAD admission, routing rules and referenced nexthop/encapsulation objects,
+state/DAD admission, routing evaluation and referenced encapsulation/bucket semantics,
 global-use/conflict policy and freshness authority.
 M6.2 persistent trial/confirmation/rollback remains required before applying
 network policy. NAS/physical NIC, HDD/NAND and product startup are excluded.

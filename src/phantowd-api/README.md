@@ -844,7 +844,8 @@ runtime conflict observation, trial/confirmation/rollback and API/UI integration
 remain open; no management-network change is enabled.
 
 [Private networkinventory](internal/networkinventory/README.md) separately
-collects bounded complete link/address dumps from the current Linux namespace,
+collects bounded complete link/address/configured-route/IP-rule/nexthop-object
+dumps from the current Linux namespace,
 checking kernel reply provenance/completion and matching two observations. It
 retains address flags/scope/peers privately, refuses JSON and exposes counts only.
 Native UID1000/zero-capability and actual ARMv5 kernel observations pass; the
@@ -852,6 +853,11 @@ standard root guest fixture does not qualify non-root ARM privileges. The
 namespace pin lasts only for collection; Recheck is not an interface generation
 lease, event monitor or Owner recovery. Factory slot identity, DAD/external
 conflict/route admission and product collector startup remain unimplemented.
+Object/group IDs and gateways remain private; missing references refuse the
+whole result. Ordered group/inline ECMP members are preserved, not digest-sorted.
+Resilient groups without bucket observations, FDB and encapsulation remain
+unresolved. The guest separately checks generated nonempty weighted groups;
+that is not proof of live nonempty kernel groups or route usability.
 
 ### Test commands
 
