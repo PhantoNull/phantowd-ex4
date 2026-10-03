@@ -4,10 +4,25 @@
 # Implementation status
 
 Code audit: **2026-10-03**, integrated `develop` baseline
-`bb9802e3779f608dcf77bc1d590236c0f4a246d1` (PR #76).
+`df9b45bc13efe5c3116d810612f42afc9293d600` (PR #77).
 Use [ROADMAP.md](ROADMAP.md) for the acceptance specification. This snapshot
 distinguishes tested components from deployed product workflows. It is not
 installation approval, a security certification, or an exhaustive line-by-line audit.
+
+PR #77 passed its own exact `07d0ef7` ARMv5/DTB check, including isolated
+volume cleanup, and merged as `df9b45b`. Expected, checked and integrated
+whole trees equal `15787a19`. Its branch was retired after tree equality and
+worktree checks. The redundant integration-triggered QEMU run is confirmed
+cancelled, not failed. This qualifies only the panel request-lifecycle change,
+not subsequent desired-review/advisory increments or a deployable product.
+
+The desired-review follow-up also identifies specific cross-protocol folder
+pairs in the loaded baseline/candidate. Complete counts with at most64
+deterministic text-only details cover equal/nested paths on one VolumeID,
+root folders and removed pairs; noncanonical path observations refuse review.
+Independent SMB/NFS revocation and unresolved runtime aliases remain explicit.
+Complete DOM and Windows API/vet/cross-compilation pass, including128x128
+pair bounds; native/ARMv5 validation of this extension remains pending.
 
 M5.4a adds a bounded semantic before/after review to the existing development
 SMB/NFS policy editor. It compares stable IDs/CIDRs, includes every NFS mapping/
@@ -21,7 +36,7 @@ tagged API vet/race, existing fixed fuzz/feedback checks and actual ARMv5 asset
 integration plus clean two-boot overlay pass on unchanged kernel/packages/probe.
 This is cached local evidence, not browser JS/visual/accessibility, clean new
 firmware/SBOM, hosted feature, physical EX4 or effective-access qualification.
-The original PR77 still qualifies only its frozen panel-lifecycle head; it
+The original PR77 qualifies only its frozen panel-lifecycle head; it
 cannot establish hosted acceptance for this subsequent change. Planning bands
 remain unchanged; no installable firmware exists.
 

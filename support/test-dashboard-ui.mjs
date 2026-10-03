@@ -129,7 +129,7 @@ async function createHarness(respond, timing = {}) {
     "observed-at", "device-count", "device-list", "array-count", "array-list", "mount-count", "mount-list",
     "gpt-observe", "gpt-observation-status",
     ...["load", "status", "result", "summary", "shares"].map((id) => `saved-${id}`),
-    ...["load", "prepare", "save", "status", "current", "summary", "document", "review", "change", "samba", "nfs", "editor", "target", "member", "action", "edit-preview", "diff", "diff-summary"].map((id) => `service-${id}`),
+    ...["load", "prepare", "save", "status", "current", "summary", "document", "review", "change", "samba", "nfs", "editor", "target", "member", "action", "edit-preview", "diff", "diff-summary", "overlaps", "overlap-summary"].map((id) => `service-${id}`),
     ...["form", "submit", "clear", "result", "error", "status", "requirements", "samba", "nfs", "nfs-fields", "uuid", "name", "path", "user", "smb-access", "nfs-enabled", "export-id", "network", "nfs-access", "squash", "uid", "gid", "security"].map((id) => `policy-${id}`),
   ];
   const elements = Object.fromEntries(ids.map((id) => [id, new FixtureElement()]));
@@ -933,6 +933,8 @@ async function testServiceRefusalsAndInvalidation() {
     assert.equal(h.elements["service-document"].textContent, "");
     assert.equal(h.elements["service-diff"].children.length, 0);
     assert.equal(h.elements["service-diff-summary"].textContent, "");
+    assert.equal(h.elements["service-overlaps"].children.length, 0);
+    assert.equal(h.elements["service-overlap-summary"].textContent, "");
     assert.equal(h.elements["service-save"].disabled, true);
     assert.equal(h.requests.filter(({ options }) => options?.method === "PUT").length, boundary === "save-reply" ? 1 : 0);
   }
@@ -1315,7 +1317,123 @@ async function testDesiredChangeReviewBoundsAndRendering() {
   assert.equal(elements["service-diff"].children.length, 0);
 }
 
+async function testCrossProtocolPairRelationships() {
+  const { context, c, values } = await editorFixture();
+  const original = JSON.stringify(c);
+  const project = (before, after) => JSON.parse(JSON.stringify(context.describeServiceOverlaps(before, after)));
+  const review = project(c, c);
+  assert.equal(review.baseline_count, 2);
+  assert.equal(review.candidate_count, 2);
+  assert.equal(review.pair_count, 2);
+  assert.equal(review.omitted_count, 0);
+  assert.equal(review.rows.length, 2);
+  assert.ok(review.rows.every((r) => r.before === r.after && /Same configured folder/.test(r.after)));
+  for (const [smbPath, nfsPath, relationship] of [
+    ["books", "books", "Same configured folder"],
+    ["books", "books/subfolder", "SMB folder contains NFS folder"],
+    ["books/subfolder/deep", "books", "NFS folder contains SMB folder"],
+    [".", "books", "SMB folder contains NFS folder"],
+    ["books", ".", "NFS folder contains SMB folder"],
+    [".", ".", "Same configured folder"],
+    ["books", "bookstore", null],
+    ["books", "books-old", null],
+    ["books", "Books", null],
+    ["caf\u00e9", "cafe\u0301", null],
+  ]) {
+    const candidate = structuredClone(c);
+    candidate.shares.shares = [candidate.shares.shares[0]];
+    candidate.nfs.exports = [candidate.nfs.exports[0]];
+    candidate.shares.shares[0].relative_path = smbPath;
+    candidate.nfs.exports[0].relative_path = nfsPath;
+    const result = project(null, candidate);
+    assert.equal(result.candidate_count, relationship === null ? 0 : 1, `${smbPath} / ${nfsPath}`);
+    if (relationship !== null) {
+      assert.match(result.rows[0].before, /No lexical overlap/);
+      assert.ok(result.rows[0].after.includes(relationship));
+    }
+  }
+  const distinctVolume = structuredClone(c);
+  distinctVolume.shares.volumes.push({ id: "volume-2", filesystem_uuid: "22222222-2222-3333-4444-555555555555" });
+  distinctVolume.nfs.exports.forEach((e) => { e.volume_id = "volume-2"; });
+  assert.equal(project(null, distinctVolume).candidate_count, 0, "matching folder strings on different volume references are not a lexical pair");
+  const removed = context.buildServiceEdit(c, "smb-remove", "smb:share-1", values).configuration;
+  const removedReview = project(c, removed);
+  assert.equal(removedReview.baseline_count, 2);
+  assert.equal(removedReview.candidate_count, 1);
+  assert.equal(removedReview.pair_count, 2, "removed overlap remains visible in baseline");
+  assert.equal(removedReview.rows.filter((r) => /No lexical overlap/.test(r.after)).length, 1);
+  assert.deepEqual(JSON.parse(JSON.stringify(removed.nfs)), { ...c.nfs, revision: 2, volume_revision: 2 }, "SMB removal retains NFS policy");
+  const reordered = structuredClone(c);
+  reordered.shares.shares.reverse(); reordered.nfs.exports.reverse();
+  assert.deepEqual(project(reordered, reordered), review, "pair ordering does not depend on collection positions");
+  assert.equal(JSON.stringify(c), original, "advice does not mutate source policy");
+  for (const path of ["", "/", "/books", "books/", "books//sub", "books/./sub", "books/../sub"]) {
+    const malformed = structuredClone(c); malformed.nfs.exports[0].relative_path = path;
+    assert.throws(() => context.describeServiceOverlaps(c, malformed), /Noncanonical/);
+  }
+  assert.throws(() => context.describeServiceOverlaps(undefined, c));
+  assert.throws(() => context.describeServiceOverlaps(c, null));
+}
+
+async function testCrossProtocolPairBoundsAndRendering() {
+  const { context, c } = await editorFixture();
+  const large = structuredClone(c);
+  large.shares.shares = Array.from({ length: 128 }, (_, i) => ({ ...structuredClone(c.shares.shares[0]),
+    id: `share-${i}`, name: `Share${i}`, relative_path: "." }));
+  large.nfs.exports = Array.from({ length: 128 }, (_, i) => ({ ...structuredClone(c.nfs.exports[0]),
+    id: `00000000-0000-0000-0000-${String(i).padStart(12, "0")}`, relative_path: "books" }));
+  const review = context.describeServiceOverlaps(large, large);
+  assert.equal(review.baseline_count, 16384);
+  assert.equal(review.candidate_count, 16384);
+  assert.equal(review.pair_count, 16384);
+  assert.equal(review.rows.length, 64, "retained details/DOM are bounded independently of pair census");
+  assert.equal(review.omitted_count, 16320);
+  const exactly64 = structuredClone(large);
+  exactly64.shares.shares = exactly64.shares.shares.slice(0, 1);
+  exactly64.nfs.exports = exactly64.nfs.exports.slice(0, 64);
+  assert.equal(context.describeServiceOverlaps(null, exactly64).omitted_count, 0);
+  exactly64.nfs.exports.push(large.nfs.exports[64]);
+  assert.equal(context.describeServiceOverlaps(null, exactly64).omitted_count, 1);
+  const disjointIDs = structuredClone(large);
+  disjointIDs.shares.shares.forEach((s) => { s.id += "-new"; });
+  disjointIDs.nfs.exports.forEach((e) => { e.id = "10000000" + e.id.slice(8); });
+  const union = context.describeServiceOverlaps(large, disjointIDs);
+  assert.equal(union.pair_count, 32768, "baseline/candidate pair union counted without materializing it");
+  assert.equal(union.omitted_count, 32704);
+
+  const h = await serviceHarness(() => jsonResponse(serviceReply(large)));
+  await h.context.loadServicePolicy();
+  const candidate = structuredClone(large);
+  candidate.revision = candidate.shares.revision = candidate.nfs.revision = candidate.nfs.volume_revision = 2;
+  await h.context.previewServiceChange(() => ({ configuration: candidate, summary: "unchanged bounded advisory" }));
+  assert.equal(h.elements["service-overlaps"].children.length, 64);
+  assert.match(h.elements["service-overlap-summary"].textContent, /16384 baseline.*16384 candidate.*64 of 16384.*16320.*omitted/);
+  assert.equal(h.elements["service-save"].disabled, false, "advisory detail limit does not block otherwise complete review");
+  assert.equal(h.requests.some((r) => r.options?.method === "PUT"), false);
+  h.context.invalidateServiceDraft();
+  assert.equal(h.elements["service-overlaps"].children.length, 0);
+  assert.equal(h.elements["service-overlap-summary"].textContent, "");
+
+  const unsafe = structuredClone(c);
+  unsafe.shares.shares[0].name = "<img src=x onerror=alert(1)>";
+  unsafe.shares.shares[0].relative_path = unsafe.nfs.exports[0].relative_path = "<script>fixture</script>";
+  const unsafeReview = h.context.describeServiceOverlaps(null, unsafe);
+  h.context.renderServiceOverlaps(unsafeReview);
+  const cells = h.elements["service-overlaps"].children[0].children;
+  assert.equal(cells[0].attributes.get("scope"), "row");
+  assert.match(cells[2].textContent, /<img.*<script>/s);
+  assert.equal(cells[2].children.length, 0, "advisory values are literal text");
+  assert.match(markup, /<caption>Configured folder pairs/);
+  assert.match(markup, /aria-label="Configured SMB and NFS folder overlap" tabindex="0"/);
+  assert.match(markup, /Removing an SMB grant or definition does not revoke NFS/);
+  h.context.clearServicePolicy();
+  assert.equal(h.elements["service-overlaps"].children.length, 0);
+  assert.equal(h.elements["service-overlap-summary"].textContent, "");
+}
+
 await testDesiredChangeReview();
 await testDesiredChangeReviewEdits();
 await testDesiredChangeReviewBoundsAndRendering();
+await testCrossProtocolPairRelationships();
+await testCrossProtocolPairBoundsAndRendering();
 process.stdout.write("Dashboard UI interaction smoke tests passed (DOM fixture; no visual browser coverage).\n");

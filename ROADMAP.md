@@ -1174,6 +1174,14 @@ milestone before enabling its controls; M1/M6 for deployment.
   embedded-asset standard/two-boot overlay pass. Real-browser/accessibility,
   hosted feature and production management remain separate gates; no current
   service or filesystem permission is inferred from this desired comparison.
+  **Cross-protocol pair advisory (host-tested extension):** loaded baseline
+  and candidate identify equal/nested SMB/NFS folders by stable share/export
+  IDs on the same policy VolumeID, including pairs removed from the candidate.
+  Counts cover the complete bounded pair census; retain only64 sorted details
+  with an explicit remainder. Missing lexical overlap is not alias/effective-
+  access proof; SMB and NFS revocations remain independent. The advisory limit
+  does not block Save. Complete DOM and Windows API/vet/cross-compilation pass;
+  native/ARMv5 integration of this extension remains pending.
 - **M5.5 — Accessible efficient UI.** Keyboard operation, labels/focus, narrow
   viewports, screen-reader status and high contrast; bounded static assets and
   shared observations. Avoid per-client hardware polling, stale-response

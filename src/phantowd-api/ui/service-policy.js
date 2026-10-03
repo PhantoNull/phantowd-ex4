@@ -23,6 +23,8 @@ function invalidateServiceDraft() {
   byId("service-review").hidden = true;
   byId("service-diff").replaceChildren();
   setText("service-diff-summary", "");
+  byId("service-overlaps").replaceChildren();
+  setText("service-overlap-summary", "");
   for (const id of ["service-change", "service-samba", "service-nfs"]) setText(id, "");
   syncServiceControls();
 }
@@ -114,12 +116,15 @@ function sameServiceDocument(a, b) {
 
 // Display-only semantic comparison of validated desired policy. This is not
 // effective access, an authorization decision or proof of a running service.
-function describeServiceChanges(before, after) {
-  const checked = (c) => validateServiceDocument({ schema_version: 1,
+function checkedServiceReviewDocument(c) {
+  return validateServiceDocument({ schema_version: 1,
     scope: "development-stored-file-service-policy-only", initialized: c !== null,
     configuration: c, applied: false, runtime_validated: false, activation_available: false });
-  checked(before);
-  if (checked(after) === null) throw new Error("A complete desired candidate is required for review.");
+}
+
+function describeServiceChanges(before, after) {
+  checkedServiceReviewDocument(before);
+  if (checkedServiceReviewDocument(after) === null) throw new Error("A complete desired candidate is required for review.");
   const entries = (c) => {
     const result = new Map();
     if (c === null) return result;
@@ -169,6 +174,70 @@ function renderServiceChanges(rows) {
   });
   byId("service-diff").replaceChildren(...nodes);
   setText("service-diff-summary", `${rows.length} changed desired ${rows.length === 1 ? "entry" : "entries"}. This is not effective access or running-service state. Unchanged entries are omitted; no files or credentials are changed.`);
+}
+
+// Advisory projection of server-validated canonical paths only. Deliberately
+// do not normalize case/Unicode or resolve filesystem aliases in the browser.
+function describeServiceOverlaps(before, after) {
+  checkedServiceReviewDocument(before);
+  if (checkedServiceReviewDocument(after) === null) throw new Error("A complete desired candidate is required for review.");
+  const entries = (c) => {
+    const shares = new Map(), exports = new Map();
+    if (c !== null) {
+      for (const [items, result] of [[c.shares.shares, shares], [c.nfs.exports, exports]]) {
+        for (const item of items) {
+          if (item.relative_path !== "." && item.relative_path.split("/").some((part) => part === "" || part === "." || part === "..")) {
+            throw new Error("Noncanonical desired folder. Cross-protocol review is unavailable.");
+          }
+          result.set(item.id, item);
+        }
+      }
+    }
+    return { shares, exports };
+  };
+  const old = entries(before), next = entries(after);
+  const relation = (share, exported) => {
+    if (!share || !exported || share.volume_id !== exported.volume_id) return null;
+    const a = share.relative_path, b = exported.relative_path;
+    if (a === b) return "Same configured folder";
+    if (a === "." || b.startsWith(`${a}/`)) return "SMB folder contains NFS folder";
+    if (b === "." || a.startsWith(`${b}/`)) return "NFS folder contains SMB folder";
+    return null;
+  };
+  const detail = (share, exported, relationship) => relationship === null ? "No lexical overlap in this policy" :
+    `Volume reference: ${share.volume_id}\nSMB name: ${share.name}\nSMB folder: ${share.relative_path}\nNFS folder: ${exported.relative_path}\n${relationship}`;
+  const result = { baseline_count: 0, candidate_count: 0, pair_count: 0, omitted_count: 0, rows: [] };
+  // At most 256x256 comparisons across two bounded documents; retain only64
+  // detail records, not a potentially large intermediate pair map or DOM.
+  const shares = [...new Set([...old.shares.keys(), ...next.shares.keys()])].sort();
+  const exports = [...new Set([...old.exports.keys(), ...next.exports.keys()])].sort();
+  for (const shareID of shares) {
+    for (const exportID of exports) {
+      const oldShare = old.shares.get(shareID), oldExport = old.exports.get(exportID);
+      const nextShare = next.shares.get(shareID), nextExport = next.exports.get(exportID);
+      const previous = relation(oldShare, oldExport), candidate = relation(nextShare, nextExport);
+      if (previous !== null) result.baseline_count++;
+      if (candidate !== null) result.candidate_count++;
+      if (previous === null && candidate === null) continue;
+      result.pair_count++;
+      if (result.rows.length === 64) { result.omitted_count++; continue; }
+      result.rows.push({ object: `SMB ${shareID} / NFS ${exportID}`,
+        before: detail(oldShare, oldExport, previous), after: detail(nextShare, nextExport, candidate) });
+    }
+  }
+  return result;
+}
+
+function renderServiceOverlaps(review) {
+  const nodes = review.rows.map((pair) => {
+    const row = document.createElement("tr"), label = document.createElement("th");
+    label.setAttribute("scope", "row"); label.textContent = pair.object;
+    const before = document.createElement("td"), after = document.createElement("td");
+    before.textContent = pair.before; after.textContent = pair.after;
+    row.append(label, before, after); return row;
+  });
+  byId("service-overlaps").replaceChildren(...nodes);
+  setText("service-overlap-summary", `Configured lexical overlaps: ${review.baseline_count} baseline pair(s), ${review.candidate_count} candidate pair(s). Showing ${review.rows.length} of ${review.pair_count} distinct pairs; ${review.omitted_count} pair detail(s) omitted. Advisory only, not effective access. No lexical overlap does not rule out filesystem aliases.`);
 }
 
 // Each operation edits one explicitly identified object/rule. References are
@@ -429,7 +498,9 @@ async function previewServiceChange(build) {
     if (draftGeneration !== policyGeneration) { setText("service-status", "Form changed. Preview again before saving."); return; }
     validatePolicyPreview(preview);
     const changes = describeServiceChanges(serviceState.baseline, c);
+    const overlaps = describeServiceOverlaps(serviceState.baseline, c);
     renderServiceChanges(changes);
+    renderServiceOverlaps(overlaps);
     serviceState.candidate = c;
     setText("service-change", `${summary} Save revision ${c.revision}, including ${c.shares.shares.length} SMB share(s) and ${c.nfs.exports.length} NFS export(s). No service activation or file deletion.`);
     setText("service-samba", preview.samba.samba_share_sections || "No SMB sections.");

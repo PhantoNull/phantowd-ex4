@@ -741,6 +741,20 @@ abort after ten seconds. The browser supplies the request Origin.
 
 #### Desired change-review task contract
 
+Cross-protocol advisory extension: after that same complete preview, compare
+lexical SMB/NFS folder relationships on each policy VolumeID in the loaded
+baseline and candidate. Identify exact share/export IDs, equal/ancestor paths
+and whether the pair remains, appears or disappears. This does not resolve
+filesystem aliases or prove effective access; removing an SMB definition/grant
+does not revoke NFS, and NFS client changes do not revoke SMB. Show exact
+baseline/candidate pair counts and at most 64 deterministic pair details with
+an explicit omitted-detail count. This presentation limit is not an activation
+or Save admission rule. Reuse the existing request and text-only table style;
+clear all advisory data with the existing draft/auth lifecycle. No endpoint,
+additional I/O, authority, daemon operation or policy mutation is introduced.
+Test equal/root/nested and segment-boundary paths, distinct VolumeIDs, pair
+removal, order invariance, limits, literal markup and late-response clearing.
+
 After the existing complete server preview succeeds, show a bounded semantic
 before/after comparison against the explicitly loaded baseline. Compare stable
 policy IDs, exact SMB user references and exact NFS client CIDRs, never list
