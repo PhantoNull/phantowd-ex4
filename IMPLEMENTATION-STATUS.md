@@ -1011,10 +1011,17 @@ feedback tests and shell/workflow contracts then pass. A fresh disposable
 configuration proves ordinary host-tool selection with no host-cmake cache
 dependency and refusal of an unsuitable version. An actual cold host-ccache
 4.10.2/dependency build passes in 86 seconds using only existing source archives
-and disposable tmpfs, without network or host-cmake compilation. This is local
-host-tool evidence, not measured hosted speedup, complete firmware validation,
-clean independent reproducibility or a product milestone. No target feature,
-compiler-cache trust rule, guest test, persistent output or device is changed.
+and disposable tmpfs, without network or host-cmake compilation. Frozen
+`4202bbf` then passes the complete local cached Buildroot lane: pinned native
+vet/unit/race/fuzz, target/legal/SBOM, regular-image probe, ARMv5 smoke, MD,
+two-boot state, isolated runtime/Owner/loader, atomic, Samba/ACL and SMART
+fixtures. Seven generated artifact hashes independently match after terminal
+exit zero; the builder is removed and only the two fixed volumes/one pinned
+image tag remain. This is not measured hosted speedup, clean independent
+reproducibility, EX4 or a product milestone. No target feature, compiler-cache
+trust rule or guest assertion is weakened; no new persistent workspace or
+device operation is added. The follow-up is based on integrated `d1b8dfe`,
+not the still-separate PR79 storage runtime.
 
 - M0: [build harness](support/container/build-qemu.sh),
   [QEMU workflow](.github/workflows/qemu-armv5.yml),
