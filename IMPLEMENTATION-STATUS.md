@@ -121,6 +121,22 @@ rebuild; actual board/build input changes remain covered.
 
 ## Roadmap comparison
 
+An additional M8.5b prerequisite provides a private complete sysfs census for
+future health-source binding. It uses the existing bounded collector and
+complete schema-v2 validator, not the import/mount candidate filter. Mounted
+whole disks, active MD members, removable/read-only state and missing/invalid/
+ambiguous VPD remain observed. Comparison validates both derived views and
+the entire inventory, including private evidence and unrelated topology.
+Windows API/UI/vet and ARMv5 cross-compilation pass; pinned Linux Go 1.26.6
+QEMU-tagged vet/race and 16 feedback contracts pass. The actual existing ARMv5
+single-boot overlay also passes mandatory mounted-root and active-MD-member
+assertions with the original base unchanged. It reuses the unchanged metadata
+helper and skips the separate two-boot fixture. This is not a new complete
+Buildroot/legal/SBOM run, hosted topic qualification, source admission, report-
+to-device binding, SMART transport/ioctl authority or product integration.
+No HTTP, broker/device rules, privilege profile or normal startup is changed.
+Milestone estimates remain unchanged.
+
 A subsequent M8.5b prerequisite adds `processowner.NewCapture` for one retained
 fixed command and one bounded regular read-only stdin, never a device. Complete
 Windows API/UI and pinned Linux process-owner/coordinator vet/race pass. Native

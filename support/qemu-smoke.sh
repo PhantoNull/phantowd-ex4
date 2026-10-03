@@ -344,6 +344,14 @@ while [ "$attempt" -lt "$smoke_timeout" ]; do
             echo 'Missing complete QEMU sysfs storage collector assertion' >&2
             exit 1
         fi
+        if ! grep -F 'PHANTOWD_SMART_SYSFS_CENSUS_READY complete=true leaves=7 mounted_root_included=true ambiguous_vpd_preserved=true device_opened=false command_admitted=false scope=qemu-fixture-only' "$log_file" >/dev/null; then
+            echo 'Missing read-only SMART census assertion' >&2
+            exit 1
+        fi
+        if ! grep -F 'PHANTOWD_SMART_MD_CENSUS_READY complete=true leaves=7 active_md_members=2 mounted_root_included=true device_opened=false command_admitted=false scope=qemu-fixture-only' "$log_file" >/dev/null; then
+            echo 'Missing in-use MD member SMART census assertion' >&2
+            exit 1
+        fi
         if ! grep -E 'PHANTOWD_AUTH_READY algorithm=argon2id kdf_concurrency=1 bootstrap=created login_enabled=yes transport=guest-loopback-http state=volatile-qemu session=memory-only kdf_cycle_ms=[0-9]+' "$log_file" >/dev/null; then
             echo "Missing first-account/authentication ARMv5 self-test assertion" >&2
             exit 1

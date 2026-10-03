@@ -143,6 +143,10 @@ func runSelfTest() error {
 		}
 	}
 	fmt.Printf("PHANTOWD_SYSFS_STORAGE_READY complete=true nodes=%d partitions=%d scope=qemu-fixture-only\n", sysfsStorage.DeviceCount, partitionNodes)
+	if err := exerciseQEMUSMARTDiskCensus(); err != nil {
+		return err
+	}
+	fmt.Println("PHANTOWD_SMART_SYSFS_CENSUS_READY complete=true leaves=7 mounted_root_included=true ambiguous_vpd_preserved=true device_opened=false command_admitted=false scope=qemu-fixture-only")
 	storageResponse, err := client.Get("http://" + listenAddress + "/api/v1/storage")
 	if err != nil {
 		return errors.New("storage loopback request failed")
