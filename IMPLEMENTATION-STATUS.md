@@ -24,6 +24,14 @@ cached overlay evidence, not clean firmware/SBOM, hosted feature or EX4
 qualification. It retains no lease, does not monitor or persist identity, and
 adds no HTTP, mount/import or service activation. Planning bands remain unchanged.
 
+Follow-up `fe1e855` ordinarily unmounts/remounts only the existing fixed disposable
+QEMU MD filesystem. Actual ARMv5 standard smoke verifies old-census refusal when
+absent and after same-path/device/UUID return, changed unique mount ID, read-only
+state and acceptance of a new complete census. Native/Windows/contracts pass.
+Development-engine shutdown interrupts the full overlay before the separate
+two-boot result and final artifact hashes, so this newer fixture is not fully
+qualified. PR #80's exact-head B3 check has since passed; its QEMU remains live.
+
 Use [ROADMAP.md](ROADMAP.md) for the acceptance specification. This snapshot
 distinguishes tested components from deployed product workflows. It is not
 installation approval, a security certification, or an exhaustive line-by-line audit.

@@ -675,6 +675,11 @@ are missing. **Depends on:** M1; M7 for hardware.
   while accepting unchanged metadata. Base artifacts remain unchanged; this is not a
   retained lease, sticky Owner, persistent registry, global-use proof or service
   authority. M3.2g remains reserved for the separate protected-registry contract.
+  Follow-up`fe1e855` extends the existing disposable MD fixture with actual
+  ordinary unmount/read-only remount; ARMv5 standard smoke confirms absent/stale
+  refusal, changed unique mount ID and fresh-census acceptance. Windows/native
+  checks pass, but development-engine shutdown interrupts the full overlay
+  before separate two-boot/final-hash acceptance. Keep that follow-up pending.
 - **M3.3 — Gate compatibility and mounting.** Define a per-layout/filesystem
   allowlist with evidence. Inspect before assembly/mounting; journal replay and
   automatic MD actions can write even during a supposedly read-only assessment.
