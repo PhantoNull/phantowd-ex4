@@ -4,10 +4,17 @@
 # Implementation status
 
 Code audit: **2026-10-03**, integrated `develop` baseline
-`d1b8dfeda4a15f74d17030f17f92b4132e7d5e54` (PR #78).
+`0731540213c4864df70478696bba7e75986abe3a` (PR #79).
 Use [ROADMAP.md](ROADMAP.md) for the acceptance specification. This snapshot
 distinguishes tested components from deployed product workflows. It is not
 installation approval, a security certification, or an exhaustive line-by-line audit.
+
+PR #79 passed its own exact `a185e0f` host and QEMU/DTB checks, including
+guest/state fixtures, research DTB and final isolated-volume cleanup, then
+guarded squash-merged as `0731540`. Expected, checked and integrated complete
+trees equal `117a6526`; its topic refs were retired after tree/worktree/ref
+guards. This integrates the mounted-ext census and scoped desired-volume
+review, not persistent VolumeIDs, production mount authority or EX4 migration.
 
 PR #78 passed its own exact56171db QEMU/DTB check37140806223, including
 standard guest/two-boot validation, research DTB and final isolated-volume
@@ -32,8 +39,9 @@ two-boot overlay pass. Native tests cover16 desired volumes/64 roots, ordering,
 aliases/clones, partial input and invalid policy. Six final runtime/test/support
 hashes and seven base hashes independently agree after terminal completion.
 No I/O, HTTP, persistent registration, qualifying token, Owner/planner authority,
-mount/import or activation is added. This is local unintegrated overlay evidence,
-not hosted, clean-build or EX4 acceptance; planning bands remain unchanged.
+mount/import or activation is added. These local proofs preceded exact-head
+PR79 hosted integration above; they do not establish independent clean-build
+or EX4 acceptance. Planning bands remain unchanged.
 
 M3.2e local follow-up derives a private complete scoped mounted-ext census from
 the current-process mount table and complete sysfs/MD topology. The fixed reader
@@ -49,7 +57,8 @@ post-run checks confirm seven frozen source/support hashes and seven unchanged
 base artifacts; the project builder was auto-removed and no new persistent
 image/volume/output was created. No HTTP, block-node opening, file-data read,
 state write, qualification, mount/import or product activation is added.
-This is local unintegrated evidence, not hosted, clean-build or EX4 acceptance.
+These local proofs preceded exact-head PR79 hosted integration above; they
+do not establish independent clean-build or EX4 acceptance.
 M3/overall planning bands remain unchanged; persistent identity, production
 qualification/roster, global-use accounting and hardware gates remain open.
 
@@ -999,6 +1008,35 @@ there is no installable beta. Applications/mobile/multi-model support are
 excluded. No calendar estimate is defensible before the hardware/recovery gates.
 
 ## Evidence map and integration gaps
+
+M0.3 local build-environment follow-up: two successful exact-head hosted jobs
+(PR77 `37136391769`, PR78 `37140806223`) took 3410/3465 seconds. In the PR78
+log, host-cmake bootstrap/configure/build consumed about 11 minutes before
+host-Go, despite an exact compiler-cache hit: this dependency cannot use
+ccache. The pinned container now supplies snapshot-authenticated system CMake
+3.25.1, accepted by the current QEMU configuration's Buildroot minimum 3.18.
+The source-contract regression first fails with CMake absent; 23 Linux
+feedback tests and shell/workflow contracts then pass. A fresh disposable
+configuration proves ordinary host-tool selection with no host-cmake cache
+dependency and refusal of an unsuitable version. An actual cold host-ccache
+4.10.2/dependency build passes in 86 seconds using only existing source archives
+and disposable tmpfs, without network or host-cmake compilation. Frozen
+`4202bbf` then passes the complete local cached Buildroot lane: pinned native
+vet/unit/race/fuzz, target/legal/SBOM, regular-image probe, ARMv5 smoke, MD,
+two-boot state, isolated runtime/Owner/loader, atomic, Samba/ACL and SMART
+fixtures. Seven generated artifact hashes independently match after terminal
+exit zero; the builder is removed and only the two fixed volumes/one pinned
+image tag remain. This is not measured hosted speedup, clean independent
+reproducibility, EX4 or a product milestone. No target feature, compiler-cache
+trust rule or guest assertion is weakened; no new persistent workspace or
+device operation is added. That initial complete local run used integrated
+`d1b8dfe`, before PR79. After guarded PR79 integration, rebase `46341c7`
+retains all four qualified CMake input blobs and the exact PR79 API subtree.
+Whole tagged Linux vet/race, repeated SIGKILL regressions, feedback contracts
+and actual ARMv5 standard/two-boot overlay pass for this union. Seven base
+artifacts remain unchanged; the overlay does not regenerate legal/SBOM or
+qualify a new clean image. The build-environment follow-up's own hosted
+acceptance remains pending.
 
 - M0: [build harness](support/container/build-qemu.sh),
   [QEMU workflow](.github/workflows/qemu-armv5.yml),

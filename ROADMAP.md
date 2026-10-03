@@ -220,7 +220,15 @@ button to an unqualified backend simply because the screen exists.
   count after adding four network campaigns is corrected without weakening
   the exact roster/count guard. The regression also requires each new campaign
   exactly once and the early local invocation; real non-root fixed-repository
-  Git mode checks and 21 feedback tests pass. Firmware runtime is unchanged.
+  Git mode checks and the feedback tests pass. Firmware runtime is unchanged.
+  The pinned container now supplies Debian-snapshot CMake; a fresh disposable
+  QEMU configuration exercises Buildroot's real minimum-version check and
+  dependency graph before host-Go bootstrap. Missing/unsuitable tools refuse;
+  no dependency override, prebuilt workspace or weaker test lane is used.
+  A local cold build actually constructs host-ccache and its dependencies
+  using system CMake without building host-cmake. Compare exact-head hosted
+  timings before claiming overall CI savings; cached full validation is not
+  independent clean-build or release qualification.
   The build feedback refinement runs pinned native Go vet/unit/race/fuzz tests
   before the full kernel/Samba compilation. Failed guest logs are preserved and
   their final 120 lines printed; failure-only artifacts are uploaded separately

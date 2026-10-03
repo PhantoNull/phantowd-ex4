@@ -26,6 +26,50 @@ def save_log(destination, source):
 
 
 class BuildFeedbackTests(unittest.TestCase):
+    def test_pinned_container_avoids_unnecessary_cmake_bootstrap(self):
+        # The archived PR78 build spent ~11 minutes building host-cmake,
+        # which cannot itself use ccache. Buildroot's ordinary host-tool
+        # suitability check must remain responsible for selecting/fallback.
+        dockerfile = (ROOT / "support/docker/Dockerfile").read_text()
+        self.assertIn("        cmake \\\n", dockerfile)
+        self.assertIn("COPY support/docker/debian-snapshot.sources",
+                      dockerfile)
+        self.assertNotIn("pip install", dockerfile)
+        script = (ROOT / "support/container/build-qemu.sh").read_text()
+        self.assertNotIn("BR2_CMAKE=", script)
+        self.assertNotIn("BR2_CMAKE_HOST_DEPENDENCY=", script)
+        probe = script.index('"$external_dir/support/tests/'
+                             'test-buildroot-system-cmake.sh" \\\n')
+        self.assertLess(probe, script.index("    host-go-bin\n"))
+        fixture = (ROOT / "support/tests/test-buildroot-system-cmake.sh")
+        fixture = fixture.read_text()
+        self.assertIn("O=\"$scratch/output\"", fixture)
+        self.assertIn("check-host-cmake.sh", fixture)
+        self.assertIn("HOST_CCACHE_DEPENDENCIES", fixture)
+        self.assertNotIn("BR2_CMAKE=", fixture.replace(
+            "'BR2_CMAKE=/usr/bin/cmake'", ""))
+
+    def test_system_cmake_fixture_refuses_missing_host_tool(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            directory = pathlib.Path(temporary)
+            source = directory / "source"
+            external = directory / "external"
+            source.mkdir()
+            (source / ".phantowd-source-ready").touch()
+            (external / "configs").mkdir(parents=True)
+            (external / "configs/phantowd_qemu_armv5_defconfig").touch()
+            result = subprocess.run(
+                ["sh", str(ROOT / "support/tests/"
+                           "test-buildroot-system-cmake.sh"),
+                 str(source), str(external)],
+                text=True, capture_output=True, timeout=3,
+                env={**os.environ, "PATH": str(directory / "empty")},
+                executable="/bin/sh",
+            )
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("must provide /usr/bin/cmake", result.stderr)
+            self.assertNotIn("PHANTOWD_SYSTEM_CMAKE_READY", result.stdout)
+
     def test_local_full_lane_checks_exact_fuzz_roster_before_build(self):
         runner = (ROOT / "support/container/test-api.sh").read_text()
         checker = (ROOT / "support/test-firmware-workflow-paths.sh").read_text()

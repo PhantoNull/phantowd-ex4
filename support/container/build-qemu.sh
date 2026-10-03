@@ -192,6 +192,13 @@ if [ "${PHANTOWD_PREPARE_ONLY:-0}" = 1 ]; then
     exit 0
 fi
 
+# CMake cannot use ccache while bootstrapping ccache itself. Exercise the
+# ordinary Buildroot host-tool selection before any expensive host build.
+shellcheck -s sh "$external_dir/support/tests/test-buildroot-system-cmake.sh"
+TMPDIR=/phantowd-qemu-fixture-tmp sh \
+    "$external_dir/support/tests/test-buildroot-system-cmake.sh" \
+    "$buildroot_source" "$external_dir"
+
 # Add structured Samba server IDs without enabling the much larger AD-DC role.
 # This patch is pinned to the Buildroot release and is idempotent in the cache.
 sh "$external_dir/support/tests/test-buildroot-samba-json-patch.sh" "$buildroot_source"

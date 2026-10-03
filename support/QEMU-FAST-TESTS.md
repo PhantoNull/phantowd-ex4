@@ -746,3 +746,23 @@ from this lane may be published as a release or staged on an EX4.
 
 Clean Buildroot/CI qualification is still required before merge/release. QEMU
 does not qualify physical SATA, WD layouts, cooling, NAND or device recovery.
+
+### Avoid rebuilding compiler-cache prerequisites
+
+The pinned build container includes CMake from the authenticated Debian
+snapshot. Buildroot still selects it through its own host-tool suitability
+check; the project does not override CMake or remove dependencies manually.
+Before host-Go bootstrap, `test-buildroot-system-cmake.sh` uses a fresh
+disposable configuration to check the real minimum and dependency graph.
+An unsupported or missing system tool fails early instead of unexpectedly
+rebuilding host-cmake, which cannot benefit from ccache itself. The source-only
+preparation lane does not run this QEMU-specific probe.
+
+After pulling a build-environment change, run the ordinary
+`support/build-qemu.ps1` wrapper once before `-CachedOnly`. It refreshes the
+fixed image tag while reusing the same two project volumes; cached-only mode
+never rebuilds an outdated image automatically.
+
+This changes the host environment, not the target configuration or validation
+ladder. Measure hosted timings rather than assuming a cache hit implies a
+fast build. Keep clean builds separate from reused local outputs.
