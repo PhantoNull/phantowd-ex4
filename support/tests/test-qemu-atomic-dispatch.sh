@@ -10,10 +10,12 @@ target=${4:?target tree required}
 source_dir=${5:?source required}
 failure_log=${6:-}
 tmpdir=${TMPDIR:-/tmp}
+# Resolve traversal/symlinks before testing that scratch actually lives in tmpfs.
+case "$tmpdir" in /*) ;; *) exit 1 ;; esac
+tmpdir=$(realpath -e "$tmpdir")
 case "$base:$cc:$debugfs:$target:$source_dir:$failure_log:$tmpdir" in
     *[!a-zA-Z0-9_./:+-]*) exit 1 ;;
 esac
-case "$tmpdir" in /*) ;; *) exit 1 ;; esac
 awk -v target="$tmpdir" '$3 == "tmpfs" && (target == $2 || index(target, $2 "/") == 1) { found = 1 } END { exit !found }' /proc/mounts
 for file in rootfs.ext2 zImage versatile-pb.dtb SHA256SUMS; do
     [ -f "$base/$file" ] && [ ! -L "$base/$file" ] || exit 1

@@ -88,6 +88,8 @@ class CompareTests(unittest.TestCase):
                 'cp "$base/rootfs.ext2" "$scratch/rootfs.ext2"'):
             self.assertIn(required, runner)
         self.assertEqual(runner.count('qemu-system-arm \\\n'), 1)
+        self.assertLess(runner.index('tmpdir=$(realpath -e "$tmpdir")'),
+                        runner.index('awk -v target="$tmpdir"'))
         self.assertNotIn('-w -R', runner.split('cp "$base/rootfs.ext2"')[0])
         for required in (
                 '--rm --pull never --network none --read-only '
