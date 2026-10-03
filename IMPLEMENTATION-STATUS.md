@@ -1000,6 +1000,22 @@ excluded. No calendar estimate is defensible before the hardware/recovery gates.
 
 ## Evidence map and integration gaps
 
+M0.3 local build-environment follow-up: two successful exact-head hosted jobs
+(PR77 `37136391769`, PR78 `37140806223`) took 3410/3465 seconds. In the PR78
+log, host-cmake bootstrap/configure/build consumed about 11 minutes before
+host-Go, despite an exact compiler-cache hit: this dependency cannot use
+ccache. The pinned container now supplies snapshot-authenticated system CMake
+3.25.1, accepted by the current QEMU configuration's Buildroot minimum 3.18.
+The source-contract regression first fails with CMake absent; 23 Linux
+feedback tests and shell/workflow contracts then pass. A fresh disposable
+configuration proves ordinary host-tool selection with no host-cmake cache
+dependency and refusal of an unsuitable version. An actual cold host-ccache
+4.10.2/dependency build passes in 86 seconds using only existing source archives
+and disposable tmpfs, without network or host-cmake compilation. This is local
+host-tool evidence, not measured hosted speedup, complete firmware validation,
+clean independent reproducibility or a product milestone. No target feature,
+compiler-cache trust rule, guest test, persistent output or device is changed.
+
 - M0: [build harness](support/container/build-qemu.sh),
   [QEMU workflow](.github/workflows/qemu-armv5.yml),
   [fast-lane limitations](support/QEMU-FAST-TESTS.md).
