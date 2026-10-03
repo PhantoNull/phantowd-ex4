@@ -1540,6 +1540,19 @@ Then qualify the selected backend and migration objects on expendable EX4 media.
   programmatic cancellation/cause checks. API metadata URLs remain query-free.
   This is a tested transport primitive, not device trust-root provisioning,
   target installation or a published firmware qualification.
+  **M10.2a — host installer prerequisite (partial; locally tested):** optional
+  `--installer-version` uses the existing bounded SemVer comparison against the
+  authenticated `minimum_installer`. It runs after signature/schema/exact-target/
+  channel checks (and immutable signed tag matching for GitHub), before payload
+  I/O or staging. Equal/newer versions pass this prerequisite; older versions
+  refuse, including a prerelease below a stable minimum. Invalid supplied syntax
+  fails before HTTP. Omission preserves integrity-only behavior, without an
+  installer assessment. Windows complete host vet/unit and pinned Linux whole
+  host-tool vet/race pass; generated HTTP fixtures assert request boundaries.
+  The module tree remains identical after rebasing onto qualified PR #75.
+  This caller-supplied version is not device attestation, installation permission,
+  persistent anti-rollback, or a target transaction. No signing/schema/trust-root
+  change, firmware build, physical operation or release qualification follows.
 - **M10.3 — Target transaction.** Explicit preflight, staged, verified, installing,
   boot-pending, health-confirmed and recovery states. Journal durable boundaries;
   check space/power prerequisites. An ambiguous state must not restart installation
