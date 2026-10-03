@@ -253,6 +253,7 @@ support/qemu-state-reboot.sh
 support/qemu-md-v10-fixture.sh
 support/test-qemu-md-v10.ps1
 support/test-volume-probe-build.py
+support/tests/test-volume-probe-license.py
 src/phantowd-volume-probe/**
 package/phantowd-volume-probe/**
 support/container/test-volume-probe.sh
@@ -309,6 +310,8 @@ for event in push pull_request; do
 		"$qemu_workflow" "$event" support/container/apply-buildroot-samba-json-patch.sh
 	require_not_ignored_pattern \
 		"$qemu_workflow" "$event" support/tests/test-buildroot-samba-json-patch.sh
+	require_not_ignored_pattern \
+		"$qemu_workflow" "$event" support/tests/test-volume-probe-license.py
 done
 
 while IFS= read -r path; do

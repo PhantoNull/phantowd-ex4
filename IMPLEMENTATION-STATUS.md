@@ -96,6 +96,24 @@ closed before execution. This is focused development-helper evidence, not
 complete integration, a legacy WD finding or product activation. Its local
 runner has explicit CPU/memory/PID caps and no new persistent Docker resources.
 
+Complete cached local integration subsequently passed on unchanged `febc799`
+(tree `eadb2f3e`): source verification, Linux host/vet/race/fuzz, image/legal-info,
+native probe and every standard/MD/two-boot/launcher/Owner/loader/Samba/SMART
+guest lane. The eleven launcher refusals and inherited high-FD check are
+actually executed in the disposable ARMv5 guest. Seven exported artifacts were
+independently verified; only `buildroot-show-info.json` differs from the prior
+full result, now recording the probe's license-hash file. The uninstalled
+launcher is tested by fixture injection, so unchanged product binaries are
+not service-activation evidence. The temporary container auto-removed; one
+existing output and the two fixed volumes/caches were reused. This is not an
+independent clean build, hosted result, physical qualification or installable
+release. The Buildroot source-packaging warning remains open.
+
+The subsequent workflow-only correction excludes the probe license-checker
+test from unchanged EX4 B3 kernel compilation, while requiring its QEMU
+coverage for both push and PR. The path contract first failed on the missing
+exclusion; its validation is separate from the full runtime result above.
+
 An explicit blocking supervisor now extends the internal static/non-root code
 Owner only. Complete scans are serialized with a fixed idle interval and no
 catch-up burst. Actual disposable ARMv5 fixtures cover rejected admission,
