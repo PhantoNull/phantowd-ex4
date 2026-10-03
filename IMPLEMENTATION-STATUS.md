@@ -4,7 +4,7 @@
 # Implementation status
 
 Code audit: **2026-10-03**, integrated `develop` baseline
-`3da9b8ef37ff352172719fd2bf9abd654315a7bf` (PR #62).
+`7fa757f417377a4c3df1a77fa56ff660a0efb4b0` (PR #63).
 Use [ROADMAP.md](ROADMAP.md) for the acceptance specification. This snapshot
 distinguishes tested components from deployed product workflows. It is not
 installation approval, a security certification, or an exhaustive line-by-line audit.
@@ -17,6 +17,12 @@ passed all three independent hosted checks, including
 [QEMU/DTB](https://github.com/PhantoNull/phantowd-ex4/actions/runs/37079287654).
 Its expected complete squash tree was verified before removing that branch.
 This is component integration, not product service or EX4 qualification.
+
+PR #63 subsequently passed its exact head `97a5b09` host and QEMU/DTB checks
+and was squash-merged with complete expected-tree equality. Its local/remote
+branch was retired after inclusion proof; no unrelated worktree or stash was
+removed. That result does not qualify the separate host-reader, source-collection
+and ARM-header follow-ups documented below.
 
 PR #59 integrated the C++ toolchain and native/ARMv5 producer replay after exact
 head `e22828d` passed both hosted B3 and
