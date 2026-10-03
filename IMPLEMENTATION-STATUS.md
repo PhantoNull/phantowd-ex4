@@ -4,7 +4,7 @@
 # Implementation status
 
 Code audit: **2026-10-03**, integrated `develop` baseline
-`f9bbfc0848be29c4fa904e67cc15714285e31b01` (PR #68).
+`3594234e05c394c7848c41cd2134a492e898ce8d` (PR #69).
 Use [ROADMAP.md](ROADMAP.md) for the acceptance specification. This snapshot
 distinguishes tested components from deployed product workflows. It is not
 installation approval, a security certification, or an exhaustive line-by-line audit.
@@ -139,10 +139,16 @@ two-boot overlay pass, including all seven virtual leaves, partial rollback,
 caller-close independence and injected-reader failure. A native regression
 first reproduced the QEMU wrapper's missing `ReadLinkFS.Lstat`; the corrected
 reader preserves the full contract, with a compile-time assertion. No collector
-guard was relaxed. This is a userspace overlay on the existing verified base,
-not a new package/legal/SBOM build or independent reproduction. Complete local
-integration and hosted qualification of this increment remain pending; no
-physical SMART command, product provider or new privilege is authorized.
+guard was relaxed. A subsequent complete cached local integration passed on
+frozen `35ae558` (tree `b6decde`): host vet/unit/race/fuzz, package/image,
+legal-info/source collection/SBOM, native image probe and all standard/MD/
+two-boot/launcher/Owner/loader/atomic/Samba/SMART guest lanes. Independent
+checks verify all seven exported hashes and byte equality of image, exported
+and target API, including the mandatory seven-leaf assertion. Five manifest
+entries, including kernel/DTB, are unchanged from the previous base; API/rootfs
+are new. This is cached integration, not independent clean reproduction,
+hosted qualification, physical SMART authority or a product provider.
+No new privilege is authorized; the historical state EBUSY remains unresolved.
 Milestone estimate bands remain unchanged.
 
 M0 fixture reliability follow-up: the two-boot Samba shutdown previously

@@ -1336,7 +1336,10 @@ not host/QEMU progress.
     regression catches a missing Lstat method without weakening the collector.
     The observation remains point-in-time, not report attribution, source
     admission, stable identity, transport/wake qualification or product wiring.
-    Complete package/hosted qualification of this increment remains pending.
+    Complete cached local package/image/legal/SBOM integration and all existing
+    guest lanes subsequently pass on35ae558, with seven exported hashes and
+    image/export/target API equality verified. Independent clean reproduction,
+    hosted qualification, command authority and product wiring remain open.
     Do not add
     history/UI by treating this transient tuple as a stable media identity.
   - **M8.5c — Wake policy.** Specify exact no-check/device-detection behavior per
