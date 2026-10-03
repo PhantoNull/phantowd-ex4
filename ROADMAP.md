@@ -3,7 +3,7 @@
 
 # Implementation roadmap
 
-Reviewed: **2026-10-02**. This is the product specification and work breakdown,
+Reviewed: **2026-10-03**. This is the product specification and work breakdown,
 not a release announcement. The [README](README.md) is the concise entry point;
 component contracts remain authoritative for implemented behavior.
 
@@ -895,8 +895,13 @@ storage. No production roster provider or activation path exists.
   Local follow-up: a separate native static-ELF launcher prototype passes a
   disposable ARMv5 QEMU fixture with a pinned restricted root, private mount
   namespace/propagation, zero capabilities, exact non-root credentials, FD and
-  inherited-signal cleanup, preserved PID/PGID, and a read-only share. Seven
-  invalid launch cases are refused. The source is
+  inherited-signal cleanup, preserved PID/PGID, and a read-only share. Eleven
+  invalid launch cases are refused, including named filesystem FIFOs and
+  read-only pipe ends on either diagnostic descriptor. The positive probe also
+  checks closure of an inherited original-root FD 511. Complete cached local
+  integration on `febc799` passes every existing guest lane; its seven exported
+  artifact hashes are independently verified. The helper remains fixture-
+  injected, not product-installed. The source is
   [phantowd-service-launcher](src/phantowd-service-launcher/README.md); run
   `support/test-service-launcher.ps1` using existing read-only cache/base
   inputs. It now runs through a fixed-input `processowner.IsolatedOwner` and
