@@ -4,7 +4,16 @@
 # Implementation status
 
 Code audit: **2026-10-04**, integrated `develop` baseline
-`6bfc52d5ee6e0e7757ea2b3c5b243e4e3b52e591` (PR #83).
+`145c8bf1225a46ffe5d486f48a9ed9d80b716b8f` (PR #84).
+PR #84 exact `d8eb97a` passed its own host and complete QEMU/DTB checks,
+including guest fixtures and isolated CI volume cleanup. Guarded squash
+integration preserves expected/checked/integrated tree `5fa11336`; the proven
+integrated topic refs were retired. The locally qualified registry-recheck/
+composition follow-up rebases with its complete source/API trees unchanged.
+Its hosted acceptance is separate; none of these observations enables product
+storage/services, persistent registration, compatibility or installation.
+
+Historical PR #83 integration:
 PR #83 exact `8564b15` passed its own host check and guarded squash-integrated
 the host-only manifest fix with expected/checked/integrated tree `d85d18b5`.
 No firmware rebuild or installation authority follows from that host change.
