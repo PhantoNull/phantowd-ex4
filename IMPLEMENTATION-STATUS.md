@@ -4,7 +4,14 @@
 # Implementation status
 
 Code audit: **2026-10-03**, integrated `develop` baseline
-`78080ebff3db8f80343ad4756e6f58dc10ef40f0` (PR #80).
+`d362c16afa118ad7b32b35719ca3336fac547cc8` (PR #81).
+PR #81 exact `07058ed` passed its own host and ARMv5/DTB checks, including
+standard/two-boot fixtures and final isolated-volume cleanup. Guarded squash
+merge `d362c16` preserves the expected/checked/integrated whole tree `4208c42e`;
+its integrated local/remote topic refs were retired. The registry/policy batch
+rebases onto that actual integration with qualified whole tree `889f8de0` and
+API subtree `ab51dcd7` unchanged. Hosted qualification of this newer batch is
+separate from PR81 success; no product/physical/install gate is completed.
 Earlier audit paragraphs below retain their original verification scope. PR #79
 passed its exact-head host/QEMU checks and merged the mounted-ext census and
 desired-volume review. PR #80 (`cca8fc5`) separately optimizes system CMake;
