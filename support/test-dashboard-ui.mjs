@@ -117,7 +117,7 @@ function mountsFixture() {
   };
 }
 
-async function createHarness(respond) {
+async function createHarness(respond, timing = {}) {
   const ids = [
     "auth-panel", "auth-title", "auth-description", "auth-form", "auth-username",
     "auth-password", "auth-submit", "auth-retry", "auth-error", "dashboard-content",
@@ -160,8 +160,8 @@ async function createHarness(respond) {
     Promise,
     TextEncoder,
     AbortController,
-    setTimeout,
-    clearTimeout,
+    setTimeout: timing.setTimeout ?? setTimeout,
+    clearTimeout: timing.clearTimeout ?? clearTimeout,
   });
   new Script(serviceSource).runInContext(context);
   new Script(source).runInContext(context);
@@ -258,6 +258,166 @@ async function testExpiredSessionReturnsToLogin() {
   assert.equal(elements["auth-panel"].hidden, false);
   assert.equal(elements["auth-form"].hidden, false);
   assert.match(elements["auth-error"].textContent, /session expired/i);
+}
+
+function snapshotResponse(path, kernel = "retired-session-kernel") {
+  if (path === "/api/v1/system") return jsonResponse({ ...systemFixture(), kernel });
+  if (path === "/api/v1/storage") return jsonResponse({ observations: [] });
+  if (path === "/api/v1/arrays") return jsonResponse(arraysFixture());
+  if (path === "/api/v1/mounts") return jsonResponse(mountsFixture());
+  throw new Error(`Unexpected snapshot request: ${path}`);
+}
+
+const settleUI = () => new Promise((resolve) => setImmediate(resolve));
+
+async function testSnapshotLateSuccessCannotSurviveAuthBoundary() {
+  for (const boundary of ["logout", "logout-all", "password", "unavailable", "unauthenticated"]) {
+    let ended = false;
+    let release;
+    const pending = new Promise((resolve) => { release = resolve; });
+    const { context, elements, requests } = await createHarness(async (path) => {
+      if (path === "/api/v1/auth/status") return jsonResponse({ authenticated: !ended, setup_required: false });
+      if (path === "/api/v1/auth/session") return jsonResponse({ csrf_token: "x".repeat(43) });
+      if (path === "/api/v1/auth/logout" || path === "/api/v1/auth/logout-all") { ended = true; return jsonResponse({ signed_out: true }); }
+      if (path === "/api/v1/auth/password") {
+        ended = true;
+        return jsonResponse({ password_changed: true, reauthentication_required: true, all_panel_sessions_revoked: true });
+      }
+      return pending.then(() => snapshotResponse(path));
+    });
+    if (boundary === "logout") await elements.logout.listeners.get("click")();
+    else if (boundary === "logout-all") await elements["logout-all"].listeners.get("click")();
+    else if (boundary === "password") {
+      elements["password-current"].value = "old public test passphrase";
+      elements["password-new"].value = "new public test passphrase";
+      elements["password-confirm"].value = elements["password-new"].value;
+      await elements["password-form"].listeners.get("submit")({ preventDefault() {} });
+    } else if (boundary === "unauthenticated") {
+      ended = true;
+      await context.updateAuthView({ refresh: false });
+    } else context.showAuthUnavailable();
+    assert.equal(elements["dashboard-content"].hidden, true, "authentication boundary itself did not hide the dashboard");
+    if (boundary === "logout") assert.equal(ended, true, "logout endpoint was not reached");
+    const connection = elements["build-label"].textContent;
+    const message = elements["snapshot-status"].textContent;
+    release();
+    await settleUI();
+    assert.equal(elements["kernel-value"].textContent, "Unavailable", "late snapshot repopulated retired session values");
+    assert.equal(elements["build-label"].textContent, connection, "late snapshot overwrote authentication state");
+    assert.equal(elements["snapshot-status"].textContent, message);
+    assert.equal(elements["dashboard-content"].hidden, true);
+    const reads = requests.filter(({ path }) => ["system", "storage", "arrays", "mounts"].some((name) => path === `/api/v1/${name}`));
+    assert.equal(reads.length, 4);
+    assert.ok(reads.every(({ options }) => options.signal?.aborted), "retired reads were not canceled together");
+  }
+}
+
+async function testSnapshotLateErrorsDoNotChangeUnavailableAuth() {
+  for (const outcome of ["unauthorized", "transport-error", "body-error"]) {
+    let release;
+    const pending = new Promise((resolve) => { release = resolve; });
+    const { context, elements, requests } = await createHarness(async (path) => {
+      if (path === "/api/v1/auth/status") return jsonResponse({ authenticated: true });
+      await pending;
+      if (outcome === "unauthorized") return jsonResponse({}, 401);
+      if (outcome === "transport-error") return new Error("late transport failure");
+      return { ok: true, status: 200, json: async () => { throw new Error("late malformed body"); } };
+    });
+    context.showAuthUnavailable();
+    const message = elements["auth-error"].textContent;
+    const requestCount = requests.length;
+    release();
+    await settleUI();
+    assert.equal(elements["dashboard-content"].hidden, true);
+    assert.equal(elements["auth-error"].textContent, message);
+    assert.equal(elements["build-label"].textContent, "API unavailable");
+    assert.equal(requests.length, requestCount, "retired response started another auth-status request");
+  }
+}
+
+async function testSnapshotLateAuthBodyCannotReplaceNewSession() {
+  let phase = "initial";
+  let releaseAuth, releaseCurrent;
+  const authBody = new Promise((resolve) => { releaseAuth = resolve; });
+  const currentRead = new Promise((resolve) => { releaseCurrent = resolve; });
+  const { context, elements } = await createHarness(async (path) => {
+    if (path === "/api/v1/auth/status") return phase === "expired" ?
+      { ok: true, status: 200, json: () => authBody } : jsonResponse({ authenticated: true });
+    if (phase === "expired") return jsonResponse({}, 401);
+    if (phase === "current") await currentRead;
+    return snapshotResponse(path, "current-session-kernel");
+  });
+  phase = "expired";
+  const retired = context.refreshSnapshot();
+  await settleUI();
+  context.showAuthUnavailable();
+  phase = "current";
+  await context.updateAuthView({ refresh: false });
+  const fresh = context.refreshSnapshot();
+  await settleUI();
+  releaseAuth({ authenticated: false, setup_required: false });
+  await retired;
+  await settleUI();
+  assert.equal(elements["dashboard-content"].hidden, false);
+  assert.equal(elements["auth-panel"].hidden, true);
+  assert.equal(elements.refresh.disabled, true, "retired finalizer unlocked a current refresh");
+  assert.equal(elements.refresh.attributes.get("aria-busy"), "true");
+  assert.equal(elements["refresh-label"].textContent, "Refreshing…");
+  releaseCurrent();
+  await fresh;
+  assert.equal(elements["kernel-value"].textContent, "Linux current-session-kernel");
+  assert.equal(elements.refresh.disabled, false);
+}
+
+async function testSnapshotReadIsSingleFlight() {
+  let release;
+  const pending = new Promise((resolve) => { release = resolve; });
+  const { context, elements, requests } = await createHarness(async (path) => {
+    if (path === "/api/v1/auth/status") return jsonResponse({ authenticated: true });
+    return pending.then(() => snapshotResponse(path));
+  });
+  const duplicate = context.refreshSnapshot();
+  await settleUI();
+  const countWhilePending = requests.filter(({ path }) => path !== "/api/v1/auth/status").length;
+  release();
+  await duplicate;
+  await settleUI();
+  assert.equal(countWhilePending, 4, "concurrent refresh started duplicate diagnostic reads");
+  assert.equal(elements.refresh.disabled, false);
+  assert.equal(elements["refresh-label"].textContent, "Refresh snapshot");
+  const reads = requests.filter(({ path }) => path !== "/api/v1/auth/status");
+  assert.ok(reads[0].options.signal);
+  assert.ok(reads.every(({ options }) => options.signal === reads[0].options.signal));
+}
+
+async function testSnapshotDeadlineIncludesBodyAndDoesNotRetry() {
+  let releaseBody;
+  const body = new Promise((resolve) => { releaseBody = resolve; });
+  const timers = new Map();
+  let nextTimer = 0;
+  const { elements, requests } = await createHarness(async (path) => {
+    if (path === "/api/v1/auth/status") return jsonResponse({ authenticated: true });
+    if (path === "/api/v1/system") return { ok: true, status: 200, json: () => body };
+    return snapshotResponse(path);
+  }, {
+    setTimeout: (callback, delay) => { const id = ++nextTimer; timers.set(id, { callback, delay }); return id; },
+    clearTimeout: (id) => timers.delete(id),
+  });
+  assert.equal(timers.size, 1, "snapshot has no finite client deadline");
+  const deadline = [...timers.values()][0];
+  assert.equal(deadline.delay, 10000);
+  deadline.callback();
+  await settleUI();
+  assert.equal(elements["kernel-value"].textContent, "Unavailable");
+  assert.match(elements["snapshot-status"].textContent, /system observation unavailable/);
+  assert.equal(elements.refresh.disabled, false);
+  assert.equal(timers.size, 0);
+  const before = elements["snapshot-status"].textContent;
+  releaseBody({ ...systemFixture(), kernel: "late-body-kernel" });
+  await settleUI();
+  assert.equal(elements["kernel-value"].textContent, "Unavailable");
+  assert.equal(elements["snapshot-status"].textContent, before);
+  assert.equal(requests.filter(({ path }) => path !== "/api/v1/auth/status").length, 4);
 }
 
 async function testStorageFailureKeepsOnlyCurrentSystemObservation() {
@@ -824,12 +984,16 @@ await testPolicyFailuresAndStaleResponses();
 await testReadOnlySnapshotAndSafeRendering();
 await testUnavailableAuthIsVisibleAndRetryable();
 await testExpiredSessionReturnsToLogin();
+await testSnapshotLateSuccessCannotSurviveAuthBoundary();
+await testSnapshotLateErrorsDoNotChangeUnavailableAuth();
+await testSnapshotLateAuthBodyCannotReplaceNewSession();
+await testSnapshotReadIsSingleFlight();
+await testSnapshotDeadlineIncludesBodyAndDoesNotRetry();
 await testStorageFailureKeepsOnlyCurrentSystemObservation();
 await testSystemFailureKeepsOnlyCurrentStorageObservation();
 await testAllDiagnosticFailuresClearValues();
 await testMountFailureClearsOnlyMountObservation();
 await testGPTObservationRunsOnlyOnExplicitClickAndUsesRedactedCSRFRequest();
-process.stdout.write("Dashboard UI interaction smoke tests passed (DOM fixture; no visual browser coverage).\n");
 
 async function editorFixture() {
   const h = await serviceHarness(() => jsonResponse(serviceReply(null)));
@@ -1044,3 +1208,5 @@ for (const outcome of ["success", "wrong-current", "uncertain", "rejected", "mal
     assert.match(elements["auth-error"].textContent, outcome === "success" ? /Password changed/ : /could not be confirmed/);
   }
 }
+
+process.stdout.write("Dashboard UI interaction smoke tests passed (DOM fixture; no visual browser coverage).\n");

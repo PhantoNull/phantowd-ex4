@@ -23,6 +23,38 @@ SMB and NFS desired policy in one strictly coherent revision. It shares the
 tested transaction engine with the original store but has a distinct format
 and filenames, no implicit migration, and no service activation.
 
+## M5.5a diagnostic snapshot lifecycle task contract
+
+The browser's existing four read-only snapshot requests must share one bounded
+single-flight generation. An authentication boundary (sign-out/password change,
+unavailable status or unauthenticated status) aborts that generation and clears
+observations immediately. Late successes, errors, body decoding and finalizers
+from an invalidated generation must never repopulate values, overwrite a newer
+session message or unlock a newer request. Aborting a browser read does not
+prove that a server/kernel operation stopped. No request is retried automatically.
+
+Use one controller and a finite 10-second client deadline for the snapshot,
+including body decoding. Each domain still reports success/unavailability
+independently; a timed-out domain has no retained old values. Reuse the existing
+read endpoints/renderers and session flows: no new endpoint, privilege,
+hardware polling, persistent job or service activation. Keep manual GPT and
+policy operations independent and explicitly triggered.
+
+Acceptance: deterministic tests execute the actual browser source with deferred
+responses across logout/auth failure and a newer refresh, shared cancellation,
+single-flight, finite timeout, late body decoding and independent partial
+failure. Host/API and ARMv5 asset integration remain separate; DOM fixture
+success is not real-browser accessibility or physical-device qualification.
+
+Local evidence (2026-10-03), code `fab3b7e` / tree `60e04f9`: actual-source
+logout regression fails twice before the fix, then the complete DOM suite and
+eleven diagnostic lifecycle cases pass repeatedly. Windows API/UI/vet/tagged
+tests and ARMv5 cross-compilation, pinned Linux full tagged vet/race, existing
+feedback/fuzz contracts, actual ARMv5 embedded-asset smoke and clean two-boot
+overlay pass. Original seven base hashes remain unchanged. No JavaScript is
+executed by QEMU; these proofs do not replace real-browser/accessibility tests,
+clean hosted qualification, product enrollment or physical EX4 validation.
+
 ## Development file-service configuration API
 
 `GET` and `PUT /api/v1/file-services/configuration` operate on the combined

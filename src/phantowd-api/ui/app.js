@@ -379,22 +379,68 @@ function clearMountObservation() {
   byId("mount-list").replaceChildren(empty);
 }
 
-async function fetchJSON(path) {
-  const response = await fetch(path, { method: "GET", headers: { Accept: "application/json" }, cache: "no-store", credentials: "same-origin" });
-  if (!response.ok) {
-    const failure = new Error("diagnostics unavailable");
-    failure.status = response.status;
-    throw failure;
-  }
-  return response.json();
+async function fetchJSON(path, { signal } = {}) {
+  const read = async () => {
+    const response = await fetch(path, { method: "GET", headers: { Accept: "application/json" }, cache: "no-store", credentials: "same-origin", signal });
+    if (!response.ok) {
+      const failure = new Error("diagnostics unavailable");
+      failure.status = response.status;
+      throw failure;
+    }
+    return response.json();
+  };
+  if (!signal) return read();
+  // Race the entire read, including body decoding. Late completion stays
+  // handled even if a transport/body promise does not honor cancellation.
+  return new Promise((resolve, reject) => {
+    const canceled = () => {
+      signal.removeEventListener("abort", canceled);
+      const failure = new Error("diagnostic read canceled");
+      failure.name = "AbortError";
+      reject(failure);
+    };
+    if (signal.aborted) { canceled(); return; }
+    signal.addEventListener("abort", canceled, { once: true });
+    read().then((value) => {
+      signal.removeEventListener("abort", canceled);
+      if (signal.aborted) canceled();
+      else resolve(value);
+    }, (failure) => {
+      signal.removeEventListener("abort", canceled);
+      reject(failure);
+    });
+  });
+}
+
+let snapshotGeneration = 0;
+let snapshotController = null;
+
+function clearSnapshot(message) {
+  snapshotGeneration++;
+  snapshotController?.abort();
+  snapshotController = null;
+  clearSystemObservation();
+  clearStorageObservation();
+  clearArrayObservation();
+  clearMountObservation();
+  byId("refresh").disabled = false;
+  byId("refresh").removeAttribute("aria-busy");
+  setText("refresh-label", "Refresh snapshot");
+  setText("snapshot-status", message);
+  byId("error-banner").hidden = true;
 }
 
 async function refreshSnapshot() {
+  if (snapshotController || logoutBusy || passwordBusy || byId("dashboard-content").hidden) return;
+  const generation = ++snapshotGeneration;
+  const controller = new AbortController();
+  snapshotController = controller;
+  const current = () => generation === snapshotGeneration;
+  const timeout = setTimeout(() => controller.abort(), 10000);
   const button = byId("refresh");
   const error = byId("error-banner");
   const status = byId("snapshot-status");
   const label = byId("refresh-label");
-  const originalLabel = label.textContent;
   button.disabled = true;
   button.setAttribute("aria-busy", "true");
   label.textContent = "Refreshing…";
@@ -403,18 +449,19 @@ async function refreshSnapshot() {
   setConnectionState("Refreshing snapshot…", "loading");
   try {
     const [systemResult, storageResult, arraysResult, mountsResult] = await Promise.allSettled([
-      fetchJSON("/api/v1/system"),
-      fetchJSON("/api/v1/storage"),
-      fetchJSON("/api/v1/arrays"),
-      fetchJSON("/api/v1/mounts"),
+      fetchJSON("/api/v1/system", { signal: controller.signal }),
+      fetchJSON("/api/v1/storage", { signal: controller.signal }),
+      fetchJSON("/api/v1/arrays", { signal: controller.signal }),
+      fetchJSON("/api/v1/mounts", { signal: controller.signal }),
     ]);
+    if (!current()) return;
     const results = [systemResult, storageResult, arraysResult, mountsResult];
     if (results.some((result) => result.status === "rejected" && result.reason?.status === 401)) {
       status.textContent = "Session expired. Sign in again to view a current snapshot.";
       try {
-        await updateAuthView({ refresh: false, notice: "Your session expired. Sign in again to continue." });
+        await updateAuthView({ refresh: false, notice: "Your session expired. Sign in again to continue.", current, signal: controller.signal });
       } catch {
-        showAuthUnavailable();
+        if (current()) showAuthUnavailable();
       }
       return;
     }
@@ -462,12 +509,13 @@ async function refreshSnapshot() {
       `${currentSummary} ${failureSummary} No previous values are shown for the unavailable section.`;
     error.hidden = false;
   } catch (failure) {
+    if (!current()) return;
     if (failure?.status === 401) {
       status.textContent = "Session expired. Sign in again to view a current snapshot.";
       try {
-        await updateAuthView({ refresh: false, notice: "Your session expired. Sign in again to continue." });
+        await updateAuthView({ refresh: false, notice: "Your session expired. Sign in again to continue.", current, signal: controller.signal });
       } catch {
-        showAuthUnavailable();
+        if (current()) showAuthUnavailable();
       }
       return;
     }
@@ -480,9 +528,13 @@ async function refreshSnapshot() {
     error.textContent = "System, storage, RAID, and mount observations are unavailable. No current values are shown.";
     error.hidden = false;
   } finally {
-    button.disabled = false;
-    button.removeAttribute("aria-busy");
-    label.textContent = originalLabel;
+    clearTimeout(timeout);
+    if (current()) {
+      snapshotController = null;
+      button.disabled = false;
+      button.removeAttribute("aria-busy");
+      label.textContent = "Refresh snapshot";
+    }
   }
 }
 
@@ -493,6 +545,7 @@ function setAuthError(message) {
 }
 
 function showAuthUnavailable() {
+  clearSnapshot("Administrator session unavailable. No current diagnostic snapshot is shown.");
   clearGPTObservation("Administrator session unavailable. No GPT observation is shown.");
   clearPasswordFields();
   clearServicePolicy();
@@ -510,8 +563,9 @@ function showAuthUnavailable() {
   setConnectionState("API unavailable", "unavailable");
 }
 
-async function updateAuthView({ refresh = true, notice = "" } = {}) {
-  const status = await fetchJSON("/api/v1/auth/status");
+async function updateAuthView({ refresh = true, notice = "", current = () => true, signal } = {}) {
+  const status = await fetchJSON("/api/v1/auth/status", { signal });
+  if (!current()) return;
   const authPanel = byId("auth-panel");
   const dashboard = byId("dashboard-content");
   const logout = byId("logout");
@@ -533,6 +587,7 @@ async function updateAuthView({ refresh = true, notice = "" } = {}) {
   }
 
   dashboard.hidden = true;
+  clearSnapshot("Sign in to view a current diagnostic snapshot.");
   clearGPTObservation("Sign in to run a manual GPT metadata observation.");
   clearPasswordFields();
   clearServicePolicy();
@@ -612,6 +667,7 @@ let logoutBusy = false;
 async function signOut(all = false) {
   if (logoutBusy || passwordBusy) return;
   logoutBusy = true;
+  clearSnapshot("Signing out. Previous diagnostic observations were cleared.");
   clearServicePolicy();
   clearSavedPolicy();
   clearPolicyDraft();
@@ -665,6 +721,7 @@ byId("password-form").addEventListener("submit", async (event) => {
     return;
   }
   passwordBusy = true;
+  clearSnapshot("Changing credentials. Previous diagnostic observations were cleared.");
   clearPasswordFields();
   clearServicePolicy();
   clearSavedPolicy();
