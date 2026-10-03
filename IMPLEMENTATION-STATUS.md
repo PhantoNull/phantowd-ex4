@@ -139,7 +139,27 @@ rebuild; actual board/build input changes remain covered.
 
 ## Roadmap comparison
 
-M6.1b local follow-up adds a private Linux kernel interface/address observation.
+M6.1c local follow-up extends the same private namespace/socket collector to
+configured IPv4/IPv6 FIB routes in all returned tables. Checked prefixes,
+scalars, table overrides, gateway/via, preferred source, interface references
+and bounded ECMP members are retained privately; canonical semantic comparison
+normalizes attribute/member order. Unknown attributes, nested metrics and
+unread nexthop objects remain explicitly unresolved. Cache usage/expiry does
+not establish configuration drift or freshness; reported cache error is retained.
+Native failure reproduced the strict IPv6 FILTERED response. Pinned kernel
+source and a failing regression distinguish its deliberate cached-exception
+exclusion from undeclared selection: only that fixed configured-route scope
+accepts FILTERED, never DUMP_INTR or link/address filters. Final native race and
+actual unprivileged capture/recheck/FD counts pass. Windows full preflight/ARMv5
+cross-compilation, pinned whole API tagged vet/race, 5,000 additional generated
+route mutations, bounded 1,000-execution wire and route fuzz campaigns,
+20 runner contracts, mandatory actual ARMv5 route assertion and clean two-boot
+overlay pass locally. Base artifacts' seven hashes pass; kernel/packages/probe
+are reused, not a new full Buildroot release/SBOM/clean reproduction. No rule/
+nexthop-object resolution, route choice, reachability, application, HTTP,
+product startup or physical qualification. M6/overall estimate bands unchanged.
+
+The earlier M6.1b follow-up adds a private Linux kernel interface/address observation.
 A thread-bound namespace pin and one unprivileged route socket issue only fixed
 link/address dumps. Kernel sender, port/sequence, completion status, interruption,
 filtering, truncation and byte/object budgets are checked without dump retry.
@@ -692,7 +712,7 @@ substantial redesign. Rows overlap and must not be added.
 | M3 — Storage lifecycle | Complete sysfs census, generation-bound read-only broker, GPT/ext/MD observations, collision checks, internal mount/lease fixtures | Persistent logical VolumeID resolver, global-use accounting, production qualifier/roster, supported layouts and EX4 media qualification | 40–55% |
 | M4 — SMB/NFS | Real loopback clients, desired policies, coherent candidate planner, process-set supervision, share-scoped handoff, grant-only isolated runtime and retained static-code Owner with explicit supervised lifecycle in QEMU | Approved daemon runtime manifests, isolated process sets, privilege profiles/ACLs, transactional activation/recovery, production wiring and storage-loss monitoring | 35–50% |
 | M5 — Management UI/security | Development authentication/TLS, sessions/password changes, diagnostics dashboard and policy preview/editing | Product enrollment/reset/certificate lifecycle, authorized live workflows, recovery UX, browser/accessibility/security qualification | 25–40% |
-| M6 — Network/system | Dual-stack desired-policy model and private bounded read-only kernel interface/address collector in host/ARMv5 QEMU; brief two-port board research | Qualified interface/runtime-conflict admission, safe network transactions/rollback, supported dual-port modes, time/discovery, notifications and administrative jobs | 5–15% |
+| M6 — Network/system | Dual-stack desired-policy model and private bounded read-only kernel interface/address/configured-FIB collector in host/ARMv5 QEMU; brief two-port board research | Qualified interface/runtime-conflict and routing admission, safe network transactions/rollback, supported dual-port modes, time/discovery, notifications and administrative jobs | 5–15% |
 | M7 — Board/cooling/recovery | DTS and bounded diskless RAM trials; passive MCU framing/catalog tooling | Qualified factory identities, fan/tach/fail-safe, LCD/LED/buttons/power/watchdog, SATA/USB and NAND recovery | 15–25% |
 | M8 — RAID/health/migration | Generic offline GPT/ext/MD inspectors, static WD layout analysis and synthetic offline SMART report interpretation | Attributable EX4 layout corpus/importer, ownership/ACL migration, RAID jobs, trusted SMART collection/history/jobs/UI, backup/restore tests | 15–25% |
 | M9 — iSCSI | Specification and legacy research; no product target implementation | ARMv5 backend selection, LUN model, session/ownership guard, migration and failure campaigns | 0–5% |

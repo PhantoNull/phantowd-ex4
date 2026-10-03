@@ -1195,6 +1195,20 @@ board network observations limited.
   subscription, generation lease, factory identity or atomic snapshot. Remaining
   M6.1 work: board-qualified slot bindings, route/use/conflict and DAD admission,
   fresh authority and production integration. No policy application or HTTP.
+  **M6.1c — configured FIB observation (partial):** the same private collector
+  now includes bounded IPv4/IPv6 configured routes across all returned tables,
+  terminal/local routes, source/destination prefixes, effective table, metric,
+  gateway/via, preferred source and correlated interface/ECMP references.
+  Attribute/member ordering is normalized; unknown attributes, nested metrics
+  and referenced nexthop IDs remain private and explicitly unresolved. Semantic
+  changes refuse matching samples; volatile cache usage/expiry is excluded,
+  reported cache error retained. Fixed strict requests exclude cached exceptions;
+  only the declared route scope accepts Linux's FILTERED response flag.
+  Link/address filters and interrupted/truncated dumps remain refused.
+  Windows preflight, pinned Linux whole-API vet/race, generated wire tests,
+  bounded fuzz and actual ARMv5 route assertion plus two-boot overlay pass locally.
+  No route lookup/evaluation, rule/object dump, event lease, reachability,
+  persistence, application, HTTP or physical qualification follows.
 - **M6.2 — Recoverable changes.** Apply changes as a trial with explicit confirmation
   and a safe timeout/recovery route. Loss of the management connection must not
   strand the owner permanently. Qualify reboot mid-trial and address conflicts.

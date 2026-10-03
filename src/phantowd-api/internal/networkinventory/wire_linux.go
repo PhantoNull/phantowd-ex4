@@ -14,12 +14,14 @@ const maxDumpBytes = 1 << 20
 const maxDatagramBytes = 64 << 10
 
 type dump struct {
-	seq, port uint32
-	kind      uint16
-	done      bool
-	bytes     int
-	links     []link
-	addresses []ipAddress
+	seq, port        uint32
+	kind             uint16
+	done             bool
+	bytes            int
+	links            []link
+	addresses        []ipAddress
+	routes           []route
+	configuredRoutes bool
 }
 
 // consume validates complete datagrams; socket sender/truncation checks precede
@@ -39,7 +41,14 @@ func (d *dump) consume(data []byte) error {
 		}
 		kind := binary.NativeEndian.Uint16(data[4:6])
 		flags := binary.NativeEndian.Uint16(data[6:8])
-		if flags & ^uint16(unix.NLM_F_MULTI) != 0 || flags&unix.NLM_F_MULTI == 0 ||
+		allowed := uint16(unix.NLM_F_MULTI)
+		// The fixed strict GETROUTE request enumerates configured FIB entries,
+		// not cached exceptions. Linux IPv6 explicitly marks that scope FILTERED.
+		// This does not permit filters on link/address dumps or arbitrary queries.
+		if d.configuredRoutes && d.kind == unix.RTM_NEWROUTE {
+			allowed |= unix.NLM_F_DUMP_FILTERED
+		}
+		if flags & ^allowed != 0 || flags&unix.NLM_F_MULTI == 0 ||
 			binary.NativeEndian.Uint32(data[8:12]) != d.seq || binary.NativeEndian.Uint32(data[12:16]) != d.port {
 			return ErrUnavailable
 		}
@@ -73,6 +82,15 @@ func (d *dump) consume(data []byte) error {
 				return ErrUnavailable
 			}
 			d.addresses = append(d.addresses, a)
+		case unix.RTM_NEWROUTE:
+			if len(d.routes) >= MaxRoutes {
+				return ErrUnavailable
+			}
+			r, err := parseRoute(payload)
+			if err != nil {
+				return ErrUnavailable
+			}
+			d.routes = append(d.routes, r)
 		default:
 			return ErrUnavailable
 		}

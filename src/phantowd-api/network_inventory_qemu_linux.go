@@ -19,7 +19,7 @@ func exerciseQEMUNetworkInventory() error {
 		return errors.New("kernel network observation failed")
 	}
 	summary, err := o.Summary()
-	if err != nil || summary.Interfaces < 1 || summary.Addresses < 1 || networkinventory.Recheck(context.Background(), o) != nil {
+	if err != nil || summary.Interfaces < 1 || summary.Addresses < 1 || summary.Routes < 1 || summary.UnresolvedRoutes > summary.Routes || networkinventory.Recheck(context.Background(), o) != nil {
 		return errors.New("kernel network observation incomplete or changed")
 	}
 	if _, err := json.Marshal(o); err == nil {

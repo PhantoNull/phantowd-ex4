@@ -88,7 +88,11 @@ func (r *kernelReader) read(ctx context.Context) (snapshot, error) {
 	if err != nil {
 		return snapshot{}, ErrUnavailable
 	}
-	return snapshot{links: links.links, addresses: addresses.addresses}, nil
+	routes, err := r.query(ctx, unix.RTM_GETROUTE, unix.RTM_NEWROUTE)
+	if err != nil {
+		return snapshot{}, ErrUnavailable
+	}
+	return snapshot{links: links.links, addresses: addresses.addresses, routes: routes.routes}, nil
 }
 
 func (r *kernelReader) query(ctx context.Context, request, response uint16) (dump, error) {
@@ -98,6 +102,8 @@ func (r *kernelReader) query(ctx context.Context, request, response uint16) (dum
 	size := 32
 	if request == unix.RTM_GETADDR {
 		size = 24
+	} else if request == unix.RTM_GETROUTE {
+		size = 28
 	} else if request != unix.RTM_GETLINK {
 		return dump{}, ErrUnavailable
 	}
@@ -111,7 +117,8 @@ func (r *kernelReader) query(ctx context.Context, request, response uint16) (dum
 	if unix.Sendto(r.fd, message, unix.MSG_DONTWAIT, &unix.SockaddrNetlink{Family: unix.AF_NETLINK}) != nil {
 		return dump{}, ErrUnavailable
 	}
-	d := dump{seq: r.seq, port: r.port, kind: response, links: []link{}, addresses: []ipAddress{}}
+	d := dump{seq: r.seq, port: r.port, kind: response, links: []link{}, addresses: []ipAddress{}, routes: []route{}}
+	d.configuredRoutes = request == unix.RTM_GETROUTE && response == unix.RTM_NEWROUTE
 	buffer := make([]byte, maxDatagramBytes)
 	for !d.done {
 		if !r.available(ctx) {

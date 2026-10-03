@@ -21,7 +21,7 @@ func TestActualUnprivilegedKernelCollectionAndRecheck(t *testing.T) {
 			t.Fatal(err)
 		}
 		s, err := o.Summary()
-		if err != nil || s.Interfaces < 1 {
+		if err != nil || s.Interfaces < 1 || s.Routes < 1 || s.UnresolvedRoutes > s.Routes {
 			t.Fatal("missing interfaces")
 		}
 		if err := Recheck(context.Background(), o); err != nil {
