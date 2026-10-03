@@ -126,6 +126,7 @@ jobs:
           go test -run '^$' -fuzz '^FuzzInspect$' -fuzztime=10000x -parallel=2 -timeout=120s ./vendorupdate
           go test -run '^$' -fuzz '^FuzzStreamDecoder$' -fuzztime=10000x -parallel=2 -timeout=120s ./mcuproto
           go test -run '^$' -fuzz '^FuzzDecodeReceiveDiagnosticBounds$' -fuzztime=10000x -parallel=2 -timeout=120s ./mcuproto
+          go test -run '^$' -fuzz '^FuzzARMAttributesNeverExposePartialObservation$' -fuzztime=10000x -parallel=2 -timeout=120s ./rootfsinventory
 
       - name: Verify firmware workflow path contracts
         run: sh support/test-firmware-workflow-paths.sh

@@ -96,6 +96,19 @@ rebuild; actual board/build input changes remain covered.
 
 ## Roadmap comparison
 
+A separate host-only increment observes bounded explicit aeabi file-scope
+attributes, preserving integer zeros and exact NTBS bytes, with absent/
+unobserved/invalid/unsupported states and no partial roster after refusal.
+Windows unit/vet checks pass. Pinned Linux unit/vet/race and a 50,000-execution
+parser fuzz campaign pass; the optional real GNU target-readelf oracle agrees
+on 1,444 CPU/ISA values across 361 attributed objects and the Go API's absence.
+The final version/text-budget refinements pass the same oracle/race/fuzz checks;
+this is not new full image/QEMU or hosted qualification. libatomic's v7/Thumb-2
+declaration and IFUNC alternatives demonstrate why these observations are not
+a complete CPU gate or evidence of a broken library. RuntimeClosure remains
+dependency/header-only and never authorizes execution. No package, privileged
+profile, HTTP or product startup changes; milestone bands remain unchanged.
+
 The combined host-reader, original-source collection and ARM-header increments
 passed complete cached local integration on unchanged `21f2f9b` (tree
 `f27f4ef6`): source verification, Linux host/vet/race/fuzz, image/legal-info/SBOM,

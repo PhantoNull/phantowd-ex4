@@ -40,18 +40,19 @@ type Summary struct {
 // ELFInfo captures loader-facing facts without disassembling or executing the
 // binary.
 type ELFInfo struct {
-	Class           string   `json:"class"`
-	ByteOrder       string   `json:"byte_order"`
-	Type            string   `json:"type"`
-	Machine         string   `json:"machine"`
-	OSABI           string   `json:"os_abi"`
-	HeaderFlags     *uint32  `json:"header_flags,omitempty"`
-	Interpreter     string   `json:"interpreter,omitempty"`
-	SONAME          string   `json:"soname,omitempty"`
-	Needed          []string `json:"needed,omitempty"`
-	RPath           []string `json:"rpath,omitempty"`
-	RunPath         []string `json:"runpath,omitempty"`
-	LoaderModifiers []string `json:"loader_modifiers,omitempty"`
+	Class           string              `json:"class"`
+	ByteOrder       string              `json:"byte_order"`
+	Type            string              `json:"type"`
+	Machine         string              `json:"machine"`
+	OSABI           string              `json:"os_abi"`
+	HeaderFlags     *uint32             `json:"header_flags,omitempty"`
+	ARMAttributes   *ARMBuildAttributes `json:"arm_attributes,omitempty"`
+	Interpreter     string              `json:"interpreter,omitempty"`
+	SONAME          string              `json:"soname,omitempty"`
+	Needed          []string            `json:"needed,omitempty"`
+	RPath           []string            `json:"rpath,omitempty"`
+	RunPath         []string            `json:"runpath,omitempty"`
+	LoaderModifiers []string            `json:"loader_modifiers,omitempty"`
 }
 
 // File records one regular file. Hashes and paths belong in private analysis
@@ -323,12 +324,13 @@ func inspectELF(reader io.ReaderAt) (*ELFInfo, error) {
 	}
 	headerFlags := parsed.ByteOrder.Uint32(rawFlags[:])
 	info := &ELFInfo{
-		Class:       parsed.Class.String(),
-		ByteOrder:   parsed.Data.String(),
-		Type:        parsed.Type.String(),
-		Machine:     parsed.Machine.String(),
-		OSABI:       parsed.OSABI.String(),
-		HeaderFlags: &headerFlags,
+		Class:         parsed.Class.String(),
+		ByteOrder:     parsed.Data.String(),
+		Type:          parsed.Type.String(),
+		Machine:       parsed.Machine.String(),
+		OSABI:         parsed.OSABI.String(),
+		HeaderFlags:   &headerFlags,
+		ARMAttributes: inspectARMAttributes(parsed),
 	}
 	for _, field := range []struct {
 		tag   elf.DynTag

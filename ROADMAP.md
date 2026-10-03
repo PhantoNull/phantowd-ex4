@@ -1017,6 +1017,15 @@ storage. No production roster provider or activation path exists.
   code. Missing flags are refused, while implied base procedure calls are valid.
   This does not qualify ARM instruction/build attributes or symbol compatibility
   and adds no process or device authority.
+  A further host-only observer now records explicit aeabi file-scope attributes
+  with bounded lengths/counts, exact NTBS hex and absent/unobserved/refused
+  states; private vendor payloads remain opaque and default/inherited values
+  are not invented. The optional GNU target-readelf comparison covers 1,444
+  CPU/ISA values across 361 objects, not every tag or hardware instruction.
+  The current libatomic contains IFUNC variants and declares v7/Thumb-2 despite
+  its EABI5 soft-float header. Qualify dispatch/kernel-helper behavior separately;
+  neither blanket header acceptance nor a new CPU-tag-only allowlist is an
+  approved runtime manifest. The dependency candidate's authority is unchanged.
   Pinned Linux unit/vet/race and 50,000 fuzz executions pass; the current cached
   target's `smbd` graph contains 105 distinct objects (27,110,832 bytes). It
   grants no execution authority and does not qualify loader caches, dynamic
