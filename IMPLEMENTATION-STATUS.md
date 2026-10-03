@@ -4,10 +4,17 @@
 # Implementation status
 
 Code audit: **2026-10-03**, integrated `develop` baseline
-`3594234e05c394c7848c41cd2134a492e898ce8d` (PR #69).
+`dd49e4091cc89fe3ef73cfe684046a204e38a101` (PR #70).
 Use [ROADMAP.md](ROADMAP.md) for the acceptance specification. This snapshot
 distinguishes tested components from deployed product workflows. It is not
 installation approval, a security certification, or an exhaustive line-by-line audit.
+
+PR #70 passed exact head `1178820` host and QEMU checks and merged as
+`dd49e4` with complete qualified/expected/integrated tree equality. Its topic
+branch was retired with exact-SHA guards. PR #71 remains separate: final
+`b64effe` host checks passed; its own QEMU run is still in progress at the
+latest inspection. The retained-census source tree is identical to the
+complete cached local integration that passed; no new hosted success is inferred.
 
 PR #68 passed final head `0e22e01` host and
 [QEMU/DTB](https://github.com/PhantoNull/phantowd-ex4/actions/runs/37101813148)
@@ -129,6 +136,22 @@ removed. QEMU-only experiment paths no longer trigger an unchanged EX4 kernel
 rebuild; actual board/build input changes remain covered.
 
 ## Roadmap comparison
+
+M6.1a local follow-up implements an internal schema-1 desired network model:
+exactly two logical slots, IPv4 DHCP/static/disabled and IPv6 auto/static/disabled,
+static aliases, default priorities, non-default routes, hostname, manual/automatic
+DNS and search domains. It reuses bounded strict JSON; errors are constant and
+failed decode returns no partial policy. Cross-slot static overlap, duplicate
+addresses, incoherent gateways and route ties are refused without normalization.
+Windows API/UI/vet/tests and ARMv5 cross-compile pass (network package statement
+coverage 98.7%). Pinned Linux Go 1.26.6 tagged vet and complete API race tests,
+3,000 fixed mutation cases, a 1,000-execution fuzz campaign, 19 build-feedback
+contracts, workflow contracts and actual ARMv5 smoke/clean two-boot overlay pass.
+The required guest marker is in the existing boot, not a new stage. Logical
+slots are not qualified hardware identities; no network application, ownership,
+persistence, runtime conflict check or HTTP workflow exists. Original base
+kernel/packages are reused; this is not a new full image, clean build or EX4
+qualification. M6 and overall estimate bands remain unchanged.
 
 M8.5b local follow-up: a private Linux complete-census witness set requires one
 already-open read-only block source per whole leaf and retains independent
@@ -647,7 +670,7 @@ substantial redesign. Rows overlap and must not be added.
 | M3 — Storage lifecycle | Complete sysfs census, generation-bound read-only broker, GPT/ext/MD observations, collision checks, internal mount/lease fixtures | Persistent logical VolumeID resolver, global-use accounting, production qualifier/roster, supported layouts and EX4 media qualification | 40–55% |
 | M4 — SMB/NFS | Real loopback clients, desired policies, coherent candidate planner, process-set supervision, share-scoped handoff, grant-only isolated runtime and retained static-code Owner with explicit supervised lifecycle in QEMU | Approved daemon runtime manifests, isolated process sets, privilege profiles/ACLs, transactional activation/recovery, production wiring and storage-loss monitoring | 35–50% |
 | M5 — Management UI/security | Development authentication/TLS, sessions/password changes, diagnostics dashboard and policy preview/editing | Product enrollment/reset/certificate lifecycle, authorized live workflows, recovery UX, browser/accessibility/security qualification | 25–40% |
-| M6 — Network/system | Diagnostic observations and brief two-port board research | Safe network transactions/rollback, supported dual-port modes, time/discovery, notifications and administrative jobs | 5–15% |
+| M6 — Network/system | Internal dual-stack desired-policy model with strict routes/DNS/conflict validation in host/ARMv5 QEMU; brief two-port board research | Qualified interface/runtime-conflict admission, safe network transactions/rollback, supported dual-port modes, time/discovery, notifications and administrative jobs | 5–15% |
 | M7 — Board/cooling/recovery | DTS and bounded diskless RAM trials; passive MCU framing/catalog tooling | Qualified factory identities, fan/tach/fail-safe, LCD/LED/buttons/power/watchdog, SATA/USB and NAND recovery | 15–25% |
 | M8 — RAID/health/migration | Generic offline GPT/ext/MD inspectors, static WD layout analysis and synthetic offline SMART report interpretation | Attributable EX4 layout corpus/importer, ownership/ACL migration, RAID jobs, trusted SMART collection/history/jobs/UI, backup/restore tests | 15–25% |
 | M9 — iSCSI | Specification and legacy research; no product target implementation | ARMv5 backend selection, LUN model, session/ownership guard, migration and failure campaigns | 0–5% |

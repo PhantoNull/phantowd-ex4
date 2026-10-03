@@ -25,6 +25,18 @@ def save_log(destination, source):
 
 
 class BuildFeedbackTests(unittest.TestCase):
+    def test_network_policy_requires_same_boot_guest_assertion(self):
+        smoke = (ROOT / "support/qemu-smoke.sh").read_text()
+        selftest = (ROOT / "src/phantowd-api/selftest.go").read_text()
+        fixture = (ROOT / "src/phantowd-api/networkpolicy_selftest.go").read_text()
+        for claim in ("PHANTOWD_NETWORK_POLICY_READY", "dual_stack=true",
+                      "conflict_refused=true", "strict_json=true", "apply=false"):
+            self.assertIn(claim, smoke)
+            self.assertIn(claim, selftest)
+        self.assertIn("exerciseQEMUNetworkPolicy()", selftest)
+        self.assertIn('networkpolicy.Decode(strings.NewReader(input))', fixture)
+        self.assertIn('"192.0.2.10/16"', fixture)
+
     def test_smart_census_witness_set_requires_actual_guest_assertion(self):
         smoke = (ROOT / "support/qemu-smoke.sh").read_text()
         md = (ROOT / "src/phantowd-api/md_stack_qemu_linux.go").read_text()

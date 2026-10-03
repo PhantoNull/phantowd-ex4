@@ -65,6 +65,10 @@ func runSelfTest() error {
 		return err
 	}
 	fmt.Println("PHANTOWD_NFS_POLICY_READY schema=1 mapping=all-squash scope=synthetic-policy-only")
+	if err := exerciseQEMUNetworkPolicy(); err != nil {
+		return err
+	}
+	fmt.Println("PHANTOWD_NETWORK_POLICY_READY schema=1 dual_stack=true aliases=true conflict_refused=true strict_json=true apply=false scope=synthetic-policy-only")
 	argon2Started := time.Now()
 	verifier, err := passwordhash.Hash(context.Background(), []byte("qemu-self-test-only"))
 	if err != nil {

@@ -831,6 +831,18 @@ reads no contents, exposes no disk IDs/FDs, starts no child and authorizes no
 SMART command. It remains unconnected to product startup/capture, report
 attribution, transport/wake policy, stable history identity or HTTP.
 
+### Desired network policy prerequisite
+
+[Internal networkpolicy](internal/networkpolicy/README.md) validates a bounded
+schema-1 desired document for two logical slots, dual-stack addressing, routes,
+hostname and DNS. It rejects known static conflicts and incoherent gateways;
+it does not normalize addresses, resolve DNS or invoke a network operation.
+Host/ARMv5 fixtures test /16, aliases, scoped IPv6 link-local gateways, dynamic
+DNS, strict JSON and negative cases in the existing guest boot. Logical slots
+are not physical identity proof. Persistent state, actual interface admission,
+runtime conflict observation, trial/confirmation/rollback and API/UI integration
+remain open; no management-network change is enabled.
+
 ### Test commands
 
 From the repository root on Windows, with a local Go 1.26+ installation:

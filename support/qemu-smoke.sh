@@ -142,6 +142,10 @@ while [ "$attempt" -lt "$smoke_timeout" ]; do
             echo "Missing generated Samba policy parser assertion" >&2
             exit 1
         fi
+        if ! grep -F 'PHANTOWD_NETWORK_POLICY_READY schema=1 dual_stack=true aliases=true conflict_refused=true strict_json=true apply=false scope=synthetic-policy-only' "$log_file" >/dev/null; then
+            echo "Desired network policy self-test marker missing" >&2
+            exit 1
+        fi
         if ! grep -F 'PHANTOWD_NFS_POLICY_READY schema=1 mapping=all-squash scope=synthetic-policy-only' "$log_file" >/dev/null; then
             echo "Missing NFS policy validation assertion" >&2
             exit 1
