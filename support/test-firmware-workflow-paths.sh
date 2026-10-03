@@ -326,6 +326,13 @@ $qemu_unrelated_ex4_stage_paths
 EOF
 
 require_develop_push "$host_workflow"
+for path in 'support/build-qemu.ps1' \
+    'support/tests/test-cached-qemu-wrapper.ps1' \
+    'support/tests/test-cached-qemu-preflight.py'; do
+    require_triggered_path "$host_workflow" "$path"
+    require_ignored_path "$qemu_workflow" "$path"
+    require_ignored_path "$stage_b3_workflow" "$path"
+done
 require_bounded_qemu_ccache "$qemu_workflow"
 require_fixed_fuzz_campaigns "$repo_root/support/container/test-api.sh" 16
 require_fixed_fuzz_campaigns "$repo_root/support/container/test-lab-tools.sh" 5

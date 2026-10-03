@@ -231,6 +231,15 @@ button to an unqualified backend simply because the screen exists.
   signatures/hashes, ARMv5 compatibility, package configuration, vulnerability
   review, license material and regenerated SBOM. Test the selected package set.
 
+The local full wrapper also provides an opt-in `-CachedOnly` mode: it checks
+existing version-derived image/volumes and initialized current output before
+one non-root, zero-capability, CPU/memory/PID/time-bounded invocation. Host test
+caches and scratch use bounded disposable tmpfs; cold API race testing established
+the current 2048 MiB temporary allocation. Command-boundary refusal tests and
+actual Linux shell preflight tests pass. This neither reduces the full test set
+nor qualifies independent reproduction, hosted results or device safety. Do not
+run concurrent builds against the same workspace or silently seed missing caches.
+
 **Start in:** `support/`, `.github/workflows/`, `versions.env`,
 `package/`, `configs/`.
 
@@ -933,6 +942,11 @@ storage. No production roster provider or activation path exists.
   giving each service an isolated private mount namespace whose only
   storage roots are its explicit grants; prove the original volume anchors and
   ungranted shares are unreachable and that read-only access cannot be bypassed.
+  The [Samba Owner packet](support/SAMBA-RUNTIME-PROFILE.md#next-owner-integration-packet-proposed-not-qualified)
+  details the separate retained resources, code-only versus composed roots,
+  process-group/`setsid` conflict, bootstrap/final privilege distinction and
+  lifecycle acceptance campaign. It is proposed, not qualified or permission
+  to run a new privileged composition.
   Keep daemon privilege profiles distinct: the real multi-user Samba QEMU
   fixture currently runs with root credentials and the pinned implementation
   performs Unix identity/group switches. The generic fixed-UID zero-capability

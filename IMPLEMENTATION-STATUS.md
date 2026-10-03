@@ -508,6 +508,21 @@ excluded. No calendar estimate is defensible before the hardware/recovery gates.
 
 ## Validation and CI findings
 
+The local wrapper's opt-in `-CachedOnly` mode encodes the previously passing
+bounded local profile without building/pulling an image, explicitly creating
+volumes or repairing ownership. It refuses absent cache inputs and mismatched
+current-config output before compilation. Mock command-boundary tests cover
+the fixed arguments and seven refusal paths; seven real Linux shell-preflight
+tests cover initialized, missing, changed-config and nonwritable inputs.
+The actual complete wrapper run subsequently passed on unchanged `9a40538`
+(tree `60ddde8d`), including all host/race/fuzz/image/legal/SBOM and guest lanes.
+Seven artifacts independently match the preceding baseline; the temporary
+container is removed, with only the two fixed volumes, one 14 GiB output and
+approximately 971 MiB compiler cache remaining. Exact-head
+[host workflow](https://github.com/PhantoNull/phantowd-ex4/actions/runs/37094418091)
+also passes, including PowerShell and the Linux preflight. This qualifies this
+cached local wrapper, not independent reproduction or physical/product safety.
+
 The unmodified audited baseline passed the local pinned incremental Buildroot
 pipeline on 2026-10-02: Linux vet/unit/race and bounded fuzz, native volume-probe
 fixtures, standard ARMv5 QEMU smoke, mdadm-authored MD v1.0 comparison and the
