@@ -4,10 +4,19 @@
 # Implementation status
 
 Code audit: **2026-10-03**, integrated `develop` baseline
-`8579e428d1a0abc876d665640cff68a0d8f6e573` (PR #67).
+`f9bbfc0848be29c4fa904e67cc15714285e31b01` (PR #68).
 Use [ROADMAP.md](ROADMAP.md) for the acceptance specification. This snapshot
 distinguishes tested components from deployed product workflows. It is not
 installation approval, a security certification, or an exhaustive line-by-line audit.
+
+PR #68 passed final head `0e22e01` host and
+[QEMU/DTB](https://github.com/PhantoNull/phantowd-ex4/actions/runs/37101813148)
+checks and was squash-merged as `f9bbfc0`. Its complete expected merge tree
+equals the checked head and integrated tree; its local/remote topic was retired
+with exact-SHA guards after inclusion and worktree checks. The subsequent
+census was rebased onto that baseline with its entire tree unchanged. This
+qualifies synthetic fixed-capture integration, not the census's hosted checks,
+physical SMART collection, authenticated runtime or product installation.
 
 PR #65 passed exact-head `eeb14a7` host and
 [QEMU/DTB](https://github.com/PhantoNull/phantowd-ex4/actions/runs/37093392186)
