@@ -143,8 +143,18 @@ change, product privileges or physical operation is added. This is not proof
 of historical state `EBUSY` causality; the original full failure remains evidence.
 The census prerequisite PR #69 passed its exact-head host/QEMU checks on
 `b4ed92d` and merged as `3594234`; integrated/head trees match and the topic
-branch was retired. The witness and fixture follow-up still require complete
-exact-source integration. Milestone estimate bands remain unchanged.
+branch was retired. The complete cached local integration subsequently passed
+on frozen `28b16f4` (tree `327f671`): source/signature preflights, complete
+API/toolkit vet/unit/race/fuzz, package/image/legal-info/source collection/SBOM,
+native regular-image probe, standard ARMv5 smoke, MD v1.0, two-boot state,
+launcher, retained static Owner/supervision, loader differential, atomic
+dispatch, restricted-root Samba and SMART parser/producer/capture fixtures.
+Independent exported hashes match all seven manifest files; five are unchanged
+from the census baseline, API/rootfs are new. Image-extracted, exported and
+target API bytes agree and include both witness and group-settlement code.
+This is cached local qualification, not independent clean reproduction,
+hosted topic success, physical support or historical `EBUSY` causality.
+Milestone estimate bands remain unchanged.
 
 A separate M8.5b prerequisite adds the Linux-only internal `smartdevice.Witness`.
 It duplicates an already-open O_RDONLY block descriptor under SyscallConn,
@@ -158,10 +168,11 @@ leaks no duplicate across 128 attempts. Existing active disposable MD members
 prove real kernel generation checks, stale tuple refusal, caller-close survival,
 sticky review and explicit release; expected-tuple drift is simulated, not
 physical replacement. The manifest-verified base/helper remain unchanged; no
-new image/volume or boot stage. This is a smoke-only cached overlay, not full
-Buildroot/hosted or physical qualification. No contents, SMART transport command,
+new image/volume or boot stage. These initial checks used a smoke-only cached
+overlay; the subsequent full local result above supersedes their integration
+status, not the remaining hosted or physical gates. No contents, SMART transport command,
 SourceAdmitted, report attribution, descriptor-to-child handoff, HTTP or product
-startup is added. Full integration remains unqualified; planning bands unchanged.
+startup is added. Hosted/physical integration remains unqualified; planning bands unchanged.
 The original complete cached run on `12f54d2` passed native/race/fuzz,
 build/legal-info/probe, standard guest smoke and MD v1.0, then failed ordinary
 state-volume unmount with the historical intermittent `EBUSY`. No retry or
@@ -171,8 +182,9 @@ reparented processes and mappings, so it does not establish the cause. Separate
 declared ten-pair state-only campaigns pass on both the older exported census
 image and the actual cached witness image, with target/image API equality
 verified for the latter. These non-reproductions are not a fix or full-pass
-substitute. Exported artifacts still describe the older image because export
-follows state-reboot success.
+substitute. At that failed run, exported artifacts still described the older
+image because export follows state-reboot success. The later complete `28b16f4`
+pass exports the new hash-verified image; it does not erase the original failure.
 
 An additional M8.5b prerequisite provides a private complete sysfs census for
 future health-source binding. It uses the existing bounded collector and

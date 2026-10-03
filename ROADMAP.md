@@ -101,8 +101,9 @@ Known unresolved qualification issue: intermittent state-volume unmount
 cause or resolution. See [fast-lane limitations](support/QEMU-FAST-TESTS.md).
 The 2026-10-03 lifecycle correction separately prevents parent-only Samba
 shutdown success with surviving same-group children. Native regression/race
-and actual ARMv5 smoke/two-boot checks pass; original `EBUSY` causality and
-complete exact-source integration remain unqualified.
+and actual ARMv5 smoke/two-boot checks pass. Complete cached local integration
+also passes on `28b16f4`; hosted topic qualification and original `EBUSY`
+causality remain open. A passing run does not establish a release gate.
 
 ## Execution rules for contributors and agents
 
