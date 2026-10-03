@@ -4,10 +4,47 @@
 # Implementation status
 
 Code audit: **2026-10-03**, integrated `develop` baseline
-`bb9802e3779f608dcf77bc1d590236c0f4a246d1` (PR #76).
+`df9b45bc13efe5c3116d810612f42afc9293d600` (PR #77).
 Use [ROADMAP.md](ROADMAP.md) for the acceptance specification. This snapshot
 distinguishes tested components from deployed product workflows. It is not
 installation approval, a security certification, or an exhaustive line-by-line audit.
+
+PR #77 passed its own exact `07d0ef7` ARMv5/DTB check, including isolated
+volume cleanup, and merged as `df9b45b`. Expected, checked and integrated
+whole trees equal `15787a19`. Its branch was retired after tree equality and
+worktree checks. The redundant integration-triggered QEMU run is confirmed
+cancelled, not failed. This qualifies only the panel request-lifecycle change,
+not subsequent desired-review/advisory increments or a deployable product.
+
+The desired-review follow-up also identifies specific cross-protocol folder
+pairs in the loaded baseline/candidate. Complete counts with at most64
+deterministic text-only details cover equal/nested paths on one VolumeID,
+root folders and removed pairs; noncanonical path observations refuse review.
+Independent SMB/NFS revocation and unresolved runtime aliases remain explicit.
+Complete DOM and Windows API/vet/cross-compilation pass, including128x128
+pair bounds and a32768-pair union with only64 retained detail records.
+Frozen code `29d4d10` (whole tree `82f2eba9`, API subtree `7c0ed3c5`) then passes
+the complete pinned Linux tagged API vet/race, three repeated SIGKILL campaigns,
+fixed fuzz/contracts and actual ARMv5 standard/two-boot overlay. Seven original
+base artifacts remain byte-identical; no new persistent build resource exists.
+This is not actual-browser/heap, effective-access, new clean firmware/SBOM,
+hosted or EX4 qualification; no product service activates.
+
+M5.4a adds a bounded semantic before/after review to the existing development
+SMB/NFS policy editor. It compares stable IDs/CIDRs, includes every NFS mapping/
+security field, ignores order/revision-only differences and renders text into
+semantic cells. More than512 changed entries or ambiguous rules refuse the
+complete review and Save; form/auth invalidation clears it. No endpoint,
+request, browser persistence, account provisioning, activation or filesystem
+operation is added. The actual-source feature regression first fails with the
+comparison absent, then complete DOM/Windows checks pass. Pinned Linux whole
+tagged API vet/race, existing fixed fuzz/feedback checks and actual ARMv5 asset
+integration plus clean two-boot overlay pass on unchanged kernel/packages/probe.
+This is cached local evidence, not browser JS/visual/accessibility, clean new
+firmware/SBOM, hosted feature, physical EX4 or effective-access qualification.
+The original PR77 qualifies only its frozen panel-lifecycle head; it
+cannot establish hosted acceptance for this subsequent change. Planning bands
+remain unchanged; no installable firmware exists.
 
 PR #76 passed its own exact `f247139` host check and merged as `bb9802e`.
 Expected, checked and integrated whole trees equal `238dbd00`; its topic was
@@ -15,6 +52,21 @@ retired with exact ref/remote guards after switching to integrated `develop`.
 This host-tool/Markdown-only increment correctly requires no firmware QEMU
 build; it does not qualify a target installer or physical device. The duplicate
 PR75 merge-triggered QEMU run is confirmed cancelled, not failed or restarted.
+
+M1.4a adds a test-only native SIGKILL campaign for the combined policy store.
+At seven actual write/sync/close/rename boundaries, the parent verifies the
+writer's exclusive lock, kills it without graceful cleanup, confirms signal
+termination and then verifies exact coherent nonempty SMB/NFS state, preserved
+pending evidence, stale-writer rejection and a subsequent explicit commit.
+All boundaries pass three Linux race-enabled repetitions; complete Linux
+`-tags=qemu` API vet/race and Windows API/UI/vet/ARMv5 cross-compilation pass.
+Linux files are disposable tmpfs regular files in one bounded non-root pinned
+container at a time, automatically removed; no new image/volume/output exists.
+Production code and firmware inputs are unchanged. This narrows the native
+process-interruption evidence gap, not power-loss, real media/ENOSPC, product
+state provisioning, ARMv5 execution or recovery qualification. Planning bands
+remain unchanged. This increment is not covered by the integrated PR #77
+panel check and has no hosted integration claim.
 
 PR #75 passed exact `c51d452` host and QEMU/DTB checks, including final
 isolated-volume cleanup, and merged as `9d2a0bc`. Expected, checked and integrated

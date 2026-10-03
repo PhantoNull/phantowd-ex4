@@ -38,6 +38,32 @@ explicit migration and a single management-state owner remain work.
 
 ## Validation boundaries
 
+### M1.4 abrupt-writer interruption contract
+
+The Linux revision engine's test-only campaign must kill a separate writer
+with SIGKILL after partial/full pending writes, successful file sync/close,
+before/after publication, and after successful directory sync. The parent
+must first observe that the live child retains the exclusive store lock.
+After confirmed signal termination, reopening must return exactly the old or
+new **whole nonempty SMB/NFS policy**, according to the reached boundary,
+never a mix, empty fallback or promoted pending document. Load/reopen must
+preserve abandoned pending bytes; only a later explicit revision-checked
+commit may discard the reserved regular pending entry. A stale revision must
+still be refused, and a subsequent explicit commit must succeed coherently.
+
+Use the existing private syscall seams in tests only; production code gains
+no interruption hook. Bound child lifetime and wait for cleanup on every
+exit path. All files are temporary regular files, no mounted device or NAS.
+This is native process-termination evidence with a live host filesystem,
+not QEMU/EX4 execution, power-loss durability or product recovery approval.
+
+Local evidence (2026-10-03): all seven boundaries pass three consecutive
+Linux amd64 race-enabled repetitions using Go 1.26.6, followed by complete
+API `-tags=qemu` vet/race tests. The pinned container is non-root,
+zero-capability, network-disabled, read-only, with disposable tmpfs fixtures.
+Windows API/UI/vet checks and ARMv5 cross-compilation also pass, but do not
+execute this Linux campaign. No product code or firmware input changes.
+
 Host tests exercise strict decoding, mismatched revisions, complete reopen,
 stale writers, snapshot independence, locking, corruption preservation, and
 injected write/sync/close/rename errors in the shared engine. A rename that

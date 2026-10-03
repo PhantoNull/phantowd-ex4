@@ -289,6 +289,17 @@ and recovery do not. **Depends on:** M0 for tests; M7 for physical placement.
   sync, ENOSPC, read-only storage, corrupt/truncated files, replacement/symlink
   attacks, concurrent writers and process exits at each durable boundary.
   Clean reboot and process exit are not power-loss guarantees.
+  **M1.4a — abrupt combined-policy writer (native-tested; not complete):**
+  a test-only child holds the actual revision-store lock while its parent
+  confirms exclusion, then sends SIGKILL at seven write/sync/close/publication
+  boundaries. Reopening returns the exact old/new nonempty SMB/NFS policy,
+  never staged or mixed components; pending evidence survives observation,
+  stale commits refuse and explicit subsequent commits succeed. Three native
+  Linux race-enabled repetitions and whole tagged API vet/race tests pass.
+  The campaign uses temporary tmpfs regular files without mounts/devices;
+  production code and firmware inputs are unchanged. This is not ARMv5/EX4
+  execution, real ENOSPC/read-only-media qualification, power interruption,
+  selected state-medium durability or an implemented reconciliation workflow.
 
 **Start in:** [admincredentials](src/phantowd-api/admincredentials/README.md),
 [fileservicestore](src/phantowd-api/fileservicestore/README.md),
@@ -1162,6 +1173,29 @@ milestone before enabling its controls; M1/M6 for deployment.
   identities, iSCSI, network, updates and recovery screens must show freshness,
   partial failure, confirmation/preview and observed results. Do not display
   configuration-only saves as successful service changes.
+  **M5.4a — desired-policy change review (partial; locally tested):** after the
+  existing whole-policy preview, compare explicitly loaded baseline/candidate
+  by stable definition/user IDs and exact NFS CIDRs. Semantic before/after
+  rows cover volume/user references, SMB definitions/grants and NFS definitions/
+  client access, squash, anonymous IDs and security. Reordering/revisions alone
+  are not access changes. At most 512 changed entries; larger/ambiguous reviews
+  refuse without partial output or Save. Text-only semantic table and candidate
+  lifecycle clearing add no endpoint, request, automatic save, activation or
+  browser persistence. Complete DOM/Windows/native tests and actual ARMv5
+  embedded-asset standard/two-boot overlay pass. Real-browser/accessibility,
+  hosted feature and production management remain separate gates; no current
+  service or filesystem permission is inferred from this desired comparison.
+  **Cross-protocol pair advisory (locally tested extension):** loaded baseline
+  and candidate identify equal/nested SMB/NFS folders by stable share/export
+  IDs on the same policy VolumeID, including pairs removed from the candidate.
+  Counts cover the complete bounded pair census; retain only64 sorted details
+  with an explicit remainder. Missing lexical overlap is not alias/effective-
+  access proof; SMB and NFS revocations remain independent. The advisory limit
+  does not block Save. Complete DOM/Windows checks, pinned Linux tagged
+  API vet/race, fixed fuzz/contracts and actual ARMv5 standard/two-boot overlay
+  pass on the combined increment. Counts/retention limits are fixture-tested,
+  not measured browser/device performance. Hosted acceptance, browser and
+  product activation remain open.
 - **M5.5 — Accessible efficient UI.** Keyboard operation, labels/focus, narrow
   viewports, screen-reader status and high contrast; bounded static assets and
   shared observations. Avoid per-client hardware polling, stale-response

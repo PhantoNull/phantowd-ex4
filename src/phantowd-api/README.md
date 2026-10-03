@@ -739,6 +739,65 @@ abort after ten seconds. The browser supplies the request Origin.
 
 ### Development configuration manager
 
+#### Desired change-review task contract
+
+Cross-protocol advisory extension: after that same complete preview, compare
+lexical SMB/NFS folder relationships on each policy VolumeID in the loaded
+baseline and candidate. Identify exact share/export IDs, equal/ancestor paths
+and whether the pair remains, appears or disappears. This does not resolve
+filesystem aliases or prove effective access; removing an SMB definition/grant
+does not revoke NFS, and NFS client changes do not revoke SMB. Show exact
+baseline/candidate pair counts and at most 64 deterministic pair details with
+an explicit omitted-detail count. This presentation limit is not an activation
+or Save admission rule. Reuse the existing request and text-only table style;
+clear all advisory data with the existing draft/auth lifecycle. No endpoint,
+additional I/O, authority, daemon operation or policy mutation is introduced.
+Test equal/root/nested and segment-boundary paths, distinct VolumeIDs, pair
+removal, order invariance, limits, literal markup and late-response clearing.
+
+Extension evidence (2026-10-03, code `29d4d10`): complete DOM/Windows tests,
+pinned Linux whole tagged API vet/race, three repetitions of the seven-boundary
+SIGKILL store campaign, bounded network fuzz/contracts and actual ARMv5 standard
+smoke plus clean two-boot overlay pass on one frozen source. The advisory
+fixture counts128x128 pairs while retaining64 details and still admits a
+complete otherwise-valid desired review; a disjoint baseline/candidate fixture
+counts32768 pairs without retaining that pair set. Auth-loss/late replies and
+literal markup do not restore/inject advisory content. This is not measured
+browser memory/performance, effective filesystem access, browser execution,
+new clean firmware/SBOM, hosted acceptance or EX4 qualification. Existing
+kernel/packages/probe and fixed build resources are unchanged.
+
+After the existing complete server preview succeeds, show a bounded semantic
+before/after comparison against the explicitly loaded baseline. Compare stable
+policy IDs, exact SMB user references and exact NFS client CIDRs, never list
+positions or rendered daemon text. Cover volume/user references, share/export
+definitions, SMB grants and every NFS mapping/security field. Ignore object/
+collection ordering and revision-only changes; never present them as access
+changes. Missing/added entries remain explicit. Maximum 512 changed entries;
+refuse an incomplete review rather than truncate and enable Save. The existing
+server validators and revisioned save/reconciliation remain authoritative.
+
+Render only text into semantic table cells; no policy value becomes HTML.
+Clear the review with candidate invalidation, logout/auth loss and failed
+preview. A fresh preview is required after an edit; late responses cannot
+resurrect a discarded comparison. Do not create another endpoint, validator,
+browser storage, request, automatic save or activation path. This compares
+desired policy, not effective access, credentials, running services or files.
+Host DOM fixtures must cover every edit family, order invariance, limits,
+text-only rendering and lifecycle clearing. Browser/assistive-technology and
+ARMv5 asset integration are separate qualification gates.
+
+Local evidence (2026-10-03): the initial DOM feature regression refuses the
+missing comparison function, then the complete suite passes with all edit
+families, field-by-field NFS mapping/security, additions/removals, reorder/
+revision invariance, exact 512/513-entry boundaries, literal markup and
+auth-loss/draft-clearing assertions. Windows API/UI/vet/tagged tests and ARMv5
+cross-compilation pass. Pinned Linux complete tagged vet/race, existing bounded
+fuzz/feedback contracts and actual ARMv5 standard/two-boot overlay pass using
+unchanged kernel/packages/probe. This checks embedded asset integration, not
+browser JavaScript execution, visual/accessibility behavior, a clean new
+firmware/SBOM or hosted/EX4 qualification. No new persistent build resource.
+
 A separate panel uses only the opt-in combined store; it never imports the
 original share-only state. The workflow is explicit load, fill the existing
 proposal form, preview an **addition to the whole saved policy**, review and

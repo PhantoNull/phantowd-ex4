@@ -129,7 +129,7 @@ async function createHarness(respond, timing = {}) {
     "observed-at", "device-count", "device-list", "array-count", "array-list", "mount-count", "mount-list",
     "gpt-observe", "gpt-observation-status",
     ...["load", "status", "result", "summary", "shares"].map((id) => `saved-${id}`),
-    ...["load", "prepare", "save", "status", "current", "summary", "document", "review", "change", "samba", "nfs", "editor", "target", "member", "action", "edit-preview"].map((id) => `service-${id}`),
+    ...["load", "prepare", "save", "status", "current", "summary", "document", "review", "change", "samba", "nfs", "editor", "target", "member", "action", "edit-preview", "diff", "diff-summary", "overlaps", "overlap-summary"].map((id) => `service-${id}`),
     ...["form", "submit", "clear", "result", "error", "status", "requirements", "samba", "nfs", "nfs-fields", "uuid", "name", "path", "user", "smb-access", "nfs-enabled", "export-id", "network", "nfs-access", "squash", "uid", "gid", "security"].map((id) => `policy-${id}`),
   ];
   const elements = Object.fromEntries(ids.map((id) => [id, new FixtureElement()]));
@@ -931,6 +931,10 @@ async function testServiceRefusalsAndInvalidation() {
     assert.equal(h.elements["service-review"].hidden, true);
     assert.equal(h.elements["service-current"].hidden, true);
     assert.equal(h.elements["service-document"].textContent, "");
+    assert.equal(h.elements["service-diff"].children.length, 0);
+    assert.equal(h.elements["service-diff-summary"].textContent, "");
+    assert.equal(h.elements["service-overlaps"].children.length, 0);
+    assert.equal(h.elements["service-overlap-summary"].textContent, "");
     assert.equal(h.elements["service-save"].disabled, true);
     assert.equal(h.requests.filter(({ options }) => options?.method === "PUT").length, boundary === "save-reply" ? 1 : 0);
   }
@@ -1209,4 +1213,227 @@ for (const outcome of ["success", "wrong-current", "uncertain", "rejected", "mal
   }
 }
 
+async function testDesiredChangeReview() {
+  const { context, elements, requests } = await serviceHarness(() => jsonResponse(serviceReply(null)));
+  fillPolicy(elements);
+  const proposal = context.buildPolicyProposal();
+  const c = context.buildServiceAddition(null, proposal);
+  const changes = context.describeServiceChanges(null, c);
+  assert.equal(changes.length, 6, "first policy includes volume, user, SMB definition/grant and NFS definition/client");
+  assert.equal(new Set(changes.map((r) => r.kind)).size, 6);
+  assert.ok(changes.every((r) => r.before === "Not defined"));
+  await context.loadServicePolicy();
+  await context.prepareServiceAddition();
+  assert.equal(elements["service-diff"].children.length, 6);
+  assert.match(elements["service-diff-summary"].textContent, /6.*desired.*not effective/i);
+  assert.equal(requests.filter((r) => r.options?.method === "PUT").length, 0, "review never saves");
+  context.invalidateServiceDraft();
+  assert.equal(elements["service-diff"].children.length, 0);
+  assert.equal(elements["service-diff-summary"].textContent, "");
+}
+
+async function testDesiredChangeReviewEdits() {
+  const { context, c, values } = await editorFixture();
+  const initial = JSON.stringify(c);
+  const smb = "smb:share-1", nfs = `nfs:${c.nfs.exports[0].id}`;
+  for (const [action, target, overrides, kinds] of [
+    ["smb-properties", smb, { name: "Renamed", path: "new-folder" }, ["SMB definition"]],
+    ["smb-properties", smb, { uuid: "22222222-2222-3333-4444-555555555555" }, ["SMB definition", "Volume reference"]],
+    ["smb-grant-upsert", smb, { "smb-access": "rw" }, ["SMB grant"]],
+    ["smb-grant-upsert", smb, { user: "newreader" }, ["SMB grant", "User reference"]],
+    ["smb-grant-remove", smb, {}, ["SMB grant"]],
+    ["smb-remove", smb, {}, ["SMB definition", "SMB grant", "SMB grant"]],
+    ["nfs-properties", nfs, { path: "new-folder" }, ["NFS definition"]],
+    ["nfs-client-upsert", nfs, { "nfs-access": "rw", squash: "root", uid: "1000", gid: "1001", security: "krb5p" }, ["NFS client"]],
+    ["nfs-client-upsert", nfs, { network: "2001:db8::/64" }, ["NFS client"]],
+    ["nfs-client-remove", nfs, {}, ["NFS client"]],
+    ["nfs-remove", nfs, {}, ["NFS definition", "NFS client", "NFS client"]],
+    ["nfs-add", "", { "export-id": "cccccccc-bbbb-cccc-dddd-eeeeeeeeeeee" }, ["NFS definition", "NFS client"]],
+  ]) {
+    const next = context.buildServiceEdit(c, action, target, { ...values, ...overrides }).configuration;
+    const rows = JSON.parse(JSON.stringify(context.describeServiceChanges(c, next)));
+    assert.deepEqual(rows.map((r) => r.kind).sort(), kinds.sort(), action);
+    assert.equal(JSON.stringify(c), initial, "comparison never mutates baseline");
+    if (action.endsWith("remove")) assert.ok(rows.every((r) => r.after === "Not defined"));
+    if (action === "nfs-client-upsert" && overrides.security) {
+      assert.match(rows[0].before, /Read only.*\nMap all users to 65534:65534.*\nSecurity: AUTH_SYS/s);
+      assert.match(rows[0].after, /Read and write.*\nMap root only to 1000:1001.*\nSecurity: Kerberos privacy/s);
+    }
+  }
+  const reordered = structuredClone(c);
+  reordered.shares.volumes.reverse(); reordered.shares.users.reverse(); reordered.shares.shares.reverse();
+  reordered.shares.shares.forEach((s) => s.grants.reverse());
+  reordered.nfs.exports.reverse(); reordered.nfs.exports.forEach((e) => e.clients.reverse());
+  reordered.revision = reordered.shares.revision = reordered.nfs.revision = reordered.nfs.volume_revision = 2;
+  assert.equal(context.describeServiceChanges(c, reordered).length, 0, "order and revision alone are not access changes");
+  const ambiguous = structuredClone(c);
+  ambiguous.nfs.exports[0].clients.push(structuredClone(ambiguous.nfs.exports[0].clients[0]));
+  assert.throws(() => context.describeServiceChanges(c, ambiguous), /Ambiguous/);
+  assert.throws(() => context.describeServiceChanges(undefined, c));
+  assert.throws(() => context.describeServiceChanges(c, null));
+  const renamedUser = structuredClone(c); renamedUser.shares.users[0].name = "renamed";
+  const renamedRows = JSON.parse(JSON.stringify(context.describeServiceChanges(c, renamedUser)));
+  assert.deepEqual(renamedRows.map((r) => r.kind).sort(), ["SMB grant", "User reference"].sort());
+}
+
+async function testDesiredChangeReviewBoundsAndRendering() {
+  const { context, c, elements } = await editorFixture();
+  const before = structuredClone(c);
+  before.shares.users = Array.from({ length: 16 }, (_, i) => ({ id: `user-${i}`, name: `reader${i}` }));
+  before.shares.shares = Array.from({ length: 32 }, (_, i) => ({ id: `share-${i}`, name: `Share${i}`,
+    volume_id: before.shares.volumes[0].id, relative_path: `folder${i}`,
+    grants: before.shares.users.slice(0, 15).map((u) => ({ user_id: u.id, access: "ro" })) }));
+  const after = structuredClone(before);
+  after.shares.shares.forEach((s) => { s.name += "Changed"; s.grants.forEach((g) => { g.access = "rw"; }); });
+  const rows = context.describeServiceChanges(before, after);
+  assert.equal(rows.length, 512, "complete bounded review at exact limit");
+  context.renderServiceChanges(rows);
+  assert.equal(elements["service-diff"].children.length, 512);
+  before.shares.shares[0].grants.push({ user_id: "user-15", access: "ro" });
+  after.shares.shares[0].grants.push({ user_id: "user-15", access: "rw" });
+  assert.throws(() => context.describeServiceChanges(before, after), /More than 512/);
+  const h = await serviceHarness(() => jsonResponse(serviceReply(before)));
+  await h.context.loadServicePolicy();
+  await h.context.previewServiceChange(() => ({ configuration: after, summary: "synthetic bulk change" }));
+  assert.equal(h.elements["service-save"].disabled, true);
+  assert.equal(h.elements["service-review"].hidden, true);
+  assert.equal(h.elements["service-diff"].children.length, 0, "refusal never exposes a truncated review");
+  assert.match(h.elements["service-status"].textContent, /More than 512/);
+  assert.equal(h.requests.some((r) => r.options?.method === "PUT"), false);
+
+  const unsafeText = structuredClone(c);
+  unsafeText.shares.shares[0].name = "<img src=x onerror=alert(1)>";
+  unsafeText.shares.shares[0].relative_path = "<script>fixture only</script>";
+  context.renderServiceChanges(context.describeServiceChanges(c, unsafeText));
+  assert.equal(elements["service-diff"].children.length, 1);
+  const cells = elements["service-diff"].children[0].children;
+  assert.equal(cells.length, 3);
+  assert.equal(cells[0].attributes.get("scope"), "row");
+  assert.match(cells[2].textContent, /<img.*<script>/s);
+  assert.equal(cells[2].children.length, 0, "policy markup remains literal text, not child elements");
+  assert.match(markup, /<caption>Desired policy changes/);
+  assert.match(markup, /role="region" aria-label="Desired policy before and after" tabindex="0"/);
+  context.clearServicePolicy();
+  assert.equal(elements["service-diff"].children.length, 0);
+}
+
+async function testCrossProtocolPairRelationships() {
+  const { context, c, values } = await editorFixture();
+  const original = JSON.stringify(c);
+  const project = (before, after) => JSON.parse(JSON.stringify(context.describeServiceOverlaps(before, after)));
+  const review = project(c, c);
+  assert.equal(review.baseline_count, 2);
+  assert.equal(review.candidate_count, 2);
+  assert.equal(review.pair_count, 2);
+  assert.equal(review.omitted_count, 0);
+  assert.equal(review.rows.length, 2);
+  assert.ok(review.rows.every((r) => r.before === r.after && /Same configured folder/.test(r.after)));
+  for (const [smbPath, nfsPath, relationship] of [
+    ["books", "books", "Same configured folder"],
+    ["books", "books/subfolder", "SMB folder contains NFS folder"],
+    ["books/subfolder/deep", "books", "NFS folder contains SMB folder"],
+    [".", "books", "SMB folder contains NFS folder"],
+    ["books", ".", "NFS folder contains SMB folder"],
+    [".", ".", "Same configured folder"],
+    ["books", "bookstore", null],
+    ["books", "books-old", null],
+    ["books", "Books", null],
+    ["caf\u00e9", "cafe\u0301", null],
+  ]) {
+    const candidate = structuredClone(c);
+    candidate.shares.shares = [candidate.shares.shares[0]];
+    candidate.nfs.exports = [candidate.nfs.exports[0]];
+    candidate.shares.shares[0].relative_path = smbPath;
+    candidate.nfs.exports[0].relative_path = nfsPath;
+    const result = project(null, candidate);
+    assert.equal(result.candidate_count, relationship === null ? 0 : 1, `${smbPath} / ${nfsPath}`);
+    if (relationship !== null) {
+      assert.match(result.rows[0].before, /No lexical overlap/);
+      assert.ok(result.rows[0].after.includes(relationship));
+    }
+  }
+  const distinctVolume = structuredClone(c);
+  distinctVolume.shares.volumes.push({ id: "volume-2", filesystem_uuid: "22222222-2222-3333-4444-555555555555" });
+  distinctVolume.nfs.exports.forEach((e) => { e.volume_id = "volume-2"; });
+  assert.equal(project(null, distinctVolume).candidate_count, 0, "matching folder strings on different volume references are not a lexical pair");
+  const removed = context.buildServiceEdit(c, "smb-remove", "smb:share-1", values).configuration;
+  const removedReview = project(c, removed);
+  assert.equal(removedReview.baseline_count, 2);
+  assert.equal(removedReview.candidate_count, 1);
+  assert.equal(removedReview.pair_count, 2, "removed overlap remains visible in baseline");
+  assert.equal(removedReview.rows.filter((r) => /No lexical overlap/.test(r.after)).length, 1);
+  assert.deepEqual(JSON.parse(JSON.stringify(removed.nfs)), { ...c.nfs, revision: 2, volume_revision: 2 }, "SMB removal retains NFS policy");
+  const reordered = structuredClone(c);
+  reordered.shares.shares.reverse(); reordered.nfs.exports.reverse();
+  assert.deepEqual(project(reordered, reordered), review, "pair ordering does not depend on collection positions");
+  assert.equal(JSON.stringify(c), original, "advice does not mutate source policy");
+  for (const path of ["", "/", "/books", "books/", "books//sub", "books/./sub", "books/../sub"]) {
+    const malformed = structuredClone(c); malformed.nfs.exports[0].relative_path = path;
+    assert.throws(() => context.describeServiceOverlaps(c, malformed), /Noncanonical/);
+  }
+  assert.throws(() => context.describeServiceOverlaps(undefined, c));
+  assert.throws(() => context.describeServiceOverlaps(c, null));
+}
+
+async function testCrossProtocolPairBoundsAndRendering() {
+  const { context, c } = await editorFixture();
+  const large = structuredClone(c);
+  large.shares.shares = Array.from({ length: 128 }, (_, i) => ({ ...structuredClone(c.shares.shares[0]),
+    id: `share-${i}`, name: `Share${i}`, relative_path: "." }));
+  large.nfs.exports = Array.from({ length: 128 }, (_, i) => ({ ...structuredClone(c.nfs.exports[0]),
+    id: `00000000-0000-0000-0000-${String(i).padStart(12, "0")}`, relative_path: "books" }));
+  const review = context.describeServiceOverlaps(large, large);
+  assert.equal(review.baseline_count, 16384);
+  assert.equal(review.candidate_count, 16384);
+  assert.equal(review.pair_count, 16384);
+  assert.equal(review.rows.length, 64, "retained details/DOM are bounded independently of pair census");
+  assert.equal(review.omitted_count, 16320);
+  const exactly64 = structuredClone(large);
+  exactly64.shares.shares = exactly64.shares.shares.slice(0, 1);
+  exactly64.nfs.exports = exactly64.nfs.exports.slice(0, 64);
+  assert.equal(context.describeServiceOverlaps(null, exactly64).omitted_count, 0);
+  exactly64.nfs.exports.push(large.nfs.exports[64]);
+  assert.equal(context.describeServiceOverlaps(null, exactly64).omitted_count, 1);
+  const disjointIDs = structuredClone(large);
+  disjointIDs.shares.shares.forEach((s) => { s.id += "-new"; });
+  disjointIDs.nfs.exports.forEach((e) => { e.id = "10000000" + e.id.slice(8); });
+  const union = context.describeServiceOverlaps(large, disjointIDs);
+  assert.equal(union.pair_count, 32768, "baseline/candidate pair union counted without materializing it");
+  assert.equal(union.omitted_count, 32704);
+
+  const h = await serviceHarness(() => jsonResponse(serviceReply(large)));
+  await h.context.loadServicePolicy();
+  const candidate = structuredClone(large);
+  candidate.revision = candidate.shares.revision = candidate.nfs.revision = candidate.nfs.volume_revision = 2;
+  await h.context.previewServiceChange(() => ({ configuration: candidate, summary: "unchanged bounded advisory" }));
+  assert.equal(h.elements["service-overlaps"].children.length, 64);
+  assert.match(h.elements["service-overlap-summary"].textContent, /16384 baseline.*16384 candidate.*64 of 16384.*16320.*omitted/);
+  assert.equal(h.elements["service-save"].disabled, false, "advisory detail limit does not block otherwise complete review");
+  assert.equal(h.requests.some((r) => r.options?.method === "PUT"), false);
+  h.context.invalidateServiceDraft();
+  assert.equal(h.elements["service-overlaps"].children.length, 0);
+  assert.equal(h.elements["service-overlap-summary"].textContent, "");
+
+  const unsafe = structuredClone(c);
+  unsafe.shares.shares[0].name = "<img src=x onerror=alert(1)>";
+  unsafe.shares.shares[0].relative_path = unsafe.nfs.exports[0].relative_path = "<script>fixture</script>";
+  const unsafeReview = h.context.describeServiceOverlaps(null, unsafe);
+  h.context.renderServiceOverlaps(unsafeReview);
+  const cells = h.elements["service-overlaps"].children[0].children;
+  assert.equal(cells[0].attributes.get("scope"), "row");
+  assert.match(cells[2].textContent, /<img.*<script>/s);
+  assert.equal(cells[2].children.length, 0, "advisory values are literal text");
+  assert.match(markup, /<caption>Configured folder pairs/);
+  assert.match(markup, /aria-label="Configured SMB and NFS folder overlap" tabindex="0"/);
+  assert.match(markup, /Removing an SMB grant or definition does not revoke NFS/);
+  h.context.clearServicePolicy();
+  assert.equal(h.elements["service-overlaps"].children.length, 0);
+  assert.equal(h.elements["service-overlap-summary"].textContent, "");
+}
+
+await testDesiredChangeReview();
+await testDesiredChangeReviewEdits();
+await testDesiredChangeReviewBoundsAndRendering();
+await testCrossProtocolPairRelationships();
+await testCrossProtocolPairBoundsAndRendering();
 process.stdout.write("Dashboard UI interaction smoke tests passed (DOM fixture; no visual browser coverage).\n");
