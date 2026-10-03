@@ -628,6 +628,15 @@ and current shell harness, not a clean source rebuild. Failure-only
 process/descriptor probes and a parent-exit probe did not establish the cause.
 Temporary probes were removed. This is non-reproduction, not a fix; the cause
 remains unproven and unrelated to the identity-channel overload correction.
+On 2026-10-03, a deterministic native subprocess regression exposed a separate
+cleanup defect: direct-parent exit could report success while an adopted
+same-group child retained a directory descriptor. The reboot Samba fixture
+now requires both parent reaping and process-group absence, with bounded TERM
+and KILL phases; forced cleanup still fails. Linux tagged vet/race, Windows
+preflight/cross-compilation and the actual ARMv5 smoke/two-boot overlay pass.
+That proves the lifecycle correction, not causality or resolution of the
+historical `EBUSY`. No unmount delay/retry, lazy unmount or product runtime
+privilege change is introduced; group-escaping descendants are not contained.
 Cleanup labels state-volume,
 Samba-data and copied-`/etc` unmount failures, and a host regression checks that
 the state-persistence fixture releases its own descriptors. Neither lazy

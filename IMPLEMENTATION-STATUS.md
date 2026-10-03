@@ -130,6 +130,62 @@ rebuild; actual board/build input changes remain covered.
 
 ## Roadmap comparison
 
+M0 fixture reliability follow-up: the two-boot Samba shutdown previously
+accepted direct-parent exit while a same-group adopted child could retain a
+directory descriptor. A deterministic native subprocess regression failed
+before the correction. The fixture now requires parent reaping and whole-group
+absence with bounded TERM/KILL phases; forced termination remains a failure.
+Cooperative late child closure, forced child termination and invalid ownership
+are tested. Windows preflight/UI/vet/ARMv5 cross-compilation, pinned Linux
+QEMU-tagged vet/main+SMART-device race, 17 runner contracts and the actual ARMv5
+standard smoke plus two-boot overlay pass. No unmount retry/delay, generic Owner
+change, product privileges or physical operation is added. This is not proof
+of historical state `EBUSY` causality; the original full failure remains evidence.
+The census prerequisite PR #69 passed its exact-head host/QEMU checks on
+`b4ed92d` and merged as `3594234`; integrated/head trees match and the topic
+branch was retired. The complete cached local integration subsequently passed
+on frozen `28b16f4` (tree `327f671`): source/signature preflights, complete
+API/toolkit vet/unit/race/fuzz, package/image/legal-info/source collection/SBOM,
+native regular-image probe, standard ARMv5 smoke, MD v1.0, two-boot state,
+launcher, retained static Owner/supervision, loader differential, atomic
+dispatch, restricted-root Samba and SMART parser/producer/capture fixtures.
+Independent exported hashes match all seven manifest files; five are unchanged
+from the census baseline, API/rootfs are new. Image-extracted, exported and
+target API bytes agree and include both witness and group-settlement code.
+This is cached local qualification, not independent clean reproduction,
+hosted topic success, physical support or historical `EBUSY` causality.
+Milestone estimate bands remain unchanged.
+
+A separate M8.5b prerequisite adds the Linux-only internal `smartdevice.Witness`.
+It duplicates an already-open O_RDONLY block descriptor under SyscallConn,
+checks CLOEXEC/type/access/major/minor and BLKGETDISKSEQ and revalidates that
+same retained FD. A failed observation keeps review permanently; copied/busy
+handles are refused and only explicit Close releases the duplicate. Windows
+API/UI/vet and ARMv5 cross-compilation pass. Pinned Linux Go 1.26.6 tagged
+vet/main+package race, 17 runner contracts and actual existing ARMv5 smoke pass
+after final cleanup changes. Native refusal preserves caller flags/offset and
+leaks no duplicate across 128 attempts. Existing active disposable MD members
+prove real kernel generation checks, stale tuple refusal, caller-close survival,
+sticky review and explicit release; expected-tuple drift is simulated, not
+physical replacement. The manifest-verified base/helper remain unchanged; no
+new image/volume or boot stage. These initial checks used a smoke-only cached
+overlay; the subsequent full local result above supersedes their integration
+status, not the remaining hosted or physical gates. No contents, SMART transport command,
+SourceAdmitted, report attribution, descriptor-to-child handoff, HTTP or product
+startup is added. Hosted/physical integration remains unqualified; planning bands unchanged.
+The original complete cached run on `12f54d2` passed native/race/fuzz,
+build/legal-info/probe, standard guest smoke and MD v1.0, then failed ordinary
+state-volume unmount with the historical intermittent `EBUSY`. No retry or
+lazy/forced unmount was added; later export and guest lanes were not reached.
+The preserved diagnostic has no owner-tree FD/path references, but excludes
+reparented processes and mappings, so it does not establish the cause. Separate
+declared ten-pair state-only campaigns pass on both the older exported census
+image and the actual cached witness image, with target/image API equality
+verified for the latter. These non-reproductions are not a fix or full-pass
+substitute. At that failed run, exported artifacts still described the older
+image because export follows state-reboot success. The later complete `28b16f4`
+pass exports the new hash-verified image; it does not erase the original failure.
+
 An additional M8.5b prerequisite provides a private complete sysfs census for
 future health-source binding. It uses the existing bounded collector and
 complete schema-v2 validator, not the import/mount candidate filter. Mounted

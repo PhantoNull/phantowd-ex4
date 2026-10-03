@@ -659,7 +659,14 @@ retained new password, refuses the old one, reads unchanged original data and
 writes with the original UID/private GID. Unix file hashes and original file
 inode/content/mode/ownership must remain unchanged. No users or credentials are
 recreated in the verification phase. Private lock/cache/PID state is volatile;
-the daemon is stopped and mounts released before the clean reboot.
+the daemon is stopped and mounts released before the clean reboot. The
+fixture-specific shutdown waits for both direct-parent `Wait` and absence of
+its foreground process group within bounded deadlines. Parent exit alone is
+not successful cleanup; forced termination or uncertain group settlement fails
+the fixture. Native subprocess regressions cover an adopted child holding a
+regular-file directory descriptor and a cooperative child that closes after
+its parent exits. This is not containment of children that escape the group,
+a production Samba Owner, or proof of the intermittent state-unmount cause.
 
 The local M2.5 QEMU fixture now exercises an Owner-journaled `Disable` that
 blocks new Samba authentication and requests account-scoped revocation of
@@ -793,7 +800,14 @@ two active disposable MD members. The private census opens no device and admits
 no `smartcollect.SourceAdmitted`, command, ioctl or stable history identity.
 It is not yet connected to the synthetic producer replay or product startup;
 retained device/runtime provenance, transport qualification and command
-boundaries remain separate. No HTTP endpoint or recurring scan is added.
+  boundaries remain separate. No HTTP endpoint or recurring scan is added.
+
+A separate Linux-only [private descriptor witness](internal/smartdevice/README.md)
+retains and rechecks an already-open read-only block FD using fstat/access flags
+and BLKGETDISKSEQ. It opens no path, reads no content and admits no SMART command.
+Native race/refusal/no-leak and actual disposable ARMv5 MD-member tests pass;
+this is not a complete provider, report attribution, transport authorization or
+production wiring. The sysfs-only census above remains device-open-free.
 
 ### Test commands
 

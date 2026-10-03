@@ -99,6 +99,11 @@ qualification; consult exact-commit CI for later revisions.
 Known unresolved qualification issue: intermittent state-volume unmount
 `EBUSY` in the two-boot QEMU fixture. Subsequent passes do not establish its
 cause or resolution. See [fast-lane limitations](support/QEMU-FAST-TESTS.md).
+The 2026-10-03 lifecycle correction separately prevents parent-only Samba
+shutdown success with surviving same-group children. Native regression/race
+and actual ARMv5 smoke/two-boot checks pass. Complete cached local integration
+also passes on `28b16f4`; hosted topic qualification and original `EBUSY`
+causality remain open. A passing run does not establish a release gate.
 
 ## Execution rules for contributors and agents
 
@@ -194,6 +199,15 @@ button to an unqualified backend simply because the screen exists.
   did not recur. This closes the post-refinement regression run, not the
   historical root-cause investigation or repeated qualification. Cleanup is
   unchanged: no retry or lazy/forced unmount. See the test-lane evidence.
+  On 2026-10-03 the complete cached witness build `12f54d2` reproduced EBUSY
+  at ordinary state-volume unmount. Preserved diagnostics list only the owner,
+  no matching FD/path and one visible state mount; they inspect current
+  descendants, not reparented/orphan processes or mappings. Ten-pair state-only
+  campaigns pass on the older exported census image and separately on the actual
+  newly built cached image. This is non-reproduction, not a fix. Do not confuse
+  exported artifacts with the failed build's image: export is after successful
+  state reboot. Next distinguish full process-group settlement, mapped/thread
+  references and kernel deferred release with a deterministic lifecycle seam.
 - **M0.3 — Keep CI proportional.** Host/domain changes use fast checks; runtime
   changes use QEMU; board changes use the relevant current probe. Windows host
   iteration has a no-Docker preflight and an optional Linux/amd64 test runner
@@ -1299,6 +1313,18 @@ not host/QEMU progress.
     This point-in-time observation is not `SourceAdmitted`, a census token,
     retained device binding, SMART-capable transport or command authority.
     Product startup, broker operations and HTTP remain unchanged.
+    A separate Linux-only [descriptor witness](src/phantowd-api/internal/smartdevice/README.md)
+    retains a supplied read-only block FD with CLOEXEC duplication protected
+    against caller-close/reuse. It rechecks type/access, major/minor and the
+    kernel's BLKGETDISKSEQ, refusing value copies/concurrent operations and
+    retaining permanent review after failed observation. Native race/refusal/
+    no-leak tests and actual generation checks on the existing temporary QEMU
+    MD members pass. Closing the caller FD leaves the independent pin usable;
+    an intentionally changed expected tuple tests sticky review, not hotplug.
+    It opens no path, reads no disk content, exposes no FD and admits no SMART
+    command. This is neither report attribution nor a provider/capture lease;
+    complete census reconciliation, fixed opener, transport/runtime authority
+    and physical qualification remain separate. No product/broker wiring changes.
     Do not add
     history/UI by treating this transient tuple as a stable media identity.
   - **M8.5c — Wake policy.** Specify exact no-check/device-detection behavior per
