@@ -90,6 +90,16 @@ rebuild; actual board/build input changes remain covered.
 
 ## Roadmap comparison
 
+A host-only M4.4 runtime prerequisite now records exact processor-specific ELF
+header flags and requires observed EABI5/base procedure calls without BE-8 code
+for every object in the bounded ARM dependency candidate. Missing headers,
+hard-float or contradictory flags and unsupported EABI versions return no
+partial candidate. Windows and pinned Linux host checks pass; independent
+GNU readelf comparisons agree across 381 observations in the five actual target
+entry/module/converter graphs. Header acceptance is not full ARMv5 instruction,
+symbol or ABI qualification, a signed manifest or service activation. No firmware
+package/startup/privilege profile changes; planning bands remain unchanged.
+
 A separate M11.4 source-collection increment retains the pinned original
 Buildroot archive alongside upstream `legal-info` without clearing its warnings.
 Linux ShellCheck/flake8, generated-file refusal/idempotence/cleanup tests and

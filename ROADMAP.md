@@ -1012,6 +1012,11 @@ storage. No production roster provider or activation path exists.
 
   Host-only prerequisite: `phantowd-lab inspect-runtime-closure` now derives a
   bounded ARM32 ELF candidate from the existing extracted-tree inventory.
+  The host inventory now also observes processor-specific header flags; every
+  selected object must declare EABI5 without hard-float procedure calls or BE-8
+  code. Missing flags are refused, while implied base procedure calls are valid.
+  This does not qualify ARM instruction/build attributes or symbol compatibility
+  and adds no process or device authority.
   Pinned Linux unit/vet/race and 50,000 fuzz executions pass; the current cached
   target's `smbd` graph contains 105 distinct objects (27,110,832 bytes). It
   grants no execution authority and does not qualify loader caches, dynamic

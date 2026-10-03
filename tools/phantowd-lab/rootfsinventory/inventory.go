@@ -45,6 +45,7 @@ type ELFInfo struct {
 	Type            string   `json:"type"`
 	Machine         string   `json:"machine"`
 	OSABI           string   `json:"os_abi"`
+	HeaderFlags     *uint32  `json:"header_flags,omitempty"`
 	Interpreter     string   `json:"interpreter,omitempty"`
 	SONAME          string   `json:"soname,omitempty"`
 	Needed          []string `json:"needed,omitempty"`
@@ -310,12 +311,24 @@ func inspectELF(reader io.ReaderAt) (*ELFInfo, error) {
 		return nil, err
 	}
 	defer parsed.Close()
+	// debug/elf does not expose the processor-specific e_flags field. Read
+	// only its fixed four bytes in the already parsed ELF header's byte order.
+	flagsOffset := int64(36)
+	if parsed.Class == elf.ELFCLASS64 {
+		flagsOffset = 48
+	}
+	var rawFlags [4]byte
+	if n, err := reader.ReadAt(rawFlags[:], flagsOffset); err != nil || n != len(rawFlags) {
+		return nil, errors.New("invalid ELF header flags")
+	}
+	headerFlags := parsed.ByteOrder.Uint32(rawFlags[:])
 	info := &ELFInfo{
-		Class:     parsed.Class.String(),
-		ByteOrder: parsed.Data.String(),
-		Type:      parsed.Type.String(),
-		Machine:   parsed.Machine.String(),
-		OSABI:     parsed.OSABI.String(),
+		Class:       parsed.Class.String(),
+		ByteOrder:   parsed.Data.String(),
+		Type:        parsed.Type.String(),
+		Machine:     parsed.Machine.String(),
+		OSABI:       parsed.OSABI.String(),
+		HeaderFlags: &headerFlags,
 	}
 	for _, field := range []struct {
 		tag   elf.DynTag
