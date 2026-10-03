@@ -32,3 +32,4 @@ cd "$module_dir"
 "$go_binary" test -run '^$' -fuzz '^FuzzJournal$' -fuzztime=25000x -parallel=2 ./identityprovision
 "$go_binary" test -run '^$' -fuzz '^FuzzDocument$' -fuzztime=25000x -parallel=2 ./admincredentials
 "$go_binary" test -run '^$' -fuzz '^FuzzRequest$' -fuzztime=25000x -parallel=2 ./identityrpc
+"$go_binary" test -run '^$' -fuzz '^FuzzPublicationRequiresAdmittedSourceAndOrdinaryExit$' -fuzztime=25000x -parallel=2 ./internal/smartcollect

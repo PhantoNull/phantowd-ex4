@@ -4,10 +4,16 @@
 # Implementation status
 
 Code audit: **2026-10-03**, integrated `develop` baseline
-`dd1dd99c83fa5458f6b55bf72e582c389123b7a3` (PR #64).
+`ea51f7023dca013ab4b831a85221a0ed62832623` (PR #65).
 Use [ROADMAP.md](ROADMAP.md) for the acceptance specification. This snapshot
 distinguishes tested components from deployed product workflows. It is not
 installation approval, a security certification, or an exhaustive line-by-line audit.
+
+PR #65 passed exact-head `eeb14a7` host and
+[QEMU/DTB](https://github.com/PhantoNull/phantowd-ex4/actions/runs/37093392186)
+checks and was squash-merged as `ea51f70`. Its complete expected squash tree
+was independently checked. The cached-wrapper follow-up is separate PR #66;
+the new SMART coordinator below is not covered by that earlier CI result.
 
 PR #60 integrated the retained static-code Owner after exact head `7c96f41`
 passed hosted host, B3 and QEMU checks. The complete expected merge tree was
@@ -103,6 +109,22 @@ removed. QEMU-only experiment paths no longer trigger an unchanged EX4 kernel
 rebuild; actual board/build input changes remain covered.
 
 ## Roadmap comparison
+
+The M8.5b internal generation-bound coordinator now passes the complete Windows
+API/UI preflight (Go 1.27.0), pinned Linux Go 1.26.6 vet/race checks and a
+25,000-execution publication fuzz campaign. Fake-backend state-machine tests
+cover source replacement/incompleteness, process signals and uncertain cleanup,
+cancellation, output limits, non-queued concurrency, private evidence and copied
+handle refusal. The existing diskless ARM926 parser fixture now runs both
+binaries in one boot and requires separate success markers; focused guest tests
+pass with the manifest-verified original rootfs unchanged. Runner contract tests
+prove missing-marker refusal, one fake boot and scratch cleanup separately;
+these mock tools are not guest execution. The focused wrapper uses the existing
+image/workspace read-only, a non-root zero-capability container and disposable
+bounded RAM scratch. This is not physical SMART provenance, an implemented
+command/device provider, a fresh full image or hosted qualification. M8 and
+overall bands remain unchanged; no product service, metadata-broker privilege,
+HTTP endpoint, history or device operation is added.
 
 The combined ARM-attribute observer and actual libatomic dispatch fixture passed
 complete cached local integration on unchanged `ea87772` (tree `e899614c`):

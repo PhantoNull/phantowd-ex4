@@ -1271,6 +1271,16 @@ not host/QEMU progress.
     concurrency, duration and memory; distinguish process signals/timeouts from
     8-bit exits. Unsupported transport and command/checksum errors must not become
     healthy states. First test fakes/QEMU only; physical qualification is separate.
+    The internal [coordinator](src/phantowd-api/internal/smartcollect/README.md)
+    now fixes a backend/target/budget at construction, checks complete-census
+    token and major/minor/diskseq before and after one capture, and quarantines
+    changed sources or uncertain process cleanup. Constructor-issued handles
+    cannot be copied to fork lifecycle state. Host/race/fuzz and the existing
+    diskless ARMv5 parser boot test these semantics with fake backends only;
+    this supplies no executable/device provenance, streaming output bound,
+    physical SMART authority or product startup. Implement the separately
+    reviewed fixed command boundary and trusted provider next. Do not add
+    history/UI by treating this transient tuple as a stable media identity.
   - **M8.5c — Wake policy.** Specify exact no-check/device-detection behavior per
     tool and transport. Low-power skip must have explicit evidence; exit bit 1
     alone is ambiguous. Do not parse tool prose to claim standby. Verify that
