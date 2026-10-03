@@ -68,6 +68,9 @@ func exerciseQEMUVolumeRegistry(census trustedMountedExtCensus) error {
 	if _, err := json.Marshal(snapshot); err == nil {
 		return errors.New("protected registry snapshot serialized")
 	}
+	if err := r.Recheck(context.Background(), snapshot); err != nil {
+		return errors.New("unchanged protected registry recheck failed")
+	}
 	if _, err := json.Marshal(review); err == nil {
 		return errors.New("private registry review serialized")
 	}
@@ -133,6 +136,20 @@ func exerciseQEMUVolumeRegistry(census trustedMountedExtCensus) error {
 	if _, err := r.Read(context.Background()); err != nil {
 		return errors.New("restored private fixture could not be observed")
 	}
+	if r.Recheck(context.Background(), snapshot) != volumeregistry.ErrObservation {
+		return errors.New("restored registry permissions rehabilitated an old snapshot")
+	}
+	fresh, err := r.Read(context.Background())
+	if err != nil || r.Recheck(context.Background(), fresh) != nil {
+		return errors.New("fresh explicit registry observation recheck failed")
+	}
+	// Fast rewrite/restore can preserve timestamps; the retained kernel watch
+	// must still invalidate the earlier read. Only fresh fixture tmpfs is written.
+	if os.WriteFile(file, []byte("{}"), 0600) != nil || os.WriteFile(file, data, 0600) != nil ||
+		r.Recheck(context.Background(), fresh) != volumeregistry.ErrObservation {
+		return errors.New("registry same-byte restore escaped change history")
+	}
+	fmt.Println("PHANTOWD_REGISTRY_RECHECK_READY same_reader=true stable=true restored_old_refused=true same_bytes_restore_refused=true private=true continued_freshness=false activation=false scope=disposable-qemu-only")
 	if os.Chown(file, 12345, -1) != nil {
 		return errors.New("registry foreign-owner fixture failed")
 	}

@@ -106,6 +106,16 @@ remains a private point-in-time observation, not stronger durable backing
 identity, RAID health, WD compatibility, global-use or activation authority.
 
 Use [ROADMAP.md](ROADMAP.md) for the acceptance specification. This snapshot
+includes a locally verified internal reader-bound registry recheck. Actual
+rapid tmpfs restoration reproduces identical contents/full timestamps before
+the retained mutation watcher fixes the gap; ten native race repetitions and
+whole tagged API vet/race pass. The actual ARMv5 fixture refuses old snapshots
+after permission/same-byte restoration and completes standard/two-boot tests.
+Watch loss/overflow/bounded-drain uncertainty fails closed without retry.
+No schema, writer, HTTP, storage lease or physical/service authority is added;
+cached overlay, clean hosted integration and product qualification remain distinct.
+
+This snapshot
 distinguishes tested components from deployed product workflows. It is not
 installation approval, a security certification, or an exhaustive line-by-line audit.
 

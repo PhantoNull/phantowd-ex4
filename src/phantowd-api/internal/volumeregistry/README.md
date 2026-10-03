@@ -114,3 +114,58 @@ two physical leaves and one array without selecting a missing claim. Original
 base hashes remain unchanged; no project test container survives. This is not
 a stronger persistent identity selector, independent clean-build qualification,
 physical-media compatibility or service authority.
+
+## Reader-bound observation recheck contract (before implementation)
+
+1. **Input/authority:** only a Snapshot produced by this still-open Reader,
+   with private reader provenance and file/directory identity metadata. No
+   caller path, owner, alternate scanner, state writer or stronger schema.
+2. **Transition:** serialize recheck with Read/Close; validate the prior origin
+   before file I/O, reread using the same protected descriptor/lock/bounds and
+   compare full claims and identity/content metadata, excluding atime only.
+   Retain one nonblocking, close-on-exec inotify descriptor watching the
+   already-owned directory via its fixed `/proc/self/fd/<fd>` anchor. Bound
+   event draining to64KiB per observation; mutation events advance a private
+   generation. Watch loss, malformed events, overflow or exhausted drain budget
+   permanently invalidate this Reader until explicit close/new construction.
+   Kernel inotify and trusted real procfs are prerequisites; no fallback watcher,
+   pathname discovery or silent metadata-only downgrade is allowed.
+   Success describes this bounded read, never continued freshness or a lease.
+3. **Failure:** zero/foreign/canceled/closed input or missing/replaced/rewritten/
+   relinked/mode/owner/directory drift returns the existing redacted error.
+   Restored bytes or revision alone cannot rehabilitate an earlier observation;
+   there is no retry, repair, automatic adoption or sticky-Owner reset.
+4. **Boundary:** internal Linux reader only, with private cross-platform snapshot
+   provenance. No JSON/HTTP, product wiring, persisted identity, mount/import,
+   daemon activation, new privilege or hardware operation. Claims remain
+   independent point-in-time data even after reader close.
+   Repeated actual tmpfs tests showed same-byte/permission/directory ABA can
+   preserve every timestamp; metadata alone is explicitly insufficient.
+   The watch is a loss-detecting local observation, not global exclusivity or
+   immunity to privileged namespace/observer manipulation.
+5. **Acceptance:** native real-files tests for stable/cross-reader/reopen/close,
+   changes at equal revision, same-byte replacement/restoration, directory ABA,
+   metadata/contents racing during recheck and serialized concurrency. Existing
+   disposable ARMv5 registry fixture checks stable and restored-old refusal;
+   Windows preflight, pinned Linux race and actual standard/two-boot overlay.
+   Reuse fixed caches/volumes; create no persistent image or volume.
+
+The metadata-only candidate reproduced rapid rewrite/permission/directory
+restoration with identical full stamps and claims in ten native repetitions.
+The retained mutation watcher fixes those regressions without sleeps or retries.
+Ten repeated pinned Linux race runs and whole tagged API vet/race pass, including
+actual lost-watch/descriptor flags, bounded synthetic event records/drain budget,
+generation-overflow and lifecycle/provenance refusal tests. Windows DOM/vet/unit
+and ARMv5 cross-build pass; the actual ARMv5 standard fixture verifies stable
+recheck and old-snapshot refusal after permission/same-byte restoration, followed
+by clean two-boot state acceptance. Eight source hashes and seven original base
+artifact hashes agree. This cached overlay does not regenerate SBOM/legal-info,
+qualify a clean/hosted build or authorize physical storage/service operations.
+
+The kernel queue and trusted procfs are part of this observation boundary.
+Overflow/watch loss/drain exhaustion is a permanent Reader error, not an
+automatic rescan. Actual kernel queue overflow is not independently induced;
+the native overflow-record and bounded-drain sources are test-only. There is
+one additional private watch descriptor per Reader, no background worker and
+at most64KiB event reads per observation. Data remains point-in-time: privileged
+observer/namespace manipulation and global-use qualification are out of scope.
