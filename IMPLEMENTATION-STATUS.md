@@ -4,7 +4,16 @@
 # Implementation status
 
 Code audit: **2026-10-04**, integrated `develop` baseline
-`6bfc52d5ee6e0e7757ea2b3c5b243e4e3b52e591` (PR #83).
+`145c8bf1225a46ffe5d486f48a9ed9d80b716b8f` (PR #84).
+PR #84 exact `d8eb97a` passed its own host and complete QEMU/DTB checks,
+including guest fixtures and isolated CI volume cleanup. Guarded squash
+integration preserves expected/checked/integrated tree `5fa11336`; the proven
+integrated topic refs were retired. The locally qualified registry-recheck/
+composition follow-up rebases with its complete source/API trees unchanged.
+Its hosted acceptance is separate; none of these observations enables product
+storage/services, persistent registration, compatibility or installation.
+
+Historical PR #83 integration:
 PR #83 exact `8564b15` passed its own host check and guarded squash-integrated
 the host-only manifest fix with expected/checked/integrated tree `d85d18b5`.
 No firmware rebuild or installation authority follows from that host change.
@@ -106,7 +115,29 @@ remains a private point-in-time observation, not stronger durable backing
 identity, RAID health, WD compatibility, global-use or activation authority.
 
 Use [ROADMAP.md](ROADMAP.md) for the acceptance specification. This snapshot
-distinguishes tested components from deployed product workflows. It is not
+includes a locally verified internal reader-bound registry recheck. Actual
+rapid tmpfs restoration reproduces identical contents/full timestamps before
+the retained mutation watcher fixes the gap; ten native race repetitions and
+whole tagged API vet/race pass. The actual ARMv5 fixture refuses old snapshots
+after permission/same-byte restoration and completes standard/two-boot tests.
+Watch loss/overflow/bounded-drain uncertainty fails closed without retry.
+No schema, writer, HTTP, storage lease or physical/service authority is added;
+cached overlay, clean hosted integration and product qualification remain distinct.
+
+The internal registry/census composition now validates combined desired policy
+before collection, derives private policy/backing reviews from the same
+protected registry and complete census, then rechecks both sources before
+publication. Invalid/canceled/closed inputs or drift return one redacted error
+and no partial result. Native tests cover same-byte restoration during either
+census pass, directory ABA, changed roots/excluded/unclaimed scope and early
+refusal. Whole Windows, pinned tagged Linux vet/race and actual ARMv5 standard/
+two-boot overlay pass. The guest observes its existing two-leaf MD fixture and
+refuses registry restoration during the second complete census. Source/base
+hashes agree and no persistent Docker resource is added. This is sequential
+read-only observation, not an atomic global snapshot, continued freshness,
+retained lease, compatibility qualifier, planner input or activation authority.
+
+This snapshot distinguishes tested components from deployed product workflows. It is not
 installation approval, a security certification, or an exhaustive line-by-line audit.
 
 PR #79 passed its own exact `a185e0f` host and QEMU/DTB checks, including

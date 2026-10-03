@@ -61,8 +61,24 @@ var fields = map[string]bool{"format": true, "schema_version": true, "revision":
 // document. It is immutable across package boundaries and not serializable.
 // It proves neither continued freshness nor device uniqueness/qualification.
 type Snapshot struct {
-	document Document
-	observed bool
+	document        Document
+	observed        bool
+	origin          *readerOrigin
+	generation      uint64
+	directory, file observationMetadata
+}
+
+// Non-zero size ensures distinct Reader allocations have distinct provenance.
+// This token retains no descriptor/Reader and grants no storage authority.
+type readerOrigin struct{ marker byte }
+
+// Platform-neutral private stamps keep model tests/cross-builds independent of
+// Linux syscalls. Only the protected Linux reader populates these observations.
+type observationMetadata struct {
+	device, inode, links                                         uint64
+	mode, uid, gid                                               uint32
+	size                                                         int64
+	modifiedSeconds, modifiedNanos, changedSeconds, changedNanos int64
 }
 
 func (Snapshot) MarshalJSON() ([]byte, error) { return nil, ErrObservation }

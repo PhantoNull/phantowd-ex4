@@ -714,6 +714,28 @@ are missing. **Depends on:** M1; M7 for hardware.
   split policy cannot become usable/planner evidence. Whole Windows/Linux race
   and actual ARMv5 standard/two-boot overlay pass locally; no registry writer,
   product state, HTTP, mount/import or service activation is added.
+  **Reader-bound recheck (partial; locally tested):** a private origin and full
+  file/directory stamps bind snapshots to one Reader. Retained nonblocking
+  inotify mutation history closes a reproduced rapid same-byte/permission/
+  directory ABA gap where full metadata remains identical. Recheck serializes
+  with Read/Close and refuses zero/foreign/reopened/stale snapshots. Watch loss,
+  overflow or64KiB drain exhaustion invalidates the Reader without retry;
+  metadata-only fallback is forbidden. Whole Windows and pinned Linux tagged
+  vet/race pass; actual ARMv5 standard/two-boot overlay verifies restoration
+  refusal with unchanged base artifacts. Native synthetic overflow/drain tests
+  do not claim actual kernel overflow reproduction. No schema/writer/HTTP,
+  retained storage lease, global-use qualification, mount/import or activation.
+  **Registry/census composition (partial; locally tested):** an internal
+  collector takes one protected Reader and validated desired policy, observes
+  registry plus the complete mounted-ext census and computes existing policy/
+  backing reviews from that same pair. Recheck the entire census and original
+  registry before returning; cancellation, restored registry mutations, root,
+  excluded/unclaimed scope drift or reader closure return no partial result.
+  Whole Windows/pinned native tagged race and actual ARMv5 standard/two-boot
+  overlay pass, using the existing MD/tmpfs fixture and unchanged base. This
+  sequential bracket is not an atomic/global snapshot, continued freshness,
+  retained lease, compatibility qualifier or activation/planner authority.
+  No writer, product startup, HTTP, mount/import or new privilege is added.
 - **M3.3 — Gate compatibility and mounting.** Define a per-layout/filesystem
   allowlist with evidence. Inspect before assembly/mounting; journal replay and
   automatic MD actions can write even during a supposedly read-only assessment.
