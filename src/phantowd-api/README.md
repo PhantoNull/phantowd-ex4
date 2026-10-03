@@ -809,6 +809,28 @@ Native race/refusal/no-leak and actual disposable ARMv5 MD-member tests pass;
 this is not a complete provider, report attribution, transport authorization or
 production wiring. The sysfs-only census above remains device-open-free.
 
+The private Linux `smartCensusWitnessSet` now composes these two prerequisites.
+Its trusted constructor receives a fixed sysfs reader and borrowed read-only
+block files, requiring exactly one generation-matched source per whole leaf.
+Partial, extra, duplicate and non-block sources are refused; partial retention
+is rolled back without closing caller files. It retains independent duplicates
+and compares the complete census before and after rechecking every descriptor.
+Any observation uncertainty permanently enters review, retaining pins until
+explicit Close; uncertain release cannot be retried into success. Copies,
+concurrent operations and JSON are refused. Cancellation before admission has
+no effect; sysfs reads/ioctls remain synchronous, not forcibly interruptible.
+
+Native Linux race/refusal tests include late-census uncertainty. The existing
+ARMv5 active-MD fixture verifies all seven whole leaves, reordered complete
+input, partial-retain rollback without leaked block FDs, independent ownership
+after caller Close, retained review pins after an injected reader failure, and
+explicit release. The fixed test reader implements the full ReadLinkFS contract;
+its failure injection is not physical hotplug. A synthetic invalid-owner test
+does not reproduce an actual kernel close error. This bridge opens no path,
+reads no contents, exposes no disk IDs/FDs, starts no child and authorizes no
+SMART command. It remains unconnected to product startup/capture, report
+attribution, transport/wake policy, stable history identity or HTTP.
+
 ### Test commands
 
 From the repository root on Windows, with a local Go 1.26+ installation:

@@ -130,6 +130,21 @@ rebuild; actual board/build input changes remain covered.
 
 ## Roadmap comparison
 
+M8.5b local follow-up: a private Linux complete-census witness set requires one
+already-open read-only block source per whole leaf and retains independent
+generation-checked descriptors all-or-error. Whole-inventory observations
+surround descriptor checks; any uncertainty keeps permanent review and pins
+until explicit release. Native race tests and actual ARMv5 standard smoke plus
+two-boot overlay pass, including all seven virtual leaves, partial rollback,
+caller-close independence and injected-reader failure. A native regression
+first reproduced the QEMU wrapper's missing `ReadLinkFS.Lstat`; the corrected
+reader preserves the full contract, with a compile-time assertion. No collector
+guard was relaxed. This is a userspace overlay on the existing verified base,
+not a new package/legal/SBOM build or independent reproduction. Complete local
+integration and hosted qualification of this increment remain pending; no
+physical SMART command, product provider or new privilege is authorized.
+Milestone estimate bands remain unchanged.
+
 M0 fixture reliability follow-up: the two-boot Samba shutdown previously
 accepted direct-parent exit while a same-group adopted child could retain a
 directory descriptor. A deterministic native subprocess regression failed

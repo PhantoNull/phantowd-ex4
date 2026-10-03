@@ -25,6 +25,21 @@ def save_log(destination, source):
 
 
 class BuildFeedbackTests(unittest.TestCase):
+    def test_smart_census_witness_set_requires_actual_guest_assertion(self):
+        smoke = (ROOT / "support/qemu-smoke.sh").read_text()
+        md = (ROOT / "src/phantowd-api/md_stack_qemu_linux.go").read_text()
+        fixture = (ROOT / "src/phantowd-api/smart_census_witness_set_qemu_linux.go").read_text()
+        marker = "PHANTOWD_SMART_CENSUS_WITNESS_SET_READY"
+        self.assertIn(marker, smoke)
+        self.assertIn(marker, md)
+        self.assertIn("exerciseQEMUSMARTCensusWitnessSet()", md)
+        for claim in ("leaves=7", "rollback_no_leak=true", "review_pins_retained=true",
+                      "reader_failure_sticky=true", "explicit_release=true"):
+            self.assertIn(claim, smoke)
+            self.assertIn(claim, md)
+        self.assertIn("fs.ReadLinkFS = (*qemuSMARTWitnessSetFS)(nil)", fixture)
+        self.assertIn("Readdirnames(129)", fixture)
+
     def test_smart_generation_witness_requires_actual_md_guest_assertion(self):
         marker = "PHANTOWD_SMART_FD_WITNESS_READY"
         smoke = (ROOT / "support/qemu-smoke.sh").read_text()

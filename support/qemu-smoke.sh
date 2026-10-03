@@ -356,6 +356,10 @@ while [ "$attempt" -lt "$smoke_timeout" ]; do
             echo 'Missing retained SMART descriptor-generation assertion' >&2
             exit 1
         fi
+        if ! grep -F 'PHANTOWD_SMART_CENSUS_WITNESS_SET_READY leaves=7 complete=true partial_refused=true rollback_no_leak=true caller_close=true review_pins_retained=true reader_failure_sticky=true explicit_release=true content_read=false smart_command=false scope=qemu-fixture-only' "$log_file" >/dev/null; then
+            echo 'Missing complete retained SMART census-set assertion' >&2
+            exit 1
+        fi
         if ! grep -E 'PHANTOWD_AUTH_READY algorithm=argon2id kdf_concurrency=1 bootstrap=created login_enabled=yes transport=guest-loopback-http state=volatile-qemu session=memory-only kdf_cycle_ms=[0-9]+' "$log_file" >/dev/null; then
             echo "Missing first-account/authentication ARMv5 self-test assertion" >&2
             exit 1
