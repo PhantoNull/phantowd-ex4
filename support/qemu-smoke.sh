@@ -308,6 +308,10 @@ while [ "$attempt" -lt "$smoke_timeout" ]; do
             echo 'Missing private complete-scope mounted-ext census assertion' >&2
             exit 1
         fi
+        if ! grep -F 'PHANTOWD_SCOPED_VOLUME_REVIEW_READY desired_ids_only=true complete_census=true actual_md=true unclaimed_explicit=true private=true qualification=false activation=false scope=disposable-qemu-only' "$log_file" >/dev/null; then
+            echo 'Missing private scoped desired-volume review assertion' >&2
+            exit 1
+        fi
         if ! grep -F 'PHANTOWD_M35_TWO_VOLUME_READY distinct_filesystems=true lost_volume_quarantined=true lost_handles_revoked=true healthy_group_lease_survived=true fresh_healthy_owner_lease=true roster_reacquire=all_or_error scope=disposable-qemu-only' "$log_file" >/dev/null; then
             echo 'Missing M3.5 two-volume lease-loss assertion' >&2
             exit 1

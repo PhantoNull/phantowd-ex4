@@ -27,6 +27,8 @@ type trustedMountedExtCensus struct {
 	coverage   mountedExtCensusCoverage
 	mounts     mountSnapshot
 	storage    storageSnapshot
+	arrays     []mdArrayStorageIdentity
+	roots      mountguard.MountedInventory
 	identities []mountedStorageIdentity
 }
 
@@ -93,7 +95,7 @@ func collectTrustedMountedExtCensusWith(ctx context.Context, sysfs, proc fs.FS, 
 	if err != nil || !sameMountSnapshot(mounts, currentMounts) || ctx.Err() != nil {
 		return fail()
 	}
-	return trustedMountedExtCensus{coverage: coverage, mounts: mounts, storage: storage, identities: identities}, nil
+	return trustedMountedExtCensus{coverage: coverage, mounts: mounts, storage: storage, arrays: arrays, roots: roots, identities: identities}, nil
 }
 
 func planMountedExtCensus(storage storageSnapshot, mounts mountSnapshot) ([]string, mountedExtCensusCoverage, error) {

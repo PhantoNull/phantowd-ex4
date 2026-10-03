@@ -202,6 +202,48 @@ The observation is point-in-time and limited to one process mount namespace;
 it does not establish global use, UUID uniqueness on unmounted media, a durable
 VolumeID, compatibility, health, a retained lease or activation authority.
 
+### M3.2f scoped desired-volume observation task contract
+
+Add one private, side-effect-free review joining a validated desired share
+policy to the complete mounted-ext census. Group by current kernel device,
+retaining every mount-root alias rather than selecting a pathname. Distinct
+devices with one UUID remain ambiguous; one device with multiple root aliases
+is one observed object. Report not-observed/observed/ambiguous **in this scope**,
+explicit alias/object counts and incomplete physical-disk identity evidence.
+An observed singleton must never become globally unique, persistently adopted,
+compatible, healthy, writable or activation-ready. Keep unclaimed observed
+objects explicit even when desired policy contains no volumes.
+
+Validate the complete census/topology/alias relationships before joining any
+desired subset; malformed or partial observations return no review. Retain
+desired revision and logical VolumeID only as policy references, never derive
+them from UUID, bay, kernel name or path. Bound the work by existing16 desired
+volumes and64 scoped roots; deterministic output must not depend on policy or
+mount-table order. Results refuse JSON and cannot construct mountowner or
+planner qualification. No I/O, persistent registry, new HTTP, mount, import,
+state write, privilege or product wiring. Test host cases for aliases/clones,
+missing/unclaimed objects, incomplete disk evidence and malformed input, then
+reuse the existing disposable MD guest observation without extra storage jobs.
+
+Local evidence (2026-10-03): full Windows API/DOM/vet and ARMv5 test compilation
+pass. A new native regression first reproduces circular validation accepting
+changed derived UUID/unique mount IDs. The collector now independently retains
+its owned root metadata and complete MD bindings; the review rebuilds from
+those original observations, not from the identities being checked. Whole
+pinned Linux tagged API vet/race, existing bounded fuzz/contracts, actual ARMv5
+standard smoke and clean two-boot overlay then pass on the corrected source.
+The actual guest checks one observed MD object against desired policy and
+accounts for every other unclaimed object; aliases/clones and16/64 limits are
+native synthetic tests, not new guest clone experiments.
+
+Independent post-terminal checks confirm six frozen runtime/test/support
+hashes and seven unchanged original base artifacts. No surviving project
+builder or new persistent image/volume/output. This is cached local overlay
+evidence, not hosted feature CI, clean-build/SBOM or physical qualification.
+The review does not create an Owner, planner-ready storage snapshot, retained
+lease, persistent ID or compatibility decision. Observed/not-observed always
+means within this declared namespace scope; no global presence/absence claim.
+
 ### Manual GPT metadata observation
 
 The development dashboard offers one separate, explicit
