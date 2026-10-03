@@ -4,7 +4,7 @@
 # Implementation status
 
 Code audit: **2026-10-03**, integrated `develop` baseline
-`ea51f7023dca013ab4b831a85221a0ed62832623` (PR #65).
+`d8707aa8a909e10a2430fe4e78e85c0cc035e1ce` (PR #66).
 Use [ROADMAP.md](ROADMAP.md) for the acceptance specification. This snapshot
 distinguishes tested components from deployed product workflows. It is not
 installation approval, a security certification, or an exhaustive line-by-line audit.
@@ -12,8 +12,12 @@ installation approval, a security certification, or an exhaustive line-by-line a
 PR #65 passed exact-head `eeb14a7` host and
 [QEMU/DTB](https://github.com/PhantoNull/phantowd-ex4/actions/runs/37093392186)
 checks and was squash-merged as `ea51f70`. Its complete expected squash tree
-was independently checked. The cached-wrapper follow-up is separate PR #66;
-the new SMART coordinator below is not covered by that earlier CI result.
+was independently checked. PR #66 was subsequently rebased onto that integrated
+commit with its complete tree unchanged, passed final-head `fa6969a`
+[host checks](https://github.com/PhantoNull/phantowd-ex4/actions/runs/37096901139)
+and merged as `d8707aa` with complete expected-tree equality. Both topic branches
+were retired with exact-SHA guards after inclusion proof. The new SMART
+coordinator below is not covered by those earlier CI results.
 
 PR #60 integrated the retained static-code Owner after exact head `7c96f41`
 passed hosted host, B3 and QEMU checks. The complete expected merge tree was
