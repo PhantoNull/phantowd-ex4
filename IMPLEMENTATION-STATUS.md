@@ -4,10 +4,31 @@
 # Implementation status
 
 Code audit: **2026-10-03**, integrated `develop` baseline
-`f19e6eb2938689d05ab8542d8d0e892272b31624` (PR #74).
+`9d2a0bc9bb0a563aac18672c0e2154046f24544d` (PR #75).
 Use [ROADMAP.md](ROADMAP.md) for the acceptance specification. This snapshot
 distinguishes tested components from deployed product workflows. It is not
 installation approval, a security certification, or an exhaustive line-by-line audit.
+
+PR #75 passed exact `c51d452` host and QEMU/DTB checks, including final
+isolated-volume cleanup, and merged as `9d2a0bc`. Expected, checked and integrated
+complete trees equal `772ed059`. The combined address topic and original Samba
+context topic were retired only after whole-tree inclusion, exact patch equality
+and attached-worktree checks. This qualifies those component increments, not
+product networking, a separate Samba Owner or the later panel lifecycle fix.
+
+M10.2a host-only source `7257019` (complete tree `c5c3b119`, host module tree
+`695bd7ed`) adds optional signed-minimum installer preflight to both release
+inspectors. A too-old installer refuses before payload reads/downloads/staging;
+equal/newer versions still require all existing payload verification. Signature,
+target/channel and signed tag checks precede assessment. Invalid host-version
+syntax fails before HTTP. Windows full host vet/unit and pinned Go 1.26.6 Linux
+whole host-tool vet/race pass. Synthetic HTTP request counters and CLI fixtures
+verify early refusal, omitted-option behavior and prerelease/version boundaries.
+The tested module tree is unchanged across the independent rebase and subsequent
+qualified PR #75 composition. No QEMU rebuild is needed for this host-only tool;
+the version is caller-supplied, not device attestation or installation authority.
+Target installer, trust-root provisioning, recovery and all release gates remain
+open; M10/overall planning bands are unchanged.
 
 PR #74 passed exact `02bdb0c` host and QEMU/DTB checks, including final
 isolated-volume cleanup, and merged as `f19e6eb`. The entire expected,

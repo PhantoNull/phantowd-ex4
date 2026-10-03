@@ -41,6 +41,84 @@ func TestInspectDownloadsOnlySignedExactGitHubReleaseAssets(t *testing.T) {
 	}
 }
 
+func TestInspectInstallerPreflightBeforePayloadDownload(t *testing.T) {
+	for _, test := range []struct {
+		version     string
+		wantPayload int
+		wantError   bool
+		wantPolicy  bool
+		compatible  bool
+	}{
+		{"", 1, false, false, false},
+		{"v0.1.0", 1, false, true, true},
+		{"v0.1.1", 1, false, true, true},
+		{"v0.0.9", 0, false, true, false},
+		{"v0.1.0-rc.1", 0, false, true, false},
+		{"v00.1.0", 0, true, false, false},
+	} {
+		t.Run(test.version, func(t *testing.T) {
+			fixture := newReleaseFixture(t, []byte("synthetic payload"))
+			fixture.serve(t, true, nil)
+			options := fixture.options()
+			options.InstallerVersion = test.version
+			result, err := Inspect(context.Background(), options)
+			policy := result.Verification.InstallerPolicy
+			if (err != nil) != test.wantError || (policy != nil) != test.wantPolicy || fixture.payloadRequests != test.wantPayload {
+				t.Fatalf("unexpected preflight: result=%+v err=%v payloads=%d", result, err, fixture.payloadRequests)
+			}
+			if test.wantError && (fixture.manifestRequests != 0 || fixture.signatureRequests != 0) {
+				t.Fatal("invalid host version reached release assets")
+			}
+			if policy != nil && (!policy.Evaluated || policy.Compatible != test.compatible || policy.MinimumInstaller != "v0.1.0" || policy.InstallationAuthorized) {
+				t.Fatalf("wrong prerequisite assessment: %+v", policy)
+			}
+			if result.Verification.Valid != (test.wantPayload == 1) || result.Verification.ArtifactsChecked != (test.wantPayload == 1) || result.Verification.InstallationAuthorized || result.Verification.HardwareQualified {
+				t.Fatalf("payload/authority boundary changed: %+v", result.Verification)
+			}
+		})
+	}
+}
+
+func TestInspectInstallerPrerequisiteFollowsSignedTagAndTargetChecks(t *testing.T) {
+	for _, mutation := range []string{"signature", "target", "tag"} {
+		t.Run(mutation, func(t *testing.T) {
+			fixture := newReleaseFixture(t, []byte("synthetic payload"))
+			switch mutation {
+			case "signature":
+				fixture.signature[0] ^= 1
+			case "target":
+				fixture.optionsRevision = "board-r2"
+			case "tag":
+				fixture.optionsTag, fixture.releaseTag = "v0.2.0", "v0.2.0"
+			}
+			fixture.serve(t, true, nil)
+			options := fixture.options()
+			options.InstallerVersion = "v1.0.0"
+			result, err := Inspect(context.Background(), options)
+			if err != nil || result.Verification.InstallerPolicy != nil || result.Verification.Valid || result.Verification.ArtifactsChecked || fixture.payloadRequests != 0 {
+				t.Fatalf("installer preflight crossed preceding gate: result=%+v err=%v", result, err)
+			}
+		})
+	}
+}
+
+func TestInspectInvalidInstallerNeverMakesHTTPRequest(t *testing.T) {
+	fixture := newReleaseFixture(t, []byte("synthetic payload"))
+	var requests atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		requests.Add(1)
+		http.Error(w, "must not be reached", http.StatusInternalServerError)
+	}))
+	defer server.Close()
+	fixture.server = server
+	options := fixture.options()
+	options.InstallerVersion = "v00.1.0"
+	result, err := Inspect(context.Background(), options)
+	if err == nil || requests.Load() != 0 || result.Verification.InstallerPolicy != nil || result.Verification.ArtifactsChecked {
+		t.Fatalf("invalid installer caused HTTP or an assessment: requests=%d result=%+v err=%v", requests.Load(), result, err)
+	}
+}
+
 func TestInspectFollowsSignedCDNRedirects(t *testing.T) {
 	fixture := newReleaseFixture(t, []byte("synthetic signed redirect payload"))
 	fixture.signedRedirects = true
