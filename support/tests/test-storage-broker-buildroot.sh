@@ -167,6 +167,9 @@ error_summary=$(printf '%s\n' \
     fail 'QEMU API self-test error summary must be bounded and sanitized'
 
 mounted_identity_marker='PHANTOWD_MOUNTED_STORAGE_CORRELATION_READY anchors=3 uuid_conflict_entries=3 bind_alias_same_device=true complete_sysfs=true scope=qemu-fixture-only'
+mounted_census_marker='PHANTOWD_MOUNTED_EXT_CENSUS_READY namespace_scoped=true roots_from_mountinfo=true rootfs_excluded=true md_members=2 repeated_metadata=true private=true block_opened=false file_data_read=false qualification=false activation=false scope=disposable-qemu-only'
+grep -F "$mounted_census_marker" "$repo_root/src/phantowd-api/md_stack_qemu_linux.go" >/dev/null || fail 'QEMU must exercise the fixed private mounted-ext census'
+grep -F "$mounted_census_marker" "$repo_root/support/qemu-smoke.sh" >/dev/null || fail 'QEMU smoke must require the complete-scope census assertion'
 grep -F "$mounted_identity_marker" "$repo_root/src/phantowd-api/mount_guard_qemu_linux.go" >/dev/null ||
     fail 'QEMU mounted-identity integration must define its complete fixture marker'
 grep -F "$mounted_identity_marker" "$repo_root/support/qemu-smoke.sh" >/dev/null ||

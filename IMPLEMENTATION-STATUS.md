@@ -9,6 +9,24 @@ Use [ROADMAP.md](ROADMAP.md) for the acceptance specification. This snapshot
 distinguishes tested components from deployed product workflows. It is not
 installation approval, a security certification, or an exhaustive line-by-line audit.
 
+M3.2e local follow-up derives a private complete scoped mounted-ext census from
+the current-process mount table and complete sysfs/MD topology. The fixed reader
+repeats descriptor-relative UUID/device observations and brackets them with
+full topology/mount-table rechecks. Private mountinfo ID/root retention detects
+remount/subtree drift; statx unique IDs remain a distinct identity namespace.
+Explicit exclusions and the64-root bound avoid claiming complete physical or
+global discovery. Native refusals cover incomplete input, buffer reuse, identity
+drift, cancellation and64/65 roots. Whole Windows preflight, pinned Linux tagged
+API vet/race/fuzz/contracts and actual ARMv5 standard/two-boot overlay pass,
+including the existing read-only MD filesystem and its two members. Independent
+post-run checks confirm seven frozen source/support hashes and seven unchanged
+base artifacts; the project builder was auto-removed and no new persistent
+image/volume/output was created. No HTTP, block-node opening, file-data read,
+state write, qualification, mount/import or product activation is added.
+This is local unintegrated evidence, not hosted, clean-build or EX4 acceptance.
+M3/overall planning bands remain unchanged; persistent identity, production
+qualification/roster, global-use accounting and hardware gates remain open.
+
 PR #77 passed its own exact `07d0ef7` ARMv5/DTB check, including isolated
 volume cleanup, and merged as `df9b45b`. Expected, checked and integrated
 whole trees equal `15787a19`. Its branch was retired after tree equality and

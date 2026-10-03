@@ -157,6 +157,51 @@ SMB/NFS activation remain separate work.
 
 ## Runtime and development boundaries
 
+### M3 mounted-root census task contract
+
+Replace caller-selected mount anchors with a private read-only census derived
+from the complete current-process mount table and complete sysfs/MD topology.
+Consider block-backed ext2/3/4 filesystem-root mounts only; explicitly count
+excluded process-root, subtree, unsupported-filesystem and zero-major entries.
+Zero-major does not prove a non-block-backed filesystem. Unknown nonzero device
+numbers, duplicate/stacked mountpoint ambiguity, inaccessible roots or incomplete
+metadata refuse the entire census. Cap actual root observations at64.
+
+Retain mountinfo's transient mount ID and filesystem-root internally so a
+same-path/device remount or subtree change invalidates re-observation; keep
+them out of existing JSON. These IDs are distinct from the statx unique mount
+IDs used by mountguard and must never be compared as one namespace of IDs.
+Use the existing fixed descriptor-relative mountguard observer twice, bracketed
+by complete storage/MD and mount-table observations, then correlate each
+observed UUID/device to the same validated topology. Refuse changes and partial
+results; return an explicitly scoped, non-serializable private observation.
+
+This is not complete physical-volume discovery, UUID uniqueness across unmounted
+media/other namespaces, a logical VolumeID resolver, compatibility/health,
+qualification or mount/import/activation authority. No block node or file data
+is read, state written, privilege widened or product/API startup wired. Native
+tests inject re-observation failures; the already-approved disposable QEMU MD
+fixture exercises the fixed reader. No NAS or real disk operation is included.
+
+Local evidence (2026-10-03): the complete Windows API/DOM/vet and ARMv5 test
+cross-compilation pass. Pinned Linux whole tagged API vet/race, bounded existing
+fuzz/contracts and actual ARMv5 standard smoke plus the two-boot state fixture
+pass. The guest census observes the existing disposable read-only MD filesystem
+and its two members, with process root explicitly excluded. Native tests cover
+the64/65-root boundary, empty scope, orphan/overmounted paths, reused observer
+buffers, mount/root/UUID/device-generation drift, unavailable metadata and
+cancellation. Census JSON is refused. Mountinfo IDs and filesystem roots remain
+private; existing snapshot comparison now detects their changes.
+
+Seven frozen source/support hashes and seven original base-artifact hashes were
+independently checked after the terminal local run. The current cached image,
+two fixed volumes and bounded auto-removed RAM scratch were reused; no new
+persistent image, volume or output exists. This is an overlay qualification,
+not a clean new firmware/SBOM, hosted feature result or physical EX4 validation.
+The observation is point-in-time and limited to one process mount namespace;
+it does not establish global use, UUID uniqueness on unmounted media, a durable
+VolumeID, compatibility, health, a retained lease or activation authority.
+
 ### Manual GPT metadata observation
 
 The development dashboard offers one separate, explicit

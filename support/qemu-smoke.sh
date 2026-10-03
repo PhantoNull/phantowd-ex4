@@ -304,6 +304,10 @@ while [ "$attempt" -lt "$smoke_timeout" ]; do
             echo 'Missing M3.3-to-M3.4 trusted mounted-volume provider assertion' >&2
             exit 1
         fi
+        if ! grep -F 'PHANTOWD_MOUNTED_EXT_CENSUS_READY namespace_scoped=true roots_from_mountinfo=true rootfs_excluded=true md_members=2 repeated_metadata=true private=true block_opened=false file_data_read=false qualification=false activation=false scope=disposable-qemu-only' "$log_file" >/dev/null; then
+            echo 'Missing private complete-scope mounted-ext census assertion' >&2
+            exit 1
+        fi
         if ! grep -F 'PHANTOWD_M35_TWO_VOLUME_READY distinct_filesystems=true lost_volume_quarantined=true lost_handles_revoked=true healthy_group_lease_survived=true fresh_healthy_owner_lease=true roster_reacquire=all_or_error scope=disposable-qemu-only' "$log_file" >/dev/null; then
             echo 'Missing M3.5 two-volume lease-loss assertion' >&2
             exit 1
