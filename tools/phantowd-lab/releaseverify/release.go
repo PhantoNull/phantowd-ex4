@@ -22,12 +22,13 @@ import (
 )
 
 const (
-	manifestFormat  = "phantowd-release-manifest"
-	manifestVersion = 1
-	maxManifestSize = 64 * 1024
-	maxArtifacts    = 16
-	maxArtifactSize = int64(1024 * 1024 * 1024)
-	maxBundleSize   = int64(2 * 1024 * 1024 * 1024)
+	manifestFormat       = "phantowd-release-manifest"
+	manifestVersion      = 1
+	maxManifestSize      = 64 * 1024
+	maxArtifacts         = 16
+	maxHardwareRevisions = 16
+	maxArtifactSize      = int64(1024 * 1024 * 1024)
+	maxBundleSize        = int64(2 * 1024 * 1024 * 1024)
 )
 
 var (
@@ -234,7 +235,7 @@ func InspectManifest(manifestReader, signatureReader io.Reader, publicKey ed2551
 	}
 
 	var manifest Manifest
-	if err := decodeStrict(manifestBytes, &manifest); err != nil {
+	if err := decodeManifest(manifestBytes, &manifest); err != nil {
 		return nil, report, fmt.Errorf("invalid release manifest: %w", err)
 	}
 	report.ReleaseVersion = manifest.ReleaseVersion
@@ -393,7 +394,7 @@ func validateManifest(manifest Manifest) error {
 	if !componentVersionPattern.MatchString(manifest.BuildrootVersion) || !componentVersionPattern.MatchString(manifest.KernelVersion) {
 		problems = append(problems, "Buildroot and kernel versions must be numeric dotted versions, optionally prefixed by v")
 	}
-	if len(manifest.HardwareRevisions) == 0 || len(manifest.HardwareRevisions) > 16 {
+	if len(manifest.HardwareRevisions) == 0 || len(manifest.HardwareRevisions) > maxHardwareRevisions {
 		problems = append(problems, "hardware_revisions must list 1 to 16 exact revisions")
 	}
 	revisions := make(map[string]bool, len(manifest.HardwareRevisions))
@@ -438,80 +439,20 @@ func validateManifest(manifest Manifest) error {
 	return errors.New(strings.Join(problems, "; "))
 }
 
-func decodeStrict(data []byte, destination any) error {
-	if err := rejectDuplicateKeys(data); err != nil {
+func decodeManifest(data []byte, destination *Manifest) error {
+	if err := checkManifestStructure(data); err != nil {
 		return err
 	}
 	decoder := json.NewDecoder(bytes.NewReader(data))
 	decoder.DisallowUnknownFields()
 	if err := decoder.Decode(destination); err != nil {
-		return err
+		return errManifestStructure
 	}
 	if err := decoder.Decode(new(any)); !errors.Is(err, io.EOF) {
 		if err == nil {
 			return errors.New("trailing JSON value")
 		}
 		return err
-	}
-	return nil
-}
-
-func rejectDuplicateKeys(data []byte) error {
-	decoder := json.NewDecoder(bytes.NewReader(data))
-	if err := scanJSON(decoder); err != nil {
-		return err
-	}
-	if _, err := decoder.Token(); !errors.Is(err, io.EOF) {
-		if err == nil {
-			return errors.New("trailing JSON value")
-		}
-		return err
-	}
-	return nil
-}
-
-func scanJSON(decoder *json.Decoder) error {
-	token, err := decoder.Token()
-	if err != nil {
-		return err
-	}
-	delimiter, ok := token.(json.Delim)
-	if !ok {
-		return nil
-	}
-	switch delimiter {
-	case '{':
-		seen := make(map[string]bool)
-		for decoder.More() {
-			keyToken, err := decoder.Token()
-			if err != nil {
-				return err
-			}
-			key, ok := keyToken.(string)
-			if !ok || seen[key] {
-				return errors.New("duplicate or invalid JSON object key")
-			}
-			seen[key] = true
-			if err := scanJSON(decoder); err != nil {
-				return err
-			}
-		}
-		closing, err := decoder.Token()
-		if err != nil || closing != json.Delim('}') {
-			return errors.New("unterminated JSON object")
-		}
-	case '[':
-		for decoder.More() {
-			if err := scanJSON(decoder); err != nil {
-				return err
-			}
-		}
-		closing, err := decoder.Token()
-		if err != nil || closing != json.Delim(']') {
-			return errors.New("unterminated JSON array")
-		}
-	default:
-		return errors.New("unexpected JSON delimiter")
 	}
 	return nil
 }
@@ -538,17 +479,30 @@ func hashRegularArtifact(directory, name string, expectedSize int64) (int64, str
 	}
 	defer file.Close()
 	opened, err := file.Stat()
-	if err != nil || !opened.Mode().IsRegular() || !os.SameFile(before, opened) {
+	if err != nil || !opened.Mode().IsRegular() || !os.SameFile(before, opened) || opened.Size() != expectedSize {
 		return 0, "", errors.New("artifact changed during open")
 	}
-	state := sha256.New()
-	count, err := io.Copy(state, file)
+	count, actualDigest, err := hashArtifactBytes(file, expectedSize)
 	if err != nil {
 		return count, "", err
 	}
 	after, err := file.Stat()
 	if err != nil || count != opened.Size() || after.Size() != opened.Size() || !after.ModTime().Equal(opened.ModTime()) {
 		return count, "", errors.New("artifact changed while reading")
+	}
+	return count, actualDigest, nil
+}
+
+// Detection consumes at most one byte beyond the signed size, even if an
+// already-open regular file keeps growing. No unbounded io.Copy from a file.
+func hashArtifactBytes(reader io.Reader, expectedSize int64) (int64, string, error) {
+	if reader == nil || expectedSize <= 0 || expectedSize > maxArtifactSize {
+		return 0, "", errors.New("invalid artifact read bound")
+	}
+	state := sha256.New()
+	count, err := io.Copy(state, io.LimitReader(reader, expectedSize+1))
+	if err != nil || count != expectedSize {
+		return count, "", errors.New("artifact read did not match signed size")
 	}
 	return count, hexHash(state), nil
 }

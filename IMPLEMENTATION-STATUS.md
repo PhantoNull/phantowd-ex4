@@ -3,8 +3,15 @@
 
 # Implementation status
 
-Code audit: **2026-10-03**, integrated `develop` baseline
-`d362c16afa118ad7b32b35719ca3336fac547cc8` (PR #81).
+Code audit: **2026-10-04**, integrated `develop` baseline
+`ae412af9f832f30d7d8ddd4d110629e97de03098` (PR #82).
+PR #82 exact `ec8e127` passed its own host and QEMU/DTB checks. Guarded
+squash integration preserves expected/checked/integrated whole tree `e84a3759`;
+its integrated topic refs were retired. This integrates the read-only protected
+volume registry and exact desired-policy binding, not persistent registration,
+mount/import, activation or hardware qualification.
+
+Historical PR #81 integration:
 PR #81 exact `07058ed` passed its own host and ARMv5/DTB checks, including
 standard/two-boot fixtures and final isolated-volume cleanup. Guarded squash
 merge `d362c16` preserves the expected/checked/integrated whole tree `4208c42e`;
@@ -47,7 +54,7 @@ successfully on that frozen source. Five source hashes and seven unchanged base
 hashes independently agree after completion. This is cumulative cached local
 evidence, not a completed original run, hosted feature or clean/EX4 acceptance.
 
-M3.2g is being implemented separately from frozen PR81: strict internal registry
+M3.2g was implemented separately from then-frozen PR81: strict internal registry
 model, descriptor-anchored read-only reader and private complete-census resolver.
 The approved scope has no writer/adoption, production state placement, HTTP,
 mount/import or activation. Windows preflight, whole pinned Linux tagged vet/
@@ -72,6 +79,16 @@ from-UUID, conflicting backing and split-policy refusal against its actual MD
 and tmpfs registry. No second policy owner/scanner, writer, HTTP, planner-ready
 token, mount/import or activation; clean/hosted/physical qualification remains
 separate. No new Docker image/volume or surviving project test container.
+
+M10.2b hardens the host signed-manifest boundary without a firmware rebuild.
+A real signed root/artifact case-alias regression fails twice before the fixed
+schema scanner refuses non-exact/missing/null/wrong-shape/encoding inputs.
+Actual HTTP fixtures prove zero payload requests on malformed signed metadata.
+Hash reads stop at signed size plus one detection byte and reject changed
+opened size; no new install-time immutability guarantee is inferred. Complete
+Windows host vet/unit and pinned Linux whole host vet/race pass. Manifest
+schema, signing, trust roots, CLI and device authority are unchanged; target
+installation, persistent rollback and recovery remain unimplemented.
 
 Use [ROADMAP.md](ROADMAP.md) for the acceptance specification. This snapshot
 distinguishes tested components from deployed product workflows. It is not

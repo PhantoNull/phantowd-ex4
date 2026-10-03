@@ -1686,6 +1686,17 @@ Then qualify the selected backend and migration objects on expendable EX4 media.
   change, firmware build, physical operation or release qualification follows.
   PR #76 subsequently passes its own exact `f247139` host check and integrates
   as `bb9802e` with expected/checked/integrated complete tree `238dbd00`.
+  **M10.2b — strict host manifest/payload boundary (partial; locally tested):**
+  signed schema1 root/artifact fields require exact decoded spellings and all
+  required non-null fields/types, bounded lists and well-formed encoding.
+  Case aliases/duplicates, unknown fields, surrogate repair, wrong shapes and
+  unbounded nesting cannot produce a VerifiedManifest. The previous signed
+  root/artifact case-alias acceptance reproduces twice before the fix. Actual
+  HTTP fixtures refuse malformed signed metadata before any payload request.
+  Payload hashing consumes at most signed size plus one byte, rejects changed
+  opened size and retains size/hash/metadata checks. Whole Windows host vet/unit
+  and pinned Linux whole host vet/race pass. No signature bypass, schema/CLI/
+  trust-root change, firmware build, physical operation or installer is claimed.
 - **M10.3 — Target transaction.** Explicit preflight, staged, verified, installing,
   boot-pending, health-confirmed and recovery states. Journal durable boundaries;
   check space/power prerequisites. An ambiguous state must not restart installation
