@@ -59,10 +59,13 @@ class CollectionRunnerContractTests(unittest.TestCase):
             self.assertEqual(result.stdout + result.stderr, "")
 
     def test_one_boot_requires_both_markers_and_removes_all_scratch(self):
-        with tempfile.TemporaryDirectory(dir="/tmp") as temporary:
+        with tempfile.TemporaryDirectory(dir="/tmp") as temporary, \
+                tempfile.TemporaryDirectory(dir="/dev/shm") as ram_temporary:
             root = Path(temporary)
-            base, tools, scratch = (root / name for name in
-                                    ("base", "tools", "scratch"))
+            base, tools = (root / name for name in ("base", "tools"))
+            # Hosted /tmp need not be tmpfs. Put tiny fake outputs in RAM;
+            # executable fake tools remain outside the shared-memory noexec.
+            scratch = Path(ram_temporary) / "scratch"
             for directory in (base, tools, scratch):
                 directory.mkdir()
             for name in ("rootfs.ext2", "zImage", "versatile-pb.dtb"):

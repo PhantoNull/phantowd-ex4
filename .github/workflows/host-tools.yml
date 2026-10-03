@@ -6,6 +6,11 @@ on:
     paths:
       - 'support/tests/test-smart-replay.sh'
       - 'support/tests/test-smart-replay-boundaries.py'
+      - 'support/test-smart-report.ps1'
+      - 'support/tests/test-smart-report-wrapper.ps1'
+      - 'support/tests/test-qemu-smart-report.sh'
+      - 'support/tests/smart-report-init.sh'
+      - 'support/tests/test-smart-replay-contract.py'
       - 'tools/phantowd-lab/**'
       - 'src/phantowd-service-launcher/**'
       - 'support/test-service-launcher.ps1'
@@ -56,6 +61,11 @@ on:
     paths:
       - 'support/tests/test-smart-replay.sh'
       - 'support/tests/test-smart-replay-boundaries.py'
+      - 'support/test-smart-report.ps1'
+      - 'support/tests/test-smart-report-wrapper.ps1'
+      - 'support/tests/test-qemu-smart-report.sh'
+      - 'support/tests/smart-report-init.sh'
+      - 'support/tests/test-smart-replay-contract.py'
       - 'tools/phantowd-lab/**'
       - 'src/phantowd-service-launcher/**'
       - 'support/test-service-launcher.ps1'
@@ -154,6 +164,13 @@ jobs:
 
       - name: Verify cached-only preflight on disposable Linux fixtures
         run: python3 -B support/tests/test-cached-qemu-preflight.py
+
+      - name: Verify SMART wrapper default and bounded command boundary
+        shell: pwsh
+        run: ./support/tests/test-smart-report-wrapper.ps1
+
+      - name: Verify SMART runner markers and disposable cleanup
+        run: python3 -B support/tests/test-smart-replay-contract.py
 
       - name: Verify native service launcher refusals
         run: python3 -B support/tests/test-service-launcher.py

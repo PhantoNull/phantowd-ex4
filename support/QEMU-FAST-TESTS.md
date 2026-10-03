@@ -654,14 +654,23 @@ See M0.2 in [the roadmap](../ROADMAP.md).
 
 ### Qualification limits
 
-`support/test-smart-report.ps1` runs the pure internal SMART report parser's
-tests on ARMv5 using only synthetic JSON. It reuses the pinned image/workspace
+`support/test-smart-report.ps1` runs the internal SMART parser and generation-
+bound coordinator tests in the **same ARMv5 boot**, using synthetic JSON and
+fake backends. Each binary needs its own exact success marker. It reuses the pinned image/workspace
 read-only, compiles in bounded tmpfs, verifies the base hashes and injects the
-test binary into a disposable snapshot; no SMART executable, additional data
+test binaries into a disposable snapshot; no SMART executable, additional data
 disk, network or physical device is supplied. No new image/volume is created.
 The full integration wrapper runs the same fixture against its just-built base.
-This qualifies report interpretation only, not actual smartctl output, transport,
-standby policy, collection, history, test jobs or physical disk health.
+The focused container is non-root, capability-free and network-free, with two
+CPUs, 2 GiB memory, 128 PIDs and disposable RAM caches/scratch. The default base
+directory is resolved inside the script body for Windows PowerShell compatibility;
+command-boundary mocks test default/explicit input and dependency/run refusals.
+Runner mocks separately test missing-marker refusal, one fake boot, scratch
+cleanup and unchanged inputs; they are not guest execution. Exact path contracts
+select host/QEMU validation for fixture changes, not an unrelated EX4 B3 rebuild.
+This qualifies report interpretation and fake-backend coordinator semantics
+only, not authenticated smartctl/device provenance, real subprocess cleanup,
+physical transport/standby policy, collection, history, jobs or disk health.
 
 The separate [CPU-only producer oracle](SMART-REPLAY.md) runs real upstream
 smartctl 7.4 or 7.5 with its generic (no hardware) backend and invented stdin ATA

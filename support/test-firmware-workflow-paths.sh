@@ -236,12 +236,19 @@ doc/**
 # Native synthetic SMART replay tests do not consume EX4 board build inputs.
 # Keep their host/QEMU validation while avoiding unrelated B3 compilation.
 for path in 'support/tests/test-smart-replay.sh' \
-    'support/tests/test-smart-replay-boundaries.py'; do
+    'support/tests/test-smart-replay-boundaries.py' \
+    'support/test-smart-report.ps1' \
+    'support/tests/test-qemu-smart-report.sh' \
+    'support/tests/smart-report-init.sh' \
+    'support/tests/test-smart-replay-contract.py'; do
     require_ignored_path "$stage_b3_workflow" "$path"
     require_triggered_path "$host_workflow" "$path"
     require_not_ignored_pattern "$qemu_workflow" push "$path"
     require_not_ignored_pattern "$qemu_workflow" pull_request "$path"
 done
+require_ignored_path "$stage_b3_workflow" 'support/tests/test-smart-report-wrapper.ps1'
+require_ignored_path "$qemu_workflow" 'support/tests/test-smart-report-wrapper.ps1'
+require_triggered_path "$host_workflow" 'support/tests/test-smart-report-wrapper.ps1'
 api_and_qemu_paths='
 src/phantowd-api/**
 package/phantowd-api/**

@@ -125,10 +125,23 @@ pass with the manifest-verified original rootfs unchanged. Runner contract tests
 prove missing-marker refusal, one fake boot and scratch cleanup separately;
 these mock tools are not guest execution. The focused wrapper uses the existing
 image/workspace read-only, a non-root zero-capability container and disposable
-bounded RAM scratch. This is not physical SMART provenance, an implemented
-command/device provider, a fresh full image or hosted qualification. M8 and
+bounded RAM scratch. Focused evidence alone is not physical SMART provenance,
+an implemented command/device provider, a full image or hosted qualification. M8 and
 overall bands remain unchanged; no product service, metadata-broker privilege,
 HTTP endpoint, history or device operation is added.
+
+The unchanged published `e960454` subsequently passed the actual complete
+`build-qemu.ps1 -CachedOnly` lane: source verification, all Linux host/race/fuzz,
+package/image/legal-info/SBOM, native probe and all standard/MD/two-boot/launcher/
+retained-Owner/loader/atomic/Samba/SMART guest fixtures. Seven exported artifacts
+were independently rehashed against the preceding known baseline and all match;
+the target library and collected Buildroot archive also retain pinned hashes.
+Only the existing two volumes, one 14 GiB output and approximately 971 MiB compiler
+cache remain; the temporary container is removed. This is cached local full
+integration, not independent clean-build, hosted topic or physical qualification.
+The subsequent CI-only follow-up selects host/QEMU rather than unchanged B3 for
+SMART fixture paths and adds command-boundary/default-path tests; it does not
+change the coordinator, guest runner, firmware inputs or product authority.
 
 The combined ARM-attribute observer and actual libatomic dispatch fixture passed
 complete cached local integration on unchanged `ea87772` (tree `e899614c`):
