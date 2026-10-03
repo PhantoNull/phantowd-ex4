@@ -4,16 +4,19 @@
 # Implementation status
 
 Code audit: **2026-10-03**, integrated `develop` baseline
-`e7f55283a781f4bd21c6715c56eb9f6baf12563d` (PR #60, following PR #61).
+`3da9b8ef37ff352172719fd2bf9abd654315a7bf` (PR #62).
 Use [ROADMAP.md](ROADMAP.md) for the acceptance specification. This snapshot
 distinguishes tested components from deployed product workflows. It is not
 installation approval, a security certification, or an exhaustive line-by-line audit.
 
 PR #60 integrated the retained static-code Owner after exact head `7c96f41`
 passed hosted host, B3 and QEMU checks. The complete expected merge tree was
-verified before removing its branch. Later root-lifetime, supervision and
-license-checker work is published separately in PR #62; its independent
-qualification is not inferred from the PR #60 merge.
+verified before removing its branch. PR #62 subsequently integrated the
+root-lifetime, supervision and license-checker work after exact head `6ab66f4`
+passed all three independent hosted checks, including
+[QEMU/DTB](https://github.com/PhantoNull/phantowd-ex4/actions/runs/37079287654).
+Its expected complete squash tree was verified before removing that branch.
+This is component integration, not product service or EX4 qualification.
 
 PR #59 integrated the C++ toolchain and native/ARMv5 producer replay after exact
 head `e22828d` passed both hosted B3 and
