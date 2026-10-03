@@ -75,6 +75,38 @@ Older inventory objects without this field are unknown, not implicitly supported
 These are header prerequisites only: ARM build attributes/instructions, symbol
 versions and complete ABI compatibility remain unqualified.
 
+For ARM files, the inventory separately reports `arm_attributes`: `absent`,
+`unobserved`, `observed`, `invalid` or `unsupported`. The bounded
+[Addenda32](https://github.com/ARM-software/abi-aa/blob/main/addenda32/addenda32.rst#representing-build-attributes-in-elf-files)
+observer supports one public `aeabi` file scope, at most 64 KiB, 128 encoded
+attributes/vendor subsections and 1,024-byte strings. Explicit integer zero is
+retained; NTBS values use lossless `text_hex` without their terminating NUL.
+Private vendor payloads remain opaque. Conflicting declarations, malformed
+lengths/ULEB128, unsupported scopes/versions or exceeded budgets yield no
+partial attribute roster. Missing attributes never become invented defaults.
+This records declarations only: no instruction disassembly, linker inheritance,
+CPU/extension classification, compatibility exception or execution grant.
+`RuntimeClosure` retains its separate dependency/header-only contract; it does
+not turn these observations into a complete ABI gate.
+
+An optional read-only GNU target-readelf oracle runs against an existing trusted
+Buildroot output, without executing target ELF or rebuilding an image:
+
+```sh
+cd tools/phantowd-lab
+PHANTOWD_ARM_ATTRIBUTES_ORACLE_OUTPUT=/path/to/buildroot-output \
+  go test -run '^TestARMAttributesTargetReadelfOracle$' -v ./rootfsinventory
+go test -run '^$' -fuzz '^FuzzARMAttributesNeverExposePartialObservation$' \
+  -fuzztime=50000x -parallel=2 -timeout=120s ./rootfsinventory
+```
+
+The current target oracle agrees on 1,444 CPU-name/architecture/ARM/Thumb values
+across 361 attributed objects; the Go API has no attribute section. This is not
+a comparison of every tag. The current `libatomic` declares v7/Thumb-2 and has
+IFUNC variants: declarations alone must not be treated as proof that all code
+executes on ARMv5, or that the library is broken. Dispatch/kernel-helper and
+actual target execution require separate qualification.
+
 The graph is capped at 256 objects, 1,024 bindings, 4,096 dependency edges and
 64 MiB of selected regular-file bytes; source inventory retains its existing
 250,000-entry limit and scans/hashes the whole extracted tree, not just the

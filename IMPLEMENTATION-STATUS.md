@@ -4,7 +4,7 @@
 # Implementation status
 
 Code audit: **2026-10-03**, integrated `develop` baseline
-`7fa757f417377a4c3df1a77fa56ff660a0efb4b0` (PR #63).
+`dd1dd99c83fa5458f6b55bf72e582c389123b7a3` (PR #64).
 Use [ROADMAP.md](ROADMAP.md) for the acceptance specification. This snapshot
 distinguishes tested components from deployed product workflows. It is not
 installation approval, a security certification, or an exhaustive line-by-line audit.
@@ -23,6 +23,14 @@ and was squash-merged with complete expected-tree equality. Its local/remote
 branch was retired after inclusion proof; no unrelated worktree or stash was
 removed. That result does not qualify the separate host-reader, source-collection
 and ARM-header follow-ups documented below.
+
+PR #64 subsequently passed exact-head `f7f9477` host, B3 and
+[QEMU/DTB](https://github.com/PhantoNull/phantowd-ex4/actions/runs/37088513201)
+checks and was squash-merged as `dd1dd99`. Its complete merge tree equals the
+checked head. The original transport/source topics have tree-identical rebased
+ancestors in that checked head; all three integrated local/remote refs were
+retired with exact-SHA guards. This does not qualify the separate ARM-attribute
+observer or new atomic-dispatch fixture as hosted/product/EX4 results.
 
 PR #59 integrated the C++ toolchain and native/ARMv5 producer replay after exact
 head `e22828d` passed both hosted B3 and
@@ -95,6 +103,45 @@ removed. QEMU-only experiment paths no longer trigger an unchanged EX4 kernel
 rebuild; actual board/build input changes remain covered.
 
 ## Roadmap comparison
+
+The combined ARM-attribute observer and actual libatomic dispatch fixture passed
+complete cached local integration on unchanged `ea87772` (tree `e899614c`):
+source verification, Linux vet/unit/race/fuzz, image/legal-info/SBOM, native
+storage probe and all standard/MD/two-boot/launcher/retained-Owner/loader/atomic/
+Samba/SMART guest lanes. Seven exported artifact hashes were independently
+verified and match the preceding full baseline. The actual library and collected
+Buildroot source archive also retain their pinned hashes. This run used the
+existing image, two fixed volumes and one output, with bounded disposable RAM
+caches and scratch. A cold full API race differential reproduced insufficient
+256 MiB temporary space and passed with 2048 MiB; the complete lane then passed
+with that allocation without weakening tests. This is not a new hosted result,
+independent clean build, full ISA/ABI qualification, physical EX4 qualification
+or product activation. The product gates and estimate bands remain unchanged.
+
+A subsequent disposable ARM926 fixture calls the actual image's libatomic
+through 36 versioned dynamic resolutions after UID/GID 1000, zero-capability
+and no-new-privileges checks. Four widths each pass 50 semantic scenarios,
+including upper-64-bit CAS mismatches and wraparound, plus 4,000 two-thread
+increments on the single-CPU guest; neighbouring cells remain unchanged.
+The readelf IFUNC roster and resolved offsets agree on non-resolver targets,
+the kernel reports helper version 5, and a missing-symbol control is refused.
+Exact target/image library hashes and unchanged original rootfs are checked.
+This is focused local fixture evidence, not every dispatch implementation,
+complete ARMv5/ABI or memory-model qualification, a new full image/hosted run,
+physical EX4 qualification or service activation. No milestone band changes.
+
+A separate host-only increment observes bounded explicit aeabi file-scope
+attributes, preserving integer zeros and exact NTBS bytes, with absent/
+unobserved/invalid/unsupported states and no partial roster after refusal.
+Windows unit/vet checks pass. Pinned Linux unit/vet/race and a 50,000-execution
+parser fuzz campaign pass; the optional real GNU target-readelf oracle agrees
+on 1,444 CPU/ISA values across 361 attributed objects and the Go API's absence.
+The final version/text-budget refinements pass the same oracle/race/fuzz checks;
+this is not new full image/QEMU or hosted qualification. libatomic's v7/Thumb-2
+declaration and IFUNC alternatives demonstrate why these observations are not
+a complete CPU gate or evidence of a broken library. RuntimeClosure remains
+dependency/header-only and never authorizes execution. No package, privileged
+profile, HTTP or product startup changes; milestone bands remain unchanged.
 
 The combined host-reader, original-source collection and ARM-header increments
 passed complete cached local integration on unchanged `21f2f9b` (tree

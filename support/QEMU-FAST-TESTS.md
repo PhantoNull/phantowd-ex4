@@ -1,5 +1,36 @@
 # Fast API and file-service integration checks
 
+## Actual libatomic dispatch on ARM926
+
+`support/test-atomic-dispatch.ps1` reuses the existing pinned image, toolchain
+and manifest-checked base. It creates no image or volume, mounts inputs
+read-only, caps CPU/memory/PIDs and uses only 256 MiB disposable tmpfs. One
+90-second QEMU ARM926 boot has no network, forwarded ports or host devices;
+only a copied rootfs snapshot is attached. Original base hashes must match.
+
+The temporary C probe drops to UID/GID 1000 with no groups/capabilities and
+`no_new_privs` before opening the image's exact `libatomic.so.1.2.0`. The host
+first compares that file's SHA-256 with the existing target library. Versioned
+`dlvsym` calls force 36 real library function resolutions rather than inlined
+compiler builtins. Resolved offsets must differ from the IFUNC resolver
+offsets in GNU readelf's dynamic symbol table. This demonstrates dispatch,
+not identification of every selected implementation or symbol/ISA safety.
+
+Four widths (1/2/4/8 bytes) each exercise 50 sequential semantic scenarios,
+including valid memory-order variants, CAS success/failure, upper-64-bit
+differences and unsigned wraparound; two threads add 4,000 increments per
+width on the single-CPU guest, with neighbouring-cell guards checked. The
+kernel kuser helper version is observed (at least 5 required). A separate
+missing-symbol run must fail without emitting readiness. A bounded host
+comparator rejects incomplete/duplicate/reordered/contradictory evidence.
+
+The full build runs this same fixture after producing its exact artifacts;
+cheap refusal tests run before compilation. QEMU-only changes are excluded
+from EX4 B3 compilation. A local cached guest pass is not a full new image
+build, hosted result, exhaustive memory-model/SMP proof, physical EX4 test or
+product service activation. An aggregate ARMv7/Thumb-2 attribute on this mixed
+library is neither sufficient acceptance nor sufficient rejection.
+
 ## Retained static-code Owner
 
 `support/test-runtime-owner.ps1` uses the existing pinned image/workspace and

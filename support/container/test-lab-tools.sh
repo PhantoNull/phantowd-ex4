@@ -18,3 +18,4 @@ cd "$module_dir"
 "$go_binary" test -run '^$' -fuzz '^FuzzStreamDecoder$' -fuzztime=100000x -parallel=2 ./mcuproto
 "$go_binary" test -run '^$' -fuzz '^FuzzDecodeReceiveDiagnosticBounds$' -fuzztime=100000x -parallel=2 -timeout=120s ./mcuproto
 "$go_binary" test -run '^$' -fuzz '^FuzzStorageInventoryAndDryRunNeverBecomeExecutable$' -fuzztime=100000x -parallel=2 ./storageinventory
+"$go_binary" test -run '^$' -fuzz '^FuzzARMAttributesNeverExposePartialObservation$' -fuzztime=50000x -parallel=2 -timeout=120s ./rootfsinventory

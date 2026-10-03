@@ -38,7 +38,7 @@ scope; [component contracts](src/phantowd-api/README.md) describe the boundaries
 | Storage | Non-root read-only broker, complete sysfs inventory, manual GPT observations, duplicate-identity detection and internal MD/mount-owner fixtures | Trusted production lifecycle, persistent volume IDs, global-use accounting, qualified import and RAID management |
 | Sharing and identities | SMB3/NFS fixtures, disabled-first Samba account lifecycle, session revocation, Unicode/CP850, streams and POSIX ACL tests | Product account workflows, supervised service activation/recovery and legacy permission migration |
 | Health | Bounded offline SMART report interpretation, synthetic ARMv5 tests and native/ARMv5 producer oracles | Trusted disk collection, history, authorized test jobs, notifications and UI |
-| Service isolation | Static-child owner/grant isolation, bounded-privilege Samba fixture, verified code staging, offline ARM-header checks and supervised retained static-code Owner | Authenticated runtime inputs, dynamic service-specific composition, durable recovery and product startup |
+| Service isolation | Static-child owner/grant isolation, bounded-privilege Samba fixture, verified code staging, offline ARM-header/build-attribute observations, actual QEMU libatomic dispatch tests and supervised retained static-code Owner | Authenticated runtime inputs, dynamic service-specific composition, durable recovery and product startup |
 | EX4 hardware | Bounded diskless RAM research; see [board notes](board/wd/ex4/README.md) | Sustained networking, factory MAC handoff, SATA, cooling, LEDs/display, thermal safety and recovery |
 
 The API/dashboard are development-only and guest-loopback-only by default.
