@@ -1254,8 +1254,11 @@ board network observations limited.
   vet/race, actual UID1000/zero-capability collection/FD counts, 25,000-execution
   object/route fuzz and Windows preflight pass. Actual ARMv5 kernel collection
   plus nonempty generated weighted-group assertions and clean two-boot overlay
-  pass on code `319a331`; verified existing kernel/packages are reused, not a
-  full image/SBOM build or independent clean/hosted/physical qualification.
+  pass on code `319a331`; those overlay checks alone are not a full image/SBOM
+  build or independent clean/hosted/physical qualification. The subsequent
+  complete cached integration passes on `cec1527`; PR #74 then passes its own
+  exact `02bdb0c` host/QEMU checks and integrates as `f19e6eb` with whole-tree
+  equality. No physical networking or release qualification follows.
   Live nonempty kernel-group behavior remains a separate acceptance gap.
   **M6.1f — local address preflight (partial; locally tested):** privately join
   a validated policy and complete immutable inventory through exactly two

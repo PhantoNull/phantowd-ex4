@@ -219,8 +219,11 @@ probe and all standard/MD/two-boot/launcher/Owner/loader/atomic/Samba/SMART gues
 lanes. Independent post-run checks verify all seven exported hashes, resolved
 policy-routing kernel options and exact exported/image/target API bytes. One
 existing output and two fixed volumes are reused; temporary containers removed.
-This is cached local integration, not independent clean reproduction, hosted
-topic or physical qualification. No live nonempty kernel-group campaign, evaluator, network
+That cached local integration did not itself demonstrate independent clean
+reproduction, hosted topic or physical qualification. Subsequently PR #74
+passed its own exact `02bdb0c` host/QEMU checks and merged as `f19e6eb` with
+complete expected/checked/integrated tree equality, qualifying component
+integration only. No live nonempty kernel-group campaign, evaluator, network
 application, new privilege, HTTP or product startup. Planning bands unchanged.
 
 M6.1d adds two fixed strict IPv4/IPv6 routing-rule dumps to the existing private
