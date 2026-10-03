@@ -96,6 +96,18 @@ rebuild; actual board/build input changes remain covered.
 
 ## Roadmap comparison
 
+A subsequent disposable ARM926 fixture calls the actual image's libatomic
+through 36 versioned dynamic resolutions after UID/GID 1000, zero-capability
+and no-new-privileges checks. Four widths each pass 50 semantic scenarios,
+including upper-64-bit CAS mismatches and wraparound, plus 4,000 two-thread
+increments on the single-CPU guest; neighbouring cells remain unchanged.
+The readelf IFUNC roster and resolved offsets agree on non-resolver targets,
+the kernel reports helper version 5, and a missing-symbol control is refused.
+Exact target/image library hashes and unchanged original rootfs are checked.
+This is focused local fixture evidence, not every dispatch implementation,
+complete ARMv5/ABI or memory-model qualification, a new full image/hosted run,
+physical EX4 qualification or service activation. No milestone band changes.
+
 A separate host-only increment observes bounded explicit aeabi file-scope
 attributes, preserving integer zeros and exact NTBS bytes, with absent/
 unobserved/invalid/unsupported states and no partial roster after refusal.

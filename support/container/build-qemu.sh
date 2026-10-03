@@ -40,6 +40,11 @@ python3 -B -m flake8 "$external_dir/support/tests/test-buildroot-source-collecti
 python3 -B "$external_dir/support/tests/test-qemu-build-feedback.py"
 python3 -B "$external_dir/support/tests/test-service-launcher.py"
 python3 -B "$external_dir/support/tests/test-runtime-loader-fixture.py"
+python3 -B "$external_dir/support/tests/test-atomic-dispatch-fixture.py"
+python3 -B -m flake8 "$external_dir/support/tests/atomic_dispatch_fixture.py" \
+    "$external_dir/support/tests/test-atomic-dispatch-fixture.py"
+shellcheck "$external_dir/support/tests/test-qemu-atomic-dispatch.sh" \
+    "$external_dir/support/tests/atomic-dispatch-init.sh"
 python3 -B "$external_dir/support/tests/test-samba-root-fixture.py"
 python3 -B "$external_dir/support/tests/test-qemu-kernel-inputs.py"
 python3 -B -m flake8 "$external_dir/support/tests/runtime_loader_fixture.py" \
@@ -526,6 +531,15 @@ if ! TMPDIR=/phantowd-qemu-fixture-tmp sh "$external_dir/support/tests/test-qemu
     "$output_dir/host/sbin/debugfs" "$external_dir" \
     "$artifact_dir/qemu-runtime-loader-failure.log"; then
     echo "Preserved failed loader differential diagnostics in $artifact_dir" >&2
+    exit 1
+fi
+
+# Memory-only actual IFUNC calls on ARM926; aggregate ISA tags are not a gate.
+if ! TMPDIR=/phantowd-qemu-fixture-tmp sh "$external_dir/support/tests/test-qemu-atomic-dispatch.sh" \
+    "$artifact_dir" "$output_dir/host/bin/arm-buildroot-linux-gnueabi-gcc" \
+    "$output_dir/host/sbin/debugfs" "$output_dir/target" "$external_dir" \
+    "$artifact_dir/qemu-atomic-dispatch-failure.log"; then
+    echo "Preserved failed atomic-dispatch diagnostics in $artifact_dir" >&2
     exit 1
 fi
 

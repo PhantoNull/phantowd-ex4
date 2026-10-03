@@ -738,6 +738,16 @@ device fails closed. Major-zero pseudo-filesystems do not imply a block source.
 
 ## M4: Supervised SMB and NFS
 
+Runtime prerequisite evidence now includes a disposable actual libatomic
+ARM926 dispatch fixture: versioned exported calls, four widths, sequential
+semantics/upper-64-bit CAS/overflow and bounded two-thread increments, with
+zero-capability execution and exact target/image library checks. GNU readelf
+resolver offsets are distinguished from selected function offsets. This
+does not identify or qualify every implementation, instruction or memory
+model, and cannot replace signed runtime manifests, process-set ownership,
+physical EX4 testing or product activation. See the
+[fast fixture contract](support/QEMU-FAST-TESTS.md#actual-libatomic-dispatch-on-arm926).
+
 **State:** policy/rendering and isolated service fixtures tested. The internal
 candidate planner has target parser evidence. A Linux adapter now obtains
 identity evidence directly from `identityowner.Owner`; host tests and a local
