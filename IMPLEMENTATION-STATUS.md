@@ -47,6 +47,21 @@ This host-tool/Markdown-only increment correctly requires no firmware QEMU
 build; it does not qualify a target installer or physical device. The duplicate
 PR75 merge-triggered QEMU run is confirmed cancelled, not failed or restarted.
 
+M1.4a adds a test-only native SIGKILL campaign for the combined policy store.
+At seven actual write/sync/close/rename boundaries, the parent verifies the
+writer's exclusive lock, kills it without graceful cleanup, confirms signal
+termination and then verifies exact coherent nonempty SMB/NFS state, preserved
+pending evidence, stale-writer rejection and a subsequent explicit commit.
+All boundaries pass three Linux race-enabled repetitions; complete Linux
+`-tags=qemu` API vet/race and Windows API/UI/vet/ARMv5 cross-compilation pass.
+Linux files are disposable tmpfs regular files in one bounded non-root pinned
+container at a time, automatically removed; no new image/volume/output exists.
+Production code and firmware inputs are unchanged. This narrows the native
+process-interruption evidence gap, not power-loss, real media/ENOSPC, product
+state provisioning, ARMv5 execution or recovery qualification. Planning bands
+remain unchanged. This increment is not covered by the integrated PR #77
+panel check and has no hosted integration claim.
+
 PR #75 passed exact `c51d452` host and QEMU/DTB checks, including final
 isolated-volume cleanup, and merged as `9d2a0bc`. Expected, checked and integrated
 complete trees equal `772ed059`. The combined address topic and original Samba

@@ -289,6 +289,17 @@ and recovery do not. **Depends on:** M0 for tests; M7 for physical placement.
   sync, ENOSPC, read-only storage, corrupt/truncated files, replacement/symlink
   attacks, concurrent writers and process exits at each durable boundary.
   Clean reboot and process exit are not power-loss guarantees.
+  **M1.4a — abrupt combined-policy writer (native-tested; not complete):**
+  a test-only child holds the actual revision-store lock while its parent
+  confirms exclusion, then sends SIGKILL at seven write/sync/close/publication
+  boundaries. Reopening returns the exact old/new nonempty SMB/NFS policy,
+  never staged or mixed components; pending evidence survives observation,
+  stale commits refuse and explicit subsequent commits succeed. Three native
+  Linux race-enabled repetitions and whole tagged API vet/race tests pass.
+  The campaign uses temporary tmpfs regular files without mounts/devices;
+  production code and firmware inputs are unchanged. This is not ARMv5/EX4
+  execution, real ENOSPC/read-only-media qualification, power interruption,
+  selected state-medium durability or an implemented reconciliation workflow.
 
 **Start in:** [admincredentials](src/phantowd-api/admincredentials/README.md),
 [fileservicestore](src/phantowd-api/fileservicestore/README.md),
