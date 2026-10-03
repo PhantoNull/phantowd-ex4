@@ -81,3 +81,36 @@ explicit empty policy and16-volume bounds. A registered volume is unreferenced
 only when its ID is absent from the desired volume dictionary; protocol counts
 do not imply activation or that referenced paths exist. No future registration
 writer or service Owner is created by this observation.
+
+## Scoped backing-topology follow-up contract (before implementation)
+
+1. **Input/authority:** the existing protected Snapshot and complete mounted-ext
+   census only. Reuse their validation before examining any registered subset.
+   Keep schema1 unchanged; do not introduce expected physical/MD identifiers.
+2. **Transition:** pure private observation of each uniquely matched filesystem's
+   immediate source kind, physical leaf count and MD-array count. Distinguish
+   physical disk/partition, MD device/partition/other MD-backed stack and other
+   block stacks. Aliases of one kernel object are not extra backing objects.
+3. **Failure:** invalid whole census/snapshot returns no partial result. Missing
+   or cloned filesystem claims receive no selected backing. Unresolved disk
+   evidence stays explicit even when topology can be observed; a topology name
+   is not identity qualification, health, compatibility or activation readiness.
+4. **Boundary:** private main-package computation, no I/O, additional scanner,
+   raw identifier/path/device output, persistence, schema migration, public API,
+   Owner, mount/import, service activation or hardware work. This prepares a
+   later reviewed stronger-backing contract; it does not implement that contract.
+5. **Acceptance:** native complete-census cases for direct disk/partition, MD,
+   stacked backing, aliases/clones/missing/unresolved/empty, order, immutable
+   inputs and JSON refusal. Reuse the existing actual ARMv5 disposable MD
+   fixture with a mandatory consumer assertion; run Windows preflight then
+   bounded full native race and standard/two-boot overlay, without new volumes.
+
+The scoped topology review passes complete pinned native tagged vet/race and
+actual ARMv5 standard/two-boot overlay. Native tests distinguish all six source
+classes, retain unresolved VPD evidence, reject malformed unclaimed census and
+zero Snapshot, and cover alias/clone/missing/empty/order/result ownership and16
+claims. The required guest assertion observes the actual disposable MD device,
+two physical leaves and one array without selecting a missing claim. Original
+base hashes remain unchanged; no project test container survives. This is not
+a stronger persistent identity selector, independent clean-build qualification,
+physical-media compatibility or service authority.

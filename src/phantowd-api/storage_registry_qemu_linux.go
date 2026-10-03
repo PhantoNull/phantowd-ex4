@@ -71,6 +71,19 @@ func exerciseQEMUVolumeRegistry(census trustedMountedExtCensus) error {
 	if _, err := json.Marshal(review); err == nil {
 		return errors.New("private registry review serialized")
 	}
+	backing, err := reviewRegisteredBacking(snapshot, census)
+	if err != nil || backing.registryRevision != 1 || backing.coverage != census.coverage || len(backing.volumes) != 2 ||
+		backing.volumes[0].observed.volumeID != "logical-missing" || backing.volumes[0].kind != "" ||
+		backing.volumes[0].physicalDiskCount != 0 || backing.volumes[0].mdArrayCount != 0 ||
+		backing.volumes[1].observed.volumeID != "logical-registered-md" || backing.volumes[1].kind != "md-device" ||
+		backing.volumes[1].physicalDiskCount != 2 || backing.volumes[1].mdArrayCount != 1 ||
+		backing.volumes[1].observed.scopedDiskEvidenceUnresolved {
+		return errors.New("registry backing topology lost actual MD or selected missing claim")
+	}
+	if _, err := json.Marshal(backing); err == nil {
+		return errors.New("private registry backing observation serialized")
+	}
+	fmt.Println("PHANTOWD_REGISTRY_BACKING_READY actual_md_device=true physical_disks=2 arrays=1 missing_unselected=true private=true identity_qualification=false activation=false scope=disposable-qemu-only")
 	policy := fileservice.Config{Format: fileservice.ConfigFormat, SchemaVersion: 1, Revision: 7,
 		Shares: shareconfig.Config{Format: shareconfig.Format, SchemaVersion: shareconfig.SchemaVersion, Revision: 7,
 			Volumes: append([]shareconfig.Volume{}, d.Volumes...), Users: []shareconfig.User{{ID: "reader", Name: "reader"}},

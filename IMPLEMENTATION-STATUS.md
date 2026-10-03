@@ -4,7 +4,12 @@
 # Implementation status
 
 Code audit: **2026-10-04**, integrated `develop` baseline
-`ae412af9f832f30d7d8ddd4d110629e97de03098` (PR #82).
+`6bfc52d5ee6e0e7757ea2b3c5b243e4e3b52e591` (PR #83).
+PR #83 exact `8564b15` passed its own host check and guarded squash-integrated
+the host-only manifest fix with expected/checked/integrated tree `d85d18b5`.
+No firmware rebuild or installation authority follows from that host change.
+
+Historical PR #82 integration:
 PR #82 exact `ec8e127` passed its own host and QEMU/DTB checks. Guarded
 squash integration preserves expected/checked/integrated whole tree `e84a3759`;
 its integrated topic refs were retired. This integrates the read-only protected
@@ -89,6 +94,16 @@ opened size; no new install-time immutability guarantee is inferred. Complete
 Windows host vet/unit and pinned Linux whole host vet/race pass. Manifest
 schema, signing, trust roots, CLI and device authority are unchanged; target
 installation, persistent rollback and recovery remain unimplemented.
+
+The private registry backing follow-up classifies observed physical disk/
+partition, MD device/partition/stack and other block-stack relationships, with
+physical-leaf/array counts. It validates the entire census, does not select a
+backing for missing/cloned claims and retains unresolved physical evidence.
+Whole pinned tagged Linux vet/race, interruption/fuzz/contracts and actual
+ARMv5 standard/two-boot overlay pass. The guest observes its existing two-leaf
+MD fixture; no new disk/boot/image/volume is added. Schema1 is unchanged. This
+remains a private point-in-time observation, not stronger durable backing
+identity, RAID health, WD compatibility, global-use or activation authority.
 
 Use [ROADMAP.md](ROADMAP.md) for the acceptance specification. This snapshot
 distinguishes tested components from deployed product workflows. It is not

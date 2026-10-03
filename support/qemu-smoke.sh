@@ -328,6 +328,10 @@ while [ "$attempt" -lt "$smoke_timeout" ]; do
             echo 'Missing combined-policy exact registry binding and conflict refusal assertion' >&2
             exit 1
         fi
+        if ! grep -F 'PHANTOWD_REGISTRY_BACKING_READY actual_md_device=true physical_disks=2 arrays=1 missing_unselected=true private=true identity_qualification=false activation=false scope=disposable-qemu-only' "$log_file" >/dev/null; then
+            echo 'Missing private registry backing topology and absent-claim refusal assertion' >&2
+            exit 1
+        fi
         if ! grep -F 'PHANTOWD_M35_TWO_VOLUME_READY distinct_filesystems=true lost_volume_quarantined=true lost_handles_revoked=true healthy_group_lease_survived=true fresh_healthy_owner_lease=true roster_reacquire=all_or_error scope=disposable-qemu-only' "$log_file" >/dev/null; then
             echo 'Missing M3.5 two-volume lease-loss assertion' >&2
             exit 1
