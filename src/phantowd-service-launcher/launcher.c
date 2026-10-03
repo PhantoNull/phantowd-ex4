@@ -6,6 +6,7 @@
 #include <fcntl.h>
 #include <grp.h>
 #include <linux/capability.h>
+#include <linux/magic.h>
 #include <sched.h>
 #include <signal.h>
 #include <stdint.h>
@@ -16,6 +17,7 @@
 #include <sys/prctl.h>
 #include <sys/stat.h>
 #include <sys/syscall.h>
+#include <sys/vfs.h>
 #include <sys/xattr.h>
 #include <unistd.h>
 
@@ -141,10 +143,15 @@ static int descriptors(void)
      * must be /dev/null; diagnostics must be anonymous pipes from the owner. */
     struct stat input, output, error;
     struct stat null_device;
+    struct statfs output_fs, error_fs;
     if (stat("/dev/null", &null_device) || fstat(0, &input) ||
         fstat(1, &output) || fstat(2, &error) || !S_ISCHR(input.st_mode) ||
         input.st_rdev != null_device.st_rdev || !S_ISFIFO(output.st_mode) ||
-        !S_ISFIFO(error.st_mode) || (fcntl(0, F_GETFL) & O_ACCMODE) != O_RDONLY)
+        !S_ISFIFO(error.st_mode) || (fcntl(0, F_GETFL) & O_ACCMODE) != O_RDONLY ||
+        fstatfs(1, &output_fs) || output_fs.f_type != PIPEFS_MAGIC ||
+        fstatfs(2, &error_fs) || error_fs.f_type != PIPEFS_MAGIC ||
+        (fcntl(1, F_GETFL) & O_ACCMODE) != O_WRONLY ||
+        (fcntl(2, F_GETFL) & O_ACCMODE) != O_WRONLY)
         return -1;
     return 0;
 }

@@ -4,17 +4,23 @@
 # Implementation status
 
 Code audit: **2026-10-03**, integrated `develop` baseline
-`2bf71fa405343f828af03b5d0c9a2889d5e5e2fd` (PR #59).
+`e7f55283a781f4bd21c6715c56eb9f6baf12563d` (PR #60, following PR #61).
 Use [ROADMAP.md](ROADMAP.md) for the acceptance specification. This snapshot
 distinguishes tested components from deployed product workflows. It is not
 installation approval, a security certification, or an exhaustive line-by-line audit.
+
+PR #60 integrated the retained static-code Owner after exact head `7c96f41`
+passed hosted host, B3 and QEMU checks. The complete expected merge tree was
+verified before removing its branch. Later root-lifetime, supervision and
+license-checker work is published separately in PR #62; its independent
+qualification is not inferred from the PR #60 merge.
 
 PR #59 integrated the C++ toolchain and native/ARMv5 producer replay after exact
 head `e22828d` passed both hosted B3 and
 [QEMU/DTB](https://github.com/PhantoNull/phantowd-ex4/actions/runs/37062393358)
 checks. Its complete merged tree equals the checked head and the merged branch
-was removed. Retained-code Owner and later native-boundary/MCU/Perl followups
-below remain feature work, not qualified merely by that earlier CI result.
+was removed. That earlier CI result alone does not qualify later Owner,
+native-boundary, MCU or Perl followups; their evidence is recorded separately.
 PR #58 previously integrated the code-ACL refusal correction and offline SMART
 parser after exact head `2e8eb6d` passed all host/B3/QEMU checks. Neither merge
 qualifies the EX4 product or physical SMART collection.
@@ -80,6 +86,15 @@ removed. QEMU-only experiment paths no longer trigger an unchanged EX4 kernel
 rebuild; actual board/build input changes remain covered.
 
 ## Roadmap comparison
+
+The native static-child launcher now verifies that stdout and stderr are
+writable anonymous `pipefs` pipe ends. Actual ARMv5 tests first reproduced
+acceptance of a named stdout FIFO and then a read-only stdout pipe; the fixes
+pass eleven refusal cases and existing positive Owner/handoff checks. Both
+stderr variants are covered, and a high inherited original-root FD is verified
+closed before execution. This is focused development-helper evidence, not
+complete integration, a legacy WD finding or product activation. Its local
+runner has explicit CPU/memory/PID caps and no new persistent Docker resources.
 
 An explicit blocking supervisor now extends the internal static/non-root code
 Owner only. Complete scans are serialized with a fixed idle interval and no

@@ -18,7 +18,11 @@ without setuid/setgid or file capabilities. The root must be root-owned,
 non-group/other-writable and not the original `/`. These checks **do not prove
 that the root contains only approved grants**; that is the future owner's job.
 
-stdin is read-only `/dev/null`, stdout/stderr are owner pipes. The caller starts
+stdin is read-only `/dev/null`; stdout/stderr must be writable anonymous
+`pipefs` pipe ends supplied by the trusted owner. Named filesystem FIFOs and
+read ends are refused independently on both descriptors. These checks establish
+descriptor type/direction, not an untrusted caller's ownership of a pipe.
+The caller starts
 one child as its process-group leader. The launcher unshares the mount
 namespace, makes propagation recursively private, enters the pinned root and
 resets cwd to `/`. It closes FD 4 and every higher inherited descriptor, marks
@@ -56,6 +60,22 @@ also verifies inherited blocked/ignored `SIGTERM` does not prevent a clean
 stop. Run `support/test-service-launcher.ps1` with existing pinned cache/base
 inputs; no image or persistent volume is created. This is an overlay test,
 not a clean product build, daemon integration or hardware qualification.
+
+On 2026-10-03, actual ARMv5 regressions reproduced two stdio contract gaps:
+the launcher accepted a named stdout FIFO, and separately a read-only stdout
+pipe. `S_ISFIFO` alone distinguishes neither an anonymous pipe from a named
+FIFO nor the descriptor's access direction. The corrected descriptor checks
+pass eleven guest refusal cases, covering named/read-only stdout and stderr,
+plus the existing positive Owner and grant-only handoff cases. The positive
+probe also verifies closure of a deliberately inherited original-root FD 511,
+not just low-numbered handles. Diagnostic-output errors cannot count as probe
+readiness. This remains a development-only helper; no legacy WD vulnerability,
+product service activation or physical qualification is inferred.
+
+The focused local Docker runner caps four CPUs, 2 GiB memory and 512 PIDs;
+its compiler scratch/rootfs copies remain in bounded tmpfs. It reuses the
+existing read-only cache and base image, creates no persistent volume or
+image, and auto-removes its container.
 
 The Go adapter fixes and copies its spec at construction, independently pins
 the executable/helper/root descriptors, and accepts no new launch input in
