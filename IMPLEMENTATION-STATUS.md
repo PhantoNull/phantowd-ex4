@@ -96,6 +96,19 @@ rebuild; actual board/build input changes remain covered.
 
 ## Roadmap comparison
 
+The combined host-reader, original-source collection and ARM-header increments
+passed complete cached local integration on unchanged `21f2f9b` (tree
+`f27f4ef6`): source verification, Linux host/vet/race/fuzz, image/legal-info/SBOM,
+native storage probe and all standard/MD/two-boot/launcher/retained-Owner/loader/
+Samba/SMART guest lanes. Seven exported artifact hashes were independently
+checked and match the preceding full baseline. The separately collected
+Buildroot archive also matches its pinned digest; upstream legal-info warnings
+are deliberately unchanged. This qualifies local integration of these increments,
+not an independent clean build, hosted feature result, complete corresponding-
+source bundle, dynamic service activation or physical EX4 installation.
+The helper experiments remain disposable and the product gates/bands below
+are unchanged. Existing image, two fixed volumes and one output/cache were reused.
+
 A host-only M4.4 runtime prerequisite now records exact processor-specific ELF
 header flags and requires observed EABI5/base procedure calls without BE-8 code
 for every object in the bounded ARM dependency candidate. Missing headers,
