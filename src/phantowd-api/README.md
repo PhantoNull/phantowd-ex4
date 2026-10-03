@@ -772,6 +772,29 @@ execution. Visual and assistive-technology testing remain required. The host
 visual-fixture server intentionally reports this backend as unavailable and
 does not emulate saves or validate policy.
 
+### Private health census prerequisite
+
+`smart_census.go` derives a complete private sysfs sample and a deterministic
+non-virtual whole-leaf view using the existing schema-v2 collector/validator.
+It does not reuse the import/mount eligibility filter: mounted disks and members
+of active MD arrays still require health monitoring. Removable/read-only flags
+and missing, invalid or ambiguous VPD remain explicit observations, not command
+eligibility. Partitions and logical/virtual nodes remain in the full census,
+but are not emitted as independent whole-leaf observations.
+
+Both samples and derived views are validated before whole-inventory comparison;
+generation, topology, private VPD evidence and unrelated-node changes refuse
+equality. Empty complete samples differ from incomplete/zero samples. Census
+types reject JSON. Synchronous sysfs reads have context checkpoints, not a
+promise of interruptible I/O or an atomic hotplug snapshot.
+
+Host tests and the existing ARMv5 smoke cover a mounted root, ambiguous VPD and
+two active disposable MD members. The private census opens no device and admits
+no `smartcollect.SourceAdmitted`, command, ioctl or stable history identity.
+It is not yet connected to the synthetic producer replay or product startup;
+retained device/runtime provenance, transport qualification and command
+boundaries remain separate. No HTTP endpoint or recurring scan is added.
+
 ### Test commands
 
 From the repository root on Windows, with a local Go 1.26+ installation:

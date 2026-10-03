@@ -25,6 +25,20 @@ def save_log(destination, source):
 
 
 class BuildFeedbackTests(unittest.TestCase):
+    def test_smart_census_requires_both_actual_guest_assertions(self):
+        smoke = (ROOT / "support/qemu-smoke.sh").read_text()
+        census = (ROOT / "src/phantowd-api/selftest.go").read_text()
+        md = (ROOT / "src/phantowd-api/md_stack_qemu_linux.go").read_text()
+        for marker, producer in (
+            ("PHANTOWD_SMART_SYSFS_CENSUS_READY", census),
+            ("PHANTOWD_SMART_MD_CENSUS_READY", md),
+        ):
+            self.assertIn(marker, smoke)
+            self.assertIn(marker, producer)
+        self.assertIn("active_md_members=2", smoke)
+        self.assertIn("command_admitted=false", smoke)
+        self.assertIn("device_opened=false", smoke)
+
     def test_runtime_code_owner_disposable_lane_is_bounded(self):
         script = (ROOT / "support/container/build-qemu.sh").read_text()
         self.assertIn('support/tests/test-qemu-runtime-owner.sh', script)

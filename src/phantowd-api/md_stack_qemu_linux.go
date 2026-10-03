@@ -180,6 +180,19 @@ func runQEMUMDStackTest() (result error) {
 		return errors.New("read-only mount of disposable MD filesystem failed")
 	}
 	mounted = true
+	if err := exerciseQEMUSMARTDiskCensus(); err != nil {
+		return err
+	}
+	smartCensus, err := collectSMARTDiskCensus(context.Background(), sysfs)
+	if err != nil {
+		return errors.New("SMART census of disposable mounted MD fixture failed")
+	}
+	smartArray, found := findWholeBlockObservation(smartCensus.snapshot.Observations, "md0")
+	if !found || len(smartArray.lowerBlocks) != 2 ||
+		!sameMDMemberNames(topologyMembers(smartArray.lowerBlocks), []mdMemberObservation{{Name: "sde"}, {Name: "sdf"}}) {
+		return errors.New("SMART census lost the active MD fixture topology")
+	}
+	fmt.Println("PHANTOWD_SMART_MD_CENSUS_READY complete=true leaves=7 active_md_members=2 mounted_root_included=true device_opened=false command_admitted=false scope=qemu-fixture-only")
 	var mountStat unix.Statx_t
 	if err := unix.Statx(unix.AT_FDCWD, mountPoint, unix.AT_NO_AUTOMOUNT,
 		unix.STATX_BASIC_STATS|unix.STATX_MNT_ID_UNIQUE, &mountStat); err != nil {

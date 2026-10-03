@@ -4,10 +4,19 @@
 # Implementation status
 
 Code audit: **2026-10-03**, integrated `develop` baseline
-`8579e428d1a0abc876d665640cff68a0d8f6e573` (PR #67).
+`f9bbfc0848be29c4fa904e67cc15714285e31b01` (PR #68).
 Use [ROADMAP.md](ROADMAP.md) for the acceptance specification. This snapshot
 distinguishes tested components from deployed product workflows. It is not
 installation approval, a security certification, or an exhaustive line-by-line audit.
+
+PR #68 passed final head `0e22e01` host and
+[QEMU/DTB](https://github.com/PhantoNull/phantowd-ex4/actions/runs/37101813148)
+checks and was squash-merged as `f9bbfc0`. Its complete expected merge tree
+equals the checked head and integrated tree; its local/remote topic was retired
+with exact-SHA guards after inclusion and worktree checks. The subsequent
+census was rebased onto that baseline with its entire tree unchanged. This
+qualifies synthetic fixed-capture integration, not the census's hosted checks,
+physical SMART collection, authenticated runtime or product installation.
 
 PR #65 passed exact-head `eeb14a7` host and
 [QEMU/DTB](https://github.com/PhantoNull/phantowd-ex4/actions/runs/37093392186)
@@ -120,6 +129,30 @@ removed. QEMU-only experiment paths no longer trigger an unchanged EX4 kernel
 rebuild; actual board/build input changes remain covered.
 
 ## Roadmap comparison
+
+An additional M8.5b prerequisite provides a private complete sysfs census for
+future health-source binding. It uses the existing bounded collector and
+complete schema-v2 validator, not the import/mount candidate filter. Mounted
+whole disks, active MD members, removable/read-only state and missing/invalid/
+ambiguous VPD remain observed. Comparison validates both derived views and
+the entire inventory, including private evidence and unrelated topology.
+Windows API/UI/vet and ARMv5 cross-compilation pass; pinned Linux Go 1.26.6
+QEMU-tagged vet/race and 16 feedback contracts pass. The actual existing ARMv5
+single-boot overlay also passes mandatory mounted-root and active-MD-member
+assertions with the original base unchanged. It reuses the unchanged metadata
+helper and skips the separate two-boot fixture. Subsequently, the complete
+cached local lane passed on unchanged published `c3f017a` (tree `082be769`):
+all host/race/fuzz, image/packages/legal-info/SBOM, native probe and existing
+standard/MD/two-boot/launcher/retained-Owner/loader/atomic/Samba/SMART guest lanes.
+Independent hashes find five exported artifacts unchanged from the capture
+baseline, while the API and rootfs have new hashes. A separate API-only rebuild
+with the pinned builder and target stripping matches the target, export and
+image-contained API byte-for-byte. This is not independent full clean-build or
+hosted topic qualification, source admission, report-to-device binding, SMART
+transport/ioctl authority or product integration. Existing two volumes, one
+14 GiB output and 971 MiB compiler cache were reused; test containers removed.
+No HTTP, broker/device rules, privilege profile or normal startup is changed.
+Milestone estimates remain unchanged.
 
 A subsequent M8.5b prerequisite adds `processowner.NewCapture` for one retained
 fixed command and one bounded regular read-only stdin, never a device. Complete

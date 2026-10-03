@@ -1289,6 +1289,16 @@ not host/QEMU progress.
     provenance, ioctl, standby or physical qualification; no product startup
     uses the primitive. Debug-free guest tests fit the existing copied image;
     injected bytes are verified before boot even if debugfs reports success.
+    An additional private sysfs census reuses the complete schema-v2 collector
+    and topology validator, not import/mount eligibility. Its non-virtual whole
+    leaf view retains mounted disks, active MD members, removable/read-only
+    flags and missing/invalid/ambiguous VPD states. Whole-inventory comparison
+    includes private VPD evidence, unrelated nodes and topology; invalid or
+    forged partial views are refused. Native race tests and the existing ARMv5
+    smoke pass, including the mounted root and two active disposable MD members.
+    This point-in-time observation is not `SourceAdmitted`, a census token,
+    retained device binding, SMART-capable transport or command authority.
+    Product startup, broker operations and HTTP remain unchanged.
     Do not add
     history/UI by treating this transient tuple as a stable media identity.
   - **M8.5c — Wake policy.** Specify exact no-check/device-detection behavior per
