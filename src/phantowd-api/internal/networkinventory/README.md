@@ -3,6 +3,58 @@
 
 # Private kernel network observation — M6.1b/M6.1c task contract
 
+## M6.1f local address preflight task contract (internal; not admission)
+
+Join a validated desired policy to an existing complete private observation
+using exactly two transient internal ifindex bindings in logical-slot order.
+Bindings are not user input or qualified factory/physical identities. Zero is
+allowed only for an entirely disabled unbound slot; all other bindings must
+refer to distinct observed independent Ethernet-shaped links. Reject loopback,
+stacked/mastered links and malformed current MAC shape, without promoting a
+current MAC to persistent identity. Do not add another collector or parser.
+
+Return counts only: static proposals, exact local prefix observations, missing
+prefixes, same-address/point-to-point-peer use elsewhere, other-interface subnet
+overlaps, blocked observed address/link flags, locally assigned gateway proposals,
+unresolved dynamic families and explicitly unbound disabled slots. Scan the full
+observed address set, including interfaces outside the bindings. Counters can
+overlap; absence of a conflict is never evidence of an externally free address.
+IPv6 link-local gateways are scoped to their proposed interface. Deduplicate
+gateway counts by interface/address, not across scopes or route enumeration.
+
+The conservative static flag check allows PERMANENT/NOPREFIXROUTE and IPv4
+SECONDARY only; tentative, DAD failure, optimistic, deprecated, NODAD and other
+unqualified flags block that observed prefix. Non-global scope or a distinct
+point-to-point peer also blocks it. Link flags must report UP/LOWER_UP and not
+DORMANT. These observations do NOT prove valid lifetimes, successful DAD,
+ownership by this policy, DHCP/RA provenance, routing/DNS reachability or physical
+carrier qualification. There is no ready/eligible/apply result or retained lease.
+
+Keep the helper private until factory binding/freshness/routing gates exist.
+Refuse canceled/nil contexts, forged/copied observations and invalid policies/
+bindings with zero output and the existing redacted error. No I/O, subprocess,
+new capability, HTTP, persistence, network mutation or physical-device operation.
+The caller must exclusively own the desired value while it is read; existing
+observation immutability is unchanged. Matching counts are not an atomic trial.
+
+Acceptance: /16,/31,/32 and IPv6 fixtures; cross-interface/peer/subnet/gateway
+conflicts including unbound interfaces; link-local scope; flag/shape/cancellation/
+privacy/alias/order and fixed-count mutation checks; actual native tests/race;
+mandatory generated ARMv5 positive/negative fixture in the existing boot, with
+the actual kernel collector remaining a separate assertion. No new stage or
+kernel/package build input. This is a prerequisite, not completed M6.1/M6.2.
+
+Local qualification (2026-10-03), code `68fae6b` / tree-identical rebased
+`8bf993d`, complete tree `3055351`: Windows API/UI/vet/tagged checks and ARMv5
+cross-compilation; pinned Linux complete API tagged vet/race, 2,000 fixed
+mutation/order cases, 1,000 wire plus 25,000 route/object fuzz executions each,
+7 kernel/21 feedback tests and actual workflow contracts pass. Standard ARMv5
+smoke requires `address_fixture=true` after generated positive/negative checks
+and separate actual kernel collection; the clean two-boot overlay also passes.
+All seven base hashes independently remain unchanged. Same existing pinned
+image/output, read-only inputs and bounded disposable tmpfs; no new full
+image/SBOM, clean hosted qualification, external conflict probe or EX4 test.
+
 ## M6.1e nexthop-object task contract (locally host/ARMv5 tested)
 
 Extend the existing private collector with one fixed strict GETNEXTHOP

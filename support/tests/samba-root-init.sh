@@ -164,9 +164,12 @@ run_fixture() {
         [ "$i" -lt 15 ] || return 1
         sleep 0.2
     done
-    grep -F 'PHANTOWD_SAMBA_ROOT_BOUNDARY_READY caps=00000000000000db nnp=true original_denied=true kernel_ro=true' /run/server.log || return 1
+    grep -Fx 'PHANTOWD_SAMBA_ROOT_CONTEXT_READY original_fds_closed=true signal_mask_empty=true dispositions_default=true scope=qemu-only' /run/server.log || return 1
+    grep -Fx 'PHANTOWD_SAMBA_ROOT_BOUNDARY_READY caps=00000000000000db nnp=true original_denied=true kernel_ro=true' /run/server.log || return 1
     grep -E '^Cap(Eff|Prm|Bnd):[[:space:]]+00000000000000db$' "/proc/$daemon_pid/status" |
         grep -c '^Cap' | grep -x 3 >/dev/null || return 1
+    grep -E '^Cap(Inh|Amb):[[:space:]]+0000000000000000$' "/proc/$daemon_pid/status" |
+        grep -c '^Cap' | grep -x 2 >/dev/null || return 1
     grep -E '^NoNewPrivs:[[:space:]]+1$' "/proc/$daemon_pid/status" >/dev/null || return 1
     [ "$(readlink "/proc/$daemon_pid/root")" = "$root" ] || return 1
     [ "$(readlink "/proc/$daemon_pid/ns/mnt")" != "$(readlink /proc/1/ns/mnt)" ] || return 1

@@ -72,7 +72,7 @@ func runSelfTest() error {
 	if err := exerciseQEMUNetworkInventory(); err != nil {
 		return err
 	}
-	fmt.Println("PHANTOWD_NETWORK_INVENTORY_READY kernel=true repeated=true routes=true fib_only=true rules=true nexthops=true object_fixture=true counts_redacted=true json_refused=true apply=false scope=qemu-namespace-only")
+	fmt.Println("PHANTOWD_NETWORK_INVENTORY_READY kernel=true repeated=true routes=true fib_only=true rules=true nexthops=true object_fixture=true address_fixture=true counts_redacted=true json_refused=true apply=false scope=qemu-namespace-only")
 	argon2Started := time.Now()
 	verifier, err := passwordhash.Hash(context.Background(), []byte("qemu-self-test-only"))
 	if err != nil {

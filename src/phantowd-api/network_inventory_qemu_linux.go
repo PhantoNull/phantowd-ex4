@@ -17,6 +17,9 @@ func exerciseQEMUNetworkInventory() error {
 	if networkinventory.QEMUObjectFixture() != nil {
 		return errors.New("generated nexthop observation failed")
 	}
+	if networkinventory.QEMUAddressFixture() != nil {
+		return errors.New("generated local address preflight failed")
+	}
 	o, err := networkinventory.Collect(context.Background())
 	if err != nil {
 		return errors.New("kernel network observation failed")

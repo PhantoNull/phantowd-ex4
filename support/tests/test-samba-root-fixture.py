@@ -44,6 +44,29 @@ def reports():
 
 
 class SambaRootFixture(unittest.TestCase):
+    @unittest.skipUnless(os.name == "posix", "Linux process context contract")
+    def test_actual_context_check_denies_each_leak_and_restores(self):
+        root = Path(__file__).resolve().parents[2]
+        with tempfile.TemporaryDirectory() as scratch:
+            executable = Path(scratch, "context-host")
+            compile_result = subprocess.run(
+                ["cc", "-std=c11", "-O2", "-Wall", "-Wextra", "-Werror",
+                 str(root / "support/tests/samba-root-context-fixture.c"),
+                 "-o", str(executable)], timeout=30, check=False,
+                capture_output=True, text=True)
+            self.assertEqual(compile_result.returncode, 0,
+                             compile_result.stderr)
+            result = subprocess.run(
+                [str(executable)], timeout=5, check=False,
+                capture_output=True, text=True,
+                env={"PATH": "/usr/bin:/bin", "LC_ALL": "C"})
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(result.stderr, "")
+            self.assertEqual(result.stdout,
+                             "PHANTOWD_SAMBA_CONTEXT_NATIVE_READY "
+                             "denied=8 restored=true "
+                             "scope=host-process-only\n")
+
     @unittest.skipUnless(os.name == "posix", "POSIX shell contract")
     def test_fixed_mkdir_error_evidence_and_absence(self):
         root = Path(__file__).resolve().parents[2]
@@ -192,6 +215,8 @@ class SambaRootFixture(unittest.TestCase):
             "scope=qemu-only",
             "PHANTOWD_SAMBA_ROOT_CHARSET_READY charset=CP850 bytes=true "
             "roundtrip=true isolated_root=true scope=qemu-only",
+            "PHANTOWD_SAMBA_ROOT_CONTEXT_READY original_fds_closed=true "
+            "signal_mask_empty=true dispositions_default=true scope=qemu-only",
             "PHANTOWD_SAMBA_ROOT_BOUNDARY_READY caps=00000000000000db "
             "nnp=true original_denied=true kernel_ro=true",
             "PHANTOWD_SAMBA_ROOT_STREAMS_READY module=streams_xattr "
@@ -219,6 +244,26 @@ class SambaRootFixture(unittest.TestCase):
         for invalid in invalid_logs:
             with self.assertRaises(ValueError):
                 fixture.check_guest("\n".join(invalid + [SCAN_COST]))
+
+    def test_inherited_context_requires_exact_positive_evidence(self):
+        evidence = ("PHANTOWD_SAMBA_ROOT_CONTEXT_READY "
+                    "original_fds_closed=true signal_mask_empty=true "
+                    "dispositions_default=true scope=qemu-only")
+        lines = list(fixture.MARKERS)
+        self.assertEqual(lines.count(evidence), 1)
+        fixture.check_guest("\n".join(lines + [SCAN_COST]))
+        for field in ("original_fds_closed", "signal_mask_empty",
+                      "dispositions_default"):
+            changed = [row.replace(field + "=true", field + "=false")
+                       for row in lines]
+            with self.assertRaises(ValueError):
+                fixture.check_guest("\n".join(changed + [SCAN_COST]))
+        for replacement in ("", evidence + "\n" + evidence,
+                            evidence.replace("qemu-only", "physical-ex4")):
+            changed = [replacement if row == evidence else row
+                       for row in lines]
+            with self.assertRaises(ValueError):
+                fixture.check_guest("\n".join(changed + [SCAN_COST]))
 
     def test_inspection_cost_is_single_bounded_emulation_evidence(self):
         good = "\n".join(fixture.MARKERS)
@@ -255,6 +300,21 @@ class SambaRootFixture(unittest.TestCase):
         self.assertIn("ARM Versatile PB", native)
         self.assertIn("unshare(CLONE_NEWNS)", native)
         self.assertIn("SYS_close_range", native)
+        self.assertIn("--user 1000:1000 --cap-drop ALL", wrapper)
+        self.assertIn("--memory 2g --pids-limit 256", wrapper)
+        self.assertIn("server && poison_inherited_context()", native)
+        self.assertIn("dup2(directory, 63)", native)
+        self.assertIn("dup2(file, 64)", native)
+        self.assertIn("sigaction(SIGINT, &ignored, NULL)", native)
+        self.assertIn("sigismember(&observed, SIGTERM) != 1", native)
+        self.assertIn("sigismember(&current_mask, number) != 0", native)
+        self.assertIn("action.sa_handler != SIG_DFL", native)
+        self.assertIn("fcntl(63, F_GETFD) != -1 || errno != EBADF", native)
+        self.assertIn("fcntl(64, F_GETFD) != -1 || errno != EBADF", native)
+        self.assertLess(
+            native.index("if (server && verify_restored_context())"),
+            native.index('execve("/usr/sbin/smbd"'))
+        self.assertIn("^Cap(Inh|Amb):", init)
         self.assertIn("PR_SET_NO_NEW_PRIVS", native)
         self.assertIn("errno != EROFS", native)
         self.assertIn("NT_STATUS_BAD_NETWORK_NAME", init)

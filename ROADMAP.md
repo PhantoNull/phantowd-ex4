@@ -1086,7 +1086,16 @@ storage. No production roster provider or activation path exists.
   A separate [Samba restricted-root QEMU profile](support/SAMBA-RUNTIME-PROFILE.md)
   now verifies distinct-user SMB3, Unix file ownership/mode denial, kernel
   read-only grants, denied original paths, one Unicode filename and group stop
-  under six bounded root capabilities. One explicitly selected, hash-verified
+  under six bounded root capabilities. A fixture-only follow-up deliberately
+  inherits original-root/ungranted-file
+  descriptors and altered signal state, then checks actual closure, complete
+  mask clearing and default dispositions before exec. Eight native negative/
+  restoration cases exercise the actual checker before heavy builds. The live
+  daemon additionally has zero inheritable/ambient capabilities; all prior
+  distinct-user/ACL/streams/kernel-RO and verified group-stop tests still pass
+  in the same actual ARMv5 boot. This is not the proposed separate Samba Owner,
+  additional bootstrap authority or product startup qualification. One explicitly
+  selected, hash-verified
   `streams_xattr` module also passes an SMB alternate-stream roundtrip, exact
   native xattr-byte checks and denied reader/kernel-read-only overwrites without
   modifying ordinary file data. It is a fixed disposable experiment,
@@ -1245,9 +1254,29 @@ board network observations limited.
   vet/race, actual UID1000/zero-capability collection/FD counts, 25,000-execution
   object/route fuzz and Windows preflight pass. Actual ARMv5 kernel collection
   plus nonempty generated weighted-group assertions and clean two-boot overlay
-  pass on code `319a331`; verified existing kernel/packages are reused, not a
-  full image/SBOM build or independent clean/hosted/physical qualification.
+  pass on code `319a331`; those overlay checks alone are not a full image/SBOM
+  build or independent clean/hosted/physical qualification. The subsequent
+  complete cached integration passes on `cec1527`; PR #74 then passes its own
+  exact `02bdb0c` host/QEMU checks and integrates as `f19e6eb` with whole-tree
+  equality. No physical networking or release qualification follows.
   Live nonempty kernel-group behavior remains a separate acceptance gap.
+  **M6.1f — local address preflight (partial; locally tested):** privately join
+  a validated policy and complete immutable inventory through exactly two
+  transient slot-to-ifindex bindings. Return overlapping diagnostic counts,
+  never admission: exact/missing prefixes, same-address/peer use and subnet
+  overlap anywhere locally, conservative link/address flag blockers, scoped
+  local gateways, unresolved dynamic families and disabled unbound slots.
+  Validate every bound link, including disabled slots; reject invalid/copied/
+  canceled inputs with zero output. Observe interfaces outside the bindings;
+  handle /16,/31,/32 and IPv6, alias flags and link-local gateway scope explicitly.
+  Windows preflight, complete native tagged vet/race, fixed 2,000-case mutations,
+  existing bounded fuzz/feedback contracts and actual ARMv5 standard/two-boot
+  overlay pass on code `68fae6b`, tree-identically rebased as `8bf993d`.
+  The generated fixture is mandatory in the existing boot, with actual kernel
+  collection checked separately. No new stage, parser, syscall, privilege,
+  endpoint or network change. Counts do not prove external address availability,
+  policy ownership, address lifetimes/DAD or routing/DNS reachability. Factory
+  binding, fresh authority and M6.2 recovery/application remain open.
 - **M6.2 — Recoverable changes.** Apply changes as a trial with explicit confirmation
   and a safe timeout/recovery route. Loss of the management connection must not
   strand the owner permanently. Qualify reboot mid-trial and address conflicts.
