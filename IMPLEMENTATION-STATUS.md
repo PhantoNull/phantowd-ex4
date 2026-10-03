@@ -4,7 +4,42 @@
 # Implementation status
 
 Code audit: **2026-10-03**, integrated `develop` baseline
-`0731540213c4864df70478696bba7e75986abe3a` (PR #79).
+`78080ebff3db8f80343ad4756e6f58dc10ef40f0` (PR #80).
+Earlier audit paragraphs below retain their original verification scope. PR #79
+passed its exact-head host/QEMU checks and merged the mounted-ext census and
+desired-volume review. PR #80 (`cca8fc5`) separately optimizes system CMake;
+its exact-head host/QEMU/B3 checks passed and it guarded squash-merged as
+`78080eb`. Expected, checked and integrated whole trees equal `49f9c0bc`;
+both topic refs were retired after inclusion/worktree/lease guards. The hosted
+QEMU log confirms system CMake selection; total job time is48m22s, not a
+guaranteed11-minute whole-job improvement. Variability and other costs remain.
+
+The current M3.2h follow-up adds an internal explicit read-only freshness
+recheck: validate previous complete evidence before root I/O, recollect the
+entire declared scope and reject mount/storage/MD/root identity changes. Native
+focused race tests and Windows preflight pass. Frozen source `616579f` then
+passes whole pinned Linux tagged vet/race, three SIGKILL repetitions, bounded
+network fuzz and workflow/storage contracts. The actual ARMv5 standard overlay
+accepts the unchanged disposable MD census and rejects internally coherent stale
+mount-ID and MD-UUID observations; clean two-boot state tests pass. Independent
+hashes confirm five frozen runtime/test/support files and seven unchanged base
+artifacts. No new persistent Docker image/volume/output is created. This is
+cached overlay evidence, not clean firmware/SBOM, hosted feature or EX4
+qualification. It retains no lease, does not monitor or persist identity, and
+adds no HTTP, mount/import or service activation. Planning bands remain unchanged.
+
+Follow-up `fe1e855` ordinarily unmounts/remounts only the existing fixed disposable
+QEMU MD filesystem. Actual ARMv5 standard smoke verifies old-census refusal when
+absent and after same-path/device/UUID return, changed unique mount ID, read-only
+state and acceptance of a new complete census. Native/Windows/contracts pass.
+The original full overlay was interrupted by development-engine shutdown.
+After explicit restart approval, rebase `e22199b` retains the entire API subtree
+`2aaf95cb` and all five qualified runtime/test/support blobs unchanged. Remaining
+integrated contracts and actual ARMv5 standard/two-boot overlay then terminate
+successfully on that frozen source. Five source hashes and seven unchanged base
+hashes independently agree after completion. This is cumulative cached local
+evidence, not a completed original run, hosted feature or clean/EX4 acceptance.
+
 Use [ROADMAP.md](ROADMAP.md) for the acceptance specification. This snapshot
 distinguishes tested components from deployed product workflows. It is not
 installation approval, a security certification, or an exhaustive line-by-line audit.

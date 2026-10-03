@@ -202,6 +202,66 @@ The observation is point-in-time and limited to one process mount namespace;
 it does not establish global use, UUID uniqueness on unmounted media, a durable
 VolumeID, compatibility, health, a retained lease or activation authority.
 
+### M3.2h explicit mounted-census freshness task contract
+
+Add an internal Linux read-only recheck of a previously complete mounted-ext
+census. Validate the entire retained observation before performing new root
+observations, then use the fixed complete collector, not a caller-selected
+subset. Compare coverage, full mount table, disk generations/VPD/topology,
+MD bindings and independent filesystem UUID/device/unique-mount observations.
+Collection timestamps are not identity. An invalid previous observation,
+unavailable metadata, cancellation or any changed observation returns only the
+existing redacted incomplete error; no partial positive result is returned.
+
+This operation has no intent/result journal or persistent transition: it
+compares two complete point-in-time observations. It does not retain handles,
+make review sticky, monitor automatically or guarantee stability after return.
+The caller must not concurrently mutate the private previous snapshot. Reuse
+existing collectors, validators and comparators; the injected root observer
+remains an in-process test seam, never request input. No public API, persistent
+VolumeID registry, mount qualification, Owner/planner authority, mount/import,
+service activation, new privilege or NAS operation is included.
+
+Acceptance: native Linux tests must refuse corrupt prior evidence before root
+I/O and detect drift in unclaimed/excluded scope as well as observed roots;
+cover cancellation, metadata failure, empty scope, ordering, timestamps and the
+64-root budget. Reuse the existing disposable QEMU MD mount/member fixture for
+an actual fixed-reader recheck and explicit mandatory marker, without another
+boot, backing disk or persistent Docker resource. Physical EX4, durable
+identity, global-use accounting and recovery gates remain open.
+
+Local evidence (2026-10-03): Windows API/DOM/vet and ARMv5 test compilation
+pass. Source `616579f` passes whole pinned Linux tagged API vet/race, three
+SIGKILL repetitions, bounded network fuzz and storage/workflow contracts.
+Actual ARMv5 standard overlay verifies unchanged complete MD census and
+internally coherent stale mount-ID/MD-UUID refusal; clean two-boot state tests
+pass. Native cases cover invalid prior evidence before root I/O, changes in
+excluded entries, unavailable metadata, observer failures, cancellation,
+ordering, mount timestamps and0/64 roots. Five frozen runtime/test/support
+hashes and seven unchanged base hashes agree independently after completion.
+This reuses one fixed image/two volumes with bounded auto-removed RAM scratch;
+no new persistent output. Hosted/clean-build/physical acceptance remains open.
+This is a point-in-time recheck, not a retained lease or activation authority.
+
+Follow-up acceptance extension: in the same disposable ARMv5 MD fixture, ordinarily
+unmount and remount only the already-created fixed read-only filesystem. The
+old complete census must refuse both absent mount and same-path/device/UUID
+remount; a newly collected census must pass. Reuse existing cleanup ownership
+and fixed VersatilePB/member guards, with no extra virtual disk or boot. This
+does not introduce a product unmount/remount operation or NAS authority.
+
+Local follow-up source `fe1e855` passes Windows preflight, whole pinned Linux
+tagged vet/race, SIGKILL/fuzz/contracts and the actual ARMv5 standard guest.
+The mandatory remount marker confirms absent/stale mount refusal, changed unique
+mount ID, unchanged device/UUID and read-only state, and fresh-census acceptance.
+The original full overlay process is interrupted by development-engine shutdown.
+After explicit restart approval, source `e22199b` rebases on merged PR80 while
+retaining the entire API subtree and five runtime/test/support blobs unchanged.
+Remaining integrated contracts and actual standard ARMv5/two-boot overlay then
+terminate successfully. Independent post-run source/base hashes agree; no new
+persistent Docker resource. This cumulative cached local proof does not mean
+the original interrupted run succeeded, or establish hosted/clean/EX4 acceptance.
+
 ### M3.2f scoped desired-volume observation task contract
 
 Add one private, side-effect-free review joining a validated desired share

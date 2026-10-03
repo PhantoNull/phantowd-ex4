@@ -663,6 +663,26 @@ are missing. **Depends on:** M1; M7 for hardware.
   artifacts unchanged. No I/O, HTTP, persistent registry, qualifying token,
   Owner construction, mount/import or activation. Next authority still needs
   an explicit durable identity/compatibility contract, not a singleton UUID.
+  **M3.2h — explicit full-census freshness (partial; locally tested):**
+  validate the entire previous mounted-ext census before root observations,
+  recollect through the fixed complete reader and compare scoped coverage,
+  complete mount/storage snapshots, MD bindings and independent root metadata.
+  Reject missing metadata, cancellation and changes even in unclaimed/excluded
+  scope; ignore collection timestamps, not identity. Native cases cover empty
+  and64-root scopes, corrupt prior records and drift. Whole pinned Linux race,
+  Windows preflight and actual ARMv5 existing MD/two-boot overlay pass on
+  `616579f`; the guest rejects coherent stale mount-ID and MD-UUID observations
+  while accepting unchanged metadata. Base artifacts remain unchanged; this is not a
+  retained lease, sticky Owner, persistent registry, global-use proof or service
+  authority. M3.2g remains reserved for the separate protected-registry contract.
+  Follow-up`fe1e855` extends the existing disposable MD fixture with actual
+  ordinary unmount/read-only remount; ARMv5 standard smoke confirms absent/stale
+  refusal, changed unique mount ID and fresh-census acceptance. Windows/native
+  checks pass. Development-engine shutdown interrupts the original full overlay;
+  after approved restart, unchanged API/runtime inputs rebase as`e22199b` on
+  integrated PR80, and the remaining contracts plus actual standard ARMv5/
+  two-boot overlay pass. Independent source/base hashes agree. This is local
+  cumulative acceptance only; no production/physical authority is granted.
 - **M3.3 — Gate compatibility and mounting.** Define a per-layout/filesystem
   allowlist with evidence. Inspect before assembly/mounting; journal replay and
   automatic MD actions can write even during a supposedly read-only assessment.

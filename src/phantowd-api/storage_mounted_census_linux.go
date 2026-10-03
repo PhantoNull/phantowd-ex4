@@ -48,6 +48,30 @@ func collectTrustedMountedExtCensus(ctx context.Context, sysfs, proc fs.FS) (tru
 	return collectTrustedMountedExtCensusWith(ctx, sysfs, proc, mountguard.ObserveMounted)
 }
 
+// Recheck compares complete point-in-time observations, not a selected policy
+// subset. It neither retains descriptors nor grants a lease/activation token.
+// Success says nothing about changes after this call returns.
+func recheckTrustedMountedExtCensus(ctx context.Context, previous trustedMountedExtCensus, sysfs, proc fs.FS) error {
+	return recheckTrustedMountedExtCensusWith(ctx, previous, sysfs, proc, mountguard.ObserveMounted)
+}
+
+// The observer is a private in-process test seam, never supplied by HTTP.
+// The caller owns previous and must not mutate it concurrently with this call.
+func recheckTrustedMountedExtCensusWith(ctx context.Context, previous trustedMountedExtCensus, sysfs, proc fs.FS, observe mountedExtRootObserver) error {
+	if ctx == nil || ctx.Err() != nil || sysfs == nil || proc == nil || observe == nil ||
+		validateMountedExtCensus(previous) != nil {
+		return errMountedStorageIdentityIncomplete
+	}
+	current, err := collectTrustedMountedExtCensusWith(ctx, sysfs, proc, observe)
+	if err != nil || ctx.Err() != nil || validateMountedExtCensus(current) != nil ||
+		previous.coverage != current.coverage || !sameMountSnapshot(previous.mounts, current.mounts) ||
+		!sameStorageSnapshot(previous.storage, current.storage) || !sameMountedCensusArrays(previous.arrays, current.arrays) ||
+		!sameMountedCensusRoots(previous.roots, current.roots) {
+		return errMountedStorageIdentityIncomplete
+	}
+	return nil
+}
+
 // The observer argument is an in-process test seam, never request input.
 func collectTrustedMountedExtCensusWith(ctx context.Context, sysfs, proc fs.FS, observe mountedExtRootObserver) (trustedMountedExtCensus, error) {
 	fail := func() (trustedMountedExtCensus, error) {
