@@ -942,6 +942,11 @@ storage. No production roster provider or activation path exists.
   giving each service an isolated private mount namespace whose only
   storage roots are its explicit grants; prove the original volume anchors and
   ungranted shares are unreachable and that read-only access cannot be bypassed.
+  The [Samba Owner packet](support/SAMBA-RUNTIME-PROFILE.md#next-owner-integration-packet-proposed-not-qualified)
+  details the separate retained resources, code-only versus composed roots,
+  process-group/`setsid` conflict, bootstrap/final privilege distinction and
+  lifecycle acceptance campaign. It is proposed, not qualified or permission
+  to run a new privileged composition.
   Keep daemon privilege profiles distinct: the real multi-user Samba QEMU
   fixture currently runs with root credentials and the pinned implementation
   performs Unix identity/group switches. The generic fixed-UID zero-capability

@@ -159,3 +159,80 @@ state, socket and privilege contract; construct roots from trusted pinned inputs
 and Owner-held grants; then integrate service-specific supervision and recovery.
 Product startup and all physical-device safety/migration/install gates remain
 closed. Kernel NFS authority is a separate design, not granted by this experiment.
+
+## Next Owner integration packet (proposed, not qualified)
+
+Implement a separate internal Samba-specific Owner; do not broaden the generic
+static/non-root adapter. The new privileged composition requires its own
+explicit host/QEMU decision before running it. Existing separate fixture passes
+do not qualify the composition, product boot, HTTP activation or user disks.
+
+### Construction and retained resources
+
+- Fix the backend, launcher, daemon, arguments, readiness/stop budgets and
+  protected roots once at construction. No operation accepts replacements,
+  arbitrary paths, executable selection, credentials or a new backend.
+- Use the trusted expected code roster, including loader, selected NSS/VFS
+  modules and conversion catalog; dependency-only ELF observations and hashes
+  measured from an untrusted tree are not manifest authority. Retain independent
+  descriptors and original inode/mount identities for the complete code tree.
+- Separate the **code-only inspection root** from the composed service root.
+  `runtimebundle.Inspect` requires a complete exact census: adding passwd,
+  configuration, state or grant entries to that inspected tree invalidates it.
+  Do not skip undeclared entries or weaken that inspector. Independently verify
+  the declared read-only code views inside the composed root, then bind the
+  explicit protected configuration, mutable state and descriptor-bound grants.
+- Define a bounded exact roster for configuration/NSS inputs and state roots;
+  code hashes alone do not qualify either. Treat legitimate state mutations
+  separately from code/configuration drift. Passdb and identity revision must
+  belong to the identity authority, not fixture password setup or self-discovery.
+- Retain configuration, state and storage authority through confirmed group
+  stop/reap. Construction failure publishes nothing: discard the fresh partial
+  root, never resume it, adopt an old daemon or reuse an uncertain tree.
+
+### Native execution boundary
+
+- Preserve one owner of PID/process-group creation. The Go Owner starts its
+  child with `Setpgid=true`; the current standalone server helper calls
+  `setsid()`. A process-group leader cannot perform that call (the native
+  disposable probe returned `EPERM`). Do not compose these unchanged. A separate
+  fixed owned-group entry must verify `PID == PGID`, preserve it through exec
+  and never detach into an unowned session. Leave standalone fixture behavior
+  intact; no PID-only shutdown or arbitrary group selection.
+- The fixed bootstrap helper, not the multithreaded Go parent, creates the
+  private namespace/restricted root. Bootstrap authority is distinct from the
+  daemon's six-capability profile: namespace/chroot preparation needs privileges
+  the final daemon explicitly lacks. Do not claim the final `0xdb` observation
+  proves that a six-capability parent can perform bootstrap.
+- Before daemon exec, close original-root/device/grant escape descriptors,
+  verify the fixed diagnostic pipe boundary and reset inherited signals. Verify
+  exact effective/permitted/bounding `0xdb`, zero inheritable/ambient sets,
+  UID0 and NNP. Retain distinct per-client Unix identities; never use `force user`,
+  shared credentials, SMB1, guest access or widened permissions to obtain a pass.
+- The final service root permits only declared code/configuration/state/grants
+  and explicitly reviewed device nodes. The existing fixture has null/entropy
+  nodes, not arbitrary block devices, `/proc` or original storage paths.
+  Original anchors and undeclared shares must be unreachable; read-only grants
+  must reject actual kernel writes, independently of Samba configuration.
+
+### Lifecycle and acceptance evidence
+
+1. Admission rejects missing/incomplete inputs, mutable spec replacement,
+   invalid privilege/profile/FD state and canceled context without launching.
+2. Readiness exercises real SMB authentication and writer/reader/outsider Unix
+   permissions. A listener, pre-exec marker or successful `testparm` is not ready.
+3. Revalidation covers retained code, protected configuration, identity freshness
+   and grants. Drift/source loss stops the known group before resource release;
+   restored bytes never clear review or trigger automatic restart.
+4. Normal stop proves owned parent reap and complete group absence before release.
+   Forced/uncertain stop requires review and retains resources until an explicit
+   absence verification; no adoption, lazy unmount, signal replay or retry-to-green.
+5. Test at least constructor refusal, caller-FD close survival, immutable inputs,
+   duplicate start, distinct-account readiness/denials, normal stop, unexpected
+   exit, forced-stop review, live code/configuration/source drift, restoration
+   refusal and attempted close while live. Use one disposable guarded QEMU root
+   and storage fixture; verify original base hashes and resource cleanup.
+
+These are implementation/acceptance requirements, not completed tests. Product
+configuration transactions, durable review/recovery, identity/storage authority,
+HTTP authorization, installation and EX4 safety remain separate release gates.
