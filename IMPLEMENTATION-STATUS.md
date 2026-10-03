@@ -130,6 +130,22 @@ rebuild; actual board/build input changes remain covered.
 
 ## Roadmap comparison
 
+M0 fixture reliability follow-up: the two-boot Samba shutdown previously
+accepted direct-parent exit while a same-group adopted child could retain a
+directory descriptor. A deterministic native subprocess regression failed
+before the correction. The fixture now requires parent reaping and whole-group
+absence with bounded TERM/KILL phases; forced termination remains a failure.
+Cooperative late child closure, forced child termination and invalid ownership
+are tested. Windows preflight/UI/vet/ARMv5 cross-compilation, pinned Linux
+QEMU-tagged vet/main+SMART-device race, 17 runner contracts and the actual ARMv5
+standard smoke plus two-boot overlay pass. No unmount retry/delay, generic Owner
+change, product privileges or physical operation is added. This is not proof
+of historical state `EBUSY` causality; the original full failure remains evidence.
+The census prerequisite PR #69 passed its exact-head host/QEMU checks on
+`b4ed92d` and merged as `3594234`; integrated/head trees match and the topic
+branch was retired. The witness and fixture follow-up still require complete
+exact-source integration. Milestone estimate bands remain unchanged.
+
 A separate M8.5b prerequisite adds the Linux-only internal `smartdevice.Witness`.
 It duplicates an already-open O_RDONLY block descriptor under SyscallConn,
 checks CLOEXEC/type/access/major/minor and BLKGETDISKSEQ and revalidates that

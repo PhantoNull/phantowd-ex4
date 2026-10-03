@@ -99,6 +99,10 @@ qualification; consult exact-commit CI for later revisions.
 Known unresolved qualification issue: intermittent state-volume unmount
 `EBUSY` in the two-boot QEMU fixture. Subsequent passes do not establish its
 cause or resolution. See [fast-lane limitations](support/QEMU-FAST-TESTS.md).
+The 2026-10-03 lifecycle correction separately prevents parent-only Samba
+shutdown success with surviving same-group children. Native regression/race
+and actual ARMv5 smoke/two-boot checks pass; original `EBUSY` causality and
+complete exact-source integration remain unqualified.
 
 ## Execution rules for contributors and agents
 
