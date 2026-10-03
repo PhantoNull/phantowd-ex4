@@ -11,8 +11,43 @@ import (
 )
 
 func runtimeELF(path string, needed ...string) File {
+	flags := uint32(0x05000200)
 	return File{Path: path, Size: 100, SHA256: strings.Repeat("a", 64), Kind: "elf",
-		ELF: &ELFInfo{Class: "ELFCLASS32", ByteOrder: "ELFDATA2LSB", Machine: "EM_ARM", Type: "ET_DYN", Needed: needed}}
+		ELF: &ELFInfo{Class: "ELFCLASS32", ByteOrder: "ELFDATA2LSB", Machine: "EM_ARM", Type: "ET_DYN", HeaderFlags: &flags, Needed: needed}}
+}
+
+func TestRuntimeClosureRequiresObservedSupportedARMHeadersForEveryObject(t *testing.T) {
+	for _, flags := range []uint32{0, 0x04000200, 0x06000200, 0x05000400, 0x05000600, 0x05800200} {
+		for index := 0; index < 4; index++ {
+			t.Run(fmt.Sprintf("flags-%08x-object-%d", flags, index), func(t *testing.T) {
+				r := runtimeReport()
+				r.Files[index].ELF.HeaderFlags = &flags
+				result, err := r.RuntimeClosure("usr/sbin/service")
+				if err != nil || result.StaticDependenciesResolved || result.Reason != "unsupported-arm-header" ||
+					len(result.Objects) != 0 || result.TotalBytes != 0 || result.RuntimeQualified || result.ExecutionAuthorized {
+					t.Fatal("incompatible header or partial candidate escaped:", result, err)
+				}
+			})
+		}
+	}
+	for index := 0; index < 4; index++ {
+		r := runtimeReport()
+		r.Files[index].ELF.HeaderFlags = nil
+		result, err := r.RuntimeClosure("usr/sbin/service")
+		if err != nil || result.StaticDependenciesResolved || result.Reason != "unobserved-arm-header" || len(result.Objects) != 0 {
+			t.Fatal("missing header was inferred as supported:", index, result, err)
+		}
+	}
+	// AAELF32 allows the base procedure-call standard to be implied when
+	// neither floating-point flag is set. Do not mislabel it as hard-float.
+	r := runtimeReport()
+	for _, item := range r.Files {
+		*item.ELF.HeaderFlags = 0x05000000
+	}
+	result, err := r.RuntimeClosure("usr/sbin/service")
+	if err != nil || !result.StaticDependenciesResolved || result.RuntimeQualified || result.ExecutionAuthorized {
+		t.Fatal("implied base ABI was refused or became authority:", result, err)
+	}
 }
 
 func runtimeReport() Report {
@@ -138,6 +173,26 @@ func FuzzRuntimeClosureNeverAuthorizesOrLeaksPartialPlan(f *testing.F) {
 		}
 		if result.ExecutionAuthorized || result.RuntimeQualified || (!result.StaticDependenciesResolved && (len(result.Objects) != 0 || result.TotalBytes != 0)) {
 			t.Fatal("candidate became authority or leaked partial objects:", result)
+		}
+	})
+}
+
+func FuzzRuntimeClosureARMHeaderPrerequisites(f *testing.F) {
+	f.Add(uint32(0x05000200), uint8(0), true)
+	f.Add(uint32(0x05000000), uint8(3), true)
+	f.Add(uint32(0x05000400), uint8(1), true)
+	f.Add(uint32(0), uint8(2), false)
+	f.Fuzz(func(t *testing.T, flags uint32, index uint8, present bool) {
+		r := runtimeReport()
+		r.Files[int(index)%len(r.Files)].ELF.HeaderFlags = &flags
+		if !present {
+			r.Files[int(index)%len(r.Files)].ELF.HeaderFlags = nil
+		}
+		result, err := r.RuntimeClosure("usr/sbin/service")
+		expected := present && flags&0xff000000 == 0x05000000 && flags&(0x400|0x800000) == 0
+		if err != nil || result.StaticDependenciesResolved != expected || result.RuntimeQualified || result.ExecutionAuthorized ||
+			(!expected && (len(result.Objects) != 0 || result.TotalBytes != 0 || result.Reason == "")) {
+			t.Fatal("header prerequisites became authority or leaked a partial candidate:", result, err)
 		}
 	})
 }

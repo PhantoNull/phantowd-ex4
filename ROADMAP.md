@@ -1012,6 +1012,11 @@ storage. No production roster provider or activation path exists.
 
   Host-only prerequisite: `phantowd-lab inspect-runtime-closure` now derives a
   bounded ARM32 ELF candidate from the existing extracted-tree inventory.
+  The host inventory now also observes processor-specific header flags; every
+  selected object must declare EABI5 without hard-float procedure calls or BE-8
+  code. Missing flags are refused, while implied base procedure calls are valid.
+  This does not qualify ARM instruction/build attributes or symbol compatibility
+  and adds no process or device authority.
   Pinned Linux unit/vet/race and 50,000 fuzz executions pass; the current cached
   target's `smbd` graph contains 105 distinct objects (27,110,832 bytes). It
   grants no execution authority and does not qualify loader caches, dynamic
@@ -1318,6 +1323,13 @@ Then qualify the selected backend and migration objects on expendable EX4 media.
   revision/channel, hashes and version policy before writes. HTTPS alone is
   insufficient. Define signing-key rotation, compromise/recovery, offline use,
   rate-limit/network failure and owner-authorized rollback policy.
+  The host-only GitHub reader now handles opaque signed query parameters on
+  the exact HTTPS release-asset CDN without treating them as authenticity.
+  Real local HTTP/TLS redirect fixtures preserve signature-before-payload and
+  hash checks; public transport errors redact signed URLs while retaining
+  programmatic cancellation/cause checks. API metadata URLs remain query-free.
+  This is a tested transport primitive, not device trust-root provisioning,
+  target installation or a published firmware qualification.
 - **M10.3 — Target transaction.** Explicit preflight, staged, verified, installing,
   boot-pending, health-confirmed and recovery states. Journal durable boundaries;
   check space/power prerequisites. An ambiguous state must not restart installation
@@ -1364,6 +1376,11 @@ and failed-update recovery demonstrated beyond merely reaching a boot prompt.
   allowlist. Publish exact source commit/configuration, payload hashes, signed
   metadata, SBOM, license/legal material, support matrix, release notes, limitations
   and qualification evidence. Fast-overlay artifacts are never releases.
+  A bounded build collector now supplements upstream `legal-info` with the
+  authenticated original Buildroot archive, preserves upstream warnings and
+  refuses conflicting existing output. This closes one source-input omission,
+  not complete corresponding-source review or public source publication; exact
+  project/modified Buildroot/config/toolchain coverage remains a release gate.
 - **M11.5 — Staged publication.** Contributor builds → qualified limited beta →
   stable release after issue triage and recovery drills. Drafting a GitHub Release
   or passing CI does not advance a gate. Installation documentation must match

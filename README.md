@@ -33,12 +33,12 @@ scope; [component contracts](src/phantowd-api/README.md) describe the boundaries
 
 | Area | Implemented / tested | Still needed for the product |
 | --- | --- | --- |
-| Build | Pinned Buildroot 2025.02.18 LTS / Linux 6.18.54 LTS, ARMv5 QEMU image, SBOM and automated tests | Installable EX4 image and release qualification |
+| Build | Pinned Buildroot 2025.02.18 LTS / Linux 6.18.54 LTS, ARMv5 QEMU image, SBOM, development source collection and automated tests | Installable EX4 image, complete release source bundle and qualification |
 | Web management | Diagnostics, development administrator authentication/password changes, SMB/NFS policy previews and opt-in policy editing | Complete setup/recovery, certificate lifecycle and live service management |
 | Storage | Non-root read-only broker, complete sysfs inventory, manual GPT observations, duplicate-identity detection and internal MD/mount-owner fixtures | Trusted production lifecycle, persistent volume IDs, global-use accounting, qualified import and RAID management |
 | Sharing and identities | SMB3/NFS fixtures, disabled-first Samba account lifecycle, session revocation, Unicode/CP850, streams and POSIX ACL tests | Product account workflows, supervised service activation/recovery and legacy permission migration |
 | Health | Bounded offline SMART report interpretation, synthetic ARMv5 tests and native/ARMv5 producer oracles | Trusted disk collection, history, authorized test jobs, notifications and UI |
-| Service isolation | Static-child owner/grant isolation, bounded-privilege multi-user Samba fixture, verified code staging/inspection and supervised retained static-code Owner | Authenticated runtime inputs, dynamic service-specific composition, durable recovery and product startup |
+| Service isolation | Static-child owner/grant isolation, bounded-privilege Samba fixture, verified code staging, offline ARM-header checks and supervised retained static-code Owner | Authenticated runtime inputs, dynamic service-specific composition, durable recovery and product startup |
 | EX4 hardware | Bounded diskless RAM research; see [board notes](board/wd/ex4/README.md) | Sustained networking, factory MAC handoff, SATA, cooling, LEDs/display, thermal safety and recovery |
 
 The API/dashboard are development-only and guest-loopback-only by default.

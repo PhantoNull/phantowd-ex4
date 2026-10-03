@@ -76,6 +76,15 @@ type releaseAsset struct {
 	State string `json:"state"`
 }
 
+// net/http includes the redirected URL in request errors. An asset URL can
+// contain expiring download credentials, so its public message must not echo
+// that URL or a caller-supplied redirect error. Preserve the cause for
+// errors.Is/As and cancellation checks, not for public diagnostic formatting.
+type redactedRequestError struct{ cause error }
+
+func (e *redactedRequestError) Error() string { return "GitHub HTTP request failed" }
+func (e *redactedRequestError) Unwrap() error { return e.cause }
+
 // Inspect downloads one exact release's signed manifest, then only the payloads
 // named by that verified manifest. Payloads are written to a private temporary
 // directory, hashed there, and removed before returning. No device is accessed.
@@ -263,7 +272,7 @@ func getBounded(ctx context.Context, client *http.Client, target, accept string,
 	}
 	response, err := client.Do(request)
 	if err != nil {
-		return nil, err
+		return nil, &redactedRequestError{cause: err}
 	}
 	defer response.Body.Close()
 	if response.StatusCode != http.StatusOK {
@@ -303,7 +312,7 @@ func downloadAsset(ctx context.Context, client *http.Client, target, destination
 	}
 	response, err := client.Do(request)
 	if err != nil {
-		return err
+		return &redactedRequestError{cause: err}
 	}
 	defer response.Body.Close()
 	if response.StatusCode != http.StatusOK {
@@ -364,7 +373,15 @@ func withSafeRedirects(client *http.Client, apiBase *url.URL) *http.Client {
 }
 
 func isAllowedRedirect(target, apiBase *url.URL) bool {
-	if target.User != nil || target.RawQuery != "" || target.Fragment != "" || (target.Port() != "" && target.Port() != "443") {
+	if target.User != nil || target.Fragment != "" || (target.Port() != "" && target.Port() != "443") {
+		return false
+	}
+	// GitHub's release-asset CDN uses expiring signed query strings. These are
+	// opaque transport parameters, not a trust anchor: manifest signatures and
+	// payload hashes are still verified independently. Keep query-bearing
+	// redirects confined to this exact HTTPS asset host, not API endpoints or
+	// the wider existing no-query GitHub host allowlist.
+	if target.RawQuery != "" && (target.Scheme != "https" || !strings.EqualFold(target.Hostname(), "release-assets.githubusercontent.com")) {
 		return false
 	}
 	if target.Scheme != "https" {

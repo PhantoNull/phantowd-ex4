@@ -34,6 +34,9 @@ shellcheck -s sh \
 	"$external_dir/board/qemu/armv5/rootfs-overlay/usr/lib/phantowd/qemu-md-v10-init.sh" \
 	"$external_dir/support/qemu-md-v10-fixture.sh"
 shellcheck -s sh "$external_dir/support/container/save-qemu-failure-log.sh"
+shellcheck -s sh "$external_dir/support/container/collect-buildroot-source.sh"
+python3 -B "$external_dir/support/tests/test-buildroot-source-collection.py"
+python3 -B -m flake8 "$external_dir/support/tests/test-buildroot-source-collection.py"
 python3 -B "$external_dir/support/tests/test-qemu-build-feedback.py"
 python3 -B "$external_dir/support/tests/test-service-launcher.py"
 python3 -B "$external_dir/support/tests/test-runtime-loader-fixture.py"
@@ -413,6 +416,13 @@ make -C "$buildroot_source" \
     BR2_DL_DIR="$download_dir" \
     O="$output_dir" \
     legal-info
+
+# Preserve the authenticated original build-system archive alongside upstream
+# legal-info. Its README warnings remain unchanged; this is not a compliance
+# approval or a complete release source bundle.
+sh "$external_dir/support/container/collect-buildroot-source.sh" \
+    "$workspace_dir/$buildroot_archive" "$output_dir/legal-info" \
+    "$BUILDROOT_VERSION" "$BUILDROOT_ARCHIVE_SHA256"
 
 # Native generated-image tests use the same hash-checked libblkid source as
 # the target package. No host devices, mounts or privileged mode are needed.

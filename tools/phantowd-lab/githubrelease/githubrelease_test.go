@@ -7,14 +7,21 @@ import (
 	"context"
 	"crypto/ed25519"
 	"crypto/sha256"
+	"crypto/tls"
+	"crypto/x509"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os"
 	"strings"
+	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/PhantoNull/phantowd-ex4/phantowd-lab/releaseverify"
 )
@@ -32,6 +39,182 @@ func TestInspectDownloadsOnlySignedExactGitHubReleaseAssets(t *testing.T) {
 	if fixture.payloadRequests != 1 || fixture.manifestRequests != 1 || fixture.signatureRequests != 1 {
 		t.Fatalf("expected one bounded request per signed asset; got manifest=%d signature=%d payload=%d", fixture.manifestRequests, fixture.signatureRequests, fixture.payloadRequests)
 	}
+}
+
+func TestInspectFollowsSignedCDNRedirects(t *testing.T) {
+	fixture := newReleaseFixture(t, []byte("synthetic signed redirect payload"))
+	fixture.signedRedirects = true
+	fixture.serve(t, true, nil)
+	client, downloads := signedRedirectClient(t, fixture)
+	options := fixture.options()
+	options.Client = client
+	result, err := Inspect(context.Background(), options)
+	if err != nil {
+		t.Fatalf("signed CDN redirect prevented release inspection: %v", err)
+	}
+	if !result.Verification.Valid || result.Verification.InstallationAuthorized || result.Verification.HardwareQualified {
+		t.Fatalf("redirected release did not retain the verification boundary: %+v", result.Verification)
+	}
+	if fixture.manifestRequests != 1 || fixture.signatureRequests != 1 || fixture.payloadRequests != 1 {
+		t.Fatal("expected one API redirect per signed asset")
+	}
+	for index := range downloads {
+		if downloads[index].Load() != 1 {
+			t.Fatalf("CDN asset %d requested %d times", index+1, downloads[index].Load())
+		}
+	}
+}
+
+func TestInspectSignedRedirectsRetainAuthenticationAndHashGates(t *testing.T) {
+	t.Run("invalid signature never fetches payload", func(t *testing.T) {
+		fixture := newReleaseFixture(t, []byte("synthetic payload"))
+		fixture.signature[0] ^= 0x80
+		fixture.signedRedirects = true
+		fixture.serve(t, true, nil)
+		client, downloads := signedRedirectClient(t, fixture)
+		options := fixture.options()
+		options.Client = client
+		result, err := Inspect(context.Background(), options)
+		if err != nil || result.Verification.Valid || result.Verification.SignatureValid || result.Verification.ArtifactsChecked {
+			t.Fatalf("signature refusal failed through CDN redirects: result=%+v err=%v", result, err)
+		}
+		if fixture.payloadRequests != 0 || downloads[0].Load() != 1 || downloads[1].Load() != 1 || downloads[2].Load() != 0 {
+			t.Fatal("redirected downloads crossed the signature gate")
+		}
+	})
+	t.Run("same-size changed payload remains invalid", func(t *testing.T) {
+		fixture := newReleaseFixture(t, []byte("synthetic payload"))
+		fixture.payload[0] ^= 0x01
+		fixture.signedRedirects = true
+		fixture.serve(t, true, nil)
+		client, downloads := signedRedirectClient(t, fixture)
+		options := fixture.options()
+		options.Client = client
+		result, err := Inspect(context.Background(), options)
+		if err != nil || result.Verification.Valid || !result.Verification.SignatureValid || !result.Verification.ArtifactsChecked || result.Verification.ArtifactsValid {
+			t.Fatalf("hash refusal failed through CDN redirects: result=%+v err=%v", result, err)
+		}
+		if downloads[2].Load() != 1 || len(result.Verification.Artifacts) != 1 || result.Verification.Artifacts[0].SHA256Match || result.Verification.InstallationAuthorized || result.Verification.HardwareQualified {
+			t.Fatal("redirected tampered payload gained verification or install authority")
+		}
+	})
+}
+
+func TestInspectRejectsQueryOnMetadataAssetEndpoint(t *testing.T) {
+	fixture := newReleaseFixture(t, []byte("payload"))
+	fixture.assetURLQuery = true
+	fixture.serve(t, true, nil)
+	result, err := Inspect(context.Background(), fixture.options())
+	if err == nil || !strings.Contains(err.Error(), "asset URL") || result.Verification.Valid || fixture.manifestRequests != 0 || fixture.payloadRequests != 0 {
+		t.Fatalf("query-bearing metadata endpoint was not refused before asset access: %v", err)
+	}
+}
+
+func TestInspectDoesNotExposeSignedRedirectQueryInErrors(t *testing.T) {
+	for _, assetID := range []int{1, 3} {
+		t.Run(fmt.Sprintf("asset-%d", assetID), func(t *testing.T) {
+			stageParent := t.TempDir()
+			for _, variable := range []string{"TMPDIR", "TMP", "TEMP"} {
+				t.Setenv(variable, stageParent)
+			}
+			fixture := newReleaseFixture(t, []byte("payload"))
+			fixture.signedRedirects = true
+			fixture.serve(t, true, nil)
+			client, downloads := signedRedirectClient(t, fixture)
+			refusal := errors.New("fixture redirect denied")
+			client.CheckRedirect = func(request *http.Request, _ []*http.Request) error {
+				if request.URL.Path == fmt.Sprintf("/fixture/%d", assetID) {
+					return refusal
+				}
+				return nil
+			}
+			options := fixture.options()
+			options.Client = client
+			_, err := Inspect(context.Background(), options)
+			if err == nil || !errors.Is(err, refusal) {
+				t.Fatalf("caller redirect refusal was not retained: %v", err)
+			}
+			if strings.Contains(err.Error(), "sig=synthetic") || strings.Contains(err.Error(), "fixture-expiry") {
+				t.Fatalf("signed redirect parameters leaked in public error: %v", err)
+			}
+			for index := range downloads {
+				want := int32(0)
+				if index+1 < assetID {
+					want = 1
+				}
+				if downloads[index].Load() != want {
+					t.Fatal("caller redirect refusal was bypassed or an earlier signed asset was omitted")
+				}
+			}
+			remaining, err := os.ReadDir(stageParent)
+			if err != nil || len(remaining) != 0 {
+				t.Fatalf("failed redirected download left staging files: entries=%d err=%v", len(remaining), err)
+			}
+		})
+	}
+}
+
+func TestInspectPreservesCanceledRequestCause(t *testing.T) {
+	fixture := newReleaseFixture(t, []byte("payload"))
+	fixture.serve(t, true, nil)
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	_, err := Inspect(ctx, fixture.options())
+	if !errors.Is(err, context.Canceled) || fixture.manifestRequests != 0 || fixture.payloadRequests != 0 {
+		t.Fatalf("canceled request cause or no-asset boundary lost: %v", err)
+	}
+}
+
+// Use real local HTTP/TLS and net/http redirects, never a public network or a
+// replacement verification implementation. The TLS certificate is trusted only
+// by this fixture client; production transport validation is unchanged.
+func signedRedirectClient(t *testing.T, fixture *releaseFixture) (*http.Client, *[3]atomic.Int32) {
+	t.Helper()
+	downloads := new([3]atomic.Int32)
+	cdn := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
+		if request.Method != http.MethodGet || request.Host != "release-assets.githubusercontent.com" || request.URL.RawQuery != "se=fixture-expiry&sig=synthetic" {
+			http.Error(w, "unexpected synthetic CDN request", http.StatusBadRequest)
+			return
+		}
+		var index int
+		var data []byte
+		switch request.URL.Path {
+		case "/fixture/1":
+			index, data = 0, fixture.manifest
+		case "/fixture/2":
+			index, data = 1, fixture.signature
+		case "/fixture/3":
+			index, data = 2, fixture.payload
+		default:
+			http.NotFound(w, request)
+			return
+		}
+		downloads[index].Add(1)
+		writeBytes(w, data)
+	}))
+	t.Cleanup(cdn.Close)
+	roots := x509.NewCertPool()
+	roots.AddCert(cdn.Certificate())
+	cdnURL, err := url.Parse(cdn.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	dialer := &net.Dialer{Timeout: 2 * time.Second}
+	transport := &http.Transport{
+		TLSClientConfig: &tls.Config{RootCAs: roots, ServerName: cdnURL.Hostname(), MinVersion: tls.VersionTLS12},
+		DialContext: func(ctx context.Context, network, address string) (net.Conn, error) {
+			switch address {
+			case "release-assets.githubusercontent.com:443":
+				address = cdn.Listener.Addr().String()
+			case fixture.server.Listener.Addr().String():
+			default:
+				return nil, fmt.Errorf("fixture refuses network destination %q", address)
+			}
+			return dialer.DialContext(ctx, network, address)
+		},
+	}
+	t.Cleanup(transport.CloseIdleConnections)
+	return &http.Client{Transport: transport, Timeout: 10 * time.Second}, downloads
 }
 
 func TestInspectDoesNotDownloadPayloadUntilManifestAuthenticates(t *testing.T) {
@@ -148,6 +331,8 @@ func TestRedirectPolicyAllowsOnlyGitHubTransportHosts(t *testing.T) {
 		"https://api.github.com/repos/PhantoNull/phantowd-ex4/releases/assets/1",
 		"https://github.com/PhantoNull/phantowd-ex4/releases/download/v0.1.0/manifest.sig",
 		"https://release-assets.githubusercontent.com/file",
+		"https://release-assets.githubusercontent.com/file?se=fixture-expiry&sig=synthetic",
+		"https://release-assets.githubusercontent.com:443/file?sig=synthetic",
 	} {
 		parsed, _ := url.Parse(target)
 		if !isAllowedRedirect(parsed, base) {
@@ -160,6 +345,14 @@ func TestRedirectPolicyAllowsOnlyGitHubTransportHosts(t *testing.T) {
 		"https://githubusercontent.com.evil.example/payload",
 		"https://release-assets.githubusercontent.com:444/payload",
 		"http://api.github.com/payload",
+		"http://release-assets.githubusercontent.com/file?sig=synthetic",
+		"https://release-assets.githubusercontent.com.evil.example/file?sig=synthetic",
+		"https://api.github.com/payload?sig=synthetic",
+		"https://github.com/payload?sig=synthetic",
+		"https://objects.githubusercontent.com/payload?sig=synthetic",
+		"https://user@release-assets.githubusercontent.com/file?sig=synthetic",
+		"https://release-assets.githubusercontent.com/file?sig=synthetic#fragment",
+		"https://release-assets.githubusercontent.com:444/file?sig=synthetic",
 	} {
 		parsed, _ := url.Parse(target)
 		if isAllowedRedirect(parsed, base) {
@@ -182,6 +375,8 @@ type releaseFixture struct {
 	immutable         bool
 	extraAsset        bool
 	foreignAssetURL   bool
+	signedRedirects   bool
+	assetURLQuery     bool
 	manifestRequests  int
 	signatureRequests int
 	payloadRequests   int
@@ -242,13 +437,13 @@ func (f *releaseFixture) serve(t *testing.T, prerelease bool, payloadOverride []
 		switch r.URL.Path {
 		case "/repos/PhantoNull/phantowd-ex4/releases/assets/1":
 			f.manifestRequests++
-			writeBytes(w, f.manifest)
+			f.writeAsset(w, r, 1, f.manifest)
 		case "/repos/PhantoNull/phantowd-ex4/releases/assets/2":
 			f.signatureRequests++
-			writeBytes(w, f.signature)
+			f.writeAsset(w, r, 2, f.signature)
 		case "/repos/PhantoNull/phantowd-ex4/releases/assets/3":
 			f.payloadRequests++
-			writeBytes(w, f.payload)
+			f.writeAsset(w, r, 3, f.payload)
 		default:
 			http.NotFound(w, r)
 		}
@@ -256,8 +451,19 @@ func (f *releaseFixture) serve(t *testing.T, prerelease bool, payloadOverride []
 	t.Cleanup(f.server.Close)
 }
 
+func (f *releaseFixture) writeAsset(w http.ResponseWriter, request *http.Request, id int, data []byte) {
+	if f.signedRedirects {
+		http.Redirect(w, request, fmt.Sprintf("https://release-assets.githubusercontent.com/fixture/%d?se=fixture-expiry&sig=synthetic", id), http.StatusFound)
+		return
+	}
+	writeBytes(w, data)
+}
+
 func (f *releaseFixture) writeRelease(w http.ResponseWriter, prerelease bool) {
 	manifestURL := f.assetURL(1)
+	if f.assetURLQuery {
+		manifestURL += "?sig=synthetic"
+	}
 	if f.foreignAssetURL {
 		manifestURL = "https://attacker.example/releases/assets/1"
 	}

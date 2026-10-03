@@ -47,6 +47,8 @@ type RuntimeClosure struct {
 // executables. The bounded ARM32 little-endian model supports literal per-object
 // RUNPATH then /lib,/usr/lib; it refuses RPATH, tokens, modifiers and shadowing.
 // No ld.so.cache/env/hwcaps, loaded-object/symbol-order or dlopen emulation.
+// Observed headers must declare EABI5/base procedure calls and no BE-8 code;
+// this does not qualify instruction sets, build attributes or symbol versions.
 func (r Report) RuntimeClosure(entry string) (RuntimeClosure, error) {
 	out := RuntimeClosure{Format: "phantowd-elf-runtime-candidate", SchemaVersion: 1,
 		RootDigest: r.RootDigest, Entry: entry, PathModel: "arm32-literal-runpath-lib-usr-lib",
@@ -152,6 +154,17 @@ func (r Report) RuntimeClosure(entry string) (RuntimeClosure, error) {
 		if file.ELF.Class != "ELFCLASS32" || file.ELF.ByteOrder != "ELFDATA2LSB" || file.ELF.Machine != "EM_ARM" ||
 			(file.ELF.Type != "ET_DYN" && file.ELF.Type != "ET_EXEC") {
 			return "unsupported-abi"
+		}
+		if file.ELF.HeaderFlags == nil {
+			return "unobserved-arm-header"
+		}
+		flags := *file.ELF.HeaderFlags
+		// AAELF32 section 5.2: EABI version in bits 24..31; hardware
+		// procedure-call ABI at bit 10 and BE-8 executable code at bit 23.
+		// Neither explicit soft-float nor implied base ABI proves ARMv5
+		// instruction compatibility; attributes remain a separate gate.
+		if flags&0xff000000 != 0x05000000 || flags&0x00000400 != 0 || flags&0x00800000 != 0 {
+			return "unsupported-arm-header"
 		}
 		object := objects[canonical]
 		if object == nil {

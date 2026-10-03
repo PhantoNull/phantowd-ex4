@@ -66,6 +66,15 @@ empty components of a nonempty list, RPATH, tokens, loader modifiers, conflictin
 libraries and unresolved evidence are refused. See [loader search semantics](https://man7.org/linux/man-pages/man8/ld.so.8.html)
 and [glibc's empty-path handling](https://github.com/bminor/glibc/blob/glibc-2.41/elf/dl-load.c).
 
+The inventory also records observed processor-specific ELF `header_flags`
+(including an observed zero). Every selected ARM object must have this evidence,
+declare EABI version 5 and not declare the hardware floating-point procedure-call
+ABI or BE-8 code. Both explicit soft-float and an implied base procedure-call ABI
+are admitted, following [ARM's ELF header specification](https://github.com/ARM-software/abi-aa/blob/main/aaelf32/aaelf32.rst#elf-header).
+Older inventory objects without this field are unknown, not implicitly supported.
+These are header prerequisites only: ARM build attributes/instructions, symbol
+versions and complete ABI compatibility remain unqualified.
+
 The graph is capped at 256 objects, 1,024 bindings, 4,096 dependency edges and
 64 MiB of selected regular-file bytes; source inventory retains its existing
 250,000-entry limit and scans/hashes the whole extracted tree, not just the
@@ -123,6 +132,17 @@ used as a substitute for the detached Ed25519 signature or local SHA-256
 checks. GitHub anonymous API access is currently limited to 60 requests per
 hour per source IP, so this manual command does not poll or retry a `latest`
 endpoint. See GitHub's [REST API rate-limit documentation](https://docs.github.com/en/rest/using-the-rest-api/rate-limits-for-the-rest-api).
+
+Downloads handle both direct asset responses and redirects. Opaque signed query
+parameters are accepted only on HTTPS `release-assets.githubusercontent.com`
+with the default/443 port. API asset URLs from metadata remain exact and
+query-free; foreign hosts, userinfo, fragments and HTTP CDN redirects are
+refused. The existing redirect limit and caller redirect policy still apply.
+Transport errors do not echo signed URLs or query credentials. Their underlying
+causes remain available for `errors.Is`/`errors.As`, not public logging.
+Local HTTP/TLS fixtures exercise complete signature/hash verification through
+redirects, authentication-before-payload, tampering refusal and failed-download
+staging cleanup. This does not qualify a real PhantoWD release or an installer.
 
 The public release is the distribution location, not the trust anchor. The
 caller still supplies a raw public key, so this host command cannot prove that

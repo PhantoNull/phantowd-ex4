@@ -4,7 +4,7 @@
 # Implementation status
 
 Code audit: **2026-10-03**, integrated `develop` baseline
-`3da9b8ef37ff352172719fd2bf9abd654315a7bf` (PR #62).
+`7fa757f417377a4c3df1a77fa56ff660a0efb4b0` (PR #63).
 Use [ROADMAP.md](ROADMAP.md) for the acceptance specification. This snapshot
 distinguishes tested components from deployed product workflows. It is not
 installation approval, a security certification, or an exhaustive line-by-line audit.
@@ -17,6 +17,12 @@ passed all three independent hosted checks, including
 [QEMU/DTB](https://github.com/PhantoNull/phantowd-ex4/actions/runs/37079287654).
 Its expected complete squash tree was verified before removing that branch.
 This is component integration, not product service or EX4 qualification.
+
+PR #63 subsequently passed its exact head `97a5b09` host and QEMU/DTB checks
+and was squash-merged with complete expected-tree equality. Its local/remote
+branch was retired after inclusion proof; no unrelated worktree or stash was
+removed. That result does not qualify the separate host-reader, source-collection
+and ARM-header follow-ups documented below.
 
 PR #59 integrated the C++ toolchain and native/ARMv5 producer replay after exact
 head `e22828d` passed both hosted B3 and
@@ -89,6 +95,52 @@ removed. QEMU-only experiment paths no longer trigger an unchanged EX4 kernel
 rebuild; actual board/build input changes remain covered.
 
 ## Roadmap comparison
+
+The combined host-reader, original-source collection and ARM-header increments
+passed complete cached local integration on unchanged `21f2f9b` (tree
+`f27f4ef6`): source verification, Linux host/vet/race/fuzz, image/legal-info/SBOM,
+native storage probe and all standard/MD/two-boot/launcher/retained-Owner/loader/
+Samba/SMART guest lanes. Seven exported artifact hashes were independently
+checked and match the preceding full baseline. The separately collected
+Buildroot archive also matches its pinned digest; upstream legal-info warnings
+are deliberately unchanged. This qualifies local integration of these increments,
+not an independent clean build, hosted feature result, complete corresponding-
+source bundle, dynamic service activation or physical EX4 installation.
+The helper experiments remain disposable and the product gates/bands below
+are unchanged. Existing image, two fixed volumes and one output/cache were reused.
+
+A host-only M4.4 runtime prerequisite now records exact processor-specific ELF
+header flags and requires observed EABI5/base procedure calls without BE-8 code
+for every object in the bounded ARM dependency candidate. Missing headers,
+hard-float or contradictory flags and unsupported EABI versions return no
+partial candidate. Windows and pinned Linux host checks pass; independent
+GNU readelf comparisons agree across 381 observations in the five actual target
+entry/module/converter graphs. Header acceptance is not full ARMv5 instruction,
+symbol or ABI qualification, a signed manifest or service activation. No firmware
+package/startup/privilege profile changes; planning bands remain unchanged.
+
+A separate M11.4 source-collection increment retains the pinned original
+Buildroot archive alongside upstream `legal-info` without clearing its warnings.
+Linux ShellCheck/flake8, generated-file refusal/idempotence/cleanup tests and
+the build-order contracts pass. The exact legal-info/collector command block
+also passed against the existing real Buildroot output with networking disabled;
+kernel, rootfs and API hashes were unchanged. This was a scoped cached
+source-collection test, not a full image/QEMU rerun or independent clean build.
+Complete corresponding-source review, release publication and hardware gates
+remain open; M11 and overall estimate bands are unchanged.
+
+A separate host-only release-reader follow-up corrects rejection of GitHub's
+signed CDN query strings and redacts those URLs from transport-error messages.
+A public-asset header-only observation confirmed the HTTPS redirect/query
+shape; no external payload was downloaded or treated as PhantoWD evidence.
+Real local HTTP/TLS tests prove the old rejection and error-query disclosure,
+then verify successful Ed25519/SHA-256 inspection, invalid-signature/no-payload,
+same-size tampering refusal, exact API URL checks, cancellation/caller-policy
+retention and staging cleanup. Windows toolkit vet/tests and pinned Linux
+Go 1.26.6 vet/unit/race plus four existing 100,000-execution fuzz lanes pass.
+The host-only delta changes neither firmware packages nor product startup;
+hosted follow-up integration is pending. No new QEMU/EX4 or installer
+qualification is inferred, and M10/the overall estimate bands are unchanged.
 
 The native static-child launcher now verifies that stdout and stderr are
 writable anonymous `pipefs` pipe ends. Actual ARMv5 tests first reproduced

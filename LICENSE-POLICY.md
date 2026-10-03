@@ -26,3 +26,22 @@ until an explicit artwork license is added.
 
 This file describes the project's intended licensing structure; it is not
 legal advice.
+
+## Development source collection
+
+The QEMU build runs Buildroot `legal-info` to collect package source archives,
+applied patches, license texts, manifests and the build configuration. It then
+retains the original Buildroot archive already authenticated by the build
+driver at `legal-info/phantowd-build-inputs/buildroot-<version>.tar.xz` in the
+build output directory. The collector verifies the pinned SHA-256 before and
+after copying, refuses symlinked inputs/outputs and does not replace a different
+existing archive. It does not download sources or change firmware images.
+
+The upstream `legal-info/README` and its warnings are preserved, including its
+warning that Buildroot itself did not save its source. The supplemental archive
+addresses that particular missing input; it is not a complete corresponding-
+source bundle or a legal-compliance determination. An exact project revision,
+all Buildroot modifications, toolchain/package source coverage, configurations,
+license notices and distribution obligations still require release review.
+The collected tree stays in the build workspace; the current binary CI artifact
+upload is not a publication of that source bundle.
