@@ -25,6 +25,37 @@ before mounting it. No physical block-device path is formatted or attached.
 
 ## What the experiment does
 
+### Inherited execution-context acceptance packet (fixture-only)
+
+Before extending service ownership, exercise the existing standalone fixture
+with deliberately inherited original-root and ungranted-file descriptors,
+blocked termination signals and an ignored interrupt signal. Use only fixed
+guest-owned inputs and descriptor numbers; no user path, root constructor,
+process adoption, new capability or product entrypoint. Verify poisoning actually
+took effect, then require direct pre-exec observations that both descriptors
+are closed, the complete signal mask is empty and altered dispositions are
+default. Require the new evidence exactly once and in order in the host verifier;
+missing/false/duplicate evidence must fail. Independently check zero live daemon
+inheritable/ambient capabilities in addition to the existing six-capability
+profile. Real SMB authentication/permissions and verified group stop must still
+pass in the same boot; an extra marker alone is not service readiness.
+
+The scope is the previously authorized disposable Samba fixture, not the
+separate proposed privileged Owner composition below. Existing namespace/root,
+code census, kernel-RO, bounded lifetime and no-physical-device guards remain.
+No installable helper, HTTP, product startup or release qualification follows.
+
+The fast Linux feedback includes the actual launcher's context-check function
+in a separate host-only executable, without invoking the guarded bootstrap.
+Two open-descriptor cases, three blocked-signal cases (including unrelated
+SIGUSR1) and three ignored-disposition cases must each be refused; explicit
+test-local restoration must return to a passing baseline. Compiler output lives
+only in the test's temporary directory. These checks run before the expensive
+guest/build stage and exercise real kernel descriptor/signal observations, not
+mocked marker strings. Host execution is not ARMv5 qualification.
+
+### Existing fixture behavior
+
 - Derives non-authorizing ELF candidates for three fixed public Buildroot
   programs (`smbd`, `smbpasswd`, `testparm`) and the single fixed
   `usr/lib/samba/vfs/streams_xattr.so` module plus the fixed glibc

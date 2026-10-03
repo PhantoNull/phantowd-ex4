@@ -38,6 +38,8 @@ exec sh /src/support/tests/test-qemu-samba-root.sh /base "$output/target" \
 '@
 $encoded = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($linuxScript.Replace("`r`n", "`n")))
 docker run --rm --pull never --network none --read-only `
+    --user 1000:1000 --cap-drop ALL --security-opt no-new-privileges `
+    --cpus 2 --memory 2g --pids-limit 256 `
     --tmpfs /tmp:rw,exec,nosuid,nodev,size=512m `
     --tmpfs /var/tmp:rw,noexec,nosuid,nodev,size=128m `
     --entrypoint /bin/sh `

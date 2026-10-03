@@ -347,6 +347,57 @@ static int acl_fixture(const char *operation)
     return 0;
 }
 
+/* Poison only the standalone disposable server's inherited context. These
+ * fixed original-namespace handles must not survive the existing boundary. */
+static int poison_inherited_context(void)
+{
+    int directory = open("/", O_PATH | O_DIRECTORY | O_CLOEXEC);
+    int file = open("/run/phantowd-samba-source/ungranted",
+                    O_RDONLY | O_NOFOLLOW | O_CLOEXEC);
+    if (directory < 0 || directory >= 63 || file < 0 || file >= 63 ||
+        dup2(directory, 63) != 63 || dup2(file, 64) != 64 ||
+        fcntl(63, F_GETFD) != 0 || fcntl(64, F_GETFD) != 0 ||
+        close(directory) || close(file))
+        return -1;
+    struct stat root_info, file_info;
+    if (fstat(63, &root_info) || !S_ISDIR(root_info.st_mode) ||
+        fstat(64, &file_info) || !S_ISREG(file_info.st_mode))
+        return -1;
+    sigset_t blocked, observed;
+    struct sigaction ignored = {.sa_handler = SIG_IGN}, current;
+    if (sigemptyset(&blocked) || sigaddset(&blocked, SIGTERM) ||
+        sigaddset(&blocked, SIGHUP) || sigemptyset(&ignored.sa_mask) ||
+        sigprocmask(SIG_SETMASK, &blocked, NULL) ||
+        sigaction(SIGINT, &ignored, NULL) ||
+        sigprocmask(SIG_BLOCK, NULL, &observed) ||
+        sigismember(&observed, SIGTERM) != 1 ||
+        sigismember(&observed, SIGHUP) != 1 ||
+        sigaction(SIGINT, NULL, &current) || current.sa_handler != SIG_IGN)
+        return -1;
+    return 0;
+}
+
+static int verify_restored_context(void)
+{
+    if (fcntl(63, F_GETFD) != -1 || errno != EBADF ||
+        fcntl(64, F_GETFD) != -1 || errno != EBADF)
+        return -1;
+    sigset_t current_mask;
+    if (sigprocmask(SIG_BLOCK, NULL, &current_mask))
+        return -1;
+    for (int number = 1; number < NSIG; ++number) {
+        if (sigismember(&current_mask, number) != 0)
+            return -1;
+    }
+    const int altered[] = {SIGTERM, SIGHUP, SIGINT};
+    for (size_t i = 0; i < sizeof(altered) / sizeof(altered[0]); ++i) {
+        struct sigaction action;
+        if (sigaction(altered[i], NULL, &action) || action.sa_handler != SIG_DFL)
+            return -1;
+    }
+    return 0;
+}
+
 int main(int argc, char **argv)
 {
     if (guard())
@@ -389,6 +440,8 @@ int main(int argc, char **argv)
         (!strcmp(argv[2], "qpwriter") || !strcmp(argv[2], "qpreader") ||
          !strcmp(argv[2], "qpoutsider"));
     if (!server && !enroll && !charset)
+        return fail();
+    if (server && poison_inherited_context())
         return fail();
     struct stat info;
     int rootfd = open(root, O_PATH | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC);
@@ -434,10 +487,13 @@ int main(int argc, char **argv)
             sigaction(number, &action, NULL) && errno != EINVAL)
             return fail();
     }
+    if (server && verify_restored_context())
+        return fail();
     if (setsid() < 0)
         return fail();
     char *environment[] = {"PATH=/usr/sbin:/usr/bin:/sbin:/bin", "LC_ALL=C", NULL};
     if (server) {
+        puts("PHANTOWD_SAMBA_ROOT_CONTEXT_READY original_fds_closed=true signal_mask_empty=true dispositions_default=true scope=qemu-only");
         puts("PHANTOWD_SAMBA_ROOT_BOUNDARY_READY caps=00000000000000db nnp=true original_denied=true kernel_ro=true");
         fflush(stdout);
         char *args[] = {"smbd", "-F", "--no-process-group", "-s", "/etc/samba/smb.conf", "-l", "/state", NULL};

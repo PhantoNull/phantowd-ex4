@@ -31,6 +31,8 @@ MARKERS = (
     "hashes=true aliases=true refusals=5 scope=qemu-only",
     "PHANTOWD_SAMBA_ROOT_CHARSET_READY charset=CP850 bytes=true "
     "roundtrip=true isolated_root=true scope=qemu-only",
+    "PHANTOWD_SAMBA_ROOT_CONTEXT_READY original_fds_closed=true "
+    "signal_mask_empty=true dispositions_default=true scope=qemu-only",
     "PHANTOWD_SAMBA_ROOT_BOUNDARY_READY caps=00000000000000db "
     "nnp=true original_denied=true kernel_ro=true",
     "PHANTOWD_SAMBA_ROOT_STREAMS_READY module=streams_xattr "
