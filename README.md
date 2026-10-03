@@ -38,6 +38,7 @@ scope; [component contracts](src/phantowd-api/README.md) describe the boundaries
 | Storage | Non-root read-only broker, complete sysfs inventory, manual GPT observations, duplicate-identity detection and internal MD/mount-owner fixtures | Trusted production lifecycle, persistent volume IDs, global-use accounting, qualified import and RAID management |
 | Sharing and identities | SMB3/NFS fixtures, disabled-first Samba account lifecycle, session revocation, Unicode/CP850, streams and POSIX ACL tests | Product account workflows, supervised service activation/recovery and legacy permission migration |
 | Health | Bounded SMART interpretation, generation-bound coordinator, private complete sysfs census including in-use disks, retained descriptor-generation witness, subprocess replay and native/ARMv5 synthetic producer fixtures | Qualified command/device provider, report-to-device binding, history, authorized test jobs, notifications and UI |
+| Network policy | Internal dual-stack desired model, two logical slots, routes/DNS validation and private read-only kernel interface/address observations in host/ARMv5 QEMU | Qualified physical interface binding, runtime conflict admission, persistent trial/confirmation/rollback and management UI |
 | Service isolation | Static-child owner/grant isolation, bounded-privilege Samba fixture, verified code staging, offline ARM-header/build-attribute observations, actual QEMU libatomic dispatch tests and supervised retained static-code Owner | Authenticated runtime inputs, dynamic service-specific composition, durable recovery and product startup |
 | EX4 hardware | Bounded diskless RAM research; see [board notes](board/wd/ex4/README.md) | Sustained networking, factory MAC handoff, SATA, cooling, LEDs/display, thermal safety and recovery |
 
@@ -70,7 +71,7 @@ tests, failure handling and contributor handoffs.
 | [M1–M2: State and identities](ROADMAP.md#m1-durable-state-and-operation-recovery) | Partial implementation | Recoverable configuration, account ownership and safe credentials |
 | [M3–M4: Storage and sharing](ROADMAP.md#m3-complete-storage-discovery-and-volume-lifecycle) | Partial implementation | Stable volumes and supervised SMB/NFS without fallback writes |
 | [M5: Web management](ROADMAP.md#m5-product-web-management-and-security) | Development UI | Authenticated setup, management and recovery workflows |
-| [M6: Network and system services](ROADMAP.md#m6-network-and-system-services) | Planned / hardware-limited | Recoverable networking, time, discovery and administration |
+| [M6: Network and system services](ROADMAP.md#m6-network-and-system-services) | Desired model tested; apply planned | Recoverable networking, time, discovery and administration |
 | [M7: EX4 board and cooling](ROADMAP.md#m7-ex4-board-controller-and-thermal-qualification) | Research | Qualified peripherals, thermal safety and recoverable boot |
 | [M8–M9: Health, migration and iSCSI](ROADMAP.md#m8-raid-health-and-legacy-migration) | Offline inspectors; management planned | SMART monitoring/tests, notifications, RAID, supported legacy layouts and guarded LUNs |
 | [M10–M11: Installer and release](ROADMAP.md#m10-signed-installer-upgrades-and-recovery) | Host verifier only | Signed model-specific installation, recovery and public beta qualification |

@@ -831,6 +831,28 @@ reads no contents, exposes no disk IDs/FDs, starts no child and authorizes no
 SMART command. It remains unconnected to product startup/capture, report
 attribution, transport/wake policy, stable history identity or HTTP.
 
+### Desired network policy prerequisite
+
+[Internal networkpolicy](internal/networkpolicy/README.md) validates a bounded
+schema-1 desired document for two logical slots, dual-stack addressing, routes,
+hostname and DNS. It rejects known static conflicts and incoherent gateways;
+it does not normalize addresses, resolve DNS or invoke a network operation.
+Host/ARMv5 fixtures test /16, aliases, scoped IPv6 link-local gateways, dynamic
+DNS, strict JSON and negative cases in the existing guest boot. Logical slots
+are not physical identity proof. Persistent state, actual interface admission,
+runtime conflict observation, trial/confirmation/rollback and API/UI integration
+remain open; no management-network change is enabled.
+
+[Private networkinventory](internal/networkinventory/README.md) separately
+collects bounded complete link/address dumps from the current Linux namespace,
+checking kernel reply provenance/completion and matching two observations. It
+retains address flags/scope/peers privately, refuses JSON and exposes counts only.
+Native UID1000/zero-capability and actual ARMv5 kernel observations pass; the
+standard root guest fixture does not qualify non-root ARM privileges. The
+namespace pin lasts only for collection; Recheck is not an interface generation
+lease, event monitor or Owner recovery. Factory slot identity, DAD/external
+conflict/route admission and product collector startup remain unimplemented.
+
 ### Test commands
 
 From the repository root on Windows, with a local Go 1.26+ installation:

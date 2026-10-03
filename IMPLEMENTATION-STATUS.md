@@ -4,10 +4,19 @@
 # Implementation status
 
 Code audit: **2026-10-03**, integrated `develop` baseline
-`3594234e05c394c7848c41cd2134a492e898ce8d` (PR #69).
+`dda8624351a77e9de5711d147eedd30058c9be1b` (PR #71).
 Use [ROADMAP.md](ROADMAP.md) for the acceptance specification. This snapshot
 distinguishes tested components from deployed product workflows. It is not
 installation approval, a security certification, or an exhaustive line-by-line audit.
+
+PR #70 passed exact head `1178820` host and QEMU checks and merged as
+`dd49e4` with complete qualified/expected/integrated tree equality. Its topic
+branch was retired with exact-SHA guards. PR #71 subsequently passed exact
+`b64effe` host and [QEMU checks](https://github.com/PhantoNull/phantowd-ex4/actions/runs/37112632559)
+and merged as `dda8624`, with complete expected/qualified/integrated tree
+equality. Its local/remote branch was retired with exact-SHA guards. This
+qualifies retained-census component integration, not physical SMART or product
+startup. The network increment below has separate local evidence.
 
 PR #68 passed final head `0e22e01` host and
 [QEMU/DTB](https://github.com/PhantoNull/phantowd-ex4/actions/runs/37101813148)
@@ -129,6 +138,42 @@ removed. QEMU-only experiment paths no longer trigger an unchanged EX4 kernel
 rebuild; actual board/build input changes remain covered.
 
 ## Roadmap comparison
+
+M6.1b local follow-up adds a private Linux kernel interface/address observation.
+A thread-bound namespace pin and one unprivileged route socket issue only fixed
+link/address dumps. Kernel sender, port/sequence, completion status, interruption,
+filtering, truncation and byte/object budgets are checked without dump retry.
+Two normalized sets must match in the same namespace; names, current MACs,
+addresses, state flags/scope and point-to-point peers remain private. JSON and
+copied/forged results are refused; public summary is counts only. Recheck is
+point-in-time comparison, not a generation lease or sticky Owner recovery.
+Final Windows preflight/cross-compile, pinned Linux whole API vet/race,
+5,000 generated wire mutations, 1,000 fuzz executions, 20 feedback contracts
+and actual same-boot ARMv5 plus clean two-boot overlay pass. Additional native
+IPv6/full-flag/scalar tests pass on unchanged guest runtime (87.9% Linux package
+statement coverage). Actual native collection/recheck succeeds as UID1000 with
+all capabilities removed, with stable descriptor counts after repeated calls.
+The standard guest self-test runs as root; its collector pass is not non-root
+ARM privilege qualification. No product collector startup, HTTP, interface
+binding, DAD/conflict admission, routes or network change is authorized.
+Cached overlays are not regenerated release artifacts or a clean full build.
+M6/overall planning bands remain unchanged.
+
+M6.1a local follow-up implements an internal schema-1 desired network model:
+exactly two logical slots, IPv4 DHCP/static/disabled and IPv6 auto/static/disabled,
+static aliases, default priorities, non-default routes, hostname, manual/automatic
+DNS and search domains. It reuses bounded strict JSON; errors are constant and
+failed decode returns no partial policy. Cross-slot static overlap, duplicate
+addresses, incoherent gateways and route ties are refused without normalization.
+Windows API/UI/vet/tests and ARMv5 cross-compile pass (network package statement
+coverage 98.7%). Pinned Linux Go 1.26.6 tagged vet and complete API race tests,
+3,000 fixed mutation cases, a 1,000-execution fuzz campaign, 19 build-feedback
+contracts, workflow contracts and actual ARMv5 smoke/clean two-boot overlay pass.
+The required guest marker is in the existing boot, not a new stage. Logical
+slots are not qualified hardware identities; no network application, ownership,
+persistence, runtime conflict check or HTTP workflow exists. Original base
+kernel/packages are reused; this is not a new full image, clean build or EX4
+qualification. M6 and overall estimate bands remain unchanged.
 
 M8.5b local follow-up: a private Linux complete-census witness set requires one
 already-open read-only block source per whole leaf and retains independent
@@ -647,7 +692,7 @@ substantial redesign. Rows overlap and must not be added.
 | M3 — Storage lifecycle | Complete sysfs census, generation-bound read-only broker, GPT/ext/MD observations, collision checks, internal mount/lease fixtures | Persistent logical VolumeID resolver, global-use accounting, production qualifier/roster, supported layouts and EX4 media qualification | 40–55% |
 | M4 — SMB/NFS | Real loopback clients, desired policies, coherent candidate planner, process-set supervision, share-scoped handoff, grant-only isolated runtime and retained static-code Owner with explicit supervised lifecycle in QEMU | Approved daemon runtime manifests, isolated process sets, privilege profiles/ACLs, transactional activation/recovery, production wiring and storage-loss monitoring | 35–50% |
 | M5 — Management UI/security | Development authentication/TLS, sessions/password changes, diagnostics dashboard and policy preview/editing | Product enrollment/reset/certificate lifecycle, authorized live workflows, recovery UX, browser/accessibility/security qualification | 25–40% |
-| M6 — Network/system | Diagnostic observations and brief two-port board research | Safe network transactions/rollback, supported dual-port modes, time/discovery, notifications and administrative jobs | 5–15% |
+| M6 — Network/system | Dual-stack desired-policy model and private bounded read-only kernel interface/address collector in host/ARMv5 QEMU; brief two-port board research | Qualified interface/runtime-conflict admission, safe network transactions/rollback, supported dual-port modes, time/discovery, notifications and administrative jobs | 5–15% |
 | M7 — Board/cooling/recovery | DTS and bounded diskless RAM trials; passive MCU framing/catalog tooling | Qualified factory identities, fan/tach/fail-safe, LCD/LED/buttons/power/watchdog, SATA/USB and NAND recovery | 15–25% |
 | M8 — RAID/health/migration | Generic offline GPT/ext/MD inspectors, static WD layout analysis and synthetic offline SMART report interpretation | Attributable EX4 layout corpus/importer, ownership/ACL migration, RAID jobs, trusted SMART collection/history/jobs/UI, backup/restore tests | 15–25% |
 | M9 — iSCSI | Specification and legacy research; no product target implementation | ARMv5 backend selection, LUN model, session/ownership guard, migration and failure campaigns | 0–5% |

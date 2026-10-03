@@ -1165,12 +1165,36 @@ exposing management on a LAN.
 
 ## M6: Network and system services
 
-**State:** product implementation planned; board network observations limited.
+**State:** internal desired-policy model tested; product application planned;
+board network observations limited.
 **Depends on:** M1/M5; M7 for physical networking.
 
 - **M6.1 — Network domain.** Specify DHCP/static addressing, subnet masks, routes,
   DNS, hostname and both physical interfaces. Validate conflicts and interface
   identity; do not hardcode an operator network or assume all LANs use /24.
+  **M6.1a — desired syntax (partial):** the internal
+  [networkpolicy contract](src/phantowd-api/internal/networkpolicy/README.md)
+  validates schema-1 IPv4/IPv6 modes, static aliases, default priorities,
+  non-default routes, hostname and manual/automatic DNS for two logical slots.
+  Bounded strict JSON, duplicates, cross-slot static subnet conflicts,
+  gateways and route ties are checked. Windows preflight, pinned Linux
+  vet/race, fixed-count mutation/fuzz tests and same-boot ARMv5 QEMU plus
+  the clean two-boot overlay pass. No network syscall, persistence or HTTP.
+  Slots are NOT qualified kernel/factory identities. Next M6.1 work must
+  admit actual interfaces and observe current/leased address conflicts; the
+  model cannot establish connectivity or authorize application. Cached overlay
+  is not a new full Buildroot image, EX4 test or product qualification.
+  **M6.1b — private kernel observation (partial):**
+  [networkinventory](src/phantowd-api/internal/networkinventory/README.md)
+  uses fixed bounded link/address netlink dumps, namespace pin/checks and two
+  matching samples. Interrupted/filtered/truncated/incomplete dumps, malformed
+  records, namespace/set drift and cancellation refuse without retry/partial
+  output. Raw names/MACs/addresses/state stay private; summary is redacted.
+  Native unprivileged collection/race/mutation/fuzz and actual ARMv5 same-boot
+  kernel observation plus clean two-boot overlay pass. Recheck is not an event
+  subscription, generation lease, factory identity or atomic snapshot. Remaining
+  M6.1 work: board-qualified slot bindings, route/use/conflict and DAD admission,
+  fresh authority and production integration. No policy application or HTTP.
 - **M6.2 — Recoverable changes.** Apply changes as a trial with explicit confirmation
   and a safe timeout/recovery route. Loss of the management connection must not
   strand the owner permanently. Qualify reboot mid-trial and address conflicts.
