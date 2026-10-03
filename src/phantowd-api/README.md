@@ -23,6 +23,15 @@ SMB and NFS desired policy in one strictly coherent revision. It shares the
 tested transaction engine with the original store but has a distinct format
 and filenames, no implicit migration, and no service activation.
 
+## M9.2a desired iSCSI policy
+
+The separate internal [iSCSI desired-policy model](internal/iscsipolicy/README.md)
+defines revision-bound target/LUN/backing relationships and per-initiator CHAP
+credential references. Its synthetic host/QEMU fixture opens no backing or
+credential and starts no target. It is not part of the atomic SMB/NFS store,
+has no HTTP endpoint or persistence, and cannot activate a service. Backend,
+global-use/session admission, import and guarded transactions remain M9 work.
+
 ## M3.2g protected registry observation
 
 The internal [volume registry](internal/volumeregistry/README.md) defines a

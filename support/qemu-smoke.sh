@@ -150,6 +150,10 @@ while [ "$attempt" -lt "$smoke_timeout" ]; do
             echo "Desired network policy self-test marker missing" >&2
             exit 1
         fi
+        if ! grep -F 'PHANTOWD_ISCSI_POLICY_READY schema=1 stable_refs=true lun_zero_explicit=true mutual_refs_distinct=true strict_json=true activation=false scope=synthetic-policy-only' "$log_file" >/dev/null; then
+            printf 'QEMU did not verify the synthetic iSCSI desired-policy contract\n' >&2
+            exit 1
+        fi
         if ! grep -F 'PHANTOWD_NFS_POLICY_READY schema=1 mapping=all-squash scope=synthetic-policy-only' "$log_file" >/dev/null; then
             echo "Missing NFS policy validation assertion" >&2
             exit 1
