@@ -1325,6 +1325,21 @@ not host/QEMU progress.
     command. This is neither report attribution nor a provider/capture lease;
     complete census reconciliation, fixed opener, transport/runtime authority
     and physical qualification remain separate. No product/broker wiring changes.
+    The private Linux complete-census witness set now requires one borrowed
+    O_RDONLY source for every whole leaf and retains independent descriptors
+    all-or-error. It observes the entire inventory before/after all witness
+    checks; failures keep review and pins until explicit Close, with no command
+    or child ownership. Native race/refusal tests and the existing actual ARMv5
+    MD fixture pass for all seven virtual leaves, reordered sources, partial
+    rollback, caller-close independence and injected reader failure; the
+    standard smoke and two-boot overlay pass. The complete native ReadLinkFS
+    regression catches a missing Lstat method without weakening the collector.
+    The observation remains point-in-time, not report attribution, source
+    admission, stable identity, transport/wake qualification or product wiring.
+    Complete cached local package/image/legal/SBOM integration and all existing
+    guest lanes subsequently pass on35ae558, with seven exported hashes and
+    image/export/target API equality verified. Independent clean reproduction,
+    hosted qualification, command authority and product wiring remain open.
     Do not add
     history/UI by treating this transient tuple as a stable media identity.
   - **M8.5c — Wake policy.** Specify exact no-check/device-detection behavior per

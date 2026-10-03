@@ -197,6 +197,10 @@ func runQEMUMDStackTest() (result error) {
 		return err
 	}
 	fmt.Println("PHANTOWD_SMART_FD_WITNESS_READY active_md_members=2 retained_fd=true caller_close=true mismatch_refused=true review_sticky=true metadata_ioctl=BLKGETDISKSEQ content_read=false smart_command=false scope=qemu-fixture-only")
+	if err := exerciseQEMUSMARTCensusWitnessSet(); err != nil {
+		return err
+	}
+	fmt.Println("PHANTOWD_SMART_CENSUS_WITNESS_SET_READY leaves=7 complete=true partial_refused=true rollback_no_leak=true caller_close=true review_pins_retained=true reader_failure_sticky=true explicit_release=true content_read=false smart_command=false scope=qemu-fixture-only")
 	var mountStat unix.Statx_t
 	if err := unix.Statx(unix.AT_FDCWD, mountPoint, unix.AT_NO_AUTOMOUNT,
 		unix.STATX_BASIC_STATS|unix.STATX_MNT_ID_UNIQUE, &mountStat); err != nil {

@@ -4,7 +4,7 @@
 # Implementation status
 
 Code audit: **2026-10-03**, integrated `develop` baseline
-`f9bbfc0848be29c4fa904e67cc15714285e31b01` (PR #68).
+`3594234e05c394c7848c41cd2134a492e898ce8d` (PR #69).
 Use [ROADMAP.md](ROADMAP.md) for the acceptance specification. This snapshot
 distinguishes tested components from deployed product workflows. It is not
 installation approval, a security certification, or an exhaustive line-by-line audit.
@@ -129,6 +129,27 @@ removed. QEMU-only experiment paths no longer trigger an unchanged EX4 kernel
 rebuild; actual board/build input changes remain covered.
 
 ## Roadmap comparison
+
+M8.5b local follow-up: a private Linux complete-census witness set requires one
+already-open read-only block source per whole leaf and retains independent
+generation-checked descriptors all-or-error. Whole-inventory observations
+surround descriptor checks; any uncertainty keeps permanent review and pins
+until explicit release. Native race tests and actual ARMv5 standard smoke plus
+two-boot overlay pass, including all seven virtual leaves, partial rollback,
+caller-close independence and injected-reader failure. A native regression
+first reproduced the QEMU wrapper's missing `ReadLinkFS.Lstat`; the corrected
+reader preserves the full contract, with a compile-time assertion. No collector
+guard was relaxed. A subsequent complete cached local integration passed on
+frozen `35ae558` (tree `b6decde`): host vet/unit/race/fuzz, package/image,
+legal-info/source collection/SBOM, native image probe and all standard/MD/
+two-boot/launcher/Owner/loader/atomic/Samba/SMART guest lanes. Independent
+checks verify all seven exported hashes and byte equality of image, exported
+and target API, including the mandatory seven-leaf assertion. Five manifest
+entries, including kernel/DTB, are unchanged from the previous base; API/rootfs
+are new. This is cached integration, not independent clean reproduction,
+hosted qualification, physical SMART authority or a product provider.
+No new privilege is authorized; the historical state EBUSY remains unresolved.
+Milestone estimate bands remain unchanged.
 
 M0 fixture reliability follow-up: the two-boot Samba shutdown previously
 accepted direct-parent exit while a same-group adopted child could retain a
