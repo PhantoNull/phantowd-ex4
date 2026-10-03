@@ -55,6 +55,17 @@ hashes remain unchanged. These are cached local component results, not clean
 firmware/SBOM, hosted feature acceptance, adoption or physical qualification.
 Product gates and planning estimates remain unchanged.
 
+The M3.2g follow-up also privately reconciles atomic SMB/NFS desired policy with
+protected registry observations: exact logical-ID/expected-UUID agreement,
+separate revisions, explicit unknown/conflicting/missing/ambiguous states,
+protocol reference counts and full-census validation even for empty policy.
+Whole local Windows preflight, pinned Linux tagged vet/race/fuzz/contracts and
+actual ARMv5 standard/two-boot overlay pass. The guest proves ID-not-inferred-
+from-UUID, conflicting backing and split-policy refusal against its actual MD
+and tmpfs registry. No second policy owner/scanner, writer, HTTP, planner-ready
+token, mount/import or activation; clean/hosted/physical qualification remains
+separate. No new Docker image/volume or surviving project test container.
+
 Use [ROADMAP.md](ROADMAP.md) for the acceptance specification. This snapshot
 distinguishes tested components from deployed product workflows. It is not
 installation approval, a security certification, or an exhaustive line-by-line audit.

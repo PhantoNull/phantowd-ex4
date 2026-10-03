@@ -700,6 +700,13 @@ are missing. **Depends on:** M1; M7 for hardware.
   state placement, registration, root service, HTTP, mount/import or activation.
   Next: specify stronger backing identity/global-use/compatibility and recoverable
   registration separately; a UUID expectation is not durable physical identity.
+  The private policy-binding follow-up now compares validated atomic SMB/NFS
+  policy with protected registry claims and the complete scoped census, requires
+  exact ID+UUID agreement and retains separate revisions/reference counts.
+  Unknown ID, conflicting backing, missing/cloned/unresolved scope and invalid
+  split policy cannot become usable/planner evidence. Whole Windows/Linux race
+  and actual ARMv5 standard/two-boot overlay pass locally; no registry writer,
+  product state, HTTP, mount/import or service activation is added.
 - **M3.3 — Gate compatibility and mounting.** Define a per-layout/filesystem
   allowlist with evidence. Inspect before assembly/mounting; journal replay and
   automatic MD actions can write even during a supposedly read-only assessment.

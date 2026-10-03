@@ -48,6 +48,15 @@ keeps a missing registered UUID unusable and observes the actual disposable MD
 object. This is cached local component acceptance, not clean firmware, hosted
 feature acceptance or physical/product storage qualification.
 
+The private combined-policy registry review requires exact logical-ID and
+expected-UUID agreement, keeps registry/policy revisions separate and counts
+SMB/NFS references per desired volume. Unknown IDs cannot be inferred from an
+observed UUID; differing UUID expectations cannot overwrite registry claims.
+Malformed/split desired policy or incomplete whole census yields no partial
+result, even for empty desired policy. Native and actual ARMv5 standard/two-boot
+tests pass locally. The result remains nonserializable point-in-time data, not
+planner evidence, a selected path, a lease or service activation authority.
+
 ## M5.5a diagnostic snapshot lifecycle task contract
 
 The browser's existing four read-only snapshot requests must share one bounded

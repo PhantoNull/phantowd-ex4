@@ -51,3 +51,33 @@ activation. Explicit recoverable registration/retired IDs, stronger GPT/MD/
 physical bindings, global-use accounting, compatibility and product-owned
 state/bootstrap remain necessary. Snapshot lifetime does not imply reader or
 kernel freshness; close does not retroactively invalidate point-in-time data.
+
+## Policy-binding follow-up contract (before implementation)
+
+1. **Input/authority:** validated combined SMB/NFS desired configuration,
+   protected registry Snapshot and complete mounted-ext census. Entirely private
+   pure computation, no path/owner/runtime authority and no HTTP wiring.
+2. **Transition:** keep policy and registry revisions separate; require exact
+   logical-ID/expected-UUID agreement before copying scoped observations for a
+   desired volume. Count SMB/NFS references without changing either document.
+3. **Failure:** reject invalid/split-revision policy or incomplete whole census,
+   even for empty desired volumes. Unknown IDs stay not-registered, conflicting
+   expected UUIDs stay registry-policy-conflict; never rebind by UUID alone.
+   Missing/cloned/unresolved observed backing remains explicit, not usable.
+4. **Boundary:** extend the existing private main-package registry reviewer and
+   reuse fileservice.Config validation; no second policy owner or scanner,
+   registry writer, adoption, lease, planner input or activation.
+5. **Acceptance:** native exact-match/unknown/conflict/revision/order/reference/
+   clone/partial/empty16-volume tests; existing ARMv5 tmpfs/MD fixture exercises
+   actual protected snapshot plus combined policy and conflict refusal. Whole
+   Windows/Linux/standard/two-boot validation, unchanged base and no new volumes.
+
+The policy-binding follow-up passes whole local Windows/Linux tagged race and
+actual ARMv5 standard/two-boot tests. Its required guest marker verifies separate
+registry/policy revisions, exact ID+UUID agreement, unknown-ID/conflicting-UUID/
+split-policy refusal and one SMB/NFS reference each. Native tests also cover
+aliases/clones, unresolved disk evidence, malformed unclaimed census, ordering,
+explicit empty policy and16-volume bounds. A registered volume is unreferenced
+only when its ID is absent from the desired volume dictionary; protocol counts
+do not imply activation or that referenced paths exist. No future registration
+writer or service Owner is created by this observation.
