@@ -320,6 +320,10 @@ while [ "$attempt" -lt "$smoke_timeout" ]; do
             echo 'Missing private scoped desired-volume review assertion' >&2
             exit 1
         fi
+        if ! grep -F 'PHANTOWD_VOLUME_REGISTRY_READY protected_reader=true explicit_ids=true actual_md=true missing_unusable=true unsafe_mode_refused=true foreign_owner_refused=true private=true writer=false activation=false scope=disposable-qemu-only' "$log_file" >/dev/null; then
+            echo 'Missing protected registry observation and scoped MD reconciliation assertion' >&2
+            exit 1
+        fi
         if ! grep -F 'PHANTOWD_M35_TWO_VOLUME_READY distinct_filesystems=true lost_volume_quarantined=true lost_handles_revoked=true healthy_group_lease_survived=true fresh_healthy_owner_lease=true roster_reacquire=all_or_error scope=disposable-qemu-only' "$log_file" >/dev/null; then
             echo 'Missing M3.5 two-volume lease-loss assertion' >&2
             exit 1

@@ -40,6 +40,21 @@ successfully on that frozen source. Five source hashes and seven unchanged base
 hashes independently agree after completion. This is cumulative cached local
 evidence, not a completed original run, hosted feature or clean/EX4 acceptance.
 
+M3.2g is being implemented separately from frozen PR81: strict internal registry
+model, descriptor-anchored read-only reader and private complete-census resolver.
+The approved scope has no writer/adoption, production state placement, HTTP,
+mount/import or activation. Windows preflight, whole pinned Linux tagged vet/
+race, repeated transaction SIGKILL/fuzz/contracts and actual ARMv5 standard/
+two-boot overlay pass locally. Native tests cover the strict64KiB/16-volume
+model, real file/directory permission/link/FIFO/metadata-race/locking/lifecycle
+refusals and complete scoped aliases/clones/missing/unclaimed reconciliation.
+The guest reads a fresh tmpfs registry, refuses unsafe mode/foreign ownership,
+keeps a missing claim unusable and observes the actual disposable MD array.
+No test container survives, no image/volume is added and seven base artifact
+hashes remain unchanged. These are cached local component results, not clean
+firmware/SBOM, hosted feature acceptance, adoption or physical qualification.
+Product gates and planning estimates remain unchanged.
+
 Use [ROADMAP.md](ROADMAP.md) for the acceptance specification. This snapshot
 distinguishes tested components from deployed product workflows. It is not
 installation approval, a security certification, or an exhaustive line-by-line audit.

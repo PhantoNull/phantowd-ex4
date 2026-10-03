@@ -321,6 +321,10 @@ func runQEMUMDStackTest() (result error) {
 		return errors.New("private desired-volume review could escape as JSON")
 	}
 	fmt.Println("PHANTOWD_SCOPED_VOLUME_REVIEW_READY desired_ids_only=true complete_census=true actual_md=true unclaimed_explicit=true private=true qualification=false activation=false scope=disposable-qemu-only")
+	if err := exerciseQEMUVolumeRegistry(census); err != nil {
+		return err
+	}
+	fmt.Println("PHANTOWD_VOLUME_REGISTRY_READY protected_reader=true explicit_ids=true actual_md=true missing_unusable=true unsafe_mode_refused=true foreign_owner_refused=true private=true writer=false activation=false scope=disposable-qemu-only")
 	var mountStat unix.Statx_t
 	if err := unix.Statx(unix.AT_FDCWD, mountPoint, unix.AT_NO_AUTOMOUNT,
 		unix.STATX_BASIC_STATS|unix.STATX_MNT_ID_UNIQUE, &mountStat); err != nil {

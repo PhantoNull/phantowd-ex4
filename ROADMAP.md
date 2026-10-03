@@ -674,7 +674,7 @@ are missing. **Depends on:** M1; M7 for hardware.
   `616579f`; the guest rejects coherent stale mount-ID and MD-UUID observations
   while accepting unchanged metadata. Base artifacts remain unchanged; this is not a
   retained lease, sticky Owner, persistent registry, global-use proof or service
-  authority. M3.2g remains reserved for the separate protected-registry contract.
+  authority. M3.2g is the separate protected-registry contract below.
   Follow-up`fe1e855` extends the existing disposable MD fixture with actual
   ordinary unmount/read-only remount; ARMv5 standard smoke confirms absent/stale
   refusal, changed unique mount ID and fresh-census acceptance. Windows/native
@@ -683,6 +683,23 @@ are missing. **Depends on:** M1; M7 for hardware.
   integrated PR80, and the remaining contracts plus actual standard ARMv5/
   two-boot overlay pass. Independent source/base hashes agree. This is local
   cumulative acceptance only; no production/physical authority is granted.
+  **M3.2g — protected registry observation (partial; locally tested):**
+  internal versioned explicit-ID/expected-UUID model with strict bounded JSON,
+  canonical shareconfig validation and no writer/adoption. The Linux reader
+  retains a trusted directory descriptor/shared flock, binds its effective
+  owner once and accepts only fixed single-link0600 `volumes.json` beneath a
+  private0700 directory, without symlink/cross-mount fallback or atime updates.
+  Bracket file/directory metadata, refuse uncertainty and return immutable
+  nonserializable provenance. Private pure reconciliation reuses full census
+  validation and explicit scoped alias/clone/missing results, never a chosen
+  mountpath or lease. Acceptance: strict model, actual Linux permissions/race/
+  lock/lifecycle and complete resolver tests; existing ARMv5 disposable MD plus
+  fresh tmpfs registry fixture, then whole standard/two-boot overlay all pass
+  locally with the pinned image and existing two volumes; base artifacts remain
+  unchanged. This is not clean/hosted/physical qualification. No product
+  state placement, registration, root service, HTTP, mount/import or activation.
+  Next: specify stronger backing identity/global-use/compatibility and recoverable
+  registration separately; a UUID expectation is not durable physical identity.
 - **M3.3 — Gate compatibility and mounting.** Define a per-layout/filesystem
   allowlist with evidence. Inspect before assembly/mounting; journal replay and
   automatic MD actions can write even during a supposedly read-only assessment.

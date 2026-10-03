@@ -23,6 +23,31 @@ SMB and NFS desired policy in one strictly coherent revision. It shares the
 tested transaction engine with the original store but has a distinct format
 and filenames, no implicit migration, and no service activation.
 
+## M3.2g protected registry observation
+
+The internal [volume registry](internal/volumeregistry/README.md) defines a
+bounded versioned document with explicitly assigned logical IDs and expected
+filesystem UUIDs. Its Linux reader retains an independently opened trusted
+directory descriptor/shared flock and observes only fixed `volumes.json` in
+read-only/no-atime mode. Exact owner/mode, single-link regular file, bounded
+content and bracketed metadata are required; no symlink/cross-mount fallback.
+The reader's effective owner is bound at construction, never supplied per read.
+Trusted parent provisioning and cooperative writers are prerequisites.
+
+Private reconciliation reuses the complete mounted-ext census validator and
+alias/clone/missing semantics. No selected path, qualification or activation
+token is returned. Protected snapshot provenance is distinct from decoded data
+and desired policy; raw snapshots/reviews reject JSON serialization. This is
+not durable adoption or a production registry: no writer, state location,
+registration API, import/mount, planner/Owner construction or service activation
+is implemented. The UUID-only schema does not prove global uniqueness or legacy
+compatibility. Windows preflight, whole pinned Linux tagged vet/race, native
+reader/complete-resolver regressions and actual ARMv5 standard/two-boot overlay
+pass locally. The guest fixture refuses unsafe file modes and a foreign owner,
+keeps a missing registered UUID unusable and observes the actual disposable MD
+object. This is cached local component acceptance, not clean firmware, hosted
+feature acceptance or physical/product storage qualification.
+
 ## M5.5a diagnostic snapshot lifecycle task contract
 
 The browser's existing four read-only snapshot requests must share one bounded
