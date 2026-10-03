@@ -4,10 +4,21 @@
 # Implementation status
 
 Code audit: **2026-10-03**, integrated `develop` baseline
-`df9b45bc13efe5c3116d810612f42afc9293d600` (PR #77).
+`d1b8dfeda4a15f74d17030f17f92b4132e7d5e54` (PR #78).
 Use [ROADMAP.md](ROADMAP.md) for the acceptance specification. This snapshot
 distinguishes tested components from deployed product workflows. It is not
 installation approval, a security certification, or an exhaustive line-by-line audit.
+
+PR #78 passed its own exact56171db QEMU/DTB check37140806223, including
+standard guest/two-boot validation, research DTB and final isolated-volume
+cleanup, then guarded squash-merged asd1b8dfe. Expected, checked and integrated
+complete trees equalc3475d50. Policy-review and separate SIGKILL topic refs
+were retired only after checked inclusion, identical original test/contract
+and attached-worktree guards. This qualifies the policy-review/interruption
+batch, not subsequent storage or a deployable appliance. Mounted-ext census/
+desired-volume follow-ups rebase on the actual merge with their complete
+qualified tree3c3810cc and API subtree7d0e5828 unchanged. Hosted acceptance of
+that newer feature remains separate; all product/hardware gates stay open.
 
 M3.2f follow-up privately reviews desired logical IDs/expected UUIDs against
 the full scoped mounted-ext census. Same-device aliases group as one observed
