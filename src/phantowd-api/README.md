@@ -755,6 +755,18 @@ additional I/O, authority, daemon operation or policy mutation is introduced.
 Test equal/root/nested and segment-boundary paths, distinct VolumeIDs, pair
 removal, order invariance, limits, literal markup and late-response clearing.
 
+Extension evidence (2026-10-03, code `29d4d10`): complete DOM/Windows tests,
+pinned Linux whole tagged API vet/race, three repetitions of the seven-boundary
+SIGKILL store campaign, bounded network fuzz/contracts and actual ARMv5 standard
+smoke plus clean two-boot overlay pass on one frozen source. The advisory
+fixture counts128x128 pairs while retaining64 details and still admits a
+complete otherwise-valid desired review; a disjoint baseline/candidate fixture
+counts32768 pairs without retaining that pair set. Auth-loss/late replies and
+literal markup do not restore/inject advisory content. This is not measured
+browser memory/performance, effective filesystem access, browser execution,
+new clean firmware/SBOM, hosted acceptance or EX4 qualification. Existing
+kernel/packages/probe and fixed build resources are unchanged.
+
 After the existing complete server preview succeeds, show a bounded semantic
 before/after comparison against the explicitly loaded baseline. Compare stable
 policy IDs, exact SMB user references and exact NFS client CIDRs, never list

@@ -22,7 +22,13 @@ deterministic text-only details cover equal/nested paths on one VolumeID,
 root folders and removed pairs; noncanonical path observations refuse review.
 Independent SMB/NFS revocation and unresolved runtime aliases remain explicit.
 Complete DOM and Windows API/vet/cross-compilation pass, including128x128
-pair bounds; native/ARMv5 validation of this extension remains pending.
+pair bounds and a32768-pair union with only64 retained detail records.
+Frozen code `29d4d10` (whole tree `82f2eba9`, API subtree `7c0ed3c5`) then passes
+the complete pinned Linux tagged API vet/race, three repeated SIGKILL campaigns,
+fixed fuzz/contracts and actual ARMv5 standard/two-boot overlay. Seven original
+base artifacts remain byte-identical; no new persistent build resource exists.
+This is not actual-browser/heap, effective-access, new clean firmware/SBOM,
+hosted or EX4 qualification; no product service activates.
 
 M5.4a adds a bounded semantic before/after review to the existing development
 SMB/NFS policy editor. It compares stable IDs/CIDRs, includes every NFS mapping/
