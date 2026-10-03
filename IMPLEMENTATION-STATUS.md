@@ -13,9 +13,16 @@ its host check passed, while QEMU/B3 acceptance is still pending.
 The current M3.2h follow-up adds an internal explicit read-only freshness
 recheck: validate previous complete evidence before root I/O, recollect the
 entire declared scope and reject mount/storage/MD/root identity changes. Native
-focused race tests and Windows preflight pass; full Linux/ARMv5 acceptance is
-pending. It retains no lease, does not monitor or persist identity, and adds no
-HTTP, mount/import or service activation. Planning bands remain unchanged.
+focused race tests and Windows preflight pass. Frozen source `616579f` then
+passes whole pinned Linux tagged vet/race, three SIGKILL repetitions, bounded
+network fuzz and workflow/storage contracts. The actual ARMv5 standard overlay
+accepts the unchanged disposable MD census and rejects internally coherent stale
+mount-ID and MD-UUID observations; clean two-boot state tests pass. Independent
+hashes confirm five frozen runtime/test/support files and seven unchanged base
+artifacts. No new persistent Docker image/volume/output is created. This is
+cached overlay evidence, not clean firmware/SBOM, hosted feature or EX4
+qualification. It retains no lease, does not monitor or persist identity, and
+adds no HTTP, mount/import or service activation. Planning bands remain unchanged.
 
 Use [ROADMAP.md](ROADMAP.md) for the acceptance specification. This snapshot
 distinguishes tested components from deployed product workflows. It is not

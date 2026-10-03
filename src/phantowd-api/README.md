@@ -230,6 +230,19 @@ an actual fixed-reader recheck and explicit mandatory marker, without another
 boot, backing disk or persistent Docker resource. Physical EX4, durable
 identity, global-use accounting and recovery gates remain open.
 
+Local evidence (2026-10-03): Windows API/DOM/vet and ARMv5 test compilation
+pass. Source `616579f` passes whole pinned Linux tagged API vet/race, three
+SIGKILL repetitions, bounded network fuzz and storage/workflow contracts.
+Actual ARMv5 standard overlay verifies unchanged complete MD census and
+internally coherent stale mount-ID/MD-UUID refusal; clean two-boot state tests
+pass. Native cases cover invalid prior evidence before root I/O, changes in
+excluded entries, unavailable metadata, observer failures, cancellation,
+ordering, mount timestamps and0/64 roots. Five frozen runtime/test/support
+hashes and seven unchanged base hashes agree independently after completion.
+This reuses one fixed image/two volumes with bounded auto-removed RAM scratch;
+no new persistent output. Hosted/clean-build/physical acceptance remains open.
+This is a point-in-time recheck, not a retained lease or activation authority.
+
 ### M3.2f scoped desired-volume observation task contract
 
 Add one private, side-effect-free review joining a validated desired share
