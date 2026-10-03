@@ -90,6 +90,16 @@ rebuild; actual board/build input changes remain covered.
 
 ## Roadmap comparison
 
+A separate M11.4 source-collection increment retains the pinned original
+Buildroot archive alongside upstream `legal-info` without clearing its warnings.
+Linux ShellCheck/flake8, generated-file refusal/idempotence/cleanup tests and
+the build-order contracts pass. The exact legal-info/collector command block
+also passed against the existing real Buildroot output with networking disabled;
+kernel, rootfs and API hashes were unchanged. This was a scoped cached
+source-collection test, not a full image/QEMU rerun or independent clean build.
+Complete corresponding-source review, release publication and hardware gates
+remain open; M11 and overall estimate bands are unchanged.
+
 A separate host-only release-reader follow-up corrects rejection of GitHub's
 signed CDN query strings and redacts those URLs from transport-error messages.
 A public-asset header-only observation confirmed the HTTPS redirect/query

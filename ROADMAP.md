@@ -1371,6 +1371,11 @@ and failed-update recovery demonstrated beyond merely reaching a boot prompt.
   allowlist. Publish exact source commit/configuration, payload hashes, signed
   metadata, SBOM, license/legal material, support matrix, release notes, limitations
   and qualification evidence. Fast-overlay artifacts are never releases.
+  A bounded build collector now supplements upstream `legal-info` with the
+  authenticated original Buildroot archive, preserves upstream warnings and
+  refuses conflicting existing output. This closes one source-input omission,
+  not complete corresponding-source review or public source publication; exact
+  project/modified Buildroot/config/toolchain coverage remains a release gate.
 - **M11.5 — Staged publication.** Contributor builds → qualified limited beta →
   stable release after issue triage and recovery drills. Drafting a GitHub Release
   or passing CI does not advance a gate. Installation documentation must match
