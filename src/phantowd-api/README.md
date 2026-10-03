@@ -202,6 +202,34 @@ The observation is point-in-time and limited to one process mount namespace;
 it does not establish global use, UUID uniqueness on unmounted media, a durable
 VolumeID, compatibility, health, a retained lease or activation authority.
 
+### M3.2h explicit mounted-census freshness task contract
+
+Add an internal Linux read-only recheck of a previously complete mounted-ext
+census. Validate the entire retained observation before performing new root
+observations, then use the fixed complete collector, not a caller-selected
+subset. Compare coverage, full mount table, disk generations/VPD/topology,
+MD bindings and independent filesystem UUID/device/unique-mount observations.
+Collection timestamps are not identity. An invalid previous observation,
+unavailable metadata, cancellation or any changed observation returns only the
+existing redacted incomplete error; no partial positive result is returned.
+
+This operation has no intent/result journal or persistent transition: it
+compares two complete point-in-time observations. It does not retain handles,
+make review sticky, monitor automatically or guarantee stability after return.
+The caller must not concurrently mutate the private previous snapshot. Reuse
+existing collectors, validators and comparators; the injected root observer
+remains an in-process test seam, never request input. No public API, persistent
+VolumeID registry, mount qualification, Owner/planner authority, mount/import,
+service activation, new privilege or NAS operation is included.
+
+Acceptance: native Linux tests must refuse corrupt prior evidence before root
+I/O and detect drift in unclaimed/excluded scope as well as observed roots;
+cover cancellation, metadata failure, empty scope, ordering, timestamps and the
+64-root budget. Reuse the existing disposable QEMU MD mount/member fixture for
+an actual fixed-reader recheck and explicit mandatory marker, without another
+boot, backing disk or persistent Docker resource. Physical EX4, durable
+identity, global-use accounting and recovery gates remain open.
+
 ### M3.2f scoped desired-volume observation task contract
 
 Add one private, side-effect-free review joining a validated desired share

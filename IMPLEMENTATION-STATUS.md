@@ -5,6 +5,18 @@
 
 Code audit: **2026-10-03**, integrated `develop` baseline
 `0731540213c4864df70478696bba7e75986abe3a` (PR #79).
+Earlier audit paragraphs below retain their original verification scope. PR #79
+passed its exact-head host/QEMU checks and merged the mounted-ext census and
+desired-volume review. PR #80 (`cca8fc5`) separately optimizes system CMake;
+its host check passed, while QEMU/B3 acceptance is still pending.
+
+The current M3.2h follow-up adds an internal explicit read-only freshness
+recheck: validate previous complete evidence before root I/O, recollect the
+entire declared scope and reject mount/storage/MD/root identity changes. Native
+focused race tests and Windows preflight pass; full Linux/ARMv5 acceptance is
+pending. It retains no lease, does not monitor or persist identity, and adds no
+HTTP, mount/import or service activation. Planning bands remain unchanged.
+
 Use [ROADMAP.md](ROADMAP.md) for the acceptance specification. This snapshot
 distinguishes tested components from deployed product workflows. It is not
 installation approval, a security certification, or an exhaustive line-by-line audit.
