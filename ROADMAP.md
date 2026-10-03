@@ -678,8 +678,11 @@ are missing. **Depends on:** M1; M7 for hardware.
   Follow-up`fe1e855` extends the existing disposable MD fixture with actual
   ordinary unmount/read-only remount; ARMv5 standard smoke confirms absent/stale
   refusal, changed unique mount ID and fresh-census acceptance. Windows/native
-  checks pass, but development-engine shutdown interrupts the full overlay
-  before separate two-boot/final-hash acceptance. Keep that follow-up pending.
+  checks pass. Development-engine shutdown interrupts the original full overlay;
+  after approved restart, unchanged API/runtime inputs rebase as`e22199b` on
+  integrated PR80, and the remaining contracts plus actual standard ARMv5/
+  two-boot overlay pass. Independent source/base hashes agree. This is local
+  cumulative acceptance only; no production/physical authority is granted.
 - **M3.3 — Gate compatibility and mounting.** Define a per-layout/filesystem
   allowlist with evidence. Inspect before assembly/mounting; journal replay and
   automatic MD actions can write even during a supposedly read-only assessment.

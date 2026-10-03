@@ -254,9 +254,13 @@ Local follow-up source `fe1e855` passes Windows preflight, whole pinned Linux
 tagged vet/race, SIGKILL/fuzz/contracts and the actual ARMv5 standard guest.
 The mandatory remount marker confirms absent/stale mount refusal, changed unique
 mount ID, unchanged device/UUID and read-only state, and fresh-census acceptance.
-The full overlay process is interrupted by development-engine shutdown before
-the separate two-boot result or final hashes; this newer follow-up is not fully
-integration-qualified. The complete older `616579f` proof remains distinct.
+The original full overlay process is interrupted by development-engine shutdown.
+After explicit restart approval, source `e22199b` rebases on merged PR80 while
+retaining the entire API subtree and five runtime/test/support blobs unchanged.
+Remaining integrated contracts and actual standard ARMv5/two-boot overlay then
+terminate successfully. Independent post-run source/base hashes agree; no new
+persistent Docker resource. This cumulative cached local proof does not mean
+the original interrupted run succeeded, or establish hosted/clean/EX4 acceptance.
 
 ### M3.2f scoped desired-volume observation task contract
 
