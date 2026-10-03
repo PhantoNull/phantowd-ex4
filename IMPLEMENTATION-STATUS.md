@@ -4,10 +4,20 @@
 # Implementation status
 
 Code audit: **2026-10-03**, integrated `develop` baseline
-`dd1dd99c83fa5458f6b55bf72e582c389123b7a3` (PR #64).
+`d8707aa8a909e10a2430fe4e78e85c0cc035e1ce` (PR #66).
 Use [ROADMAP.md](ROADMAP.md) for the acceptance specification. This snapshot
 distinguishes tested components from deployed product workflows. It is not
 installation approval, a security certification, or an exhaustive line-by-line audit.
+
+PR #65 passed exact-head `eeb14a7` host and
+[QEMU/DTB](https://github.com/PhantoNull/phantowd-ex4/actions/runs/37093392186)
+checks and was squash-merged as `ea51f70`. Its complete expected squash tree
+was independently checked. PR #66 was subsequently rebased onto that integrated
+commit with its complete tree unchanged, passed final-head `fa6969a`
+[host checks](https://github.com/PhantoNull/phantowd-ex4/actions/runs/37096901139)
+and merged as `d8707aa` with complete expected-tree equality. Both topic branches
+were retired with exact-SHA guards after inclusion proof. The new SMART
+coordinator below is not covered by those earlier CI results.
 
 PR #60 integrated the retained static-code Owner after exact head `7c96f41`
 passed hosted host, B3 and QEMU checks. The complete expected merge tree was
@@ -103,6 +113,35 @@ removed. QEMU-only experiment paths no longer trigger an unchanged EX4 kernel
 rebuild; actual board/build input changes remain covered.
 
 ## Roadmap comparison
+
+The M8.5b internal generation-bound coordinator now passes the complete Windows
+API/UI preflight (Go 1.27.0), pinned Linux Go 1.26.6 vet/race checks and a
+25,000-execution publication fuzz campaign. Fake-backend state-machine tests
+cover source replacement/incompleteness, process signals and uncertain cleanup,
+cancellation, output limits, non-queued concurrency, private evidence and copied
+handle refusal. The existing diskless ARM926 parser fixture now runs both
+binaries in one boot and requires separate success markers; focused guest tests
+pass with the manifest-verified original rootfs unchanged. Runner contract tests
+prove missing-marker refusal, one fake boot and scratch cleanup separately;
+these mock tools are not guest execution. The focused wrapper uses the existing
+image/workspace read-only, a non-root zero-capability container and disposable
+bounded RAM scratch. Focused evidence alone is not physical SMART provenance,
+an implemented command/device provider, a full image or hosted qualification. M8 and
+overall bands remain unchanged; no product service, metadata-broker privilege,
+HTTP endpoint, history or device operation is added.
+
+The unchanged published `e960454` subsequently passed the actual complete
+`build-qemu.ps1 -CachedOnly` lane: source verification, all Linux host/race/fuzz,
+package/image/legal-info/SBOM, native probe and all standard/MD/two-boot/launcher/
+retained-Owner/loader/atomic/Samba/SMART guest fixtures. Seven exported artifacts
+were independently rehashed against the preceding known baseline and all match;
+the target library and collected Buildroot archive also retain pinned hashes.
+Only the existing two volumes, one 14 GiB output and approximately 971 MiB compiler
+cache remain; the temporary container is removed. This is cached local full
+integration, not independent clean-build, hosted topic or physical qualification.
+The subsequent CI-only follow-up selects host/QEMU rather than unchanged B3 for
+SMART fixture paths and adds command-boundary/default-path tests; it does not
+change the coordinator, guest runner, firmware inputs or product authority.
 
 The combined ARM-attribute observer and actual libatomic dispatch fixture passed
 complete cached local integration on unchanged `ea87772` (tree `e899614c`):

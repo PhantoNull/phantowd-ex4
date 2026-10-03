@@ -2,10 +2,13 @@
 # SPDX-FileCopyrightText: 2026 PhantoWD EX4 contributors
 [CmdletBinding()]
 param(
-    [string]$BaseArtifactDir = (Join-Path (Split-Path -Parent $PSScriptRoot) 'artifacts/qemu-armv5')
+    [string]$BaseArtifactDir = ''
 )
 $ErrorActionPreference = 'Stop'
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
+if ([string]::IsNullOrWhiteSpace($BaseArtifactDir)) {
+    $BaseArtifactDir = Join-Path $repoRoot 'artifacts/qemu-armv5'
+}
 $baseRoot = (Resolve-Path -LiteralPath $BaseArtifactDir).Path
 $pins = @(Get-Content (Join-Path $repoRoot 'versions.env') | Where-Object { $_ -match '^BUILDROOT_VERSION=' })
 if ($pins.Count -ne 1) { throw 'One Buildroot pin is required.' }
@@ -34,8 +37,10 @@ exec sh /src/support/tests/test-qemu-smart-report.sh /base \
 '@
 $encoded = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($linuxScript.Replace("`r`n", "`n")))
 docker run --rm --pull never --network none --read-only `
-    --tmpfs /tmp:rw,exec,nosuid,nodev,size=768m `
-    --tmpfs /var/tmp:rw,noexec,nosuid,nodev,size=128m `
+    --user 1000:1000 --cap-drop ALL --security-opt no-new-privileges:true `
+    --cpus 2 --memory 2g --pids-limit 128 `
+    --tmpfs '/tmp:rw,exec,nosuid,nodev,size=2048m,uid=1000,gid=1000' `
+    --tmpfs '/var/tmp:rw,noexec,nosuid,nodev,size=128m,uid=1000,gid=1000' `
     --entrypoint /bin/sh `
     --mount "type=bind,source=$repoRoot,target=/src,readonly" `
     --mount "type=bind,source=$baseRoot,target=/base,readonly" `
