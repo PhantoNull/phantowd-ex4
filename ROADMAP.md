@@ -1655,6 +1655,17 @@ support per tested combination; refuse untested combinations without mutation.
 - **M9.1 — Backend decision.** Evaluate the kernel/userspace target implementation
   for this kernel, ARMv5 and resource budget. Record package/license choices.
   Do not assume legacy WD target configuration is directly portable.
+  **M9.1a — isolated LIO prerequisite (local compile only):** a pinned-archive,
+  fresh-tmpfs ARMv5 kernel helper enables built-in LIO/FILEIO for a separate
+  research profile, not the standard QEMU or EX4 defconfig. Six Windows/Linux
+  profile test groups and ShellCheck pass; the actual kernel compile succeeds.
+  No target/client boot or CHAP/data/session assertion has run. FILEIO's
+  O_CREAT/RW and control delimiters prohibit blindly using a desired pathname;
+  credential configfs attributes require a separate privileged/redacted owner.
+  **Next:** qualify a pinned upstream initiator and an isolated guest-loopback
+  32 MiB target fixture, including retained-FD replace/unlink/missing cases,
+  CHAP refusals, effective RO/RW, capacity, sessions and verified teardown.
+  See the [research contract and source boundaries](support/ISCSI-LIO-RESEARCH.md).
 - **M9.2 — Target model.** Stable target/LUN identity, backing volume/object,
   capacity/allocation policy, initiator access and protected authentication
   secrets. Secrets are not returned by read APIs or exposed in diagnostics.
