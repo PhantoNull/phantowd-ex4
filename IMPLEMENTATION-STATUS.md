@@ -4,7 +4,7 @@
 # Implementation status
 
 Code audit: **2026-10-03**, integrated `develop` baseline
-`7fa757f417377a4c3df1a77fa56ff660a0efb4b0` (PR #63).
+`dd1dd99c83fa5458f6b55bf72e582c389123b7a3` (PR #64).
 Use [ROADMAP.md](ROADMAP.md) for the acceptance specification. This snapshot
 distinguishes tested components from deployed product workflows. It is not
 installation approval, a security certification, or an exhaustive line-by-line audit.
@@ -23,6 +23,14 @@ and was squash-merged with complete expected-tree equality. Its local/remote
 branch was retired after inclusion proof; no unrelated worktree or stash was
 removed. That result does not qualify the separate host-reader, source-collection
 and ARM-header follow-ups documented below.
+
+PR #64 subsequently passed exact-head `f7f9477` host, B3 and
+[QEMU/DTB](https://github.com/PhantoNull/phantowd-ex4/actions/runs/37088513201)
+checks and was squash-merged as `dd1dd99`. Its complete merge tree equals the
+checked head. The original transport/source topics have tree-identical rebased
+ancestors in that checked head; all three integrated local/remote refs were
+retired with exact-SHA guards. This does not qualify the separate ARM-attribute
+observer or new atomic-dispatch fixture as hosted/product/EX4 results.
 
 PR #59 integrated the C++ toolchain and native/ARMv5 producer replay after exact
 head `e22828d` passed both hosted B3 and
