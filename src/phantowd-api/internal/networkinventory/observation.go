@@ -18,6 +18,7 @@ const MaxInterfaces = 64
 const MaxAddresses = 256
 const MaxRoutes = 512
 const MaxRules = 256
+const MaxNextHopObjects = 128
 const maxNextHops = 32
 
 var ErrUnavailable = errors.New("network observation unavailable")
@@ -43,6 +44,22 @@ type snapshot struct {
 	addresses []ipAddress
 	routes    []route
 	rules     []rule
+	objects   []nextHopObject
+}
+
+type nextHopMember struct {
+	id, weight uint32
+}
+
+type nextHopObject struct {
+	id, output, flags       uint32
+	family, scope, protocol uint8
+	gateway                 netip.Addr
+	groupType               uint16
+	blackhole, fdb          bool
+	members                 []nextHopMember
+	semantic                [32]byte
+	unresolved              bool
 }
 
 type rule struct {
@@ -64,6 +81,7 @@ type route struct {
 	next                                []nextHop
 	semantic                            [32]byte
 	unresolved                          bool
+	objectID                            uint32
 }
 type nextHop struct {
 	index        uint32
@@ -82,12 +100,14 @@ type Observation struct {
 }
 
 type Summary struct {
-	Interfaces       int
-	Addresses        int
-	Routes           int
-	UnresolvedRoutes int
-	Rules            int
-	UnresolvedRules  int
+	Interfaces               int
+	Addresses                int
+	Routes                   int
+	UnresolvedRoutes         int
+	Rules                    int
+	UnresolvedRules          int
+	NextHopObjects           int
+	UnresolvedNextHopObjects int
 }
 
 func (o *Observation) Summary() (Summary, error) {
@@ -106,7 +126,13 @@ func (o *Observation) Summary() (Summary, error) {
 			unresolvedRules++
 		}
 	}
-	return Summary{Interfaces: len(o.state.links), Addresses: len(o.state.addresses), Routes: len(o.state.routes), UnresolvedRoutes: unresolved, Rules: len(o.state.rules), UnresolvedRules: unresolvedRules}, nil
+	unresolvedObjects := 0
+	for _, n := range o.state.objects {
+		if n.unresolved {
+			unresolvedObjects++
+		}
+	}
+	return Summary{Interfaces: len(o.state.links), Addresses: len(o.state.addresses), Routes: len(o.state.routes), UnresolvedRoutes: unresolved, Rules: len(o.state.rules), UnresolvedRules: unresolvedRules, NextHopObjects: len(o.state.objects), UnresolvedNextHopObjects: unresolvedObjects}, nil
 }
 func (Observation) MarshalJSON() ([]byte, error) { return nil, ErrUnavailable }
 func (*Observation) UnmarshalJSON([]byte) error  { return ErrUnavailable }
@@ -146,7 +172,7 @@ func observe(ctx context.Context, r reader) (*Observation, error) {
 }
 
 func normalize(s *snapshot) error {
-	if len(s.links) == 0 || len(s.links) > MaxInterfaces || s.addresses == nil || len(s.addresses) > MaxAddresses || s.routes == nil || len(s.routes) > MaxRoutes || s.rules == nil || len(s.rules) > MaxRules {
+	if len(s.links) == 0 || len(s.links) > MaxInterfaces || s.addresses == nil || len(s.addresses) > MaxAddresses || s.routes == nil || len(s.routes) > MaxRoutes || s.rules == nil || len(s.rules) > MaxRules || s.objects == nil || len(s.objects) > MaxNextHopObjects {
 		return ErrUnavailable
 	}
 	// Clone provider-owned data so a result does not alias an injected reader.
@@ -154,6 +180,7 @@ func normalize(s *snapshot) error {
 	s.addresses = slices.Clone(s.addresses)
 	s.routes = slices.Clone(s.routes)
 	s.rules = slices.Clone(s.rules)
+	s.objects = slices.Clone(s.objects)
 	slices.SortFunc(s.links, func(a, b link) int {
 		if a.index < b.index {
 			return -1
@@ -188,12 +215,21 @@ func normalize(s *snapshot) error {
 			return ErrUnavailable
 		}
 	}
+	if normalizeObjects(s) != nil {
+		return ErrUnavailable
+	}
 	for i := range s.routes {
 		r := &s.routes[i]
 		if !r.destination.IsValid() || !r.source.IsValid() || r.destination != r.destination.Masked() || r.source != r.source.Masked() || r.destination.Addr().BitLen() != r.source.Addr().BitLen() || len(r.next) > maxNextHops {
 			return ErrUnavailable
 		}
 		r.next = slices.Clone(r.next)
+		if r.objectID != 0 && findObject(s.objects, r.objectID) == nil {
+			return ErrUnavailable
+		}
+		if r.objectID != 0 {
+			r.unresolved = true
+		}
 		for _, index := range []uint32{r.input, r.output} {
 			if index != 0 && !hasInterface(s.links, index) {
 				return ErrUnavailable
@@ -285,9 +321,59 @@ func compareAddress(a, b ipAddress) int {
 }
 func sameAddressIdentity(a, b ipAddress) bool { return compareAddress(a, b) == 0 }
 func equal(a, b snapshot) bool {
-	return slices.Equal(a.links, b.links) && slices.Equal(a.addresses, b.addresses) && slices.Equal(a.rules, b.rules) && slices.EqualFunc(a.routes, b.routes, func(a, b route) bool {
-		return a.destination == b.destination && a.source == b.source && a.table == b.table && a.metric == b.metric && a.input == b.input && a.output == b.output && a.flags == b.flags && a.protocol == b.protocol && a.scope == b.scope && a.kind == b.kind && a.tos == b.tos && a.gateway == b.gateway && a.preferred == b.preferred && a.via == b.via && a.semantic == b.semantic && a.unresolved == b.unresolved && slices.Equal(a.next, b.next)
+	return slices.Equal(a.links, b.links) && slices.Equal(a.addresses, b.addresses) && slices.Equal(a.rules, b.rules) && slices.EqualFunc(a.objects, b.objects, func(a, b nextHopObject) bool {
+		return a.id == b.id && a.output == b.output && a.flags == b.flags && a.family == b.family && a.scope == b.scope && a.protocol == b.protocol && a.gateway == b.gateway && a.groupType == b.groupType && a.blackhole == b.blackhole && a.fdb == b.fdb && a.semantic == b.semantic && a.unresolved == b.unresolved && slices.Equal(a.members, b.members)
+	}) && slices.EqualFunc(a.routes, b.routes, func(a, b route) bool {
+		return a.destination == b.destination && a.source == b.source && a.table == b.table && a.metric == b.metric && a.input == b.input && a.output == b.output && a.flags == b.flags && a.protocol == b.protocol && a.scope == b.scope && a.kind == b.kind && a.tos == b.tos && a.gateway == b.gateway && a.preferred == b.preferred && a.via == b.via && a.semantic == b.semantic && a.unresolved == b.unresolved && a.objectID == b.objectID && slices.Equal(a.next, b.next)
 	})
+}
+
+func findObject(objects []nextHopObject, id uint32) *nextHopObject {
+	for i := range objects {
+		if objects[i].id == id {
+			return &objects[i]
+		}
+	}
+	return nil
+}
+
+func normalizeObjects(s *snapshot) error {
+	slices.SortFunc(s.objects, func(a, b nextHopObject) int {
+		if a.id < b.id {
+			return -1
+		}
+		if a.id > b.id {
+			return 1
+		}
+		return 0
+	})
+	for i := range s.objects {
+		n := &s.objects[i]
+		if n.id == 0 || i > 0 && s.objects[i-1].id == n.id || len(n.members) > maxNextHops || n.output != 0 && !hasInterface(s.links, n.output) {
+			return ErrUnavailable
+		}
+		n.members = slices.Clone(n.members)
+		for j, m := range n.members {
+			target := findObject(s.objects, m.id)
+			if target == nil || len(target.members) != 0 || m.id == n.id || m.weight == 0 || m.weight > 65535 || target.fdb != n.fdb || target.blackhole && len(n.members) > 1 {
+				return ErrUnavailable
+			}
+			for _, previous := range n.members[:j] {
+				if previous.id == m.id {
+					return ErrUnavailable
+				}
+			}
+		}
+	}
+	// No nested groups: a second pass propagates unresolved leaf semantics
+	// independent of object dump order. It never makes a route usable.
+	for i := range s.objects {
+		n := &s.objects[i]
+		for _, m := range n.members {
+			n.unresolved = n.unresolved || findObject(s.objects, m.id).unresolved
+		}
+	}
+	return nil
 }
 
 // Recheck is another observation, not an Owner recovery or sticky-state reset.

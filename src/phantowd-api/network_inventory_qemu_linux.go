@@ -14,12 +14,15 @@ import (
 )
 
 func exerciseQEMUNetworkInventory() error {
+	if networkinventory.QEMUObjectFixture() != nil {
+		return errors.New("generated nexthop observation failed")
+	}
 	o, err := networkinventory.Collect(context.Background())
 	if err != nil {
 		return errors.New("kernel network observation failed")
 	}
 	summary, err := o.Summary()
-	if err != nil || summary.Interfaces < 1 || summary.Addresses < 1 || summary.Routes < 1 || summary.Rules < 1 || summary.UnresolvedRoutes > summary.Routes || summary.UnresolvedRules > summary.Rules || networkinventory.Recheck(context.Background(), o) != nil {
+	if err != nil || summary.Interfaces < 1 || summary.Addresses < 1 || summary.Routes < 1 || summary.Rules < 1 || summary.UnresolvedRoutes > summary.Routes || summary.UnresolvedRules > summary.Rules || summary.UnresolvedNextHopObjects > summary.NextHopObjects || networkinventory.Recheck(context.Background(), o) != nil {
 		return errors.New("kernel network observation incomplete or changed")
 	}
 	if _, err := json.Marshal(o); err == nil {

@@ -37,3 +37,4 @@ cd "$module_dir"
 "$go_binary" test -run '^$' -fuzz '^FuzzWireConsume$' -fuzztime=25000x -parallel=2 ./internal/networkinventory
 "$go_binary" test -run '^$' -fuzz '^FuzzRoute$' -fuzztime=25000x -parallel=2 ./internal/networkinventory
 "$go_binary" test -run '^$' -fuzz '^FuzzRule$' -fuzztime=25000x -parallel=2 ./internal/networkinventory
+"$go_binary" test -run '^$' -fuzz '^FuzzNextHopObject$' -fuzztime=25000x -parallel=2 ./internal/networkinventory

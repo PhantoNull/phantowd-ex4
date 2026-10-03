@@ -1205,7 +1205,8 @@ board network observations limited.
   now includes bounded IPv4/IPv6 configured routes across all returned tables,
   terminal/local routes, source/destination prefixes, effective table, metric,
   gateway/via, preferred source and correlated interface/ECMP references.
-  Attribute/member ordering is normalized; unknown attributes, nested metrics
+  Attribute ordering is normalized; ECMP member order is preserved (M6.1e
+  corrects the earlier sorting assumption). Unknown attributes, nested metrics
   and referenced nexthop IDs remain private and explicitly unresolved. Semantic
   changes refuse matching samples; volatile cache usage/expiry is excluded,
   reported cache error retained. Fixed strict requests exclude cached exceptions;
@@ -1229,6 +1230,24 @@ board network observations limited.
   independently; resolved kernel options are audited. This is local cached
   evidence, not hosted topic or independent clean-build qualification. Production
   EX4 profile/configuration remains a separate gate. No rule evaluation or apply.
+  **M6.1e — private nexthop objects (partial; locally tested):**
+  one fixed strict AF_UNSPEC dump observes all returned objects, not just route
+  references; completed empty and missing rosters are distinct. Bound 128
+  objects/32 ordered members, correlate local OIF and route/group IDs, reject
+  missing/duplicate targets and group nesting, retain effective 16-bit weights.
+  FDB/encapsulation/unknown semantics and resilient groups without bucket
+  observations remain unresolved; joined route IDs still grant no routing
+  authority. Object dump/attribute order is normalized, member order preserved.
+  Two complete sets/recheck must match, with private IDs/count-only summary.
+  Inline ECMP sorting reproduced a real hidden-drift regression; corrected
+  parser preserves order and non-adjacent duplicate refusal. Pinned no-flag LWT
+  encapsulation framing has a separate RED/GREEN test. Native whole API
+  vet/race, actual UID1000/zero-capability collection/FD counts, 25,000-execution
+  object/route fuzz and Windows preflight pass. Actual ARMv5 kernel collection
+  plus nonempty generated weighted-group assertions and clean two-boot overlay
+  pass on code `319a331`; verified existing kernel/packages are reused, not a
+  full image/SBOM build or independent clean/hosted/physical qualification.
+  Live nonempty kernel-group behavior remains a separate acceptance gap.
 - **M6.2 — Recoverable changes.** Apply changes as a trial with explicit confirmation
   and a safe timeout/recovery route. Loss of the management connection must not
   strand the owner permanently. Qualify reboot mid-trial and address conflicts.

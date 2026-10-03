@@ -4,10 +4,18 @@
 # Implementation status
 
 Code audit: **2026-10-03**, integrated `develop` baseline
-`43711023ff8dcd050ec1cd4298e15abe784a19e0` (PR #72).
+`0bf3f91d385b8c11c4ce8062589d90ffa17b688a` (PR #73).
 Use [ROADMAP.md](ROADMAP.md) for the acceptance specification. This snapshot
 distinguishes tested components from deployed product workflows. It is not
 installation approval, a security certification, or an exhaustive line-by-line audit.
+
+PR #73 passed exact `834ccce` host and QEMU/DTB checks, including final isolated
+build-volume cleanup, and merged as `0bf3f91`. Its expected, checked and
+integrated complete trees are identical. The route/rule topic refs were retired
+with exact-SHA guards after complete inclusion and worktree checks. The nexthop
+follow-up was rebased onto this actual merge with its complete source tree and
+three patches unchanged (`319a331` becomes `37e766a`). Its complete local proof
+below remains valid; PR #73 does not qualify that follow-up as hosted.
 
 PR #72 passed exact `1dca772` host and QEMU/DTB checks and merged as `4371102`;
 the expected, checked and integrated complete tree is identical. Its local and
@@ -145,6 +153,30 @@ rebuild; actual board/build input changes remain covered.
 
 ## Roadmap comparison
 
+M6.1e local follow-up on code `319a331` / tree `333e81d` adds one fixed strict
+AF_UNSPEC nexthop-object dump per matching sample, complete even when empty.
+It observes unreferenced objects, correlates route/group IDs and local OIF,
+checks bounded ordered groups/effective 16-bit weights and refuses incomplete
+rosters. Resilient buckets, FDB and encapsulation are not evaluated; complex
+objects and referenced routes remain unresolved. IDs stay private; summary is
+counts only. A real parser RED/GREEN corrects inline ECMP sorting that hid
+member-order drift; pinned no-flag LWT framing has a separate regression.
+Windows API/UI/vet/ARMv5 cross-compilation, pinned Linux whole API tagged
+vet/race, actual UID1000/zero-capability capture/recheck/FD census, 5,000 mutations,
+25,000-execution object/route fuzz, real workflow and 7 kernel/21 feedback tests
+pass. Actual ARMv5 kernel observation plus nonempty generated weighted-group
+assertions and clean two-boot overlay pass; seven base hashes verify and the
+base remains unchanged. A subsequent complete cached integration on unchanged
+`cec1527` (tree `61a8391`, five Markdown-only changes from `319a331`) also passes
+whole native/vet/race/fixed-fuzz, package/rootfs/legal-info/SBOM, regular-image
+probe and all standard/MD/two-boot/launcher/Owner/loader/atomic/Samba/SMART guest
+lanes. Independent post-run checks verify all seven exported hashes, resolved
+policy-routing kernel options and exact exported/image/target API bytes. One
+existing output and two fixed volumes are reused; temporary containers removed.
+This is cached local integration, not independent clean reproduction, hosted
+topic or physical qualification. No live nonempty kernel-group campaign, evaluator, network
+application, new privilege, HTTP or product startup. Planning bands unchanged.
+
 M6.1d adds two fixed strict IPv4/IPv6 routing-rule dumps to the existing private
 collector. A generic request first reproduced an extra family128; a failing
 request-shape regression now requires the actual IP family in the packet and
@@ -184,8 +216,9 @@ checks remain necessary; the original host failure is not a firmware failure.
 M6.1c local follow-up extends the same private namespace/socket collector to
 configured IPv4/IPv6 FIB routes in all returned tables. Checked prefixes,
 scalars, table overrides, gateway/via, preferred source, interface references
-and bounded ECMP members are retained privately; canonical semantic comparison
-normalizes attribute/member order. Unknown attributes, nested metrics and
+and bounded ECMP members are retained privately; canonical comparison
+normalizes attribute order. M6.1e above supersedes the earlier member-order
+sorting assumption and qualifies the correction locally. Unknown attributes, nested metrics and
 unread nexthop objects remain explicitly unresolved. Cache usage/expiry does
 not establish configuration drift or freshness; reported cache error is retained.
 Native failure reproduced the strict IPv6 FILTERED response. Pinned kernel

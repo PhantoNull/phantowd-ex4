@@ -354,7 +354,7 @@ for path in 'support/build-qemu.ps1' \
     require_ignored_path "$stage_b3_workflow" "$path"
 done
 require_bounded_qemu_ccache "$qemu_workflow"
-require_fixed_fuzz_campaigns "$repo_root/support/container/test-api.sh" 21
+require_fixed_fuzz_campaigns "$repo_root/support/container/test-api.sh" 22
 require_fixed_fuzz_campaigns "$repo_root/support/container/test-lab-tools.sh" 5
 require_fixed_fuzz_campaigns "$host_workflow" 4
 

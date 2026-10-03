@@ -101,7 +101,11 @@ func (r *kernelReader) read(ctx context.Context) (snapshot, error) {
 		return snapshot{}, ErrUnavailable
 	}
 	rules.rules = append(rules.rules, rules6.rules...)
-	return snapshot{links: links.links, addresses: addresses.addresses, routes: routes.routes, rules: rules.rules}, nil
+	objects, err := r.query(ctx, unix.RTM_GETNEXTHOP, unix.RTM_NEWNEXTHOP, unix.AF_UNSPEC)
+	if err != nil {
+		return snapshot{}, ErrUnavailable
+	}
+	return snapshot{links: links.links, addresses: addresses.addresses, routes: routes.routes, rules: rules.rules, objects: objects.objects}, nil
 }
 
 func requestMessage(request, response uint16, family byte, seq uint32) ([]byte, error) {
@@ -121,6 +125,11 @@ func requestMessage(request, response uint16, family byte, seq uint32) ([]byte, 
 			return nil, ErrUnavailable
 		}
 		size = 28
+	} else if request == unix.RTM_GETNEXTHOP {
+		if response != unix.RTM_NEWNEXTHOP || family != unix.AF_UNSPEC {
+			return nil, ErrUnavailable
+		}
+		size = 24
 	} else if request != unix.RTM_GETLINK || response != unix.RTM_NEWLINK || family != unix.AF_UNSPEC {
 		return nil, ErrUnavailable
 	}
@@ -149,6 +158,7 @@ func (r *kernelReader) query(ctx context.Context, request, response uint16, fami
 	d := dump{seq: r.seq, port: r.port, kind: response, links: []link{}, addresses: []ipAddress{}, routes: []route{}}
 	d.configuredRoutes = request == unix.RTM_GETROUTE && response == unix.RTM_NEWROUTE
 	d.rules = []rule{}
+	d.objects = []nextHopObject{}
 	d.family = family
 	buffer := make([]byte, maxDatagramBytes)
 	for !d.done {
