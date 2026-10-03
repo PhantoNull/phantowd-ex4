@@ -4,7 +4,14 @@
 # Implementation status
 
 Code audit: **2026-10-03**, integrated `develop` baseline
-`78080ebff3db8f80343ad4756e6f58dc10ef40f0` (PR #80).
+`d362c16afa118ad7b32b35719ca3336fac547cc8` (PR #81).
+PR #81 exact `07058ed` passed its own host and ARMv5/DTB checks, including
+standard/two-boot fixtures and final isolated-volume cleanup. Guarded squash
+merge `d362c16` preserves the expected/checked/integrated whole tree `4208c42e`;
+its integrated local/remote topic refs were retired. The registry/policy batch
+rebases onto that actual integration with qualified whole tree `889f8de0` and
+API subtree `ab51dcd7` unchanged. Hosted qualification of this newer batch is
+separate from PR81 success; no product/physical/install gate is completed.
 Earlier audit paragraphs below retain their original verification scope. PR #79
 passed its exact-head host/QEMU checks and merged the mounted-ext census and
 desired-volume review. PR #80 (`cca8fc5`) separately optimizes system CMake;
@@ -39,6 +46,32 @@ integrated contracts and actual ARMv5 standard/two-boot overlay then terminate
 successfully on that frozen source. Five source hashes and seven unchanged base
 hashes independently agree after completion. This is cumulative cached local
 evidence, not a completed original run, hosted feature or clean/EX4 acceptance.
+
+M3.2g is being implemented separately from frozen PR81: strict internal registry
+model, descriptor-anchored read-only reader and private complete-census resolver.
+The approved scope has no writer/adoption, production state placement, HTTP,
+mount/import or activation. Windows preflight, whole pinned Linux tagged vet/
+race, repeated transaction SIGKILL/fuzz/contracts and actual ARMv5 standard/
+two-boot overlay pass locally. Native tests cover the strict64KiB/16-volume
+model, real file/directory permission/link/FIFO/metadata-race/locking/lifecycle
+refusals and complete scoped aliases/clones/missing/unclaimed reconciliation.
+The guest reads a fresh tmpfs registry, refuses unsafe mode/foreign ownership,
+keeps a missing claim unusable and observes the actual disposable MD array.
+No test container survives, no image/volume is added and seven base artifact
+hashes remain unchanged. These are cached local component results, not clean
+firmware/SBOM, hosted feature acceptance, adoption or physical qualification.
+Product gates and planning estimates remain unchanged.
+
+The M3.2g follow-up also privately reconciles atomic SMB/NFS desired policy with
+protected registry observations: exact logical-ID/expected-UUID agreement,
+separate revisions, explicit unknown/conflicting/missing/ambiguous states,
+protocol reference counts and full-census validation even for empty policy.
+Whole local Windows preflight, pinned Linux tagged vet/race/fuzz/contracts and
+actual ARMv5 standard/two-boot overlay pass. The guest proves ID-not-inferred-
+from-UUID, conflicting backing and split-policy refusal against its actual MD
+and tmpfs registry. No second policy owner/scanner, writer, HTTP, planner-ready
+token, mount/import or activation; clean/hosted/physical qualification remains
+separate. No new Docker image/volume or surviving project test container.
 
 Use [ROADMAP.md](ROADMAP.md) for the acceptance specification. This snapshot
 distinguishes tested components from deployed product workflows. It is not
