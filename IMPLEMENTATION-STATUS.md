@@ -144,6 +144,13 @@ authenticated runtime/device provenance,
 an isolated physical SMART collector, standby or product activation. All milestone
 bands and the first-release scope remain unchanged.
 
+The first fixed-capture PR selection exposed missing producer-fixture path
+coverage: it selected unchanged EX4 B3 and omitted the fast host workflow.
+A path regression now requires those files to select host/QEMU and exclude B3;
+host adds POSIX syntax checks, while actual ARM execution remains in QEMU.
+The correction changes only CI/contracts/status, not the full-tested command,
+coordinator, guest runner, firmware input or product authority.
+
 The M8.5b internal generation-bound coordinator now passes the complete Windows
 API/UI preflight (Go 1.27.0), pinned Linux Go 1.26.6 vet/race checks and a
 25,000-execution publication fuzz campaign. Fake-backend state-machine tests
