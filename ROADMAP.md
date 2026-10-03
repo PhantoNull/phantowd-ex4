@@ -194,6 +194,15 @@ button to an unqualified backend simply because the screen exists.
   did not recur. This closes the post-refinement regression run, not the
   historical root-cause investigation or repeated qualification. Cleanup is
   unchanged: no retry or lazy/forced unmount. See the test-lane evidence.
+  On 2026-10-03 the complete cached witness build `12f54d2` reproduced EBUSY
+  at ordinary state-volume unmount. Preserved diagnostics list only the owner,
+  no matching FD/path and one visible state mount; they inspect current
+  descendants, not reparented/orphan processes or mappings. Ten-pair state-only
+  campaigns pass on the older exported census image and separately on the actual
+  newly built cached image. This is non-reproduction, not a fix. Do not confuse
+  exported artifacts with the failed build's image: export is after successful
+  state reboot. Next distinguish full process-group settlement, mapped/thread
+  references and kernel deferred release with a deterministic lifecycle seam.
 - **M0.3 — Keep CI proportional.** Host/domain changes use fast checks; runtime
   changes use QEMU; board changes use the relevant current probe. Windows host
   iteration has a no-Docker preflight and an optional Linux/amd64 test runner

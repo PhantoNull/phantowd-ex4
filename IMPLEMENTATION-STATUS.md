@@ -145,7 +145,18 @@ physical replacement. The manifest-verified base/helper remain unchanged; no
 new image/volume or boot stage. This is a smoke-only cached overlay, not full
 Buildroot/hosted or physical qualification. No contents, SMART transport command,
 SourceAdmitted, report attribution, descriptor-to-child handoff, HTTP or product
-startup is added. Full integration remains pending; planning bands unchanged.
+startup is added. Full integration remains unqualified; planning bands unchanged.
+The original complete cached run on `12f54d2` passed native/race/fuzz,
+build/legal-info/probe, standard guest smoke and MD v1.0, then failed ordinary
+state-volume unmount with the historical intermittent `EBUSY`. No retry or
+lazy/forced unmount was added; later export and guest lanes were not reached.
+The preserved diagnostic has no owner-tree FD/path references, but excludes
+reparented processes and mappings, so it does not establish the cause. Separate
+declared ten-pair state-only campaigns pass on both the older exported census
+image and the actual cached witness image, with target/image API equality
+verified for the latter. These non-reproductions are not a fix or full-pass
+substitute. Exported artifacts still describe the older image because export
+follows state-reboot success.
 
 An additional M8.5b prerequisite provides a private complete sysfs census for
 future health-source binding. It uses the existing bounded collector and
