@@ -626,6 +626,35 @@ are missing. **Depends on:** M1; M7 for hardware.
   host, Stage B3 and ARMv5 QEMU checks passed on head `f7bdc68`, merged as
   `db9fd33`. This does not provide persistent volume IDs, a bay map, a product
   resolver, import/mount authority or EX4 qualification; those remain M3 work.
+  **M3.2e — mounted-root census (partial; locally tested):** a private Linux
+  collector derives all eligible ext2/3/4 filesystem-root anchors from the
+  complete current-process mount table, not a caller-selected subset. Explicit
+  exclusions cover process root, subtrees, unsupported filesystems and
+  zero-major devices; zero-major is not proof of non-block backing. Unknown
+  nonzero devices, stacked mountpoint ambiguity or more than64 scoped roots
+  refuse the entire observation. Fixed descriptor-based root observations are
+  repeated and bracketed by complete sysfs/MD and mount-table observations.
+  Private mountinfo ID/root retention detects same-path/device remount or
+  subtree changes without confusing those IDs with statx unique mount IDs.
+  Whole native vet/race, Windows preflight and actual ARMv5 existing MD/two-boot
+  fixtures pass; seven base artifacts remain unchanged. No block node or file
+  data is read, state written or product/API operation added. Next: join complete
+  observations to an explicitly specified persistent VolumeID/compatibility
+  authority and production roster. Do not convert this point-in-time census
+  into qualification, global-use proof, an automatic import/mount or a lease.
+  **M3.2f — scoped desired-volume review (partial; locally tested):** privately
+  join validated desired VolumeID/expected UUID claims to the complete mounted
+  census, never infer a persistent ID or select a pathname. Same-device root
+  aliases count as one object; distinct devices with cloned UUIDs remain
+  ambiguous. Missing/unclaimed objects and unresolved scoped physical-disk
+  evidence remain explicit. Validate the full topology and independent original
+  root observations before any desired subset, including empty policy. Native
+  RED/GREEN checks cover changed derived UUID/unique mount IDs, and aliases,
+  clones, incomplete input, ordering and16/64 bounds pass. Whole native race,
+  Windows and actual ARMv5 existing MD/two-boot overlay pass; original base
+  artifacts unchanged. No I/O, HTTP, persistent registry, qualifying token,
+  Owner construction, mount/import or activation. Next authority still needs
+  an explicit durable identity/compatibility contract, not a singleton UUID.
 - **M3.3 — Gate compatibility and mounting.** Define a per-layout/filesystem
   allowlist with evidence. Inspect before assembly/mounting; journal replay and
   automatic MD actions can write even during a supposedly read-only assessment.

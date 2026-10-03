@@ -201,6 +201,43 @@ func runQEMUMDStackTest() (result error) {
 		return err
 	}
 	fmt.Println("PHANTOWD_SMART_CENSUS_WITNESS_SET_READY leaves=7 complete=true partial_refused=true rollback_no_leak=true caller_close=true review_pins_retained=true reader_failure_sticky=true explicit_release=true content_read=false smart_command=false scope=qemu-fixture-only")
+	census, err := collectTrustedMountedExtCensus(context.Background(), sysfs, os.DirFS("/proc"))
+	if err != nil || census.coverage.processRootExcluded != 1 || census.coverage.observedRootCount != len(census.identities) {
+		return errors.New("private mounted-ext census did not retain complete scoped coverage")
+	}
+	mdRoots := 0
+	for _, identity := range census.identities {
+		if identity.anchor == mountPoint {
+			if identity.sourceName != "md0" || identity.filesystemUUID != qemuMDFilesystemUUID ||
+				len(identity.arrays) != 1 || len(identity.physicalDisks) != 2 || identity.filesystemUUIDConflict {
+				return errors.New("private census lost the disposable MD filesystem/member identity")
+			}
+			mdRoots++
+		}
+	}
+	if mdRoots != 1 {
+		return errors.New("complete scoped census omitted the disposable MD filesystem root")
+	}
+	if _, err := json.Marshal(census); err == nil {
+		return errors.New("private mounted-ext census could escape as JSON")
+	}
+	fmt.Println("PHANTOWD_MOUNTED_EXT_CENSUS_READY namespace_scoped=true roots_from_mountinfo=true rootfs_excluded=true md_members=2 repeated_metadata=true private=true block_opened=false file_data_read=false qualification=false activation=false scope=disposable-qemu-only")
+	volumeReview, err := reviewDesiredMountedVolumes(shareconfig.Config{
+		Format: shareconfig.Format, SchemaVersion: shareconfig.SchemaVersion, Revision: 1,
+		Volumes: []shareconfig.Volume{{ID: "observed-md", FilesystemUUID: qemuMDFilesystemUUID}},
+		Users:   []shareconfig.User{}, Shares: []shareconfig.Share{},
+	}, census)
+	if err != nil || volumeReview.policyRevision != 1 || volumeReview.coverage != census.coverage ||
+		len(volumeReview.volumes) != 1 || volumeReview.volumes[0].volumeID != "observed-md" ||
+		volumeReview.volumes[0].status != "observed-in-scope" || volumeReview.volumes[0].objectCount != 1 ||
+		volumeReview.volumes[0].aliasCount != 1 || volumeReview.volumes[0].scopedDiskEvidenceUnresolved ||
+		volumeReview.unclaimedObjectCount != volumeReview.objectCount-1 {
+		return errors.New("private desired-volume review lost scoped MD observation or unclaimed objects")
+	}
+	if _, err := json.Marshal(volumeReview); err == nil {
+		return errors.New("private desired-volume review could escape as JSON")
+	}
+	fmt.Println("PHANTOWD_SCOPED_VOLUME_REVIEW_READY desired_ids_only=true complete_census=true actual_md=true unclaimed_explicit=true private=true qualification=false activation=false scope=disposable-qemu-only")
 	var mountStat unix.Statx_t
 	if err := unix.Statx(unix.AT_FDCWD, mountPoint, unix.AT_NO_AUTOMOUNT,
 		unix.STATX_BASIC_STATS|unix.STATX_MNT_ID_UNIQUE, &mountStat); err != nil {

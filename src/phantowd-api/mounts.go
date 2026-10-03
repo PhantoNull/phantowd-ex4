@@ -39,6 +39,9 @@ type mountObservation struct {
 	DeviceMajor uint32 `json:"device_major"`
 	DeviceMinor uint32 `json:"device_minor"`
 	ReadOnly    bool   `json:"read_only"`
+	// mountinfo IDs are transient/reusable; they are not STATX_MNT_ID_UNIQUE.
+	mountInfoID    uint32 `json:"-"`
+	filesystemRoot string `json:"-"`
 }
 
 // observedWholeDiskHasVisibleDependentMount correlates mountinfo device
@@ -291,6 +294,7 @@ func parseMountInfoLine(fields []string) (mountObservation, uint32, error) {
 	return mountObservation{
 		MountPoint: mountPoint, Filesystem: filesystem,
 		DeviceMajor: major, DeviceMinor: minor, ReadOnly: readOnly,
+		mountInfoID: uint32(mountID64), filesystemRoot: root,
 	}, uint32(mountID64), nil
 }
 

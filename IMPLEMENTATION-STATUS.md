@@ -4,10 +4,54 @@
 # Implementation status
 
 Code audit: **2026-10-03**, integrated `develop` baseline
-`df9b45bc13efe5c3116d810612f42afc9293d600` (PR #77).
+`d1b8dfeda4a15f74d17030f17f92b4132e7d5e54` (PR #78).
 Use [ROADMAP.md](ROADMAP.md) for the acceptance specification. This snapshot
 distinguishes tested components from deployed product workflows. It is not
 installation approval, a security certification, or an exhaustive line-by-line audit.
+
+PR #78 passed its own exact56171db QEMU/DTB check37140806223, including
+standard guest/two-boot validation, research DTB and final isolated-volume
+cleanup, then guarded squash-merged asd1b8dfe. Expected, checked and integrated
+complete trees equalc3475d50. Policy-review and separate SIGKILL topic refs
+were retired only after checked inclusion, identical original test/contract
+and attached-worktree guards. This qualifies the policy-review/interruption
+batch, not subsequent storage or a deployable appliance. Mounted-ext census/
+desired-volume follow-ups rebase on the actual merge with their complete
+qualified tree3c3810cc and API subtree7d0e5828 unchanged. Hosted acceptance of
+that newer feature remains separate; all product/hardware gates stay open.
+
+M3.2f follow-up privately reviews desired logical IDs/expected UUIDs against
+the full scoped mounted-ext census. Same-device aliases group as one observed
+object; cloned UUIDs on distinct devices remain ambiguous. Unclaimed objects,
+not-observed-in-scope and unresolved disk evidence remain explicit. A native
+regression reproduces circular validation accepting changes to derived UUID/
+unique mount ID; corrected validation rebuilds from independently retained
+original root observations and complete MD bindings. Whole Windows preflight,
+pinned Linux tagged vet/race/fuzz/contracts and actual ARMv5 existing MD/standard/
+two-boot overlay pass. Native tests cover16 desired volumes/64 roots, ordering,
+aliases/clones, partial input and invalid policy. Six final runtime/test/support
+hashes and seven base hashes independently agree after terminal completion.
+No I/O, HTTP, persistent registration, qualifying token, Owner/planner authority,
+mount/import or activation is added. This is local unintegrated overlay evidence,
+not hosted, clean-build or EX4 acceptance; planning bands remain unchanged.
+
+M3.2e local follow-up derives a private complete scoped mounted-ext census from
+the current-process mount table and complete sysfs/MD topology. The fixed reader
+repeats descriptor-relative UUID/device observations and brackets them with
+full topology/mount-table rechecks. Private mountinfo ID/root retention detects
+remount/subtree drift; statx unique IDs remain a distinct identity namespace.
+Explicit exclusions and the64-root bound avoid claiming complete physical or
+global discovery. Native refusals cover incomplete input, buffer reuse, identity
+drift, cancellation and64/65 roots. Whole Windows preflight, pinned Linux tagged
+API vet/race/fuzz/contracts and actual ARMv5 standard/two-boot overlay pass,
+including the existing read-only MD filesystem and its two members. Independent
+post-run checks confirm seven frozen source/support hashes and seven unchanged
+base artifacts; the project builder was auto-removed and no new persistent
+image/volume/output was created. No HTTP, block-node opening, file-data read,
+state write, qualification, mount/import or product activation is added.
+This is local unintegrated evidence, not hosted, clean-build or EX4 acceptance.
+M3/overall planning bands remain unchanged; persistent identity, production
+qualification/roster, global-use accounting and hardware gates remain open.
 
 PR #77 passed its own exact `07d0ef7` ARMv5/DTB check, including isolated
 volume cleanup, and merged as `df9b45b`. Expected, checked and integrated
@@ -938,7 +982,7 @@ substantial redesign. Rows overlap and must not be added.
 | M0 — Engineering baseline | Pinned builds, signatures/hashes, host/race/fuzz tests, QEMU, SBOM; an earlier independent reproduction | Reliable hosted integration, unresolved fixture failures, renewed release reproducibility | 50–65% |
 | M1 — Durable state | Revision stores, intent/result journals, refusal of uncertain state, synthetic clean-reboot tests | Product state placement, bootstrap/schema migration, operator reconciliation, real durability/power-loss qualification | 30–45% |
 | M2 — Identities | Unix allocation/creation; Owner-bound Samba disabled-first enrollment, explicit enable/disable and account-session revocation in QEMU | Complete ownership/import inventory, product boot authority, account API/UI, retirement and recovery | 50–65% |
-| M3 — Storage lifecycle | Complete sysfs census, generation-bound read-only broker, GPT/ext/MD observations, collision checks, internal mount/lease fixtures | Persistent logical VolumeID resolver, global-use accounting, production qualifier/roster, supported layouts and EX4 media qualification | 40–55% |
+| M3 — Storage lifecycle | Complete sysfs census, generation-bound read-only broker, GPT/ext/MD observations, collision checks, scoped desired-volume review, internal mount/lease fixtures | Persistent logical VolumeID resolver, global-use accounting, production qualifier/roster, supported layouts and EX4 media qualification | 40–55% |
 | M4 — SMB/NFS | Real loopback clients, desired policies, coherent candidate planner, process-set supervision, share-scoped handoff, grant-only isolated runtime and retained static-code Owner with explicit supervised lifecycle in QEMU | Approved daemon runtime manifests, isolated process sets, privilege profiles/ACLs, transactional activation/recovery, production wiring and storage-loss monitoring | 35–50% |
 | M5 — Management UI/security | Development authentication/TLS, sessions/password changes, diagnostics dashboard and policy preview/editing | Product enrollment/reset/certificate lifecycle, authorized live workflows, recovery UX, browser/accessibility/security qualification | 25–40% |
 | M6 — Network/system | Dual-stack desired-policy model, private bounded read-only kernel inventories and internal local-address diagnostics in host/ARMv5 QEMU; brief two-port board research | Qualified interface/external-conflict and routing admission, safe network transactions/rollback, supported dual-port modes, time/discovery, notifications and administrative jobs | 5–15% |

@@ -35,13 +35,40 @@ func TestCollectMountInventoryReadOnlyAndRedacted(t *testing.T) {
 		second.DeviceMajor != 253 || second.DeviceMinor != 0 || !second.ReadOnly {
 		t.Fatalf("escaped mountpoint/read-only state was not parsed: %+v", second)
 	}
+	if snapshot.Mounts[0].mountInfoID != 36 || snapshot.Mounts[0].filesystemRoot != "/" ||
+		snapshot.Mounts[1].mountInfoID != 38 || snapshot.Mounts[1].filesystemRoot != "/root" {
+		t.Fatal("private mount identity/root were discarded")
+	}
 	encoded, err := json.Marshal(snapshot)
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, secret := range []string{"/dev/sda1", "/dev/md0", "errors=continue", "nosuid", "/root"} {
+	for _, secret := range []string{"/dev/sda1", "/dev/md0", "errors=continue", "nosuid", "/root", "mountInfoID", "filesystemRoot", "mount_info_id"} {
 		if strings.Contains(string(encoded), secret) {
 			t.Fatalf("mount API leaked source/options/root value %q: %s", secret, encoded)
+		}
+	}
+}
+
+func TestMountReobservationRetainsTransientIDAndFilesystemRoot(t *testing.T) {
+	read := func(line string) mountSnapshot {
+		t.Helper()
+		value, err := collectMountInventory(fstest.MapFS{"self/mountinfo": {Data: []byte(line)}}, time.Now())
+		if err != nil {
+			t.Fatal(err)
+		}
+		return value
+	}
+	first := read("36 0 8:1 / /data ro - ext4 /dev/sda1 ro\n")
+	if !sameMountSnapshot(first, read("36 0 8:1 / /data ro - ext4 /dev/sda1 ro\n")) {
+		t.Fatal("timestamps alone must not change inventory identity")
+	}
+	for _, changed := range []string{
+		"99 0 8:1 / /data ro - ext4 /dev/sda1 ro\n",
+		"36 0 8:1 /subtree /data ro - ext4 /dev/sda1 ro\n",
+	} {
+		if sameMountSnapshot(first, read(changed)) {
+			t.Fatal("same-path/device replacement or filesystem-root change was hidden")
 		}
 	}
 }
