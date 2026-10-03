@@ -231,6 +231,15 @@ button to an unqualified backend simply because the screen exists.
   signatures/hashes, ARMv5 compatibility, package configuration, vulnerability
   review, license material and regenerated SBOM. Test the selected package set.
 
+The local full wrapper also provides an opt-in `-CachedOnly` mode: it checks
+existing version-derived image/volumes and initialized current output before
+one non-root, zero-capability, CPU/memory/PID/time-bounded invocation. Host test
+caches and scratch use bounded disposable tmpfs; cold API race testing established
+the current 2048 MiB temporary allocation. Command-boundary refusal tests and
+actual Linux shell preflight tests pass. This neither reduces the full test set
+nor qualifies independent reproduction, hosted results or device safety. Do not
+run concurrent builds against the same workspace or silently seed missing caches.
+
 **Start in:** `support/`, `.github/workflows/`, `versions.env`,
 `package/`, `configs/`.
 

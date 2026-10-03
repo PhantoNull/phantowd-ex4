@@ -116,6 +116,17 @@ and userspace. The Windows wrapper requires at least 40 GiB free on Docker's
 data drive. It reuses two fixed volumes; inspect their usage with
 `docker system df -v`. Avoid broad Docker prune commands on shared systems.
 
+For repeated local full validation with the **current configuration already
+initialized**, use `support/build-qemu.ps1 -CachedOnly`. It refuses missing
+images/volumes/toolchain, performs no image build/pull or explicit volume
+creation, and bypasses ownership repair. One auto-removed non-root container
+uses a bounded CPU/memory/PID profile and disposable RAM test caches/scratch;
+the existing Buildroot output and compiler cache remain reusable. See the
+[local validation contract](support/QEMU-FAST-TESTS.md#bounded-cached-full-validation).
+This is still the complete integration lane, not the faster overlay lane or
+independent clean-build qualification. Do not run concurrent builds against the
+same workspace or edit the tested source while a run is active.
+
 Outputs are in `artifacts/qemu-armv5/`. Tests use disposable virtual storage,
 without host-port forwarding or physical devices. QEMU emulates ARMv5 on
 VersatilePB, **not the EX4's NAND, SATA, fan, display or recovery**.

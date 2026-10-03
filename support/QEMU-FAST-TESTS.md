@@ -1,5 +1,45 @@
 # Fast API and file-service integration checks
 
+## Bounded cached full validation
+
+After the ordinary `support/build-qemu.ps1` has initialized the pinned image,
+two fixed volumes, artifact permissions and output for the current defconfig:
+
+```powershell
+.\support\build-qemu.ps1 -CachedOnly
+```
+
+This runs the complete existing Buildroot/host/guest validation, not a reduced
+test set. It inspects the local image and both named volumes before one
+`--rm --pull never` container; it never calls image build/pull, volume create
+or prune. Initialization markers, current config-keyed Go/target output and
+builder write permissions are checked before compilation. Missing inputs
+refuse without ownership repair, alternate output adoption or automatic retry.
+Serialize use of these resources: inspection is not a lease against another
+operator deleting a volume or changing an image tag. Do not run parallel builds
+or change source during exact-source qualification.
+
+The profile uses UID/GID1000, zero capabilities, no-new-privileges, 4 CPU quota,
+6 GiB memory, 512 PIDs and a 1800-second outer timeout with 30-second kill grace.
+`/tmp` is 2048 MiB, guest scratch512 MiB, API/toolkit Go caches768 MiB each;
+all four are disposable tmpfs and do not accumulate in Docker's writable layer.
+The cold complete API race suite reproduced linker space failure at256 MiB
+and passed at2048 MiB. Full integration subsequently passed with that profile.
+These are bounded allocations, not measured peak/minimum requirements or a
+guarantee that future package/suite growth fits the same budgets.
+
+The existing Buildroot workspace and bounded compiler cache remain writable:
+cached mode does not prohibit normal dependency rebuilding/source downloads
+or eliminate their persistent disk use. The ordinary40 GiB host-headroom check
+still applies. No ports or physical devices are supplied; normal networking
+remains for existing source/key verification. It does not emulate EX4 hardware,
+authorize NAS writes, demonstrate clean reproduction or replace hosted checks.
+
+`support/tests/test-cached-qemu-wrapper.ps1` mocks only the command boundary
+and checks profile/refusal/no-retry behavior. The Linux Python preflight test
+executes the actual embedded shell against disposable initialized/missing/
+changed-config/nonwritable fixtures. Neither is itself a full build result.
+
 ## Actual libatomic dispatch on ARM926
 
 `support/test-atomic-dispatch.ps1` reuses the existing pinned image, toolchain

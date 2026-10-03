@@ -508,6 +508,14 @@ excluded. No calendar estimate is defensible before the hardware/recovery gates.
 
 ## Validation and CI findings
 
+The local wrapper's opt-in `-CachedOnly` mode encodes the previously passing
+bounded local profile without building/pulling an image, explicitly creating
+volumes or repairing ownership. It refuses absent cache inputs and mismatched
+current-config output before compilation. Mock command-boundary tests cover
+the fixed arguments and seven refusal paths; seven real Linux shell-preflight
+tests cover initialized, missing, changed-config and nonwritable inputs. These
+are tooling tests, not a new complete wrapper-run or firmware qualification.
+
 The unmodified audited baseline passed the local pinned incremental Buildroot
 pipeline on 2026-10-02: Linux vet/unit/race and bounded fuzz, native volume-probe
 fixtures, standard ARMv5 QEMU smoke, mdadm-authored MD v1.0 comparison and the
