@@ -700,6 +700,13 @@ are missing. **Depends on:** M1; M7 for hardware.
   state placement, registration, root service, HTTP, mount/import or activation.
   Next: specify stronger backing identity/global-use/compatibility and recoverable
   registration separately; a UUID expectation is not durable physical identity.
+  A private scoped backing review now distinguishes physical disk/partition,
+  MD device/partition/stack and other block stacks after whole-census validation.
+  Aliases count once, cloned/missing claims select no backing and unresolved
+  physical evidence remains explicit. Whole local native race and actual ARMv5
+  standard/two-boot fixtures pass, including the actual two-leaf MD array.
+  Schema1 and authority stay unchanged; observed topology is not an expected
+  durable backing selector, RAID health or WD compatibility qualification.
   The private policy-binding follow-up now compares validated atomic SMB/NFS
   policy with protected registry claims and the complete scoped census, requires
   exact ID+UUID agreement and retains separate revisions/reference counts.
