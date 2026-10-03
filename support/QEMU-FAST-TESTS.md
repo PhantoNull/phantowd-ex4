@@ -2,6 +2,11 @@
 
 ## Bounded cached full validation
 
+The full builder first runs the same workflow path and exact fixed-count fuzz
+roster contract as hosted host CI. Keep it synchronized when adding campaigns;
+a stale declaration must fail before source authentication or compilation,
+not consume a full build. This cheap gate does not replace the native/guest tests.
+
 After the ordinary `support/build-qemu.ps1` has initialized the pinned image,
 two fixed volumes, artifact permissions and output for the current defconfig:
 

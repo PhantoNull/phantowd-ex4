@@ -171,6 +171,16 @@ containers were removed. This is cached local integration, not hosted topic or
 independent clean-build/EX4 qualification. No routing evaluation, application,
 HTTP, product startup or EX4 authority. Planning bands unchanged.
 
+The first PR #73 host check exposed a stale workflow-contract count: 17 was
+still expected after four legitimate network fuzz campaigns made the roster 21.
+The real contract reproduced locally; the corrected exact count, one-copy
+network campaign assertions and early full-builder invocation pass with 21
+feedback tests. The read-only Git mode check uses only a command-scoped safe
+directory for its fixed repository, not a global trust/configuration change.
+This preflight-only follow-up changes no firmware inputs or guest behavior;
+the preceding full-tested runtime remains unchanged. New exact-head hosted
+checks remain necessary; the original host failure is not a firmware failure.
+
 M6.1c local follow-up extends the same private namespace/socket collector to
 configured IPv4/IPv6 FIB routes in all returned tables. Checked prefixes,
 scalars, table overrides, gateway/via, preferred source, interface references

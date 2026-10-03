@@ -3,6 +3,7 @@
 
 import pathlib
 import os
+import re
 import subprocess
 import tempfile
 import unittest
@@ -25,6 +26,34 @@ def save_log(destination, source):
 
 
 class BuildFeedbackTests(unittest.TestCase):
+    def test_local_full_lane_checks_exact_fuzz_roster_before_build(self):
+        runner = (ROOT / "support/container/test-api.sh").read_text()
+        checker = (ROOT / "support/test-firmware-workflow-paths.sh").read_text()
+        declarations = re.findall(
+            r'^require_fixed_fuzz_campaigns '
+            r'"\$repo_root/support/container/test-api.sh" ([1-9][0-9]*)$',
+            checker, re.MULTILINE,
+        )
+        campaigns = [line for line in runner.splitlines()
+                     if "-fuzztime=" in line]
+        self.assertEqual(declarations, [str(len(campaigns))])
+        for target, package in (
+                ("FuzzDecode", "networkpolicy"),
+                ("FuzzWireConsume", "networkinventory"),
+                ("FuzzRoute", "networkinventory"),
+                ("FuzzRule", "networkinventory")):
+            expected = (
+                '"$go_binary" test -run \'^$\' '
+                f"-fuzz '^{target}$' -fuzztime=25000x -parallel=2 "
+                f"./internal/{package}")
+            self.assertEqual(campaigns.count(expected), 1)
+        full = (ROOT / "support/container/build-qemu.sh").read_text()
+        invocation = 'sh "$external_dir/support/test-firmware-workflow-paths.sh"'
+        self.assertIn(invocation, full)
+        self.assertLess(full.index(invocation), full.index("shellcheck -s sh"))
+        broker = (ROOT / "support/tests/test-storage-broker-buildroot.sh").read_text()
+        self.assertIn('git -c safe.directory="$repo_root" -C "$repo_root"', broker)
+
     def test_network_inventory_requires_actual_kernel_assertion(self):
         smoke = (ROOT / "support/qemu-smoke.sh").read_text()
         selftest = (ROOT / "src/phantowd-api/selftest.go").read_text()

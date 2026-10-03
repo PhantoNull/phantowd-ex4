@@ -215,6 +215,12 @@ button to an unqualified backend simply because the screen exists.
   pull/build an image or create a volume. Preserve isolation, exact-source
   hashes and clean-build/reproducibility lanes. Cache hits are an optimization,
   never qualification evidence.
+  The full builder now runs the same workflow/fixed-fuzz-roster contract as
+  hosted host CI before compilation. A locally reproduced stale 17-versus-21
+  count after adding four network campaigns is corrected without weakening
+  the exact roster/count guard. The regression also requires each new campaign
+  exactly once and the early local invocation; real non-root fixed-repository
+  Git mode checks and 21 feedback tests pass. Firmware runtime is unchanged.
   The build feedback refinement runs pinned native Go vet/unit/race/fuzz tests
   before the full kernel/Samba compilation. Failed guest logs are preserved and
   their final 120 lines printed; failure-only artifacts are uploaded separately

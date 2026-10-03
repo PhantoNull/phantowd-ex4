@@ -23,6 +23,10 @@ key_file="$workspace_dir/buildroot-release-key.asc"
 
 mkdir -p "$workspace_dir" "$download_dir/linux" "$download_dir/cyclonedx"
 
+# Run the same cheap workflow/fuzz-roster contract as hosted host CI before
+# source authentication, host tests or any cached package/kernel rebuild.
+sh "$external_dir/support/test-firmware-workflow-paths.sh"
+
 shellcheck -s sh \
 	"$external_dir/support/compare-build-artifacts.sh" \
 	"$external_dir/support/test-compare-build-artifacts.sh" \
