@@ -1166,6 +1166,22 @@ milestone before enabling its controls; M1/M6 for deployment.
   viewports, screen-reader status and high contrast; bounded static assets and
   shared observations. Avoid per-client hardware polling, stale-response
   overwrites, duplicate submissions and unbounded retained logs.
+  **M5.5a — diagnostic request ownership (partial; locally tested):** one browser
+  snapshot generation owns the existing four read-only requests and a 10-second
+  deadline, including body decoding and a snapshot-originated auth reread.
+  Sign-out/password-change or unavailable/unauthenticated status invalidates
+  that generation, aborts its reads and clears observations immediately. Late
+  successes, errors, auth bodies and finalizers cannot repopulate a retired
+  session, overwrite a new session or unlock its current refresh. Duplicate
+  refreshes do not issue another set; no read is automatically retried. Domain
+  failures still clear only failed values and report partial freshness.
+  Actual-source DOM regression first reproduces retired-session data after
+  logout, then passes eleven deterministic cases in five groups. Windows/API,
+  pinned native tagged vet/race and actual ARMv5 asset integration plus clean
+  two-boot overlay pass on code `fab3b7e`. No server endpoint/authorization,
+  privilege, job, hardware polling or service activation changes. Browser abort
+  does not prove server/kernel work stopped; real-browser/accessibility and
+  product authentication/recovery remain separate gates.
 - **M5.6 — Audit and diagnostics.** Record actor, operation ID, revisions and
   redacted outcome; bound retention. Export a sanitized support bundle that
   excludes credentials, private keys, passdb hashes and user file contents.

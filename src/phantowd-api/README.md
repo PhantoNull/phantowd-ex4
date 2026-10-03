@@ -46,6 +46,15 @@ single-flight, finite timeout, late body decoding and independent partial
 failure. Host/API and ARMv5 asset integration remain separate; DOM fixture
 success is not real-browser accessibility or physical-device qualification.
 
+Local evidence (2026-10-03), code `fab3b7e` / tree `60e04f9`: actual-source
+logout regression fails twice before the fix, then the complete DOM suite and
+eleven diagnostic lifecycle cases pass repeatedly. Windows API/UI/vet/tagged
+tests and ARMv5 cross-compilation, pinned Linux full tagged vet/race, existing
+feedback/fuzz contracts, actual ARMv5 embedded-asset smoke and clean two-boot
+overlay pass. Original seven base hashes remain unchanged. No JavaScript is
+executed by QEMU; these proofs do not replace real-browser/accessibility tests,
+clean hosted qualification, product enrollment or physical EX4 validation.
+
 ## Development file-service configuration API
 
 `GET` and `PUT /api/v1/file-services/configuration` operate on the combined

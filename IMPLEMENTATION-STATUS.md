@@ -182,6 +182,25 @@ rebuild; actual board/build input changes remain covered.
 
 ## Roadmap comparison
 
+M5.5a local correction on `fab3b7e` (complete tree `60e04f9`) closes a
+deterministically reproduced browser-state race: the existing snapshot could
+render retired diagnostic values after a completed logout. The four reads now
+share one single-flight generation/controller and a finite 10-second deadline
+through body decoding. Authentication boundaries abort/clear that generation;
+late successful/error/auth-body responses and finalizers cannot alter a newer
+session. Eleven actual-source DOM cases across five groups pass, including
+logout/global logout/password change, auth failure, timed-out body, duplicate
+reads and a newer pending snapshot. The complete UI suite passes repeatedly;
+its success marker now follows every test, not just an earlier subset.
+Windows API/UI/vet/tagged/cross-compilation, pinned Linux whole API tagged
+vet/race and existing feedback/fuzz contracts pass. Actual ARMv5 standard smoke
+and clean two-boot overlay pass with the current embedded assets; seven base
+hashes independently remain unchanged. These fixtures do not run JavaScript
+in a real browser and do not qualify accessibility, target installation or
+product authentication. No HTTP authorization, endpoint, privileged operation
+or storage behavior changes. One existing image/output and bounded disposable
+RAM scratch reused; no second heavy PR. M5/overall planning bands unchanged.
+
 M6.1f local follow-up on code `68fae6b`, tree-identically rebased as `8bf993d`
 (complete tree `3055351`), joins a validated desired policy to the existing
 immutable inventory through two internal transient interface bindings. Private
