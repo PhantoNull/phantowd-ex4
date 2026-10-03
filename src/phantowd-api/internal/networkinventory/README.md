@@ -29,7 +29,7 @@ actually in the packet. Unknown families/requests and arbitrary selectors are
 not accepted. See the [pinned rule UAPI](https://github.com/gregkh/linux/blob/v6.18.54/include/uapi/linux/fib_rules.h)
 and [dump/order implementation](https://github.com/gregkh/linux/blob/v6.18.54/net/core/fib_rules.c).
 
-The existing QEMU kernel lacks FIB_RULES/multiple-table support. Enable only
+The preceding QEMU kernel lacked FIB_RULES/multiple-table support. Enable only
 that network capability in its existing networked-storage fragment, audit the
 resolved kernel configuration and refresh Linux in the SAME cached workspace.
 No new Buildroot configuration namespace, image/volume or physical profile.
@@ -37,6 +37,19 @@ Old-kernel fast overlays cannot qualify this change. Acceptance requires native
 actual rule collection and malformed/order/drift/privacy/fuzz tests, Windows
 preflight, then complete cached Buildroot/ARMv5 qualification with a positive
 actual rule count in the existing mandatory same-boot assertion and two-boot.
+
+Local evidence (2026-10-03): final native vet/race and actual UID1000,
+zero-capability collection/recheck with stable descriptor counts pass, including
+bounded rule mutation/fuzz, fixed request shape, order/multiplicity, drift and
+privacy refusals. Windows full preflight and ARMv5 cross-compilation pass.
+Complete cached integration on unchanged `e0986fc` (tree `f86d6e3`) refreshes
+the actual kernel and passes whole Linux host/vet/race/fixed-fuzz, image/legal/
+SBOM, standard/MD/two-boot and every launcher/Owner/loader/atomic/Samba/SMART
+guest lane. The mandatory actual guest observation requires positive rule counts;
+resolved multiple-table/FIB_RULES options, seven exported hashes and exact
+image/export/target API equality were checked independently. Guest self-test is
+root; this is not non-root ARM, independent clean build, physical EX4 or product
+qualification. No rule application or evaluator is installed.
 
 ## M6.1c configured-route observation
 

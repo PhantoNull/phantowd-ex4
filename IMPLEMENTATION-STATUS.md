@@ -159,10 +159,17 @@ UID1000/zero-capability capture/recheck/FD counts, 5,000 rule mutations, a bound
 lint/ShellCheck and Windows preflight/ARMv5 cross-compilation pass. The QEMU
 kernel did not have FIB_RULES: the existing networked-storage fragment now
 requests IPv4/IPv6 multiple tables, with resolved-kernel audit and normal
-fingerprint-triggered Linux refresh in the SAME workspace. Complete new-kernel
-Buildroot/ARMv5 qualification is still pending; the prior overlay cannot qualify
-these inputs. No routing evaluation, application, HTTP, product startup or EX4
-authority. Planning bands unchanged.
+fingerprint-triggered Linux refresh in the SAME workspace. Complete cached
+Buildroot/ARMv5 integration passed on unchanged `e0986fc` (tree `f86d6e3`):
+Linux host/vet/race/fixed-fuzz, actual refreshed kernel, package/legal-info/SBOM,
+native regular-image probe and all standard/MD/two-boot/launcher/Owner/loader/
+atomic/Samba/SMART guest lanes. The resolved kernel independently has IPv4/IPv6
+multiple tables and FIB_RULES; the mandatory actual guest rule assertion passes.
+All seven exported hashes were independently checked, and image/export/target
+API bytes agree. One existing output and two fixed volumes were reused; temporary
+containers were removed. This is cached local integration, not hosted topic or
+independent clean-build/EX4 qualification. No routing evaluation, application,
+HTTP, product startup or EX4 authority. Planning bands unchanged.
 
 M6.1c local follow-up extends the same private namespace/socket collector to
 configured IPv4/IPv6 FIB routes in all returned tables. Checked prefixes,
@@ -737,7 +744,7 @@ substantial redesign. Rows overlap and must not be added.
 | M3 — Storage lifecycle | Complete sysfs census, generation-bound read-only broker, GPT/ext/MD observations, collision checks, internal mount/lease fixtures | Persistent logical VolumeID resolver, global-use accounting, production qualifier/roster, supported layouts and EX4 media qualification | 40–55% |
 | M4 — SMB/NFS | Real loopback clients, desired policies, coherent candidate planner, process-set supervision, share-scoped handoff, grant-only isolated runtime and retained static-code Owner with explicit supervised lifecycle in QEMU | Approved daemon runtime manifests, isolated process sets, privilege profiles/ACLs, transactional activation/recovery, production wiring and storage-loss monitoring | 35–50% |
 | M5 — Management UI/security | Development authentication/TLS, sessions/password changes, diagnostics dashboard and policy preview/editing | Product enrollment/reset/certificate lifecycle, authorized live workflows, recovery UX, browser/accessibility/security qualification | 25–40% |
-| M6 — Network/system | Dual-stack desired-policy model and private bounded read-only kernel interface/address/configured-FIB collector in host/ARMv5 QEMU; brief two-port board research | Qualified interface/runtime-conflict and routing admission, safe network transactions/rollback, supported dual-port modes, time/discovery, notifications and administrative jobs | 5–15% |
+| M6 — Network/system | Dual-stack desired-policy model and private bounded read-only kernel interface/address/configured-FIB/IP-rule collector in host/ARMv5 QEMU; brief two-port board research | Qualified interface/runtime-conflict and routing admission, safe network transactions/rollback, supported dual-port modes, time/discovery, notifications and administrative jobs | 5–15% |
 | M7 — Board/cooling/recovery | DTS and bounded diskless RAM trials; passive MCU framing/catalog tooling | Qualified factory identities, fan/tach/fail-safe, LCD/LED/buttons/power/watchdog, SATA/USB and NAND recovery | 15–25% |
 | M8 — RAID/health/migration | Generic offline GPT/ext/MD inspectors, static WD layout analysis and synthetic offline SMART report interpretation | Attributable EX4 layout corpus/importer, ownership/ACL migration, RAID jobs, trusted SMART collection/history/jobs/UI, backup/restore tests | 15–25% |
 | M9 — iSCSI | Specification and legacy research; no product target implementation | ARMv5 backend selection, LUN model, session/ownership guard, migration and failure campaigns | 0–5% |

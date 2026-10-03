@@ -1209,7 +1209,7 @@ board network observations limited.
   bounded fuzz and actual ARMv5 route assertion plus two-boot overlay pass locally.
   No route lookup/evaluation, rule/object dump, event lease, reachability,
   persistence, application, HTTP or physical qualification follows.
-  **M6.1d — private IP routing rules (native-tested; new-kernel QEMU pending):**
+  **M6.1d — private IP routing rules (partial; locally tested):**
   two fixed strict IP-family dumps, checked response family, prefix/scalar/range
   framing and bounded private semantic equality. Preserve within-family order,
   same-priority ordering and duplicate multiplicity; normalize only family dump
@@ -1217,9 +1217,12 @@ board network observations limited.
   Native actual unprivileged capture/race/fuzz and Windows preflight pass.
   QEMU multiple-table support is requested/audited in the existing network
   fragment; refresh Linux within the same cache, not a new output namespace.
-  Require the actual same-boot positive rule assertion, clean two-boot and full
-  new-kernel integration before claiming ARMv5 completion. Production EX4
-  profile/configuration remains a separate gate. No rule evaluation or apply.
+  Complete cached new-kernel integration passes on unchanged `e0986fc`, including
+  actual same-boot positive rule assertion, clean two-boot and all other guest
+  lanes. Seven exported hashes and image/export/target API equality are checked
+  independently; resolved kernel options are audited. This is local cached
+  evidence, not hosted topic or independent clean-build qualification. Production
+  EX4 profile/configuration remains a separate gate. No rule evaluation or apply.
 - **M6.2 — Recoverable changes.** Apply changes as a trial with explicit confirmation
   and a safe timeout/recovery route. Loss of the management connection must not
   strand the owner permanently. Qualify reboot mid-trial and address conflicts.
