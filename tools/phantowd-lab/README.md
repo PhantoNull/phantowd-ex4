@@ -124,6 +124,17 @@ checks. GitHub anonymous API access is currently limited to 60 requests per
 hour per source IP, so this manual command does not poll or retry a `latest`
 endpoint. See GitHub's [REST API rate-limit documentation](https://docs.github.com/en/rest/using-the-rest-api/rate-limits-for-the-rest-api).
 
+Downloads handle both direct asset responses and redirects. Opaque signed query
+parameters are accepted only on HTTPS `release-assets.githubusercontent.com`
+with the default/443 port. API asset URLs from metadata remain exact and
+query-free; foreign hosts, userinfo, fragments and HTTP CDN redirects are
+refused. The existing redirect limit and caller redirect policy still apply.
+Transport errors do not echo signed URLs or query credentials. Their underlying
+causes remain available for `errors.Is`/`errors.As`, not public logging.
+Local HTTP/TLS fixtures exercise complete signature/hash verification through
+redirects, authentication-before-payload, tampering refusal and failed-download
+staging cleanup. This does not qualify a real PhantoWD release or an installer.
+
 The public release is the distribution location, not the trust anchor. The
 caller still supplies a raw public key, so this host command cannot prove that
 the caller chose PhantoWD's genuine key. A future device updater must use a

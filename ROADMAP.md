@@ -1318,6 +1318,13 @@ Then qualify the selected backend and migration objects on expendable EX4 media.
   revision/channel, hashes and version policy before writes. HTTPS alone is
   insufficient. Define signing-key rotation, compromise/recovery, offline use,
   rate-limit/network failure and owner-authorized rollback policy.
+  The host-only GitHub reader now handles opaque signed query parameters on
+  the exact HTTPS release-asset CDN without treating them as authenticity.
+  Real local HTTP/TLS redirect fixtures preserve signature-before-payload and
+  hash checks; public transport errors redact signed URLs while retaining
+  programmatic cancellation/cause checks. API metadata URLs remain query-free.
+  This is a tested transport primitive, not device trust-root provisioning,
+  target installation or a published firmware qualification.
 - **M10.3 — Target transaction.** Explicit preflight, staged, verified, installing,
   boot-pending, health-confirmed and recovery states. Journal durable boundaries;
   check space/power prerequisites. An ambiguous state must not restart installation

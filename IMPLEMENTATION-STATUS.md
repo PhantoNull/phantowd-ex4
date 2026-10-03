@@ -90,6 +90,19 @@ rebuild; actual board/build input changes remain covered.
 
 ## Roadmap comparison
 
+A separate host-only release-reader follow-up corrects rejection of GitHub's
+signed CDN query strings and redacts those URLs from transport-error messages.
+A public-asset header-only observation confirmed the HTTPS redirect/query
+shape; no external payload was downloaded or treated as PhantoWD evidence.
+Real local HTTP/TLS tests prove the old rejection and error-query disclosure,
+then verify successful Ed25519/SHA-256 inspection, invalid-signature/no-payload,
+same-size tampering refusal, exact API URL checks, cancellation/caller-policy
+retention and staging cleanup. Windows toolkit vet/tests and pinned Linux
+Go 1.26.6 vet/unit/race plus four existing 100,000-execution fuzz lanes pass.
+The host-only delta changes neither firmware packages nor product startup;
+hosted follow-up integration is pending. No new QEMU/EX4 or installer
+qualification is inferred, and M10/the overall estimate bands are unchanged.
+
 The native static-child launcher now verifies that stdout and stderr are
 writable anonymous `pipefs` pipe ends. Actual ARMv5 tests first reproduced
 acceptance of a named stdout FIFO and then a read-only stdout pipe; the fixes
