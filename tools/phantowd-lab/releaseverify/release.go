@@ -89,6 +89,7 @@ type Report struct {
 	RequestedChannel       string           `json:"requested_channel,omitempty"`
 	Artifacts              []ArtifactResult `json:"artifacts"`
 	UpdatePolicy           *UpdatePolicy    `json:"update_policy,omitempty"`
+	InstallerPolicy        *InstallerPolicy `json:"installer_policy,omitempty"`
 	Findings               []string         `json:"findings"`
 	Limitations            []string         `json:"limitations"`
 }
@@ -100,6 +101,17 @@ type UpdatePolicy struct {
 	CurrentVersion         string `json:"current_version,omitempty"`
 	ReleaseVersion         string `json:"release_version,omitempty"`
 	StrictlyNewer          bool   `json:"strictly_newer"`
+	InstallationAuthorized bool   `json:"installation_authorized"`
+	Finding                string `json:"finding,omitempty"`
+}
+
+// InstallerPolicy compares a caller-supplied installer version with signed
+// metadata. It does not attest a device or authorize installation.
+type InstallerPolicy struct {
+	Evaluated              bool   `json:"evaluated"`
+	InstallerVersion       string `json:"installer_version,omitempty"`
+	MinimumInstaller       string `json:"minimum_installer,omitempty"`
+	Compatible             bool   `json:"compatible"`
 	InstallationAuthorized bool   `json:"installation_authorized"`
 	Finding                string `json:"finding,omitempty"`
 }
@@ -146,6 +158,30 @@ func (v *VerifiedManifest) Channel() string {
 	return v.manifest.Channel
 }
 
+// AssessInstallerVersion uses only the immutable, authenticated minimum. A
+// metadata-only verification suffices; payloads must not be read to discover
+// that an installer is incompatible. Nil/zero manifests fail closed.
+func (v *VerifiedManifest) AssessInstallerVersion(installerVersion string) InstallerPolicy {
+	policy := InstallerPolicy{}
+	if v == nil || !v.report.SignatureValid || !v.report.TargetMatched || !v.report.ChannelMatched {
+		policy.Finding = "verified signed metadata for the exact target and channel is required"
+		return policy
+	}
+	order, err := CompareVersions(installerVersion, v.manifest.MinimumInstaller)
+	if err != nil {
+		policy.Finding = "installer and signed minimum must use strict v-prefixed SemVer syntax"
+		return policy
+	}
+	policy.Evaluated = true
+	policy.InstallerVersion = installerVersion
+	policy.MinimumInstaller = v.manifest.MinimumInstaller
+	policy.Compatible = order >= 0
+	if !policy.Compatible {
+		policy.Finding = "installer version is below the signed minimum"
+	}
+	return policy
+}
+
 // InspectManifest verifies signed metadata and the exact requested target
 // before a caller downloads any payload. publicKey must come from a separately
 // trusted source. No key is embedded and no installation is authorized.
@@ -158,6 +194,7 @@ func InspectManifest(manifestReader, signatureReader io.Reader, publicKey ed2551
 		Limitations: []string{
 			"the supplied public key is caller-selected; trust-anchor provisioning is not verified",
 			"hardware qualification, anti-rollback policy, and installation are not evaluated",
+			"installer version is caller-supplied; omitting it leaves the signed minimum prerequisite unassessed",
 			"artifact hashes describe bytes read during this check; later immutability and install-time re-verification are not evaluated",
 			"this host-only verifier never accesses a device or writes an artifact",
 		},
@@ -274,11 +311,34 @@ func (v *VerifiedManifest) VerifyArtifacts(artifactDirectory string) Report {
 // Inspect verifies the signature, schema, exact requested target, channel, and
 // payload size/hash. It never authorizes installation.
 func Inspect(manifestReader, signatureReader io.Reader, publicKey ed25519.PublicKey, artifactDirectory, modelID, hardwareRevision, channel string) (Report, error) {
+	return InspectWithInstallerVersion(manifestReader, signatureReader, publicKey, artifactDirectory, modelID, hardwareRevision, channel, "")
+}
+
+// InspectWithInstallerVersion optionally refuses an incompatible installer
+// before artifact I/O. Empty version preserves integrity-only Inspect behavior.
+// The supplied version is host input, not an attested installed component.
+func InspectWithInstallerVersion(manifestReader, signatureReader io.Reader, publicKey ed25519.PublicKey, artifactDirectory, modelID, hardwareRevision, channel, installerVersion string) (Report, error) {
+	if installerVersion != "" {
+		if _, err := CompareVersions(installerVersion, installerVersion); err != nil {
+			return Report{}, errors.New("installer version must use strict v-prefixed SemVer syntax")
+		}
+	}
 	verified, report, err := InspectManifest(manifestReader, signatureReader, publicKey, modelID, hardwareRevision, channel)
 	if err != nil || verified == nil {
 		return report, err
 	}
-	return verified.VerifyArtifacts(artifactDirectory), nil
+	var policy *InstallerPolicy
+	if installerVersion != "" {
+		assessment := verified.AssessInstallerVersion(installerVersion)
+		policy = &assessment
+		if !assessment.Compatible {
+			report.InstallerPolicy = policy
+			return report, nil
+		}
+	}
+	report = verified.VerifyArtifacts(artifactDirectory)
+	report.InstallerPolicy = policy
+	return report, nil
 }
 
 // AssessUpgradeVersion adds an optional anti-rollback comparison to a report.

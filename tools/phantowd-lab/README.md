@@ -24,8 +24,8 @@ boundary, not a qualified controller driver or permission to transmit commands.
 ## Commands
 
 ```text
-phantowd-lab inspect-github-release --tag VERSION --public-key FILE --model ID --revision ID --channel stable|beta|nightly [--current-version VERSION]
-phantowd-lab inspect-release --manifest FILE --signature FILE --public-key FILE --artifacts DIR --model ID --revision ID --channel stable|beta|nightly [--current-version VERSION]
+phantowd-lab inspect-github-release --tag VERSION --public-key FILE --model ID --revision ID --channel stable|beta|nightly [--current-version VERSION] [--installer-version VERSION]
+phantowd-lab inspect-release --manifest FILE --signature FILE --public-key FILE --artifacts DIR --model ID --revision ID --channel stable|beta|nightly [--current-version VERSION] [--installer-version VERSION]
 phantowd-lab inspect-update FILE
 phantowd-lab inspect-mtd3 FILE
 phantowd-lab inspect-rescue FILE
@@ -148,6 +148,15 @@ the installed version is caller-supplied, no anti-rollback state is persisted,
 and the result never authorizes installation. A same-version release or
 downgrade is reported as not monotonic but does not change the release-integrity
 exit status.
+
+Both commands also accept optional `--installer-version`. After signed metadata
+and target checks, `installer_policy` compares that caller-supplied version
+against the authenticated `minimum_installer`. Equal or newer versions pass;
+older versions return exit `2` before any payload I/O or temporary payload
+staging. Invalid version syntax returns exit `1` (before HTTP in the GitHub
+reader). Omitting the option keeps the existing integrity-only behavior and
+does not emit an installer assessment. Compatibility of this prerequisite
+does not imply payload validity, installation permission or device readiness.
 
 `inspect-github-release` is a host-side bridge for the planned public GitHub
 distribution path. It requests one exact version tag from the PhantoWD EX4
@@ -521,6 +530,27 @@ research questions. Synthetic replay is not proof that active hardware control
 is safe.
 
 ## Tests
+
+### M10.2 installer-version preflight task contract
+
+The host release inspectors may accept an explicit `--installer-version` using
+the existing bounded SemVer rules. Compare it with `minimum_installer` only
+after the detached signature, schema, exact target and channel pass (and, for
+GitHub, the signed version matches the immutable tag). Equal or newer installer
+versions satisfy this prerequisite; a prerelease below a stable minimum does
+not. An incompatible installer refuses before any payload read/download or
+temporary payload staging. Invalid supplied syntax is a usage/input error
+before network activity. Omitting the option preserves integrity-only behavior
+and must not imply that installer compatibility was checked.
+
+The version is caller-supplied, not an observation of a device. The result is a
+host prerequisite assessment, never installation permission, physical
+qualification, persistent anti-rollback or target recovery. No target code,
+signing scheme, manifest schema, trust roots or device operation changes.
+Acceptance includes local CLI refusal before unavailable payloads, real
+synthetic HTTP request counts, signature/target-first ordering, version
+boundaries and the complete host-tool vet/unit/race suite. No QEMU build is
+required for this host-only change.
 
 From the repository root with Go 1.24 or newer:
 

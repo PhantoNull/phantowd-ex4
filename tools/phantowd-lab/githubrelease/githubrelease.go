@@ -50,6 +50,8 @@ type Options struct {
 	ModelID    string
 	Revision   string
 	Channel    string
+	// Optional host prerequisite; not an attestation of a device installer.
+	InstallerVersion string
 }
 
 // Result contains verification evidence, never an install authorization.
@@ -168,6 +170,15 @@ func Inspect(ctx context.Context, options Options) (Result, error) {
 		result.Verification.Findings = append(result.Verification.Findings, "signed channel does not match the requested channel")
 		return result, nil
 	}
+	var installerPolicy *releaseverify.InstallerPolicy
+	if options.InstallerVersion != "" {
+		assessment := verified.AssessInstallerVersion(options.InstallerVersion)
+		installerPolicy = &assessment
+		result.Verification.InstallerPolicy = installerPolicy
+		if !assessment.Compatible {
+			return result, nil
+		}
+	}
 
 	specifications := verified.Artifacts()
 	if len(assets) != len(specifications)+2 {
@@ -201,10 +212,16 @@ func Inspect(ctx context.Context, options Options) (Result, error) {
 		}
 	}
 	result.Verification = verified.VerifyArtifacts(stage)
+	result.Verification.InstallerPolicy = installerPolicy
 	return result, nil
 }
 
 func validateOptions(options Options) error {
+	if options.InstallerVersion != "" {
+		if _, err := releaseverify.CompareVersions(options.InstallerVersion, options.InstallerVersion); err != nil {
+			return errors.New("installer version must use strict v-prefixed SemVer syntax")
+		}
+	}
 	if !repositoryPart.MatchString(options.Owner) || !repositoryPart.MatchString(options.Repository) {
 		return errors.New("GitHub owner and repository must be single path components")
 	}

@@ -298,8 +298,9 @@ func inspectGitHubRelease(args []string, output io.Writer) (int, error) {
 	revision := flags.String("revision", "", "exact requested hardware revision")
 	channel := flags.String("channel", "", "expected channel: stable, beta, or nightly")
 	currentVersion := flags.String("current-version", "", "installed vMAJOR.MINOR.PATCH for optional monotonic-upgrade assessment")
+	installerVersion := flags.String("installer-version", "", "caller-supplied installer version for optional signed-minimum preflight")
 	if err := flags.Parse(args); err != nil || flags.NArg() != 0 || *tag == "" || *publicKeyPath == "" || *modelID == "" || *revision == "" || *channel == "" {
-		return 1, errors.New("usage: phantowd-lab inspect-github-release --tag VERSION --public-key FILE --model ID --revision ID --channel stable|beta|nightly [--current-version VERSION]")
+		return 1, errors.New("usage: phantowd-lab inspect-github-release --tag VERSION --public-key FILE --model ID --revision ID --channel stable|beta|nightly [--current-version VERSION] [--installer-version VERSION]")
 	}
 	keyFile, keySize, err := openRegular(*publicKeyPath)
 	if err != nil {
@@ -318,7 +319,7 @@ func inspectGitHubRelease(args []string, output io.Writer) (int, error) {
 	result, err := githubrelease.Inspect(ctx, githubrelease.Options{
 		APIBase: githubrelease.DefaultAPIBase, Owner: githubrelease.ProjectOwner,
 		Repository: githubrelease.ProjectRepository, Tag: *tag, PublicKey: publicKey,
-		ModelID: *modelID, Revision: *revision, Channel: *channel,
+		ModelID: *modelID, Revision: *revision, Channel: *channel, InstallerVersion: *installerVersion,
 	})
 	if err != nil {
 		return 1, err
@@ -346,8 +347,9 @@ func inspectRelease(args []string, output io.Writer) (int, error) {
 	revision := flags.String("revision", "", "exact requested hardware revision")
 	channel := flags.String("channel", "", "expected release channel: stable, beta, or nightly")
 	currentVersion := flags.String("current-version", "", "installed vMAJOR.MINOR.PATCH for optional monotonic-upgrade assessment")
+	installerVersion := flags.String("installer-version", "", "caller-supplied installer version for optional signed-minimum preflight")
 	if err := flags.Parse(args); err != nil || flags.NArg() != 0 || *manifestPath == "" || *signaturePath == "" || *publicKeyPath == "" || *artifactDir == "" || *modelID == "" || *revision == "" || *channel == "" {
-		return 1, errors.New("usage: phantowd-lab inspect-release --manifest FILE --signature FILE --public-key FILE --artifacts DIR --model ID --revision ID --channel stable|beta|nightly [--current-version VERSION]")
+		return 1, errors.New("usage: phantowd-lab inspect-release --manifest FILE --signature FILE --public-key FILE --artifacts DIR --model ID --revision ID --channel stable|beta|nightly [--current-version VERSION] [--installer-version VERSION]")
 	}
 	manifest, _, err := openRegular(*manifestPath)
 	if err != nil {
@@ -374,7 +376,7 @@ func inspectRelease(args []string, output io.Writer) (int, error) {
 	if err != nil || len(publicKey) != 32 {
 		return 1, errors.New("cannot read trusted Ed25519 public key")
 	}
-	report, err := releaseverify.Inspect(manifest, signature, publicKey, *artifactDir, *modelID, *revision, *channel)
+	report, err := releaseverify.InspectWithInstallerVersion(manifest, signature, publicKey, *artifactDir, *modelID, *revision, *channel, *installerVersion)
 	if err != nil {
 		return 1, err
 	}

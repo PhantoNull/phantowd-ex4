@@ -77,6 +77,32 @@ func TestInspectReleaseCLIValidatesSignatureTargetAndPayload(t *testing.T) {
 	}
 
 	output.Reset()
+	installerArgs := append(append([]string(nil), args...), "--installer-version", "v0.1.0")
+	code, err = run(installerArgs, &output)
+	if err != nil || code != 0 || !strings.Contains(output.String(), `"compatible": true`) || !strings.Contains(output.String(), `"installation_authorized": false`) {
+		t.Fatalf("equal installer prerequisite rejected: code=%d err=%v output=%s", code, err, output.String())
+	}
+	// A deliberately unavailable payload directory distinguishes an early
+	// installer refusal from an attempted artifact check.
+	oldInstallerArgs := append(append([]string(nil), args...), "--installer-version", "v0.0.9")
+	for index := range oldInstallerArgs {
+		if oldInstallerArgs[index] == "--artifacts" {
+			oldInstallerArgs[index+1] = filepath.Join(root, "not-created")
+		}
+	}
+	output.Reset()
+	code, err = run(oldInstallerArgs, &output)
+	if err != nil || code != 2 || !strings.Contains(output.String(), `"compatible": false`) ||
+		!strings.Contains(output.String(), `"artifacts_checked": false`) || strings.Contains(output.String(), "artifact rootfs.swu is unavailable") {
+		t.Fatalf("old installer was not refused before payload reads: code=%d err=%v output=%s", code, err, output.String())
+	}
+	invalidInstallerArgs := append(append([]string(nil), args...), "--installer-version", "v00.1.0")
+	output.Reset()
+	code, err = run(invalidInstallerArgs, &output)
+	if err == nil || code != 1 || output.Len() != 0 {
+		t.Fatalf("invalid installer syntax accepted: code=%d err=%v output=%s", code, err, output.String())
+	}
+	output.Reset()
 	args[len(args)-3] = "board-r2"
 	code, err = run(args, &output)
 	if err != nil || code != 2 || !strings.Contains(output.String(), `"target_matched": false`) {
