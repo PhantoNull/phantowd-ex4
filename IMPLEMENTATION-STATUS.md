@@ -104,6 +104,20 @@ rebuild; actual board/build input changes remain covered.
 
 ## Roadmap comparison
 
+The combined ARM-attribute observer and actual libatomic dispatch fixture passed
+complete cached local integration on unchanged `ea87772` (tree `e899614c`):
+source verification, Linux vet/unit/race/fuzz, image/legal-info/SBOM, native
+storage probe and all standard/MD/two-boot/launcher/retained-Owner/loader/atomic/
+Samba/SMART guest lanes. Seven exported artifact hashes were independently
+verified and match the preceding full baseline. The actual library and collected
+Buildroot source archive also retain their pinned hashes. This run used the
+existing image, two fixed volumes and one output, with bounded disposable RAM
+caches and scratch. A cold full API race differential reproduced insufficient
+256 MiB temporary space and passed with 2048 MiB; the complete lane then passed
+with that allocation without weakening tests. This is not a new hosted result,
+independent clean build, full ISA/ABI qualification, physical EX4 qualification
+or product activation. The product gates and estimate bands remain unchanged.
+
 A subsequent disposable ARM926 fixture calls the actual image's libatomic
 through 36 versioned dynamic resolutions after UID/GID 1000, zero-capability
 and no-new-privileges checks. Four widths each pass 50 semantic scenarios,
