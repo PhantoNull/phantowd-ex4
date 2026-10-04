@@ -353,6 +353,10 @@ for path in \
     'support/container/qemu_lio_result.py' \
     'support/fixtures/iscsi-loopback-client.c' \
     'support/fixtures/qemu-lio-init.sh' \
+    'support/fixtures/patches/linux-lio-strict-mutual.patch' \
+    'support/fixtures/lio-lun-set.h' \
+    'support/tests/lio-lun-set-fixture.c' \
+    'support/tests/test-lio-lun-set.sh' \
     'support/qemu-lio-fixture.sh' \
     'support/test-qemu-lio.ps1' \
     'support/tests/test-qemu-lio-inputs.py' \

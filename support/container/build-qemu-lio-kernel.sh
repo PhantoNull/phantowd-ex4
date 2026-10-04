@@ -8,6 +8,8 @@ archive=${2:?pinned Linux archive required}
 base_config=${3:?QEMU kernel configuration required}
 host=${4:?existing Buildroot host toolchain required}
 output=${5:?fresh tmpfs output directory required}
+required_mutual=${PHANTOWD_LIO_REQUIRE_MUTUAL:-0}
+case "$required_mutual" in 0|1) ;; *) echo 'Invalid mutual research mode' >&2; exit 1 ;; esac
 for input in "$source_dir" "$archive" "$base_config" "$host" "$output"; do
     case "$input" in /*) ;; *) echo 'Absolute research input required' >&2; exit 1 ;; esac
     case "$input" in *[!a-zA-Z0-9_./-]*) echo 'Unsupported research input path' >&2; exit 1 ;; esac
@@ -32,6 +34,12 @@ config_hash=$(sha256sum "$base_config" | awk '{print $1}')
 grep -Fx '# Linux/arm '"$LINUX_VERSION"' Kernel Configuration' "$base_config" >/dev/null
 mkdir "$output/source" "$output/build"
 tar -xJf "$archive" --strip-components=1 -C "$output/source"
+if [ "$required_mutual" = 1 ]; then
+    mutual_patch="$source_dir/support/fixtures/patches/linux-lio-strict-mutual.patch"
+    [ -f "$mutual_patch" ] && [ ! -L "$mutual_patch" ]
+    mutual_patch_hash=$(sha256sum "$mutual_patch" | awk '{print $1}')
+    patch --batch --forward --fuzz=0 -p1 -d "$output/source" < "$mutual_patch"
+fi
 cp "$base_config" "$output/build/.config"
 export PATH="$host/bin:$PATH"
 export ARCH=arm CROSS_COMPILE="$host/bin/arm-buildroot-linux-gnueabi-"
@@ -42,11 +50,22 @@ done
 for symbol in TCM_IBLOCK TCM_PSCSI TCM_USER2 LOOPBACK_TARGET ISCSI_TCP ISCSI_BOOT_SYSFS; do
     "$output/source/scripts/config" --file "$output/build/.config" --disable "$symbol"
 done
+if [ "$required_mutual" = 1 ]; then
+    "$output/source/scripts/config" --file "$output/build/.config" --enable ISCSI_TARGET_STRICT_MUTUAL_CHAP
+fi
 make -C "$output/source" O="$output/build" olddefconfig
-python3 "$source_dir/support/container/qemu_lio_inputs.py" "$output/build/.config"
+if [ "$required_mutual" = 1 ]; then
+    python3 "$source_dir/support/container/qemu_lio_inputs.py" --required-mutual "$output/build/.config"
+else
+    python3 "$source_dir/support/container/qemu_lio_inputs.py" "$output/build/.config"
+fi
 make -C "$output/source" O="$output/build" -j4 zImage dtbs
 sha256sum "$output/build/.config" "$output/build/arch/arm/boot/zImage" \
     "$output/build/arch/arm/boot/dts/arm/versatile-pb.dtb"
 [ "$(sha256sum "$archive" | awk '{print $1}')" = "$archive_hash" ]
 [ "$(sha256sum "$base_config" | awk '{print $1}')" = "$config_hash" ]
+if [ "$required_mutual" = 1 ]; then
+    [ "$(sha256sum "$mutual_patch" | awk '{print $1}')" = "$mutual_patch_hash" ]
+    echo 'PHANTOWD_LIO_MUTUAL_KERNEL_COMPILED strict_when_configured=true default_profile_unchanged=true scope=tmpfs-research-only guest=false activation=false'
+fi
 echo 'PHANTOWD_LIO_KERNEL_COMPILED scope=tmpfs-research-only guest=false activation=false'

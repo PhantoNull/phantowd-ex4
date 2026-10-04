@@ -1,7 +1,7 @@
 # M9.1: disposable LIO qualification
 
 This is a research contract, not a selected production backend or an installer.
-The scope is ARMv5 QEMU, one synthetic 32 MiB backing and test-only loopback
+The scope is ARMv5 QEMU, synthetic 32 MiB and 8 MiB backings and test-only loopback
 initiators. The original single-peer fixture now also checks two simultaneous
 peers with independent credentials/grants. No NAS, physical device, host port
 forwarding or product activation.
@@ -16,7 +16,8 @@ In `drivers/target/target_core_file.c`, `fd_configure_device` calls `filp_open`
 with `O_RDWR | O_CREAT | O_LARGEFILE | O_DSYNC`. Missing backings can therefore
 be created. Its control parser also splits on commas/newlines; desired backing
 paths must never be interpolated directly into that interface. FILEIO initially
-uses 512-byte blocks; the model's 4096-byte option remains unqualified.
+uses 512-byte blocks initially. The separate 8 MiB/4096-byte fixture below now
+passes locally; this does not qualify that option for product storage.
 
 `target_dev_enable_store` calls `target_configure_device`, which calls the
 backend's `configure_device` directly. A retained `/proc/self/fd/N` binding is a
@@ -35,8 +36,9 @@ path even when `authenticate_target` is set. The actual fixture confirms this,
 as well as successful reciprocal exchange and client-side refusal of a wrong
 target response/name. Do not admit a product policy promising required
 bidirectional authentication merely because outbound configfs credentials exist.
-Strict enforcement needs a separately reviewed/qualified solution or a clearly
-distinct explicitly approved policy; never silently downgrade the requirement.
+The optional research-only enforcement profile below now passes local guest
+tests. Product use still needs separate review/qualification; never silently
+downgrade a requirement or infer enforcement from configured credentials alone.
 
 The kernel documentation's illustrative setup disables authentication and uses
 a wildcard portal. It is not an acceptable fixture or production default.
@@ -117,8 +119,9 @@ Implemented independent assertions, exercised on actual ARM926 QEMU:
 - Reciprocal CHAP succeeds with separate inbound/outbound synthetic secrets.
   Wrong inbound credentials, wrong target response and wrong target username
   require exact pinned protocol/library failures, not a network error. A one-way
-  peer still succeeds with mutual credentials configured: this is an explicit
-  backend limitation, not an enforced mutual-only profile.
+  peer still succeeds with mutual credentials configured in the unchanged
+  upstream profile. The optional strict profile requires authentication refusal
+  instead, while leaving peers without outbound credentials unchanged.
 - With no active session, rotate the primary inbound credential: old login
   fails, new reciprocal login succeeds and existing data remains unchanged.
   This is not durable or interrupted/live-session credential rotation.
@@ -126,8 +129,15 @@ Implemented independent assertions, exercised on actual ARM926 QEMU:
   and secondary RO write denial use independent credentials. Cross-peer
   credentials fail; secondary logout leaves the primary session observed and
   capable of reading unchanged data. Both logout before ACL teardown. This
-  tests one target/LUN and the same pinned client, not Windows, multiple LUNs,
+  concurrent-session test uses one target/LUN and the same pinned client, not Windows,
   per-account revocation or a production session/use owner.
+- A second retained 8 MiB FILEIO object uses 4096-byte blocks, while the original
+  32 MiB object remains 512-byte. Primary ACL sees LUNs 0/1 with RW/RO access;
+  peer sees 0/3 with RO/RW access. Exact reported sets, both capacities/block
+  sizes, ungranted-LUN SCSI refusal, opposite write permissions, distinct seeds,
+  readback and peer-write visibility are mandatory. Every session logs out
+  before exact link/storage/descriptor cleanup. These multi-LUN I/O clients run
+  sequentially; the earlier single-LUN concurrent-session test is retained.
 
 Use strict bounded timeouts and mandatory markers. Any uncertain cleanup fails;
 no retries, silent recreation or reuse of a partially configured target.
@@ -136,7 +146,8 @@ The runner uses a private tmpfs `TMPDIR` for QEMU snapshot files. A paused-VM
 RED/GREEN regression proves that missing TMPDIR fails on the read-only builder
 and the actual call site uses its owned scratch. The dedicated guest init is
 never installed in a normal overlay. It mounts only its root snapshot read-only
-and tmpfs/configfs; the only data backing is a dense 32 MiB tmpfs file.
+and tmpfs/configfs; dense 32 MiB and 8 MiB files are the only data backings,
+inside the existing 64 MiB guest tmpfs.
 The runner attaches no NIC/data disk/host port and accepts only guest-loopback
 listeners. The pinned kernel's inactive `sit0` tunnel is accounted for explicitly.
 
@@ -150,8 +161,52 @@ Negative logins require the exact pinned protocol refusal class/detail, not a
 network failure. Diagnostics and result validation never expose credentials.
 The bounded result validator also refuses unknown/contradictory LIO readiness
 lines in addition to missing/duplicate markers and secret/error tokens. A
-five-case native RED/GREEN regression verifies this consumer boundary; success
-requires the measured one-way acceptance to remain explicitly non-enforcing.
+native RED/GREEN regression verifies this consumer boundary. Each invocation
+selects one exact expected profile; default/strict, mixed, missing and duplicate
+markers cannot substitute for each other.
+
+### Optional strict mutual-login research profile
+
+`fixtures/patches/linux-lio-strict-mutual.patch` adds a default-off kernel option,
+`CONFIG_ISCSI_TARGET_STRICT_MUTUAL_CHAP`. Only an explicitly selected fresh tmpfs
+research compile applies it, with zero patch fuzz. With outbound target
+credentials configured, a missing initiator challenge now fails authentication
+instead of taking the successful one-way branch. Peers without outbound
+credentials retain their one-way behavior. Standard QEMU/EX4 kernels, Buildroot
+patch directories and product startup remain unchanged.
+
+Both fresh profiles pass actual ARM926 QEMU locally on 2026-10-04: strict mode
+requires the exact protocol authentication refusal for the one-way attempt;
+default mode still requires its measured acceptance. Reciprocal exchange,
+wrong inbound/target response/name refusals, credential rotation, independent
+RO/RW peers, retained backing and cleanup assertions pass in both modes.
+Seven profile and eight result test groups, ShellCheck, workflow path checks
+and the mocked wrapper's strict-cached refusal also pass. Host CI does not
+execute these actual target tests.
+
+### Exact multi-LUN set regression
+
+Pinned LIO's `spc_emulate_report_luns` walks its ACL hlist, not a numeric sort.
+The first multi-LUN fixture wrongly required ascending order and failed in the
+actual guest at `multi-report-luns`. A native C regression of the exact helper
+used by the client reproduces that failure before correction. Its 512 finite
+pair/count vectors plus null/unsupported-selector/high-LUN checks pass afterward:
+either order is accepted, but exactly two distinct expected LUNs remain required.
+The actual fresh strict/default guests then pass the original full scenario,
+including 4096-byte I/O, permissions and teardown. No I/O/auth check was relaxed.
+
+```sh
+sh support/tests/test-lio-lun-set.sh "$PWD"
+```
+
+This tiny native matcher test runs before local kernel compilation and in host
+CI. It is not a target boot, protocol interoperability or storage authority.
+
+This is login-time enforcement of a supplied challenge, not proof that a hostile
+client verified the target response, transport encryption, existing-session
+revocation, credential ownership or production backend selection. Independent
+security review and product integration remain required. CHAP still uses its
+protocol MD5 construction; do not describe it as confidential transport.
 
 ### Reproduce locally
 
@@ -165,6 +220,9 @@ The wrapper performs no downloads, image pulls/builds or volume creation.
 ```powershell
 # Fresh verified kernel + client + actual guest, with disposable 4 GiB scratch.
 .\support\test-qemu-lio.ps1 -CompileKernel
+
+# Separate opt-in strict mutual-login kernel + actual guest; always fresh.
+.\support\test-qemu-lio.ps1 -CompileKernel -RequireMutual
 
 # Fast iteration only if a previously verified local kernel candidate exists.
 .\support\test-qemu-lio.ps1
@@ -181,6 +239,10 @@ SHA256SUMS,INPUTS.sha256}`; check output hashes and compile-helper/version/base
 config/compiler input hashes before and after. Local retained candidate size is
 approximately 4.1 MiB, not an additional Docker volume. If absent/stale, use
 fresh mode rather than bypassing a checksum failure.
+`-RequireMutual` without `-CompileKernel` refuses before Docker inspection;
+an old/default cached candidate cannot qualify strict mode. Changes to the
+compile helper invalidate its previous input manifest even for default mode.
+Never rewrite a stale manifest to bypass that refusal; use a fresh compile.
 
 One non-root, read-only, networkless, zero-capability auto-removed container
 reuses the existing workspace read-only. Cached mode has 2 GiB memory/512 MiB
@@ -199,7 +261,8 @@ session races, legacy import, capacity/allocation modes, EX4 resource/thermal
 qualification and UI activation remain separate roadmap requirements.
 The actual reciprocal exchange, two-peer RO/RW isolation and inactive-session
 credential rotation above are now covered locally, not product-qualified.
-Still pending: required-mutual enforcement, durable/live-session rotation,
+Still pending: product review/integration of required-mutual enforcement,
+durable/live-session rotation,
 active-session mutation refusal, crash/backing-loss/full-storage campaigns,
 typed privileged ownership and complete release licensing. A successful forced
 session teardown is not permission to revoke production clients automatically.

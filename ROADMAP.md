@@ -1679,11 +1679,31 @@ support per tested combination; refuse untested combinations without mutation.
   the other session/data usable. Missing/duplicate/unknown/contradictory consumer
   markers refuse (native RED/GREEN). This remains one LUN/pinned-client QEMU,
   not product credential/session ownership, Windows or interrupted rotation.
-  **Required-mutual gate:** pinned LIO permits one-way login even with mutual
+  **Required-mutual gate:** unmodified pinned LIO permits one-way login even with mutual
   credentials configured; source and actual guest agree. Do not label that
   setting enforced mutual authentication. A product policy requiring both
   directions must refuse admission until a separately reviewed enforcement
   solution is qualified; an explicitly approved weaker policy would be distinct.
+  **Research subset now verified:** an opt-in default-off kernel option rejects
+  missing initiator challenges only when outbound credentials are configured.
+  Separate fresh strict/default actual ARM926 guests pass exact refusal versus
+  upstream acceptance, reciprocal exchange, rotation, two-peer RO/RW, retained
+  data and teardown. Seven profile/seven result groups, wrapper strict-cached
+  refusal and host-only workflow selection pass. This patch applies only in
+  disposable research tmpfs, not product/standard QEMU/EX4 kernels. Independent
+  security review, product backend selection/integration and credential admission
+  remain open; a target cannot prove an untrusted client checked its response.
+  **Multi-LUN/block-size research subset:** fresh strict/default actual ARM926
+  guests now verify 32 MiB/512-byte and 8 MiB/4096-byte retained FILEIO objects,
+  exact ACL LUN sets primary0/1 RW/RO versus peer0/3 RO/RW, capacity, distinct
+  seeds, readback/peer-write visibility, denied writes and exact ungranted-LUN
+  SCSI refusal, then full teardown. Clients are sequential; the existing
+  single-LUN concurrent-session test remains. A RED/GREEN native C matcher
+  regression fixes an invalid sorted-REPORT-LUNS assumption without weakening
+  exact cardinality/uniqueness/membership. Host-only gates now include7 profile/
+  8 result groups and512 finite matcher vectors; they are not target execution.
+  Multiple-target/other-client and production allocation/use/session admission
+  remain open; this is not a product 4096-byte backing qualifier.
   **Next M9.1b:** typed internal backend admission/observation contract: retained
   backing identity and writable authority; bounded credentials with reserved
   configfs-value refusal; redacted session observations; no automatic creation
