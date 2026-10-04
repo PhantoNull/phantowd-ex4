@@ -54,7 +54,20 @@ composition with normal/replace/exit/uncertain static-child lifetimes, direct
 lease-close refusal, failed metadata admission without a stranded lease and
 constant FD count across32 checks. A separate same-filesystem overmount proves
 metadata-root identity loss retains its independent descriptor and group claim
-until explicit release; this is not a writer-on-mount-loss qualification.
+until explicit release. Additional actual same-filesystem overmount cases use
+a live UID/GID1000 inherited-RW consumer: observation quarantines, confirmed
+stop/reap precedes release, and deliberately uncertain stop retains the live
+child/RW/metadata/mount claims. Restoring the exact original bind cannot revive
+review, retry stop or issue a fresh lease. Fixture cleanup must complete exactly
+before success, with independently confirmed reap before disposal. This proves
+mount-identity loss with a one-write/FD-holding child, not physical I/O failure
+mid-transfer, LIO/session behavior, autonomous monitoring or product recovery.
+
+The new native checker-seam drift/uncertain-stop/restoration composition and
+nonfixture-input refusal pass alongside whole pinned Linux tagged vet/race and
+focused race count3. Mandatory actual ARMv5 mounted-writer-loss assertions and
+the existing clean two-boot state lane pass in the bounded API overlay. No
+production behavior, backend authority or device startup is added.
 
 Mandatory mounted-lifetime/root-loss assertions and the existing clean two-boot
 state fixture pass locally. The API overlay reuses seven verified baseline

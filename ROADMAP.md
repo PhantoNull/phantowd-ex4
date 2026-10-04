@@ -1740,8 +1740,16 @@ support per tested combination; refuse untested combinations without mutation.
   mounted-owner composition, failed-admission cleanup, constant FD count across32
   checks and normal/replace/exit/uncertain writer lifetime. Separate actual
   same-filesystem overmount proves metadata-only root loss retains independent
-  FD/group claims until release, not writer stop on mount loss. Old two-boot
-  state acceptance remains required and passes. No product writable opener,
+  FD/group claims until release. Additional actual same-filesystem overmount
+  cases now prove a live inherited-RW UID1000 consumer quarantines: confirmed
+  stop/reap precedes release, deliberately uncertain stop retains the live
+  child and RW/metadata/mount claims, and exact bind restoration cannot revive
+  the owner, retry stop or issue a new lease. Independent fixture teardown
+  must complete before success; a cleanup error cannot masquerade as expected
+  review. The fixed consumer writes once then holds its FD; physical I/O failure,
+  mid-transfer interruption, target sessions, autonomous supervision and durable
+  recovery remain separate. Old two-boot state acceptance remains required and
+  passes. No product writable opener,
   LIO adapter, roster startup, coherent admission or persistent recovery follows.
   **Local acceptance:** Windows preflight/cross-compile, pinned whole Linux
   tagged vet/race, focused race count3, storage contracts and smoke ShellCheck

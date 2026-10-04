@@ -304,6 +304,10 @@ while [ "$attempt" -lt "$smoke_timeout" ]; do
             echo 'Missing actual root-pin mount-loss lifetime assertion' >&2
             exit 1
         fi
+        if ! grep -F 'PHANTOWD_MOUNTED_WRITER_LOSS_READY actual_same_fs_overmount=true consumer_uid=1000 stop_before_release=true uncertain_stop_retains_mount=true restoration_no_revival=true no_retry=true exact_fixture_teardown=true product_recovery=false scope=disposable-qemu-only' "$log_file" >/dev/null; then
+            echo 'Missing actual mounted writer loss and retention assertion' >&2
+            exit 1
+        fi
         if ! grep -F 'PHANTOWD_MOUNT_OWNER_READY qualified_before_lease=true identity_change_blocks_new_access=true owner_handles_revoked=true set_lease_identity_loss=true returned_anchor_no_reuse=true ambiguous_mount_no_retry=true ambiguous_unmount_no_retry=true mismatch_no_lease=true target_fd_anchored=true target_replacement_not_used=true late_target_race_pinned_object_only=true late_target_race_quarantined=true source_fd_anchored=true source_replacement_quarantined=true scope=disposable-qemu-only' "$log_file" >/dev/null; then
             echo 'Missing trusted mount-owner lifecycle assertion' >&2
             exit 1
