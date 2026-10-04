@@ -1701,6 +1701,28 @@ support per tested combination; refuse untested combinations without mutation.
   define coherent persistent policy ownership rather than independently saving
   this document alongside SMB/NFS. Extend legacy names/auth only through explicit
   compatibility decisions. Do not turn syntactic `enabled` into startup behavior.
+  **M9.2b — internal registered-volume/backing review (prototype):** compare
+  the desired file-LUN policy with the protected registry, complete mounted-ext
+  census and coherent SMB/NFS policy inside one shared read/recheck bracket.
+  Preserve independent iSCSI/volume/registry revisions, unknown/conflicting/
+  missing/clone states and unresolved physical evidence. Unknown logical IDs
+  cannot bind by UUID; only an exact single scoped observation carries actual
+  physical/MD topology counts. Count distinct referenced registry IDs and
+  same-volume root/equal/ancestor SMB/NFS path exposures (including RO) per
+  stable BackingID. Exposure remains advisory, not admission or activation.
+  Raw observations reject JSON; invalid whole evidence or final drift yields
+  zero composite, even with no desired LUNs. No backing/credential file is read.
+  **Acceptance:** bounded 64-backing/multi-target tests, alias/clone/unknown/
+  conflict/unresolved cases, volume-scoped path boundaries, no shared mutable
+  result, whole-census/registry-ABA/cancel refusal, plus actual ARMv5 disposable
+  MD census reconciliation and restoration during final checks. Preserve the
+  old whole-scope tests and require the new guest assertion in standard smoke.
+  **Next:** do not use this diagnostic as an opener token. M9.1b must separately
+  obtain retained qualified file/mount authority, prove capacity/allocation,
+  guard symlink/hardlink aliasing and global-use/session races, and bind protected
+  credentials. Coherent durable all-protocol policy ownership, network listeners,
+  product startup, UI and legacy import remain separate work. No physical test
+  or persistent registration/activation is authorized by this prototype.
 - **M9.3 — Guard mutations.** Create/enable/disable/grow/remove operations check
   real initiator/session ownership and backing-volume state. Prevent local
   filesystem mounting while an initiator owns the LUN; prohibit unsafe shrink.

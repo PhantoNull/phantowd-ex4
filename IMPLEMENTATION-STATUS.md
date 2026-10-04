@@ -3,6 +3,34 @@
 
 # Implementation status
 
+## M9.2b registered-volume and cross-protocol review — local component evidence
+
+The private collector now binds desired file-LUN observations to protected
+logical registry IDs and expected UUIDs inside the existing complete-census/
+reader recheck bracket. iSCSI, volume-policy and registry revisions remain
+separate. Missing, unknown, conflicting or cloned volumes cannot select actual
+backing topology; unresolved physical evidence remains explicit. Per-BackingID
+SMB/NFS path exposure counts include RO shares and remain advisory only.
+
+Windows DOM/API vet/unit and ARMv5 cross-compilation pass. Pinned Go 1.26.6
+whole Linux tagged vet/test/race and focused review/collector race count3 pass,
+covering the 64-backing/multiple-target bound, distinct volume references,
+ordering/owned results, path boundaries, alias/clone/missing/unknown/conflict,
+incomplete whole evidence and registry/directory ABA/root/census/cancel refusal.
+The actual standard ARMv5 smoke reconciles the existing synthetic MD array,
+keeps an absent volume unselected, observes a known share exposure and returns
+zero composite after registry restoration during final census checks. The new
+assertion is mandatory in smoke and its static storage contract. Existing
+two-boot state acceptance, workflow path tests and smoke ShellCheck also pass.
+
+This uses a cache-reusing API overlay, the unchanged base volume probe and
+seven checksum-verified base artifacts. No complete new firmware/SBOM, hosted
+feature acceptance, secret/backing-file access, lease, global-use admission,
+target mutation, HTTP, persistence or product/physical qualification follows.
+All disposable rootfs/guest/cache scratch is bounded tmpfs and discarded; no
+Docker image/volume is created. See the [component boundary](src/phantowd-api/README.md#m92b-registered-volume-and-cross-protocol-review)
+and detailed M9.2b/M9.1b handoff in the roadmap.
+
 ## M9.1a actual LIO/initiator fixture — local research only
 
 The separate pinned Linux ARM926 kernel and libiscsi 1.20.0 client now execute

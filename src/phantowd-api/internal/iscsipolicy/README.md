@@ -8,6 +8,11 @@ LUNs and per-initiator access. It does not open backing objects, resolve secrets
 allocate files, configure configfs, listen, invoke a target or persist anything.
 Its positive revisions are not transactions or permission to activate a LUN.
 
+The separate Linux [registered-volume review](../../README.md#m92b-registered-volume-and-cross-protocol-review)
+compares this model with protected registry/census observations and SMB/NFS
+path advisories. That comparison is not part of this parser's authority: it
+opens no backing/secret and provides no lease, admission token or activation.
+
 ## Inputs and ownership
 
 Schema 1 binds to the exact revision of a validated `shareconfig.Config` and
