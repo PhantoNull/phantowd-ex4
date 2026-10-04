@@ -18,6 +18,8 @@ import (
 	"time"
 
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/fileservice"
+	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/iscsipolicy"
+	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/naspolicy"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/nfsconfig"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/shareconfig"
 	"golang.org/x/sys/unix"
@@ -25,6 +27,7 @@ import (
 
 const killFixtureEnv = "PHANTOWD_BUNDLE_KILL_FIXTURE"
 const killStageEnv = "PHANTOWD_BUNDLE_KILL_STAGE"
+const killProfileEnv = "PHANTOWD_BUNDLE_KILL_PROFILE"
 
 func killCodec() Codec[fileservice.Config] {
 	return Codec[fileservice.Config]{CurrentName: "file-services.json", PendingName: ".file-services.pending",
@@ -58,7 +61,19 @@ func TestBundleKillWriterHelper(t *testing.T) {
 	if dir == "" {
 		return
 	}
-	s, err := OpenWithCodec(dir, killCodec())
+	if os.Getenv(killProfileEnv) == "nas" {
+		killWriter(t, dir, nasKillCodec(), nasKillPolicy(2))
+		return
+	}
+	if os.Getenv(killProfileEnv) != "file-services" {
+		t.Fatal("unknown interruption profile")
+	}
+	killWriter(t, dir, killCodec(), killPolicy(2))
+}
+
+func killWriter[T any](t *testing.T, dir string, codec Codec[T], next T) {
+	t.Helper()
+	s, err := OpenWithCodec(dir, codec)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -126,21 +141,30 @@ func TestBundleKillWriterHelper(t *testing.T) {
 	default:
 		t.Fatal("unknown interruption stage")
 	}
-	t.Fatalf("commit unexpectedly returned: %v", s.Commit(1, killPolicy(2)))
+	t.Fatalf("commit unexpectedly returned: %v", s.Commit(1, next))
 }
 
 func TestBundleSIGKILLRecovery(t *testing.T) {
+	testBundleSIGKILLRecovery(t, killCodec(), killPolicy, "file-services")
+}
+
+func TestNASBundleSIGKILLRecovery(t *testing.T) {
+	testBundleSIGKILLRecovery(t, nasKillCodec(), nasKillPolicy, "nas")
+}
+
+func testBundleSIGKILLRecovery[T any](t *testing.T, codec Codec[T], policy func(uint64) T, profile string) {
+	t.Helper()
 	for _, stage := range []string{"partial-write", "full-write", "file-sync", "file-close", "before-rename", "after-rename", "directory-sync"} {
 		t.Run(stage, func(t *testing.T) {
 			dir := t.TempDir()
 			if err := os.Chmod(dir, 0700); err != nil {
 				t.Fatal(err)
 			}
-			s, err := OpenWithCodec(dir, killCodec())
+			s, err := OpenWithCodec(dir, codec)
 			if err != nil {
 				t.Fatal(err)
 			}
-			if err := s.Commit(0, killPolicy(1)); err != nil {
+			if err := s.Commit(0, policy(1)); err != nil {
 				s.Close()
 				t.Fatal(err)
 			}
@@ -151,7 +175,7 @@ func TestBundleSIGKILLRecovery(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 			defer cancel()
 			cmd := exec.CommandContext(ctx, os.Args[0], "-test.run=^TestBundleKillWriterHelper$")
-			cmd.Env = append(os.Environ(), killFixtureEnv+"="+dir, killStageEnv+"="+stage)
+			cmd.Env = append(os.Environ(), killFixtureEnv+"="+dir, killStageEnv+"="+stage, killProfileEnv+"="+profile)
 			out, err := cmd.StdoutPipe()
 			if err != nil {
 				t.Fatal(err)
@@ -177,7 +201,7 @@ func TestBundleSIGKILLRecovery(t *testing.T) {
 			if _, err := io.ReadFull(out, marker[:]); err != nil || marker[0] != 'K' {
 				t.Fatalf("writer did not reach gate: %q %v", marker, err)
 			}
-			if other, err := OpenWithCodec(dir, killCodec()); !errors.Is(err, ErrBusy) {
+			if other, err := OpenWithCodec(dir, codec); !errors.Is(err, ErrBusy) {
 				if other != nil {
 					other.Close()
 				}
@@ -202,9 +226,9 @@ func TestBundleSIGKILLRecovery(t *testing.T) {
 			if published {
 				want = 2
 			}
-			pendingPath := filepath.Join(dir, killCodec().PendingName)
+			pendingPath := filepath.Join(dir, codec.PendingName)
 			pending, pendingErr := os.ReadFile(pendingPath)
-			nextBytes, err := json.Marshal(killPolicy(2))
+			nextBytes, err := json.Marshal(policy(2))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -220,12 +244,12 @@ func TestBundleSIGKILLRecovery(t *testing.T) {
 					t.Fatal("abandoned pending differs from gate", pendingErr)
 				}
 			}
-			s, err = OpenWithCodec(dir, killCodec())
+			s, err = OpenWithCodec(dir, codec)
 			if err != nil {
 				t.Fatal("kernel did not release child lock", err)
 			}
 			defer s.Close()
-			if got, err := s.Load(); err != nil || !reflect.DeepEqual(got, killPolicy(want)) {
+			if got, err := s.Load(); err != nil || !reflect.DeepEqual(got, policy(want)) {
 				t.Fatal("split, empty or unexpected committed policy", got, err)
 			}
 			if !published {
@@ -233,13 +257,13 @@ func TestBundleSIGKILLRecovery(t *testing.T) {
 					t.Fatal("reopen/load changed pending evidence", err)
 				}
 			}
-			if err := s.Commit(want-1, killPolicy(want)); !errors.Is(err, ErrConflict) {
+			if err := s.Commit(want-1, policy(want)); !errors.Is(err, ErrConflict) {
 				t.Fatal("stale retry accepted", err)
 			}
-			if err := s.Commit(want, killPolicy(want+1)); err != nil {
+			if err := s.Commit(want, policy(want+1)); err != nil {
 				t.Fatal("explicit next commit failed", err)
 			}
-			if got, err := s.Load(); err != nil || !reflect.DeepEqual(got, killPolicy(want+1)) {
+			if got, err := s.Load(); err != nil || !reflect.DeepEqual(got, policy(want+1)) {
 				t.Fatal("next commit split policy", got, err)
 			}
 			if _, err := os.Lstat(pendingPath); !errors.Is(err, os.ErrNotExist) {
@@ -247,4 +271,25 @@ func TestBundleSIGKILLRecovery(t *testing.T) {
 			}
 		})
 	}
+}
+
+func nasKillCodec() Codec[naspolicy.Config] {
+	return Codec[naspolicy.Config]{CurrentName: "nas-services.json", PendingName: ".nas-services.pending",
+		MaxBytes: naspolicy.MaxInputBytes, Decode: naspolicy.Decode, Validate: naspolicy.Config.Validate,
+		Revision: func(c naspolicy.Config) uint64 { return c.Revision }}
+}
+
+func nasKillPolicy(revision uint64) naspolicy.Config {
+	access, path := "ro", "luns/old.img"
+	if revision > 1 {
+		access, path = "rw", "luns/new.img"
+	}
+	return naspolicy.Config{Format: naspolicy.Format, SchemaVersion: 1, Revision: revision, FileServices: killPolicy(revision),
+		ISCSI: iscsipolicy.Policy{Format: iscsipolicy.Format, SchemaVersion: 1, Revision: revision, VolumeRevision: revision,
+			Backings: []iscsipolicy.Backing{{ID: "disk", VolumeID: "bulk", RelativePath: path, CapacityBytes: 4096, BlockSize: 512, Allocation: "preallocated"}},
+			Targets: []iscsipolicy.Target{{ID: "target", Name: "iqn.2001-04.com.example:target", State: "disabled",
+				LUNs: []iscsipolicy.LUN{{ID: "lun", Number: 0, BackingID: "disk", Access: access}},
+				Initiators: []iscsipolicy.Initiator{{Name: "iqn.2001-04.com.example:peer",
+					Authentication: iscsipolicy.Authentication{Mode: "chap", InitiatorUser: "peer", InitiatorSecretRef: "inbound"},
+					Grants:         []iscsipolicy.Grant{{LUNID: "lun", Access: access}}}}}}}}
 }

@@ -3,6 +3,38 @@
 
 # Implementation status
 
+## M9.2c coherent SMB/NFS/iSCSI state — internal local prototype
+
+`internal/naspolicy` binds all three desired protocols and shared volume/user
+policy to one positive revision; seven counters/bindings must agree. Bounded
+strict envelope and component decoding return no partial policy; nested byte
+limits and explicit LUN0 semantics remain enforced. `internal/naspolicystore`
+uses the existing fixed-name Linux revision engine, exclusive directory lock
+and single rename/sync transaction. Pending is not recovery state, corruption
+is not empty, and old formats are neither imported nor modified.
+
+Windows preflight/cross-compilation, pinned Go1.26.6 whole Linux tagged vet/race
+and focused model/store/envelope count3 pass. Both old two-protocol and new
+three-protocol SIGKILL campaigns pass at seven publication points with three
+repetitions: live child lock, exact old/new whole state, unchanged abandoned
+pending, stale refusal and later explicit commit. Test hooks are not production
+code. This demonstrates process death on a live filesystem, not power loss.
+
+Actual ARMv5 standard smoke and existing generated-disk two-boot lane pass with
+the mandatory nonempty three-protocol marker, mixed/stale revision refusal,
+pending/corrupt evidence preservation and subsequent coherent commit/reopen.
+The cache-reusing overlay retains the base kernel/packages/probe; bounded tmpfs
+scratch and container disappear without new Docker image/volume. This does not
+qualify clean builds, physical EX4 storage, recovery or installation.
+
+No new HTTP, product state placement, runtime owner, credential/backing open,
+mount or target activation is introduced. The old development HTTP/store stays
+unchanged; a future explicit protected owner must prevent competing authoritative
+formats and qualify migration. This closes a desired-document coherence seam,
+not live policy/registry/access/allocation/global-use/session admission.
+
+See the [format/store contract](src/phantowd-api/internal/naspolicy/README.md).
+
 ## M9.1b retained mount-backed lifetime — private host/QEMU prototype
 
 `OpenFromMountedLease` retains an existing complete mounted-roster lease through

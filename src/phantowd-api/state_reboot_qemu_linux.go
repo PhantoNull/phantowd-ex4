@@ -132,6 +132,9 @@ func exerciseQEMUStatePersistence(root, phase string) error {
 	if err := exerciseQEMUServiceStatePersistence(root, phase); err != nil {
 		return err
 	}
+	if err := exerciseQEMUNASPolicyPersistence(root, phase); err != nil {
+		return err
+	}
 	if err := exerciseQEMUServiceAccounts(root, phase); err != nil {
 		return err
 	}
