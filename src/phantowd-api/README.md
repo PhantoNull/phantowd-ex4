@@ -25,6 +25,14 @@ and filenames, no implicit migration, and no service activation.
 
 ## M9.1b existing backing metadata prerequisite
 
+The additional [root-only CHAP reader](internal/iscsicredentials/README.md)
+retains private credential claims for a fixed trusted consumer. Desired policy
+continues to contain refs only; root-owned plaintext storage is the accepted
+first-release boundary, with encryption at rest deferred. The private backing
+lifecycle now retains credentials until verified teardown/reference closure;
+uncertainty retains review without retry. This is synthetic host/QEMU lifetime
+work, not a credential writer, LIO adapter, HTTP or product activation.
+
 The Linux-only [internal file pin](internal/backingpin/README.md) retains
 metadata-only parent/file references below a caller-owned qualified Root,
 rejects unsafe objects and exact-size mismatches, and quarantines observed

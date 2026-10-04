@@ -19,6 +19,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/iscsicredentials"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/mountowner"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/mountguard"
 	"golang.org/x/sys/unix"
@@ -30,12 +31,15 @@ const writableFixtureData = "PHANTOWD_WRITER"
 // No interpolated names/credentials/commands. The child receives only its
 // inherited RW file capability and uses UID/GID1000, not the opener's root UID.
 type fixtureWritableBackend struct {
-	cmd                   *exec.Cmd
-	done                  chan struct{}
-	file                  *os.File
-	stopCalls             int
-	stopFailure           bool
-	stopWithLiveReference bool
+	cmd                     *exec.Cmd
+	done                    chan struct{}
+	file                    *os.File
+	stopCalls               int
+	stopFailure             bool
+	stopWithLiveReference   bool
+	prepareCalls            int
+	credentialPeers         []iscsicredentials.Credential
+	stopWithLiveCredentials bool
 }
 
 func (b *fixtureWritableBackend) start(ctx context.Context, file *os.File) error {
@@ -121,6 +125,10 @@ func (b *fixtureWritableBackend) running(context.Context) (bool, error) {
 }
 func (b *fixtureWritableBackend) stop(ctx context.Context) error {
 	b.stopCalls++
+	if len(b.credentialPeers) > 0 {
+		_, err := b.credentialPeers[0].Incoming.WriteTo(io.Discard)
+		b.stopWithLiveCredentials = err == nil
+	}
 	if b.file != nil {
 		_, err := b.file.Stat()
 		b.stopWithLiveReference = err == nil

@@ -58,7 +58,14 @@ func createFixturePolicyOwner(directory, relative string) (*naspolicystore.Owner
 // Existing generated policy only, no symlink/create fallback. Mutation and
 // exact restoration deliberately violate the cooperating-writer contract.
 func mutateFixturePolicy(directory string) error {
-	name := directory + "/nas-services.json"
+	return mutateFixtureDocument(directory, "nas-services.json")
+}
+
+func mutateFixtureDocument(directory, name string) error {
+	if name != "nas-services.json" && name != "chap-secrets.json" {
+		return ErrInvalid
+	}
+	name = directory + "/" + name
 	original, err := os.ReadFile(name)
 	if err != nil {
 		return err

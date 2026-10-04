@@ -1791,6 +1791,23 @@ support per tested combination; refuse untested combinations without mutation.
   or product startup. This is not universal I/O interruption or a qualified
   hardware polling/resource budget. Full backend/code/access/allocation/global-
   use/session/credential composition and durable recovery remain prerequisites.
+- **M9.1c — protected credential lifetime prerequisite.** The first-release
+  decision permits root-owned recoverable plaintext (`0700` directory/`0600`
+  document); encryption at rest is later work with an explicit key/recovery
+  design, not an implied property. Internal root-only reader reuses revision
+  store locks/checks/watch/claims, resolves all policy SecretRefs, rejects missing
+  and identical byte values and backend-reserved names, and binds a fixed trusted
+  consumer at acquisition. No document read API or provisioning/rotation writer.
+  Private backing lifecycle retains its own credential/policy/mount/RW claims
+  through uncertain preparation/stop/closure, without retry. Root-native and
+  disposable actual mounted QEMU tests pass locally; buffers deny JSON/text
+  disclosure and invalidate borrowed handles only after verified teardown.
+  This is not complete LIO/target-wide admission. **Next:** qualify typed LIO
+  credential install/readback and exact borrower teardown, compose target-wide
+  multi-LUN/code/access/allocation/use/session/network ownership, design random
+  generation/import provenance and protected provisioning/rotation recovery,
+  then product startup and UI. Length checks are not entropy qualification;
+  CHAP and root-only files provide neither transport nor at-rest encryption.
 - **M9.2 — Target model.** Stable target/LUN identity, backing volume/object,
   capacity/allocation policy, initiator access and protected authentication
   secrets. Secrets are not returned by read APIs or exposed in diagnostics.

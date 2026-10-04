@@ -3,6 +3,34 @@
 
 # Implementation status
 
+## M9.1c retained root-only CHAP material — internal prerequisite
+
+The first-release decision permits root-owned recoverable plaintext (`0700`
+directory, `0600` file); encryption at rest is deferred, not provided. Internal
+`iscsicredentials` reuses the protected revision engine for initialized state,
+retained claims and restored-mutation quarantine. Policy contains only refs.
+All references resolve before target selection; missing/duplicate byte values
+and LIO reserved prefixes refuse without partial material. A fixed trusted
+consumer receives opaque sink-writable buffers; normal formatting is redacted
+and JSON denied. Best-effort wiping applies only to owned buffers, not all
+runtime/JSON/kernel copies. Token length is not entropy qualification.
+
+The private backing owner retains its own policy/credential/mount/RW claims,
+prepares with the same backend, and releases only after confirmed teardown and
+reference closure. Partial preparation/stop/close uncertainty retains review
+without retry. No writer, import, entropy generator, endpoint or startup exists.
+Only tagged fixture code provisions a fresh synthetic vault.
+
+Windows preflight/cross-compilation, pinned Linux root-focused tagged race
+count3, non-root whole tagged vet/race, shell/storage contracts and actual ARMv5
+standard smoke plus complete two-boot state pass locally. Root-focused tests
+exercise actual protected files but synthetic lifecycle admission; three added
+mounted guest cases retain the real UID/GID1000 child through normal/drift/
+uncertain stop. Credentials stay in the fixture's root-only synthetic sink,
+not the child or configfs. This is neither actual LIO credential-install proof
+nor target-wide/multi-LUN ownership, production state/recovery, clean-build or
+physical EX4 qualification. M9.1b product activation gates remain open.
+
 ## M9.1b private policy/backing supervision — host/QEMU prerequisite
 
 The internal writable-reference prototype now offers one explicit blocking

@@ -14,6 +14,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/iscsicredentials"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/mountowner"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/naspolicystore"
 	"golang.org/x/sys/unix"
@@ -55,6 +56,11 @@ func RunQEMUMountedWritableFixture(source string) error {
 				return fmt.Errorf("policy mounted writable %s: %w", kind, err)
 			}
 		}
+		for _, kind := range []string{"chap-normal", "chap-drift", "chap-uncertain"} {
+			if err := withMountedWritableCase(set, workspace, kind, nil); err != nil {
+				return fmt.Errorf("credential mounted fixture %s: %w", kind, err)
+			}
+		}
 		return nil
 	})
 	if err != nil {
@@ -69,6 +75,7 @@ func RunQEMUMountedWritableFixture(source string) error {
 	fmt.Println("PHANTOWD_MOUNTED_BACKING_READY real_mount_owner=true exact_roster=true caller_lease_close_busy=true repeated_verify_no_fd_growth=true stop_before_mount_release=true uncertain_stop_retains_mount=true product_opener=false iscsi_backend=false scope=disposable-qemu-only")
 	emitPolicyWritableMarker()
 	emitSupervisedPolicyMarker()
+	emitCredentialWritableMarker()
 	return nil
 }
 
@@ -91,12 +98,20 @@ func withMountedWritableCase(set *mountowner.MountedVolumeSet, workspace, kind s
 	}
 	var policySource *naspolicystore.Owner
 	relative := filepath.Base(workspace) + "/" + kind
-	if strings.HasPrefix(kind, "policy-") {
+	if strings.HasPrefix(kind, "policy-") || strings.HasPrefix(kind, "chap-") {
 		policySource, err = createFixturePolicyOwner(workspace+"/desired-"+kind, relative)
 		if err != nil {
 			return err
 		}
 		defer func() { result = errors.Join(result, policySource.Close()) }()
+	}
+	var secretSource *iscsicredentials.Owner
+	if strings.HasPrefix(kind, "chap-") {
+		secretSource, err = iscsicredentials.OpenQEMUFixture(workspace + "/credentials-" + kind)
+		if err != nil {
+			return err
+		}
+		defer func() { result = errors.Join(result, secretSource.Close()) }()
 	}
 	// Provision fixture state before retaining the backing; directory contents
 	// are not themselves part of Pin's parent-inode/mount identity comparison.
@@ -125,7 +140,9 @@ func withMountedWritableCase(set *mountowner.MountedVolumeSet, workspace, kind s
 	data := os.NewFile(uintptr(fd), "mounted-qemu-writable-file")
 	backend := &fixtureWritableBackend{}
 	var owner *writableOwner
-	if policySource != nil {
+	if secretSource != nil {
+		owner, err = newCredentialBoundWritableOwner(context.Background(), pin, data, backend, policySource, 1, "fixture-backing", secretSource, 1, "fixture-target")
+	} else if policySource != nil {
 		owner, err = newPolicyBoundWritableOwner(context.Background(), pin, data, backend, policySource, 1, "fixture-backing")
 	} else {
 		owner, err = newWritableOwner(pin, data, backend)
@@ -164,8 +181,14 @@ func withMountedWritableCase(set *mountowner.MountedVolumeSet, workspace, kind s
 			if pinErr == nil && owner.policy != nil {
 				result = errors.Join(result, owner.policy.Release())
 			}
+			if pinErr == nil && owner.credentials != nil {
+				result = errors.Join(result, owner.credentials.Release())
+			}
 		}
 	}()
+	if secretSource != nil && exercise == nil {
+		return exerciseCredentialWritableFixture(ctx, owner, backend, policySource, secretSource, workspace+"/credentials-"+kind, kind, lease)
+	}
 	if policySource != nil && exercise == nil {
 		if strings.HasPrefix(kind, "policy-supervise-") {
 			return exerciseSupervisedPolicyFixture(ctx, owner, backend, policySource, workspace+"/desired-"+kind, relative, kind, lease)

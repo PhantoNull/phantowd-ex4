@@ -79,7 +79,7 @@ This fixture is not a LIO backend or qualified process-isolation profile.
 No descriptor/path/raw identity is exposed. Handles/observations reject JSON.
 The public metadata pin performs no data read/write/create/truncate. Neither
 it nor the private lifecycle prototype supplies product writable authority,
-mount qualification, global-use/session fence, credential access, configfs, listener, HTTP or
+mount qualification, global-use/session fence, production credential authority, configfs, listener, HTTP or
 product startup. Verification is point-in-time, not proof of change history or
 unchanged file contents. Metadata syscalls can still perform/block on metadata
 I/O; this is not a universal execution deadline.
@@ -149,8 +149,26 @@ count3, shell/storage contracts, actual ARMv5 standard smoke and the complete
 two-boot fixture pass locally. These are cache-reusing userspace-overlay tests,
 not clean-build, physical-storage or EX4 qualification.
 
+## Private credential-bound lifetime composition
+
+An additional unexported constructor acquires its own coherent policy claim,
+checks target-to-backing membership and obtains a private claim from the
+[root-only CHAP reader](../iscsicredentials/README.md). The same fixed backend
+receives credentials and owns execution. Preparation is inside the started
+lifecycle: even a partial/uncertain prepare requires verified backend teardown
+before release. Fresh credential checks bracket policy/kernel observations.
+
+Credentials remain retained through uncertain stop or reference closure. No
+per-operation backend injection, automatic rotation/restart or product writer
+is added. Owned handles deny JSON and redact `fmt`, including copied values.
+Root-only synthetic native tests cover preparation/drift/close uncertainty;
+three added disposable mounted QEMU cases check normal stop, exact restored
+secret mutation and uncertain stop with the actual UID/GID1000 child. The secret
+sink stays in the root fixture; no secret enters child arguments/environment
+or logs. This is not LIO authentication or target-wide/multi-LUN admission.
+
 Remaining M9.1b work: qualified production lifecycle and full coherent policy admission,
 controlled writable descriptor acquisition/handoff and retained lifetime,
 permissions/allocation admission, whole-protocol backing-use/session ownership,
-protected credentials, backend observation and verified teardown. Do not use
+product credential generation/install/rotation, backend observation and verified teardown. Do not use
 this metadata-only pin as a substitute for those capabilities.
