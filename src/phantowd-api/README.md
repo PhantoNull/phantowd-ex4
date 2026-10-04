@@ -38,9 +38,17 @@ an already-open exact RW file and fixed backend are owned together with the
 metadata Pin; confirmed consumer stop/reap precedes release, and uncertainty
 retains references without retry/restart. It is tested with real descriptors
 and a fixed UID/GID1000 static consumer in disposable ARMv5 QEMU. No exported
-writable constructor, production opener, LIO adapter, mount/use/session
+writable constructor, production opener, LIO adapter, use/session
 authority or product activation follows. See the component contract for the
 native-test seam, actual-guest scope and remaining admission gates.
+
+`OpenFromMountedLease` now retains an existing complete mounted-roster lease
+through private root-pin ownership and independently closed directory handles.
+Direct group close remains busy through a live or uncertain consumer. Whole-roster
+rechecks are serialized; no raw Root or data descriptor is exported. Disposable
+ARMv5 fixtures cover retained mount lifetime and constant descriptor use, with
+a separate metadata-only actual overmount test. Production mount qualification,
+coherent policy/use/permission admission and target activation remain absent.
 
 ## M9.2a desired iSCSI policy
 

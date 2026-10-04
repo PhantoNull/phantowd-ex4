@@ -3,6 +3,36 @@
 
 # Implementation status
 
+## M9.1b retained mount-backed lifetime — private host/QEMU prototype
+
+`OpenFromMountedLease` retains an existing complete mounted-roster lease through
+an opaque member-root pin. It opens independently owned metadata directories,
+not lease-tracked references that repeated checks would accumulate or close
+twice. Group close refuses while a root pin exists, including an uncertain
+consumer stop or uncertain reference closure. Whole-roster checks use canonical
+locks; release closes references before dropping the root pin and never unmounts
+or reacquires the original roster. No raw Root/data descriptor escapes.
+
+Pinned Go1.26.6 whole Linux QEMU-tagged vet/race and focused package race count3
+pass. Native modeled tests cover repeated independent directory ownership,
+serialization refusal, concurrent release, mount/generation/drain quarantine,
+unselected-member drift and uncertain close retention. Windows preflight and
+ARMv5 cross-compilation pass. Actual ARMv5 Linux6.18.54 verifies real mount-owner
+composition with normal/replace/exit/uncertain static-child lifetimes, direct
+lease-close refusal, failed metadata admission without a stranded lease and
+constant FD count across32 checks. A separate same-filesystem overmount proves
+metadata-root identity loss retains its independent descriptor and group claim
+until explicit release; this is not a writer-on-mount-loss qualification.
+
+Mandatory mounted-lifetime/root-loss assertions and the existing clean two-boot
+state fixture pass locally. The API overlay reuses seven verified baseline
+artifacts and the unchanged probe, with bounded discarded tmpfs scratch in an
+auto-removed container; no new image or volume. This is not an installable EX4
+image, hosted/clean-build reproducibility or physical-device qualification.
+Production writable acquisition, roster qualification, coherent protected
+policy/access/allocation/global-use/session/credential admission and a target
+backend remain open. No HTTP, startup, LIO or NAS/disk/flash operation is added.
+
 ## M9.1b writable-reference lifetime — private host/QEMU prototype
 
 An unexported owner now accepts an already-open RW file only after its identity
@@ -29,7 +59,7 @@ locally. Seven verified baseline artifacts and the unchanged probe are reused;
 scratch is bounded tmpfs in an auto-removed container, with no new image/volume.
 
 There is no exported writable constructor, product opener or LIO backend.
-Mount-owner lease integration, permission/allocation/global-use/session
+Product mount qualification, permission/allocation/global-use/session
 admission, credentials, protected policy binding and durable recovery remain
 open. Independent fixture teardown after confirmed reap is not owner recovery;
 the fixture is not a general process-isolation profile. This is a userspace
@@ -62,7 +92,7 @@ contracts and smoke ShellCheck pass. This reuses seven verified baseline
 artifacts and the unchanged volume probe; bounded tmpfs scratch is discarded.
 
 This does not complete M9.1b. Writable descriptor acquisition/handoff/lifetime,
-tracked mount-owner leases, access/allocation/global-use/session admission,
+qualified product mounted rosters, access/allocation/global-use/session admission,
 protected credentials and a product target adapter remain missing. Metadata
 verification is point-in-time, not content/change-history or nonblocking-I/O
 proof. No HTTP, product startup, NAS/HDD/NAND or persistent device operation.

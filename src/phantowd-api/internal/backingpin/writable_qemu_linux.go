@@ -19,6 +19,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/mountowner"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/mountguard"
 	"golang.org/x/sys/unix"
 )
@@ -241,7 +242,7 @@ func RunQEMUWritableFixture(root *mountguard.Root, anchor string) (result error)
 		if duplicate, err := newWritableOwner(p, f, &fixtureWritableBackend{}); duplicate != nil || !errors.Is(err, ErrBusy) || p.consumer != owner {
 			return errors.New("duplicate consumer claim admitted")
 		}
-		if err := exerciseWritableOwnerFixture(ctx, owner, backend, workspace+"/"+kind, kind); err != nil {
+		if err := exerciseWritableOwnerFixture(ctx, owner, backend, workspace+"/"+kind, kind, nil); err != nil {
 			// Synthetic resource teardown only, after independent confirmed reap.
 			if backend.teardown(ctx) == nil {
 				_ = f.Close()
@@ -257,7 +258,12 @@ func RunQEMUWritableFixture(root *mountguard.Root, anchor string) (result error)
 	return nil
 }
 
-func exerciseWritableOwnerFixture(ctx context.Context, owner *writableOwner, backend *fixtureWritableBackend, file, kind string) error {
+func exerciseWritableOwnerFixture(ctx context.Context, owner *writableOwner, backend *fixtureWritableBackend, file, kind string, lease *mountowner.MountedVolumeSetLease) error {
+	if lease != nil {
+		if err := lease.Close(); !errors.Is(err, mountowner.ErrBusy) {
+			return errors.New("claimed backing allowed direct mount lease close")
+		}
+	}
 	if err := owner.pin.Close(); !errors.Is(err, ErrBusy) {
 		return errors.New("claimed Pin closed")
 	}
@@ -341,6 +347,11 @@ func exerciseWritableOwnerFixture(ctx context.Context, owner *writableOwner, bac
 		}
 		if _, err := owner.file.Stat(); err != nil {
 			return errors.New("uncertain RW reference lost")
+		}
+		if lease != nil {
+			if err := lease.Close(); !errors.Is(err, mountowner.ErrBusy) {
+				return errors.New("uncertain stop released mount lifetime")
+			}
 		}
 		// Destroy this disposable fixture only after separately proving child reap;
 		// the Owner itself stays reviewed, never becomes a recovery implementation.

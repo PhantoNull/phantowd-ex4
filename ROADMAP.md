@@ -1727,8 +1727,22 @@ support per tested combination; refuse untested combinations without mutation.
   replaces the reproduced BusyBox setuid second-exec readiness race; all32
   post-write credential observations remain required. No guard is relaxed.
   This adds neither a qualified writable opener nor a LIO adapter. Next compose
-  a retained mount-owner lease and protected coherent policy/use admission;
+  protected coherent policy/use admission with the retained mount lifetime below;
   do not promote the existing advisory overlap review into that authority.
+  **Retained mounted-roster prototype:** metadata-only `OpenFromMountedLease`
+  privately pins one member of an existing complete roster. Whole-roster rechecks
+  retain canonical locking; returned directory references are independently
+  owned, not double-closed Owner-tracked handles. Direct group close stays busy
+  through live/uncertain consumers; metadata/RW closure precedes root-pin release.
+  Uncertain closure retains the claim without retry or implicit unmount. Native
+  race/count3 covers unselected-member drift, drain/generation/identity failure,
+  concurrent release and uncertain-close retention. Actual ARMv5 proves fixed
+  mounted-owner composition, failed-admission cleanup, constant FD count across32
+  checks and normal/replace/exit/uncertain writer lifetime. Separate actual
+  same-filesystem overmount proves metadata-only root loss retains independent
+  FD/group claims until release, not writer stop on mount loss. Old two-boot
+  state acceptance remains required and passes. No product writable opener,
+  LIO adapter, roster startup, coherent admission or persistent recovery follows.
   **Local acceptance:** Windows preflight/cross-compile, pinned whole Linux
   tagged vet/race, focused race count3, storage contracts and smoke ShellCheck
   pass. Native positive syscall cases skip explicitly on unsupported unique

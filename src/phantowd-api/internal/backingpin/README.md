@@ -19,6 +19,28 @@ serialized `Close`. Close uncertainty remains explicit on subsequent calls;
 there is no automatic reopen/retry. The borrowed Root is not closed by the pin.
 The Root's lifecycle owner must coordinate concurrent revocation and consumers.
 
+## Retained mounted-roster constructor
+
+`OpenFromMountedLease` accepts an existing complete `mountowner` roster lease,
+not a desired policy or raw Root. It holds a private member-root pin until all
+metadata references are closed; the group's direct `Close` returns busy while
+that pin exists. The writable prototype therefore retains the mount lifetime
+through confirmed consumer stop, and through uncertainty without a close bypass.
+
+Root checks cover the entire original roster under canonical locks. Directory
+references are independently caller-owned, not Owner-tracked handles that would
+accumulate on repeated verification or be closed twice. Observed drift is sticky;
+uncertain reference closure retains the root claim. Explicit root-pin release
+does not release the group or unmount it. This is an internal ownership contract,
+not enforcement against unrelated privileged processes or a product opener.
+
+The disposable ARMv5 fixture checks actual mounted-owner composition, failed
+file admission without a stranded lease, constant descriptor count across32
+verifications, caller-close refusal, normal/replace/exit/uncertain consumer
+lifetimes, and a separate actual same-filesystem overmount retaining its
+independent root descriptor until release. The overmount test is metadata-only,
+not proof of an actual writer stopping on mount loss or product recovery.
+
 ## Private writable-reference lifecycle prototype
 
 `writable_linux.go` contains an unexported owner/constructor, used only by
@@ -49,8 +71,8 @@ This fixture is not a LIO backend or qualified process-isolation profile.
 
 No descriptor/path/raw identity is exposed. Handles/observations reject JSON.
 The public metadata pin performs no data read/write/create/truncate. Neither
-it nor the private lifecycle prototype supplies product writable authority, mount-owner
-lease, global-use/session fence, credential access, configfs, listener, HTTP or
+it nor the private lifecycle prototype supplies product writable authority,
+mount qualification, global-use/session fence, credential access, configfs, listener, HTTP or
 product startup. Verification is point-in-time, not proof of change history or
 unchanged file contents. Metadata syscalls can still perform/block on metadata
 I/O; this is not a universal execution deadline.
