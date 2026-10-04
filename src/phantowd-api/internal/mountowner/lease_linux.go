@@ -21,6 +21,7 @@ type MountedVolumeSetLease struct {
 	evidence MountedVolumeSetEvidence
 	leases   map[string]*Lease
 	ordered  []*Lease
+	rootPins map[*VolumeRootPin]struct{}
 }
 
 // Acquire atomically observes the complete fixed roster and retains a lease
@@ -85,18 +86,33 @@ func (l *MountedVolumeSetLease) Verify() (MountedVolumeSetEvidence, error) {
 	if l.closed {
 		return MountedVolumeSetEvidence{}, ErrUnavailable
 	}
+	return l.verifyLocked()
+}
+
+// Requires l.mu. Set and member locks are always taken in canonical order.
+func (l *MountedVolumeSetLease) verifyLocked() (MountedVolumeSetEvidence, error) {
+	unlock := l.lockOwnersLocked()
+	defer unlock()
+	return l.verifyOwnersLocked()
+}
+
+func (l *MountedVolumeSetLease) lockOwnersLocked() func() {
 	s := l.set
 	s.mu.Lock()
-	defer s.mu.Unlock()
 	for _, owner := range s.lockOrder {
 		owner.mu.Lock()
 	}
-	defer func() {
+	return func() {
 		for index := len(s.lockOrder) - 1; index >= 0; index-- {
 			s.lockOrder[index].mu.Unlock()
 		}
-	}()
+		s.mu.Unlock()
+	}
+}
 
+// Requires l.mu, l.set.mu and every member Owner lock.
+func (l *MountedVolumeSetLease) verifyOwnersLocked() (MountedVolumeSetEvidence, error) {
+	s := l.set
 	evidence, err := s.observeLocked()
 	if err != nil {
 		return MountedVolumeSetEvidence{}, err
@@ -162,6 +178,9 @@ func (l *MountedVolumeSetLease) Close() error {
 	defer l.mu.Unlock()
 	if l.closed {
 		return nil
+	}
+	if len(l.rootPins) != 0 {
+		return ErrBusy
 	}
 	for _, owner := range l.set.lockOrder {
 		owner.mu.Lock()

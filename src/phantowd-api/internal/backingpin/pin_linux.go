@@ -5,7 +5,8 @@
 
 // Package backingpin retains metadata-only references to an existing file
 // under a caller-owned qualified mountguard. It is not writable authority,
-// allocation/ownership admission, a mount lease or a target backend.
+// allocation/ownership admission or a target backend. The mounted constructor
+// can retain, but cannot create or qualify, an existing complete roster lease.
 package backingpin
 
 import (
@@ -17,6 +18,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/mountowner"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/mountguard"
 	"golang.org/x/sys/unix"
 )
@@ -63,8 +65,8 @@ type identity struct {
 	readOnly                 bool
 }
 
-// Pin must not be copied. It owns only parent/leaf O_PATH references; Root is
-// borrowed and must remain exclusively managed by its lifecycle owner. No FD,
+// Pin must not be copied. It owns parent/leaf O_PATH references; Open borrows
+// Root, while OpenFromMountedLease owns a private retained roster-root pin. No FD,
 // path, inode, device tuple or backend handoff escapes this package.
 type Pin struct {
 	nonSerializable
@@ -76,6 +78,7 @@ type Pin struct {
 	review, closed               bool
 	closeError                   error
 	consumer                     *writableOwner
+	mountRoot                    *mountowner.VolumeRootPin
 }
 
 // Open pins an existing regular, single-link file of the exact expected size.
@@ -89,10 +92,39 @@ func Open(root *mountguard.Root, relative string, expectedSize uint64) (*Pin, Ob
 	return openWith(root, relative, expectedSize)
 }
 
+// OpenFromMountedLease retains the complete existing mount-owner roster lease
+// while resolving one backing member. The root pin never escapes to callers;
+// direct group Close stays busy until safe metadata/consumer release. This
+// acquires no data descriptor or access/allocation/global-use/session authority.
+func OpenFromMountedLease(lease *mountowner.MountedVolumeSetLease, volumeID, relative string, expectedSize uint64) (*Pin, Observation, error) {
+	if lease == nil || !validSelection(relative, expectedSize) {
+		return nil, Observation{}, ErrInvalid
+	}
+	root, err := lease.PinVolumeRoot(volumeID)
+	if err != nil {
+		return nil, Observation{}, ErrUnavailable
+	}
+	pin, observation, err := openWith(root, relative, expectedSize)
+	if err != nil {
+		// Uncertain metadata close cannot release the retained mount lifetime.
+		// The group keeps the opaque pin for review; no implicit recovery/retry.
+		if !errors.Is(err, ErrReview) && root.Release() != nil {
+			err = ErrReview
+		}
+		return nil, Observation{}, err
+	}
+	pin.mountRoot = root
+	return pin, observation, nil
+}
+
+func validSelection(relative string, expectedSize uint64) bool {
+	return fs.ValidPath(relative) && relative != "." && len(relative) <= 1024 &&
+		!strings.ContainsAny(relative, "\\\x00") && expectedSize >= 512 && expectedSize <= math.MaxInt64 && expectedSize%512 == 0
+}
+
 // Private construction seam for native lifecycle tests, never request input.
 func openWith(root rootGuard, relative string, expectedSize uint64) (*Pin, Observation, error) {
-	if root == nil || !fs.ValidPath(relative) || relative == "." || len(relative) > 1024 ||
-		strings.ContainsAny(relative, "\\\x00") || expectedSize < 512 || expectedSize > math.MaxInt64 || expectedSize%512 != 0 {
+	if root == nil || !validSelection(relative, expectedSize) {
 		return nil, Observation{}, ErrInvalid
 	}
 	p := &Pin{root: root, directory: path.Dir(relative), name: path.Base(relative)}
@@ -217,6 +249,14 @@ func (p *Pin) closeLocked() error {
 		}
 	}
 	p.file, p.parent, p.root = nil, nil, nil
+	if result == nil && p.mountRoot != nil {
+		if p.mountRoot.Release() != nil {
+			result = ErrReview
+			p.review = true
+		} else {
+			p.mountRoot = nil
+		}
+	}
 	p.closeError = result
 	return result
 }

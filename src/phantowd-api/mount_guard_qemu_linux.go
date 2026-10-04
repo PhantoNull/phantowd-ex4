@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/backingpin"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/mountowner"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/mountguard"
 	"golang.org/x/sys/unix"
@@ -20,6 +21,12 @@ func runQEMUMountGuardTest() (result error) {
 		return err
 	}
 	if err := mountowner.RunQEMUFixture(smbFixtureAnchor); err != nil {
+		return err
+	}
+	if err := backingpin.RunQEMUMountedWritableFixture(smbFixtureAnchor); err != nil {
+		return err
+	}
+	if err := mountowner.RunQEMURootPinLossFixture(smbFixtureAnchor); err != nil {
 		return err
 	}
 	workspace, err := os.MkdirTemp("/run", "phantowd-mount-guard-")

@@ -296,6 +296,14 @@ while [ "$attempt" -lt "$smoke_timeout" ]; do
             echo 'Missing writable backing fixture ownership assertion' >&2
             exit 1
         fi
+        if ! grep -F 'PHANTOWD_MOUNTED_BACKING_READY real_mount_owner=true exact_roster=true caller_lease_close_busy=true repeated_verify_no_fd_growth=true stop_before_mount_release=true uncertain_stop_retains_mount=true product_opener=false iscsi_backend=false scope=disposable-qemu-only' "$log_file" >/dev/null; then
+            echo 'Missing retained mount-backed file lifetime assertion' >&2
+            exit 1
+        fi
+        if ! grep -F 'PHANTOWD_ROOT_PIN_LOSS_READY actual_mount_identity_loss=true independent_fd_retained=true caller_lease_close_busy=true release_before_fixture_unmount=true product_recovery=false scope=disposable-qemu-only' "$log_file" >/dev/null; then
+            echo 'Missing actual root-pin mount-loss lifetime assertion' >&2
+            exit 1
+        fi
         if ! grep -F 'PHANTOWD_MOUNT_OWNER_READY qualified_before_lease=true identity_change_blocks_new_access=true owner_handles_revoked=true set_lease_identity_loss=true returned_anchor_no_reuse=true ambiguous_mount_no_retry=true ambiguous_unmount_no_retry=true mismatch_no_lease=true target_fd_anchored=true target_replacement_not_used=true late_target_race_pinned_object_only=true late_target_race_quarantined=true source_fd_anchored=true source_replacement_quarantined=true scope=disposable-qemu-only' "$log_file" >/dev/null; then
             echo 'Missing trusted mount-owner lifecycle assertion' >&2
             exit 1
