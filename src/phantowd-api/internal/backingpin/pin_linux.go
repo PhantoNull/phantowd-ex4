@@ -11,6 +11,8 @@ package backingpin
 
 import (
 	"errors"
+	"fmt"
+	"io"
 	"io/fs"
 	"math"
 	"os"
@@ -55,6 +57,9 @@ type nonSerializable struct{}
 
 func (nonSerializable) MarshalJSON() ([]byte, error) { return nil, ErrUnavailable }
 func (*nonSerializable) UnmarshalJSON([]byte) error  { return ErrUnavailable }
+func (nonSerializable) Format(s fmt.State, _ rune) {
+	_, _ = io.WriteString(s, "[private backing owner]")
+}
 
 type identity struct {
 	mount, inode             uint64
