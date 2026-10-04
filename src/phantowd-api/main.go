@@ -28,11 +28,12 @@ func main() {
 	stateTest := flag.String("qemu-state-test", "", "fixed two-boot state fixture; QEMU only")
 	identityClient := flag.String("qemu-identity-client", "", "fixed unprivileged identity-channel fixture; QEMU only")
 	identityOwnerService := flag.Bool("qemu-identity-owner-service", false, "fixed root identity-owner service fixture; QEMU only")
+	writableConsumer := flag.Bool("qemu-writable-backing-consumer", false, "fixed inherited-descriptor consumer; disposable QEMU only")
 	flag.Parse()
 	modes := 0
 	for _, selected := range []bool{
 		*selfTest, *storageBroker, *nfsTest != "", *smbTest, *mountGuardTest,
-		*mdStackTest, *mdV10Fixture, *mdV10BrokerClient, *stateTest != "", *identityClient != "", *identityOwnerService,
+		*mdStackTest, *mdV10Fixture, *mdV10BrokerClient, *stateTest != "", *identityClient != "", *identityOwnerService, *writableConsumer,
 	} {
 		if selected {
 			modes++
@@ -40,6 +41,13 @@ func main() {
 	}
 	if flag.NArg() != 0 || modes > 1 {
 		log.Fatal("unexpected arguments")
+	}
+	if *writableConsumer {
+		if err := runQEMUWritableBackingConsumer(); err != nil {
+			fmt.Fprintln(os.Stderr, "PHANTOWD_WRITABLE_CONSUMER_ERROR fixture refused")
+			os.Exit(1)
+		}
+		return
 	}
 	if *storageBroker {
 		if err := runStorageBroker(); err != nil {

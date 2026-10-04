@@ -1707,6 +1707,28 @@ support per tested combination; refuse untested combinations without mutation.
   private read-only transitions and Root loss. Finish the remaining writable
   lifetime, coherent desired/registry qualification, allocation/access/use/session
   and credential gates above; do not mark M9.1b complete for this prerequisite.
+  **Writable-reference lifecycle prototype:** private constructor binds an
+  already-open exact RW descriptor to the metadata Pin and an immutable trusted
+  backend. Successful construction exclusively owns all three; failure does
+  not consume caller references. Start/observation bracket readiness with
+  identity checks; drift/exit/uncertainty stops once before release. Active or
+  uncertain resources block direct Pin close; stop uncertainty preserves RW
+  and metadata references in review, never automatic retry/restart. Native
+  lifecycle seams are not descriptor admission. Require actual ARMv5 real-Root
+  descriptor/unsafe-flag refusal, inherited FD writes by a UID1000 child,
+  verified stop/reap before release, unchanged replacement, unexpected exit,
+  concurrent stop and uncertain retention. Test-only disposal after independent
+  reap is not product recovery. No exported owner constructor, product opener,
+  LIO backend, tracked mount-owner/use/session/allocation admission or activation
+  follows; qualify those remaining capabilities rather than widening this fixture.
+  **Writable prototype local acceptance:** native state-machine race/count3
+  and actual ARMv5 real-Root descriptor/duplicate-claim/stop-lifetime cases pass,
+  with the existing full two-boot lane. A fixed static UID/GID1000 consumer
+  replaces the reproduced BusyBox setuid second-exec readiness race; all32
+  post-write credential observations remain required. No guard is relaxed.
+  This adds neither a qualified writable opener nor a LIO adapter. Next compose
+  a retained mount-owner lease and protected coherent policy/use admission;
+  do not promote the existing advisory overlap review into that authority.
   **Local acceptance:** Windows preflight/cross-compile, pinned whole Linux
   tagged vet/race, focused race count3, storage contracts and smoke ShellCheck
   pass. Native positive syscall cases skip explicitly on unsupported unique
