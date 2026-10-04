@@ -32,6 +32,7 @@ target=iqn.2026-10.invalid.phantowd:lio-fixture
 initiator=iqn.2026-10.invalid.phantowd:client
 tpg="$fabric/$target/tpgt_1"
 acl="$tpg/acls/$initiator"
+peer_acl="$tpg/acls/iqn.2026-10.invalid.phantowd:peer"
 client=/usr/libexec/phantowd-iscsi-fixture-client
 backing=/run/phantowd-lio/backing,comma.img
 mkdir "$fabric" "$core"
@@ -145,6 +146,62 @@ printf '1\n' > "$acl/lun_0/write_protect"
 [ "$(cat "$acl/lun_0/write_protect")" = 1 ]
 "$client" ro
 [ "$(sha256sum "$backing" | cut -d ' ' -f 1)" = "$replacement_hash" ]
+phase=mutual-authentication
+grep -q '^No active iSCSI Session' "$acl/info"
+printf '%s' fixture-target > "$acl/auth/userid_mutual"
+printf '%s' synthetic-outbound-only-2026 > "$acl/auth/password_mutual"
+[ "$(cat "$acl/auth/authenticate_target")" = 1 ]
+"$client" mutual
+"$client" mutual-target-wrong
+"$client" mutual-user-wrong
+"$client" mutual-inbound-wrong
+# Pinned LIO accepts a peer that does not ask to authenticate the target.
+# This is measured backend behavior, NOT enforced mutual-only admission.
+"$client" mutual-oneway
+grep -q '^No active iSCSI Session' "$acl/info"
+echo 'PHANTOWD_LIO_MUTUAL_READY exchange=true wrong_target_refused=true wrong_user_refused=true wrong_inbound_refused=true oneway_still_accepted=true enforcement=false'
+phase=credential-rotation
+printf '%s' synthetic-rotated-only-2026 > "$acl/auth/password"
+"$client" rotated-old
+"$client" rotated
+grep -q '^No active iSCSI Session' "$acl/info"
+echo 'PHANTOWD_LIO_ROTATION_READY no_active_session=true old_refused=true new_verified=true data_preserved=true durable=false'
+phase=independent-peers
+mkdir "$peer_acl" "$peer_acl/lun_0"
+printf '%s' fixture-peer > "$peer_acl/auth/userid"
+printf '%s' synthetic-peer-only-2026 > "$peer_acl/auth/password"
+ln -s "$tpg/lun/lun_0" "$peer_acl/lun_0/grant"
+printf '1\n' > "$peer_acl/lun_0/write_protect"
+[ "$(cat "$peer_acl/lun_0/write_protect")" = 1 ]
+"$client" peer-cross
+printf '0\n' > "$acl/lun_0/write_protect"
+[ "$(cat "$acl/lun_0/write_protect")" = 0 ]
+"$client" primary-hold &
+primary_pid=$!
+"$client" peer-ro-hold &
+peer_pid=$!
+attempt=0
+while { [ ! -f /run/phantowd-lio/primary-ready ] || [ ! -f /run/phantowd-lio/peer-ready ]; } && [ "$attempt" -lt 30 ]; do
+    kill -0 "$primary_pid"
+    kill -0 "$peer_pid"
+    sleep 1
+    attempt=$((attempt + 1))
+done
+[ -f /run/phantowd-lio/primary-ready ] && [ -f /run/phantowd-lio/peer-ready ]
+if grep -q '^No active iSCSI Session' "$acl/info"; then exit 1; fi
+if grep -q '^No active iSCSI Session' "$peer_acl/info"; then exit 1; fi
+touch /run/phantowd-lio/peer-release
+wait "$peer_pid"
+grep -q '^No active iSCSI Session' "$peer_acl/info"
+if grep -q '^No active iSCSI Session' "$acl/info"; then exit 1; fi
+touch /run/phantowd-lio/primary-release
+wait "$primary_pid"
+grep -q '^No active iSCSI Session' "$acl/info"
+rm /run/phantowd-lio/primary-ready /run/phantowd-lio/peer-ready /run/phantowd-lio/primary-release /run/phantowd-lio/peer-release
+rm "$peer_acl/lun_0/grant"
+rmdir "$peer_acl/lun_0" "$peer_acl"
+[ "$(sha256sum "$backing" | cut -d ' ' -f 1)" = "$replacement_hash" ]
+echo 'PHANTOWD_LIO_PEERS_READY concurrent=2 separate_credentials=true cross_credentials_refused=true primary_readwrite=true peer_readonly=true logout_independent=true data_preserved=true'
 phase=unlink-rebind
 remove_target
 rm /run/phantowd-lio/original

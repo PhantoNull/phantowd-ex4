@@ -3,6 +3,37 @@
 
 # Implementation status
 
+## M9.1b existing backing metadata pins — local prerequisite evidence
+
+The Linux-only internal pin borrows a qualified Root and retains parent/file
+O_PATH references to one existing single-link regular file of exact expected
+size. It never opens data for reading/writing or creates a missing file.
+Re-resolved and retained mount/inode/size/mode/UID/GID/link identities must
+agree; observed drift permanently quarantines without releasing the retained
+references until explicit close. Handles/observations refuse JSON, including
+Pin values; uncertain close remains explicit without retry. No raw FD escapes.
+
+Windows DOM/API vet/unit and ARMv5 cross-compilation pass. Pinned Go1.26.6
+whole Linux QEMU-tagged vet/race and focused package race count3 pass; native
+positive syscall lifecycle tests explicitly skip on this host's kernel lacking
+unique mount IDs, rather than using weaker identifiers. Synthetic mask/type/
+size/overflow/mount/input/serialization checks run there. Actual ARMv5 Linux
+6.18.54 covers those lifecycle cases through the real qualified disposable
+ext Root: O_PATH data refusal, missing/symlink/special/size refusals, replacement,
+unlink/truncate/mode/UID/GID/hardlink/parent drift and restoration quarantine,
+concurrent verify/close, uncertain close, nested/leaf bind mounts, private RO
+transition and Root loss. The required backing-pin assertion and old mount
+guard pass; the existing clean two-boot state fixture also passes. Storage
+contracts and smoke ShellCheck pass. This reuses seven verified baseline
+artifacts and the unchanged volume probe; bounded tmpfs scratch is discarded.
+
+This does not complete M9.1b. Writable descriptor acquisition/handoff/lifetime,
+tracked mount-owner leases, access/allocation/global-use/session admission,
+protected credentials and a product target adapter remain missing. Metadata
+verification is point-in-time, not content/change-history or nonblocking-I/O
+proof. No HTTP, product startup, NAS/HDD/NAND or persistent device operation.
+See the [component contract](src/phantowd-api/internal/backingpin/README.md).
+
 ## M9.2b registered-volume and cross-protocol review — local component evidence
 
 The private collector now binds desired file-LUN observations to protected
@@ -40,6 +71,24 @@ continues reaching the original file after rename/replace/unlink; closed/missing
 descriptors fail without recreating storage. A live session is observed,
 forcibly disabled and absent afterward; its I/O and new login fail, re-enable
 preserves data, and final target/listener/configfs teardown is checked.
+
+The expanded actual ARMv5 guest also verifies reciprocal CHAP with exact wrong
+inbound/target response/name refusal, inactive-session credential rotation with
+old login refusal/new login and preserved data, and two simultaneous explicit
+ACL peers with independent credentials and primary RW/secondary RO grants.
+Cross-peer credentials fail; secondary logout leaves the primary observed and
+reading unchanged data. Both logout before ACL teardown. The bounded consumer
+now refuses unknown/contradictory readiness lines; five native RED/GREEN cases,
+six result/profile test groups, mock wrapper/ShellCheck and actual cached-kernel
+guest pass. No additional kernel profile or Docker image/volume is generated.
+
+**Backend limitation:** both pinned source and actual guest confirm that mutual
+configfs credentials still permit one-way CHAP. Successful reciprocal exchange
+is not required-mutual enforcement. Production admission for such a requirement
+must wait for a separately reviewed enforcement solution or a distinct explicit
+policy decision; the desired model is not silently weakened. Rotation tests
+are neither durable/interrupted nor live-session, and simultaneous-peer evidence
+is one LUN/pinned libiscsi client, not Windows or a product authority owner.
 
 The source-defined local wrapper checks profile/result refusals and a real
 paused-snapshot TMPDIR regression, compiles the pinned upstream client and boots

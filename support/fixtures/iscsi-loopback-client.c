@@ -12,9 +12,15 @@
 #define TARGET "iqn.2026-10.invalid.phantowd:lio-fixture"
 #define INITIATOR "iqn.2026-10.invalid.phantowd:client"
 #define FOREIGN "iqn.2026-10.invalid.phantowd:foreign"
+#define PEER "iqn.2026-10.invalid.phantowd:peer"
 #define PORTAL "127.0.0.1:3260"
 #define USER "fixture"
 #define SECRET "synthetic-chap-only-2026"
+#define ROTATED "synthetic-rotated-only-2026"
+#define TARGET_USER "fixture-target"
+#define TARGET_SECRET "synthetic-outbound-only-2026"
+#define PEER_USER "fixture-peer"
+#define PEER_SECRET "synthetic-peer-only-2026"
 #define BLOCK 512
 
 static int failed(struct iscsi_context *ctx, const char *stage)
@@ -44,6 +50,11 @@ static int refused_status(const char *error, const char *mode)
     const char *number;
     char *end;
     long observed, expected;
+    /* Exact pinned libiscsi verification failures, not TCP/timeout failures. */
+    if (error != NULL && !strcmp(mode, "mutual-target-wrong"))
+        return !strcmp(error, "Authentication failed. Invalid CHAP_R response from the target");
+    if (error != NULL && !strcmp(mode, "mutual-user-wrong"))
+        return !strcmp(error, "Failed to log in to target. Wrong CHAP targetname received: " TARGET_USER);
     if (error == NULL ||
         strncmp(error, "Failed to log in to target. Status:", 34) != 0)
         return 0;
@@ -67,20 +78,34 @@ int main(int argc, char **argv)
     struct scsi_readcapacity16 *capacity;
     unsigned char seed[BLOCK] = {0}, written[BLOCK], denied[BLOCK];
     int refusal, login, write_ok;
+    int peer, mutual, rotated, held;
     unsigned char entropy[32];
     if (argc != 2)
         return failed(NULL, "arguments");
     mode = argv[1];
     if (strcmp(mode, "rw") && strcmp(mode, "ro") && strcmp(mode, "check") &&
         strcmp(mode, "wrong") && strcmp(mode, "none") && strcmp(mode, "foreign") &&
-        strcmp(mode, "hold") && strcmp(mode, "disabled") && strcmp(mode, "reenabled"))
+        strcmp(mode, "hold") && strcmp(mode, "disabled") && strcmp(mode, "reenabled") &&
+        strcmp(mode, "mutual") && strcmp(mode, "mutual-target-wrong") &&
+        strcmp(mode, "mutual-user-wrong") && strcmp(mode, "mutual-inbound-wrong") &&
+        strcmp(mode, "mutual-oneway") && strcmp(mode, "rotated") &&
+        strcmp(mode, "rotated-old") && strcmp(mode, "primary-hold") &&
+        strcmp(mode, "peer-ro-hold") && strcmp(mode, "peer-cross"))
         return failed(NULL, "mode");
     /* No fixed seed or pre-initialization urandom use in authentication tests. */
     if (getrandom(entropy, sizeof(entropy), GRND_NONBLOCK) != sizeof(entropy))
         return failed(NULL, "entropy");
     refusal = !strcmp(mode, "wrong") || !strcmp(mode, "none") ||
-              !strcmp(mode, "foreign") || !strcmp(mode, "disabled");
-    ctx = iscsi_create_context(!strcmp(mode, "foreign") ? FOREIGN : INITIATOR);
+              !strcmp(mode, "foreign") || !strcmp(mode, "disabled") ||
+              !strcmp(mode, "mutual-target-wrong") || !strcmp(mode, "mutual-user-wrong") ||
+              !strcmp(mode, "mutual-inbound-wrong") || !strcmp(mode, "rotated-old") ||
+              !strcmp(mode, "peer-cross");
+    peer = !strcmp(mode, "peer-ro-hold") || !strcmp(mode, "peer-cross");
+    rotated = !strcmp(mode, "rotated") || !strcmp(mode, "primary-hold");
+    mutual = !strncmp(mode, "mutual", 6) && strcmp(mode, "mutual-oneway");
+    mutual = mutual || rotated || !strcmp(mode, "rotated-old");
+    held = !strcmp(mode, "primary-hold") || !strcmp(mode, "peer-ro-hold");
+    ctx = iscsi_create_context(!strcmp(mode, "foreign") ? FOREIGN : peer ? PEER : INITIATOR);
     if (ctx == NULL)
         return failed(NULL, "context");
     iscsi_set_log_level(ctx, 0);
@@ -92,9 +117,14 @@ int main(int argc, char **argv)
         iscsi_set_session_type(ctx, ISCSI_SESSION_NORMAL) != 0)
         return failed(ctx, "setup");
     if (strcmp(mode, "none") &&
-        iscsi_set_initiator_username_pwd(ctx, USER,
-            !strcmp(mode, "wrong") ? "deliberately-wrong" : SECRET) != 0)
+        iscsi_set_initiator_username_pwd(ctx, peer && strcmp(mode, "peer-cross") ? PEER_USER : USER,
+            (!strcmp(mode, "wrong") || !strcmp(mode, "mutual-inbound-wrong")) ? "deliberately-wrong" :
+            (rotated || !strcmp(mode, "peer-cross")) ? ROTATED : peer ? PEER_SECRET : SECRET) != 0)
         return failed(ctx, "auth-setup");
+    if (mutual && iscsi_set_target_username_pwd(ctx,
+            !strcmp(mode, "mutual-user-wrong") ? "wrong-target-user" : TARGET_USER,
+            !strcmp(mode, "mutual-target-wrong") ? "deliberately-wrong" : TARGET_SECRET) != 0)
+        return failed(ctx, "target-auth-setup");
     /* A network failure must not be accepted as authentication refusal. */
     if (iscsi_connect_sync(ctx, PORTAL) != 0)
         return failed(ctx, "tcp-connect");
@@ -142,7 +172,7 @@ int main(int argc, char **argv)
     memset(denied, 'C', BLOCK);
     if (!read_exact(ctx, 0, seed))
         return failed(ctx, "retained-seed");
-    if (!strcmp(mode, "rw")) {
+    if (!strcmp(mode, "rw") || !strcmp(mode, "primary-hold")) {
         /* FILEIO uses O_DSYNC with write cache disabled; FUA is not advertised. */
         task = iscsi_write16_sync(ctx, 0, 1, written, BLOCK, BLOCK, 0, 0, 0, 0, 0);
         write_ok = task != NULL && task->status == SCSI_STATUS_GOOD;
@@ -150,7 +180,7 @@ int main(int argc, char **argv)
             scsi_free_scsi_task(task);
         if (!write_ok)
             return failed(ctx, "write");
-    } else if (!strcmp(mode, "ro")) {
+    } else if (!strcmp(mode, "ro") || !strcmp(mode, "peer-ro-hold")) {
         task = iscsi_write16_sync(ctx, 0, 1, denied, BLOCK, BLOCK, 0, 0, 0, 0, 0);
         write_ok = task != NULL && task->status == SCSI_STATUS_CHECK_CONDITION &&
                    task->sense.key == SCSI_SENSE_DATA_PROTECTION;
@@ -161,6 +191,21 @@ int main(int argc, char **argv)
     }
     if (!read_exact(ctx, 1, written))
         return failed(ctx, "readback");
+    if (held) {
+        const char *ready_path = peer ? "/run/phantowd-lio/peer-ready" : "/run/phantowd-lio/primary-ready";
+        const char *release_path = peer ? "/run/phantowd-lio/peer-release" : "/run/phantowd-lio/primary-release";
+        FILE *ready = fopen(ready_path, "wx");
+        int attempt;
+        if (ready == NULL || fclose(ready) != 0)
+            return failed(ctx, "peer-ready");
+        for (attempt = 0; attempt < 30; attempt++) {
+            if (access(release_path, F_OK) == 0)
+                break;
+            sleep(1);
+        }
+        if (attempt == 30 || !read_exact(ctx, 1, written))
+            return failed(ctx, "peer-lifetime");
+    }
     if (!strcmp(mode, "hold")) {
         FILE *ready;
         int attempt;

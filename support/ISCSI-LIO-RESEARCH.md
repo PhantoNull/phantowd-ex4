@@ -1,8 +1,10 @@
 # M9.1: disposable LIO qualification
 
 This is a research contract, not a selected production backend or an installer.
-The approved scope is ARMv5 QEMU, one synthetic 32 MiB backing and a loopback
-initiator. No NAS, physical device, host port forwarding or product activation.
+The scope is ARMv5 QEMU, one synthetic 32 MiB backing and test-only loopback
+initiators. The original single-peer fixture now also checks two simultaneous
+peers with independent credentials/grants. No NAS, physical device, host port
+forwarding or product activation.
 
 ## Source findings
 
@@ -26,6 +28,15 @@ Their show functions return credentials; never recursively dump configfs.
 Store treats an uppercase `NULL` prefix as unset. A future backend adapter must
 reject reserved values before use, independently of the generic desired model.
 Credentials, daemon/portal state and active sessions need their own typed owner.
+
+**Mutual configuration is not mutual-only enforcement.** In the pinned
+`iscsi_target_auth.c`, a missing initiator CHAP_I takes the successful one-way
+path even when `authenticate_target` is set. The actual fixture confirms this,
+as well as successful reciprocal exchange and client-side refusal of a wrong
+target response/name. Do not admit a product policy promising required
+bidirectional authentication merely because outbound configfs credentials exist.
+Strict enforcement needs a separately reviewed/qualified solution or a clearly
+distinct explicitly approved policy; never silently downgrade the requirement.
 
 The kernel documentation's illustrative setup disables authentication and uses
 a wildcard portal. It is not an acceptable fixture or production default.
@@ -103,6 +114,20 @@ Implemented independent assertions, exercised on actual ARM926 QEMU:
   this is not a product active-session mutation-refusal guard.
 - Verify no listener outside loopback, no copied credentials in logs, no leaked
   target objects/sessions and unchanged base artifacts after exit.
+- Reciprocal CHAP succeeds with separate inbound/outbound synthetic secrets.
+  Wrong inbound credentials, wrong target response and wrong target username
+  require exact pinned protocol/library failures, not a network error. A one-way
+  peer still succeeds with mutual credentials configured: this is an explicit
+  backend limitation, not an enforced mutual-only profile.
+- With no active session, rotate the primary inbound credential: old login
+  fails, new reciprocal login succeeds and existing data remains unchanged.
+  This is not durable or interrupted/live-session credential rotation.
+- Observe two simultaneous explicit ACL sessions: primary RW writes/readback
+  and secondary RO write denial use independent credentials. Cross-peer
+  credentials fail; secondary logout leaves the primary session observed and
+  capable of reading unchanged data. Both logout before ACL teardown. This
+  tests one target/LUN and the same pinned client, not Windows, multiple LUNs,
+  per-account revocation or a production session/use owner.
 
 Use strict bounded timeouts and mandatory markers. Any uncertain cleanup fails;
 no retries, silent recreation or reuse of a partially configured target.
@@ -123,6 +148,10 @@ secret generation. FILEIO write cache and FUA emulation are disabled; the test
 does not send unadvertised FUA commands and makes no power-loss durability claim.
 Negative logins require the exact pinned protocol refusal class/detail, not a
 network failure. Diagnostics and result validation never expose credentials.
+The bounded result validator also refuses unknown/contradictory LIO readiness
+lines in addition to missing/duplicate markers and secret/error tokens. A
+five-case native RED/GREEN regression verifies this consumer boundary; success
+requires the measured one-way acceptance to remain explicitly non-enforcing.
 
 ### Reproduce locally
 
@@ -168,7 +197,9 @@ Success would qualify only this synthetic guest backend profile. Protected
 credential/registry/mount/global-use/network authority, durable transactions,
 session races, legacy import, capacity/allocation modes, EX4 resource/thermal
 qualification and UI activation remain separate roadmap requirements.
-Also pending: mutual CHAP, independent simultaneous peers, credential rotation,
+The actual reciprocal exchange, two-peer RO/RW isolation and inactive-session
+credential rotation above are now covered locally, not product-qualified.
+Still pending: required-mutual enforcement, durable/live-session rotation,
 active-session mutation refusal, crash/backing-loss/full-storage campaigns,
 typed privileged ownership and complete release licensing. A successful forced
 session teardown is not permission to revoke production clients automatically.

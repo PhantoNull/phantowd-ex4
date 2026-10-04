@@ -62,6 +62,9 @@ func runQEMUMountGuardTest() (result error) {
 		return fmt.Errorf("qualified test mount rejected: %w", err)
 	}
 	defer root.Close()
+	if err := exerciseQEMUBackingPin(workspace, anchor, root, expected); err != nil {
+		return fmt.Errorf("backing metadata fixture: %w", err)
+	}
 	if err := exerciseQEMUMountedAmbiguity(workspace, anchor); err != nil {
 		return err
 	}

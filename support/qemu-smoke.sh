@@ -288,6 +288,10 @@ while [ "$attempt" -lt "$smoke_timeout" ]; do
             echo 'Missing descriptor/mount guard assertion' >&2
             exit 1
         fi
+        if ! grep -F 'PHANTOWD_BACKING_PIN_READY metadata_only=true actual_ext_root=true exact_size=true unsafe_objects_denied=true nested_mount_denied=true leaf_overmount_denied=true retained_review=true restore_denied=true readonly_change_denied=true root_loss_denied=true serialized_close=true writable_authority=false target=false scope=disposable-qemu-only' "$log_file" >/dev/null; then
+            echo 'Missing backing metadata pin refusal/lifecycle assertion' >&2
+            exit 1
+        fi
         if ! grep -F 'PHANTOWD_MOUNT_OWNER_READY qualified_before_lease=true identity_change_blocks_new_access=true owner_handles_revoked=true set_lease_identity_loss=true returned_anchor_no_reuse=true ambiguous_mount_no_retry=true ambiguous_unmount_no_retry=true mismatch_no_lease=true target_fd_anchored=true target_replacement_not_used=true late_target_race_pinned_object_only=true late_target_race_quarantined=true source_fd_anchored=true source_replacement_quarantined=true scope=disposable-qemu-only' "$log_file" >/dev/null; then
             echo 'Missing trusted mount-owner lifecycle assertion' >&2
             exit 1
