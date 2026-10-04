@@ -10,6 +10,8 @@ host=${4:?existing Buildroot host toolchain required}
 output=${5:?fresh tmpfs output directory required}
 required_mutual=${PHANTOWD_LIO_REQUIRE_MUTUAL:-0}
 case "$required_mutual" in 0|1) ;; *) echo 'Invalid mutual research mode' >&2; exit 1 ;; esac
+idle_guard=${PHANTOWD_LIO_IDLE_GUARD:-0}
+case "$idle_guard" in 0|1) ;; *) echo 'Invalid idle research mode' >&2; exit 1 ;; esac
 for input in "$source_dir" "$archive" "$base_config" "$host" "$output"; do
     case "$input" in /*) ;; *) echo 'Absolute research input required' >&2; exit 1 ;; esac
     case "$input" in *[!a-zA-Z0-9_./-]*) echo 'Unsupported research input path' >&2; exit 1 ;; esac
@@ -40,6 +42,12 @@ if [ "$required_mutual" = 1 ]; then
     mutual_patch_hash=$(sha256sum "$mutual_patch" | awk '{print $1}')
     patch --batch --forward --fuzz=0 -p1 -d "$output/source" < "$mutual_patch"
 fi
+if [ "$idle_guard" = 1 ]; then
+    idle_patch="$source_dir/support/fixtures/patches/linux-lio-idle-disable.patch"
+    [ -f "$idle_patch" ] && [ ! -L "$idle_patch" ]
+    idle_patch_hash=$(sha256sum "$idle_patch" | awk '{print $1}')
+    patch --batch --forward --fuzz=0 -p1 -d "$output/source" < "$idle_patch"
+fi
 cp "$base_config" "$output/build/.config"
 export PATH="$host/bin:$PATH"
 export ARCH=arm CROSS_COMPILE="$host/bin/arm-buildroot-linux-gnueabi-"
@@ -53,12 +61,14 @@ done
 if [ "$required_mutual" = 1 ]; then
     "$output/source/scripts/config" --file "$output/build/.config" --enable ISCSI_TARGET_STRICT_MUTUAL_CHAP
 fi
-make -C "$output/source" O="$output/build" olddefconfig
-if [ "$required_mutual" = 1 ]; then
-    python3 "$source_dir/support/container/qemu_lio_inputs.py" --required-mutual "$output/build/.config"
-else
-    python3 "$source_dir/support/container/qemu_lio_inputs.py" "$output/build/.config"
+if [ "$idle_guard" = 1 ]; then
+    "$output/source/scripts/config" --file "$output/build/.config" --enable ISCSI_TARGET_IDLE_DISABLE
 fi
+make -C "$output/source" O="$output/build" olddefconfig
+set -- "$output/build/.config"
+if [ "$required_mutual" = 1 ]; then set -- "$@" --required-mutual; fi
+if [ "$idle_guard" = 1 ]; then set -- "$@" --idle-guard; fi
+python3 "$source_dir/support/container/qemu_lio_inputs.py" "$@"
 make -C "$output/source" O="$output/build" -j4 zImage dtbs
 sha256sum "$output/build/.config" "$output/build/arch/arm/boot/zImage" \
     "$output/build/arch/arm/boot/dts/arm/versatile-pb.dtb"
@@ -67,5 +77,9 @@ sha256sum "$output/build/.config" "$output/build/arch/arm/boot/zImage" \
 if [ "$required_mutual" = 1 ]; then
     [ "$(sha256sum "$mutual_patch" | awk '{print $1}')" = "$mutual_patch_hash" ]
     echo 'PHANTOWD_LIO_MUTUAL_KERNEL_COMPILED strict_when_configured=true default_profile_unchanged=true scope=tmpfs-research-only guest=false activation=false'
+fi
+if [ "$idle_guard" = 1 ]; then
+    [ "$(sha256sum "$idle_patch" | awk '{print $1}')" = "$idle_patch_hash" ]
+    echo 'PHANTOWD_LIO_IDLE_KERNEL_COMPILED force=false default_profile_unchanged=true scope=tmpfs-research-only guest=false activation=false'
 fi
 echo 'PHANTOWD_LIO_KERNEL_COMPILED scope=tmpfs-research-only guest=false activation=false'

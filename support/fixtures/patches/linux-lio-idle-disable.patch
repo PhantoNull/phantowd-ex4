@@ -1,0 +1,94 @@
+From: PhantoWD EX4 contributors
+Subject: [RESEARCH ONLY] target/iscsi: optional non-forcing disable attribute
+
+SPDX-License-Identifier: GPL-2.0-only
+SPDX-FileCopyrightText: 2026 PhantoWD EX4 contributors
+
+Reuse the existing access mutex and force=0 path. Do not change the ordinary
+forced disable/delete hooks. Refusal leaves established sessions intact but
+the underlying function resets pending login threads before the session check.
+This is not general mutation authority or a product backend.
+After a successful fabric disable, complete core RTPI/enabled bookkeeping while
+holding the fabric access mutex. A fabric-only stop leaves stale core state.
+
+--- a/drivers/target/iscsi/Kconfig
++++ b/drivers/target/iscsi/Kconfig
+@@ -15,1 +15,12 @@
++config ISCSI_TARGET_IDLE_DISABLE
++	bool "Expose non-forcing iSCSI portal-group disable"
++	depends on ISCSI_TARGET
++	default n
++	help
++	  Add a write-only disable_if_idle configfs attribute. Writing 1 uses
++	  the existing non-forcing portal-group disable path, which refuses
++	  established sessions. Pending logins can still be interrupted.
++	  This does not guard other mutations or concurrent configfs writers.
++	  The default leaves the upstream configfs interface unchanged.
++
+ source	"drivers/target/iscsi/cxgbit/Kconfig"
+--- a/drivers/target/iscsi/iscsi_target_configfs.c
++++ b/drivers/target/iscsi/iscsi_target_configfs.c
+@@ -1031,4 +1031,35 @@
++#ifdef CONFIG_ISCSI_TARGET_IDLE_DISABLE
++static ssize_t lio_target_tpg_disable_if_idle_store(struct config_item *item,
++		const char *page, size_t count)
++{
++	struct iscsi_portal_group *tpg = to_iscsi_tpg(to_tpg(item));
++	u32 value;
++	int ret;
++
++	ret = kstrtou32(page, 0, &value);
++	if (ret)
++		return ret;
++	if (value != 1)
++		return -EINVAL;
++	ret = iscsit_get_tpg(tpg);
++	if (ret)
++		return ret;
++	ret = iscsit_tpg_disable_portal_group(tpg, 0);
++	if (!ret)
++		target_tpg_complete_disable(&tpg->tpg_se_tpg);
++	iscsit_put_tpg(tpg);
++	if (ret < 0)
++		return ret;
++	return count;
++}
++
++CONFIGFS_ATTR_WO(lio_target_tpg_, disable_if_idle);
++#endif
++
+ static struct configfs_attribute *lio_target_tpg_attrs[] = {
+ 	&lio_target_tpg_attr_dynamic_sessions,
++#ifdef CONFIG_ISCSI_TARGET_IDLE_DISABLE
++	&lio_target_tpg_attr_disable_if_idle,
++#endif
+ 	NULL,
+ };
+--- a/drivers/target/target_core_tpg.c
++++ b/drivers/target/target_core_tpg.c
+@@ -505,1 +505,11 @@
++#ifdef CONFIG_ISCSI_TARGET_IDLE_DISABLE
++/* Caller holds the fabric access mutex after a successful fabric disable. */
++void target_tpg_complete_disable(struct se_portal_group *se_tpg)
++{
++	target_tpg_deregister_rtpi(se_tpg);
++	se_tpg->enabled = false;
++}
++EXPORT_SYMBOL_GPL(target_tpg_complete_disable);
++#endif
++
+ /* Does not change se_wwn->priv. */
+--- a/include/target/target_core_fabric.h
++++ b/include/target/target_core_fabric.h
+@@ -223,8 +223,11 @@
+ int	core_tpg_set_initiator_node_tag(struct se_portal_group *,
+ 		struct se_node_acl *, const char *);
+ int	core_tpg_register(struct se_wwn *, struct se_portal_group *, int);
+ int	core_tpg_deregister(struct se_portal_group *);
++#ifdef CONFIG_ISCSI_TARGET_IDLE_DISABLE
++void target_tpg_complete_disable(struct se_portal_group *);
++#endif
+ 
+ int	target_alloc_sgl(struct scatterlist **sgl, unsigned int *nents,
+ 		u32 length, bool zero_page, bool chainable);
+ void	target_free_sgl(struct scatterlist *sgl, int nents);

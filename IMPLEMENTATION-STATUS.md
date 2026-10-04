@@ -305,7 +305,21 @@ CHAP timeout; no authentication bypass or fixed seed is used. The normal
 QEMU/EX4 defconfigs and product init are unchanged. Pure host CI covers contracts,
 not actual target execution. See the [research contract](support/ISCSI-LIO-RESEARCH.md).
 
-This is not a privileged product adapter, live-session mutation-refusal guard,
+**M9.3a research prerequisite:** an independent default-off idle-disable patch
+uses the existing non-forcing fabric path and completes core RTPI/enabled
+bookkeeping under the fabric access mutex. The first prototype omitted that
+bookkeeping; actual RED/GREEN retains its core-state assertion. Fresh combined
+strict-mutual/idle-guard ARM926 execution now proves active-session refusal with
+fresh I/O on that same client, idle stop, exact released RTPI reuse, unavailable-
+TPG refusal and explicit re-enable with preserved data. Invalid/repeated stop
+refuses. All old auth/rotation/forced-revocation/two-peer/multi-LUN gates remain.
+A fresh unpatched default guest passes with the idle attribute absent. Eight
+profile/nine result groups and the mocked wrapper cover the four-way option
+matrix, not four actual guest builds. This locally passed 2026-10-05 experiment
+may interrupt pending logins even when stop refuses; other mutations, concurrent
+configfs writers/shared portals and production recovery remain unqualified.
+
+This is not a privileged product adapter, product-wide mutation-refusal owner,
 protected credentials/registry/mount/global-use authority, durable iSCSI state,
 UI activation, migration, hardware entropy/cooling qualification or installer.
 No production NAS/disk/NAND operation occurs. M9.1 backend selection remains open.

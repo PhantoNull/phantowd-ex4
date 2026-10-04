@@ -16,7 +16,7 @@ DISABLED = ("TCM_IBLOCK", "TCM_PSCSI", "TCM_USER2", "LOOPBACK_TARGET",
             "ISCSI_TCP", "ISCSI_BOOT_SYSFS")
 
 
-def audit(path, required_mutual=False):
+def audit(path, required_mutual=False, idle_guard=False):
     path = Path(path)
     if path.is_symlink() or not path.is_file():
         raise ValueError("regular LIO research config required")
@@ -41,14 +41,21 @@ def audit(path, required_mutual=False):
     permitted = ([strict + "=y"],) if required_mutual else ([], [f"# {strict} is not set"])
     if observed not in permitted:
         raise ValueError("LIO mutual research mode mismatch")
+    idle = "CONFIG_ISCSI_TARGET_IDLE_DISABLE"
+    observed = [line for line in lines if line.startswith(idle + "=")
+                or line == f"# {idle} is not set"]
+    permitted = ([idle + "=y"],) if idle_guard else ([], [f"# {idle} is not set"])
+    if observed not in permitted:
+        raise ValueError("LIO idle-disable research mode mismatch")
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("config")
     parser.add_argument("--required-mutual", action="store_true")
+    parser.add_argument("--idle-guard", action="store_true")
     args = parser.parse_args()
-    audit(args.config, args.required_mutual)
+    audit(args.config, args.required_mutual, args.idle_guard)
 
 
 if __name__ == "__main__":

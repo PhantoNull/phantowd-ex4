@@ -68,7 +68,7 @@ static int refused_status(const char *error, const char *mode)
         return 0;
     /* Pinned LIO: authentication failed, target forbidden, unavailable TPG. */
     expected = !strcmp(mode, "foreign") ? 0x0202 :
-               !strcmp(mode, "disabled") ? 0x0301 : 0x0201;
+               (!strcmp(mode, "disabled") || !strcmp(mode, "idle-disabled")) ? 0x0301 : 0x0201;
     return observed == expected;
 }
 
@@ -209,6 +209,7 @@ int main(int argc, char **argv)
     if (strcmp(mode, "rw") && strcmp(mode, "ro") && strcmp(mode, "check") &&
         strcmp(mode, "wrong") && strcmp(mode, "none") && strcmp(mode, "foreign") &&
         strcmp(mode, "hold") && strcmp(mode, "disabled") && strcmp(mode, "reenabled") &&
+        strcmp(mode, "idle-disabled") && strcmp(mode, "idle-reenabled") &&
         strcmp(mode, "mutual") && strcmp(mode, "mutual-target-wrong") &&
         strcmp(mode, "mutual-user-wrong") && strcmp(mode, "mutual-inbound-wrong") &&
         strcmp(mode, "mutual-oneway") && strcmp(mode, "mutual-oneway-refused") && strcmp(mode, "rotated") &&
@@ -221,7 +222,7 @@ int main(int argc, char **argv)
     if (getrandom(entropy, sizeof(entropy), GRND_NONBLOCK) != sizeof(entropy))
         return failed(NULL, "entropy");
     refusal = !strcmp(mode, "wrong") || !strcmp(mode, "none") ||
-              !strcmp(mode, "foreign") || !strcmp(mode, "disabled") ||
+              !strcmp(mode, "foreign") || !strcmp(mode, "disabled") || !strcmp(mode, "idle-disabled") ||
               !strcmp(mode, "mutual-target-wrong") || !strcmp(mode, "mutual-user-wrong") ||
               !strcmp(mode, "mutual-inbound-wrong") || !strcmp(mode, "rotated-old") ||
               !strcmp(mode, "peer-cross") || !strcmp(mode, "mutual-oneway-refused");
@@ -340,12 +341,20 @@ int main(int argc, char **argv)
     }
     if (!strcmp(mode, "hold")) {
         FILE *ready;
-        int attempt;
+        int attempt, idle_verified = 0;
         ready = fopen("/run/phantowd-lio/session-ready", "wx");
         if (ready == NULL || fclose(ready) != 0)
             return failed(ctx, "session-ready");
         /* The guest controller revokes this already-qualified session. */
         for (attempt = 0; attempt < 30; attempt++) {
+            if (!idle_verified && access("/run/phantowd-lio/idle-check", F_OK) == 0) {
+                if (!read_exact(ctx, 1, written))
+                    return failed(ctx, "idle-session-io");
+                ready = fopen("/run/phantowd-lio/idle-verified", "wx");
+                if (ready == NULL || fclose(ready) != 0)
+                    return failed(ctx, "idle-session-witness");
+                idle_verified = 1;
+            }
             if (access("/run/phantowd-lio/revoke", F_OK) == 0)
                 break;
             sleep(1);
