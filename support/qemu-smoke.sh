@@ -301,6 +301,11 @@ while [ "$attempt" -lt "$smoke_timeout" ]; do
             cat "$log_file" >&2
             exit 1
         fi
+        if ! grep -F 'PHANTOWD_POLICY_BACKING_SUPERVISION_READY exclusive=true serial_idle_scans=true actual_consumer_uid=1000 cancellation_verified_stop=true policy_drift_review=true unexpected_exit=true uncertain_retains_policy_mount_rw=true mount_loss_supervised=true no_retry=true product_startup=false scope=disposable-qemu-only' "$log_file" >/dev/null; then
+            echo 'Missing supervised policy/backing lifetime assertions' >&2
+            cat "$log_file" >&2
+            exit 1
+        fi
         if ! grep -F 'PHANTOWD_MOUNTED_BACKING_READY real_mount_owner=true exact_roster=true caller_lease_close_busy=true repeated_verify_no_fd_growth=true stop_before_mount_release=true uncertain_stop_retains_mount=true product_opener=false iscsi_backend=false scope=disposable-qemu-only' "$log_file" >/dev/null; then
             echo 'Missing retained mount-backed file lifetime assertion' >&2
             exit 1

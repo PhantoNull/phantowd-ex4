@@ -12,6 +12,7 @@ import (
 	"path"
 	"reflect"
 	"sync"
+	"time"
 
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/iscsipolicy"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/naspolicy"
@@ -50,6 +51,7 @@ type writableOwner struct {
 	check                            func() error          // Fixed kernel checker; state-machine tests use a private seam.
 	phase                            writablePhase
 	started, stopAttempted, released bool
+	supervising                      bool
 }
 
 func newWritableOwner(pin *Pin, file *os.File, backend writableBackend) (*writableOwner, error) {
@@ -193,6 +195,9 @@ func (o *writableOwner) start(ctx context.Context) error {
 	}
 	o.mu.Lock()
 	defer o.mu.Unlock()
+	if o.supervising {
+		return ErrBusy
+	}
 	if o.phase == writableReview {
 		return ErrReview
 	}
@@ -228,6 +233,13 @@ func (o *writableOwner) observe(ctx context.Context) error {
 	}
 	o.mu.Lock()
 	defer o.mu.Unlock()
+	if o.supervising {
+		return ErrBusy
+	}
+	return o.observeLocked(ctx)
+}
+
+func (o *writableOwner) observeLocked(ctx context.Context) error {
 	if o.phase == writableReview {
 		return ErrReview
 	}
@@ -255,6 +267,13 @@ func (o *writableOwner) stop(ctx context.Context) error {
 	}
 	o.mu.Lock()
 	defer o.mu.Unlock()
+	if o.supervising {
+		return ErrBusy
+	}
+	return o.stopLocked(ctx)
+}
+
+func (o *writableOwner) stopLocked(ctx context.Context) error {
 	if o.phase == writableReview {
 		return ErrReview
 	}
@@ -287,6 +306,9 @@ func (o *writableOwner) close() error {
 	}
 	o.mu.Lock()
 	defer o.mu.Unlock()
+	if o.supervising {
+		return ErrBusy
+	}
 	if o.phase == writableReview {
 		return ErrReview
 	}
@@ -302,6 +324,74 @@ func (o *writableOwner) close() error {
 	}
 	o.phase = writableClosed
 	return nil
+}
+
+const (
+	writableSupervisionInterval         = time.Second
+	writableSupervisionOperationTimeout = 5 * time.Second
+)
+
+// supervise exclusively owns an already-active consumer. It performs one full
+// observation immediately, then serial scans separated by a fixed idle period;
+// there are no catch-up scans, detached monitor or implicit start/restart.
+// Accepted cancellation requests verified stop with a fresh bounded context,
+// never release based only on a canceled request. All resource claims remain
+// held until stop/reference closure succeeds. The fixed backend must honor its
+// context; this is not a hard deadline for blocking regular-file metadata I/O.
+func (o *writableOwner) supervise(ctx context.Context) error {
+	if o == nil || ctx == nil {
+		return ErrInvalid
+	}
+	o.mu.Lock()
+	if o.supervising {
+		o.mu.Unlock()
+		return ErrBusy
+	}
+	if o.phase == writableReview {
+		o.mu.Unlock()
+		return ErrReview
+	}
+	if o.phase != writableActive {
+		o.mu.Unlock()
+		return ErrInvalid
+	}
+	if ctx.Err() != nil {
+		o.mu.Unlock()
+		return ErrUnavailable // not accepted; caller still owns the active lifecycle
+	}
+	o.supervising = true
+	o.mu.Unlock()
+	defer func() {
+		o.mu.Lock()
+		o.supervising = false
+		o.mu.Unlock()
+	}()
+
+	for {
+		// Once accepted, cancellation cannot strand a healthy active consumer.
+		// A fresh per-operation context also avoids interpreting request cancel
+		// during a policy read as policy drift or an uncertain canceled stop.
+		opctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), writableSupervisionOperationTimeout)
+		o.mu.Lock()
+		var err error
+		if cause := ctx.Err(); cause != nil {
+			err = errors.Join(cause, o.stopLocked(opctx))
+		} else {
+			err = o.observeLocked(opctx)
+		}
+		o.mu.Unlock()
+		cancel()
+		if err != nil {
+			return err
+		}
+		timer := time.NewTimer(writableSupervisionInterval)
+		select {
+		case <-ctx.Done():
+		case <-timer.C:
+		}
+		timer.Stop()
+		// Recheck cancellation under the lifecycle lock before the next scan.
+	}
 }
 
 func (o *writableOwner) quarantineLocked(ctx context.Context) error {

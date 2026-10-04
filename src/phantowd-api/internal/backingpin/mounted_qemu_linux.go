@@ -50,7 +50,7 @@ func RunQEMUMountedWritableFixture(source string) error {
 				return fmt.Errorf("mounted writable %s: %w", kind, err)
 			}
 		}
-		for _, kind := range []string{"policy-normal", "policy-drift", "policy-uncertain"} {
+		for _, kind := range []string{"policy-normal", "policy-drift", "policy-uncertain", "policy-supervise-cancel", "policy-supervise-drift", "policy-supervise-uncertain", "policy-supervise-exit"} {
 			if err := withMountedWritableCase(set, workspace, kind, nil); err != nil {
 				return fmt.Errorf("policy mounted writable %s: %w", kind, err)
 			}
@@ -68,6 +68,7 @@ func RunQEMUMountedWritableFixture(source string) error {
 	fmt.Println("PHANTOWD_MOUNTED_WRITER_LOSS_READY actual_same_fs_overmount=true consumer_uid=1000 stop_before_release=true uncertain_stop_retains_mount=true restoration_no_revival=true no_retry=true exact_fixture_teardown=true product_recovery=false scope=disposable-qemu-only")
 	fmt.Println("PHANTOWD_MOUNTED_BACKING_READY real_mount_owner=true exact_roster=true caller_lease_close_busy=true repeated_verify_no_fd_growth=true stop_before_mount_release=true uncertain_stop_retains_mount=true product_opener=false iscsi_backend=false scope=disposable-qemu-only")
 	emitPolicyWritableMarker()
+	emitSupervisedPolicyMarker()
 	return nil
 }
 
@@ -137,6 +138,12 @@ func withMountedWritableCase(set *mountowner.MountedVolumeSet, workspace, kind s
 	defer cancel()
 	defer func() {
 		// Independent disposable-fixture cleanup only, never Owner recovery.
+		owner.mu.Lock()
+		defer owner.mu.Unlock()
+		if owner.supervising {
+			result = errors.Join(result, errors.New("cannot dispose inputs of a live supervisor"))
+			return
+		}
 		pin.mu.Lock()
 		claimed := pin.consumer == owner
 		pin.mu.Unlock()
@@ -160,6 +167,9 @@ func withMountedWritableCase(set *mountowner.MountedVolumeSet, workspace, kind s
 		}
 	}()
 	if policySource != nil && exercise == nil {
+		if strings.HasPrefix(kind, "policy-supervise-") {
+			return exerciseSupervisedPolicyFixture(ctx, owner, backend, policySource, workspace+"/desired-"+kind, relative, kind, lease)
+		}
 		return exercisePolicyWritableFixture(ctx, owner, backend, policySource, workspace+"/desired-"+kind, relative, kind, lease)
 	}
 	if exercise == nil {
@@ -187,7 +197,7 @@ func mountedWritableLossCase(source string, uncertain bool) error {
 			return err
 		}
 		defer func() { result = errors.Join(result, os.RemoveAll(workspace)) }()
-		return withMountedWritableCase(set, workspace, "policy-loss", func(ctx context.Context, owner *writableOwner, backend *fixtureWritableBackend, file string, lease *mountowner.MountedVolumeSetLease) error {
+		return withMountedWritableCase(set, workspace, "policy-loss", func(ctx context.Context, owner *writableOwner, backend *fixtureWritableBackend, file string, lease *mountowner.MountedVolumeSetLease) (result error) {
 			if err := owner.start(ctx); err != nil {
 				return err
 			}
@@ -201,11 +211,28 @@ func mountedWritableLossCase(source string, uncertain bool) error {
 				return errors.New("live mounted loss consumer did not retain lease")
 			}
 			backend.stopFailure = uncertain
+			cancel, done, err := startFixtureSupervisor(ctx, owner)
+			joined := done == nil
+			defer func() {
+				if cancel != nil {
+					cancel()
+				}
+				if !joined {
+					settleErr, settled := awaitFixtureSupervisor(done)
+					if !settled || !errors.Is(settleErr, context.Canceled) || errors.Is(settleErr, ErrReview) {
+						result = errors.Join(result, settleErr)
+					}
+				}
+			}()
+			if err != nil {
+				return err
+			}
 			if err := lose(); err != nil {
 				return err
 			}
-			if err := owner.observe(ctx); !errors.Is(err, ErrReview) || owner.phase != writableReview {
-				return errors.New("actual mount loss did not quarantine consumer")
+			err, joined = awaitFixtureSupervisor(done)
+			if !joined || !errors.Is(err, ErrReview) || owner.phase != writableReview {
+				return errors.Join(errors.New("actual mount loss did not settle supervised consumer"), err)
 			}
 			if backend.stopCalls != 1 || !backend.stopWithLiveReference {
 				return errors.New("mount loss did not stop once with retained RW reference")

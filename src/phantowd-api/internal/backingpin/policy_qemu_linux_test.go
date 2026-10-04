@@ -192,3 +192,54 @@ func TestPolicyBackingSelectionAndFailedAdmissionConsumeNothing(t *testing.T) {
 		})
 	}
 }
+
+func TestPolicySupervisionRetainsClaimAcrossCancellationAndDrift(t *testing.T) {
+	for _, kind := range []string{"cancel", "cancel-uncertain", "drift", "drift-uncertain"} {
+		t.Run(kind, func(t *testing.T) {
+			owner, backend := lifecycleOwner(t)
+			source, directory := lifecyclePolicyOwner(t, owner)
+			ctx := context.Background()
+			if err := owner.start(ctx); err != nil {
+				t.Fatal(err)
+			}
+			cancel, done := startLifecycleSupervisor(t, owner)
+			if !errors.Is(source.Commit(ctx, 1, fixtureBackingPolicy(2, "synthetic/data")), naspolicystore.ErrBusy) || !errors.Is(source.Close(), naspolicystore.ErrBusy) {
+				t.Fatal("supervised consumer lost private policy claim")
+			}
+			owner.mu.Lock()
+			if kind == "cancel-uncertain" || kind == "drift-uncertain" {
+				backend.stopError = ErrUnavailable
+			}
+			owner.mu.Unlock()
+			if kind == "drift" || kind == "drift-uncertain" {
+				if err := mutateFixturePolicy(directory); err != nil {
+					t.Fatal(err)
+				}
+			} else {
+				cancel()
+			}
+			err := awaitLifecycleSupervisor(t, done)
+			if kind == "cancel" {
+				if !errors.Is(err, context.Canceled) || errors.Is(err, ErrReview) || owner.policy != nil || !owner.released {
+					t.Fatal("healthy cancellation did not release after stop", err)
+				}
+				if err := source.Commit(ctx, 1, fixtureBackingPolicy(2, "synthetic/data")); err != nil {
+					t.Fatal(err)
+				}
+			} else {
+				if !errors.Is(err, ErrReview) || owner.phase != writableReview {
+					t.Fatal("supervision fault not reviewed", err)
+				}
+				if kind != "drift" && (owner.policy == nil || owner.released || !errors.Is(source.Close(), naspolicystore.ErrBusy)) {
+					t.Fatal("uncertain supervised consumer abandoned policy")
+				}
+				if !errors.Is(owner.supervise(ctx), ErrReview) || backend.stopCalls != 1 {
+					t.Fatal("restored supervisor retried or revived")
+				}
+			}
+			if backend.stopCalls != 1 || !backend.stopWithLiveReference {
+				t.Fatal("policy release preceded supervised stop")
+			}
+		})
+	}
+}
