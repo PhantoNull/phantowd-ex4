@@ -20,11 +20,26 @@ class LIOInputs(unittest.TestCase):
         return "\n".join([*(f"CONFIG_{s}=y" for s in inputs.ENABLED),
                           *(f"# CONFIG_{s} is not set" for s in inputs.DISABLED)])
 
-    def check(self, data, required_mutual=False):
+    def check(self, data, required_mutual=False, idle_guard=False):
         with tempfile.TemporaryDirectory() as temp:
             path = Path(temp) / "config"
             path.write_bytes(data)
-            inputs.audit(path, required_mutual)
+            inputs.audit(path, required_mutual, idle_guard)
+
+    def test_idle_mode_exact_builtin_and_mutual_mode_matrix(self):
+        idle = "CONFIG_ISCSI_TARGET_IDLE_DISABLE=y"
+        strict = "CONFIG_ISCSI_TARGET_STRICT_MUTUAL_CHAP=y"
+        for mutual in (False, True):
+            base = self.valid() + ("\n" + strict if mutual else "")
+            self.check((base + "\n" + idle).encode(), mutual, True)
+            self.check(base.encode(), mutual, False)
+            self.check((base + "\n# CONFIG_ISCSI_TARGET_IDLE_DISABLE is not set").encode(), mutual, False)
+            with self.assertRaises(ValueError):
+                self.check((base + "\n" + idle).encode(), mutual, False)
+            for substitute in ("", "# CONFIG_ISCSI_TARGET_IDLE_DISABLE is not set",
+                               "CONFIG_ISCSI_TARGET_IDLE_DISABLE=m", idle + "\n" + idle):
+                with self.subTest(mutual=mutual, substitute=substitute), self.assertRaises(ValueError):
+                    self.check((base + "\n" + substitute).encode(), mutual, True)
 
     def test_valid_profile(self):
         self.check(self.valid().encode())

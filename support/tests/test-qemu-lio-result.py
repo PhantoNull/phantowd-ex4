@@ -18,9 +18,35 @@ SPEC.loader.exec_module(result)
 
 
 class LIOResult(unittest.TestCase):
-    def valid(self, strict=False):
+    def valid(self, strict=False, idle=False):
         markers = result.STRICT_MARKERS if strict else result.MARKERS
+        if idle:
+            markers += result.IDLE_MARKERS
         return ("ordinary boot log\n" + "\n".join(markers) + "\n").encode()
+
+    def test_idle_mode_matrix_refuses_missing_duplicate_weakened_or_wrong_profile(self):
+        for strict in (False, True):
+            good = self.valid(strict, idle=True)
+            result.validate(good, strict, True)
+            result.validate(good.replace(b"\n", b"\r\n"), strict, True)
+            for selected_strict, selected_idle in ((strict, False), (not strict, True)):
+                with self.assertRaises(ValueError):
+                    result.validate(good, selected_strict, selected_idle)
+            with self.assertRaises(ValueError):
+                result.validate(self.valid(strict), strict, True)
+            for marker in result.IDLE_MARKERS:
+                replacements = ("", marker + "\n" + marker, "prefix " + marker)
+                if "true" in marker:
+                    replacements += (marker.replace("true", "false"),)
+                for replacement in replacements:
+                    with self.subTest(strict=strict, marker=marker, replacement=replacement), self.assertRaises(ValueError):
+                        result.validate(good.replace(marker.encode(), replacement.encode()), strict, True)
+            for marker in (result.MARKERS if not strict else result.STRICT_MARKERS):
+                with self.subTest(strict=strict, omitted=marker), self.assertRaises(ValueError):
+                    result.validate(good.replace(marker.encode(), b""), strict, True)
+            for token in result.DENIED:
+                with self.assertRaises(ValueError):
+                    result.validate(good + token.encode(), strict, True)
 
     def test_complete(self):
         result.validate(self.valid())

@@ -11,6 +11,9 @@ mount -t sysfs sysfs /sys
 phase=mutual-profile
 mutual_mode=$(awk '{ for (i=1; i<=NF; i++) if ($i ~ /^phantowd.lio_mutual=/) { count++; value=$i } } END { if (count != 1) exit 1; print value }' /proc/cmdline)
 case "$mutual_mode" in phantowd.lio_mutual=default|phantowd.lio_mutual=strict) ;; *) exit 1 ;; esac
+phase=idle-profile
+idle_mode=$(awk '{ for (i=1; i<=NF; i++) if ($i ~ /^phantowd.lio_idle=/) { count++; value=$i } } END { if (count != 1) exit 1; print value }' /proc/cmdline)
+case "$idle_mode" in phantowd.lio_idle=off|phantowd.lio_idle=guarded) ;; *) exit 1 ;; esac
 phase='devtmpfs'
 grep -q ' /dev devtmpfs ' /proc/mounts
 phase='root-readonly'
@@ -116,6 +119,11 @@ phase=target
 make_storage
 make_target
 listeners
+if [ "$idle_mode" = phantowd.lio_idle=guarded ]; then
+    [ -f "$tpg/disable_if_idle" ]
+else
+    [ ! -e "$tpg/disable_if_idle" ]
+fi
 phase=rw
 "$client" rw
 phase=session-revocation
@@ -129,6 +137,21 @@ while [ ! -f /run/phantowd-lio/session-ready ] && [ "$attempt" -lt 30 ]; do
 done
 [ -f /run/phantowd-lio/session-ready ]
 if grep -q '^No active iSCSI Session' "$acl/info"; then exit 1; fi
+if [ "$idle_mode" = phantowd.lio_idle=guarded ]; then
+    phase=idle-active-refusal
+    if printf '1\n' > "$tpg/disable_if_idle" 2>/run/phantowd-lio/refusal-error; then exit 1; fi
+    [ "$(cat "$tpg/enable")" = 1 ]
+    if grep -q '^No active iSCSI Session' "$acl/info"; then exit 1; fi
+    touch /run/phantowd-lio/idle-check
+    attempt=0
+    while [ ! -f /run/phantowd-lio/idle-verified ] && [ "$attempt" -lt 10 ]; do
+        kill -0 "$session_pid"
+        sleep 1
+        attempt=$((attempt + 1))
+    done
+    [ -f /run/phantowd-lio/idle-verified ]
+fi
+phase=session-revocation
 printf '0\n' > "$tpg/enable"
 [ "$(cat "$tpg/enable")" = 0 ]
 grep -q '^No active iSCSI Session' "$acl/info"
@@ -140,6 +163,45 @@ printf '1\n' > "$tpg/enable"
 "$client" reenabled
 rm /run/phantowd-lio/session-ready /run/phantowd-lio/revoke
 echo 'PHANTOWD_LIO_SESSION_READY observed=true revoked=true admission_disabled=true reenabled_data=true'
+if [ "$idle_mode" = phantowd.lio_idle=guarded ]; then
+    phase=idle-empty-disable
+    grep -q '^No active iSCSI Session' "$acl/info"
+    for value in 0 2 invalid; do
+        phase=idle-invalid-refusal
+        if printf '%s\n' "$value" > "$tpg/disable_if_idle" 2>/run/phantowd-lio/refusal-error; then exit 1; fi
+        [ "$(cat "$tpg/enable")" = 1 ]
+    done
+    phase=idle-disable-call
+    printf '1\n' > "$tpg/disable_if_idle"
+    phase=idle-core-disabled-state
+    [ "$(cat "$tpg/enable")" = 0 ]
+    phase=idle-repeat-refusal
+    if printf '1\n' > "$tpg/disable_if_idle" 2>/run/phantowd-lio/refusal-error; then exit 1; fi
+    [ "$(cat "$tpg/enable")" = 0 ]
+    phase=idle-new-login-refusal
+    "$client" idle-disabled
+    phase=idle-rtpi-reuse
+    # Core must also release the disabled TPG's exact RTPI reservation.
+    # No network portal/initiator is attached to this short-lived probe.
+    probe_tpg="$fabric/$target/tpgt_2"
+    mkdir "$probe_tpg"
+    printf '1\n' > "$probe_tpg/attrib/authentication"
+    printf 'CHAP\n' > "$probe_tpg/param/AuthMethod"
+    printf '%s\n' "$(cat "$tpg/rtpi")" > "$probe_tpg/rtpi"
+    printf '1\n' > "$probe_tpg/enable"
+    [ "$(cat "$probe_tpg/enable")" = 1 ]
+    printf '0\n' > "$probe_tpg/enable"
+    [ "$(cat "$probe_tpg/enable")" = 0 ]
+    rmdir "$probe_tpg"
+    phase=idle-explicit-reenable
+    printf '1\n' > "$tpg/enable"
+    [ "$(cat "$tpg/enable")" = 1 ]
+    phase=idle-reenabled-data
+    "$client" idle-reenabled
+    grep -q '^No active iSCSI Session' "$acl/info"
+    rm /run/phantowd-lio/idle-check /run/phantowd-lio/idle-verified
+    echo 'PHANTOWD_LIO_IDLE_READY active_refused=true session_io_survived=true idle_disabled=true new_logins_refused=true rtpi_released=true reenabled_data=true invalid_refused=true scope=disposable-qemu-only'
+fi
 phase=authentication-refusals
 "$client" wrong
 "$client" none

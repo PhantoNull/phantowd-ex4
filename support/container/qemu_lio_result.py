@@ -36,14 +36,22 @@ STRICT_MARKERS = tuple(
 DENIED = ("PHANTOWD_LIO_ERROR", "PHANTOWD_LIO_CLIENT_ERROR", "Kernel panic",
           "synthetic-chap-only-2026", "synthetic-outbound-only-2026",
           "synthetic-rotated-only-2026", "synthetic-peer-only-2026", "deliberately-wrong")
+IDLE_MARKERS = (
+    "PHANTOWD_LIO_CLIENT_READY case=idle-disabled",
+    "PHANTOWD_LIO_CLIENT_READY case=idle-reenabled",
+    "PHANTOWD_LIO_IDLE_READY active_refused=true session_io_survived=true idle_disabled=true "
+    "new_logins_refused=true rtpi_released=true reenabled_data=true invalid_refused=true scope=disposable-qemu-only",
+)
 
 
-def validate(data, required_mutual=False):
+def validate(data, required_mutual=False, idle_guard=False):
     if len(data) > MAX_BYTES:
         raise ValueError("LIO guest qualification refused")
     text = data.decode("utf-8", errors="strict")
     lines = text.splitlines()
     expected = STRICT_MARKERS if required_mutual else MARKERS
+    if idle_guard:
+        expected += IDLE_MARKERS
     if any(token in text for token in DENIED):
         raise ValueError("LIO guest qualification refused")
     if any("PHANTOWD_LIO_" in line and line not in expected for line in lines):
@@ -56,6 +64,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("log")
     parser.add_argument("--required-mutual", action="store_true")
+    parser.add_argument("--idle-guard", action="store_true")
     args = parser.parse_args()
     try:
         path = Path(args.log)
@@ -63,7 +72,7 @@ def main():
             raise ValueError()
         with path.open("rb") as stream:
             data = stream.read(MAX_BYTES + 1)
-        validate(data, args.required_mutual)
+        validate(data, args.required_mutual, args.idle_guard)
     except (OSError, ValueError):
         print("LIO guest qualification refused", file=sys.stderr)
         return 1

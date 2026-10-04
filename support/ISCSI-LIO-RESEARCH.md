@@ -208,6 +208,55 @@ revocation, credential ownership or production backend selection. Independent
 security review and product integration remain required. CHAP still uses its
 protocol MD5 construction; do not describe it as confidential transport.
 
+### Optional non-forcing disable research profile
+
+Pinned `lio_target_tiqn_enabletpg` calls `iscsit_tpg_disable_portal_group(tpg, 1)`:
+the ordinary `enable=0` command forcibly closes established sessions. The
+existing force-zero path checks `nsessions` under the session lock before
+closing any session and restores the previous TPG state on refusal. It first
+resets login threads, however: a refused stop may interrupt **pending logins**.
+This is not an entirely side-effect-free operation or a general mutation guard.
+
+`fixtures/patches/linux-lio-idle-disable.patch` adds default-off
+`CONFIG_ISCSI_TARGET_IDLE_DISABLE`, exposing a write-only `disable_if_idle`
+attribute only in an explicitly selected fresh research kernel. Writing the
+numeric value 1 takes the existing TPG access mutex, calls the non-forcing path
+and completes core RTPI/enabled bookkeeping on success before releasing the
+mutex. It returns the actual refusal error. Other values and inactive groups refuse;
+there is no fallback to forced disable, automatic enable or retry. Ordinary
+disable/delete, standard QEMU/EX4 kernels and product startup are unchanged.
+
+The guarded fixture requires active-session refusal, unchanged enabled state
+and a fresh read on the **same** established client before retaining the
+ordinary forced-revocation test. With no sessions, guarded disable must succeed,
+new login must give the exact unavailable-TPG protocol status, and explicit
+re-enable must preserve the data. A short-lived portal-less second TPG must be
+able to reserve the exact released RTPI. Invalid values/repeated inactive disable also
+refuse. An unguarded guest requires the attribute to be absent. Pure profile,
+result and wrapper tests cover both mutual modes crossed with both idle modes;
+native contracts are not actual kernel/guest qualification.
+
+Local qualification on 2026-10-05: the fresh combined strict-mutual/idle-guard
+kernel passes the full actual ARM926 scenario, including all old assertions.
+A fresh unpatched default kernel passes the original scenario and requires
+the idle attribute to be absent. The full four-way mode matrix is covered by
+native contracts, not four actual guest builds. Eight profile/nine result groups,
+mocked wrapper and Linux ShellCheck/workflow contracts pass; host CI is not
+actual target execution.
+
+The first prototype stopped the iSCSI fabric but omitted core bookkeeping.
+The actual guest regression reproduced `idle-core-disabled-state`: core still
+reported enabled. The corrected optional helper releases the RTPI reservation
+and clears core enabled only after successful fabric disable, under its access
+mutex. The original assertion was preserved, not weakened. No production or
+legacy firmware defect is inferred from this new research-prototype bug.
+
+Pending-login and concurrent-writer races, multiple TPG/shared-portal behavior,
+production ownership, interrupted recovery and all other mutations remain
+unqualified. This research prerequisite does not complete M9.3 or select a
+production kernel patch/backend. Do not use normal forced disable as a fallback
+for a failed idle check.
+
 ### Reproduce locally
 
 Seed the ordinary pinned builder/workspace and verified baseline artifacts once
@@ -223,6 +272,9 @@ The wrapper performs no downloads, image pulls/builds or volume creation.
 
 # Separate opt-in strict mutual-login kernel + actual guest; always fresh.
 .\support\test-qemu-lio.ps1 -CompileKernel -RequireMutual
+
+# Separate opt-in non-forcing disable + strict mutual-login research.
+.\support\test-qemu-lio.ps1 -CompileKernel -RequireMutual -IdleGuard
 
 # Fast iteration only if a previously verified local kernel candidate exists.
 .\support\test-qemu-lio.ps1
@@ -243,6 +295,9 @@ fresh mode rather than bypassing a checksum failure.
 an old/default cached candidate cannot qualify strict mode. Changes to the
 compile helper invalidate its previous input manifest even for default mode.
 Never rewrite a stale manifest to bypass that refusal; use a fresh compile.
+`-IdleGuard` independently requires a fresh compile and refuses cached mode
+before Docker inspection. The two research options may be selected separately
+or together; each selects exact mandatory configuration/result evidence.
 
 One non-root, read-only, networkless, zero-capability auto-removed container
 reuses the existing workspace read-only. Cached mode has 2 GiB memory/512 MiB

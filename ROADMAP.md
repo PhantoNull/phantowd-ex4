@@ -1898,6 +1898,18 @@ support per tested combination; refuse untested combinations without mutation.
   real initiator/session ownership and backing-volume state. Prevent local
   filesystem mounting while an initiator owns the LUN; prohibit unsafe shrink.
   Session presence and disconnect races need observed pre/postconditions.
+  **M9.3a — research-only idle-disable prerequisite:** pinned ordinary configfs
+  disable is forced. An optional default-off research patch exposes the existing
+  force-zero path under the TPG access mutex; a guarded QEMU fixture requires
+  an established session to survive refusal with fresh I/O, then verifies idle
+  disable, coherent core enabled state, exact RTPI reuse, new-login refusal and
+  explicit data-preserving re-enable. Fresh combined strict/guarded and unpatched
+  default actual ARM926 guests pass locally on 2026-10-05; the four-way option
+  matrix is native-contract coverage, not four guest builds. The original
+  prototype's omitted core bookkeeping has a preserved actual RED/GREEN gate.
+  This does not guard other mutations: pending logins can be interrupted,
+  concurrent writers/shared portals and product transactions remain open.
+  See the [research-only contract](support/ISCSI-LIO-RESEARCH.md#optional-non-forcing-disable-research-profile).
 - **M9.4 — Import and failure.** Recognize supported old backing objects without
   modifying them during discovery. Full backing storage, loss/reappearance,
   abrupt initiator disconnect, target restart and interrupted mutations preserve

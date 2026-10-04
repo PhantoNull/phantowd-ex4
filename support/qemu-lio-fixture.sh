@@ -11,6 +11,8 @@ source_dir=${5:?source checkout required}
 log=${6:?output log required}
 required_mutual=${PHANTOWD_LIO_REQUIRE_MUTUAL:-0}
 case "$required_mutual" in 0) mutual_mode=default ;; 1) mutual_mode=strict ;; *) exit 1 ;; esac
+idle_guard=${PHANTOWD_LIO_IDLE_GUARD:-0}
+case "$idle_guard" in 0) idle_mode=off ;; 1) idle_mode=guarded ;; *) exit 1 ;; esac
 for input in "$base" "$kernel" "$dtb" "$client" "$source_dir" "$log"; do
     case "$input" in /*) ;; *) exit 1 ;; esac
     case "$input" in *[!a-zA-Z0-9_./-]*) exit 1 ;; esac
@@ -56,7 +58,7 @@ qemu-system-arm -M versatilepb -cpu arm926 -m 256M \
     -device scsi-hd,bus=scsi0.0,drive=rootdisk \
     -object rng-random,filename=/dev/urandom,id=fixture-rng \
     -device virtio-rng-pci,rng=fixture-rng \
-    -append "rootwait root=/dev/sda ro console=ttyAMA0,115200 init=/usr/libexec/phantowd-lio-fixture-init phantowd.lio_mutual=$mutual_mode" \
+    -append "rootwait root=/dev/sda ro console=ttyAMA0,115200 init=/usr/libexec/phantowd-lio-fixture-init phantowd.lio_mutual=$mutual_mode phantowd.lio_idle=$idle_mode" \
     -display none -serial stdio -monitor none -no-reboot -nic none \
     > "$temporary/qemu.log" 2>&1 &
 qemu_pid=$!
@@ -77,11 +79,10 @@ status=0
 wait "$qemu_pid" || status=$?
 qemu_pid=
 [ "$status" -eq 0 ]
-if [ "$required_mutual" = 1 ]; then
-    python3 -B "$source_dir/support/container/qemu_lio_result.py" --required-mutual "$log"
-else
-    python3 -B "$source_dir/support/container/qemu_lio_result.py" "$log"
-fi
+set -- "$log"
+if [ "$required_mutual" = 1 ]; then set -- "$@" --required-mutual; fi
+if [ "$idle_guard" = 1 ]; then set -- "$@" --idle-guard; fi
+python3 -B "$source_dir/support/container/qemu_lio_result.py" "$@"
 [ "$(sha256sum "$base/rootfs.ext2" | awk '{print $1}')" = "$root_hash" ]
 (cd "$base" && sha256sum -c SHA256SUMS)
 echo 'QEMU ARMv5 synthetic LIO fixture passed'
