@@ -3,6 +3,53 @@
 
 # Implementation status
 
+## M9.1b private policy/backing supervision — host/QEMU prerequisite
+
+The internal writable-reference prototype now offers one explicit blocking
+supervision operation for an already-active consumer. It reserves the lifecycle,
+performs an immediate complete scan, then serial scans after a fixed one-second
+idle period. Concurrent lifecycle operations refuse busy; no detached monitor,
+catch-up queue, automatic start/restart or product init is added. Accepted cancel
+uses a fresh five-second operation context to verify stop/reap before reference
+and policy release. Drift/exit/stop/close uncertainty retains review without retry.
+Regular metadata I/O is not a hard-deadline operation; product polling and
+resource qualification remain open.
+
+Windows preflight/cross-compilation, pinned whole Linux tagged vet/race and
+focused backing/policy race count3, shell/storage contracts, actual ARMv5 standard
+smoke and complete two-boot state pass locally. Native tests include cancellation
+during a scan and policy fences. Four actual supervised policy cases and both
+actual mounted-loss cases exercise the live UID/GID1000 static child; the test
+goroutine is joined before independent fixture cleanup. This cached overlay is
+not a clean hosted/EX4 test, LIO runtime, durable recovery or activation authority.
+The full M9.1b backend/access/allocation/use/session/credential gates remain open.
+
+## M9.2e private policy/backing lifetime composition — host/QEMU prototype
+
+The private writable-reference owner now acquires and retains its own coherent
+NAS-policy revision claim. Construction matches the selected BackingID against
+the mounted VolumeID, relative path and exact size, then applies the existing
+descriptor admission. Failed construction consumes no caller-owned resources.
+Policy verification brackets kernel/readiness observations. Verified stop/reap
+and successful RW/metadata/mount-root closure precede policy release; uncertain
+stop or reference closure retains claims and publication/Close fences without
+retry. No new opener, HTTP endpoint, credential resolution or target activation
+is supplied. Matching a disabled desired target is not execution authority.
+
+Windows preflight/ARMv5 cross-compilation, pinned Go1.26.6 whole Linux tagged
+vet/race, focused backing/policy-owner race count3, shell/storage contracts,
+actual ARMv5 Linux6.18.54 standard smoke and complete two-boot state pass locally.
+Three policy lifetime cases and both actual mounted-loss cases compose the
+private claim with a live UID/GID1000 inherited-RW static child. Native tests
+also cover before/after-start drift, failed admission and close uncertainty.
+This is the cache-reusing overlay, not a fresh hosted build, production LIO
+backend, physical-device qualification or durable recovery implementation.
+
+Qualified code/backend, protected registry/media identity, access/allocation,
+global-use/session and credential ownership, supervised product composition
+and operator recovery still precede any live service activation. See the
+[private lifetime contract](src/phantowd-api/internal/backingpin/README.md).
+
 ## M9.2d retained coherent policy owner — internal host/QEMU prerequisite
 
 The opt-in Linux `naspolicystore.OpenOwner` requires initialized desired policy

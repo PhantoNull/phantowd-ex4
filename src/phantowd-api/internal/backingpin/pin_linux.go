@@ -79,6 +79,7 @@ type Pin struct {
 	closeError                   error
 	consumer                     *writableOwner
 	mountRoot                    *mountowner.VolumeRootPin
+	volumeID                     string // immutable mounted-member selection, not registry authority
 }
 
 // Open pins an existing regular, single-link file of the exact expected size.
@@ -114,6 +115,7 @@ func OpenFromMountedLease(lease *mountowner.MountedVolumeSetLease, volumeID, rel
 		return nil, Observation{}, err
 	}
 	pin.mountRoot = root
+	pin.volumeID = volumeID
 	return pin, observation, nil
 }
 

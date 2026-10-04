@@ -11,9 +11,11 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/mountowner"
+	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/naspolicystore"
 	"golang.org/x/sys/unix"
 )
 
@@ -48,6 +50,11 @@ func RunQEMUMountedWritableFixture(source string) error {
 				return fmt.Errorf("mounted writable %s: %w", kind, err)
 			}
 		}
+		for _, kind := range []string{"policy-normal", "policy-drift", "policy-uncertain", "policy-supervise-cancel", "policy-supervise-drift", "policy-supervise-uncertain", "policy-supervise-exit"} {
+			if err := withMountedWritableCase(set, workspace, kind, nil); err != nil {
+				return fmt.Errorf("policy mounted writable %s: %w", kind, err)
+			}
+		}
 		return nil
 	})
 	if err != nil {
@@ -60,6 +67,8 @@ func RunQEMUMountedWritableFixture(source string) error {
 	}
 	fmt.Println("PHANTOWD_MOUNTED_WRITER_LOSS_READY actual_same_fs_overmount=true consumer_uid=1000 stop_before_release=true uncertain_stop_retains_mount=true restoration_no_revival=true no_retry=true exact_fixture_teardown=true product_recovery=false scope=disposable-qemu-only")
 	fmt.Println("PHANTOWD_MOUNTED_BACKING_READY real_mount_owner=true exact_roster=true caller_lease_close_busy=true repeated_verify_no_fd_growth=true stop_before_mount_release=true uncertain_stop_retains_mount=true product_opener=false iscsi_backend=false scope=disposable-qemu-only")
+	emitPolicyWritableMarker()
+	emitSupervisedPolicyMarker()
 	return nil
 }
 
@@ -80,6 +89,17 @@ func withMountedWritableCase(set *mountowner.MountedVolumeSet, workspace, kind s
 	if err := os.WriteFile(file, make([]byte, 4096), 0600); err != nil {
 		return err
 	}
+	var policySource *naspolicystore.Owner
+	relative := filepath.Base(workspace) + "/" + kind
+	if strings.HasPrefix(kind, "policy-") {
+		policySource, err = createFixturePolicyOwner(workspace+"/desired-"+kind, relative)
+		if err != nil {
+			return err
+		}
+		defer func() { result = errors.Join(result, policySource.Close()) }()
+	}
+	// Provision fixture state before retaining the backing; directory contents
+	// are not themselves part of Pin's parent-inode/mount identity comparison.
 	pin, _, err := OpenFromMountedLease(lease, "qemu-plan", filepath.Base(workspace)+"/"+kind, 4096)
 	if err != nil {
 		return err
@@ -104,7 +124,12 @@ func withMountedWritableCase(set *mountowner.MountedVolumeSet, workspace, kind s
 	}
 	data := os.NewFile(uintptr(fd), "mounted-qemu-writable-file")
 	backend := &fixtureWritableBackend{}
-	owner, err := newWritableOwner(pin, data, backend)
+	var owner *writableOwner
+	if policySource != nil {
+		owner, err = newPolicyBoundWritableOwner(context.Background(), pin, data, backend, policySource, 1, "fixture-backing")
+	} else {
+		owner, err = newWritableOwner(pin, data, backend)
+	}
 	if err != nil {
 		data.Close()
 		return err
@@ -113,6 +138,12 @@ func withMountedWritableCase(set *mountowner.MountedVolumeSet, workspace, kind s
 	defer cancel()
 	defer func() {
 		// Independent disposable-fixture cleanup only, never Owner recovery.
+		owner.mu.Lock()
+		defer owner.mu.Unlock()
+		if owner.supervising {
+			result = errors.Join(result, errors.New("cannot dispose inputs of a live supervisor"))
+			return
+		}
 		pin.mu.Lock()
 		claimed := pin.consumer == owner
 		pin.mu.Unlock()
@@ -127,11 +158,36 @@ func withMountedWritableCase(set *mountowner.MountedVolumeSet, workspace, kind s
 			}
 			pin.mu.Lock()
 			pin.consumer = nil
-			result = errors.Join(result, pin.closeLocked())
+			pinErr := pin.closeLocked()
+			result = errors.Join(result, pinErr)
 			pin.mu.Unlock()
+			if pinErr == nil && owner.policy != nil {
+				result = errors.Join(result, owner.policy.Release())
+			}
 		}
 	}()
-	return exercise(ctx, owner, backend, file, lease)
+	if policySource != nil && exercise == nil {
+		if strings.HasPrefix(kind, "policy-supervise-") {
+			return exerciseSupervisedPolicyFixture(ctx, owner, backend, policySource, workspace+"/desired-"+kind, relative, kind, lease)
+		}
+		return exercisePolicyWritableFixture(ctx, owner, backend, policySource, workspace+"/desired-"+kind, relative, kind, lease)
+	}
+	if exercise == nil {
+		return ErrInvalid
+	}
+	if err := exercise(ctx, owner, backend, file, lease); err != nil {
+		return err
+	}
+	if policySource != nil {
+		if owner.policy != nil {
+			if !errors.Is(policySource.Close(), naspolicystore.ErrBusy) {
+				return errors.New("uncertain mount consumer lost private policy claim")
+			}
+		} else if err := policySource.Close(); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func mountedWritableLossCase(source string, uncertain bool) error {
@@ -141,9 +197,12 @@ func mountedWritableLossCase(source string, uncertain bool) error {
 			return err
 		}
 		defer func() { result = errors.Join(result, os.RemoveAll(workspace)) }()
-		return withMountedWritableCase(set, workspace, "loss", func(ctx context.Context, owner *writableOwner, backend *fixtureWritableBackend, file string, lease *mountowner.MountedVolumeSetLease) error {
+		return withMountedWritableCase(set, workspace, "policy-loss", func(ctx context.Context, owner *writableOwner, backend *fixtureWritableBackend, file string, lease *mountowner.MountedVolumeSetLease) (result error) {
 			if err := owner.start(ctx); err != nil {
 				return err
+			}
+			if owner.policy == nil {
+				return errors.New("mounted loss consumer missing private policy claim")
 			}
 			if err := owner.observe(ctx); err != nil {
 				return err
@@ -152,17 +211,34 @@ func mountedWritableLossCase(source string, uncertain bool) error {
 				return errors.New("live mounted loss consumer did not retain lease")
 			}
 			backend.stopFailure = uncertain
+			cancel, done, err := startFixtureSupervisor(ctx, owner)
+			joined := done == nil
+			defer func() {
+				if cancel != nil {
+					cancel()
+				}
+				if !joined {
+					settleErr, settled := awaitFixtureSupervisor(done)
+					if !settled || !errors.Is(settleErr, context.Canceled) || errors.Is(settleErr, ErrReview) {
+						result = errors.Join(result, settleErr)
+					}
+				}
+			}()
+			if err != nil {
+				return err
+			}
 			if err := lose(); err != nil {
 				return err
 			}
-			if err := owner.observe(ctx); !errors.Is(err, ErrReview) || owner.phase != writableReview {
-				return errors.New("actual mount loss did not quarantine consumer")
+			err, joined = awaitFixtureSupervisor(done)
+			if !joined || !errors.Is(err, ErrReview) || owner.phase != writableReview {
+				return errors.Join(errors.New("actual mount loss did not settle supervised consumer"), err)
 			}
 			if backend.stopCalls != 1 || !backend.stopWithLiveReference {
 				return errors.New("mount loss did not stop once with retained RW reference")
 			}
 			if uncertain {
-				if owner.released || owner.pin.consumer != owner {
+				if owner.released || owner.pin.consumer != owner || owner.policy == nil || owner.policy.Verify(ctx) != nil {
 					return errors.New("uncertain mount loss released consumer references")
 				}
 				if err := owner.pin.Close(); !errors.Is(err, ErrBusy) {
@@ -178,7 +254,7 @@ func mountedWritableLossCase(source string, uncertain bool) error {
 					return errors.New("uncertain fixture must retain an actual live consumer")
 				}
 			} else {
-				if !owner.released || owner.file != nil {
+				if !owner.released || owner.file != nil || owner.policy != nil {
 					return errors.New("confirmed mount-loss stop did not release references")
 				}
 				select {

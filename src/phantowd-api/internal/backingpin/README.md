@@ -63,7 +63,7 @@ identity and consumer state. Drift/exit/uncertainty quarantines and makes one
 stop attempt. Confirmed stop precedes RW descriptor and metadata release;
 uncertain stop retains both references, denies Pin close and cannot be retried
 or bypassed through owner close. Active owner close is busy, not implicit stop.
-There is no restart, background monitor or product recovery implementation.
+There is no restart, detached background monitor or product recovery implementation.
 
 Native state-machine tests use a private checker seam, explicitly not real
 descriptor admission. The QEMU fixture additionally uses the actual Root and
@@ -93,7 +93,63 @@ quarantine, concurrent verify/close and uncertain close. Its caller additionally
 tests nested/leaf bind mounts, private read-only transitions and Root loss.
 Mandatory smoke assertions require these tests; no physical disk is involved.
 
-Remaining M9.1b work: qualified production lifecycle and coherent policy binding,
+## Private coherent-policy lifetime composition
+
+An unexported constructor acquires its own `naspolicystore` revision claim and
+matches the selected BackingID against the retained mounted VolumeID, relative
+file name and exact size before using the existing RW descriptor admission.
+Failed construction releases its provisional claim without consuming the
+caller's Pin, file or backend. This is reference matching, not target enable,
+registry/media qualification, access, allocation or credential authority.
+
+Start and observation bracket kernel/readiness checks with policy verification.
+Confirmed consumer stop/reap and successful RW/metadata/mount-root reference
+closure precede private policy release. Uncertain stop or reference closure
+retains the claim and its Commit/Close fences; restoring policy cannot revive
+the consumer or retry teardown. Policy checks do not hold policy locks while
+acquiring Pin/mount locks. Supervision is an explicit blocking operation below,
+not a detached monitor or product startup hook.
+
+Tagged native tests exercise claim fencing, before/after-start drift, failed
+admission and actual file-close failures; their lifecycle checker seam is not
+qualified descriptor admission. Actual disposable ARMv5 cases compose the
+mounted owner and inherited-RW UID/GID1000 child with normal shutdown, restored
+policy mutation and uncertain stop. The existing two actual same-source
+overmount/loss cases now retain a private policy claim too. Independent fixture
+cleanup confirms child teardown before releasing references; it is not product
+recovery. The desired target remains disabled: this independently authorized
+static test child is not LIO or product activation.
+
+## Explicit private supervision
+
+`supervise(ctx)` accepts only an already-active consumer and exclusively owns
+its lifecycle until return. Concurrent start/observe/stop/close/supervise calls
+refuse busy. One complete scan runs immediately; subsequent scans start after
+a fixed one-second idle interval, not a ticker/catch-up queue. No scan overlaps,
+and supervision never starts or restarts a consumer.
+
+Accepted cancellation requests stop using a fresh five-second operation context;
+confirmed stop/reap and successful reference closure precede policy release.
+Drift, exit, timeout or stop/close uncertainty retains terminal review without
+retry. An already-canceled, unaccepted request has no effect. The trusted backend
+must honor its context; metadata I/O may block and the timeout is not a universal
+wall-clock guarantee. No production polling/resource budget is qualified yet.
+
+Native race tests cover exclusion, accepted/unaccepted cancellation, cancellation
+during a scan, private policy fencing, source/exit/observation faults and uncertain
+closure. Actual disposable ARMv5 tests supervise cancellation, restored policy
+mutation, uncertain stop and a real unexpected child exit. Both actual mounted-
+loss cases now run under supervision, not manual observation. Old cases remain
+mandatory. The explicit test goroutine must be joined before independent disposal;
+live supervision blocks that cleanup. This adds no boot/profile, HTTP surface,
+product startup, LIO backend or permission to open data.
+
+Windows preflight/cross-compilation, pinned Linux tagged vet/race, focused race
+count3, shell/storage contracts, actual ARMv5 standard smoke and the complete
+two-boot fixture pass locally. These are cache-reusing userspace-overlay tests,
+not clean-build, physical-storage or EX4 qualification.
+
+Remaining M9.1b work: qualified production lifecycle and full coherent policy admission,
 controlled writable descriptor acquisition/handoff and retained lifetime,
 permissions/allocation admission, whole-protocol backing-use/session ownership,
 protected credentials, backend observation and verified teardown. Do not use

@@ -1757,6 +1757,20 @@ support per tested combination; refuse untested combinations without mutation.
   mount IDs; actual ARMv5 Linux6.18.54 qualifies the real-root fixture including
   UID/GID drift and the existing two-boot state lane. Cache-reusing API overlay,
   not clean Buildroot reproducibility, hosted feature or physical qualification.
+  **Explicit supervision prerequisite (internal host/QEMU):** a blocking
+  operation exclusively owns one already-active policy/mount/backing consumer.
+  Scan immediately, then after a fixed one-second idle period; no overlap,
+  catch-up, start/restart or detached goroutine. Accepted cancellation uses a
+  fresh five-second operation context and requires verified stop/reap plus
+  successful reference closure before policy release. Drift/exit/uncertainty
+  remains review without retry; unaccepted canceled requests have no effects.
+  Native race/count3 covers exclusion, policy fencing, cancellation during scan,
+  source/exit/close faults. Actual ARMv5 four supervised policy cases and both
+  existing real overmount-loss cases pass with the complete standard/two-boot
+  lane. Join test supervision before independent disposal; no extra guest boot
+  or product startup. This is not universal I/O interruption or a qualified
+  hardware polling/resource budget. Full backend/code/access/allocation/global-
+  use/session/credential composition and durable recovery remain prerequisites.
 - **M9.2 — Target model.** Stable target/LUN identity, backing volume/object,
   capacity/allocation policy, initiator access and protected authentication
   secrets. Secrets are not returned by read APIs or exposed in diagnostics.
@@ -1844,6 +1858,22 @@ support per tested combination; refuse untested combinations without mutation.
   ARMv5 standard smoke and the complete two-boot state fixture pass with the
   mandatory owner marker. Acquisition/Commit/Close races and restored mutation
   during decode are covered. Cached overlay, not a clean hosted/physical test.
+- **M9.2e — Privately compose policy and backing lifetime.** Implemented as an
+  internal host/QEMU prototype, not product activation. Acquire an Owner-private
+  revision claim, match BackingID to mounted VolumeID/path/size, reuse descriptor
+  admission and bracket kernel/readiness observations with policy verification.
+  Release only after verified stop/reap and successful data/metadata/mount-root
+  closure; uncertainty retains claims and prevents publication/Close without
+  retry. Failed admission consumes no caller resources. Desired target state
+  and symbolic credentials are not execution, access or allocation authority.
+  **Local acceptance:** whole pinned Linux tagged vet/race and focused count3,
+  Windows preflight/cross-compilation, shell/storage contracts, actual ARMv5
+  standard smoke and complete two-boot state pass. Three policy lifecycle cases
+  plus both actual mounted-loss cases retain the private claim. Native close
+  faults and pre/post-start mutation remain distinct from real guest admission.
+  Next compose qualified code/backend, registry/media identity, access and
+  allocation, global-use/session and protected credentials, then product
+  supervision/recovery. No extra guest boot, HTTP surface or NAS operation.
 - **M9.3 — Guard mutations.** Create/enable/disable/grow/remove operations check
   real initiator/session ownership and backing-volume state. Prevent local
   filesystem mounting while an initiator owns the LUN; prohibit unsafe shrink.

@@ -7,9 +7,16 @@ package backingpin
 
 import (
 	"context"
+	"errors"
 	"os"
+	"path"
 	"reflect"
 	"sync"
+	"time"
+
+	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/iscsipolicy"
+	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/naspolicy"
+	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/naspolicystore"
 
 	"golang.org/x/sys/unix"
 )
@@ -40,9 +47,11 @@ type writableOwner struct {
 	pin                              *Pin
 	file                             *os.File
 	backend                          writableBackend
-	check                            func() error // Fixed kernel checker; state-machine tests use a private seam.
+	policy                           *naspolicystore.Lease // privately acquired; never caller-releasable
+	check                            func() error          // Fixed kernel checker; state-machine tests use a private seam.
 	phase                            writablePhase
 	started, stopAttempted, released bool
+	supervising                      bool
 }
 
 func newWritableOwner(pin *Pin, file *os.File, backend writableBackend) (*writableOwner, error) {
@@ -74,6 +83,82 @@ func nilWritableBackend(backend writableBackend) bool {
 	default:
 		return false
 	}
+}
+
+// Private prototype composition, not target/access/allocation admission. It
+// acquires its OWN coherent policy claim and matches one declared backing to
+// the already-qualified mounted Pin. A desired target state/SecretRef is not
+// launch authority. Failure transfers no Pin/file/backend and releases only the
+// newly acquired policy claim; success retains all inputs through consumer stop.
+func newPolicyBoundWritableOwner(ctx context.Context, pin *Pin, file *os.File, backend writableBackend, source *naspolicystore.Owner, revision uint64, backingID iscsipolicy.BackingID) (_ *writableOwner, result error) {
+	if ctx == nil || pin == nil || file == nil || source == nil || backingID == "" || nilWritableBackend(backend) {
+		return nil, ErrInvalid
+	}
+	lease, err := source.Acquire(ctx, revision)
+	if err != nil {
+		if errors.Is(err, naspolicystore.ErrReview) {
+			return nil, ErrReview
+		}
+		return nil, ErrUnavailable
+	}
+	keep := false
+	defer func() {
+		if !keep && lease.Release() != nil {
+			result = ErrReview
+		}
+	}()
+	document, err := lease.Snapshot(ctx)
+	if err != nil {
+		return nil, ErrReview
+	}
+	pin.mu.Lock()
+	matches := policyMatchesPin(document, backingID, pin)
+	pin.mu.Unlock()
+	if !matches {
+		return nil, ErrInvalid
+	}
+	if lease.Verify(ctx) != nil {
+		return nil, ErrReview
+	}
+	owner, err := newWritableOwner(pin, file, backend)
+	if err != nil {
+		return nil, err
+	}
+	owner.policy = lease
+	keep = true
+	return owner, nil
+}
+
+// Requires pin.mu. Only immutable selection is compared; metadata/descriptor
+// admission is still performed by newWritableOwner. This is not registry,
+// allocation or access qualification, and does not resolve symbolic secrets.
+func policyMatchesPin(document naspolicy.Config, id iscsipolicy.BackingID, pin *Pin) bool {
+	if document.Validate() != nil || pin.mountRoot == nil || pin.volumeID == "" {
+		return false
+	}
+	for _, backing := range document.ISCSI.Backings {
+		if backing.ID == id {
+			return string(backing.VolumeID) == pin.volumeID && backing.RelativePath == path.Join(pin.directory, pin.name) &&
+				backing.CapacityBytes == pin.fileIdentity.size
+		}
+	}
+	return false
+}
+
+// Never hold the policy lock while acquiring Pin/mount locks. The consumer
+// mutex serializes its own lifecycle; each source is rechecked in a bracket.
+// Cooperating desired writers cannot change the revision while the claim lives.
+func (o *writableOwner) checkInputs(ctx context.Context) error {
+	if o.policy != nil && o.policy.Verify(ctx) != nil {
+		return ErrReview
+	}
+	if o.check == nil || o.check() != nil {
+		return ErrReview
+	}
+	if o.policy != nil && o.policy.Verify(ctx) != nil {
+		return ErrReview
+	}
+	return nil
 }
 
 // Requires pin.mu. Checks happen before and after inspecting the RW descriptor.
@@ -110,6 +195,9 @@ func (o *writableOwner) start(ctx context.Context) error {
 	}
 	o.mu.Lock()
 	defer o.mu.Unlock()
+	if o.supervising {
+		return ErrBusy
+	}
 	if o.phase == writableReview {
 		return ErrReview
 	}
@@ -122,7 +210,7 @@ func (o *writableOwner) start(ctx context.Context) error {
 	if ctx.Err() != nil {
 		return ErrUnavailable
 	}
-	if o.check == nil || o.check() != nil {
+	if o.checkInputs(ctx) != nil {
 		return o.quarantineLocked(ctx)
 	}
 	o.started = true // Even a failed start may have acquired kernel/child resources.
@@ -130,7 +218,7 @@ func (o *writableOwner) start(ctx context.Context) error {
 		return o.quarantineLocked(ctx)
 	}
 	running, err := o.backend.running(ctx)
-	if err != nil || !running || ctx.Err() != nil || o.check() != nil {
+	if err != nil || !running || ctx.Err() != nil || o.checkInputs(ctx) != nil {
 		return o.quarantineLocked(ctx)
 	}
 	o.phase = writableActive
@@ -145,6 +233,13 @@ func (o *writableOwner) observe(ctx context.Context) error {
 	}
 	o.mu.Lock()
 	defer o.mu.Unlock()
+	if o.supervising {
+		return ErrBusy
+	}
+	return o.observeLocked(ctx)
+}
+
+func (o *writableOwner) observeLocked(ctx context.Context) error {
 	if o.phase == writableReview {
 		return ErrReview
 	}
@@ -154,12 +249,12 @@ func (o *writableOwner) observe(ctx context.Context) error {
 	if ctx.Err() != nil {
 		return ErrUnavailable
 	}
-	if o.check == nil || o.check() != nil {
+	if o.checkInputs(ctx) != nil {
 		return o.quarantineLocked(ctx)
 	}
 	if o.phase == writableActive {
 		running, err := o.backend.running(ctx)
-		if err != nil || !running || ctx.Err() != nil || o.check() != nil {
+		if err != nil || !running || ctx.Err() != nil || o.checkInputs(ctx) != nil {
 			return o.quarantineLocked(ctx)
 		}
 	}
@@ -172,6 +267,13 @@ func (o *writableOwner) stop(ctx context.Context) error {
 	}
 	o.mu.Lock()
 	defer o.mu.Unlock()
+	if o.supervising {
+		return ErrBusy
+	}
+	return o.stopLocked(ctx)
+}
+
+func (o *writableOwner) stopLocked(ctx context.Context) error {
 	if o.phase == writableReview {
 		return ErrReview
 	}
@@ -204,6 +306,9 @@ func (o *writableOwner) close() error {
 	}
 	o.mu.Lock()
 	defer o.mu.Unlock()
+	if o.supervising {
+		return ErrBusy
+	}
 	if o.phase == writableReview {
 		return ErrReview
 	}
@@ -219,6 +324,74 @@ func (o *writableOwner) close() error {
 	}
 	o.phase = writableClosed
 	return nil
+}
+
+const (
+	writableSupervisionInterval         = time.Second
+	writableSupervisionOperationTimeout = 5 * time.Second
+)
+
+// supervise exclusively owns an already-active consumer. It performs one full
+// observation immediately, then serial scans separated by a fixed idle period;
+// there are no catch-up scans, detached monitor or implicit start/restart.
+// Accepted cancellation requests verified stop with a fresh bounded context,
+// never release based only on a canceled request. All resource claims remain
+// held until stop/reference closure succeeds. The fixed backend must honor its
+// context; this is not a hard deadline for blocking regular-file metadata I/O.
+func (o *writableOwner) supervise(ctx context.Context) error {
+	if o == nil || ctx == nil {
+		return ErrInvalid
+	}
+	o.mu.Lock()
+	if o.supervising {
+		o.mu.Unlock()
+		return ErrBusy
+	}
+	if o.phase == writableReview {
+		o.mu.Unlock()
+		return ErrReview
+	}
+	if o.phase != writableActive {
+		o.mu.Unlock()
+		return ErrInvalid
+	}
+	if ctx.Err() != nil {
+		o.mu.Unlock()
+		return ErrUnavailable // not accepted; caller still owns the active lifecycle
+	}
+	o.supervising = true
+	o.mu.Unlock()
+	defer func() {
+		o.mu.Lock()
+		o.supervising = false
+		o.mu.Unlock()
+	}()
+
+	for {
+		// Once accepted, cancellation cannot strand a healthy active consumer.
+		// A fresh per-operation context also avoids interpreting request cancel
+		// during a policy read as policy drift or an uncertain canceled stop.
+		opctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), writableSupervisionOperationTimeout)
+		o.mu.Lock()
+		var err error
+		if cause := ctx.Err(); cause != nil {
+			err = errors.Join(cause, o.stopLocked(opctx))
+		} else {
+			err = o.observeLocked(opctx)
+		}
+		o.mu.Unlock()
+		cancel()
+		if err != nil {
+			return err
+		}
+		timer := time.NewTimer(writableSupervisionInterval)
+		select {
+		case <-ctx.Done():
+		case <-timer.C:
+		}
+		timer.Stop()
+		// Recheck cancellation under the lifecycle lock before the next scan.
+	}
 }
 
 func (o *writableOwner) quarantineLocked(ctx context.Context) error {
@@ -247,13 +420,21 @@ func (o *writableOwner) releaseLocked() error {
 	}
 	o.file = nil
 	o.pin.mu.Lock()
-	defer o.pin.mu.Unlock()
 	if o.pin.consumer != o {
+		o.pin.mu.Unlock()
 		return ErrReview
 	}
 	o.pin.consumer = nil
-	if o.pin.closeLocked() != nil {
+	pinErr := o.pin.closeLocked()
+	o.pin.mu.Unlock()
+	if pinErr != nil {
 		return ErrReview
+	}
+	if o.policy != nil {
+		if o.policy.Release() != nil {
+			return ErrReview
+		}
+		o.policy = nil
 	}
 	o.released = true
 	return nil

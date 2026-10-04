@@ -21,6 +21,8 @@ type lifecycleBackend struct {
 	file                                *os.File
 	onStart                             func()
 	stopWithLiveReference               bool
+	stopContextError                    error
+	stopContextDeadline                 bool
 }
 
 func (b *lifecycleBackend) start(_ context.Context, file *os.File) error {
@@ -33,8 +35,10 @@ func (b *lifecycleBackend) start(_ context.Context, file *os.File) error {
 	return b.startError
 }
 func (b *lifecycleBackend) running(context.Context) (bool, error) { return b.active, b.runningError }
-func (b *lifecycleBackend) stop(context.Context) error {
+func (b *lifecycleBackend) stop(ctx context.Context) error {
 	b.stopCalls++
+	b.stopContextError = ctx.Err()
+	_, b.stopContextDeadline = ctx.Deadline()
 	if b.file != nil {
 		_, err := b.file.Stat()
 		b.stopWithLiveReference = err == nil
