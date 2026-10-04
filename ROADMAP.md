@@ -1671,11 +1671,25 @@ support per tested combination; refuse untested combinations without mutation.
   One bounded local wrapper supports fresh tmpfs compile and a small verified
   candidate for fast feedback, without new Docker images/volumes. Pure host CI
   must not be confused with actual target qualification.
+  **Expanded M9.1a local evidence:** actual reciprocal CHAP accepts distinct
+  synthetic credentials and refuses exact wrong inbound/target response/name;
+  inactive-session credential rotation rejects old login and preserves data.
+  Two explicit ACL peers are concurrently observed with independent credentials,
+  primary RW and secondary RO; cross-peer credentials fail and one logout leaves
+  the other session/data usable. Missing/duplicate/unknown/contradictory consumer
+  markers refuse (native RED/GREEN). This remains one LUN/pinned-client QEMU,
+  not product credential/session ownership, Windows or interrupted rotation.
+  **Required-mutual gate:** pinned LIO permits one-way login even with mutual
+  credentials configured; source and actual guest agree. Do not label that
+  setting enforced mutual authentication. A product policy requiring both
+  directions must refuse admission until a separately reviewed enforcement
+  solution is qualified; an explicitly approved weaker policy would be distinct.
   **Next M9.1b:** typed internal backend admission/observation contract: retained
   backing identity and writable authority; bounded credentials with reserved
   configfs-value refusal; redacted session observations; no automatic creation
-  or recovery. Qualify mutual CHAP, multiple simultaneous peers, credentials
-  rotation and exact active-session mutation refusal before any product owner.
+  or recovery. Qualify required-mutual enforcement, durable/live-session
+  credential rotation and exact active-session mutation refusal before any
+  product owner; extend multiple-LUN/client compatibility separately.
   Add crash, full/backing-loss and uncertain teardown campaigns separately.
   See the [research contract and source boundaries](support/ISCSI-LIO-RESEARCH.md).
 - **M9.2 — Target model.** Stable target/LUN identity, backing volume/object,

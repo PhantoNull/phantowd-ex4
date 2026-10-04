@@ -45,6 +45,17 @@ class LIOResult(unittest.TestCase):
             with self.assertRaises(ValueError):
                 result.validate(data)
 
+    def test_additional_unknown_or_contradictory_results_refused(self):
+        for marker in (
+            "PHANTOWD_LIO_CLIENT_READY case=unexpected",
+            "PHANTOWD_LIO_MUTUAL_READY enforcement=true scope=product",
+            "PHANTOWD_LIO_PEERS_READY concurrent=1",
+            "PHANTOWD_LIO_READY scope=product",
+            "prefix PHANTOWD_LIO_READY scope=product",
+        ):
+            with self.subTest(marker=marker), self.assertRaises(ValueError):
+                result.validate(self.valid() + marker.encode() + b"\n")
+
     def test_cli_regular_missing_directory_and_redacted_failure(self):
         with tempfile.TemporaryDirectory() as temp:
             directory = Path(temp)

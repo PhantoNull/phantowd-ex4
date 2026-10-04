@@ -41,6 +41,24 @@ descriptors fail without recreating storage. A live session is observed,
 forcibly disabled and absent afterward; its I/O and new login fail, re-enable
 preserves data, and final target/listener/configfs teardown is checked.
 
+The expanded actual ARMv5 guest also verifies reciprocal CHAP with exact wrong
+inbound/target response/name refusal, inactive-session credential rotation with
+old login refusal/new login and preserved data, and two simultaneous explicit
+ACL peers with independent credentials and primary RW/secondary RO grants.
+Cross-peer credentials fail; secondary logout leaves the primary observed and
+reading unchanged data. Both logout before ACL teardown. The bounded consumer
+now refuses unknown/contradictory readiness lines; five native RED/GREEN cases,
+six result/profile test groups, mock wrapper/ShellCheck and actual cached-kernel
+guest pass. No additional kernel profile or Docker image/volume is generated.
+
+**Backend limitation:** both pinned source and actual guest confirm that mutual
+configfs credentials still permit one-way CHAP. Successful reciprocal exchange
+is not required-mutual enforcement. Production admission for such a requirement
+must wait for a separately reviewed enforcement solution or a distinct explicit
+policy decision; the desired model is not silently weakened. Rotation tests
+are neither durable/interrupted nor live-session, and simultaneous-peer evidence
+is one LUN/pinned libiscsi client, not Windows or a product authority owner.
+
 The source-defined local wrapper checks profile/result refusals and a real
 paused-snapshot TMPDIR regression, compiles the pinned upstream client and boots
 one bounded disposable guest. Virtual RNG initialization fixes the reproduced
