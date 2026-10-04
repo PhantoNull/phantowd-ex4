@@ -32,6 +32,32 @@ credential and starts no target. It is not part of the atomic SMB/NFS store,
 has no HTTP endpoint or persistence, and cannot activate a service. Backend,
 global-use/session admission, import and guarded transactions remain M9 work.
 
+### M9.2b registered-volume and cross-protocol review
+
+The private Linux collector compares desired file-LUNs with the protected
+volume registry, complete mounted-ext census and coherent SMB/NFS policy in
+one shared read/recheck bracket. iSCSI, volume-policy and registry revisions
+remain distinct. Logical VolumeID and expected filesystem UUID must both match:
+an unknown ID never rebinds by UUID, and conflicting/missing/cloned claims never
+select backing topology. Unique scoped observations retain explicit unresolved
+physical identity, rather than promoting topology to eligibility.
+
+Each stable BackingID receives a nonserializable, caller-owned observation,
+sorted deterministically, with scoped topology counts and same-volume SMB/NFS
+path-overlap counts. RO shares can still expose a live LUN. Root/equal/ancestor
+paths are advisory here; different VolumeIDs and sibling/prefix lookalikes do
+not match. The comparison does not resolve symlinks/hardlinks or prove that
+data files exist, have sufficient capacity/allocation or are safe to expose.
+Unreferenced registry counts use distinct referenced VolumeIDs, not LUN count.
+Invalid whole evidence, registry restoration/drift or cancellation returns
+zero for all reviews, including an empty desired iSCSI policy.
+
+This remains internal host/disposable-QEMU work: no backing/secret open, mount,
+lease, global-use authority, target operation, HTTP, writer or product startup.
+It is not an atomic policy transaction or a continuously fresh storage snapshot.
+M9.1b admission still needs retained file authority, protected credentials,
+session/global-use guards and durable service ownership.
+
 ## M3.2g protected registry observation
 
 The internal [volume registry](internal/volumeregistry/README.md) defines a

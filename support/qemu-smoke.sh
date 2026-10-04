@@ -344,6 +344,10 @@ while [ "$attempt" -lt "$smoke_timeout" ]; do
             echo 'Missing composed registry and full census restoration refusal assertion' >&2
             exit 1
         fi
+        if ! grep -F 'PHANTOWD_REGISTRY_ISCSI_READY actual_md=true missing_unselected=true logical_binding_exact=true share_overlap_advisory=true restored_registry_refused=true private=true activation=false scope=disposable-qemu-only' "$log_file" >/dev/null; then
+            echo 'Missing private iSCSI registry binding and advisory-only share overlap assertion' >&2
+            exit 1
+        fi
         if ! grep -F 'PHANTOWD_M35_TWO_VOLUME_READY distinct_filesystems=true lost_volume_quarantined=true lost_handles_revoked=true healthy_group_lease_survived=true fresh_healthy_owner_lease=true roster_reacquire=all_or_error scope=disposable-qemu-only' "$log_file" >/dev/null; then
             echo 'Missing M3.5 two-volume lease-loss assertion' >&2
             exit 1

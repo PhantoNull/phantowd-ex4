@@ -14,6 +14,7 @@ import (
 	"path/filepath"
 
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/fileservice"
+	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/iscsipolicy"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/volumeregistry"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/mountguard"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/nfsconfig"
@@ -118,8 +119,34 @@ func exerciseQEMUVolumeRegistry(census trustedMountedExtCensus) error {
 	if _, err := json.Marshal(composed); err == nil {
 		return errors.New("composed registry and census review serialized")
 	}
+	iscsiPolicy := iscsipolicy.Policy{Format: iscsipolicy.Format, SchemaVersion: 1, Revision: 3, VolumeRevision: 7,
+		Backings: []iscsipolicy.Backing{
+			{ID: "md-backing", VolumeID: "logical-registered-md", RelativePath: "books/lun.img", CapacityBytes: 1 << 20, BlockSize: 512, Allocation: "preallocated"},
+			{ID: "missing-backing", VolumeID: "logical-missing", RelativePath: "luns/missing.img", CapacityBytes: 1 << 20, BlockSize: 512, Allocation: "preallocated"}},
+		Targets: []iscsipolicy.Target{{ID: "fixture-target", Name: "iqn.2001-04.com.example:registry-fixture", State: "disabled",
+			LUNs: []iscsipolicy.LUN{{ID: "md-lun", Number: 0, BackingID: "md-backing", Access: "ro"}, {ID: "missing-lun", Number: 1, BackingID: "missing-backing", Access: "ro"}},
+			Initiators: []iscsipolicy.Initiator{{Name: "iqn.2001-04.com.example:registry-peer",
+				Authentication: iscsipolicy.Authentication{Mode: "chap", InitiatorUser: "fixture-peer", InitiatorSecretRef: "fixture-secret"},
+				Grants:         []iscsipolicy.Grant{{LUNID: "md-lun", Access: "ro"}, {LUNID: "missing-lun", Access: "ro"}}}}}}}
+	iscsiComposed, err := collectRegisteredISCSIStorageReview(context.Background(), policy, iscsiPolicy, r, os.DirFS("/sys"), os.DirFS("/proc"))
+	if err != nil || iscsiComposed.iscsi.policyRevision != 3 || iscsiComposed.iscsi.volumeRevision != 7 ||
+		iscsiComposed.iscsi.registryRevision != 1 || iscsiComposed.iscsi.coverage != iscsiComposed.policy.coverage ||
+		iscsiComposed.iscsi.coverage != iscsiComposed.backing.coverage || len(iscsiComposed.iscsi.backings) != 2 ||
+		iscsiComposed.iscsi.unreferencedRegisteredCount != 0 {
+		return errors.New("iSCSI review lost shared complete scope or separate revisions")
+	}
+	mdBacking, missingBacking := iscsiComposed.iscsi.backings[0], iscsiComposed.iscsi.backings[1]
+	if mdBacking.backingID != "md-backing" || mdBacking.observed.status != "observed-in-scope" || mdBacking.kind != "md-device" ||
+		mdBacking.physicalDiskCount != 2 || mdBacking.mdArrayCount != 1 || mdBacking.smbPathOverlapCount != 1 || mdBacking.nfsPathOverlapCount != 0 ||
+		missingBacking.backingID != "missing-backing" || missingBacking.observed.status != "not-observed-in-scope" ||
+		missingBacking.kind != "" || missingBacking.physicalDiskCount != 0 || missingBacking.mdArrayCount != 0 {
+		return errors.New("iSCSI review selected missing volume or lost actual topology/share advisory")
+	}
+	if _, err := json.Marshal(iscsiComposed.iscsi); err == nil {
+		return errors.New("private iSCSI review serialized")
+	}
 	observations := 0
-	changed, err := collectRegisteredStorageReviewWith(context.Background(), policy, r, os.DirFS("/sys"), os.DirFS("/proc"),
+	changed, err := collectRegisteredStorageReviewScope(context.Background(), policy, &iscsiPolicy, r, os.DirFS("/sys"), os.DirFS("/proc"),
 		func(anchors []string) (mountguard.MountedInventory, error) {
 			observations++
 			if observations == 3 {
@@ -131,7 +158,7 @@ func exerciseQEMUVolumeRegistry(census trustedMountedExtCensus) error {
 			}
 			return mountguard.ObserveMounted(anchors)
 		})
-	if err != volumeregistry.ErrObservation || observations != 4 || changed.policy.volumes != nil || changed.backing.volumes != nil {
+	if err != volumeregistry.ErrObservation || observations != 4 || changed.policy.volumes != nil || changed.backing.volumes != nil || changed.iscsi.backings != nil {
 		return errors.New("registry restoration during full census published a partial review")
 	}
 	fmt.Println("PHANTOWD_REGISTRY_CENSUS_READY complete_scope=true revisions_separate=true restored_registry_refused=true private=true continued_freshness=false activation=false scope=disposable-qemu-only")
@@ -141,14 +168,26 @@ func exerciseQEMUVolumeRegistry(census trustedMountedExtCensus) error {
 	if err != nil || conflict.volumes[1].observed.status != "registry-policy-conflict" || conflict.volumes[1].observed.objectCount != 0 {
 		return errors.New("different policy backing silently overwrote registry claim")
 	}
+	iscsiConflict, err := reviewRegisteredISCSIVolumes(iscsiPolicy, policy, snapshot, census)
+	if err != nil || len(iscsiConflict.backings) != 2 || iscsiConflict.backings[0].observed.status != "registry-policy-conflict" ||
+		iscsiConflict.backings[0].observed.objectCount != 0 || iscsiConflict.backings[0].kind != "" {
+		return errors.New("iSCSI conflict selected actual registry backing")
+	}
 	policy.Shares.Volumes[0].FilesystemUUID = qemuMDFilesystemUUID
 	policy.Shares.Volumes[0].ID = "unregistered-same-uuid"
 	policy.Shares.Shares[0].VolumeID = "unregistered-same-uuid"
 	policy.NFS.Exports[0].VolumeID = "unregistered-same-uuid"
+	iscsiPolicy.Backings[0].VolumeID = "unregistered-same-uuid"
 	unknown, err := reviewRegisteredPolicyVolumes(policy, snapshot, census)
 	if err != nil || unknown.volumes[1].observed.status != "not-registered" || unknown.volumes[1].observed.objectCount != 0 || unknown.unreferencedRegisteredCount != 1 {
 		return errors.New("UUID alone selected a different logical registration")
 	}
+	iscsiUnknown, err := reviewRegisteredISCSIVolumes(iscsiPolicy, policy, snapshot, census)
+	if err != nil || len(iscsiUnknown.backings) != 2 || iscsiUnknown.backings[0].observed.status != "not-registered" ||
+		iscsiUnknown.backings[0].observed.objectCount != 0 || iscsiUnknown.backings[0].kind != "" || iscsiUnknown.unreferencedRegisteredCount != 1 {
+		return errors.New("iSCSI UUID alone rebound a logical registry ID")
+	}
+	fmt.Println("PHANTOWD_REGISTRY_ISCSI_READY actual_md=true missing_unselected=true logical_binding_exact=true share_overlap_advisory=true restored_registry_refused=true private=true activation=false scope=disposable-qemu-only")
 	policy.NFS.Revision++
 	if _, err := reviewRegisteredPolicyVolumes(policy, snapshot, census); err != volumeregistry.ErrObservation {
 		return errors.New("split combined policy produced a registry observation")
