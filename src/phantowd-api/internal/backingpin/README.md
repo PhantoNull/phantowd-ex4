@@ -93,7 +93,38 @@ quarantine, concurrent verify/close and uncertain close. Its caller additionally
 tests nested/leaf bind mounts, private read-only transitions and Root loss.
 Mandatory smoke assertions require these tests; no physical disk is involved.
 
-Remaining M9.1b work: qualified production lifecycle and coherent policy binding,
+## Private coherent-policy lifetime composition
+
+An unexported constructor acquires its own `naspolicystore` revision claim and
+matches the selected BackingID against the retained mounted VolumeID, relative
+file name and exact size before using the existing RW descriptor admission.
+Failed construction releases its provisional claim without consuming the
+caller's Pin, file or backend. This is reference matching, not target enable,
+registry/media qualification, access, allocation or credential authority.
+
+Start and observation bracket kernel/readiness checks with policy verification.
+Confirmed consumer stop/reap and successful RW/metadata/mount-root reference
+closure precede private policy release. Uncertain stop or reference closure
+retains the claim and its Commit/Close fences; restoring policy cannot revive
+the consumer or retry teardown. Policy checks do not hold policy locks while
+acquiring Pin/mount locks. This prototype has no autonomous supervisor.
+
+Tagged native tests exercise claim fencing, before/after-start drift, failed
+admission and actual file-close failures; their lifecycle checker seam is not
+qualified descriptor admission. Actual disposable ARMv5 cases compose the
+mounted owner and inherited-RW UID/GID1000 child with normal shutdown, restored
+policy mutation and uncertain stop. The existing two actual same-source
+overmount/loss cases now retain a private policy claim too. Independent fixture
+cleanup confirms child teardown before releasing references; it is not product
+recovery. The desired target remains disabled: this independently authorized
+static test child is not LIO or product activation.
+
+Windows preflight/cross-compilation, pinned Linux tagged vet/race, focused race
+count3, shell/storage contracts, actual ARMv5 standard smoke and the complete
+two-boot fixture pass locally. These are cache-reusing userspace-overlay tests,
+not clean-build, physical-storage or EX4 qualification.
+
+Remaining M9.1b work: qualified production lifecycle and full coherent policy admission,
 controlled writable descriptor acquisition/handoff and retained lifetime,
 permissions/allocation admission, whole-protocol backing-use/session ownership,
 protected credentials, backend observation and verified teardown. Do not use

@@ -3,6 +3,32 @@
 
 # Implementation status
 
+## M9.2e private policy/backing lifetime composition — host/QEMU prototype
+
+The private writable-reference owner now acquires and retains its own coherent
+NAS-policy revision claim. Construction matches the selected BackingID against
+the mounted VolumeID, relative path and exact size, then applies the existing
+descriptor admission. Failed construction consumes no caller-owned resources.
+Policy verification brackets kernel/readiness observations. Verified stop/reap
+and successful RW/metadata/mount-root closure precede policy release; uncertain
+stop or reference closure retains claims and publication/Close fences without
+retry. No new opener, HTTP endpoint, credential resolution or target activation
+is supplied. Matching a disabled desired target is not execution authority.
+
+Windows preflight/ARMv5 cross-compilation, pinned Go1.26.6 whole Linux tagged
+vet/race, focused backing/policy-owner race count3, shell/storage contracts,
+actual ARMv5 Linux6.18.54 standard smoke and complete two-boot state pass locally.
+Three policy lifetime cases and both actual mounted-loss cases compose the
+private claim with a live UID/GID1000 inherited-RW static child. Native tests
+also cover before/after-start drift, failed admission and close uncertainty.
+This is the cache-reusing overlay, not a fresh hosted build, production LIO
+backend, physical-device qualification or durable recovery implementation.
+
+Qualified code/backend, protected registry/media identity, access/allocation,
+global-use/session and credential ownership, supervised product composition
+and operator recovery still precede any live service activation. See the
+[private lifetime contract](src/phantowd-api/internal/backingpin/README.md).
+
 ## M9.2d retained coherent policy owner — internal host/QEMU prerequisite
 
 The opt-in Linux `naspolicystore.OpenOwner` requires initialized desired policy

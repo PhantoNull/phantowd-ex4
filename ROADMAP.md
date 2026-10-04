@@ -1844,6 +1844,22 @@ support per tested combination; refuse untested combinations without mutation.
   ARMv5 standard smoke and the complete two-boot state fixture pass with the
   mandatory owner marker. Acquisition/Commit/Close races and restored mutation
   during decode are covered. Cached overlay, not a clean hosted/physical test.
+- **M9.2e — Privately compose policy and backing lifetime.** Implemented as an
+  internal host/QEMU prototype, not product activation. Acquire an Owner-private
+  revision claim, match BackingID to mounted VolumeID/path/size, reuse descriptor
+  admission and bracket kernel/readiness observations with policy verification.
+  Release only after verified stop/reap and successful data/metadata/mount-root
+  closure; uncertainty retains claims and prevents publication/Close without
+  retry. Failed admission consumes no caller resources. Desired target state
+  and symbolic credentials are not execution, access or allocation authority.
+  **Local acceptance:** whole pinned Linux tagged vet/race and focused count3,
+  Windows preflight/cross-compilation, shell/storage contracts, actual ARMv5
+  standard smoke and complete two-boot state pass. Three policy lifecycle cases
+  plus both actual mounted-loss cases retain the private claim. Native close
+  faults and pre/post-start mutation remain distinct from real guest admission.
+  Next compose qualified code/backend, registry/media identity, access and
+  allocation, global-use/session and protected credentials, then product
+  supervision/recovery. No extra guest boot, HTTP surface or NAS operation.
 - **M9.3 — Guard mutations.** Create/enable/disable/grow/remove operations check
   real initiator/session ownership and backing-volume state. Prevent local
   filesystem mounting while an initiator owns the LUN; prohibit unsafe shrink.

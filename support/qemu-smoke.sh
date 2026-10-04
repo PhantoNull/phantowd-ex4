@@ -296,6 +296,11 @@ while [ "$attempt" -lt "$smoke_timeout" ]; do
             echo 'Missing writable backing fixture ownership assertion' >&2
             exit 1
         fi
+        if ! grep -F 'PHANTOWD_POLICY_BACKING_LIFETIME_READY private_revision_claim=true exact_backing_selection=true real_mount_owner=true consumer_uid=1000 stop_before_policy_release=true uncertain_stop_retains_policy_mount_rw=true restored_policy_no_revival=true no_retry=true product_activation=false scope=disposable-qemu-only' "$log_file" >/dev/null; then
+            echo 'Missing combined desired-policy/backing lifetime assertions' >&2
+            cat "$log_file" >&2
+            exit 1
+        fi
         if ! grep -F 'PHANTOWD_MOUNTED_BACKING_READY real_mount_owner=true exact_roster=true caller_lease_close_busy=true repeated_verify_no_fd_growth=true stop_before_mount_release=true uncertain_stop_retains_mount=true product_opener=false iscsi_backend=false scope=disposable-qemu-only' "$log_file" >/dev/null; then
             echo 'Missing retained mount-backed file lifetime assertion' >&2
             exit 1
