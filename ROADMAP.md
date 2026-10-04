@@ -1692,6 +1692,27 @@ support per tested combination; refuse untested combinations without mutation.
   product owner; extend multiple-LUN/client compatibility separately.
   Add crash, full/backing-loss and uncertain teardown campaigns separately.
   See the [research contract and source boundaries](support/ISCSI-LIO-RESEARCH.md).
+  **M9.1b metadata prerequisite (internal prototype):** `internal/backingpin`
+  borrows an actual qualified Root and retains existing single-link regular
+  parent/file O_PATH references, with exact expected size and no data access.
+  Unique mount identity/flags, inode/size/mode/UID/GID/link drift or unresolved
+  names quarantine permanently; restoration cannot revive the pin. Explicit
+  serialized close releases its references, not the borrowed Root. No raw
+  descriptor or JSON observation is exported. This is neither writable authority
+  nor a tracked mount-owner lease, allocation/global-use admission or target
+  adapter. Metadata I/O is not guaranteed nonblocking. Native lifecycle tests
+  require unique mount IDs; the mandatory actual ARMv5 ext-root fixture covers
+  missing/unsafe objects, replace/unlink/truncate/mode/hardlink/parent restoration,
+  O_PATH read/write refusal, concurrent/uncertain close, nested/leaf binds,
+  private read-only transitions and Root loss. Finish the remaining writable
+  lifetime, coherent desired/registry qualification, allocation/access/use/session
+  and credential gates above; do not mark M9.1b complete for this prerequisite.
+  **Local acceptance:** Windows preflight/cross-compile, pinned whole Linux
+  tagged vet/race, focused race count3, storage contracts and smoke ShellCheck
+  pass. Native positive syscall cases skip explicitly on unsupported unique
+  mount IDs; actual ARMv5 Linux6.18.54 qualifies the real-root fixture including
+  UID/GID drift and the existing two-boot state lane. Cache-reusing API overlay,
+  not clean Buildroot reproducibility, hosted feature or physical qualification.
 - **M9.2 — Target model.** Stable target/LUN identity, backing volume/object,
   capacity/allocation policy, initiator access and protected authentication
   secrets. Secrets are not returned by read APIs or exposed in diagnostics.

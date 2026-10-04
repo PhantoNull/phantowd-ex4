@@ -23,6 +23,16 @@ SMB and NFS desired policy in one strictly coherent revision. It shares the
 tested transaction engine with the original store but has a distinct format
 and filenames, no implicit migration, and no service activation.
 
+## M9.1b existing backing metadata prerequisite
+
+The Linux-only [internal file pin](internal/backingpin/README.md) retains
+metadata-only parent/file references below a caller-owned qualified Root,
+rejects unsafe objects and exact-size mismatches, and quarantines observed
+identity/mount drift permanently. It exports neither descriptors nor JSON.
+Only disposable QEMU calls the public constructor; production qualification,
+writable handoff, mount-owner/global-use/session/credential authority and a
+target adapter remain absent. This prerequisite does not complete M9.1b.
+
 ## M9.2a desired iSCSI policy
 
 The separate internal [iSCSI desired-policy model](internal/iscsipolicy/README.md)

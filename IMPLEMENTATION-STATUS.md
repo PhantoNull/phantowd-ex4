@@ -3,6 +3,37 @@
 
 # Implementation status
 
+## M9.1b existing backing metadata pins — local prerequisite evidence
+
+The Linux-only internal pin borrows a qualified Root and retains parent/file
+O_PATH references to one existing single-link regular file of exact expected
+size. It never opens data for reading/writing or creates a missing file.
+Re-resolved and retained mount/inode/size/mode/UID/GID/link identities must
+agree; observed drift permanently quarantines without releasing the retained
+references until explicit close. Handles/observations refuse JSON, including
+Pin values; uncertain close remains explicit without retry. No raw FD escapes.
+
+Windows DOM/API vet/unit and ARMv5 cross-compilation pass. Pinned Go1.26.6
+whole Linux QEMU-tagged vet/race and focused package race count3 pass; native
+positive syscall lifecycle tests explicitly skip on this host's kernel lacking
+unique mount IDs, rather than using weaker identifiers. Synthetic mask/type/
+size/overflow/mount/input/serialization checks run there. Actual ARMv5 Linux
+6.18.54 covers those lifecycle cases through the real qualified disposable
+ext Root: O_PATH data refusal, missing/symlink/special/size refusals, replacement,
+unlink/truncate/mode/UID/GID/hardlink/parent drift and restoration quarantine,
+concurrent verify/close, uncertain close, nested/leaf bind mounts, private RO
+transition and Root loss. The required backing-pin assertion and old mount
+guard pass; the existing clean two-boot state fixture also passes. Storage
+contracts and smoke ShellCheck pass. This reuses seven verified baseline
+artifacts and the unchanged volume probe; bounded tmpfs scratch is discarded.
+
+This does not complete M9.1b. Writable descriptor acquisition/handoff/lifetime,
+tracked mount-owner leases, access/allocation/global-use/session admission,
+protected credentials and a product target adapter remain missing. Metadata
+verification is point-in-time, not content/change-history or nonblocking-I/O
+proof. No HTTP, product startup, NAS/HDD/NAND or persistent device operation.
+See the [component contract](src/phantowd-api/internal/backingpin/README.md).
+
 ## M9.2b registered-volume and cross-protocol review — local component evidence
 
 The private collector now binds desired file-LUN observations to protected
