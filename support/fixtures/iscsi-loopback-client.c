@@ -1,0 +1,195 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* SPDX-FileCopyrightText: 2026 PhantoWD EX4 contributors */
+/* Test-only glue around upstream libiscsi, never a product initiator. */
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/random.h>
+#include <unistd.h>
+#include <iscsi.h>
+#include <scsi-lowlevel.h>
+
+#define TARGET "iqn.2026-10.invalid.phantowd:lio-fixture"
+#define INITIATOR "iqn.2026-10.invalid.phantowd:client"
+#define FOREIGN "iqn.2026-10.invalid.phantowd:foreign"
+#define PORTAL "127.0.0.1:3260"
+#define USER "fixture"
+#define SECRET "synthetic-chap-only-2026"
+#define BLOCK 512
+
+static int failed(struct iscsi_context *ctx, const char *stage)
+{
+    /* Never print the library error, URL, configfs or credential fields. */
+    fprintf(stderr, "PHANTOWD_LIO_CLIENT_ERROR stage=%s\n", stage);
+    if (ctx != NULL)
+        iscsi_destroy_context(ctx);
+    return 1;
+}
+
+static int read_exact(struct iscsi_context *ctx, unsigned long long lba,
+                      const unsigned char expected[BLOCK])
+{
+    struct scsi_task *task = iscsi_read16_sync(ctx, 0, lba, BLOCK, BLOCK,
+                                               0, 0, 0, 0, 0);
+    int valid = task != NULL && task->status == SCSI_STATUS_GOOD &&
+                task->datain.size == BLOCK && task->datain.data != NULL &&
+                memcmp(task->datain.data, expected, BLOCK) == 0;
+    if (task != NULL)
+        scsi_free_scsi_task(task);
+    return valid;
+}
+
+static int refused_status(const char *error, const char *mode)
+{
+    const char *number;
+    char *end;
+    long observed, expected;
+    if (error == NULL ||
+        strncmp(error, "Failed to log in to target. Status:", 34) != 0)
+        return 0;
+    number = strrchr(error, '(');
+    if (number == NULL || number[1] < '0' || number[1] > '9')
+        return 0;
+    observed = strtol(number + 1, &end, 10);
+    if (end[0] != ')' || end[1] != '\0')
+        return 0;
+    /* Pinned LIO: authentication failed, target forbidden, unavailable TPG. */
+    expected = !strcmp(mode, "foreign") ? 0x0202 :
+               !strcmp(mode, "disabled") ? 0x0301 : 0x0201;
+    return observed == expected;
+}
+
+int main(int argc, char **argv)
+{
+    const char *mode;
+    struct iscsi_context *ctx;
+    struct scsi_task *task;
+    struct scsi_readcapacity16 *capacity;
+    unsigned char seed[BLOCK] = {0}, written[BLOCK], denied[BLOCK];
+    int refusal, login, write_ok;
+    unsigned char entropy[32];
+    if (argc != 2)
+        return failed(NULL, "arguments");
+    mode = argv[1];
+    if (strcmp(mode, "rw") && strcmp(mode, "ro") && strcmp(mode, "check") &&
+        strcmp(mode, "wrong") && strcmp(mode, "none") && strcmp(mode, "foreign") &&
+        strcmp(mode, "hold") && strcmp(mode, "disabled") && strcmp(mode, "reenabled"))
+        return failed(NULL, "mode");
+    /* No fixed seed or pre-initialization urandom use in authentication tests. */
+    if (getrandom(entropy, sizeof(entropy), GRND_NONBLOCK) != sizeof(entropy))
+        return failed(NULL, "entropy");
+    refusal = !strcmp(mode, "wrong") || !strcmp(mode, "none") ||
+              !strcmp(mode, "foreign") || !strcmp(mode, "disabled");
+    ctx = iscsi_create_context(!strcmp(mode, "foreign") ? FOREIGN : INITIATOR);
+    if (ctx == NULL)
+        return failed(NULL, "context");
+    iscsi_set_log_level(ctx, 0);
+    iscsi_set_noautoreconnect(ctx, 1);
+    iscsi_set_reconnect_max_retries(ctx, 0);
+    iscsi_set_tcp_user_timeout(ctx, 5000);
+    if (iscsi_set_timeout(ctx, 5) != 0 ||
+        iscsi_set_targetname(ctx, TARGET) != 0 ||
+        iscsi_set_session_type(ctx, ISCSI_SESSION_NORMAL) != 0)
+        return failed(ctx, "setup");
+    if (strcmp(mode, "none") &&
+        iscsi_set_initiator_username_pwd(ctx, USER,
+            !strcmp(mode, "wrong") ? "deliberately-wrong" : SECRET) != 0)
+        return failed(ctx, "auth-setup");
+    /* A network failure must not be accepted as authentication refusal. */
+    if (iscsi_connect_sync(ctx, PORTAL) != 0)
+        return failed(ctx, "tcp-connect");
+    login = iscsi_login_sync(ctx);
+    if (refusal) {
+        const char *error = iscsi_get_error(ctx);
+        if (login == 0 || iscsi_is_logged_in(ctx) || !refused_status(error, mode))
+            return failed(ctx, "login-refusal");
+        if (iscsi_destroy_context(ctx) != 0)
+            return failed(NULL, "refusal-close");
+        printf("PHANTOWD_LIO_CLIENT_READY case=%s\n", mode);
+        return 0;
+    }
+    if (login != 0 || !iscsi_is_logged_in(ctx)) {
+        return failed(ctx, "login");
+    }
+    /* Consume at most one expected initial SCSI Unit Attention, not I/O errors. */
+    task = iscsi_testunitready_sync(ctx, 0);
+    if (task != NULL && task->status == SCSI_STATUS_CHECK_CONDITION &&
+        task->sense.key == SCSI_SENSE_UNIT_ATTENTION) {
+        scsi_free_scsi_task(task);
+        task = iscsi_testunitready_sync(ctx, 0);
+    }
+    if (task == NULL || task->status != SCSI_STATUS_GOOD) {
+        if (task != NULL)
+            scsi_free_scsi_task(task);
+        return failed(ctx, "unit-ready");
+    }
+    scsi_free_scsi_task(task);
+    task = iscsi_readcapacity16_sync(ctx, 0);
+    if (task == NULL || task->status != SCSI_STATUS_GOOD) {
+        if (task != NULL)
+            scsi_free_scsi_task(task);
+        return failed(ctx, "capacity-status");
+    }
+    capacity = scsi_datain_unmarshall(task);
+    if (capacity == NULL || capacity->returned_lba != 65535 ||
+        capacity->block_length != BLOCK) {
+        scsi_free_scsi_task(task);
+        return failed(ctx, "capacity-value");
+    }
+    scsi_free_scsi_task(task);
+    memcpy(seed, "PHANTOWD-LIO-SEED", sizeof("PHANTOWD-LIO-SEED") - 1);
+    memset(written, 'B', BLOCK);
+    memset(denied, 'C', BLOCK);
+    if (!read_exact(ctx, 0, seed))
+        return failed(ctx, "retained-seed");
+    if (!strcmp(mode, "rw")) {
+        /* FILEIO uses O_DSYNC with write cache disabled; FUA is not advertised. */
+        task = iscsi_write16_sync(ctx, 0, 1, written, BLOCK, BLOCK, 0, 0, 0, 0, 0);
+        write_ok = task != NULL && task->status == SCSI_STATUS_GOOD;
+        if (task != NULL)
+            scsi_free_scsi_task(task);
+        if (!write_ok)
+            return failed(ctx, "write");
+    } else if (!strcmp(mode, "ro")) {
+        task = iscsi_write16_sync(ctx, 0, 1, denied, BLOCK, BLOCK, 0, 0, 0, 0, 0);
+        write_ok = task != NULL && task->status == SCSI_STATUS_CHECK_CONDITION &&
+                   task->sense.key == SCSI_SENSE_DATA_PROTECTION;
+        if (task != NULL)
+            scsi_free_scsi_task(task);
+        if (!write_ok)
+            return failed(ctx, "write-protection");
+    }
+    if (!read_exact(ctx, 1, written))
+        return failed(ctx, "readback");
+    if (!strcmp(mode, "hold")) {
+        FILE *ready;
+        int attempt;
+        ready = fopen("/run/phantowd-lio/session-ready", "wx");
+        if (ready == NULL || fclose(ready) != 0)
+            return failed(ctx, "session-ready");
+        /* The guest controller revokes this already-qualified session. */
+        for (attempt = 0; attempt < 30; attempt++) {
+            if (access("/run/phantowd-lio/revoke", F_OK) == 0)
+                break;
+            sleep(1);
+        }
+        if (attempt == 30)
+            return failed(ctx, "session-budget");
+        task = iscsi_read16_sync(ctx, 0, 1, BLOCK, BLOCK, 0, 0, 0, 0, 0);
+        write_ok = task != NULL && task->status == SCSI_STATUS_GOOD;
+        if (task != NULL)
+            scsi_free_scsi_task(task);
+        if (write_ok)
+            return failed(ctx, "session-not-revoked");
+        if (iscsi_destroy_context(ctx) != 0)
+            return failed(NULL, "revocation-close");
+        puts("PHANTOWD_LIO_CLIENT_READY case=revoked");
+        return 0;
+    }
+    if (iscsi_logout_sync(ctx) != 0 || iscsi_disconnect(ctx) != 0)
+        return failed(ctx, "logout");
+    if (iscsi_destroy_context(ctx) != 0)
+        return failed(NULL, "close");
+    printf("PHANTOWD_LIO_CLIENT_READY case=%s\n", mode);
+    return 0;
+}

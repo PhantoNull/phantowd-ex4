@@ -4,6 +4,18 @@ on:
   push:
     branches: [main, develop]
     paths:
+      - 'support/container/build-qemu-lio-kernel.sh'
+      - 'support/container/build-qemu-iscsi-client.sh'
+      - 'support/container/qemu_lio_inputs.py'
+      - 'support/container/qemu_lio_result.py'
+      - 'support/fixtures/iscsi-loopback-client.c'
+      - 'support/fixtures/qemu-lio-init.sh'
+      - 'support/qemu-lio-fixture.sh'
+      - 'support/test-qemu-lio.ps1'
+      - 'support/tests/test-qemu-lio-inputs.py'
+      - 'support/tests/test-qemu-lio-result.py'
+      - 'support/tests/test-qemu-lio-snapshot-temp.sh'
+      - 'support/tests/test-qemu-lio-wrapper.ps1'
       - 'support/tests/test-smart-replay.sh'
       - 'support/tests/test-smart-replay-boundaries.py'
       - 'support/test-smart-report.ps1'
@@ -63,6 +75,18 @@ on:
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
     paths:
+      - 'support/container/build-qemu-lio-kernel.sh'
+      - 'support/container/build-qemu-iscsi-client.sh'
+      - 'support/container/qemu_lio_inputs.py'
+      - 'support/container/qemu_lio_result.py'
+      - 'support/fixtures/iscsi-loopback-client.c'
+      - 'support/fixtures/qemu-lio-init.sh'
+      - 'support/qemu-lio-fixture.sh'
+      - 'support/test-qemu-lio.ps1'
+      - 'support/tests/test-qemu-lio-inputs.py'
+      - 'support/tests/test-qemu-lio-result.py'
+      - 'support/tests/test-qemu-lio-snapshot-temp.sh'
+      - 'support/tests/test-qemu-lio-wrapper.ps1'
       - 'support/tests/test-smart-replay.sh'
       - 'support/tests/test-smart-replay-boundaries.py'
       - 'support/test-smart-report.ps1'
@@ -200,6 +224,18 @@ jobs:
 
       - name: Verify kernel-input invalidation and ACL requirements
         run: python3 -B support/tests/test-qemu-kernel-inputs.py
+
+      - name: Verify isolated LIO profile and result refusals without compiling
+        run: |
+          python3 -B support/tests/test-qemu-lio-inputs.py
+          python3 -B support/tests/test-qemu-lio-result.py
+          for script in support/container/build-qemu-lio-kernel.sh support/container/build-qemu-iscsi-client.sh support/qemu-lio-fixture.sh support/fixtures/qemu-lio-init.sh support/tests/test-qemu-lio-snapshot-temp.sh; do
+            sh -n "$script"
+          done
+
+      - name: Verify LIO local wrapper command boundary without Docker
+        shell: pwsh
+        run: ./support/tests/test-qemu-lio-wrapper.ps1
 
       - name: Test Stage B kernel-config audit policy
         run: sh support/tests/test-ex4-stage-b-kernel-config-audit.sh

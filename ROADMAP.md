@@ -1655,6 +1655,29 @@ support per tested combination; refuse untested combinations without mutation.
 - **M9.1 — Backend decision.** Evaluate the kernel/userspace target implementation
   for this kernel, ARMv5 and resource budget. Record package/license choices.
   Do not assume legacy WD target configuration is directly portable.
+  **M9.1a — isolated LIO prerequisite and target fixture (local research):** a pinned-archive,
+  fresh-tmpfs ARMv5 kernel helper enables built-in LIO/FILEIO for a separate
+  research profile, not the standard QEMU or EX4 defconfig. Six Windows/Linux
+  profile test groups and ShellCheck pass; the actual kernel compile succeeds.
+  A separate actual ARM926 guest with pinned libiscsi now verifies good CHAP,
+  exact wrong/missing/foreign login refusals, capacity/512-byte blocks, effective
+  RO/RW, retained backing through replace/unlink and closed/missing descriptor
+  refusal without recreation. Session observation, forced TPG disable, revoked
+  I/O/new-login refusal, re-enable data and complete teardown pass locally.
+  Initialized virtual entropy is required; no fixed seed/auth bypass is used.
+  This does not implement a product mutation-refusal or authority owner. FILEIO's
+  O_CREAT/RW and control delimiters prohibit blindly using a desired pathname;
+  credential configfs attributes require a separate privileged/redacted owner.
+  One bounded local wrapper supports fresh tmpfs compile and a small verified
+  candidate for fast feedback, without new Docker images/volumes. Pure host CI
+  must not be confused with actual target qualification.
+  **Next M9.1b:** typed internal backend admission/observation contract: retained
+  backing identity and writable authority; bounded credentials with reserved
+  configfs-value refusal; redacted session observations; no automatic creation
+  or recovery. Qualify mutual CHAP, multiple simultaneous peers, credentials
+  rotation and exact active-session mutation refusal before any product owner.
+  Add crash, full/backing-loss and uncertain teardown campaigns separately.
+  See the [research contract and source boundaries](support/ISCSI-LIO-RESEARCH.md).
 - **M9.2 — Target model.** Stable target/LUN identity, backing volume/object,
   capacity/allocation policy, initiator access and protected authentication
   secrets. Secrets are not returned by read APIs or exposed in diagnostics.

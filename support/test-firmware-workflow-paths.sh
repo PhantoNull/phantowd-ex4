@@ -346,6 +346,23 @@ $qemu_unrelated_ex4_stage_paths
 EOF
 
 require_develop_push "$host_workflow"
+for path in \
+    'support/container/build-qemu-lio-kernel.sh' \
+    'support/container/build-qemu-iscsi-client.sh' \
+    'support/container/qemu_lio_inputs.py' \
+    'support/container/qemu_lio_result.py' \
+    'support/fixtures/iscsi-loopback-client.c' \
+    'support/fixtures/qemu-lio-init.sh' \
+    'support/qemu-lio-fixture.sh' \
+    'support/test-qemu-lio.ps1' \
+    'support/tests/test-qemu-lio-inputs.py' \
+    'support/tests/test-qemu-lio-result.py' \
+    'support/tests/test-qemu-lio-snapshot-temp.sh' \
+    'support/tests/test-qemu-lio-wrapper.ps1'; do
+    require_triggered_path "$host_workflow" "$path"
+    require_ignored_path "$qemu_workflow" "$path"
+    require_ignored_path "$stage_b3_workflow" "$path"
+done
 for path in 'support/build-qemu.ps1' \
     'support/tests/test-cached-qemu-wrapper.ps1' \
     'support/tests/test-cached-qemu-preflight.py'; do
