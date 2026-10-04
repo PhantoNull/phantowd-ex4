@@ -88,7 +88,7 @@ int main(int argc, char **argv)
         strcmp(mode, "hold") && strcmp(mode, "disabled") && strcmp(mode, "reenabled") &&
         strcmp(mode, "mutual") && strcmp(mode, "mutual-target-wrong") &&
         strcmp(mode, "mutual-user-wrong") && strcmp(mode, "mutual-inbound-wrong") &&
-        strcmp(mode, "mutual-oneway") && strcmp(mode, "rotated") &&
+        strcmp(mode, "mutual-oneway") && strcmp(mode, "mutual-oneway-refused") && strcmp(mode, "rotated") &&
         strcmp(mode, "rotated-old") && strcmp(mode, "primary-hold") &&
         strcmp(mode, "peer-ro-hold") && strcmp(mode, "peer-cross"))
         return failed(NULL, "mode");
@@ -99,10 +99,10 @@ int main(int argc, char **argv)
               !strcmp(mode, "foreign") || !strcmp(mode, "disabled") ||
               !strcmp(mode, "mutual-target-wrong") || !strcmp(mode, "mutual-user-wrong") ||
               !strcmp(mode, "mutual-inbound-wrong") || !strcmp(mode, "rotated-old") ||
-              !strcmp(mode, "peer-cross");
+              !strcmp(mode, "peer-cross") || !strcmp(mode, "mutual-oneway-refused");
     peer = !strcmp(mode, "peer-ro-hold") || !strcmp(mode, "peer-cross");
     rotated = !strcmp(mode, "rotated") || !strcmp(mode, "primary-hold");
-    mutual = !strncmp(mode, "mutual", 6) && strcmp(mode, "mutual-oneway");
+    mutual = !strncmp(mode, "mutual", 6) && strcmp(mode, "mutual-oneway") && strcmp(mode, "mutual-oneway-refused");
     mutual = mutual || rotated || !strcmp(mode, "rotated-old");
     held = !strcmp(mode, "primary-hold") || !strcmp(mode, "peer-ro-hold");
     ctx = iscsi_create_context(!strcmp(mode, "foreign") ? FOREIGN : peer ? PEER : INITIATOR);

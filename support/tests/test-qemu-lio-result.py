@@ -18,12 +18,32 @@ SPEC.loader.exec_module(result)
 
 
 class LIOResult(unittest.TestCase):
-    def valid(self):
-        return ("ordinary boot log\n" + "\n".join(result.MARKERS) + "\n").encode()
+    def valid(self, strict=False):
+        markers = result.STRICT_MARKERS if strict else result.MARKERS
+        return ("ordinary boot log\n" + "\n".join(markers) + "\n").encode()
 
     def test_complete(self):
         result.validate(self.valid())
         result.validate(self.valid().replace(b"\n", b"\r\n"))
+
+    def test_strict_mode_refuses_default_cross_mode_and_mixed_evidence(self):
+        strict = self.valid(strict=True)
+        result.validate(strict, required_mutual=True)
+        result.validate(strict.replace(b"\n", b"\r\n"), required_mutual=True)
+        with self.assertRaises(ValueError):
+            result.validate(self.valid(), required_mutual=True)
+        with self.assertRaises(ValueError):
+            result.validate(strict)
+        for marker in result.STRICT_MARKERS:
+            for replacement in ("", marker + "\n" + marker, "prefix " + marker):
+                with self.subTest(marker=marker, replacement=replacement), self.assertRaises(ValueError):
+                    result.validate(strict.replace(marker.encode(), replacement.encode()), required_mutual=True)
+        for old in set(result.MARKERS) - set(result.STRICT_MARKERS):
+            with self.assertRaises(ValueError):
+                result.validate(strict + old.encode() + b"\n", required_mutual=True)
+        for token in result.DENIED:
+            with self.assertRaises(ValueError):
+                result.validate(strict + token.encode(), required_mutual=True)
 
     def test_every_marker_missing_duplicate_or_substring_refused(self):
         for marker in result.MARKERS:

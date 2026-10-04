@@ -20,14 +20,26 @@ class LIOInputs(unittest.TestCase):
         return "\n".join([*(f"CONFIG_{s}=y" for s in inputs.ENABLED),
                           *(f"# CONFIG_{s} is not set" for s in inputs.DISABLED)])
 
-    def check(self, data):
+    def check(self, data, required_mutual=False):
         with tempfile.TemporaryDirectory() as temp:
             path = Path(temp) / "config"
             path.write_bytes(data)
-            inputs.audit(path)
+            inputs.audit(path, required_mutual)
 
     def test_valid_profile(self):
         self.check(self.valid().encode())
+
+    def test_strict_mode_requires_exact_builtin_opt_in(self):
+        line = "CONFIG_ISCSI_TARGET_STRICT_MUTUAL_CHAP=y"
+        strict = self.valid() + "\n" + line
+        self.check(strict.encode(), required_mutual=True)
+        with self.assertRaises(ValueError):
+            self.check(strict.encode())
+        for substitute in ("", "# CONFIG_ISCSI_TARGET_STRICT_MUTUAL_CHAP is not set",
+                           "CONFIG_ISCSI_TARGET_STRICT_MUTUAL_CHAP=m", line + "\n" + line):
+            with self.subTest(substitute=substitute), self.assertRaises(ValueError):
+                self.check(strict.replace(line, substitute).encode(), required_mutual=True)
+        self.check((self.valid() + "\n# CONFIG_ISCSI_TARGET_STRICT_MUTUAL_CHAP is not set").encode())
 
     def test_every_required_symbol_missing_module_or_duplicate_refused(self):
         for symbol in inputs.ENABLED:

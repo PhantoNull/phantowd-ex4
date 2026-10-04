@@ -1679,11 +1679,20 @@ support per tested combination; refuse untested combinations without mutation.
   the other session/data usable. Missing/duplicate/unknown/contradictory consumer
   markers refuse (native RED/GREEN). This remains one LUN/pinned-client QEMU,
   not product credential/session ownership, Windows or interrupted rotation.
-  **Required-mutual gate:** pinned LIO permits one-way login even with mutual
+  **Required-mutual gate:** unmodified pinned LIO permits one-way login even with mutual
   credentials configured; source and actual guest agree. Do not label that
   setting enforced mutual authentication. A product policy requiring both
   directions must refuse admission until a separately reviewed enforcement
   solution is qualified; an explicitly approved weaker policy would be distinct.
+  **Research subset now verified:** an opt-in default-off kernel option rejects
+  missing initiator challenges only when outbound credentials are configured.
+  Separate fresh strict/default actual ARM926 guests pass exact refusal versus
+  upstream acceptance, reciprocal exchange, rotation, two-peer RO/RW, retained
+  data and teardown. Seven profile/seven result groups, wrapper strict-cached
+  refusal and host-only workflow selection pass. This patch applies only in
+  disposable research tmpfs, not product/standard QEMU/EX4 kernels. Independent
+  security review, product backend selection/integration and credential admission
+  remain open; a target cannot prove an untrusted client checked its response.
   **Next M9.1b:** typed internal backend admission/observation contract: retained
   backing identity and writable authority; bounded credentials with reserved
   configfs-value refusal; redacted session observations; no automatic creation

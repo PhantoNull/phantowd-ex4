@@ -1,9 +1,12 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 PhantoWD EX4 contributors
 [CmdletBinding()]
-param([switch]$CompileKernel)
+param([switch]$CompileKernel, [switch]$RequireMutual)
 
 $ErrorActionPreference = 'Stop'
+if ($RequireMutual -and !$CompileKernel) {
+    throw 'Strict mutual research requires a fresh kernel compile; a default cached kernel cannot qualify it.'
+}
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 $versions = @(Get-Content (Join-Path $repoRoot 'versions.env') | Where-Object { $_ -match '^BUILDROOT_VERSION=' })
 if ($versions.Count -ne 1) { throw 'Exactly one Buildroot pin required.' }
@@ -24,6 +27,7 @@ if (!(Test-Path -LiteralPath $archive -PathType Leaf) -or
 $scratch = '512m'
 $memory = '2g'
 $compile = '0'
+$requiredMutual = if ($RequireMutual) { '1' } else { '0' }
 if ($CompileKernel) { $scratch = '4g'; $memory = '8g'; $compile = '1' }
 if (!$CompileKernel) {
     foreach ($name in @('zImage', 'versatile-pb.dtb', 'kernel.config', 'SHA256SUMS', 'INPUTS.sha256')) {
@@ -78,6 +82,7 @@ docker run --rm --pull never --entrypoint /bin/sh --network none --read-only --c
     --tmpfs "/tmp:rw,exec,nosuid,nodev,size=$scratch,mode=1777" `
     --mount "type=bind,source=$repoRoot,target=/src,readonly" `
     --mount "type=volume,source=$volume,target=/workspace,readonly,volume-nocopy" `
-    --env "PHANTOWD_LIO_COMPILE=$compile" $image `
+    --env "PHANTOWD_LIO_COMPILE=$compile" `
+    --env "PHANTOWD_LIO_REQUIRE_MUTUAL=$requiredMutual" $image `
     -c "printf '%s' '$encoded' | base64 -d | timeout --signal=TERM --kill-after=10 900 sh"
 if ($LASTEXITCODE -ne 0) { throw 'Disposable LIO qualification failed; no product/device authority.' }

@@ -8,6 +8,9 @@ phase=init
 trap 'echo "PHANTOWD_LIO_ERROR phase=$phase"; exec /sbin/reboot -f' EXIT
 mount -t proc proc /proc
 mount -t sysfs sysfs /sys
+phase=mutual-profile
+mutual_mode=$(awk '{ for (i=1; i<=NF; i++) if ($i ~ /^phantowd.lio_mutual=/) { count++; value=$i } } END { if (count != 1) exit 1; print value }' /proc/cmdline)
+case "$mutual_mode" in phantowd.lio_mutual=default|phantowd.lio_mutual=strict) ;; *) exit 1 ;; esac
 phase='devtmpfs'
 grep -q ' /dev devtmpfs ' /proc/mounts
 phase='root-readonly'
@@ -155,11 +158,19 @@ printf '%s' synthetic-outbound-only-2026 > "$acl/auth/password_mutual"
 "$client" mutual-target-wrong
 "$client" mutual-user-wrong
 "$client" mutual-inbound-wrong
-# Pinned LIO accepts a peer that does not ask to authenticate the target.
-# This is measured backend behavior, NOT enforced mutual-only admission.
-"$client" mutual-oneway
+if [ "$mutual_mode" = phantowd.lio_mutual=strict ]; then
+    # Exact authentication refusal, not TCP failure or client verification.
+    "$client" mutual-oneway-refused
+else
+    # Keep measuring upstream default behavior without claiming enforcement.
+    "$client" mutual-oneway
+fi
 grep -q '^No active iSCSI Session' "$acl/info"
-echo 'PHANTOWD_LIO_MUTUAL_READY exchange=true wrong_target_refused=true wrong_user_refused=true wrong_inbound_refused=true oneway_still_accepted=true enforcement=false'
+if [ "$mutual_mode" = phantowd.lio_mutual=strict ]; then
+    echo 'PHANTOWD_LIO_MUTUAL_READY exchange=true wrong_target_refused=true wrong_user_refused=true wrong_inbound_refused=true oneway_refused=true enforcement=login-when-configured'
+else
+    echo 'PHANTOWD_LIO_MUTUAL_READY exchange=true wrong_target_refused=true wrong_user_refused=true wrong_inbound_refused=true oneway_still_accepted=true enforcement=false'
+fi
 phase=credential-rotation
 printf '%s' synthetic-rotated-only-2026 > "$acl/auth/password"
 "$client" rotated-old

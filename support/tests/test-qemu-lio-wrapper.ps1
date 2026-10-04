@@ -42,9 +42,11 @@ function Assert-True {
 }
 try {
     $state = $global:phantowdLIOWrapperTestState
-    foreach ($compile in @($false, $true)) {
+    foreach ($mode in @(@{ Compile = $false; Mutual = $false }, @{ Compile = $true; Mutual = $false }, @{ Compile = $true; Mutual = $true })) {
+        $compile = $mode.Compile
+        $strictMutual = $mode.Mutual
         $state.Calls.Clear()
-        & $wrapper -CompileKernel:$compile
+        & $wrapper -CompileKernel:$compile -RequireMutual:$strictMutual
         Assert-True ($state.Calls.Count -eq 3) 'Exactly two inspections and one run required.'
         $run = $state.Calls[2]
         foreach ($argument in @('run', '--rm', '--pull', 'never', '--entrypoint', '/bin/sh',
@@ -55,6 +57,8 @@ try {
         $memory = if ($compile) { '8g' } else { '2g' }
         $scratch = if ($compile) { '4g' } else { '512m' }
         Assert-True ($memory -in $run) 'Wrong memory budget.'
+        $expectedMutual = if ($strictMutual) { '1' } else { '0' }
+        Assert-True ("PHANTOWD_LIO_REQUIRE_MUTUAL=$expectedMutual" -in $run) 'Explicit mutual research mode missing.'
         Assert-True ("/tmp:rw,exec,nosuid,nodev,size=$scratch,mode=1777" -in $run) 'Wrong scratch budget.'
         Assert-True (@($run | Where-Object { $_ -match '^type=volume,.*readonly,volume-nocopy$' }).Count -eq 1) 'Read-only existing workspace required.'
         Assert-True (@($run | Where-Object { $_ -match '^type=bind,.*readonly$' }).Count -eq 1) 'Read-only checkout required.'
@@ -68,6 +72,10 @@ try {
         }
         Assert-True ($run[-1].Contains('timeout --signal=TERM --kill-after=10 900 sh')) 'Overall timeout missing.'
     }
+    $state.Calls.Clear()
+    $strictCachedRefused = $false
+    try { & $wrapper -RequireMutual } catch { $strictCachedRefused = $true }
+    Assert-True ($strictCachedRefused -and $state.Calls.Count -eq 0) 'Strict research must refuse a default cached kernel before Docker.'
     foreach ($failure in @('image inspect', 'volume inspect', 'archive-missing', 'archive-hash', 'candidate-link', 'run')) {
         $state.Calls.Clear()
         $state.Failure = $failure
@@ -77,7 +85,7 @@ try {
         Assert-True (@($state.Calls | Where-Object { $_[0] -eq 'run' }).Count -eq [int]($failure -eq 'run')) 'Refusal started/retried the guest.'
         Assert-True (-not ($state.Calls | Where-Object { $_[0] -in @('build', 'pull', 'system') })) 'Forbidden resource operation.'
     }
-    'PHANTOWD_LIO_WRAPPER_TESTS_READY cached=true cold=true refusals=6 scope=mock-command-boundary-only'
+    'PHANTOWD_LIO_WRAPPER_TESTS_READY cached=true cold=true strict_cold=true strict_cached_refused=true refusals=6 scope=mock-command-boundary-only'
 } finally {
     Remove-Variable phantowdLIOWrapperTestState -Scope Global
     $global:LASTEXITCODE = $previousExitCode
