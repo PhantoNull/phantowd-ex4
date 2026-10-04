@@ -4,6 +4,18 @@ on:
   push:
     branches: [main, develop]
     paths-ignore:
+      - 'support/container/build-qemu-lio-kernel.sh'
+      - 'support/container/build-qemu-iscsi-client.sh'
+      - 'support/container/qemu_lio_inputs.py'
+      - 'support/container/qemu_lio_result.py'
+      - 'support/fixtures/iscsi-loopback-client.c'
+      - 'support/fixtures/qemu-lio-init.sh'
+      - 'support/qemu-lio-fixture.sh'
+      - 'support/test-qemu-lio.ps1'
+      - 'support/tests/test-qemu-lio-inputs.py'
+      - 'support/tests/test-qemu-lio-result.py'
+      - 'support/tests/test-qemu-lio-snapshot-temp.sh'
+      - 'support/tests/test-qemu-lio-wrapper.ps1'
       - '**/*.md'
       - '.github/assets/**'
       - 'doc/**'
@@ -92,6 +104,18 @@ on:
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
     paths-ignore:
+      - 'support/container/build-qemu-lio-kernel.sh'
+      - 'support/container/build-qemu-iscsi-client.sh'
+      - 'support/container/qemu_lio_inputs.py'
+      - 'support/container/qemu_lio_result.py'
+      - 'support/fixtures/iscsi-loopback-client.c'
+      - 'support/fixtures/qemu-lio-init.sh'
+      - 'support/qemu-lio-fixture.sh'
+      - 'support/test-qemu-lio.ps1'
+      - 'support/tests/test-qemu-lio-inputs.py'
+      - 'support/tests/test-qemu-lio-result.py'
+      - 'support/tests/test-qemu-lio-snapshot-temp.sh'
+      - 'support/tests/test-qemu-lio-wrapper.ps1'
       - '**/*.md'
       - '.github/assets/**'
       - 'doc/**'

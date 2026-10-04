@@ -3,6 +3,28 @@
 
 # Implementation status
 
+## M9.1a actual LIO/initiator fixture — local research only
+
+The separate pinned Linux ARM926 kernel and libiscsi 1.20.0 client now execute
+real guest-loopback iSCSI: successful CHAP, exact wrong/missing/foreign refusal,
+32 MiB/512-byte capacity, RW readback and RO write denial. A retained descriptor
+continues reaching the original file after rename/replace/unlink; closed/missing
+descriptors fail without recreating storage. A live session is observed,
+forcibly disabled and absent afterward; its I/O and new login fail, re-enable
+preserves data, and final target/listener/configfs teardown is checked.
+
+The source-defined local wrapper checks profile/result refusals and a real
+paused-snapshot TMPDIR regression, compiles the pinned upstream client and boots
+one bounded disposable guest. Virtual RNG initialization fixes the reproduced
+CHAP timeout; no authentication bypass or fixed seed is used. The normal
+QEMU/EX4 defconfigs and product init are unchanged. Pure host CI covers contracts,
+not actual target execution. See the [research contract](support/ISCSI-LIO-RESEARCH.md).
+
+This is not a privileged product adapter, live-session mutation-refusal guard,
+protected credentials/registry/mount/global-use authority, durable iSCSI state,
+UI activation, migration, hardware entropy/cooling qualification or installer.
+No production NAS/disk/NAND operation occurs. M9.1 backend selection remains open.
+
 ## M9.2a desired iSCSI model — local component evidence
 
 The internal `iscsipolicy` schema binds logical target/LUN/file-backing IDs to
@@ -17,13 +39,18 @@ is reused and all seven base artifacts remain checksum-verified.
 
 This cache-reusing overlay adds no target/backing/secret access or persistent
 Docker image/volume; its rootfs copy and caches are disposable RAM scratch.
-No actual iSCSI protocol, backend, initiator sessions, persistence,
-HTTP, product startup, migration or physical qualification is implemented or
-proved. Authentication/migration exceptions remain a pending policy decision;
+That model does not execute iSCSI protocol/backend/session operations; the
+separate synthetic fixture above does not add persistence, HTTP, product startup,
+migration or physical qualification. Authentication/migration exceptions remain a pending policy decision;
 the conservative development profile requires CHAP. See the
 [component contract](src/phantowd-api/internal/iscsipolicy/README.md) and M9.
 
-Code audit: **2026-10-04**, integrated `develop` baseline
+Latest desired-model integration: PR #86 exact `06eac24` passed its own host
+and QEMU/DTB checks and guarded squash-merged as `ba78e1b`; expected, checked
+and integrated whole tree `024847ef` agree. Only its proven integrated topic
+refs were retired; the research fixture remains separate development work.
+
+Historical code audit: **2026-10-04**, integrated `develop` baseline
 `145c8bf1225a46ffe5d486f48a9ed9d80b716b8f` (PR #84).
 PR #84 exact `d8eb97a` passed its own host and complete QEMU/DTB checks,
 including guest fixtures and isolated CI volume cleanup. Guarded squash
