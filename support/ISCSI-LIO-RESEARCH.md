@@ -1,7 +1,7 @@
 # M9.1: disposable LIO qualification
 
 This is a research contract, not a selected production backend or an installer.
-The scope is ARMv5 QEMU, one synthetic 32 MiB backing and test-only loopback
+The scope is ARMv5 QEMU, synthetic 32 MiB and 8 MiB backings and test-only loopback
 initiators. The original single-peer fixture now also checks two simultaneous
 peers with independent credentials/grants. No NAS, physical device, host port
 forwarding or product activation.
@@ -16,7 +16,8 @@ In `drivers/target/target_core_file.c`, `fd_configure_device` calls `filp_open`
 with `O_RDWR | O_CREAT | O_LARGEFILE | O_DSYNC`. Missing backings can therefore
 be created. Its control parser also splits on commas/newlines; desired backing
 paths must never be interpolated directly into that interface. FILEIO initially
-uses 512-byte blocks; the model's 4096-byte option remains unqualified.
+uses 512-byte blocks initially. The separate 8 MiB/4096-byte fixture below now
+passes locally; this does not qualify that option for product storage.
 
 `target_dev_enable_store` calls `target_configure_device`, which calls the
 backend's `configure_device` directly. A retained `/proc/self/fd/N` binding is a
@@ -128,8 +129,15 @@ Implemented independent assertions, exercised on actual ARM926 QEMU:
   and secondary RO write denial use independent credentials. Cross-peer
   credentials fail; secondary logout leaves the primary session observed and
   capable of reading unchanged data. Both logout before ACL teardown. This
-  tests one target/LUN and the same pinned client, not Windows, multiple LUNs,
+  concurrent-session test uses one target/LUN and the same pinned client, not Windows,
   per-account revocation or a production session/use owner.
+- A second retained 8 MiB FILEIO object uses 4096-byte blocks, while the original
+  32 MiB object remains 512-byte. Primary ACL sees LUNs 0/1 with RW/RO access;
+  peer sees 0/3 with RO/RW access. Exact reported sets, both capacities/block
+  sizes, ungranted-LUN SCSI refusal, opposite write permissions, distinct seeds,
+  readback and peer-write visibility are mandatory. Every session logs out
+  before exact link/storage/descriptor cleanup. These multi-LUN I/O clients run
+  sequentially; the earlier single-LUN concurrent-session test is retained.
 
 Use strict bounded timeouts and mandatory markers. Any uncertain cleanup fails;
 no retries, silent recreation or reuse of a partially configured target.
@@ -138,7 +146,8 @@ The runner uses a private tmpfs `TMPDIR` for QEMU snapshot files. A paused-VM
 RED/GREEN regression proves that missing TMPDIR fails on the read-only builder
 and the actual call site uses its owned scratch. The dedicated guest init is
 never installed in a normal overlay. It mounts only its root snapshot read-only
-and tmpfs/configfs; the only data backing is a dense 32 MiB tmpfs file.
+and tmpfs/configfs; dense 32 MiB and 8 MiB files are the only data backings,
+inside the existing 64 MiB guest tmpfs.
 The runner attaches no NIC/data disk/host port and accepts only guest-loopback
 listeners. The pinned kernel's inactive `sit0` tunnel is accounted for explicitly.
 
@@ -171,9 +180,27 @@ requires the exact protocol authentication refusal for the one-way attempt;
 default mode still requires its measured acceptance. Reciprocal exchange,
 wrong inbound/target response/name refusals, credential rotation, independent
 RO/RW peers, retained backing and cleanup assertions pass in both modes.
-Seven profile and seven result test groups, ShellCheck, workflow path checks
+Seven profile and eight result test groups, ShellCheck, workflow path checks
 and the mocked wrapper's strict-cached refusal also pass. Host CI does not
 execute these actual target tests.
+
+### Exact multi-LUN set regression
+
+Pinned LIO's `spc_emulate_report_luns` walks its ACL hlist, not a numeric sort.
+The first multi-LUN fixture wrongly required ascending order and failed in the
+actual guest at `multi-report-luns`. A native C regression of the exact helper
+used by the client reproduces that failure before correction. Its 512 finite
+pair/count vectors plus null/unsupported-selector/high-LUN checks pass afterward:
+either order is accepted, but exactly two distinct expected LUNs remain required.
+The actual fresh strict/default guests then pass the original full scenario,
+including 4096-byte I/O, permissions and teardown. No I/O/auth check was relaxed.
+
+```sh
+sh support/tests/test-lio-lun-set.sh "$PWD"
+```
+
+This tiny native matcher test runs before local kernel compilation and in host
+CI. It is not a target boot, protocol interoperability or storage authority.
 
 This is login-time enforcement of a supplied challenge, not proof that a hostile
 client verified the target response, transport encryption, existing-session

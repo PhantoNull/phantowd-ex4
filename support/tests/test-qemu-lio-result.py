@@ -53,6 +53,22 @@ class LIOResult(unittest.TestCase):
                         result.validate(self.valid().replace(marker.encode(),
                                                             replacement.encode()))
 
+    def test_multiple_lun_evidence_cannot_be_omitted_or_weakened(self):
+        marker = "PHANTOWD_LIO_LUNS_READY count=2 block_sizes=512,4096 primary_luns=0,1 peer_luns=0,3 " \
+                 "opposite_access=true ungranted_refused=true data_isolated=true teardown=true scope=disposable-qemu-only"
+        self.assertIn(marker, result.MARKERS)
+        self.assertIn(marker, result.STRICT_MARKERS)
+        for strict in (False, True):
+            good = self.valid(strict=strict)
+            for old, new in (("count=2", "count=1"), ("4096", "512"),
+                             ("peer_luns=0,3", "peer_luns=0,1"),
+                             ("ungranted_refused=true", "ungranted_refused=false"),
+                             ("data_isolated=true", "data_isolated=false"),
+                             ("teardown=true", "teardown=false")):
+                with self.subTest(strict=strict, old=old), self.assertRaises(ValueError):
+                    result.validate(good.replace(marker.encode(), marker.replace(old, new).encode()),
+                                    required_mutual=strict)
+
     def test_errors_secrets_and_wrong_scope_refused(self):
         for token in result.DENIED:
             with self.subTest(token=token), self.assertRaises(ValueError):

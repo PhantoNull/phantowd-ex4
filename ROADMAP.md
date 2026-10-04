@@ -1693,6 +1693,17 @@ support per tested combination; refuse untested combinations without mutation.
   disposable research tmpfs, not product/standard QEMU/EX4 kernels. Independent
   security review, product backend selection/integration and credential admission
   remain open; a target cannot prove an untrusted client checked its response.
+  **Multi-LUN/block-size research subset:** fresh strict/default actual ARM926
+  guests now verify 32 MiB/512-byte and 8 MiB/4096-byte retained FILEIO objects,
+  exact ACL LUN sets primary0/1 RW/RO versus peer0/3 RO/RW, capacity, distinct
+  seeds, readback/peer-write visibility, denied writes and exact ungranted-LUN
+  SCSI refusal, then full teardown. Clients are sequential; the existing
+  single-LUN concurrent-session test remains. A RED/GREEN native C matcher
+  regression fixes an invalid sorted-REPORT-LUNS assumption without weakening
+  exact cardinality/uniqueness/membership. Host-only gates now include7 profile/
+  8 result groups and512 finite matcher vectors; they are not target execution.
+  Multiple-target/other-client and production allocation/use/session admission
+  remain open; this is not a product 4096-byte backing qualifier.
   **Next M9.1b:** typed internal backend admission/observation contract: retained
   backing identity and writable authority; bounded credentials with reserved
   configfs-value refusal; redacted session observations; no automatic creation

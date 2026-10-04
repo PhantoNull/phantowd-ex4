@@ -11,6 +11,9 @@ on:
       - 'support/fixtures/iscsi-loopback-client.c'
       - 'support/fixtures/qemu-lio-init.sh'
       - 'support/fixtures/patches/linux-lio-strict-mutual.patch'
+      - 'support/fixtures/lio-lun-set.h'
+      - 'support/tests/lio-lun-set-fixture.c'
+      - 'support/tests/test-lio-lun-set.sh'
       - 'support/qemu-lio-fixture.sh'
       - 'support/test-qemu-lio.ps1'
       - 'support/tests/test-qemu-lio-inputs.py'
@@ -83,6 +86,9 @@ on:
       - 'support/fixtures/iscsi-loopback-client.c'
       - 'support/fixtures/qemu-lio-init.sh'
       - 'support/fixtures/patches/linux-lio-strict-mutual.patch'
+      - 'support/fixtures/lio-lun-set.h'
+      - 'support/tests/lio-lun-set-fixture.c'
+      - 'support/tests/test-lio-lun-set.sh'
       - 'support/qemu-lio-fixture.sh'
       - 'support/test-qemu-lio.ps1'
       - 'support/tests/test-qemu-lio-inputs.py'
@@ -227,10 +233,11 @@ jobs:
       - name: Verify kernel-input invalidation and ACL requirements
         run: python3 -B support/tests/test-qemu-kernel-inputs.py
 
-      - name: Verify isolated LIO profile and result refusals without compiling
+      - name: Verify isolated LIO contracts without kernel compilation or guest boot
         run: |
           python3 -B support/tests/test-qemu-lio-inputs.py
           python3 -B support/tests/test-qemu-lio-result.py
+          sh support/tests/test-lio-lun-set.sh "$PWD"
           for script in support/container/build-qemu-lio-kernel.sh support/container/build-qemu-iscsi-client.sh support/qemu-lio-fixture.sh support/fixtures/qemu-lio-init.sh support/tests/test-qemu-lio-snapshot-temp.sh; do
             sh -n "$script"
           done

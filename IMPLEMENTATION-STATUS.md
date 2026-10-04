@@ -286,6 +286,18 @@ The patch is outside product/standard kernel builds. This closes a synthetic
 login-enforcement experiment, not independent security review, client-side
 verification, transport confidentiality, session revocation or product admission.
 
+Both fresh profiles also pass a second 8 MiB/4096-byte retained backing alongside
+the existing 32 MiB/512-byte object. Actual primary LUN0/1 RW/RO and peer LUN0/3
+RO/RW mappings have exact reported sets/capacities, distinct seeds, write/refusal
+readback, peer-write visibility, exact ungranted-LUN SCSI refusal and complete
+teardown. Multi-LUN clients are sequential; the prior single-LUN concurrent-peer
+test remains. A reproduced fixture bug required ascending REPORT LUNS order;
+LIO walks an ACL hlist. Native RED/GREEN of the same C matcher now checks the
+exact unordered two-member set without accepting missing/duplicate/foreign LUNs.
+Seven profile/eight result groups and the matcher gate pass before compilation;
+host CI checks these contracts, not real target execution. Other client/multiple
+target compatibility and production backing/allocation/use/session gates remain.
+
 The source-defined local wrapper checks profile/result refusals and a real
 paused-snapshot TMPDIR regression, compiles the pinned upstream client and boots
 one bounded disposable guest. Virtual RNG initialization fixes the reproduced

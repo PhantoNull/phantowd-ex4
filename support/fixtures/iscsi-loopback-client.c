@@ -8,6 +8,7 @@
 #include <unistd.h>
 #include <iscsi.h>
 #include <scsi-lowlevel.h>
+#include "lio-lun-set.h"
 
 #define TARGET "iqn.2026-10.invalid.phantowd:lio-fixture"
 #define INITIATOR "iqn.2026-10.invalid.phantowd:client"
@@ -22,6 +23,7 @@
 #define PEER_USER "fixture-peer"
 #define PEER_SECRET "synthetic-peer-only-2026"
 #define BLOCK 512
+#define SECOND_BLOCK 4096
 
 static int failed(struct iscsi_context *ctx, const char *stage)
 {
@@ -70,6 +72,127 @@ static int refused_status(const char *error, const char *mode)
     return observed == expected;
 }
 
+/* Fixed two-backing qualification, not a caller-selected LUN/device API. */
+static int multiple_ready(struct iscsi_context *ctx, int lun)
+{
+    struct scsi_task *task = iscsi_testunitready_sync(ctx, lun);
+    int valid;
+    if (task != NULL && task->status == SCSI_STATUS_CHECK_CONDITION &&
+        task->sense.key == SCSI_SENSE_UNIT_ATTENTION) {
+        scsi_free_scsi_task(task);
+        task = iscsi_testunitready_sync(ctx, lun);
+    }
+    valid = task != NULL && task->status == SCSI_STATUS_GOOD;
+    if (task != NULL)
+        scsi_free_scsi_task(task);
+    return valid;
+}
+
+static int multiple_capacity(struct iscsi_context *ctx, int lun, int block,
+                             unsigned long long last)
+{
+    struct scsi_task *task = iscsi_readcapacity16_sync(ctx, lun);
+    struct scsi_readcapacity16 *capacity;
+    int valid = 0;
+    if (task != NULL && task->status == SCSI_STATUS_GOOD) {
+        capacity = scsi_datain_unmarshall(task);
+        valid = capacity != NULL && capacity->returned_lba == last &&
+                capacity->block_length == (unsigned int)block;
+    }
+    if (task != NULL)
+        scsi_free_scsi_task(task);
+    return valid;
+}
+
+static int multiple_read(struct iscsi_context *ctx, int lun, unsigned long long lba,
+                         const unsigned char *expected, int block)
+{
+    struct scsi_task *task = iscsi_read16_sync(ctx, lun, lba, block, block,
+                                             0, 0, 0, 0, 0);
+    int valid = task != NULL && task->status == SCSI_STATUS_GOOD &&
+                task->datain.size == block && task->datain.data != NULL &&
+                memcmp(task->datain.data, expected, (size_t)block) == 0;
+    if (task != NULL)
+        scsi_free_scsi_task(task);
+    return valid;
+}
+
+static int multiple_write(struct iscsi_context *ctx, int lun,
+                          unsigned char *data, int block, int readonly)
+{
+    struct scsi_task *task = iscsi_write16_sync(ctx, lun, 1, data, block, block,
+                                              0, 0, 0, 0, 0);
+    int valid = task != NULL && (readonly ?
+        task->status == SCSI_STATUS_CHECK_CONDITION &&
+        task->sense.key == SCSI_SENSE_DATA_PROTECTION &&
+        task->sense.ascq == SCSI_SENSE_ASCQ_WRITE_PROTECTED :
+        task->status == SCSI_STATUS_GOOD);
+    if (task != NULL)
+        scsi_free_scsi_task(task);
+    return valid;
+}
+
+static const char *multiple_luns(struct iscsi_context *ctx, const char *mode)
+{
+    int peer = !strcmp(mode, "multi-peer"), second = peer ? 3 : 1;
+    int checked = !strcmp(mode, "multi-primary-check"), valid;
+    struct scsi_task *task;
+    struct scsi_reportluns_list *list;
+    unsigned char first_seed[BLOCK] = {0}, first_written[BLOCK];
+    unsigned char second_seed[SECOND_BLOCK] = {0}, second_written[SECOND_BLOCK];
+    unsigned char denied[SECOND_BLOCK];
+    memcpy(first_seed, "PHANTOWD-LIO-SEED", sizeof("PHANTOWD-LIO-SEED") - 1);
+    memcpy(second_seed, "PHANTOWD-LIO-SECOND", sizeof("PHANTOWD-LIO-SECOND") - 1);
+    memset(first_written, 'B', sizeof(first_written));
+    memset(second_written, checked ? 'D' : 0, sizeof(second_written));
+    memset(denied, 'C', sizeof(denied));
+    if (!multiple_ready(ctx, 0))
+        return "multi-ready-first";
+    if (!multiple_ready(ctx, second))
+        return "multi-ready-second";
+    task = iscsi_reportluns_sync(ctx, 0, 256);
+    valid = 0;
+    if (task != NULL && task->status == SCSI_STATUS_GOOD) {
+        list = scsi_datain_unmarshall(task);
+        valid = list != NULL && fixture_lun_set_matches(list->luns, list->num, (uint16_t)second);
+    }
+    if (task != NULL)
+        scsi_free_scsi_task(task);
+    if (!valid)
+        return "multi-report-luns";
+    if (!multiple_capacity(ctx, 0, BLOCK, 65535))
+        return "multi-capacity-first";
+    if (!multiple_capacity(ctx, second, SECOND_BLOCK, 2047))
+        return "multi-capacity-second";
+    if (!multiple_read(ctx, 0, 0, first_seed, BLOCK) ||
+        !multiple_read(ctx, 0, 1, first_written, BLOCK))
+        return "multi-data-first";
+    if (!multiple_read(ctx, second, 0, second_seed, SECOND_BLOCK) ||
+        !multiple_read(ctx, second, 1, second_written, SECOND_BLOCK))
+        return "multi-data-second";
+    /* Missing ACL mapping must be a SCSI LUN refusal, not connectivity loss. */
+    task = iscsi_read16_sync(ctx, peer ? 1 : 3, 0, BLOCK, BLOCK, 0, 0, 0, 0, 0);
+    valid = task != NULL && task->status == SCSI_STATUS_CHECK_CONDITION &&
+            task->sense.key == SCSI_SENSE_ILLEGAL_REQUEST &&
+            task->sense.ascq == SCSI_SENSE_ASCQ_LOGICAL_UNIT_NOT_SUPPORTED;
+    if (task != NULL)
+        scsi_free_scsi_task(task);
+    if (!valid)
+        return "multi-ungranted-lun";
+    if (!multiple_write(ctx, 0, peer ? denied : first_written, BLOCK, peer))
+        return "multi-write-first";
+    if (peer)
+        memset(second_written, 'D', sizeof(second_written));
+    if (!multiple_write(ctx, second, peer ? second_written : denied, SECOND_BLOCK, !peer))
+        return "multi-write-second";
+    if (!multiple_read(ctx, 0, 0, first_seed, BLOCK) ||
+        !multiple_read(ctx, 0, 1, first_written, BLOCK) ||
+        !multiple_read(ctx, second, 0, second_seed, SECOND_BLOCK) ||
+        !multiple_read(ctx, second, 1, second_written, SECOND_BLOCK))
+        return "multi-data-isolation";
+    return NULL;
+}
+
 int main(int argc, char **argv)
 {
     const char *mode;
@@ -90,7 +213,9 @@ int main(int argc, char **argv)
         strcmp(mode, "mutual-user-wrong") && strcmp(mode, "mutual-inbound-wrong") &&
         strcmp(mode, "mutual-oneway") && strcmp(mode, "mutual-oneway-refused") && strcmp(mode, "rotated") &&
         strcmp(mode, "rotated-old") && strcmp(mode, "primary-hold") &&
-        strcmp(mode, "peer-ro-hold") && strcmp(mode, "peer-cross"))
+        strcmp(mode, "peer-ro-hold") && strcmp(mode, "peer-cross") &&
+        strcmp(mode, "multi-primary") && strcmp(mode, "multi-peer") &&
+        strcmp(mode, "multi-primary-check"))
         return failed(NULL, "mode");
     /* No fixed seed or pre-initialization urandom use in authentication tests. */
     if (getrandom(entropy, sizeof(entropy), GRND_NONBLOCK) != sizeof(entropy))
@@ -100,8 +225,9 @@ int main(int argc, char **argv)
               !strcmp(mode, "mutual-target-wrong") || !strcmp(mode, "mutual-user-wrong") ||
               !strcmp(mode, "mutual-inbound-wrong") || !strcmp(mode, "rotated-old") ||
               !strcmp(mode, "peer-cross") || !strcmp(mode, "mutual-oneway-refused");
-    peer = !strcmp(mode, "peer-ro-hold") || !strcmp(mode, "peer-cross");
-    rotated = !strcmp(mode, "rotated") || !strcmp(mode, "primary-hold");
+    peer = !strcmp(mode, "peer-ro-hold") || !strcmp(mode, "peer-cross") || !strcmp(mode, "multi-peer");
+    rotated = !strcmp(mode, "rotated") || !strcmp(mode, "primary-hold") ||
+              !strcmp(mode, "multi-primary") || !strcmp(mode, "multi-primary-check");
     mutual = !strncmp(mode, "mutual", 6) && strcmp(mode, "mutual-oneway") && strcmp(mode, "mutual-oneway-refused");
     mutual = mutual || rotated || !strcmp(mode, "rotated-old");
     held = !strcmp(mode, "primary-hold") || !strcmp(mode, "peer-ro-hold");
@@ -140,6 +266,12 @@ int main(int argc, char **argv)
     }
     if (login != 0 || !iscsi_is_logged_in(ctx)) {
         return failed(ctx, "login");
+    }
+    if (!strncmp(mode, "multi-", 6)) {
+        const char *stage = multiple_luns(ctx, mode);
+        if (stage != NULL)
+            return failed(ctx, stage);
+        goto logout;
     }
     /* Consume at most one expected initial SCSI Unit Attention, not I/O errors. */
     task = iscsi_testunitready_sync(ctx, 0);
@@ -231,6 +363,7 @@ int main(int argc, char **argv)
         puts("PHANTOWD_LIO_CLIENT_READY case=revoked");
         return 0;
     }
+logout:
     if (iscsi_logout_sync(ctx) != 0 || iscsi_disconnect(ctx) != 0)
         return failed(ctx, "logout");
     if (iscsi_destroy_context(ctx) != 0)

@@ -209,6 +209,49 @@ touch /run/phantowd-lio/primary-release
 wait "$primary_pid"
 grep -q '^No active iSCSI Session' "$acl/info"
 rm /run/phantowd-lio/primary-ready /run/phantowd-lio/peer-ready /run/phantowd-lio/primary-release /run/phantowd-lio/peer-release
+
+phase=multiple-luns
+# Fixed synthetic second backing, still well below the existing 64 MiB tmpfs.
+# Both peers must be disconnected before changing mappings.
+grep -q '^No active iSCSI Session' "$acl/info"
+grep -q '^No active iSCSI Session' "$peer_acl/info"
+dd if=/dev/zero of=/run/phantowd-lio/second bs=1M count=8
+printf '%s' PHANTOWD-LIO-SECOND | dd of=/run/phantowd-lio/second conv=notrunc
+[ "$(wc -c < /run/phantowd-lio/second)" = 8388608 ]
+exec 8<>/run/phantowd-lio/second
+mkdir "$core/second"
+printf 'fd_dev_name=/proc/self/fd/8,fd_dev_size=8388608\n' > "$core/second/control"
+printf '1\n' > "$core/second/enable"
+# Pinned target configfs permits changing block size only before export.
+printf '4096\n' > "$core/second/attrib/block_size"
+printf '0\n' > "$core/second/attrib/emulate_fua_write"
+[ "$(cat "$core/second/enable")" = 1 ]
+[ "$(cat "$core/second/attrib/block_size")" = 4096 ]
+[ "$(cat "$core/second/attrib/emulate_write_cache")" = 0 ]
+[ "$(cat "$core/second/attrib/emulate_fua_write")" = 0 ]
+mkdir "$tpg/lun/lun_1" "$acl/lun_1" "$peer_acl/lun_3"
+ln -s "$core/second" "$tpg/lun/lun_1/backing"
+ln -s "$tpg/lun/lun_1" "$acl/lun_1/grant"
+ln -s "$tpg/lun/lun_1" "$peer_acl/lun_3/grant"
+printf '1\n' > "$acl/lun_1/write_protect"
+printf '0\n' > "$peer_acl/lun_3/write_protect"
+[ "$(cat "$acl/lun_0/write_protect")" = 0 ]
+[ "$(cat "$acl/lun_1/write_protect")" = 1 ]
+[ "$(cat "$peer_acl/lun_0/write_protect")" = 1 ]
+[ "$(cat "$peer_acl/lun_3/write_protect")" = 0 ]
+"$client" multi-primary
+"$client" multi-peer
+"$client" multi-primary-check
+grep -q '^No active iSCSI Session' "$acl/info"
+grep -q '^No active iSCSI Session' "$peer_acl/info"
+rm "$acl/lun_1/grant" "$peer_acl/lun_3/grant"
+rmdir "$acl/lun_1" "$peer_acl/lun_3"
+rm "$tpg/lun/lun_1/backing"
+rmdir "$tpg/lun/lun_1" "$core/second"
+exec 8>&-
+rm /run/phantowd-lio/second
+echo 'PHANTOWD_LIO_LUNS_READY count=2 block_sizes=512,4096 primary_luns=0,1 peer_luns=0,3 opposite_access=true ungranted_refused=true data_isolated=true teardown=true scope=disposable-qemu-only'
+
 rm "$peer_acl/lun_0/grant"
 rmdir "$peer_acl/lun_0" "$peer_acl"
 [ "$(sha256sum "$backing" | cut -d ' ' -f 1)" = "$replacement_hash" ]

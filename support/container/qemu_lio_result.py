@@ -11,12 +11,15 @@ MARKERS = (
     *(f"PHANTOWD_LIO_CLIENT_READY case={mode}"
       for mode in ("rw", "revoked", "disabled", "reenabled", "wrong", "none", "foreign", "ro", "check",
                    "mutual", "mutual-target-wrong", "mutual-user-wrong", "mutual-inbound-wrong",
-                   "mutual-oneway", "rotated-old", "rotated", "peer-cross", "primary-hold", "peer-ro-hold")),
+                   "mutual-oneway", "rotated-old", "rotated", "peer-cross", "primary-hold", "peer-ro-hold",
+                   "multi-primary", "multi-peer", "multi-primary-check")),
     "PHANTOWD_LIO_MUTUAL_READY exchange=true wrong_target_refused=true wrong_user_refused=true "
     "wrong_inbound_refused=true oneway_still_accepted=true enforcement=false",
     "PHANTOWD_LIO_ROTATION_READY no_active_session=true old_refused=true new_verified=true data_preserved=true durable=false",
     "PHANTOWD_LIO_PEERS_READY concurrent=2 separate_credentials=true cross_credentials_refused=true "
     "primary_readwrite=true peer_readonly=true logout_independent=true data_preserved=true",
+    "PHANTOWD_LIO_LUNS_READY count=2 block_sizes=512,4096 primary_luns=0,1 peer_luns=0,3 "
+    "opposite_access=true ungranted_refused=true data_isolated=true teardown=true scope=disposable-qemu-only",
     "PHANTOWD_LIO_SESSION_READY observed=true revoked=true admission_disabled=true reenabled_data=true",
     "PHANTOWD_LIO_DESCRIPTOR_READY closed_refused=true missing_refused=true recreated=false",
     "PHANTOWD_LIO_READY chap=true access=ro-rw retained_fd=true replacement_unchanged=true "

@@ -46,7 +46,8 @@ host=$workspace/host
 [ -x "$host/bin/arm-buildroot-linux-gnueabi-gcc" ]
 python3 -B /src/support/tests/test-qemu-lio-inputs.py
 python3 -B /src/support/tests/test-qemu-lio-result.py
-shellcheck /src/support/container/build-qemu-lio-kernel.sh /src/support/container/build-qemu-iscsi-client.sh /src/support/qemu-lio-fixture.sh /src/support/fixtures/qemu-lio-init.sh /src/support/tests/test-qemu-lio-snapshot-temp.sh
+sh /src/support/tests/test-lio-lun-set.sh /src
+shellcheck /src/support/container/build-qemu-lio-kernel.sh /src/support/container/build-qemu-iscsi-client.sh /src/support/qemu-lio-fixture.sh /src/support/fixtures/qemu-lio-init.sh /src/support/tests/test-qemu-lio-snapshot-temp.sh /src/support/tests/test-lio-lun-set.sh
 sh /src/support/tests/test-qemu-lio-snapshot-temp.sh /src
 if [ "$PHANTOWD_LIO_COMPILE" = 1 ]; then
     mkdir /tmp/kernel
