@@ -3,6 +3,34 @@
 
 # Implementation status
 
+## M9.2d retained coherent policy owner — internal host/QEMU prerequisite
+
+The opt-in Linux `naspolicystore.OpenOwner` requires initialized desired policy
+and privately reuses the transaction engine. Constructor-issued revision claims
+fence Commit and Close; defensive snapshots are not execution/storage authority.
+Owned fixed-name reads bracket metadata and a private mutation watch, refusing
+cross-mount/symlink traversal and restored-content ABA. Any unexpected change,
+watch/read uncertainty or attempted publication failure retains review/claims/
+flock without retry. Explicit claim release is the caller's responsibility after
+independently confirmed consumer stop, not automatic session/process teardown.
+
+Native and generated-media ARMv5 tests exercise these invariants, including
+multiple nonempty three-protocol claims after reboot, a coherent explicit epoch
+change and mutation/restoration quarantine. This adds no extra guest boot,
+product startup, HTTP endpoint, backing/credential open or service activation.
+Windows preflight/ARMv5 cross-compilation, pinned Go1.26.6 whole Linux tagged
+vet/race, focused owner/store race count3, shell/storage contracts and actual
+ARMv5 Linux6.18.54 standard smoke plus complete two-boot state pass locally.
+The final run also includes acquisition concurrent with Commit/Close, mutation
+during decode, publication cancellation and terminal close-uncertainty checks.
+This is the cache-reusing userspace overlay, not a fresh Buildroot/hosted result,
+physical power-loss test or EX4 qualification.
+
+Single product state placement, preventing old/new authoritative writers,
+format migration, service ownership/supervision, registry/mount/identity/access/
+allocation/global-use/session/credential admission and recovery remain open.
+See the [retained owner contract](src/phantowd-api/internal/revisionstore/README.md).
+
 ## M9.2c coherent SMB/NFS/iSCSI state — internal local prototype
 
 `internal/naspolicy` binds all three desired protocols and shared volume/user
@@ -27,10 +55,11 @@ The cache-reusing overlay retains the base kernel/packages/probe; bounded tmpfs
 scratch and container disappear without new Docker image/volume. This does not
 qualify clean builds, physical EX4 storage, recovery or installation.
 
-No new HTTP, product state placement, runtime owner, credential/backing open,
+No new HTTP, product state placement, service-runtime owner, credential/backing open,
 mount or target activation is introduced. The old development HTTP/store stays
-unchanged; a future explicit protected owner must prevent competing authoritative
-formats and qualify migration. This closes a desired-document coherence seam,
+unchanged; product composition must prevent competing authoritative
+formats and qualify migration. The opt-in retained policy owner above is not
+product startup. This closes a desired-document coherence seam,
 not live policy/registry/access/allocation/global-use/session admission.
 
 See the [format/store contract](src/phantowd-api/internal/naspolicy/README.md).

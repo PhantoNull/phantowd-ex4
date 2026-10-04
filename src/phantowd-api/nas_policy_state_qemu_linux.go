@@ -7,6 +7,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -16,6 +17,7 @@ import (
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/iscsipolicy"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/naspolicy"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/naspolicystore"
+	"golang.org/x/sys/unix"
 )
 
 func qemuPersistentNASPolicy(revision uint64) naspolicy.Config {
@@ -132,6 +134,133 @@ func exerciseQEMUNASPolicyPersistence(root, phase string) error {
 			return errors.New("legacy state created by NAS store")
 		}
 	}
+	if err := s.Close(); err != nil {
+		return err
+	}
+	if err := exerciseQEMUNASPolicyOwner(dir); err != nil {
+		return err
+	}
 	fmt.Println("PHANTOWD_NAS_POLICY_STATE_READY protocols=smb,nfs,iscsi atomic_revision=true nonempty=true after_reboot=true pending_preserved=true corrupt_refused=true stale_writer_denied=true activation=false scope=disposable-qemu-only")
 	return nil
+}
+
+// This is called only by the generated-media two-boot harness. Leases retain
+// desired state, not real services/backings. The mutation is confined to its
+// synthetic nas-services.json; exact byte restoration must not clear review.
+func exerciseQEMUNASPolicyOwner(dir string) error {
+	ctx := context.Background()
+	o, err := naspolicystore.OpenOwner(dir)
+	if err != nil {
+		return err
+	}
+	defer o.Close()
+	first, err := o.Acquire(ctx, 3)
+	if err != nil {
+		return err
+	}
+	defer first.Release()
+	second, err := o.Acquire(ctx, 3)
+	if err != nil {
+		return err
+	}
+	defer second.Release()
+	got, err := first.Snapshot(ctx)
+	if err != nil || !reflect.DeepEqual(got, qemuPersistentNASPolicy(3)) {
+		return errors.New("policy owner did not retain coherent rebooted state")
+	}
+	if !errors.Is(o.Commit(ctx, 3, qemuPersistentNASPolicy(4)), naspolicystore.ErrBusy) ||
+		!errors.Is(o.Close(), naspolicystore.ErrBusy) {
+		return errors.New("live policy lease did not fence mutation or close")
+	}
+	if err := first.Release(); err != nil {
+		return err
+	}
+	if !errors.Is(o.Commit(ctx, 3, qemuPersistentNASPolicy(4)), naspolicystore.ErrBusy) {
+		return errors.New("second policy lease lost")
+	}
+	if err := second.Release(); err != nil {
+		return err
+	}
+	if err := o.Commit(ctx, 3, qemuPersistentNASPolicy(4)); err != nil {
+		return err
+	}
+	lease, err := o.Acquire(ctx, 4)
+	if err != nil {
+		return err
+	}
+	defer lease.Release()
+	got, err = lease.Snapshot(ctx)
+	if err != nil || !reflect.DeepEqual(got, qemuPersistentNASPolicy(4)) {
+		return errors.New("policy owner epoch did not advance coherently")
+	}
+	before, err := os.ReadFile(dir + "/nas-services.json")
+	if err != nil {
+		return err
+	}
+	if err := overwriteQEMUNASPolicyFixture(dir, []byte("{interrupted")); err != nil {
+		return err
+	}
+	if err := overwriteQEMUNASPolicyFixture(dir, before); err != nil {
+		return err
+	}
+	for attempt := 0; attempt < 2; attempt++ {
+		if !errors.Is(lease.Verify(ctx), naspolicystore.ErrReview) ||
+			!errors.Is(o.Commit(ctx, 4, qemuPersistentNASPolicy(5)), naspolicystore.ErrReview) {
+			return errors.New("restored policy revived owner or allowed retry")
+		}
+		if extra, err := o.Acquire(ctx, 4); !errors.Is(err, naspolicystore.ErrReview) {
+			if extra != nil {
+				extra.Release()
+			}
+			return errors.New("review admitted new policy lease")
+		}
+	}
+	if !errors.Is(o.Close(), naspolicystore.ErrBusy) {
+		return errors.New("policy review abandoned live claim")
+	}
+	if other, err := naspolicystore.Open(dir); !errors.Is(err, naspolicystore.ErrBusy) {
+		if other != nil {
+			other.Close()
+		}
+		return errors.New("policy review abandoned directory lock")
+	}
+	if after, err := os.ReadFile(dir + "/nas-services.json"); err != nil || !bytes.Equal(after, before) {
+		return errors.New("policy review changed restored evidence")
+	}
+	if err := lease.Release(); err != nil {
+		return err
+	}
+	if _, err := o.Snapshot(ctx); !errors.Is(err, naspolicystore.ErrReview) {
+		return errors.New("policy release cleared review")
+	}
+	if err := o.Close(); err != nil {
+		return err
+	}
+	fmt.Println("PHANTOWD_NAS_POLICY_OWNER_READY protocols=smb,nfs,iscsi revision_leases=true publication_fenced=true close_fenced=true restored_mutation_review=true flock_retained=true no_retry=true activation=false scope=disposable-qemu-only")
+	return nil
+}
+
+// Existing generated file only; never create a missing policy or follow a link.
+// This deliberately violates the Owner's writer contract solely in this fixture.
+func overwriteQEMUNASPolicyFixture(dir string, data []byte) error {
+	fd, err := unix.Open(dir+"/nas-services.json", unix.O_WRONLY|unix.O_NOFOLLOW|unix.O_NONBLOCK|unix.O_CLOEXEC, 0)
+	if err != nil {
+		return err
+	}
+	f := os.NewFile(uintptr(fd), "qemu-policy-mutation")
+	var st unix.Stat_t
+	if unix.Fstat(fd, &st) != nil || st.Mode&unix.S_IFMT != unix.S_IFREG || st.Mode&07777 != 0600 ||
+		st.Uid != uint32(os.Geteuid()) || st.Nlink != 1 {
+		f.Close()
+		return errors.New("unexpected generated policy mutation object")
+	}
+	if err := f.Truncate(0); err != nil {
+		f.Close()
+		return err
+	}
+	n, writeErr := f.Write(data)
+	if n != len(data) && writeErr == nil {
+		writeErr = errors.New("short fixture mutation")
+	}
+	return errors.Join(writeErr, f.Sync(), f.Close())
 }

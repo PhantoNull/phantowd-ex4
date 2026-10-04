@@ -43,8 +43,12 @@ No existing `shares.json` or `file-services.json` is imported/renamed/deleted.
 This is a distinct opt-in internal format; the old development HTTP adapter is
 unchanged. Production must choose one protected state owner, not run independent
 authoritative old/new writers. Explicit migration/recovery, product directory
-placement and retained policy/runtime ownership remain work. No device operation
-is authorized by this adapter.
+placement and runtime composition remain work. An opt-in initialized-state
+`OpenOwner` now retains the same engine and provides private all-protocol revision
+claims: active leases block Commit/Close, while unexpected mutation or uncertain
+publication enters permanent review. It does not migrate formats or prove live
+consumer/session teardown. See the [owner contract](../revisionstore/README.md).
+No device operation is authorized by this adapter.
 
 ## Verification and remaining work
 
@@ -62,6 +66,6 @@ commit reopens coherently. No real backing file or credential is opened, no
 target/service starts, and no old file format is created by the new store.
 
 This is a cached userspace overlay, not clean-build or EX4 qualification. Next
-compose a protected policy owner with qualified registry/mount/identity and
+compose the retained policy owner with qualified registry/mount/identity and
 global-use/session/credential admission before any controlled RW opener or
 target backend. Durable live mutation, activation UI and migration stay separate.

@@ -50,6 +50,7 @@ type Store[T any] struct {
 	ready     bool
 	closed    bool
 	uncertain bool
+	noAtime   bool // private owned-policy reads must not update file access time
 	io        fileOps
 	codec     Codec[T]
 }
@@ -135,7 +136,17 @@ func (s *Store[T]) openCurrent() (*os.File, error) {
 	if err != nil || before.Mode&unix.S_IFMT != unix.S_IFREG {
 		return nil, ErrUnsafe
 	}
-	fd, err := unix.Openat(s.dir, currentName, unix.O_RDONLY|unix.O_NOFOLLOW|unix.O_NONBLOCK|unix.O_CLOEXEC, 0)
+	flags := unix.O_RDONLY | unix.O_NOFOLLOW | unix.O_NONBLOCK | unix.O_CLOEXEC
+	if s.noAtime {
+		flags |= unix.O_NOATIME
+	}
+	var fd int
+	if s.noAtime {
+		fd, err = unix.Openat2(s.dir, currentName, &unix.OpenHow{Flags: uint64(flags),
+			Resolve: unix.RESOLVE_BENEATH | unix.RESOLVE_NO_XDEV | unix.RESOLVE_NO_SYMLINKS | unix.RESOLVE_NO_MAGICLINKS})
+	} else {
+		fd, err = unix.Openat(s.dir, currentName, flags, 0)
+	}
 	if errors.Is(err, unix.ENOENT) {
 		return nil, ErrNotInitialized
 	}

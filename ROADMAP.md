@@ -1821,6 +1821,29 @@ support per tested combination; refuse untested combinations without mutation.
   HTTP, product startup, credential/backing opening or target activation. Coherent
   desired state is necessary but not admission; retain the M9.1b use/access/session
   and backend gates. See the [contract](src/phantowd-api/internal/naspolicy/README.md).
+- **M9.2d — Retained coherent desired-policy owner (internal prerequisite).**
+  Reuse the revision engine behind a private initialized-state owner, not a
+  second parser/writer. Bounded opaque all-protocol revision claims fence both
+  publication and Close. Fresh defensive values are not authority; a service
+  owner must retain its claim until independently confirmed consumer teardown.
+  Bracket fixed-name reads with metadata and mutation epochs; refuse restored
+  ABA, cross-mount/symlink reads and loss/overflow/uncertainty without retry.
+  Preserve claims/flock in review; never implicitly stop/release a consumer.
+  Explicit no-claim commits start a verified new epoch. Exercise native race,
+  bounded/no-leak/forgery/cancellation and six publication-failure boundaries;
+  keep the existing ARMv5 two-boot nonempty policy lane and require claim fences,
+  coherent epoch advancement and permanent restored-mutation quarantine.
+  These tests/implementation do not install a product service owner or establish
+  power-loss recovery, session/global-use/credential admission. Next privately
+  compose policy claims with qualified service, identity and mount ownership,
+  define exclusive product state placement/format migration, then qualify
+  supervision/controlled activation and durable operator recovery. No new HTTP,
+  extra guest boot, backing open or NAS operation follows from this prerequisite.
+  **Local acceptance:** Windows/API/ARMv5 cross-compilation, whole pinned Linux
+  tagged vet/race, focused owner/store count3, shell/storage contracts, actual
+  ARMv5 standard smoke and the complete two-boot state fixture pass with the
+  mandatory owner marker. Acquisition/Commit/Close races and restored mutation
+  during decode are covered. Cached overlay, not a clean hosted/physical test.
 - **M9.3 — Guard mutations.** Create/enable/disable/grow/remove operations check
   real initiator/session ownership and backing-volume state. Prevent local
   filesystem mounting while an initiator owns the LUN; prohibit unsafe shrink.
