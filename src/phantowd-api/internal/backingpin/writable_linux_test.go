@@ -233,3 +233,38 @@ func TestWritableTypedNilBackendHasNoEffects(t *testing.T) {
 		t.Fatal("invalid backend consumed file", err)
 	}
 }
+
+// Native state-machine composition, not actual mount/descriptor admission.
+// An observed identity loss plus uncertain stop must retain authority even if
+// both the checker and backend subsequently report that they are healthy.
+func TestWritableDriftAndUncertainStopCannotBeRevived(t *testing.T) {
+	o, b := lifecycleOwner(t)
+	ctx := context.Background()
+	if err := o.start(ctx); err != nil {
+		t.Fatal(err)
+	}
+	o.check = func() error { return ErrUnavailable }
+	b.stopError = ErrUnavailable
+	if err := o.observe(ctx); !errors.Is(err, ErrReview) {
+		t.Fatal("drift/uncertain stop not quarantined", err)
+	}
+	if !b.active || b.stopCalls != 1 || !b.stopWithLiveReference || o.released || o.pin.consumer != o {
+		t.Fatal("uncertain drift lost live references or stop ordering")
+	}
+	o.check = func() error { return nil }
+	b.stopError = nil
+	for _, op := range []func() error{func() error { return o.start(ctx) }, func() error { return o.observe(ctx) }, func() error { return o.stop(ctx) }, o.close} {
+		if err := op(); !errors.Is(err, ErrReview) {
+			t.Fatal("restoration bypassed review", err)
+		}
+	}
+	if b.stopCalls != 1 || !b.active || o.released {
+		t.Fatal("restoration retried stop or released references")
+	}
+	if err := o.pin.Close(); !errors.Is(err, ErrBusy) {
+		t.Fatal("restoration bypassed retained pin", err)
+	}
+	if _, err := o.file.Stat(); err != nil {
+		t.Fatal("restoration lost data reference", err)
+	}
+}

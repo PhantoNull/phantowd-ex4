@@ -1740,8 +1740,16 @@ support per tested combination; refuse untested combinations without mutation.
   mounted-owner composition, failed-admission cleanup, constant FD count across32
   checks and normal/replace/exit/uncertain writer lifetime. Separate actual
   same-filesystem overmount proves metadata-only root loss retains independent
-  FD/group claims until release, not writer stop on mount loss. Old two-boot
-  state acceptance remains required and passes. No product writable opener,
+  FD/group claims until release. Additional actual same-filesystem overmount
+  cases now prove a live inherited-RW UID1000 consumer quarantines: confirmed
+  stop/reap precedes release, deliberately uncertain stop retains the live
+  child and RW/metadata/mount claims, and exact bind restoration cannot revive
+  the owner, retry stop or issue a new lease. Independent fixture teardown
+  must complete before success; a cleanup error cannot masquerade as expected
+  review. The fixed consumer writes once then holds its FD; physical I/O failure,
+  mid-transfer interruption, target sessions, autonomous supervision and durable
+  recovery remain separate. Old two-boot state acceptance remains required and
+  passes. No product writable opener,
   LIO adapter, roster startup, coherent admission or persistent recovery follows.
   **Local acceptance:** Windows preflight/cross-compile, pinned whole Linux
   tagged vet/race, focused race count3, storage contracts and smoke ShellCheck
@@ -1794,6 +1802,25 @@ support per tested combination; refuse untested combinations without mutation.
   credentials. Coherent durable all-protocol policy ownership, network listeners,
   product startup, UI and legacy import remain separate work. No physical test
   or persistent registration/activation is authorized by this prototype.
+  **M9.2c — coherent all-protocol desired state (internal prototype):** one new
+  `phantowd-nas-service-config` schema1 envelope contains the existing strict
+  file-service and iSCSI formats. All seven revision/binding values agree;
+  registry/device generations remain separate. Bounded raw-envelope validation
+  retains nested bytes for independent strict decoders and child limits, with
+  zero/redacted failure. Linux adapter reuses the single-document revision engine
+  under a lifetime private-directory lock, fixed0600 files and one rename/sync.
+  No old-format automatic import, pending promotion or empty-corruption fallback.
+  **Acceptance achieved locally:** Windows strict-model/API/cross-compile; pinned
+  whole Linux tagged vet/race and focused count3; existing/new seven-boundary
+  SIGKILL old/new nonempty whole-policy campaigns count3; actual ARMv5 standard
+  smoke and clean generated-disk two-boot nonempty SMB/NFS/iSCSI persistence,
+  pending/corrupt preservation, stale/mixed refusal and later coherent reopen.
+  **Next:** protected single state owner, explicit legacy format migration,
+  filesystem-qualified power-loss recovery and runtime freshness/claim ownership.
+  Never configure old/new stores as independent authoritative writers. No new
+  HTTP, product startup, credential/backing opening or target activation. Coherent
+  desired state is necessary but not admission; retain the M9.1b use/access/session
+  and backend gates. See the [contract](src/phantowd-api/internal/naspolicy/README.md).
 - **M9.3 — Guard mutations.** Create/enable/disable/grow/remove operations check
   real initiator/session ownership and backing-volume state. Prevent local
   filesystem mounting while an initiator owns the LUN; prohibit unsafe shrink.

@@ -38,8 +38,15 @@ The disposable ARMv5 fixture checks actual mounted-owner composition, failed
 file admission without a stranded lease, constant descriptor count across32
 verifications, caller-close refusal, normal/replace/exit/uncertain consumer
 lifetimes, and a separate actual same-filesystem overmount retaining its
-independent root descriptor until release. The overmount test is metadata-only,
-not proof of an actual writer stopping on mount loss or product recovery.
+independent root descriptor until release. Additional actual same-filesystem
+overmount cases retain a live UID/GID1000 inherited-RW consumer: observation
+quarantines and confirms stop/reap before reference release, or retains the
+live child/RW/metadata/mount claims when stop is deliberately uncertain.
+Restoring the exact original bind cannot revive the consumer, retry stop or
+issue a fresh lease. Independent confirmed fixture teardown releases references
+before the reviewed mount is removed. The child writes once and holds its FD;
+this is mount-identity loss, not physical I/O failure during a transfer, a LIO
+target/session test, autonomous supervision or product recovery.
 
 ## Private writable-reference lifecycle prototype
 

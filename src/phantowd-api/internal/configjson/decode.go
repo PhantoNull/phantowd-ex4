@@ -18,7 +18,7 @@ import (
 // excess nesting/input and trailing documents. Struct decoding also rejects
 // keys used in the wrong object. Errors never echo input or underlying I/O.
 func Decode(input io.Reader, target any, maxBytes, maxDepth int, keys map[string]bool) error {
-	if maxBytes <= 0 || maxDepth <= 0 {
+	if maxBytes <= 0 || maxDepth <= 0 || keys == nil {
 		return errors.New("invalid JSON limits")
 	}
 	data, err := io.ReadAll(io.LimitReader(input, int64(maxBytes)+1))
@@ -109,7 +109,7 @@ func scanValue(d *json.Decoder, depth, maxDepth int, keys map[string]bool) error
 				return err
 			}
 			key, ok := keyToken.(string)
-			if !ok || seen[key] || !keys[key] {
+			if !ok || seen[key] || (keys != nil && !keys[key]) {
 				return errors.New("duplicate or unknown field")
 			}
 			seen[key] = true

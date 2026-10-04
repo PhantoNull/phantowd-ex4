@@ -52,6 +52,13 @@ coherent policy/use/permission admission and target activation remain absent.
 
 ## M9.2a desired iSCSI policy
 
+The internal [coherent NAS policy](internal/naspolicy/README.md) additionally
+stores desired SMB/NFS/iSCSI as one strict revision through the existing Linux
+transaction engine. Native interruption tests and an actual ARMv5 two-boot
+nonempty fixture pass. This distinct opt-in format performs no implicit import,
+does not replace the old development HTTP store, and supplies no credential,
+storage/global-use/session or activation authority.
+
 The separate internal [iSCSI desired-policy model](internal/iscsipolicy/README.md)
 defines revision-bound target/LUN/backing relationships and per-initiator CHAP
 credential references. Its synthetic host/QEMU fixture opens no backing or
