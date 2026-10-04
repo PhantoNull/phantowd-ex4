@@ -3,6 +3,26 @@
 
 # Implementation status
 
+## M9.2a desired iSCSI model — local component evidence
+
+The internal `iscsipolicy` schema binds logical target/LUN/file-backing IDs to
+the exact shared desired-volume revision, with explicit capacity/allocation,
+per-peer grants and symbolic CHAP/mutual-CHAP references. Strict JSON requires
+the valid zero LUN number explicitly and returns no partial policy on failure.
+Windows DOM/API vet/unit and ARMv5 cross-compilation pass. Pinned Go 1.26.6
+whole Linux tagged vet/race, focused package race count3, 2048 fixed malformed
+inputs, workflow/storage contracts, actual standard ARMv5 smoke and existing
+two-boot state fixture pass locally on frozen source. The unchanged base helper
+is reused and all seven base artifacts remain checksum-verified.
+
+This cache-reusing overlay adds no target/backing/secret access or persistent
+Docker image/volume; its rootfs copy and caches are disposable RAM scratch.
+No actual iSCSI protocol, backend, initiator sessions, persistence,
+HTTP, product startup, migration or physical qualification is implemented or
+proved. Authentication/migration exceptions remain a pending policy decision;
+the conservative development profile requires CHAP. See the
+[component contract](src/phantowd-api/internal/iscsipolicy/README.md) and M9.
+
 Code audit: **2026-10-04**, integrated `develop` baseline
 `145c8bf1225a46ffe5d486f48a9ed9d80b716b8f` (PR #84).
 PR #84 exact `d8eb97a` passed its own host and complete QEMU/DTB checks,

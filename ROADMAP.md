@@ -1649,7 +1649,8 @@ support per tested combination; refuse untested combinations without mutation.
 
 ## M9: iSCSI targets and LUN lifecycle
 
-**State:** planned. **Depends on:** M1/M2/M3/M5/M7/M8.
+**State:** desired-model prototype; target backend/lifecycle planned.
+**Depends on:** M1/M2/M3/M5/M7/M8.
 
 - **M9.1 — Backend decision.** Evaluate the kernel/userspace target implementation
   for this kernel, ARMv5 and resource budget. Record package/license choices.
@@ -1657,6 +1658,26 @@ support per tested combination; refuse untested combinations without mutation.
 - **M9.2 — Target model.** Stable target/LUN identity, backing volume/object,
   capacity/allocation policy, initiator access and protected authentication
   secrets. Secrets are not returned by read APIs or exposed in diagnostics.
+  **M9.2a — internal desired file-LUN model (locally tested prototype):**
+  `internal/iscsipolicy` uses shared VolumeIDs and their exact desired revision,
+  independent typed target/LUN/backing IDs, explicit capacity/block size,
+  allocation, target state and per-peer LUN grants. Each backing has one owner;
+  equal/ancestor same-volume paths, orphan backings, repeated LUN identities/
+  numbers, cross-target grants and read-only escalation refuse. The initial
+  canonical ASCII IQN/CHAP profile has explicit bounds and distinct symbolic
+  credential references, not secret resolution or worldwide name uniqueness.
+  Strict JSON requires a LUN number even when zero; every failure returns zero
+  and a constant redacted error. Windows preflight, pinned whole Linux tagged
+  vet/race, 2048 fixed malformed-input cases and the pure standard ARMv5
+  same-boot fixture pass locally; the existing two-boot state tests also pass.
+  This is a cache-reusing source overlay, not a full new Buildroot image, target
+  authentication/session test, hosted feature or physical qualification. There is
+  no HTTP/store, listener, backend config, secret/file open or product activation.
+  **Next:** decide/qualify backend naming, LUN-addressing and allocation modes;
+  bind protected credential references and storage/global-use/network authority;
+  define coherent persistent policy ownership rather than independently saving
+  this document alongside SMB/NFS. Extend legacy names/auth only through explicit
+  compatibility decisions. Do not turn syntactic `enabled` into startup behavior.
 - **M9.3 — Guard mutations.** Create/enable/disable/grow/remove operations check
   real initiator/session ownership and backing-volume state. Prevent local
   filesystem mounting while an initiator owns the LUN; prohibit unsafe shrink.

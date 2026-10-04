@@ -69,6 +69,10 @@ func runSelfTest() error {
 		return err
 	}
 	fmt.Println("PHANTOWD_NETWORK_POLICY_READY schema=1 dual_stack=true aliases=true conflict_refused=true strict_json=true apply=false scope=synthetic-policy-only")
+	if err := exerciseQEMUISCSIPolicy(); err != nil {
+		return err
+	}
+	fmt.Println("PHANTOWD_ISCSI_POLICY_READY schema=1 stable_refs=true lun_zero_explicit=true mutual_refs_distinct=true strict_json=true activation=false scope=synthetic-policy-only")
 	if err := exerciseQEMUNetworkInventory(); err != nil {
 		return err
 	}
