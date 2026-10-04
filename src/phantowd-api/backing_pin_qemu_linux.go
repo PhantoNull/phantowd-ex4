@@ -19,6 +19,9 @@ func exerciseQEMUBackingPin(workspace, qualifiedAnchor string, root *mountguard.
 	if err := backingpin.RunQEMUFixture(root, qualifiedAnchor); err != nil {
 		return err
 	}
+	if err := backingpin.RunQEMUWritableFixture(root, qualifiedAnchor); err != nil {
+		return err
+	}
 	// Separate private bind: flag transitions must not revoke other guard tests.
 	anchor := workspace + "/backing-anchor"
 	if err := os.Mkdir(anchor, 0700); err != nil {

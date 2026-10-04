@@ -19,8 +19,37 @@ serialized `Close`. Close uncertainty remains explicit on subsequent calls;
 there is no automatic reopen/retry. The borrowed Root is not closed by the pin.
 The Root's lifecycle owner must coordinate concurrent revocation and consumers.
 
+## Private writable-reference lifecycle prototype
+
+`writable_linux.go` contains an unexported owner/constructor, used only by
+package tests and the QEMU fixture. It accepts an already-open RW descriptor,
+compares its real metadata/flags with the Pin before and after, and on success
+exclusively claims Pin/file/backend ownership. Foreign descriptors, read-only,
+append or missing close-on-exec flags refuse without taking ownership. It is
+not a production opener or an access/allocation/global-use admission token.
+
+The fixed backend is retained at construction, never supplied per operation.
+Start checks before and after readiness; caller-driven observation checks file
+identity and consumer state. Drift/exit/uncertainty quarantines and makes one
+stop attempt. Confirmed stop precedes RW descriptor and metadata release;
+uncertain stop retains both references, denies Pin close and cannot be retried
+or bypassed through owner close. Active owner close is busy, not implicit stop.
+There is no restart, background monitor or product recovery implementation.
+
+Native state-machine tests use a private checker seam, explicitly not real
+descriptor admission. The QEMU fixture additionally uses the actual Root and
+real RW descriptors, with a fixed UID/GID1000 static Go child writing via an
+inherited descriptor, without a shell or second exec. Thirty-two credential
+observations after the write guard against readiness/exec races. It verifies
+write/readback, stop/reap-before-release,
+replacement preservation, unexpected exit, concurrent stop and retention on
+uncertainty. Independent test-only teardown reaps the synthetic child after
+assertions; it does not revive the reviewed owner or implement product recovery.
+This fixture is not a LIO backend or qualified process-isolation profile.
+
 No descriptor/path/raw identity is exposed. Handles/observations reject JSON.
-There is no data read/write/create/truncate, writable authority, mount-owner
+The public metadata pin performs no data read/write/create/truncate. Neither
+it nor the private lifecycle prototype supplies product writable authority, mount-owner
 lease, global-use/session fence, credential access, configfs, listener, HTTP or
 product startup. Verification is point-in-time, not proof of change history or
 unchanged file contents. Metadata syscalls can still perform/block on metadata

@@ -292,6 +292,10 @@ while [ "$attempt" -lt "$smoke_timeout" ]; do
             echo 'Missing backing metadata pin refusal/lifecycle assertion' >&2
             exit 1
         fi
+        if ! grep -F 'PHANTOWD_WRITABLE_BACKING_READY actual_descriptor=true foreign_or_unsafe_flags_denied=true consumer_uid=1000 inherited_rw=true pin_close_busy=true stop_before_release=true replace_quarantined=true unexpected_exit=true uncertain_stop_retains=true no_retry=true serialized_stop=true product_opener=false iscsi_backend=false scope=disposable-qemu-only' "$log_file" >/dev/null; then
+            echo 'Missing writable backing fixture ownership assertion' >&2
+            exit 1
+        fi
         if ! grep -F 'PHANTOWD_MOUNT_OWNER_READY qualified_before_lease=true identity_change_blocks_new_access=true owner_handles_revoked=true set_lease_identity_loss=true returned_anchor_no_reuse=true ambiguous_mount_no_retry=true ambiguous_unmount_no_retry=true mismatch_no_lease=true target_fd_anchored=true target_replacement_not_used=true late_target_race_pinned_object_only=true late_target_race_quarantined=true source_fd_anchored=true source_replacement_quarantined=true scope=disposable-qemu-only' "$log_file" >/dev/null; then
             echo 'Missing trusted mount-owner lifecycle assertion' >&2
             exit 1

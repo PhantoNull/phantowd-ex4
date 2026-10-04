@@ -26,6 +26,7 @@ var (
 	ErrUnavailable = errors.New("backing metadata unavailable")
 	ErrReview      = errors.New("backing metadata requires review")
 	ErrClosed      = errors.New("backing metadata pin closed")
+	ErrBusy        = errors.New("backing references owned by a consumer")
 )
 
 // Observation is deliberately nonserializable. AllocatedBytes observes statx
@@ -74,6 +75,7 @@ type Pin struct {
 	parentIdentity, fileIdentity identity
 	review, closed               bool
 	closeError                   error
+	consumer                     *writableOwner
 }
 
 // Open pins an existing regular, single-link file of the exact expected size.
@@ -196,6 +198,9 @@ func (p *Pin) Close() error {
 	}
 	p.mu.Lock()
 	defer p.mu.Unlock()
+	if p.consumer != nil {
+		return ErrBusy
+	}
 	return p.closeLocked()
 }
 

@@ -33,6 +33,15 @@ Only disposable QEMU calls the public constructor; production qualification,
 writable handoff, mount-owner/global-use/session/credential authority and a
 target adapter remain absent. This prerequisite does not complete M9.1b.
 
+The same package now has a private writable-reference lifecycle prototype:
+an already-open exact RW file and fixed backend are owned together with the
+metadata Pin; confirmed consumer stop/reap precedes release, and uncertainty
+retains references without retry/restart. It is tested with real descriptors
+and a fixed UID/GID1000 static consumer in disposable ARMv5 QEMU. No exported
+writable constructor, production opener, LIO adapter, mount/use/session
+authority or product activation follows. See the component contract for the
+native-test seam, actual-guest scope and remaining admission gates.
+
 ## M9.2a desired iSCSI policy
 
 The separate internal [iSCSI desired-policy model](internal/iscsipolicy/README.md)

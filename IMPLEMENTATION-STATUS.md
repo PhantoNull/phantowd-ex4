@@ -3,6 +3,40 @@
 
 # Implementation status
 
+## M9.1b writable-reference lifetime — private host/QEMU prototype
+
+An unexported owner now accepts an already-open RW file only after its identity
+and safe flags match the retained metadata Pin. Successful construction takes
+exclusive Pin/file/backend ownership; invalid input, including a typed-nil
+backend, takes nothing. Direct Pin close is busy while claimed. Backend choice
+is fixed at construction, not supplied by an operation or HTTP request.
+
+Start and caller-driven observations bracket readiness with descriptor/Root
+checks. Drift, exit or uncertainty quarantines and attempts stop once; verified
+stop precedes RW and metadata release. Uncertain stop preserves the references
+and rejects close/retry/restart. Native state-machine seams are not filesystem
+admission. Actual ARMv5 Linux 6.18.54 uses the real qualified ext Root, rejects
+foreign/RO/append/non-CLOEXEC descriptors and duplicate ownership, and exercises
+inherited-FD writes, replacement preservation, unexpected exit, concurrent stop
+and uncertain retention with a UID/GID1000 static consumer. Thirty-two credential
+observations after readiness cover the previously reproduced shell/second-exec
+setuid transition; the fixed consumer never executes another program.
+
+Windows DOM/API vet/unit/cross-compilation, pinned Go1.26.6 whole Linux tagged
+vet/race and focused race count3 pass. Storage contracts, smoke ShellCheck,
+actual standard ARMv5 smoke and the existing clean two-boot state lane pass
+locally. Seven verified baseline artifacts and the unchanged probe are reused;
+scratch is bounded tmpfs in an auto-removed container, with no new image/volume.
+
+There is no exported writable constructor, product opener or LIO backend.
+Mount-owner lease integration, permission/allocation/global-use/session
+admission, credentials, protected policy binding and durable recovery remain
+open. Independent fixture teardown after confirmed reap is not owner recovery;
+the fixture is not a general process-isolation profile. This is a userspace
+overlay, not clean firmware reproducibility, hosted or EX4 qualification, and
+does not complete M9.1b. No NAS/HDD/NAND or HTTP/product-startup operation occurs.
+See the [component contract](src/phantowd-api/internal/backingpin/README.md).
+
 ## M9.1b existing backing metadata pins — local prerequisite evidence
 
 The Linux-only internal pin borrows a qualified Root and retains parent/file
