@@ -64,6 +64,7 @@ done
 grep -F 'PHANTOWD_SHARE_READ_READY authenticated=true backend=sharestore after_reboot=true mutation=false scope=qemu-handler-dispatch-only' "$log" >/dev/null
 grep -F 'PHANTOWD_SERVICE_STATE_READY protocols=smb,nfs atomic_revision=true after_reboot=true activation=false scope=disposable-qemu-only' "$log" >/dev/null
 grep -F 'PHANTOWD_NAS_POLICY_STATE_READY protocols=smb,nfs,iscsi atomic_revision=true nonempty=true after_reboot=true pending_preserved=true corrupt_refused=true stale_writer_denied=true activation=false scope=disposable-qemu-only' "$log" >/dev/null
+grep -F 'PHANTOWD_NAS_POLICY_OWNER_READY protocols=smb,nfs,iscsi revision_leases=true publication_fenced=true close_fenced=true restored_mutation_review=true flock_retained=true no_retry=true activation=false scope=disposable-qemu-only' "$log" >/dev/null
 grep -F 'PHANTOWD_SERVICE_HTTP_READY protocols=http,https authenticated=true csrf=true stale_write_denied=true after_reboot=true activation=false scope=disposable-qemu-only' "$log" >/dev/null
 grep -F 'PHANTOWD_SERVICE_IDENTITIES_READY after_reboot=true retired_ids_reserved=true stale_writer_denied=true share_binding=true provisioned=false scope=disposable-qemu-only' "$log" >/dev/null
 grep -F 'PHANTOWD_ADMIN_CREDENTIALS_READY after_reboot=true legacy_preserved=true old_password_denied=true replacement_verified=true stale_writer_denied=true scope=store-fixture-only' "$log" >/dev/null
