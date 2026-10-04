@@ -50,6 +50,7 @@ type writableOwner struct {
 	backend                          writableBackend
 	policy                           *naspolicystore.Lease    // privately acquired; never caller-releasable
 	credentials                      *iscsicredentials.Bundle // privately acquired, retained through uncertain stop
+	group                            []targetBacking          // complete private target roster; nil for singleton path
 	check                            func() error             // Fixed kernel checker; state-machine tests use a private seam.
 	phase                            writablePhase
 	started, stopAttempted, released bool
@@ -500,6 +501,9 @@ func (o *writableOwner) releaseLocked() error {
 	if o.released {
 		return nil
 	}
+	if len(o.group) > 0 {
+		return o.releaseTargetLocked()
+	}
 	if o.file == nil || o.file.Close() != nil {
 		return ErrReview
 	}
@@ -515,6 +519,10 @@ func (o *writableOwner) releaseLocked() error {
 	if pinErr != nil {
 		return ErrReview
 	}
+	return o.releaseSourcesLocked()
+}
+
+func (o *writableOwner) releaseSourcesLocked() error {
 	if o.policy != nil {
 		if o.policy.Release() != nil {
 			return ErrReview

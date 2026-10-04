@@ -46,9 +46,12 @@ Explicit release wipes owned buffers and invalidates all their borrowed handles;
 it does not itself stop a consumer. Wiping is best effort for owned buffers only,
 not guaranteed erasure of JSON, Go runtime, kernel, backend or crash-dump copies.
 
-The current composition is a **single-backing lifetime prototype**, not a
-target-wide/multi-LUN owner, qualified LIO adapter, entropy source, durable
-rotation/recovery or product state placement. Product activation still needs
+The current composition includes a private
+[complete-target resource lifetime prototype](../backingpin/README.md#private-complete-target-resource-lifetime):
+one credential bundle remains retained with every selected LUN's Pin/file and
+the coherent policy until verified whole-backend teardown and reference closure.
+This is not a qualified LIO adapter, entropy source, durable rotation/recovery
+or product state placement. Product activation still needs
 code/storage/access/allocation/global-use/session/network authority and actual
 credential installation/readback/teardown qualification. Host synthetic sinks
 and the mounted QEMU child do not prove iSCSI protocol authentication; the

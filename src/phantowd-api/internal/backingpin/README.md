@@ -165,7 +165,49 @@ Root-only synthetic native tests cover preparation/drift/close uncertainty;
 three added disposable mounted QEMU cases check normal stop, exact restored
 secret mutation and uncertain stop with the actual UID/GID1000 child. The secret
 sink stays in the root fixture; no secret enters child arguments/environment
-or logs. This is not LIO authentication or target-wide/multi-LUN admission.
+or logs. Those single-backing cases do not prove LIO authentication or
+target-wide/multi-LUN admission; the complete resource prototype below adds
+the latter lifetime boundary, not product activation authority.
+
+## Private complete-target resource lifetime
+
+The unexported target constructor reuses the same lifecycle and supervisor,
+not a second state machine. It privately retains one coherent policy claim,
+one credential bundle and the complete selected target's existing Pin/RW file
+roster. Missing, extra, foreign or duplicated members refuse. Explicit LUN
+numbers determine ordering; input positions do not. Distinct handles or bind
+mount IDs cannot disguise the same observed inode/device. This metadata alias
+check does not establish physical allocation or global backing-use authority.
+
+Every member must independently match the retained policy and pass real
+descriptor/root checks. Provisional claims use one Pin lock at a time; failed
+admission returns caller references without closing them or preparing a backend.
+Already observed review remains sticky. The fixed backend receives a defensive
+roster copy and borrows every data handle. Its successful stop must join **all**
+processes, sessions and kernel credential users. Complete scans observe every
+member; drift in a later LUN cannot be hidden by a healthy first LUN.
+
+Confirmed whole-backend teardown precedes every data close. All data closes
+must succeed before any metadata Pin is released; successful Pin/mount-root
+closure then precedes policy/credential release and owned-buffer wiping. Stop
+uncertainty retains all sources. Close uncertainty retains the remaining
+references and global claims in review; already closed files stay closed and
+teardown is never retried. This is not durable product recovery.
+
+Native tagged race tests cover complete planning, aliases, second-member drift,
+partial start/close faults, cancellation and credential retention, with the
+explicit lifecycle seam. Actual ARMv5 QEMU additionally tests real mounted
+two-file admission, failed second-descriptor rollback, explicit LUN0/LUN7 order,
+512/4096-byte metadata, second-file replacement and uncertain stop around a
+UID/GID1000 child inheriting both files. The fixed child validates both files
+before writing public markers; credentials remain in the root fixture's sink.
+Standard smoke and the existing complete two-boot lane pass without another
+kernel build or boot profile. This is descriptor/resource lifetime proof, not
+LIO installation, protocol authentication or qualified access enforcement.
+
+No product opener, allocation, registry/global-use/session/network authority,
+HTTP, listener, startup, physical disk or NAS operation is added. Desired target
+enable/access remains metadata, not permission to run or expose a target.
 
 Remaining M9.1b work: qualified production lifecycle and full coherent policy admission,
 controlled writable descriptor acquisition/handoff and retained lifetime,

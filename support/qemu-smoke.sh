@@ -300,6 +300,10 @@ while [ "$attempt" -lt "$smoke_timeout" ]; do
             echo 'QEMU credential/backing lifetime proof missing' >&2
             exit 1
         fi
+        if ! grep -F 'PHANTOWD_TARGET_BACKING_LIFETIME_READY complete_roster=true canonical_lun_order=true members=2 block_sizes=512,4096 actual_mount_owner=true consumer_uid=1000 admission_rollback=true stop_once_before_all_release=true second_member_drift=true uncertain_retains_all_sources=true no_retry=true target_activation=false scope=disposable-qemu-only' "$log_file" >/dev/null; then
+            echo 'Missing complete target backing lifetime assertion' >&2
+            exit 1
+        fi
         if ! grep -F 'PHANTOWD_POLICY_BACKING_LIFETIME_READY private_revision_claim=true exact_backing_selection=true real_mount_owner=true consumer_uid=1000 stop_before_policy_release=true uncertain_stop_retains_policy_mount_rw=true restored_policy_no_revival=true no_retry=true product_activation=false scope=disposable-qemu-only' "$log_file" >/dev/null; then
             echo 'Missing combined desired-policy/backing lifetime assertions' >&2
             cat "$log_file" >&2

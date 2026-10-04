@@ -33,6 +33,15 @@ lifecycle now retains credentials until verified teardown/reference closure;
 uncertainty retains review without retry. This is synthetic host/QEMU lifetime
 work, not a credential writer, LIO adapter, HTTP or product activation.
 
+The private complete-target resource owner now retains every selected LUN's
+existing Pin/RW descriptor with that policy and credential bundle. It refuses
+incomplete/foreign/duplicate or observed inode-alias rosters, uses explicit LUN
+numbers rather than input order, and rolls back provisional admission without
+closing caller files. Confirmed whole-backend stop precedes all data/metadata
+closure and credential release. Later-member drift or uncertainty enters review
+without retry. Native races and actual disposable two-file ARMv5 fixtures pass;
+this is resource lifetime proof, not LIO activation or qualified access control.
+
 The Linux-only [internal file pin](internal/backingpin/README.md) retains
 metadata-only parent/file references below a caller-owned qualified Root,
 rejects unsafe objects and exact-size mismatches, and quarantines observed

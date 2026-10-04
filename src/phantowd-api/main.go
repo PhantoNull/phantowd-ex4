@@ -29,11 +29,12 @@ func main() {
 	identityClient := flag.String("qemu-identity-client", "", "fixed unprivileged identity-channel fixture; QEMU only")
 	identityOwnerService := flag.Bool("qemu-identity-owner-service", false, "fixed root identity-owner service fixture; QEMU only")
 	writableConsumer := flag.Bool("qemu-writable-backing-consumer", false, "fixed inherited-descriptor consumer; disposable QEMU only")
+	targetConsumer := flag.Bool("qemu-target-backing-consumer", false, "fixed two-descriptor consumer; disposable QEMU only")
 	flag.Parse()
 	modes := 0
 	for _, selected := range []bool{
 		*selfTest, *storageBroker, *nfsTest != "", *smbTest, *mountGuardTest,
-		*mdStackTest, *mdV10Fixture, *mdV10BrokerClient, *stateTest != "", *identityClient != "", *identityOwnerService, *writableConsumer,
+		*mdStackTest, *mdV10Fixture, *mdV10BrokerClient, *stateTest != "", *identityClient != "", *identityOwnerService, *writableConsumer, *targetConsumer,
 	} {
 		if selected {
 			modes++
@@ -45,6 +46,13 @@ func main() {
 	if *writableConsumer {
 		if err := runQEMUWritableBackingConsumer(); err != nil {
 			fmt.Fprintln(os.Stderr, "PHANTOWD_WRITABLE_CONSUMER_ERROR fixture refused")
+			os.Exit(1)
+		}
+		return
+	}
+	if *targetConsumer {
+		if err := runQEMUTargetBackingConsumer(); err != nil {
+			fmt.Fprintln(os.Stderr, "PHANTOWD_TARGET_CONSUMER_ERROR fixture refused")
 			os.Exit(1)
 		}
 		return

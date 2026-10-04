@@ -61,6 +61,9 @@ func RunQEMUMountedWritableFixture(source string) error {
 				return fmt.Errorf("credential mounted fixture %s: %w", kind, err)
 			}
 		}
+		if err := runTargetWritableFixtures(set, workspace); err != nil {
+			return err
+		}
 		return nil
 	})
 	if err != nil {
