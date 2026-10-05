@@ -161,6 +161,20 @@ lifecycle ownership, accepted cancellation, live code drift, unexpected child
 exit and forced-stop review, with kernel group absence and retained mount pins.
 Restoring code cannot restart the reviewed Owner.
 
+The same finite guest also schedules two actual mutations at a later file's
+hash-read boundary, after the complete census, alias checks and earlier file
+hash. It replaces an inner executable directory with identical bytes, or an
+alias with an identical target. A separate `Inspect` control still accepts
+the declared bytes; a retained Owner refuses the changed original path before
+any child starts and restoration cannot clear review. A test-only context
+observes the inspector's actual independent read descriptor at offset zero;
+it injects no metadata, changes no descriptor offset and adds no production
+hook. Required evidence includes both cases and verified Close/root release/
+normal unmount before the guest's final success marker. This explains why
+early census metadata cannot replace the Owner's trailing pathname identity
+checks. It does not prove an atomic snapshot, every possible race or exclusion
+of privileged writers, nor justify reducing the production integrity checks.
+
 The separate Samba fixture emits a bounded scan-cost measurement around its
 existing positive code-only inspection (no additional scan): file/byte counts
 and monotonic elapsed time. Its log validator rejects missing, duplicate,
