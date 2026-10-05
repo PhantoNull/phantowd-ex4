@@ -1973,6 +1973,28 @@ support per tested combination; refuse untested combinations without mutation.
   protocol/global-use ownership and concurrent activation/foreign consumers under
   explicit lock order. Passing lexical isolation is NOT global-use/writable
   admission. Keep runtime/network/allocation, durable recovery and hardware gates.
+- **M9.1l — cooperative actual backing-object ownership (private prerequisite).**
+  Require the SAME internal authority at every writable constructor, including
+  older singleton paths. Observe each actual RW descriptor against its held Pin
+  before an atomic whole-roster reservation keyed by device/inode, not path,
+  VolumeID, mount ID, target label or open-description identity. Bound the roster
+  and complete authority; reject uninitialized/closed/reviewed authorities.
+  A later collision must reserve no earlier prefix and consume no caller file
+  or Pin. Keep reservations until verified whole-backend stop, all data and Pin
+  closures and source release; uncertainty stays terminal review without retry.
+  Lock order is lifecycle → individual Pin, separately lifecycle → authority;
+  the authority never calls consumers/sources or performs I/O under its lock.
+  **Tests:** actual independent-open ARMv5 tracer RED/GREEN; actual mounted
+  later-member-only target refusal and singleton reuse; native concurrent
+  admissions with exactly one winner, verified reuse and uncertain retention;
+  full tagged vet/race, old LIO gates and standard/two-boot regression.
+  These tests pass locally, including fresh guarded LIO/all old gates and
+  actual standard/two-boot regression. No serialized use claims or recovery
+  reset, product opening/activation, HTTP, NAS or physical disk operations.
+  **Next:** integrate this authority into a qualified product composition and
+  separately fence external/cross-protocol access, foreign target/session use,
+  allocation and retained storage/network lifetimes. Distinct authorities do
+  not coordinate; success is NOT complete global-use/writer exclusion.
 - **M9.2 — Target model.** Stable target/LUN identity, backing volume/object,
   capacity/allocation policy, initiator access and protected authentication
   secrets. Secrets are not returned by read APIs or exposed in diagnostics.

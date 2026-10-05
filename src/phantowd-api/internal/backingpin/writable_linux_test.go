@@ -214,7 +214,7 @@ func TestWritableLifecycleCancellationAndConcurrentStop(t *testing.T) {
 	if b.stopCalls != 1 || !o.released {
 		t.Fatal("concurrent stop did not serialize")
 	}
-	if _, err := newWritableOwner(nil, nil, nil); !errors.Is(err, ErrInvalid) {
+	if _, err := newWritableOwner(nil, nil, nil, nil); !errors.Is(err, ErrInvalid) {
 		t.Fatal(err)
 	}
 }
@@ -227,7 +227,7 @@ func TestWritableTypedNilBackendHasNoEffects(t *testing.T) {
 	defer file.Close()
 	pin := &Pin{}
 	var backend *lifecycleBackend
-	if owner, err := newWritableOwner(pin, file, backend); owner != nil || !errors.Is(err, ErrInvalid) {
+	if owner, err := newWritableOwner(pin, file, backend, newBackingUseOwner()); owner != nil || !errors.Is(err, ErrInvalid) {
 		t.Fatalf("typed nil must refuse before filesystem checks: %v", err)
 	}
 	if pin.consumer != nil {

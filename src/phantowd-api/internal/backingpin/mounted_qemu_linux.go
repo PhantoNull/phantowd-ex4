@@ -90,6 +90,8 @@ func mountedWritableCase(set *mountowner.MountedVolumeSet, workspace, kind strin
 
 // Private QEMU-only composition; existing normal and loss cases share setup.
 func withMountedWritableCase(set *mountowner.MountedVolumeSet, workspace, kind string, exercise func(context.Context, *writableOwner, *fixtureWritableBackend, string, *mountowner.MountedVolumeSetLease) error) (result error) {
+	uses := newBackingUseOwner()
+	defer func() { result = errors.Join(result, uses.close()) }()
 	lease, _, err := set.Acquire(context.Background())
 	if err != nil {
 		return err
@@ -144,11 +146,11 @@ func withMountedWritableCase(set *mountowner.MountedVolumeSet, workspace, kind s
 	backend := &fixtureWritableBackend{}
 	var owner *writableOwner
 	if secretSource != nil {
-		owner, err = newCredentialBoundWritableOwner(context.Background(), pin, data, backend, policySource, 1, "fixture-backing", secretSource, 1, "fixture-target")
+		owner, err = newCredentialBoundWritableOwner(context.Background(), pin, data, backend, policySource, 1, "fixture-backing", secretSource, 1, "fixture-target", uses)
 	} else if policySource != nil {
-		owner, err = newPolicyBoundWritableOwner(context.Background(), pin, data, backend, policySource, 1, "fixture-backing")
+		owner, err = newPolicyBoundWritableOwner(context.Background(), pin, data, backend, policySource, 1, "fixture-backing", uses)
 	} else {
-		owner, err = newWritableOwner(pin, data, backend)
+		owner, err = newWritableOwner(pin, data, backend, uses)
 	}
 	if err != nil {
 		data.Close()
@@ -181,11 +183,8 @@ func withMountedWritableCase(set *mountowner.MountedVolumeSet, workspace, kind s
 			pinErr := pin.closeLocked()
 			result = errors.Join(result, pinErr)
 			pin.mu.Unlock()
-			if pinErr == nil && owner.policy != nil {
-				result = errors.Join(result, owner.policy.Release())
-			}
-			if pinErr == nil && owner.credentials != nil {
-				result = errors.Join(result, owner.credentials.Release())
+			if pinErr == nil {
+				result = errors.Join(result, owner.releaseSourcesLocked())
 			}
 		}
 	}()

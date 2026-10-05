@@ -146,6 +146,8 @@ func qemuLIOWriteOnlyProbe() error {
 func runQEMULIOTargetCase(set *mountowner.MountedVolumeSet, workspace, kind string) (result error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
+	uses := newBackingUseOwner()
+	defer func() { result = errors.Join(result, uses.close()) }()
 	dir := workspace + "/" + kind
 	if os.Mkdir(dir, 0700) != nil {
 		return ErrUnavailable
@@ -233,7 +235,7 @@ func runQEMULIOTargetCase(set *mountowner.MountedVolumeSet, workspace, kind stri
 		inputs = append(inputs, targetSelection{backingID: id, pin: pin, file: file})
 	}
 	inputs[0], inputs[1] = inputs[1], inputs[0]
-	owner, err := newTargetWritableOwner(ctx, inputs, backend, policy, 1, secrets, 1, "fixture-target")
+	owner, err := newTargetWritableOwner(ctx, inputs, backend, policy, 1, secrets, 1, "fixture-target", uses)
 	if err != nil {
 		return err
 	}

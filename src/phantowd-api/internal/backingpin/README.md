@@ -326,6 +326,30 @@ full-capacity/resource campaigns remain unqualified.
 
 ## Private declared backing-use refusal
 
+The constructors also require a shared private actual-object use authority.
+The trusted composition supplies the SAME authority to complete-target and
+singleton consumers. It rechecks each real RW descriptor against its privately
+claimed Pin before atomically reserving all device/inode keys. Mount ID, logical
+volume, path and independent open descriptions are not exclusion identities.
+Later-member conflict publishes no prefix, and admission refusal returns caller
+resources. The lifecycle releases last, after verified whole-backend stop, all
+data/Pin closures and source release. Stop/closure uncertainty retains the whole
+reservation in terminal no-retry review. Zero values, closed/reviewed authorities
+and serialized claims cannot authorize admission. Bounds are 16 LUNs per roster
+and 64 total reserved objects. The authority lock never covers I/O or callbacks;
+lifecycle → individual Pin and lifecycle → authority are separate lock orders.
+
+This is cooperative in-process ownership only: another authority, external
+process, foreign target or concurrent SMB/NFS alias is not excluded. No file
+lock, product opener, durable registry/recovery or activation endpoint is added.
+An actual independent-open ARMv5 defect is reproduced and corrected. The actual
+mounted later-member-only conflict also refuses without a prefix reservation or
+backend effects, preserving callers and permitting an unused-member singleton
+through the same authority. Native concurrent one-winner admission, verified
+reuse and uncertain no-retry retention, whole tagged vet/race/repetitions,
+Windows cross-compile, fresh guarded LIO/all old gates and standard/two-boot
+regression pass locally. This is not clean-build or physical EX4 qualification.
+
 Admission now rejects a selected target if ANY LUN backing overlaps a configured
 SMB share or NFS export on the SAME logical VolumeID. Comparison uses validated
 canonical path components: equal, ancestor, descendant and volume-root paths

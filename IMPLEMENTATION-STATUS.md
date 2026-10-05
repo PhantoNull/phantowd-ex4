@@ -3,6 +3,32 @@
 
 # Implementation status
 
+## M9.1l cooperative backing-object ownership — private prerequisite
+
+All internal writable constructors now require a retained shared use authority.
+It samples the actual RW descriptor against each privately held Pin, then
+reserves the entire roster atomically by device/inode identity. Mount ID,
+logical VolumeID, path and separately opened descriptors cannot create a second
+slot for the same object. A later conflict publishes no earlier reservation.
+Admission failure returns caller resources; successful lifecycle release occurs
+only after verified whole-backend stop, all data/Pin closures and source release.
+Uncertain stop/closure retains the reservation in terminal no-retry review.
+
+An actual standard ARMv5 tracer first admitted independent Pins/descriptors for
+the same two files; the corrected tracer passes. Native simultaneous admissions
+have exactly one winner; verified reuse and uncertain no-retry retention pass.
+Actual mounted ARMv5 also refuses a later-member-only conflict with no earlier
+reservation or backend effects, preserving caller resources and allowing a
+singleton to claim the unused member through the same authority. Whole tagged
+vet/race, focused repetitions, Windows cross-compile, standard/two-boot and
+fresh guarded LIO/all previous gates pass locally. Cached overlays do not prove
+clean-build reproducibility, complete global-use admission or EX4 qualification.
+This is private cooperative in-process exclusion, not a filesystem lock or
+complete product authority. The trusted composition must supply the SAME
+instance to all consumers; independent authorities, external processes, foreign
+targets and concurrent SMB/NFS aliases are not excluded. No product opener,
+HTTP endpoint, persistent state, service startup or NAS operation is added.
+
 ## M9.1k declared backing exposure — private admission prerequisite
 
 The selected target's complete LUN roster now refuses configured SMB/NFS

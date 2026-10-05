@@ -61,18 +61,21 @@ func (b *fixtureTargetBackend) stop(ctx context.Context) error {
 }
 
 func runTargetWritableFixtures(set *mountowner.MountedVolumeSet, workspace string) error {
-	for _, kind := range []string{"normal", "replace-second", "uncertain", "configured-smb", "configured-nfs"} {
+	for _, kind := range []string{"normal", "replace-second", "uncertain", "configured-smb", "configured-nfs", "duplicate-open", "later-held"} {
 		if err := targetWritableCase(set, workspace, kind); err != nil {
 			return fmt.Errorf("target roster fixture %s: %w", kind, err)
 		}
 	}
 	fmt.Println("PHANTOWD_TARGET_BACKING_LIFETIME_READY complete_roster=true canonical_lun_order=true members=2 block_sizes=512,4096 actual_mount_owner=true consumer_uid=1000 admission_rollback=true stop_once_before_all_release=true second_member_drift=true uncertain_retains_all_sources=true no_retry=true target_activation=false scope=disposable-qemu-only")
 	fmt.Println("PHANTOWD_TARGET_KNOWN_USE_READY coherent_policy=true smb_exposure_refused=true nfs_exposure_refused=true readonly_refused=true later_member=true caller_resources_preserved=true no_source_claims=true no_backend_effects=true global_use=false activation=false scope=disposable-qemu-only")
+	fmt.Println("PHANTOWD_TARGET_OBJECT_USE_READY shared_authority=true independent_opens_refused=true later_conflict_atomic=true singleton_same_authority=true actual_mount_owner=true caller_resources_preserved=true uncertain_retains_reservation=true no_retry=true cooperative=true external_exclusion=false global_use=false activation=false scope=disposable-qemu-only")
 	return nil
 }
 func targetWritableCase(set *mountowner.MountedVolumeSet, workspace, kind string) (result error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()
+	uses := newBackingUseOwner()
+	defer func() { result = errors.Join(result, uses.close()) }()
 	dir := workspace + "/target-" + kind
 	if err := os.Mkdir(dir, 0700); err != nil {
 		return err
@@ -149,7 +152,7 @@ func targetWritableCase(set *mountowner.MountedVolumeSet, workspace, kind string
 	}
 	if kind == "configured-smb" || kind == "configured-nfs" {
 		backend := &fixtureTargetBackend{}
-		owner, err := newTargetWritableOwner(ctx, inputs, backend, policy, 1, secrets, 1, "fixture-target")
+		owner, err := newTargetWritableOwner(ctx, inputs, backend, policy, 1, secrets, 1, "fixture-target", uses)
 		if owner != nil || !errors.Is(err, ErrInvalid) || backend.prepareCalls != 0 || backend.cmd != nil || backend.stopCalls != 0 {
 			return ErrReview
 		}
@@ -160,10 +163,10 @@ func targetWritableCase(set *mountowner.MountedVolumeSet, workspace, kind string
 		// prerequisite. No backend preparation/execution or caller transfer occurs.
 		single := &fixtureWritableBackend{}
 		second := inputs[1]
-		if owner, err := newPolicyBoundWritableOwner(ctx, second.pin, second.file, single, policy, 1, second.backingID); owner != nil || !errors.Is(err, ErrInvalid) {
+		if owner, err := newPolicyBoundWritableOwner(ctx, second.pin, second.file, single, policy, 1, second.backingID, uses); owner != nil || !errors.Is(err, ErrInvalid) {
 			return ErrReview
 		}
-		if owner, err := newCredentialBoundWritableOwner(ctx, second.pin, second.file, single, policy, 1, second.backingID, secrets, 1, "fixture-target"); owner != nil || !errors.Is(err, ErrInvalid) {
+		if owner, err := newCredentialBoundWritableOwner(ctx, second.pin, second.file, single, policy, 1, second.backingID, secrets, 1, "fixture-target", uses); owner != nil || !errors.Is(err, ErrInvalid) {
 			return ErrReview
 		}
 		if single.prepareCalls != 0 || single.cmd != nil || single.stopCalls != 0 {
@@ -187,8 +190,62 @@ func targetWritableCase(set *mountowner.MountedVolumeSet, workspace, kind string
 		// Successful direct Close proves no hidden policy/credential claim remains.
 		return errors.Join(policy.Close(), secrets.Close())
 	}
+	if kind == "later-held" {
+		// Only the later member is held through a separate singleton admission.
+		// Refusing the complete target must not publish a first-member prefix.
+		pin, _, err := OpenFromMountedLease(lease, "qemu-plan", relative[1], 8192)
+		if err != nil {
+			return err
+		}
+		defer func() { result = errors.Join(result, pin.Close()) }()
+		fd, err := unix.Open(paths[1], unix.O_RDWR|unix.O_CLOEXEC|unix.O_NONBLOCK, 0)
+		if err != nil {
+			return err
+		}
+		file := os.NewFile(uintptr(fd), "later-held-member")
+		defer func() {
+			if _, err := file.Stat(); err == nil {
+				result = errors.Join(result, file.Close())
+			}
+		}()
+		holder, err := newWritableOwner(pin, file, &fixtureWritableBackend{}, uses)
+		if err != nil {
+			return err
+		}
+		defer func() { result = errors.Join(result, holder.close()) }()
+		backend := &fixtureTargetBackend{}
+		target, err := newTargetWritableOwner(ctx, inputs, backend, policy, 1, secrets, 1, "fixture-target", uses)
+		if target != nil {
+			if err := target.close(); err != nil {
+				return err
+			}
+			return errors.New("later held object admitted")
+		}
+		if !errors.Is(err, ErrBusy) || backend.prepareCalls != 0 || backend.cmd != nil || backend.stopCalls != 0 {
+			return errors.New("later object conflict had backend effects")
+		}
+		for _, input := range inputs {
+			if input.pin.consumer != nil {
+				return ErrReview
+			}
+			if _, err := input.file.Stat(); err != nil {
+				return ErrReview
+			}
+		}
+		first, err := newWritableOwner(inputs[0].pin, inputs[0].file, &fixtureWritableBackend{}, uses)
+		if err != nil {
+			return errors.New("later conflict published an earlier reservation")
+		}
+		if err := first.close(); err != nil {
+			return err
+		}
+		if err := holder.close(); err != nil {
+			return err
+		}
+		return errors.Join(policy.Close(), secrets.Close())
+	}
 	if kind == "normal" {
-		if owner, err := newTargetWritableOwner(ctx, inputs[:1], &fixtureTargetBackend{}, policy, 1, secrets, 1, "fixture-target"); owner != nil || !errors.Is(err, ErrInvalid) {
+		if owner, err := newTargetWritableOwner(ctx, inputs[:1], &fixtureTargetBackend{}, policy, 1, secrets, 1, "fixture-target", uses); owner != nil || !errors.Is(err, ErrInvalid) {
 			return errors.New("partial target admitted")
 		}
 		fd, err := unix.Open(paths[1], unix.O_RDONLY|unix.O_CLOEXEC|unix.O_NONBLOCK, 0)
@@ -198,7 +255,7 @@ func targetWritableCase(set *mountowner.MountedVolumeSet, workspace, kind string
 		ro := os.NewFile(uintptr(fd), "refused-target-member")
 		bad := append([]targetSelection(nil), inputs...)
 		bad[1].file = ro
-		owner, admitErr := newTargetWritableOwner(ctx, bad, &fixtureTargetBackend{}, policy, 1, secrets, 1, "fixture-target")
+		owner, admitErr := newTargetWritableOwner(ctx, bad, &fixtureTargetBackend{}, policy, 1, secrets, 1, "fixture-target", uses)
 		if owner != nil || !errors.Is(admitErr, ErrUnavailable) {
 			_ = ro.Close()
 			return errors.New("unsafe later descriptor admitted")
@@ -233,7 +290,7 @@ func targetWritableCase(set *mountowner.MountedVolumeSet, workspace, kind string
 	// Reverse caller order; the backend must still receive explicit LUN0/7 order.
 	inputs[0], inputs[1] = inputs[1], inputs[0]
 	backend := &fixtureTargetBackend{}
-	owner, err := newTargetWritableOwner(ctx, inputs, backend, policy, 1, secrets, 1, "fixture-target")
+	owner, err := newTargetWritableOwner(ctx, inputs, backend, policy, 1, secrets, 1, "fixture-target", uses)
 	if err != nil {
 		return err
 	}
@@ -266,13 +323,61 @@ func targetWritableCase(set *mountowner.MountedVolumeSet, workspace, kind string
 				return
 			}
 		}
-		if owner.policy != nil {
-			result = errors.Join(result, owner.policy.Release())
-		}
-		if owner.credentials != nil {
-			result = errors.Join(result, owner.credentials.Release())
+		if err := owner.releaseSourcesLocked(); err != nil {
+			result = errors.Join(result, err)
 		}
 	}()
+	if kind == "duplicate-open" {
+		// Separate Pins and open file descriptions for the SAME actual objects.
+		// This is not a forged inode tuple, repeated pointer or shared FD control.
+		var duplicate []targetSelection
+		for i, path := range paths {
+			pin, _, err := OpenFromMountedLease(lease, "qemu-plan", relative[i], uint64(4096*(i+1)))
+			if err != nil {
+				return err
+			}
+			defer func() { result = errors.Join(result, pin.Close()) }()
+			fd, err := unix.Open(path, unix.O_RDWR|unix.O_CLOEXEC|unix.O_NONBLOCK, 0)
+			if err != nil {
+				return err
+			}
+			file := os.NewFile(uintptr(fd), "duplicate-target-member")
+			defer func() {
+				if _, err := file.Stat(); err == nil {
+					result = errors.Join(result, file.Close())
+				}
+			}()
+			id := iscsipolicy.BackingID("fixture-backing")
+			if i == 1 {
+				id = "fixture-second"
+			}
+			duplicate = append(duplicate, targetSelection{backingID: id, pin: pin, file: file})
+		}
+		second, admitErr := newTargetWritableOwner(ctx, duplicate, &fixtureTargetBackend{}, policy, 1, secrets, 1, "fixture-target", uses)
+		if second != nil {
+			// Prepared only: no child/credentials/configfs effects. Independent
+			// fixture disposal is needed before reporting the real admission defect.
+			if err := second.close(); err != nil {
+				return err
+			}
+			return errors.New("independent owners admitted same backing objects")
+		}
+		if !errors.Is(admitErr, ErrBusy) {
+			return errors.New("duplicate object refusal was not a held-use conflict")
+		}
+		for _, member := range duplicate {
+			if member.pin.consumer != nil {
+				return ErrReview
+			}
+			if _, err := member.file.Stat(); err != nil {
+				return ErrReview
+			}
+		}
+		if !errors.Is(uses.close(), ErrBusy) || owner.use.verify() != nil {
+			return ErrReview
+		}
+		return owner.close()
+	}
 	if !errors.Is(policy.Close(), naspolicystore.ErrBusy) || !errors.Is(secrets.Close(), iscsicredentials.ErrBusy) || !errors.Is(lease.Close(), mountowner.ErrBusy) {
 		return errors.New("target did not fence all sources")
 	}
@@ -320,6 +425,9 @@ func targetWritableCase(set *mountowner.MountedVolumeSet, workspace, kind string
 		return errors.New("whole backend stop ordering")
 	}
 	if kind == "uncertain" {
+		if owner.use == nil || owner.use.verify() != nil || !errors.Is(uses.close(), ErrBusy) {
+			return errors.New("uncertainty dropped the whole object reservation")
+		}
 		if owner.released || owner.policy == nil || owner.credentials == nil {
 			return errors.New("uncertainty released global target claims")
 		}

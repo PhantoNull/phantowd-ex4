@@ -50,6 +50,7 @@ type writableOwner struct {
 	backend                          writableBackend
 	policy                           *naspolicystore.Lease    // privately acquired; never caller-releasable
 	credentials                      *iscsicredentials.Bundle // privately acquired, retained through uncertain stop
+	use                              *backingUseLease         // private whole-roster cooperative object reservation
 	group                            []targetBacking          // complete private target roster; nil for singleton path
 	check                            func() error             // Fixed kernel checker; state-machine tests use a private seam.
 	phase                            writablePhase
@@ -57,20 +58,33 @@ type writableOwner struct {
 	supervising                      bool
 }
 
-func newWritableOwner(pin *Pin, file *os.File, backend writableBackend) (*writableOwner, error) {
-	if pin == nil || file == nil || nilWritableBackend(backend) {
+func newWritableOwner(pin *Pin, file *os.File, backend writableBackend, uses *backingUseOwner) (*writableOwner, error) {
+	if pin == nil || file == nil || uses == nil || nilWritableBackend(backend) {
 		return nil, ErrInvalid
 	}
 	owner := &writableOwner{pin: pin, file: file, backend: backend, phase: writablePrepared}
 	pin.mu.Lock()
-	defer pin.mu.Unlock()
 	if pin.consumer != nil {
+		pin.mu.Unlock()
 		return nil, ErrBusy
 	}
 	if owner.checkDescriptorLocked() != nil {
+		pin.mu.Unlock()
 		return nil, ErrUnavailable
 	}
 	pin.consumer = owner
+	pin.mu.Unlock()
+	claim, err := uses.acquire(owner)
+	if err != nil {
+		pin.mu.Lock()
+		defer pin.mu.Unlock()
+		if pin.consumer != owner {
+			return nil, ErrReview
+		}
+		pin.consumer = nil
+		return nil, err
+	}
+	owner.use = claim
 	owner.check = owner.checkBinding
 	return owner, nil
 }
@@ -93,8 +107,8 @@ func nilWritableBackend(backend writableBackend) bool {
 // the already-qualified mounted Pin. A desired target state/SecretRef is not
 // launch authority. Failure transfers no Pin/file/backend and releases only the
 // newly acquired policy claim; success retains all inputs through consumer stop.
-func newPolicyBoundWritableOwner(ctx context.Context, pin *Pin, file *os.File, backend writableBackend, source *naspolicystore.Owner, revision uint64, backingID iscsipolicy.BackingID) (_ *writableOwner, result error) {
-	if ctx == nil || pin == nil || file == nil || source == nil || backingID == "" || nilWritableBackend(backend) {
+func newPolicyBoundWritableOwner(ctx context.Context, pin *Pin, file *os.File, backend writableBackend, source *naspolicystore.Owner, revision uint64, backingID iscsipolicy.BackingID, uses *backingUseOwner) (_ *writableOwner, result error) {
+	if ctx == nil || pin == nil || file == nil || uses == nil || source == nil || backingID == "" || nilWritableBackend(backend) {
 		return nil, ErrInvalid
 	}
 	lease, err := source.Acquire(ctx, revision)
@@ -123,7 +137,7 @@ func newPolicyBoundWritableOwner(ctx context.Context, pin *Pin, file *os.File, b
 	if lease.Verify(ctx) != nil {
 		return nil, ErrReview
 	}
-	owner, err := newWritableOwner(pin, file, backend)
+	owner, err := newWritableOwner(pin, file, backend, uses)
 	if err != nil {
 		return nil, err
 	}
@@ -144,8 +158,8 @@ type credentialWritableBackend interface {
 // backend. No persistent credential provisioning/rotation is exposed here.
 func newCredentialBoundWritableOwner(ctx context.Context, pin *Pin, file *os.File, backend credentialWritableBackend,
 	source *naspolicystore.Owner, revision uint64, backingID iscsipolicy.BackingID,
-	secrets *iscsicredentials.Owner, secretRevision uint64, targetID iscsipolicy.TargetID) (_ *writableOwner, result error) {
-	if ctx == nil || source == nil || secrets == nil || pin == nil || file == nil || nilWritableBackend(backend) {
+	secrets *iscsicredentials.Owner, secretRevision uint64, targetID iscsipolicy.TargetID, uses *backingUseOwner) (_ *writableOwner, result error) {
+	if ctx == nil || source == nil || secrets == nil || uses == nil || pin == nil || file == nil || nilWritableBackend(backend) {
 		return nil, ErrInvalid
 	}
 	policy, err := source.Acquire(ctx, revision)
@@ -197,7 +211,7 @@ func newCredentialBoundWritableOwner(ctx context.Context, pin *Pin, file *os.Fil
 	if policy.Verify(ctx) != nil || credentials.Verify(ctx) != nil {
 		return nil, ErrReview
 	}
-	owner, err := newWritableOwner(pin, file, backend)
+	owner, err := newWritableOwner(pin, file, backend, uses)
 	if err != nil {
 		return nil, err
 	}
@@ -226,6 +240,9 @@ func policyMatchesPin(document naspolicy.Config, id iscsipolicy.BackingID, pin *
 // mutex serializes its own lifecycle; each source is rechecked in a bracket.
 // Cooperating desired writers cannot change the revision while the claim lives.
 func (o *writableOwner) checkInputs(ctx context.Context) error {
+	if o.use != nil && o.use.verify() != nil {
+		return ErrReview
+	}
 	if o.credentials != nil && o.credentials.Verify(ctx) != nil {
 		return ErrReview
 	}
@@ -239,6 +256,9 @@ func (o *writableOwner) checkInputs(ctx context.Context) error {
 		return ErrReview
 	}
 	if o.credentials != nil && o.credentials.Verify(ctx) != nil {
+		return ErrReview
+	}
+	if o.use != nil && o.use.verify() != nil {
 		return ErrReview
 	}
 	return nil
@@ -534,6 +554,12 @@ func (o *writableOwner) releaseSourcesLocked() error {
 			return ErrReview
 		}
 		o.credentials = nil
+	}
+	if o.use != nil {
+		if o.use.release() != nil {
+			return ErrReview
+		}
+		o.use = nil
 	}
 	o.released = true
 	return nil
