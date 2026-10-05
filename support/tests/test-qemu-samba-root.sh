@@ -32,7 +32,7 @@ cleanup() {
     rm -f "$scratch/rootfs.ext2" "$scratch/acl.ext4" "$scratch/lab" "$scratch/smbd.json" \
         "$scratch/smbpasswd.json" "$scratch/testparm.json" \
         "$scratch/streams_xattr.json" "$scratch/ibm850.json" "$scratch/manifest" \
-        "$scratch/launcher" "$scratch/charset" "$scratch/bundle" "$scratch/guest.log"
+        "$scratch/launcher" "$scratch/charset" "$scratch/bundle" "$scratch/owner" "$scratch/guest.log"
     rm -rf "$scratch/go-cache" "$scratch/go-path"
     rmdir "$scratch"
 }
@@ -59,6 +59,8 @@ python3 -B "$source_dir/support/tests/samba_root_fixture.py" prepare \
     -o "$scratch/charset" "$source_dir/support/tests/samba-charset-fixture.c"
 (cd "$source_dir/src/phantowd-api" && CGO_ENABLED=0 GOOS=linux GOARCH=arm GOARM=5 \
     "$go_binary" build -tags=qemu -trimpath -o "$scratch/bundle" ./cmd/qemu-runtime-bundle)
+(cd "$source_dir/src/phantowd-api" && CGO_ENABLED=0 GOOS=linux GOARCH=arm GOARM=5 \
+    "$go_binary" build -tags=qemu -trimpath -o "$scratch/owner" ./cmd/qemu-samba-owner)
 rm -rf "$scratch/go-cache" "$scratch/go-path"
 cp "$base/rootfs.ext2" "$scratch/rootfs.ext2"
 # Format only this newly-created regular tmpfs file, never a block-device path.
@@ -70,6 +72,7 @@ truncate -s 16M "$scratch/acl.ext4"
 for pair in "launcher phantowd-samba-root-launcher" \
     "charset phantowd-samba-charset-probe" \
     "bundle phantowd-runtime-bundle-probe" \
+    "owner phantowd-samba-owner-probe" \
     "$source_dir/support/tests/samba-root-init.sh phantowd-samba-root-init"; do
     input=${pair%% *}
     output=${pair#* }

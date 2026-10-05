@@ -3,6 +3,37 @@
 
 # Implementation status
 
+## M4.4 Samba owned-group boundary — fixture-only prerequisite
+
+A separate QEMU-only probe now composes the pinned bootstrap helper with the
+existing process-set owner, without weakening the generic static/non-root
+runtime. The owned entry checks group leadership and writable anonymous
+diagnostic pipes before bootstrap and before final daemon exec; it preserves the
+group rather than calling `setsid`. Caller helper-FD closure, canceled admission,
+duplicate Start and live Close refusals are tested.
+
+Actual ARMv5 locally passes fresh SMB write/read bytes, distinct Unix ownership,
+reader/outsider/authentication denials, kernel-read-only write refusal, private
+namespace/restricted root and the exact six-capability/root/NNP profile. Normal
+Stop proves parent reap and complete group absence before helper-pin release.
+Six native context refusals and fixed-command admission regressions run before
+the guest. The expanded tests caught two fixture defects (missing fixed client
+commands and the wrong expected kernel-RO NTSTATUS); neither was repaired by
+relaxing permissions or execution/stop guards.
+
+Local verification (2026-10-06): 16 Linux fixture tests, seven loader tests,
+linters/workflow contracts, Windows API/UI preflight, Linux QEMU-tagged vet and
+process/runtime Owner race tests, and the complete ARM926 Samba experiment with
+all old streams/ext4 ACL/inheritance gates. Seven base artifact hashes remain
+unchanged. One auto-removed non-root container reuses existing caches read-only
+with bounded tmpfs; no new persistent image/volume or product/NAS operation.
+
+This is not the complete Samba Owner: retained authenticated dynamic inputs,
+configuration/passdb/identity and storage authorities, input-drift/forced-stop
+composition, durable recovery, product startup and HTTP activation remain open.
+No milestone is declared complete or hardware/installation band increased.
+See the [profile and full integration contract](support/SAMBA-RUNTIME-PROFILE.md#samba-specific-owner-integration-packet-hostqemu-scope-approved).
+
 ## M9.1l cooperative backing-object ownership — private prerequisite
 
 All internal writable constructors now require a retained shared use authority.
@@ -1154,9 +1185,10 @@ pass. The verifier first rejected the older guest solely for missing new
 evidence. All seven base hashes are independently unchanged afterward. Existing
 image/packages/kernel remain untouched; the local container is UID1000,
 cap-drop ALL/NNP with bounded CPU/RAM/PIDs and disposable RAM scratch. No new
-full-image/SBOM, hosted topic or product qualification. The separately proposed
-privileged Samba Owner composition still requires its explicit scope decision;
-neither it nor a new product/helper/HTTP privilege is implemented. Bands unchanged.
+full-image/SBOM, hosted topic or product qualification. Separate privileged Samba
+Owner development is now approved only for host/disposable QEMU. Its owned-group
+prerequisite is described above; the complete retained-input Owner, product
+helper/HTTP privileges and physical qualification remain unimplemented. Bands unchanged.
 
 M6.1e local follow-up on code `319a331` / tree `333e81d` adds one fixed strict
 AF_UNSPEC nexthop-object dump per matching sample, complete even when empty.
