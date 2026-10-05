@@ -1934,12 +1934,28 @@ support per tested combination; refuse untested combinations without mutation.
   final guarded ARMv5 foreign ACL/LUN/mapping refusal preserves foreign objects,
   retains complete sources on uncertain stop and keeps no-retry review.
   Native/14 marker contracts/all old actual gates/standard two-boot pass.
-  **Next:** adversarial portal/extra-TPG and link/name-change cases, max-policy
+  **Next:** M9.1j adds bounded portal/extra-TPG cases; still qualify concurrent
+  shared-portal and link/name-change cases, max-policy
   resource/FD campaigns, complete write/readback/close faults and independent
   writer/portal/pending-login admission. Snapshots cannot detect a mutation
   restored between scans or supply atomic enable/writer exclusion. Then compose
   protected code/network/registry/storage/allocation/global-use and durable
   activation/recovery. No HTTP/startup/physical device authority is added.
+- **M9.1j — bounded foreign endpoints (locally tested prerequisite).**
+  Actual guarded ARMv5 adds a NEW guest-loopback portal under the owned TPG
+  and a separate NEW default-disabled sibling TPG with no portal. Observation
+  refuses both; one stop preserves foreign identity and complete claims in
+  terminal no-retry review. Prove the distinct partial outcomes: foreign
+  portal leaves the owned TPG disabled but retained; sibling TPG blocks target
+  removal after owned TPG teardown. Independent witnessed fixture disposal
+  releases sources without resetting lifecycle state. Fifteen mandatory result
+  contracts, native vet/race/repetitions, fresh guarded guest/all old gates and
+  standard two-boot pass. Product backend behavior/privileges remain unchanged.
+  **Next:** shared-portal/concurrent writer/pending-login admission, max-policy
+  FD/resource and complete write/readback/close fault campaigns; compose actual
+  code/network/registry/storage/allocation/global-use ownership and durable
+  activation/recovery. These bounded cases are not global writer exclusion,
+  foreign session fencing, a recovery API or hardware qualification.
 - **M9.2 — Target model.** Stable target/LUN identity, backing volume/object,
   capacity/allocation policy, initiator access and protected authentication
   secrets. Secrets are not returned by read APIs or exposed in diagnostics.

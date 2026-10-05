@@ -311,8 +311,18 @@ marker contracts/all old guest gates and standard/two-boot pass. The first
 default-name prototype is corrected against the pinned source: fabric-root
 lio_version/cpus_allowed_list do not belong to a single target directory.
 This is point-in-time observation, not global fabric ownership or concurrent
-writer exclusion; restored changes between scans are not witnessed. Adversarial
-portal/extra-TPG and full-capacity/resource campaigns remain unqualified.
+writer exclusion; restored changes between scans are not witnessed.
+
+Two additional actual guarded ARMv5 cases create only a foreign guest-loopback
+portal or a default-disabled sibling TPG with no portal. Both fail observation,
+preserve captured/path foreign identities and retain all sources in terminal
+no-retry review. The portal blocks owned TPG removal; the sibling blocks target
+removal after owned TPG teardown. Independent witnessed fixture disposal proves
+those different partial outcomes without resetting the Owner/backend. Fifteen
+mandatory result contracts, native tagged race/repetitions, fresh actual guest
+and standard/two-boot regression pass locally. Product backend behavior is
+unchanged. Shared-portal/concurrent mutation, active foreign sessions and
+full-capacity/resource campaigns remain unqualified.
 
 Remaining adapter-specific tests include exhaustive store/readback/close/delete
 faults and resource bounds, pending-login

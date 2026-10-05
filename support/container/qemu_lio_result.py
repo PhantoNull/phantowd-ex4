@@ -40,6 +40,8 @@ DENIED = ("PHANTOWD_LIO_ERROR", "PHANTOWD_LIO_CLIENT_ERROR", "Kernel panic",
           "synthetic-chap-only-2026", "synthetic-outbound-only-2026",
           "synthetic-rotated-only-2026", "synthetic-peer-only-2026", "deliberately-wrong")
 IDLE_MARKERS = (
+    "PHANTOWD_LIO_ENDPOINTS_READY foreign_portal_refused=true extra_tpg_refused=true foreign_preserved=true "
+    "sources_retained=true no_retry=true independent_disposal=true writer_exclusion=false scope=disposable-qemu-only",
     "PHANTOWD_LIO_TOPOLOGY_READY bounded_census=true foreign_acl_refused=true foreign_lun_refused=true foreign_grant_refused=true "
     "foreign_preserved=true sources_retained=true no_retry=true writer_exclusion=false scope=disposable-qemu-only",
     "PHANTOWD_LIO_TARGET_FAULTS_READY existing_target_preserved=true later_storage_preserved=true partial_setup_cleaned=true "

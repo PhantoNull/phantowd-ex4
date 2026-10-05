@@ -3,6 +3,29 @@
 
 # Implementation status
 
+## M9.1j foreign endpoints — disposable host/QEMU proof
+
+The exact target census now has actual guarded ARMv5 cases for a NEW foreign
+guest-loopback portal under owned tpgt_1 and a NEW sibling tpgt_2, which stays
+default-disabled with no portal. Both cause terminal Owner review, one stop
+attempt, preserved captured/path foreign identity and complete retained
+file/Pin/mount/policy/CHAP claims. Repeated lifecycle calls never retry.
+
+The portal prevents complete owned TPG removal; disabled readback still works.
+The sibling TPG instead prevents target removal after the owned TPG has been
+disabled/removed/closed. The fixture verifies that different partial outcome
+without reopening a vanished owned object. Only an independent controller
+removes its still-witnessed synthetic object and remaining idle owned objects
+before releasing sources; it never resets review or the backend stop state.
+
+Fifteen mandatory result-contract groups, mocked wrapper profiles, Windows
+preflight/cross-compile, whole Linux tagged vet/race and focused repetitions,
+fresh guarded ARMv5/all old LIO gates and standard/two-boot regression pass
+locally. Only QEMU fixture/qualification evidence changes; the production
+backend is unchanged. No shared-portal race, active foreign session revocation,
+exclusive writer/network authority, exhaustive faults/resource limits, durable
+recovery or product activation is qualified. No NAS or physical media is touched.
+
 ## M9.1i exact target topology — private host/QEMU prerequisite
 
 The retained-storage LIO backend now censuses configurable rosters inside its
@@ -26,8 +49,9 @@ cpus_allowed_list are not attributes of an individual target.
 
 This is point-in-time target observation, not a global fabric census, atomic
 mutation witness, concurrent-root exclusion, pending-login fence or permission
-to disable foreign sessions. Adversarial portal/extra-TPG mutation and full
-capacity/resource campaigns remain. Product runtime/storage/network/global-use,
+to disable foreign sessions. M9.1j adds two bounded foreign-endpoint cases;
+concurrent/shared-portal mutation and full capacity/resource campaigns remain.
+Product runtime/storage/network/global-use,
 durable recovery, credentials and UI/startup gates are unchanged; no NAS I/O,
 new product interface/privilege or Docker image/named volume is introduced.
 

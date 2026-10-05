@@ -29,6 +29,10 @@ func qemuLIOForeignTopology(ctx context.Context, owner *writableOwner, backend *
 		path = tpg + "/lun/lun_8"
 	case "foreign-grant":
 		path = tpg + "/acls/" + lioCredentialFixturePeer + "/lun_8"
+	case "foreign-portal":
+		path = tpg + "/np/127.0.0.1:3261" // Guest loopback only; no host listener/NIC.
+	case "extra-tpg":
+		path = lioCredentialFixtureTarget + "/tpgt_2"
 	default:
 		return ErrInvalid
 	}
@@ -44,9 +48,33 @@ func qemuLIOForeignTopology(ctx context.Context, owner *writableOwner, backend *
 	if err != nil {
 		return err
 	}
+	if kind == "extra-tpg" && lioBackendCheck(foreign, "enable", "0") != nil {
+		return ErrReview // NEW default-disabled TPG; never enable/add a portal.
+	}
+	// An extra sibling TPG blocks removal of the target itself, AFTER owned
+	// tpgt_1 is disabled/removed/closed. Other foreign children block tpgt_1
+	// removal, leaving its retained descriptor available for disabled readback.
+	idleRemainder := func() bool {
+		if kind != "extra-tpg" {
+			return lioBackendCheck(backend.tpg, "enable", "0") == nil
+		}
+		if _, err := os.Stat(tpg); !errors.Is(err, os.ErrNotExist) || lioBackendCheck(foreign, "enable", "0") != nil {
+			return false
+		}
+		removedTPG, retainedTarget := false, false
+		for _, entry := range backend.entries {
+			if entry.name == "tpgt_1" {
+				removedTPG = entry.removed
+			}
+			if entry.name == backend.target.Name {
+				retainedTarget = !entry.removed
+			}
+		}
+		return removedTPG && retainedTarget
+	}
 	if !errors.Is(owner.observe(ctx), ErrReview) || owner.phase != writableReview || owner.released ||
 		backend.stops != 1 || !backend.liveAtStop || !backend.stopAttempted || backend.stopped || backend.checkEntries() != nil ||
-		lioBackendCheck(backend.tpg, "enable", "0") != nil || owner.policy == nil || owner.credentials == nil {
+		!idleRemainder() || owner.policy == nil || owner.credentials == nil {
 		return ErrReview
 	}
 	if !errors.Is(policy.Close(), naspolicystore.ErrBusy) || !errors.Is(secrets.Close(), iscsicredentials.ErrBusy) || !errors.Is(lease.Close(), mountowner.ErrBusy) {
@@ -80,10 +108,11 @@ func qemuLIOForeignTopology(ctx context.Context, owner *writableOwner, backend *
 	if observeErr != nil || closeErr != nil || retainErr != nil || observed != id || retained != id || backend.stops != 1 {
 		return ErrReview
 	}
-	// No portal/login or backing was added by this controller. Owner's stop
-	// verified no owned sessions before partial removal. The TPG remains disabled.
-	// Removing our own empty object is independent fixture disposal, not retry.
-	if lioBackendCheck(backend.tpg, "enable", "0") != nil || os.Remove(path) != nil || qemuLIORemoveRemainingFixture(ctx, backend.lioBackend) != nil {
+	// No login/backing is added. The extra portal is guest loopback only;
+	// the extra TPG stays default-disabled with no portal. Owner's one stop
+	// verified idle state before partial removal. Independently remove ONLY
+	// the controller's still-witnessed object, never reset/retry backend stop.
+	if !idleRemainder() || os.Remove(path) != nil || qemuLIORemoveRemainingFixture(ctx, backend.lioBackend) != nil {
 		return ErrReview
 	}
 	owner.mu.Lock()
