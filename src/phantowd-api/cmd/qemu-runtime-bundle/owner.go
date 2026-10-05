@@ -127,6 +127,9 @@ func ownerFixture() error {
 	if err := ownerSupervisionFixtures(plan); err != nil {
 		return err
 	}
+	if err := ownerScanDriftFixtures(data); err != nil {
+		return err
+	}
 	if err := ownerReviewFixtures(plan, data); err != nil {
 		return err
 	}
@@ -279,6 +282,7 @@ func ownerFixtureChild() error {
 	}
 	switch os.Args[2] {
 	case ownerFixtureBase + "/control/normal", ownerFixtureBase + "/control/before", ownerFixtureBase + "/control/live", ownerFixtureBase + "/control/forced",
+		ownerFixtureBase + "/control/scan-directory", ownerFixtureBase + "/control/scan-alias",
 		ownerFixtureBase + "/control/supervised", ownerFixtureBase + "/control/supervised-drift", ownerFixtureBase + "/control/supervised-exit", ownerFixtureBase + "/control/supervised-forced":
 	default:
 		return errors.New("fixed child guard")

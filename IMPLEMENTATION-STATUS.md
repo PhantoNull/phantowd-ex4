@@ -1606,6 +1606,18 @@ qualification, persistent review/recovery, complete service activation or EX4
 hardware qualification. See the
 [Owner contract](src/phantowd-api/internal/runtimebundle/README.md).
 
+The dedicated ARMv5 Owner fixture now also proves two deterministic mid-scan
+identity changes: an inner executable directory replaced with identical bytes,
+and an alias replaced with the same target, after the initial census/alias
+checks and earlier hash. Independent point-in-time inspection controls still
+accept the declared bytes; the retained Owner refuses both before any child
+starts, keeps review after restoration and verifies release/normal unmount.
+Scheduling uses actual guest read descriptors, without fabricated metadata,
+production hooks or relaxed checks. Native tagged vet/race and the bounded
+fixture/marker preflight also pass. This is local component evidence, not
+hosted/clean-build, an atomic snapshot, exhaustive race coverage, a performance
+improvement or the separately proposed privileged Samba Owner composition.
+
 Complete cached local integration passed on unchanged published `c93d936`:
 the actual non-root builder's API/tool tests, vet, race and fixed-count fuzz,
 package/image/legal-info/SBOM, native regular-image probe, standard/MD/two-boot

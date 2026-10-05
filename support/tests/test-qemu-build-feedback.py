@@ -197,9 +197,16 @@ class BuildFeedbackTests(unittest.TestCase):
             "scope=qemu-only'", fixture
         )
         self.assertIn(
-            '"$expected" "$supervised" "$review" "$forced" '
+            '"$expected" "$supervised" "$scan" "$review" "$forced" '
             'PHANTOWD_CODE_OWNER_DONE', fixture
         )
+        scan_source = (ROOT / "src/phantowd-api/cmd/"
+                       "qemu-runtime-bundle/scan_drift.go").read_text()
+        scan_marker = re.search(r'fmt.Println\("(PHANTOWD_CODE_OWNER_SCAN_READY[^\"]*)"\)',
+                                scan_source)
+        self.assertIsNotNone(scan_marker)
+        self.assertIn("scan='" + scan_marker.group(1) + "'", fixture)
+        self.assertIn('//go:build qemu && linux', scan_source)
         release = fixture.index('rm -rf "$scratch/go-cache"',
                                 fixture.index('"$go_binary" build'))
         self.assertLess(release, fixture.index('cp "$base/rootfs.ext2"'))

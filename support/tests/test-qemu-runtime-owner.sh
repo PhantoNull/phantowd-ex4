@@ -61,9 +61,10 @@ wait "$child_pid" || status=$?
 child_pid=
 expected='PHANTOWD_CODE_OWNER_READY caller_close=true fixed_spec=true pinned_exec=true duplicate_start_no_effect=true stop_reaped=true scope=qemu-only'
 supervised='PHANTOWD_CODE_OWNER_SUPERVISION_READY canceled=true drift=true unexpected_exit=true forced_review=true group_reaped=true pins_retained=true concurrent_refused=true scope=qemu-only'
+scan='PHANTOWD_CODE_OWNER_SCAN_READY actual_later_hash=true same_bytes=true inner_directory_replaced=true alias_replaced=true point_in_time_controls=true original_paths_refused=true before_child=true restoration_not_retried=true scope=qemu-only'
 review='PHANTOWD_CODE_OWNER_REVIEW_READY same_bytes_replacement=true before_child=true live_root_drift=true group_reaped=true restoration_not_retried=true scope=qemu-only'
 forced='PHANTOWD_CODE_OWNER_FORCED_REVIEW_READY forced=true pins_retained=true explicit_reap=true released_after_verification=true review_not_cleared=true scope=qemu-only'
-if [ "$status" -ne 0 ] || [ "$(grep '^PHANTOWD_CODE_OWNER_' "$scratch/guest.log" | tr -d '\r')" != "$(printf '%s\n%s\n%s\n%s\n%s' "$expected" "$supervised" "$review" "$forced" PHANTOWD_CODE_OWNER_DONE)" ]; then
+if [ "$status" -ne 0 ] || [ "$(grep '^PHANTOWD_CODE_OWNER_' "$scratch/guest.log" | tr -d '\r')" != "$(printf '%s\n%s\n%s\n%s\n%s\n%s' "$expected" "$supervised" "$scan" "$review" "$forced" PHANTOWD_CODE_OWNER_DONE)" ]; then
     if [ -n "$failure_log" ]; then
         mkdir -p "$(dirname "$failure_log")"
         cp "$scratch/guest.log" "$failure_log"
