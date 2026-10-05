@@ -141,7 +141,30 @@ result markers have native omission/duplicate/weakening RED/GREEN contracts;
 old protocol gates and standard/two-boot checks remain. No image/named volume
 is created in Docker; guest image and kernel/client/source scratch are discarded.
 Exclusive writer/code/network/registry/storage/allocation/global-use authority,
-setup/teardown faults and product recovery/startup/UI still need qualification.
+exhaustive setup/teardown faults and product recovery/startup/UI still need qualification.
+
+### Bounded adapter configfs fault cases
+
+The guarded guest additionally checks an existing target before effects and
+a second-storage collision after actual first-LUN binding. Both preserve the
+foreign object's witnessed identity and original data, clean only NEW owned
+objects before source release, and keep terminal review without retry.
+
+A separate test-only NEW LUN8 holds a reference to the first storage. Real
+Owner stop disables the TPG and removes earlier owned entries, then cannot
+remove the referenced storage. All file/Pin/mount/policy/secret claims remain
+held. Repeated lifecycle calls do not retry, even after the separate fixture
+controller removes its witnessed blocker and disposes remaining idle objects.
+This independent disposal never resets the backend/Owner and is NOT recovery.
+
+The original trigger attempted another link on an already-bound LUN; the real
+kernel refuses that with EEXIST. The corrected fixture asserts EEXIST and no
+created link, then uses the legal first binding on a separate LUN. No retention
+assertion was relaxed. Fresh actual guarded ARMv5/all old gates, native tagged
+vet/race/contracts and standard/two-boot regression pass locally. A mandatory
+fault marker rejects missing, duplicate, weakened or wrong-scope evidence.
+This qualifies only these bounded fault cases, not every syscall boundary,
+exclusive writer/portal authority, pending-login fencing or product recovery.
 
 Use the isolated kernel and a disposable snapshot of the verified root image;
 start a dedicated guest init, not product services. The guest alone may use

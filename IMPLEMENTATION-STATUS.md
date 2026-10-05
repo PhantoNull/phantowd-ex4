@@ -3,6 +3,36 @@
 
 # Implementation status
 
+## M9.1h bounded configfs fault proof — disposable host/QEMU only
+
+The actual retained-storage adapter now tests an existing target before effects
+and an existing second storage after the first LUN is bound. Both fail setup,
+preserve the foreign object's witnessed identity and original data, and remove
+only the adapter's NEW objects before complete resource release. Owner review
+remains terminal: failed setup is not readiness or an implicit retry.
+
+A third case adds a separate NEW test-owned LUN referencing the first storage.
+Real teardown disables the TPG and removes earlier owned entries, then refuses
+to remove the still-referenced storage. Every backing descriptor, Pin, mount,
+policy and secret claim remains held; repeated lifecycle calls do not retry.
+An independent fixture controller validates and removes only its own blocker,
+then disposes remaining idle objects before fixture release. It never resets
+the failed backend/Owner or supplies product recovery.
+
+The first fault trigger incorrectly added a second link on an already-bound
+LUN. The real guest failed; the corrected test retains an exact EEXIST/no-link
+regression and uses the separate LUN's legal binding. This is a test defect,
+not a legacy WD/kernel defect. The retention assertions were not weakened.
+Windows preflight/cross-compile, native tagged vet/race/focused repetitions,
+fresh guarded ARMv5 LIO including all old gates, and standard/two-boot tests
+pass locally. A mandatory fault marker rejects missing/duplicate/weakened proof.
+
+These are three bounded fault cases, not exhaustive store/readback/close/delete
+coverage, continuous writer exclusion or clean hosted/hardware qualification.
+Pending-login/new-login fencing, protected runtime/storage/network/global-use
+composition, durable recovery and product activation remain open. No NAS I/O,
+product interface/privilege change or new Docker image/named volume is added.
+
 ## M9.1g adapter access/session proof — disposable host/QEMU only
 
 The private retained-storage LIO adapter now has its own real initiator tests,
@@ -30,7 +60,8 @@ access/session result markers reject omission, weakening or duplicate evidence;
 their consumer contracts were observed RED/GREEN before each implementation.
 No product interface, privilege expansion, physical disk, NAS operation or new
 Docker image/named volume is added. Clean hosted qualification remains separate.
-Setup/teardown faults, exclusive configfs/code/network/storage/global-use authority,
+M9.1h above adds bounded setup/teardown faults; exhaustive fault qualification,
+exclusive configfs/code/network/storage/global-use authority,
 durable recovery, credential provisioning and UI/startup remain open.
 
 ## M9.1f retained-storage LIO composition — private host/QEMU prerequisite

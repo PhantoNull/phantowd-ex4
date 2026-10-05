@@ -29,20 +29,27 @@ type qemuLIOTargetBackend struct {
 	uncertain  bool
 	stops      int
 	liveAtStop bool
+	tracked    []targetBacking
+	peers      []iscsicredentials.Credential // opaque borrowed claims, even before sink installation
+}
+
+func (b *qemuLIOTargetBackend) PrepareCredentials(ctx context.Context, peers []iscsicredentials.Credential) error {
+	b.peers = append([]iscsicredentials.Credential(nil), peers...)
+	return b.lioBackend.PrepareCredentials(ctx, peers)
 }
 
 func (b *qemuLIOTargetBackend) stop(ctx context.Context) error {
 	b.stops++
 	b.liveAtStop = true
-	for _, member := range b.members {
+	for _, member := range b.tracked {
 		if _, err := member.file.Stat(); err != nil {
 			b.liveAtStop = false
 		}
 	}
-	if b.sink == nil || len(b.sink.peers) != len(b.target.Initiators) {
+	if len(b.peers) != len(b.target.Initiators) || len(b.tracked) != len(b.target.LUNs) {
 		return ErrReview
 	}
-	for _, peer := range b.sink.peers {
+	for _, peer := range b.peers {
 		if _, err := peer.Incoming.WriteTo(io.Discard); err != nil {
 			b.liveAtStop = false
 		}
@@ -76,7 +83,7 @@ func RunQEMULIOTargetFixture() error {
 			return ErrUnavailable
 		}
 		defer os.RemoveAll(workspace) // Generated fixture contents only, after Owner disposal.
-		for _, kind := range []string{"normal", "access", "active-session", "replace-second", "permission-drift", "uncertain"} {
+		for _, kind := range []string{"normal", "access", "active-session", "existing-target", "existing-second-storage", "partial-delete", "replace-second", "permission-drift", "uncertain"} {
 			if err := runQEMULIOTargetCase(set, workspace, kind); err != nil {
 				// Fixed case label only; never print configfs/library/credential errors.
 				fmt.Printf("PHANTOWD_LIO_ERROR phase=owned-target-%s\n", kind)
@@ -89,6 +96,7 @@ func RunQEMULIOTargetFixture() error {
 		return err
 	}
 	fmt.Println("PHANTOWD_LIO_TARGET_ACCESS_READY peers=2 separate_credentials=true primary_readwrite=true peer_readonly=true ungranted_refused=true cross_credentials_refused=true foreign_refused=true original_data_preserved=true scope=disposable-qemu-only")
+	fmt.Println("PHANTOWD_LIO_TARGET_FAULTS_READY existing_target_preserved=true later_storage_preserved=true partial_setup_cleaned=true partial_teardown_retained=true no_retry=true independent_disposal=true scope=disposable-qemu-only")
 	fmt.Println("PHANTOWD_LIO_TARGET_SESSION_READY active_stop_refused=true same_client_readwrite=true complete_resources_retained=true owner_review=true no_retry=true logout_not_recovery=true independent_fixture_disposal=true scope=disposable-qemu-only")
 	fmt.Println("PHANTOWD_LIO_TARGET_READY complete_roster=true luns=0,7 block_sizes=512,4096 actual_mount_owner=true proc_fd_binding=true chap=true exact_data=true write_only_open_modes=true active_attribute_checks=true later_member_drift=true uncertain_retains_all=true no_retry=true idle_teardown_before_release=true scope=disposable-qemu-only")
 	return nil
@@ -227,6 +235,10 @@ func runQEMULIOTargetCase(set *mountowner.MountedVolumeSet, workspace, kind stri
 	if err != nil {
 		return err
 	}
+	backend.tracked = append([]targetBacking(nil), owner.group...)
+	if kind == "existing-target" || kind == "existing-second-storage" {
+		return qemuLIOSetupCollision(ctx, owner, backend, kind, paths)
+	}
 	if err := owner.start(ctx); err != nil {
 		return err
 	}
@@ -267,6 +279,10 @@ func runQEMULIOTargetCase(set *mountowner.MountedVolumeSet, workspace, kind stri
 		return err
 	}
 	switch kind {
+	case "partial-delete":
+		if err := qemuLIOPartialDelete(ctx, owner, backend, policy, secrets, lease); err != nil {
+			return err
+		}
 	case "active-session":
 		if err := qemuLIOHeldOwner(ctx, owner, backend, policy, secrets, lease); err != nil {
 			return err
@@ -335,7 +351,7 @@ func runQEMULIOTargetCase(set *mountowner.MountedVolumeSet, workspace, kind stri
 		if err != nil {
 			return err
 		}
-	} else if !owner.released || kind != "active-session" && !lio.stopped {
+	} else if !owner.released || kind != "active-session" && kind != "partial-delete" && !lio.stopped {
 		return ErrReview
 	}
 	if _, err := os.Stat(lioCredentialFixtureTarget); !errors.Is(err, os.ErrNotExist) {

@@ -164,9 +164,21 @@ func qemuLIODisposeIdleFixture(ctx context.Context, backend *lioBackend) error {
 	if backend.checkEntries() != nil || !qemuLIOSessionState(backend, true) {
 		return ErrReview
 	}
+	return qemuLIORemoveRemainingFixture(ctx, backend)
+}
+
+// Only the independently verified idle test controller may call this. It owns
+// no product retry authority and never resets backend/Owner lifecycle flags.
+func qemuLIORemoveRemainingFixture(ctx context.Context, backend *lioBackend) error {
+	if ctx.Err() != nil || backend.checkEntries() != nil {
+		return ErrReview
+	}
 	for i := len(backend.entries) - 1; i >= 0; i-- {
 		entry := backend.entries[i]
-		if entry.removed || entry.file == nil || strings.ContainsAny(entry.name, "/\\\x00") {
+		if entry.removed {
+			continue // Already removed objects are never retried/adopted.
+		}
+		if ctx.Err() != nil || entry.file == nil || strings.ContainsAny(entry.name, "/\\\x00") {
 			return ErrReview
 		}
 		if entry.name != "" {

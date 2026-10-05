@@ -283,7 +283,18 @@ witnessed objects before independent fixture release. It never calls or resets t
 failed backend stop or clears Owner review. These actual guarded ARMv5 cases,
 native contracts/race and standard/two-boot regression pass locally.
 
-Remaining adapter-specific tests include setup/teardown faults, pending-login
+Actual guarded ARMv5 also exercises an existing target before effects, a
+second-storage collision after first-LUN binding, and partial teardown blocked
+by a separate NEW test-only LUN's reference to the first storage. Foreign
+identities/data are preserved. Verified setup cleanup precedes release; partial
+teardown retains complete file/Pin/mount/policy/secret claims in terminal review
+without retry. Independent witnessed blocker/remaining-object disposal does
+not reset backend/Owner state or provide recovery. An exact EEXIST/no-link
+check locks down the initially invalid second-link fault trigger. Native,
+actual guarded guest/all old gates and standard/two-boot regression pass.
+
+Remaining adapter-specific tests include exhaustive store/readback/close/delete
+faults and resource bounds, pending-login
 side effects and new-login fencing (refused active teardown keeps the target
 enabled, not revoked). Independent fixture disposal is NOT recovery. Exclusive writer,
 runtime-code/network, allocation/storage/global-use authority and durable

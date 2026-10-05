@@ -63,6 +63,17 @@ class LIOResult(unittest.TestCase):
         result.validate(self.valid())
         result.validate(self.valid().replace(b"\n", b"\r\n"))
 
+    def test_owned_fault_proof_cannot_omit_retention_or_foreign_preservation(self):
+        marker = "PHANTOWD_LIO_TARGET_FAULTS_READY existing_target_preserved=true later_storage_preserved=true partial_setup_cleaned=true " \
+                 "partial_teardown_retained=true no_retry=true independent_disposal=true scope=disposable-qemu-only"
+        self.assertIn(marker, result.IDLE_MARKERS)
+        good = self.valid(idle=True)
+        for replacement in ("", marker + "\n" + marker, marker.replace("later_storage_preserved=true", "later_storage_preserved=false"),
+                            marker.replace("partial_teardown_retained=true", "partial_teardown_retained=false"),
+                            marker.replace("no_retry=true", "no_retry=false"), marker.replace("disposable-qemu-only", "product")):
+            with self.subTest(replacement=replacement), self.assertRaises(ValueError):
+                result.validate(good.replace(marker.encode(), replacement.encode()), idle_guard=True)
+
     def test_owned_session_proof_requires_same_client_io_and_no_owner_retry(self):
         marker = "PHANTOWD_LIO_TARGET_SESSION_READY active_stop_refused=true same_client_readwrite=true complete_resources_retained=true " \
                  "owner_review=true no_retry=true logout_not_recovery=true independent_fixture_disposal=true scope=disposable-qemu-only"
