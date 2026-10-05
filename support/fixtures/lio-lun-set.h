@@ -14,4 +14,9 @@ static inline int fixture_lun_set_matches(const uint16_t *luns, uint32_t count,
     return (luns[0] == 0 && luns[1] == second) ||
            (luns[0] == second && luns[1] == 0);
 }
+static inline int fixture_owned_lun_set_matches(const uint16_t *luns, uint32_t count)
+{
+    return luns != 0 && count == 2 &&
+           ((luns[0] == 0 && luns[1] == 7) || (luns[0] == 7 && luns[1] == 0));
+}
 #endif

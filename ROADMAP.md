@@ -1843,15 +1843,50 @@ support per tested combination; refuse untested combinations without mutation.
   enters review without retry/rotation. Native race/refusal tests and actual
   fresh-source default ARMv5 zero-data-LUN CHAP/reciprocal protocol cases pass,
   including foreign same-configfs ACL refusal and object teardown before claim
-  release. All old protocol/session/data assertions remain. **Next:** compose
-  this sink inside the fixed complete-target backend, not a per-operation
-  callback; own retained configfs/code/network resources, complete LUN mapping
-  and active-state auth/session observations. Qualify partial-install faults,
+  release. All old protocol/session/data assertions remain. **Following M9.1f**
+  composes the sink inside the fixed complete-target backend, not a per-operation
+  callback. **Next:** qualify retained code/network and exclusive writer authority,
+  complete access/session observations and partial-install faults,
   writer exclusion, non-forcing session refusal and retained-file control binding
   with actual multi-LUN I/O. Only after these gates may product lifecycle,
   durable recovery, startup and authenticated UI transactions be composed.
   Disabled snapshots are not atomic/continuous history proof; configured mutual
   credentials are not required-mutual enforcement or kernel memory erasure.
+- **M9.1f — retained-storage LIO composition (private prerequisite).** Capture
+  a validated immutable target definition; independently retain root-only
+  configfs directories and every exact admitted LUN descriptor. Create NEW
+  objects only and witness each directory/link before use/removal. Bind data
+  through integer-only proc-FD values, never desired paths. Fixed typed CHAP
+  installation/readback stays inside this backend; refuse unsupported mutual
+  enforcement before effects. Separate partial-start state from readiness.
+  Recheck enabled state, credentials, authentication flags, exact storage
+  properties and each ACL mapping's access attributes. Require the optional
+  non-forcing idle-disable primitive before any portal/data binding. One stop
+  attempts verified disabled/session-idle state and owned-object teardown
+  before the containing Owner releases any source; uncertainty retains all
+  remaining references in terminal review, never force/retry/reopen.
+  **Locally tested:** native/cross-compile contracts, actual guarded ARMv5
+  complete target with LUN0/7,512/4096-byte RW data and real qualified mount;
+  original-file readback, changed second member/mapping quarantine, injected
+  uncertain-stop retention/no-retry and independent fixture disposal. Actual
+  write-only configfs refusal/acceptance and native RED/GREEN protect control
+  open modes. Old separate protocol gates plus standard/two-boot tests pass.
+  **Next acceptance packets, before product composition:**
+  1. Prove this adapter's per-initiator RO/RW and ungranted-LUN denials through
+     real clients; do not substitute the separate manually configured fixture.
+  2. Attempt this Owner's stop with an established session; require refusal,
+     SAME-client ongoing I/O and retained resources. Logout permits only
+     separate fixture disposal, never an Owner retry. Test pending-login
+     side effects and define exclusive portal/configfs mutation authority.
+  3. Fault every setup/store/readback/close/delete boundary, including later
+     members; qualify one-attempt cleanup, remaining-reference retention and
+     bounded resources. No partial success, adopted foreign object or force.
+  4. Compose retained runtime-code/network and protected registry/storage/
+     allocation/global-use authority under documented lock order. Desired
+     policy, this loopback prototype and point-in-time snapshots supply none.
+  5. Only then add durable lifecycle/recovery, root-only secret provisioning/
+     rotation, product startup and authenticated UI transactions. Keep physical
+     media/NAS installation behind independent hardware/recovery gates.
 - **M9.2 — Target model.** Stable target/LUN identity, backing volume/object,
   capacity/allocation policy, initiator access and protected authentication
   secrets. Secrets are not returned by read APIs or exposed in diagnostics.

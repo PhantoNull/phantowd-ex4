@@ -160,6 +160,10 @@ func (s lioAttributeSink) Write(value []byte) (int, error) {
 }
 
 func (s *lioCredentialSink) checkDisabled() error {
+	return s.checkState("0")
+}
+
+func (s *lioCredentialSink) checkState(expected string) error {
 	if s == nil || os.Geteuid() != 0 {
 		return ErrUnavailable
 	}
@@ -192,7 +196,7 @@ func (s *lioCredentialSink) checkDisabled() error {
 	if err != nil {
 		return err
 	}
-	compareErr := lioCompareAttribute(f, []byte("0"))
+	compareErr := lioCompareAttribute(f, []byte(expected))
 	if closeErr := f.Close(); compareErr != nil || closeErr != nil {
 		return ErrUnavailable
 	}
@@ -351,6 +355,14 @@ func (s *lioCredentialSink) PrepareCredentials(ctx context.Context, peers []iscs
 // Private disabled-state verification only. A target backend must implement its
 // own active-state authority/session observations; no caller can inject peers.
 func (s *lioCredentialSink) verifyDisabled(ctx context.Context) error {
+	return s.verifyState(ctx, "0")
+}
+
+func (s *lioCredentialSink) verifyEnabled(ctx context.Context) error {
+	return s.verifyState(ctx, "1")
+}
+
+func (s *lioCredentialSink) verifyState(ctx context.Context, expected string) error {
 	if s == nil || ctx == nil {
 		return ErrInvalid
 	}
@@ -362,7 +374,7 @@ func (s *lioCredentialSink) verifyDisabled(ctx context.Context) error {
 	if !s.ready || ctx.Err() != nil {
 		return ErrUnavailable
 	}
-	if s.checkDisabled() != nil || s.fields(false) != nil || ctx.Err() != nil || s.checkDisabled() != nil {
+	if s.checkState(expected) != nil || s.fields(false) != nil || ctx.Err() != nil || s.checkState(expected) != nil {
 		s.review = true
 		return ErrReview
 	}

@@ -40,6 +40,9 @@ DENIED = ("PHANTOWD_LIO_ERROR", "PHANTOWD_LIO_CLIENT_ERROR", "Kernel panic",
           "synthetic-chap-only-2026", "synthetic-outbound-only-2026",
           "synthetic-rotated-only-2026", "synthetic-peer-only-2026", "deliberately-wrong")
 IDLE_MARKERS = (
+    "PHANTOWD_LIO_TARGET_READY complete_roster=true luns=0,7 block_sizes=512,4096 actual_mount_owner=true "
+    "proc_fd_binding=true chap=true exact_data=true write_only_open_modes=true active_attribute_checks=true later_member_drift=true "
+    "uncertain_retains_all=true no_retry=true idle_teardown_before_release=true scope=disposable-qemu-only",
     "PHANTOWD_LIO_CLIENT_READY case=idle-disabled",
     "PHANTOWD_LIO_CLIENT_READY case=idle-reenabled",
     "PHANTOWD_LIO_IDLE_READY active_refused=true session_io_survived=true idle_disabled=true "
