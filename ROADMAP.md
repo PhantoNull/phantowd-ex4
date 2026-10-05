@@ -1934,12 +1934,88 @@ support per tested combination; refuse untested combinations without mutation.
   final guarded ARMv5 foreign ACL/LUN/mapping refusal preserves foreign objects,
   retains complete sources on uncertain stop and keeps no-retry review.
   Native/14 marker contracts/all old actual gates/standard two-boot pass.
-  **Next:** adversarial portal/extra-TPG and link/name-change cases, max-policy
+  **Next:** M9.1j adds bounded portal/extra-TPG cases; still qualify concurrent
+  shared-portal and link/name-change cases, max-policy
   resource/FD campaigns, complete write/readback/close faults and independent
   writer/portal/pending-login admission. Snapshots cannot detect a mutation
   restored between scans or supply atomic enable/writer exclusion. Then compose
   protected code/network/registry/storage/allocation/global-use and durable
   activation/recovery. No HTTP/startup/physical device authority is added.
+- **M9.1j — bounded foreign endpoints (locally tested prerequisite).**
+  Actual guarded ARMv5 adds a NEW guest-loopback portal under the owned TPG
+  and a separate NEW default-disabled sibling TPG with no portal. Observation
+  refuses both; one stop preserves foreign identity and complete claims in
+  terminal no-retry review. Prove the distinct partial outcomes: foreign
+  portal leaves the owned TPG disabled but retained; sibling TPG blocks target
+  removal after owned TPG teardown. Independent witnessed fixture disposal
+  releases sources without resetting lifecycle state. Fifteen mandatory result
+  contracts, native vet/race/repetitions, fresh guarded guest/all old gates and
+  standard two-boot pass. Product backend behavior/privileges remain unchanged.
+  **Next:** shared-portal/concurrent writer/pending-login admission, max-policy
+  FD/resource and complete write/readback/close fault campaigns; compose actual
+  code/network/registry/storage/allocation/global-use ownership and durable
+  activation/recovery. These bounded cases are not global writer exclusion,
+  foreign session fencing, a recovery API or hardware qualification.
+- **M9.1k — declared backing exposure admission (private prerequisite).**
+  Check the selected target's ENTIRE roster against validated canonical SMB/NFS
+  paths on the same logical VolumeID. Equal/ancestor/descendant/root overlap
+  refuses even for RO grants or desired disabled targets. Check before resource
+  transfer, credential preparation and LIO configfs effects; close singleton
+  policy-bound bypasses. Desired saves and advisory previews remain possible.
+  Native tests cover component boundaries, RO/RW, logical-volume separation,
+  unchanged input and no partial output. Mandatory standard ARMv5 fixtures use
+  actual mounted Pins/RW files and retained policy/CHAP owners: a later-member-only
+  conflict must reject without backend effects or retained claims, preserving
+  caller resources and original data. Native vet/race/repetitions, actual
+  standard ARMv5/two-boot regression and fresh guarded LIO/all old gates pass
+  locally; cached overlays do not establish clean-build or EX4 qualification.
+  **Next:** qualify actual object aliases across paths/logical volumes, shared
+  protocol/global-use ownership and concurrent activation/foreign consumers under
+  explicit lock order. Passing lexical isolation is NOT global-use/writable
+  admission. Keep runtime/network/allocation, durable recovery and hardware gates.
+- **M9.1l — cooperative actual backing-object ownership (private prerequisite).**
+  Require the SAME internal authority at every writable constructor, including
+  older singleton paths. Observe each actual RW descriptor against its held Pin
+  before an atomic whole-roster reservation keyed by device/inode, not path,
+  VolumeID, mount ID, target label or open-description identity. Bound the roster
+  and complete authority; reject uninitialized/closed/reviewed authorities.
+  A later collision must reserve no earlier prefix and consume no caller file
+  or Pin. Keep reservations until verified whole-backend stop, all data and Pin
+  closures and source release; uncertainty stays terminal review without retry.
+  Lock order is lifecycle → individual Pin, separately lifecycle → authority;
+  the authority never calls consumers/sources or performs I/O under its lock.
+  **Tests:** actual independent-open ARMv5 tracer RED/GREEN; actual mounted
+  later-member-only target refusal and singleton reuse; mandatory ARMv5
+  concurrent admissions with exactly one winner and verified whole-stop reuse;
+  full tagged vet/race, old LIO gates and standard/two-boot regression.
+  Native actual-object positive cases SKIP on the local WSL 6.6 kernel without
+  unique mount IDs; aggregate success is not positive syscall qualification.
+  Existing tests pass locally, including fresh guarded LIO/all old gates and
+  actual standard/two-boot regression. No serialized use claims or recovery
+  reset, product opening/activation, HTTP, NAS or physical disk operations.
+  The mandatory real mounted ARMv5 concurrency/reuse fixture now passes locally:
+  join both independent admissions before release, require one winner and one
+  conflict with caller handles intact, run/reap the actual first child, verify
+  every member closure, then reuse the losing original handles through the
+  SAME authority and require a fresh child write/verified stop. Standard and
+  complete two-boot regression pass; this replaces the missing local native
+  positive evidence, not the native unique-mount guard or clean-build CI.
+  A mandatory actual later-FD-close fault also passes: the earlier data FD
+  closes, but all metadata/source/whole-object claims remain in terminal review;
+  fresh independent earlier-object admission refuses and lifecycle calls never
+  retry or launch. This prepared-only fault deliberately closes a caller-owned
+  descriptor first; it is not active-LIO recovery, media I/O or ECC evidence.
+  Actual mounted capacity qualification also passes: 63 distinct prepared
+  singleton objects leave one slot; a two-file target refuses without publishing
+  a prefix, the unused first input admits as object64 and another refuses;
+  verified closure frees two slots for a complete target through the SAME book.
+  No injected inode/map identity or backend start; standard/two-boot pass.
+  Kernel-independent native JSON/reconstruction refusal and empty-close tests
+  execute under race count3, independently of the skipped statx-positive cases.
+  **Next:** integrate this authority into a qualified product composition and
+  separately fence external/cross-protocol access, foreign target/session use,
+  allocation and retained storage/network lifetimes. Distinct authorities do
+  not coordinate; success is NOT complete global-use/writer exclusion.
 - **M9.2 — Target model.** Stable target/LUN identity, backing volume/object,
   capacity/allocation policy, initiator access and protected authentication
   secrets. Secrets are not returned by read APIs or exposed in diagnostics.
@@ -2219,11 +2295,16 @@ These features are separate scope, not shortcuts around core acceptance:
 
 ## Next bounded work packets
 
-Current priority (2026-10-02): **M0.3 feedback reliability → M4.4 private service
-namespace/restricted root → M3 production roster/qualification + M4 activation
-owner**. PR #53 is integrated; no feature commits were waiting to be pushed at
-this audit. The packets below retain earlier dependency context, not a list of
-unmerged PRs. See [current gaps and acceptance sequence](IMPLEMENTATION-STATUS.md#next-implementation-sequence).
+Current priority (2026-10-05): **M9.1l actual backing-use lifetime qualification
+→ M4.4 separate Samba-specific service Owner → M3 production roster/qualification
++ M4 durable activation Owner**. Keep local-first validation and exact-head
+integration serialized; do not restart a heavy qualifier for each intermediate
+checkpoint. The actual cooperative target concurrency/reuse fixture passes
+locally, but native positive tests skip on the unsupported local kernel.
+The Samba Owner composition still requires its separate explicit host/QEMU
+decision; the already-qualified standalone fixture is not that permission.
+The packets below retain earlier dependency context, not current PR status.
+See [current gaps and acceptance sequence](IMPLEMENTATION-STATUS.md#next-implementation-sequence).
 
 1. **M0.1:** exact-head integration of router/race correction and Samba
    boundary characterization is complete in merged PR #40. Continue tracking

@@ -304,6 +304,26 @@ while [ "$attempt" -lt "$smoke_timeout" ]; do
             echo 'Missing complete target backing lifetime assertion' >&2
             exit 1
         fi
+        if ! grep -F 'PHANTOWD_TARGET_KNOWN_USE_READY coherent_policy=true smb_exposure_refused=true nfs_exposure_refused=true readonly_refused=true later_member=true caller_resources_preserved=true no_source_claims=true no_backend_effects=true global_use=false activation=false scope=disposable-qemu-only' "$log_file" >/dev/null; then
+            echo 'Missing declared backing-use admission proof' >&2
+            exit 1
+        fi
+        if ! grep -F 'PHANTOWD_TARGET_OBJECT_USE_READY shared_authority=true independent_opens_refused=true later_conflict_atomic=true singleton_same_authority=true actual_mount_owner=true caller_resources_preserved=true uncertain_retains_reservation=true no_retry=true cooperative=true external_exclusion=false global_use=false activation=false scope=disposable-qemu-only' "$log_file" >/dev/null; then
+            echo 'Missing cooperative backing-object reservation proof' >&2
+            exit 1
+        fi
+        if ! grep -F 'PHANTOWD_TARGET_OBJECT_CONCURRENCY_READY independent_opens=true simultaneous_admission=true joined_before_release=true exactly_one_winner=true rejected_callers_preserved=true busy_until_stop=true actual_child_reaped=true verified_reuse=true actual_mount_owner=true cooperative=true external_exclusion=false activation=false scope=disposable-qemu-only' "$log_file" >/dev/null; then
+            echo 'Missing actual backing-object concurrent admission and verified reuse proof' >&2
+            exit 1
+        fi
+        if ! grep -F 'PHANTOWD_TARGET_OBJECT_CLOSE_READY actual_later_fd_close_failure=true earlier_fd_closed=true all_metadata_retained=true whole_reservation_retained=true independent_open_refused=true policy_credentials_mount_retained=true terminal_review=true no_close_retry=true actual_mount_owner=true activation=false scope=disposable-qemu-only' "$log_file" >/dev/null; then
+            echo 'Missing actual later-member close uncertainty and reservation retention proof' >&2
+            exit 1
+        fi
+        if ! grep -F 'PHANTOWD_TARGET_OBJECT_CAPACITY_READY actual_objects=64 whole_overflow_atomic=true rejected_callers_preserved=true unused_slot_reusable=true released_capacity_reusable=true actual_mount_owner=true no_backend_effects=true cooperative=true activation=false scope=disposable-qemu-only' "$log_file" >/dev/null; then
+            echo 'Missing actual whole-roster backing capacity and rollback proof' >&2
+            exit 1
+        fi
         if ! grep -F 'PHANTOWD_POLICY_BACKING_LIFETIME_READY private_revision_claim=true exact_backing_selection=true real_mount_owner=true consumer_uid=1000 stop_before_policy_release=true uncertain_stop_retains_policy_mount_rw=true restored_policy_no_revival=true no_retry=true product_activation=false scope=disposable-qemu-only' "$log_file" >/dev/null; then
             echo 'Missing combined desired-policy/backing lifetime assertions' >&2
             cat "$log_file" >&2

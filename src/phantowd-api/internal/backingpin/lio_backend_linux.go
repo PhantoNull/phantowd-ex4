@@ -79,7 +79,7 @@ type lioOwnedEntry struct {
 }
 
 func lioTargetDefinition(document naspolicy.Config, id iscsipolicy.TargetID) (iscsipolicy.Target, map[iscsipolicy.BackingID]iscsipolicy.Backing, error) {
-	if document.Validate() != nil {
+	if !knownTargetUseAllowed(document, id) {
 		return iscsipolicy.Target{}, nil, ErrInvalid
 	}
 	for _, target := range document.ISCSI.Targets {

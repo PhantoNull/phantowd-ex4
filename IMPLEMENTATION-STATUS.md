@@ -3,6 +3,105 @@
 
 # Implementation status
 
+## M9.1l cooperative backing-object ownership — private prerequisite
+
+All internal writable constructors now require a retained shared use authority.
+It samples the actual RW descriptor against each privately held Pin, then
+reserves the entire roster atomically by device/inode identity. Mount ID,
+logical VolumeID, path and separately opened descriptors cannot create a second
+slot for the same object. A later conflict publishes no earlier reservation.
+Admission failure returns caller resources; successful lifecycle release occurs
+only after verified whole-backend stop, all data/Pin closures and source release.
+Uncertain stop/closure retains the reservation in terminal no-retry review.
+
+An actual standard ARMv5 tracer first admitted independent Pins/descriptors for
+the same two files; the corrected tracer passes. Scope correction: the three
+native actual-object positive tests SKIP on the local WSL 6.6 kernel because
+unique mount IDs are unavailable. Aggregate native green does not establish
+concurrent admission, verified reuse or uncertain-retention syscall evidence.
+The mandatory actual mounted ARMv5 concurrent fixture now executes: independent
+Pins/RW descriptions race into the SAME authority; both admissions join before
+release; exactly one succeeds, and the refused caller retains its handles.
+The winner runs a UID1000 consumer and remains busy until verified whole stop,
+child reap and all member closures. The losing original handles then admit and
+run a second consumer through that SAME authority. Readiness bytes are cleared
+before reuse so the second child must write them anew. Standard ARMv5 and the
+complete two-boot regression pass locally with the mandatory concurrency marker.
+An additional mandatory mounted ARMv5 fault closes the later caller-owned
+descriptor before prepared-Owner teardown. The actual later os.File.Close
+failure follows a successful earlier data close; all metadata, whole object
+reservation, policy, credentials and mount remain retained in terminal review.
+Even a new independent open of the earlier object is refused. Repeated lifecycle
+operations cannot retry closure or start a backend. This is a controlled
+already-closed-FD fault, not a storage-I/O/ECC failure or live-LIO recovery test.
+The actual mounted capacity fixture fills the shared authority with 63 distinct
+prepared singleton objects. A complete two-file target refuses atomically with
+caller handles intact; the unused first file can still occupy slot64, while
+another object refuses. Verified closure frees two slots and the complete
+target then admits through the SAME authority. No fabricated identity/map keys
+or backend start is used. Standard/two-boot pass. Kernel-independent native
+serialization/reconstruction refusal and empty-close checks execute under race
+count3; the three actual native statx-positive cases remain explicitly skipped.
+Actual mounted ARMv5 also refuses a later-member-only conflict with no earlier
+reservation or backend effects, preserving caller resources and allowing a
+singleton to claim the unused member through the same authority. Whole tagged
+vet/race, focused repetitions, Windows cross-compile, standard/two-boot and
+fresh guarded LIO/all previous gates pass locally. Cached overlays do not prove
+clean-build reproducibility, complete global-use admission or EX4 qualification.
+This is private cooperative in-process exclusion, not a filesystem lock or
+complete product authority. The trusted composition must supply the SAME
+instance to all consumers; independent authorities, external processes, foreign
+targets and concurrent SMB/NFS aliases are not excluded. No product opener,
+HTTP endpoint, persistent state, service startup or NAS operation is added.
+
+## M9.1k declared backing exposure — private admission prerequisite
+
+The selected target's complete LUN roster now refuses configured SMB/NFS
+equal/ancestor/descendant/root exposure on the same logical VolumeID, including
+read-only shares and desired disabled targets. The private planner, LIO definition
+constructor and older policy-bound singleton compositions enforce this before
+resource transfer or credential/backend preparation. Errors return no partial
+definition. Desired validation/save and advisory previews remain unchanged.
+
+Whole Linux tagged vet/race and focused repeated native tests pass locally,
+including RO/RW canonical-component boundaries, different logical volumes,
+unchanged desired policy and bypass refusal. A mandatory disposable ARMv5 case
+for each protocol checks a later-member-only conflict with actual mounted Pins,
+RW caller descriptors and root-only policy/CHAP sources; backend effects and
+retained source claims must be absent. Actual standard ARMv5 and complete
+two-boot regression pass locally. A fresh guarded LIO kernel/guest run also
+passes all previous credential, access, session, topology and fault gates.
+Base artifacts verify unchanged; this cache-reusing overlay is not clean-build
+reproducibility or physical EX4 qualification.
+
+This is only a negative check of configured paths. Actual aliases across paths
+or logical volumes, other users/processes/targets, concurrent share activation,
+global-use/session/allocation and retained product authority remain open.
+No policy schema, HTTP endpoint, product startup or NAS operation is added.
+
+## M9.1j foreign endpoints — disposable host/QEMU proof
+
+The exact target census now has actual guarded ARMv5 cases for a NEW foreign
+guest-loopback portal under owned tpgt_1 and a NEW sibling tpgt_2, which stays
+default-disabled with no portal. Both cause terminal Owner review, one stop
+attempt, preserved captured/path foreign identity and complete retained
+file/Pin/mount/policy/CHAP claims. Repeated lifecycle calls never retry.
+
+The portal prevents complete owned TPG removal; disabled readback still works.
+The sibling TPG instead prevents target removal after the owned TPG has been
+disabled/removed/closed. The fixture verifies that different partial outcome
+without reopening a vanished owned object. Only an independent controller
+removes its still-witnessed synthetic object and remaining idle owned objects
+before releasing sources; it never resets review or the backend stop state.
+
+Fifteen mandatory result-contract groups, mocked wrapper profiles, Windows
+preflight/cross-compile, whole Linux tagged vet/race and focused repetitions,
+fresh guarded ARMv5/all old LIO gates and standard/two-boot regression pass
+locally. Only QEMU fixture/qualification evidence changes; the production
+backend is unchanged. No shared-portal race, active foreign session revocation,
+exclusive writer/network authority, exhaustive faults/resource limits, durable
+recovery or product activation is qualified. No NAS or physical media is touched.
+
 ## M9.1i exact target topology — private host/QEMU prerequisite
 
 The retained-storage LIO backend now censuses configurable rosters inside its
@@ -26,8 +125,9 @@ cpus_allowed_list are not attributes of an individual target.
 
 This is point-in-time target observation, not a global fabric census, atomic
 mutation witness, concurrent-root exclusion, pending-login fence or permission
-to disable foreign sessions. Adversarial portal/extra-TPG mutation and full
-capacity/resource campaigns remain. Product runtime/storage/network/global-use,
+to disable foreign sessions. M9.1j adds two bounded foreign-endpoint cases;
+concurrent/shared-portal mutation and full capacity/resource campaigns remain.
+Product runtime/storage/network/global-use,
 durable recovery, credentials and UI/startup gates are unchanged; no NAS I/O,
 new product interface/privilege or Docker image/named volume is introduced.
 

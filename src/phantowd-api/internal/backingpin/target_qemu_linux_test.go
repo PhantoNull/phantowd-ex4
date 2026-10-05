@@ -7,6 +7,7 @@ package backingpin
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"io"
 	"os"
@@ -17,7 +18,107 @@ import (
 
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/iscsicredentials"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/iscsipolicy"
+	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/mountowner"
+	"github.com/PhantoNull/phantowd-ex4/phantowd-api/nfsconfig"
+	"github.com/PhantoNull/phantowd-ex4/phantowd-api/shareconfig"
 )
+
+func TestTargetPlanningRefusesConfiguredSMBExposure(t *testing.T) {
+	p := fixtureTargetPolicy(1, "data/a", "data/b")
+	p.FileServices.Shares.Users = []shareconfig.User{{ID: "reader", Name: "reader"}}
+	p.FileServices.Shares.Shares = []shareconfig.Share{{ID: "visible", Name: "visible", VolumeID: "qemu-plan", RelativePath: "data",
+		Grants: []shareconfig.Grant{{UserID: "reader", Access: "ro"}}}}
+	if p.Validate() != nil {
+		t.Fatal("desired overlap must remain saveable, not silently activate")
+	}
+	var in []targetSelection
+	for _, id := range []iscsipolicy.BackingID{"fixture-backing", "fixture-second"} {
+		f, err := os.CreateTemp(t.TempDir(), "input-")
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() { _ = f.Close() })
+		in = append(in, targetSelection{backingID: id, pin: &Pin{}, file: f})
+	}
+	if plan, err := planTarget(p, "fixture-target", in); plan != nil || !errors.Is(err, ErrInvalid) {
+		t.Fatal("read-only share exposure admitted for target resources")
+	}
+	if target, defs, err := lioTargetDefinition(p, "fixture-target"); target.ID != "" || defs != nil || !errors.Is(err, ErrInvalid) {
+		t.Fatal("exposed target definition captured for LIO")
+	}
+	for _, member := range in {
+		if _, err := member.file.Stat(); err != nil || member.pin.consumer != nil {
+			t.Fatal("rejected selection consumed caller resources")
+		}
+	}
+}
+
+func TestTargetDefinitionRefusesConfiguredNFSExposure(t *testing.T) {
+	p := fixtureTargetPolicy(1, "data/a", "other/b")
+	p.FileServices.NFS.Exports = []nfsconfig.Export{{ID: "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee", VolumeID: "qemu-plan", RelativePath: "other",
+		Clients: []nfsconfig.Client{{Network: "127.0.0.1/32", Access: "ro", Squash: "all", AnonymousUID: 1000, AnonymousGID: 1000, Security: "sys"}}}}
+	if p.Validate() != nil {
+		t.Fatal("valid read-only NFS desired policy refused")
+	}
+	if target, defs, err := lioTargetDefinition(p, "fixture-target"); target.ID != "" || defs != nil || !errors.Is(err, ErrInvalid) {
+		t.Fatal("later member exposed through NFS admitted")
+	}
+}
+
+func TestTargetKnownUseCanonicalBoundariesAndVolumeScope(t *testing.T) {
+	for _, protocol := range []string{"configured-smb", "configured-nfs"} {
+		for _, access := range []string{"ro", "rw"} {
+			for _, tc := range []struct {
+				path    string
+				refused bool
+			}{{".", true}, {"data", true}, {"data/a", true}, {"data/a/nested", true}, {"database", false}, {"data/ab", false}, {"elsewhere", false}} {
+				t.Run(protocol+"-"+access+"-"+tc.path, func(t *testing.T) {
+					p := fixtureTargetPolicy(1, "data/a", "other/b")
+					fixtureTargetExposure(&p, protocol, tc.path)
+					p.ISCSI.Targets[0].LUNs[0].Access = access
+					p.ISCSI.Targets[0].Initiators[0].Grants[0].Access = access
+					if protocol == "configured-smb" {
+						p.FileServices.Shares.Shares[0].Grants[0].Access = access
+					} else {
+						p.FileServices.NFS.Exports[0].Clients[0].Access = access
+					}
+					if p.Validate() != nil {
+						t.Fatal("invalid control policy")
+					}
+					before, _ := json.Marshal(p)
+					target, defs, err := lioTargetDefinition(p, "fixture-target")
+					if tc.refused {
+						if target.ID != "" || defs != nil || !errors.Is(err, ErrInvalid) {
+							t.Fatal("known exposure produced partial definition")
+						}
+					} else if err != nil || target.ID != "fixture-target" || len(defs) != 2 {
+						t.Fatal("lexically disjoint control refused", err)
+					}
+					// Metadata selection seam ONLY, not a qualified mounted root.
+					pin := &Pin{mountRoot: &mountowner.VolumeRootPin{}, volumeID: "qemu-plan", directory: "data", name: "a", fileIdentity: identity{size: 4096}}
+					if policyMatchesPin(p, "fixture-backing", pin) == tc.refused {
+						t.Fatal("singleton policy path bypassed or over-refused")
+					}
+					after, _ := json.Marshal(p)
+					if string(before) != string(after) {
+						t.Fatal("admission mutated desired policy")
+					}
+				})
+			}
+		}
+		p := fixtureTargetPolicy(1, "data/a", "other/b")
+		fixtureTargetExposure(&p, protocol, ".")
+		p.FileServices.Shares.Volumes = append(p.FileServices.Shares.Volumes, shareconfig.Volume{ID: "different", FilesystemUUID: "22222222-3333-4444-5555-666666666666"})
+		if protocol == "configured-smb" {
+			p.FileServices.Shares.Shares[0].VolumeID = "different"
+		} else {
+			p.FileServices.NFS.Exports[0].VolumeID = "different"
+		}
+		if target, _, err := lioTargetDefinition(p, "fixture-target"); err != nil || target.ID != "fixture-target" {
+			t.Fatal("different logical volume treated as known path overlap", err)
+		}
+	}
+}
 
 type targetLifecycleBackend struct {
 	*credentialLifecycleBackend

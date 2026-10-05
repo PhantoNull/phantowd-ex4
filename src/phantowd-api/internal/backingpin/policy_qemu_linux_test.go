@@ -179,7 +179,7 @@ func TestPolicyBackingSelectionAndFailedAdmissionConsumeNothing(t *testing.T) {
 				t.Fatal(err)
 			}
 			defer f.Close()
-			owner, err := newPolicyBoundWritableOwner(ctx, p, f, backend, source, revision, iscsipolicy.BackingID(id))
+			owner, err := newPolicyBoundWritableOwner(ctx, p, f, backend, source, revision, iscsipolicy.BackingID(id), newBackingUseOwner())
 			if owner != nil || err == nil || p.consumer != nil {
 				t.Fatal("unqualified descriptor admitted", err)
 			}

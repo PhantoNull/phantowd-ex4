@@ -205,7 +205,7 @@ func RunQEMUWritableFixture(root *mountguard.Root, anchor string) (result error)
 	defer p.Close()
 	defer file.Close()
 	var missingBackend *fixtureWritableBackend
-	if owner, err := newWritableOwner(p, file, missingBackend); owner != nil || !errors.Is(err, ErrInvalid) || p.consumer != nil {
+	if owner, err := newWritableOwner(p, file, missingBackend, newBackingUseOwner()); owner != nil || !errors.Is(err, ErrInvalid) || p.consumer != nil {
 		return errors.New("typed nil backend admitted on real Root")
 	}
 	for _, kind := range []string{"foreign", "readonly", "append", "inherit"} {
@@ -234,7 +234,7 @@ func RunQEMUWritableFixture(root *mountguard.Root, anchor string) (result error)
 			}
 			other = os.NewFile(uintptr(fd), "qemu-refused-backing")
 		}
-		owner, e := newWritableOwner(p, other, &fixtureWritableBackend{})
+		owner, e := newWritableOwner(p, other, &fixtureWritableBackend{}, newBackingUseOwner())
 		if owner != nil || !errors.Is(e, ErrUnavailable) {
 			other.Close()
 			return fmt.Errorf("writable %s admission accepted", kind)
@@ -255,13 +255,14 @@ func RunQEMUWritableFixture(root *mountguard.Root, anchor string) (result error)
 			return err
 		}
 		backend := &fixtureWritableBackend{}
-		owner, err := newWritableOwner(p, f, backend)
+		uses := newBackingUseOwner()
+		owner, err := newWritableOwner(p, f, backend, uses)
 		if err != nil {
 			f.Close()
 			p.Close()
 			return err
 		}
-		if duplicate, err := newWritableOwner(p, f, &fixtureWritableBackend{}); duplicate != nil || !errors.Is(err, ErrBusy) || p.consumer != owner {
+		if duplicate, err := newWritableOwner(p, f, &fixtureWritableBackend{}, uses); duplicate != nil || !errors.Is(err, ErrBusy) || p.consumer != owner {
 			return errors.New("duplicate consumer claim admitted")
 		}
 		if err := exerciseWritableOwnerFixture(ctx, owner, backend, workspace+"/"+kind, kind, nil); err != nil {
@@ -274,6 +275,9 @@ func RunQEMUWritableFixture(root *mountguard.Root, anchor string) (result error)
 				p.mu.Unlock()
 			}
 			return fmt.Errorf("writable lifecycle %s: %w", kind, err)
+		}
+		if err := uses.close(); err != nil {
+			return err
 		}
 	}
 	fmt.Println("PHANTOWD_WRITABLE_BACKING_READY actual_descriptor=true foreign_or_unsafe_flags_denied=true consumer_uid=1000 inherited_rw=true pin_close_busy=true stop_before_release=true replace_quarantined=true unexpected_exit=true uncertain_stop_retains=true no_retry=true serialized_stop=true product_opener=false iscsi_backend=false scope=disposable-qemu-only")
@@ -388,6 +392,9 @@ func exerciseWritableOwnerFixture(ctx context.Context, owner *writableOwner, bac
 		err := owner.pin.closeLocked()
 		owner.pin.mu.Unlock()
 		if err != nil {
+			return err
+		}
+		if err := owner.releaseSourcesLocked(); err != nil {
 			return err
 		}
 	}

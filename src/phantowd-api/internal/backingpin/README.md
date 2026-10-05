@@ -311,8 +311,99 @@ marker contracts/all old guest gates and standard/two-boot pass. The first
 default-name prototype is corrected against the pinned source: fabric-root
 lio_version/cpus_allowed_list do not belong to a single target directory.
 This is point-in-time observation, not global fabric ownership or concurrent
-writer exclusion; restored changes between scans are not witnessed. Adversarial
-portal/extra-TPG and full-capacity/resource campaigns remain unqualified.
+writer exclusion; restored changes between scans are not witnessed.
+
+Two additional actual guarded ARMv5 cases create only a foreign guest-loopback
+portal or a default-disabled sibling TPG with no portal. Both fail observation,
+preserve captured/path foreign identities and retain all sources in terminal
+no-retry review. The portal blocks owned TPG removal; the sibling blocks target
+removal after owned TPG teardown. Independent witnessed fixture disposal proves
+those different partial outcomes without resetting the Owner/backend. Fifteen
+mandatory result contracts, native tagged race/repetitions, fresh actual guest
+and standard/two-boot regression pass locally. Product backend behavior is
+unchanged. Shared-portal/concurrent mutation, active foreign sessions and
+full-capacity/resource campaigns remain unqualified.
+
+## Private declared backing-use refusal
+
+The constructors also require a shared private actual-object use authority.
+The trusted composition supplies the SAME authority to complete-target and
+singleton consumers. It rechecks each real RW descriptor against its privately
+claimed Pin before atomically reserving all device/inode keys. Mount ID, logical
+volume, path and independent open descriptions are not exclusion identities.
+Later-member conflict publishes no prefix, and admission refusal returns caller
+resources. The lifecycle releases last, after verified whole-backend stop, all
+data/Pin closures and source release. Stop/closure uncertainty retains the whole
+reservation in terminal no-retry review. Zero values, closed/reviewed authorities
+and serialized claims cannot authorize admission. Bounds are 16 LUNs per roster
+and 64 total reserved objects. The authority lock never covers I/O or callbacks;
+lifecycle → individual Pin and lifecycle → authority are separate lock orders.
+
+This is cooperative in-process ownership only: another authority, external
+process, foreign target or concurrent SMB/NFS alias is not excluded. No file
+lock, product opener, durable registry/recovery or activation endpoint is added.
+An actual independent-open ARMv5 defect is reproduced and corrected. The actual
+mounted later-member-only conflict also refuses without a prefix reservation or
+backend effects, preserving callers and permitting an unused-member singleton
+through the same authority. The three native actual-object positive cases SKIP
+on the local WSL 6.6 kernel without unique mount IDs; aggregate native success
+does not establish their concurrent/reuse/uncertainty assertions. Whole tagged
+vet/race/repetitions, Windows cross-compile, fresh guarded LIO/all old gates and standard/two-boot
+regression pass locally. This is not clean-build or physical EX4 qualification.
+The mandatory mounted ARMv5 fixture separately executes concurrent complete-
+target admission using independent Pins/RW descriptions and the SAME authority.
+Both admissions join before release; one winner and one conflict are required.
+The refused caller keeps its handles. After an actual UID1000 child runs, whole
+stop/reap and every member closure must succeed before those original losing
+handles can admit/run again. Old readiness bytes are cleared, requiring a new
+child write. Standard ARMv5/two-boot pass with the mandatory concurrency marker;
+native positive tests remain explicitly skipped on the unsupported local kernel.
+The additional mandatory mounted ARMv5 close-fault case deliberately closes a
+later caller-owned FD before prepared-Owner teardown. Actual later Close fails
+after the earlier data Close succeeds; every metadata/source claim and the
+whole reservation remain in terminal review. A fresh independent open of the
+earlier object still refuses, and repeated lifecycle calls do not retry or
+launch. Independent fixture disposal observes already-closed handles without
+a second Close; it never resets review. This is not live-LIO recovery or an
+I/O/ECC failure. The combined standard/two-boot regression passes locally.
+The mandatory mounted capacity case uses 63 actual distinct prepared singleton
+objects, leaving one slot. A two-member target refuses without a prefix claim
+or caller/backend effects. The unused first input can occupy slot64 while the
+next object refuses; verified closure frees two slots for a complete target
+through the SAME book. No injected identity/map key is used and no child starts.
+This is the cooperative object's internal bound, not a 64-LUN target or a
+performance/product/global-use qualification. Standard/two-boot pass. Native
+JSON/reconstruction refusal and empty-close cases execute under race count3
+without the unique-mount prerequisite; positive native statx cases still SKIP.
+
+Admission now rejects a selected target if ANY LUN backing overlaps a configured
+SMB share or NFS export on the SAME logical VolumeID. Comparison uses validated
+canonical path components: equal, ancestor, descendant and volume-root paths
+conflict; lexical prefixes such as `data/a` versus `data/ab` do not. Read-only
+grants and desired disabled state do not make backing exposure safe. Every
+selected member is checked before Pin/file transfer or credential preparation;
+the LIO definition constructor and older policy-bound singleton paths enforce
+the same prerequisite. Failure returns no partial target definition.
+
+The complete-target Owner supplies its own retained coherent policy claim.
+Desired policy validation/save and read-only registry/share advisories are
+unchanged: this is a private negative admission gate, not a policy rewrite or
+an activation endpoint. Different logical VolumeIDs are only lexically distinct,
+not proved to refer to different storage. Symlinks/hardlinks, bind/case aliases,
+other processes or protocols, foreign targets and concurrent writers still need
+independent retained identity/global-use ownership. A successful path comparison
+never supplies writable, allocation, mount, network or execution authority.
+
+Native tests cover both protocols, RO/RW access, canonical overlap boundaries,
+different-volume controls, unchanged desired policy and singleton bypass
+refusal. The disposable standard ARMv5 fixture requires both protocols to reject
+a later-member-only conflict, with real mounted Pins/caller descriptors and
+policy/CHAP sources; no backend prepare/start/stop or source claim may remain.
+Its mandatory marker explicitly preserves `global_use=false` and
+`activation=false`. Native vet/race/repetitions, actual standard ARMv5 and
+complete two-boot regression pass locally. Fresh guarded LIO execution also
+passes all previous authentication/access/session/fault/topology gates. Cached
+overlays are not clean-build reproducibility or physical EX4 qualification.
 
 Remaining adapter-specific tests include exhaustive store/readback/close/delete
 faults and resource bounds, pending-login

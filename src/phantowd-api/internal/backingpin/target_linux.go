@@ -88,7 +88,7 @@ func (b *targetBackendAdapter) stop(ctx context.Context) error { return b.backen
 // Pure complete membership/alias planning. Real descriptor/kernel checks are
 // separate and mandatory. No partial, positional, inferred or foreign roster.
 func planTarget(document naspolicy.Config, id iscsipolicy.TargetID, inputs []targetSelection) ([]targetBacking, error) {
-	if document.Validate() != nil || len(inputs) == 0 || len(inputs) > iscsipolicy.MaxLUNs {
+	if !knownTargetUseAllowed(document, id) || len(inputs) == 0 || len(inputs) > iscsipolicy.MaxLUNs {
 		return nil, ErrInvalid
 	}
 	var target *iscsipolicy.Target
@@ -140,8 +140,8 @@ func planTarget(document naspolicy.Config, id iscsipolicy.TargetID, inputs []tar
 // untouched (apart from any already-observed sticky Pin/source review).
 // No product opener, LIO/configfs, listener, HTTP or automatic recovery.
 func newTargetWritableOwner(ctx context.Context, inputs []targetSelection, backend targetBackend,
-	source *naspolicystore.Owner, revision uint64, secrets *iscsicredentials.Owner, secretRevision uint64, id iscsipolicy.TargetID) (_ *writableOwner, result error) {
-	if ctx == nil || source == nil || secrets == nil || backend == nil {
+	source *naspolicystore.Owner, revision uint64, secrets *iscsicredentials.Owner, secretRevision uint64, id iscsipolicy.TargetID, uses *backingUseOwner) (_ *writableOwner, result error) {
+	if ctx == nil || source == nil || secrets == nil || backend == nil || uses == nil {
 		return nil, ErrInvalid
 	}
 	v := reflect.ValueOf(backend)
@@ -177,6 +177,10 @@ func newTargetWritableOwner(ctx context.Context, inputs []targetSelection, backe
 			}
 			pin.consumer = nil
 			pin.mu.Unlock()
+		}
+		if owner != nil && owner.use != nil && owner.use.release() != nil {
+			result = ErrReview
+			return // Lost reservation requires retaining all remaining sources.
 		}
 		if credentials != nil && credentials.Release() != nil {
 			result = ErrReview
@@ -229,6 +233,10 @@ func newTargetWritableOwner(ctx context.Context, inputs []targetSelection, backe
 		pin.consumer = owner
 		claimed = append(claimed, pin)
 		pin.mu.Unlock()
+	}
+	owner.use, err = uses.acquire(owner)
+	if err != nil {
+		return nil, err
 	}
 	if owner.checkInputs(ctx) != nil {
 		return nil, ErrReview

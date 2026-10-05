@@ -186,8 +186,17 @@ from pinned target_fabric_make_wwn: fabric-root attributes are not target attrs.
 Mandatory exact topology evidence refuses missing/duplicate/weakened proof or
 an exaggerated writer-exclusion claim. This is NOT a global fabric census,
 atomic transaction, restored-change witness or concurrent-root exclusion.
-Adversarial portal/extra-TPG changes, maximum-policy/FD/resource campaigns,
-writer/portal admission and pending/new-login fencing remain product gates.
+Separate bounded cases now prove refusal/preservation of a NEW guest-loopback
+portal and a NEW default-disabled sibling TPG without a portal. One stop leaves
+the former's owned TPG disabled but retained; the latter's owned TPG disappears
+before target removal is blocked. Complete sources remain held in review;
+independent witnessed disposal never resets/retries lifecycle state. A separate
+mandatory endpoint marker rejects omitted/duplicate/weakened results or a
+writer-exclusion/product claim. Fresh guarded ARMv5/all old gates, native tagged
+race/repetitions and standard/two-boot tests pass locally. No production backend
+behavior/privilege changes. Shared-portal/concurrent changes, maximum-policy/FD/
+resource campaigns, writer/portal admission and pending/new-login fencing remain
+product gates; the two isolated cases are not foreign-session fencing/recovery.
 
 Use the isolated kernel and a disposable snapshot of the verified root image;
 start a dedicated guest init, not product services. The guest alone may use
