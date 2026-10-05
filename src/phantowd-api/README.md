@@ -31,7 +31,15 @@ continues to contain refs only; root-owned plaintext storage is the accepted
 first-release boundary, with encryption at rest deferred. The private backing
 lifecycle now retains credentials until verified teardown/reference closure;
 uncertainty retains review without retry. This is synthetic host/QEMU lifetime
-work, not a credential writer, LIO adapter, HTTP or product activation.
+work, not a credential-store writer, complete LIO adapter, HTTP or product activation.
+
+An additional private fixed LIO credential sink now installs opaque buffers
+through allowlisted configfs leaves and performs redacted exact readback below
+the retained disabled TPG's named ACLs. Native and separate actual zero-data-LUN
+ARMv5 loopback protocol fixtures cover CHAP/reciprocal exchange and teardown
+before credential release. Same-configfs foreign ACLs refuse; observed restored
+drift cannot revive the sink. No complete target backend, active-state/session
+authority, provisioning writer or product activation follows.
 
 The private complete-target resource owner now retains every selected LUN's
 existing Pin/RW descriptor with that policy and credential bundle. It refuses

@@ -216,7 +216,8 @@ int main(int argc, char **argv)
         strcmp(mode, "rotated-old") && strcmp(mode, "primary-hold") &&
         strcmp(mode, "peer-ro-hold") && strcmp(mode, "peer-cross") &&
         strcmp(mode, "multi-primary") && strcmp(mode, "multi-peer") &&
-        strcmp(mode, "multi-primary-check"))
+        strcmp(mode, "multi-primary-check") && strcmp(mode, "credential-chap") &&
+        strcmp(mode, "credential-mutual"))
         return failed(NULL, "mode");
     /* No fixed seed or pre-initialization urandom use in authentication tests. */
     if (getrandom(entropy, sizeof(entropy), GRND_NONBLOCK) != sizeof(entropy))
@@ -230,7 +231,7 @@ int main(int argc, char **argv)
     rotated = !strcmp(mode, "rotated") || !strcmp(mode, "primary-hold") ||
               !strcmp(mode, "multi-primary") || !strcmp(mode, "multi-primary-check");
     mutual = !strncmp(mode, "mutual", 6) && strcmp(mode, "mutual-oneway") && strcmp(mode, "mutual-oneway-refused");
-    mutual = mutual || rotated || !strcmp(mode, "rotated-old");
+    mutual = mutual || rotated || !strcmp(mode, "rotated-old") || !strcmp(mode, "credential-mutual");
     held = !strcmp(mode, "primary-hold") || !strcmp(mode, "peer-ro-hold");
     ctx = iscsi_create_context(!strcmp(mode, "foreign") ? FOREIGN : peer ? PEER : INITIATOR);
     if (ctx == NULL)
@@ -268,6 +269,9 @@ int main(int argc, char **argv)
     if (login != 0 || !iscsi_is_logged_in(ctx)) {
         return failed(ctx, "login");
     }
+    /* Typed credential installation proof has no data LUN or SCSI commands. */
+    if (!strcmp(mode, "credential-chap") || !strcmp(mode, "credential-mutual"))
+        goto logout;
     if (!strncmp(mode, "multi-", 6)) {
         const char *stage = multiple_luns(ctx, mode);
         if (stage != NULL)

@@ -209,6 +209,42 @@ No product opener, allocation, registry/global-use/session/network authority,
 HTTP, listener, startup, physical disk or NAS operation is added. Desired target
 enable/access remains metadata, not permission to run or expose a target.
 
+## Private typed LIO credential sink prerequisite
+
+The Linux-only sink is a fixed-consumer prerequisite, not a target backend.
+It borrows backend-owned TPG/auth directory references, requires root-owned
+writable configfs with unique mount/inode observations, and rechecks each named
+ACL's confined `acls/<initiator>/auth` topology against its borrowed descriptor.
+Same-filesystem or similarly named handles do not establish that relationship.
+Only fixed credential/state leaves may be opened: no create/truncate, arbitrary
+path, ACL/portal/LUN creation, target enable or credential release exists here.
+
+The complete credential roster is matched before mutation. One installation
+attempt writes opaque secrets directly through their trusted sink interface;
+fixed-size transient readback compares exact bytes plus the pinned kernel's
+single show newline, then wipes its scratch. No secret string/digest, diagnostics
+or independently retained secret byte copy is returned. CHAP explicitly unsets
+stale outbound fields; this is logical unsetting, not guaranteed kernel memory
+erasure. Reciprocal configuration is not required-mutual enforcement.
+
+Installation and private verification bracket all field operations with disabled
+TPG/root/topology checks. Partial write/read/close, observed drift or uncertainty
+permanently enters review; no reinstall, clear, rotation, restart or recovery
+method exists. The containing backend must own exclusive configuration access
+and retain claims until all kernel borrowers and configfs objects are verifiably
+torn down. Disabled-state snapshots alone are not session/global-use authority,
+continuous change-history proof or an atomic transaction. Metadata I/O can block;
+context cancellation is not universal syscall interruption.
+
+The separate tagged fixture provisions a public synthetic root-only vault and
+two successive fixed loopback targets with **zero data LUNs**. It exercises
+the actual configfs sink, CHAP/reciprocal login through pinned libiscsi, wrong/
+missing credential refusal, stale outbound removal, observed/restored drift
+quarantine, claim retention and object teardown before release. It adds no data
+disk or product activation. Native readback tests explicitly use regular-file
+I/O seams, not positive configfs qualification. The dedicated guest fixture is
+not installed in the standard overlay or shipped as a product service.
+
 Remaining M9.1b work: qualified production lifecycle and full coherent policy admission,
 controlled writable descriptor acquisition/handoff and retained lifetime,
 permissions/allocation admission, whole-protocol backing-use/session ownership,

@@ -9,15 +9,16 @@ dtb=${3:?compiled research DTB required}
 client=${4:?compiled synthetic initiator required}
 source_dir=${5:?source checkout required}
 log=${6:?output log required}
+api=${7:?compiled QEMU credential fixture required}
 required_mutual=${PHANTOWD_LIO_REQUIRE_MUTUAL:-0}
 case "$required_mutual" in 0) mutual_mode=default ;; 1) mutual_mode=strict ;; *) exit 1 ;; esac
 idle_guard=${PHANTOWD_LIO_IDLE_GUARD:-0}
 case "$idle_guard" in 0) idle_mode=off ;; 1) idle_mode=guarded ;; *) exit 1 ;; esac
-for input in "$base" "$kernel" "$dtb" "$client" "$source_dir" "$log"; do
+for input in "$base" "$kernel" "$dtb" "$client" "$source_dir" "$log" "$api"; do
     case "$input" in /*) ;; *) exit 1 ;; esac
     case "$input" in *[!a-zA-Z0-9_./-]*) exit 1 ;; esac
 done
-for file in "$base/rootfs.ext2" "$base/SHA256SUMS" "$kernel" "$dtb" "$client"; do
+for file in "$base/rootfs.ext2" "$base/SHA256SUMS" "$kernel" "$dtb" "$client" "$api"; do
     [ -f "$file" ] && [ ! -L "$file" ]
 done
 (cd "$base" && sha256sum -c SHA256SUMS)
@@ -49,6 +50,7 @@ replace() {
     rm "$temporary/verify"
 }
 replace "$client" /usr/libexec/phantowd-iscsi-fixture-client
+replace "$api" /usr/libexec/phantowd-lio-credential-fixture
 replace "$source_dir/support/fixtures/qemu-lio-init.sh" /usr/libexec/phantowd-lio-fixture-init
 : > "$log"
 qemu-system-arm -M versatilepb -cpu arm926 -m 256M \

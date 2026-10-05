@@ -27,8 +27,8 @@ if (!(Test-Path -LiteralPath $archive -PathType Leaf) -or
     '6321d802103f2a363d3afd9a5ae772de0b4052c84fe6a301ecb576b34e853caa') {
     throw 'Verified libiscsi 1.20.0 source archive required; this wrapper does not download.'
 }
-$scratch = '512m'
-$memory = '2g'
+$scratch = '1g'
+$memory = '4g'
 $compile = '0'
 $requiredMutual = if ($RequireMutual) { '1' } else { '0' }
 $idleModeEnv = if ($IdleGuard) { '1' } else { '0' }
@@ -71,9 +71,12 @@ sh /src/support/container/build-qemu-iscsi-client.sh /src \
     /src/artifacts/fixture-sources/libiscsi-1.20.0.tar.gz "$host" /tmp/client \
     > /tmp/client-build.log 2>&1 || { tail -30 /tmp/client-build.log; exit 1; }
 tail -3 /tmp/client-build.log
+export GOPROXY=off GOTOOLCHAIN=local GOFLAGS='-mod=vendor -buildvcs=false' CGO_ENABLED=0 GOOS=linux GOARCH=arm GOARM=5
+export GOCACHE=/tmp/go-cache GOPATH=/tmp/go-path
+(cd /src/src/phantowd-api && "$host/bin/go" build -tags=qemu -trimpath -ldflags='-s -w' -o /tmp/lio-credential-api .)
 status=0
 sh /src/support/qemu-lio-fixture.sh /src/artifacts/qemu-armv5 "$kernel" "$dtb" \
-    /tmp/client/phantowd-iscsi-fixture-client /src /tmp/lio-guest.log || status=$?
+    /tmp/client/phantowd-iscsi-fixture-client /src /tmp/lio-guest.log /tmp/lio-credential-api || status=$?
 # Only fixed synthetic markers, never arbitrary kernel/auth diagnostics.
 if [ -f /tmp/lio-guest.log ]; then grep '^PHANTOWD_LIO_' /tmp/lio-guest.log || true; fi
 if [ "$PHANTOWD_LIO_COMPILE" = 0 ]; then

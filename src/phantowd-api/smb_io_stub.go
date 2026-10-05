@@ -18,6 +18,9 @@ func runQEMUWritableBackingConsumer() error {
 func runQEMUTargetBackingConsumer() error {
 	return errors.New("target consumer fixture requires Linux ARMv5 QEMU")
 }
+func runQEMULIOCredentialTest() error {
+	return errors.New("LIO credential fixture requires Linux ARMv5 QEMU")
+}
 
 func runQEMUIdentityClient(string) error {
 	return errors.New("identity client fixture requires Linux ARMv5 QEMU")

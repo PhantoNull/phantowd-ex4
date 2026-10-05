@@ -30,11 +30,12 @@ func main() {
 	identityOwnerService := flag.Bool("qemu-identity-owner-service", false, "fixed root identity-owner service fixture; QEMU only")
 	writableConsumer := flag.Bool("qemu-writable-backing-consumer", false, "fixed inherited-descriptor consumer; disposable QEMU only")
 	targetConsumer := flag.Bool("qemu-target-backing-consumer", false, "fixed two-descriptor consumer; disposable QEMU only")
+	lioCredentialTest := flag.Bool("qemu-lio-credential-test", false, "fixed root credential installation fixture; disposable LIO QEMU only")
 	flag.Parse()
 	modes := 0
 	for _, selected := range []bool{
 		*selfTest, *storageBroker, *nfsTest != "", *smbTest, *mountGuardTest,
-		*mdStackTest, *mdV10Fixture, *mdV10BrokerClient, *stateTest != "", *identityClient != "", *identityOwnerService, *writableConsumer, *targetConsumer,
+		*mdStackTest, *mdV10Fixture, *mdV10BrokerClient, *stateTest != "", *identityClient != "", *identityOwnerService, *writableConsumer, *targetConsumer, *lioCredentialTest,
 	} {
 		if selected {
 			modes++
@@ -46,6 +47,13 @@ func main() {
 	if *writableConsumer {
 		if err := runQEMUWritableBackingConsumer(); err != nil {
 			fmt.Fprintln(os.Stderr, "PHANTOWD_WRITABLE_CONSUMER_ERROR fixture refused")
+			os.Exit(1)
+		}
+		return
+	}
+	if *lioCredentialTest {
+		if runQEMULIOCredentialTest() != nil {
+			fmt.Fprintln(os.Stderr, "PHANTOWD_LIO_ERROR phase=typed-credentials")
 			os.Exit(1)
 		}
 		return

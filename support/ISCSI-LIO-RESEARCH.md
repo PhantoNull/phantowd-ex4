@@ -86,6 +86,33 @@ marker explicitly says `guest=false activation=false`.
 
 ## Increment B: actual target and initiator fixture (local research)
 
+### Typed credential install/readback prerequisite
+
+The dedicated guest additionally runs the current tagged Go fixture before the
+existing FILEIO tests. Two new fixed targets are created and removed sequentially
+with **zero data LUNs**. A public synthetic root-only vault retains a credential
+claim while the private fixed configfs sink matches the complete peer roster,
+binds auth descriptors to the retained TPG's named ACLs, writes fixed leaves and
+performs exact bounded readback. Same-configfs foreign ACLs refuse. The pinned
+libiscsi client verifies CHAP/reciprocal login and exact wrong/missing credential
+refusal without SCSI commands; its output is discarded by the fixed Go caller.
+Observed credential drift remains review after exact restoration, with no retry.
+All client processes join, TPG disables and portal/ACL/TPG/target objects are
+removed before the claim is released. Independent fixture disposal is not
+product recovery. The final default-profile actual ARMv5 run passes locally;
+mocked strict/idle wrapper checks are not actual qualification of this new case.
+
+The sink borrows backend-owned references and never creates/enables targets,
+opens data, provisions a store or releases a claim. It is not the complete
+targetBackend adapter, exclusive mutation/session authority, active-state
+credential observer or required-mutual enforcement. CHAP stale outbound fields
+are logically unset, not guaranteed erased from kernel memory. Disabled-state
+snapshots do not prove continuous change history or an atomic transaction.
+The fixture executable is added only to a discarded copy of the root image,
+not installed in the standard overlay. The runner's seventh required argument
+is that independently compiled tagged fixture binary; the wrapper compiles it
+using the pinned existing Go toolchain with a disposable cache and no download.
+
 Use the isolated kernel and a disposable snapshot of the verified root image;
 start a dedicated guest init, not product services. The guest alone may use
 root/configfs. Attach no data disks and disable external QEMU networking.
@@ -300,7 +327,7 @@ before Docker inspection. The two research options may be selected separately
 or together; each selects exact mandatory configuration/result evidence.
 
 One non-root, read-only, networkless, zero-capability auto-removed container
-reuses the existing workspace read-only. Cached mode has 2 GiB memory/512 MiB
+reuses the existing workspace read-only. Cached mode has 4 GiB memory/1 GiB
 tmpfs; fresh mode has 8 GiB memory/4 GiB tmpfs; both have four CPUs/512 PIDs,
 a 900-second outer budget and a 180-second guest budget. All client/root snapshot
 and build scratch disappears at exit. Do not edit tested source during a run.
