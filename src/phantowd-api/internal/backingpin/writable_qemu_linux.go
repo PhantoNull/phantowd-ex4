@@ -43,10 +43,17 @@ type fixtureWritableBackend struct {
 }
 
 func (b *fixtureWritableBackend) start(ctx context.Context, file *os.File) error {
-	b.file = file
-	b.cmd = exec.Command("/usr/bin/phantowd-api", "-qemu-writable-backing-consumer")
+	return b.startFixedConsumer(ctx, []*os.File{file}, "-qemu-writable-backing-consumer", []string{writableFixtureData})
+}
+func (b *fixtureWritableBackend) startFixedConsumer(ctx context.Context, files []*os.File, mode string, markers []string) error {
+	if len(files) == 0 || len(files) != len(markers) ||
+		(mode != "-qemu-writable-backing-consumer" && mode != "-qemu-target-backing-consumer") {
+		return ErrInvalid
+	}
+	b.file = files[0]
+	b.cmd = exec.Command("/usr/bin/phantowd-api", mode)
 	b.cmd.Dir = "/"
-	b.cmd.ExtraFiles = []*os.File{file}
+	b.cmd.ExtraFiles = append([]*os.File(nil), files...)
 	b.cmd.Stdout = io.Discard
 	b.cmd.Stderr = io.Discard
 	b.cmd.SysProcAttr = &syscall.SysProcAttr{Credential: &syscall.Credential{Uid: 1000, Gid: 1000}, Pdeathsig: syscall.SIGKILL}
@@ -57,8 +64,15 @@ func (b *fixtureWritableBackend) start(ctx context.Context, file *os.File) error
 	go func() { _ = b.cmd.Wait(); close(b.done) }()
 	deadline := time.Now().Add(5 * time.Second)
 	for {
-		var bytes [len(writableFixtureData)]byte
-		if _, err := file.ReadAt(bytes[:], 0); err == nil && string(bytes[:]) == writableFixtureData {
+		ready := true
+		for i, file := range files {
+			data := make([]byte, len(markers[i]))
+			if _, err := file.ReadAt(data, 0); err != nil || string(data) != markers[i] {
+				ready = false
+				break
+			}
+		}
+		if ready {
 			for sample := 0; sample < 32; sample++ {
 				if err := b.verifyFixtureCredentials(); err != nil {
 					return err

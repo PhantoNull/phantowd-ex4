@@ -3,6 +3,38 @@
 
 # Implementation status
 
+## M9.1d complete-target resource lifetime — internal host/QEMU prerequisite
+
+The private constructor retains one coherent policy claim, one credential
+bundle and every selected target LUN's existing Pin/RW descriptor. It reuses
+the existing lifecycle/supervisor. Complete exact membership, explicit numeric
+ordering and observed inode/device alias refusal precede real per-member
+descriptor/root admission. Failed late admission rolls back provisional claims
+without closing caller files or preparing a backend. Desired access/enable
+still supplies no activation or permission authority.
+
+The fixed backend borrows the complete defensive roster. Verified teardown of
+all borrowers precedes every data close; every data close precedes any Pin
+release, and complete reference closure precedes shared policy/credential
+release. Second-member drift and partial start/stop/close uncertainty enter
+terminal review without retry. Uncertain stop retains all sources; partial close
+retains remaining references/global claims, without reopening already closed files.
+
+Windows preflight/cross-compilation, pinned Linux root-focused tagged vet/race
+count3, non-root whole tagged vet/race, storage/shell contracts and actual ARMv5
+standard smoke plus the complete two-boot state fixture pass locally. Native
+lifecycle tests use an explicit seam; real mounted guest cases cover complete
+two-member admission, failed second-file rollback, LUN0/LUN7 input-order reversal,
+512/4096-byte metadata, replacement of the second file and uncertain stop. A
+fixed UID/GID1000 child inherits both descriptors; no credential enters the
+child. These are cached userspace-overlay results, not clean hosted-build,
+LIO installation, protocol authentication, access enforcement or EX4 proof.
+
+No product data opener, LIO/configfs adapter, allocation/global-use/session/
+network admission, provisioning/recovery, HTTP, listener or startup is added.
+M9.1b product gates remain open. The earlier single-backing M9.1c evidence below
+remains separate and is not retroactively promoted to complete-target proof.
+
 ## M9.1c retained root-only CHAP material — internal prerequisite
 
 The first-release decision permits root-owned recoverable plaintext (`0700`

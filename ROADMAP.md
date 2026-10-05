@@ -1808,6 +1808,31 @@ support per tested combination; refuse untested combinations without mutation.
   generation/import provenance and protected provisioning/rotation recovery,
   then product startup and UI. Length checks are not entropy qualification;
   CHAP and root-only files provide neither transport nor at-rest encryption.
+- **M9.1d — complete-target resource lifetime (internal prototype).** One
+  private constructor now retains the exact selected target's existing Pin/RW
+  roster, one coherent policy revision and one credential bundle through the
+  existing lifecycle/supervisor. Refuse incomplete/extra/foreign/duplicate
+  members and observed inode/device aliases across bind views. Order by explicit
+  LUN number, not input position. Each member must match desired VolumeID/path/
+  capacity and pass real descriptor/root checks; provisional claims roll back
+  without closing caller references or preparing a backend on failed admission.
+  The fixed backend borrows a defensive complete roster. Confirmed teardown of
+  **every** process/session/kernel borrower precedes all data closure; all data
+  closes precede any Pin release; complete metadata/mount closure precedes shared
+  policy/credential release. Later-member drift or partial start/stop/closure
+  remains terminal review without retry. Uncertain stop retains all sources;
+  partial close retains remaining resources/global claims without reopening.
+  Native race and actual disposable mounted ARMv5 LUN0/LUN7 two-file cases,
+  512/4096-byte metadata, failed second-file rollback, later-file replacement
+  and uncertain stop pass with the complete standard/two-boot lane. This is
+  resource ownership, not LIO authentication/access enforcement or product
+  eligibility. **Next:** implement a typed LIO adapter with complete-roster
+  credential installation, redacted readback and verified borrower teardown;
+  qualify actual retained-descriptor binding, idle/session refusal and safe
+  rollback under fault injection before joining code, media, allocation,
+  access/global-use/network owners. Do not expose target operations or promote
+  desired enable/access to authority. Provisioning, durable uncertainty recovery,
+  product startup, UI and physical/recovery qualification remain separate gates.
 - **M9.2 — Target model.** Stable target/LUN identity, backing volume/object,
   capacity/allocation policy, initiator access and protected authentication
   secrets. Secrets are not returned by read APIs or exposed in diagnostics.

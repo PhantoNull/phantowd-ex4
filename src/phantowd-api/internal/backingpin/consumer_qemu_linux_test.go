@@ -18,4 +18,7 @@ func TestQEMUWritableConsumerRefusesNonARMBeforeDescriptorAccess(t *testing.T) {
 	if err := RunQEMUWritableConsumer(); !errors.Is(err, ErrUnavailable) {
 		t.Fatal("non-QEMU host entered the write/hold path", err)
 	}
+	if err := RunQEMUTargetConsumer(); !errors.Is(err, ErrUnavailable) {
+		t.Fatal("non-QEMU target consumer entered write path")
+	}
 }

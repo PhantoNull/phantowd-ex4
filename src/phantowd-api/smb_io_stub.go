@@ -15,6 +15,9 @@ func runQEMUSMBTest() error { return errors.New("SMB integration fixture require
 func runQEMUWritableBackingConsumer() error {
 	return errors.New("writable consumer fixture requires Linux ARMv5 QEMU")
 }
+func runQEMUTargetBackingConsumer() error {
+	return errors.New("target consumer fixture requires Linux ARMv5 QEMU")
+}
 
 func runQEMUIdentityClient(string) error {
 	return errors.New("identity client fixture requires Linux ARMv5 QEMU")
