@@ -166,6 +166,29 @@ fault marker rejects missing, duplicate, weakened or wrong-scope evidence.
 This qualifies only these bounded fault cases, not every syscall boundary,
 exclusive writer/portal authority, pending-login fencing or product recovery.
 
+### Exact owned-target directory census
+
+The private backend adds a point-in-time census of configurable rosters under
+its owned target: target/TPG, ACL/LUN/portal groups, per-peer mappings and owned
+LUN/mapping/portal directories. Names are generated from captured policy and
+pinned kernel defaults; no observed baseline is trusted. Confined fresh open
+descriptions avoid shared directory offsets; at most 64 names are accepted per
+directory, with exhaustion/overflow and identity checks. Checks run before/
+after enable and around active attribute/credential observations. This census
+reads names only, not data or auth attribute values; existing typed checks remain.
+
+Actual foreign-ACL RED precedes this implementation. Final guarded ARMv5
+rejects foreign NEW ACL/LUN/mapping objects and verifies identity preservation,
+complete source retention on partial stop and terminal no-retry review before
+independent fixture disposal. All previous actual gates, native tagged race/
+contracts and standard/two-boot pass. A first default-name error is corrected
+from pinned target_fabric_make_wwn: fabric-root attributes are not target attrs.
+Mandatory exact topology evidence refuses missing/duplicate/weakened proof or
+an exaggerated writer-exclusion claim. This is NOT a global fabric census,
+atomic transaction, restored-change witness or concurrent-root exclusion.
+Adversarial portal/extra-TPG changes, maximum-policy/FD/resource campaigns,
+writer/portal admission and pending/new-login fencing remain product gates.
+
 Use the isolated kernel and a disposable snapshot of the verified root image;
 start a dedicated guest init, not product services. The guest alone may use
 root/configfs. Attach no operator/physical disks and disable external QEMU

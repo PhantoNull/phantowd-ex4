@@ -3,6 +3,34 @@
 
 # Implementation status
 
+## M9.1i exact target topology — private host/QEMU prerequisite
+
+The retained-storage LIO backend now censuses configurable rosters inside its
+owned target: target/TPG, named ACLs, data LUNs, per-peer mappings, portal group,
+and owned LUN/mapping/portal directories. Expected names come only from the
+captured policy and pinned Linux defaults, never an observed baseline. Each
+directory accepts at most 64 entries, with overflow/end-of-list checks, fresh
+confined open descriptions and original configfs identity rechecks. Start checks
+before/after enable; active observations bracket existing attribute/credential
+checks. The census reads names only, not data or authentication attributes.
+
+Actual ARMv5 regression first fails at foreign ACL observation without this
+census. Final guarded guest rejects NEW foreign ACL/LUN/mapping objects,
+preserves their witnessed identities, retains every file/Pin/mount/policy/secret
+claim through uncertain teardown, and never retries from terminal review.
+Independent fixture disposal is not recovery. All old protocol/fault/session
+gates, native tagged vet/race/repetitions, Windows cross-compile, 14 result
+contracts and standard/two-boot tests pass locally. An initial default-name
+mistake is corrected from pinned kernel source: fabric-root lio_version and
+cpus_allowed_list are not attributes of an individual target.
+
+This is point-in-time target observation, not a global fabric census, atomic
+mutation witness, concurrent-root exclusion, pending-login fence or permission
+to disable foreign sessions. Adversarial portal/extra-TPG mutation and full
+capacity/resource campaigns remain. Product runtime/storage/network/global-use,
+durable recovery, credentials and UI/startup gates are unchanged; no NAS I/O,
+new product interface/privilege or Docker image/named volume is introduced.
+
 ## M9.1h bounded configfs fault proof — disposable host/QEMU only
 
 The actual retained-storage adapter now tests an existing target before effects

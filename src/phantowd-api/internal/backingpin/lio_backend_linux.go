@@ -37,6 +37,7 @@ type lioBackend struct {
 	members                                          []targetBacking // borrowed from containing complete-target owner
 	storages, luns                                   []*os.File
 	attributes                                       []lioExpectedAttribute
+	topology                                         []lioDirectoryRoster
 	prepared, started, ready, stopAttempted, stopped bool
 	prepareAttempted                                 bool
 }
@@ -351,10 +352,14 @@ func (b *lioBackend) PrepareCredentials(ctx context.Context, peers []iscsicreden
 	if err != nil {
 		return err
 	}
+	// target_fabric_make_wwn uses tf_tpg_cit (no attributes), not tf_wwn_cit.
+	// lio_version/cpus_allowed_list belong to the fabric root, not this target.
+	b.topology = append(b.topology, lioDirectoryRoster{target, []string{"fabric_statistics", "param", "tpgt_1"}})
 	b.tpg, err = b.directory(target, "tpgt_1")
 	if err != nil {
 		return err
 	}
+	b.topology = append(b.topology, lioDirectoryRoster{b.tpg, []string{"lun", "np", "acls", "attrib", "auth", "param", "enable", "rtpi", "dynamic_sessions", "disable_if_idle"}})
 	// Required non-forcing primitive, checked BEFORE any portal or data binding.
 	guard, err := lioBackendLeaf(b.tpg, "disable_if_idle", unix.O_WRONLY)
 	if err != nil {
@@ -373,18 +378,30 @@ func (b *lioBackend) PrepareCredentials(ctx context.Context, peers []iscsicreden
 		return err
 	}
 	var selected []lioAuthSelection
+	peerNames := make([]string, 0, len(b.target.Initiators))
 	for _, desired := range b.target.Initiators {
 		acl, err := b.directory(acls, desired.Name)
 		if err != nil {
 			return err
 		}
 		b.auth = append(b.auth, acl)
+		peerNames = append(peerNames, desired.Name)
+		aclNames := []string{"attrib", "auth", "param", "fabric_statistics", "info", "cmdsn_depth", "tag"}
+		for _, grant := range desired.Grants {
+			for _, lun := range b.target.LUNs {
+				if lun.ID == grant.LUNID {
+					aclNames = append(aclNames, "lun_"+strconv.Itoa(int(lun.Number)))
+				}
+			}
+		}
+		b.topology = append(b.topology, lioDirectoryRoster{acl, aclNames})
 		auth, err := b.fixedGroup(acl, "auth")
 		if err != nil {
 			return err
 		}
 		selected = append(selected, lioAuthSelection{name: desired.Name, auth: auth})
 	}
+	b.topology = append(b.topology, lioDirectoryRoster{acls, peerNames})
 	b.sink, err = newLIOCredentialSink(b.tpg, selected)
 	if err != nil {
 		return err
@@ -420,6 +437,7 @@ func (b *lioBackend) startTarget(ctx context.Context, members []targetBacking) e
 	if err != nil {
 		return err
 	}
+	lunNames := make([]string, 0, len(b.members))
 	for _, member := range b.members {
 		storage, err := b.directory(b.core, "phantowd-"+string(b.target.ID)+"-"+strconv.Itoa(int(member.number)))
 		if err != nil {
@@ -439,10 +457,13 @@ func (b *lioBackend) startTarget(ctx context.Context, members []targetBacking) e
 			return err
 		}
 		b.luns = append(b.luns, lun)
+		lunNames = append(lunNames, "lun_"+strconv.Itoa(int(member.number)))
+		b.topology = append(b.topology, lioDirectoryRoster{lun, []string{"statistics", "alua_tg_pt_gp", "alua_tg_pt_offline", "alua_tg_pt_status", "alua_tg_pt_write_md", "backing"}})
 		if b.link(lun, "backing", storage) != nil {
 			return ErrReview
 		}
 	}
+	b.topology = append(b.topology, lioDirectoryRoster{luns, lunNames})
 	for i, peer := range b.target.Initiators {
 		for _, grant := range peer.Grants {
 			for j, member := range b.members {
@@ -456,6 +477,7 @@ func (b *lioBackend) startTarget(ctx context.Context, members []targetBacking) e
 				if b.link(mapping, "grant", b.luns[j]) != nil {
 					return ErrReview
 				}
+				b.topology = append(b.topology, lioDirectoryRoster{mapping, []string{"statistics", "write_protect", "grant"}})
 				ro := "1"
 				if grant.Access == "rw" {
 					ro = "0"
@@ -471,10 +493,12 @@ func (b *lioBackend) startTarget(ctx context.Context, members []targetBacking) e
 		return err
 	}
 	// Fixed disposable loopback only. Product endpoint selection is NOT provided.
-	if _, err := b.directory(np, "127.0.0.1:3260"); err != nil {
+	portal, err := b.directory(np, "127.0.0.1:3260")
+	if err != nil {
 		return err
 	}
-	if ctx.Err() != nil || b.checkEntries() != nil || b.checkExpected(ctx) != nil || b.sink.verifyDisabled(ctx) != nil || lioBackendSet(b.tpg, "enable", "1", true) != nil {
+	b.topology = append(b.topology, lioDirectoryRoster{np, []string{"127.0.0.1:3260"}}, lioDirectoryRoster{portal, []string{"iser", "cxgbit"}})
+	if ctx.Err() != nil || b.checkTopology(ctx) != nil || b.checkExpected(ctx) != nil || b.sink.verifyDisabled(ctx) != nil || lioBackendSet(b.tpg, "enable", "1", true) != nil || b.checkTopology(ctx) != nil {
 		return ErrReview
 	}
 	b.ready = true
@@ -482,10 +506,10 @@ func (b *lioBackend) startTarget(ctx context.Context, members []targetBacking) e
 }
 
 func (b *lioBackend) running(ctx context.Context) (bool, error) {
-	if b == nil || ctx == nil || ctx.Err() != nil || !b.ready || b.stopAttempted || b.checkEntries() != nil || b.sink.verifyEnabled(ctx) != nil || b.checkExpected(ctx) != nil {
+	if b == nil || ctx == nil || ctx.Err() != nil || !b.ready || b.stopAttempted || b.checkTopology(ctx) != nil || b.sink.verifyEnabled(ctx) != nil || b.checkExpected(ctx) != nil {
 		return false, ErrReview
 	}
-	if b.checkEntries() != nil || ctx.Err() != nil {
+	if b.checkTopology(ctx) != nil || ctx.Err() != nil {
 		return false, ErrReview
 	}
 	return true, nil
