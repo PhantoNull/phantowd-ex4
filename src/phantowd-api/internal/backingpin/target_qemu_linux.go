@@ -61,7 +61,7 @@ func (b *fixtureTargetBackend) stop(ctx context.Context) error {
 }
 
 func runTargetWritableFixtures(set *mountowner.MountedVolumeSet, workspace string) error {
-	for _, kind := range []string{"normal", "replace-second", "uncertain", "configured-smb", "configured-nfs", "duplicate-open", "later-held", "concurrent-open"} {
+	for _, kind := range []string{"normal", "replace-second", "uncertain", "configured-smb", "configured-nfs", "duplicate-open", "later-held", "concurrent-open", "close-uncertain"} {
 		if err := targetWritableCase(set, workspace, kind); err != nil {
 			return fmt.Errorf("target roster fixture %s: %w", kind, err)
 		}
@@ -70,6 +70,7 @@ func runTargetWritableFixtures(set *mountowner.MountedVolumeSet, workspace strin
 	fmt.Println("PHANTOWD_TARGET_KNOWN_USE_READY coherent_policy=true smb_exposure_refused=true nfs_exposure_refused=true readonly_refused=true later_member=true caller_resources_preserved=true no_source_claims=true no_backend_effects=true global_use=false activation=false scope=disposable-qemu-only")
 	fmt.Println("PHANTOWD_TARGET_OBJECT_USE_READY shared_authority=true independent_opens_refused=true later_conflict_atomic=true singleton_same_authority=true actual_mount_owner=true caller_resources_preserved=true uncertain_retains_reservation=true no_retry=true cooperative=true external_exclusion=false global_use=false activation=false scope=disposable-qemu-only")
 	fmt.Println("PHANTOWD_TARGET_OBJECT_CONCURRENCY_READY independent_opens=true simultaneous_admission=true joined_before_release=true exactly_one_winner=true rejected_callers_preserved=true busy_until_stop=true actual_child_reaped=true verified_reuse=true actual_mount_owner=true cooperative=true external_exclusion=false activation=false scope=disposable-qemu-only")
+	fmt.Println("PHANTOWD_TARGET_OBJECT_CLOSE_READY actual_later_fd_close_failure=true earlier_fd_closed=true all_metadata_retained=true whole_reservation_retained=true independent_open_refused=true policy_credentials_mount_retained=true terminal_review=true no_close_retry=true actual_mount_owner=true activation=false scope=disposable-qemu-only")
 	return nil
 }
 func targetWritableCase(set *mountowner.MountedVolumeSet, workspace, kind string) (result error) {
@@ -193,6 +194,9 @@ func targetWritableCase(set *mountowner.MountedVolumeSet, workspace, kind string
 	}
 	if kind == "concurrent-open" {
 		return targetConcurrentOpenCase(ctx, lease, paths, relative, inputs, policy, secrets, uses)
+	}
+	if kind == "close-uncertain" {
+		return targetUncertainCloseCase(ctx, lease, paths[0], relative[0], inputs, policy, secrets, uses)
 	}
 	if kind == "later-held" {
 		// Only the later member is held through a separate singleton admission.
@@ -630,6 +634,115 @@ func targetConcurrentOpenCase(ctx context.Context, lease *mountowner.MountedVolu
 		if member.file != nil || !member.pin.closed {
 			return errors.New("reused target member closure missing")
 		}
+	}
+	return nil
+}
+
+// An actual os.File close failure in the later member, not a mocked close
+// result. This fault and its independent disposal exist only in the guest.
+func targetUncertainCloseCase(ctx context.Context, lease *mountowner.MountedVolumeSetLease, path, relative string,
+	inputs []targetSelection, policy *naspolicystore.Owner, secrets *iscsicredentials.Owner, uses *backingUseOwner) (result error) {
+	backend := &fixtureTargetBackend{}
+	owner, err := newTargetWritableOwner(ctx, inputs, backend, policy, 1, secrets, 1, "fixture-target", uses)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		// Prepared only; no child/session/kernel consumer was started. Verify
+		// already-closed handles without a second Close. Separately close any
+		// still-live fixture handle exactly once before all metadata/sources.
+		if owner.started || backend.cmd != nil {
+			result = errors.Join(result, ErrReview)
+			return
+		}
+		for i := range owner.group {
+			member := &owner.group[i]
+			if member.file == nil {
+				continue
+			}
+			_, statErr := member.file.Stat()
+			if !errors.Is(statErr, os.ErrClosed) {
+				if statErr != nil {
+					result = errors.Join(result, statErr)
+					return
+				}
+				if err := member.file.Close(); err != nil {
+					result = errors.Join(result, err)
+					return
+				}
+			}
+			member.file = nil
+		}
+		for _, member := range owner.group {
+			member.pin.mu.Lock()
+			if member.pin.consumer != owner {
+				member.pin.mu.Unlock()
+				result = errors.Join(result, ErrReview)
+				return
+			}
+			member.pin.consumer = nil
+			err := member.pin.closeLocked()
+			member.pin.mu.Unlock()
+			if err != nil {
+				result = errors.Join(result, err)
+				return
+			}
+		}
+		result = errors.Join(result, owner.releaseSourcesLocked())
+		// The review phase is never reset or admitted as product recovery.
+	}()
+	if err := inputs[1].file.Close(); err != nil {
+		return err
+	}
+	if !errors.Is(owner.close(), ErrReview) || owner.phase != writableReview || owner.released {
+		return errors.New("later actual descriptor close failure did not retain review")
+	}
+	if owner.group[0].file != nil || owner.group[1].file == nil {
+		return errors.New("close failure was not after the earlier data close")
+	}
+	for _, input := range inputs {
+		if _, err := input.file.Stat(); !errors.Is(err, os.ErrClosed) {
+			return errors.New("close fault did not establish actual descriptor closure")
+		}
+		if input.pin.consumer != owner || input.pin.closed {
+			return errors.New("close uncertainty released a metadata claim")
+		}
+	}
+	if owner.use.verify() != nil || !errors.Is(uses.close(), ErrBusy) ||
+		!errors.Is(policy.Close(), naspolicystore.ErrBusy) || !errors.Is(secrets.Close(), iscsicredentials.ErrBusy) ||
+		!errors.Is(lease.Close(), mountowner.ErrBusy) {
+		return errors.New("close uncertainty released whole reservation or source claims")
+	}
+	// Even the EARLIER object's already-closed data FD must not permit a fresh
+	// independent singleton to claim it while the whole roster stays in review.
+	pin, _, err := OpenFromMountedLease(lease, "qemu-plan", relative, 4096)
+	if err != nil {
+		return err
+	}
+	defer func() { result = errors.Join(result, pin.Close()) }()
+	fd, err := unix.Open(path, unix.O_RDWR|unix.O_CLOEXEC|unix.O_NONBLOCK, 0)
+	if err != nil {
+		return err
+	}
+	file := os.NewFile(uintptr(fd), "close-review-independent-member")
+	defer func() { result = errors.Join(result, file.Close()) }()
+	second, admitErr := newWritableOwner(pin, file, &fixtureWritableBackend{}, uses)
+	if second != nil || !errors.Is(admitErr, ErrBusy) || pin.consumer != nil {
+		if second != nil {
+			_ = second.close()
+		}
+		return errors.New("close review lost the earlier object's reservation")
+	}
+	if _, err := file.Stat(); err != nil {
+		return err
+	}
+	for _, operation := range []func() error{owner.close, func() error { return owner.start(ctx) }, func() error { return owner.observe(ctx) }, func() error { return owner.stop(ctx) }} {
+		if !errors.Is(operation(), ErrReview) {
+			return errors.New("close uncertainty allowed lifecycle retry")
+		}
+	}
+	if backend.prepareCalls != 0 || backend.stopCalls != 0 || backend.cmd != nil || owner.use.verify() != nil {
+		return errors.New("close review retried backend or released reservation")
 	}
 	return nil
 }

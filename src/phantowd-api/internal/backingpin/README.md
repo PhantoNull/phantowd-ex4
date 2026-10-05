@@ -348,8 +348,7 @@ backend effects, preserving callers and permitting an unused-member singleton
 through the same authority. The three native actual-object positive cases SKIP
 on the local WSL 6.6 kernel without unique mount IDs; aggregate native success
 does not establish their concurrent/reuse/uncertainty assertions. Whole tagged
-vet/race/repetitions,
-Windows cross-compile, fresh guarded LIO/all old gates and standard/two-boot
+vet/race/repetitions, Windows cross-compile, fresh guarded LIO/all old gates and standard/two-boot
 regression pass locally. This is not clean-build or physical EX4 qualification.
 The mandatory mounted ARMv5 fixture separately executes concurrent complete-
 target admission using independent Pins/RW descriptions and the SAME authority.
@@ -359,6 +358,14 @@ stop/reap and every member closure must succeed before those original losing
 handles can admit/run again. Old readiness bytes are cleared, requiring a new
 child write. Standard ARMv5/two-boot pass with the mandatory concurrency marker;
 native positive tests remain explicitly skipped on the unsupported local kernel.
+The additional mandatory mounted ARMv5 close-fault case deliberately closes a
+later caller-owned FD before prepared-Owner teardown. Actual later Close fails
+after the earlier data Close succeeds; every metadata/source claim and the
+whole reservation remain in terminal review. A fresh independent open of the
+earlier object still refuses, and repeated lifecycle calls do not retry or
+launch. Independent fixture disposal observes already-closed handles without
+a second Close; it never resets review. This is not live-LIO recovery or an
+I/O/ECC failure. The combined standard/two-boot regression passes locally.
 
 Admission now rejects a selected target if ANY LUN backing overlaps a configured
 SMB share or NFS export on the SAME logical VolumeID. Comparison uses validated

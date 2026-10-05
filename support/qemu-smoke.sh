@@ -316,6 +316,10 @@ while [ "$attempt" -lt "$smoke_timeout" ]; do
             echo 'Missing actual backing-object concurrent admission and verified reuse proof' >&2
             exit 1
         fi
+        if ! grep -F 'PHANTOWD_TARGET_OBJECT_CLOSE_READY actual_later_fd_close_failure=true earlier_fd_closed=true all_metadata_retained=true whole_reservation_retained=true independent_open_refused=true policy_credentials_mount_retained=true terminal_review=true no_close_retry=true actual_mount_owner=true activation=false scope=disposable-qemu-only' "$log_file" >/dev/null; then
+            echo 'Missing actual later-member close uncertainty and reservation retention proof' >&2
+            exit 1
+        fi
         if ! grep -F 'PHANTOWD_POLICY_BACKING_LIFETIME_READY private_revision_claim=true exact_backing_selection=true real_mount_owner=true consumer_uid=1000 stop_before_policy_release=true uncertain_stop_retains_policy_mount_rw=true restored_policy_no_revival=true no_retry=true product_activation=false scope=disposable-qemu-only' "$log_file" >/dev/null; then
             echo 'Missing combined desired-policy/backing lifetime assertions' >&2
             cat "$log_file" >&2

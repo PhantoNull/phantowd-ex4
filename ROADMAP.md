@@ -2000,6 +2000,11 @@ support per tested combination; refuse untested combinations without mutation.
   SAME authority and require a fresh child write/verified stop. Standard and
   complete two-boot regression pass; this replaces the missing local native
   positive evidence, not the native unique-mount guard or clean-build CI.
+  A mandatory actual later-FD-close fault also passes: the earlier data FD
+  closes, but all metadata/source/whole-object claims remain in terminal review;
+  fresh independent earlier-object admission refuses and lifecycle calls never
+  retry or launch. This prepared-only fault deliberately closes a caller-owned
+  descriptor first; it is not active-LIO recovery, media I/O or ECC evidence.
   **Next:** integrate this authority into a qualified product composition and
   separately fence external/cross-protocol access, foreign target/session use,
   allocation and retained storage/network lifetimes. Distinct authorities do
@@ -2283,11 +2288,16 @@ These features are separate scope, not shortcuts around core acceptance:
 
 ## Next bounded work packets
 
-Current priority (2026-10-02): **M0.3 feedback reliability → M4.4 private service
-namespace/restricted root → M3 production roster/qualification + M4 activation
-owner**. PR #53 is integrated; no feature commits were waiting to be pushed at
-this audit. The packets below retain earlier dependency context, not a list of
-unmerged PRs. See [current gaps and acceptance sequence](IMPLEMENTATION-STATUS.md#next-implementation-sequence).
+Current priority (2026-10-05): **M9.1l actual backing-use lifetime qualification
+→ M4.4 separate Samba-specific service Owner → M3 production roster/qualification
++ M4 durable activation Owner**. Keep local-first validation and exact-head
+integration serialized; do not restart a heavy qualifier for each intermediate
+checkpoint. The actual cooperative target concurrency/reuse fixture passes
+locally, but native positive tests skip on the unsupported local kernel.
+The Samba Owner composition still requires its separate explicit host/QEMU
+decision; the already-qualified standalone fixture is not that permission.
+The packets below retain earlier dependency context, not current PR status.
+See [current gaps and acceptance sequence](IMPLEMENTATION-STATUS.md#next-implementation-sequence).
 
 1. **M0.1:** exact-head integration of router/race correction and Samba
    boundary characterization is complete in merged PR #40. Continue tracking

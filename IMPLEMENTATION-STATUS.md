@@ -27,6 +27,13 @@ child reap and all member closures. The losing original handles then admit and
 run a second consumer through that SAME authority. Readiness bytes are cleared
 before reuse so the second child must write them anew. Standard ARMv5 and the
 complete two-boot regression pass locally with the mandatory concurrency marker.
+An additional mandatory mounted ARMv5 fault closes the later caller-owned
+descriptor before prepared-Owner teardown. The actual later os.File.Close
+failure follows a successful earlier data close; all metadata, whole object
+reservation, policy, credentials and mount remain retained in terminal review.
+Even a new independent open of the earlier object is refused. Repeated lifecycle
+operations cannot retry closure or start a backend. This is a controlled
+already-closed-FD fault, not a storage-I/O/ECC failure or live-LIO recovery test.
 Actual mounted ARMv5 also refuses a later-member-only conflict with no earlier
 reservation or backend effects, preserving caller resources and allowing a
 singleton to claim the unused member through the same authority. Whole tagged
