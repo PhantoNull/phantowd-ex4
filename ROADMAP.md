@@ -1833,6 +1833,25 @@ support per tested combination; refuse untested combinations without mutation.
   access/global-use/network owners. Do not expose target operations or promote
   desired enable/access to authority. Provisioning, durable uncertainty recovery,
   product startup, UI and physical/recovery qualification remain separate gates.
+- **M9.1e — typed credential install/readback (private prerequisite).** The
+  fixed Linux configfs sink borrows backend-owned TPG/auth directories, requires
+  root-owned writable configfs and rechecks confined named-ACL topology against
+  supplied descriptors. Complete peer matching precedes a single attempt;
+  fixed leaves receive opaque buffers directly, exact bounded readback accounts
+  for show/store newline differences and wipes transient scratch. CHAP unsets
+  stale outbound fields. Partial I/O, observed drift or uncertainty permanently
+  enters review without retry/rotation. Native race/refusal tests and actual
+  fresh-source default ARMv5 zero-data-LUN CHAP/reciprocal protocol cases pass,
+  including foreign same-configfs ACL refusal and object teardown before claim
+  release. All old protocol/session/data assertions remain. **Next:** compose
+  this sink inside the fixed complete-target backend, not a per-operation
+  callback; own retained configfs/code/network resources, complete LUN mapping
+  and active-state auth/session observations. Qualify partial-install faults,
+  writer exclusion, non-forcing session refusal and retained-file control binding
+  with actual multi-LUN I/O. Only after these gates may product lifecycle,
+  durable recovery, startup and authenticated UI transactions be composed.
+  Disabled snapshots are not atomic/continuous history proof; configured mutual
+  credentials are not required-mutual enforcement or kernel memory erasure.
 - **M9.2 — Target model.** Stable target/LUN identity, backing volume/object,
   capacity/allocation policy, initiator access and protected authentication
   secrets. Secrets are not returned by read APIs or exposed in diagnostics.

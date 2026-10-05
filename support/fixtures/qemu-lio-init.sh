@@ -42,6 +42,8 @@ peer_acl="$tpg/acls/iqn.2026-10.invalid.phantowd:peer"
 client=/usr/libexec/phantowd-iscsi-fixture-client
 backing=/run/phantowd-lio/backing,comma.img
 mkdir "$fabric" "$core"
+phase=typed-credentials
+/usr/libexec/phantowd-lio-credential-fixture -qemu-lio-credential-test
 phase='seed-allocate'
 dd if=/dev/zero of="$backing" bs=1M count=32
 phase='seed-content'

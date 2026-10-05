@@ -8,6 +8,9 @@ import sys
 
 
 MARKERS = (
+    "PHANTOWD_LIO_CREDENTIALS_READY root_only_claim=true typed_fixed_attributes=true same_configfs_acl_refused=true exact_readback=true "
+    "chap=true mutual_exchange=true wrong_secret_refused=true missing_secret_refused=true stale_outbound_cleared=true "
+    "restored_drift_review=true no_retry=true teardown_before_release=true data_luns=0 scope=disposable-qemu-only",
     *(f"PHANTOWD_LIO_CLIENT_READY case={mode}"
       for mode in ("rw", "revoked", "disabled", "reenabled", "wrong", "none", "foreign", "ro", "check",
                    "mutual", "mutual-target-wrong", "mutual-user-wrong", "mutual-inbound-wrong",

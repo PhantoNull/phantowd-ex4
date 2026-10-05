@@ -3,6 +3,39 @@
 
 # Implementation status
 
+## M9.1e typed LIO credential installation — private research prerequisite
+
+The Linux-only fixed sink borrows backend-owned TPG/auth directory references,
+requires root-owned writable configfs, and binds every supplied auth descriptor
+to its named ACL below that retained TPG. Same-configfs foreign ACLs refuse.
+Whole peer matching precedes a single installation attempt. Fixed leaves receive
+opaque secret buffers directly; bounded exact readback handles the pinned
+kernel's show newline without adding a store newline, then wipes scratch.
+CHAP explicitly unsets stale outbound fields. Observed field/topology drift or
+partial I/O uncertainty stays review without reinstall/retry. This is disabled-
+state observation, not an atomic transaction or continuous mutation witness.
+
+Native tagged vet/race and lower-I/O/roster/refusal tests pass. Actual fresh-source
+default-profile ARMv5 LIO tests also pass: two successive zero-data-LUN targets
+exercise the real sink, root-only retained credential claim, CHAP/reciprocal
+exchange through pinned libiscsi, wrong/missing credential refusal, same-configfs
+foreign ACL refusal, stale outbound unsetting, restored drift quarantine and
+complete configfs-object teardown before claim release. All previous actual
+data/session/auth/two-peer/multi-LUN assertions remain mandatory and pass.
+Mocked wrapper profile checks do not establish actual strict/idle qualification
+for this new case; the final-source actual run uses the unchanged default profile.
+Windows no-Docker preflight/cross-compilation, standard cached userspace ARMv5
+smoke and the complete clean two-boot state regression also pass. These do not
+establish independent clean Buildroot or physical EX4 qualification.
+
+The sink does not create/enable targets, open LUNs, release claims, provision
+secrets or offer active-state observation. The tagged fixture alone owns fixed
+synthetic target/loopback operations, with no physical disk/NAS/product startup.
+No complete targetBackend adapter, exclusive configfs admission, active session/
+global-use authority, durable provisioning/recovery or UI activation is added.
+No guaranteed kernel/runtime memory erasure or mutual-only policy enforcement
+is implied. Those M9.1b/product gates remain open.
+
 ## M9.1d complete-target resource lifetime — internal host/QEMU prerequisite
 
 The private constructor retains one coherent policy claim, one credential

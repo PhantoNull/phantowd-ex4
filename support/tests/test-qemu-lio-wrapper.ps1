@@ -58,8 +58,8 @@ try {
             'no-new-privileges', '--user', '1000:1000', '--cpus', '4', '--pids-limit', '512')) {
             Assert-True ($argument -in $run) "Missing isolation: $argument"
         }
-        $memory = if ($compile) { '8g' } else { '2g' }
-        $scratch = if ($compile) { '4g' } else { '512m' }
+        $memory = if ($compile) { '8g' } else { '4g' }
+        $scratch = if ($compile) { '4g' } else { '1g' }
         Assert-True ($memory -in $run) 'Wrong memory budget.'
         $expectedMutual = if ($strictMutual) { '1' } else { '0' }
         Assert-True ("PHANTOWD_LIO_REQUIRE_MUTUAL=$expectedMutual" -in $run) 'Explicit mutual research mode missing.'
@@ -73,7 +73,8 @@ try {
         $linux = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($Matches[1]))
         foreach ($text in @('sha256sum -c INPUTS.sha256', 'sha256sum -c SHA256SUMS',
             'qemu_lio_inputs.py', 'qemu-lio-fixture.sh', 'build-qemu-iscsi-client.sh',
-            'test-qemu-lio-snapshot-temp.sh', 'test-qemu-lio-result.py')) {
+            'test-qemu-lio-snapshot-temp.sh', 'test-qemu-lio-result.py',
+            'build -tags=qemu', '/tmp/lio-credential-api', 'GOCACHE=/tmp/go-cache')) {
             Assert-True ($linux.Contains($text)) "Missing actual call boundary: $text"
         }
         Assert-True ($run[-1].Contains('timeout --signal=TERM --kill-after=10 900 sh')) 'Overall timeout missing.'

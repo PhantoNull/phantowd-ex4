@@ -57,3 +57,9 @@ credential installation/readback/teardown qualification. Host synthetic sinks
 and the mounted QEMU child do not prove iSCSI protocol authentication; the
 separate [LIO research fixture](../../../../support/ISCSI-LIO-RESEARCH.md) covers
 that different boundary.
+
+The additional private [typed configfs sink](../backingpin/README.md#private-typed-lio-credential-sink-prerequisite)
+now supplies a disabled-state install/readback prerequisite. Its separate
+root-only-vault, zero-data-LUN fixture verifies actual CHAP/reciprocal exchange
+and configfs-object teardown before claim release. It does not complete the
+target backend, active-state/session authority or product provisioning/recovery.
