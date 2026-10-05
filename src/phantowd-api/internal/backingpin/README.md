@@ -245,6 +245,39 @@ disk or product activation. Native readback tests explicitly use regular-file
 I/O seams, not positive configfs qualification. The dedicated guest fixture is
 not installed in the standard overlay or shipped as a product service.
 
+## Private retained-storage LIO composition
+
+The unexported backend captures validated desired definitions and independently
+duplicates root-owned configfs roots. Only newly created owned objects are
+tracked; foreign/existing objects are not adopted or removed. Exact complete
+LUN order/identity/capacity/block/access matches precede data setup. FILEIO uses
+integer-only retained proc-FD control values, never desired paths. The containing
+Owner still owns the admitted data/Pin/policy/mount/credential lifetime. This
+adapter does not acquire product storage or global-use authority.
+
+The fixed typed sink prepares CHAP and verifies it in disabled/enabled state.
+Unsupported required-mutual mode refuses before effects. Owned object/link
+identity plus authentication, storage and mapping attributes are rechecked.
+Only `control`/`disable_if_idle` use write-only opens; readable state requires
+exact bounded readback. Partial start is not readiness. One stop uses only the
+optional idle-disable primitive, observes idle state, removes owned configfs
+objects and closes owned roots before any containing-Owner source release.
+Uncertainty retains resources in review; there is no forced fallback/retry.
+
+The separate guarded ARMv5 fixture uses a disposable 16 MiB ext2 image, real
+mount Owner, two RW files/LUN0/7 and pinned libiscsi I/O. It independently reads
+both original files, replaces the second file, changes a mapped permission and
+injects stop uncertainty. No-retry/source-retention assertions precede separate
+test-only disposal. Native pure seams are not positive configfs qualification;
+actual write-only probes and the full guest lock down the reproduced open-mode
+defect. Standard smoke/two-boot regression passes without enabling LIO there.
+
+Remaining adapter-specific tests include RO/ungranted access, established-
+session stop refusal and setup/teardown fault boundaries. Exclusive writer,
+runtime-code/network, allocation/storage/global-use authority and durable
+recovery remain separate product gates. This private loopback/CHAP composition
+does not install a product service, create an HTTP endpoint or authorize NAS I/O.
+
 Remaining M9.1b work: qualified production lifecycle and full coherent policy admission,
 controlled writable descriptor acquisition/handoff and retained lifetime,
 permissions/allocation admission, whole-protocol backing-use/session ownership,

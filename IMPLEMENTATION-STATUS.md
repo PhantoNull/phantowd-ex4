@@ -3,6 +3,46 @@
 
 # Implementation status
 
+## M9.1f retained-storage LIO composition — private host/QEMU prerequisite
+
+The private Linux backend captures a validated target definition, duplicates
+root-owned configfs directory references, creates only new owned objects and
+receives the complete already-admitted backing roster from its containing
+Owner. Explicit LUN numbers, capacities, block sizes and per-peer grants are
+matched. Integer-only retained proc-FD control values replace desired paths;
+no missing-file creation or product data opener is supplied by this adapter.
+CHAP-only is deliberate: unsupported required-mutual mode fails before effects.
+The loopback portal is fixed and test-only, not a product network selection.
+
+Typed credential readback, object/link identity and fixed authentication/storage/
+mapping attributes are rechecked while active. Partial setup is retained for
+one stop attempt; readiness is separate from partial-start state. The optional
+research kernel's non-forcing idle-disable primitive is required before any
+portal/data binding. No forced-disable fallback or retry exists. Confirmed
+configfs teardown precedes containing-Owner data/Pin/mount/credential release;
+uncertainty retains the remaining references in review.
+
+Windows preflight/cross-compilation, pinned whole Linux tagged vet/race/focused
+repetitions, shell/result contracts and a fresh guarded actual ARMv5 guest pass.
+The new guest uses one disposable 16 MiB ext2 image, an actual mount Owner,
+LUN0/7 with 512/4096-byte blocks and two RW files. Pinned libiscsi writes/reads
+both; independent file reads verify the original objects. Changed second-file
+identity and mapped permissions quarantine; injected stop uncertainty retains
+all live sources without retry, followed by distinct test-only disposal. Actual
+write-only attribute probes and a native RED/GREEN regression lock down configfs
+`control`/`disable_if_idle` open modes. Old separate authentication, live-session,
+RO/RW and multi-LUN assertions remain mandatory. Standard userspace smoke and
+the complete clean two-boot state lane also pass locally.
+
+This does **not** qualify new-adapter RO grants, real live-session refusal/fault
+recovery, exclusive configfs writer authority, retained runtime-code/network
+authority, protected storage/registry/allocation/global-use admission, mutual
+enforcement, credential provisioning/rotation or durable product recovery.
+Old separate protocol proofs do not replace those adapter-specific tests.
+No product startup, HTTP activation, physical disk, NAS operation or new Docker
+image/named volume is added. Cached local execution is not an independently
+clean Buildroot/hosted feature build or physical EX4 qualification.
+
 ## M9.1e typed LIO credential installation — private research prerequisite
 
 The Linux-only fixed sink borrows backend-owned TPG/auth directory references,
@@ -31,8 +71,9 @@ establish independent clean Buildroot or physical EX4 qualification.
 The sink does not create/enable targets, open LUNs, release claims, provision
 secrets or offer active-state observation. The tagged fixture alone owns fixed
 synthetic target/loopback operations, with no physical disk/NAS/product startup.
-No complete targetBackend adapter, exclusive configfs admission, active session/
-global-use authority, durable provisioning/recovery or UI activation is added.
+No complete targetBackend belongs to this credential-only increment; M9.1f
+above adds private composition, not product admission. Exclusive configfs and
+session/global-use authority, durable recovery and UI activation remain open.
 No guaranteed kernel/runtime memory erasure or mutual-only policy enforcement
 is implied. Those M9.1b/product gates remain open.
 

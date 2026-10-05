@@ -48,6 +48,17 @@ class LIOResult(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     result.validate(good + token.encode(), strict, True)
 
+    def test_owned_target_marker_cannot_claim_partial_or_product_authority(self):
+        marker = next(item for item in result.IDLE_MARKERS if item.startswith("PHANTOWD_LIO_TARGET_READY "))
+        good = self.valid(idle=True)
+        for old, new in (("complete_roster=true", "complete_roster=false"),
+                         ("luns=0,7", "luns=0"), ("actual_mount_owner=true", "actual_mount_owner=false"),
+                         ("uncertain_retains_all=true", "uncertain_retains_all=false"),
+                         ("idle_teardown_before_release=true", "idle_teardown_before_release=false"),
+                         ("disposable-qemu-only", "product")):
+            with self.subTest(old=old), self.assertRaises(ValueError):
+                result.validate(good.replace(marker.encode(), marker.replace(old, new).encode()), idle_guard=True)
+
     def test_complete(self):
         result.validate(self.valid())
         result.validate(self.valid().replace(b"\n", b"\r\n"))

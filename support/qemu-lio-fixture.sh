@@ -33,7 +33,7 @@ cleanup() {
         kill "$qemu_pid" 2>/dev/null || true
         wait "$qemu_pid" 2>/dev/null || true
     fi
-    rm -f "$temporary/rootfs.ext2" "$temporary/verify" "$temporary/qemu.log"
+    rm -f "$temporary/rootfs.ext2" "$temporary/verify" "$temporary/qemu.log" "$temporary/owned-target.ext2"
     rmdir "$temporary"
 }
 trap cleanup EXIT
@@ -52,12 +52,21 @@ replace() {
 replace "$client" /usr/libexec/phantowd-iscsi-fixture-client
 replace "$api" /usr/libexec/phantowd-lio-credential-fixture
 replace "$source_dir/support/fixtures/qemu-lio-init.sh" /usr/libexec/phantowd-lio-fixture-init
+set --
+if [ "$idle_guard" = 1 ]; then
+    # Fixed regular image in this invocation's verified tmpfs, never a host device.
+    truncate -s 16M "$temporary/owned-target.ext2"
+    mkfs.ext2 -q -F -U 11111111-2222-3333-4444-555555555555 "$temporary/owned-target.ext2"
+    set -- -drive "file=$temporary/owned-target.ext2,if=none,id=owneddisk,format=raw" \
+        -device scsi-hd,bus=scsi0.0,drive=owneddisk
+fi
 : > "$log"
 qemu-system-arm -M versatilepb -cpu arm926 -m 256M \
     -kernel "$kernel" -dtb "$dtb" \
     -drive "file=$temporary/rootfs.ext2,if=none,id=rootdisk,format=raw,snapshot=on" \
     -device lsi53c895a,id=scsi0 \
     -device scsi-hd,bus=scsi0.0,drive=rootdisk \
+    "$@" \
     -object rng-random,filename=/dev/urandom,id=fixture-rng \
     -device virtio-rng-pci,rng=fixture-rng \
     -append "rootwait root=/dev/sda ro console=ttyAMA0,115200 init=/usr/libexec/phantowd-lio-fixture-init phantowd.lio_mutual=$mutual_mode phantowd.lio_idle=$idle_mode" \

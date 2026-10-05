@@ -30,6 +30,19 @@ int main(void)
     luns[1] = 0;
     if (fixture_lun_set_matches(luns, 2, 1))
         return 1;
+    if (fixture_owned_lun_set_matches(0, 2))
+        return 1;
+    for (a = 0; a < 9; a++) {
+        for (b = 0; b < 9; b++) {
+            luns[0] = a;
+            luns[1] = b;
+            for (count = 0; count < 4; count++) {
+                int expected = count == 2 && ((a == 0 && b == 7) || (a == 7 && b == 0));
+                if (fixture_owned_lun_set_matches(luns, count) != expected)
+                    return 1;
+            }
+        }
+    }
     puts("PHANTOWD_LIO_LUN_SET_READY permutations=true exact_cardinality=true duplicates_refused=true missing_refused=true foreign_refused=true scope=pure-native-matcher-only");
     return 0;
 }

@@ -193,6 +193,31 @@ static const char *multiple_luns(struct iscsi_context *ctx, const char *mode)
     return NULL;
 }
 
+static const char *owned_target(struct iscsi_context *ctx)
+{
+    struct scsi_task *task;
+    struct scsi_reportluns_list *list;
+    unsigned char first[BLOCK], second[SECOND_BLOCK];
+    int valid = 0;
+    memset(first, 'X', sizeof(first));
+    memset(second, 'Y', sizeof(second));
+    if (!multiple_ready(ctx, 0) || !multiple_ready(ctx, 7))
+        return "owned-ready";
+    task = iscsi_reportluns_sync(ctx, 0, 256);
+    if (task != NULL && task->status == SCSI_STATUS_GOOD) {
+        list = scsi_datain_unmarshall(task);
+        valid = list != NULL && fixture_owned_lun_set_matches(list->luns, list->num);
+    }
+    if (task != NULL)
+        scsi_free_scsi_task(task);
+    if (!valid || !multiple_capacity(ctx, 0, BLOCK, 7) || !multiple_capacity(ctx, 7, SECOND_BLOCK, 1))
+        return "owned-roster-capacity";
+    if (!multiple_write(ctx, 0, first, BLOCK, 0) || !multiple_write(ctx, 7, second, SECOND_BLOCK, 0) ||
+        !multiple_read(ctx, 0, 1, first, BLOCK) || !multiple_read(ctx, 7, 1, second, SECOND_BLOCK))
+        return "owned-data";
+    return NULL;
+}
+
 int main(int argc, char **argv)
 {
     const char *mode;
@@ -217,7 +242,7 @@ int main(int argc, char **argv)
         strcmp(mode, "peer-ro-hold") && strcmp(mode, "peer-cross") &&
         strcmp(mode, "multi-primary") && strcmp(mode, "multi-peer") &&
         strcmp(mode, "multi-primary-check") && strcmp(mode, "credential-chap") &&
-        strcmp(mode, "credential-mutual"))
+        strcmp(mode, "credential-mutual") && strcmp(mode, "owned-target"))
         return failed(NULL, "mode");
     /* No fixed seed or pre-initialization urandom use in authentication tests. */
     if (getrandom(entropy, sizeof(entropy), GRND_NONBLOCK) != sizeof(entropy))
@@ -268,6 +293,12 @@ int main(int argc, char **argv)
     }
     if (login != 0 || !iscsi_is_logged_in(ctx)) {
         return failed(ctx, "login");
+    }
+    if (!strcmp(mode, "owned-target")) {
+        const char *stage = owned_target(ctx);
+        if (stage != NULL)
+            return failed(ctx, stage);
+        goto logout;
     }
     /* Typed credential installation proof has no data LUN or SCSI commands. */
     if (!strcmp(mode, "credential-chap") || !strcmp(mode, "credential-mutual"))
