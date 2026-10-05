@@ -7,6 +7,7 @@ package backingpin
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"os"
 	"path/filepath"
@@ -14,6 +15,40 @@ import (
 
 	"golang.org/x/sys/unix"
 )
+
+// Kernel-independent refusal checks must execute even where the actual native
+// statx-positive lifecycle tests deliberately skip. No forged syscall identity.
+func TestBackingUseClaimsCannotBeSerializedOrReconstructed(t *testing.T) {
+	for _, value := range []any{newBackingUseOwner(), backingUseOwner{}, &backingUseLease{}, backingUseLease{}} {
+		if data, err := json.Marshal(value); !errors.Is(err, ErrUnavailable) || len(data) != 0 {
+			t.Fatal("private use claim serialized", err)
+		}
+	}
+	var authority backingUseOwner
+	var lease backingUseLease
+	for _, value := range []any{&authority, &lease} {
+		if err := json.Unmarshal([]byte(`{"source":{},"objects":[{"inode":1}]}`), value); !errors.Is(err, ErrUnavailable) {
+			t.Fatal("serialized input reconstructed a private claim", err)
+		}
+	}
+	if authority.entries != nil || lease.source != nil || lease.consumer != nil || len(lease.objects) != 0 {
+		t.Fatal("failed decoding changed zero authority")
+	}
+}
+
+func TestBackingUseUninitializedCloseRefusesAndEmptyCloseIsIdempotent(t *testing.T) {
+	var uninitialized backingUseOwner
+	if !errors.Is(uninitialized.close(), ErrInvalid) {
+		t.Fatal("uninitialized authority accepted close")
+	}
+	empty := newBackingUseOwner()
+	if err := empty.close(); err != nil {
+		t.Fatal(err)
+	}
+	if err := empty.close(); err != nil {
+		t.Fatal("verified empty close not idempotent", err)
+	}
+}
 
 // Actual O_PATH/statx and separate RW descriptions on native disposable files;
 // not a qualified mount. The mandatory ARMv5 fixture uses a real mount Owner.

@@ -2005,6 +2005,13 @@ support per tested combination; refuse untested combinations without mutation.
   fresh independent earlier-object admission refuses and lifecycle calls never
   retry or launch. This prepared-only fault deliberately closes a caller-owned
   descriptor first; it is not active-LIO recovery, media I/O or ECC evidence.
+  Actual mounted capacity qualification also passes: 63 distinct prepared
+  singleton objects leave one slot; a two-file target refuses without publishing
+  a prefix, the unused first input admits as object64 and another refuses;
+  verified closure frees two slots for a complete target through the SAME book.
+  No injected inode/map identity or backend start; standard/two-boot pass.
+  Kernel-independent native JSON/reconstruction refusal and empty-close tests
+  execute under race count3, independently of the skipped statx-positive cases.
   **Next:** integrate this authority into a qualified product composition and
   separately fence external/cross-protocol access, foreign target/session use,
   allocation and retained storage/network lifetimes. Distinct authorities do

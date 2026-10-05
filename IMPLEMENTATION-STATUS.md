@@ -34,6 +34,14 @@ reservation, policy, credentials and mount remain retained in terminal review.
 Even a new independent open of the earlier object is refused. Repeated lifecycle
 operations cannot retry closure or start a backend. This is a controlled
 already-closed-FD fault, not a storage-I/O/ECC failure or live-LIO recovery test.
+The actual mounted capacity fixture fills the shared authority with 63 distinct
+prepared singleton objects. A complete two-file target refuses atomically with
+caller handles intact; the unused first file can still occupy slot64, while
+another object refuses. Verified closure frees two slots and the complete
+target then admits through the SAME authority. No fabricated identity/map keys
+or backend start is used. Standard/two-boot pass. Kernel-independent native
+serialization/reconstruction refusal and empty-close checks execute under race
+count3; the three actual native statx-positive cases remain explicitly skipped.
 Actual mounted ARMv5 also refuses a later-member-only conflict with no earlier
 reservation or backend effects, preserving caller resources and allowing a
 singleton to claim the unused member through the same authority. Whole tagged

@@ -61,7 +61,7 @@ func (b *fixtureTargetBackend) stop(ctx context.Context) error {
 }
 
 func runTargetWritableFixtures(set *mountowner.MountedVolumeSet, workspace string) error {
-	for _, kind := range []string{"normal", "replace-second", "uncertain", "configured-smb", "configured-nfs", "duplicate-open", "later-held", "concurrent-open", "close-uncertain"} {
+	for _, kind := range []string{"normal", "replace-second", "uncertain", "configured-smb", "configured-nfs", "duplicate-open", "later-held", "concurrent-open", "close-uncertain", "capacity-bound"} {
 		if err := targetWritableCase(set, workspace, kind); err != nil {
 			return fmt.Errorf("target roster fixture %s: %w", kind, err)
 		}
@@ -71,6 +71,7 @@ func runTargetWritableFixtures(set *mountowner.MountedVolumeSet, workspace strin
 	fmt.Println("PHANTOWD_TARGET_OBJECT_USE_READY shared_authority=true independent_opens_refused=true later_conflict_atomic=true singleton_same_authority=true actual_mount_owner=true caller_resources_preserved=true uncertain_retains_reservation=true no_retry=true cooperative=true external_exclusion=false global_use=false activation=false scope=disposable-qemu-only")
 	fmt.Println("PHANTOWD_TARGET_OBJECT_CONCURRENCY_READY independent_opens=true simultaneous_admission=true joined_before_release=true exactly_one_winner=true rejected_callers_preserved=true busy_until_stop=true actual_child_reaped=true verified_reuse=true actual_mount_owner=true cooperative=true external_exclusion=false activation=false scope=disposable-qemu-only")
 	fmt.Println("PHANTOWD_TARGET_OBJECT_CLOSE_READY actual_later_fd_close_failure=true earlier_fd_closed=true all_metadata_retained=true whole_reservation_retained=true independent_open_refused=true policy_credentials_mount_retained=true terminal_review=true no_close_retry=true actual_mount_owner=true activation=false scope=disposable-qemu-only")
+	fmt.Println("PHANTOWD_TARGET_OBJECT_CAPACITY_READY actual_objects=64 whole_overflow_atomic=true rejected_callers_preserved=true unused_slot_reusable=true released_capacity_reusable=true actual_mount_owner=true no_backend_effects=true cooperative=true activation=false scope=disposable-qemu-only")
 	return nil
 }
 func targetWritableCase(set *mountowner.MountedVolumeSet, workspace, kind string) (result error) {
@@ -197,6 +198,9 @@ func targetWritableCase(set *mountowner.MountedVolumeSet, workspace, kind string
 	}
 	if kind == "close-uncertain" {
 		return targetUncertainCloseCase(ctx, lease, paths[0], relative[0], inputs, policy, secrets, uses)
+	}
+	if kind == "capacity-bound" {
+		return targetUseCapacityCase(ctx, lease, dir, paths, relative, inputs, policy, secrets, uses)
 	}
 	if kind == "later-held" {
 		// Only the later member is held through a separate singleton admission.

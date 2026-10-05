@@ -366,6 +366,15 @@ earlier object still refuses, and repeated lifecycle calls do not retry or
 launch. Independent fixture disposal observes already-closed handles without
 a second Close; it never resets review. This is not live-LIO recovery or an
 I/O/ECC failure. The combined standard/two-boot regression passes locally.
+The mandatory mounted capacity case uses 63 actual distinct prepared singleton
+objects, leaving one slot. A two-member target refuses without a prefix claim
+or caller/backend effects. The unused first input can occupy slot64 while the
+next object refuses; verified closure frees two slots for a complete target
+through the SAME book. No injected identity/map key is used and no child starts.
+This is the cooperative object's internal bound, not a 64-LUN target or a
+performance/product/global-use qualification. Standard/two-boot pass. Native
+JSON/reconstruction refusal and empty-close cases execute under race count3
+without the unique-mount prerequisite; positive native statx cases still SKIP.
 
 Admission now rejects a selected target if ANY LUN backing overlaps a configured
 SMB share or NFS export on the SAME logical VolumeID. Comparison uses validated
