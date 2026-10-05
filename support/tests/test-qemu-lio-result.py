@@ -74,6 +74,17 @@ class LIOResult(unittest.TestCase):
             with self.subTest(replacement=replacement), self.assertRaises(ValueError):
                 result.validate(good.replace(marker.encode(), replacement.encode()), idle_guard=True)
 
+    def test_owned_topology_requires_foreign_object_refusal_and_retention(self):
+        marker = "PHANTOWD_LIO_TOPOLOGY_READY bounded_census=true foreign_acl_refused=true foreign_lun_refused=true foreign_grant_refused=true " \
+                 "foreign_preserved=true sources_retained=true no_retry=true writer_exclusion=false scope=disposable-qemu-only"
+        self.assertIn(marker, result.IDLE_MARKERS)
+        good = self.valid(idle=True)
+        for replacement in ("", marker + "\n" + marker, marker.replace("foreign_acl_refused=true", "foreign_acl_refused=false"),
+                            marker.replace("sources_retained=true", "sources_retained=false"), marker.replace("writer_exclusion=false", "writer_exclusion=true"),
+                            marker.replace("no_retry=true", "no_retry=false"), marker.replace("disposable-qemu-only", "product")):
+            with self.subTest(replacement=replacement), self.assertRaises(ValueError):
+                result.validate(good.replace(marker.encode(), replacement.encode()), idle_guard=True)
+
     def test_owned_session_proof_requires_same_client_io_and_no_owner_retry(self):
         marker = "PHANTOWD_LIO_TARGET_SESSION_READY active_stop_refused=true same_client_readwrite=true complete_resources_retained=true " \
                  "owner_review=true no_retry=true logout_not_recovery=true independent_fixture_disposal=true scope=disposable-qemu-only"

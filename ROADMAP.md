@@ -1922,6 +1922,24 @@ support per tested combination; refuse untested combinations without mutation.
   bound campaigns; qualify writer/portal/pending-login authority, then retained
   code/network/registry/storage/allocation/global-use and durable recovery.
   No product activation, HTTP, hardware/NAS action or exhaustive-coverage claim.
+- **M9.1i — exact owned-target topology (locally tested prerequisite).**
+  Generate immutable expected directory names from captured policy and pinned
+  kernel defaults, not observations. Census target/TPG, ACLs/LUNs/portals,
+  per-peer mappings and owned LUN/mapping/portal directories. Accept at most
+  64 entries per directory, detect overflow/partial/error results, reopen
+  confined `.` with an independent offset, bracket original configfs identity
+  and owned-entry checks. Check before/after enable and around active attribute/
+  credential observations. Never census unrelated targets as though this Owner
+  owned the global fabric. Actual foreign-ACL RED precedes implementation;
+  final guarded ARMv5 foreign ACL/LUN/mapping refusal preserves foreign objects,
+  retains complete sources on uncertain stop and keeps no-retry review.
+  Native/14 marker contracts/all old actual gates/standard two-boot pass.
+  **Next:** adversarial portal/extra-TPG and link/name-change cases, max-policy
+  resource/FD campaigns, complete write/readback/close faults and independent
+  writer/portal/pending-login admission. Snapshots cannot detect a mutation
+  restored between scans or supply atomic enable/writer exclusion. Then compose
+  protected code/network/registry/storage/allocation/global-use and durable
+  activation/recovery. No HTTP/startup/physical device authority is added.
 - **M9.2 — Target model.** Stable target/LUN identity, backing volume/object,
   capacity/allocation policy, initiator access and protected authentication
   secrets. Secrets are not returned by read APIs or exposed in diagnostics.

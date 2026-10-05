@@ -293,6 +293,27 @@ not reset backend/Owner state or provide recovery. An exact EEXIST/no-link
 check locks down the initially invalid second-link fault trigger. Native,
 actual guarded guest/all old gates and standard/two-boot regression pass.
 
+The backend now also checks exact target-scoped directory rosters generated
+from captured policy and pinned Linux defaults: target/TPG, named ACLs, data
+LUNs, per-peer mappings, portal group and owned LUN/mapping/portal directories.
+It accepts at most 64 names per directory, checks exhaustion/overflow, opens
+confined `.` with a NEW open description on every scan (dup would share the
+directory offset), and brackets original configfs/owned-entry identities.
+Checks precede/follow enable and bracket active credential/attribute checks.
+Only names are read by this census. Borrowed directory references remain owned
+by the existing entry ledger; there is no second closer or baseline adoption.
+
+Actual foreign-ACL observation fails before the census is added. Final actual
+guarded ARMv5 rejects foreign NEW ACL/LUN/mapping objects, preserves their
+identities and retains complete sources through uncertain teardown in no-retry
+review. Separate disposal never resets backend/Owner state. Native, mandatory
+marker contracts/all old guest gates and standard/two-boot pass. The first
+default-name prototype is corrected against the pinned source: fabric-root
+lio_version/cpus_allowed_list do not belong to a single target directory.
+This is point-in-time observation, not global fabric ownership or concurrent
+writer exclusion; restored changes between scans are not witnessed. Adversarial
+portal/extra-TPG and full-capacity/resource campaigns remain unqualified.
+
 Remaining adapter-specific tests include exhaustive store/readback/close/delete
 faults and resource bounds, pending-login
 side effects and new-login fencing (refused active teardown keeps the target
