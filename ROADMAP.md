@@ -1985,12 +1985,21 @@ support per tested combination; refuse untested combinations without mutation.
   Lock order is lifecycle → individual Pin, separately lifecycle → authority;
   the authority never calls consumers/sources or performs I/O under its lock.
   **Tests:** actual independent-open ARMv5 tracer RED/GREEN; actual mounted
-  later-member-only target refusal and singleton reuse; native concurrent
-  admissions with exactly one winner, verified reuse and uncertain retention;
+  later-member-only target refusal and singleton reuse; mandatory ARMv5
+  concurrent admissions with exactly one winner and verified whole-stop reuse;
   full tagged vet/race, old LIO gates and standard/two-boot regression.
-  These tests pass locally, including fresh guarded LIO/all old gates and
+  Native actual-object positive cases SKIP on the local WSL 6.6 kernel without
+  unique mount IDs; aggregate success is not positive syscall qualification.
+  Existing tests pass locally, including fresh guarded LIO/all old gates and
   actual standard/two-boot regression. No serialized use claims or recovery
   reset, product opening/activation, HTTP, NAS or physical disk operations.
+  The mandatory real mounted ARMv5 concurrency/reuse fixture now passes locally:
+  join both independent admissions before release, require one winner and one
+  conflict with caller handles intact, run/reap the actual first child, verify
+  every member closure, then reuse the losing original handles through the
+  SAME authority and require a fresh child write/verified stop. Standard and
+  complete two-boot regression pass; this replaces the missing local native
+  positive evidence, not the native unique-mount guard or clean-build CI.
   **Next:** integrate this authority into a qualified product composition and
   separately fence external/cross-protocol access, foreign target/session use,
   allocation and retained storage/network lifetimes. Distinct authorities do

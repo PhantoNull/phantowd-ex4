@@ -61,7 +61,7 @@ func (b *fixtureTargetBackend) stop(ctx context.Context) error {
 }
 
 func runTargetWritableFixtures(set *mountowner.MountedVolumeSet, workspace string) error {
-	for _, kind := range []string{"normal", "replace-second", "uncertain", "configured-smb", "configured-nfs", "duplicate-open", "later-held"} {
+	for _, kind := range []string{"normal", "replace-second", "uncertain", "configured-smb", "configured-nfs", "duplicate-open", "later-held", "concurrent-open"} {
 		if err := targetWritableCase(set, workspace, kind); err != nil {
 			return fmt.Errorf("target roster fixture %s: %w", kind, err)
 		}
@@ -69,6 +69,7 @@ func runTargetWritableFixtures(set *mountowner.MountedVolumeSet, workspace strin
 	fmt.Println("PHANTOWD_TARGET_BACKING_LIFETIME_READY complete_roster=true canonical_lun_order=true members=2 block_sizes=512,4096 actual_mount_owner=true consumer_uid=1000 admission_rollback=true stop_once_before_all_release=true second_member_drift=true uncertain_retains_all_sources=true no_retry=true target_activation=false scope=disposable-qemu-only")
 	fmt.Println("PHANTOWD_TARGET_KNOWN_USE_READY coherent_policy=true smb_exposure_refused=true nfs_exposure_refused=true readonly_refused=true later_member=true caller_resources_preserved=true no_source_claims=true no_backend_effects=true global_use=false activation=false scope=disposable-qemu-only")
 	fmt.Println("PHANTOWD_TARGET_OBJECT_USE_READY shared_authority=true independent_opens_refused=true later_conflict_atomic=true singleton_same_authority=true actual_mount_owner=true caller_resources_preserved=true uncertain_retains_reservation=true no_retry=true cooperative=true external_exclusion=false global_use=false activation=false scope=disposable-qemu-only")
+	fmt.Println("PHANTOWD_TARGET_OBJECT_CONCURRENCY_READY independent_opens=true simultaneous_admission=true joined_before_release=true exactly_one_winner=true rejected_callers_preserved=true busy_until_stop=true actual_child_reaped=true verified_reuse=true actual_mount_owner=true cooperative=true external_exclusion=false activation=false scope=disposable-qemu-only")
 	return nil
 }
 func targetWritableCase(set *mountowner.MountedVolumeSet, workspace, kind string) (result error) {
@@ -189,6 +190,9 @@ func targetWritableCase(set *mountowner.MountedVolumeSet, workspace, kind string
 		}
 		// Successful direct Close proves no hidden policy/credential claim remains.
 		return errors.Join(policy.Close(), secrets.Close())
+	}
+	if kind == "concurrent-open" {
+		return targetConcurrentOpenCase(ctx, lease, paths, relative, inputs, policy, secrets, uses)
 	}
 	if kind == "later-held" {
 		// Only the later member is held through a separate singleton admission.
@@ -474,6 +478,157 @@ func targetWritableCase(set *mountowner.MountedVolumeSet, workspace, kind string
 		}
 		if backend.stopCalls != 1 || backend.prepareCalls != 1 {
 			return errors.New("target repeated teardown/preparation")
+		}
+	}
+	return nil
+}
+
+// Real mounted objects and independent open descriptions, not fabricated statx
+// identities. Both admissions finish before the winner may release any claim.
+// No LIO/configfs activation: only the existing disposable UID1000 child.
+func targetConcurrentOpenCase(ctx context.Context, lease *mountowner.MountedVolumeSetLease, paths, relative []string,
+	first []targetSelection, policy *naspolicystore.Owner, secrets *iscsicredentials.Owner, uses *backingUseOwner) (result error) {
+	var second []targetSelection
+	for i, path := range paths {
+		pin, _, err := OpenFromMountedLease(lease, "qemu-plan", relative[i], uint64(4096*(i+1)))
+		if err != nil {
+			return err
+		}
+		defer func() { result = errors.Join(result, pin.Close()) }()
+		fd, err := unix.Open(path, unix.O_RDWR|unix.O_CLOEXEC|unix.O_NONBLOCK, 0)
+		if err != nil {
+			return err
+		}
+		file := os.NewFile(uintptr(fd), "concurrent-target-member")
+		defer func() {
+			if _, err := file.Stat(); err == nil {
+				result = errors.Join(result, file.Close())
+			}
+		}()
+		second = append(second, targetSelection{backingID: first[i].backingID, pin: pin, file: file})
+	}
+	type admission struct {
+		index   int
+		owner   *writableOwner
+		backend *fixtureTargetBackend
+		err     error
+	}
+	inputs := [][]targetSelection{first, second}
+	ready, start, done := make(chan struct{}, 2), make(chan struct{}), make(chan admission, 2)
+	for index := range inputs {
+		go func() {
+			backend := &fixtureTargetBackend{}
+			ready <- struct{}{}
+			<-start
+			owner, err := newTargetWritableOwner(ctx, inputs[index], backend, policy, 1, secrets, 1, "fixture-target", uses)
+			done <- admission{index, owner, backend, err}
+		}()
+	}
+	<-ready
+	<-ready
+	close(start)
+	// Join BOTH bounded admissions before examining/closing either Owner.
+	admitted := []admission{<-done, <-done}
+	defer func() {
+		for _, a := range admitted {
+			if a.owner == nil || a.owner.released {
+				continue
+			}
+			// Independent test-only disposal after an actual child reap. Never
+			// reset review or retry the lifecycle/backend stop operation.
+			if err := a.backend.teardown(ctx); err != nil {
+				result = errors.Join(result, err)
+				continue
+			}
+			a.owner.mu.Lock()
+			result = errors.Join(result, a.owner.releaseLocked())
+			a.owner.mu.Unlock()
+		}
+	}()
+	winner, loser := admitted[0], admitted[1]
+	if winner.owner == nil {
+		winner, loser = loser, winner
+	}
+	if winner.owner == nil || winner.err != nil || loser.owner != nil || !errors.Is(loser.err, ErrBusy) {
+		return errors.New("concurrent actual-object admission did not have exactly one winner")
+	}
+	if loser.backend.prepareCalls != 0 || loser.backend.cmd != nil || loser.backend.stopCalls != 0 {
+		return errors.New("concurrent refused admission had backend effects")
+	}
+	for _, input := range inputs[loser.index] {
+		if input.pin.consumer != nil {
+			return errors.New("concurrent refusal retained caller pin")
+		}
+		if _, err := input.pin.Verify(); err != nil {
+			return err
+		}
+		if _, err := input.file.Stat(); err != nil {
+			return err
+		}
+	}
+	if !errors.Is(uses.close(), ErrBusy) {
+		return errors.New("concurrent winner did not retain shared authority")
+	}
+	if err := winner.owner.start(ctx); err != nil {
+		return err
+	}
+	if err := winner.owner.observe(ctx); err != nil {
+		return err
+	}
+	if !errors.Is(uses.close(), ErrBusy) {
+		return errors.New("active child lost its object reservation")
+	}
+	if err := winner.owner.stop(ctx); err != nil {
+		return err
+	}
+	if !winner.owner.released || winner.backend.stopCalls != 1 || !winner.backend.allLiveAtStop {
+		return errors.New("concurrent winner released without verified whole stop")
+	}
+	select {
+	case <-winner.backend.done:
+	default:
+		return errors.New("concurrent winner released before actual child reap")
+	}
+	for _, member := range winner.owner.group {
+		if member.file != nil || !member.pin.closed {
+			return errors.New("concurrent winner retained unverified member closure")
+		}
+	}
+	// Clear the old readiness bytes through the losing caller's retained fixture
+	// handles; the next child must actually write them again, not inherit a marker.
+	for i, input := range inputs[loser.index] {
+		if _, err := input.file.WriteAt(make([]byte, 4096*(i+1)), 0); err != nil {
+			return err
+		}
+	}
+	// Reuse the losing caller's original live handles, not freshly opened files
+	// or a new authority. Only verified whole-stop/closure enables admission.
+	backend := &fixtureTargetBackend{}
+	owner, err := newTargetWritableOwner(ctx, inputs[loser.index], backend, policy, 1, secrets, 1, "fixture-target", uses)
+	if err != nil {
+		return fmt.Errorf("verified object reuse: %w", err)
+	}
+	admitted = append(admitted, admission{loser.index, owner, backend, nil})
+	if err := owner.start(ctx); err != nil {
+		return err
+	}
+	if err := owner.observe(ctx); err != nil {
+		return err
+	}
+	if err := owner.stop(ctx); err != nil {
+		return err
+	}
+	if !owner.released || backend.stopCalls != 1 || !backend.allLiveAtStop {
+		return errors.New("reused target whole-stop witness missing")
+	}
+	select {
+	case <-backend.done:
+	default:
+		return errors.New("reused target released before actual child reap")
+	}
+	for _, member := range owner.group {
+		if member.file != nil || !member.pin.closed {
+			return errors.New("reused target member closure missing")
 		}
 	}
 	return nil

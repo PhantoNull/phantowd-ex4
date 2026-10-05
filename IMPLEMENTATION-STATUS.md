@@ -15,8 +15,18 @@ only after verified whole-backend stop, all data/Pin closures and source release
 Uncertain stop/closure retains the reservation in terminal no-retry review.
 
 An actual standard ARMv5 tracer first admitted independent Pins/descriptors for
-the same two files; the corrected tracer passes. Native simultaneous admissions
-have exactly one winner; verified reuse and uncertain no-retry retention pass.
+the same two files; the corrected tracer passes. Scope correction: the three
+native actual-object positive tests SKIP on the local WSL 6.6 kernel because
+unique mount IDs are unavailable. Aggregate native green does not establish
+concurrent admission, verified reuse or uncertain-retention syscall evidence.
+The mandatory actual mounted ARMv5 concurrent fixture now executes: independent
+Pins/RW descriptions race into the SAME authority; both admissions join before
+release; exactly one succeeds, and the refused caller retains its handles.
+The winner runs a UID1000 consumer and remains busy until verified whole stop,
+child reap and all member closures. The losing original handles then admit and
+run a second consumer through that SAME authority. Readiness bytes are cleared
+before reuse so the second child must write them anew. Standard ARMv5 and the
+complete two-boot regression pass locally with the mandatory concurrency marker.
 Actual mounted ARMv5 also refuses a later-member-only conflict with no earlier
 reservation or backend effects, preserving caller resources and allowing a
 singleton to claim the unused member through the same authority. Whole tagged
