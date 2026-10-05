@@ -23,7 +23,8 @@ func OpenQEMUFixture(directory string) (*Owner, error) {
 // This provisioner is absent from product binaries and accepts no secret input.
 func OpenQEMULIOFixture(directory string) (*Owner, error) {
 	return openSyntheticFixture(directory, []entry{{Ref: "fixture-secret", Secret: "synthetic-chap-only-2026"},
-		{Ref: "fixture-outbound", Secret: "synthetic-outbound-only-2026"}})
+		{Ref: "fixture-outbound", Secret: "synthetic-outbound-only-2026"},
+		{Ref: "fixture-peer", Secret: "synthetic-peer-only-2026"}})
 }
 
 func openSyntheticFixture(directory string, entries []entry) (*Owner, error) {

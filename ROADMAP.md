@@ -1872,13 +1872,14 @@ support per tested combination; refuse untested combinations without mutation.
   write-only configfs refusal/acceptance and native RED/GREEN protect control
   open modes. Old separate protocol gates plus standard/two-boot tests pass.
   **Next acceptance packets, before product composition:**
-  1. Prove this adapter's per-initiator RO/RW and ungranted-LUN denials through
-     real clients; do not substitute the separate manually configured fixture.
-  2. Attempt this Owner's stop with an established session; require refusal,
-     SAME-client ongoing I/O and retained resources. Logout permits only
-     separate fixture disposal, never an Owner retry. Test pending-login
-     side effects and define exclusive portal/configfs mutation authority.
-  3. Fault every setup/store/readback/close/delete boundary, including later
+  1. M9.1g below now proves this adapter's per-initiator RO/RW and ungranted-LUN
+     denials through real clients, not the separate manually configured fixture.
+  2. M9.1g now proves established-session stop refusal, SAME-client fresh I/O,
+     retained resources and terminal review after logout. Pending-login
+     side effects, admission fencing and exclusive portal/configfs mutation
+     authority remain open; established-session proof is not those guarantees.
+  3. M9.1h below proves early/later setup collisions and referenced-storage
+     partial teardown. Still fault every store/readback/close/delete boundary, including later
      members; qualify one-attempt cleanup, remaining-reference retention and
      bounded resources. No partial success, adopted foreign object or force.
   4. Compose retained runtime-code/network and protected registry/storage/
@@ -1887,6 +1888,40 @@ support per tested combination; refuse untested combinations without mutation.
   5. Only then add durable lifecycle/recovery, root-only secret provisioning/
      rotation, product startup and authenticated UI transactions. Keep physical
      media/NAS installation behind independent hardware/recovery gates.
+- **M9.1g — adapter access/session proof (locally tested prerequisite).**
+  Two CHAP peers with distinct credentials: exact primary LUN0/7 RW, peer
+  LUN0 RO roster, precise write-protected/ungranted-LUN SCSI refusals, crossed
+  credentials/foreign IQN denied, independently preserved original data.
+  A separate real Owner stop with one established libiscsi context refuses;
+  that SAME context performs fresh reads and writes on BOTH LUNs afterward.
+  All sources remain held in terminal review; logout never restores authority,
+  and lifecycle calls never retry. Independent QEMU-only idle/disposal checks
+  remove witnessed objects before fixture source release without resetting
+  backend/Owner state. Native RED/GREEN consumer contracts require separate
+  exact access/session markers. Final native, actual guarded ARMv5, old protocol
+  gates and standard/two-boot tests pass; no product startup/HTTP/NAS operation.
+  **Next:** M9.1h adds three real fault cases; still fault every
+  mutation/readback/close/delete boundary, including later
+  members; prove residual resource retention and no foreign-object adoption.
+  Qualify exclusive writer/portal authority and pending-login behavior before
+  composing code/network/registry/storage/allocation/global-use ownership.
+  Define durable recovery and new-login fencing explicitly: refused active
+  teardown keeps the target enabled and resources live, not fully revoked.
+- **M9.1h — bounded configfs faults (locally tested prerequisite).**
+  Actual guarded ARMv5 exercises an existing target before effects, an existing
+  second storage after first-LUN setup, and a separate test-owned LUN holding
+  the first storage through partial teardown. Foreign identity/data remain
+  preserved; successful cleanup precedes source release, while uncertain
+  teardown keeps complete descriptor/Pin/mount/policy/secret claims in terminal
+  review without retry. Independent witnessed fixture disposal is not product
+  recovery and never resets lifecycle state. Mandatory exact result evidence,
+  native contracts/race, actual old protocol gates and standard/two-boot pass.
+  The initially invalid double-link trigger is diagnosed and retained as an
+  exact kernel EEXIST/no-created-link regression; no retention assertion is
+  weakened. **Next:** complete store/readback/close/delete fault and resource-
+  bound campaigns; qualify writer/portal/pending-login authority, then retained
+  code/network/registry/storage/allocation/global-use and durable recovery.
+  No product activation, HTTP, hardware/NAS action or exhaustive-coverage claim.
 - **M9.2 — Target model.** Stable target/LUN identity, backing volume/object,
   capacity/allocation policy, initiator access and protected authentication
   secrets. Secrets are not returned by read APIs or exposed in diagnostics.
