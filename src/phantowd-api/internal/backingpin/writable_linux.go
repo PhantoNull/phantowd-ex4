@@ -215,7 +215,7 @@ func policyMatchesPin(document naspolicy.Config, id iscsipolicy.BackingID, pin *
 	}
 	for _, backing := range document.ISCSI.Backings {
 		if backing.ID == id {
-			return string(backing.VolumeID) == pin.volumeID && backing.RelativePath == path.Join(pin.directory, pin.name) &&
+			return knownBackingPathIsolated(document, backing) && string(backing.VolumeID) == pin.volumeID && backing.RelativePath == path.Join(pin.directory, pin.name) &&
 				backing.CapacityBytes == pin.fileIdentity.size
 		}
 	}

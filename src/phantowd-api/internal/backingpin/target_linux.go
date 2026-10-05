@@ -88,7 +88,7 @@ func (b *targetBackendAdapter) stop(ctx context.Context) error { return b.backen
 // Pure complete membership/alias planning. Real descriptor/kernel checks are
 // separate and mandatory. No partial, positional, inferred or foreign roster.
 func planTarget(document naspolicy.Config, id iscsipolicy.TargetID, inputs []targetSelection) ([]targetBacking, error) {
-	if document.Validate() != nil || len(inputs) == 0 || len(inputs) > iscsipolicy.MaxLUNs {
+	if !knownTargetUseAllowed(document, id) || len(inputs) == 0 || len(inputs) > iscsipolicy.MaxLUNs {
 		return nil, ErrInvalid
 	}
 	var target *iscsipolicy.Target

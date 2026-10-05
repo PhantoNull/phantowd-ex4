@@ -3,6 +3,31 @@
 
 # Implementation status
 
+## M9.1k declared backing exposure — private admission prerequisite
+
+The selected target's complete LUN roster now refuses configured SMB/NFS
+equal/ancestor/descendant/root exposure on the same logical VolumeID, including
+read-only shares and desired disabled targets. The private planner, LIO definition
+constructor and older policy-bound singleton compositions enforce this before
+resource transfer or credential/backend preparation. Errors return no partial
+definition. Desired validation/save and advisory previews remain unchanged.
+
+Whole Linux tagged vet/race and focused repeated native tests pass locally,
+including RO/RW canonical-component boundaries, different logical volumes,
+unchanged desired policy and bypass refusal. A mandatory disposable ARMv5 case
+for each protocol checks a later-member-only conflict with actual mounted Pins,
+RW caller descriptors and root-only policy/CHAP sources; backend effects and
+retained source claims must be absent. Actual standard ARMv5 and complete
+two-boot regression pass locally. A fresh guarded LIO kernel/guest run also
+passes all previous credential, access, session, topology and fault gates.
+Base artifacts verify unchanged; this cache-reusing overlay is not clean-build
+reproducibility or physical EX4 qualification.
+
+This is only a negative check of configured paths. Actual aliases across paths
+or logical volumes, other users/processes/targets, concurrent share activation,
+global-use/session/allocation and retained product authority remain open.
+No policy schema, HTTP endpoint, product startup or NAS operation is added.
+
 ## M9.1j foreign endpoints — disposable host/QEMU proof
 
 The exact target census now has actual guarded ARMv5 cases for a NEW foreign

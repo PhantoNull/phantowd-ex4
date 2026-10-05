@@ -304,6 +304,10 @@ while [ "$attempt" -lt "$smoke_timeout" ]; do
             echo 'Missing complete target backing lifetime assertion' >&2
             exit 1
         fi
+        if ! grep -F 'PHANTOWD_TARGET_KNOWN_USE_READY coherent_policy=true smb_exposure_refused=true nfs_exposure_refused=true readonly_refused=true later_member=true caller_resources_preserved=true no_source_claims=true no_backend_effects=true global_use=false activation=false scope=disposable-qemu-only' "$log_file" >/dev/null; then
+            echo 'Missing declared backing-use admission proof' >&2
+            exit 1
+        fi
         if ! grep -F 'PHANTOWD_POLICY_BACKING_LIFETIME_READY private_revision_claim=true exact_backing_selection=true real_mount_owner=true consumer_uid=1000 stop_before_policy_release=true uncertain_stop_retains_policy_mount_rw=true restored_policy_no_revival=true no_retry=true product_activation=false scope=disposable-qemu-only' "$log_file" >/dev/null; then
             echo 'Missing combined desired-policy/backing lifetime assertions' >&2
             cat "$log_file" >&2

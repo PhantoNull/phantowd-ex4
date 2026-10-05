@@ -324,6 +324,37 @@ and standard/two-boot regression pass locally. Product backend behavior is
 unchanged. Shared-portal/concurrent mutation, active foreign sessions and
 full-capacity/resource campaigns remain unqualified.
 
+## Private declared backing-use refusal
+
+Admission now rejects a selected target if ANY LUN backing overlaps a configured
+SMB share or NFS export on the SAME logical VolumeID. Comparison uses validated
+canonical path components: equal, ancestor, descendant and volume-root paths
+conflict; lexical prefixes such as `data/a` versus `data/ab` do not. Read-only
+grants and desired disabled state do not make backing exposure safe. Every
+selected member is checked before Pin/file transfer or credential preparation;
+the LIO definition constructor and older policy-bound singleton paths enforce
+the same prerequisite. Failure returns no partial target definition.
+
+The complete-target Owner supplies its own retained coherent policy claim.
+Desired policy validation/save and read-only registry/share advisories are
+unchanged: this is a private negative admission gate, not a policy rewrite or
+an activation endpoint. Different logical VolumeIDs are only lexically distinct,
+not proved to refer to different storage. Symlinks/hardlinks, bind/case aliases,
+other processes or protocols, foreign targets and concurrent writers still need
+independent retained identity/global-use ownership. A successful path comparison
+never supplies writable, allocation, mount, network or execution authority.
+
+Native tests cover both protocols, RO/RW access, canonical overlap boundaries,
+different-volume controls, unchanged desired policy and singleton bypass
+refusal. The disposable standard ARMv5 fixture requires both protocols to reject
+a later-member-only conflict, with real mounted Pins/caller descriptors and
+policy/CHAP sources; no backend prepare/start/stop or source claim may remain.
+Its mandatory marker explicitly preserves `global_use=false` and
+`activation=false`. Native vet/race/repetitions, actual standard ARMv5 and
+complete two-boot regression pass locally. Fresh guarded LIO execution also
+passes all previous authentication/access/session/fault/topology gates. Cached
+overlays are not clean-build reproducibility or physical EX4 qualification.
+
 Remaining adapter-specific tests include exhaustive store/readback/close/delete
 faults and resource bounds, pending-login
 side effects and new-login fencing (refused active teardown keeps the target

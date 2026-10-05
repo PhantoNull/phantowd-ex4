@@ -6,6 +6,7 @@
 package backingpin
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -19,6 +20,8 @@ import (
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/mountowner"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/naspolicy"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/naspolicystore"
+	"github.com/PhantoNull/phantowd-ex4/phantowd-api/nfsconfig"
+	"github.com/PhantoNull/phantowd-ex4/phantowd-api/shareconfig"
 	"golang.org/x/sys/unix"
 )
 
@@ -58,12 +61,13 @@ func (b *fixtureTargetBackend) stop(ctx context.Context) error {
 }
 
 func runTargetWritableFixtures(set *mountowner.MountedVolumeSet, workspace string) error {
-	for _, kind := range []string{"normal", "replace-second", "uncertain"} {
+	for _, kind := range []string{"normal", "replace-second", "uncertain", "configured-smb", "configured-nfs"} {
 		if err := targetWritableCase(set, workspace, kind); err != nil {
 			return fmt.Errorf("target roster fixture %s: %w", kind, err)
 		}
 	}
 	fmt.Println("PHANTOWD_TARGET_BACKING_LIFETIME_READY complete_roster=true canonical_lun_order=true members=2 block_sizes=512,4096 actual_mount_owner=true consumer_uid=1000 admission_rollback=true stop_once_before_all_release=true second_member_drift=true uncertain_retains_all_sources=true no_retry=true target_activation=false scope=disposable-qemu-only")
+	fmt.Println("PHANTOWD_TARGET_KNOWN_USE_READY coherent_policy=true smb_exposure_refused=true nfs_exposure_refused=true readonly_refused=true later_member=true caller_resources_preserved=true no_source_claims=true no_backend_effects=true global_use=false activation=false scope=disposable-qemu-only")
 	return nil
 }
 func targetWritableCase(set *mountowner.MountedVolumeSet, workspace, kind string) (result error) {
@@ -80,6 +84,13 @@ func targetWritableCase(set *mountowner.MountedVolumeSet, workspace, kind string
 	defer func() { result = errors.Join(result, lease.Close()) }()
 	paths := []string{dir + "/first", dir + "/second"}
 	relative := []string{filepath.Base(workspace) + "/target-" + kind + "/first", filepath.Base(workspace) + "/target-" + kind + "/second"}
+	if kind == "configured-smb" || kind == "configured-nfs" {
+		if err := os.Mkdir(dir+"/exposed", 0700); err != nil {
+			return err
+		}
+		paths[1] = dir + "/exposed/second"
+		relative[1] = filepath.Base(workspace) + "/target-" + kind + "/exposed/second"
+	}
 	for i, path := range paths {
 		if err := os.WriteFile(path, make([]byte, 4096*(i+1)), 0600); err != nil {
 			return err
@@ -92,7 +103,14 @@ func targetWritableCase(set *mountowner.MountedVolumeSet, workspace, kind string
 	if err != nil {
 		return err
 	}
-	commitErr := store.Commit(0, fixtureTargetPolicy(1, relative[0], relative[1]))
+	p := fixtureTargetPolicy(1, relative[0], relative[1])
+	if kind == "configured-smb" || kind == "configured-nfs" {
+		fixtureTargetExposure(&p, kind, filepath.Dir(relative[1])) // Conflict in LATER LUN only.
+		if p.Validate() != nil || !knownBackingPathIsolated(p, p.ISCSI.Backings[0]) || knownBackingPathIsolated(p, p.ISCSI.Backings[1]) {
+			return ErrReview
+		}
+	}
+	commitErr := store.Commit(0, p)
 	if err := errors.Join(commitErr, store.Close()); err != nil {
 		return err
 	}
@@ -128,6 +146,46 @@ func targetWritableCase(set *mountowner.MountedVolumeSet, workspace, kind string
 			id = "fixture-second"
 		}
 		inputs = append(inputs, targetSelection{backingID: id, pin: pin, file: file})
+	}
+	if kind == "configured-smb" || kind == "configured-nfs" {
+		backend := &fixtureTargetBackend{}
+		owner, err := newTargetWritableOwner(ctx, inputs, backend, policy, 1, secrets, 1, "fixture-target")
+		if owner != nil || !errors.Is(err, ErrInvalid) || backend.prepareCalls != 0 || backend.cmd != nil || backend.stopCalls != 0 {
+			return ErrReview
+		}
+		if target, defs, err := lioTargetDefinition(p, "fixture-target"); target.ID != "" || defs != nil || !errors.Is(err, ErrInvalid) {
+			return ErrReview
+		}
+		// Neither older singleton policy/credential composition may bypass this
+		// prerequisite. No backend preparation/execution or caller transfer occurs.
+		single := &fixtureWritableBackend{}
+		second := inputs[1]
+		if owner, err := newPolicyBoundWritableOwner(ctx, second.pin, second.file, single, policy, 1, second.backingID); owner != nil || !errors.Is(err, ErrInvalid) {
+			return ErrReview
+		}
+		if owner, err := newCredentialBoundWritableOwner(ctx, second.pin, second.file, single, policy, 1, second.backingID, secrets, 1, "fixture-target"); owner != nil || !errors.Is(err, ErrInvalid) {
+			return ErrReview
+		}
+		if single.prepareCalls != 0 || single.cmd != nil || single.stopCalls != 0 {
+			return ErrReview
+		}
+		for i, input := range inputs {
+			if input.pin.consumer != nil {
+				return ErrReview
+			}
+			if _, err := input.pin.Verify(); err != nil {
+				return ErrReview
+			}
+			if _, err := input.file.Stat(); err != nil {
+				return ErrReview
+			}
+			data, err := os.ReadFile(paths[i])
+			if err != nil || !bytes.Equal(data, make([]byte, 4096*(i+1))) {
+				return ErrReview
+			}
+		}
+		// Successful direct Close proves no hidden policy/credential claim remains.
+		return errors.Join(policy.Close(), secrets.Close())
 	}
 	if kind == "normal" {
 		if owner, err := newTargetWritableOwner(ctx, inputs[:1], &fixtureTargetBackend{}, policy, 1, secrets, 1, "fixture-target"); owner != nil || !errors.Is(err, ErrInvalid) {
@@ -311,4 +369,16 @@ func targetWritableCase(set *mountowner.MountedVolumeSet, workspace, kind string
 		}
 	}
 	return nil
+}
+
+// Declared synthetic exposure only: no SMB/NFS runtime is activated here.
+func fixtureTargetExposure(p *naspolicy.Config, protocol, relative string) {
+	if protocol == "configured-smb" {
+		p.FileServices.Shares.Users = []shareconfig.User{{ID: "reader", Name: "reader"}}
+		p.FileServices.Shares.Shares = []shareconfig.Share{{ID: "visible", Name: "visible", VolumeID: "qemu-plan", RelativePath: relative,
+			Grants: []shareconfig.Grant{{UserID: "reader", Access: "ro"}}}}
+	} else if protocol == "configured-nfs" {
+		p.FileServices.NFS.Exports = []nfsconfig.Export{{ID: "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee", VolumeID: "qemu-plan", RelativePath: relative,
+			Clients: []nfsconfig.Client{{Network: "127.0.0.1/32", Access: "ro", Squash: "all", AnonymousUID: 1000, AnonymousGID: 1000, Security: "sys"}}}}
+	}
 }

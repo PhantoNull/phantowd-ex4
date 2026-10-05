@@ -1956,6 +1956,23 @@ support per tested combination; refuse untested combinations without mutation.
   code/network/registry/storage/allocation/global-use ownership and durable
   activation/recovery. These bounded cases are not global writer exclusion,
   foreign session fencing, a recovery API or hardware qualification.
+- **M9.1k — declared backing exposure admission (private prerequisite).**
+  Check the selected target's ENTIRE roster against validated canonical SMB/NFS
+  paths on the same logical VolumeID. Equal/ancestor/descendant/root overlap
+  refuses even for RO grants or desired disabled targets. Check before resource
+  transfer, credential preparation and LIO configfs effects; close singleton
+  policy-bound bypasses. Desired saves and advisory previews remain possible.
+  Native tests cover component boundaries, RO/RW, logical-volume separation,
+  unchanged input and no partial output. Mandatory standard ARMv5 fixtures use
+  actual mounted Pins/RW files and retained policy/CHAP owners: a later-member-only
+  conflict must reject without backend effects or retained claims, preserving
+  caller resources and original data. Native vet/race/repetitions, actual
+  standard ARMv5/two-boot regression and fresh guarded LIO/all old gates pass
+  locally; cached overlays do not establish clean-build or EX4 qualification.
+  **Next:** qualify actual object aliases across paths/logical volumes, shared
+  protocol/global-use ownership and concurrent activation/foreign consumers under
+  explicit lock order. Passing lexical isolation is NOT global-use/writable
+  admission. Keep runtime/network/allocation, durable recovery and hardware gates.
 - **M9.2 — Target model.** Stable target/LUN identity, backing volume/object,
   capacity/allocation policy, initiator access and protected authentication
   secrets. Secrets are not returned by read APIs or exposed in diagnostics.
