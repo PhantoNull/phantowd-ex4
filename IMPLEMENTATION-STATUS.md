@@ -3,6 +3,36 @@
 
 # Implementation status
 
+## M9.1g adapter access/session proof — disposable host/QEMU only
+
+The private retained-storage LIO adapter now has its own real initiator tests,
+not only the separate manually configured protocol fixture. Two peers use
+distinct synthetic credentials. The primary writes/reads both LUN0/7; a peer
+sees exactly LUN0 read-only. Its write returns exact SCSI write-protected sense,
+LUN7 returns logical-unit-not-supported, crossed credentials and a foreign IQN
+fail with exact authentication/authorization status. Original data is preserved.
+
+A separate case keeps ONE libiscsi context connected through the real Owner's
+stop attempt. The non-forcing primitive refuses; fresh reads AND writes on both
+LUNs still succeed through the same context. Independent retained-descriptor
+reads confirm the new bytes. Every data/Pin/mount/policy/credential claim remains
+held, Owner review is terminal, and start/observe/stop/close never retry teardown.
+Logout does not change this state. A separate QEMU-only controller verifies idle
+and witnessed object removal before independent fixture release, without
+calling/resetting the failed backend stop or clearing review. This is NOT
+product recovery. The refused target remains enabled; this does not establish
+new-login fencing or pending-login side-effect freedom.
+
+Final Windows preflight/cross-compilation, pinned whole Linux tagged vet/race and
+focused repetitions, fresh actual guarded ARMv5 LIO, all old protocol gates and
+standard smoke/complete two-boot regression pass locally. Separate mandatory
+access/session result markers reject omission, weakening or duplicate evidence;
+their consumer contracts were observed RED/GREEN before each implementation.
+No product interface, privilege expansion, physical disk, NAS operation or new
+Docker image/named volume is added. Clean hosted qualification remains separate.
+Setup/teardown faults, exclusive configfs/code/network/storage/global-use authority,
+durable recovery, credential provisioning and UI/startup remain open.
+
 ## M9.1f retained-storage LIO composition — private host/QEMU prerequisite
 
 The private Linux backend captures a validated target definition, duplicates
@@ -34,7 +64,8 @@ write-only attribute probes and a native RED/GREEN regression lock down configfs
 RO/RW and multi-LUN assertions remain mandatory. Standard userspace smoke and
 the complete clean two-boot state lane also pass locally.
 
-This does **not** qualify new-adapter RO grants, real live-session refusal/fault
+This composition-only increment does **not** qualify RO grants or real
+live-session refusal; M9.1g above adds those bounded adapter fixtures. Fault
 recovery, exclusive configfs writer authority, retained runtime-code/network
 authority, protected storage/registry/allocation/global-use admission, mutual
 enforcement, credential provisioning/rotation or durable product recovery.

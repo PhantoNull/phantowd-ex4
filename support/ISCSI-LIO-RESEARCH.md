@@ -113,9 +113,40 @@ not installed in the standard overlay. The runner's seventh required argument
 is that independently compiled tagged fixture binary; the wrapper compiles it
 using the pinned existing Go toolchain with a disposable cache and no download.
 
+### Retained-storage adapter access and active-session cases
+
+The optional guarded kernel profile also runs the private complete-target
+adapter with a real mount Owner and one disposable 16 MiB ext2 data image.
+Already-admitted two-file/LUN0/7 references bind through integer-only proc-FD
+control values, with 512/4096-byte blocks. No desired path is passed to FILEIO.
+The primary CHAP peer writes/reads both LUNs. A separately authenticated peer
+reports exactly LUN0, reads it, receives exact write-protected sense on writes
+and logical-unit-not-supported on LUN7. Crossed credentials and a foreign IQN
+fail with exact expected status, not connectivity errors. Independent data
+readback confirms the original files remain correct after these refusals.
+
+A second case keeps a single libiscsi context connected through the real Owner's
+stop refusal. Fixed bounded stdin/stdout commands coordinate fresh two-LUN reads
+and writes AFTER refusal; reconnect is disabled. Independent retained-descriptor
+reads confirm new bytes. Every file/Pin/mount/policy/secret claim remains held;
+all lifecycle calls keep terminal review and do not retry. After verified logout,
+a separate QEMU-only disposal controller rechecks identities/idle state, uses
+non-forcing idle disable and removes witnessed objects before fixture release.
+It never calls or resets the failed backend stop, and does not clear review.
+This is disposal, NOT durable recovery or a product route. A refused stop keeps
+the target enabled; pending-login side effects and new-login fencing remain open.
+
+Both new cases pass locally on actual ARMv5 guarded QEMU. Separate mandatory
+result markers have native omission/duplicate/weakening RED/GREEN contracts;
+old protocol gates and standard/two-boot checks remain. No image/named volume
+is created in Docker; guest image and kernel/client/source scratch are discarded.
+Exclusive writer/code/network/registry/storage/allocation/global-use authority,
+setup/teardown faults and product recovery/startup/UI still need qualification.
+
 Use the isolated kernel and a disposable snapshot of the verified root image;
 start a dedicated guest init, not product services. The guest alone may use
-root/configfs. Attach no data disks and disable external QEMU networking.
+root/configfs. Attach no operator/physical disks and disable external QEMU
+networking; only the guarded adapter's newly generated regular image is writable.
 Only explicitly allowed initiators on guest loopback may log in. Use fixed
 synthetic secrets, never operator credentials; redact auth diagnostics.
 

@@ -218,6 +218,61 @@ static const char *owned_target(struct iscsi_context *ctx)
     return NULL;
 }
 
+static const char *owned_readonly_peer(struct iscsi_context *ctx)
+{
+    struct scsi_task *task;
+    struct scsi_reportluns_list *list;
+    unsigned char expected[BLOCK], denied[BLOCK];
+    int valid = 0;
+    memset(expected, 'X', sizeof(expected));
+    memset(denied, 'Z', sizeof(denied));
+    if (!multiple_ready(ctx, 0))
+        return "owned-peer-ready";
+    task = iscsi_reportluns_sync(ctx, 0, 256);
+    if (task != NULL && task->status == SCSI_STATUS_GOOD) {
+        list = scsi_datain_unmarshall(task);
+        valid = list != NULL && list->num == 1 && list->luns[0] == 0;
+    }
+    if (task != NULL)
+        scsi_free_scsi_task(task);
+    if (!valid || !multiple_capacity(ctx, 0, BLOCK, 7) ||
+        !multiple_read(ctx, 0, 1, expected, BLOCK) ||
+        !multiple_write(ctx, 0, denied, BLOCK, 1) ||
+        !multiple_read(ctx, 0, 1, expected, BLOCK))
+        return "owned-peer-readonly";
+    /* A real SCSI refusal, not a TCP/authentication/timeout failure. */
+    task = iscsi_read16_sync(ctx, 7, 1, SECOND_BLOCK, SECOND_BLOCK, 0, 0, 0, 0, 0);
+    valid = task != NULL && task->status == SCSI_STATUS_CHECK_CONDITION &&
+            task->sense.key == SCSI_SENSE_ILLEGAL_REQUEST &&
+            task->sense.ascq == SCSI_SENSE_ASCQ_LOGICAL_UNIT_NOT_SUPPORTED;
+    if (task != NULL)
+        scsi_free_scsi_task(task);
+    return valid ? NULL : "owned-peer-ungranted";
+}
+
+/* One live context, no reconnect. The parent controls only fixed test commands. */
+static const char *owned_session(struct iscsi_context *ctx)
+{
+    char command[4];
+    unsigned char first[BLOCK], second[SECOND_BLOCK];
+    memset(first, 'X', sizeof(first));
+    memset(second, 'Y', sizeof(second));
+    if (puts("PHANTOWD_LIO_HELD_READY") == EOF || fflush(stdout) != 0 ||
+        fgets(command, sizeof(command), stdin) == NULL || strcmp(command, "C\n"))
+        return "owned-session-command";
+    if (!multiple_read(ctx, 0, 1, first, BLOCK) || !multiple_read(ctx, 7, 1, second, SECOND_BLOCK))
+        return "owned-session-same-read";
+    memset(first, 'Z', sizeof(first));
+    memset(second, 'W', sizeof(second));
+    if (!multiple_write(ctx, 0, first, BLOCK, 0) || !multiple_write(ctx, 7, second, SECOND_BLOCK, 0) ||
+        !multiple_read(ctx, 0, 1, first, BLOCK) || !multiple_read(ctx, 7, 1, second, SECOND_BLOCK))
+        return "owned-session-same-write";
+    if (puts("PHANTOWD_LIO_HELD_IO_READY") == EOF || fflush(stdout) != 0 ||
+        fgets(command, sizeof(command), stdin) == NULL || strcmp(command, "L\n"))
+        return "owned-session-logout-command";
+    return NULL;
+}
+
 int main(int argc, char **argv)
 {
     const char *mode;
@@ -242,7 +297,8 @@ int main(int argc, char **argv)
         strcmp(mode, "peer-ro-hold") && strcmp(mode, "peer-cross") &&
         strcmp(mode, "multi-primary") && strcmp(mode, "multi-peer") &&
         strcmp(mode, "multi-primary-check") && strcmp(mode, "credential-chap") &&
-        strcmp(mode, "credential-mutual") && strcmp(mode, "owned-target"))
+        strcmp(mode, "credential-mutual") && strcmp(mode, "owned-target") &&
+        strcmp(mode, "owned-peer-ro") && strcmp(mode, "owned-peer-cross") && strcmp(mode, "owned-hold"))
         return failed(NULL, "mode");
     /* No fixed seed or pre-initialization urandom use in authentication tests. */
     if (getrandom(entropy, sizeof(entropy), GRND_NONBLOCK) != sizeof(entropy))
@@ -251,8 +307,9 @@ int main(int argc, char **argv)
               !strcmp(mode, "foreign") || !strcmp(mode, "disabled") || !strcmp(mode, "idle-disabled") ||
               !strcmp(mode, "mutual-target-wrong") || !strcmp(mode, "mutual-user-wrong") ||
               !strcmp(mode, "mutual-inbound-wrong") || !strcmp(mode, "rotated-old") ||
-              !strcmp(mode, "peer-cross") || !strcmp(mode, "mutual-oneway-refused");
-    peer = !strcmp(mode, "peer-ro-hold") || !strcmp(mode, "peer-cross") || !strcmp(mode, "multi-peer");
+              !strcmp(mode, "peer-cross") || !strcmp(mode, "owned-peer-cross") || !strcmp(mode, "mutual-oneway-refused");
+    peer = !strcmp(mode, "peer-ro-hold") || !strcmp(mode, "peer-cross") || !strcmp(mode, "multi-peer") ||
+           !strcmp(mode, "owned-peer-ro") || !strcmp(mode, "owned-peer-cross");
     rotated = !strcmp(mode, "rotated") || !strcmp(mode, "primary-hold") ||
               !strcmp(mode, "multi-primary") || !strcmp(mode, "multi-primary-check");
     mutual = !strncmp(mode, "mutual", 6) && strcmp(mode, "mutual-oneway") && strcmp(mode, "mutual-oneway-refused");
@@ -270,9 +327,9 @@ int main(int argc, char **argv)
         iscsi_set_session_type(ctx, ISCSI_SESSION_NORMAL) != 0)
         return failed(ctx, "setup");
     if (strcmp(mode, "none") &&
-        iscsi_set_initiator_username_pwd(ctx, peer && strcmp(mode, "peer-cross") ? PEER_USER : USER,
+        iscsi_set_initiator_username_pwd(ctx, peer && strcmp(mode, "peer-cross") && strcmp(mode, "owned-peer-cross") ? PEER_USER : USER,
             (!strcmp(mode, "wrong") || !strcmp(mode, "mutual-inbound-wrong")) ? "deliberately-wrong" :
-            (rotated || !strcmp(mode, "peer-cross")) ? ROTATED : peer ? PEER_SECRET : SECRET) != 0)
+            (rotated || !strcmp(mode, "peer-cross")) ? ROTATED : !strcmp(mode, "owned-peer-cross") ? SECRET : peer ? PEER_SECRET : SECRET) != 0)
         return failed(ctx, "auth-setup");
     if (mutual && iscsi_set_target_username_pwd(ctx,
             !strcmp(mode, "mutual-user-wrong") ? "wrong-target-user" : TARGET_USER,
@@ -294,8 +351,16 @@ int main(int argc, char **argv)
     if (login != 0 || !iscsi_is_logged_in(ctx)) {
         return failed(ctx, "login");
     }
-    if (!strcmp(mode, "owned-target")) {
+    if (!strcmp(mode, "owned-target") || !strcmp(mode, "owned-hold")) {
         const char *stage = owned_target(ctx);
+        if (stage != NULL)
+            return failed(ctx, stage);
+        if (!strcmp(mode, "owned-hold") && (stage = owned_session(ctx)) != NULL)
+            return failed(ctx, stage);
+        goto logout;
+    }
+    if (!strcmp(mode, "owned-peer-ro")) {
+        const char *stage = owned_readonly_peer(ctx);
         if (stage != NULL)
             return failed(ctx, stage);
         goto logout;

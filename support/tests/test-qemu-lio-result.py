@@ -63,6 +63,29 @@ class LIOResult(unittest.TestCase):
         result.validate(self.valid())
         result.validate(self.valid().replace(b"\n", b"\r\n"))
 
+    def test_owned_session_proof_requires_same_client_io_and_no_owner_retry(self):
+        marker = "PHANTOWD_LIO_TARGET_SESSION_READY active_stop_refused=true same_client_readwrite=true complete_resources_retained=true " \
+                 "owner_review=true no_retry=true logout_not_recovery=true independent_fixture_disposal=true scope=disposable-qemu-only"
+        self.assertIn(marker, result.IDLE_MARKERS)
+        good = self.valid(idle=True)
+        for replacement in ("", marker + "\n" + marker, marker.replace("same_client_readwrite=true", "same_client_readwrite=false"),
+                            marker.replace("complete_resources_retained=true", "complete_resources_retained=false"),
+                            marker.replace("no_retry=true", "no_retry=false"), marker.replace("disposable-qemu-only", "product")):
+            with self.subTest(replacement=replacement), self.assertRaises(ValueError):
+                result.validate(good.replace(marker.encode(), replacement.encode()), idle_guard=True)
+
+    def test_owned_access_proof_is_mandatory_and_cannot_be_weakened(self):
+        marker = "PHANTOWD_LIO_TARGET_ACCESS_READY peers=2 separate_credentials=true primary_readwrite=true peer_readonly=true " \
+                 "ungranted_refused=true cross_credentials_refused=true foreign_refused=true original_data_preserved=true scope=disposable-qemu-only"
+        self.assertIn(marker, result.IDLE_MARKERS)
+        good = self.valid(idle=True)
+        for replacement in ("", marker + "\n" + marker, marker.replace("peers=2", "peers=1"),
+                            marker.replace("peer_readonly=true", "peer_readonly=false"),
+                            marker.replace("ungranted_refused=true", "ungranted_refused=false"),
+                            marker.replace("disposable-qemu-only", "product")):
+            with self.subTest(replacement=replacement), self.assertRaises(ValueError):
+                result.validate(good.replace(marker.encode(), replacement.encode()), idle_guard=True)
+
     def test_strict_mode_refuses_default_cross_mode_and_mixed_evidence(self):
         strict = self.valid(strict=True)
         result.validate(strict, required_mutual=True)

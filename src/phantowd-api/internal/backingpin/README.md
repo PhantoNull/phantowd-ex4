@@ -272,8 +272,20 @@ test-only disposal. Native pure seams are not positive configfs qualification;
 actual write-only probes and the full guest lock down the reproduced open-mode
 defect. Standard smoke/two-boot regression passes without enabling LIO there.
 
-Remaining adapter-specific tests include RO/ungranted access, established-
-session stop refusal and setup/teardown fault boundaries. Exclusive writer,
+The adapter's separate access case now proves two independently authenticated
+peers, exact RW/RO LUN rosters, precise write-protected/ungranted SCSI refusals,
+cross-credential/foreign-IQN denials and independent original-file preservation.
+Another case holds a single libiscsi context through real Owner stop refusal,
+then performs fresh reads AND writes on both LUNs; retained-descriptor readback
+proves the new bytes. Complete claims remain held in terminal review. Logout
+does not enable retry; a separate QEMU-only controller verifies idle and removes
+witnessed objects before independent fixture release. It never calls or resets the
+failed backend stop or clears Owner review. These actual guarded ARMv5 cases,
+native contracts/race and standard/two-boot regression pass locally.
+
+Remaining adapter-specific tests include setup/teardown faults, pending-login
+side effects and new-login fencing (refused active teardown keeps the target
+enabled, not revoked). Independent fixture disposal is NOT recovery. Exclusive writer,
 runtime-code/network, allocation/storage/global-use authority and durable
 recovery remain separate product gates. This private loopback/CHAP composition
 does not install a product service, create an HTTP endpoint or authorize NAS I/O.

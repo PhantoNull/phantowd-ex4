@@ -39,11 +39,13 @@ func (b *qemuLIOTargetBackend) stop(ctx context.Context) error {
 			b.liveAtStop = false
 		}
 	}
-	if b.sink == nil || len(b.sink.peers) != 1 {
+	if b.sink == nil || len(b.sink.peers) != len(b.target.Initiators) {
 		return ErrReview
 	}
-	if _, err := b.sink.peers[0].Incoming.WriteTo(io.Discard); err != nil {
-		b.liveAtStop = false
+	for _, peer := range b.sink.peers {
+		if _, err := peer.Incoming.WriteTo(io.Discard); err != nil {
+			b.liveAtStop = false
+		}
 	}
 	if b.uncertain {
 		return ErrReview
@@ -74,7 +76,7 @@ func RunQEMULIOTargetFixture() error {
 			return ErrUnavailable
 		}
 		defer os.RemoveAll(workspace) // Generated fixture contents only, after Owner disposal.
-		for _, kind := range []string{"normal", "replace-second", "permission-drift", "uncertain"} {
+		for _, kind := range []string{"normal", "access", "active-session", "replace-second", "permission-drift", "uncertain"} {
 			if err := runQEMULIOTargetCase(set, workspace, kind); err != nil {
 				// Fixed case label only; never print configfs/library/credential errors.
 				fmt.Printf("PHANTOWD_LIO_ERROR phase=owned-target-%s\n", kind)
@@ -86,6 +88,8 @@ func RunQEMULIOTargetFixture() error {
 	if err != nil {
 		return err
 	}
+	fmt.Println("PHANTOWD_LIO_TARGET_ACCESS_READY peers=2 separate_credentials=true primary_readwrite=true peer_readonly=true ungranted_refused=true cross_credentials_refused=true foreign_refused=true original_data_preserved=true scope=disposable-qemu-only")
+	fmt.Println("PHANTOWD_LIO_TARGET_SESSION_READY active_stop_refused=true same_client_readwrite=true complete_resources_retained=true owner_review=true no_retry=true logout_not_recovery=true independent_fixture_disposal=true scope=disposable-qemu-only")
 	fmt.Println("PHANTOWD_LIO_TARGET_READY complete_roster=true luns=0,7 block_sizes=512,4096 actual_mount_owner=true proc_fd_binding=true chap=true exact_data=true write_only_open_modes=true active_attribute_checks=true later_member_drift=true uncertain_retains_all=true no_retry=true idle_teardown_before_release=true scope=disposable-qemu-only")
 	return nil
 }
@@ -159,6 +163,13 @@ func runQEMULIOTargetCase(set *mountowner.MountedVolumeSet, workspace, kind stri
 	p.ISCSI.Targets[0].Name = "iqn.2026-10.invalid.phantowd:lio-fixture"
 	p.ISCSI.Targets[0].Initiators[0].Name = lioCredentialFixturePeer
 	p.ISCSI.Targets[0].Initiators[0].Authentication.InitiatorUser = "fixture"
+	if kind == "access" {
+		p.ISCSI.Targets[0].Initiators = append(p.ISCSI.Targets[0].Initiators, iscsipolicy.Initiator{
+			Name:           "iqn.2026-10.invalid.phantowd:peer",
+			Authentication: iscsipolicy.Authentication{Mode: "chap", InitiatorUser: "fixture-peer", InitiatorSecretRef: "fixture-peer"},
+			Grants:         []iscsipolicy.Grant{{LUNID: "fixture-lun", Access: "ro"}},
+		})
+	}
 	commitErr := store.Commit(0, p)
 	if err := errors.Join(commitErr, store.Close()); err != nil {
 		return err
@@ -231,6 +242,16 @@ func runQEMULIOTargetCase(set *mountowner.MountedVolumeSet, workspace, kind stri
 	if cmd.Run() != nil {
 		return ErrUnavailable
 	}
+	if kind == "access" {
+		for _, mode := range []string{"owned-peer-ro", "owned-peer-cross", "foreign"} {
+			peer := exec.CommandContext(ctx, "/usr/libexec/phantowd-iscsi-fixture-client", mode)
+			peer.Env, peer.Dir = cmd.Env, cmd.Dir
+			peer.Stdout, peer.Stderr = io.Discard, io.Discard
+			if peer.Run() != nil {
+				return ErrUnavailable
+			}
+		}
+	}
 	// Independently prove actual writes reached both original retained files.
 	for i, path := range paths {
 		data, err := os.ReadFile(path)
@@ -246,6 +267,10 @@ func runQEMULIOTargetCase(set *mountowner.MountedVolumeSet, workspace, kind stri
 		return err
 	}
 	switch kind {
+	case "active-session":
+		if err := qemuLIOHeldOwner(ctx, owner, backend, policy, secrets, lease); err != nil {
+			return err
+		}
 	case "replace-second":
 		if os.Rename(paths[1], paths[1]+"-old") != nil || os.WriteFile(paths[1], make([]byte, 8192), 0600) != nil {
 			return ErrUnavailable
@@ -310,7 +335,7 @@ func runQEMULIOTargetCase(set *mountowner.MountedVolumeSet, workspace, kind stri
 		if err != nil {
 			return err
 		}
-	} else if !owner.released || !lio.stopped {
+	} else if !owner.released || kind != "active-session" && !lio.stopped {
 		return ErrReview
 	}
 	if _, err := os.Stat(lioCredentialFixtureTarget); !errors.Is(err, os.ErrNotExist) {
@@ -321,8 +346,10 @@ func runQEMULIOTargetCase(set *mountowner.MountedVolumeSet, workspace, kind stri
 			return ErrReview
 		}
 	}
-	if _, err := backend.sink.peers[0].Incoming.WriteTo(io.Discard); !errors.Is(err, iscsicredentials.ErrClosed) {
-		return ErrReview
+	for _, peer := range backend.sink.peers {
+		if _, err := peer.Incoming.WriteTo(io.Discard); !errors.Is(err, iscsicredentials.ErrClosed) {
+			return ErrReview
+		}
 	}
 	return nil
 }
