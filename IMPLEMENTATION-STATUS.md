@@ -3,6 +3,38 @@
 
 # Implementation status
 
+## Retained native state-alias fault — focused QEMU prerequisite
+
+The actual ARMv5 trace replaces one fixed guest-tmpfs state directory alias
+while retaining the original object and its contents. Complete admission
+refuses before the pending capture executes. The coordinator stops the owned
+daemon/client set, keeps the unconsumed capture, original code/config/state
+descriptors and busy identity authority, and refuses restart or repeated close
+after restoration. A separate read-only observation proves owned-group stop
+and distinguishes an unconsumed capture from an executed, settled one.
+Intentional retained references are disposed only by the test subprocess's exit
+after that proof; this is not product recovery. FD equality applies to its parent.
+Clients are not active in this fault trace; their fault settlement remains open.
+
+The final local lane passes 42 driver/seven loader tests and three complete
+ARMv5 campaigns. One probe compilation/base image supplies separate fresh
+service, native-revocation and lifecycle snapshots, each still limited to 180
+seconds. Complete phase markers, matching runtime censuses, entropy, all earlier
+access/authentication/revocation guards and unchanged base hashes are mandatory.
+Root Linux race-count3 for the five affected packages, tagged module vet and
+Windows API/UI/vet/ARMv5 cross-compilation pass. Temporary diagnostics are removed.
+
+The original mode-drift test selected the wrong seam: invalid directory modes
+refuse capture construction before a pending capture exists. Alias replacement
+exercises the intended later refusal. A combined campaign passed with timing
+instrumentation but its final uninstrumented rerun timed out; separate campaigns
+avoid charging unrelated scenarios to one deadline without dropping their tests.
+This does not prove deterministic performance or diagnose every older timeout.
+New whole-image/hosted/clean-build qualification is still separate. Identity/code
+drift, unexpected exits, in-worker cancellation, other uncertain teardown,
+routed Disable, storage, bootstrap continuity, product UI/startup, durable
+recovery and physical EX4 qualification remain open.
+
 ## Identity-bound native startup/supervision — normal QEMU prerequisite
 
 The private QEMU coordinator obtains only the exact Owner-fixed backend's

@@ -2517,6 +2517,19 @@ this order, preserving the [full contract](support/SAMBA-RUNTIME-PROFILE.md#samb
    campaigns/40-driver/seven-loader/all old guards pass. This is NORMAL ONLY;
    do not borrow the static Owner's fault qualification for this coordinator.
 
+   A subsequent actual ARMv5 trace now qualifies one state-directory alias
+   replacement on guest tmpfs. Valid original descriptors survive capture
+   construction; complete admission refuses before the worker runs. Independent
+   read-only witnesses prove owned daemon/client stop and an unconsumed pending
+   capture, while code/config/state and busy identity authority stay retained.
+   Restoration and repeated Close do not revive it. Child process exit after
+   those witnesses is fixture disposal, not recovery; clients were not active
+   in this fault trace. Mode drift refuses earlier and is not that pending branch.
+   The final 42-driver/seven-loader lane uses one compilation/base and three
+   fresh service/native/lifecycle guests, each180, with all old guards and equal
+   code census. Cached full/hosted/clean/hardware qualification remains separate;
+   the remaining fault variants, routed command and storage gates below stay open.
+
    - Construct against one startup-fixed runtime/backend, retain identity BEFORE
      any descendant starts, and refuse a foreign runtime even with equal bytes.
    - Serialize external coordination without Owner/runtime gate recursion;

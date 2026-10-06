@@ -719,11 +719,15 @@ Ownership, wrong-password/access denials, Unix-mode enforcement, kernel RO,
 original-path/symlink denial, one Unicode filename and owned-group stop are
 checked. This is a distinct test-only native fixture, never installed into the
 product image. See [runtime profile and remaining gates](SAMBA-RUNTIME-PROFILE.md).
-The current wrapper compiles once and runs separate fresh service/native
+The current wrapper compiles once and runs separate fresh service/native/lifecycle
 snapshots, each bounded to 180 seconds. It independently verifies each phase,
-requires both complete proofs with matching runtime census, then prints combined
+requires all three complete proofs with matching runtime census, then prints combined
 coverage. This is not a state/daemon lease across boots. No tests, base checks,
 code admission or credential deadline are removed to avoid a cumulative timeout.
+The lifecycle guest independently prepares real accounts/authentication/idle
+disable, then tests retained startup/supervision and one state-alias fault.
+Deliberately quarantined captures and identity references remain held until a
+disposable subprocess proves group stop and exits; that exit is not recovery.
 Its fixed runtime now includes IBM850 plus a strictly bounded, hash-verified
 conversion catalog. A dynamic probe tests exact non-ASCII CP850/UTF-8 conversions
 and refusals inside the restricted root; the fixture rejects ASCII fallback.

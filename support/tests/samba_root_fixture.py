@@ -143,6 +143,12 @@ MARKERS = (
     "accepted_cancellation=true stopped_reaped=true "
     "close_before_release=true no_fd_leak=true "
     "service_owner=false scope=qemu-only",
+    "PHANTOWD_SAMBA_OWNER_NATIVE_IDENTITY_FAULT_READY "
+    "state_drift=true before_worker=true pending_retained=true "
+    "groups_stopped=true capture_settled=true authority_busy=true "
+    "inputs_retained=true restoration_refused=true close_no_retry=true "
+    "subprocess_disposal=true no_fd_leak=true "
+    "service_owner=false scope=qemu-only",
     "PHANTOWD_SAMBA_ROOT_DONE",
 )
 
@@ -176,12 +182,19 @@ def check_guest(log):
 
 def check_campaign(log, phase):
     if (not isinstance(log, str) or len(log.encode("utf-8")) > MAX_LOG
-            or phase not in ("service", "native")):
+            or phase not in ("service", "native", "lifecycle")):
         raise ValueError("invalid campaign evidence")
     split = next(i for i, row in enumerate(MARKERS)
                  if row.startswith("PHANTOWD_SAMBA_OWNER_NATIVE_NSS_READY"))
-    expected = (MARKERS[:split] + ("PHANTOWD_SAMBA_ROOT_SERVICE_DONE",)
-                if phase == "service" else MARKERS[:5] + MARKERS[split:])
+    live = next(i for i, row in enumerate(MARKERS)
+                if row.startswith(
+                    "PHANTOWD_SAMBA_OWNER_NATIVE_LIVE_REVOKE_READY"))
+    expected = {
+        "service": MARKERS[:split] + ("PHANTOWD_SAMBA_ROOT_SERVICE_DONE",),
+        "native": MARKERS[:5] + MARKERS[split:-3]
+        + ("PHANTOWD_SAMBA_ROOT_NATIVE_DONE",),
+        "lifecycle": MARKERS[:5] + MARKERS[split:live] + MARKERS[-3:],
+    }[phase]
     prefixes = ("PHANTOWD_SAMBA_ROOT_", "PHANTOWD_SAMBA_OWNER_")
     markers = tuple(line for line in log.splitlines()
                     if line.startswith(prefixes))
@@ -190,12 +203,13 @@ def check_campaign(log, phase):
     return scan_cost(log)
 
 
-def check_campaigns(service, native):
+def check_campaigns(service, native, lifecycle):
     first = check_campaign(service, "service")
     second = check_campaign(native, "native")
-    if first[:2] != second[:2]:
+    third = check_campaign(lifecycle, "lifecycle")
+    if first[:2] != second[:2] or first[:2] != third[:2]:
         raise ValueError("campaign runtime census differs")
-    return first, second
+    return first, second, third
 
 
 def validate_catalog(catalog):
@@ -260,9 +274,10 @@ def main():
     verify = sub.add_parser("verify")
     verify.add_argument("log")
     verify.add_argument("--native-log")
+    verify.add_argument("--lifecycle-log")
     campaign = sub.add_parser("verify-campaign")
     campaign.add_argument("log")
-    campaign.add_argument("phase", choices=("service", "native"))
+    campaign.add_argument("phase", choices=("service", "native", "lifecycle"))
     args = parser.parse_args()
     if args.command == "prepare":
         reports = [json.loads(read_bounded(name, MAX_REPORT)) for name in (
@@ -277,12 +292,17 @@ def main():
         print(f"Samba {args.phase} campaign verified")
     else:
         log = read_bounded(args.log, MAX_LOG)
+        if bool(args.native_log) != bool(args.lifecycle_log):
+            raise ValueError("all three campaign logs required")
         if args.native_log:
             native = read_bounded(args.native_log, MAX_LOG)
-            _, (files, size, elapsed) = check_campaigns(log, native)
-            print(f"PHANTOWD_SAMBA_CAMPAIGN_SCAN_COST phase=native "
-                  f"files={files} bytes={size} elapsed_ns={elapsed} "
-                  "scope=qemu-emulation-only")
+            lifecycle = read_bounded(args.lifecycle_log, MAX_LOG)
+            costs = check_campaigns(log, native, lifecycle)
+            for phase, (files, size, elapsed) in zip(
+                    ("native", "lifecycle"), costs[1:]):
+                print(f"PHANTOWD_SAMBA_CAMPAIGN_SCAN_COST phase={phase} "
+                      f"files={files} bytes={size} elapsed_ns={elapsed} "
+                      "scope=qemu-emulation-only")
         else:
             check_guest(log)
         files, size, elapsed = scan_cost(log)

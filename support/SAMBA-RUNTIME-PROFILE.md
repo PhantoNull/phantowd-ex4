@@ -17,7 +17,7 @@ The wrapper refuses missing caches;
 it never builds/pulls an image or creates a named volume. Source, workspace and
 base inputs are read-only; one disposable container uses bounded 512 MiB `/tmp`
 and 128 MiB `/var/tmp` tmpfs. Compiler scratch is removed before the image copy.
-One ARM926/VersatilePB boot is bounded to 180 seconds, without retries, guest
+Each of three ARM926/VersatilePB boots is bounded to 180 seconds, without retries, guest
 NICs, host ports or physical-device attachments. The base image hash must remain
 unchanged. Generated images and state are destroyed when the fixture exits.
 The host formats only a newly created 16 MiB regular tmpfs file as ext4 and
@@ -588,24 +588,39 @@ through caller loss/GC still needs the product recovery/lifecycle design.
 ### Bounded campaign execution
 
 The official runner compiles and stages one fixed probe image, then executes
-two fresh QEMU snapshots sequentially, each bounded to 180 seconds. The service
+three fresh QEMU snapshots sequentially, each bounded to 180 seconds. The service
 campaign proves the old access/isolation/lifetime cases and releases all its
 resources. The native campaign independently proves lookup, configuration
-handoff and credential workers on fresh tmpfs state. No service passdb or
+handoff, credential workers and live revocation on fresh tmpfs state. The
+lifecycle guest independently repeats real enrollment/authentication/idle
+disable preparation, then qualifies retained startup/supervision and one
+state-directory alias replacement fault. No service passdb or
 filesystem mutation carries over; both virtual drives use snapshots.
 
-Both campaigns require their own real virtio entropy, fresh staging and complete
+All campaigns require their own real virtio entropy, fresh staging and complete
 code census. The verifier accepts only the exact ordered phase markers and one
 bounded scan measurement per guest, then requires equal file/byte censuses.
 Missing, duplicated, swapped or weakened proofs fail. The normalized marker
 summary is combined coverage, not one daemon or state retained across boots.
 The base manifest and post-run image hash remain mandatory. Failure artifacts
-contain the failed phase's log, or both logs when joint verification fails.
+contain the failed phase's log, or all three logs when joint verification fails.
 
 This addresses an observed outer timeout after native handoff in the growing
 single-guest campaign, without weakening admission or increasing the native
 60-second credential budget. Local wrapper success is not hosted/clean-build
 qualification; the publication's own head must pass independently.
+
+Later normal-startup plus fault work also exhausted the native guest budget.
+The current split keeps every previous access/authentication/live-session guard
+and every per-operation budget; it does not extend guest180 or add another
+kernel/image build. Final local qualification passes 42 driver/seven loader
+checks and all three actual campaigns, including parent FD equality and base
+hash preservation. A replaced state alias reaches complete admission after
+valid capture construction, unlike mode drift, which refuses earlier. The fault
+keeps original pins, the unconsumed capture and busy identity authority even
+after alias restoration and repeated Close. Group-stop witnesses precede child
+process disposal; this is not recovery, active-client fault settlement, complete
+fault coverage, product activation, new full-image or physical EX4 qualification.
 
 ### Native same-state authentication (QEMU only)
 

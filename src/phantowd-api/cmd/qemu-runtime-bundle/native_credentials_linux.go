@@ -22,7 +22,7 @@ import (
 	"golang.org/x/sys/unix"
 )
 
-func nativeCredentialFixture() (result error) {
+func nativeCredentialFixture(lifecycle bool) (result error) {
 	commandLine, err := os.ReadFile("/proc/cmdline")
 	var fs unix.Statfs_t
 	if err != nil || !strings.Contains(" "+string(commandLine)+" ", " phantowd_samba_ext4_fixture=1 ") ||
@@ -245,6 +245,35 @@ func nativeCredentialFixture() (result error) {
 	if err := runtime.VerifyNativeIdleDisableQEMU(idleContext); err != nil {
 		return fmt.Errorf("native idle disable authentication elapsed=%v context=%v: %w", time.Since(idleStarted), idleContext.Err(), err)
 	}
+	// Independent fresh guest, not another image/build or a relaxed deadline.
+	// Both campaigns establish real disabled-first accounts and authentication;
+	// only the lifecycle campaign continues to startup/supervision/faults. The
+	// original native campaign still performs every held-client/revocation check.
+	if lifecycle {
+		if err := runtime.StopNativeDaemonQEMU(context.Background()); err != nil {
+			return err
+		}
+		if err := owner.Close(); err != nil {
+			return err
+		}
+		if err := runtime.Close(context.Background()); err != nil {
+			return err
+		}
+		if err := nativeIdentityStartupFixtureQEMU(plan, lookup, authority, inventory, native[0].Account.ID); err != nil {
+			return fmt.Errorf("native retained startup: %w", err)
+		}
+		if err := nativeIdentityFaultSubprocessQEMU(); err != nil {
+			return err
+		}
+		after, err := os.ReadDir("/proc/self/fd")
+		if err != nil || len(after) != len(before) {
+			return errors.New("native lifecycle descriptor leak")
+		}
+		nativeCredentialPreparationMarkersQEMU()
+		fmt.Println("PHANTOWD_SAMBA_OWNER_NATIVE_IDENTITY_STARTUP_READY startup_bound=true exact_backend=true before_start_busy=true after_start_busy=true duplicate_refused=true canceled_start_refused=true complete_observation=true serialized_scans=true accepted_cancellation=true stopped_reaped=true close_before_release=true no_fd_leak=true service_owner=false scope=qemu-only")
+		fmt.Println("PHANTOWD_SAMBA_OWNER_NATIVE_IDENTITY_FAULT_READY state_drift=true before_worker=true pending_retained=true groups_stopped=true capture_settled=true authority_busy=true inputs_retained=true restoration_refused=true close_no_retry=true subprocess_disposal=true no_fd_leak=true service_owner=false scope=qemu-only")
+		return nil
+	}
 	// Separate bounded active-session phase. The tagged native adapter has a
 	// fixed ten-second revocation budget for complete worker admissions; generic
 	// revocation stays five seconds. Native status reads include full admission
@@ -331,21 +360,22 @@ func nativeCredentialFixture() (result error) {
 	if err := runtime.Close(context.Background()); err != nil {
 		return err
 	}
-	if err := nativeIdentityStartupFixtureQEMU(plan, lookup, authority, inventory, native[0].Account.ID); err != nil {
-		return fmt.Errorf("native retained startup: %w", err)
-	}
 	after, err := os.ReadDir("/proc/self/fd")
 	if err != nil || len(after) != len(before) {
 		return errors.New("native credential descriptor leak")
 	}
-	fmt.Println("PHANTOWD_SAMBA_OWNER_NATIVE_ENROLLMENT_READY accounts=2 owner_bound=true original_config=true original_state=true disabled_first=true stdin_only=true same_sid=true explicit_enable=true stopped_reaped=true no_fd_leak=true scope=qemu-only")
-	fmt.Println("PHANTOWD_SAMBA_OWNER_NATIVE_DAEMON_READY accounts=2 same_code=true same_config=true same_state=true authenticated=true wrong_password_denied=true owned_group=true stopped_reaped=true no_fd_leak=true scope=qemu-only")
-	fmt.Println("PHANTOWD_SAMBA_OWNER_NATIVE_IDLE_DISABLE_READY owner_bound=true same_sid=true stable_absence=true new_login_denied=true other_login_allowed=true same_daemon=true no_new_privileges=true stopped_reaped=true no_fd_leak=true scope=qemu-only")
+	nativeCredentialPreparationMarkersQEMU()
 	fmt.Println("PHANTOWD_SAMBA_OWNER_NATIVE_LIVE_REVOKE_READY accounts=2 qualified_pair=true owner_bound=true same_sid=true target_absent=true same_peer_session=true new_login_denied=true other_login_allowed=true same_daemon=true no_new_privileges=true stopped_reaped=true no_fd_leak=true scope=qemu-only")
 	fmt.Println("PHANTOWD_SAMBA_OWNER_NATIVE_BACKEND_BINDING_READY owner_bound=true backend_bound=true unchanged_verified=true foreign_refused=true close_busy=true released_before_start=true release_no_mutation=true stopped_reaped=true no_fd_leak=true service_owner=false scope=qemu-only")
 	fmt.Println("PHANTOWD_SAMBA_OWNER_NATIVE_DISABLE_HANDOFF_READY owner_bound=true backend_bound=true atomic_successor=true old_review=true new_verified=true close_busy=true same_peer_session=true retained_until_stop=true stopped_reaped=true no_fd_leak=true startup_bound=false service_owner=false scope=qemu-only")
-	fmt.Println("PHANTOWD_SAMBA_OWNER_NATIVE_IDENTITY_STARTUP_READY startup_bound=true exact_backend=true before_start_busy=true after_start_busy=true duplicate_refused=true canceled_start_refused=true complete_observation=true serialized_scans=true accepted_cancellation=true stopped_reaped=true close_before_release=true no_fd_leak=true service_owner=false scope=qemu-only")
 	return nil
+}
+
+// Emitted only after each campaign's complete real work and parent FD census.
+func nativeCredentialPreparationMarkersQEMU() {
+	fmt.Println("PHANTOWD_SAMBA_OWNER_NATIVE_ENROLLMENT_READY accounts=2 owner_bound=true original_config=true original_state=true disabled_first=true stdin_only=true same_sid=true explicit_enable=true stopped_reaped=true no_fd_leak=true scope=qemu-only")
+	fmt.Println("PHANTOWD_SAMBA_OWNER_NATIVE_DAEMON_READY accounts=2 same_code=true same_config=true same_state=true authenticated=true wrong_password_denied=true owned_group=true stopped_reaped=true no_fd_leak=true scope=qemu-only")
+	fmt.Println("PHANTOWD_SAMBA_OWNER_NATIVE_IDLE_DISABLE_READY owner_bound=true same_sid=true stable_absence=true new_login_denied=true other_login_allowed=true same_daemon=true no_new_privileges=true stopped_reaped=true no_fd_leak=true scope=qemu-only")
 }
 
 // This read-only probe finishes and releases BEFORE daemon/client startup. It

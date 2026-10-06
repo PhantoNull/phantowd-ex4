@@ -176,3 +176,24 @@ verified-Disable successor is not routed through this coordinator yet; mutations
 outside it invalidate its consumer. Storage/grants, continuously retained
 bootstrap provenance, product authorization/startup and durable recovery remain
 open. No HTTP endpoint, product listener or physical NAS operation is added.
+
+The subsequent focused trace qualifies one **state-directory alias replacement**
+in guest tmpfs. Valid original descriptors survive capture construction; complete
+runtime admission refuses the changed alias before execution. Daemon/client
+groups stop, but the unconsumed pending capture and code/config/state/identity
+authority remain retained in review. Restoring the original alias cannot revive
+the service or turn repeated uncertain Close into success. A read-only fixture
+observation verifies stopped owned groups, capture settlement and retained
+inputs; settlement alone does not prove a capture never ran. The child exits
+only after these witnesses pass. Parent FD equality is mandatory; child process
+disposal is not product recovery. Clients were not held active in this trace.
+
+Invalid modes instead refuse capture construction before pending installation;
+that earlier branch must not be presented as the same fault. Final local proof
+passes 42 driver/seven loader tests and three fresh campaigns using one compiled
+image: service access/lifetimes, native credentials/live revocation, and native
+startup/supervision/faults. Each guest remains bounded to 180 seconds. Enrollment,
+authentication and idle-disable preparation execute on fresh state in both native
+campaigns. All original guards, phase ordering, equal code census and base hashes
+remain mandatory; there is no cross-guest authority or automatic retry. Broader
+fault and product gates above remain open, as does new whole-image qualification.

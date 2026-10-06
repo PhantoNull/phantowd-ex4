@@ -34,7 +34,7 @@ cleanup() {
         "$scratch/smbstatus.json" "$scratch/smbcontrol.json" \
         "$scratch/streams_xattr.json" "$scratch/ibm850.json" "$scratch/manifest" \
         "$scratch/launcher" "$scratch/charset" "$scratch/bundle" "$scratch/owner" \
-        "$scratch/service.log" "$scratch/native.log"
+        "$scratch/service.log" "$scratch/native.log" "$scratch/lifecycle.log"
     rm -rf "$scratch/go-cache" "$scratch/go-path"
     rmdir "$scratch"
 }
@@ -89,7 +89,7 @@ for pair in "launcher phantowd-samba-root-launcher" \
     "$debugfs" -w -R "set_inode_field /usr/sbin/$output gid 0" "$scratch/rootfs.ext2" >/dev/null 2>&1
 done
 "$debugfs" -w -R "write $scratch/manifest /usr/lib/phantowd/qemu-samba-root.manifest" "$scratch/rootfs.ext2" >/dev/null 2>&1
-for campaign in service native; do
+for campaign in service native lifecycle; do
     timeout --signal=TERM --kill-after=5 180 qemu-system-arm \
     -M versatilepb -cpu arm926 -m 256M -nographic -no-reboot -nic none \
     -object rng-random,id=samba-rng,filename=/dev/urandom \
@@ -115,13 +115,15 @@ if [ "$status" -ne 0 ] || ! python3 -B "$source_dir/support/tests/samba_root_fix
 fi
 done
 if ! python3 -B "$source_dir/support/tests/samba_root_fixture.py" verify \
-    "$scratch/service.log" --native-log "$scratch/native.log"; then
+    "$scratch/service.log" --native-log "$scratch/native.log" \
+    --lifecycle-log "$scratch/lifecycle.log"; then
     if [ -n "$failure_log" ]; then
         mkdir -p "$(dirname "$failure_log")"
-        cat "$scratch/service.log" "$scratch/native.log" >"$failure_log"
+        cat "$scratch/service.log" "$scratch/native.log" "$scratch/lifecycle.log" >"$failure_log"
     fi
     tail -n 60 "$scratch/service.log" >&2
     tail -n 60 "$scratch/native.log" >&2
+    tail -n 60 "$scratch/lifecycle.log" >&2
     exit 1
 fi
 [ "$(sha256sum "$base/rootfs.ext2" | awk '{print $1}')" = "$base_hash" ]
