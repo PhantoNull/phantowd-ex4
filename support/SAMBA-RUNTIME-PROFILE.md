@@ -434,7 +434,6 @@ Native identity consumers/NSS are not attached to this synthetic account set.
 Persistent state lifecycle, same-passdb identity ownership, coordinated mutation,
 descriptor-bound grants, durable recovery and product startup remain open.
 No HTTP, NAS, physical disk or flash operation is added.
-
 ### Construction and retained resources
 
 - Fix the backend, launcher, daemon, arguments, readiness/stop budgets and

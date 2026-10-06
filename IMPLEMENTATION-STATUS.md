@@ -87,7 +87,6 @@ Candidates are not installed or consumed by the daemon: native libc lookup,
 daemon identity-consumer composition, actual same-passdb/state and descriptor-bound grants,
 transactional activation/recovery and product startup remain open. See the
 [internal candidate contract](src/phantowd-api/internal/fileserviceplan/README.md#candidate-samba-nss).
-
 ## M4.4 protected configuration lifetime — QEMU prerequisite
 
 The separate guarded Samba fixture now retains an exact seven-file config/NSS

@@ -132,7 +132,6 @@ not pinned as immutable objects: their supported mutation/replacement lifecycle
 must come from the same real identity authority, not from this directory
 tracer. Persistent state, external privileged writers, identity-consumer
 composition and storage leases remain required before product activation.
-
 A separate guarded `qemu && linux` constructor now composes complete prepared
 code references with the pinned fixed Samba bootstrap and the existing
 serialized Owner lifecycle. The actual dynamic daemon is checked against the
