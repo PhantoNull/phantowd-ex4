@@ -23,6 +23,7 @@ CATALOG_ROWS = frozenset({
     ("module", "INTERNAL", "IBM850//", "IBM850", "1"),
 })
 MARKERS = (
+    "PHANTOWD_SAMBA_ROOT_ENTROPY_READY provider=virtio-rng scope=qemu-only",
     "PHANTOWD_SAMBA_ROOT_STAGE_READY fresh=true hashes_during_copy=true "
     "no_overwrite=true refusals=5 scope=qemu-only",
     "PHANTOWD_SAMBA_ROOT_CODE_ACL_READY baseline=true root=true "

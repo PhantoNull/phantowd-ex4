@@ -240,6 +240,8 @@ class SambaRootFixture(unittest.TestCase):
 
     def test_guest_crlf_and_strict_complete_markers(self):
         lines = [
+            "PHANTOWD_SAMBA_ROOT_ENTROPY_READY provider=virtio-rng "
+            "scope=qemu-only",
             "PHANTOWD_SAMBA_ROOT_STAGE_READY fresh=true "
             "hashes_during_copy=true "
             "no_overwrite=true refusals=5 scope=qemu-only",
@@ -307,6 +309,18 @@ class SambaRootFixture(unittest.TestCase):
         for invalid in invalid_logs:
             with self.assertRaises(ValueError):
                 fixture.check_guest("\n".join(invalid + [SCAN_COST]))
+
+    def test_guest_refuses_missing_or_predictable_entropy_evidence(self):
+        expected = ("PHANTOWD_SAMBA_ROOT_ENTROPY_READY provider=virtio-rng "
+                    "scope=qemu-only")
+        good = "\n".join([*fixture.MARKERS, SCAN_COST])
+        fixture.check_guest(good)
+        for replacement in ("", expected.replace("virtio-rng", "none"),
+                            expected.replace("virtio-rng", "fixed-seed"),
+                            expected.replace("qemu-only", "product"),
+                            expected + "\n" + expected):
+            with self.assertRaises(ValueError):
+                fixture.check_guest(good.replace(expected, replacement))
 
     def test_code_lifetime_requires_verified_stop_drift_and_retention(self):
         fields = ("caller_close", "live_code_pins", "normal_stop",

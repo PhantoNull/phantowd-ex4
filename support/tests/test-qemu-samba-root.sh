@@ -85,6 +85,8 @@ done
 "$debugfs" -w -R "write $scratch/manifest /usr/lib/phantowd/qemu-samba-root.manifest" "$scratch/rootfs.ext2" >/dev/null 2>&1
 timeout --signal=TERM --kill-after=5 180 qemu-system-arm \
     -M versatilepb -cpu arm926 -m 256M -nographic -no-reboot -nic none \
+    -object rng-random,id=samba-rng,filename=/dev/urandom \
+    -device virtio-rng-pci,rng=samba-rng \
     -kernel "$base/zImage" -dtb "$base/versatile-pb.dtb" \
     -append 'console=ttyAMA0 root=/dev/sda rootwait ro panic=-1 phantowd_samba_ext4_fixture=1 init=/usr/sbin/phantowd-samba-root-init' \
     -drive "file=$scratch/rootfs.ext2,format=raw,if=scsi,snapshot=on" \

@@ -60,6 +60,10 @@ run_fixture() {
     mount -t sysfs sysfs /sys || return 1
     /usr/sbin/phantowd-samba-root-launcher guard || return 1
     grep -Eq '(^| )phantowd_samba_ext4_fixture=1( |$)' /proc/cmdline || return 1
+    # This guest has no normal hardware entropy sources. Require the real
+    # QEMU provider before authentication; never inject a predictable seed.
+    grep -Eq '^virtio_rng(\.[0-9]+)?$' /sys/class/misc/hw_random/rng_current || return 1
+    echo 'PHANTOWD_SAMBA_ROOT_ENTROPY_READY provider=virtio-rng scope=qemu-only'
     mount -t tmpfs -o mode=0755,size=96m tmpfs /run || return 1
     ifconfig lo up || return 1
     root=/run/phantowd-samba-root

@@ -25,6 +25,22 @@ attaches it as a second QEMU snapshot disk. Guest PID1 requires the exact
 VersatilePB guard, explicit fixture cmdline flag and expected virtual-disk size
 before mounting it. No physical block-device path is formatted or attached.
 
+The driver supplies `virtio-rng-pci` from the host kernel's `/dev/urandom`,
+as the normal smoke/reboot fixtures already do. PID1 requires that virtual
+provider before authentication; the verifier requires its evidence exactly
+once. No fixed seed, uninitialized random output or physical storage device is
+used. The virtual provider is not exposed inside Samba's restricted root.
+This is a QEMU test prerequisite, not EX4 hardware-entropy qualification.
+
+A measured diagnostic without that provider spent about 101 seconds in initial
+enrollment, almost entirely guest-idle, before the configuration tests. With
+the provider, the same enrollment took about 1.2 seconds and all lifetime/access
+checks completed under the unchanged 180-second deadline. Missing-provider
+execution is refused before staging/authentication. These are emulation
+observations, not physical EX4 performance; the preceding full-build timeout
+is not reclassified as success. Temporary timing instrumentation is removed
+before final qualification.
+
 ## What the experiment does
 
 ### Inherited execution-context acceptance packet (fixture-only)

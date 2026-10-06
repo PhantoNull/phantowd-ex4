@@ -2349,6 +2349,11 @@ this order, preserving the [full contract](support/SAMBA-RUNTIME-PROFILE.md#samb
    qualifies recomposition of config after the nonrecursive service-root bind.
    This does not qualify a product renderer/identity revision, mutable passdb,
    state ownership or descriptor-bound storage; those are still the next inputs.
+   The fixture now requires the already-supported virtual entropy provider,
+   backed by host kernel randomness rather than a fixed seed. This removes the
+   measured initial enrollment wait without extending its180-second deadline;
+   missing-provider execution fails before staging/authentication. A previous
+   complete local timeout stays failed until renewed full integration passes.
 3. Integrate serial revalidation and lifecycle supervision: drift/source loss or
    unexpected exit stops the known group before any input release; uncertain or
    forced stop retains authorities in review. Test restoration/no-restart,
