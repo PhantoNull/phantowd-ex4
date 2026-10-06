@@ -32,8 +32,11 @@ func SambaCredentialDocumentsQEMU(lookup fileserviceplan.SambaEnrollmentLookup) 
 		return nil, ErrInvalid
 	}
 	return map[string]string{
-		"passwd": passwd, "group": group, "nsswitch.conf": nss,
-		"hosts": "127.0.0.1 localhost\n", "protocols": "tcp 6 TCP\nudp 17 UDP\n", "services": "microsoft-ds 445/tcp\n",
+		"passwd": passwd, "group": group,
+		// The enrollment candidate covers identity lookup only. Service lookup
+		// must also forbid implicit DNS/default resolver paths in this root.
+		"nsswitch.conf": nss + "hosts: files\nnetworks: files\nprotocols: files\nservices: files\n",
+		"hosts":         "127.0.0.1 localhost\n", "protocols": "tcp 6 TCP\nudp 17 UDP\n", "services": "microsoft-ds 445/tcp\n",
 		"samba/smb.conf": strings.Join([]string{
 			"[global]", "server role = standalone server", "security = user", "map to guest = Never",
 			"interfaces = 127.0.0.1", "bind interfaces only = yes", "smb ports = 1445",
@@ -48,8 +51,9 @@ func SambaCredentialDocumentsQEMU(lookup fileserviceplan.SambaEnrollmentLookup) 
 }
 
 // NativeSambaRuntimeQEMU privately retains one code/configuration/state tuple
-// and serializes fixed credential workers. No daemon or product startup exists
-// in this first composition. It owns pending captures until verified teardown.
+// and serializes fixed credential workers and one authentication-only daemon
+// experiment. No product startup exists. Pending captures remain owned until
+// verified teardown.
 type NativeSambaRuntimeQEMU struct {
 	owner   *Owner
 	helper  *os.File
@@ -103,6 +107,9 @@ func (p *Plan) NewNativeSambaRuntimeQEMU(ctx context.Context, code, configuratio
 	}
 	if err == nil {
 		err = staticExecutable(r.helper)
+	}
+	if err == nil {
+		err = r.prepareNativeDaemonQEMU(ctx)
 	}
 	if err == nil {
 		err = o.revalidate(ctx)
@@ -205,7 +212,8 @@ func (r *NativeSambaRuntimeQEMU) ExecuteQEMU(ctx context.Context, operation proc
 		return nil, ErrReviewRequired // Keep pending and all original authority.
 	}
 	r.pending = nil
-	if runErr != nil || observed.Kind != processowner.CaptureExited || observed.ExitCode != 0 || strings.Count(string(observed.Stderr), nativeCredentialHandoff) != 1 || r.owner.revalidate(ctx) != nil {
+	checkErr := r.owner.revalidate(ctx)
+	if runErr != nil || observed.Kind != processowner.CaptureExited || observed.ExitCode != 0 || strings.Count(string(observed.Stderr), nativeCredentialHandoff) != 1 || checkErr != nil {
 		clear(observed.Stdout)
 		r.owner.review = true
 		return nil, fmt.Errorf("native credential worker kind=%v exit=%d handoff=%d: %w", observed.Kind, observed.ExitCode, strings.Count(string(observed.Stderr), nativeCredentialHandoff), ErrReviewRequired)

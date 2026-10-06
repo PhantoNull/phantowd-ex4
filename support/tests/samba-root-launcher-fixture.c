@@ -21,6 +21,7 @@
 #include <sys/statvfs.h>
 #include <sys/vfs.h>
 #include <sys/syscall.h>
+#include <sys/sysmacros.h>
 #include <sys/wait.h>
 #include <sys/xattr.h>
 #include <time.h>
@@ -781,8 +782,8 @@ static int native_lookup_fixture(int handoff)
     return fail();
 }
 
-/* Fixed disposable credential profile. It deliberately has no daemon/data
- * grants. Admission receives five original immutable config objects followed
+/* Fixed disposable native profile. It deliberately has no data grants.
+ * Admission receives five original immutable config objects followed
  * by seven original mutable state directories; no pathname fallback is used. */
 static int native_credential_fixture(const char *operation, const char *name)
 {
@@ -795,17 +796,20 @@ static int native_credential_fixture(const char *operation, const char *name)
     int read_operation = !strcmp(operation, "check") || !strcmp(operation, "list") || !strcmp(operation, "status");
     int write_operation = !strcmp(operation, "create") || !strcmp(operation, "password") ||
         !strcmp(operation, "enable") || !strcmp(operation, "disable") || !strcmp(operation, "revoke");
-    if (owned_group_context() || (!read_operation && !write_operation) ||
-        (read_operation ? *name != '\0' : (strcmp(name, "qpmanaged") && strcmp(name, "qpsecond"))))
+    int server = !strcmp(operation, "server");
+    if (owned_group_context() || (!read_operation && !write_operation && !server) ||
+        ((read_operation || server) ? *name != '\0' : (strcmp(name, "qpmanaged") && strcmp(name, "qpsecond"))))
         return fail();
     struct stat input, objects[12];
     int input_flags = fcntl(0, F_GETFL);
     int seals = fcntl(0, F_GET_SEALS);
     const int required = F_SEAL_WRITE | F_SEAL_GROW | F_SEAL_SHRINK | F_SEAL_SEAL;
-    if (input_flags < 0 || (input_flags & O_ACCMODE) != O_RDONLY ||
+    if (input_flags < 0 || (input_flags & O_ACCMODE) != O_RDONLY || fstat(0, &input))
+        return fail();
+    if (server ? (!S_ISCHR(input.st_mode) || major(input.st_rdev) != 1 || minor(input.st_rdev) != 3) : (
         seals < 0 || (seals & required) != required || fstat(0, &input) ||
         !S_ISREG(input.st_mode) || input.st_size < 0 || input.st_size > 514 ||
-        (strcmp(operation, "password") && input.st_size))
+        (strcmp(operation, "password") && input.st_size)))
         return fail();
     int clones[12];
     for (int index = 0; index < 12; ++index) {
@@ -838,7 +842,7 @@ static int native_credential_fixture(const char *operation, const char *name)
     struct stat info;
     struct statfs fs;
     if (lstat(native_root, &info) || info.st_mode != (S_IFDIR | 0755) || info.st_uid || info.st_gid ||
-        statfs(native_root, &fs) || fs.f_type != TMPFS_MAGIC || unshare(CLONE_NEWNS | CLONE_NEWNET) ||
+        statfs(native_root, &fs) || fs.f_type != TMPFS_MAGIC || unshare(CLONE_NEWNS | (server ? 0 : CLONE_NEWNET)) ||
         mount(NULL, "/", NULL, MS_REC | MS_PRIVATE, NULL) || mount(native_root, native_root, NULL, MS_BIND, NULL))
         return fail();
     for (int index = 0; index < 2; ++index) {
@@ -886,9 +890,15 @@ static int native_credential_fixture(const char *operation, const char *name)
     if (access("/proc", F_OK) != -1 || errno != ENOENT || access("/dev", F_OK) != -1 || errno != ENOENT ||
         access("/run", F_OK) != -1 || errno != ENOENT)
         return fail();
-    char *arguments[8] = {NULL};
+    char *arguments[9] = {NULL};
     const char *executable;
-    if (!strcmp(operation, "check") || !strcmp(operation, "list") || !strcmp(operation, "status")) {
+    if (server) {
+        executable = "/usr/sbin/smbd";
+        arguments[0] = "smbd"; arguments[1] = "-F"; arguments[2] = "--no-process-group";
+        arguments[3] = "-s"; arguments[4] = "/etc/samba/smb.conf";
+        arguments[5] = "-l"; arguments[6] = "/state";
+        arguments[7] = "--debug-stdout";
+    } else if (!strcmp(operation, "check") || !strcmp(operation, "list") || !strcmp(operation, "status")) {
         executable = !strcmp(operation, "check") ? "/usr/bin/testparm" :
             (!strcmp(operation, "list") ? "/usr/bin/pdbedit" : "/usr/bin/smbstatus");
         arguments[0] = !strcmp(operation, "check") ? "testparm" : (!strcmp(operation, "list") ? "pdbedit" : "smbstatus");
@@ -912,10 +922,40 @@ static int native_credential_fixture(const char *operation, const char *name)
         else arguments[index++] = !strcmp(operation, "enable") ? "-e" : "-d";
         arguments[index++] = "-c"; arguments[index++] = "/etc/samba/smb.conf"; arguments[index] = (char *)name;
     }
-    fputs("PHANTOWD_NATIVE_CREDENTIAL_HANDOFF_READY inputs=12 original_config=true original_state=true closed_before_exec=true scope=qemu-only\n", stderr);
+    fputs(server ? "PHANTOWD_NATIVE_DAEMON_HANDOFF_READY inputs=12 original_config=true original_state=true closed_before_exec=true scope=qemu-only\n" :
+        "PHANTOWD_NATIVE_CREDENTIAL_HANDOFF_READY inputs=12 original_config=true original_state=true closed_before_exec=true scope=qemu-only\n", stderr);
     fflush(stderr);
     char *environment[] = {"PATH=/usr/sbin:/usr/bin:/sbin:/bin", "LC_ALL=C", NULL};
     execve(executable, arguments, environment);
+    return fail();
+}
+
+/* Fixed authentication-only client in the outer disposable guest, not a
+ * product launcher or data grant. Capture owns its process group. Secrets are
+ * independently opened/validated and inherited via one FD, never argv/env. */
+static int native_client(const char *user, const char *kind)
+{
+    int wrong = !strcmp(kind, "wrong");
+    if (owned_group_context() || (strcmp(user, "qpmanaged") && strcmp(user, "qpsecond")) ||
+        (!wrong && strcmp(kind, "good")))
+        return fail();
+    char path[96], expected[160], actual[160];
+    snprintf(path, sizeof(path), "/run/native-%s-%s.auth", user, kind);
+    snprintf(expected, sizeof(expected), "username = %s\npassword = %s\n", user,
+        wrong ? "native-qemu-wrong-password-29" : "native-qemu-only-password-29");
+    int fd = open(path, O_RDONLY | O_NOFOLLOW | O_CLOEXEC);
+    struct stat info;
+    struct statfs fs;
+    if (fd < 0 || fstat(fd, &info) || info.st_mode != (S_IFREG | 0600) || info.st_uid || info.st_gid ||
+        info.st_nlink != 1 || info.st_size != (off_t)strlen(expected) || fstatfs(fd, &fs) || fs.f_type != TMPFS_MAGIC ||
+        read(fd, actual, sizeof(actual)) != info.st_size || memcmp(actual, expected, (size_t)info.st_size) ||
+        lseek(fd, 0, SEEK_SET) != 0 || dup2(fd, 4) != 4 || fcntl(4, F_SETFD, 0) ||
+        close(3) || syscall(SYS_close_range, 5U, ~0U, 0))
+        return fail();
+    char *arguments[] = {"smbclient", "-t", "2", "-m", "SMB3_11", "-p", "1445",
+        "-A", "/proc/self/fd/4", "//127.0.0.1/IPC$", "-c", "quit", NULL};
+    char *environment[] = {"PATH=/usr/sbin:/usr/bin:/sbin:/bin", "LC_ALL=C", NULL};
+    execve("/usr/bin/smbclient", arguments, environment);
     return fail();
 }
 
@@ -931,6 +971,10 @@ int main(int argc, char **argv)
         return native_lookup_fixture(1);
     if (argc == 4 && !strcmp(argv[1], "native-credential"))
         return native_credential_fixture(argv[2], argv[3]);
+    if (argc == 2 && !strcmp(argv[1], "native-server"))
+        return native_credential_fixture("server", "");
+    if (argc == 4 && !strcmp(argv[1], "native-client"))
+        return native_client(argv[2], argv[3]);
     if (argc == 2 && !strcmp(argv[1], "runtime-bundle"))
         return inspect_runtime_bundle();
     if (argc == 2 && !strcmp(argv[1], "composed-code"))

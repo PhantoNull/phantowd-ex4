@@ -67,7 +67,10 @@ func nativeCredentialFixture() (result error) {
 	}
 	const root = "/run/phantowd-native-samba-root"
 	const state = "/run/phantowd-native-samba-state"
-	for _, name := range []string{root, root + "/etc", root + "/etc/samba", root + "/lib", root + "/usr", root + "/state"} {
+	// Samba's fixed IPC$ service checks its default /tmp directory even when
+	// this experiment exposes no data shares. It remains empty and read-only
+	// under the child root; no mutable scratch or host directory is granted.
+	for _, name := range []string{root, root + "/etc", root + "/etc/samba", root + "/lib", root + "/usr", root + "/state", root + "/tmp"} {
 		if err := os.Mkdir(name, 0755); err != nil {
 			return err
 		}
@@ -165,7 +168,7 @@ func nativeCredentialFixture() (result error) {
 		err = op.SetPasswordDisabled(ctx, journal.Revision, secret)
 		clear(secret)
 		if err != nil {
-			return fmt.Errorf("native disabled password: %w", err)
+			return fmt.Errorf("native disabled password elapsed=%v context=%v: %w", time.Since(started), ctx.Err(), err)
 		}
 		journal, err = op.Load(ctx)
 		if err != nil || journal.Phase != smbprovision.CredentialSetDisabled || journal.SID != sid {
@@ -182,7 +185,14 @@ func nativeCredentialFixture() (result error) {
 	observed, err := backend.ObserveAccounts(ctx, registry.Accounts)
 	if err != nil || len(observed) != 2 || observed[0].Disabled || observed[1].Disabled ||
 		!observed[0].Present || !observed[1].Present || observed[0].SID == observed[1].SID {
-		return errors.New("native backend final identity census")
+		return errors.Join(errors.New("native backend final identity census"), err)
+	}
+	// Authentication is a new, separately bounded phase; the original 60-second
+	// credential campaign remains unchanged. The outer guest still has 180s.
+	daemonContext, stopDaemonContext := context.WithTimeout(context.Background(), 20*time.Second)
+	defer stopDaemonContext()
+	if err := runtime.ProbeNativeDaemonQEMU(daemonContext); err != nil {
+		return fmt.Errorf("native same-state daemon: %w", err)
 	}
 	if err := owner.Close(); err != nil {
 		return err
@@ -195,5 +205,6 @@ func nativeCredentialFixture() (result error) {
 		return errors.New("native credential descriptor leak")
 	}
 	fmt.Println("PHANTOWD_SAMBA_OWNER_NATIVE_ENROLLMENT_READY accounts=2 owner_bound=true original_config=true original_state=true disabled_first=true stdin_only=true same_sid=true explicit_enable=true stopped_reaped=true no_fd_leak=true scope=qemu-only")
+	fmt.Println("PHANTOWD_SAMBA_OWNER_NATIVE_DAEMON_READY accounts=2 same_code=true same_config=true same_state=true authenticated=true wrong_password_denied=true owned_group=true stopped_reaped=true no_fd_leak=true scope=qemu-only")
 	return nil
 }
