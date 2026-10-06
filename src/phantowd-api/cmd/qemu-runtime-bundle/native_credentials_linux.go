@@ -163,14 +163,14 @@ func nativeCredentialFixture(lifecycle bool) (result error) {
 	for _, confirmed := range native {
 		op := owner.SMB(confirmed.Account.ID)
 		if err := op.Begin(ctx, confirmed.Revision); err != nil {
-			return fmt.Errorf("native enrollment begin: %w", err)
+			return fmt.Errorf("native enrollment begin elapsed=%v context=%v: %w", time.Since(started), ctx.Err(), err)
 		}
 		journal, err := op.Load(ctx)
 		if err != nil || journal.Phase != smbprovision.Reserved {
 			return errors.New("native enrollment intent")
 		}
 		if err := op.Step(ctx, journal.Revision); err != nil {
-			return fmt.Errorf("native disabled creation: %w", err)
+			return fmt.Errorf("native disabled creation elapsed=%v context=%v: %w", time.Since(started), ctx.Err(), err)
 		}
 		journal, err = op.Load(ctx)
 		if err != nil || journal.Phase != smbprovision.DisabledNoPassword || journal.SID == "" {
