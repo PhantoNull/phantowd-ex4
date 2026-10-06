@@ -28,9 +28,25 @@ The later state-fault subprocess explicitly re-enables the synthetic target
 before NEW admission; it does not refresh an invalidated consumer or fabricate
 state. No additional campaign, image, volume or privilege profile is added.
 
+Complete cached local integration also passes on frozen `42d77be` (tree
+`9440318`): API/UI/vet/race/fixed-count fuzz, package/source/license/SBOM
+collection, ordinary ARMv5 smoke, MD component/partition comparisons, two-boot
+state, launcher/runtime/loader/libatomic, all three Samba campaigns and synthetic
+SMART report/producer/capture. An independent read-only audit matches all 894
+tracked API files to the compiled package and source archive, without extra or
+duplicate regular archive members. All seven artifact hashes verify.
+
+Buildroot's configured target stripping is reproduced on a temporary copy of
+the raw package binary: its result equals the installed, image-contained and
+exported API (10,577,108 bytes, SHA256
+`80478e9bfdb3a08aa58e431f03822360ef551755e2d1a4f9c83af08661163ac1`).
+The pre-strip binary is not expected to have the same bytes. This is cached
+local qualification, not independent clean-build reproduction or complete
+release licensing.
+
 This does not qualify production queued commands/supervision, continuous
 bootstrap/storage authority, additional fault variants, durable recovery,
-HTTP activation, complete cached/clean/hosted integration or physical EX4.
+HTTP activation, clean/hosted integration or physical EX4.
 
 ## Retained native state-alias fault — focused QEMU prerequisite
 
@@ -59,7 +75,8 @@ exercises the intended later refusal. A combined campaign passed with timing
 instrumentation but its final uninstrumented rerun timed out; separate campaigns
 avoid charging unrelated scenarios to one deadline without dropping their tests.
 This does not prove deterministic performance or diagnose every older timeout.
-New whole-image/hosted/clean-build qualification is still separate. Identity/code
+The newer complete cached `42d77be` proof above includes this fault trace;
+hosted/clean-build qualification is still separate. Identity/code
 drift, unexpected exits, in-worker cancellation, other uncertain teardown,
 further command lifecycle, storage, bootstrap continuity, product UI/startup, durable
 recovery and physical EX4 qualification remain open.

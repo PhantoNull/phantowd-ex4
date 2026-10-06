@@ -2537,8 +2537,11 @@ this order, preserving the [full contract](support/SAMBA-RUNTIME-PROFILE.md#samb
    serialized mutation and retention until complete closure. All42/seven tests
    and three campaigns pass with original guards/guest180. Added live45 and
    post-observation20 phases are independently bounded; no new guest/privilege
-   or automatic retry is introduced. Whole-image/hosted/clean qualification
-   and broader faults remain separate.
+   or automatic retry is introduced. Frozen `42d77be` also passes complete
+   cached local integration: all 894 tracked API files match the compiled
+   package/source archive, configured target stripping reproduces the installed/
+   embedded/exported API, and seven artifact hashes verify. Hosted/clean
+   qualification and broader faults remain separate.
 
    - Construct against one startup-fixed runtime/backend, retain identity BEFORE
      any descendant starts, and refuse a foreign runtime even with equal bytes.
