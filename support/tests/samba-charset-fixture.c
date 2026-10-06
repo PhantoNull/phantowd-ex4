@@ -4,6 +4,7 @@
 #define _GNU_SOURCE
 #include <iconv.h>
 #include <errno.h>
+#include <fcntl.h>
 #include <grp.h>
 #include <pwd.h>
 #include <linux/capability.h>
@@ -40,6 +41,11 @@ static int convert(const char *to, const char *from,
  * expected IDs independently check the real Owner's deterministic allocation. */
 static int native_lookup(void)
 {
+    // The actual post-exec libc probe, not just the privileged bootstrap,
+    // verifies that neither original namespace nor configuration FDs survive.
+    for (int fd = 3; fd <= 64; ++fd)
+        if (fcntl(fd, F_GETFD) != -1 || errno != EBADF)
+            return 1;
     struct __user_cap_header_struct header = {_LINUX_CAPABILITY_VERSION_3, 0};
     struct __user_cap_data_struct caps[2] = {{0}, {0}};
     struct statvfs flags;

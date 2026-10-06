@@ -2387,8 +2387,45 @@ this order, preserving the [full contract](support/SAMBA-RUNTIME-PROFILE.md#samb
    driver tests, tagged vet and focused ARMv5 old/new Samba gates pass locally.
    This is not retained identity/configuration authority or daemon installation;
    its test-only source increment is not included in the earlier full image.
-   Next compose retained native configuration with a startup-bound credential
-   backend and daemon using the SAME mutable state. Never bootstrap by
+   The independent native tracer now derives an exact three-file protected
+   configuration plan from the opaque Owner candidate, retains original
+   descriptors during actual libc lookup, closes temporary callers before
+   execution and verifies group absence before release. A real mode change
+   refuses; restoring permissions does not match the admitted generation.
+   Final actual ARMv5, all 30 Linux driver tests/lint and focused native race
+   repetitions pass with unchanged base and no descriptor leak. This is not
+   a retained identity lease, sticky service review or descriptor-bound product
+   root construction; the fixed guest-only writable fault anchor is not a
+   product shortcut. A fixed read-only QEMU worker now receives four duplicated
+   original configuration objects (root plus three files), with role/parent
+   checks and late mount/metadata/byte fencing. Its bootstrap clones originals
+   before namespace change, poisons the source pathname and attaches the same
+   objects; the actual libc probe verifies escape FDs are absent after exec.
+   Seven admission refusals preserve callers/FD counts, and late mode drift
+   refuses before launch with capture review surviving restoration. All 31
+   driver tests and old/new ARMv5 gates pass within the same guest budget.
+   This is read-only worker handoff, not retained identity/service authority,
+   descriptor-bound product code/root construction or credential backend.
+   A separate credential-only QEMU composition now fixes its backend at
+   `identityowner.OpenWithSMBBackend` and retains the complete code roster,
+   independently expected native configuration and original writable state.
+   Twelve-object worker handoff masks both source paths, attaches original
+   objects and closes inherited escape FDs. Actual two-account disabled-first,
+   sealed-stdin password and separate enable cycles preserve each SID; verified
+   settlement/close restores the initial FD count. All 33 driver tests and older
+   ARMv5 gates pass within unchanged 60/180-second fixture/guest budgets. Complete
+   checks bracket each worker; duplicate pre-admission hashing is eliminated,
+   not replaced by cached launch authorization. This is not a daemon, continuous
+   identity lease or durable product quarantine/recovery. The factory/fixture
+   remain trusted test-only composition; product ownership is not established.
+   The same runtime also passes complete cached local integration on `8b1f9ec`,
+   including every later lane; all 874 packaged/source-archive API files,
+   installed/embedded/exported API bytes and seven artifact hashes agree.
+   This does not qualify independent clean builds, release licensing or EX4
+   operation, and does not close any of the following composition gates.
+   Next bind that credential backend and daemon to the SAME mutable state and
+   qualify actual authentication/revocation there, then identity/storage authority
+   and protected product construction. Never bootstrap by
    fabricating enabled journals/SIDs, copying TDBs or
    passing enrollment lookup as active-service evidence. Closing/reopening an
    identity Owner is new admission, not continuous retained authority.

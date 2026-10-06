@@ -17,6 +17,7 @@ import (
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/identityowner"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/fileserviceplan"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/processowner"
+	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/runtimebundle"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/serviceaccounts"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/serviceaccountstore"
 	"golang.org/x/sys/unix"
@@ -150,6 +151,13 @@ func nativeLookupFixture() (result error) {
 	}
 	fmt.Println("PHANTOWD_SAMBA_OWNER_NATIVE_NSS_READY accounts=2 owner_derived=true libc=true private_groups=true foreign_omitted=true readonly_root=true caps_zero=true no_state=true unchanged_owner=true stopped_reaped=true daemon_installed=false scope=qemu-only")
 	fmt.Println("PHANTOWD_SAMBA_OWNER_NATIVE_NSS_REFUSAL_READY changed_uid=true supplementary_group=true foreign_user=true restored_lookup=true unchanged_owner=true stopped_reaped=true scope=qemu-only")
+	if err := runtimebundle.ProbeNativeLookupConfigurationQEMU(ctx, lookup); err != nil {
+		return err
+	}
+	after, err = owner.NativeLookupSnapshot(ctx)
+	if err != nil || !reflect.DeepEqual(before, after) {
+		return errors.New("native configuration probe changed native Owner state")
+	}
 	return nil
 }
 
