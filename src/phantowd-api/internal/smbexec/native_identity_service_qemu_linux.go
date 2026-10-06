@@ -14,6 +14,7 @@ import (
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/identityowner"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/processowner"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/runtimebundle"
+	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/smbprovision"
 )
 
 // NativeIdentityServiceQEMU is confined to disposable QEMU qualification. It
@@ -124,6 +125,44 @@ func (s *NativeIdentityServiceQEMU) Observe(ctx context.Context) error {
 	}
 	defer func() { <-s.gate }()
 	return s.observe(ctx)
+}
+
+// Disable is an explicit revision-checked transition through the SAME Owner's
+// startup-fixed backend. Its verified successor replaces only this consumer;
+// no caller supplies a token, fingerprint, runtime or executor. The exclusive
+// supervision loop refuses concurrent mutation rather than racing that transfer.
+func (s *NativeIdentityServiceQEMU) Disable(ctx context.Context, id string, expected uint64) error {
+	if err := s.enter(ctx); err != nil {
+		return err
+	}
+	defer func() { <-s.gate }()
+	if s.closed || s.review || !s.started || s.stopped {
+		return runtimebundle.ErrReviewRequired
+	}
+	if id == "" || expected == 0 || expected > ^uint64(0)-2 {
+		return ErrInvalid
+	}
+	previous := s.lease
+	successor, err := s.owner.SMB(id).DisableForFileService(ctx, expected, previous)
+	// Even a surprising non-nil successor with an error must stay owned. Never
+	// drop the authority returned by the atomic transition to simplify cleanup.
+	if successor != nil {
+		s.lease = successor
+	}
+	if err != nil {
+		if successor == nil && errors.Is(err, smbprovision.ErrConflict) && !errors.Is(err, identityowner.ErrReview) {
+			return err // Qualified pre-intent revision refusal, not a retry.
+		}
+		return s.quarantine(err)
+	}
+	if successor == nil || !errors.Is(previous.Verify(ctx), identityowner.ErrReview) {
+		return s.quarantine(identityowner.ErrReview)
+	}
+	if err := successor.Verify(ctx); err != nil {
+		return s.quarantine(err)
+	}
+	s.publish()
+	return nil
 }
 
 func (s *NativeIdentityServiceQEMU) observe(ctx context.Context) error {

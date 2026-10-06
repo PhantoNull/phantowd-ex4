@@ -118,6 +118,13 @@ class SambaRootFixture(unittest.TestCase):
                     "complete_observation=true serialized_scans=true "
                     "accepted_cancellation=true stopped_reaped=true "
                     "close_before_release=true no_fd_leak=true "
+                    "coordinator_disable=true qualified_pair=true "
+                    "same_peer_session=true target_denied=true "
+                    "stale_revision_refused=true "
+                    "canceled_disable_refused=true "
+                    "serialized_disable=true "
+                    "prepared_disable_refused=true "
+                    "stopped_disable_refused=true "
                     "service_owner=false scope=qemu-only")
         self.assertIn(expected, fixture.MARKERS)
         good = "\n".join([*fixture.MARKERS, SCAN_COST])
@@ -126,7 +133,12 @@ class SambaRootFixture(unittest.TestCase):
                       "after_start_busy", "duplicate_refused",
                       "canceled_start_refused", "complete_observation",
                       "serialized_scans", "accepted_cancellation",
-                      "stopped_reaped", "close_before_release", "no_fd_leak"):
+                      "stopped_reaped", "close_before_release", "no_fd_leak",
+                      "coordinator_disable", "qualified_pair",
+                      "same_peer_session", "target_denied",
+                      "stale_revision_refused", "canceled_disable_refused",
+                      "serialized_disable", "prepared_disable_refused",
+                      "stopped_disable_refused"):
             with self.subTest(field=field), self.assertRaises(ValueError):
                 altered = expected.replace(field + "=true",
                                            field + "=false", 1)
@@ -761,6 +773,11 @@ class SambaRootFixture(unittest.TestCase):
             "canceled_start_refused=true complete_observation=true "
             "serialized_scans=true accepted_cancellation=true "
             "stopped_reaped=true close_before_release=true no_fd_leak=true "
+            "coordinator_disable=true qualified_pair=true "
+            "same_peer_session=true target_denied=true "
+            "stale_revision_refused=true canceled_disable_refused=true "
+            "serialized_disable=true prepared_disable_refused=true "
+            "stopped_disable_refused=true "
             "service_owner=false scope=qemu-only",
             "PHANTOWD_SAMBA_OWNER_NATIVE_IDENTITY_FAULT_READY "
             "state_drift=true before_worker=true pending_retained=true "

@@ -2528,7 +2528,17 @@ this order, preserving the [full contract](support/SAMBA-RUNTIME-PROFILE.md#samb
    The final 42-driver/seven-loader lane uses one compilation/base and three
    fresh service/native/lifecycle guests, each180, with all old guards and equal
    code census. Cached full/hosted/clean/hardware qualification remains separate;
-   the remaining fault variants, routed command and storage gates below stay open.
+   the remaining fault variants, product command and storage gates below stay open.
+
+   Explicit target-only `Disable` is now routed through this retained
+   coordinator's gate and SAME Owner/backend. Actual ARMv5 proves two held
+   sessions, qualified stale/canceled refusal, the verified atomic successor,
+   SAME peer session/generation, target-login denial, Owner Close refusal,
+   serialized mutation and retention until complete closure. All42/seven tests
+   and three campaigns pass with original guards/guest180. Added live45 and
+   post-observation20 phases are independently bounded; no new guest/privilege
+   or automatic retry is introduced. Whole-image/hosted/clean qualification
+   and broader faults remain separate.
 
    - Construct against one startup-fixed runtime/backend, retain identity BEFORE
      any descendant starts, and refuse a foreign runtime even with equal bytes.
@@ -2548,10 +2558,11 @@ this order, preserving the [full contract](support/SAMBA-RUNTIME-PROFILE.md#samb
      repeated uncertain teardown. Restore inputs only to prove non-revival;
      restoration is not recovery. Never release/force-close a private FD merely
      to make a fixture's descriptor census pass.
-   - Route explicit target-only Disable through the retained coordinator using
-     the existing verified successor under its serialization. Do not accept a
-     caller-selected backend/runtime or refresh a stale token. Complete native
-     before/after/SAME-peer proofs must still pass. Product supervision needs a
+   - Preserve the locally qualified explicit target-only Disable and verified
+     successor under coordinator serialization. Do not accept a caller-selected
+     backend/runtime or refresh a stale token. Extend native fault proofs for
+     uncertain intent/transition and simultaneous cancellation. Product
+     supervision needs a
      separately qualified command/coordinator contract; the initial exclusive
      loop intentionally refuses concurrent operations and supplies no HTTP API.
    - Compose the trusted retained-storage roster and descriptor-bound grants

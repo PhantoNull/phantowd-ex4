@@ -42,6 +42,15 @@ func TestNativeIdentityServiceRefusesAbsentAuthority(t *testing.T) {
 	if _, err := service.Status(); !errors.Is(err, ErrInvalid) {
 		t.Fatal("absent coordinator published status:", err)
 	}
+	if err := service.Disable(ctx, "missing", 1); !errors.Is(err, ErrInvalid) {
+		t.Fatal("absent coordinator admitted an account mutation:", err)
+	}
+	if _, err := service.StartNativeSessionPairQEMU(ctx); !errors.Is(err, ErrInvalid) {
+		t.Fatal("absent coordinator admitted fixture clients:", err)
+	}
+	if err := service.VerifyNativeDisabledPairQEMU(ctx, NativeSessionPairQEMU{}); !errors.Is(err, ErrInvalid) {
+		t.Fatal("absent coordinator admitted a session witness:", err)
+	}
 }
 
 func TestNativeIdentityServiceConstructionRefusesCancellationBeforeObservation(t *testing.T) {

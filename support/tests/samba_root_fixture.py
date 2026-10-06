@@ -142,6 +142,11 @@ MARKERS = (
     "complete_observation=true serialized_scans=true "
     "accepted_cancellation=true stopped_reaped=true "
     "close_before_release=true no_fd_leak=true "
+    "coordinator_disable=true qualified_pair=true "
+    "same_peer_session=true target_denied=true "
+    "stale_revision_refused=true canceled_disable_refused=true "
+    "serialized_disable=true prepared_disable_refused=true "
+    "stopped_disable_refused=true "
     "service_owner=false scope=qemu-only",
     "PHANTOWD_SAMBA_OWNER_NATIVE_IDENTITY_FAULT_READY "
     "state_drift=true before_worker=true pending_retained=true "

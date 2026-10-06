@@ -171,9 +171,10 @@ This does not establish independent clean, hosted, hardware or release safety.
 
 This first trace is **normal lifecycle only**. Real identity/code/state drift,
 unexpected daemon exit, mid-worker cancellation and uncertain stop/close still
-need coordinator-specific disposable-subprocess QEMU fault proofs. The separate
-verified-Disable successor is not routed through this coordinator yet; mutations
-outside it invalidate its consumer. Storage/grants, continuously retained
+need coordinator-specific disposable-subprocess QEMU fault proofs. The subsequent
+explicit coordinator Disable trace below composes the separate verified
+successor; unapproved mutations outside it still invalidate its consumer.
+Storage/grants, continuously retained
 bootstrap provenance, product authorization/startup and durable recovery remain
 open. No HTTP endpoint, product listener or physical NAS operation is added.
 
@@ -197,3 +198,28 @@ authentication and idle-disable preparation execute on fresh state in both nativ
 campaigns. All original guards, phase ordering, equal code census and base hashes
 remain mandatory; there is no cross-guest authority or automatic retry. Broader
 fault and product gates above remain open, as does new whole-image qualification.
+
+### Explicit Disable through the retained coordinator (QEMU only)
+
+`Disable(ctx, id, revision)` is serialized with startup, observation, supervision
+and close. It uses only the SAME Owner's fixed backend and retained consumer.
+The verified atomic successor replaces that consumer without a zero-reference
+gap or reviving the old token. A qualified pre-intent revision conflict returns
+unchanged; other uncertainty retains review and stops without mutation retry.
+Prepared/stopped coordinators refuse. The exclusive supervisor refuses mutation
+while running; a product command loop is a separate unqualified contract.
+
+The actual ARMv5 trace holds two distinct sessions through fixed coordinator
+helpers, refuses canceled/stale requests, confirms the unchanged journal after
+refusal, then requires the same-SID disabled journal and exact original peer
+session/server generation. New target login is denied; peer login still works.
+Owner Close stays busy until complete runtime closure. All42/seven tests, three
+campaigns, prior fault/privilege guards, FD counts and base hashes pass, together
+with root native race-count3/tagged vet and Windows API/UI/cross-compilation.
+The added live phase is bounded to45 seconds; post-transition observation/stop
+has20 seconds, independently of startup40 and the unchanged guest180/worker4/
+revocation10 limits. The fault child explicitly re-enables the synthetic target
+before NEW admission, never by refreshing a consumer or fabricating passdb.
+
+This is not product activation, storage/grant or continuous-bootstrap authority,
+complete cached/clean/hosted qualification, durable recovery or EX4 evidence.

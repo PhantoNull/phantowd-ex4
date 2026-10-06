@@ -3,6 +3,35 @@
 
 # Implementation status
 
+## Coordinator-owned native Disable — focused QEMU prerequisite
+
+The retained startup coordinator now routes explicit revision-checked Disable
+through the SAME identity Owner/backend and atomically retains its verified
+successor. No caller can supply a replacement token, fingerprint or runtime.
+A qualified pre-intent revision conflict leaves the journal/consumer unchanged;
+other uncertainty stops the service and retains review, without retry.
+
+The actual ARMv5 fixture holds two distinct sessions before this transition:
+the target disappears, new target login is denied and the original peer session
+and server generation remain unchanged. Owner Close stays busy through the
+transition and verified stop; full runtime closure precedes identity release.
+Canceled/stale requests, pre-start/stopped mutation and mutation competing with
+the exclusive supervisor refuse. The fixed client helpers share the coordinator
+gate and supply no caller-selected credentials, command or executable.
+
+All 42 Linux driver/seven loader tests, lint/ShellCheck, three actual ARMv5
+campaigns, base hashes and final descriptor equality pass locally. Root Linux
+race-count3/tagged vet and Windows API/UI/cross-compilation pass. The added live
+phase has its own 45-second bound, followed by a 20-second observation/stop
+phase; startup40, worker4/revocation10 and each guest180 remain unchanged.
+The later state-fault subprocess explicitly re-enables the synthetic target
+before NEW admission; it does not refresh an invalidated consumer or fabricate
+state. No additional campaign, image, volume or privilege profile is added.
+
+This does not qualify production queued commands/supervision, continuous
+bootstrap/storage authority, additional fault variants, durable recovery,
+HTTP activation, complete cached/clean/hosted integration or physical EX4.
+
 ## Retained native state-alias fault — focused QEMU prerequisite
 
 The actual ARMv5 trace replaces one fixed guest-tmpfs state directory alias
@@ -32,7 +61,7 @@ avoid charging unrelated scenarios to one deadline without dropping their tests.
 This does not prove deterministic performance or diagnose every older timeout.
 New whole-image/hosted/clean-build qualification is still separate. Identity/code
 drift, unexpected exits, in-worker cancellation, other uncertain teardown,
-routed Disable, storage, bootstrap continuity, product UI/startup, durable
+further command lifecycle, storage, bootstrap continuity, product UI/startup, durable
 recovery and physical EX4 qualification remain open.
 
 ## Identity-bound native startup/supervision — normal QEMU prerequisite
@@ -65,8 +94,8 @@ the temporary builder is removed. This is not independent clean-build,
 complete release licensing, hosted or physical EX4 qualification.
 
 This qualifies the **normal** startup/supervision path only. Coordinator-specific
-drift/exit/mid-worker cancellation/uncertain-stop/close fault proofs, routed
-Disable successor, storage/grants, bootstrap continuity, product startup/UI and
+drift/exit/mid-worker cancellation/uncertain-stop/close fault proofs,
+storage/grants, bootstrap continuity, product startup/UI and
 durable recovery remain open. The cached image proof above does not qualify
 hosted/clean builds, deployment, NAS or hardware behavior.
 

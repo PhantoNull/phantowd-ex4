@@ -19,6 +19,7 @@ import (
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/fileserviceplan"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/runtimebundle"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/smbexec"
+	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/smbprovision"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/serviceaccounts"
 	"golang.org/x/sys/unix"
 )
@@ -109,6 +110,37 @@ func nativeIdentityStateFaultQEMU() error {
 	owner, err := identityowner.OpenWithSMBBackend(authority, inventory, backend)
 	if err != nil {
 		return err
+	}
+	// The preceding coordinator campaign leaves the synthetic target disabled.
+	// Explicitly prepare it BEFORE acquiring this NEW service consumer. No stale
+	// consumer is refreshed and no passdb/journal bytes are copied or fabricated.
+	registry, _, err := owner.Snapshot(ctx)
+	if err != nil {
+		return err
+	}
+	targetFound := false
+	for _, account := range registry.Accounts {
+		if account.Name != "qpmanaged" {
+			continue
+		}
+		if targetFound {
+			return errors.New("fault bootstrap target ambiguous")
+		}
+		targetFound = true
+		journal, err := owner.SMB(account.ID).Load(ctx)
+		if err != nil {
+			return err
+		}
+		if journal.Phase == smbprovision.Disabled {
+			if err := owner.SMB(account.ID).Enable(ctx, journal.Revision); err != nil {
+				return err
+			}
+		} else if journal.Phase != smbprovision.Enabled {
+			return errors.New("fault bootstrap target requires review")
+		}
+	}
+	if !targetFound {
+		return errors.New("fault bootstrap target missing")
 	}
 	evidence, err := owner.FileServiceSnapshot(ctx)
 	if err != nil {
