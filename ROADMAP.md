@@ -2492,6 +2492,12 @@ this order, preserving the [full contract](support/SAMBA-RUNTIME-PROFILE.md#samb
    This fixture acquires AFTER daemon startup; do not mark the complete Owner
    done. Next packet, still host/disposable QEMU only:
 
+   Complete cached local integration of `cd9b2a5` passes the full existing lane,
+   including both ARMv5 Samba campaigns and synthetic SMART replay/capture.
+   Independent source/package/archive comparison covers all 883 tracked API
+   files; installed/image/exported API and seven artifact hashes agree. This
+   does not qualify clean reproducibility, release licensing or physical EX4.
+
    - Construct against one startup-fixed runtime/backend, retain identity BEFORE
      any descendant starts, and refuse a foreign runtime even with equal bytes.
    - Serialize external coordination without Owner/runtime gate recursion;

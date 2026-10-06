@@ -3,7 +3,7 @@
 
 # Implementation status
 
-## Explicit SMB disable successor — focused host/QEMU prerequisite
+## Explicit SMB disable successor — cached integration prerequisite
 
 `identityowner.SMB(id).DisableForFileService` retains the startup-bound backend
 and performs existing journaled revocation under the Owner lock. Only complete,
@@ -26,7 +26,14 @@ or older hosted census diagnosis is claimed.
 Retention here starts after daemon startup. Constructor-bound continuous
 identity/storage authority, supervisor drift/failure handling, close-uncertainty
 retention, product HTTP/startup, durable recovery and EX4 qualification remain
-open. Focused qualification is not a new complete image or hosted/clean proof.
+open. The complete cached local build of source `cd9b2a5` also passes API/UI,
+vet/race/fixed-count fuzz, package/source/license collection, ARMv5 smoke, MD,
+two-boot state, launcher/runtime/loader/libatomic, both Samba campaigns and
+synthetic SMART lanes. Independent read-only comparison matches all 883 tracked
+API files against the compiled package and regular archive members; installed,
+image-contained and exported API bytes agree, and all seven artifact hashes
+verify. This is cached integration, not independent clean-build, complete
+release licensing, hosted or hardware qualification.
 See the [identity contract](src/phantowd-api/identityowner/README.md#file-service-consumer-retention).
 
 ## Exact-backend identity retention — focused host/QEMU qualification
