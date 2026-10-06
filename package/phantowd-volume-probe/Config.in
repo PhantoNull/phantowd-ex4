@@ -1,0 +1,9 @@
+config BR2_PACKAGE_PHANTOWD_VOLUME_PROBE
+	bool "phantowd-volume-probe (read-only descriptor metadata)"
+	depends on BR2_USE_MMU
+	select BR2_PACKAGE_UTIL_LINUX
+	select BR2_PACKAGE_UTIL_LINUX_LIBBLKID
+	help
+	  Small libblkid-based helper reading one caller-supplied read-only file
+	  descriptor. No device enumeration, mount, repair or activation interface.
+	  Initial qualification is restricted to disposable images and QEMU.

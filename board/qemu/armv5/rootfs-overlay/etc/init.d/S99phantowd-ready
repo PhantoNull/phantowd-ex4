@@ -21,22 +21,35 @@ case "$1" in
         esac
 
         # Probe only guest loopback; no guest-to-LAN or host forwarding exists.
-        for api_license in LICENSE Go-LICENSE; do
+        for api_license in LICENSE Go-LICENSE Go-XCrypto-LICENSE Go-XSys-LICENSE; do
             if [ ! -s "/usr/share/licenses/phantowd-api/$api_license" ]; then
                 echo 'PHANTOWD_QEMU_ERROR diagnostics-license-missing'
                 exit 1
             fi
         done
-        api_attempt=0
-        while ! /usr/bin/phantowd-api --self-test 2>/dev/null; do
-            api_attempt=$((api_attempt + 1))
-            if [ "$api_attempt" -ge 5 ]; then
-                echo 'PHANTOWD_QEMU_ERROR diagnostics-api-unavailable'
+        api_error_log=/run/phantowd-api-selftest.stderr
+        /usr/lib/phantowd/qemu-selftest-once.sh /usr/bin/phantowd-api "$api_error_log" || exit 1
+        api_pid="$(cat /run/phantowd-api.pid)"
+        /etc/init.d/S50phantowd-api stop || {
+            echo 'PHANTOWD_QEMU_ERROR diagnostics-api-stop-failed'
+            exit 1
+        }
+        api_stop_attempt=0
+        while kill -0 "$api_pid" 2>/dev/null; do
+            api_stop_attempt=$((api_stop_attempt + 1))
+            if [ "$api_stop_attempt" -ge 10 ]; then
+                echo 'PHANTOWD_QEMU_ERROR diagnostics-api-did-not-stop'
                 exit 1
             fi
             sleep 1
         done
+        /etc/init.d/S50phantowd-api start || {
+            echo 'PHANTOWD_QEMU_ERROR diagnostics-api-restart-failed'
+            exit 1
+        }
+        /usr/lib/phantowd/qemu-selftest-once.sh /usr/bin/phantowd-api "$api_error_log" || exit 1
         api_pid="$(cat /run/phantowd-api.pid)"
+        echo 'PHANTOWD_AUTH_STATE_READY account_survives=daemon-restart sessions_memory_only=true scope=qemu-loopback-only'
         api_rss="$(awk '/^VmRSS:/ { print $2 }' "/proc/$api_pid/status")"
         case "$api_rss" in
             ''|*[!0-9]*)
@@ -49,6 +62,143 @@ case "$1" in
             exit 1
         fi
         echo "PHANTOWD_API_RESOURCE rss_kib=$api_rss scope=qemu-smoke-only"
+
+        nfs_daemon_rss_kib=0
+        for nfs_daemon in rpcbind rpc.statd rpc.mountd; do
+            nfs_daemon_pids="$(pidof "$nfs_daemon" 2>/dev/null || true)"
+            if [ -z "$nfs_daemon_pids" ]; then
+                echo "PHANTOWD_QEMU_ERROR nfs-daemon-not-running name=$nfs_daemon"
+                exit 1
+            fi
+            for nfs_daemon_pid in $nfs_daemon_pids; do
+                nfs_daemon_rss="$(awk '/^VmRSS:/ { print $2 }' "/proc/$nfs_daemon_pid/status")"
+                case "$nfs_daemon_rss" in
+                    ''|*[!0-9]*)
+                        echo "PHANTOWD_QEMU_ERROR nfs-daemon-rss-unavailable name=$nfs_daemon"
+                        exit 1
+                        ;;
+                esac
+                nfs_daemon_rss_kib=$((nfs_daemon_rss_kib + nfs_daemon_rss))
+            done
+        done
+        echo "PHANTOWD_NFS_RESOURCE userspace_daemons=rpcbind,rpc.statd,rpc.mountd rss_kib=$nfs_daemon_rss_kib scope=qemu-smoke-only"
+
+        nfs_mount=/run/phantowd-nfs-smoke
+        mkdir -p "$nfs_mount"
+        if ! mount -t nfs -o vers=3,proto=tcp,nolock,ro,soft,timeo=5,retrans=1 \
+            127.0.0.1:/srv/phantowd-nfs-smoke "$nfs_mount"; then
+            echo 'PHANTOWD_QEMU_ERROR nfs-v3-tcp-loopback-mount-failed'
+            exit 1
+        fi
+        if [ "$(cat "$nfs_mount/marker" 2>/dev/null)" != 'phantowd-qemu-nfs-smoke-v1' ]; then
+            umount "$nfs_mount" || true
+            echo 'PHANTOWD_QEMU_ERROR nfs-v3-tcp-loopback-content-mismatch'
+            exit 1
+        fi
+        if ! awk -v mountpoint="$nfs_mount" \
+            '$2 == mountpoint && $3 == "nfs" && $4 ~ /vers=3/ && $4 ~ /proto=tcp/ { found=1 } END { exit !found }' \
+            /proc/mounts; then
+            umount "$nfs_mount" || true
+            echo 'PHANTOWD_QEMU_ERROR nfs-v3-tcp-mount-options-unverified'
+            exit 1
+        fi
+        if ! umount "$nfs_mount"; then
+            echo 'PHANTOWD_QEMU_ERROR nfs-v3-tcp-loopback-unmount-failed'
+            exit 1
+        fi
+        echo 'PHANTOWD_NFS_SMOKE_READY protocol=nfs3 transport=tcp scope=qemu-loopback-only'
+
+        if ! /bin/sh /usr/lib/phantowd/qemu-nfs-policy-smoke.sh; then
+            echo 'PHANTOWD_QEMU_ERROR generated-nfs-policy-integration-failed'
+            exit 1
+        fi
+
+        if pidof nmbd >/dev/null 2>&1; then
+            echo 'PHANTOWD_QEMU_ERROR smb-netbios-daemon-running'
+            exit 1
+        fi
+        smb_listener_attempt=0
+        while ! awk '$2 == "0100007F:01BD" && $4 == "0A" { found=1 } END { exit !found }' /proc/net/tcp; do
+            if awk '$2 == "00000000:01BD" && $4 == "0A" { found=1 } END { exit !found }' /proc/net/tcp \
+                || awk '$2 == "00000000000000000000000000000000:01BD" && $4 == "0A" { found=1 } END { exit !found }' /proc/net/tcp6; then
+                echo 'PHANTOWD_QEMU_ERROR smb-listener-bound-to-wildcard'
+                cat /proc/net/tcp /proc/net/tcp6 2>/dev/null || true
+                exit 1
+            fi
+            smb_listener_attempt=$((smb_listener_attempt + 1))
+            if [ "$smb_listener_attempt" -ge 30 ]; then
+                echo 'PHANTOWD_QEMU_ERROR smb-listener-not-loopback-only'
+                cat /proc/net/tcp /proc/net/tcp6 2>/dev/null || true
+                exit 1
+            fi
+            sleep 1
+        done
+        echo 'PHANTOWD_SMB_LISTENER_READY address=127.0.0.1:445 smb1=disabled netbios=nmbd-disabled'
+
+        smb_marker=/run/phantowd-smb-marker
+        smb_client_log=/run/phantowd-smbclient.log
+        rm -f "$smb_marker"
+        smb_attempt=0
+        while ! smbclient -N -t 2 -m SMB3_11 //127.0.0.1/phantowd-smb-smoke \
+            -c "get marker $smb_marker" >"$smb_client_log" 2>&1; do
+            smb_attempt=$((smb_attempt + 1))
+            if [ "$smb_attempt" -ge 30 ]; then
+                echo 'PHANTOWD_QEMU_ERROR smb3-loopback-read-failed'
+                cat "$smb_client_log" 2>/dev/null || true
+                grep -i ':01BD ' /proc/net/tcp /proc/net/tcp6 2>/dev/null || true
+                cat /var/log/samba/testparm.log 2>/dev/null || true
+                tail -n 40 /var/log/samba/smbd-startup.log 2>/dev/null || true
+                exit 1
+            fi
+            sleep 1
+        done
+        if [ ! -s "$smb_marker" ]; then
+            echo 'PHANTOWD_QEMU_ERROR smb3-loopback-read-failed'
+            exit 1
+        fi
+        if [ "$(cat "$smb_marker" 2>/dev/null)" != 'phantowd-qemu-smb-smoke-v1' ]; then
+            rm -f "$smb_marker"
+            echo 'PHANTOWD_QEMU_ERROR smb3-loopback-content-mismatch'
+            exit 1
+        fi
+        rm -f "$smb_marker"
+        echo 'PHANTOWD_SMB_SMOKE_READY client_max_protocol=SMB3_11 server_min_protocol=SMB3_00 server_max_protocol=SMB3_11 transport=tcp scope=qemu-loopback-only'
+
+        smb_write_marker=/run/phantowd-smb-write-marker
+        printf '%s\n' 'phantowd-qemu-smb-write-probe-v1' >"$smb_write_marker"
+        if smbclient -N -t 2 -m SMB3_11 //127.0.0.1/phantowd-smb-smoke \
+            -c "put $smb_write_marker phantowd-write-must-be-denied" >"$smb_client_log" 2>&1; then
+            rm -f "$smb_write_marker"
+            echo 'PHANTOWD_QEMU_ERROR smb-readonly-share-accepted-write'
+            exit 1
+        fi
+        if ! grep -Eq 'NT_STATUS_(ACCESS_DENIED|MEDIA_WRITE_PROTECTED|NETWORK_ACCESS_DENIED)' "$smb_client_log"; then
+            rm -f "$smb_write_marker"
+            echo 'PHANTOWD_QEMU_ERROR smb-readonly-share-failed-for-unexpected-reason'
+            cat "$smb_client_log"
+            exit 1
+        fi
+        rm -f "$smb_write_marker"
+        echo 'PHANTOWD_SMB_READONLY_READY denied_write=confirmed scope=qemu-loopback-only'
+
+        smb_daemon_rss_kib=0
+        smb_daemon_pids="$(pidof smbd 2>/dev/null || true)"
+        if [ -z "$smb_daemon_pids" ]; then
+            echo 'PHANTOWD_QEMU_ERROR smb-daemon-not-running name=smbd'
+            exit 1
+        fi
+        # shellcheck disable=SC2086 # pidof intentionally returns a whitespace-separated PID list
+        for smb_daemon_pid in $smb_daemon_pids; do
+            smb_daemon_rss="$(awk '/^VmRSS:/ { print $2 }' "/proc/$smb_daemon_pid/status")"
+            case "$smb_daemon_rss" in
+                ''|*[!0-9]*)
+                    echo 'PHANTOWD_QEMU_ERROR smb-daemon-rss-unavailable name=smbd'
+                    exit 1
+                    ;;
+            esac
+            smb_daemon_rss_kib=$((smb_daemon_rss_kib + smb_daemon_rss))
+        done
+        echo "PHANTOWD_SMB_RESOURCE userspace_daemons=smbd rss_kib=$smb_daemon_rss_kib scope=qemu-smoke-only"
         echo "PHANTOWD_QEMU_READY target=$PHANTOWD_TARGET kernel=$running_kernel arch=$running_arch flashable=$PHANTOWD_FLASHABLE"
         ;;
     stop)

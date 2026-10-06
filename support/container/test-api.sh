@@ -11,7 +11,30 @@ cd "$module_dir"
 "$go_binary" version
 "$go_binary" vet ./...
 "$go_binary" test -count=1 -coverprofile="$report_dir/coverage.out" ./...
+"$go_binary" vet -tags=qemu ./...
+"$go_binary" test -tags=qemu -run '^(TestQEMUDashboardAssetsMatchSelfTest|TestQEMUTLSLoopbackSmoke|TestQEMUShareConfig|TestQEMUShareStore|TestQEMUSMBPreview|TestQEMUNFSPolicy|TestQEMUNFSFixture|TestQEMUFileServicePreviewHTTP|TestQEMUSMBEffectiveFixture|TestQEMUSMBDenialEvidence|TestQEMUSMBProvisionParser|TestQEMUSMBStatusJSONReturnsOnlyTargetGenerations|TestQEMUSMBStatusJSONRejectsUnavailableOrUnqualifiedSessions|TestQEMUSMBStatusJSONAcceptsEmptySessionInventory|TestQEMUCollisionFixture|TestQEMUStatePersistence|TestQEMUServiceStateBackend|TestQEMUIdentityOwnerServiceHostGuard|TestQEMUStateProcReaderObservesAndRedactsOwnerCWD|TestQEMUNetworkPolicy|TestQEMUNetworkInventory)$' -count=1 .
 "$go_binary" test -race -count=1 ./...
-# Keep fuzz coverage independent of wall-clock scheduling; the test-wide
-# timeout still bounds a genuinely stuck run.
-"$go_binary" test -run '^$' -fuzz '^FuzzParseMemory$' -fuzztime=10000x -parallel=2 -timeout=120s .
+# Fixed execution counts avoid false deadline failures in the pinned Go 1.26
+# fuzz coordinator while keeping CI fuzz coverage reproducible across runners.
+"$go_binary" test -run '^$' -fuzz '^FuzzParseMemory$' -fuzztime=100000x -parallel=2 .
+"$go_binary" test -run '^$' -fuzz '^FuzzParseMDStat$' -fuzztime=50000x -parallel=2 .
+"$go_binary" test -run '^$' -fuzz '^FuzzParsePHC$' -fuzztime=250000x -parallel=2 ./passwordhash
+"$go_binary" test -run '^$' -fuzz '^FuzzDecode$' -fuzztime=25000x -parallel=2 ./shareconfig
+"$go_binary" test -run '^$' -fuzz '^FuzzPreview$' -fuzztime=25000x -parallel=2 ./smbconfig
+"$go_binary" test -run '^$' -fuzz '^FuzzPolicy$' -fuzztime=25000x -parallel=2 ./nfsconfig
+"$go_binary" test -run '^$' -fuzz '^FuzzPreviewEnvelope$' -fuzztime=25000x -parallel=2 ./fileservice
+"$go_binary" test -run '^$' -fuzz '^FuzzCombinedConfig$' -fuzztime=25000x -parallel=2 ./fileservice
+"$go_binary" test -run '^$' -fuzz '^FuzzDecode$' -fuzztime=25000x -parallel=2 ./volumeprobe
+"$go_binary" test -run '^$' -fuzz '^FuzzRegistry$' -fuzztime=25000x -parallel=2 ./serviceaccounts
+"$go_binary" test -run '^$' -fuzz '^FuzzDecode$' -fuzztime=25000x -parallel=2 ./internal/smbprovision
+"$go_binary" test -run '^$' -fuzz '^FuzzSnapshot$' -fuzztime=25000x -parallel=2 ./unixidentity
+"$go_binary" test -run '^$' -fuzz '^FuzzFilesOnlyNSS$' -fuzztime=25000x -parallel=2 ./unixidentity
+"$go_binary" test -run '^$' -fuzz '^FuzzJournal$' -fuzztime=25000x -parallel=2 ./identityprovision
+"$go_binary" test -run '^$' -fuzz '^FuzzDocument$' -fuzztime=25000x -parallel=2 ./admincredentials
+"$go_binary" test -run '^$' -fuzz '^FuzzRequest$' -fuzztime=25000x -parallel=2 ./identityrpc
+"$go_binary" test -run '^$' -fuzz '^FuzzPublicationRequiresAdmittedSourceAndOrdinaryExit$' -fuzztime=25000x -parallel=2 ./internal/smartcollect
+"$go_binary" test -run '^$' -fuzz '^FuzzDecode$' -fuzztime=25000x -parallel=2 ./internal/networkpolicy
+"$go_binary" test -run '^$' -fuzz '^FuzzWireConsume$' -fuzztime=25000x -parallel=2 ./internal/networkinventory
+"$go_binary" test -run '^$' -fuzz '^FuzzRoute$' -fuzztime=25000x -parallel=2 ./internal/networkinventory
+"$go_binary" test -run '^$' -fuzz '^FuzzRule$' -fuzztime=25000x -parallel=2 ./internal/networkinventory
+"$go_binary" test -run '^$' -fuzz '^FuzzNextHopObject$' -fuzztime=25000x -parallel=2 ./internal/networkinventory

@@ -1,157 +1,165 @@
 <p align="center">
-  <img src=".github/assets/phantowd-ex4-banner.png" alt="PhantoWD EX4 concept artwork: a black four-bay NAS with orange ghost branding" width="700">
+  <img src=".github/assets/phantowd-ex4-banner.png" alt="PhantoWD EX4: a four-bay NAS with orange ghost branding" width="700">
 </p>
 
 # 👻 PhantoWD EX4
 
-PhantoWD EX4 is an unofficial, community-oriented effort to give the
-unsupported WD My Cloud EX4 a maintainable software base. The intended target
-is a small Buildroot system with modern, deliberately selected components,
-reproducible builds, safe recovery, and signed model-specific updates.
+A community replacement firmware project for the **WD My Cloud EX4**:
+a maintained, local-first NAS with web management, modern file sharing,
+recoverable updates and a conservative migration path for existing disks.
 
-The project is at the **hardware discovery and non-destructive bring-up**
-stage. It does not yet produce a flashable replacement firmware. It now has a
-separately named ARMv5 QEMU baseline for software-only development.
-Short, diskless RAM boots of serial-only Stage A, Ethernet-enumeration Stage B,
-and the bounded Stage B2 dual-link probe have succeeded on one EX4. These
-results do not qualify storage, cooling, sustained networking or flash updates.
+[![QEMU integration build](https://github.com/PhantoNull/phantowd-ex4/actions/workflows/qemu-armv5.yml/badge.svg?branch=develop)](https://github.com/PhantoNull/phantowd-ex4/actions/workflows/qemu-armv5.yml?query=branch%3Adevelop)
+[Roadmap](ROADMAP.md) · [Implementation status](IMPLEMENTATION-STATUS.md) ·
+[Contributing](CONTRIBUTING.md) · [Builds](https://github.com/PhantoNull/phantowd-ex4/actions/workflows/qemu-armv5.yml) ·
+[Releases](https://github.com/PhantoNull/phantowd-ex4/releases)
 
-## Current work
+## Can I install it?
 
-- document the boot chain, flash layout, NAND/ECC behaviour, and peripherals;
-- preserve a verified recovery path before changing persistent flash;
-- reproduce the vendor kernel and user-space layout from legally obtained
-  inputs without redistributing proprietary WD binaries;
-- bring up a Buildroot image in RAM or over the network first;
-- provide standards-based NAS services, including SMB and NFS, through a
-  hardware-independent configuration layer and management interface;
-- design signed, model-specific updates with rollback protection.
+**Not yet. There is no installable firmware release or supported upgrade
+procedure.** CI artifacts are development/test outputs, not WD dashboard
+updates. Do not flash them, replace NAND partitions or attach valuable disks
+to an experimental image.
 
-## Pinned QEMU baseline
+No legacy disk layout is product-qualified for migration; see the
+[storage compatibility matrix](STORAGE-COMPATIBILITY.md). A public installer
+requires qualified board support, disk compatibility, signed updates and
+demonstrated recovery. Development and QEMU testing do not require a NAS.
 
-The source baseline is pinned to Buildroot 2025.02.18 and Linux 6.18.50. The
-Buildroot release signature, signing-key fingerprint, Buildroot archive hash,
-and Linux archive hash are verified before use. On Windows with Docker Desktop:
+## Current capabilities
+
+The current source implements and tests components, not a production appliance.
+[Implementation status](IMPLEMENTATION-STATUS.md) records exact verification
+scope; [component contracts](src/phantowd-api/README.md) describe the boundaries.
+
+| Area | Implemented / tested | Still needed for the product |
+| --- | --- | --- |
+| Build | Pinned Buildroot 2025.02.18 LTS / Linux 6.18.54 LTS, ARMv5 QEMU image, SBOM, development source collection and automated tests | Installable EX4 image, complete release source bundle and qualification |
+| Web management | Bounded read-only snapshots, development administrator authentication/password changes, SMB/NFS policy editing with before/after review and cross-protocol folder advisories | Complete setup/recovery, certificate lifecycle, browser qualification and live service management |
+| Storage | Non-root read-only broker, complete sysfs inventory, manual GPT observations, duplicate-identity detection, protected registry with reader-bound rechecks, rechecked registry/census policy and backing reviews, internal MD/mount-owner fixtures | Trusted production lifecycle, persistent volume IDs, global-use accounting, qualified import and RAID management |
+| Sharing and identities | SMB3/NFS fixtures, disabled-first Samba account lifecycle, session revocation, Unicode/CP850, streams and POSIX ACL tests | Product account workflows, supervised service activation/recovery and legacy permission migration |
+| iSCSI | Coherent desired policy, root-only CHAP reader, registry/share review, private declared SMB/NFS exposure refusal, shared backing-object reservations and retained-storage LIO/CHAP composition with ARMv5 access/session/fault fixtures | Product authority/composition, credential provisioning/recovery, external/cross-protocol use and complete session guards, import and target-management UI |
+| Health | Bounded SMART interpretation, generation-bound coordinator, private complete sysfs census including in-use disks, retained descriptor-generation witness, subprocess replay and native/ARMv5 synthetic producer fixtures | Qualified command/device provider, report-to-device binding, history, authorized test jobs, notifications and UI |
+| Network policy | Desired dual-stack policy, private read-only kernel inventories and internal local-address conflict diagnostics in host/ARMv5 QEMU | Qualified physical interface binding, external address-conflict/routing admission, persistent trial/confirmation/rollback and management UI |
+| Service isolation | Static-child owner/grant isolation, bounded-privilege Samba fixture with retained code/configuration, mutable-state directory lifetimes and descriptor handoff, separate read-only code/service views with copied-object refusal, verified code staging, offline ARM-header/build-attribute observations, actual QEMU libatomic dispatch tests and supervised retained static-code Owner | Product-authorized runtime inputs, complete descriptor-bound construction, identity/state/storage composition, durable recovery and product startup |
+| EX4 hardware | Bounded diskless RAM research; see [board notes](board/wd/ex4/README.md) | Sustained networking, factory MAC handoff, SATA, cooling, LEDs/display, thermal safety and recovery |
+
+The API/dashboard are development-only and guest-loopback-only by default.
+Do not expose them through a LAN listener or reverse proxy. Service experiments
+and mount fixtures are not enabled for user disks. Desired configuration and
+successful parser checks do not activate a product service.
+
+The code-only inspector rejects undeclared entries, incorrect hashes/modes,
+cross-mount or symlink traversal, file capabilities and access/default ACLs.
+This rule is separate from supported **data-share ACLs**. Its point-in-time
+observation is not a signed manifest, retained lease or execution authority.
+See the [runtime contract](src/phantowd-api/internal/runtimebundle/README.md) and
+[Samba profile](support/SAMBA-RUNTIME-PROFILE.md).
+
+The build badge tracks `develop`, not every feature branch. Check a workflow's
+commit, conclusion and artifacts before relying on it. Cached local tests do
+not establish independent clean-build reproducibility, complete licensing
+compliance or physical EX4 qualification. [versions.env](versions.env) is the
+source of truth for build pins.
+
+## Roadmap
+
+The detailed [roadmap](ROADMAP.md) specifies task IDs, dependencies, acceptance
+tests, failure handling and contributor handoffs.
+
+| Milestone | Current state | Intended outcome |
+| --- | --- | --- |
+| [M0: Engineering baseline](ROADMAP.md#m0-engineering-baseline-and-test-reliability) | In progress | Reliable tests, reproducible builds and traceable qualification |
+| [M1–M2: State and identities](ROADMAP.md#m1-durable-state-and-operation-recovery) | Partial implementation | Recoverable configuration, account ownership and safe credentials |
+| [M3–M4: Storage and sharing](ROADMAP.md#m3-complete-storage-discovery-and-volume-lifecycle) | Partial implementation | Stable volumes and supervised SMB/NFS without fallback writes |
+| [M5: Web management](ROADMAP.md#m5-product-web-management-and-security) | Development UI | Authenticated setup, management and recovery workflows |
+| [M6: Network and system services](ROADMAP.md#m6-network-and-system-services) | Desired model tested; apply planned | Recoverable networking, time, discovery and administration |
+| [M7: EX4 board and cooling](ROADMAP.md#m7-ex4-board-controller-and-thermal-qualification) | Research | Qualified peripherals, thermal safety and recoverable boot |
+| [M8–M9: Health, migration and iSCSI](ROADMAP.md#m8-raid-health-and-legacy-migration) | Offline inspectors; management planned | SMART monitoring/tests, notifications, RAID, supported legacy layouts and guarded LUNs |
+| [M10–M11: Installer and release](ROADMAP.md#m10-signed-installer-upgrades-and-recovery) | Host verifier only | Signed model-specific installation, recovery and public beta qualification |
+
+Resource-qualified applications and a possible mobile companion follow the
+core NAS release. No release date or completion percentage is promised before
+the hardware and recovery gates have evidence.
+
+## Develop without a NAS
+
+Use `develop` for integrated development. Feature branches may not have passed
+clean CI; no published release is a stable installation branch.
+Read [CONTRIBUTING.md](CONTRIBUTING.md) before changing safety-sensitive code.
+
+### Fast checks
+
+Install Git, Go **1.26+**, Node.js and PowerShell. Go dependencies are vendored;
+the test wrappers disable automatic toolchain downloads.
+
+```powershell
+git clone --branch develop https://github.com/PhantoNull/phantowd-ex4.git
+cd phantowd-ex4
+.\support\test-api.ps1
+.\support\test-lab-tools.ps1
+```
+
+These checks do not use Docker or contact the NAS. ARMv5 cross-compilation is
+not guest execution. With the pinned image/workspace already present,
+`support/test-api-linux.ps1` adds Linux-native checks without pulling an image
+or creating volumes. Use the [fast integration lane](support/QEMU-FAST-TESTS.md)
+for eligible userspace changes; clean builds remain separate qualification.
+
+### Build and boot QEMU
+
+With Docker Desktop running **Linux containers**, run from the repository root:
 
 ```powershell
 .\support\build-qemu.ps1
 ```
 
-The build must reach the `PHANTOWD_QEMU_READY` marker on an emulated ARM926
-CPU. Resulting files under `artifacts/qemu-armv5/` are explicitly non-flashable.
-They test the ARMv5 software foundation only; QEMU does not emulate the EX4's
-NAND, SATA, fan, display, LEDs, watchdog, buttons, or management controller.
+The first build downloads verified sources and builds the toolchain, kernel
+and userspace. The Windows wrapper requires at least 40 GiB free on Docker's
+data drive. It reuses two fixed volumes; inspect their usage with
+`docker system df -v`. Avoid broad Docker prune commands on shared systems.
 
-The first product-owned package is a [read-only diagnostics API](src/phantowd-api/README.md).
-It runs unprivileged on guest loopback only, has no storage/hardware controls,
-and has no authentication/TLS yet. The QEMU test checks its ARMv5 metadata,
-GET/negative request contract, and a smoke-only RSS ceiling. Guest networking
-is restricted and no ports or physical devices are forwarded.
-Run `.\support\test-api.ps1` for fast offline host-native tests; the complete
-build runs those tests again with Buildroot's hash-verified Linux Go compiler.
+For repeated local full validation with the **current configuration already
+initialized**, use `support/build-qemu.ps1 -CachedOnly`. It refuses missing
+images/volumes/toolchain, performs no image build/pull or explicit volume
+creation, and bypasses ownership repair. One auto-removed non-root container
+uses a bounded CPU/memory/PID profile and disposable RAM test caches/scratch;
+the existing Buildroot output and compiler cache remain reusable. See the
+[local validation contract](support/QEMU-FAST-TESTS.md#bounded-cached-full-validation).
+This is still the complete integration lane, not the faster overlay lane or
+independent clean-build qualification. Do not run concurrent builds against the
+same workspace or edit the tested source while a run is active.
 
-The [offline research toolkit](tools/phantowd-lab/README.md) validates
-user-supplied local copies of legacy update, logical-mtd3, logical-rescue and
-U-Boot image formats and replays passive controller captures. Artifact
-inspectors accept regular files only; rootfs inventory does not follow
-symlinks or open special files. The toolkit has no firmware construction,
-extraction, flash-device, serial-port or command-transmission path.
-Run `.\support\test-lab-tools.ps1` for its generated-fixture test suite. No
-proprietary firmware or device dump is included in the repository.
+Outputs are in `artifacts/qemu-armv5/`. Tests use disposable virtual storage,
+without host-port forwarding or physical devices. QEMU emulates ARMv5 on
+VersatilePB, **not the EX4's NAND, SATA, fan, display or recovery**.
 
-A separate compile-only Linux 6.18 EX4 device-tree baseline is available with
-`.\support\build-ex4-dtb.ps1`. It intentionally disables raw NAND and SDIO,
-and its output under `artifacts/ex4-dtb-research/` is also non-flashable.
+When discarding the cached workspace is acceptable, review
+`support/clean-qemu-build-volumes.ps1 -WhatIf`, then rerun without `-WhatIf`
+to remove only the two unreferenced project volumes. Repository artifacts and
+unrelated Docker resources remain; Docker's VHDX may need separate compaction.
 
-An even narrower Stage A safety target is available with
-`.\support\build-ex4-stage-a.ps1`. It builds a kernel with storage, flash,
-network and unnecessary optional subsystems compiled out, plus a DTB that
-disables every known non-console peripheral and a bounded initramfs. Its
-BusyBox userspace is restricted to the shell and five applets required by the
-fixed init script; storage, network, and general diagnostic applets are absent.
-Only the ELF loader and `libc` remain alongside BusyBox and the fixed init.
-One narrowly bounded, diskless Stage A RAM boot has now succeeded on an EX4:
-Linux 6.18.50 reached the serial readiness marker and halted after about 20
-seconds. This does not validate storage, Ethernet, cooling, NAND, recovery or
-installation. The artifacts remain research-only and non-flashable. The
-initramfs is embedded in `zImage`. A separately named
-artifact concatenates the exact Stage A DTB after `zImage`, and an additional
-legacy `uImage` wrapper uses the load/entry values observed in the stock EX4
-kernel header. Both are statically checked, but neither supplies an approved
-general-purpose boot command. The wrapper does not authorize a flash
-operation or an unreviewed repeat test.
+## Codebase guide
 
-An isolated Stage B research target adds only Ethernet-0/MDIO enumeration to
-the Stage A serial probe. It leaves the interface down, with no DHCP, IP
-configuration or packet-sending userspace. One exact-device diskless RAM boot
-reached its readiness marker and halted automatically;
-`.\support\build-ex4-stage-b.ps1` prepares hash/signature-verified sources,
-then compiles and audits it offline without rebuilding the full QEMU image.
-A local offline build, an independent legacy-uImage parser check, and a clean
-compile-only CI build have passed. The observed MAC was a placeholder, and
-Stage B did not raise a link or validate network stability.
-On a default Windows Docker Desktop installation, the wrapper refuses to
-start unless at least 40 GiB is free on the Docker data drive; it does not
-shrink Docker's VHDX or free unrelated images/volumes automatically.
+- [Management API/UI](src/phantowd-api/README.md): authentication, configuration,
+  identity coordination and development fixtures.
+- [Storage probe](src/phantowd-volume-probe/README.md): restricted descriptor-based
+  metadata helper.
+- [Research toolkit](tools/phantowd-lab/README.md): host-only image, metadata and
+  signed-release inspection.
+- [QEMU target](board/qemu/armv5/README.md) and
+  [EX4 board research](board/wd/ex4/README.md): separate software/hardware lanes.
+- `support/`, `package/`, `configs/`, `.github/workflows/`: tooling,
+  Buildroot integration and CI.
 
-Stage B2 adds the second Ethernet controller and a four-second, serial-only
-carrier observation. The Marvell driver requires the IPv4 core, but the target
-disables IP autoconfiguration, IPv6, packet sockets, bridge, NFS and SUNRPC and
-contains no address-management or network-service tools. Exact-head CI and two
-independent builds produced byte-identical uImages. Separate diskless RAM
-boots with one rear jack connected at a time mapped the left jack to `eth0`
-and the right jack to `eth1`; each reached 1 Gbit/s carrier while the other
-interface stayed down. The short four-second observations recorded two
-left-port and one right-port link transitions, so sustained stability remains
-unqualified. Both MACs were placeholders. The fixed init lowered both
-interfaces and halted automatically.
+Keep implementation status, installation claims and roadmap evidence in sync
+with behavior-changing PRs. Test history belongs in component/status documents,
+not this overview.
 
-`BR2_REPRODUCIBLE` is enabled, but bit-for-bit reproducibility is not claimed
-until two clean builds in independently provisioned environments have been
-compared. The container base image is digest-pinned; Debian build-dependency
-packages are not yet tied to an immutable snapshot.
+## License and affiliation
 
-The project mascot and future logo are a small ghost: the **PhantoWD**.
+Original project code is Apache-2.0; Linux-derived code remains GPL-2.0-only
+and third-party components retain their licenses. See
+[LICENSE-POLICY.md](LICENSE-POLICY.md).
 
-## Safety status
-
-Do not write to `/dev/mtd3`, `/dev/mtdblock3`, or any other flash partition
-using material from this repository. A SquashFS signature at a particular
-offset is not proof that a NAND partition can be copied or rewritten as a flat
-file. Bad-block handling, ECC/OOB data, WD headers, validation, and rescue
-behaviour must all be understood first.
-
-Development follows a read-only-first policy. Initial physical bring-up must
-use non-persistent boot paths and must not involve user-data disks or NAND
-writes.
-
-## Repository layout
-
-- `board/wd/ex4/` — board notes and future Buildroot board support;
-- `board/qemu/armv5/` — non-flashable ARMv5 software test target;
-- `configs/` — reproducible Buildroot defconfigs;
-- `support/` — pinned container build and QEMU smoke-test tooling;
-- `tools/phantowd-lab/` — host-only read-only format and protocol tooling;
-- `Config.in`, `external.mk`, `external.desc` — Buildroot external-tree
-  skeleton.
-
-## Scope
-
-The first hardware target is the WD My Cloud EX4 running vendor firmware
-2.13.108 on ARMv5/Feroceon hardware. Support for other models must use separate
-board definitions and separately built update artifacts; there will be no
-"universal" image selected only at install time.
-
-This project is not affiliated with, endorsed by, or supported by Western
-Digital. WD and My Cloud are trademarks of their respective owner.
-
-## Licensing
-
-Original PhantoWD source code, build tooling, and documentation are licensed
-under Apache-2.0. Linux-derived device trees and kernel changes remain
-GPL-2.0-only, and third-party components retain their upstream licenses.
-See [LICENSE-POLICY.md](LICENSE-POLICY.md) and `REUSE.toml` for the per-file
-rules.
-
-Vendor firmware, keys, device dumps, proprietary binaries, and other
-non-redistributable artifacts must not be committed.
+This unofficial project is not affiliated with or supported by Western Digital.
+Do not contribute proprietary WD firmware, device dumps, credentials or signing keys.

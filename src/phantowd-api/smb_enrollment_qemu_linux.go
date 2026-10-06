@@ -1,0 +1,226 @@
+//go:build qemu && linux
+
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 PhantoWD EX4 contributors
+
+package main
+
+import (
+	"context"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"os"
+	"slices"
+
+	"github.com/PhantoNull/phantowd-ex4/phantowd-api/identityowner"
+	"github.com/PhantoNull/phantowd-ex4/phantowd-api/identityprovision"
+	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/smbprovision"
+	"github.com/PhantoNull/phantowd-ex4/phantowd-api/serviceaccounts"
+)
+
+func qemuSMBEnrollmentAccount(account serviceaccounts.Account) bool {
+	return account.ID == "second" && account.Name == "qpsecond" && account.State == serviceaccounts.Disabled && account.UID == account.GID
+}
+
+func exerciseQEMUOwnerSMBEnrollment(owner *identityowner.Owner, account serviceaccounts.Account) error {
+	if owner == nil || !qemuSMBEnrollmentAccount(account) {
+		return errors.New("owner-managed SMB fixture identity refused")
+	}
+	ctx := context.Background()
+	if err := exerciseQEMUIdentityChannel(owner, "smb-create"); err != nil {
+		return fmt.Errorf("protected channel refused Samba enrollment setup: %w", err)
+	}
+	operation := owner.SMB(account.ID)
+	journal, err := operation.Load(ctx)
+	if err != nil || journal.Phase != smbprovision.DisabledNoPassword || journal.Revision != 3 {
+		return errors.New("owner did not confirm the new disabled Samba entry")
+	}
+	emptyAuth := smbFixtureRoot + "/owner-disabled-empty.auth"
+	if err := os.WriteFile(emptyAuth, []byte("username = qpsecond\npassword = \n"), 0600); err != nil {
+		return errors.New("could not create empty-credential fixture")
+	}
+	defer os.Remove(emptyAuth)
+	output, err := smbFixtureCommand("", "/usr/bin/smbclient", "-t", "2", "-m", "SMB3_11", "-p", "1445", "-A", emptyAuth, "//127.0.0.1/IPC$", "-c", "quit")
+	if !smbFixtureDenied(output, err, "NT_STATUS_LOGON_FAILURE") {
+		clear(output)
+		return errors.New("new disabled owner-managed account accepted an empty credential")
+	}
+	clear(output)
+	if err := exerciseQEMUIdentityChannel(owner, "smb-password"); err != nil {
+		return fmt.Errorf("protected channel refused disabled-password enrollment: %w", err)
+	}
+	journal, err = operation.Load(ctx)
+	if err != nil || journal.Phase != smbprovision.CredentialSetDisabled || journal.Revision != 5 {
+		return errors.New("owner did not confirm credentials while the Samba account stayed disabled")
+	}
+	if err := smbFixtureRequireDisabledAccount(smbFixtureRoot+"/smb.conf", account.Name); err != nil {
+		return err
+	}
+	initialAuth := smbFixtureRoot + "/owner-disabled-initial.auth"
+	if err := os.WriteFile(initialAuth, []byte("username = qpsecond\npassword = public-qemu-owner-enrollment\n"), 0600); err != nil {
+		return errors.New("could not create owner credential fixture")
+	}
+	defer os.Remove(initialAuth)
+	output, err = smbFixtureCommand("", "/usr/bin/smbclient", "-t", "2", "-m", "SMB3_11", "-p", "1445", "-A", initialAuth, "//127.0.0.1/IPC$", "-c", "quit")
+	if !smbFixtureDenied(output, err, "NT_STATUS_ACCOUNT_DISABLED") {
+		clear(output)
+		return errors.New("owner-managed initial credential authenticated before explicit enable")
+	}
+	clear(output)
+	if err := exerciseQEMUIdentityChannel(owner, "smb-enable"); err != nil {
+		return fmt.Errorf("protected channel refused explicitly authorized enable: %w", err)
+	}
+	journal, err = operation.Load(ctx)
+	if err != nil || journal.Phase != smbprovision.Enabled || journal.Revision != 7 {
+		return errors.New("owner did not confirm explicit Samba enable")
+	}
+	// This probe retains the actual Owner during the existing credential
+	// fixture. It launches no process of its own and is not a service Owner.
+	retainedEvidence, err := owner.FileServiceSnapshot(ctx)
+	if err != nil {
+		return errors.New("ARMv5 consumer initial identity evidence unavailable")
+	}
+	consumer, err := owner.RetainFileServiceSnapshot(ctx, retainedEvidence.Fingerprint)
+	if err != nil {
+		return errors.New("ARMv5 consumer failed exact Owner retention")
+	}
+	defer consumer.Release()
+	if err := consumer.Verify(ctx); err != nil {
+		return errors.New("ARMv5 unchanged consumer evidence refused")
+	}
+	if err := owner.Close(); !errors.Is(err, identityowner.ErrBusy) {
+		return errors.New("ARMv5 consumer did not fence Owner close")
+	}
+	output, err = smbFixtureCommand("", "/usr/bin/smbclient", "-t", "2", "-m", "SMB3_11", "-p", "1445", "-A", initialAuth, "//127.0.0.1/IPC$", "-c", "quit")
+	if err != nil {
+		clear(output)
+		return errors.New("new credential failed after explicit enable")
+	}
+	clear(output)
+	output, err = smbFixtureCommand("", "/usr/bin/smbclient", "-t", "2", "-m", "SMB3_11", "-p", "1445", "-A", emptyAuth, "//127.0.0.1/IPC$", "-c", "quit")
+	if !smbFixtureDenied(output, err, "NT_STATUS_LOGON_FAILURE") {
+		clear(output)
+		return errors.New("empty credential authenticated after explicit enable")
+	}
+	clear(output)
+	if err := exerciseQEMUIdentityChannel(owner, "smb-disable"); err != nil {
+		return fmt.Errorf("protected channel refused explicit disable: %w", err)
+	}
+	journal, err = operation.Load(ctx)
+	if err != nil || journal.Phase != smbprovision.Disabled || journal.Revision != 9 {
+		return errors.New("owner did not confirm explicit Samba disable")
+	}
+	if err := consumer.Verify(ctx); !errors.Is(err, identityowner.ErrReview) {
+		return errors.New("ARMv5 explicit credential disable did not invalidate consumer")
+	}
+	output, err = smbFixtureCommand("", "/usr/bin/smbclient", "-t", "2", "-m", "SMB3_11", "-p", "1445", "-A", initialAuth, "//127.0.0.1/IPC$", "-c", "quit")
+	if !smbFixtureDenied(output, err, "NT_STATUS_ACCOUNT_DISABLED") {
+		clear(output)
+		return errors.New("explicitly disabled account accepted a new authenticated connection")
+	}
+	clear(output)
+	if err := exerciseQEMUIdentityChannel(owner, "smb-reenable"); err != nil {
+		return fmt.Errorf("protected channel refused explicit re-enable: %w", err)
+	}
+	journal, err = operation.Load(ctx)
+	if err != nil || journal.Phase != smbprovision.Enabled || journal.Revision != 11 {
+		return errors.New("owner did not confirm explicit Samba re-enable")
+	}
+	output, err = smbFixtureCommand("", "/usr/bin/smbclient", "-t", "2", "-m", "SMB3_11", "-p", "1445", "-A", initialAuth, "//127.0.0.1/IPC$", "-c", "quit")
+	if err != nil {
+		clear(output)
+		return errors.New("new credential failed after explicit re-enable")
+	}
+	clear(output)
+
+	if err := consumer.Verify(ctx); !errors.Is(err, identityowner.ErrReview) {
+		return errors.New("ARMv5 explicit re-enable revived invalid consumer")
+	}
+	if err := owner.Close(); !errors.Is(err, identityowner.ErrBusy) {
+		return errors.New("ARMv5 review lost identity lifetime retention")
+	}
+	freshEvidence, err := owner.FileServiceSnapshot(ctx)
+	if err != nil {
+		return errors.New("ARMv5 post-reenable identity evidence unavailable")
+	}
+	if refused, err := owner.RetainFileServiceSnapshot(ctx, retainedEvidence.Fingerprint); refused != nil || !errors.Is(err, identityowner.ErrConflict) {
+		if refused != nil {
+			_ = refused.Release()
+		}
+		return errors.New("ARMv5 stale consumer acquisition accepted changed evidence")
+	}
+	if err := consumer.Release(); err != nil {
+		return errors.New("ARMv5 completed probe release refused")
+	}
+	if err := consumer.Verify(ctx); !errors.Is(err, identityowner.ErrUnavailable) {
+		return errors.New("ARMv5 released probe still verified")
+	}
+	afterRelease, err := owner.FileServiceSnapshot(ctx)
+	if err != nil || afterRelease.Fingerprint != freshEvidence.Fingerprint {
+		return errors.New("ARMv5 probe release changed Owner evidence")
+	}
+	fmt.Println("PHANTOWD_M44_IDENTITY_CONSUMER_READY owner_close=busy unchanged_verified=true credential_disable=true new_login_denied=true reenable_verified=true review_sticky=true stale_acquire_refused=true release_no_mutation=true service_owner=false scope=disposable-qemu-only")
+
+	// Exercise the M4.1 observation against the same fixed Owner/backend after
+	// the existing disposable enrollment fixture reaches a stable enabled state.
+	// This call itself must not alter either journal or authentication state.
+	nativeBefore, err := owner.Operation(account.ID).Load(ctx)
+	if err != nil {
+		return errors.New("could not read native journal before Owner evidence collection")
+	}
+	sambaBefore, err := operation.Load(ctx)
+	if err != nil {
+		return errors.New("could not read Samba journal before Owner evidence collection")
+	}
+	evidence, err := owner.FileServiceSnapshot(ctx)
+	if err != nil {
+		return errors.New("ARMv5 Owner identity/passdb observation failed")
+	}
+	if evidence.Registry.Validate() != nil || len(evidence.Registry.Accounts) != 2 ||
+		len(evidence.Native) != len(evidence.Registry.Accounts) || len(evidence.Passdb) != len(evidence.Registry.Accounts) ||
+		len(evidence.Samba) != 1 || evidence.Fingerprint == ([32]byte{}) ||
+		!slices.Contains(evidence.UIDs, account.UID) || !slices.Contains(evidence.GIDs, account.GID) {
+		return errors.New("ARMv5 Owner identity evidence omitted its complete local identity census")
+	}
+	for index, managed := range evidence.Registry.Accounts {
+		journal := evidence.Native[index]
+		passdb := evidence.Passdb[index]
+		if journal.Validate() != nil || journal.Phase != identityprovision.UnixConfirmed ||
+			journal.Account.ID != managed.ID || passdb.AccountID != managed.ID {
+			return errors.New("ARMv5 Owner identity evidence lost ledger/journal/passdb alignment")
+		}
+		if managed.ID == account.ID {
+			if !passdb.Observation.Present || passdb.Observation.Name != account.Name ||
+				passdb.Observation.UID != account.UID || passdb.Observation.GID != account.GID ||
+				passdb.Observation.SID == "" || passdb.Observation.Disabled {
+				return errors.New("ARMv5 Owner passdb observation lost redacted enabled identity fields")
+			}
+		} else if passdb.Observation != (smbprovision.Observation{}) {
+			return errors.New("ARMv5 Owner passdb observation adopted an unrelated identity")
+		}
+	}
+	observedSamba := evidence.Samba[0]
+	if observedSamba.Journal.Account.ID != account.ID || observedSamba.Journal.Phase != smbprovision.Enabled ||
+		observedSamba.Journal != sambaBefore || observedSamba.Observation.Name != account.Name ||
+		observedSamba.Observation.UID != account.UID || observedSamba.Observation.GID != account.GID ||
+		observedSamba.Observation.SID == "" || observedSamba.Observation.Disabled {
+		return errors.New("ARMv5 Owner evidence did not correlate the enabled journal with redacted passdb state")
+	}
+	if _, err := json.Marshal(evidence); err == nil {
+		return errors.New("ARMv5 Owner identity evidence became serializable")
+	}
+	nativeAfter, err := owner.Operation(account.ID).Load(ctx)
+	if err != nil || nativeAfter != nativeBefore {
+		return errors.New("ARMv5 Owner identity observation changed the native journal")
+	}
+	sambaAfter, err := operation.Load(ctx)
+	if err != nil || sambaAfter != sambaBefore {
+		return errors.New("ARMv5 Owner identity observation changed the Samba journal")
+	}
+	fmt.Println("PHANTOWD_M41_OWNER_PASSDB_OBSERVATION_READY owner_locked=true ledger=true native_journals=true samba_journal=true passdb=redacted uid_gid=local_census no_adoption=true journals_unchanged=true auth_mutation=false activation=false http=false scope=disposable-qemu-only")
+	if err := exerciseQEMUOwnerLockCoherentNFSPlan(ctx, owner, account); err != nil {
+		return err
+	}
+	return nil
+}

@@ -1,0 +1,40 @@
+From: PhantoWD EX4 contributors
+Subject: [RESEARCH ONLY] target/iscsi: optionally require configured mutual CHAP
+
+SPDX-License-Identifier: GPL-2.0-only
+SPDX-FileCopyrightText: 2026 PhantoWD EX4 contributors
+
+Keep the upstream default. In the opt-in disposable research profile only,
+reject a missing initiator challenge when target credentials are configured.
+This is login-time enforcement, not client verification, transport encryption,
+credential ownership or revocation of an already authenticated session.
+
+--- a/drivers/target/iscsi/Kconfig
++++ b/drivers/target/iscsi/Kconfig
+@@ -12,4 +12,15 @@ config ISCSI_TARGET
+ 	include iSCSI, Fibre Channel and the SCSI RDMA Protocol (SRP).
+ 	Configuration of the SCSI target mode stack happens through configfs.
+ 
++config ISCSI_TARGET_STRICT_MUTUAL_CHAP
++	bool "Require mutual CHAP when target credentials are configured"
++	depends on ISCSI_TARGET
++	default n
++	help
++	  Reject CHAP login without an initiator challenge when outbound target
++	  credentials are configured. Without this option, configured outbound
++	  credentials still allow an initiator to use one-way authentication.
++	  This changes only new CHAP authentication, not existing sessions or
++	  transport confidentiality. The default preserves upstream behavior.
++
+ source	"drivers/target/iscsi/cxgbit/Kconfig"
+--- a/drivers/target/iscsi/iscsi_target_auth.c
++++ b/drivers/target/iscsi/iscsi_target_auth.c
+@@ -426,6 +426,8 @@ static int chap_server_compute_hash(
+ 	ret = extract_param(nr_in_ptr, "CHAP_I", 10, identifier, &type);
+ 	if (ret == -ENOENT) {
+ 		pr_debug("Could not find CHAP_I. Initiator uses One way authentication.\n");
++		if (IS_ENABLED(CONFIG_ISCSI_TARGET_STRICT_MUTUAL_CHAP))
++			goto out;
+ 		auth_ret = 0;
+ 		goto out;
+ 	}

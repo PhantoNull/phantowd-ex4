@@ -143,3 +143,54 @@ retained the known placeholder MAC. The fixed init lowered both interfaces
 and halted automatically. Factory identity, cooling, recovery and repeatability
 remain unverified. These results do not authorize installation or use with
 disks.
+
+## Stage B3 combined network and sensor observation
+
+Stage B3 is a separate, compile-only RAM research target that groups three
+checks into one short run: it checks whether Linux receives two distinct,
+non-placeholder MACs from temporary U-Boot variables; both interfaces are
+raised together and sampled at two-second intervals; and the SoC's internal
+thermal zone is read over serial. It keeps IP autoconfiguration, IPv6, packet
+sockets, network services, storage, MTD, NAND, SATA and the fan controller
+unavailable. The thermal sensor is tripless and observational; it is not a
+thermal safety system.
+
+The bounded exact-device trial on 2026-09-24 used the unit's stock `mac1` and
+`mac2` values as temporary U-Boot `ethaddr`/`eth1addr`, read them back, and did
+not run `saveenv`. `eth0` reported the factory MAC; `eth1` still reported its
+placeholder. Both links reached 1 Gbit/s/full duplex by sample 4 after brief
+transitions. The short sample does not prove sustained stability or explain
+the MAC2 handoff. Five internal temperature readings were observational only;
+no independent thermometer or fan control was used. The probe configured no
+IP, started no network service, and halted automatically with both HDDs absent.
+This single trial is complete; a repeat requires fresh review and explicit
+authorization. It does not qualify MAC handoff, cooling, stable networking,
+storage, recovery or installation.
+
+Build and audit with `.\support\build-ex4-stage-b3.ps1` on Windows/Docker.
+The output remains explicitly non-flashable and research-only. The single
+bounded RAM trial is complete; it does not authorize another boot or
+installation.
+A separate local compile-only build of the Stage B3 profile with Linux 6.18.54
+passed its kernel-configuration audit and all 11 MAC-policy cases on
+2026-09-30. Its manifest still says `flashable=no` and
+`hardware_validated=no`; Linux 6.18.54 has not been booted on the EX4. The only
+Stage B3 physical observation remains the bounded 6.18.53 trial above.
+
+Hosted CI compiles Stage B3 as the single automatic Stage B-family firmware
+build. Stage B and B2 remain available through manual workflow dispatch for
+targeted historical-profile checks. These profiles use isolated clean Buildroot
+workspaces in CI; they do not incrementally reuse one another's build output.
+
+## Installer and recovery status
+
+No installer or flashable firmware is produced. Static review of the final
+stock 2.13.108 update path found legacy XOR/CRC checks rather than cryptographic
+authenticity, component writers for the kernel/ramdisk/rootfs MTD regions, and
+optional rescue/front-controller update paths. The rootfs component is a
+bad-block-aware logical NAND stream that omits OOB; it is not a flat raw-MTD
+image. The stock rescue/error branches have not been exercised as a recovery
+procedure on hardware. PhantoWD has no selected install layout, NAND writer,
+A/B boot transaction, or proven rollback path. Do not write NAND/MTD or treat a
+vendor rescue image as a generic unbrick artifact. The remaining decision and
+qualification gates are tracked under [M10 in the roadmap](../../../ROADMAP.md#m10-signed-installer-upgrades-and-recovery).

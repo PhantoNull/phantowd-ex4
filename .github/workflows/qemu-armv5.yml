@@ -2,8 +2,99 @@ name: QEMU ARMv5 baseline
 
 on:
   push:
-    branches: [main]
+    branches: [main, develop]
+    paths-ignore:
+      - 'support/container/build-qemu-lio-kernel.sh'
+      - 'support/container/build-qemu-iscsi-client.sh'
+      - 'support/container/qemu_lio_inputs.py'
+      - 'support/container/qemu_lio_result.py'
+      - 'support/fixtures/iscsi-loopback-client.c'
+      - 'support/fixtures/qemu-lio-init.sh'
+      - 'support/fixtures/patches/linux-lio-strict-mutual.patch'
+      - 'support/fixtures/patches/linux-lio-idle-disable.patch'
+      - 'support/fixtures/lio-lun-set.h'
+      - 'support/tests/lio-lun-set-fixture.c'
+      - 'support/tests/test-lio-lun-set.sh'
+      - 'support/qemu-lio-fixture.sh'
+      - 'support/test-qemu-lio.ps1'
+      - 'support/tests/test-qemu-lio-inputs.py'
+      - 'support/tests/test-qemu-lio-result.py'
+      - 'support/tests/test-qemu-lio-snapshot-temp.sh'
+      - 'support/tests/test-qemu-lio-wrapper.ps1'
+      - '**/*.md'
+      - '.github/assets/**'
+      - 'doc/**'
+      - 'tools/phantowd-lab/**'
+      - 'support/build-qemu.ps1'
+      - 'support/tests/test-cached-qemu-wrapper.ps1'
+      - 'support/tests/test-cached-qemu-preflight.py'
+      - 'support/tests/test-smart-report-wrapper.ps1'
+      - 'support/clean-qemu-build-volumes.ps1'
+      - 'support/test-lab-tools.ps1'
+      - 'support/container/test-lab-tools.sh'
+      - 'support/test-firmware-workflow-paths.sh'
+      - 'support/tests/test-storage-broker-buildroot.sh'
+      - 'support/tests/test-ex4-stage-b-kernel-config-audit.sh'
+      - 'board/wd/ex4/stage-b/**'
+      - 'board/wd/ex4/stage-b2/**'
+      - 'board/wd/ex4/stage-b3/**'
+      - 'support/container/build-ex4-stage-b2.sh'
+      - 'support/container/build-ex4-stage-b3.sh'
+      - 'support/container/audit-ex4-stage-b-kernel-config.sh'
+      - 'support/tests/test-ex4-stage-b-kernel-config-audit.sh'
+      - '.github/workflows/qemu-armv5.yml'
+      - '.github/workflows/ex4-stage-a.yml'
+      - '.github/workflows/ex4-stage-b.yml'
+      - '.github/workflows/ex4-stage-b2.yml'
+      - '.github/workflows/ex4-stage-b3.yml'
+      - '.github/workflows/host-tools.yml'
   pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths-ignore:
+      - 'support/container/build-qemu-lio-kernel.sh'
+      - 'support/container/build-qemu-iscsi-client.sh'
+      - 'support/container/qemu_lio_inputs.py'
+      - 'support/container/qemu_lio_result.py'
+      - 'support/fixtures/iscsi-loopback-client.c'
+      - 'support/fixtures/qemu-lio-init.sh'
+      - 'support/fixtures/patches/linux-lio-strict-mutual.patch'
+      - 'support/fixtures/patches/linux-lio-idle-disable.patch'
+      - 'support/fixtures/lio-lun-set.h'
+      - 'support/tests/lio-lun-set-fixture.c'
+      - 'support/tests/test-lio-lun-set.sh'
+      - 'support/qemu-lio-fixture.sh'
+      - 'support/test-qemu-lio.ps1'
+      - 'support/tests/test-qemu-lio-inputs.py'
+      - 'support/tests/test-qemu-lio-result.py'
+      - 'support/tests/test-qemu-lio-snapshot-temp.sh'
+      - 'support/tests/test-qemu-lio-wrapper.ps1'
+      - '**/*.md'
+      - '.github/assets/**'
+      - 'doc/**'
+      - 'tools/phantowd-lab/**'
+      - 'support/build-qemu.ps1'
+      - 'support/tests/test-cached-qemu-wrapper.ps1'
+      - 'support/tests/test-cached-qemu-preflight.py'
+      - 'support/tests/test-smart-report-wrapper.ps1'
+      - 'support/clean-qemu-build-volumes.ps1'
+      - 'support/test-lab-tools.ps1'
+      - 'support/container/test-lab-tools.sh'
+      - 'support/test-firmware-workflow-paths.sh'
+      - 'support/tests/test-storage-broker-buildroot.sh'
+      - 'support/tests/test-ex4-stage-b-kernel-config-audit.sh'
+      - 'board/wd/ex4/stage-b/**'
+      - 'board/wd/ex4/stage-b2/**'
+      - 'board/wd/ex4/stage-b3/**'
+      - 'support/container/build-ex4-stage-b2.sh'
+      - 'support/container/build-ex4-stage-b3.sh'
+      - 'support/container/audit-ex4-stage-b-kernel-config.sh'
+      - 'support/tests/test-ex4-stage-b-kernel-config-audit.sh'
+      - '.github/workflows/qemu-armv5.yml'
+      - '.github/workflows/ex4-stage-a.yml'
+      - '.github/workflows/ex4-stage-b.yml'
+      - '.github/workflows/ex4-stage-b2.yml'
+      - '.github/workflows/ex4-stage-b3.yml'
+      - '.github/workflows/host-tools.yml'
   workflow_dispatch:
 
 permissions:
@@ -14,25 +105,85 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build-and-boot:
+  qemu-and-dtb:
+    name: Build QEMU baseline and EX4 research DTB
     runs-on: ubuntu-24.04
-    timeout-minutes: 90
+    timeout-minutes: 120
 
     steps:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Verify pinned Linux versions across firmware profiles
+        run: sh support/test-firmware-version-locks.sh
+
+      - name: Exercise dashboard interaction states
+        run: node support/test-dashboard-ui.mjs
+
+      - name: Verify storage broker and QEMU smoke marker contracts
+        run: sh support/tests/test-storage-broker-buildroot.sh
+
+      - name: Verify early feedback and failure-diagnostic contracts
+        run: python3 -B support/tests/test-qemu-build-feedback.py
+
+      - name: Verify native service launcher refusals before the full build
+        run: python3 -B support/tests/test-service-launcher.py
+
+      - name: Verify runtime-loader comparison refusals before the full build
+        run: python3 -B support/tests/test-runtime-loader-fixture.py
+
+      - name: Verify atomic-dispatch evidence refusals before the full build
+        run: python3 -B support/tests/test-atomic-dispatch-fixture.py
+
+      - name: Verify Samba-root experiment refusals before the full build
+        run: python3 -B support/tests/test-samba-root-fixture.py
+
+      - name: Verify kernel-input invalidation and ACL requirements
+        run: python3 -B support/tests/test-qemu-kernel-inputs.py
+
+      - name: Select bounded compiler-cache namespace
+        id: ccache_namespace
+        run: echo "week=$(date -u +%G-W%V)" >> "$GITHUB_OUTPUT"
+
+      - name: Hash Buildroot compiler-cache inputs
+        id: ccache_key
+        env:
+          CCACHE_KEY_HASH: ${{ hashFiles('versions.env', 'configs/phantowd_qemu_armv5_defconfig', 'support/buildroot-patches/**', 'support/docker/Dockerfile', 'support/docker/debian-snapshot.sources') }}
+        run: echo "base=qemu-ccache-linux-${CCACHE_KEY_HASH}" >> "$GITHUB_OUTPUT"
+
+      - name: Restore Buildroot compiler cache
+        id: ccache_restore
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ runner.temp }}/phantowd-buildroot-ccache
+          key: ${{ steps.ccache_key.outputs.base }}-${{ steps.ccache_namespace.outputs.week }}
+          # Prefer exact inputs, then let ccache revalidate older QEMU objects.
+          # This is compiler cache only, never a prebuilt workspace/image.
+          restore-keys: |
+            ${{ steps.ccache_key.outputs.base }}-
+            qemu-ccache-linux-
+
+      - name: Prepare compiler-cache directory for the container user
+        run: |
+          mkdir -p "$RUNNER_TEMP/phantowd-buildroot-ccache"
+          sudo chown -R 1000:1000 "$RUNNER_TEMP/phantowd-buildroot-ccache"
 
       - name: Build pinned environment
         run: docker build --file support/docker/Dockerfile --tag phantowd/buildroot:ci .
 
-      - name: Create isolated build volume
-        run: docker volume create phantowd-ci-${{ github.run_id }}
+      - name: Create isolated QEMU build volume
+        run: docker volume create phantowd-ci-${{ github.run_id }}-qemu
 
       - name: Build and boot ARMv5 image
         run: |
           docker run --rm \
+            --tmpfs /phantowd-qemu-fixture-tmp:rw,exec,nosuid,nodev,size=512m \
             --mount type=bind,source="$PWD",target=/external \
-            --mount type=volume,source=phantowd-ci-${{ github.run_id }},target=/workspace \
+            --mount type=volume,source=phantowd-ci-${{ github.run_id }}-qemu,target=/workspace \
+            --mount type=bind,source="$RUNNER_TEMP/phantowd-buildroot-ccache",target=/ccache \
+            --env PHANTOWD_CCACHE_DIR=/ccache \
             phantowd/buildroot:ci \
             /external/support/container/build-qemu.sh
 
@@ -40,17 +191,9 @@ jobs:
         run: |
           docker run --rm \
             --mount type=bind,source="$PWD",target=/external \
-            --mount type=volume,source=phantowd-ci-${{ github.run_id }},target=/workspace \
+            --mount type=volume,source=phantowd-ci-${{ github.run_id }}-qemu,target=/workspace \
             phantowd/buildroot:ci \
             /external/support/container/build-ex4-dtb.sh
-
-      - name: Compile and verify EX4 Stage A image
-        run: |
-          docker run --rm \
-            --mount type=bind,source="$PWD",target=/external \
-            --mount type=volume,source=phantowd-ci-${{ github.run_id }},target=/workspace \
-            phantowd/buildroot:ci \
-            /external/support/container/build-ex4-stage-a.sh
 
       - name: Upload non-flashable QEMU artifacts
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -68,14 +211,30 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
-      - name: Upload compile-only EX4 Stage A artifact
+      - name: Upload failed QEMU diagnostics
+        if: failure()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: phantowd-ex4-stage-a-compile-only
-          path: artifacts/ex4-stage-a-compile-only/
-          if-no-files-found: error
+          name: phantowd-qemu-failure-logs
+          path: artifacts/qemu-armv5/*-failure.log
+          if-no-files-found: ignore
           retention-days: 7
 
-      - name: Remove isolated build volume
+      - name: Observe completed compiler checkpoint
+        id: compiler_checkpoint
+        if: ${{ !cancelled() }}
+        run: |
+          if [ "$(cat artifacts/qemu-build-checkpoints/compile-complete 2>/dev/null)" = "complete" ]; then
+            echo 'ready=true' >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Save bounded Buildroot compiler cache
+        if: ${{ !cancelled() && steps.compiler_checkpoint.outputs.ready == 'true' && steps.ccache_restore.outputs.cache-hit != 'true' && github.event_name == 'push' && github.ref == 'refs/heads/develop' }}
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ runner.temp }}/phantowd-buildroot-ccache
+          key: ${{ steps.ccache_key.outputs.base }}-${{ steps.ccache_namespace.outputs.week }}
+
+      - name: Remove isolated QEMU build volume
         if: always()
-        run: docker volume rm phantowd-ci-${{ github.run_id }} || true
+        run: docker volume rm phantowd-ci-${{ github.run_id }}-qemu || true

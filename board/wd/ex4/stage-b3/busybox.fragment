@@ -1,0 +1,2 @@
+# Stage B3 needs only ifconfig; no IP, DHCP or network-service applets.
+CONFIG_IFCONFIG=y

@@ -43,3 +43,9 @@ rm -f \
 chmod 0755 "$target_dir/bin/busybox"
 chmod 0755 "$target_dir/init"
 chmod 0644 "$target_dir/etc/phantowd-release"
+
+# The Stage B3 policy is sourced by init; it is data/code, not a standalone
+# executable. Overlay permissions can be broader on non-POSIX host filesystems.
+if [ -e "$target_dir/usr/lib/phantowd/stage-b3/mac-policy.sh" ]; then
+    chmod 0644 "$target_dir/usr/lib/phantowd/stage-b3/mac-policy.sh"
+fi

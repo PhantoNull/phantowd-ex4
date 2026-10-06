@@ -20,3 +20,10 @@ Build on Windows with Docker Desktop:
 The wrapper verifies the signed Buildroot release metadata, both pinned source
 hashes, builds in a persistent Docker volume, boots the result, and copies only
 the reviewable runtime artifacts to `artifacts/qemu-armv5/`.
+
+Kernel inputs use a fixed, explicitly checked fragment roster. Changes
+reconfigure only the cached Linux package, not a second full workspace.
+Required ext4 POSIX ACL and MD options are audited before a compiler checkpoint
+is recorded. The separate restricted-root Samba experiment formats only a
+temporary regular ext4 image and tests named-user permissions and revocation;
+it does not inspect or qualify EX4 media or Windows ACL migration.

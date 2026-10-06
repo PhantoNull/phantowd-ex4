@@ -1,0 +1,290 @@
+//go:build qemu && linux
+
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 PhantoWD EX4 contributors
+
+package main
+
+import (
+	"errors"
+	"fmt"
+	"os"
+
+	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/backingpin"
+	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/mountowner"
+	"github.com/PhantoNull/phantowd-ex4/phantowd-api/mountguard"
+	"golang.org/x/sys/unix"
+)
+
+func runQEMUMountGuardTest() (result error) {
+	if err := guardQEMUDataVolume(); err != nil {
+		return err
+	}
+	if err := mountowner.RunQEMUFixture(smbFixtureAnchor); err != nil {
+		return err
+	}
+	if err := backingpin.RunQEMUMountedWritableFixture(smbFixtureAnchor); err != nil {
+		return err
+	}
+	if err := mountowner.RunQEMURootPinLossFixture(smbFixtureAnchor); err != nil {
+		return err
+	}
+	workspace, err := os.MkdirTemp("/run", "phantowd-mount-guard-")
+	if err != nil {
+		return err
+	}
+	anchor := workspace + "/anchor"
+	if err := os.Mkdir(anchor, 0700); err != nil {
+		return err
+	}
+	if err := unix.Mount(smbFixtureAnchor, anchor, "", unix.MS_BIND, ""); err != nil {
+		return err
+	}
+	anchorMounted, nestedMounted, overMounted := true, false, false
+	defer func() {
+		// Only ordinary unmounts of this fixture's own disposable mounts.
+		if overMounted {
+			if err := unix.Unmount(anchor, 0); err != nil {
+				result = errors.Join(result, err)
+			}
+		}
+		if nestedMounted {
+			if err := unix.Unmount(anchor+"/guard-nested", 0); err != nil {
+				result = errors.Join(result, err)
+			}
+		}
+		if anchorMounted {
+			if err := unix.Unmount(anchor, 0); err != nil {
+				result = errors.Join(result, err)
+			}
+		}
+	}()
+	var st unix.Statx_t
+	if err := unix.Statx(unix.AT_FDCWD, anchor, unix.AT_NO_AUTOMOUNT, unix.STATX_BASIC_STATS|unix.STATX_MNT_ID_UNIQUE, &st); err != nil {
+		return err
+	}
+	expected := mountguard.Expected{MountID: st.Mnt_id, RootInode: st.Ino, DeviceMajor: st.Dev_major, DeviceMinor: st.Dev_minor, FilesystemType: unix.EXT4_SUPER_MAGIC, FilesystemUUID: "11111111-2222-3333-4444-555555555555", RequireWritable: true}
+	root, err := mountguard.Open(anchor, expected)
+	if err != nil {
+		return fmt.Errorf("qualified test mount rejected: %w", err)
+	}
+	defer root.Close()
+	if err := exerciseQEMUBackingPin(workspace, anchor, root, expected); err != nil {
+		return fmt.Errorf("backing metadata fixture: %w", err)
+	}
+	if err := exerciseQEMUMountedAmbiguity(workspace, anchor); err != nil {
+		return err
+	}
+	wrongUUID := expected
+	wrongUUID.FilesystemUUID = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+	if other, err := mountguard.Open(anchor, wrongUUID); !errors.Is(err, mountguard.ErrMismatch) {
+		if other != nil {
+			other.Close()
+		}
+		return fmt.Errorf("wrong filesystem UUID accepted: %v", err)
+	}
+	if other, err := mountguard.Open(workspace, expected); err == nil {
+		other.Close()
+		return errors.New("ordinary directory accepted as qualified mount")
+	}
+	for _, name := range []string{"guard-child", "guard-nested"} {
+		if err := os.Mkdir(anchor+"/"+name, 0700); err != nil {
+			return err
+		}
+	}
+	if err := os.Symlink("/etc", anchor+"/guard-link"); err != nil {
+		return err
+	}
+	if err := os.Symlink(anchor, workspace+"/anchor-link"); err != nil {
+		return err
+	}
+	if other, err := mountguard.Open(workspace+"/anchor-link", expected); err == nil {
+		other.Close()
+		return errors.New("symlink anchor accepted")
+	}
+	directory, err := root.OpenDirectory("guard-child")
+	if err != nil {
+		return err
+	}
+	if _, err := directory.Read(make([]byte, 1)); err == nil {
+		directory.Close()
+		return errors.New("metadata descriptor unexpectedly reads contents")
+	}
+	if err := directory.Close(); err != nil {
+		return err
+	}
+	for _, relative := range []string{"..", "guard-child/../../etc", "/etc", "guard-link", "missing-child", "."} {
+		opened, err := root.OpenDirectory(relative)
+		if relative == "." {
+			if err != nil {
+				return err
+			}
+			opened.Close()
+			continue
+		}
+		if err == nil {
+			opened.Close()
+			return errors.New("unsafe/missing relative directory accepted")
+		}
+	}
+	if err := unix.Mount(anchor+"/guard-child", anchor+"/guard-nested", "", unix.MS_BIND, ""); err != nil {
+		return err
+	}
+	nestedMounted = true
+	if opened, err := root.OpenDirectory("guard-nested"); !errors.Is(err, mountguard.ErrUnsafe) {
+		if opened != nil {
+			opened.Close()
+		}
+		return fmt.Errorf("nested same-filesystem bind not rejected: %v", err)
+	}
+	if err := unix.Unmount(anchor+"/guard-nested", 0); err != nil {
+		return err
+	}
+	nestedMounted = false
+	// Remount flags affect only this private bind, not the NFS data mount.
+	if err := unix.Mount("", anchor, "", unix.MS_REMOUNT|unix.MS_BIND|unix.MS_RDONLY, ""); err != nil {
+		return err
+	}
+	if err := root.Verify(); !errors.Is(err, mountguard.ErrMismatch) {
+		return fmt.Errorf("read-only transition was not rejected: %v", err)
+	}
+	readOnlyExpected := expected
+	readOnlyExpected.RequireWritable = false
+	readOnly, err := mountguard.Open(anchor, readOnlyExpected)
+	if err != nil {
+		return fmt.Errorf("explicit read-only binding failed: %w", err)
+	}
+	readOnly.Close()
+	if err := unix.Mount("", anchor, "", unix.MS_REMOUNT|unix.MS_BIND, ""); err != nil {
+		return err
+	}
+	if err := root.Verify(); !errors.Is(err, mountguard.ErrClosed) {
+		return fmt.Errorf("lease remained usable after the read-only mismatch: %v", err)
+	}
+	var writableMount unix.Statx_t
+	if err := unix.Statx(unix.AT_FDCWD, anchor, unix.AT_NO_AUTOMOUNT,
+		unix.STATX_BASIC_STATS|unix.STATX_MNT_ID_UNIQUE, &writableMount); err != nil {
+		return err
+	}
+	writableExpected := expected
+	writableExpected.MountID, writableExpected.RootInode = writableMount.Mnt_id, writableMount.Ino
+	writableExpected.DeviceMajor, writableExpected.DeviceMinor = writableMount.Dev_major, writableMount.Dev_minor
+	root, err = mountguard.Open(anchor, writableExpected)
+	if err != nil {
+		return fmt.Errorf("fresh writable mount qualification failed: %w", err)
+	}
+	defer root.Close()
+	// A second bind of the SAME disk/root has a distinct unique mount ID.
+	// Device major/minor + inode + filesystem type alone must not accept it.
+	if err := unix.Mount(smbFixtureAnchor, anchor, "", unix.MS_BIND, ""); err != nil {
+		return err
+	}
+	overMounted = true
+	if err := root.Verify(); !errors.Is(err, mountguard.ErrMismatch) {
+		return fmt.Errorf("overmount was not rejected: %v", err)
+	}
+	if opened, err := root.OpenDirectory("guard-child"); err == nil {
+		opened.Close()
+		return errors.New("overmounted anchor still usable")
+	}
+	if err := unix.Unmount(anchor, 0); err != nil {
+		return err
+	}
+	overMounted = false
+	if err := root.Verify(); !errors.Is(err, mountguard.ErrClosed) {
+		return fmt.Errorf("revoked mount lease was reused after the original anchor reappeared: %v", err)
+	}
+	var restored unix.Statx_t
+	if err := unix.Statx(unix.AT_FDCWD, anchor, unix.AT_NO_AUTOMOUNT,
+		unix.STATX_BASIC_STATS|unix.STATX_MNT_ID_UNIQUE, &restored); err != nil {
+		return err
+	}
+	requalifiedExpected := writableExpected
+	requalifiedExpected.MountID, requalifiedExpected.RootInode = restored.Mnt_id, restored.Ino
+	requalifiedExpected.DeviceMajor, requalifiedExpected.DeviceMinor = restored.Dev_major, restored.Dev_minor
+	requalified, err := mountguard.Open(anchor, requalifiedExpected)
+	if err != nil {
+		return fmt.Errorf("fresh qualification could not open the restored original mount: %w", err)
+	}
+	if err := requalified.Verify(); err != nil {
+		requalified.Close()
+		return fmt.Errorf("new mount lease did not verify: %w", err)
+	}
+	if err := requalified.Close(); err != nil {
+		return err
+	}
+	if err := root.Close(); err != nil {
+		return err
+	}
+	if err := unix.Unmount(anchor, 0); err != nil {
+		return err
+	}
+	anchorMounted = false
+	if other, err := mountguard.Open(anchor, expected); err == nil {
+		other.Close()
+		return errors.New("missing mount fell back into system filesystem")
+	}
+	if _, err := os.Lstat(anchor + "/guard-child"); !errors.Is(err, os.ErrNotExist) {
+		return errors.New("fixture wrote to unmounted fallback directory")
+	}
+	fmt.Println("PHANTOWD_MOUNT_GUARD_READY unique_mount_id=true descriptor_pinned=true symlinks_denied=true nested_mount_denied=true overmount_denied=true readonly_change_denied=true lease_revoked_on_identity_failure=true fresh_root_required=true fallback_denied=true scope=qemu-fixture-only")
+	fmt.Println("PHANTOWD_FILESYSTEM_UUID_READY source=kernel-ioctl expected_uuid=true mismatch_denied=true block_device_opened=false scope=qemu-fixture-only")
+	return nil
+}
+
+func exerciseQEMUMountedAmbiguity(workspace, anchor string) (result error) {
+	if err := verifyQEMUBlockDevice(os.DirFS("/sys"), "sdc", qemuCloneSerial, qemuCloneWWN); err != nil {
+		return err
+	}
+	clone := workspace + "/clone"
+	if err := os.Mkdir(clone, 0700); err != nil {
+		return err
+	}
+	if err := unix.Mount("/dev/sdc", clone, "ext2", unix.MS_RDONLY|unix.MS_NOSUID|unix.MS_NODEV|unix.MS_NOEXEC, ""); err != nil {
+		return err
+	}
+	defer func() { result = errors.Join(result, unix.Unmount(clone, 0)) }()
+	aliases, err := mountguard.ObserveMounted([]string{anchor, smbFixtureAnchor})
+	if err != nil || len(aliases.Mounts) != 2 || len(aliases.ConflictingUUIDs) != 0 {
+		return fmt.Errorf("bind alias incorrectly classified: %v", err)
+	}
+	clones, err := mountguard.ObserveMounted([]string{anchor, clone, smbFixtureAnchor})
+	if err != nil || len(clones.Mounts) != 3 || len(clones.ConflictingUUIDs) != 1 || clones.ConflictingUUIDs[0] != qemuNFSVolumeUUID {
+		return fmt.Errorf("cloned UUID not detected: %v", err)
+	}
+	storage, mdIdentities, err := collectMDStorageIdentitySnapshot(os.DirFS("/sys"), os.DirFS("/proc"))
+	if err != nil {
+		return fmt.Errorf("complete mounted-storage identity inputs unavailable: %w", err)
+	}
+	correlated, err := correlateObservedMountedStorageIdentity(storage, mdIdentities, clones)
+	if err != nil || len(correlated) != 3 {
+		return fmt.Errorf("mounted filesystem did not join to complete storage identity: %v", err)
+	}
+	var bindObservation, cloneObservation, originalObservation *mountedStorageIdentity
+	for index := range correlated {
+		observation := &correlated[index]
+		if !observation.filesystemUUIDConflict {
+			return errors.New("cloned filesystem UUID was not marked conflicting")
+		}
+		switch observation.anchor {
+		case anchor:
+			bindObservation = observation
+		case clone:
+			cloneObservation = observation
+		case smbFixtureAnchor:
+			originalObservation = observation
+		}
+	}
+	if bindObservation == nil || cloneObservation == nil || originalObservation == nil ||
+		bindObservation.sourceMajor != originalObservation.sourceMajor || bindObservation.sourceMinor != originalObservation.sourceMinor ||
+		bindObservation.sourceName != originalObservation.sourceName ||
+		cloneObservation.sourceMajor == originalObservation.sourceMajor && cloneObservation.sourceMinor == originalObservation.sourceMinor {
+		return errors.New("mounted UUID alias/clone source mapping was not preserved")
+	}
+	fmt.Println("PHANTOWD_MOUNTED_STORAGE_CORRELATION_READY anchors=3 uuid_conflict_entries=3 bind_alias_same_device=true complete_sysfs=true scope=qemu-fixture-only")
+	if snapshot, err := mountguard.ObserveMounted([]string{anchor, workspace}); err == nil || snapshot.Mounts != nil {
+		return errors.New("incomplete mounted scan yielded a usable snapshot")
+	}
+	fmt.Println("PHANTOWD_MOUNTED_AMBIGUITY_READY cloned_uuid=true bind_alias_not_clone=true incomplete_scan_refused=true scope=provided-mounted-ext-only")
+	return nil
+}

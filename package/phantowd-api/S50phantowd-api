@@ -2,9 +2,19 @@
 
 DAEMON=/usr/bin/phantowd-api
 PIDFILE=/run/phantowd-api.pid
+DEFAULTS=/etc/default/phantowd-api
 
+if [ -r "$DEFAULTS" ]; then
+    # shellcheck disable=SC1090 # target-specific state mount configuration
+    . "$DEFAULTS"
+fi
 case "$1" in
     start)
+        if [ -z "$PHANTOWD_STATE_DIR" ]; then
+            echo 'PhantoWD account state directory is not configured'
+            exit 1
+        fi
+        export PHANTOWD_STATE_DIR
         printf 'Starting PhantoWD loopback diagnostics: '
         if start-stop-daemon --start --background --make-pidfile \
             --pidfile "$PIDFILE" --chuid phantowd:phantowd --exec "$DAEMON"; then

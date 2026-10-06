@@ -1,0 +1,7 @@
+# QEMU's versatilepb model has no physical entropy source. Feed its PCI RNG
+# device from the host so SMB3 crypto tests don't run before the guest CRNG is
+# initialized. This is emulator-only, not an EX4 hardware assumption.
+CONFIG_VIRTIO=y
+CONFIG_VIRTIO_PCI=y
+CONFIG_HW_RANDOM=y
+CONFIG_HW_RANDOM_VIRTIO=y
