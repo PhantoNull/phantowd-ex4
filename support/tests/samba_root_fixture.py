@@ -148,6 +148,30 @@ def check_guest(log):
     scan_cost(log)
 
 
+def check_campaign(log, phase):
+    if (not isinstance(log, str) or len(log.encode("utf-8")) > MAX_LOG
+            or phase not in ("service", "native")):
+        raise ValueError("invalid campaign evidence")
+    split = next(i for i, row in enumerate(MARKERS)
+                 if row.startswith("PHANTOWD_SAMBA_OWNER_NATIVE_NSS_READY"))
+    expected = (MARKERS[:split] + ("PHANTOWD_SAMBA_ROOT_SERVICE_DONE",)
+                if phase == "service" else MARKERS[:5] + MARKERS[split:])
+    prefixes = ("PHANTOWD_SAMBA_ROOT_", "PHANTOWD_SAMBA_OWNER_")
+    markers = tuple(line for line in log.splitlines()
+                    if line.startswith(prefixes))
+    if markers != expected:
+        raise ValueError("incomplete, wrong-phase or repeated campaign proof")
+    return scan_cost(log)
+
+
+def check_campaigns(service, native):
+    first = check_campaign(service, "service")
+    second = check_campaign(native, "native")
+    if first[:2] != second[:2]:
+        raise ValueError("campaign runtime census differs")
+    return first, second
+
+
 def validate_catalog(catalog):
     if (not isinstance(catalog, str) or not catalog.isascii()
             or not 0 < len(catalog) <= 4096 or "\x00" in catalog):
@@ -209,6 +233,10 @@ def main():
     prepare.add_argument("manifest")
     verify = sub.add_parser("verify")
     verify.add_argument("log")
+    verify.add_argument("--native-log")
+    campaign = sub.add_parser("verify-campaign")
+    campaign.add_argument("log")
+    campaign.add_argument("phase", choices=("service", "native"))
     args = parser.parse_args()
     if args.command == "prepare":
         reports = [json.loads(read_bounded(name, MAX_REPORT)) for name in (
@@ -218,9 +246,19 @@ def main():
             raise ValueError("regular fixed conversion catalog required")
         catalog = read_bounded(args.catalog, 4096)
         Path(args.manifest).write_text(merge(reports, catalog))
+    elif args.command == "verify-campaign":
+        check_campaign(read_bounded(args.log, MAX_LOG), args.phase)
+        print(f"Samba {args.phase} campaign verified")
     else:
         log = read_bounded(args.log, MAX_LOG)
-        check_guest(log)
+        if args.native_log:
+            native = read_bounded(args.native_log, MAX_LOG)
+            _, (files, size, elapsed) = check_campaigns(log, native)
+            print(f"PHANTOWD_SAMBA_CAMPAIGN_SCAN_COST phase=native "
+                  f"files={files} bytes={size} elapsed_ns={elapsed} "
+                  "scope=qemu-emulation-only")
+        else:
+            check_guest(log)
         files, size, elapsed = scan_cost(log)
         print(f"{SCAN_PREFIX} files={files} bytes={size} elapsed_ns={elapsed} "
               "scope=qemu-emulation-only")

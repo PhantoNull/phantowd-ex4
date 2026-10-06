@@ -55,11 +55,36 @@ denied_mkdir() {
     [ "$(grep '^NT_STATUS_' /run/client.log)" = "$expected" ] || return 1
     [ ! -e "/run/phantowd-samba-source/approved/inherited/$2" ] || return 1
 }
+run_native_fixture() {
+    # Fresh guest: no service campaign state or passdb is carried across boots.
+    mount -t tmpfs -o mode=0755,size=1m tmpfs /etc || return 1
+    printf '%s\n' 'root:!:0:0:root:/:/sbin/nologin' \
+        'nobody:!:65534:65534:nobody:/:/sbin/nologin' \
+        'qpwriter:!:1801:1800::/:/sbin/nologin' \
+        'qpreader:!:1802:1800::/:/sbin/nologin' \
+        'qpoutsider:!:1803:1800::/:/sbin/nologin' >/etc/passwd
+    printf '%s\n' 'root:!:0:' 'nobody:!:65534:' \
+        'qpgroup:!:1800:qpwriter,qpreader,qpoutsider' >/etc/group
+    printf '%s\n' 'passwd: files' 'group: files' 'initgroups: files' \
+        'shadow: files' >/etc/nsswitch.conf
+    printf '%s\n' 'root:!:0:0:99999:7:::' \
+        'nobody:!:0:0:99999:7:::' >/etc/shadow
+    chmod 0600 /etc/shadow || return 1
+    /usr/sbin/phantowd-runtime-bundle-probe native-lookup || return 1
+    /usr/sbin/phantowd-runtime-bundle-probe native-credentials || return 1
+    echo PHANTOWD_SAMBA_ROOT_DONE
+}
 run_fixture() {
     mount -t proc proc /proc || return 1
     mount -t sysfs sysfs /sys || return 1
     /usr/sbin/phantowd-samba-root-launcher guard || return 1
     grep -Eq '(^| )phantowd_samba_ext4_fixture=1( |$)' /proc/cmdline || return 1
+    campaign=$(awk '{ for (i = 1; i <= NF; i++) if ($i ~ /^phantowd_samba_campaign=/) { value = $i; count++ } } END { if (count == 1) print value }' /proc/cmdline)
+    case "$campaign" in
+        phantowd_samba_campaign=service) campaign=service ;;
+        phantowd_samba_campaign=native) campaign=native ;;
+        *) return 1 ;;
+    esac
     # This guest has no normal hardware entropy sources. Require the real
     # QEMU provider before authentication; never inject a predictable seed.
     grep -Eq '^virtio_rng(\.[0-9]+)?$' /sys/class/misc/hw_random/rng_current || return 1
@@ -83,6 +108,10 @@ run_fixture() {
     /usr/sbin/phantowd-runtime-bundle-probe stage || return 1
     /usr/sbin/phantowd-runtime-bundle-probe inspect-acl || return 1
     /usr/sbin/phantowd-samba-root-launcher runtime-bundle || return 1
+    if [ "$campaign" = native ]; then
+        run_native_fixture || return 1
+        return 0
+    fi
     # Inspection does not authorize these separately generated state/grants.
     mkdir -p "$root/etc/samba" "$root/dev" "$root/state" "$root/tmp" \
         "$root/shares/rw" "$root/shares/ro" "$root/shares/denied" || return 1
@@ -276,24 +305,7 @@ run_fixture() {
     /usr/sbin/phantowd-samba-owner-probe || return 1
     /usr/sbin/phantowd-samba-root-launcher code-owner || return 1
     /usr/sbin/phantowd-samba-root-launcher configuration-owner || return 1
-    # Every old daemon/controller has stopped and released its inputs. This
-    # independent native lookup uses only synthetic guest tmpfs identities.
-    mount -t tmpfs -o mode=0755,size=1m tmpfs /etc || return 1
-    printf '%s\n' 'root:!:0:0:root:/:/sbin/nologin' \
-        'nobody:!:65534:65534:nobody:/:/sbin/nologin' \
-        'qpwriter:!:1801:1800::/:/sbin/nologin' \
-        'qpreader:!:1802:1800::/:/sbin/nologin' \
-        'qpoutsider:!:1803:1800::/:/sbin/nologin' >/etc/passwd
-    printf '%s\n' 'root:!:0:' 'nobody:!:65534:' \
-        'qpgroup:!:1800:qpwriter,qpreader,qpoutsider' >/etc/group
-    printf '%s\n' 'passwd: files' 'group: files' 'initgroups: files' \
-        'shadow: files' >/etc/nsswitch.conf
-    printf '%s\n' 'root:!:0:0:99999:7:::' \
-        'nobody:!:0:0:99999:7:::' >/etc/shadow
-    chmod 0600 /etc/shadow || return 1
-    /usr/sbin/phantowd-runtime-bundle-probe native-lookup || return 1
-    /usr/sbin/phantowd-runtime-bundle-probe native-credentials || return 1
-    echo PHANTOWD_SAMBA_ROOT_DONE
+    echo PHANTOWD_SAMBA_ROOT_SERVICE_DONE
 }
 if ! run_fixture; then
     echo PHANTOWD_SAMBA_ROOT_FAILED

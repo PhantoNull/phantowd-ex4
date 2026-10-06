@@ -65,6 +65,32 @@ class SambaRootFixture(unittest.TestCase):
             with self.assertRaises(ValueError):
                 fixture.check_guest(good.replace(expected, replacement))
 
+    def test_campaigns_require_both_complete_fresh_proofs(self):
+        split = next(i for i, row in enumerate(fixture.MARKERS)
+                     if row.startswith(
+                         "PHANTOWD_SAMBA_OWNER_NATIVE_NSS_READY"))
+        service = [*fixture.MARKERS[:split],
+                   "PHANTOWD_SAMBA_ROOT_SERVICE_DONE", SCAN_COST]
+        native = [*fixture.MARKERS[:5], *fixture.MARKERS[split:], SCAN_COST]
+        good_service, good_native = "\r\n".join(service), "\r\n".join(native)
+        self.assertEqual(fixture.check_campaigns(good_service, good_native),
+                         ((104, 12000000, 123456789),) * 2)
+        for rows, phase in ((service, "service"), (native, "native")):
+            for index in range(len(rows)):
+                missing = "\n".join(rows[:index] + rows[index + 1:])
+                with self.assertRaises(ValueError):
+                    fixture.check_campaigns(
+                        missing if phase == "service" else good_service,
+                        missing if phase == "native" else good_native)
+        for first, second in ((good_native, good_service),
+                              (good_service, good_service),
+                              (good_native, good_native),
+                              (good_service, good_native + "\n" + native[0]),
+                              (good_service, good_native.replace(
+                                  "files=104", "files=105"))):
+            with self.assertRaises(ValueError):
+                fixture.check_campaigns(first, second)
+
     def test_native_enrollment_requires_real_disabled_first_cycle(self):
         expected = ("PHANTOWD_SAMBA_OWNER_NATIVE_ENROLLMENT_READY accounts=2 "
                     "owner_bound=true original_config=true "
