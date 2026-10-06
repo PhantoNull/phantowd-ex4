@@ -3,6 +3,31 @@
 
 # Implementation status
 
+## M4.4 state-bound Samba observation worker — QEMU prerequisite
+
+The fixed disposable capture adapter now runs actual ARMv5 `pdbedit` in the
+daemon's restricted root with independent references to the same seven mutable
+state directories. The bootstrap masks the old source pathname, attaches the
+original objects, closes input FDs before exec and retains the owned process
+group. Only a fixed synthetic-account listing with empty regular stdin is
+allowed; no tool/action/config/account or password option is added.
+
+The actual campaign qualifies duplicate late-input refusal without launch or
+partial-pin leak, closure of all temporary callers before capture, private
+bounded output, single-use enforcement, verified group absence, explicit
+release and stable FD counts. All old Samba guards and the new mandatory marker
+pass within the unchanged 180-second guest budget. The code-only closure adds
+only `pdbedit`, with fixed manifest/loader checks and all previous refusals intact.
+Native vet/API tests and QEMU-tagged processowner/runtimebundle race-count3 pass;
+native host refusal is not a positive ARMv5 result.
+
+This closes a state-bound worker tracer, not real identity-owner enrollment or
+revocation. Owner-derived private NSS, the credential backend, authoritative
+passdb mutations and tracked storage leases still need composition. Code/config/
+data root construction remains fixture-path-based. Complete local package/image
+integration and exact-head hosted qualification for this increment remain open;
+no product service, HTTP, NAS, physical disk or installation is enabled.
+
 ## M4.4 Samba state descriptor handoff — QEMU only
 
 A fixed `qemu && linux` construction adapter independently retains seven

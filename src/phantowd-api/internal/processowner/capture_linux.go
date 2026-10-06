@@ -34,6 +34,10 @@ type CaptureOwner struct {
 	current                       *managedProcess
 	consumed, review, closed      bool
 	closeFailed                   bool
+	// Only a fixed guarded QEMU constructor populates these private inputs.
+	// Generic CaptureSpec has no descriptor-injection option.
+	fixtureInputs      []*os.File
+	fixtureInputsValid func() bool
 }
 
 func NewCapture(spec CaptureSpec, executable, input *os.File) (*CaptureOwner, error) {
@@ -108,6 +112,9 @@ func (c *CaptureOwner) inputsUnchanged() bool {
 	if c.executable == nil || c.input == nil || trustedExecutable(c.executable) != nil {
 		return false
 	}
+	if c.fixtureInputsValid != nil && !c.fixtureInputsValid() {
+		return false
+	}
 	var code, input unix.Stat_t
 	if unix.Fstat(int(c.executable.Fd()), &code) != nil || unix.Fstat(int(c.input.Fd()), &input) != nil ||
 		!sameCaptureObject(code, c.executableStat) || !sameCaptureObject(input, c.inputStat) {
@@ -180,7 +187,7 @@ func (c *CaptureOwner) Capture(ctx context.Context) (CaptureResult, error) {
 	command.Args = append([]string{c.spec.ExecutableLabel}, c.spec.Args...)
 	command.Dir = "/"
 	command.Env = []string{"PATH=/usr/sbin:/usr/bin:/sbin:/bin", "LC_ALL=C"}
-	command.ExtraFiles = []*os.File{c.executable}
+	command.ExtraFiles = append([]*os.File{c.executable}, c.fixtureInputs...)
 	command.Stdin, command.Stdout, command.Stderr = c.input, stdout, stderr
 	command.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 	if c.spec.RunAs != nil {
@@ -305,12 +312,13 @@ func (c *CaptureOwner) Close(ctx context.Context) error {
 
 func (c *CaptureOwner) release() error {
 	var err error
-	for _, file := range []*os.File{c.executable, c.input} {
+	for _, file := range append([]*os.File{c.executable, c.input}, c.fixtureInputs...) {
 		if file != nil {
 			err = errors.Join(err, file.Close())
 		}
 	}
 	c.executable, c.input = nil, nil
+	c.fixtureInputs, c.fixtureInputsValid = nil, nil
 	return err
 }
 

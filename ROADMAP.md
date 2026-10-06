@@ -2385,7 +2385,18 @@ this order, preserving the [full contract](support/SAMBA-RUNTIME-PROFILE.md#samb
    constructor refuses repeated objects/mixed filesystems before publication;
    no generic launch option or new privilege is added. Next attach the SAME
    actual identity authority/NSS/passdb and
-   storage leases. Whole-root/code/config/data construction, durable review and
+   storage leases. A first fixed observation worker now runs actual ARMv5
+   `pdbedit` against the daemon's same retained state-directory objects inside
+   the restricted root, despite masking the source pathname. It accepts empty
+   regular stdin only, checks duplicate late-input refusal and caller closure,
+   keeps bounded listing bytes private and verifies single-use/group absence/
+   release with no FD leak. Its mandatory evidence passes with all old guards;
+   the closure adds only that fixed tool. This synthetic-account tracer is not
+   real Owner enrollment/revocation or a complete credential backend. Next bind
+   the existing identity Owner and Owner-derived NSS to this actual state view,
+   then qualify credential changes and revoke against the running daemon;
+   no passdb copy, unrelated token or arbitrary tool/argv injection.
+   Whole-root/code/config/data construction, durable review and
    product lifecycle/HTTP remain open.
    The complete combined source on336c29f now also passes ONE cached full local
    Buildroot/QEMU integration, with independently verified seven exported

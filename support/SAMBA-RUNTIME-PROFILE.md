@@ -88,8 +88,8 @@ The separate proposed privileged Owner remains unapproved and unimplemented.
 
 ### Existing fixture behavior
 
-- Derives non-authorizing ELF candidates for three fixed public Buildroot
-  programs (`smbd`, `smbpasswd`, `testparm`) and the single fixed
+- Derives non-authorizing ELF candidates for four fixed public Buildroot
+  programs (`smbd`, `smbpasswd`, `testparm`, `pdbedit`) and the single fixed
   `usr/lib/samba/vfs/streams_xattr.so` module plus the fixed glibc
   `usr/lib/gconv/IBM850.so` converter. Merging refuses conflicts, unknown
   paths, missing entries, partial graphs or asserted execution authority.
@@ -457,6 +457,17 @@ Native identity consumers/NSS are not attached to this synthetic account set.
 Persistent state lifecycle, same-passdb identity ownership, coordinated mutation,
 descriptor-bound grants, durable recovery and product startup remain open.
 No HTTP, NAS, physical disk or flash operation is added.
+
+The fixed observation worker additionally runs `pdbedit -L -u qpwriter` against
+those same retained state directories through the private-root bootstrap,
+without `/proc` or a source-path fallback. It has only empty regular stdin and
+no caller-selected tool/action/account/config or password input. Its bounded
+listing stays private and is cleared; only fixed redacted acceptance evidence
+reaches the console. ARMv5 verifies duplicate late-input refusal, partial-pin
+cleanup, caller closure before launch, the child's object/closed-FD evidence,
+single-use/closed-handle refusal, verified group absence and no FD leak on
+release. This is synthetic-account observation, not identity-owned credentials,
+credential mutation/revocation, persistent state or complete root construction.
 
 ### Construction and retained resources
 
