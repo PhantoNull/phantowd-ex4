@@ -92,3 +92,21 @@ define ownership and startup ordering, connect the fixture-only internal v2
 channel to product startup and HTTP authorization, and define operator handling
 for review-required state. No HTTP credential endpoint exists in this slice;
 enablement is explicit in the internal/QEMU path and never automatic.
+
+### Native retained runtime fixture
+
+`NativeBackendQEMU` is compile-tagged and bound once to a guarded private
+runtime. The factory pins the original configuration inode; successful
+construction transfers runtime teardown responsibility to the backend, while
+failure leaves teardown with the trusted fixture caller. Existing command and
+observation logic maps only to fixed typed worker verbs and two fixture users.
+No call accepts a replacement backend or caller-selected executable/config.
+
+The actual ARMv5 fixture now enrolls both Owner-created Unix identities through
+`identityowner.OpenWithSMBBackend`: disabled-first creation, sealed stdin-only
+password, still-disabled confirmation and separate same-SID enable. Code,
+original config and original mutable-state tuples remain retained through
+verified worker settlement/close; the normal-cycle final FD count is unchanged.
+The same-state daemon, authentication/revocation, fault/recovery and product
+ownership composition remain unfinished. Earlier generic-adapter session tests
+do not qualify session-control operations in this new restricted root.

@@ -3,6 +3,117 @@
 
 # Implementation status
 
+## M0 bounded Samba campaign qualification
+
+The Samba integration lane now compiles its probes once, then boots two fresh
+disposable snapshots: service isolation/lifetimes and native lookup/enrollment.
+Each guest retains the 180-second limit; the credential operation retains its
+60-second budget. No state/passdb is transferred between campaigns.
+
+Each log must independently prove the exact ordered markers for its phase,
+including fresh entropy, staging, complete code admission and teardown. The
+joint verifier rejects missing/duplicate/swapped campaigns and different code
+censuses. Every earlier guard remains required; the manifest-verified base is
+unchanged. Failure diagnostics identify the failed campaign.
+
+The official local wrapper passes all 34 Linux driver tests, seven loader
+tests, lint/ShellCheck and both actual ARMv5 campaigns. This fixes the observed
+single-guest outer timeout after native handoff without removing checks or
+extending per-guest deadlines. This is focused cached local qualification;
+the new hosted head must pass its own checks. No new daemon/product/EX4
+qualification is claimed by reorganizing these tests.
+
+## M2.4 Owner-bound native credential workers — disposable QEMU
+
+The actual two Unix identities from the native lookup now enroll through a
+backend fixed at `identityowner.OpenWithSMBBackend`, not a per-operation adapter.
+Its private runtime retains the complete code roster, independently expected
+Owner-derived configuration and one original writable state directory tuple.
+The exact roster now also includes `smbstatus` and `smbcontrol` and their closure.
+
+A fixed worker receives twelve original objects: configuration root plus
+passwd/group/nsswitch/smb.conf, followed by state root and six private role
+directories. It clones them before unsharing, masks the source paths, verifies
+same-object attachment, closes escape FDs and executes a fixed Samba command
+with bounded privileges. The protected config is read-only/noexec; mutable
+state is writable/noexec. Password input is a bounded, sealed read-only memfd,
+never argv or environment. Raw command output remains private parser input.
+
+Actual ARMv5 tests require absent → disabled/no-password → password still
+disabled → separately enabled for both real identities, with unchanged per-user
+SID and distinct final SIDs. Every worker settles and closes before release;
+the final descriptor count matches the baseline. The official campaign passes
+all 33 driver tests, seven loader tests, lint/ShellCheck and every older gate,
+with unchanged base image and the existing 180-second guest budget.
+
+The same frozen runtime subsequently passes complete cached local integration
+on `8b1f9ec`: host/race/fuzz, package compilation and source collection, ARMv5
+smoke/MD/two-boot, launcher/code/loader/atomic, restricted-root Samba and
+synthetic SMART producer/capture. All 874 tracked API files independently match
+the compiled package and source archive. Installed, image-embedded and exported
+API bytes agree at SHA256
+`c74339a186c8faed0610d3c242689724cb54d74e1a47cda9316899ccd7e05717`;
+all seven exported artifact hashes verify. This is cached local qualification,
+not an independent clean build, complete release licensing or EX4 qualification.
+
+The first composition reproduced a 60-second fixture deadline caused by four
+complete code scans per command. Configuration binding now checks configuration
+only; full code/config/state checks immediately bracket each worker. Both
+identities finish within the original 60-second budget; checks were not removed
+from the effect boundary or replaced by cached success.
+
+This is **credential-only fixture composition**, not a daemon using that state,
+live-session revocation in this composition, storage grants, continuous identity
+authority, descriptor-bound product code/root construction, durable quarantine,
+startup recovery, HTTP or physical EX4 qualification. The bootstrap Owner closes
+before a fresh backend-bound admission; this is not continuous retention. The
+legacy fixture's session-revocation proof is not borrowed for this new profile.
+No product service, installer or independent clean-build qualification is
+established.
+
+## M2.4 Owner-derived native configuration and descriptor handoff — QEMU
+
+The native enrollment candidate now supplies the independently expected hashes,
+modes and sizes for exactly `passwd`, `group` and `nsswitch.conf`. A private
+adapter reuses protected configuration admission; it does not infer expected
+contents from the directory being inspected or grant execution authority.
+
+The fixed QEMU tracer admits those real Owner-derived documents on a separate
+read-only/nosuid/nodev/noexec mount and retains their original descriptors
+across actual libc lookup. Temporary caller references close before execution;
+fresh complete rechecks bracket the worker. Verified group absence and explicit
+capture close precede configuration release. A controlled metadata change is
+refused; restored permissions still differ from the originally admitted object
+generation. Successful teardown restores the initial descriptor count and the
+native Owner's evidence remains unchanged.
+
+A separate fixed QEMU capture now duplicates the original configuration root
+and three original files, with role/parent correspondence and late metadata,
+mount, attribute and byte rechecks. Its bootstrap clones these objects before
+changing mount namespace, masks the source pathname in the child and attaches
+only the detached original-object clones. The actual post-exec libc probe
+checks that inherited descriptors are closed. All four temporary config callers
+close before capture; no generic extra-FD/action/secret interface is added.
+
+Seven real admission refusals cover missing, closed, duplicate, wrong-kind,
+swapped-role and non-empty-stdin inputs with caller preservation and partial
+cleanup. A metadata change after capture construction refuses before launch;
+restoration does not clear capture review. This is fixed lookup-worker review,
+not product service recovery or an identity lease.
+
+Windows API/UI preflight, Linux tagged vet and focused race-count3 pass. The
+official focused wrapper passes all 31 Linux driver tests, seven loader tests,
+lint/ShellCheck, fresh ARMv5 compilation and all existing/new Samba gates with
+the base unchanged and the existing 180-second guest budget.
+
+This qualifies original configuration handoff during one fixed lookup worker,
+not a retained identity lease, descriptor-bound product root construction, sticky
+service review, daemon installation or SAME-state credential backend. The
+QEMU controller retains a writable original only for its metadata fault;
+product code must not inherit that fixture shortcut. Uncertain worker teardown
+does not release configuration pins. No product service, HTTP, credentials,
+physical device or new full image/source-bundle qualification is introduced.
+
 ## M2.4 native lookup consumed by libc — disposable QEMU only
 
 The existing restricted-root Samba campaign now finishes with a separate
@@ -73,8 +184,10 @@ qualification, not independent clean reproduction, complete release licensing,
 hosted qualification, native libc consumption or physical EX4 qualification.
 
 The separate fixture above now qualifies lookup-only native libc consumption.
-Next retain these actual native documents through the configuration boundary
-and bind the credential backend to the SAME daemon state. Actual
+The new tracer above also retains the actual documents through the protected
+configuration boundary during one fixed worker. Next compose the whole
+identity/configuration lifetime and credential backend with the SAME daemon
+state. Actual
 disabled-first enrollment, password assignment, enable/revoke, storage leases,
 durable recovery and product activation must still be composed; a candidate
 lookup alone does not close those gates.
