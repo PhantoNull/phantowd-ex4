@@ -80,6 +80,15 @@ roster and refuses five altered plans: digest, mode, alias target, omitted
 daemon and symlink retyped as file. Cancellation must return no observation.
 This fixture manifest is research evidence, not a signed product manifest.
 
+After fixture configuration exists, a separate capability-free QEMU observer
+rechecks the unchanged code-only census. Code and service roots are distinct;
+fixed read-only executable code views must expose the same descriptor-observed
+objects. An actual byte/mode-identical copied-catalog overlay is refused by that
+same observer. Config/NSS presence/type is checked separately, not authorized.
+These point-in-time references close before later Samba launch; complete dynamic
+code/configuration/identity/storage lifetime and race-qualified root construction
+remain unimplemented. See the [separate-view profile](../../../../support/SAMBA-RUNTIME-PROFILE.md#qualified-separate-codeservice-views-fixture-only).
+
 A separate fixed root-only QEMU permission regression uses miniature tmpfs
 code trees, its own private mount namespace and read-only binds. It reads back
 actual kernel ACL bytes and proves Unix modes remain unchanged. An ACL-free
@@ -89,6 +98,17 @@ regression is excluded from product builds and does not modify the Samba tree,
 data-grant ACLs, parent mount namespace or physical storage.
 
 ## Disposable construction prototype
+
+A separate guarded `qemu && linux` constructor now composes complete prepared
+code references with the pinned fixed Samba bootstrap and the existing
+serialized Owner lifecycle. The actual dynamic daemon is checked against the
+retained object. Three mandatory ARMv5 cases cover normal stop, live code-mode
+drift and forced stop of a frozen group; restoration refuses restart and review
+keeps code references until explicit verified teardown. Generic `NewOwner`
+static/non-root restrictions remain unchanged. No descriptors/owner are returned
+from the qualification probe. This test-only composition is not the complete
+Samba Owner: configuration/identity/state/storage inputs are not yet retained
+product authorities. See the [lifetime scope](../../../../support/SAMBA-RUNTIME-PROFILE.md#qualified-dynamic-code-lifetime-qemu-only).
 
 `Plan.StageQEMU` independently pins source/destination `O_PATH` descriptors.
 It requires root credentials, a local read-only source and a freshly empty

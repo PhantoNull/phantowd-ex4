@@ -3,6 +3,50 @@
 
 # Implementation status
 
+## M4.4 retained dynamic-code lifetime — QEMU prerequisite
+
+A separate guarded QEMU constructor now retains the complete Samba code closure
+during actual daemon execution, reusing serialized revalidation/review/whole-group
+cleanup without widening generic static/non-root `NewOwner`. Caller closure,
+actual executed-object identity, live complete-roster recheck, normal stop,
+live code-mode drift and forced stop of a frozen Samba group pass on ARMv5.
+Review retains code references; mode restoration cannot restart; explicit
+verified teardown releases them with no FD leak and safe repeated Close.
+
+Final local qualification includes 20 fixture/seven loader tests, linters,
+Linux QEMU-tagged vet/focused races and Windows API/UI. Every previous Samba
+authentication, writer/reader, streams, ext4 ACL/inheritance and isolation gate
+still passes; seven base artifacts are independently unchanged. Outer containers
+are non-root/capability-free and disposable, with bounded RAM scratch, no new
+persistent image/volume and no NAS/physical-storage operation.
+
+This advances code lifetime, not complete service authority. Protected config,
+identity/passdb revision, mutable state and descriptor-bound storage grants,
+race-qualified construction, trusted manifest/ABI/model binding, combined live
+supervision, durable recovery and product activation remain open. See the
+[qualified lifetime profile](support/SAMBA-RUNTIME-PROFILE.md#qualified-dynamic-code-lifetime-qemu-only).
+
+## M4.4 separate code/service views — QEMU prerequisite
+
+The fixture now preserves an exact code-only staged tree while composing a
+different service root. Its private read-only executable code views must expose
+the same actual objects after separate config/NSS inputs exist. The strong code
+census is unchanged; configuration is not silently excluded from a mixed tree.
+An actual same-byte/same-mode different-inode catalog overlay is refused by the
+same capability-free observer, not accepted on its hash alone.
+
+Local final-source checks pass: 18 fixture tests, seven loader tests, linters,
+Linux QEMU-tagged vet/focused races, Windows API/UI and actual ARMv5 Samba,
+preserving all earlier writer/reader/authentication, streams, ext4 ACL,
+inheritance and verified whole-group stop checks. Seven base artifact hashes
+remain unchanged; no extra persistent image/volume or real-device operation.
+
+The view observation closes descriptors before the later service. Configuration
+contents, passdb revision, descriptor-bound grants, race-qualified construction,
+complete live input retention/supervision and product activation remain open.
+This is not M4 completion or installable firmware. See the
+[qualified profile](support/SAMBA-RUNTIME-PROFILE.md#qualified-separate-codeservice-views-fixture-only).
+
 ## M4.4 shared code-input preparation — internal prerequisite
 
 The package-private retained-code helper is now shared by static `Owner` and

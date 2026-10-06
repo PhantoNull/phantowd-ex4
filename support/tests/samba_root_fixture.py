@@ -33,6 +33,10 @@ MARKERS = (
     "caller_close=true dynamic_elf=true generic_dynamic_refused=true "
     "generic_root_refused=true canceled_refused=true "
     "released=true no_fd_leak=true scope=qemu-only",
+    "PHANTOWD_SAMBA_ROOT_CODE_VIEWS_READY code_only=true config_separate=true "
+    "same_inodes=true readonly_views=true scope=qemu-only",
+    "PHANTOWD_SAMBA_ROOT_CODE_VIEWS_REFUSAL_READY same_bytes_copy=true "
+    "scope=qemu-only",
     "PHANTOWD_SAMBA_ROOT_CHARSET_READY charset=CP850 bytes=true "
     "roundtrip=true isolated_root=true scope=qemu-only",
     "PHANTOWD_SAMBA_ROOT_CONTEXT_READY original_fds_closed=true "
@@ -56,6 +60,11 @@ MARKERS = (
     "writer_bytes=true unix_ownership=true kernel_ro=true "
     "duplicate_refused=true live_close_refused=true "
     "stopped_reaped=true scope=qemu-only",
+    "PHANTOWD_SAMBA_OWNER_CODE_LIFETIME_READY caller_close=true "
+    "live_code_pins=true normal_stop=true drift_stopped=true "
+    "forced_stop_review=true "
+    "review_retained=true restoration_refused=true released=true "
+    "no_fd_leak=true scope=qemu-only",
     "PHANTOWD_SAMBA_ROOT_DONE",
 )
 

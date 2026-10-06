@@ -252,6 +252,12 @@ class SambaRootFixture(unittest.TestCase):
             "caller_close=true dynamic_elf=true generic_dynamic_refused=true "
             "generic_root_refused=true canceled_refused=true "
             "released=true no_fd_leak=true scope=qemu-only",
+            "PHANTOWD_SAMBA_ROOT_CODE_VIEWS_READY code_only=true "
+            "config_separate=true "
+            "same_inodes=true readonly_views=true scope=qemu-only",
+            "PHANTOWD_SAMBA_ROOT_CODE_VIEWS_REFUSAL_READY "
+            "same_bytes_copy=true "
+            "scope=qemu-only",
             "PHANTOWD_SAMBA_ROOT_CHARSET_READY charset=CP850 bytes=true "
             "roundtrip=true isolated_root=true scope=qemu-only",
             "PHANTOWD_SAMBA_ROOT_CONTEXT_READY original_fds_closed=true "
@@ -279,6 +285,11 @@ class SambaRootFixture(unittest.TestCase):
             "duplicate_refused=true "
             "live_close_refused=true "
             "stopped_reaped=true scope=qemu-only",
+            "PHANTOWD_SAMBA_OWNER_CODE_LIFETIME_READY caller_close=true "
+            "live_code_pins=true normal_stop=true drift_stopped=true "
+            "forced_stop_review=true "
+            "review_retained=true restoration_refused=true released=true "
+            "no_fd_leak=true scope=qemu-only",
             "PHANTOWD_SAMBA_ROOT_DONE",
         ]
         fixture.check_guest("\r\n".join(lines + [SCAN_COST]))
@@ -291,6 +302,25 @@ class SambaRootFixture(unittest.TestCase):
         for invalid in invalid_logs:
             with self.assertRaises(ValueError):
                 fixture.check_guest("\n".join(invalid + [SCAN_COST]))
+
+    def test_code_lifetime_requires_verified_stop_drift_and_retention(self):
+        fields = ("caller_close", "live_code_pins", "normal_stop",
+                  "drift_stopped", "review_retained", "restoration_refused",
+                  "released", "no_fd_leak")
+        for field in fields:
+            changed = [row.replace(field + "=true", field + "=false")
+                       if "CODE_LIFETIME_READY" in row else row
+                       for row in fixture.MARKERS]
+            with self.assertRaises(ValueError):
+                fixture.check_guest("\n".join(changed + [SCAN_COST]))
+
+    def test_code_lifetime_refuses_missing_or_false_forced_stop_review(self):
+        for value in ("", " forced_stop_review=false"):
+            changed = [row.replace(" forced_stop_review=true", value)
+                       if "CODE_LIFETIME_READY" in row else row
+                       for row in fixture.MARKERS]
+            with self.assertRaises(ValueError):
+                fixture.check_guest("\n".join(changed + [SCAN_COST]))
 
     def test_inherited_context_requires_exact_positive_evidence(self):
         evidence = ("PHANTOWD_SAMBA_ROOT_CONTEXT_READY "
@@ -352,6 +382,15 @@ class SambaRootFixture(unittest.TestCase):
                             evidence.replace("qemu-only", "physical-ex4"),
                             "PHANTOWD_SAMBA_ROOT_RETAINED_CODE_FAILED"):
             changed = [replacement if row == evidence else row
+                       for row in fixture.MARKERS]
+            with self.assertRaises(ValueError):
+                fixture.check_guest("\n".join(changed + [SCAN_COST]))
+
+    def test_code_views_require_identity_and_separation(self):
+        fields = ("code_only", "config_separate", "same_inodes",
+                  "readonly_views", "same_bytes_copy")
+        for field in fields:
+            changed = [row.replace(field + "=true", field + "=false")
                        for row in fixture.MARKERS]
             with self.assertRaises(ValueError):
                 fixture.check_guest("\n".join(changed + [SCAN_COST]))
