@@ -290,6 +290,11 @@ class SambaRootFixture(unittest.TestCase):
             "forced_stop_review=true "
             "review_retained=true restoration_refused=true released=true "
             "no_fd_leak=true scope=qemu-only",
+            "PHANTOWD_SAMBA_OWNER_CONFIG_LIFETIME_READY exact_contents=true "
+            "caller_close=true live_pins=true same_child_objects=true "
+            "readonly_noexec=true normal_stop=true drift_stopped=true "
+            "review_retained=true restoration_refused=true released=true "
+            "scope=qemu-only",
             "PHANTOWD_SAMBA_ROOT_DONE",
         ]
         fixture.check_guest("\r\n".join(lines + [SCAN_COST]))
@@ -310,6 +315,17 @@ class SambaRootFixture(unittest.TestCase):
         for field in fields:
             changed = [row.replace(field + "=true", field + "=false")
                        if "CODE_LIFETIME_READY" in row else row
+                       for row in fixture.MARKERS]
+            with self.assertRaises(ValueError):
+                fixture.check_guest("\n".join(changed + [SCAN_COST]))
+
+    def test_configuration_lifetime_requires_protected_child_and_stop(self):
+        for field in ("exact_contents", "caller_close", "live_pins",
+                      "same_child_objects", "readonly_noexec", "normal_stop",
+                      "drift_stopped", "review_retained",
+                      "restoration_refused", "released"):
+            changed = [row.replace(field + "=true", field + "=false")
+                       if "CONFIG_LIFETIME_READY" in row else row
                        for row in fixture.MARKERS]
             with self.assertRaises(ValueError):
                 fixture.check_guest("\n".join(changed + [SCAN_COST]))

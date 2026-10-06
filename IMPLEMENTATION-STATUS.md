@@ -3,6 +3,32 @@
 
 # Implementation status
 
+## M4.4 protected configuration lifetime — QEMU prerequisite
+
+The separate guarded Samba fixture now retains an exact seven-file config/NSS
+roster through actual service execution. Expected hashes come from independent
+compiled fixture contents, not the filesystem under inspection. A private
+configuration plan has a 16-file/64-KiB bound and protected data modes; public
+code `NewPlan` keeps its original 0444/0555 admission. Mutable passdb and state
+are deliberately excluded from immutable configuration.
+
+Actual ARMv5 verifies config caller closure, retained original objects visible
+inside the real child, read-only/nosuid/nodev/noexec views, normal stop, live
+configuration-mode drift, retained review, restoration without restart and
+release only after verified group absence. The regression found that a
+nonrecursive root bind hid the earlier config submount: the fixed bootstrap now
+rebuilds that protected view inside the new root. Final daemon capabilities and
+generic static/non-root admission are unchanged.
+
+Local final-source qualification passes 21 fixture/seven loader tests, linters,
+actual full focused Samba ARMv5 campaign, Linux QEMU-tagged vet/focused races,
+and Windows API/UI/cross-compile. All older code/SMB/access/ACL/streams checks
+remain green and all seven base hashes unchanged. This is focused qualification,
+not a complete Buildroot validation of this increment or a product activation
+claim. Product renderer/identity revision, state and storage authorities,
+race-qualified root construction and durable recovery remain open. See the
+[protected configuration contract](support/SAMBA-RUNTIME-PROFILE.md#qualified-protected-configuration-lifetime-qemu-only).
+
 ## M4.4 retained dynamic-code lifetime — QEMU prerequisite
 
 A separate guarded QEMU constructor now retains the complete Samba code closure

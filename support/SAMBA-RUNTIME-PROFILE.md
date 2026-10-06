@@ -352,6 +352,39 @@ mutable state and storage grants are still fixed disposable inputs, not retained
 product authorities. Trusted manifests, race-qualified construction, combined
 input supervision, durable recovery, product startup and HTTP remain open.
 
+### Qualified protected configuration lifetime (QEMU only)
+
+The next fixed disposable constructor retains the exact seven-file config/NSS
+roster as well as code. Independent compiled fixture contents supply expected
+hashes/modes; no expectation is measured from the tree being inspected. The
+private data-only plan limits inputs to 16 files/64 KiB, refuses aliases and
+executable modes, and shares complete-census/hash/original-node verification.
+Public code `NewPlan` still permits only 0444/0555. Config pins are read-only;
+their mount must be read-only/nosuid/nodev/noexec. Passdb and legitimate mutable
+state are not frozen or hashed as immutable configuration.
+
+Actual ARMv5 covers normal service stop and live smb.conf mode drift. The caller
+config root closes after construction. All seven files seen through the real
+child root match retained original objects and have protected mount flags.
+Drift stops the complete known group, retains code/config for review, and mode
+restoration cannot restart. Explicit verified teardown releases both rosters.
+The existing code forced-stop/review and all earlier access/ACL/stream tests
+still pass. There is no config-specific forced-stop or FD-count claim yet.
+
+The regression initially failed in the actual child: a nonrecursive service-root
+bind hid the earlier config submount, leaving flags without nodev/noexec. The
+fixed native bootstrap now creates the protected etc view AFTER that root bind,
+before authority reduction. The same child-view assertion passes; no capability,
+timeout, census or access check was relaxed. Temporary diagnostics are removed.
+Final local checks pass 21 fixture/seven loader tests, linters, Linux vet/focused
+races, Windows API/UI/cross-compile and the actual focused ARMv5 campaign; seven
+base hashes remain unchanged. This is not complete fresh Buildroot validation.
+
+These inputs remain synthetic. Product trusted renderer/NSS provenance,
+identity-authority passdb/revision, mutable state, retained storage leases,
+race-qualified root construction, combined supervision, durable activation and
+HTTP/product startup are not supplied by this fixture. No real NAS/disks/flash.
+
 ### Construction and retained resources
 
 - Fix the backend, launcher, daemon, arguments, readiness/stop budgets and

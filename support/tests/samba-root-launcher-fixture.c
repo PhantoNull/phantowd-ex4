@@ -339,6 +339,41 @@ static int code_owner_fixture(void)
     return fail();
 }
 
+/* The writable config anchor stays only in the fixed test controller. Every
+ * daemon still drops all escape descriptors. Code and immutable configuration
+ * are separate mounts: only configuration is noexec. */
+static int configuration_owner_fixture(void)
+{
+    const char config[] = "/run/phantowd-samba-root/etc";
+    int source = open(config, O_PATH | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC);
+    int writer = source < 0 ? -1 : fcntl(source, F_DUPFD_CLOEXEC, 6);
+    if (source < 0 || writer < 0 || close(source) ||
+        unshare(CLONE_NEWNS) ||
+        mount(NULL, "/", NULL, MS_REC | MS_PRIVATE, NULL) ||
+        mount(code_root, code_root, NULL, MS_BIND, NULL) ||
+        mount(NULL, code_root, NULL, MS_BIND | MS_REMOUNT | MS_RDONLY |
+              MS_NOSUID | MS_NODEV, NULL) ||
+        mount(config, config, NULL, MS_BIND, NULL) ||
+        mount(NULL, config, NULL, MS_BIND | MS_REMOUNT | MS_RDONLY |
+              MS_NOSUID | MS_NODEV | MS_NOEXEC, NULL))
+        return fail();
+    source = open(code_root, O_PATH | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC);
+    int code = source < 0 ? -1 : fcntl(source, F_DUPFD_CLOEXEC, 6);
+    if (source < 0 || code < 0 || close(source))
+        return fail();
+    source = open(config, O_PATH | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC);
+    int reader = source < 0 ? -1 : fcntl(source, F_DUPFD_CLOEXEC, 6);
+    if (source < 0 || reader < 0 || close(source) ||
+        dup2(code, 3) != 3 || dup2(reader, 4) != 4 || dup2(writer, 5) != 5 ||
+        fcntl(3, F_SETFD, 0) || fcntl(4, F_SETFD, 0) || fcntl(5, F_SETFD, 0) ||
+        syscall(SYS_close_range, 6U, ~0U, 0))
+        return fail();
+    char *args[] = {"qemu-runtime-bundle", "samba-configuration-owner", NULL};
+    char *environment[] = {"PATH=/usr/sbin:/usr/bin:/sbin:/bin", "LC_ALL=C", NULL};
+    execve("/usr/sbin/phantowd-runtime-bundle-probe", args, environment);
+    return fail();
+}
+
 struct fixed_acl {
     struct posix_acl_xattr_header header;
     struct posix_acl_xattr_entry entries[5];
@@ -529,6 +564,8 @@ int main(int argc, char **argv)
         return inspect_runtime_bundle_mode("composed-code-copy");
     if (argc == 2 && !strcmp(argv[1], "code-owner"))
         return code_owner_fixture();
+    if (argc == 2 && !strcmp(argv[1], "configuration-owner"))
+        return configuration_owner_fixture();
     if (argc == 2 && (!strcmp(argv[1], "acl-prepare") ||
         !strcmp(argv[1], "acl-grant") || !strcmp(argv[1], "acl-revoke")))
         return acl_fixture(argv[1]);
@@ -576,6 +613,9 @@ int main(int argc, char **argv)
         !S_ISDIR(info.st_mode) || (info.st_mode & 0022) ||
         unshare(CLONE_NEWNS) || mount(NULL, "/", NULL, MS_REC | MS_PRIVATE, NULL) ||
         mount(root, root, NULL, MS_BIND, NULL) ||
+        /* A nonrecursive root bind hides its earlier config submount. Rebuild
+         * this fixed protected view inside the new root before dropping caps. */
+        grant("/run/phantowd-samba-root/etc", "/run/phantowd-samba-root/etc", 1) ||
         code_views() ||
         grant("/run/phantowd-samba-state", "/run/phantowd-samba-root/state", 0) ||
         grant("/run/phantowd-samba-source/approved", "/run/phantowd-samba-root/shares/rw", 0) ||
