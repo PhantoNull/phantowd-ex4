@@ -2392,10 +2392,11 @@ this order, preserving the [full contract](support/SAMBA-RUNTIME-PROFILE.md#samb
    hashes, embedded/installed/exported API and all853 compiled/archive source
    files. Hosted checks must still qualify their own exact PR head; no clean
    reproduction, product authority, release compliance or EX4 gate is inferred.
-   The descriptor-handoff source6cb5522 additionally passes the same complete
-   cached integration with854 independently matched compiled/archive files,
-   matching image API and seven hashes. Its later admission/forced-stop packet
-   has separate focused/native proof, not an inherited full-build result.
+   The combined descriptor-handoff/admission/forced-stop source `303adae` also
+   passes complete cached local integration with all 854 independently matched
+   compiled/archive files, matching image API and seven hashes. This is the
+   packet's own full result, not inherited ancestor qualification. Hosted checks
+   must qualify their own exact PR head; product and hardware gates remain open.
    The fixture now requires the already-supported virtual entropy provider,
    backed by host kernel randomness rather than a fixed seed. This removes the
    measured initial enrollment wait without extending its180-second deadline;

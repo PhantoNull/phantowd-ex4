@@ -38,12 +38,15 @@ configuration and storage view construction still use fixed fixture paths.
 Same real identity/NSS/passdb/storage authority, durable recovery and product
 startup remain required. No NAS, physical disk or product listener is used.
 
-The earlier handoff source `6cb5522` separately passes complete cached
+The complete handoff/admission/forced-stop source `303adae` passes cached local
 Buildroot/QEMU integration, including every existing guest lane and final SMART
-fixtures. Every854 tracked API file matches both compiled source and collected
+fixtures. All 854 tracked API files match both compiled source and collected
 archive; embedded/installed/exported API and seven artifact hashes independently
-agree. This does not qualify the subsequent admission increment as a full build,
-nor establish clean reproduction, product activation or physical EX4 support.
+agree. The exported API SHA256 is
+`fbc018bcbe497249e61583eb5d5a9981057375009cda22b37f8b0c238a65d585`.
+This is this increment's own full local result, not borrowed ancestor evidence.
+It does not establish clean reproduction, hosted exact-head qualification,
+product activation or physical EX4 support.
 
 ## M4.4 mutable Samba state-directory lifetime — QEMU prerequisite
 
