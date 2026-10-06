@@ -2372,9 +2372,12 @@ this order, preserving the [full contract](support/SAMBA-RUNTIME-PROFILE.md#samb
    cancelled/incomplete/drift/review inputs refuse atomically, credential backends
    are not queried and JSON is blocked. Native tagged vet/race, host preflight,
    actual ARMv5 API overlay smoke and the separate two-boot state suite pass.
-   Missing/duplicate/altered lookup evidence is refused. Complete package/image
-   and hosted qualification remain separate; the documents are not installed
-   in a daemon or qualified through native libc.
+   Missing/duplicate/altered lookup evidence is refused. The same frozen source
+   also passes complete cached local integration on `fa4f25a`, including every
+   later Samba/SMART lane; all 862 packaged API files, the embedded/installed/
+   exported API and seven artifact hashes independently agree. Hosted and
+   independent clean-build qualification remain separate; the documents are
+   not installed in a daemon or qualified through native libc.
    Next qualify actual libc consumption of these real native private identities,
    then a startup-bound credential backend and daemon using the SAME mutable
    state. Never bootstrap by fabricating enabled journals/SIDs, copying TDBs or

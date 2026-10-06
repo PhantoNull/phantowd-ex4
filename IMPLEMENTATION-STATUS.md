@@ -27,7 +27,16 @@ marker requires exactly one pre-enrollment native-lookup result; altered,
 missing or duplicate evidence is refused by the driver's executed host tests.
 The injected API is SHA256
 `02dc89218ec57d2a6f04467efb2fad1d46cdc723cfb7f4936dc1719e8516540d`.
-This is userspace overlay execution, not a new complete image/SBOM build,
+That first result is userspace overlay execution, not a complete image build.
+The same frozen source subsequently passes complete cached local integration
+on `fa4f25a`: host/race/fuzz, package compilation/source collection, ARMv5 smoke,
+MD metadata, two-boot state, launcher/code ownership, loader/atomic dispatch,
+restricted-root Samba and synthetic SMART producer/capture. All 862 tracked API
+files independently match the compiled package and source archive. The installed,
+embedded and exported API match SHA256
+`59a605980323dcc46e441ecc3e0dffe64f24e9001eec65354cfcba62a48aeb95`;
+all seven artifact manifest entries independently verify. This is cached local
+qualification, not independent clean reproduction, complete release licensing,
 hosted qualification, native libc consumption or physical EX4 qualification.
 
 Next stage these actual native documents through the retained configuration
