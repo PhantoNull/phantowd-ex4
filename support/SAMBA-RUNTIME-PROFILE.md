@@ -285,6 +285,39 @@ campaign is requalified after extraction. Its local wrapper now also runs
 UID1000/cap-drop ALL/NNP; root namespace/fixture work occurs only inside the
 disposable QEMU guest, not the Docker test container.
 
+### Qualified separate code/service views (fixture only)
+
+The code-only staged root is now distinct from the service root. Configuration,
+NSS files, devices, mutable state and data grants are not added to the inspected
+code tree. A capability-free UID1801 probe rechecks its unchanged complete
+census after service configuration exists. Private read-only `lib`/`usr` bind
+views must expose the same actual code objects: device/inode, mode, size, owner
+and timestamps match descriptor observations. Code views remain executable;
+data grants keep their separate `nosuid,nodev,noexec` policy. The seven fixed
+configuration files are checked for presence and root-owned regular-file type,
+not approved contents or identity-authority provenance.
+
+Actual ARMv5 first reproduced failure when configuration polluted the code
+census. The separated roots pass without weakening `Inspect`. A second
+disposable namespace overlays a byte/mode-identical but independently copied
+conversion catalog only in the service view. The native control verifies equal
+bytes/mode and different inode; the same Go observer must refuse the substituted
+object. It receives no negative-test flag. The copied object is bounded to
+4 KiB; the 27 MiB code closure is shared, not copied again.
+
+Local qualification (2026-10-06): 18 fixture tests, seven loader tests, linters,
+native QEMU-tagged vet/focused races, Windows API/UI preflight and the complete
+ARM926 Samba campaign, including the actual copied-object refusal and all prior
+authentication, writer/reader, streams, ext4 ACL/inheritance and group-stop gates.
+Seven base artifact hashes are independently unchanged. Scratch is bounded RAM,
+containers auto-remove, and no persistent image/volume or NAS operation is added.
+
+This is a point-in-time QEMU view check, not a product root constructor or full
+retained-input Owner. Observed descriptors close before the later Samba launch.
+Race-qualified construction, trusted manifest/configuration contents, passdb
+revision, storage-grant lifetime, live input supervision and durable activation
+remain open. Read-only code does not make approved data shares read-only.
+
 ### Construction and retained resources
 
 - Fix the backend, launcher, daemon, arguments, readiness/stop budgets and

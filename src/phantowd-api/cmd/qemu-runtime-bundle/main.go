@@ -45,7 +45,8 @@ func run() error {
 	if len(os.Args) == 3 && os.Args[1] == "owner-child" && os.Getuid() == 1801 && os.Geteuid() == 1801 {
 		return ownerFixtureChild()
 	}
-	if len(os.Args) != 1 || os.Getuid() != 1801 || os.Geteuid() != 1801 {
+	composed := len(os.Args) == 2 && os.Args[1] == "composed-code"
+	if (len(os.Args) != 1 && !composed) || os.Getuid() != 1801 || os.Geteuid() != 1801 {
 		return errors.New("fixture guard")
 	}
 	status, err := os.ReadFile("/proc/self/status")
@@ -71,6 +72,9 @@ func run() error {
 	}
 	if len(required) != 0 {
 		return errors.New("incomplete authority evidence")
+	}
+	if composed {
+		return composedCodeFixture()
 	}
 	files, aliases, err := inputs()
 	if err != nil {

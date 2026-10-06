@@ -26,6 +26,7 @@
 #include <unistd.h>
 
 static const char root[] = "/run/phantowd-samba-root";
+static const char code_root[] = "/run/phantowd-samba-code";
 /* Client impersonation and ordinary owner/group/metadata operations only.
  * In particular no SYS_ADMIN, SYS_CHROOT, PTRACE, SETPCAP or network admin. */
 static const uint32_t allowed = (1U << CAP_CHOWN) | (1U << CAP_DAC_OVERRIDE) |
@@ -87,6 +88,33 @@ static int grant(const char *source, const char *destination, int readonly)
     struct statvfs flags;
     if (statvfs(destination, &flags) || !!(flags.f_flag & ST_RDONLY) != readonly)
         return -1;
+    return 0;
+}
+
+/* Fixed fixture code views only. Unlike data grants, these must allow loading
+ * executable code. Nothing is copied or added to the inspected code-only root.
+ * The complete census still belongs to runtimebundle, not this mount helper. */
+static int code_views(void)
+{
+    const char *sources[] = {"/run/phantowd-samba-code/lib",
+                            "/run/phantowd-samba-code/usr"};
+    const char *destinations[] = {"/run/phantowd-samba-root/lib",
+                                 "/run/phantowd-samba-root/usr"};
+    for (size_t i = 0; i < sizeof(sources) / sizeof(sources[0]); ++i) {
+        struct stat before, after;
+        struct statvfs flags;
+        if (lstat(sources[i], &before) || !S_ISDIR(before.st_mode) ||
+            before.st_uid || before.st_gid || (before.st_mode & 0022) ||
+            lstat(destinations[i], &after) || !S_ISDIR(after.st_mode) ||
+            after.st_uid || after.st_gid || (after.st_mode & 0022) ||
+            mount(sources[i], destinations[i], NULL, MS_BIND, NULL) ||
+            mount(NULL, destinations[i], NULL, MS_BIND | MS_REMOUNT |
+                  MS_RDONLY | MS_NOSUID | MS_NODEV, NULL) ||
+            stat(destinations[i], &after) || before.st_dev != after.st_dev ||
+            before.st_ino != after.st_ino || statvfs(destinations[i], &flags) ||
+            !(flags.f_flag & ST_RDONLY) || (flags.f_flag & ST_NOEXEC))
+            return -1;
+    }
     return 0;
 }
 
@@ -215,15 +243,47 @@ static int writer_identity(void)
 /* Inspect only the generated code tree, before config/state/share grants.
  * The read-only bind exists only in this child namespace; no parent mount is
  * changed. Drop all bounding/ambient/effective authority before the Go probe. */
-static int inspect_runtime_bundle(void)
+static int inspect_runtime_bundle_mode(const char *mode)
 {
     if (unshare(CLONE_NEWNS) ||
         mount(NULL, "/", NULL, MS_REC | MS_PRIVATE, NULL) ||
-        mount(root, root, NULL, MS_BIND, NULL) ||
-        mount(NULL, root, NULL, MS_BIND | MS_REMOUNT | MS_RDONLY | MS_NOSUID |
+        mount(code_root, code_root, NULL, MS_BIND, NULL) ||
+        mount(NULL, code_root, NULL, MS_BIND | MS_REMOUNT | MS_RDONLY | MS_NOSUID |
               MS_NODEV, NULL))
         return fail();
-    int fd = open(root, O_PATH | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC);
+    if (mode && (mount(root, root, NULL, MS_BIND, NULL) || code_views() ||
+        mount(NULL, root, NULL, MS_BIND | MS_REMOUNT | MS_RDONLY | MS_NOSUID,
+              NULL)))
+        return fail();
+    if (mode && !strcmp(mode, "composed-code-copy")) {
+        /* A fresh fixed catalog copy with equal bytes/mode, different inode.
+         * Poison only this child view; neither inspected tree nor parent mount
+         * changes. Require the Go observer itself to reject this substitution. */
+        const char original[] = "/run/phantowd-samba-code/usr/lib/gconv/gconv-modules";
+        const char copied[] = "/run/phantowd-samba-root/fixture/copied-catalog";
+        const char view[] = "/run/phantowd-samba-root/usr/lib/gconv/gconv-modules";
+        int a = open(original, O_RDONLY | O_NOFOLLOW | O_CLOEXEC);
+        int b = open(copied, O_RDONLY | O_NOFOLLOW | O_CLOEXEC);
+        struct stat source_info, copy_info;
+        unsigned char source_bytes[4097], copy_bytes[4097];
+        if (a < 0 || b < 0 || fstat(a, &source_info) || fstat(b, &copy_info) ||
+            !S_ISREG(source_info.st_mode) || !S_ISREG(copy_info.st_mode) ||
+            source_info.st_size <= 0 || source_info.st_size > 4096 ||
+            source_info.st_size != copy_info.st_size ||
+            source_info.st_mode != copy_info.st_mode ||
+            (source_info.st_dev == copy_info.st_dev &&
+             source_info.st_ino == copy_info.st_ino) ||
+            read(a, source_bytes, sizeof(source_bytes)) != source_info.st_size ||
+            read(b, copy_bytes, sizeof(copy_bytes)) != copy_info.st_size ||
+            memcmp(source_bytes, copy_bytes, source_info.st_size) ||
+            close(a) || close(b) || mount(copied, view, NULL, MS_BIND, NULL) ||
+            mount(NULL, view, NULL, MS_BIND | MS_REMOUNT | MS_RDONLY |
+                  MS_NOSUID | MS_NODEV, NULL))
+            return fail();
+        puts("PHANTOWD_SAMBA_ROOT_COPY_CONTROL_READY bytes=true mode=true different_inode=true scope=qemu-only");
+        fflush(stdout);
+    }
+    int fd = open(code_root, O_PATH | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC);
     if (fd < 0 || dup2(fd, 3) != 3 || fcntl(3, F_SETFD, 0) ||
         syscall(SYS_close_range, 4U, ~0U, 0) ||
         prctl(PR_CAP_AMBIENT, PR_CAP_AMBIENT_CLEAR_ALL, 0, 0, 0))
@@ -242,10 +302,15 @@ static int inspect_runtime_bundle(void)
     }
     if (!last || writer_identity())
         return fail();
-    char *args[] = {"qemu-runtime-bundle", NULL};
+    char *args[] = {"qemu-runtime-bundle", mode ? "composed-code" : NULL, NULL};
     char *environment[] = {"PATH=/usr/sbin:/usr/bin:/sbin:/bin", "LC_ALL=C", NULL};
     execve("/usr/sbin/phantowd-runtime-bundle-probe", args, environment);
     return fail();
+}
+
+static int inspect_runtime_bundle(void)
+{
+    return inspect_runtime_bundle_mode(NULL);
 }
 
 struct fixed_acl {
@@ -432,6 +497,10 @@ int main(int argc, char **argv)
         return 0;
     if (argc == 2 && !strcmp(argv[1], "runtime-bundle"))
         return inspect_runtime_bundle();
+    if (argc == 2 && !strcmp(argv[1], "composed-code"))
+        return inspect_runtime_bundle_mode("composed-code");
+    if (argc == 2 && !strcmp(argv[1], "composed-code-copy"))
+        return inspect_runtime_bundle_mode("composed-code-copy");
     if (argc == 2 && (!strcmp(argv[1], "acl-prepare") ||
         !strcmp(argv[1], "acl-grant") || !strcmp(argv[1], "acl-revoke")))
         return acl_fixture(argv[1]);
@@ -479,6 +548,7 @@ int main(int argc, char **argv)
         !S_ISDIR(info.st_mode) || (info.st_mode & 0022) ||
         unshare(CLONE_NEWNS) || mount(NULL, "/", NULL, MS_REC | MS_PRIVATE, NULL) ||
         mount(root, root, NULL, MS_BIND, NULL) ||
+        code_views() ||
         grant("/run/phantowd-samba-state", "/run/phantowd-samba-root/state", 0) ||
         grant("/run/phantowd-samba-source/approved", "/run/phantowd-samba-root/shares/rw", 0) ||
         grant("/run/phantowd-samba-source/approved", "/run/phantowd-samba-root/shares/ro", 1) ||
@@ -531,7 +601,7 @@ int main(int argc, char **argv)
         execve("/usr/sbin/smbd", args, environment);
     } else if (charset) {
         char *args[] = {"phantowd-samba-charset-probe", NULL};
-        execve("/usr/sbin/phantowd-samba-charset-probe", args, environment);
+        execve("/fixture/charset", args, environment);
     } else {
         char *args[] = {"smbpasswd", "-s", "-a", "-c", "/etc/samba/smb.conf", argv[2], NULL};
         execve("/usr/bin/smbpasswd", args, environment);

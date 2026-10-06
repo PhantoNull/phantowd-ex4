@@ -80,6 +80,15 @@ roster and refuses five altered plans: digest, mode, alias target, omitted
 daemon and symlink retyped as file. Cancellation must return no observation.
 This fixture manifest is research evidence, not a signed product manifest.
 
+After fixture configuration exists, a separate capability-free QEMU observer
+rechecks the unchanged code-only census. Code and service roots are distinct;
+fixed read-only executable code views must expose the same descriptor-observed
+objects. An actual byte/mode-identical copied-catalog overlay is refused by that
+same observer. Config/NSS presence/type is checked separately, not authorized.
+These point-in-time references close before later Samba launch; complete dynamic
+code/configuration/identity/storage lifetime and race-qualified root construction
+remain unimplemented. See the [separate-view profile](../../../../support/SAMBA-RUNTIME-PROFILE.md#qualified-separate-codeservice-views-fixture-only).
+
 A separate fixed root-only QEMU permission regression uses miniature tmpfs
 code trees, its own private mount namespace and read-only binds. It reads back
 actual kernel ACL bytes and proves Unix modes remain unchanged. An ACL-free

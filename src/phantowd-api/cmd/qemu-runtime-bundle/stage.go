@@ -40,7 +40,7 @@ func stageFixture() error {
 		return err
 	}
 	defer source.Close()
-	destination, err := stageRoot("/run/phantowd-samba-root")
+	destination, err := stageRoot("/run/phantowd-samba-code")
 	if err != nil {
 		return err
 	}
@@ -55,7 +55,7 @@ func stageFixture() error {
 		if err != nil {
 			return err
 		}
-		copy, err := os.Lstat("/run/phantowd-samba-root/" + file.Path)
+		copy, err := os.Lstat("/run/phantowd-samba-code/" + file.Path)
 		if err != nil || os.SameFile(original, copy) {
 			return errors.New("fresh copy evidence")
 		}

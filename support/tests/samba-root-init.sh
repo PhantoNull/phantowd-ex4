@@ -63,9 +63,11 @@ run_fixture() {
     mount -t tmpfs -o mode=0755,size=96m tmpfs /run || return 1
     ifconfig lo up || return 1
     root=/run/phantowd-samba-root
+    code=/run/phantowd-samba-code
     source=/run/phantowd-samba-source
     state=/run/phantowd-samba-state
     mkdir -m 0700 "$root" || return 1
+    mkdir -m 0700 "$code" || return 1
     mkdir -m 0755 "$source" || return 1
     [ "$(cat /sys/block/sdb/size)" = 32768 ] || return 1
     [ -b /dev/sdb ] || return 1
@@ -80,9 +82,10 @@ run_fixture() {
     # Inspection does not authorize these separately generated state/grants.
     mkdir -p "$root/etc/samba" "$root/dev" "$root/state" "$root/tmp" \
         "$root/shares/rw" "$root/shares/ro" "$root/shares/denied" || return 1
+    mkdir -m 0755 "$root/lib" "$root/usr" "$root/fixture" || return 1
     cp /usr/sbin/phantowd-samba-charset-probe \
-        "$root/usr/sbin/phantowd-samba-charset-probe" || return 1
-    chmod 0555 "$root/usr/sbin/phantowd-samba-charset-probe" || return 1
+        "$root/fixture/charset" || return 1
+    chmod 0555 "$root/fixture/charset" || return 1
     printf '%s\n' 'root:x:0:0:root:/:/sbin/nologin' \
         'nobody:x:65534:65534:nobody:/:/sbin/nologin' \
         'qpwriter:x:1801:1800:writer:/:/sbin/nologin' \
@@ -134,10 +137,27 @@ run_fixture() {
         'guest ok = no' 'read only = no' 'valid users = qpwriter' \
         >"$root/etc/samba/smb.conf"
     chmod 0600 "$root/etc/samba/smb.conf" || return 1
+    chmod 0555 "$root" || return 1
     chown 1801:1800 "$source/approved" || return 1
     chmod 2770 "$source/approved" || return 1
     echo 'outside-selected-subtree' >"$source/ungranted"
     ln -s "$source/ungranted" "$source/approved/escape" || return 1
+    cp "$code/usr/lib/gconv/gconv-modules" "$root/fixture/copied-catalog" || return 1
+    chmod 0555 "$root/fixture/copied-catalog" || return 1
+    /usr/sbin/phantowd-samba-root-launcher composed-code || return 1
+    /usr/sbin/phantowd-samba-root-launcher composed-code-copy \
+        >/run/code-copy.log 2>&1
+    copy_status=$?
+    [ "$copy_status" -eq 1 ] || {
+        echo "PHANTOWD_SAMBA_ROOT_COPY_STATUS_FAILED status=$copy_status"
+        cat /run/code-copy.log
+        return 1
+    }
+    grep -Fx 'PHANTOWD_SAMBA_ROOT_COPY_CONTROL_READY bytes=true mode=true different_inode=true scope=qemu-only' \
+        /run/code-copy.log >/dev/null || { cat /run/code-copy.log; return 1; }
+    grep -Fx 'PHANTOWD_SAMBA_ROOT_COMPOSED_CODE_FAILED composed code is not the inspected object' \
+        /run/code-copy.log >/dev/null || return 1
+    echo 'PHANTOWD_SAMBA_ROOT_CODE_VIEWS_REFUSAL_READY same_bytes_copy=true scope=qemu-only'
     /usr/sbin/phantowd-samba-root-launcher charset || return 1
     echo 'distinct-unix-writer-test' >/run/upload
     echo 'distinct-stream-fixture' >/run/upload-stream

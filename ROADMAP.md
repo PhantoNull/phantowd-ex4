@@ -2320,6 +2320,11 @@ this order, preserving the [full contract](support/SAMBA-RUNTIME-PROFILE.md#samb
    unchanged generic dynamic/root refusal. Static lifecycle/drift/forced-stop
    checks are requalified. This prerequisite releases its Samba inputs before
    service construction: live dynamic retention is still required, not complete.
+   The fixture now also qualifies separate code-only/service roots, unchanged
+   exact census after configuration exists, and same-object read-only code views.
+   A byte/mode-identical copied catalog is refused in an actual private ARMv5
+   view. These observation descriptors close before launch; this does not
+   complete a race-qualified constructor or live input ownership.
    Fix the expected closure/ABI and trusted manifest source, not self-measured
    dependency candidates. Qualify same-byte file/directory/alias replacement,
    caller closure, constructor failure and cancellation before launch.

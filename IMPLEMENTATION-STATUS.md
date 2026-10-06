@@ -3,6 +3,27 @@
 
 # Implementation status
 
+## M4.4 separate code/service views — QEMU prerequisite
+
+The fixture now preserves an exact code-only staged tree while composing a
+different service root. Its private read-only executable code views must expose
+the same actual objects after separate config/NSS inputs exist. The strong code
+census is unchanged; configuration is not silently excluded from a mixed tree.
+An actual same-byte/same-mode different-inode catalog overlay is refused by the
+same capability-free observer, not accepted on its hash alone.
+
+Local final-source checks pass: 18 fixture tests, seven loader tests, linters,
+Linux QEMU-tagged vet/focused races, Windows API/UI and actual ARMv5 Samba,
+preserving all earlier writer/reader/authentication, streams, ext4 ACL,
+inheritance and verified whole-group stop checks. Seven base artifact hashes
+remain unchanged; no extra persistent image/volume or real-device operation.
+
+The view observation closes descriptors before the later service. Configuration
+contents, passdb revision, descriptor-bound grants, race-qualified construction,
+complete live input retention/supervision and product activation remain open.
+This is not M4 completion or installable firmware. See the
+[qualified profile](support/SAMBA-RUNTIME-PROFILE.md#qualified-separate-codeservice-views-fixture-only).
+
 ## M4.4 shared code-input preparation — internal prerequisite
 
 The package-private retained-code helper is now shared by static `Owner` and
