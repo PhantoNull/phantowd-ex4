@@ -2402,6 +2402,13 @@ this order, preserving the [full contract](support/SAMBA-RUNTIME-PROFILE.md#samb
    files independently match compiled and collected source; image/installed/
    exported API and seven distinct expected artifact hashes agree. This does
    not borrow ancestor qualification or establish clean/hosted/product/EX4 proof.
+   A subsequent fixture-only ARMv5 campaign also qualifies worker cancellation
+   before admission, late protected-directory mode loss before launch, sticky
+   review after restoration, complete input retention and verified leak-free
+   release. Native tagged vet/race-count3 and strict evidence checks pass. No
+   production API changes; focused qualification does not replace a new full
+   packet or clean/hosted validation. Same real Owner/NSS/state/storage remains
+   the next composition requirement, not another synthetic account authority.
    Whole-root/code/config/data construction, durable review and
    product lifecycle/HTTP remain open.
    The complete combined source on336c29f now also passes ONE cached full local

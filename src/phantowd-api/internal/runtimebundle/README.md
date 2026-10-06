@@ -171,6 +171,15 @@ This uses synthetic qpwriter, not an identity Owner's native private-group
 account. The real credential backend/Owner-derived NSS and mutations/revocation
 must still be composed; this probe returns neither a backend nor raw listing.
 
+Its separate prelaunch refusal case uses the same fixed public constructor:
+pre-admission cancellation publishes no output and consumes no command; a later
+protected directory mode fault returns review, preserves all nine retained
+code/input/state descriptors and cannot be revived by mode restoration. Group
+absence and explicit close release those references without leakage. The fault
+is temporary disposable QEMU state only, not a supported permission change or
+a production interface. Credential-worker cancellation after launch and full
+forced/uncertain shutdown still require their own qualification.
+
 `Plan.StageQEMU` independently pins source/destination `O_PATH` descriptors.
 It requires root credentials, a local read-only source and a freshly empty
 root:root 0700 writable tmpfs destination with no ACL/capability attributes.

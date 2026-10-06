@@ -34,6 +34,17 @@ and all seven distinct expected artifact hashes agree. Cached validation is not
 independent clean-build reproduction. Exact-head hosted qualification remains open;
 no product service, HTTP, NAS, physical disk or installation is enabled.
 
+The subsequent QEMU-only fixture extension also exercises this worker's existing
+public capture contract before launch: cancellation before admission returns no
+output and does not consume it; a late protected-state directory mode change
+causes review without output, retains all nine code/input/state references and
+refuses restart after restoration. Verified absence and explicit close release
+the complete roster without an FD leak. Actual ARMv5 and all previous Samba
+gates pass within the unchanged guest budget; strict fixture tests, native tagged
+vet/race-count3 and API/UI cross-compilation pass. No production interface or
+behavior changes. This focused result is not a new complete package/image build;
+the full `c4ed376` result above remains scoped to that source revision.
+
 ## M4.4 Samba state descriptor handoff — QEMU only
 
 A fixed `qemu && linux` construction adapter independently retains seven

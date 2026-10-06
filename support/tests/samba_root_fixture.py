@@ -88,6 +88,11 @@ MARKERS = (
     "caller_inputs_closed=true source_path_masked=true same_objects=true "
     "closed_before_exec=true listing_redacted=true single_use=true "
     "stopped_reaped=true released=true no_fd_leak=true scope=qemu-only",
+    "PHANTOWD_SAMBA_OWNER_STATE_OBSERVER_REFUSAL_READY "
+    "late_mode_drift=true before_launch=true "
+    "cancellation_before_admission=true "
+    "review_pins=true restoration_refused=true stopped_reaped=true "
+    "released=true no_fd_leak=true scope=qemu-only",
     "PHANTOWD_SAMBA_ROOT_DONE",
 )
 

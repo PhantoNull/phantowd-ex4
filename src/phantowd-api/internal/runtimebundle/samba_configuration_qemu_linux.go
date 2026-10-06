@@ -239,6 +239,7 @@ func (p *Plan) ProbeSambaConfigurationLifetimeQEMU(ctx context.Context, code, co
 	fmt.Println("PHANTOWD_SAMBA_OWNER_STATE_HANDOFF_READY inputs=7 source_path_masked=true same_child_objects=true closed_before_exec=true no_fd_leak=true scope=qemu-only")
 	fmt.Println("PHANTOWD_SAMBA_OWNER_STATE_ADMISSION_READY refusals=5 before_launch=true caller_inputs_closed=true copied_spec=true partial_cleanup=true forced_stop_review=true review_pins=true explicit_release=true no_fd_leak=true scope=qemu-only")
 	fmt.Println("PHANTOWD_SAMBA_OWNER_STATE_OBSERVER_READY inputs=7 refusals=1 caller_inputs_closed=true source_path_masked=true same_objects=true closed_before_exec=true listing_redacted=true single_use=true stopped_reaped=true released=true no_fd_leak=true scope=qemu-only")
+	fmt.Println("PHANTOWD_SAMBA_OWNER_STATE_OBSERVER_REFUSAL_READY late_mode_drift=true before_launch=true cancellation_before_admission=true review_pins=true restoration_refused=true stopped_reaped=true released=true no_fd_leak=true scope=qemu-only")
 	return nil
 }
 

@@ -96,6 +96,9 @@ func (o *Owner) probeSambaStateObserverQEMU(ctx context.Context) (result error) 
 	if !errors.Is(admissionErr, processowner.ErrInvalid) || err != nil || postRefusal != preRefusal {
 		return errors.New("observer refusal leaked partial pins")
 	}
+	if err := probeSambaStateObserverAdmissionQEMU(ctx, helper, input, inputs); err != nil {
+		return err
+	}
 	capture, err := processowner.NewSambaStateObservationCaptureQEMU(helper, input, inputs)
 	if err != nil {
 		return err
@@ -144,4 +147,77 @@ func (o *Owner) probeSambaStateObserverQEMU(ctx context.Context) (result error) 
 		return errors.New("state observer leaked retained inputs")
 	}
 	return o.revalidate(ctx)
+}
+
+// Exercise the existing public worker contract, with no backend/tool/action
+// injection. Only the disposable guest's last role mode changes temporarily;
+// the admitted capture must retain all inputs and never revive after review.
+func probeSambaStateObserverAdmissionQEMU(ctx context.Context, helper, input *os.File, inputs [7]*os.File) (result error) {
+	before, err := retainedFixtureFDCount()
+	if err != nil {
+		return err
+	}
+	capture, err := processowner.NewSambaStateObservationCaptureQEMU(helper, input, inputs)
+	if err != nil {
+		return err
+	}
+	defer func() { result = errors.Join(result, capture.Close(context.Background())) }()
+	retained, err := retainedFixtureFDCount()
+	if err != nil || retained != before+9 {
+		return errors.New("observer did not retain complete code/input/state roster")
+	}
+	canceled, cancel := context.WithCancel(ctx)
+	cancel()
+	unstarted, err := capture.Capture(canceled)
+	defer clear(unstarted.Stdout)
+	defer clear(unstarted.Stderr)
+	if !errors.Is(err, context.Canceled) || !sambaObserverEmptyResultQEMU(unstarted) {
+		return errors.New("observer cancellation before admission published output")
+	}
+	fd := int(inputs[6].Fd())
+	if unix.Fchmod(fd, 0777) != nil {
+		return errors.New("observer late-mode fault unavailable")
+	}
+	restore := true
+	defer func() {
+		if restore {
+			result = errors.Join(result, unix.Fchmod(fd, 0700))
+		}
+	}()
+	refused, err := capture.Capture(ctx)
+	defer clear(refused.Stdout)
+	defer clear(refused.Stderr)
+	if !errors.Is(err, processowner.ErrReviewRequired) || !sambaObserverEmptyResultQEMU(refused) {
+		return errors.New("observer accepted changed protected state before launch")
+	}
+	if unix.Fchmod(fd, 0700) != nil {
+		return errors.New("observer mode restoration failed")
+	}
+	restore = false
+	revived, err := capture.Capture(ctx)
+	defer clear(revived.Stdout)
+	defer clear(revived.Stderr)
+	if !errors.Is(err, processowner.ErrReviewRequired) || !sambaObserverEmptyResultQEMU(revived) {
+		return errors.New("observer restoration revived review or published output")
+	}
+	reviewPins, err := retainedFixtureFDCount()
+	if err != nil || reviewPins != retained {
+		return errors.New("observer review released protected input pins")
+	}
+	if settled, err := capture.Settled(ctx); err != nil || !settled {
+		return errors.New("observer refusal did not verify group absence")
+	}
+	if err := capture.Close(context.Background()); err != nil {
+		return err
+	}
+	after, err := retainedFixtureFDCount()
+	if err != nil || after != before {
+		return errors.New("observer refusal leaked retained inputs")
+	}
+	return nil
+}
+
+func sambaObserverEmptyResultQEMU(result processowner.CaptureResult) bool {
+	return result.Kind == processowner.CaptureUnknown && result.ExitCode == 0 &&
+		result.Stdout == nil && result.Stderr == nil
 }

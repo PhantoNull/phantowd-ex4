@@ -469,6 +469,13 @@ single-use/closed-handle refusal, verified group absence and no FD leak on
 release. This is synthetic-account observation, not identity-owned credentials,
 credential mutation/revocation, persistent state or complete root construction.
 
+The worker's separate actual ARMv5 prelaunch case verifies that a canceled
+context publishes no output or consumes the command, then a temporary protected
+directory mode fault refuses launch and retains all code/input/state pins in
+review. Restoring the mode cannot revive that capture. Verified group absence
+and explicit close release it with unchanged FD counts. This is a fixture fault,
+not permission to alter user storage; no tool/action/secret API is added.
+
 ### Construction and retained resources
 
 - Fix the backend, launcher, daemon, arguments, readiness/stop budgets and

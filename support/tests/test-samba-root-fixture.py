@@ -44,6 +44,27 @@ def reports():
 
 
 class SambaRootFixture(unittest.TestCase):
+    def test_state_observer_requires_prelaunch_refusal_and_sticky_review(self):
+        expected = ("PHANTOWD_SAMBA_OWNER_STATE_OBSERVER_REFUSAL_READY "
+                    "late_mode_drift=true before_launch=true "
+                    "cancellation_before_admission=true review_pins=true "
+                    "restoration_refused=true stopped_reaped=true "
+                    "released=true no_fd_leak=true scope=qemu-only")
+        self.assertIn(expected, fixture.MARKERS)
+        good = "\n".join([*fixture.MARKERS, SCAN_COST])
+        fixture.check_guest(good)
+        for field in ("late_mode_drift", "before_launch",
+                      "cancellation_before_admission", "review_pins",
+                      "restoration_refused", "stopped_reaped", "released",
+                      "no_fd_leak"):
+            with self.assertRaises(ValueError):
+                fixture.check_guest(good.replace(expected, expected.replace(
+                    field + "=true", field + "=false")))
+        for replacement in ("", expected + "\n" + expected,
+                            expected.replace("qemu-only", "product")):
+            with self.assertRaises(ValueError):
+                fixture.check_guest(good.replace(expected, replacement))
+
     def test_state_observer_requires_actual_retained_worker_evidence(self):
         expected = ("PHANTOWD_SAMBA_OWNER_STATE_OBSERVER_READY inputs=7 "
                     "refusals=1 caller_inputs_closed=true "
@@ -337,6 +358,11 @@ class SambaRootFixture(unittest.TestCase):
             "caller_inputs_closed=true source_path_masked=true "
             "same_objects=true closed_before_exec=true listing_redacted=true "
             "single_use=true stopped_reaped=true released=true "
+            "no_fd_leak=true scope=qemu-only",
+            "PHANTOWD_SAMBA_OWNER_STATE_OBSERVER_REFUSAL_READY "
+            "late_mode_drift=true before_launch=true "
+            "cancellation_before_admission=true review_pins=true "
+            "restoration_refused=true stopped_reaped=true released=true "
             "no_fd_leak=true scope=qemu-only",
             "PHANTOWD_SAMBA_ROOT_DONE",
         ]
