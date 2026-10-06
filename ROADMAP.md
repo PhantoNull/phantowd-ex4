@@ -2325,6 +2325,13 @@ this order, preserving the [full contract](support/SAMBA-RUNTIME-PROFILE.md#samb
    A byte/mode-identical copied catalog is refused in an actual private ARMv5
    view. These observation descriptors close before launch; this does not
    complete a race-qualified constructor or live input ownership.
+   The next QEMU-only composition now retains that closure across actual Samba
+   execution, normal stop, live mode drift and forced stop of a frozen group.
+   Caller closure, actual executed-object identity, permanent review after mode
+   restoration, retained references and explicit verified release all pass.
+   Generic static/non-root admission is unchanged. This closes the disposable
+   code-lifetime tracer, not trusted product manifest/construction or the config,
+   identity, state and storage authority requirements in steps2/3 below.
    Fix the expected closure/ABI and trusted manifest source, not self-measured
    dependency candidates. Qualify same-byte file/directory/alias replacement,
    caller closure, constructor failure and cancellation before launch.

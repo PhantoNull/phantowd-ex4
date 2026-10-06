@@ -60,6 +60,11 @@ MARKERS = (
     "writer_bytes=true unix_ownership=true kernel_ro=true "
     "duplicate_refused=true live_close_refused=true "
     "stopped_reaped=true scope=qemu-only",
+    "PHANTOWD_SAMBA_OWNER_CODE_LIFETIME_READY caller_close=true "
+    "live_code_pins=true normal_stop=true drift_stopped=true "
+    "forced_stop_review=true "
+    "review_retained=true restoration_refused=true released=true "
+    "no_fd_leak=true scope=qemu-only",
     "PHANTOWD_SAMBA_ROOT_DONE",
 )
 

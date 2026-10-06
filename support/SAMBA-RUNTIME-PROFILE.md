@@ -318,6 +318,40 @@ Race-qualified construction, trusted manifest/configuration contents, passdb
 revision, storage-grant lifetime, live input supervision and durable activation
 remain open. Read-only code does not make approved data shares read-only.
 
+### Qualified dynamic code lifetime (QEMU only)
+
+A separate `qemu && linux` constructor now retains the complete prepared code
+tree through actual Samba execution. It reuses serialized Owner revalidation,
+review and complete-group cleanup, but does not change generic `NewOwner`'s
+static/non-root admission. Both entry and construction require root and the
+exact VersatilePB model. The fixed static bootstrap is independently pinned;
+the final daemon still has its separate six-capability restricted-root profile.
+This is not the complete product Samba-specific Owner.
+
+Actual ARMv5 covers three lifetimes: normal stop; live conversion-catalog mode
+drift with normal stop; and that drift after the owned Samba group is frozen.
+The last case reads back a stopped leader and forces the existing bounded stop
+to escalate. Forced termination is review, not successful graceful shutdown.
+Code references remain retained through review and release only after explicit
+group-reap/absence verification. Mode restoration cannot restart the Owner.
+The controller's original writable tmpfs fault anchor is test-only; the launcher
+closes all escape descriptors before the daemon. No real disk is involved.
+
+Every case closes its caller root, exercises actual SMB readiness and distinct
+reader bytes, verifies the live daemon executes the retained object in a private
+restricted root with the unchanged capability/NNP profile, and rechecks the
+complete code roster while running. Final release checks descriptor absence,
+whole-group absence, repeated-close safety and a steady-state FD count.
+Local native guard/refusal/race, API/UI and all 20 fixture/seven loader tests
+pass; the final ARMv5 campaign preserves all prior access/ACL/stream gates and
+seven base artifact hashes. Native success alone is not ARMv5 execution.
+
+The new references outlive service launch, unlike the earlier point-in-time
+observers. Protected configuration/NSS contents, identity/passdb revision,
+mutable state and storage grants are still fixed disposable inputs, not retained
+product authorities. Trusted manifests, race-qualified construction, combined
+input supervision, durable recovery, product startup and HTTP remain open.
+
 ### Construction and retained resources
 
 - Fix the backend, launcher, daemon, arguments, readiness/stop budgets and

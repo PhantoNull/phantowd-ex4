@@ -99,6 +99,17 @@ data-grant ACLs, parent mount namespace or physical storage.
 
 ## Disposable construction prototype
 
+A separate guarded `qemu && linux` constructor now composes complete prepared
+code references with the pinned fixed Samba bootstrap and the existing
+serialized Owner lifecycle. The actual dynamic daemon is checked against the
+retained object. Three mandatory ARMv5 cases cover normal stop, live code-mode
+drift and forced stop of a frozen group; restoration refuses restart and review
+keeps code references until explicit verified teardown. Generic `NewOwner`
+static/non-root restrictions remain unchanged. No descriptors/owner are returned
+from the qualification probe. This test-only composition is not the complete
+Samba Owner: configuration/identity/state/storage inputs are not yet retained
+product authorities. See the [lifetime scope](../../../../support/SAMBA-RUNTIME-PROFILE.md#qualified-dynamic-code-lifetime-qemu-only).
+
 `Plan.StageQEMU` independently pins source/destination `O_PATH` descriptors.
 It requires root credentials, a local read-only source and a freshly empty
 root:root 0700 writable tmpfs destination with no ACL/capability attributes.

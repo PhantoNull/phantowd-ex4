@@ -42,6 +42,21 @@ func run() error {
 	if len(os.Args) == 2 && os.Args[1] == "owner" && os.Getuid() == 0 && os.Geteuid() == 0 {
 		return ownerFixture()
 	}
+	if len(os.Args) == 2 && os.Args[1] == "samba-code-owner" && os.Getuid() == 0 && os.Geteuid() == 0 {
+		files, aliases, err := inputs()
+		if err != nil {
+			return err
+		}
+		plan, err := runtimebundle.NewPlan(files, aliases)
+		if err != nil {
+			return err
+		}
+		root := os.NewFile(3, "fixed-readonly-code-root")
+		writer := os.NewFile(4, "fixed-qemu-fault-anchor")
+		defer root.Close()
+		defer writer.Close()
+		return plan.ProbeSambaCodeLifetimeQEMU(context.Background(), root, writer)
+	}
 	if len(os.Args) == 3 && os.Args[1] == "owner-child" && os.Getuid() == 1801 && os.Geteuid() == 1801 {
 		return ownerFixtureChild()
 	}

@@ -313,6 +313,32 @@ static int inspect_runtime_bundle(void)
     return inspect_runtime_bundle_mode(NULL);
 }
 
+/* Fixed root-only lifetime experiment. Keep the original writable tmpfs anchor
+ * ONLY in this QEMU controller, for its one controlled metadata fault. Children
+ * inherit neither anchor: the pinned launcher closes every escape descriptor.
+ * This is not a product constructor or a new privilege profile. */
+static int code_owner_fixture(void)
+{
+    int source = open(code_root, O_PATH | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC);
+    int writer = source < 0 ? -1 : fcntl(source, F_DUPFD_CLOEXEC, 5);
+    if (source < 0 || writer < 0 || close(source) ||
+        unshare(CLONE_NEWNS) ||
+        mount(NULL, "/", NULL, MS_REC | MS_PRIVATE, NULL) ||
+        mount(code_root, code_root, NULL, MS_BIND, NULL) ||
+        mount(NULL, code_root, NULL, MS_BIND | MS_REMOUNT | MS_RDONLY |
+              MS_NOSUID | MS_NODEV, NULL))
+        return fail();
+    int reader = open(code_root, O_PATH | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC);
+    if (reader < 0 || dup2(reader, 3) != 3 || dup2(writer, 4) != 4 ||
+        fcntl(3, F_SETFD, 0) || fcntl(4, F_SETFD, 0) ||
+        syscall(SYS_close_range, 5U, ~0U, 0))
+        return fail();
+    char *args[] = {"qemu-runtime-bundle", "samba-code-owner", NULL};
+    char *environment[] = {"PATH=/usr/sbin:/usr/bin:/sbin:/bin", "LC_ALL=C", NULL};
+    execve("/usr/sbin/phantowd-runtime-bundle-probe", args, environment);
+    return fail();
+}
+
 struct fixed_acl {
     struct posix_acl_xattr_header header;
     struct posix_acl_xattr_entry entries[5];
@@ -501,6 +527,8 @@ int main(int argc, char **argv)
         return inspect_runtime_bundle_mode("composed-code");
     if (argc == 2 && !strcmp(argv[1], "composed-code-copy"))
         return inspect_runtime_bundle_mode("composed-code-copy");
+    if (argc == 2 && !strcmp(argv[1], "code-owner"))
+        return code_owner_fixture();
     if (argc == 2 && (!strcmp(argv[1], "acl-prepare") ||
         !strcmp(argv[1], "acl-grant") || !strcmp(argv[1], "acl-revoke")))
         return acl_fixture(argv[1]);

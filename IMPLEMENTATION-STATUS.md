@@ -3,6 +3,29 @@
 
 # Implementation status
 
+## M4.4 retained dynamic-code lifetime — QEMU prerequisite
+
+A separate guarded QEMU constructor now retains the complete Samba code closure
+during actual daemon execution, reusing serialized revalidation/review/whole-group
+cleanup without widening generic static/non-root `NewOwner`. Caller closure,
+actual executed-object identity, live complete-roster recheck, normal stop,
+live code-mode drift and forced stop of a frozen Samba group pass on ARMv5.
+Review retains code references; mode restoration cannot restart; explicit
+verified teardown releases them with no FD leak and safe repeated Close.
+
+Final local qualification includes 20 fixture/seven loader tests, linters,
+Linux QEMU-tagged vet/focused races and Windows API/UI. Every previous Samba
+authentication, writer/reader, streams, ext4 ACL/inheritance and isolation gate
+still passes; seven base artifacts are independently unchanged. Outer containers
+are non-root/capability-free and disposable, with bounded RAM scratch, no new
+persistent image/volume and no NAS/physical-storage operation.
+
+This advances code lifetime, not complete service authority. Protected config,
+identity/passdb revision, mutable state and descriptor-bound storage grants,
+race-qualified construction, trusted manifest/ABI/model binding, combined live
+supervision, durable recovery and product activation remain open. See the
+[qualified lifetime profile](support/SAMBA-RUNTIME-PROFILE.md#qualified-dynamic-code-lifetime-qemu-only).
+
 ## M4.4 separate code/service views — QEMU prerequisite
 
 The fixture now preserves an exact code-only staged tree while composing a
