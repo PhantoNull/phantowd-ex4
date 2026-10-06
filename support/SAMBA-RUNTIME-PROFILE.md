@@ -544,6 +544,47 @@ Configuration release follows verified closure of both captures. This does
 not qualify a continuous identity lease, descriptor-bound product code/root,
 daemon credentials/state composition or durable service recovery.
 
+### Native credential workers (QEMU only)
+
+The next separate fixture binds one `smbexec.NativeBackendQEMU` at native
+Owner opening. It reuses the existing passdb parsing and journal-facing
+credential logic, not fabricated journals/SIDs or copied TDB files. Expected
+configuration is rendered again from the opaque native lookup, independently
+of the staged directory. A bootstrap Owner closes before this fresh admission;
+no continuous identity authority is claimed.
+
+The private runtime retains the full eight-entry code closure (including
+`smbstatus`/`smbcontrol`), seven exact config files and seven original state
+directories. Each fixed capture duplicates config root plus four files and all
+seven state directories. Before namespace change, the helper clones all twelve
+original objects; private source-path masking cannot redirect them. Child views
+must match original inode/device, protected config remains read-only/noexec,
+state writable/noexec, escape FDs close and capabilities reduce to `0xdb`/NNP.
+There are no devices, host paths, data grants, daemon or externally exposed port.
+
+Password input is a bounded sealed read-only memfd with two matching lines.
+Raw output stays private and is cleared when not needed. Complete code/config/
+state rechecks occur immediately before execution and after verified settlement;
+configuration-only binding is not launch authorization. This removes duplicate
+full code scans without weakening the older integrity inspector. The original
+60-second credential-fixture and 180-second guest budgets remain.
+
+Actual ARMv5 requires two real native identities to progress from absent to
+disabled/no-password, password-confirmed/still-disabled, then explicit enable
+with the same SID. Final identities have distinct SIDs. Verified worker close
+and final FD-count equality are mandatory; driver tests reject missing,
+duplicate or weakened evidence. All 33 driver/seven loader tests and old/new
+guest gates pass, base unchanged. Host tests qualify guarded refusal separately.
+
+This does not qualify a daemon using these objects, actual authentication/live
+revocation in this new composition, storage grants, retained identity authority,
+durable quarantine/recovery, signed manifest authority, product startup or EX4.
+Session-control verbs are not qualified by merely including their executables.
+Uncertain cleanup is not reported as successful release; durable ownership
+through caller loss/GC still needs the product recovery/lifecycle design.
+
+### Product construction requirements
+
 - Fix the backend, launcher, daemon, arguments, readiness/stop budgets and
   protected roots once at construction. No operation accepts replacements,
   arbitrary paths, executable selection, credentials or a new backend.

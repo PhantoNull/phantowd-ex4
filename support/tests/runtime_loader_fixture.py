@@ -24,7 +24,7 @@ def safe_path(value):
 def validate(report, *, fixed_entry=FIXED_ENTRY):
     if fixed_entry not in (
             FIXED_ENTRY, "usr/bin/smbpasswd", "usr/bin/testparm",
-            "usr/bin/pdbedit",
+            "usr/bin/pdbedit", "usr/bin/smbstatus", "usr/bin/smbcontrol",
             "usr/lib/samba/vfs/streams_xattr.so", "usr/lib/gconv/IBM850.so"):
         raise ValueError("unsupported fixed fixture entry")
     if not isinstance(report, dict):

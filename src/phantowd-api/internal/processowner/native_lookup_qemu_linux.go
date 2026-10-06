@@ -109,6 +109,10 @@ func NewNativeLookupCaptureQEMU(executable, input *os.File, configuration [4]*os
 }
 
 func duplicateNativeConfigurationQEMU(source *os.File, directory bool) (*os.File, error) {
+	return duplicateNativeConfigurationModeQEMU(source, directory, false)
+}
+
+func duplicateNativeConfigurationModeQEMU(source *os.File, directory, private bool) (*os.File, error) {
 	if source == nil {
 		return nil, ErrInvalid
 	}
@@ -126,6 +130,9 @@ func duplicateNativeConfigurationQEMU(source *os.File, directory bool) (*os.File
 	var st unix.Stat_t
 	var fs unix.Statfs_t
 	mode := uint32(unix.S_IFREG | 0644)
+	if private {
+		mode = unix.S_IFREG | 0600
+	}
 	if directory {
 		mode = unix.S_IFDIR | 0755
 	}

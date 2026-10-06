@@ -2406,8 +2406,21 @@ this order, preserving the [full contract](support/SAMBA-RUNTIME-PROFILE.md#samb
    driver tests and old/new ARMv5 gates pass within the same guest budget.
    This is read-only worker handoff, not retained identity/service authority,
    descriptor-bound product code/root construction or credential backend.
-   Next compose the full retained native configuration with a startup-bound
-   credential backend and daemon using the SAME mutable state. Never bootstrap by
+   A separate credential-only QEMU composition now fixes its backend at
+   `identityowner.OpenWithSMBBackend` and retains the complete code roster,
+   independently expected native configuration and original writable state.
+   Twelve-object worker handoff masks both source paths, attaches original
+   objects and closes inherited escape FDs. Actual two-account disabled-first,
+   sealed-stdin password and separate enable cycles preserve each SID; verified
+   settlement/close restores the initial FD count. All 33 driver tests and older
+   ARMv5 gates pass within unchanged 60/180-second fixture/guest budgets. Complete
+   checks bracket each worker; duplicate pre-admission hashing is eliminated,
+   not replaced by cached launch authorization. This is not a daemon, continuous
+   identity lease or durable product quarantine/recovery. The factory/fixture
+   remain trusted test-only composition; product ownership is not established.
+   Next bind that credential backend and daemon to the SAME mutable state and
+   qualify actual authentication/revocation there, then identity/storage authority
+   and protected product construction. Never bootstrap by
    fabricating enabled journals/SIDs, copying TDBs or
    passing enrollment lookup as active-service evidence. Closing/reopening an
    identity Owner is new admission, not continuous retained authority.

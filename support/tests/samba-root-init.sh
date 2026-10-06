@@ -292,6 +292,7 @@ run_fixture() {
         'nobody:!:0:0:99999:7:::' >/etc/shadow
     chmod 0600 /etc/shadow || return 1
     /usr/sbin/phantowd-runtime-bundle-probe native-lookup || return 1
+    /usr/sbin/phantowd-runtime-bundle-probe native-credentials || return 1
     echo PHANTOWD_SAMBA_ROOT_DONE
 }
 if ! run_fixture; then

@@ -781,6 +781,144 @@ static int native_lookup_fixture(int handoff)
     return fail();
 }
 
+/* Fixed disposable credential profile. It deliberately has no daemon/data
+ * grants. Admission receives five original immutable config objects followed
+ * by seven original mutable state directories; no pathname fallback is used. */
+static int native_credential_fixture(const char *operation, const char *name)
+{
+    const char native_root[] = "/run/phantowd-native-samba-root";
+    const char config[] = "/run/phantowd-native-samba-root/etc";
+    const char state[] = "/run/phantowd-native-samba-state";
+    const char *config_roles[] = {"", "/passwd", "/group", "/nsswitch.conf", "/samba/smb.conf"};
+    const char *state_roles[] = {"", "/private", "/lock", "/state", "/cache", "/pid", "/rpc"};
+    const char *attributes[] = {"system.posix_acl_access", "system.posix_acl_default", "security.capability"};
+    int read_operation = !strcmp(operation, "check") || !strcmp(operation, "list") || !strcmp(operation, "status");
+    int write_operation = !strcmp(operation, "create") || !strcmp(operation, "password") ||
+        !strcmp(operation, "enable") || !strcmp(operation, "disable") || !strcmp(operation, "revoke");
+    if (owned_group_context() || (!read_operation && !write_operation) ||
+        (read_operation ? *name != '\0' : (strcmp(name, "qpmanaged") && strcmp(name, "qpsecond"))))
+        return fail();
+    struct stat input, objects[12];
+    int input_flags = fcntl(0, F_GETFL);
+    int seals = fcntl(0, F_GET_SEALS);
+    const int required = F_SEAL_WRITE | F_SEAL_GROW | F_SEAL_SHRINK | F_SEAL_SEAL;
+    if (input_flags < 0 || (input_flags & O_ACCMODE) != O_RDONLY ||
+        seals < 0 || (seals & required) != required || fstat(0, &input) ||
+        !S_ISREG(input.st_mode) || input.st_size < 0 || input.st_size > 514 ||
+        (strcmp(operation, "password") && input.st_size))
+        return fail();
+    int clones[12];
+    for (int index = 0; index < 12; ++index) {
+        int fd = 4 + index;
+        int directory = index == 0 || index >= 5;
+        int flags = fcntl(fd, F_GETFL);
+        struct statfs fs;
+        mode_t mode = directory ? (S_IFDIR | (index ? 0700 : 0755)) :
+            (S_IFREG | (index == 4 ? 0600 : 0644));
+        unsigned long expected = ST_NOSUID | ST_NODEV | ST_NOEXEC |
+            (index < 5 ? ST_RDONLY : 0);
+        if (flags < 0 || (flags & O_ACCMODE) != O_RDONLY || (flags & O_PATH) ||
+            !!(flags & O_DIRECTORY) != directory || fstat(fd, &objects[index]) ||
+            objects[index].st_mode != mode || objects[index].st_uid || objects[index].st_gid ||
+            (!directory && (objects[index].st_nlink != 1 || objects[index].st_size <= 0 || objects[index].st_size > 32768)) ||
+            fstatfs(fd, &fs) || fs.f_type != TMPFS_MAGIC ||
+            (fs.f_flags & (ST_RDONLY | ST_NOSUID | ST_NODEV | ST_NOEXEC)) != expected ||
+            objects[index].st_dev != objects[index < 5 ? 0 : 5].st_dev)
+            return fail();
+        for (int prior = 0; prior < index; ++prior)
+            if (objects[index].st_dev == objects[prior].st_dev && objects[index].st_ino == objects[prior].st_ino)
+                return fail();
+        for (size_t item = 0; item < sizeof(attributes) / sizeof(attributes[0]); ++item)
+            if (fgetxattr(fd, attributes[item], NULL, 0) >= 0 || (errno != ENODATA && errno != ENOTSUP))
+                return fail();
+        clones[index] = syscall(SYS_open_tree, fd, "", OPEN_TREE_CLONE | OPEN_TREE_CLOEXEC | AT_EMPTY_PATH);
+        if (clones[index] < 0)
+            return fail();
+    }
+    struct stat info;
+    struct statfs fs;
+    if (lstat(native_root, &info) || info.st_mode != (S_IFDIR | 0755) || info.st_uid || info.st_gid ||
+        statfs(native_root, &fs) || fs.f_type != TMPFS_MAGIC || unshare(CLONE_NEWNS | CLONE_NEWNET) ||
+        mount(NULL, "/", NULL, MS_REC | MS_PRIVATE, NULL) || mount(native_root, native_root, NULL, MS_BIND, NULL))
+        return fail();
+    for (int index = 0; index < 2; ++index) {
+        char source[96], destination[96];
+        struct stat before, after;
+        struct statvfs flags;
+        snprintf(source, sizeof(source), "%s/%s", code_root, index ? "usr" : "lib");
+        snprintf(destination, sizeof(destination), "%s/%s", native_root, index ? "usr" : "lib");
+        if (lstat(source, &before) || !S_ISDIR(before.st_mode) || before.st_uid || before.st_gid || (before.st_mode & 0022) ||
+            mount(source, destination, NULL, MS_BIND, NULL) ||
+            mount(NULL, destination, NULL, MS_BIND | MS_REMOUNT | MS_RDONLY | MS_NOSUID | MS_NODEV, NULL) ||
+            stat(destination, &after) || before.st_dev != after.st_dev || before.st_ino != after.st_ino ||
+            statvfs(destination, &flags) || !(flags.f_flag & ST_RDONLY) || (flags.f_flag & ST_NOEXEC))
+            return fail();
+    }
+    /* Poison both child source paths before attaching detached originals. */
+    struct stat masked;
+    if (mount("tmpfs", config, "tmpfs", MS_NOSUID | MS_NODEV | MS_NOEXEC, "size=64k,mode=0755") ||
+        stat(config, &masked) || (objects[0].st_dev == masked.st_dev && objects[0].st_ino == masked.st_ino) ||
+        mount("tmpfs", state, "tmpfs", MS_NOSUID | MS_NODEV | MS_NOEXEC, "size=64k,mode=0700") ||
+        stat(state, &masked) || (objects[5].st_dev == masked.st_dev && objects[5].st_ino == masked.st_ino))
+        return fail();
+    for (int index = 0; index < 12; ++index) {
+        char destination[128];
+        struct stat actual;
+        struct statvfs flags;
+        unsigned long expected = ST_NOSUID | ST_NODEV | ST_NOEXEC | (index < 5 ? ST_RDONLY : 0);
+        if (index < 5)
+            snprintf(destination, sizeof(destination), "%s%s", config, config_roles[index]);
+        else
+            snprintf(destination, sizeof(destination), "%s/state%s", native_root, state_roles[index - 5]);
+        if (syscall(SYS_move_mount, clones[index], "", AT_FDCWD, destination, MOVE_MOUNT_F_EMPTY_PATH) ||
+            close(clones[index]) || mount(NULL, destination, NULL, MS_BIND | MS_REMOUNT |
+                MS_NOSUID | MS_NODEV | MS_NOEXEC | (index < 5 ? MS_RDONLY : 0), NULL) ||
+            stat(destination, &actual) || objects[index].st_dev != actual.st_dev || objects[index].st_ino != actual.st_ino ||
+            statvfs(destination, &flags) || (flags.f_flag & (ST_RDONLY | ST_NOSUID | ST_NODEV | ST_NOEXEC)) != expected)
+            return fail();
+    }
+    if (mount(NULL, native_root, NULL, MS_BIND | MS_REMOUNT | MS_RDONLY | MS_NOSUID | MS_NODEV, NULL) ||
+        chroot(native_root) || chdir("/") || syscall(SYS_close_range, 3U, ~0U, 0) || restrict_capabilities())
+        return fail();
+    for (int fd = 3; fd <= 64; ++fd)
+        if (fcntl(fd, F_GETFD) != -1 || errno != EBADF)
+            return fail();
+    if (access("/proc", F_OK) != -1 || errno != ENOENT || access("/dev", F_OK) != -1 || errno != ENOENT ||
+        access("/run", F_OK) != -1 || errno != ENOENT)
+        return fail();
+    char *arguments[8] = {NULL};
+    const char *executable;
+    if (!strcmp(operation, "check") || !strcmp(operation, "list") || !strcmp(operation, "status")) {
+        executable = !strcmp(operation, "check") ? "/usr/bin/testparm" :
+            (!strcmp(operation, "list") ? "/usr/bin/pdbedit" : "/usr/bin/smbstatus");
+        arguments[0] = !strcmp(operation, "check") ? "testparm" : (!strcmp(operation, "list") ? "pdbedit" : "smbstatus");
+        arguments[1] = !strcmp(operation, "check") ? "-s" : (!strcmp(operation, "list") ? "-L" : "-j");
+        int index = 2;
+        if (!strcmp(operation, "list"))
+            arguments[index++] = "-v";
+        if (strcmp(operation, "check"))
+            arguments[index++] = "-s";
+        arguments[index] = "/etc/samba/smb.conf";
+    } else if (!strcmp(operation, "revoke")) {
+        executable = "/usr/bin/smbcontrol";
+        arguments[0] = "smbcontrol"; arguments[1] = "-s"; arguments[2] = "/etc/samba/smb.conf";
+        arguments[3] = "smbd"; arguments[4] = "logoff-user"; arguments[5] = (char *)name;
+    } else {
+        executable = "/usr/bin/smbpasswd";
+        arguments[0] = "smbpasswd";
+        int index = 1;
+        if (!strcmp(operation, "create")) { arguments[index++] = "-a"; arguments[index++] = "-d"; }
+        else if (!strcmp(operation, "password")) { arguments[index++] = "-s"; arguments[index++] = "--set-password-disabled"; }
+        else arguments[index++] = !strcmp(operation, "enable") ? "-e" : "-d";
+        arguments[index++] = "-c"; arguments[index++] = "/etc/samba/smb.conf"; arguments[index] = (char *)name;
+    }
+    fputs("PHANTOWD_NATIVE_CREDENTIAL_HANDOFF_READY inputs=12 original_config=true original_state=true closed_before_exec=true scope=qemu-only\n", stderr);
+    fflush(stderr);
+    char *environment[] = {"PATH=/usr/sbin:/usr/bin:/sbin:/bin", "LC_ALL=C", NULL};
+    execve(executable, arguments, environment);
+    return fail();
+}
+
 int main(int argc, char **argv)
 {
     if (guard())
@@ -791,6 +929,8 @@ int main(int argc, char **argv)
         return native_lookup_fixture(0);
     if (argc == 2 && !strcmp(argv[1], "native-lookup-retained"))
         return native_lookup_fixture(1);
+    if (argc == 4 && !strcmp(argv[1], "native-credential"))
+        return native_credential_fixture(argv[2], argv[3]);
     if (argc == 2 && !strcmp(argv[1], "runtime-bundle"))
         return inspect_runtime_bundle();
     if (argc == 2 && !strcmp(argv[1], "composed-code"))

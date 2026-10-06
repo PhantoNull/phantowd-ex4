@@ -44,6 +44,33 @@ def reports():
 
 
 class SambaRootFixture(unittest.TestCase):
+    def test_native_enrollment_requires_real_disabled_first_cycle(self):
+        expected = ("PHANTOWD_SAMBA_OWNER_NATIVE_ENROLLMENT_READY accounts=2 "
+                    "owner_bound=true original_config=true "
+                    "original_state=true "
+                    "disabled_first=true stdin_only=true same_sid=true "
+                    "explicit_enable=true stopped_reaped=true "
+                    "no_fd_leak=true scope=qemu-only")
+        self.assertIn(expected, fixture.MARKERS)
+        good = "\n".join([*fixture.MARKERS, SCAN_COST])
+        fixture.check_guest(good)
+        for field in ("owner_bound", "original_config", "original_state",
+                      "disabled_first", "stdin_only", "same_sid",
+                      "explicit_enable", "stopped_reaped", "no_fd_leak"):
+            with self.assertRaises(ValueError):
+                fixture.check_guest(good.replace(expected, expected.replace(
+                    field + "=true", field + "=false")))
+        for replacement in ("", expected + "\n" + expected,
+                            expected.replace("accounts=2", "accounts=1"),
+                            expected.replace("qemu-only", "product")):
+            with self.assertRaises(ValueError):
+                fixture.check_guest(good.replace(expected, replacement))
+
+    def test_complete_manifest_contains_session_control_tools(self):
+        manifest = merge(reports())
+        for path in ("usr/bin/smbstatus", "usr/bin/smbcontrol"):
+            self.assertIn(" /" + path + "\n", manifest)
+
     def test_native_handoff_requires_originals_and_refusals(self):
         expected = ("PHANTOWD_SAMBA_OWNER_NATIVE_HANDOFF_READY inputs=4 "
                     "refusals=7 source_path_masked=true same_objects=true "
@@ -275,7 +302,7 @@ class SambaRootFixture(unittest.TestCase):
 
     def test_deduplicated_fixed_roster(self):
         manifest = merge(reports())
-        self.assertEqual(len(manifest.splitlines()), 8)
+        self.assertEqual(len(manifest.splitlines()), 10)
         self.assertEqual(manifest.count("b" * 64), 1)
         self.assertIn(hashlib.sha256(CATALOG.encode()).hexdigest(), manifest)
         self.assertNotEqual(
@@ -469,6 +496,11 @@ class SambaRootFixture(unittest.TestCase):
             "readonly_noexec=true closed_before_exec=true "
             "late_drift_refused=true review_sticky=true partial_cleanup=true "
             "stopped_reaped=true no_fd_leak=true scope=qemu-only",
+            "PHANTOWD_SAMBA_OWNER_NATIVE_ENROLLMENT_READY accounts=2 "
+            "owner_bound=true original_config=true original_state=true "
+            "disabled_first=true stdin_only=true same_sid=true "
+            "explicit_enable=true stopped_reaped=true "
+            "no_fd_leak=true scope=qemu-only",
             "PHANTOWD_SAMBA_ROOT_DONE",
         ]
         fixture.check_guest("\r\n".join(lines + [SCAN_COST]))

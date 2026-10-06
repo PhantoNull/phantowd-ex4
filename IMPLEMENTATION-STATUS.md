@@ -3,6 +3,43 @@
 
 # Implementation status
 
+## M2.4 Owner-bound native credential workers — disposable QEMU
+
+The actual two Unix identities from the native lookup now enroll through a
+backend fixed at `identityowner.OpenWithSMBBackend`, not a per-operation adapter.
+Its private runtime retains the complete code roster, independently expected
+Owner-derived configuration and one original writable state directory tuple.
+The exact roster now also includes `smbstatus` and `smbcontrol` and their closure.
+
+A fixed worker receives twelve original objects: configuration root plus
+passwd/group/nsswitch/smb.conf, followed by state root and six private role
+directories. It clones them before unsharing, masks the source paths, verifies
+same-object attachment, closes escape FDs and executes a fixed Samba command
+with bounded privileges. The protected config is read-only/noexec; mutable
+state is writable/noexec. Password input is a bounded, sealed read-only memfd,
+never argv or environment. Raw command output remains private parser input.
+
+Actual ARMv5 tests require absent → disabled/no-password → password still
+disabled → separately enabled for both real identities, with unchanged per-user
+SID and distinct final SIDs. Every worker settles and closes before release;
+the final descriptor count matches the baseline. The official campaign passes
+all 33 driver tests, seven loader tests, lint/ShellCheck and every older gate,
+with unchanged base image and the existing 180-second guest budget.
+
+The first composition reproduced a 60-second fixture deadline caused by four
+complete code scans per command. Configuration binding now checks configuration
+only; full code/config/state checks immediately bracket each worker. Both
+identities finish within the original 60-second budget; checks were not removed
+from the effect boundary or replaced by cached success.
+
+This is **credential-only fixture composition**, not a daemon using that state,
+live-session revocation in this composition, storage grants, continuous identity
+authority, descriptor-bound product code/root construction, durable quarantine,
+startup recovery, HTTP or physical EX4 qualification. The bootstrap Owner closes
+before a fresh backend-bound admission; this is not continuous retention. The
+legacy fixture's session-revocation proof is not borrowed for this new profile.
+No product service, installer or new full-image qualification is established.
+
 ## M2.4 Owner-derived native configuration and descriptor handoff — QEMU
 
 The native enrollment candidate now supplies the independently expected hashes,

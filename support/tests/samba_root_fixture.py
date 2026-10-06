@@ -13,7 +13,7 @@ from runtime_loader_fixture import MAX_LOG, MAX_REPORT, read_bounded, validate
 
 ENTRIES = ("usr/sbin/smbd", "usr/bin/smbpasswd", "usr/bin/testparm",
            "usr/lib/samba/vfs/streams_xattr.so", "usr/lib/gconv/IBM850.so",
-           "usr/bin/pdbedit")
+           "usr/bin/pdbedit", "usr/bin/smbstatus", "usr/bin/smbcontrol")
 CATALOG_PATH = "usr/lib/gconv/gconv-modules"
 CATALOG_ROWS = frozenset({
     ("alias", "CP850//", "IBM850//"),
@@ -109,6 +109,10 @@ MARKERS = (
     "readonly_noexec=true closed_before_exec=true late_drift_refused=true "
     "review_sticky=true partial_cleanup=true stopped_reaped=true "
     "no_fd_leak=true scope=qemu-only",
+    "PHANTOWD_SAMBA_OWNER_NATIVE_ENROLLMENT_READY accounts=2 "
+    "owner_bound=true original_config=true original_state=true "
+    "disabled_first=true stdin_only=true same_sid=true explicit_enable=true "
+    "stopped_reaped=true no_fd_leak=true scope=qemu-only",
     "PHANTOWD_SAMBA_ROOT_DONE",
 )
 
@@ -195,6 +199,8 @@ def main():
     prepare.add_argument("streams_xattr")
     prepare.add_argument("ibm850")
     prepare.add_argument("pdbedit")
+    prepare.add_argument("smbstatus")
+    prepare.add_argument("smbcontrol")
     prepare.add_argument("catalog")
     prepare.add_argument("manifest")
     verify = sub.add_parser("verify")
@@ -203,7 +209,7 @@ def main():
     if args.command == "prepare":
         reports = [json.loads(read_bounded(name, MAX_REPORT)) for name in (
             args.smbd, args.smbpasswd, args.testparm, args.streams_xattr,
-            args.ibm850, args.pdbedit)]
+            args.ibm850, args.pdbedit, args.smbstatus, args.smbcontrol)]
         if Path(args.catalog).is_symlink() or not Path(args.catalog).is_file():
             raise ValueError("regular fixed conversion catalog required")
         catalog = read_bounded(args.catalog, 4096)
