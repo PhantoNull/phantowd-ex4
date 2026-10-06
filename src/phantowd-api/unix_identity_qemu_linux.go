@@ -135,6 +135,9 @@ func exerciseQEMUUnixIdentity() (result error) {
 	if status, err := partial.Assess(a); err != nil || status != unixidentity.Partial {
 		return errors.New("group-only fixture not classified as partial")
 	}
+	if lookup, err := owner.NativeLookupSnapshot(context.Background()); !errors.Is(err, identityowner.ErrPending) || lookup.Fingerprint != [32]byte{} {
+		return errors.New("native enrollment lookup accepted actual incomplete identity")
+	}
 	// Resume a confirmed group after store close/reopen; this is not an
 	// ambiguous dispatch. The next command still needs fresh group-only state.
 	if _, err := owner.Reserve(context.Background(), 2, "other", "qpother"); !errors.Is(err, identityowner.ErrPending) {
@@ -270,6 +273,9 @@ func exerciseQEMUSecondIdentity(owner *identityowner.Owner, first serviceaccount
 		if err := verifyQEMUIdentityLogin(a.Name); err != nil {
 			return err
 		}
+	}
+	if err := exerciseQEMUNativeEnrollmentLookup(owner); err != nil {
+		return err
 	}
 	if err := exerciseQEMUDisabledPasswordBoundary(owner, second); err != nil {
 		return err

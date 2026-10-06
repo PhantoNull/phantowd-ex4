@@ -166,6 +166,10 @@ while [ "$attempt" -lt "$smoke_timeout" ]; do
             echo "Missing internal file-service plan assertion" >&2
             exit 1
         fi
+        if ! test "$(sed 's/\r$//' "$log_file" | grep -Fxc 'PHANTOWD_M24_NATIVE_ENROLLMENT_LOOKUP_READY accounts=2 before_enrollment=true private_groups=true files_only=true foreign_omitted=true journals_unchanged=true json_refused=true installed=false activation=false scope=disposable-qemu-only')" -eq 1; then
+            echo 'Missing or duplicate native enrollment lookup assertion' >&2
+            exit 1
+        fi
         if ! sed 's/\r$//' "$log_file" | grep -Fx 'PHANTOWD_M41_OWNER_SAMBA_NSS_READY identity=owner_passdb storage=mounted_roster locks=ordered native_private_groups=true files_only=true census_refusals=2 desired_roundtrip=true journals_unchanged=true stale_refused=true installed=false activation=false scope=disposable-qemu-only' >/dev/null; then
             echo 'Missing Owner-derived Samba NSS candidate assertion' >&2
             exit 1

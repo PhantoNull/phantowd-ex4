@@ -95,6 +95,29 @@ The documents are **not installed or used by the running Samba daemon**. This
 does not provide a consumer lease, native libc NSS qualification, same-passdb
 state binding, revocation coordination or product service activation.
 
+## Native lookup before Samba enrollment
+
+`SambaEnrollmentLookupFromOwner(ctx, owner)` is a separate Linux-only internal
+constructor, not `Build`, `Plan` or `IdentitySnapshot`. It derives bounded
+passwd/group/nsswitch candidates from the Owner's fresh native-only observation
+under the mutation lock, including confirmed desired-disabled accounts before
+passdb enrollment. It does not query a credential backend or fabricate
+passdb-absence, SID or enabled-journal evidence.
+
+The immutable `SambaEnrollmentLookup` exposes `LookupDocuments` and its source
+`Fingerprint`; zero/error cases yield no documents. It rejects JSON in both
+directions. Rendering shares the active planner's locked, files-only private
+identity grammar and 32 KiB/128-account limits, but has a separate admission
+contract. No unrelated/imported users, shadow data or supplementary groups are
+copied; rendering does not reorder the source registry.
+
+The existing `Plan` still requires enabled, granted accounts and corroborated
+live passdb evidence. Enrollment lookup cannot substitute for service evidence,
+authorize a mount/share/login or be passed as a Plan. These documents are not
+installed, consumed by libc or bound to the running Samba daemon. A future
+constructor must qualify fresh same-object configuration/state and retained
+identity/storage ownership without holding the pure callback across I/O.
+
 ## Remaining M4.1 work
 
 The identity Owner evidence adapter is host-tested and exercised in ARMv5 QEMU

@@ -515,6 +515,9 @@ func TestFileServiceSnapshotRefusesInterruptedSMBIntentWithoutRecovery(t *testin
 	if _, err := o.FileServiceSnapshot(ctx); !errors.Is(err, ErrReview) {
 		t.Fatalf("interrupted intent must be surfaced for review: %v", err)
 	}
+	if lookup, err := o.NativeLookupSnapshot(ctx); !errors.Is(err, ErrReview) || lookup.Fingerprint != [32]byte{} {
+		t.Fatal("native lookup must refuse interrupted SMB intent without recovery:", err)
+	}
 	after, err := os.ReadFile(journalPath)
 	if err != nil || string(after) != string(before) {
 		t.Fatalf("read-only snapshot changed interrupted intent: before=%s after=%s error=%v", before, after, err)
@@ -570,6 +573,9 @@ func TestFileServiceSnapshotFailsClosedOnReviewRequiredSMBJournal(t *testing.T) 
 	if _, err := o.FileServiceSnapshot(ctx); !errors.Is(err, ErrReview) {
 		t.Fatalf("review-required identity must refuse the complete evidence snapshot: %v", err)
 	}
+	if lookup, err := o.NativeLookupSnapshot(ctx); !errors.Is(err, ErrReview) || lookup.Fingerprint != [32]byte{} {
+		t.Fatal("native lookup must refuse review-required SMB state:", err)
+	}
 	after, err := os.ReadFile(journalPath)
 	if err != nil || string(after) != string(before) {
 		t.Fatalf("read-only snapshot changed review-required journal: before=%s after=%s error=%v", before, after, err)
@@ -619,6 +625,9 @@ func TestFileServiceSnapshotRefusesNativeIntentWithoutRecovery(t *testing.T) {
 	defer reopened.Close()
 	if _, err := reopened.FileServiceSnapshot(ctx); !errors.Is(err, ErrPending) {
 		t.Fatalf("native intent must be reported as pending, not recovered: %v", err)
+	}
+	if lookup, err := reopened.NativeLookupSnapshot(ctx); !errors.Is(err, ErrPending) || lookup.Fingerprint != [32]byte{} {
+		t.Fatal("native lookup must leave interrupted native intent untouched:", err)
 	}
 	after, err := os.ReadFile(journalPath)
 	if err != nil || string(after) != string(before) {

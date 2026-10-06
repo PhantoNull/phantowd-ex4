@@ -82,6 +82,36 @@ activation I/O. The snapshot itself uses the non-recovering scan path; ordinary
 intent makes the complete observation fail closed without passdb reads, replay,
 or journal rewrites.
 
+## Native enrollment lookup
+
+`NativeLookupSnapshot(ctx)` and `WithNativeLookupSnapshot(ctx, inspect)` are
+trusted in-process read-only operations, not socket/HTTP methods. They collect
+the validated registry, confirmed native journals, existing stable Samba
+journals and fresh complete local Unix reservations under the same mutation
+lock. Desired-disabled native accounts are included even before Samba
+enrollment; no Samba backend is required or queried. An empty ledger still
+requires an explicit complete Unix observation.
+
+Incomplete or mismatched native identities, interrupted/review Samba journals,
+unknown/replaced stores and incomplete Unix observations refuse the whole
+result. No intent is recovered, journal rewritten, credential observed or
+command dispatched. The native checks are shared with `FileServiceSnapshot`;
+that stronger reader retains its existing batched passdb requirement and
+fingerprint format. Both convenience readers return zero evidence on error.
+
+Lookup fingerprints use a separate domain and cover registry, native/stable
+Samba journals and the complete local UID/GID/name census. They detect even
+desired-state or foreign-census changes, but do not retain authority or freeze
+files. Returned collections are independent of the Owner stores and JSON
+marshal/unmarshal is refused. Callbacks permit only bounded in-process
+derivation: no reentry, staging I/O, subprocesses or service lifetime.
+
+This evidence cannot establish passdb absence, enabled credentials, SID
+freshness, share grants or mount/service readiness. The separate internal
+`fileserviceplan.SambaEnrollmentLookupFromOwner` renders lookup-only documents;
+the enabled-service planner remains unchanged. Staging, actual libc lookup,
+same-state credential backend construction and product startup remain open.
+
 ## File-service consumer retention
 
 `RetainFileServiceSnapshot(ctx, expectedFingerprint)` is a trusted in-process
