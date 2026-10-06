@@ -2353,7 +2353,10 @@ this order, preserving the [full contract](support/SAMBA-RUNTIME-PROFILE.md#samb
    backed by host kernel randomness rather than a fixed seed. This removes the
    measured initial enrollment wait without extending its180-second deadline;
    missing-provider execution fails before staging/authentication. A previous
-   complete local timeout stays failed until renewed full integration passes.
+   complete local timeout stays failed. Renewed complete cached local
+   integration on `faf1c88` passes all old/new guest lanes and independently
+   verifies embedded API and collected source contents. It does not substitute
+   for this increment's own clean CI or qualify product activation/hardware.
 3. Integrate serial revalidation and lifecycle supervision: drift/source loss or
    unexpected exit stops the known group before any input release; uncertain or
    forced stop retains authorities in review. Test restoration/no-restart,

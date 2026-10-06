@@ -23,15 +23,21 @@ generic static/non-root admission are unchanged.
 Local final-source qualification passes 22 fixture/seven loader tests, linters,
 actual full focused Samba ARMv5 campaign, Linux QEMU-tagged vet/focused races,
 and Windows API/UI/cross-compile. All older code/SMB/access/ACL/streams checks
-remain green and all seven base hashes unchanged. This is focused qualification,
-not a complete Buildroot validation of this increment or a product activation
-claim. A complete local attempt reached the unchanged Samba guest deadline
+remain green and all seven base hashes unchanged. Renewed complete cached local
+Buildroot/QEMU validation on `faf1c88` also passes after the correction below:
+host vet/tests/races/fuzz, image/source collection, initial smoke, MD metadata,
+two-boot persistence, isolated/static Owner, loader/atomic, actual Samba and
+both final SMART lanes. All 847 tracked API files match the compiled source
+tree and collected package archive; the API embedded in rootfs matches the
+target and exported artifact. This is cached local integration, not independent
+clean CI, complete release-source compliance or a product activation claim.
+The preceding complete local attempt reached the unchanged Samba guest deadline
 after code lifetime but before configuration/DONE. Phase measurements isolated
 an initial entropy wait; the driver now supplies the already-supported virtual
 RNG from host kernel randomness and refuses a missing provider before staging.
 The actual missing-provider negative and complete focused positive pass without
 relaxing the deadline, privilege profile or access checks. The failed complete
-attempt remains failed; renewed full integration is still required.
+attempt remains failed; the corrected complete run is independently successful.
 Product renderer/identity revision, state and storage authorities,
 race-qualified root construction and durable recovery remain open. See the
 [protected configuration contract](support/SAMBA-RUNTIME-PROFILE.md#qualified-protected-configuration-lifetime-qemu-only).

@@ -396,6 +396,12 @@ Final local checks pass 21 fixture/seven loader tests, linters, Linux vet/focuse
 races, Windows API/UI/cross-compile and the actual focused ARMv5 campaign; seven
 base hashes remain unchanged. This is not complete fresh Buildroot validation.
 
+Complete cached local integration on `faf1c88` additionally passes the existing
+smoke/MD/two-boot/static-owner/loader/atomic/Samba/final SMART suites with the
+provider correction. The embedded API and collected API source archive are
+independently compared with target/artifact and frozen source respectively.
+This does not establish clean-build reproducibility or release compliance.
+
 These inputs remain synthetic. Product trusted renderer/NSS provenance,
 identity-authority passdb/revision, mutable state, retained storage leases,
 race-qualified root construction, combined supervision, durable activation and
