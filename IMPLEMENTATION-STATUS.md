@@ -3,6 +3,130 @@
 
 # Implementation status
 
+## Complete cached native-revocation integration — local qualification
+
+Frozen `57ee527` passes the complete cached local lane: API/vet/race/fixed-count
+fuzz, source/configuration preflights, package/source/legal-info collection,
+actual ARMv5 smoke/MD/two-boot, launcher/retained Owner/loader/libatomic,
+both restricted-root Samba campaigns and synthetic SMART producer/capture.
+Live-session revocation and every earlier Samba guard pass within the declared
+fixed profiles; all previous base-image/teardown checks remain mandatory.
+
+An independent post-terminal audit compares all 880 tracked API files against
+the compiled package and regular, nonduplicated source archive members. All
+match; unexpected archived code is refused. Installed, image-contained and
+exported API bytes agree at SHA256
+`5867a9149bd506811ddfcf15bde6d605e08057ef415a01b8524a8b91410ee662`.
+All seven ordered payload hashes verify. No tracked source changes or restarted
+build occur during qualification.
+
+This is cached local evidence, not the new PR's own hosted checks, independent
+clean-build reproducibility, complete release-source/licensing qualification,
+product identity/storage composition, recovery, migration or EX4 qualification.
+There is still no installable firmware release.
+
+## M4.4 Owner-bound native live-session revocation — disposable QEMU
+
+The official local ARMv5 wrapper now passes all 37 driver/seven loader tests
+and both campaigns, including two fixed interactive clients against the same
+Owner-enrolled daemon. Complete qualified session inventories must establish
+both accounts before dispatch. One Owner-bound target-only logoff then requires
+two complete target-absence inventories, the SAME peer session ID and server
+generation, a denied fresh target login and an allowed peer login. A replacement
+session or empty/partial inventory cannot substitute for continuity.
+
+The private witness is backend-bound and cannot be serialized. Host/race tests
+at count3 refuse incomplete/ambiguous inventories, zero/foreign witnesses,
+changed peer IDs/generations and weakened parent deadlines. Client groups,
+daemon groups and original pins remain owned through verified stop/reap/close;
+final FD equality, all earlier markers and unchanged base are mandatory.
+
+The native tagged fixture uses fixed 4-second status / 10-second revocation
+budgets to include complete admissions around workers. The ordinary adapter
+retains 2/5 seconds. Startup and idle-disable each have a separate 20-second
+phase; the complete active-session phase has 45 seconds. Enrollment remains
+60 seconds and each fresh guest remains bounded to 180 seconds. Earlier
+shared/tight phase envelopes failed closed during slower emulated scans;
+no admission, inventory, generation guard or no-retry rule is removed.
+
+The complete cached result above additionally qualifies this source's image.
+Neither result establishes hosted/independent clean-build qualification,
+continuous identity/storage authority, data-share/handle semantics, product
+startup/UI or EX4 qualification. The firmware remains non-installable.
+Historical results below retain their source scope.
+
+## M4.4 Owner-bound native idle disable — disposable QEMU
+
+The fixed native daemon now has a single-use serialized start/check/stop
+lifecycle. The same Owner-bound backend can run credential and status workers
+while that daemon remains owned; no per-operation replacement backend,
+arbitrary command, product listener or new privilege is introduced.
+
+The official local ARMv5 wrapper passes all 36 driver/seven loader tests and
+both complete campaigns. It explicitly disables one Owner-enrolled account,
+confirms the same SID and disabled journal, requires the unchanged backend's
+two complete stable-absence inventories, denies that account's new login and
+authenticates the other account against the same daemon. Canceled/duplicate
+start and restart after stop are refused; verified teardown, final FD equality
+and unchanged base are mandatory. Focused Linux-native tagged vet/race tests
+pass at count3, including absent/canceled/busy authority refusal.
+
+The initial new composition failed closed when redundant complete code scans
+exhausted the existing 2-second status deadline. Removing the duplicate scans
+restores exactly one complete code/config/state plus live-daemon admission on
+each side of a worker; the 2-second status, 5-second revocation, 60-second
+enrollment, 20-second daemon and 180-second guest budgets remain unchanged.
+Temporary diagnostics were removed before final qualification.
+
+No session is deliberately held open in this tracer. It does **not** qualify
+revocation of an established session, active-session generation coverage,
+sustained supervision, continuous identity/storage authority, product startup,
+new complete-image/clean/hosted qualification or physical EX4 operation.
+Those gates remain open; the earlier complete-image result below retains its
+exact source scope. The firmware remains non-installable.
+
+## M4.4 native Owner-enrolled daemon authentication — disposable QEMU
+
+The native runtime now retains the same original code, protected configuration
+and mutable state through Owner-bound enrollment and actual `smbd` execution.
+A separate fixed daemon adapter independently duplicates twelve input objects,
+clones their mounts before namespace isolation, masks source paths and attaches
+the originals. Generic static/non-root launcher restrictions remain unchanged.
+
+The daemon has a private read-only root/mount namespace, capabilities `0xdb`,
+no-new-privileges, no `/proc`, `/dev` or `/run`, and an empty read-only `/tmp`
+required for IPC. It shares only the disposable guest's loopback network;
+QEMU has no NIC or host forwarding. Fixed test clients use root-only temporary
+authentication files via an inherited descriptor, never password argv/env.
+Readiness requires real authentication, not merely an open TCP port.
+
+The official local wrapper passes all 35 Linux driver tests, seven loader tests,
+lint/ShellCheck and both complete actual ARMv5 campaigns. Both Owner-enrolled
+accounts authenticate; a wrong password is denied. Live checks verify all 114
+original code objects, protected configuration/state views, capabilities and
+root isolation. Whole-group stop/reap and explicit close precede release;
+the final FD count matches the baseline and the base image is unchanged.
+Enrollment retains its 60-second budget; authentication has a separate fixed
+20-second phase inside the unchanged 180-second native guest limit.
+
+The same frozen runtime also passes complete cached local integration on
+`8cb0b86`: API/vet/race/fixed-count fuzz, package/source collection, actual ARMv5
+smoke/MD/two-boot, launcher/code/loader/atomic, both restricted-root Samba
+campaigns and synthetic SMART producer/capture. All 877 tracked API files match
+the compiled package and regular source-archive members independently.
+Installed, image-embedded and exported API bytes agree at SHA256
+`bbcfcff3f63976b1a8ca731f25c8e78eba8dea2500b270d6774f1b9ab4fc79d9`;
+all seven exported artifact hashes verify. No source mutation or restarted build
+occurs during qualification. This is cached local evidence, not independent
+clean-build reproducibility or complete release licensing.
+
+This is test-only authentication qualification, not a clean/hosted build,
+sustained service supervision, live revocation, continuous
+identity/storage authority, product construction/UI or physical EX4 proof.
+The existing revocation fixture does not qualify this new restricted profile.
+This increment's own hosted checks remain required; the firmware is not
+installable.
+
 ## M0 bounded Samba campaign qualification
 
 The Samba integration lane now compiles its probes once, then boots two fresh
@@ -62,10 +186,12 @@ only; full code/config/state checks immediately bracket each worker. Both
 identities finish within the original 60-second budget; checks were not removed
 from the effect boundary or replaced by cached success.
 
-This is **credential-only fixture composition**, not a daemon using that state,
+The earlier `8b1f9ec` qualification is **credential-only fixture composition**.
+The newer same-state daemon authentication is qualified separately above;
 live-session revocation in this composition, storage grants, continuous identity
 authority, descriptor-bound product code/root construction, durable quarantine,
-startup recovery, HTTP or physical EX4 qualification. The bootstrap Owner closes
+startup recovery, HTTP and physical EX4 qualification remain open. The bootstrap
+Owner closes
 before a fresh backend-bound admission; this is not continuous retention. The
 legacy fixture's session-revocation proof is not borrowed for this new profile.
 No product service, installer or independent clean-build qualification is

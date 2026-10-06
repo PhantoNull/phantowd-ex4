@@ -2423,9 +2423,58 @@ this order, preserving the [full contract](support/SAMBA-RUNTIME-PROFILE.md#samb
    installed/embedded/exported API bytes and seven artifact hashes agree.
    This does not qualify independent clean builds, release licensing or EX4
    operation, and does not close any of the following composition gates.
-   Next bind that credential backend and daemon to the SAME mutable state and
-   qualify actual authentication/revocation there, then identity/storage authority
-   and protected product construction. Never bootstrap by
+   A newer QEMU-only native daemon now uses the SAME retained code/config/state
+   as those Owner-enrolled credential workers. Actual two-account authentication,
+   wrong-password denial, all114 original code views, restricted root/caps,
+   verified group stop/reap and no-FD-leak pass in the official local wrapper:
+   all35 driver/seven loader tests, both complete campaigns, base unchanged.
+   This does not borrow the earlier fixture's revocation or identity lease.
+   Next qualify live-session revocation in this restricted profile, continuous
+   identity/storage authority and protected product construction. Session-control
+   workers need an explicitly qualified PID-generation/revocation boundary;
+   do not grant an unrestricted `/proc` or infer session absence from exit0.
+   The same frozen runtime passes complete cached local integration on8cb0b86:
+   all877 packaged/archive API sources, installed/embedded/exported API bytes
+   and seven artifact hashes agree. Every later guest lane also passes. Own
+   hosted/independent clean-build qualification remains pending; this is not
+   product construction or physical EX4 evidence.
+   The next local tracer now passes Owner-bound **idle** disable against that
+   same daemon: same-SID disabled journal, two complete stable-absence
+   inventories, refused new login and unaffected second-account login. All36
+   driver/seven loader tests, both actual ARMv5 campaigns and focused native
+   race-count3 pass. Single-use start/check/stop avoids recursive runtime gates;
+   complete code/config/state and live daemon checks bracket workers once each,
+   without increasing status/revocation budgets or granting `/proc`.
+   This newer tracer has no deliberately open session and is not included in
+   the earlier full image. Next hold two fixed actual client sessions under
+   owned groups; require complete qualified-generation observations before
+   dispatch, one target-only logoff, target absence and continued peer access,
+   failed fresh target login, uncertainty/no-retry refusal and verified whole
+   client/daemon teardown. Do not infer live revocation from an empty inventory.
+   This active-session tracer now passes the official local ARMv5 wrapper:
+   all37 driver/seven loader tests and both campaigns, two complete qualified
+   session records before dispatch, one Owner-bound target-only logoff, two
+   complete absence observations and the SAME peer session/server generation.
+   Fresh target login is denied; peer login, whole-group stop/reap, final FD
+   equality and unchanged base are mandatory. The backend-bound private witness
+   rejects JSON and host/race-count3 tests refuse partial, foreign or replaced
+   evidence. Native fixture status/revocation budgets are fixed4/10 seconds;
+   ordinary adapter2/5 is unchanged. Separate startup20/idle20/session45 phases
+   avoid sharing an already-consumed deadline; enrollment60/guest180 remain.
+   No guard or privilege is relaxed. Frozen57ee527 now also passes complete
+   cached local integration, including all later guest lanes; all880 API
+   source/package/regular archive files, installed/image/exported API bytes and
+   seven payload hashes agree. Own hosted and independent clean-build/release
+   qualification remain separate. Next qualify continuous identity/storage
+   authority and protected product construction. Existing snapshot leases are
+   not backend-bound handoff authority: their full evidence includes mutable
+   Samba journals, and Verify calls passdb under the Owner lock. Never recurse
+   into that lease from a worker/runtime gate or silently refresh its review.
+   A confirmed account transition needs an explicitly qualified successor/fence;
+   unknown drift, wrong Owner/backend, uncertain stop or partial evidence refuse.
+   It does not
+   establish data-handle semantics or qualify hardware/migration/recovery.
+   Never bootstrap by
    fabricating enabled journals/SIDs, copying TDBs or
    passing enrollment lookup as active-service evidence. Closing/reopening an
    identity Owner is new admission, not continuous retained authority.

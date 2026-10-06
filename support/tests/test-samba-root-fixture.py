@@ -44,6 +44,72 @@ def reports():
 
 
 class SambaRootFixture(unittest.TestCase):
+    def test_native_live_revoke_requires_real_pair_and_peer_continuity(self):
+        expected = ("PHANTOWD_SAMBA_OWNER_NATIVE_LIVE_REVOKE_READY "
+                    "accounts=2 qualified_pair=true owner_bound=true "
+                    "same_sid=true target_absent=true same_peer_session=true "
+                    "new_login_denied=true other_login_allowed=true "
+                    "same_daemon=true no_new_privileges=true "
+                    "stopped_reaped=true no_fd_leak=true scope=qemu-only")
+        self.assertIn(expected, fixture.MARKERS)
+        good = "\n".join([*fixture.MARKERS, SCAN_COST])
+        fixture.check_guest(good)
+        for field in ("qualified_pair", "owner_bound", "same_sid",
+                      "target_absent", "same_peer_session", "new_login_denied",
+                      "other_login_allowed", "same_daemon",
+                      "no_new_privileges",
+                      "stopped_reaped", "no_fd_leak"):
+            with self.assertRaises(ValueError):
+                fixture.check_guest(good.replace(expected, expected.replace(
+                    field + "=true", field + "=false")))
+        for replacement in ("", expected + "\n" + expected,
+                            expected.replace("accounts=2", "accounts=1"),
+                            expected.replace("qemu-only", "product")):
+            with self.assertRaises(ValueError):
+                fixture.check_guest(good.replace(expected, replacement))
+
+    def test_native_idle_disable_requires_owner_and_live_worker_proof(self):
+        expected = ("PHANTOWD_SAMBA_OWNER_NATIVE_IDLE_DISABLE_READY "
+                    "owner_bound=true same_sid=true stable_absence=true "
+                    "new_login_denied=true other_login_allowed=true "
+                    "same_daemon=true no_new_privileges=true "
+                    "stopped_reaped=true no_fd_leak=true scope=qemu-only")
+        self.assertIn(expected, fixture.MARKERS)
+        good = "\n".join([*fixture.MARKERS, SCAN_COST])
+        fixture.check_guest(good)
+        for field in ("owner_bound", "same_sid", "stable_absence",
+                      "new_login_denied", "other_login_allowed",
+                      "same_daemon", "no_new_privileges", "stopped_reaped",
+                      "no_fd_leak"):
+            with self.assertRaises(ValueError):
+                fixture.check_guest(good.replace(expected, expected.replace(
+                    field + "=true", field + "=false")))
+        for replacement in ("", expected + "\n" + expected,
+                            expected.replace("qemu-only", "product")):
+            with self.assertRaises(ValueError):
+                fixture.check_guest(good.replace(expected, replacement))
+
+    def test_native_daemon_requires_same_state_authentication(self):
+        expected = ("PHANTOWD_SAMBA_OWNER_NATIVE_DAEMON_READY accounts=2 "
+                    "same_code=true same_config=true same_state=true "
+                    "authenticated=true wrong_password_denied=true "
+                    "owned_group=true stopped_reaped=true no_fd_leak=true "
+                    "scope=qemu-only")
+        self.assertIn(expected, fixture.MARKERS)
+        good = "\n".join([*fixture.MARKERS, SCAN_COST])
+        fixture.check_guest(good)
+        for field in ("same_code", "same_config", "same_state",
+                      "authenticated", "wrong_password_denied",
+                      "owned_group", "stopped_reaped", "no_fd_leak"):
+            with self.assertRaises(ValueError):
+                fixture.check_guest(good.replace(expected, expected.replace(
+                    field + "=true", field + "=false")))
+        for replacement in ("", expected + "\n" + expected,
+                            expected.replace("accounts=2", "accounts=1"),
+                            expected.replace("qemu-only", "product")):
+            with self.assertRaises(ValueError):
+                fixture.check_guest(good.replace(expected, replacement))
+
     def test_campaigns_require_both_complete_fresh_proofs(self):
         split = next(i for i, row in enumerate(fixture.MARKERS)
                      if row.startswith(
@@ -527,6 +593,20 @@ class SambaRootFixture(unittest.TestCase):
             "disabled_first=true stdin_only=true same_sid=true "
             "explicit_enable=true stopped_reaped=true "
             "no_fd_leak=true scope=qemu-only",
+            "PHANTOWD_SAMBA_OWNER_NATIVE_DAEMON_READY accounts=2 "
+            "same_code=true same_config=true same_state=true "
+            "authenticated=true wrong_password_denied=true owned_group=true "
+            "stopped_reaped=true no_fd_leak=true scope=qemu-only",
+            "PHANTOWD_SAMBA_OWNER_NATIVE_IDLE_DISABLE_READY owner_bound=true "
+            "same_sid=true stable_absence=true new_login_denied=true "
+            "other_login_allowed=true same_daemon=true no_new_privileges=true "
+            "stopped_reaped=true no_fd_leak=true scope=qemu-only",
+            "PHANTOWD_SAMBA_OWNER_NATIVE_LIVE_REVOKE_READY accounts=2 "
+            "qualified_pair=true owner_bound=true same_sid=true "
+            "target_absent=true same_peer_session=true new_login_denied=true "
+            "other_login_allowed=true same_daemon=true "
+            "no_new_privileges=true stopped_reaped=true no_fd_leak=true "
+            "scope=qemu-only",
             "PHANTOWD_SAMBA_ROOT_DONE",
         ]
         fixture.check_guest("\r\n".join(lines + [SCAN_COST]))
