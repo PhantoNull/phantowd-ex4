@@ -2396,6 +2396,12 @@ this order, preserving the [full contract](support/SAMBA-RUNTIME-PROFILE.md#samb
    the existing identity Owner and Owner-derived NSS to this actual state view,
    then qualify credential changes and revoke against the running daemon;
    no passdb copy, unrelated token or arbitrary tool/argv injection.
+   This worker increment's own combined source `c4ed376` also passes complete
+   cached local Buildroot/QEMU integration, including the new mandatory worker
+   evidence, all prior Samba gates and final SMART lanes. All 857 tracked API
+   files independently match compiled and collected source; image/installed/
+   exported API and seven distinct expected artifact hashes agree. This does
+   not borrow ancestor qualification or establish clean/hosted/product/EX4 proof.
    Whole-root/code/config/data construction, durable review and
    product lifecycle/HTTP remain open.
    The complete combined source on336c29f now also passes ONE cached full local

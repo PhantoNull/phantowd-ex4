@@ -24,8 +24,14 @@ native host refusal is not a positive ARMv5 result.
 This closes a state-bound worker tracer, not real identity-owner enrollment or
 revocation. Owner-derived private NSS, the credential backend, authoritative
 passdb mutations and tracked storage leases still need composition. Code/config/
-data root construction remains fixture-path-based. Complete local package/image
-integration and exact-head hosted qualification for this increment remain open;
+data root construction remains fixture-path-based. This increment's own complete
+cached local Buildroot/QEMU integration passes on `c4ed376`, including its new
+mandatory worker marker, all prior Samba guards and final SMART lanes. All 857
+tracked API files independently match compiled and collected source; installed,
+image and exported API match SHA256
+`aa3b29b301bd4a6f6b65c1377c97568c669f15b6284661bf43222df37fe5f5e8`,
+and all seven distinct expected artifact hashes agree. Cached validation is not
+independent clean-build reproduction. Exact-head hosted qualification remains open;
 no product service, HTTP, NAS, physical disk or installation is enabled.
 
 ## M4.4 Samba state descriptor handoff — QEMU only
