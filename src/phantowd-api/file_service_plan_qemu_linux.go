@@ -67,7 +67,10 @@ func exerciseQEMUFileServicePlan() error {
 		if _, err := json.Marshal(plan); err == nil {
 			return errors.New("QEMU file-service internal plan became serializable")
 		}
-		return validateQEMUPlanSambaWithTestparm(samba, string(qemuPlannerVolumeID))
+		if err := validateQEMUPlanSambaWithTestparm(samba, string(qemuPlannerVolumeID)); err != nil {
+			return err
+		}
+		return validateQEMUIsolatedSambaPlan(plan)
 	})
 }
 
@@ -78,6 +81,6 @@ func runQEMUMountedFileServicePlanFixture() error {
 	if err := exerciseQEMUFileServicePlan(); err != nil {
 		return err
 	}
-	fmt.Println("PHANTOWD_FILE_SERVICE_PLAN_READY snapshot=complete-mounted-owner-set-nonempty roster_lease=all_member_owned descriptor_revoked=true owner_scope=fixture_complete volume_count=1 revisions=bound fresh_check=passed parser=testparm json=false activation=false compatibility=synthetic-ext2 scope=disposable-qemu-only")
+	fmt.Println("PHANTOWD_FILE_SERVICE_PLAN_READY snapshot=complete-mounted-owner-set-nonempty roster_lease=all_member_owned descriptor_revoked=true owner_scope=fixture_complete volume_count=1 revisions=bound fresh_check=passed parser=testparm isolated_candidate=true declared_root=bound json=false activation=false compatibility=synthetic-ext2 scope=disposable-qemu-only")
 	return nil
 }

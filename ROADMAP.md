@@ -979,6 +979,17 @@ storage. No production roster provider or activation path exists.
   collected together through production owners and native validation plus
   configuration replacement are owned transactionally before product service
   changes.
+  Isolated-root preparation now retains an immutable desired SMB policy inside
+  the existing Plan. `SambaShareCandidates` pairs exact source-root requests
+  with `/shares/<share-id>` sections and the same NSS/freshness context. The
+  renderer preserves RO/RW grants and source-overlap checks; whole-volume `.`
+  refuses only this isolated path. This is candidate-only host work, not a
+  completed storage/native-Samba composition. Next acceptance must acquire the
+  complete roster before admission, hand off exact declared descriptors into
+  the restricted native namespace, exercise real writer/reader/denied clients,
+  and stop all descendants before releasing any source pin. Source loss and
+  uncertain closure must retain review without fallback/restart. Storage checks
+  must not recurse from backend/runtime workers into held mounted-roster locks.
 - **M4.2 — Single service owner.** Define start/reload/stop and child-process
   ownership; bound diagnostics and verify readiness. Preserve the last known
   working configuration on syntax/start failure without claiming an unapplied

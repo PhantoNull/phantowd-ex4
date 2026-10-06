@@ -95,6 +95,39 @@ The documents are **not installed or used by the running Samba daemon**. This
 does not provide a consumer lease, native libc NSS qualification, same-passdb
 state binding, revocation coordination or product service activation.
 
+## Isolated share-root candidates
+
+`Plan.SambaShareCandidates` returns deterministic share sections at fixed
+`/shares/<share-id>` destinations together with the exact logical-volume and
+relative-subdirectory requests from that same Plan. Source policy, including
+nested grant slices, is privately copied at Build; changing caller inputs or
+returned root requests cannot change this candidate. Existing ordinary previews
+remain unchanged. The candidate shares the Plan's complete identity/storage
+freshness tuple and NSS documents, but **does not retain those authorities**.
+
+The renderer preserves exact RO/RW user lists and denies guests, symlink
+following and wide links. A root is marked read-only only when that share has
+no RW grant; a writer on another share never broadens it. Mixed shares need a
+writable clone with independently qualified Samba and Unix/ACL enforcement.
+Whole-volume `.` requests are refused by this isolated path, consistently with
+the existing mount handoff; an ordinary desired preview may still describe them.
+Zero/refused candidates return no partial sections or root requests. An NFS-only
+Plan produces an empty SMB request set, not a synthetic share.
+
+This is a preparation step, not the completed storage-to-native-Samba path.
+The next coordinator must acquire/revalidate the complete mounted roster,
+retain exact declared directory descriptors, attach only those roots inside
+Samba's restricted namespace and retain storage through verified descendant
+stop and input closure. It must not fall back to ordinary host-volume paths.
+Storage verification must remain outside recursive identity/backend/runtime
+locks. No daemon consumes this candidate yet; native parser validation, real
+RW/RO file-access proofs, source-loss quarantine and uncertain teardown are
+still required. A local ARMv5 one-boot overlay does check the isolated request
+against the live synthetic mounted-roster tuple and validates its sections with
+target `testparm`; identity in that fixture remains synthetic. It provides no
+Samba data handoff or access proof through this candidate. No new HTTP operation,
+product startup or NAS write is added.
+
 ## Native lookup before Samba enrollment
 
 `SambaEnrollmentLookupFromOwner(ctx, owner)` is a separate Linux-only internal

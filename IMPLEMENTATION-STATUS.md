@@ -3,6 +3,36 @@
 
 # Implementation status
 
+## Isolated Samba share candidates — preparation only
+
+The existing file-service Plan now privately retains a bounded immutable copy
+of its validated SMB policy. `SambaShareCandidates` derives fixed
+`/shares/<share-id>` sections and exact logical-volume/subdirectory requests
+from that same Plan, alongside its identity/storage freshness and NSS context.
+Ordinary previews are unchanged. Mixed RO/RW grants are preserved; roots with
+no writer request read-only clones. A writer on one share does not broaden
+another. Zero/refused candidates return no partial output; whole-volume `.`
+is unsupported by this isolated path, and NFS-only policy invents no SMB root.
+
+Windows API/UI/vet and ARMv5 cross-compilation pass locally, as do Linux
+race-count3 for the renderer/planner, tagged module vet, ShellCheck and a
+10,000-execution renderer fuzz campaign. The complete one-boot ARMv5 overlay
+smoke passes against the hash-verified cached base. Its mounted-roster fixture
+checks the exact isolated root request and invokes target `testparm` for path,
+users, RO/RW lists, read-only default, denied guests and symlink/wide-link
+refusal; the smoke requires the new isolated-candidate assertion alongside all
+earlier guards. Identity in this particular parser fixture is synthetic.
+
+This does not attach share descriptors, retain storage for native Samba,
+transfer files through this candidate or authorize activation. The next
+step is the complete roster/identity/native-runtime composition with real RW/RO
+access, source-loss quarantine and verified descendant stop before releasing
+data pins. Candidate/parser results do not qualify that file-access behavior,
+product startup, migration or physical EX4 hardware.
+This overlay does not rebuild base packages/SBOM/legal-info or run the separate
+two-boot and three restricted Samba campaigns; complete cached/clean/hosted
+qualification of this increment remains separate.
+
 ## Coordinator-owned native Disable — focused QEMU prerequisite
 
 The retained startup coordinator now routes explicit revision-checked Disable

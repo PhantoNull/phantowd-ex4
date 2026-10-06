@@ -162,7 +162,7 @@ while [ "$attempt" -lt "$smoke_timeout" ]; do
             echo "Missing authenticated file-service preview assertion" >&2
             exit 1
         fi
-        if ! grep -F 'PHANTOWD_FILE_SERVICE_PLAN_READY snapshot=complete-mounted-owner-set-nonempty roster_lease=all_member_owned descriptor_revoked=true owner_scope=fixture_complete volume_count=1 revisions=bound fresh_check=passed parser=testparm json=false activation=false compatibility=synthetic-ext2 scope=disposable-qemu-only' "$log_file" >/dev/null; then
+        if ! grep -F 'PHANTOWD_FILE_SERVICE_PLAN_READY snapshot=complete-mounted-owner-set-nonempty roster_lease=all_member_owned descriptor_revoked=true owner_scope=fixture_complete volume_count=1 revisions=bound fresh_check=passed parser=testparm isolated_candidate=true declared_root=bound json=false activation=false compatibility=synthetic-ext2 scope=disposable-qemu-only' "$log_file" >/dev/null; then
             echo "Missing internal file-service plan assertion" >&2
             exit 1
         fi
