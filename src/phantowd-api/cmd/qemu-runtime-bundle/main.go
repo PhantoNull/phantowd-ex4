@@ -36,6 +36,9 @@ func run() error {
 	if len(os.Args) == 2 && os.Args[1] == "stage" && os.Getuid() == 0 && os.Geteuid() == 0 {
 		return stageFixture()
 	}
+	if len(os.Args) == 2 && os.Args[1] == "native-lookup" && os.Getuid() == 0 && os.Geteuid() == 0 {
+		return nativeLookupFixture()
+	}
 	if len(os.Args) == 2 && os.Args[1] == "inspect-acl" && os.Getuid() == 0 && os.Geteuid() == 0 {
 		return inspectACLFixture()
 	}

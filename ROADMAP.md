@@ -2378,9 +2378,18 @@ this order, preserving the [full contract](support/SAMBA-RUNTIME-PROFILE.md#samb
    exported API and seven artifact hashes independently agree. Hosted and
    independent clean-build qualification remain separate; the documents are
    not installed in a daemon or qualified through native libc.
-   Next qualify actual libc consumption of these real native private identities,
-   then a startup-bound credential backend and daemon using the SAME mutable
-   state. Never bootstrap by fabricating enabled journals/SIDs, copying TDBs or
+   The separate fixed campaign now also qualifies actual ARMv5 libc consumption
+   of two real Owner-created private identities, in a new read-only tmpfs root
+   with private mount/network namespaces, nobody/zero capabilities and no
+   shadow/state/data grants. Actual changed-UID, extra supplementary-group and
+   foreign-user documents refuse; a fresh restored lookup passes. Owner state
+   remains unchanged and every capture verifies group absence. All 29 Linux
+   driver tests, tagged vet and focused ARMv5 old/new Samba gates pass locally.
+   This is not retained identity/configuration authority or daemon installation;
+   its test-only source increment is not included in the earlier full image.
+   Next compose retained native configuration with a startup-bound credential
+   backend and daemon using the SAME mutable state. Never bootstrap by
+   fabricating enabled journals/SIDs, copying TDBs or
    passing enrollment lookup as active-service evidence. Closing/reopening an
    identity Owner is new admission, not continuous retained authority.
    The guarded Samba Owner now also retains its original writable tmpfs state

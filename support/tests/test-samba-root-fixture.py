@@ -44,6 +44,47 @@ def reports():
 
 
 class SambaRootFixture(unittest.TestCase):
+    def test_native_lookup_requires_real_corrupt_document_refusals(self):
+        expected = ("PHANTOWD_SAMBA_OWNER_NATIVE_NSS_REFUSAL_READY "
+                    "changed_uid=true supplementary_group=true "
+                    "foreign_user=true restored_lookup=true "
+                    "unchanged_owner=true stopped_reaped=true scope=qemu-only")
+        self.assertIn(expected, fixture.MARKERS)
+        good = "\n".join([*fixture.MARKERS, SCAN_COST])
+        fixture.check_guest(good)
+        for field in ("changed_uid", "supplementary_group", "foreign_user",
+                      "restored_lookup", "unchanged_owner", "stopped_reaped"):
+            with self.assertRaises(ValueError):
+                fixture.check_guest(good.replace(expected, expected.replace(
+                    field + "=true", field + "=false")))
+        for replacement in ("", expected + "\n" + expected,
+                            expected.replace("qemu-only", "product")):
+            with self.assertRaises(ValueError):
+                fixture.check_guest(good.replace(expected, replacement))
+
+    def test_native_lookup_requires_actual_libc_and_isolated_owner_evidence(self):
+        expected = ("PHANTOWD_SAMBA_OWNER_NATIVE_NSS_READY accounts=2 "
+                    "owner_derived=true libc=true private_groups=true "
+                    "foreign_omitted=true readonly_root=true caps_zero=true "
+                    "no_state=true unchanged_owner=true stopped_reaped=true "
+                    "daemon_installed=false scope=qemu-only")
+        self.assertIn(expected, fixture.MARKERS)
+        good = "\n".join([*fixture.MARKERS, SCAN_COST])
+        fixture.check_guest(good)
+        for field in ("owner_derived", "libc", "private_groups",
+                      "foreign_omitted", "readonly_root", "caps_zero",
+                      "no_state", "unchanged_owner", "stopped_reaped"):
+            with self.assertRaises(ValueError):
+                fixture.check_guest(good.replace(expected, expected.replace(
+                    field + "=true", field + "=false")))
+        for replacement in ("", expected + "\n" + expected,
+                            expected.replace("accounts=2", "accounts=1"),
+                            expected.replace("daemon_installed=false",
+                                             "daemon_installed=true"),
+                            expected.replace("qemu-only", "product")):
+            with self.assertRaises(ValueError):
+                fixture.check_guest(good.replace(expected, replacement))
+
     def test_state_observer_requires_prelaunch_refusal_and_sticky_review(self):
         expected = ("PHANTOWD_SAMBA_OWNER_STATE_OBSERVER_REFUSAL_READY "
                     "late_mode_drift=true before_launch=true "
@@ -364,6 +405,14 @@ class SambaRootFixture(unittest.TestCase):
             "cancellation_before_admission=true review_pins=true "
             "restoration_refused=true stopped_reaped=true released=true "
             "no_fd_leak=true scope=qemu-only",
+            "PHANTOWD_SAMBA_OWNER_NATIVE_NSS_READY accounts=2 "
+            "owner_derived=true libc=true private_groups=true "
+            "foreign_omitted=true readonly_root=true caps_zero=true "
+            "no_state=true unchanged_owner=true stopped_reaped=true "
+            "daemon_installed=false scope=qemu-only",
+            "PHANTOWD_SAMBA_OWNER_NATIVE_NSS_REFUSAL_READY changed_uid=true "
+            "supplementary_group=true foreign_user=true restored_lookup=true "
+            "unchanged_owner=true stopped_reaped=true scope=qemu-only",
             "PHANTOWD_SAMBA_ROOT_DONE",
         ]
         fixture.check_guest("\r\n".join(lines + [SCAN_COST]))

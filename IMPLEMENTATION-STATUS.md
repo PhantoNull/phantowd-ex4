@@ -3,6 +3,39 @@
 
 # Implementation status
 
+## M2.4 native lookup consumed by libc — disposable QEMU only
+
+The existing restricted-root Samba campaign now finishes with a separate
+lookup-only experiment, after all earlier daemon/controller groups stop. An
+actual native Owner creates two disabled Unix accounts through the typed
+BusyBox executor and derives the pre-enrollment documents without a Samba
+backend. Incomplete private-group-only identity is refused. The documents are
+staged only in fresh guest tmpfs, outside the daemon root and code-only tree.
+
+A fixed bootstrap creates private mount/network namespaces, binds read-only
+code and read-only/nosuid/nodev/noexec lookup files, closes escape descriptors,
+chroots, switches to nobody and drops every capability. The dynamically linked
+ARMv5 glibc probe verifies name/ID lookup, exact private primary groups,
+`getgrouplist`, bounded enumeration, absence of foreign users/groups and lack
+of shadow, devices, original paths, Samba state or data grants. An owned,
+single-use capture validates exact output, ordinary exit and complete group
+absence before release. Owner evidence remains unchanged across execution.
+
+Actual ARMv5 execution passes all prior Samba gates and this new positive
+control. Three controlled child-document faults — changed UID, an extra
+supplementary group and a foreign user — must reach the real libc probe and
+return its exact refusal, not merely fail bootstrap. Restored lookup passes in
+a fresh capture; no stale capture or service authority is revived. Host marker
+tests reject missing, duplicate, reordered or weakened evidence. All 29 Linux
+driver tests, tagged vet and the focused ARMv5 campaign pass locally.
+
+This proves libc consumption in an independent disposable root, **not**
+installation in the daemon, retained identity/configuration authority, a
+same-state credential backend, product startup, a new full image/source bundle,
+hosted qualification or physical EX4 support. The complete cached result on
+`fa4f25a` below predates this test-only increment. Password assignment, explicit
+enable/revoke, storage leases and durable service recovery remain to compose.
+
 ## M2.4 native enrollment lookup — internal prerequisite
 
 The Owner now has a separate non-recovering read-only native lookup for confirmed
@@ -39,8 +72,9 @@ all seven artifact manifest entries independently verify. This is cached local
 qualification, not independent clean reproduction, complete release licensing,
 hosted qualification, native libc consumption or physical EX4 qualification.
 
-Next stage these actual native documents through the retained configuration
-boundary and bind the credential backend to the SAME daemon state. Actual
+The separate fixture above now qualifies lookup-only native libc consumption.
+Next retain these actual native documents through the configuration boundary
+and bind the credential backend to the SAME daemon state. Actual
 disabled-first enrollment, password assignment, enable/revoke, storage leases,
 durable recovery and product activation must still be composed; a candidate
 lookup alone does not close those gates.

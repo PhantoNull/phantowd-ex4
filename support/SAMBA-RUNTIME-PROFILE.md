@@ -476,6 +476,39 @@ review. Restoring the mode cannot revive that capture. Verified group absence
 and explicit close release it with unchanged FD counts. This is a fixture fault,
 not permission to alter user storage; no tool/action/secret API is added.
 
+### Qualified native libc lookup (independent QEMU root only)
+
+After the old daemon and all runtime Owners stop/release, the existing campaign
+uses a fresh guest tmpfs Unix database and a native Owner without a Samba
+backend. Actual typed BusyBox creation supplies two disabled accounts with
+distinct same-number private UID/GIDs. A partial group-only account cannot
+derive enrollment lookup. The resulting Owner-derived passwd/group/nsswitch
+documents are staged separately from the old service root and code-only census.
+
+The fixed capture bootstrap validates the disposable root/files, creates private
+mount and network namespaces and a restricted read-only root, attaches the
+existing prepared code read-only, marks only configuration noexec, closes
+escape FDs and changes to nobody with no supplementary groups, zero capabilities
+and NNP. The dynamic glibc probe checks name/ID lookup, private groups,
+`getgrouplist`, enumeration and omission of foreign fixture identities. Shadow,
+devices, original anchors, Samba state and data grants are absent. No password,
+passdb, `smbd`, arbitrary account selector or new product helper is involved.
+
+The parent owns each single-use capture, verifies exact positive/refusal output,
+ordinary exit and process-group absence before releasing resources. Actual
+changed UID, extra supplementary group and foreign-user document faults are
+refused by the libc probe, not accepted as arbitrary bootstrap failures. A new
+restored capture passes; the native Owner's complete evidence is unchanged.
+Both new markers are mandatory in strict ordered evidence; all previous
+charset/ACL/access/code/config/state guards and base hashes remain unchanged.
+The fixed 180-second guest budget is not extended.
+
+This is independent temporary lookup consumption, not the daemon's protected
+configuration/identity lease, credential mutation authority or SAME-state
+passdb backend. The lookup snapshot remains point-in-time: protected staging,
+full resource retention/revalidation and product construction must still be
+composed. No product startup or physical device uses this fixture.
+
 ### Construction and retained resources
 
 - Fix the backend, launcher, daemon, arguments, readiness/stop budgets and
