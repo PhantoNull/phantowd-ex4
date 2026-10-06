@@ -3,7 +3,12 @@
 
 package identityowner
 
-import "context"
+import (
+	"context"
+	"reflect"
+
+	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/smbprovision"
+)
 
 const maxFileServiceLeases = 16
 
@@ -18,6 +23,7 @@ type FileServiceLease struct {
 type fileServiceLeaseState struct {
 	owner       *Owner
 	fingerprint [32]byte
+	smbBackend  smbprovision.Backend
 	released    bool
 	review      bool
 }
@@ -27,6 +33,29 @@ type fileServiceLeaseState struct {
 // It does not run inside WithFileServiceSnapshot's pure callback or expose I/O,
 // credentials, a filesystem path, or activation through that callback.
 func (o *Owner) RetainFileServiceSnapshot(ctx context.Context, expected [32]byte) (*FileServiceLease, error) {
+	return o.retainFileServiceSnapshot(ctx, expected, nil)
+}
+
+// RetainSMBFileServiceSnapshot additionally requires the exact non-nil pointer
+// backend already fixed by OpenWithSMBBackend. The argument is only an identity
+// assertion: observations always use the Owner's backend, never the supplied
+// candidate. It neither substitutes an executor nor authorizes daemon startup.
+// Value adapters and zero-sized pointees cannot establish unique object identity.
+// Call outside Owner/runtime gates; Verify reads passdb under the Owner lock.
+func (o *Owner) RetainSMBFileServiceSnapshot(ctx context.Context, expected [32]byte, backend smbprovision.Backend) (*FileServiceLease, error) {
+	if !sameSMBBackend(backend, backend) {
+		return nil, ErrInvalid
+	}
+	return o.retainFileServiceSnapshot(ctx, expected, backend)
+}
+
+func sameSMBBackend(actual, expected smbprovision.Backend) bool {
+	a, e := reflect.ValueOf(actual), reflect.ValueOf(expected)
+	return a.IsValid() && e.IsValid() && a.Kind() == reflect.Pointer && e.Kind() == reflect.Pointer &&
+		!a.IsNil() && !e.IsNil() && a.Type() == e.Type() && a.Type().Elem().Size() != 0 && actual == expected
+}
+
+func (o *Owner) retainFileServiceSnapshot(ctx context.Context, expected [32]byte, backend smbprovision.Backend) (*FileServiceLease, error) {
 	if expected == ([32]byte{}) {
 		return nil, ErrInvalid
 	}
@@ -34,6 +63,9 @@ func (o *Owner) RetainFileServiceSnapshot(ctx context.Context, expected [32]byte
 		return nil, err
 	}
 	defer o.mu.Unlock()
+	if backend != nil && !sameSMBBackend(o.smbBackend, backend) {
+		return nil, ErrConflict
+	}
 	if len(o.fileServiceLeases) >= maxFileServiceLeases {
 		return nil, ErrBusy
 	}
@@ -47,7 +79,7 @@ func (o *Owner) RetainFileServiceSnapshot(ctx context.Context, expected [32]byte
 	if ctx.Err() != nil {
 		return nil, ErrUnavailable
 	}
-	state := &fileServiceLeaseState{owner: o, fingerprint: expected}
+	state := &fileServiceLeaseState{owner: o, fingerprint: expected, smbBackend: backend}
 	if o.fileServiceLeases == nil {
 		o.fileServiceLeases = make(map[*fileServiceLeaseState]struct{})
 	}
@@ -71,6 +103,10 @@ func (l *FileServiceLease) Verify(ctx context.Context) error {
 		return ErrReview
 	}
 	if _, retained := o.fileServiceLeases[l.state]; !retained {
+		l.state.review = true
+		return ErrReview
+	}
+	if l.state.smbBackend != nil && !sameSMBBackend(o.smbBackend, l.state.smbBackend) {
 		l.state.review = true
 		return ErrReview
 	}
