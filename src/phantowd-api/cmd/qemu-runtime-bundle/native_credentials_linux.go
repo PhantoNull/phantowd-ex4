@@ -202,28 +202,73 @@ func nativeCredentialFixture() (result error) {
 	if err := runtime.StartNativeDaemonQEMU(daemonContext); !errors.Is(err, runtimebundle.ErrReviewRequired) {
 		return errors.New("native duplicate start admitted")
 	}
+	// Authentication has completed. Idle-disable verification is a different
+	// phase: do not reuse the remaining startup deadline for three workers,
+	// journal confirmation and the two fresh-login probes.
+	idleContext, stopIdleContext := context.WithTimeout(context.Background(), 20*time.Second)
+	defer stopIdleContext()
+	idleStarted := time.Now()
 	// No client is held open here. The unchanged backend must perform its two
 	// complete stable-absence observations against the SAME running daemon.
 	disable := owner.SMB(native[0].Account.ID)
-	journal, err := disable.Load(daemonContext)
+	journal, err := disable.Load(idleContext)
 	if err != nil || journal.Phase != smbprovision.Enabled {
 		return errors.New("native idle disable admission")
 	}
 	sid := journal.SID
-	if err := disable.Disable(daemonContext, journal.Revision); err != nil {
-		return fmt.Errorf("native idle disable: %w", err)
+	if err := disable.Disable(idleContext, journal.Revision); err != nil {
+		return fmt.Errorf("native idle disable elapsed=%v context=%v: %w", time.Since(idleStarted), idleContext.Err(), err)
 	}
-	journal, err = disable.Load(daemonContext)
+	journal, err = disable.Load(idleContext)
 	if err != nil || journal.Phase != smbprovision.Disabled || journal.SID != sid {
 		return errors.New("native idle disable journal confirmation")
 	}
-	if err := runtime.VerifyNativeIdleDisableQEMU(daemonContext); err != nil {
-		return fmt.Errorf("native idle disable authentication: %w", err)
+	if err := runtime.VerifyNativeIdleDisableQEMU(idleContext); err != nil {
+		return fmt.Errorf("native idle disable authentication elapsed=%v context=%v: %w", time.Since(idleStarted), idleContext.Err(), err)
+	}
+	// Separate bounded active-session phase. The tagged native adapter has a
+	// fixed ten-second revocation budget for complete worker admissions; generic
+	// revocation stays five seconds. Native status reads include full admission
+	// with a four-second limit; generic status reads stay two seconds.
+	// This phase composes re-enable, two held clients, complete pair/absence/
+	// continuity observations and fresh-login probes. Full scans measured near
+	// one second each make the earlier 30-second aggregate envelope too tight.
+	sessionContext, stopSessionContext := context.WithTimeout(context.Background(), 45*time.Second)
+	defer stopSessionContext()
+	sessionStarted := time.Now()
+	if err := disable.Enable(sessionContext, journal.Revision); err != nil {
+		return fmt.Errorf("native session explicit re-enable: %w", err)
+	}
+	journal, err = disable.Load(sessionContext)
+	if err != nil || journal.Phase != smbprovision.Enabled || journal.SID != sid {
+		return errors.New("native session enable confirmation")
+	}
+	if err := runtime.StartNativeClientsQEMU(sessionContext); err != nil {
+		return fmt.Errorf("native held session clients: %w", err)
+	}
+	pair, err := backend.ObserveNativeSessionPairQEMU(sessionContext)
+	if err != nil {
+		return fmt.Errorf("native real qualified session pair: %w", err)
+	}
+	if err := disable.Disable(sessionContext, journal.Revision); err != nil {
+		return fmt.Errorf("native live session revoke elapsed=%v context=%v: %w", time.Since(sessionStarted), sessionContext.Err(), err)
+	}
+	journal, err = disable.Load(sessionContext)
+	if err != nil || journal.Phase != smbprovision.Disabled || journal.SID != sid {
+		return errors.New("native live session disabled confirmation")
+	}
+	if err := backend.VerifyNativePeerSessionQEMU(sessionContext, pair); err != nil {
+		return fmt.Errorf("native same peer session elapsed=%v context=%v: %w", time.Since(sessionStarted), sessionContext.Err(), err)
+	}
+	if err := runtime.VerifyNativeIdleDisableQEMU(sessionContext); err != nil {
+		return fmt.Errorf("native revoked fresh login elapsed=%v context=%v: %w", time.Since(sessionStarted), sessionContext.Err(), err)
 	}
 	if err := runtime.StopNativeDaemonQEMU(context.Background()); err != nil {
 		return err
 	}
-	if err := runtime.StartNativeDaemonQEMU(daemonContext); !errors.Is(err, runtimebundle.ErrReviewRequired) {
+	// Use a fresh context so this tests the single-use lifecycle refusal rather
+	// than cancellation of the already-completed authentication phase.
+	if err := runtime.StartNativeDaemonQEMU(context.Background()); !errors.Is(err, runtimebundle.ErrReviewRequired) {
 		return errors.New("native stopped daemon restarted")
 	}
 	if err := owner.Close(); err != nil {
@@ -239,5 +284,6 @@ func nativeCredentialFixture() (result error) {
 	fmt.Println("PHANTOWD_SAMBA_OWNER_NATIVE_ENROLLMENT_READY accounts=2 owner_bound=true original_config=true original_state=true disabled_first=true stdin_only=true same_sid=true explicit_enable=true stopped_reaped=true no_fd_leak=true scope=qemu-only")
 	fmt.Println("PHANTOWD_SAMBA_OWNER_NATIVE_DAEMON_READY accounts=2 same_code=true same_config=true same_state=true authenticated=true wrong_password_denied=true owned_group=true stopped_reaped=true no_fd_leak=true scope=qemu-only")
 	fmt.Println("PHANTOWD_SAMBA_OWNER_NATIVE_IDLE_DISABLE_READY owner_bound=true same_sid=true stable_absence=true new_login_denied=true other_login_allowed=true same_daemon=true no_new_privileges=true stopped_reaped=true no_fd_leak=true scope=qemu-only")
+	fmt.Println("PHANTOWD_SAMBA_OWNER_NATIVE_LIVE_REVOKE_READY accounts=2 qualified_pair=true owner_bound=true same_sid=true target_absent=true same_peer_session=true new_login_denied=true other_login_allowed=true same_daemon=true no_new_privileges=true stopped_reaped=true no_fd_leak=true scope=qemu-only")
 	return nil
 }

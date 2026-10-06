@@ -2451,6 +2451,20 @@ this order, preserving the [full contract](support/SAMBA-RUNTIME-PROFILE.md#samb
    dispatch, one target-only logoff, target absence and continued peer access,
    failed fresh target login, uncertainty/no-retry refusal and verified whole
    client/daemon teardown. Do not infer live revocation from an empty inventory.
+   This active-session tracer now passes the official local ARMv5 wrapper:
+   all37 driver/seven loader tests and both campaigns, two complete qualified
+   session records before dispatch, one Owner-bound target-only logoff, two
+   complete absence observations and the SAME peer session/server generation.
+   Fresh target login is denied; peer login, whole-group stop/reap, final FD
+   equality and unchanged base are mandatory. The backend-bound private witness
+   rejects JSON and host/race-count3 tests refuse partial, foreign or replaced
+   evidence. Native fixture status/revocation budgets are fixed4/10 seconds;
+   ordinary adapter2/5 is unchanged. Separate startup20/idle20/session45 phases
+   avoid sharing an already-consumed deadline; enrollment60/guest180 remain.
+   No guard or privilege is relaxed. This is focused local proof only: next
+   freeze and validate the complete source/image, then qualify continuous
+   identity/storage authority and protected product construction. It does not
+   establish data-handle semantics or qualify hardware/migration/recovery.
    Never bootstrap by
    fabricating enabled journals/SIDs, copying TDBs or
    passing enrollment lookup as active-service evidence. Closing/reopening an

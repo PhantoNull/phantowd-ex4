@@ -233,9 +233,19 @@ the private gate individually; no callback or replacement backend runs inside
 it. Exactly one complete code/config/state and live-daemon admission brackets
 each worker, retaining the existing status/revocation deadlines. Canceled and
 duplicate starts, restart after stop and absent/busy authority are refused.
-No session is deliberately held open here; empty-inventory qualification does
-not establish active-session coverage or live revocation.
-This is not complete image/clean/hosted qualification, live-session revocation,
+That first idle-only result did not establish active-session coverage.
+The newer official local wrapper additionally holds two fixed interactive
+clients, observes a complete qualified pair, executes Owner-bound target-only
+logoff, requires two complete target-absence inventories and verifies the SAME
+peer session/server generation. Fresh target login is denied; the peer remains
+usable. The witness is backend-bound/nonserializable; incomplete, foreign or
+replaced evidence is refused. All37 driver/seven loader tests, both campaigns,
+verified client/daemon group stop/reap, final FD equality and unchanged base
+pass; native host/race-count3 checks also pass. No new privilege or data share
+is granted. Native status/revocation use fixed4/10-second budgets (ordinary
+adapter2/5 unchanged), with independent startup20/idle20/session45 phases,
+enrollment60 and guest180. Complete worker admissions are never skipped.
+This is not complete image/clean/hosted qualification, data-handle semantics,
 continuous identity/storage authority, product root construction or startup.
 The generic Owner's static/non-root contract below is unchanged. See the
 [native profile](../../../../support/SAMBA-RUNTIME-PROFILE.md#native-same-state-authentication-qemu-only).

@@ -3,6 +3,35 @@
 
 # Implementation status
 
+## M4.4 Owner-bound native live-session revocation — disposable QEMU
+
+The official local ARMv5 wrapper now passes all 37 driver/seven loader tests
+and both campaigns, including two fixed interactive clients against the same
+Owner-enrolled daemon. Complete qualified session inventories must establish
+both accounts before dispatch. One Owner-bound target-only logoff then requires
+two complete target-absence inventories, the SAME peer session ID and server
+generation, a denied fresh target login and an allowed peer login. A replacement
+session or empty/partial inventory cannot substitute for continuity.
+
+The private witness is backend-bound and cannot be serialized. Host/race tests
+at count3 refuse incomplete/ambiguous inventories, zero/foreign witnesses,
+changed peer IDs/generations and weakened parent deadlines. Client groups,
+daemon groups and original pins remain owned through verified stop/reap/close;
+final FD equality, all earlier markers and unchanged base are mandatory.
+
+The native tagged fixture uses fixed 4-second status / 10-second revocation
+budgets to include complete admissions around workers. The ordinary adapter
+retains 2/5 seconds. Startup and idle-disable each have a separate 20-second
+phase; the complete active-session phase has 45 seconds. Enrollment remains
+60 seconds and each fresh guest remains bounded to 180 seconds. Earlier
+shared/tight phase envelopes failed closed during slower emulated scans;
+no admission, inventory, generation guard or no-retry rule is removed.
+
+This is focused cached local qualification, not a new complete image, hosted
+check, independent clean build, continuous identity/storage authority, data
+share/handle semantics, product startup/UI, or EX4 qualification. The firmware
+remains non-installable. Historical results below retain their source scope.
+
 ## M4.4 Owner-bound native idle disable — disposable QEMU
 
 The fixed native daemon now has a single-use serialized start/check/stop

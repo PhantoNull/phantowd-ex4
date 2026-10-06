@@ -933,7 +933,7 @@ static int native_credential_fixture(const char *operation, const char *name)
 /* Fixed authentication-only client in the outer disposable guest, not a
  * product launcher or data grant. Capture owns its process group. Secrets are
  * independently opened/validated and inherited via one FD, never argv/env. */
-static int native_client(const char *user, const char *kind)
+static int native_client(const char *user, const char *kind, int hold)
 {
     int wrong = !strcmp(kind, "wrong");
     if (owned_group_context() || (strcmp(user, "qpmanaged") && strcmp(user, "qpsecond")) ||
@@ -955,6 +955,54 @@ static int native_client(const char *user, const char *kind)
     char *arguments[] = {"smbclient", "-t", "2", "-m", "SMB3_11", "-p", "1445",
         "-A", "/proc/self/fd/4", "//127.0.0.1/IPC$", "-c", "quit", NULL};
     char *environment[] = {"PATH=/usr/sbin:/usr/bin:/sbin:/bin", "LC_ALL=C", NULL};
+    if (hold) {
+        if (wrong)
+            return fail();
+        /* Fixed interactive clients only, with an owned pipe kept open by
+         * this foreground group leader. Echo exercises the same connection;
+         * no shell, arbitrary command, data share or host listener is used.
+         * The controller, not a bootstrap marker, proves both real sessions. */
+        int input[2];
+        if (pipe2(input, O_CLOEXEC))
+            return fail();
+        pid_t child = fork();
+        if (child < 0)
+            return fail();
+        if (!child) {
+            if (dup2(input[0], 0) != 0 || close(input[0]) || close(input[1]))
+                return fail();
+            arguments[10] = NULL; /* no -c quit; stdin remains a private pipe */
+            execve("/usr/bin/smbclient", arguments, environment);
+            return fail();
+        }
+        if (close(input[0]) || close(4))
+            return fail();
+        struct sigaction no_pipe_signal = {.sa_handler = SIG_IGN};
+        sigemptyset(&no_pipe_signal.sa_mask);
+        if (sigaction(SIGPIPE, &no_pipe_signal, NULL))
+            return fail(); /* parent only; child already preserves defaults */
+        const char command[] = "echo 1 phantowd-qemu-session\n";
+        int live = 1, pipe_open = 1;
+        for (;;) {
+            if (live) {
+                int status;
+                pid_t waited = waitpid(child, &status, WNOHANG);
+                if (waited == child) {
+                    live = 0; /* retain the holder until explicit owned stop */
+                } else if (waited < 0 && errno != EINTR) {
+                    return fail();
+                }
+            }
+            if (live && pipe_open && write(input[1], command, sizeof(command) - 1) !=
+                    (ssize_t)(sizeof(command) - 1)) {
+                if (errno != EPIPE || close(input[1]))
+                    return fail();
+                pipe_open = 0; /* still wait/reap the child, never adopt/restart */
+            }
+            struct timespec delay = {.tv_sec = 0, .tv_nsec = 500000000};
+            while (nanosleep(&delay, &delay) && errno == EINTR) {}
+        }
+    }
     execve("/usr/bin/smbclient", arguments, environment);
     return fail();
 }
@@ -974,7 +1022,9 @@ int main(int argc, char **argv)
     if (argc == 2 && !strcmp(argv[1], "native-server"))
         return native_credential_fixture("server", "");
     if (argc == 4 && !strcmp(argv[1], "native-client"))
-        return native_client(argv[2], argv[3]);
+        return native_client(argv[2], argv[3], 0);
+    if (argc == 3 && !strcmp(argv[1], "native-session"))
+        return native_client(argv[2], "good", 1);
     if (argc == 2 && !strcmp(argv[1], "runtime-bundle"))
         return inspect_runtime_bundle();
     if (argc == 2 && !strcmp(argv[1], "composed-code"))

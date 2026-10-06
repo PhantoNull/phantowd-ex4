@@ -55,14 +55,16 @@ func SambaCredentialDocumentsQEMU(lookup fileserviceplan.SambaEnrollmentLookup) 
 // experiment. No product startup exists. Pending captures remain owned until
 // verified teardown.
 type NativeSambaRuntimeQEMU struct {
-	owner           *Owner
-	helper          *os.File
-	pending         *processowner.CaptureOwner
-	gate            chan struct{}
-	closed          bool
-	daemonAttempted bool
-	daemonPID       int
-	authPaths       []string
+	owner            *Owner
+	helper           *os.File
+	pending          *processowner.CaptureOwner
+	gate             chan struct{}
+	closed           bool
+	daemonAttempted  bool
+	daemonPID        int
+	authPaths        []string
+	clients          *processowner.PinnedSet
+	clientsAttempted bool
 }
 
 func (p *Plan) NewNativeSambaRuntimeQEMU(ctx context.Context, code, configuration, state *os.File, lookup fileserviceplan.SambaEnrollmentLookup) (_ *NativeSambaRuntimeQEMU, result error) {
@@ -113,6 +115,9 @@ func (p *Plan) NewNativeSambaRuntimeQEMU(ctx context.Context, code, configuratio
 	}
 	if err == nil {
 		err = r.prepareNativeDaemonQEMU(ctx)
+	}
+	if err == nil {
+		err = r.prepareNativeClientsQEMU()
 	}
 	if err == nil {
 		err = o.revalidate(ctx)
@@ -242,7 +247,19 @@ func (r *NativeSambaRuntimeQEMU) Close(ctx context.Context) error {
 		}
 		r.pending = nil
 	}
-	err := r.owner.Close(context.Background())
+	var clientErr error
+	if r.clients != nil {
+		_, clientErr = r.clients.Stop(context.Background())
+		if clientErr != nil {
+			r.owner.review = true
+		}
+		if err := r.clients.Close(); err != nil {
+			_, daemonErr := r.owner.processes.Stop(context.Background())
+			return errors.Join(ErrReviewRequired, clientErr, err, daemonErr)
+		}
+		r.clients = nil // all client groups settled before any original release
+	}
+	err := errors.Join(clientErr, r.owner.Close(context.Background()))
 	if !r.owner.closed {
 		return errors.Join(ErrReviewRequired, err)
 	}

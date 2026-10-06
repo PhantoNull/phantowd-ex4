@@ -155,11 +155,19 @@ func (r *NativeSambaRuntimeQEMU) StopNativeDaemonQEMU(ctx context.Context) error
 }
 
 func (r *NativeSambaRuntimeQEMU) stopNativeDaemonQEMU() error {
+	var clientErr error
+	if r.clients != nil {
+		clients, err := r.clients.Stop(context.Background())
+		clientErr = err
+		if clients.State != processowner.StateStopped {
+			clientErr = errors.Join(clientErr, ErrReviewRequired)
+		}
+	}
 	stopped, err := r.owner.processes.Stop(context.Background())
 	r.owner.snapshot.Processes, r.owner.snapshot.State = stopped, stopped.State
-	if err != nil || stopped.State != processowner.StateStopped {
+	if err != nil || clientErr != nil || stopped.State != processowner.StateStopped {
 		r.owner.review = true
-		return errors.Join(ErrReviewRequired, err)
+		return errors.Join(ErrReviewRequired, clientErr, err)
 	}
 	r.daemonPID = 0
 	return r.removeNativeAuthQEMU()
