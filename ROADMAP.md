@@ -2378,9 +2378,13 @@ this order, preserving the [full contract](support/SAMBA-RUNTIME-PROFILE.md#samb
    readiness/same objects/protected writable views, checks input-FD closure
    before exec and steady-state counts after normal/config/state stop cases.
    The failed cross-namespace legacy bind is not a pass; no source-path fallback
-   or generic extra-input API is added. Next qualify late FD-admission failures,
-   caller-input closure/copy independence and forced-stop retention for this
-   state handoff, then attach the SAME actual identity authority/NSS/passdb and
+   or generic extra-input API is added. Actual ARMv5 now also qualifies five
+   late-input constructor refusals with partial-pin cleanup, closure of every
+   temporary caller input, copied argv/credentials and forced-stop state review
+   with retained code/config/state and explicit verified release. The parent
+   constructor refuses repeated objects/mixed filesystems before publication;
+   no generic launch option or new privilege is added. Next attach the SAME
+   actual identity authority/NSS/passdb and
    storage leases. Whole-root/code/config/data construction, durable review and
    product lifecycle/HTTP remain open.
    The complete combined source on336c29f now also passes ONE cached full local
@@ -2388,6 +2392,10 @@ this order, preserving the [full contract](support/SAMBA-RUNTIME-PROFILE.md#samb
    hashes, embedded/installed/exported API and all853 compiled/archive source
    files. Hosted checks must still qualify their own exact PR head; no clean
    reproduction, product authority, release compliance or EX4 gate is inferred.
+   The descriptor-handoff source6cb5522 additionally passes the same complete
+   cached integration with854 independently matched compiled/archive files,
+   matching image API and seven hashes. Its later admission/forced-stop packet
+   has separate focused/native proof, not an inherited full-build result.
    The fixture now requires the already-supported virtual entropy provider,
    backed by host kernel randomness rather than a fixed seed. This removes the
    measured initial enrollment wait without extending its180-second deadline;

@@ -132,7 +132,14 @@ via `move_mount`, without reopening a source pathname. A mandatory actual
 ARMv5 case masks that pathname with an empty child-private tmpfs; real Samba
 readiness and same-object writable/nosuid/nodev/noexec views still pass. Input
 FDs must be closed before exec, bounded private bootstrap evidence must be
-complete/untruncated, and the three lifecycle cases must leak no descriptors.
+complete/untruncated, and the four lifecycle cases must leak no descriptors.
+The public QEMU-only constructor rejects duplicated objects and mixed
+filesystems before publication. Fixed probes exercise five invalid last-role
+inputs after partial retention, without launching or closing callers. The actual
+daemon receives independent inputs after all temporary callers are closed and
+the caller's argv/credentials mutated. A frozen-group state-drift case requires
+forced-stop review retaining code/config/state until explicit verified release;
+restoration never allows restart. Strict final evidence covers these behaviors.
 The ordinary static launcher still has no extra-input option. Code/config/data
 construction retains fixed fixture paths: this is **not** an atomic whole-root
 constructor or qualification of all path-replacement races. Passdb files are

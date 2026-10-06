@@ -38,12 +38,24 @@ func NewSambaStatePinnedSetQEMU(spec MemberSpec, executable *os.File, directorie
 			result = errors.Join(result, s.release())
 		}
 	}()
-	for _, source := range directories {
+	var identities [7]unix.Stat_t
+	for index, source := range directories {
 		pin, err := duplicateSambaStateDirectoryQEMU(source)
 		if err != nil {
 			return nil, err
 		}
 		s.pins = append(s.pins, pin)
+		// Qualify the complete tuple before publication, not only inside the
+		// child. Retained independent pins prevent caller close/FD reuse from
+		// changing either the comparison or subsequent launch inputs.
+		if unix.Fstat(int(pin.Fd()), &identities[index]) != nil || identities[index].Dev != identities[0].Dev {
+			return nil, ErrInvalid
+		}
+		for prior := 0; prior < index; prior++ {
+			if identities[index].Ino == identities[prior].Ino {
+				return nil, ErrInvalid
+			}
+		}
 	}
 	// Fixed captured slice; caller array/file closure cannot retarget launch.
 	inputs := append([]*os.File(nil), s.pins[1:]...)

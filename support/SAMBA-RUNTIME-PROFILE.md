@@ -438,10 +438,21 @@ FD is explicitly checked closed before exec; private bootstrap evidence must
 be complete and untruncated. The final mandatory marker additionally requires
 steady-state descriptor counts after all normal/config/state lifecycle cases.
 
+Parent-side admission additionally refuses duplicate objects or mixed
+filesystems before publication. Actual ARMv5 probes verify duplicate/nil/closed/
+O_PATH/regular-file late-role refusals, partial cleanup and caller-reference
+survival, without invoking Start. The actual daemon survives closing every
+temporary caller directory and mutating argv/credentials after construction.
+An additional frozen-group state-drift case verifies forced-stop review with
+retained code/config/state, restoration refusal, explicit verified release and
+idempotent Close. All four cases preserve the original180-second guest deadline
+and require strict admission/copy/forced-stop evidence with stable FD counts.
+
 This remains directory retention and a state-source handoff, not a product
 passdb authority or credential-byte snapshot. Root/code/config/data preparation
 still uses fixed fixture paths; atomic whole-root construction, all replacement
-races and forced-stop retention of this new state handoff are not qualified.
+races are not qualified. Forced-stop proof covers this guarded state handoff,
+not persistent product state or an installed service.
 Native identity consumers/NSS are not attached to this synthetic account set.
 Persistent state lifecycle, same-passdb identity ownership, coordinated mutation,
 descriptor-bound grants, durable recovery and product startup remain open.

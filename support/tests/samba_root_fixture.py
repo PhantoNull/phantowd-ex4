@@ -79,6 +79,10 @@ MARKERS = (
     "PHANTOWD_SAMBA_OWNER_STATE_HANDOFF_READY inputs=7 "
     "source_path_masked=true same_child_objects=true "
     "closed_before_exec=true no_fd_leak=true scope=qemu-only",
+    "PHANTOWD_SAMBA_OWNER_STATE_ADMISSION_READY refusals=5 "
+    "before_launch=true caller_inputs_closed=true copied_spec=true "
+    "partial_cleanup=true forced_stop_review=true review_pins=true "
+    "explicit_release=true no_fd_leak=true scope=qemu-only",
     "PHANTOWD_SAMBA_ROOT_DONE",
 )
 

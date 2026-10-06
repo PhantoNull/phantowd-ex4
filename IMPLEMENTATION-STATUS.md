@@ -13,12 +13,23 @@ namespace isolation, then attaches them with `move_mount` in its private root.
 All state views must match the original objects and be writable/nosuid/nodev/
 noexec; all seven input FDs are explicitly checked closed before daemon exec.
 
+The parent constructor now also refuses duplicate directory objects and mixed
+filesystems before publishing a process set. Actual ARMv5 constructor probes
+reject duplicate/nil/closed/O_PATH/regular-file last inputs after six valid
+roles, with no process launch, no partial-pin leak and caller references intact.
+The real daemon survives closing all seven temporary caller inputs and mutating
+the caller's argv/credential objects after construction. A separate frozen-group
+state-drift case forces bounded termination, retains code/config/state in review,
+refuses restoration/restart and releases only after explicit verified cleanup.
+All four lifecycle cases require stable descriptor counts and strict new
+admission/copy/forced-stop evidence; the existing180-second guest budget is unchanged.
+
 The actual ARMv5 regression masks the source pathname with an empty tmpfs in
 the child only. Path-based construction fails; the descriptor handoff passes
 real SMB readiness, live child-object checks, normal stop and config/state drift
 with retained review. The complete focused campaign and strict evidence
 validator pass, including unchanged base hashes and steady-state FD counts
-across all three cases. The initial cross-namespace legacy bind attempt failed
+across all four cases. The initial cross-namespace legacy bind attempt failed
 with `EINVAL`; retained mount clones must be created before changing namespace.
 
 This is a state-source handoff tracer, not atomic construction of the entire
@@ -26,6 +37,13 @@ service root, product passdb authority or qualified persistent state. Code,
 configuration and storage view construction still use fixed fixture paths.
 Same real identity/NSS/passdb/storage authority, durable recovery and product
 startup remain required. No NAS, physical disk or product listener is used.
+
+The earlier handoff source `6cb5522` separately passes complete cached
+Buildroot/QEMU integration, including every existing guest lane and final SMART
+fixtures. Every854 tracked API file matches both compiled source and collected
+archive; embedded/installed/exported API and seven artifact hashes independently
+agree. This does not qualify the subsequent admission increment as a full build,
+nor establish clean reproduction, product activation or physical EX4 support.
 
 ## M4.4 mutable Samba state-directory lifetime — QEMU prerequisite
 
