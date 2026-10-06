@@ -76,6 +76,15 @@ func (p *Plan) newSambaConfigurationQEMU(ctx context.Context, code, configuratio
 		owner.configuration, err = expected.retain(ctx, configuration)
 	}
 	if err == nil {
+		fd, openErr := unix.Open("/run/phantowd-samba-state", unix.O_PATH|unix.O_DIRECTORY|unix.O_CLOEXEC|unix.O_NOFOLLOW, 0)
+		err = openErr
+		if err == nil {
+			caller := os.NewFile(uintptr(fd), "fixed-disposable-samba-state")
+			owner.sambaState, err = retainSambaState(ctx, caller)
+			err = errors.Join(err, caller.Close())
+		}
+	}
+	if err == nil {
 		err = owner.revalidate(ctx) // Late combined fence after all fixed inputs.
 	}
 	if err != nil {
@@ -85,7 +94,7 @@ func (p *Plan) newSambaConfigurationQEMU(ctx context.Context, code, configuratio
 }
 
 // No Owner or descriptors escape. Fixed root-only disposable QEMU controller
-// exercises real Samba with original config objects and one metadata fault.
+// exercises real Samba with original config/state objects and metadata faults.
 func (p *Plan) ProbeSambaConfigurationLifetimeQEMU(ctx context.Context, code, configuration, writer *os.File) error {
 	if p == nil || ctx == nil || code == nil || configuration == nil || writer == nil {
 		return ErrInvalid
@@ -103,16 +112,17 @@ func (p *Plan) ProbeSambaConfigurationLifetimeQEMU(ctx context.Context, code, co
 		unix.Fstatfs(int(writer.Fd()), &fs) != nil || fs.Type != unix.TMPFS_MAGIC || fs.Flags&unix.ST_RDONLY != 0 {
 		return ErrInvalid
 	}
-	for _, drift := range []bool{false, true} {
-		if err := p.sambaConfigurationCase(ctx, code, configuration, writer, drift); err != nil {
+	for _, fault := range []string{"none", "configuration", "state"} {
+		if err := p.sambaConfigurationCase(ctx, code, configuration, writer, fault); err != nil {
 			return err
 		}
 	}
 	fmt.Println("PHANTOWD_SAMBA_OWNER_CONFIG_LIFETIME_READY exact_contents=true caller_close=true live_pins=true same_child_objects=true readonly_noexec=true normal_stop=true drift_stopped=true review_retained=true restoration_refused=true released=true scope=qemu-only")
+	fmt.Println("PHANTOWD_SAMBA_OWNER_STATE_LIFETIME_READY caller_close=true live_directory_pins=true same_child_objects=true writable_noexec=true mutable_passdb=true normal_stop=true drift_stopped=true review_retained=true restoration_refused=true released=true scope=qemu-only")
 	return nil
 }
 
-func (p *Plan) sambaConfigurationCase(ctx context.Context, code, configuration, writer *os.File, drift bool) (result error) {
+func (p *Plan) sambaConfigurationCase(ctx context.Context, code, configuration, writer *os.File, fault string) (result error) {
 	caller, err := duplicateRoot(configuration)
 	if err != nil {
 		return err
@@ -150,38 +160,80 @@ func (p *Plan) sambaConfigurationCase(ctx context.Context, code, configuration, 
 	if err := o.verifyLiveSambaCodeQEMU(pid); err != nil {
 		return err
 	}
-	if drift {
-		fd, err := openBeneath(int(writer.Fd()), "samba/smb.conf", unix.O_RDONLY)
+	if err := o.verifyLiveSambaStateQEMU(pid); err != nil {
+		return err
+	}
+	if fault != "none" {
+		root, name, originalMode, changedMode := writer, "samba/smb.conf", uint32(0600), uint32(0644)
+		if fault == "state" {
+			root, name, originalMode, changedMode = o.sambaState.root, "private", 0700, 0755
+		}
+		fd, err := openBeneath(int(root.Fd()), name, unix.O_RDONLY)
 		if err != nil {
 			return err
 		}
-		control := os.NewFile(uintptr(fd), "fixed-config-fault")
+		control := os.NewFile(uintptr(fd), "fixed-samba-input-fault")
 		defer control.Close()
-		if unix.Fchmod(fd, 0644) != nil {
-			return errors.New("config fault failed")
+		if unix.Fchmod(fd, changedMode) != nil {
+			return errors.New("input fault failed")
 		}
-		defer unix.Fchmod(fd, 0600)
+		defer unix.Fchmod(fd, originalMode)
 		observed, err := o.Observe(ctx)
 		if !errors.Is(err, ErrReviewRequired) || observed.State != processowner.StateReviewRequired ||
-			!errors.Is(unix.Kill(-pid, 0), unix.ESRCH) || len(o.configuration.contents.files) != 7 {
-			return errors.Join(errors.New("config drift did not stop and retain"), err)
+			!errors.Is(unix.Kill(-pid, 0), unix.ESRCH) || len(o.configuration.contents.files) != 7 || len(o.sambaState.files) != 7 {
+			return errors.Join(errors.New("input drift did not stop and retain"), err)
 		}
 		for _, pin := range o.configuration.contents.files {
 			if _, err := pin.Stat(); err != nil {
 				return err
 			}
 		}
-		if unix.Fchmod(fd, 0600) != nil {
-			return errors.New("config restoration failed")
+		for _, pin := range o.sambaState.files {
+			if _, err := pin.Stat(); err != nil {
+				return err
+			}
+		}
+		if unix.Fchmod(fd, originalMode) != nil {
+			return errors.New("input restoration failed")
 		}
 		if observed, err := o.Start(ctx); !errors.Is(err, ErrReviewRequired) || observed.State != processowner.StateReviewRequired {
-			return errors.New("restored config restarted reviewed service")
+			return errors.New("restored input restarted reviewed service")
 		}
 	}
 	closeErr := o.Close(context.Background())
-	if (!drift && closeErr != nil) || (drift && !errors.Is(closeErr, ErrReviewRequired)) ||
-		!errors.Is(unix.Kill(-pid, 0), unix.ESRCH) || o.configuration != nil || o.root != nil || len(o.files) != 0 {
-		return errors.Join(errors.New("config release not verified"), closeErr)
+	if (fault == "none" && closeErr != nil) || (fault != "none" && !errors.Is(closeErr, ErrReviewRequired)) ||
+		!errors.Is(unix.Kill(-pid, 0), unix.ESRCH) || o.configuration != nil || o.sambaState != nil || o.root != nil || len(o.files) != 0 {
+		return errors.Join(errors.New("input release not verified"), closeErr)
 	}
 	return nil
+}
+
+func (o *Owner) verifyLiveSambaStateQEMU(pid int) error {
+	for name, pin := range o.sambaState.files {
+		original, err := pin.Stat()
+		actualPath := "/proc/" + strconv.Itoa(pid) + "/root/state/" + name
+		actual, actualErr := os.Stat(actualPath)
+		if err != nil || actualErr != nil || !os.SameFile(original, actual) {
+			return errors.New("child state is not retained object")
+		}
+		fd, err := unix.Open(actualPath, unix.O_RDONLY|unix.O_DIRECTORY|unix.O_CLOEXEC|unix.O_NOFOLLOW, 0)
+		if err != nil {
+			return err
+		}
+		_, inspectErr := inspectSambaState(fd)
+		var fs unix.Statfs_t
+		fsErr := unix.Fstatfs(fd, &fs)
+		closeErr := unix.Close(fd)
+		const protected = unix.ST_NOSUID | unix.ST_NODEV | unix.ST_NOEXEC
+		if inspectErr != nil || fsErr != nil || closeErr != nil || fs.Flags&protected != protected {
+			return errors.New("child state mount flags or permissions")
+		}
+	}
+	// Samba's existing synthetic enrollment created this mutable database; do
+	// not read/hash its credential bytes or call that database identity-owned.
+	info, err := os.Stat("/proc/" + strconv.Itoa(pid) + "/root/state/private/passdb.tdb")
+	if err != nil || !info.Mode().IsRegular() || info.Size() == 0 {
+		return errors.New("mutable fixture passdb missing")
+	}
+	return o.sambaState.revalidate(context.Background())
 }

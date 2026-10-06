@@ -25,6 +25,7 @@ type Owner struct {
 	// Fixed only by the separate disposable Samba constructor. NewOwner's
 	// static/non-root contract and its inputs remain unchanged.
 	configuration *retainedConfiguration
+	sambaState    *retainedSambaState
 	gate          chan struct{}
 	processes     *processowner.PinnedSet
 	snapshot      OwnerSnapshot
@@ -294,8 +295,9 @@ func (o *Owner) release() error {
 			return err
 		}
 	}
-	result := errors.Join(o.retainedCode.release(), o.configuration.release())
+	result := errors.Join(o.retainedCode.release(), o.configuration.release(), o.sambaState.release())
 	o.configuration = nil
+	o.sambaState = nil
 	return result
 }
 
@@ -304,7 +306,12 @@ func (o *Owner) revalidate(ctx context.Context) error {
 		return err
 	}
 	if o.configuration != nil {
-		return o.configuration.revalidate(ctx)
+		if err := o.configuration.revalidate(ctx); err != nil {
+			return err
+		}
+	}
+	if o.sambaState != nil {
+		return o.sambaState.revalidate(ctx)
 	}
 	return nil
 }

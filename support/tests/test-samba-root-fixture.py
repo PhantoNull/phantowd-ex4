@@ -297,6 +297,11 @@ class SambaRootFixture(unittest.TestCase):
             "readonly_noexec=true normal_stop=true drift_stopped=true "
             "review_retained=true restoration_refused=true released=true "
             "scope=qemu-only",
+            "PHANTOWD_SAMBA_OWNER_STATE_LIFETIME_READY caller_close=true "
+            "live_directory_pins=true same_child_objects=true "
+            "writable_noexec=true mutable_passdb=true normal_stop=true "
+            "drift_stopped=true review_retained=true "
+            "restoration_refused=true released=true scope=qemu-only",
             "PHANTOWD_SAMBA_ROOT_DONE",
         ]
         fixture.check_guest("\r\n".join(lines + [SCAN_COST]))
@@ -351,6 +356,29 @@ class SambaRootFixture(unittest.TestCase):
                        for row in fixture.MARKERS]
             with self.assertRaises(ValueError):
                 fixture.check_guest("\n".join(changed + [SCAN_COST]))
+
+    def test_state_requires_mutable_same_objects_and_verified_stop(self):
+        expected = ("PHANTOWD_SAMBA_OWNER_STATE_LIFETIME_READY "
+                    "caller_close=true live_directory_pins=true "
+                    "same_child_objects=true writable_noexec=true "
+                    "mutable_passdb=true normal_stop=true drift_stopped=true "
+                    "review_retained=true restoration_refused=true "
+                    "released=true scope=qemu-only")
+        self.assertIn(expected, fixture.MARKERS)
+        good = "\n".join([*fixture.MARKERS, SCAN_COST])
+        fixture.check_guest(good)
+        for field in ("caller_close", "live_directory_pins",
+                      "same_child_objects", "writable_noexec",
+                      "mutable_passdb",
+                      "normal_stop", "drift_stopped", "review_retained",
+                      "restoration_refused", "released"):
+            with self.assertRaises(ValueError):
+                fixture.check_guest(good.replace(expected, expected.replace(
+                    field + "=true", field + "=false")))
+        for replacement in ("", expected + "\n" + expected,
+                            expected.replace("qemu-only", "product")):
+            with self.assertRaises(ValueError):
+                fixture.check_guest(good.replace(expected, replacement))
 
     def test_inherited_context_requires_exact_positive_evidence(self):
         evidence = ("PHANTOWD_SAMBA_ROOT_CONTEXT_READY "

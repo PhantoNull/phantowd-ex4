@@ -2365,6 +2365,16 @@ this order, preserving the [full contract](support/SAMBA-RUNTIME-PROFILE.md#samb
    launches no descendant and is not the daemon's service Owner.
    Next compose that token into actual same-object NSS/passdb/state/storage handoff;
    do not replace that requirement with another candidate/snapshot check.
+   The guarded Samba Owner now also retains its original writable tmpfs state
+   root and six fixed root-only role directories. Actual ARMv5 verifies matching
+   child objects and writable/nosuid/nodev/noexec views; normal TDB/log changes
+   are allowed, live directory-mode drift stops the group, review survives
+   restoration and verified teardown releases code/config/state together.
+   Native tests cover same-mode replacement, real kernel ACLs and incomplete/
+   unprotected directories. This is not a passdb-file or persistent-state
+   authority: the fixed bootstrap still mounts by pathname. Next qualify
+   descriptor-bound state construction, then attach the SAME actual identity
+   authority/NSS/passdb and storage leases before product lifecycle/HTTP.
    The fixture now requires the already-supported virtual entropy provider,
    backed by host kernel randomness rather than a fixed seed. This removes the
    measured initial enrollment wait without extending its180-second deadline;

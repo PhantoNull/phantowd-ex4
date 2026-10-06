@@ -71,6 +71,11 @@ MARKERS = (
     "readonly_noexec=true normal_stop=true drift_stopped=true "
     "review_retained=true restoration_refused=true released=true "
     "scope=qemu-only",
+    "PHANTOWD_SAMBA_OWNER_STATE_LIFETIME_READY caller_close=true "
+    "live_directory_pins=true same_child_objects=true writable_noexec=true "
+    "mutable_passdb=true normal_stop=true drift_stopped=true "
+    "review_retained=true restoration_refused=true released=true "
+    "scope=qemu-only",
     "PHANTOWD_SAMBA_ROOT_DONE",
 )
 

@@ -3,6 +3,30 @@
 
 # Implementation status
 
+## M4.4 mutable Samba state-directory lifetime — QEMU prerequisite
+
+The guarded Samba configuration Owner now retains the original writable tmpfs
+state root plus six fixed role directories. Their identity, root ownership,
+0700 mode, mount and lack of permission-changing attributes are rechecked;
+legitimate TDB/log writes are not treated as immutable-content drift. The
+ordinary mount-ID check is used only with retained references and does not
+weaken immutable code/config's unique mount-ID requirement.
+
+The focused actual ARMv5 campaign passes with the existing real daemon and
+synthetic credentials: same child directory objects, writable/nosuid/nodev/
+noexec views, normal mutation, live private-directory mode drift, verified
+whole-group stop, retained review, refusal after restoration and explicit
+verified code/config/state release. All earlier access/ACL/stream/code/config
+checks pass and the manifest-verified base image is unchanged. Native root tests
+cover same-mode replacement, missing/symlink roles, mode and actual kernel ACL
+refusal, cancellation and independent/idempotent release.
+
+The fixed bootstrap still uses a source pathname: this is not an atomic or
+descriptor-bound mount handoff, complete passdb-file lifecycle, product state
+provisioning or real identity-authority composition. No HTTP/product startup,
+physical storage or NAS operation is added. See the
+[state-directory contract](support/SAMBA-RUNTIME-PROFILE.md#qualified-mutable-state-directory-lifetime-qemu-only).
+
 ## M4.4 identity-consumer retention — internal prerequisite
 
 The Linux identity Owner now retains a bounded, opaque consumer only after
@@ -60,7 +84,7 @@ trailing-CR-only normalization fix it without relaxing evidence or deadlines.
 This overlay reuses the qualified base kernel/packages; it is not a clean
 Buildroot build, regenerated SBOM/legal-info or hardware qualification.
 Candidates are not installed or consumed by the daemon: native libc lookup,
-identity-consumer lifetime, actual same-passdb/state and descriptor-bound grants,
+daemon identity-consumer composition, actual same-passdb/state and descriptor-bound grants,
 transactional activation/recovery and product startup remain open. See the
 [internal candidate contract](src/phantowd-api/internal/fileserviceplan/README.md#candidate-samba-nss).
 
