@@ -2396,9 +2396,18 @@ this order, preserving the [full contract](support/SAMBA-RUNTIME-PROFILE.md#samb
    repetitions pass with unchanged base and no descriptor leak. This is not
    a retained identity lease, sticky service review or descriptor-bound product
    root construction; the fixed guest-only writable fault anchor is not a
-   product shortcut. Next compose the full retained native configuration with
-   a startup-bound credential
-   backend and daemon using the SAME mutable state. Never bootstrap by
+   product shortcut. A fixed read-only QEMU worker now receives four duplicated
+   original configuration objects (root plus three files), with role/parent
+   checks and late mount/metadata/byte fencing. Its bootstrap clones originals
+   before namespace change, poisons the source pathname and attaches the same
+   objects; the actual libc probe verifies escape FDs are absent after exec.
+   Seven admission refusals preserve callers/FD counts, and late mode drift
+   refuses before launch with capture review surviving restoration. All 31
+   driver tests and old/new ARMv5 gates pass within the same guest budget.
+   This is read-only worker handoff, not retained identity/service authority,
+   descriptor-bound product code/root construction or credential backend.
+   Next compose the full retained native configuration with a startup-bound
+   credential backend and daemon using the SAME mutable state. Never bootstrap by
    fabricating enabled journals/SIDs, copying TDBs or
    passing enrollment lookup as active-service evidence. Closing/reopening an
    identity Owner is new admission, not continuous retained authority.

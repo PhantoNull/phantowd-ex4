@@ -3,7 +3,7 @@
 
 # Implementation status
 
-## M2.4 Owner-derived native configuration retention — QEMU prerequisite
+## M2.4 Owner-derived native configuration and descriptor handoff — QEMU
 
 The native enrollment candidate now supplies the independently expected hashes,
 modes and sizes for exactly `passwd`, `group` and `nsswitch.conf`. A private
@@ -19,13 +19,27 @@ refused; restored permissions still differ from the originally admitted object
 generation. Successful teardown restores the initial descriptor count and the
 native Owner's evidence remains unchanged.
 
+A separate fixed QEMU capture now duplicates the original configuration root
+and three original files, with role/parent correspondence and late metadata,
+mount, attribute and byte rechecks. Its bootstrap clones these objects before
+changing mount namespace, masks the source pathname in the child and attaches
+only the detached original-object clones. The actual post-exec libc probe
+checks that inherited descriptors are closed. All four temporary config callers
+close before capture; no generic extra-FD/action/secret interface is added.
+
+Seven real admission refusals cover missing, closed, duplicate, wrong-kind,
+swapped-role and non-empty-stdin inputs with caller preservation and partial
+cleanup. A metadata change after capture construction refuses before launch;
+restoration does not clear capture review. This is fixed lookup-worker review,
+not product service recovery or an identity lease.
+
 Windows API/UI preflight, Linux tagged vet and focused race-count3 pass. The
-official focused wrapper passes all 30 Linux driver tests, seven loader tests,
+official focused wrapper passes all 31 Linux driver tests, seven loader tests,
 lint/ShellCheck, fresh ARMv5 compilation and all existing/new Samba gates with
 the base unchanged and the existing 180-second guest budget.
 
-This qualifies configuration retention during one fixed lookup worker, not a
-retained identity lease, descriptor-bound product root construction, sticky
+This qualifies original configuration handoff during one fixed lookup worker,
+not a retained identity lease, descriptor-bound product root construction, sticky
 service review, daemon installation or SAME-state credential backend. The
 QEMU controller retains a writable original only for its metadata fault;
 product code must not inherit that fixture shortcut. Uncertain worker teardown

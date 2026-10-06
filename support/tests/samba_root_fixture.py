@@ -104,6 +104,11 @@ MARKERS = (
     "exact_census=true readonly_noexec=true caller_close=true "
     "libc=true drift_refused=true restoration_mismatch=true "
     "stopped_reaped=true released=true no_fd_leak=true scope=qemu-only",
+    "PHANTOWD_SAMBA_OWNER_NATIVE_HANDOFF_READY inputs=4 refusals=7 "
+    "source_path_masked=true same_objects=true caller_close=true "
+    "readonly_noexec=true closed_before_exec=true late_drift_refused=true "
+    "review_sticky=true partial_cleanup=true stopped_reaped=true "
+    "no_fd_leak=true scope=qemu-only",
     "PHANTOWD_SAMBA_ROOT_DONE",
 )
 

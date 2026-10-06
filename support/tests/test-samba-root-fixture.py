@@ -44,6 +44,30 @@ def reports():
 
 
 class SambaRootFixture(unittest.TestCase):
+    def test_native_handoff_requires_originals_and_refusals(self):
+        expected = ("PHANTOWD_SAMBA_OWNER_NATIVE_HANDOFF_READY inputs=4 "
+                    "refusals=7 source_path_masked=true same_objects=true "
+                    "caller_close=true readonly_noexec=true "
+                    "closed_before_exec=true late_drift_refused=true "
+                    "review_sticky=true partial_cleanup=true "
+                    "stopped_reaped=true no_fd_leak=true scope=qemu-only")
+        self.assertIn(expected, fixture.MARKERS)
+        good = "\n".join([*fixture.MARKERS, SCAN_COST])
+        fixture.check_guest(good)
+        for field in ("source_path_masked", "same_objects", "caller_close",
+                      "readonly_noexec", "closed_before_exec",
+                      "late_drift_refused", "review_sticky", "partial_cleanup",
+                      "stopped_reaped", "no_fd_leak"):
+            with self.assertRaises(ValueError):
+                fixture.check_guest(good.replace(expected, expected.replace(
+                    field + "=true", field + "=false")))
+        for replacement in ("", expected + "\n" + expected,
+                            expected.replace("inputs=4", "inputs=3"),
+                            expected.replace("refusals=7", "refusals=6"),
+                            expected.replace("qemu-only", "product")):
+            with self.assertRaises(ValueError):
+                fixture.check_guest(good.replace(expected, replacement))
+
     def test_native_configuration_requires_retained_real_lookup(self):
         expected = ("PHANTOWD_SAMBA_OWNER_NATIVE_CONFIG_READY "
                     "owner_derived=true "
@@ -440,6 +464,11 @@ class SambaRootFixture(unittest.TestCase):
             "libc=true drift_refused=true restoration_mismatch=true "
             "stopped_reaped=true released=true no_fd_leak=true "
             "scope=qemu-only",
+            "PHANTOWD_SAMBA_OWNER_NATIVE_HANDOFF_READY inputs=4 refusals=7 "
+            "source_path_masked=true same_objects=true caller_close=true "
+            "readonly_noexec=true closed_before_exec=true "
+            "late_drift_refused=true review_sticky=true partial_cleanup=true "
+            "stopped_reaped=true no_fd_leak=true scope=qemu-only",
             "PHANTOWD_SAMBA_ROOT_DONE",
         ]
         fixture.check_guest("\r\n".join(lines + [SCAN_COST]))

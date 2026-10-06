@@ -630,9 +630,79 @@ static int verify_restored_context(void)
     return 0;
 }
 
+/* Fixed native configuration ABI, independent of the mutable-state profile.
+ * Clone all four originals before leaving their mount namespace. Expected
+ * document bytes/census remain the controller's protected admission contract. */
+static int native_config_clones(int clones[4])
+{
+    struct stat objects[4];
+    const char *attributes[] = {"system.posix_acl_access",
+        "system.posix_acl_default", "security.capability"};
+    for (int index = 0; index < 4; ++index) {
+        int fd = 4 + index;
+        int flags = fcntl(fd, F_GETFL);
+        struct statfs fs;
+        mode_t mode = index ? (S_IFREG | 0644) : (S_IFDIR | 0755);
+        if (flags < 0 || (flags & O_ACCMODE) != O_RDONLY || (flags & O_PATH) ||
+            !!(flags & O_DIRECTORY) != !index ||
+            fstat(fd, &objects[index]) || objects[index].st_mode != mode ||
+            objects[index].st_uid || objects[index].st_gid ||
+            (index && (objects[index].st_nlink != 1 ||
+                objects[index].st_size <= 0 || objects[index].st_size > 32768)) ||
+            fstatfs(fd, &fs) || fs.f_type != TMPFS_MAGIC ||
+            (fs.f_flags & (ST_RDONLY | ST_NOSUID | ST_NODEV | ST_NOEXEC)) !=
+                (ST_RDONLY | ST_NOSUID | ST_NODEV | ST_NOEXEC) ||
+            objects[index].st_dev != objects[0].st_dev)
+            return -1;
+        for (int prior = 0; prior < index; ++prior)
+            if (objects[index].st_ino == objects[prior].st_ino)
+                return -1;
+        for (size_t i = 0; i < sizeof(attributes) / sizeof(attributes[0]); ++i)
+            if (fgetxattr(fd, attributes[i], NULL, 0) >= 0 ||
+                (errno != ENODATA && errno != ENOTSUP))
+                return -1;
+        clones[index] = syscall(SYS_open_tree, fd, "",
+            OPEN_TREE_CLONE | OPEN_TREE_CLOEXEC | AT_EMPTY_PATH);
+        if (clones[index] < 0)
+            return -1;
+    }
+    return 0;
+}
+
+static int native_config_view(int clones[4])
+{
+    const char config[] = "/run/phantowd-native-lookup/etc";
+    struct stat original, masked;
+    /* Poison only the child source pathname. A bind of that pathname cannot
+     * provide any passwd/group entries. Never fall back to /proc/self/fd. */
+    if (mount("tmpfs", config, "tmpfs", MS_NOSUID | MS_NODEV | MS_NOEXEC,
+              "size=64k,mode=0755") || fstat(4, &original) ||
+        stat(config, &masked) ||
+        (original.st_dev == masked.st_dev && original.st_ino == masked.st_ino))
+        return -1;
+    const char *roles[] = {"", "/passwd", "/group", "/nsswitch.conf"};
+    for (int index = 0; index < 4; ++index) {
+        char destination[96];
+        struct stat actual;
+        struct statvfs flags;
+        snprintf(destination, sizeof(destination), "%s%s", config, roles[index]);
+        if (fstat(4 + index, &original) ||
+            syscall(SYS_move_mount, clones[index], "", AT_FDCWD, destination,
+                    MOVE_MOUNT_F_EMPTY_PATH) || close(clones[index]) ||
+            mount(NULL, destination, NULL, MS_BIND | MS_REMOUNT | MS_RDONLY |
+                  MS_NOSUID | MS_NODEV | MS_NOEXEC, NULL) ||
+            stat(destination, &actual) || original.st_dev != actual.st_dev ||
+            original.st_ino != actual.st_ino || statvfs(destination, &flags) ||
+            (flags.f_flag & (ST_RDONLY | ST_NOSUID | ST_NODEV | ST_NOEXEC)) !=
+                (ST_RDONLY | ST_NOSUID | ST_NODEV | ST_NOEXEC))
+            return -1;
+    }
+    return 0;
+}
+
 /* No Samba state or data grants. Only the fixed staged native documents and
  * already prepared read-only code are visible to this capability-free probe. */
-static int native_lookup_fixture(void)
+static int native_lookup_fixture(int handoff)
 {
     const char lookup[] = "/run/phantowd-native-lookup";
     struct stat info, original, attached;
@@ -641,8 +711,11 @@ static int native_lookup_fixture(void)
         info.st_mode != (S_IFDIR | 0755) || info.st_uid || info.st_gid ||
         statfs(lookup, &fs) || fs.f_type != TMPFS_MAGIC)
         return fail();
+    int clones[4];
+    if (handoff && native_config_clones(clones))
+        return fail();
     const char *files[] = {"/etc/passwd", "/etc/group", "/etc/nsswitch.conf"};
-    for (size_t i = 0; i < sizeof(files) / sizeof(files[0]); ++i) {
+    for (size_t i = 0; !handoff && i < sizeof(files) / sizeof(files[0]); ++i) {
         char path[96];
         snprintf(path, sizeof(path), "%s%s", lookup, files[i]);
         if (lstat(path, &info) || info.st_mode != (S_IFREG | 0644) ||
@@ -674,7 +747,8 @@ static int native_lookup_fixture(void)
             return fail();
     }
     const char config[] = "/run/phantowd-native-lookup/etc";
-    if (grant(config, config, 1) || chroot(lookup) || chdir("/") ||
+    if ((handoff ? native_config_view(clones) : grant(config, config, 1)) ||
+        chroot(lookup) || chdir("/") ||
         syscall(SYS_close_range, 3U, ~0U, 0) ||
         prctl(PR_CAP_AMBIENT, PR_CAP_AMBIENT_CLEAR_ALL, 0, 0, 0) ||
         prctl(PR_SET_KEEPCAPS, 0, 0, 0, 0))
@@ -697,6 +771,10 @@ static int native_lookup_fixture(void)
         setresuid(65534, 65534, 65534) || syscall(SYS_capset, &header, data) ||
         prctl(PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0))
         return fail();
+    if (handoff)
+        fputs("PHANTOWD_NATIVE_CONFIG_HANDOFF_READY inputs=4 "
+              "source_path_masked=true same_objects=true closed_before_exec=true "
+              "scope=qemu-only\n", stderr);
     char *args[] = {"native-libc-probe", "native-lookup", NULL};
     char *environment[] = {"LC_ALL=C", NULL};
     execve("/fixture/charset", args, environment);
@@ -710,7 +788,9 @@ int main(int argc, char **argv)
     if (argc == 2 && !strcmp(argv[1], "guard"))
         return 0;
     if (argc == 2 && !strcmp(argv[1], "native-lookup"))
-        return native_lookup_fixture();
+        return native_lookup_fixture(0);
+    if (argc == 2 && !strcmp(argv[1], "native-lookup-retained"))
+        return native_lookup_fixture(1);
     if (argc == 2 && !strcmp(argv[1], "runtime-bundle"))
         return inspect_runtime_bundle();
     if (argc == 2 && !strcmp(argv[1], "composed-code"))

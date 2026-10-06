@@ -527,6 +527,23 @@ a claim of sticky service review. If capture teardown is uncertain, the tracer
 does not release its configuration pins; product recovery/ownership must still
 be composed. The new evidence adds no boot or increased guest deadline.
 
+The fixed read-only native worker now also receives four independently
+duplicated configuration objects: root, passwd, group and nsswitch.conf.
+Role/parent checks use the retained directory, not a host pathname; mount,
+metadata, attributes and file bytes are rechecked before launch. The guarded
+bootstrap clones all originals before unsharing, masks the child source path
+and attaches those detached original-object clones read-only/noexec. All
+temporary callers close before capture; the actual post-exec libc probe
+independently checks escape descriptors are absent. No generic extra-FD option
+or selector/secret interface is added.
+
+Seven actual QEMU admission refusals exercise partial cleanup and preserve
+caller/FD counts. A separately admitted worker sees late mode drift and refuses
+before execution; permission restoration cannot clear its capture review.
+Configuration release follows verified closure of both captures. This does
+not qualify a continuous identity lease, descriptor-bound product code/root,
+daemon credentials/state composition or durable service recovery.
+
 - Fix the backend, launcher, daemon, arguments, readiness/stop budgets and
   protected roots once at construction. No operation accepts replacements,
   arbitrary paths, executable selection, credentials or a new backend.
