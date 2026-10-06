@@ -2461,9 +2461,18 @@ this order, preserving the [full contract](support/SAMBA-RUNTIME-PROFILE.md#samb
    evidence. Native fixture status/revocation budgets are fixed4/10 seconds;
    ordinary adapter2/5 is unchanged. Separate startup20/idle20/session45 phases
    avoid sharing an already-consumed deadline; enrollment60/guest180 remain.
-   No guard or privilege is relaxed. This is focused local proof only: next
-   freeze and validate the complete source/image, then qualify continuous
-   identity/storage authority and protected product construction. It does not
+   No guard or privilege is relaxed. Frozen57ee527 now also passes complete
+   cached local integration, including all later guest lanes; all880 API
+   source/package/regular archive files, installed/image/exported API bytes and
+   seven payload hashes agree. Own hosted and independent clean-build/release
+   qualification remain separate. Next qualify continuous identity/storage
+   authority and protected product construction. Existing snapshot leases are
+   not backend-bound handoff authority: their full evidence includes mutable
+   Samba journals, and Verify calls passdb under the Owner lock. Never recurse
+   into that lease from a worker/runtime gate or silently refresh its review.
+   A confirmed account transition needs an explicitly qualified successor/fence;
+   unknown drift, wrong Owner/backend, uncertain stop or partial evidence refuse.
+   It does not
    establish data-handle semantics or qualify hardware/migration/recovery.
    Never bootstrap by
    fabricating enabled journals/SIDs, copying TDBs or

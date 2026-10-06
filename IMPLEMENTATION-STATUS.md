@@ -3,6 +3,28 @@
 
 # Implementation status
 
+## Complete cached native-revocation integration — local qualification
+
+Frozen `57ee527` passes the complete cached local lane: API/vet/race/fixed-count
+fuzz, source/configuration preflights, package/source/legal-info collection,
+actual ARMv5 smoke/MD/two-boot, launcher/retained Owner/loader/libatomic,
+both restricted-root Samba campaigns and synthetic SMART producer/capture.
+Live-session revocation and every earlier Samba guard pass within the declared
+fixed profiles; all previous base-image/teardown checks remain mandatory.
+
+An independent post-terminal audit compares all 880 tracked API files against
+the compiled package and regular, nonduplicated source archive members. All
+match; unexpected archived code is refused. Installed, image-contained and
+exported API bytes agree at SHA256
+`5867a9149bd506811ddfcf15bde6d605e08057ef415a01b8524a8b91410ee662`.
+All seven ordered payload hashes verify. No tracked source changes or restarted
+build occur during qualification.
+
+This is cached local evidence, not the new PR's own hosted checks, independent
+clean-build reproducibility, complete release-source/licensing qualification,
+product identity/storage composition, recovery, migration or EX4 qualification.
+There is still no installable firmware release.
+
 ## M4.4 Owner-bound native live-session revocation — disposable QEMU
 
 The official local ARMv5 wrapper now passes all 37 driver/seven loader tests
@@ -27,10 +49,11 @@ phase; the complete active-session phase has 45 seconds. Enrollment remains
 shared/tight phase envelopes failed closed during slower emulated scans;
 no admission, inventory, generation guard or no-retry rule is removed.
 
-This is focused cached local qualification, not a new complete image, hosted
-check, independent clean build, continuous identity/storage authority, data
-share/handle semantics, product startup/UI, or EX4 qualification. The firmware
-remains non-installable. Historical results below retain their source scope.
+The complete cached result above additionally qualifies this source's image.
+Neither result establishes hosted/independent clean-build qualification,
+continuous identity/storage authority, data-share/handle semantics, product
+startup/UI or EX4 qualification. The firmware remains non-installable.
+Historical results below retain their source scope.
 
 ## M4.4 Owner-bound native idle disable — disposable QEMU
 
