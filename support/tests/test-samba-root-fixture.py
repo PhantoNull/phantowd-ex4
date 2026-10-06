@@ -62,7 +62,7 @@ class SambaRootFixture(unittest.TestCase):
             with self.assertRaises(ValueError):
                 fixture.check_guest(good.replace(expected, replacement))
 
-    def test_native_lookup_requires_actual_libc_and_isolated_owner_evidence(self):
+    def test_native_lookup_requires_libc_and_isolated_owner_evidence(self):
         expected = ("PHANTOWD_SAMBA_OWNER_NATIVE_NSS_READY accounts=2 "
                     "owner_derived=true libc=true private_groups=true "
                     "foreign_omitted=true readonly_root=true caps_zero=true "
