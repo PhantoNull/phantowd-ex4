@@ -93,6 +93,13 @@ MARKERS = (
     "cancellation_before_admission=true "
     "review_pins=true restoration_refused=true stopped_reaped=true "
     "released=true no_fd_leak=true scope=qemu-only",
+    "PHANTOWD_SAMBA_OWNER_NATIVE_NSS_READY accounts=2 owner_derived=true "
+    "libc=true private_groups=true foreign_omitted=true readonly_root=true "
+    "caps_zero=true no_state=true unchanged_owner=true stopped_reaped=true "
+    "daemon_installed=false scope=qemu-only",
+    "PHANTOWD_SAMBA_OWNER_NATIVE_NSS_REFUSAL_READY changed_uid=true "
+    "supplementary_group=true foreign_user=true restored_lookup=true "
+    "unchanged_owner=true stopped_reaped=true scope=qemu-only",
     "PHANTOWD_SAMBA_ROOT_DONE",
 )
 

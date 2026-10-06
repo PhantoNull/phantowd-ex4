@@ -26,6 +26,47 @@ def save_log(destination, source):
 
 
 class BuildFeedbackTests(unittest.TestCase):
+    def test_enrollment_lookup_requires_exact_unique_serial_evidence(self):
+        marker = (
+            "PHANTOWD_M24_NATIVE_ENROLLMENT_LOOKUP_READY accounts=2 "
+            "before_enrollment=true private_groups=true files_only=true "
+            "foreign_omitted=true journals_unchanged=true json_refused=true "
+            "installed=false activation=false scope=disposable-qemu-only"
+        )
+        source = (ROOT / "support/qemu-smoke.sh").read_text()
+        line = next(line.strip() for line in source.splitlines()
+                    if line.strip().startswith("if ! ") and marker in line)
+        command = line[len("if ! "):-len("; then")]
+        with tempfile.TemporaryDirectory() as temporary:
+            log = pathlib.Path(temporary) / "serial.log"
+            cases = [("LF", marker + "\n", True),
+                     ("CRLF", marker + "\r\n", True),
+                     ("absent", "", False),
+                     ("duplicate", (marker + "\n") * 2, False),
+                     ("prefixed", "prefix " + marker + "\n", False)]
+            cases += [(field, marker.replace(field, replacement) + "\n",
+                       False) for field, replacement in (
+                           ("accounts=2", "accounts=1"),
+                           ("scope=disposable-qemu-only", "scope=product"),
+                           ("installed=false", "installed=true"),
+                           ("activation=false", "activation=true"),
+                           ("private_groups=true", "private_groups=false"),
+                           ("before_enrollment=true",
+                            "before_enrollment=false"),
+                           ("journals_unchanged=true",
+                            "journals_unchanged=false"),
+                           ("files_only=true", "files_only=false"),
+                           ("foreign_omitted=true", "foreign_omitted=false"),
+                           ("json_refused=true", "json_refused=false"))]
+            for label, payload, accepted in cases:
+                with self.subTest(label=label):
+                    log.write_bytes(payload.encode("ascii"))
+                    result = subprocess.run(
+                        ["sh", "-c", command], capture_output=True,
+                        env={**os.environ, "log_file": str(log)}, timeout=3,
+                    )
+                    self.assertEqual(result.returncode == 0, accepted)
+
     def test_owner_nss_marker_accepts_crlf_but_not_altered_evidence(self):
         marker = (
             "PHANTOWD_M41_OWNER_SAMBA_NSS_READY identity=owner_passdb "

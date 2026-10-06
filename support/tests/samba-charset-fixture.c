@@ -1,10 +1,19 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /* SPDX-FileCopyrightText: 2026 PhantoWD EX4 contributors */
 /* Dynamic glibc conversion probe, executed only in the disposable QEMU root. */
+#define _GNU_SOURCE
 #include <iconv.h>
 #include <errno.h>
+#include <grp.h>
+#include <pwd.h>
+#include <linux/capability.h>
 #include <stdio.h>
 #include <string.h>
+#include <sys/prctl.h>
+#include <sys/stat.h>
+#include <sys/statvfs.h>
+#include <sys/syscall.h>
+#include <unistd.h>
 
 static int convert(const char *to, const char *from,
                    const unsigned char *input, size_t input_size,
@@ -27,8 +36,100 @@ static int convert(const char *to, const char *from,
     return mismatch;
 }
 
-int main(void)
+/* Separate lookup-only experiment; no credential or Samba command. The fixed
+ * expected IDs independently check the real Owner's deterministic allocation. */
+static int native_lookup(void)
 {
+    struct __user_cap_header_struct header = {_LINUX_CAPABILITY_VERSION_3, 0};
+    struct __user_cap_data_struct caps[2] = {{0}, {0}};
+    struct statvfs flags;
+    struct stat info;
+    if (getuid() != 65534 || geteuid() != 65534 || getgid() != 65534 ||
+        getegid() != 65534 || getgroups(0, NULL) != 0 ||
+        prctl(PR_GET_NO_NEW_PRIVS, 0, 0, 0, 0) != 1 ||
+        syscall(SYS_capget, &header, caps) || caps[0].effective ||
+        caps[0].permitted || caps[0].inheritable || caps[1].effective ||
+        caps[1].permitted || caps[1].inheritable ||
+        statvfs("/", &flags) || !(flags.f_flag & ST_RDONLY) ||
+        statvfs("/etc", &flags) ||
+        (flags.f_flag & (ST_RDONLY | ST_NOSUID | ST_NODEV | ST_NOEXEC)) !=
+            (ST_RDONLY | ST_NOSUID | ST_NODEV | ST_NOEXEC))
+        return 1;
+    for (unsigned int cap = 0; cap < 64; ++cap) {
+        int bounded = prctl(PR_CAPBSET_READ, cap, 0, 0, 0);
+        if (bounded < 0) {
+            if (errno != EINVAL || cap <= CAP_LAST_CAP)
+                return 1;
+            break;
+        }
+        if (bounded || prctl(PR_CAP_AMBIENT, PR_CAP_AMBIENT_IS_SET,
+                             cap, 0, 0) != 0)
+            return 1;
+    }
+    const char *absent[] = {"/proc", "/sys", "/dev", "/state", "/shares",
+        "/etc/shadow", "/etc/samba", "/run/phantowd-native-lookup"};
+    for (size_t i = 0; i < sizeof(absent) / sizeof(absent[0]); ++i)
+        if (!lstat(absent[i], &info) || errno != ENOENT)
+            return 1;
+    const char *names[] = {"qpmanaged", "qpsecond"};
+    for (size_t i = 0; i < 2; ++i) {
+        uid_t expected = 2000 + i;
+        struct passwd *user = getpwnam(names[i]);
+        if (!user || user->pw_uid != expected || user->pw_gid != expected ||
+            strcmp(user->pw_name, names[i]) || strcmp(user->pw_passwd, "!") ||
+            strcmp(user->pw_dir, "/") || strcmp(user->pw_shell, "/sbin/nologin"))
+            return 1;
+        user = getpwuid(expected);
+        if (!user || strcmp(user->pw_name, names[i]))
+            return 1;
+        struct group *group = getgrnam(names[i]);
+        if (!group || group->gr_gid != expected || group->gr_mem[0])
+            return 1;
+        group = getgrgid(expected);
+        if (!group || strcmp(group->gr_name, names[i]))
+            return 1;
+        gid_t groups[8];
+        int count = 8;
+        if (getgrouplist(names[i], expected, groups, &count) != 1 ||
+            count != 1 || groups[0] != expected)
+            return 1;
+    }
+    for (size_t i = 0; i < 3; ++i) {
+        const char *foreign[] = {"qpwriter", "qpreader", "qpoutsider"};
+        if (getpwnam(foreign[i]) || getpwuid(1801 + i))
+            return 1;
+    }
+    if (getgrnam("qpgroup") || getgrgid(1800))
+        return 1;
+    unsigned int users = 0, groups = 0;
+    setpwent();
+    while (getpwent())
+        if (++users > 4)
+            return 1;
+    endpwent();
+    setgrent();
+    while (getgrent())
+        if (++groups > 4)
+            return 1;
+    endgrent();
+    if (users != 4 || groups != 4)
+        return 1;
+    puts("PHANTOWD_NATIVE_LIBC_LOOKUP_READY accounts=2 private_groups=true "
+         "foreign_omitted=true readonly_root=true caps_zero=true no_state=true "
+         "scope=qemu-only");
+    return 0;
+}
+
+int main(int argc, char **argv)
+{
+    if (argc == 2 && !strcmp(argv[1], "native-lookup")) {
+        int result = native_lookup();
+        if (result)
+            fputs("PHANTOWD_NATIVE_LIBC_LOOKUP_REFUSED\n", stderr);
+        return result;
+    }
+    if (argc != 1)
+        return 1;
     /* Distinct accented and box-drawing characters, not ASCII identity. */
     const unsigned char cp850[] = {0x82, 0x9c, 0xa0, 0xe1, 0xb3};
     const unsigned char utf8[] = {0xc3, 0xa9, 0xc2, 0xa3, 0xc3, 0xa1,

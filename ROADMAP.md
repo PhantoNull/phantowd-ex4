@@ -2365,6 +2365,33 @@ this order, preserving the [full contract](support/SAMBA-RUNTIME-PROFILE.md#samb
    launches no descendant and is not the daemon's service Owner.
    Next compose that token into actual same-object NSS/passdb/state/storage handoff;
    do not replace that requirement with another candidate/snapshot check.
+   A separate native enrollment lookup now breaks the bootstrap dependency:
+   confirmed desired-disabled Unix identities can produce lookup-only documents
+   before passdb enrollment, without loosening the enabled-service Plan. The
+   non-recovering Owner reader and bounded renderer run under the identity lock;
+   cancelled/incomplete/drift/review inputs refuse atomically, credential backends
+   are not queried and JSON is blocked. Native tagged vet/race, host preflight,
+   actual ARMv5 API overlay smoke and the separate two-boot state suite pass.
+   Missing/duplicate/altered lookup evidence is refused. The same frozen source
+   also passes complete cached local integration on `fa4f25a`, including every
+   later Samba/SMART lane; all 862 packaged API files, the embedded/installed/
+   exported API and seven artifact hashes independently agree. Hosted and
+   independent clean-build qualification remain separate; the documents are
+   not installed in a daemon or qualified through native libc.
+   The separate fixed campaign now also qualifies actual ARMv5 libc consumption
+   of two real Owner-created private identities, in a new read-only tmpfs root
+   with private mount/network namespaces, nobody/zero capabilities and no
+   shadow/state/data grants. Actual changed-UID, extra supplementary-group and
+   foreign-user documents refuse; a fresh restored lookup passes. Owner state
+   remains unchanged and every capture verifies group absence. All 29 Linux
+   driver tests, tagged vet and focused ARMv5 old/new Samba gates pass locally.
+   This is not retained identity/configuration authority or daemon installation;
+   its test-only source increment is not included in the earlier full image.
+   Next compose retained native configuration with a startup-bound credential
+   backend and daemon using the SAME mutable state. Never bootstrap by
+   fabricating enabled journals/SIDs, copying TDBs or
+   passing enrollment lookup as active-service evidence. Closing/reopening an
+   identity Owner is new admission, not continuous retained authority.
    The guarded Samba Owner now also retains its original writable tmpfs state
    root and six fixed root-only role directories. Actual ARMv5 verifies matching
    child objects and writable/nosuid/nodev/noexec views; normal TDB/log changes

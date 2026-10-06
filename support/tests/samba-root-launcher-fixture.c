@@ -630,12 +630,87 @@ static int verify_restored_context(void)
     return 0;
 }
 
+/* No Samba state or data grants. Only the fixed staged native documents and
+ * already prepared read-only code are visible to this capability-free probe. */
+static int native_lookup_fixture(void)
+{
+    const char lookup[] = "/run/phantowd-native-lookup";
+    struct stat info, original, attached;
+    struct statfs fs;
+    if (owned_group_context() || lstat(lookup, &info) ||
+        info.st_mode != (S_IFDIR | 0755) || info.st_uid || info.st_gid ||
+        statfs(lookup, &fs) || fs.f_type != TMPFS_MAGIC)
+        return fail();
+    const char *files[] = {"/etc/passwd", "/etc/group", "/etc/nsswitch.conf"};
+    for (size_t i = 0; i < sizeof(files) / sizeof(files[0]); ++i) {
+        char path[96];
+        snprintf(path, sizeof(path), "%s%s", lookup, files[i]);
+        if (lstat(path, &info) || info.st_mode != (S_IFREG | 0644) ||
+            info.st_uid || info.st_gid || info.st_nlink != 1 ||
+            info.st_size <= 0 || info.st_size > 32768)
+            return fail();
+    }
+    if (unshare(CLONE_NEWNS | CLONE_NEWNET) ||
+        mount(NULL, "/", NULL, MS_REC | MS_PRIVATE, NULL) ||
+        mount(lookup, lookup, NULL, MS_BIND, NULL) ||
+        mount(NULL, lookup, NULL, MS_BIND | MS_REMOUNT | MS_RDONLY |
+              MS_NOSUID | MS_NODEV, NULL))
+        return fail();
+    const char *sources[] = {"/run/phantowd-samba-code/lib",
+        "/run/phantowd-samba-code/usr", "/usr/sbin/phantowd-samba-charset-probe"};
+    const char *destinations[] = {"/run/phantowd-native-lookup/lib",
+        "/run/phantowd-native-lookup/usr", "/run/phantowd-native-lookup/fixture/charset"};
+    for (size_t i = 0; i < 3; ++i) {
+        struct statvfs flags;
+        if (lstat(sources[i], &original) || original.st_uid || original.st_gid ||
+            (original.st_mode & 0022) ||
+            (i < 2 ? !S_ISDIR(original.st_mode) : !S_ISREG(original.st_mode)) ||
+            mount(sources[i], destinations[i], NULL, MS_BIND, NULL) ||
+            mount(NULL, destinations[i], NULL, MS_BIND | MS_REMOUNT |
+                  MS_RDONLY | MS_NOSUID | MS_NODEV, NULL) ||
+            stat(destinations[i], &attached) || attached.st_dev != original.st_dev ||
+            attached.st_ino != original.st_ino || statvfs(destinations[i], &flags) ||
+            !(flags.f_flag & ST_RDONLY) || (flags.f_flag & ST_NOEXEC))
+            return fail();
+    }
+    const char config[] = "/run/phantowd-native-lookup/etc";
+    if (grant(config, config, 1) || chroot(lookup) || chdir("/") ||
+        syscall(SYS_close_range, 3U, ~0U, 0) ||
+        prctl(PR_CAP_AMBIENT, PR_CAP_AMBIENT_CLEAR_ALL, 0, 0, 0) ||
+        prctl(PR_SET_KEEPCAPS, 0, 0, 0, 0))
+        return fail();
+    unsigned int last = 0;
+    for (unsigned int cap = 0; cap < 64; ++cap) {
+        int present = prctl(PR_CAPBSET_READ, cap, 0, 0, 0);
+        if (present < 0) {
+            if (errno != EINVAL || cap <= CAP_LAST_CAP)
+                return fail();
+            last = cap;
+            break;
+        }
+        if (prctl(PR_CAPBSET_DROP, cap, 0, 0, 0))
+            return fail();
+    }
+    struct __user_cap_header_struct header = {_LINUX_CAPABILITY_VERSION_3, 0};
+    struct __user_cap_data_struct data[2] = {{0}, {0}};
+    if (!last || setgroups(0, NULL) || setresgid(65534, 65534, 65534) ||
+        setresuid(65534, 65534, 65534) || syscall(SYS_capset, &header, data) ||
+        prctl(PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0))
+        return fail();
+    char *args[] = {"native-libc-probe", "native-lookup", NULL};
+    char *environment[] = {"LC_ALL=C", NULL};
+    execve("/fixture/charset", args, environment);
+    return fail();
+}
+
 int main(int argc, char **argv)
 {
     if (guard())
         return fail();
     if (argc == 2 && !strcmp(argv[1], "guard"))
         return 0;
+    if (argc == 2 && !strcmp(argv[1], "native-lookup"))
+        return native_lookup_fixture();
     if (argc == 2 && !strcmp(argv[1], "runtime-bundle"))
         return inspect_runtime_bundle();
     if (argc == 2 && !strcmp(argv[1], "composed-code"))

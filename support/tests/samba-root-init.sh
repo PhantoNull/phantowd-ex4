@@ -276,6 +276,22 @@ run_fixture() {
     /usr/sbin/phantowd-samba-owner-probe || return 1
     /usr/sbin/phantowd-samba-root-launcher code-owner || return 1
     /usr/sbin/phantowd-samba-root-launcher configuration-owner || return 1
+    # Every old daemon/controller has stopped and released its inputs. This
+    # independent native lookup uses only synthetic guest tmpfs identities.
+    mount -t tmpfs -o mode=0755,size=1m tmpfs /etc || return 1
+    printf '%s\n' 'root:!:0:0:root:/:/sbin/nologin' \
+        'nobody:!:65534:65534:nobody:/:/sbin/nologin' \
+        'qpwriter:!:1801:1800::/:/sbin/nologin' \
+        'qpreader:!:1802:1800::/:/sbin/nologin' \
+        'qpoutsider:!:1803:1800::/:/sbin/nologin' >/etc/passwd
+    printf '%s\n' 'root:!:0:' 'nobody:!:65534:' \
+        'qpgroup:!:1800:qpwriter,qpreader,qpoutsider' >/etc/group
+    printf '%s\n' 'passwd: files' 'group: files' 'initgroups: files' \
+        'shadow: files' >/etc/nsswitch.conf
+    printf '%s\n' 'root:!:0:0:99999:7:::' \
+        'nobody:!:0:0:99999:7:::' >/etc/shadow
+    chmod 0600 /etc/shadow || return 1
+    /usr/sbin/phantowd-runtime-bundle-probe native-lookup || return 1
     echo PHANTOWD_SAMBA_ROOT_DONE
 }
 if ! run_fixture; then

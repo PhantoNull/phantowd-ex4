@@ -14,7 +14,6 @@ import (
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/identityprovision"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/smbprovision"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/serviceaccounts"
-	"github.com/PhantoNull/phantowd-ex4/phantowd-api/unixidentity"
 )
 
 const fileServiceSnapshotFormat = "phantowd-file-service-identity-evidence-v1"
@@ -60,7 +59,10 @@ func (o *Owner) FileServiceSnapshot(ctx context.Context) (FileServiceSnapshot, e
 		evidence = snapshot
 		return nil
 	})
-	return evidence, err
+	if err != nil {
+		return FileServiceSnapshot{}, err
+	}
+	return evidence, nil
 }
 
 // WithFileServiceSnapshot invokes inspect while the identity Owner lock remains
@@ -92,63 +94,13 @@ func (o *Owner) WithFileServiceSnapshot(ctx context.Context, inspect func(FileSe
 }
 
 func (o *Owner) fileServiceSnapshotLocked(ctx context.Context) (FileServiceSnapshot, error) {
-	registry, native, sambaJournals, err := o.scanSnapshot(false)
+	registry, native, sambaJournals, reservations, err := o.nativeEvidenceLocked(ctx)
 	if err != nil {
 		return FileServiceSnapshot{}, err
 	}
 	sambaByID := make(map[string]smbprovision.Journal, len(sambaJournals))
 	for _, journal := range sambaJournals {
-		if journal.Validate() != nil {
-			return FileServiceSnapshot{}, ErrUnavailable
-		}
-		if _, duplicate := sambaByID[journal.Account.ID]; duplicate {
-			return FileServiceSnapshot{}, ErrUnavailable
-		}
-		switch journal.Phase {
-		case smbprovision.CreateIntent, smbprovision.PasswordIntent,
-			smbprovision.EnableIntent, smbprovision.DisableIntent,
-			smbprovision.ReviewRequired:
-			// Do not treat an uncertain/review-required credential state as a
-			// usable identity observation, even if the current passdb view happens
-			// to match. The separate SMB Review operation owns that workflow.
-			return FileServiceSnapshot{}, ErrReview
-		}
 		sambaByID[journal.Account.ID] = journal
-	}
-	if err := ctx.Err(); err != nil {
-		return FileServiceSnapshot{}, ErrUnavailable
-	}
-	local, err := o.deps.observe(ctx)
-	if err != nil {
-		return FileServiceSnapshot{}, ErrUnavailable
-	}
-	reservations, err := local.Reservations()
-	if err != nil || reservations.UIDs == nil || reservations.GIDs == nil || reservations.Names == nil ||
-		len(reservations.UIDs) > 65536 || len(reservations.GIDs) > 65536 || len(reservations.Names) > 65536 {
-		return FileServiceSnapshot{}, ErrUnavailable
-	}
-	if len(native) != len(registry.Accounts) {
-		return FileServiceSnapshot{}, ErrUnavailable
-	}
-	for i, account := range registry.Accounts {
-		journal := native[i]
-		if err := ctx.Err(); err != nil {
-			return FileServiceSnapshot{}, ErrUnavailable
-		}
-		if journal.Validate() != nil || journal.Phase != identityprovision.UnixConfirmed ||
-			!sameAccountIdentity(journal.Account, account) {
-			if journal.Phase == identityprovision.ReviewRequired {
-				return FileServiceSnapshot{}, ErrReview
-			}
-			return FileServiceSnapshot{}, ErrPending
-		}
-		status, assessErr := local.Assess(account)
-		if assessErr != nil {
-			return FileServiceSnapshot{}, ErrUnavailable
-		}
-		if status != unixidentity.Observed {
-			return FileServiceSnapshot{}, ErrReview
-		}
 	}
 
 	passdb := make([]FileServicePassdb, len(registry.Accounts))
