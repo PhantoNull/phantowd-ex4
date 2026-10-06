@@ -65,6 +65,7 @@ type Owner struct {
 	smbInodes             map[string]uint64
 	deps                  dependencies
 	failed, closed, ready bool
+	closeUncertain        bool
 }
 
 // Open requires pre-provisioned root-owned 0700 root/registry/operations
@@ -184,45 +185,66 @@ func (o *Owner) enter(ctx context.Context) error {
 	return nil
 }
 
-// Close waits for this owner's current operation before releasing its lease.
+// Close waits for active work and refuses live consumers. Backend teardown must
+// succeed before any identity store is released. An uncertain close quarantines
+// the authority without retry; reopening requires separately qualified recovery.
 func (o *Owner) Close() error {
 	if o == nil {
 		return nil
 	}
 	o.mu.Lock()
 	defer o.mu.Unlock()
+	if o.closeUncertain {
+		return errors.Join(ErrUnavailable, ErrReview)
+	}
 	if o.closed || !o.ready {
 		return nil
 	}
 	if len(o.fileServiceLeases) != 0 {
 		return ErrBusy
 	}
-	o.closed = true
+	if closer, ok := o.smbBackend.(interface{ Close() error }); ok {
+		if closer.Close() != nil {
+			return o.quarantineClose()
+		}
+	}
+	o.smbBackend = nil
+	o.deps.smbBackend = nil
 	var err error
 	for _, journal := range o.smbJournals {
 		err = errors.Join(err, journal.Close())
 	}
-	if closer, ok := o.smbBackend.(interface{ Close() error }); ok {
-		err = errors.Join(err, closer.Close())
-	}
-	o.smbBackend = nil
-	o.deps.smbBackend = nil
 	for _, journal := range o.journals {
 		err = errors.Join(err, journal.Close())
 	}
 	if o.registry != nil {
 		err = errors.Join(err, o.registry.Close())
 	}
+	// Preserve the outer authority fence if any inner store's close is uncertain.
+	// Some inner stores may already be closed; never replay their Close calls.
+	if err != nil {
+		return o.quarantineClose()
+	}
 	if o.operations >= 0 {
-		err = errors.Join(err, unix.Close(o.operations))
+		if unix.Close(o.operations) != nil {
+			return o.quarantineClose()
+		}
+		o.operations = -1
 	}
 	if o.root >= 0 {
-		err = errors.Join(err, unix.Close(o.root))
+		if unix.Close(o.root) != nil {
+			return o.quarantineClose()
+		}
+		o.root = -1
 	}
-	if err != nil {
-		return ErrUnavailable
-	}
+	o.closed = true
 	return nil
+}
+
+// Caller holds mu. Backend details never escape this fail-closed result.
+func (o *Owner) quarantineClose() error {
+	o.failed, o.closeUncertain = true, true
+	return errors.Join(ErrUnavailable, ErrReview)
 }
 
 // Snapshot returns fresh decoded state, never the authority's internal stores.

@@ -2498,6 +2498,13 @@ this order, preserving the [full contract](support/SAMBA-RUNTIME-PROFILE.md#samb
    files; installed/image/exported API and seven artifact hashes agree. This
    does not qualify clean reproducibility, release licensing or physical EX4.
 
+   Teardown prerequisite: `identityowner.Close` now closes its fixed backend
+   before releasing stores. Root-isolated real-lock regression proves retained
+   root/registry/native/Samba authority after a modeled external close error,
+   sticky redacted review and no retry. Normal teardown retains the journal
+   during backend close and is idempotent. Qualify failed-Open cleanup and
+   low-level close faults separately; process exit is not product recovery.
+
    - Construct against one startup-fixed runtime/backend, retain identity BEFORE
      any descendant starts, and refuse a foreign runtime even with equal bytes.
    - Serialize external coordination without Owner/runtime gate recursion;

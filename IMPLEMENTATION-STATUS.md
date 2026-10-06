@@ -3,6 +3,25 @@
 
 # Implementation status
 
+## Identity Owner teardown quarantine — host prerequisite
+
+An Owner with no live file-service consumers must close its fixed backend
+before releasing identity journals/ledger. Backend teardown errors now retain
+all authority references, reject new work and return redacted unavailability/
+review without automatic retry. Later inner-store closure errors retain the
+outer root fence; final descriptor-close uncertainty is sticky, not proof that
+the descriptor remained open. Successful closure remains idempotent.
+
+A root-isolated failing test reproduced the former competing-Owner admission
+after an external backend error. Real Owner/store/lock tests now verify all
+native/Samba/registry leases, new-work refusal, no retry and positive teardown
+ordering. No product recovery, failed-Open or low-level syscall fault claim is
+made. Root Linux race-count3 and tagged module vet pass. The focused local
+ARMv5 lane preserves both complete Samba campaigns, all 39 driver/seven loader
+checks, normal native closure, old/new markers, FD equality and unchanged base
+hashes. The modeled teardown fault itself is tested on Linux host, not ARMv5.
+This is separate from the earlier complete cached image below.
+
 ## Explicit SMB disable successor — cached integration prerequisite
 
 `identityowner.SMB(id).DisableForFileService` retains the startup-bound backend
