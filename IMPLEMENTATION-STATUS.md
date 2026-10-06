@@ -3,6 +3,26 @@
 
 # Implementation status
 
+## M0 bounded Samba campaign qualification
+
+The Samba integration lane now compiles its probes once, then boots two fresh
+disposable snapshots: service isolation/lifetimes and native lookup/enrollment.
+Each guest retains the 180-second limit; the credential operation retains its
+60-second budget. No state/passdb is transferred between campaigns.
+
+Each log must independently prove the exact ordered markers for its phase,
+including fresh entropy, staging, complete code admission and teardown. The
+joint verifier rejects missing/duplicate/swapped campaigns and different code
+censuses. Every earlier guard remains required; the manifest-verified base is
+unchanged. Failure diagnostics identify the failed campaign.
+
+The official local wrapper passes all 34 Linux driver tests, seven loader
+tests, lint/ShellCheck and both actual ARMv5 campaigns. This fixes the observed
+single-guest outer timeout after native handoff without removing checks or
+extending per-guest deadlines. This is focused cached local qualification;
+the new hosted head must pass its own checks. No new daemon/product/EX4
+qualification is claimed by reorganizing these tests.
+
 ## M2.4 Owner-bound native credential workers — disposable QEMU
 
 The actual two Unix identities from the native lookup now enroll through a
