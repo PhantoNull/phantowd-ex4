@@ -21,6 +21,15 @@ checks pass and the manifest-verified base image is unchanged. Native root tests
 cover same-mode replacement, missing/symlink roles, mode and actual kernel ACL
 refusal, cancellation and independent/idempotent release.
 
+Complete cached Buildroot/QEMU integration on `336c29f` additionally passes
+host vet/tests/races/fuzz, source/legal-info collection, ARMv5 smoke and MD
+metadata, separate two-boot persistence, isolated/static Owner, loader/atomic,
+the entire Samba campaign and both final synthetic SMART lanes. All seven
+exported hashes verify independently. Every853 tracked API source file matches
+the compiled source and collected archive; embedded, installed and exported
+API bytes agree. This is cached local integration, not clean hosted CI,
+physical EX4 qualification or complete release licensing approval.
+
 The fixed bootstrap still uses a source pathname: this is not an atomic or
 descriptor-bound mount handoff, complete passdb-file lifecycle, product state
 provisioning or real identity-authority composition. No HTTP/product startup,

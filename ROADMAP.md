@@ -2375,6 +2375,11 @@ this order, preserving the [full contract](support/SAMBA-RUNTIME-PROFILE.md#samb
    authority: the fixed bootstrap still mounts by pathname. Next qualify
    descriptor-bound state construction, then attach the SAME actual identity
    authority/NSS/passdb and storage leases before product lifecycle/HTTP.
+   The complete combined source on336c29f now also passes ONE cached full local
+   Buildroot/QEMU integration, with independently verified seven exported
+   hashes, embedded/installed/exported API and all853 compiled/archive source
+   files. Hosted checks must still qualify their own exact PR head; no clean
+   reproduction, product authority, release compliance or EX4 gate is inferred.
    The fixture now requires the already-supported virtual entropy provider,
    backed by host kernel randomness rather than a fixed seed. This removes the
    measured initial enrollment wait without extending its180-second deadline;
