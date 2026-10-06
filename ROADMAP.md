@@ -2340,6 +2340,23 @@ this order, preserving the [full contract](support/SAMBA-RUNTIME-PROFILE.md#samb
    state has an explicit protected roster and legitimate-mutation contract,
    separate from immutable code/configuration. No per-call backend/path changes,
    automatic account creation, mount/import or product listener.
+   The guarded Samba fixture now qualifies the immutable configuration part:
+   seven independently expected config/NSS files are retained with exact census,
+   hashes and original identities through actual child execution. Config views
+   are read-only/nosuid/nodev/noexec, separate from executable code and writable
+   state. Caller closure, live mode drift/stop, retained review, restoration
+   refusal and verified release pass locally on ARMv5. The regression also
+   qualifies recomposition of config after the nonrecursive service-root bind.
+   This does not qualify a product renderer/identity revision, mutable passdb,
+   state ownership or descriptor-bound storage; those are still the next inputs.
+   The fixture now requires the already-supported virtual entropy provider,
+   backed by host kernel randomness rather than a fixed seed. This removes the
+   measured initial enrollment wait without extending its180-second deadline;
+   missing-provider execution fails before staging/authentication. A previous
+   complete local timeout stays failed. Renewed complete cached local
+   integration on `faf1c88` passes all old/new guest lanes and independently
+   verifies embedded API and collected source contents. It does not substitute
+   for this increment's own clean CI or qualify product activation/hardware.
 3. Integrate serial revalidation and lifecycle supervision: drift/source loss or
    unexpected exit stops the known group before any input release; uncertain or
    forced stop retains authorities in review. Test restoration/no-restart,

@@ -22,11 +22,14 @@ import (
 // The initial execution adapter accepts only static ELF/non-root children.
 type Owner struct {
 	*retainedCode
-	gate      chan struct{}
-	processes *processowner.PinnedSet
-	snapshot  OwnerSnapshot
-	review    bool
-	closed    bool
+	// Fixed only by the separate disposable Samba constructor. NewOwner's
+	// static/non-root contract and its inputs remain unchanged.
+	configuration *retainedConfiguration
+	gate          chan struct{}
+	processes     *processowner.PinnedSet
+	snapshot      OwnerSnapshot
+	review        bool
+	closed        bool
 }
 
 // NewOwner fixes trusted inputs and copies every process specification. Paths
@@ -291,5 +294,17 @@ func (o *Owner) release() error {
 			return err
 		}
 	}
-	return o.retainedCode.release()
+	result := errors.Join(o.retainedCode.release(), o.configuration.release())
+	o.configuration = nil
+	return result
+}
+
+func (o *Owner) revalidate(ctx context.Context) error {
+	if err := o.retainedCode.revalidate(ctx); err != nil {
+		return err
+	}
+	if o.configuration != nil {
+		return o.configuration.revalidate(ctx)
+	}
+	return nil
 }

@@ -99,6 +99,22 @@ data-grant ACLs, parent mount namespace or physical storage.
 
 ## Disposable construction prototype
 
+The configuration increment additionally retains seven fixed fixture config/NSS
+files through real Samba execution. Its package-private data-only plan has
+16-file/64-KiB limits and modes 0400/0444/0600/0644, sharing exact census/hash and
+original-object retention but not executable admission. Code `NewPlan` is
+unchanged. Read-only/nosuid/nodev/noexec config views are rebuilt after the
+nonrecursive service-root bind and verified through actual child objects.
+Independent compiled fixture contents define expectations; no filesystem
+self-hashing is used. Caller config closure, normal stop, live config-mode drift,
+retained review, restoration refusal and verified code/config release pass in
+the focused ARMv5 campaign. The containing Owner owns serialization and combined
+revalidation; generic static construction cannot configure this private field.
+Passdb/state legitimate mutations are separate, not immutable inputs. This is
+not product renderer/NSS authority, identity revision, storage/state ownership,
+race-qualified construction, durable activation or complete firmware validation.
+See the [configuration scope](../../../../support/SAMBA-RUNTIME-PROFILE.md#qualified-protected-configuration-lifetime-qemu-only).
+
 A separate guarded `qemu && linux` constructor now composes complete prepared
 code references with the pinned fixed Samba bootstrap and the existing
 serialized Owner lifecycle. The actual dynamic daemon is checked against the

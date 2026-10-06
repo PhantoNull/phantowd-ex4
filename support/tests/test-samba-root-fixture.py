@@ -240,6 +240,8 @@ class SambaRootFixture(unittest.TestCase):
 
     def test_guest_crlf_and_strict_complete_markers(self):
         lines = [
+            "PHANTOWD_SAMBA_ROOT_ENTROPY_READY provider=virtio-rng "
+            "scope=qemu-only",
             "PHANTOWD_SAMBA_ROOT_STAGE_READY fresh=true "
             "hashes_during_copy=true "
             "no_overwrite=true refusals=5 scope=qemu-only",
@@ -290,6 +292,11 @@ class SambaRootFixture(unittest.TestCase):
             "forced_stop_review=true "
             "review_retained=true restoration_refused=true released=true "
             "no_fd_leak=true scope=qemu-only",
+            "PHANTOWD_SAMBA_OWNER_CONFIG_LIFETIME_READY exact_contents=true "
+            "caller_close=true live_pins=true same_child_objects=true "
+            "readonly_noexec=true normal_stop=true drift_stopped=true "
+            "review_retained=true restoration_refused=true released=true "
+            "scope=qemu-only",
             "PHANTOWD_SAMBA_ROOT_DONE",
         ]
         fixture.check_guest("\r\n".join(lines + [SCAN_COST]))
@@ -303,6 +310,18 @@ class SambaRootFixture(unittest.TestCase):
             with self.assertRaises(ValueError):
                 fixture.check_guest("\n".join(invalid + [SCAN_COST]))
 
+    def test_guest_refuses_missing_or_predictable_entropy_evidence(self):
+        expected = ("PHANTOWD_SAMBA_ROOT_ENTROPY_READY provider=virtio-rng "
+                    "scope=qemu-only")
+        good = "\n".join([*fixture.MARKERS, SCAN_COST])
+        fixture.check_guest(good)
+        for replacement in ("", expected.replace("virtio-rng", "none"),
+                            expected.replace("virtio-rng", "fixed-seed"),
+                            expected.replace("qemu-only", "product"),
+                            expected + "\n" + expected):
+            with self.assertRaises(ValueError):
+                fixture.check_guest(good.replace(expected, replacement))
+
     def test_code_lifetime_requires_verified_stop_drift_and_retention(self):
         fields = ("caller_close", "live_code_pins", "normal_stop",
                   "drift_stopped", "review_retained", "restoration_refused",
@@ -310,6 +329,17 @@ class SambaRootFixture(unittest.TestCase):
         for field in fields:
             changed = [row.replace(field + "=true", field + "=false")
                        if "CODE_LIFETIME_READY" in row else row
+                       for row in fixture.MARKERS]
+            with self.assertRaises(ValueError):
+                fixture.check_guest("\n".join(changed + [SCAN_COST]))
+
+    def test_configuration_lifetime_requires_protected_child_and_stop(self):
+        for field in ("exact_contents", "caller_close", "live_pins",
+                      "same_child_objects", "readonly_noexec", "normal_stop",
+                      "drift_stopped", "review_retained",
+                      "restoration_refused", "released"):
+            changed = [row.replace(field + "=true", field + "=false")
+                       if "CONFIG_LIFETIME_READY" in row else row
                        for row in fixture.MARKERS]
             with self.assertRaises(ValueError):
                 fixture.check_guest("\n".join(changed + [SCAN_COST]))

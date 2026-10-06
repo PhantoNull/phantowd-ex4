@@ -25,6 +25,22 @@ attaches it as a second QEMU snapshot disk. Guest PID1 requires the exact
 VersatilePB guard, explicit fixture cmdline flag and expected virtual-disk size
 before mounting it. No physical block-device path is formatted or attached.
 
+The driver supplies `virtio-rng-pci` from the host kernel's `/dev/urandom`,
+as the normal smoke/reboot fixtures already do. PID1 requires that virtual
+provider before authentication; the verifier requires its evidence exactly
+once. No fixed seed, uninitialized random output or physical storage device is
+used. The virtual provider is not exposed inside Samba's restricted root.
+This is a QEMU test prerequisite, not EX4 hardware-entropy qualification.
+
+A measured diagnostic without that provider spent about 101 seconds in initial
+enrollment, almost entirely guest-idle, before the configuration tests. With
+the provider, the same enrollment took about 1.2 seconds and all lifetime/access
+checks completed under the unchanged 180-second deadline. Missing-provider
+execution is refused before staging/authentication. These are emulation
+observations, not physical EX4 performance; the preceding full-build timeout
+is not reclassified as success. Temporary timing instrumentation is removed
+before final qualification.
+
 ## What the experiment does
 
 ### Inherited execution-context acceptance packet (fixture-only)
@@ -351,6 +367,45 @@ observers. Protected configuration/NSS contents, identity/passdb revision,
 mutable state and storage grants are still fixed disposable inputs, not retained
 product authorities. Trusted manifests, race-qualified construction, combined
 input supervision, durable recovery, product startup and HTTP remain open.
+
+### Qualified protected configuration lifetime (QEMU only)
+
+The next fixed disposable constructor retains the exact seven-file config/NSS
+roster as well as code. Independent compiled fixture contents supply expected
+hashes/modes; no expectation is measured from the tree being inspected. The
+private data-only plan limits inputs to 16 files/64 KiB, refuses aliases and
+executable modes, and shares complete-census/hash/original-node verification.
+Public code `NewPlan` still permits only 0444/0555. Config pins are read-only;
+their mount must be read-only/nosuid/nodev/noexec. Passdb and legitimate mutable
+state are not frozen or hashed as immutable configuration.
+
+Actual ARMv5 covers normal service stop and live smb.conf mode drift. The caller
+config root closes after construction. All seven files seen through the real
+child root match retained original objects and have protected mount flags.
+Drift stops the complete known group, retains code/config for review, and mode
+restoration cannot restart. Explicit verified teardown releases both rosters.
+The existing code forced-stop/review and all earlier access/ACL/stream tests
+still pass. There is no config-specific forced-stop or FD-count claim yet.
+
+The regression initially failed in the actual child: a nonrecursive service-root
+bind hid the earlier config submount, leaving flags without nodev/noexec. The
+fixed native bootstrap now creates the protected etc view AFTER that root bind,
+before authority reduction. The same child-view assertion passes; no capability,
+timeout, census or access check was relaxed. Temporary diagnostics are removed.
+Final local checks pass 21 fixture/seven loader tests, linters, Linux vet/focused
+races, Windows API/UI/cross-compile and the actual focused ARMv5 campaign; seven
+base hashes remain unchanged. This is not complete fresh Buildroot validation.
+
+Complete cached local integration on `faf1c88` additionally passes the existing
+smoke/MD/two-boot/static-owner/loader/atomic/Samba/final SMART suites with the
+provider correction. The embedded API and collected API source archive are
+independently compared with target/artifact and frozen source respectively.
+This does not establish clean-build reproducibility or release compliance.
+
+These inputs remain synthetic. Product trusted renderer/NSS provenance,
+identity-authority passdb/revision, mutable state, retained storage leases,
+race-qualified root construction, combined supervision, durable activation and
+HTTP/product startup are not supplied by this fixture. No real NAS/disks/flash.
 
 ### Construction and retained resources
 
