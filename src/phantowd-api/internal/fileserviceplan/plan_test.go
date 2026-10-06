@@ -7,6 +7,8 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"errors"
+	"fmt"
+	"slices"
 	"strings"
 	"testing"
 
@@ -15,6 +17,7 @@ import (
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/nfsconfig"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/serviceaccounts"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/shareconfig"
+	"github.com/PhantoNull/phantowd-ex4/phantowd-api/unixidentity"
 )
 
 const (
@@ -102,6 +105,193 @@ func TestBuildPlanResolvesCombinedPolicyWithoutActivationAuthority(t *testing.T)
 		!strings.Contains(plan.nfsConfig, "anonuid=1000,anongid=1000") ||
 		!plan.FreshAgainst(plan.Freshness()) {
 		t.Fatalf("plan lost service configuration or freshness contract: %+v", plan)
+	}
+}
+
+func TestSMBOnlyPlanRequiresGrantedUnixUID(t *testing.T) {
+	config, active, identity, storage := planInputs(t)
+	config.NFS.Exports = []nfsconfig.Export{}
+	if _, err := Build(config, active, identity, storage); err != nil {
+		t.Fatal("valid SMB-only control refused:", err)
+	}
+	identity.UnixUIDs = []uint32{}
+	plan, err := Build(config, active, identity, storage)
+	if !errors.Is(err, ErrNotReady) {
+		t.Fatalf("SMB grant accepted without its Unix UID: %v", err)
+	}
+	samba, nfs := plan.RenderedCandidates()
+	if samba != "" || nfs != "" || plan.FreshAgainst(plan.Freshness()) {
+		t.Fatal("incoherent identity returned a usable partial candidate")
+	}
+}
+
+func TestSMBOnlyPlanRequiresGrantedUnixPrimaryGID(t *testing.T) {
+	config, active, identity, storage := planInputs(t)
+	config.NFS.Exports = []nfsconfig.Export{}
+	identity.UnixGIDs = []uint32{identity.Registry.Accounts[0].GID + 1}
+	plan, err := Build(config, active, identity, storage)
+	if !errors.Is(err, ErrNotReady) {
+		t.Fatalf("SMB grant accepted without its exact Unix primary GID: %v", err)
+	}
+	samba, nfs := plan.RenderedCandidates()
+	if samba != "" || nfs != "" || plan.FreshAgainst(plan.Freshness()) {
+		t.Fatal("incoherent primary group returned a usable partial candidate")
+	}
+}
+
+func TestPlanRendersSambaNSSForExactGrantedPrivateIdentity(t *testing.T) {
+	config, active, identity, storage := planInputs(t)
+	plan, err := Build(config, active, identity, storage)
+	if err != nil {
+		t.Fatal(err)
+	}
+	passwd, group, nss, err := plan.SambaNSSCandidates()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(passwd, "alice:!:1000:1000::/:/sbin/nologin\n") ||
+		!strings.Contains(group, "alice:!:1000:\n") || !unixidentity.FilesOnlyNSS([]byte(nss)) {
+		t.Fatal("candidate lost locked private identity or files-only NSS")
+	}
+	observed, err := unixidentity.Parse(strings.NewReader(passwd), strings.NewReader(group))
+	if err != nil {
+		t.Fatal("generated documents failed independent Unix parser:", err)
+	}
+	status, err := observed.Assess(identity.Registry.Accounts[0])
+	if err != nil || status != unixidentity.Observed {
+		t.Fatal("generated private group did not resolve to granted native identity")
+	}
+}
+
+func TestSambaNSSRefusesZeroPlanAndDoesNotAliasInput(t *testing.T) {
+	passwd, group, nss, err := (Plan{}).SambaNSSCandidates()
+	if !errors.Is(err, ErrNotReady) || passwd != "" || group != "" || nss != "" {
+		t.Fatal("zero plan returned usable NSS")
+	}
+	config, active, identity, storage := planInputs(t)
+	plan, err := Build(config, active, identity, storage)
+	if err != nil {
+		t.Fatal(err)
+	}
+	before, _, _, err := plan.SambaNSSCandidates()
+	if err != nil {
+		t.Fatal(err)
+	}
+	identity.Registry.Accounts[0].Name = "changed"
+	config.Shares.Users[0].Name = "changed"
+	after, _, _, err := plan.SambaNSSCandidates()
+	if err != nil || after != before {
+		t.Fatal("caller mutation changed compiled NSS candidate")
+	}
+}
+
+func TestSambaNSSOmitsUngrantedAndRetiredAccountsWithoutDiscardingReservations(t *testing.T) {
+	config, active, identity, storage := planInputs(t)
+	registry, err := identity.Registry.Create(identity.Registry.Revision, "unused", "olduser", serviceaccounts.Reservations{
+		UIDs: []uint32{}, GIDs: []uint32{}, Names: []string{},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, state := range []string{serviceaccounts.Disabled, serviceaccounts.Retired} {
+		if state == serviceaccounts.Retired {
+			registry, err = registry.SetState(registry.Revision, "unused", state)
+			if err != nil {
+				t.Fatal(err)
+			}
+		}
+		identity.Registry = registry
+		plan, err := Build(config, active, identity, storage)
+		if err != nil {
+			t.Fatal(err)
+		}
+		passwd, group, _, err := plan.SambaNSSCandidates()
+		if err != nil || strings.Contains(passwd, "olduser") || strings.Contains(group, "olduser") {
+			t.Fatal("unused/retired identity appeared in granted NSS")
+		}
+		if len(identity.Registry.Accounts) != 2 || identity.Registry.Accounts[1].UID != 1001 {
+			t.Fatal("rendering removed permanent reservation")
+		}
+	}
+}
+
+func TestSambaNSSDoesNotInventCollidingNogroup(t *testing.T) {
+	config, active, identity, storage := planInputs(t)
+	identity.Registry.Accounts[0].Name = "nogroup"
+	identity.Samba[0].Journal.Account.Name = "nogroup"
+	identity.Samba[0].Observation.Name = "nogroup"
+	config.Shares.Users[0].Name = "nogroup"
+	plan, err := Build(config, active, identity, storage)
+	if err != nil {
+		t.Fatal(err)
+	}
+	passwd, group, _, err := plan.SambaNSSCandidates()
+	if err != nil {
+		t.Fatal(err)
+	}
+	observed, err := unixidentity.Parse(strings.NewReader(passwd), strings.NewReader(group))
+	if err != nil {
+		t.Fatal("valid managed nogroup collided with system group:", err)
+	}
+	if status, err := observed.Assess(identity.Registry.Accounts[0]); err != nil || status != unixidentity.Observed {
+		t.Fatal("managed private nogroup identity did not resolve")
+	}
+}
+
+func TestSambaNSSMaximumGrantedRosterIsBoundedAndOrderIndependent(t *testing.T) {
+	config, active, identity, storage := planInputs(t)
+	identity.Registry.Accounts = []serviceaccounts.Account{}
+	identity.UnixUIDs, identity.UnixGIDs = []uint32{}, []uint32{}
+	identity.Samba = []SambaIdentity{}
+	config.Shares.Users = []shareconfig.User{}
+	config.Shares.Shares[0].Grants = []shareconfig.Grant{}
+	for i := 0; i < shareconfig.MaxUsers; i++ {
+		account := serviceaccounts.Account{ID: fmt.Sprintf("u%d", i), Name: fmt.Sprintf("u%031d", i),
+			UID: uint32(1000 + i), GID: uint32(1000 + i), State: serviceaccounts.Enabled}
+		identity.Registry.Accounts = append(identity.Registry.Accounts, account)
+		identity.UnixUIDs = append(identity.UnixUIDs, account.UID)
+		identity.UnixGIDs = append(identity.UnixGIDs, account.GID)
+		journalAccount := account
+		journalAccount.State = serviceaccounts.Disabled
+		sid := fmt.Sprintf("S-1-5-21-1-2-3-%d", 1001+i)
+		identity.Samba = append(identity.Samba, SambaIdentity{
+			Journal: smbprovision.Journal{Format: smbprovision.Format, SchemaVersion: 1, Revision: 7,
+				NativeRevision: identity.Registry.Revision, Account: journalAccount, SID: sid, Phase: smbprovision.Enabled},
+			Observation: smbprovision.Observation{Present: true, Name: account.Name, UID: account.UID, GID: account.GID, SID: sid},
+		})
+		config.Shares.Users = append(config.Shares.Users, shareconfig.User{ID: account.ID, Name: account.Name})
+		config.Shares.Shares[0].Grants = append(config.Shares.Shares[0].Grants, shareconfig.Grant{UserID: account.ID, Access: "rw"})
+	}
+	first, err := Build(config, active, identity, storage)
+	if err != nil {
+		t.Fatal("maximum valid roster refused:", err)
+	}
+	passwd, group, nss, err := first.SambaNSSCandidates()
+	if err != nil || len(passwd)+len(group)+len(nss) > MaxSambaNSSBytes {
+		t.Fatal("maximum candidate exceeded combined NSS bound")
+	}
+	observed, err := unixidentity.Parse(strings.NewReader(passwd), strings.NewReader(group))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, account := range identity.Registry.Accounts {
+		if status, err := observed.Assess(account); err != nil || status != unixidentity.Observed {
+			t.Fatal("maximum roster lost private identity")
+		}
+	}
+	slices.Reverse(identity.Registry.Accounts)
+	slices.Reverse(identity.Samba)
+	slices.Reverse(identity.UnixUIDs)
+	slices.Reverse(identity.UnixGIDs)
+	slices.Reverse(config.Shares.Users)
+	slices.Reverse(config.Shares.Shares[0].Grants)
+	second, err := Build(config, active, identity, storage)
+	if err != nil {
+		t.Fatal(err)
+	}
+	p2, g2, n2, err := second.SambaNSSCandidates()
+	if err != nil || passwd != p2 || group != g2 || nss != n2 {
+		t.Fatal("NSS rendering depends on input enumeration order")
 	}
 }
 

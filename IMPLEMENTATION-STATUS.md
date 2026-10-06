@@ -3,6 +3,38 @@
 
 # Implementation status
 
+## M4.1 Owner-derived native NSS candidates — internal only
+
+The existing candidate Plan now derives bounded passwd/group/nsswitch text for
+its enabled, granted native Samba accounts. Same-number private primary groups,
+locked password sentinels and files-only NSS are preserved; unrelated/imported
+accounts, supplementary groups and secrets are not copied. Root/nobody lookup
+rows grant no SMB access. Retired IDs remain reserved outside the rendered view.
+The combined text is limited to 32 KiB/128 accounts, deterministic and bound to
+the existing candidate freshness; zero/refused plans return no partial NSS.
+
+An SMB-only regression exposed missing UID/GID-census admission that NFS had
+previously checked indirectly. Both missing-number cases fail before the fix
+and pass after explicit SMB admission. Host tests also independently parse and
+assess generated identities, verify maximum/order/copy behavior and exercise a
+valid managed `nogroup` without an invented colliding system group.
+
+The separate disposable ARMv5 Owner/passdb/mounted-roster fixture derives the
+same candidate under ordered locks, verifies private identities and both census
+refusals, then round-trips desired state with unchanged native/Samba journals
+and passdb identity. Old freshness and disabled desired grants are refused.
+Local qualification passes the API/UI and ARMv5 cross-compile checks, Linux
+QEMU-tagged vet/focused races, and the actual ARMv5 API-overlay smoke followed
+by the separate two-boot persistence test. The first overlay attempt failed
+on exact serial-marker matching with CRLF; a command-boundary regression and
+trailing-CR-only normalization fix it without relaxing evidence or deadlines.
+This overlay reuses the qualified base kernel/packages; it is not a clean
+Buildroot build, regenerated SBOM/legal-info or hardware qualification.
+Candidates are not installed or consumed by the daemon: native libc lookup,
+identity-consumer lifetime, actual same-passdb/state and descriptor-bound grants,
+transactional activation/recovery and product startup remain open. See the
+[internal candidate contract](src/phantowd-api/internal/fileserviceplan/README.md#candidate-samba-nss).
+
 ## M4.4 protected configuration lifetime — QEMU prerequisite
 
 The separate guarded Samba fixture now retains an exact seven-file config/NSS

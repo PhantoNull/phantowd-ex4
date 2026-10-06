@@ -126,6 +126,9 @@ type Plan struct {
 	runtimeValidated    bool
 	volumes             []VolumeBinding
 	sambaConfig         string
+	sambaPasswd         string
+	sambaGroup          string
+	sambaNSS            string
 	nfsConfig           string
 	requirements        []string
 }
@@ -149,6 +152,10 @@ func Build(config fileservice.Config, activeRevision uint64, identities Identity
 		return Plan{}, err
 	}
 	if err := validateSMBAccounts(config.Shares, identities); err != nil {
+		return Plan{}, err
+	}
+	passwd, group, nss, err := renderSambaNSS(config.Shares, identities.Registry)
+	if err != nil {
 		return Plan{}, err
 	}
 	if err := validateNFSIdentities(config.NFS, identities); err != nil {
@@ -192,6 +199,7 @@ func Build(config fileservice.Config, activeRevision uint64, identities Identity
 		},
 		scope: "candidate-only", activationAvailable: false, applied: false, runtimeValidated: false,
 		volumes: bindings, sambaConfig: preview.Samba.Sections, nfsConfig: preview.NFS.Table,
+		sambaPasswd: passwd, sambaGroup: group, sambaNSS: nss,
 		requirements: slices.Clone(preview.Requirements),
 	}, nil
 }
@@ -372,7 +380,8 @@ func validateSMBAccounts(policy shareconfig.Config, snapshot IdentitySnapshot) e
 	}
 	for _, account := range bound.Accounts {
 		identity, ok := byID[account.ID]
-		if !ok || identity.Journal.Phase != smbprovision.Enabled ||
+		if !slices.Contains(snapshot.UnixUIDs, account.UID) || !slices.Contains(snapshot.UnixGIDs, account.GID) ||
+			!ok || identity.Journal.Phase != smbprovision.Enabled ||
 			!sameAccountIdentity(identity.Journal.Account, account) || identity.Observation.Present == false ||
 			identity.Observation.Disabled || identity.Observation.Name != account.Name ||
 			identity.Observation.UID != account.UID || identity.Observation.GID != account.GID ||

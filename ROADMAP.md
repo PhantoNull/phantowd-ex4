@@ -2349,6 +2349,13 @@ this order, preserving the [full contract](support/SAMBA-RUNTIME-PROFILE.md#samb
    qualifies recomposition of config after the nonrecursive service-root bind.
    This does not qualify a product renderer/identity revision, mutable passdb,
    state ownership or descriptor-bound storage; those are still the next inputs.
+   The existing Plan now also derives bounded, granted-only native NSS
+   candidates under the identity/mounted-roster locks, with independent Unix
+   parsing, exact UID/GID-census refusal, private groups, desired-state drift
+   and unchanged journal/passdb identity checks in a disposable ARMv5 fixture.
+   These documents are not installed in the daemon. Next compose the identity
+   consumer lifetime and actual same-object NSS/passdb/state/storage handoff;
+   do not replace that requirement with another candidate/snapshot check.
    The fixture now requires the already-supported virtual entropy provider,
    backed by host kernel randomness rather than a fixed seed. This removes the
    measured initial enrollment wait without extending its180-second deadline;
