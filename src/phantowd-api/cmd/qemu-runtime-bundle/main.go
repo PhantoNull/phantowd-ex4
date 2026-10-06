@@ -39,6 +39,15 @@ func run() error {
 	if len(os.Args) == 2 && os.Args[1] == "native-lookup" && os.Getuid() == 0 && os.Geteuid() == 0 {
 		return nativeLookupFixture()
 	}
+	if len(os.Args) == 2 && os.Args[1] == "native-credentials" && os.Getuid() == 0 && os.Geteuid() == 0 {
+		err := nativeCredentialFixture()
+		if err != nil {
+			// Only fixture-defined stages and redacted sentinel errors, never
+			// command output, credential bytes or passdb records.
+			fmt.Fprintln(os.Stderr, "native credential fixture:", err)
+		}
+		return err
+	}
 	if len(os.Args) == 2 && os.Args[1] == "inspect-acl" && os.Getuid() == 0 && os.Geteuid() == 0 {
 		return inspectACLFixture()
 	}

@@ -44,6 +44,105 @@ def reports():
 
 
 class SambaRootFixture(unittest.TestCase):
+    def test_campaigns_require_both_complete_fresh_proofs(self):
+        split = next(i for i, row in enumerate(fixture.MARKERS)
+                     if row.startswith(
+                         "PHANTOWD_SAMBA_OWNER_NATIVE_NSS_READY"))
+        service = [*fixture.MARKERS[:split],
+                   "PHANTOWD_SAMBA_ROOT_SERVICE_DONE", SCAN_COST]
+        native = [*fixture.MARKERS[:5], *fixture.MARKERS[split:], SCAN_COST]
+        good_service, good_native = "\r\n".join(service), "\r\n".join(native)
+        self.assertEqual(fixture.check_campaigns(good_service, good_native),
+                         ((104, 12000000, 123456789),) * 2)
+        for rows, phase in ((service, "service"), (native, "native")):
+            for index in range(len(rows)):
+                missing = "\n".join(rows[:index] + rows[index + 1:])
+                with self.assertRaises(ValueError):
+                    fixture.check_campaigns(
+                        missing if phase == "service" else good_service,
+                        missing if phase == "native" else good_native)
+        for first, second in ((good_native, good_service),
+                              (good_service, good_service),
+                              (good_native, good_native),
+                              (good_service, good_native + "\n" + native[0]),
+                              (good_service, good_native.replace(
+                                  "files=104", "files=105"))):
+            with self.assertRaises(ValueError):
+                fixture.check_campaigns(first, second)
+
+    def test_native_enrollment_requires_real_disabled_first_cycle(self):
+        expected = ("PHANTOWD_SAMBA_OWNER_NATIVE_ENROLLMENT_READY accounts=2 "
+                    "owner_bound=true original_config=true "
+                    "original_state=true "
+                    "disabled_first=true stdin_only=true same_sid=true "
+                    "explicit_enable=true stopped_reaped=true "
+                    "no_fd_leak=true scope=qemu-only")
+        self.assertIn(expected, fixture.MARKERS)
+        good = "\n".join([*fixture.MARKERS, SCAN_COST])
+        fixture.check_guest(good)
+        for field in ("owner_bound", "original_config", "original_state",
+                      "disabled_first", "stdin_only", "same_sid",
+                      "explicit_enable", "stopped_reaped", "no_fd_leak"):
+            with self.assertRaises(ValueError):
+                fixture.check_guest(good.replace(expected, expected.replace(
+                    field + "=true", field + "=false")))
+        for replacement in ("", expected + "\n" + expected,
+                            expected.replace("accounts=2", "accounts=1"),
+                            expected.replace("qemu-only", "product")):
+            with self.assertRaises(ValueError):
+                fixture.check_guest(good.replace(expected, replacement))
+
+    def test_complete_manifest_contains_session_control_tools(self):
+        manifest = merge(reports())
+        for path in ("usr/bin/smbstatus", "usr/bin/smbcontrol"):
+            self.assertIn(" /" + path + "\n", manifest)
+
+    def test_native_handoff_requires_originals_and_refusals(self):
+        expected = ("PHANTOWD_SAMBA_OWNER_NATIVE_HANDOFF_READY inputs=4 "
+                    "refusals=7 source_path_masked=true same_objects=true "
+                    "caller_close=true readonly_noexec=true "
+                    "closed_before_exec=true late_drift_refused=true "
+                    "review_sticky=true partial_cleanup=true "
+                    "stopped_reaped=true no_fd_leak=true scope=qemu-only")
+        self.assertIn(expected, fixture.MARKERS)
+        good = "\n".join([*fixture.MARKERS, SCAN_COST])
+        fixture.check_guest(good)
+        for field in ("source_path_masked", "same_objects", "caller_close",
+                      "readonly_noexec", "closed_before_exec",
+                      "late_drift_refused", "review_sticky", "partial_cleanup",
+                      "stopped_reaped", "no_fd_leak"):
+            with self.assertRaises(ValueError):
+                fixture.check_guest(good.replace(expected, expected.replace(
+                    field + "=true", field + "=false")))
+        for replacement in ("", expected + "\n" + expected,
+                            expected.replace("inputs=4", "inputs=3"),
+                            expected.replace("refusals=7", "refusals=6"),
+                            expected.replace("qemu-only", "product")):
+            with self.assertRaises(ValueError):
+                fixture.check_guest(good.replace(expected, replacement))
+
+    def test_native_configuration_requires_retained_real_lookup(self):
+        expected = ("PHANTOWD_SAMBA_OWNER_NATIVE_CONFIG_READY "
+                    "owner_derived=true "
+                    "exact_census=true readonly_noexec=true caller_close=true "
+                    "libc=true drift_refused=true restoration_mismatch=true "
+                    "stopped_reaped=true released=true no_fd_leak=true "
+                    "scope=qemu-only")
+        self.assertIn(expected, fixture.MARKERS)
+        good = "\n".join([*fixture.MARKERS, SCAN_COST])
+        fixture.check_guest(good)
+        for field in ("owner_derived", "exact_census", "readonly_noexec",
+                      "caller_close", "libc", "drift_refused",
+                      "restoration_mismatch", "stopped_reaped", "released",
+                      "no_fd_leak"):
+            with self.assertRaises(ValueError):
+                fixture.check_guest(good.replace(expected, expected.replace(
+                    field + "=true", field + "=false")))
+        for replacement in ("", expected + "\n" + expected,
+                            expected.replace("qemu-only", "product")):
+            with self.assertRaises(ValueError):
+                fixture.check_guest(good.replace(expected, replacement))
+
     def test_native_lookup_requires_real_corrupt_document_refusals(self):
         expected = ("PHANTOWD_SAMBA_OWNER_NATIVE_NSS_REFUSAL_READY "
                     "changed_uid=true supplementary_group=true "
@@ -229,7 +328,7 @@ class SambaRootFixture(unittest.TestCase):
 
     def test_deduplicated_fixed_roster(self):
         manifest = merge(reports())
-        self.assertEqual(len(manifest.splitlines()), 8)
+        self.assertEqual(len(manifest.splitlines()), 10)
         self.assertEqual(manifest.count("b" * 64), 1)
         self.assertIn(hashlib.sha256(CATALOG.encode()).hexdigest(), manifest)
         self.assertNotEqual(
@@ -413,6 +512,21 @@ class SambaRootFixture(unittest.TestCase):
             "PHANTOWD_SAMBA_OWNER_NATIVE_NSS_REFUSAL_READY changed_uid=true "
             "supplementary_group=true foreign_user=true restored_lookup=true "
             "unchanged_owner=true stopped_reaped=true scope=qemu-only",
+            "PHANTOWD_SAMBA_OWNER_NATIVE_CONFIG_READY owner_derived=true "
+            "exact_census=true readonly_noexec=true caller_close=true "
+            "libc=true drift_refused=true restoration_mismatch=true "
+            "stopped_reaped=true released=true no_fd_leak=true "
+            "scope=qemu-only",
+            "PHANTOWD_SAMBA_OWNER_NATIVE_HANDOFF_READY inputs=4 refusals=7 "
+            "source_path_masked=true same_objects=true caller_close=true "
+            "readonly_noexec=true closed_before_exec=true "
+            "late_drift_refused=true review_sticky=true partial_cleanup=true "
+            "stopped_reaped=true no_fd_leak=true scope=qemu-only",
+            "PHANTOWD_SAMBA_OWNER_NATIVE_ENROLLMENT_READY accounts=2 "
+            "owner_bound=true original_config=true original_state=true "
+            "disabled_first=true stdin_only=true same_sid=true "
+            "explicit_enable=true stopped_reaped=true "
+            "no_fd_leak=true scope=qemu-only",
             "PHANTOWD_SAMBA_ROOT_DONE",
         ]
         fixture.check_guest("\r\n".join(lines + [SCAN_COST]))

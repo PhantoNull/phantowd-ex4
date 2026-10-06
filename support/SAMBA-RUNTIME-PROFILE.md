@@ -478,8 +478,8 @@ not permission to alter user storage; no tool/action/secret API is added.
 
 ### Qualified native libc lookup (independent QEMU root only)
 
-After the old daemon and all runtime Owners stop/release, the existing campaign
-uses a fresh guest tmpfs Unix database and a native Owner without a Samba
+The separate native campaign boots a fresh snapshot with a guest tmpfs Unix
+database and a native Owner without a Samba
 backend. Actual typed BusyBox creation supplies two disabled accounts with
 distinct same-number private UID/GIDs. A partial group-only account cannot
 derive enrollment lookup. The resulting Owner-derived passwd/group/nsswitch
@@ -510,6 +510,103 @@ full resource retention/revalidation and product construction must still be
 composed. No product startup or physical device uses this fixture.
 
 ### Construction and retained resources
+
+The independent native lookup tracer now also qualifies protected configuration
+retention for the three real Owner-derived documents. Its private expected plan
+uses the opaque lookup candidate, not hashes read from the staged root. Existing
+complete-census/mode/hash/mount admission retains the original descriptors;
+temporary caller handles close before a fixed actual libc capture. Complete
+rechecks bracket execution, verified group absence precedes release, and final
+FD counts agree. An actual metadata fault and its restored-but-changed generation
+refuse. The native Owner's separate evidence remains unchanged.
+
+This tracer has no password/passdb or daemon. Its fixed QEMU mount anchor and
+controller-only writable fault reference are not descriptor-bound product
+construction or a retained identity lease. Metadata generation mismatch is not
+a claim of sticky service review. If capture teardown is uncertain, the tracer
+does not release its configuration pins; product recovery/ownership must still
+be composed. These checks share the native campaign without increasing its
+guest deadline.
+
+The fixed read-only native worker now also receives four independently
+duplicated configuration objects: root, passwd, group and nsswitch.conf.
+Role/parent checks use the retained directory, not a host pathname; mount,
+metadata, attributes and file bytes are rechecked before launch. The guarded
+bootstrap clones all originals before unsharing, masks the child source path
+and attaches those detached original-object clones read-only/noexec. All
+temporary callers close before capture; the actual post-exec libc probe
+independently checks escape descriptors are absent. No generic extra-FD option
+or selector/secret interface is added.
+
+Seven actual QEMU admission refusals exercise partial cleanup and preserve
+caller/FD counts. A separately admitted worker sees late mode drift and refuses
+before execution; permission restoration cannot clear its capture review.
+Configuration release follows verified closure of both captures. This does
+not qualify a continuous identity lease, descriptor-bound product code/root,
+daemon credentials/state composition or durable service recovery.
+
+### Native credential workers (QEMU only)
+
+The next separate fixture binds one `smbexec.NativeBackendQEMU` at native
+Owner opening. It reuses the existing passdb parsing and journal-facing
+credential logic, not fabricated journals/SIDs or copied TDB files. Expected
+configuration is rendered again from the opaque native lookup, independently
+of the staged directory. A bootstrap Owner closes before this fresh admission;
+no continuous identity authority is claimed.
+
+The private runtime retains the full eight-entry code closure (including
+`smbstatus`/`smbcontrol`), seven exact config files and seven original state
+directories. Each fixed capture duplicates config root plus four files and all
+seven state directories. Before namespace change, the helper clones all twelve
+original objects; private source-path masking cannot redirect them. Child views
+must match original inode/device, protected config remains read-only/noexec,
+state writable/noexec, escape FDs close and capabilities reduce to `0xdb`/NNP.
+There are no devices, host paths, data grants, daemon or externally exposed port.
+
+Password input is a bounded sealed read-only memfd with two matching lines.
+Raw output stays private and is cleared when not needed. Complete code/config/
+state rechecks occur immediately before execution and after verified settlement;
+configuration-only binding is not launch authorization. This removes duplicate
+full code scans without weakening the older integrity inspector. The original
+60-second credential-fixture and 180-second guest budgets remain.
+
+Actual ARMv5 requires two real native identities to progress from absent to
+disabled/no-password, password-confirmed/still-disabled, then explicit enable
+with the same SID. Final identities have distinct SIDs. Verified worker close
+and final FD-count equality are mandatory; driver tests reject missing,
+duplicate or weakened evidence. All 34 driver/seven loader tests and old/new
+guest gates pass, base unchanged. Host tests qualify guarded refusal separately.
+
+This does not qualify a daemon using these objects, actual authentication/live
+revocation in this new composition, storage grants, retained identity authority,
+durable quarantine/recovery, signed manifest authority, product startup or EX4.
+Session-control verbs are not qualified by merely including their executables.
+Uncertain cleanup is not reported as successful release; durable ownership
+through caller loss/GC still needs the product recovery/lifecycle design.
+
+### Bounded campaign execution
+
+The official runner compiles and stages one fixed probe image, then executes
+two fresh QEMU snapshots sequentially, each bounded to 180 seconds. The service
+campaign proves the old access/isolation/lifetime cases and releases all its
+resources. The native campaign independently proves lookup, configuration
+handoff and credential workers on fresh tmpfs state. No service passdb or
+filesystem mutation carries over; both virtual drives use snapshots.
+
+Both campaigns require their own real virtio entropy, fresh staging and complete
+code census. The verifier accepts only the exact ordered phase markers and one
+bounded scan measurement per guest, then requires equal file/byte censuses.
+Missing, duplicated, swapped or weakened proofs fail. The normalized marker
+summary is combined coverage, not one daemon or state retained across boots.
+The base manifest and post-run image hash remain mandatory. Failure artifacts
+contain the failed phase's log, or both logs when joint verification fails.
+
+This addresses an observed outer timeout after native handoff in the growing
+single-guest campaign, without weakening admission or increasing the native
+60-second credential budget. Local wrapper success is not hosted/clean-build
+qualification; the publication's own head must pass independently.
+
+### Product construction requirements
 
 - Fix the backend, launcher, daemon, arguments, readiness/stop budgets and
   protected roots once at construction. No operation accepts replacements,

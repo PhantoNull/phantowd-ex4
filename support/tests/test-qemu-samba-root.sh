@@ -31,8 +31,10 @@ cleanup() {
     # Only this exact newly-created tmpfs directory owns these files.
     rm -f "$scratch/rootfs.ext2" "$scratch/acl.ext4" "$scratch/lab" "$scratch/smbd.json" \
         "$scratch/smbpasswd.json" "$scratch/testparm.json" "$scratch/pdbedit.json" \
+        "$scratch/smbstatus.json" "$scratch/smbcontrol.json" \
         "$scratch/streams_xattr.json" "$scratch/ibm850.json" "$scratch/manifest" \
-        "$scratch/launcher" "$scratch/charset" "$scratch/bundle" "$scratch/owner" "$scratch/guest.log"
+        "$scratch/launcher" "$scratch/charset" "$scratch/bundle" "$scratch/owner" \
+        "$scratch/service.log" "$scratch/native.log"
     rm -rf "$scratch/go-cache" "$scratch/go-path"
     rmdir "$scratch"
 }
@@ -50,9 +52,12 @@ export GOCACHE="$scratch/go-cache" GOPATH="$scratch/go-path"
 "$scratch/lab" inspect-runtime-closure "$target" usr/lib/samba/vfs/streams_xattr.so >"$scratch/streams_xattr.json"
 "$scratch/lab" inspect-runtime-closure "$target" usr/lib/gconv/IBM850.so >"$scratch/ibm850.json"
 "$scratch/lab" inspect-runtime-closure "$target" usr/bin/pdbedit >"$scratch/pdbedit.json"
+"$scratch/lab" inspect-runtime-closure "$target" usr/bin/smbstatus >"$scratch/smbstatus.json"
+"$scratch/lab" inspect-runtime-closure "$target" usr/bin/smbcontrol >"$scratch/smbcontrol.json"
 python3 -B "$source_dir/support/tests/samba_root_fixture.py" prepare \
     "$scratch/smbd.json" "$scratch/smbpasswd.json" "$scratch/testparm.json" \
     "$scratch/streams_xattr.json" "$scratch/ibm850.json" "$scratch/pdbedit.json" \
+    "$scratch/smbstatus.json" "$scratch/smbcontrol.json" \
     "$target/usr/lib/gconv/gconv-modules" "$scratch/manifest"
 "$compiler" -std=c11 -O2 -static -Wall -Wextra -Werror \
     -o "$scratch/launcher" "$source_dir/support/tests/samba-root-launcher-fixture.c"
@@ -84,26 +89,39 @@ for pair in "launcher phantowd-samba-root-launcher" \
     "$debugfs" -w -R "set_inode_field /usr/sbin/$output gid 0" "$scratch/rootfs.ext2" >/dev/null 2>&1
 done
 "$debugfs" -w -R "write $scratch/manifest /usr/lib/phantowd/qemu-samba-root.manifest" "$scratch/rootfs.ext2" >/dev/null 2>&1
-timeout --signal=TERM --kill-after=5 180 qemu-system-arm \
+for campaign in service native; do
+    timeout --signal=TERM --kill-after=5 180 qemu-system-arm \
     -M versatilepb -cpu arm926 -m 256M -nographic -no-reboot -nic none \
     -object rng-random,id=samba-rng,filename=/dev/urandom \
     -device virtio-rng-pci,rng=samba-rng \
     -kernel "$base/zImage" -dtb "$base/versatile-pb.dtb" \
-    -append 'console=ttyAMA0 root=/dev/sda rootwait ro panic=-1 phantowd_samba_ext4_fixture=1 init=/usr/sbin/phantowd-samba-root-init' \
+    -append "console=ttyAMA0 root=/dev/sda rootwait ro panic=-1 phantowd_samba_ext4_fixture=1 phantowd_samba_campaign=$campaign init=/usr/sbin/phantowd-samba-root-init" \
     -drive "file=$scratch/rootfs.ext2,format=raw,if=scsi,snapshot=on" \
     -drive "file=$scratch/acl.ext4,format=raw,if=scsi,snapshot=on" \
-    >"$scratch/guest.log" 2>&1 &
+    >"$scratch/$campaign.log" 2>&1 &
 child_pid=$!
 status=0
 wait "$child_pid" || status=$?
 child_pid=
-if [ "$status" -ne 0 ] || ! python3 -B "$source_dir/support/tests/samba_root_fixture.py" verify \
-    "$scratch/guest.log"; then
+if [ "$status" -ne 0 ] || ! python3 -B "$source_dir/support/tests/samba_root_fixture.py" verify-campaign \
+    "$scratch/$campaign.log" "$campaign"; then
     if [ -n "$failure_log" ]; then
         mkdir -p "$(dirname "$failure_log")"
-        cp "$scratch/guest.log" "$failure_log"
+        cp "$scratch/$campaign.log" "$failure_log"
     fi
-    tail -n 120 "$scratch/guest.log" >&2
+    printf 'Samba campaign failed: %s\n' "$campaign" >&2
+    tail -n 120 "$scratch/$campaign.log" >&2
+    exit 1
+fi
+done
+if ! python3 -B "$source_dir/support/tests/samba_root_fixture.py" verify \
+    "$scratch/service.log" --native-log "$scratch/native.log"; then
+    if [ -n "$failure_log" ]; then
+        mkdir -p "$(dirname "$failure_log")"
+        cat "$scratch/service.log" "$scratch/native.log" >"$failure_log"
+    fi
+    tail -n 60 "$scratch/service.log" >&2
+    tail -n 60 "$scratch/native.log" >&2
     exit 1
 fi
 [ "$(sha256sum "$base/rootfs.ext2" | awk '{print $1}')" = "$base_hash" ]
