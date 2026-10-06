@@ -114,6 +114,26 @@ same-state credential backend construction and product startup remain open.
 
 ## File-service consumer retention
 
+`RetainSMBFileServiceSnapshot(ctx, expectedFingerprint, expectedBackend)` adds
+an exact startup-backend identity requirement. The candidate must be the same
+non-nil pointer object already fixed in `OpenWithSMBBackend`; equal snapshots
+from another Owner/backend are insufficient. Value adapters, typed nils and
+zero-sized pointees are refused. The argument only asserts identity: it is
+never substituted or dispatched, and foreign binding fails before observation.
+Its opaque lease shares the existing 16-consumer bound, close fence, sticky
+review, copy semantics and serialization refusal. Verification checks that the
+original backend remains bound, then collects the ordinary complete evidence.
+The generic retention method below is unchanged and makes no SMB binding claim.
+
+Root-run Linux/race tests verify equal-evidence foreign refusal, invalid object
+identities, revocation/stale evidence, serialization, mixed consumer capacity
+and exact backend lifetime. A separate actual ARMv5 native-backend read-only
+probe verifies retention/close refusal and unchanged release **before** daemon
+startup. It does not retain or supervise the live service. Consumers must still
+construct against their own fixed runtime/backend, verify outside Owner/runtime
+gates and obtain an explicit successor contract for confirmed account changes;
+this API does not provide atomic handoff, refresh, process authority or recovery.
+
 `RetainFileServiceSnapshot(ctx, expectedFingerprint)` is a trusted in-process
 operation, not a request field or RPC/HTTP route. It freshly collects the same
 complete, non-recovering evidence under the Owner lock and retains a consumer

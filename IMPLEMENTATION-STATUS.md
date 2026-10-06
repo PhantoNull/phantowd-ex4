@@ -3,6 +3,31 @@
 
 # Implementation status
 
+## Exact-backend identity retention — focused host/QEMU qualification
+
+The internal identity Owner now offers `RetainSMBFileServiceSnapshot` for the
+exact non-nil, non-zero-sized pointer backend fixed at startup. The candidate
+is an identity assertion only, never a replacement executor. Different Owner
+backends are refused before observation even when their complete fingerprints
+match. Generic consumer behavior remains unchanged; both methods share the
+same 16-consumer bound, close fence, copy/release and sticky-review rules.
+
+Root-run Linux tests and race-count3 qualify foreign/equal-evidence refusal,
+invalid/noncomparable/typed-nil/zero-sized identities, revocation/stale evidence,
+serialization refusal, mixed capacity and exact backend lifetime. Windows
+API/UI/vet and tagged ARMv5 cross-compilation pass. The official local ARMv5
+wrapper passes all 38 driver/seven loader tests and BOTH complete Samba
+campaigns, including an actual native-backend read-only retention/close-fence
+probe that releases before daemon startup without changing identity evidence.
+All earlier live-revocation/privilege/base/teardown/FD guards remain mandatory.
+
+This is not a new complete Buildroot image, hosted/clean qualification or
+continuous daemon authority. A constructor must still bind its own runtime,
+coordinate outside Owner/runtime gates, and qualify a successor/fence for
+confirmed account mutations. The probe neither supervises a daemon nor
+authorizes refresh, activation, new HTTP, persistent recovery or NAS operations.
+The complete cached result below retains its exact historical source scope.
+
 ## Complete cached native-revocation integration — local qualification
 
 Frozen `57ee527` passes the complete cached local lane: API/vet/race/fixed-count

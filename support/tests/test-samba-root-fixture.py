@@ -44,6 +44,29 @@ def reports():
 
 
 class SambaRootFixture(unittest.TestCase):
+    def test_native_backend_binding_requires_complete_readonly_probe(self):
+        expected = ("PHANTOWD_SAMBA_OWNER_NATIVE_BACKEND_BINDING_READY "
+                    "owner_bound=true backend_bound=true "
+                    "unchanged_verified=true foreign_refused=true "
+                    "close_busy=true released_before_start=true "
+                    "release_no_mutation=true stopped_reaped=true "
+                    "no_fd_leak=true service_owner=false scope=qemu-only")
+        self.assertIn(expected, fixture.MARKERS)
+        good = "\n".join([*fixture.MARKERS, SCAN_COST])
+        fixture.check_guest(good)
+        for field in ("owner_bound", "backend_bound", "unchanged_verified",
+                      "foreign_refused", "close_busy", "released_before_start",
+                      "release_no_mutation", "stopped_reaped", "no_fd_leak"):
+            with self.assertRaises(ValueError):
+                fixture.check_guest(good.replace(expected, expected.replace(
+                    field + "=true", field + "=false")))
+        for replacement in ("", expected + "\n" + expected,
+                            expected.replace("service_owner=false",
+                                             "service_owner=true"),
+                            expected.replace("qemu-only", "product")):
+            with self.assertRaises(ValueError):
+                fixture.check_guest(good.replace(expected, replacement))
+
     def test_native_live_revoke_requires_real_pair_and_peer_continuity(self):
         expected = ("PHANTOWD_SAMBA_OWNER_NATIVE_LIVE_REVOKE_READY "
                     "accounts=2 qualified_pair=true owner_bound=true "
@@ -607,6 +630,11 @@ class SambaRootFixture(unittest.TestCase):
             "other_login_allowed=true same_daemon=true "
             "no_new_privileges=true stopped_reaped=true no_fd_leak=true "
             "scope=qemu-only",
+            "PHANTOWD_SAMBA_OWNER_NATIVE_BACKEND_BINDING_READY "
+            "owner_bound=true backend_bound=true unchanged_verified=true "
+            "foreign_refused=true close_busy=true released_before_start=true "
+            "release_no_mutation=true stopped_reaped=true no_fd_leak=true "
+            "service_owner=false scope=qemu-only",
             "PHANTOWD_SAMBA_ROOT_DONE",
         ]
         fixture.check_guest("\r\n".join(lines + [SCAN_COST]))

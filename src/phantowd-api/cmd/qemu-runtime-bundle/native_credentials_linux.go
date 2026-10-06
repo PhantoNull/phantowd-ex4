@@ -187,6 +187,9 @@ func nativeCredentialFixture() (result error) {
 		!observed[0].Present || !observed[1].Present || observed[0].SID == observed[1].SID {
 		return errors.Join(errors.New("native backend final identity census"), err)
 	}
+	if err := nativeIdentityBackendProbeQEMU(owner, backend); err != nil {
+		return fmt.Errorf("native read-only backend binding: %w", err)
+	}
 	// Authentication is a new, separately bounded phase; the original 60-second
 	// credential campaign remains unchanged. The outer guest still has 180s.
 	daemonContext, stopDaemonContext := context.WithTimeout(context.Background(), 20*time.Second)
@@ -285,5 +288,48 @@ func nativeCredentialFixture() (result error) {
 	fmt.Println("PHANTOWD_SAMBA_OWNER_NATIVE_DAEMON_READY accounts=2 same_code=true same_config=true same_state=true authenticated=true wrong_password_denied=true owned_group=true stopped_reaped=true no_fd_leak=true scope=qemu-only")
 	fmt.Println("PHANTOWD_SAMBA_OWNER_NATIVE_IDLE_DISABLE_READY owner_bound=true same_sid=true stable_absence=true new_login_denied=true other_login_allowed=true same_daemon=true no_new_privileges=true stopped_reaped=true no_fd_leak=true scope=qemu-only")
 	fmt.Println("PHANTOWD_SAMBA_OWNER_NATIVE_LIVE_REVOKE_READY accounts=2 qualified_pair=true owner_bound=true same_sid=true target_absent=true same_peer_session=true new_login_denied=true other_login_allowed=true same_daemon=true no_new_privileges=true stopped_reaped=true no_fd_leak=true scope=qemu-only")
+	fmt.Println("PHANTOWD_SAMBA_OWNER_NATIVE_BACKEND_BINDING_READY owner_bound=true backend_bound=true unchanged_verified=true foreign_refused=true close_busy=true released_before_start=true release_no_mutation=true stopped_reaped=true no_fd_leak=true service_owner=false scope=qemu-only")
+	return nil
+}
+
+// This read-only probe finishes and releases BEFORE daemon/client startup. It
+// does not turn a snapshot lease into service authority or refresh one after
+// an account mutation. The complete credential/start/revoke campaigns retain
+// their existing independent budgets; the outer guest limit is unchanged.
+func nativeIdentityBackendProbeQEMU(owner *identityowner.Owner, backend *smbexec.NativeBackendQEMU) (result error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+	evidence, err := owner.FileServiceSnapshot(ctx)
+	if err != nil {
+		return err
+	}
+	foreign := &smbexec.NativeBackendQEMU{}
+	if refused, err := owner.RetainSMBFileServiceSnapshot(ctx, evidence.Fingerprint, foreign); refused != nil || !errors.Is(err, identityowner.ErrConflict) {
+		if refused != nil {
+			_ = refused.Release()
+		}
+		return errors.New("foreign native backend binding admitted")
+	}
+	consumer, err := owner.RetainSMBFileServiceSnapshot(ctx, evidence.Fingerprint, backend)
+	if err != nil {
+		return err
+	}
+	defer func() { result = errors.Join(result, consumer.Release()) }()
+	if err := consumer.Verify(ctx); err != nil {
+		return err
+	}
+	if err := owner.Close(); !errors.Is(err, identityowner.ErrBusy) {
+		return errors.New("native bound consumer did not retain Owner")
+	}
+	if err := consumer.Release(); err != nil {
+		return err
+	}
+	if err := consumer.Verify(ctx); !errors.Is(err, identityowner.ErrUnavailable) {
+		return errors.New("released native bound consumer verified")
+	}
+	after, err := owner.FileServiceSnapshot(ctx)
+	if err != nil || after.Fingerprint != evidence.Fingerprint {
+		return errors.Join(errors.New("native binding probe changed identity evidence"), err)
+	}
 	return nil
 }

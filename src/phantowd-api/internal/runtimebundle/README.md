@@ -250,6 +250,16 @@ continuous identity/storage authority, product root construction or startup.
 The generic Owner's static/non-root contract below is unchanged. See the
 [native profile](../../../../support/SAMBA-RUNTIME-PROFILE.md#native-same-state-authentication-qemu-only).
 
+A subsequent read-only native-backend probe obtains an identity consumer only
+for the exact adapter fixed in `identityowner.OpenWithSMBBackend`. It refuses a
+foreign adapter, verifies complete evidence and busy Owner close, then releases
+before daemon/client startup and confirms unchanged evidence. The official
+38-driver/seven-loader/two-campaign ARMv5 wrapper and root identity race-count3
+pass, including every earlier guard. This qualifies a binding prerequisite,
+not a continuously retained service lease: no runtime callback, atomic account
+transition, supervision or product constructor is added. Never invoke lease
+verification from an Owner/runtime gate or silently refresh invalidated tokens.
+
 Linux `Plan.NewOwner(ctx, root, specs)` privately duplicates the root and retains
 every verified regular file. It copies a fixed set of 1..8 process specifications
 and owns their independently pinned executable descriptors. There is no handle

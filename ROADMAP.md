@@ -2466,8 +2466,13 @@ this order, preserving the [full contract](support/SAMBA-RUNTIME-PROFILE.md#samb
    source/package/regular archive files, installed/image/exported API bytes and
    seven payload hashes agree. Own hosted and independent clean-build/release
    qualification remain separate. Next qualify continuous identity/storage
-   authority and protected product construction. Existing snapshot leases are
-   not backend-bound handoff authority: their full evidence includes mutable
+   authority and protected product construction. An additional internal
+   `RetainSMBFileServiceSnapshot` now retains only the exact pointer adapter
+   fixed at Owner startup; foreign adapters refuse even with identical evidence.
+   Root/race tests and an actual ARMv5 native-backend read-only probe qualify
+   lifetime, close refusal and unchanged release before daemon startup. Generic
+   snapshot leases still assert no SMB binding, and the new token is not a
+   continuously composed runtime handoff: their full evidence includes mutable
    Samba journals, and Verify calls passdb under the Owner lock. Never recurse
    into that lease from a worker/runtime gate or silently refresh its review.
    A confirmed account transition needs an explicitly qualified successor/fence;

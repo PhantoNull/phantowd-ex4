@@ -126,6 +126,11 @@ MARKERS = (
     "same_peer_session=true new_login_denied=true other_login_allowed=true "
     "same_daemon=true no_new_privileges=true stopped_reaped=true "
     "no_fd_leak=true scope=qemu-only",
+    "PHANTOWD_SAMBA_OWNER_NATIVE_BACKEND_BINDING_READY "
+    "owner_bound=true backend_bound=true unchanged_verified=true "
+    "foreign_refused=true close_busy=true released_before_start=true "
+    "release_no_mutation=true stopped_reaped=true no_fd_leak=true "
+    "service_owner=false scope=qemu-only",
     "PHANTOWD_SAMBA_ROOT_DONE",
 )
 
