@@ -185,7 +185,8 @@ func nativeCredentialFixture() (result error) {
 	observed, err := backend.ObserveAccounts(ctx, registry.Accounts)
 	if err != nil || len(observed) != 2 || observed[0].Disabled || observed[1].Disabled ||
 		!observed[0].Present || !observed[1].Present || observed[0].SID == observed[1].SID {
-		return errors.Join(errors.New("native backend final identity census"), err)
+		return fmt.Errorf("native backend final identity census elapsed=%v context=%v rows=%d: %w",
+			time.Since(started), ctx.Err(), len(observed), errors.Join(errors.New("invalid native account observation"), err))
 	}
 	if err := nativeIdentityBackendProbeQEMU(owner, backend); err != nil {
 		return fmt.Errorf("native read-only backend binding: %w", err)
