@@ -2418,6 +2418,11 @@ this order, preserving the [full contract](support/SAMBA-RUNTIME-PROFILE.md#samb
    not replaced by cached launch authorization. This is not a daemon, continuous
    identity lease or durable product quarantine/recovery. The factory/fixture
    remain trusted test-only composition; product ownership is not established.
+   The same runtime also passes complete cached local integration on `8b1f9ec`,
+   including every later lane; all 874 packaged/source-archive API files,
+   installed/embedded/exported API bytes and seven artifact hashes agree.
+   This does not qualify independent clean builds, release licensing or EX4
+   operation, and does not close any of the following composition gates.
    Next bind that credential backend and daemon to the SAME mutable state and
    qualify actual authentication/revocation there, then identity/storage authority
    and protected product construction. Never bootstrap by

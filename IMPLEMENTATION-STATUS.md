@@ -26,6 +26,16 @@ the final descriptor count matches the baseline. The official campaign passes
 all 33 driver tests, seven loader tests, lint/ShellCheck and every older gate,
 with unchanged base image and the existing 180-second guest budget.
 
+The same frozen runtime subsequently passes complete cached local integration
+on `8b1f9ec`: host/race/fuzz, package compilation and source collection, ARMv5
+smoke/MD/two-boot, launcher/code/loader/atomic, restricted-root Samba and
+synthetic SMART producer/capture. All 874 tracked API files independently match
+the compiled package and source archive. Installed, image-embedded and exported
+API bytes agree at SHA256
+`c74339a186c8faed0610d3c242689724cb54d74e1a47cda9316899ccd7e05717`;
+all seven exported artifact hashes verify. This is cached local qualification,
+not an independent clean build, complete release licensing or EX4 qualification.
+
 The first composition reproduced a 60-second fixture deadline caused by four
 complete code scans per command. Configuration binding now checks configuration
 only; full code/config/state checks immediately bracket each worker. Both
@@ -38,7 +48,8 @@ authority, descriptor-bound product code/root construction, durable quarantine,
 startup recovery, HTTP or physical EX4 qualification. The bootstrap Owner closes
 before a fresh backend-bound admission; this is not continuous retention. The
 legacy fixture's session-revocation proof is not borrowed for this new profile.
-No product service, installer or new full-image qualification is established.
+No product service, installer or independent clean-build qualification is
+established.
 
 ## M2.4 Owner-derived native configuration and descriptor handoff — QEMU
 
