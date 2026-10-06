@@ -120,7 +120,7 @@ retain exact declared directory descriptors, attach only those roots inside
 Samba's restricted namespace and retain storage through verified descendant
 stop and input closure. It must not fall back to ordinary host-volume paths.
 Storage verification must remain outside recursive identity/backend/runtime
-locks. No daemon consumes this candidate yet; native parser validation, real
+locks. No daemon consumes this candidate yet; full runtime-profile validation, real
 RW/RO file-access proofs, source-loss quarantine and uncertain teardown are
 still required. A local ARMv5 one-boot overlay does check the isolated request
 against the live synthetic mounted-roster tuple and validates its sections with
