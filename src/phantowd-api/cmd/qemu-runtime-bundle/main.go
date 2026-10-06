@@ -168,7 +168,13 @@ func run() error {
 	if observation, err := p.Inspect(ctx, root); !errors.Is(err, context.Canceled) || observation != (runtimebundle.Observation{}) {
 		return errors.New("cancellation")
 	}
+	retained, err := p.ProbeRetainedCodeQEMU(context.Background(), root)
+	if err != nil || retained != got {
+		fmt.Fprintln(os.Stderr, "PHANTOWD_SAMBA_ROOT_RETAINED_CODE_FAILED", err)
+		return errors.Join(errors.New("retained dynamic code qualification"), err)
+	}
 	fmt.Println("PHANTOWD_SAMBA_ROOT_BUNDLE_READY readonly=true complete_census=true hashes=true aliases=true refusals=5 scope=qemu-only")
+	fmt.Println("PHANTOWD_SAMBA_ROOT_RETAINED_CODE_READY complete_code_pins=true caller_close=true dynamic_elf=true generic_dynamic_refused=true generic_root_refused=true canceled_refused=true released=true no_fd_leak=true scope=qemu-only")
 	return nil
 }
 

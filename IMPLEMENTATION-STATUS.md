@@ -3,6 +3,33 @@
 
 # Implementation status
 
+## M4.4 shared code-input preparation — internal prerequisite
+
+The package-private retained-code helper is now shared by static `Owner` and
+the guarded QEMU prepared-code probe. It keeps independent root/file references
+and original directory/file/alias identities, preserves exact census/hash checks
+and the trailing identity fence, and adds no production API or execution grant.
+The static constructor retains its static-ELF/non-root restrictions and unchanged
+scan sequence; release remains after complete process cleanup.
+
+Local non-root Linux vet/race checks pass, including cancellation before input
+inspection and repeated failed preparation without caller-FD consumption or
+descriptor leaks. Actual ARMv5 requalifies every existing static lifecycle,
+supervision, mid-scan same-byte replacement, restoration refusal and forced-stop
+review case. The runtime-owner wrapper now drops all Docker capabilities and
+uses UID1000/NNP; privileged fixture setup stays in QEMU.
+
+Actual ARMv5 also qualifies retention/revalidation/release of the prepared Samba
+dynamic closure with caller closure, cancellation and stable descriptor count,
+plus actual generic-adapter rejection of dynamic Samba with non-root/root
+credentials. The preflight executes 17 fixture tests and seven loader tests,
+while preserving all real SMB/streams/ext4 ACL/inheritance/owned-group checks.
+The complete prepared-code references are released BEFORE configuration/state
+composition and Samba startup. This does not complete dynamic service-lifetime
+ownership, manifest provenance, product identity/storage/state composition,
+input-drift supervision, durable activation/recovery or HTTP/hardware support.
+See the [internal contract](src/phantowd-api/internal/runtimebundle/README.md#shared-prepared-code-references).
+
 ## M4.4 Samba owned-group boundary — fixture-only prerequisite
 
 A separate QEMU-only probe now composes the pinned bootstrap helper with the

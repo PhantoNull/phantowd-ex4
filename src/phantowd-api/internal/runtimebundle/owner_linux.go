@@ -21,11 +21,8 @@ import (
 // set. It grants no isolation, mount/storage authority or new privilege profile.
 // The initial execution adapter accepts only static ELF/non-root children.
 type Owner struct {
+	*retainedCode
 	gate      chan struct{}
-	plan      *Plan
-	root      *os.File
-	files     map[string]*os.File
-	metadata  map[string]unix.Statx_t
 	processes *processowner.PinnedSet
 	snapshot  OwnerSnapshot
 	review    bool
@@ -42,7 +39,7 @@ func (p *Plan) NewOwner(ctx context.Context, root *os.File, specs []processowner
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
-	o := &Owner{gate: make(chan struct{}, 1), plan: p, files: make(map[string]*os.File, len(p.files))}
+	o := &Owner{gate: make(chan struct{}, 1)}
 	keep := false
 	defer func() {
 		if !keep {
@@ -50,30 +47,11 @@ func (p *Plan) NewOwner(ctx context.Context, root *os.File, specs []processowner
 		}
 	}()
 	var err error
-	o.root, err = duplicateRoot(root)
+	o.retainedCode, err = p.prepareRetainedCode(ctx, root)
 	if err != nil {
 		return nil, err
 	}
-	o.snapshot.Bundle, err = p.Inspect(ctx, o.root)
-	if err != nil {
-		return nil, err
-	}
-	o.metadata, err = o.nodeMetadata(ctx)
-	if err != nil {
-		return nil, err
-	}
-	mount := o.metadata["."].Mnt_id
-	for _, expected := range p.files {
-		fd, err := openBeneath(int(o.root.Fd()), expected.Path, unix.O_RDONLY)
-		if err != nil {
-			return nil, err
-		}
-		pin := os.NewFile(uintptr(fd), "retained-runtime-object")
-		o.files[expected.Path] = pin
-		if err := verifyOpenFile(ctx, pin, mount, expected); err != nil {
-			return nil, err
-		}
-	}
+	o.snapshot.Bundle = o.retainedCode.observation
 	var executables []*os.File
 	for _, spec := range specs {
 		name := strings.TrimPrefix(spec.Process.Executable, "/")
@@ -131,50 +109,6 @@ func staticExecutable(pin *os.File) error {
 	for _, segment := range program.Progs {
 		if segment.Type == elf.PT_INTERP || segment.Type == elf.PT_DYNAMIC {
 			return ErrInvalid
-		}
-	}
-	return nil
-}
-
-func (o *Owner) nodeMetadata(ctx context.Context) (map[string]unix.Statx_t, error) {
-	result := make(map[string]unix.Statx_t, len(o.plan.nodes))
-	for name := range o.plan.nodes {
-		if err := ctx.Err(); err != nil {
-			return nil, err
-		}
-		fd, err := openBeneath(int(o.root.Fd()), name, unix.O_PATH)
-		if err != nil {
-			return nil, err
-		}
-		var stat unix.Statx_t
-		const required = unix.STATX_BASIC_STATS | unix.STATX_MNT_ID_UNIQUE
-		statErr := unix.Statx(fd, "", unix.AT_EMPTY_PATH|unix.AT_NO_AUTOMOUNT, required, &stat)
-		_ = unix.Close(fd)
-		if statErr != nil || stat.Mask&required != required {
-			return nil, ErrUnavailable
-		}
-		result[name] = stat
-	}
-	return result, nil
-}
-
-func (o *Owner) revalidate(ctx context.Context) error {
-	if _, err := o.plan.Inspect(ctx, o.root); err != nil {
-		return err
-	}
-	current, err := o.nodeMetadata(ctx)
-	if err != nil {
-		return err
-	}
-	for name, initial := range o.metadata {
-		if current[name] != initial {
-			return ErrMismatch
-		}
-	}
-	for name, pin := range o.files {
-		metadata, err := inspectMetadata(int(pin.Fd()), unix.S_IFREG, o.metadata["."].Mnt_id)
-		if err != nil || metadata != o.metadata[name] {
-			return ErrMismatch
 		}
 	}
 	return nil
@@ -352,19 +286,10 @@ func (o *Owner) Close(ctx context.Context) error {
 }
 
 func (o *Owner) release() error {
-	var result error
 	if o.processes != nil {
 		if err := o.processes.Close(); err != nil {
 			return err
 		}
 	}
-	for _, pin := range o.files {
-		result = errors.Join(result, pin.Close())
-	}
-	o.files = nil
-	if o.root != nil {
-		result = errors.Join(result, o.root.Close())
-		o.root = nil
-	}
-	return result
+	return o.retainedCode.release()
 }

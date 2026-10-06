@@ -29,6 +29,10 @@ MARKERS = (
     "directories=true files=true refusals=5 scope=qemu-only",
     "PHANTOWD_SAMBA_ROOT_BUNDLE_READY readonly=true complete_census=true "
     "hashes=true aliases=true refusals=5 scope=qemu-only",
+    "PHANTOWD_SAMBA_ROOT_RETAINED_CODE_READY complete_code_pins=true "
+    "caller_close=true dynamic_elf=true generic_dynamic_refused=true "
+    "generic_root_refused=true canceled_refused=true "
+    "released=true no_fd_leak=true scope=qemu-only",
     "PHANTOWD_SAMBA_ROOT_CHARSET_READY charset=CP850 bytes=true "
     "roundtrip=true isolated_root=true scope=qemu-only",
     "PHANTOWD_SAMBA_ROOT_CONTEXT_READY original_fds_closed=true "
