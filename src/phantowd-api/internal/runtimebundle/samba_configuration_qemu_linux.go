@@ -13,6 +13,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/processowner"
 	"golang.org/x/sys/unix"
@@ -85,12 +86,120 @@ func (p *Plan) newSambaConfigurationQEMU(ctx context.Context, code, configuratio
 		}
 	}
 	if err == nil {
+		err = owner.setSambaStateProcessQEMU()
+	}
+	if err == nil {
 		err = owner.revalidate(ctx) // Late combined fence after all fixed inputs.
 	}
 	if err != nil {
 		return nil, errors.Join(err, owner.release())
 	}
 	return owner, nil
+}
+
+// Fixed disposable tracer only: exercise the state bootstrap while keeping the
+// generic static and separate code-only profiles unchanged. No per-call spec.
+func (o *Owner) setSambaStateProcessQEMU() error {
+	if err := o.processes.Close(); err != nil {
+		return err
+	}
+	fd, err := unix.Open(sambaFixtureHelper, unix.O_RDONLY|unix.O_CLOEXEC|unix.O_NOFOLLOW, 0)
+	if err != nil {
+		return err
+	}
+	helper := os.NewFile(uintptr(fd), "fixed-state-bootstrap")
+	if err := staticExecutable(helper); err != nil {
+		return errors.Join(err, helper.Close())
+	}
+	var inputs [7]*os.File
+	for index, name := range sambaStateDirectories {
+		inputs[index] = o.sambaState.files[name]
+	}
+	spec := processowner.MemberSpec{Name: "samba-state", Process: processowner.Spec{
+		Executable: sambaFixtureHelper, Args: []string{"owned-state-server"},
+		RunAs: &processowner.Credentials{UID: 0, GID: 0},
+		Ready: func(ctx context.Context) (bool, error) {
+			_, err := sambaFixtureClient(ctx, "qpwriter", "ls")
+			return err == nil, ctx.Err()
+		},
+		ReadyTimeout: 20 * time.Second, ProbeInterval: 200 * time.Millisecond, StopTimeout: 4 * time.Second,
+	}}
+	if err := checkSambaStateAdmissionQEMU(spec, helper, inputs); err != nil {
+		return errors.Join(err, helper.Close())
+	}
+	// These temporary callers are deliberately closed before Start. The
+	// containing Owner still retains its separate authority/revalidation pins.
+	var callers [7]*os.File
+	closeCallers := func() (result error) {
+		for index, caller := range callers {
+			if caller != nil {
+				result = errors.Join(result, caller.Close())
+				callers[index] = nil
+			}
+		}
+		return result
+	}
+	for index, input := range inputs {
+		fd, duplicateErr := unix.FcntlInt(input.Fd(), unix.F_DUPFD_CLOEXEC, 0)
+		if duplicateErr != nil {
+			return errors.Join(duplicateErr, closeCallers(), helper.Close())
+		}
+		callers[index] = os.NewFile(uintptr(fd), "disposable-state-caller")
+	}
+	o.processes, err = processowner.NewSambaStatePinnedSetQEMU(spec, helper, callers)
+	err = errors.Join(err, closeCallers())
+	// Spec contains mutable pointers/slices. Mutation after construction must
+	// not change credentials, argv or the actual original-object child mounts.
+	spec.Process.Args[0] = "invalid-after-construction"
+	spec.Process.RunAs.UID, spec.Process.RunAs.GID = 65534, 65534
+	return errors.Join(err, helper.Close())
+}
+
+// Fixed public-constructor refusals, without Start or authority getters. The
+// invalid last role exercises cleanup after six valid input pins were retained.
+func checkSambaStateAdmissionQEMU(spec processowner.MemberSpec, helper *os.File, inputs [7]*os.File) (result error) {
+	pathFD, err := unix.Openat(int(inputs[6].Fd()), ".", unix.O_PATH|unix.O_DIRECTORY|unix.O_CLOEXEC|unix.O_NOFOLLOW, 0)
+	if err != nil {
+		return err
+	}
+	path := os.NewFile(uintptr(pathFD), "invalid-state-path-input")
+	defer func() { result = errors.Join(result, path.Close()) }()
+	closedFD, err := unix.FcntlInt(inputs[6].Fd(), unix.F_DUPFD_CLOEXEC, 0)
+	if err != nil {
+		return err
+	}
+	closed := os.NewFile(uintptr(closedFD), "invalid-state-closed-input")
+	if err := closed.Close(); err != nil {
+		return err
+	}
+	for _, trial := range []struct {
+		name  string
+		input *os.File
+	}{{"duplicate", inputs[0]}, {"nil", nil}, {"closed", closed}, {"path-only", path}, {"regular", helper}} {
+		before, err := retainedFixtureFDCount()
+		if err != nil {
+			return err
+		}
+		invalid := inputs
+		invalid[6] = trial.input
+		rejected, admissionErr := processowner.NewSambaStatePinnedSetQEMU(spec, helper, invalid)
+		if rejected != nil {
+			return errors.Join(fmt.Errorf("invalid state role admitted: %s", trial.name), rejected.Close())
+		}
+		after, err := retainedFixtureFDCount()
+		if !errors.Is(admissionErr, processowner.ErrInvalid) || err != nil || after != before {
+			return errors.Join(fmt.Errorf("state refusal leaked partial pins: %s", trial.name), err)
+		}
+		for _, input := range inputs {
+			if _, err := input.Stat(); err != nil {
+				return errors.Join(errors.New("state refusal closed caller input"), err)
+			}
+		}
+		if _, err := helper.Stat(); err != nil {
+			return errors.Join(errors.New("state refusal closed caller helper"), err)
+		}
+	}
+	return nil
 }
 
 // No Owner or descriptors escape. Fixed root-only disposable QEMU controller
@@ -112,13 +221,23 @@ func (p *Plan) ProbeSambaConfigurationLifetimeQEMU(ctx context.Context, code, co
 		unix.Fstatfs(int(writer.Fd()), &fs) != nil || fs.Type != unix.TMPFS_MAGIC || fs.Flags&unix.ST_RDONLY != 0 {
 		return ErrInvalid
 	}
-	for _, fault := range []string{"none", "configuration", "state"} {
+	before, err := retainedFixtureFDCount()
+	if err != nil {
+		return err
+	}
+	for _, fault := range []string{"none", "configuration", "state", "state-forced"} {
 		if err := p.sambaConfigurationCase(ctx, code, configuration, writer, fault); err != nil {
 			return err
 		}
 	}
+	after, err := retainedFixtureFDCount()
+	if err != nil || after != before {
+		return errors.New("state descriptor handoff leaked references")
+	}
 	fmt.Println("PHANTOWD_SAMBA_OWNER_CONFIG_LIFETIME_READY exact_contents=true caller_close=true live_pins=true same_child_objects=true readonly_noexec=true normal_stop=true drift_stopped=true review_retained=true restoration_refused=true released=true scope=qemu-only")
 	fmt.Println("PHANTOWD_SAMBA_OWNER_STATE_LIFETIME_READY caller_close=true live_directory_pins=true same_child_objects=true writable_noexec=true mutable_passdb=true normal_stop=true drift_stopped=true review_retained=true restoration_refused=true released=true scope=qemu-only")
+	fmt.Println("PHANTOWD_SAMBA_OWNER_STATE_HANDOFF_READY inputs=7 source_path_masked=true same_child_objects=true closed_before_exec=true no_fd_leak=true scope=qemu-only")
+	fmt.Println("PHANTOWD_SAMBA_OWNER_STATE_ADMISSION_READY refusals=5 before_launch=true caller_inputs_closed=true copied_spec=true partial_cleanup=true forced_stop_review=true review_pins=true explicit_release=true no_fd_leak=true scope=qemu-only")
 	return nil
 }
 
@@ -141,6 +260,9 @@ func (p *Plan) sambaConfigurationCase(ctx context.Context, code, configuration, 
 		return errors.Join(errors.New("protected config readiness"), err)
 	}
 	pid := started.Processes.Members[0].Process.PID
+	if err := o.processes.CheckSambaStateBootstrapQEMU(ctx); err != nil {
+		return errors.New("missing actual state descriptor handoff evidence")
+	}
 	for name, pin := range o.configuration.contents.files {
 		original, err := pin.Stat()
 		actualPath := "/proc/" + strconv.Itoa(pid) + "/root/etc/" + name
@@ -164,8 +286,14 @@ func (p *Plan) sambaConfigurationCase(ctx context.Context, code, configuration, 
 		return err
 	}
 	if fault != "none" {
+		forced := fault == "state-forced"
+		if forced {
+			if err := stopSambaFixtureGroup(pid); err != nil {
+				return err
+			}
+		}
 		root, name, originalMode, changedMode := writer, "samba/smb.conf", uint32(0600), uint32(0644)
-		if fault == "state" {
+		if fault == "state" || forced {
 			root, name, originalMode, changedMode = o.sambaState.root, "private", 0700, 0755
 		}
 		fd, err := openBeneath(int(root.Fd()), name, unix.O_RDONLY)
@@ -180,7 +308,9 @@ func (p *Plan) sambaConfigurationCase(ctx context.Context, code, configuration, 
 		defer unix.Fchmod(fd, originalMode)
 		observed, err := o.Observe(ctx)
 		if !errors.Is(err, ErrReviewRequired) || observed.State != processowner.StateReviewRequired ||
-			!errors.Is(unix.Kill(-pid, 0), unix.ESRCH) || len(o.configuration.contents.files) != 7 || len(o.sambaState.files) != 7 {
+			len(o.configuration.contents.files) != 7 || len(o.sambaState.files) != 7 || o.root == nil || len(o.files) != len(p.files) ||
+			(!forced && (!errors.Is(unix.Kill(-pid, 0), unix.ESRCH) || observed.Processes.Members[0].Process.PID != 0)) ||
+			(forced && (observed.Processes.State != processowner.StateReviewRequired || observed.Processes.Members[0].Process.PID != pid)) {
 			return errors.Join(errors.New("input drift did not stop and retain"), err)
 		}
 		for _, pin := range o.configuration.contents.files {
@@ -189,6 +319,11 @@ func (p *Plan) sambaConfigurationCase(ctx context.Context, code, configuration, 
 			}
 		}
 		for _, pin := range o.sambaState.files {
+			if _, err := pin.Stat(); err != nil {
+				return err
+			}
+		}
+		for _, pin := range o.files {
 			if _, err := pin.Stat(); err != nil {
 				return err
 			}
@@ -202,7 +337,8 @@ func (p *Plan) sambaConfigurationCase(ctx context.Context, code, configuration, 
 	}
 	closeErr := o.Close(context.Background())
 	if (fault == "none" && closeErr != nil) || (fault != "none" && !errors.Is(closeErr, ErrReviewRequired)) ||
-		!errors.Is(unix.Kill(-pid, 0), unix.ESRCH) || o.configuration != nil || o.sambaState != nil || o.root != nil || len(o.files) != 0 {
+		!errors.Is(unix.Kill(-pid, 0), unix.ESRCH) || o.configuration != nil || o.sambaState != nil || o.root != nil || len(o.files) != 0 ||
+		!errors.Is(o.revalidate(ctx), ErrUnavailable) || o.Close(context.Background()) != nil {
 		return errors.Join(errors.New("input release not verified"), closeErr)
 	}
 	return nil

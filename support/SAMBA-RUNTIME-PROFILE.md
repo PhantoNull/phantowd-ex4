@@ -427,13 +427,37 @@ cases remain required. Root-run native tests also reject same-mode directory
 replacement, missing/symlink roles, public/special modes and actual kernel ACLs;
 normal mutation, cancellation, caller independence and repeated release pass.
 
-This is directory retention, not a product passdb authority or credential-byte
-snapshot. The bootstrap still binds the fixed source pathname, not an inherited
-state descriptor: observed child identity is not race-qualified construction.
+The fixed state handoff separately duplicates seven O_RDONLY directory FDs,
+validates root ownership/0700/tmpfs/access flags/attributes, and refuses missing
+or duplicate objects in the child. Mount clones are created from the FDs with
+`open_tree` before namespace isolation; `move_mount` attaches them inside the
+child's private root, with no fallback to the source pathname. The actual ARMv5
+case masks that pathname with an empty private tmpfs and still proves real SMB
+readiness, same child objects and writable/nosuid/nodev/noexec views. Every input
+FD is explicitly checked closed before exec; private bootstrap evidence must
+be complete and untruncated. The final mandatory marker additionally requires
+steady-state descriptor counts after all normal/config/state lifecycle cases.
+
+Parent-side admission additionally refuses duplicate objects or mixed
+filesystems before publication. Actual ARMv5 probes verify duplicate/nil/closed/
+O_PATH/regular-file late-role refusals, partial cleanup and caller-reference
+survival, without invoking Start. The actual daemon survives closing every
+temporary caller directory and mutating argv/credentials after construction.
+An additional frozen-group state-drift case verifies forced-stop review with
+retained code/config/state, restoration refusal, explicit verified release and
+idempotent Close. All four cases preserve the original180-second guest deadline
+and require strict admission/copy/forced-stop evidence with stable FD counts.
+
+This remains directory retention and a state-source handoff, not a product
+passdb authority or credential-byte snapshot. Root/code/config/data preparation
+still uses fixed fixture paths; atomic whole-root construction, all replacement
+races are not qualified. Forced-stop proof covers this guarded state handoff,
+not persistent product state or an installed service.
 Native identity consumers/NSS are not attached to this synthetic account set.
 Persistent state lifecycle, same-passdb identity ownership, coordinated mutation,
 descriptor-bound grants, durable recovery and product startup remain open.
 No HTTP, NAS, physical disk or flash operation is added.
+
 ### Construction and retained resources
 
 - Fix the backend, launcher, daemon, arguments, readiness/stop budgets and

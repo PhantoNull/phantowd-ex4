@@ -125,9 +125,24 @@ This is not product renderer/NSS authority, identity revision, storage/state own
 race-qualified construction, durable activation or complete firmware validation.
 See the [configuration scope](../../../../support/SAMBA-RUNTIME-PROFILE.md#qualified-protected-configuration-lifetime-qemu-only).
 
-The fixture bootstrap still binds state by its fixed source pathname. Retained
-parent references and observed same child objects do **not** qualify an atomic,
-descriptor-bound mount handoff or all path-replacement races. Passdb files are
+The guarded state tracer now independently retains seven read-only directory
+FDs at construction. Its fixed bootstrap validates them before effects, clones
+their mounts via `open_tree` before namespace isolation and attaches the clones
+via `move_mount`, without reopening a source pathname. A mandatory actual
+ARMv5 case masks that pathname with an empty child-private tmpfs; real Samba
+readiness and same-object writable/nosuid/nodev/noexec views still pass. Input
+FDs must be closed before exec, bounded private bootstrap evidence must be
+complete/untruncated, and the four lifecycle cases must leak no descriptors.
+The public QEMU-only constructor rejects duplicated objects and mixed
+filesystems before publication. Fixed probes exercise five invalid last-role
+inputs after partial retention, without launching or closing callers. The actual
+daemon receives independent inputs after all temporary callers are closed and
+the caller's argv/credentials mutated. A frozen-group state-drift case requires
+forced-stop review retaining code/config/state until explicit verified release;
+restoration never allows restart. Strict final evidence covers these behaviors.
+The ordinary static launcher still has no extra-input option. Code/config/data
+construction retains fixed fixture paths: this is **not** an atomic whole-root
+constructor or qualification of all path-replacement races. Passdb files are
 not pinned as immutable objects: their supported mutation/replacement lifecycle
 must come from the same real identity authority, not from this directory
 tracer. Persistent state, external privileged writers, identity-consumer
