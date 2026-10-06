@@ -2349,6 +2349,37 @@ this order, preserving the [full contract](support/SAMBA-RUNTIME-PROFILE.md#samb
    qualifies recomposition of config after the nonrecursive service-root bind.
    This does not qualify a product renderer/identity revision, mutable passdb,
    state ownership or descriptor-bound storage; those are still the next inputs.
+   The existing Plan now also derives bounded, granted-only native NSS
+   candidates under the identity/mounted-roster locks, with independent Unix
+   parsing, exact UID/GID-census refusal, private groups, desired-state drift
+   and unchanged journal/passdb identity checks in a disposable ARMv5 fixture.
+   These documents are not installed in the daemon. The internal identity
+   consumer now re-observes the exact expected fingerprint, retains Owner
+   authority across caller work and refuses Owner close until explicit release.
+   Drift/uncertain admitted observation is sticky review; credential changes
+   and revocation remain available. Local native lifetime/mutation/copy/race
+   tests pass. The actual ARMv5 credential fixture also qualifies unchanged
+   evidence, busy Owner close, real disable/new-login denial, re-enable without
+   review revival, stale acquisition and release without identity mutation.
+   Complete API overlay smoke and separate two-boot tests pass; the probe
+   launches no descendant and is not the daemon's service Owner.
+   Next compose that token into actual same-object NSS/passdb/state/storage handoff;
+   do not replace that requirement with another candidate/snapshot check.
+   The guarded Samba Owner now also retains its original writable tmpfs state
+   root and six fixed root-only role directories. Actual ARMv5 verifies matching
+   child objects and writable/nosuid/nodev/noexec views; normal TDB/log changes
+   are allowed, live directory-mode drift stops the group, review survives
+   restoration and verified teardown releases code/config/state together.
+   Native tests cover same-mode replacement, real kernel ACLs and incomplete/
+   unprotected directories. This is not a passdb-file or persistent-state
+   authority: the fixed bootstrap still mounts by pathname. Next qualify
+   descriptor-bound state construction, then attach the SAME actual identity
+   authority/NSS/passdb and storage leases before product lifecycle/HTTP.
+   The complete combined source on336c29f now also passes ONE cached full local
+   Buildroot/QEMU integration, with independently verified seven exported
+   hashes, embedded/installed/exported API and all853 compiled/archive source
+   files. Hosted checks must still qualify their own exact PR head; no clean
+   reproduction, product authority, release compliance or EX4 gate is inferred.
    The fixture now requires the already-supported virtual entropy provider,
    backed by host kernel randomness rather than a fixed seed. This removes the
    measured initial enrollment wait without extending its180-second deadline;

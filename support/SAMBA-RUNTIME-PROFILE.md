@@ -407,6 +407,33 @@ identity-authority passdb/revision, mutable state, retained storage leases,
 race-qualified root construction, combined supervision, durable activation and
 HTTP/product startup are not supplied by this fixture. No real NAS/disks/flash.
 
+### Qualified mutable state-directory lifetime (QEMU only)
+
+The same guarded configuration Owner additionally retains the writable tmpfs
+state root and six role directories (`private`, `lock`, `state`, `cache`,
+`pid`, `rpc`). All are root:root0700, without access/default ACLs or file
+capabilities. Opens refuse symlinks, magic links and cross-mount traversal.
+Revalidation compares retained and freshly resolved original directory objects,
+ownership/mode and mount, while ignoring mutable contents/timestamps/link counts.
+This uses ordinary mount IDs only while the original descriptors retain the
+mount; immutable code/config's unique-ID guards are not relaxed.
+
+The actual Samba child exposes the same original directories through writable/
+nosuid/nodev/noexec views and uses the existing nonempty synthetic TDB. A live
+private-directory mode fault stops the whole group and retains all inputs in
+review. Restoring mode cannot restart; only explicit verified teardown releases
+state together with code/config. The earlier config-mode and code forced-stop
+cases remain required. Root-run native tests also reject same-mode directory
+replacement, missing/symlink roles, public/special modes and actual kernel ACLs;
+normal mutation, cancellation, caller independence and repeated release pass.
+
+This is directory retention, not a product passdb authority or credential-byte
+snapshot. The bootstrap still binds the fixed source pathname, not an inherited
+state descriptor: observed child identity is not race-qualified construction.
+Native identity consumers/NSS are not attached to this synthetic account set.
+Persistent state lifecycle, same-passdb identity ownership, coordinated mutation,
+descriptor-bound grants, durable recovery and product startup remain open.
+No HTTP, NAS, physical disk or flash operation is added.
 ### Construction and retained resources
 
 - Fix the backend, launcher, daemon, arguments, readiness/stop budgets and

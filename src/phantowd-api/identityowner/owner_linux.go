@@ -60,6 +60,7 @@ type Owner struct {
 	journals              map[string]*identityprovision.Store
 	smbJournals           map[string]*smbprovision.Store
 	smbBackend            smbprovision.Backend
+	fileServiceLeases     map[*fileServiceLeaseState]struct{}
 	inodes                map[string]uint64
 	smbInodes             map[string]uint64
 	deps                  dependencies
@@ -192,6 +193,9 @@ func (o *Owner) Close() error {
 	defer o.mu.Unlock()
 	if o.closed || !o.ready {
 		return nil
+	}
+	if len(o.fileServiceLeases) != 0 {
+		return ErrBusy
 	}
 	o.closed = true
 	var err error

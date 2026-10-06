@@ -26,6 +26,75 @@ def save_log(destination, source):
 
 
 class BuildFeedbackTests(unittest.TestCase):
+    def test_owner_nss_marker_accepts_crlf_but_not_altered_evidence(self):
+        marker = (
+            "PHANTOWD_M41_OWNER_SAMBA_NSS_READY identity=owner_passdb "
+            "storage=mounted_roster locks=ordered native_private_groups=true "
+            "files_only=true census_refusals=2 desired_roundtrip=true "
+            "journals_unchanged=true stale_refused=true installed=false "
+            "activation=false scope=disposable-qemu-only"
+        )
+        source = (ROOT / "support/qemu-smoke.sh").read_text()
+        # Execute the driver's real check against synthetic serial logs;
+        # this proves command-boundary behavior, not a QEMU guest pass.
+        line = next(line.strip() for line in source.splitlines()
+                    if line.strip().startswith("if ! ") and marker in line)
+        command = line[len("if ! "):-len("; then")]
+        with tempfile.TemporaryDirectory() as temporary:
+            log = pathlib.Path(temporary) / "serial.log"
+            for label, payload, accepted in (
+                    ("LF", marker + "\n", True),
+                    ("serial CRLF", marker + "\r\n", True),
+                    ("wrong scope", marker.replace(
+                        "scope=disposable-qemu-only", "scope=product")
+                     + "\r\n", False),
+                    ("prefixed", "prefix " + marker + "\r\n", False),
+                    ("partial", marker.replace("census_refusals=2 ", "")
+                     + "\r\n", False),
+                    ("embedded CR", marker.replace("identity=", "iden\rtity=")
+                     + "\r\n", False)):
+                with self.subTest(label=label):
+                    log.write_bytes(payload.encode("ascii"))
+                    result = subprocess.run(
+                        ["sh", "-c", command], capture_output=True,
+                        env={**os.environ, "log_file": str(log)}, timeout=3,
+                    )
+                    self.assertEqual(result.returncode == 0, accepted)
+
+    def test_identity_consumer_marker_requires_exact_serial_evidence(self):
+        marker = (
+            "PHANTOWD_M44_IDENTITY_CONSUMER_READY owner_close=busy "
+            "unchanged_verified=true credential_disable=true "
+            "new_login_denied=true reenable_verified=true review_sticky=true "
+            "stale_acquire_refused=true release_no_mutation=true "
+            "service_owner=false scope=disposable-qemu-only"
+        )
+        source = (ROOT / "support/qemu-smoke.sh").read_text()
+        line = next(line.strip() for line in source.splitlines()
+                    if line.strip().startswith("if ! ") and marker in line)
+        command = line[len("if ! "):-len("; then")]
+        with tempfile.TemporaryDirectory() as temporary:
+            log = pathlib.Path(temporary) / "serial.log"
+            for label, payload, accepted in (
+                    ("LF", marker + "\n", True),
+                    ("serial CRLF", marker + "\r\n", True),
+                    ("wrong scope", marker.replace(
+                        "scope=disposable-qemu-only", "scope=product")
+                     + "\r\n", False),
+                    ("false service claim", marker.replace(
+                        "service_owner=false", "service_owner=true")
+                     + "\r\n", False),
+                    ("partial", marker.replace("review_sticky=true ", "")
+                     + "\r\n", False),
+                    ("prefixed", "prefix " + marker + "\r\n", False)):
+                with self.subTest(label=label):
+                    log.write_bytes(payload.encode("ascii"))
+                    result = subprocess.run(
+                        ["sh", "-c", command], capture_output=True,
+                        env={**os.environ, "log_file": str(log)}, timeout=3,
+                    )
+                    self.assertEqual(result.returncode == 0, accepted)
+
     def test_pinned_container_avoids_unnecessary_cmake_bootstrap(self):
         # The archived PR78 build spent ~11 minutes building host-cmake,
         # which cannot itself use ccache. Buildroot's ordinary host-tool

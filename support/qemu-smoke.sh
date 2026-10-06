@@ -166,6 +166,14 @@ while [ "$attempt" -lt "$smoke_timeout" ]; do
             echo "Missing internal file-service plan assertion" >&2
             exit 1
         fi
+        if ! sed 's/\r$//' "$log_file" | grep -Fx 'PHANTOWD_M41_OWNER_SAMBA_NSS_READY identity=owner_passdb storage=mounted_roster locks=ordered native_private_groups=true files_only=true census_refusals=2 desired_roundtrip=true journals_unchanged=true stale_refused=true installed=false activation=false scope=disposable-qemu-only' >/dev/null; then
+            echo 'Missing Owner-derived Samba NSS candidate assertion' >&2
+            exit 1
+        fi
+        if ! sed 's/\r$//' "$log_file" | grep -Fx 'PHANTOWD_M44_IDENTITY_CONSUMER_READY owner_close=busy unchanged_verified=true credential_disable=true new_login_denied=true reenable_verified=true review_sticky=true stale_acquire_refused=true release_no_mutation=true service_owner=false scope=disposable-qemu-only' >/dev/null; then
+            echo 'Missing retained identity consumer assertion' >&2
+            exit 1
+        fi
         if ! grep -F 'PHANTOWD_FILE_SERVICE_OWNER_MOUNTED_PLAN_READY identity=owner_observed storage=complete_mounted_owner_set owner_scope=fixture_complete volume_count=1 uid_gid=local_census nfs=read_only identity_stale=true mount_stale=true candidate_only=true auth_mutation=false activation=false http=false scope=disposable-qemu-only' "$log_file" >/dev/null; then
             echo 'Missing combined Owner identity and mounted-storage planner assertion' >&2
             exit 1

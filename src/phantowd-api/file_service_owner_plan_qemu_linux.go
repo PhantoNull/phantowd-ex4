@@ -202,7 +202,7 @@ func exerciseQEMUOwnerLockCoherentNFSPlan(ctx context.Context, owner *identityow
 			return errors.New("QEMU candidate construction changed or invalidated identity/passdb evidence")
 		}
 		fmt.Println("PHANTOWD_M41_OWNER_STORAGE_COHERENT_READY identity=owner_passdb_fingerprint storage=mounted_roster locks=ordered nfs=readonly samba=empty_policy candidate=true activation=false endpoint=false auth_mutation=false scope=disposable-qemu-only")
-		return nil
+		return exerciseQEMUOwnerSambaNSSPlan(ctx, owner, mountedSet, account)
 	})
 }
 

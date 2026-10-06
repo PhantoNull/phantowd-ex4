@@ -39,7 +39,9 @@ storage generation/canonical volume-set fingerprint.
 - Required volumes must be uniquely mapped, filesystem-UUID matched, mounted
   at the fixed logical anchor, marked qualified, and writable when policy
   requests writes. SMB grants must resolve to an enabled native account and a
-  matching enabled Samba journal/passdb observation. NFS anonymous IDs must
+  matching enabled Samba journal/passdb observation, with the exact UID and
+  primary GID present in the supplied Unix census even for SMB-only policy.
+  NFS anonymous IDs must
   exist in the supplied Unix UID/GID census.
 - Identity freshness compares both registry revision and the SHA-256 evidence
   fingerprint (native/Samba journals, local reservations and observed passdb);
@@ -64,6 +66,34 @@ storage generation/canonical volume-set fingerprint.
 - `Plan`, `Freshness`, `IdentitySnapshot`, and `StorageSnapshot` reject JSON
   marshaling and unmarshaling. There is deliberately no apply/activate
   operation and no product HTTP exposure.
+
+## Candidate Samba NSS
+
+`Plan.SambaNSSCandidates` returns deterministic passwd/group/nsswitch documents
+bound to the existing plan freshness tuple. The zero/refused plan returns an
+error with no partial document. Only enabled, granted, confirmed Samba accounts
+are rendered; native same-number private groups are preserved. No unrelated
+host users, imported identities, supplementary/shared groups or credentials are
+copied. Disabled/ungranted/retired rows remain absent without discarding their
+permanent registry reservations. Enumeration order does not affect output.
+
+Fixed locked root and nobody lookup rows are separate from SMB grants. Their
+names are already reserved by the registry; a `nogroup` baseline is deliberately
+not invented because that name is legal for a managed private identity. All
+password fields are fixed `!` sentinels, home is `/`, shell is `/sbin/nologin`,
+and NSS sources are files-only. No shadow file, home or Unix login is created.
+Combined candidate text is bounded to 32 KiB and at most 128 granted accounts;
+the eventual constructor must separately enforce its full configuration budget.
+
+On Linux, `BuildFromOwners` derives these same candidates under the ordered
+mounted-roster/identity locks. A disposable ARMv5 fixture uses the actual
+Owner-managed Unix/passdb observations and mounted roster, independently parses
+and assesses the documents, refuses missing UID/GID evidence, and round-trips
+desired native state without changing native/Samba journals or passdb identity.
+Old freshness and disabled desired grants are refused after the transition.
+The documents are **not installed or used by the running Samba daemon**. This
+does not provide a consumer lease, native libc NSS qualification, same-passdb
+state binding, revocation coordination or product service activation.
 
 ## Remaining M4.1 work
 

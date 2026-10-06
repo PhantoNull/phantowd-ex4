@@ -110,11 +110,28 @@ self-hashing is used. Caller config closure, normal stop, live config-mode drift
 retained review, restoration refusal and verified code/config release pass in
 the focused ARMv5 campaign. The containing Owner owns serialization and combined
 revalidation; generic static construction cannot configure this private field.
-Passdb/state legitimate mutations are separate, not immutable inputs. This is
-not product renderer/NSS authority, identity revision, storage/state ownership,
+Passdb/state legitimate mutations are separate, not immutable inputs. The
+state increment retains the original writable tmpfs root plus its six fixed
+root:root0700 role directories. Revalidation checks identity, ownership/mode,
+mount and absence of access/default ACLs or capabilities, not content hashes,
+ctime/mtime, size or link counts that normal TDB/log writes change. Ordinary
+mount IDs are compared only while original open references retain the mount;
+the existing immutable-code unique-mount-ID requirement is unchanged.
+Actual ARMv5 child views use those same objects and are writable/nosuid/nodev/
+noexec. Normal use, live private-directory mode drift, whole-group stop,
+retained review, restoration refusal and verified release are exercised.
+Generic static construction cannot supply state or gain these privileges.
+This is not product renderer/NSS authority, identity revision, storage/state ownership,
 race-qualified construction, durable activation or complete firmware validation.
 See the [configuration scope](../../../../support/SAMBA-RUNTIME-PROFILE.md#qualified-protected-configuration-lifetime-qemu-only).
 
+The fixture bootstrap still binds state by its fixed source pathname. Retained
+parent references and observed same child objects do **not** qualify an atomic,
+descriptor-bound mount handoff or all path-replacement races. Passdb files are
+not pinned as immutable objects: their supported mutation/replacement lifecycle
+must come from the same real identity authority, not from this directory
+tracer. Persistent state, external privileged writers, identity-consumer
+composition and storage leases remain required before product activation.
 A separate guarded `qemu && linux` constructor now composes complete prepared
 code references with the pinned fixed Samba bootstrap and the existing
 serialized Owner lifecycle. The actual dynamic daemon is checked against the

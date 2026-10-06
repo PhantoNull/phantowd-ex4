@@ -3,6 +3,99 @@
 
 # Implementation status
 
+## M4.4 mutable Samba state-directory lifetime — QEMU prerequisite
+
+The guarded Samba configuration Owner now retains the original writable tmpfs
+state root plus six fixed role directories. Their identity, root ownership,
+0700 mode, mount and lack of permission-changing attributes are rechecked;
+legitimate TDB/log writes are not treated as immutable-content drift. The
+ordinary mount-ID check is used only with retained references and does not
+weaken immutable code/config's unique mount-ID requirement.
+
+The focused actual ARMv5 campaign passes with the existing real daemon and
+synthetic credentials: same child directory objects, writable/nosuid/nodev/
+noexec views, normal mutation, live private-directory mode drift, verified
+whole-group stop, retained review, refusal after restoration and explicit
+verified code/config/state release. All earlier access/ACL/stream/code/config
+checks pass and the manifest-verified base image is unchanged. Native root tests
+cover same-mode replacement, missing/symlink roles, mode and actual kernel ACL
+refusal, cancellation and independent/idempotent release.
+
+Complete cached Buildroot/QEMU integration on `336c29f` additionally passes
+host vet/tests/races/fuzz, source/legal-info collection, ARMv5 smoke and MD
+metadata, separate two-boot persistence, isolated/static Owner, loader/atomic,
+the entire Samba campaign and both final synthetic SMART lanes. All seven
+exported hashes verify independently. Every853 tracked API source file matches
+the compiled source and collected archive; embedded, installed and exported
+API bytes agree. This is cached local integration, not clean hosted CI,
+physical EX4 qualification or complete release licensing approval.
+
+The fixed bootstrap still uses a source pathname: this is not an atomic or
+descriptor-bound mount handoff, complete passdb-file lifecycle, product state
+provisioning or real identity-authority composition. No HTTP/product startup,
+physical storage or NAS operation is added. See the
+[state-directory contract](support/SAMBA-RUNTIME-PROFILE.md#qualified-mutable-state-directory-lifetime-qemu-only).
+
+## M4.4 identity-consumer retention — internal prerequisite
+
+The Linux identity Owner now retains a bounded, opaque consumer only after
+fresh complete evidence exactly matches the expected private fingerprint.
+Owner close releases nothing while consumers remain. Tokens share state across
+copies, refuse JSON, and release idempotently without closing the original
+authority. Verification drift or an uncertain admitted observation is permanent
+review even after restoration; pre-admission busy/cancellation is not drift.
+
+Root-run Linux tests exercise exact lifetime/exclusive ownership, restoration,
+read uncertainty, capacity/reuse, copied concurrent release and redacted
+serialization. Existing explicit revocation and disabled credential rotation
+remain usable while a consumer is retained; it does not freeze the Owner lock
+or mutable passdb. Full Linux API vet/tests, QEMU-tagged vet, three focused
+race repetitions and Windows API/UI/cross-compile pass. Actual ARMv5 credential
+fixture integration also passes: exact Owner retention/busy close, real
+credential disable/new-login denial, explicit re-enable, permanent review,
+stale-acquisition refusal and release without identity mutation. The probe
+launches no descendant and is not the Samba service Owner. The complete API
+overlay smoke and separate two-boot persistence test pass on the unchanged
+qualified base kernel/packages; this is not clean Buildroot CI or hardware
+qualification.
+
+This reference is not yet a Samba service Owner. Same-object NSS/passdb/state,
+descriptor-bound storage, coordinated account changes, verified group stop
+before release, durable recovery and product startup remain required. No NAS,
+disk, flash, HTTP endpoint or product listener is involved. See the
+[consumer contract](src/phantowd-api/identityowner/README.md#file-service-consumer-retention).
+
+## M4.1 Owner-derived native NSS candidates — internal only
+
+The existing candidate Plan now derives bounded passwd/group/nsswitch text for
+its enabled, granted native Samba accounts. Same-number private primary groups,
+locked password sentinels and files-only NSS are preserved; unrelated/imported
+accounts, supplementary groups and secrets are not copied. Root/nobody lookup
+rows grant no SMB access. Retired IDs remain reserved outside the rendered view.
+The combined text is limited to 32 KiB/128 accounts, deterministic and bound to
+the existing candidate freshness; zero/refused plans return no partial NSS.
+
+An SMB-only regression exposed missing UID/GID-census admission that NFS had
+previously checked indirectly. Both missing-number cases fail before the fix
+and pass after explicit SMB admission. Host tests also independently parse and
+assess generated identities, verify maximum/order/copy behavior and exercise a
+valid managed `nogroup` without an invented colliding system group.
+
+The separate disposable ARMv5 Owner/passdb/mounted-roster fixture derives the
+same candidate under ordered locks, verifies private identities and both census
+refusals, then round-trips desired state with unchanged native/Samba journals
+and passdb identity. Old freshness and disabled desired grants are refused.
+Local qualification passes the API/UI and ARMv5 cross-compile checks, Linux
+QEMU-tagged vet/focused races, and the actual ARMv5 API-overlay smoke followed
+by the separate two-boot persistence test. The first overlay attempt failed
+on exact serial-marker matching with CRLF; a command-boundary regression and
+trailing-CR-only normalization fix it without relaxing evidence or deadlines.
+This overlay reuses the qualified base kernel/packages; it is not a clean
+Buildroot build, regenerated SBOM/legal-info or hardware qualification.
+Candidates are not installed or consumed by the daemon: native libc lookup,
+daemon identity-consumer composition, actual same-passdb/state and descriptor-bound grants,
+transactional activation/recovery and product startup remain open. See the
+[internal candidate contract](src/phantowd-api/internal/fileserviceplan/README.md#candidate-samba-nss).
 ## M4.4 protected configuration lifetime — QEMU prerequisite
 
 The separate guarded Samba fixture now retains an exact seven-file config/NSS
