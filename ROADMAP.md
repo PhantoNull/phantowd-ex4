@@ -2477,6 +2477,35 @@ this order, preserving the [full contract](support/SAMBA-RUNTIME-PROFILE.md#samb
    into that lease from a worker/runtime gate or silently refresh its review.
    A confirmed account transition needs an explicitly qualified successor/fence;
    unknown drift, wrong Owner/backend, uncertain stop or partial evidence refuse.
+   The separate internal `SMB(id).DisableForFileService` now qualifies only an
+   explicit single-account disable under the Owner lock: complete before/after
+   evidence must preserve every other journal/identity/passdb row and all census
+   reservations. It atomically transfers the existing bounded slot to a NEW
+   token, never refreshes the old token, and keeps review/retention on uncertainty
+   without retry. Root tests cover capacity16, concurrent Close, census drift,
+   wrong/stale/unbound tokens and cancellation after intent. Actual ARMv5
+   qualifies the SAME peer session and successor retained until verified whole
+   stop. Preparation20 is distinct from live45; enrollment60/guest180 remain.
+   A combined45-second attempt expired at login verification, while an
+   instrumentation-only control passed; this is not a deterministic timing or
+   older hosted-census fix. No admission or privilege is relaxed.
+   This fixture acquires AFTER daemon startup; do not mark the complete Owner
+   done. Next packet, still host/disposable QEMU only:
+
+   - Construct against one startup-fixed runtime/backend, retain identity BEFORE
+     any descendant starts, and refuse a foreign runtime even with equal bytes.
+   - Serialize external coordination without Owner/runtime gate recursion;
+     observe complete identity/code/config/state under bounded supervision.
+     Unapproved identity changes and uncertain observations must stop, preserve
+     review and never automatically restart or mint a replacement lease.
+   - Qualify drift/exit/cancellation and partial/uncertain stop/close. Current
+     pins must remain held until whole descendant stop and closure are verified;
+     a repeated nil Close is not proof that an earlier uncertain close recovered.
+   - Compose the trusted retained-storage roster and descriptor-bound grants
+     with the SAME service Owner, including real effective-access/refusal cases.
+   - Only then wire product authorization/startup and user management; keep
+     HTTP/service activation, real disks and durable recovery as separate gates.
+
    It does not
    establish data-handle semantics or qualify hardware/migration/recovery.
    Never bootstrap by

@@ -3,6 +3,32 @@
 
 # Implementation status
 
+## Explicit SMB disable successor — focused host/QEMU prerequisite
+
+`identityowner.SMB(id).DisableForFileService` retains the startup-bound backend
+and performs existing journaled revocation under the Owner lock. Only complete,
+non-recovering before/after evidence with the exact single-account delta can
+transfer the bounded consumer slot. A new token verifies; the old token never
+revives. Foreign/unbound/stale inputs refuse; uncertainty keeps review/retention
+without retry. No generic lease refresh or enable/password successor is added.
+
+Root-run Linux tests exercise seven scenarios plus eight refusal subcases,
+including capacity 16, concurrent Close and cancellation after journal intent.
+The actual local ARMv5 lane passes 39 driver/seven loader tests, both Samba
+campaigns, SAME peer-session continuity and mandatory old/new markers, verified
+whole stop/reap/FD equality and unchanged base hashes. Windows API/UI/vet and
+tagged ARMv5 cross-compilation pass. An earlier combined live-phase attempt
+expired at 45 seconds; an instrumentation-only control also passed. Preparation
+is now separately bounded 20 seconds before held clients; live 45/enrollment 60/
+guest 180 limits and every admission remain intact. No deterministic timing fix
+or older hosted census diagnosis is claimed.
+
+Retention here starts after daemon startup. Constructor-bound continuous
+identity/storage authority, supervisor drift/failure handling, close-uncertainty
+retention, product HTTP/startup, durable recovery and EX4 qualification remain
+open. Focused qualification is not a new complete image or hosted/clean proof.
+See the [identity contract](src/phantowd-api/identityowner/README.md#file-service-consumer-retention).
+
 ## Exact-backend identity retention — focused host/QEMU qualification
 
 The internal identity Owner now offers `RetainSMBFileServiceSnapshot` for the

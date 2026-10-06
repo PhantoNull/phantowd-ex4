@@ -132,7 +132,33 @@ probe verifies retention/close refusal and unchanged release **before** daemon
 startup. It does not retain or supervise the live service. Consumers must still
 construct against their own fixed runtime/backend, verify outside Owner/runtime
 gates and obtain an explicit successor contract for confirmed account changes;
-this API does not provide atomic handoff, refresh, process authority or recovery.
+retention alone provides no atomic handoff, refresh, process authority or recovery.
+
+`SMB(id).DisableForFileService(ctx, expectedRevision, currentLease)` is a
+separate internal, explicit transition for a backend-bound consumer. Under the
+same Owner lock it checks complete non-recovering evidence, the exact target
+revision and Unix identity, then invokes the existing journaled `Disable` on
+the startup-bound backend. A complete post-observation must differ only in the
+target's enabled-to-disabled journal (revision +2) and its disabled passdb flag.
+Registry, native journals, Unix census, SID/UID/GID and every other account must
+remain unchanged. Only then is the retained slot transferred to a NEW opaque
+token without a zero-consumer interval, including at capacity sixteen.
+
+The old token is permanently invalid; its copies/releases cannot affect the
+successor. Stale requests, foreign/unbound/released tokens or incomplete evidence
+return no successor. Mutation/observation uncertainty retains the old reference
+in sticky review, without retry, rollback or arbitrary fingerprint refresh.
+A completed journal is not rewritten merely because later census drift denies
+the service handoff. Enable/password rotation have no successor path here.
+
+Root/race tests cover transfer, all pre-admission refusals, unrelated census
+drift, revocation error/cancellation, capacity and concurrent Close. The actual
+ARMv5 native fixture acquires a consumer before held clients, revokes the target,
+verifies the old/new tokens and SAME peer session, and keeps the successor until
+verified daemon/client stop. Preparation has a separate bounded 20-second phase;
+live pair/revocation/login checks remain 45 seconds and the outer guest 180.
+This fixture acquires after daemon startup: it does not qualify startup binding,
+continuous supervision, storage grants, product activation or recovery.
 
 `RetainFileServiceSnapshot(ctx, expectedFingerprint)` is a trusted in-process
 operation, not a request field or RPC/HTTP route. It freshly collects the same
@@ -161,12 +187,14 @@ desired-state changes, credential operations and account/session revocation
 remain possible; the old lease will refuse changed evidence. `Release` drops
 only the cooperative reference, closes no store/process and does not clear
 review or close the Owner. A trusted service coordinator must stop and verify
-all descendants before releasing service-owned tokens. A probe with no launched
+all descendants before releasing current service-owned tokens. The explicit
+verified transition above transfers a slot instead of releasing the authority;
+discarding its superseded token never discards the successor. A probe with no launched
 descendants can release after its observation ends. Required verification that
 cannot complete is not permission for a service to continue operating.
 
-This does not bind the daemon to the same passdb/NSS/state objects, exclude
-unrelated root writers, supervise/stop a process, perform account transactions,
+These tokens do not independently bind the daemon to the same passdb/NSS/state
+objects, exclude unrelated root writers, supervise/stop a process, provide general account transactions,
 or implement product startup/recovery. Mutable credential content is not part
 of the redacted snapshot; supported Owner mutations are represented through
 the journals/revisions. Same-object state and single-writer deployment still

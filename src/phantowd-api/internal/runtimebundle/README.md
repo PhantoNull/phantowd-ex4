@@ -256,9 +256,26 @@ foreign adapter, verifies complete evidence and busy Owner close, then releases
 before daemon/client startup and confirms unchanged evidence. The official
 38-driver/seven-loader/two-campaign ARMv5 wrapper and root identity race-count3
 pass, including every earlier guard. This qualifies a binding prerequisite,
-not a continuously retained service lease: no runtime callback, atomic account
-transition, supervision or product constructor is added. Never invoke lease
+not a continuously retained service lease: that probe adds no runtime callback,
+account transition, supervision or product constructor. Never invoke lease
 verification from an Owner/runtime gate or silently refresh invalidated tokens.
+
+The separate native live-session fixture now qualifies an explicit
+`identityowner.SMB(id).DisableForFileService` successor. It binds to the exact
+startup adapter, retains before held-client construction, and transfers only
+after complete before/after evidence proves the single authorized disable.
+The old token remains invalid, the successor verifies and keeps Owner Close
+busy, and the SAME peer session remains usable. Both tokens are discarded only
+after independently verified whole daemon/client stop; uncertain stop keeps
+retention. The mandatory handoff marker explicitly records `startup_bound=false`
+and `service_owner=false`: retention starts AFTER daemon startup, not at a
+product constructor. No gate recursion, per-call backend injection, implicit
+refresh, new capabilities, storage authority or HTTP surface is introduced.
+The official local 39-driver/seven-loader/two-campaign lane passes. Preparation
+is independently bounded 20 seconds; live checks 45, enrollment 60 and guest 180
+remain fixed. A prior combined 45-second attempt expired at login verification;
+an instrumentation-only control passed, so the failure is not represented as
+a deterministic runtime defect or a diagnosis of older hosted census failures.
 
 Linux `Plan.NewOwner(ctx, root, specs)` privately duplicates the root and retains
 every verified regular file. It copies a fixed set of 1..8 process specifications

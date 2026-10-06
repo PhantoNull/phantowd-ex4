@@ -10,6 +10,7 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/smbprovision"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/serviceaccounts"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/unixidentity"
 )
@@ -148,7 +149,13 @@ func TestFileServiceLeaseCapacityRefusesWithoutEffectsAndReusesReleasedSlot(t *t
 func fileServiceSMBLeaseFixture(t *testing.T) (*Owner, *modeledSMB, serviceaccounts.Account) {
 	t.Helper()
 	backend := &modeledSMB{}
-	owner, _, _ := fixtureWithSMB(t, backend)
+	owner, _, account := fileServiceSMBLeaseFixtureWithBackend(t, backend)
+	return owner, backend, account
+}
+
+func fileServiceSMBLeaseFixtureWithBackend(t *testing.T, backend smbprovision.Backend) (*Owner, *model, serviceaccounts.Account) {
+	t.Helper()
+	owner, identities, _ := fixtureWithSMB(t, backend)
 	ctx := context.Background()
 	account, err := owner.Reserve(ctx, 1, "first", "firstuser")
 	if err != nil {
@@ -169,7 +176,7 @@ func fileServiceSMBLeaseFixture(t *testing.T) (*Owner, *modeledSMB, serviceaccou
 			t.Fatal(err)
 		}
 	}
-	return owner, backend, account
+	return owner, identities, account
 }
 
 func TestFileServiceLeaseDoesNotBlockSMBRevocationOrCredentialRotation(t *testing.T) {
