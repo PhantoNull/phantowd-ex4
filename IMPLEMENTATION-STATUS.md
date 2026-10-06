@@ -3,6 +3,35 @@
 
 # Implementation status
 
+## M2.4 Owner-derived native configuration retention — QEMU prerequisite
+
+The native enrollment candidate now supplies the independently expected hashes,
+modes and sizes for exactly `passwd`, `group` and `nsswitch.conf`. A private
+adapter reuses protected configuration admission; it does not infer expected
+contents from the directory being inspected or grant execution authority.
+
+The fixed QEMU tracer admits those real Owner-derived documents on a separate
+read-only/nosuid/nodev/noexec mount and retains their original descriptors
+across actual libc lookup. Temporary caller references close before execution;
+fresh complete rechecks bracket the worker. Verified group absence and explicit
+capture close precede configuration release. A controlled metadata change is
+refused; restored permissions still differ from the originally admitted object
+generation. Successful teardown restores the initial descriptor count and the
+native Owner's evidence remains unchanged.
+
+Windows API/UI preflight, Linux tagged vet and focused race-count3 pass. The
+official focused wrapper passes all 30 Linux driver tests, seven loader tests,
+lint/ShellCheck, fresh ARMv5 compilation and all existing/new Samba gates with
+the base unchanged and the existing 180-second guest budget.
+
+This qualifies configuration retention during one fixed lookup worker, not a
+retained identity lease, descriptor-bound product root construction, sticky
+service review, daemon installation or SAME-state credential backend. The
+QEMU controller retains a writable original only for its metadata fault;
+product code must not inherit that fixture shortcut. Uncertain worker teardown
+does not release configuration pins. No product service, HTTP, credentials,
+physical device or new full image/source-bundle qualification is introduced.
+
 ## M2.4 native lookup consumed by libc — disposable QEMU only
 
 The existing restricted-root Samba campaign now finishes with a separate
@@ -73,8 +102,10 @@ qualification, not independent clean reproduction, complete release licensing,
 hosted qualification, native libc consumption or physical EX4 qualification.
 
 The separate fixture above now qualifies lookup-only native libc consumption.
-Next retain these actual native documents through the configuration boundary
-and bind the credential backend to the SAME daemon state. Actual
+The new tracer above also retains the actual documents through the protected
+configuration boundary during one fixed worker. Next compose the whole
+identity/configuration lifetime and credential backend with the SAME daemon
+state. Actual
 disabled-first enrollment, password assignment, enable/revoke, storage leases,
 durable recovery and product activation must still be composed; a candidate
 lookup alone does not close those gates.

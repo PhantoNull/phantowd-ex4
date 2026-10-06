@@ -2387,7 +2387,17 @@ this order, preserving the [full contract](support/SAMBA-RUNTIME-PROFILE.md#samb
    driver tests, tagged vet and focused ARMv5 old/new Samba gates pass locally.
    This is not retained identity/configuration authority or daemon installation;
    its test-only source increment is not included in the earlier full image.
-   Next compose retained native configuration with a startup-bound credential
+   The independent native tracer now derives an exact three-file protected
+   configuration plan from the opaque Owner candidate, retains original
+   descriptors during actual libc lookup, closes temporary callers before
+   execution and verifies group absence before release. A real mode change
+   refuses; restoring permissions does not match the admitted generation.
+   Final actual ARMv5, all 30 Linux driver tests/lint and focused native race
+   repetitions pass with unchanged base and no descriptor leak. This is not
+   a retained identity lease, sticky service review or descriptor-bound product
+   root construction; the fixed guest-only writable fault anchor is not a
+   product shortcut. Next compose the full retained native configuration with
+   a startup-bound credential
    backend and daemon using the SAME mutable state. Never bootstrap by
    fabricating enabled journals/SIDs, copying TDBs or
    passing enrollment lookup as active-service evidence. Closing/reopening an

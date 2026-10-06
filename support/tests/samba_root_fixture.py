@@ -100,6 +100,10 @@ MARKERS = (
     "PHANTOWD_SAMBA_OWNER_NATIVE_NSS_REFUSAL_READY changed_uid=true "
     "supplementary_group=true foreign_user=true restored_lookup=true "
     "unchanged_owner=true stopped_reaped=true scope=qemu-only",
+    "PHANTOWD_SAMBA_OWNER_NATIVE_CONFIG_READY owner_derived=true "
+    "exact_census=true readonly_noexec=true caller_close=true "
+    "libc=true drift_refused=true restoration_mismatch=true "
+    "stopped_reaped=true released=true no_fd_leak=true scope=qemu-only",
     "PHANTOWD_SAMBA_ROOT_DONE",
 )
 

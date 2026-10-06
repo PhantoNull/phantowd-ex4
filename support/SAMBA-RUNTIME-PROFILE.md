@@ -511,6 +511,22 @@ composed. No product startup or physical device uses this fixture.
 
 ### Construction and retained resources
 
+The independent native lookup tracer now also qualifies protected configuration
+retention for the three real Owner-derived documents. Its private expected plan
+uses the opaque lookup candidate, not hashes read from the staged root. Existing
+complete-census/mode/hash/mount admission retains the original descriptors;
+temporary caller handles close before a fixed actual libc capture. Complete
+rechecks bracket execution, verified group absence precedes release, and final
+FD counts agree. An actual metadata fault and its restored-but-changed generation
+refuse. The native Owner's separate evidence remains unchanged.
+
+This tracer has no password/passdb or daemon. Its fixed QEMU mount anchor and
+controller-only writable fault reference are not descriptor-bound product
+construction or a retained identity lease. Metadata generation mismatch is not
+a claim of sticky service review. If capture teardown is uncertain, the tracer
+does not release its configuration pins; product recovery/ownership must still
+be composed. The new evidence adds no boot or increased guest deadline.
+
 - Fix the backend, launcher, daemon, arguments, readiness/stop budgets and
   protected roots once at construction. No operation accepts replacements,
   arbitrary paths, executable selection, credentials or a new backend.
