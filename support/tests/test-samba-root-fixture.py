@@ -44,6 +44,51 @@ def reports():
 
 
 class SambaRootFixture(unittest.TestCase):
+    def test_state_observer_requires_prelaunch_refusal_and_sticky_review(self):
+        expected = ("PHANTOWD_SAMBA_OWNER_STATE_OBSERVER_REFUSAL_READY "
+                    "late_mode_drift=true before_launch=true "
+                    "cancellation_before_admission=true review_pins=true "
+                    "restoration_refused=true stopped_reaped=true "
+                    "released=true no_fd_leak=true scope=qemu-only")
+        self.assertIn(expected, fixture.MARKERS)
+        good = "\n".join([*fixture.MARKERS, SCAN_COST])
+        fixture.check_guest(good)
+        for field in ("late_mode_drift", "before_launch",
+                      "cancellation_before_admission", "review_pins",
+                      "restoration_refused", "stopped_reaped", "released",
+                      "no_fd_leak"):
+            with self.assertRaises(ValueError):
+                fixture.check_guest(good.replace(expected, expected.replace(
+                    field + "=true", field + "=false")))
+        for replacement in ("", expected + "\n" + expected,
+                            expected.replace("qemu-only", "product")):
+            with self.assertRaises(ValueError):
+                fixture.check_guest(good.replace(expected, replacement))
+
+    def test_state_observer_requires_actual_retained_worker_evidence(self):
+        expected = ("PHANTOWD_SAMBA_OWNER_STATE_OBSERVER_READY inputs=7 "
+                    "refusals=1 caller_inputs_closed=true "
+                    "source_path_masked=true same_objects=true "
+                    "closed_before_exec=true listing_redacted=true "
+                    "single_use=true stopped_reaped=true released=true "
+                    "no_fd_leak=true scope=qemu-only")
+        self.assertIn(expected, fixture.MARKERS)
+        good = "\n".join([*fixture.MARKERS, SCAN_COST])
+        fixture.check_guest(good)
+        for field in ("caller_inputs_closed", "source_path_masked",
+                      "same_objects", "closed_before_exec",
+                      "listing_redacted", "single_use", "stopped_reaped",
+                      "released", "no_fd_leak"):
+            with self.assertRaises(ValueError):
+                fixture.check_guest(good.replace(expected, expected.replace(
+                    field + "=true", field + "=false")))
+        for replacement in ("", expected + "\n" + expected,
+                            expected.replace("inputs=7", "inputs=6"),
+                            expected.replace("refusals=1", "refusals=0"),
+                            expected.replace("qemu-only", "product")):
+            with self.assertRaises(ValueError):
+                fixture.check_guest(good.replace(expected, replacement))
+
     @unittest.skipUnless(os.name == "posix", "Linux owned group contract")
     def test_owned_group_requires_leader_and_anonymous_writable_pipes(self):
         root = Path(__file__).resolve().parents[2]
@@ -143,7 +188,7 @@ class SambaRootFixture(unittest.TestCase):
 
     def test_deduplicated_fixed_roster(self):
         manifest = merge(reports())
-        self.assertEqual(len(manifest.splitlines()), 7)
+        self.assertEqual(len(manifest.splitlines()), 8)
         self.assertEqual(manifest.count("b" * 64), 1)
         self.assertIn(hashlib.sha256(CATALOG.encode()).hexdigest(), manifest)
         self.assertNotEqual(
@@ -309,6 +354,16 @@ class SambaRootFixture(unittest.TestCase):
             "before_launch=true caller_inputs_closed=true copied_spec=true "
             "partial_cleanup=true forced_stop_review=true review_pins=true "
             "explicit_release=true no_fd_leak=true scope=qemu-only",
+            "PHANTOWD_SAMBA_OWNER_STATE_OBSERVER_READY inputs=7 refusals=1 "
+            "caller_inputs_closed=true source_path_masked=true "
+            "same_objects=true closed_before_exec=true listing_redacted=true "
+            "single_use=true stopped_reaped=true released=true "
+            "no_fd_leak=true scope=qemu-only",
+            "PHANTOWD_SAMBA_OWNER_STATE_OBSERVER_REFUSAL_READY "
+            "late_mode_drift=true before_launch=true "
+            "cancellation_before_admission=true review_pins=true "
+            "restoration_refused=true stopped_reaped=true released=true "
+            "no_fd_leak=true scope=qemu-only",
             "PHANTOWD_SAMBA_ROOT_DONE",
         ]
         fixture.check_guest("\r\n".join(lines + [SCAN_COST]))

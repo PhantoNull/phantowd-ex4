@@ -30,7 +30,7 @@ cleanup() {
     fi
     # Only this exact newly-created tmpfs directory owns these files.
     rm -f "$scratch/rootfs.ext2" "$scratch/acl.ext4" "$scratch/lab" "$scratch/smbd.json" \
-        "$scratch/smbpasswd.json" "$scratch/testparm.json" \
+        "$scratch/smbpasswd.json" "$scratch/testparm.json" "$scratch/pdbedit.json" \
         "$scratch/streams_xattr.json" "$scratch/ibm850.json" "$scratch/manifest" \
         "$scratch/launcher" "$scratch/charset" "$scratch/bundle" "$scratch/owner" "$scratch/guest.log"
     rm -rf "$scratch/go-cache" "$scratch/go-path"
@@ -49,9 +49,10 @@ export GOCACHE="$scratch/go-cache" GOPATH="$scratch/go-path"
 "$scratch/lab" inspect-runtime-closure "$target" usr/bin/testparm >"$scratch/testparm.json"
 "$scratch/lab" inspect-runtime-closure "$target" usr/lib/samba/vfs/streams_xattr.so >"$scratch/streams_xattr.json"
 "$scratch/lab" inspect-runtime-closure "$target" usr/lib/gconv/IBM850.so >"$scratch/ibm850.json"
+"$scratch/lab" inspect-runtime-closure "$target" usr/bin/pdbedit >"$scratch/pdbedit.json"
 python3 -B "$source_dir/support/tests/samba_root_fixture.py" prepare \
     "$scratch/smbd.json" "$scratch/smbpasswd.json" "$scratch/testparm.json" \
-    "$scratch/streams_xattr.json" "$scratch/ibm850.json" \
+    "$scratch/streams_xattr.json" "$scratch/ibm850.json" "$scratch/pdbedit.json" \
     "$target/usr/lib/gconv/gconv-modules" "$scratch/manifest"
 "$compiler" -std=c11 -O2 -static -Wall -Wextra -Werror \
     -o "$scratch/launcher" "$source_dir/support/tests/samba-root-launcher-fixture.c"

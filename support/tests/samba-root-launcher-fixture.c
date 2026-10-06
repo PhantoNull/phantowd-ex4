@@ -675,22 +675,24 @@ int main(int argc, char **argv)
     if (argc == 5 && !strcmp(argv[1], "client"))
         return client(argv[2], argv[3], argv[4]);
     int state_server = argc == 2 && !strcmp(argv[1], "owned-state-server");
+    int state_observe = argc == 2 && !strcmp(argv[1], "owned-state-observe");
+    int state_handoff = state_server || state_observe;
     int owned_server = state_server || (argc == 2 && !strcmp(argv[1], "owned-server"));
     int server = owned_server || (argc == 2 && !strcmp(argv[1], "server"));
     int charset = argc == 2 && !strcmp(argv[1], "charset");
     int enroll = argc == 3 && !strcmp(argv[1], "enroll") &&
         (!strcmp(argv[2], "qpwriter") || !strcmp(argv[2], "qpreader") ||
          !strcmp(argv[2], "qpoutsider"));
-    if (!server && !enroll && !charset)
+    if (!server && !enroll && !charset && !state_observe)
         return fail();
-    if (owned_server && owned_group_context())
+    if ((owned_server || state_observe) && owned_group_context())
         return fail();
     /* Descriptor ABI admission precedes namespace/mount/context effects. */
-    if (state_server && state_inputs()) {
+    if (state_handoff && state_inputs()) {
         return fail();
     }
     int clones[7] = {-1, -1, -1, -1, -1, -1, -1};
-    if (state_server && state_clones(clones))
+    if (state_handoff && state_clones(clones))
         return fail();
     pid_t owner_group = getpgrp();
     if (server && poison_inherited_context())
@@ -705,7 +707,7 @@ int main(int argc, char **argv)
          * this fixed protected view inside the new root before dropping caps. */
         grant("/run/phantowd-samba-root/etc", "/run/phantowd-samba-root/etc", 1) ||
         code_views() ||
-        state_view(state_server, clones) ||
+        state_view(state_handoff, clones) ||
         grant("/run/phantowd-samba-source/approved", "/run/phantowd-samba-root/shares/rw", 0) ||
         grant("/run/phantowd-samba-source/approved", "/run/phantowd-samba-root/shares/ro", 1) ||
         grant("/run/phantowd-samba-source/denied", "/run/phantowd-samba-root/shares/denied", 0) ||
@@ -746,15 +748,26 @@ int main(int argc, char **argv)
     }
     if (server && verify_restored_context())
         return fail();
-    if (owned_server ? (owned_group_context() || getpgrp() != owner_group) :
+    if ((owned_server || state_observe) ? (owned_group_context() || getpgrp() != owner_group) :
         setsid() < 0)
         return fail();
     char *environment[] = {"PATH=/usr/sbin:/usr/bin:/sbin:/bin", "LC_ALL=C", NULL};
+    if (state_handoff) {
+        for (int input = 4; input <= 10; ++input)
+            if (fcntl(input, F_GETFD) != -1 || errno != EBADF)
+                return fail();
+    }
+    if (state_observe) {
+        fputs("PHANTOWD_SAMBA_STATE_OBSERVER_HANDOFF_READY inputs=7 source_path_masked=true same_objects=true closed_before_exec=true scope=qemu-only\n", stderr);
+        fflush(stderr);
+        /* Fixed read operation: no caller-selected account/action/config or
+         * password bytes. Listing stays in private capture, never console. */
+        char *args[] = {"pdbedit", "-L", "-u", "qpwriter", "-s", "/etc/samba/smb.conf", NULL};
+        execve("/usr/bin/pdbedit", args, environment);
+        return fail();
+    }
     if (server) {
         if (state_server) {
-            for (int input = 4; input <= 10; ++input)
-                if (fcntl(input, F_GETFD) != -1 || errno != EBADF)
-                    return fail();
             puts("PHANTOWD_SAMBA_STATE_HANDOFF_READY inputs=7 source_path_masked=true same_objects=true closed_before_exec=true scope=qemu-only");
         }
         puts("PHANTOWD_SAMBA_ROOT_CONTEXT_READY original_fds_closed=true signal_mask_empty=true dispositions_default=true scope=qemu-only");

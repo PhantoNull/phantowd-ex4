@@ -2385,7 +2385,31 @@ this order, preserving the [full contract](support/SAMBA-RUNTIME-PROFILE.md#samb
    constructor refuses repeated objects/mixed filesystems before publication;
    no generic launch option or new privilege is added. Next attach the SAME
    actual identity authority/NSS/passdb and
-   storage leases. Whole-root/code/config/data construction, durable review and
+   storage leases. A first fixed observation worker now runs actual ARMv5
+   `pdbedit` against the daemon's same retained state-directory objects inside
+   the restricted root, despite masking the source pathname. It accepts empty
+   regular stdin only, checks duplicate late-input refusal and caller closure,
+   keeps bounded listing bytes private and verifies single-use/group absence/
+   release with no FD leak. Its mandatory evidence passes with all old guards;
+   the closure adds only that fixed tool. This synthetic-account tracer is not
+   real Owner enrollment/revocation or a complete credential backend. Next bind
+   the existing identity Owner and Owner-derived NSS to this actual state view,
+   then qualify credential changes and revoke against the running daemon;
+   no passdb copy, unrelated token or arbitrary tool/argv injection.
+   This worker increment's own combined source `c4ed376` also passes complete
+   cached local Buildroot/QEMU integration, including the new mandatory worker
+   evidence, all prior Samba gates and final SMART lanes. All 857 tracked API
+   files independently match compiled and collected source; image/installed/
+   exported API and seven distinct expected artifact hashes agree. This does
+   not borrow ancestor qualification or establish clean/hosted/product/EX4 proof.
+   A subsequent fixture-only ARMv5 campaign also qualifies worker cancellation
+   before admission, late protected-directory mode loss before launch, sticky
+   review after restoration, complete input retention and verified leak-free
+   release. Native tagged vet/race-count3 and strict evidence checks pass. No
+   production API changes; focused qualification does not replace a new full
+   packet or clean/hosted validation. Same real Owner/NSS/state/storage remains
+   the next composition requirement, not another synthetic account authority.
+   Whole-root/code/config/data construction, durable review and
    product lifecycle/HTTP remain open.
    The complete combined source on336c29f now also passes ONE cached full local
    Buildroot/QEMU integration, with independently verified seven exported

@@ -238,6 +238,8 @@ func (p *Plan) ProbeSambaConfigurationLifetimeQEMU(ctx context.Context, code, co
 	fmt.Println("PHANTOWD_SAMBA_OWNER_STATE_LIFETIME_READY caller_close=true live_directory_pins=true same_child_objects=true writable_noexec=true mutable_passdb=true normal_stop=true drift_stopped=true review_retained=true restoration_refused=true released=true scope=qemu-only")
 	fmt.Println("PHANTOWD_SAMBA_OWNER_STATE_HANDOFF_READY inputs=7 source_path_masked=true same_child_objects=true closed_before_exec=true no_fd_leak=true scope=qemu-only")
 	fmt.Println("PHANTOWD_SAMBA_OWNER_STATE_ADMISSION_READY refusals=5 before_launch=true caller_inputs_closed=true copied_spec=true partial_cleanup=true forced_stop_review=true review_pins=true explicit_release=true no_fd_leak=true scope=qemu-only")
+	fmt.Println("PHANTOWD_SAMBA_OWNER_STATE_OBSERVER_READY inputs=7 refusals=1 caller_inputs_closed=true source_path_masked=true same_objects=true closed_before_exec=true listing_redacted=true single_use=true stopped_reaped=true released=true no_fd_leak=true scope=qemu-only")
+	fmt.Println("PHANTOWD_SAMBA_OWNER_STATE_OBSERVER_REFUSAL_READY late_mode_drift=true before_launch=true cancellation_before_admission=true review_pins=true restoration_refused=true stopped_reaped=true released=true no_fd_leak=true scope=qemu-only")
 	return nil
 }
 
@@ -284,6 +286,11 @@ func (p *Plan) sambaConfigurationCase(ctx context.Context, code, configuration, 
 	}
 	if err := o.verifyLiveSambaStateQEMU(pid); err != nil {
 		return err
+	}
+	if fault == "none" {
+		if err := o.probeSambaStateObserverQEMU(ctx); err != nil {
+			return err
+		}
 	}
 	if fault != "none" {
 		forced := fault == "state-forced"

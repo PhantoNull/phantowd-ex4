@@ -158,6 +158,28 @@ from the qualification probe. This test-only composition is not the complete
 Samba Owner: configuration/identity/state/storage inputs are not yet retained
 product authorities. See the [lifetime scope](../../../../support/SAMBA-RUNTIME-PROFILE.md#qualified-dynamic-code-lifetime-qemu-only).
 
+A fixed QEMU-only observation worker independently retains the same seven state
+directory objects for a single actual `pdbedit` listing inside the restricted
+root. Its source pathname is masked; input FDs close before tool exec. The
+containing runtime Owner retains/rechecks the code and protected configuration.
+Duplicate late-input refusal, partial cleanup, closure of every temporary caller,
+private bounded listing, single-use/closed-handle refusal, verified process-group
+absence and release/no-FD-leak pass on ARMv5. Generic `CaptureSpec` has no new
+descriptor/action/password option. The private fixed constructor requires the
+root VersatilePB fixture and empty regular stdin; product builds exclude it.
+This uses synthetic qpwriter, not an identity Owner's native private-group
+account. The real credential backend/Owner-derived NSS and mutations/revocation
+must still be composed; this probe returns neither a backend nor raw listing.
+
+Its separate prelaunch refusal case uses the same fixed public constructor:
+pre-admission cancellation publishes no output and consumes no command; a later
+protected directory mode fault returns review, preserves all nine retained
+code/input/state descriptors and cannot be revived by mode restoration. Group
+absence and explicit close release those references without leakage. The fault
+is temporary disposable QEMU state only, not a supported permission change or
+a production interface. Credential-worker cancellation after launch and full
+forced/uncertain shutdown still require their own qualification.
+
 `Plan.StageQEMU` independently pins source/destination `O_PATH` descriptors.
 It requires root credentials, a local read-only source and a freshly empty
 root:root 0700 writable tmpfs destination with no ACL/capability attributes.

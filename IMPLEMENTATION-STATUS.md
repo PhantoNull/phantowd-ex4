@@ -3,6 +3,48 @@
 
 # Implementation status
 
+## M4.4 state-bound Samba observation worker — QEMU prerequisite
+
+The fixed disposable capture adapter now runs actual ARMv5 `pdbedit` in the
+daemon's restricted root with independent references to the same seven mutable
+state directories. The bootstrap masks the old source pathname, attaches the
+original objects, closes input FDs before exec and retains the owned process
+group. Only a fixed synthetic-account listing with empty regular stdin is
+allowed; no tool/action/config/account or password option is added.
+
+The actual campaign qualifies duplicate late-input refusal without launch or
+partial-pin leak, closure of all temporary callers before capture, private
+bounded output, single-use enforcement, verified group absence, explicit
+release and stable FD counts. All old Samba guards and the new mandatory marker
+pass within the unchanged 180-second guest budget. The code-only closure adds
+only `pdbedit`, with fixed manifest/loader checks and all previous refusals intact.
+Native vet/API tests and QEMU-tagged processowner/runtimebundle race-count3 pass;
+native host refusal is not a positive ARMv5 result.
+
+This closes a state-bound worker tracer, not real identity-owner enrollment or
+revocation. Owner-derived private NSS, the credential backend, authoritative
+passdb mutations and tracked storage leases still need composition. Code/config/
+data root construction remains fixture-path-based. This increment's own complete
+cached local Buildroot/QEMU integration passes on `c4ed376`, including its new
+mandatory worker marker, all prior Samba guards and final SMART lanes. All 857
+tracked API files independently match compiled and collected source; installed,
+image and exported API match SHA256
+`aa3b29b301bd4a6f6b65c1377c97568c669f15b6284661bf43222df37fe5f5e8`,
+and all seven distinct expected artifact hashes agree. Cached validation is not
+independent clean-build reproduction. Exact-head hosted qualification remains open;
+no product service, HTTP, NAS, physical disk or installation is enabled.
+
+The subsequent QEMU-only fixture extension also exercises this worker's existing
+public capture contract before launch: cancellation before admission returns no
+output and does not consume it; a late protected-state directory mode change
+causes review without output, retains all nine code/input/state references and
+refuses restart after restoration. Verified absence and explicit close release
+the complete roster without an FD leak. Actual ARMv5 and all previous Samba
+gates pass within the unchanged guest budget; strict fixture tests, native tagged
+vet/race-count3 and API/UI cross-compilation pass. No production interface or
+behavior changes. This focused result is not a new complete package/image build;
+the full `c4ed376` result above remains scoped to that source revision.
+
 ## M4.4 Samba state descriptor handoff — QEMU only
 
 A fixed `qemu && linux` construction adapter independently retains seven
