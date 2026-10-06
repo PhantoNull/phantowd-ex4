@@ -163,6 +163,12 @@ older authentication/revocation/isolation markers remain mandatory. Its new
 guest; enrollment60/startup20/idle20/preparation20/live45/guest180 limits are
 unchanged. The driver now has 40 tests plus seven loader tests.
 
+Frozen `e445f1c` also passes the complete cached local Buildroot lane, including
+the standard smoke, two-boot state and synthetic SMART lanes. All 887 tracked
+API source files match the compiled package and legal-info archive; installed,
+image-contained and exported API bytes agree, and seven artifact hashes verify.
+This does not establish independent clean, hosted, hardware or release safety.
+
 This first trace is **normal lifecycle only**. Real identity/code/state drift,
 unexpected daemon exit, mid-worker cancellation and uncertain stop/close still
 need coordinator-specific disposable-subprocess QEMU fault proofs. The separate

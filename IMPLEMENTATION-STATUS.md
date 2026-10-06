@@ -21,11 +21,22 @@ observation, accepted cancellation, retention until full closure and no FD leak.
 Existing authentication/revocation/privilege markers and base hashes remain.
 Root Linux race-count3/tagged vet and Windows API/UI/cross-compilation pass.
 
+The complete cached local Buildroot lane also passes on frozen `e445f1c`
+(tree `b10ac7a`): API/UI/vet/race/fixed-count fuzz, source/license/SBOM
+collection, standard ARMv5 smoke, MD component comparisons, two-boot state,
+launcher/retained runtime/loader/libatomic, both Samba campaigns and synthetic
+SMART producer/capture lanes. Independent read-only audit matches all 887
+tracked API files to compiled package and archive members, with no additional
+regular archive entries; installed, image-contained and exported API bytes
+match, and all seven artifact hashes verify. Existing fixed caches are reused;
+the temporary builder is removed. This is not independent clean-build,
+complete release licensing, hosted or physical EX4 qualification.
+
 This qualifies the **normal** startup/supervision path only. Coordinator-specific
 drift/exit/mid-worker cancellation/uncertain-stop/close fault proofs, routed
 Disable successor, storage/grants, bootstrap continuity, product startup/UI and
-durable recovery remain open. No complete new image, hosted/clean build, NAS or
-hardware qualification is claimed here.
+durable recovery remain open. The cached image proof above does not qualify
+hosted/clean builds, deployment, NAS or hardware behavior.
 
 ## Identity Owner teardown quarantine — host prerequisite
 
