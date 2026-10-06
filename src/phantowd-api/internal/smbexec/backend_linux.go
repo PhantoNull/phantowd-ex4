@@ -234,7 +234,15 @@ func (b *Backend) Enable(ctx context.Context, account serviceaccounts.Account) e
 // this composite operation; any uncertain command or incomplete observation
 // is returned as failure so the journal can quarantine it without replay.
 func (b *Backend) Disable(ctx context.Context, account serviceaccounts.Account) error {
-	if b == nil || ctx == nil || !validAccount(account) {
+	return b.disableWithin(ctx, account, sessionRevocationTimeout)
+}
+
+// Only trusted adapters choose a fixed budget; it is not request input.
+// The native QEMU adapter needs room for complete before/after worker
+// admissions. The ordinary command adapter retains its five-second limit.
+func (b *Backend) disableWithin(ctx context.Context, account serviceaccounts.Account, budget time.Duration) error {
+	if b == nil || ctx == nil || !validAccount(account) ||
+		(budget != sessionRevocationTimeout && budget != 2*sessionRevocationTimeout) {
 		return ErrInvalid
 	}
 	b.mu.RLock()
@@ -248,18 +256,18 @@ func (b *Backend) Disable(ctx context.Context, account serviceaccounts.Account) 
 	if err != nil || ctx.Err() != nil {
 		return ErrUnavailable
 	}
-	return b.revokeUserSessions(ctx, account.Name)
+	return b.revokeUserSessions(ctx, account.Name, budget)
 }
 
 // revokeUserSessions invokes Samba's account-scoped session-logoff control at
 // most once, then requires two consecutive complete inventories without the
 // target account. Read-only status polling is bounded; ambiguous output,
 // timeout, cancellation or a failed control command is never retried here.
-func (b *Backend) revokeUserSessions(ctx context.Context, username string) error {
+func (b *Backend) revokeUserSessions(ctx context.Context, username string, budget time.Duration) error {
 	if ctx == nil || username == "" {
 		return ErrInvalid
 	}
-	deadline := time.Now().Add(sessionRevocationTimeout)
+	deadline := time.Now().Add(budget)
 	controlSent := false
 	stableAbsent := 0
 	for {
@@ -268,6 +276,9 @@ func (b *Backend) revokeUserSessions(ctx context.Context, username string) error
 			return ErrUnavailable
 		}
 		statusTimeout := sessionStatusTimeout
+		if budget == 2*sessionRevocationTimeout {
+			statusTimeout *= 2 // retained native worker admissions are included
+		}
 		if remaining < statusTimeout {
 			statusTimeout = remaining
 		}
