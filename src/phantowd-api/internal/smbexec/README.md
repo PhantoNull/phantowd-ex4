@@ -125,3 +125,48 @@ unchanged. Host/race tests enforce both profiles and shorter caller deadlines.
 Full-image/hosted qualification, in-flight/durable handle semantics, sustained
 supervision, continuous identity/storage authority, fault/recovery and product
 ownership composition remain unfinished. This is not physical EX4 evidence.
+
+### Identity-bound native startup and supervision (QEMU only)
+
+`NewNativeIdentityServiceQEMU` takes the existing identity Owner, an expected
+complete fingerprint and its exact startup-fixed `NativeBackendQEMU`. It takes
+the runtime only from that backend, never from a second caller-supplied runtime.
+The guarded runtime must be pre-daemon/pre-client with no pending worker;
+complete checks bracket acquisition of a backend-bound identity consumer.
+The original coordinator pointer must not be copied. Trusted callers transfer
+its lifecycle control and must not operate backend/runtime aliases concurrently.
+
+`Start` is single-use and freshly verifies identity on both sides of actual
+daemon startup. Verification is outside the runtime gate: the Owner's complete
+passdb observations already call that runtime through the fixed backend.
+`Observe` rechecks complete registry/journal/Unix/passdb evidence and the SAME
+code/config/state/daemon through those retained workers. `Supervise` owns one
+exclusive loop, with fixed idle intervals of 1 second to 1 hour, no catch-up,
+competing-operation refusal, and no restart. Accepted cancellation stops the
+daemon/client set, keeps the identity reference and requires explicit `Close`.
+Atomic `Status` returns only immutable redacted telemetry during that loop;
+it never authorizes a service, grants a lease or exposes account identifiers.
+
+Complete runtime closure must succeed before identity `Release`. Uncertain
+startup/stop/close keeps review and the consumer; repeated `Close` cannot turn
+an earlier runtime error into success. A pending credential capture cannot be
+hidden by successful daemon stop. Late uncertain construction returns both a
+quarantined handle and an error; keep that handle rather than substituting a
+new consumer. No automatic recovery or arbitrary fingerprint refresh exists.
+
+The focused actual ARMv5 positive trace qualifies pre-/post-start Owner close
+refusal, canceled/duplicate startup refusal, complete manual and timed scans,
+serialized observations, accepted cancellation after a completed scan,
+retention after stop, full closure before release and final FD equality. All
+older authentication/revocation/isolation markers remain mandatory. Its new
+40-second phase follows the unchanged legacy experiment in the SAME native
+guest; enrollment60/startup20/idle20/preparation20/live45/guest180 limits are
+unchanged. The driver now has 40 tests plus seven loader tests.
+
+This first trace is **normal lifecycle only**. Real identity/code/state drift,
+unexpected daemon exit, mid-worker cancellation and uncertain stop/close still
+need coordinator-specific disposable-subprocess QEMU fault proofs. The separate
+verified-Disable successor is not routed through this coordinator yet; mutations
+outside it invalidate its consumer. Storage/grants, continuously retained
+bootstrap provenance, product authorization/startup and durable recovery remain
+open. No HTTP endpoint, product listener or physical NAS operation is added.

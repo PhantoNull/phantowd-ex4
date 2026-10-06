@@ -44,6 +44,36 @@ def reports():
 
 
 class SambaRootFixture(unittest.TestCase):
+    def test_native_identity_startup_requires_complete_retention(self):
+        expected = ("PHANTOWD_SAMBA_OWNER_NATIVE_IDENTITY_STARTUP_READY "
+                    "startup_bound=true exact_backend=true "
+                    "before_start_busy=true after_start_busy=true "
+                    "duplicate_refused=true canceled_start_refused=true "
+                    "complete_observation=true serialized_scans=true "
+                    "accepted_cancellation=true stopped_reaped=true "
+                    "close_before_release=true no_fd_leak=true "
+                    "service_owner=false scope=qemu-only")
+        self.assertIn(expected, fixture.MARKERS)
+        good = "\n".join([*fixture.MARKERS, SCAN_COST])
+        fixture.check_guest(good)
+        for field in ("startup_bound", "exact_backend", "before_start_busy",
+                      "after_start_busy", "duplicate_refused",
+                      "canceled_start_refused", "complete_observation",
+                      "serialized_scans", "accepted_cancellation",
+                      "stopped_reaped", "close_before_release", "no_fd_leak"):
+            with self.subTest(field=field), self.assertRaises(ValueError):
+                altered = expected.replace(field + "=true",
+                                           field + "=false", 1)
+                fixture.check_guest(good.replace(expected, altered, 1))
+        for bad in (good.replace(expected + "\n", "", 1),
+                    good.replace(expected, expected + "\n" + expected, 1),
+                    good.replace(expected, expected.replace(
+                        "service_owner=false", "service_owner=true"), 1),
+                    good.replace(expected, expected.replace(
+                        "scope=qemu-only", "scope=product"), 1)):
+            with self.assertRaises(ValueError):
+                fixture.check_guest(bad)
+
     def test_native_disable_handoff_requires_retention_until_stop(self):
         expected = ("PHANTOWD_SAMBA_OWNER_NATIVE_DISABLE_HANDOFF_READY "
                     "owner_bound=true backend_bound=true "
@@ -668,6 +698,13 @@ class SambaRootFixture(unittest.TestCase):
             "same_peer_session=true retained_until_stop=true "
             "stopped_reaped=true no_fd_leak=true "
             "startup_bound=false service_owner=false scope=qemu-only",
+            "PHANTOWD_SAMBA_OWNER_NATIVE_IDENTITY_STARTUP_READY "
+            "startup_bound=true exact_backend=true before_start_busy=true "
+            "after_start_busy=true duplicate_refused=true "
+            "canceled_start_refused=true complete_observation=true "
+            "serialized_scans=true accepted_cancellation=true "
+            "stopped_reaped=true close_before_release=true no_fd_leak=true "
+            "service_owner=false scope=qemu-only",
             "PHANTOWD_SAMBA_ROOT_DONE",
         ]
         fixture.check_guest("\r\n".join(lines + [SCAN_COST]))

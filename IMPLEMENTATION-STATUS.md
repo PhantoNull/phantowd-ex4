@@ -3,6 +3,30 @@
 
 # Implementation status
 
+## Identity-bound native startup/supervision — normal QEMU prerequisite
+
+The private QEMU coordinator obtains only the exact Owner-fixed backend's
+runtime and retains a backend-bound consumer **before** daemon startup.
+Fresh identity verification brackets startup; complete observations use the
+same retained code/config/state/daemon through the fixed backend. One exclusive
+fixed-idle supervision loop serializes scans, refuses competing operations and
+stops on accepted cancellation without restart. Readable atomic status is
+redacted telemetry, not authority. Identity release follows verified complete
+runtime closure; uncertain startup/stop/close retains review without replay.
+
+The focused local ARMv5 lane passes all 40 driver/seven loader tests and BOTH
+campaigns. The additional positive trace proves Owner close refusal before/
+during startup, canceled/duplicate refusal, complete timed scans, serialized
+observation, accepted cancellation, retention until full closure and no FD leak.
+Existing authentication/revocation/privilege markers and base hashes remain.
+Root Linux race-count3/tagged vet and Windows API/UI/cross-compilation pass.
+
+This qualifies the **normal** startup/supervision path only. Coordinator-specific
+drift/exit/mid-worker cancellation/uncertain-stop/close fault proofs, routed
+Disable successor, storage/grants, bootstrap continuity, product startup/UI and
+durable recovery remain open. No complete new image, hosted/clean build, NAS or
+hardware qualification is claimed here.
+
 ## Identity Owner teardown quarantine — host prerequisite
 
 An Owner with no live file-service consumers must close its fixed backend
