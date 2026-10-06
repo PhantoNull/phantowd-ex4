@@ -3,6 +3,37 @@
 
 # Implementation status
 
+## M4.4 native Owner-enrolled daemon authentication — disposable QEMU
+
+The native runtime now retains the same original code, protected configuration
+and mutable state through Owner-bound enrollment and actual `smbd` execution.
+A separate fixed daemon adapter independently duplicates twelve input objects,
+clones their mounts before namespace isolation, masks source paths and attaches
+the originals. Generic static/non-root launcher restrictions remain unchanged.
+
+The daemon has a private read-only root/mount namespace, capabilities `0xdb`,
+no-new-privileges, no `/proc`, `/dev` or `/run`, and an empty read-only `/tmp`
+required for IPC. It shares only the disposable guest's loopback network;
+QEMU has no NIC or host forwarding. Fixed test clients use root-only temporary
+authentication files via an inherited descriptor, never password argv/env.
+Readiness requires real authentication, not merely an open TCP port.
+
+The official local wrapper passes all 35 Linux driver tests, seven loader tests,
+lint/ShellCheck and both complete actual ARMv5 campaigns. Both Owner-enrolled
+accounts authenticate; a wrong password is denied. Live checks verify all 114
+original code objects, protected configuration/state views, capabilities and
+root isolation. Whole-group stop/reap and explicit close precede release;
+the final FD count matches the baseline and the base image is unchanged.
+Enrollment retains its 60-second budget; authentication has a separate fixed
+20-second phase inside the unchanged 180-second native guest limit.
+
+This is local test-only authentication qualification, not a complete image,
+clean/hosted build, sustained service supervision, live revocation, continuous
+identity/storage authority, product construction/UI or physical EX4 proof.
+The existing revocation fixture does not qualify this new restricted profile.
+Complete cached integration and this increment's own hosted checks remain
+required; the firmware is not installable.
+
 ## M0 bounded Samba campaign qualification
 
 The Samba integration lane now compiles its probes once, then boots two fresh
@@ -62,10 +93,12 @@ only; full code/config/state checks immediately bracket each worker. Both
 identities finish within the original 60-second budget; checks were not removed
 from the effect boundary or replaced by cached success.
 
-This is **credential-only fixture composition**, not a daemon using that state,
+The earlier `8b1f9ec` qualification is **credential-only fixture composition**.
+The newer same-state daemon authentication is qualified separately above;
 live-session revocation in this composition, storage grants, continuous identity
 authority, descriptor-bound product code/root construction, durable quarantine,
-startup recovery, HTTP or physical EX4 qualification. The bootstrap Owner closes
+startup recovery, HTTP and physical EX4 qualification remain open. The bootstrap
+Owner closes
 before a fresh backend-bound admission; this is not continuous retention. The
 legacy fixture's session-revocation proof is not borrowed for this new profile.
 No product service, installer or independent clean-build qualification is

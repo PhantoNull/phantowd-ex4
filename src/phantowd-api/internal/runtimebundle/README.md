@@ -214,6 +214,23 @@ serialization refusal, writable-root refusal and safe Linux open flags.
 
 ## Retained code and static-process Owner
 
+The separate QEMU-only native composition now retains the same original code,
+Owner-derived configuration and writable state through disabled-first account
+enrollment and one bounded authentication-only daemon probe. Its private adapter
+duplicates the helper plus twelve input objects; the bootstrap clones originals,
+masks source paths, closes escape FDs and runs in a read-only root with caps
+`0xdb`/NNP, no proc/dev/run and empty read-only IPC `/tmp`. Only the disposable
+guest's loopback is available, not a host listener or data grant.
+
+The official local ARMv5 wrapper verifies real authentication for two distinct
+Owner-enrolled accounts, wrong-password refusal, all114 original code views,
+protected config/state and verified whole-group stop/reap/no-FD-leak. Credentials
+and authentication keep separate 60/20-second phases inside the 180-second guest.
+This is not complete image/clean/hosted qualification, live-session revocation,
+continuous identity/storage authority, product root construction or startup.
+The generic Owner's static/non-root contract below is unchanged. See the
+[native profile](../../../../support/SAMBA-RUNTIME-PROFILE.md#native-same-state-authentication-qemu-only).
+
 Linux `Plan.NewOwner(ctx, root, specs)` privately duplicates the root and retains
 every verified regular file. It copies a fixed set of 1..8 process specifications
 and owns their independently pinned executable descriptors. There is no handle

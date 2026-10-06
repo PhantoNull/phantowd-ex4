@@ -2423,9 +2423,18 @@ this order, preserving the [full contract](support/SAMBA-RUNTIME-PROFILE.md#samb
    installed/embedded/exported API bytes and seven artifact hashes agree.
    This does not qualify independent clean builds, release licensing or EX4
    operation, and does not close any of the following composition gates.
-   Next bind that credential backend and daemon to the SAME mutable state and
-   qualify actual authentication/revocation there, then identity/storage authority
-   and protected product construction. Never bootstrap by
+   A newer QEMU-only native daemon now uses the SAME retained code/config/state
+   as those Owner-enrolled credential workers. Actual two-account authentication,
+   wrong-password denial, all114 original code views, restricted root/caps,
+   verified group stop/reap and no-FD-leak pass in the official local wrapper:
+   all35 driver/seven loader tests, both complete campaigns, base unchanged.
+   This does not borrow the earlier fixture's revocation or identity lease.
+   Next qualify live-session revocation in this restricted profile, continuous
+   identity/storage authority and protected product construction. Session-control
+   workers need an explicitly qualified PID-generation/revocation boundary;
+   do not grant an unrestricted `/proc` or infer session absence from exit0.
+   Complete image/own hosted checks for this increment remain pending.
+   Never bootstrap by
    fabricating enabled journals/SIDs, copying TDBs or
    passing enrollment lookup as active-service evidence. Closing/reopening an
    identity Owner is new admission, not continuous retained authority.
