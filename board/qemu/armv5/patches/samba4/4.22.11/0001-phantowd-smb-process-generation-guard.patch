@@ -1,0 +1,37 @@
+--- a/lib/messaging/messages_dgm.c
++++ b/lib/messaging/messages_dgm.c
+@@ -939,6 +939,7 @@
+ 	do {
+ 		generate_random_buffer((uint8_t *)&unique, sizeof(unique));
+-	} while (unique == UINT64_C(0xFFFFFFFFFFFFFFFF));
++	} while (unique == 0 ||
++		 unique == UINT64_C(0xFFFFFFFFFFFFFFFF));
+ 
+ 	unique_len = snprintf(buf, sizeof(buf), "%"PRIu64"\n", unique);
+ 
+--- a/source3/lib/messages.c
++++ b/source3/lib/messages.c
+@@ -423,8 +423,23 @@
+ 	DBG_DEBUG("Received message 0x%x len %zu (num_fds:%zu) from %s\n",
+ 		  (unsigned)rec.msg_type, rec.buf.length, num_fds,
+ 		  server_id_str_buf(rec.src, &idbuf));
+ 
++	/*
++	 * The datagram transport routes by PID only. Check an explicitly
++	 * generation-qualified destination after routing and before dispatch, or
++	 * PID reuse can deliver a stale control message to a different process.
++	 * PID-only and broadcast destinations retain their existing semantics.
++	 */
++	if (rec.dest.pid != 0 &&
++	    rec.dest.unique_id != 0 &&
++	    rec.dest.unique_id != UINT64_C(0xFFFFFFFFFFFFFFFF) &&
++	    (!server_id_same_process(&rec.dest, &msg_ctx->id) ||
++	     rec.dest.unique_id != msg_ctx->id.unique_id)) {
++		DBG_DEBUG("Ignoring message with stale destination generation\n");
++		return;
++	}
++
+ 	if (server_id_same_process(&rec.src, &msg_ctx->id)) {
+ 		DBG_DEBUG("Ignoring self-send\n");
+ 		return;
+ 	}

@@ -40,6 +40,47 @@ func TestDecodeRejectsInvalidEnvelope(t *testing.T) {
 	}
 }
 
+func TestOversizedReceiveFrameDoesNotRetainRawInput(t *testing.T) {
+	input := make([]byte, 4096)
+	input[0], input[len(input)-1] = FrameStart, FrameEnd
+	decoded, err := DecodeReceive(input)
+	if err == nil {
+		t.Fatal("oversized frame accepted")
+	}
+	if decoded.Length != len(input) || decoded.RawHex != "" {
+		t.Fatal("oversized refusal retained raw input or lost the observed length")
+	}
+	if decoded.Known || len(decoded.Names) != 0 || len(decoded.TemplateFourth) != 0 ||
+		decoded.DispatchKey != [3]byte{} || decoded.ChecksumStatus != "unknown-not-validated" {
+		t.Fatal("oversized refusal returned selector or checksum evidence")
+	}
+}
+
+func FuzzDecodeReceiveDiagnosticBounds(f *testing.F) {
+	f.Add([]byte{FrameStart, 0x23, 0, 0, 0, 0, FrameEnd})
+	f.Add([]byte{})
+	f.Add(make([]byte, MaxFrame+1))
+	f.Fuzz(func(t *testing.T, data []byte) {
+		decoded, err := DecodeReceive(data)
+		if decoded.Length != len(data) || len(decoded.RawHex) > 2*MaxFrame ||
+			decoded.ChecksumStatus != "unknown-not-validated" {
+			t.Fatal("receive diagnostics exceeded bounds or asserted checksum evidence")
+		}
+		switch len(data) {
+		case 7, 13, 15:
+			if len(decoded.RawHex) != 2*len(data) {
+				t.Fatal("bounded frame diagnostics lost their bytes")
+			}
+		default:
+			if err == nil || decoded.RawHex != "" || decoded.Known ||
+				len(decoded.Names) != 0 || len(decoded.TemplateFourth) != 0 ||
+				decoded.DispatchKey != [3]byte{} {
+				t.Fatal("unsupported length returned raw input or classification")
+			}
+		}
+	})
+}
+
 func TestStreamReplayAndButtonState(t *testing.T) {
 	decoder := &StreamDecoder{}
 	state := NewState()

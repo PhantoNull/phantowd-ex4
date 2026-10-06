@@ -12,7 +12,10 @@ cd "$module_dir"
 "$go_binary" vet ./...
 "$go_binary" test -count=1 -coverprofile="$report_dir/coverage.out" ./...
 "$go_binary" test -race -count=1 ./...
-# Use a deterministic iteration budget: Go 1.26 can spuriously report
-# "context deadline exceeded" when a time-limited fuzz run stops.
-"$go_binary" test -run '^$' -fuzz '^FuzzInspect$' -fuzztime=10000x -parallel=2 -timeout=120s ./vendorupdate
-"$go_binary" test -run '^$' -fuzz '^FuzzStreamDecoder$' -fuzztime=10000x -parallel=2 -timeout=120s ./mcuproto
+# Fixed execution counts avoid false deadline failures in the pinned Go 1.26
+# fuzz coordinator while bounding campaign work independently of runner speed.
+"$go_binary" test -run '^$' -fuzz '^FuzzInspect$' -fuzztime=100000x -parallel=2 ./vendorupdate
+"$go_binary" test -run '^$' -fuzz '^FuzzStreamDecoder$' -fuzztime=100000x -parallel=2 ./mcuproto
+"$go_binary" test -run '^$' -fuzz '^FuzzDecodeReceiveDiagnosticBounds$' -fuzztime=100000x -parallel=2 -timeout=120s ./mcuproto
+"$go_binary" test -run '^$' -fuzz '^FuzzStorageInventoryAndDryRunNeverBecomeExecutable$' -fuzztime=100000x -parallel=2 ./storageinventory
+"$go_binary" test -run '^$' -fuzz '^FuzzARMAttributesNeverExposePartialObservation$' -fuzztime=50000x -parallel=2 -timeout=120s ./rootfsinventory

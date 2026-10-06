@@ -1,0 +1,1439 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 PhantoWD EX4 contributors
+
+// Dependency-free browser-DOM smoke tests for the embedded dashboard logic.
+// This does not claim visual browser or assistive-technology coverage.
+import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+import { createContext, Script } from "node:vm";
+
+const repoRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
+const source = await readFile(join(repoRoot, "src/phantowd-api/ui/app.js"), "utf8");
+const serviceSource = await readFile(join(repoRoot, "src/phantowd-api/ui/service-policy.js"), "utf8");
+const markup = await readFile(join(repoRoot, "src/phantowd-api/ui/index.html"), "utf8");
+const markupIDs = [...markup.matchAll(/\bid="([^"]+)"/g)].map((match) => match[1]);
+assert.equal(new Set(markupIDs).size, markupIDs.length, "duplicate HTML IDs");
+for (const match of (source + serviceSource).matchAll(/(?:byId|setText)\("([^"]+)"/g)) {
+  assert.ok(markupIDs.includes(match[1]), `script references missing HTML ID ${match[1]}`);
+}
+assert.match(markup, /id="policy-nfs-fields"[^>]*hidden disabled/);
+assert.match(markup, /id="policy-form"[^>]*autocomplete="off"/);
+
+class FixtureElement {
+  constructor() {
+    this.attributes = new Map();
+    this.children = [];
+    this.dataset = {};
+    this.hidden = false;
+    this.listeners = new Map();
+    this.style = {};
+    this.textContent = "";
+    this.value = "";
+    this.className = "";
+    this.disabled = false;
+    this.parentElement = null;
+    this.classList = {
+      toggle: (name, force) => {
+        const classes = new Set(this.className.split(/\s+/).filter(Boolean));
+        const enabled = force ?? !classes.has(name);
+        if (enabled) classes.add(name);
+        else classes.delete(name);
+        this.className = [...classes].join(" ");
+        return enabled;
+      },
+    };
+  }
+
+  addEventListener(name, handler) {
+    this.listeners.set(name, handler);
+  }
+
+  append(...nodes) {
+    this.children.push(...nodes);
+  }
+
+  replaceChildren(...nodes) {
+    this.children = [...nodes];
+  }
+
+  setAttribute(name, value) {
+    this.attributes.set(name, String(value));
+  }
+
+  removeAttribute(name) {
+    this.attributes.delete(name);
+  }
+}
+
+function jsonResponse(body, status = 200) {
+  return { ok: status >= 200 && status < 300, status, json: async () => body };
+}
+
+function systemFixture() {
+  return {
+    target: "qemu-armv5",
+    mode: "development",
+    flashable: false,
+    hardware_validated: false,
+    observed_at: "2026-09-25T12:30:00Z",
+    architecture: "arm",
+    goarm: "5",
+    kernel: "6.18.54",
+    uptime_seconds: 123456,
+    memory: { total_bytes: 256 * 1024 * 1024, available_bytes: 96 * 1024 * 1024 },
+  };
+}
+
+function arraysFixture() {
+  return {
+    status: "available",
+    array_count: 2,
+    arrays: [{
+      name: "md0", level: "raid1", state: "clean", health: "healthy",
+      expected_devices: 2, active_devices: 2, degraded_devices: 0,
+      sync_action: "idle", members: [{ name: "sda2" }, { name: "sdb2" }],
+    }, {
+      name: "md1", level: "raid1", state: "active", health: "paused",
+      expected_devices: 2, active_devices: 2, degraded_devices: 0,
+      sync_action: "frozen", members: [{ name: "sda3" }, { name: "sdb3" }],
+    }],
+  };
+}
+
+function mountsFixture() {
+  return {
+    schema_version: 1,
+    scope: "current-process-mount-namespace",
+    read_only: true,
+    filesystem_contents_read: false,
+    mount_operations_performed: false,
+    mount_count: 2,
+    mounts: [
+      { mount_point: "/mnt/data<script>", filesystem: "ext4", device_major: 8, device_minor: 1, read_only: false },
+      { mount_point: "/proc", filesystem: "proc", device_major: 0, device_minor: 42, read_only: true },
+    ],
+  };
+}
+
+async function createHarness(respond, timing = {}) {
+  const ids = [
+    "auth-panel", "auth-title", "auth-description", "auth-form", "auth-username",
+    "auth-password", "auth-submit", "auth-retry", "auth-error", "dashboard-content",
+    "logout", "logout-all", "refresh", "refresh-label", "snapshot-status", "error-banner",
+    ...["panel", "form", "current", "new", "confirm", "submit", "status"].map((id) => `password-${id}`),
+    "service-status-dot", "build-label", "kernel-value", "runtime-value", "target-value",
+    "memory-value", "memory-detail", "memory-meter", "firmware-value", "firmware-detail",
+    "profile-notice-title", "profile-notice-copy", "profile-notice-mark",
+    "observed-at", "device-count", "device-list", "array-count", "array-list", "mount-count", "mount-list",
+    "gpt-observe", "gpt-observation-status",
+    ...["load", "status", "result", "summary", "shares"].map((id) => `saved-${id}`),
+    ...["load", "prepare", "save", "status", "current", "summary", "document", "review", "change", "samba", "nfs", "editor", "target", "member", "action", "edit-preview", "diff", "diff-summary", "overlaps", "overlap-summary"].map((id) => `service-${id}`),
+    ...["form", "submit", "clear", "result", "error", "status", "requirements", "samba", "nfs", "nfs-fields", "uuid", "name", "path", "user", "smb-access", "nfs-enabled", "export-id", "network", "nfs-access", "squash", "uid", "gid", "security"].map((id) => `policy-${id}`),
+  ];
+  const elements = Object.fromEntries(ids.map((id) => [id, new FixtureElement()]));
+  elements["refresh-label"].textContent = "Refresh snapshot";
+  elements["memory-meter"].parentElement = new FixtureElement();
+  const document = {
+    getElementById: (id) => elements[id] ?? null,
+    createElement: () => new FixtureElement(),
+    createTextNode: (text) => ({ textContent: String(text) }),
+  };
+  const requests = [];
+  const fetch = async (path, options) => {
+    requests.push({ path, options });
+    const result = await respond(path, options);
+    if (result instanceof Error) throw result;
+    return result;
+  };
+  const context = createContext({
+    document,
+    fetch,
+    Intl,
+    Date,
+    Number,
+    String,
+    Math,
+    Array,
+    Error,
+    Promise,
+    TextEncoder,
+    AbortController,
+    setTimeout: timing.setTimeout ?? setTimeout,
+    clearTimeout: timing.clearTimeout ?? clearTimeout,
+  });
+  new Script(serviceSource).runInContext(context);
+  new Script(source).runInContext(context);
+  await new Promise((resolve) => setImmediate(resolve));
+  return { context, elements, requests };
+}
+
+async function testReadOnlySnapshotAndSafeRendering() {
+  const { context, elements, requests } = await createHarness(async (path) => {
+    if (path === "/api/v1/auth/status") return jsonResponse({ authenticated: true });
+    if (path === "/api/v1/system") return jsonResponse(systemFixture());
+    if (path === "/api/v1/storage") {
+      return jsonResponse({ observations: [{
+        name: "disk<script>", kind: "disk", major: 8, minor: 0,
+        size_bytes: 2 ** 40, serial_status: "present", wwn_status: "unavailable", read_only: true,
+      }] });
+    }
+    if (path === "/api/v1/arrays") return jsonResponse(arraysFixture());
+    if (path === "/api/v1/mounts") return jsonResponse(mountsFixture());
+    throw new Error(`Unexpected request: ${path}`);
+  });
+
+  assert.equal(elements["auth-panel"].hidden, true);
+  assert.equal(elements["dashboard-content"].hidden, false);
+  assert.equal(elements["kernel-value"].textContent, "Linux 6.18.54");
+  assert.equal(elements["target-value"].textContent, "qemu-armv5");
+  assert.match(elements["observed-at"].textContent, /^Last observed /);
+  assert.equal(elements["observed-at"].dateTime, "2026-09-25T12:30:00.000Z");
+  assert.equal(elements["profile-notice-title"].textContent, "Emulator only.");
+  assert.match(elements["snapshot-status"].textContent, /updated/);
+  assert.equal(elements["array-count"].textContent, "2 arrays");
+  assert.equal(elements["array-list"].children[0].children[0].children[0].textContent, "md0");
+  assert.equal(elements["array-list"].children[0].children[1].textContent, "healthy");
+  assert.equal(elements["array-list"].children[1].children[1].textContent, "paused");
+  assert.match(elements["array-list"].children[1].children[1].className, /array-health-paused/);
+  assert.equal(elements["array-list"].children[1].children[4].textContent, "frozen · progress unavailable");
+  assert.equal(elements["mount-count"].textContent, "2 mounts");
+  assert.equal(elements["mount-list"].children[0].children[0].textContent, "/mnt/data<script>");
+  assert.equal(elements["mount-list"].children[0].children[1].textContent, "ext4");
+  assert.equal(elements["mount-list"].children[0].children[2].textContent, "8:1");
+  assert.equal(elements["mount-list"].children[1].children[3].textContent, "Read-only mount flag");
+  assert.equal(elements["device-list"].children[0].children[0].children[1].children[0].textContent, "disk<script>");
+  assert.equal(elements["device-list"].children[0].children[3].textContent, "Kernel read-only");
+  assert.deepEqual(requests.map(({ path }) => path), [
+    "/api/v1/auth/status", "/api/v1/system", "/api/v1/storage", "/api/v1/arrays", "/api/v1/mounts",
+  ]);
+  assert.ok(requests.every(({ options }) => options.method === "GET"));
+
+  elements["logout"].hidden = false;
+  context.renderSystem({ ...systemFixture(), target: "ui-preview-fixture" });
+  assert.equal(elements["build-label"].textContent, "LOCAL FIXTURES");
+  assert.equal(elements["profile-notice-title"].textContent, "Synthetic preview.");
+  assert.equal(elements["profile-notice-mark"].textContent, "FIXTURE DATA");
+  assert.equal(elements["logout"].hidden, true);
+}
+
+async function testUnavailableAuthIsVisibleAndRetryable() {
+  let available = false;
+  const { elements } = await createHarness(async (path) => {
+    if (path !== "/api/v1/auth/status") throw new Error(`Unexpected request: ${path}`);
+    if (!available) throw new Error("service unavailable");
+    return jsonResponse({ authenticated: false, setup_required: true });
+  });
+
+  assert.equal(elements["auth-panel"].hidden, false);
+  assert.equal(elements["auth-form"].hidden, true);
+  assert.equal(elements["auth-retry"].hidden, false);
+  assert.match(elements["auth-error"].textContent, /could not be reached/);
+  assert.equal(elements["dashboard-content"].hidden, true);
+  available = true;
+  await elements["auth-retry"].listeners.get("click")();
+  assert.equal(elements["auth-form"].hidden, false);
+  assert.equal(elements["auth-retry"].hidden, true);
+  assert.match(elements["auth-title"].textContent, /Set up/);
+}
+
+async function testExpiredSessionReturnsToLogin() {
+  let expired = false;
+  const { context, elements } = await createHarness(async (path) => {
+    if (path === "/api/v1/auth/status") {
+      return jsonResponse(expired ? { authenticated: false, setup_required: false } : { authenticated: true });
+    }
+    if (expired) return jsonResponse({ error: "unauthorized" }, 401);
+    if (path === "/api/v1/system") return jsonResponse(systemFixture());
+    if (path === "/api/v1/storage") return jsonResponse({ observations: [] });
+    if (path === "/api/v1/arrays") return jsonResponse(arraysFixture());
+    if (path === "/api/v1/mounts") return jsonResponse(mountsFixture());
+    throw new Error(`Unexpected request: ${path}`);
+  });
+
+  expired = true;
+  await context.refreshSnapshot();
+  assert.equal(elements["dashboard-content"].hidden, true);
+  assert.equal(elements["auth-panel"].hidden, false);
+  assert.equal(elements["auth-form"].hidden, false);
+  assert.match(elements["auth-error"].textContent, /session expired/i);
+}
+
+function snapshotResponse(path, kernel = "retired-session-kernel") {
+  if (path === "/api/v1/system") return jsonResponse({ ...systemFixture(), kernel });
+  if (path === "/api/v1/storage") return jsonResponse({ observations: [] });
+  if (path === "/api/v1/arrays") return jsonResponse(arraysFixture());
+  if (path === "/api/v1/mounts") return jsonResponse(mountsFixture());
+  throw new Error(`Unexpected snapshot request: ${path}`);
+}
+
+const settleUI = () => new Promise((resolve) => setImmediate(resolve));
+
+async function testSnapshotLateSuccessCannotSurviveAuthBoundary() {
+  for (const boundary of ["logout", "logout-all", "password", "unavailable", "unauthenticated"]) {
+    let ended = false;
+    let release;
+    const pending = new Promise((resolve) => { release = resolve; });
+    const { context, elements, requests } = await createHarness(async (path) => {
+      if (path === "/api/v1/auth/status") return jsonResponse({ authenticated: !ended, setup_required: false });
+      if (path === "/api/v1/auth/session") return jsonResponse({ csrf_token: "x".repeat(43) });
+      if (path === "/api/v1/auth/logout" || path === "/api/v1/auth/logout-all") { ended = true; return jsonResponse({ signed_out: true }); }
+      if (path === "/api/v1/auth/password") {
+        ended = true;
+        return jsonResponse({ password_changed: true, reauthentication_required: true, all_panel_sessions_revoked: true });
+      }
+      return pending.then(() => snapshotResponse(path));
+    });
+    if (boundary === "logout") await elements.logout.listeners.get("click")();
+    else if (boundary === "logout-all") await elements["logout-all"].listeners.get("click")();
+    else if (boundary === "password") {
+      elements["password-current"].value = "old public test passphrase";
+      elements["password-new"].value = "new public test passphrase";
+      elements["password-confirm"].value = elements["password-new"].value;
+      await elements["password-form"].listeners.get("submit")({ preventDefault() {} });
+    } else if (boundary === "unauthenticated") {
+      ended = true;
+      await context.updateAuthView({ refresh: false });
+    } else context.showAuthUnavailable();
+    assert.equal(elements["dashboard-content"].hidden, true, "authentication boundary itself did not hide the dashboard");
+    if (boundary === "logout") assert.equal(ended, true, "logout endpoint was not reached");
+    const connection = elements["build-label"].textContent;
+    const message = elements["snapshot-status"].textContent;
+    release();
+    await settleUI();
+    assert.equal(elements["kernel-value"].textContent, "Unavailable", "late snapshot repopulated retired session values");
+    assert.equal(elements["build-label"].textContent, connection, "late snapshot overwrote authentication state");
+    assert.equal(elements["snapshot-status"].textContent, message);
+    assert.equal(elements["dashboard-content"].hidden, true);
+    const reads = requests.filter(({ path }) => ["system", "storage", "arrays", "mounts"].some((name) => path === `/api/v1/${name}`));
+    assert.equal(reads.length, 4);
+    assert.ok(reads.every(({ options }) => options.signal?.aborted), "retired reads were not canceled together");
+  }
+}
+
+async function testSnapshotLateErrorsDoNotChangeUnavailableAuth() {
+  for (const outcome of ["unauthorized", "transport-error", "body-error"]) {
+    let release;
+    const pending = new Promise((resolve) => { release = resolve; });
+    const { context, elements, requests } = await createHarness(async (path) => {
+      if (path === "/api/v1/auth/status") return jsonResponse({ authenticated: true });
+      await pending;
+      if (outcome === "unauthorized") return jsonResponse({}, 401);
+      if (outcome === "transport-error") return new Error("late transport failure");
+      return { ok: true, status: 200, json: async () => { throw new Error("late malformed body"); } };
+    });
+    context.showAuthUnavailable();
+    const message = elements["auth-error"].textContent;
+    const requestCount = requests.length;
+    release();
+    await settleUI();
+    assert.equal(elements["dashboard-content"].hidden, true);
+    assert.equal(elements["auth-error"].textContent, message);
+    assert.equal(elements["build-label"].textContent, "API unavailable");
+    assert.equal(requests.length, requestCount, "retired response started another auth-status request");
+  }
+}
+
+async function testSnapshotLateAuthBodyCannotReplaceNewSession() {
+  let phase = "initial";
+  let releaseAuth, releaseCurrent;
+  const authBody = new Promise((resolve) => { releaseAuth = resolve; });
+  const currentRead = new Promise((resolve) => { releaseCurrent = resolve; });
+  const { context, elements } = await createHarness(async (path) => {
+    if (path === "/api/v1/auth/status") return phase === "expired" ?
+      { ok: true, status: 200, json: () => authBody } : jsonResponse({ authenticated: true });
+    if (phase === "expired") return jsonResponse({}, 401);
+    if (phase === "current") await currentRead;
+    return snapshotResponse(path, "current-session-kernel");
+  });
+  phase = "expired";
+  const retired = context.refreshSnapshot();
+  await settleUI();
+  context.showAuthUnavailable();
+  phase = "current";
+  await context.updateAuthView({ refresh: false });
+  const fresh = context.refreshSnapshot();
+  await settleUI();
+  releaseAuth({ authenticated: false, setup_required: false });
+  await retired;
+  await settleUI();
+  assert.equal(elements["dashboard-content"].hidden, false);
+  assert.equal(elements["auth-panel"].hidden, true);
+  assert.equal(elements.refresh.disabled, true, "retired finalizer unlocked a current refresh");
+  assert.equal(elements.refresh.attributes.get("aria-busy"), "true");
+  assert.equal(elements["refresh-label"].textContent, "Refreshing…");
+  releaseCurrent();
+  await fresh;
+  assert.equal(elements["kernel-value"].textContent, "Linux current-session-kernel");
+  assert.equal(elements.refresh.disabled, false);
+}
+
+async function testSnapshotReadIsSingleFlight() {
+  let release;
+  const pending = new Promise((resolve) => { release = resolve; });
+  const { context, elements, requests } = await createHarness(async (path) => {
+    if (path === "/api/v1/auth/status") return jsonResponse({ authenticated: true });
+    return pending.then(() => snapshotResponse(path));
+  });
+  const duplicate = context.refreshSnapshot();
+  await settleUI();
+  const countWhilePending = requests.filter(({ path }) => path !== "/api/v1/auth/status").length;
+  release();
+  await duplicate;
+  await settleUI();
+  assert.equal(countWhilePending, 4, "concurrent refresh started duplicate diagnostic reads");
+  assert.equal(elements.refresh.disabled, false);
+  assert.equal(elements["refresh-label"].textContent, "Refresh snapshot");
+  const reads = requests.filter(({ path }) => path !== "/api/v1/auth/status");
+  assert.ok(reads[0].options.signal);
+  assert.ok(reads.every(({ options }) => options.signal === reads[0].options.signal));
+}
+
+async function testSnapshotDeadlineIncludesBodyAndDoesNotRetry() {
+  let releaseBody;
+  const body = new Promise((resolve) => { releaseBody = resolve; });
+  const timers = new Map();
+  let nextTimer = 0;
+  const { elements, requests } = await createHarness(async (path) => {
+    if (path === "/api/v1/auth/status") return jsonResponse({ authenticated: true });
+    if (path === "/api/v1/system") return { ok: true, status: 200, json: () => body };
+    return snapshotResponse(path);
+  }, {
+    setTimeout: (callback, delay) => { const id = ++nextTimer; timers.set(id, { callback, delay }); return id; },
+    clearTimeout: (id) => timers.delete(id),
+  });
+  assert.equal(timers.size, 1, "snapshot has no finite client deadline");
+  const deadline = [...timers.values()][0];
+  assert.equal(deadline.delay, 10000);
+  deadline.callback();
+  await settleUI();
+  assert.equal(elements["kernel-value"].textContent, "Unavailable");
+  assert.match(elements["snapshot-status"].textContent, /system observation unavailable/);
+  assert.equal(elements.refresh.disabled, false);
+  assert.equal(timers.size, 0);
+  const before = elements["snapshot-status"].textContent;
+  releaseBody({ ...systemFixture(), kernel: "late-body-kernel" });
+  await settleUI();
+  assert.equal(elements["kernel-value"].textContent, "Unavailable");
+  assert.equal(elements["snapshot-status"].textContent, before);
+  assert.equal(requests.filter(({ path }) => path !== "/api/v1/auth/status").length, 4);
+}
+
+async function testStorageFailureKeepsOnlyCurrentSystemObservation() {
+  let storageAvailable = true;
+  const { context, elements } = await createHarness(async (path) => {
+    if (path === "/api/v1/auth/status") return jsonResponse({ authenticated: true });
+    if (path === "/api/v1/system") return jsonResponse(systemFixture());
+    if (path === "/api/v1/storage") {
+      return storageAvailable ? jsonResponse({ observations: [{ name: "sda", kind: "block", major: 8, minor: 0, size_bytes: 2 ** 40 }] }) : jsonResponse({ error: "unavailable" }, 503);
+    }
+    if (path === "/api/v1/arrays") return jsonResponse(arraysFixture());
+    if (path === "/api/v1/mounts") return jsonResponse(mountsFixture());
+    throw new Error(`Unexpected request: ${path}`);
+  });
+
+  storageAvailable = false;
+  await context.refreshSnapshot();
+  assert.equal(elements["kernel-value"].textContent, "Linux 6.18.54");
+  assert.equal(elements["device-count"].textContent, "Storage unavailable");
+  assert.match(elements["device-list"].children[0].textContent, /no current device values/i);
+  assert.equal(elements["service-status-dot"].className.includes("is-degraded"), true);
+  assert.match(elements["snapshot-status"].textContent, /system.*current.*storage.*unavailable/i);
+  assert.match(elements["error-banner"].textContent, /no previous values are shown for the unavailable section/i);
+}
+
+async function testSystemFailureKeepsOnlyCurrentStorageObservation() {
+  let systemAvailable = true;
+  const { context, elements } = await createHarness(async (path) => {
+    if (path === "/api/v1/auth/status") return jsonResponse({ authenticated: true });
+    if (path === "/api/v1/system") return systemAvailable ? jsonResponse(systemFixture()) : jsonResponse({ error: "unavailable" }, 503);
+    if (path === "/api/v1/storage") return jsonResponse({ observations: [{ name: "sda", kind: "block", major: 8, minor: 0, size_bytes: 2 ** 40 }] });
+    if (path === "/api/v1/arrays") return jsonResponse(arraysFixture());
+    if (path === "/api/v1/mounts") return jsonResponse(mountsFixture());
+    throw new Error(`Unexpected request: ${path}`);
+  });
+
+  systemAvailable = false;
+  await context.refreshSnapshot();
+  assert.equal(elements["kernel-value"].textContent, "Unavailable");
+  assert.equal(elements["observed-at"].textContent, "No current system observation");
+  assert.equal(elements["profile-notice-title"].textContent, "System profile unavailable.");
+  assert.equal(elements["device-count"].textContent, "1 device");
+  assert.equal(elements["device-list"].children[0].children[0].children[1].children[0].textContent, "sda");
+  assert.equal(elements["service-status-dot"].className.includes("is-degraded"), true);
+  assert.match(elements["snapshot-status"].textContent, /storage.*current.*system.*unavailable/i);
+}
+
+async function testAllDiagnosticFailuresClearValues() {
+  const { context, elements } = await createHarness(async (path) => {
+    if (path === "/api/v1/auth/status") return jsonResponse({ authenticated: true });
+    if (path === "/api/v1/system" || path === "/api/v1/storage" || path === "/api/v1/arrays" || path === "/api/v1/mounts") return jsonResponse({ error: "unavailable" }, 503);
+    throw new Error(`Unexpected request: ${path}`);
+  });
+
+  assert.equal(elements["kernel-value"].textContent, "Unavailable");
+  assert.match(elements["snapshot-status"].textContent, /system, storage, RAID, and mount.*unavailable.*cleared/i);
+  assert.equal(elements["error-banner"].hidden, false);
+  assert.equal(elements["service-status-dot"].className.includes("is-unavailable"), true);
+  assert.match(elements["device-list"].children[0].textContent, /no current device values/i);
+}
+
+async function testMountFailureClearsOnlyMountObservation() {
+  let mountsAvailable = true;
+  const { context, elements } = await createHarness(async (path) => {
+    if (path === "/api/v1/auth/status") return jsonResponse({ authenticated: true });
+    if (path === "/api/v1/system") return jsonResponse(systemFixture());
+    if (path === "/api/v1/storage") return jsonResponse({ observations: [{ name: "sda", kind: "block", major: 8, minor: 0, size_bytes: 2 ** 40 }] });
+    if (path === "/api/v1/arrays") return jsonResponse(arraysFixture());
+    if (path === "/api/v1/mounts") return mountsAvailable ? jsonResponse(mountsFixture()) : jsonResponse({ error: "unavailable" }, 503);
+    throw new Error(`Unexpected request: ${path}`);
+  });
+
+  mountsAvailable = false;
+  await context.refreshSnapshot();
+  assert.equal(elements["kernel-value"].textContent, "Linux 6.18.54");
+  assert.equal(elements["device-count"].textContent, "1 device");
+  assert.equal(elements["array-count"].textContent, "2 arrays");
+  assert.equal(elements["mount-count"].textContent, "Mounts unavailable");
+  assert.match(elements["mount-list"].children[0].textContent, /no current mount values/i);
+  assert.equal(elements["service-status-dot"].className.includes("is-degraded"), true);
+  assert.match(elements["snapshot-status"].textContent, /system, storage, RAID.*current.*mount.*unavailable/i);
+}
+
+async function testGPTObservationRunsOnlyOnExplicitClickAndUsesRedactedCSRFRequest() {
+  const summary = {
+    schema_version: 1, status: "complete", scope: "manual-gpt-metadata-read-only",
+    eligible_candidate_count: 2, gpt_disk_count: 2, partition_count: 4,
+    unsupported_or_non_gpt_count: 0, gpt_coverage: "all-candidates-gpt",
+    ambiguous_disk_guid_count: 0, ambiguous_partuuid_count: 0, identity_evidence_incomplete: false,
+    content_read: false, mount_performed: false, assembly_performed: false, import_performed: false,
+    mutations_performed: false, limitations: ["one", "two", "three", "four", "five"],
+  };
+  const { elements, requests } = await createHarness(async (path, options) => {
+    if (path === "/api/v1/auth/status") return jsonResponse({ authenticated: true });
+    if (path === "/api/v1/auth/session") return jsonResponse({ csrf_token: "x".repeat(43) });
+    if (path === "/api/v1/storage/gpt-observation") return jsonResponse(summary);
+    if (path === "/api/v1/system") return jsonResponse(systemFixture());
+    if (path === "/api/v1/storage") return jsonResponse({ observations: [] });
+    if (path === "/api/v1/arrays") return jsonResponse(arraysFixture());
+    if (path === "/api/v1/mounts") return jsonResponse(mountsFixture());
+    throw new Error(`Unexpected request: ${path} ${JSON.stringify(options)}`);
+  });
+
+  assert.equal(elements["gpt-observation-status"].textContent.includes("Complete observation"), false);
+  assert.equal(requests.some(({ path }) => path === "/api/v1/storage/gpt-observation"), false,
+    "page load and the ordinary refresh must not probe GPT metadata");
+  await elements["gpt-observe"].listeners.get("click")();
+  const request = requests.find(({ path }) => path === "/api/v1/storage/gpt-observation");
+  assert.ok(request);
+  assert.equal(request.options.method, "POST");
+  assert.equal(request.options.headers["X-PhantoWD-CSRF"], "x".repeat(43));
+  assert.equal(request.options.headers["Content-Type"], undefined);
+  assert.equal(request.options.body, undefined);
+  assert.equal(request.options.credentials, "same-origin");
+  assert.match(elements["gpt-observation-status"].textContent, /2 eligible candidates; 2 GPT disks; 4 GPT partitions/);
+  assert.equal(elements["gpt-observation-status"].textContent.includes("12345678-1234"), false);
+  assert.equal(elements["gpt-observe"].disabled, false);
+
+  Object.assign(summary, {
+    eligible_candidate_count: 6, gpt_disk_count: 6, partition_count: 1536,
+    ambiguous_partuuid_count: 1536, unsupported_or_non_gpt_count: 0,
+  });
+  await elements["gpt-observe"].listeners.get("click")();
+  assert.match(elements["gpt-observation-status"].textContent, /6 eligible candidates; 6 GPT disks; 1536 GPT partitions/,
+    "the UI must accept the bounded six-device QEMU fixture without weakening validation");
+}
+
+function policyFixture() {
+  return { schema_version: 1, scope: "desired-policy-only", persisted: false, applied: false, runtime_validated: false, activation_available: false,
+    requirements: ["runtime_volume_identity", "path_and_mount_containment", "unix_accounts_and_effective_access", "durable_configuration", "service_activation_lifecycle", "cross_protocol_access_review"],
+    samba: { samba_share_sections: "[Books]\npath = /example/<script>" }, nfs: { exports_table: "/example client(ro)" } };
+}
+
+function fillPolicy(elements) {
+  const values = { uuid: "11111111-2222-3333-4444-555555555555", name: "Books", path: "books", user: "reader", "smb-access": "ro", "nfs-enabled": "on", "export-id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee", network: "192.0.2.10/32", "nfs-access": "ro", squash: "all", uid: "65534", gid: "65534", security: "sys" };
+  for (const [id, value] of Object.entries(values)) elements[`policy-${id}`].value = value;
+}
+
+async function policyHarness(previewResponse = () => jsonResponse(policyFixture()), sessionResponse = () => jsonResponse({ csrf_token: "fixture-only" }), savedResponse = () => jsonResponse(savedFixture())) {
+  return createHarness(async (path, options) => {
+    if (path === "/api/v1/shares/configuration") return savedResponse(options);
+    if (path === "/api/v1/auth/status") return jsonResponse({ authenticated: true });
+    if (path === "/api/v1/auth/session") return sessionResponse();
+    if (path === "/api/v1/file-services/preview") return previewResponse(options);
+    if (path === "/api/v1/system") return jsonResponse(systemFixture());
+    if (path === "/api/v1/storage") return jsonResponse({ observations: [] });
+    if (path === "/api/v1/arrays") return jsonResponse(arraysFixture());
+    if (path === "/api/v1/mounts") return jsonResponse(mountsFixture());
+    throw new Error(`Unexpected request ${path}`);
+  });
+}
+
+async function testPolicyBuilderAndSafePreview() {
+  const overlapPreview = policyFixture();
+  overlapPreview.requirements.push("cross_protocol_path_overlap");
+  const { context, elements, requests } = await policyHarness(() => jsonResponse(overlapPreview));
+  fillPolicy(elements);
+  context.syncPolicyNFS();
+  assert.equal(elements["policy-nfs-fields"].disabled, false);
+  await context.submitPolicyProposal({ preventDefault() {} });
+  const request = requests.find(({ path }) => path.endsWith("/preview"));
+  assert.equal(request.options.method, "POST");
+  assert.equal(request.options.headers["X-PhantoWD-CSRF"], "fixture-only");
+  assert.equal(request.options.credentials, "same-origin");
+  const proposal = JSON.parse(request.options.body);
+  assert.equal(proposal.shares.volumes[0].filesystem_uuid, elements["policy-uuid"].value);
+  assert.equal(proposal.shares.shares[0].grants[0].access, "ro");
+  assert.equal(proposal.nfs.volume_revision, proposal.shares.revision);
+  assert.equal(proposal.nfs.exports[0].clients[0].anonymous_uid, 65534);
+  assert.equal(proposal.nfs.exports[0].clients[0].squash, "all");
+  assert.equal(elements["policy-result"].hidden, false);
+  assert.match(elements["policy-status"].textContent, /Not saved or applied/);
+  assert.ok(elements["policy-requirements"].children.some((item) => /configured SMB\/NFS paths overlap/i.test(item.textContent)),
+    "the preview should explain configured cross-protocol path overlap");
+  assert.equal(elements["policy-samba"].textContent, policyFixture().samba.samba_share_sections);
+  assert.equal(elements["policy-samba"].children.length, 0);
+  elements["policy-form"].listeners.get("input")();
+  assert.equal(elements["policy-result"].hidden, true);
+  assert.equal(elements["policy-samba"].textContent, "");
+  elements["policy-nfs-enabled"].value = "off";
+  elements["policy-uid"].value = "invalid ignored when disabled";
+  context.syncPolicyNFS();
+  assert.equal(elements["policy-nfs-fields"].disabled, true);
+  assert.equal(context.buildPolicyProposal().nfs.exports.length, 0);
+  context.clearPolicyDraft();
+  assert.equal(elements["policy-uuid"].value, "");
+  assert.equal(elements["policy-nfs-enabled"].value, "off");
+  assert.equal(elements["policy-submit"].disabled, false);
+}
+
+async function testPolicyFailuresAndStaleResponses() {
+  for (const response of [jsonResponse({}, 422), jsonResponse({}, 403), jsonResponse({}, 503), jsonResponse({ ...policyFixture(), applied: true }), jsonResponse({ ...policyFixture(), applied: undefined }), jsonResponse({ ...policyFixture(), requirements: ["__proto__"] }), jsonResponse({ ...policyFixture(), requirements: [] })]) {
+    const { context, elements } = await policyHarness(() => response);
+    fillPolicy(elements);
+    await context.submitPolicyProposal({ preventDefault() {} });
+    assert.equal(elements["policy-result"].hidden, true);
+    assert.equal(elements["policy-error"].hidden, false);
+    assert.equal(elements["policy-submit"].disabled, false);
+  }
+  const { context, elements, requests } = await policyHarness();
+  fillPolicy(elements);
+  elements["policy-uid"].value = "1e3";
+  await context.submitPolicyProposal({ preventDefault() {} });
+  assert.match(elements["policy-error"].textContent, /whole numbers/);
+  assert.equal(requests.some(({ path }) => path.endsWith("/session")), false);
+  for (const sessionReply of [jsonResponse({}, 503), jsonResponse({}), jsonResponse({ csrf_token: "" })]) {
+    const harness = await policyHarness(undefined, () => sessionReply);
+    fillPolicy(harness.elements);
+    await harness.context.submitPolicyProposal({ preventDefault() {} });
+    assert.equal(harness.requests.some(({ path }) => path.endsWith("/preview")), false);
+    assert.equal(harness.elements["policy-error"].hidden, false);
+  }
+  const timedOut = await policyHarness(() => { const error = new Error("aborted"); error.name = "AbortError"; throw error; });
+  fillPolicy(timedOut.elements);
+  await timedOut.context.submitPolicyProposal({ preventDefault() {} });
+  assert.match(timedOut.elements["policy-error"].textContent, /timed out/);
+  timedOut.context.showAuthUnavailable();
+  assert.equal(timedOut.elements["policy-user"].value, "");
+
+  for (const duringSession of [false, true]) {
+    let release;
+    const pending = new Promise((resolve) => { release = resolve; });
+    const harness = await policyHarness(duringSession ? undefined : () => pending, duringSession ? () => pending : undefined);
+    fillPolicy(harness.elements);
+    const operation = harness.context.submitPolicyProposal({ preventDefault() {} });
+    await new Promise((resolve) => setImmediate(resolve));
+    await harness.context.submitPolicyProposal({ preventDefault() {} }); // duplicate ignored
+    harness.context.clearPolicyDraft(); // also used at logout/auth loss
+    release(duringSession ? jsonResponse({ csrf_token: "fixture-only" }) : jsonResponse(policyFixture()));
+    await operation;
+    assert.equal(harness.elements["policy-result"].hidden, true);
+    assert.equal(harness.elements["policy-samba"].textContent, "");
+    assert.equal(harness.elements["policy-uuid"].value, "");
+    assert.equal(harness.requests.filter(({ path }) => path.endsWith("/preview")).length, duringSession ? 0 : 1);
+  }
+}
+
+function savedFixture() {
+  return {
+    schema_version: 1, scope: "stored-desired-share-policy-only", initialized: true,
+    runtime_validated: false, activation_available: false,
+    configuration: {
+      format: "phantowd-share-config", schema_version: 1, revision: 4,
+      volumes: [{ id: "media", filesystem_uuid: "11111111-2222-3333-4444-555555555555" }],
+      users: [{ id: "reader", name: "reader" }],
+      shares: [{ id: "books", name: "Books", volume_id: "media", relative_path: "books", grants: [{ user_id: "reader", access: "ro" }] }],
+    },
+  };
+}
+
+async function testSavedPolicyStatesAndSafeRendering() {
+  let response = jsonResponse(savedFixture());
+  const { context, elements, requests } = await policyHarness(undefined, undefined, () => response);
+  assert.equal(requests.some(({ path }) => path.endsWith("/configuration")), false, "loading must be explicit");
+  await elements["saved-load"].listeners.get("click")();
+  const request = requests.find(({ path }) => path.endsWith("/configuration"));
+  assert.equal(request.options.method, "GET");
+  assert.equal(request.options.credentials, "same-origin");
+  assert.equal(request.options.cache, "no-store");
+  assert.equal(request.options.body, undefined);
+  assert.equal(elements["saved-result"].hidden, false);
+  assert.match(elements["saved-summary"].textContent, /Revision 4/);
+  assert.match(elements["saved-status"].textContent, /Runtime access has not been verified/);
+  const row = elements["saved-shares"].children[0];
+  assert.equal(row.children[0].textContent, "Books");
+  assert.equal(row.children[1].textContent, "media / books");
+  assert.match(row.children[3].children[1].textContent, /reader: read only/);
+
+  // Even a hostile, structurally valid reply is rendered as text, never markup.
+  const hostile = savedFixture();
+  hostile.configuration.shares[0].name = "<img src=x onerror=alert(1)>";
+  hostile.configuration.shares[0].relative_path = "<script>payload</script>";
+  response = jsonResponse(hostile);
+  await context.loadSavedPolicy();
+  assert.equal(elements["saved-shares"].children[0].children[0].textContent, hostile.configuration.shares[0].name);
+  assert.equal(elements["saved-shares"].children[0].children[0].children.length, 0);
+
+  const empty = savedFixture();
+  empty.configuration.shares = [];
+  response = jsonResponse(empty);
+  await context.loadSavedPolicy();
+  assert.equal(elements["saved-result"].hidden, false);
+  assert.equal(elements["saved-shares"].children.length, 0);
+  assert.match(elements["saved-status"].textContent, /no shares are defined/);
+
+  for (const [reply, expected] of [
+    [jsonResponse({ ...savedFixture(), initialized: false, configuration: null }), /no share policy has been initialized/],
+    [jsonResponse({ error: "share_configuration_not_configured" }, 503), /storage is not connected/],
+    [jsonResponse({ error: "share_configuration_unavailable" }, 503), /unavailable or busy/],
+    [jsonResponse({}, 403), /unavailable or busy/],
+    [Object.assign(new Error("private backend details"), { name: "AbortError" }), /timed out/],
+    [new Error("private backend details"), /could not be verified/],
+  ]) {
+    response = jsonResponse(savedFixture());
+    await context.loadSavedPolicy();
+    response = reply;
+    await context.loadSavedPolicy();
+    assert.equal(elements["saved-result"].hidden, true);
+    assert.equal(elements["saved-shares"].children.length, 0);
+    assert.equal(elements["saved-summary"].textContent, "");
+    assert.match(elements["saved-status"].textContent, expected);
+    assert.doesNotMatch(elements["saved-status"].textContent, /private/);
+    assert.equal(elements["saved-load"].disabled, false);
+  }
+}
+
+async function testSavedPolicyMalformedReplies() {
+  for (const mutate of [
+    (r) => { r.schema_version = 2; },
+    (r) => { r.scope = "active-shares"; },
+    (r) => { delete r.runtime_validated; },
+    (r) => { r.activation_available = true; },
+    (r) => { r.initialized = false; },
+    (r) => { r.configuration = null; },
+    (r) => { r.configuration.format = "unknown"; },
+    (r) => { r.configuration.revision = Number.MAX_SAFE_INTEGER + 1; },
+    (r) => { r.configuration.volumes.push(r.configuration.volumes[0]); },
+    (r) => { r.configuration.volumes = Array(17).fill(r.configuration.volumes[0]); },
+    (r) => { r.configuration.volumes[0].filesystem_uuid = "not-a-uuid"; },
+    (r) => { r.configuration.users.push(r.configuration.users[0]); },
+    (r) => { r.configuration.shares[0].volume_id = "missing"; },
+    (r) => { r.configuration.shares[0].grants[0].user_id = "missing"; },
+    (r) => { r.configuration.shares[0].grants[0].access = "admin"; },
+    (r) => { r.configuration.shares[0].grants.push(r.configuration.shares[0].grants[0]); },
+    (r) => { r.configuration.shares[0].relative_path = "x".repeat(1025); },
+  ]) {
+    const reply = savedFixture(); mutate(reply);
+    const { context, elements } = await policyHarness(undefined, undefined, () => jsonResponse(reply));
+    await context.loadSavedPolicy();
+    assert.equal(elements["saved-result"].hidden, true);
+    assert.match(elements["saved-status"].textContent, /could not be verified/);
+    assert.equal(elements["saved-shares"].children.length, 0);
+  }
+}
+
+async function testSavedPolicyLateRepliesAndAuthLoss() {
+  for (const delayedBody of [false, true]) {
+    for (const reset of ["clear", "auth-loss", "logout"]) {
+      let release;
+      const pending = new Promise((resolve) => { release = resolve; });
+      const harness = await policyHarness(undefined, () => jsonResponse({}, 503), () =>
+        delayedBody ? { ok: true, status: 200, json: () => pending } : pending);
+      const { context, elements, requests } = harness;
+      const operation = context.loadSavedPolicy();
+      await new Promise((resolve) => setImmediate(resolve));
+      assert.equal(elements["saved-load"].disabled, true);
+      await context.loadSavedPolicy(); // duplicate ignored
+      if (reset === "clear") context.clearSavedPolicy();
+      if (reset === "auth-loss") context.showAuthUnavailable();
+      if (reset === "logout") await elements.logout.listeners.get("click")();
+      release(delayedBody ? savedFixture() : jsonResponse(savedFixture()));
+      await operation;
+      assert.equal(requests.filter(({ path }) => path.endsWith("/configuration")).length, 1);
+      assert.equal(requests.find(({ path }) => path.endsWith("/configuration")).options.signal.aborted, true);
+      assert.equal(elements["saved-result"].hidden, true);
+      assert.equal(elements["saved-shares"].children.length, 0);
+      assert.equal(elements["saved-load"].disabled, false);
+    }
+  }
+  for (const statusFails of [false, true]) {
+    let expired = false;
+    const { context, elements } = await createHarness(async (path) => {
+      if (path === "/api/v1/auth/status") return jsonResponse({ authenticated: !expired, setup_required: false }, expired && statusFails ? 503 : 200);
+      if (path === "/api/v1/shares/configuration") { expired = true; return jsonResponse({}, 401); }
+      if (path === "/api/v1/system") return jsonResponse(systemFixture());
+      if (path === "/api/v1/storage") return jsonResponse({ observations: [] });
+      if (path === "/api/v1/arrays") return jsonResponse(arraysFixture());
+      if (path === "/api/v1/mounts") return jsonResponse(mountsFixture());
+      throw new Error(`Unexpected request ${path}`);
+    });
+    await context.loadSavedPolicy();
+    assert.equal(elements["dashboard-content"].hidden, true);
+    assert.equal(elements["auth-panel"].hidden, false);
+    assert.equal(elements["saved-result"].hidden, true);
+  }
+}
+
+function serviceReply(configuration) {
+  return { schema_version: 1, scope: "development-stored-file-service-policy-only", initialized: configuration !== null,
+    configuration, applied: false, runtime_validated: false, activation_available: false };
+}
+
+function serviceSaved(revision) {
+  return { schema_version: 1, scope: "development-stored-file-service-policy-only", revision, saved: true,
+    applied: false, runtime_validated: false, activation_available: false };
+}
+
+async function serviceHarness(stateResponse, previewResponse = () => jsonResponse(policyFixture()), sessionResponse = () => jsonResponse({ csrf_token: "fixture-only" })) {
+  return createHarness(async (path, options) => {
+    if (path === "/api/v1/file-services/configuration") return stateResponse(options);
+    if (path === "/api/v1/auth/status") return jsonResponse({ authenticated: true });
+    if (path === "/api/v1/auth/session") return sessionResponse();
+    if (path === "/api/v1/file-services/preview") return previewResponse(options);
+    if (path === "/api/v1/system") return jsonResponse(systemFixture());
+    if (path === "/api/v1/storage") return jsonResponse({ observations: [] });
+    if (path === "/api/v1/arrays") return jsonResponse(arraysFixture());
+    if (path === "/api/v1/mounts") return jsonResponse(mountsFixture());
+    throw new Error(`Unexpected request ${path}`);
+  });
+}
+
+async function testServiceAddAndPreserve() {
+  let saved = null;
+  const { context, elements, requests } = await serviceHarness((options) => {
+    if (options.method === "PUT") { saved = JSON.parse(options.body); return jsonResponse(serviceSaved(saved.revision)); }
+    return jsonResponse(serviceReply(saved));
+  });
+  await context.saveServiceChange();
+  assert.equal(requests.some(({ options }) => options?.method === "PUT"), false);
+  await context.loadServicePolicy();
+  assert.match(elements["service-summary"].textContent, /no configuration initialized/);
+  fillPolicy(elements);
+  await context.prepareServiceAddition();
+  assert.equal(elements["service-save"].disabled, false);
+  assert.equal(elements["service-review"].hidden, false);
+  assert.equal(requests.some(({ options }) => options?.method === "PUT"), false, "preview must not save");
+  assert.match(elements["service-samba"].textContent, /<script>/, "render as text only");
+  await context.saveServiceChange();
+  assert.equal(saved.revision, 1);
+  assert.equal(saved.nfs.volume_revision, 1);
+  assert.equal(saved.shares.volumes.length, 1);
+  const previous = structuredClone(saved);
+  assert.match(elements["service-status"].textContent, /confirmed saved.*No services were activated/);
+  elements["policy-name"].value = "Comics"; elements["policy-path"].value = "comics";
+  elements["policy-export-id"].value = "bbbbbbbb-bbbb-cccc-dddd-eeeeeeeeeeee";
+  context.invalidatePolicyPreview();
+  await context.prepareServiceAddition(); await context.saveServiceChange();
+  assert.equal(saved.revision, 2);
+  assert.deepEqual(saved.shares.shares[0], previous.shares.shares[0]);
+  assert.deepEqual(saved.nfs.exports[0], previous.nfs.exports[0]);
+  assert.equal(saved.shares.volumes.length, 1, "reuse same UUID");
+  assert.equal(saved.shares.users.length, 1, "reuse named account reference");
+  assert.equal(saved.shares.shares.length, 2);
+  assert.notEqual(saved.shares.shares[0].id, saved.shares.shares[1].id);
+  await context.prepareServiceAddition();
+  assert.match(elements["service-status"].textContent, /already exists/);
+  assert.equal(elements["service-save"].disabled, true);
+  assert.equal(requests.filter(({ options }) => options?.method === "PUT").length, 2);
+  for (const { options } of requests.filter(({ options }) => options?.method === "PUT")) {
+    assert.equal(options.headers["X-PhantoWD-CSRF"], "fixture-only");
+    assert.equal(options.credentials, "same-origin");
+    assert.equal(options.cache, "no-store");
+  }
+}
+
+async function testServiceUncertainAndConflict() {
+  for (const result of ["lost-but-saved", "lost-not-saved", "conflict", "invalid-success", "unavailable"]) {
+    let saved = null;
+    const { context, elements, requests } = await serviceHarness((options) => {
+      if (options.method === "PUT") {
+        if (result === "lost-but-saved") saved = JSON.parse(options.body);
+        if (result === "conflict") return jsonResponse({}, 409);
+        if (result === "unavailable") return jsonResponse({}, 503);
+        if (result === "invalid-success") return jsonResponse({ saved: true });
+        return new Error("private transport detail");
+      }
+      // Change object-key order; the full structure, not raw serialization, matters.
+      return jsonResponse(serviceReply(saved === null ? null : Object.fromEntries(Object.entries(saved).reverse())));
+    });
+    fillPolicy(elements); await context.loadServicePolicy(); await context.prepareServiceAddition(); await context.saveServiceChange();
+    assert.match(elements["service-status"].textContent, result === "conflict" ? /Revision conflict.*refused/ : /not confirmed.*may have committed/);
+    assert.equal(elements["service-save"].disabled, true);
+    assert.equal(elements["service-prepare"].disabled, true);
+    await context.saveServiceChange(); await context.prepareServiceAddition();
+    assert.equal(requests.filter(({ options }) => options?.method === "PUT").length, 1);
+    await context.loadServicePolicy();
+    assert.match(elements["service-status"].textContent, result === "lost-but-saved" ? /complete attempted configuration.*confirmed saved/ : /differs.*not retried/);
+    assert.equal(requests.filter(({ options }) => options?.method === "PUT").length, 1);
+    assert.equal(elements["service-prepare"].disabled, false);
+  }
+  // Same revision with different content is never confirmation.
+  const { context, elements } = await serviceHarness(() => jsonResponse(serviceReply(null)));
+  fillPolicy(elements);
+  const proposal = context.buildPolicyProposal();
+  const a = context.buildServiceAddition(null, proposal);
+  const b = structuredClone(a); b.shares.shares[0].name = "Different";
+  assert.equal(context.sameServiceDocument(a, b), false);
+}
+
+async function testServiceRefusalsAndInvalidation() {
+  for (const reply of [jsonResponse({}, 503), jsonResponse(serviceReply({ revision: 1 })), new Error("private failure")]) {
+    const { context, elements, requests } = await serviceHarness(() => reply);
+    fillPolicy(elements); await context.loadServicePolicy(); await context.prepareServiceAddition(); await context.saveServiceChange();
+    assert.equal(elements["service-current"].hidden, true);
+    assert.equal(elements["service-save"].disabled, true);
+    assert.equal(requests.some(({ options }) => options?.method === "PUT"), false);
+    assert.doesNotMatch(elements["service-status"].textContent, /private failure/);
+  }
+  const { context, elements, requests } = await serviceHarness(() => jsonResponse(serviceReply(null)), () => jsonResponse({}, 422));
+  fillPolicy(elements); await context.loadServicePolicy(); await context.prepareServiceAddition(); await context.saveServiceChange();
+  assert.equal(elements["service-save"].disabled, true);
+  assert.equal(requests.some(({ options }) => options?.method === "PUT"), false);
+  for (const boundary of ["preview", "save-session", "save-reply", "load"]) {
+    let release, delay = false;
+    const pending = new Promise((resolve) => { release = resolve; });
+    const h = await serviceHarness((options) => {
+      if (boundary === "load" && delay) return pending;
+      if (options.method === "PUT") return boundary === "save-reply" ? pending : jsonResponse(serviceSaved(1));
+      return jsonResponse(serviceReply(null));
+    }, () => boundary === "preview" ? pending : jsonResponse(policyFixture()),
+    () => boundary === "save-session" && delay ? pending : jsonResponse({ csrf_token: "fixture-only" }));
+    fillPolicy(h.elements); await h.context.loadServicePolicy();
+    if (boundary !== "preview") await h.context.prepareServiceAddition();
+    delay = true;
+    const operation = boundary === "preview" ? h.context.prepareServiceAddition() : boundary === "load" ? h.context.loadServicePolicy() : h.context.saveServiceChange();
+    await new Promise((resolve) => setImmediate(resolve));
+    // Auth loss must cancel and prevent a late response from restoring sensitive data.
+    h.context.showAuthUnavailable();
+    release(jsonResponse(boundary === "preview" ? policyFixture() : boundary === "save-session" ? { csrf_token: "fixture-only" } : boundary === "load" ? serviceReply(null) : serviceSaved(1)));
+    await operation;
+    assert.equal(h.elements["service-review"].hidden, true);
+    assert.equal(h.elements["service-current"].hidden, true);
+    assert.equal(h.elements["service-document"].textContent, "");
+    assert.equal(h.elements["service-diff"].children.length, 0);
+    assert.equal(h.elements["service-diff-summary"].textContent, "");
+    assert.equal(h.elements["service-overlaps"].children.length, 0);
+    assert.equal(h.elements["service-overlap-summary"].textContent, "");
+    assert.equal(h.elements["service-save"].disabled, true);
+    assert.equal(h.requests.filter(({ options }) => options?.method === "PUT").length, boundary === "save-reply" ? 1 : 0);
+  }
+}
+
+async function testServiceFormEditsAndReconcileFailure() {
+  for (const phase of ["preview", "save-session"]) {
+    let release, delay = false;
+    const pending = new Promise((resolve) => { release = resolve; });
+    const { context, elements, requests } = await serviceHarness(() => jsonResponse(serviceReply(null)),
+      () => phase === "preview" && delay ? pending : jsonResponse(policyFixture()),
+      () => phase === "save-session" && delay ? pending : jsonResponse({ csrf_token: "fixture-only" }));
+    fillPolicy(elements); await context.loadServicePolicy();
+    if (phase === "save-session") await context.prepareServiceAddition();
+    delay = true;
+    const operation = phase === "preview" ? context.prepareServiceAddition() : context.saveServiceChange();
+    await new Promise((resolve) => setImmediate(resolve));
+    elements["policy-name"].value = "Edited during request";
+    context.invalidatePolicyPreview();
+    release(jsonResponse(phase === "preview" ? policyFixture() : { csrf_token: "fixture-only" }));
+    await operation;
+    assert.equal(elements["service-save"].disabled, true);
+    assert.equal(elements["service-review"].hidden, true);
+    assert.match(elements["service-status"].textContent, /Form changed/);
+    assert.equal(requests.some(({ options }) => options?.method === "PUT"), false);
+  }
+  let failed = false;
+  const { context, elements, requests } = await serviceHarness((options) => {
+    if (options.method === "PUT") { failed = true; return new Error("lost response"); }
+    return failed ? jsonResponse({}, 503) : jsonResponse(serviceReply(null));
+  });
+  fillPolicy(elements); await context.loadServicePolicy(); await context.prepareServiceAddition(); await context.saveServiceChange();
+  await context.loadServicePolicy(); await context.prepareServiceAddition(); await context.saveServiceChange();
+  assert.equal(elements["service-save"].disabled, true);
+  assert.equal(elements["service-prepare"].disabled, true);
+  assert.equal(elements["service-current"].hidden, true);
+  assert.equal(requests.filter(({ options }) => options?.method === "PUT").length, 1);
+}
+
+await testServiceAddAndPreserve();
+await testServiceUncertainAndConflict();
+await testServiceRefusalsAndInvalidation();
+await testServiceFormEditsAndReconcileFailure();
+await testServiceEditingContracts();
+await testServiceEditorInteraction();
+await testSavedPolicyStatesAndSafeRendering();
+await testSavedPolicyMalformedReplies();
+await testSavedPolicyLateRepliesAndAuthLoss();
+await testPolicyBuilderAndSafePreview();
+await testPolicyFailuresAndStaleResponses();
+await testReadOnlySnapshotAndSafeRendering();
+await testUnavailableAuthIsVisibleAndRetryable();
+await testExpiredSessionReturnsToLogin();
+await testSnapshotLateSuccessCannotSurviveAuthBoundary();
+await testSnapshotLateErrorsDoNotChangeUnavailableAuth();
+await testSnapshotLateAuthBodyCannotReplaceNewSession();
+await testSnapshotReadIsSingleFlight();
+await testSnapshotDeadlineIncludesBodyAndDoesNotRetry();
+await testStorageFailureKeepsOnlyCurrentSystemObservation();
+await testSystemFailureKeepsOnlyCurrentStorageObservation();
+await testAllDiagnosticFailuresClearValues();
+await testMountFailureClearsOnlyMountObservation();
+await testGPTObservationRunsOnlyOnExplicitClickAndUsesRedactedCSRFRequest();
+
+async function editorFixture() {
+  const h = await serviceHarness(() => jsonResponse(serviceReply(null)));
+  fillPolicy(h.elements);
+  const original = h.context.buildServiceAddition(null, h.context.buildPolicyProposal());
+  const c = JSON.parse(JSON.stringify(original));
+  c.shares.users.push({ id: "user-2", name: "writer" });
+  c.shares.shares[0].grants.push({ user_id: "user-2", access: "rw" });
+  c.shares.shares.push({ id: "share-2", name: "Other", volume_id: "volume-1", relative_path: "other", grants: [{ user_id: "user-2", access: "rw" }] });
+  c.nfs.exports[0].clients.push({ ...c.nfs.exports[0].clients[0], network: "192.0.2.11/32", access: "rw" });
+  c.nfs.exports.push({ ...structuredClone(c.nfs.exports[0]), id: "bbbbbbbb-bbbb-cccc-dddd-eeeeeeeeeeee", relative_path: "other" });
+  const values = Object.fromEntries(Object.entries(h.elements).filter(([id]) => id.startsWith("policy-")).map(([id, element]) => [id.slice(7), element.value]));
+  return { c, values, ...h };
+}
+
+async function testServiceEditingContracts() {
+  const { context, c, values } = await editorFixture();
+  const initial = structuredClone(c);
+  const edit = (action, target, overrides = {}) => JSON.parse(JSON.stringify(context.buildServiceEdit(c, action, target, { ...values, ...overrides }).configuration));
+  const smb = "smb:share-1", nfs = `nfs:${c.nfs.exports[0].id}`;
+  const shared = (result) => {
+    assert.equal(result.revision, 2);
+    assert.equal(result.shares.revision, 2);
+    assert.equal(result.nfs.revision, 2);
+    assert.equal(result.nfs.volume_revision, 2);
+    assert.deepEqual(c, initial, "source snapshot mutated");
+  };
+  let result = edit("smb-properties", smb, { name: "Renamed", path: "new-folder" }); shared(result);
+  assert.equal(result.shares.shares[0].id, "share-1");
+  assert.equal(result.shares.shares[0].relative_path, "new-folder");
+  assert.deepEqual(result.shares.shares[0].grants, c.shares.shares[0].grants);
+  assert.deepEqual(result.shares.shares[1], c.shares.shares[1]);
+  assert.deepEqual(result.nfs.exports, c.nfs.exports);
+  result = edit("smb-grant-upsert", smb, { "smb-access": "rw" }); shared(result);
+  assert.deepEqual(result.shares.shares[0].grants, [{ user_id: "user-1", access: "rw" }, c.shares.shares[0].grants[1]]);
+  assert.deepEqual(result.nfs.exports, c.nfs.exports);
+  result = edit("smb-grant-upsert", smb, { user: "newreader" }); shared(result);
+  assert.equal(result.shares.users[2].name, "newreader");
+  assert.equal(result.shares.shares[0].grants.length, 3);
+  assert.deepEqual(result.shares.shares[0].grants.slice(0, 2), c.shares.shares[0].grants);
+  result = edit("smb-grant-remove", smb); shared(result);
+  assert.deepEqual(result.shares.shares[0].grants, [c.shares.shares[0].grants[1]]);
+  assert.deepEqual(result.shares.users, c.shares.users);
+  result = edit("smb-remove", smb); shared(result);
+  assert.deepEqual(result.shares.shares, [c.shares.shares[1]]);
+  assert.deepEqual(result.shares.volumes, c.shares.volumes);
+  assert.deepEqual(result.shares.users, c.shares.users);
+  assert.deepEqual(result.nfs.exports, c.nfs.exports, "SMB removal touched NFS");
+  result = edit("nfs-properties", nfs, { path: "new-nfs-path" }); shared(result);
+  assert.equal(result.nfs.exports[0].id, c.nfs.exports[0].id);
+  assert.deepEqual(result.nfs.exports[0].clients, c.nfs.exports[0].clients);
+  assert.deepEqual(result.shares.shares, c.shares.shares);
+  result = edit("nfs-client-upsert", nfs, { "nfs-access": "rw", uid: "1000", gid: "1000" }); shared(result);
+  assert.equal(result.nfs.exports[0].clients[0].anonymous_uid, 1000);
+  assert.deepEqual(result.nfs.exports[0].clients[1], c.nfs.exports[0].clients[1]);
+  assert.deepEqual(result.nfs.exports[1], c.nfs.exports[1]);
+  result = edit("nfs-client-upsert", nfs, { network: "192.0.2.12/32" }); shared(result);
+  assert.equal(result.nfs.exports[0].clients.length, 3);
+  assert.deepEqual(result.nfs.exports[0].clients.slice(0, 2), c.nfs.exports[0].clients);
+  result = edit("nfs-client-remove", nfs); shared(result);
+  assert.deepEqual(result.nfs.exports[0].clients, [c.nfs.exports[0].clients[1]]);
+  result = edit("nfs-remove", nfs); shared(result);
+  assert.deepEqual(result.nfs.exports, [c.nfs.exports[1]]);
+  assert.deepEqual(result.shares, { ...c.shares, revision: 2 });
+  result = edit("nfs-add", "", { path: "independent", "export-id": "cccccccc-bbbb-cccc-dddd-eeeeeeeeeeee" }); shared(result);
+  assert.deepEqual(result.nfs.exports.slice(0, 2), c.nfs.exports);
+  assert.deepEqual(result.shares, { ...c.shares, revision: 2 });
+  assert.equal(result.nfs.exports[2].relative_path, "independent");
+  for (const [action, target, overrides] of [
+    ["smb-remove", "smb:missing", {}], ["smb-remove", nfs, {}], ["nfs-remove", smb, {}],
+    ["smb-properties", smb, {}], ["smb-properties", smb, { name: "Other" }],
+    ["smb-grant-remove", smb, { user: "missing" }], ["smb-grant-remove", "smb:share-2", { user: "writer" }],
+    ["nfs-client-remove", nfs, { network: "192.0.2.99/32" }], ["nfs-add", "", {}],
+    ["nfs-client-upsert", nfs, { uid: "0" }], ["nfs-client-upsert", nfs, { gid: "4294967295" }],
+  ]) assert.throws(() => edit(action, target, overrides));
+  const only = structuredClone(c); only.nfs.exports[0].clients.splice(1);
+  assert.throws(() => context.buildServiceEdit(only, "nfs-client-remove", nfs, values), /last client/);
+  const standalone = context.buildServiceEdit(null, "nfs-add", "", values).configuration;
+  assert.equal(standalone.shares.shares.length, 0);
+  assert.equal(standalone.shares.users.length, 0);
+  assert.equal(standalone.nfs.exports.length, 1);
+}
+
+async function testServiceEditorInteraction() {
+  const { c } = await editorFixture();
+  let stored = c;
+  const { context, elements, requests } = await serviceHarness((options) => {
+    if (options.method === "PUT") { stored = JSON.parse(options.body); return jsonResponse(serviceSaved(stored.revision)); }
+    return jsonResponse(serviceReply(stored));
+  });
+  fillPolicy(elements); await context.loadServicePolicy();
+  assert.equal(elements["service-target"].children.length, 5);
+  elements["service-target"].value = "smb:share-1";
+  context.selectServiceTarget();
+  assert.equal(elements["policy-name"].value, "Books");
+  assert.equal(elements["service-member"].children.length, 3);
+  elements["service-member"].value = "user-2"; context.selectServiceMember();
+  assert.equal(elements["policy-user"].value, "writer");
+  assert.equal(elements["policy-smb-access"].value, "rw");
+  elements["service-action"].value = "smb-remove"; context.selectServiceAction();
+  await context.prepareServiceEdit();
+  assert.match(elements["service-change"].textContent, /Remove only SMB.*does not revoke NFS/);
+  assert.equal(requests.some(({ options }) => options?.method === "PUT"), false);
+  await context.saveServiceChange();
+  assert.deepEqual(stored.nfs.exports, c.nfs.exports);
+  assert.equal(stored.shares.shares.length, 1);
+  assert.equal(elements["service-target"].value, "", "selection resets after commit");
+  elements["service-target"].value = `nfs:${c.nfs.exports[0].id}`;
+  context.selectServiceTarget();
+  assert.equal(elements["policy-nfs-enabled"].value, "on");
+  elements["service-member"].value = "192.0.2.11/32"; context.selectServiceMember();
+  assert.equal(elements["policy-network"].value, "192.0.2.11/32");
+  assert.equal(elements["policy-nfs-access"].value, "rw");
+  elements["service-action"].value = "nfs-client-remove"; context.selectServiceAction();
+  await context.prepareServiceEdit();
+  assert.equal(elements["service-save"].disabled, false);
+  // A changed action invalidates the candidate even if the form is untouched.
+  elements["service-action"].value = "nfs-remove"; context.selectServiceAction();
+  await context.saveServiceChange();
+  assert.equal(requests.filter(({ options }) => options?.method === "PUT").length, 1);
+  context.showAuthUnavailable();
+  assert.equal(elements["service-target"].children.length, 1);
+  assert.equal(elements["service-member"].children.length, 1);
+  assert.equal(elements["service-editor"].disabled, true);
+}
+
+// Global panel sign-out is single-flight, authenticated/CSRF-bound, and never
+// automatically retried when its response is lost or rejected.
+for (const outcome of ["success", "uncertain", "rejected"]) {
+  let ended = false;
+  let release;
+  const pending = new Promise((resolve) => { release = resolve; });
+  const { elements, requests } = await createHarness(async (path) => {
+    if (path === "/api/v1/auth/status") return jsonResponse({ authenticated: !ended, setup_required: false });
+    if (path === "/api/v1/auth/session") return jsonResponse({ csrf_token: "x".repeat(43) });
+    if (path === "/api/v1/auth/logout-all") { ended = true; return pending; }
+    if (path === "/api/v1/system") return jsonResponse(systemFixture());
+    if (path === "/api/v1/storage") return jsonResponse({ observations: [] });
+    if (path === "/api/v1/arrays") return jsonResponse(arraysFixture());
+    if (path === "/api/v1/mounts") return jsonResponse(mountsFixture());
+    throw new Error(`Unexpected sign-out request: ${path}`);
+  });
+  const first = elements["logout-all"].listeners.get("click")();
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(elements["logout-all"].disabled, true);
+  assert.equal(elements.logout.disabled, true);
+  await elements["logout-all"].listeners.get("click")();
+  await elements.logout.listeners.get("click")();
+  const writes = requests.filter(({ options }) => options?.method === "POST");
+  assert.equal(writes.length, 1);
+  assert.equal(writes[0].path, "/api/v1/auth/logout-all");
+  assert.equal(writes[0].options.headers["X-PhantoWD-CSRF"], "x".repeat(43));
+  assert.equal(writes[0].options.credentials, "same-origin");
+  assert.ok(writes[0].options.signal);
+  release(outcome === "success" ? jsonResponse({ all_panel_sessions_revoked: true }) :
+    outcome === "rejected" ? jsonResponse({}, 403) : new Error("lost response"));
+  await first;
+  assert.equal(elements["dashboard-content"].hidden, true);
+  assert.equal(elements["auth-panel"].hidden, false);
+  assert.equal(elements["logout-all"].disabled, false);
+  assert.equal(requests.filter(({ options }) => options?.method === "POST").length, 1);
+  if (outcome !== "success") assert.match(elements["auth-error"].textContent, /could not be confirmed/);
+}
+
+// Password changes carry no confirmation field, clear secrets immediately,
+// permit only one POST and treat missing/malformed replies as uncertain.
+for (const outcome of ["success", "wrong-current", "uncertain", "rejected", "malformed"]) {
+  let ended = false;
+  let release;
+  const pending = new Promise((resolve) => { release = resolve; });
+  const { elements, requests } = await createHarness(async (path) => {
+    if (path === "/api/v1/auth/status") return jsonResponse({ authenticated: !ended, setup_required: false });
+    if (path === "/api/v1/auth/session") return jsonResponse({ csrf_token: "x".repeat(43) });
+    if (path === "/api/v1/auth/password") return pending;
+    if (path === "/api/v1/system") return jsonResponse(systemFixture());
+    if (path === "/api/v1/storage") return jsonResponse({ observations: [] });
+    if (path === "/api/v1/arrays") return jsonResponse(arraysFixture());
+    if (path === "/api/v1/mounts") return jsonResponse(mountsFixture());
+    throw new Error(`Unexpected password request: ${path}`);
+  });
+  elements["password-current"].value = "public old long passphrase";
+  elements["password-new"].value = "public new long passphrase";
+  elements["password-confirm"].value = "different confirmation";
+  await elements["password-form"].listeners.get("submit")({ preventDefault() {} });
+  assert.equal(requests.filter(({ options }) => options?.method === "POST").length, 0);
+  elements["password-confirm"].value = elements["password-new"].value;
+  const first = elements["password-form"].listeners.get("submit")({ preventDefault() {} });
+  await new Promise((resolve) => setImmediate(resolve));
+  for (const field of ["current", "new", "confirm"]) assert.equal(elements[`password-${field}`].value, "");
+  assert.equal(elements["password-submit"].disabled, true);
+  await elements["password-form"].listeners.get("submit")({ preventDefault() {} });
+  await elements["logout-all"].listeners.get("click")();
+  const writes = requests.filter(({ options }) => options?.method === "POST");
+  assert.equal(writes.length, 1);
+  assert.equal(writes[0].path, "/api/v1/auth/password");
+  assert.deepEqual(JSON.parse(writes[0].options.body), { current_password: "public old long passphrase", new_password: "public new long passphrase" });
+  assert.equal(writes[0].options.headers["X-PhantoWD-CSRF"], "x".repeat(43));
+  assert.equal(writes[0].options.credentials, "same-origin");
+  assert.ok(writes[0].options.signal);
+  ended = outcome === "success";
+  release(outcome === "success" ? jsonResponse({ password_changed: true, reauthentication_required: true, all_panel_sessions_revoked: true }) :
+    outcome === "wrong-current" ? jsonResponse({ error: "current_password_invalid" }, 401) :
+      outcome === "rejected" ? jsonResponse({}, 403) : outcome === "malformed" ? jsonResponse({}) : new Error("lost reply"));
+  await first;
+  assert.equal(elements["password-submit"].disabled, false);
+  assert.equal(requests.filter(({ options }) => options?.method === "POST").length, 1);
+  if (outcome === "wrong-current") {
+    assert.equal(elements["dashboard-content"].hidden, false);
+    assert.match(elements["password-status"].textContent, /not correct/);
+  } else {
+    assert.equal(elements["dashboard-content"].hidden, true);
+    assert.match(elements["auth-error"].textContent, outcome === "success" ? /Password changed/ : /could not be confirmed/);
+  }
+}
+
+async function testDesiredChangeReview() {
+  const { context, elements, requests } = await serviceHarness(() => jsonResponse(serviceReply(null)));
+  fillPolicy(elements);
+  const proposal = context.buildPolicyProposal();
+  const c = context.buildServiceAddition(null, proposal);
+  const changes = context.describeServiceChanges(null, c);
+  assert.equal(changes.length, 6, "first policy includes volume, user, SMB definition/grant and NFS definition/client");
+  assert.equal(new Set(changes.map((r) => r.kind)).size, 6);
+  assert.ok(changes.every((r) => r.before === "Not defined"));
+  await context.loadServicePolicy();
+  await context.prepareServiceAddition();
+  assert.equal(elements["service-diff"].children.length, 6);
+  assert.match(elements["service-diff-summary"].textContent, /6.*desired.*not effective/i);
+  assert.equal(requests.filter((r) => r.options?.method === "PUT").length, 0, "review never saves");
+  context.invalidateServiceDraft();
+  assert.equal(elements["service-diff"].children.length, 0);
+  assert.equal(elements["service-diff-summary"].textContent, "");
+}
+
+async function testDesiredChangeReviewEdits() {
+  const { context, c, values } = await editorFixture();
+  const initial = JSON.stringify(c);
+  const smb = "smb:share-1", nfs = `nfs:${c.nfs.exports[0].id}`;
+  for (const [action, target, overrides, kinds] of [
+    ["smb-properties", smb, { name: "Renamed", path: "new-folder" }, ["SMB definition"]],
+    ["smb-properties", smb, { uuid: "22222222-2222-3333-4444-555555555555" }, ["SMB definition", "Volume reference"]],
+    ["smb-grant-upsert", smb, { "smb-access": "rw" }, ["SMB grant"]],
+    ["smb-grant-upsert", smb, { user: "newreader" }, ["SMB grant", "User reference"]],
+    ["smb-grant-remove", smb, {}, ["SMB grant"]],
+    ["smb-remove", smb, {}, ["SMB definition", "SMB grant", "SMB grant"]],
+    ["nfs-properties", nfs, { path: "new-folder" }, ["NFS definition"]],
+    ["nfs-client-upsert", nfs, { "nfs-access": "rw", squash: "root", uid: "1000", gid: "1001", security: "krb5p" }, ["NFS client"]],
+    ["nfs-client-upsert", nfs, { network: "2001:db8::/64" }, ["NFS client"]],
+    ["nfs-client-remove", nfs, {}, ["NFS client"]],
+    ["nfs-remove", nfs, {}, ["NFS definition", "NFS client", "NFS client"]],
+    ["nfs-add", "", { "export-id": "cccccccc-bbbb-cccc-dddd-eeeeeeeeeeee" }, ["NFS definition", "NFS client"]],
+  ]) {
+    const next = context.buildServiceEdit(c, action, target, { ...values, ...overrides }).configuration;
+    const rows = JSON.parse(JSON.stringify(context.describeServiceChanges(c, next)));
+    assert.deepEqual(rows.map((r) => r.kind).sort(), kinds.sort(), action);
+    assert.equal(JSON.stringify(c), initial, "comparison never mutates baseline");
+    if (action.endsWith("remove")) assert.ok(rows.every((r) => r.after === "Not defined"));
+    if (action === "nfs-client-upsert" && overrides.security) {
+      assert.match(rows[0].before, /Read only.*\nMap all users to 65534:65534.*\nSecurity: AUTH_SYS/s);
+      assert.match(rows[0].after, /Read and write.*\nMap root only to 1000:1001.*\nSecurity: Kerberos privacy/s);
+    }
+  }
+  const reordered = structuredClone(c);
+  reordered.shares.volumes.reverse(); reordered.shares.users.reverse(); reordered.shares.shares.reverse();
+  reordered.shares.shares.forEach((s) => s.grants.reverse());
+  reordered.nfs.exports.reverse(); reordered.nfs.exports.forEach((e) => e.clients.reverse());
+  reordered.revision = reordered.shares.revision = reordered.nfs.revision = reordered.nfs.volume_revision = 2;
+  assert.equal(context.describeServiceChanges(c, reordered).length, 0, "order and revision alone are not access changes");
+  const ambiguous = structuredClone(c);
+  ambiguous.nfs.exports[0].clients.push(structuredClone(ambiguous.nfs.exports[0].clients[0]));
+  assert.throws(() => context.describeServiceChanges(c, ambiguous), /Ambiguous/);
+  assert.throws(() => context.describeServiceChanges(undefined, c));
+  assert.throws(() => context.describeServiceChanges(c, null));
+  const renamedUser = structuredClone(c); renamedUser.shares.users[0].name = "renamed";
+  const renamedRows = JSON.parse(JSON.stringify(context.describeServiceChanges(c, renamedUser)));
+  assert.deepEqual(renamedRows.map((r) => r.kind).sort(), ["SMB grant", "User reference"].sort());
+}
+
+async function testDesiredChangeReviewBoundsAndRendering() {
+  const { context, c, elements } = await editorFixture();
+  const before = structuredClone(c);
+  before.shares.users = Array.from({ length: 16 }, (_, i) => ({ id: `user-${i}`, name: `reader${i}` }));
+  before.shares.shares = Array.from({ length: 32 }, (_, i) => ({ id: `share-${i}`, name: `Share${i}`,
+    volume_id: before.shares.volumes[0].id, relative_path: `folder${i}`,
+    grants: before.shares.users.slice(0, 15).map((u) => ({ user_id: u.id, access: "ro" })) }));
+  const after = structuredClone(before);
+  after.shares.shares.forEach((s) => { s.name += "Changed"; s.grants.forEach((g) => { g.access = "rw"; }); });
+  const rows = context.describeServiceChanges(before, after);
+  assert.equal(rows.length, 512, "complete bounded review at exact limit");
+  context.renderServiceChanges(rows);
+  assert.equal(elements["service-diff"].children.length, 512);
+  before.shares.shares[0].grants.push({ user_id: "user-15", access: "ro" });
+  after.shares.shares[0].grants.push({ user_id: "user-15", access: "rw" });
+  assert.throws(() => context.describeServiceChanges(before, after), /More than 512/);
+  const h = await serviceHarness(() => jsonResponse(serviceReply(before)));
+  await h.context.loadServicePolicy();
+  await h.context.previewServiceChange(() => ({ configuration: after, summary: "synthetic bulk change" }));
+  assert.equal(h.elements["service-save"].disabled, true);
+  assert.equal(h.elements["service-review"].hidden, true);
+  assert.equal(h.elements["service-diff"].children.length, 0, "refusal never exposes a truncated review");
+  assert.match(h.elements["service-status"].textContent, /More than 512/);
+  assert.equal(h.requests.some((r) => r.options?.method === "PUT"), false);
+
+  const unsafeText = structuredClone(c);
+  unsafeText.shares.shares[0].name = "<img src=x onerror=alert(1)>";
+  unsafeText.shares.shares[0].relative_path = "<script>fixture only</script>";
+  context.renderServiceChanges(context.describeServiceChanges(c, unsafeText));
+  assert.equal(elements["service-diff"].children.length, 1);
+  const cells = elements["service-diff"].children[0].children;
+  assert.equal(cells.length, 3);
+  assert.equal(cells[0].attributes.get("scope"), "row");
+  assert.match(cells[2].textContent, /<img.*<script>/s);
+  assert.equal(cells[2].children.length, 0, "policy markup remains literal text, not child elements");
+  assert.match(markup, /<caption>Desired policy changes/);
+  assert.match(markup, /role="region" aria-label="Desired policy before and after" tabindex="0"/);
+  context.clearServicePolicy();
+  assert.equal(elements["service-diff"].children.length, 0);
+}
+
+async function testCrossProtocolPairRelationships() {
+  const { context, c, values } = await editorFixture();
+  const original = JSON.stringify(c);
+  const project = (before, after) => JSON.parse(JSON.stringify(context.describeServiceOverlaps(before, after)));
+  const review = project(c, c);
+  assert.equal(review.baseline_count, 2);
+  assert.equal(review.candidate_count, 2);
+  assert.equal(review.pair_count, 2);
+  assert.equal(review.omitted_count, 0);
+  assert.equal(review.rows.length, 2);
+  assert.ok(review.rows.every((r) => r.before === r.after && /Same configured folder/.test(r.after)));
+  for (const [smbPath, nfsPath, relationship] of [
+    ["books", "books", "Same configured folder"],
+    ["books", "books/subfolder", "SMB folder contains NFS folder"],
+    ["books/subfolder/deep", "books", "NFS folder contains SMB folder"],
+    [".", "books", "SMB folder contains NFS folder"],
+    ["books", ".", "NFS folder contains SMB folder"],
+    [".", ".", "Same configured folder"],
+    ["books", "bookstore", null],
+    ["books", "books-old", null],
+    ["books", "Books", null],
+    ["caf\u00e9", "cafe\u0301", null],
+  ]) {
+    const candidate = structuredClone(c);
+    candidate.shares.shares = [candidate.shares.shares[0]];
+    candidate.nfs.exports = [candidate.nfs.exports[0]];
+    candidate.shares.shares[0].relative_path = smbPath;
+    candidate.nfs.exports[0].relative_path = nfsPath;
+    const result = project(null, candidate);
+    assert.equal(result.candidate_count, relationship === null ? 0 : 1, `${smbPath} / ${nfsPath}`);
+    if (relationship !== null) {
+      assert.match(result.rows[0].before, /No lexical overlap/);
+      assert.ok(result.rows[0].after.includes(relationship));
+    }
+  }
+  const distinctVolume = structuredClone(c);
+  distinctVolume.shares.volumes.push({ id: "volume-2", filesystem_uuid: "22222222-2222-3333-4444-555555555555" });
+  distinctVolume.nfs.exports.forEach((e) => { e.volume_id = "volume-2"; });
+  assert.equal(project(null, distinctVolume).candidate_count, 0, "matching folder strings on different volume references are not a lexical pair");
+  const removed = context.buildServiceEdit(c, "smb-remove", "smb:share-1", values).configuration;
+  const removedReview = project(c, removed);
+  assert.equal(removedReview.baseline_count, 2);
+  assert.equal(removedReview.candidate_count, 1);
+  assert.equal(removedReview.pair_count, 2, "removed overlap remains visible in baseline");
+  assert.equal(removedReview.rows.filter((r) => /No lexical overlap/.test(r.after)).length, 1);
+  assert.deepEqual(JSON.parse(JSON.stringify(removed.nfs)), { ...c.nfs, revision: 2, volume_revision: 2 }, "SMB removal retains NFS policy");
+  const reordered = structuredClone(c);
+  reordered.shares.shares.reverse(); reordered.nfs.exports.reverse();
+  assert.deepEqual(project(reordered, reordered), review, "pair ordering does not depend on collection positions");
+  assert.equal(JSON.stringify(c), original, "advice does not mutate source policy");
+  for (const path of ["", "/", "/books", "books/", "books//sub", "books/./sub", "books/../sub"]) {
+    const malformed = structuredClone(c); malformed.nfs.exports[0].relative_path = path;
+    assert.throws(() => context.describeServiceOverlaps(c, malformed), /Noncanonical/);
+  }
+  assert.throws(() => context.describeServiceOverlaps(undefined, c));
+  assert.throws(() => context.describeServiceOverlaps(c, null));
+}
+
+async function testCrossProtocolPairBoundsAndRendering() {
+  const { context, c } = await editorFixture();
+  const large = structuredClone(c);
+  large.shares.shares = Array.from({ length: 128 }, (_, i) => ({ ...structuredClone(c.shares.shares[0]),
+    id: `share-${i}`, name: `Share${i}`, relative_path: "." }));
+  large.nfs.exports = Array.from({ length: 128 }, (_, i) => ({ ...structuredClone(c.nfs.exports[0]),
+    id: `00000000-0000-0000-0000-${String(i).padStart(12, "0")}`, relative_path: "books" }));
+  const review = context.describeServiceOverlaps(large, large);
+  assert.equal(review.baseline_count, 16384);
+  assert.equal(review.candidate_count, 16384);
+  assert.equal(review.pair_count, 16384);
+  assert.equal(review.rows.length, 64, "retained details/DOM are bounded independently of pair census");
+  assert.equal(review.omitted_count, 16320);
+  const exactly64 = structuredClone(large);
+  exactly64.shares.shares = exactly64.shares.shares.slice(0, 1);
+  exactly64.nfs.exports = exactly64.nfs.exports.slice(0, 64);
+  assert.equal(context.describeServiceOverlaps(null, exactly64).omitted_count, 0);
+  exactly64.nfs.exports.push(large.nfs.exports[64]);
+  assert.equal(context.describeServiceOverlaps(null, exactly64).omitted_count, 1);
+  const disjointIDs = structuredClone(large);
+  disjointIDs.shares.shares.forEach((s) => { s.id += "-new"; });
+  disjointIDs.nfs.exports.forEach((e) => { e.id = "10000000" + e.id.slice(8); });
+  const union = context.describeServiceOverlaps(large, disjointIDs);
+  assert.equal(union.pair_count, 32768, "baseline/candidate pair union counted without materializing it");
+  assert.equal(union.omitted_count, 32704);
+
+  const h = await serviceHarness(() => jsonResponse(serviceReply(large)));
+  await h.context.loadServicePolicy();
+  const candidate = structuredClone(large);
+  candidate.revision = candidate.shares.revision = candidate.nfs.revision = candidate.nfs.volume_revision = 2;
+  await h.context.previewServiceChange(() => ({ configuration: candidate, summary: "unchanged bounded advisory" }));
+  assert.equal(h.elements["service-overlaps"].children.length, 64);
+  assert.match(h.elements["service-overlap-summary"].textContent, /16384 baseline.*16384 candidate.*64 of 16384.*16320.*omitted/);
+  assert.equal(h.elements["service-save"].disabled, false, "advisory detail limit does not block otherwise complete review");
+  assert.equal(h.requests.some((r) => r.options?.method === "PUT"), false);
+  h.context.invalidateServiceDraft();
+  assert.equal(h.elements["service-overlaps"].children.length, 0);
+  assert.equal(h.elements["service-overlap-summary"].textContent, "");
+
+  const unsafe = structuredClone(c);
+  unsafe.shares.shares[0].name = "<img src=x onerror=alert(1)>";
+  unsafe.shares.shares[0].relative_path = unsafe.nfs.exports[0].relative_path = "<script>fixture</script>";
+  const unsafeReview = h.context.describeServiceOverlaps(null, unsafe);
+  h.context.renderServiceOverlaps(unsafeReview);
+  const cells = h.elements["service-overlaps"].children[0].children;
+  assert.equal(cells[0].attributes.get("scope"), "row");
+  assert.match(cells[2].textContent, /<img.*<script>/s);
+  assert.equal(cells[2].children.length, 0, "advisory values are literal text");
+  assert.match(markup, /<caption>Configured folder pairs/);
+  assert.match(markup, /aria-label="Configured SMB and NFS folder overlap" tabindex="0"/);
+  assert.match(markup, /Removing an SMB grant or definition does not revoke NFS/);
+  h.context.clearServicePolicy();
+  assert.equal(h.elements["service-overlaps"].children.length, 0);
+  assert.equal(h.elements["service-overlap-summary"].textContent, "");
+}
+
+await testDesiredChangeReview();
+await testDesiredChangeReviewEdits();
+await testDesiredChangeReviewBoundsAndRendering();
+await testCrossProtocolPairRelationships();
+await testCrossProtocolPairBoundsAndRendering();
+process.stdout.write("Dashboard UI interaction smoke tests passed (DOM fixture; no visual browser coverage).\n");

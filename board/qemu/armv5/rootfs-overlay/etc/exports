@@ -1,0 +1,1 @@
+/srv/phantowd-nfs-smoke 127.0.0.1(ro,sync,no_subtree_check,root_squash)

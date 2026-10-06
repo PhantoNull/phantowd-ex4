@@ -12,7 +12,7 @@ import (
 
 func fixtureProc() fstest.MapFS {
 	return fstest.MapFS{
-		"sys/kernel/osrelease": {Data: []byte("6.18.50\n")},
+		"sys/kernel/osrelease": {Data: []byte("6.18.53\n")},
 		"uptime":               {Data: []byte("123.50 456.75\n")},
 		"meminfo":              {Data: []byte("MemTotal: 262144 kB\nMemAvailable: 196608 kB\nOther: 1 kB\n")},
 	}
@@ -27,7 +27,7 @@ func TestCollectSystem(t *testing.T) {
 	if snapshot.SchemaVersion != 1 || snapshot.Target != "qemu-armv5" || snapshot.Mode != "development" || snapshot.Flashable || snapshot.HardwareValidated {
 		t.Fatalf("incorrect development boundary: %+v", snapshot)
 	}
-	if snapshot.Kernel != "6.18.50" || snapshot.UptimeSeconds != 123.5 || snapshot.Memory.TotalBytes != 268435456 || snapshot.Memory.AvailableBytes != 201326592 {
+	if snapshot.Kernel != "6.18.53" || snapshot.UptimeSeconds != 123.5 || snapshot.Memory.TotalBytes != 268435456 || snapshot.Memory.AvailableBytes != 201326592 {
 		t.Fatalf("incorrect proc conversion: %+v", snapshot)
 	}
 	if !snapshot.ObservedAt.Equal(now) || snapshot.ObservedAt.Location() != time.UTC {

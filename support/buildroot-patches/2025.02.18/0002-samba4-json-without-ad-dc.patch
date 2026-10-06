@@ -1,0 +1,29 @@
+--- a/package/samba4/Config.in
++++ b/package/samba4/Config.in
+@@ -21,6 +21,7 @@
+ 	select BR2_PACKAGE_GNUTLS
+ 	select BR2_PACKAGE_HOST_PYTHON3
+ 	select BR2_PACKAGE_HOST_PYTHON3_SSL
++	select BR2_PACKAGE_JANSSON
+ 	select BR2_PACKAGE_LIBICONV if !BR2_ENABLE_LOCALE
+ 	select BR2_PACKAGE_LIBTIRPC if !BR2_TOOLCHAIN_HAS_NATIVE_RPC
+ 	select BR2_PACKAGE_LIBXCRYPT if BR2_TOOLCHAIN_USES_GLIBC
+--- a/package/samba4/samba4.mk
++++ b/package/samba4/samba4.mk
+@@ -17,6 +17,6 @@
+ 	host-e2fsprogs host-flex host-heimdal host-nfs-utils \
+ 	host-perl host-perl-parse-yapp host-python3 \
+-	cmocka e2fsprogs gnutls popt zlib \
++	cmocka e2fsprogs gnutls jansson popt zlib \
+ 	$(if $(BR2_PACKAGE_ICU),icu) \
+ 	$(if $(BR2_PACKAGE_LIBAIO),libaio) \
+ 	$(if $(BR2_PACKAGE_LIBCAP),libcap) \
+@@ -170,3 +170,2 @@
+ SAMBA4_DEPENDENCIES += \
+-	jansson \
+ 	host-python-dnspython \
+@@ -176,3 +175,3 @@
+ else
+-SAMBA4_CONF_OPTS += --without-ad-dc --without-json
++SAMBA4_CONF_OPTS += --without-ad-dc --with-json
+ endif

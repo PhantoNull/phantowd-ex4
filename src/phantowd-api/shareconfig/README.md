@@ -1,0 +1,58 @@
+# Share configuration model
+
+`shareconfig` defines the first version of the product's desired file-sharing
+policy. It validates volume references, file-service users, relative share
+paths and explicit `ro`/`rw` grants. The authenticated
+[preview API](../fileservice/README.md) accepts this desired policy but does
+not save it, create users, mount volumes or configure services. The separate
+Linux [share store](../sharestore/README.md) persists validated revisions in an
+explicit private directory; no product storage location is provisioned yet.
+
+`Volume.ID` is the logical key referenced by shares and NFS exports. It is a
+different type and field from `Volume.FilesystemUUID`, the expected filesystem
+identity anchor. Neither value is a bay number or kernel device path. The key
+is not itself proof that a product-owned volume identity has been durably
+adopted; the future trusted resolver must prove the backing volume is present,
+unique and qualified before activation. UUID text in policy alone establishes
+neither ownership nor device health or migration compatibility.
+
+SMB/NFS previews derive the proposed stable mount anchor from `Volume.ID` as
+`/srv/phantowd/volumes/<volume-id>`. The filesystem UUID remains a separate
+expected lower-layer identity and is not embedded in that service path. No
+component currently provisions this anchor or authorizes mounting/export.
+
+All fields are required. Empty top-level arrays are valid; a configured share
+requires at least one grant. Unknown, duplicate, differently cased, missing or
+null fields are rejected, as are dangling references and conflicting grants.
+The JSON document is limited to 256 KiB, 16 volumes, 128 users and 128 shares.
+An empty configuration can represent an unconfigured appliance. Revision zero
+is invalid; the store uses revisions for optimistic concurrency.
+
+File-service user grants do not yet define access for background service
+processes. The internal M4.4 QEMU prototype gates a whole-volume handoff path by
+a fixed Unix group, but does not expose only individual share roots or apply
+file-level ACLs. It makes no automatic ownership/mode changes. A separate,
+explicit service-to-share grant and recoverable ACL-provisioning contract is
+required before non-root applications may consume user data.
+
+Share paths are relative to their volume. `.` explicitly selects the volume
+root. Lexical validation rejects absolute paths, traversal and control bytes;
+it cannot establish filesystem containment. The future privileged layer must
+resolve symlinks/mount boundaries safely and refuse a missing volume before
+opening paths. Overlapping shares and ACL inheritance need runtime policy
+before service activation. The separate [Samba preview renderer](../smbconfig/README.md)
+emits candidate share sections and refuses unsafe interpolation and overlapping
+paths; it does not establish runtime containment or apply configuration.
+
+File-service account names initially use a bounded lowercase POSIX subset;
+share names use a bounded printable ASCII subset, excluding reserved service
+names and configuration delimiters. This restriction is an initial schema
+choice; international display names can be added through a reviewed revision.
+Credentials, guest access, network settings and migration instructions remain
+outside this first share-policy document. [NFS client policy](../nfsconfig/README.md)
+is a separate versioned document bound to the shared volume revision; it does
+not inherit Samba grants. Both renderers use the same proposed VolumeID mount
+root.
+
+Shared bounded JSON decoding rejects duplicate/unknown/null fields and
+unpaired UTF-16 surrogate escapes instead of silently rewriting paths.

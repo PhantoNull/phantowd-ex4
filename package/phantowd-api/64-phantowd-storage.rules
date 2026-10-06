@@ -1,0 +1,2 @@
+# Match the EX4/QEMU whole-disk nodes only; the API user is not in this group.
+SUBSYSTEM=="block", ENV{DEVTYPE}=="disk", KERNEL=="sd[a-d]", GROUP="phantowd-storage-read", MODE="0440"

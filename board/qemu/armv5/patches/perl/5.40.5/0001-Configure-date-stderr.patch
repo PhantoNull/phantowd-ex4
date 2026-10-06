@@ -1,0 +1,30 @@
+From: PhantoNull <65261018+PhantoNull@users.noreply.github.com>
+Subject: [PATCH] Configure: keep date diagnostics out of config.sh
+
+Buildroot's reproducible date wrapper writes its SOURCE_DATE_EPOCH warning
+to stderr and the timestamp to stdout. Capturing both into cf_time inserts
+an uncommented second line beneath the generated configuration-time comment;
+sourcing config.sh then tries to execute the weekday as a command.
+
+Capture only the timestamp. Leave stderr connected to the build diagnostic
+stream rather than globally hiding the wrapper warning.
+
+Upstream: Not submitted [reproduced with Buildroot's reproducible date wrapper]
+Signed-off-by: PhantoNull <65261018+PhantoNull@users.noreply.github.com>
+---
+ Configure | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+
+--- a/Configure
++++ b/Configure
+@@ -3918,7 +3918,9 @@
+ 
+ : who configured the system
+-cf_time=`LC_ALL=C; LANGUAGE=C; export LC_ALL; export LANGUAGE; $date 2>&1`
++# Only stdout is a timestamp. A date wrapper's stderr diagnostics must not
++# become executable lines in the generated config.sh header.
++cf_time=`LC_ALL=C; LANGUAGE=C; export LC_ALL; export LANGUAGE; $date`
+ case "$cf_by" in
+ "")
+ 	cf_by=`(logname) 2>/dev/null`
+ 	case "$cf_by" in

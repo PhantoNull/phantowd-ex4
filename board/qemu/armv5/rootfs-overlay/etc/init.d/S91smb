@@ -1,0 +1,33 @@
+#!/bin/sh
+
+case "$1" in
+    start)
+        [ -f /etc/samba/smb.conf ] || exit 0
+        mkdir -p /var/log/samba
+        if ! /usr/bin/testparm -s >/var/log/samba/testparm.log 2>&1; then
+            cat /var/log/samba/testparm.log
+            exit 1
+        fi
+        if ! pidof smbd >/dev/null 2>&1; then
+            /usr/sbin/smbd -D >>/var/log/samba/smbd-startup.log 2>&1 &
+        fi
+        echo 'Starting SMB3 file service (TCP only): OK'
+        ;;
+    stop)
+        smbd_pids="$(pidof smbd 2>/dev/null || true)"
+        if [ -n "$smbd_pids" ]; then
+            # shellcheck disable=SC2086 # pidof intentionally returns a whitespace-separated PID list
+            kill $smbd_pids
+        fi
+        ;;
+    restart)
+        "$0" stop
+        "$0" start
+        ;;
+    *)
+        echo "Usage: $0 {start|stop|restart}"
+        exit 1
+        ;;
+esac
+
+exit 0

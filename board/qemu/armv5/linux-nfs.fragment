@@ -1,0 +1,15 @@
+CONFIG_NFS_FS=y
+# NFSv2 is obsolete; the QEMU integration target exercises only v3.
+# CONFIG_NFS_V2 is not set
+CONFIG_NFS_V3=y
+# CONFIG_NFS_V4 is not set
+CONFIG_NFSD=y
+# Networked-storage diagnostics must observe routing rules, not infer the absence
+# of policy routing from a kernel that has no rule subsystem. Keep the existing
+# fragment/output namespace; the kernel-input fingerprint forces reconfiguration.
+CONFIG_IP_ADVANCED_ROUTER=y
+CONFIG_IP_MULTIPLE_TABLES=y
+CONFIG_IPV6_MULTIPLE_TABLES=y
+# NFSv3 is built into NFSD; disable deprecated v2 and optional v4.
+# CONFIG_NFSD_V2 is not set
+# CONFIG_NFSD_V4 is not set

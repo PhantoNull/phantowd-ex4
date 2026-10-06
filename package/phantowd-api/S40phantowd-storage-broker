@@ -1,0 +1,45 @@
+#!/bin/sh
+
+DAEMON=/usr/bin/phantowd-api
+PIDFILE=/run/phantowd-storage-broker.pid
+RUNDIR=/run/phantowd-storage
+
+case "$1" in
+    start)
+        mkdir -p "$RUNDIR" || exit 1
+        chown phantowd-storage:phantowd "$RUNDIR" || exit 1
+        chmod 2750 "$RUNDIR" || exit 1
+        printf 'Starting unprivileged read-only storage broker: '
+        if ! start-stop-daemon --start --background --make-pidfile \
+            --pidfile "$PIDFILE" --chuid phantowd-storage:phantowd-storage-read \
+            --exec "$DAEMON" -- --storage-broker; then
+            echo FAIL
+            exit 1
+        fi
+        attempt=0
+        while [ ! -S "$RUNDIR/channel" ]; do
+            if [ ! -s "$PIDFILE" ] || ! kill -0 "$(cat "$PIDFILE")" 2>/dev/null; then
+                echo FAIL
+                exit 1
+            fi
+            attempt=$((attempt + 1))
+            if [ "$attempt" -ge 10 ]; then
+                echo FAIL
+                exit 1
+            fi
+            sleep 1
+        done
+        echo OK
+        ;;
+    stop)
+        start-stop-daemon --stop --pidfile "$PIDFILE" --exec "$DAEMON" || exit 1
+        rm -f "$PIDFILE"
+        ;;
+    restart)
+        "$0" stop && "$0" start
+        ;;
+    *)
+        echo "Usage: $0 {start|stop|restart}"
+        exit 1
+        ;;
+esac

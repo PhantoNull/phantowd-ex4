@@ -1,0 +1,312 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- SPDX-FileCopyrightText: 2026 PhantoWD EX4 contributors -->
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark light">
+  <meta name="theme-color" content="#10131b">
+  <title>PhantoWD EX4 — Device overview</title>
+  <link rel="icon" href="/assets/ghost.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/assets/app.css">
+  <script src="/assets/service-policy.js" defer></script>
+  <script src="/assets/app.js" defer></script>
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <a class="brand" href="/" aria-label="PhantoWD EX4 device overview">
+        <img src="/assets/ghost.svg" alt="" width="38" height="38">
+        <span class="brand-name">PhantoWD <span class="brand-model">EX4</span></span>
+      </a>
+      <div class="topbar-status">
+        <span class="status-dot is-loading" id="service-status-dot" aria-hidden="true"></span>
+        <span id="build-label">Checking local API…</span>
+      </div>
+      <button class="logout-button" id="logout" type="button" hidden>Sign out</button>
+    </header>
+
+    <main>
+      <section class="auth-panel" id="auth-panel" aria-labelledby="auth-title" hidden>
+        <p class="eyebrow">LOCAL ADMINISTRATOR</p>
+        <h1 id="auth-title">Set up your administrator account.</h1>
+        <p class="lede" id="auth-description">This initial account is stored in the configured system-state directory. Use at least 15 characters; a longer passphrase is better.</p>
+        <form id="auth-form" class="auth-form">
+          <label for="auth-username">Username</label>
+          <input id="auth-username" name="username" autocomplete="username" minlength="1" maxlength="32" pattern="[A-Za-z0-9._-]+" required>
+          <label for="auth-password">Password</label>
+          <input id="auth-password" name="password" type="password" autocomplete="new-password" minlength="15" maxlength="1024" required>
+          <button class="refresh-button" id="auth-submit" type="submit">Create account</button>
+        </form>
+        <button class="refresh-button" id="auth-retry" type="button" hidden>Retry connection</button>
+        <p class="error-banner" id="auth-error" role="alert" hidden>Authentication request failed.</p>
+      </section>
+
+      <div id="dashboard-content" hidden>
+      <section class="notice" aria-label="Panel session security">
+        <p>End all administrator panel sessions, including this one. This does not disconnect SMB/NFS clients or change the password.</p>
+        <button class="logout-button" id="logout-all" type="button">Sign out all panel sessions</button>
+      </section>
+      <details id="password-panel" class="card policy-panel password-panel">
+        <summary id="password-title">Administrator password</summary>
+        <p id="password-help" class="policy-help">Changing this password signs out every panel session, including this one. SMB/NFS credentials are not changed. Use a different passphrase of at least 15 characters.</p>
+        <form id="password-form" class="auth-form" aria-describedby="password-help password-status">
+          <label for="password-current">Current password</label>
+          <input id="password-current" type="password" autocomplete="current-password" required maxlength="1024">
+          <label for="password-new">New password</label>
+          <input id="password-new" type="password" autocomplete="new-password" required minlength="15" maxlength="1024">
+          <label for="password-confirm">Confirm new password</label>
+          <input id="password-confirm" type="password" autocomplete="new-password" required minlength="15" maxlength="1024">
+          <button id="password-submit" type="submit" class="refresh-button">Change password and sign out</button>
+        </form>
+        <p id="password-status" class="snapshot-status" role="status" aria-live="polite"></p>
+      </details>
+      <section class="intro" aria-labelledby="page-title">
+        <div>
+        <p class="eyebrow">DEVICE CONSOLE <span aria-hidden="true">/</span> OVERVIEW</p>
+          <h1 id="page-title">Know what the system sees.</h1>
+        <p class="lede">Read-only observations from this development image. Each section reports its own current state; unavailable values are cleared. Nothing here assembles, mounts, or changes storage.</p>
+        <p class="snapshot-status" id="snapshot-status" role="status" aria-live="polite" aria-atomic="true">Waiting for the local API…</p>
+        </div>
+        <button class="refresh-button" id="refresh" type="button" aria-describedby="snapshot-status">
+          <span class="refresh-icon" aria-hidden="true">↻</span>
+          <span id="refresh-label">Refresh snapshot</span>
+        </button>
+      </section>
+
+      <section class="notice" aria-label="Development safety notice">
+        <span class="notice-icon" aria-hidden="true">i</span>
+        <p><strong id="profile-notice-title">Development image.</strong> <span id="profile-notice-copy">This view is not a release qualification or storage-management interface.</span></p>
+        <span class="notice-mark" id="profile-notice-mark">NOT RELEASE QUALIFIED</span>
+      </section>
+
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">ON-DEMAND OBSERVATIONS</p>
+          <h2>System</h2>
+        </div>
+        <time class="sample-time" id="observed-at">Waiting for snapshot</time>
+      </div>
+
+      <section class="system-grid" aria-label="System observations">
+        <article class="card system-card">
+          <div class="card-heading">
+            <span class="card-icon icon-cpu" aria-hidden="true">⌘</span>
+            <span class="card-label">Runtime</span>
+          </div>
+          <p class="primary-value" id="kernel-value">—</p>
+          <p class="secondary-value" id="runtime-value">Waiting for API</p>
+          <span class="pill pill-neutral" id="target-value">Target unknown</span>
+        </article>
+
+        <article class="card system-card">
+          <div class="card-heading">
+            <span class="card-icon icon-memory" aria-hidden="true">▤</span>
+            <span class="card-label">Memory</span>
+          </div>
+          <p class="primary-value" id="memory-value">—</p>
+          <p class="secondary-value" id="memory-detail">Waiting for API</p>
+          <div class="meter" role="meter" aria-label="Memory availability" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+            <span class="meter-fill" id="memory-meter"></span>
+          </div>
+        </article>
+
+        <article class="card system-card">
+          <div class="card-heading">
+            <span class="card-icon icon-lock" aria-hidden="true">◇</span>
+            <span class="card-label">Firmware state</span>
+          </div>
+          <p class="primary-value" id="firmware-value">Development</p>
+          <p class="secondary-value" id="firmware-detail">Flashable: unknown · Hardware: unknown</p>
+          <span class="pill pill-warning">Not for installation</span>
+        </article>
+      </section>
+
+      <div class="section-heading storage-heading">
+        <div>
+          <p class="eyebrow">KERNEL PROCFS + SYSFS</p>
+          <h2>Software RAID</h2>
+        </div>
+        <span class="count-badge" id="array-count">RAID unknown</span>
+      </div>
+
+      <section class="array-panel" aria-label="Observed software RAID arrays">
+        <div id="array-list" class="array-list" aria-live="polite">
+          <p class="empty-state">Waiting for the read-only RAID observation...</p>
+        </div>
+        <div class="storage-footnote">
+          <span class="footnote-icon" aria-hidden="true">i</span>
+          <p>Health is only the Linux MD status observed at this moment; it does not imply redundancy (RAID0/linear have none) or verified data integrity. Member names are temporary; no block contents are read and no array is assembled, mounted, repaired, or changed.</p>
+        </div>
+      </section>
+
+      <div class="section-heading storage-heading">
+        <div>
+          <p class="eyebrow">KERNEL SYSFS ONLY</p>
+          <h2>Block devices</h2>
+        </div>
+        <span class="count-badge" id="device-count">— devices</span>
+      </div>
+
+      <section class="storage-panel" aria-label="Observed block devices">
+        <div class="storage-head" aria-hidden="true">
+          <span>Device</span><span>Capacity</span><span>Identity signals</span><span>Access</span>
+        </div>
+        <div id="device-list" class="device-list" aria-live="polite">
+          <p class="empty-state">Waiting for the read-only storage observation…</p>
+        </div>
+        <div class="storage-footnote">
+          <span class="footnote-icon" aria-hidden="true">⌁</span>
+          <p>Names such as <code>sda</code> are temporary kernel observations, not stable volume identities. Filesystems, RAID membership, bay mapping, disk health, and WD migration compatibility are not evaluated here.</p>
+        </div>
+      </section>
+
+      <section class="storage-panel gpt-observation-panel" aria-labelledby="gpt-observation-title">
+        <div class="gpt-observation-actions">
+          <div>
+            <p class="eyebrow">MANUAL / METADATA ONLY</p>
+            <h3 id="gpt-observation-title">GPT partition identities</h3>
+          </div>
+          <button class="refresh-button" id="gpt-observe" type="button" aria-describedby="gpt-observation-help gpt-observation-status">Observe GPT metadata</button>
+        </div>
+        <p class="policy-help gpt-observation-help" id="gpt-observation-help">This separate, explicit action reads only GPT headers and partition-entry metadata from eligible read-only whole-disk candidates. It does not read filesystem signatures or partition contents, and it never assembles, mounts, imports, repairs, or writes. It may be delayed if the kernel is stuck on block I/O. This development diagnostic is not EX4-qualified; do not run it on valuable disks before a separate safety review.</p>
+        <p class="snapshot-status" id="gpt-observation-status" role="status" aria-live="polite" aria-atomic="true">Not run. The ordinary snapshot and page load never invoke this observation.</p>
+      </section>
+
+      <div class="section-heading storage-heading">
+        <div>
+          <p class="eyebrow">CURRENT PROCESS MOUNT NAMESPACE</p>
+          <h2>Mounted filesystems</h2>
+        </div>
+        <span class="count-badge" id="mount-count">Mounts unknown</span>
+      </div>
+
+      <section class="mount-panel" aria-label="Observed mounted filesystems">
+        <div class="mount-head" aria-hidden="true">
+          <span>Mount point</span><span>Filesystem</span><span>Device major:minor</span><span>Mount flag</span>
+        </div>
+        <div id="mount-list" class="mount-list" aria-live="polite">
+          <p class="empty-state">Waiting for the read-only mount observation…</p>
+        </div>
+        <div class="storage-footnote">
+          <span class="footnote-icon" aria-hidden="true">i</span>
+          <p>This lists only filesystems already mounted in the API process namespace. Unmounted disks are not probed; mount sources and options are omitted. No mount/unmount operation or file-content read is performed. A visible mount does not establish filesystem integrity or stable bay identity.</p>
+        </div>
+      </section>
+
+      <section class="policy-panel card" aria-labelledby="policy-title">
+        <p class="eyebrow">DESIRED POLICY / NOTHING IS APPLIED</p>
+        <h2 id="policy-title">File shares</h2>
+        <section class="saved-policy" aria-labelledby="saved-title">
+          <h3 id="saved-title">Saved share configuration</h3>
+          <p class="policy-help">Desired volumes, users and SMB grants only. This does not establish active shares, disk availability or effective permissions. NFS policy is not included.</p>
+          <button id="saved-load" class="refresh-button" type="button">Load saved configuration</button>
+          <p id="saved-status" class="snapshot-status" role="status" aria-live="polite">Not loaded. No stored configuration is shown.</p>
+          <div id="saved-result" hidden>
+            <p class="pill pill-warning">SAVED POLICY / ACTIVATION NOT AVAILABLE</p>
+            <p id="saved-summary" class="policy-help"></p>
+            <ul id="saved-shares" class="saved-shares"></ul>
+          </div>
+        </section>
+        <h3>Plan a file share</h3>
+        <p id="policy-help" class="policy-help">Build a standalone proposal for one share. Validate proposal only previews it: no save, disk verification, account creation or service change. To add it to explicitly configured development storage, use the separate configuration manager below. No password is needed in this form.</p>
+        <form id="policy-form" aria-describedby="policy-help" autocomplete="off">
+          <fieldset class="policy-grid">
+            <legend>Volume and SMB access</legend>
+            <label>Filesystem UUID<input id="policy-uuid" required maxlength="36" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" spellcheck="false"></label>
+            <label>Share name<input id="policy-name" required maxlength="80" placeholder="Books"></label>
+            <label>Relative folder<input id="policy-path" required maxlength="512" placeholder="books" aria-describedby="policy-path-help"><small id="policy-path-help">Use . for the volume root. No bay or /dev paths.</small></label>
+            <label>File-service username<input id="policy-user" required maxlength="32" pattern="[a-z][a-z0-9_\-]*" placeholder="reader" spellcheck="false"></label>
+            <label>SMB access<select id="policy-smb-access"><option value="ro">Read only</option><option value="rw">Read and write</option></select></label>
+            <label>NFS proposal<select id="policy-nfs-enabled"><option value="off">Not included</option><option value="on">Include NFS export</option></select></label>
+          </fieldset>
+          <fieldset id="policy-nfs-fields" class="policy-grid" hidden disabled>
+            <legend>NFS client and identity mapping</legend>
+            <label>Stable export UUID<input id="policy-export-id" required maxlength="36" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" spellcheck="false"><small>A separate export identifier, not the filesystem UUID.</small></label>
+            <label>Allowed client network (CIDR)<input id="policy-network" required maxlength="64" placeholder="192.0.2.10/32" spellcheck="false"></label>
+            <label>NFS access<select id="policy-nfs-access"><option value="ro">Read only</option><option value="rw">Read and write</option></select></label>
+            <label>Identity mapping<select id="policy-squash"><option value="all">Map all users to anonymous IDs</option><option value="root">Map root only; trust other client IDs</option></select></label>
+            <label>Anonymous UID<input id="policy-uid" type="number" required min="1" max="4294967294" step="1" value="65534"></label>
+            <label>Anonymous GID<input id="policy-gid" type="number" required min="1" max="4294967294" step="1" value="65534"></label>
+            <label>Security flavor<select id="policy-security"><option value="sys">AUTH_SYS (trusted network only)</option><option value="krb5">Kerberos authentication</option><option value="krb5i">Kerberos integrity</option><option value="krb5p">Kerberos privacy</option></select></label>
+            <p class="policy-help">NFS permissions are independent of SMB grants. AUTH_SYS does not authenticate client IDs cryptographically. Kerberos requires separate provisioning that is not implemented yet.</p>
+          </fieldset>
+          <div class="policy-actions"><button id="policy-submit" class="refresh-button" type="submit">Validate proposal</button><button id="policy-clear" class="logout-button" type="button">Clear draft</button></div>
+        </form>
+        <p id="policy-status" class="snapshot-status" role="status" aria-live="polite">No proposal validated.</p>
+        <p id="policy-error" class="error-banner" role="alert" hidden></p>
+        <div id="policy-result" hidden>
+          <p class="pill pill-warning">NOT SAVED / NOT APPLIED / RUNTIME NOT VERIFIED</p>
+          <h3>Required before activation</h3><ul id="policy-requirements"></ul>
+          <details><summary>Candidate Samba share sections</summary><pre id="policy-samba"></pre></details>
+          <details><summary>Candidate NFS export table</summary><pre id="policy-nfs"></pre></details>
+        </div>
+        <section class="saved-policy" aria-labelledby="service-title">
+          <h3 id="service-title">Development configuration manager</h3>
+          <p class="policy-help">Optional combined SMB/NFS test storage only. Load its current revision, then add from the form or select an existing item and an explicit edit operation. Unrelated shares and rules are retained. This does not migrate the separate share-only store. Saving never activates services, provisions accounts or reconfigures disks.</p>
+          <div class="policy-actions">
+            <button id="service-load" class="refresh-button" type="button">Load / reconcile saved state</button>
+            <button id="service-prepare" class="logout-button" type="button" disabled>Preview addition from form</button>
+          </div>
+          <p id="service-status" class="snapshot-status" role="status" aria-live="polite">Not loaded. Save is unavailable until development storage is verified.</p>
+          <div id="service-current" hidden>
+            <p id="service-summary" class="policy-help"></p>
+            <details><summary>Complete saved desired configuration</summary><pre id="service-document"></pre></details>
+            <fieldset id="service-editor" class="policy-grid">
+              <legend>Edit saved desired policy</legend>
+              <label>Share or export<select id="service-target"><option value="">Choose a saved item</option></select></label>
+              <label>Existing access rule<select id="service-member"><option value="">Choose a rule, or enter a new one above</option></select></label>
+              <label>Change to preview<select id="service-action">
+                <option value="smb-properties">SMB: change name, volume or folder</option>
+                <option value="smb-grant-upsert">SMB: add/update the entered user's grant</option>
+                <option value="smb-grant-remove">SMB: remove the entered user's grant</option>
+                <option value="smb-remove">SMB: remove the selected share definition</option>
+                <option value="nfs-add">NFS: add an independent export from the form</option>
+                <option value="nfs-properties">NFS: change volume or folder, retain export UUID</option>
+                <option value="nfs-client-upsert">NFS: add/update the entered CIDR's rule</option>
+                <option value="nfs-client-remove">NFS: remove the entered CIDR's rule</option>
+                <option value="nfs-remove">NFS: remove the selected export definition</option>
+              </select></label>
+              <p class="policy-help">Selecting an item fills its fields above. Selecting an access rule fills that user or CIDR. Only the chosen operation is changed; other grants, clients and the other protocol are retained. Removing SMB does not revoke NFS. Removing definitions never deletes files, volumes or users. Removing the last access rule is refused; remove the definition explicitly instead.</p>
+              <button id="service-edit-preview" class="logout-button" type="button" disabled>Preview selected change</button>
+            </fieldset>
+          </div>
+          <div id="service-review" hidden>
+            <p id="service-change" class="policy-help"></p>
+            <p class="pill pill-warning">SAVE ONLY / NO SERVICE ACTIVATION</p>
+            <p id="service-diff-summary" class="policy-help"></p>
+            <div class="policy-diff-scroll" role="region" aria-label="Desired policy before and after" tabindex="0">
+              <table class="policy-diff-table">
+                <caption>Desired policy changes — not effective access</caption>
+                <thead><tr><th scope="col">Desired entry</th><th scope="col">Loaded baseline</th><th scope="col">Reviewed candidate</th></tr></thead>
+                <tbody id="service-diff"></tbody>
+              </table>
+            </div>
+            <h3>Cross-protocol access review</h3>
+            <p class="policy-help">SMB grants and NFS client rules are independent. Removing an SMB grant or definition does not revoke NFS; removing an NFS client or export does not revoke SMB. Folder overlap is advisory only. Runtime symlinks, hard links and bind mounts are not resolved here.</p>
+            <p id="service-overlap-summary" class="policy-help"></p>
+            <div class="policy-diff-scroll" role="region" aria-label="Configured SMB and NFS folder overlap" tabindex="0">
+              <table class="policy-diff-table">
+                <caption>Configured folder pairs — not effective access</caption>
+                <thead><tr><th scope="col">SMB / NFS pair</th><th scope="col">Loaded baseline</th><th scope="col">Reviewed candidate</th></tr></thead>
+                <tbody id="service-overlaps"></tbody>
+              </table>
+            </div>
+            <details><summary>Resulting Samba share sections</summary><pre id="service-samba"></pre></details>
+            <details><summary>Resulting NFS export table</summary><pre id="service-nfs"></pre></details>
+            <button id="service-save" class="refresh-button" type="button" disabled>Save reviewed change</button>
+          </div>
+        </section>
+      </section>
+      <p class="error-banner" id="error-banner" role="alert" hidden>Snapshot unavailable. The service did not return usable diagnostics.</p>
+      </div>
+    </main>
+
+    <footer class="footer">
+      <span>PhantoWD EX4 <span aria-hidden="true">·</span> development console</span>
+      <span>Local guest loopback only <span class="footer-dot" aria-hidden="true">●</span></span>
+    </footer>
+  </div>
+</body>
+</html>

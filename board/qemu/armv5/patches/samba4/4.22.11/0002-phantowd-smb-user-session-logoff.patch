@@ -1,0 +1,208 @@
+--- a/librpc/idl/messaging.idl
++++ b/librpc/idl/messaging.idl
+@@ -121,6 +121,9 @@
+ 		/* smbd ip dropped message */
+ 		MSG_SMB_IP_DROPPED		= 0x0322,
+ 
++		/* PhantoWD: log off one Unix account's SMB sessions */
++		MSG_SMB_LOGOFF_USER		= 0x0323,
++
+ 		/* winbind messages */
+ 		MSG_WINBIND_FINISHED		= 0x0401,
+ 		MSG_WINBIND_FORGET_STATE	= 0x0402,
+--- a/source3/smbd/smbXsrv_session.h
++++ b/source3/smbd/smbXsrv_session.h
+@@ -67,6 +67,7 @@
+ NTSTATUS smb2srv_session_shutdown_recv(struct tevent_req *req);
+ NTSTATUS smbXsrv_session_logoff(struct smbXsrv_session *session);
+ NTSTATUS smbXsrv_session_logoff_all(struct smbXsrv_client *client);
++NTSTATUS smbXsrv_session_logoff_user(struct smbXsrv_client *client, const char *username);
+ NTSTATUS smb1srv_session_table_init(struct smbXsrv_connection *conn);
+ NTSTATUS smb1srv_session_lookup(struct smbXsrv_connection *conn,
+ 				uint16_t vuid,
+--- a/source3/smbd/smbXsrv_session.c
++++ b/source3/smbd/smbXsrv_session.c
+@@ -2051,6 +2051,94 @@
+ 	return 0;
+ }
+ 
++struct smbXsrv_session_logoff_user_state {
++	const char *username;
++	NTSTATUS first_status;
++	int errors;
++};
++
++static int smbXsrv_session_logoff_user_callback(struct db_record *local_rec,
++						void *private_data)
++{
++	struct smbXsrv_session_logoff_user_state *state = private_data;
++	TDB_DATA val;
++	void *ptr = NULL;
++	struct smbXsrv_session *session = NULL;
++	struct auth_session_info *session_info = NULL;
++	NTSTATUS status;
++
++	val = dbwrap_record_get_value(local_rec);
++	if (val.dsize != sizeof(ptr)) {
++		status = NT_STATUS_INTERNAL_ERROR;
++		if (NT_STATUS_IS_OK(state->first_status)) {
++			state->first_status = status;
++		}
++		state->errors++;
++		return 0;
++	}
++
++	memcpy(&ptr, val.dptr, val.dsize);
++	session = talloc_get_type_abort(ptr, struct smbXsrv_session);
++	if (session->global == NULL) {
++		return 0;
++	}
++	session_info = session->global->auth_session_info;
++	if (session_info == NULL || session_info->unix_info == NULL ||
++	    session_info->unix_info->unix_name == NULL) {
++		/* An unauthenticated in-progress connection has no target user. */
++		return 0;
++	}
++	if (strcmp(session_info->unix_info->unix_name, state->username) != 0) {
++		return 0;
++	}
++
++	session->db_rec = local_rec;
++	status = smbXsrv_session_clear_and_logoff(session);
++	session->db_rec = NULL;
++	if (!NT_STATUS_IS_OK(status)) {
++		if (NT_STATUS_IS_OK(state->first_status)) {
++			state->first_status = status;
++		}
++		state->errors++;
++	}
++
++	return 0;
++}
++
++NTSTATUS smbXsrv_session_logoff_user(struct smbXsrv_client *client,
++				     const char *username)
++{
++	struct smbXsrv_session_table *table = NULL;
++	struct smbXsrv_session_logoff_user_state state = {
++		.username = username,
++		.first_status = NT_STATUS_OK,
++	};
++	NTSTATUS status;
++	int count = 0;
++
++	if (client == NULL || username == NULL || username[0] == '\0') {
++		return NT_STATUS_INVALID_PARAMETER;
++	}
++	table = client->session_table;
++	if (table == NULL) {
++		return NT_STATUS_OK;
++	}
++
++	status = dbwrap_traverse(table->local.db_ctx,
++				 smbXsrv_session_logoff_user_callback,
++				 &state, &count);
++	if (!NT_STATUS_IS_OK(status)) {
++		DBG_ERR("dbwrap_traverse() failed: %s\n", nt_errstr(status));
++		return status;
++	}
++	if (!NT_STATUS_IS_OK(state.first_status)) {
++		DBG_ERR("count[%d] errors[%d] first[%s]\n",
++			count, state.errors, nt_errstr(state.first_status));
++		return state.first_status;
++	}
++	return NT_STATUS_OK;
++}
++
+ struct smbXsrv_session_local_trav_state {
+ 	NTSTATUS status;
+ 	int (*caller_cb)(struct smbXsrv_session *session,
+--- a/source3/smbd/server.c
++++ b/source3/smbd/server.c
+@@ -1280,6 +1280,8 @@
+ 			   smb_parent_send_to_children);
+ 	messaging_register(msg_ctx, NULL, MSG_SMB_KILL_CLIENT_IP,
+ 			   smb_parent_send_to_children);
++	messaging_register(msg_ctx, NULL, MSG_SMB_LOGOFF_USER,
++			   smb_parent_send_to_children);
+ 	messaging_register(msg_ctx, NULL, MSG_SMB_TELL_NUM_CHILDREN,
+ 			   smb_tell_num_children);
+ 
+--- a/source3/smbd/smb2_process.c
++++ b/source3/smbd/smb2_process.c
+@@ -1540,6 +1540,36 @@
+ 	TALLOC_FREE(client_ip);
+ }
+ 
++static void msg_logoff_user(struct messaging_context *msg_ctx,
++			    void *private_data,
++			    uint32_t msg_type,
++			    struct server_id server_id,
++			    DATA_BLOB *data)
++{
++	struct smbd_server_connection *sconn = talloc_get_type_abort(
++		private_data, struct smbd_server_connection);
++	const char *username = NULL;
++	NTSTATUS status;
++
++	if (data == NULL || data->data == NULL || data->length < 2 ||
++	    data->data[data->length - 1] != '\0' ||
++	    memchr(data->data, '\0', data->length - 1) != NULL) {
++		DBG_WARNING("Ignoring invalid logoff-user message\n");
++		return;
++	}
++	username = (const char *)data->data;
++	if (username[0] == '\0' || strpbrk(username, "\r\n") != NULL) {
++		DBG_WARNING("Ignoring invalid logoff-user account name\n");
++		return;
++	}
++
++	status = smbXsrv_session_logoff_user(sconn->client, username);
++	if (!NT_STATUS_IS_OK(status)) {
++		DBG_ERR("Could not log off SMB sessions for %s: %s\n",
++			username, nt_errstr(status));
++	}
++}
++
+ static void msg_kill_client_with_server_ip(struct messaging_context *msg_ctx,
+ 				      void *private_data,
+ 				      uint32_t msg_type,
+@@ -2114,1 +2114,5 @@
++	messaging_deregister(sconn->msg_ctx, MSG_SMB_LOGOFF_USER, NULL);
++	messaging_register(sconn->msg_ctx, sconn,
++			MSG_SMB_LOGOFF_USER,
++			msg_logoff_user);
+ 	messaging_deregister(sconn->msg_ctx, MSG_SMB_TELL_NUM_CHILDREN, NULL);
+ 
+--- a/source3/utils/smbcontrol.c
++++ b/source3/utils/smbcontrol.c
+@@ -873,2 +873,18 @@
++/* Log off one Unix account's local SMB sessions without killing its worker. */
++static bool do_logoff_user(struct tevent_context *ev_ctx,
++			struct messaging_context *msg_ctx,
++			const struct server_id pid,
++			const int argc,
++			const char **argv)
++{
++	if (argc != 2 || argv[1][0] == '\0' || strpbrk(argv[1], "\r\n") != NULL) {
++			fprintf(stderr, "Usage: smbcontrol <dest> logoff-user <username>\n");
++			return false;
++	}
++
++	return send_message(msg_ctx, pid, MSG_SMB_LOGOFF_USER,
++			argv[1], strlen(argv[1]) + 1);
++}
++
+ /* Tell winbindd an IP got dropped */
+ 
+@@ -1517,5 +1533,10 @@
+ 		.help = "Forcibly disconnect a client with a specific IP address",
+ 	},
++	{
++		.name = "logoff-user",
++		.fn   = do_logoff_user,
++		.help = "Log off one Unix account's SMB sessions",
++	},
+ 	{
+ 		.name = "ip-dropped",
+ 		.fn   = do_ip_dropped,
