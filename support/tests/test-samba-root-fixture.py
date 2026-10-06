@@ -44,6 +44,27 @@ def reports():
 
 
 class SambaRootFixture(unittest.TestCase):
+    def test_native_idle_disable_requires_owner_and_live_worker_proof(self):
+        expected = ("PHANTOWD_SAMBA_OWNER_NATIVE_IDLE_DISABLE_READY "
+                    "owner_bound=true same_sid=true stable_absence=true "
+                    "new_login_denied=true other_login_allowed=true "
+                    "same_daemon=true no_new_privileges=true "
+                    "stopped_reaped=true no_fd_leak=true scope=qemu-only")
+        self.assertIn(expected, fixture.MARKERS)
+        good = "\n".join([*fixture.MARKERS, SCAN_COST])
+        fixture.check_guest(good)
+        for field in ("owner_bound", "same_sid", "stable_absence",
+                      "new_login_denied", "other_login_allowed",
+                      "same_daemon", "no_new_privileges", "stopped_reaped",
+                      "no_fd_leak"):
+            with self.assertRaises(ValueError):
+                fixture.check_guest(good.replace(expected, expected.replace(
+                    field + "=true", field + "=false")))
+        for replacement in ("", expected + "\n" + expected,
+                            expected.replace("qemu-only", "product")):
+            with self.assertRaises(ValueError):
+                fixture.check_guest(good.replace(expected, replacement))
+
     def test_native_daemon_requires_same_state_authentication(self):
         expected = ("PHANTOWD_SAMBA_OWNER_NATIVE_DAEMON_READY accounts=2 "
                     "same_code=true same_config=true same_state=true "
@@ -551,6 +572,10 @@ class SambaRootFixture(unittest.TestCase):
             "PHANTOWD_SAMBA_OWNER_NATIVE_DAEMON_READY accounts=2 "
             "same_code=true same_config=true same_state=true "
             "authenticated=true wrong_password_denied=true owned_group=true "
+            "stopped_reaped=true no_fd_leak=true scope=qemu-only",
+            "PHANTOWD_SAMBA_OWNER_NATIVE_IDLE_DISABLE_READY owner_bound=true "
+            "same_sid=true stable_absence=true new_login_denied=true "
+            "other_login_allowed=true same_daemon=true no_new_privileges=true "
             "stopped_reaped=true no_fd_leak=true scope=qemu-only",
             "PHANTOWD_SAMBA_ROOT_DONE",
         ]

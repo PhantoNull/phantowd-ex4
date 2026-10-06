@@ -3,6 +3,36 @@
 
 # Implementation status
 
+## M4.4 Owner-bound native idle disable — disposable QEMU
+
+The fixed native daemon now has a single-use serialized start/check/stop
+lifecycle. The same Owner-bound backend can run credential and status workers
+while that daemon remains owned; no per-operation replacement backend,
+arbitrary command, product listener or new privilege is introduced.
+
+The official local ARMv5 wrapper passes all 36 driver/seven loader tests and
+both complete campaigns. It explicitly disables one Owner-enrolled account,
+confirms the same SID and disabled journal, requires the unchanged backend's
+two complete stable-absence inventories, denies that account's new login and
+authenticates the other account against the same daemon. Canceled/duplicate
+start and restart after stop are refused; verified teardown, final FD equality
+and unchanged base are mandatory. Focused Linux-native tagged vet/race tests
+pass at count3, including absent/canceled/busy authority refusal.
+
+The initial new composition failed closed when redundant complete code scans
+exhausted the existing 2-second status deadline. Removing the duplicate scans
+restores exactly one complete code/config/state plus live-daemon admission on
+each side of a worker; the 2-second status, 5-second revocation, 60-second
+enrollment, 20-second daemon and 180-second guest budgets remain unchanged.
+Temporary diagnostics were removed before final qualification.
+
+No session is deliberately held open in this tracer. It does **not** qualify
+revocation of an established session, active-session generation coverage,
+sustained supervision, continuous identity/storage authority, product startup,
+new complete-image/clean/hosted qualification or physical EX4 operation.
+Those gates remain open; the earlier complete-image result below retains its
+exact source scope. The firmware remains non-installable.
+
 ## M4.4 native Owner-enrolled daemon authentication — disposable QEMU
 
 The native runtime now retains the same original code, protected configuration

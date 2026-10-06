@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/fileserviceplan"
+	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/processowner"
 )
 
 func TestNativeCredentialRuntimeRefusesHostBeforeConsumingRoots(t *testing.T) {
@@ -43,5 +44,35 @@ func TestNativeCredentialRuntimeRefusesHostBeforeConsumingRoots(t *testing.T) {
 	}
 	if docs, err := SambaCredentialDocumentsQEMU(fileserviceplan.SambaEnrollmentLookup{}); docs != nil || !errors.Is(err, ErrInvalid) {
 		t.Fatal("zero native evidence supplied configuration", err)
+	}
+}
+
+func TestNativeDaemonLifecycleRefusesAbsentCanceledAndBusyAuthority(t *testing.T) {
+	var absent *NativeSambaRuntimeQEMU
+	for _, operation := range []func(context.Context) error{
+		absent.StartNativeDaemonQEMU, absent.StopNativeDaemonQEMU,
+		absent.VerifyNativeIdleDisableQEMU, absent.ProbeNativeDaemonQEMU,
+	} {
+		if err := operation(context.Background()); !errors.Is(err, ErrInvalid) {
+			t.Fatal("absent authority admitted lifecycle", err)
+		}
+	}
+	// No pins or process set: cancellation and exclusive-gate refusal must
+	// happen before any file/process access, so these cases need no root fixture.
+	r := &NativeSambaRuntimeQEMU{owner: &Owner{}, gate: make(chan struct{}, 1)}
+	canceled, cancel := context.WithCancel(context.Background())
+	cancel()
+	for _, operation := range []func(context.Context) error{
+		r.StartNativeDaemonQEMU, r.StopNativeDaemonQEMU, r.VerifyNativeIdleDisableQEMU,
+	} {
+		if err := operation(canceled); !errors.Is(err, context.Canceled) {
+			t.Fatal("canceled lifecycle proceeded", err)
+		}
+		r.gate <- struct{}{}
+		err := operation(context.Background())
+		<-r.gate
+		if !errors.Is(err, processowner.ErrBusy) {
+			t.Fatal("concurrent lifecycle proceeded", err)
+		}
 	}
 }

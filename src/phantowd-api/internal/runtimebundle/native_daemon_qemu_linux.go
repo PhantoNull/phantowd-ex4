@@ -56,21 +56,23 @@ func (r *NativeSambaRuntimeQEMU) prepareNativeDaemonQEMU(ctx context.Context) er
 	return nil // The outer constructor performs the complete late admission.
 }
 
-// ProbeNativeDaemonQEMU is a fixed authentication-only experiment, not a product
-// Start API. It keeps the private runtime gate, starts once, verifies original
-// child views/owned process, then stops before returning without releasing pins.
-func (r *NativeSambaRuntimeQEMU) ProbeNativeDaemonQEMU(ctx context.Context) (result error) {
+// StartNativeDaemonQEMU is a single-use fixed experiment. Each operation keeps
+// the runtime gate; the owned daemon survives between operations so the fixed
+// Owner-bound backend can run credential/status workers without recursive gates.
+// This is not product startup and accepts no caller-selected process or profile.
+func (r *NativeSambaRuntimeQEMU) StartNativeDaemonQEMU(ctx context.Context) (result error) {
 	if err := r.enter(ctx); err != nil {
 		return err
 	}
 	defer func() { <-r.gate }()
-	if r.closed || r.owner.review || r.pending != nil {
+	if r.closed || r.owner.review || r.pending != nil || r.daemonAttempted {
 		return ErrReviewRequired
 	}
-	var authPaths []string
+	r.daemonAttempted = true
 	defer func() {
-		for _, path := range authPaths {
-			result = errors.Join(result, os.Remove(path))
+		if result != nil {
+			r.owner.review = true
+			result = errors.Join(result, r.stopNativeDaemonQEMU())
 		}
 	}()
 	for _, test := range []struct{ user, kind, password string }{
@@ -83,28 +85,18 @@ func (r *NativeSambaRuntimeQEMU) ProbeNativeDaemonQEMU(ctx context.Context) (res
 		if err != nil {
 			return err
 		}
-		authPaths = append(authPaths, path)
+		r.authPaths = append(r.authPaths, path)
 		_, err = fmt.Fprintf(file, "username = %s\npassword = %s\n", test.user, test.password)
 		if err := errors.Join(err, file.Close()); err != nil {
 			return err
 		}
 	}
-	defer func() {
-		stopped, err := r.owner.processes.Stop(context.Background())
-		r.owner.snapshot.Processes, r.owner.snapshot.State = stopped, stopped.State
-		if err != nil || stopped.State != processowner.StateStopped {
-			r.owner.review = true
-			result = errors.Join(result, ErrReviewRequired, err)
-		}
-		if result != nil {
-			r.owner.review = true
-		}
-	}()
 	started, err := r.owner.Start(ctx)
 	if err != nil || started.State != processowner.StateReady || len(started.Processes.Members) != 1 {
 		return errors.Join(errors.New("native daemon readiness"), err)
 	}
 	pid := started.Processes.Members[0].Process.PID
+	r.daemonPID = pid
 	if err := r.verifyNativeDaemonQEMU(ctx, pid); err != nil {
 		return err
 	}
@@ -119,6 +111,79 @@ func (r *NativeSambaRuntimeQEMU) ProbeNativeDaemonQEMU(ctx context.Context) (res
 		return errors.Join(errors.New("native daemon wrong-password refusal missing"), err)
 	}
 	return r.verifyNativeDaemonQEMU(ctx, pid)
+}
+
+// VerifyNativeIdleDisableQEMU tests only the fixed qpmanaged/qpsecond pair.
+// It does not claim that an established session was revoked: this first tracer
+// proves workers against the live daemon and new-login refusal independently.
+func (r *NativeSambaRuntimeQEMU) VerifyNativeIdleDisableQEMU(ctx context.Context) (result error) {
+	if err := r.enter(ctx); err != nil {
+		return err
+	}
+	defer func() { <-r.gate }()
+	if r.closed || r.owner.review || r.pending != nil || r.daemonPID == 0 {
+		return ErrReviewRequired
+	}
+	defer func() {
+		if result != nil {
+			r.owner.review = true
+		}
+	}()
+	if err := r.verifyNativeDaemonQEMU(ctx, r.daemonPID); err != nil {
+		return err
+	}
+	authenticated, denied, err := r.nativeClientQEMU(ctx, "qpmanaged", false)
+	if err != nil || authenticated || !denied {
+		return errors.Join(ErrMismatch, err)
+	}
+	authenticated, _, err = r.nativeClientQEMU(ctx, "qpsecond", false)
+	if err != nil || !authenticated {
+		return errors.Join(ErrMismatch, err)
+	}
+	return r.verifyNativeDaemonQEMU(ctx, r.daemonPID)
+}
+
+func (r *NativeSambaRuntimeQEMU) StopNativeDaemonQEMU(ctx context.Context) error {
+	if err := r.enter(ctx); err != nil {
+		return err
+	}
+	defer func() { <-r.gate }()
+	if r.closed {
+		return nil
+	}
+	return r.stopNativeDaemonQEMU()
+}
+
+func (r *NativeSambaRuntimeQEMU) stopNativeDaemonQEMU() error {
+	stopped, err := r.owner.processes.Stop(context.Background())
+	r.owner.snapshot.Processes, r.owner.snapshot.State = stopped, stopped.State
+	if err != nil || stopped.State != processowner.StateStopped {
+		r.owner.review = true
+		return errors.Join(ErrReviewRequired, err)
+	}
+	r.daemonPID = 0
+	return r.removeNativeAuthQEMU()
+}
+
+func (r *NativeSambaRuntimeQEMU) removeNativeAuthQEMU() error {
+	var result error
+	var remaining []string
+	for _, path := range r.authPaths {
+		if err := os.Remove(path); err != nil {
+			result = errors.Join(result, err)
+			remaining = append(remaining, path)
+		}
+	}
+	r.authPaths = remaining
+	return result
+}
+
+// ProbeNativeDaemonQEMU retains the original bounded authentication experiment.
+func (r *NativeSambaRuntimeQEMU) ProbeNativeDaemonQEMU(ctx context.Context) error {
+	if err := r.StartNativeDaemonQEMU(ctx); err != nil {
+		return err
+	}
+	return r.StopNativeDaemonQEMU(context.Background())
 }
 
 func (r *NativeSambaRuntimeQEMU) nativeClientQEMU(ctx context.Context, user string, wrong bool) (authenticated, denied bool, result error) {
@@ -163,7 +228,8 @@ func (r *NativeSambaRuntimeQEMU) nativeClientQEMU(ctx context.Context, user stri
 	if observed.ExitCode == 0 && !bytes.Contains(output, []byte("NT_STATUS_")) {
 		return true, false, nil
 	}
-	if observed.ExitCode == 1 && bytes.Contains(output, []byte("NT_STATUS_LOGON_FAILURE")) {
+	if observed.ExitCode == 1 && (bytes.Contains(output, []byte("NT_STATUS_LOGON_FAILURE")) ||
+		(!wrong && bytes.Contains(output, []byte("NT_STATUS_ACCOUNT_DISABLED")))) {
 		return false, true, nil
 	}
 	if observed.ExitCode == 1 && bytes.Contains(output, []byte("NT_STATUS_CONNECTION_REFUSED")) && bytes.Contains(output, []byte("Connection to 127.0.0.1 failed")) {
@@ -174,6 +240,10 @@ func (r *NativeSambaRuntimeQEMU) nativeClientQEMU(ctx context.Context, user stri
 
 func (r *NativeSambaRuntimeQEMU) verifyNativeDaemonQEMU(ctx context.Context, pid int) error {
 	if pid <= 1 || r.owner.revalidate(ctx) != nil || r.owner.processes.CheckNativeSambaBootstrapQEMU(ctx) != nil {
+		return ErrReviewRequired
+	}
+	observed, err := r.owner.processes.Observe(ctx)
+	if err != nil || observed.State != processowner.StateReady || len(observed.Members) != 1 || observed.Members[0].Process.PID != pid {
 		return ErrReviewRequired
 	}
 	group, err := unix.Getpgid(pid)
@@ -226,4 +296,14 @@ func (r *NativeSambaRuntimeQEMU) verifyNativeDaemonQEMU(ctx context.Context, pid
 		}
 	}
 	return r.owner.verifyLiveSambaStateQEMU(pid)
+}
+
+// Exactly one complete admission on each side of every worker. Live daemon
+// verification already includes the complete code/config/state revalidation;
+// repeating it would consume the existing bounded status deadline before exec.
+func (r *NativeSambaRuntimeQEMU) revalidateNativeRuntimeQEMU(ctx context.Context) error {
+	if r.daemonPID != 0 {
+		return r.verifyNativeDaemonQEMU(ctx, r.daemonPID)
+	}
+	return r.owner.revalidate(ctx)
 }

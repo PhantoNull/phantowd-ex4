@@ -117,6 +117,10 @@ MARKERS = (
     "same_code=true same_config=true same_state=true authenticated=true "
     "wrong_password_denied=true owned_group=true stopped_reaped=true "
     "no_fd_leak=true scope=qemu-only",
+    "PHANTOWD_SAMBA_OWNER_NATIVE_IDLE_DISABLE_READY owner_bound=true "
+    "same_sid=true stable_absence=true new_login_denied=true "
+    "other_login_allowed=true same_daemon=true no_new_privileges=true "
+    "stopped_reaped=true no_fd_leak=true scope=qemu-only",
     "PHANTOWD_SAMBA_ROOT_DONE",
 )
 

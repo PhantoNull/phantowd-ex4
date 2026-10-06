@@ -216,7 +216,7 @@ serialization refusal, writable-root refusal and safe Linux open flags.
 
 The separate QEMU-only native composition now retains the same original code,
 Owner-derived configuration and writable state through disabled-first account
-enrollment and one bounded authentication-only daemon probe. Its private adapter
+enrollment and one bounded single-use daemon lifecycle. Its private adapter
 duplicates the helper plus twelve input objects; the bootstrap clones originals,
 masks source paths, closes escape FDs and runs in a read-only root with caps
 `0xdb`/NNP, no proc/dev/run and empty read-only IPC `/tmp`. Only the disposable
@@ -226,6 +226,15 @@ The official local ARMv5 wrapper verifies real authentication for two distinct
 Owner-enrolled accounts, wrong-password refusal, all114 original code views,
 protected config/state and verified whole-group stop/reap/no-FD-leak. Credentials
 and authentication keep separate 60/20-second phases inside the 180-second guest.
+The same fixed backend now also passes idle disable while that daemon remains
+owned: same-SID journal, two complete stable-absence inventories, refused new
+target login and successful peer login. Start/worker/check/stop operations keep
+the private gate individually; no callback or replacement backend runs inside
+it. Exactly one complete code/config/state and live-daemon admission brackets
+each worker, retaining the existing status/revocation deadlines. Canceled and
+duplicate starts, restart after stop and absent/busy authority are refused.
+No session is deliberately held open here; empty-inventory qualification does
+not establish active-session coverage or live revocation.
 This is not complete image/clean/hosted qualification, live-session revocation,
 continuous identity/storage authority, product root construction or startup.
 The generic Owner's static/non-root contract below is unchanged. See the

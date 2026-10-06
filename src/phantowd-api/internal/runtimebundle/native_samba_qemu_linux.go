@@ -55,11 +55,14 @@ func SambaCredentialDocumentsQEMU(lookup fileserviceplan.SambaEnrollmentLookup) 
 // experiment. No product startup exists. Pending captures remain owned until
 // verified teardown.
 type NativeSambaRuntimeQEMU struct {
-	owner   *Owner
-	helper  *os.File
-	pending *processowner.CaptureOwner
-	gate    chan struct{}
-	closed  bool
+	owner           *Owner
+	helper          *os.File
+	pending         *processowner.CaptureOwner
+	gate            chan struct{}
+	closed          bool
+	daemonAttempted bool
+	daemonPID       int
+	authPaths       []string
 }
 
 func (p *Plan) NewNativeSambaRuntimeQEMU(ctx context.Context, code, configuration, state *os.File, lookup fileserviceplan.SambaEnrollmentLookup) (_ *NativeSambaRuntimeQEMU, result error) {
@@ -198,7 +201,7 @@ func (r *NativeSambaRuntimeQEMU) ExecuteQEMU(ctx context.Context, operation proc
 	r.pending = capture
 	// Duplicating inputs above has no command/state effects. Admit the complete
 	// retained tuple ONCE here, then recheck it after verified worker teardown.
-	if err := r.owner.revalidate(ctx); err != nil {
+	if err := r.revalidateNativeRuntimeQEMU(ctx); err != nil {
 		r.owner.review = true
 		return nil, ErrReviewRequired // Close owns the pending unlaunched capture.
 	}
@@ -212,7 +215,7 @@ func (r *NativeSambaRuntimeQEMU) ExecuteQEMU(ctx context.Context, operation proc
 		return nil, ErrReviewRequired // Keep pending and all original authority.
 	}
 	r.pending = nil
-	checkErr := r.owner.revalidate(ctx)
+	checkErr := r.revalidateNativeRuntimeQEMU(ctx)
 	if runErr != nil || observed.Kind != processowner.CaptureExited || observed.ExitCode != 0 || strings.Count(string(observed.Stderr), nativeCredentialHandoff) != 1 || checkErr != nil {
 		clear(observed.Stdout)
 		r.owner.review = true
@@ -244,6 +247,7 @@ func (r *NativeSambaRuntimeQEMU) Close(ctx context.Context) error {
 		return errors.Join(ErrReviewRequired, err)
 	}
 	r.closed = true
+	err = errors.Join(err, r.removeNativeAuthQEMU())
 	if r.helper != nil {
 		err = errors.Join(err, r.helper.Close())
 		r.helper = nil

@@ -2438,6 +2438,19 @@ this order, preserving the [full contract](support/SAMBA-RUNTIME-PROFILE.md#samb
    and seven artifact hashes agree. Every later guest lane also passes. Own
    hosted/independent clean-build qualification remains pending; this is not
    product construction or physical EX4 evidence.
+   The next local tracer now passes Owner-bound **idle** disable against that
+   same daemon: same-SID disabled journal, two complete stable-absence
+   inventories, refused new login and unaffected second-account login. All36
+   driver/seven loader tests, both actual ARMv5 campaigns and focused native
+   race-count3 pass. Single-use start/check/stop avoids recursive runtime gates;
+   complete code/config/state and live daemon checks bracket workers once each,
+   without increasing status/revocation budgets or granting `/proc`.
+   This newer tracer has no deliberately open session and is not included in
+   the earlier full image. Next hold two fixed actual client sessions under
+   owned groups; require complete qualified-generation observations before
+   dispatch, one target-only logoff, target absence and continued peer access,
+   failed fresh target login, uncertainty/no-retry refusal and verified whole
+   client/daemon teardown. Do not infer live revocation from an empty inventory.
    Never bootstrap by
    fabricating enabled journals/SIDs, copying TDBs or
    passing enrollment lookup as active-service evidence. Closing/reopening an

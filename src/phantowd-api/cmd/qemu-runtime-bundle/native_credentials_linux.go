@@ -191,8 +191,40 @@ func nativeCredentialFixture() (result error) {
 	// credential campaign remains unchanged. The outer guest still has 180s.
 	daemonContext, stopDaemonContext := context.WithTimeout(context.Background(), 20*time.Second)
 	defer stopDaemonContext()
-	if err := runtime.ProbeNativeDaemonQEMU(daemonContext); err != nil {
+	canceled, cancelStart := context.WithCancel(daemonContext)
+	cancelStart()
+	if err := runtime.StartNativeDaemonQEMU(canceled); !errors.Is(err, context.Canceled) {
+		return errors.New("native canceled start admitted")
+	}
+	if err := runtime.StartNativeDaemonQEMU(daemonContext); err != nil {
 		return fmt.Errorf("native same-state daemon: %w", err)
+	}
+	if err := runtime.StartNativeDaemonQEMU(daemonContext); !errors.Is(err, runtimebundle.ErrReviewRequired) {
+		return errors.New("native duplicate start admitted")
+	}
+	// No client is held open here. The unchanged backend must perform its two
+	// complete stable-absence observations against the SAME running daemon.
+	disable := owner.SMB(native[0].Account.ID)
+	journal, err := disable.Load(daemonContext)
+	if err != nil || journal.Phase != smbprovision.Enabled {
+		return errors.New("native idle disable admission")
+	}
+	sid := journal.SID
+	if err := disable.Disable(daemonContext, journal.Revision); err != nil {
+		return fmt.Errorf("native idle disable: %w", err)
+	}
+	journal, err = disable.Load(daemonContext)
+	if err != nil || journal.Phase != smbprovision.Disabled || journal.SID != sid {
+		return errors.New("native idle disable journal confirmation")
+	}
+	if err := runtime.VerifyNativeIdleDisableQEMU(daemonContext); err != nil {
+		return fmt.Errorf("native idle disable authentication: %w", err)
+	}
+	if err := runtime.StopNativeDaemonQEMU(context.Background()); err != nil {
+		return err
+	}
+	if err := runtime.StartNativeDaemonQEMU(daemonContext); !errors.Is(err, runtimebundle.ErrReviewRequired) {
+		return errors.New("native stopped daemon restarted")
 	}
 	if err := owner.Close(); err != nil {
 		return err
@@ -206,5 +238,6 @@ func nativeCredentialFixture() (result error) {
 	}
 	fmt.Println("PHANTOWD_SAMBA_OWNER_NATIVE_ENROLLMENT_READY accounts=2 owner_bound=true original_config=true original_state=true disabled_first=true stdin_only=true same_sid=true explicit_enable=true stopped_reaped=true no_fd_leak=true scope=qemu-only")
 	fmt.Println("PHANTOWD_SAMBA_OWNER_NATIVE_DAEMON_READY accounts=2 same_code=true same_config=true same_state=true authenticated=true wrong_password_denied=true owned_group=true stopped_reaped=true no_fd_leak=true scope=qemu-only")
+	fmt.Println("PHANTOWD_SAMBA_OWNER_NATIVE_IDLE_DISABLE_READY owner_bound=true same_sid=true stable_absence=true new_login_denied=true other_login_allowed=true same_daemon=true no_new_privileges=true stopped_reaped=true no_fd_leak=true scope=qemu-only")
 	return nil
 }

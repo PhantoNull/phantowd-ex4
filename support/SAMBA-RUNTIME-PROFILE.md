@@ -640,6 +640,18 @@ session-control workers lack a qualified process-generation/revocation view;
 including their binaries is not that proof. Durable recovery, atomic protected
 root construction, product startup/UI, clean builds and EX4 remain open.
 
+The subsequent fixed single-use lifecycle also qualifies Owner-bound **idle**
+disable while the same daemon remains running. Two complete stable-absence
+inventories, same-SID disabled journal, denied new target login, unaffected peer
+login, canceled/duplicate-start and stopped-restart refusal, group/FD teardown
+and all previous markers are mandatory in the 36-driver/seven-loader official
+ARMv5 wrapper. Focused native race-count3 also passes. Every credential/status
+worker retains complete admission and live-daemon verification before and after
+execution, once each rather than duplicate full scans. Status2/revocation5,
+enrollment60/daemon20 and guest180-second limits are unchanged; no new `/proc`,
+device, network, storage or privilege grant exists. This is not deliberately
+open-session revocation, new full-image/source-bundle or hosted qualification.
+
 ### Product construction requirements
 
 - Fix the backend, launcher, daemon, arguments, readiness/stop budgets and
