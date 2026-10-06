@@ -2295,14 +2295,41 @@ These features are separate scope, not shortcuts around core acceptance:
 
 ## Next bounded work packets
 
-Current priority (2026-10-05): **M9.1l actual backing-use lifetime qualification
-→ M4.4 separate Samba-specific service Owner → M3 production roster/qualification
+Current priority (2026-10-06): **M4.4 separate Samba-specific service Owner
+→ M3 production roster/qualification
 + M4 durable activation Owner**. Keep local-first validation and exact-head
 integration serialized; do not restart a heavy qualifier for each intermediate
 checkpoint. The actual cooperative target concurrency/reuse fixture passes
 locally, but native positive tests skip on the unsupported local kernel.
-The Samba Owner composition still requires its separate explicit host/QEMU
-decision; the already-qualified standalone fixture is not that permission.
+Separate Samba Owner host/disposable-QEMU development is approved. Its first
+owned-group prerequisite does not complete retained dynamic code/configuration,
+identity/storage authority or product activation. Keep the static/non-root Owner
+unchanged, qualify the separate bootstrap boundary and retain all inputs until
+verified complete-group stop. NAS/disks and persistent operations remain excluded.
+
+M4.4's owned-group prerequisite is now locally host/ARMv5 qualified: fixed
+guarded bootstrap entry, pinned helper, real distinct-account write/read/denial
+checks, unchanged capability/namespace/root boundaries and verified whole stop.
+It is not the retained-input service Owner. Complete the remaining packet in
+this order, preserving the [full contract](support/SAMBA-RUNTIME-PROFILE.md#samba-specific-owner-integration-packet-hostqemu-scope-approved):
+
+1. Retain independently validated code-only tree descriptors and original
+   identities; keep the exact census separate from the composed service root.
+   Fix the expected closure/ABI and trusted manifest source, not self-measured
+   dependency candidates. Qualify same-byte file/directory/alias replacement,
+   caller closure, constructor failure and cancellation before launch.
+2. Bind protected bounded configuration/NSS inputs, identity-authority passdb
+   revision and descriptor-bound storage grants at construction. Mutable Samba
+   state has an explicit protected roster and legitimate-mutation contract,
+   separate from immutable code/configuration. No per-call backend/path changes,
+   automatic account creation, mount/import or product listener.
+3. Integrate serial revalidation and lifecycle supervision: drift/source loss or
+   unexpected exit stops the known group before any input release; uncertain or
+   forced stop retains authorities in review. Test restoration/no-restart,
+   incomplete cleanup, repeated Close and complete-group absence, not just PID
+   exit. Only afterward compose durable activation/recovery and authenticated
+   web management with the production storage/identity Owners.
+
 The packets below retain earlier dependency context, not current PR status.
 See [current gaps and acceptance sequence](IMPLEMENTATION-STATUS.md#next-implementation-sequence).
 

@@ -7,6 +7,7 @@
 #include <grp.h>
 #include <endian.h>
 #include <linux/capability.h>
+#include <linux/magic.h>
 #include <linux/posix_acl_xattr.h>
 #include <sched.h>
 #include <signal.h>
@@ -17,6 +18,7 @@
 #include <sys/prctl.h>
 #include <sys/stat.h>
 #include <sys/statvfs.h>
+#include <sys/vfs.h>
 #include <sys/syscall.h>
 #include <sys/wait.h>
 #include <sys/xattr.h>
@@ -34,6 +36,25 @@ static int fail(void)
 {
     fputs("PHANTOWD_SAMBA_ROOT_LAUNCH_REFUSED\n", stderr);
     return 1;
+}
+
+/* Separate fixed entry for an already-created Owner group. A standalone
+ * caller is not silently converted into an owned server. Check before any
+ * namespace, mount, root, capability or inherited-context mutation. */
+static int owned_group_context(void)
+{
+    if (getpid() <= 1 || getpgrp() != getpid())
+        return -1;
+    for (int fd = 1; fd <= 2; ++fd) {
+        struct stat info;
+        struct statfs filesystem;
+        int flags = fcntl(fd, F_GETFL);
+        if (flags < 0 || (flags & O_ACCMODE) != O_WRONLY ||
+            fstat(fd, &info) || !S_ISFIFO(info.st_mode) ||
+            fstatfs(fd, &filesystem) || filesystem.f_type != PIPEFS_MAGIC)
+            return -1;
+    }
+    return 0;
 }
 
 static int guard(void)
@@ -107,15 +128,11 @@ static int restrict_capabilities(void)
     return 0;
 }
 
-static int client(const char *user, const char *share, const char *operation)
+static int client_operation_allowed(const char *operation)
 {
-    if ((strcmp(user, "qpwriter") && strcmp(user, "qpreader") &&
-         strcmp(user, "qpoutsider") && strcmp(user, "qpwrong")) ||
-        (strcmp(share, "ReadWrite") && strcmp(share, "KernelReadOnly") &&
-         strcmp(share, "OriginalAnchor") && strcmp(share, "UnixDenied") &&
-         strcmp(share, "PosixACL")))
-        return fail();
     const char *operations[] = {"ls", "put /run/upload created",
+        "put /run/upload owned-created", "get owned-created /run/download",
+        "put /run/upload owned-readonly-denied",
         "get created /run/download", "put /run/upload reader-denied",
         "put /run/upload readonly-denied", "get escape /run/escaped",
         "put /run/upload unix-denied", "put /run/upload created-é-β",
@@ -133,7 +150,16 @@ static int client(const char *user, const char *share, const char *operation)
     int matched = 0;
     for (size_t i = 0; i < sizeof(operations) / sizeof(operations[0]); ++i)
         matched |= !strcmp(operation, operations[i]);
-    if (!matched)
+    return matched;
+}
+
+static int client(const char *user, const char *share, const char *operation)
+{
+    if ((strcmp(user, "qpwriter") && strcmp(user, "qpreader") &&
+         strcmp(user, "qpoutsider") && strcmp(user, "qpwrong")) ||
+        (strcmp(share, "ReadWrite") && strcmp(share, "KernelReadOnly") &&
+         strcmp(share, "OriginalAnchor") && strcmp(share, "UnixDenied") &&
+         strcmp(share, "PosixACL")) || !client_operation_allowed(operation))
         return fail();
     char auth[64], address[64];
     snprintf(auth, sizeof(auth), "/run/%s.auth", user);
@@ -347,7 +373,7 @@ static int acl_fixture(const char *operation)
     return 0;
 }
 
-/* Poison only the standalone disposable server's inherited context. These
+/* Poison only the disposable servers' inherited context. These
  * fixed original-namespace handles must not survive the existing boundary. */
 static int poison_inherited_context(void)
 {
@@ -434,13 +460,17 @@ int main(int argc, char **argv)
     }
     if (argc == 5 && !strcmp(argv[1], "client"))
         return client(argv[2], argv[3], argv[4]);
-    int server = argc == 2 && !strcmp(argv[1], "server");
+    int owned_server = argc == 2 && !strcmp(argv[1], "owned-server");
+    int server = owned_server || (argc == 2 && !strcmp(argv[1], "server"));
     int charset = argc == 2 && !strcmp(argv[1], "charset");
     int enroll = argc == 3 && !strcmp(argv[1], "enroll") &&
         (!strcmp(argv[2], "qpwriter") || !strcmp(argv[2], "qpreader") ||
          !strcmp(argv[2], "qpoutsider"));
     if (!server && !enroll && !charset)
         return fail();
+    if (owned_server && owned_group_context())
+        return fail();
+    pid_t owner_group = getpgrp();
     if (server && poison_inherited_context())
         return fail();
     struct stat info;
@@ -489,7 +519,8 @@ int main(int argc, char **argv)
     }
     if (server && verify_restored_context())
         return fail();
-    if (setsid() < 0)
+    if (owned_server ? (owned_group_context() || getpgrp() != owner_group) :
+        setsid() < 0)
         return fail();
     char *environment[] = {"PATH=/usr/sbin:/usr/bin:/sbin:/bin", "LC_ALL=C", NULL};
     if (server) {

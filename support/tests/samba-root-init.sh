@@ -249,6 +249,7 @@ run_fixture() {
             return 1
         fi
     done
+    /usr/sbin/phantowd-samba-owner-probe || return 1
     echo PHANTOWD_SAMBA_ROOT_DONE
 }
 if ! run_fixture; then

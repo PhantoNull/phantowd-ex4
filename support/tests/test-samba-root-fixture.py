@@ -44,6 +44,41 @@ def reports():
 
 
 class SambaRootFixture(unittest.TestCase):
+    @unittest.skipUnless(os.name == "posix", "Linux owned group contract")
+    def test_owned_group_requires_leader_and_anonymous_writable_pipes(self):
+        root = Path(__file__).resolve().parents[2]
+        with tempfile.TemporaryDirectory() as scratch:
+            executable = Path(scratch, "owned-context-host")
+            compiled = subprocess.run(
+                ["cc", "-std=c11", "-O2", "-Wall", "-Wextra", "-Werror",
+                 str(root / "support/tests/"
+                     "samba-root-owned-context-fixture.c"),
+                 "-o", str(executable)], timeout=30, check=False,
+                capture_output=True, text=True)
+            self.assertEqual(compiled.returncode, 0, compiled.stderr)
+            result = subprocess.run(
+                [str(executable)], timeout=5, check=False,
+                capture_output=True, text=True,
+                env={"PATH": "/usr/bin:/bin", "LC_ALL": "C"})
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(result.stderr, "")
+            self.assertEqual(result.stdout,
+                             "PHANTOWD_SAMBA_OWNED_CONTEXT_NATIVE_READY "
+                             "accepted=1 denied=6 scope=host-process-only\n")
+            for operation in ("put /run/upload owned-created",
+                              "get owned-created /run/download",
+                              "put /run/upload owned-readonly-denied"):
+                checked = subprocess.run(
+                    [str(executable), operation], timeout=5, check=False,
+                    capture_output=True, text=True)
+                self.assertEqual(checked.returncode, 0, operation)
+            for operation in ("put /run/upload unapproved", "ls; reboot",
+                              "get ../escape /tmp/escape", "", "LS"):
+                checked = subprocess.run(
+                    [str(executable), operation], timeout=5, check=False,
+                    capture_output=True, text=True)
+                self.assertEqual(checked.returncode, 1, operation)
+
     @unittest.skipUnless(os.name == "posix", "Linux process context contract")
     def test_actual_context_check_denies_each_leak_and_restores(self):
         root = Path(__file__).resolve().parents[2]
@@ -232,7 +267,15 @@ class SambaRootFixture(unittest.TestCase):
             "reader_uid=1802 outsider_denied=true kernel_ro=true "
             "original_denied=true unix_ownership=true unix_denial=true "
             "utf8_roundtrip=true scope=qemu-only",
-            "PHANTOWD_SAMBA_ROOT_STOPPED", "PHANTOWD_SAMBA_ROOT_DONE",
+            "PHANTOWD_SAMBA_ROOT_STOPPED",
+            "PHANTOWD_SAMBA_OWNER_GROUP_READY nonleader_refused=true "
+            "pinned_helper=true caller_close=true canceled_refused=true "
+            "same_group=true caps=db distinct_accounts=true "
+            "writer_bytes=true unix_ownership=true kernel_ro=true "
+            "duplicate_refused=true "
+            "live_close_refused=true "
+            "stopped_reaped=true scope=qemu-only",
+            "PHANTOWD_SAMBA_ROOT_DONE",
         ]
         fixture.check_guest("\r\n".join(lines + [SCAN_COST]))
         self.assertEqual(fixture.scan_cost("\r\n".join(lines + [SCAN_COST])),
@@ -258,12 +301,33 @@ class SambaRootFixture(unittest.TestCase):
                        for row in lines]
             with self.assertRaises(ValueError):
                 fixture.check_guest("\n".join(changed + [SCAN_COST]))
+
         for replacement in ("", evidence + "\n" + evidence,
                             evidence.replace("qemu-only", "physical-ex4")):
             changed = [replacement if row == evidence else row
                        for row in lines]
             with self.assertRaises(ValueError):
                 fixture.check_guest("\n".join(changed + [SCAN_COST]))
+
+    def test_owned_group_requires_executed_write_and_canceled_admission(self):
+        expected = ("PHANTOWD_SAMBA_OWNER_GROUP_READY nonleader_refused=true "
+                    "pinned_helper=true caller_close=true "
+                    "canceled_refused=true "
+                    "same_group=true caps=db distinct_accounts=true "
+                    "writer_bytes=true unix_ownership=true kernel_ro=true "
+                    "duplicate_refused=true live_close_refused=true "
+                    "stopped_reaped=true scope=qemu-only")
+        self.assertIn(expected, fixture.MARKERS)
+        for field in ("canceled_refused", "writer_bytes", "unix_ownership",
+                      "kernel_ro", "same_group", "stopped_reaped"):
+            changed = [row.replace(field + "=true", field + "=false")
+                       if row == expected else row for row in fixture.MARKERS]
+            with self.assertRaises(ValueError):
+                fixture.check_guest("\n".join(changed + [SCAN_COST]))
+        for extra in (expected, "PHANTOWD_SAMBA_OWNER_FAILED writer access"):
+            with self.assertRaises(ValueError):
+                fixture.check_guest("\n".join(
+                    list(fixture.MARKERS) + [SCAN_COST, extra]))
 
     def test_inspection_cost_is_single_bounded_emulation_evidence(self):
         good = "\n".join(fixture.MARKERS)

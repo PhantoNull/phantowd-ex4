@@ -11,7 +11,9 @@ physical hardware or connect user data.
 ## Reproduce locally
 
 With an existing pinned Buildroot image/workspace and manifest-verified QEMU
-artifacts, run `support/test-samba-root.ps1`. The wrapper refuses missing caches;
+artifacts, run `support/test-samba-root.ps1 -BaseArtifactDir ./artifacts/qemu-armv5`.
+The explicit base path also supports Windows PowerShell 5.1 invocation.
+The wrapper refuses missing caches;
 it never builds/pulls an image or creates a named volume. Source, workspace and
 base inputs are read-only; one disposable container uses bounded 512 MiB `/tmp`
 and 128 MiB `/var/tmp` tmpfs. Compiler scratch is removed before the image copy.
@@ -169,9 +171,10 @@ refuses five altered plans. This is point-in-time read-only evidence, not an
 approved product manifest, retained lease or trusted root constructor. See
 the [contract](../src/phantowd-api/internal/runtimebundle/README.md).
 
-The fixture's fixed paths, state and Unix IDs are not a production constructor
-or resolver. It does not use production mount/identity Owners, persistent
-transactions, process-set integration, session revocation or operator recovery.
+The standalone fixture's fixed paths, state and Unix IDs are not a production
+constructor or resolver. It does not use production mount/identity Owners,
+persistent transactions, product process-set integration, session revocation
+or operator recovery.
 It does not prove resistance to concurrent runtime-root replacement, all root
 escape mechanisms, syscall attacks or credential/ACL migrations. A private
 mount namespace plus limited root is not a security certification.
@@ -205,12 +208,56 @@ and Owner-held grants; then integrate service-specific supervision and recovery.
 Product startup and all physical-device safety/migration/install gates remain
 closed. Kernel NFS authority is a separate design, not granted by this experiment.
 
-## Next Owner integration packet (proposed, not qualified)
+## Samba-specific Owner integration packet (host/QEMU scope approved)
 
 Implement a separate internal Samba-specific Owner; do not broaden the generic
-static/non-root adapter. The new privileged composition requires its own
-explicit host/QEMU decision before running it. Existing separate fixture passes
-do not qualify the composition, product boot, HTTP activation or user disks.
+static/non-root adapter. Separate host/disposable-QEMU composition is approved;
+this does not authorize product boot, HTTP activation, user disks or hardware
+operations. The owned-group prerequisite below is not the complete Owner.
+
+### Qualified owned-group prerequisite (fixture only)
+
+The `qemu && linux` probe in `cmd/qemu-samba-owner` composes the existing
+`processowner.PinnedSet` with a separate `owned-server` entry of the guarded
+test helper. That entry requires an existing PID-equal-PGID leader and writable
+anonymous stdout/stderr pipes before bootstrap, rechecks them before exec and
+never calls `setsid`. Pipe/group shape is not caller authentication. Standalone
+server behavior and the generic static/non-root Owner are unchanged.
+
+Actual ARM926 execution locally passes (2026-10-06): direct nonleader refusal,
+caller helper-FD close survival, canceled admission, actual dynamic `smbd` exec,
+same process group, private mount namespace/restricted root, exact `0xdb`
+effective/permitted/bounding capabilities, empty inheritable/ambient and
+supplementary-group sets, root Unix IDs and NNP. It verifies a fresh SMB-created
+file's bytes and `1801:1800` Unix ownership, distinct reader access, reader/
+outsider/bad-credential denials, and actual kernel-read-only write refusal.
+Duplicate start and live Close are refused; normal Stop proves parent reap and
+whole-group absence before the pinned helper is released. The final marker is
+emitted only after verified teardown.
+
+Six native process-context refusals cover nonleader, read-end pipe, writable
+regular stdout/stderr, closed stdout and a named FIFO; one genuine writable
+anonymous-pipe group is accepted. A native check also verifies the three fixed
+new client commands and rejects arbitrary/injected operations without running
+an SMB client. The first expanded guest attempt exposed missing fixed commands;
+another exposed an incorrect expected NTSTATUS for kernel-RO refusal. The fixed
+fresh-file test requires `NT_STATUS_MEDIA_WRITE_PROTECTED`, while account/Unix
+permission denials keep their own expected statuses. No permissions, capability
+profile, execution guard or deadline was relaxed.
+
+Final local validation: 16 Linux fixture tests, seven loader tests, linters,
+workflow-path contracts, API/UI preflight, Linux QEMU-tagged vet and focused
+process/runtime Owner race tests; actual one-boot ARMv5 Samba campaign preserves
+all prior streams/ext4 ACL/inheritance checks. All seven base artifact hashes
+are independently unchanged afterward. This cache-reusing proof is not clean
+hosted integration, hardware or product qualification. No new image/named volume
+or surviving test container is created.
+
+Only the static bootstrap helper is retained by this new composition. Dynamic
+code/configuration/passdb, identity revisions and storage grants still use fixed
+disposable fixture inputs, not retained production authorities. Constructor
+trust, complete input-drift supervision, uncertain/forced-stop composition and
+durable recovery remain requirements of the full Owner below.
 
 ### Construction and retained resources
 
@@ -238,10 +285,10 @@ do not qualify the composition, product boot, HTTP activation or user disks.
 ### Native execution boundary
 
 - Preserve one owner of PID/process-group creation. The Go Owner starts its
-  child with `Setpgid=true`; the current standalone server helper calls
+  child with `Setpgid=true`; the standalone server helper calls
   `setsid()`. A process-group leader cannot perform that call (the native
   disposable probe returned `EPERM`). Do not compose these unchanged. A separate
-  fixed owned-group entry must verify `PID == PGID`, preserve it through exec
+  fixed `owned-server` entry verifies `PID == PGID`, preserves it through exec
   and never detach into an unowned session. Leave standalone fixture behavior
   intact; no PID-only shutdown or arbitrary group selection.
 - The fixed bootstrap helper, not the multithreaded Go parent, creates the
@@ -278,6 +325,7 @@ do not qualify the composition, product boot, HTTP activation or user disks.
    refusal and attempted close while live. Use one disposable guarded QEMU root
    and storage fixture; verify original base hashes and resource cleanup.
 
-These are implementation/acceptance requirements, not completed tests. Product
-configuration transactions, durable review/recovery, identity/storage authority,
+These are full-Owner implementation/acceptance requirements, not all completed
+tests. Product configuration transactions, durable review/recovery,
+identity/storage authority,
 HTTP authorization, installation and EX4 safety remain separate release gates.

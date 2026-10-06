@@ -45,7 +45,14 @@ MARKERS = (
     "PHANTOWD_SAMBA_ROOT_POLICY_READY writer_uid=1801 reader_uid=1802 "
     "outsider_denied=true kernel_ro=true original_denied=true "
     "unix_ownership=true unix_denial=true utf8_roundtrip=true scope=qemu-only",
-    "PHANTOWD_SAMBA_ROOT_STOPPED", "PHANTOWD_SAMBA_ROOT_DONE",
+    "PHANTOWD_SAMBA_ROOT_STOPPED",
+    "PHANTOWD_SAMBA_OWNER_GROUP_READY nonleader_refused=true "
+    "pinned_helper=true caller_close=true canceled_refused=true "
+    "same_group=true caps=db distinct_accounts=true "
+    "writer_bytes=true unix_ownership=true kernel_ro=true "
+    "duplicate_refused=true live_close_refused=true "
+    "stopped_reaped=true scope=qemu-only",
+    "PHANTOWD_SAMBA_ROOT_DONE",
 )
 
 SCAN_PREFIX = "PHANTOWD_RUNTIME_SCAN_COST"
@@ -69,8 +76,8 @@ def scan_cost(log):
 def check_guest(log):
     if not isinstance(log, str) or len(log.encode("utf-8")) > MAX_LOG:
         raise ValueError("oversized guest evidence")
-    markers = [line for line in log.splitlines()
-               if line.startswith("PHANTOWD_SAMBA_ROOT_")]
+    prefixes = ("PHANTOWD_SAMBA_ROOT_", "PHANTOWD_SAMBA_OWNER_")
+    markers = [line for line in log.splitlines() if line.startswith(prefixes)]
     if markers != list(MARKERS):
         raise ValueError("incomplete, failed or repeated guest evidence")
     scan_cost(log)
