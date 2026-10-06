@@ -13,6 +13,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/processowner"
 	"golang.org/x/sys/unix"
@@ -85,12 +86,45 @@ func (p *Plan) newSambaConfigurationQEMU(ctx context.Context, code, configuratio
 		}
 	}
 	if err == nil {
+		err = owner.setSambaStateProcessQEMU()
+	}
+	if err == nil {
 		err = owner.revalidate(ctx) // Late combined fence after all fixed inputs.
 	}
 	if err != nil {
 		return nil, errors.Join(err, owner.release())
 	}
 	return owner, nil
+}
+
+// Fixed disposable tracer only: exercise the state bootstrap while keeping the
+// generic static and separate code-only profiles unchanged. No per-call spec.
+func (o *Owner) setSambaStateProcessQEMU() error {
+	if err := o.processes.Close(); err != nil {
+		return err
+	}
+	fd, err := unix.Open(sambaFixtureHelper, unix.O_RDONLY|unix.O_CLOEXEC|unix.O_NOFOLLOW, 0)
+	if err != nil {
+		return err
+	}
+	helper := os.NewFile(uintptr(fd), "fixed-state-bootstrap")
+	if err := staticExecutable(helper); err != nil {
+		return errors.Join(err, helper.Close())
+	}
+	var inputs [7]*os.File
+	for index, name := range sambaStateDirectories {
+		inputs[index] = o.sambaState.files[name]
+	}
+	o.processes, err = processowner.NewSambaStatePinnedSetQEMU(processowner.MemberSpec{Name: "samba-state", Process: processowner.Spec{
+		Executable: sambaFixtureHelper, Args: []string{"owned-state-server"},
+		RunAs: &processowner.Credentials{UID: 0, GID: 0},
+		Ready: func(ctx context.Context) (bool, error) {
+			_, err := sambaFixtureClient(ctx, "qpwriter", "ls")
+			return err == nil, ctx.Err()
+		},
+		ReadyTimeout: 20 * time.Second, ProbeInterval: 200 * time.Millisecond, StopTimeout: 4 * time.Second,
+	}}, helper, inputs)
+	return errors.Join(err, helper.Close())
 }
 
 // No Owner or descriptors escape. Fixed root-only disposable QEMU controller
@@ -112,13 +146,22 @@ func (p *Plan) ProbeSambaConfigurationLifetimeQEMU(ctx context.Context, code, co
 		unix.Fstatfs(int(writer.Fd()), &fs) != nil || fs.Type != unix.TMPFS_MAGIC || fs.Flags&unix.ST_RDONLY != 0 {
 		return ErrInvalid
 	}
+	before, err := retainedFixtureFDCount()
+	if err != nil {
+		return err
+	}
 	for _, fault := range []string{"none", "configuration", "state"} {
 		if err := p.sambaConfigurationCase(ctx, code, configuration, writer, fault); err != nil {
 			return err
 		}
 	}
+	after, err := retainedFixtureFDCount()
+	if err != nil || after != before {
+		return errors.New("state descriptor handoff leaked references")
+	}
 	fmt.Println("PHANTOWD_SAMBA_OWNER_CONFIG_LIFETIME_READY exact_contents=true caller_close=true live_pins=true same_child_objects=true readonly_noexec=true normal_stop=true drift_stopped=true review_retained=true restoration_refused=true released=true scope=qemu-only")
 	fmt.Println("PHANTOWD_SAMBA_OWNER_STATE_LIFETIME_READY caller_close=true live_directory_pins=true same_child_objects=true writable_noexec=true mutable_passdb=true normal_stop=true drift_stopped=true review_retained=true restoration_refused=true released=true scope=qemu-only")
+	fmt.Println("PHANTOWD_SAMBA_OWNER_STATE_HANDOFF_READY inputs=7 source_path_masked=true same_child_objects=true closed_before_exec=true no_fd_leak=true scope=qemu-only")
 	return nil
 }
 
@@ -141,6 +184,9 @@ func (p *Plan) sambaConfigurationCase(ctx context.Context, code, configuration, 
 		return errors.Join(errors.New("protected config readiness"), err)
 	}
 	pid := started.Processes.Members[0].Process.PID
+	if err := o.processes.CheckSambaStateBootstrapQEMU(ctx); err != nil {
+		return errors.New("missing actual state descriptor handoff evidence")
+	}
 	for name, pin := range o.configuration.contents.files {
 		original, err := pin.Stat()
 		actualPath := "/proc/" + strconv.Itoa(pid) + "/root/etc/" + name

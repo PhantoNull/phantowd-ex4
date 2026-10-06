@@ -3,6 +3,30 @@
 
 # Implementation status
 
+## M4.4 Samba state descriptor handoff — QEMU only
+
+A fixed `qemu && linux` construction adapter independently retains seven
+read-only directory descriptors (root plus six roles) and the static bootstrap.
+No generic `Spec`/`Start` extra-descriptor API is added. The child validates the
+fixed FD ABI before effects, clones the admitted mounts with `open_tree` before
+namespace isolation, then attaches them with `move_mount` in its private root.
+All state views must match the original objects and be writable/nosuid/nodev/
+noexec; all seven input FDs are explicitly checked closed before daemon exec.
+
+The actual ARMv5 regression masks the source pathname with an empty tmpfs in
+the child only. Path-based construction fails; the descriptor handoff passes
+real SMB readiness, live child-object checks, normal stop and config/state drift
+with retained review. The complete focused campaign and strict evidence
+validator pass, including unchanged base hashes and steady-state FD counts
+across all three cases. The initial cross-namespace legacy bind attempt failed
+with `EINVAL`; retained mount clones must be created before changing namespace.
+
+This is a state-source handoff tracer, not atomic construction of the entire
+service root, product passdb authority or qualified persistent state. Code,
+configuration and storage view construction still use fixed fixture paths.
+Same real identity/NSS/passdb/storage authority, durable recovery and product
+startup remain required. No NAS, physical disk or product listener is used.
+
 ## M4.4 mutable Samba state-directory lifetime — QEMU prerequisite
 
 The guarded Samba configuration Owner now retains the original writable tmpfs
@@ -30,9 +54,9 @@ the compiled source and collected archive; embedded, installed and exported
 API bytes agree. This is cached local integration, not clean hosted CI,
 physical EX4 qualification or complete release licensing approval.
 
-The fixed bootstrap still uses a source pathname: this is not an atomic or
-descriptor-bound mount handoff, complete passdb-file lifecycle, product state
-provisioning or real identity-authority composition. No HTTP/product startup,
+The subsequent state-source descriptor handoff is qualified only as described
+above, not atomic whole-root construction, complete passdb-file lifecycle,
+product state provisioning or real identity-authority composition. No HTTP/product startup,
 physical storage or NAS operation is added. See the
 [state-directory contract](support/SAMBA-RUNTIME-PROFILE.md#qualified-mutable-state-directory-lifetime-qemu-only).
 

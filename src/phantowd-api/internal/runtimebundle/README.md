@@ -125,9 +125,17 @@ This is not product renderer/NSS authority, identity revision, storage/state own
 race-qualified construction, durable activation or complete firmware validation.
 See the [configuration scope](../../../../support/SAMBA-RUNTIME-PROFILE.md#qualified-protected-configuration-lifetime-qemu-only).
 
-The fixture bootstrap still binds state by its fixed source pathname. Retained
-parent references and observed same child objects do **not** qualify an atomic,
-descriptor-bound mount handoff or all path-replacement races. Passdb files are
+The guarded state tracer now independently retains seven read-only directory
+FDs at construction. Its fixed bootstrap validates them before effects, clones
+their mounts via `open_tree` before namespace isolation and attaches the clones
+via `move_mount`, without reopening a source pathname. A mandatory actual
+ARMv5 case masks that pathname with an empty child-private tmpfs; real Samba
+readiness and same-object writable/nosuid/nodev/noexec views still pass. Input
+FDs must be closed before exec, bounded private bootstrap evidence must be
+complete/untruncated, and the three lifecycle cases must leak no descriptors.
+The ordinary static launcher still has no extra-input option. Code/config/data
+construction retains fixed fixture paths: this is **not** an atomic whole-root
+constructor or qualification of all path-replacement races. Passdb files are
 not pinned as immutable objects: their supported mutation/replacement lifecycle
 must come from the same real identity authority, not from this directory
 tracer. Persistent state, external privileged writers, identity-consumer

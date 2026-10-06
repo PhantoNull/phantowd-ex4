@@ -344,12 +344,18 @@ func startProcess(spec Spec) (*managedProcess, error) {
 // The caller owns executable and keeps it open through command.Start. ExtraFiles
 // gives the child an independent descriptor; this function never closes the pin.
 func startPinnedProcess(spec Spec, executable *os.File) (*managedProcess, error) {
+	return startPinnedProcessWithInputs(spec, executable, nil)
+}
+
+// Only an internal construction adapter can fix additional retained inputs.
+// No Spec/Start option exposes arbitrary descriptors; ordinary launch is nil.
+func startPinnedProcessWithInputs(spec Spec, executable *os.File, inputs []*os.File) (*managedProcess, error) {
 	diagnostics := newDiagnosticRing()
 	command := exec.Command("/proc/self/fd/3")
 	command.Args = append([]string{spec.Executable}, spec.Args...)
 	command.Dir = "/"
 	command.Env = []string{"PATH=/usr/sbin:/usr/bin:/sbin:/bin", "LC_ALL=C"}
-	command.ExtraFiles = []*os.File{executable}
+	command.ExtraFiles = append([]*os.File{executable}, inputs...)
 	command.Stdout, command.Stderr = diagnostics, diagnostics
 	attributes := &syscall.SysProcAttr{Setpgid: true}
 	if spec.RunAs != nil {

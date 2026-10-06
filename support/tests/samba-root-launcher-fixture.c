@@ -8,6 +8,7 @@
 #include <endian.h>
 #include <linux/capability.h>
 #include <linux/magic.h>
+#include <linux/mount.h>
 #include <linux/posix_acl_xattr.h>
 #include <sched.h>
 #include <signal.h>
@@ -88,6 +89,85 @@ static int grant(const char *source, const char *destination, int readonly)
     struct statvfs flags;
     if (statvfs(destination, &flags) || !!(flags.f_flag & ST_RDONLY) != readonly)
         return -1;
+    return 0;
+}
+
+/* Regression-only source-path replacement inside the private guest namespace.
+ * A pathname-based state handoff must fail: the credentials remain only in
+ * the original state object. This does not change the controller's namespace. */
+static int state_inputs(void)
+{
+    struct stat objects[7];
+    const char *attributes[] = {"system.posix_acl_access",
+        "system.posix_acl_default", "security.capability"};
+    for (int index = 0; index < 7; ++index) {
+        int fd = 4 + index;
+        int flags = fcntl(fd, F_GETFL);
+        struct statfs fs;
+        if (flags < 0 || (flags & O_ACCMODE) != O_RDONLY ||
+            (flags & O_PATH) || !(flags & O_DIRECTORY) ||
+            fstat(fd, &objects[index]) || objects[index].st_mode != (S_IFDIR | 0700) ||
+            objects[index].st_uid || objects[index].st_gid || fstatfs(fd, &fs) ||
+            fs.f_type != TMPFS_MAGIC || (fs.f_flags & ST_RDONLY) ||
+            objects[index].st_dev != objects[0].st_dev)
+            return -1;
+        for (int previous = 0; previous < index; ++previous)
+            if (objects[index].st_ino == objects[previous].st_ino)
+                return -1;
+        for (size_t item = 0; item < sizeof(attributes) / sizeof(attributes[0]); ++item)
+            if (fgetxattr(fd, attributes[item], NULL, 0) >= 0 ||
+                (errno != ENODATA && errno != ENOTSUP))
+                return -1;
+    }
+    return 0;
+}
+
+/* Linux rejects cloning a retained mount from a different non-anonymous
+ * namespace. Clone every admitted FD while still in the controller's namespace,
+ * then attach the detached clones in the child's private namespace. No source
+ * pathname lookup or recursive submount import is allowed. Process exit drops
+ * every unattached clone on a partial failure. */
+static int state_clones(int clones[7])
+{
+    for (int index = 0; index < 7; ++index) {
+        clones[index] = syscall(SYS_open_tree, 4 + index, "",
+            OPEN_TREE_CLONE | OPEN_TREE_CLOEXEC | AT_EMPTY_PATH);
+        if (clones[index] < 0)
+            return -1;
+    }
+    return 0;
+}
+
+static int state_view(int handoff, int clones[7])
+{
+    if (!handoff)
+        return grant("/run/phantowd-samba-state", "/run/phantowd-samba-root/state", 0);
+    if (mount("tmpfs", "/run/phantowd-samba-state", "tmpfs",
+              MS_NOSUID | MS_NODEV | MS_NOEXEC, "size=64k,mode=0700")) {
+        return -1;
+    }
+    struct stat retained, masked;
+    if (fstat(4, &retained) || stat("/run/phantowd-samba-state", &masked) ||
+        (retained.st_dev == masked.st_dev && retained.st_ino == masked.st_ino))
+        return -1;
+    const char *roles[] = {"", "/private", "/lock", "/state", "/cache", "/pid", "/rpc"};
+    for (int index = 0; index < 7; ++index) {
+        char destination[96];
+        snprintf(destination, sizeof(destination), "/run/phantowd-samba-root/state%s", roles[index]);
+        struct stat original, actual;
+        struct statvfs flags;
+        if (fstat(4 + index, &original) ||
+            syscall(SYS_move_mount, clones[index], "", AT_FDCWD, destination,
+                    MOVE_MOUNT_F_EMPTY_PATH) || close(clones[index]) ||
+            mount(NULL, destination, NULL, MS_BIND | MS_REMOUNT |
+                  MS_NOSUID | MS_NODEV | MS_NOEXEC, NULL) ||
+            stat(destination, &actual) || original.st_dev != actual.st_dev ||
+            original.st_ino != actual.st_ino || statvfs(destination, &flags) ||
+            (flags.f_flag & (ST_RDONLY | ST_NOSUID | ST_NODEV | ST_NOEXEC)) !=
+                (ST_NOSUID | ST_NODEV | ST_NOEXEC)) {
+            return -1;
+        }
+    }
     return 0;
 }
 
@@ -594,7 +674,8 @@ int main(int argc, char **argv)
     }
     if (argc == 5 && !strcmp(argv[1], "client"))
         return client(argv[2], argv[3], argv[4]);
-    int owned_server = argc == 2 && !strcmp(argv[1], "owned-server");
+    int state_server = argc == 2 && !strcmp(argv[1], "owned-state-server");
+    int owned_server = state_server || (argc == 2 && !strcmp(argv[1], "owned-server"));
     int server = owned_server || (argc == 2 && !strcmp(argv[1], "server"));
     int charset = argc == 2 && !strcmp(argv[1], "charset");
     int enroll = argc == 3 && !strcmp(argv[1], "enroll") &&
@@ -603,6 +684,13 @@ int main(int argc, char **argv)
     if (!server && !enroll && !charset)
         return fail();
     if (owned_server && owned_group_context())
+        return fail();
+    /* Descriptor ABI admission precedes namespace/mount/context effects. */
+    if (state_server && state_inputs()) {
+        return fail();
+    }
+    int clones[7] = {-1, -1, -1, -1, -1, -1, -1};
+    if (state_server && state_clones(clones))
         return fail();
     pid_t owner_group = getpgrp();
     if (server && poison_inherited_context())
@@ -617,12 +705,13 @@ int main(int argc, char **argv)
          * this fixed protected view inside the new root before dropping caps. */
         grant("/run/phantowd-samba-root/etc", "/run/phantowd-samba-root/etc", 1) ||
         code_views() ||
-        grant("/run/phantowd-samba-state", "/run/phantowd-samba-root/state", 0) ||
+        state_view(state_server, clones) ||
         grant("/run/phantowd-samba-source/approved", "/run/phantowd-samba-root/shares/rw", 0) ||
         grant("/run/phantowd-samba-source/approved", "/run/phantowd-samba-root/shares/ro", 1) ||
         grant("/run/phantowd-samba-source/denied", "/run/phantowd-samba-root/shares/denied", 0) ||
-        mount(NULL, root, NULL, MS_BIND | MS_REMOUNT | MS_RDONLY | MS_NOSUID, NULL))
+        mount(NULL, root, NULL, MS_BIND | MS_REMOUNT | MS_RDONLY | MS_NOSUID, NULL)) {
         return fail();
+    }
     /* Reopen the new root bind, not the pre-bind mount reference. Fixed paths
      * here are exclusively created inside the disposable guest, not an Owner
      * contract for production root construction or path-race qualification. */
@@ -662,6 +751,12 @@ int main(int argc, char **argv)
         return fail();
     char *environment[] = {"PATH=/usr/sbin:/usr/bin:/sbin:/bin", "LC_ALL=C", NULL};
     if (server) {
+        if (state_server) {
+            for (int input = 4; input <= 10; ++input)
+                if (fcntl(input, F_GETFD) != -1 || errno != EBADF)
+                    return fail();
+            puts("PHANTOWD_SAMBA_STATE_HANDOFF_READY inputs=7 source_path_masked=true same_objects=true closed_before_exec=true scope=qemu-only");
+        }
         puts("PHANTOWD_SAMBA_ROOT_CONTEXT_READY original_fds_closed=true signal_mask_empty=true dispositions_default=true scope=qemu-only");
         puts("PHANTOWD_SAMBA_ROOT_BOUNDARY_READY caps=00000000000000db nnp=true original_denied=true kernel_ro=true");
         fflush(stdout);

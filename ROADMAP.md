@@ -2372,9 +2372,17 @@ this order, preserving the [full contract](support/SAMBA-RUNTIME-PROFILE.md#samb
    restoration and verified teardown releases code/config/state together.
    Native tests cover same-mode replacement, real kernel ACLs and incomplete/
    unprotected directories. This is not a passdb-file or persistent-state
-   authority: the fixed bootstrap still mounts by pathname. Next qualify
-   descriptor-bound state construction, then attach the SAME actual identity
-   authority/NSS/passdb and storage leases before product lifecycle/HTTP.
+   authority. The guarded state-source handoff now retains seven read-only FDs,
+   clones their mounts before namespace isolation and attaches them inside the
+   private child. Actual ARMv5 masks the old source pathname, verifies real SMB
+   readiness/same objects/protected writable views, checks input-FD closure
+   before exec and steady-state counts after normal/config/state stop cases.
+   The failed cross-namespace legacy bind is not a pass; no source-path fallback
+   or generic extra-input API is added. Next qualify late FD-admission failures,
+   caller-input closure/copy independence and forced-stop retention for this
+   state handoff, then attach the SAME actual identity authority/NSS/passdb and
+   storage leases. Whole-root/code/config/data construction, durable review and
+   product lifecycle/HTTP remain open.
    The complete combined source on336c29f now also passes ONE cached full local
    Buildroot/QEMU integration, with independently verified seven exported
    hashes, embedded/installed/exported API and all853 compiled/archive source

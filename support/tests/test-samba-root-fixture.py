@@ -302,6 +302,9 @@ class SambaRootFixture(unittest.TestCase):
             "writable_noexec=true mutable_passdb=true normal_stop=true "
             "drift_stopped=true review_retained=true "
             "restoration_refused=true released=true scope=qemu-only",
+            "PHANTOWD_SAMBA_OWNER_STATE_HANDOFF_READY inputs=7 "
+            "source_path_masked=true same_child_objects=true "
+            "closed_before_exec=true no_fd_leak=true scope=qemu-only",
             "PHANTOWD_SAMBA_ROOT_DONE",
         ]
         fixture.check_guest("\r\n".join(lines + [SCAN_COST]))
@@ -376,6 +379,24 @@ class SambaRootFixture(unittest.TestCase):
                 fixture.check_guest(good.replace(expected, expected.replace(
                     field + "=true", field + "=false")))
         for replacement in ("", expected + "\n" + expected,
+                            expected.replace("qemu-only", "product")):
+            with self.assertRaises(ValueError):
+                fixture.check_guest(good.replace(expected, replacement))
+
+    def test_state_handoff_requires_masked_path_objects_and_cleanup(self):
+        expected = ("PHANTOWD_SAMBA_OWNER_STATE_HANDOFF_READY inputs=7 "
+                    "source_path_masked=true same_child_objects=true "
+                    "closed_before_exec=true no_fd_leak=true scope=qemu-only")
+        self.assertIn(expected, fixture.MARKERS)
+        good = "\n".join([*fixture.MARKERS, SCAN_COST])
+        fixture.check_guest(good)
+        for field in ("source_path_masked", "same_child_objects",
+                      "closed_before_exec", "no_fd_leak"):
+            with self.assertRaises(ValueError):
+                fixture.check_guest(good.replace(expected, expected.replace(
+                    field + "=true", field + "=false")))
+        for replacement in ("", expected + "\n" + expected,
+                            expected.replace("inputs=7", "inputs=6"),
                             expected.replace("qemu-only", "product")):
             with self.assertRaises(ValueError):
                 fixture.check_guest(good.replace(expected, replacement))
