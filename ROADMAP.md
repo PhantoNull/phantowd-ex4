@@ -2353,8 +2353,17 @@ this order, preserving the [full contract](support/SAMBA-RUNTIME-PROFILE.md#samb
    candidates under the identity/mounted-roster locks, with independent Unix
    parsing, exact UID/GID-census refusal, private groups, desired-state drift
    and unchanged journal/passdb identity checks in a disposable ARMv5 fixture.
-   These documents are not installed in the daemon. Next compose the identity
-   consumer lifetime and actual same-object NSS/passdb/state/storage handoff;
+   These documents are not installed in the daemon. The internal identity
+   consumer now re-observes the exact expected fingerprint, retains Owner
+   authority across caller work and refuses Owner close until explicit release.
+   Drift/uncertain admitted observation is sticky review; credential changes
+   and revocation remain available. Local native lifetime/mutation/copy/race
+   tests pass. The actual ARMv5 credential fixture also qualifies unchanged
+   evidence, busy Owner close, real disable/new-login denial, re-enable without
+   review revival, stale acquisition and release without identity mutation.
+   Complete API overlay smoke and separate two-boot tests pass; the probe
+   launches no descendant and is not the daemon's service Owner.
+   Next compose that token into actual same-object NSS/passdb/state/storage handoff;
    do not replace that requirement with another candidate/snapshot check.
    The fixture now requires the already-supported virtual entropy provider,
    backed by host kernel randomness rather than a fixed seed. This removes the

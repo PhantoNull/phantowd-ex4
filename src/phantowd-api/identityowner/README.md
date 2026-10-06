@@ -82,6 +82,56 @@ activation I/O. The snapshot itself uses the non-recovering scan path; ordinary
 intent makes the complete observation fail closed without passdb reads, replay,
 or journal rewrites.
 
+## File-service consumer retention
+
+`RetainFileServiceSnapshot(ctx, expectedFingerprint)` is a trusted in-process
+operation, not a request field or RPC/HTTP route. It freshly collects the same
+complete, non-recovering evidence under the Owner lock and retains a consumer
+only if it exactly matches the prior snapshot/planner fingerprint. Zero input,
+incomplete/review evidence, stale fingerprints, cancellation and busy admission
+return no token. At most 16 consumers are retained; a released slot is reusable.
+Do not call it, `Verify`, or `Release` inside the pure snapshot callback.
+
+The opaque `FileServiceLease` provides `Verify(ctx)` and `Release()`. The
+original Owner remains the only authority: its `Close` waits for active work
+then returns `ErrBusy`, releasing nothing, while any consumer remains. Token
+copies share one private state; repeated or concurrent release cannot drop
+another consumer. JSON serialization/deserialization is refused.
+
+Verification re-observes complete evidence under the same mutation lock. Drift
+or an uncertain admitted observation permanently marks that consumer review;
+restoring identical evidence does not revive it. Busy or cancellation before
+admission gives no positive verification and does not itself mark identity
+drift. Cancellation during an admitted observation is uncertain and sticky.
+Unrelated changes to the complete local Unix census also invalidate the
+fingerprint conservatively; this is not a selective foreign-account lease.
+
+Consumers do not hold the mutex between calls or freeze passdb bytes. Explicit
+desired-state changes, credential operations and account/session revocation
+remain possible; the old lease will refuse changed evidence. `Release` drops
+only the cooperative reference, closes no store/process and does not clear
+review or close the Owner. A trusted service coordinator must stop and verify
+all descendants before releasing service-owned tokens. A probe with no launched
+descendants can release after its observation ends. Required verification that
+cannot complete is not permission for a service to continue operating.
+
+This does not bind the daemon to the same passdb/NSS/state objects, exclude
+unrelated root writers, supervise/stop a process, perform account transactions,
+or implement product startup/recovery. Mutable credential content is not part
+of the redacted snapshot; supported Owner mutations are represented through
+the journals/revisions. Same-object state and single-writer deployment still
+need qualification. See the [remaining product work](#remaining-product-work).
+
+Root-run Linux tests exercise lifetime/exclusivity, stale admission, capacity,
+copy/concurrent release, uncertain observation/cancellation and restoration.
+Explicit revocation and disabled credential rotation remain available. The
+actual disposable ARMv5 enrollment fixture also retains this Owner across its
+existing enable/disable/re-enable cycle, verifies real new-login denial and
+sticky review, and checks that release leaves its fresh evidence unchanged.
+This probe launches no descendant and is not the daemon's complete service
+Owner; it does not claim retained NSS/passdb/storage composition or full live
+session-revocation proof under this token.
+
 ## Creation and interruption
 
 `Reserve(ctx, expectedRevision, id, name)` merges protected local Unix exclusions
@@ -164,8 +214,9 @@ The QEMU validator also accepts the deliberately tested
 incomplete/review-required phases. This proves a QEMU startup/lifecycle slice,
 not reboot durability or product state placement.
 
-Close waits for the active operation, closes all stores and the bound Samba
-executor/config descriptor exactly once, then releases the lease.
+Close waits for the active operation and refuses busy while consumers remain.
+After their explicit release, it closes all stores and the bound Samba
+executor/config descriptor exactly once, then releases the authority lease.
 Context cancellation is cooperative and does not undo committed mutations or
 bound uninterruptible filesystem I/O. Do not copy an Owner. Return values and
 snapshots do not grant lasting Unix/Samba authorization.

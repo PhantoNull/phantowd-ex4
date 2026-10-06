@@ -3,6 +3,35 @@
 
 # Implementation status
 
+## M4.4 identity-consumer retention — internal prerequisite
+
+The Linux identity Owner now retains a bounded, opaque consumer only after
+fresh complete evidence exactly matches the expected private fingerprint.
+Owner close releases nothing while consumers remain. Tokens share state across
+copies, refuse JSON, and release idempotently without closing the original
+authority. Verification drift or an uncertain admitted observation is permanent
+review even after restoration; pre-admission busy/cancellation is not drift.
+
+Root-run Linux tests exercise exact lifetime/exclusive ownership, restoration,
+read uncertainty, capacity/reuse, copied concurrent release and redacted
+serialization. Existing explicit revocation and disabled credential rotation
+remain usable while a consumer is retained; it does not freeze the Owner lock
+or mutable passdb. Full Linux API vet/tests, QEMU-tagged vet, three focused
+race repetitions and Windows API/UI/cross-compile pass. Actual ARMv5 credential
+fixture integration also passes: exact Owner retention/busy close, real
+credential disable/new-login denial, explicit re-enable, permanent review,
+stale-acquisition refusal and release without identity mutation. The probe
+launches no descendant and is not the Samba service Owner. The complete API
+overlay smoke and separate two-boot persistence test pass on the unchanged
+qualified base kernel/packages; this is not clean Buildroot CI or hardware
+qualification.
+
+This reference is not yet a Samba service Owner. Same-object NSS/passdb/state,
+descriptor-bound storage, coordinated account changes, verified group stop
+before release, durable recovery and product startup remain required. No NAS,
+disk, flash, HTTP endpoint or product listener is involved. See the
+[consumer contract](src/phantowd-api/identityowner/README.md#file-service-consumer-retention).
+
 ## M4.1 Owner-derived native NSS candidates — internal only
 
 The existing candidate Plan now derives bounded passwd/group/nsswitch text for

@@ -75,6 +75,23 @@ func exerciseQEMUOwnerSMBEnrollment(owner *identityowner.Owner, account servicea
 	if err != nil || journal.Phase != smbprovision.Enabled || journal.Revision != 7 {
 		return errors.New("owner did not confirm explicit Samba enable")
 	}
+	// This probe retains the actual Owner during the existing credential
+	// fixture. It launches no process of its own and is not a service Owner.
+	retainedEvidence, err := owner.FileServiceSnapshot(ctx)
+	if err != nil {
+		return errors.New("ARMv5 consumer initial identity evidence unavailable")
+	}
+	consumer, err := owner.RetainFileServiceSnapshot(ctx, retainedEvidence.Fingerprint)
+	if err != nil {
+		return errors.New("ARMv5 consumer failed exact Owner retention")
+	}
+	defer consumer.Release()
+	if err := consumer.Verify(ctx); err != nil {
+		return errors.New("ARMv5 unchanged consumer evidence refused")
+	}
+	if err := owner.Close(); !errors.Is(err, identityowner.ErrBusy) {
+		return errors.New("ARMv5 consumer did not fence Owner close")
+	}
 	output, err = smbFixtureCommand("", "/usr/bin/smbclient", "-t", "2", "-m", "SMB3_11", "-p", "1445", "-A", initialAuth, "//127.0.0.1/IPC$", "-c", "quit")
 	if err != nil {
 		clear(output)
@@ -93,6 +110,9 @@ func exerciseQEMUOwnerSMBEnrollment(owner *identityowner.Owner, account servicea
 	journal, err = operation.Load(ctx)
 	if err != nil || journal.Phase != smbprovision.Disabled || journal.Revision != 9 {
 		return errors.New("owner did not confirm explicit Samba disable")
+	}
+	if err := consumer.Verify(ctx); !errors.Is(err, identityowner.ErrReview) {
+		return errors.New("ARMv5 explicit credential disable did not invalidate consumer")
 	}
 	output, err = smbFixtureCommand("", "/usr/bin/smbclient", "-t", "2", "-m", "SMB3_11", "-p", "1445", "-A", initialAuth, "//127.0.0.1/IPC$", "-c", "quit")
 	if !smbFixtureDenied(output, err, "NT_STATUS_ACCOUNT_DISABLED") {
@@ -113,6 +133,34 @@ func exerciseQEMUOwnerSMBEnrollment(owner *identityowner.Owner, account servicea
 		return errors.New("new credential failed after explicit re-enable")
 	}
 	clear(output)
+
+	if err := consumer.Verify(ctx); !errors.Is(err, identityowner.ErrReview) {
+		return errors.New("ARMv5 explicit re-enable revived invalid consumer")
+	}
+	if err := owner.Close(); !errors.Is(err, identityowner.ErrBusy) {
+		return errors.New("ARMv5 review lost identity lifetime retention")
+	}
+	freshEvidence, err := owner.FileServiceSnapshot(ctx)
+	if err != nil {
+		return errors.New("ARMv5 post-reenable identity evidence unavailable")
+	}
+	if refused, err := owner.RetainFileServiceSnapshot(ctx, retainedEvidence.Fingerprint); refused != nil || !errors.Is(err, identityowner.ErrConflict) {
+		if refused != nil {
+			_ = refused.Release()
+		}
+		return errors.New("ARMv5 stale consumer acquisition accepted changed evidence")
+	}
+	if err := consumer.Release(); err != nil {
+		return errors.New("ARMv5 completed probe release refused")
+	}
+	if err := consumer.Verify(ctx); !errors.Is(err, identityowner.ErrUnavailable) {
+		return errors.New("ARMv5 released probe still verified")
+	}
+	afterRelease, err := owner.FileServiceSnapshot(ctx)
+	if err != nil || afterRelease.Fingerprint != freshEvidence.Fingerprint {
+		return errors.New("ARMv5 probe release changed Owner evidence")
+	}
+	fmt.Println("PHANTOWD_M44_IDENTITY_CONSUMER_READY owner_close=busy unchanged_verified=true credential_disable=true new_login_denied=true reenable_verified=true review_sticky=true stale_acquire_refused=true release_no_mutation=true service_owner=false scope=disposable-qemu-only")
 
 	// Exercise the M4.1 observation against the same fixed Owner/backend after
 	// the existing disposable enrollment fixture reaches a stable enabled state.
