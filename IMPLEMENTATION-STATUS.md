@@ -3,6 +3,64 @@
 
 # Implementation status
 
+## Explicit SMB disable successor — cached integration prerequisite
+
+`identityowner.SMB(id).DisableForFileService` retains the startup-bound backend
+and performs existing journaled revocation under the Owner lock. Only complete,
+non-recovering before/after evidence with the exact single-account delta can
+transfer the bounded consumer slot. A new token verifies; the old token never
+revives. Foreign/unbound/stale inputs refuse; uncertainty keeps review/retention
+without retry. No generic lease refresh or enable/password successor is added.
+
+Root-run Linux tests exercise seven scenarios plus eight refusal subcases,
+including capacity 16, concurrent Close and cancellation after journal intent.
+The actual local ARMv5 lane passes 39 driver/seven loader tests, both Samba
+campaigns, SAME peer-session continuity and mandatory old/new markers, verified
+whole stop/reap/FD equality and unchanged base hashes. Windows API/UI/vet and
+tagged ARMv5 cross-compilation pass. An earlier combined live-phase attempt
+expired at 45 seconds; an instrumentation-only control also passed. Preparation
+is now separately bounded 20 seconds before held clients; live 45/enrollment 60/
+guest 180 limits and every admission remain intact. No deterministic timing fix
+or older hosted census diagnosis is claimed.
+
+Retention here starts after daemon startup. Constructor-bound continuous
+identity/storage authority, supervisor drift/failure handling, close-uncertainty
+retention, product HTTP/startup, durable recovery and EX4 qualification remain
+open. The complete cached local build of source `cd9b2a5` also passes API/UI,
+vet/race/fixed-count fuzz, package/source/license collection, ARMv5 smoke, MD,
+two-boot state, launcher/runtime/loader/libatomic, both Samba campaigns and
+synthetic SMART lanes. Independent read-only comparison matches all 883 tracked
+API files against the compiled package and regular archive members; installed,
+image-contained and exported API bytes agree, and all seven artifact hashes
+verify. This is cached integration, not independent clean-build, complete
+release licensing, hosted or hardware qualification.
+See the [identity contract](src/phantowd-api/identityowner/README.md#file-service-consumer-retention).
+
+## Exact-backend identity retention — focused host/QEMU qualification
+
+The internal identity Owner now offers `RetainSMBFileServiceSnapshot` for the
+exact non-nil, non-zero-sized pointer backend fixed at startup. The candidate
+is an identity assertion only, never a replacement executor. Different Owner
+backends are refused before observation even when their complete fingerprints
+match. Generic consumer behavior remains unchanged; both methods share the
+same 16-consumer bound, close fence, copy/release and sticky-review rules.
+
+Root-run Linux tests and race-count3 qualify foreign/equal-evidence refusal,
+invalid/noncomparable/typed-nil/zero-sized identities, revocation/stale evidence,
+serialization refusal, mixed capacity and exact backend lifetime. Windows
+API/UI/vet and tagged ARMv5 cross-compilation pass. The official local ARMv5
+wrapper passes all 38 driver/seven loader tests and BOTH complete Samba
+campaigns, including an actual native-backend read-only retention/close-fence
+probe that releases before daemon startup without changing identity evidence.
+All earlier live-revocation/privilege/base/teardown/FD guards remain mandatory.
+
+This is not a new complete Buildroot image, hosted/clean qualification or
+continuous daemon authority. A constructor must still bind its own runtime,
+coordinate outside Owner/runtime gates, and qualify a successor/fence for
+confirmed account mutations. The probe neither supervises a daemon nor
+authorizes refresh, activation, new HTTP, persistent recovery or NAS operations.
+The complete cached result below retains its exact historical source scope.
+
 ## Complete cached native-revocation integration — local qualification
 
 Frozen `57ee527` passes the complete cached local lane: API/vet/race/fixed-count

@@ -86,8 +86,10 @@ type modeledSMB struct {
 	enableCalls     int
 	disableCalls    int
 	enableErr       bool
+	disableErr      bool
 	secret          []byte
 	onCreate        func()
+	onDisable       func()
 }
 
 type closeCountingSMB struct {
@@ -155,11 +157,17 @@ func (b *modeledSMB) Enable(_ context.Context, account serviceaccounts.Account) 
 }
 func (b *modeledSMB) Disable(_ context.Context, account serviceaccounts.Account) error {
 	b.disableCalls++
+	if b.disableErr {
+		return errors.New("PRIVATE ambiguous SMB disable result")
+	}
 	if !b.observation.Present || b.observation.Disabled || b.observation.Name != account.Name ||
 		b.observation.UID != account.UID || b.observation.GID != account.GID {
 		return errors.New("PRIVATE SMB account not enabled")
 	}
 	b.observation.Disabled = true
+	if b.onDisable != nil {
+		b.onDisable()
+	}
 	return nil
 }
 

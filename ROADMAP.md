@@ -2466,12 +2466,52 @@ this order, preserving the [full contract](support/SAMBA-RUNTIME-PROFILE.md#samb
    source/package/regular archive files, installed/image/exported API bytes and
    seven payload hashes agree. Own hosted and independent clean-build/release
    qualification remain separate. Next qualify continuous identity/storage
-   authority and protected product construction. Existing snapshot leases are
-   not backend-bound handoff authority: their full evidence includes mutable
+   authority and protected product construction. An additional internal
+   `RetainSMBFileServiceSnapshot` now retains only the exact pointer adapter
+   fixed at Owner startup; foreign adapters refuse even with identical evidence.
+   Root/race tests and an actual ARMv5 native-backend read-only probe qualify
+   lifetime, close refusal and unchanged release before daemon startup. Generic
+   snapshot leases still assert no SMB binding, and the new token is not a
+   continuously composed runtime handoff: their full evidence includes mutable
    Samba journals, and Verify calls passdb under the Owner lock. Never recurse
    into that lease from a worker/runtime gate or silently refresh its review.
    A confirmed account transition needs an explicitly qualified successor/fence;
    unknown drift, wrong Owner/backend, uncertain stop or partial evidence refuse.
+   The separate internal `SMB(id).DisableForFileService` now qualifies only an
+   explicit single-account disable under the Owner lock: complete before/after
+   evidence must preserve every other journal/identity/passdb row and all census
+   reservations. It atomically transfers the existing bounded slot to a NEW
+   token, never refreshes the old token, and keeps review/retention on uncertainty
+   without retry. Root tests cover capacity16, concurrent Close, census drift,
+   wrong/stale/unbound tokens and cancellation after intent. Actual ARMv5
+   qualifies the SAME peer session and successor retained until verified whole
+   stop. Preparation20 is distinct from live45; enrollment60/guest180 remain.
+   A combined45-second attempt expired at login verification, while an
+   instrumentation-only control passed; this is not a deterministic timing or
+   older hosted-census fix. No admission or privilege is relaxed.
+   This fixture acquires AFTER daemon startup; do not mark the complete Owner
+   done. Next packet, still host/disposable QEMU only:
+
+   Complete cached local integration of `cd9b2a5` passes the full existing lane,
+   including both ARMv5 Samba campaigns and synthetic SMART replay/capture.
+   Independent source/package/archive comparison covers all 883 tracked API
+   files; installed/image/exported API and seven artifact hashes agree. This
+   does not qualify clean reproducibility, release licensing or physical EX4.
+
+   - Construct against one startup-fixed runtime/backend, retain identity BEFORE
+     any descendant starts, and refuse a foreign runtime even with equal bytes.
+   - Serialize external coordination without Owner/runtime gate recursion;
+     observe complete identity/code/config/state under bounded supervision.
+     Unapproved identity changes and uncertain observations must stop, preserve
+     review and never automatically restart or mint a replacement lease.
+   - Qualify drift/exit/cancellation and partial/uncertain stop/close. Current
+     pins must remain held until whole descendant stop and closure are verified;
+     a repeated nil Close is not proof that an earlier uncertain close recovered.
+   - Compose the trusted retained-storage roster and descriptor-bound grants
+     with the SAME service Owner, including real effective-access/refusal cases.
+   - Only then wire product authorization/startup and user management; keep
+     HTTP/service activation, real disks and durable recovery as separate gates.
+
    It does not
    establish data-handle semantics or qualify hardware/migration/recovery.
    Never bootstrap by
