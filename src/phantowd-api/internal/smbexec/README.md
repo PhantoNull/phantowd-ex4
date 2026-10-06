@@ -107,6 +107,21 @@ The actual ARMv5 fixture now enrolls both Owner-created Unix identities through
 password, still-disabled confirmation and separate same-SID enable. Code,
 original config and original mutable-state tuples remain retained through
 verified worker settlement/close; the normal-cycle final FD count is unchanged.
-The same-state daemon, authentication/revocation, fault/recovery and product
-ownership composition remain unfinished. Earlier generic-adapter session tests
-do not qualify session-control operations in this new restricted root.
+The same-state daemon now has focused actual ARMv5 authentication and active
+session-revocation proof: two fixed held clients, complete qualified inventory,
+one target-only logoff, two complete absence inventories, the SAME peer session
+and process generation, denied new target login and unaffected peer login.
+The witness is private, backend-bound and nonserializable; empty, incomplete,
+foreign or replaced evidence is refused. Whole client/daemon groups settle
+before original pins close; final FD equality and unchanged base are mandatory.
+
+Complete native worker admissions require a separate fixed timing profile:
+status4/revocation10 seconds, while ordinary commands retain status2/revocation5.
+No caller can select a budget, backend or executable. Earlier total5-second
+revocation cannot contain four measured native admissions; tight status/shared
+phase envelopes also fail closed under slower emulation. The controller now
+separates startup20/idle20/session45-second phases, with enrollment60 and guest180
+unchanged. Host/race tests enforce both profiles and shorter caller deadlines.
+Full-image/hosted qualification, in-flight/durable handle semantics, sustained
+supervision, continuous identity/storage authority, fault/recovery and product
+ownership composition remain unfinished. This is not physical EX4 evidence.

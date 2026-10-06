@@ -172,7 +172,10 @@ func (b *NativeBackendQEMU) Disable(ctx context.Context, account serviceaccounts
 	if b.inner == nil {
 		return ErrInvalid
 	}
-	return b.inner.Disable(ctx, account)
+	// Four complete worker admissions plus status polling take about seven
+	// seconds on the qualified ARMv5 emulator. Preserve every admission, with
+	// fixed four-second status / ten-second total limits only in this fixture.
+	return b.inner.disableWithin(ctx, account, 2*sessionRevocationTimeout)
 }
 
 func (b *NativeBackendQEMU) Close() error {

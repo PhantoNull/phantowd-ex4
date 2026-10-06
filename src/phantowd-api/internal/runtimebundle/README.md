@@ -214,6 +214,42 @@ serialization refusal, writable-root refusal and safe Linux open flags.
 
 ## Retained code and static-process Owner
 
+The separate QEMU-only native composition now retains the same original code,
+Owner-derived configuration and writable state through disabled-first account
+enrollment and one bounded single-use daemon lifecycle. Its private adapter
+duplicates the helper plus twelve input objects; the bootstrap clones originals,
+masks source paths, closes escape FDs and runs in a read-only root with caps
+`0xdb`/NNP, no proc/dev/run and empty read-only IPC `/tmp`. Only the disposable
+guest's loopback is available, not a host listener or data grant.
+
+The official local ARMv5 wrapper verifies real authentication for two distinct
+Owner-enrolled accounts, wrong-password refusal, all114 original code views,
+protected config/state and verified whole-group stop/reap/no-FD-leak. Credentials
+and authentication keep separate 60/20-second phases inside the 180-second guest.
+The same fixed backend now also passes idle disable while that daemon remains
+owned: same-SID journal, two complete stable-absence inventories, refused new
+target login and successful peer login. Start/worker/check/stop operations keep
+the private gate individually; no callback or replacement backend runs inside
+it. Exactly one complete code/config/state and live-daemon admission brackets
+each worker, retaining the existing status/revocation deadlines. Canceled and
+duplicate starts, restart after stop and absent/busy authority are refused.
+That first idle-only result did not establish active-session coverage.
+The newer official local wrapper additionally holds two fixed interactive
+clients, observes a complete qualified pair, executes Owner-bound target-only
+logoff, requires two complete target-absence inventories and verifies the SAME
+peer session/server generation. Fresh target login is denied; the peer remains
+usable. The witness is backend-bound/nonserializable; incomplete, foreign or
+replaced evidence is refused. All37 driver/seven loader tests, both campaigns,
+verified client/daemon group stop/reap, final FD equality and unchanged base
+pass; native host/race-count3 checks also pass. No new privilege or data share
+is granted. Native status/revocation use fixed4/10-second budgets (ordinary
+adapter2/5 unchanged), with independent startup20/idle20/session45 phases,
+enrollment60 and guest180. Complete worker admissions are never skipped.
+This is not complete image/clean/hosted qualification, data-handle semantics,
+continuous identity/storage authority, product root construction or startup.
+The generic Owner's static/non-root contract below is unchanged. See the
+[native profile](../../../../support/SAMBA-RUNTIME-PROFILE.md#native-same-state-authentication-qemu-only).
+
 Linux `Plan.NewOwner(ctx, root, specs)` privately duplicates the root and retains
 every verified regular file. It copies a fixed set of 1..8 process specifications
 and owns their independently pinned executable descriptors. There is no handle

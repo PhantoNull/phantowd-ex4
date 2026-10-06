@@ -577,8 +577,9 @@ and final FD-count equality are mandatory; driver tests reject missing,
 duplicate or weakened evidence. All 34 driver/seven loader tests and old/new
 guest gates pass, base unchanged. Host tests qualify guarded refusal separately.
 
-This does not qualify a daemon using these objects, actual authentication/live
-revocation in this new composition, storage grants, retained identity authority,
+That credential-worker proof alone does not qualify a daemon using these objects
+or actual authentication. The newer authentication qualification below remains
+separate from live revocation, storage grants, retained identity authority,
 durable quarantine/recovery, signed manifest authority, product startup or EX4.
 Session-control verbs are not qualified by merely including their executables.
 Uncertain cleanup is not reported as successful release; durable ownership
@@ -605,6 +606,72 @@ This addresses an observed outer timeout after native handoff in the growing
 single-guest campaign, without weakening admission or increasing the native
 60-second credential budget. Local wrapper success is not hosted/clean-build
 qualification; the publication's own head must pass independently.
+
+### Native same-state authentication (QEMU only)
+
+`NativeSambaRuntimeQEMU` now constructs a separate private pinned daemon adapter
+from the same code/configuration/state retained for native credential workers.
+The helper plus twelve input objects are independently held through verified
+whole-group stop. Source paths are masked; detached original mounts are attached
+before escape descriptors close and bounded capabilities/NNP are established.
+The original static/non-root adapter receives no new privilege or input option.
+
+The fixed daemon runs foreground with supported `--debug-stdout` to preserve
+the Owner's private output pipe without opening an in-root `/dev/null`. An
+empty `/tmp` on the read-only root satisfies IPC's directory requirement; no
+mutable scratch or data share is granted. `/proc`, `/dev` and `/run` are absent.
+Its private mount root has caps `0xdb`/NNP and guest-loopback-only networking;
+QEMU has no NIC or forwarding. Credential workers retain separate network
+namespaces. Synthetic clients in the outer guest inherit only a validated
+root-only tmpfs authentication file, never password argv or environment.
+
+Readiness requires real successful authentication. Both distinct Owner-enrolled
+accounts then authenticate; a wrong password must be denied. Live checks bracket
+clients and verify all 114 original code-file views, executable/config/state
+identities, mount/root isolation, capabilities and read-only IPC root. All 35
+driver/seven loader tests and both actual official ARMv5 campaigns pass; stop,
+reap, explicit runtime/identity close, final FD-count equality and unchanged
+base are mandatory. The enrollment budget remains 60 seconds; daemon probing
+has a separate fixed 20-second phase within the native guest's 180 seconds.
+
+That initial authentication-only result did not establish data-share authority,
+continuous identity retention, sustained supervision or live-session revocation.
+Including session-control binaries alone is not generation/revocation proof;
+the additional tracer below supplies narrowly scoped actual-session evidence.
+Durable recovery, atomic protected root construction, product startup/UI,
+clean builds and EX4 remain open.
+
+The subsequent fixed single-use lifecycle also qualifies Owner-bound **idle**
+disable while the same daemon remains running. Two complete stable-absence
+inventories, same-SID disabled journal, denied new target login, unaffected peer
+login, canceled/duplicate-start and stopped-restart refusal, group/FD teardown
+and all previous markers are mandatory in the 36-driver/seven-loader official
+ARMv5 wrapper. Focused native race-count3 also passes. Every credential/status
+worker retains complete admission and live-daemon verification before and after
+execution, once each rather than duplicate full scans. Status2/revocation5,
+enrollment60/daemon20 and guest180-second limits are unchanged; no new `/proc`,
+device, network, storage or privilege grant exists. This is not deliberately
+open-session revocation, new full-image/source-bundle or hosted qualification.
+
+The newer official local wrapper passes all37 driver/seven loader tests and
+both campaigns with two fixed interactive clients. A complete qualified pair
+must precede Owner-bound target-only logoff; success requires two complete
+target-absence inventories and the SAME peer session/server generation, not
+merely another successful login. The private witness binds to one backend,
+refuses JSON and rejects missing/foreign/replaced evidence in host/race tests.
+Owned holders maintain private stdin pipes and fixed IPC echo commands; no
+shell, data share, arbitrary input, host listener or new privilege is added.
+Both clients and the daemon settle before original code/config/state release;
+final FD equality and unchanged base remain mandatory.
+
+Complete before/after admissions are included in fixed native status4 and
+revocation10-second budgets; ordinary adapter status2/revocation5 is unchanged.
+The native controller uses separate enrollment60, startup20, idle-disable20 and
+active-session45-second phases, within the same180-second guest bound. Earlier
+tight/shared envelopes fail closed on slower emulator scans; they are not
+product performance specifications. This focused local result does not qualify
+full images/hosted checks, durable reconnect/in-flight handles, continuous
+identity/storage authority, sustained supervision, product or physical EX4.
 
 ### Product construction requirements
 
