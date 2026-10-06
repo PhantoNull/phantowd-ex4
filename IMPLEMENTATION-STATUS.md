@@ -27,12 +27,23 @@ the final FD count matches the baseline and the base image is unchanged.
 Enrollment retains its 60-second budget; authentication has a separate fixed
 20-second phase inside the unchanged 180-second native guest limit.
 
-This is local test-only authentication qualification, not a complete image,
-clean/hosted build, sustained service supervision, live revocation, continuous
+The same frozen runtime also passes complete cached local integration on
+`8cb0b86`: API/vet/race/fixed-count fuzz, package/source collection, actual ARMv5
+smoke/MD/two-boot, launcher/code/loader/atomic, both restricted-root Samba
+campaigns and synthetic SMART producer/capture. All 877 tracked API files match
+the compiled package and regular source-archive members independently.
+Installed, image-embedded and exported API bytes agree at SHA256
+`bbcfcff3f63976b1a8ca731f25c8e78eba8dea2500b270d6774f1b9ab4fc79d9`;
+all seven exported artifact hashes verify. No source mutation or restarted build
+occurs during qualification. This is cached local evidence, not independent
+clean-build reproducibility or complete release licensing.
+
+This is test-only authentication qualification, not a clean/hosted build,
+sustained service supervision, live revocation, continuous
 identity/storage authority, product construction/UI or physical EX4 proof.
 The existing revocation fixture does not qualify this new restricted profile.
-Complete cached integration and this increment's own hosted checks remain
-required; the firmware is not installable.
+This increment's own hosted checks remain required; the firmware is not
+installable.
 
 ## M0 bounded Samba campaign qualification
 

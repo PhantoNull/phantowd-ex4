@@ -2433,7 +2433,11 @@ this order, preserving the [full contract](support/SAMBA-RUNTIME-PROFILE.md#samb
    identity/storage authority and protected product construction. Session-control
    workers need an explicitly qualified PID-generation/revocation boundary;
    do not grant an unrestricted `/proc` or infer session absence from exit0.
-   Complete image/own hosted checks for this increment remain pending.
+   The same frozen runtime passes complete cached local integration on8cb0b86:
+   all877 packaged/archive API sources, installed/embedded/exported API bytes
+   and seven artifact hashes agree. Every later guest lane also passes. Own
+   hosted/independent clean-build qualification remains pending; this is not
+   product construction or physical EX4 evidence.
    Never bootstrap by
    fabricating enabled journals/SIDs, copying TDBs or
    passing enrollment lookup as active-service evidence. Closing/reopening an
