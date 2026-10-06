@@ -42,6 +42,35 @@ and product wiring remain separate. No user data is read or modified here.
 Context cancellation is checked between bounded local reads, not a guarantee
 that an arbitrary kernel I/O stall can be interrupted.
 
+## Shared prepared code references
+
+The package-private `prepareRetainedCode` helper captures independent read-only
+root/file references and original file/directory/alias metadata for the complete
+declared code tree. Static `Owner` now reuses it without changing its static ELF
+or non-root execution restrictions. Preparation does not publish execution
+authority: the containing constructor must perform the trailing full
+revalidation after its other inputs are fixed and before publication/launch.
+The extraction preserves the existing census/hash/identity sequence; it does
+not replace late pathname checks with early metadata or add a constructor scan.
+
+The containing Owner serializes all access, decides review/stop policy and
+establishes complete process-group absence before releasing code references.
+The helper itself starts no process, mounts nothing, accepts no backend changes
+and exports no descriptor or production API. Dynamic code may be inspected and
+retained without being authorized for execution by the generic Owner.
+
+The `qemu && linux`-only `ProbeRetainedCodeQEMU` observes the actual prepared
+Samba code-only closure under the existing non-root/capability-free fixture
+boundary. It checks real dynamic ELF headers, rejection of that daemon by the
+generic execution adapter with both non-root and root credentials, caller-descriptor closure,
+complete revalidation, canceled observation, release/no further use and stable
+descriptor count. It returns counts only after releasing the prepared references;
+it is not a retained grant returned to a caller and does not hold code through
+the later Samba service. The full Samba-specific Owner must still integrate
+these references with protected configuration/state/identity/storage inputs,
+supervision and verified service stop. Signature/model/ABI authority remains a
+separate gate, not inferred from a fixture dependency manifest.
+
 The QEMU-only `cmd/qemu-runtime-bundle` checks the actual prepared Samba code
 tree before fixture configuration/state/share grants are added. A fixed native
 test helper creates a private read-only bind, drops every bounding capability

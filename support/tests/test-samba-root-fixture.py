@@ -248,6 +248,10 @@ class SambaRootFixture(unittest.TestCase):
             "PHANTOWD_SAMBA_ROOT_BUNDLE_READY readonly=true "
             "complete_census=true hashes=true aliases=true refusals=5 "
             "scope=qemu-only",
+            "PHANTOWD_SAMBA_ROOT_RETAINED_CODE_READY complete_code_pins=true "
+            "caller_close=true dynamic_elf=true generic_dynamic_refused=true "
+            "generic_root_refused=true canceled_refused=true "
+            "released=true no_fd_leak=true scope=qemu-only",
             "PHANTOWD_SAMBA_ROOT_CHARSET_READY charset=CP850 bytes=true "
             "roundtrip=true isolated_root=true scope=qemu-only",
             "PHANTOWD_SAMBA_ROOT_CONTEXT_READY original_fds_closed=true "
@@ -328,6 +332,29 @@ class SambaRootFixture(unittest.TestCase):
             with self.assertRaises(ValueError):
                 fixture.check_guest("\n".join(
                     list(fixture.MARKERS) + [SCAN_COST, extra]))
+
+    def test_retained_code_requires_complete_roster_and_verified_release(self):
+        evidence = ("PHANTOWD_SAMBA_ROOT_RETAINED_CODE_READY "
+                    "complete_code_pins=true caller_close=true "
+                    "dynamic_elf=true generic_dynamic_refused=true "
+                    "generic_root_refused=true canceled_refused=true "
+                    "released=true "
+                    "no_fd_leak=true scope=qemu-only")
+        self.assertIn(evidence, fixture.MARKERS)
+        for field in ("complete_code_pins", "caller_close", "dynamic_elf",
+                      "generic_dynamic_refused", "generic_root_refused",
+                      "canceled_refused", "released", "no_fd_leak"):
+            changed = [row.replace(field + "=true", field + "=false")
+                       if row == evidence else row for row in fixture.MARKERS]
+            with self.assertRaises(ValueError):
+                fixture.check_guest("\n".join(changed + [SCAN_COST]))
+        for replacement in (evidence + "\n" + evidence,
+                            evidence.replace("qemu-only", "physical-ex4"),
+                            "PHANTOWD_SAMBA_ROOT_RETAINED_CODE_FAILED"):
+            changed = [replacement if row == evidence else row
+                       for row in fixture.MARKERS]
+            with self.assertRaises(ValueError):
+                fixture.check_guest("\n".join(changed + [SCAN_COST]))
 
     def test_inspection_cost_is_single_bounded_emulation_evidence(self):
         good = "\n".join(fixture.MARKERS)

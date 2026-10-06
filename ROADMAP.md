@@ -2315,6 +2315,11 @@ this order, preserving the [full contract](support/SAMBA-RUNTIME-PROFILE.md#samb
 
 1. Retain independently validated code-only tree descriptors and original
    identities; keep the exact census separate from the composed service root.
+   The private shared preparation helper now passes local native and actual
+   ARMv5 checks, including caller closure, cancellation, complete release and
+   unchanged generic dynamic/root refusal. Static lifecycle/drift/forced-stop
+   checks are requalified. This prerequisite releases its Samba inputs before
+   service construction: live dynamic retention is still required, not complete.
    Fix the expected closure/ABI and trusted manifest source, not self-measured
    dependency candidates. Qualify same-byte file/directory/alias replacement,
    caller closure, constructor failure and cancellation before launch.

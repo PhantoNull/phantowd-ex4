@@ -259,6 +259,32 @@ disposable fixture inputs, not retained production authorities. Constructor
 trust, complete input-drift supervision, uncertain/forced-stop composition and
 durable recovery remain requirements of the full Owner below.
 
+### Shared code-input preparation prerequisite
+
+The private `runtimebundle` preparation helper now owns independent root/file
+references and original metadata for the exact code-only tree; the static Owner
+reuses it with unchanged ELF/credential admission and the same trailing identity
+fence. It adds no public production API, program-selection surface, root
+constructor, execution or storage authority. The containing Owner must revalidate
+after all inputs are fixed, serialize lifecycle and stop all processes before
+release.
+
+The existing non-root/capability-free prepared-code probe now tests this helper
+on the real Samba dynamic closure. It closes its caller copy, revalidates the
+complete original roster, refuses canceled observation, releases all references
+and checks both unusability afterward and unchanged descriptor count. It
+also executes the generic Owner's refusal of the actual dynamic daemon for
+both non-root and root credentials; preparation must not widen execution rights.
+The local preflight now has 17 fixture tests and seven loader tests. This
+qualification finishes before configuration/state/grants and before Samba starts;
+it is not dynamic input retention through the service's lifetime. Product
+manifest provenance and the complete Samba-specific composition remain open.
+
+The static Owner's complete ARMv5 supervision/drift/late-identity/forced-stop
+campaign is requalified after extraction. Its local wrapper now also runs
+UID1000/cap-drop ALL/NNP; root namespace/fixture work occurs only inside the
+disposable QEMU guest, not the Docker test container.
+
 ### Construction and retained resources
 
 - Fix the backend, launcher, daemon, arguments, readiness/stop budgets and

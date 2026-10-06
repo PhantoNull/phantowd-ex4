@@ -32,6 +32,7 @@ exec sh /src/support/tests/test-qemu-runtime-owner.sh /base "$output/host/bin/go
 '@
 $encoded = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($linuxScript.Replace("`r`n", "`n")))
 docker run --rm --pull never --network none --read-only --cpus 4 --memory 2g --pids-limit 512 `
+    --user 1000:1000 --cap-drop ALL --security-opt no-new-privileges `
     --tmpfs /tmp:rw,exec,nosuid,nodev,size=512m --tmpfs /var/tmp:rw,noexec,nosuid,nodev,size=128m `
     --entrypoint /bin/sh --mount "type=bind,source=$repoRoot,target=/src,readonly" `
     --mount "type=bind,source=$baseRoot,target=/base,readonly" `
