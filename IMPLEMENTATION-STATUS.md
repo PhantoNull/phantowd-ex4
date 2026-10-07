@@ -3,7 +3,7 @@
 
 # Implementation status
 
-## Native session-worker phase budgets — qualification in progress
+## Native session-worker phase budgets — local full qualification
 
 A measured slow ARMv5 diagnostic and a host regression reproduce the former
 ten-second aggregate deadline truncating the last inventory, despite every
@@ -33,9 +33,25 @@ count toward absence while the parent remained live. The executor now checks
 that child context before canceling it, clears late output and refuses without
 another poll or control. The test fails before the fix and passes afterward;
 the combined source passes Windows preflight and root tagged Linux race-count3,
-plus ordinary non-root Linux race tests. Complete-image/combined-source ARMv5
-and hosted qualification remain required before promotion.
+plus ordinary non-root Linux race tests. The exact combined source now passes
+complete cached Buildroot/ARMv5 integration: all three Samba campaigns, default
+and two-boot checks, launcher/code-owner/loader/atomic and synthetic SMART lanes.
+Independent comparison matches all 924 tracked API files with compiled package
+and source archive, configured stripping, installed/image/export API bytes and
+all seven artifact hashes. This is local cached qualification, not independent
+clean-build reproducibility; own hosted qualification remains required before
+integration/promotion.
 Historical four/ten-second qualification below retains its earlier source scope.
+
+### Known retained-descriptor cleanup gap
+
+A separate Linux fault-injection regression demonstrates that a descriptor
+close error can be forgotten by repeated cleanup in the current retained-input
+and pinned-process owners. A host-tested draft preserves the error, stops later
+releases and keeps review without retry, but is not included in the qualification
+above. Its fixtures model already-closed objects; they do not qualify kernel I/O
+close failures, product recovery or physical-device behavior. This remains a
+product-runtime integration prerequisite; no installable runtime is offered.
 
 ## Inert retained Plan configuration role — QEMU only
 

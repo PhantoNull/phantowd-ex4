@@ -226,7 +226,9 @@ button to an unqualified backend simply because the screen exists.
   clear captured output and stop polling even if its parent is still live;
   the non-root regression reproduces this defect before the guard and passes
   after it. The phase-profile checkpoint passes the original ARMv5 union;
-  combined-source full qualification remains separate.
+  combined-source complete cached integration and independent924-source/package/
+  archive/strip/image/seven-artifact comparison now also pass. Own hosted
+  qualification remains separate; cache success is not an independent clean build.
   Regression must execute in the ordinary non-root Linux lane, not silently
   skip until late QEMU. Original complete campaigns, full image/source matching
   and own hosted qualification remain required; no physical performance or
