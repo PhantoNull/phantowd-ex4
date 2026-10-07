@@ -141,6 +141,12 @@ MARKERS = (
     "unix_owner=true symlink_denied=true private_namespace=true "
     "stopped_before_release=true no_fd_leak=true "
     "complete_storage_identity=false scope=qemu-only",
+    "PHANTOWD_SAMBA_OWNER_PLANNED_CANDIDATE_READY "
+    "owner=actual_native_backend storage=mounted_roster locked_plan=true "
+    "exact_declaration=true original_objects=true caller_close=true "
+    "fresh_recompiled=true identity_retained=true handoff_close_gated=true "
+    "desired_roundtrip=true journals_unchanged=true stale_refused=true "
+    "released=true samba_data=false activation=false scope=qemu-only",
     "PHANTOWD_SAMBA_OWNER_NATIVE_IDENTITY_STARTUP_READY "
     "startup_bound=true exact_backend=true before_start_busy=true "
     "after_start_busy=true duplicate_refused=true canceled_start_refused=true "
@@ -199,12 +205,16 @@ def check_campaign(log, phase):
     enrollment = next(i for i, row in enumerate(MARKERS)
                       if row.startswith(
                           "PHANTOWD_SAMBA_OWNER_NATIVE_ENROLLMENT_READY"))
+    planned = next(row for row in MARKERS
+                   if row.startswith(
+                       "PHANTOWD_SAMBA_OWNER_PLANNED_CANDIDATE_READY"))
+    native = tuple(row for row in MARKERS[split:-3] if row != planned)
     expected = {
         "service": MARKERS[:split] + ("PHANTOWD_SAMBA_ROOT_SERVICE_DONE",),
-        "native": MARKERS[:5] + MARKERS[split:-3]
+        "native": MARKERS[:5] + native
         + ("PHANTOWD_SAMBA_ROOT_NATIVE_DONE",),
         "lifecycle": (MARKERS[:5] + MARKERS[split:enrollment + 1]
-                      + MARKERS[-3:]),
+                      + (planned,) + MARKERS[-3:]),
     }[phase]
     prefixes = ("PHANTOWD_SAMBA_ROOT_", "PHANTOWD_SAMBA_OWNER_")
     markers = tuple(line for line in log.splitlines()

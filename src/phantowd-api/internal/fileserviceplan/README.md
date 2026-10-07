@@ -69,6 +69,15 @@ storage generation/canonical volume-set fingerprint.
 
 ## Candidate Samba NSS
 
+A separate guarded ARMv5 admission fixture now uses `BuildFromOwners` with the
+SAME actual native-backend identity Owner and a mounted synthetic ext4 roster.
+The isolated candidate matches retained original RO/RW share roots, fresh
+recompilation, independent caller closure and gated identity/handoff teardown.
+Desired-state restoration leaves identity journals/passdb unchanged and refuses
+stale candidates. The complete local three-campaign regression passes. This
+does not install candidate documents in Samba or qualify planned service access;
+the existing fixed native-data experiment is a separate prerequisite.
+
 `Plan.SambaNSSCandidates` returns deterministic passwd/group/nsswitch documents
 bound to the existing plan freshness tuple. The zero/refused plan returns an
 error with no partial document. Only enabled, granted, confirmed Samba accounts

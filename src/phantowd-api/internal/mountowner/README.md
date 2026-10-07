@@ -131,6 +131,17 @@ is not Buildroot package installation or product authorization.
 
 ## QEMU-only declared-share pins
 
+`WithQEMUNativeMountedSet` adds only a fixed synthetic roster for the disposable
+Samba overlay. It refuses host/missing-observer execution and checks the exact
+ARM model, explicit fixture cmdline, tmpfs context, device/source binding,
+16 MiB size, protected ext4 mount and UUID before construction. Logical anchors
+use a scoped protected tmpfs overlay over the read-only image; verified child
+teardown precedes overlay removal and original-anchor identity restoration.
+Uncertainty retains mounts for guest disposal, never lazy-unmount recovery.
+Actual ARMv5 admission matches Plan-derived roots with the SAME native identity
+Owner and verifies fresh evidence, caller closure and retained-authority gates.
+It starts no daemon and is not a production roster or physical-disk qualifier.
+
 `ServiceHandoff.RetainShareRootsQEMU` exclusively retains the original attached
 share objects after complete verification. `DuplicateRoots` returns independent
 `O_PATH` copies of only those individual declared subdirectories, never the

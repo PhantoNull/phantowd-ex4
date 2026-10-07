@@ -3,6 +3,31 @@
 
 # Implementation status
 
+## Actual Owner-to-mounted-candidate admission — QEMU only
+
+A positive disposable ARMv5 fixture now builds a locked Plan from the SAME
+real identity Owner/native Samba backend and an actual mounted-volume roster.
+Its immutable candidate matches both declared RO/RW roots; retained identity
+and original share descriptors block premature teardown. Caller copies close
+independently, fresh Owner/storage evidence recompiles to the same candidate,
+and normal release restores the volatile mount namespace. A desired-state
+round trip leaves Unix/Samba journals and passdb identities unchanged; stale
+evidence and restored disabled grants refuse.
+
+The clean local service/native/lifecycle union passes all previous guards,
+50 driver/seven loader tests and unchanged base hashes. Windows API/UI/vet/ARMv5
+cross-compilation and Linux tagged planner/mount-owner race-count3/module vet
+also pass. The fixed 16 MiB synthetic ext4 device is read only for UUID probing;
+mount anchors use a protected temporary overlay, never a writable base image.
+No deadline or privilege profile is widened. A prior local timeout remains
+recorded; one successful regression does not establish absence of runner jitter.
+
+This proves candidate/handoff admission, **not** Samba consuming that Plan's
+configuration or data. The existing fixed native-data experiment remains a
+separate prerequisite. Complete planned daemon composition, grant/ACL and
+source-loss/uncertain-stop proofs, full image/hosted qualification and product
+activation are still required. No HTTP, NAS or installation authority is added.
+
 ## Complete isolated Samba candidate — storage composition prerequisite
 
 One immutable candidate now packages Plan-derived NSS, isolated share grants,

@@ -1007,6 +1007,16 @@ storage. No production roster provider or activation path exists.
   and source-loss/uncertain-stop retention, then complete image integration.
   The fixed data prerequisite is not M4.1/M4.4 completion. Daemon data
   handles must not broaden credential workers' configuration/state-only profile.
+  A positive guarded ARMv5 admission fixture now builds the isolated candidate
+  with the SAME actual identity Owner/native backend and mounted roster, retains
+  both authorities, matches exact RO/RW declarations and original objects,
+  closes caller copies, recompiles fresh evidence and releases in order. Desired
+  round-trip/stale refusals and normal volatile-anchor restoration are checked;
+  the complete local three-campaign union passes without wider limits. This
+  still starts no daemon from that candidate. The next composition must keep
+  management lookup distinct from granted-only service lookup while preserving
+  one Owner/backend/passdb, qualify descriptor-bound native configuration and
+  effective access, then supervise complete identity/storage drift and settlement.
 - **M4.2 — Single service owner.** Define start/reload/stop and child-process
   ownership; bound diagnostics and verify readiness. Preserve the last known
   working configuration on syntax/start failure without claiming an unapplied
