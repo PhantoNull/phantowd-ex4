@@ -15,9 +15,11 @@ freshness token, service activation path or product configuration.
 
 Linux tagged race-count3/module vet, host preflight/ARMv5 cross-compilation,
 50 driver/seven loader tests and the focused ARMv5 lifecycle campaign pass.
-Complete campaign/image qualification and post-admission fault tests remain
-required, followed by original storage/identity/state composition and actual
-Plan-configured daemon consumption. No HTTP or physical NAS operation is added.
+The default service/native/lifecycle union also passes every previous contract
+and unchanged base hashes with the same guest/operation limits. Complete cached
+image qualification and post-admission fault tests remain required, followed by
+original storage/identity/state composition and actual Plan-configured daemon
+consumption. No HTTP or physical NAS operation is added.
 
 ## Bounded Plan-derived Samba documents — QEMU only
 
