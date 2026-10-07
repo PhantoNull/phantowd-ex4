@@ -3,6 +3,22 @@
 
 # Implementation status
 
+## Declared-share input close tests — host bookkeeping only
+
+Actual temporary `O_PATH` descriptors now characterize the existing reviewed
+release contract. A preclosed original prevents handoff teardown and preserves
+later inputs; repeated and concurrent calls cannot revive the lifetime, retry
+cleanup or touch a test-only replacement. A known-close control is idempotent,
+revokes further descriptor use and does not grant absent mount authority.
+
+Pinned Linux tagged vet and full mountowner package race-count3 pass; Windows
+API/UI/vet and ARMv5 cross-compilation also pass. This is added coverage of
+existing behavior, not a reproduced bug/fix or actual mounted-roster admission.
+No healthy mount lease is fabricated or verified. Actual QEMU uncertain-close
+authority, kernel EIO and product recovery remain separate requirements.
+The earlier combined cached proof below keeps its exact 934-input source scope;
+it does not cover the newly added test/archive input or component documentation.
+
 ## Current combined checkpoint — complete cached local qualification
 
 Frozen `8aaedd716a370b4f1180475da0465b67565bf151` passes the complete cached

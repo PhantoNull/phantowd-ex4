@@ -164,6 +164,16 @@ kernel `EROFS`, accepted data mutation, gated handoff close, source-loss review,
 restoration refusal and final FD equality. No Samba process consumes these roots
 yet, and actual uncertain-close fault qualification for this pin remains open.
 
+Host-only input-release characterization now uses actual temporary `O_PATH`
+descriptors: a preclosed original preserves reviewed handoff exclusion and
+leaves later inputs open; repeated/concurrent calls neither retry nor touch a
+test-only replacement. Known closure remains idempotent and fences subsequent
+descriptor use. Tagged Linux vet and package race-count3 pass. These tests
+exercise rejected teardown bookkeeping without fabricating, admitting or
+verifying a healthy mount/roster lease. The behavior already existed; this is
+new coverage, not a bug fix, kernel EIO proof or actual mounted QEMU fault
+qualification. The latter and durable product recovery remain required.
+
 The qualification token currently comes only from the QEMU fixture. There is
 no production qualifier or production roster source, no EX4-complete mounted-
 volume collector, mount-point allocator, durable volume identity, product

@@ -1036,6 +1036,12 @@ storage. No production roster provider or activation path exists.
   refusal and final FD equality. This is storage-side lifetime evidence, not
   Samba access or namespace containment. An actual uncertain-close fault for
   this pin and complete Plan/identity/runtime composition remain required.
+  Host-only real `O_PATH` release characterization additionally passes tagged
+  vet/package race-count3: preclosed originals retain reviewed handoff exclusion,
+  later/replacement inputs remain untouched, concurrency cannot retry and known
+  closure stays idempotent. This covers the existing bookkeeping contract,
+  not admission of actual mounted authority, kernel EIO or guest fault recovery;
+  it does not close the actual QEMU fault requirement above.
   A distinct fixed QEMU data profile now qualifies individual original FD
   admission, nonrecursive native clones and real RW/RO SMB transfers, Unix
   ownership, kernel `EROFS`, symlink denial and stop-before-release/FD equality.
