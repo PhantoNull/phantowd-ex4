@@ -1167,8 +1167,10 @@ storage. No production roster provider or activation path exists.
   when repeated public Close forgets the original file error and passes with
   terminal first-error retention, operation fencing and replacement isolation.
   Focused host race3, root module tagged vet/five-package race3 and Windows
-  preflight pass; actual runtime-close faults, changed-source normal ARMv5
-  integration and durable recovery remain separate acceptance gates.
+  preflight pass. Frozen `fdef51d` also passes the original all-three ARMv5
+  union with unchanged guards/base/bounds. Actual runtime-close faults,
+  complete changed-image/audit and durable recovery remain separate gates;
+  the positive union does not identify the intermittent-timeout cause.
 
   Security limit: this is a share-scoped pathname view, not a complete service
   authorization boundary. Consumers still run in the host mount namespace and
