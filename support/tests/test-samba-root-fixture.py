@@ -137,7 +137,8 @@ class SambaRootFixture(unittest.TestCase):
             "locked_plan=true exact_declaration=true original_objects=true "
             "caller_close=true fresh_recompiled=true rendered=true "
             "granted_only=true paired_lookup=true management_complete=true "
-            "shared_globals=true protected_role=true management_unchanged=true "
+            "shared_globals=true protected_role=true "
+            "management_unchanged=true "
             "startup_blocked=true identity_retained=true "
             "handoff_close_gated=true desired_roundtrip=true "
             "journals_unchanged=true stale_refused=true released=true "
@@ -148,7 +149,8 @@ class SambaRootFixture(unittest.TestCase):
         for field in ("locked_plan", "exact_declaration", "original_objects",
                       "caller_close", "fresh_recompiled", "rendered",
                       "granted_only", "paired_lookup", "management_complete",
-                      "shared_globals", "protected_role", "management_unchanged",
+                      "shared_globals", "protected_role",
+                      "management_unchanged",
                       "startup_blocked", "identity_retained",
                       "handoff_close_gated", "desired_roundtrip",
                       "journals_unchanged", "stale_refused", "released"):
@@ -918,7 +920,8 @@ class SambaRootFixture(unittest.TestCase):
             "locked_plan=true exact_declaration=true original_objects=true "
             "caller_close=true fresh_recompiled=true rendered=true "
             "granted_only=true paired_lookup=true management_complete=true "
-            "shared_globals=true protected_role=true management_unchanged=true "
+            "shared_globals=true protected_role=true "
+            "management_unchanged=true "
             "startup_blocked=true identity_retained=true "
             "handoff_close_gated=true desired_roundtrip=true "
             "journals_unchanged=true stale_refused=true released=true "
