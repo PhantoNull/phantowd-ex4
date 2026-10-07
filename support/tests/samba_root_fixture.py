@@ -136,6 +136,11 @@ MARKERS = (
     "old_review=true new_verified=true close_busy=true same_peer_session=true "
     "retained_until_stop=true stopped_reaped=true no_fd_leak=true "
     "startup_bound=false service_owner=false scope=qemu-only",
+    "PHANTOWD_SAMBA_OWNER_NATIVE_DATA_READY original_objects=true "
+    "individual_clones=true readonly_EROFS=true smb_read=true smb_write=true "
+    "unix_owner=true symlink_denied=true private_namespace=true "
+    "stopped_before_release=true no_fd_leak=true "
+    "complete_storage_identity=false scope=qemu-only",
     "PHANTOWD_SAMBA_OWNER_NATIVE_IDENTITY_STARTUP_READY "
     "startup_bound=true exact_backend=true before_start_busy=true "
     "after_start_busy=true duplicate_refused=true canceled_start_refused=true "

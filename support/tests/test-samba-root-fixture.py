@@ -44,6 +44,34 @@ def reports():
 
 
 class SambaRootFixture(unittest.TestCase):
+    def test_native_data_requires_access_and_settlement(self):
+        expected = ("PHANTOWD_SAMBA_OWNER_NATIVE_DATA_READY "
+                    "original_objects=true individual_clones=true "
+                    "readonly_EROFS=true smb_read=true smb_write=true "
+                    "unix_owner=true symlink_denied=true "
+                    "private_namespace=true stopped_before_release=true "
+                    "no_fd_leak=true complete_storage_identity=false "
+                    "scope=qemu-only")
+        self.assertIn(expected, fixture.MARKERS)
+        good = "\n".join([*fixture.MARKERS, SCAN_COST])
+        fixture.check_guest(good)
+        for field in ("original_objects", "individual_clones",
+                      "readonly_EROFS",
+                      "smb_read", "smb_write", "unix_owner", "symlink_denied",
+                      "private_namespace", "stopped_before_release",
+                      "no_fd_leak"):
+            with self.subTest(field=field):
+                with self.assertRaises(ValueError):
+                    altered = expected.replace(field + "=true",
+                                               field + "=false")
+                    fixture.check_guest(good.replace(expected, altered))
+        for replacement in ("", expected + "\n" + expected,
+                            expected.replace("complete_storage_identity=false",
+                                             "complete_storage_identity=true"),
+                            expected.replace("qemu-only", "product")):
+            with self.assertRaises(ValueError):
+                fixture.check_guest(good.replace(expected, replacement))
+
     def test_three_bounded_campaigns_require_every_original_proof(self):
         split = next(i for i, row in enumerate(fixture.MARKERS)
                      if row.startswith(
@@ -767,6 +795,12 @@ class SambaRootFixture(unittest.TestCase):
             "same_peer_session=true retained_until_stop=true "
             "stopped_reaped=true no_fd_leak=true "
             "startup_bound=false service_owner=false scope=qemu-only",
+            "PHANTOWD_SAMBA_OWNER_NATIVE_DATA_READY original_objects=true "
+            "individual_clones=true readonly_EROFS=true "
+            "smb_read=true smb_write=true unix_owner=true "
+            "symlink_denied=true private_namespace=true "
+            "stopped_before_release=true no_fd_leak=true "
+            "complete_storage_identity=false scope=qemu-only",
             "PHANTOWD_SAMBA_OWNER_NATIVE_IDENTITY_STARTUP_READY "
             "startup_bound=true exact_backend=true before_start_busy=true "
             "after_start_busy=true duplicate_refused=true "

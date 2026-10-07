@@ -360,6 +360,9 @@ func nativeCredentialFixture(lifecycle bool) (result error) {
 	if err := runtime.Close(context.Background()); err != nil {
 		return err
 	}
+	if err := nativeDataFixtureQEMU(plan, lookup); err != nil {
+		return fmt.Errorf("native data descriptor profile: %w", err)
+	}
 	after, err := os.ReadDir("/proc/self/fd")
 	if err != nil || len(after) != len(before) {
 		return errors.New("native credential descriptor leak")
@@ -368,6 +371,7 @@ func nativeCredentialFixture(lifecycle bool) (result error) {
 	fmt.Println("PHANTOWD_SAMBA_OWNER_NATIVE_LIVE_REVOKE_READY accounts=2 qualified_pair=true owner_bound=true same_sid=true target_absent=true same_peer_session=true new_login_denied=true other_login_allowed=true same_daemon=true no_new_privileges=true stopped_reaped=true no_fd_leak=true scope=qemu-only")
 	fmt.Println("PHANTOWD_SAMBA_OWNER_NATIVE_BACKEND_BINDING_READY owner_bound=true backend_bound=true unchanged_verified=true foreign_refused=true close_busy=true released_before_start=true release_no_mutation=true stopped_reaped=true no_fd_leak=true service_owner=false scope=qemu-only")
 	fmt.Println("PHANTOWD_SAMBA_OWNER_NATIVE_DISABLE_HANDOFF_READY owner_bound=true backend_bound=true atomic_successor=true old_review=true new_verified=true close_busy=true same_peer_session=true retained_until_stop=true stopped_reaped=true no_fd_leak=true startup_bound=false service_owner=false scope=qemu-only")
+	fmt.Println("PHANTOWD_SAMBA_OWNER_NATIVE_DATA_READY original_objects=true individual_clones=true readonly_EROFS=true smb_read=true smb_write=true unix_owner=true symlink_denied=true private_namespace=true stopped_before_release=true no_fd_leak=true complete_storage_identity=false scope=qemu-only")
 	return nil
 }
 

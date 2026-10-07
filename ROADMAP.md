@@ -996,8 +996,16 @@ storage. No production roster provider or activation path exists.
   kernel `EROFS`, legitimate data mutation, source-loss review/restoration
   refusal and final FD equality. This is storage-side lifetime evidence, not
   Samba access or namespace containment. An actual uncertain-close fault for
-  this pin, fixed individual-share native FD admission, complete Plan/identity/
-  runtime composition and real SMB transfers remain required. Daemon data
+  this pin and complete Plan/identity/runtime composition remain required.
+  A distinct fixed QEMU data profile now qualifies individual original FD
+  admission, nonrecursive native clones and real RW/RO SMB transfers, Unix
+  ownership, kernel `EROFS`, symlink denial and stop-before-release/FD equality.
+  It uses synthetic two-root documents after the prior identity runtime closes;
+  it does not consume this complete-roster pin or continuously retain identity.
+  Next bind the exact desired candidate/complete Plan and SAME storage/identity/
+  backend/runtime before startup, qualify effective multi-user grant/ACL access
+  and source-loss/uncertain-stop retention, then complete image integration.
+  The fixed data prerequisite is not M4.1/M4.4 completion. Daemon data
   handles must not broaden credential workers' configuration/state-only profile.
 - **M4.2 — Single service owner.** Define start/reload/stop and child-process
   ownership; bound diagnostics and verify readiness. Preserve the last known

@@ -68,6 +68,10 @@ type NativeSambaRuntimeQEMU struct {
 }
 
 func (p *Plan) NewNativeSambaRuntimeQEMU(ctx context.Context, code, configuration, state *os.File, lookup fileserviceplan.SambaEnrollmentLookup) (_ *NativeSambaRuntimeQEMU, result error) {
+	return p.newNativeSambaRuntimeQEMU(ctx, code, configuration, state, lookup, nil)
+}
+
+func (p *Plan) newNativeSambaRuntimeQEMU(ctx context.Context, code, configuration, state *os.File, lookup fileserviceplan.SambaEnrollmentLookup, roots *[2]*os.File) (_ *NativeSambaRuntimeQEMU, result error) {
 	if ctx == nil || code == nil || configuration == nil || state == nil {
 		return nil, ErrInvalid
 	}
@@ -78,6 +82,9 @@ func (p *Plan) NewNativeSambaRuntimeQEMU(ctx context.Context, code, configuratio
 		return nil, err
 	}
 	documents, err := SambaCredentialDocumentsQEMU(lookup)
+	if roots != nil {
+		documents, err = SambaNativeDataDocumentsQEMU(lookup)
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -114,7 +121,7 @@ func (p *Plan) NewNativeSambaRuntimeQEMU(ctx context.Context, code, configuratio
 		err = staticExecutable(r.helper)
 	}
 	if err == nil {
-		err = r.prepareNativeDaemonQEMU(ctx)
+		err = r.prepareNativeDaemonQEMU(ctx, roots)
 	}
 	if err == nil {
 		err = r.prepareNativeClientsQEMU()

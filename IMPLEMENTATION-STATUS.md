@@ -3,6 +3,36 @@
 
 # Implementation status
 
+## Native individual-share data handoff — fixed QEMU prerequisite
+
+A separate guarded native data profile now receives two original, individually
+attached ext-family mount roots (RO/RW) alongside the retained code/configuration
+and seven mutable-state directories. Its factory duplicates existing `O_PATH`
+descriptors, verifies independent mount identities/protected flags and rejects
+host execution. The bootstrap makes nonrecursive clones before changing mount
+namespace, attaches only the two fixed shares, closes all inherited inputs and
+executes Samba in the existing restricted read-only root with capabilities
+`0xdb`. Credential workers retain their twelve-input, no-data profile; the
+generic static/non-root launcher is unchanged.
+
+The official local three-campaign ARMv5 lane passes with 43 driver tests, seven
+loader tests and unchanged base hashes. Real SMB write/read, RO read, RO-write
+denial, kernel `EROFS`, 22-byte file contents and Unix ownership `2001:2001`
+pass. A symlink escape returns `NT_STATUS_STOPPED_ON_SYMLINK`; no destination
+file or forbidden RO file exists. Verified whole client/daemon settlement
+precedes original-root release, and parent descriptor counts match. Linux
+process/runtime race-count3 and tagged module vet plus Windows API/UI preflight
+and ARMv5 cross-compilation also pass locally.
+
+This uses fixed qualification documents and synthetic mounts after the prior
+identity/runtime experiment has closed. It does **not** consume the complete
+mounted-roster share pin or retain the SAME identity Owner throughout data
+service startup. The marker explicitly says `complete_storage_identity=false`.
+Complete Plan-bound bootstrap, grant/ACL matrix, storage-loss and uncertain-close
+composition, full cached/clean/hosted integration and product activation remain
+required. No new guest, widened timeout, production listener or device operation
+is introduced. See the [native profile](support/SAMBA-RUNTIME-PROFILE.md#native-individual-share-data-profile-qemu-only).
+
 ## Declared share descriptor pins — QEMU storage prerequisite
 
 The guarded `qemu && linux` storage fixture now retains original `O_PATH`

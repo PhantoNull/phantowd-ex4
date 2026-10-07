@@ -226,6 +226,38 @@ closed. Kernel NFS authority is a separate design, not granted by this experimen
 
 ## Samba-specific Owner integration packet (host/QEMU scope approved)
 
+### Native individual-share data profile (QEMU only)
+
+The distinct `native-data-server` ABI extends the existing five original
+configuration/seven original state inputs with exactly two independently
+attached RO/RW `O_PATH` ext-family roots. It duplicates existing descriptors,
+not labels/source paths or the entire controller tree. The guarded bootstrap
+clones each root nonrecursively before namespace separation, attaches fixed
+`/shares/readonly` and `/shares/writable`, verifies original inode/device and
+kernel flags, closes inherited inputs and drops to the existing `0xdb`/NNP
+profile. No generic launcher or credential-worker privileges/data inputs change.
+Mutable share contents, Unix modes and ACLs are not treated as immutable code.
+
+One explicit previously enrolled peer performs five fixed actual SMB operations:
+RW put/get, RO get, denied RO put and denied symlink get. Fresh content and Unix
+ownership plus kernel `EROFS` are checked, not merely exit codes. Samba reports
+`NT_STATUS_STOPPED_ON_SYMLINK` for the latter operation; the original assertion
+incorrectly accepted only ACCESS_DENIED/OBJECT_NAME_NOT_FOUND. The actual guest
+reproduced that assertion failure before the narrow correction. No arbitrary
+NTSTATUS, timeout or signal counts as an access denial. The escaped download
+and forbidden RO file must be absent. Whole client/daemon stop and descriptor
+closure precede caller-root release; final parent FD counts match.
+
+Final local validation passes 43 driver/seven loader tests, strict C ARM build,
+all three ARMv5 campaigns, unchanged seven base hashes, Linux process/runtime
+race-count3/tagged module vet and Windows API/UI preflight/cross-compile. This
+reuses the existing cache, adds no guest or timeout, and is not clean/hosted or
+physical qualification. It uses fixed two-share documents and synthetic roots
+after the prior identity Owner closes: complete-roster pin consumption, SAME
+identity/backend bootstrap, grant/ACL matrix and storage-loss/uncertain-close
+composition still remain. `complete_storage_identity=false` is mandatory;
+neither this helper nor the probe is installed as a product service.
+
 Implement a separate internal Samba-specific Owner; do not broaden the generic
 static/non-root adapter. Separate host/disposable-QEMU composition is approved;
 this does not authorize product boot, HTTP activation, user disks or hardware

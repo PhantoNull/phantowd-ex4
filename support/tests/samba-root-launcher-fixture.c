@@ -782,9 +782,68 @@ static int native_lookup_fixture(int handoff)
     return fail();
 }
 
-/* Fixed disposable native profile. It deliberately has no data grants.
+/* Separate fixed data ABI: FD16 is RO, FD17 is RW. These are original
+ * individually attached share roots, not the controller's complete tree.
+ * Mutable file contents, Unix modes and data ACLs are not immutable code.
+ * Nonrecursive detached clones are created before namespace separation. */
+static int native_data_clones(int clones[2], struct stat objects[2])
+{
+    uint64_t mounts[2];
+    for (int index = 0; index < 2; ++index) {
+        int fd = 16 + index;
+        int flags = fcntl(fd, F_GETFL);
+        struct statfs fs;
+        struct statx identity;
+        unsigned long expected = ST_NOSUID | ST_NODEV | ST_NOEXEC |
+            (index ? 0 : ST_RDONLY);
+        if (flags < 0 || !(flags & O_PATH) || fstat(fd, &objects[index]) ||
+            !S_ISDIR(objects[index].st_mode) || fstatfs(fd, &fs) ||
+            fs.f_type != EXT4_SUPER_MAGIC ||
+            (fs.f_flags & (ST_RDONLY | ST_NOSUID | ST_NODEV | ST_NOEXEC)) != expected ||
+            statx(fd, "", AT_EMPTY_PATH | AT_NO_AUTOMOUNT, STATX_MNT_ID | STATX_INO, &identity) ||
+            (identity.stx_mask & (STATX_MNT_ID | STATX_INO)) != (STATX_MNT_ID | STATX_INO) ||
+            !identity.stx_mnt_id || !(identity.stx_attributes_mask & STATX_ATTR_MOUNT_ROOT) ||
+            !(identity.stx_attributes & STATX_ATTR_MOUNT_ROOT))
+            return -1;
+        mounts[index] = identity.stx_mnt_id;
+        if (index && (mounts[0] == mounts[1] ||
+            (objects[0].st_dev == objects[1].st_dev && objects[0].st_ino == objects[1].st_ino)))
+            return -1;
+        clones[index] = syscall(SYS_open_tree, fd, "",
+            OPEN_TREE_CLONE | OPEN_TREE_CLOEXEC | AT_EMPTY_PATH);
+        if (clones[index] < 0)
+            return -1;
+    }
+    return 0;
+}
+
+static int native_data_view(const char *native_root, int clones[2], struct stat objects[2])
+{
+    const char *roles[] = {"readonly", "writable"};
+    for (int index = 0; index < 2; ++index) {
+        char destination[128];
+        struct stat before, actual;
+        struct statvfs flags;
+        unsigned long expected = ST_NOSUID | ST_NODEV | ST_NOEXEC |
+            (index ? 0 : ST_RDONLY);
+        snprintf(destination, sizeof(destination), "%s/shares/%s", native_root, roles[index]);
+        if (lstat(destination, &before) || before.st_mode != (S_IFDIR | 0755) || before.st_uid || before.st_gid ||
+            syscall(SYS_move_mount, clones[index], "", AT_FDCWD, destination, MOVE_MOUNT_F_EMPTY_PATH) ||
+            close(clones[index]) ||
+            mount(NULL, destination, NULL, MS_BIND | MS_REMOUNT | MS_NOSUID | MS_NODEV | MS_NOEXEC |
+                (index ? 0 : MS_RDONLY), NULL) ||
+            stat(destination, &actual) || objects[index].st_dev != actual.st_dev || objects[index].st_ino != actual.st_ino ||
+            statvfs(destination, &flags) ||
+            (flags.f_flag & (ST_RDONLY | ST_NOSUID | ST_NODEV | ST_NOEXEC)) != expected)
+            return -1;
+    }
+    return 0;
+}
+
+/* Fixed disposable native credential/authentication profile has no data grants.
  * Admission receives five original immutable config objects followed
- * by seven original mutable state directories; no pathname fallback is used. */
+ * by seven original mutable state directories; no pathname fallback is used.
+ * Only the distinct data-server verb accepts the two additional data objects. */
 static int native_credential_fixture(const char *operation, const char *name)
 {
     const char native_root[] = "/run/phantowd-native-samba-root";
@@ -796,7 +855,8 @@ static int native_credential_fixture(const char *operation, const char *name)
     int read_operation = !strcmp(operation, "check") || !strcmp(operation, "list") || !strcmp(operation, "status");
     int write_operation = !strcmp(operation, "create") || !strcmp(operation, "password") ||
         !strcmp(operation, "enable") || !strcmp(operation, "disable") || !strcmp(operation, "revoke");
-    int server = !strcmp(operation, "server");
+    int data = !strcmp(operation, "data-server");
+    int server = data || !strcmp(operation, "server");
     if (owned_group_context() || (!read_operation && !write_operation && !server) ||
         ((read_operation || server) ? *name != '\0' : (strcmp(name, "qpmanaged") && strcmp(name, "qpsecond"))))
         return fail();
@@ -810,6 +870,10 @@ static int native_credential_fixture(const char *operation, const char *name)
         seals < 0 || (seals & required) != required || fstat(0, &input) ||
         !S_ISREG(input.st_mode) || input.st_size < 0 || input.st_size > 514 ||
         (strcmp(operation, "password") && input.st_size)))
+        return fail();
+    int data_clones[2];
+    struct stat data_objects[2];
+    if (data && native_data_clones(data_clones, data_objects))
         return fail();
     int clones[12];
     for (int index = 0; index < 12; ++index) {
@@ -881,7 +945,8 @@ static int native_credential_fixture(const char *operation, const char *name)
             statvfs(destination, &flags) || (flags.f_flag & (ST_RDONLY | ST_NOSUID | ST_NODEV | ST_NOEXEC)) != expected)
             return fail();
     }
-    if (mount(NULL, native_root, NULL, MS_BIND | MS_REMOUNT | MS_RDONLY | MS_NOSUID | MS_NODEV, NULL) ||
+    if ((data && native_data_view(native_root, data_clones, data_objects)) ||
+        mount(NULL, native_root, NULL, MS_BIND | MS_REMOUNT | MS_RDONLY | MS_NOSUID | MS_NODEV, NULL) ||
         chroot(native_root) || chdir("/") || syscall(SYS_close_range, 3U, ~0U, 0) || restrict_capabilities())
         return fail();
     for (int fd = 3; fd <= 64; ++fd)
@@ -922,7 +987,8 @@ static int native_credential_fixture(const char *operation, const char *name)
         else arguments[index++] = !strcmp(operation, "enable") ? "-e" : "-d";
         arguments[index++] = "-c"; arguments[index++] = "/etc/samba/smb.conf"; arguments[index] = (char *)name;
     }
-    fputs(server ? "PHANTOWD_NATIVE_DAEMON_HANDOFF_READY inputs=12 original_config=true original_state=true closed_before_exec=true scope=qemu-only\n" :
+    fputs(data ? "PHANTOWD_NATIVE_DATA_HANDOFF_READY inputs=14 original_config=true original_state=true original_shares=true individual_clones=true closed_before_exec=true scope=qemu-only\n" :
+        server ? "PHANTOWD_NATIVE_DAEMON_HANDOFF_READY inputs=12 original_config=true original_state=true closed_before_exec=true scope=qemu-only\n" :
         "PHANTOWD_NATIVE_CREDENTIAL_HANDOFF_READY inputs=12 original_config=true original_state=true closed_before_exec=true scope=qemu-only\n", stderr);
     fflush(stderr);
     char *environment[] = {"PATH=/usr/sbin:/usr/bin:/sbin:/bin", "LC_ALL=C", NULL};
@@ -930,10 +996,10 @@ static int native_credential_fixture(const char *operation, const char *name)
     return fail();
 }
 
-/* Fixed authentication-only client in the outer disposable guest, not a
- * product launcher or data grant. Capture owns its process group. Secrets are
+/* Fixed authentication/data clients in the outer disposable guest, not a
+ * product launcher or caller-selected policy. Capture owns the group. Secrets are
  * independently opened/validated and inherited via one FD, never argv/env. */
-static int native_client(const char *user, const char *kind, int hold)
+static int native_client_mode(const char *user, const char *kind, int hold, const char *data_operation)
 {
     int wrong = !strcmp(kind, "wrong");
     if (owned_group_context() || (strcmp(user, "qpmanaged") && strcmp(user, "qpsecond")) ||
@@ -954,6 +1020,28 @@ static int native_client(const char *user, const char *kind, int hold)
         return fail();
     char *arguments[] = {"smbclient", "-t", "2", "-m", "SMB3_11", "-p", "1445",
         "-A", "/proc/self/fd/4", "//127.0.0.1/IPC$", "-c", "quit", NULL};
+    if (data_operation) {
+        if (wrong || hold || strcmp(user, "qpsecond"))
+            return fail();
+        if (!strcmp(data_operation, "rw-write")) {
+            arguments[9] = "//127.0.0.1/writable";
+            arguments[11] = "put /run/native-share-upload created";
+        } else if (!strcmp(data_operation, "rw-read")) {
+            arguments[9] = "//127.0.0.1/writable";
+            arguments[11] = "get created /run/native-share-download-rw";
+        } else if (!strcmp(data_operation, "ro-read")) {
+            arguments[9] = "//127.0.0.1/readonly";
+            arguments[11] = "get seed /run/native-share-download-ro";
+        } else if (!strcmp(data_operation, "ro-write")) {
+            arguments[9] = "//127.0.0.1/readonly";
+            arguments[11] = "put /run/native-share-upload forbidden";
+        } else if (!strcmp(data_operation, "escape")) {
+            arguments[9] = "//127.0.0.1/readonly";
+            arguments[11] = "get escape /run/native-share-download-escape";
+        } else {
+            return fail();
+        }
+    }
     char *environment[] = {"PATH=/usr/sbin:/usr/bin:/sbin:/bin", "LC_ALL=C", NULL};
     if (hold) {
         if (wrong)
@@ -1007,6 +1095,11 @@ static int native_client(const char *user, const char *kind, int hold)
     return fail();
 }
 
+static int native_client(const char *user, const char *kind, int hold)
+{
+    return native_client_mode(user, kind, hold, NULL);
+}
+
 int main(int argc, char **argv)
 {
     if (guard())
@@ -1021,8 +1114,12 @@ int main(int argc, char **argv)
         return native_credential_fixture(argv[2], argv[3]);
     if (argc == 2 && !strcmp(argv[1], "native-server"))
         return native_credential_fixture("server", "");
+    if (argc == 2 && !strcmp(argv[1], "native-data-server"))
+        return native_credential_fixture("data-server", "");
     if (argc == 4 && !strcmp(argv[1], "native-client"))
         return native_client(argv[2], argv[3], 0);
+    if (argc == 3 && !strcmp(argv[1], "native-data-client"))
+        return native_client_mode("qpsecond", "good", 0, argv[2]);
     if (argc == 3 && !strcmp(argv[1], "native-session"))
         return native_client(argv[2], "good", 1);
     if (argc == 2 && !strcmp(argv[1], "runtime-bundle"))

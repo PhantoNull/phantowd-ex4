@@ -214,6 +214,24 @@ serialization refusal, writable-root refusal and safe Linux open flags.
 
 ## Retained code and static-process Owner
 
+The separate fixed QEMU native-data prerequisite adds two original per-share
+`O_PATH` inputs to a NEW runtime after the preceding identity/runtime fixture
+fully closes. It validates protected, independent ext-family RO/RW mount roots;
+the native helper attaches individual nonrecursive clones and closes inputs
+before executing Samba in its restricted root. The original credential workers
+receive no data descriptors. Fixed qualification documents are not desired
+policy, a complete file-service Plan, or product activation inputs.
+
+Actual ARMv5 SMB transfers prove RW write/read, RO read/write denial, Unix file
+ownership, kernel `EROFS` and symlink refusal with no transferred/forbidden file.
+Every owned group and descriptor copy settles before caller originals release.
+The full local three-campaign lane, Linux race-count3/module vet and Windows
+preflight/cross-compile pass. Complete-roster storage pins, the SAME identity
+Owner/backend through startup, policy/grant/ACL admission, storage-loss and
+uncertain-stop fences, full image/hosted qualification and product wiring remain
+open. The exact marker records `complete_storage_identity=false`; do not borrow
+continuous lifetime evidence from another fixture.
+
 The separate QEMU-only native composition now retains the same original code,
 Owner-derived configuration and writable state through disabled-first account
 enrollment and one bounded single-use daemon lifecycle. Its private adapter

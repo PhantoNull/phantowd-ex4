@@ -20,7 +20,7 @@ import (
 
 // Replace the unused old fixture process spec BEFORE publication. All daemon
 // inputs duplicate the same admitted originals retained for credential workers.
-func (r *NativeSambaRuntimeQEMU) prepareNativeDaemonQEMU(ctx context.Context) error {
+func (r *NativeSambaRuntimeQEMU) prepareNativeDaemonQEMU(ctx context.Context, roots *[2]*os.File) error {
 	fd, err := unix.Openat(int(r.owner.configuration.contents.root.Fd()), ".", unix.O_RDONLY|unix.O_DIRECTORY|unix.O_CLOEXEC|unix.O_NOFOLLOW, 0)
 	if err != nil {
 		return err
@@ -31,17 +31,27 @@ func (r *NativeSambaRuntimeQEMU) prepareNativeDaemonQEMU(ctx context.Context) er
 	for index, name := range sambaStateDirectories {
 		state[index] = r.owner.sambaState.files[name]
 	}
-	set, err := processowner.NewNativeSambaPinnedSetQEMU(processowner.MemberSpec{Name: "native-samba", Process: processowner.Spec{
-		Executable: sambaFixtureHelper, Args: []string{"native-server"}, RunAs: &processowner.Credentials{UID: 0, GID: 0},
+	name, argument, readyUser := "native-samba", "native-server", "qpmanaged"
+	if roots != nil {
+		name, argument, readyUser = "native-samba-data", "native-data-server", "qpsecond"
+	}
+	spec := processowner.MemberSpec{Name: name, Process: processowner.Spec{
+		Executable: sambaFixtureHelper, Args: []string{argument}, RunAs: &processowner.Credentials{UID: 0, GID: 0},
 		Ready: func(ctx context.Context) (bool, error) {
-			authenticated, denied, err := r.nativeClientQEMU(ctx, "qpmanaged", false)
+			authenticated, denied, err := r.nativeClientQEMU(ctx, readyUser, false)
 			if denied {
 				return false, ErrMismatch
 			}
 			return authenticated, err
 		},
 		ReadyTimeout: 12 * time.Second, ProbeInterval: 200 * time.Millisecond, StopTimeout: 4 * time.Second,
-	}}, r.helper, config, state)
+	}}
+	var set *processowner.PinnedSet
+	if roots == nil {
+		set, err = processowner.NewNativeSambaPinnedSetQEMU(spec, r.helper, config, state)
+	} else {
+		set, err = processowner.NewNativeSambaDataPinnedSetQEMU(spec, r.helper, config, state, *roots)
+	}
 	err = errors.Join(err, root.Close())
 	if err != nil {
 		if set != nil {
