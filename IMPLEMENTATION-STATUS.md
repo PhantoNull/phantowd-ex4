@@ -3,6 +3,34 @@
 
 # Implementation status
 
+## Declared share descriptor pins — QEMU storage prerequisite
+
+The guarded `qemu && linux` storage fixture now retains original `O_PATH`
+descriptors for each declared attached share, after complete roster and source
+verification. Only copies of those originals are returned; no complete volume
+root or recursively cloned tree is supplied. One exclusive pin prevents direct
+handoff teardown until explicit release. Source loss puts the pin in sticky
+review; restoring the source path cannot issue replacement descriptors.
+These parent-namespace handles are not a service isolation boundary.
+
+The actual ARMv5 service-launcher guest passes two declared roots (RW and RO),
+repeated copied-descriptor closure with original pins still usable, non-root
+UID/GID-correct writes, kernel `EROFS` and unchanged descriptor count after
+settled release. Legitimate data changes do not trip immutable-code checks.
+Normal release and source-loss review are exercised, with all earlier launcher
+and static-child isolation guards unchanged. Host refusal/race tests and tagged
+module vet pass; the pins and descriptors refuse JSON serialization.
+
+The trusted consumer must first stop/reap every descendant and close all copied
+inputs; this pin's `Close` cannot independently prove that external settlement.
+Its uncertain-close path conservatively keeps the handoff reservation, but an
+actual close-uncertainty fault has not yet been qualified for this new type.
+This fixture does not pass data to Samba, transfer SMB files, qualify descendant
+settlement for a Samba consumer, activate HTTP/product services or touch real
+disks. Next, compose the Plan and complete roster/identity/runtime authorities
+with an individual-share native descriptor profile and real SMB RW/RO access.
+Full cached/clean/hosted integration of this increment remains separate.
+
 ## Isolated Samba share candidates — preparation only
 
 The existing file-service Plan now privately retains a bounded immutable copy

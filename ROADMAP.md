@@ -990,6 +990,15 @@ storage. No production roster provider or activation path exists.
   and stop all descendants before releasing any source pin. Source loss and
   uncertain closure must retain review without fallback/restart. Storage checks
   must not recurse from backend/runtime workers into held mounted-roster locks.
+  The QEMU-only handoff now retains original per-share `O_PATH` descriptors,
+  gates teardown and duplicates only those originals. The actual launcher guest
+  proves two RO/RW roots, caller-copy closure, effective non-root ownership,
+  kernel `EROFS`, legitimate data mutation, source-loss review/restoration
+  refusal and final FD equality. This is storage-side lifetime evidence, not
+  Samba access or namespace containment. An actual uncertain-close fault for
+  this pin, fixed individual-share native FD admission, complete Plan/identity/
+  runtime composition and real SMB transfers remain required. Daemon data
+  handles must not broaden credential workers' configuration/state-only profile.
 - **M4.2 — Single service owner.** Define start/reload/stop and child-process
   ownership; bound diagnostics and verify readiness. Preserve the last known
   working configuration on syntax/start failure without claiming an unapplied
