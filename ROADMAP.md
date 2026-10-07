@@ -1102,9 +1102,12 @@ storage. No production roster provider or activation path exists.
   configuration, mutable state and executable pins require negative coverage,
   including replacement noninterference and later-role retention. Already-
   closed-file Linux regressions pass, as do separate normal static Owner/all
-  three Samba ARMv5 campaigns. Complete-image qualification of this increment,
-  actual guest fault injection, kernel I/O failure semantics and durable
-  recovery remain separate open gates; these tests do not complete M4.4.
+  three Samba ARMv5 campaigns. Complete cached integration and exact926-source/
+  package/archive/configured-strip/image/export/seven-hash audit also pass.
+  Native QEMU-wrapper terminal cleanup/error-state propagation remains a
+  separately identified gap with a host-tested isolated follow-up. Actual guest
+  fault injection, kernel I/O failure semantics and durable recovery remain
+  open gates; these tests do not complete M4.4 or qualify a product runtime.
 
   Security limit: this is a share-scoped pathname view, not a complete service
   authorization boundary. Consumers still run in the host mount namespace and

@@ -3,7 +3,7 @@
 
 # Implementation status
 
-## Retained descriptor release uncertainty — integration qualification pending
+## Retained descriptor release uncertainty — local full qualification
 
 Linux retained code/configuration/state and pinned-process cleanup now preserve
 the first close error permanently and stop releasing later inputs. The runtime
@@ -18,10 +18,23 @@ retention. Non-root Linux race-count3 and tagged regressions/vet pass. A separat
 actual ARMv5 normal-path campaign passes the original static Code Owner and
 all three service/native/lifecycle Samba campaigns, all driver/loader guards
 and unchanged base hashes. Those guest positives do not execute the injected
-close fault. Complete-image qualification of this changed source is pending;
-the earlier 924-source image proof below does not cover this increment.
+close fault. Complete cached Buildroot/ARMv5 integration now also passes all
+ordinary/race/fuzz/default/two-boot, metadata, launcher/code-owner/loader/atomic,
+all three Samba and synthetic SMART lanes. Independent comparison matches all
+926 API sources with the compiled package and source archive, reproduces the
+configured strip step and matches installed/image/export API bytes and all
+seven artifact hashes. This is not independent clean-build qualification;
+the earlier 924-source proof below does not cover this increment.
 Actual kernel I/O close failures, durable quarantine/recovery and product
 activation remain unqualified. No HTTP, NAS operation or new privilege is added.
+
+The separate QEMU native-runtime wrapper still has a known terminal cleanup
+gap in this qualified source: it may continue auth/helper cleanup after an
+Owner error and forget terminal errors on repeated Close. An isolated host-
+tested follow-up preserves the error, stops later release and keeps the
+observable review state consistent; it is not included in this 926-source
+image. Its original ARMv5 campaign qualification is pending. Normal guest
+positives above do not demonstrate that this separately injected fault passes.
 
 ## Native session-worker phase budgets — local full qualification
 
