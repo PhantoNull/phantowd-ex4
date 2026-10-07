@@ -15,7 +15,10 @@ A real regular-file regression reproduces the prior false success. Targeted
 non-root Linux race-count3 passes; ordinary and QEMU-tagged Linux adapter
 race-count3 plus tagged module vet pass with temporary root-owned configuration
 fixtures and fake command runners. Windows API/UI/vet and ARMv5 cross-compilation
-pass. No actual kernel EIO, ARMv5 execution of this increment, separate native
+pass. Uninstrumented ARMv5 native and lifecycle campaigns now also pass on the
+same code, with original limits, assertions and base hashes unchanged; complete
+suite/full-image qualification remains pending. These normal paths do not
+exercise injected close faults. No actual kernel EIO, separate native
 wrapper recovery, complete image or product activation is qualified. This is
 not a fix for the independent native campaign timeout blocking main promotion.
 

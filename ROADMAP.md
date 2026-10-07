@@ -419,7 +419,14 @@ qualification remain open. The revocation primitive is currently QEMU-only.
   is bound once to the Owner and
   journal at open; the validated config inode stays pinned for the Owner
   lifetime and is closed after active operations drain. Operation calls cannot
-  substitute the backend. Reopened intent becomes
+  substitute the backend. The base executor now fences every operation before
+  its first close and preserves a terminal close error without retry or later
+  false success, including empty observations. Real-file fault/concurrency
+  regressions pass in ordinary and tagged Linux race tests; separate unmodified
+  ARMv5 native/lifecycle normal-path campaigns pass locally. These do not prove
+  injected kernel EIO, native-wrapper teardown, full-image qualification or
+  resolution of the independent promotion-blocking timeout.
+  Reopened intent becomes
   review-required without command replay. The internal credential-bearing
   version-2 Unix-socket methods, including explicit `enable` and `disable`, are bound to the
   Owner resolver and used only by the disposable QEMU fixture; no HTTP endpoint
