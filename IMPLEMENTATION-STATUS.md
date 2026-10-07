@@ -31,15 +31,20 @@ installed/image/exported API equality and all seven artifact hashes.
 The package census separately accounts for one exact zero-byte archive marker
 created after API compilation. The upstream Buildroot archive helper's omitted
 marker cleanup reproduces three times in disposable RAM; no generic `tmp.*`
-exception, source deletion or runtime modification is used. That cleanup defect
-remains to be fixed. API SHA-256 is
+exception, source deletion or runtime modification is used. At that frozen
+checkpoint the cleanup defect was unfixed; the newer focused correction above
+has not yet qualified a changed complete image/census. API SHA-256 is
 `aaf55b14c1c9ffe9f44144086ccdb01e9ca4af5726fec7e34cf5c84d9d28e2c0`.
 
 This is cached local qualification, not clean reproducibility, complete release
 licensing, deployment or timeout resolution. PR #123's own `00d9445` QEMU run
 fails in the native campaign at the original 180-second bound after descriptor
-handoff and before enrollment; service passes, later lanes remain unqualified
-there. Both public integrations remain held. No NAS or persistent device action.
+handoff with no final enrollment marker; that marker is emitted after the whole
+campaign, so its absence does not locate a pre-enrollment failure. A separate
+intentional shell-only SIGQUIT90 diagnostic samples fresh data-runtime hashing
+after prior authority closure, not the original hosted timeout. All temporary
+instrumentation is removed. Service passes; later hosted lanes remain unqualified.
+Both public integrations remain held. No NAS or persistent device action.
 
 ## Declared-share close quarantine — actual mounted ARMv5 fixture
 
