@@ -423,8 +423,11 @@ qualification remain open. The revocation primitive is currently QEMU-only.
   its first close and preserves a terminal close error without retry or later
   false success, including empty observations. Real-file fault/concurrency
   regressions pass in ordinary and tagged Linux race tests; separate unmodified
-  ARMv5 native/lifecycle normal-path campaigns pass locally. These do not prove
-  injected kernel EIO, native-wrapper teardown, full-image qualification or
+  ARMv5 normal-path campaigns and complete cached image integration pass on the
+  combined checkpoint, with all 928 API source/package/archive files and the
+  configured strip/installed/image/export bytes independently matched. These
+  do not prove injected kernel EIO, native-wrapper teardown, clean-build or
+  physical-device qualification, or
   resolution of the independent promotion-blocking timeout.
   Reopened intent becomes
   review-required without command replay. The internal credential-bearing

@@ -3,7 +3,7 @@
 
 # Implementation status
 
-## Base Samba adapter close uncertainty — local host qualification
+## Base Samba adapter close uncertainty — local cached integration qualification
 
 The base `smbexec.Backend` now fences operations before releasing its pinned
 configuration and preserves the first close error. Later closes do not retry,
@@ -15,11 +15,16 @@ A real regular-file regression reproduces the prior false success. Targeted
 non-root Linux race-count3 passes; ordinary and QEMU-tagged Linux adapter
 race-count3 plus tagged module vet pass with temporary root-owned configuration
 fixtures and fake command runners. Windows API/UI/vet and ARMv5 cross-compilation
-pass. Uninstrumented ARMv5 native and lifecycle campaigns now also pass on the
-same code, with original limits, assertions and base hashes unchanged; complete
-suite/full-image qualification remains pending. These normal paths do not
-exercise injected close faults. No actual kernel EIO, separate native
-wrapper recovery, complete image or product activation is qualified. This is
+pass. The combined checkpoint `0e36a08` also passes the complete cached
+Buildroot/ARMv5 integration: ordinary/race/fuzz, default API boot, two-boot state,
+metadata, launcher/Code Owner/loader/atomic, all three Samba campaigns and
+synthetic SMART lanes. Original limits, assertions and base hashes are unchanged.
+Independent comparison matches all 928 tracked API files to compiled-package
+and distributed-archive contents, reproduces configured stripping, and confirms
+installed/image/export API bytes and all seven artifact hashes. These normal
+guest paths do not exercise injected close faults. No actual kernel EIO,
+separate native-wrapper recovery, independent clean build, physical-device or
+product activation is qualified. This is
 not a fix for the independent native campaign timeout blocking main promotion.
 
 ## Local Samba test-wrapper default — host regression only
@@ -33,7 +38,7 @@ all four selections, unchanged resource/read-only isolation, and six refusal
 cases. The regression is also included in host CI; hosted qualification remains
 pending. This does not address the ARMv5 lifecycle timeout or change guest limits.
 
-## Per-scan hash scratch — local host qualification only
+## Per-scan hash scratch — local allocation and cached integration qualification
 
 Code inspection and retained-code preparation now own one 32 KiB scratch buffer
 per complete pass, instead of allocating it once per file. There is no global
@@ -50,13 +55,16 @@ physical EX4 throughput, total appliance RAM or proof of a lifecycle-timeout
 fix. Tagged module vet/full runtimebundle and processowner race-count3 pass;
 Windows API/UI/vet and ARMv5 cross-compilation pass, not guest execution.
 
-The original ARMv5 static Code Owner and service/native campaigns pass, but
-the lifecycle guest reaches its unchanged 180-second outer timeout. A shell-only
+The earlier isolated scratch checkpoint passed static Code Owner and service/
+native campaigns, but its lifecycle guest reached the unchanged 180-second
+outer timeout. A shell-only
 timing diagnostic, with unchanged Go source, also times out; its preliminary
-boot/staging/inspection/lookup work finishes in about 16 seconds. No complete
-three-campaign or changed-source full-image qualification exists. The allocation
-improvement is not a demonstrated timeout fix. Do not borrow the earlier
-926-source audit below. The
+boot/staging/inspection/lookup work finished in about 16 seconds. The subsequent
+combined checkpoint `0e36a08`, including the independently regressed base Samba
+close fix, passes the original three-campaign union and complete cached image;
+its own 928-source/package/archive/strip/image audit passes as described above.
+Those positives do not explain the earlier timeouts or prove that scratch reuse
+fixed them. Do not substitute the older 926-source audit for this new proof. The
 separate native-wrapper cleanup draft remains excluded; no product service,
 new privilege, physical-device or migration qualification is added.
 
