@@ -3,6 +3,25 @@
 
 # Implementation status
 
+## Native runtime terminal-close quarantine — host qualification
+
+The QEMU-only native runtime now retains its first terminal release error after
+Owner cleanup, authentication-file removal or helper-descriptor closure. It stops
+before later resources, fences subsequent service operations and keeps observable
+review state; repeated `Close` neither retries cleanup nor reports false success.
+The normal verified repeated-close path remains idempotent.
+
+On the current branch, real temporary-file bookkeeping tests reproduce all three
+former failures before the fix and pass afterward. Tests also preserve untouched
+later resources and refuse removal/closure of test-only replacement objects.
+Pinned Linux tagged module vet and three-count planner/runtime/coordinator race
+tests pass, along with Windows API/UI/vet/ARMv5 cross-compilation. These tests
+exercise teardown bookkeeping without bundle admission, never launch a child and
+do not qualify actual kernel EIO, live-worker fault handling or durable recovery.
+Original ARMv5 normal-lifecycle and full combined image/source qualification are
+pending. This does not fix or bypass PR #123's hosted native outer timeout.
+No constructor, privilege profile, device operation or HTTP surface is added.
+
 ## Paired management retention — host and original ARMv5 union qualification
 
 The QEMU-only inert retainer now accepts the complete same-Plan role candidate,
@@ -155,13 +174,11 @@ the earlier 924-source proof below does not cover this increment.
 Actual kernel I/O close failures, durable quarantine/recovery and product
 activation remain unqualified. No HTTP, NAS operation or new privilege is added.
 
-The separate QEMU native-runtime wrapper still has a known terminal cleanup
-gap in this qualified source: it may continue auth/helper cleanup after an
-Owner error and forget terminal errors on repeated Close. An isolated host-
-tested follow-up preserves the error, stops later release and keeps the
-observable review state consistent; it is not included in this 926-source
-image. Its original ARMv5 campaign qualification is pending. Normal guest
-positives above do not demonstrate that this separately injected fault passes.
+The earlier qualified 926-source image excludes the native-runtime wrapper's
+terminal cleanup follow-up. That image can continue auth/helper cleanup after an
+Owner error and forget terminal errors on repeated Close. The current host-tested
+follow-up is described above; it is not retroactively included in that image.
+Normal guest positives do not establish injected-close-fault qualification.
 
 ## Native session-worker phase budgets — local full qualification
 

@@ -52,6 +52,7 @@ type NativeSambaRuntimeQEMU struct {
 	authPaths        []string
 	clients          *processowner.PinnedSet
 	clientsAttempted bool
+	releaseErr       error
 }
 
 func (p *Plan) NewNativeSambaRuntimeQEMU(ctx context.Context, code, configuration, state *os.File, lookup fileserviceplan.SambaEnrollmentLookup) (_ *NativeSambaRuntimeQEMU, result error) {
@@ -228,6 +229,9 @@ func (r *NativeSambaRuntimeQEMU) Close(ctx context.Context) error {
 		return err
 	}
 	defer func() { <-r.gate }()
+	if r.releaseErr != nil {
+		return errors.Join(ErrReviewRequired, r.releaseErr)
+	}
 	if r.closed {
 		return nil
 	}
@@ -258,12 +262,31 @@ func (r *NativeSambaRuntimeQEMU) Close(ctx context.Context) error {
 		return errors.Join(ErrReviewRequired, err)
 	}
 	r.closed = true
-	err = errors.Join(err, r.removeNativeAuthQEMU())
+	// Closed fences every service operation, but terminal cleanup uncertainty
+	// must remain observable. Never continue to unrelated resources or retry
+	// release after the first error; an errored descriptor may already be closed.
+	if err != nil {
+		r.owner.review = true
+		r.releaseErr = err
+		r.owner.snapshot.State = processowner.StateReviewRequired
+		return errors.Join(ErrReviewRequired, err)
+	}
+	if err := r.removeNativeAuthQEMU(); err != nil {
+		r.owner.review = true
+		r.releaseErr = err
+		r.owner.snapshot.State = processowner.StateReviewRequired
+		return errors.Join(ErrReviewRequired, err)
+	}
 	if r.helper != nil {
-		err = errors.Join(err, r.helper.Close())
+		if err := r.helper.Close(); err != nil {
+			r.owner.review = true
+			r.releaseErr = err
+			r.owner.snapshot.State = processowner.StateReviewRequired
+			return errors.Join(ErrReviewRequired, err)
+		}
 		r.helper = nil
 	}
-	return err
+	return nil
 }
 
 func sealedNativeCredentialInputQEMU(data []byte) (reader *os.File, result error) {

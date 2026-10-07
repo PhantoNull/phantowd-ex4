@@ -122,6 +122,13 @@ are guaranteed not to have been released by this cleanup. Linux fault fixtures
 use already-closed real files and qualify bookkeeping, not kernel I/O failures
 or durable product recovery. Normal static/Samba ARMv5 paths are separately
 tested; those positive campaigns are not injected-close-fault qualification.
+The QEMU native runtime wrapper now preserves terminal Owner/auth/helper release
+errors as well: closed prevents new operations but never erases the first error
+or turns review into stopped/success. Later resources remain unattempted, and
+repeated cleanup cannot touch replacement objects. Current host regressions
+qualify this bookkeeping; normal ARMv5/image and actual kernel-fault/durable
+recovery evidence remain distinct. This adds no generalized closer callback,
+replacement backend or product recovery operation.
 The helper itself starts no process, mounts nothing, accepts no backend changes
 and exports no descriptor or production API. Dynamic code may be inspected and
 retained without being authorized for execution by the generic Owner.

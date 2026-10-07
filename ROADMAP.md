@@ -2627,6 +2627,16 @@ this order, preserving the [full contract](support/SAMBA-RUNTIME-PROFILE.md#samb
    during backend close and is idempotent. Qualify failed-Open cleanup and
    low-level close faults separately; process exit is not product recovery.
 
+   The QEMU native runtime's own terminal teardown now preserves first errors
+   from Owner/auth/helper release, stops later resources and retains observable
+   review across repeated Close. Current real-file bookkeeping RED/GREEN and
+   tagged module vet/three-count planner/runtime/coordinator race tests pass;
+   normal-repeat control stays idempotent. This imports only the previously
+   isolated wrapper contract, not its older ARM/image qualification. Requalify
+   original all-campaign normal lifecycle and the combined image, then fault
+   live worker/session teardown and durable recovery separately. No new
+   constructor, callback, HTTP surface or device privilege is added.
+
    The first `NativeIdentityServiceQEMU` normal-lifecycle trace now passes:
    complete startup eligibility brackets exact-backend identity retention;
    identity verification brackets actual daemon start; one exclusive timed
