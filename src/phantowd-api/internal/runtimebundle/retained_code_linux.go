@@ -7,7 +7,6 @@ package runtimebundle
 
 import (
 	"context"
-	"errors"
 	"os"
 
 	"golang.org/x/sys/unix"
@@ -22,6 +21,7 @@ type retainedCode struct {
 	files       map[string]*os.File
 	metadata    map[string]unix.Statx_t
 	observation Observation
+	releaseErr  error
 }
 
 // prepareRetainedCode collects independent references without exposing them.
@@ -121,18 +121,29 @@ func (c *retainedCode) revalidate(ctx context.Context) error {
 
 // release owns no processes. The containing Owner must establish their absence
 // first; neither a reference nor a successful observation is an execution token.
+// A close error permanently blocks further releases. Preserve unattempted pins
+// and the error; the descriptor that failed to close is not assumed still open.
 func (c *retainedCode) release() error {
 	if c == nil {
 		return nil
 	}
-	var result error
-	for _, pin := range c.files {
-		result = errors.Join(result, pin.Close())
+	if c.releaseErr != nil {
+		return c.releaseErr
+	}
+	for name, pin := range c.files {
+		if err := pin.Close(); err != nil {
+			c.releaseErr = err
+			return err
+		}
+		delete(c.files, name)
 	}
 	c.files = nil
 	if c.root != nil {
-		result = errors.Join(result, c.root.Close())
+		if err := c.root.Close(); err != nil {
+			c.releaseErr = err
+			return err
+		}
 		c.root = nil
 	}
-	return result
+	return nil
 }

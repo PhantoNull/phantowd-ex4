@@ -3,6 +3,26 @@
 
 # Implementation status
 
+## Retained descriptor release uncertainty — integration qualification pending
+
+Linux retained code/configuration/state and pinned-process cleanup now preserve
+the first close error permanently and stop releasing later inputs. The runtime
+Owner records review; repeated Close never retries cleanup or reports success.
+Earlier confirmed closures remain released. An errored close is not evidence
+that its descriptor remains open, and restoring a test-only object does not
+clear quarantine or permit closing its replacement.
+
+Real-file fault regressions reproduce the old false-success behavior before
+the fix and pass afterward, including remaining-root/later-role/executable
+retention. Non-root Linux race-count3 and tagged regressions/vet pass. A separate
+actual ARMv5 normal-path campaign passes the original static Code Owner and
+all three service/native/lifecycle Samba campaigns, all driver/loader guards
+and unchanged base hashes. Those guest positives do not execute the injected
+close fault. Complete-image qualification of this changed source is pending;
+the earlier 924-source image proof below does not cover this increment.
+Actual kernel I/O close failures, durable quarantine/recovery and product
+activation remain unqualified. No HTTP, NAS operation or new privilege is added.
+
 ## Native session-worker phase budgets — local full qualification
 
 A measured slow ARMv5 diagnostic and a host regression reproduce the former
@@ -43,15 +63,14 @@ clean-build reproducibility; own hosted qualification remains required before
 integration/promotion.
 Historical four/ten-second qualification below retains its earlier source scope.
 
-### Known retained-descriptor cleanup gap
+### Retained-descriptor gap discovered after this qualification
 
-A separate Linux fault-injection regression demonstrates that a descriptor
-close error can be forgotten by repeated cleanup in the current retained-input
-and pinned-process owners. A host-tested draft preserves the error, stops later
-releases and keeps review without retry, but is not included in the qualification
-above. Its fixtures model already-closed objects; they do not qualify kernel I/O
-close failures, product recovery or physical-device behavior. This remains a
-product-runtime integration prerequisite; no installable runtime is offered.
+A separate Linux fault regression demonstrated forgotten close errors and false
+success on repeated cleanup in the source qualified above. The later increment
+at the top of this document fixes that bookkeeping; it is not included in this
+924-source qualification. Already-closed-object fixtures do not qualify kernel
+I/O close failures, product recovery or physical-device behavior. These remain
+product-runtime prerequisites; no installable runtime is offered.
 
 ## Inert retained Plan configuration role — QEMU only
 

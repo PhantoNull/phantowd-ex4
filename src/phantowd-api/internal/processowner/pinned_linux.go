@@ -17,10 +17,11 @@ import (
 // It does not qualify a runtime closure, loader, root, credentials or manifest.
 // Trusted composition must validate those inputs before construction.
 type PinnedSet struct {
-	gate   chan struct{}
-	set    *Set
-	pins   []*os.File
-	closed bool
+	gate       chan struct{}
+	set        *Set
+	pins       []*os.File
+	closed     bool
+	releaseErr error
 }
 
 // NewPinnedSet copies specs and duplicates corresponding read-only executable
@@ -140,6 +141,9 @@ func (s *PinnedSet) Stop(ctx context.Context) (SetSnapshot, error) {
 // Close never signals a process. All private Owners must have confirmed their
 // process groups reaped and dropped current before any executable is released.
 // Explicit Stop may verify an earlier uncertain cleanup but cannot clear review.
+// Descriptor-close uncertainty is different: it is permanently retained and
+// never retried, even after process absence is confirmed. Failed Close does not
+// imply the failed descriptor remains open; later pins are not released.
 func (s *PinnedSet) Close() error {
 	if s == nil || s.set == nil || s.gate == nil {
 		return ErrUnavailable
@@ -150,6 +154,9 @@ func (s *PinnedSet) Close() error {
 		return ErrBusy
 	}
 	defer func() { <-s.gate }()
+	if s.releaseErr != nil {
+		return errors.Join(ErrReviewRequired, s.releaseErr)
+	}
 	if s.closed {
 		return nil
 	}
@@ -159,14 +166,24 @@ func (s *PinnedSet) Close() error {
 		}
 	}
 	s.closed = true
-	return s.release()
+	if err := s.release(); err != nil {
+		return errors.Join(ErrReviewRequired, err)
+	}
+	return nil
 }
 
 func (s *PinnedSet) release() error {
-	var result error
-	for _, pin := range s.pins {
-		result = errors.Join(result, pin.Close())
+	if s.releaseErr != nil {
+		return s.releaseErr
+	}
+	for len(s.pins) > 0 {
+		if err := s.pins[0].Close(); err != nil {
+			s.releaseErr = err
+			return err
+		}
+		s.pins[0] = nil
+		s.pins = s.pins[1:]
 	}
 	s.pins = nil
-	return result
+	return nil
 }

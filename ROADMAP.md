@@ -1094,6 +1094,18 @@ storage. No production roster provider or activation path exists.
   stop retains the lease without retry. Callers must poll `Observe`; there is
   no automatic monitor, restart or production daemon wiring.
 
+  Retained runtime-input release acceptance: after verified process absence,
+  the first descriptor-close failure must remain observable on every later
+  Close, stop releases of all not-yet-attempted inputs and keep runtime review
+  without retry or restart. Successfully closed inputs remain released; the
+  errored descriptor must not be assumed open. Code, management/service
+  configuration, mutable state and executable pins require negative coverage,
+  including replacement noninterference and later-role retention. Already-
+  closed-file Linux regressions pass, as do separate normal static Owner/all
+  three Samba ARMv5 campaigns. Complete-image qualification of this increment,
+  actual guest fault injection, kernel I/O failure semantics and durable
+  recovery remain separate open gates; these tests do not complete M4.4.
+
   Security limit: this is a share-scoped pathname view, not a complete service
   authorization boundary. Consumers still run in the host mount namespace and
   may reach the original volume path if its Unix metadata permits; that path

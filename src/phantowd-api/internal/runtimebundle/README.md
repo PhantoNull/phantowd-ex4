@@ -80,6 +80,15 @@ not replace late pathname checks with early metadata or add a constructor scan.
 
 The containing Owner serializes all access, decides review/stop policy and
 establishes complete process-group absence before releasing code references.
+After a descriptor-close error, retained code/configuration/state and pinned
+process inputs permanently preserve that error, stop subsequent releases and
+refuse cleanup retry. The containing Owner remains in review; repeated Close
+cannot report success. Confirmed earlier closures stay released. A failed
+close does not prove that its descriptor remains open; only unattempted inputs
+are guaranteed not to have been released by this cleanup. Linux fault fixtures
+use already-closed real files and qualify bookkeeping, not kernel I/O failures
+or durable product recovery. Normal static/Samba ARMv5 paths are separately
+tested; those positive campaigns are not injected-close-fault qualification.
 The helper itself starts no process, mounts nothing, accepts no backend changes
 and exports no descriptor or production API. Dynamic code may be inspected and
 retained without being authorized for execution by the generic Owner.
