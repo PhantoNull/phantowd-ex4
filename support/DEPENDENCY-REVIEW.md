@@ -20,7 +20,7 @@ records. These are different inventories, not interchangeable counts.
 | Input | Observed version / scope | Review outcome |
 | --- | --- | --- |
 | Buildroot | 2025.02.18 build system | Still listed in the selected LTS line; individual packages require their own review |
-| Linux and headers | 6.18.54 target | 6.18.55 is an update candidate, not yet built or qualified here |
+| Linux and headers | Reviewed image: 6.18.54; current source pins: 6.18.55 | Authenticated kernel-only probe passes; complete updated-image qualification remains open |
 | Samba | 4.22.11 target, six declared patches | Upstream's July security release; no complete Samba advisory/configuration review claimed |
 | OpenSSL | 3.5.8 **host only**, four declared patches | September advisory requires evaluating an update to 3.5.9; affected host call paths remain unassessed |
 | Go | 1.26.6 host SDK **and compiled target runtime** | 1.26.8 is a maintenance candidate, not a demonstrated security or QEMU-timeout fix |
@@ -37,6 +37,45 @@ Source facts: [Buildroot downloads](https://buildroot.org/download.html),
 [Go release history](https://go.dev/doc/devel/release),
 [Go database API](https://go.dev/doc/security/vuln/database).
 Refresh these dated observations before choosing update inputs.
+
+## Linux 6.18.55 focused qualification (2026-10-07)
+
+The kernel.org archive was authenticated on its uncompressed tar stream with
+the pinned stable-release signer. Its compressed SHA-256 is
+`f410638061a165c12f42ab871d2f3fcd525515359b5faeee80969cff84524df9`.
+`COPYING`, GPL-2.0 and Linux-syscall-note match the previously qualified
+license hashes. The unchanged EX4 Stage B3 DTS compiles to byte-identical
+DTBs against both authenticated source versions; existing warnings remain.
+The generic research patch dry-run passes with zero fuzz, with a reported
+binding-file offset. This is not resolved board Kconfig or hardware proof.
+
+An actual Linux 6.18.55 QEMU kernel build uses the existing ARMv5 toolchain and
+baseline resolved configuration. Every configuration symbol retains its
+previous value, including ACL, RAID and no-MD-autodetection requirements.
+Its standard ARMv5 smoke test passes with the original 240-second budget and
+all original assertions, including the storage, identity, SMB and NFS fixtures.
+Only the expected-kernel field was changed in a disposable rootfs copy:
+the API and guest readiness script remain byte-identical to the base.
+All seven original artifact hashes verify both before and after the test.
+Sources, compilation and QEMU snapshot files live in bounded RAM scratch;
+no new Docker image or named volume is created by this focused probe.
+
+Two initial harness refusals are accounted for, not erased: read-only
+`/var/tmp` prevented QEMU snapshot creation before guest execution; after
+adding bounded tmpfs there, the guest correctly refused a 6.18.54 metadata /
+6.18.55 running-kernel mismatch. Paused-QEMU and metadata readback controls
+isolate those issues before the successful original smoke replay. Neither
+refusal demonstrates a kernel regression; neither correction removes a check.
+
+Current source pins now update all five firmware configurations/release files,
+kernel/header archive hashes and the version-qualified GPL hash patch/driver
+together. Version/workflow locks, kernel-input predicates, shell checks,
+dashboard DOM tests and actual zero-fuzz GPL-patch application against the
+authenticated original Buildroot recipe pass locally. The old image, headers,
+SBOM and compiler metadata remain evidence only for their original build.
+No complete updated Buildroot image, separate three-campaign Samba suite,
+clean reproducibility, EX4 kernel build/boot or release qualification follows.
+The hosted native timeout and physical-device safety gates remain open.
 
 ## Important interpretation boundaries
 
@@ -68,10 +107,11 @@ Refresh these dated observations before choosing update inputs.
 
 ## Required update work packets (M0.4)
 
-1. **Linux 6.18.55 candidate:** review the
+1. **Linux 6.18.55 selected update:** review the
    [stable changelog](https://www.kernel.org/pub/linux/kernel/v6.x/ChangeLog-6.18.55),
-   authenticate the archive/signature with the pinned kernel signer, then update
-   all kernel/header/hash consumers coherently. Recheck QEMU and EX4 profile
+   finish configuration-relevant change review and qualify the complete image
+   from the authenticated, coherently updated kernel/header/hash consumers.
+   The focused proof above does not replace full QEMU and EX4 profile
    configurations, especially existing device-write/thermal fences. A compile
    does not authorize a physical boot or disk operation.
 2. **Host OpenSSL 3.5.9 candidate:** retain the Buildroot LTS baseline unless a
@@ -94,5 +134,5 @@ Refresh these dated observations before choosing update inputs.
 Perform focused local validation before one necessary complete integration run.
 Keep only the existing project cache volumes; no broad Docker cleanup or
 repeated hosted reruns. Publish an updated SBOM and source/license bundle only
-from the exact qualified candidate. This review changes no pins, image bytes,
+from the exact qualified candidate. The Linux pin changes above do not change
 service activation, installation claims or hardware authorization.

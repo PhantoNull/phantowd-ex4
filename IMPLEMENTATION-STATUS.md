@@ -3,12 +3,32 @@
 
 # Implementation status
 
-## Dependency review — update candidates identified, not qualified
+## Linux 6.18.55 — coherent pins and focused ARMv5 proof; full image pending
+
+The authenticated Linux 6.18.55 source compiles with the existing ARMv5
+toolchain and an exactly unchanged configuration-symbol set. The original
+standard QEMU smoke passes with all assertions and its 240-second budget,
+using the previous userspace and only an aligned expected-kernel field in a
+disposable rootfs copy. API/readiness-script bytes and all seven original
+artifact hashes remain unchanged. EX4 Stage B3 DTS bytes also match the
+6.18.54 control, but this is not an EX4 kernel build or hardware proof.
+
+Five configurations/release metadata files, both kernel/header archive hashes
+and the version-qualified GPL hash patch/driver now select 6.18.55 together.
+Local version/workflow, kernel-input, shell, dashboard DOM and actual upstream
+GPL-patch preflights pass. A complete rebuilt image and all separate integration
+campaigns, regenerated metadata/source/license audit and exact-head hosted
+checks remain required. Existing public CI failures are not fixed or waived.
+The [dependency record](support/DEPENDENCY-REVIEW.md) distinguishes the focused
+proof from the unchanged prior image and the remaining qualification gates.
+
+## Dependency review — partial advisory coverage, other updates pending
 
 The [2026-10-07 dependency review](support/DEPENDENCY-REVIEW.md) checks the
 actual local package inventory and embedded API compiler metadata against
-selected official advisories. Linux 6.18.55, host OpenSSL 3.5.9 and Go 1.26.8 are
-update candidates; the existing image/pins remain unchanged. OpenSSL is host-only
+selected official advisories. Linux 6.18.55 source pins have the focused proof
+above; host OpenSSL 3.5.9 and Go 1.26.8 remain update candidates. The existing
+complete image is unchanged. OpenSSL is host-only
 in this inventory, whereas the Go SDK also supplies the target executable's
 runtime. Exact backports and complete component/exposure dispositions remain
 release gates. This is not an all-package security audit, QEMU timeout fix,

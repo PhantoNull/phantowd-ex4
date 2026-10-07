@@ -33,7 +33,7 @@ scope; [component contracts](src/phantowd-api/README.md) describe the boundaries
 
 | Area | Implemented / tested | Still needed for the product |
 | --- | --- | --- |
-| Build | Pinned Buildroot 2025.02.18 LTS / Linux 6.18.54 LTS, ARMv5 QEMU image, SBOM, development source collection and automated tests | Installable EX4 image, complete release source bundle and qualification |
+| Build | Pinned Buildroot 2025.02.18 LTS / Linux 6.18.55 LTS; kernel-only ARMv5 probe passes against existing userspace | Complete new-image qualification/SBOM/source bundle, installable EX4 image and release qualification |
 | Web management | Bounded read-only snapshots, development administrator authentication/password changes, SMB/NFS policy editing with before/after review and cross-protocol folder advisories | Complete setup/recovery, certificate lifecycle, browser qualification and live service management |
 | Storage | Non-root read-only broker, complete sysfs inventory, manual GPT observations, duplicate-identity detection, protected registry with reader-bound rechecks, rechecked registry/census policy and backing reviews, internal MD/mount-owner fixtures | Trusted production lifecycle, persistent volume IDs, global-use accounting, qualified import and RAID management |
 | Sharing and identities | SMB3/NFS fixtures, disabled-first Samba accounts, session revocation, retained startup/state-fault fixtures, Unicode/CP850, streams and POSIX ACL tests | Product account workflows, supervised service activation/recovery and legacy permission migration |
@@ -60,6 +60,12 @@ commit, conclusion and artifacts before relying on it. Cached local tests do
 not establish independent clean-build reproducibility, complete licensing
 compliance or physical EX4 qualification. [versions.env](versions.env) is the
 source of truth for build pins.
+
+The Linux 6.18.55 pin update is locally preflighted, but its complete Buildroot
+image is not yet qualified. The kernel probe used a disposable copy of the
+previous userspace, with only its expected-kernel metadata changed; it is not a
+publishable image or evidence that the independent Samba CI timeout is fixed.
+See the [dependency qualification record](support/DEPENDENCY-REVIEW.md).
 
 ## Roadmap
 

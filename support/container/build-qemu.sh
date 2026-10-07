@@ -166,11 +166,11 @@ python3 -B "$external_dir/support/tests/test-volume-probe-license.py" \
 python3 -B -m flake8 "$external_dir/support/tests/test-volume-probe-license.py"
 
 # Buildroot 2025.02.18's linux package license-file hash predates the GPL-2.0
-# text shipped in Linux 6.18.54. The archive itself is separately SHA-256 and
+# text shipped in Linux 6.18.55. The archive itself is separately SHA-256 and
 # PGP verified above; update only that expected license-text hash, fail closed
 # if the pinned Buildroot source no longer matches either known state.
-if [ "$BUILDROOT_VERSION" != "2025.02.18" ] || [ "$LINUX_VERSION" != "6.18.54" ]; then
-    echo "The Buildroot GPL-2.0 hash refresh is qualified only for Buildroot 2025.02.18 and Linux 6.18.54" >&2
+if [ "$BUILDROOT_VERSION" != "2025.02.18" ] || [ "$LINUX_VERSION" != "6.18.55" ]; then
+    echo "The Buildroot GPL-2.0 hash refresh is qualified only for Buildroot 2025.02.18 and Linux 6.18.55" >&2
     exit 1
 fi
 linux_hash_file="$buildroot_source/linux/linux.hash"
@@ -182,7 +182,7 @@ linux_gpl_hash_count="$(grep -F -c \
     "$linux_gpl_text_hash  LICENSES/preferred/GPL-2.0" "$linux_hash_file" || true)"
 if [ "$old_gpl_hash_count" -eq 1 ] && [ "$linux_gpl_hash_count" -eq 0 ]; then
     patch --directory "$buildroot_source" --strip=1 --fuzz=0 --forward \
-        < "$external_dir/support/buildroot-patches/$BUILDROOT_VERSION/0001-linux-gpl-text-hash-for-linux-6.18.54.patch"
+        < "$external_dir/support/buildroot-patches/$BUILDROOT_VERSION/0001-linux-gpl-text-hash-for-linux-6.18.55.patch"
 elif [ "$old_gpl_hash_count" -ne 0 ] || [ "$linux_gpl_hash_count" -ne 1 ]; then
     echo "Unexpected GPL-2.0 license hash in $linux_hash_file" >&2
     exit 1

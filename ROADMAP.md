@@ -288,11 +288,17 @@ button to an unqualified backend simply because the screen exists.
   signatures/hashes, ARMv5 compatibility, package configuration, vulnerability
   review, license material and regenerated SBOM. Test the selected package set.
   The [dated dependency review](support/DEPENDENCY-REVIEW.md) now identifies
-  Linux 6.18.55, host OpenSSL 3.5.9 and Go 1.26.8 as separate unqualified update
-  candidates. It distinguishes host libraries from linked Go target runtime,
+  Linux 6.18.55, host OpenSSL 3.5.9 and Go 1.26.8 as separate update packets.
+  Linux source/signature/license authentication, unchanged-symbol ARMv5 kernel
+  compilation and the original standard QEMU smoke now pass locally. Five
+  firmware configurations/release files, both source hashes and the qualified
+  GPL patch/driver coherently select 6.18.55; cheap local preflights pass.
+  Complete new-image/headers/SBOM/source-license and all separate campaign
+  qualification remain open. No old image or EX4 proof is borrowed.
+  The review distinguishes host libraries from linked Go target runtime,
   exact backports from base-version CPEs, and upstream ignore lists from product
   dispositions. All-package/call-path review remains open; no CVE-free or timeout
-  fix claim follows from the partial review. No version pin has changed.
+  fix claim follows from the partial review or focused kernel probe.
   The pinned Buildroot archive producer now has a one-line success-cleanup
   patch, gated by exact original/patched helper and patch hashes. The actual
   unmodified producer fails the temporary-file regression; the patched producer
