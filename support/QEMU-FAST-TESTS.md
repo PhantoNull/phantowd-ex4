@@ -777,6 +777,17 @@ weakening the handoff's checks. Local builder1000 verification passed with the
 same512 MiB budget used by the full local/CI wrapper. No image/named volume is
 created; this lane neither installs the helper nor tests a real daemon profile.
 
+The declared-share pin campaign also requires
+`PHANTOWD_DECLARED_SHARE_CLOSE_READY`: healthy actual mounted admission followed
+by a real premature original `os.File` close must retain review, the later
+input, original grant clones and full roster. Repeated operations cannot issue
+copies, admit replacements or settle the handoff. Independent never-launched
+fixture disposal checks original clone identities and leaves the lifetime in
+review; final FD equality and ordinary source unmount remain required. This
+is controlled premature-close characterization, not kernel EIO, live Samba
+teardown or a production recovery procedure. The original guest deadline and
+all other markers remain unchanged.
+
 This lane can exercise current userspace against the base's kernel and
 packages without rebuilding Buildroot. It does **not** validate changed
 kernel, Buildroot, package selections, libraries, complete overlay installation,

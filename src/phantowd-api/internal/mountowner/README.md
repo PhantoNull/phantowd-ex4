@@ -162,7 +162,15 @@ the reservation in review without cleanup retry. The actual ARMv5 launcher guest
 covers caller-copy closure, two RO/RW roots, effective non-root write ownership,
 kernel `EROFS`, accepted data mutation, gated handoff close, source-loss review,
 restoration refusal and final FD equality. No Samba process consumes these roots
-yet, and actual uncertain-close fault qualification for this pin remains open.
+yet. A separate actual mounted ARMv5 case now admits healthy original share
+pins, prematurely closes the first original `os.File`, and verifies sticky
+review, untouched later input, original grant mounts/roster retention and
+replacement refusal through repeated public operations. No fake mount/close
+result or daemon is used. Independent fixture disposal closes only known-live
+descriptors and detaches identity-checked original clones, without resetting
+review or making the retained handoff releasable. Final FD equality and all
+previous launcher controls remain required. This is controlled premature-close
+qualification, not kernel EIO, a live-service teardown fault or product recovery.
 
 Host-only input-release characterization now uses actual temporary `O_PATH`
 descriptors: a preclosed original preserves reviewed handoff exclusion and
@@ -172,7 +180,8 @@ descriptor use. Tagged Linux vet and package race-count3 pass. These tests
 exercise rejected teardown bookkeeping without fabricating, admitting or
 verifying a healthy mount/roster lease. The behavior already existed; this is
 new coverage, not a bug fix, kernel EIO proof or actual mounted QEMU fault
-qualification. The latter and durable product recovery remain required.
+qualification. The separate guest case above supplies the latter's controlled
+premature-close scope only; durable product recovery remains required.
 
 The qualification token currently comes only from the QEMU fixture. There is
 no production qualifier or production roster source, no EX4-complete mounted-

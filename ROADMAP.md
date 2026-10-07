@@ -1034,14 +1034,20 @@ storage. No production roster provider or activation path exists.
   proves two RO/RW roots, caller-copy closure, effective non-root ownership,
   kernel `EROFS`, legitimate data mutation, source-loss review/restoration
   refusal and final FD equality. This is storage-side lifetime evidence, not
-  Samba access or namespace containment. An actual uncertain-close fault for
-  this pin and complete Plan/identity/runtime composition remain required.
+  Samba access or namespace containment. The focused launcher guest additionally
+  admits actual healthy mounted share pins before a controlled premature
+  original-FD close: repeated release/use requests preserve review, later input,
+  original grant mounts and complete roster; fresh admission refuses. Independent
+  exact-object fixture disposal cannot revive the lifetime or release its
+  reservation. All old controls, FD equality, deadline and base hashes remain
+  required. Kernel EIO/live-service close faults, durable recovery and complete
+  Plan/identity/runtime composition remain required.
   Host-only real `O_PATH` release characterization additionally passes tagged
   vet/package race-count3: preclosed originals retain reviewed handoff exclusion,
   later/replacement inputs remain untouched, concurrency cannot retry and known
   closure stays idempotent. This covers the existing bookkeeping contract,
   not admission of actual mounted authority, kernel EIO or guest fault recovery;
-  it does not close the actual QEMU fault requirement above.
+  it does not replace the actual controlled mounted guest case above.
   A distinct fixed QEMU data profile now qualifies individual original FD
   admission, nonrecursive native clones and real RW/RO SMB transfers, Unix
   ownership, kernel `EROFS`, symlink denial and stop-before-release/FD equality.

@@ -3,6 +3,25 @@
 
 # Implementation status
 
+## Declared-share close quarantine — actual mounted ARMv5 fixture
+
+The focused disposable launcher lane now qualifies healthy original mount,
+roster and two-share admission before a controlled premature original-FD close.
+Repeated public operations retain review, the later original, both original
+grant mounts and complete roster; replacement admission and new descriptor
+copies refuse. Independent never-launched fixture disposal verifies exact clone
+identities, closes remaining known inputs once and never resets review or the
+handoff reservation. All earlier launcher controls, final FD equality, the
+original 90-second guest bound and seven unchanged base hashes pass.
+
+This extends existing correct behavior's qualification, not product runtime
+behavior. The first guest failed because the new test expected `review` instead
+of the existing `unavailable` refusal from an already-reviewed handoff; the
+assertion was corrected, without changing its public error contract. No actual
+Samba daemon consumes these roots. Kernel EIO, live-child uncertain stop/close,
+durable recovery, production composition and physical EX4 gates remain open.
+The older complete 934-input image/audit does not qualify this changed fixture.
+
 ## Declared-share input close tests — host bookkeeping only
 
 Actual temporary `O_PATH` descriptors now characterize the existing reviewed
@@ -14,8 +33,9 @@ revokes further descriptor use and does not grant absent mount authority.
 Pinned Linux tagged vet and full mountowner package race-count3 pass; Windows
 API/UI/vet and ARMv5 cross-compilation also pass. This is added coverage of
 existing behavior, not a reproduced bug/fix or actual mounted-roster admission.
-No healthy mount lease is fabricated or verified. Actual QEMU uncertain-close
-authority, kernel EIO and product recovery remain separate requirements.
+No healthy mount lease is fabricated or verified by these host tests. The
+separate actual guest case above covers controlled premature-close authority;
+kernel EIO and product recovery remain separate requirements.
 The earlier combined cached proof below keeps its exact 934-input source scope;
 it does not cover the newly added test/archive input or component documentation.
 
