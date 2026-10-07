@@ -2,12 +2,13 @@
 # SPDX-FileCopyrightText: 2026 PhantoWD EX4 contributors
 [CmdletBinding()]
 param(
-    [string]$BaseArtifactDir = (Join-Path (Split-Path -Parent $PSScriptRoot) 'artifacts/qemu-armv5'),
+    [string]$BaseArtifactDir,
     [ValidateSet('all', 'service', 'native', 'lifecycle')]
     [string]$Campaign = 'all'
 )
 $ErrorActionPreference = 'Stop'
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
+if (-not $BaseArtifactDir) { $BaseArtifactDir = Join-Path $repoRoot 'artifacts/qemu-armv5' }
 $baseRoot = (Resolve-Path -LiteralPath $BaseArtifactDir).Path
 $pins = @(Get-Content (Join-Path $repoRoot 'versions.env') | Where-Object { $_ -match '^BUILDROOT_VERSION=' })
 if ($pins.Count -ne 1) { throw 'One Buildroot version pin is required.' }

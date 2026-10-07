@@ -49,6 +49,7 @@ on:
       - 'support/tests/runtime-owner-init.sh'
       - 'support/tests/test-qemu-runtime-owner.sh'
       - 'support/test-samba-root.ps1'
+      - 'support/tests/test-samba-root-wrapper.ps1'
       - 'support/tests/samba-root-*'
       - 'support/tests/samba-charset-fixture.c'
       - 'support/tests/samba_root_fixture.py'
@@ -125,6 +126,7 @@ on:
       - 'support/tests/runtime-owner-init.sh'
       - 'support/tests/test-qemu-runtime-owner.sh'
       - 'support/test-samba-root.ps1'
+      - 'support/tests/test-samba-root-wrapper.ps1'
       - 'support/tests/samba-root-*'
       - 'support/tests/samba-charset-fixture.c'
       - 'support/tests/samba_root_fixture.py'
@@ -231,6 +233,10 @@ jobs:
 
       - name: Verify Samba-root experiment refusals
         run: python3 -B support/tests/test-samba-root-fixture.py
+
+      - name: Verify Samba wrapper defaults and bounded command boundary
+        shell: pwsh
+        run: ./support/tests/test-samba-root-wrapper.ps1
 
       - name: Verify kernel-input invalidation and ACL requirements
         run: python3 -B support/tests/test-qemu-kernel-inputs.py

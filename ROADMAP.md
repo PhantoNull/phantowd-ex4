@@ -2372,8 +2372,11 @@ fence retained. Host digest allocation/chunk/cancellation/reuse regressions,
 tagged race-count3/module vet and Windows/ARMv5 cross-compilation pass. The
 114-digest host microbenchmark reduces allocated bytes from 3,739,200 to 36,416;
 this is not appliance RAM, EX4 throughput or a demonstrated lifecycle-timeout
-fix. Requalify original static Owner/all-three Samba and full image before
-integration; earlier926-source proof does not cover the changed inspector.
+fix. Static Owner/service/native pass locally; the unchanged lifecycle guest
+times out at180 seconds. A Go-source-identical shell timing diagnostic completes
+preliminary work in about16 seconds, so that prefix alone does not explain the
+failure. Resolve and requalify the original all-three union before a full image
+or integration; earlier926-source proof does not cover the changed inspector.
 
 Current priority (2026-10-06): **M4.4 separate Samba-specific service Owner
 → M3 production roster/qualification

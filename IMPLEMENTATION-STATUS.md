@@ -3,6 +3,17 @@
 
 # Implementation status
 
+## Local Samba test-wrapper default — host regression only
+
+Windows PowerShell `-File` failed while evaluating the artifact-directory
+parameter default, before any Docker command. The default is now resolved in
+the script body from the repository root, matching the Code Owner wrapper.
+A Windows native-command mock reproduces the old failure and confirms the fix
+without contacting Docker. Command-boundary tests cover default/explicit paths,
+all four selections, unchanged resource/read-only isolation, and six refusal
+cases. The regression is also included in host CI; hosted qualification remains
+pending. This does not address the ARMv5 lifecycle timeout or change guest limits.
+
 ## Per-scan hash scratch — local host qualification only
 
 Code inspection and retained-code preparation now own one 32 KiB scratch buffer
@@ -20,8 +31,13 @@ physical EX4 throughput, total appliance RAM or proof of a lifecycle-timeout
 fix. Tagged module vet/full runtimebundle and processowner race-count3 pass;
 Windows API/UI/vet and ARMv5 cross-compilation pass, not guest execution.
 
-Original ARMv5 Code Owner/Samba and complete-image qualification for this new
-source remain pending. Do not borrow the earlier 926-source audit below. The
+The original ARMv5 static Code Owner and service/native campaigns pass, but
+the lifecycle guest reaches its unchanged 180-second outer timeout. A shell-only
+timing diagnostic, with unchanged Go source, also times out; its preliminary
+boot/staging/inspection/lookup work finishes in about 16 seconds. No complete
+three-campaign or changed-source full-image qualification exists. The allocation
+improvement is not a demonstrated timeout fix. Do not borrow the earlier
+926-source audit below. The
 separate native-wrapper cleanup draft remains excluded; no product service,
 new privilege, physical-device or migration qualification is added.
 
