@@ -17,9 +17,14 @@ Linux tagged race-count3/module vet, host preflight/ARMv5 cross-compilation,
 50 driver/seven loader tests and the focused ARMv5 lifecycle campaign pass.
 The default service/native/lifecycle union also passes every previous contract
 and unchanged base hashes with the same guest/operation limits. Complete cached
-image qualification and post-admission fault tests remain required, followed by
-original storage/identity/state composition and actual Plan-configured daemon
-consumption. No HTTP or physical NAS operation is added.
+Buildroot/ARMv5 integration also passes, including the default/two-boot and
+synthetic SMART lanes. Independent comparison matches all 921 tracked API files
+with the compiled package/source archive, reproduces configured stripping and
+matches installed/image/exported API bytes plus all seven artifact hashes.
+Post-admission fault tests, original storage/identity/state composition and
+actual Plan-configured daemon consumption remain required. This is not an
+independent clean build or physical EX4 qualification. No HTTP or physical NAS
+operation is added.
 
 ## Bounded Plan-derived Samba documents — QEMU only
 
