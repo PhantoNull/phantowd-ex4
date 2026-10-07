@@ -2598,6 +2598,17 @@ this order, preserving the [full contract](support/SAMBA-RUNTIME-PROFILE.md#samb
      loop intentionally refuses concurrent operations and supplies no HTTP API.
    - Compose the trusted retained-storage roster and descriptor-bound grants
      with the SAME service Owner, including real effective-access/refusal cases.
+     A complete immutable isolated candidate now binds NSS/grants/root requests
+     and the six-field Plan freshness tuple. Host/race tests qualify immutability,
+     refusals and matching; a focused ARMv5 service campaign qualifies exact
+     declaration checks against actual mounted pins, seven mismatch refusals and
+     sticky source-loss review. This is a prerequisite, not full composition:
+     next prove a positive candidate derived with `BuildFromOwners` against the
+     SAME mounted handoff, then stage that exact configuration and descriptor
+     grant set for the SAME identity/backend/native service Owner. Recompile
+     complete storage/identity evidence at admission and supervision; a declaration
+     match or candidate fingerprint is not a retained service lease. Preserve
+     explicit stop/copy-close-before-pin-release and uncertain-close quarantine.
    - Only then wire product authorization/startup and user management; keep
      HTTP/service activation, real disks and durable recovery as separate gates.
 

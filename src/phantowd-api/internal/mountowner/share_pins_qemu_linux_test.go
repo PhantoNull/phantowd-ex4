@@ -25,6 +25,9 @@ func TestServiceSharePinsRequireOriginalQEMUHandoff(t *testing.T) {
 	if err := pin.Verify(); !errors.Is(err, ErrHandoffInvalid) {
 		t.Fatal("absent pin verified")
 	}
+	if err := pin.VerifyDeclaredRoots(nil); !errors.Is(err, ErrHandoffInvalid) {
+		t.Fatal("absent pin accepted share requests")
+	}
 	if err := pin.Close(); !errors.Is(err, ErrHandoffInvalid) {
 		t.Fatal("absent pin claimed teardown settlement")
 	}

@@ -3,6 +3,27 @@
 
 # Implementation status
 
+## Complete isolated Samba candidate — storage composition prerequisite
+
+One immutable candidate now packages Plan-derived NSS, isolated share grants,
+exact ID/VolumeID/subdirectory/RO requests and the complete freshness tuple.
+Caller mutations cannot mix/rewrite its parts; zero, unsupported and NFS-only
+plans refuse with no partial usable SMB candidate. JSON is refused in both
+directions. The private QEMU adapter compares these requests with a live
+trusted mounted-handoff declaration; it supplies no mount or launch operation.
+
+Windows API/UI/vet and ARMv5 cross-compilation, Linux tagged race-count3 for
+planner/mount-owner plus tagged module vet pass. A focused actual ARMv5 service
+campaign also passes exact declaration matching, seven mismatch refusals,
+healthy-pin preservation and source-loss/restoration review, all prior service
+guards and unchanged base hashes. Focused proof is explicitly
+`complete_image=false`; it does not replace native/lifecycle/full-build CI.
+
+The full positive Owner → Plan → candidate → mounted pins → SAME native service
+composition remains unqualified. Current fixed two-root native data proof does
+not become complete merely because this candidate/check exists. No product
+startup, web activation, persistent-device operation or firmware release is added.
+
 ## M0: Bounded Samba feedback and nonduplicated lifecycle preparation
 
 The default local ARMv5 runner still compiles once and requires three fresh

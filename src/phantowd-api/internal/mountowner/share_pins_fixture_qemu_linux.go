@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"slices"
 	"syscall"
 	"time"
 
@@ -76,6 +77,35 @@ func exerciseQEMUSharePinsAt(loss bool) (result error) {
 		if err != nil {
 			return err // Retain any non-nil quarantined handle; no teardown retry.
 		}
+		declaration := []ServiceShare{
+			{ID: "writable", VolumeID: qemuPlannerVolumeID, RelativePath: "pinned-rw"},
+			{ID: "readonly", VolumeID: qemuPlannerVolumeID, RelativePath: "pinned-ro", ReadOnly: true},
+		}
+		if err := pins.VerifyDeclaredRoots(declaration); err != nil {
+			return errors.New("exact complete declaration did not match retained share roots")
+		}
+		for _, field := range []string{"missing", "extra", "duplicate", "ID", "volume", "path", "RO"} {
+			wrong := slices.Clone(declaration)
+			switch field {
+			case "missing":
+				wrong = wrong[:1]
+			case "extra":
+				wrong = append(wrong, ServiceShare{ID: "extra"})
+			case "duplicate":
+				wrong[1] = wrong[0]
+			case "ID":
+				wrong[0].ID = "different"
+			case "volume":
+				wrong[0].VolumeID = "other"
+			case "path":
+				wrong[0].RelativePath = "replacement"
+			case "RO":
+				wrong[0].ReadOnly = true
+			}
+			if !errors.Is(pins.VerifyDeclaredRoots(wrong), ErrHandoffInvalid) || pins.Verify() != nil {
+				return errors.New("different declaration matched or quarantined healthy original share pins")
+			}
+		}
 		if duplicate, err := h.RetainShareRootsQEMU(); duplicate != nil || !errors.Is(err, ErrHandoffReview) {
 			return errors.New("handoff issued two independently releasable consumers")
 		}
@@ -112,6 +142,9 @@ func exerciseQEMUSharePinsAt(loss bool) (result error) {
 			}
 			if inputs, err := pins.DuplicateRoots(); inputs != nil || !errors.Is(err, ErrHandoffReview) {
 				return errors.New("source restoration revived a reviewed share input")
+			}
+			if !errors.Is(pins.VerifyDeclaredRoots(declaration), ErrHandoffReview) {
+				return errors.New("matching policy declaration revived reviewed source authority")
 			}
 		}
 		closeErr := pins.Close() // All synthetic clients exited; copied inputs closed.

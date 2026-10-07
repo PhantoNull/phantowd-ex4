@@ -9,6 +9,8 @@ import (
 	"errors"
 	"os"
 	"runtime"
+	"slices"
+	"strings"
 	"sync"
 
 	"golang.org/x/sys/unix"
@@ -141,6 +143,46 @@ func (p *ServiceSharePinsQEMU) Verify() error {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	return p.verify()
+}
+
+// VerifyDeclaredRoots compares the complete requested set with the exact
+// declaration retained by the live handoff. It cannot authorize services or
+// validate identity/policy freshness. A mismatching caller request refuses
+// without changing a healthy pin; actual source drift still enters review.
+func (p *ServiceSharePinsQEMU) VerifyDeclaredRoots(required []ServiceShare) error {
+	if p == nil || p.handoff == nil {
+		return ErrHandoffInvalid
+	}
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if err := p.verify(); err != nil {
+		return err
+	}
+	h := p.handoff
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	if !sameDeclaredRootsQEMU(required, h.required) {
+		return ErrHandoffInvalid
+	}
+	return nil
+}
+
+func sameDeclaredRootsQEMU(required, actual []ServiceShare) bool {
+	if len(required) == 0 || len(required) != len(actual) {
+		return false
+	}
+	// Never sort caller-owned policy or the original handoff declaration.
+	required, actual = slices.Clone(required), slices.Clone(actual)
+	compare := func(a, b ServiceShare) int { return strings.Compare(a.ID, b.ID) }
+	slices.SortFunc(required, compare)
+	slices.SortFunc(actual, compare)
+	for index := range required {
+		if !validHandoffShareID(required[index].ID) || required[index] != actual[index] ||
+			(index > 0 && required[index-1].ID == required[index].ID) {
+			return false
+		}
+	}
+	return true
 }
 
 // DuplicateRoots duplicates only already-retained original descriptors.

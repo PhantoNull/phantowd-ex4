@@ -128,6 +128,31 @@ target `testparm`; identity in that fixture remains synthetic. It provides no
 Samba data handoff or access proof through this candidate. No new HTTP operation,
 product startup or NAS write is added.
 
+## Complete isolated candidate and declared-root comparison
+
+`Plan.SambaIsolatedCandidate` packages private NSS, isolated share/grant text,
+exact logical-volume/subdirectory/RO requests and all six freshness fields from
+one complete Plan. It is immutable and non-serializable; returned root slices
+are independent copies. Zero, unsupported whole-volume and NFS-only plans do
+not produce a usable SMB candidate or partial documents. The existing separate
+preview methods remain unchanged.
+
+The QEMU-only `VerifySharePinsQEMU` adapter compares those requests with a live
+trusted handoff's complete declaration. Its `VerifyDeclaredRoots` operation
+checks original pins and rejects changed share IDs, volumes, paths, RO roles,
+missing/extra/duplicate roots, without invalidating healthy pins merely because
+the caller supplied a different declaration. Actual source loss still enters
+sticky review; supplying matching policy after restoration cannot revive it.
+
+Host tests cover candidate identity/storage/revision binding, caller independence,
+JSON refusals and missing-authority refusal. Linux tagged race/vet pass. The
+focused ARMv5 service campaign verifies exact/mismatching declarations against
+actual mounted pins and source-loss/restoration behavior. This is **not** a
+positive end-to-end Owner/Plan/candidate/native-daemon proof: complete identity
+and storage freshness, retained lifetime, planned runtime configuration and
+verified service settlement must still compose under the SAME service Owner.
+No HTTP, product activation or real-disk operation is introduced.
+
 ## Native lookup before Samba enrollment
 
 `SambaEnrollmentLookupFromOwner(ctx, owner)` is a separate Linux-only internal
