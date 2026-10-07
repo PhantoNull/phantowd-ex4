@@ -3,6 +3,28 @@
 
 # Implementation status
 
+## Current combined checkpoint — complete cached 935-input local qualification
+
+Frozen `b25dea169c3048fc867abb4ea46f2f0584536349` passes the complete cached
+host/ARMv5 build, including all three original Samba campaigns, the new actual
+mounted share-close case and synthetic SMART producer/capture. A post-terminal
+read-only audit verifies all 935 tracked API inputs against the compiled package
+and exact source archive, declared license copies, configured stripping,
+installed/image/exported API equality and all seven artifact hashes.
+
+The package census separately accounts for one exact zero-byte archive marker
+created after API compilation. The upstream Buildroot archive helper's omitted
+marker cleanup reproduces three times in disposable RAM; no generic `tmp.*`
+exception, source deletion or runtime modification is used. That cleanup defect
+remains to be fixed. API SHA-256 is
+`aaf55b14c1c9ffe9f44144086ccdb01e9ca4af5726fec7e34cf5c84d9d28e2c0`.
+
+This is cached local qualification, not clean reproducibility, complete release
+licensing, deployment or timeout resolution. PR #123's own `00d9445` QEMU run
+fails in the native campaign at the original 180-second bound after descriptor
+handoff and before enrollment; service passes, later lanes remain unqualified
+there. Both public integrations remain held. No NAS or persistent device action.
+
 ## Declared-share close quarantine — actual mounted ARMv5 fixture
 
 The focused disposable launcher lane now qualifies healthy original mount,
