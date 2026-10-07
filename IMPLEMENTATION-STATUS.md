@@ -22,6 +22,15 @@ Protected staging, distinct retained management/service roles, complete native
 data/service lifetime and fault tests remain required. No HTTP, product startup
 or NAS operation is introduced.
 
+The renderer checkpoint also passes complete cached local Buildroot/ARMv5
+integration, including all three Samba campaigns, two-boot checks and synthetic
+SMART lanes. Independent comparison matches all 917 tracked API files with
+the compiled package and source archive, reproduces the configured strip step,
+and matches installed/image/exported API bytes and all seven artifact hashes.
+This is not independent clean-build reproducibility or EX4 qualification. A
+separate hosted develop run failed live-session revocation; a focused local
+replay of that exact develop commit passes, so the failure remains unresolved.
+
 ## Actual Owner-to-mounted-candidate admission — QEMU only
 
 A positive disposable ARMv5 fixture now builds a locked Plan from the SAME
@@ -52,8 +61,9 @@ cached local Buildroot/ARMv5 integration, including all three Samba campaigns
 and synthetic SMART lanes. Independent comparison matches all 914 API sources
 with the compiled package and source archive, configured-stripped package bytes
 with installed/image/exported API bytes, and all seven artifact hashes. This
-does not qualify the later renderer as a complete image, independent clean-build
-reproducibility, a physical SMART provider or EX4 hardware/migration/recovery.
+does not establish independent clean-build reproducibility, a physical SMART
+provider or EX4 hardware/migration/recovery. The later renderer's separate
+complete cached qualification is recorded above.
 
 ## Complete isolated Samba candidate — storage composition prerequisite
 
