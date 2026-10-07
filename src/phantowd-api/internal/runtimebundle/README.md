@@ -9,6 +9,18 @@ product startup does not call it. It has no HTTP/RPC or JSON input/output.
 The separate `qemu && linux` staging prototype below is excluded from ordinary
 builds; it does not turn the read-only inspector into a product write service.
 
+The `qemu`-only `SambaPlannedDataDocumentsQEMU` renderer produces seven bounded
+configuration documents from one immutable isolated Plan candidate. It preserves
+the candidate's granted-only Unix identities and exact RO/RW share sections,
+uses the existing native fixture's loopback SMB3 globals and passdb/state paths,
+and rejects empty or over-budget output without returning partial documents.
+The aggregate budget remains 64 KiB. Rendering performs no I/O, retains no
+authority, installs no configuration and changes no native backend. Host tests
+cover exact documents, caller independence, refusals and unchanged global bytes;
+they do not qualify ARMv5 consumption or the two-role runtime lifecycle. A future
+trusted constructor must independently derive expectations, bind the original
+mounted share objects and recheck complete admission before starting a daemon.
+
 `NewPlan` privately copies a fixed in-process file/alias roster supplied by a
 future trusted build/release owner. It limits the plan to 256 regular files,
 1024 bindings, 4096 total nodes, 16 path components and 64 MiB. Files have exact

@@ -37,16 +37,7 @@ func SambaCredentialDocumentsQEMU(lookup fileserviceplan.SambaEnrollmentLookup) 
 		// must also forbid implicit DNS/default resolver paths in this root.
 		"nsswitch.conf": nss + "hosts: files\nnetworks: files\nprotocols: files\nservices: files\n",
 		"hosts":         "127.0.0.1 localhost\n", "protocols": "tcp 6 TCP\nudp 17 UDP\n", "services": "microsoft-ds 445/tcp\n",
-		"samba/smb.conf": strings.Join([]string{
-			"[global]", "server role = standalone server", "security = user", "map to guest = Never",
-			"interfaces = 127.0.0.1", "bind interfaces only = yes", "smb ports = 1445",
-			"server min protocol = SMB3_00", "server max protocol = SMB3_11", "server signing = mandatory",
-			"load printers = no", "printing = bsd", "printcap name = /dev/null", "disable spoolss = yes",
-			"dns proxy = no", "name resolve order = host", "dos charset = CP850", "unix charset = UTF-8",
-			"private dir = /state/private", "lock directory = /state/lock", "state directory = /state/state",
-			"cache directory = /state/cache", "pid directory = /state/pid", "ncalrpc dir = /state/rpc",
-			"passdb backend = tdbsam:/state/private/passdb.tdb", "log file = /state/log.smbd", "",
-		}, "\n"),
+		"samba/smb.conf": nativeSambaGlobalsQEMU,
 	}, nil
 }
 
