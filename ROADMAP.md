@@ -1157,9 +1157,11 @@ storage. No production roster provider or activation path exists.
   without exposing underlying output or secrets. Its gated observer must remain
   read-only after closure and refuse canceled/busy calls. Host-only bookkeeping
   and ordinary-adapter redaction tests pass; guest reports are diagnostic-only.
-  Next: one original focused ARMv5 lifecycle with all guards/deadlines intact,
-  classify any failure, then lock down the actual defect at its real seam.
-  Logging alone is not a timeout fix, retry policy or product recovery.
+  Frozen `a257104` passes the original focused lifecycle and all-three ARMv5
+  union, with all guards/deadlines and base hashes intact. No failure telemetry
+  fires: qualify the failure path separately and reproduce/classify any timing
+  failure before claiming its cause or resolution. Logging and positive normal
+  execution alone are not a timeout fix, retry policy or product recovery.
 
   Security limit: this is a share-scoped pathname view, not a complete service
   authorization boundary. Consumers still run in the host mount namespace and

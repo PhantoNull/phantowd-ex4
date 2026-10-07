@@ -20,9 +20,13 @@ verify fixed-label redaction, first-fault retention and canceled/busy observatio
 Pinned Linux tagged vet/race-count3 and Windows API/UI/vet/ARMv5 cross-compilation
 pass. The unchanged ordinary Samba adapter's command-diagnostic redaction also
 passes three root-fixture executions. These are host bookkeeping proofs, not
-an actual native worker-failure or complete image qualification. The original
-clean ARMv5 lifecycle timeout below remains unresolved; fresh focused guest
-qualification is required before interpreting this diagnostic in that campaign.
+an actual native worker-failure or complete image qualification. Frozen
+`a257104` now passes both an original focused lifecycle and the complete
+service/native/lifecycle ARMv5 union, with unchanged base hashes, guards and
+deadlines. No failure diagnostic fires in those positive paths. Earlier clean
+timeouts and hosted failures remain unresolved: this normal-path proof does
+not identify their cause, qualify failure telemetry end-to-end or establish
+complete changed-image/independent clean-build qualification.
 
 ## Native runtime terminal-close quarantine — host qualification
 
