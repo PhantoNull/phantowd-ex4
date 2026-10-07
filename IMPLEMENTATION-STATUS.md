@@ -3,6 +3,28 @@
 
 # Implementation status
 
+## Same-Plan Samba lookup roles — host prerequisite
+
+The internal `Plan.SambaRoleCandidate` binds complete live management lookup
+and the existing granted-only isolated service candidate to one immutable Plan
+and freshness tuple. Desired-disabled and ungranted live users appear only in
+management lookup; retired rows are omitted without removing permanent identity
+reservations. Missing management UID/GID evidence refuses the pair, not an
+otherwise valid existing share-only Plan. Rendering is bounded, non-serializable
+and independent of caller mutation. The QEMU-only paired renderer returns two
+separate seven-file trees with the exact existing globals/passdb/state paths and
+no management shares; it neither stages them nor provides startup authority.
+
+Windows API/UI/vet and ARMv5 cross-compilation pass. Final pinned Linux tagged
+module vet and three-count race tests pass for the planner/runtime/guest command,
+including the maximum-capacity regression. The
+existing lifecycle fixture now checks both views against its SAME actual native
+Owner and mounted roster, recompile and staleness, without removing the inert
+startup guard. This new guest evidence and full changed-source integration are
+not yet qualified. Same-object two-role runtime admission, native parser/access
+checks, supervision/recovery and product activation remain open. No physical
+NAS, disk, listener or persistence operation is introduced.
+
 ## Base Samba adapter close uncertainty — local cached integration qualification
 
 The base `smbexec.Backend` now fences operations before releasing its pinned

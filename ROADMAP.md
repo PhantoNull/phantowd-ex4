@@ -1045,6 +1045,18 @@ storage. No production roster provider or activation path exists.
   management lookup distinct from granted-only service lookup while preserving
   one Owner/backend/passdb, qualify descriptor-bound native configuration and
   effective access, then supervise complete identity/storage drift and settlement.
+  `Plan.SambaRoleCandidate` now supplies an inert same-Plan pair: complete live
+  native management lookup (including disabled/ungranted users) and unchanged
+  granted-only service lookup/grants/root requests, bound to one freshness tuple.
+  Missing unrelated native census IDs refuse only the paired candidate; existing
+  share-only admission is unchanged. Retired rows remain reserved but omitted.
+  `SambaRoleDocumentsQEMU` renders separate bounded trees with identical fixed
+  global/passdb paths and no management share sections. Host coverage includes
+  missing census, zero/unsupported plans, maximum live/retired capacity, copy/order
+  independence, all freshness dimensions and JSON refusal. Actual native Owner
+  paired rendering is wired into the existing lifecycle fixture, but that new
+  guest evidence is not yet qualified. This does not authorize two-role runtime
+  construction, native validation, service bootstrap or product activation.
 - **M4.2 — Single service owner.** Define start/reload/stop and child-process
   ownership; bound diagnostics and verify readiness. Preserve the last known
   working configuration on syntax/start failure without claiming an unapplied

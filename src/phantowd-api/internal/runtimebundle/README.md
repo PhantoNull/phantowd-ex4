@@ -32,6 +32,17 @@ daemon or qualifies the two-role runtime lifecycle. A future
 trusted constructor must independently derive expectations, bind the original
 mounted share objects and recheck complete admission before starting a daemon.
 
+`SambaRoleDocumentsQEMU` also renders two distinct inert seven-file maps from
+one opaque `Plan.SambaRoleCandidate`. Management lookup is complete over live
+native accounts and has no share sections; service lookup/sections remain
+granted-only. Both use the exact unchanged globals, including identical fixed
+passdb/state paths. Each tree retains the existing 64 KiB aggregate limit.
+Invalid input returns neither tree; mutations of caller maps do not affect the
+other role or future rendering. Strings and maps are not retention authority.
+This is a pure host-tested prerequisite: the runtime still has no constructor
+that admits these roles together, and inert service-role startup remains blocked.
+Identical paths are not proof of identical state objects or a runtime lifecycle.
+
 `RetainPlannedConfigurationQEMU` is a separate inert prototype. It independently
 derives expectations from the opaque candidate and retains exact configuration
 objects in the same Owner without replacing its management configuration or

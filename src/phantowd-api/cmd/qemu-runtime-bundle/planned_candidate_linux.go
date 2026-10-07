@@ -23,10 +23,11 @@ import (
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/nfsconfig"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/serviceaccounts"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/shareconfig"
+	"github.com/PhantoNull/phantowd-ex4/phantowd-api/unixidentity"
 	"golang.org/x/sys/unix"
 )
 
-const plannedCandidateMarkerQEMU = "PHANTOWD_SAMBA_OWNER_PLANNED_CANDIDATE_READY owner=actual_native_backend storage=mounted_roster locked_plan=true exact_declaration=true original_objects=true caller_close=true fresh_recompiled=true rendered=true granted_only=true protected_role=true management_unchanged=true startup_blocked=true identity_retained=true handoff_close_gated=true desired_roundtrip=true journals_unchanged=true stale_refused=true released=true samba_data=false activation=false scope=qemu-only"
+const plannedCandidateMarkerQEMU = "PHANTOWD_SAMBA_OWNER_PLANNED_CANDIDATE_READY owner=actual_native_backend storage=mounted_roster locked_plan=true exact_declaration=true original_objects=true caller_close=true fresh_recompiled=true rendered=true granted_only=true paired_lookup=true management_complete=true shared_globals=true protected_role=true management_unchanged=true startup_blocked=true identity_retained=true handoff_close_gated=true desired_roundtrip=true journals_unchanged=true stale_refused=true released=true samba_data=false activation=false scope=qemu-only"
 
 // Runs after real enrollment, before ANY lifecycle daemon starts. It retains
 // the SAME Owner/backend and actual mounted roster through descriptor closure.
@@ -77,6 +78,10 @@ func nativePlannedCandidateFixtureQEMU(owner *identityowner.Owner, backend *smbe
 		if err != nil {
 			return err
 		}
+		roles, err := plan.SambaRoleCandidate()
+		if err != nil {
+			return err
+		}
 		passwd, group, nss, sections, requests, err := candidate.Documents()
 		if err != nil || len(requests) != 2 {
 			return errors.New("planned candidate incomplete documents")
@@ -87,6 +92,26 @@ func nativePlannedCandidateFixtureQEMU(owner *identityowner.Owner, backend *smbe
 			!strings.Contains(passwd, "qpsecond:!:2001:2001:") || strings.Contains(passwd, "qpmanaged:") ||
 			strings.Contains(group, "qpmanaged:") {
 			return errors.New("planned rendering lost complete granted-only native documents")
+		}
+		management, service, err := runtimebundle.SambaRoleDocumentsQEMU(roles)
+		if err != nil || !maps.Equal(service, documents) || len(management) != 7 ||
+			service["samba/smb.conf"] != management["samba/smb.conf"]+sections {
+			return errors.New("paired lookup changed grants or shared global/state paths")
+		}
+		lookup, err := unixidentity.Parse(strings.NewReader(management["passwd"]), strings.NewReader(management["group"]))
+		if err != nil || !unixidentity.FilesOnlyNSS([]byte(management["nsswitch.conf"])) {
+			return errors.New("paired management lookup grammar")
+		}
+		for _, account := range before.Registry.Accounts {
+			if status, err := lookup.Assess(account); err != nil || status != unixidentity.Observed {
+				return errors.New("paired management lookup omitted actual native identity")
+			}
+		}
+		expectedManagement := maps.Clone(management)
+		management["passwd"] = "replacement"
+		delete(service, "group")
+		if documents["group"] != group {
+			return errors.New("paired caller maps alias single-role output")
 		}
 		// Caller mutation must not change this candidate's later complete output.
 		expectedDocuments := maps.Clone(documents)
@@ -152,7 +177,8 @@ func nativePlannedCandidateFixtureQEMU(owner *identityowner.Owner, backend *smbe
 			}
 		}
 		fresh, err := fileserviceplan.BuildFromOwners(ctx, config, 0, owner, storage)
-		if err != nil || !candidate.FreshAgainst(fresh.Freshness()) || candidate.VerifySharePinsQEMU(pins) != nil || consumer.Verify(ctx) != nil {
+		if err != nil || !candidate.FreshAgainst(fresh.Freshness()) || !roles.FreshAgainst(fresh.Freshness()) ||
+			candidate.VerifySharePinsQEMU(pins) != nil || consumer.Verify(ctx) != nil {
 			return errors.New("planned candidate lost freshly recompiled/retained authority")
 		}
 		freshCandidate, err := fresh.SambaIsolatedCandidate()
@@ -162,6 +188,14 @@ func nativePlannedCandidateFixtureQEMU(owner *identityowner.Owner, backend *smbe
 		freshDocuments, err := runtimebundle.SambaPlannedDataDocumentsQEMU(freshCandidate)
 		if err != nil || !maps.Equal(expectedDocuments, freshDocuments) {
 			return errors.New("planned native rendering changed after complete evidence recompile")
+		}
+		freshRoles, err := fresh.SambaRoleCandidate()
+		if err != nil {
+			return err
+		}
+		freshManagement, freshService, err := runtimebundle.SambaRoleDocumentsQEMU(freshRoles)
+		if err != nil || !maps.Equal(expectedManagement, freshManagement) || !maps.Equal(expectedDocuments, freshService) {
+			return errors.New("paired native rendering changed after complete evidence recompile")
 		}
 		stage, err = stagePlannedConfigurationQEMU(ctx, runtime, freshCandidate)
 		if err != nil {
@@ -191,7 +225,7 @@ func nativePlannedCandidateFixtureQEMU(owner *identityowner.Owner, backend *smbe
 		}
 		stale := plan.Freshness()
 		stale.IdentityGeneration, stale.IdentityFingerprint = after.Registry.Revision, after.Fingerprint
-		if candidate.FreshAgainst(stale) {
+		if candidate.FreshAgainst(stale) || roles.FreshAgainst(stale) {
 			return errors.New("planned candidate survived actual identity-generation transition")
 		}
 		if _, err := fileserviceplan.BuildFromOwners(ctx, config, 0, owner, storage); !errors.Is(err, fileserviceplan.ErrNotReady) {

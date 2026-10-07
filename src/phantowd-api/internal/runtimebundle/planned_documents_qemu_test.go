@@ -20,7 +20,7 @@ import (
 )
 
 // Synthetic snapshots test pure rendering, not actual Owner/mount authority.
-func plannedDocumentCandidate(t *testing.T) fileserviceplan.SambaIsolatedCandidate {
+func plannedDocumentPlan(t *testing.T) fileserviceplan.Plan {
 	t.Helper()
 	registry, err := serviceaccounts.New(2000, 3000)
 	if err != nil {
@@ -73,11 +73,75 @@ func plannedDocumentCandidate(t *testing.T) fileserviceplan.SambaIsolatedCandida
 	if err != nil {
 		t.Fatal(err)
 	}
+	return plan
+}
+
+func plannedDocumentCandidate(t *testing.T) fileserviceplan.SambaIsolatedCandidate {
+	t.Helper()
+	plan := plannedDocumentPlan(t)
 	candidate, err := plan.SambaIsolatedCandidate()
 	if err != nil {
 		t.Fatal(err)
 	}
 	return candidate
+}
+
+func TestSambaRoleDocumentsKeepManagementCompleteServiceGrantedAndStateIdentical(t *testing.T) {
+	plan := plannedDocumentPlan(t)
+	roles, err := plan.SambaRoleCandidate()
+	if err != nil {
+		t.Fatal(err)
+	}
+	management, service, err := SambaRoleDocumentsQEMU(roles)
+	if err != nil || len(management) != 7 || len(service) != 7 {
+		t.Fatal("two bounded role documents refused", err)
+	}
+	passwd, group, nss, err := roles.ManagementDocuments()
+	if err != nil || management["passwd"] != passwd || management["group"] != group || management["nsswitch.conf"] != nss ||
+		!strings.Contains(passwd, "qpmanaged:!:2000:2000:") || !strings.Contains(passwd, "qpsecond:!:2001:2001:") {
+		t.Fatal("management lookup lost complete native roster", err)
+	}
+	isolated, err := roles.ServiceCandidate()
+	if err != nil {
+		t.Fatal(err)
+	}
+	expected, err := SambaPlannedDataDocumentsQEMU(isolated)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for name, contents := range expected {
+		if service[name] != contents {
+			t.Fatal("service renderer changed exact candidate", name)
+		}
+	}
+	if management["samba/smb.conf"] != nativeSambaGlobalsQEMU ||
+		!strings.HasPrefix(service["samba/smb.conf"], management["samba/smb.conf"]) ||
+		strings.Contains(service["passwd"], "qpmanaged:") || strings.Contains(service["group"], "qpmanaged:") {
+		t.Fatal("management shares admitted, state diverged or service lookup broadened")
+	}
+	for _, name := range []string{"nsswitch.conf", "hosts", "protocols", "services"} {
+		if management[name] != service[name] {
+			t.Fatal("fixed role baseline diverged", name)
+		}
+	}
+	management["passwd"] = "replacement"
+	delete(service, "group")
+	management["samba/smb.conf"] = "replacement"
+	if service["passwd"] != expected["passwd"] || service["samba/smb.conf"] != expected["samba/smb.conf"] {
+		t.Fatal("caller maps alias independent role outputs")
+	}
+	freshManagement, freshService, err := SambaRoleDocumentsQEMU(roles)
+	if err != nil || freshManagement["passwd"] != passwd || freshManagement["samba/smb.conf"] != nativeSambaGlobalsQEMU ||
+		freshService["group"] != expected["group"] {
+		t.Fatal("caller map mutation changed subsequent candidate rendering", err)
+	}
+}
+
+func TestSambaRoleDocumentsRefuseZeroCandidateWithoutPartialTrees(t *testing.T) {
+	management, service, err := SambaRoleDocumentsQEMU(fileserviceplan.SambaRoleCandidate{})
+	if management != nil || service != nil || !errors.Is(err, ErrInvalid) {
+		t.Fatal("absent role candidate supplied partial trees", err)
+	}
 }
 
 func TestPlannedDocumentsPreserveCompleteCandidateAndOmitUngranted(t *testing.T) {
