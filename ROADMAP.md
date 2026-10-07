@@ -2613,9 +2613,16 @@ this order, preserving the [full contract](support/SAMBA-RUNTIME-PROFILE.md#samb
      refusals and matching; a focused ARMv5 service campaign qualifies exact
      declaration checks against actual mounted pins, seven mismatch refusals and
      sticky source-loss review. This is a prerequisite, not full composition:
-     next prove a positive candidate derived with `BuildFromOwners` against the
-     SAME mounted handoff, then stage that exact configuration and descriptor
-     grant set for the SAME identity/backend/native service Owner. Recompile
+     a positive candidate derived with `BuildFromOwners` against the SAME actual
+     native identity Owner/backend and mounted handoff now passes complete
+     cached local integration. Bounded Plan-derived configuration rendering also
+     passes host/Linux and focused ARMv5 lifecycle tests, including granted-only
+     lookup and byte-identical output after complete evidence recompilation.
+     Next stage that exact configuration and descriptor grant set for the SAME
+     identity/backend/native service Owner, retaining complete management lookup
+     separately from granted-only daemon lookup without copying passdb or changing
+     the backend. Rendering and candidate admission are not daemon consumption.
+     Recompile
      complete storage/identity evidence at admission and supervision; a declaration
      match or candidate fingerprint is not a retained service lease. Preserve
      explicit stop/copy-close-before-pin-release and uncertain-close quarantine.

@@ -144,7 +144,8 @@ MARKERS = (
     "PHANTOWD_SAMBA_OWNER_PLANNED_CANDIDATE_READY "
     "owner=actual_native_backend storage=mounted_roster locked_plan=true "
     "exact_declaration=true original_objects=true caller_close=true "
-    "fresh_recompiled=true identity_retained=true handoff_close_gated=true "
+    "fresh_recompiled=true rendered=true granted_only=true "
+    "identity_retained=true handoff_close_gated=true "
     "desired_roundtrip=true journals_unchanged=true stale_refused=true "
     "released=true samba_data=false activation=false scope=qemu-only",
     "PHANTOWD_SAMBA_OWNER_NATIVE_IDENTITY_STARTUP_READY "

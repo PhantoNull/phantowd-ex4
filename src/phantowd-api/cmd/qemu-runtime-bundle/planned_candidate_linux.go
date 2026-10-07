@@ -8,14 +8,17 @@ package main
 import (
 	"context"
 	"errors"
+	"maps"
 	"os"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/fileservice"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/identityowner"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/fileserviceplan"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/mountowner"
+	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/runtimebundle"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/smbexec"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/nfsconfig"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/serviceaccounts"
@@ -23,7 +26,7 @@ import (
 	"golang.org/x/sys/unix"
 )
 
-const plannedCandidateMarkerQEMU = "PHANTOWD_SAMBA_OWNER_PLANNED_CANDIDATE_READY owner=actual_native_backend storage=mounted_roster locked_plan=true exact_declaration=true original_objects=true caller_close=true fresh_recompiled=true identity_retained=true handoff_close_gated=true desired_roundtrip=true journals_unchanged=true stale_refused=true released=true samba_data=false activation=false scope=qemu-only"
+const plannedCandidateMarkerQEMU = "PHANTOWD_SAMBA_OWNER_PLANNED_CANDIDATE_READY owner=actual_native_backend storage=mounted_roster locked_plan=true exact_declaration=true original_objects=true caller_close=true fresh_recompiled=true rendered=true granted_only=true identity_retained=true handoff_close_gated=true desired_roundtrip=true journals_unchanged=true stale_refused=true released=true samba_data=false activation=false scope=qemu-only"
 
 // Runs after real enrollment, before ANY lifecycle daemon starts. It retains
 // the SAME Owner/backend and actual mounted roster through descriptor closure.
@@ -73,9 +76,24 @@ func nativePlannedCandidateFixtureQEMU(owner *identityowner.Owner, backend *smbe
 		if err != nil {
 			return err
 		}
-		_, _, _, _, requests, err := candidate.Documents()
+		passwd, group, nss, sections, requests, err := candidate.Documents()
 		if err != nil || len(requests) != 2 {
 			return errors.New("planned candidate incomplete documents")
+		}
+		documents, err := runtimebundle.SambaPlannedDataDocumentsQEMU(candidate)
+		if err != nil || len(documents) != 7 || documents["passwd"] != passwd || documents["group"] != group ||
+			documents["nsswitch.conf"] != nss || !strings.HasSuffix(documents["samba/smb.conf"], sections) ||
+			!strings.Contains(passwd, "qpsecond:!:2001:2001:") || strings.Contains(passwd, "qpmanaged:") ||
+			strings.Contains(group, "qpmanaged:") {
+			return errors.New("planned rendering lost complete granted-only native documents")
+		}
+		// Caller mutation must not change this candidate's later complete output.
+		expectedDocuments := maps.Clone(documents)
+		documents["passwd"] = "replacement"
+		delete(documents, "samba/smb.conf")
+		repeated, err := runtimebundle.SambaPlannedDataDocumentsQEMU(candidate)
+		if err != nil || !maps.Equal(expectedDocuments, repeated) {
+			return errors.New("planned rendering lost caller independence")
 		}
 		consumer, err := owner.RetainSMBFileServiceSnapshot(ctx, plan.Freshness().IdentityFingerprint, backend)
 		if err != nil {
@@ -135,6 +153,14 @@ func nativePlannedCandidateFixtureQEMU(owner *identityowner.Owner, backend *smbe
 		fresh, err := fileserviceplan.BuildFromOwners(ctx, config, 0, owner, storage)
 		if err != nil || !candidate.FreshAgainst(fresh.Freshness()) || candidate.VerifySharePinsQEMU(pins) != nil || consumer.Verify(ctx) != nil {
 			return errors.New("planned candidate lost freshly recompiled/retained authority")
+		}
+		freshCandidate, err := fresh.SambaIsolatedCandidate()
+		if err != nil {
+			return err
+		}
+		freshDocuments, err := runtimebundle.SambaPlannedDataDocumentsQEMU(freshCandidate)
+		if err != nil || !maps.Equal(expectedDocuments, freshDocuments) {
+			return errors.New("planned native rendering changed after complete evidence recompile")
 		}
 		if err := pins.Close(); err != nil {
 			return err

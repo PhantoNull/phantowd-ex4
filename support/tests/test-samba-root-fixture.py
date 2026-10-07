@@ -135,7 +135,8 @@ class SambaRootFixture(unittest.TestCase):
             "PHANTOWD_SAMBA_OWNER_PLANNED_CANDIDATE_READY "
             "owner=actual_native_backend storage=mounted_roster "
             "locked_plan=true exact_declaration=true original_objects=true "
-            "caller_close=true fresh_recompiled=true identity_retained=true "
+            "caller_close=true fresh_recompiled=true rendered=true "
+            "granted_only=true identity_retained=true "
             "handoff_close_gated=true desired_roundtrip=true "
             "journals_unchanged=true stale_refused=true released=true "
             "samba_data=false activation=false scope=qemu-only")
@@ -143,7 +144,8 @@ class SambaRootFixture(unittest.TestCase):
         good = "\n".join([*fixture.MARKERS, SCAN_COST])
         fixture.check_guest(good)
         for field in ("locked_plan", "exact_declaration", "original_objects",
-                      "caller_close", "fresh_recompiled", "identity_retained",
+                      "caller_close", "fresh_recompiled", "rendered",
+                      "granted_only", "identity_retained",
                       "handoff_close_gated", "desired_roundtrip",
                       "journals_unchanged", "stale_refused", "released"):
             with self.subTest(field=field):
@@ -910,7 +912,8 @@ class SambaRootFixture(unittest.TestCase):
             "PHANTOWD_SAMBA_OWNER_PLANNED_CANDIDATE_READY "
             "owner=actual_native_backend storage=mounted_roster "
             "locked_plan=true exact_declaration=true original_objects=true "
-            "caller_close=true fresh_recompiled=true identity_retained=true "
+            "caller_close=true fresh_recompiled=true rendered=true "
+            "granted_only=true identity_retained=true "
             "handoff_close_gated=true desired_roundtrip=true "
             "journals_unchanged=true stale_refused=true released=true "
             "samba_data=false activation=false scope=qemu-only",

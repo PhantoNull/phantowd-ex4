@@ -3,6 +3,25 @@
 
 # Implementation status
 
+## Bounded Plan-derived Samba documents — QEMU only
+
+One pure renderer emits seven configuration documents from the immutable
+isolated Plan candidate: exact granted-only Unix lookup and RO/RW share sections,
+with byte-identical existing native loopback/SMB3 globals and passdb/state paths.
+The unchanged aggregate 64 KiB budget accepts its exact boundary and refuses
+overflow or absent inputs without partial output. Returned-map mutation cannot
+change the candidate or a later render.
+
+Windows API/UI/vet and actual-command ARMv5 cross-compilation, Linux tagged
+runtime/planner race-count3 and module vet, 50 driver/seven loader tests and a
+focused ARMv5 lifecycle campaign pass. That campaign uses the SAME actual native
+identity Owner/backend and mounted roster, omits the ungranted native account,
+and freshly recompiles complete evidence to byte-identical documents. It is
+explicitly `complete_image=false`; no daemon consumes these documents yet.
+Protected staging, distinct retained management/service roles, complete native
+data/service lifetime and fault tests remain required. No HTTP, product startup
+or NAS operation is introduced.
+
 ## Actual Owner-to-mounted-candidate admission — QEMU only
 
 A positive disposable ARMv5 fixture now builds a locked Plan from the SAME
@@ -27,6 +46,14 @@ configuration or data. The existing fixed native-data experiment remains a
 separate prerequisite. Complete planned daemon composition, grant/ACL and
 source-loss/uncertain-stop proofs, full image/hosted qualification and product
 activation are still required. No HTTP, NAS or installation authority is added.
+
+The preceding admission-only source checkpoint separately passes the complete
+cached local Buildroot/ARMv5 integration, including all three Samba campaigns
+and synthetic SMART lanes. Independent comparison matches all 914 API sources
+with the compiled package and source archive, configured-stripped package bytes
+with installed/image/exported API bytes, and all seven artifact hashes. This
+does not qualify the later renderer as a complete image, independent clean-build
+reproducibility, a physical SMART provider or EX4 hardware/migration/recovery.
 
 ## Complete isolated Samba candidate — storage composition prerequisite
 

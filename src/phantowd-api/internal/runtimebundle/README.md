@@ -16,8 +16,11 @@ uses the existing native fixture's loopback SMB3 globals and passdb/state paths,
 and rejects empty or over-budget output without returning partial documents.
 The aggregate budget remains 64 KiB. Rendering performs no I/O, retains no
 authority, installs no configuration and changes no native backend. Host tests
-cover exact documents, caller independence, refusals and unchanged global bytes;
-they do not qualify ARMv5 consumption or the two-role runtime lifecycle. A future
+cover exact documents, caller independence, refusals and unchanged global bytes.
+A focused ARMv5 lifecycle fixture also renders from the actual native Owner and
+mounted roster, verifies granted-only output and compares complete documents
+after fresh locked evidence compilation. Neither proof starts a Plan-configured
+daemon or qualifies the two-role runtime lifecycle. A future
 trusted constructor must independently derive expectations, bind the original
 mounted share objects and recheck complete admission before starting a daemon.
 
