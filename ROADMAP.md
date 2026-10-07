@@ -1162,6 +1162,13 @@ storage. No production roster provider or activation path exists.
   fires: qualify the failure path separately and reproduce/classify any timing
   failure before claiming its cause or resolution. Logging and positive normal
   execution alone are not a timeout fix, retry policy or product recovery.
+  A separate deterministic native-adapter inner-close regression now uses the
+  real post-runtime step rather than a fabricated healthy runtime. It fails
+  when repeated public Close forgets the original file error and passes with
+  terminal first-error retention, operation fencing and replacement isolation.
+  Focused host race3, root module tagged vet/five-package race3 and Windows
+  preflight pass; actual runtime-close faults, changed-source normal ARMv5
+  integration and durable recovery remain separate acceptance gates.
 
   Security limit: this is a share-scoped pathname view, not a complete service
   authorization boundary. Consumers still run in the host mount namespace and

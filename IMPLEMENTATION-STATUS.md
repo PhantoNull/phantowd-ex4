@@ -3,6 +3,27 @@
 
 # Implementation status
 
+## Native backend inner-close quarantine — focused host qualification
+
+A deterministic host regression reproduces the native adapter forgetting an
+inner-configuration close failure: repeated public Close returns nil after
+discarding its inner backend. The fixed post-runtime step now retains the
+original bookkeeping and first review/error. All native operations are fenced
+before the first Close attempt; runtime-close uncertainty cannot release the
+inner configuration or permit retries. Normal repeated closure stays idempotent.
+Closed adapters cannot construct a new retained identity service.
+
+Real-file regressions pass with race detection and three repetitions, including
+concurrent Close/empty observation and test-only replacement noninterference.
+Pinned root Linux module tagged vet and five-package race-count3 also pass,
+along with Windows API/UI/vet and ARMv5 cross-compilation. The regression seam
+is exactly the private inner-close step after independently
+verified runtime closure; tests do not fabricate or invoke a healthy runtime,
+inject arbitrary closers or qualify runtime retirement/kernel EIO. Original
+ARMv5 integration for this changed source remains pending. The
+previous `a257104` normal-path union below does not qualify this new change or
+prove an intermittent-timeout fix. No NAS, product endpoint or activation.
+
 ## Native worker failure classification — host-only diagnostic prerequisite
 
 The private QEMU credential runtime now preserves the first failing phase and

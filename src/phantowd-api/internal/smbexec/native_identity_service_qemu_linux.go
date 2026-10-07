@@ -52,7 +52,7 @@ func NewNativeIdentityServiceQEMU(ctx context.Context, owner *identityowner.Owne
 		return nil, err
 	}
 	backend.mu.RLock()
-	valid := backend.inner != nil && backend.runtime != nil
+	valid := !backend.closed && backend.inner != nil && backend.runtime != nil
 	backend.mu.RUnlock()
 	if !valid {
 		return nil, ErrInvalid
