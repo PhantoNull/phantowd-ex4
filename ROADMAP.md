@@ -2498,6 +2498,51 @@ this order, preserving the [full contract](support/SAMBA-RUNTIME-PROFILE.md#samb
    files; installed/image/exported API and seven artifact hashes agree. This
    does not qualify clean reproducibility, release licensing or physical EX4.
 
+   Teardown prerequisite: `identityowner.Close` now closes its fixed backend
+   before releasing stores. Root-isolated real-lock regression proves retained
+   root/registry/native/Samba authority after a modeled external close error,
+   sticky redacted review and no retry. Normal teardown retains the journal
+   during backend close and is idempotent. Qualify failed-Open cleanup and
+   low-level close faults separately; process exit is not product recovery.
+
+   The first `NativeIdentityServiceQEMU` normal-lifecycle trace now passes:
+   complete startup eligibility brackets exact-backend identity retention;
+   identity verification brackets actual daemon start; one exclusive timed
+   supervisor serializes complete scans and stops on accepted cancellation.
+   Atomic redacted status stays readable but grants no authority. Full runtime
+   closure precedes identity release, and uncertainty keeps review without retry.
+   Actual ARMv5 proves pre-/post-start close fences, canceled/duplicate refusals,
+   manual/timed scans, competing-observation refusal, accepted cancellation,
+   retention after stop, closure-before-release and final FD equality. Both
+   campaigns/40-driver/seven-loader/all old guards pass. This is NORMAL ONLY;
+   do not borrow the static Owner's fault qualification for this coordinator.
+
+   A subsequent actual ARMv5 trace now qualifies one state-directory alias
+   replacement on guest tmpfs. Valid original descriptors survive capture
+   construction; complete admission refuses before the worker runs. Independent
+   read-only witnesses prove owned daemon/client stop and an unconsumed pending
+   capture, while code/config/state and busy identity authority stay retained.
+   Restoration and repeated Close do not revive it. Child process exit after
+   those witnesses is fixture disposal, not recovery; clients were not active
+   in this fault trace. Mode drift refuses earlier and is not that pending branch.
+   The final 42-driver/seven-loader lane uses one compilation/base and three
+   fresh service/native/lifecycle guests, each180, with all old guards and equal
+   code census. Cached full/hosted/clean/hardware qualification remains separate;
+   the remaining fault variants, product command and storage gates below stay open.
+
+   Explicit target-only `Disable` is now routed through this retained
+   coordinator's gate and SAME Owner/backend. Actual ARMv5 proves two held
+   sessions, qualified stale/canceled refusal, the verified atomic successor,
+   SAME peer session/generation, target-login denial, Owner Close refusal,
+   serialized mutation and retention until complete closure. All42/seven tests
+   and three campaigns pass with original guards/guest180. Added live45 and
+   post-observation20 phases are independently bounded; no new guest/privilege
+   or automatic retry is introduced. Frozen `42d77be` also passes complete
+   cached local integration: all 894 tracked API files match the compiled
+   package/source archive, configured target stripping reproduces the installed/
+   embedded/exported API, and seven artifact hashes verify. Hosted/clean
+   qualification and broader faults remain separate.
+
    - Construct against one startup-fixed runtime/backend, retain identity BEFORE
      any descendant starts, and refuse a foreign runtime even with equal bytes.
    - Serialize external coordination without Owner/runtime gate recursion;
@@ -2507,6 +2552,22 @@ this order, preserving the [full contract](support/SAMBA-RUNTIME-PROFILE.md#samb
    - Qualify drift/exit/cancellation and partial/uncertain stop/close. Current
      pins must remain held until whole descendant stop and closure are verified;
      a repeated nil Close is not proof that an earlier uncertain close recovered.
+     Use disposable subprocesses for deliberately quarantined references; verify
+     actual whole-group stop independently before those subprocesses exit.
+     Test unexpected Unix/passdb changes, same-bytes configuration/state
+     replacement and mode drift, a real daemon exit, cancellation inside a
+     retained worker, pending-capture uncertainty and failed closure. Require
+     sticky review, no restart/lease replacement, busy identity Close and no
+     repeated uncertain teardown. Restore inputs only to prove non-revival;
+     restoration is not recovery. Never release/force-close a private FD merely
+     to make a fixture's descriptor census pass.
+   - Preserve the locally qualified explicit target-only Disable and verified
+     successor under coordinator serialization. Do not accept a caller-selected
+     backend/runtime or refresh a stale token. Extend native fault proofs for
+     uncertain intent/transition and simultaneous cancellation. Product
+     supervision needs a
+     separately qualified command/coordinator contract; the initial exclusive
+     loop intentionally refuses concurrent operations and supplies no HTTP API.
    - Compose the trusted retained-storage roster and descriptor-bound grants
      with the SAME service Owner, including real effective-access/refusal cases.
    - Only then wire product authorization/startup and user management; keep
