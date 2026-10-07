@@ -25,6 +25,22 @@ No legacy disk layout is product-qualified for migration; see the
 requires qualified board support, disk compatibility, signed updates and
 demonstrated recovery. Development and QEMU testing do not require a NAS.
 
+## Follow current development
+
+`main` is the public source snapshot; newer integrated work lives on `develop`.
+Neither branch is an installable release. As of **2026-10-07**, promotion of
+`develop` is held while failures in the ARMv5 QEMU native Samba lifecycle are
+investigated. Passing host tests or compile-only builds do not replace that
+integration check.
+
+For the latest integrated scope, see the
+[development implementation status](https://github.com/PhantoNull/phantowd-ex4/blob/develop/IMPLEMENTATION-STATUS.md)
+and [development roadmap](https://github.com/PhantoNull/phantowd-ex4/blob/develop/ROADMAP.md).
+Those documents describe `develop`, not necessarily this checkout. Follow the
+[promotion PR](https://github.com/PhantoNull/phantowd-ex4/pull/121) for its exact
+commit and check results. Feature-branch work remains unqualified until its
+own checks and integration review pass.
+
 ## Current capabilities
 
 The current source implements and tests components, not a production appliance.
