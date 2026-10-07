@@ -1053,9 +1053,10 @@ storage. No production roster provider or activation path exists.
   `SambaRoleDocumentsQEMU` renders separate bounded trees with identical fixed
   global/passdb paths and no management share sections. Host coverage includes
   missing census, zero/unsupported plans, maximum live/retired capacity, copy/order
-  independence, all freshness dimensions and JSON refusal. Actual native Owner
-  paired rendering is wired into the existing lifecycle fixture, but that new
-  guest evidence is not yet qualified. This does not authorize two-role runtime
+  independence, all freshness dimensions and JSON refusal. The original focused
+  ARMv5 lifecycle campaign now passes on `7614c3e`, exercising paired rendering
+  against the SAME actual native Owner/mounted roster and unchanged base. Full
+  changed-source integration remains pending. This does not authorize two-role runtime
   construction, native validation, service bootstrap or product activation.
 - **M4.2 — Single service owner.** Define start/reload/stop and child-process
   ownership; bound diagnostics and verify readiness. Preserve the last known

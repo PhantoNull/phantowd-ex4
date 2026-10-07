@@ -39,8 +39,10 @@ granted-only. Both use the exact unchanged globals, including identical fixed
 passdb/state paths. Each tree retains the existing 64 KiB aggregate limit.
 Invalid input returns neither tree; mutations of caller maps do not affect the
 other role or future rendering. Strings and maps are not retention authority.
-This is a pure host-tested prerequisite: the runtime still has no constructor
-that admits these roles together, and inert service-role startup remains blocked.
+Host tests and the original focused ARMv5 lifecycle campaign qualify this pure
+rendering prerequisite against its actual native Owner/mounted roster. They do
+not make a daemon consume both roles. The runtime still has no constructor that
+admits these roles together, and inert service-role startup remains blocked.
 Identical paths are not proof of identical state objects or a runtime lifecycle.
 
 `RetainPlannedConfigurationQEMU` is a separate inert prototype. It independently

@@ -18,10 +18,12 @@ no management shares; it neither stages them nor provides startup authority.
 Windows API/UI/vet and ARMv5 cross-compilation pass. Final pinned Linux tagged
 module vet and three-count race tests pass for the planner/runtime/guest command,
 including the maximum-capacity regression. The
-existing lifecycle fixture now checks both views against its SAME actual native
-Owner and mounted roster, recompile and staleness, without removing the inert
-startup guard. This new guest evidence and full changed-source integration are
-not yet qualified. Same-object two-role runtime admission, native parser/access
+existing lifecycle fixture now passes on `7614c3e`: it checks both views against
+its SAME actual native Owner and mounted roster, recompile and staleness, without
+removing the inert startup guard. The original focused ARMv5 lifecycle campaign
+and unchanged-base checks pass, with no added limits or instrumentation. This is
+not the complete three-campaign union or changed-source image qualification.
+Same-object two-role runtime admission, native parser/access
 checks, supervision/recovery and product activation remain open. No physical
 NAS, disk, listener or persistence operation is introduced.
 
