@@ -49,6 +49,19 @@ type SharePreview struct {
 // It refuses unsafe Samba interpolation and overlapping paths. Mount/ACL and
 // symlink checks cannot be established lexically and remain activation gates.
 func Build(config shareconfig.Config) (Preview, error) {
+	return build(config, false)
+}
+
+// BuildIsolated renders the same validated grant policy at fixed /shares/<id>
+// destinations inside a future restricted service root. Source-volume
+// requirements still name the original logical anchors. This is candidate
+// text only: the caller must retain and attach exact source descriptors before
+// launch; no pathname fallback or activation authority is provided here.
+func BuildIsolated(config shareconfig.Config) (Preview, error) {
+	return build(config, true)
+}
+
+func build(config shareconfig.Config, isolated bool) (Preview, error) {
 	if err := config.Validate(); err != nil {
 		return Preview{}, errors.New("invalid desired share policy")
 	}
@@ -69,6 +82,9 @@ func Build(config shareconfig.Config) (Preview, error) {
 	}
 	used := make(map[shareconfig.VolumeID]bool)
 	for i, share := range config.Shares {
+		if isolated && share.RelativePath == "." {
+			return Preview{}, errors.New("isolated share requires a declared subdirectory")
+		}
 		if unsafeValue(share.Name) || unsafeValue(share.RelativePath) {
 			return Preview{}, fmt.Errorf("share %d cannot be represented safely in Samba", i)
 		}
@@ -105,6 +121,11 @@ func Build(config shareconfig.Config) (Preview, error) {
 		return strings.Compare(string(a.VolumeID), string(b.VolumeID))
 	})
 	slices.SortFunc(preview.Shares, func(a, b SharePreview) int { return strings.Compare(a.ID, b.ID) })
+	if isolated {
+		for index := range preview.Shares {
+			preview.Shares[index].Path = "/shares/" + preview.Shares[index].ID
+		}
+	}
 	var output strings.Builder
 	output.WriteString("# PhantoWD candidate share sections; not an activation authorization.\n")
 	output.WriteString("# Verify filesystem identity, mount containment, accounts and POSIX ACLs first.\n")

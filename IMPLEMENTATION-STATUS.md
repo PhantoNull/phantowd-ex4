@@ -3,6 +3,162 @@
 
 # Implementation status
 
+## Native session-worker phase budgets — local full qualification
+
+A measured slow ARMv5 diagnostic and a host regression reproduce the former
+ten-second aggregate deadline truncating the last inventory, despite every
+worker individually fitting its four-second limit. The private native QEMU
+adapter now selects a fixed phase profile: four seconds for status and control,
+twenty seconds for the aggregate verification loop. The latter covers one
+initial inventory, one control and two complete absence inventories, with one
+worker-sized margin for bounded parsing/polling. The ordinary command adapter
+retains its exact two-second status/five-second total profile. Unknown profiles
+refuse before commands; no durations come from requests or configuration.
+
+The control is independently capped, never repeated, and uncertain outcomes
+still require review. Complete code/configuration/state admission around every
+native worker is unchanged. No product deadline, privilege, guest limit or
+recovery policy is widened. New host timing/control/profile regressions pass;
+the explicitly incomplete slow ARMv5 diagnostic also passes. All temporary
+instrumentation, narrowed validators and alternate virtual-clock settings are
+removed. Windows API/UI/vet/cross-compilation and root Linux tagged race-count3
+also pass. The timing regressions execute and pass in ordinary non-root Linux
+tests, with and without the QEMU tag. The clean phase-profile checkpoint passes
+the original service/native/lifecycle ARMv5 union, including live revocation,
+same-peer preservation, all earlier guards and unchanged base hashes.
+
+A subsequent negative host regression reproduces a separate expired-inventory
+acceptance bug: a runner's successful result after its own status deadline could
+count toward absence while the parent remained live. The executor now checks
+that child context before canceling it, clears late output and refuses without
+another poll or control. The test fails before the fix and passes afterward;
+the combined source passes Windows preflight and root tagged Linux race-count3,
+plus ordinary non-root Linux race tests. The exact combined source now passes
+complete cached Buildroot/ARMv5 integration: all three Samba campaigns, default
+and two-boot checks, launcher/code-owner/loader/atomic and synthetic SMART lanes.
+Independent comparison matches all 924 tracked API files with compiled package
+and source archive, configured stripping, installed/image/export API bytes and
+all seven artifact hashes. This is local cached qualification, not independent
+clean-build reproducibility; own hosted qualification remains required before
+integration/promotion.
+Historical four/ten-second qualification below retains its earlier source scope.
+
+### Known retained-descriptor cleanup gap
+
+A separate Linux fault-injection regression demonstrates that a descriptor
+close error can be forgotten by repeated cleanup in the current retained-input
+and pinned-process owners. A host-tested draft preserves the error, stops later
+releases and keeps review without retry, but is not included in the qualification
+above. Its fixtures model already-closed objects; they do not qualify kernel I/O
+close failures, product recovery or physical-device behavior. This remains a
+product-runtime integration prerequisite; no installable runtime is offered.
+
+## Inert retained Plan configuration role — QEMU only
+
+The same native runtime can retain a second, independently Plan-derived
+configuration root without replacing its management lookup or mutable passdb.
+Construction requires exact protected documents; empty candidates and malformed
+modes refuse. Caller descriptors close independently, management observations
+remain unchanged, and normal runtime closure precedes exact-mount cleanup.
+The role blocks daemon startup and cannot be replaced. It is not a grant lease,
+freshness token, service activation path or product configuration.
+
+Linux tagged race-count3/module vet, host preflight/ARMv5 cross-compilation,
+50 driver/seven loader tests and the focused ARMv5 lifecycle campaign pass.
+The default service/native/lifecycle union also passes every previous contract
+and unchanged base hashes with the same guest/operation limits. Complete cached
+Buildroot/ARMv5 integration also passes, including the default/two-boot and
+synthetic SMART lanes. Independent comparison matches all 921 tracked API files
+with the compiled package/source archive, reproduces configured stripping and
+matches installed/image/exported API bytes plus all seven artifact hashes.
+Post-admission fault tests, original storage/identity/state composition and
+actual Plan-configured daemon consumption remain required. This is not an
+independent clean build or physical EX4 qualification. No HTTP or physical NAS
+operation is added.
+
+## Bounded Plan-derived Samba documents — QEMU only
+
+One pure renderer emits seven configuration documents from the immutable
+isolated Plan candidate: exact granted-only Unix lookup and RO/RW share sections,
+with byte-identical existing native loopback/SMB3 globals and passdb/state paths.
+The unchanged aggregate 64 KiB budget accepts its exact boundary and refuses
+overflow or absent inputs without partial output. Returned-map mutation cannot
+change the candidate or a later render.
+
+Windows API/UI/vet and actual-command ARMv5 cross-compilation, Linux tagged
+runtime/planner race-count3 and module vet, 50 driver/seven loader tests and a
+focused ARMv5 lifecycle campaign pass. That campaign uses the SAME actual native
+identity Owner/backend and mounted roster, omits the ungranted native account,
+and freshly recompiles complete evidence to byte-identical documents. It is
+explicitly `complete_image=false`; no daemon consumes these documents yet.
+Protected staging, distinct retained management/service roles, complete native
+data/service lifetime and fault tests remain required. No HTTP, product startup
+or NAS operation is introduced.
+
+The renderer checkpoint also passes complete cached local Buildroot/ARMv5
+integration, including all three Samba campaigns, two-boot checks and synthetic
+SMART lanes. Independent comparison matches all 917 tracked API files with
+the compiled package and source archive, reproduces the configured strip step,
+and matches installed/image/exported API bytes and all seven artifact hashes.
+This is not independent clean-build reproducibility or EX4 qualification. A
+separate hosted develop run failed live-session revocation; a focused local
+replay of that exact develop commit passes, so the failure remains unresolved.
+
+## Actual Owner-to-mounted-candidate admission — QEMU only
+
+A positive disposable ARMv5 fixture now builds a locked Plan from the SAME
+real identity Owner/native Samba backend and an actual mounted-volume roster.
+Its immutable candidate matches both declared RO/RW roots; retained identity
+and original share descriptors block premature teardown. Caller copies close
+independently, fresh Owner/storage evidence recompiles to the same candidate,
+and normal release restores the volatile mount namespace. A desired-state
+round trip leaves Unix/Samba journals and passdb identities unchanged; stale
+evidence and restored disabled grants refuse.
+
+The clean local service/native/lifecycle union passes all previous guards,
+50 driver/seven loader tests and unchanged base hashes. Windows API/UI/vet/ARMv5
+cross-compilation and Linux tagged planner/mount-owner race-count3/module vet
+also pass. The fixed 16 MiB synthetic ext4 device is read only for UUID probing;
+mount anchors use a protected temporary overlay, never a writable base image.
+No deadline or privilege profile is widened. A prior local timeout remains
+recorded; one successful regression does not establish absence of runner jitter.
+
+This proves candidate/handoff admission, **not** Samba consuming that Plan's
+configuration or data. The existing fixed native-data experiment remains a
+separate prerequisite. Complete planned daemon composition, grant/ACL and
+source-loss/uncertain-stop proofs, full image/hosted qualification and product
+activation are still required. No HTTP, NAS or installation authority is added.
+
+The preceding admission-only source checkpoint separately passes the complete
+cached local Buildroot/ARMv5 integration, including all three Samba campaigns
+and synthetic SMART lanes. Independent comparison matches all 914 API sources
+with the compiled package and source archive, configured-stripped package bytes
+with installed/image/exported API bytes, and all seven artifact hashes. This
+does not establish independent clean-build reproducibility, a physical SMART
+provider or EX4 hardware/migration/recovery. The later renderer's separate
+complete cached qualification is recorded above.
+
+## Complete isolated Samba candidate — storage composition prerequisite
+
+One immutable candidate now packages Plan-derived NSS, isolated share grants,
+exact ID/VolumeID/subdirectory/RO requests and the complete freshness tuple.
+Caller mutations cannot mix/rewrite its parts; zero, unsupported and NFS-only
+plans refuse with no partial usable SMB candidate. JSON is refused in both
+directions. The private QEMU adapter compares these requests with a live
+trusted mounted-handoff declaration; it supplies no mount or launch operation.
+
+Windows API/UI/vet and ARMv5 cross-compilation, Linux tagged race-count3 for
+planner/mount-owner plus tagged module vet pass. A focused actual ARMv5 service
+campaign also passes exact declaration matching, seven mismatch refusals,
+healthy-pin preservation and source-loss/restoration review, all prior service
+guards and unchanged base hashes. Focused proof is explicitly
+`complete_image=false`; it does not replace native/lifecycle/full-build CI.
+
+The full positive Owner → Plan → candidate → mounted pins → SAME native service
+composition remains unqualified. Current fixed two-root native data proof does
+not become complete merely because this candidate/check exists. No product
+startup, web activation, persistent-device operation or firmware release is added.
+
 ## M0: Bounded Samba feedback and nonduplicated lifecycle preparation
 
 The default local ARMv5 runner still compiles once and requires three fresh
@@ -26,6 +182,94 @@ These are cached local fixture results, not an independently clean build,
 exact-parent hosted qualification, product startup or hardware/release proof.
 Intermittent runner behavior is not claimed eliminated by one successful run.
 All product identity/storage/runtime composition and recovery gates remain open.
+
+## Native individual-share data handoff — fixed QEMU prerequisite
+
+A separate guarded native data profile now receives two original, individually
+attached ext-family mount roots (RO/RW) alongside the retained code/configuration
+and seven mutable-state directories. Its factory duplicates existing `O_PATH`
+descriptors, verifies independent mount identities/protected flags and rejects
+host execution. The bootstrap makes nonrecursive clones before changing mount
+namespace, attaches only the two fixed shares, closes all inherited inputs and
+executes Samba in the existing restricted read-only root with capabilities
+`0xdb`. Credential workers retain their twelve-input, no-data profile; the
+generic static/non-root launcher is unchanged.
+
+The official local three-campaign ARMv5 lane passes with 43 driver tests, seven
+loader tests and unchanged base hashes. Real SMB write/read, RO read, RO-write
+denial, kernel `EROFS`, 22-byte file contents and Unix ownership `2001:2001`
+pass. A symlink escape returns `NT_STATUS_STOPPED_ON_SYMLINK`; no destination
+file or forbidden RO file exists. Verified whole client/daemon settlement
+precedes original-root release, and parent descriptor counts match. Linux
+process/runtime race-count3 and tagged module vet plus Windows API/UI preflight
+and ARMv5 cross-compilation also pass locally.
+
+This uses fixed qualification documents and synthetic mounts after the prior
+identity/runtime experiment has closed. It does **not** consume the complete
+mounted-roster share pin or retain the SAME identity Owner throughout data
+service startup. The marker explicitly says `complete_storage_identity=false`.
+Complete Plan-bound bootstrap, grant/ACL matrix, storage-loss and uncertain-close
+composition, full cached/clean/hosted integration and product activation remain
+required. No new guest, widened timeout, production listener or device operation
+is introduced. See the [native profile](support/SAMBA-RUNTIME-PROFILE.md#native-individual-share-data-profile-qemu-only).
+
+## Declared share descriptor pins — QEMU storage prerequisite
+
+The guarded `qemu && linux` storage fixture now retains original `O_PATH`
+descriptors for each declared attached share, after complete roster and source
+verification. Only copies of those originals are returned; no complete volume
+root or recursively cloned tree is supplied. One exclusive pin prevents direct
+handoff teardown until explicit release. Source loss puts the pin in sticky
+review; restoring the source path cannot issue replacement descriptors.
+These parent-namespace handles are not a service isolation boundary.
+
+The actual ARMv5 service-launcher guest passes two declared roots (RW and RO),
+repeated copied-descriptor closure with original pins still usable, non-root
+UID/GID-correct writes, kernel `EROFS` and unchanged descriptor count after
+settled release. Legitimate data changes do not trip immutable-code checks.
+Normal release and source-loss review are exercised, with all earlier launcher
+and static-child isolation guards unchanged. Host refusal/race tests and tagged
+module vet pass; the pins and descriptors refuse JSON serialization.
+
+The trusted consumer must first stop/reap every descendant and close all copied
+inputs; this pin's `Close` cannot independently prove that external settlement.
+Its uncertain-close path conservatively keeps the handoff reservation, but an
+actual close-uncertainty fault has not yet been qualified for this new type.
+This fixture does not pass data to Samba, transfer SMB files, qualify descendant
+settlement for a Samba consumer, activate HTTP/product services or touch real
+disks. Next, compose the Plan and complete roster/identity/runtime authorities
+with an individual-share native descriptor profile and real SMB RW/RO access.
+Full cached/clean/hosted integration of this increment remains separate.
+
+## Isolated Samba share candidates — preparation only
+
+The existing file-service Plan now privately retains a bounded immutable copy
+of its validated SMB policy. `SambaShareCandidates` derives fixed
+`/shares/<share-id>` sections and exact logical-volume/subdirectory requests
+from that same Plan, alongside its identity/storage freshness and NSS context.
+Ordinary previews are unchanged. Mixed RO/RW grants are preserved; roots with
+no writer request read-only clones. A writer on one share does not broaden
+another. Zero/refused candidates return no partial output; whole-volume `.`
+is unsupported by this isolated path, and NFS-only policy invents no SMB root.
+
+Windows API/UI/vet and ARMv5 cross-compilation pass locally, as do Linux
+race-count3 for the renderer/planner, tagged module vet, ShellCheck and a
+10,000-execution renderer fuzz campaign. The complete one-boot ARMv5 overlay
+smoke passes against the hash-verified cached base. Its mounted-roster fixture
+checks the exact isolated root request and invokes target `testparm` for path,
+users, RO/RW lists, read-only default, denied guests and symlink/wide-link
+refusal; the smoke requires the new isolated-candidate assertion alongside all
+earlier guards. Identity in this particular parser fixture is synthetic.
+
+This does not attach share descriptors, retain storage for native Samba,
+transfer files through this candidate or authorize activation. The next
+step is the complete roster/identity/native-runtime composition with real RW/RO
+access, source-loss quarantine and verified descendant stop before releasing
+data pins. Candidate/parser results do not qualify that file-access behavior,
+product startup, migration or physical EX4 hardware.
+This overlay does not rebuild base packages/SBOM/legal-info or run the separate
+two-boot and three restricted Samba campaigns; complete cached/clean/hosted
+qualification of this increment remains separate.
 
 ## Coordinator-owned native Disable — focused QEMU prerequisite
 
@@ -255,8 +499,9 @@ changed peer IDs/generations and weakened parent deadlines. Client groups,
 daemon groups and original pins remain owned through verified stop/reap/close;
 final FD equality, all earlier markers and unchanged base are mandatory.
 
-The native tagged fixture uses fixed 4-second status / 10-second revocation
-budgets to include complete admissions around workers. The ordinary adapter
+The initial native tagged fixture used fixed 4-second status / 10-second
+revocation budgets; the phase-accounted profile above supersedes those limits.
+The ordinary adapter
 retains 2/5 seconds. Startup and idle-disable each have a separate 20-second
 phase; the complete active-session phase has 45 seconds. Enrollment remains
 60 seconds and each fresh guest remains bounded to 180 seconds. Earlier

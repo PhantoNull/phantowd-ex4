@@ -215,6 +215,24 @@ button to an unqualified backend simply because the screen exists.
   pull/build an image or create a volume. Preserve isolation, exact-source
   hashes and clean-build/reproducibility lanes. Cache hits are an optimization,
   never qualification evidence.
+  Native session-worker timing now has an explicit fixed profile, rather than
+  doubling an aggregate command timeout. A slow-worker host model and controlled
+  ARMv5 diagnostic reproduce the final-subdeadline failure. The fixture profile
+  covers three complete inventories and one control: each worker remains capped
+  at4 seconds, total verification20 seconds including bounded polling/parsing.
+  Ordinary commands remain status2/total5; shorter parent deadlines always win,
+  unknown profiles refuse before effects, and control is sent at most once.
+  A successful status result after its own child deadline must also refuse,
+  clear captured output and stop polling even if its parent is still live;
+  the non-root regression reproduces this defect before the guard and passes
+  after it. The phase-profile checkpoint passes the original ARMv5 union;
+  combined-source complete cached integration and independent924-source/package/
+  archive/strip/image/seven-artifact comparison now also pass. Own hosted
+  qualification remains separate; cache success is not an independent clean build.
+  Regression must execute in the ordinary non-root Linux lane, not silently
+  skip until late QEMU. Original complete campaigns, full image/source matching
+  and own hosted qualification remain required; no physical performance or
+  product deadline is inferred from emulator timing.
   The full builder now runs the same workflow/fixed-fuzz-roster contract as
   hosted host CI before compilation. A locally reproduced stale 17-versus-21
   count after adding four network campaigns is corrected without weakening
@@ -979,6 +997,44 @@ storage. No production roster provider or activation path exists.
   collected together through production owners and native validation plus
   configuration replacement are owned transactionally before product service
   changes.
+  Isolated-root preparation now retains an immutable desired SMB policy inside
+  the existing Plan. `SambaShareCandidates` pairs exact source-root requests
+  with `/shares/<share-id>` sections and the same NSS/freshness context. The
+  renderer preserves RO/RW grants and source-overlap checks; whole-volume `.`
+  refuses only this isolated path. This is candidate-only host work, not a
+  completed storage/native-Samba composition. Next acceptance must acquire the
+  complete roster before admission, hand off exact declared descriptors into
+  the restricted native namespace, exercise real writer/reader/denied clients,
+  and stop all descendants before releasing any source pin. Source loss and
+  uncertain closure must retain review without fallback/restart. Storage checks
+  must not recurse from backend/runtime workers into held mounted-roster locks.
+  The QEMU-only handoff now retains original per-share `O_PATH` descriptors,
+  gates teardown and duplicates only those originals. The actual launcher guest
+  proves two RO/RW roots, caller-copy closure, effective non-root ownership,
+  kernel `EROFS`, legitimate data mutation, source-loss review/restoration
+  refusal and final FD equality. This is storage-side lifetime evidence, not
+  Samba access or namespace containment. An actual uncertain-close fault for
+  this pin and complete Plan/identity/runtime composition remain required.
+  A distinct fixed QEMU data profile now qualifies individual original FD
+  admission, nonrecursive native clones and real RW/RO SMB transfers, Unix
+  ownership, kernel `EROFS`, symlink denial and stop-before-release/FD equality.
+  It uses synthetic two-root documents after the prior identity runtime closes;
+  it does not consume this complete-roster pin or continuously retain identity.
+  Next bind the exact desired candidate/complete Plan and SAME storage/identity/
+  backend/runtime before startup, qualify effective multi-user grant/ACL access
+  and source-loss/uncertain-stop retention, then complete image integration.
+  The fixed data prerequisite is not M4.1/M4.4 completion. Daemon data
+  handles must not broaden credential workers' configuration/state-only profile.
+  A positive guarded ARMv5 admission fixture now builds the isolated candidate
+  with the SAME actual identity Owner/native backend and mounted roster, retains
+  both authorities, matches exact RO/RW declarations and original objects,
+  closes caller copies, recompiles fresh evidence and releases in order. Desired
+  round-trip/stale refusals and normal volatile-anchor restoration are checked;
+  the complete local three-campaign union passes without wider limits. This
+  still starts no daemon from that candidate. The next composition must keep
+  management lookup distinct from granted-only service lookup while preserving
+  one Owner/backend/passdb, qualify descriptor-bound native configuration and
+  effective access, then supervise complete identity/storage drift and settlement.
 - **M4.2 — Single service owner.** Define start/reload/stop and child-process
   ownership; bound diagnostics and verify readiness. Preserve the last known
   working configuration on syntax/start failure without claiming an unapplied
@@ -2458,8 +2514,10 @@ this order, preserving the [full contract](support/SAMBA-RUNTIME-PROFILE.md#samb
    Fresh target login is denied; peer login, whole-group stop/reap, final FD
    equality and unchanged base are mandatory. The backend-bound private witness
    rejects JSON and host/race-count3 tests refuse partial, foreign or replaced
-   evidence. Native fixture status/revocation budgets are fixed4/10 seconds;
-   ordinary adapter2/5 is unchanged. Separate startup20/idle20/session45 phases
+   evidence. Initial native fixture status/revocation budgets were fixed4/10;
+   the phase-accounted M0.3 fixture profile supersedes them with status4,
+   control4 and aggregate20 seconds; ordinary commands remain status2/total5.
+   Separate startup20/idle20/session45 phases
    avoid sharing an already-consumed deadline; enrollment60/guest180 remain.
    No guard or privilege is relaxed. Frozen57ee527 now also passes complete
    cached local integration, including all later guest lanes; all880 API
@@ -2570,6 +2628,24 @@ this order, preserving the [full contract](support/SAMBA-RUNTIME-PROFILE.md#samb
      loop intentionally refuses concurrent operations and supplies no HTTP API.
    - Compose the trusted retained-storage roster and descriptor-bound grants
      with the SAME service Owner, including real effective-access/refusal cases.
+     A complete immutable isolated candidate now binds NSS/grants/root requests
+     and the six-field Plan freshness tuple. Host/race tests qualify immutability,
+     refusals and matching; a focused ARMv5 service campaign qualifies exact
+     declaration checks against actual mounted pins, seven mismatch refusals and
+     sticky source-loss review. This is a prerequisite, not full composition:
+     a positive candidate derived with `BuildFromOwners` against the SAME actual
+     native identity Owner/backend and mounted handoff now passes complete
+     cached local integration. Bounded Plan-derived configuration rendering also
+     passes host/Linux and focused ARMv5 lifecycle tests, including granted-only
+     lookup and byte-identical output after complete evidence recompilation.
+     Next stage that exact configuration and descriptor grant set for the SAME
+     identity/backend/native service Owner, retaining complete management lookup
+     separately from granted-only daemon lookup without copying passdb or changing
+     the backend. Rendering and candidate admission are not daemon consumption.
+     Recompile
+     complete storage/identity evidence at admission and supervision; a declaration
+     match or candidate fingerprint is not a retained service lease. Preserve
+     explicit stop/copy-close-before-pin-release and uncertain-close quarantine.
    - Only then wire product authorization/startup and user management; keep
      HTTP/service activation, real disks and durable recovery as separate gates.
 

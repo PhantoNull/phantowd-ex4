@@ -46,6 +46,9 @@ func RunQEMUIsolatedHandoffFixture() error {
 			return err
 		}
 	}
+	if err := exerciseQEMUSharePins(); err != nil {
+		return err
+	}
 	fmt.Println("PHANTOWD_ISOLATED_HANDOFF_READY grant_only_root=true original_path_denied=true nonroot=true read_only=true close_gated=true stop_before_release=true source_loss_review=true no_restart=true scope=disposable-qemu-only")
 	return nil
 }

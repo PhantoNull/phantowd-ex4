@@ -9,6 +9,31 @@ product startup does not call it. It has no HTTP/RPC or JSON input/output.
 The separate `qemu && linux` staging prototype below is excluded from ordinary
 builds; it does not turn the read-only inspector into a product write service.
 
+The `qemu`-only `SambaPlannedDataDocumentsQEMU` renderer produces seven bounded
+configuration documents from one immutable isolated Plan candidate. It preserves
+the candidate's granted-only Unix identities and exact RO/RW share sections,
+uses the existing native fixture's loopback SMB3 globals and passdb/state paths,
+and rejects empty or over-budget output without returning partial documents.
+The aggregate budget remains 64 KiB. Rendering performs no I/O, retains no
+authority, installs no configuration and changes no native backend. Host tests
+cover exact documents, caller independence, refusals and unchanged global bytes.
+A focused ARMv5 lifecycle fixture also renders from the actual native Owner and
+mounted roster, verifies granted-only output and compares complete documents
+after fresh locked evidence compilation. Neither proof starts a Plan-configured
+daemon or qualifies the two-role runtime lifecycle. A future
+trusted constructor must independently derive expectations, bind the original
+mounted share objects and recheck complete admission before starting a daemon.
+
+`RetainPlannedConfigurationQEMU` is a separate inert prototype. It independently
+derives expectations from the opaque candidate and retains exact configuration
+objects in the same Owner without replacing its management configuration or
+mutable state. Complete revalidation includes both roles, and verified process
+stop precedes release. The role cannot be replaced and blocks native daemon
+startup; it does not acquire storage grants or establish candidate freshness.
+Guarded disposable ARMv5 staging proves construction refusals, independent
+caller closure, unchanged management observations and normal exact-mount
+cleanup. Complete planned-service lifetime and fault qualification remain open.
+
 `NewPlan` privately copies a fixed in-process file/alias roster supplied by a
 future trusted build/release owner. It limits the plan to 256 regular files,
 1024 bindings, 4096 total nodes, 16 path components and 64 MiB. Files have exact
@@ -213,6 +238,24 @@ images or persistent volumes. Host tests cover plan copying/budgets/hierarchy,
 serialization refusal, writable-root refusal and safe Linux open flags.
 
 ## Retained code and static-process Owner
+
+The separate fixed QEMU native-data prerequisite adds two original per-share
+`O_PATH` inputs to a NEW runtime after the preceding identity/runtime fixture
+fully closes. It validates protected, independent ext-family RO/RW mount roots;
+the native helper attaches individual nonrecursive clones and closes inputs
+before executing Samba in its restricted root. The original credential workers
+receive no data descriptors. Fixed qualification documents are not desired
+policy, a complete file-service Plan, or product activation inputs.
+
+Actual ARMv5 SMB transfers prove RW write/read, RO read/write denial, Unix file
+ownership, kernel `EROFS` and symlink refusal with no transferred/forbidden file.
+Every owned group and descriptor copy settles before caller originals release.
+The full local three-campaign lane, Linux race-count3/module vet and Windows
+preflight/cross-compile pass. Complete-roster storage pins, the SAME identity
+Owner/backend through startup, policy/grant/ACL admission, storage-loss and
+uncertain-stop fences, full image/hosted qualification and product wiring remain
+open. The exact marker records `complete_storage_identity=false`; do not borrow
+continuous lifetime evidence from another fixture.
 
 The separate QEMU-only native composition now retains the same original code,
 Owner-derived configuration and writable state through disabled-first account

@@ -69,6 +69,15 @@ storage generation/canonical volume-set fingerprint.
 
 ## Candidate Samba NSS
 
+A separate guarded ARMv5 admission fixture now uses `BuildFromOwners` with the
+SAME actual native-backend identity Owner and a mounted synthetic ext4 roster.
+The isolated candidate matches retained original RO/RW share roots, fresh
+recompilation, independent caller closure and gated identity/handoff teardown.
+Desired-state restoration leaves identity journals/passdb unchanged and refuses
+stale candidates. The complete local three-campaign regression passes. This
+does not install candidate documents in Samba or qualify planned service access;
+the existing fixed native-data experiment is a separate prerequisite.
+
 `Plan.SambaNSSCandidates` returns deterministic passwd/group/nsswitch documents
 bound to the existing plan freshness tuple. The zero/refused plan returns an
 error with no partial document. Only enabled, granted, confirmed Samba accounts
@@ -94,6 +103,64 @@ Old freshness and disabled desired grants are refused after the transition.
 The documents are **not installed or used by the running Samba daemon**. This
 does not provide a consumer lease, native libc NSS qualification, same-passdb
 state binding, revocation coordination or product service activation.
+
+## Isolated share-root candidates
+
+`Plan.SambaShareCandidates` returns deterministic share sections at fixed
+`/shares/<share-id>` destinations together with the exact logical-volume and
+relative-subdirectory requests from that same Plan. Source policy, including
+nested grant slices, is privately copied at Build; changing caller inputs or
+returned root requests cannot change this candidate. Existing ordinary previews
+remain unchanged. The candidate shares the Plan's complete identity/storage
+freshness tuple and NSS documents, but **does not retain those authorities**.
+
+The renderer preserves exact RO/RW user lists and denies guests, symlink
+following and wide links. A root is marked read-only only when that share has
+no RW grant; a writer on another share never broadens it. Mixed shares need a
+writable clone with independently qualified Samba and Unix/ACL enforcement.
+Whole-volume `.` requests are refused by this isolated path, consistently with
+the existing mount handoff; an ordinary desired preview may still describe them.
+Zero/refused candidates return no partial sections or root requests. An NFS-only
+Plan produces an empty SMB request set, not a synthetic share.
+
+This is a preparation step, not the completed storage-to-native-Samba path.
+The next coordinator must acquire/revalidate the complete mounted roster,
+retain exact declared directory descriptors, attach only those roots inside
+Samba's restricted namespace and retain storage through verified descendant
+stop and input closure. It must not fall back to ordinary host-volume paths.
+Storage verification must remain outside recursive identity/backend/runtime
+locks. No daemon consumes this candidate yet; full runtime-profile validation, real
+RW/RO file-access proofs, source-loss quarantine and uncertain teardown are
+still required. A local ARMv5 one-boot overlay does check the isolated request
+against the live synthetic mounted-roster tuple and validates its sections with
+target `testparm`; identity in that fixture remains synthetic. It provides no
+Samba data handoff or access proof through this candidate. No new HTTP operation,
+product startup or NAS write is added.
+
+## Complete isolated candidate and declared-root comparison
+
+`Plan.SambaIsolatedCandidate` packages private NSS, isolated share/grant text,
+exact logical-volume/subdirectory/RO requests and all six freshness fields from
+one complete Plan. It is immutable and non-serializable; returned root slices
+are independent copies. Zero, unsupported whole-volume and NFS-only plans do
+not produce a usable SMB candidate or partial documents. The existing separate
+preview methods remain unchanged.
+
+The QEMU-only `VerifySharePinsQEMU` adapter compares those requests with a live
+trusted handoff's complete declaration. Its `VerifyDeclaredRoots` operation
+checks original pins and rejects changed share IDs, volumes, paths, RO roles,
+missing/extra/duplicate roots, without invalidating healthy pins merely because
+the caller supplied a different declaration. Actual source loss still enters
+sticky review; supplying matching policy after restoration cannot revive it.
+
+Host tests cover candidate identity/storage/revision binding, caller independence,
+JSON refusals and missing-authority refusal. Linux tagged race/vet pass. The
+focused ARMv5 service campaign verifies exact/mismatching declarations against
+actual mounted pins and source-loss/restoration behavior. This is **not** a
+positive end-to-end Owner/Plan/candidate/native-daemon proof: complete identity
+and storage freshness, retained lifetime, planned runtime configuration and
+verified service settlement must still compose under the SAME service Owner.
+No HTTP, product activation or real-disk operation is introduced.
 
 ## Native lookup before Samba enrollment
 

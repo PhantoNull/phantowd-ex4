@@ -126,6 +126,7 @@ type Plan struct {
 	runtimeValidated    bool
 	volumes             []VolumeBinding
 	sambaConfig         string
+	sambaPolicy         shareconfig.Config
 	sambaPasswd         string
 	sambaGroup          string
 	sambaNSS            string
@@ -198,7 +199,7 @@ func Build(config fileservice.Config, activeRevision uint64, identities Identity
 			StorageGeneration: storage.Generation, StorageFingerprint: fingerprintStorageSnapshot(storage),
 		},
 		scope: "candidate-only", activationAvailable: false, applied: false, runtimeValidated: false,
-		volumes: bindings, sambaConfig: preview.Samba.Sections, nfsConfig: preview.NFS.Table,
+		volumes: bindings, sambaConfig: preview.Samba.Sections, sambaPolicy: cloneSambaPolicy(config.Shares), nfsConfig: preview.NFS.Table,
 		sambaPasswd: passwd, sambaGroup: group, sambaNSS: nss,
 		requirements: slices.Clone(preview.Requirements),
 	}, nil

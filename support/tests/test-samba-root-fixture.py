@@ -102,6 +102,69 @@ class SambaRootFixture(unittest.TestCase):
                 self.assertEqual(result.stdout, "")
                 self.assertEqual(result.stderr, "")
 
+    def test_native_data_requires_access_and_settlement(self):
+        expected = ("PHANTOWD_SAMBA_OWNER_NATIVE_DATA_READY "
+                    "original_objects=true individual_clones=true "
+                    "readonly_EROFS=true smb_read=true smb_write=true "
+                    "unix_owner=true symlink_denied=true "
+                    "private_namespace=true stopped_before_release=true "
+                    "no_fd_leak=true complete_storage_identity=false "
+                    "scope=qemu-only")
+        self.assertIn(expected, fixture.MARKERS)
+        good = "\n".join([*fixture.MARKERS, SCAN_COST])
+        fixture.check_guest(good)
+        for field in ("original_objects", "individual_clones",
+                      "readonly_EROFS",
+                      "smb_read", "smb_write", "unix_owner", "symlink_denied",
+                      "private_namespace", "stopped_before_release",
+                      "no_fd_leak"):
+            with self.subTest(field=field):
+                with self.assertRaises(ValueError):
+                    altered = expected.replace(field + "=true",
+                                               field + "=false")
+                    fixture.check_guest(good.replace(expected, altered))
+        for replacement in ("", expected + "\n" + expected,
+                            expected.replace("complete_storage_identity=false",
+                                             "complete_storage_identity=true"),
+                            expected.replace("qemu-only", "product")):
+            with self.assertRaises(ValueError):
+                fixture.check_guest(good.replace(expected, replacement))
+
+    def test_planned_candidate_requires_native_roster_not_activation(self):
+        expected = (
+            "PHANTOWD_SAMBA_OWNER_PLANNED_CANDIDATE_READY "
+            "owner=actual_native_backend storage=mounted_roster "
+            "locked_plan=true exact_declaration=true original_objects=true "
+            "caller_close=true fresh_recompiled=true rendered=true "
+            "granted_only=true protected_role=true management_unchanged=true "
+            "startup_blocked=true identity_retained=true "
+            "handoff_close_gated=true desired_roundtrip=true "
+            "journals_unchanged=true stale_refused=true released=true "
+            "samba_data=false activation=false scope=qemu-only")
+        self.assertIn(expected, fixture.MARKERS)
+        good = "\n".join([*fixture.MARKERS, SCAN_COST])
+        fixture.check_guest(good)
+        for field in ("locked_plan", "exact_declaration", "original_objects",
+                      "caller_close", "fresh_recompiled", "rendered",
+                      "granted_only", "protected_role", "management_unchanged",
+                      "startup_blocked", "identity_retained",
+                      "handoff_close_gated", "desired_roundtrip",
+                      "journals_unchanged", "stale_refused", "released"):
+            with self.subTest(field=field):
+                with self.assertRaises(ValueError):
+                    altered = expected.replace(field + "=true",
+                                               field + "=false")
+                    fixture.check_guest(good.replace(expected, altered))
+        for replacement in (
+                "", expected + "\n" + expected,
+                expected.replace("actual_native_backend", "synthetic"),
+                expected.replace("mounted_roster", "synthetic"),
+                expected.replace("samba_data=false", "samba_data=true"),
+                expected.replace("activation=false", "activation=true"),
+                expected.replace("qemu-only", "product")):
+            with self.assertRaises(ValueError):
+                fixture.check_guest(good.replace(expected, replacement))
+
     def test_three_bounded_campaigns_require_every_original_proof(self):
         split = next(i for i, row in enumerate(fixture.MARKERS)
                      if row.startswith(
@@ -109,13 +172,19 @@ class SambaRootFixture(unittest.TestCase):
         enrollment = next(i for i, row in enumerate(fixture.MARKERS)
                           if row.startswith(
                               "PHANTOWD_SAMBA_OWNER_NATIVE_ENROLLMENT_READY"))
+        planned = next(row for row in fixture.MARKERS
+                       if row.startswith(
+                           "PHANTOWD_SAMBA_OWNER_PLANNED_CANDIDATE_READY"))
         rows = {
             "service": [*fixture.MARKERS[:split],
                         "PHANTOWD_SAMBA_ROOT_SERVICE_DONE", SCAN_COST],
-            "native": [*fixture.MARKERS[:5], *fixture.MARKERS[split:-3],
+            "native": [*fixture.MARKERS[:5],
+                       *(row for row in fixture.MARKERS[split:-3]
+                         if row != planned),
                        "PHANTOWD_SAMBA_ROOT_NATIVE_DONE", SCAN_COST],
             "lifecycle": [*fixture.MARKERS[:5],
                           *fixture.MARKERS[split:enrollment + 1],
+                          planned,
                           *fixture.MARKERS[-3:], SCAN_COST],
         }
         good = ["\n".join(rows[phase])
@@ -129,6 +198,8 @@ class SambaRootFixture(unittest.TestCase):
                              for row in rows["lifecycle"]))
         self.assertTrue(any("NATIVE_IDLE_DISABLE_READY" in row
                             for row in rows["native"]))
+        self.assertNotIn(planned, rows["native"])
+        self.assertIn(planned, rows["lifecycle"])
         self.assertEqual(fixture.check_campaigns(*good),
                          ((104, 12000000, 123456789),) * 3)
         for index, phase in enumerate(("service", "native", "lifecycle")):
@@ -834,6 +905,21 @@ class SambaRootFixture(unittest.TestCase):
             "same_peer_session=true retained_until_stop=true "
             "stopped_reaped=true no_fd_leak=true "
             "startup_bound=false service_owner=false scope=qemu-only",
+            "PHANTOWD_SAMBA_OWNER_NATIVE_DATA_READY original_objects=true "
+            "individual_clones=true readonly_EROFS=true "
+            "smb_read=true smb_write=true unix_owner=true "
+            "symlink_denied=true private_namespace=true "
+            "stopped_before_release=true no_fd_leak=true "
+            "complete_storage_identity=false scope=qemu-only",
+            "PHANTOWD_SAMBA_OWNER_PLANNED_CANDIDATE_READY "
+            "owner=actual_native_backend storage=mounted_roster "
+            "locked_plan=true exact_declaration=true original_objects=true "
+            "caller_close=true fresh_recompiled=true rendered=true "
+            "granted_only=true protected_role=true management_unchanged=true "
+            "startup_blocked=true identity_retained=true "
+            "handoff_close_gated=true desired_roundtrip=true "
+            "journals_unchanged=true stale_refused=true released=true "
+            "samba_data=false activation=false scope=qemu-only",
             "PHANTOWD_SAMBA_OWNER_NATIVE_IDENTITY_STARTUP_READY "
             "startup_bound=true exact_backend=true before_start_busy=true "
             "after_start_busy=true duplicate_refused=true "

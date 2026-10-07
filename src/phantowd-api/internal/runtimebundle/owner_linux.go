@@ -25,12 +25,15 @@ type Owner struct {
 	// Fixed only by the separate disposable Samba constructor. NewOwner's
 	// static/non-root contract and its inputs remain unchanged.
 	configuration *retainedConfiguration
-	sambaState    *retainedSambaState
-	gate          chan struct{}
-	processes     *processowner.PinnedSet
-	snapshot      OwnerSnapshot
-	review        bool
-	closed        bool
+	// Inert planned daemon role: management workers retain configuration above.
+	// Only the QEMU runtime can supply this second, independently derived role.
+	serviceConfiguration *retainedConfiguration
+	sambaState           *retainedSambaState
+	gate                 chan struct{}
+	processes            *processowner.PinnedSet
+	snapshot             OwnerSnapshot
+	review               bool
+	closed               bool
 }
 
 // NewOwner fixes trusted inputs and copies every process specification. Paths
@@ -295,8 +298,9 @@ func (o *Owner) release() error {
 			return err
 		}
 	}
-	result := errors.Join(o.retainedCode.release(), o.configuration.release(), o.sambaState.release())
+	result := errors.Join(o.retainedCode.release(), o.configuration.release(), o.serviceConfiguration.release(), o.sambaState.release())
 	o.configuration = nil
+	o.serviceConfiguration = nil
 	o.sambaState = nil
 	return result
 }
@@ -311,7 +315,12 @@ func (o *Owner) revalidate(ctx context.Context) error {
 		}
 	}
 	if o.sambaState != nil {
-		return o.sambaState.revalidate(ctx)
+		if err := o.sambaState.revalidate(ctx); err != nil {
+			return err
+		}
+	}
+	if o.serviceConfiguration != nil {
+		return o.serviceConfiguration.revalidate(ctx)
 	}
 	return nil
 }
