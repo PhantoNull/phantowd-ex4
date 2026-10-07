@@ -61,8 +61,11 @@ cleanup. Complete planned-service lifetime and fault qualification remain open.
 the native lookup already contains all eight files-only NSS tables, so no
 resolver directives are appended again. A real temporary empty Owner regression
 reproduces the former duplication and checks the actual renderer; pure matching
-tests do not constitute descriptor or identity authority. The new paired
-retention is separately requalified on host/ARMv5 before any startup composition.
+tests do not constitute descriptor or identity authority. Original all-three
+ARMv5 union on `79b5229` qualifies paired retention against the actual native
+Owner/mounted roster with base/guards/deadlines unchanged; no daemon consumes the
+paired role. Complete changed-source image qualification and startup composition
+remain separate requirements.
 
 `NewPlan` privately copies a fixed in-process file/alias roster supplied by a
 future trusted build/release owner. It limits the plan to 256 regular files,

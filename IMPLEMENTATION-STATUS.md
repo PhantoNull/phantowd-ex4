@@ -3,7 +3,7 @@
 
 # Implementation status
 
-## Paired management retention — host qualification; ARMv5 pending
+## Paired management retention — host and original ARMv5 union qualification
 
 The QEMU-only inert retainer now accepts the complete same-Plan role candidate,
 not a separately supplied service candidate. Before acquiring new service pins,
@@ -20,9 +20,11 @@ renderer shared by both roles. Globals, state paths and files-only resolution
 remain unchanged. Windows API/UI/vet/cross-compilation, pinned Linux tagged vet
 and three-count planner/runtime/coordinator race tests pass. Matching tests
 reject every file's changed digest/mode/size/name and incomplete or service-only
-expectations. These are not retained-descriptor fault tests. The strengthened
-guest marker requires management binding; actual ARMv5 proof and a changed-source
-full image/audit remain pending. Inert startup stays blocked, with no product
+expectations. These are not retained-descriptor fault tests. Original all-three
+ARMv5 campaigns pass on frozen `79b5229`, including mandatory management binding
+against the actual native Owner and mounted roster, all former guards, exact
+base hashes and unchanged guest deadlines. The source-changing full image/audit
+remains pending. Inert startup stays blocked, with no product
 listener, service activation or physical-device operations.
 
 Hosted PR #123's exact `1e77768` QEMU run `37592585439` separately failed the native

@@ -1066,8 +1066,10 @@ storage. No production roster provider or activation path exists.
   revalidation and daemon-start refusal remain. The native credential renderer
   now preserves the already complete files-only NSS profile without appending
   duplicate tables. Host matching and actual temporary-Owner renderer regression
-  pass; strengthened actual ARMv5 retention and full changed-source audit remain
-  pending. This is not two-role startup authority or a fix for PR #123's native
+  pass; original all-three ARMv5 union on `79b5229` also proves management matching
+  against the actual native Owner/mounted roster and preserves original guards,
+  deadlines and base. Full changed-source image/audit remains pending.
+  This is not two-role startup authority or a fix for PR #123's native
   outer timeout. Continue to same-state original-object construction/access,
   complete storage/identity supervision and recovery before product activation.
 - **M4.2 — Single service owner.** Define start/reload/stop and child-process
