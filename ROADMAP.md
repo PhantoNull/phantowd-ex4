@@ -292,9 +292,13 @@ button to an unqualified backend simply because the screen exists.
   unmodified producer fails the temporary-file regression; the patched producer
   preserves compressed bytes, exclusions, unrelated CWD files and repeatability.
   Idempotence and unknown/missing/symlinked input refusals pass in disposable
-  RAM. The QEMU driver qualifies/applies it before package builds; no historical
-  marker deletion, error/interruption-cleanup claim, changed full-image census
-  or native Samba timeout resolution is inferred.
+  RAM. The QEMU driver qualifies/applies it before package builds. The complete
+  cached host/ARMv5 build on frozen `d232054` and an independent post-terminal
+  read-only audit now pass: exact935 package/archive inputs, zero generated-marker
+  exemptions, declared licenses, configured strip/image/export and seven hashes.
+  All original Samba/SMART gates are unchanged. No manual historical-marker
+  deletion, error/interruption-cleanup claim, clean reproduction, full release
+  compliance or native Samba timeout resolution is inferred.
 
 The local full wrapper also provides an opt-in `-CachedOnly` mode: it checks
 existing version-derived image/volumes and initialized current output before

@@ -3,7 +3,7 @@
 
 # Implementation status
 
-## Buildroot archive cleanup — focused regression qualified
+## Buildroot archive cleanup — complete cached integration qualified
 
 The pinned archive helper's documented successful cleanup now removes its
 empty `mktemp` marker alongside its three work files. The real unmodified
@@ -15,11 +15,24 @@ The QEMU build applies the one-line patch only after source authentication and
 before package downloads/builds. Exact original/patched helper and patch hashes
 gate idempotent application; unknown, missing or symlinked inputs refuse.
 Focused tests use read-only existing sources and small disposable tmpfs only.
-This does not clean historical package markers, qualify failure/interruption
-cleanup, or resolve Samba's hosted timeout. No changed complete build or
-post-patch package census is claimed; the prior 935-input image remains historical.
+The frozen `d2320541dd67c56ad17c7a6bcaae38fe686be03f` source passes the
+complete cached host/ARMv5 build after the normal build hook applies this patch.
+All three original Samba campaigns, actual mounted share-close quarantine and
+synthetic SMART lanes pass with unchanged assertions and deadlines. An independent
+post-terminal read-only audit matches all 935 API inputs against BOTH compiled
+package and source archive, with **zero generated-marker exemptions**, declared
+license bytes, configured stripping, installed/image/export equality and seven
+ordered artifact hashes. No unexpected input is deleted to obtain success.
 
-## Current combined checkpoint — complete cached 935-input local qualification
+The API is 10,708,180 bytes, SHA-256
+`aaf55b14c1c9ffe9f44144086ccdb01e9ca4af5726fec7e34cf5c84d9d28e2c0`.
+The independently measured source archive and artifact hashes are unchanged;
+the cleanup corrects producer bookkeeping without changing archived contents.
+This does not clean historical markers in unrelated packages, qualify failure/
+interruption cleanup, resolve Samba's intermittent hosted timeout, qualify clean
+reproducibility/release compliance or authorize deployment. No NAS operations.
+
+## Previous combined checkpoint — before the archive cleanup correction
 
 Frozen `b25dea169c3048fc867abb4ea46f2f0584536349` passes the complete cached
 host/ARMv5 build, including all three original Samba campaigns, the new actual
@@ -33,7 +46,8 @@ created after API compilation. The upstream Buildroot archive helper's omitted
 marker cleanup reproduces three times in disposable RAM; no generic `tmp.*`
 exception, source deletion or runtime modification is used. At that frozen
 checkpoint the cleanup defect was unfixed; the newer focused correction above
-has not yet qualified a changed complete image/census. API SHA-256 is
+was still only focused-qualified at that earlier checkpoint. The newer complete
+post-patch qualification above supersedes that limitation. API SHA-256 is
 `aaf55b14c1c9ffe9f44144086ccdb01e9ca4af5726fec7e34cf5c84d9d28e2c0`.
 
 This is cached local qualification, not clean reproducibility, complete release
