@@ -3,7 +3,7 @@
 
 # Implementation status
 
-## Same-Plan Samba lookup roles — host prerequisite
+## Same-Plan Samba lookup roles — local cached integration qualification
 
 The internal `Plan.SambaRoleCandidate` binds complete live management lookup
 and the existing granted-only isolated service candidate to one immutable Plan
@@ -21,8 +21,16 @@ including the maximum-capacity regression. The
 existing lifecycle fixture now passes on `7614c3e`: it checks both views against
 its SAME actual native Owner and mounted roster, recompile and staleness, without
 removing the inert startup guard. The original focused ARMv5 lifecycle campaign
-and unchanged-base checks pass, with no added limits or instrumentation. This is
-not the complete three-campaign union or changed-source image qualification.
+and unchanged-base checks pass, with no added limits or instrumentation.
+The complete cached Buildroot/QEMU lane then passes on frozen `f40fd82`, including
+all three original Samba campaigns, default/two-boot and synthetic SMART gates.
+An independent read-only audit matches all 930 tracked API inputs to the rebuilt
+package and source archive, reproduces the configured strip operation, and
+matches the installed/image/exported API plus all seven artifact hashes. Its
+API SHA-256 is `e02d803b891bcf0bd2f8e4cde8f776a949f45d62cb59cef528ef28c26bd024a8`.
+Later CI-filter/status edits do not change those API/build/guest inputs. Cached
+qualification is not independent clean-build reproducibility, full licensing
+compliance, hosted qualification or EX4 hardware/product qualification.
 Same-object two-role runtime admission, native parser/access
 checks, supervision/recovery and product activation remain open. No physical
 NAS, disk, listener or persistence operation is introduced.

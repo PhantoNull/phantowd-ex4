@@ -1055,8 +1055,10 @@ storage. No production roster provider or activation path exists.
   missing census, zero/unsupported plans, maximum live/retired capacity, copy/order
   independence, all freshness dimensions and JSON refusal. The original focused
   ARMv5 lifecycle campaign now passes on `7614c3e`, exercising paired rendering
-  against the SAME actual native Owner/mounted roster and unchanged base. Full
-  changed-source integration remains pending. This does not authorize two-role runtime
+  against the SAME actual native Owner/mounted roster and unchanged base. The
+  complete cached integration on `f40fd82` and independent 930-input source,
+  configured-strip/image/export and seven-artifact audit also pass. Hosted and
+  independent clean-build qualification remain separate. This does not authorize two-role runtime
   construction, native validation, service bootstrap or product activation.
 - **M4.2 — Single service owner.** Define start/reload/stop and child-process
   ownership; bound diagnostics and verify readiness. Preserve the last known
