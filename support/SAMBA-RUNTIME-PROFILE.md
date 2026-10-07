@@ -624,10 +624,21 @@ three fresh QEMU snapshots sequentially, each bounded to 180 seconds. The servic
 campaign proves the old access/isolation/lifetime cases and releases all its
 resources. The native campaign independently proves lookup, configuration
 handoff, credential workers and live revocation on fresh tmpfs state. The
-lifecycle guest independently repeats real enrollment/authentication/idle
-disable preparation, then qualifies retained startup/supervision and one
+lifecycle guest independently repeats real disabled-first enrollment and explicit
+enable, then qualifies retained startup/supervision, coordinator revocation and one
 state-directory alias replacement fault. No service passdb or
 filesystem mutation carries over; both virtual drives use snapshots.
+
+Lifecycle does not start/idle-disable/stop a redundant initial daemon before
+its coordinator. Those authentication/idle/live-disable and backend-binding
+contracts remain mandatory in the native guest. Lifecycle prints only its
+actual enrollment/startup/fault proofs. The complete union of required contracts
+is unchanged; negative verifier tests reject any missing contract or wrong-phase
+claim. The final native account census now uses the complete Owner-locked
+snapshot already collected in the separate20-second binding probe, instead of
+repeating the same batch outside that lock at the end of enrollment60. Exactly
+two present/enabled accounts with distinct SIDs remain explicitly required;
+all per-worker admission fences and deadlines are unchanged.
 
 All campaigns require their own real virtio entropy, fresh staging and complete
 code census. The verifier accepts only the exact ordered phase markers and one
@@ -636,6 +647,11 @@ Missing, duplicated, swapped or weakened proofs fail. The normalized marker
 summary is combined coverage, not one daemon or state retained across boots.
 The base manifest and post-run image hash remain mandatory. Failure artifacts
 contain the failed phase's log, or all three logs when joint verification fails.
+
+The local PowerShell runner may explicitly select one campaign for diagnosis;
+default/full Buildroot callers still require all three. Focused completion
+reports `complete_image=false`, never the aggregate qualification marker.
+See the [focused-run contract](QEMU-FAST-TESTS.md).
 
 This addresses an observed outer timeout after native handoff in the growing
 single-guest campaign, without weakening admission or increasing the native

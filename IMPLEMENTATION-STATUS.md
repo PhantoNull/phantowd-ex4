@@ -3,6 +3,30 @@
 
 # Implementation status
 
+## M0: Bounded Samba feedback and nonduplicated lifecycle preparation
+
+The default local ARMv5 runner still compiles once and requires three fresh
+service/native/lifecycle guests, exact ordered proofs, equal runtime censuses
+and unchanged base hashes; each retains its180-second limit. Lifecycle creates
+real disabled-first accounts and explicitly enables them before its new retained
+startup coordinator, without repeating native's first daemon/idle-disable cycle.
+Authentication, idle/live revocation and backend binding remain mandatory in
+native. Every original contract remains required in the complete proof union.
+The final native passdb assertions use the already-collected Owner-locked
+snapshot; no worker fence or deadline is relaxed.
+
+The clean local three-campaign regression and a separately scoped focused
+lifecycle probe pass. Driver tests cover complete contract coverage, missing/
+wrong-phase proofs, exact campaign selection and rejection of partial evidence
+as full qualification. Temporary diagnostic logs are removed. An explicit
+`-Campaign` local probe reports `complete_image=false`; full-build callers are
+unchanged. See [fast-test scope](support/QEMU-FAST-TESTS.md).
+
+These are cached local fixture results, not an independently clean build,
+exact-parent hosted qualification, product startup or hardware/release proof.
+Intermittent runner behavior is not claimed eliminated by one successful run.
+All product identity/storage/runtime composition and recovery gates remain open.
+
 ## Native individual-share data handoff — fixed QEMU prerequisite
 
 A separate guarded native data profile now receives two original, individually

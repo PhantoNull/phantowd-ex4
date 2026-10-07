@@ -55,14 +55,11 @@ func nativeIdentityStartupFixtureQEMU(plan *runtimebundle.Plan, lookup fileservi
 	}
 	defer func() { result = errors.Join(result, owner.Close()) }()
 	journal, err := owner.SMB(target).Load(ctx)
-	if err != nil || journal.Phase != smbprovision.Disabled {
-		return errors.New("startup target was not previously disabled")
+	if err != nil || journal.Phase != smbprovision.Enabled {
+		return errors.New("startup target was not explicitly enrolled and enabled")
 	}
-	if err := owner.SMB(target).Enable(ctx, journal.Revision); err != nil {
-		return err
-	}
-	// Re-enable is explicit BEFORE a service consumer exists, never a refresh
-	// of an invalidated consumer or an automatic account transition.
+	// The preceding real enrollment explicitly enables the target BEFORE this
+	// NEW service consumer. Startup does not change identities automatically.
 	evidence, err := owner.FileServiceSnapshot(ctx)
 	if err != nil {
 		return err

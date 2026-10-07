@@ -7,6 +7,7 @@ import hashlib
 import os
 from pathlib import Path
 import subprocess
+import sys
 import tempfile
 import unittest
 
@@ -44,6 +45,63 @@ def reports():
 
 
 class SambaRootFixture(unittest.TestCase):
+    def test_campaign_selection_defaults_to_complete_proof(self):
+        self.assertEqual(fixture.select_campaigns("all"),
+                         ("service", "native", "lifecycle"))
+
+    def test_campaign_selection_is_one_exact_phase(self):
+        for phase in ("service", "native", "lifecycle"):
+            self.assertEqual(fixture.select_campaigns(phase), (phase,))
+
+    def test_campaign_selection_refuses_untrusted_values(self):
+        for value in (None, "", "ALL", "native lifecycle", "../native",
+                      "native;true", ["lifecycle"]):
+            with self.assertRaises(ValueError):
+                fixture.select_campaigns(value)
+
+    def test_campaign_selection_cli_has_exact_output(self):
+        command = [sys.executable, "-B", str(Path(fixture.__file__)),
+                   "select-campaigns"]
+        for selection in ("all", "service", "native", "lifecycle"):
+            result = subprocess.run(command + [selection], check=False,
+                                    capture_output=True, text=True, timeout=5)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(result.stderr, "")
+            self.assertEqual(result.stdout,
+                             " ".join(fixture.select_campaigns(selection))
+                             + "\n")
+        for invalid in ("", "ALL", "native;true", "native lifecycle"):
+            result = subprocess.run(command + [invalid], check=False,
+                                    capture_output=True, text=True, timeout=5)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertEqual(result.stdout, "")
+
+    def test_focused_completion_is_not_full_qualification(self):
+        focused = ("PHANTOWD_SAMBA_FOCUSED_COMPLETE campaign=lifecycle "
+                   "base_unchanged=true complete_image=false scope=qemu-only")
+        with self.assertRaises(ValueError):
+            fixture.check_guest(focused + "\n" + SCAN_COST)
+
+    @unittest.skipUnless(os.name == "posix", "POSIX driver admission")
+    def test_invalid_driver_selection_never_calls_python(self):
+        driver = Path(__file__).resolve().with_name(
+            "test-qemu-samba-root.sh")
+        with tempfile.TemporaryDirectory() as scratch:
+            python = Path(scratch) / "python3"
+            python.write_text(
+                "#!/bin/sh\necho unexpected-python >&2\nexit 73\n")
+            python.chmod(0o700)
+            env = dict(os.environ, PATH=scratch + ":/usr/bin:/bin",
+                       TMPDIR="/tmp")
+            for invalid in ("--help", "ALL", "native;true", "all service"):
+                result = subprocess.run(
+                    ["sh", str(driver), *(["/unused"] * 6), "", invalid],
+                    env=env, check=False, capture_output=True, text=True,
+                    timeout=5)
+                self.assertEqual(result.returncode, 1)
+                self.assertEqual(result.stdout, "")
+                self.assertEqual(result.stderr, "")
+
     def test_native_data_requires_access_and_settlement(self):
         expected = ("PHANTOWD_SAMBA_OWNER_NATIVE_DATA_READY "
                     "original_objects=true individual_clones=true "
@@ -76,20 +134,29 @@ class SambaRootFixture(unittest.TestCase):
         split = next(i for i, row in enumerate(fixture.MARKERS)
                      if row.startswith(
                          "PHANTOWD_SAMBA_OWNER_NATIVE_NSS_READY"))
-        live = next(i for i, row in enumerate(fixture.MARKERS)
-                    if row.startswith(
-                        "PHANTOWD_SAMBA_OWNER_NATIVE_LIVE_REVOKE_READY"))
+        enrollment = next(i for i, row in enumerate(fixture.MARKERS)
+                          if row.startswith(
+                              "PHANTOWD_SAMBA_OWNER_NATIVE_ENROLLMENT_READY"))
         rows = {
             "service": [*fixture.MARKERS[:split],
                         "PHANTOWD_SAMBA_ROOT_SERVICE_DONE", SCAN_COST],
             "native": [*fixture.MARKERS[:5], *fixture.MARKERS[split:-3],
                        "PHANTOWD_SAMBA_ROOT_NATIVE_DONE", SCAN_COST],
             "lifecycle": [*fixture.MARKERS[:5],
-                          *fixture.MARKERS[split:live],
+                          *fixture.MARKERS[split:enrollment + 1],
                           *fixture.MARKERS[-3:], SCAN_COST],
         }
         good = ["\n".join(rows[phase])
                 for phase in ("service", "native", "lifecycle")]
+        # Every original contract remains mandatory in the complete union.
+        # Lifecycle must not claim the idle-disable proof exercised in native.
+        covered = {row for values in rows.values() for row in values
+                   if row in fixture.MARKERS}
+        self.assertEqual(covered, set(fixture.MARKERS))
+        self.assertFalse(any("NATIVE_IDLE_DISABLE_READY" in row
+                             for row in rows["lifecycle"]))
+        self.assertTrue(any("NATIVE_IDLE_DISABLE_READY" in row
+                            for row in rows["native"]))
         self.assertEqual(fixture.check_campaigns(*good),
                          ((104, 12000000, 123456789),) * 3)
         for index, phase in enumerate(("service", "native", "lifecycle")):

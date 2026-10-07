@@ -196,14 +196,15 @@ def check_campaign(log, phase):
         raise ValueError("invalid campaign evidence")
     split = next(i for i, row in enumerate(MARKERS)
                  if row.startswith("PHANTOWD_SAMBA_OWNER_NATIVE_NSS_READY"))
-    live = next(i for i, row in enumerate(MARKERS)
-                if row.startswith(
-                    "PHANTOWD_SAMBA_OWNER_NATIVE_LIVE_REVOKE_READY"))
+    enrollment = next(i for i, row in enumerate(MARKERS)
+                      if row.startswith(
+                          "PHANTOWD_SAMBA_OWNER_NATIVE_ENROLLMENT_READY"))
     expected = {
         "service": MARKERS[:split] + ("PHANTOWD_SAMBA_ROOT_SERVICE_DONE",),
         "native": MARKERS[:5] + MARKERS[split:-3]
         + ("PHANTOWD_SAMBA_ROOT_NATIVE_DONE",),
-        "lifecycle": MARKERS[:5] + MARKERS[split:live] + MARKERS[-3:],
+        "lifecycle": (MARKERS[:5] + MARKERS[split:enrollment + 1]
+                      + MARKERS[-3:]),
     }[phase]
     prefixes = ("PHANTOWD_SAMBA_ROOT_", "PHANTOWD_SAMBA_OWNER_")
     markers = tuple(line for line in log.splitlines()
@@ -211,6 +212,17 @@ def check_campaign(log, phase):
     if markers != expected:
         raise ValueError("incomplete, wrong-phase or repeated campaign proof")
     return scan_cost(log)
+
+
+def select_campaigns(selection):
+    """A focused local probe is never the complete three-campaign proof."""
+    if not isinstance(selection, str):
+        raise ValueError("invalid campaign selection")
+    if selection == "all":
+        return ("service", "native", "lifecycle")
+    if selection not in ("service", "native", "lifecycle"):
+        raise ValueError("invalid campaign selection")
+    return (selection,)
 
 
 def check_campaigns(service, native, lifecycle):
@@ -288,6 +300,9 @@ def main():
     campaign = sub.add_parser("verify-campaign")
     campaign.add_argument("log")
     campaign.add_argument("phase", choices=("service", "native", "lifecycle"))
+    selection = sub.add_parser("select-campaigns")
+    selection.add_argument("selection",
+                           choices=("all", "service", "native", "lifecycle"))
     args = parser.parse_args()
     if args.command == "prepare":
         reports = [json.loads(read_bounded(name, MAX_REPORT)) for name in (
@@ -300,6 +315,8 @@ def main():
     elif args.command == "verify-campaign":
         check_campaign(read_bounded(args.log, MAX_LOG), args.phase)
         print(f"Samba {args.phase} campaign verified")
+    elif args.command == "select-campaigns":
+        print(" ".join(select_campaigns(args.selection)))
     else:
         log = read_bounded(args.log, MAX_LOG)
         if bool(args.native_log) != bool(args.lifecycle_log):
