@@ -136,6 +136,7 @@ func nativeCredentialFixture(lifecycle bool) (result error) {
 		return err
 	}
 	defer func() { result = errors.Join(result, runtime.Close(context.Background())) }()
+	defer func() { reportNativeWorkerFailureQEMU(runtime, result) }()
 	backend, err := smbexec.NewNativeBackendQEMU(ctx, runtime)
 	if err != nil {
 		return fmt.Errorf("native backend admission: %w", err)
@@ -387,6 +388,19 @@ func nativeCredentialPreparationMarkersQEMU() {
 
 func nativeCredentialEnrollmentMarkerQEMU() {
 	fmt.Println("PHANTOWD_SAMBA_OWNER_NATIVE_ENROLLMENT_READY accounts=2 owner_bound=true original_config=true original_state=true disabled_first=true stdin_only=true same_sid=true explicit_enable=true stopped_reaped=true no_fd_leak=true scope=qemu-only")
+}
+
+// A failing guest may have lost backend error details to mandatory ordinary
+// adapter redaction. This emits fixed-label telemetry only, never a proof,
+// secret, cause text or raw program diagnostics, and does not mutate state.
+func reportNativeWorkerFailureQEMU(runtime *runtimebundle.NativeSambaRuntimeQEMU, result error) {
+	if result == nil {
+		return
+	}
+	fault, err := runtime.ObserveNativeWorkerFailureQEMU(context.Background())
+	if err == nil && fault.Present {
+		fmt.Fprintf(os.Stderr, "PHANTOWD_QEMU_NATIVE_WORKER_FAILURE phase=%s reason=%s scope=diagnostic-only\n", fault.Phase, fault.Reason)
+	}
 }
 
 // This read-only probe finishes and releases BEFORE daemon/client startup. It

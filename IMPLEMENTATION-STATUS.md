@@ -3,6 +3,27 @@
 
 # Implementation status
 
+## Native worker failure classification — host-only diagnostic prerequisite
+
+The private QEMU credential runtime now preserves the first failing phase and
+fixed reason label across ordinary backend redaction. Complete admission,
+worker execution, verified settlement and post-execution admission failures
+remain review-required; the private cause stays inspectable with `errors.Is`
+but is never included in error text or diagnostic output. A gated read-only
+observer refuses canceled/busy calls, survives closure and neither runs workers
+nor clears review. The guest emits fixed diagnostic-only labels on failure,
+including from the distinct retained-startup runtime. No product endpoint,
+constructor, privilege, normal command, admission guard or budget changes.
+
+Host tests reproduce loss of the original cause before the implementation and
+verify fixed-label redaction, first-fault retention and canceled/busy observation.
+Pinned Linux tagged vet/race-count3 and Windows API/UI/vet/ARMv5 cross-compilation
+pass. The unchanged ordinary Samba adapter's command-diagnostic redaction also
+passes three root-fixture executions. These are host bookkeeping proofs, not
+an actual native worker-failure or complete image qualification. The original
+clean ARMv5 lifecycle timeout below remains unresolved; fresh focused guest
+qualification is required before interpreting this diagnostic in that campaign.
+
 ## Native runtime terminal-close quarantine — host qualification
 
 The QEMU-only native runtime now retains its first terminal release error after

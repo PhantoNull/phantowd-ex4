@@ -17,6 +17,17 @@ metadata, ACL/capability, cancellation or trailing original-identity checks.
 Digest-loop host tests/benchmarks do not qualify complete runtime admission,
 physical EX4 performance or eliminate timing-sensitive guest failures.
 
+The private QEMU native credential runtime retains its first worker-failure
+classification for bounded diagnostic observation, including after closure.
+Only fixed phase/reason labels are exposed; cause text, stdin, stderr, account
+identities and secrets are not. The error retains review and its private cause
+for internal `errors.Is` checks. Observation serializes with runtime operations,
+refuses canceled/busy calls, executes no worker and cannot clear review or grant
+admission. A missing diagnostic is not a health witness. Ordinary Samba adapter
+error redaction remains unchanged; guest output is explicitly diagnostic-only,
+never a qualification marker. Host tests qualify the bookkeeping/redaction
+boundary, not an actual ARMv5 worker fault, timeout fix or product recovery.
+
 The `qemu`-only `SambaPlannedDataDocumentsQEMU` renderer produces seven bounded
 configuration documents from one immutable isolated Plan candidate. It preserves
 the candidate's granted-only Unix identities and exact RO/RW share sections,

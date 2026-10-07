@@ -45,6 +45,7 @@ func nativeIdentityStartupFixtureQEMU(plan *runtimebundle.Plan, lookup fileservi
 	if err != nil {
 		return err
 	}
+	defer func() { reportNativeWorkerFailureQEMU(runtime, result) }()
 	backend, err := smbexec.NewNativeBackendQEMU(ctx, runtime)
 	if err != nil {
 		return errors.Join(err, runtime.Close(context.Background()))

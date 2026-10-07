@@ -1152,6 +1152,14 @@ storage. No production roster provider or activation path exists.
   JSON log output now preserves successful/failed fixture observations before
   cleanup, without modifying guest execution or acceptance. Reproduce/diagnose
   the intermittent timeout before current full-image/hosted qualification.
+  The private worker boundary additionally retains only the first fixed
+  phase/reason diagnostic, preserving review and internal cause inspection
+  without exposing underlying output or secrets. Its gated observer must remain
+  read-only after closure and refuse canceled/busy calls. Host-only bookkeeping
+  and ordinary-adapter redaction tests pass; guest reports are diagnostic-only.
+  Next: one original focused ARMv5 lifecycle with all guards/deadlines intact,
+  classify any failure, then lock down the actual defect at its real seam.
+  Logging alone is not a timeout fix, retry policy or product recovery.
 
   Security limit: this is a share-scoped pathname view, not a complete service
   authorization boundary. Consumers still run in the host mount namespace and

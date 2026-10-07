@@ -53,6 +53,7 @@ type NativeSambaRuntimeQEMU struct {
 	clients          *processowner.PinnedSet
 	clientsAttempted bool
 	releaseErr       error
+	workerFailure    *nativeWorkerErrorQEMU
 }
 
 func (p *Plan) NewNativeSambaRuntimeQEMU(ctx context.Context, code, configuration, state *os.File, lookup fileserviceplan.SambaEnrollmentLookup) (_ *NativeSambaRuntimeQEMU, result error) {
@@ -203,7 +204,9 @@ func (r *NativeSambaRuntimeQEMU) ExecuteQEMU(ctx context.Context, operation proc
 	// retained tuple ONCE here, then recheck it after verified worker teardown.
 	if err := r.revalidateNativeRuntimeQEMU(ctx); err != nil {
 		r.owner.review = true
-		return nil, ErrReviewRequired // Close owns the pending unlaunched capture.
+		// Close owns the pending unlaunched capture. Retain review and a private
+		// cause, but disclose only fixed phase/reason labels, never cause text.
+		return nil, r.nativeWorkerFailureQEMU(nativeWorkerAdmissionQEMU, err)
 	}
 	observed, runErr := capture.Capture(ctx)
 	defer clear(observed.Stderr)
@@ -212,14 +215,20 @@ func (r *NativeSambaRuntimeQEMU) ExecuteQEMU(ctx context.Context, operation proc
 	if !settled || settleErr != nil || closeErr != nil {
 		clear(observed.Stdout)
 		r.owner.review = true
-		return nil, ErrReviewRequired // Keep pending and all original authority.
+		return nil, r.nativeWorkerFailureQEMU(nativeWorkerSettlementQEMU, errors.Join(settleErr, closeErr)) // Keep pending and all original authority.
 	}
 	r.pending = nil
 	checkErr := r.revalidateNativeRuntimeQEMU(ctx)
 	if runErr != nil || observed.Kind != processowner.CaptureExited || observed.ExitCode != 0 || strings.Count(string(observed.Stderr), nativeCredentialHandoff) != 1 || checkErr != nil {
 		clear(observed.Stdout)
 		r.owner.review = true
-		return nil, fmt.Errorf("native credential worker kind=%v exit=%d handoff=%d: %w", observed.Kind, observed.ExitCode, strings.Count(string(observed.Stderr), nativeCredentialHandoff), ErrReviewRequired)
+		stage, cause := nativeWorkerResultQEMU, error(ErrMismatch)
+		if runErr != nil {
+			stage, cause = nativeWorkerExecutionQEMU, runErr
+		} else if checkErr != nil {
+			stage, cause = nativeWorkerPostAdmissionQEMU, checkErr
+		}
+		return nil, fmt.Errorf("native credential worker kind=%v exit=%d handoff=%d: %w", observed.Kind, observed.ExitCode, strings.Count(string(observed.Stderr), nativeCredentialHandoff), r.nativeWorkerFailureQEMU(stage, cause))
 	}
 	return observed.Stdout, nil
 }
