@@ -2,6 +2,18 @@
 
 ## Bounded cached full validation
 
+The QEMU builder selects one CPU job ceiling from Linux process affinity and
+the visible cgroup v1/v2 quota hierarchy. Fractional CPU quotas round down, with
+a minimum of one job. `PHANTOWD_BUILD_JOBS` can request a smaller positive
+integer ceiling; it cannot increase concurrency beyond the observed limits.
+Invalid values or unreadable/malformed quota data fail before compilation.
+The selected budget reaches both GNU make's parallel build and Buildroot's
+`PARALLEL_JOBS`, including Samba/WAF and early package builds. This avoids
+using a host CPU count (for example 24) inside a four-CPU Docker quota. It is
+not a memory/disk budget, measured speedup or fix for a Samba guest timeout.
+The small `support/tests/test-build-jobs.py` regression executes the driver's
+real parallel command boundaries without starting a compiler or QEMU.
+
 The full driver qualifies the pinned Buildroot archive-helper cleanup with
 `support/tests/test-buildroot-download-patch.sh`, then applies only its one-line
 success-cleanup patch before package builds. Its direct regression executes
