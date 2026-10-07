@@ -20,7 +20,7 @@ records. These are different inventories, not interchangeable counts.
 | Input | Observed version / scope | Review outcome |
 | --- | --- | --- |
 | Buildroot | 2025.02.18 build system | Still listed in the selected LTS line; individual packages require their own review |
-| Linux and headers | Reviewed image: 6.18.54; current source pins: 6.18.55 | Authenticated kernel-only probe passes; complete updated-image qualification remains open |
+| Linux and headers | Earlier advisory inventory: 6.18.54; current selected and locally rebuilt image: 6.18.55 | Authenticated source, complete cached ARMv5 integration and exact metadata/source/image audit pass; hosted/EX4/release gates remain |
 | Samba | 4.22.11 target, six declared patches | Upstream's July security release; no complete Samba advisory/configuration review claimed |
 | OpenSSL | 3.5.8 **host only**, four declared patches | September advisory requires evaluating an update to 3.5.9; affected host call paths remain unassessed |
 | Go | 1.26.6 host SDK **and compiled target runtime** | 1.26.8 is a maintenance candidate, not a demonstrated security or QEMU-timeout fix |
@@ -73,9 +73,49 @@ together. Version/workflow locks, kernel-input predicates, shell checks,
 dashboard DOM tests and actual zero-fuzz GPL-patch application against the
 authenticated original Buildroot recipe pass locally. The old image, headers,
 SBOM and compiler metadata remain evidence only for their original build.
-No complete updated Buildroot image, separate three-campaign Samba suite,
-clean reproducibility, EX4 kernel build/boot or release qualification follows.
-The hosted native timeout and physical-device safety gates remain open.
+The later complete-image evidence below extends this focused scope; neither
+proof establishes clean reproducibility, EX4 kernel build/boot or release
+qualification. The hosted native timeout and physical-device safety gates
+remain open.
+
+## Linux 6.18.55 complete local qualification (2026-10-07)
+
+The unchanged complete driver passes on frozen source
+`fb2f68c6cded66db1a118c21fa99ca8fad2bfc6d`, API tree
+`5d819e6b9ad72b849f2fb3c3c27c1b2c47a114ff`, using a newly initialized
+configuration-derived output in the existing project workspace. The full
+toolchain/kernel/header/userspace build, host ordinary/race/fixed fuzz,
+standard smoke, MD comparisons, state reboot, launcher/runtime/loader/atomic,
+all three original Samba campaigns and synthetic SMART lanes pass. No guest
+deadline or assertion is relaxed and no previous output is adopted as 6.18.55.
+
+The independent post-terminal read-only audit verifies all 935 tracked API
+files against compiled package and collected source archive, rejects stale
+extras and uses zero generated-marker exemptions. Declared licenses match;
+configured stripping reproduces installed/image/exported API bytes. All seven
+actual artifacts hash correctly. Kernel AND header package versions/namespaces,
+source downloads, SBOM project/components, source/installed/image release and
+non-flashability, output/export zImage/DTB/rootfs, exact legal manifest, BOTH
+authenticated kernel source archives and six legal license copies agree.
+The actual API confirms linked Go 1.26.6, CGO disabled, Linux/ARM/GOARM5.
+Twenty-one regular-file witnesses are re-read unchanged; alias/generation drift
+and special files refuse. Preparatory controls refuse the actual old image as
+6.18.55 and duplicate metadata; they are not substituted for this final audit.
+
+Selected artifact hashes:
+
+| Artifact | SHA-256 |
+| --- | --- |
+| zImage | `870a75a25fc5de6126c049fcca85075d5cc7ba9c7f4a393ccf96da7fb42f3111` |
+| rootfs.ext2 | `8f37bfa289f7e260853c20705bdcf6341beffded9c50986676501cb74899fb5d` |
+| API source archive | `43f00ae652137031047933c0ece4117b2de01544dc5d05f9703d19876d02765d` |
+| SHA256SUMS | `f972c23375ff1432cdc9c75ea9993e7cb867a6ac321c69cd0050419f7fe161eb` |
+
+This is local complete integration in an existing development environment,
+NOT independent clean reproduction, complete component/backport/CVE or release
+licensing review, hosted-head or resolved EX4/physical qualification. Go and
+host OpenSSL update packets remain separate. A successful local Samba run does
+not demonstrate a fix for historical hosted timeouts or authorize deployment.
 
 ## Important interpretation boundaries
 
@@ -109,11 +149,11 @@ The hosted native timeout and physical-device safety gates remain open.
 
 1. **Linux 6.18.55 selected update:** review the
    [stable changelog](https://www.kernel.org/pub/linux/kernel/v6.x/ChangeLog-6.18.55),
-   finish configuration-relevant change review and qualify the complete image
-   from the authenticated, coherently updated kernel/header/hash consumers.
-   The focused proof above does not replace full QEMU and EX4 profile
-   configurations, especially existing device-write/thermal fences. A compile
-   does not authorize a physical boot or disk operation.
+   finish configuration-relevant change review and exact-head hosted, independent
+   clean and EX4 profile qualification. The complete cached QEMU build/audit
+   above now pass from authenticated, coherent kernel/header/hash consumers.
+   They do not replace resolved EX4 configurations or device-write/thermal
+   fences. A compile does not authorize a physical boot or disk operation.
 2. **Host OpenSSL 3.5.9 candidate:** retain the Buildroot LTS baseline unless a
    concrete requirement calls for a branch change. Review its exact recipe and
    four patches, source/license hashes and host reverse dependencies. Qualify the

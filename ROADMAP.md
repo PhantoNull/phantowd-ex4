@@ -293,8 +293,12 @@ button to an unqualified backend simply because the screen exists.
   compilation and the original standard QEMU smoke now pass locally. Five
   firmware configurations/release files, both source hashes and the qualified
   GPL patch/driver coherently select 6.18.55; cheap local preflights pass.
-  Complete new-image/headers/SBOM/source-license and all separate campaign
-  qualification remain open. No old image or EX4 proof is borrowed.
+  Complete new-output toolchain/kernel/header/userspace integration now passes
+  locally on frozen `fb2f68c`: original host/fuzz/MD/state/launcher/runtime/loader/
+  atomic/three-Samba/SMART gates and independent exact935 source/archive/license/
+  strip/image/seven-hash audit. Actual kernel/header/SBOM/rootfs/legal sources
+  bind55 and linked Go remains1.26.6. Exact-head hosted, clean reproduction and
+  resolved EX4/physical/release gates remain open; no old image proof is borrowed.
   The review distinguishes host libraries from linked Go target runtime,
   exact backports from base-version CPEs, and upstream ignore lists from product
   dispositions. All-package/call-path review remains open; no CVE-free or timeout

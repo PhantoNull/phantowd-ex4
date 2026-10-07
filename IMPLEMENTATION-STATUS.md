@@ -3,7 +3,37 @@
 
 # Implementation status
 
-## Linux 6.18.55 — coherent pins and focused ARMv5 proof; full image pending
+## Linux 6.18.55 — complete local ARMv5 integration and exact artifact audit
+
+The complete Buildroot driver terminates successfully on frozen
+`fb2f68c6cded66db1a118c21fa99ca8fad2bfc6d`, API tree
+`5d819e6b9ad72b849f2fb3c3c27c1b2c47a114ff`, in the new configuration-derived
+output namespace. It rebuilds the toolchain, Linux/headers and userspace;
+the previous output is not relabelled as the new version. Ordinary/race/fixed-count
+fuzz, standard smoke, MD comparisons, state reboot, launcher/runtime/loader,
+atomic dispatch, all three Samba campaigns and synthetic SMART lanes pass with
+their original assertions and guest deadlines.
+
+An independent post-terminal read-only audit matches all **935** tracked API
+inputs against both the exact compiled package and source archive, with zero
+generated-marker exemptions. It reproduces configured stripping and proves
+installed/image/exported API equality and all seven ordered artifact hashes.
+The actual kernel AND headers, package namespaces/downloads, SBOM project and
+components, installed/source/image release, output/export images, legal manifest,
+both authenticated kernel source archives, kernel license copies and linked
+Go 1.26.6/CGO0/Linux ARMv5 settings match. Twenty-one file witnesses recheck
+unchanged; nonregular inputs and generation/alias drift refuse.
+
+The API remains 10,708,180 bytes, SHA-256
+`aaf55b14c1c9ffe9f44144086ccdb01e9ca4af5726fec7e34cf5c84d9d28e2c0`.
+The new complete rootfs is
+`8f37bfa289f7e260853c20705bdcf6341beffded9c50986676501cb74899fb5d`.
+This supersedes the included update's pending local full-image statements,
+not historical hosted failures, clean reproducibility, complete component/CVE
+or release licensing review, EX4 profile/hardware or installation gates.
+No NAS or production disk is touched.
+
+### Earlier focused source and kernel controls
 
 The authenticated Linux 6.18.55 source compiles with the existing ARMv5
 toolchain and an exactly unchanged configuration-symbol set. The original
@@ -16,9 +46,9 @@ artifact hashes remain unchanged. EX4 Stage B3 DTS bytes also match the
 Five configurations/release metadata files, both kernel/header archive hashes
 and the version-qualified GPL hash patch/driver now select 6.18.55 together.
 Local version/workflow, kernel-input, shell, dashboard DOM and actual upstream
-GPL-patch preflights pass. A complete rebuilt image and all separate integration
-campaigns, regenerated metadata/source/license audit and exact-head hosted
-checks remain required. Existing public CI failures are not fixed or waived.
+GPL-patch preflights pass. The complete local rebuilt image/campaigns and audit
+now pass above; exact-head hosted checks remain required. Existing public CI
+failures are not fixed or waived.
 The [dependency record](support/DEPENDENCY-REVIEW.md) distinguishes the focused
 proof from the unchanged prior image and the remaining qualification gates.
 
@@ -26,9 +56,9 @@ proof from the unchanged prior image and the remaining qualification gates.
 
 The [2026-10-07 dependency review](support/DEPENDENCY-REVIEW.md) checks the
 actual local package inventory and embedded API compiler metadata against
-selected official advisories. Linux 6.18.55 source pins have the focused proof
-above; host OpenSSL 3.5.9 and Go 1.26.8 remain update candidates. The existing
-complete image is unchanged. OpenSSL is host-only
+selected official advisories. Linux 6.18.55 now has the complete local proof
+above; host OpenSSL 3.5.9 and Go 1.26.8 remain update candidates. This is not
+a renewed full advisory review of the changed kernel. OpenSSL is host-only
 in this inventory, whereas the Go SDK also supplies the target executable's
 runtime. Exact backports and complete component/exposure dispositions remain
 release gates. This is not an all-package security audit, QEMU timeout fix,
