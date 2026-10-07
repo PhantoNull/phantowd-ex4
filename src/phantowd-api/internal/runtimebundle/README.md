@@ -24,6 +24,16 @@ daemon or qualifies the two-role runtime lifecycle. A future
 trusted constructor must independently derive expectations, bind the original
 mounted share objects and recheck complete admission before starting a daemon.
 
+`RetainPlannedConfigurationQEMU` is a separate inert prototype. It independently
+derives expectations from the opaque candidate and retains exact configuration
+objects in the same Owner without replacing its management configuration or
+mutable state. Complete revalidation includes both roles, and verified process
+stop precedes release. The role cannot be replaced and blocks native daemon
+startup; it does not acquire storage grants or establish candidate freshness.
+Guarded disposable ARMv5 staging proves construction refusals, independent
+caller closure, unchanged management observations and normal exact-mount
+cleanup. Complete planned-service lifetime and fault qualification remain open.
+
 `NewPlan` privately copies a fixed in-process file/alias roster supplied by a
 future trusted build/release owner. It limits the plan to 256 regular files,
 1024 bindings, 4096 total nodes, 16 path components and 64 MiB. Files have exact

@@ -202,13 +202,17 @@ func nativeCredentialFixture(lifecycle bool) (result error) {
 	// start/disable/stop a redundant first daemon before the startup coordinator.
 	// The complete suite still requires every original proof from all3 guests.
 	if lifecycle {
-		if err := nativePlannedCandidateFixtureQEMU(owner, backend); err != nil {
+		stage, err := nativePlannedCandidateFixtureQEMU(owner, backend, runtime)
+		if err != nil {
 			return fmt.Errorf("native planned candidate: %w", err)
 		}
 		if err := owner.Close(); err != nil {
 			return err
 		}
 		if err := runtime.Close(context.Background()); err != nil {
+			return err
+		}
+		if err := stage.removeAfterRuntimeClose(); err != nil {
 			return err
 		}
 		if err := nativeIdentityStartupFixtureQEMU(plan, lookup, authority, inventory, native[0].Account.ID); err != nil {

@@ -26,19 +26,20 @@ import (
 	"golang.org/x/sys/unix"
 )
 
-const plannedCandidateMarkerQEMU = "PHANTOWD_SAMBA_OWNER_PLANNED_CANDIDATE_READY owner=actual_native_backend storage=mounted_roster locked_plan=true exact_declaration=true original_objects=true caller_close=true fresh_recompiled=true rendered=true granted_only=true identity_retained=true handoff_close_gated=true desired_roundtrip=true journals_unchanged=true stale_refused=true released=true samba_data=false activation=false scope=qemu-only"
+const plannedCandidateMarkerQEMU = "PHANTOWD_SAMBA_OWNER_PLANNED_CANDIDATE_READY owner=actual_native_backend storage=mounted_roster locked_plan=true exact_declaration=true original_objects=true caller_close=true fresh_recompiled=true rendered=true granted_only=true protected_role=true management_unchanged=true startup_blocked=true identity_retained=true handoff_close_gated=true desired_roundtrip=true journals_unchanged=true stale_refused=true released=true samba_data=false activation=false scope=qemu-only"
 
 // Runs after real enrollment, before ANY lifecycle daemon starts. It retains
 // the SAME Owner/backend and actual mounted roster through descriptor closure.
 // This positive Plan/candidate/handoff admission proof does not start Samba or
 // substitute for the full planned native-service coordinator.
-func nativePlannedCandidateFixtureQEMU(owner *identityowner.Owner, backend *smbexec.NativeBackendQEMU) error {
-	if owner == nil || backend == nil {
-		return errors.New("planned candidate requires actual native authorities")
+func nativePlannedCandidateFixtureQEMU(owner *identityowner.Owner, backend *smbexec.NativeBackendQEMU, runtime *runtimebundle.NativeSambaRuntimeQEMU) (*plannedConfigurationStageQEMU, error) {
+	if owner == nil || backend == nil || runtime == nil {
+		return nil, errors.New("planned candidate requires actual native authorities")
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
-	return mountowner.WithQEMUNativeMountedSet(func(storage *mountowner.MountedVolumeSet) error {
+	var stage *plannedConfigurationStageQEMU
+	err := mountowner.WithQEMUNativeMountedSet(func(storage *mountowner.MountedVolumeSet) error {
 		before, err := owner.FileServiceSnapshot(ctx)
 		if err != nil || len(before.Registry.Accounts) != 2 || len(before.Passdb) != 2 ||
 			before.Registry.Accounts[1].Name != "qpsecond" || before.Registry.Accounts[1].State != serviceaccounts.Disabled {
@@ -162,6 +163,10 @@ func nativePlannedCandidateFixtureQEMU(owner *identityowner.Owner, backend *smbe
 		if err != nil || !maps.Equal(expectedDocuments, freshDocuments) {
 			return errors.New("planned native rendering changed after complete evidence recompile")
 		}
+		stage, err = stagePlannedConfigurationQEMU(ctx, runtime, freshCandidate)
+		if err != nil {
+			return err
+		}
 		if err := pins.Close(); err != nil {
 			return err
 		}
@@ -199,4 +204,5 @@ func nativePlannedCandidateFixtureQEMU(owner *identityowner.Owner, backend *smbe
 		}
 		return nil
 	})
+	return stage, err
 }

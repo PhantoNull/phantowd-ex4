@@ -75,7 +75,7 @@ func (r *NativeSambaRuntimeQEMU) StartNativeDaemonQEMU(ctx context.Context) (res
 		return err
 	}
 	defer func() { <-r.gate }()
-	if r.closed || r.owner.review || r.pending != nil || r.daemonAttempted {
+	if r.closed || r.owner.review || r.pending != nil || r.daemonAttempted || r.owner.serviceConfiguration != nil {
 		return ErrReviewRequired
 	}
 	r.daemonAttempted = true
@@ -172,7 +172,7 @@ func (r *NativeSambaRuntimeQEMU) CheckNativeStartupQEMU(ctx context.Context) err
 		return err
 	}
 	defer func() { <-r.gate }()
-	if r.closed || r.owner.review || r.pending != nil || r.daemonAttempted || r.clientsAttempted {
+	if r.closed || r.owner.review || r.pending != nil || r.daemonAttempted || r.clientsAttempted || r.owner.serviceConfiguration != nil {
 		return ErrReviewRequired
 	}
 	return r.owner.revalidate(ctx)

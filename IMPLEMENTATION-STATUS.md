@@ -3,6 +3,22 @@
 
 # Implementation status
 
+## Inert retained Plan configuration role — QEMU only
+
+The same native runtime can retain a second, independently Plan-derived
+configuration root without replacing its management lookup or mutable passdb.
+Construction requires exact protected documents; empty candidates and malformed
+modes refuse. Caller descriptors close independently, management observations
+remain unchanged, and normal runtime closure precedes exact-mount cleanup.
+The role blocks daemon startup and cannot be replaced. It is not a grant lease,
+freshness token, service activation path or product configuration.
+
+Linux tagged race-count3/module vet, host preflight/ARMv5 cross-compilation,
+50 driver/seven loader tests and the focused ARMv5 lifecycle campaign pass.
+Complete campaign/image qualification and post-admission fault tests remain
+required, followed by original storage/identity/state composition and actual
+Plan-configured daemon consumption. No HTTP or physical NAS operation is added.
+
 ## Bounded Plan-derived Samba documents — QEMU only
 
 One pure renderer emits seven configuration documents from the immutable
