@@ -3,6 +3,17 @@
 
 # Implementation status
 
+## Dependency review — update candidates identified, not qualified
+
+The [2026-10-07 dependency review](support/DEPENDENCY-REVIEW.md) checks the
+actual local package inventory and embedded API compiler metadata against
+selected official advisories. Linux 6.18.55, host OpenSSL 3.5.9 and Go 1.26.8 are
+update candidates; the existing image/pins remain unchanged. OpenSSL is host-only
+in this inventory, whereas the Go SDK also supplies the target executable's
+runtime. Exact backports and complete component/exposure dispositions remain
+release gates. This is not an all-package security audit, QEMU timeout fix,
+public-head qualification or installable firmware.
+
 ## Buildroot archive cleanup — complete cached integration qualified
 
 The pinned archive helper's documented successful cleanup now removes its
