@@ -34,6 +34,10 @@ invocation, original acceptance, guest commands and deadlines are unchanged;
 no persistent log directory, image, volume or retry is added. Mock Windows
 wrapper tests, 54 Linux driver tests, flake8 and shellcheck pass. This closes a
 diagnostic-observability gap, not the intermittent campaign-timeout gate.
+The unchanged API guest on `32644ec` subsequently reproduces the focused
+lifecycle timeout with QEMU exit 124; diagnostic output is retained and the
+wrapper correctly fails. Neither clean all-three nor full changed-image
+qualification is claimed, and no hosted rerun has been dispatched.
 
 ## Paired management retention — host and original ARMv5 union qualification
 
