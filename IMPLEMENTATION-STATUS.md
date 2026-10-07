@@ -3,6 +3,162 @@
 
 # Implementation status
 
+## M0: Bounded Samba feedback and nonduplicated lifecycle preparation
+
+The default local ARMv5 runner still compiles once and requires three fresh
+service/native/lifecycle guests, exact ordered proofs, equal runtime censuses
+and unchanged base hashes; each retains its180-second limit. Lifecycle creates
+real disabled-first accounts and explicitly enables them before its new retained
+startup coordinator, without repeating native's first daemon/idle-disable cycle.
+Authentication, idle/live revocation and backend binding remain mandatory in
+native. Every original contract remains required in the complete proof union.
+The final native passdb assertions use the already-collected Owner-locked
+snapshot; no worker fence or deadline is relaxed.
+
+The clean local three-campaign regression and a separately scoped focused
+lifecycle probe pass. Driver tests cover complete contract coverage, missing/
+wrong-phase proofs, exact campaign selection and rejection of partial evidence
+as full qualification. Temporary diagnostic logs are removed. An explicit
+`-Campaign` local probe reports `complete_image=false`; full-build callers are
+unchanged. See [fast-test scope](support/QEMU-FAST-TESTS.md).
+
+These are cached local fixture results, not an independently clean build,
+exact-parent hosted qualification, product startup or hardware/release proof.
+Intermittent runner behavior is not claimed eliminated by one successful run.
+All product identity/storage/runtime composition and recovery gates remain open.
+
+## Coordinator-owned native Disable — focused QEMU prerequisite
+
+The retained startup coordinator now routes explicit revision-checked Disable
+through the SAME identity Owner/backend and atomically retains its verified
+successor. No caller can supply a replacement token, fingerprint or runtime.
+A qualified pre-intent revision conflict leaves the journal/consumer unchanged;
+other uncertainty stops the service and retains review, without retry.
+
+The actual ARMv5 fixture holds two distinct sessions before this transition:
+the target disappears, new target login is denied and the original peer session
+and server generation remain unchanged. Owner Close stays busy through the
+transition and verified stop; full runtime closure precedes identity release.
+Canceled/stale requests, pre-start/stopped mutation and mutation competing with
+the exclusive supervisor refuse. The fixed client helpers share the coordinator
+gate and supply no caller-selected credentials, command or executable.
+
+All 42 Linux driver/seven loader tests, lint/ShellCheck, three actual ARMv5
+campaigns, base hashes and final descriptor equality pass locally. Root Linux
+race-count3/tagged vet and Windows API/UI/cross-compilation pass. The added live
+phase has its own 45-second bound, followed by a 20-second observation/stop
+phase; startup40, worker4/revocation10 and each guest180 remain unchanged.
+The later state-fault subprocess explicitly re-enables the synthetic target
+before NEW admission; it does not refresh an invalidated consumer or fabricate
+state. No additional campaign, image, volume or privilege profile is added.
+
+Complete cached local integration also passes on frozen `42d77be` (tree
+`9440318`): API/UI/vet/race/fixed-count fuzz, package/source/license/SBOM
+collection, ordinary ARMv5 smoke, MD component/partition comparisons, two-boot
+state, launcher/runtime/loader/libatomic, all three Samba campaigns and synthetic
+SMART report/producer/capture. An independent read-only audit matches all 894
+tracked API files to the compiled package and source archive, without extra or
+duplicate regular archive members. All seven artifact hashes verify.
+
+Buildroot's configured target stripping is reproduced on a temporary copy of
+the raw package binary: its result equals the installed, image-contained and
+exported API (10,577,108 bytes, SHA256
+`80478e9bfdb3a08aa58e431f03822360ef551755e2d1a4f9c83af08661163ac1`).
+The pre-strip binary is not expected to have the same bytes. This is cached
+local qualification, not independent clean-build reproduction or complete
+release licensing.
+
+This does not qualify production queued commands/supervision, continuous
+bootstrap/storage authority, additional fault variants, durable recovery,
+HTTP activation, clean/hosted integration or physical EX4.
+
+## Retained native state-alias fault — focused QEMU prerequisite
+
+The actual ARMv5 trace replaces one fixed guest-tmpfs state directory alias
+while retaining the original object and its contents. Complete admission
+refuses before the pending capture executes. The coordinator stops the owned
+daemon/client set, keeps the unconsumed capture, original code/config/state
+descriptors and busy identity authority, and refuses restart or repeated close
+after restoration. A separate read-only observation proves owned-group stop
+and distinguishes an unconsumed capture from an executed, settled one.
+Intentional retained references are disposed only by the test subprocess's exit
+after that proof; this is not product recovery. FD equality applies to its parent.
+Clients are not active in this fault trace; their fault settlement remains open.
+
+The final local lane passes 42 driver/seven loader tests and three complete
+ARMv5 campaigns. One probe compilation/base image supplies separate fresh
+service, native-revocation and lifecycle snapshots, each still limited to 180
+seconds. Complete phase markers, matching runtime censuses, entropy, all earlier
+access/authentication/revocation guards and unchanged base hashes are mandatory.
+Root Linux race-count3 for the five affected packages, tagged module vet and
+Windows API/UI/vet/ARMv5 cross-compilation pass. Temporary diagnostics are removed.
+
+The original mode-drift test selected the wrong seam: invalid directory modes
+refuse capture construction before a pending capture exists. Alias replacement
+exercises the intended later refusal. A combined campaign passed with timing
+instrumentation but its final uninstrumented rerun timed out; separate campaigns
+avoid charging unrelated scenarios to one deadline without dropping their tests.
+This does not prove deterministic performance or diagnose every older timeout.
+The newer complete cached `42d77be` proof above includes this fault trace;
+hosted/clean-build qualification is still separate. Identity/code
+drift, unexpected exits, in-worker cancellation, other uncertain teardown,
+further command lifecycle, storage, bootstrap continuity, product UI/startup, durable
+recovery and physical EX4 qualification remain open.
+
+## Identity-bound native startup/supervision — normal QEMU prerequisite
+
+The private QEMU coordinator obtains only the exact Owner-fixed backend's
+runtime and retains a backend-bound consumer **before** daemon startup.
+Fresh identity verification brackets startup; complete observations use the
+same retained code/config/state/daemon through the fixed backend. One exclusive
+fixed-idle supervision loop serializes scans, refuses competing operations and
+stops on accepted cancellation without restart. Readable atomic status is
+redacted telemetry, not authority. Identity release follows verified complete
+runtime closure; uncertain startup/stop/close retains review without replay.
+
+The focused local ARMv5 lane passes all 40 driver/seven loader tests and BOTH
+campaigns. The additional positive trace proves Owner close refusal before/
+during startup, canceled/duplicate refusal, complete timed scans, serialized
+observation, accepted cancellation, retention until full closure and no FD leak.
+Existing authentication/revocation/privilege markers and base hashes remain.
+Root Linux race-count3/tagged vet and Windows API/UI/cross-compilation pass.
+
+The complete cached local Buildroot lane also passes on frozen `e445f1c`
+(tree `b10ac7a`): API/UI/vet/race/fixed-count fuzz, source/license/SBOM
+collection, standard ARMv5 smoke, MD component comparisons, two-boot state,
+launcher/retained runtime/loader/libatomic, both Samba campaigns and synthetic
+SMART producer/capture lanes. Independent read-only audit matches all 887
+tracked API files to compiled package and archive members, with no additional
+regular archive entries; installed, image-contained and exported API bytes
+match, and all seven artifact hashes verify. Existing fixed caches are reused;
+the temporary builder is removed. This is not independent clean-build,
+complete release licensing, hosted or physical EX4 qualification.
+
+This qualifies the **normal** startup/supervision path only. Coordinator-specific
+drift/exit/mid-worker cancellation/uncertain-stop/close fault proofs,
+storage/grants, bootstrap continuity, product startup/UI and
+durable recovery remain open. The cached image proof above does not qualify
+hosted/clean builds, deployment, NAS or hardware behavior.
+
+## Identity Owner teardown quarantine — host prerequisite
+
+An Owner with no live file-service consumers must close its fixed backend
+before releasing identity journals/ledger. Backend teardown errors now retain
+all authority references, reject new work and return redacted unavailability/
+review without automatic retry. Later inner-store closure errors retain the
+outer root fence; final descriptor-close uncertainty is sticky, not proof that
+the descriptor remained open. Successful closure remains idempotent.
+
+A root-isolated failing test reproduced the former competing-Owner admission
+after an external backend error. Real Owner/store/lock tests now verify all
+native/Samba/registry leases, new-work refusal, no retry and positive teardown
+ordering. No product recovery, failed-Open or low-level syscall fault claim is
+made. Root Linux race-count3 and tagged module vet pass. The focused local
+ARMv5 lane preserves both complete Samba campaigns, all 39 driver/seven loader
+checks, normal native closure, old/new markers, FD equality and unchanged base
+hashes. The modeled teardown fault itself is tested on Linux host, not ARMv5.
+This is separate from the earlier complete cached image below.
+
 ## Explicit SMB disable successor — cached integration prerequisite
 
 `identityowner.SMB(id).DisableForFileService` retains the startup-bound backend

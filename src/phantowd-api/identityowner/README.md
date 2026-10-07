@@ -30,6 +30,27 @@ other root tools or instances pointed at different roots are **not** excluded
 from changing `/etc`. The product must enforce a single writer deployment.
 No directory may be independently moved, replaced or modified during ownership.
 
+`Close` drains active work and refuses retained file-service consumers. It
+closes the startup-bound backend **before** releasing any journal or ledger.
+Any backend close error retains all these authority leases and the backend,
+returns redacted `ErrUnavailable` and `ErrReview`, and rejects further work.
+Repeated `Close` returns the same classification without replaying teardown,
+even if the backend could now succeed. After verified backend closure, an inner
+store/operations close error retains the outer root fence; some inner stores
+may already be closed. Final root-descriptor close failure is sticky too, but
+cannot prove that a failed system call retained that descriptor. No descriptor
+number is retried and no qualified recovery is provided by this library.
+
+Root-isolated regression tests use real stores and filesystem locks, with only
+the external backend's uncertain teardown modeled. They prove competing Owner,
+registry and native/Samba journal refusal after the backend error, fail-closed
+observations and no automatic retry. A separate positive test verifies journal
+authority during backend teardown and normal idempotent closure. The fault test
+runs in a disposable subprocess to contain deliberately retained descriptors;
+its process-exit cleanup is not a product recovery qualification. Failed-Open
+cleanup, low-level close faults and complete runtime/product recovery still
+require separate lifecycle qualification.
+
 Snapshots freshly decode the ledger/journals and refuse missing/orphan entries,
 wrong ownership/modes, symlinks, device changes, replaced known operation
 directories, account mismatches or inconsistent revision histories. Registry

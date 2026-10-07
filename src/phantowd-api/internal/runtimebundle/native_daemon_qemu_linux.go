@@ -154,6 +154,39 @@ func (r *NativeSambaRuntimeQEMU) StopNativeDaemonQEMU(ctx context.Context) error
 	return r.stopNativeDaemonQEMU()
 }
 
+// Guard startup construction without entering the identity Owner or accepting
+// caller-selected runtime/process inputs. Credential workers may already have
+// completed, but the authentication daemon/held clients must never have started.
+func (r *NativeSambaRuntimeQEMU) CheckNativeStartupQEMU(ctx context.Context) error {
+	if err := r.enter(ctx); err != nil {
+		return err
+	}
+	defer func() { <-r.gate }()
+	if r.closed || r.owner.review || r.pending != nil || r.daemonAttempted || r.clientsAttempted {
+		return ErrReviewRequired
+	}
+	return r.owner.revalidate(ctx)
+}
+
+// An unsettled credential capture must not be hidden by successful daemon stop.
+// Preserve it for explicit recovery; stop the daemon/client groups, but do not
+// claim whole-service settlement or retry an uncertain worker close.
+func (r *NativeSambaRuntimeQEMU) StopNativeServiceQEMU(ctx context.Context) error {
+	if err := r.enter(ctx); err != nil {
+		return err
+	}
+	defer func() { <-r.gate }()
+	if r.closed {
+		return ErrReviewRequired
+	}
+	err := r.stopNativeDaemonQEMU()
+	if r.pending != nil {
+		r.owner.review = true
+		return errors.Join(ErrReviewRequired, err)
+	}
+	return err
+}
+
 func (r *NativeSambaRuntimeQEMU) stopNativeDaemonQEMU() error {
 	var clientErr error
 	if r.clients != nil {
