@@ -722,12 +722,31 @@ product image. See [runtime profile and remaining gates](SAMBA-RUNTIME-PROFILE.m
 The current wrapper compiles once and runs separate fresh service/native/lifecycle
 snapshots, each bounded to 180 seconds. It independently verifies each phase,
 requires all three complete proofs with matching runtime census, then prints combined
-coverage. This is not a state/daemon lease across boots. No tests, base checks,
-code admission or credential deadline are removed to avoid a cumulative timeout.
-The lifecycle guest independently prepares real accounts/authentication/idle
-disable, then tests retained startup/supervision and one state-alias fault.
+coverage. This is not a state/daemon lease across boots. Every original contract,
+base check, worker admission fence and deadline remains required by the complete
+suite. The lifecycle guest independently creates real disabled-first accounts
+and explicitly enables them, then tests retained startup/supervision, coordinator
+revocation and one state-alias fault. It does not duplicate native's first
+daemon/idle-disable cycle. Authentication, idle/live disable and backend-binding
+proofs remain mandatory in the native guest, never fabricated in lifecycle.
 Deliberately quarantined captures and identity references remain held until a
 disposable subprocess proves group stop and exits; that exit is not recovery.
+
+For a focused local diagnosis, select exactly one unchanged guest campaign:
+
+```powershell
+.\support\test-samba-root.ps1 -Campaign lifecycle
+```
+
+Allowed selections are `service`, `native`, `lifecycle` and the default `all`.
+Invalid values fail before guest/fixture construction. A focused run still
+compiles current source, checks all base hashes, uses read-only inputs and
+bounded tmpfs, verifies that phase's exact proof, retains its 180-second limit
+and cleans its disposable container. Its completion explicitly reports
+`complete_image=false`; it cannot substitute for the default three-campaign
+qualification or clean Buildroot/hosted/release evidence. Existing full-build
+callers continue to select all campaigns without modification.
+
 Its fixed runtime now includes IBM850 plus a strictly bounded, hash-verified
 conversion catalog. A dynamic probe tests exact non-ASCII CP850/UTF-8 conversions
 and refusals inside the restricted root; the fixture rejects ASCII fallback.

@@ -197,12 +197,36 @@ func nativeCredentialFixture(lifecycle bool) (result error) {
 			return errors.New("native explicit enable confirmation")
 		}
 	}
-	observed, err := backend.ObserveAccounts(ctx, registry.Accounts)
-	if err != nil || len(observed) != 2 || observed[0].Disabled || observed[1].Disabled ||
-		!observed[0].Present || !observed[1].Present || observed[0].SID == observed[1].SID {
-		return fmt.Errorf("native backend final identity census elapsed=%v context=%v rows=%d: %w",
-			time.Since(started), ctx.Err(), len(observed), errors.Join(errors.New("invalid native account observation"), err))
+	// Independent fresh guest: real enrollment is required here, but the native
+	// campaign owns the idle/live-disable and backend-binding proofs. Do not
+	// start/disable/stop a redundant first daemon before the startup coordinator.
+	// The complete suite still requires every original proof from all3 guests.
+	if lifecycle {
+		if err := owner.Close(); err != nil {
+			return err
+		}
+		if err := runtime.Close(context.Background()); err != nil {
+			return err
+		}
+		if err := nativeIdentityStartupFixtureQEMU(plan, lookup, authority, inventory, native[0].Account.ID); err != nil {
+			return fmt.Errorf("native retained startup: %w", err)
+		}
+		if err := nativeIdentityFaultSubprocessQEMU(); err != nil {
+			return err
+		}
+		after, err := os.ReadDir("/proc/self/fd")
+		if err != nil || len(after) != len(before) {
+			return errors.New("native lifecycle descriptor leak")
+		}
+		nativeCredentialEnrollmentMarkerQEMU()
+		fmt.Println("PHANTOWD_SAMBA_OWNER_NATIVE_IDENTITY_STARTUP_READY startup_bound=true exact_backend=true before_start_busy=true after_start_busy=true duplicate_refused=true canceled_start_refused=true complete_observation=true serialized_scans=true accepted_cancellation=true stopped_reaped=true close_before_release=true no_fd_leak=true coordinator_disable=true qualified_pair=true same_peer_session=true target_denied=true stale_revision_refused=true canceled_disable_refused=true serialized_disable=true prepared_disable_refused=true stopped_disable_refused=true service_owner=false scope=qemu-only")
+		fmt.Println("PHANTOWD_SAMBA_OWNER_NATIVE_IDENTITY_FAULT_READY state_drift=true before_worker=true pending_retained=true groups_stopped=true capture_settled=true authority_busy=true inputs_retained=true restoration_refused=true close_no_retry=true subprocess_disposal=true no_fd_leak=true service_owner=false scope=qemu-only")
+		return nil
 	}
+	// Final passdb assertions belong to the complete Owner-locked observation
+	// below. Do not repeat the same full scan outside that lock at the end of
+	// the cumulative enrollment budget. All per-worker admission fences and
+	// deadlines remain unchanged.
 	if err := nativeIdentityBackendProbeQEMU(owner, backend); err != nil {
 		return fmt.Errorf("native read-only backend binding: %w", err)
 	}
@@ -244,35 +268,6 @@ func nativeCredentialFixture(lifecycle bool) (result error) {
 	}
 	if err := runtime.VerifyNativeIdleDisableQEMU(idleContext); err != nil {
 		return fmt.Errorf("native idle disable authentication elapsed=%v context=%v: %w", time.Since(idleStarted), idleContext.Err(), err)
-	}
-	// Independent fresh guest, not another image/build or a relaxed deadline.
-	// Both campaigns establish real disabled-first accounts and authentication;
-	// only the lifecycle campaign continues to startup/supervision/faults. The
-	// original native campaign still performs every held-client/revocation check.
-	if lifecycle {
-		if err := runtime.StopNativeDaemonQEMU(context.Background()); err != nil {
-			return err
-		}
-		if err := owner.Close(); err != nil {
-			return err
-		}
-		if err := runtime.Close(context.Background()); err != nil {
-			return err
-		}
-		if err := nativeIdentityStartupFixtureQEMU(plan, lookup, authority, inventory, native[0].Account.ID); err != nil {
-			return fmt.Errorf("native retained startup: %w", err)
-		}
-		if err := nativeIdentityFaultSubprocessQEMU(); err != nil {
-			return err
-		}
-		after, err := os.ReadDir("/proc/self/fd")
-		if err != nil || len(after) != len(before) {
-			return errors.New("native lifecycle descriptor leak")
-		}
-		nativeCredentialPreparationMarkersQEMU()
-		fmt.Println("PHANTOWD_SAMBA_OWNER_NATIVE_IDENTITY_STARTUP_READY startup_bound=true exact_backend=true before_start_busy=true after_start_busy=true duplicate_refused=true canceled_start_refused=true complete_observation=true serialized_scans=true accepted_cancellation=true stopped_reaped=true close_before_release=true no_fd_leak=true coordinator_disable=true qualified_pair=true same_peer_session=true target_denied=true stale_revision_refused=true canceled_disable_refused=true serialized_disable=true prepared_disable_refused=true stopped_disable_refused=true service_owner=false scope=qemu-only")
-		fmt.Println("PHANTOWD_SAMBA_OWNER_NATIVE_IDENTITY_FAULT_READY state_drift=true before_worker=true pending_retained=true groups_stopped=true capture_settled=true authority_busy=true inputs_retained=true restoration_refused=true close_no_retry=true subprocess_disposal=true no_fd_leak=true service_owner=false scope=qemu-only")
-		return nil
 	}
 	// Separate bounded active-session phase. The tagged native adapter has a
 	// fixed ten-second revocation budget for complete worker admissions; generic
@@ -373,9 +368,13 @@ func nativeCredentialFixture(lifecycle bool) (result error) {
 
 // Emitted only after each campaign's complete real work and parent FD census.
 func nativeCredentialPreparationMarkersQEMU() {
-	fmt.Println("PHANTOWD_SAMBA_OWNER_NATIVE_ENROLLMENT_READY accounts=2 owner_bound=true original_config=true original_state=true disabled_first=true stdin_only=true same_sid=true explicit_enable=true stopped_reaped=true no_fd_leak=true scope=qemu-only")
+	nativeCredentialEnrollmentMarkerQEMU()
 	fmt.Println("PHANTOWD_SAMBA_OWNER_NATIVE_DAEMON_READY accounts=2 same_code=true same_config=true same_state=true authenticated=true wrong_password_denied=true owned_group=true stopped_reaped=true no_fd_leak=true scope=qemu-only")
 	fmt.Println("PHANTOWD_SAMBA_OWNER_NATIVE_IDLE_DISABLE_READY owner_bound=true same_sid=true stable_absence=true new_login_denied=true other_login_allowed=true same_daemon=true no_new_privileges=true stopped_reaped=true no_fd_leak=true scope=qemu-only")
+}
+
+func nativeCredentialEnrollmentMarkerQEMU() {
+	fmt.Println("PHANTOWD_SAMBA_OWNER_NATIVE_ENROLLMENT_READY accounts=2 owner_bound=true original_config=true original_state=true disabled_first=true stdin_only=true same_sid=true explicit_enable=true stopped_reaped=true no_fd_leak=true scope=qemu-only")
 }
 
 // This read-only probe finishes and releases BEFORE daemon/client startup. It
@@ -385,9 +384,16 @@ func nativeCredentialPreparationMarkersQEMU() {
 func nativeIdentityBackendProbeQEMU(owner *identityowner.Owner, backend *smbexec.NativeBackendQEMU) (result error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()
+	started := time.Now()
 	evidence, err := owner.FileServiceSnapshot(ctx)
 	if err != nil {
-		return err
+		return fmt.Errorf("native Owner final identity census elapsed=%v context=%v: %w", time.Since(started), ctx.Err(), err)
+	}
+	if len(evidence.Registry.Accounts) != 2 || len(evidence.Passdb) != 2 ||
+		!evidence.Passdb[0].Observation.Present || !evidence.Passdb[1].Observation.Present ||
+		evidence.Passdb[0].Observation.Disabled || evidence.Passdb[1].Observation.Disabled ||
+		evidence.Passdb[0].Observation.SID == evidence.Passdb[1].Observation.SID {
+		return errors.New("invalid native Owner final account observation")
 	}
 	foreign := &smbexec.NativeBackendQEMU{}
 	if refused, err := owner.RetainSMBFileServiceSnapshot(ctx, evidence.Fingerprint, foreign); refused != nil || !errors.Is(err, identityowner.ErrConflict) {
