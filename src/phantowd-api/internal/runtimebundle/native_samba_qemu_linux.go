@@ -31,14 +31,10 @@ func SambaCredentialDocumentsQEMU(lookup fileserviceplan.SambaEnrollmentLookup) 
 	if err != nil {
 		return nil, ErrInvalid
 	}
-	return map[string]string{
-		"passwd": passwd, "group": group,
-		// The enrollment candidate covers identity lookup only. Service lookup
-		// must also forbid implicit DNS/default resolver paths in this root.
-		"nsswitch.conf": nss + "hosts: files\nnetworks: files\nprotocols: files\nservices: files\n",
-		"hosts":         "127.0.0.1 localhost\n", "protocols": "tcp 6 TCP\nudp 17 UDP\n", "services": "microsoft-ds 445/tcp\n",
-		"samba/smb.conf": nativeSambaGlobalsQEMU,
-	}, nil
+	// The opaque lookup already supplies the complete files-only NSS profile.
+	// Reuse the paired renderer's bounded grammar; never append duplicate tables
+	// or choose different state/global paths for credential workers.
+	return boundedNativeDocumentsQEMU(passwd, group, nss, "")
 }
 
 // NativeSambaRuntimeQEMU privately retains one code/configuration/state tuple

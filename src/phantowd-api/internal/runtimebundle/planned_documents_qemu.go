@@ -62,7 +62,8 @@ func boundedPlannedDocumentsQEMU(passwd, group, nss, sections string) (map[strin
 // service has only granted lookup and the exact isolated share declarations.
 // Both use the same fixed globals/state locations. Caller maps never constitute
 // authority or replace independently derived retention expectations. No runtime
-// accepts these two roles together yet; daemon startup remains blocked.
+// starts a daemon from these roles; the separate inert retainer checks existing
+// management expectations before pinning service. Daemon startup stays blocked.
 func SambaRoleDocumentsQEMU(candidate fileserviceplan.SambaRoleCandidate) (management, service map[string]string, err error) {
 	passwd, group, nss, err := candidate.ManagementDocuments()
 	if err != nil {

@@ -22,7 +22,7 @@ const plannedConfigurationPathQEMU = "/run/phantowd-planned-samba-configuration"
 // Caller may remove it only after the native runtime's verified normal Close.
 type plannedConfigurationStageQEMU struct{ identity unix.Statx_t }
 
-func stagePlannedConfigurationQEMU(ctx context.Context, runtime *runtimebundle.NativeSambaRuntimeQEMU, candidate fileserviceplan.SambaIsolatedCandidate) (_ *plannedConfigurationStageQEMU, result error) {
+func stagePlannedConfigurationQEMU(ctx context.Context, runtime *runtimebundle.NativeSambaRuntimeQEMU, candidate fileserviceplan.SambaRoleCandidate) (_ *plannedConfigurationStageQEMU, result error) {
 	if ctx == nil || runtime == nil {
 		return nil, errors.New("planned configuration stage requires context/runtime")
 	}
@@ -38,7 +38,7 @@ func stagePlannedConfigurationQEMU(ctx context.Context, runtime *runtimebundle.N
 		unix.Statfs("/etc", &etcFS) != nil || etcFS.Type != unix.TMPFS_MAGIC {
 		return nil, errors.New("planned configuration stage fixture guard")
 	}
-	documents, err := runtimebundle.SambaPlannedDataDocumentsQEMU(candidate)
+	_, documents, err := runtimebundle.SambaRoleDocumentsQEMU(candidate)
 	if err != nil {
 		return nil, err
 	}
@@ -88,7 +88,7 @@ func stagePlannedConfigurationQEMU(ctx context.Context, runtime *runtimebundle.N
 		return nil, err
 	}
 	caller := os.NewFile(uintptr(fd), "planned-configuration-caller")
-	if err := runtime.RetainPlannedConfigurationQEMU(ctx, caller, fileserviceplan.SambaIsolatedCandidate{}); !errors.Is(err, runtimebundle.ErrInvalid) {
+	if err := runtime.RetainPlannedConfigurationQEMU(ctx, caller, fileserviceplan.SambaRoleCandidate{}); !errors.Is(err, runtimebundle.ErrInvalid) {
 		return nil, errors.Join(errors.New("empty planned configuration candidate admitted"), caller.Close())
 	}
 	if err := writer.Chmod(0400); err != nil {

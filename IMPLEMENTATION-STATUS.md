@@ -3,6 +3,34 @@
 
 # Implementation status
 
+## Paired management retention — host qualification; ARMv5 pending
+
+The QEMU-only inert retainer now accepts the complete same-Plan role candidate,
+not a separately supplied service candidate. Before acquiring new service pins,
+it compares the existing retained management expectation's complete seven-file
+roster, names, modes, sizes and SHA-256 values to independently rendered
+management output. The original late complete code/configuration/state scan
+remains mandatory; expectation equality alone grants no freshness or authority.
+Mismatch returns without replacing management or acquiring a new role.
+
+The credential renderer previously appended four resolver directives already
+present in its opaque files-only lookup. A real temporary empty identity Owner
+regression reproduces that duplication and passes after reusing the bounded
+renderer shared by both roles. Globals, state paths and files-only resolution
+remain unchanged. Windows API/UI/vet/cross-compilation, pinned Linux tagged vet
+and three-count planner/runtime/coordinator race tests pass. Matching tests
+reject every file's changed digest/mode/size/name and incomplete or service-only
+expectations. These are not retained-descriptor fault tests. The strengthened
+guest marker requires management binding; actual ARMv5 proof and a changed-source
+full image/audit remain pending. Inert startup stays blocked, with no product
+listener, service activation or physical-device operations.
+
+Hosted PR #123's exact `1e77768` QEMU run `37592585439` separately failed the native
+campaign's original 180-second outer timeout after the native configuration
+handoff. Host and B3 succeeded. Neither this NSS correction nor earlier cached
+passes establish a timeout fix; develop integration and main promotion remain
+held, without rerun or bypass.
+
 ## Same-Plan Samba lookup roles — local cached integration qualification
 
 The internal `Plan.SambaRoleCandidate` binds complete live management lookup

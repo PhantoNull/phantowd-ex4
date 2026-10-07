@@ -27,7 +27,7 @@ import (
 	"golang.org/x/sys/unix"
 )
 
-const plannedCandidateMarkerQEMU = "PHANTOWD_SAMBA_OWNER_PLANNED_CANDIDATE_READY owner=actual_native_backend storage=mounted_roster locked_plan=true exact_declaration=true original_objects=true caller_close=true fresh_recompiled=true rendered=true granted_only=true paired_lookup=true management_complete=true shared_globals=true protected_role=true management_unchanged=true startup_blocked=true identity_retained=true handoff_close_gated=true desired_roundtrip=true journals_unchanged=true stale_refused=true released=true samba_data=false activation=false scope=qemu-only"
+const plannedCandidateMarkerQEMU = "PHANTOWD_SAMBA_OWNER_PLANNED_CANDIDATE_READY owner=actual_native_backend storage=mounted_roster locked_plan=true exact_declaration=true original_objects=true caller_close=true fresh_recompiled=true rendered=true granted_only=true paired_lookup=true management_complete=true shared_globals=true management_bound=true protected_role=true management_unchanged=true startup_blocked=true identity_retained=true handoff_close_gated=true desired_roundtrip=true journals_unchanged=true stale_refused=true released=true samba_data=false activation=false scope=qemu-only"
 
 // Runs after real enrollment, before ANY lifecycle daemon starts. It retains
 // the SAME Owner/backend and actual mounted roster through descriptor closure.
@@ -197,7 +197,7 @@ func nativePlannedCandidateFixtureQEMU(owner *identityowner.Owner, backend *smbe
 		if err != nil || !maps.Equal(expectedManagement, freshManagement) || !maps.Equal(expectedDocuments, freshService) {
 			return errors.New("paired native rendering changed after complete evidence recompile")
 		}
-		stage, err = stagePlannedConfigurationQEMU(ctx, runtime, freshCandidate)
+		stage, err = stagePlannedConfigurationQEMU(ctx, runtime, freshRoles)
 		if err != nil {
 			return err
 		}

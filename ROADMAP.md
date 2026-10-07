@@ -1060,6 +1060,16 @@ storage. No production roster provider or activation path exists.
   configured-strip/image/export and seven-artifact audit also pass. Hosted and
   independent clean-build qualification remain separate. This does not authorize two-role runtime
   construction, native validation, service bootstrap or product activation.
+  The inert retainer additionally accepts the same-Plan paired candidate and
+  matches its complete management expectations against the existing retained
+  management roster before pinning service configuration. Original complete late
+  revalidation and daemon-start refusal remain. The native credential renderer
+  now preserves the already complete files-only NSS profile without appending
+  duplicate tables. Host matching and actual temporary-Owner renderer regression
+  pass; strengthened actual ARMv5 retention and full changed-source audit remain
+  pending. This is not two-role startup authority or a fix for PR #123's native
+  outer timeout. Continue to same-state original-object construction/access,
+  complete storage/identity supervision and recovery before product activation.
 - **M4.2 — Single service owner.** Define start/reload/stop and child-process
   ownership; bound diagnostics and verify readiness. Preserve the last known
   working configuration on syntax/start failure without claiming an unapplied

@@ -41,12 +41,15 @@ Invalid input returns neither tree; mutations of caller maps do not affect the
 other role or future rendering. Strings and maps are not retention authority.
 Host tests and the original focused ARMv5 lifecycle campaign qualify this pure
 rendering prerequisite against its actual native Owner/mounted roster. They do
-not make a daemon consume both roles. The runtime still has no constructor that
-admits these roles together, and inert service-role startup remains blocked.
+not make a daemon consume both roles. The inert retainer now compares complete
+management expectations before pinning the service role; no constructor starts
+a daemon from both roles, and inert service-role startup remains blocked.
 Identical paths are not proof of identical state objects or a runtime lifecycle.
 
 `RetainPlannedConfigurationQEMU` is a separate inert prototype. It independently
-derives expectations from the opaque candidate and retains exact configuration
+derives both expectations from the opaque `SambaRoleCandidate` and requires the
+existing management roster to match all seven file names, modes, sizes and
+digests before acquiring service pins. It then retains exact configuration
 objects in the same Owner without replacing its management configuration or
 mutable state. Complete revalidation includes both roles, and verified process
 stop precedes release. The role cannot be replaced and blocks native daemon
@@ -54,6 +57,12 @@ startup; it does not acquire storage grants or establish candidate freshness.
 Guarded disposable ARMv5 staging proves construction refusals, independent
 caller closure, unchanged management observations and normal exact-mount
 cleanup. Complete planned-service lifetime and fault qualification remain open.
+`SambaCredentialDocumentsQEMU` reuses the same bounded document renderer:
+the native lookup already contains all eight files-only NSS tables, so no
+resolver directives are appended again. A real temporary empty Owner regression
+reproduces the former duplication and checks the actual renderer; pure matching
+tests do not constitute descriptor or identity authority. The new paired
+retention is separately requalified on host/ARMv5 before any startup composition.
 
 `NewPlan` privately copies a fixed in-process file/alias roster supplied by a
 future trusted build/release owner. It limits the plan to 256 regular files,
