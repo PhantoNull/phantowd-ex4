@@ -234,15 +234,14 @@ func (b *Backend) Enable(ctx context.Context, account serviceaccounts.Account) e
 // this composite operation; any uncertain command or incomplete observation
 // is returned as failure so the journal can quarantine it without replay.
 func (b *Backend) Disable(ctx context.Context, account serviceaccounts.Account) error {
-	return b.disableWithin(ctx, account, sessionRevocationTimeout)
+	return b.disableWithProfile(ctx, account, commandRevocationProfile)
 }
 
-// Only trusted adapters choose a fixed budget; it is not request input.
-// The native QEMU adapter needs room for complete before/after worker
-// admissions. The ordinary command adapter retains its five-second limit.
-func (b *Backend) disableWithin(ctx context.Context, account serviceaccounts.Account, budget time.Duration) error {
-	if b == nil || ctx == nil || !validAccount(account) ||
-		(budget != sessionRevocationTimeout && budget != 2*sessionRevocationTimeout) {
+// Only trusted adapters select one fixed profile, never request-supplied
+// durations. The command profile preserves its original limits exactly.
+func (b *Backend) disableWithProfile(ctx context.Context, account serviceaccounts.Account, profile revocationProfile) error {
+	limits, valid := profile.limits()
+	if b == nil || ctx == nil || !validAccount(account) || !valid {
 		return ErrInvalid
 	}
 	b.mu.RLock()
@@ -256,18 +255,18 @@ func (b *Backend) disableWithin(ctx context.Context, account serviceaccounts.Acc
 	if err != nil || ctx.Err() != nil {
 		return ErrUnavailable
 	}
-	return b.revokeUserSessions(ctx, account.Name, budget)
+	return b.revokeUserSessions(ctx, account.Name, limits)
 }
 
 // revokeUserSessions invokes Samba's account-scoped session-logoff control at
 // most once, then requires two consecutive complete inventories without the
 // target account. Read-only status polling is bounded; ambiguous output,
 // timeout, cancellation or a failed control command is never retried here.
-func (b *Backend) revokeUserSessions(ctx context.Context, username string, budget time.Duration) error {
+func (b *Backend) revokeUserSessions(ctx context.Context, username string, limits revocationLimits) error {
 	if ctx == nil || username == "" {
 		return ErrInvalid
 	}
-	deadline := time.Now().Add(budget)
+	deadline := time.Now().Add(limits.total)
 	controlSent := false
 	stableAbsent := 0
 	for {
@@ -275,18 +274,16 @@ func (b *Backend) revokeUserSessions(ctx context.Context, username string, budge
 		if remaining <= 0 || ctx.Err() != nil {
 			return ErrUnavailable
 		}
-		statusTimeout := sessionStatusTimeout
-		if budget == 2*sessionRevocationTimeout {
-			statusTimeout *= 2 // retained native worker admissions are included
-		}
+		statusTimeout := limits.status
 		if remaining < statusTimeout {
 			statusTimeout = remaining
 		}
 		statusCtx, cancel := context.WithTimeout(ctx, statusTimeout)
 		output, err := b.runner.Run(statusCtx, smbstatusPath,
 			[]string{"-j", "-s", configArgument}, b.config, []byte{}, true)
+		statusCtxErr := statusCtx.Err()
 		cancel()
-		if err != nil || ctx.Err() != nil {
+		if err != nil || statusCtxErr != nil || ctx.Err() != nil {
 			clear(output)
 			return ErrUnavailable
 		}
@@ -301,6 +298,9 @@ func (b *Backend) revokeUserSessions(ctx context.Context, username string, budge
 				controlTimeout := time.Until(deadline)
 				if controlTimeout <= 0 {
 					return ErrUnavailable
+				}
+				if controlTimeout > limits.control {
+					controlTimeout = limits.control
 				}
 				controlCtx, cancel := context.WithTimeout(ctx, controlTimeout)
 				controlOutput, controlErr := b.runner.Run(controlCtx, smbcontrolPath,

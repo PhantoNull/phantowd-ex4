@@ -215,6 +215,22 @@ button to an unqualified backend simply because the screen exists.
   pull/build an image or create a volume. Preserve isolation, exact-source
   hashes and clean-build/reproducibility lanes. Cache hits are an optimization,
   never qualification evidence.
+  Native session-worker timing now has an explicit fixed profile, rather than
+  doubling an aggregate command timeout. A slow-worker host model and controlled
+  ARMv5 diagnostic reproduce the final-subdeadline failure. The fixture profile
+  covers three complete inventories and one control: each worker remains capped
+  at4 seconds, total verification20 seconds including bounded polling/parsing.
+  Ordinary commands remain status2/total5; shorter parent deadlines always win,
+  unknown profiles refuse before effects, and control is sent at most once.
+  A successful status result after its own child deadline must also refuse,
+  clear captured output and stop polling even if its parent is still live;
+  the non-root regression reproduces this defect before the guard and passes
+  after it. The phase-profile checkpoint passes the original ARMv5 union;
+  combined-source full qualification remains separate.
+  Regression must execute in the ordinary non-root Linux lane, not silently
+  skip until late QEMU. Original complete campaigns, full image/source matching
+  and own hosted qualification remain required; no physical performance or
+  product deadline is inferred from emulator timing.
   The full builder now runs the same workflow/fixed-fuzz-roster contract as
   hosted host CI before compilation. A locally reproduced stale 17-versus-21
   count after adding four network campaigns is corrected without weakening
@@ -2496,8 +2512,10 @@ this order, preserving the [full contract](support/SAMBA-RUNTIME-PROFILE.md#samb
    Fresh target login is denied; peer login, whole-group stop/reap, final FD
    equality and unchanged base are mandatory. The backend-bound private witness
    rejects JSON and host/race-count3 tests refuse partial, foreign or replaced
-   evidence. Native fixture status/revocation budgets are fixed4/10 seconds;
-   ordinary adapter2/5 is unchanged. Separate startup20/idle20/session45 phases
+   evidence. Initial native fixture status/revocation budgets were fixed4/10;
+   the phase-accounted M0.3 fixture profile supersedes them with status4,
+   control4 and aggregate20 seconds; ordinary commands remain status2/total5.
+   Separate startup20/idle20/session45 phases
    avoid sharing an already-consumed deadline; enrollment60/guest180 remain.
    No guard or privilege is relaxed. Frozen57ee527 now also passes complete
    cached local integration, including all later guest lanes; all880 API

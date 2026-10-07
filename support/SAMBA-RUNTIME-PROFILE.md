@@ -8,6 +8,11 @@ helper, activation permission or EX4 qualification. It is separate from the
 generic static non-root launcher, which remains unchanged. Do not run it on
 physical hardware or connect user data.
 
+Status results must arrive within their own child deadline as well as the
+caller deadline; a successful late result is cleared and refused without a
+second inventory or control. A non-root Linux negative regression reproduces
+the former acceptance bug and passes with the explicit child-context guard.
+
 ## Reproduce locally
 
 With an existing pinned Buildroot image/workspace and manifest-verified QEMU
@@ -727,8 +732,17 @@ shell, data share, arbitrary input, host listener or new privilege is added.
 Both clients and the daemon settle before original code/config/state release;
 final FD equality and unchanged base remain mandatory.
 
-Complete before/after admissions are included in fixed native status4 and
-revocation10-second budgets; ordinary adapter status2/revocation5 is unchanged.
+The initial result included complete before/after admissions in native
+status4/revocation10-second budgets. The current private QEMU phase profile
+retains status4, independently caps control4 and uses aggregate20 seconds:
+three complete status workers plus one control and bounded parsing/polling.
+Ordinary adapter status2/revocation5 is unchanged. Profiles are fixed internal
+values, never request input; shorter parent deadlines take precedence. No
+code/configuration/state admission, complete-inventory check or no-retry rule
+is removed. New host regressions cover the measured cumulative latency and
+the separate control cap; original full campaign/image/hosted qualification
+remains required. Diagnostic-only omissions/logs and an unsuccessful icount
+experiment are not part of the current profile.
 The native controller uses separate enrollment60, startup20, idle-disable20 and
 active-session45-second phases, within the same180-second guest bound. Earlier
 tight/shared envelopes fail closed on slower emulator scans; they are not

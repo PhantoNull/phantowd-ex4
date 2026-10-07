@@ -23,15 +23,17 @@ func TestDisableKeepsFixedAdapterBudgetAndParentDeadline(t *testing.T) {
 		t.Skip("trusted Samba adapter tests require root-owned fixture config")
 	}
 	for _, test := range []struct {
-		name   string
-		native bool
-		parent time.Duration
-		want   time.Duration
-		status time.Duration
+		name    string
+		native  bool
+		parent  time.Duration
+		control time.Duration
+		status  time.Duration
 	}{
 		{"ordinary", false, 0, 5 * time.Second, 2 * time.Second},
-		{"native-complete-admission", true, 0, 10 * time.Second, 4 * time.Second},
+		{"native-complete-admission", true, 0, 4 * time.Second, 4 * time.Second},
 		{"native-parent-shorter", true, 2 * time.Second, 2 * time.Second, 2 * time.Second},
+		{"ordinary-parent-shorter", false, 2 * time.Second, 2 * time.Second, 2 * time.Second},
+		{"native-parent-longer", true, 30 * time.Second, 4 * time.Second, 4 * time.Second},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			statusCalls, controlCalls := 0, 0
@@ -51,8 +53,8 @@ func TestDisableKeepsFixedAdapterBudgetAndParentDeadline(t *testing.T) {
 					controlCalls++
 					deadline, ok := ctx.Deadline()
 					remaining := time.Until(deadline)
-					if !ok || remaining <= test.want-time.Second || remaining > test.want {
-						t.Fatalf("fixed bounded revocation budget = %v; want at most %v with parent respected", remaining, test.want)
+					if !ok || remaining <= test.control-time.Second || remaining > test.control {
+						t.Fatalf("fixed bounded control budget = %v; want at most %v with parent respected", remaining, test.control)
 					}
 					if len(args) != 5 || args[4] != "qpmanaged" {
 						t.Fatal("revocation escaped target-only control")

@@ -62,6 +62,9 @@ observation, journal transition, and mutation.
   cancellation or timeout is returned as an uncertain failure so the journal
   moves to `review-required` and will not replay it. Revoking a live SMB session
   can interrupt transfers or writes in progress.
+  A runner's successful exit/output after the status child deadline is also
+  refused: output is cleared and no further inventory or control is dispatched,
+  even when the caller's parent context is still live.
 
 The executor does not create Unix accounts, automatically enable Samba
 accounts, implement retirement, repair pre-existing state, retry an uncertain
@@ -116,12 +119,21 @@ foreign or replaced evidence is refused. Whole client/daemon groups settle
 before original pins close; final FD equality and unchanged base are mandatory.
 
 Complete native worker admissions require a separate fixed timing profile:
-status4/revocation10 seconds, while ordinary commands retain status2/revocation5.
-No caller can select a budget, backend or executable. Earlier total5-second
-revocation cannot contain four measured native admissions; tight status/shared
-phase envelopes also fail closed under slower emulation. The controller now
-separates startup20/idle20/session45-second phases, with enrollment60 and guest180
-unchanged. Host/race tests enforce both profiles and shorter caller deadlines.
+status4/control4/aggregate20 seconds, while ordinary commands retain
+status2/control-at-most5/aggregate5. The aggregate native verification budget
+covers one initial inventory, one control and two stable-absence inventories,
+plus one worker-sized margin for bounded parsing/polling. Unknown profiles
+refuse before effects, and shorter caller deadlines always win. No request can
+select a duration, backend or executable. The earlier total10-second native
+profile truncates its final inventory when four measured workers each take
+about2.6 seconds; the independently capped control cannot consume the entire
+new aggregate budget. This fixture-only adjustment is not an EX4 performance
+specification or a product deadline change. All complete admissions remain.
+The controller retains separate startup20/idle20/session45-second phases, with enrollment60 and guest180
+unchanged. Ordinary non-root Linux timing tests cover the complete composite
+sequence and uncertain-control/no-retry path; constructor ownership and actual
+wrapper binding retain separate root/ARMv5 tests. Host/race tests enforce both
+profiles and shorter caller deadlines.
 Full-image/hosted qualification, in-flight/durable handle semantics, sustained
 supervision, continuous identity/storage authority, fault/recovery and product
 ownership composition remain unfinished. This is not physical EX4 evidence.

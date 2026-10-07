@@ -3,6 +3,40 @@
 
 # Implementation status
 
+## Native session-worker phase budgets — qualification in progress
+
+A measured slow ARMv5 diagnostic and a host regression reproduce the former
+ten-second aggregate deadline truncating the last inventory, despite every
+worker individually fitting its four-second limit. The private native QEMU
+adapter now selects a fixed phase profile: four seconds for status and control,
+twenty seconds for the aggregate verification loop. The latter covers one
+initial inventory, one control and two complete absence inventories, with one
+worker-sized margin for bounded parsing/polling. The ordinary command adapter
+retains its exact two-second status/five-second total profile. Unknown profiles
+refuse before commands; no durations come from requests or configuration.
+
+The control is independently capped, never repeated, and uncertain outcomes
+still require review. Complete code/configuration/state admission around every
+native worker is unchanged. No product deadline, privilege, guest limit or
+recovery policy is widened. New host timing/control/profile regressions pass;
+the explicitly incomplete slow ARMv5 diagnostic also passes. All temporary
+instrumentation, narrowed validators and alternate virtual-clock settings are
+removed. Windows API/UI/vet/cross-compilation and root Linux tagged race-count3
+also pass. The timing regressions execute and pass in ordinary non-root Linux
+tests, with and without the QEMU tag. The clean phase-profile checkpoint passes
+the original service/native/lifecycle ARMv5 union, including live revocation,
+same-peer preservation, all earlier guards and unchanged base hashes.
+
+A subsequent negative host regression reproduces a separate expired-inventory
+acceptance bug: a runner's successful result after its own status deadline could
+count toward absence while the parent remained live. The executor now checks
+that child context before canceling it, clears late output and refuses without
+another poll or control. The test fails before the fix and passes afterward;
+the combined source passes Windows preflight and root tagged Linux race-count3,
+plus ordinary non-root Linux race tests. Complete-image/combined-source ARMv5
+and hosted qualification remain required before promotion.
+Historical four/ten-second qualification below retains its earlier source scope.
+
 ## Inert retained Plan configuration role — QEMU only
 
 The same native runtime can retain a second, independently Plan-derived
@@ -449,8 +483,9 @@ changed peer IDs/generations and weakened parent deadlines. Client groups,
 daemon groups and original pins remain owned through verified stop/reap/close;
 final FD equality, all earlier markers and unchanged base are mandatory.
 
-The native tagged fixture uses fixed 4-second status / 10-second revocation
-budgets to include complete admissions around workers. The ordinary adapter
+The initial native tagged fixture used fixed 4-second status / 10-second
+revocation budgets; the phase-accounted profile above supersedes those limits.
+The ordinary adapter
 retains 2/5 seconds. Startup and idle-disable each have a separate 20-second
 phase; the complete active-session phase has 45 seconds. Enrollment remains
 60 seconds and each fresh guest remains bounded to 180 seconds. Earlier
