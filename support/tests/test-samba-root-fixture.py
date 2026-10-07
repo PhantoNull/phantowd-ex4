@@ -46,6 +46,40 @@ def reports():
 
 
 class SambaRootFixture(unittest.TestCase):
+    def test_native_phase_timing_cannot_replace_or_weaken_acceptance(self):
+        timings = "\n".join(
+            "PHANTOWD_DIAG_NATIVE_PHASE phase=" + phase
+            + " elapsed_ms=123 qualifying=false scope=qemu-only"
+            for phase in ("entered", "admitted", "enrolled",
+                          "authority-closed", "data-verified"))
+        good = "\n".join([*fixture.MARKERS, SCAN_COST])
+        fixture.check_guest(timings + "\n" + good)
+        with self.assertRaises(ValueError):
+            fixture.check_guest(timings + "\n" + SCAN_COST)
+        for marker in fixture.MARKERS:
+            with self.subTest(missing=marker):
+                with self.assertRaises(ValueError):
+                    fixture.check_guest(
+                        timings + "\n" + good.replace(marker, ""))
+        native_split = next(
+            i for i, row in enumerate(fixture.MARKERS)
+            if row.startswith("PHANTOWD_SAMBA_OWNER_NATIVE_NSS_READY"))
+        planned = next(row for row in fixture.MARKERS
+                       if row.startswith(
+                           "PHANTOWD_SAMBA_OWNER_PLANNED_CANDIDATE_READY"))
+        native = [*fixture.MARKERS[:5],
+                  *(row for row in fixture.MARKERS[native_split:-3]
+                    if row != planned), "PHANTOWD_SAMBA_ROOT_NATIVE_DONE",
+                  SCAN_COST]
+        fixture.check_campaign(timings + "\n" + "\n".join(native),
+                               "native")
+        for marker in native[:-1]:
+            with self.subTest(native_missing=marker):
+                with self.assertRaises(ValueError):
+                    fixture.check_campaign(
+                        timings + "\n" + "\n".join(native).replace(
+                            marker, ""), "native")
+
     def test_diagnostic_record_is_bounded_nonqualifying_and_escaped(self):
         log = 'phase\nPHANTOWD_SAMBA_ROOT_DONE\n\x1b[31m'
         encoded = fixture.diagnostic_record(log, "lifecycle", 0)

@@ -777,8 +777,19 @@ such records. This preserves useful successful diagnostic logs before tmpfs
 cleanup without writing persistent log files, adding a container/volume, altering
 the guest, retrying or changing acceptance and deadlines. These are synthetic
 fixture logs only, not a product/device log collector; save the command output
-if needed. Instrumented source still requires a separate clean replay after
-instrumentation is removed.
+if needed. Additional temporary instrumentation still requires a separate clean
+replay after it is removed.
+
+The QEMU-only native and lifecycle fixtures also emit bounded cumulative
+`PHANTOWD_DIAG_NATIVE_PHASE` timings with fixed phase names, `qualifying=false`
+and `scope=qemu-only`. The monotonic clock starts inside credential setup,
+not at host compilation or guest boot. Timings distinguish enrollment, backend
+observation, authentication, revocation, verified authority closure and the
+later new data profile; lifecycle uses its own candidate/startup/fault phases.
+A last timing row only bounds completed work: it neither identifies a blocked
+worker inside the next phase nor proves its success. All original proof markers,
+descriptor census, hashes and command/phase/180-second guest limits remain
+independent and mandatory. Passing telemetry tests is not a timeout fix.
 
 Its fixed runtime now includes IBM850 plus a strictly bounded, hash-verified
 conversion catalog. A dynamic probe tests exact non-ASCII CP850/UTF-8 conversions
