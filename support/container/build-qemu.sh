@@ -39,6 +39,9 @@ shellcheck -s sh \
 	"$external_dir/support/qemu-md-v10-fixture.sh"
 shellcheck -s sh "$external_dir/support/container/save-qemu-failure-log.sh"
 shellcheck -s sh "$external_dir/support/container/collect-buildroot-source.sh"
+shellcheck -s sh "$external_dir/support/container/apply-buildroot-download-cleanup.sh"
+shellcheck -s bash "$external_dir/support/tests/test-buildroot-download-cleanup.sh" \
+    "$external_dir/support/tests/test-buildroot-download-patch.sh"
 python3 -B "$external_dir/support/tests/test-buildroot-source-collection.py"
 python3 -B -m flake8 "$external_dir/support/tests/test-buildroot-source-collection.py"
 python3 -B "$external_dir/support/tests/test-qemu-build-feedback.py"
@@ -191,6 +194,14 @@ if [ "${PHANTOWD_PREPARE_ONLY:-0}" = 1 ]; then
     printf 'Pinned Buildroot and Linux sources verified; QEMU build skipped.\n'
     exit 0
 fi
+
+# The pinned upstream archive helper leaves its empty mktemp marker in CWD.
+# Qualify the real function in RAM, then patch only its successful cleanup.
+TMPDIR=/phantowd-qemu-fixture-tmp bash \
+    "$external_dir/support/tests/test-buildroot-download-patch.sh" "$buildroot_source"
+sh "$external_dir/support/container/apply-buildroot-download-cleanup.sh" \
+    "$buildroot_source" \
+    "$external_dir/support/buildroot-patches/$BUILDROOT_VERSION/0003-download-remove-archive-temporary-marker.patch"
 
 # CMake cannot use ccache while bootstrapping ccache itself. Exercise the
 # ordinary Buildroot host-tool selection before any expensive host build.

@@ -3,6 +3,22 @@
 
 # Implementation status
 
+## Buildroot archive cleanup — focused regression qualified
+
+The pinned archive helper's documented successful cleanup now removes its
+empty `mktemp` marker alongside its three work files. The real unmodified
+function fails the new disposable-file regression; the patched function
+passes content, exclusion, unrelated-file preservation and repeatability checks.
+An original-versus-patched differential produces identical compressed bytes.
+
+The QEMU build applies the one-line patch only after source authentication and
+before package downloads/builds. Exact original/patched helper and patch hashes
+gate idempotent application; unknown, missing or symlinked inputs refuse.
+Focused tests use read-only existing sources and small disposable tmpfs only.
+This does not clean historical package markers, qualify failure/interruption
+cleanup, or resolve Samba's hosted timeout. No changed complete build or
+post-patch package census is claimed; the prior 935-input image remains historical.
+
 ## Current combined checkpoint — complete cached 935-input local qualification
 
 Frozen `b25dea169c3048fc867abb4ea46f2f0584536349` passes the complete cached

@@ -287,6 +287,14 @@ button to an unqualified backend simply because the screen exists.
 - **M0.4 — Maintain release inputs.** Dependency update changes include source
   signatures/hashes, ARMv5 compatibility, package configuration, vulnerability
   review, license material and regenerated SBOM. Test the selected package set.
+  The pinned Buildroot archive producer now has a one-line success-cleanup
+  patch, gated by exact original/patched helper and patch hashes. The actual
+  unmodified producer fails the temporary-file regression; the patched producer
+  preserves compressed bytes, exclusions, unrelated CWD files and repeatability.
+  Idempotence and unknown/missing/symlinked input refusals pass in disposable
+  RAM. The QEMU driver qualifies/applies it before package builds; no historical
+  marker deletion, error/interruption-cleanup claim, changed full-image census
+  or native Samba timeout resolution is inferred.
 
 The local full wrapper also provides an opt-in `-CachedOnly` mode: it checks
 existing version-derived image/volumes and initialized current output before

@@ -2,6 +2,15 @@
 
 ## Bounded cached full validation
 
+The full driver qualifies the pinned Buildroot archive-helper cleanup with
+`support/tests/test-buildroot-download-patch.sh`, then applies only its one-line
+success-cleanup patch before package builds. Its direct regression executes
+the real `mk_tar_gz` function: no empty marker survives, unrelated files remain,
+content/exclusions/repeatability hold, and original/patched archives match.
+Unknown helper/patch bytes and symlinked/missing inputs refuse. This is an
+existing-source, small-tmpfs test; it does not remove historical package files,
+change archive semantics, repair interrupted downloads or solve Samba timeouts.
+
 The full builder first runs the same workflow path and exact fixed-count fuzz
 roster contract as hosted host CI. Keep it synchronized when adding campaigns;
 a stale declaration must fail before source authentication or compilation,

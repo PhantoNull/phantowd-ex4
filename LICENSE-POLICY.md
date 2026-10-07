@@ -12,6 +12,10 @@ GPL-2.0-only. Their complete license text is in
 `LICENSES/GPL-2.0-only.txt`. SPDX headers in those files take precedence over
 the repository default.
 
+The Buildroot archive-helper cleanup patch retains upstream's
+GPL-2.0-or-later licensing; its license text is in
+`LICENSES/GPL-2.0-or-later.txt`. It is not an Apache-2.0 upstream derivative.
+
 Third-party material retains its upstream copyright and license. Contributions
 must not remove or weaken upstream notices. Generated images may contain
 separately licensed components; the presence of an Apache-2.0 repository
