@@ -65,9 +65,11 @@ func (f commandRunnerFunc) Run(ctx context.Context, executable string, args []st
 // one identityowner.Owner. The validated root-owned config file is pinned for
 // the backend lifetime and passed to each child through an inherited descriptor.
 type Backend struct {
-	mu     sync.RWMutex
-	config *os.File
-	runner commandRunner
+	mu       sync.RWMutex
+	config   *os.File
+	runner   commandRunner
+	closed   bool
+	closeErr error
 }
 
 // New creates a production command adapter for one trusted Samba config path.
@@ -95,20 +97,28 @@ func newBackend(configPath string, runner commandRunner) (*Backend, error) {
 	return &Backend{config: config, runner: runner}, nil
 }
 
-// Close releases the pinned configuration descriptor. identityowner closes
-// it only after draining operations under its lifetime lock.
+// Close releases the pinned configuration descriptor after operations drain.
+// Its first error is terminal: retain uncertainty, never retry release or report
+// later success. A failed close does not prove that the descriptor remains open.
 func (b *Backend) Close() error {
 	if b == nil {
 		return nil
 	}
 	b.mu.Lock()
 	defer b.mu.Unlock()
+	if b.closed {
+		return b.closeErr
+	}
+	b.closed = true // Fence every operation before attempting the release.
 	if b.config == nil {
 		return nil
 	}
-	err := b.config.Close()
+	if err := b.config.Close(); err != nil {
+		b.closeErr = err
+		return err
+	}
 	b.config = nil
-	return err
+	return nil
 }
 
 // Observe returns only the requested account's Unix name, owner-supplied UID/GID,
@@ -131,6 +141,11 @@ func (b *Backend) ObserveAccounts(ctx context.Context, accounts []serviceaccount
 	if ctx.Err() != nil {
 		return nil, ErrUnavailable
 	}
+	b.mu.RLock()
+	defer b.mu.RUnlock()
+	if b.closed {
+		return nil, ErrInvalid
+	}
 	observations := make([]smbprovision.Observation, len(accounts))
 	if len(accounts) == 0 {
 		return observations, nil
@@ -142,8 +157,6 @@ func (b *Backend) ObserveAccounts(ctx context.Context, accounts []serviceaccount
 		}
 		seenIDs[account.ID], seenNames[account.Name] = true, true
 	}
-	b.mu.RLock()
-	defer b.mu.RUnlock()
 	if b.runner == nil || b.config == nil {
 		return nil, ErrInvalid
 	}
@@ -168,7 +181,7 @@ func (b *Backend) CreateDisabled(ctx context.Context, account serviceaccounts.Ac
 	}
 	b.mu.RLock()
 	defer b.mu.RUnlock()
-	if b.runner == nil || b.config == nil {
+	if b.closed || b.runner == nil || b.config == nil {
 		return ErrInvalid
 	}
 	output, err := b.runner.Run(ctx, smbpasswdPath,
@@ -188,7 +201,7 @@ func (b *Backend) SetPasswordDisabled(ctx context.Context, account serviceaccoun
 	}
 	b.mu.RLock()
 	defer b.mu.RUnlock()
-	if b.runner == nil || b.config == nil {
+	if b.closed || b.runner == nil || b.config == nil {
 		return ErrInvalid
 	}
 	input := make([]byte, 0, len(secret)*2+2)
@@ -216,7 +229,7 @@ func (b *Backend) Enable(ctx context.Context, account serviceaccounts.Account) e
 	}
 	b.mu.RLock()
 	defer b.mu.RUnlock()
-	if b.runner == nil || b.config == nil {
+	if b.closed || b.runner == nil || b.config == nil {
 		return ErrInvalid
 	}
 	output, err := b.runner.Run(ctx, smbpasswdPath,
@@ -246,7 +259,7 @@ func (b *Backend) disableWithProfile(ctx context.Context, account serviceaccount
 	}
 	b.mu.RLock()
 	defer b.mu.RUnlock()
-	if b.runner == nil || b.config == nil {
+	if b.closed || b.runner == nil || b.config == nil {
 		return ErrInvalid
 	}
 	output, err := b.runner.Run(ctx, smbpasswdPath,

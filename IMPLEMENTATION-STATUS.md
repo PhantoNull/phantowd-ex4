@@ -3,6 +3,22 @@
 
 # Implementation status
 
+## Base Samba adapter close uncertainty — local host qualification
+
+The base `smbexec.Backend` now fences operations before releasing its pinned
+configuration and preserves the first close error. Later closes do not retry,
+close a test-only replacement or turn uncertainty into success; empty passdb
+observations also refuse a closed lifetime. Production configuration admission,
+fixed commands, privileges and deadlines are unchanged.
+
+A real regular-file regression reproduces the prior false success. Targeted
+non-root Linux race-count3 passes; ordinary and QEMU-tagged Linux adapter
+race-count3 plus tagged module vet pass with temporary root-owned configuration
+fixtures and fake command runners. Windows API/UI/vet and ARMv5 cross-compilation
+pass. No actual kernel EIO, ARMv5 execution of this increment, separate native
+wrapper recovery, complete image or product activation is qualified. This is
+not a fix for the independent native campaign timeout blocking main promotion.
+
 ## Local Samba test-wrapper default — host regression only
 
 Windows PowerShell `-File` failed while evaluating the artifact-directory

@@ -9,6 +9,13 @@ observation, journal transition, and mutation.
 
 ## Command boundary
 
+- The base command adapter fences all operations before its first configuration
+  close attempt. A failed close retains the first error and the original object
+  reference: subsequent `Close` calls never retry or report success, and even an
+  empty observation is refused after closure. This does not prove that an
+  errored descriptor remains open. Real regular-file closure and concurrent
+  observation regressions cover the base adapter; they do not qualify kernel
+  EIO, the separate tagged native wrapper or durable product recovery.
 - Executables are fixed absolute paths: `/usr/bin/testparm`,
   `/usr/bin/pdbedit`, `/usr/bin/smbpasswd`, `/usr/bin/smbstatus` and
   `/usr/bin/smbcontrol`.
