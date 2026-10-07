@@ -3,6 +3,31 @@
 
 # Implementation status
 
+## Current combined checkpoint — complete cached local qualification
+
+Frozen `8aaedd716a370b4f1180475da0465b67565bf151` passes the complete cached
+Buildroot/ARMv5 lane: host ordinary/race/fixed-count fuzz, source/configuration
+preflights, package/source collection, default/metadata/two-boot smoke,
+launcher/retained Code Owner/loader/libatomic, all three original Samba
+campaigns and synthetic SMART interpretation/producer/capture. Assertions,
+privileges and guest deadlines remain unchanged. Paired configuration remains
+inert: no daemon consumes that candidate and product activation is absent.
+
+After the writer terminates, an independent read-only audit matches all **934
+tracked API files** to compiled-package and regular source-archive contents,
+reproduces configured stripping, and verifies installed/image/exported API
+equality plus all seven ordered artifact hashes. The API is 10,708,180 bytes,
+SHA-256 `abfa6bb2ee5a96bc78a8288d14f45b53da8b7ba32d0215852c4da5eceeb65e9a`.
+This supersedes pending combined-image statements for the included changes;
+earlier sections retain their historical source and fault-test scope.
+
+No failure diagnostic fires in these successful guests. This is not an
+intermittent-timeout fix, injected live teardown fault proof, independent clean
+reproducibility, complete release licensing, product construction or EX4
+qualification. Own exact-head hosted checks are required before integration;
+the failed older PR heads do not become qualified by this local result.
+No NAS, physical disk, NAND, product listener or installation operation occurs.
+
 ## Native backend inner-close quarantine — focused host qualification
 
 A deterministic host regression reproduces the native adapter forgetting an
@@ -23,7 +48,8 @@ inject arbitrary closers or qualify runtime retirement/kernel EIO. Frozen
 `fdef51d` now passes the original complete service/native/lifecycle ARMv5 union,
 including all former guards and unchanged base hashes/budgets. This qualifies
 normal-path compatibility of the changed source, not injected runtime-close
-faults, complete image/source audit or the intermittent-timeout cause. The
+faults or the intermittent-timeout cause. The newer combined checkpoint above
+separately qualifies the complete cached image and source audit. The
 previous `a257104` proof retains its separate source scope. No NAS, product
 endpoint or activation.
 

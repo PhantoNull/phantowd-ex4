@@ -3,7 +3,7 @@
 
 # Implementation roadmap
 
-Reviewed: **2026-10-03**. This is the product specification and work breakdown,
+Reviewed: **2026-10-07**. This is the product specification and work breakdown,
 not a release announcement. The [README](README.md) is the concise entry point;
 component contracts remain authoritative for implemented behavior.
 
@@ -66,6 +66,17 @@ The initial evidence-backed status is tracked in
 currently product-qualified for migration.
 
 ## Current baseline
+
+The current combined local checkpoint `8aaedd7` passes the complete cached
+Buildroot/ARMv5 integration, including all three original Samba campaigns and
+the synthetic SMART lanes. Independent post-terminal auditing matches all 934
+API inputs to compiled package/source archive, reproduces configured stripping,
+and verifies installed/image/exported API and seven artifact hashes; see
+[exact scope](IMPLEMENTATION-STATUS.md#current-combined-checkpoint--complete-cached-local-qualification).
+This closes the included changes' pending cached-image audit, not the
+intermittent-timeout cause, exact-head hosted promotion, clean reproducibility,
+two-role daemon construction or any product/hardware/release gate. Historical
+task evidence below keeps its original source scope.
 
 Status vocabulary:
 
