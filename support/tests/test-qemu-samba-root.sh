@@ -3,13 +3,19 @@
 # SPDX-FileCopyrightText: 2026 PhantoWD EX4 contributors
 # Exact fixed public-runtime profile, disposable root snapshot and guest tmpfs.
 set -eu
-base=${1:?BASE TARGET GO DEBUGFS CC SOURCE [FAILURE_LOG]}
+base=${1:?BASE TARGET GO DEBUGFS CC SOURCE [FAILURE_LOG] [CAMPAIGN]}
 target=${2:?pinned target required}
 go_binary=${3:?pinned Go required}
 debugfs=${4:?pinned debugfs required}
 compiler=${5:?pinned ARM compiler required}
 source_dir=${6:?source required}
 failure_log=${7:-}
+selection=${8:-all}
+[ "$#" -le 8 ] || exit 1
+case "$selection" in
+    all|service|native|lifecycle) ;;
+    *) exit 1 ;;
+esac
 tmpdir=${TMPDIR:-/tmp}
 export TMPDIR="$tmpdir"
 case "$base:$target:$go_binary:$debugfs:$compiler:$source_dir:$failure_log:$tmpdir" in
@@ -17,6 +23,7 @@ case "$base:$target:$go_binary:$debugfs:$compiler:$source_dir:$failure_log:$tmpd
 esac
 case "$tmpdir" in /*) ;; *) exit 1 ;; esac
 awk -v target="$tmpdir" '$3 == "tmpfs" && (target == $2 || index(target, $2 "/") == 1) { found = 1 } END { exit !found }' /proc/mounts || exit 1
+campaigns=$(python3 -B "$source_dir/support/tests/samba_root_fixture.py" select-campaigns "$selection")
 for file in rootfs.ext2 zImage versatile-pb.dtb SHA256SUMS; do
     [ -f "$base/$file" ] && [ ! -L "$base/$file" ] || exit 1
 done
@@ -34,7 +41,7 @@ cleanup() {
         "$scratch/smbstatus.json" "$scratch/smbcontrol.json" \
         "$scratch/streams_xattr.json" "$scratch/ibm850.json" "$scratch/manifest" \
         "$scratch/launcher" "$scratch/charset" "$scratch/bundle" "$scratch/owner" \
-        "$scratch/service.log" "$scratch/native.log"
+        "$scratch/service.log" "$scratch/native.log" "$scratch/lifecycle.log"
     rm -rf "$scratch/go-cache" "$scratch/go-path"
     rmdir "$scratch"
 }
@@ -89,7 +96,9 @@ for pair in "launcher phantowd-samba-root-launcher" \
     "$debugfs" -w -R "set_inode_field /usr/sbin/$output gid 0" "$scratch/rootfs.ext2" >/dev/null 2>&1
 done
 "$debugfs" -w -R "write $scratch/manifest /usr/lib/phantowd/qemu-samba-root.manifest" "$scratch/rootfs.ext2" >/dev/null 2>&1
-for campaign in service native; do
+# Default remains the complete qualification. Explicit local selection narrows
+# only which fresh guest is run, never its guards, assertions or180s deadline.
+for campaign in $campaigns; do
     timeout --signal=TERM --kill-after=5 180 qemu-system-arm \
     -M versatilepb -cpu arm926 -m 256M -nographic -no-reboot -nic none \
     -object rng-random,id=samba-rng,filename=/dev/urandom \
@@ -114,15 +123,21 @@ if [ "$status" -ne 0 ] || ! python3 -B "$source_dir/support/tests/samba_root_fix
     exit 1
 fi
 done
-if ! python3 -B "$source_dir/support/tests/samba_root_fixture.py" verify \
-    "$scratch/service.log" --native-log "$scratch/native.log"; then
+if [ "$selection" = all ] && ! python3 -B "$source_dir/support/tests/samba_root_fixture.py" verify \
+    "$scratch/service.log" --native-log "$scratch/native.log" \
+    --lifecycle-log "$scratch/lifecycle.log"; then
     if [ -n "$failure_log" ]; then
         mkdir -p "$(dirname "$failure_log")"
-        cat "$scratch/service.log" "$scratch/native.log" >"$failure_log"
+        cat "$scratch/service.log" "$scratch/native.log" "$scratch/lifecycle.log" >"$failure_log"
     fi
     tail -n 60 "$scratch/service.log" >&2
     tail -n 60 "$scratch/native.log" >&2
+    tail -n 60 "$scratch/lifecycle.log" >&2
     exit 1
 fi
 [ "$(sha256sum "$base/rootfs.ext2" | awk '{print $1}')" = "$base_hash" ]
-echo PHANTOWD_SAMBA_ROOT_BASE_UNCHANGED
+if [ "$selection" = all ]; then
+    echo PHANTOWD_SAMBA_ROOT_BASE_UNCHANGED
+else
+    printf 'PHANTOWD_SAMBA_FOCUSED_COMPLETE campaign=%s base_unchanged=true complete_image=false scope=qemu-only\n' "$selection"
+fi

@@ -71,8 +71,13 @@ run_native_fixture() {
         'nobody:!:0:0:99999:7:::' >/etc/shadow
     chmod 0600 /etc/shadow || return 1
     /usr/sbin/phantowd-runtime-bundle-probe native-lookup || return 1
-    /usr/sbin/phantowd-runtime-bundle-probe native-credentials || return 1
-    echo PHANTOWD_SAMBA_ROOT_DONE
+    if [ "$campaign" = lifecycle ]; then
+        /usr/sbin/phantowd-runtime-bundle-probe native-lifecycle || return 1
+        echo PHANTOWD_SAMBA_ROOT_DONE
+    else
+        /usr/sbin/phantowd-runtime-bundle-probe native-credentials || return 1
+        echo PHANTOWD_SAMBA_ROOT_NATIVE_DONE
+    fi
 }
 run_fixture() {
     mount -t proc proc /proc || return 1
@@ -83,6 +88,7 @@ run_fixture() {
     case "$campaign" in
         phantowd_samba_campaign=service) campaign=service ;;
         phantowd_samba_campaign=native) campaign=native ;;
+        phantowd_samba_campaign=lifecycle) campaign=lifecycle ;;
         *) return 1 ;;
     esac
     # This guest has no normal hardware entropy sources. Require the real
@@ -108,7 +114,7 @@ run_fixture() {
     /usr/sbin/phantowd-runtime-bundle-probe stage || return 1
     /usr/sbin/phantowd-runtime-bundle-probe inspect-acl || return 1
     /usr/sbin/phantowd-samba-root-launcher runtime-bundle || return 1
-    if [ "$campaign" = native ]; then
+    if [ "$campaign" = native ] || [ "$campaign" = lifecycle ]; then
         run_native_fixture || return 1
         return 0
     fi
