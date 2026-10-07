@@ -747,6 +747,18 @@ and cleans its disposable container. Its completion explicitly reports
 qualification or clean Buildroot/hosted/release evidence. Existing full-build
 callers continue to select all campaigns without modification.
 
+For troubleshooting, add `-DiagnosticLogs` to the same command. After each
+guest exits, this opt-in mode emits its complete bounded log as one escaped JSON
+record (`phantowd-qemu-campaign-diagnostic`, schema 1, `qualifying=false`) with
+the campaign and actual exit status, including on timeout. Newlines and control
+characters stay escaped; a record is never a proof marker. The default emits no
+such records. This preserves useful successful diagnostic logs before tmpfs
+cleanup without writing persistent log files, adding a container/volume, altering
+the guest, retrying or changing acceptance and deadlines. These are synthetic
+fixture logs only, not a product/device log collector; save the command output
+if needed. Instrumented source still requires a separate clean replay after
+instrumentation is removed.
+
 Its fixed runtime now includes IBM850 plus a strictly bounded, hash-verified
 conversion catalog. A dynamic probe tests exact non-ASCII CP850/UTF-8 conversions
 and refusals inside the restricted root; the fixture rejects ASCII fallback.

@@ -18,9 +18,22 @@ Pinned Linux tagged module vet and three-count planner/runtime/coordinator race
 tests pass, along with Windows API/UI/vet/ARMv5 cross-compilation. These tests
 exercise teardown bookkeeping without bundle admission, never launch a child and
 do not qualify actual kernel EIO, live-worker fault handling or durable recovery.
-Original ARMv5 normal-lifecycle and full combined image/source qualification are
-pending. This does not fix or bypass PR #123's hosted native outer timeout.
+The original all-campaign replay on frozen `3ffb811` passes service and native,
+but lifecycle reaches its unchanged 180-second outer timeout after handoff.
+Full current-image/source qualification is therefore deferred. A temporary
+timestamped lifecycle replay passes, measuring enrollment at about 35 seconds
+and candidate/closure at about 11.5 seconds; this is diagnostic evidence, not
+an original replay or a timeout fix. All temporary timestamps are removed.
+This does not fix or bypass PR #123's hosted native outer timeout.
 No constructor, privilege profile, device operation or HTTP surface is added.
+
+The local Samba wrapper now has opt-in `-DiagnosticLogs`: after each guest
+exits, it emits the bounded fixture log in an escaped single-line JSON record
+marked `qualifying=false`, including success and timeout exit status. Default
+invocation, original acceptance, guest commands and deadlines are unchanged;
+no persistent log directory, image, volume or retry is added. Mock Windows
+wrapper tests, 54 Linux driver tests, flake8 and shellcheck pass. This closes a
+diagnostic-observability gap, not the intermittent campaign-timeout gate.
 
 ## Paired management retention — host and original ARMv5 union qualification
 

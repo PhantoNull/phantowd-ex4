@@ -1145,6 +1145,13 @@ storage. No production roster provider or activation path exists.
   separately identified gap with a host-tested isolated follow-up. Actual guest
   fault injection, kernel I/O failure semantics and durable recovery remain
   open gates; these tests do not complete M4.4 or qualify a product runtime.
+  Current native-wrapper close faults have fresh host RED/GREEN and race/vet
+  proof on `3ffb811`; its original all-campaign replay passes service/native
+  but lifecycle reaches outer180s. A temporary timing replay passes without
+  proving the cause or resolution; it is removed. Optional bounded diagnostic
+  JSON log output now preserves successful/failed fixture observations before
+  cleanup, without modifying guest execution or acceptance. Reproduce/diagnose
+  the intermittent timeout before current full-image/hosted qualification.
 
   Security limit: this is a share-scoped pathname view, not a complete service
   authorization boundary. Consumers still run in the host mount namespace and

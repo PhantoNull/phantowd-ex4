@@ -69,8 +69,16 @@ try {
             Assert-True ($run[-1] -match "printf '%s' '([A-Za-z0-9+/=]+)' \| base64 -d \| sh") 'Encoded command missing.'
             $linux = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($Matches[1]))
             Assert-True ($linux.Contains("/src '' '$campaign'")) 'Exact selected campaign not passed.'
+            Assert-True (-not $linux.Contains("'diagnostic'")) 'Diagnostics must remain opt-in.'
         }
     }
+    $state.Calls.Clear()
+    & $wrapper -Campaign lifecycle -DiagnosticLogs
+    Assert-True ($state.Calls.Count -eq 3) 'Diagnostics must not add a Docker operation.'
+    $diagnosticRun = $state.Calls[2]
+    Assert-True ($diagnosticRun[-1] -match "printf '%s' '([A-Za-z0-9+/=]+)' \| base64 -d \| sh") 'Diagnostic command missing.'
+    $diagnosticLinux = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($Matches[1]))
+    Assert-True ($diagnosticLinux.Contains("/src '' 'lifecycle' 'diagnostic'")) 'Diagnostic mode not passed to the same guest driver.'
     foreach ($failure in @('image inspect', 'volume inspect', 'run', 'directory', 'symlink')) {
         $state.Calls.Clear()
         $state.Failure = $failure

@@ -4,6 +4,7 @@
 """Negative manifests and source-contract checks for a QEMU-only experiment."""
 import copy
 import hashlib
+import json
 import os
 from pathlib import Path
 import subprocess
@@ -45,9 +46,73 @@ def reports():
 
 
 class SambaRootFixture(unittest.TestCase):
+    def test_diagnostic_record_is_bounded_nonqualifying_and_escaped(self):
+        log = 'phase\nPHANTOWD_SAMBA_ROOT_DONE\n\x1b[31m'
+        encoded = fixture.diagnostic_record(log, "lifecycle", 0)
+        self.assertNotIn("\n", encoded)
+        self.assertNotIn("\x1b", encoded)
+        record = json.loads(encoded)
+        self.assertEqual(record["format"],
+                         "phantowd-qemu-campaign-diagnostic")
+        self.assertEqual(record["schema_version"], 1)
+        self.assertIs(record["qualifying"], False)
+        self.assertEqual(record["log"], log)
+        self.assertEqual(record["phase"], "lifecycle")
+        self.assertEqual(record["guest_exit"], 0)
+        with self.assertRaises(ValueError):
+            fixture.check_campaign(encoded, "lifecycle")
+
+    def test_diagnostic_record_refuses_invalid_inputs(self):
+        for log, phase, status in ((None, "native", 0),
+                                   ("x" * (fixture.MAX_LOG + 1), "native", 0),
+                                   ("x", "all", 0), ("x", "../native", 0),
+                                   ("x", "native", -1),
+                                   ("x", "native", 256),
+                                   ("x", "native", True)):
+            with self.assertRaises(ValueError):
+                fixture.diagnostic_record(log, phase, status)
+
+    def test_diagnostic_cli_preserves_success_and_timeout_logs(self):
+        with tempfile.TemporaryDirectory() as scratch:
+            path = Path(scratch) / "guest.log"
+            path.write_bytes(b"partial fixture\n")
+            command = [sys.executable, "-B", str(Path(fixture.__file__)),
+                       "diagnostic-log", str(path), "native"]
+            for status in (0, 124):
+                result = subprocess.run(command + [str(status)],
+                                        capture_output=True, text=True,
+                                        check=False, timeout=5)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual(result.stderr, "")
+                record = json.loads(result.stdout)
+                self.assertIs(record["qualifying"], False)
+                self.assertEqual(record["guest_exit"], status)
+                self.assertEqual(record["log"], "partial fixture\n")
+
     def test_campaign_selection_defaults_to_complete_proof(self):
         self.assertEqual(fixture.select_campaigns("all"),
                          ("service", "native", "lifecycle"))
+
+    @unittest.skipUnless(os.name == "posix", "POSIX driver admission")
+    def test_invalid_diagnostic_mode_never_calls_python(self):
+        driver = Path(__file__).resolve().with_name(
+            "test-qemu-samba-root.sh")
+        with tempfile.TemporaryDirectory() as scratch:
+            python = Path(scratch) / "python3"
+            python.write_text(
+                "#!/bin/sh\necho unexpected-python >&2\nexit 73\n")
+            python.chmod(0o700)
+            env = dict(os.environ, PATH=scratch + ":/usr/bin:/bin",
+                       TMPDIR="/tmp")
+            for extra in (("DIAGNOSTIC",), ("diagnostic;true",),
+                          ("none", "extra")):
+                result = subprocess.run(
+                    ["sh", str(driver), *(["/unused"] * 6), "",
+                     "lifecycle", *extra], env=env, check=False,
+                    capture_output=True, text=True, timeout=5)
+                self.assertEqual(result.returncode, 1)
+                self.assertEqual(result.stdout, "")
+                self.assertEqual(result.stderr, "")
 
     def test_campaign_selection_is_one_exact_phase(self):
         for phase in ("service", "native", "lifecycle"):
