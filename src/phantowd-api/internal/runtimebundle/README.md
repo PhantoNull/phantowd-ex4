@@ -9,6 +9,14 @@ product startup does not call it. It has no HTTP/RPC or JSON input/output.
 The separate `qemu && linux` staging prototype below is excluded from ordinary
 builds; it does not turn the read-only inspector into a product write service.
 
+Each complete code inspection and retained-code preparation owns one 32 KiB
+hash scratch buffer, reused only within that pass. Concurrent calls have
+independent buffers; nothing is pooled or retained in the Plan. This reduces
+per-file allocation churn without caching hashes or reducing census, content,
+metadata, ACL/capability, cancellation or trailing original-identity checks.
+Digest-loop host tests/benchmarks do not qualify complete runtime admission,
+physical EX4 performance or eliminate timing-sensitive guest failures.
+
 The `qemu`-only `SambaPlannedDataDocumentsQEMU` renderer produces seven bounded
 configuration documents from one immutable isolated Plan candidate. It preserves
 the candidate's granted-only Unix identities and exact RO/RW share sections,

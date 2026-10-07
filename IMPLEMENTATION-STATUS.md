@@ -3,6 +3,28 @@
 
 # Implementation status
 
+## Per-scan hash scratch — local host qualification only
+
+Code inspection and retained-code preparation now own one 32 KiB scratch buffer
+per complete pass, instead of allocating it once per file. There is no global
+pool, shared mutable Plan state, hash cache or skipped verification. Every file
+is still hashed; read chunks, size+1 fence, cancellation boundaries, census,
+ACL/capability/mode/mount checks and trailing original-object checks remain.
+
+The real digest-loop allocation regression fails before this change and passes
+afterward. Chunk-boundary, short/overlength, cancellation/read-failure and
+different-file scratch-reuse tests pass. A Linux amd64/Go 1.26.6 microbenchmark
+of 114 regular-file digest repetitions measures 3,739,200 -> 36,416 allocated
+bytes per batch and 228 -> 115 allocations. This is not complete inspection,
+physical EX4 throughput, total appliance RAM or proof of a lifecycle-timeout
+fix. Tagged module vet/full runtimebundle and processowner race-count3 pass;
+Windows API/UI/vet and ARMv5 cross-compilation pass, not guest execution.
+
+Original ARMv5 Code Owner/Samba and complete-image qualification for this new
+source remain pending. Do not borrow the earlier 926-source audit below. The
+separate native-wrapper cleanup draft remains excluded; no product service,
+new privilege, physical-device or migration qualification is added.
+
 ## Retained descriptor release uncertainty — local full qualification
 
 Linux retained code/configuration/state and pinned-process cleanup now preserve

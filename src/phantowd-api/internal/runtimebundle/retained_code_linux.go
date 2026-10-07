@@ -56,6 +56,7 @@ func (p *Plan) prepareRetainedCode(ctx context.Context, root *os.File) (*retaine
 		return nil, err
 	}
 	mount := c.metadata["."].Mnt_id
+	scratch := make([]byte, runtimeHashScratchSize)
 	for _, expected := range p.files {
 		fd, err := openBeneath(int(c.root.Fd()), expected.Path, unix.O_RDONLY)
 		if err != nil {
@@ -63,7 +64,7 @@ func (p *Plan) prepareRetainedCode(ctx context.Context, root *os.File) (*retaine
 		}
 		pin := os.NewFile(uintptr(fd), "retained-runtime-object")
 		c.files[expected.Path] = pin
-		if err := verifyOpenFile(ctx, pin, mount, expected); err != nil {
+		if err := verifyOpenFile(ctx, pin, mount, expected, scratch); err != nil {
 			return nil, err
 		}
 	}

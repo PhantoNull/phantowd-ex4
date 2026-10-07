@@ -2366,6 +2366,15 @@ These features are separate scope, not shortcuts around core acceptance:
 
 ## Next bounded work packets
 
+Local efficiency increment (2026-10-07): code inspection/preparation reuses
+one 32 KiB scratch buffer per pass, with every original hash/metadata/identity
+fence retained. Host digest allocation/chunk/cancellation/reuse regressions,
+tagged race-count3/module vet and Windows/ARMv5 cross-compilation pass. The
+114-digest host microbenchmark reduces allocated bytes from 3,739,200 to 36,416;
+this is not appliance RAM, EX4 throughput or a demonstrated lifecycle-timeout
+fix. Requalify original static Owner/all-three Samba and full image before
+integration; earlier926-source proof does not cover the changed inspector.
+
 Current priority (2026-10-06): **M4.4 separate Samba-specific service Owner
 → M3 production roster/qualification
 + M4 durable activation Owner**. Keep local-first validation and exact-head
