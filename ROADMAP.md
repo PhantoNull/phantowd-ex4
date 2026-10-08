@@ -67,13 +67,14 @@ currently product-qualified for migration.
 
 ## Current baseline
 
-The current combined local checkpoint `5355a5c` passes the complete cached
-Buildroot/ARMv5 integration, including all six independently enrolled Samba
+The current combined local checkpoint `970483e` selects Go 1.26.8 and passes
+the complete cached Buildroot/ARMv5 integration, including all six independently enrolled Samba
 scenarios and both synthetic SMART lanes. Independent post-terminal auditing
-matches all 950 API inputs to compiled package/source archive, reproduces
+matches all 954 API inputs to compiled package/source archive, reproduces
 configured stripping, and verifies installed/image/exported API, seven hashes,
-Linux AND headers 6.18.55, SBOM, release and legal-source bindings; see
-[exact scope](IMPLEMENTATION-STATUS.md#current-complete-cached-integration--six-samba-scenarios-and-exact950-audit).
+Linux AND headers 6.18.55, selected/installed Go SDK, SBOM, release and
+legal-source bindings; see
+[exact scope](IMPLEMENTATION-STATUS.md#current-complete-cached-integration--go-1268-and-exact954-audit).
 Normal same-authority planned Samba startup and access are qualified only in
 disposable fixtures. This complete image also passes exclusive composed supervision
 with serial complete scans, idle cancellation/verified stop, retained originals
@@ -109,6 +110,15 @@ updated complete six-guest union and whole950 image/audit pass separately.
 Held-session/mid-transfer, native pending capture, uncertain stop and constructor/
 close faults still require separate actual traces. Keep existing checks and
 finite budgets; no HTTP, device access or recovery authority is introduced.
+
+A subsequent QEMU-only read-only observation prerequisite is host-tested:
+review is mandatory while owned-command/group teardown and original input
+retention are checked separately. Normal/held-client observers are unchanged.
+Negative-only Linux/race3 checks and ARMv5 cross-build do not qualify genuine
+reviewed teardown. The original-process-handle trigger and actual composed
+unexpected-exit trace still need implementation/qualification; no old image or
+generic static-owner fault is substituted for them. See
+[current refusal scope](IMPLEMENTATION-STATUS.md#current-component--reviewed-stop-observations-host-only-refusal-proof).
 
 Status vocabulary:
 
@@ -334,6 +344,26 @@ button to an unqualified backend simply because the screen exists.
   review, license material and regenerated SBOM. Test the selected package set.
   The [dated dependency review](support/DEPENDENCY-REVIEW.md) now identifies
   Linux 6.18.55, host OpenSSL 3.5.9 and Go 1.26.8 as separate update packets.
+  Go 1.26.8 has authenticated SDK/source/license and focused host proof on
+  frozen `c995c6e`: ordinary/race/22 fixed fuzz campaigns, seven tagged authority
+  packages/race3, ARMv5 cross-build and 64 Linux driver tests pass. Successor
+  `01e6045` also passes toolkit ordinary/race/five fuzz campaigns and all six
+  actual Samba ARMv5 campaigns compiled with the candidate. The complete
+  original proof union, runtime census, unchanged base and independent trace
+  replay pass; all 1,083 API/toolkit/harness inputs remain unchanged. At that
+  earlier component snapshot the base still used Go 1.26.6; component execution
+  was not a complete new image or full-image adoption. The feature now selects Go 1.26.8 through one
+  exact-state, idempotent Buildroot recipe/hash patch and an early installed-SDK
+  version check. Real-package RAM fixtures verify coherent application,
+  refusal without effects and stale-SDK rejection. Frozen `970483e` now passes
+  one complete cached Go 1.26.8 integration, every original campaign and an
+  independent exact954 image/source/package/archive/SDK/license/SBOM audit.
+  All 11,510 installed SDK files match the selected SDK and all 1,237 tracked
+  witnesses remain unchanged. This supersedes the old complete Go 1.26.6 image
+  as the latest local checkpoint; it is not independent clean reproduction,
+  exact-head hosted qualification, complete advisory review or EX4/release
+  qualification, nor a speedup or hosted-timeout fix.
+  See the linked review.
   Linux source/signature/license authentication, unchanged-symbol ARMv5 kernel
   compilation and the original standard QEMU smoke now pass locally. Five
   firmware configurations/release files, both source hashes and the qualified

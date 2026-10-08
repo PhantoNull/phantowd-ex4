@@ -3,7 +3,39 @@
 
 # Dependency review and update qualification
 
-## Current cached950 integration and exact artifact audit (2026-10-08)
+## Current cached954 Go 1.26.8 integration and exact artifact audit (2026-10-08)
+
+Frozen `970483e095c54186de9f53e4a164bc44c2b3cfd0`, API tree
+`7b612fe28e5a0304d40664cf72816ece027af0dc`, passes the complete original
+cached host/ARMv5 lane and a separate independent post-terminal read-only audit.
+All original campaigns, six independently enrolled Samba guests and both
+synthetic SMART lanes pass with unchanged limits. Normal exclusive composed
+supervision and idle source-alias-loss qualify; composed unexpected exit and
+positive reviewed-stop coverage remain separate work.
+
+All **954** API inputs match compiled package AND legal source archive, without
+stale extras or generated-marker exemptions. Configured strip/installed/rootfs/
+export, seven ordered hashes, actual kernel AND headers 6.18.55 bindings and
+linked Go 1.26.8/CGO0/ARM5 agree. The selected recipe, official SDK/source
+hashes, all **11,510** installed SDK files, host source/license manifest and
+SBOM agree. All 1,237 tracked source witnesses remain unchanged; **24,959**
+regular audit inputs are rechecked.
+
+| Artifact | SHA-256 |
+| --- | --- |
+| API (10,708,180 bytes) | `6c94b1b1298d773435d0b6f8979a4a07bb8dcd0251882cefe2f767f2da412fcf` |
+| rootfs.ext2 (83,886,080 bytes) | `9079e546fd4e214b97d24e8a635c049e51f3f9067f19e25f3c486093aceb04e0` |
+| API source archive | `ea9a344e5b1f86424ff99f9af033985245849954ea74b1ad71d11de6edfaebe0` |
+| SHA256SUMS | `13ef75384bcbd02d4126a4b0cab953f38bec27d91ab67bcfb9362b6875e40d1b` |
+
+These identities are measured from this checkpoint, not adopted from the
+earlier950 image or candidate-only probes. Existing image/two project volumes
+are reused. This is not independent clean, exact-head hosted, advisory-complete,
+EX4, migration, recovery, product activation or install qualification. It does
+not demonstrate a speedup or resolve the intermittent hosted timeout. Require
+the publication head's own hosted checks before merge.
+
+## Earlier cached950 integration and exact artifact audit (2026-10-08)
 
 Frozen `5355a5cb033ecd1106294c4fcd4bb256fe2e3e2a`, API tree
 `82955d54b74934ae4fcf1351339a39483a5fa40f`, passes the complete cached
@@ -142,7 +174,7 @@ records. These are different inventories, not interchangeable counts.
 | Linux and headers | Earlier advisory inventory: 6.18.54; current selected and locally rebuilt image: 6.18.55 | Authenticated source, complete cached ARMv5 integration and exact metadata/source/image audit pass; hosted/EX4/release gates remain |
 | Samba | 4.22.11 target, six declared patches | Upstream's July security release; no complete Samba advisory/configuration review claimed |
 | OpenSSL | 3.5.8 **host only**, four declared patches | September advisory requires evaluating an update to 3.5.9; affected host call paths remain unassessed |
-| Go | 1.26.6 host SDK **and compiled target runtime** | 1.26.8 is a maintenance candidate, not a demonstrated security or QEMU-timeout fix |
+| Go | Dated inventory: 1.26.6; current complete cached954 audit: 1.26.8 SDK/runtime | Locally qualified maintenance update, not a demonstrated security or QEMU-timeout fix |
 | x/crypto | v0.57.0 target API module | Reviewed SSH records [6354](https://vuln.go.dev/ID/GO-2026-6354.json)/[6355](https://vuln.go.dev/ID/GO-2026-6355.json) are fixed at v0.56.0; this API uses Argon2, not an SSH server |
 | x/sys | v0.48.0 target API module | Reviewed Windows record [5024](https://vuln.go.dev/ID/GO-2026-5024.json) is fixed at v0.44.0; this is not an ARMv5 exposure finding |
 | BusyBox / util-linux | 1.37.0 / 2.40.4 target, 20 / 15 declared patches | Upstream base-version matching alone loses backport information; dispositions remain to be reviewed |
@@ -330,7 +362,7 @@ product/hardware/recovery/release gates remain open.
   build environment from review. Record affected host applications/configuration
   before assigning an exposure disposition.
 - `host-go-bin` being a host package does not make Go findings host-only:
-  `go version -m` on the exported API confirms Go 1.26.6, CGO disabled,
+  `go version -m` on the dated inventory's exported API confirms Go 1.26.6, CGO disabled,
   Linux/ARM/GOARM=5 and the two module versions above. Its standard library
   is part of the target executable. Module manifests alone do not prove this.
 - The reviewed recent stdlib/toolchain records GO-2026-5026, 5942, 5972,
@@ -370,6 +402,43 @@ product/hardware/recovery/release gates remain open.
    verify the compiler version embedded in the exported API, source/license
    collection and image equality. Do not infer a speedup, drop revalidation or
    change test budgets to obtain a pass.
+   **Focused host proof (2026-10-08):** official source and Linux/amd64 SDK
+   archives pass SHA-256 verification from [Go download metadata](https://go.dev/dl/?mode=json).
+   Source and SDK licenses agree with the current recipe's license hash.
+   Frozen `c995c6e`, API tree `7b612fe2`, passes ordinary/vet/tagged-vet,
+   all-package race, all 22 existing fixed-count API fuzz campaigns, seven
+   tagged authority packages and their race-count3 checks, ARMv5 cross-build
+   and all 64 Linux Samba-driver verifier tests. All 954 tracked API inputs
+   have matching before/after hashes. The temporary cross-built probe reports
+   Go 1.26.8, CGO0/Linux ARM5 and the exact unmodified source revision.
+   SDK/source/cache live in bounded disposable RAM scratch using the existing
+   container image; no new image or named volume is created.
+   **Focused ARMv5 component proof (2026-10-08):** successor `01e6045`, with
+   the same API tree, passes toolkit vet/ordinary/race and all five original
+   fixed-count fuzz campaigns, then all six freshly enrolled Samba guest
+   campaigns using Go 1.26.8-compiled probes. The complete original proof union,
+   matching 114-file runtime census and unchanged-base checks pass without
+   changing guest or worker limits. A separate read-only replay of the six
+   complete traces verifies the union again. All 1,083 API/toolkit/harness
+   inputs match their pre-run hashes; temporary scratch and the container are
+   removed. No new image or volume is created.
+   **Candidate Buildroot inputs:** the feature selects Go 1.26.8 with a
+   versioned common recipe patch covering the source archive, all six host
+   SDK archives and the unchanged license hash. The authenticated 1.26 cgo
+   workaround is preserved. The applicator accepts only exact complete
+   original/patched states, dry-runs without fuzz and rejects mixed, unknown,
+   missing or symlinked inputs before writes. RAM fixtures exercise the real
+   package and prove idempotence and no-effect refusal. The actual installed
+   Linux SDK must match the selected pin before native tests or target builds;
+   automatic Go toolchain downloads are disabled.
+   **Complete cached image qualified (2026-10-08):** frozen `970483e` now passes
+   one complete Buildroot/host/ARMv5 lane, all original campaigns and the exact
+   954-input image/source/package/archive/Go/license/SBOM audit recorded above.
+   Actual installed SDK/source/recipe and exported runtime bind Go 1.26.8;
+   candidate-only proofs are not substituted for this new image qualification.
+   Independent clean reproduction, exact-head hosted checks, complete advisory
+   review and EX4/release qualification remain required. This is neither an
+   observed speedup nor a fix for the intermittent hosted timeout.
 4. **Complete the review:** cover every selected host/target component and linked
    Go package, actual backport contents and disabled/compiled features. Record
    advisory ID, upstream affected/fixed ranges, source/patch identity, exact
