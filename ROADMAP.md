@@ -1126,7 +1126,8 @@ storage. No production roster provider or activation path exists.
   duplicate tables. Host matching and actual temporary-Owner renderer regression
   pass; original all-three ARMv5 union on `79b5229` also proves management matching
   against the actual native Owner/mounted roster and preserves original guards,
-  deadlines and base. Full changed-source image/audit remains pending.
+  deadlines and base. The later complete cached image/source audit extends this
+  focused proof; see [implementation status](IMPLEMENTATION-STATUS.md).
   This is not two-role startup authority or a fix for PR #123's native
   outer timeout. Continue to same-state original-object construction/access,
   complete storage/identity supervision and recovery before product activation.
@@ -1138,7 +1139,9 @@ storage. No production roster provider or activation path exists.
   observation, policy-copy/foreign-roster refusal and runtime-close-before-
   original-release pass host/race and the complete original three-guest union.
   This is not this milestone's completion: there is NO planned daemon Start,
-  product policy authority, HTTP route or full changed-source image proof.
+  product policy authority or HTTP route. Frozen `19d1891` now passes the
+  complete cached host/ARMv5 driver and independent exact941 source/image audit;
+  hosted exact-head, independent clean and hardware qualification remain.
   Next qualify constructor/late-close uncertainty, paired-role data startup,
   effective grant/ACL access and complete live drift/settlement supervision
   while retaining these SAME authorities, before any product activation.

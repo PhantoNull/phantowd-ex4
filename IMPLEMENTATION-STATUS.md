@@ -3,7 +3,7 @@
 
 # Implementation status
 
-## Prepared same-authority coordinator — local component qualification
+## Prepared same-authority coordinator — complete cached local qualification
 
 `NativePlannedServiceQEMU` now privately copies policy, compiles its SAME
 identity/storage authorities, binds share pins to the original roster, retains
@@ -21,9 +21,35 @@ Earlier timeout evidence is preserved: this pass does not establish a hosted
 timeout fix, independent clean reproduction or physical performance.
 
 This coordinator has NO Start, HTTP/product activation or product policy lease.
-Constructor/late-close uncertainty, live same-authority data access/supervision
-and complete changed-source image/audit qualification remain open. The audited
-939-input image below is the earlier prerequisite, not this 941-input work.
+Constructor/late-close uncertainty and live same-authority data access/
+supervision remain open. The complete 941-input build and independent
+source/image audit now pass as recorded below. Hosted exact-head, independent
+clean reproduction, physical EX4 and all product/release gates remain separate.
+
+## Current cached integration — prepared coordinator and exact941 audit
+
+Frozen `19d189178d155bb6a721d775495b45136809c96f`, API tree
+`e8ba603a77553d715564e155789d2525ce4a1e59`, passes one complete cached
+Buildroot/host/ARMv5 driver on 2026-10-08. Ordinary/race/fixed-count fuzz,
+standard smoke, MD/state, launcher/runtime/loader/atomic, all three original
+Samba campaigns and both synthetic SMART lanes pass. The four-job ceiling,
+assertions, privileges and guest/operation deadlines are unchanged.
+
+The independent post-terminal read-only audit matches all **941** API inputs
+against BOTH compiled package and collected source archive, rejecting stale
+extras with zero generated-marker exemptions. Declared licenses, configured
+stripping, installed/image/exported API, ordered seven hashes, actual Linux
+AND headers 6.18.55, SBOM/release/legal-source/license and linked Go
+1.26.6/CGO0/Linux ARMv5 agree. Twenty-one regular inputs recheck unchanged;
+all thirteen component-tested code hashes match before and after the audit.
+
+The API is 10,708,180 bytes, SHA-256
+`a8ef0ccd990c37eb4fccaf2df0f3ff57194c856e811cc4c51ca13d88e45713de`.
+Exact archive/rootfs/manifest hashes are recorded in the
+[dependency qualification record](support/DEPENDENCY-REVIEW.md).
+This is not independent clean reproduction, a hosted timeout fix, complete
+advisory/release licensing review, planned daemon consumption, complete
+service supervision, physical EX4 qualification or installation.
 
 ## Planned native inputs — host and ARMv5 prerequisite
 
@@ -53,7 +79,7 @@ Constructor-close/late-uncertainty faults, fresh identity/storage supervision,
 and product/hardware gates remain open. The new complete image/source audit
 now passes as recorded below.
 
-## Current cached integration — original planned inputs and exact939 audit
+## Earlier cached integration — original planned inputs and exact939 audit
 
 Frozen `0d12dca66bcaa41f80666aeebcac0145f64e92c2`, API tree
 `599446ec8424e9622683cea9a156d4a347759c8f`, passes the complete cached

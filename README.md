@@ -62,15 +62,15 @@ compliance or physical EX4 qualification. [versions.env](versions.env) is the
 source of truth for build pins.
 
 The last fully audited Linux 6.18.55 cached build passes the original host and ARMv5
-integration campaigns. Its post-build audit matches all 939 API source inputs,
+integration campaigns. Its post-build audit matches all 941 API source inputs,
 actual images, kernel/header source archives, release metadata, SBOM and license
 files. This cached local proof does not qualify an EX4 installation, independent
 clean reproducibility or a fix for the intermittent hosted Samba timeout.
 See the [dependency qualification record](support/DEPENDENCY-REVIEW.md).
 
-That qualified checkpoint includes paired-role input preparation and the
-complete original three-campaign Samba union. It does not activate a planned
-SMB/NFS service; see [implementation status](IMPLEMENTATION-STATUS.md).
+That qualified checkpoint includes same-authority coordinator preparation and
+the complete original three-campaign Samba union. It does not activate a
+planned SMB/NFS service; see [implementation status](IMPLEMENTATION-STATUS.md).
 
 ## Roadmap
 

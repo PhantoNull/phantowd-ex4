@@ -174,6 +174,35 @@ reproducibility, resolve hosted timeouts, qualify physical EX4 peripherals or
 installation, or complete paired-role service supervision. Constructor and
 late-uncertainty faults, other dependency packets and all release gates remain.
 
+## Prepared same-authority coordinator complete qualification (2026-10-08)
+
+Frozen `19d189178d155bb6a721d775495b45136809c96f`, API tree
+`e8ba603a77553d715564e155789d2525ce4a1e59`, passes ONE complete cached
+host/ARMv5 build: ordinary/race/fixed fuzz, standard smoke, MD/state,
+launcher/runtime/loader/atomic, all three Samba campaigns and both synthetic
+SMART lanes. Existing resource ceilings, assertions and deadlines remain.
+
+The independent post-terminal read-only audit verifies all **941** API inputs
+against compiled package AND source archive, with no stale extras or generated
+marker exemptions. Declared licenses, configured strip/installed/image/export,
+seven hashes, actual kernel AND headers 6.18.55, legal source/license/SBOM/
+release bindings and linked Go 1.26.6/CGO0/Linux ARMv5 agree. Twenty-one regular
+inputs recheck unchanged; all thirteen component-tested code hashes also match
+before and after. The earlier 939-input image is not adopted as this proof.
+
+| Artifact | SHA-256 |
+| --- | --- |
+| API (10,708,180 bytes) | `a8ef0ccd990c37eb4fccaf2df0f3ff57194c856e811cc4c51ca13d88e45713de` |
+| rootfs.ext2 (83,886,080 bytes) | `40e7f9478afbadf7806f5d65302fbba2e93152eca0c578e00e65ce126fd61d7c` |
+| API source archive | `fce983ec5226cbf774f5f66ce992b4b557c26e15729b7f3bea67f479973c764b` |
+| SHA256SUMS | `0a05c4c44c16d5e0bd226a225f834346369f02a522a94a35bb47b464e54aa6cb` |
+
+This qualifies cached local preparation only, not planned daemon Start,
+continuous identity/storage service supervision, exact-head hosted checks,
+independent clean reproduction, a causal timeout fix, complete advisory/license
+review, EX4 behavior or installation. Constructor/late-close faults and all
+product/hardware/recovery/release gates remain open.
+
 ## Important interpretation boundaries
 
 - OpenSSL CVE-2026-84782 has a DTLS-specific path and is fixed in 3.5.9.
