@@ -27,8 +27,8 @@ const nativeLookupRoot = "/run/phantowd-native-lookup"
 
 // A separate, fixed guest-only experiment after every prior Samba Owner closes.
 // No product constructor, persistent storage, password, passdb or HTTP input.
-// Lifecycle needs its OWN real Unix bootstrap but never claims the independent
-// libc/configuration/handoff proofs. Native still runs every original scenario.
+// Both native guests need their OWN real Unix bootstrap but never claim the
+// independent libc/configuration/handoff proofs, now owned by service.
 func nativeLookupFixture(bootstrapOnly bool) (result error) {
 	commandLine, err := os.ReadFile("/proc/cmdline")
 	if err != nil || !strings.Contains(" "+string(commandLine)+" ", " phantowd_samba_ext4_fixture=1 ") {

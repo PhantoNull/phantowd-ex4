@@ -46,7 +46,7 @@ func run() error {
 		return nativeIdentityStateFaultQEMU()
 	}
 	if len(os.Args) == 2 && os.Args[1] == "native-credentials" && os.Getuid() == 0 && os.Geteuid() == 0 {
-		err := nativeCredentialFixture(false)
+		err := nativeCredentialFixture(nativeCredentialsCampaignQEMU)
 		if err != nil {
 			// Only fixture-defined stages and redacted sentinel errors, never
 			// command output, credential bytes or passdb records.
@@ -55,9 +55,16 @@ func run() error {
 		return err
 	}
 	if len(os.Args) == 2 && os.Args[1] == "native-lifecycle" && os.Getuid() == 0 && os.Geteuid() == 0 {
-		err := nativeCredentialFixture(true)
+		err := nativeCredentialFixture(nativeLifecycleCampaignQEMU)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, "native lifecycle fixture:", err)
+		}
+		return err
+	}
+	if len(os.Args) == 2 && os.Args[1] == "native-planned-data" && os.Getuid() == 0 && os.Geteuid() == 0 {
+		err := nativeCredentialFixture(nativePlannedDataCampaignQEMU)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "native planned data fixture:", err)
 		}
 		return err
 	}

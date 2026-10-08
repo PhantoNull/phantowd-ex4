@@ -15,7 +15,7 @@ selection=${8:-all}
 diagnostics=${9:-none}
 case "$diagnostics" in none|diagnostic) ;; *) exit 1 ;; esac
 case "$selection" in
-    all|service|native|lifecycle) ;;
+    all|service|native|lifecycle|data) ;;
     *) exit 1 ;;
 esac
 tmpdir=${TMPDIR:-/tmp}
@@ -43,7 +43,8 @@ cleanup() {
         "$scratch/smbstatus.json" "$scratch/smbcontrol.json" \
         "$scratch/streams_xattr.json" "$scratch/ibm850.json" "$scratch/manifest" \
         "$scratch/launcher" "$scratch/charset" "$scratch/bundle" "$scratch/owner" \
-        "$scratch/service.log" "$scratch/native.log" "$scratch/lifecycle.log"
+        "$scratch/service.log" "$scratch/native.log" "$scratch/lifecycle.log" \
+        "$scratch/data.log"
     rm -rf "$scratch/go-cache" "$scratch/go-path"
     rmdir "$scratch"
 }
@@ -133,14 +134,16 @@ fi
 done
 if [ "$selection" = all ] && ! python3 -B "$source_dir/support/tests/samba_root_fixture.py" verify \
     "$scratch/service.log" --native-log "$scratch/native.log" \
-    --lifecycle-log "$scratch/lifecycle.log"; then
+    --lifecycle-log "$scratch/lifecycle.log" --data-log "$scratch/data.log"; then
     if [ -n "$failure_log" ]; then
         mkdir -p "$(dirname "$failure_log")"
-        cat "$scratch/service.log" "$scratch/native.log" "$scratch/lifecycle.log" >"$failure_log"
+        cat "$scratch/service.log" "$scratch/native.log" \
+            "$scratch/lifecycle.log" "$scratch/data.log" >"$failure_log"
     fi
     tail -n 60 "$scratch/service.log" >&2
     tail -n 60 "$scratch/native.log" >&2
     tail -n 60 "$scratch/lifecycle.log" >&2
+    tail -n 60 "$scratch/data.log" >&2
     exit 1
 fi
 [ "$(sha256sum "$base/rootfs.ext2" | awk '{print $1}')" = "$base_hash" ]

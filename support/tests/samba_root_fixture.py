@@ -11,6 +11,7 @@ from pathlib import Path
 from runtime_loader_fixture import MAX_LOG, MAX_REPORT, read_bounded, validate
 
 
+CAMPAIGNS = ("service", "native", "lifecycle", "data")
 ENTRIES = ("usr/sbin/smbd", "usr/bin/smbpasswd", "usr/bin/testparm",
            "usr/lib/samba/vfs/streams_xattr.so", "usr/lib/gconv/IBM850.so",
            "usr/bin/pdbedit", "usr/bin/smbstatus", "usr/bin/smbcontrol")
@@ -153,6 +154,13 @@ MARKERS = (
     "fresh_observation=true runtime_close_before_release=true "
     "stopped_reaped=true no_fd_leak=true samba_data=false "
     "activation=false scope=qemu-only",
+    "PHANTOWD_SAMBA_OWNER_PLANNED_DATA_READY "
+    "same_authorities=true same_daemon=true granted_only=true "
+    "ungranted_enabled_denied=true "
+    "smb_read=true smb_write=true unix_owner=true readonly_EROFS=true "
+    "readonly_denied=true symlink_denied=true fresh_observation=true "
+    "stopped_before_release=true no_fd_leak=true "
+    "activation=false scope=qemu-only",
     "PHANTOWD_SAMBA_OWNER_PLANNED_CANDIDATE_READY "
     "owner=actual_native_backend storage=mounted_roster locked_plan=true "
     "exact_declaration=true original_objects=true caller_close=true "
@@ -217,27 +225,32 @@ def check_guest(log):
 
 def check_campaign(log, phase):
     if (not isinstance(log, str) or len(log.encode("utf-8")) > MAX_LOG
-            or phase not in ("service", "native", "lifecycle")):
+            or phase not in CAMPAIGNS):
         raise ValueError("invalid campaign evidence")
-    split = next(i for i, row in enumerate(MARKERS)
-                 if row.startswith("PHANTOWD_SAMBA_OWNER_NATIVE_NSS_READY"))
     enrollment = next(i for i, row in enumerate(MARKERS)
                       if row.startswith(
                           "PHANTOWD_SAMBA_OWNER_NATIVE_ENROLLMENT_READY"))
     planned = next(row for row in MARKERS
                    if row.startswith(
                        "PHANTOWD_SAMBA_OWNER_PLANNED_CANDIDATE_READY"))
-    native = tuple(row for row in MARKERS[split:-3] if row != planned)
+    access = tuple(row for row in MARKERS if row.startswith((
+        "PHANTOWD_SAMBA_OWNER_PLANNED_STARTUP_READY",
+        "PHANTOWD_SAMBA_OWNER_PLANNED_DATA_READY")))
+    native = tuple(row for row in MARKERS[enrollment:-3]
+                   if row not in (*access, planned))
     # Every guest still hashes its own complete code tree. The independently
     # exercised refusals/retention remain mandatory once, in the service guest;
     # neither a narrowed inspection nor another guest's state claims those.
     census = MARKERS[:3] + (CENSUS_MARKER,)
     expected = {
-        "service": MARKERS[:split] + ("PHANTOWD_SAMBA_ROOT_SERVICE_DONE",),
+        "service": MARKERS[:enrollment]
+        + ("PHANTOWD_SAMBA_ROOT_SERVICE_DONE",),
         "native": census + native
         + ("PHANTOWD_SAMBA_ROOT_NATIVE_DONE",),
         "lifecycle": (census + (MARKERS[enrollment],)
                       + (planned,) + MARKERS[-3:]),
+        "data": (census + (MARKERS[enrollment],) + access
+                 + ("PHANTOWD_SAMBA_ROOT_DATA_DONE",)),
     }[phase]
     prefixes = ("PHANTOWD_SAMBA_ROOT_", "PHANTOWD_SAMBA_OWNER_")
     markers = tuple(line for line in log.splitlines()
@@ -248,12 +261,12 @@ def check_campaign(log, phase):
 
 
 def select_campaigns(selection):
-    """A focused local probe is never the complete three-campaign proof."""
+    """A focused local probe is never the complete four-campaign proof."""
     if not isinstance(selection, str):
         raise ValueError("invalid campaign selection")
     if selection == "all":
-        return ("service", "native", "lifecycle")
-    if selection not in ("service", "native", "lifecycle"):
+        return CAMPAIGNS
+    if selection not in CAMPAIGNS:
         raise ValueError("invalid campaign selection")
     return (selection,)
 
@@ -261,7 +274,7 @@ def select_campaigns(selection):
 def diagnostic_record(log, phase, status):
     """Bounded escaped fixture telemetry, never campaign acceptance."""
     if (not isinstance(log, str) or len(log.encode("utf-8")) > MAX_LOG
-            or phase not in ("service", "native", "lifecycle")
+            or phase not in CAMPAIGNS
             or type(status) is not int or not 0 <= status <= 255):
         raise ValueError("invalid campaign diagnostics")
     return json.dumps({"format": "phantowd-qemu-campaign-diagnostic",
@@ -270,13 +283,14 @@ def diagnostic_record(log, phase, status):
                       ensure_ascii=True, separators=(",", ":"))
 
 
-def check_campaigns(service, native, lifecycle):
+def check_campaigns(service, native, lifecycle, data=None):
     first = check_campaign(service, "service")
     second = check_campaign(native, "native")
     third = check_campaign(lifecycle, "lifecycle")
-    if first[:2] != second[:2] or first[:2] != third[:2]:
+    fourth = check_campaign(data, "data")
+    if any(first[:2] != cost[:2] for cost in (second, third, fourth)):
         raise ValueError("campaign runtime census differs")
-    return first, second, third
+    return first, second, third, fourth
 
 
 def validate_catalog(catalog):
@@ -342,16 +356,15 @@ def main():
     verify.add_argument("log")
     verify.add_argument("--native-log")
     verify.add_argument("--lifecycle-log")
+    verify.add_argument("--data-log")
     campaign = sub.add_parser("verify-campaign")
     campaign.add_argument("log")
-    campaign.add_argument("phase", choices=("service", "native", "lifecycle"))
+    campaign.add_argument("phase", choices=CAMPAIGNS)
     selection = sub.add_parser("select-campaigns")
-    selection.add_argument("selection",
-                           choices=("all", "service", "native", "lifecycle"))
+    selection.add_argument("selection", choices=("all", *CAMPAIGNS))
     diagnostics = sub.add_parser("diagnostic-log")
     diagnostics.add_argument("log")
-    diagnostics.add_argument("phase",
-                             choices=("service", "native", "lifecycle"))
+    diagnostics.add_argument("phase", choices=CAMPAIGNS)
     diagnostics.add_argument("status", type=int)
     args = parser.parse_args()
     if args.command == "prepare":
@@ -374,14 +387,16 @@ def main():
                                 args.phase, args.status))
     else:
         log = read_bounded(args.log, MAX_LOG)
-        if bool(args.native_log) != bool(args.lifecycle_log):
-            raise ValueError("all three campaign logs required")
+        paths = (args.native_log, args.lifecycle_log, args.data_log)
+        if any(paths) and not all(paths):
+            raise ValueError("all four campaign logs required")
         if args.native_log:
             native = read_bounded(args.native_log, MAX_LOG)
             lifecycle = read_bounded(args.lifecycle_log, MAX_LOG)
-            costs = check_campaigns(log, native, lifecycle)
+            data = read_bounded(args.data_log, MAX_LOG)
+            costs = check_campaigns(log, native, lifecycle, data)
             for phase, (files, size, elapsed) in zip(
-                    ("native", "lifecycle"), costs[1:]):
+                    CAMPAIGNS[1:], costs[1:]):
                 print(f"PHANTOWD_SAMBA_CAMPAIGN_SCAN_COST phase={phase} "
                       f"files={files} bytes={size} elapsed_ns={elapsed} "
                       "scope=qemu-emulation-only")

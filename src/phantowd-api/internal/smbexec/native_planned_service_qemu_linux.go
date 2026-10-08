@@ -46,6 +46,8 @@ type NativePlannedServiceQEMU struct {
 	checks        uint64
 	attempted     bool
 	started       bool
+	dataAttempted bool
+	dataVerified  bool
 	stopped       bool
 	closed        bool
 	review        bool
@@ -60,6 +62,7 @@ type NativePlannedStatusQEMU struct {
 	IdentityRetained bool
 	SharesRetained   bool
 	RuntimeClosed    bool
+	DataVerified     bool
 }
 
 func NewNativePlannedServiceQEMU(ctx context.Context, inputs NativePlannedInputsQEMU) (*NativePlannedServiceQEMU, error) {
@@ -214,6 +217,31 @@ func (s *NativePlannedServiceQEMU) Start(ctx context.Context) error {
 	return nil
 }
 
+// VerifyDataAccess is a fixed disposable qualification through this service's
+// startup-bound runtime. It accepts no replacement authority or command.
+func (s *NativePlannedServiceQEMU) VerifyDataAccess(ctx context.Context) error {
+	if err := s.enter(ctx); err != nil {
+		return err
+	}
+	defer func() { <-s.gate }()
+	if s.closed || s.review || !s.started || s.stopped || s.dataAttempted {
+		return runtimebundle.ErrReviewRequired
+	}
+	s.dataAttempted = true
+	if err := s.verify(ctx); err != nil {
+		return s.quarantine(err)
+	}
+	if err := s.inputs.Backend.runtime.ProbePlannedDataAccessQEMU(ctx); err != nil {
+		return s.quarantine(err)
+	}
+	if err := s.verify(ctx); err != nil {
+		return s.quarantine(err)
+	}
+	s.dataVerified = true
+	s.publish()
+	return nil
+}
+
 func (s *NativePlannedServiceQEMU) quarantine(cause error) error {
 	s.review = true
 	if s.started && !s.stopped && s.closeErr == nil {
@@ -286,5 +314,5 @@ func (s *NativePlannedServiceQEMU) publish() {
 		state = "review-required"
 	}
 	s.status.Store(NativePlannedStatusQEMU{State: state, Checks: s.checks, IdentityRetained: s.lease != nil,
-		SharesRetained: s.inputs.Shares != nil, RuntimeClosed: s.runtimeClosed})
+		SharesRetained: s.inputs.Shares != nil, RuntimeClosed: s.runtimeClosed, DataVerified: s.dataVerified})
 }

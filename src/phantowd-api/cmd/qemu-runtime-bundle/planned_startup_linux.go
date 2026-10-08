@@ -18,6 +18,7 @@ import (
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/mountowner"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/runtimebundle"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/smbexec"
+	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/smbprovision"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/nfsconfig"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/serviceaccounts"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/shareconfig"
@@ -26,10 +27,13 @@ import (
 
 const plannedStartupMarkerQEMU = "PHANTOWD_SAMBA_OWNER_PLANNED_STARTUP_READY owner=actual_native_backend storage=mounted_roster same_authorities=true granted_only=true service_role=true original_views=true before_start_busy=true after_start_busy=true duplicate_refused=true canceled_start_refused=true fresh_observation=true runtime_close_before_release=true stopped_reaped=true no_fd_leak=true samba_data=false activation=false scope=qemu-only"
 
-// A NEW disposable service after the older native auth/revocation/data proofs.
+const plannedDataMarkerQEMU = "PHANTOWD_SAMBA_OWNER_PLANNED_DATA_READY same_authorities=true same_daemon=true granted_only=true ungranted_enabled_denied=true smb_read=true smb_write=true unix_owner=true readonly_EROFS=true readonly_denied=true symlink_denied=true fresh_observation=true stopped_before_release=true no_fd_leak=true activation=false scope=qemu-only"
+
+// A NEW disposable service in a fresh, independently enrolled data guest.
 // It retains the SAME identity Owner, startup-fixed backend, complete mounted
 // roster and original share pins from planning through startup and full Close.
-// No data-access or product activation is claimed by this first startup tracer.
+// A separate access proof exercises actual transfers through that SAME service.
+// The startup marker alone claims neither transfers nor product activation.
 func nativePlannedStartupFixtureQEMU(plan *runtimebundle.Plan, lookup fileserviceplan.SambaEnrollmentLookup, authority string, inventory identityowner.Inventory) (result error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 40*time.Second)
 	defer cancel()
@@ -70,6 +74,25 @@ func nativePlannedStartupFixtureQEMU(plan *runtimebundle.Plan, lookup fileservic
 		if err := owner.SetDesiredState(ctx, before.Registry.Revision, peer.ID, serviceaccounts.Enabled); err != nil {
 			return err
 		}
+		// A genuinely enabled credential must still have no service access when
+		// it has no grant. Never fabricate passdb/SID evidence or mistake an
+		// already-disabled account for grant enforcement.
+		ungranted := before.Registry.Accounts[0]
+		if ungranted.Name != "qpmanaged" || ungranted.State != serviceaccounts.Disabled {
+			return errors.New("planned data unexpected ungranted identity")
+		}
+		op := owner.SMB(ungranted.ID)
+		journal, err := op.Load(ctx)
+		if err != nil || journal.Phase != smbprovision.Enabled || journal.SID == "" {
+			return errors.New("planned data missing confirmed enabled ungranted credential")
+		}
+		current, _, err := owner.Snapshot(ctx)
+		if err != nil {
+			return err
+		}
+		if err := owner.SetDesiredState(ctx, current.Revision, ungranted.ID, serviceaccounts.Enabled); err != nil {
+			return err
+		}
 		const source = "/run/phantowd-samba-source"
 		const root = "/run/phantowd/service-handoff/native-planned-startup"
 		for _, name := range []string{"planned-readonly", "planned-writable"} {
@@ -80,6 +103,22 @@ func nativePlannedStartupFixtureQEMU(plan *runtimebundle.Plan, lookup fileservic
 			if err := errors.Join(os.Chown(path, int(peer.UID), int(peer.GID)), os.Chmod(path, 0770)); err != nil {
 				return err
 			}
+		}
+		for _, path := range []string{source + "/planned-readonly/seed", "/run/native-share-upload"} {
+			file, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0600)
+			if err != nil {
+				return err
+			}
+			_, err = file.WriteString("native-share-qualified")
+			if err := errors.Join(err, file.Close()); err != nil {
+				return err
+			}
+		}
+		if err := os.Chown(source+"/planned-readonly/seed", int(peer.UID), int(peer.GID)); err != nil {
+			return err
+		}
+		if err := os.Symlink(source+"/planned-readonly/seed", source+"/planned-readonly/escape"); err != nil {
+			return err
 		}
 		config := fileservice.Config{Format: fileservice.ConfigFormat, SchemaVersion: 1, Revision: 1,
 			Shares: shareconfig.Config{Format: shareconfig.Format, SchemaVersion: 1, Revision: 1,
@@ -165,6 +204,29 @@ func nativePlannedStartupFixtureQEMU(plan *runtimebundle.Plan, lookup fileservic
 		if err != nil || status.State != "ready" || status.Checks != 1 || !status.IdentityRetained || !status.SharesRetained || status.RuntimeClosed {
 			return errors.New("planned startup incomplete live observation")
 		}
+		// The original startup/preparation remains bounded40. Data access is a
+		// NEW action with its OWN20-second budget, not leftovers from startup.
+		// Guest180/readiness12/worker4/stop bounds remain unchanged.
+		cancel()
+		dataCtx, cancelData := context.WithTimeout(context.Background(), 20*time.Second)
+		defer cancelData()
+		ctx = dataCtx
+		canceledData, cancelProbe := context.WithCancel(ctx)
+		cancelProbe()
+		if err := service.VerifyDataAccess(canceledData); !errors.Is(err, context.Canceled) {
+			return errors.New("planned data accepted canceled probe")
+		}
+		if err := service.VerifyDataAccess(ctx); err != nil {
+			return fmt.Errorf("planned same-authority data access: %w", err)
+		}
+		if !errors.Is(service.VerifyDataAccess(ctx), runtimebundle.ErrReviewRequired) {
+			return errors.New("planned data repeated a single-use probe")
+		}
+		status, err = service.Status()
+		if err != nil || !status.DataVerified || status.State != "ready" || !status.IdentityRetained || !status.SharesRetained ||
+			!errors.Is(owner.Close(), identityowner.ErrBusy) || !errors.Is(handoff.Close(), mountowner.ErrHandoffBusy) {
+			return errors.New("planned data lost continuous service authority")
+		}
 		if err := service.Close(context.Background()); err != nil {
 			return err
 		}
@@ -175,14 +237,16 @@ func nativePlannedStartupFixtureQEMU(plan *runtimebundle.Plan, lookup fileservic
 		if err := handoff.Close(); err != nil {
 			return err
 		}
-		current, _, err := owner.Snapshot(ctx)
+		current, _, err = owner.Snapshot(ctx)
 		if err != nil {
 			return err
 		}
 		if err := owner.SetDesiredState(ctx, current.Revision, peer.ID, serviceaccounts.Disabled); err != nil {
 			return err
 		}
-		for _, path := range []string{root, source + "/planned-readonly", source + "/planned-writable"} {
+		for _, path := range []string{root, source + "/planned-readonly/escape", source + "/planned-readonly/seed",
+			source + "/planned-writable/created", source + "/planned-readonly", source + "/planned-writable",
+			"/run/native-share-upload", "/run/native-share-download-rw", "/run/native-share-download-ro"} {
 			if err := os.Remove(path); err != nil {
 				return err
 			}

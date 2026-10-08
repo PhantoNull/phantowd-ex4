@@ -114,6 +114,7 @@ func TestNativeDaemonLifecycleRefusesAbsentCanceledAndBusyAuthority(t *testing.T
 		absent.VerifyNativeIdleDisableQEMU, absent.ProbeNativeDaemonQEMU,
 		absent.CheckNativeStartupQEMU, absent.StopNativeServiceQEMU,
 		absent.StartPlannedDaemonQEMU,
+		absent.ProbePlannedDataAccessQEMU,
 	} {
 		if err := operation(context.Background()); !errors.Is(err, ErrInvalid) {
 			t.Fatal("absent authority admitted lifecycle", err)
@@ -128,6 +129,7 @@ func TestNativeDaemonLifecycleRefusesAbsentCanceledAndBusyAuthority(t *testing.T
 		r.StartNativeDaemonQEMU, r.StopNativeDaemonQEMU, r.VerifyNativeIdleDisableQEMU,
 		r.CheckNativeStartupQEMU, r.StopNativeServiceQEMU,
 		r.StartPlannedDaemonQEMU,
+		r.ProbePlannedDataAccessQEMU,
 	} {
 		if err := operation(canceled); !errors.Is(err, context.Canceled) {
 			t.Fatal("canceled lifecycle proceeded", err)

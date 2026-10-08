@@ -1122,6 +1122,8 @@ int main(int argc, char **argv)
         return native_client(argv[2], argv[3], 0);
     if (argc == 3 && !strcmp(argv[1], "native-data-client"))
         return native_client_mode("qpsecond", "good", 0, argv[2]);
+    if (argc == 2 && !strcmp(argv[1], "native-ungranted-client"))
+        return native_client("qpmanaged", "good", 0);
     if (argc == 3 && !strcmp(argv[1], "native-session"))
         return native_client(argv[2], "good", 1);
     if (argc == 2 && !strcmp(argv[1], "runtime-bundle"))

@@ -47,7 +47,7 @@ function Assert-True {
 try {
     $repoRoot = (Microsoft.PowerShell.Management\Resolve-Path (Join-Path $PSScriptRoot '../..')).Path
     $state = $global:phantowdSambaWrapperTestState
-    foreach ($campaign in @('all', 'service', 'native', 'lifecycle')) {
+    foreach ($campaign in @('all', 'service', 'native', 'lifecycle', 'data')) {
         foreach ($baseArgument in @('', (Join-Path $repoRoot 'mock-explicit-base'))) {
             $state.Calls.Clear()
             $state.Files.Clear()
@@ -73,12 +73,12 @@ try {
         }
     }
     $state.Calls.Clear()
-    & $wrapper -Campaign lifecycle -DiagnosticLogs
+    & $wrapper -Campaign data -DiagnosticLogs
     Assert-True ($state.Calls.Count -eq 3) 'Diagnostics must not add a Docker operation.'
     $diagnosticRun = $state.Calls[2]
     Assert-True ($diagnosticRun[-1] -match "printf '%s' '([A-Za-z0-9+/=]+)' \| base64 -d \| sh") 'Diagnostic command missing.'
     $diagnosticLinux = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($Matches[1]))
-    Assert-True ($diagnosticLinux.Contains("/src '' 'lifecycle' 'diagnostic'")) 'Diagnostic mode not passed to the same guest driver.'
+    Assert-True ($diagnosticLinux.Contains("/src '' 'data' 'diagnostic'")) 'Diagnostic mode not passed to the same guest driver.'
     foreach ($failure in @('image inspect', 'volume inspect', 'run', 'directory', 'symlink')) {
         $state.Calls.Clear()
         $state.Failure = $failure
@@ -115,7 +115,7 @@ try {
             Remove-Item -LiteralPath $probeRoot -Force
         }
     }
-    'PHANTOWD_SAMBA_WRAPPER_TESTS_READY defaults=true campaigns=4 refusals=6 scope=mock-command-boundary-only'
+    'PHANTOWD_SAMBA_WRAPPER_TESTS_READY defaults=true campaigns=5 refusals=6 scope=mock-command-boundary-only'
 } finally {
     Remove-Variable phantowdSambaWrapperTestState -Scope Global
     $global:LASTEXITCODE = $previousExitCode

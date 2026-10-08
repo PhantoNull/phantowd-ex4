@@ -12,6 +12,8 @@ import (
 
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/identityowner"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/mountowner"
+	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/processowner"
+	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/runtimebundle"
 )
 
 func TestNativePlannedServiceRefusesAbsentAuthorityBeforeOwnershipTransfer(t *testing.T) {
@@ -42,5 +44,27 @@ func TestNativePlannedStartRefusesMissingAuthority(t *testing.T) {
 	var service *NativePlannedServiceQEMU
 	if err := service.Start(context.Background()); !errors.Is(err, ErrInvalid) {
 		t.Fatal("absent planned service admitted startup:", err)
+	}
+}
+
+func TestNativePlannedDataRefusesAbsentCanceledAndBusyAuthority(t *testing.T) {
+	var absent *NativePlannedServiceQEMU
+	if err := absent.VerifyDataAccess(context.Background()); !errors.Is(err, ErrInvalid) {
+		t.Fatal("absent planned service admitted a data operation:", err)
+	}
+	service := &NativePlannedServiceQEMU{gate: make(chan struct{}, 1)}
+	canceled, cancel := context.WithCancel(context.Background())
+	cancel()
+	if err := service.VerifyDataAccess(canceled); !errors.Is(err, context.Canceled) {
+		t.Fatal("canceled data qualification proceeded:", err)
+	}
+	service.gate <- struct{}{}
+	err := service.VerifyDataAccess(context.Background())
+	<-service.gate
+	if !errors.Is(err, processowner.ErrBusy) {
+		t.Fatal("busy planned service admitted a data operation:", err)
+	}
+	if err := service.VerifyDataAccess(context.Background()); !errors.Is(err, runtimebundle.ErrReviewRequired) {
+		t.Fatal("unstarted planned service admitted a data operation:", err)
 	}
 }

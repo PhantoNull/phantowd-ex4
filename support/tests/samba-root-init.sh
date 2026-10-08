@@ -55,7 +55,7 @@ denied_mkdir() {
     [ "$(grep '^NT_STATUS_' /run/client.log)" = "$expected" ] || return 1
     [ ! -e "/run/phantowd-samba-source/approved/inherited/$2" ] || return 1
 }
-run_native_fixture() {
+setup_native_fixture() {
     # Fresh guest: no service campaign state or passdb is carried across boots.
     mount -t tmpfs -o mode=0755,size=1m tmpfs /etc || return 1
     printf '%s\n' 'root:!:0:0:root:/:/sbin/nologin' \
@@ -70,15 +70,19 @@ run_native_fixture() {
     printf '%s\n' 'root:!:0:0:99999:7:::' \
         'nobody:!:0:0:99999:7:::' >/etc/shadow
     chmod 0600 /etc/shadow || return 1
-    if [ "$campaign" = lifecycle ]; then
-        # Create this guest's real disabled Unix accounts through the SAME
-        # Owner operations. Independent libc/config/handoff probes remain
-        # mandatory in native, not repeated before this cumulative workload.
-        /usr/sbin/phantowd-runtime-bundle-probe native-lookup-bootstrap || return 1
+}
+run_native_fixture() {
+    setup_native_fixture || return 1
+    # OWN real Unix accounts in each guest. Independent libc/config/handoff
+    # experiments run once after the service guest's other groups close.
+    /usr/sbin/phantowd-runtime-bundle-probe native-lookup-bootstrap || return 1
+    if [ "$campaign" = data ]; then
+        /usr/sbin/phantowd-runtime-bundle-probe native-planned-data || return 1
+        echo PHANTOWD_SAMBA_ROOT_DATA_DONE
+    elif [ "$campaign" = lifecycle ]; then
         /usr/sbin/phantowd-runtime-bundle-probe native-lifecycle || return 1
         echo PHANTOWD_SAMBA_ROOT_DONE
     else
-        /usr/sbin/phantowd-runtime-bundle-probe native-lookup || return 1
         /usr/sbin/phantowd-runtime-bundle-probe native-credentials || return 1
         echo PHANTOWD_SAMBA_ROOT_NATIVE_DONE
     fi
@@ -93,6 +97,7 @@ run_fixture() {
         phantowd_samba_campaign=service) campaign=service ;;
         phantowd_samba_campaign=native) campaign=native ;;
         phantowd_samba_campaign=lifecycle) campaign=lifecycle ;;
+        phantowd_samba_campaign=data) campaign=data ;;
         *) return 1 ;;
     esac
     # This guest has no normal hardware entropy sources. Require the real
@@ -126,7 +131,7 @@ run_fixture() {
         # claiming the independent experiments or borrowing another boot.
         /usr/sbin/phantowd-samba-root-launcher runtime-census || return 1
     fi
-    if [ "$campaign" = native ] || [ "$campaign" = lifecycle ]; then
+    if [ "$campaign" != service ]; then
         run_native_fixture || return 1
         return 0
     fi
@@ -323,6 +328,10 @@ run_fixture() {
     /usr/sbin/phantowd-samba-owner-probe || return 1
     /usr/sbin/phantowd-samba-root-launcher code-owner || return 1
     /usr/sbin/phantowd-samba-root-launcher configuration-owner || return 1
+    # All prior service groups/inputs have fully settled. This guest owns its
+    # independent real NSS/config/handoff tests; it passes NO state to another.
+    setup_native_fixture || return 1
+    /usr/sbin/phantowd-runtime-bundle-probe native-lookup || return 1
     echo PHANTOWD_SAMBA_ROOT_SERVICE_DONE
 }
 if ! run_fixture; then

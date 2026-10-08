@@ -22,7 +22,18 @@ import (
 	"golang.org/x/sys/unix"
 )
 
-func nativeCredentialFixture(lifecycle bool) (result error) {
+type nativeCredentialCampaignQEMU uint8
+
+const (
+	nativeCredentialsCampaignQEMU nativeCredentialCampaignQEMU = iota
+	nativeLifecycleCampaignQEMU
+	nativePlannedDataCampaignQEMU
+)
+
+func nativeCredentialFixture(campaign nativeCredentialCampaignQEMU) (result error) {
+	if campaign > nativePlannedDataCampaignQEMU {
+		return errors.New("native credential campaign guard")
+	}
 	commandLine, err := os.ReadFile("/proc/cmdline")
 	var fs unix.Statfs_t
 	if err != nil || !strings.Contains(" "+string(commandLine)+" ", " phantowd_samba_ext4_fixture=1 ") ||
@@ -201,11 +212,39 @@ func nativeCredentialFixture(lifecycle bool) (result error) {
 		}
 	}
 	reportNativePhaseTimingQEMU(nativeFixtureEnrolledQEMU, started)
+	if campaign == nativePlannedDataCampaignQEMU {
+		// Fresh guest: these are empty child mount destinations, not data
+		// authority or state inherited from the older credential campaign.
+		if err := owner.Close(); err != nil {
+			return err
+		}
+		if err := runtime.Close(context.Background()); err != nil {
+			return err
+		}
+		reportNativePhaseTimingQEMU(nativeFixtureAuthorityClosedQEMU, started)
+		for _, path := range []string{root + "/shares", root + "/shares/readonly", root + "/shares/writable"} {
+			if err := os.Mkdir(path, 0755); err != nil {
+				return err
+			}
+		}
+		if err := nativePlannedStartupFixtureQEMU(plan, lookup, authority, inventory); err != nil {
+			return fmt.Errorf("native planned data: %w", err)
+		}
+		reportNativePhaseTimingQEMU(nativeFixtureDataVerifiedQEMU, started)
+		after, err := os.ReadDir("/proc/self/fd")
+		if err != nil || len(after) != len(before) {
+			return errors.New("planned data credential descriptor leak")
+		}
+		nativeCredentialEnrollmentMarkerQEMU()
+		fmt.Println(plannedStartupMarkerQEMU)
+		fmt.Println(plannedDataMarkerQEMU)
+		return nil
+	}
 	// Independent fresh guest: real enrollment is required here, but the native
 	// campaign owns the idle/live-disable and backend-binding proofs. Do not
 	// start/disable/stop a redundant first daemon before the startup coordinator.
-	// The complete suite still requires every original proof from all3 guests.
-	if lifecycle {
+	// The complete suite still requires every original proof from all guests.
+	if campaign == nativeLifecycleCampaignQEMU {
 		stage, err := nativePlannedCandidateFixtureQEMU(owner, backend, runtime)
 		if err != nil {
 			return fmt.Errorf("native planned candidate: %w", err)
@@ -381,9 +420,6 @@ func nativeCredentialFixture(lifecycle bool) (result error) {
 		return fmt.Errorf("native data descriptor profile: %w", err)
 	}
 	reportNativePhaseTimingQEMU(nativeFixtureDataVerifiedQEMU, started)
-	if err := nativePlannedStartupFixtureQEMU(plan, lookup, authority, inventory); err != nil {
-		return fmt.Errorf("native planned startup: %w", err)
-	}
 	after, err := os.ReadDir("/proc/self/fd")
 	if err != nil || len(after) != len(before) {
 		return errors.New("native credential descriptor leak")
@@ -393,7 +429,6 @@ func nativeCredentialFixture(lifecycle bool) (result error) {
 	fmt.Println("PHANTOWD_SAMBA_OWNER_NATIVE_BACKEND_BINDING_READY owner_bound=true backend_bound=true unchanged_verified=true foreign_refused=true close_busy=true released_before_start=true release_no_mutation=true stopped_reaped=true no_fd_leak=true service_owner=false scope=qemu-only")
 	fmt.Println("PHANTOWD_SAMBA_OWNER_NATIVE_DISABLE_HANDOFF_READY owner_bound=true backend_bound=true atomic_successor=true old_review=true new_verified=true close_busy=true same_peer_session=true retained_until_stop=true stopped_reaped=true no_fd_leak=true startup_bound=false service_owner=false scope=qemu-only")
 	fmt.Println("PHANTOWD_SAMBA_OWNER_NATIVE_DATA_READY original_objects=true individual_clones=true readonly_EROFS=true smb_read=true smb_write=true unix_owner=true symlink_denied=true private_namespace=true stopped_before_release=true no_fd_leak=true complete_storage_identity=false scope=qemu-only")
-	fmt.Println(plannedStartupMarkerQEMU)
 	return nil
 }
 
