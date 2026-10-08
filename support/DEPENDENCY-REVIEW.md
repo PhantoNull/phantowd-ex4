@@ -370,6 +370,22 @@ product/hardware/recovery/release gates remain open.
    verify the compiler version embedded in the exported API, source/license
    collection and image equality. Do not infer a speedup, drop revalidation or
    change test budgets to obtain a pass.
+   **Focused host proof (2026-10-08):** official source and Linux/amd64 SDK
+   archives pass SHA-256 verification from [Go download metadata](https://go.dev/dl/?mode=json).
+   Source and SDK licenses agree with the current recipe's license hash.
+   Frozen `c995c6e`, API tree `7b612fe2`, passes ordinary/vet/tagged-vet,
+   all-package race, all 22 existing fixed-count API fuzz campaigns, seven
+   tagged authority packages and their race-count3 checks, ARMv5 cross-build
+   and all 64 Linux Samba-driver verifier tests. All 954 tracked API inputs
+   have matching before/after hashes. The temporary cross-built probe reports
+   Go 1.26.8, CGO0/Linux ARM5 and the exact unmodified source revision.
+   SDK/source/cache live in bounded disposable RAM scratch using the existing
+   container image; no new image or named volume is created.
+   **Not adopted:** selected Go 1.26.6 and the complete 950-input image above are
+   unchanged. Cross-compilation is not ARMv5 execution. The candidate still
+   needs lab-tool coverage, original guest campaigns, coherent recipe/hash
+   changes and exact new image/source/license/SBOM qualification. This is
+   neither an observed speedup nor a fix for the intermittent hosted timeout.
 4. **Complete the review:** cover every selected host/target component and linked
    Go package, actual backport contents and disabled/compiled features. Record
    advisory ID, upstream affected/fixed ranges, source/patch identity, exact

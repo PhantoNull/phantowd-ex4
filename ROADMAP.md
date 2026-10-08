@@ -343,6 +343,12 @@ button to an unqualified backend simply because the screen exists.
   review, license material and regenerated SBOM. Test the selected package set.
   The [dated dependency review](support/DEPENDENCY-REVIEW.md) now identifies
   Linux 6.18.55, host OpenSSL 3.5.9 and Go 1.26.8 as separate update packets.
+  Go 1.26.8 now has authenticated SDK/source/license and focused host proof on
+  frozen `c995c6e`: ordinary/race/22 fixed fuzz campaigns, seven tagged authority
+  packages/race3, ARMv5 cross-build and 64 Linux driver tests pass; all 954 API
+  inputs remain unchanged. This is not guest execution or adoption. Keep
+  Go 1.26.6 selected until original ARMv5 campaigns, coherent Buildroot inputs
+  and exact candidate image/source/license/SBOM audit pass; see the linked review.
   Linux source/signature/license authentication, unchanged-symbol ARMv5 kernel
   compilation and the original standard QEMU smoke now pass locally. Five
   firmware configurations/release files, both source hashes and the qualified
