@@ -3,10 +3,54 @@
 
 # Implementation status
 
-## Current complete cached integration — seven Samba scenarios and exact960 audit
+## Current test observability — redacted planned-fault boundaries
 
-Frozen `ab5f4d1222036e7cb911437ef2eb57fd907fa8f5`, API tree
-`eb8023d8b6bb6256070248653e902203aad211ed`, passes the complete cached
+An earlier reviewed-Close seven-campaign attempt passes service, native,
+candidate and lifecycle, then fails fault with incomplete subprocess proof;
+data/exit are not reached. Subsequent isolated, all-seven component and complete
+cached integration runs pass on the checkpoint below. This does not localize
+or causally resolve the intermittent failure.
+
+Test-only planned-fault diagnostics now report outer child deadline/result/proof
+agreement and validated fixed phase/deadline/review labels, without raw child
+output or secrets. Unknown/malformed rows are discarded and duplicates collapsed.
+Diagnostics cannot satisfy exact child-proof equality or campaign qualification.
+Pinned Go 1.26.8 Linux tagged vet/unit/race-count3 and Windows API/UI/contracts/
+ARMv5 cross preflight pass; temporary debug probes are removed. The original
+strict proof bytes, output bound, deadlines, privileges and runtime behavior
+are unchanged. See [diagnostic interpretation](support/QEMU-FAST-TESTS.md#diagnose-a-native-fixture-timeout-before-a-full-ci-build).
+
+The changed diagnostic fixture passes both its original all-seven ARMv5
+component lane and the complete cached integration/audit below. Own-head hosted
+qualification remains separate; no product or NAS operation is added.
+
+## Current component — reviewed planned Close retains original authority
+
+A real disposable ARMv5 source-alias restoration followed by `Close` exposes
+release of retained runtime/original authority despite coordinator review.
+The existing fault probe previously did not attempt this operation. Temporary
+fixed-label diagnostics localize the failure at the new retention assertion;
+they are removed before final validation.
+
+`NativePlannedServiceQEMU.Close` now refuses review before accessing the runtime,
+preserving first cleanup errors. Two explicit Close attempts in the original
+fault campaign retain actual runtime inputs and both original busy authorities;
+the mandatory proof includes `close_refused=true`. Missing/false proof refuses.
+The actual fault guest passes, and the actual normal data guest retains all
+startup/access/supervision/stop/full-close-before-release and FD-equality proofs.
+Pinned Go 1.26.8 Linux two-package tagged vet/unit/race-count3 and Windows API/UI/
+vet/tagged contracts/ARMv5 cross-compilation also pass. Worker/service/readiness/
+stop/guest limits, privileges and low-level explicit cleanup remain unchanged.
+
+The complete checkpoint below includes this correction and its actual fault
+proof. It is not held-session fault, durable recovery, product activation or
+EX4 qualification. PR #129's older published head passes its own checks but
+omits this correction; a refreshed head must pass its own hosted gates.
+
+## Current complete cached integration — seven Samba scenarios and exact962 audit
+
+Frozen `cea5e0a66d8fed7acec6f5ab63aefec9fa8178b0`, API tree
+`8eae4e2b1fa4a9832428c26d2e7e5ace3a06a706`, passes the complete cached
 Buildroot/host/ARMv5 lane and an independent post-terminal read-only audit on
 2026-10-08. Original ordinary/race/fixed-fuzz/toolkit, standard smoke, MD/state,
 launcher/runtime/loader/atomic, all **seven** independently enrolled Samba
@@ -21,18 +65,19 @@ unconsumed and settled worker inputs; review does not authorize release,
 restart or recovery. Mid-transfer/held-session loss and uncertain construction/
 teardown remain open.
 
-All **960** API inputs match source, compiled package and legal source archive
+All **962** API inputs match source, compiled package and legal source archive
 without stale extras. Configured strip, installed/rootfs/exported API, all
 seven ordered artifact hashes, actual Go 1.26.8 recipe/source/SDK/host licensing/
 SBOM and Linux AND headers 6.18.55 agree. All **11,510** installed SDK files
-match; **25,259** regular audit inputs and all **1,248** tracked build witnesses
+match; **25,263** regular audit inputs and all **1,250** tracked build witnesses
 recheck unchanged. See [measured artifact identities](support/DEPENDENCY-REVIEW.md).
 
 Only the existing image/two project volumes are reused; no consumer remains.
 This is cached local qualification, not independent clean reproduction,
 exact-head hosted qualification, complete advisory review, EX4 operation,
-migration, recovery, product activation or an installable release. PR #128/#129
-retain their own failed QEMU checks; local success is not their timeout fix.
+migration, recovery, product activation or an installable release. Earlier
+PR #128/#129 checkpoints failed QEMU; local success is not their timeout fix,
+and a refreshed head must pass its own checks.
 Older sections below retain their dated, narrower source scopes.
 
 Build-only hardening now fences builtin/module `CONFIG_CRYPTO_USER_API*`

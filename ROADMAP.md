@@ -67,14 +67,14 @@ currently product-qualified for migration.
 
 ## Current baseline
 
-The fully audited local checkpoint `ab5f4d1` selects Go 1.26.8 and passes the
+The fully audited local checkpoint `cea5e0a` selects Go 1.26.8 and passes the
 complete cached Buildroot/host/ARMv5 lane: all seven independently enrolled
 Samba scenarios and both synthetic SMART lanes. Independent post-terminal
-auditing matches all 960 API inputs to compiled package/source archive and all
-1,248 tracked build witnesses. Configured stripping, installed/image/exported
+auditing matches all 962 API inputs to compiled package/source archive and all
+1,250 tracked build witnesses. Configured stripping, installed/image/exported
 API, seven hashes, Linux AND headers 6.18.55, actual selected/installed Go SDK,
 SBOM, release and legal sources agree; see
-[exact qualification](IMPLEMENTATION-STATUS.md#current-complete-cached-integration--seven-samba-scenarios-and-exact960-audit).
+[exact qualification](IMPLEMENTATION-STATUS.md#current-complete-cached-integration--seven-samba-scenarios-and-exact962-audit).
 
 The QEMU lifecycle fixture separates preparation (20 seconds) from revocation
 (45 seconds), changing the combined allowance from 45 to 65 seconds. Original worker/service/readiness/stop/
@@ -88,11 +88,16 @@ The exit proof requires its retained worker capture to be unconsumed and
 settled; reviewed authority is not released or automatically restarted.
 Normal and held-client observers remain unchanged.
 
+After source restoration, two normal coordinator `Close` attempts are also
+refused while the same runtime inputs and both original authorities stay retained.
+QEMU-only failure diagnostics accept only fixed redacted labels and cannot satisfy
+the exact proof contract; the intermittent failure cause remains unresolved.
+
 This is not held-session/mid-transfer fault coverage, uncertain construction/
 teardown, product recovery or production storage/identity composition.
 Exact-head hosted promotion, independent clean reproduction, complete advisory
 review, hardware, migration, recovery and signed release gates remain open.
-PR #128/#129 retain failed hosted coordinator-continuity checks; local success
+Earlier PR #128/#129 checkpoints failed hosted coordinator-continuity checks; local success
 is not their causal fix. Keep existing guards and finite budgets. No HTTP
 service activation, NAS operation or installable firmware is introduced.
 Historical task evidence below retains its original source scope.
@@ -1229,6 +1234,17 @@ storage. No production roster provider or activation path exists.
   own hosted run still fails; this local success is not its repair. Guest
   isolation is not a proven hosted timeout fix. All hosted/independent-clean,
   hardware and product-activation gates remain open.
+
+  The source-restoration/Close follow-up now reproduces retained-input/original
+  authority release despite coordinator review. The coordinator's reviewed
+  Close admission is fenced before low-level teardown; the original actual
+  fault guest requires two refused Close attempts, retained runtime inputs and
+  both original busy authorities. Missing/false `close_refused=true` refuses.
+  Pinned Linux vet/unit/race3, Windows API/UI/ARM cross and the actual normal
+  data/close-before-release control pass. No deadline, privilege, low-level
+  cleanup or recovery contract changes. This is focused correction only: new
+  exact source/package/image audit, own-head hosted and broader uncertain-close/
+  held-session/product recovery gates remain separate.
 - **M4.2 — Single service owner.** Define start/reload/stop and child-process
   ownership; bound diagnostics and verify readiness. Preserve the last known
   working configuration on syntax/start failure without claiming an unapplied

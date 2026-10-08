@@ -330,6 +330,19 @@ code, both configurations and state retained; both original authorities stay bus
 Only the observed cover is unmounted. Original mount identity is restored,
 but every revival operation still refuses. No normal-path Close releases review.
 
+An added real source-restoration/Close regression exposes an earlier gap:
+the coordinator could call the low-level runtime Close after a successful stop,
+releasing retained inputs/original authority despite returning review. The
+coordinator now refuses reviewed Close before any runtime access, preserving
+the first uncertain close error when present. Two explicit Close attempts in
+the original fault guest must leave actual runtime inputs retained and both
+original Owner/handoff authorities busy. The mandatory fault proof includes
+`close_refused=true`; missing/false evidence refuses. A negative-only host
+admission control accesses no backend, while pinned Linux vet/unit/race-count3
+and the actual normal data guest verify unchanged healthy close-before-release.
+This focused correction does not alter the low-level Owner's explicit teardown
+contract or qualify product recovery, full image/SBOM, held sessions or hardware.
+
 Child exit disposes its namespace only after these witnesses; parent FD equality
 and the original identity-only fault proof remain mandatory. This is not product
 recovery. A missing launcher prerequisite exposed by the first actual trace is

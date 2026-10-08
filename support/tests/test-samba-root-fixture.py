@@ -131,7 +131,7 @@ class SambaRootFixture(unittest.TestCase):
             "source_covered=true exclusive_supervision=true "
             "review_sticky=true stopped_reaped=true private_inputs=15 "
             "runtime_inputs_retained=true originals_busy=true "
-            "cover_removed=true restoration_refused=true "
+            "cover_removed=true restoration_refused=true close_refused=true "
             "private_mount_namespace=true subprocess_disposal=true "
             "parent_fd_equal=true activation=false scope=qemu-only")
         self.assertIn(proof, fixture.MARKERS)
@@ -145,6 +145,9 @@ class SambaRootFixture(unittest.TestCase):
                                           "originals_busy=false"),
                             proof.replace("restoration_refused=true",
                                           "restoration_refused=false"),
+                            proof.replace("close_refused=true",
+                                          "close_refused=false"),
+                            proof.replace("close_refused=true ", ""),
                             proof.replace("private_inputs=15",
                                           "private_inputs=13")):
             with self.subTest(replacement=replacement):
@@ -1442,7 +1445,7 @@ class SambaRootFixture(unittest.TestCase):
             "source_covered=true exclusive_supervision=true "
             "review_sticky=true stopped_reaped=true private_inputs=15 "
             "runtime_inputs_retained=true originals_busy=true "
-            "cover_removed=true restoration_refused=true "
+            "cover_removed=true restoration_refused=true close_refused=true "
             "private_mount_namespace=true subprocess_disposal=true "
             "parent_fd_equal=true activation=false scope=qemu-only",
             "PHANTOWD_SAMBA_ROOT_DONE",

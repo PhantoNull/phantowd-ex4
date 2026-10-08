@@ -26,9 +26,9 @@ import (
 	"golang.org/x/sys/unix"
 )
 
-const plannedSourceFaultMarkerQEMU = "PHANTOWD_SAMBA_OWNER_PLANNED_SOURCE_FAULT_READY same_authorities=true same_daemon=true data_verified=true source_covered=true exclusive_supervision=true review_sticky=true stopped_reaped=true private_inputs=15 runtime_inputs_retained=true originals_busy=true cover_removed=true restoration_refused=true private_mount_namespace=true subprocess_disposal=true parent_fd_equal=true activation=false scope=qemu-only"
+const plannedSourceFaultMarkerQEMU = "PHANTOWD_SAMBA_OWNER_PLANNED_SOURCE_FAULT_READY same_authorities=true same_daemon=true data_verified=true source_covered=true exclusive_supervision=true review_sticky=true stopped_reaped=true private_inputs=15 runtime_inputs_retained=true originals_busy=true cover_removed=true restoration_refused=true close_refused=true private_mount_namespace=true subprocess_disposal=true parent_fd_equal=true activation=false scope=qemu-only"
 
-const plannedSourceFaultChildProofQEMU = "PHANTOWD_PLANNED_SOURCE_FAULT_CHILD_READY same_authorities=true same_daemon=true data_verified=true source_covered=true exclusive_supervision=true review_sticky=true stopped_reaped=true private_inputs=15 runtime_inputs_retained=true originals_busy=true cover_removed=true restoration_refused=true private_mount_namespace=true scope=qemu-subprocess-only\n"
+const plannedSourceFaultChildProofQEMU = "PHANTOWD_PLANNED_SOURCE_FAULT_CHILD_READY same_authorities=true same_daemon=true data_verified=true source_covered=true exclusive_supervision=true review_sticky=true stopped_reaped=true private_inputs=15 runtime_inputs_retained=true originals_busy=true cover_removed=true restoration_refused=true close_refused=true private_mount_namespace=true scope=qemu-subprocess-only\n"
 
 func nativePlannedSourceFaultSubprocessQEMU() error {
 	return nativePlannedFaultSubprocessQEMU("source")
@@ -53,6 +53,7 @@ func nativePlannedFaultSubprocessQEMU(fault string) error {
 	var output nativeFaultOutput
 	command.Stdout, command.Stderr = &output, &output
 	if err := command.Run(); err != nil || output.String() != proof {
+		fmt.Fprint(os.Stderr, plannedFaultSubprocessDiagnosticQEMU(ctx.Err(), err, output.String(), proof))
 		return fmt.Errorf("planned %s fault subprocess proof incomplete", fault)
 	}
 	return nil
@@ -119,7 +120,11 @@ func nativePlannedFaultQEMU(fault string) error {
 	return nativePlannedServiceFixtureQEMU(plan, lookup, authority, inventory, fault)
 }
 
-func qualifyPlannedSourceFaultQEMU(ctx context.Context, service *smbexec.NativePlannedServiceQEMU, native *runtimebundle.NativeSambaRuntimeQEMU, owner *identityowner.Owner, handoff *mountowner.ServiceHandoff) error {
+func qualifyPlannedSourceFaultQEMU(ctx context.Context, service *smbexec.NativePlannedServiceQEMU, native *runtimebundle.NativeSambaRuntimeQEMU, owner *identityowner.Owner, handoff *mountowner.ServiceHandoff) (result error) {
+	phase := "initial"
+	defer func() {
+		fmt.Fprint(os.Stderr, plannedFaultFailureDiagnosticQEMU(phase, result))
+	}()
 	initial, err := service.Status()
 	if err != nil || initial.State != "ready" || !initial.DataVerified || !initial.IdentityRetained || !initial.SharesRetained || initial.RuntimeClosed {
 		return errors.New("planned source fault lacks original live access authority")
@@ -166,6 +171,7 @@ func qualifyPlannedSourceFaultQEMU(ctx context.Context, service *smbexec.NativeP
 			// Cover ONLY the already-qualified synthetic volume alias. All
 			// original mounts, grant clones and pinned objects remain attached.
 			// Never detach a grant or alter data/TDBs/devices to trigger loss.
+			phase = "cover"
 			if err := unix.Mount("/run", target, "", unix.MS_BIND, ""); err != nil {
 				cancelLoop()
 				return errors.Join(err, <-completed)
@@ -178,6 +184,7 @@ func qualifyPlannedSourceFaultQEMU(ctx context.Context, service *smbexec.NativeP
 				cancelLoop()
 				return errors.Join(errors.New("planned fault source cover not witnessed"), err, retainedErr, <-completed)
 			}
+			phase = "quarantine"
 			select {
 			case err := <-completed:
 				if !errors.Is(err, runtimebundle.ErrReviewRequired) {
@@ -187,6 +194,7 @@ func qualifyPlannedSourceFaultQEMU(ctx context.Context, service *smbexec.NativeP
 				cancelLoop()
 				return errors.Join(ctx.Err(), <-completed)
 			}
+			phase = "retention"
 			for range 2 {
 				stopped, err := native.ObservePlannedStopQEMU(ctx)
 				status, statusErr := service.Status()
@@ -197,6 +205,7 @@ func qualifyPlannedSourceFaultQEMU(ctx context.Context, service *smbexec.NativeP
 				}
 			}
 			// Remove exactly the observed cover, not the original mount/grants.
+			phase = "restoration"
 			current, err := plannedFaultPathIdentityQEMU(target)
 			if err != nil || current != covered {
 				return errors.Join(errors.New("planned fault cover identity changed"), err)
@@ -215,6 +224,18 @@ func qualifyPlannedSourceFaultQEMU(ctx context.Context, service *smbexec.NativeP
 			}
 			if err := service.Supervise(ctx, time.Second); !errors.Is(err, runtimebundle.ErrReviewRequired) {
 				return errors.New("planned source restoration revived supervision")
+			}
+			phase = "review-close"
+			for range 2 {
+				if err := service.Close(ctx); !errors.Is(err, runtimebundle.ErrReviewRequired) {
+					return errors.Join(errors.New("planned source review close was admitted"), err)
+				}
+				stopped, stopErr := native.ObservePlannedStopQEMU(ctx)
+				status, err := service.Status()
+				if stopErr != nil || !stopped.DaemonStopped || !stopped.InputsRetained || err != nil || status.State != "review-required" || !status.IdentityRetained || !status.SharesRetained || status.RuntimeClosed ||
+					!errors.Is(owner.Close(), identityowner.ErrBusy) || !errors.Is(handoff.Close(), mountowner.ErrHandoffBusy) {
+					return errors.Join(errors.New("planned source review close released original authority"), err, stopErr)
+				}
 			}
 			status, err = service.Status()
 			if err != nil || status.State != "review-required" || !status.IdentityRetained || !status.SharesRetained || status.RuntimeClosed ||

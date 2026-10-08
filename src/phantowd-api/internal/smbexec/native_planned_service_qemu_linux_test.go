@@ -102,3 +102,23 @@ func TestNativePlannedDataRefusesAbsentCanceledAndBusyAuthority(t *testing.T) {
 		t.Fatal("unstarted planned service admitted a data operation:", err)
 	}
 }
+
+func TestNativePlannedReviewedCloseRefusesBeforeRuntimeAccess(t *testing.T) {
+	// Negative-only admission fixture, never a fabricated healthy authority.
+	// No backend exists: review must refuse before accessing any runtime alias.
+	service := &NativePlannedServiceQEMU{gate: make(chan struct{}, 1), review: true}
+	service.publish()
+	before, err := service.Status()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for range 2 {
+		if err := service.Close(context.Background()); !errors.Is(err, runtimebundle.ErrReviewRequired) {
+			t.Fatal("reviewed close accessed runtime or reported settlement:", err)
+		}
+		after, err := service.Status()
+		if err != nil || after != before {
+			t.Fatal("reviewed close changed retained telemetry:", after, err)
+		}
+	}
+}
