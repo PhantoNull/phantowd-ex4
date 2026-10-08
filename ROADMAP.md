@@ -67,6 +67,15 @@ currently product-qualified for migration.
 
 ## Current baseline
 
+A newer component-only follow-up passes host checks and all seven fresh ARMv5
+Samba overlay guests. One authorized original IPC$ session remains under the
+SAME planned service's exclusive supervision. Source-alias loss stops client
+and daemon, retaining reviewed identity/storage/runtime despite restoration
+or repeated Close. Older observers refuse the extra group. This is not a new
+complete image or normal full-close/in-flight/durable-handle qualification.
+The separate OpenSSL PR's own QEMU run fails at the source child's data phase;
+no merge/retry or causal fix is claimed by the newer local result.
+
 The fully audited local checkpoint `e234644` selects Go 1.26.8 and host OpenSSL
 3.5.9 and passes the
 complete cached Buildroot/host/ARMv5 lane: all seven independently enrolled
@@ -90,7 +99,7 @@ exclusive serial supervision, cancellation/verified stop, retained originals,
 full-close-before-release, idle source-alias loss and original-owned idle exit.
 The exit proof requires its retained worker capture to be unconsumed and
 settled; reviewed authority is not released or automatically restarted.
-Normal and held-client observers remain unchanged.
+Normal and held-client observers were unchanged at that audited checkpoint.
 
 After source restoration, two normal coordinator `Close` attempts are also
 refused while the same runtime inputs and both original authorities stay retained.
@@ -1594,23 +1603,30 @@ storage. No production roster provider or activation path exists.
   This is NOT a composed-storage held-session fault, retained data handle,
   in-flight/durable reconnect, complete changed image or recovery qualification.
 
-  **Next bounded host/QEMU packet:** qualify a held authorized session through
-  the SAME planned service, original identity/backend, mounted roster and RO/RW
-  grants before inducing the existing synthetic source-alias loss. The planned
-  fixture deliberately excludes the enabled but ungranted account from service
-  NSS: do not grant it access merely to reuse the two-account credential fixture.
-  Construct a fixed authorized client from retained fixture inputs; no generic
-  executable, credential, backend or source-path fallback may be added.
-  Keep client-group pins through verified stop/close; uncertain construction or
-  settlement retains review/authority without retry. Preserve the older unused
-  two-client observer's strict contract, using a separate read-only witness for
-  actually started held clients. Require original session identity before the
-  fault, actual client/daemon group stop and reap afterward, retained original
-  identity/storage/code/config/state, restoration/repeated-Close refusal and
-  parent FD equality before subprocess disposal. No physical disk, product HTTP,
-  NAND or new privilege. Measure new action timing locally before changing any
-  existing phase/guest bound or publishing a heavy hosted run. Session continuity
-  alone does not qualify open-file, mid-transfer or durable-handle semantics.
+  The composed held-session source-loss packet now passes all seven fresh
+  ARMv5 overlay guests plus root/non-root host checks. The SAME original
+  service retains one fixed authorized client; the enabled ungranted account
+  stays excluded. Complete original-session observations precede the alias
+  cover. Client and daemon stop/reap; originals and all15 private daemon inputs
+  remain retained. Old observers refuse the additional group and restoration/
+  repeated Close cannot revive or release review. Parent FD equality and base
+  hashes pass. All1,260 witnesses match; existing startup40/data20/supervision20/
+  child90/guest180 and worker limits remain.
+
+  **Next bounded host/QEMU packet:** qualify that SAME fixed authorized holder
+  through accepted idle cancellation and normal full runtime Close. Retain
+  original session checks, identity/backend/complete mounted roster and RO/RW
+  grants without granting the excluded account or supplying replacement inputs.
+  Require both group absence/reap and the unused two-client generation-zero
+  census before releasing retained programs/inputs. Preserve old-observer
+  refusals while the extra group exists. Only full successful closure releases
+  either original authority; uncertainty retains review and the first error
+  without retry. Test repeated healthy Close, final parent FD equality and
+  unchanged base images. No physical disk, HTTP activation, new privilege or
+  widened deadline. Then qualify open-file/in-flight loss and late/uncertain
+  cleanup separately; IPC$ continuity proves neither data handles nor durable
+  reconnect. Hosted source-child data failures need an exact-head local feedback
+  loop and a causal fix before promotion; local green is not one.
 - **M4.6 — Product persistence.** Reboot with saved policies, identities and data;
   verify activation of the intended revision and no recreation of credentials,
   permissions or missing directory trees as a recovery shortcut.

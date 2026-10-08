@@ -55,6 +55,8 @@ type NativePlannedServiceQEMU struct {
 	runtimeClosed bool
 	closeErr      error
 	pendingRoots  []mountowner.ServiceShareDescriptorQEMU
+	heldAttempted bool
+	heldSession   NativePlannedSessionQEMU
 }
 
 type NativePlannedStatusQEMU struct {
@@ -169,6 +171,42 @@ func (s *NativePlannedServiceQEMU) verify(ctx context.Context) error {
 	fresh, err := fileserviceplan.BuildFromRetainedOwners(ctx, s.inputs.Policy, s.inputs.ActiveRevision, s.lease, s.inputs.Storage)
 	if err != nil || !s.plan.FreshAgainst(fresh.Freshness()) {
 		return errors.Join(runtimebundle.ErrReviewRequired, err)
+	}
+	if s.heldSession.backend != nil {
+		return s.inputs.Backend.VerifyPlannedSessionQEMU(ctx, s.heldSession)
+	}
+	return nil
+}
+
+// Fixed QEMU-only authorized session. Caller supplies no name, credential,
+// witness or runtime. Supervision rechecks this exact original witness under
+// the same exclusive gate; no replacement session can repair this lifetime.
+func (s *NativePlannedServiceQEMU) StartHeldSessionQEMU(ctx context.Context) error {
+	if err := s.enter(ctx); err != nil {
+		return err
+	}
+	defer func() { <-s.gate }()
+	if s.closed || s.review || !s.started || s.stopped || !s.dataVerified || s.heldAttempted {
+		return runtimebundle.ErrReviewRequired
+	}
+	s.heldAttempted = true
+	if err := s.verify(ctx); err != nil {
+		return s.quarantine(err)
+	}
+	if err := s.inputs.Backend.runtime.StartPlannedClientQEMU(ctx); err != nil {
+		// Runtime owns startup rollback/stop. Retain its uncertain result;
+		// neither supervision nor Close may retry settlement.
+		s.closeErr, s.review = err, true
+		s.publish()
+		return errors.Join(runtimebundle.ErrReviewRequired, err)
+	}
+	original, err := s.inputs.Backend.ObservePlannedSessionQEMU(ctx)
+	if err != nil {
+		return s.quarantine(err)
+	}
+	s.heldSession = original
+	if err := s.verify(ctx); err != nil {
+		return s.quarantine(err)
 	}
 	return nil
 }

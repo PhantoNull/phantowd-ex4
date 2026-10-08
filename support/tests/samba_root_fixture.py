@@ -32,6 +32,8 @@ CENSUS_MARKER = ("PHANTOWD_SAMBA_ROOT_CENSUS_READY readonly=true "
 PLANNED_SOURCE_FAULT_MARKER = (
     "PHANTOWD_SAMBA_OWNER_PLANNED_SOURCE_FAULT_READY "
     "same_authorities=true same_daemon=true data_verified=true "
+    "original_session=true held_client_stopped=true "
+    "held_client_retained=true old_observers_refused=true "
     "source_covered=true exclusive_supervision=true review_sticky=true "
     "stopped_reaped=true private_inputs=15 runtime_inputs_retained=true "
     "originals_busy=true cover_removed=true restoration_refused=true "

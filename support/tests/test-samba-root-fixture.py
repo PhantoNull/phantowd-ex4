@@ -144,6 +144,8 @@ class SambaRootFixture(unittest.TestCase):
         proof = (
             "PHANTOWD_SAMBA_OWNER_PLANNED_SOURCE_FAULT_READY "
             "same_authorities=true same_daemon=true data_verified=true "
+            "original_session=true held_client_stopped=true "
+            "held_client_retained=true old_observers_refused=true "
             "source_covered=true exclusive_supervision=true "
             "review_sticky=true stopped_reaped=true private_inputs=15 "
             "runtime_inputs_retained=true originals_busy=true "
@@ -165,7 +167,17 @@ class SambaRootFixture(unittest.TestCase):
                                           "close_refused=false"),
                             proof.replace("close_refused=true ", ""),
                             proof.replace("private_inputs=15",
-                                          "private_inputs=13")):
+                                          "private_inputs=13"),
+                            *(proof.replace(field + "=true", field + "=false")
+                              for field in ("original_session",
+                                            "held_client_stopped",
+                                            "held_client_retained",
+                                            "old_observers_refused")),
+                            *(proof.replace(field + "=true ", "")
+                              for field in ("original_session",
+                                            "held_client_stopped",
+                                            "held_client_retained",
+                                            "old_observers_refused"))):
             with self.subTest(replacement=replacement):
                 with self.assertRaises(ValueError):
                     fixture.check_campaign(
@@ -1462,6 +1474,8 @@ class SambaRootFixture(unittest.TestCase):
             "service_owner=false scope=qemu-only",
             "PHANTOWD_SAMBA_OWNER_PLANNED_SOURCE_FAULT_READY "
             "same_authorities=true same_daemon=true data_verified=true "
+            "original_session=true held_client_stopped=true "
+            "held_client_retained=true old_observers_refused=true "
             "source_covered=true exclusive_supervision=true "
             "review_sticky=true stopped_reaped=true private_inputs=15 "
             "runtime_inputs_retained=true originals_busy=true "

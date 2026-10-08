@@ -26,9 +26,9 @@ import (
 	"golang.org/x/sys/unix"
 )
 
-const plannedSourceFaultMarkerQEMU = "PHANTOWD_SAMBA_OWNER_PLANNED_SOURCE_FAULT_READY same_authorities=true same_daemon=true data_verified=true source_covered=true exclusive_supervision=true review_sticky=true stopped_reaped=true private_inputs=15 runtime_inputs_retained=true originals_busy=true cover_removed=true restoration_refused=true close_refused=true private_mount_namespace=true subprocess_disposal=true parent_fd_equal=true activation=false scope=qemu-only"
+const plannedSourceFaultMarkerQEMU = "PHANTOWD_SAMBA_OWNER_PLANNED_SOURCE_FAULT_READY same_authorities=true same_daemon=true data_verified=true original_session=true held_client_stopped=true held_client_retained=true old_observers_refused=true source_covered=true exclusive_supervision=true review_sticky=true stopped_reaped=true private_inputs=15 runtime_inputs_retained=true originals_busy=true cover_removed=true restoration_refused=true close_refused=true private_mount_namespace=true subprocess_disposal=true parent_fd_equal=true activation=false scope=qemu-only"
 
-const plannedSourceFaultChildProofQEMU = "PHANTOWD_PLANNED_SOURCE_FAULT_CHILD_READY same_authorities=true same_daemon=true data_verified=true source_covered=true exclusive_supervision=true review_sticky=true stopped_reaped=true private_inputs=15 runtime_inputs_retained=true originals_busy=true cover_removed=true restoration_refused=true close_refused=true private_mount_namespace=true scope=qemu-subprocess-only\n"
+const plannedSourceFaultChildProofQEMU = "PHANTOWD_PLANNED_SOURCE_FAULT_CHILD_READY same_authorities=true same_daemon=true data_verified=true original_session=true held_client_stopped=true held_client_retained=true old_observers_refused=true source_covered=true exclusive_supervision=true review_sticky=true stopped_reaped=true private_inputs=15 runtime_inputs_retained=true originals_busy=true cover_removed=true restoration_refused=true close_refused=true private_mount_namespace=true scope=qemu-subprocess-only\n"
 
 func nativePlannedSourceFaultSubprocessQEMU() error {
 	return nativePlannedFaultSubprocessQEMU("source")
@@ -129,6 +129,22 @@ func qualifyPlannedSourceFaultQEMU(ctx context.Context, service *smbexec.NativeP
 	if err != nil || initial.State != "ready" || !initial.DataVerified || !initial.IdentityRetained || !initial.SharesRetained || initial.RuntimeClosed {
 		return errors.New("planned source fault lacks original live access authority")
 	}
+	phase = "startup" // Fixed authorized holder, not a second daemon.
+	canceled, cancel := context.WithCancel(ctx)
+	cancel()
+	if err := service.StartHeldSessionQEMU(canceled); !errors.Is(err, context.Canceled) {
+		return errors.New("planned held session accepted canceled admission")
+	}
+	if err := service.StartHeldSessionQEMU(ctx); err != nil {
+		return err
+	}
+	if err := service.StartHeldSessionQEMU(ctx); !errors.Is(err, runtimebundle.ErrReviewRequired) {
+		return errors.New("planned held session accepted duplicate admission")
+	}
+	live, err := observePlannedHeldFaultStopQEMU(ctx, native)
+	if err != nil || live.DaemonStopped || live.ClientStopped || !live.InputsRetained {
+		return errors.Join(errors.New("planned live holder supplied stopped or released evidence"), err)
+	}
 	const target = "/srv/phantowd/volumes/qemu-native"
 	fd, err := unix.Openat2(unix.AT_FDCWD, target, &unix.OpenHow{
 		Flags:   unix.O_PATH | unix.O_DIRECTORY | unix.O_CLOEXEC,
@@ -196,9 +212,9 @@ func qualifyPlannedSourceFaultQEMU(ctx context.Context, service *smbexec.NativeP
 			}
 			phase = "retention"
 			for range 2 {
-				stopped, err := native.ObservePlannedStopQEMU(ctx)
+				stopped, err := observePlannedHeldFaultStopQEMU(ctx, native)
 				status, statusErr := service.Status()
-				if err != nil || !stopped.DaemonStopped || !stopped.InputsRetained || statusErr != nil ||
+				if err != nil || !stopped.DaemonStopped || !stopped.ClientStopped || !stopped.InputsRetained || statusErr != nil ||
 					status.State != "review-required" || !status.IdentityRetained || !status.SharesRetained || status.RuntimeClosed ||
 					!errors.Is(owner.Close(), identityowner.ErrBusy) || !errors.Is(handoff.Close(), mountowner.ErrHandoffBusy) {
 					return errors.Join(errors.New("planned source fault lost stop or retained authority"), err, statusErr)
@@ -217,7 +233,7 @@ func qualifyPlannedSourceFaultQEMU(ctx context.Context, service *smbexec.NativeP
 			if err != nil || current != original {
 				return errors.Join(errors.New("planned fault original alias not restored"), err)
 			}
-			for _, operation := range []func(context.Context) error{service.Start, service.Observe, service.VerifyDataAccess} {
+			for _, operation := range []func(context.Context) error{service.Start, service.Observe, service.VerifyDataAccess, service.StartHeldSessionQEMU} {
 				if err := operation(ctx); !errors.Is(err, runtimebundle.ErrReviewRequired) {
 					return errors.New("planned source restoration revived service")
 				}
@@ -230,9 +246,9 @@ func qualifyPlannedSourceFaultQEMU(ctx context.Context, service *smbexec.NativeP
 				if err := service.Close(ctx); !errors.Is(err, runtimebundle.ErrReviewRequired) {
 					return errors.Join(errors.New("planned source review close was admitted"), err)
 				}
-				stopped, stopErr := native.ObservePlannedStopQEMU(ctx)
+				stopped, stopErr := observePlannedHeldFaultStopQEMU(ctx, native)
 				status, err := service.Status()
-				if stopErr != nil || !stopped.DaemonStopped || !stopped.InputsRetained || err != nil || status.State != "review-required" || !status.IdentityRetained || !status.SharesRetained || status.RuntimeClosed ||
+				if stopErr != nil || !stopped.DaemonStopped || !stopped.ClientStopped || !stopped.InputsRetained || err != nil || status.State != "review-required" || !status.IdentityRetained || !status.SharesRetained || status.RuntimeClosed ||
 					!errors.Is(owner.Close(), identityowner.ErrBusy) || !errors.Is(handoff.Close(), mountowner.ErrHandoffBusy) {
 					return errors.Join(errors.New("planned source review close released original authority"), err, stopErr)
 				}
@@ -245,6 +261,20 @@ func qualifyPlannedSourceFaultQEMU(ctx context.Context, service *smbexec.NativeP
 			return nil // Fixed child exit disposes review, never product recovery.
 		}
 	}
+}
+
+func observePlannedHeldFaultStopQEMU(ctx context.Context, native *runtimebundle.NativeSambaRuntimeQEMU) (runtimebundle.PlannedHeldStopObservationQEMU, error) {
+	// Old observers must not silently omit the additional actually used group.
+	if observed, err := native.ObservePlannedStopQEMU(ctx); observed != (runtimebundle.PlannedStopObservationQEMU{}) || !errors.Is(err, runtimebundle.ErrReviewRequired) {
+		return runtimebundle.PlannedHeldStopObservationQEMU{}, errors.New("planned unused-client observer admitted held group")
+	}
+	if observed, err := native.ObserveNativeStopQEMU(ctx); observed != (runtimebundle.NativeStopObservationQEMU{}) || !errors.Is(err, runtimebundle.ErrReviewRequired) {
+		return runtimebundle.PlannedHeldStopObservationQEMU{}, errors.New("native two-client observer admitted planned held group")
+	}
+	if observed, err := native.ObservePlannedReviewStopQEMU(ctx); observed != (runtimebundle.PlannedReviewStopObservationQEMU{}) || !errors.Is(err, runtimebundle.ErrReviewRequired) {
+		return runtimebundle.PlannedHeldStopObservationQEMU{}, errors.New("planned exit observer admitted held group")
+	}
+	return native.ObservePlannedHeldStopQEMU(ctx)
 }
 
 func plannedFaultMountIdentityQEMU(fd int) ([4]uint64, error) {

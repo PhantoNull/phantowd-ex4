@@ -63,6 +63,13 @@ func TestNativeBackendInnerCloseFailureSurvivesPublicCloseAndReplacement(t *test
 		func() error { return b.Enable(ctx, account) },
 		func() error { return b.Disable(ctx, account) },
 		func() error { _, err := b.ObserveNativeSessionPairQEMU(ctx); return err },
+		func() error { _, err := b.ObservePlannedSessionQEMU(ctx); return err },
+		func() error {
+			return b.VerifyPlannedSessionQEMU(ctx, NativePlannedSessionQEMU{
+				backend: b,
+				session: smbStatusSession{SessionID: "negative-only-peer", Username: "qpsecond"},
+			})
+		},
 		func() error {
 			return b.VerifyNativePeerSessionQEMU(ctx, NativeSessionPairQEMU{
 				backend: b,

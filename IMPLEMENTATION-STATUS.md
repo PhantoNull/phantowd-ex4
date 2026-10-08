@@ -3,6 +3,31 @@
 
 # Implementation status
 
+## Authorized held-session source loss (QEMU only)
+
+The SAME planned service retains one fixed authorized `qpsecond` IPC$ client
+and rechecks its original qualified session under exclusive supervision. The
+enabled but ungranted account stays denied. Fresh login, changed generation or
+incomplete inventory cannot replace the witness; command/parser/cancellation
+failure is not proof of observed session change.
+
+All seven fresh ARMv5 Samba overlay guests pass, along with root Go 1.26.8
+tagged vet/race-count3, ordinary/tagged non-root Linux tests, ARM compilation
+and Windows API/UI checks. Source loss verifies client/daemon stop/reap,
+all15 private daemon inputs and original runtime/identity/storage retention,
+older-observer refusal, restoration/repeated-Close refusal, parent FD equality
+and unchanged base images. All1,260 source witnesses, including967 API inputs,
+match after execution. Startup40/data20/supervision20/child90/guest180 and
+worker/readiness/stop limits remain unchanged.
+
+The added holder's normal full-close retirement, open-file/in-flight/durable
+reconnect, uncertain kernel teardown and recovery remain unqualified. This is
+not a new complete image/SBOM audit, hosted qualification or product activation.
+The separate OpenSSL PR's own hosted QEMU run fails at its planned-source
+child's data phase; host/B3 pass. No merge or automatic retry was performed;
+newer local success is not a demonstrated fix. The latest complete cached
+image qualification remains the checkpoint below.
+
 ## Focused original-session continuity prerequisite
 
 The private QEMU-tagged backend now rechecks both original qualified SMB session

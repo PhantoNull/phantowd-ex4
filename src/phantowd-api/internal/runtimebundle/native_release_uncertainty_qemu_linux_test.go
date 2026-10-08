@@ -114,3 +114,36 @@ func TestNativeRuntimeCloseNormalRepeatHasNoReview(t *testing.T) {
 		t.Fatal("normal repeated Close was not idempotent", err)
 	}
 }
+
+func TestNativeRuntimeHeldCloseKeepsTerminalStopFailureAndOriginalInputs(t *testing.T) {
+	// Teardown bookkeeping ONLY: real independent unused sets, no admitted
+	// runtime, launched child, mounted grant or healthy authority is fabricated.
+	r := nativeReleaseFixture(t)
+	client := nativeReleaseFixture(t).owner.processes
+	r.plannedClient = client
+	r.helper = releaseFaultFile(t, false)
+	if err := client.Close(); err != nil {
+		t.Fatal(err)
+	}
+	first := r.Close(context.Background())
+	if !errors.Is(first, ErrReviewRequired) || !errors.Is(first, processowner.ErrUnavailable) ||
+		!r.owner.review || r.owner.snapshot.State != processowner.StateReviewRequired {
+		t.Fatal("prematurely closed client did not publish terminal review:", first, r.owner.snapshot.State)
+	}
+	replacement := nativeReleaseFixture(t).owner.processes
+	r.plannedClient = replacement // Test-only repair cannot revive the lifetime.
+	for range 2 {
+		if err := r.Close(context.Background()); !errors.Is(err, processowner.ErrUnavailable) || !errors.Is(err, ErrReviewRequired) {
+			t.Fatal("terminal client failure was erased:", err)
+		}
+		if r.closed || r.plannedClient != replacement {
+			t.Fatal("repeated failed Close discarded retained input ownership")
+		}
+		if _, err := r.helper.Stat(); err != nil {
+			t.Fatal("repeated failed Close released original helper:", err)
+		}
+		if _, err := replacement.Observe(context.Background()); err != nil {
+			t.Fatal("repeated failed Close touched replacement client set:", err)
+		}
+	}
+}

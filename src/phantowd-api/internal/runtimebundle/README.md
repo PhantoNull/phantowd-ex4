@@ -3,6 +3,22 @@
 
 # Internal code-only runtime bundle inspection
 
+The QEMU-only planned runtime additionally retains one fixed authorized IPC$
+holder, distinct from the unused two-account client set. No caller chooses its
+program, user, credential or process profile. Its startup/stop uncertainty is
+sticky; original references survive until verified settlement and closure.
+The containing coordinator owns lifecycle control and must not operate aliases.
+
+`ObservePlannedHeldStopQEMU` is read-only: it requires the original unused-client
+census, the additional holder's generation/group absence and retained daemon/
+runtime inputs. Older idle/two-client/exit observers refuse this additional
+group. All seven fresh ARMv5 overlay guests qualify source-alias loss with the
+holder active; restoration/repeated Close leave review and both originals busy.
+Normal full-close retirement of this added holder and live uncertain teardown
+remain unqualified. A real unused-set premature-close regression qualifies only
+terminal error bookkeeping, not an admitted healthy runtime or kernel EIO.
+See [current evidence scope](../../../../IMPLEMENTATION-STATUS.md).
+
 `runtimebundle` provides code verification and an internal retained-code Owner
 prototype for M4.4, not an approved runtime manifest or installation token. Ordinary
 product startup does not call it. It has no HTTP/RPC or JSON input/output.

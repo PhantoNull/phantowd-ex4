@@ -42,21 +42,26 @@ func SambaCredentialDocumentsQEMU(lookup fileserviceplan.SambaEnrollmentLookup) 
 // experiment. No product startup exists. Pending captures remain owned until
 // verified teardown.
 type NativeSambaRuntimeQEMU struct {
-	owner                *Owner
-	helper               *os.File
-	pending              *processowner.CaptureOwner
-	gate                 chan struct{}
-	closed               bool
-	daemonAttempted      bool
-	daemonPID            int
-	authPaths            []string
-	clients              *processowner.PinnedSet
-	clientsAttempted     bool
-	plannedDataPrepared  bool
-	plannedDataAttempted bool
-	plannedExitAttempted bool
-	releaseErr           error
-	workerFailure        *nativeWorkerErrorQEMU
+	owner                      *Owner
+	helper                     *os.File
+	pending                    *processowner.CaptureOwner
+	gate                       chan struct{}
+	closed                     bool
+	daemonAttempted            bool
+	daemonPID                  int
+	authPaths                  []string
+	clients                    *processowner.PinnedSet
+	clientsAttempted           bool
+	plannedDataPrepared        bool
+	plannedDataAttempted       bool
+	plannedExitAttempted       bool
+	plannedClient              *processowner.PinnedSet
+	plannedClientAttempted     bool
+	plannedClientPID           int
+	plannedClientStopAttempted bool
+	plannedClientStopErr       error
+	releaseErr                 error
+	workerFailure              *nativeWorkerErrorQEMU
 }
 
 func (p *Plan) NewNativeSambaRuntimeQEMU(ctx context.Context, code, configuration, state *os.File, lookup fileserviceplan.SambaEnrollmentLookup) (_ *NativeSambaRuntimeQEMU, result error) {
@@ -246,6 +251,21 @@ func (r *NativeSambaRuntimeQEMU) Close(ctx context.Context) error {
 	}
 	if r.closed {
 		return nil
+	}
+	if r.plannedClient != nil {
+		// Settle every owned group before releasing the additional holder's
+		// code pin. Stop uncertainty is terminal at this containing boundary.
+		if err := r.stopNativeDaemonQEMU(); err != nil {
+			r.owner.review, r.releaseErr = true, err
+			r.owner.snapshot.State = processowner.StateReviewRequired
+			return errors.Join(ErrReviewRequired, err)
+		}
+		if err := r.plannedClient.Close(); err != nil {
+			r.owner.review, r.releaseErr = true, err
+			r.owner.snapshot.State = processowner.StateReviewRequired
+			return errors.Join(ErrReviewRequired, err)
+		}
+		r.plannedClient = nil
 	}
 	if r.pending != nil {
 		settled, err := r.pending.Settled(context.Background())

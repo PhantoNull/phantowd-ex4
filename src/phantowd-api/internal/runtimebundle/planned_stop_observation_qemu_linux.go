@@ -27,6 +27,13 @@ func (r *NativeSambaRuntimeQEMU) ObservePlannedStopQEMU(ctx context.Context) (Pl
 		return PlannedStopObservationQEMU{}, err
 	}
 	defer func() { <-r.gate }()
+	if r.plannedClientAttempted {
+		return PlannedStopObservationQEMU{}, ErrReviewRequired
+	}
+	return r.observePlannedStopQEMU(ctx)
+}
+
+func (r *NativeSambaRuntimeQEMU) observePlannedStopQEMU(ctx context.Context) (PlannedStopObservationQEMU, error) {
 	if r.closed || !r.plannedDataPrepared || !r.daemonAttempted || r.clients == nil ||
 		r.clientsAttempted || r.pending != nil || r.owner.processes == nil || r.owner.serviceConfiguration == nil {
 		return PlannedStopObservationQEMU{}, ErrReviewRequired

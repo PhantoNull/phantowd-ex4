@@ -337,7 +337,24 @@ cannot start or own a process; this does not qualify live uncertain teardown.
 
 ### Composed source-alias fault (QEMU only)
 
-The focused fault guest now also exercises the SAME planned service through
+The newer source child starts only the granted `qpsecond` IPC$ holder through
+`StartHeldSessionQEMU`. The private `NativePlannedSessionQEMU` witness requires
+that exact complete qualified session; it cannot be serialized or replaced by
+fresh login. `verify` rechecks it under the SAME exclusive coordinator gate
+after complete storage-first/identity observation. Validated inventory change
+differs from unavailable worker/parser/deadline results; neither grants recovery.
+
+All seven fresh ARMv5 overlay guests and root/non-root host regressions pass.
+Both actual holder and daemon groups stop/reap; original identity/storage/code/
+configuration/state and private daemon inputs remain retained. Older observers
+refuse the additional group; the separate read-only witness also requires the
+original unused two-client census. Restoration/repeated Close cannot release
+review. All1,260 source witnesses/base hashes match with unchanged budgets.
+This does not qualify normal full retirement of the added holder, open-file/
+in-flight/durable handles, uncertain kernel teardown, a new complete image/SBOM
+audit, hosted/physical EX4 qualification or product activation.
+
+The earlier idle fault guest exercised the SAME planned service through
 genuine enrollment, retained startup/access and exclusive complete supervision.
 A fixed private-namespace child covers only the qualified synthetic volume
 alias with guest tmpfs; original volume/share mounts and object pins survive.

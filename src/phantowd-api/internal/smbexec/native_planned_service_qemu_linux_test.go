@@ -48,6 +48,28 @@ func TestNativePlannedStartRefusesMissingAuthority(t *testing.T) {
 	}
 }
 
+func TestNativePlannedHeldSessionRefusesMissingCanceledBusyAndUnstartedAuthority(t *testing.T) {
+	var absent *NativePlannedServiceQEMU
+	if err := absent.StartHeldSessionQEMU(context.Background()); !errors.Is(err, ErrInvalid) {
+		t.Fatal("absent service admitted held session:", err)
+	}
+	service := &NativePlannedServiceQEMU{gate: make(chan struct{}, 1)}
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	if err := service.StartHeldSessionQEMU(ctx); !errors.Is(err, context.Canceled) {
+		t.Fatal("pre-canceled held session admission proceeded:", err)
+	}
+	service.gate <- struct{}{}
+	err := service.StartHeldSessionQEMU(context.Background())
+	<-service.gate
+	if !errors.Is(err, processowner.ErrBusy) {
+		t.Fatal("competing held session admission proceeded:", err)
+	}
+	if err := service.StartHeldSessionQEMU(context.Background()); !errors.Is(err, runtimebundle.ErrReviewRequired) {
+		t.Fatal("unstarted service accessed backend:", err)
+	}
+}
+
 func TestNativePlannedSupervisionRefusesMissingAuthority(t *testing.T) {
 	var absent *NativePlannedServiceQEMU
 	if err := absent.Supervise(context.Background(), time.Second); !errors.Is(err, ErrInvalid) {
