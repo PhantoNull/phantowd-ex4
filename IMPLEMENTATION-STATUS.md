@@ -5,11 +5,11 @@
 
 ## Current test observability — redacted planned-fault boundaries
 
-The reviewed-Close follow-up's complete seven-campaign attempt passes service,
-native, candidate and lifecycle, then fails fault with incomplete subprocess
-proof; data/exit are not reached. A fresh isolated diagnostic fault guest passes,
-so the all-campaign failure is not localized or resolved. The earlier focused
-Close correction below remains valid only within its stated evidence scope.
+An earlier reviewed-Close seven-campaign attempt passes service, native,
+candidate and lifecycle, then fails fault with incomplete subprocess proof;
+data/exit are not reached. Subsequent isolated, all-seven component and complete
+cached integration runs pass on the checkpoint below. This does not localize
+or causally resolve the intermittent failure.
 
 Test-only planned-fault diagnostics now report outer child deadline/result/proof
 agreement and validated fixed phase/deadline/review labels, without raw child
@@ -20,9 +20,9 @@ ARMv5 cross preflight pass; temporary debug probes are removed. The original
 strict proof bytes, output bound, deadlines, privileges and runtime behavior
 are unchanged. See [diagnostic interpretation](support/QEMU-FAST-TESTS.md#diagnose-a-native-fixture-timeout-before-a-full-ci-build).
 
-The changed diagnostic fixture still requires its complete ARMv5 campaign
-qualification. No new whole-image/archive/SBOM or hosted result is claimed;
-the current PR head remains separate. No product or NAS operation is added.
+The changed diagnostic fixture passes both its original all-seven ARMv5
+component lane and the complete cached integration/audit below. Own-head hosted
+qualification remains separate; no product or NAS operation is added.
 
 ## Current component — reviewed planned Close retains original authority
 
@@ -42,16 +42,15 @@ Pinned Go 1.26.8 Linux two-package tagged vet/unit/race-count3 and Windows API/U
 vet/tagged contracts/ARMv5 cross-compilation also pass. Worker/service/readiness/
 stop/guest limits, privileges and low-level explicit cleanup remain unchanged.
 
-This is a focused correction after the complete checkpoint below, not a new
-whole-image/archive/SBOM or hosted qualification, held-session fault, durable
-recovery, product activation or EX4 claim. PR #129's earlier published head is
-separate and must not be merged before the follow-up is locally qualified and
-its refreshed head passes its own hosted gates.
+The complete checkpoint below includes this correction and its actual fault
+proof. It is not held-session fault, durable recovery, product activation or
+EX4 qualification. PR #129's older published head passes its own checks but
+omits this correction; a refreshed head must pass its own hosted gates.
 
-## Current complete cached integration — seven Samba scenarios and exact960 audit
+## Current complete cached integration — seven Samba scenarios and exact962 audit
 
-Frozen `ab5f4d1222036e7cb911437ef2eb57fd907fa8f5`, API tree
-`eb8023d8b6bb6256070248653e902203aad211ed`, passes the complete cached
+Frozen `cea5e0a66d8fed7acec6f5ab63aefec9fa8178b0`, API tree
+`8eae4e2b1fa4a9832428c26d2e7e5ace3a06a706`, passes the complete cached
 Buildroot/host/ARMv5 lane and an independent post-terminal read-only audit on
 2026-10-08. Original ordinary/race/fixed-fuzz/toolkit, standard smoke, MD/state,
 launcher/runtime/loader/atomic, all **seven** independently enrolled Samba
@@ -66,11 +65,11 @@ unconsumed and settled worker inputs; review does not authorize release,
 restart or recovery. Mid-transfer/held-session loss and uncertain construction/
 teardown remain open.
 
-All **960** API inputs match source, compiled package and legal source archive
+All **962** API inputs match source, compiled package and legal source archive
 without stale extras. Configured strip, installed/rootfs/exported API, all
 seven ordered artifact hashes, actual Go 1.26.8 recipe/source/SDK/host licensing/
 SBOM and Linux AND headers 6.18.55 agree. All **11,510** installed SDK files
-match; **25,259** regular audit inputs and all **1,248** tracked build witnesses
+match; **25,263** regular audit inputs and all **1,250** tracked build witnesses
 recheck unchanged. See [measured artifact identities](support/DEPENDENCY-REVIEW.md).
 
 Only the existing image/two project volumes are reused; no consumer remains.

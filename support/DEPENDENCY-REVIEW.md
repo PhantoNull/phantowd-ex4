@@ -3,10 +3,10 @@
 
 # Dependency review and update qualification
 
-## Current cached960 Go 1.26.8 integration and exact artifact audit (2026-10-08)
+## Current cached962 Go 1.26.8 integration and exact artifact audit (2026-10-08)
 
-Frozen `ab5f4d1222036e7cb911437ef2eb57fd907fa8f5`, API tree
-`eb8023d8b6bb6256070248653e902203aad211ed`, passes the complete original
+Frozen `cea5e0a66d8fed7acec6f5ab63aefec9fa8178b0`, API tree
+`8eae4e2b1fa4a9832428c26d2e7e5ace3a06a706`, passes the complete original
 cached host/ARMv5 lane and a separate independent post-terminal read-only audit.
 All original campaigns, seven independently enrolled Samba guests and both
 synthetic SMART lanes pass. Lifecycle preparation (20 seconds) and revocation
@@ -17,20 +17,25 @@ supervision, idle source-alias loss and original-owned idle exit with retained
 review qualify. Mid-transfer/session loss, uncertain constructor/teardown and
 recovery remain separate work.
 
-All **960** API inputs match compiled package AND legal source archive, without
+The restored-source fault proof now also requires two normal coordinator Close
+refusals with the same runtime inputs and both original authorities retained.
+Fixed, redacted QEMU diagnostics do not change proof equality or resolve the
+intermittent failure's cause.
+
+All **962** API inputs match compiled package AND legal source archive, without
 stale extras or generated-marker exemptions. Configured strip/installed/rootfs/
 export, seven ordered hashes, actual kernel AND headers 6.18.55 bindings and
 linked Go 1.26.8/CGO0/ARM5 agree. The selected recipe, official SDK/source
 hashes, all **11,510** installed SDK files, host source/license manifest and
-SBOM agree. All 1,248 tracked source witnesses remain unchanged; **25,259**
+SBOM agree. All 1,250 tracked source witnesses remain unchanged; **25,263**
 regular audit inputs are rechecked.
 
 | Artifact | SHA-256 |
 | --- | --- |
-| API (10,708,180 bytes) | `44b6d81c8fcf572e4daddc8d253496cf3a231861d92f1847b89af6e53d269d69` |
-| rootfs.ext2 (83,886,080 bytes) | `42bf9c58a1e83f04825b40a7ab3f26c1fe36e01500df9c613efb35499b4b8f95` |
-| API source archive | `e666f3303fcbaebae2f0d2ac309512aedfffa1137ac0835b0e3b6da222cc913c` |
-| SHA256SUMS | `369b1833d735d2372989fc0e7e6e8d5988786b5d14256295b83d79b5b0885c7b` |
+| API (10,708,180 bytes) | `3262712f6a62dd0b7f4723290ab8134ee516592b7f4762ec293db688232e8127` |
+| rootfs.ext2 (83,886,080 bytes) | `9bc5707171ed06d2a5a51e3979c649bf3451db0e90f06505926da78c07db81fd` |
+| API source archive | `37f777994a226e403c4b0395c67243588398983391e07d8ef493478e1f545689` |
+| SHA256SUMS | `5673e3fa96920a91cace444636a6556e8f75e5ab77da407e3ce283f1498cba1e` |
 
 These identities are measured from this checkpoint, not adopted from the
 earlier950 image or candidate-only probes. Existing image/two project volumes
@@ -38,7 +43,7 @@ are reused. This is not independent clean, exact-head hosted, advisory-complete,
 EX4, migration, recovery, product activation or install qualification. It does
 not demonstrate a speedup or resolve the intermittent hosted timeout. Require
 the publication head's own hosted checks before merge. This supersedes the
-earlier959 current-summary scope; its exact identities remain in Git history.
+earlier960 current-summary scope; its exact identities remain in Git history.
 
 ## Earlier cached950 integration and exact artifact audit (2026-10-08)
 

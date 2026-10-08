@@ -67,14 +67,14 @@ currently product-qualified for migration.
 
 ## Current baseline
 
-The fully audited local checkpoint `ab5f4d1` selects Go 1.26.8 and passes the
+The fully audited local checkpoint `cea5e0a` selects Go 1.26.8 and passes the
 complete cached Buildroot/host/ARMv5 lane: all seven independently enrolled
 Samba scenarios and both synthetic SMART lanes. Independent post-terminal
-auditing matches all 960 API inputs to compiled package/source archive and all
-1,248 tracked build witnesses. Configured stripping, installed/image/exported
+auditing matches all 962 API inputs to compiled package/source archive and all
+1,250 tracked build witnesses. Configured stripping, installed/image/exported
 API, seven hashes, Linux AND headers 6.18.55, actual selected/installed Go SDK,
 SBOM, release and legal sources agree; see
-[exact qualification](IMPLEMENTATION-STATUS.md#current-complete-cached-integration--seven-samba-scenarios-and-exact960-audit).
+[exact qualification](IMPLEMENTATION-STATUS.md#current-complete-cached-integration--seven-samba-scenarios-and-exact962-audit).
 
 The QEMU lifecycle fixture separates preparation (20 seconds) from revocation
 (45 seconds), changing the combined allowance from 45 to 65 seconds. Original worker/service/readiness/stop/
@@ -87,6 +87,11 @@ full-close-before-release, idle source-alias loss and original-owned idle exit.
 The exit proof requires its retained worker capture to be unconsumed and
 settled; reviewed authority is not released or automatically restarted.
 Normal and held-client observers remain unchanged.
+
+After source restoration, two normal coordinator `Close` attempts are also
+refused while the same runtime inputs and both original authorities stay retained.
+QEMU-only failure diagnostics accept only fixed redacted labels and cannot satisfy
+the exact proof contract; the intermittent failure cause remains unresolved.
 
 This is not held-session/mid-transfer fault coverage, uncertain construction/
 teardown, product recovery or production storage/identity composition.
