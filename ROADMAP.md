@@ -67,13 +67,14 @@ currently product-qualified for migration.
 
 ## Current baseline
 
-The current combined local checkpoint `5355a5c` passes the complete cached
-Buildroot/ARMv5 integration, including all six independently enrolled Samba
+The current combined local checkpoint `970483e` selects Go 1.26.8 and passes
+the complete cached Buildroot/ARMv5 integration, including all six independently enrolled Samba
 scenarios and both synthetic SMART lanes. Independent post-terminal auditing
-matches all 950 API inputs to compiled package/source archive, reproduces
+matches all 954 API inputs to compiled package/source archive, reproduces
 configured stripping, and verifies installed/image/exported API, seven hashes,
-Linux AND headers 6.18.55, SBOM, release and legal-source bindings; see
-[exact scope](IMPLEMENTATION-STATUS.md#current-complete-cached-integration--six-samba-scenarios-and-exact950-audit).
+Linux AND headers 6.18.55, selected/installed Go SDK, SBOM, release and
+legal-source bindings; see
+[exact scope](IMPLEMENTATION-STATUS.md#current-complete-cached-integration--go-1268-and-exact954-audit).
 Normal same-authority planned Samba startup and access are qualified only in
 disposable fixtures. This complete image also passes exclusive composed supervision
 with serial complete scans, idle cancellation/verified stop, retained originals
@@ -349,14 +350,19 @@ button to an unqualified backend simply because the screen exists.
   `01e6045` also passes toolkit ordinary/race/five fuzz campaigns and all six
   actual Samba ARMv5 campaigns compiled with the candidate. The complete
   original proof union, runtime census, unchanged base and independent trace
-  replay pass; all 1,083 API/toolkit/harness inputs remain unchanged. The base
-  still uses Go 1.26.6: this is component execution, not a complete new image
-  or full-image adoption. The feature now selects Go 1.26.8 through one
+  replay pass; all 1,083 API/toolkit/harness inputs remain unchanged. At that
+  earlier component snapshot the base still used Go 1.26.6; component execution
+  was not a complete new image or full-image adoption. The feature now selects Go 1.26.8 through one
   exact-state, idempotent Buildroot recipe/hash patch and an early installed-SDK
   version check. Real-package RAM fixtures verify coherent application,
-  refusal without effects and stale-SDK rejection. The last complete audited
-  image remains Go 1.26.6; all remaining original campaigns and exact candidate
-  image/source/license/SBOM audit are still required before qualification.
+  refusal without effects and stale-SDK rejection. Frozen `970483e` now passes
+  one complete cached Go 1.26.8 integration, every original campaign and an
+  independent exact954 image/source/package/archive/SDK/license/SBOM audit.
+  All 11,510 installed SDK files match the selected SDK and all 1,237 tracked
+  witnesses remain unchanged. This supersedes the old complete Go 1.26.6 image
+  as the latest local checkpoint; it is not independent clean reproduction,
+  exact-head hosted qualification, complete advisory review or EX4/release
+  qualification, nor a speedup or hosted-timeout fix.
   See the linked review.
   Linux source/signature/license authentication, unchanged-symbol ARMv5 kernel
   compilation and the original standard QEMU smoke now pass locally. Five

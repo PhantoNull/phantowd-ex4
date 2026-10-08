@@ -22,10 +22,38 @@ These are **negative host proofs and a cross-build**, not actual ARMv5 reviewed
 teardown qualification. A genuine composed unexpected-exit trace and fixed
 original-process-handle trigger remain separate work; neither exists in this
 increment. No HTTP/product activation or NAS operation is added. The complete
-950-input image below retains its original source scope and is not adopted as
-proof for these four new source files.
+950-input image below retains its original source scope. The newer 954-input
+image includes these four files and passes the original campaigns, but does
+not supply a positive composed unexpected-exit/reviewed-stop trace.
 
-## Current complete cached integration — six Samba scenarios and exact950 audit
+## Current complete cached integration — Go 1.26.8 and exact954 audit
+
+Frozen `970483e095c54186de9f53e4a164bc44c2b3cfd0`, API tree
+`7b612fe28e5a0304d40664cf72816ece027af0dc`, passes one complete cached
+Buildroot/host/ARMv5 integration run and a separate independent post-terminal
+read-only audit on 2026-10-08. Ordinary/race/fixed fuzz, standard smoke,
+MD/state reboot, launcher/runtime/loader/atomic, all six independently enrolled
+Samba guests and both synthetic SMART lanes pass with their original limits.
+The complete proof union includes normal exclusive composed supervision and
+the completed-transfer/idle source-alias-loss fault, not the pending composed
+unexpected-exit or positive reviewed-stop scenarios.
+
+All **954** API files match source, compiled package and legal source archive,
+without stale extras or generated-marker exemptions. The selected recipe,
+official SDK/source hashes, all **11,510** installed Go SDK files, actual linked
+Go 1.26.8/CGO0/Linux ARM5, host licensing/SBOM, configured strip and installed/
+rootfs/exported API agree. All seven ordered artifact hashes, Linux AND headers
+6.18.55 source/license/SBOM/legal/release bindings agree. All 1,237 tracked
+source witnesses remain unchanged; 24,959 regular audit inputs are rechecked.
+Only the existing image/two project volumes are reused; no workspace consumer
+remains. See [exact artifact identities](support/DEPENDENCY-REVIEW.md).
+
+This is cached local qualification, not independent clean reproduction,
+exact-head hosted qualification, a hosted-timeout fix, complete advisory review,
+physical EX4 support, migration, recovery, product activation or installation.
+Require the publication head's own hosted checks before integration.
+
+## Earlier complete cached integration — six Samba scenarios and exact950 audit
 
 Frozen `5355a5cb033ecd1106294c4fcd4bb256fe2e3e2a`, API tree
 `82955d54b74934ae4fcf1351339a39483a5fa40f`, passes one complete cached
