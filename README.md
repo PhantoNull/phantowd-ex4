@@ -61,8 +61,8 @@ not establish independent clean-build reproducibility, complete licensing
 compliance or physical EX4 qualification. [versions.env](versions.env) is the
 source of truth for build pins.
 
-The Linux 6.18.55 complete local build passes the original host and ARMv5
-integration campaigns. Its post-build audit matches all 935 API source inputs,
+The Linux 6.18.55 complete cached local build passes the original host and ARMv5
+integration campaigns. Its post-build audit matches all 937 API source inputs,
 actual images, kernel/header source archives, release metadata, SBOM and license
 files. This cached local proof does not qualify an EX4 installation, independent
 clean reproducibility or a fix for the intermittent hosted Samba timeout.

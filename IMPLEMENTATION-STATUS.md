@@ -3,6 +3,30 @@
 
 # Implementation status
 
+## Current cached integration — bounded build jobs and native phase visibility
+
+Frozen `4ca65d557c746eec08d36dadf72a97bdcbce9757`, API tree
+`677a3f8f76122ab310c5763d6cd0ee631ace4543`, passes the complete cached
+Buildroot/host/ARMv5 driver on 2026-10-08. All original campaigns, assertions
+and guest deadlines remain, including three Samba campaigns and synthetic
+SMART producer/capture. The actual driver selects four compile jobs from
+its visible CPU quota rather than the host's 24-CPU count.
+
+The independent post-terminal read-only audit matches all **937** API inputs
+against BOTH compiled package and collected source archive, with zero stale
+extras or generated-marker exemptions. All original license, strip, installed/
+image/export, seven-hash, kernel/header, SBOM/release/legal-source and linked-Go
+predicates pass; 21 regular-file witnesses recheck unchanged. Two added sources
+are QEMU-tagged timing/tests; the normal product API and seven final artifacts
+retain the earlier Linux 6.18.55 hashes. The new source archive is recorded in
+the [dependency qualification record](support/DEPENDENCY-REVIEW.md).
+
+Fixed QEMU-only phase observations are explicitly nonqualifying and cannot
+replace any mandatory acceptance marker. Native/race/refusal and original
+focused ARMv5 controls pass. This is not a demonstrated speedup, hosted Samba
+timeout fix, clean reproduction, service activation or deployable image.
+Exact-head hosted and all EX4/storage/recovery/installation gates remain open.
+
 ## Linux 6.18.55 — complete local ARMv5 integration and exact artifact audit
 
 The complete Buildroot driver terminates successfully on frozen

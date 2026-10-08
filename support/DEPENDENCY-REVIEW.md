@@ -117,6 +117,31 @@ licensing review, hosted-head or resolved EX4/physical qualification. Go and
 host OpenSSL update packets remain separate. A successful local Samba run does
 not demonstrate a fix for historical hosted timeouts or authorize deployment.
 
+## Current cached integration requalification (2026-10-08)
+
+Frozen `4ca65d557c746eec08d36dadf72a97bdcbce9757`, API tree
+`677a3f8f76122ab310c5763d6cd0ee631ace4543`, passes the complete cached
+host/ARMv5 driver and independent strict post-terminal audit. The normal driver
+applies a four-job ceiling to all Buildroot parallel consumers. All original
+guest campaigns, deadlines and assertions remain, including three Samba and
+synthetic SMART lanes. Fixed phase diagnostics are QEMU-only, nonqualifying
+observations; no timeout resolution or measured speedup is inferred.
+
+The audit now matches exactly **937** tracked API sources against compiled
+package and legal source archive, with zero stale extras/generated-marker
+exemptions. All earlier license/strip/image/export, seven-artifact, kernel AND
+header, metadata/SBOM/release, authenticated legal-source/license and linked-Go
+checks pass, with 21 unchanged regular-file witnesses. The new source archive
+SHA-256 is `0325799ef3ce9eca78a78141a8948e717d79b4a3ffb4c400ec0232ca414488f9`.
+Normal product API and all seven final artifact hashes remain exactly those
+above; the two new source files are QEMU-tagged diagnostics/tests. The earlier
+935-input proof remains a historical observation, not the current census.
+
+This cached pass does not re-run the complete advisory review, establish clean
+reproducibility, waive failed hosted checks, qualify physical EX4 peripherals,
+activate product services or authorize installation. Other dependency update
+packets and all release gates remain separate.
+
 ## Important interpretation boundaries
 
 - OpenSSL CVE-2026-84782 has a DTLS-specific path and is fixed in 3.5.9.

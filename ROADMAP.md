@@ -299,6 +299,13 @@ button to an unqualified backend simply because the screen exists.
   strip/image/seven-hash audit. Actual kernel/header/SBOM/rootfs/legal sources
   bind55 and linked Go remains1.26.6. Exact-head hosted, clean reproduction and
   resolved EX4/physical/release gates remain open; no old image proof is borrowed.
+  The 2026-10-08 frozen `4ca65d5` successor also passes the complete cached
+  driver and independent exact937 source/package/archive and all original
+  artifact/metadata/license audits. Its four-job quota ceiling reaches every
+  Buildroot parallel consumer. QEMU-only fixed phase observations cannot
+  replace acceptance; two added source files leave the normal product API
+  and all seven final artifact hashes unchanged. This is local integration,
+  not hosted timeout resolution, measured speedup or clean reproduction.
   The review distinguishes host libraries from linked Go target runtime,
   exact backports from base-version CPEs, and upstream ignore lists from product
   dispositions. All-package/call-path review remains open; no CVE-free or timeout
