@@ -3,6 +3,33 @@
 
 # Implementation status
 
+## Current cached integration — same-authority startup/data and exact943 audit
+
+Frozen `2ce88f03ee2211f03e1efb73426aab0bccf0efe3`, API tree
+`aa88877c1336c4d20f9eeb0def51ea8daf8de84a`, passes the complete cached
+host/ARMv5 driver on 2026-10-08. Standard smoke, MD/state reboot, native
+launcher/runtime Owner/loader/atomic, all four Samba guests and both synthetic
+SMART lanes pass, preserving every original assertion and deadline.
+
+The independent post-terminal read-only audit matches all **943** source
+inputs against the compiled package and legal source archive, with no stale
+extras or generated-marker exemptions. License copies, configured strip,
+installed/exported/rootfs API, seven ordered hashes, actual images, kernel AND
+headers 6.18.55 archives/licenses, selected metadata/SBOM/legal/release and
+linked Go 1.26.6/CGO0/Linux ARM5 agree. All 943 before-build source hashes remain
+unchanged; 1,909 regular audit inputs are rechecked. Existing image and two
+project volumes are reused; no new image/volume or broad prune is required.
+
+This includes the normal same-authority planned startup/data tracer below,
+not complete grant/ACL, constructor/late-close fault or supervision proof.
+Cached local success does not qualify independent clean reproducibility,
+complete advisory/licensing compliance, physical EX4, migration, installation
+or product activation. The earlier prepared941 checkpoint's own hosted QEMU
+run [37734668729](https://github.com/PhantoNull/phantowd-ex4/actions/runs/37734668729)
+fails during planned candidate construction with post-admission/deadline;
+this newer local success does not repair that failed run or establish its cause.
+Exact-head hosted qualification remains open.
+
 ## Same-authority SMB access — local host/QEMU component qualification
 
 Code checkpoint `e3e1d5b845b72558688ec37aedfec23307853c9f` adds a single-use,
@@ -32,8 +59,9 @@ for intermittent hosted enrollment or other CI timeouts.
 This is fixed normal access qualification, not a complete ungranted UNC/mixed
 ACL matrix, constructor/late-close fault proof, continuous drift supervision,
 product activation, HTTP route or EX4 qualification. The changed 943-input
-image/source audit, exact-head hosted checks and clean reproduction remain
-separate; the earlier prepared941 audit below is not borrowed as their proof.
+cached image/source audit now passes as recorded above; exact-head hosted
+checks and independent clean reproduction remain separate. The earlier
+prepared941 audit below is not borrowed as proof for this successor.
 
 ## Earlier same-authority planned startup — local component qualification
 
@@ -56,9 +84,9 @@ This normal startup tracer explicitly claims **no data transfers by this
 coordinator**, no product activation or HTTP route. The older isolated data
 probe remains independent and does not gain complete storage/identity scope.
 Constructor/late-close faults, live data/grant/ACL checks and complete drift/
-supervision qualification remain open. The current 943 source inputs have not
-yet received a complete new image/source audit; the last fully audited image is
-the earlier prepared941 checkpoint below. No hosted timeout fix, clean-build,
+supervision qualification remained open at this earlier checkpoint. The newer
+943-input cached image/source audit now passes above; the prepared941 record
+below remains historical. No hosted timeout fix, independent clean-build,
 EX4, installation or release qualification follows from these local tests.
 
 ## Prepared same-authority coordinator — complete cached local qualification
@@ -84,7 +112,7 @@ supervision remain open. The complete 941-input build and independent
 source/image audit now pass as recorded below. Hosted exact-head, independent
 clean reproduction, physical EX4 and all product/release gates remain separate.
 
-## Current cached integration — prepared coordinator and exact941 audit
+## Earlier cached integration — prepared coordinator and exact941 audit
 
 Frozen `19d189178d155bb6a721d775495b45136809c96f`, API tree
 `e8ba603a77553d715564e155789d2525ce4a1e59`, passes one complete cached

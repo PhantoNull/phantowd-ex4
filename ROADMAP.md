@@ -1158,9 +1158,13 @@ storage. No production roster provider or activation path exists.
   cumulative overload, using the SAME single compilation. All prior proofs,
   complete per-guest hashes, worker/readiness/180-second bounds and privileges
   remain mandatory; no retry, borrowed state or extra firmware build is added.
+  Frozen `2ce88f0`/`aa88877c` additionally passes the complete cached host/ARMv5
+  driver and independent exact943 package/archive/image/kernel-header/SBOM/
+  legal/linked-Go audit, with every before-build source hash unchanged.
   Next qualify constructor/late-close uncertainty, broader effective grant/ACL
-  access, complete drift/settlement supervision and the changed943 image/source
-  audit. Guest isolation is not a proven hosted timeout fix. All hosted/clean,
+  access and complete drift/settlement supervision. The earlier prepared941
+  own hosted run still fails; this local success is not its repair. Guest
+  isolation is not a proven hosted timeout fix. All hosted/independent-clean,
   hardware and product-activation gates remain open.
 - **M4.2 — Single service owner.** Define start/reload/stop and child-process
   ownership; bound diagnostics and verify readiness. Preserve the last known

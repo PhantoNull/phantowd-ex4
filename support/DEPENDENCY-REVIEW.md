@@ -3,6 +3,38 @@
 
 # Dependency review and update qualification
 
+## Current cached943 integration and exact artifact audit (2026-10-08)
+
+Frozen `2ce88f03ee2211f03e1efb73426aab0bccf0efe3`, API tree
+`aa88877c1336c4d20f9eeb0def51ea8daf8de84a`, passes the complete cached
+host/ARMv5 lane, including standard smoke, MD/state, launcher/runtime/loader/
+atomic, all four Samba guests and both synthetic SMART lanes. The new normal
+planned startup/data tracer retains its SAME identity/backend/storage/share
+authorities; this is not full grant/ACL, fault or supervision qualification.
+
+An independent post-terminal read-only audit matches all **943** API inputs
+against compiled package AND legal source archive, with no stale extras or
+generated-marker exemptions. Declared licenses, configured strip/installed/
+rootfs/export, seven ordered hashes, actual kernel AND headers 6.18.55
+source/license/SBOM/legal/release bindings and linked Go 1.26.6/CGO0/ARM5 agree.
+All 943 before-build source hashes remain unchanged; 1,909 regular audit
+inputs are rechecked. The stripped API is 10,708,180 bytes, SHA256
+`66286bb8edd1c65ca9e13cb177f0fdc9272e6c8dd7da26cf7a50f488bcfdec78`.
+Its source archive SHA256 is
+`631fd2d67ff4756c52a5f68098c7aee423a0ac2d3f64ca4e71af288abe873521`;
+the ordered artifact-manifest SHA256 is
+`5782dcf6b2d487d4eee4d420fb0bbb3fae68121b37e7df6fcad3eec7b591d2cd`.
+
+This is cached local qualification, not independent clean reproducibility,
+complete advisory/licensing compliance, physical EX4, migration, installation
+or product activation. The earlier prepared941 own hosted run
+[37734668729](https://github.com/PhantoNull/phantowd-ex4/actions/runs/37734668729)
+fails at planned candidate construction, worker post-admission/deadline;
+the cause remains unproven and this local pass is not a hosted fix.
+Existing image/two project volumes and bounded disposable scratch are reused.
+Earlier advisory inventories and their open package reviews below remain
+dated evidence, not a fresh vulnerability review of this newer checkpoint.
+
 ## Scope of the 2026-10-07 review
 
 This is a **partial advisory review**, not a vulnerability-free assertion or
