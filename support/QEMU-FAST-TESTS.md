@@ -844,7 +844,8 @@ as the same timeout:
 | Boundary | Current fixture scope | What a failure does not establish |
 | --- | --- | --- |
 | Initial native credential setup, 60 s | Construction and explicit enrollment of the fixture accounts; precedes `phase=enrolled` | The later coordinator operation was reached |
-| Lifecycle coordinator, 45 s | Held-client preparation, stale-revision refusal, actual disable and peer/new-login verification | Every individual worker exceeded its own deadline |
+| Lifecycle preparation, 20 s | Original journal admission, canceled-disable refusal and creation/qualification of two held clients | Revocation or continuity has completed |
+| Lifecycle revocation, 45 s | Stale-revision refusal, actual disable, successor journal and original peer/new-login verification | Every individual worker exceeded its own deadline |
 | Guest, 180 s | The complete disposable boot and selected campaign | A specific account, worker or coordinator caused expiry |
 
 These are test-context limits, not physical EX4 performance guarantees or
@@ -854,6 +855,25 @@ when changing their orchestration. A cumulative parent deadline can expire
 after several individually successful operations; a child deadline can also
 expire while its parent still has time. Neither permits ignoring uncertainty,
 reusing reviewed authority or skipping a verification.
+
+The current QEMU-only lifecycle driver replaces its former cumulative45 context
+with serial preparation20 and revocation45 contexts. This deliberately raises
+the combined contextual allowance to65 seconds; it is not a performance gain
+or product request policy. The SAME service, Owner, startup-fixed backend,
+journal and opaque original session pair cross the handoff. Uncertain/expired
+preparation refuses the second phase, shorter parent deadlines still bound both,
+and a late nil return cannot report success. Contexts are cooperative, not a
+guarantee to preempt an uninterruptible callback. Worker/readiness/stop and the
+external guest180 guard are unchanged. Fake-clock regression tests exercise the
+actual internal phase runner without inventing runtime/session authority.
+
+A focused local ARMv5 lifecycle replay passes all original proofs after this
+change. An unchanged-source fresh guest also passed, while another failed on an
+independent post-admission worker deadline during client preparation. Therefore
+one candidate pass does not establish that historical hosted outer deadlines
+or independent child expiries are fixed. Full current-source integration and
+own-head hosted qualification remain required; do not rerun heavy CI merely to
+substitute a lucky green for a diagnosed failure.
 
 Fixed `PHANTOWD_QEMU_NATIVE_WORKER_FAILURE` phase/reason labels are diagnostic,
 not authorization. `reason=other` is not proof that no deadline occurred:

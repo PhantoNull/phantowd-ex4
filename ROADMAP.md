@@ -311,6 +311,17 @@ button to an unqualified backend simply because the screen exists.
   This is fixture orchestration only. New exact-source image/archive audit,
   own-head hosted checks and independent clean qualification remain mandatory;
   do not declare intermittent hosted enrollment or historical EBUSY fixed.
+  The lifecycle fixture now separates original held-client preparation20 from
+  actual disable/successor/peer/new-login verification45, replacing shared45
+  with a combined contextual allowance65. SAME authority crosses the seam;
+  uncertain/expired work never continues/retries, shorter parent bounds both,
+  and late success refuses. Actual runner virtual-clock RED/GREEN, pinned
+  Linux tagged command vet/tests/race3, Windows preflight and one focused
+  actual ARMv5 lifecycle pass. Worker/readiness/stop/guest180 limits unchanged.
+  An unchanged fresh guest also passes; another fails on an independent worker
+  deadline at client preparation. Do not conflate these with hosted continuity
+  expiry. New full source/image audit, repeatable-load and own-head hosted
+  qualification remain open; this is not a product timing policy or speedup.
 - **M0.4 — Maintain release inputs.** Dependency update changes include source
   signatures/hashes, ARMv5 compatibility, package configuration, vulnerability
   review, license material and regenerated SBOM. Test the selected package set.

@@ -43,6 +43,29 @@ B3 config6.18.54 also passes, but is not a new build. No kernel selections,
 fragments, crypto provider, image, API, privilege or timeout changes. This is
 build-policy validation, not a new whole-image, security or performance result.
 
+## Current QEMU fixture — separately bounded lifecycle workloads
+
+The lifecycle driver separates held-client preparation20 from the original
+revocation/peer/new-login verification45. Its combined contextual allowance
+changes from45 to65 seconds; no worker, service, readiness, stop or guest180
+limit changes. It retains the SAME service/Owner/backend/journal/session pair,
+refuses continuation or retry after failed/expired preparation, preserves typed
+uncertainty, respects shorter parents and rejects late successful results.
+
+The real internal runner first fails a virtual-clock regression under the old
+cumulative budget, then passes the timing/cancellation/uncertainty cases.
+Pinned Go1.26.8 Linux tagged command vet/tests and race-count3, Windows API/UI/
+vet/contracts/ARMv5 cross-compilation, and one actual focused ARMv5 lifecycle
+campaign pass with every original proof. The final tool transcript is clipped;
+its observed terminal acceptance is not a claimed complete archived guest log.
+
+Fresh unchanged-source guests both fail and pass: the failure is an independent
+post-admission worker deadline during client preparation, not the historical
+hosted outer continuity timeout. This is fixture orchestration, not a proven
+hosted fix, repeatable-load result, new complete image, product activation or
+EX4 qualification. Full current-source suite/image audit and own-head hosted
+gates remain open. The separate exclusive-supervision contract is unchanged.
+
 ## Current native component — terminal session-observation fences
 
 The QEMU-only native session reader now refuses closed wrapper/inner lifetimes

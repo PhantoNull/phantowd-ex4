@@ -256,7 +256,16 @@ session/server generation. New target login is denied; peer login still works.
 Owner Close stays busy until complete runtime closure. All42/seven tests, three
 campaigns, prior fault/privilege guards, FD counts and base hashes pass, together
 with root native race-count3/tagged vet and Windows API/UI/cross-compilation.
-The added live phase is bounded to45 seconds; post-transition observation/stop
+The current lifecycle driver first bounds journal admission/canceled-request
+refusal/held-client qualification to20 seconds, then gives the original
+stale-revision/disable/successor/peer/new-login checks their own45 seconds.
+This replaces a cumulative45 context with serial20+45, not a service deadline
+or faster implementation. The SAME coordinator/backend/Owner/session witness
+crosses that seam; failed/expired work cannot continue or retry and late success
+is refused. Deterministic orchestration tests and one focused actual ARMv5
+lifecycle replay pass. Independent child expiries and the historical hosted
+timeout remain unqualified; a fresh unchanged-source guest also passed.
+Post-transition observation/stop
 has20 seconds, independently of startup40 and the unchanged guest180/worker4/
 revocation10 limits. The fault child explicitly re-enables the synthetic target
 before NEW admission, never by refreshing a consumer or fabricating passdb.
