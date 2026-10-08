@@ -62,12 +62,13 @@ not establish independent clean-build reproducibility, complete licensing
 compliance or physical EX4 qualification. [versions.env](versions.env) is the
 source of truth for build pins.
 
-The builder now selects host OpenSSL 3.5.9 with exact recipe/hash and installed
-CLI/library guards. Complete qualification of that selection is pending; the
-audited checkpoint below still used host OpenSSL 3.5.8. This does not enable a
-target OpenSSL package or qualify a NAS HTTPS service.
+The builder selects host OpenSSL 3.5.9 with exact recipe/hash and installed
+CLI/library guards. Its complete cached integration and independent artifact/
+source/license/SBOM audit pass. This does not enable target OpenSSL or qualify
+a NAS HTTPS service, independent clean reproduction or physical EX4 support.
 
-The latest fully audited local checkpoint, `cea5e0a`, selects Go 1.26.8 and
+The latest fully audited local checkpoint, `e234644`, selects Go 1.26.8 and
+host OpenSSL 3.5.9, and
 passes the complete cached host/ARMv5 integration lane, all seven independently enrolled Samba guests
 and both synthetic SMART lanes. It includes retained same-authority startup,
 real data access, exclusive supervision and a source-alias-loss fault that
@@ -81,7 +82,11 @@ Validated QEMU-only diagnostics report fixed, redacted failure boundaries;
 they do not weaken proof equality or establish the cause of intermittent failures.
 An independent audit matches all 962 API inputs, actual images, kernel/header
 archives, the selected and installed Go SDK, release metadata, SBOM and declared
-license files; see the [exact qualification record](support/DEPENDENCY-REVIEW.md).
+license files. OpenSSL's three installed objects are byte-exact reproductions
+of their built objects after Buildroot's configured RPATH normalization. The
+actual Buildroot Python consumer loads those libraries and passes certificate
+verification and private loopback TLS 1.3; see the
+[exact qualification record](support/DEPENDENCY-REVIEW.md).
 The QEMU lifecycle fixture separates preparation (20 seconds) from revocation
 verification (45 seconds), increasing their combined allowance from 45 to 65
 seconds without changing worker, service, stop or guest limits. This is not a
@@ -90,7 +95,8 @@ performance improvement or a demonstrated fix for hosted failures.
 This does not establish independent clean reproduction, physical EX4 support,
 complete fault coverage or an installable release. The previous hosted
 identity-coordinator timeout remains unexplained; local success is not a fix.
-The updated PR must pass its own hosted checks before integration. No product
+The core checkpoint passed its own hosted checks and merged into `develop`;
+the separate OpenSSL update must pass its own hosted checks before integration. No product
 SMB/NFS service is activated; see [implementation status](IMPLEMENTATION-STATUS.md).
 
 ## Roadmap

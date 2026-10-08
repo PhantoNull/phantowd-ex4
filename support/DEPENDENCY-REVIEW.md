@@ -3,6 +3,36 @@
 
 # Dependency review and update qualification
 
+## Current OpenSSL 3.5.9 complete cached qualification (2026-10-09)
+
+Frozen `e2346443b8517e3d67df1255503030530a409168`, API tree
+`8eae4e2b1fa4a9832428c26d2e7e5ace3a06a706`, passes the original complete cached
+host/ARMv5 lane, all seven Samba campaigns and both synthetic SMART lanes.
+Independent post-terminal auditing preserves all previous source/package/SDK/
+kernel/image/legal guards: all 1,255 tracked witnesses, 962 API source inputs,
+11,510 installed Go 1.26.8 SDK files and 25,289 regular audit inputs agree.
+Configured strip/installed/rootfs/export, kernel AND headers 6.18.55, source
+archives, release bindings, legal metadata and all seven artifact hashes match.
+
+The selected host OpenSSL 3.5.9 recipe/source/license/four-patch roster and SBOM
+agree. Its three installed CLI/library objects match their built objects
+byte-for-byte after the exact configured RPATH change, authenticated against
+the original Buildroot Makefile/fix-rpath source; altered bytes are not exempted.
+Actual Buildroot Python 3.12.14 loads those same host libraries and passes exact
+runtime version/number binding, certificate verification and a private loopback
+TLS 1.3 exchange. An initial raw-object comparison omitted normal RPATH
+finalization, and a private Python check misread its legacy five-field version
+tuple. Corrected full auditing passes without changing artifacts or waiving
+byte equality; these were audit expectations, not runtime defects.
+
+This supersedes the earlier host3.5.8 cached image below, not its dated evidence.
+The core Go/reviewed-Close checkpoint passed its own hosted checks and merged
+into `develop`; this separate host update needs its own hosted checks. Independent
+clean reproduction, a fresh host-Python header rebuild, full upstream regression
+coverage, remaining advisory dispositions and EX4 host-consumer/hardware/release
+qualification remain separate. No target OpenSSL, NAS HTTPS exposure, physical
+disk operation or vulnerability-free/licensing-complete assertion.
+
 ## Current cached962 Go 1.26.8 integration and exact artifact audit (2026-10-08)
 
 Frozen `cea5e0a66d8fed7acec6f5ab63aefec9fa8178b0`, API tree
@@ -426,10 +456,11 @@ product/hardware/recovery/release gates remain open.
    must both match, with inherited configuration/library/module environment
    removed. Selected-version and wrong-library RED/GREEN tests, complete refusal/
    shell checks and refusal of the actual old cached3.5.8 installation pass.
-   The complete artifacts above still carry their old host3.5.8 metadata. Next:
-   qualify actual host consumers and regenerate legal sources/SBOM in a complete
-   build; selection alone is not successful installation or full upstream test
-   coverage. No target crypto package, NAS HTTPS or product security claim.
+   The complete cached qualification above now binds actual installed3.5.9,
+   configured RPATH transform, original/legal source/license/SBOM and actual host
+   Python mapped-library/certificate/TLS1.3 behavior. Own hosted, independent clean,
+   EX4 consumers, full upstream tests and complete advisory review remain open.
+   No target crypto package, NAS HTTPS or product security claim.
 3. **Go 1.26.8 candidate:** authenticate the exact SDK/source inputs, update the
    Buildroot recipe without unpinned toolchain downloads and preserve the module
    vendor set. Run ordinary/race/fuzz checks and the original ARMv5 campaigns;

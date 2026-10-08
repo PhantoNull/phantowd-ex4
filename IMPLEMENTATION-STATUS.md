@@ -3,13 +3,14 @@
 
 # Implementation status
 
-## Current maintenance selection — OpenSSL host guards, complete build pending
+## Current complete cached OpenSSL 3.5.9 qualification
 
 OpenSSL3.5.9's official archive hash and PGP primary-key signature are verified;
 all four existing Buildroot patches apply without fuzz and the license hash
 is unchanged. A bounded RAM-only host build with the current configure options
 passes actual CLI/shared-library/provider version binding, certificate/signature
-verification and private loopback TLS1.3. No cached installation is replaced.
+verification and private loopback TLS1.3. That initial proof did not replace
+the cache; the integrated run below installs the selected host package.
 
 An exact-state maintenance applicator and shell tests now cover coherent
 apply/idempotence and no-effect refusal of mixed, unknown, missing or symlink
@@ -22,10 +23,28 @@ library versions before expensive tests/kernel work; QEMU repeats the guard afte
 the full make. The guard discards inherited OpenSSL configuration/library/module
 environment and rejects stale, mismatching, malformed or incomplete observations.
 Test-first selected/mismatching-library checks, full shell/refusal tests and the
-actual cached 3.5.8 refusal pass. This selection is not a new fully audited image:
-the qualified artifacts below retain their exact previous scope.
-Actual host consumers, full upstream tests, regenerated legal/SBOM metadata and
-complete-build qualification remain open. No target OpenSSL,
+actual cached 3.5.8 refusal pass.
+
+Frozen `e234644` passes the original complete cached host/ARMv5 lane, all seven
+independently enrolled Samba campaigns and both synthetic SMART lanes. A separate
+post-terminal read-only audit matches all 1,255 tracked witnesses and 962 API
+inputs, configured strip/installed/rootfs/export, kernel and headers 6.18.55,
+selected/installed Go 1.26.8 SDK, source archives, seven artifact hashes, legal
+metadata and SBOM; 25,289 regular audit inputs remain unchanged.
+The authenticated OpenSSL archive, four patches, license and selected metadata
+agree with 3.5.9. All three installed OpenSSL objects exactly reproduce their
+built bytes after only Buildroot's authenticated configured RPATH normalization.
+The actual Buildroot Python 3.12.14 consumer loads the expected libraries and
+passes version binding, certificate verification and private loopback TLS 1.3.
+An initial audit wrongly compared unnormalized bytes and assumed Python's
+five-field version tuple was a semver triple; both expectations were corrected
+against the original source and actual runtime, without artifact changes or
+weaker byte-equality checks.
+
+The separate core PR passed all its own hosted checks and merged to `develop`.
+This host update still requires its own hosted checks, independent clean
+reproduction, EX4 consumer qualification and remaining advisory/upstream review.
+The cached consumer proof is not a fresh clean host-Python header rebuild. No target OpenSSL,
 NAS operation or new whole-image security claim; see [dependency review](support/DEPENDENCY-REVIEW.md).
 
 ## Current test observability — redacted planned-fault boundaries

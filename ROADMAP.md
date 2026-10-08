@@ -3,7 +3,7 @@
 
 # Implementation roadmap
 
-Reviewed: **2026-10-08**. This is the product specification and work breakdown,
+Reviewed: **2026-10-09**. This is the product specification and work breakdown,
 not a release announcement. The [README](README.md) is the concise entry point;
 component contracts remain authoritative for implemented behavior.
 
@@ -67,14 +67,18 @@ currently product-qualified for migration.
 
 ## Current baseline
 
-The fully audited local checkpoint `cea5e0a` selects Go 1.26.8 and passes the
+The fully audited local checkpoint `e234644` selects Go 1.26.8 and host OpenSSL
+3.5.9 and passes the
 complete cached Buildroot/host/ARMv5 lane: all seven independently enrolled
 Samba scenarios and both synthetic SMART lanes. Independent post-terminal
 auditing matches all 962 API inputs to compiled package/source archive and all
-1,250 tracked build witnesses. Configured stripping, installed/image/exported
+1,255 tracked build witnesses. Configured stripping, installed/image/exported
 API, seven hashes, Linux AND headers 6.18.55, actual selected/installed Go SDK,
-SBOM, release and legal sources agree; see
-[exact qualification](IMPLEMENTATION-STATUS.md#current-complete-cached-integration--seven-samba-scenarios-and-exact962-audit).
+SBOM, release and legal sources agree. The OpenSSL recipe/four patches/original
+and legal source/license/SBOM match; its three installed objects reproduce built
+bytes after configured RPATH normalization. Actual Buildroot Python passes
+mapped-library/version/certificate/private TLS 1.3 checks; see
+[exact qualification](IMPLEMENTATION-STATUS.md#current-complete-cached-openssl-359-qualification).
 
 The QEMU lifecycle fixture separates preparation (20 seconds) from revocation
 (45 seconds), changing the combined allowance from 45 to 65 seconds. Original worker/service/readiness/stop/
@@ -95,7 +99,8 @@ the exact proof contract; the intermittent failure cause remains unresolved.
 
 This is not held-session/mid-transfer fault coverage, uncertain construction/
 teardown, product recovery or production storage/identity composition.
-Exact-head hosted promotion, independent clean reproduction, complete advisory
+The separate core PR passed its own hosted checks and merged into `develop`;
+this OpenSSL update's own hosted promotion, independent clean reproduction, complete advisory
 review, hardware, migration, recovery and signed release gates remain open.
 Earlier PR #128/#129 checkpoints failed hosted coordinator-continuity checks; local success
 is not their causal fix. Keep existing guards and finite budgets. No HTTP
