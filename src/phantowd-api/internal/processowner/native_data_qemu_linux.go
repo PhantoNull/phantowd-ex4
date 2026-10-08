@@ -16,6 +16,46 @@ import (
 
 const nativeDataBootstrapMarkerQEMU = "PHANTOWD_NATIVE_DATA_HANDOFF_READY inputs=14 original_config=true original_state=true original_shares=true individual_clones=true closed_before_exec=true scope=qemu-only\n"
 
+type NativeDataStopObservationQEMU struct {
+	Stopped, InputsRetained bool
+}
+
+// ObserveNativeDataStopQEMU reports only this fixed data-daemon profile. A
+// stopped snapshot requires the owned group to have been reaped and verified
+// absent; all fifteen private pins are observed without reopening paths. This
+// neither signals nor releases anything, re-admits inputs, or clears review.
+func (s *PinnedSet) ObserveNativeDataStopQEMU(ctx context.Context) (NativeDataStopObservationQEMU, error) {
+	if err := s.enter(ctx); err != nil {
+		return NativeDataStopObservationQEMU{}, err
+	}
+	defer func() { <-s.gate }()
+	if len(s.pins) != 15 || len(s.set.members) != 1 || s.set.members[0].name != "native-samba-data" || s.set.generation == 0 {
+		return NativeDataStopObservationQEMU{}, ErrInvalid
+	}
+	observed, err := s.set.Observe(ctx)
+	if err != nil {
+		return NativeDataStopObservationQEMU{}, err
+	}
+	result := NativeDataStopObservationQEMU{
+		Stopped: observed.State == StateStopped && len(observed.Members) == 1 &&
+			observed.Members[0].Process.State == StateStopped && observed.Members[0].Process.PID == 0,
+		InputsRetained: true,
+	}
+	for _, pin := range s.pins {
+		if pin == nil {
+			result.InputsRetained = false
+			continue
+		}
+		if _, err := pin.Stat(); err != nil {
+			result.InputsRetained = false
+		}
+	}
+	if err := ctx.Err(); err != nil {
+		return NativeDataStopObservationQEMU{}, err
+	}
+	return result, nil
+}
+
 // VerifyNativeDataViewsQEMU compares only this set's owned, ready daemon with
 // its retained original two roots. Clone mount IDs deliberately differ from
 // source IDs; object identity and exact protected RO/RW roles must agree.

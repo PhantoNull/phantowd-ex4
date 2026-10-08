@@ -525,3 +525,27 @@ The new action has its own 20-second budget after startup/preparation40, not
 unused startup time. This does not qualify a complete ungranted UNC/mixed-ACL
 matrix, constructor/late-close faults, drift supervision, changed whole-image
 audit, hosted timeout fix, product activation or physical EX4 operation.
+
+### Planned-stop observation (QEMU only)
+
+`ObservePlannedStopQEMU` is a separate read-only observation, not a stop or
+recovery operation. The fixed data daemon's process owner witnesses its owned
+group state and all 15 private launcher/configuration/state/share inputs;
+the runtime also observes the original complete code and both configuration
+trees and state references. Retention does not imply unchanged contents or
+continued storage/identity admission. No descriptor, path, PID selection,
+callback, replacement authority, signal, close or retry is exposed.
+
+The constructor always prepares two held-client handles. In this planned data
+profile they must remain dormant, with exact members, zero generations/PIDs
+and no attempt. The older native observer's two-client contract is unchanged.
+Pending captures, absent/wrong/unstarted profiles, cancellation, concurrent
+operations and closed runtime refuse. Review is never cleared by observation.
+
+Pinned Linux/race3/ARM-build and 63 verifier tests pass. The actual focused
+ARMv5 data trace proves live-not-stopped, normal supervised stop/reap, retained
+original inputs, repeated read-only observation, legacy guard continuity,
+closed refusal and final descriptor equality. Its initial failed guest caught
+the mistaken nil-client assumption before correction. This is not composed
+source-loss/exit/mid-worker/uncertain-stop coverage, complete updated integration,
+product authorization, durable recovery or physical EX4 qualification.

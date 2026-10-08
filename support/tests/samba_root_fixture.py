@@ -167,6 +167,12 @@ MARKERS = (
     "restart_refused=true close_before_release=true "
     "stopped_reaped=true no_fd_leak=true "
     "activation=false scope=qemu-only",
+    "PHANTOWD_SAMBA_OWNER_PLANNED_STOP_READY "
+    "same_daemon=true private_inputs=15 runtime_inputs_retained=true "
+    "live_not_stopped=true stopped_reaped=true "
+    "legacy_clients_guard=true repeated_readonly=true "
+    "closed_refused=true no_fd_leak=true activation=false "
+    "scope=qemu-only",
     "PHANTOWD_SAMBA_OWNER_PLANNED_CANDIDATE_READY "
     "owner=actual_native_backend storage=mounted_roster locked_plan=true "
     "exact_declaration=true original_objects=true caller_close=true "
@@ -242,7 +248,8 @@ def check_campaign(log, phase):
     access = tuple(row for row in MARKERS if row.startswith((
         "PHANTOWD_SAMBA_OWNER_PLANNED_STARTUP_READY",
         "PHANTOWD_SAMBA_OWNER_PLANNED_DATA_READY",
-        "PHANTOWD_SAMBA_OWNER_PLANNED_SUPERVISION_READY")))
+        "PHANTOWD_SAMBA_OWNER_PLANNED_SUPERVISION_READY",
+        "PHANTOWD_SAMBA_OWNER_PLANNED_STOP_READY")))
     native = tuple(row for row in MARKERS[enrollment:-3]
                    if row not in (*access, planned))
     # Every guest still hashes its own complete code tree. The independently

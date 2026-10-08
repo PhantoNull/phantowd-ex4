@@ -29,6 +29,8 @@ const plannedStartupMarkerQEMU = "PHANTOWD_SAMBA_OWNER_PLANNED_STARTUP_READY own
 
 const plannedDataMarkerQEMU = "PHANTOWD_SAMBA_OWNER_PLANNED_DATA_READY same_authorities=true same_daemon=true granted_only=true ungranted_enabled_denied=true smb_read=true smb_write=true unix_owner=true readonly_EROFS=true readonly_denied=true symlink_denied=true fresh_observation=true stopped_before_release=true no_fd_leak=true activation=false scope=qemu-only"
 
+const plannedStopMarkerQEMU = "PHANTOWD_SAMBA_OWNER_PLANNED_STOP_READY same_daemon=true private_inputs=15 runtime_inputs_retained=true live_not_stopped=true stopped_reaped=true legacy_clients_guard=true repeated_readonly=true closed_refused=true no_fd_leak=true activation=false scope=qemu-only"
+
 // A NEW disposable service in a fresh, independently enrolled data guest.
 // It retains the SAME identity Owner, startup-fixed backend, complete mounted
 // roster and original share pins from planning through startup and full Close.
@@ -209,8 +211,18 @@ func nativePlannedStartupFixtureQEMU(plan *runtimebundle.Plan, lookup fileservic
 		if err := service.Start(canceled); !errors.Is(err, context.Canceled) {
 			return errors.New("planned startup admitted canceled start")
 		}
+		if legacy, err := runtime.ObserveNativeStopQEMU(ctx); legacy != (runtimebundle.NativeStopObservationQEMU{}) || !errors.Is(err, runtimebundle.ErrReviewRequired) {
+			return errors.New("unstarted planned role weakened legacy daemon guard")
+		}
 		if err := service.Start(ctx); err != nil {
 			return fmt.Errorf("planned same-authority daemon start: %w", err)
+		}
+		live, err := runtime.ObservePlannedStopQEMU(ctx)
+		if err != nil || live.DaemonStopped || !live.InputsRetained {
+			return errors.Join(errors.New("planned live daemon supplied stopped or released-input evidence"), err)
+		}
+		if legacy, err := runtime.ObserveNativeStopQEMU(ctx); err != nil || legacy.DaemonStopped || !legacy.ClientsStopped || !legacy.InputsRetained {
+			return errors.Join(errors.New("planned live role lost legacy two-client observation"), err)
 		}
 		if !errors.Is(service.Start(ctx), runtimebundle.ErrReviewRequired) ||
 			!errors.Is(owner.Close(), identityowner.ErrBusy) || !errors.Is(handoff.Close(), mountowner.ErrHandoffBusy) {
@@ -255,8 +267,25 @@ func nativePlannedStartupFixtureQEMU(plan *runtimebundle.Plan, lookup fileservic
 		if err := qualifyPlannedSupervisionQEMU(ctx, service, owner, handoff); err != nil {
 			return err
 		}
+		for range 2 {
+			stopped, err := runtime.ObservePlannedStopQEMU(ctx)
+			if err != nil || !stopped.DaemonStopped || !stopped.InputsRetained {
+				return errors.Join(errors.New("planned stop lacks owned-group and retained-input proof"), err)
+			}
+		}
+		if legacy, err := runtime.ObserveNativeStopQEMU(ctx); err != nil || !legacy.DaemonStopped || !legacy.ClientsStopped || !legacy.InputsRetained {
+			return errors.Join(errors.New("planned stopped role lost legacy two-client observation"), err)
+		}
+		stillStopped, err := service.Status()
+		if err != nil || stillStopped.State != "stopped" || !stillStopped.IdentityRetained || !stillStopped.SharesRetained || stillStopped.RuntimeClosed ||
+			!errors.Is(owner.Close(), identityowner.ErrBusy) || !errors.Is(handoff.Close(), mountowner.ErrHandoffBusy) {
+			return errors.New("read-only planned stop changed original authority")
+		}
 		if err := service.Close(context.Background()); err != nil {
 			return err
+		}
+		if observed, err := runtime.ObservePlannedStopQEMU(ctx); observed != (runtimebundle.PlannedStopObservationQEMU{}) || !errors.Is(err, runtimebundle.ErrReviewRequired) {
+			return errors.New("closed planned runtime supplied retained-input evidence")
 		}
 		status, err = service.Status()
 		if err != nil || status.State != "stopped" || status.IdentityRetained || status.SharesRetained || !status.RuntimeClosed {

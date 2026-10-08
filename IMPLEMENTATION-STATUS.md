@@ -3,6 +3,31 @@
 
 # Implementation status
 
+## Current component — planned-stop observation, focused host/QEMU proof
+
+On 2026-10-08, the separate QEMU-only `ObservePlannedStopQEMU` passes pinned
+Linux seven-package checks, race-count3, ARMv5 cross-build, 63 Linux verifier
+tests and the actual focused data guest. The same service's daemon is observed
+live before supervision and stopped/reaped afterward, with all 15 private
+daemon inputs plus the original code, management/service configuration and
+state references retained. Repeated observation does not release authority;
+closed runtime observation refuses. The final descriptor census and unchanged
+base checks pass before the new mandatory proof is accepted.
+
+The runtime constructor prepares two held-client handles even in the data
+profile. This observer requires them to remain dormant: exact members, zero
+generations/PIDs and no launch attempt. The legacy two-client observer is
+unchanged and is checked against the real unstarted, live and stopped runtime.
+An initial actual-guest refusal exposed and corrected a mistaken nil-client
+assumption; host-only tests did not qualify a healthy runtime.
+
+This is retention/stop evidence, not fresh input validity, recovery authority,
+composed source-loss/uncertain-teardown coverage or a hosted timeout fix. The
+latest fully audited whole image remains the 946-input checkpoint below; the
+new 948-input source has only the component qualification described here.
+The complete updated six-guest union and whole-image audit remain separate.
+No deadline expansion, product activation, HTTP surface or NAS access is added.
+
 ## Current component — composed Samba supervision, normal host/QEMU proof
 
 On 2026-10-08, `NativePlannedServiceQEMU.Supervise` passes pinned Go 1.26.6

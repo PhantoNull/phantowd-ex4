@@ -12,6 +12,30 @@ import (
 	"testing"
 )
 
+func TestNativeDataStopObservationRefusesUnownedAuthority(t *testing.T) {
+	var absent *PinnedSet
+	if observed, err := absent.ObserveNativeDataStopQEMU(context.Background()); observed != (NativeDataStopObservationQEMU{}) || !errors.Is(err, ErrUnavailable) {
+		t.Fatal("absent process supplied planned-stop evidence", err)
+	}
+	// Negative-only handles own no process or descriptors. Healthy retention
+	// and stop evidence must come from the actual disposable daemon fixture.
+	set := &PinnedSet{gate: make(chan struct{}, 1), set: &Set{}}
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	if observed, err := set.ObserveNativeDataStopQEMU(ctx); observed != (NativeDataStopObservationQEMU{}) || !errors.Is(err, context.Canceled) {
+		t.Fatal("canceled stop observation proceeded", err)
+	}
+	set.gate <- struct{}{}
+	observed, err := set.ObserveNativeDataStopQEMU(context.Background())
+	<-set.gate
+	if observed != (NativeDataStopObservationQEMU{}) || !errors.Is(err, ErrBusy) {
+		t.Fatal("competing stop observation proceeded", err)
+	}
+	if observed, err := set.ObserveNativeDataStopQEMU(context.Background()); observed != (NativeDataStopObservationQEMU{}) || !errors.Is(err, ErrInvalid) {
+		t.Fatal("unowned process supplied planned-stop evidence", err)
+	}
+}
+
 func TestNativeDataViewsRefuseAbsentCanceledAndBusyAuthority(t *testing.T) {
 	var absent *PinnedSet
 	if err := absent.VerifyNativeDataViewsQEMU(context.Background(), 2); !errors.Is(err, ErrUnavailable) {

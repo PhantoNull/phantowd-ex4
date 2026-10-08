@@ -58,7 +58,8 @@ def campaign_rows():
     access = tuple(row for row in fixture.MARKERS if row.startswith((
         "PHANTOWD_SAMBA_OWNER_PLANNED_STARTUP_READY",
         "PHANTOWD_SAMBA_OWNER_PLANNED_DATA_READY",
-        "PHANTOWD_SAMBA_OWNER_PLANNED_SUPERVISION_READY")))
+        "PHANTOWD_SAMBA_OWNER_PLANNED_SUPERVISION_READY",
+        "PHANTOWD_SAMBA_OWNER_PLANNED_STOP_READY")))
     census = [*fixture.MARKERS[:3], CENSUS, fixture.MARKERS[enrollment]]
     return {
         "service": [*fixture.MARKERS[:enrollment],
@@ -79,6 +80,38 @@ def campaign_rows():
 
 
 class SambaRootFixture(unittest.TestCase):
+    def test_planned_stop_requires_private_inputs_and_owned_daemon_proof(self):
+        proof = (
+            "PHANTOWD_SAMBA_OWNER_PLANNED_STOP_READY "
+            "same_daemon=true private_inputs=15 runtime_inputs_retained=true "
+            "live_not_stopped=true stopped_reaped=true "
+            "legacy_clients_guard=true repeated_readonly=true "
+            "closed_refused=true no_fd_leak=true activation=false "
+            "scope=qemu-only")
+        self.assertIn(proof, fixture.MARKERS)
+        rows = campaign_rows()
+        good = "\n".join(rows["data"])
+        fixture.check_campaign(good, "data")
+        for replacement in ("", proof + "\n" + proof,
+                            proof.replace("private_inputs=15",
+                                          "private_inputs=13"),
+                            proof.replace("stopped_reaped=true",
+                                          "stopped_reaped=false"),
+                            proof.replace("legacy_clients_guard=true",
+                                          "legacy_clients_guard=false"),
+                            proof.replace("activation=false",
+                                          "activation=true")):
+            with self.subTest(replacement=replacement):
+                with self.assertRaises(ValueError):
+                    fixture.check_campaign(good.replace(proof, replacement),
+                                           "data")
+        for phase in fixture.CAMPAIGNS:
+            if phase != "data":
+                with self.subTest(wrong_phase=phase):
+                    with self.assertRaises(ValueError):
+                        fixture.check_campaign(
+                            "\n".join(rows[phase] + [proof]), phase)
+
     def test_planned_supervision_is_required_once_in_the_data_trace(self):
         rows = campaign_rows()
         proof = (
@@ -89,7 +122,7 @@ class SambaRootFixture(unittest.TestCase):
             "stopped_reaped=true no_fd_leak=true "
             "activation=false scope=qemu-only")
         valid = [row for row in rows["data"] if row != proof]
-        valid.insert(-2, proof)
+        valid.insert(-3, proof)
         fixture.check_campaign("\n".join(valid), "data")
         with self.assertRaises(ValueError):
             fixture.check_campaign(
@@ -197,6 +230,8 @@ class SambaRootFixture(unittest.TestCase):
                 fixture.MARKERS[native_split], startup,
                 marker, next(row for row in fixture.MARKERS if row.startswith(
                     "PHANTOWD_SAMBA_OWNER_PLANNED_SUPERVISION_READY")),
+                next(row for row in fixture.MARKERS if row.startswith(
+                    "PHANTOWD_SAMBA_OWNER_PLANNED_STOP_READY")),
                 "PHANTOWD_SAMBA_ROOT_DATA_DONE", SCAN_COST]
         good = "\n".join(rows)
         fixture.check_campaign(good, "data")
@@ -240,6 +275,8 @@ class SambaRootFixture(unittest.TestCase):
                 marker, data,
                 next(row for row in fixture.MARKERS if row.startswith(
                     "PHANTOWD_SAMBA_OWNER_PLANNED_SUPERVISION_READY")),
+                next(row for row in fixture.MARKERS if row.startswith(
+                    "PHANTOWD_SAMBA_OWNER_PLANNED_STOP_READY")),
                 "PHANTOWD_SAMBA_ROOT_DATA_DONE", SCAN_COST]
         good = "\n".join(rows)
         fixture.check_campaign(good, "data")
@@ -284,7 +321,8 @@ class SambaRootFixture(unittest.TestCase):
                     if row != planned and not row.startswith((
                         "PHANTOWD_SAMBA_OWNER_PLANNED_STARTUP_READY",
                         "PHANTOWD_SAMBA_OWNER_PLANNED_DATA_READY",
-                        "PHANTOWD_SAMBA_OWNER_PLANNED_SUPERVISION_READY"))),
+                        "PHANTOWD_SAMBA_OWNER_PLANNED_SUPERVISION_READY",
+                        "PHANTOWD_SAMBA_OWNER_PLANNED_STOP_READY"))),
                   "PHANTOWD_SAMBA_ROOT_NATIVE_DONE",
                   SCAN_COST]
         fixture.check_campaign(timings + "\n" + "\n".join(native),
@@ -1281,6 +1319,12 @@ class SambaRootFixture(unittest.TestCase):
             "restart_refused=true close_before_release=true "
             "stopped_reaped=true no_fd_leak=true "
             "activation=false scope=qemu-only",
+            "PHANTOWD_SAMBA_OWNER_PLANNED_STOP_READY "
+            "same_daemon=true private_inputs=15 runtime_inputs_retained=true "
+            "live_not_stopped=true stopped_reaped=true "
+            "legacy_clients_guard=true repeated_readonly=true "
+            "closed_refused=true no_fd_leak=true activation=false "
+            "scope=qemu-only",
             "PHANTOWD_SAMBA_OWNER_PLANNED_CANDIDATE_READY "
             "owner=actual_native_backend storage=mounted_roster "
             "locked_plan=true exact_declaration=true original_objects=true "
