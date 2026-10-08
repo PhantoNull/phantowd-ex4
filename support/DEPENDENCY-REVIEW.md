@@ -3,7 +3,37 @@
 
 # Dependency review and update qualification
 
-## Current cached943 integration and exact artifact audit (2026-10-08)
+## Current cached945 integration and exact artifact audit (2026-10-08)
+
+Frozen `5a087ed1c5e6cda9957a2554038bfd4303c485fa`, API tree
+`dccdc1fd2722097520f18b263ac0558c1a4e4c2c`, passes one complete cached
+host/ARMv5 lane and an independent post-terminal read-only audit. All original
+host/guest checks, six independently enrolled Samba scenarios and both
+synthetic SMART lanes pass. Every original proof and complete runtime census
+remain required; no state or authority is borrowed across boots.
+
+All **945** API inputs match compiled package AND legal source archive, with
+no stale extras or generated-marker exemptions. Declared licenses, configured
+strip/installed/rootfs/export, seven ordered hashes, actual kernel AND headers
+6.18.55 source/license/SBOM/legal/release bindings and linked Go 1.26.6/CGO0/ARM5
+agree. All 945 before/after source hashes match; 1,913 regular inputs recheck.
+Stripped API: 10,708,180 bytes, SHA256
+`66286bb8edd1c65ca9e13cb177f0fdc9272e6c8dd7da26cf7a50f488bcfdec78`.
+NEW source archive SHA256:
+`c4e2778265e3ad1f9f830652fdeb3153ba8f6ec7b0255805ab990c0f33001c1d`.
+Ordered artifact manifest SHA256:
+`5782dcf6b2d487d4eee4d420fb0bbb3fae68121b37e7df6fcad3eec7b591d2cd`.
+QEMU-only changes leave installed product/image bytes unchanged; the new
+source archive is independently checked, not borrowed from the older audit.
+
+The existing image/two project volumes are reused. This is cached local
+qualification, not a fresh advisory review, independent clean reproduction,
+exact-head hosted, physical EX4, migration, product activation or installation
+qualification. The old prepared941 hosted failure stays failed and its natural
+post-admission cause is not established by this pass. Earlier advisory
+inventories/open package reviews below remain dated evidence.
+
+## Earlier cached943 integration and exact artifact audit (2026-10-08)
 
 Frozen `2ce88f03ee2211f03e1efb73426aab0bccf0efe3`, API tree
 `aa88877c1336c4d20f9eeb0def51ea8daf8de84a`, passes the complete cached

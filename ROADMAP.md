@@ -67,16 +67,19 @@ currently product-qualified for migration.
 
 ## Current baseline
 
-The current combined local checkpoint `8aaedd7` passes the complete cached
-Buildroot/ARMv5 integration, including all three original Samba campaigns and
-the synthetic SMART lanes. Independent post-terminal auditing matches all 934
-API inputs to compiled package/source archive, reproduces configured stripping,
-and verifies installed/image/exported API and seven artifact hashes; see
-[exact scope](IMPLEMENTATION-STATUS.md#current-combined-checkpoint--complete-cached-local-qualification).
-This closes the included changes' pending cached-image audit, not the
-intermittent-timeout cause, exact-head hosted promotion, clean reproducibility,
-two-role daemon construction or any product/hardware/release gate. Historical
-task evidence below keeps its original source scope.
+The current combined local checkpoint `5a087ed` passes the complete cached
+Buildroot/ARMv5 integration, including all six independently enrolled Samba
+scenarios and both synthetic SMART lanes. Independent post-terminal auditing
+matches all 945 API inputs to compiled package/source archive, reproduces
+configured stripping, and verifies installed/image/exported API, seven hashes,
+Linux AND headers 6.18.55, SBOM, release and legal-source bindings; see
+[exact scope](IMPLEMENTATION-STATUS.md#current-complete-cached-integration--six-samba-scenarios-and-exact945-audit).
+Normal same-authority planned Samba startup and access are qualified only in
+disposable fixtures. Continuous supervision, uncertain construction/teardown,
+production storage/identity composition, exact-head hosted promotion, clean
+reproducibility and product/hardware/release gates remain open. This is not a
+causal fix of the earlier hosted timeout. Historical task evidence below keeps
+its original source scope.
 
 Status vocabulary:
 
@@ -89,7 +92,7 @@ Status vocabulary:
 
 | Area | Evidence and limits |
 | --- | --- |
-| Build/tooling | Pinned Buildroot 2025.02.18 LTS / Linux 6.18.54 LTS; source verification, package metadata, SBOM and clean CI. Independent reproducibility was demonstrated for one earlier commit, not every revision. |
+| Build/tooling | Pinned Buildroot 2025.02.18 LTS / Linux 6.18.55 LTS; current cached local source/image/SBOM audit and earlier clean CI. Exact-head hosted checks remain required; independent reproducibility was demonstrated for one earlier commit, not every revision. |
 | Admin management | Host/DOM and ARMv5 authentication, password-change, revocation and clean-reboot tests. Product enrollment, state placement, recovery and certificates remain open. |
 | Desired SMB/NFS policy | Strict models, revision stores and opt-in development editing. Stored policy does not activate services. |
 | Native identities | Reservation ledger, protected local reader, creation journal, typed executor, cooperative owner/listener and multi-account router; Owner now supports a revisioned internal desired-state toggle that does not change Unix/Samba authentication or activate services. Not a deployed account manager. |

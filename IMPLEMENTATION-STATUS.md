@@ -3,6 +3,29 @@
 
 # Implementation status
 
+## Current complete cached integration — six Samba scenarios and exact945 audit
+
+Frozen `5a087ed1c5e6cda9957a2554038bfd4303c485fa`, API tree
+`dccdc1fd2722097520f18b263ac0558c1a4e4c2c`, passes one complete cached
+Buildroot/host/ARMv5 integration run and an independent post-terminal read-only
+audit on 2026-10-08. Standard smoke, MD/state reboot, launcher/runtime/loader/
+atomic, all six independently enrolled Samba guests and both synthetic SMART
+lanes pass. Every original proof and each complete runtime census remain required.
+
+All **945** API source files match both the compiled package and collected
+source archive, with no stale extras or generated-marker exemptions. Configured
+stripping, installed/rootfs/exported API, seven ordered hashes, actual images,
+kernel AND headers 6.18.55 source/license/SBOM/legal/release bindings and linked
+Go 1.26.6/CGO0/Linux ARM5 agree. All 945 before/after source hashes match;
+1,913 regular audit inputs are rechecked. Only the existing pinned image and
+two project volumes are reused. See [exact artifact identities](support/DEPENDENCY-REVIEW.md).
+
+This qualifies the current cached local image, not independent clean builds,
+the new publication's own hosted checks, a causal fix of the earlier hosted
+failure, physical EX4, migration, product service activation or installation.
+Normal retained startup/access is tested; complete grants/ACLs, constructor/
+late-close faults and continuous planned-service supervision remain open.
+
 ## Current QEMU component — independently enrolled bounded scenarios
 
 On 2026-10-08, the updated Samba lane passes pinned Go 1.26.6 tagged vet,
@@ -21,12 +44,12 @@ Candidate's distinct declaration/prepared-input workloads now receive separate
 cover ten refusal/cancellation/budget cases, including late nil and no retry;
 the aggregate change is QEMU-only, not a product deadline extension.
 
-This is current component verification, not a new complete image/source audit
-or a repair of the earlier hosted run. Exact-head hosted checks and independent
-clean/physical/product gates remain open. The last complete audited image below
-belongs to its exact older 943-input checkpoint, not the changed source.
+The updated complete cached image/source audit now passes as recorded above.
+This is not a repair of the earlier hosted run. Exact-head hosted checks and
+independent clean/physical/product gates remain open. The older 943-input
+image below retains its exact historical source scope.
 
-## Last complete cached integration — same-authority startup/data and exact943 audit
+## Earlier complete cached integration — same-authority startup/data and exact943 audit
 
 Frozen `2ce88f03ee2211f03e1efb73426aab0bccf0efe3`, API tree
 `aa88877c1336c4d20f9eeb0def51ea8daf8de84a`, passes the complete cached
