@@ -110,8 +110,12 @@ func (r *NativeSambaRuntimeQEMU) nativeDataClientQEMU(ctx context.Context, opera
 	if err != nil {
 		return err
 	}
+	args := []string{"native-data-client", operation}
+	if operation == "ungranted" {
+		args = []string{"native-ungranted-client"} // Fixed enabled/non-granted peer.
+	}
 	capture, err := processowner.NewCapture(processowner.CaptureSpec{
-		ExecutableLabel: sambaFixtureHelper, Args: []string{"native-data-client", operation},
+		ExecutableLabel: sambaFixtureHelper, Args: args,
 		RunAs: &processowner.Credentials{UID: 0, GID: 0}, Timeout: 4 * time.Second, StopTimeout: time.Second,
 	}, r.helper, input)
 	err = errors.Join(err, input.Close())
@@ -137,7 +141,14 @@ func (r *NativeSambaRuntimeQEMU) nativeDataClientQEMU(ctx context.Context, opera
 	}
 	output := append(observed.Stdout, observed.Stderr...)
 	defer clear(output)
-	if operation == "ro-write" || operation == "escape" {
+	if operation == "ungranted" {
+		// ACCOUNT_DISABLED, timeout, signals and a launcher error are not grant
+		// enforcement. The complete authority independently confirms enabled.
+		if observed.ExitCode == 1 && bytes.Contains(output, []byte("NT_STATUS_LOGON_FAILURE")) &&
+			!bytes.Contains(output, []byte("NT_STATUS_ACCOUNT_DISABLED")) {
+			return nil
+		}
+	} else if operation == "ro-write" || operation == "escape" {
 		if observed.ExitCode == 1 && (bytes.Contains(output, []byte("NT_STATUS_ACCESS_DENIED")) ||
 			(operation == "escape" && (bytes.Contains(output, []byte("NT_STATUS_OBJECT_NAME_NOT_FOUND")) ||
 				bytes.Contains(output, []byte("NT_STATUS_STOPPED_ON_SYMLINK"))))) {

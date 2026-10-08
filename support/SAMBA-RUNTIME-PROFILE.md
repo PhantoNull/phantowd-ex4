@@ -22,7 +22,7 @@ The wrapper refuses missing caches;
 it never builds/pulls an image or creates a named volume. Source, workspace and
 base inputs are read-only; one disposable container uses bounded 512 MiB `/tmp`
 and 128 MiB `/var/tmp` tmpfs. Compiler scratch is removed before the image copy.
-Each of three ARM926/VersatilePB boots is bounded to 180 seconds, without retries, guest
+Each of six ARM926/VersatilePB boots is bounded to 180 seconds, without retries, guest
 NICs, host ports or physical-device attachments. The base image hash must remain
 unchanged. Generated images and state are destroyed when the fixture exits.
 The host formats only a newly created 16 MiB regular tmpfs file as ext4 and
@@ -262,6 +262,52 @@ after the prior identity Owner closes: complete-roster pin consumption, SAME
 identity/backend bootstrap, grant/ACL matrix and storage-loss/uncertain-close
 composition still remain. `complete_storage_identity=false` is mandatory;
 neither this helper nor the probe is installed as a product service.
+
+### Planned original-input preparation (fixture only)
+
+`PreparePlannedDataInputsQEMU` prepares exactly one existing two-share data
+tuple, without launching a process. It independently renders both complete
+seven-file expectations from the opaque paired candidate and matches the
+retained management/service roles. Data inputs duplicate the five service-config
+objects, seven original state directories and two declared RO/RW O_PATH roots;
+credential workers still use management lookup. No generic ExtraFiles, runtime
+selection, privilege change or product API is added. Existing daemon-start APIs
+continue to refuse any retained inert service role.
+
+The trusted caller freshly compiles and verifies the original mounted share
+pins and identity evidence OUTSIDE the runtime gate, retaining both authorities
+through verified runtime Close. The constructor does not mint storage/identity
+authority or call their locks from inside its own gate. Actual QEMU tests cover
+invalid/duplicate/missing declarations, an empty candidate, canceled admission,
+caller closure, busy original authorities and complete input closure before
+lease/pin/handoff release. The normal trace does not qualify constructor-close
+or late-uncertainty recovery, planned daemon execution or product supervision.
+
+The separate same-authority coordinator now qualifies **normal startup** in
+host/disposable QEMU. Its single-use `Start` brackets the prepared fixed daemon
+with fresh complete original storage/identity planning outside the runtime gate.
+The daemon consumes the service role; credential workers retain management.
+Its owned child data views are compared with retained originals and protected
+RO/RW flags, not caller-selected paths or matching bytes. Canceled/duplicate
+admission refuses, both original authorities stay busy while live, and verified
+whole-runtime closure precedes their release. An uncertain startup/stop/close
+keeps review and authority without restart or retry.
+
+The mandatory new startup marker explicitly denies coordinator data transfers
+and product activation. It does not borrow the independent native data probe's
+access proof or complete the constructor-fault/live-grant/supervision gates.
+Pinned Linux tagged tests, six-package race-count3 and all three original ARMv5
+guests pass with 56 POSIX driver tests and unchanged limits. This is not a new
+complete943 image audit, hosted timeout fix or physical/product qualification.
+
+Host tagged vet/tests, focused race-count3, ARM cross-build and the complete
+three-campaign ARMv5 union pass with all55 POSIX verifier tests. Independent
+libc/config/handoff probes remain mandatory in native, rather than duplicated
+in lifecycle; lifecycle bootstraps/enrolls its OWN real accounts. The complete
+union still requires every original proof, equal runtime censuses and unchanged
+guest/operation limits. Earlier timeout evidence remains failure, not a proved
+hosted intermittency fix. Complete new-image/source, clean, EX4 and product
+qualification stay separate.
 
 Implement a separate internal Samba-specific Owner; do not broaden the generic
 static/non-root adapter. Separate host/disposable-QEMU composition is approved;
@@ -625,20 +671,29 @@ through caller loss/GC still needs the product recovery/lifecycle design.
 ### Bounded campaign execution
 
 The official runner compiles and stages one fixed probe image, then executes
-three fresh QEMU snapshots sequentially, each bounded to 180 seconds. The service
+six fresh QEMU snapshots sequentially, each bounded to 180 seconds. The service
 campaign proves the old access/isolation/lifetime cases and releases all its
-resources. The native campaign independently proves lookup, configuration
-handoff, credential workers and live revocation on fresh tmpfs state. The
+resources, then runs the independent real NSS/configuration/handoff checks.
+The native campaign bootstraps its own accounts and proves credential workers,
+live revocation and the older isolated data prerequisite on fresh tmpfs. The
 lifecycle guest independently repeats real disabled-first enrollment and explicit
-enable, then qualifies retained startup/supervision, coordinator revocation and one
-state-directory alias replacement fault. No service passdb or
+enable, then qualifies retained startup/supervision and coordinator revocation.
+Candidate and state-alias fault have their own independently enrolled guests:
+candidate retains the SAME enrollment Owner/backend/runtime and mounted roster
+through declaration, role rendering and prepared-input checks; fault closes
+enrollment admission before a NEW retained service consumer in its bounded
+subprocess. The data guest independently enrolls
+its own identities, then verifies retained planned startup and six fixed access
+clients through the SAME service and original authorities. No service passdb or
 filesystem mutation carries over; both virtual drives use snapshots.
 
 Lifecycle does not start/idle-disable/stop a redundant initial daemon before
 its coordinator. Those authentication/idle/live-disable and backend-binding
 contracts remain mandatory in the native guest. Lifecycle prints only its
-actual enrollment/startup/fault proofs. The complete union of required contracts
-is unchanged; negative verifier tests reject any missing contract or wrong-phase
+actual enrollment/startup proofs; candidate and fault cannot claim those or each
+other's proof. The complete union of required contracts
+keeps every previous contract plus planned startup/access; verifier tests reject
+any missing contract or wrong-phase
 claim. The final native account census now uses the complete Owner-locked
 snapshot already collected in the separate20-second binding probe, instead of
 repeating the same batch outside that lock at the end of enrollment60. Exactly
@@ -651,20 +706,35 @@ bounded scan measurement per guest, then requires equal file/byte censuses.
 Missing, duplicated, swapped or weakened proofs fail. The normalized marker
 summary is combined coverage, not one daemon or state retained across boots.
 The base manifest and post-run image hash remain mandatory. Failure artifacts
-contain the failed phase's log, or all three logs when joint verification fails.
+contain the failed phase's log, or all six logs when joint verification fails.
 
 The local PowerShell runner may explicitly select one campaign for diagnosis;
-default/full Buildroot callers still require all three. Focused completion
+default/full Buildroot callers require all six. Focused completion
 reports `complete_image=false`, never the aggregate qualification marker.
 See the [focused-run contract](QEMU-FAST-TESTS.md).
 
-This addresses an observed outer timeout after native handoff in the growing
+The former compound lifecycle completed candidate and startup but exhausted
+guest180 before its fault proof. The current distribution passes all six real
+ARMv5 guests, the complete original proof union and unchanged-base check locally
+on 2026-10-08. All 61 Linux verifier tests pass. This is component verification,
+not a new full-image/source audit, independent clean build or repair of the
+earlier hosted failure.
+
+Candidate's declaration and prepared-input scenarios also have distinct fixed
+30-second contexts, while retaining the SAME authorities. This explicitly
+changes that fixture's aggregate from shared30 to two30; it changes no product,
+worker, readiness, stop or guest deadline. An uncertain/expired first scenario
+cannot proceed or retry, parent cancellation remains binding, and late nil
+results fail. Five deterministic fake-clock tests cover ten cases; their
+success is not real Samba execution or a new authority admission.
+
+The earlier split addressed an observed outer timeout after native handoff in the growing
 single-guest campaign, without weakening admission or increasing the native
 60-second credential budget. Local wrapper success is not hosted/clean-build
 qualification; the publication's own head must pass independently.
 
-Later normal-startup plus fault work also exhausted the native guest budget.
-The current split keeps every previous access/authentication/live-session guard
+Earlier normal-startup plus fault work also exhausted the native guest budget.
+That split kept every previous access/authentication/live-session guard
 and every per-operation budget; it does not extend guest180 or add another
 kernel/image build. Final local qualification passes 42 driver/seven loader
 checks and all three actual campaigns, including parent FD equality and base

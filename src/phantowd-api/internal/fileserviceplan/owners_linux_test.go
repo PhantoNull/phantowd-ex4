@@ -18,3 +18,11 @@ func TestBuildFromOwnersRefusesMissingTrustedOwners(t *testing.T) {
 		t.Fatalf("missing identity and storage Owners must fail closed: %v", err)
 	}
 }
+
+func TestBuildFromRetainedOwnersRefusesMissingAuthority(t *testing.T) {
+	for _, ctx := range []context.Context{nil, context.Background()} {
+		if _, err := BuildFromRetainedOwners(ctx, fileservice.Config{}, 0, nil, nil); !errors.Is(err, ErrNotReady) {
+			t.Fatal("missing retained identity/storage authority supplied a plan:", err)
+		}
+	}
+}

@@ -326,13 +326,14 @@ static int writer_identity(void)
  * changed. Drop all bounding/ambient/effective authority before the Go probe. */
 static int inspect_runtime_bundle_mode(const char *mode)
 {
+    const int census_only = mode && !strcmp(mode, "runtime-census");
     if (unshare(CLONE_NEWNS) ||
         mount(NULL, "/", NULL, MS_REC | MS_PRIVATE, NULL) ||
         mount(code_root, code_root, NULL, MS_BIND, NULL) ||
         mount(NULL, code_root, NULL, MS_BIND | MS_REMOUNT | MS_RDONLY | MS_NOSUID |
               MS_NODEV, NULL))
         return fail();
-    if (mode && (mount(root, root, NULL, MS_BIND, NULL) || code_views() ||
+    if (mode && !census_only && (mount(root, root, NULL, MS_BIND, NULL) || code_views() ||
         mount(NULL, root, NULL, MS_BIND | MS_REMOUNT | MS_RDONLY | MS_NOSUID,
               NULL)))
         return fail();
@@ -383,7 +384,8 @@ static int inspect_runtime_bundle_mode(const char *mode)
     }
     if (!last || writer_identity())
         return fail();
-    char *args[] = {"qemu-runtime-bundle", mode ? "composed-code" : NULL, NULL};
+    char *args[] = {"qemu-runtime-bundle", census_only ? "census-only" :
+                    (mode ? "composed-code" : NULL), NULL};
     char *environment[] = {"PATH=/usr/sbin:/usr/bin:/sbin:/bin", "LC_ALL=C", NULL};
     execve("/usr/sbin/phantowd-runtime-bundle-probe", args, environment);
     return fail();
@@ -1120,10 +1122,14 @@ int main(int argc, char **argv)
         return native_client(argv[2], argv[3], 0);
     if (argc == 3 && !strcmp(argv[1], "native-data-client"))
         return native_client_mode("qpsecond", "good", 0, argv[2]);
+    if (argc == 2 && !strcmp(argv[1], "native-ungranted-client"))
+        return native_client("qpmanaged", "good", 0);
     if (argc == 3 && !strcmp(argv[1], "native-session"))
         return native_client(argv[2], "good", 1);
     if (argc == 2 && !strcmp(argv[1], "runtime-bundle"))
         return inspect_runtime_bundle();
+    if (argc == 2 && !strcmp(argv[1], "runtime-census"))
+        return inspect_runtime_bundle_mode("runtime-census");
     if (argc == 2 && !strcmp(argv[1], "composed-code"))
         return inspect_runtime_bundle_mode("composed-code");
     if (argc == 2 && !strcmp(argv[1], "composed-code-copy"))

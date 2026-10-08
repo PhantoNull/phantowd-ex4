@@ -114,6 +114,14 @@ func nativeDataFixtureQEMU(plan *runtimebundle.Plan, lookup fileserviceplan.Samb
 			return err
 		}
 	}
+	// Only this successful, fully closed disposable experiment's client files.
+	// The later complete-authority tracer must prove NEW transfers, not accept
+	// byte-identical downloads left by this independent prerequisite.
+	for _, path := range []string{"/run/native-share-upload", "/run/native-share-download-rw", "/run/native-share-download-ro"} {
+		if err := os.Remove(path); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 

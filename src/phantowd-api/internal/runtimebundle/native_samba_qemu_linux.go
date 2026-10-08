@@ -42,18 +42,20 @@ func SambaCredentialDocumentsQEMU(lookup fileserviceplan.SambaEnrollmentLookup) 
 // experiment. No product startup exists. Pending captures remain owned until
 // verified teardown.
 type NativeSambaRuntimeQEMU struct {
-	owner            *Owner
-	helper           *os.File
-	pending          *processowner.CaptureOwner
-	gate             chan struct{}
-	closed           bool
-	daemonAttempted  bool
-	daemonPID        int
-	authPaths        []string
-	clients          *processowner.PinnedSet
-	clientsAttempted bool
-	releaseErr       error
-	workerFailure    *nativeWorkerErrorQEMU
+	owner                *Owner
+	helper               *os.File
+	pending              *processowner.CaptureOwner
+	gate                 chan struct{}
+	closed               bool
+	daemonAttempted      bool
+	daemonPID            int
+	authPaths            []string
+	clients              *processowner.PinnedSet
+	clientsAttempted     bool
+	plannedDataPrepared  bool
+	plannedDataAttempted bool
+	releaseErr           error
+	workerFailure        *nativeWorkerErrorQEMU
 }
 
 func (p *Plan) NewNativeSambaRuntimeQEMU(ctx context.Context, code, configuration, state *os.File, lookup fileserviceplan.SambaEnrollmentLookup) (_ *NativeSambaRuntimeQEMU, result error) {
