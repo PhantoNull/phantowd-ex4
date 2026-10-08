@@ -70,11 +70,15 @@ run_native_fixture() {
     printf '%s\n' 'root:!:0:0:99999:7:::' \
         'nobody:!:0:0:99999:7:::' >/etc/shadow
     chmod 0600 /etc/shadow || return 1
-    /usr/sbin/phantowd-runtime-bundle-probe native-lookup || return 1
     if [ "$campaign" = lifecycle ]; then
+        # Create this guest's real disabled Unix accounts through the SAME
+        # Owner operations. Independent libc/config/handoff probes remain
+        # mandatory in native, not repeated before this cumulative workload.
+        /usr/sbin/phantowd-runtime-bundle-probe native-lookup-bootstrap || return 1
         /usr/sbin/phantowd-runtime-bundle-probe native-lifecycle || return 1
         echo PHANTOWD_SAMBA_ROOT_DONE
     else
+        /usr/sbin/phantowd-runtime-bundle-probe native-lookup || return 1
         /usr/sbin/phantowd-runtime-bundle-probe native-credentials || return 1
         echo PHANTOWD_SAMBA_ROOT_NATIVE_DONE
     fi

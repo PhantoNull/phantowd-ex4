@@ -263,6 +263,35 @@ identity/backend bootstrap, grant/ACL matrix and storage-loss/uncertain-close
 composition still remain. `complete_storage_identity=false` is mandatory;
 neither this helper nor the probe is installed as a product service.
 
+### Planned original-input preparation (fixture only)
+
+`PreparePlannedDataInputsQEMU` prepares exactly one existing two-share data
+tuple, without launching a process. It independently renders both complete
+seven-file expectations from the opaque paired candidate and matches the
+retained management/service roles. Data inputs duplicate the five service-config
+objects, seven original state directories and two declared RO/RW O_PATH roots;
+credential workers still use management lookup. No generic ExtraFiles, runtime
+selection, privilege change or product API is added. Existing daemon-start APIs
+continue to refuse any retained inert service role.
+
+The trusted caller freshly compiles and verifies the original mounted share
+pins and identity evidence OUTSIDE the runtime gate, retaining both authorities
+through verified runtime Close. The constructor does not mint storage/identity
+authority or call their locks from inside its own gate. Actual QEMU tests cover
+invalid/duplicate/missing declarations, an empty candidate, canceled admission,
+caller closure, busy original authorities and complete input closure before
+lease/pin/handoff release. The normal trace does not qualify constructor-close
+or late-uncertainty recovery, planned daemon execution or product supervision.
+
+Host tagged vet/tests, focused race-count3, ARM cross-build and the complete
+three-campaign ARMv5 union pass with all55 POSIX verifier tests. Independent
+libc/config/handoff probes remain mandatory in native, rather than duplicated
+in lifecycle; lifecycle bootstraps/enrolls its OWN real accounts. The complete
+union still requires every original proof, equal runtime censuses and unchanged
+guest/operation limits. Earlier timeout evidence remains failure, not a proved
+hosted intermittency fix. Complete new-image/source, clean, EX4 and product
+qualification stay separate.
+
 Implement a separate internal Samba-specific Owner; do not broaden the generic
 static/non-root adapter. Separate host/disposable-QEMU composition is approved;
 this does not authorize product boot, HTTP activation, user disks or hardware

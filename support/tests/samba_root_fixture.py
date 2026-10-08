@@ -147,9 +147,11 @@ MARKERS = (
     "fresh_recompiled=true rendered=true granted_only=true "
     "paired_lookup=true management_complete=true shared_globals=true "
     "management_bound=true protected_role=true management_unchanged=true "
+    "prepared_inputs=true service_config_bound=true share_inputs_bound=true "
     "startup_blocked=true "
     "identity_retained=true handoff_close_gated=true "
     "desired_roundtrip=true journals_unchanged=true stale_refused=true "
+    "runtime_close_before_release=true "
     "released=true samba_data=false activation=false scope=qemu-only",
     "PHANTOWD_SAMBA_OWNER_NATIVE_IDENTITY_STARTUP_READY "
     "startup_bound=true exact_backend=true before_start_busy=true "
@@ -217,7 +219,7 @@ def check_campaign(log, phase):
         "service": MARKERS[:split] + ("PHANTOWD_SAMBA_ROOT_SERVICE_DONE",),
         "native": MARKERS[:5] + native
         + ("PHANTOWD_SAMBA_ROOT_NATIVE_DONE",),
-        "lifecycle": (MARKERS[:5] + MARKERS[split:enrollment + 1]
+        "lifecycle": (MARKERS[:5] + (MARKERS[enrollment],)
                       + (planned,) + MARKERS[-3:]),
     }[phase]
     prefixes = ("PHANTOWD_SAMBA_ROOT_", "PHANTOWD_SAMBA_OWNER_")

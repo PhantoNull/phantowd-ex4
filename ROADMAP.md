@@ -3,7 +3,7 @@
 
 # Implementation roadmap
 
-Reviewed: **2026-10-07**. This is the product specification and work breakdown,
+Reviewed: **2026-10-08**. This is the product specification and work breakdown,
 not a release announcement. The [README](README.md) is the concise entry point;
 component contracts remain authoritative for implemented behavior.
 
@@ -2800,6 +2800,18 @@ this order, preserving the [full contract](support/SAMBA-RUNTIME-PROFILE.md#samb
      identity/backend/native service Owner, retaining complete management lookup
      separately from granted-only daemon lookup without copying passdb or changing
      the backend. Rendering and candidate admission are not daemon consumption.
+     A subsequent fixed two-share input-preparation prerequisite now passes
+     Linux tagged/race tests and the complete three-campaign ARMv5 union. Both
+     full configuration expectations are independently matched; credential
+     workers retain management lookup while the data tuple duplicates the five
+     service-config/seven state/two original RO/RW inputs. Actual fresh Plan/
+     caller-close/busy-authority/runtime-close-before-release checks pass. No
+     planned daemon starts and the inert-role startup refusal remains. Native
+     owns the independent libc/config/handoff probes once; lifecycle still
+     performs its OWN real bootstrap/enrollment and every original union proof
+     and deadline remains required. Next qualify actual paired-role daemon
+     consumption, complete same-service supervision and uncertain constructor/
+     teardown paths; do not treat tuple preparation as a service Owner.
      Recompile
      complete storage/identity evidence at admission and supervision; a declaration
      match or candidate fingerprint is not a retained service lease. Preserve

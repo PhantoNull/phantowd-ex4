@@ -470,3 +470,13 @@ relative to the legacy firmware.
 Trusted signed/model/ABI inputs, dynamic Samba-specific composition and
 privileges, storage leases, durable recovery and EX4/product qualification
 remain open. Passing this prototype does not activate SMB or NFS.
+
+The QEMU-only `PreparePlannedDataInputsQEMU` prerequisite independently matches
+both complete paired configuration expectations and prepares the fixed original
+five-config/seven-state/two-share tuple. Credential workers keep management
+lookup; data uses the retained service role. The trusted caller freshly compiles
+and retains identity/storage outside the runtime gate through verified Close.
+Host/race and the complete three-guest ARMv5 union qualify normal preparation,
+caller closure and runtime-close-before-authority-release. Existing start APIs
+still refuse the inert role: this is not planned daemon consumption, a complete
+constructor-fault proof, service supervision or a product activation surface.

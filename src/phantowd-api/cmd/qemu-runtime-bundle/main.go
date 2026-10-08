@@ -37,7 +37,10 @@ func run() error {
 		return stageFixture()
 	}
 	if len(os.Args) == 2 && os.Args[1] == "native-lookup" && os.Getuid() == 0 && os.Geteuid() == 0 {
-		return nativeLookupFixture()
+		return nativeLookupFixture(false)
+	}
+	if len(os.Args) == 2 && os.Args[1] == "native-lookup-bootstrap" && os.Getuid() == 0 && os.Geteuid() == 0 {
+		return nativeLookupFixture(true)
 	}
 	if len(os.Args) == 2 && os.Args[1] == "native-startup-fault" && os.Getuid() == 0 && os.Geteuid() == 0 {
 		return nativeIdentityStateFaultQEMU()

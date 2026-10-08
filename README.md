@@ -61,12 +61,16 @@ not establish independent clean-build reproducibility, complete licensing
 compliance or physical EX4 qualification. [versions.env](versions.env) is the
 source of truth for build pins.
 
-The Linux 6.18.55 complete cached local build passes the original host and ARMv5
+The last fully audited Linux 6.18.55 cached build passes the original host and ARMv5
 integration campaigns. Its post-build audit matches all 937 API source inputs,
 actual images, kernel/header source archives, release metadata, SBOM and license
 files. This cached local proof does not qualify an EX4 installation, independent
 clean reproducibility or a fix for the intermittent hosted Samba timeout.
 See the [dependency qualification record](support/DEPENDENCY-REVIEW.md).
+
+Later paired-role input preparation passes host and disposable ARMv5 tests;
+its complete-image audit remains separate. It does not activate a planned
+SMB/NFS service; see [implementation status](IMPLEMENTATION-STATUS.md).
 
 ## Roadmap
 

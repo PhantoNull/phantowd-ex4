@@ -8,6 +8,7 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
 	"maps"
 	"os"
 	"slices"
@@ -27,7 +28,7 @@ import (
 	"golang.org/x/sys/unix"
 )
 
-const plannedCandidateMarkerQEMU = "PHANTOWD_SAMBA_OWNER_PLANNED_CANDIDATE_READY owner=actual_native_backend storage=mounted_roster locked_plan=true exact_declaration=true original_objects=true caller_close=true fresh_recompiled=true rendered=true granted_only=true paired_lookup=true management_complete=true shared_globals=true management_bound=true protected_role=true management_unchanged=true startup_blocked=true identity_retained=true handoff_close_gated=true desired_roundtrip=true journals_unchanged=true stale_refused=true released=true samba_data=false activation=false scope=qemu-only"
+const plannedCandidateMarkerQEMU = "PHANTOWD_SAMBA_OWNER_PLANNED_CANDIDATE_READY owner=actual_native_backend storage=mounted_roster locked_plan=true exact_declaration=true original_objects=true caller_close=true fresh_recompiled=true rendered=true granted_only=true paired_lookup=true management_complete=true shared_globals=true management_bound=true protected_role=true management_unchanged=true prepared_inputs=true service_config_bound=true share_inputs_bound=true startup_blocked=true identity_retained=true handoff_close_gated=true desired_roundtrip=true journals_unchanged=true stale_refused=true runtime_close_before_release=true released=true samba_data=false activation=false scope=qemu-only"
 
 // Runs after real enrollment, before ANY lifecycle daemon starts. It retains
 // the SAME Owner/backend and actual mounted roster through descriptor closure.
@@ -201,12 +202,8 @@ func nativePlannedCandidateFixtureQEMU(owner *identityowner.Owner, backend *smbe
 		if err != nil {
 			return err
 		}
-		if err := pins.Close(); err != nil {
-			return err
-		}
-		if err := handoff.Close(); err != nil {
-			return err
-		}
+		// The original no-process desired roundtrip remains before any planned
+		// process inputs are captured. No live service authority is released.
 		if err := consumer.Release(); err != nil {
 			return err
 		}
@@ -230,6 +227,88 @@ func nativePlannedCandidateFixtureQEMU(owner *identityowner.Owner, backend *smbe
 		}
 		if _, err := fileserviceplan.BuildFromOwners(ctx, config, 0, owner, storage); !errors.Is(err, fileserviceplan.ErrNotReady) {
 			return errors.New("planned candidate admitted restored disabled desired user")
+		}
+		if err := owner.SetDesiredState(ctx, after.Registry.Revision, peer.ID, serviceaccounts.Enabled); err != nil {
+			return err
+		}
+		preparedPlan, err := fileserviceplan.BuildFromOwners(ctx, config, 0, owner, storage)
+		if err != nil {
+			return err
+		}
+		preparedRoles, err := preparedPlan.SambaRoleCandidate()
+		if err != nil {
+			return err
+		}
+		preparedCandidate, err := preparedRoles.ServiceCandidate()
+		if err != nil || preparedCandidate.VerifySharePinsQEMU(pins) != nil {
+			return errors.New("planned input preparation lost exact original grants")
+		}
+		consumer, err = owner.RetainSMBFileServiceSnapshot(ctx, preparedPlan.Freshness().IdentityFingerprint, backend)
+		if err != nil {
+			return err
+		}
+		preparedInputs, err := pins.DuplicateRoots()
+		if err != nil {
+			return err
+		}
+		if len(preparedInputs) != 2 {
+			return errors.New("planned original input census")
+		}
+		for _, invalid := range [][]mountowner.ServiceShareDescriptorQEMU{
+			nil, preparedInputs[:1],
+			{{ShareID: "foreign", ReadOnly: preparedInputs[0].ReadOnly, File: preparedInputs[0].File}, preparedInputs[1]},
+			{{ShareID: preparedInputs[0].ShareID, ReadOnly: !preparedInputs[0].ReadOnly, File: preparedInputs[0].File}, preparedInputs[1]},
+			{{ShareID: preparedInputs[0].ShareID, ReadOnly: preparedInputs[0].ReadOnly}, preparedInputs[1]},
+			{preparedInputs[0], preparedInputs[0]},
+		} {
+			if err := runtime.PreparePlannedDataInputsQEMU(ctx, preparedRoles, invalid); !errors.Is(err, runtimebundle.ErrInvalid) {
+				return errors.New("planned input declaration refusal missing")
+			}
+		}
+		if err := runtime.PreparePlannedDataInputsQEMU(ctx, fileserviceplan.SambaRoleCandidate{}, preparedInputs); !errors.Is(err, runtimebundle.ErrInvalid) {
+			return errors.New("planned input empty candidate admitted")
+		}
+		canceled, cancelPreparation := context.WithCancel(ctx)
+		cancelPreparation()
+		if err := runtime.PreparePlannedDataInputsQEMU(canceled, preparedRoles, preparedInputs); !errors.Is(err, context.Canceled) {
+			return errors.New("planned input canceled preparation admitted")
+		}
+		prepareErr := runtime.PreparePlannedDataInputsQEMU(ctx, preparedRoles, preparedInputs)
+		for _, input := range preparedInputs {
+			prepareErr = errors.Join(prepareErr, input.File.Close())
+		}
+		if prepareErr != nil {
+			return fmt.Errorf("planned original input preparation: %w", prepareErr)
+		}
+		if !errors.Is(runtime.PreparePlannedDataInputsQEMU(ctx, preparedRoles, nil), runtimebundle.ErrReviewRequired) ||
+			!errors.Is(runtime.CheckNativeStartupQEMU(ctx), runtimebundle.ErrReviewRequired) ||
+			!errors.Is(runtime.StartNativeDaemonQEMU(ctx), runtimebundle.ErrReviewRequired) {
+			return errors.New("planned prepared tuple replaced or admitted startup")
+		}
+		if !errors.Is(owner.Close(), identityowner.ErrBusy) || !errors.Is(handoff.Close(), mountowner.ErrHandoffBusy) ||
+			preparedCandidate.VerifySharePinsQEMU(pins) != nil || consumer.Verify(ctx) != nil {
+			return errors.New("planned process inputs lost retained authorities")
+		}
+		// No daemon is admitted. Release ALL runtime-owned copies before either
+		// original storage or identity authority can be released.
+		if err := runtime.Close(context.Background()); err != nil {
+			return err
+		}
+		if err := consumer.Release(); err != nil {
+			return err
+		}
+		if err := pins.Close(); err != nil {
+			return err
+		}
+		if err := handoff.Close(); err != nil {
+			return err
+		}
+		current, _, err = owner.Snapshot(ctx)
+		if err != nil {
+			return err
+		}
+		if err := owner.SetDesiredState(ctx, current.Revision, peer.ID, serviceaccounts.Disabled); err != nil {
+			return err
 		}
 		for _, path := range []string{root, source + "/candidate-readonly", source + "/candidate-writable"} {
 			if err := os.Remove(path); err != nil {

@@ -3,6 +3,33 @@
 
 # Implementation status
 
+## Planned native inputs — host and ARMv5 prerequisite
+
+The QEMU-only runtime now prepares one fixed two-share process tuple from
+independently derived complete management/service expectations. Credential
+workers keep management lookup; the prepared data tuple duplicates the five
+service-configuration inputs, seven original state directories and two declared
+RO/RW O_PATH roots. The trusted caller freshly compiles the same Owner/storage
+evidence and retains original share pins and identity authority outside the
+runtime gate until verified runtime closure. Input preparation starts no daemon;
+all existing start APIs still refuse the inert service role.
+
+Actual local Linux tagged vet/tests, focused race-count3, ARMv5 cross-build,
+Windows API/UI preflight and all three disposable ARMv5 Samba campaigns pass.
+The complete original union verifier independently passes with equal 114-file/
+27,384,058-byte runtime censuses. New mandatory evidence covers original input
+preparation, separate configuration roles, caller closure, busy authorities and
+runtime-close-before-release, alongside existing startup/fault/FD checks.
+
+An earlier lifecycle attempt times out and remains failure evidence. Independent
+libc/configuration/handoff scenarios now run once in the native campaign;
+lifecycle still bootstraps and enrolls its own real accounts. Every original
+proof remains mandatory in the three-guest union, with unchanged guest/operation
+deadlines and privileges. This local pass does not establish a hosted timeout
+fix, physical efficiency, planned daemon consumption or complete service Owner.
+Constructor-close/late-uncertainty faults, fresh identity/storage supervision,
+the new complete image/source audit and product/hardware gates remain open.
+
 ## Current cached integration — bounded build jobs and native phase visibility
 
 Frozen `4ca65d557c746eec08d36dadf72a97bdcbce9757`, API tree
