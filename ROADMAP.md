@@ -351,9 +351,13 @@ button to an unqualified backend simply because the screen exists.
   original proof union, runtime census, unchanged base and independent trace
   replay pass; all 1,083 API/toolkit/harness inputs remain unchanged. The base
   still uses Go 1.26.6: this is component execution, not a complete new image
-  or adoption. Keep Go 1.26.6 selected until coherent Buildroot inputs, all
-  remaining original campaigns and exact candidate image/source/license/SBOM
-  audit pass; see the linked review.
+  or full-image adoption. The feature now selects Go 1.26.8 through one
+  exact-state, idempotent Buildroot recipe/hash patch and an early installed-SDK
+  version check. Real-package RAM fixtures verify coherent application,
+  refusal without effects and stale-SDK rejection. The last complete audited
+  image remains Go 1.26.6; all remaining original campaigns and exact candidate
+  image/source/license/SBOM audit are still required before qualification.
+  See the linked review.
   Linux source/signature/license authentication, unchanged-symbol ARMv5 kernel
   compilation and the original standard QEMU smoke now pass locally. Five
   firmware configurations/release files, both source hashes and the qualified

@@ -26,6 +26,27 @@ def save_log(destination, source):
 
 
 class BuildFeedbackTests(unittest.TestCase):
+    def test_go_recipe_and_installed_sdk_are_checked_before_heavy_tests(self):
+        script = (ROOT / "support/container/build-qemu.sh").read_text()
+        patch_fixture = script.index(
+            '"$external_dir/support/tests/test-buildroot-go-maintenance.sh" '
+            '"$buildroot_source"')
+        patch_apply = script.index(
+            'sh "$external_dir/support/container/'
+            'apply-buildroot-go-maintenance.sh" \\\n')
+        sdk_build = script.index("    host-go-bin\n")
+        sdk_check = script.index(
+            'sh "$external_dir/support/container/'
+            'check-buildroot-go-sdk.sh" \\\n')
+        host_test = script.index(
+            'sh "$external_dir/support/container/test-api.sh"')
+        target_build = script.index("\tphantowd-api-dirclean")
+        self.assertLess(patch_fixture, patch_apply)
+        self.assertLess(patch_apply, sdk_build)
+        self.assertLess(sdk_build, sdk_check)
+        self.assertLess(sdk_check, host_test)
+        self.assertLess(host_test, target_build)
+
     def test_enrollment_lookup_requires_exact_unique_serial_evidence(self):
         marker = (
             "PHANTOWD_M24_NATIVE_ENROLLMENT_LOOKUP_READY accounts=2 "

@@ -142,7 +142,7 @@ records. These are different inventories, not interchangeable counts.
 | Linux and headers | Earlier advisory inventory: 6.18.54; current selected and locally rebuilt image: 6.18.55 | Authenticated source, complete cached ARMv5 integration and exact metadata/source/image audit pass; hosted/EX4/release gates remain |
 | Samba | 4.22.11 target, six declared patches | Upstream's July security release; no complete Samba advisory/configuration review claimed |
 | OpenSSL | 3.5.8 **host only**, four declared patches | September advisory requires evaluating an update to 3.5.9; affected host call paths remain unassessed |
-| Go | 1.26.6 host SDK **and compiled target runtime** | 1.26.8 is a maintenance candidate, not a demonstrated security or QEMU-timeout fix |
+| Go | Last complete audited image: 1.26.6 SDK/runtime; feature recipe selects 1.26.8 pending full integration | Maintenance candidate, not a demonstrated security or QEMU-timeout fix |
 | x/crypto | v0.57.0 target API module | Reviewed SSH records [6354](https://vuln.go.dev/ID/GO-2026-6354.json)/[6355](https://vuln.go.dev/ID/GO-2026-6355.json) are fixed at v0.56.0; this API uses Argon2, not an SSH server |
 | x/sys | v0.48.0 target API module | Reviewed Windows record [5024](https://vuln.go.dev/ID/GO-2026-5024.json) is fixed at v0.44.0; this is not an ARMv5 exposure finding |
 | BusyBox / util-linux | 1.37.0 / 2.40.4 target, 20 / 15 declared patches | Upstream base-version matching alone loses backport information; dispositions remain to be reviewed |
@@ -390,10 +390,19 @@ product/hardware/recovery/release gates remain open.
    complete traces verifies the union again. All 1,083 API/toolkit/harness
    inputs match their pre-run hashes; temporary scratch and the container are
    removed. No new image or volume is created.
-   **Not adopted:** selected Go 1.26.6 and the complete 950-input image above
-   are unchanged. The base API/kernel/packages/SBOM are still the old image;
+   **Candidate Buildroot inputs:** the feature selects Go 1.26.8 with a
+   versioned common recipe patch covering the source archive, all six host
+   SDK archives and the unchanged license hash. The authenticated 1.26 cgo
+   workaround is preserved. The applicator accepts only exact complete
+   original/patched states, dry-runs without fuzz and rejects mixed, unknown,
+   missing or symlinked inputs before writes. RAM fixtures exercise the real
+   package and prove idempotence and no-effect refusal. The actual installed
+   Linux SDK must match the selected pin before native tests or target builds;
+   automatic Go toolchain downloads are disabled.
+   **Not whole-image qualified:** the complete Go 1.26.6 950-input image above
+   is unchanged. The base API/kernel/packages/SBOM are still the old image;
    this proves candidate toolkit/Samba-probe execution, not a complete target
-   image. Coherent recipe/hash changes, all remaining original campaigns and
+   image. A full Buildroot rebuild, all remaining original campaigns and
    exact new image/source/license/SBOM qualification remain required. This is
    neither an observed speedup nor a fix for the intermittent hosted timeout.
 4. **Complete the review:** cover every selected host/target component and linked
