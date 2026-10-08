@@ -3,14 +3,16 @@
 
 # Implementation status
 
-## Current complete cached integration — seven Samba scenarios and exact959 audit
+## Current complete cached integration — seven Samba scenarios and exact960 audit
 
-Frozen `217d978c8861d1384a77e28b287505cbca77e38d`, API tree
-`bfbfa25ab57e4457cd33709ded2dc080b085ec56`, passes the complete cached
+Frozen `ab5f4d1222036e7cb911437ef2eb57fd907fa8f5`, API tree
+`eb8023d8b6bb6256070248653e902203aad211ed`, passes the complete cached
 Buildroot/host/ARMv5 lane and an independent post-terminal read-only audit on
 2026-10-08. Original ordinary/race/fixed-fuzz/toolkit, standard smoke, MD/state,
 launcher/runtime/loader/atomic, all **seven** independently enrolled Samba
-scenarios and both synthetic SMART lanes pass with unchanged limits.
+scenarios and both synthetic SMART lanes pass. The lifecycle fixture's combined
+contextual allowance changes from 45 to serial 20+45 seconds as described below;
+worker, readiness, service, stop and guest limits are unchanged.
 
 The complete original proof union includes same-authority startup/data access,
 exclusive supervision, verified cancellation/stop, idle source-alias loss and
@@ -19,11 +21,11 @@ unconsumed and settled worker inputs; review does not authorize release,
 restart or recovery. Mid-transfer/held-session loss and uncertain construction/
 teardown remain open.
 
-All **959** API inputs match source, compiled package and legal source archive
+All **960** API inputs match source, compiled package and legal source archive
 without stale extras. Configured strip, installed/rootfs/exported API, all
 seven ordered artifact hashes, actual Go 1.26.8 recipe/source/SDK/host licensing/
 SBOM and Linux AND headers 6.18.55 agree. All **11,510** installed SDK files
-match; **25,252** regular audit inputs and all **1,242** tracked build witnesses
+match; **25,259** regular audit inputs and all **1,248** tracked build witnesses
 recheck unchanged. See [measured artifact identities](support/DEPENDENCY-REVIEW.md).
 
 Only the existing image/two project volumes are reused; no consumer remains.
@@ -62,9 +64,10 @@ its observed terminal acceptance is not a claimed complete archived guest log.
 Fresh unchanged-source guests both fail and pass: the failure is an independent
 post-admission worker deadline during client preparation, not the historical
 hosted outer continuity timeout. This is fixture orchestration, not a proven
-hosted fix, repeatable-load result, new complete image, product activation or
-EX4 qualification. Full current-source suite/image audit and own-head hosted
-gates remain open. The separate exclusive-supervision contract is unchanged.
+hosted fix, repeatable-load result, product activation or EX4 qualification.
+The complete current-source suite/image audit now passes at the exact checkpoint
+above; own-head hosted gates remain open. The separate exclusive-supervision
+contract is unchanged.
 
 ## Current native component — terminal session-observation fences
 
@@ -150,9 +153,9 @@ auto-removed non-root container with the existing read-only workspace.
 
 No new image/volume or guest/hardware run. DOM/source assertions do not qualify
 real-browser focus/rendering, assistive technology, contrast, WCAG, a complete
-changed image or hosted integration. The `217d978` complete-image checkpoint
-above remains historical and does not cover these changed assets. Existing
-QEMU coordinator failures and integration gates remain open.
+changed image or hosted integration. The `ab5f4d1` complete-image checkpoint
+above includes these assets, but does not add real-browser qualification.
+Existing QEMU coordinator failures and integration gates remain open.
 
 ## Current component — original-owned exit, focused host/QEMU proof
 

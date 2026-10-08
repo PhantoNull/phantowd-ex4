@@ -62,7 +62,7 @@ not establish independent clean-build reproducibility, complete licensing
 compliance or physical EX4 qualification. [versions.env](versions.env) is the
 source of truth for build pins.
 
-The latest fully audited local checkpoint, `217d978`, selects Go 1.26.8 and
+The latest fully audited local checkpoint, `ab5f4d1`, selects Go 1.26.8 and
 passes the complete cached host/ARMv5 integration lane, all seven independently enrolled Samba guests
 and both synthetic SMART lanes. It includes retained same-authority startup,
 real data access, exclusive supervision and a source-alias-loss fault that
@@ -70,9 +70,13 @@ stops the daemon without releasing reviewed authority or restarting it.
 The original-owned idle exit scenario also verifies sticky review, group
 stop/reap and retained unconsumed worker inputs; it does not qualify
 mid-transfer/session loss or recovery.
-An independent audit matches all 959 API inputs, actual images, kernel/header
+An independent audit matches all 960 API inputs, actual images, kernel/header
 archives, the selected and installed Go SDK, release metadata, SBOM and declared
 license files; see the [exact qualification record](support/DEPENDENCY-REVIEW.md).
+The QEMU lifecycle fixture separates preparation (20 seconds) from revocation
+verification (45 seconds), increasing their combined allowance from 45 to 65
+seconds without changing worker, service, stop or guest limits. This is not a
+performance improvement or a demonstrated fix for hosted failures.
 
 This does not establish independent clean reproduction, physical EX4 support,
 complete fault coverage or an installable release. The previous hosted

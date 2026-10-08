@@ -3,31 +3,34 @@
 
 # Dependency review and update qualification
 
-## Current cached959 Go 1.26.8 integration and exact artifact audit (2026-10-08)
+## Current cached960 Go 1.26.8 integration and exact artifact audit (2026-10-08)
 
-Frozen `217d978c8861d1384a77e28b287505cbca77e38d`, API tree
-`bfbfa25ab57e4457cd33709ded2dc080b085ec56`, passes the complete original
+Frozen `ab5f4d1222036e7cb911437ef2eb57fd907fa8f5`, API tree
+`eb8023d8b6bb6256070248653e902203aad211ed`, passes the complete original
 cached host/ARMv5 lane and a separate independent post-terminal read-only audit.
 All original campaigns, seven independently enrolled Samba guests and both
-synthetic SMART lanes pass with unchanged limits. Normal exclusive composed
+synthetic SMART lanes pass. Lifecycle preparation (20 seconds) and revocation
+(45 seconds) have separate contextual budgets (combined allowance 45 becomes
+65); all original worker, service, readiness, stop and guest limits remain
+unchanged. Normal exclusive composed
 supervision, idle source-alias loss and original-owned idle exit with retained
 review qualify. Mid-transfer/session loss, uncertain constructor/teardown and
 recovery remain separate work.
 
-All **959** API inputs match compiled package AND legal source archive, without
+All **960** API inputs match compiled package AND legal source archive, without
 stale extras or generated-marker exemptions. Configured strip/installed/rootfs/
 export, seven ordered hashes, actual kernel AND headers 6.18.55 bindings and
 linked Go 1.26.8/CGO0/ARM5 agree. The selected recipe, official SDK/source
 hashes, all **11,510** installed SDK files, host source/license manifest and
-SBOM agree. All 1,242 tracked source witnesses remain unchanged; **25,252**
+SBOM agree. All 1,248 tracked source witnesses remain unchanged; **25,259**
 regular audit inputs are rechecked.
 
 | Artifact | SHA-256 |
 | --- | --- |
-| API (10,708,180 bytes) | `6f69a80d1fa1332d2bfca707e52a403b07bebeea148098612a76dc9390e5dc4d` |
-| rootfs.ext2 (83,886,080 bytes) | `03c02f621c1dfc1ddaf688a0b2620f396447afd1ee8161c02a62c7410b6da901` |
-| API source archive | `de4d1e52ad716687a991f0712da303e01db220f1afddf4107007ae6ddece0851` |
-| SHA256SUMS | `325144c5edbe54e06a2d911f8f0cbfc39e438b60b9a6071610543c98da45fd90` |
+| API (10,708,180 bytes) | `44b6d81c8fcf572e4daddc8d253496cf3a231861d92f1847b89af6e53d269d69` |
+| rootfs.ext2 (83,886,080 bytes) | `42bf9c58a1e83f04825b40a7ab3f26c1fe36e01500df9c613efb35499b4b8f95` |
+| API source archive | `e666f3303fcbaebae2f0d2ac309512aedfffa1137ac0835b0e3b6da222cc913c` |
+| SHA256SUMS | `369b1833d735d2372989fc0e7e6e8d5988786b5d14256295b83d79b5b0885c7b` |
 
 These identities are measured from this checkpoint, not adopted from the
 earlier950 image or candidate-only probes. Existing image/two project volumes
@@ -35,7 +38,7 @@ are reused. This is not independent clean, exact-head hosted, advisory-complete,
 EX4, migration, recovery, product activation or install qualification. It does
 not demonstrate a speedup or resolve the intermittent hosted timeout. Require
 the publication head's own hosted checks before merge. This supersedes the
-earlier954 current-summary scope; its exact identities remain in Git history.
+earlier959 current-summary scope; its exact identities remain in Git history.
 
 ## Earlier cached950 integration and exact artifact audit (2026-10-08)
 
@@ -433,9 +436,9 @@ product/hardware/recovery/release gates remain open.
    package and prove idempotence and no-effect refusal. The actual installed
    Linux SDK must match the selected pin before native tests or target builds;
    automatic Go toolchain downloads are disabled.
-   **Complete cached image qualified (2026-10-08):** frozen `217d978` now passes
+   **Complete cached image qualified (2026-10-08):** frozen `ab5f4d1` now passes
    one complete Buildroot/host/ARMv5 lane, all original campaigns and the exact
-   959-input image/source/package/archive/Go/license/SBOM audit recorded above.
+   960-input image/source/package/archive/Go/license/SBOM audit recorded above.
    Actual installed SDK/source/recipe and exported runtime bind Go 1.26.8;
    candidate-only proofs are not substituted for this new image qualification.
    Independent clean reproduction, exact-head hosted checks, complete advisory

@@ -67,14 +67,19 @@ currently product-qualified for migration.
 
 ## Current baseline
 
-The fully audited local checkpoint `217d978` selects Go 1.26.8 and passes the
+The fully audited local checkpoint `ab5f4d1` selects Go 1.26.8 and passes the
 complete cached Buildroot/host/ARMv5 lane: all seven independently enrolled
 Samba scenarios and both synthetic SMART lanes. Independent post-terminal
-auditing matches all 959 API inputs to compiled package/source archive and all
-1,242 tracked build witnesses. Configured stripping, installed/image/exported
+auditing matches all 960 API inputs to compiled package/source archive and all
+1,248 tracked build witnesses. Configured stripping, installed/image/exported
 API, seven hashes, Linux AND headers 6.18.55, actual selected/installed Go SDK,
 SBOM, release and legal sources agree; see
-[exact qualification](IMPLEMENTATION-STATUS.md#current-complete-cached-integration--seven-samba-scenarios-and-exact959-audit).
+[exact qualification](IMPLEMENTATION-STATUS.md#current-complete-cached-integration--seven-samba-scenarios-and-exact960-audit).
+
+The QEMU lifecycle fixture separates preparation (20 seconds) from revocation
+(45 seconds), changing the combined allowance from 45 to 65 seconds. Original worker/service/readiness/stop/
+guest limits and authority checks remain intact; this is not a speedup or a
+demonstrated causal fix for hosted timeouts.
 
 Disposable fixtures qualify same-authority planned startup/data access,
 exclusive serial supervision, cancellation/verified stop, retained originals,
