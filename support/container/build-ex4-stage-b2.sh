@@ -120,6 +120,10 @@ kernel_config="$output_dir/build/linux-$LINUX_VERSION/.config"
 make -C "$buildroot_source" BR2_EXTERNAL="$external_dir" \
     BR2_DL_DIR="$download_dir" O="$output_dir" \
     "phantowd_ex4_stage_${stage}_defconfig"
+make -C "$buildroot_source" BR2_EXTERNAL="$external_dir" \
+    BR2_DL_DIR="$download_dir" O="$output_dir" host-libopenssl
+sh "$external_dir/support/container/check-buildroot-openssl-tool.sh" \
+    "$output_dir/host" "$OPENSSL_VERSION"
 # Configure and audit the final Kconfig result before paying for a kernel build.
 make -C "$buildroot_source" BR2_EXTERNAL="$external_dir" \
     BR2_DL_DIR="$download_dir" O="$output_dir" linux-configure

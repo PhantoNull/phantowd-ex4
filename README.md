@@ -62,6 +62,11 @@ not establish independent clean-build reproducibility, complete licensing
 compliance or physical EX4 qualification. [versions.env](versions.env) is the
 source of truth for build pins.
 
+The builder now selects host OpenSSL 3.5.9 with exact recipe/hash and installed
+CLI/library guards. Complete qualification of that selection is pending; the
+audited checkpoint below still used host OpenSSL 3.5.8. This does not enable a
+target OpenSSL package or qualify a NAS HTTPS service.
+
 The latest fully audited local checkpoint, `cea5e0a`, selects Go 1.26.8 and
 passes the complete cached host/ARMv5 integration lane, all seven independently enrolled Samba guests
 and both synthetic SMART lanes. It includes retained same-authority startup,

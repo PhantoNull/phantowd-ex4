@@ -401,7 +401,7 @@ product/hardware/recovery/release gates remain open.
    above now pass from authenticated, coherent kernel/header/hash consumers.
    They do not replace resolved EX4 configurations or device-write/thermal
    fences. A compile does not authorize a physical boot or disk operation.
-2. **Host OpenSSL 3.5.9 candidate:** retain the Buildroot LTS baseline unless a
+2. **Host OpenSSL 3.5.9 selected update:** retain the Buildroot LTS baseline unless a
    concrete requirement calls for a branch change. Review its exact recipe and
    four patches, source/license hashes and host reverse dependencies. Qualify the
    actual host consumers and regenerated package/SBOM metadata. Do not add target
@@ -419,10 +419,17 @@ product/hardware/recovery/release gates remain open.
    application/idempotence and no-effect rejection of mixed/unknown/missing/
    symlink inputs and changed/incomplete/extra upstream patch rosters. The actual
    changed-patch regression first fails, then passes after whole-roster checks.
-   The applicator is **not yet wired into the builder**; selected pins/cache,
-   complete artifacts and their host3.5.8 metadata remain unchanged. Next:
-   integrate source/version guards, qualify actual host consumers and regenerate
-   legal sources/SBOM in a complete build. No NAS HTTPS or product security claim.
+   **Selection guards (2026-10-09):** versions.env now selects 3.5.9 and that
+   archive hash; the applicator precedes the shared board-only preparation return.
+   QEMU and research builders build/check host-libopenssl before expensive work;
+   QEMU repeats the check after full make. The installed CLI and loaded library
+   must both match, with inherited configuration/library/module environment
+   removed. Selected-version and wrong-library RED/GREEN tests, complete refusal/
+   shell checks and refusal of the actual old cached3.5.8 installation pass.
+   The complete artifacts above still carry their old host3.5.8 metadata. Next:
+   qualify actual host consumers and regenerate legal sources/SBOM in a complete
+   build; selection alone is not successful installation or full upstream test
+   coverage. No target crypto package, NAS HTTPS or product security claim.
 3. **Go 1.26.8 candidate:** authenticate the exact SDK/source inputs, update the
    Buildroot recipe without unpinned toolchain downloads and preserve the module
    vendor set. Run ordinary/race/fuzz checks and the original ARMv5 campaigns;
