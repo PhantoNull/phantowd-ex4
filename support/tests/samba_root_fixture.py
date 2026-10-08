@@ -147,7 +147,9 @@ MARKERS = (
     "other_login_allowed=true same_daemon=true no_new_privileges=true "
     "stopped_reaped=true no_fd_leak=true scope=qemu-only",
     "PHANTOWD_SAMBA_OWNER_NATIVE_LIVE_REVOKE_READY accounts=2 "
-    "qualified_pair=true owner_bound=true same_sid=true target_absent=true "
+    "qualified_pair=true original_pair_rechecked=true "
+    "revoked_pair_refused=true "
+    "owner_bound=true same_sid=true target_absent=true "
     "same_peer_session=true new_login_denied=true other_login_allowed=true "
     "same_daemon=true no_new_privileges=true stopped_reaped=true "
     "no_fd_leak=true scope=qemu-only",

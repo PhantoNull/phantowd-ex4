@@ -70,6 +70,13 @@ func TestNativeBackendInnerCloseFailureSurvivesPublicCloseAndReplacement(t *test
 				peer:    smbStatusSession{SessionID: "negative-only-peer"},
 			})
 		},
+		func() error {
+			return b.VerifyNativeSessionPairQEMU(ctx, NativeSessionPairQEMU{
+				backend: b,
+				target:  smbStatusSession{SessionID: "negative-only-target"},
+				peer:    smbStatusSession{SessionID: "negative-only-peer"},
+			})
+		},
 	} {
 		if err := operation(); err == nil {
 			t.Fatal("closed native wrapper admitted an operation")

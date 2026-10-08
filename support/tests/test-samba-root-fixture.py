@@ -84,6 +84,22 @@ def campaign_rows():
 
 
 class SambaRootFixture(unittest.TestCase):
+    def test_native_pair_continuity_requires_both_new_observations(self):
+        marker = next(row for row in fixture.MARKERS if row.startswith(
+            "PHANTOWD_SAMBA_OWNER_NATIVE_LIVE_REVOKE_READY"))
+        fields = ("original_pair_rechecked", "revoked_pair_refused")
+        for field in fields:
+            self.assertIn(field + "=true", marker)
+        rows = campaign_rows()["native"]
+        fixture.check_campaign("\n".join(rows), "native")
+        for field in fields:
+            for replacement in ("", field + "=false"):
+                changed = marker.replace(field + "=true", replacement)
+                log = "\n".join(changed if row == marker else row
+                                for row in rows)
+                with self.assertRaises(ValueError):
+                    fixture.check_campaign(log, "native")
+
     def test_planned_exit_requires_separate_owned_reviewed_stop_proof(self):
         proof = (
             "PHANTOWD_SAMBA_OWNER_PLANNED_EXIT_FAULT_READY "
@@ -810,7 +826,9 @@ class SambaRootFixture(unittest.TestCase):
 
     def test_native_live_revoke_requires_real_pair_and_peer_continuity(self):
         expected = ("PHANTOWD_SAMBA_OWNER_NATIVE_LIVE_REVOKE_READY "
-                    "accounts=2 qualified_pair=true owner_bound=true "
+                    "accounts=2 qualified_pair=true "
+                    "original_pair_rechecked=true revoked_pair_refused=true "
+                    "owner_bound=true "
                     "same_sid=true target_absent=true same_peer_session=true "
                     "new_login_denied=true other_login_allowed=true "
                     "same_daemon=true no_new_privileges=true "
@@ -818,7 +836,8 @@ class SambaRootFixture(unittest.TestCase):
         self.assertIn(expected, fixture.MARKERS)
         good = "\n".join([*fixture.MARKERS, SCAN_COST])
         fixture.check_guest(good)
-        for field in ("qualified_pair", "owner_bound", "same_sid",
+        for field in ("qualified_pair", "original_pair_rechecked",
+                      "revoked_pair_refused", "owner_bound", "same_sid",
                       "target_absent", "same_peer_session", "new_login_denied",
                       "other_login_allowed", "same_daemon",
                       "no_new_privileges",
@@ -1357,7 +1376,8 @@ class SambaRootFixture(unittest.TestCase):
             "other_login_allowed=true same_daemon=true no_new_privileges=true "
             "stopped_reaped=true no_fd_leak=true scope=qemu-only",
             "PHANTOWD_SAMBA_OWNER_NATIVE_LIVE_REVOKE_READY accounts=2 "
-            "qualified_pair=true owner_bound=true same_sid=true "
+            "qualified_pair=true original_pair_rechecked=true "
+            "revoked_pair_refused=true owner_bound=true same_sid=true "
             "target_absent=true same_peer_session=true new_login_denied=true "
             "other_login_allowed=true same_daemon=true "
             "no_new_privileges=true stopped_reaped=true no_fd_leak=true "

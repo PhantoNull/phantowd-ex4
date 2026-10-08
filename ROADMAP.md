@@ -1585,6 +1585,32 @@ storage. No production roster provider or activation path exists.
 - **M4.5 — Failure and shutdown.** Cover startup with absent disks, service crash,
   read-only/full volume, client reconnect, stale NFS handles, shutdown with open
   files and restart ordering. Distinguish safely unavailable from healthy.
+  The private original-session-pair recheck prerequisite now passes root-isolated
+  host race-count3 and a focused actual ARMv5 native campaign. It requires the
+  same complete pair before target-only revocation, refuses the old pair afterward
+  and distinguishes validated inventory change from command/parser/deadline
+  failure. All old same-peer/access/stop/FD/base guards and session45/guest180
+  remain; the two new proof fields are mandatory in the 66-test driver.
+  This is NOT a composed-storage held-session fault, retained data handle,
+  in-flight/durable reconnect, complete changed image or recovery qualification.
+
+  **Next bounded host/QEMU packet:** qualify a held authorized session through
+  the SAME planned service, original identity/backend, mounted roster and RO/RW
+  grants before inducing the existing synthetic source-alias loss. The planned
+  fixture deliberately excludes the enabled but ungranted account from service
+  NSS: do not grant it access merely to reuse the two-account credential fixture.
+  Construct a fixed authorized client from retained fixture inputs; no generic
+  executable, credential, backend or source-path fallback may be added.
+  Keep client-group pins through verified stop/close; uncertain construction or
+  settlement retains review/authority without retry. Preserve the older unused
+  two-client observer's strict contract, using a separate read-only witness for
+  actually started held clients. Require original session identity before the
+  fault, actual client/daemon group stop and reap afterward, retained original
+  identity/storage/code/config/state, restoration/repeated-Close refusal and
+  parent FD equality before subprocess disposal. No physical disk, product HTTP,
+  NAND or new privilege. Measure new action timing locally before changing any
+  existing phase/guest bound or publishing a heavy hosted run. Session continuity
+  alone does not qualify open-file, mid-transfer or durable-handle semantics.
 - **M4.6 — Product persistence.** Reboot with saved policies, identities and data;
   verify activation of the intended revision and no recreation of credentials,
   permissions or missing directory trees as a recovery shortcut.

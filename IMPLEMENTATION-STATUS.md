@@ -3,6 +3,24 @@
 
 # Implementation status
 
+## Focused original-session continuity prerequisite
+
+The private QEMU-tagged backend now rechecks both original qualified SMB session
+records through the same startup-bound adapter. A complete observed mismatch is
+distinct from an unavailable/malformed/canceled observation; neither case grants
+a replacement session or recovery authority. Root-isolated Go 1.26.8 race-count3,
+ordinary/tagged Linux checks, ARMv5 compilation and a focused actual native guest
+pass. The guest rechecks the original pair before target-only revocation and
+refuses it afterward, retaining every previous authentication, same-peer,
+effective-access, owned-stop, FD-equality and unchanged-base assertion.
+Both new proof fields are required by the 66-test driver.
+
+Session45/guest180 and worker limits are unchanged. This is not a held-session
+fault under the composed storage Owner, open-file/in-flight transfer or durable
+reconnect proof, new complete seven-campaign image/SBOM audit, hosted qualification
+or product activation. See the [backend contract](src/phantowd-api/internal/smbexec/README.md).
+The latest complete cached image qualification remains the checkpoint below.
+
 ## Current complete cached OpenSSL 3.5.9 qualification
 
 OpenSSL3.5.9's official archive hash and PGP primary-key signature are verified;

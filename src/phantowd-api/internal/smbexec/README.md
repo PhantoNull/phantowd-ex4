@@ -146,6 +146,23 @@ The witness is private, backend-bound and nonserializable; empty, incomplete,
 foreign or replaced evidence is refused. Whole client/daemon groups settle
 before original pins close; final FD equality and unchanged base are mandatory.
 
+The QEMU-only backend now also rechecks **both original sessions** against the
+same private witness. It compares complete session records, including qualified
+server generations, and refuses replacement logins, either missing session,
+foreign witnesses, terminal adapters and canceled or late command replies.
+`ErrNativeSessionPairChangedQEMU` means a successfully validated complete
+inventory differs; command/parser/deadline failure must never be interpreted
+as that observed change. No raw inventory or new session witness is returned.
+
+Root-isolated Linux race-count3 and a focused actual ARMv5 native campaign pass.
+The guest requires original-pair continuity before revocation and an explicit
+changed-pair observation afterward, while preserving the original same-peer,
+target-denial, owned-stop, final-FD and unchanged-base proofs. New proof fields
+are mandatory; omitted/false fields refuse. Existing session45/guest180 and
+worker bounds are unchanged. This is a point-in-time observation, not a retained
+session/data-handle lease, composed-storage fault, full changed-image audit,
+durable-reconnect/recovery or product service qualification.
+
 Complete native worker admissions require a separate fixed timing profile:
 status4/control4/aggregate20 seconds, while ordinary commands retain
 status2/control-at-most5/aggregate5. The aggregate native verification budget
