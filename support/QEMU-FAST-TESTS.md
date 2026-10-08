@@ -815,6 +815,54 @@ worker inside the next phase nor proves its success. All original proof markers,
 descriptor census, hashes and command/phase/180-second guest limits remain
 independent and mandatory. Passing telemetry tests is not a timeout fix.
 
+### Diagnose a native fixture timeout before a full CI build
+
+Use the existing matching pinned image, workspace and manifest-verified base:
+
+```powershell
+.\support\test-samba-root.ps1 -Campaign lifecycle -DiagnosticLogs
+```
+
+Do not edit source or run another build against the same workspace while it
+executes. Preserve the exact Git revision, uncommitted changes, base manifest,
+command, actual terminal status and complete escaped diagnostic record. This
+lane neither downloads a new image nor creates a named volume; its scratch is
+disposable. It still requires matching cached dependencies and checks the
+selected campaign, not an entire new firmware image.
+
+Read the **first failed operation** rather than treating every elapsed timer
+as the same timeout:
+
+| Boundary | Current fixture scope | What a failure does not establish |
+| --- | --- | --- |
+| Initial native credential setup, 60 s | Construction and explicit enrollment of the fixture accounts; precedes `phase=enrolled` | The later coordinator operation was reached |
+| Lifecycle coordinator, 45 s | Held-client preparation, stale-revision refusal, actual disable and peer/new-login verification | Every individual worker exceeded its own deadline |
+| Guest, 180 s | The complete disposable boot and selected campaign | A specific account, worker or coordinator caused expiry |
+
+These are test-context limits, not physical EX4 performance guarantees or
+product request deadlines. See the actual [credential fixture](../src/phantowd-api/cmd/qemu-runtime-bundle/native_credentials_linux.go)
+and [lifecycle fixture](../src/phantowd-api/cmd/qemu-runtime-bundle/native_identity_startup_linux.go)
+when changing their orchestration. A cumulative parent deadline can expire
+after several individually successful operations; a child deadline can also
+expire while its parent still has time. Neither permits ignoring uncertainty,
+reusing reviewed authority or skipping a verification.
+
+Fixed `PHANTOWD_QEMU_NATIVE_WORKER_FAILURE` phase/reason labels are diagnostic,
+not authorization. `reason=other` is not proof that no deadline occurred:
+an intermediate refusal can discard the underlying typed cause. Conversely,
+absence of a worker label does not mean the campaign succeeded. The last
+`PHANTOWD_DIAG_NATIVE_PHASE` row identifies completed work only; missing
+`phase=enrolled` means a proposed *post-enrollment* experiment did not reach
+its trigger, not that its intended setting was applied.
+
+Require the original verifier's terminal success and complete selected-phase
+proofs. A failed fixture may deliberately shut down with guest exit 0; that
+does not override failure markers or the host verifier's nonzero result.
+Save complete JSON diagnostics before cleanup: a clipped console tail is not
+the full trace. A new disposable diagnostic guest is not recovery or a retry
+of a reviewed Owner. Local success, changed CPU quotas, or narrower diagnosis
+cannot waive exact-head hosted checks, clean-build or hardware qualification.
+
 Its fixed runtime now includes IBM850 plus a strictly bounded, hash-verified
 conversion catalog. A dynamic probe tests exact non-ASCII CP850/UTF-8 conversions
 and refusals inside the restricted root; the fixture rejects ASCII fallback.
