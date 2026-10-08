@@ -381,10 +381,20 @@ product/hardware/recovery/release gates remain open.
    Go 1.26.8, CGO0/Linux ARM5 and the exact unmodified source revision.
    SDK/source/cache live in bounded disposable RAM scratch using the existing
    container image; no new image or named volume is created.
-   **Not adopted:** selected Go 1.26.6 and the complete 950-input image above are
-   unchanged. Cross-compilation is not ARMv5 execution. The candidate still
-   needs lab-tool coverage, original guest campaigns, coherent recipe/hash
-   changes and exact new image/source/license/SBOM qualification. This is
+   **Focused ARMv5 component proof (2026-10-08):** successor `01e6045`, with
+   the same API tree, passes toolkit vet/ordinary/race and all five original
+   fixed-count fuzz campaigns, then all six freshly enrolled Samba guest
+   campaigns using Go 1.26.8-compiled probes. The complete original proof union,
+   matching 114-file runtime census and unchanged-base checks pass without
+   changing guest or worker limits. A separate read-only replay of the six
+   complete traces verifies the union again. All 1,083 API/toolkit/harness
+   inputs match their pre-run hashes; temporary scratch and the container are
+   removed. No new image or volume is created.
+   **Not adopted:** selected Go 1.26.6 and the complete 950-input image above
+   are unchanged. The base API/kernel/packages/SBOM are still the old image;
+   this proves candidate toolkit/Samba-probe execution, not a complete target
+   image. Coherent recipe/hash changes, all remaining original campaigns and
+   exact new image/source/license/SBOM qualification remain required. This is
    neither an observed speedup nor a fix for the intermittent hosted timeout.
 4. **Complete the review:** cover every selected host/target component and linked
    Go package, actual backport contents and disabled/compiled features. Record
