@@ -406,6 +406,23 @@ product/hardware/recovery/release gates remain open.
    four patches, source/license hashes and host reverse dependencies. Qualify the
    actual host consumers and regenerated package/SBOM metadata. Do not add target
    OpenSSL merely to satisfy a scanner or expose new crypto services.
+   **Focused candidate proof (2026-10-08):** upstream 3.5.9 archive SHA-256
+   `603f5602e2eef00d77fbd429d34dcd5822bb301757a1bc9cdb24c670f1eb859a`
+   and its PGP signature match the [official release key](https://openssl-library.org/source/),
+   primary fingerprint `B146647E45A7B33947AB226B2A2C87D161692D40`.
+   All four existing Buildroot patches apply with fuzz0; LICENSE.txt is unchanged.
+   A bounded disposable-RAM host build using the current host configure options
+   passes actual 3.5.9 CLI/shared-library/default-provider binding, SHA-256,
+   certificate and signature verification, and a private loopback TLS1.3 exchange.
+   This is not the complete upstream test suite or actual Buildroot installation.
+   The new exact-state maintenance applicator and shell tests qualify coherent
+   application/idempotence and no-effect rejection of mixed/unknown/missing/
+   symlink inputs and changed/incomplete/extra upstream patch rosters. The actual
+   changed-patch regression first fails, then passes after whole-roster checks.
+   The applicator is **not yet wired into the builder**; selected pins/cache,
+   complete artifacts and their host3.5.8 metadata remain unchanged. Next:
+   integrate source/version guards, qualify actual host consumers and regenerate
+   legal sources/SBOM in a complete build. No NAS HTTPS or product security claim.
 3. **Go 1.26.8 candidate:** authenticate the exact SDK/source inputs, update the
    Buildroot recipe without unpinned toolchain downloads and preserve the module
    vendor set. Run ordinary/race/fuzz checks and the original ARMv5 campaigns;

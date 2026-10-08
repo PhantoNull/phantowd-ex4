@@ -3,6 +3,23 @@
 
 # Implementation status
 
+## Current maintenance candidate — OpenSSL host proof, not selected
+
+OpenSSL3.5.9's official archive hash and PGP primary-key signature are verified;
+all four existing Buildroot patches apply without fuzz and the license hash
+is unchanged. A bounded RAM-only host build with the current configure options
+passes actual CLI/shared-library/provider version binding, certificate/signature
+verification and private loopback TLS1.3. No cached installation is replaced.
+
+An exact-state maintenance applicator and shell tests now cover coherent
+apply/idempotence and no-effect refusal of mixed, unknown, missing or symlink
+inputs and altered/incomplete/extra upstream patch rosters. A real changed-patch
+regression first fails and then passes after the complete roster check.
+The helper is not wired into the builder yet; pins and qualified artifacts below
+remain unchanged. Actual host consumers, full upstream tests, regenerated legal/
+SBOM metadata and complete-build qualification remain open. No target OpenSSL,
+NAS operation or new whole-image security claim; see [dependency review](support/DEPENDENCY-REVIEW.md).
+
 ## Current test observability — redacted planned-fault boundaries
 
 An earlier reviewed-Close seven-campaign attempt passes service, native,
