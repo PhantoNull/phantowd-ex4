@@ -2524,6 +2524,15 @@ and failed-update recovery demonstrated beyond merely reaching a boot prompt.
   enrollment/recovery, updates, sessions, secrets, application execution and data
   access. Review dependency advisories and document mitigation/response ownership.
   No known unresolved critical data-loss, authentication or cooling issue ships.
+  **Build-only hardening increment:** existing QEMU and EX4 B2/B3 resolved-config
+  auditors refuse unused `CONFIG_CRYPTO_USER_API*` builtin/module interfaces.
+  Internal kernel crypto remains available; no AF_ALG hash backend or kernel
+  change is introduced. Windows/Linux mutation tests, lint, actual QEMU6.18.55
+  config audit and workflow contracts pass. B3 config6.18.54 is historical
+  audit evidence only, not a current build. Current upstream
+  [AF_ALG guidance](https://www.kernel.org/doc/html/latest/crypto/userspace-if.html)
+  supports avoiding this interface; no specific-CVE or complete-security
+  disposition, performance improvement or hosted-timeout fix is established.
 - **M11.4 — Reproducible release.** Two independent clean builds compare a declared
   allowlist. Publish exact source commit/configuration, payload hashes, signed
   metadata, SBOM, license/legal material, support matrix, release notes, limitations

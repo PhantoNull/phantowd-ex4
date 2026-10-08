@@ -2,6 +2,14 @@
 
 ## Bounded cached full validation
 
+The existing QEMU and EX4 B2/B3 kernel-configuration auditors reject builtin
+or module entries in the unused `CONFIG_CRYPTO_USER_API*` namespace (AF_ALG),
+including future options. Internal kernel crypto libraries remain permitted.
+No hash provider or kernel selection changes: cheap mutation tests plus
+read-only resolved-config audits verify this build guard without compiling
+another image. This follows [upstream AF_ALG guidance](https://www.kernel.org/doc/html/latest/crypto/userspace-if.html),
+not a claim that the pinned kernel implements newer-version restrictions.
+
 The QEMU builder selects one CPU job ceiling from Linux process affinity and
 the visible cgroup v1/v2 quota hierarchy. Fractional CPU quotas round down, with
 a minimum of one job. `PHANTOWD_BUILD_JOBS` can request a smaller positive

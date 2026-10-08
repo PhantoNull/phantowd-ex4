@@ -87,6 +87,42 @@ class KernelInputs(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     inputs.audit(config)
 
+    def test_userspace_kernel_hash_interface_is_refused(self):
+
+        with tempfile.TemporaryDirectory() as temp:
+            config = Path(temp) / "config"
+            config.write_text("\n".join(inputs.REQUIRED) +
+                              "\nCONFIG_CRYPTO_USER_API_HASH=y\n")
+            with self.assertRaises(ValueError):
+                inputs.audit(config)
+
+    def test_all_af_alg_interfaces_refuse_builtin_or_module(self):
+        with tempfile.TemporaryDirectory() as temp:
+            config = Path(temp) / "config"
+            good = "\n".join(inputs.REQUIRED) + "\n"
+            for key in ("CONFIG_CRYPTO_USER_API",
+                        "CONFIG_CRYPTO_USER_API_HASH",
+                        "CONFIG_CRYPTO_USER_API_SKCIPHER",
+                        "CONFIG_CRYPTO_USER_API_AEAD",
+                        "CONFIG_CRYPTO_USER_API_RNG",
+                        "CONFIG_CRYPTO_USER_API_RNG_CAVP",
+                        "CONFIG_CRYPTO_USER_API_FUTURE_FIXTURE"):
+                for enabled in ("y", "m"):
+                    with self.subTest(key=key, enabled=enabled):
+                        config.write_text(good + key + "=" + enabled + "\n")
+                        with self.assertRaises(ValueError):
+                            inputs.audit(config)
+
+    def test_disabled_af_alg_preserves_internal_kernel_crypto(self):
+        with tempfile.TemporaryDirectory() as temp:
+            config = Path(temp) / "config"
+            config.write_text("\n".join(inputs.REQUIRED) + "\n" +
+                              "# CONFIG_CRYPTO_USER_API_HASH is not set\n" +
+                              "CONFIG_CRYPTO_USER_API_RNG=n\n" +
+                              "CONFIG_CRYPTO_LIB_SHA256=y\n" +
+                              "CONFIG_CRYPTO_LIB_SHA256_ARCH=y\n")
+            inputs.audit(config)
+
     def test_build_refreshes_cached_kernel_and_audits_before_checkpoint(self):
         script = (ROOT / "support/container/build-qemu.sh").read_text()
         self.assertIn('"$linux_inputs_previous" != "$linux_inputs_digest"',

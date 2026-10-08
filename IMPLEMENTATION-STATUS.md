@@ -33,6 +33,16 @@ migration, recovery, product activation or an installable release. PR #128/#129
 retain their own failed QEMU checks; local success is not their timeout fix.
 Older sections below retain their dated, narrower source scopes.
 
+Build-only hardening now fences builtin/module `CONFIG_CRYPTO_USER_API*`
+interfaces in the existing QEMU and EX4 B2/B3 kernel-config auditors. Public
+CLI mutation regressions first reproduce acceptance, then pass after the guard;
+all ten kernel-input tests, both-stage namespace refusals/internal-crypto
+controls, lint and workflow contracts pass. The resolved QEMU6.18.55 config
+already has these interfaces disabled and passes the new auditor. Historical
+B3 config6.18.54 also passes, but is not a new build. No kernel selections,
+fragments, crypto provider, image, API, privilege or timeout changes. This is
+build-policy validation, not a new whole-image, security or performance result.
+
 ## Current component — original-owned exit, focused host/QEMU proof
 
 On 2026-10-08, a new independently enrolled ARMv5 `exit` guest passes the fixed
