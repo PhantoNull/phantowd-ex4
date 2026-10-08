@@ -31,23 +31,10 @@ func SambaCredentialDocumentsQEMU(lookup fileserviceplan.SambaEnrollmentLookup) 
 	if err != nil {
 		return nil, ErrInvalid
 	}
-	return map[string]string{
-		"passwd": passwd, "group": group,
-		// The enrollment candidate covers identity lookup only. Service lookup
-		// must also forbid implicit DNS/default resolver paths in this root.
-		"nsswitch.conf": nss + "hosts: files\nnetworks: files\nprotocols: files\nservices: files\n",
-		"hosts":         "127.0.0.1 localhost\n", "protocols": "tcp 6 TCP\nudp 17 UDP\n", "services": "microsoft-ds 445/tcp\n",
-		"samba/smb.conf": strings.Join([]string{
-			"[global]", "server role = standalone server", "security = user", "map to guest = Never",
-			"interfaces = 127.0.0.1", "bind interfaces only = yes", "smb ports = 1445",
-			"server min protocol = SMB3_00", "server max protocol = SMB3_11", "server signing = mandatory",
-			"load printers = no", "printing = bsd", "printcap name = /dev/null", "disable spoolss = yes",
-			"dns proxy = no", "name resolve order = host", "dos charset = CP850", "unix charset = UTF-8",
-			"private dir = /state/private", "lock directory = /state/lock", "state directory = /state/state",
-			"cache directory = /state/cache", "pid directory = /state/pid", "ncalrpc dir = /state/rpc",
-			"passdb backend = tdbsam:/state/private/passdb.tdb", "log file = /state/log.smbd", "",
-		}, "\n"),
-	}, nil
+	// The opaque lookup already supplies the complete files-only NSS profile.
+	// Reuse the paired renderer's bounded grammar; never append duplicate tables
+	// or choose different state/global paths for credential workers.
+	return boundedNativeDocumentsQEMU(passwd, group, nss, "")
 }
 
 // NativeSambaRuntimeQEMU privately retains one code/configuration/state tuple
@@ -65,9 +52,15 @@ type NativeSambaRuntimeQEMU struct {
 	authPaths        []string
 	clients          *processowner.PinnedSet
 	clientsAttempted bool
+	releaseErr       error
+	workerFailure    *nativeWorkerErrorQEMU
 }
 
 func (p *Plan) NewNativeSambaRuntimeQEMU(ctx context.Context, code, configuration, state *os.File, lookup fileserviceplan.SambaEnrollmentLookup) (_ *NativeSambaRuntimeQEMU, result error) {
+	return p.newNativeSambaRuntimeQEMU(ctx, code, configuration, state, lookup, nil)
+}
+
+func (p *Plan) newNativeSambaRuntimeQEMU(ctx context.Context, code, configuration, state *os.File, lookup fileserviceplan.SambaEnrollmentLookup, roots *[2]*os.File) (_ *NativeSambaRuntimeQEMU, result error) {
 	if ctx == nil || code == nil || configuration == nil || state == nil {
 		return nil, ErrInvalid
 	}
@@ -78,6 +71,9 @@ func (p *Plan) NewNativeSambaRuntimeQEMU(ctx context.Context, code, configuratio
 		return nil, err
 	}
 	documents, err := SambaCredentialDocumentsQEMU(lookup)
+	if roots != nil {
+		documents, err = SambaNativeDataDocumentsQEMU(lookup)
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -114,7 +110,7 @@ func (p *Plan) NewNativeSambaRuntimeQEMU(ctx context.Context, code, configuratio
 		err = staticExecutable(r.helper)
 	}
 	if err == nil {
-		err = r.prepareNativeDaemonQEMU(ctx)
+		err = r.prepareNativeDaemonQEMU(ctx, roots)
 	}
 	if err == nil {
 		err = r.prepareNativeClientsQEMU()
@@ -208,7 +204,9 @@ func (r *NativeSambaRuntimeQEMU) ExecuteQEMU(ctx context.Context, operation proc
 	// retained tuple ONCE here, then recheck it after verified worker teardown.
 	if err := r.revalidateNativeRuntimeQEMU(ctx); err != nil {
 		r.owner.review = true
-		return nil, ErrReviewRequired // Close owns the pending unlaunched capture.
+		// Close owns the pending unlaunched capture. Retain review and a private
+		// cause, but disclose only fixed phase/reason labels, never cause text.
+		return nil, r.nativeWorkerFailureQEMU(nativeWorkerAdmissionQEMU, err)
 	}
 	observed, runErr := capture.Capture(ctx)
 	defer clear(observed.Stderr)
@@ -217,14 +215,20 @@ func (r *NativeSambaRuntimeQEMU) ExecuteQEMU(ctx context.Context, operation proc
 	if !settled || settleErr != nil || closeErr != nil {
 		clear(observed.Stdout)
 		r.owner.review = true
-		return nil, ErrReviewRequired // Keep pending and all original authority.
+		return nil, r.nativeWorkerFailureQEMU(nativeWorkerSettlementQEMU, errors.Join(settleErr, closeErr)) // Keep pending and all original authority.
 	}
 	r.pending = nil
 	checkErr := r.revalidateNativeRuntimeQEMU(ctx)
 	if runErr != nil || observed.Kind != processowner.CaptureExited || observed.ExitCode != 0 || strings.Count(string(observed.Stderr), nativeCredentialHandoff) != 1 || checkErr != nil {
 		clear(observed.Stdout)
 		r.owner.review = true
-		return nil, fmt.Errorf("native credential worker kind=%v exit=%d handoff=%d: %w", observed.Kind, observed.ExitCode, strings.Count(string(observed.Stderr), nativeCredentialHandoff), ErrReviewRequired)
+		stage, cause := nativeWorkerResultQEMU, error(ErrMismatch)
+		if runErr != nil {
+			stage, cause = nativeWorkerExecutionQEMU, runErr
+		} else if checkErr != nil {
+			stage, cause = nativeWorkerPostAdmissionQEMU, checkErr
+		}
+		return nil, fmt.Errorf("native credential worker kind=%v exit=%d handoff=%d: %w", observed.Kind, observed.ExitCode, strings.Count(string(observed.Stderr), nativeCredentialHandoff), r.nativeWorkerFailureQEMU(stage, cause))
 	}
 	return observed.Stdout, nil
 }
@@ -234,6 +238,9 @@ func (r *NativeSambaRuntimeQEMU) Close(ctx context.Context) error {
 		return err
 	}
 	defer func() { <-r.gate }()
+	if r.releaseErr != nil {
+		return errors.Join(ErrReviewRequired, r.releaseErr)
+	}
 	if r.closed {
 		return nil
 	}
@@ -264,12 +271,31 @@ func (r *NativeSambaRuntimeQEMU) Close(ctx context.Context) error {
 		return errors.Join(ErrReviewRequired, err)
 	}
 	r.closed = true
-	err = errors.Join(err, r.removeNativeAuthQEMU())
+	// Closed fences every service operation, but terminal cleanup uncertainty
+	// must remain observable. Never continue to unrelated resources or retry
+	// release after the first error; an errored descriptor may already be closed.
+	if err != nil {
+		r.owner.review = true
+		r.releaseErr = err
+		r.owner.snapshot.State = processowner.StateReviewRequired
+		return errors.Join(ErrReviewRequired, err)
+	}
+	if err := r.removeNativeAuthQEMU(); err != nil {
+		r.owner.review = true
+		r.releaseErr = err
+		r.owner.snapshot.State = processowner.StateReviewRequired
+		return errors.Join(ErrReviewRequired, err)
+	}
 	if r.helper != nil {
-		err = errors.Join(err, r.helper.Close())
+		if err := r.helper.Close(); err != nil {
+			r.owner.review = true
+			r.releaseErr = err
+			r.owner.snapshot.State = processowner.StateReviewRequired
+			return errors.Join(ErrReviewRequired, err)
+		}
 		r.helper = nil
 	}
-	return err
+	return nil
 }
 
 func sealedNativeCredentialInputQEMU(data []byte) (reader *os.File, result error) {

@@ -129,6 +129,60 @@ authority in this increment. It is fixture-only, not installed by product init,
 and exposes no HTTP/RPC operation. The helper's presence in a copied QEMU image
 is not Buildroot package installation or product authorization.
 
+## QEMU-only declared-share pins
+
+`WithQEMUNativeMountedSet` adds only a fixed synthetic roster for the disposable
+Samba overlay. It refuses host/missing-observer execution and checks the exact
+ARM model, explicit fixture cmdline, tmpfs context, device/source binding,
+16 MiB size, protected ext4 mount and UUID before construction. Logical anchors
+use a scoped protected tmpfs overlay over the read-only image; verified child
+teardown precedes overlay removal and original-anchor identity restoration.
+Uncertainty retains mounts for guest disposal, never lazy-unmount recovery.
+Actual ARMv5 admission matches Plan-derived roots with the SAME native identity
+Owner and verifies fresh evidence, caller closure and retained-authority gates.
+It starts no daemon and is not a production roster or physical-disk qualifier.
+
+`ServiceHandoff.RetainShareRootsQEMU` exclusively retains the original attached
+share objects after complete verification. `DuplicateRoots` returns independent
+`O_PATH` copies of only those individual declared subdirectories, never the
+whole handoff/volume root; it does not reopen source paths. Pins and descriptors
+refuse JSON. Lock order is pin, handoff, complete roster, canonical volume Owners.
+Direct handoff closure remains busy while the pin exists. Source loss or changed
+objects enter sticky review, with no revival after pathname restoration.
+
+This is lifetime preparation, not Samba admission or isolation. The returned
+labels are not authority; a future fixed native factory must bind the exact
+Plan/root roles and make nonrecursive individual-share mounts inside its private
+namespace. Parent-namespace descriptors alone do not prevent traversal outside
+the selected subtree. Mutable data/ACLs must not inherit immutable-code rules.
+
+The trusted consumer must prove descendant stop/reap and copied-input closure
+before releasing original pins. Known closure releases once; uncertainty retains
+the reservation in review without cleanup retry. The actual ARMv5 launcher guest
+covers caller-copy closure, two RO/RW roots, effective non-root write ownership,
+kernel `EROFS`, accepted data mutation, gated handoff close, source-loss review,
+restoration refusal and final FD equality. No Samba process consumes these roots
+yet. A separate actual mounted ARMv5 case now admits healthy original share
+pins, prematurely closes the first original `os.File`, and verifies sticky
+review, untouched later input, original grant mounts/roster retention and
+replacement refusal through repeated public operations. No fake mount/close
+result or daemon is used. Independent fixture disposal closes only known-live
+descriptors and detaches identity-checked original clones, without resetting
+review or making the retained handoff releasable. Final FD equality and all
+previous launcher controls remain required. This is controlled premature-close
+qualification, not kernel EIO, a live-service teardown fault or product recovery.
+
+Host-only input-release characterization now uses actual temporary `O_PATH`
+descriptors: a preclosed original preserves reviewed handoff exclusion and
+leaves later inputs open; repeated/concurrent calls neither retry nor touch a
+test-only replacement. Known closure remains idempotent and fences subsequent
+descriptor use. Tagged Linux vet and package race-count3 pass. These tests
+exercise rejected teardown bookkeeping without fabricating, admitting or
+verifying a healthy mount/roster lease. The behavior already existed; this is
+new coverage, not a bug fix, kernel EIO proof or actual mounted QEMU fault
+qualification. The separate guest case above supplies the latter's controlled
+premature-close scope only; durable product recovery remains required.
+
 The qualification token currently comes only from the QEMU fixture. There is
 no production qualifier or production roster source, no EX4-complete mounted-
 volume collector, mount-point allocator, durable volume identity, product
@@ -140,6 +194,5 @@ lower-level `ServiceHandoff` does not stop pathname consumers by itself;
 only after its caller invokes `Observe`. Passing QEMU tests does not qualify
 physical EX4 disks or authorize mounting user media.
 
-See [M3.4 roadmap acceptance](../../../../ROADMAP.md#m3-complete-storage-discovery-and-volume-lifecycle) and the private
-dated evidence records in `doc/sources/m34-owner-lifecycle-local-qemu-2026-09-30.md`
-and `doc/sources/m34-owner-mounted-evidence-local-qemu-2026-09-30.md`.
+See [M3.4 roadmap acceptance](../../../../ROADMAP.md#m3-complete-storage-discovery-and-volume-lifecycle)
+and [implementation status](../../../../IMPLEMENTATION-STATUS.md).

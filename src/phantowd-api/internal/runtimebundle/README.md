@@ -9,6 +9,75 @@ product startup does not call it. It has no HTTP/RPC or JSON input/output.
 The separate `qemu && linux` staging prototype below is excluded from ordinary
 builds; it does not turn the read-only inspector into a product write service.
 
+Each complete code inspection and retained-code preparation owns one 32 KiB
+hash scratch buffer, reused only within that pass. Concurrent calls have
+independent buffers; nothing is pooled or retained in the Plan. This reduces
+per-file allocation churn without caching hashes or reducing census, content,
+metadata, ACL/capability, cancellation or trailing original-identity checks.
+Digest-loop host tests/benchmarks do not qualify complete runtime admission,
+physical EX4 performance or eliminate timing-sensitive guest failures.
+
+The private QEMU native credential runtime retains its first worker-failure
+classification for bounded diagnostic observation, including after closure.
+Only fixed phase/reason labels are exposed; cause text, stdin, stderr, account
+identities and secrets are not. The error retains review and its private cause
+for internal `errors.Is` checks. Observation serializes with runtime operations,
+refuses canceled/busy calls, executes no worker and cannot clear review or grant
+admission. A missing diagnostic is not a health witness. Ordinary Samba adapter
+error redaction remains unchanged; guest output is explicitly diagnostic-only,
+never a qualification marker. Host tests qualify the bookkeeping/redaction
+boundary, not an actual ARMv5 worker fault, timeout fix or product recovery.
+
+The `qemu`-only `SambaPlannedDataDocumentsQEMU` renderer produces seven bounded
+configuration documents from one immutable isolated Plan candidate. It preserves
+the candidate's granted-only Unix identities and exact RO/RW share sections,
+uses the existing native fixture's loopback SMB3 globals and passdb/state paths,
+and rejects empty or over-budget output without returning partial documents.
+The aggregate budget remains 64 KiB. Rendering performs no I/O, retains no
+authority, installs no configuration and changes no native backend. Host tests
+cover exact documents, caller independence, refusals and unchanged global bytes.
+A focused ARMv5 lifecycle fixture also renders from the actual native Owner and
+mounted roster, verifies granted-only output and compares complete documents
+after fresh locked evidence compilation. Neither proof starts a Plan-configured
+daemon or qualifies the two-role runtime lifecycle. A future
+trusted constructor must independently derive expectations, bind the original
+mounted share objects and recheck complete admission before starting a daemon.
+
+`SambaRoleDocumentsQEMU` also renders two distinct inert seven-file maps from
+one opaque `Plan.SambaRoleCandidate`. Management lookup is complete over live
+native accounts and has no share sections; service lookup/sections remain
+granted-only. Both use the exact unchanged globals, including identical fixed
+passdb/state paths. Each tree retains the existing 64 KiB aggregate limit.
+Invalid input returns neither tree; mutations of caller maps do not affect the
+other role or future rendering. Strings and maps are not retention authority.
+Host tests and the original focused ARMv5 lifecycle campaign qualify this pure
+rendering prerequisite against its actual native Owner/mounted roster. They do
+not make a daemon consume both roles. The inert retainer now compares complete
+management expectations before pinning the service role; no constructor starts
+a daemon from both roles, and inert service-role startup remains blocked.
+Identical paths are not proof of identical state objects or a runtime lifecycle.
+
+`RetainPlannedConfigurationQEMU` is a separate inert prototype. It independently
+derives both expectations from the opaque `SambaRoleCandidate` and requires the
+existing management roster to match all seven file names, modes, sizes and
+digests before acquiring service pins. It then retains exact configuration
+objects in the same Owner without replacing its management configuration or
+mutable state. Complete revalidation includes both roles, and verified process
+stop precedes release. The role cannot be replaced and blocks native daemon
+startup; it does not acquire storage grants or establish candidate freshness.
+Guarded disposable ARMv5 staging proves construction refusals, independent
+caller closure, unchanged management observations and normal exact-mount
+cleanup. Complete planned-service lifetime and fault qualification remain open.
+`SambaCredentialDocumentsQEMU` reuses the same bounded document renderer:
+the native lookup already contains all eight files-only NSS tables, so no
+resolver directives are appended again. A real temporary empty Owner regression
+reproduces the former duplication and checks the actual renderer; pure matching
+tests do not constitute descriptor or identity authority. Original all-three
+ARMv5 union on `79b5229` qualifies paired retention against the actual native
+Owner/mounted roster with base/guards/deadlines unchanged; no daemon consumes the
+paired role. Complete changed-source image qualification and startup composition
+remain separate requirements.
+
 `NewPlan` privately copies a fixed in-process file/alias roster supplied by a
 future trusted build/release owner. It limits the plan to 256 regular files,
 1024 bindings, 4096 total nodes, 16 path components and 64 MiB. Files have exact
@@ -55,6 +124,22 @@ not replace late pathname checks with early metadata or add a constructor scan.
 
 The containing Owner serializes all access, decides review/stop policy and
 establishes complete process-group absence before releasing code references.
+After a descriptor-close error, retained code/configuration/state and pinned
+process inputs permanently preserve that error, stop subsequent releases and
+refuse cleanup retry. The containing Owner remains in review; repeated Close
+cannot report success. Confirmed earlier closures stay released. A failed
+close does not prove that its descriptor remains open; only unattempted inputs
+are guaranteed not to have been released by this cleanup. Linux fault fixtures
+use already-closed real files and qualify bookkeeping, not kernel I/O failures
+or durable product recovery. Normal static/Samba ARMv5 paths are separately
+tested; those positive campaigns are not injected-close-fault qualification.
+The QEMU native runtime wrapper now preserves terminal Owner/auth/helper release
+errors as well: closed prevents new operations but never erases the first error
+or turns review into stopped/success. Later resources remain unattempted, and
+repeated cleanup cannot touch replacement objects. Current host regressions
+qualify this bookkeeping; normal ARMv5/image and actual kernel-fault/durable
+recovery evidence remain distinct. This adds no generalized closer callback,
+replacement backend or product recovery operation.
 The helper itself starts no process, mounts nothing, accepts no backend changes
 and exports no descriptor or production API. Dynamic code may be inspected and
 retained without being authorized for execution by the generic Owner.
@@ -213,6 +298,24 @@ images or persistent volumes. Host tests cover plan copying/budgets/hierarchy,
 serialization refusal, writable-root refusal and safe Linux open flags.
 
 ## Retained code and static-process Owner
+
+The separate fixed QEMU native-data prerequisite adds two original per-share
+`O_PATH` inputs to a NEW runtime after the preceding identity/runtime fixture
+fully closes. It validates protected, independent ext-family RO/RW mount roots;
+the native helper attaches individual nonrecursive clones and closes inputs
+before executing Samba in its restricted root. The original credential workers
+receive no data descriptors. Fixed qualification documents are not desired
+policy, a complete file-service Plan, or product activation inputs.
+
+Actual ARMv5 SMB transfers prove RW write/read, RO read/write denial, Unix file
+ownership, kernel `EROFS` and symlink refusal with no transferred/forbidden file.
+Every owned group and descriptor copy settles before caller originals release.
+The full local three-campaign lane, Linux race-count3/module vet and Windows
+preflight/cross-compile pass. Complete-roster storage pins, the SAME identity
+Owner/backend through startup, policy/grant/ACL admission, storage-loss and
+uncertain-stop fences, full image/hosted qualification and product wiring remain
+open. The exact marker records `complete_storage_identity=false`; do not borrow
+continuous lifetime evidence from another fixture.
 
 The separate QEMU-only native composition now retains the same original code,
 Owner-derived configuration and writable state through disabled-first account

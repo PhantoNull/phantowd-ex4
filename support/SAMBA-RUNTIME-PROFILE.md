@@ -8,6 +8,11 @@ helper, activation permission or EX4 qualification. It is separate from the
 generic static non-root launcher, which remains unchanged. Do not run it on
 physical hardware or connect user data.
 
+Status results must arrive within their own child deadline as well as the
+caller deadline; a successful late result is cleared and refused without a
+second inventory or control. A non-root Linux negative regression reproduces
+the former acceptance bug and passes with the explicit child-context guard.
+
 ## Reproduce locally
 
 With an existing pinned Buildroot image/workspace and manifest-verified QEMU
@@ -225,6 +230,38 @@ Product startup and all physical-device safety/migration/install gates remain
 closed. Kernel NFS authority is a separate design, not granted by this experiment.
 
 ## Samba-specific Owner integration packet (host/QEMU scope approved)
+
+### Native individual-share data profile (QEMU only)
+
+The distinct `native-data-server` ABI extends the existing five original
+configuration/seven original state inputs with exactly two independently
+attached RO/RW `O_PATH` ext-family roots. It duplicates existing descriptors,
+not labels/source paths or the entire controller tree. The guarded bootstrap
+clones each root nonrecursively before namespace separation, attaches fixed
+`/shares/readonly` and `/shares/writable`, verifies original inode/device and
+kernel flags, closes inherited inputs and drops to the existing `0xdb`/NNP
+profile. No generic launcher or credential-worker privileges/data inputs change.
+Mutable share contents, Unix modes and ACLs are not treated as immutable code.
+
+One explicit previously enrolled peer performs five fixed actual SMB operations:
+RW put/get, RO get, denied RO put and denied symlink get. Fresh content and Unix
+ownership plus kernel `EROFS` are checked, not merely exit codes. Samba reports
+`NT_STATUS_STOPPED_ON_SYMLINK` for the latter operation; the original assertion
+incorrectly accepted only ACCESS_DENIED/OBJECT_NAME_NOT_FOUND. The actual guest
+reproduced that assertion failure before the narrow correction. No arbitrary
+NTSTATUS, timeout or signal counts as an access denial. The escaped download
+and forbidden RO file must be absent. Whole client/daemon stop and descriptor
+closure precede caller-root release; final parent FD counts match.
+
+Final local validation passes 43 driver/seven loader tests, strict C ARM build,
+all three ARMv5 campaigns, unchanged seven base hashes, Linux process/runtime
+race-count3/tagged module vet and Windows API/UI preflight/cross-compile. This
+reuses the existing cache, adds no guest or timeout, and is not clean/hosted or
+physical qualification. It uses fixed two-share documents and synthetic roots
+after the prior identity Owner closes: complete-roster pin consumption, SAME
+identity/backend bootstrap, grant/ACL matrix and storage-loss/uncertain-close
+composition still remain. `complete_storage_identity=false` is mandatory;
+neither this helper nor the probe is installed as a product service.
 
 Implement a separate internal Samba-specific Owner; do not broaden the generic
 static/non-root adapter. Separate host/disposable-QEMU composition is approved;
@@ -695,8 +732,17 @@ shell, data share, arbitrary input, host listener or new privilege is added.
 Both clients and the daemon settle before original code/config/state release;
 final FD equality and unchanged base remain mandatory.
 
-Complete before/after admissions are included in fixed native status4 and
-revocation10-second budgets; ordinary adapter status2/revocation5 is unchanged.
+The initial result included complete before/after admissions in native
+status4/revocation10-second budgets. The current private QEMU phase profile
+retains status4, independently caps control4 and uses aggregate20 seconds:
+three complete status workers plus one control and bounded parsing/polling.
+Ordinary adapter status2/revocation5 is unchanged. Profiles are fixed internal
+values, never request input; shorter parent deadlines take precedence. No
+code/configuration/state admission, complete-inventory check or no-retry rule
+is removed. New host regressions cover the measured cumulative latency and
+the separate control cap; original full campaign/image/hosted qualification
+remains required. Diagnostic-only omissions/logs and an unsuccessful icount
+experiment are not part of the current profile.
 The native controller uses separate enrollment60, startup20, idle-disable20 and
 active-session45-second phases, within the same180-second guest bound. Earlier
 tight/shared envelopes fail closed on slower emulator scans; they are not

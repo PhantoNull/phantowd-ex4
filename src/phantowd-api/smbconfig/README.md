@@ -48,6 +48,14 @@ must supply and validate the complete global security/network/state profile,
 retain last-known-good configuration and coordinate volume loss and restart.
 The preview is not an activation authorization, even if `testparm` accepts it.
 
+`BuildIsolated` uses the same policy validation, source-overlap checks and grant
+renderer, but fixes service-root destinations to `/shares/<share-id>`. Required
+volumes still refer to the original logical source anchors. Whole-volume `.`
+requests refuse without partial output; ordinary `Build` is unchanged. No caller
+can supply an alternative destination or bypass source validation by choosing
+disjoint isolated paths. This is an internal-consumer preparation candidate,
+not a live mount, effective-access proof or change to the preview HTTP endpoint.
+
 ## Validation
 
 Unit tests check deterministic output, ro/rw/denied users, identity retention,

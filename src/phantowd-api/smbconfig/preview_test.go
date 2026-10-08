@@ -170,5 +170,29 @@ func FuzzPreview(f *testing.F) {
 		if err != nil || !reflect.DeepEqual(p, again) {
 			t.Fatal("nondeterministic rendering")
 		}
+		isolated, err := BuildIsolated(c)
+		if err != nil {
+			wholeVolume := false
+			for _, share := range c.Shares {
+				wholeVolume = wholeVolume || share.RelativePath == "."
+			}
+			if !wholeVolume || !reflect.DeepEqual(isolated, Preview{}) {
+				t.Fatal("isolated refusal lost its all-or-error contract")
+			}
+			return
+		}
+		if len(isolated.Shares) != len(c.Shares) || strings.Contains(isolated.Sections, "%") ||
+			strings.Contains(isolated.Sections, VolumeRoot) || strings.Count(isolated.Sections, "\n[") != len(c.Shares) {
+			t.Fatal("unsafe isolated rendering")
+		}
+		for _, share := range isolated.Shares {
+			if share.Path != "/shares/"+share.ID {
+				t.Fatal("isolated destination is not fixed by the declared share ID")
+			}
+		}
+		againIsolated, err := BuildIsolated(c)
+		if err != nil || !reflect.DeepEqual(isolated, againIsolated) {
+			t.Fatal("nondeterministic isolated rendering")
+		}
 	})
 }

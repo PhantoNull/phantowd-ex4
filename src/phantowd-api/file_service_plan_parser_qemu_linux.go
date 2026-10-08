@@ -23,6 +23,14 @@ import (
 // No live Samba configuration is read, overwritten or reloaded. Host-side
 // QEMU-tagged contract tests skip the native parser; the ARMv5 guest executes it.
 func validateQEMUPlanSambaWithTestparm(candidate, volumeID string) error {
+	return validateQEMUPlanSambaAtPath(candidate, shareconfig.VolumeMountRoot+"/"+volumeID+"/books")
+}
+
+func validateQEMUIsolatedSambaWithTestparm(candidate string) error {
+	return validateQEMUPlanSambaAtPath(candidate, "/shares/books")
+}
+
+func validateQEMUPlanSambaAtPath(candidate, expectedPath string) error {
 	if runtime.GOARCH != "arm" || strings.Split(buildARMLevel(), ",")[0] != "5" {
 		return nil
 	}
@@ -41,8 +49,9 @@ func validateQEMUPlanSambaWithTestparm(candidate, volumeID string) error {
 		return errors.New("QEMU plan parser fixture could not write temporary candidate")
 	}
 	for _, parameter := range []struct{ name, want string }{
-		{"path", shareconfig.VolumeMountRoot + "/" + volumeID + "/books"},
+		{"path", expectedPath},
 		{"valid users", "alice"}, {"write list", "alice"}, {"read only", "Yes"}, {"guest ok", "No"},
+		{"read list", ""}, {"wide links", "No"}, {"follow symlinks", "No"},
 	} {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		command := exec.CommandContext(ctx, "/usr/bin/testparm", "-s", "--section-name=Books", "--parameter-name="+parameter.name, name)

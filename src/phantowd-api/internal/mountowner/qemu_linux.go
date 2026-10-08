@@ -516,7 +516,9 @@ func withQEMUMountedOwnerAt(source, target, volumeID, filesystemUUID string, req
 		volumeID == qemuPlannerVolumeID && filesystemUUID == qemuFixtureUUID && requireWritable
 	fixedMDSource := source == QEMUMDStackFixtureSource && target == qemuMDStackMountAnchor &&
 		volumeID == QEMUMDStackFixtureVolumeID && filesystemUUID == qemuMDStackFilesystem && !requireWritable
-	if (!fixedSource && !fixedMDSource) || inspect == nil || runtime.GOOS != "linux" || runtime.GOARCH != "arm" {
+	fixedNativeSource := source == qemuNativeSource && target == qemuNativeTarget &&
+		volumeID == QEMUNativeVolumeID && filesystemUUID == QEMUNativeFilesystemUUID && requireWritable
+	if (!fixedSource && !fixedMDSource && !fixedNativeSource) || inspect == nil || runtime.GOOS != "linux" || runtime.GOARCH != "arm" {
 		return errors.New("file-service mount integration requires its fixed QEMU source")
 	}
 	model, err := os.ReadFile("/sys/firmware/devicetree/base/model")

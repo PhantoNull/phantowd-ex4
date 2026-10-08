@@ -16,6 +16,8 @@ import (
 	"golang.org/x/sys/unix"
 )
 
+const runtimeHashScratchSize = 32 << 10
+
 // Inspect requires an O_PATH directory on a kernel-enforced read-only mount.
 // It duplicates the root, refuses symlink traversal and cross-mount opens,
 // checks the complete code-only census and hashes only declared regular files.
@@ -60,8 +62,11 @@ func (p *Plan) Inspect(ctx context.Context, root *os.File) (Observation, error) 
 			return Observation{}, ErrMismatch
 		}
 	}
+	// Each scan owns one scratch buffer. No cross-call pool, shared mutable Plan
+	// state, hash cache or reduction of any file/metadata/identity check.
+	scratch := make([]byte, runtimeHashScratchSize)
 	for _, file := range p.files {
-		if err := inspectFile(ctx, fd, initial.Mnt_id, file); err != nil {
+		if err := inspectFile(ctx, fd, initial.Mnt_id, file, scratch); err != nil {
 			return Observation{}, err
 		}
 	}
@@ -185,17 +190,17 @@ func (p *Plan) census(ctx context.Context, root int, name string, mount uint64, 
 	return nil
 }
 
-func inspectFile(ctx context.Context, root int, mount uint64, expected File) error {
+func inspectFile(ctx context.Context, root int, mount uint64, expected File, scratch []byte) error {
 	fd, err := openBeneath(root, expected.Path, unix.O_RDONLY)
 	if err != nil {
 		return err
 	}
 	file := os.NewFile(uintptr(fd), "runtime-object")
 	defer file.Close()
-	return verifyOpenFile(ctx, file, mount, expected)
+	return verifyOpenFile(ctx, file, mount, expected, scratch)
 }
 
-func verifyOpenFile(ctx context.Context, file *os.File, mount uint64, expected File) error {
+func verifyOpenFile(ctx context.Context, file *os.File, mount uint64, expected File, scratch []byte) error {
 	fd := int(file.Fd())
 	before, err := inspectMetadata(fd, unix.S_IFREG, mount)
 	if err != nil || before.Size != uint64(expected.Size) || uint32(before.Mode&07777) != expected.Mode || before.Nlink != 1 {
@@ -204,31 +209,43 @@ func verifyOpenFile(ctx context.Context, file *os.File, mount uint64, expected F
 	if err := codeNoExtendedPermissions(fd); err != nil {
 		return err
 	}
+	digest, total, err := hashRuntimeFile(ctx, file, expected.Size, scratch)
+	if err != nil {
+		return err
+	}
+	after, err := inspectMetadata(fd, unix.S_IFREG, mount)
+	if err != nil || after != before || total != expected.Size || digest != expected.SHA256 {
+		return ErrMismatch
+	}
+	return nil
+}
+
+// The digest loop grants no file, code or execution authority. Metadata, exact
+// length/hash and trailing identity checks remain in verifyOpenFile.
+func hashRuntimeFile(ctx context.Context, file *os.File, size int64, scratch []byte) ([32]byte, int64, error) {
+	if ctx == nil || file == nil || size <= 0 || size > maxBytes || len(scratch) != runtimeHashScratchSize {
+		return [32]byte{}, 0, ErrInvalid
+	}
 	hash := sha256.New()
-	buffer := make([]byte, 32<<10)
 	var total int64
-	reader := io.LimitReader(file, expected.Size+1)
+	reader := io.LimitReader(file, size+1)
 	for {
 		if ctx.Err() != nil {
-			return ctx.Err()
+			return [32]byte{}, 0, ctx.Err()
 		}
-		count, readErr := reader.Read(buffer)
+		count, readErr := reader.Read(scratch)
 		if count > 0 {
-			_, _ = hash.Write(buffer[:count])
+			_, _ = hash.Write(scratch[:count])
 			total += int64(count)
 		}
 		if errors.Is(readErr, io.EOF) {
 			break
 		}
 		if readErr != nil {
-			return ErrUnavailable
+			return [32]byte{}, 0, ErrUnavailable
 		}
 	}
 	var digest [32]byte
 	copy(digest[:], hash.Sum(nil))
-	after, err := inspectMetadata(fd, unix.S_IFREG, mount)
-	if err != nil || after != before || total != expected.Size || digest != expected.SHA256 {
-		return ErrMismatch
-	}
-	return nil
+	return digest, total, nil
 }

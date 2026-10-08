@@ -49,6 +49,7 @@ on:
       - 'support/tests/runtime-owner-init.sh'
       - 'support/tests/test-qemu-runtime-owner.sh'
       - 'support/test-samba-root.ps1'
+      - 'support/tests/test-samba-root-wrapper.ps1'
       - 'support/tests/samba-root-*'
       - 'support/tests/samba-charset-fixture.c'
       - 'support/tests/samba_root_fixture.py'
@@ -67,6 +68,8 @@ on:
       - 'support/tests/test-qemu-build-feedback.py'
       - 'support/tests/test-qemu-kernel-inputs.py'
       - 'support/container/qemu_kernel_inputs.py'
+      - 'support/container/build_jobs.py'
+      - 'support/tests/test-build-jobs.py'
       - 'support/container/save-qemu-failure-log.sh'
       - 'support/tests/test-storage-broker-buildroot.sh'
       - 'support/container/audit-ex4-stage-b-kernel-config.sh'
@@ -125,6 +128,7 @@ on:
       - 'support/tests/runtime-owner-init.sh'
       - 'support/tests/test-qemu-runtime-owner.sh'
       - 'support/test-samba-root.ps1'
+      - 'support/tests/test-samba-root-wrapper.ps1'
       - 'support/tests/samba-root-*'
       - 'support/tests/samba-charset-fixture.c'
       - 'support/tests/samba_root_fixture.py'
@@ -143,6 +147,8 @@ on:
       - 'support/tests/test-qemu-build-feedback.py'
       - 'support/tests/test-qemu-kernel-inputs.py'
       - 'support/container/qemu_kernel_inputs.py'
+      - 'support/container/build_jobs.py'
+      - 'support/tests/test-build-jobs.py'
       - 'support/container/save-qemu-failure-log.sh'
       - 'support/tests/test-storage-broker-buildroot.sh'
       - 'support/container/audit-ex4-stage-b-kernel-config.sh'
@@ -198,7 +204,9 @@ jobs:
         run: sh support/test-firmware-workflow-paths.sh
 
       - name: Verify QEMU build feedback contracts
-        run: python3 -B support/tests/test-qemu-build-feedback.py
+        run: |
+          python3 -B support/tests/test-qemu-build-feedback.py
+          python3 -B support/tests/test-build-jobs.py
 
       - name: Verify cached-only local wrapper command boundary
         shell: pwsh
@@ -231,6 +239,10 @@ jobs:
 
       - name: Verify Samba-root experiment refusals
         run: python3 -B support/tests/test-samba-root-fixture.py
+
+      - name: Verify Samba wrapper defaults and bounded command boundary
+        shell: pwsh
+        run: ./support/tests/test-samba-root-wrapper.ps1
 
       - name: Verify kernel-input invalidation and ACL requirements
         run: python3 -B support/tests/test-qemu-kernel-inputs.py

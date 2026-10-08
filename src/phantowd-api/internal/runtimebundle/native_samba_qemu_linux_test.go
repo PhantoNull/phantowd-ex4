@@ -9,11 +9,71 @@ import (
 	"context"
 	"errors"
 	"os"
+	"strings"
 	"testing"
 
+	"github.com/PhantoNull/phantowd-ex4/phantowd-api/identityowner"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/fileserviceplan"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/processowner"
+	"github.com/PhantoNull/phantowd-ex4/phantowd-api/serviceaccounts"
+	"github.com/PhantoNull/phantowd-ex4/phantowd-api/serviceaccountstore"
 )
+
+// Real empty Owner/lookup and renderer, not a manufactured opaque lookup. All
+// writes stay in temporary state; no user operation, daemon or mount is used.
+func TestNativeCredentialDocumentsPreserveOwnerFilesOnlyNSS(t *testing.T) {
+	if os.Getuid() != 0 {
+		t.Skip("root-owned temporary identity store; run in isolated root SDK fixture")
+	}
+	dir := t.TempDir()
+	if err := os.Chmod(dir, 0700); err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range []string{"registry", "operations"} {
+		if err := os.Mkdir(dir+"/"+name, 0700); err != nil {
+			t.Fatal(err)
+		}
+	}
+	store, err := serviceaccountstore.Open(dir + "/registry")
+	if err != nil {
+		t.Fatal(err)
+	}
+	initErr := store.Initialize(58000, 59000)
+	if err := errors.Join(initErr, store.Close()); err != nil {
+		t.Fatal(err)
+	}
+	owner, err := identityowner.Open(dir, func(context.Context) (serviceaccounts.Reservations, error) {
+		return serviceaccounts.Reservations{UIDs: []uint32{}, GIDs: []uint32{}, Names: []string{}}, nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		if err := owner.Close(); err != nil {
+			t.Error(err)
+		}
+	}()
+	lookup, err := fileserviceplan.SambaEnrollmentLookupFromOwner(context.Background(), owner)
+	if err != nil {
+		t.Fatal(err)
+	}
+	passwd, group, nss, err := lookup.LookupDocuments()
+	if err != nil {
+		t.Fatal(err)
+	}
+	documents, err := SambaCredentialDocumentsQEMU(lookup)
+	if err != nil || len(documents) != 7 || documents["passwd"] != passwd || documents["group"] != group || documents["nsswitch.conf"] != nss {
+		t.Fatal("credential renderer changed Owner-derived lookup", err)
+	}
+	for _, table := range []string{"passwd", "group", "initgroups", "shadow", "hosts", "networks", "protocols", "services"} {
+		if strings.Count(documents["nsswitch.conf"], table+": files\n") != 1 {
+			t.Fatal("lookup directive absent or duplicated", table)
+		}
+	}
+	if documents["samba/smb.conf"] != nativeSambaGlobalsQEMU {
+		t.Fatal("management renderer changed globals or added share authority")
+	}
+}
 
 func TestNativeCredentialRuntimeRefusesHostBeforeConsumingRoots(t *testing.T) {
 	if model, _ := os.ReadFile("/sys/firmware/devicetree/base/model"); string(model) == "ARM Versatile PB\x00" {

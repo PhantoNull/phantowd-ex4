@@ -8,3 +8,5 @@ package main
 // Native daemon parsers are exercised by the Linux ARMv5 QEMU integration
 // fixture, not by host-side contract tests.
 func validateQEMUPlanSambaWithTestparm(string, string) error { return nil }
+
+func validateQEMUIsolatedSambaWithTestparm(string) error { return nil }

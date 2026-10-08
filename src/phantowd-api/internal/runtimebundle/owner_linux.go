@@ -25,12 +25,16 @@ type Owner struct {
 	// Fixed only by the separate disposable Samba constructor. NewOwner's
 	// static/non-root contract and its inputs remain unchanged.
 	configuration *retainedConfiguration
-	sambaState    *retainedSambaState
-	gate          chan struct{}
-	processes     *processowner.PinnedSet
-	snapshot      OwnerSnapshot
-	review        bool
-	closed        bool
+	// Inert planned daemon role: management workers retain configuration above.
+	// Only the QEMU runtime can supply this second, independently derived role.
+	serviceConfiguration *retainedConfiguration
+	sambaState           *retainedSambaState
+	gate                 chan struct{}
+	processes            *processowner.PinnedSet
+	snapshot             OwnerSnapshot
+	review               bool
+	closed               bool
+	releaseErr           error
 }
 
 // NewOwner fixes trusted inputs and copies every process specification. Paths
@@ -267,6 +271,9 @@ func (o *Owner) Close(ctx context.Context) error {
 		return processowner.ErrBusy
 	}
 	defer func() { <-o.gate }()
+	if o.releaseErr != nil {
+		return errors.Join(ErrReviewRequired, o.releaseErr)
+	}
 	if o.closed {
 		return nil
 	}
@@ -281,24 +288,48 @@ func (o *Owner) Close(ctx context.Context) error {
 		return errors.Join(ErrReviewRequired, stopErr, err)
 	}
 	o.closed = true
+	releaseErr := o.release()
+	if releaseErr != nil {
+		o.review = true
+	}
 	if o.review {
 		o.snapshot.State = processowner.StateReviewRequired
-		return errors.Join(ErrReviewRequired, stopErr, o.release())
+		return errors.Join(ErrReviewRequired, stopErr, releaseErr)
 	}
 	o.snapshot.State = processowner.StateStopped
-	return o.release()
+	return nil
 }
 
 func (o *Owner) release() error {
+	if o.releaseErr != nil {
+		return o.releaseErr
+	}
 	if o.processes != nil {
 		if err := o.processes.Close(); err != nil {
+			o.releaseErr = err
 			return err
 		}
 	}
-	result := errors.Join(o.retainedCode.release(), o.configuration.release(), o.sambaState.release())
+	if err := o.retainedCode.release(); err != nil {
+		o.releaseErr = err
+		return err
+	}
+	if err := o.configuration.release(); err != nil {
+		o.releaseErr = err
+		return err
+	}
 	o.configuration = nil
+	if err := o.serviceConfiguration.release(); err != nil {
+		o.releaseErr = err
+		return err
+	}
+	o.serviceConfiguration = nil
+	if err := o.sambaState.release(); err != nil {
+		o.releaseErr = err
+		return err
+	}
 	o.sambaState = nil
-	return result
+	return nil
 }
 
 func (o *Owner) revalidate(ctx context.Context) error {
@@ -311,7 +342,12 @@ func (o *Owner) revalidate(ctx context.Context) error {
 		}
 	}
 	if o.sambaState != nil {
-		return o.sambaState.revalidate(ctx)
+		if err := o.sambaState.revalidate(ctx); err != nil {
+			return err
+		}
+	}
+	if o.serviceConfiguration != nil {
+		return o.serviceConfiguration.revalidate(ctx)
 	}
 	return nil
 }

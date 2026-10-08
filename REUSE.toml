@@ -39,6 +39,12 @@ SPDX-FileCopyrightText = "2026 PhantoWD EX4 contributors"
 SPDX-License-Identifier = "GPL-3.0-or-later"
 
 [[annotations]]
+path = "support/buildroot-patches/2025.02.18/0003-download-remove-archive-temporary-marker.patch"
+precedence = "closest"
+SPDX-FileCopyrightText = "2026 PhantoWD EX4 contributors"
+SPDX-License-Identifier = "GPL-2.0-or-later"
+
+[[annotations]]
 path = "board/wd/ex4/patches/linux/**"
 precedence = "closest"
 SPDX-FileCopyrightText = [

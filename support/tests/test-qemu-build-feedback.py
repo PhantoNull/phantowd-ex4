@@ -326,9 +326,10 @@ class BuildFeedbackTests(unittest.TestCase):
         regression = script.index(
             '"$external_dir/support/tests/test-perl-configure-date.py" \\\n'
         )
-        full_build = script.index('    -j"$(getconf _NPROCESSORS_ONLN)"')
+        full_build = script.index('\n    PARALLEL_JOBS="$build_jobs" '
+                                  '-j"$build_jobs"\n')
         self.assertLess(regression, full_build)
-        self.assertIn('O="$output_dir" host-perl-dirclean', script)
+        self.assertIn('PARALLEL_JOBS="$build_jobs" host-perl-dirclean', script)
         self.assertIn('"$perl_inputs_previous" != "$perl_patch_digest"',
                       script)
         self.assertIn('Perl patch changed during the build', script)
@@ -427,7 +428,8 @@ class BuildFeedbackTests(unittest.TestCase):
         lab = script.index(
             'sh "$external_dir/support/container/test-lab-tools.sh"'
         )
-        full_build = script.index('    -j"$(getconf _NPROCESSORS_ONLN)"')
+        full_build = script.index('\n    PARALLEL_JOBS="$build_jobs" '
+                                  '-j"$build_jobs"\n')
         self.assertLess(toolchain, api)
         self.assertLess(api, full_build)
         self.assertLess(lab, full_build)
@@ -438,7 +440,8 @@ class BuildFeedbackTests(unittest.TestCase):
     def test_compile_checkpoint_is_fresh_and_precedes_guest_tests(self):
         script = (ROOT / "support/container/build-qemu.sh").read_text()
         reset = script.index('rm -f "$compile_checkpoint"')
-        full_build = script.index('    -j"$(getconf _NPROCESSORS_ONLN)"')
+        full_build = script.index('\n    PARALLEL_JOBS="$build_jobs" '
+                                  '-j"$build_jobs"\n')
         checkpoint = script.index(
             "printf 'complete\\n' > \"$compile_checkpoint\""
         )

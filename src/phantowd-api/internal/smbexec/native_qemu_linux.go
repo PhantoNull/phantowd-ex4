@@ -24,9 +24,11 @@ import (
 // The runtime owns code/config/state and can be released only after workers
 // settle. This guarded fixture is not product startup or an HTTP surface.
 type NativeBackendQEMU struct {
-	inner   *Backend
-	runtime *runtimebundle.NativeSambaRuntimeQEMU
-	mu      sync.RWMutex
+	inner    *Backend
+	runtime  *runtimebundle.NativeSambaRuntimeQEMU
+	mu       sync.RWMutex
+	closed   bool
+	closeErr error
 }
 
 func NewNativeBackendQEMU(ctx context.Context, runtime *runtimebundle.NativeSambaRuntimeQEMU) (*NativeBackendQEMU, error) {
@@ -116,7 +118,7 @@ func (b *NativeBackendQEMU) ObserveAccounts(ctx context.Context, accounts []serv
 	}
 	b.mu.RLock()
 	defer b.mu.RUnlock()
-	if b.inner == nil {
+	if b.closed || b.inner == nil {
 		return nil, ErrInvalid
 	}
 	for _, account := range accounts {
@@ -133,7 +135,7 @@ func (b *NativeBackendQEMU) CreateDisabled(ctx context.Context, account servicea
 	}
 	b.mu.RLock()
 	defer b.mu.RUnlock()
-	if b.inner == nil {
+	if b.closed || b.inner == nil {
 		return ErrInvalid
 	}
 	return b.inner.CreateDisabled(ctx, account)
@@ -145,7 +147,7 @@ func (b *NativeBackendQEMU) SetPasswordDisabled(ctx context.Context, account ser
 	}
 	b.mu.RLock()
 	defer b.mu.RUnlock()
-	if b.inner == nil {
+	if b.closed || b.inner == nil {
 		return ErrInvalid
 	}
 	return b.inner.SetPasswordDisabled(ctx, account, secret)
@@ -157,7 +159,7 @@ func (b *NativeBackendQEMU) Enable(ctx context.Context, account serviceaccounts.
 	}
 	b.mu.RLock()
 	defer b.mu.RUnlock()
-	if b.inner == nil {
+	if b.closed || b.inner == nil {
 		return ErrInvalid
 	}
 	return b.inner.Enable(ctx, account)
@@ -169,13 +171,12 @@ func (b *NativeBackendQEMU) Disable(ctx context.Context, account serviceaccounts
 	}
 	b.mu.RLock()
 	defer b.mu.RUnlock()
-	if b.inner == nil {
+	if b.closed || b.inner == nil {
 		return ErrInvalid
 	}
-	// Four complete worker admissions plus status polling take about seven
-	// seconds on the qualified ARMv5 emulator. Preserve every admission, with
-	// fixed four-second status / ten-second total limits only in this fixture.
-	return b.inner.disableWithin(ctx, account, 2*sessionRevocationTimeout)
+	// Retained workers include complete before/after admission. Use the fixed
+	// fixture-only phase budget, not the ordinary command adapter's SLA.
+	return b.inner.disableWithProfile(ctx, account, nativeQEMURevocationProfile)
 }
 
 func (b *NativeBackendQEMU) Close() error {
@@ -184,13 +185,33 @@ func (b *NativeBackendQEMU) Close() error {
 	}
 	b.mu.Lock()
 	defer b.mu.Unlock()
+	if b.closed {
+		return b.closeErr
+	}
+	// Fence every operation before either teardown step. Uncertain closure is
+	// terminal for this backend; retain original references and never retry it.
+	b.closed = true
 	if b.inner == nil {
 		return nil
 	}
 	if err := b.runtime.Close(context.Background()); err != nil {
-		return err // Never discard config while runtime teardown is uncertain.
+		b.closeErr = errors.Join(runtimebundle.ErrReviewRequired, err)
+		return b.closeErr // Never release config while runtime is uncertain.
 	}
-	err := b.inner.Close()
+	return b.closeInnerAfterRuntimeQEMU()
+}
+
+// Caller holds mu and has independently verified runtime closure. This fixed
+// post-runtime step accepts no substitute runtime, closer, backend or callback.
+func (b *NativeBackendQEMU) closeInnerAfterRuntimeQEMU() error {
+	b.closed = true
+	if b.closeErr != nil || b.inner == nil {
+		return b.closeErr
+	}
+	if err := b.inner.Close(); err != nil {
+		b.closeErr = errors.Join(runtimebundle.ErrReviewRequired, err)
+		return b.closeErr // Keep original bookkeeping, not an open-FD witness.
+	}
 	b.inner = nil
-	return err
+	return nil
 }

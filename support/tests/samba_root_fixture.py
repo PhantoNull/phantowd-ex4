@@ -136,6 +136,21 @@ MARKERS = (
     "old_review=true new_verified=true close_busy=true same_peer_session=true "
     "retained_until_stop=true stopped_reaped=true no_fd_leak=true "
     "startup_bound=false service_owner=false scope=qemu-only",
+    "PHANTOWD_SAMBA_OWNER_NATIVE_DATA_READY original_objects=true "
+    "individual_clones=true readonly_EROFS=true smb_read=true smb_write=true "
+    "unix_owner=true symlink_denied=true private_namespace=true "
+    "stopped_before_release=true no_fd_leak=true "
+    "complete_storage_identity=false scope=qemu-only",
+    "PHANTOWD_SAMBA_OWNER_PLANNED_CANDIDATE_READY "
+    "owner=actual_native_backend storage=mounted_roster locked_plan=true "
+    "exact_declaration=true original_objects=true caller_close=true "
+    "fresh_recompiled=true rendered=true granted_only=true "
+    "paired_lookup=true management_complete=true shared_globals=true "
+    "management_bound=true protected_role=true management_unchanged=true "
+    "startup_blocked=true "
+    "identity_retained=true handoff_close_gated=true "
+    "desired_roundtrip=true journals_unchanged=true stale_refused=true "
+    "released=true samba_data=false activation=false scope=qemu-only",
     "PHANTOWD_SAMBA_OWNER_NATIVE_IDENTITY_STARTUP_READY "
     "startup_bound=true exact_backend=true before_start_busy=true "
     "after_start_busy=true duplicate_refused=true canceled_start_refused=true "
@@ -194,12 +209,16 @@ def check_campaign(log, phase):
     enrollment = next(i for i, row in enumerate(MARKERS)
                       if row.startswith(
                           "PHANTOWD_SAMBA_OWNER_NATIVE_ENROLLMENT_READY"))
+    planned = next(row for row in MARKERS
+                   if row.startswith(
+                       "PHANTOWD_SAMBA_OWNER_PLANNED_CANDIDATE_READY"))
+    native = tuple(row for row in MARKERS[split:-3] if row != planned)
     expected = {
         "service": MARKERS[:split] + ("PHANTOWD_SAMBA_ROOT_SERVICE_DONE",),
-        "native": MARKERS[:5] + MARKERS[split:-3]
+        "native": MARKERS[:5] + native
         + ("PHANTOWD_SAMBA_ROOT_NATIVE_DONE",),
         "lifecycle": (MARKERS[:5] + MARKERS[split:enrollment + 1]
-                      + MARKERS[-3:]),
+                      + (planned,) + MARKERS[-3:]),
     }[phase]
     prefixes = ("PHANTOWD_SAMBA_ROOT_", "PHANTOWD_SAMBA_OWNER_")
     markers = tuple(line for line in log.splitlines()
@@ -218,6 +237,18 @@ def select_campaigns(selection):
     if selection not in ("service", "native", "lifecycle"):
         raise ValueError("invalid campaign selection")
     return (selection,)
+
+
+def diagnostic_record(log, phase, status):
+    """Bounded escaped fixture telemetry, never campaign acceptance."""
+    if (not isinstance(log, str) or len(log.encode("utf-8")) > MAX_LOG
+            or phase not in ("service", "native", "lifecycle")
+            or type(status) is not int or not 0 <= status <= 255):
+        raise ValueError("invalid campaign diagnostics")
+    return json.dumps({"format": "phantowd-qemu-campaign-diagnostic",
+                       "schema_version": 1, "qualifying": False,
+                       "phase": phase, "guest_exit": status, "log": log},
+                      ensure_ascii=True, separators=(",", ":"))
 
 
 def check_campaigns(service, native, lifecycle):
@@ -298,6 +329,11 @@ def main():
     selection = sub.add_parser("select-campaigns")
     selection.add_argument("selection",
                            choices=("all", "service", "native", "lifecycle"))
+    diagnostics = sub.add_parser("diagnostic-log")
+    diagnostics.add_argument("log")
+    diagnostics.add_argument("phase",
+                             choices=("service", "native", "lifecycle"))
+    diagnostics.add_argument("status", type=int)
     args = parser.parse_args()
     if args.command == "prepare":
         reports = [json.loads(read_bounded(name, MAX_REPORT)) for name in (
@@ -312,6 +348,11 @@ def main():
         print(f"Samba {args.phase} campaign verified")
     elif args.command == "select-campaigns":
         print(" ".join(select_campaigns(args.selection)))
+    elif args.command == "diagnostic-log":
+        if Path(args.log).is_symlink() or not Path(args.log).is_file():
+            raise ValueError("regular fixture log required")
+        print(diagnostic_record(read_bounded(args.log, MAX_LOG),
+                                args.phase, args.status))
     else:
         log = read_bounded(args.log, MAX_LOG)
         if bool(args.native_log) != bool(args.lifecycle_log):

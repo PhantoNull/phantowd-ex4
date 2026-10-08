@@ -15,8 +15,6 @@ import (
 	"golang.org/x/sys/unix"
 )
 
-const maxConfigurationBytes int64 = 64 << 10
-
 // configurationPlan is separate from executable code admission. Expected
 // contents come from a trusted renderer/identity authority, not from reading
 // the tree being inspected. This private plan has no activation authority.

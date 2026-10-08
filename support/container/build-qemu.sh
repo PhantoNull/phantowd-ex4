@@ -14,6 +14,11 @@ fi
 # shellcheck disable=SC1091
 . "$external_dir/versions.env"
 
+# getconf reports host CPUs even under a Docker CPU quota. Bound both make's
+# jobserver and Buildroot's package budget (including Samba's WAF workers).
+build_jobs=$(python3 -B "$external_dir/support/container/build_jobs.py")
+printf 'PhantoWD build CPU budget: %s jobs\n' "$build_jobs"
+
 buildroot_archive="buildroot-$BUILDROOT_VERSION.tar.xz"
 buildroot_url="https://buildroot.org/downloads/$buildroot_archive"
 buildroot_signature="$buildroot_archive.sign"
@@ -39,9 +44,15 @@ shellcheck -s sh \
 	"$external_dir/support/qemu-md-v10-fixture.sh"
 shellcheck -s sh "$external_dir/support/container/save-qemu-failure-log.sh"
 shellcheck -s sh "$external_dir/support/container/collect-buildroot-source.sh"
+shellcheck -s sh "$external_dir/support/container/apply-buildroot-download-cleanup.sh"
+shellcheck -s bash "$external_dir/support/tests/test-buildroot-download-cleanup.sh" \
+    "$external_dir/support/tests/test-buildroot-download-patch.sh"
 python3 -B "$external_dir/support/tests/test-buildroot-source-collection.py"
 python3 -B -m flake8 "$external_dir/support/tests/test-buildroot-source-collection.py"
 python3 -B "$external_dir/support/tests/test-qemu-build-feedback.py"
+python3 -B "$external_dir/support/tests/test-build-jobs.py"
+python3 -B -m flake8 "$external_dir/support/container/build_jobs.py" \
+    "$external_dir/support/tests/test-build-jobs.py"
 python3 -B "$external_dir/support/tests/test-service-launcher.py"
 python3 -B "$external_dir/support/tests/test-runtime-loader-fixture.py"
 python3 -B "$external_dir/support/tests/test-atomic-dispatch-fixture.py"
@@ -163,11 +174,11 @@ python3 -B "$external_dir/support/tests/test-volume-probe-license.py" \
 python3 -B -m flake8 "$external_dir/support/tests/test-volume-probe-license.py"
 
 # Buildroot 2025.02.18's linux package license-file hash predates the GPL-2.0
-# text shipped in Linux 6.18.54. The archive itself is separately SHA-256 and
+# text shipped in Linux 6.18.55. The archive itself is separately SHA-256 and
 # PGP verified above; update only that expected license-text hash, fail closed
 # if the pinned Buildroot source no longer matches either known state.
-if [ "$BUILDROOT_VERSION" != "2025.02.18" ] || [ "$LINUX_VERSION" != "6.18.54" ]; then
-    echo "The Buildroot GPL-2.0 hash refresh is qualified only for Buildroot 2025.02.18 and Linux 6.18.54" >&2
+if [ "$BUILDROOT_VERSION" != "2025.02.18" ] || [ "$LINUX_VERSION" != "6.18.55" ]; then
+    echo "The Buildroot GPL-2.0 hash refresh is qualified only for Buildroot 2025.02.18 and Linux 6.18.55" >&2
     exit 1
 fi
 linux_hash_file="$buildroot_source/linux/linux.hash"
@@ -179,7 +190,7 @@ linux_gpl_hash_count="$(grep -F -c \
     "$linux_gpl_text_hash  LICENSES/preferred/GPL-2.0" "$linux_hash_file" || true)"
 if [ "$old_gpl_hash_count" -eq 1 ] && [ "$linux_gpl_hash_count" -eq 0 ]; then
     patch --directory "$buildroot_source" --strip=1 --fuzz=0 --forward \
-        < "$external_dir/support/buildroot-patches/$BUILDROOT_VERSION/0001-linux-gpl-text-hash-for-linux-6.18.54.patch"
+        < "$external_dir/support/buildroot-patches/$BUILDROOT_VERSION/0001-linux-gpl-text-hash-for-linux-6.18.55.patch"
 elif [ "$old_gpl_hash_count" -ne 0 ] || [ "$linux_gpl_hash_count" -ne 1 ]; then
     echo "Unexpected GPL-2.0 license hash in $linux_hash_file" >&2
     exit 1
@@ -191,6 +202,14 @@ if [ "${PHANTOWD_PREPARE_ONLY:-0}" = 1 ]; then
     printf 'Pinned Buildroot and Linux sources verified; QEMU build skipped.\n'
     exit 0
 fi
+
+# The pinned upstream archive helper leaves its empty mktemp marker in CWD.
+# Qualify the real function in RAM, then patch only its successful cleanup.
+TMPDIR=/phantowd-qemu-fixture-tmp bash \
+    "$external_dir/support/tests/test-buildroot-download-patch.sh" "$buildroot_source"
+sh "$external_dir/support/container/apply-buildroot-download-cleanup.sh" \
+    "$buildroot_source" \
+    "$external_dir/support/buildroot-patches/$BUILDROOT_VERSION/0003-download-remove-archive-temporary-marker.patch"
 
 # CMake cannot use ccache while bootstrapping ccache itself. Exercise the
 # ordinary Buildroot host-tool selection before any expensive host build.
@@ -311,6 +330,7 @@ make -C "$buildroot_source" \
     BR2_EXTERNAL="$external_dir" \
     BR2_DL_DIR="$download_dir" \
 	O="$output_dir" \
+	PARALLEL_JOBS="$build_jobs" \
 	phantowd_qemu_armv5_defconfig
 
 grep -Fx 'BR2_PACKAGE_SAMBA4=y' "$output_dir/.config" >/dev/null
@@ -330,6 +350,7 @@ make -C "$buildroot_source" \
     BR2_EXTERNAL="$external_dir" \
     BR2_DL_DIR="$download_dir" \
     O="$output_dir" \
+    PARALLEL_JOBS="$build_jobs" \
     host-go-bin
 
 GOCACHE="$workspace_dir/api-host-cache" \
@@ -346,6 +367,7 @@ make -C "$buildroot_source" \
     BR2_EXTERNAL="$external_dir" \
     BR2_DL_DIR="$download_dir" \
 	O="$output_dir" \
+	PARALLEL_JOBS="$build_jobs" \
 	phantowd-api-dirclean phantowd-volume-probe-dirclean
 
 if [ "$samba_package_rebuild" = 1 ]; then
@@ -353,12 +375,14 @@ if [ "$samba_package_rebuild" = 1 ]; then
 		BR2_EXTERNAL="$external_dir" \
 		BR2_DL_DIR="$download_dir" \
 		O="$output_dir" \
+		PARALLEL_JOBS="$build_jobs" \
 		samba4-dirclean
 fi
 
 if [ "$perl_package_rebuild" = 1 ]; then
     make -C "$buildroot_source" BR2_EXTERNAL="$external_dir" \
-        BR2_DL_DIR="$download_dir" O="$output_dir" host-perl-dirclean
+        BR2_DL_DIR="$download_dir" O="$output_dir" \
+        PARALLEL_JOBS="$build_jobs" host-perl-dirclean
 fi
 
 # Clean only the generated local-package directory: rsync alone can retain
@@ -378,13 +402,13 @@ if [ -f "$output_dir/build/linux-$LINUX_VERSION/.stamp_configured" ] && \
     [ "$linux_inputs_previous" != "$linux_inputs_digest" ]; then
     make -C "$buildroot_source" BR2_EXTERNAL="$external_dir" \
         BR2_DL_DIR="$download_dir" O="$output_dir" \
-        -j"$(getconf _NPROCESSORS_ONLN)" linux-reconfigure
+        PARALLEL_JOBS="$build_jobs" -j"$build_jobs" linux-reconfigure
 fi
 make -C "$buildroot_source" \
     BR2_EXTERNAL="$external_dir" \
     BR2_DL_DIR="$download_dir" \
     O="$output_dir" \
-    -j"$(getconf _NPROCESSORS_ONLN)"
+    PARALLEL_JOBS="$build_jobs" -j"$build_jobs"
 
 # Compare literal Configure source, not the build shell's variables.
 # shellcheck disable=SC2016
@@ -431,6 +455,7 @@ make -C "$buildroot_source" \
     BR2_EXTERNAL="$external_dir" \
     BR2_DL_DIR="$download_dir" \
     O="$output_dir" \
+    PARALLEL_JOBS="$build_jobs" \
     legal-info
 
 # Preserve the authenticated original build-system archive alongside upstream
@@ -479,6 +504,7 @@ make --no-print-directory -C "$buildroot_source" \
     BR2_EXTERNAL="$external_dir" \
     BR2_DL_DIR="$download_dir" \
     O="$output_dir" \
+    PARALLEL_JOBS="$build_jobs" \
     show-info > "$artifact_dir/buildroot-show-info.json"
 raw_sbom="$artifact_dir/buildroot-sbom.cdx.json"
 (
