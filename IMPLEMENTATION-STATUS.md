@@ -3,6 +3,28 @@
 
 # Implementation status
 
+## Prepared same-authority coordinator — local component qualification
+
+`NativePlannedServiceQEMU` now privately copies policy, compiles its SAME
+identity/storage authorities, binds share pins to the original roster, retains
+the Owner's startup-fixed backend and closes runtime copies before original
+identity/share authorities. Its pure plan derivation uses ONE freshly verified
+retained identity observation under storage-first lock ordering, not cached
+evidence or a replacement backend. Normal construction/observation/closure,
+caller-policy isolation and original-roster refusal pass pinned Linux tagged
+tests/race-count3, Windows preflight and the complete three-guest ARMv5 union.
+
+The union retains every original independent proof; inspector refusal/retention
+experiments run once in service, while native/lifecycle still hash their OWN
+complete runtime. Bounds, privileges and per-worker admission fences remain.
+Earlier timeout evidence is preserved: this pass does not establish a hosted
+timeout fix, independent clean reproduction or physical performance.
+
+This coordinator has NO Start, HTTP/product activation or product policy lease.
+Constructor/late-close uncertainty, live same-authority data access/supervision
+and complete changed-source image/audit qualification remain open. The audited
+939-input image below is the earlier prerequisite, not this 941-input work.
+
 ## Planned native inputs — host and ARMv5 prerequisite
 
 The QEMU-only runtime now prepares one fixed two-share process tuple from

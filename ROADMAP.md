@@ -1130,6 +1130,18 @@ storage. No production roster provider or activation path exists.
   This is not two-role startup authority or a fix for PR #123's native
   outer timeout. Continue to same-state original-object construction/access,
   complete storage/identity supervision and recovery before product activation.
+
+  A QEMU-only prepared coordinator now retains its SAME Owner/backend, original
+  complete storage roster and share pins, privately copies policy and compiles
+  paired roles itself. Retained identity verification and planning share ONE
+  fresh complete observation under storage-first locks. Normal preparation,
+  observation, policy-copy/foreign-roster refusal and runtime-close-before-
+  original-release pass host/race and the complete original three-guest union.
+  This is not this milestone's completion: there is NO planned daemon Start,
+  product policy authority, HTTP route or full changed-source image proof.
+  Next qualify constructor/late-close uncertainty, paired-role data startup,
+  effective grant/ACL access and complete live drift/settlement supervision
+  while retaining these SAME authorities, before any product activation.
 - **M4.2 — Single service owner.** Define start/reload/stop and child-process
   ownership; bound diagnostics and verify readiness. Preserve the last known
   working configuration on syntax/start failure without claiming an unapplied

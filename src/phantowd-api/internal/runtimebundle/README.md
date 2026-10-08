@@ -480,3 +480,14 @@ Host/race and the complete three-guest ARMv5 union qualify normal preparation,
 caller closure and runtime-close-before-authority-release. Existing start APIs
 still refuse the inert role: this is not planned daemon consumption, a complete
 constructor-fault proof, service supervision or a product activation surface.
+
+The QEMU-only `smbexec.NativePlannedServiceQEMU` now coordinates that prepared
+tuple with its SAME identity Owner/startup backend, original mounted roster and
+share pins. It privately copies policy, compiles its own paired roles and
+rechecks fresh complete retained evidence outside the runtime gate. Runtime
+copies close before either original authority releases; late construction
+failure returns a quarantined handle with the error, and uncertain closure
+keeps review without retry. Normal preparation/observation/closure, policy-copy
+isolation and unrelated-roster refusal pass host/race and the complete local
+ARMv5 union. It has NO daemon Start, HTTP route or product policy authority;
+constructor/late-close fault qualification and live data supervision remain.

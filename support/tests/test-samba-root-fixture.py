@@ -25,6 +25,9 @@ module INTERNAL IBM850// IBM850 1
 
 SCAN_COST = ("PHANTOWD_RUNTIME_SCAN_COST files=104 bytes=12000000 "
              "elapsed_ns=123456789 scope=qemu-emulation-only")
+CENSUS = ("PHANTOWD_SAMBA_ROOT_CENSUS_READY readonly=true "
+          "complete_census=true hashes=true aliases=true "
+          "negative_controls=false retained_control=false scope=qemu-only")
 
 
 def merge(values):
@@ -67,7 +70,7 @@ class SambaRootFixture(unittest.TestCase):
         planned = next(row for row in fixture.MARKERS
                        if row.startswith(
                            "PHANTOWD_SAMBA_OWNER_PLANNED_CANDIDATE_READY"))
-        native = [*fixture.MARKERS[:5],
+        native = [*fixture.MARKERS[:3], CENSUS,
                   *(row for row in fixture.MARKERS[native_split:-3]
                     if row != planned), "PHANTOWD_SAMBA_ROOT_NATIVE_DONE",
                   SCAN_COST]
@@ -239,6 +242,7 @@ class SambaRootFixture(unittest.TestCase):
             "shared_globals=true management_bound=true protected_role=true "
             "management_unchanged=true prepared_inputs=true "
             "service_config_bound=true share_inputs_bound=true "
+            "coordinator_bound=true same_roster=true policy_copy=true "
             "startup_blocked=true identity_retained=true "
             "handoff_close_gated=true desired_roundtrip=true "
             "journals_unchanged=true stale_refused=true "
@@ -253,6 +257,7 @@ class SambaRootFixture(unittest.TestCase):
                       "shared_globals", "management_bound", "protected_role",
                       "management_unchanged", "prepared_inputs",
                       "service_config_bound", "share_inputs_bound",
+                      "coordinator_bound", "same_roster", "policy_copy",
                       "startup_blocked", "identity_retained",
                       "handoff_close_gated", "desired_roundtrip",
                       "journals_unchanged", "stale_refused",
@@ -285,11 +290,11 @@ class SambaRootFixture(unittest.TestCase):
         rows = {
             "service": [*fixture.MARKERS[:split],
                         "PHANTOWD_SAMBA_ROOT_SERVICE_DONE", SCAN_COST],
-            "native": [*fixture.MARKERS[:5],
+            "native": [*fixture.MARKERS[:3], CENSUS,
                        *(row for row in fixture.MARKERS[split:-3]
                          if row != planned),
                        "PHANTOWD_SAMBA_ROOT_NATIVE_DONE", SCAN_COST],
-            "lifecycle": [*fixture.MARKERS[:5],
+            "lifecycle": [*fixture.MARKERS[:3], CENSUS,
                           fixture.MARKERS[enrollment],
                           planned,
                           *fixture.MARKERS[-3:], SCAN_COST],
@@ -301,6 +306,13 @@ class SambaRootFixture(unittest.TestCase):
         covered = {row for values in rows.values() for row in values
                    if row in fixture.MARKERS}
         self.assertEqual(covered, set(fixture.MARKERS))
+        # Each fresh native guest inspects its OWN complete code census. All
+        # independent negative/retention experiments stay mandatory in service,
+        # never asserted by a guest that did not run them. No fourth boot.
+        for proof in fixture.MARKERS[3:5]:
+            self.assertIn(proof, rows["service"])
+            self.assertNotIn(proof, rows["native"])
+            self.assertNotIn(proof, rows["lifecycle"])
         self.assertFalse(any("NATIVE_IDLE_DISABLE_READY" in row
                              for row in rows["lifecycle"]))
         self.assertTrue(any("NATIVE_IDLE_DISABLE_READY" in row
@@ -329,6 +341,20 @@ class SambaRootFixture(unittest.TestCase):
                             good[index].replace("files=104", "files=105")):
                 changed = list(good)
                 changed[index] = altered
+                with self.assertRaises(ValueError):
+                    fixture.check_campaigns(*changed)
+
+        for index in (1, 2):
+            for field in ("readonly", "complete_census", "hashes", "aliases"):
+                changed = list(good)
+                changed[index] = good[index].replace(
+                    CENSUS, CENSUS.replace(field + "=true", field + "=false"))
+                with self.assertRaises(ValueError):
+                    fixture.check_campaigns(*changed)
+            for field in ("negative_controls", "retained_control"):
+                changed = list(good)
+                changed[index] = good[index].replace(
+                    CENSUS, CENSUS.replace(field + "=false", field + "=true"))
                 with self.assertRaises(ValueError):
                     fixture.check_campaigns(*changed)
 
@@ -1032,6 +1058,7 @@ class SambaRootFixture(unittest.TestCase):
             "shared_globals=true management_bound=true protected_role=true "
             "management_unchanged=true prepared_inputs=true "
             "service_config_bound=true share_inputs_bound=true "
+            "coordinator_bound=true same_roster=true policy_copy=true "
             "startup_blocked=true identity_retained=true "
             "handoff_close_gated=true desired_roundtrip=true "
             "journals_unchanged=true stale_refused=true "

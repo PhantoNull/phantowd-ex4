@@ -23,6 +23,10 @@ CATALOG_ROWS = frozenset({
     ("module", "IBM850//", "INTERNAL", "IBM850", "1"),
     ("module", "INTERNAL", "IBM850//", "IBM850", "1"),
 })
+CENSUS_MARKER = ("PHANTOWD_SAMBA_ROOT_CENSUS_READY readonly=true "
+                 "complete_census=true hashes=true aliases=true "
+                 "negative_controls=false retained_control=false "
+                 "scope=qemu-only")
 MARKERS = (
     "PHANTOWD_SAMBA_ROOT_ENTROPY_READY provider=virtio-rng scope=qemu-only",
     "PHANTOWD_SAMBA_ROOT_STAGE_READY fresh=true hashes_during_copy=true "
@@ -148,6 +152,7 @@ MARKERS = (
     "paired_lookup=true management_complete=true shared_globals=true "
     "management_bound=true protected_role=true management_unchanged=true "
     "prepared_inputs=true service_config_bound=true share_inputs_bound=true "
+    "coordinator_bound=true same_roster=true policy_copy=true "
     "startup_blocked=true "
     "identity_retained=true handoff_close_gated=true "
     "desired_roundtrip=true journals_unchanged=true stale_refused=true "
@@ -215,11 +220,15 @@ def check_campaign(log, phase):
                    if row.startswith(
                        "PHANTOWD_SAMBA_OWNER_PLANNED_CANDIDATE_READY"))
     native = tuple(row for row in MARKERS[split:-3] if row != planned)
+    # Every guest still hashes its own complete code tree. The independently
+    # exercised refusals/retention remain mandatory once, in the service guest;
+    # neither a narrowed inspection nor another guest's state claims those.
+    census = MARKERS[:3] + (CENSUS_MARKER,)
     expected = {
         "service": MARKERS[:split] + ("PHANTOWD_SAMBA_ROOT_SERVICE_DONE",),
-        "native": MARKERS[:5] + native
+        "native": census + native
         + ("PHANTOWD_SAMBA_ROOT_NATIVE_DONE",),
-        "lifecycle": (MARKERS[:5] + (MARKERS[enrollment],)
+        "lifecycle": (census + (MARKERS[enrollment],)
                       + (planned,) + MARKERS[-3:]),
     }[phase]
     prefixes = ("PHANTOWD_SAMBA_ROOT_", "PHANTOWD_SAMBA_OWNER_")

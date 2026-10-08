@@ -30,7 +30,38 @@ func BuildFromOwners(
 	identity *identityowner.Owner,
 	storage *mountowner.MountedVolumeSet,
 ) (Plan, error) {
-	if ctx == nil || identity == nil || storage == nil || ctx.Err() != nil {
+	if identity == nil {
+		return Plan{}, ErrNotReady
+	}
+	return buildFromLockedOwners(ctx, config, activeRevision, storage, identity.WithFileServiceSnapshot)
+}
+
+// BuildFromRetainedOwners uses the original lease's ONE fresh observation for
+// both membership/backend/fingerprint verification and planning. Storage still
+// locks first; complete identity derivation happens under the original Owner's
+// mutation lock. A released/review lease supplies no evidence. No caller can
+// substitute a backend, snapshot or freshness assertion at this boundary.
+func BuildFromRetainedOwners(
+	ctx context.Context,
+	config fileservice.Config,
+	activeRevision uint64,
+	identity *identityowner.FileServiceLease,
+	storage *mountowner.MountedVolumeSet,
+) (Plan, error) {
+	if identity == nil {
+		return Plan{}, ErrNotReady
+	}
+	return buildFromLockedOwners(ctx, config, activeRevision, storage, identity.WithFileServiceSnapshot)
+}
+
+func buildFromLockedOwners(
+	ctx context.Context,
+	config fileservice.Config,
+	activeRevision uint64,
+	storage *mountowner.MountedVolumeSet,
+	withIdentity func(context.Context, func(identityowner.FileServiceSnapshot) error) error,
+) (Plan, error) {
+	if ctx == nil || storage == nil || withIdentity == nil || ctx.Err() != nil {
 		return Plan{}, ErrNotReady
 	}
 
@@ -43,7 +74,7 @@ func BuildFromOwners(
 		if err != nil {
 			return err
 		}
-		return identity.WithFileServiceSnapshot(ctx, func(identityEvidence identityowner.FileServiceSnapshot) error {
+		return withIdentity(ctx, func(identityEvidence identityowner.FileServiceSnapshot) error {
 			if ctx.Err() != nil {
 				return ErrNotReady
 			}

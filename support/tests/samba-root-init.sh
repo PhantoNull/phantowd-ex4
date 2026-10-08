@@ -117,7 +117,15 @@ run_fixture() {
     mkdir -m 0700 "$source/denied" || return 1
     /usr/sbin/phantowd-runtime-bundle-probe stage || return 1
     /usr/sbin/phantowd-runtime-bundle-probe inspect-acl || return 1
-    /usr/sbin/phantowd-samba-root-launcher runtime-bundle || return 1
+    if [ "$campaign" = service ]; then
+        # The complete union still requires EVERY independent inspector and
+        # generic-adapter refusal/retention proof from this one fresh guest.
+        /usr/sbin/phantowd-samba-root-launcher runtime-bundle || return 1
+    else
+        # These guests still inspect/hash their OWN full runtime, without
+        # claiming the independent experiments or borrowing another boot.
+        /usr/sbin/phantowd-samba-root-launcher runtime-census || return 1
+    fi
     if [ "$campaign" = native ] || [ "$campaign" = lifecycle ]; then
         run_native_fixture || return 1
         return 0

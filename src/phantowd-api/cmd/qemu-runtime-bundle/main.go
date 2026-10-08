@@ -103,7 +103,8 @@ func run() error {
 		return ownerFixtureChild()
 	}
 	composed := len(os.Args) == 2 && os.Args[1] == "composed-code"
-	if (len(os.Args) != 1 && !composed) || os.Getuid() != 1801 || os.Geteuid() != 1801 {
+	censusOnly := len(os.Args) == 2 && os.Args[1] == "census-only"
+	if (len(os.Args) != 1 && !composed && !censusOnly) || os.Getuid() != 1801 || os.Geteuid() != 1801 {
 		return errors.New("fixture guard")
 	}
 	status, err := os.ReadFile("/proc/self/status")
@@ -157,6 +158,13 @@ func run() error {
 		return errors.New("byte accounting")
 	}
 	fmt.Printf("PHANTOWD_RUNTIME_SCAN_COST files=%d bytes=%d elapsed_ns=%d scope=qemu-emulation-only\n", got.Files, got.Bytes, elapsed.Nanoseconds())
+	if censusOnly {
+		// Native/lifecycle each hash their OWN full tree under the SAME zero-cap
+		// boundary. The service guest owns every original independent inspector
+		// refusal/retention experiment; no proof or authority crosses boots.
+		fmt.Println("PHANTOWD_SAMBA_ROOT_CENSUS_READY readonly=true complete_census=true hashes=true aliases=true negative_controls=false retained_control=false scope=qemu-only")
+		return nil
+	}
 	refuse := func(f []runtimebundle.File, a []runtimebundle.Alias) error {
 		bad, err := runtimebundle.NewPlan(f, a)
 		if err != nil {

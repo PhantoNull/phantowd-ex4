@@ -750,6 +750,16 @@ and explicitly enables them, then tests retained startup/supervision, coordinato
 revocation and one state-alias fault. It does not duplicate native's first
 daemon/idle-disable cycle. Authentication, idle/live disable and backend-binding
 proofs remain mandatory in the native guest, never fabricated in lifecycle.
+Independent inspector refusals and generic-adapter retention experiments now
+run once, in service, and remain mandatory in the complete union. Native and
+lifecycle each run the SAME zero-capability/read-only boundary and actual
+complete census/hash inspection of their OWN staged tree, but emit a separate
+`CENSUS_READY` proof explicitly saying those independent controls did not run.
+There is no borrowed runtime authority, cached hash, fourth guest, weaker
+worker revalidation or increased deadline. The host verifier rejects missing
+original service proofs, incomplete census, wrong-phase/duplicate markers and
+false claims that omitted controls ran. A local all-three pass is not proof
+that intermittent hosted enrollment/guest timeouts are fixed.
 Deliberately quarantined captures and identity references remain held until a
 disposable subprocess proves group stop and exits; that exit is not recovery.
 

@@ -48,6 +48,111 @@ func TestFileServiceLeaseRetainsExactOwnerUntilRelease(t *testing.T) {
 	}
 }
 
+func TestFileServiceLeaseDerivesCompleteEvidenceWithoutReleasingAuthority(t *testing.T) {
+	owner, _, account := fileServiceSMBLeaseFixture(t)
+	ctx := context.Background()
+	before, err := owner.FileServiceSnapshot(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	lease, err := owner.RetainFileServiceSnapshot(ctx, before.Fingerprint)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { lease.Release() })
+	derived := false
+	refusedDerivation := errors.New("pure derivation refused")
+	err = lease.WithFileServiceSnapshot(ctx, func(evidence FileServiceSnapshot) error {
+		if evidence.Fingerprint != before.Fingerprint || len(evidence.Registry.Accounts) != 1 ||
+			evidence.Registry.Accounts[0] != before.Registry.Accounts[0] || evidence.Registry.Accounts[0].ID != account.ID ||
+			len(evidence.Native) != 1 || len(evidence.Samba) != 1 ||
+			len(evidence.Passdb) != 1 || evidence.Passdb[0].AccountID != account.ID {
+			t.Fatal("retained derivation omitted complete, exact identity evidence")
+		}
+		derived = true
+		return refusedDerivation
+	})
+	if !errors.Is(err, refusedDerivation) || !derived {
+		t.Fatal("retained pure derivation did not receive complete evidence:", err)
+	}
+	if err := lease.Verify(ctx); err != nil {
+		t.Fatal("pure derivation refusal invalidated healthy authority:", err)
+	}
+	if err := owner.Close(); !errors.Is(err, ErrBusy) {
+		t.Fatal("pure derivation released the original identity authority:", err)
+	}
+	if err := lease.Release(); err != nil {
+		t.Fatal(err)
+	}
+	derived = false
+	err = lease.WithFileServiceSnapshot(ctx, func(FileServiceSnapshot) error { derived = true; return nil })
+	if !errors.Is(err, ErrUnavailable) || derived {
+		t.Fatal("released lease supplied trusted evidence:", err)
+	}
+}
+
+func TestFileServiceLeaseDerivationRejectsUncertainEvidenceWithoutCallingConsumer(t *testing.T) {
+	owner, backend, _ := fileServiceSMBLeaseFixture(t)
+	ctx := context.Background()
+	before, err := owner.FileServiceSnapshot(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	lease, err := owner.RetainFileServiceSnapshot(ctx, before.Fingerprint)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { lease.Release() })
+	called := false
+	derive := func(FileServiceSnapshot) error { called = true; return nil }
+	if err := lease.WithFileServiceSnapshot(ctx, nil); !errors.Is(err, ErrUnavailable) {
+		t.Fatal("absent derivation was admitted:", err)
+	}
+	if err := lease.Verify(ctx); err != nil {
+		t.Fatal("invalid callback changed healthy retained authority:", err)
+	}
+	backend.observeErr = true
+	if err := lease.WithFileServiceSnapshot(ctx, derive); !errors.Is(err, ErrReview) || called {
+		t.Fatal("uncertain passdb observation reached the consumer:", err)
+	}
+	backend.observeErr = false
+	if err := lease.WithFileServiceSnapshot(ctx, derive); !errors.Is(err, ErrReview) || called {
+		t.Fatal("restored evidence revived an uncertain derivation:", err)
+	}
+	if err := owner.Close(); !errors.Is(err, ErrBusy) {
+		t.Fatal("uncertain derivation dropped lifetime authority:", err)
+	}
+}
+
+func TestFileServiceLeaseCancellationDuringDerivationRemainsReview(t *testing.T) {
+	owner, _, _ := fileServiceSMBLeaseFixture(t)
+	ctx := context.Background()
+	before, err := owner.FileServiceSnapshot(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	lease, err := owner.RetainFileServiceSnapshot(ctx, before.Fingerprint)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { lease.Release() })
+	canceled, cancel := context.WithCancel(ctx)
+	defer cancel()
+	called := false
+	err = lease.WithFileServiceSnapshot(canceled, func(FileServiceSnapshot) error { called = true; cancel(); return nil })
+	if !errors.Is(err, ErrReview) || !called {
+		t.Fatal("admitted cancellation supplied a usable derivation:", err)
+	}
+	called = false
+	err = lease.WithFileServiceSnapshot(ctx, func(FileServiceSnapshot) error { called = true; return nil })
+	if !errors.Is(err, ErrReview) || called {
+		t.Fatal("fresh context revived a canceled retained derivation:", err)
+	}
+	if err := owner.Close(); !errors.Is(err, ErrBusy) {
+		t.Fatal("admitted cancellation released the original authority:", err)
+	}
+}
+
 func TestFileServiceLeaseCannotCrossSerializationBoundary(t *testing.T) {
 	owner, _, _ := fixture(t)
 	ctx := context.Background()
