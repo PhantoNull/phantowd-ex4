@@ -71,6 +71,8 @@ See the [dependency qualification record](support/DEPENDENCY-REVIEW.md).
 That qualified checkpoint includes same-authority coordinator preparation and
 the complete original three-campaign Samba union. It does not activate a
 planned SMB/NFS service; see [implementation status](IMPLEMENTATION-STATUS.md).
+Newer QEMU-only retained startup is qualified separately as a component, not
+an installable image or product service.
 
 ## Roadmap
 

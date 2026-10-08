@@ -3,6 +3,32 @@
 
 # Implementation status
 
+## Same-authority planned startup — local host/QEMU component qualification
+
+Code checkpoint `8dcd541d29acb253c03320e0d712d511bbe51dbb` adds single-use
+`NativePlannedServiceQEMU.Start`. The coordinator retains its original identity
+Owner, startup-fixed backend, complete mounted roster and declared share pins.
+Fresh complete planning brackets startup outside the runtime gate. The daemon
+uses the separately retained service configuration; credential workers retain
+management lookup. Live verification compares both original data objects and
+their exact protected RO/RW child views. No backend is selected per operation.
+
+On 2026-10-08, Windows API/UI preflight, pinned Linux tagged vet/package tests,
+six-package race-count3, ARMv5 cross-build and all three original Samba guests
+pass locally. The new mandatory startup proof verifies canceled/duplicate
+refusal, busy original authorities while live, fresh complete observation and
+runtime-close-before-release. All 56 POSIX driver tests pass, all prior proofs
+remain mandatory, and guest/worker bounds and privileges are unchanged.
+
+This normal startup tracer explicitly claims **no data transfers by this
+coordinator**, no product activation or HTTP route. The older isolated data
+probe remains independent and does not gain complete storage/identity scope.
+Constructor/late-close faults, live data/grant/ACL checks and complete drift/
+supervision qualification remain open. The current 943 source inputs have not
+yet received a complete new image/source audit; the last fully audited image is
+the earlier prepared941 checkpoint below. No hosted timeout fix, clean-build,
+EX4, installation or release qualification follows from these local tests.
+
 ## Prepared same-authority coordinator — complete cached local qualification
 
 `NativePlannedServiceQEMU` now privately copies policy, compiles its SAME
@@ -20,7 +46,7 @@ complete runtime. Bounds, privileges and per-worker admission fences remain.
 Earlier timeout evidence is preserved: this pass does not establish a hosted
 timeout fix, independent clean reproduction or physical performance.
 
-This coordinator has NO Start, HTTP/product activation or product policy lease.
+That frozen prepared checkpoint had NO Start, HTTP/product activation or product policy lease.
 Constructor/late-close uncertainty and live same-authority data access/
 supervision remain open. The complete 941-input build and independent
 source/image audit now pass as recorded below. Hosted exact-head, independent

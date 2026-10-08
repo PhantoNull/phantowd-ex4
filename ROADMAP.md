@@ -1138,13 +1138,21 @@ storage. No production roster provider or activation path exists.
   fresh complete observation under storage-first locks. Normal preparation,
   observation, policy-copy/foreign-roster refusal and runtime-close-before-
   original-release pass host/race and the complete original three-guest union.
-  This is not this milestone's completion: there is NO planned daemon Start,
-  product policy authority or HTTP route. Frozen `19d1891` now passes the
+  This is not this milestone's completion: that prepared checkpoint had NO
+  planned daemon Start, product policy authority or HTTP route. Frozen `19d1891` passes the
   complete cached host/ARMv5 driver and independent exact941 source/image audit;
   hosted exact-head, independent clean and hardware qualification remain.
-  Next qualify constructor/late-close uncertainty, paired-role data startup,
-  effective grant/ACL access and complete live drift/settlement supervision
-  while retaining these SAME authorities, before any product activation.
+  New code checkpoint `8dcd541` adds normal single-use paired-role startup in
+  host/disposable QEMU with those SAME authorities, freshly recompiled on both
+  sides. Original-object RO/RW child views, canceled/duplicate refusal, busy
+  authority, live observation and full close-before-release pass the complete
+  original three-guest suite. It has no HTTP/product policy surface; the new
+  normal trace explicitly claims no data transfers by this coordinator.
+  Next qualify constructor/late-close uncertainty, effective live grant/ACL
+  access, complete drift/settlement supervision and the changed943 image/source
+  audit. Measure cumulative guest budgets before adding work; neither a fourth
+  guest nor relaxed deadlines/predicates is a timeout fix. All hosted/clean,
+  hardware and product-activation gates remain open.
 - **M4.2 — Single service owner.** Define start/reload/stop and child-process
   ownership; bound diagnostics and verify readiness. Preserve the last known
   working configuration on syntax/start failure without claiming an unapplied

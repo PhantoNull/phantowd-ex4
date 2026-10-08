@@ -283,6 +283,23 @@ caller closure, busy original authorities and complete input closure before
 lease/pin/handoff release. The normal trace does not qualify constructor-close
 or late-uncertainty recovery, planned daemon execution or product supervision.
 
+The separate same-authority coordinator now qualifies **normal startup** in
+host/disposable QEMU. Its single-use `Start` brackets the prepared fixed daemon
+with fresh complete original storage/identity planning outside the runtime gate.
+The daemon consumes the service role; credential workers retain management.
+Its owned child data views are compared with retained originals and protected
+RO/RW flags, not caller-selected paths or matching bytes. Canceled/duplicate
+admission refuses, both original authorities stay busy while live, and verified
+whole-runtime closure precedes their release. An uncertain startup/stop/close
+keeps review and authority without restart or retry.
+
+The mandatory new startup marker explicitly denies coordinator data transfers
+and product activation. It does not borrow the independent native data probe's
+access proof or complete the constructor-fault/live-grant/supervision gates.
+Pinned Linux tagged tests, six-package race-count3 and all three original ARMv5
+guests pass with 56 POSIX driver tests and unchanged limits. This is not a new
+complete943 image audit, hosted timeout fix or physical/product qualification.
+
 Host tagged vet/tests, focused race-count3, ARM cross-build and the complete
 three-campaign ARMv5 union pass with all55 POSIX verifier tests. Independent
 libc/config/handoff probes remain mandatory in native, rather than duplicated

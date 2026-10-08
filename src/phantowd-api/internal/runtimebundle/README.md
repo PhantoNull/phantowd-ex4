@@ -489,5 +489,21 @@ copies close before either original authority releases; late construction
 failure returns a quarantined handle with the error, and uncertain closure
 keeps review without retry. Normal preparation/observation/closure, policy-copy
 isolation and unrelated-roster refusal pass host/race and the complete local
-ARMv5 union. It has NO daemon Start, HTTP route or product policy authority;
-constructor/late-close fault qualification and live data supervision remain.
+ARMv5 union. It exposes no HTTP route or product policy authority.
+
+The separate QEMU-only coordinator `Start` now admits one prepared service
+tuple, freshly recompiling complete original storage/identity evidence before
+and after launch outside the runtime gate. `StartPlannedDaemonQEMU` refuses
+unprepared roles, pending work, repeated starts and retained-runtime review.
+Credential workers keep management configuration while the daemon uses the
+service role. Its owned ready PID's two child views must match the retained
+original objects and exact protected RO/RW flags; caller-selected PIDs/paths
+cannot supply observation authority. Legacy start APIs remain blocked.
+
+Normal startup, canceled/duplicate refusal, busy identity/handoff authority,
+fresh live observation and full close-before-release pass host/race and the
+complete original three-guest ARMv5 suite. Startup failure retains review and
+both original authorities without retrying uncertain teardown. This is not a
+constructor/late-close fault qualification, data-access/supervision proof,
+product policy lease or new complete image audit. See
+[the current qualification scope](../../../../IMPLEMENTATION-STATUS.md).
