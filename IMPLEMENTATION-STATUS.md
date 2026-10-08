@@ -28,9 +28,36 @@ proof remains mandatory in the three-guest union, with unchanged guest/operation
 deadlines and privileges. This local pass does not establish a hosted timeout
 fix, physical efficiency, planned daemon consumption or complete service Owner.
 Constructor-close/late-uncertainty faults, fresh identity/storage supervision,
-the new complete image/source audit and product/hardware gates remain open.
+and product/hardware gates remain open. The new complete image/source audit
+now passes as recorded below.
 
-## Current cached integration — bounded build jobs and native phase visibility
+## Current cached integration — original planned inputs and exact939 audit
+
+Frozen `0d12dca66bcaa41f80666aeebcac0145f64e92c2`, API tree
+`599446ec8424e9622683cea9a156d4a347759c8f`, passes the complete cached
+Buildroot/host/ARMv5 driver on 2026-10-08. Ordinary/race/fixed-count fuzz,
+standard smoke, MD/state, launcher/runtime/loader/atomic, all three original
+Samba campaigns and both synthetic SMART lanes pass. The original four-job
+ceiling, assertions, privileges and guest/operation deadlines are unchanged.
+
+The independent post-terminal read-only audit matches all **939** API source
+files against BOTH compiled package and collected source archive, rejecting
+stale extras with zero generated-marker exemptions. Declared licenses,
+configured stripping, installed/image/exported API, ordered seven hashes,
+actual Linux AND headers 6.18.55, SBOM/release/legal-source/license and linked
+Go 1.26.6/CGO0/Linux ARMv5 agree. Twenty-one regular-file witnesses recheck
+unchanged. No previous image or 937-input census is adopted as this proof.
+
+The normal API is 10,708,180 bytes, SHA-256
+`e383bca363eb5c5204c3d3f4cfae262f62afdbc57e655839749a5f82a4e85be5`.
+Exact source archive, rootfs and manifest hashes are recorded in the
+[dependency qualification record](support/DEPENDENCY-REVIEW.md).
+This is cached local integration, not clean reproduction, a hosted timeout fix,
+complete advisory/release licensing review, paired-role daemon consumption,
+complete service supervision, physical EX4 qualification or installation.
+Exact-head hosted and all remaining product/storage/recovery gates remain.
+
+### Earlier cached parent — bounded build jobs and native phase visibility
 
 Frozen `4ca65d557c746eec08d36dadf72a97bdcbce9757`, API tree
 `677a3f8f76122ab310c5763d6cd0ee631ace4543`, passes the complete cached

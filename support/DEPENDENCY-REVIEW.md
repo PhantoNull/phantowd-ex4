@@ -117,7 +117,7 @@ licensing review, hosted-head or resolved EX4/physical qualification. Go and
 host OpenSSL update packets remain separate. A successful local Samba run does
 not demonstrate a fix for historical hosted timeouts or authorize deployment.
 
-## Current cached integration requalification (2026-10-08)
+## Earlier cached parent requalification (2026-10-08)
 
 Frozen `4ca65d557c746eec08d36dadf72a97bdcbce9757`, API tree
 `677a3f8f76122ab310c5763d6cd0ee631ace4543`, passes the complete cached
@@ -141,6 +141,38 @@ This cached pass does not re-run the complete advisory review, establish clean
 reproducibility, waive failed hosted checks, qualify physical EX4 peripherals,
 activate product services or authorize installation. Other dependency update
 packets and all release gates remain separate.
+
+## Current planned-input cached qualification (2026-10-08)
+
+Frozen `0d12dca66bcaa41f80666aeebcac0145f64e92c2`, API tree
+`599446ec8424e9622683cea9a156d4a347759c8f`, passes the complete cached
+host/ARMv5 driver. Original ordinary/race/fixed fuzz, smoke, MD/state,
+launcher/runtime/loader/atomic, all three Samba campaigns and both synthetic
+SMART lanes remain mandatory and pass with unchanged limits and privileges.
+The paired-role prerequisite prepares original configuration/state/share inputs;
+it admits no planned daemon or product activation.
+
+The independent post-terminal read-only audit matches exactly **939** tracked
+API files against compiled package AND collected source archive. It rejects
+stale extras and uses zero generated-marker exemptions. All original license,
+configured-strip, installed/image/export, seven-artifact, actual Linux/header
+6.18.55, metadata/SBOM/release, authenticated legal-source/license and linked
+Go 1.26.6 checks pass. Twenty-one regular-file witnesses recheck unchanged.
+The preceding 935/937 source and artifact hashes describe their own frozen
+parents, not this new image.
+
+| Artifact | SHA-256 |
+| --- | --- |
+| Normal API (10,708,180 bytes) | `e383bca363eb5c5204c3d3f4cfae262f62afdbc57e655839749a5f82a4e85be5` |
+| rootfs.ext2 | `1e98047cf1876d249da9bb06ddc6edaa36814293549d930f2dfe44837c5155fb` |
+| API source archive | `dcf8eedfe8e9d3c775604ce99381f865506897944d3b8bf24856d5a9ca15e351` |
+| SHA256SUMS | `d8f5cf650bc0da3cc7fff15df890812b987d2d430e7f08bb50900d869c273fbc` |
+
+This extends local complete qualification only. It does not renew complete
+advisory/backport or release licensing review, establish independent clean
+reproducibility, resolve hosted timeouts, qualify physical EX4 peripherals or
+installation, or complete paired-role service supervision. Constructor and
+late-uncertainty faults, other dependency packets and all release gates remain.
 
 ## Important interpretation boundaries
 
