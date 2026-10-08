@@ -162,6 +162,32 @@ and storage freshness, retained lifetime, planned runtime configuration and
 verified service settlement must still compose under the SAME service Owner.
 No HTTP, product activation or real-disk operation is introduced.
 
+## Same-Plan management and service lookup candidates
+
+`Plan.SambaRoleCandidate` pairs complete live native management lookup with the
+existing granted-only isolated service candidate. Both are immutable derivatives
+of ONE Plan and its six-field freshness tuple; no constructor accepts separately
+supplied management and service snapshots. Management includes desired-disabled
+and enabled ungranted live accounts, with the same locked private-group grammar.
+Retired rows stay absent and their permanent registry reservations are unchanged.
+Every live management account must have its exact UID/GID in the source census.
+
+Management lookup is optional at `Build`: missing unrelated native identities
+do not change existing share-only candidate admission, but such a Plan cannot
+produce the paired candidate or partial role documents. Zero, NFS-only and
+unsupported isolated whole-volume plans likewise refuse the pair. The live
+lookup remains bounded to 128 accounts / 32 KiB, even with 1024 registry rows.
+Returned strings and service-root request copies do not alias caller input;
+both JSON directions refuse. A disabled management row is **not** SMB access.
+
+`BuildFromOwners` derives the same pair within its existing ordered locks and
+native-confirmation adapter. `Build` still consumes supplied snapshots; rendering
+cannot assert native journal confirmation, passdb identity, a retained lease or
+authority merely because a census contains an ID. The pair does not replace the
+separate pre-enrollment lookup contract. Same-object configuration/state binding,
+fresh retained storage/identity, native parser qualification and complete planned
+daemon supervision remain required. No files, mounts or services are changed.
+
 ## Native lookup before Samba enrollment
 
 `SambaEnrollmentLookupFromOwner(ctx, owner)` is a separate Linux-only internal

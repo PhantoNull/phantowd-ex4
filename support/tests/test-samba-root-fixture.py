@@ -4,6 +4,7 @@
 """Negative manifests and source-contract checks for a QEMU-only experiment."""
 import copy
 import hashlib
+import json
 import os
 from pathlib import Path
 import subprocess
@@ -45,9 +46,107 @@ def reports():
 
 
 class SambaRootFixture(unittest.TestCase):
+    def test_native_phase_timing_cannot_replace_or_weaken_acceptance(self):
+        timings = "\n".join(
+            "PHANTOWD_DIAG_NATIVE_PHASE phase=" + phase
+            + " elapsed_ms=123 qualifying=false scope=qemu-only"
+            for phase in ("entered", "admitted", "enrolled",
+                          "authority-closed", "data-verified"))
+        good = "\n".join([*fixture.MARKERS, SCAN_COST])
+        fixture.check_guest(timings + "\n" + good)
+        with self.assertRaises(ValueError):
+            fixture.check_guest(timings + "\n" + SCAN_COST)
+        for marker in fixture.MARKERS:
+            with self.subTest(missing=marker):
+                with self.assertRaises(ValueError):
+                    fixture.check_guest(
+                        timings + "\n" + good.replace(marker, ""))
+        native_split = next(
+            i for i, row in enumerate(fixture.MARKERS)
+            if row.startswith("PHANTOWD_SAMBA_OWNER_NATIVE_NSS_READY"))
+        planned = next(row for row in fixture.MARKERS
+                       if row.startswith(
+                           "PHANTOWD_SAMBA_OWNER_PLANNED_CANDIDATE_READY"))
+        native = [*fixture.MARKERS[:5],
+                  *(row for row in fixture.MARKERS[native_split:-3]
+                    if row != planned), "PHANTOWD_SAMBA_ROOT_NATIVE_DONE",
+                  SCAN_COST]
+        fixture.check_campaign(timings + "\n" + "\n".join(native),
+                               "native")
+        for marker in native[:-1]:
+            with self.subTest(native_missing=marker):
+                with self.assertRaises(ValueError):
+                    fixture.check_campaign(
+                        timings + "\n" + "\n".join(native).replace(
+                            marker, ""), "native")
+
+    def test_diagnostic_record_is_bounded_nonqualifying_and_escaped(self):
+        log = 'phase\nPHANTOWD_SAMBA_ROOT_DONE\n\x1b[31m'
+        encoded = fixture.diagnostic_record(log, "lifecycle", 0)
+        self.assertNotIn("\n", encoded)
+        self.assertNotIn("\x1b", encoded)
+        record = json.loads(encoded)
+        self.assertEqual(record["format"],
+                         "phantowd-qemu-campaign-diagnostic")
+        self.assertEqual(record["schema_version"], 1)
+        self.assertIs(record["qualifying"], False)
+        self.assertEqual(record["log"], log)
+        self.assertEqual(record["phase"], "lifecycle")
+        self.assertEqual(record["guest_exit"], 0)
+        with self.assertRaises(ValueError):
+            fixture.check_campaign(encoded, "lifecycle")
+
+    def test_diagnostic_record_refuses_invalid_inputs(self):
+        for log, phase, status in ((None, "native", 0),
+                                   ("x" * (fixture.MAX_LOG + 1), "native", 0),
+                                   ("x", "all", 0), ("x", "../native", 0),
+                                   ("x", "native", -1),
+                                   ("x", "native", 256),
+                                   ("x", "native", True)):
+            with self.assertRaises(ValueError):
+                fixture.diagnostic_record(log, phase, status)
+
+    def test_diagnostic_cli_preserves_success_and_timeout_logs(self):
+        with tempfile.TemporaryDirectory() as scratch:
+            path = Path(scratch) / "guest.log"
+            path.write_bytes(b"partial fixture\n")
+            command = [sys.executable, "-B", str(Path(fixture.__file__)),
+                       "diagnostic-log", str(path), "native"]
+            for status in (0, 124):
+                result = subprocess.run(command + [str(status)],
+                                        capture_output=True, text=True,
+                                        check=False, timeout=5)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual(result.stderr, "")
+                record = json.loads(result.stdout)
+                self.assertIs(record["qualifying"], False)
+                self.assertEqual(record["guest_exit"], status)
+                self.assertEqual(record["log"], "partial fixture\n")
+
     def test_campaign_selection_defaults_to_complete_proof(self):
         self.assertEqual(fixture.select_campaigns("all"),
                          ("service", "native", "lifecycle"))
+
+    @unittest.skipUnless(os.name == "posix", "POSIX driver admission")
+    def test_invalid_diagnostic_mode_never_calls_python(self):
+        driver = Path(__file__).resolve().with_name(
+            "test-qemu-samba-root.sh")
+        with tempfile.TemporaryDirectory() as scratch:
+            python = Path(scratch) / "python3"
+            python.write_text(
+                "#!/bin/sh\necho unexpected-python >&2\nexit 73\n")
+            python.chmod(0o700)
+            env = dict(os.environ, PATH=scratch + ":/usr/bin:/bin",
+                       TMPDIR="/tmp")
+            for extra in (("DIAGNOSTIC",), ("diagnostic;true",),
+                          ("none", "extra")):
+                result = subprocess.run(
+                    ["sh", str(driver), *(["/unused"] * 6), "",
+                     "lifecycle", *extra], env=env, check=False,
+                    capture_output=True, text=True, timeout=5)
+                self.assertEqual(result.returncode, 1)
+                self.assertEqual(result.stdout, "")
+                self.assertEqual(result.stderr, "")
 
     def test_campaign_selection_is_one_exact_phase(self):
         for phase in ("service", "native", "lifecycle"):
@@ -136,7 +235,9 @@ class SambaRootFixture(unittest.TestCase):
             "owner=actual_native_backend storage=mounted_roster "
             "locked_plan=true exact_declaration=true original_objects=true "
             "caller_close=true fresh_recompiled=true rendered=true "
-            "granted_only=true protected_role=true management_unchanged=true "
+            "granted_only=true paired_lookup=true management_complete=true "
+            "shared_globals=true management_bound=true protected_role=true "
+            "management_unchanged=true "
             "startup_blocked=true identity_retained=true "
             "handoff_close_gated=true desired_roundtrip=true "
             "journals_unchanged=true stale_refused=true released=true "
@@ -146,7 +247,9 @@ class SambaRootFixture(unittest.TestCase):
         fixture.check_guest(good)
         for field in ("locked_plan", "exact_declaration", "original_objects",
                       "caller_close", "fresh_recompiled", "rendered",
-                      "granted_only", "protected_role", "management_unchanged",
+                      "granted_only", "paired_lookup", "management_complete",
+                      "shared_globals", "management_bound", "protected_role",
+                      "management_unchanged",
                       "startup_blocked", "identity_retained",
                       "handoff_close_gated", "desired_roundtrip",
                       "journals_unchanged", "stale_refused", "released"):
@@ -915,7 +1018,9 @@ class SambaRootFixture(unittest.TestCase):
             "owner=actual_native_backend storage=mounted_roster "
             "locked_plan=true exact_declaration=true original_objects=true "
             "caller_close=true fresh_recompiled=true rendered=true "
-            "granted_only=true protected_role=true management_unchanged=true "
+            "granted_only=true paired_lookup=true management_complete=true "
+            "shared_globals=true management_bound=true protected_role=true "
+            "management_unchanged=true "
             "startup_blocked=true identity_retained=true "
             "handoff_close_gated=true desired_roundtrip=true "
             "journals_unchanged=true stale_refused=true released=true "

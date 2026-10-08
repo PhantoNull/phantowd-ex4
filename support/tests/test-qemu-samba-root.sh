@@ -3,7 +3,7 @@
 # SPDX-FileCopyrightText: 2026 PhantoWD EX4 contributors
 # Exact fixed public-runtime profile, disposable root snapshot and guest tmpfs.
 set -eu
-base=${1:?BASE TARGET GO DEBUGFS CC SOURCE [FAILURE_LOG] [CAMPAIGN]}
+base=${1:?BASE TARGET GO DEBUGFS CC SOURCE [FAILURE_LOG] [CAMPAIGN] [DIAGNOSTICS]}
 target=${2:?pinned target required}
 go_binary=${3:?pinned Go required}
 debugfs=${4:?pinned debugfs required}
@@ -11,7 +11,9 @@ compiler=${5:?pinned ARM compiler required}
 source_dir=${6:?source required}
 failure_log=${7:-}
 selection=${8:-all}
-[ "$#" -le 8 ] || exit 1
+[ "$#" -le 9 ] || exit 1
+diagnostics=${9:-none}
+case "$diagnostics" in none|diagnostic) ;; *) exit 1 ;; esac
 case "$selection" in
     all|service|native|lifecycle) ;;
     *) exit 1 ;;
@@ -112,6 +114,12 @@ child_pid=$!
 status=0
 wait "$child_pid" || status=$?
 child_pid=
+if [ "$diagnostics" = diagnostic ]; then
+    # Escaped, bounded telemetry only. Emitted before verification even for a
+    # timeout; never a success marker or substitute for original acceptance.
+    python3 -B "$source_dir/support/tests/samba_root_fixture.py" diagnostic-log \
+        "$scratch/$campaign.log" "$campaign" "$status"
+fi
 if [ "$status" -ne 0 ] || ! python3 -B "$source_dir/support/tests/samba_root_fixture.py" verify-campaign \
     "$scratch/$campaign.log" "$campaign"; then
     if [ -n "$failure_log" ]; then

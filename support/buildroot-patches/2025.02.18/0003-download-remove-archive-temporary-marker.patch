@@ -1,0 +1,15 @@
+# SPDX-License-Identifier: GPL-2.0-or-later
+# SPDX-FileCopyrightText: 2026 PhantoWD EX4 contributors
+# Remove the empty mktemp marker as well as its archive-work suffixes.
+# This changes success cleanup only, not archive bytes or failure recovery.
+--- a/support/download/helpers
++++ b/support/download/helpers
+@@ -67,7 +67,7 @@
+     # Compress the archive
+     gzip -6 -n <"${tmp}.tar" >"${out}"
+ 
+-    rm -f "${tmp}"{.list,.sorted,.tar}
++    rm -f "${tmp}" "${tmp}"{.list,.sorted,.tar}
+ 
+     popd >/dev/null
+ }

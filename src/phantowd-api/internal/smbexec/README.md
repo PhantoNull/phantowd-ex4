@@ -9,6 +9,13 @@ observation, journal transition, and mutation.
 
 ## Command boundary
 
+- The base command adapter fences all operations before its first configuration
+  close attempt. A failed close retains the first error and the original object
+  reference: subsequent `Close` calls never retry or report success, and even an
+  empty observation is refused after closure. This does not prove that an
+  errored descriptor remains open. Real regular-file closure and concurrent
+  observation regressions cover the base adapter; they do not qualify kernel
+  EIO, the separate tagged native wrapper or durable product recovery.
 - Executables are fixed absolute paths: `/usr/bin/testparm`,
   `/usr/bin/pdbedit`, `/usr/bin/smbpasswd`, `/usr/bin/smbstatus` and
   `/usr/bin/smbcontrol`.
@@ -110,6 +117,18 @@ The actual ARMv5 fixture now enrolls both Owner-created Unix identities through
 password, still-disabled confirmation and separate same-SID enable. Code,
 original config and original mutable-state tuples remain retained through
 verified worker settlement/close; the normal-cycle final FD count is unchanged.
+
+The native adapter now fences all operations before its first Close attempt.
+Runtime or inner-configuration close uncertainty retains the first error and
+review without retry; later Close cannot report success or touch replacements.
+The original inner bookkeeping stays retained after its close fails, which is
+not proof that the errored descriptor remains open. A private fixed
+`closeInnerAfterRuntimeQEMU` step is called only after independently verified
+runtime closure and accepts no alternate closer/runtime/backend. Real-file host
+regressions reach that post-runtime step, then exercise repeated public Close,
+concurrent observations and replacement noninterference. They qualify the
+inner-close bookkeeping, not runtime retirement, kernel EIO or actual guest
+fault recovery. Normal guest qualification must match the changed source.
 The same-state daemon now has focused actual ARMv5 authentication and active
 session-revocation proof: two fixed held clients, complete qualified inventory,
 one target-only logoff, two complete absence inventories, the SAME peer session

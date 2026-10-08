@@ -16,19 +16,19 @@ import (
 )
 
 func TestPlannedConfigurationStageRequiresContextRuntimeAndActualQEMU(t *testing.T) {
-	if stage, err := stagePlannedConfigurationQEMU(nil, nil, fileserviceplan.SambaIsolatedCandidate{}); stage != nil || err == nil {
+	if stage, err := stagePlannedConfigurationQEMU(nil, nil, fileserviceplan.SambaRoleCandidate{}); stage != nil || err == nil {
 		t.Fatal("absent authorities staged files")
 	}
 	runtime := &runtimebundle.NativeSambaRuntimeQEMU{}
 	canceled, cancel := context.WithCancel(context.Background())
 	cancel()
-	if stage, err := stagePlannedConfigurationQEMU(canceled, runtime, fileserviceplan.SambaIsolatedCandidate{}); stage != nil || !errors.Is(err, context.Canceled) {
+	if stage, err := stagePlannedConfigurationQEMU(canceled, runtime, fileserviceplan.SambaRoleCandidate{}); stage != nil || !errors.Is(err, context.Canceled) {
 		t.Fatal("canceled authority staged files", err)
 	}
 	if model, _ := os.ReadFile("/sys/firmware/devicetree/base/model"); string(model) == "ARM Versatile PB\x00" {
 		t.Skip("host refusal; actual guarded staging runs only in QEMU fixture")
 	}
-	if stage, err := stagePlannedConfigurationQEMU(context.Background(), runtime, fileserviceplan.SambaIsolatedCandidate{}); stage != nil || err == nil {
+	if stage, err := stagePlannedConfigurationQEMU(context.Background(), runtime, fileserviceplan.SambaRoleCandidate{}); stage != nil || err == nil {
 		t.Fatal("host acquired a disposable staging role")
 	}
 }

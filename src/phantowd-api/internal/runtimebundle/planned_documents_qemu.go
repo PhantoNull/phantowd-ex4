@@ -51,7 +51,41 @@ func SambaPlannedDataDocumentsQEMU(candidate fileserviceplan.SambaIsolatedCandid
 }
 
 func boundedPlannedDocumentsQEMU(passwd, group, nss, sections string) (map[string]string, error) {
-	if passwd == "" || group == "" || nss == "" || sections == "" {
+	if sections == "" {
+		return nil, ErrInvalid
+	}
+	return boundedNativeDocumentsQEMU(passwd, group, nss, sections)
+}
+
+// SambaRoleDocumentsQEMU renders two separate inert trees from ONE Plan-bound
+// candidate. Management has complete live native lookup and no share sections;
+// service has only granted lookup and the exact isolated share declarations.
+// Both use the same fixed globals/state locations. Caller maps never constitute
+// authority or replace independently derived retention expectations. No runtime
+// starts a daemon from these roles; the separate inert retainer checks existing
+// management expectations before pinning service. Daemon startup stays blocked.
+func SambaRoleDocumentsQEMU(candidate fileserviceplan.SambaRoleCandidate) (management, service map[string]string, err error) {
+	passwd, group, nss, err := candidate.ManagementDocuments()
+	if err != nil {
+		return nil, nil, ErrInvalid
+	}
+	isolated, err := candidate.ServiceCandidate()
+	if err != nil {
+		return nil, nil, ErrInvalid
+	}
+	management, err = boundedNativeDocumentsQEMU(passwd, group, nss, "")
+	if err != nil {
+		return nil, nil, err
+	}
+	service, err = SambaPlannedDataDocumentsQEMU(isolated)
+	if err != nil {
+		return nil, nil, err
+	}
+	return management, service, nil
+}
+
+func boundedNativeDocumentsQEMU(passwd, group, nss, sections string) (map[string]string, error) {
+	if passwd == "" || group == "" || nss == "" {
 		return nil, ErrInvalid
 	}
 	documents := map[string]string{

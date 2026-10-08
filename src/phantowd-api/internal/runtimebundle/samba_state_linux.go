@@ -7,7 +7,6 @@ package runtimebundle
 
 import (
 	"context"
-	"errors"
 	"os"
 
 	"golang.org/x/sys/unix"
@@ -18,9 +17,10 @@ import (
 // Only the disposable Samba constructor currently consumes this private type.
 // Its containing Owner must verify whole-group stop before releasing any pin.
 type retainedSambaState struct {
-	root     *os.File
-	files    map[string]*os.File
-	identity map[string]sambaStateIdentity
+	root       *os.File
+	files      map[string]*os.File
+	identity   map[string]sambaStateIdentity
+	releaseErr error
 }
 
 type sambaStateIdentity struct {
@@ -118,19 +118,30 @@ func (s *retainedSambaState) revalidate(ctx context.Context) error {
 	return ctx.Err()
 }
 
+// Never retry an uncertain close or continue to another input afterward.
+// Confirmed earlier closures stay released; unattempted inputs remain retained.
 func (s *retainedSambaState) release() error {
 	if s == nil {
 		return nil
 	}
-	var result error
-	for _, pin := range s.files {
-		result = errors.Join(result, pin.Close())
+	if s.releaseErr != nil {
+		return s.releaseErr
+	}
+	for name, pin := range s.files {
+		if err := pin.Close(); err != nil {
+			s.releaseErr = err
+			return err
+		}
+		delete(s.files, name)
 	}
 	s.files = nil
-	s.identity = nil
 	if s.root != nil {
-		result = errors.Join(result, s.root.Close())
+		if err := s.root.Close(); err != nil {
+			s.releaseErr = err
+			return err
+		}
 		s.root = nil
 	}
-	return result
+	s.identity = nil
+	return nil
 }

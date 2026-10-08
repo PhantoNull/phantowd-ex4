@@ -130,6 +130,7 @@ type Plan struct {
 	sambaPasswd         string
 	sambaGroup          string
 	sambaNSS            string
+	sambaManagementNSS  sambaLookupDocuments
 	nfsConfig           string
 	requirements        []string
 }
@@ -165,6 +166,10 @@ func Build(config fileservice.Config, activeRevision uint64, identities Identity
 	if preview.NFS.RequiresKerberos && !identities.KerberosReady {
 		return Plan{}, ErrNotReady
 	}
+	// The existing share candidate does not require unrelated native users.
+	// Retain an optional management lookup from the SAME evidence instead of
+	// later pairing independently collected identity and service snapshots.
+	managementNSS := sambaManagementLookup(identities)
 
 	used, writes := referencedVolumes(config)
 	observed := make(map[shareconfig.VolumeID]ObservedVolume, len(storage.Volumes))
@@ -201,7 +206,8 @@ func Build(config fileservice.Config, activeRevision uint64, identities Identity
 		scope: "candidate-only", activationAvailable: false, applied: false, runtimeValidated: false,
 		volumes: bindings, sambaConfig: preview.Samba.Sections, sambaPolicy: cloneSambaPolicy(config.Shares), nfsConfig: preview.NFS.Table,
 		sambaPasswd: passwd, sambaGroup: group, sambaNSS: nss,
-		requirements: slices.Clone(preview.Requirements),
+		sambaManagementNSS: managementNSS,
+		requirements:       slices.Clone(preview.Requirements),
 	}, nil
 }
 

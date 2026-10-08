@@ -177,6 +177,15 @@ passed its kernel-configuration audit and all 11 MAC-policy cases on
 `hardware_validated=no`; Linux 6.18.54 has not been booted on the EX4. The only
 Stage B3 physical observation remains the bounded 6.18.53 trial above.
 
+Source profiles now select Linux 6.18.55. Its authenticated-source Stage B3
+DTS compiles to the same bytes as the 6.18.54 control, with existing warnings;
+the generic board research patch dry-run accepts with zero fuzz. A separate
+kernel-only QEMU/VersatilePB smoke passes against the previous userspace; a later
+complete local Buildroot/ARMv5 QEMU image and exact source/metadata audit also
+pass with all original campaigns. None qualifies a resolved EX4 configuration,
+EX4 image or physical boot. The 6.18.55 Stage B3 build and all hardware gates
+remain open.
+
 Hosted CI compiles Stage B3 as the single automatic Stage B-family firmware
 build. Stage B and B2 remain available through manual workflow dispatch for
 targeted historical-profile checks. These profiles use isolated clean Buildroot

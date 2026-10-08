@@ -3,7 +3,7 @@
 
 # Implementation roadmap
 
-Reviewed: **2026-10-03**. This is the product specification and work breakdown,
+Reviewed: **2026-10-07**. This is the product specification and work breakdown,
 not a release announcement. The [README](README.md) is the concise entry point;
 component contracts remain authoritative for implemented behavior.
 
@@ -66,6 +66,17 @@ The initial evidence-backed status is tracked in
 currently product-qualified for migration.
 
 ## Current baseline
+
+The current combined local checkpoint `8aaedd7` passes the complete cached
+Buildroot/ARMv5 integration, including all three original Samba campaigns and
+the synthetic SMART lanes. Independent post-terminal auditing matches all 934
+API inputs to compiled package/source archive, reproduces configured stripping,
+and verifies installed/image/exported API and seven artifact hashes; see
+[exact scope](IMPLEMENTATION-STATUS.md#current-combined-checkpoint--complete-cached-local-qualification).
+This closes the included changes' pending cached-image audit, not the
+intermittent-timeout cause, exact-head hosted promotion, clean reproducibility,
+two-role daemon construction or any product/hardware/release gate. Historical
+task evidence below keeps its original source scope.
 
 Status vocabulary:
 
@@ -276,6 +287,41 @@ button to an unqualified backend simply because the screen exists.
 - **M0.4 — Maintain release inputs.** Dependency update changes include source
   signatures/hashes, ARMv5 compatibility, package configuration, vulnerability
   review, license material and regenerated SBOM. Test the selected package set.
+  The [dated dependency review](support/DEPENDENCY-REVIEW.md) now identifies
+  Linux 6.18.55, host OpenSSL 3.5.9 and Go 1.26.8 as separate update packets.
+  Linux source/signature/license authentication, unchanged-symbol ARMv5 kernel
+  compilation and the original standard QEMU smoke now pass locally. Five
+  firmware configurations/release files, both source hashes and the qualified
+  GPL patch/driver coherently select 6.18.55; cheap local preflights pass.
+  Complete new-output toolchain/kernel/header/userspace integration now passes
+  locally on frozen `fb2f68c`: original host/fuzz/MD/state/launcher/runtime/loader/
+  atomic/three-Samba/SMART gates and independent exact935 source/archive/license/
+  strip/image/seven-hash audit. Actual kernel/header/SBOM/rootfs/legal sources
+  bind55 and linked Go remains1.26.6. Exact-head hosted, clean reproduction and
+  resolved EX4/physical/release gates remain open; no old image proof is borrowed.
+  The 2026-10-08 frozen `4ca65d5` successor also passes the complete cached
+  driver and independent exact937 source/package/archive and all original
+  artifact/metadata/license audits. Its four-job quota ceiling reaches every
+  Buildroot parallel consumer. QEMU-only fixed phase observations cannot
+  replace acceptance; two added source files leave the normal product API
+  and all seven final artifact hashes unchanged. This is local integration,
+  not hosted timeout resolution, measured speedup or clean reproduction.
+  The review distinguishes host libraries from linked Go target runtime,
+  exact backports from base-version CPEs, and upstream ignore lists from product
+  dispositions. All-package/call-path review remains open; no CVE-free or timeout
+  fix claim follows from the partial review or focused kernel probe.
+  The pinned Buildroot archive producer now has a one-line success-cleanup
+  patch, gated by exact original/patched helper and patch hashes. The actual
+  unmodified producer fails the temporary-file regression; the patched producer
+  preserves compressed bytes, exclusions, unrelated CWD files and repeatability.
+  Idempotence and unknown/missing/symlinked input refusals pass in disposable
+  RAM. The QEMU driver qualifies/applies it before package builds. The complete
+  cached host/ARMv5 build on frozen `d232054` and an independent post-terminal
+  read-only audit now pass: exact935 package/archive inputs, zero generated-marker
+  exemptions, declared licenses, configured strip/image/export and seven hashes.
+  All original Samba/SMART gates are unchanged. No manual historical-marker
+  deletion, error/interruption-cleanup claim, clean reproduction, full release
+  compliance or native Samba timeout resolution is inferred.
 
 The local full wrapper also provides an opt-in `-CachedOnly` mode: it checks
 existing version-derived image/volumes and initialized current output before
@@ -419,7 +465,17 @@ qualification remain open. The revocation primitive is currently QEMU-only.
   is bound once to the Owner and
   journal at open; the validated config inode stays pinned for the Owner
   lifetime and is closed after active operations drain. Operation calls cannot
-  substitute the backend. Reopened intent becomes
+  substitute the backend. The base executor now fences every operation before
+  its first close and preserves a terminal close error without retry or later
+  false success, including empty observations. Real-file fault/concurrency
+  regressions pass in ordinary and tagged Linux race tests; separate unmodified
+  ARMv5 normal-path campaigns and complete cached image integration pass on the
+  combined checkpoint, with all 928 API source/package/archive files and the
+  configured strip/installed/image/export bytes independently matched. These
+  do not prove injected kernel EIO, native-wrapper teardown, clean-build or
+  physical-device qualification, or
+  resolution of the independent promotion-blocking timeout.
+  Reopened intent becomes
   review-required without command replay. The internal credential-bearing
   version-2 Unix-socket methods, including explicit `enable` and `disable`, are bound to the
   Owner resolver and used only by the disposable QEMU fixture; no HTTP endpoint
@@ -1013,8 +1069,20 @@ storage. No production roster provider or activation path exists.
   proves two RO/RW roots, caller-copy closure, effective non-root ownership,
   kernel `EROFS`, legitimate data mutation, source-loss review/restoration
   refusal and final FD equality. This is storage-side lifetime evidence, not
-  Samba access or namespace containment. An actual uncertain-close fault for
-  this pin and complete Plan/identity/runtime composition remain required.
+  Samba access or namespace containment. The focused launcher guest additionally
+  admits actual healthy mounted share pins before a controlled premature
+  original-FD close: repeated release/use requests preserve review, later input,
+  original grant mounts and complete roster; fresh admission refuses. Independent
+  exact-object fixture disposal cannot revive the lifetime or release its
+  reservation. All old controls, FD equality, deadline and base hashes remain
+  required. Kernel EIO/live-service close faults, durable recovery and complete
+  Plan/identity/runtime composition remain required.
+  Host-only real `O_PATH` release characterization additionally passes tagged
+  vet/package race-count3: preclosed originals retain reviewed handoff exclusion,
+  later/replacement inputs remain untouched, concurrency cannot retry and known
+  closure stays idempotent. This covers the existing bookkeeping contract,
+  not admission of actual mounted authority, kernel EIO or guest fault recovery;
+  it does not replace the actual controlled mounted guest case above.
   A distinct fixed QEMU data profile now qualifies individual original FD
   admission, nonrecursive native clones and real RW/RO SMB transfers, Unix
   ownership, kernel `EROFS`, symlink denial and stop-before-release/FD equality.
@@ -1035,6 +1103,33 @@ storage. No production roster provider or activation path exists.
   management lookup distinct from granted-only service lookup while preserving
   one Owner/backend/passdb, qualify descriptor-bound native configuration and
   effective access, then supervise complete identity/storage drift and settlement.
+  `Plan.SambaRoleCandidate` now supplies an inert same-Plan pair: complete live
+  native management lookup (including disabled/ungranted users) and unchanged
+  granted-only service lookup/grants/root requests, bound to one freshness tuple.
+  Missing unrelated native census IDs refuse only the paired candidate; existing
+  share-only admission is unchanged. Retired rows remain reserved but omitted.
+  `SambaRoleDocumentsQEMU` renders separate bounded trees with identical fixed
+  global/passdb paths and no management share sections. Host coverage includes
+  missing census, zero/unsupported plans, maximum live/retired capacity, copy/order
+  independence, all freshness dimensions and JSON refusal. The original focused
+  ARMv5 lifecycle campaign now passes on `7614c3e`, exercising paired rendering
+  against the SAME actual native Owner/mounted roster and unchanged base. The
+  complete cached integration on `f40fd82` and independent 930-input source,
+  configured-strip/image/export and seven-artifact audit also pass. Hosted and
+  independent clean-build qualification remain separate. This does not authorize two-role runtime
+  construction, native validation, service bootstrap or product activation.
+  The inert retainer additionally accepts the same-Plan paired candidate and
+  matches its complete management expectations against the existing retained
+  management roster before pinning service configuration. Original complete late
+  revalidation and daemon-start refusal remain. The native credential renderer
+  now preserves the already complete files-only NSS profile without appending
+  duplicate tables. Host matching and actual temporary-Owner renderer regression
+  pass; original all-three ARMv5 union on `79b5229` also proves management matching
+  against the actual native Owner/mounted roster and preserves original guards,
+  deadlines and base. Full changed-source image/audit remains pending.
+  This is not two-role startup authority or a fix for PR #123's native
+  outer timeout. Continue to same-state original-object construction/access,
+  complete storage/identity supervision and recovery before product activation.
 - **M4.2 — Single service owner.** Define start/reload/stop and child-process
   ownership; bound diagnostics and verify readiness. Preserve the last known
   working configuration on syntax/start failure without claiming an unapplied
@@ -1093,6 +1188,47 @@ storage. No production roster provider or activation path exists.
   readiness, and stops its fixed process set before teardown. An uncertain
   stop retains the lease without retry. Callers must poll `Observe`; there is
   no automatic monitor, restart or production daemon wiring.
+
+  Retained runtime-input release acceptance: after verified process absence,
+  the first descriptor-close failure must remain observable on every later
+  Close, stop releases of all not-yet-attempted inputs and keep runtime review
+  without retry or restart. Successfully closed inputs remain released; the
+  errored descriptor must not be assumed open. Code, management/service
+  configuration, mutable state and executable pins require negative coverage,
+  including replacement noninterference and later-role retention. Already-
+  closed-file Linux regressions pass, as do separate normal static Owner/all
+  three Samba ARMv5 campaigns. Complete cached integration and exact926-source/
+  package/archive/configured-strip/image/export/seven-hash audit also pass.
+  Native QEMU-wrapper terminal cleanup/error-state propagation remains a
+  separately identified gap with a host-tested isolated follow-up. Actual guest
+  fault injection, kernel I/O failure semantics and durable recovery remain
+  open gates; these tests do not complete M4.4 or qualify a product runtime.
+  Current native-wrapper close faults have fresh host RED/GREEN and race/vet
+  proof on `3ffb811`; its original all-campaign replay passes service/native
+  but lifecycle reaches outer180s. A temporary timing replay passes without
+  proving the cause or resolution; it is removed. Optional bounded diagnostic
+  JSON log output now preserves successful/failed fixture observations before
+  cleanup, without modifying guest execution or acceptance. Reproduce/diagnose
+  the intermittent timeout before current full-image/hosted qualification.
+  The private worker boundary additionally retains only the first fixed
+  phase/reason diagnostic, preserving review and internal cause inspection
+  without exposing underlying output or secrets. Its gated observer must remain
+  read-only after closure and refuse canceled/busy calls. Host-only bookkeeping
+  and ordinary-adapter redaction tests pass; guest reports are diagnostic-only.
+  Frozen `a257104` passes the original focused lifecycle and all-three ARMv5
+  union, with all guards/deadlines and base hashes intact. No failure telemetry
+  fires: qualify the failure path separately and reproduce/classify any timing
+  failure before claiming its cause or resolution. Logging and positive normal
+  execution alone are not a timeout fix, retry policy or product recovery.
+  A separate deterministic native-adapter inner-close regression now uses the
+  real post-runtime step rather than a fabricated healthy runtime. It fails
+  when repeated public Close forgets the original file error and passes with
+  terminal first-error retention, operation fencing and replacement isolation.
+  Focused host race3, root module tagged vet/five-package race3 and Windows
+  preflight pass. Frozen `fdef51d` also passes the original all-three ARMv5
+  union with unchanged guards/base/bounds. Actual runtime-close faults,
+  complete changed-image/audit and durable recovery remain separate gates;
+  the positive union does not identify the intermittent-timeout cause.
 
   Security limit: this is a share-scoped pathname view, not a complete service
   authorization boundary. Consumers still run in the host mount namespace and
@@ -2351,6 +2487,18 @@ These features are separate scope, not shortcuts around core acceptance:
 
 ## Next bounded work packets
 
+Local efficiency increment (2026-10-07): code inspection/preparation reuses
+one 32 KiB scratch buffer per pass, with every original hash/metadata/identity
+fence retained. Host digest allocation/chunk/cancellation/reuse regressions,
+tagged race-count3/module vet and Windows/ARMv5 cross-compilation pass. The
+114-digest host microbenchmark reduces allocated bytes from 3,739,200 to 36,416;
+this is not appliance RAM, EX4 throughput or a demonstrated lifecycle-timeout
+fix. Static Owner/service/native pass locally; the unchanged lifecycle guest
+times out at180 seconds. A Go-source-identical shell timing diagnostic completes
+preliminary work in about16 seconds, so that prefix alone does not explain the
+failure. Resolve and requalify the original all-three union before a full image
+or integration; earlier926-source proof does not cover the changed inspector.
+
 Current priority (2026-10-06): **M4.4 separate Samba-specific service Owner
 → M3 production roster/qualification
 + M4 durable activation Owner**. Keep local-first validation and exact-head
@@ -2562,6 +2710,16 @@ this order, preserving the [full contract](support/SAMBA-RUNTIME-PROFILE.md#samb
    sticky redacted review and no retry. Normal teardown retains the journal
    during backend close and is idempotent. Qualify failed-Open cleanup and
    low-level close faults separately; process exit is not product recovery.
+
+   The QEMU native runtime's own terminal teardown now preserves first errors
+   from Owner/auth/helper release, stops later resources and retains observable
+   review across repeated Close. Current real-file bookkeeping RED/GREEN and
+   tagged module vet/three-count planner/runtime/coordinator race tests pass;
+   normal-repeat control stays idempotent. This imports only the previously
+   isolated wrapper contract, not its older ARM/image qualification. Requalify
+   original all-campaign normal lifecycle and the combined image, then fault
+   live worker/session teardown and durable recovery separately. No new
+   constructor, callback, HTTP surface or device privilege is added.
 
    The first `NativeIdentityServiceQEMU` normal-lifecycle trace now passes:
    complete startup eligibility brackets exact-backend identity retention;

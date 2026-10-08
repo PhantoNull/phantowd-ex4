@@ -2,6 +2,27 @@
 
 ## Bounded cached full validation
 
+The QEMU builder selects one CPU job ceiling from Linux process affinity and
+the visible cgroup v1/v2 quota hierarchy. Fractional CPU quotas round down, with
+a minimum of one job. `PHANTOWD_BUILD_JOBS` can request a smaller positive
+integer ceiling; it cannot increase concurrency beyond the observed limits.
+Invalid values or unreadable/malformed quota data fail before compilation.
+The selected budget reaches both GNU make's parallel build and Buildroot's
+`PARALLEL_JOBS`, including Samba/WAF and early package builds. This avoids
+using a host CPU count (for example 24) inside a four-CPU Docker quota. It is
+not a memory/disk budget, measured speedup or fix for a Samba guest timeout.
+The small `support/tests/test-build-jobs.py` regression executes the driver's
+real parallel command boundaries without starting a compiler or QEMU.
+
+The full driver qualifies the pinned Buildroot archive-helper cleanup with
+`support/tests/test-buildroot-download-patch.sh`, then applies only its one-line
+success-cleanup patch before package builds. Its direct regression executes
+the real `mk_tar_gz` function: no empty marker survives, unrelated files remain,
+content/exclusions/repeatability hold, and original/patched archives match.
+Unknown helper/patch bytes and symlinked/missing inputs refuse. This is an
+existing-source, small-tmpfs test; it does not remove historical package files,
+change archive semantics, repair interrupted downloads or solve Samba timeouts.
+
 The full builder first runs the same workflow path and exact fixed-count fuzz
 roster contract as hosted host CI. Keep it synchronized when adding campaigns;
 a stale declaration must fail before source authentication or compilation,
@@ -747,6 +768,29 @@ and cleans its disposable container. Its completion explicitly reports
 qualification or clean Buildroot/hosted/release evidence. Existing full-build
 callers continue to select all campaigns without modification.
 
+For troubleshooting, add `-DiagnosticLogs` to the same command. After each
+guest exits, this opt-in mode emits its complete bounded log as one escaped JSON
+record (`phantowd-qemu-campaign-diagnostic`, schema 1, `qualifying=false`) with
+the campaign and actual exit status, including on timeout. Newlines and control
+characters stay escaped; a record is never a proof marker. The default emits no
+such records. This preserves useful successful diagnostic logs before tmpfs
+cleanup without writing persistent log files, adding a container/volume, altering
+the guest, retrying or changing acceptance and deadlines. These are synthetic
+fixture logs only, not a product/device log collector; save the command output
+if needed. Additional temporary instrumentation still requires a separate clean
+replay after it is removed.
+
+The QEMU-only native and lifecycle fixtures also emit bounded cumulative
+`PHANTOWD_DIAG_NATIVE_PHASE` timings with fixed phase names, `qualifying=false`
+and `scope=qemu-only`. The monotonic clock starts inside credential setup,
+not at host compilation or guest boot. Timings distinguish enrollment, backend
+observation, authentication, revocation, verified authority closure and the
+later new data profile; lifecycle uses its own candidate/startup/fault phases.
+A last timing row only bounds completed work: it neither identifies a blocked
+worker inside the next phase nor proves its success. All original proof markers,
+descriptor census, hashes and command/phase/180-second guest limits remain
+independent and mandatory. Passing telemetry tests is not a timeout fix.
+
 Its fixed runtime now includes IBM850 plus a strictly bounded, hash-verified
 conversion catalog. A dynamic probe tests exact non-ASCII CP850/UTF-8 conversions
 and refusals inside the restricted root; the fixture rejects ASCII fallback.
@@ -764,6 +808,17 @@ explicitly mode0755: permissive default ancestors must not be worked around by
 weakening the handoff's checks. Local builder1000 verification passed with the
 same512 MiB budget used by the full local/CI wrapper. No image/named volume is
 created; this lane neither installs the helper nor tests a real daemon profile.
+
+The declared-share pin campaign also requires
+`PHANTOWD_DECLARED_SHARE_CLOSE_READY`: healthy actual mounted admission followed
+by a real premature original `os.File` close must retain review, the later
+input, original grant clones and full roster. Repeated operations cannot issue
+copies, admit replacements or settle the handoff. Independent never-launched
+fixture disposal checks original clone identities and leaves the lifetime in
+review; final FD equality and ordinary source unmount remain required. This
+is controlled premature-close characterization, not kernel EIO, live Samba
+teardown or a production recovery procedure. The original guest deadline and
+all other markers remain unchanged.
 
 This lane can exercise current userspace against the base's kernel and
 packages without rebuilding Buildroot. It does **not** validate changed

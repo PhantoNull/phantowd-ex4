@@ -33,7 +33,7 @@ scope; [component contracts](src/phantowd-api/README.md) describe the boundaries
 
 | Area | Implemented / tested | Still needed for the product |
 | --- | --- | --- |
-| Build | Pinned Buildroot 2025.02.18 LTS / Linux 6.18.54 LTS, ARMv5 QEMU image, SBOM, development source collection and automated tests | Installable EX4 image, complete release source bundle and qualification |
+| Build | Pinned Buildroot 2025.02.18 LTS / Linux 6.18.55 LTS; complete local ARMv5 integration and exact source/image/SBOM audit pass | Exact-head hosted checks, independent clean reproduction, installable EX4 image and release qualification |
 | Web management | Bounded read-only snapshots, development administrator authentication/password changes, SMB/NFS policy editing with before/after review and cross-protocol folder advisories | Complete setup/recovery, certificate lifecycle, browser qualification and live service management |
 | Storage | Non-root read-only broker, complete sysfs inventory, manual GPT observations, duplicate-identity detection, protected registry with reader-bound rechecks, rechecked registry/census policy and backing reviews, internal MD/mount-owner fixtures | Trusted production lifecycle, persistent volume IDs, global-use accounting, qualified import and RAID management |
 | Sharing and identities | SMB3/NFS fixtures, disabled-first Samba accounts, session revocation, retained startup/state-fault fixtures, Unicode/CP850, streams and POSIX ACL tests | Product account workflows, supervised service activation/recovery and legacy permission migration |
@@ -60,6 +60,13 @@ commit, conclusion and artifacts before relying on it. Cached local tests do
 not establish independent clean-build reproducibility, complete licensing
 compliance or physical EX4 qualification. [versions.env](versions.env) is the
 source of truth for build pins.
+
+The Linux 6.18.55 complete cached local build passes the original host and ARMv5
+integration campaigns. Its post-build audit matches all 937 API source inputs,
+actual images, kernel/header source archives, release metadata, SBOM and license
+files. This cached local proof does not qualify an EX4 installation, independent
+clean reproducibility or a fix for the intermittent hosted Samba timeout.
+See the [dependency qualification record](support/DEPENDENCY-REVIEW.md).
 
 ## Roadmap
 

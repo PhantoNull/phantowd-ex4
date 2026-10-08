@@ -2,12 +2,14 @@
 # SPDX-FileCopyrightText: 2026 PhantoWD EX4 contributors
 [CmdletBinding()]
 param(
-    [string]$BaseArtifactDir = (Join-Path (Split-Path -Parent $PSScriptRoot) 'artifacts/qemu-armv5'),
+    [string]$BaseArtifactDir,
     [ValidateSet('all', 'service', 'native', 'lifecycle')]
-    [string]$Campaign = 'all'
+    [string]$Campaign = 'all',
+    [switch]$DiagnosticLogs
 )
 $ErrorActionPreference = 'Stop'
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
+if (-not $BaseArtifactDir) { $BaseArtifactDir = Join-Path $repoRoot 'artifacts/qemu-armv5' }
 $baseRoot = (Resolve-Path -LiteralPath $BaseArtifactDir).Path
 $pins = @(Get-Content (Join-Path $repoRoot 'versions.env') | Where-Object { $_ -match '^BUILDROOT_VERSION=' })
 if ($pins.Count -ne 1) { throw 'One Buildroot version pin is required.' }
@@ -36,9 +38,11 @@ python3 -B -m flake8 /src/support/tests/samba_root_fixture.py /src/support/tests
 shellcheck /src/support/tests/samba-root-init.sh /src/support/tests/test-qemu-samba-root.sh
 exec sh /src/support/tests/test-qemu-samba-root.sh /base "$output/target" \
     "$output/host/bin/go" "$output/host/sbin/debugfs" \
-    "$output/host/bin/arm-buildroot-linux-gnueabi-gcc" /src '' '__PHANTOWD_CAMPAIGN__'
+    "$output/host/bin/arm-buildroot-linux-gnueabi-gcc" /src '' '__PHANTOWD_CAMPAIGN__'__PHANTOWD_DIAGNOSTIC__
 '@
 $linuxScript = $linuxScript.Replace('__PHANTOWD_CAMPAIGN__', $Campaign)
+$diagnosticArgument = if ($DiagnosticLogs) { " 'diagnostic'" } else { '' }
+$linuxScript = $linuxScript.Replace('__PHANTOWD_DIAGNOSTIC__', $diagnosticArgument)
 $encoded = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($linuxScript.Replace("`r`n", "`n")))
 docker run --rm --pull never --network none --read-only `
     --user 1000:1000 --cap-drop ALL --security-opt no-new-privileges `

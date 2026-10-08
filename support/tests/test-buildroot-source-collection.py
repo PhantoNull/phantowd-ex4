@@ -86,7 +86,8 @@ class CollectionTests(unittest.TestCase):
         regression = script.index(
             'python3 -B "$external_dir/support/tests/'
             'test-buildroot-source-collection.py"')
-        compile_step = script.index('    -j"$(getconf _NPROCESSORS_ONLN)"')
+        compile_step = script.index('\n    PARALLEL_JOBS="$build_jobs" '
+                                    '-j"$build_jobs"\n')
         legal_step = script.index('    legal-info\n')
         collection = script.index(
             '\nsh "$external_dir/support/container/'
