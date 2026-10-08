@@ -129,6 +129,15 @@ regressions reach that post-runtime step, then exercise repeated public Close,
 concurrent observations and replacement noninterference. They qualify the
 inner-close bookkeeping, not runtime retirement, kernel EIO or actual guest
 fault recovery. Normal guest qualification must match the changed source.
+The native session-pair and peer-continuity helpers now also check both wrapper
+and inner terminal lifetimes before status dispatch; pre-canceled contexts
+refuse before dispatch as well. Real-file inner-close/replacement and canceled
+command-boundary regressions first expose the missing fences, then pass without
+running a status worker. These negative host fixtures admit no healthy runtime
+or session witness. Pinned Linux tagged vet/tests/race-count3 and the actual
+ARMv5 native authentication/revocation campaign pass after the correction.
+This does not qualify an uncertain runtime-close fault, durable recovery,
+complete changed-image integration or resolve the separate lifecycle timeout.
 The same-state daemon now has focused actual ARMv5 authentication and active
 session-revocation proof: two fixed held clients, complete qualified inventory,
 one target-only logoff, two complete absence inventories, the SAME peer session
@@ -247,7 +256,16 @@ session/server generation. New target login is denied; peer login still works.
 Owner Close stays busy until complete runtime closure. All42/seven tests, three
 campaigns, prior fault/privilege guards, FD counts and base hashes pass, together
 with root native race-count3/tagged vet and Windows API/UI/cross-compilation.
-The added live phase is bounded to45 seconds; post-transition observation/stop
+The current lifecycle driver first bounds journal admission/canceled-request
+refusal/held-client qualification to20 seconds, then gives the original
+stale-revision/disable/successor/peer/new-login checks their own45 seconds.
+This replaces a cumulative45 context with serial20+45, not a service deadline
+or faster implementation. The SAME coordinator/backend/Owner/session witness
+crosses that seam; failed/expired work cannot continue or retry and late success
+is refused. Deterministic orchestration tests and one focused actual ARMv5
+lifecycle replay pass. Independent child expiries and the historical hosted
+timeout remain unqualified; a fresh unchanged-source guest also passed.
+Post-transition observation/stop
 has20 seconds, independently of startup40 and the unchanged guest180/worker4/
 revocation10 limits. The fault child explicitly re-enables the synthetic target
 before NEW admission, never by refreshing a consumer or fabricating passdb.
@@ -311,6 +329,19 @@ read-only observations require all15 private daemon inputs plus original runtime
 code, both configurations and state retained; both original authorities stay busy.
 Only the observed cover is unmounted. Original mount identity is restored,
 but every revival operation still refuses. No normal-path Close releases review.
+
+An added real source-restoration/Close regression exposes an earlier gap:
+the coordinator could call the low-level runtime Close after a successful stop,
+releasing retained inputs/original authority despite returning review. The
+coordinator now refuses reviewed Close before any runtime access, preserving
+the first uncertain close error when present. Two explicit Close attempts in
+the original fault guest must leave actual runtime inputs retained and both
+original Owner/handoff authorities busy. The mandatory fault proof includes
+`close_refused=true`; missing/false evidence refuses. A negative-only host
+admission control accesses no backend, while pinned Linux vet/unit/race-count3
+and the actual normal data guest verify unchanged healthy close-before-release.
+This focused correction does not alter the low-level Owner's explicit teardown
+contract or qualify product recovery, full image/SBOM, held sessions or hardware.
 
 Child exit disposes its namespace only after these witnesses; parent FD equality
 and the original identity-only fault proof remain mandatory. This is not product

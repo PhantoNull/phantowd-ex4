@@ -2,7 +2,8 @@
 
 `phantowd-lab` is a host-only research tool with no device or installation
 path. It validates local copies of the legacy WD My Cloud EX4 update,
-logical-mtd3 and logical-rescue formats, verifies signed release metadata,
+logical-mtd3 and logical-rescue formats, prepares unsigned release metadata
+from explicit regular payload files, verifies signed release metadata,
 optionally inspects a public GitHub release, and replays passive captures of
 the internal front-controller protocol.
 
@@ -24,6 +25,7 @@ boundary, not a qualified controller driver or permission to transmit commands.
 ## Commands
 
 ```text
+phantowd-lab build-release-manifest --artifacts DIR --public-key FILE --release-version VERSION --channel stable|beta|nightly --model ID --revision ID --source-commit SHA --buildroot-version VERSION --kernel-version VERSION --minimum-installer VERSION --artifact NAME:ROLE [--revision ID ...] [--artifact NAME:ROLE ...]
 phantowd-lab inspect-github-release --tag VERSION --public-key FILE --model ID --revision ID --channel stable|beta|nightly [--current-version VERSION] [--installer-version VERSION]
 phantowd-lab inspect-release --manifest FILE --signature FILE --public-key FILE --artifacts DIR --model ID --revision ID --channel stable|beta|nightly [--current-version VERSION] [--installer-version VERSION]
 phantowd-lab inspect-update FILE
@@ -50,6 +52,24 @@ phantowd-lab catalog-mcu
 phantowd-lab decode-mcu "fa 23 00 00 00 00 fb"
 phantowd-lab replay-mcu [--format raw|hex] FILE
 ```
+
+`build-release-manifest` emits **unsigned** schema1 JSON on stdout. It accepts
+only a raw 32-byte public key, not a private key. Repeat `--artifact NAME:ROLE`
+and `--revision ID` for explicit lists (at most16 each); payload filenames must
+be flat, unique and safe. Revisions/names are sorted for reproducible bytes;
+the public-key fingerprint, payload sizes and SHA-256 values are measured.
+The existing manifest validators and size+1 bounded reader are reused. The
+whole set's 1 GiB/member and 2 GiB/combined limits, plus the 64 KiB encoded
+manifest limit, are checked before hashing. Source/target/version declarations
+remain caller input, not provenance or hardware qualification. Payloads are
+point-in-time observations, not retained immutable staging. A future approved
+signing process must independently qualify provenance/staging and sign the exact
+bytes. Private release keys must never enter ordinary PR jobs.
+
+Exit `0` means an unsigned candidate was prepared, **not** a verified release or
+permission to install. Invalid inputs/source observations return `1` without
+metadata output. Output-write failures may leave a partial stream; discard it.
+The command writes no file, payload, image or device and publishes no release.
 
 Artifact inspectors return exit status `0` when all currently understood
 structure and XOR checks pass, `2` when a parsed artifact fails validation,

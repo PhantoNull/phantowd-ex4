@@ -3,7 +3,288 @@
 
 # Implementation status
 
-## Current complete cached integration — six Samba scenarios and exact950 audit
+## Current test observability — redacted planned-fault boundaries
+
+An earlier reviewed-Close seven-campaign attempt passes service, native,
+candidate and lifecycle, then fails fault with incomplete subprocess proof;
+data/exit are not reached. Subsequent isolated, all-seven component and complete
+cached integration runs pass on the checkpoint below. This does not localize
+or causally resolve the intermittent failure.
+
+Test-only planned-fault diagnostics now report outer child deadline/result/proof
+agreement and validated fixed phase/deadline/review labels, without raw child
+output or secrets. Unknown/malformed rows are discarded and duplicates collapsed.
+Diagnostics cannot satisfy exact child-proof equality or campaign qualification.
+Pinned Go 1.26.8 Linux tagged vet/unit/race-count3 and Windows API/UI/contracts/
+ARMv5 cross preflight pass; temporary debug probes are removed. The original
+strict proof bytes, output bound, deadlines, privileges and runtime behavior
+are unchanged. See [diagnostic interpretation](support/QEMU-FAST-TESTS.md#diagnose-a-native-fixture-timeout-before-a-full-ci-build).
+
+The changed diagnostic fixture passes both its original all-seven ARMv5
+component lane and the complete cached integration/audit below. Own-head hosted
+qualification remains separate; no product or NAS operation is added.
+
+## Current component — reviewed planned Close retains original authority
+
+A real disposable ARMv5 source-alias restoration followed by `Close` exposes
+release of retained runtime/original authority despite coordinator review.
+The existing fault probe previously did not attempt this operation. Temporary
+fixed-label diagnostics localize the failure at the new retention assertion;
+they are removed before final validation.
+
+`NativePlannedServiceQEMU.Close` now refuses review before accessing the runtime,
+preserving first cleanup errors. Two explicit Close attempts in the original
+fault campaign retain actual runtime inputs and both original busy authorities;
+the mandatory proof includes `close_refused=true`. Missing/false proof refuses.
+The actual fault guest passes, and the actual normal data guest retains all
+startup/access/supervision/stop/full-close-before-release and FD-equality proofs.
+Pinned Go 1.26.8 Linux two-package tagged vet/unit/race-count3 and Windows API/UI/
+vet/tagged contracts/ARMv5 cross-compilation also pass. Worker/service/readiness/
+stop/guest limits, privileges and low-level explicit cleanup remain unchanged.
+
+The complete checkpoint below includes this correction and its actual fault
+proof. It is not held-session fault, durable recovery, product activation or
+EX4 qualification. PR #129's older published head passes its own checks but
+omits this correction; a refreshed head must pass its own hosted gates.
+
+## Current complete cached integration — seven Samba scenarios and exact962 audit
+
+Frozen `cea5e0a66d8fed7acec6f5ab63aefec9fa8178b0`, API tree
+`8eae4e2b1fa4a9832428c26d2e7e5ace3a06a706`, passes the complete cached
+Buildroot/host/ARMv5 lane and an independent post-terminal read-only audit on
+2026-10-08. Original ordinary/race/fixed-fuzz/toolkit, standard smoke, MD/state,
+launcher/runtime/loader/atomic, all **seven** independently enrolled Samba
+scenarios and both synthetic SMART lanes pass. The lifecycle fixture's combined
+contextual allowance changes from 45 to serial 20+45 seconds as described below;
+worker, readiness, service, stop and guest limits are unchanged.
+
+The complete original proof union includes same-authority startup/data access,
+exclusive supervision, verified cancellation/stop, idle source-alias loss and
+the original-owned idle exit described below. The latter requires retained,
+unconsumed and settled worker inputs; review does not authorize release,
+restart or recovery. Mid-transfer/held-session loss and uncertain construction/
+teardown remain open.
+
+All **962** API inputs match source, compiled package and legal source archive
+without stale extras. Configured strip, installed/rootfs/exported API, all
+seven ordered artifact hashes, actual Go 1.26.8 recipe/source/SDK/host licensing/
+SBOM and Linux AND headers 6.18.55 agree. All **11,510** installed SDK files
+match; **25,263** regular audit inputs and all **1,250** tracked build witnesses
+recheck unchanged. See [measured artifact identities](support/DEPENDENCY-REVIEW.md).
+
+Only the existing image/two project volumes are reused; no consumer remains.
+This is cached local qualification, not independent clean reproduction,
+exact-head hosted qualification, complete advisory review, EX4 operation,
+migration, recovery, product activation or an installable release. Earlier
+PR #128/#129 checkpoints failed QEMU; local success is not their timeout fix,
+and a refreshed head must pass its own checks.
+Older sections below retain their dated, narrower source scopes.
+
+Build-only hardening now fences builtin/module `CONFIG_CRYPTO_USER_API*`
+interfaces in the existing QEMU and EX4 B2/B3 kernel-config auditors. Public
+CLI mutation regressions first reproduce acceptance, then pass after the guard;
+all ten kernel-input tests, both-stage namespace refusals/internal-crypto
+controls, lint and workflow contracts pass. The resolved QEMU6.18.55 config
+already has these interfaces disabled and passes the new auditor. Historical
+B3 config6.18.54 also passes, but is not a new build. No kernel selections,
+fragments, crypto provider, image, API, privilege or timeout changes. This is
+build-policy validation, not a new whole-image, security or performance result.
+
+## Current QEMU fixture — separately bounded lifecycle workloads
+
+The lifecycle driver separates held-client preparation20 from the original
+revocation/peer/new-login verification45. Its combined contextual allowance
+changes from45 to65 seconds; no worker, service, readiness, stop or guest180
+limit changes. It retains the SAME service/Owner/backend/journal/session pair,
+refuses continuation or retry after failed/expired preparation, preserves typed
+uncertainty, respects shorter parents and rejects late successful results.
+
+The real internal runner first fails a virtual-clock regression under the old
+cumulative budget, then passes the timing/cancellation/uncertainty cases.
+Pinned Go1.26.8 Linux tagged command vet/tests and race-count3, Windows API/UI/
+vet/contracts/ARMv5 cross-compilation, and one actual focused ARMv5 lifecycle
+campaign pass with every original proof. The final tool transcript is clipped;
+its observed terminal acceptance is not a claimed complete archived guest log.
+
+Fresh unchanged-source guests both fail and pass: the failure is an independent
+post-admission worker deadline during client preparation, not the historical
+hosted outer continuity timeout. This is fixture orchestration, not a proven
+hosted fix, repeatable-load result, product activation or EX4 qualification.
+The complete current-source suite/image audit now passes at the exact checkpoint
+above; own-head hosted gates remain open. The separate exclusive-supervision
+contract is unchanged.
+
+## Current native component — terminal session-observation fences
+
+The QEMU-only native session reader now refuses closed wrapper/inner lifetimes
+and pre-canceled requests before status dispatch. Its two public fixture helpers
+reuse that reader. Real regular-file close/replacement and canceled-command
+regressions first reproduce dispatch after refusal should have been terminal,
+then pass with no status worker call or cleanup retry. No healthy runtime or
+session authority is fabricated by these negative host fixtures.
+
+Pinned Go 1.26.8 Linux two-package tagged vet/tests and race-count3 pass, with
+the affected tests also cross-compiled for ARMv5. The actual current-source
+ARMv5 `native` campaign passes all original enrollment, authentication,
+idle/live revocation, same-peer continuity, identity/backend handoff, data
+access and cleanup proofs. Windows Go 1.27 API/UI/vet/tagged contracts and
+ARMv5 API-test cross-compilation pass. Parser, full runtime admission, command
+arguments, mutation limits, deadlines, privileges and cleanup policy are unchanged.
+
+This is focused host/guest qualification, not a new full image/SBOM, hosted
+qualification, uncertain runtime-close fault, durable recovery or product/NAS
+activation. The independent lifecycle timeout and PR #128/#129 gates remain
+open; this fence correction is not their diagnosis or fix.
+
+## Current release component — unsigned metadata producer, host-only proof
+
+M10.2c adds the host `build-release-manifest` command and typed producer for
+existing schema1. Explicit declarations/names/roles and a raw public key yield
+sorted deterministic JSON with measured fingerprint/sizes/SHA-256; no private
+key, signer, writer, publisher, VerifiedManifest or install authority. Existing
+validators and bounded regular-file hashing are reused; whole-set size and
+encoded JSON admission precede payload hash reads. Observed set/root drift and
+missing/nonregular/empty payloads refuse with no metadata output.
+
+The real CLI first fails as unknown, then the existing verifier accepts exact
+output with test-only in-memory signatures and still refuses installation/
+hardware authority. Whole Windows Go1.27 toolkit vet/tests and pinned Go1.26.8
+Linux whole toolkit vet/tests plus producer/CLI race3 pass. Linux inotify
+observes zero payload opens/accesses on a sparse over-budget set and verifies a
+positive read control; FIFO/symlink refusal also passes. No GiB of test data is
+allocated and no new Docker image/volume remains.
+
+This prepares metadata, not a qualified firmware release. Source/model/version
+declarations are caller input, files remain point-in-time observations, and
+trusted provenance/immutable staging, key authorization/rotation, authenticated
+runtime roster delivery, signed publication, target install/recovery and EX4
+qualification remain open. No guest, image build, product API or NAS operation;
+the existing QEMU lifecycle failures are unchanged.
+
+## Current runtime component — final digest cancellation, host-only proof
+
+The bounded regular-file digest helper now checks its context after EOF and
+SHA-256 finalization, before emitting a digest/count. A deterministic test
+cancels immediately after the last successful pre-read check and reproduces
+the old completed result for 1, 32768 and 32769 bytes; all three return the
+typed cancellation with zero result after the fix. Complete byte hashing,
+size+1 and metadata/census/identity checks remain unchanged. No cache, skipped
+scan, provider, privilege, retry or deadline change.
+
+Pinned Go 1.26.8 non-root Linux tagged vet/tests and race-count3 for runtimebundle
+and smbexec pass, including the existing digest/scratch regressions; ARMv5
+runtimebundle tests cross-compile, not execute. Root-required fixtures may skip
+under this profile. `Inspect` already had its own final context check: this is
+an internal calculation-boundary correction, not a demonstrated admission
+bypass, new whole-image qualification or the lifecycle timeout fix. No guest,
+hardware or persistent resource creation; the timing-contract choice remains
+open and the integration PRs retain their failed QEMU gates.
+
+## Current UI component — authentication focus continuity, host-only proof
+
+M5.5b adds a main-content skip link, non-tabbable focus destinations and shared
+keyboard/system-color focus styles. Before an authentication transition hides
+the active control, focus moves to the newly visible heading without scrolling.
+Initial status, unchanged views, unrelated controls and retired replies do not
+steal focus. No request, retry, endpoint, privilege, poll or activation changes.
+
+The actual-source DOM regression fails against prior `fa97910` JavaScript for
+the missing login destination, then the complete suite passes with three new
+focus groups including setup, expiration, both logout scopes, unavailable auth,
+password-change uncertainty and stale replies. Windows Go 1.27.0 API/UI/vet,
+tagged contracts and ARMv5 test cross-compilation pass. Pinned Go 1.26.8 Linux
+host vet and embedded dashboard/self-test asset checks also pass in one bounded,
+auto-removed non-root container with the existing read-only workspace.
+
+No new image/volume or guest/hardware run. DOM/source assertions do not qualify
+real-browser focus/rendering, assistive technology, contrast, WCAG, a complete
+changed image or hosted integration. The `ab5f4d1` complete-image checkpoint
+above includes these assets, but does not add real-browser qualification.
+Existing QEMU coordinator failures and integration gates remain open.
+
+## Current component — original-owned exit, focused host/QEMU proof
+
+On 2026-10-08, a new independently enrolled ARMv5 `exit` guest passes the fixed
+original-owned daemon exit scenario. It completes real startup/data access and
+an exclusive supervision scan before a single-use signal through the original
+owned `os.Process`. No caller supplies a PID, group, executable or signal.
+Canceled and duplicate requests refuse. The actual supervisor retains review,
+verifies whole-group stop/reap and preserves all 15 private inputs, original
+runtime references and both busy identity/share authorities. Normal-stop
+classification, restart, recovery and authority release remain refused.
+
+Unexpected exit can refuse a credential worker after its inputs were prepared
+but before execution. The separate reviewed-stop witness now explicitly checks
+that retained capture is **unconsumed and settled**, without closing/retrying it.
+Executed, closed or uncertain captures refuse. This corrects the new witness's
+initial blanket rejection of pending handles; it does not alter the runtime's
+safe retention or the original normal/held-client observers. The real failing
+guest preceded the fix; no healthy runtime or positive stop is fabricated in
+host tests. Temporary diagnostic instrumentation was removed.
+
+Pinned Go 1.26.8 Linux vet, seven-package tests/race-count3, ARM5 cross-build,
+65 Linux verifier tests and the focused actual guest pass. Parent descriptor
+equality, private child disposal, complete runtime census and unchanged base
+remain mandatory. All 959 API inputs and six harness files match before/after.
+One compilation now passes all seven fresh campaigns, their complete ordered
+proof union, equal full runtime censuses and unchanged base. Complete image
+qualification is recorded above, separately from this component proof.
+Original guest/worker/readiness/stop
+limits are unchanged. This qualifies a completed-transfer/idle exit fixture,
+not mid-transfer/held-session loss, constructor/uncertain-stop coverage,
+product activation, physical EX4 operation, migration or installation.
+
+## Earlier component — reviewed-stop observations, host-only refusal proof
+
+Separate QEMU-only `ObserveNativeDataReviewStopQEMU` and
+`ObservePlannedReviewStopQEMU` are implemented as read-only observations.
+The normal planned-stop and older held-client observers are unchanged.
+Reviewed-stop success requires the exact launched generation, sticky review,
+verified owned-command/group teardown, all 15 private process inputs retained,
+absence of the runtime's original group, dormant prepared clients and retained
+runtime code/configuration/state. Missing, incomplete, canceled, competing or
+closed lifetimes refuse; the observation does not signal a process, retry
+Stop/Close, release authority, re-admit inputs or clear review.
+
+Pinned Go 1.26.6 Linux vet, seven-package tests/race-count3, ARMv5 cross-build,
+64 Linux verifier tests and no-Docker Windows API/UI/lab preflight pass on
+2026-10-08. Host tests fabricate no healthy or successfully stopped runtime.
+These are **negative host proofs and a cross-build**, not actual ARMv5 reviewed
+teardown qualification. A genuine composed unexpected-exit trace and fixed
+original-process-handle trigger remain separate work; neither exists in this
+increment. No HTTP/product activation or NAS operation is added. The complete
+950-input image below retains its original source scope. The newer 954-input
+image includes these four files and passes the original campaigns, but does
+not supply a positive composed unexpected-exit/reviewed-stop trace.
+
+## Earlier complete cached integration — Go 1.26.8 and exact954 audit
+
+Frozen `970483e095c54186de9f53e4a164bc44c2b3cfd0`, API tree
+`7b612fe28e5a0304d40664cf72816ece027af0dc`, passes one complete cached
+Buildroot/host/ARMv5 integration run and a separate independent post-terminal
+read-only audit on 2026-10-08. Ordinary/race/fixed fuzz, standard smoke,
+MD/state reboot, launcher/runtime/loader/atomic, all six independently enrolled
+Samba guests and both synthetic SMART lanes pass with their original limits.
+The complete proof union includes normal exclusive composed supervision and
+the completed-transfer/idle source-alias-loss fault, not the pending composed
+unexpected-exit or positive reviewed-stop scenarios.
+
+All **954** API files match source, compiled package and legal source archive,
+without stale extras or generated-marker exemptions. The selected recipe,
+official SDK/source hashes, all **11,510** installed Go SDK files, actual linked
+Go 1.26.8/CGO0/Linux ARM5, host licensing/SBOM, configured strip and installed/
+rootfs/exported API agree. All seven ordered artifact hashes, Linux AND headers
+6.18.55 source/license/SBOM/legal/release bindings agree. All 1,237 tracked
+source witnesses remain unchanged; 24,959 regular audit inputs are rechecked.
+Only the existing image/two project volumes are reused; no workspace consumer
+remains. See [exact artifact identities](support/DEPENDENCY-REVIEW.md).
+
+This is cached local qualification, not independent clean reproduction,
+exact-head hosted qualification, a hosted-timeout fix, complete advisory review,
+physical EX4 support, migration, recovery, product activation or installation.
+Require the publication head's own hosted checks before integration.
+
+## Earlier complete cached integration — six Samba scenarios and exact950 audit
 
 Frozen `5355a5cb033ecd1106294c4fcd4bb256fe2e3e2a`, API tree
 `82955d54b74934ae4fcf1351339a39483a5fa40f`, passes one complete cached
@@ -594,6 +875,17 @@ previous `a257104` proof retains its separate source scope. No NAS, product
 endpoint or activation.
 
 ## Native worker failure classification — host-only diagnostic prerequisite
+
+The latest diagnostic correction fixes a separate cause-loss guard in live
+daemon verification: retained-tuple/bootstrap/process-observation errors now
+keep their typed cause behind generic review-only text. A public negative
+observation reproduces unavailable-cause loss before the fix and passes after
+it; deadline/cancellation/private-text classification tests also pass. Pinned
+Go1.26.8 non-root Linux vet/two-package tests/race3 and ARMv5 cross-compilation
+pass. The unchanged focused lifecycle guest completes enrollment but fails
+peer-continuity at45.125302s under its original CPU2/45/180 limits. This is
+host-verified diagnostic work, NOT positive QEMU, timeout resolution or a new
+complete image qualification. No product interface, admission or budget changes.
 
 The private QEMU credential runtime now preserves the first failing phase and
 fixed reason label across ordinary backend redaction. Complete admission,

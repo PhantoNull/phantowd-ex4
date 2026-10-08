@@ -171,54 +171,81 @@ func nativeIdentityStartupFixtureQEMU(plan *runtimebundle.Plan, lookup fileservi
 // The coordinator retains and transfers its own identity consumer throughout.
 func nativeCoordinatorDisableFixtureQEMU(service *smbexec.NativeIdentityServiceQEMU, owner *identityowner.Owner, target string) (result error) {
 	begin := time.Now()
-	ctx, cancel := context.WithTimeout(context.Background(), 45*time.Second)
-	defer cancel()
 	stage := "admission"
 	defer func() {
 		if result != nil {
-			result = fmt.Errorf("native coordinator disable stage=%s elapsed=%s context=%v: %w", stage, time.Since(begin), ctx.Err(), result)
+			result = fmt.Errorf("native coordinator disable stage=%s elapsed=%s deadline=%t canceled=%t: %w", stage, time.Since(begin), errors.Is(result, context.DeadlineExceeded), errors.Is(result, context.Canceled), result)
 		}
 	}()
-	journal, err := owner.SMB(target).Load(ctx)
-	if err != nil || journal.Phase != smbprovision.Enabled {
-		return errors.New("coordinator disable admission")
-	}
-	canceled, cancelDisable := context.WithCancel(ctx)
-	cancelDisable()
-	if err := service.Disable(canceled, target, journal.Revision); !errors.Is(err, context.Canceled) {
-		return errors.New("canceled coordinator disable admitted")
-	}
-	stage = "session-pair"
-	pair, err := service.StartNativeSessionPairQEMU(ctx)
-	if err != nil {
+	var journal smbprovision.Journal
+	var pair smbexec.NativeSessionPairQEMU
+	return runNativeCoordinatorPhasesQEMU(context.Background(), func(ctx context.Context) error {
+		var err error
+		journal, err = owner.SMB(target).Load(ctx)
+		if err != nil || journal.Phase != smbprovision.Enabled {
+			return errors.New("coordinator disable admission")
+		}
+		canceled, cancelDisable := context.WithCancel(ctx)
+		cancelDisable()
+		if err := service.Disable(canceled, target, journal.Revision); !errors.Is(err, context.Canceled) {
+			return errors.New("canceled coordinator disable admitted")
+		}
+		stage = "session-pair"
+		pair, err = service.StartNativeSessionPairQEMU(ctx)
 		return err
+	}, func(ctx context.Context) error {
+		stage = "stale-revision"
+		if err := service.Disable(ctx, target, journal.Revision-1); !errors.Is(err, smbprovision.ErrConflict) {
+			return errors.New("stale coordinator disable did not refuse before intent")
+		}
+		unchanged, err := owner.SMB(target).Load(ctx)
+		if err != nil || unchanged != journal {
+			return errors.New("refused coordinator disable changed journal")
+		}
+		stage = "disable"
+		if err := service.Disable(ctx, target, journal.Revision); err != nil {
+			return err
+		}
+		after, err := owner.SMB(target).Load(ctx)
+		if err != nil || after.Phase != smbprovision.Disabled || after.Revision != journal.Revision+2 || after.SID != journal.SID {
+			return errors.New("coordinator disable successor journal mismatch")
+		}
+		stage = "peer-continuity"
+		if err := service.VerifyNativeDisabledPairQEMU(ctx, pair); err != nil {
+			return err
+		}
+		status, err := service.Status()
+		if err != nil || status.State != "ready" || !status.IdentityRetained || status.RuntimeClosed {
+			return errors.New("coordinator transition lost running authority")
+		}
+		if err := owner.Close(); !errors.Is(err, identityowner.ErrBusy) {
+			return errors.New("coordinator disable released live identity")
+		}
+		return nil
+	})
+}
+
+// Fixed fixture callbacks, not backend selection or a product timing policy.
+// Preparation gets 20 seconds; original revocation/continuity/login checks keep
+// their full 45 seconds. The SAME runtime, Owner and held pair cross this seam.
+// Context expiry or uncertain work never proceeds/retries; all worker and
+// external 180-second guest limits remain independent and unchanged.
+func runNativeCoordinatorPhasesQEMU(parent context.Context, prepare, revoke func(context.Context) error) error {
+	if parent == nil || prepare == nil || revoke == nil {
+		return errors.New("native coordinator requires both fixture phases and parent")
 	}
-	stage = "stale-revision"
-	if err := service.Disable(ctx, target, journal.Revision-1); !errors.Is(err, smbprovision.ErrConflict) {
-		return errors.New("stale coordinator disable did not refuse before intent")
+	budgets := [...]time.Duration{20 * time.Second, 45 * time.Second}
+	for index, phase := range []func(context.Context) error{prepare, revoke} {
+		if err := parent.Err(); err != nil {
+			return err
+		}
+		ctx, cancel := context.WithTimeout(parent, budgets[index])
+		err := phase(ctx)
+		contextErr := ctx.Err()
+		cancel()
+		if err != nil || contextErr != nil {
+			return errors.Join(err, contextErr)
+		}
 	}
-	unchanged, err := owner.SMB(target).Load(ctx)
-	if err != nil || unchanged != journal {
-		return errors.New("refused coordinator disable changed journal")
-	}
-	stage = "disable"
-	if err := service.Disable(ctx, target, journal.Revision); err != nil {
-		return err
-	}
-	after, err := owner.SMB(target).Load(ctx)
-	if err != nil || after.Phase != smbprovision.Disabled || after.Revision != journal.Revision+2 || after.SID != journal.SID {
-		return errors.New("coordinator disable successor journal mismatch")
-	}
-	stage = "peer-continuity"
-	if err := service.VerifyNativeDisabledPairQEMU(ctx, pair); err != nil {
-		return err
-	}
-	status, err := service.Status()
-	if err != nil || status.State != "ready" || !status.IdentityRetained || status.RuntimeClosed {
-		return errors.New("coordinator transition lost running authority")
-	}
-	if err := owner.Close(); !errors.Is(err, identityowner.ErrBusy) {
-		return errors.New("coordinator disable released live identity")
-	}
-	return nil
+	return parent.Err()
 }

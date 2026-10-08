@@ -54,6 +54,7 @@ type NativeSambaRuntimeQEMU struct {
 	clientsAttempted     bool
 	plannedDataPrepared  bool
 	plannedDataAttempted bool
+	plannedExitAttempted bool
 	releaseErr           error
 	workerFailure        *nativeWorkerErrorQEMU
 }

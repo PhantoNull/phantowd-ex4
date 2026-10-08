@@ -28,6 +28,14 @@ error redaction remains unchanged; guest output is explicitly diagnostic-only,
 never a qualification marker. Host tests qualify the bookkeeping/redaction
 boundary, not an actual ARMv5 worker fault, timeout fix or product recovery.
 
+Live-daemon code/configuration revalidation, bootstrap inspection and process
+observation refusals preserve their private typed causes behind the same
+generic review-only error text. Ordered admission checks and failure behavior
+are unchanged; a missing code authority still refuses before PID inspection.
+Fixed worker classification can distinguish a wrapped deadline/cancellation
+without printing its cause. This diagnostic correction neither extends a
+deadline nor settles reviewed authority; focused lifecycle timeout remains open.
+
 The `qemu`-only `SambaPlannedDataDocumentsQEMU` renderer produces seven bounded
 configuration documents from one immutable isolated Plan candidate. It preserves
 the candidate's granted-only Unix identities and exact RO/RW share sections,
@@ -108,8 +116,14 @@ pins and revalidation. A read-only bind does not make other views immutable.
 Trusted signature/model binding, ARM ABI and loader qualification, NSS/config,
 state/grants/device rules, privilege profiles, construction/activation/recovery
 and product wiring remain separate. No user data is read or modified here.
-Context cancellation is checked between bounded local reads, not a guarantee
-that an arbitrary kernel I/O stall can be interrupted.
+Context cancellation is checked between bounded local reads and before emitting
+a completed digest, not a guarantee that an arbitrary kernel I/O stall can be
+interrupted. A deterministic regular-file regression cancels just after the
+last successful pre-read check; the digest helper must return the typed
+cancellation with zero digest/count, even if EOF/finalization completed. This
+strengthens that internal calculation boundary; `Inspect` already has its own
+final context check. It is not a demonstrated admission bypass or a diagnosis
+of the QEMU lifecycle deadline.
 
 ## Shared prepared code references
 
@@ -549,3 +563,44 @@ closed refusal and final descriptor equality. Its initial failed guest caught
 the mistaken nil-client assumption before correction. This is not composed
 source-loss/exit/mid-worker/uncertain-stop coverage, complete updated integration,
 product authorization, durable recovery or physical EX4 qualification.
+
+### Reviewed planned-stop observations and fixed owned exit (QEMU only)
+
+`ObserveNativeDataReviewStopQEMU` and `ObservePlannedReviewStopQEMU` keep
+review mandatory while observing verified owned-command/group teardown and
+retained inputs. They do not replace the strict normal-state or held-client
+observers. The fixed single launched generation must have been reaped and its
+whole group verified absent; all 15 private inputs remain open. The runtime
+also checks the original group for absence, both clients still dormant and
+original complete code, management/service configuration and state references
+retained. Group-number reuse or uncertainty refuses, never signals a replacement.
+
+No path/PID/process selection, signal delivery, Stop/Close retry, pin release,
+input re-admission, adoption, restart or recovery is exposed. Retention is not
+fresh contents, healthy storage/identity or activation authority. A pending
+credential capture is accepted only after separate unconsumed THEN settled
+observations; executed, closed or uncertain captures refuse. It remains retained,
+never closed/retried to manufacture stop evidence. The original normal and
+held-client observers remain unchanged.
+
+`RequestPlannedDaemonExitQEMU` is a fixed, single-use disposable ARM guest fault,
+not a Stop or recovery verb. Exact guest/root/tmpfs/private-namespace, launched
+generation, complete live runtime and dormant-client checks precede a SIGTERM
+through the ORIGINAL owned command. No caller chooses a PID, process group,
+signal or executable. Signal admission is not a stop/reap or review witness;
+the existing exclusive supervisor must establish those independently.
+
+Fresh Go 1.26.8 Linux vet/seven-package/race3/ARM5 cross/65 verifier checks and
+all seven independently enrolled ARMv5 campaigns pass. The new `exit` guest
+completes actual same-authority startup/data and a full scan before exit,
+verifies reviewed group stop/reap/absence, all15 private/runtime inputs retained,
+an unconsumed/settled capture, BOTH original authorities busy, normal-stop and
+restart/release refusal, private-child disposal and parent FD equality. The
+initial real failure identified retained capture as the new observer mismatch;
+temporary diagnostic instrumentation was removed before clean qualification.
+Host tests fabricate no healthy or successfully stopped runtime. Original
+guest/worker/readiness/stop limits and every previous proof remain mandatory.
+This is completed-transfer/idle fixture coverage, not held-session/mid-transfer,
+uncertain teardown, product activation, recovery or physical EX4 qualification.
+The complete954 image keeps its original source scope; a new image audit is
+still required. See [current status](../../../../IMPLEMENTATION-STATUS.md).

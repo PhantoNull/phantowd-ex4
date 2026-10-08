@@ -45,6 +45,9 @@ func run(args []string, output io.Writer) (int, error) {
 		return 1, errors.New("usage: phantowd-lab COMMAND [arguments]")
 	}
 	switch args[0] {
+	case "build-release-manifest":
+		return buildReleaseManifest(args[1:], output)
+
 	case "inspect-github-release":
 		return inspectGitHubRelease(args[1:], output)
 

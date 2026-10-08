@@ -247,5 +247,10 @@ func hashRuntimeFile(ctx context.Context, file *os.File, size int64, scratch []b
 	}
 	var digest [32]byte
 	copy(digest[:], hash.Sum(nil))
+	// Cancellation can arrive after the final pre-read check, including while
+	// reading EOF or finalizing SHA-256. Never publish that completed digest.
+	if err := ctx.Err(); err != nil {
+		return [32]byte{}, 0, err
+	}
 	return digest, total, nil
 }

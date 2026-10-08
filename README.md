@@ -34,14 +34,15 @@ scope; [component contracts](src/phantowd-api/README.md) describe the boundaries
 | Area | Implemented / tested | Still needed for the product |
 | --- | --- | --- |
 | Build | Pinned Buildroot 2025.02.18 LTS / Linux 6.18.55 LTS; complete local ARMv5 integration and exact source/image/SBOM audit pass | Exact-head hosted checks, independent clean reproduction, installable EX4 image and release qualification |
-| Web management | Bounded read-only snapshots, development administrator authentication/password changes, SMB/NFS policy editing with before/after review and cross-protocol folder advisories | Complete setup/recovery, certificate lifecycle, browser qualification and live service management |
+| Web management | Bounded read-only snapshots, development authentication/password changes with focus-preserving navigation, SMB/NFS policy editing with before/after review and cross-protocol folder advisories | Complete setup/recovery, certificate lifecycle, browser/accessibility qualification and live service management |
 | Storage | Non-root read-only broker, complete sysfs inventory, manual GPT observations, duplicate-identity detection, protected registry with reader-bound rechecks, rechecked registry/census policy and backing reviews, internal MD/mount-owner fixtures | Trusted production lifecycle, persistent volume IDs, global-use accounting, qualified import and RAID management |
-| Sharing and identities | SMB3/NFS fixtures, disabled-first Samba accounts, session revocation, retained same-authority SMB startup/access, normal supervision and focused source-alias fault fixtures, Unicode/CP850, streams and POSIX ACL tests | Product account workflows, complete fault coverage, supervised service activation/recovery and legacy permission migration |
+| Sharing and identities | SMB3/NFS fixtures, disabled-first Samba accounts, session revocation, retained same-authority SMB startup/access, normal supervision and focused source-alias/original-owned exit fixtures, Unicode/CP850, streams and POSIX ACL tests | Product account workflows, complete fault coverage, supervised service activation/recovery and legacy permission migration |
 | iSCSI | Coherent desired policy, root-only CHAP reader, registry/share review, private declared SMB/NFS exposure refusal, shared backing-object reservations and retained-storage LIO/CHAP composition with ARMv5 access/session/fault fixtures | Product authority/composition, credential provisioning/recovery, external/cross-protocol use and complete session guards, import and target-management UI |
 | Health | Bounded SMART interpretation, generation-bound coordinator, private complete sysfs census including in-use disks, retained descriptor-generation witness, subprocess replay and native/ARMv5 synthetic producer fixtures | Qualified command/device provider, report-to-device binding, history, authorized test jobs, notifications and UI |
 | Network policy | Desired dual-stack policy, private read-only kernel inventories and internal local-address conflict diagnostics in host/ARMv5 QEMU | Qualified physical interface binding, external address-conflict/routing admission, persistent trial/confirmation/rollback and management UI |
 | Service isolation | Static-child owner/grant isolation, bounded-privilege Samba fixture with retained code/configuration, mutable-state directory lifetimes and descriptor handoff, separate read-only code/service views with copied-object refusal, verified code staging, offline ARM-header/build-attribute observations, actual QEMU libatomic dispatch tests and supervised retained static-code Owner | Product-authorized runtime inputs, complete descriptor-bound construction, identity/state/storage composition, durable recovery and product startup |
 | EX4 hardware | Bounded diskless RAM research; see [board notes](board/wd/ex4/README.md) | Sustained networking, factory MAC handoff, SATA, cooling, LEDs/display, thermal safety and recovery |
+| Release tooling | Host-only deterministic unsigned manifest producer and exact-byte signature/payload verification | Trusted provenance/staging, key provisioning/signing, target transaction, recovery and release qualification |
 
 The API/dashboard are development-only and guest-loopback-only by default.
 Do not expose them through a LAN listener or reverse proxy. Service experiments
@@ -61,14 +62,25 @@ not establish independent clean-build reproducibility, complete licensing
 compliance or physical EX4 qualification. [versions.env](versions.env) is the
 source of truth for build pins.
 
-The latest fully audited local checkpoint, `5355a5c`, passes the complete
-cached host/ARMv5 integration lane, all six independently enrolled Samba guests
+The latest fully audited local checkpoint, `cea5e0a`, selects Go 1.26.8 and
+passes the complete cached host/ARMv5 integration lane, all seven independently enrolled Samba guests
 and both synthetic SMART lanes. It includes retained same-authority startup,
 real data access, exclusive supervision and a source-alias-loss fault that
 stops the daemon without releasing reviewed authority or restarting it.
-An independent audit matches all 950 API inputs, actual images, kernel/header
-archives, release metadata, SBOM and declared license files; see the
-[exact qualification record](support/DEPENDENCY-REVIEW.md).
+The original-owned idle exit scenario also verifies sticky review, group
+stop/reap and retained unconsumed worker inputs; it does not qualify
+mid-transfer/session loss or recovery.
+The reviewed coordinator also refuses normal `Close` after source restoration:
+two attempts retain its runtime inputs and both original authorities.
+Validated QEMU-only diagnostics report fixed, redacted failure boundaries;
+they do not weaken proof equality or establish the cause of intermittent failures.
+An independent audit matches all 962 API inputs, actual images, kernel/header
+archives, the selected and installed Go SDK, release metadata, SBOM and declared
+license files; see the [exact qualification record](support/DEPENDENCY-REVIEW.md).
+The QEMU lifecycle fixture separates preparation (20 seconds) from revocation
+verification (45 seconds), increasing their combined allowance from 45 to 65
+seconds without changing worker, service, stop or guest limits. This is not a
+performance improvement or a demonstrated fix for hosted failures.
 
 This does not establish independent clean reproduction, physical EX4 support,
 complete fault coverage or an installable release. The previous hosted
@@ -90,7 +102,7 @@ tests, failure handling and contributor handoffs.
 | [M6: Network and system services](ROADMAP.md#m6-network-and-system-services) | Desired model tested; apply planned | Recoverable networking, time, discovery and administration |
 | [M7: EX4 board and cooling](ROADMAP.md#m7-ex4-board-controller-and-thermal-qualification) | Research | Qualified peripherals, thermal safety and recoverable boot |
 | [M8–M9: Health, migration and iSCSI](ROADMAP.md#m8-raid-health-and-legacy-migration) | Offline inspectors; management planned | SMART monitoring/tests, notifications, RAID, supported legacy layouts and guarded LUNs |
-| [M10–M11: Installer and release](ROADMAP.md#m10-signed-installer-upgrades-and-recovery) | Host verifier only | Signed model-specific installation, recovery and public beta qualification |
+| [M10–M11: Installer and release](ROADMAP.md#m10-signed-installer-upgrades-and-recovery) | Host metadata producer/verifier only | Signed model-specific installation, recovery and public beta qualification |
 
 Resource-qualified applications and a possible mobile companion follow the
 core NAS release. No release date or completion percentage is promised before

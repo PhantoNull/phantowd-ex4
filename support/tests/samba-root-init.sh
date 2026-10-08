@@ -88,6 +88,9 @@ run_native_fixture() {
     elif [ "$campaign" = fault ]; then
         /usr/sbin/phantowd-runtime-bundle-probe native-identity-fault || return 1
         echo PHANTOWD_SAMBA_ROOT_FAULT_DONE
+    elif [ "$campaign" = exit ]; then
+        /usr/sbin/phantowd-runtime-bundle-probe native-planned-exit || return 1
+        echo PHANTOWD_SAMBA_ROOT_EXIT_DONE
     else
         /usr/sbin/phantowd-runtime-bundle-probe native-credentials || return 1
         echo PHANTOWD_SAMBA_ROOT_NATIVE_DONE
@@ -106,6 +109,7 @@ run_fixture() {
         phantowd_samba_campaign=lifecycle) campaign=lifecycle ;;
         phantowd_samba_campaign=fault) campaign=fault ;;
         phantowd_samba_campaign=data) campaign=data ;;
+        phantowd_samba_campaign=exit) campaign='exit' ;;
         *) return 1 ;;
     esac
     # This guest has no normal hardware entropy sources. Require the real

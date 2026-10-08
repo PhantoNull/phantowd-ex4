@@ -37,6 +37,10 @@ shellcheck -s sh \
 	"$external_dir/support/test-compare-build-artifacts.sh" \
 	"$external_dir/support/container/apply-buildroot-samba-json-patch.sh" \
 	"$external_dir/support/tests/test-buildroot-samba-json-patch.sh" \
+	"$external_dir/support/container/apply-buildroot-go-maintenance.sh" \
+	"$external_dir/support/container/check-buildroot-go-sdk.sh" \
+	"$external_dir/support/tests/test-buildroot-go-maintenance.sh" \
+	"$external_dir/support/tests/test-buildroot-go-sdk.sh" \
 	"$external_dir/package/phantowd-api/S02phantowd-mdev" \
 	"$external_dir/package/phantowd-api/S40phantowd-storage-broker" \
 	"$external_dir/board/qemu/armv5/rootfs-overlay/etc/init.d/S49phantowd-identity-owner" \
@@ -218,6 +222,21 @@ TMPDIR=/phantowd-qemu-fixture-tmp sh \
     "$external_dir/support/tests/test-buildroot-system-cmake.sh" \
     "$buildroot_source" "$external_dir"
 
+# Update all common Go recipe inputs together, after exact-state tmpfs tests.
+# Never silently use an inherited SDK version from the cached host install.
+[ "$GO_VERSION" = 1.26.8 ] || {
+    echo 'Selected Go pin does not match the versioned maintenance patch' >&2
+    exit 1
+}
+TMPDIR=/phantowd-qemu-fixture-tmp sh \
+    "$external_dir/support/tests/test-buildroot-go-maintenance.sh" "$buildroot_source"
+TMPDIR=/phantowd-qemu-fixture-tmp sh \
+    "$external_dir/support/tests/test-buildroot-go-sdk.sh"
+sh "$external_dir/support/container/apply-buildroot-go-maintenance.sh" \
+    "$buildroot_source" \
+    "$external_dir/support/buildroot-patches/$BUILDROOT_VERSION/0004-go-1.26.8-maintenance.patch"
+grep -Fx "GO_VERSION = $GO_VERSION" "$buildroot_source/package/go/go.mk" >/dev/null
+
 # Add structured Samba server IDs without enabling the much larger AD-DC role.
 # This patch is pinned to the Buildroot release and is idempotent in the cache.
 sh "$external_dir/support/tests/test-buildroot-samba-json-patch.sh" "$buildroot_source"
@@ -352,6 +371,9 @@ make -C "$buildroot_source" \
     O="$output_dir" \
     PARALLEL_JOBS="$build_jobs" \
     host-go-bin
+
+sh "$external_dir/support/container/check-buildroot-go-sdk.sh" \
+    "$output_dir/host/bin/go" "$GO_VERSION"
 
 GOCACHE="$workspace_dir/api-host-cache" \
     sh "$external_dir/support/container/test-api.sh" \

@@ -93,6 +93,44 @@ func TestRuntimeFileHashCancellationAndReadFailureAreNotObservations(t *testing.
 	}
 }
 
+// Cancel immediately after a successful context check. This deterministically
+// models cancellation between that check and the final regular-file EOF read;
+// it is not a wall-clock/scheduling test or a code-admission fixture.
+type cancelAfterHashCheckContext struct {
+	context.Context
+	cancel   context.CancelFunc
+	checks   int
+	cancelAt int
+}
+
+func (c *cancelAfterHashCheckContext) Err() error {
+	err := c.Context.Err()
+	c.checks++
+	if c.checks == c.cancelAt {
+		c.cancel()
+	}
+	return err
+}
+
+func TestRuntimeFileHashFinalReadCancellationHasNoObservation(t *testing.T) {
+	for _, size := range []int{1, runtimeHashScratchSize, runtimeHashScratchSize + 1} {
+		t.Run(fmt.Sprint(size), func(t *testing.T) {
+			file := runtimeHashFixture(t, bytes.Repeat([]byte{0xa5}, size))
+			base, cancel := context.WithCancel(context.Background())
+			defer cancel()
+			ctx := &cancelAfterHashCheckContext{Context: base, cancel: cancel,
+				cancelAt: (size+runtimeHashScratchSize-1)/runtimeHashScratchSize + 1}
+			digest, count, err := hashRuntimeFile(ctx, file, int64(size), make([]byte, runtimeHashScratchSize))
+			if !errors.Is(base.Err(), context.Canceled) {
+				t.Fatal("fixture did not cancel at the final read boundary")
+			}
+			if !errors.Is(err, context.Canceled) || digest != ([32]byte{}) || count != 0 {
+				t.Fatal("final-read cancellation returned a completed digest", count, err)
+			}
+		})
+	}
+}
+
 func TestRuntimeFileHashScratchReuseDoesNotReuseDigestOrOldBytes(t *testing.T) {
 	scratch := make([]byte, runtimeHashScratchSize)
 	for _, size := range []int{65537, 1, 32769, 17} {

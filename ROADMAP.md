@@ -67,48 +67,40 @@ currently product-qualified for migration.
 
 ## Current baseline
 
-The current combined local checkpoint `5355a5c` passes the complete cached
-Buildroot/ARMv5 integration, including all six independently enrolled Samba
-scenarios and both synthetic SMART lanes. Independent post-terminal auditing
-matches all 950 API inputs to compiled package/source archive, reproduces
-configured stripping, and verifies installed/image/exported API, seven hashes,
-Linux AND headers 6.18.55, SBOM, release and legal-source bindings; see
-[exact scope](IMPLEMENTATION-STATUS.md#current-complete-cached-integration--six-samba-scenarios-and-exact950-audit).
-Normal same-authority planned Samba startup and access are qualified only in
-disposable fixtures. This complete image also passes exclusive composed supervision
-with serial complete scans, idle cancellation/verified stop, retained originals
-and full-close-before-release, across all six ARMv5 scenarios. This normal-path
-proof does not qualify composed exit/mid-worker/uncertain stop/close faults.
-The same complete image separately qualifies the idle source-alias fault below.
-Complete fault supervision, uncertain construction/teardown,
-production storage/identity composition, exact-head hosted promotion, clean
-reproducibility and product/hardware/release gates remain open. This is not a
-causal fix of the latest hosted coordinator continuity timeout. That failed
-integration checkpoint remains unmerged. Historical task evidence below keeps
-its original source scope.
+The fully audited local checkpoint `cea5e0a` selects Go 1.26.8 and passes the
+complete cached Buildroot/host/ARMv5 lane: all seven independently enrolled
+Samba scenarios and both synthetic SMART lanes. Independent post-terminal
+auditing matches all 962 API inputs to compiled package/source archive and all
+1,250 tracked build witnesses. Configured stripping, installed/image/exported
+API, seven hashes, Linux AND headers 6.18.55, actual selected/installed Go SDK,
+SBOM, release and legal sources agree; see
+[exact qualification](IMPLEMENTATION-STATUS.md#current-complete-cached-integration--seven-samba-scenarios-and-exact962-audit).
 
-A subsequent **host/QEMU** increment qualifies separate planned-stop
-observation: owned daemon stop/reap, all 15 private daemon inputs and original
-runtime code/configuration/state retention, dormant prepared client checks,
-legacy observer continuity, repeated read-only observation and closed refusal.
-The earlier 948-input six-guest component union passed separately; the observer
-is now included in the complete 950-input image. Retention alone is not composed
-fault or recovery qualification; see
-[current component scope](IMPLEMENTATION-STATUS.md#current-component--planned-stop-observation-focused-hostqemu-proof).
+The QEMU lifecycle fixture separates preparation (20 seconds) from revocation
+(45 seconds), changing the combined allowance from 45 to 65 seconds. Original worker/service/readiness/stop/
+guest limits and authority checks remain intact; this is not a speedup or a
+demonstrated causal fix for hosted timeouts.
 
-The **host/QEMU** source-loss slice now passes actual
-genuine enrollment and SAME planned identity/backend/storage/share authority
-checks. It replaces the earlier unverified handoff-parent rename proposal with
-a cover of ONLY the synthetic volume alias, retaining original mounts/grants.
-Actual exclusive supervision enters sticky review and stops/reaps the daemon;
-independent stop/retention observations and both busy authorities pass. Removing
-the exact observed cover restores the original mount without reviving any
-operation. A private-namespace child exits after proof, not product recovery.
-The prior identity-fault proof and parent FD equality remain mandatory. The
-updated complete six-guest union and whole950 image/audit pass separately.
-Held-session/mid-transfer, native pending capture, uncertain stop and constructor/
-close faults still require separate actual traces. Keep existing checks and
-finite budgets; no HTTP, device access or recovery authority is introduced.
+Disposable fixtures qualify same-authority planned startup/data access,
+exclusive serial supervision, cancellation/verified stop, retained originals,
+full-close-before-release, idle source-alias loss and original-owned idle exit.
+The exit proof requires its retained worker capture to be unconsumed and
+settled; reviewed authority is not released or automatically restarted.
+Normal and held-client observers remain unchanged.
+
+After source restoration, two normal coordinator `Close` attempts are also
+refused while the same runtime inputs and both original authorities stay retained.
+QEMU-only failure diagnostics accept only fixed redacted labels and cannot satisfy
+the exact proof contract; the intermittent failure cause remains unresolved.
+
+This is not held-session/mid-transfer fault coverage, uncertain construction/
+teardown, product recovery or production storage/identity composition.
+Exact-head hosted promotion, independent clean reproduction, complete advisory
+review, hardware, migration, recovery and signed release gates remain open.
+Earlier PR #128/#129 checkpoints failed hosted coordinator-continuity checks; local success
+is not their causal fix. Keep existing guards and finite budgets. No HTTP
+service activation, NAS operation or installable firmware is introduced.
+Historical task evidence below retains its original source scope.
 
 Status vocabulary:
 
@@ -329,11 +321,42 @@ button to an unqualified backend simply because the screen exists.
   This is fixture orchestration only. New exact-source image/archive audit,
   own-head hosted checks and independent clean qualification remain mandatory;
   do not declare intermittent hosted enrollment or historical EBUSY fixed.
+  The lifecycle fixture now separates original held-client preparation20 from
+  actual disable/successor/peer/new-login verification45, replacing shared45
+  with a combined contextual allowance65. SAME authority crosses the seam;
+  uncertain/expired work never continues/retries, shorter parent bounds both,
+  and late success refuses. Actual runner virtual-clock RED/GREEN, pinned
+  Linux tagged command vet/tests/race3, Windows preflight and one focused
+  actual ARMv5 lifecycle pass. Worker/readiness/stop/guest180 limits unchanged.
+  An unchanged fresh guest also passes; another fails on an independent worker
+  deadline at client preparation. Do not conflate these with hosted continuity
+  expiry. New full source/image audit, repeatable-load and own-head hosted
+  qualification remain open; this is not a product timing policy or speedup.
 - **M0.4 — Maintain release inputs.** Dependency update changes include source
   signatures/hashes, ARMv5 compatibility, package configuration, vulnerability
   review, license material and regenerated SBOM. Test the selected package set.
   The [dated dependency review](support/DEPENDENCY-REVIEW.md) now identifies
   Linux 6.18.55, host OpenSSL 3.5.9 and Go 1.26.8 as separate update packets.
+  Go 1.26.8 has authenticated SDK/source/license and focused host proof on
+  frozen `c995c6e`: ordinary/race/22 fixed fuzz campaigns, seven tagged authority
+  packages/race3, ARMv5 cross-build and 64 Linux driver tests pass. Successor
+  `01e6045` also passes toolkit ordinary/race/five fuzz campaigns and all six
+  actual Samba ARMv5 campaigns compiled with the candidate. The complete
+  original proof union, runtime census, unchanged base and independent trace
+  replay pass; all 1,083 API/toolkit/harness inputs remain unchanged. At that
+  earlier component snapshot the base still used Go 1.26.6; component execution
+  was not a complete new image or full-image adoption. The feature now selects Go 1.26.8 through one
+  exact-state, idempotent Buildroot recipe/hash patch and an early installed-SDK
+  version check. Real-package RAM fixtures verify coherent application,
+  refusal without effects and stale-SDK rejection. Frozen `970483e` now passes
+  one complete cached Go 1.26.8 integration, every original campaign and an
+  independent exact954 image/source/package/archive/SDK/license/SBOM audit.
+  All 11,510 installed SDK files match the selected SDK and all 1,237 tracked
+  witnesses remain unchanged. This supersedes the old complete Go 1.26.6 image
+  as the latest local checkpoint; it is not independent clean reproduction,
+  exact-head hosted qualification, complete advisory review or EX4/release
+  qualification, nor a speedup or hosted-timeout fix.
+  See the linked review.
   Linux source/signature/license authentication, unchanged-symbol ARMv5 kernel
   compilation and the original standard QEMU smoke now pass locally. Five
   firmware configurations/release files, both source hashes and the qualified
@@ -1211,6 +1234,17 @@ storage. No production roster provider or activation path exists.
   own hosted run still fails; this local success is not its repair. Guest
   isolation is not a proven hosted timeout fix. All hosted/independent-clean,
   hardware and product-activation gates remain open.
+
+  The source-restoration/Close follow-up now reproduces retained-input/original
+  authority release despite coordinator review. The coordinator's reviewed
+  Close admission is fenced before low-level teardown; the original actual
+  fault guest requires two refused Close attempts, retained runtime inputs and
+  both original busy authorities. Missing/false `close_refused=true` refuses.
+  Pinned Linux vet/unit/race3, Windows API/UI/ARM cross and the actual normal
+  data/close-before-release control pass. No deadline, privilege, low-level
+  cleanup or recovery contract changes. This is focused correction only: new
+  exact source/package/image audit, own-head hosted and broader uncertain-close/
+  held-session/product recovery gates remain separate.
 - **M4.2 — Single service owner.** Define start/reload/stop and child-process
   ownership; bound diagnostics and verify readiness. Preserve the last known
   working configuration on syntax/start failure without claiming an unapplied
@@ -1301,6 +1335,13 @@ storage. No production roster provider or activation path exists.
   fires: qualify the failure path separately and reproduce/classify any timing
   failure before claiming its cause or resolution. Logging and positive normal
   execution alone are not a timeout fix, retry policy or product recovery.
+  A later live-daemon guard fix preserves retained-tuple/bootstrap/process
+  observation causes behind generic review-only text instead of discarding
+  them. Public negative RED/GREEN, fixed-label redaction, pinned non-root
+  Linux two-package vet/tests/race3 and ARMv5 compilation pass. The original
+  focused lifecycle still fails peer-continuity45.125302s without CPU stress;
+  keep that gate open. No timeout/authority/privilege/retry change is included;
+  actual failed-worker classification and complete integration remain separate.
   A separate deterministic native-adapter inner-close regression now uses the
   real post-runtime step rather than a fabricated healthy runtime. It fails
   when repeated public Close forgets the original file error and passes with
@@ -1310,6 +1351,14 @@ storage. No production roster provider or activation path exists.
   union with unchanged guards/base/bounds. Actual runtime-close faults,
   complete changed-image/audit and durable recovery remain separate gates;
   the positive union does not identify the intermittent-timeout cause.
+  A follow-up extends that terminal fence to the native session-pair and
+  peer-continuity status reader, including the inner backend and pre-canceled
+  admission. Real-file/canceled command-boundary RED/GREEN, pinned Linux tagged
+  vet/tests/race3, Windows preflight and the actual ARMv5 native campaign pass.
+  No worker is dispatched on the new refusals. Normal valid session parsing,
+  complete runtime revalidation and all deadlines are unchanged. This remains
+  focused qualification, not an uncertain runtime-close fault, full new image
+  or the separate coordinator-timeout fix.
 
   Security limit: this is a share-scoped pathname view, not a complete service
   authorization boundary. Consumers still run in the host mount namespace and
@@ -1383,6 +1432,13 @@ storage. No production roster provider or activation path exists.
   writable views, retain pins and revalidate through start/stop/source loss;
   compose configuration, state, devices and Owner-held grants explicitly.
   Do not promote fixture text or the offline ELF candidate into authority.
+  The internal digest calculation also refuses cancellation after the last
+  pre-read check/EOF/finalization with zero digest/count. Three deterministic
+  boundary cases reproduce the old result and pass after correction; pinned
+  non-root Linux tagged vet/tests/race3 and ARMv5 test cross-compilation pass.
+  Full byte/census/metadata/identity checks and budgets remain unchanged.
+  `Inspect` already checks context before returning; no admission bypass,
+  QEMU timeout fix, new guest or whole-image qualification is established.
   A separate `qemu && linux` prototype now stages fresh regular files from a
   pinned local read-only source into an exclusively owned empty 0700 tmpfs
   root. It uses descriptor-relative no-traversal/no-cross-mount operations,
@@ -1599,6 +1655,20 @@ milestone before enabling its controls; M1/M6 for deployment.
   privilege, job, hardware polling or service activation changes. Browser abort
   does not prove server/kernel work stopped; real-browser/accessibility and
   product authentication/recovery remain separate gates.
+  **M5.5b — authentication focus continuity (partial; host-tested):** a first
+  skip link targets the main landmark; headings accept programmatic focus
+  without adding tab stops. When an auth boundary hides the focused control,
+  move focus to the visible destination heading without scrolling. Initial
+  status, unchanged views, unrelated visible controls and retired responses
+  do not move focus. Shared keyboard outlines include links, buttons, form
+  controls, summaries and explicit tabindex targets; forced-color overrides
+  use system colors. Actual-source DOM regression reproduces the missing
+  login destination on the previous source and passes after correction,
+  including logout, password-change uncertainty and stale-response cases.
+  Complete Windows API/UI checks, ARMv5 test cross-compilation and pinned
+  Linux embedded-asset tests pass. DOM focus/stylesheet contracts are not
+  browser rendering, screen-reader, contrast or whole-image qualification.
+  No new request, retry, endpoint, privilege, polling or activation.
 - **M5.6 — Audit and diagnostics.** Record actor, operation ID, revisions and
   redacted outcome; bound retention. Export a sanitized support bundle that
   excludes credentials, private keys, passdb hashes and user file contents.
@@ -2473,6 +2543,20 @@ Then qualify the selected backend and migration objects on expendable EX4 media.
   opened size and retains size/hash/metadata checks. Whole Windows host vet/unit
   and pinned Linux whole host vet/race pass. No signature bypass, schema/CLI/
   trust-root change, firmware build, physical operation or installer is claimed.
+  **M10.2c — unsigned metadata production (partial; host-tested):** prepare
+  deterministic schema1 JSON from explicit names/roles, caller declarations
+  and a raw public key; measure fingerprint/sizes/SHA-256, sort copied lists,
+  reuse existing validators/read bounds and refuse incomplete results.
+  Whole-set size and encoded-manifest admission precede payload hash reads.
+  New host CLI has no private-key/signing/staging/install/publish action.
+  CLI missing-command regression, exact-byte fixture signing/verifier roundtrip,
+  invalid declarations/no-output, payload substitutions, Linux FIFO/symlink and
+  kernel-observed before-open size refusal pass. Complete Windows/pinned Linux
+  host vet/tests and producer/CLI race3 pass. Declarations remain unproven
+  source/model/version input, not build provenance or qualified compatibility;
+  observed files are not retained immutable staging. Next qualify provenance,
+  signing-key authorization/rotation and authenticated runtime roster delivery
+  with the release/installer owner; no product trust or target transaction.
 - **M10.3 — Target transaction.** Explicit preflight, staged, verified, installing,
   boot-pending, health-confirmed and recovery states. Journal durable boundaries;
   check space/power prerequisites. An ambiguous state must not restart installation
@@ -2515,6 +2599,15 @@ and failed-update recovery demonstrated beyond merely reaching a boot prompt.
   enrollment/recovery, updates, sessions, secrets, application execution and data
   access. Review dependency advisories and document mitigation/response ownership.
   No known unresolved critical data-loss, authentication or cooling issue ships.
+  **Build-only hardening increment:** existing QEMU and EX4 B2/B3 resolved-config
+  auditors refuse unused `CONFIG_CRYPTO_USER_API*` builtin/module interfaces.
+  Internal kernel crypto remains available; no AF_ALG hash backend or kernel
+  change is introduced. Windows/Linux mutation tests, lint, actual QEMU6.18.55
+  config audit and workflow contracts pass. B3 config6.18.54 is historical
+  audit evidence only, not a current build. Current upstream
+  [AF_ALG guidance](https://www.kernel.org/doc/html/latest/crypto/userspace-if.html)
+  supports avoiding this interface; no specific-CVE or complete-security
+  disposition, performance improvement or hosted-timeout fix is established.
 - **M11.4 — Reproducible release.** Two independent clean builds compare a declared
   allowlist. Publish exact source commit/configuration, payload hashes, signed
   metadata, SBOM, license/legal material, support matrix, release notes, limitations

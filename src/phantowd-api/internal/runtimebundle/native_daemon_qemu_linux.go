@@ -295,12 +295,32 @@ func (r *NativeSambaRuntimeQEMU) nativeClientQEMU(ctx context.Context, user stri
 	return false, false, ErrMismatch
 }
 
+// Retain a refusal's typed cause for private fixed-label diagnostics, without
+// printing its text or weakening the review marker. This is not a retry,
+// readiness result or permission to operate on an uncertain daemon.
+type nativeDaemonReviewQEMU struct{ cause error }
+
+func (e *nativeDaemonReviewQEMU) Error() string { return ErrReviewRequired.Error() }
+
+func (e *nativeDaemonReviewQEMU) Unwrap() []error {
+	return []error{ErrReviewRequired, e.cause}
+}
+
 func (r *NativeSambaRuntimeQEMU) verifyNativeDaemonQEMU(ctx context.Context, pid int) error {
-	if pid <= 1 || r.owner.revalidate(ctx) != nil || r.owner.processes.CheckNativeSambaBootstrapQEMU(ctx) != nil {
+	if pid <= 1 {
 		return ErrReviewRequired
 	}
+	if err := r.owner.revalidate(ctx); err != nil {
+		return &nativeDaemonReviewQEMU{cause: err}
+	}
+	if err := r.owner.processes.CheckNativeSambaBootstrapQEMU(ctx); err != nil {
+		return &nativeDaemonReviewQEMU{cause: err}
+	}
 	observed, err := r.owner.processes.Observe(ctx)
-	if err != nil || observed.State != processowner.StateReady || len(observed.Members) != 1 || observed.Members[0].Process.PID != pid {
+	if err != nil {
+		return &nativeDaemonReviewQEMU{cause: err}
+	}
+	if observed.State != processowner.StateReady || len(observed.Members) != 1 || observed.Members[0].Process.PID != pid {
 		return ErrReviewRequired
 	}
 	group, err := unix.Getpgid(pid)

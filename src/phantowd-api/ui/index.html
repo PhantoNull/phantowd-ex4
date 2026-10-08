@@ -14,6 +14,7 @@
   <script src="/assets/app.js" defer></script>
 </head>
 <body>
+  <a class="skip-link" id="skip-to-content" href="#main-content">Skip to main content</a>
   <div class="app-shell">
     <header class="topbar">
       <a class="brand" href="/" aria-label="PhantoWD EX4 device overview">
@@ -27,10 +28,10 @@
       <button class="logout-button" id="logout" type="button" hidden>Sign out</button>
     </header>
 
-    <main>
+    <main id="main-content" tabindex="-1">
       <section class="auth-panel" id="auth-panel" aria-labelledby="auth-title" hidden>
         <p class="eyebrow">LOCAL ADMINISTRATOR</p>
-        <h1 id="auth-title">Set up your administrator account.</h1>
+        <h1 id="auth-title" tabindex="-1">Set up your administrator account.</h1>
         <p class="lede" id="auth-description">This initial account is stored in the configured system-state directory. Use at least 15 characters; a longer passphrase is better.</p>
         <form id="auth-form" class="auth-form">
           <label for="auth-username">Username</label>
@@ -65,7 +66,7 @@
       <section class="intro" aria-labelledby="page-title">
         <div>
         <p class="eyebrow">DEVICE CONSOLE <span aria-hidden="true">/</span> OVERVIEW</p>
-          <h1 id="page-title">Know what the system sees.</h1>
+          <h1 id="page-title" tabindex="-1">Know what the system sees.</h1>
         <p class="lede">Read-only observations from this development image. Each section reports its own current state; unavailable values are cleared. Nothing here assembles, mounts, or changes storage.</p>
         <p class="snapshot-status" id="snapshot-status" role="status" aria-live="polite" aria-atomic="true">Waiting for the local API…</p>
         </div>

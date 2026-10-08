@@ -37,6 +37,24 @@ body {
 
 button, a { font: inherit; }
 a { color: inherit; text-decoration: none; }
+:is(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+  outline: 2px solid var(--violet);
+  outline-offset: 3px;
+}
+.skip-link {
+  position: fixed;
+  z-index: 10;
+  inset-block-start: 12px;
+  inset-inline-start: 12px;
+  max-width: calc(100% - 24px);
+  padding: 12px 16px;
+  border: 1px solid var(--violet);
+  border-radius: 8px;
+  color: var(--ink);
+  background: var(--canvas);
+  transform: translateY(calc(-100% - 24px));
+}
+.skip-link:focus { transform: none; }
 
 .app-shell { width: min(1180px, calc(100% - 56px)); margin: 0 auto; }
 .topbar { height: 82px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--line); }
@@ -223,4 +241,9 @@ code { color: #ded5ff; font-family: ui-monospace, SFMono-Regular, Consolas, mono
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; }
+}
+
+@media (forced-colors: active) {
+  :is(a, button, input, select, textarea, summary, [tabindex]):focus-visible { outline-color: Highlight; }
+  .skip-link { color: LinkText; background: Canvas; border-color: CanvasText; }
 }

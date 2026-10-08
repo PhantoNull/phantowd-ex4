@@ -43,14 +43,17 @@ func (b *NativeBackendQEMU) readNativeSessionsQEMU(ctx context.Context) (map[str
 	if b == nil || ctx == nil {
 		return nil, ErrInvalid
 	}
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	b.mu.RLock()
 	defer b.mu.RUnlock()
-	if b.inner == nil {
+	if b.closed || b.inner == nil {
 		return nil, ErrInvalid
 	}
 	b.inner.mu.RLock()
 	defer b.inner.mu.RUnlock()
-	if b.inner.config == nil || b.inner.runner == nil {
+	if b.inner.closed || b.inner.config == nil || b.inner.runner == nil {
 		return nil, ErrInvalid
 	}
 	// This native-only observation includes complete admission on both sides

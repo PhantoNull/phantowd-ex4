@@ -317,6 +317,12 @@ func (s *NativePlannedServiceQEMU) Close(ctx context.Context) error {
 	if s.closeErr != nil {
 		return errors.Join(runtimebundle.ErrReviewRequired, s.closeErr)
 	}
+	if s.review {
+		// Review is not teardown authority. A normal low-level Close can
+		// release settled inputs, but this coordinator must retain BOTH
+		// originals and runtime inputs until separately qualified recovery.
+		return runtimebundle.ErrReviewRequired
+	}
 	if !s.closed {
 		if err := s.inputs.Backend.runtime.Close(context.Background()); err != nil {
 			s.closeErr = err

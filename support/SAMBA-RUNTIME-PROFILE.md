@@ -671,7 +671,7 @@ through caller loss/GC still needs the product recovery/lifecycle design.
 ### Bounded campaign execution
 
 The official runner compiles and stages one fixed probe image, then executes
-six fresh QEMU snapshots sequentially, each bounded to 180 seconds. The service
+seven fresh QEMU snapshots sequentially, each bounded to 180 seconds. The service
 campaign proves the old access/isolation/lifetime cases and releases all its
 resources, then runs the independent real NSS/configuration/handoff checks.
 The native campaign bootstraps its own accounts and proves credential workers,
@@ -706,10 +706,17 @@ bounded scan measurement per guest, then requires equal file/byte censuses.
 Missing, duplicated, swapped or weakened proofs fail. The normalized marker
 summary is combined coverage, not one daemon or state retained across boots.
 The base manifest and post-run image hash remain mandatory. Failure artifacts
-contain the failed phase's log, or all six logs when joint verification fails.
+contain the failed phase's log, or all seven logs when joint verification fails.
 
 The local PowerShell runner may explicitly select one campaign for diagnosis;
-default/full Buildroot callers require all six. Focused completion
+default/full Buildroot callers require all seven. The separate `exit` guest
+performs its own enrollment, real planned startup/data access and original-owned
+single-use exit request. Actual exclusive supervision must verify reviewed
+group stop/reap, retained private inputs and BOTH original authorities, plus a
+retained unconsumed/settled credential capture. No normal-stop reclassification,
+restart or release is accepted. Its fixed private-namespace child is disposed
+only after the proof; the parent must retain descriptor equality. No authority
+or Samba state is borrowed across guest boots. Focused completion
 reports `complete_image=false`, never the aggregate qualification marker.
 See the [focused-run contract](QEMU-FAST-TESTS.md).
 
