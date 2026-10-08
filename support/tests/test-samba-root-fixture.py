@@ -48,79 +48,111 @@ def reports():
     } for entry in fixture.ENTRIES]
 
 
+def campaign_rows():
+    """Synthetic verifier inputs, not executed guest qualification."""
+    enrollment = next(i for i, row in enumerate(fixture.MARKERS) if
+                      row.startswith(
+                          "PHANTOWD_SAMBA_OWNER_NATIVE_ENROLLMENT_READY"))
+    candidate = next(row for row in fixture.MARKERS if row.startswith(
+        "PHANTOWD_SAMBA_OWNER_PLANNED_CANDIDATE_READY"))
+    access = tuple(row for row in fixture.MARKERS if row.startswith((
+        "PHANTOWD_SAMBA_OWNER_PLANNED_STARTUP_READY",
+        "PHANTOWD_SAMBA_OWNER_PLANNED_DATA_READY")))
+    census = [*fixture.MARKERS[:3], CENSUS, fixture.MARKERS[enrollment]]
+    return {
+        "service": [*fixture.MARKERS[:enrollment],
+                    "PHANTOWD_SAMBA_ROOT_SERVICE_DONE", SCAN_COST],
+        "native": [*fixture.MARKERS[:3], CENSUS,
+                   *(row for row in fixture.MARKERS[enrollment:-3]
+                     if row not in (*access, candidate)),
+                   "PHANTOWD_SAMBA_ROOT_NATIVE_DONE", SCAN_COST],
+        "candidate": [*census, candidate,
+                      "PHANTOWD_SAMBA_ROOT_CANDIDATE_DONE", SCAN_COST],
+        "lifecycle": [*census, fixture.MARKERS[-3],
+                      "PHANTOWD_SAMBA_ROOT_DONE", SCAN_COST],
+        "fault": [*census, fixture.MARKERS[-2],
+                  "PHANTOWD_SAMBA_ROOT_FAULT_DONE", SCAN_COST],
+        "data": [*census, *access,
+                 "PHANTOWD_SAMBA_ROOT_DATA_DONE", SCAN_COST],
+    }
+
+
 class SambaRootFixture(unittest.TestCase):
+    def test_all_requires_independent_candidate_startup_fault_traces(self):
+        rows = campaign_rows()
+        phases = ("service", "native", "candidate", "lifecycle", "fault",
+                  "data")
+        logs = tuple("\n".join(rows[phase]) for phase in phases)
+        self.assertEqual(fixture.check_campaigns(*logs),
+                         ((104, 12000000, 123456789),) * 6)
+        self.assertEqual(fixture.select_campaigns("all"), phases)
+        self.assertEqual({row for values in rows.values() for row in values
+                          if row in fixture.MARKERS}, set(fixture.MARKERS))
+
+    def test_complete_cli_requires_all_six_ordered_campaign_logs(self):
+        with tempfile.TemporaryDirectory() as scratch:
+            paths = {}
+            for phase, rows in campaign_rows().items():
+                path = Path(scratch) / (phase + ".log")
+                path.write_text("\n".join(rows), encoding="utf-8")
+                paths[phase] = str(path)
+            base = [sys.executable, "-B", str(Path(fixture.__file__)),
+                    "verify", paths["service"]]
+            pairs = [["--" + phase + "-log", paths[phase]]
+                     for phase in ("native", "candidate", "lifecycle",
+                                   "fault", "data")]
+            complete = [item for pair in pairs for item in pair]
+            result = subprocess.run(base + complete, capture_output=True,
+                                    text=True, check=False, timeout=5)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            fixture.check_guest(result.stdout)
+            for omitted in range(len(pairs)):
+                partial = [item for index, pair in enumerate(pairs)
+                           if index != omitted for item in pair]
+                with self.subTest(omitted=omitted):
+                    result = subprocess.run(
+                        base + partial, capture_output=True, text=True,
+                        check=False, timeout=5)
+                    self.assertNotEqual(result.returncode, 0)
+                    self.assertEqual(result.stdout, "")
+
     def test_new_data_guest_is_required_without_replacing_old_campaigns(self):
-        enrollment = next(i for i, row in enumerate(fixture.MARKERS) if
-                          row.startswith(
-                              "PHANTOWD_SAMBA_OWNER_NATIVE_ENROLLMENT_READY"))
-        planned = tuple(row for row in fixture.MARKERS if row.startswith((
-            "PHANTOWD_SAMBA_OWNER_PLANNED_STARTUP_READY",
-            "PHANTOWD_SAMBA_OWNER_PLANNED_DATA_READY")))
-        candidate = next(row for row in fixture.MARKERS if row.startswith(
-            "PHANTOWD_SAMBA_OWNER_PLANNED_CANDIDATE_READY"))
-        rows = (
-            [*fixture.MARKERS[:enrollment],
-             "PHANTOWD_SAMBA_ROOT_SERVICE_DONE", SCAN_COST],
-            [*fixture.MARKERS[:3], CENSUS,
-             *(row for row in fixture.MARKERS[enrollment:-3]
-               if row not in (*planned, candidate)),
-             "PHANTOWD_SAMBA_ROOT_NATIVE_DONE", SCAN_COST],
-            [*fixture.MARKERS[:3], CENSUS, fixture.MARKERS[enrollment],
-             candidate, *fixture.MARKERS[-3:], SCAN_COST],
-            [*fixture.MARKERS[:3], CENSUS, fixture.MARKERS[enrollment],
-             *planned, "PHANTOWD_SAMBA_ROOT_DATA_DONE", SCAN_COST],
-        )
+        rows = tuple(campaign_rows().values())
         logs = tuple("\n".join(values) for values in rows)
         self.assertEqual(fixture.check_campaigns(*logs),
-                         ((104, 12000000, 123456789),) * 4)
+                         ((104, 12000000, 123456789),) * 6)
         self.assertEqual(fixture.select_campaigns("all"),
-                         ("service", "native", "lifecycle", "data"))
-        self.assertEqual(fixture.check_campaign(logs[3], "data"),
+                         ("service", "native", "candidate", "lifecycle",
+                          "fault", "data"))
+        self.assertEqual(fixture.check_campaign(logs[5], "data"),
                          (104, 12000000, 123456789))
         self.assertEqual({row for values in rows for row in values
                           if row in fixture.MARKERS}, set(fixture.MARKERS))
         with self.assertRaises(ValueError):
-            fixture.check_campaigns(*logs[:3])
-        for omitted in rows[3][:-1]:
+            fixture.check_campaigns(*logs[:5])
+        for omitted in rows[5][:-1]:
             with self.subTest(omitted=omitted):
                 with self.assertRaises(ValueError):
-                    fixture.check_campaigns(*logs[:3],
-                                            logs[3].replace(omitted, ""))
+                    fixture.check_campaigns(*logs[:5],
+                                            logs[5].replace(omitted, ""))
 
     def test_independent_lookup_moves_once_without_borrowed_native_state(self):
         enrollment = next(
             i for i, row in enumerate(fixture.MARKERS)
             if row.startswith("PHANTOWD_SAMBA_OWNER_NATIVE_ENROLLMENT_READY"))
-        planned = next(row for row in fixture.MARKERS if row.startswith(
-            "PHANTOWD_SAMBA_OWNER_PLANNED_CANDIDATE_READY"))
-        access = tuple(row for row in fixture.MARKERS if row.startswith((
-            "PHANTOWD_SAMBA_OWNER_PLANNED_STARTUP_READY",
-            "PHANTOWD_SAMBA_OWNER_PLANNED_DATA_READY")))
-        service = "\n".join([*fixture.MARKERS[:enrollment],
-                             "PHANTOWD_SAMBA_ROOT_SERVICE_DONE", SCAN_COST])
-        native = "\n".join([*fixture.MARKERS[:3], CENSUS,
-                            *(row for row in fixture.MARKERS[enrollment:-3]
-                              if row not in (*access, planned)),
-                            "PHANTOWD_SAMBA_ROOT_NATIVE_DONE", SCAN_COST])
-        lifecycle = "\n".join([*fixture.MARKERS[:3], CENSUS,
-                               fixture.MARKERS[enrollment], planned,
-                               *fixture.MARKERS[-3:], SCAN_COST])
-        data = "\n".join([*fixture.MARKERS[:3], CENSUS,
-                          fixture.MARKERS[enrollment], *access,
-                          "PHANTOWD_SAMBA_ROOT_DATA_DONE", SCAN_COST])
-        fixture.check_campaigns(service, native, lifecycle, data)
+        logs = tuple("\n".join(rows) for rows in campaign_rows().values())
+        fixture.check_campaigns(*logs)
         split = next(i for i, row in enumerate(fixture.MARKERS) if
                      row.startswith("PHANTOWD_SAMBA_OWNER_NATIVE_NSS_READY"))
         for proof in fixture.MARKERS[split:enrollment]:
-            self.assertNotIn(proof, native)
-            self.assertNotIn(proof, lifecycle)
-            self.assertNotIn(proof, data)
+            for other in logs[1:]:
+                self.assertNotIn(proof, other)
             with self.assertRaises(ValueError):
-                fixture.check_campaigns(service.replace(proof, ""), native,
-                                        lifecycle, data)
+                fixture.check_campaigns(logs[0].replace(proof, ""),
+                                        *logs[1:])
             with self.assertRaises(ValueError):
-                fixture.check_campaigns(service, native + "\n" + proof,
-                                        lifecycle, data)
+                fixture.check_campaigns(logs[0], logs[1] + "\n" + proof,
+                                        *logs[2:])
 
     def test_planned_data_requires_actual_retained_access_proof(self):
         marker = (
@@ -278,7 +310,8 @@ class SambaRootFixture(unittest.TestCase):
 
     def test_campaign_selection_defaults_to_complete_proof(self):
         self.assertEqual(fixture.select_campaigns("all"),
-                         ("service", "native", "lifecycle", "data"))
+                         ("service", "native", "candidate", "lifecycle",
+                          "fault", "data"))
 
     @unittest.skipUnless(os.name == "posix", "POSIX driver admission")
     def test_invalid_diagnostic_mode_never_calls_python(self):
@@ -302,7 +335,8 @@ class SambaRootFixture(unittest.TestCase):
                 self.assertEqual(result.stderr, "")
 
     def test_campaign_selection_is_one_exact_phase(self):
-        for phase in ("service", "native", "lifecycle", "data"):
+        for phase in ("service", "native", "candidate", "lifecycle", "fault",
+                      "data"):
             self.assertEqual(fixture.select_campaigns(phase), (phase,))
 
     def test_campaign_selection_refuses_untrusted_values(self):
@@ -314,7 +348,8 @@ class SambaRootFixture(unittest.TestCase):
     def test_campaign_selection_cli_has_exact_output(self):
         command = [sys.executable, "-B", str(Path(fixture.__file__)),
                    "select-campaigns"]
-        for selection in ("all", "service", "native", "lifecycle", "data"):
+        for selection in ("all", "service", "native", "candidate", "lifecycle",
+                          "fault", "data"):
             result = subprocess.run(command + [selection], check=False,
                                     capture_output=True, text=True, timeout=5)
             self.assertEqual(result.returncode, 0, result.stderr)
@@ -427,7 +462,7 @@ class SambaRootFixture(unittest.TestCase):
             with self.assertRaises(ValueError):
                 fixture.check_guest(good.replace(expected, replacement))
 
-    def test_four_bounded_campaigns_require_every_original_proof(self):
+    def test_six_bounded_campaigns_require_every_original_proof(self):
         split = next(i for i, row in enumerate(fixture.MARKERS)
                      if row.startswith(
                          "PHANTOWD_SAMBA_OWNER_NATIVE_NSS_READY"))
@@ -437,26 +472,8 @@ class SambaRootFixture(unittest.TestCase):
         planned = next(row for row in fixture.MARKERS
                        if row.startswith(
                            "PHANTOWD_SAMBA_OWNER_PLANNED_CANDIDATE_READY"))
-        access = tuple(row for row in fixture.MARKERS if row.startswith((
-            "PHANTOWD_SAMBA_OWNER_PLANNED_STARTUP_READY",
-            "PHANTOWD_SAMBA_OWNER_PLANNED_DATA_READY")))
-        rows = {
-            "service": [*fixture.MARKERS[:enrollment],
-                        "PHANTOWD_SAMBA_ROOT_SERVICE_DONE", SCAN_COST],
-            "native": [*fixture.MARKERS[:3], CENSUS,
-                       *(row for row in fixture.MARKERS[enrollment:-3]
-                         if row not in (*access, planned)),
-                       "PHANTOWD_SAMBA_ROOT_NATIVE_DONE", SCAN_COST],
-            "lifecycle": [*fixture.MARKERS[:3], CENSUS,
-                          fixture.MARKERS[enrollment],
-                          planned,
-                          *fixture.MARKERS[-3:], SCAN_COST],
-            "data": [*fixture.MARKERS[:3], CENSUS,
-                     fixture.MARKERS[enrollment], *access,
-                     "PHANTOWD_SAMBA_ROOT_DATA_DONE", SCAN_COST],
-        }
-        good = ["\n".join(rows[phase])
-                for phase in ("service", "native", "lifecycle", "data")]
+        rows = campaign_rows()
+        good = ["\n".join(values) for values in rows.values()]
         # Every original contract remains mandatory in the complete union.
         # Lifecycle must not claim the idle-disable proof exercised in native.
         covered = {row for values in rows.values() for row in values
@@ -476,7 +493,9 @@ class SambaRootFixture(unittest.TestCase):
         self.assertTrue(any("NATIVE_IDLE_DISABLE_READY" in row
                             for row in rows["native"]))
         self.assertNotIn(planned, rows["native"])
-        self.assertIn(planned, rows["lifecycle"])
+        self.assertIn(planned, rows["candidate"])
+        self.assertNotIn(planned, rows["lifecycle"])
+        self.assertNotIn(planned, rows["fault"])
         # Independent libc/config/handoff scenarios run once, in service.
         # Each native guest still creates its OWN real identities and enrolls
         # both accounts; it cannot borrow state or proof from another guest.
@@ -486,9 +505,8 @@ class SambaRootFixture(unittest.TestCase):
             self.assertNotIn(proof, rows["lifecycle"])
             self.assertNotIn(proof, rows["data"])
         self.assertEqual(fixture.check_campaigns(*good),
-                         ((104, 12000000, 123456789),) * 4)
-        for index, phase in enumerate(("service", "native", "lifecycle",
-                                       "data")):
+                         ((104, 12000000, 123456789),) * 6)
+        for index, phase in enumerate(rows):
             self.assertEqual(fixture.check_campaign(good[index], phase),
                              (104, 12000000, 123456789))
             for row_index in range(len(rows[phase])):
@@ -498,14 +516,14 @@ class SambaRootFixture(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     fixture.check_campaigns(*changed)
             for altered in (good[index] + "\n" + rows[phase][0],
-                            good[(index + 1) % 4],
+                            good[(index + 1) % 6],
                             good[index].replace("files=104", "files=105")):
                 changed = list(good)
                 changed[index] = altered
                 with self.assertRaises(ValueError):
                     fixture.check_campaigns(*changed)
 
-        for index in (1, 2, 3):
+        for index in (1, 2, 3, 4, 5):
             for field in ("readonly", "complete_census", "hashes", "aliases"):
                 changed = list(good)
                 changed[index] = good[index].replace(

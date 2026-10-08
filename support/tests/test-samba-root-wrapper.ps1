@@ -47,7 +47,7 @@ function Assert-True {
 try {
     $repoRoot = (Microsoft.PowerShell.Management\Resolve-Path (Join-Path $PSScriptRoot '../..')).Path
     $state = $global:phantowdSambaWrapperTestState
-    foreach ($campaign in @('all', 'service', 'native', 'lifecycle', 'data')) {
+    foreach ($campaign in @('all', 'service', 'native', 'candidate', 'lifecycle', 'fault', 'data')) {
         foreach ($baseArgument in @('', (Join-Path $repoRoot 'mock-explicit-base'))) {
             $state.Calls.Clear()
             $state.Files.Clear()
@@ -115,7 +115,7 @@ try {
             Remove-Item -LiteralPath $probeRoot -Force
         }
     }
-    'PHANTOWD_SAMBA_WRAPPER_TESTS_READY defaults=true campaigns=5 refusals=6 scope=mock-command-boundary-only'
+    'PHANTOWD_SAMBA_WRAPPER_TESTS_READY defaults=true campaigns=7 refusals=6 scope=mock-command-boundary-only'
 } finally {
     Remove-Variable phantowdSambaWrapperTestState -Scope Global
     $global:LASTEXITCODE = $previousExitCode

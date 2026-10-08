@@ -22,7 +22,7 @@ The wrapper refuses missing caches;
 it never builds/pulls an image or creates a named volume. Source, workspace and
 base inputs are read-only; one disposable container uses bounded 512 MiB `/tmp`
 and 128 MiB `/var/tmp` tmpfs. Compiler scratch is removed before the image copy.
-Each of four ARM926/VersatilePB boots is bounded to 180 seconds, without retries, guest
+Each of six ARM926/VersatilePB boots is bounded to 180 seconds, without retries, guest
 NICs, host ports or physical-device attachments. The base image hash must remain
 unchanged. Generated images and state are destroyed when the fixture exits.
 The host formats only a newly created 16 MiB regular tmpfs file as ext4 and
@@ -671,14 +671,18 @@ through caller loss/GC still needs the product recovery/lifecycle design.
 ### Bounded campaign execution
 
 The official runner compiles and stages one fixed probe image, then executes
-four fresh QEMU snapshots sequentially, each bounded to 180 seconds. The service
+six fresh QEMU snapshots sequentially, each bounded to 180 seconds. The service
 campaign proves the old access/isolation/lifetime cases and releases all its
 resources, then runs the independent real NSS/configuration/handoff checks.
 The native campaign bootstraps its own accounts and proves credential workers,
 live revocation and the older isolated data prerequisite on fresh tmpfs. The
 lifecycle guest independently repeats real disabled-first enrollment and explicit
-enable, then qualifies retained startup/supervision, coordinator revocation and one
-state-directory alias replacement fault. The data guest independently enrolls
+enable, then qualifies retained startup/supervision and coordinator revocation.
+Candidate and state-alias fault have their own independently enrolled guests:
+candidate retains the SAME enrollment Owner/backend/runtime and mounted roster
+through declaration, role rendering and prepared-input checks; fault closes
+enrollment admission before a NEW retained service consumer in its bounded
+subprocess. The data guest independently enrolls
 its own identities, then verifies retained planned startup and six fixed access
 clients through the SAME service and original authorities. No service passdb or
 filesystem mutation carries over; both virtual drives use snapshots.
@@ -686,7 +690,8 @@ filesystem mutation carries over; both virtual drives use snapshots.
 Lifecycle does not start/idle-disable/stop a redundant initial daemon before
 its coordinator. Those authentication/idle/live-disable and backend-binding
 contracts remain mandatory in the native guest. Lifecycle prints only its
-actual enrollment/startup/fault proofs. The complete union of required contracts
+actual enrollment/startup proofs; candidate and fault cannot claim those or each
+other's proof. The complete union of required contracts
 keeps every previous contract plus planned startup/access; verifier tests reject
 any missing contract or wrong-phase
 claim. The final native account census now uses the complete Owner-locked
@@ -701,12 +706,27 @@ bounded scan measurement per guest, then requires equal file/byte censuses.
 Missing, duplicated, swapped or weakened proofs fail. The normalized marker
 summary is combined coverage, not one daemon or state retained across boots.
 The base manifest and post-run image hash remain mandatory. Failure artifacts
-contain the failed phase's log, or all four logs when joint verification fails.
+contain the failed phase's log, or all six logs when joint verification fails.
 
 The local PowerShell runner may explicitly select one campaign for diagnosis;
-default/full Buildroot callers require all four. Focused completion
+default/full Buildroot callers require all six. Focused completion
 reports `complete_image=false`, never the aggregate qualification marker.
 See the [focused-run contract](QEMU-FAST-TESTS.md).
+
+The former compound lifecycle completed candidate and startup but exhausted
+guest180 before its fault proof. The current distribution passes all six real
+ARMv5 guests, the complete original proof union and unchanged-base check locally
+on 2026-10-08. All 61 Linux verifier tests pass. This is component verification,
+not a new full-image/source audit, independent clean build or repair of the
+earlier hosted failure.
+
+Candidate's declaration and prepared-input scenarios also have distinct fixed
+30-second contexts, while retaining the SAME authorities. This explicitly
+changes that fixture's aggregate from shared30 to two30; it changes no product,
+worker, readiness, stop or guest deadline. An uncertain/expired first scenario
+cannot proceed or retry, parent cancellation remains binding, and late nil
+results fail. Five deterministic fake-clock tests cover ten cases; their
+success is not real Samba execution or a new authority admission.
 
 The earlier split addressed an observed outer timeout after native handoff in the growing
 single-guest campaign, without weakening admission or increasing the native

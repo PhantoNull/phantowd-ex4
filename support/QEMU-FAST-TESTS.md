@@ -740,29 +740,37 @@ Ownership, wrong-password/access denials, Unix-mode enforcement, kernel RO,
 original-path/symlink denial, one Unicode filename and owned-group stop are
 checked. This is a distinct test-only native fixture, never installed into the
 product image. See [runtime profile and remaining gates](SAMBA-RUNTIME-PROFILE.md).
-The current wrapper compiles once and runs fresh service/native/lifecycle/data
+The current wrapper compiles once and runs fresh service/native/candidate/
+lifecycle/fault/data
 snapshots, each bounded to 180 seconds. It independently verifies each phase,
-requires all four complete proofs with matching runtime census, then prints combined
+requires all six complete proofs with matching runtime census, then prints combined
 coverage. This is not a state/daemon lease across boots. Every original contract,
 base check, worker admission fence and deadline remains required by the complete
 suite. The lifecycle guest independently creates real disabled-first accounts
-and explicitly enables them, then tests retained startup/supervision, coordinator
-revocation and one state-alias fault. It does not duplicate native's first
+and explicitly enables them, then tests retained startup/supervision and coordinator
+revocation. Candidate and state-alias fault now have independently enrolled
+guests instead of accumulating inside lifecycle. Candidate retains the SAME
+Owner/backend/runtime/roster; fault closes enrollment admission before its NEW
+service consumer and disposal subprocess. Lifecycle does not duplicate native's first
 daemon/idle-disable cycle. Authentication, idle/live disable and backend-binding
 proofs remain mandatory in the native guest, never fabricated in lifecycle.
 Independent inspector refusals and generic-adapter retention experiments now
 run once, in service, and remain mandatory in the complete union. Native and
-lifecycle/data each run the SAME zero-capability/read-only boundary and actual
+candidate/lifecycle/fault/data each run the SAME zero-capability/read-only boundary and actual
 complete census/hash inspection of their OWN staged tree, but emit a separate
 `CENSUS_READY` proof explicitly saying those independent controls did not run.
 The new data guest independently creates and enrolls its own real identities,
 then verifies fixed SMB transfers and denials through the SAME retained planned
 service. Startup/preparation and the new data action retain separate 40/20-second
 budgets. No earlier guest supplies identity, passdb, runtime or mount authority.
-There is no borrowed authority, cached hash, weaker worker revalidation or
-increased deadline. The host verifier rejects missing
+There is no borrowed authority, cached hash or weaker worker revalidation.
+Worker/readiness/stop/guest deadlines remain unchanged. Candidate's distinct
+declaration and prepared-input scenarios use two serial30-second contexts
+instead of sharing30; failed/expired first work cannot proceed or retry and
+parent cancellation remains binding. This is fixture orchestration, not a
+product timeout extension. The host verifier rejects missing
 original service proofs, incomplete census, wrong-phase/duplicate markers and
-false claims that omitted controls ran. A local all-four pass is not proof
+false claims that omitted controls ran. A local all-six pass is not proof
 that intermittent hosted enrollment/guest timeouts are fixed.
 Deliberately quarantined captures and identity references remain held until a
 disposable subprocess proves group stop and exits; that exit is not recovery.
@@ -773,12 +781,13 @@ For a focused local diagnosis, select exactly one unchanged guest campaign:
 .\support\test-samba-root.ps1 -Campaign lifecycle
 ```
 
-Allowed selections are `service`, `native`, `lifecycle`, `data` and default `all`.
+Allowed selections are `service`, `native`, `candidate`, `lifecycle`, `fault`,
+`data` and default `all`.
 Invalid values fail before guest/fixture construction. A focused run still
 compiles current source, checks all base hashes, uses read-only inputs and
 bounded tmpfs, verifies that phase's exact proof, retains its 180-second limit
 and cleans its disposable container. Its completion explicitly reports
-`complete_image=false`; it cannot substitute for the default four-campaign
+`complete_image=false`; it cannot substitute for the default six-campaign
 qualification or clean Buildroot/hosted/release evidence. Existing full-build
 callers continue to select all campaigns without modification.
 
@@ -794,12 +803,13 @@ fixture logs only, not a product/device log collector; save the command output
 if needed. Additional temporary instrumentation still requires a separate clean
 replay after it is removed.
 
-The QEMU-only native, lifecycle and data fixtures also emit bounded cumulative
+The QEMU-only native, candidate, lifecycle, fault and data fixtures also emit bounded cumulative
 `PHANTOWD_DIAG_NATIVE_PHASE` timings with fixed phase names, `qualifying=false`
 and `scope=qemu-only`. The monotonic clock starts inside credential setup,
 not at host compilation or guest boot. Timings distinguish enrollment, backend
 observation, authentication, revocation, verified authority closure and the
-later new data profile; lifecycle uses its own candidate/startup/fault phases.
+later new data profile. Candidate/startup/fault timings belong to their own
+independently enrolled traces, never a continuous authority across boots.
 A last timing row only bounds completed work: it neither identifies a blocked
 worker inside the next phase nor proves its success. All original proof markers,
 descriptor census, hashes and command/phase/180-second guest limits remain

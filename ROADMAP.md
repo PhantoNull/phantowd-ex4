@@ -284,6 +284,19 @@ button to an unqualified backend simply because the screen exists.
   prebuilt workspaces/images, weaken ccache input checks or change the trusted
   develop-only write/checkpoint/1 GiB policy. Measure actual hosted savings;
   a broader lookup is not reproducibility or a release qualification.
+  The 2026-10-08 compound lifecycle replay completed candidate/startup but
+  exhausted guest180 before fault. The current one-compile Samba lane separates
+  candidate/startup/fault into independently enrolled guests. All six actual
+  ARMv5 traces, complete original proof union, equal full censuses and base
+  hash pass locally; 61 Linux verifier tests reject missing, duplicate,
+  wrong-phase and census-mismatched evidence. No state or authority crosses
+  boots, and worker/readiness/stop/guest limits stay unchanged. Candidate's
+  separate declaration/prepared-input workloads use two serial30 contexts,
+  explicitly replacing shared30; parent cancellation, late-result refusal
+  and no continuation/retry after uncertain first work pass fake-clock tests.
+  This is fixture orchestration only. New exact-source image/archive audit,
+  own-head hosted checks and independent clean qualification remain mandatory;
+  do not declare intermittent hosted enrollment or historical EBUSY fixed.
 - **M0.4 — Maintain release inputs.** Dependency update changes include source
   signatures/hashes, ARMv5 compatibility, package configuration, vulnerability
   review, license material and regenerated SBOM. Test the selected package set.

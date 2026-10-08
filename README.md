@@ -69,9 +69,11 @@ clean reproducibility or a fix for the intermittent hosted Samba timeout.
 See the [dependency qualification record](support/DEPENDENCY-REVIEW.md).
 
 That qualified checkpoint includes retained same-authority SMB startup and
-fixed data-access checks, plus every original Samba proof. The Samba lane
-compiles once and checks four disposable guests; no product SMB/NFS service
-is activated. This is cached integration qualification, not an installable
+fixed data-access checks, plus every original Samba proof. The current Samba
+lane compiles once and checks six disposable guests, separating candidate,
+startup and fault work; all six pass locally. Its updated full-image audit and
+exact-head hosted checks remain pending. No product SMB/NFS service
+is activated. Component/cached verification is not an installable
 image or product service; see [implementation status](IMPLEMENTATION-STATUS.md).
 
 ## Roadmap

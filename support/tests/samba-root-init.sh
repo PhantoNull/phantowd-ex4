@@ -79,9 +79,15 @@ run_native_fixture() {
     if [ "$campaign" = data ]; then
         /usr/sbin/phantowd-runtime-bundle-probe native-planned-data || return 1
         echo PHANTOWD_SAMBA_ROOT_DATA_DONE
+    elif [ "$campaign" = candidate ]; then
+        /usr/sbin/phantowd-runtime-bundle-probe native-planned-candidate || return 1
+        echo PHANTOWD_SAMBA_ROOT_CANDIDATE_DONE
     elif [ "$campaign" = lifecycle ]; then
         /usr/sbin/phantowd-runtime-bundle-probe native-lifecycle || return 1
         echo PHANTOWD_SAMBA_ROOT_DONE
+    elif [ "$campaign" = fault ]; then
+        /usr/sbin/phantowd-runtime-bundle-probe native-identity-fault || return 1
+        echo PHANTOWD_SAMBA_ROOT_FAULT_DONE
     else
         /usr/sbin/phantowd-runtime-bundle-probe native-credentials || return 1
         echo PHANTOWD_SAMBA_ROOT_NATIVE_DONE
@@ -96,7 +102,9 @@ run_fixture() {
     case "$campaign" in
         phantowd_samba_campaign=service) campaign=service ;;
         phantowd_samba_campaign=native) campaign=native ;;
+        phantowd_samba_campaign=candidate) campaign=candidate ;;
         phantowd_samba_campaign=lifecycle) campaign=lifecycle ;;
+        phantowd_samba_campaign=fault) campaign=fault ;;
         phantowd_samba_campaign=data) campaign=data ;;
         *) return 1 ;;
     esac

@@ -11,7 +11,7 @@ from pathlib import Path
 from runtime_loader_fixture import MAX_LOG, MAX_REPORT, read_bounded, validate
 
 
-CAMPAIGNS = ("service", "native", "lifecycle", "data")
+CAMPAIGNS = ("service", "native", "candidate", "lifecycle", "fault", "data")
 ENTRIES = ("usr/sbin/smbd", "usr/bin/smbpasswd", "usr/bin/testparm",
            "usr/lib/samba/vfs/streams_xattr.so", "usr/lib/gconv/IBM850.so",
            "usr/bin/pdbedit", "usr/bin/smbstatus", "usr/bin/smbcontrol")
@@ -247,8 +247,12 @@ def check_campaign(log, phase):
         + ("PHANTOWD_SAMBA_ROOT_SERVICE_DONE",),
         "native": census + native
         + ("PHANTOWD_SAMBA_ROOT_NATIVE_DONE",),
-        "lifecycle": (census + (MARKERS[enrollment],)
-                      + (planned,) + MARKERS[-3:]),
+        "candidate": (census + (MARKERS[enrollment], planned)
+                      + ("PHANTOWD_SAMBA_ROOT_CANDIDATE_DONE",)),
+        "lifecycle": (census + (MARKERS[enrollment], MARKERS[-3],
+                                "PHANTOWD_SAMBA_ROOT_DONE")),
+        "fault": (census + (MARKERS[enrollment], MARKERS[-2],
+                            "PHANTOWD_SAMBA_ROOT_FAULT_DONE")),
         "data": (census + (MARKERS[enrollment],) + access
                  + ("PHANTOWD_SAMBA_ROOT_DATA_DONE",)),
     }[phase]
@@ -261,7 +265,7 @@ def check_campaign(log, phase):
 
 
 def select_campaigns(selection):
-    """A focused local probe is never the complete four-campaign proof."""
+    """A focused local probe is never the complete six-campaign proof."""
     if not isinstance(selection, str):
         raise ValueError("invalid campaign selection")
     if selection == "all":
@@ -283,14 +287,13 @@ def diagnostic_record(log, phase, status):
                       ensure_ascii=True, separators=(",", ":"))
 
 
-def check_campaigns(service, native, lifecycle, data=None):
-    first = check_campaign(service, "service")
-    second = check_campaign(native, "native")
-    third = check_campaign(lifecycle, "lifecycle")
-    fourth = check_campaign(data, "data")
-    if any(first[:2] != cost[:2] for cost in (second, third, fourth)):
+def check_campaigns(service, native, candidate, lifecycle=None, fault=None,
+                    data=None):
+    costs = tuple(check_campaign(log, phase) for log, phase in zip(
+        (service, native, candidate, lifecycle, fault, data), CAMPAIGNS))
+    if any(costs[0][:2] != cost[:2] for cost in costs[1:]):
         raise ValueError("campaign runtime census differs")
-    return first, second, third, fourth
+    return costs
 
 
 def validate_catalog(catalog):
@@ -355,7 +358,9 @@ def main():
     verify = sub.add_parser("verify")
     verify.add_argument("log")
     verify.add_argument("--native-log")
+    verify.add_argument("--candidate-log")
     verify.add_argument("--lifecycle-log")
+    verify.add_argument("--fault-log")
     verify.add_argument("--data-log")
     campaign = sub.add_parser("verify-campaign")
     campaign.add_argument("log")
@@ -387,14 +392,13 @@ def main():
                                 args.phase, args.status))
     else:
         log = read_bounded(args.log, MAX_LOG)
-        paths = (args.native_log, args.lifecycle_log, args.data_log)
+        paths = (args.native_log, args.candidate_log, args.lifecycle_log,
+                 args.fault_log, args.data_log)
         if any(paths) and not all(paths):
-            raise ValueError("all four campaign logs required")
+            raise ValueError("all six campaign logs required")
         if args.native_log:
-            native = read_bounded(args.native_log, MAX_LOG)
-            lifecycle = read_bounded(args.lifecycle_log, MAX_LOG)
-            data = read_bounded(args.data_log, MAX_LOG)
-            costs = check_campaigns(log, native, lifecycle, data)
+            costs = check_campaigns(
+                log, *(read_bounded(path, MAX_LOG) for path in paths))
             for phase, (files, size, elapsed) in zip(
                     CAMPAIGNS[1:], costs[1:]):
                 print(f"PHANTOWD_SAMBA_CAMPAIGN_SCAN_COST phase={phase} "

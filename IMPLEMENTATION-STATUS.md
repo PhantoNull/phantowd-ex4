@@ -3,7 +3,30 @@
 
 # Implementation status
 
-## Current cached integration — same-authority startup/data and exact943 audit
+## Current QEMU component — independently enrolled bounded scenarios
+
+On 2026-10-08, the updated Samba lane passes pinned Go 1.26.6 tagged vet,
+seven-package tests and seven-package race-count3, ARMv5 cross-build, all 61
+Linux verifier tests and all six actual ARMv5 guests. One overlay compilation
+runs service, native, candidate, lifecycle, fault and data with matching complete
+114-file/27,384,058-byte censuses, all original proofs and an unchanged base.
+Windows API/UI/lab preflight and mock-only wrapper guards also pass.
+
+The previous compound lifecycle exceeded guest180 after healthy candidate and
+startup. Each scenario now has its own genuine disabled-first enrollment;
+no passdb, lease or pins cross boots. SAME within-trace authorities, FD counts,
+worker/readiness/stop/guest limits and failure retention remain required.
+Candidate's distinct declaration/prepared-input workloads now receive separate
+30-second contexts rather than sharing30. Five deterministic fake-clock tests
+cover ten refusal/cancellation/budget cases, including late nil and no retry;
+the aggregate change is QEMU-only, not a product deadline extension.
+
+This is current component verification, not a new complete image/source audit
+or a repair of the earlier hosted run. Exact-head hosted checks and independent
+clean/physical/product gates remain open. The last complete audited image below
+belongs to its exact older 943-input checkpoint, not the changed source.
+
+## Last complete cached integration — same-authority startup/data and exact943 audit
 
 Frozen `2ce88f03ee2211f03e1efb73426aab0bccf0efe3`, API tree
 `aa88877c1336c4d20f9eeb0def51ea8daf8de84a`, passes the complete cached

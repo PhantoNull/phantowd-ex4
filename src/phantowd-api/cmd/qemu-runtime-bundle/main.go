@@ -61,6 +61,20 @@ func run() error {
 		}
 		return err
 	}
+	if len(os.Args) == 2 && os.Args[1] == "native-planned-candidate" && os.Getuid() == 0 && os.Geteuid() == 0 {
+		err := nativeCredentialFixture(nativePlannedCandidateCampaignQEMU)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "native planned candidate fixture:", err)
+		}
+		return err
+	}
+	if len(os.Args) == 2 && os.Args[1] == "native-identity-fault" && os.Getuid() == 0 && os.Geteuid() == 0 {
+		err := nativeCredentialFixture(nativeIdentityFaultCampaignQEMU)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "native identity fault fixture:", err)
+		}
+		return err
+	}
 	if len(os.Args) == 2 && os.Args[1] == "native-planned-data" && os.Getuid() == 0 && os.Geteuid() == 0 {
 		err := nativeCredentialFixture(nativePlannedDataCampaignQEMU)
 		if err != nil {
@@ -166,7 +180,7 @@ func run() error {
 	}
 	fmt.Printf("PHANTOWD_RUNTIME_SCAN_COST files=%d bytes=%d elapsed_ns=%d scope=qemu-emulation-only\n", got.Files, got.Bytes, elapsed.Nanoseconds())
 	if censusOnly {
-		// Native/lifecycle each hash their OWN full tree under the SAME zero-cap
+		// Every non-service guest hashes its OWN full tree under the SAME zero-cap
 		// boundary. The service guest owns every original independent inspector
 		// refusal/retention experiment; no proof or authority crosses boots.
 		fmt.Println("PHANTOWD_SAMBA_ROOT_CENSUS_READY readonly=true complete_census=true hashes=true aliases=true negative_controls=false retained_control=false scope=qemu-only")
