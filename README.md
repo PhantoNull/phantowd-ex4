@@ -27,19 +27,17 @@ demonstrated recovery. Development and QEMU testing do not require a NAS.
 
 ## Follow current development
 
-`main` is the public source snapshot; newer integrated work lives on `develop`.
-Neither branch is an installable release. As of **2026-10-07**, promotion of
-`develop` is held while failures in the ARMv5 QEMU native Samba lifecycle are
-investigated. Passing host tests or compile-only builds do not replace that
-integration check.
+`main` is the reviewed public source snapshot; newer integrated work may live
+on `develop`. Neither branch is an installable release. Promotions require
+passing host tests, ARMv5 QEMU integration and EX4 compile-only checks for the
+promoted commit; a compile-only result does not replace integration testing.
 
 For the latest integrated scope, see the
 [development implementation status](https://github.com/PhantoNull/phantowd-ex4/blob/develop/IMPLEMENTATION-STATUS.md)
 and [development roadmap](https://github.com/PhantoNull/phantowd-ex4/blob/develop/ROADMAP.md).
-Those documents describe `develop`, not necessarily this checkout. Follow the
-[promotion PR](https://github.com/PhantoNull/phantowd-ex4/pull/121) for its exact
-commit and check results. Feature-branch work remains unqualified until its
-own checks and integration review pass.
+Those documents describe `develop`, not necessarily this checkout. Check the
+workflow's exact commit and conclusion before relying on a build. Feature-branch
+work remains unqualified until its own checks and integration review pass.
 
 ## Current capabilities
 
