@@ -3,6 +3,35 @@
 
 # Implementation status
 
+## Current complete cached integration — six Samba scenarios and exact950 audit
+
+Frozen `5355a5cb033ecd1106294c4fcd4bb256fe2e3e2a`, API tree
+`82955d54b74934ae4fcf1351339a39483a5fa40f`, passes one complete cached
+Buildroot/host/ARMv5 integration run and a separate independent post-terminal
+read-only audit on 2026-10-08. Ordinary/race/fixed fuzz, standard smoke,
+MD/state reboot, launcher/runtime/loader/atomic, all six independently enrolled
+Samba guests and both synthetic SMART lanes pass. Every original proof,
+complete runtime census and unchanged-base check remains required.
+
+The complete image includes normal composed supervision, separate planned-stop
+observation and the completed-transfer/idle source-alias-loss fault below.
+All **950** API inputs match the compiled package AND collected source archive,
+with no stale extras or generated-marker exemptions. Configured stripping,
+installed/rootfs/exported API, seven ordered artifact hashes, Linux AND headers
+6.18.55 source/license/SBOM/legal/release bindings and linked Go 1.26.6/CGO0/
+Linux ARM5 agree. All 950 pre-build source witnesses remain unchanged;
+1,923 regular audit inputs are rechecked. Only the existing image/two project
+volumes are reused; no workspace consumer remains after verification.
+See [exact artifact identities](support/DEPENDENCY-REVIEW.md).
+
+This is cached local qualification, not an independent clean build, hosted
+timeout fix, physical EX4 support, legacy migration, recovery, product service
+activation or installation. Composed unexpected exit, held sessions/mid-transfer,
+worker cancellation and uncertain construction/teardown remain separate gates.
+The prior integration head `2c2c04c` failed its own hosted coordinator continuity
+test at the fixed 45-second budget; cause remains unproven. Require the updated
+publication head's own hosted checks before integration.
+
 ## Current component — composed source-loss supervision, focused host/QEMU proof
 
 On 2026-10-08, pinned Linux seven-package checks, race-count3, ARMv5 cross-build,
@@ -32,7 +61,7 @@ the original identity-fault40, guest180 and runtime guards remain unchanged.
 This qualifies completed-transfer/idle source-alias replacement, not physical
 disk failure, active sessions, mid-transfer/worker cancellation, unexpected exit
 or uncertain teardown. The updated complete six-guest union and whole 950-input
-image/audit are separate gates; the last fully audited image remains946 below.
+image/audit now pass separately, as recorded above.
 This is not a fix for the hosted coordinator timeout, product activation, HTTP
 surface, migration, recovery or EX4 qualification.
 
@@ -57,9 +86,9 @@ assumption; host-only tests did not qualify a healthy runtime.
 
 This is retention/stop evidence, not fresh input validity, recovery authority,
 composed source-loss/uncertain-teardown coverage or a hosted timeout fix. The
-latest fully audited whole image remains the 946-input checkpoint below; the
-new 948-input source has only the component qualification described here.
-The 948-input six-guest union passes; the whole-image audit remains separate.
+earlier 948-input component union passed independently. This observer is now
+included in the separately qualified complete 950-input image above; that
+later proof does not expand this observer's retention-only contract.
 No deadline expansion, product activation, HTTP surface or NAS access is added.
 
 ## Current component — composed Samba supervision, normal host/QEMU proof
@@ -80,7 +109,8 @@ full runtime closure. No retry, restart or replacement authority is admitted.
 The new supervised fixture action is independently bounded to 20 seconds;
 prior phase, worker/readiness/stop and guest180 guards remain unchanged.
 
-Only the normal path is qualified here. Composed drift, unexpected exit,
+Only the normal path is qualified here. The separate idle source-alias fault
+is qualified above; composed unexpected exit,
 mid-worker cancellation and uncertain stop/close need coordinator-specific
 proofs; earlier identity-only faults cannot substitute. Product authorization,
 storage/identity lifetimes, durable recovery, hosted/clean/EX4 and install gates
@@ -94,7 +124,7 @@ the missing snapshot, then passes after restoring publication. It uses an invali
 runtime that cannot execute or own processes, not fabricated healthy evidence.
 This host refusal proof does not qualify a live daemon's uncertain teardown.
 
-## Current complete cached integration — six Samba scenarios and exact946 audit
+## Earlier complete cached integration — six Samba scenarios and exact946 audit
 
 Frozen `1e68966f91d27c6d449a7624212720cf3d7da86b`, API tree
 `0280c9719f3ac808b5a5d25c077492a81e6bc954`, passes one complete cached

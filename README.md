@@ -61,26 +61,20 @@ not establish independent clean-build reproducibility, complete licensing
 compliance or physical EX4 qualification. [versions.env](versions.env) is the
 source of truth for build pins.
 
-The last fully audited Linux 6.18.55 cached build passes the complete host and ARMv5
-integration campaigns. Its post-build audit matches all 946 API source inputs,
-actual images, kernel/header source archives, release metadata, SBOM and license
-files. This cached local proof does not qualify an EX4 installation, independent
-clean reproducibility or a fix for the intermittent hosted Samba timeout.
-See the [dependency qualification record](support/DEPENDENCY-REVIEW.md).
+The latest fully audited local checkpoint, `5355a5c`, passes the complete
+cached host/ARMv5 integration lane, all six independently enrolled Samba guests
+and both synthetic SMART lanes. It includes retained same-authority startup,
+real data access, exclusive supervision and a source-alias-loss fault that
+stops the daemon without releasing reviewed authority or restarting it.
+An independent audit matches all 950 API inputs, actual images, kernel/header
+archives, release metadata, SBOM and declared license files; see the
+[exact qualification record](support/DEPENDENCY-REVIEW.md).
 
-That qualified checkpoint includes retained same-authority SMB startup and
-fixed data-access checks, plus every original Samba proof. The current Samba
-lane compiles once and checks six disposable guests, separating candidate,
-startup and fault work; all six and the updated full-image audit pass locally.
-That complete cached image also qualifies normal composed supervision: serial complete
-scans, exclusive lifecycle operations, verified cancellation stop and retained
-authority until full closure. Composed fault coverage remains separate;
-see [implementation status](IMPLEMENTATION-STATUS.md). The latest hosted run
-still fails in the identity-coordinator revocation/continuity test; local
-success does not establish its cause or authorize integration.
-Exact-head hosted checks remain required before integration. No product SMB/NFS service
-is activated. Component/cached verification is not an installable
-image or product service; see [implementation status](IMPLEMENTATION-STATUS.md).
+This does not establish independent clean reproduction, physical EX4 support,
+complete fault coverage or an installable release. The previous hosted
+identity-coordinator timeout remains unexplained; local success is not a fix.
+The updated PR must pass its own hosted checks before integration. No product
+SMB/NFS service is activated; see [implementation status](IMPLEMENTATION-STATUS.md).
 
 ## Roadmap
 

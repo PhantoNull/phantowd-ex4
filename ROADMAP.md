@@ -67,18 +67,19 @@ currently product-qualified for migration.
 
 ## Current baseline
 
-The current combined local checkpoint `1e68966` passes the complete cached
+The current combined local checkpoint `5355a5c` passes the complete cached
 Buildroot/ARMv5 integration, including all six independently enrolled Samba
 scenarios and both synthetic SMART lanes. Independent post-terminal auditing
-matches all 946 API inputs to compiled package/source archive, reproduces
+matches all 950 API inputs to compiled package/source archive, reproduces
 configured stripping, and verifies installed/image/exported API, seven hashes,
 Linux AND headers 6.18.55, SBOM, release and legal-source bindings; see
-[exact scope](IMPLEMENTATION-STATUS.md#current-complete-cached-integration--six-samba-scenarios-and-exact946-audit).
+[exact scope](IMPLEMENTATION-STATUS.md#current-complete-cached-integration--six-samba-scenarios-and-exact950-audit).
 Normal same-authority planned Samba startup and access are qualified only in
 disposable fixtures. This complete image also passes exclusive composed supervision
 with serial complete scans, idle cancellation/verified stop, retained originals
 and full-close-before-release, across all six ARMv5 scenarios. This normal-path
-proof does not qualify composed drift/exit/mid-worker/uncertain stop/close faults.
+proof does not qualify composed exit/mid-worker/uncertain stop/close faults.
+The same complete image separately qualifies the idle source-alias fault below.
 Complete fault supervision, uncertain construction/teardown,
 production storage/identity composition, exact-head hosted promotion, clean
 reproducibility and product/hardware/release gates remain open. This is not a
@@ -90,11 +91,12 @@ A subsequent **host/QEMU** increment qualifies separate planned-stop
 observation: owned daemon stop/reap, all 15 private daemon inputs and original
 runtime code/configuration/state retention, dormant prepared client checks,
 legacy observer continuity, repeated read-only observation and closed refusal.
-The complete 948-input six-guest component union also passes.
-It is not a new whole-image audit or composed-fault qualification; see
+The earlier 948-input six-guest component union passed separately; the observer
+is now included in the complete 950-input image. Retention alone is not composed
+fault or recovery qualification; see
 [current component scope](IMPLEMENTATION-STATUS.md#current-component--planned-stop-observation-focused-hostqemu-proof).
 
-The subsequent **focused host/QEMU** source-loss slice now passes actual
+The **host/QEMU** source-loss slice now passes actual
 genuine enrollment and SAME planned identity/backend/storage/share authority
 checks. It replaces the earlier unverified handoff-parent rename proposal with
 a cover of ONLY the synthetic volume alias, retaining original mounts/grants.
@@ -102,8 +104,8 @@ Actual exclusive supervision enters sticky review and stops/reaps the daemon;
 independent stop/retention observations and both busy authorities pass. Removing
 the exact observed cover restores the original mount without reviving any
 operation. A private-namespace child exits after proof, not product recovery.
-The prior identity-fault proof and parent FD equality remain mandatory. Updated
-complete six-guest and whole950 image/audit qualification remain separate.
+The prior identity-fault proof and parent FD equality remain mandatory. The
+updated complete six-guest union and whole950 image/audit pass separately.
 Held-session/mid-transfer, native pending capture, uncertain stop and constructor/
 close faults still require separate actual traces. Keep existing checks and
 finite budgets; no HTTP, device access or recovery authority is introduced.
@@ -186,7 +188,7 @@ missing, build the read-only interface/fixture and record the unresolved decisio
 | Board behavior | Static configuration audit first, then a separately approved bounded EX4 test with explicit stop conditions |
 | Installer/release | Independent reproducibility, license/SBOM review, device compatibility, security and recovery qualification |
 
-Use [host wrappers](README.md#fast-host-checks), the pinned Linux test scripts in
+Use [host wrappers](README.md#fast-checks), the pinned Linux test scripts in
 `support/container/`, and [QEMU fast-lane instructions](support/QEMU-FAST-TESTS.md).
 Do not launch all historical Stage A/B/B2/B3 targets for an unrelated API edit.
 Use the latest relevant board probe; historical targets remain reference tools.
@@ -1354,7 +1356,7 @@ storage. No production roster provider or activation path exists.
   giving each service an isolated private mount namespace whose only
   storage roots are its explicit grants; prove the original volume anchors and
   ungranted shares are unreachable and that read-only access cannot be bypassed.
-  The [Samba Owner packet](support/SAMBA-RUNTIME-PROFILE.md#next-owner-integration-packet-proposed-not-qualified)
+  The [Samba Owner packet](support/SAMBA-RUNTIME-PROFILE.md#samba-specific-owner-integration-packet-hostqemu-scope-approved)
   details the separate retained resources, code-only versus composed roots,
   process-group/`setsid` conflict, bootstrap/final privilege distinction and
   lifecycle acceptance campaign. It is proposed, not qualified or permission

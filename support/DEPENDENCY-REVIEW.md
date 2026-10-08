@@ -3,7 +3,37 @@
 
 # Dependency review and update qualification
 
-## Current cached946 integration and exact artifact audit (2026-10-08)
+## Current cached950 integration and exact artifact audit (2026-10-08)
+
+Frozen `5355a5cb033ecd1106294c4fcd4bb256fe2e3e2a`, API tree
+`82955d54b74934ae4fcf1351339a39483a5fa40f`, passes the complete cached
+host/ARMv5 lane and a separate independent post-terminal read-only audit.
+All original campaigns, six independently enrolled Samba guests, normal
+composed supervision, planned-stop observation, the idle source-alias-loss
+fault and both synthetic SMART lanes pass with unchanged original limits.
+
+All **950** API inputs match compiled package AND legal source archive without
+stale extras or generated-marker exemptions. Configured strip/installed/rootfs/
+export, seven ordered hashes, actual kernel AND headers 6.18.55 source/license/
+SBOM/legal/release and linked Go 1.26.6/CGO0/ARM5 agree. All 950 pre-build source
+hashes remain unchanged; 1,923 regular audit inputs are rechecked.
+
+| Artifact | SHA-256 |
+| --- | --- |
+| API (10,708,180 bytes) | `09d721ecefc9f437fa34b55858846b8b5b8a4e08fe747b352e9784a45da2dfef` |
+| rootfs.ext2 (83,886,080 bytes) | `3bfa05401f5d0a92d8e86cdb85f149c77ce49bfaa805b3778843560725b6de2f` |
+| API source archive | `1f1ff6fde616e28627a739bf6618f6fe6f1fdea5fad41a0d49650376472db05a` |
+| SHA256SUMS | `c5c0d93e742cbf6b633dcd075a6528347c639793d398a733e0e1f78edbd36c16` |
+
+These are measured from this checkpoint, not adopted from the earlier946
+image. Existing image/two project volumes are reused. This is not independent
+clean, hosted, advisory-complete, EX4, migration, product activation or install
+qualification. Source-alias replacement is not physical disk failure or full
+fault coverage. The prior `2c2c04c` hosted coordinator continuity failure stays
+unexplained; require the new publication head's own hosted checks before merge.
+The dependency candidates and incomplete advisory review below remain separate.
+
+## Earlier cached946 integration and exact artifact audit (2026-10-08)
 
 Frozen `1e68966f91d27c6d449a7624212720cf3d7da86b`, API tree
 `0280c9719f3ac808b5a5d25c077492a81e6bc954`, passes the complete cached
