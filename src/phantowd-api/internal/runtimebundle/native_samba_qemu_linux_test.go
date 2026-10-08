@@ -142,3 +142,22 @@ func TestNativeDaemonLifecycleRefusesAbsentCanceledAndBusyAuthority(t *testing.T
 		}
 	}
 }
+
+func TestNativeDaemonObservationRetainsUnavailableCauseAndReview(t *testing.T) {
+	// Deliberately incomplete authority, not a live or qualified daemon. No
+	// program starts and PID 2 is never inspected: missing retained code must
+	// refuse first. Exercise the public observation, not a fabricated success.
+	runtime := nativeReleaseFixture(t)
+	runtime.daemonPID = 2
+	err := runtime.VerifyNativeIdleDisableQEMU(context.Background())
+	if !errors.Is(err, ErrReviewRequired) || !errors.Is(err, ErrUnavailable) || !runtime.owner.review {
+		t.Fatal("daemon refusal lost the original cause or sticky review", err)
+	}
+	observed, observeErr := runtime.ObserveNativeWorkerFailureQEMU(context.Background())
+	if observeErr != nil || observed.Present {
+		t.Fatal("daemon inspection invented a credential worker failure", observed, observeErr)
+	}
+	if next := runtime.VerifyNativeIdleDisableQEMU(context.Background()); !errors.Is(next, ErrReviewRequired) {
+		t.Fatal("unavailable authority became reusable", next)
+	}
+}

@@ -707,6 +707,17 @@ endpoint or activation.
 
 ## Native worker failure classification — host-only diagnostic prerequisite
 
+The latest diagnostic correction fixes a separate cause-loss guard in live
+daemon verification: retained-tuple/bootstrap/process-observation errors now
+keep their typed cause behind generic review-only text. A public negative
+observation reproduces unavailable-cause loss before the fix and passes after
+it; deadline/cancellation/private-text classification tests also pass. Pinned
+Go1.26.8 non-root Linux vet/two-package tests/race3 and ARMv5 cross-compilation
+pass. The unchanged focused lifecycle guest completes enrollment but fails
+peer-continuity at45.125302s under its original CPU2/45/180 limits. This is
+host-verified diagnostic work, NOT positive QEMU, timeout resolution or a new
+complete image qualification. No product interface, admission or budget changes.
+
 The private QEMU credential runtime now preserves the first failing phase and
 fixed reason label across ordinary backend redaction. Complete admission,
 worker execution, verified settlement and post-execution admission failures

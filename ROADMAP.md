@@ -1303,6 +1303,13 @@ storage. No production roster provider or activation path exists.
   fires: qualify the failure path separately and reproduce/classify any timing
   failure before claiming its cause or resolution. Logging and positive normal
   execution alone are not a timeout fix, retry policy or product recovery.
+  A later live-daemon guard fix preserves retained-tuple/bootstrap/process
+  observation causes behind generic review-only text instead of discarding
+  them. Public negative RED/GREEN, fixed-label redaction, pinned non-root
+  Linux two-package vet/tests/race3 and ARMv5 compilation pass. The original
+  focused lifecycle still fails peer-continuity45.125302s without CPU stress;
+  keep that gate open. No timeout/authority/privilege/retry change is included;
+  actual failed-worker classification and complete integration remain separate.
   A separate deterministic native-adapter inner-close regression now uses the
   real post-runtime step rather than a fabricated healthy runtime. It fails
   when repeated public Close forgets the original file error and passes with

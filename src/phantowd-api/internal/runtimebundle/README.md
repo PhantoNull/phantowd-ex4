@@ -28,6 +28,14 @@ error redaction remains unchanged; guest output is explicitly diagnostic-only,
 never a qualification marker. Host tests qualify the bookkeeping/redaction
 boundary, not an actual ARMv5 worker fault, timeout fix or product recovery.
 
+Live-daemon code/configuration revalidation, bootstrap inspection and process
+observation refusals preserve their private typed causes behind the same
+generic review-only error text. Ordered admission checks and failure behavior
+are unchanged; a missing code authority still refuses before PID inspection.
+Fixed worker classification can distinguish a wrapped deadline/cancellation
+without printing its cause. This diagnostic correction neither extends a
+deadline nor settles reviewed authority; focused lifecycle timeout remains open.
+
 The `qemu`-only `SambaPlannedDataDocumentsQEMU` renderer produces seven bounded
 configuration documents from one immutable isolated Plan candidate. It preserves
 the candidate's granted-only Unix identities and exact RO/RW share sections,
