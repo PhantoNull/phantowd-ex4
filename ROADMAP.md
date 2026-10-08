@@ -1392,6 +1392,13 @@ storage. No production roster provider or activation path exists.
   writable views, retain pins and revalidate through start/stop/source loss;
   compose configuration, state, devices and Owner-held grants explicitly.
   Do not promote fixture text or the offline ELF candidate into authority.
+  The internal digest calculation also refuses cancellation after the last
+  pre-read check/EOF/finalization with zero digest/count. Three deterministic
+  boundary cases reproduce the old result and pass after correction; pinned
+  non-root Linux tagged vet/tests/race3 and ARMv5 test cross-compilation pass.
+  Full byte/census/metadata/identity checks and budgets remain unchanged.
+  `Inspect` already checks context before returning; no admission bypass,
+  QEMU timeout fix, new guest or whole-image qualification is established.
   A separate `qemu && linux` prototype now stages fresh regular files from a
   pinned local read-only source into an exclusively owned empty 0700 tmpfs
   root. It uses descriptor-relative no-traversal/no-cross-mount operations,

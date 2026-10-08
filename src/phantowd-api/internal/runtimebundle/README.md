@@ -116,8 +116,14 @@ pins and revalidation. A read-only bind does not make other views immutable.
 Trusted signature/model binding, ARM ABI and loader qualification, NSS/config,
 state/grants/device rules, privilege profiles, construction/activation/recovery
 and product wiring remain separate. No user data is read or modified here.
-Context cancellation is checked between bounded local reads, not a guarantee
-that an arbitrary kernel I/O stall can be interrupted.
+Context cancellation is checked between bounded local reads and before emitting
+a completed digest, not a guarantee that an arbitrary kernel I/O stall can be
+interrupted. A deterministic regular-file regression cancels just after the
+last successful pre-read check; the digest helper must return the typed
+cancellation with zero digest/count, even if EOF/finalization completed. This
+strengthens that internal calculation boundary; `Inspect` already has its own
+final context check. It is not a demonstrated admission bypass or a diagnosis
+of the QEMU lifecycle deadline.
 
 ## Shared prepared code references
 

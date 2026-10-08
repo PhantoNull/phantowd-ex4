@@ -43,6 +43,25 @@ B3 config6.18.54 also passes, but is not a new build. No kernel selections,
 fragments, crypto provider, image, API, privilege or timeout changes. This is
 build-policy validation, not a new whole-image, security or performance result.
 
+## Current runtime component — final digest cancellation, host-only proof
+
+The bounded regular-file digest helper now checks its context after EOF and
+SHA-256 finalization, before emitting a digest/count. A deterministic test
+cancels immediately after the last successful pre-read check and reproduces
+the old completed result for 1, 32768 and 32769 bytes; all three return the
+typed cancellation with zero result after the fix. Complete byte hashing,
+size+1 and metadata/census/identity checks remain unchanged. No cache, skipped
+scan, provider, privilege, retry or deadline change.
+
+Pinned Go 1.26.8 non-root Linux tagged vet/tests and race-count3 for runtimebundle
+and smbexec pass, including the existing digest/scratch regressions; ARMv5
+runtimebundle tests cross-compile, not execute. Root-required fixtures may skip
+under this profile. `Inspect` already had its own final context check: this is
+an internal calculation-boundary correction, not a demonstrated admission
+bypass, new whole-image qualification or the lifecycle timeout fix. No guest,
+hardware or persistent resource creation; the timing-contract choice remains
+open and the integration PRs retain their failed QEMU gates.
+
 ## Current UI component — authentication focus continuity, host-only proof
 
 M5.5b adds a main-content skip link, non-tabbable focus destinations and shared
