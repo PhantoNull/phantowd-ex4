@@ -129,6 +129,15 @@ regressions reach that post-runtime step, then exercise repeated public Close,
 concurrent observations and replacement noninterference. They qualify the
 inner-close bookkeeping, not runtime retirement, kernel EIO or actual guest
 fault recovery. Normal guest qualification must match the changed source.
+The native session-pair and peer-continuity helpers now also check both wrapper
+and inner terminal lifetimes before status dispatch; pre-canceled contexts
+refuse before dispatch as well. Real-file inner-close/replacement and canceled
+command-boundary regressions first expose the missing fences, then pass without
+running a status worker. These negative host fixtures admit no healthy runtime
+or session witness. Pinned Linux tagged vet/tests/race-count3 and the actual
+ARMv5 native authentication/revocation campaign pass after the correction.
+This does not qualify an uncertain runtime-close fault, durable recovery,
+complete changed-image integration or resolve the separate lifecycle timeout.
 The same-state daemon now has focused actual ARMv5 authentication and active
 session-revocation proof: two fixed held clients, complete qualified inventory,
 one target-only logoff, two complete absence inventories, the SAME peer session

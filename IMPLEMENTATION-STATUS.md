@@ -43,6 +43,28 @@ B3 config6.18.54 also passes, but is not a new build. No kernel selections,
 fragments, crypto provider, image, API, privilege or timeout changes. This is
 build-policy validation, not a new whole-image, security or performance result.
 
+## Current native component — terminal session-observation fences
+
+The QEMU-only native session reader now refuses closed wrapper/inner lifetimes
+and pre-canceled requests before status dispatch. Its two public fixture helpers
+reuse that reader. Real regular-file close/replacement and canceled-command
+regressions first reproduce dispatch after refusal should have been terminal,
+then pass with no status worker call or cleanup retry. No healthy runtime or
+session authority is fabricated by these negative host fixtures.
+
+Pinned Go 1.26.8 Linux two-package tagged vet/tests and race-count3 pass, with
+the affected tests also cross-compiled for ARMv5. The actual current-source
+ARMv5 `native` campaign passes all original enrollment, authentication,
+idle/live revocation, same-peer continuity, identity/backend handoff, data
+access and cleanup proofs. Windows Go 1.27 API/UI/vet/tagged contracts and
+ARMv5 API-test cross-compilation pass. Parser, full runtime admission, command
+arguments, mutation limits, deadlines, privileges and cleanup policy are unchanged.
+
+This is focused host/guest qualification, not a new full image/SBOM, hosted
+qualification, uncertain runtime-close fault, durable recovery or product/NAS
+activation. The independent lifecycle timeout and PR #128/#129 gates remain
+open; this fence correction is not their diagnosis or fix.
+
 ## Current release component — unsigned metadata producer, host-only proof
 
 M10.2c adds the host `build-release-manifest` command and typed producer for

@@ -1319,6 +1319,14 @@ storage. No production roster provider or activation path exists.
   union with unchanged guards/base/bounds. Actual runtime-close faults,
   complete changed-image/audit and durable recovery remain separate gates;
   the positive union does not identify the intermittent-timeout cause.
+  A follow-up extends that terminal fence to the native session-pair and
+  peer-continuity status reader, including the inner backend and pre-canceled
+  admission. Real-file/canceled command-boundary RED/GREEN, pinned Linux tagged
+  vet/tests/race3, Windows preflight and the actual ARMv5 native campaign pass.
+  No worker is dispatched on the new refusals. Normal valid session parsing,
+  complete runtime revalidation and all deadlines are unchanged. This remains
+  focused qualification, not an uncertain runtime-close fault, full new image
+  or the separate coordinator-timeout fix.
 
   Security limit: this is a share-scoped pathname view, not a complete service
   authorization boundary. Consumers still run in the host mount namespace and
