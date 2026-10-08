@@ -92,7 +92,7 @@ This is not held-session/mid-transfer fault coverage, uncertain construction/
 teardown, product recovery or production storage/identity composition.
 Exact-head hosted promotion, independent clean reproduction, complete advisory
 review, hardware, migration, recovery and signed release gates remain open.
-PR #128/#129 retain failed hosted coordinator-continuity checks; local success
+Earlier PR #128/#129 checkpoints failed hosted coordinator-continuity checks; local success
 is not their causal fix. Keep existing guards and finite budgets. No HTTP
 service activation, NAS operation or installable firmware is introduced.
 Historical task evidence below retains its original source scope.
@@ -1229,6 +1229,17 @@ storage. No production roster provider or activation path exists.
   own hosted run still fails; this local success is not its repair. Guest
   isolation is not a proven hosted timeout fix. All hosted/independent-clean,
   hardware and product-activation gates remain open.
+
+  The source-restoration/Close follow-up now reproduces retained-input/original
+  authority release despite coordinator review. The coordinator's reviewed
+  Close admission is fenced before low-level teardown; the original actual
+  fault guest requires two refused Close attempts, retained runtime inputs and
+  both original busy authorities. Missing/false `close_refused=true` refuses.
+  Pinned Linux vet/unit/race3, Windows API/UI/ARM cross and the actual normal
+  data/close-before-release control pass. No deadline, privilege, low-level
+  cleanup or recovery contract changes. This is focused correction only: new
+  exact source/package/image audit, own-head hosted and broader uncertain-close/
+  held-session/product recovery gates remain separate.
 - **M4.2 — Single service owner.** Define start/reload/stop and child-process
   ownership; bound diagnostics and verify readiness. Preserve the last known
   working configuration on syntax/start failure without claiming an unapplied

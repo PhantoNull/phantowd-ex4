@@ -3,6 +3,30 @@
 
 # Implementation status
 
+## Current component — reviewed planned Close retains original authority
+
+A real disposable ARMv5 source-alias restoration followed by `Close` exposes
+release of retained runtime/original authority despite coordinator review.
+The existing fault probe previously did not attempt this operation. Temporary
+fixed-label diagnostics localize the failure at the new retention assertion;
+they are removed before final validation.
+
+`NativePlannedServiceQEMU.Close` now refuses review before accessing the runtime,
+preserving first cleanup errors. Two explicit Close attempts in the original
+fault campaign retain actual runtime inputs and both original busy authorities;
+the mandatory proof includes `close_refused=true`. Missing/false proof refuses.
+The actual fault guest passes, and the actual normal data guest retains all
+startup/access/supervision/stop/full-close-before-release and FD-equality proofs.
+Pinned Go 1.26.8 Linux two-package tagged vet/unit/race-count3 and Windows API/UI/
+vet/tagged contracts/ARMv5 cross-compilation also pass. Worker/service/readiness/
+stop/guest limits, privileges and low-level explicit cleanup remain unchanged.
+
+This is a focused correction after the complete checkpoint below, not a new
+whole-image/archive/SBOM or hosted qualification, held-session fault, durable
+recovery, product activation or EX4 claim. PR #129's earlier published head is
+separate and must not be merged before the follow-up is locally qualified and
+its refreshed head passes its own hosted gates.
+
 ## Current complete cached integration — seven Samba scenarios and exact960 audit
 
 Frozen `ab5f4d1222036e7cb911437ef2eb57fd907fa8f5`, API tree
@@ -31,8 +55,9 @@ recheck unchanged. See [measured artifact identities](support/DEPENDENCY-REVIEW.
 Only the existing image/two project volumes are reused; no consumer remains.
 This is cached local qualification, not independent clean reproduction,
 exact-head hosted qualification, complete advisory review, EX4 operation,
-migration, recovery, product activation or an installable release. PR #128/#129
-retain their own failed QEMU checks; local success is not their timeout fix.
+migration, recovery, product activation or an installable release. Earlier
+PR #128/#129 checkpoints failed QEMU; local success is not their timeout fix,
+and a refreshed head must pass its own checks.
 Older sections below retain their dated, narrower source scopes.
 
 Build-only hardening now fences builtin/module `CONFIG_CRYPTO_USER_API*`

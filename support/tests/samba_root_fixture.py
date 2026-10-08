@@ -35,6 +35,7 @@ PLANNED_SOURCE_FAULT_MARKER = (
     "source_covered=true exclusive_supervision=true review_sticky=true "
     "stopped_reaped=true private_inputs=15 runtime_inputs_retained=true "
     "originals_busy=true cover_removed=true restoration_refused=true "
+    "close_refused=true "
     "private_mount_namespace=true subprocess_disposal=true "
     "parent_fd_equal=true activation=false scope=qemu-only")
 PLANNED_EXIT_FAULT_MARKER = (
