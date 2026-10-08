@@ -37,7 +37,37 @@ duplicate escaped names, encoding, trailing/deep/oversized input and redaction.
 A continuously producing reader is stopped at signed size plus one; existing
 regular-file payload, size/hash, symlink and missing-file checks remain in force.
 
-No schema/signing/trust-root/CLI change or device writer is introduced. A valid
+The earlier parser correction introduced no schema/signing/trust-root/CLI
+change or device writer. A valid
 report remains point-in-time integrity evidence with installation/hardware
 authority false. Product trust provisioning, retained staged bytes, persistent
 rollback policy, target transaction and recovery remain unimplemented.
+
+## Unsigned metadata producer — M10.2c
+
+`BuildUnsignedManifest` and the host `build-release-manifest` command prepare
+deterministic existing schema1 JSON from explicit declarations, payload names/
+roles and a caller-supplied raw public key. They accept no private key, do not
+sign and create no VerifiedManifest or installation authority. Caller source
+commit, component versions, model and exact revisions are declarations, not
+provenance or qualified compatibility. No defaults infer board compatibility.
+
+Reuse all semantic/structural validators and bounded regular-payload hashing.
+Admit at most16 explicit payloads/revisions, 1 GiB/member, 2 GiB/whole set and
+64 KiB encoded JSON. Validate declarations/encoding before payload access;
+preflight the complete size set and updated encoded size before any hash read.
+Reject nonregular/symlink/missing/empty files, observed identity/metadata/root
+drift and incomplete results. Sort copied revision/payload lists, measure every
+size/digest, and emit complete bytes only after all checks. Read failures do not
+retry; input payloads are never written. Observations do not exclude privileged
+in-place writes, prove original build inputs or provide retained staging.
+
+Actual CLI regression first reports the command absent, then passes. Existing
+verifier round-trips fixture-only signatures over exact output while keeping
+installation/hardware authority false. Windows whole toolkit vet/tests and
+pinned Go1.26.8 Linux whole toolkit vet/tests plus producer/CLI race-count3 pass.
+Actual Linux FIFO/directory-symlink refusal and kernel open/access observation
+prove over-budget whole-set refusal before payload opens, with a positive read
+control. Sparse disposable files allocate no GiB of data. No runtime API, guest,
+firmware build, signing job, trust provision, release publication or device
+transaction is qualified by these host-only tests.

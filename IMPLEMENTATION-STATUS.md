@@ -43,6 +43,31 @@ B3 config6.18.54 also passes, but is not a new build. No kernel selections,
 fragments, crypto provider, image, API, privilege or timeout changes. This is
 build-policy validation, not a new whole-image, security or performance result.
 
+## Current release component — unsigned metadata producer, host-only proof
+
+M10.2c adds the host `build-release-manifest` command and typed producer for
+existing schema1. Explicit declarations/names/roles and a raw public key yield
+sorted deterministic JSON with measured fingerprint/sizes/SHA-256; no private
+key, signer, writer, publisher, VerifiedManifest or install authority. Existing
+validators and bounded regular-file hashing are reused; whole-set size and
+encoded JSON admission precede payload hash reads. Observed set/root drift and
+missing/nonregular/empty payloads refuse with no metadata output.
+
+The real CLI first fails as unknown, then the existing verifier accepts exact
+output with test-only in-memory signatures and still refuses installation/
+hardware authority. Whole Windows Go1.27 toolkit vet/tests and pinned Go1.26.8
+Linux whole toolkit vet/tests plus producer/CLI race3 pass. Linux inotify
+observes zero payload opens/accesses on a sparse over-budget set and verifies a
+positive read control; FIFO/symlink refusal also passes. No GiB of test data is
+allocated and no new Docker image/volume remains.
+
+This prepares metadata, not a qualified firmware release. Source/model/version
+declarations are caller input, files remain point-in-time observations, and
+trusted provenance/immutable staging, key authorization/rotation, authenticated
+runtime roster delivery, signed publication, target install/recovery and EX4
+qualification remain open. No guest, image build, product API or NAS operation;
+the existing QEMU lifecycle failures are unchanged.
+
 ## Current runtime component — final digest cancellation, host-only proof
 
 The bounded regular-file digest helper now checks its context after EOF and

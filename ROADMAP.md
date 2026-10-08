@@ -2503,6 +2503,20 @@ Then qualify the selected backend and migration objects on expendable EX4 media.
   opened size and retains size/hash/metadata checks. Whole Windows host vet/unit
   and pinned Linux whole host vet/race pass. No signature bypass, schema/CLI/
   trust-root change, firmware build, physical operation or installer is claimed.
+  **M10.2c — unsigned metadata production (partial; host-tested):** prepare
+  deterministic schema1 JSON from explicit names/roles, caller declarations
+  and a raw public key; measure fingerprint/sizes/SHA-256, sort copied lists,
+  reuse existing validators/read bounds and refuse incomplete results.
+  Whole-set size and encoded-manifest admission precede payload hash reads.
+  New host CLI has no private-key/signing/staging/install/publish action.
+  CLI missing-command regression, exact-byte fixture signing/verifier roundtrip,
+  invalid declarations/no-output, payload substitutions, Linux FIFO/symlink and
+  kernel-observed before-open size refusal pass. Complete Windows/pinned Linux
+  host vet/tests and producer/CLI race3 pass. Declarations remain unproven
+  source/model/version input, not build provenance or qualified compatibility;
+  observed files are not retained immutable staging. Next qualify provenance,
+  signing-key authorization/rotation and authenticated runtime roster delivery
+  with the release/installer owner; no product trust or target transaction.
 - **M10.3 — Target transaction.** Explicit preflight, staged, verified, installing,
   boot-pending, health-confirmed and recovery states. Journal durable boundaries;
   check space/power prerequisites. An ambiguous state must not restart installation
