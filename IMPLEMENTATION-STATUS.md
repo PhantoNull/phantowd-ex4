@@ -3,6 +3,27 @@
 
 # Implementation status
 
+## Current test observability — redacted planned-fault boundaries
+
+The reviewed-Close follow-up's complete seven-campaign attempt passes service,
+native, candidate and lifecycle, then fails fault with incomplete subprocess
+proof; data/exit are not reached. A fresh isolated diagnostic fault guest passes,
+so the all-campaign failure is not localized or resolved. The earlier focused
+Close correction below remains valid only within its stated evidence scope.
+
+Test-only planned-fault diagnostics now report outer child deadline/result/proof
+agreement and validated fixed phase/deadline/review labels, without raw child
+output or secrets. Unknown/malformed rows are discarded and duplicates collapsed.
+Diagnostics cannot satisfy exact child-proof equality or campaign qualification.
+Pinned Go 1.26.8 Linux tagged vet/unit/race-count3 and Windows API/UI/contracts/
+ARMv5 cross preflight pass; temporary debug probes are removed. The original
+strict proof bytes, output bound, deadlines, privileges and runtime behavior
+are unchanged. See [diagnostic interpretation](support/QEMU-FAST-TESTS.md#diagnose-a-native-fixture-timeout-before-a-full-ci-build).
+
+The changed diagnostic fixture still requires its complete ARMv5 campaign
+qualification. No new whole-image/archive/SBOM or hosted result is claimed;
+the current PR head remains separate. No product or NAS operation is added.
+
 ## Current component — reviewed planned Close retains original authority
 
 A real disposable ARMv5 source-alias restoration followed by `Close` exposes

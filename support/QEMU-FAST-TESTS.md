@@ -883,6 +883,21 @@ absence of a worker label does not mean the campaign succeeded. The last
 `phase=enrolled` means a proposed *post-enrollment* experiment did not reach
 its trigger, not that its intended setting was applied.
 
+The planned source/exit subprocess boundary also emits fixed-label
+`PHANTOWD_QEMU_PLANNED_FAULT_SUBPROCESS_FAILURE` diagnostics on failure. Its
+`deadline` flag describes the outer 90-second child context, `child_failed`
+describes the command result, and `proof_match` describes exact captured-proof
+equality. Validated, deduplicated `PHANTOWD_QEMU_PLANNED_FAULT_FAILURE` rows
+identify fixture phases and typed deadline/review membership without relaying
+raw child errors, commands, paths, credentials or passdb. An absent child row
+does not localize the cause; `deadline=false` does not rule out an inner expiry
+whose typed error was redacted earlier. Unknown/malformed rows are discarded.
+All rows are `scope=diagnostic-only`; even diagnostics accompanied by the
+expected proof still fail exact child-proof equality. The 1-KiB child-output
+bound, original proof bytes, deadlines and verifier remain unchanged. This
+observability improvement does not resolve the intermittent all-campaign fault
+failure or qualify product/hardware operation.
+
 Require the original verifier's terminal success and complete selected-phase
 proofs. A failed fixture may deliberately shut down with guest exit 0; that
 does not override failure markers or the host verifier's nonzero result.
