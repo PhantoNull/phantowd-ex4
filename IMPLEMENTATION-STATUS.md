@@ -3,6 +3,28 @@
 
 # Implementation status
 
+## Current component — reviewed-stop observations, host-only refusal proof
+
+Separate QEMU-only `ObserveNativeDataReviewStopQEMU` and
+`ObservePlannedReviewStopQEMU` are implemented as read-only observations.
+The normal planned-stop and older held-client observers are unchanged.
+Reviewed-stop success requires the exact launched generation, sticky review,
+verified owned-command/group teardown, all 15 private process inputs retained,
+absence of the runtime's original group, dormant prepared clients and retained
+runtime code/configuration/state. Missing, incomplete, canceled, competing or
+closed lifetimes refuse; the observation does not signal a process, retry
+Stop/Close, release authority, re-admit inputs or clear review.
+
+Pinned Go 1.26.6 Linux vet, seven-package tests/race-count3, ARMv5 cross-build,
+64 Linux verifier tests and no-Docker Windows API/UI/lab preflight pass on
+2026-10-08. Host tests fabricate no healthy or successfully stopped runtime.
+These are **negative host proofs and a cross-build**, not actual ARMv5 reviewed
+teardown qualification. A genuine composed unexpected-exit trace and fixed
+original-process-handle trigger remain separate work; neither exists in this
+increment. No HTTP/product activation or NAS operation is added. The complete
+950-input image below retains its original source scope and is not adopted as
+proof for these four new source files.
+
 ## Current complete cached integration — six Samba scenarios and exact950 audit
 
 Frozen `5355a5cb033ecd1106294c4fcd4bb256fe2e3e2a`, API tree

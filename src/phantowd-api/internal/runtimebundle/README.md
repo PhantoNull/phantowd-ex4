@@ -549,3 +549,22 @@ closed refusal and final descriptor equality. Its initial failed guest caught
 the mistaken nil-client assumption before correction. This is not composed
 source-loss/exit/mid-worker/uncertain-stop coverage, complete updated integration,
 product authorization, durable recovery or physical EX4 qualification.
+
+### Reviewed planned-stop observations (QEMU only; host refusal proof)
+
+`ObserveNativeDataReviewStopQEMU` and `ObservePlannedReviewStopQEMU` keep
+review mandatory while observing verified owned-command/group teardown and
+retained inputs. They do not replace the strict normal-state or held-client
+observers. The fixed single launched generation must have been reaped and its
+whole group verified absent; all 15 private inputs remain open. The runtime
+also checks the original group for absence, both clients still dormant and
+original complete code, management/service configuration and state references
+retained. Group-number reuse or uncertainty refuses, never signals a replacement.
+
+No path/PID/process selection, signal delivery, Stop/Close retry, pin release,
+input re-admission, adoption, restart or recovery is exposed. Retention is not
+fresh contents, healthy storage/identity or activation authority. Negative-only
+pinned Linux/race3 tests, ARMv5 cross-build and 64 verifier checks pass; no
+successfully stopped runtime is fabricated in host tests. A genuine composed
+unexpected-exit ARMv5 trace remains unqualified, and this increment adds no
+trigger. The earlier complete950 image keeps its original source scope.
