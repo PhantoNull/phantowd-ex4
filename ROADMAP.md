@@ -111,14 +111,15 @@ Held-session/mid-transfer, native pending capture, uncertain stop and constructo
 close faults still require separate actual traces. Keep existing checks and
 finite budgets; no HTTP, device access or recovery authority is introduced.
 
-A subsequent QEMU-only read-only observation prerequisite is host-tested:
-review is mandatory while owned-command/group teardown and original input
-retention are checked separately. Normal/held-client observers are unchanged.
-Negative-only Linux/race3 checks and ARMv5 cross-build do not qualify genuine
-reviewed teardown. The original-process-handle trigger and actual composed
-unexpected-exit trace still need implementation/qualification; no old image or
-generic static-owner fault is substituted for them. See
-[current refusal scope](IMPLEMENTATION-STATUS.md#current-component--reviewed-stop-observations-host-only-refusal-proof).
+A subsequent fixed original-owned exit fixture passes focused host/ARMv5 QEMU
+checks: actual supervision retains sticky review, verifies whole-group stop/
+reap and keeps all private inputs and BOTH original authorities. A retained
+credential capture must be observed unconsumed and settled, never retried or
+released. Normal/held-client observers remain unchanged. One compilation feeds
+seven independently enrolled guests; all seven and the complete proof union
+pass locally. New image audit remains separate. Completed-transfer/idle exit is not held-session/mid-transfer,
+constructor/uncertain-stop coverage or product recovery. See
+[current component scope](IMPLEMENTATION-STATUS.md#current-component--original-owned-exit-focused-hostqemu-proof).
 
 Status vocabulary:
 

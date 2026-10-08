@@ -47,7 +47,7 @@ function Assert-True {
 try {
     $repoRoot = (Microsoft.PowerShell.Management\Resolve-Path (Join-Path $PSScriptRoot '../..')).Path
     $state = $global:phantowdSambaWrapperTestState
-    foreach ($campaign in @('all', 'service', 'native', 'candidate', 'lifecycle', 'fault', 'data')) {
+    foreach ($campaign in @('all', 'service', 'native', 'candidate', 'lifecycle', 'fault', 'data', 'exit')) {
         foreach ($baseArgument in @('', (Join-Path $repoRoot 'mock-explicit-base'))) {
             $state.Calls.Clear()
             $state.Files.Clear()

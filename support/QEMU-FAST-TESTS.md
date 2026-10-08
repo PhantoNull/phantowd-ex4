@@ -782,12 +782,12 @@ For a focused local diagnosis, select exactly one unchanged guest campaign:
 ```
 
 Allowed selections are `service`, `native`, `candidate`, `lifecycle`, `fault`,
-`data` and default `all`.
+`data`, `exit` and default `all`.
 Invalid values fail before guest/fixture construction. A focused run still
 compiles current source, checks all base hashes, uses read-only inputs and
 bounded tmpfs, verifies that phase's exact proof, retains its 180-second limit
 and cleans its disposable container. Its completion explicitly reports
-`complete_image=false`; it cannot substitute for the default six-campaign
+`complete_image=false`; it cannot substitute for the default seven-campaign
 qualification or clean Buildroot/hosted/release evidence. Existing full-build
 callers continue to select all campaigns without modification.
 

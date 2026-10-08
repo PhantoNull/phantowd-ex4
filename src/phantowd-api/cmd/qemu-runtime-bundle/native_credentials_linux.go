@@ -30,10 +30,11 @@ const (
 	nativePlannedDataCampaignQEMU
 	nativePlannedCandidateCampaignQEMU
 	nativeIdentityFaultCampaignQEMU
+	nativePlannedExitCampaignQEMU
 )
 
 func nativeCredentialFixture(campaign nativeCredentialCampaignQEMU) (result error) {
-	if campaign > nativeIdentityFaultCampaignQEMU {
+	if campaign > nativePlannedExitCampaignQEMU {
 		return errors.New("native credential campaign guard")
 	}
 	commandLine, err := os.ReadFile("/proc/cmdline")
@@ -243,7 +244,7 @@ func nativeCredentialFixture(campaign nativeCredentialCampaignQEMU) (result erro
 	// Candidate retains this SAME Owner/backend/runtime for its whole trace;
 	// startup and fault close enrollment admission before their NEW consumers.
 	// No passdb, lease or pins cross boots. All original proofs stay mandatory.
-	if campaign == nativePlannedCandidateCampaignQEMU || campaign == nativeLifecycleCampaignQEMU || campaign == nativeIdentityFaultCampaignQEMU {
+	if campaign == nativePlannedCandidateCampaignQEMU || campaign == nativeLifecycleCampaignQEMU || campaign == nativeIdentityFaultCampaignQEMU || campaign == nativePlannedExitCampaignQEMU {
 		var stage *plannedConfigurationStageQEMU
 		if campaign == nativePlannedCandidateCampaignQEMU {
 			stage, err = nativePlannedCandidateFixtureQEMU(owner, backend, runtime)
@@ -278,6 +279,11 @@ func nativeCredentialFixture(campaign nativeCredentialCampaignQEMU) (result erro
 				return err
 			}
 			reportNativePhaseTimingQEMU(nativeFixtureFaultVerifiedQEMU, started)
+		case nativePlannedExitCampaignQEMU:
+			if err := nativePlannedExitFaultSubprocessQEMU(); err != nil {
+				return err
+			}
+			reportNativePhaseTimingQEMU(nativeFixtureFaultVerifiedQEMU, started)
 		}
 		after, err := os.ReadDir("/proc/self/fd")
 		if err != nil || len(after) != len(before) {
@@ -292,6 +298,8 @@ func nativeCredentialFixture(campaign nativeCredentialCampaignQEMU) (result erro
 		case nativeIdentityFaultCampaignQEMU:
 			fmt.Println("PHANTOWD_SAMBA_OWNER_NATIVE_IDENTITY_FAULT_READY state_drift=true before_worker=true pending_retained=true groups_stopped=true capture_settled=true authority_busy=true inputs_retained=true restoration_refused=true close_no_retry=true subprocess_disposal=true no_fd_leak=true service_owner=false scope=qemu-only")
 			fmt.Println(plannedSourceFaultMarkerQEMU)
+		case nativePlannedExitCampaignQEMU:
+			fmt.Println(plannedExitFaultMarkerQEMU)
 		}
 		return nil
 	}

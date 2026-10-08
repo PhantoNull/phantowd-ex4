@@ -3,7 +3,38 @@
 
 # Implementation status
 
-## Current component — reviewed-stop observations, host-only refusal proof
+## Current component — original-owned exit, focused host/QEMU proof
+
+On 2026-10-08, a new independently enrolled ARMv5 `exit` guest passes the fixed
+original-owned daemon exit scenario. It completes real startup/data access and
+an exclusive supervision scan before a single-use signal through the original
+owned `os.Process`. No caller supplies a PID, group, executable or signal.
+Canceled and duplicate requests refuse. The actual supervisor retains review,
+verifies whole-group stop/reap and preserves all 15 private inputs, original
+runtime references and both busy identity/share authorities. Normal-stop
+classification, restart, recovery and authority release remain refused.
+
+Unexpected exit can refuse a credential worker after its inputs were prepared
+but before execution. The separate reviewed-stop witness now explicitly checks
+that retained capture is **unconsumed and settled**, without closing/retrying it.
+Executed, closed or uncertain captures refuse. This corrects the new witness's
+initial blanket rejection of pending handles; it does not alter the runtime's
+safe retention or the original normal/held-client observers. The real failing
+guest preceded the fix; no healthy runtime or positive stop is fabricated in
+host tests. Temporary diagnostic instrumentation was removed.
+
+Pinned Go 1.26.8 Linux vet, seven-package tests/race-count3, ARM5 cross-build,
+65 Linux verifier tests and the focused actual guest pass. Parent descriptor
+equality, private child disposal, complete runtime census and unchanged base
+remain mandatory. All 959 API inputs and six harness files match before/after.
+One compilation now passes all seven fresh campaigns, their complete ordered
+proof union, equal full runtime censuses and unchanged base. The new
+whole-image audit remains a separate gate. Original guest/worker/readiness/stop
+limits are unchanged. This qualifies a completed-transfer/idle exit fixture,
+not mid-transfer/held-session loss, constructor/uncertain-stop coverage,
+product activation, physical EX4 operation, migration or installation.
+
+## Earlier component — reviewed-stop observations, host-only refusal proof
 
 Separate QEMU-only `ObserveNativeDataReviewStopQEMU` and
 `ObservePlannedReviewStopQEMU` are implemented as read-only observations.

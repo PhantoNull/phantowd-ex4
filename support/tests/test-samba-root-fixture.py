@@ -66,7 +66,8 @@ def campaign_rows():
                     "PHANTOWD_SAMBA_ROOT_SERVICE_DONE", SCAN_COST],
         "native": [*fixture.MARKERS[:3], CENSUS,
                    *(row for row in fixture.MARKERS[enrollment:-4]
-                     if row not in (*access, candidate)),
+                     if row not in (*access, candidate,
+                                    fixture.PLANNED_EXIT_FAULT_MARKER)),
                    "PHANTOWD_SAMBA_ROOT_NATIVE_DONE", SCAN_COST],
         "candidate": [*census, candidate,
                       "PHANTOWD_SAMBA_ROOT_CANDIDATE_DONE", SCAN_COST],
@@ -77,10 +78,52 @@ def campaign_rows():
                   "PHANTOWD_SAMBA_ROOT_FAULT_DONE", SCAN_COST],
         "data": [*census, *access,
                  "PHANTOWD_SAMBA_ROOT_DATA_DONE", SCAN_COST],
+        "exit": [*census, fixture.PLANNED_EXIT_FAULT_MARKER,
+                 "PHANTOWD_SAMBA_ROOT_EXIT_DONE", SCAN_COST],
     }
 
 
 class SambaRootFixture(unittest.TestCase):
+    def test_planned_exit_requires_separate_owned_reviewed_stop_proof(self):
+        proof = (
+            "PHANTOWD_SAMBA_OWNER_PLANNED_EXIT_FAULT_READY "
+            "same_authorities=true same_daemon=true data_verified=true "
+            "original_handle=true single_use=true exclusive_supervision=true "
+            "review_sticky=true stopped_reaped=true private_inputs=15 "
+            "capture_retained=true capture_before_worker=true "
+            "runtime_inputs_retained=true originals_busy=true "
+            "restart_refused=true normal_stop_refused=true "
+            "private_mount_namespace=true subprocess_disposal=true "
+            "parent_fd_equal=true activation=false scope=qemu-only")
+        self.assertIn(proof, fixture.MARKERS)
+
+        logs = {phase: "\n".join(rows)
+                for phase, rows in campaign_rows().items()}
+        fixture.check_campaign(logs["exit"], "exit")
+        for replacement in ("", proof + "\n" + proof,
+                            proof.replace("original_handle=true",
+                                          "original_handle=false"),
+                            proof.replace("single_use=true",
+                                          "single_use=false"),
+                            proof.replace("stopped_reaped=true",
+                                          "stopped_reaped=false"),
+                            proof.replace("capture_retained=true",
+                                          "capture_retained=false"),
+                            proof.replace("capture_before_worker=true",
+                                          "capture_before_worker=false"),
+                            proof.replace("originals_busy=true",
+                                          "originals_busy=false"),
+                            proof.replace("normal_stop_refused=true",
+                                          "normal_stop_refused=false")):
+            with self.subTest(replacement=replacement):
+                with self.assertRaises(ValueError):
+                    fixture.check_campaign(
+                        logs["exit"].replace(proof, replacement), "exit")
+        for phase in fixture.CAMPAIGNS:
+            if phase != "exit":
+                with self.assertRaises(ValueError):
+                    fixture.check_campaign(logs[phase] + "\n" + proof, phase)
+
     def test_planned_source_fault_requires_stop_retention_and_nonrevival(self):
         proof = (
             "PHANTOWD_SAMBA_OWNER_PLANNED_SOURCE_FAULT_READY "
@@ -172,15 +215,15 @@ class SambaRootFixture(unittest.TestCase):
     def test_all_requires_independent_candidate_startup_fault_traces(self):
         rows = campaign_rows()
         phases = ("service", "native", "candidate", "lifecycle", "fault",
-                  "data")
+                  "data", "exit")
         logs = tuple("\n".join(rows[phase]) for phase in phases)
         self.assertEqual(fixture.check_campaigns(*logs),
-                         ((104, 12000000, 123456789),) * 6)
+                         ((104, 12000000, 123456789),) * 7)
         self.assertEqual(fixture.select_campaigns("all"), phases)
         self.assertEqual({row for values in rows.values() for row in values
                           if row in fixture.MARKERS}, set(fixture.MARKERS))
 
-    def test_complete_cli_requires_all_six_ordered_campaign_logs(self):
+    def test_complete_cli_requires_all_seven_ordered_campaign_logs(self):
         with tempfile.TemporaryDirectory() as scratch:
             paths = {}
             for phase, rows in campaign_rows().items():
@@ -191,7 +234,7 @@ class SambaRootFixture(unittest.TestCase):
                     "verify", paths["service"]]
             pairs = [["--" + phase + "-log", paths[phase]]
                      for phase in ("native", "candidate", "lifecycle",
-                                   "fault", "data")]
+                                   "fault", "data", "exit")]
             complete = [item for pair in pairs for item in pair]
             result = subprocess.run(base + complete, capture_output=True,
                                     text=True, check=False, timeout=5)
@@ -211,10 +254,10 @@ class SambaRootFixture(unittest.TestCase):
         rows = tuple(campaign_rows().values())
         logs = tuple("\n".join(values) for values in rows)
         self.assertEqual(fixture.check_campaigns(*logs),
-                         ((104, 12000000, 123456789),) * 6)
+                         ((104, 12000000, 123456789),) * 7)
         self.assertEqual(fixture.select_campaigns("all"),
                          ("service", "native", "candidate", "lifecycle",
-                          "fault", "data"))
+                          "fault", "data", "exit"))
         self.assertEqual(fixture.check_campaign(logs[5], "data"),
                          (104, 12000000, 123456789))
         self.assertEqual({row for values in rows for row in values
@@ -225,7 +268,8 @@ class SambaRootFixture(unittest.TestCase):
             with self.subTest(omitted=omitted):
                 with self.assertRaises(ValueError):
                     fixture.check_campaigns(*logs[:5],
-                                            logs[5].replace(omitted, ""))
+                                            logs[5].replace(omitted, ""),
+                                            logs[6])
 
     def test_independent_lookup_moves_once_without_borrowed_native_state(self):
         enrollment = next(
@@ -355,7 +399,8 @@ class SambaRootFixture(unittest.TestCase):
                         "PHANTOWD_SAMBA_OWNER_PLANNED_STARTUP_READY",
                         "PHANTOWD_SAMBA_OWNER_PLANNED_DATA_READY",
                         "PHANTOWD_SAMBA_OWNER_PLANNED_SUPERVISION_READY",
-                        "PHANTOWD_SAMBA_OWNER_PLANNED_STOP_READY"))),
+                        "PHANTOWD_SAMBA_OWNER_PLANNED_STOP_READY",
+                        "PHANTOWD_SAMBA_OWNER_PLANNED_EXIT_FAULT_READY"))),
                   "PHANTOWD_SAMBA_ROOT_NATIVE_DONE",
                   SCAN_COST]
         fixture.check_campaign(timings + "\n" + "\n".join(native),
@@ -413,7 +458,7 @@ class SambaRootFixture(unittest.TestCase):
     def test_campaign_selection_defaults_to_complete_proof(self):
         self.assertEqual(fixture.select_campaigns("all"),
                          ("service", "native", "candidate", "lifecycle",
-                          "fault", "data"))
+                          "fault", "data", "exit"))
 
     @unittest.skipUnless(os.name == "posix", "POSIX driver admission")
     def test_invalid_diagnostic_mode_never_calls_python(self):
@@ -438,7 +483,7 @@ class SambaRootFixture(unittest.TestCase):
 
     def test_campaign_selection_is_one_exact_phase(self):
         for phase in ("service", "native", "candidate", "lifecycle", "fault",
-                      "data"):
+                      "data", "exit"):
             self.assertEqual(fixture.select_campaigns(phase), (phase,))
 
     def test_campaign_selection_refuses_untrusted_values(self):
@@ -451,7 +496,7 @@ class SambaRootFixture(unittest.TestCase):
         command = [sys.executable, "-B", str(Path(fixture.__file__)),
                    "select-campaigns"]
         for selection in ("all", "service", "native", "candidate", "lifecycle",
-                          "fault", "data"):
+                          "fault", "data", "exit"):
             result = subprocess.run(command + [selection], check=False,
                                     capture_output=True, text=True, timeout=5)
             self.assertEqual(result.returncode, 0, result.stderr)
@@ -564,7 +609,7 @@ class SambaRootFixture(unittest.TestCase):
             with self.assertRaises(ValueError):
                 fixture.check_guest(good.replace(expected, replacement))
 
-    def test_six_bounded_campaigns_require_every_original_proof(self):
+    def test_seven_bounded_campaigns_require_every_original_proof(self):
         split = next(i for i, row in enumerate(fixture.MARKERS)
                      if row.startswith(
                          "PHANTOWD_SAMBA_OWNER_NATIVE_NSS_READY"))
@@ -607,7 +652,7 @@ class SambaRootFixture(unittest.TestCase):
             self.assertNotIn(proof, rows["lifecycle"])
             self.assertNotIn(proof, rows["data"])
         self.assertEqual(fixture.check_campaigns(*good),
-                         ((104, 12000000, 123456789),) * 6)
+                         ((104, 12000000, 123456789),) * 7)
         for index, phase in enumerate(rows):
             self.assertEqual(fixture.check_campaign(good[index], phase),
                              (104, 12000000, 123456789))
@@ -1402,6 +1447,11 @@ class SambaRootFixture(unittest.TestCase):
             "parent_fd_equal=true activation=false scope=qemu-only",
             "PHANTOWD_SAMBA_ROOT_DONE",
         ]
+        # The new independent exit proof is additional; all older literal
+        # golden proofs remain required, in their original relative order.
+        index = next(i for i, row in enumerate(lines) if row.startswith(
+            "PHANTOWD_SAMBA_OWNER_NATIVE_IDENTITY_STARTUP_READY"))
+        lines.insert(index, fixture.PLANNED_EXIT_FAULT_MARKER)
         fixture.check_guest("\r\n".join(lines + [SCAN_COST]))
         self.assertEqual(fixture.scan_cost("\r\n".join(lines + [SCAN_COST])),
                          (104, 12000000, 123456789))

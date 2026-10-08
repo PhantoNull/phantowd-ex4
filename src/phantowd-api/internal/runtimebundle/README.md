@@ -550,7 +550,7 @@ the mistaken nil-client assumption before correction. This is not composed
 source-loss/exit/mid-worker/uncertain-stop coverage, complete updated integration,
 product authorization, durable recovery or physical EX4 qualification.
 
-### Reviewed planned-stop observations (QEMU only; host refusal proof)
+### Reviewed planned-stop observations and fixed owned exit (QEMU only)
 
 `ObserveNativeDataReviewStopQEMU` and `ObservePlannedReviewStopQEMU` keep
 review mandatory while observing verified owned-command/group teardown and
@@ -563,8 +563,30 @@ retained. Group-number reuse or uncertainty refuses, never signals a replacement
 
 No path/PID/process selection, signal delivery, Stop/Close retry, pin release,
 input re-admission, adoption, restart or recovery is exposed. Retention is not
-fresh contents, healthy storage/identity or activation authority. Negative-only
-pinned Linux/race3 tests, ARMv5 cross-build and 64 verifier checks pass; no
-successfully stopped runtime is fabricated in host tests. A genuine composed
-unexpected-exit ARMv5 trace remains unqualified, and this increment adds no
-trigger. The earlier complete950 image keeps its original source scope.
+fresh contents, healthy storage/identity or activation authority. A pending
+credential capture is accepted only after separate unconsumed THEN settled
+observations; executed, closed or uncertain captures refuse. It remains retained,
+never closed/retried to manufacture stop evidence. The original normal and
+held-client observers remain unchanged.
+
+`RequestPlannedDaemonExitQEMU` is a fixed, single-use disposable ARM guest fault,
+not a Stop or recovery verb. Exact guest/root/tmpfs/private-namespace, launched
+generation, complete live runtime and dormant-client checks precede a SIGTERM
+through the ORIGINAL owned command. No caller chooses a PID, process group,
+signal or executable. Signal admission is not a stop/reap or review witness;
+the existing exclusive supervisor must establish those independently.
+
+Fresh Go 1.26.8 Linux vet/seven-package/race3/ARM5 cross/65 verifier checks and
+all seven independently enrolled ARMv5 campaigns pass. The new `exit` guest
+completes actual same-authority startup/data and a full scan before exit,
+verifies reviewed group stop/reap/absence, all15 private/runtime inputs retained,
+an unconsumed/settled capture, BOTH original authorities busy, normal-stop and
+restart/release refusal, private-child disposal and parent FD equality. The
+initial real failure identified retained capture as the new observer mismatch;
+temporary diagnostic instrumentation was removed before clean qualification.
+Host tests fabricate no healthy or successfully stopped runtime. Original
+guest/worker/readiness/stop limits and every previous proof remain mandatory.
+This is completed-transfer/idle fixture coverage, not held-session/mid-transfer,
+uncertain teardown, product activation, recovery or physical EX4 qualification.
+The complete954 image keeps its original source scope; a new image audit is
+still required. See [current status](../../../../IMPLEMENTATION-STATUS.md).
