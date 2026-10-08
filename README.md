@@ -61,12 +61,15 @@ not establish independent clean-build reproducibility, complete licensing
 compliance or physical EX4 qualification. [versions.env](versions.env) is the
 source of truth for build pins.
 
-The latest fully audited local checkpoint, `970483e`, selects Go 1.26.8 and
-passes the complete cached host/ARMv5 integration lane, all six independently enrolled Samba guests
+The latest fully audited local checkpoint, `217d978`, selects Go 1.26.8 and
+passes the complete cached host/ARMv5 integration lane, all seven independently enrolled Samba guests
 and both synthetic SMART lanes. It includes retained same-authority startup,
 real data access, exclusive supervision and a source-alias-loss fault that
 stops the daemon without releasing reviewed authority or restarting it.
-An independent audit matches all 954 API inputs, actual images, kernel/header
+The original-owned idle exit scenario also verifies sticky review, group
+stop/reap and retained unconsumed worker inputs; it does not qualify
+mid-transfer/session loss or recovery.
+An independent audit matches all 959 API inputs, actual images, kernel/header
 archives, the selected and installed Go SDK, release metadata, SBOM and declared
 license files; see the [exact qualification record](support/DEPENDENCY-REVIEW.md).
 

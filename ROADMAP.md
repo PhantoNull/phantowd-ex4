@@ -67,59 +67,30 @@ currently product-qualified for migration.
 
 ## Current baseline
 
-The current combined local checkpoint `970483e` selects Go 1.26.8 and passes
-the complete cached Buildroot/ARMv5 integration, including all six independently enrolled Samba
-scenarios and both synthetic SMART lanes. Independent post-terminal auditing
-matches all 954 API inputs to compiled package/source archive, reproduces
-configured stripping, and verifies installed/image/exported API, seven hashes,
-Linux AND headers 6.18.55, selected/installed Go SDK, SBOM, release and
-legal-source bindings; see
-[exact scope](IMPLEMENTATION-STATUS.md#current-complete-cached-integration--go-1268-and-exact954-audit).
-Normal same-authority planned Samba startup and access are qualified only in
-disposable fixtures. This complete image also passes exclusive composed supervision
-with serial complete scans, idle cancellation/verified stop, retained originals
-and full-close-before-release, across all six ARMv5 scenarios. This normal-path
-proof does not qualify composed exit/mid-worker/uncertain stop/close faults.
-The same complete image separately qualifies the idle source-alias fault below.
-Complete fault supervision, uncertain construction/teardown,
-production storage/identity composition, exact-head hosted promotion, clean
-reproducibility and product/hardware/release gates remain open. This is not a
-causal fix of the latest hosted coordinator continuity timeout. That failed
-integration checkpoint remains unmerged. Historical task evidence below keeps
-its original source scope.
+The fully audited local checkpoint `217d978` selects Go 1.26.8 and passes the
+complete cached Buildroot/host/ARMv5 lane: all seven independently enrolled
+Samba scenarios and both synthetic SMART lanes. Independent post-terminal
+auditing matches all 959 API inputs to compiled package/source archive and all
+1,242 tracked build witnesses. Configured stripping, installed/image/exported
+API, seven hashes, Linux AND headers 6.18.55, actual selected/installed Go SDK,
+SBOM, release and legal sources agree; see
+[exact qualification](IMPLEMENTATION-STATUS.md#current-complete-cached-integration--seven-samba-scenarios-and-exact959-audit).
 
-A subsequent **host/QEMU** increment qualifies separate planned-stop
-observation: owned daemon stop/reap, all 15 private daemon inputs and original
-runtime code/configuration/state retention, dormant prepared client checks,
-legacy observer continuity, repeated read-only observation and closed refusal.
-The earlier 948-input six-guest component union passed separately; the observer
-is now included in the complete 950-input image. Retention alone is not composed
-fault or recovery qualification; see
-[current component scope](IMPLEMENTATION-STATUS.md#current-component--planned-stop-observation-focused-hostqemu-proof).
+Disposable fixtures qualify same-authority planned startup/data access,
+exclusive serial supervision, cancellation/verified stop, retained originals,
+full-close-before-release, idle source-alias loss and original-owned idle exit.
+The exit proof requires its retained worker capture to be unconsumed and
+settled; reviewed authority is not released or automatically restarted.
+Normal and held-client observers remain unchanged.
 
-The **host/QEMU** source-loss slice now passes actual
-genuine enrollment and SAME planned identity/backend/storage/share authority
-checks. It replaces the earlier unverified handoff-parent rename proposal with
-a cover of ONLY the synthetic volume alias, retaining original mounts/grants.
-Actual exclusive supervision enters sticky review and stops/reaps the daemon;
-independent stop/retention observations and both busy authorities pass. Removing
-the exact observed cover restores the original mount without reviving any
-operation. A private-namespace child exits after proof, not product recovery.
-The prior identity-fault proof and parent FD equality remain mandatory. The
-updated complete six-guest union and whole950 image/audit pass separately.
-Held-session/mid-transfer, native pending capture, uncertain stop and constructor/
-close faults still require separate actual traces. Keep existing checks and
-finite budgets; no HTTP, device access or recovery authority is introduced.
-
-A subsequent fixed original-owned exit fixture passes focused host/ARMv5 QEMU
-checks: actual supervision retains sticky review, verifies whole-group stop/
-reap and keeps all private inputs and BOTH original authorities. A retained
-credential capture must be observed unconsumed and settled, never retried or
-released. Normal/held-client observers remain unchanged. One compilation feeds
-seven independently enrolled guests; all seven and the complete proof union
-pass locally. New image audit remains separate. Completed-transfer/idle exit is not held-session/mid-transfer,
-constructor/uncertain-stop coverage or product recovery. See
-[current component scope](IMPLEMENTATION-STATUS.md#current-component--original-owned-exit-focused-hostqemu-proof).
+This is not held-session/mid-transfer fault coverage, uncertain construction/
+teardown, product recovery or production storage/identity composition.
+Exact-head hosted promotion, independent clean reproduction, complete advisory
+review, hardware, migration, recovery and signed release gates remain open.
+PR #128/#129 retain failed hosted coordinator-continuity checks; local success
+is not their causal fix. Keep existing guards and finite budgets. No HTTP
+service activation, NAS operation or installable firmware is introduced.
+Historical task evidence below retains its original source scope.
 
 Status vocabulary:
 

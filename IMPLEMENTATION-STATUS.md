@@ -3,6 +3,36 @@
 
 # Implementation status
 
+## Current complete cached integration — seven Samba scenarios and exact959 audit
+
+Frozen `217d978c8861d1384a77e28b287505cbca77e38d`, API tree
+`bfbfa25ab57e4457cd33709ded2dc080b085ec56`, passes the complete cached
+Buildroot/host/ARMv5 lane and an independent post-terminal read-only audit on
+2026-10-08. Original ordinary/race/fixed-fuzz/toolkit, standard smoke, MD/state,
+launcher/runtime/loader/atomic, all **seven** independently enrolled Samba
+scenarios and both synthetic SMART lanes pass with unchanged limits.
+
+The complete original proof union includes same-authority startup/data access,
+exclusive supervision, verified cancellation/stop, idle source-alias loss and
+the original-owned idle exit described below. The latter requires retained,
+unconsumed and settled worker inputs; review does not authorize release,
+restart or recovery. Mid-transfer/held-session loss and uncertain construction/
+teardown remain open.
+
+All **959** API inputs match source, compiled package and legal source archive
+without stale extras. Configured strip, installed/rootfs/exported API, all
+seven ordered artifact hashes, actual Go 1.26.8 recipe/source/SDK/host licensing/
+SBOM and Linux AND headers 6.18.55 agree. All **11,510** installed SDK files
+match; **25,252** regular audit inputs and all **1,242** tracked build witnesses
+recheck unchanged. See [measured artifact identities](support/DEPENDENCY-REVIEW.md).
+
+Only the existing image/two project volumes are reused; no consumer remains.
+This is cached local qualification, not independent clean reproduction,
+exact-head hosted qualification, complete advisory review, EX4 operation,
+migration, recovery, product activation or an installable release. PR #128/#129
+retain their own failed QEMU checks; local success is not their timeout fix.
+Older sections below retain their dated, narrower source scopes.
+
 ## Current component — original-owned exit, focused host/QEMU proof
 
 On 2026-10-08, a new independently enrolled ARMv5 `exit` guest passes the fixed
@@ -28,8 +58,9 @@ Pinned Go 1.26.8 Linux vet, seven-package tests/race-count3, ARM5 cross-build,
 equality, private child disposal, complete runtime census and unchanged base
 remain mandatory. All 959 API inputs and six harness files match before/after.
 One compilation now passes all seven fresh campaigns, their complete ordered
-proof union, equal full runtime censuses and unchanged base. The new
-whole-image audit remains a separate gate. Original guest/worker/readiness/stop
+proof union, equal full runtime censuses and unchanged base. Complete image
+qualification is recorded above, separately from this component proof.
+Original guest/worker/readiness/stop
 limits are unchanged. This qualifies a completed-transfer/idle exit fixture,
 not mid-transfer/held-session loss, constructor/uncertain-stop coverage,
 product activation, physical EX4 operation, migration or installation.
@@ -57,7 +88,7 @@ increment. No HTTP/product activation or NAS operation is added. The complete
 image includes these four files and passes the original campaigns, but does
 not supply a positive composed unexpected-exit/reviewed-stop trace.
 
-## Current complete cached integration — Go 1.26.8 and exact954 audit
+## Earlier complete cached integration — Go 1.26.8 and exact954 audit
 
 Frozen `970483e095c54186de9f53e4a164bc44c2b3cfd0`, API tree
 `7b612fe28e5a0304d40664cf72816ece027af0dc`, passes one complete cached
