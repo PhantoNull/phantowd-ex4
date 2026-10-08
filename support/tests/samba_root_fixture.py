@@ -145,6 +145,14 @@ MARKERS = (
     "unix_owner=true symlink_denied=true private_namespace=true "
     "stopped_before_release=true no_fd_leak=true "
     "complete_storage_identity=false scope=qemu-only",
+    "PHANTOWD_SAMBA_OWNER_PLANNED_STARTUP_READY "
+    "owner=actual_native_backend storage=mounted_roster "
+    "same_authorities=true granted_only=true service_role=true "
+    "original_views=true before_start_busy=true after_start_busy=true "
+    "duplicate_refused=true canceled_start_refused=true "
+    "fresh_observation=true runtime_close_before_release=true "
+    "stopped_reaped=true no_fd_leak=true samba_data=false "
+    "activation=false scope=qemu-only",
     "PHANTOWD_SAMBA_OWNER_PLANNED_CANDIDATE_READY "
     "owner=actual_native_backend storage=mounted_roster locked_plan=true "
     "exact_declaration=true original_objects=true caller_close=true "

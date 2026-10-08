@@ -44,6 +44,9 @@ type NativePlannedServiceQEMU struct {
 	gate          chan struct{}
 	status        atomic.Value
 	checks        uint64
+	attempted     bool
+	started       bool
+	stopped       bool
 	closed        bool
 	review        bool
 	runtimeClosed bool
@@ -171,7 +174,7 @@ func (s *NativePlannedServiceQEMU) Observe(ctx context.Context) error {
 		return err
 	}
 	defer func() { <-s.gate }()
-	if s.closed || s.review {
+	if s.closed || s.review || s.stopped {
 		return runtimebundle.ErrReviewRequired
 	}
 	if err := s.verify(ctx); err != nil {
@@ -182,10 +185,46 @@ func (s *NativePlannedServiceQEMU) Observe(ctx context.Context) error {
 	return nil
 }
 
+// Start is a separate planned-service admission; legacy runtime start remains
+// blocked by the inert service role. No caller supplies a runtime or backend.
+func (s *NativePlannedServiceQEMU) Start(ctx context.Context) error {
+	if err := s.enter(ctx); err != nil {
+		return err
+	}
+	defer func() { <-s.gate }()
+	if s.closed || s.review || s.attempted {
+		return runtimebundle.ErrReviewRequired
+	}
+	s.attempted = true
+	if err := s.verify(ctx); err != nil {
+		return s.quarantine(err)
+	}
+	if err := s.inputs.Backend.runtime.StartPlannedDaemonQEMU(ctx); err != nil {
+		// Runtime startup owns its bounded failure stop. Its error is not a
+		// settlement witness: keep both original authorities and never retry.
+		s.closeErr, s.review = err, true
+		s.publish()
+		return errors.Join(runtimebundle.ErrReviewRequired, err)
+	}
+	s.started = true
+	if err := s.verify(ctx); err != nil {
+		return s.quarantine(err)
+	}
+	s.publish()
+	return nil
+}
+
 func (s *NativePlannedServiceQEMU) quarantine(cause error) error {
 	s.review = true
+	if s.started && !s.stopped && s.closeErr == nil {
+		if err := s.inputs.Backend.runtime.StopNativeServiceQEMU(context.Background()); err != nil {
+			s.closeErr = err
+		} else {
+			s.stopped = true
+		}
+	}
 	s.publish()
-	return errors.Join(runtimebundle.ErrReviewRequired, cause)
+	return errors.Join(runtimebundle.ErrReviewRequired, cause, s.closeErr)
 }
 
 // Runtime copies close before EITHER original authority is released. A first
@@ -204,7 +243,7 @@ func (s *NativePlannedServiceQEMU) Close(ctx context.Context) error {
 			s.closeErr = err
 			return s.quarantine(err)
 		}
-		s.runtimeClosed = true
+		s.runtimeClosed, s.stopped = true, true
 		if err := s.lease.Release(); err != nil {
 			s.closeErr = err
 			return s.quarantine(err)
@@ -237,7 +276,10 @@ func (s *NativePlannedServiceQEMU) Status() (NativePlannedStatusQEMU, error) {
 
 func (s *NativePlannedServiceQEMU) publish() {
 	state := "prepared"
-	if s.closed {
+	if s.started {
+		state = "ready"
+	}
+	if s.stopped || s.closed {
 		state = "stopped"
 	}
 	if s.review {

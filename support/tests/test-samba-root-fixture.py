@@ -49,6 +49,40 @@ def reports():
 
 
 class SambaRootFixture(unittest.TestCase):
+    def test_planned_startup_requires_complete_retained_authorities(self):
+        marker = (
+            "PHANTOWD_SAMBA_OWNER_PLANNED_STARTUP_READY "
+            "owner=actual_native_backend storage=mounted_roster "
+            "same_authorities=true granted_only=true service_role=true "
+            "original_views=true before_start_busy=true after_start_busy=true "
+            "duplicate_refused=true canceled_start_refused=true "
+            "fresh_observation=true runtime_close_before_release=true "
+            "stopped_reaped=true no_fd_leak=true samba_data=false "
+            "activation=false scope=qemu-only")
+        split = next(
+            i for i, row in enumerate(fixture.MARKERS)
+            if row.startswith("PHANTOWD_SAMBA_OWNER_NATIVE_NSS_READY"))
+        rows = [*fixture.MARKERS[:3], CENSUS,
+                *(row for row in fixture.MARKERS[split:-3]
+                  if not row.startswith((
+                      "PHANTOWD_SAMBA_OWNER_PLANNED_CANDIDATE_READY",
+                      "PHANTOWD_SAMBA_OWNER_PLANNED_STARTUP_READY"))),
+                marker, "PHANTOWD_SAMBA_ROOT_NATIVE_DONE", SCAN_COST]
+        good = "\n".join(rows)
+        fixture.check_campaign(good, "native")
+        for invalid in (good.replace(marker, ""),
+                        good.replace(marker, marker + "\n" + marker),
+                        good.replace("same_authorities=true",
+                                     "same_authorities=false"),
+                        good.replace("original_views=true",
+                                     "original_views=false"),
+                        good.replace("activation=false", "activation=true")):
+            with self.subTest(invalid=invalid):
+                with self.assertRaises(ValueError):
+                    fixture.check_campaign(invalid, "native")
+        with self.assertRaises(ValueError):
+            fixture.check_campaign(good, "lifecycle")
+
     def test_native_phase_timing_cannot_replace_or_weaken_acceptance(self):
         timings = "\n".join(
             "PHANTOWD_DIAG_NATIVE_PHASE phase=" + phase
@@ -1050,6 +1084,14 @@ class SambaRootFixture(unittest.TestCase):
             "symlink_denied=true private_namespace=true "
             "stopped_before_release=true no_fd_leak=true "
             "complete_storage_identity=false scope=qemu-only",
+            "PHANTOWD_SAMBA_OWNER_PLANNED_STARTUP_READY "
+            "owner=actual_native_backend storage=mounted_roster "
+            "same_authorities=true granted_only=true service_role=true "
+            "original_views=true before_start_busy=true after_start_busy=true "
+            "duplicate_refused=true canceled_start_refused=true "
+            "fresh_observation=true runtime_close_before_release=true "
+            "stopped_reaped=true no_fd_leak=true samba_data=false "
+            "activation=false scope=qemu-only",
             "PHANTOWD_SAMBA_OWNER_PLANNED_CANDIDATE_READY "
             "owner=actual_native_backend storage=mounted_roster "
             "locked_plan=true exact_declaration=true original_objects=true "

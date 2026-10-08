@@ -6,10 +6,37 @@
 package processowner
 
 import (
+	"context"
 	"errors"
 	"os"
 	"testing"
 )
+
+func TestNativeDataViewsRefuseAbsentCanceledAndBusyAuthority(t *testing.T) {
+	var absent *PinnedSet
+	if err := absent.VerifyNativeDataViewsQEMU(context.Background(), 2); !errors.Is(err, ErrUnavailable) {
+		t.Fatal("absent process supplied data-view evidence:", err)
+	}
+	// No executable, descriptor or process exists. Admission must refuse these
+	// cases before inspecting any pathname or accepting a caller-selected PID.
+	set := &PinnedSet{gate: make(chan struct{}, 1), set: &Set{}}
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	if err := set.VerifyNativeDataViewsQEMU(ctx, 2); !errors.Is(err, context.Canceled) {
+		t.Fatal("canceled data-view observation proceeded:", err)
+	}
+	set.gate <- struct{}{}
+	err := set.VerifyNativeDataViewsQEMU(context.Background(), 2)
+	<-set.gate
+	if !errors.Is(err, ErrBusy) {
+		t.Fatal("concurrent data-view observation proceeded:", err)
+	}
+	for _, pid := range []int{-1, 0, 1, 2} {
+		if err := set.VerifyNativeDataViewsQEMU(context.Background(), pid); !errors.Is(err, ErrInvalid) {
+			t.Fatal("unowned process supplied data-view evidence:", err)
+		}
+	}
+}
 
 func TestNativeDataDaemonRefusesHostAndPreservesCallers(t *testing.T) {
 	if model, _ := os.ReadFile("/sys/firmware/devicetree/base/model"); string(model) == "ARM Versatile PB\x00" {

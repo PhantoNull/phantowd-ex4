@@ -37,3 +37,10 @@ func TestNativePlannedServiceRefusesAbsentAuthorityBeforeOwnershipTransfer(t *te
 		t.Fatal("absent service published an authority observation:", err)
 	}
 }
+
+func TestNativePlannedStartRefusesMissingAuthority(t *testing.T) {
+	var service *NativePlannedServiceQEMU
+	if err := service.Start(context.Background()); !errors.Is(err, ErrInvalid) {
+		t.Fatal("absent planned service admitted startup:", err)
+	}
+}

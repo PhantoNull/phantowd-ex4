@@ -112,6 +112,7 @@ func stagePlannedConfigurationQEMU(ctx context.Context, runtime *runtimebundle.N
 	}
 	if !errors.Is(runtime.RetainPlannedConfigurationQEMU(ctx, nil, candidate), runtimebundle.ErrReviewRequired) ||
 		!errors.Is(runtime.CheckNativeStartupQEMU(ctx), runtimebundle.ErrReviewRequired) ||
+		!errors.Is(runtime.StartPlannedDaemonQEMU(ctx), runtimebundle.ErrReviewRequired) ||
 		!errors.Is(runtime.StartNativeDaemonQEMU(ctx), runtimebundle.ErrReviewRequired) {
 		return nil, errors.New("inert configuration role replaced or admitted a daemon")
 	}

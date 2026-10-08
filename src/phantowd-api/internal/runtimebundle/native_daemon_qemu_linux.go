@@ -345,11 +345,23 @@ func (r *NativeSambaRuntimeQEMU) verifyNativeDaemonQEMU(ctx context.Context, pid
 			return errors.New("native daemon code view changed")
 		}
 	}
-	for name, pin := range r.owner.configuration.contents.files {
+	configuration := r.owner.configuration
+	if r.plannedDataPrepared {
+		if r.owner.serviceConfiguration == nil {
+			return ErrReviewRequired
+		}
+		configuration = r.owner.serviceConfiguration
+	}
+	for name, pin := range configuration.contents.files {
 		actual, err := os.Stat(base + "/root/etc/" + name)
 		expected, expectedErr := pin.Stat()
 		if err != nil || expectedErr != nil || !os.SameFile(actual, expected) {
 			return errors.New("native daemon original configuration mismatch")
+		}
+	}
+	if r.plannedDataPrepared {
+		if err := r.owner.processes.VerifyNativeDataViewsQEMU(ctx, pid); err != nil {
+			return errors.Join(ErrReviewRequired, err)
 		}
 	}
 	return r.owner.verifyLiveSambaStateQEMU(pid)
