@@ -1608,6 +1608,20 @@ milestone before enabling its controls; M1/M6 for deployment.
   privilege, job, hardware polling or service activation changes. Browser abort
   does not prove server/kernel work stopped; real-browser/accessibility and
   product authentication/recovery remain separate gates.
+  **M5.5b — authentication focus continuity (partial; host-tested):** a first
+  skip link targets the main landmark; headings accept programmatic focus
+  without adding tab stops. When an auth boundary hides the focused control,
+  move focus to the visible destination heading without scrolling. Initial
+  status, unchanged views, unrelated visible controls and retired responses
+  do not move focus. Shared keyboard outlines include links, buttons, form
+  controls, summaries and explicit tabindex targets; forced-color overrides
+  use system colors. Actual-source DOM regression reproduces the missing
+  login destination on the previous source and passes after correction,
+  including logout, password-change uncertainty and stale-response cases.
+  Complete Windows API/UI checks, ARMv5 test cross-compilation and pinned
+  Linux embedded-asset tests pass. DOM focus/stylesheet contracts are not
+  browser rendering, screen-reader, contrast or whole-image qualification.
+  No new request, retry, endpoint, privilege, polling or activation.
 - **M5.6 — Audit and diagnostics.** Record actor, operation ID, revisions and
   redacted outcome; bound retention. Export a sanitized support bundle that
   excludes credentials, private keys, passdb hashes and user file contents.

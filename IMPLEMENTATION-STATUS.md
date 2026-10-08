@@ -43,6 +43,28 @@ B3 config6.18.54 also passes, but is not a new build. No kernel selections,
 fragments, crypto provider, image, API, privilege or timeout changes. This is
 build-policy validation, not a new whole-image, security or performance result.
 
+## Current UI component — authentication focus continuity, host-only proof
+
+M5.5b adds a main-content skip link, non-tabbable focus destinations and shared
+keyboard/system-color focus styles. Before an authentication transition hides
+the active control, focus moves to the newly visible heading without scrolling.
+Initial status, unchanged views, unrelated controls and retired replies do not
+steal focus. No request, retry, endpoint, privilege, poll or activation changes.
+
+The actual-source DOM regression fails against prior `fa97910` JavaScript for
+the missing login destination, then the complete suite passes with three new
+focus groups including setup, expiration, both logout scopes, unavailable auth,
+password-change uncertainty and stale replies. Windows Go 1.27.0 API/UI/vet,
+tagged contracts and ARMv5 test cross-compilation pass. Pinned Go 1.26.8 Linux
+host vet and embedded dashboard/self-test asset checks also pass in one bounded,
+auto-removed non-root container with the existing read-only workspace.
+
+No new image/volume or guest/hardware run. DOM/source assertions do not qualify
+real-browser focus/rendering, assistive technology, contrast, WCAG, a complete
+changed image or hosted integration. The `217d978` complete-image checkpoint
+above remains historical and does not cover these changed assets. Existing
+QEMU coordinator failures and integration gates remain open.
+
 ## Current component — original-owned exit, focused host/QEMU proof
 
 On 2026-10-08, a new independently enrolled ARMv5 `exit` guest passes the fixed

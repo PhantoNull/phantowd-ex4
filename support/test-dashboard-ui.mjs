@@ -13,6 +13,7 @@ const repoRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
 const source = await readFile(join(repoRoot, "src/phantowd-api/ui/app.js"), "utf8");
 const serviceSource = await readFile(join(repoRoot, "src/phantowd-api/ui/service-policy.js"), "utf8");
 const markup = await readFile(join(repoRoot, "src/phantowd-api/ui/index.html"), "utf8");
+const styles = await readFile(join(repoRoot, "src/phantowd-api/ui/app.css"), "utf8");
 const markupIDs = [...markup.matchAll(/\bid="([^"]+)"/g)].map((match) => match[1]);
 assert.equal(new Set(markupIDs).size, markupIDs.length, "duplicate HTML IDs");
 for (const match of (source + serviceSource).matchAll(/(?:byId|setText)\("([^"]+)"/g)) {
@@ -20,9 +21,18 @@ for (const match of (source + serviceSource).matchAll(/(?:byId|setText)\("([^"]+
 }
 assert.match(markup, /id="policy-nfs-fields"[^>]*hidden disabled/);
 assert.match(markup, /id="policy-form"[^>]*autocomplete="off"/);
+assert.match(markup, /<body>\s*<a class="skip-link" id="skip-to-content" href="#main-content">Skip to main content<\/a>/);
+assert.match(markup, /<main id="main-content" tabindex="-1">/);
+for (const id of ["auth-title", "page-title"]) {
+  assert.match(markup, new RegExp(`<h1 id="${id}" tabindex="-1">`));
+}
+assert.match(styles, /:is\(a, button, input, select, textarea, summary, \[tabindex\]\):focus-visible\s*\{\s*outline: 2px solid var\(--violet\);\s*outline-offset: 3px;/);
+assert.match(styles, /\.skip-link:focus\s*\{ transform: none; \}/);
+assert.match(styles, /@media \(forced-colors: active\)/);
 
 class FixtureElement {
-  constructor() {
+  constructor(ownerDocument = null) {
+    this.ownerDocument = ownerDocument;
     this.attributes = new Map();
     this.children = [];
     this.dataset = {};
@@ -64,6 +74,32 @@ class FixtureElement {
 
   removeAttribute(name) {
     this.attributes.delete(name);
+  }
+
+  contains(node) {
+    for (let current = node; current; current = current.parentElement) {
+      if (current === this) return true;
+    }
+    return false;
+  }
+
+  get hidden() { return this.isHidden; }
+
+  set hidden(value) {
+    this.isHidden = value;
+    // Model focus retirement before testing the actual source's replacement.
+    if (value && this.ownerDocument && this.contains(this.ownerDocument.activeElement)) {
+      this.ownerDocument.activeElement = this.ownerDocument.body;
+    }
+  }
+
+  focus(options) {
+    if (!this.ownerDocument || this.disabled) return;
+    for (let current = this; current; current = current.parentElement) {
+      if (current.hidden) return;
+    }
+    this.ownerDocument.activeElement = this;
+    this.ownerDocument.focusCalls.push({ element: this, options });
   }
 }
 
@@ -119,6 +155,7 @@ function mountsFixture() {
 
 async function createHarness(respond, timing = {}) {
   const ids = [
+    "main-content", "page-title", "skip-to-content",
     "auth-panel", "auth-title", "auth-description", "auth-form", "auth-username",
     "auth-password", "auth-submit", "auth-retry", "auth-error", "dashboard-content",
     "logout", "logout-all", "refresh", "refresh-label", "snapshot-status", "error-banner",
@@ -132,14 +169,28 @@ async function createHarness(respond, timing = {}) {
     ...["load", "prepare", "save", "status", "current", "summary", "document", "review", "change", "samba", "nfs", "editor", "target", "member", "action", "edit-preview", "diff", "diff-summary", "overlaps", "overlap-summary"].map((id) => `service-${id}`),
     ...["form", "submit", "clear", "result", "error", "status", "requirements", "samba", "nfs", "nfs-fields", "uuid", "name", "path", "user", "smb-access", "nfs-enabled", "export-id", "network", "nfs-access", "squash", "uid", "gid", "security"].map((id) => `policy-${id}`),
   ];
-  const elements = Object.fromEntries(ids.map((id) => [id, new FixtureElement()]));
+  const document = { activeElement: null, focusCalls: [] };
+  const elements = Object.fromEntries(ids.map((id) => [id, new FixtureElement(document)]));
+  document.body = new FixtureElement(document);
+  document.activeElement = document.body;
+  elements["main-content"].parentElement = document.body;
+  elements["auth-panel"].parentElement = elements["main-content"];
+  elements["dashboard-content"].parentElement = elements["main-content"];
+  for (const [id, element] of Object.entries(elements)) {
+    if (["main-content", "auth-panel", "dashboard-content"].includes(id)) continue;
+    element.parentElement = id === "logout" || id === "skip-to-content" ? document.body :
+      id.startsWith("auth-") ? elements["auth-panel"] : elements["dashboard-content"];
+  }
+  for (const id of ["auth-username", "auth-password", "auth-submit"]) {
+    elements[id].parentElement = elements["auth-form"];
+  }
   elements["refresh-label"].textContent = "Refresh snapshot";
   elements["memory-meter"].parentElement = new FixtureElement();
-  const document = {
+  Object.assign(document, {
     getElementById: (id) => elements[id] ?? null,
-    createElement: () => new FixtureElement(),
+    createElement: () => new FixtureElement(document),
     createTextNode: (text) => ({ textContent: String(text) }),
-  };
+  });
   const requests = [];
   const fetch = async (path, options) => {
     requests.push({ path, options });
@@ -166,7 +217,115 @@ async function createHarness(respond, timing = {}) {
   new Script(serviceSource).runInContext(context);
   new Script(source).runInContext(context);
   await new Promise((resolve) => setImmediate(resolve));
-  return { context, elements, requests };
+  return { context, elements, requests, document };
+}
+
+async function testAuthFocusMovesOnlyWhenItsControlIsHidden() {
+  for (const setup of [false, true]) {
+    let authenticated = false;
+    const h = await createHarness(async (path) => {
+      if (path === "/api/v1/auth/status") return jsonResponse({ authenticated, setup_required: setup });
+      if (path === (setup ? "/api/v1/auth/setup" : "/api/v1/auth/login")) {
+        authenticated = true;
+        return jsonResponse({ authenticated: true });
+      }
+      return snapshotResponse(path);
+    });
+    assert.ok(h.document.activeElement === h.document.body, "initial status must not steal focus");
+    h.elements["auth-username"].value = "fixture-admin";
+    h.elements["auth-password"].value = "public fixture passphrase";
+    h.elements["auth-submit"].focus();
+    await h.elements["auth-form"].listeners.get("submit")({ preventDefault() {} });
+    assert.ok(h.document.activeElement === h.elements["page-title"], "hidden login/setup control loses focus without a visible destination");
+    assert.equal(h.document.focusCalls.at(-1).options.preventScroll, true);
+
+    h.elements.refresh.focus();
+    const calls = h.document.focusCalls.length;
+    await h.context.updateAuthView();
+    assert.ok(h.document.activeElement === h.elements.refresh, "same-view refresh must not steal focus");
+    assert.equal(h.document.focusCalls.length, calls);
+
+    authenticated = false;
+    await h.context.updateAuthView({ refresh: false, notice: "Session expired." });
+    assert.ok(h.document.activeElement === h.elements["auth-title"], "expired session must leave focus in visible authentication view");
+    h.elements["auth-password"].focus();
+    await h.context.updateAuthView({ refresh: false });
+    assert.ok(h.document.activeElement === h.elements["auth-password"], "unchanged login view must retain field focus");
+    h.context.showAuthUnavailable();
+    assert.ok(h.document.activeElement === h.elements["auth-title"], "hidden authentication field must not retain focus");
+    h.elements["auth-retry"].focus();
+    h.context.showAuthUnavailable();
+    assert.ok(h.document.activeElement === h.elements["auth-retry"], "visible retry control must retain focus");
+    await h.context.updateAuthView({ refresh: false });
+    assert.ok(h.document.activeElement === h.elements["auth-title"], "hidden retry control must return focus to authentication heading");
+  }
+
+  for (const all of [false, true]) {
+    let authenticated = true;
+    const h = await createHarness(async (path) => {
+      if (path === "/api/v1/auth/status") return jsonResponse({ authenticated });
+      if (path === "/api/v1/auth/session") return jsonResponse({ csrf_token: "x".repeat(43) });
+      if (path === (all ? "/api/v1/auth/logout-all" : "/api/v1/auth/logout")) {
+        authenticated = false;
+        return jsonResponse({ signed_out: true });
+      }
+      return snapshotResponse(path);
+    });
+    h.elements[all ? "logout-all" : "logout"].focus();
+    await h.elements[all ? "logout-all" : "logout"].listeners.get("click")();
+    assert.ok(h.document.activeElement === h.elements["auth-title"], "hidden logout control must return focus to authentication heading");
+    assert.equal(h.requests.filter((r) => r.options?.method === "POST").length, 1, "focus handling must not add requests");
+  }
+}
+
+async function testAuthFocusAfterPasswordChangeOrUncertainty() {
+  for (const confirmed of [false, true]) {
+    let authenticated = true;
+    const h = await createHarness(async (path) => {
+      if (path === "/api/v1/auth/status") return jsonResponse({ authenticated });
+      if (path === "/api/v1/auth/session") return jsonResponse({ csrf_token: "x".repeat(43) });
+      if (path === "/api/v1/auth/password") {
+        authenticated = false;
+        return confirmed ? jsonResponse({ password_changed: true, reauthentication_required: true, all_panel_sessions_revoked: true }) :
+          jsonResponse({ error: "unconfirmed" }, 503);
+      }
+      return snapshotResponse(path);
+    });
+    h.elements["password-current"].value = "old public fixture passphrase";
+    h.elements["password-new"].value = "new public fixture passphrase";
+    h.elements["password-confirm"].value = h.elements["password-new"].value;
+    h.elements["password-submit"].focus();
+    await h.elements["password-form"].listeners.get("submit")({ preventDefault() {} });
+    assert.ok(h.document.activeElement === h.elements["auth-title"], "confirmed or uncertain credential boundary must have a visible focus destination");
+    assert.equal(h.elements["auth-form"].hidden, !confirmed);
+    assert.equal(h.requests.filter((r) => r.options?.method === "POST").length, 1, "focus handling must not retry password change");
+  }
+}
+
+async function testAuthFocusDoesNotFollowRetiredOrUnrelatedReads() {
+  let pending = false;
+  let release;
+  const h = await createHarness(async (path) => {
+    if (path === "/api/v1/auth/status") {
+      if (pending) return new Promise((resolve) => { release = resolve; });
+      return jsonResponse({ authenticated: true });
+    }
+    return snapshotResponse(path);
+  });
+  h.elements.refresh.focus();
+  pending = true;
+  const retired = h.context.updateAuthView({ refresh: false, current: () => false });
+  await settleUI();
+  const calls = h.document.focusCalls.length;
+  release(jsonResponse({ authenticated: false }));
+  await retired;
+  assert.ok(h.document.activeElement === h.elements.refresh);
+  assert.equal(h.document.focusCalls.length, calls, "retired auth reply must not change focus");
+  assert.equal(h.elements["dashboard-content"].hidden, false);
+
+  h.elements["main-content"].focus();
+  h.context.showAuthUnavailable();
+  assert.ok(h.document.activeElement === h.elements["main-content"], "focus outside the disappearing controls must stay in place");
 }
 
 async function testReadOnlySnapshotAndSafeRendering() {
@@ -988,6 +1147,9 @@ await testPolicyFailuresAndStaleResponses();
 await testReadOnlySnapshotAndSafeRendering();
 await testUnavailableAuthIsVisibleAndRetryable();
 await testExpiredSessionReturnsToLogin();
+await testAuthFocusMovesOnlyWhenItsControlIsHidden();
+await testAuthFocusAfterPasswordChangeOrUncertainty();
+await testAuthFocusDoesNotFollowRetiredOrUnrelatedReads();
 await testSnapshotLateSuccessCannotSurviveAuthBoundary();
 await testSnapshotLateErrorsDoNotChangeUnavailableAuth();
 await testSnapshotLateAuthBodyCannotReplaceNewSession();
