@@ -470,3 +470,82 @@ relative to the legacy firmware.
 Trusted signed/model/ABI inputs, dynamic Samba-specific composition and
 privileges, storage leases, durable recovery and EX4/product qualification
 remain open. Passing this prototype does not activate SMB or NFS.
+
+The QEMU-only `PreparePlannedDataInputsQEMU` prerequisite independently matches
+both complete paired configuration expectations and prepares the fixed original
+five-config/seven-state/two-share tuple. Credential workers keep management
+lookup; data uses the retained service role. The trusted caller freshly compiles
+and retains identity/storage outside the runtime gate through verified Close.
+Host/race and the complete three-guest ARMv5 union qualify normal preparation,
+caller closure and runtime-close-before-authority-release. Existing start APIs
+still refuse the inert role: this is not planned daemon consumption, a complete
+constructor-fault proof, service supervision or a product activation surface.
+
+The QEMU-only `smbexec.NativePlannedServiceQEMU` now coordinates that prepared
+tuple with its SAME identity Owner/startup backend, original mounted roster and
+share pins. It privately copies policy, compiles its own paired roles and
+rechecks fresh complete retained evidence outside the runtime gate. Runtime
+copies close before either original authority releases; late construction
+failure returns a quarantined handle with the error, and uncertain closure
+keeps review without retry. Normal preparation/observation/closure, policy-copy
+isolation and unrelated-roster refusal pass host/race and the complete local
+ARMv5 union. It exposes no HTTP route or product policy authority.
+
+The separate QEMU-only coordinator `Start` now admits one prepared service
+tuple, freshly recompiling complete original storage/identity evidence before
+and after launch outside the runtime gate. `StartPlannedDaemonQEMU` refuses
+unprepared roles, pending work, repeated starts and retained-runtime review.
+Credential workers keep management configuration while the daemon uses the
+service role. Its owned ready PID's two child views must match the retained
+original objects and exact protected RO/RW flags; caller-selected PIDs/paths
+cannot supply observation authority. Legacy start APIs remain blocked.
+
+Earlier normal startup, canceled/duplicate refusal, busy identity/handoff authority,
+fresh live observation and full close-before-release pass host/race and the
+complete original three-guest ARMv5 suite. Startup failure retains review and
+both original authorities without retrying uncertain teardown. This is not a
+constructor/late-close fault qualification, data-access/supervision proof,
+product policy lease or new complete image audit. See
+[the current qualification scope](../../../../IMPLEMENTATION-STATUS.md).
+
+The newer fixed `ProbePlannedDataAccessQEMU` uses ONLY the already-running
+startup-bound service role. It accepts no caller path, credential, runtime,
+command or backend; six bounded clients check exact read/write bytes, peer Unix
+ownership, kernel read-only, write/symlink refusal and enabled-ungranted IPC
+authentication refusal. Complete live code/config/state/original-view checks
+bracket every client. Its containing coordinator freshly verifies its SAME
+identity and complete storage authorities outside the runtime gate, serializes
+single use and keeps review on uncertainty. Full runtime closure precedes
+release; `DataVerified` is historical completion, not health or authorization.
+
+Pinned Linux host/race and all four actual ARMv5 campaigns pass at `e3e1d5b`.
+One overlay compilation feeds four fresh, independently enrolled snapshots;
+all previous proofs, complete per-guest censuses and original deadlines remain.
+The new action has its own 20-second budget after startup/preparation40, not
+unused startup time. This does not qualify a complete ungranted UNC/mixed-ACL
+matrix, constructor/late-close faults, drift supervision, changed whole-image
+audit, hosted timeout fix, product activation or physical EX4 operation.
+
+### Planned-stop observation (QEMU only)
+
+`ObservePlannedStopQEMU` is a separate read-only observation, not a stop or
+recovery operation. The fixed data daemon's process owner witnesses its owned
+group state and all 15 private launcher/configuration/state/share inputs;
+the runtime also observes the original complete code and both configuration
+trees and state references. Retention does not imply unchanged contents or
+continued storage/identity admission. No descriptor, path, PID selection,
+callback, replacement authority, signal, close or retry is exposed.
+
+The constructor always prepares two held-client handles. In this planned data
+profile they must remain dormant, with exact members, zero generations/PIDs
+and no attempt. The older native observer's two-client contract is unchanged.
+Pending captures, absent/wrong/unstarted profiles, cancellation, concurrent
+operations and closed runtime refuse. Review is never cleared by observation.
+
+Pinned Linux/race3/ARM-build and 63 verifier tests pass. The actual focused
+ARMv5 data trace proves live-not-stopped, normal supervised stop/reap, retained
+original inputs, repeated read-only observation, legacy guard continuity,
+closed refusal and final descriptor equality. Its initial failed guest caught
+the mistaken nil-client assumption before correction. This is not composed
+source-loss/exit/mid-worker/uncertain-stop coverage, complete updated integration,
+product authorization, durable recovery or physical EX4 qualification.

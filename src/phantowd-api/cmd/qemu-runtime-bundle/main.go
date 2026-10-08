@@ -37,13 +37,19 @@ func run() error {
 		return stageFixture()
 	}
 	if len(os.Args) == 2 && os.Args[1] == "native-lookup" && os.Getuid() == 0 && os.Geteuid() == 0 {
-		return nativeLookupFixture()
+		return nativeLookupFixture(false)
+	}
+	if len(os.Args) == 2 && os.Args[1] == "native-lookup-bootstrap" && os.Getuid() == 0 && os.Geteuid() == 0 {
+		return nativeLookupFixture(true)
 	}
 	if len(os.Args) == 2 && os.Args[1] == "native-startup-fault" && os.Getuid() == 0 && os.Geteuid() == 0 {
 		return nativeIdentityStateFaultQEMU()
 	}
+	if len(os.Args) == 2 && os.Args[1] == "native-planned-source-fault" && os.Getuid() == 0 && os.Geteuid() == 0 {
+		return nativePlannedSourceFaultQEMU()
+	}
 	if len(os.Args) == 2 && os.Args[1] == "native-credentials" && os.Getuid() == 0 && os.Geteuid() == 0 {
-		err := nativeCredentialFixture(false)
+		err := nativeCredentialFixture(nativeCredentialsCampaignQEMU)
 		if err != nil {
 			// Only fixture-defined stages and redacted sentinel errors, never
 			// command output, credential bytes or passdb records.
@@ -52,9 +58,30 @@ func run() error {
 		return err
 	}
 	if len(os.Args) == 2 && os.Args[1] == "native-lifecycle" && os.Getuid() == 0 && os.Geteuid() == 0 {
-		err := nativeCredentialFixture(true)
+		err := nativeCredentialFixture(nativeLifecycleCampaignQEMU)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, "native lifecycle fixture:", err)
+		}
+		return err
+	}
+	if len(os.Args) == 2 && os.Args[1] == "native-planned-candidate" && os.Getuid() == 0 && os.Geteuid() == 0 {
+		err := nativeCredentialFixture(nativePlannedCandidateCampaignQEMU)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "native planned candidate fixture:", err)
+		}
+		return err
+	}
+	if len(os.Args) == 2 && os.Args[1] == "native-identity-fault" && os.Getuid() == 0 && os.Geteuid() == 0 {
+		err := nativeCredentialFixture(nativeIdentityFaultCampaignQEMU)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "native identity fault fixture:", err)
+		}
+		return err
+	}
+	if len(os.Args) == 2 && os.Args[1] == "native-planned-data" && os.Getuid() == 0 && os.Geteuid() == 0 {
+		err := nativeCredentialFixture(nativePlannedDataCampaignQEMU)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "native planned data fixture:", err)
 		}
 		return err
 	}
@@ -100,7 +127,8 @@ func run() error {
 		return ownerFixtureChild()
 	}
 	composed := len(os.Args) == 2 && os.Args[1] == "composed-code"
-	if (len(os.Args) != 1 && !composed) || os.Getuid() != 1801 || os.Geteuid() != 1801 {
+	censusOnly := len(os.Args) == 2 && os.Args[1] == "census-only"
+	if (len(os.Args) != 1 && !composed && !censusOnly) || os.Getuid() != 1801 || os.Geteuid() != 1801 {
 		return errors.New("fixture guard")
 	}
 	status, err := os.ReadFile("/proc/self/status")
@@ -154,6 +182,13 @@ func run() error {
 		return errors.New("byte accounting")
 	}
 	fmt.Printf("PHANTOWD_RUNTIME_SCAN_COST files=%d bytes=%d elapsed_ns=%d scope=qemu-emulation-only\n", got.Files, got.Bytes, elapsed.Nanoseconds())
+	if censusOnly {
+		// Every non-service guest hashes its OWN full tree under the SAME zero-cap
+		// boundary. The service guest owns every original independent inspector
+		// refusal/retention experiment; no proof or authority crosses boots.
+		fmt.Println("PHANTOWD_SAMBA_ROOT_CENSUS_READY readonly=true complete_census=true hashes=true aliases=true negative_controls=false retained_control=false scope=qemu-only")
+		return nil
+	}
 	refuse := func(f []runtimebundle.File, a []runtimebundle.Alias) error {
 		bad, err := runtimebundle.NewPlan(f, a)
 		if err != nil {

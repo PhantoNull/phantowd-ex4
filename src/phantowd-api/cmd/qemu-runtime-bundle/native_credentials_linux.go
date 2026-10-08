@@ -22,7 +22,20 @@ import (
 	"golang.org/x/sys/unix"
 )
 
-func nativeCredentialFixture(lifecycle bool) (result error) {
+type nativeCredentialCampaignQEMU uint8
+
+const (
+	nativeCredentialsCampaignQEMU nativeCredentialCampaignQEMU = iota
+	nativeLifecycleCampaignQEMU
+	nativePlannedDataCampaignQEMU
+	nativePlannedCandidateCampaignQEMU
+	nativeIdentityFaultCampaignQEMU
+)
+
+func nativeCredentialFixture(campaign nativeCredentialCampaignQEMU) (result error) {
+	if campaign > nativeIdentityFaultCampaignQEMU {
+		return errors.New("native credential campaign guard")
+	}
 	commandLine, err := os.ReadFile("/proc/cmdline")
 	var fs unix.Statfs_t
 	if err != nil || !strings.Contains(" "+string(commandLine)+" ", " phantowd_samba_ext4_fixture=1 ") ||
@@ -201,42 +214,85 @@ func nativeCredentialFixture(lifecycle bool) (result error) {
 		}
 	}
 	reportNativePhaseTimingQEMU(nativeFixtureEnrolledQEMU, started)
-	// Independent fresh guest: real enrollment is required here, but the native
-	// campaign owns the idle/live-disable and backend-binding proofs. Do not
-	// start/disable/stop a redundant first daemon before the startup coordinator.
-	// The complete suite still requires every original proof from all3 guests.
-	if lifecycle {
-		stage, err := nativePlannedCandidateFixtureQEMU(owner, backend, runtime)
-		if err != nil {
-			return fmt.Errorf("native planned candidate: %w", err)
-		}
-		reportNativePhaseTimingQEMU(nativeFixtureCandidateVerifiedQEMU, started)
+	if campaign == nativePlannedDataCampaignQEMU {
+		// Fresh guest: these are empty child mount destinations, not data
+		// authority or state inherited from the older credential campaign.
 		if err := owner.Close(); err != nil {
 			return err
 		}
 		if err := runtime.Close(context.Background()); err != nil {
 			return err
 		}
-		if err := stage.removeAfterRuntimeClose(); err != nil {
+		reportNativePhaseTimingQEMU(nativeFixtureAuthorityClosedQEMU, started)
+		if err := nativePlannedStartupFixtureQEMU(plan, lookup, authority, inventory); err != nil {
+			return fmt.Errorf("native planned data: %w", err)
+		}
+		reportNativePhaseTimingQEMU(nativeFixtureDataVerifiedQEMU, started)
+		after, err := os.ReadDir("/proc/self/fd")
+		if err != nil || len(after) != len(before) {
+			return errors.New("planned data credential descriptor leak")
+		}
+		nativeCredentialEnrollmentMarkerQEMU()
+		fmt.Println(plannedStartupMarkerQEMU)
+		fmt.Println(plannedDataMarkerQEMU)
+		fmt.Println(plannedSupervisionMarkerQEMU)
+		fmt.Println(plannedStopMarkerQEMU)
+		return nil
+	}
+	// Each scenario owns a fresh guest and genuine disabled-first enrollment.
+	// Candidate retains this SAME Owner/backend/runtime for its whole trace;
+	// startup and fault close enrollment admission before their NEW consumers.
+	// No passdb, lease or pins cross boots. All original proofs stay mandatory.
+	if campaign == nativePlannedCandidateCampaignQEMU || campaign == nativeLifecycleCampaignQEMU || campaign == nativeIdentityFaultCampaignQEMU {
+		var stage *plannedConfigurationStageQEMU
+		if campaign == nativePlannedCandidateCampaignQEMU {
+			stage, err = nativePlannedCandidateFixtureQEMU(owner, backend, runtime)
+			if err != nil {
+				return fmt.Errorf("native planned candidate: %w", err)
+			}
+			reportNativePhaseTimingQEMU(nativeFixtureCandidateVerifiedQEMU, started)
+		}
+		if err := owner.Close(); err != nil {
 			return err
+		}
+		if err := runtime.Close(context.Background()); err != nil {
+			return err
+		}
+		if stage != nil {
+			if err := stage.removeAfterRuntimeClose(); err != nil {
+				return err
+			}
 		}
 		reportNativePhaseTimingQEMU(nativeFixtureAuthorityClosedQEMU, started)
-		if err := nativeIdentityStartupFixtureQEMU(plan, lookup, authority, inventory, native[0].Account.ID); err != nil {
-			return fmt.Errorf("native retained startup: %w", err)
+		switch campaign {
+		case nativeLifecycleCampaignQEMU:
+			if err := nativeIdentityStartupFixtureQEMU(plan, lookup, authority, inventory, native[0].Account.ID); err != nil {
+				return fmt.Errorf("native retained startup: %w", err)
+			}
+			reportNativePhaseTimingQEMU(nativeFixtureStartupVerifiedQEMU, started)
+		case nativeIdentityFaultCampaignQEMU:
+			if err := nativeIdentityFaultSubprocessQEMU(); err != nil {
+				return err
+			}
+			if err := nativePlannedSourceFaultSubprocessQEMU(); err != nil {
+				return err
+			}
+			reportNativePhaseTimingQEMU(nativeFixtureFaultVerifiedQEMU, started)
 		}
-		reportNativePhaseTimingQEMU(nativeFixtureStartupVerifiedQEMU, started)
-		if err := nativeIdentityFaultSubprocessQEMU(); err != nil {
-			return err
-		}
-		reportNativePhaseTimingQEMU(nativeFixtureFaultVerifiedQEMU, started)
 		after, err := os.ReadDir("/proc/self/fd")
 		if err != nil || len(after) != len(before) {
 			return errors.New("native lifecycle descriptor leak")
 		}
 		nativeCredentialEnrollmentMarkerQEMU()
-		fmt.Println(plannedCandidateMarkerQEMU)
-		fmt.Println("PHANTOWD_SAMBA_OWNER_NATIVE_IDENTITY_STARTUP_READY startup_bound=true exact_backend=true before_start_busy=true after_start_busy=true duplicate_refused=true canceled_start_refused=true complete_observation=true serialized_scans=true accepted_cancellation=true stopped_reaped=true close_before_release=true no_fd_leak=true coordinator_disable=true qualified_pair=true same_peer_session=true target_denied=true stale_revision_refused=true canceled_disable_refused=true serialized_disable=true prepared_disable_refused=true stopped_disable_refused=true service_owner=false scope=qemu-only")
-		fmt.Println("PHANTOWD_SAMBA_OWNER_NATIVE_IDENTITY_FAULT_READY state_drift=true before_worker=true pending_retained=true groups_stopped=true capture_settled=true authority_busy=true inputs_retained=true restoration_refused=true close_no_retry=true subprocess_disposal=true no_fd_leak=true service_owner=false scope=qemu-only")
+		switch campaign {
+		case nativePlannedCandidateCampaignQEMU:
+			fmt.Println(plannedCandidateMarkerQEMU)
+		case nativeLifecycleCampaignQEMU:
+			fmt.Println("PHANTOWD_SAMBA_OWNER_NATIVE_IDENTITY_STARTUP_READY startup_bound=true exact_backend=true before_start_busy=true after_start_busy=true duplicate_refused=true canceled_start_refused=true complete_observation=true serialized_scans=true accepted_cancellation=true stopped_reaped=true close_before_release=true no_fd_leak=true coordinator_disable=true qualified_pair=true same_peer_session=true target_denied=true stale_revision_refused=true canceled_disable_refused=true serialized_disable=true prepared_disable_refused=true stopped_disable_refused=true service_owner=false scope=qemu-only")
+		case nativeIdentityFaultCampaignQEMU:
+			fmt.Println("PHANTOWD_SAMBA_OWNER_NATIVE_IDENTITY_FAULT_READY state_drift=true before_worker=true pending_retained=true groups_stopped=true capture_settled=true authority_busy=true inputs_retained=true restoration_refused=true close_no_retry=true subprocess_disposal=true no_fd_leak=true service_owner=false scope=qemu-only")
+			fmt.Println(plannedSourceFaultMarkerQEMU)
+		}
 		return nil
 	}
 	// Final passdb assertions belong to the complete Owner-locked observation
