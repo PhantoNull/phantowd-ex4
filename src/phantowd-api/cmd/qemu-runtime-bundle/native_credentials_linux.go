@@ -224,11 +224,6 @@ func nativeCredentialFixture(campaign nativeCredentialCampaignQEMU) (result erro
 			return err
 		}
 		reportNativePhaseTimingQEMU(nativeFixtureAuthorityClosedQEMU, started)
-		for _, path := range []string{root + "/shares", root + "/shares/readonly", root + "/shares/writable"} {
-			if err := os.Mkdir(path, 0755); err != nil {
-				return err
-			}
-		}
 		if err := nativePlannedStartupFixtureQEMU(plan, lookup, authority, inventory); err != nil {
 			return fmt.Errorf("native planned data: %w", err)
 		}
@@ -279,6 +274,9 @@ func nativeCredentialFixture(campaign nativeCredentialCampaignQEMU) (result erro
 			if err := nativeIdentityFaultSubprocessQEMU(); err != nil {
 				return err
 			}
+			if err := nativePlannedSourceFaultSubprocessQEMU(); err != nil {
+				return err
+			}
 			reportNativePhaseTimingQEMU(nativeFixtureFaultVerifiedQEMU, started)
 		}
 		after, err := os.ReadDir("/proc/self/fd")
@@ -293,6 +291,7 @@ func nativeCredentialFixture(campaign nativeCredentialCampaignQEMU) (result erro
 			fmt.Println("PHANTOWD_SAMBA_OWNER_NATIVE_IDENTITY_STARTUP_READY startup_bound=true exact_backend=true before_start_busy=true after_start_busy=true duplicate_refused=true canceled_start_refused=true complete_observation=true serialized_scans=true accepted_cancellation=true stopped_reaped=true close_before_release=true no_fd_leak=true coordinator_disable=true qualified_pair=true same_peer_session=true target_denied=true stale_revision_refused=true canceled_disable_refused=true serialized_disable=true prepared_disable_refused=true stopped_disable_refused=true service_owner=false scope=qemu-only")
 		case nativeIdentityFaultCampaignQEMU:
 			fmt.Println("PHANTOWD_SAMBA_OWNER_NATIVE_IDENTITY_FAULT_READY state_drift=true before_worker=true pending_retained=true groups_stopped=true capture_settled=true authority_busy=true inputs_retained=true restoration_refused=true close_no_retry=true subprocess_disposal=true no_fd_leak=true service_owner=false scope=qemu-only")
+			fmt.Println(plannedSourceFaultMarkerQEMU)
 		}
 		return nil
 	}

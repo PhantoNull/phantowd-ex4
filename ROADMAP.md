@@ -86,27 +86,27 @@ causal fix of the latest hosted coordinator continuity timeout. That failed
 integration checkpoint remains unmerged. Historical task evidence below keeps
 its original source scope.
 
-A subsequent **focused host/QEMU** increment qualifies separate planned-stop
+A subsequent **host/QEMU** increment qualifies separate planned-stop
 observation: owned daemon stop/reap, all 15 private daemon inputs and original
 runtime code/configuration/state retention, dormant prepared client checks,
 legacy observer continuity, repeated read-only observation and closed refusal.
+The complete 948-input six-guest component union also passes.
 It is not a new whole-image audit or composed-fault qualification; see
 [current component scope](IMPLEMENTATION-STATUS.md#current-component--planned-stop-observation-focused-hostqemu-proof).
 
-The next composed-fault slice must use genuine enrollment and the SAME planned
-identity/backend/storage/share authorities, not fabricated journals or a test
-backend. Qualify loss of the ordinary tmpfs handoff parent alias with NOREPLACE
-while original child mounts/pins remain alive; its renameability is unverified.
-Never rename a mounted root, detach a live grant or modify TDBs/data/devices to
-trigger this case. Require actual exclusive supervision to reject the source,
-enter sticky review and stop the owned daemon. Independently observe stop/reap
-and retained inputs, verify both original authorities remain busy, restore only
-the verified empty alias and require refusal of every revival operation.
-Isolate intentional retained fault resources in a disposable guest/subprocess;
-disposal must follow stop/retention proof and must not masquerade as product
-recovery. Held-session/mid-transfer, native pending capture, uncertain stop and
-constructor/close faults require separate actual traces. Keep existing checks
-and finite budgets; no HTTP, device access or recovery authority is introduced.
+The subsequent **focused host/QEMU** source-loss slice now passes actual
+genuine enrollment and SAME planned identity/backend/storage/share authority
+checks. It replaces the earlier unverified handoff-parent rename proposal with
+a cover of ONLY the synthetic volume alias, retaining original mounts/grants.
+Actual exclusive supervision enters sticky review and stops/reaps the daemon;
+independent stop/retention observations and both busy authorities pass. Removing
+the exact observed cover restores the original mount without reviving any
+operation. A private-namespace child exits after proof, not product recovery.
+The prior identity-fault proof and parent FD equality remain mandatory. Updated
+complete six-guest and whole950 image/audit qualification remain separate.
+Held-session/mid-transfer, native pending capture, uncertain stop and constructor/
+close faults still require separate actual traces. Keep existing checks and
+finite budgets; no HTTP, device access or recovery authority is introduced.
 
 Status vocabulary:
 

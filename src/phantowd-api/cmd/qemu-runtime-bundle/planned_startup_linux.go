@@ -9,6 +9,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"time"
 
@@ -37,6 +38,12 @@ const plannedStopMarkerQEMU = "PHANTOWD_SAMBA_OWNER_PLANNED_STOP_READY same_daem
 // A separate access proof exercises actual transfers through that SAME service.
 // The startup marker alone claims neither transfers nor product activation.
 func nativePlannedStartupFixtureQEMU(plan *runtimebundle.Plan, lookup fileserviceplan.SambaEnrollmentLookup, authority string, inventory identityowner.Inventory) (result error) {
+	return nativePlannedServiceFixtureQEMU(plan, lookup, authority, inventory, false)
+}
+
+// The source-fault variant is reachable only through the fixed guarded child.
+// It shares real startup/access construction, not a fabricated healthy backend.
+func nativePlannedServiceFixtureQEMU(plan *runtimebundle.Plan, lookup fileserviceplan.SambaEnrollmentLookup, authority string, inventory identityowner.Inventory, sourceFault bool) (result error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 40*time.Second)
 	defer cancel()
 	var callers [3]*os.File
@@ -62,6 +69,15 @@ func nativePlannedStartupFixtureQEMU(plan *runtimebundle.Plan, lookup fileservic
 	owner, err := identityowner.OpenWithSMBBackend(authority, inventory, backend)
 	if err != nil {
 		return err
+	}
+	// Both fixed entry points need fresh EMPTY launcher mount destinations.
+	// They are child-view scaffolding, not storage grants. Create only: an
+	// existing path refuses, and the C helper still verifies type/mode/ownership.
+	const childRoot = "/run/phantowd-native-samba-root"
+	for _, path := range []string{childRoot + "/shares", childRoot + "/shares/readonly", childRoot + "/shares/writable"} {
+		if err := os.Mkdir(path, 0755); err != nil {
+			return err
+		}
 	}
 	var stage *plannedConfigurationStageQEMU
 	if err := mountowner.WithQEMUNativeMountedSet(func(storage *mountowner.MountedVolumeSet) error {
@@ -264,6 +280,20 @@ func nativePlannedStartupFixtureQEMU(plan *runtimebundle.Plan, lookup fileservic
 		superviseCtx, cancelSupervise := context.WithTimeout(context.Background(), 20*time.Second)
 		defer cancelSupervise()
 		ctx = superviseCtx
+		if sourceFault {
+			if err := qualifyPlannedSourceFaultQEMU(ctx, service, runtime, owner, handoff); err != nil {
+				return err
+			}
+			if _, err := io.WriteString(os.Stdout, plannedSourceFaultChildProofQEMU); err != nil {
+				return err
+			}
+			// The owned daemon is already stopped/reaped and BOTH original
+			// authorities remain busy. Do not run normal-path defers, release
+			// reviewed grants, or attempt product recovery. Kernel disposal of
+			// this fixed private-namespace child is the fixture-only boundary.
+			os.Exit(0)
+			return errors.New("planned fault child did not exit")
+		}
 		if err := qualifyPlannedSupervisionQEMU(ctx, service, owner, handoff); err != nil {
 			return err
 		}

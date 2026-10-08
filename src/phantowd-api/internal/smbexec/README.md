@@ -299,3 +299,25 @@ qualify this coordinator. No HTTP, product activation or physical NAS operation.
 A post-run negative-only Close/Status regression preserves review telemetry
 when a prior close error prohibits cleanup retry. Invalid runtime admission
 cannot start or own a process; this does not qualify live uncertain teardown.
+
+### Composed source-alias fault (QEMU only)
+
+The focused fault guest now also exercises the SAME planned service through
+genuine enrollment, retained startup/access and exclusive complete supervision.
+A fixed private-namespace child covers only the qualified synthetic volume
+alias with guest tmpfs; original volume/share mounts and object pins survive.
+The next scan enters sticky review and verifies daemon stop/reap. Independent
+read-only observations require all15 private daemon inputs plus original runtime
+code, both configurations and state retained; both original authorities stay busy.
+Only the observed cover is unmounted. Original mount identity is restored,
+but every revival operation still refuses. No normal-path Close releases review.
+
+Child exit disposes its namespace only after these witnesses; parent FD equality
+and the original identity-only fault proof remain mandatory. This is not product
+recovery. A missing launcher prerequisite exposed by the first actual trace is
+fixed in shared create-only scaffolding, not by relaxing C admission guards.
+Pinned Linux/race3/ARM-build,64 verifier tests and the actual focused fault pass;
+updated complete six-guest/image qualification remain separate. This idle,
+completed-transfer alias replacement does not qualify physical failure, held
+sessions, mid-transfer/worker cancellation or uncertain teardown. No HTTP,
+product activation or NAS operation is added.

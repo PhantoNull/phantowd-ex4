@@ -28,6 +28,14 @@ CENSUS_MARKER = ("PHANTOWD_SAMBA_ROOT_CENSUS_READY readonly=true "
                  "complete_census=true hashes=true aliases=true "
                  "negative_controls=false retained_control=false "
                  "scope=qemu-only")
+PLANNED_SOURCE_FAULT_MARKER = (
+    "PHANTOWD_SAMBA_OWNER_PLANNED_SOURCE_FAULT_READY "
+    "same_authorities=true same_daemon=true data_verified=true "
+    "source_covered=true exclusive_supervision=true review_sticky=true "
+    "stopped_reaped=true private_inputs=15 runtime_inputs_retained=true "
+    "originals_busy=true cover_removed=true restoration_refused=true "
+    "private_mount_namespace=true subprocess_disposal=true "
+    "parent_fd_equal=true activation=false scope=qemu-only")
 MARKERS = (
     "PHANTOWD_SAMBA_ROOT_ENTROPY_READY provider=virtio-rng scope=qemu-only",
     "PHANTOWD_SAMBA_ROOT_STAGE_READY fresh=true hashes_during_copy=true "
@@ -204,6 +212,7 @@ MARKERS = (
     "inputs_retained=true restoration_refused=true close_no_retry=true "
     "subprocess_disposal=true no_fd_leak=true "
     "service_owner=false scope=qemu-only",
+    PLANNED_SOURCE_FAULT_MARKER,
     "PHANTOWD_SAMBA_ROOT_DONE",
 )
 
@@ -250,7 +259,7 @@ def check_campaign(log, phase):
         "PHANTOWD_SAMBA_OWNER_PLANNED_DATA_READY",
         "PHANTOWD_SAMBA_OWNER_PLANNED_SUPERVISION_READY",
         "PHANTOWD_SAMBA_OWNER_PLANNED_STOP_READY")))
-    native = tuple(row for row in MARKERS[enrollment:-3]
+    native = tuple(row for row in MARKERS[enrollment:-4]
                    if row not in (*access, planned))
     # Every guest still hashes its own complete code tree. The independently
     # exercised refusals/retention remain mandatory once, in the service guest;
@@ -263,9 +272,10 @@ def check_campaign(log, phase):
         + ("PHANTOWD_SAMBA_ROOT_NATIVE_DONE",),
         "candidate": (census + (MARKERS[enrollment], planned)
                       + ("PHANTOWD_SAMBA_ROOT_CANDIDATE_DONE",)),
-        "lifecycle": (census + (MARKERS[enrollment], MARKERS[-3],
+        "lifecycle": (census + (MARKERS[enrollment], MARKERS[-4],
                                 "PHANTOWD_SAMBA_ROOT_DONE")),
-        "fault": (census + (MARKERS[enrollment], MARKERS[-2],
+        "fault": (census + (MARKERS[enrollment], MARKERS[-3],
+                            PLANNED_SOURCE_FAULT_MARKER,
                             "PHANTOWD_SAMBA_ROOT_FAULT_DONE")),
         "data": (census + (MARKERS[enrollment],) + access
                  + ("PHANTOWD_SAMBA_ROOT_DATA_DONE",)),

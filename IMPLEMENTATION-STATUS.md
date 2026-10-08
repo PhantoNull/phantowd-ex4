@@ -3,11 +3,45 @@
 
 # Implementation status
 
+## Current component — composed source-loss supervision, focused host/QEMU proof
+
+On 2026-10-08, pinned Linux seven-package checks, race-count3, ARMv5 cross-build,
+64 Linux verifier tests and the actual focused fault guest pass. After genuine
+enrollment, the SAME planned identity/backend, complete mounted roster, share
+pins and daemon survive startup, real access and a complete exclusive scan.
+Covering ONLY the synthetic volume alias triggers review and verified owned
+daemon stop/reap. All 15 private inputs and runtime code/configuration/state
+references remain retained; BOTH original authorities refuse premature Close.
+Removing the identity-checked cover restores the original mount, but start,
+observation, data access and supervision remain refused in sticky review.
+
+The child has a separate private mount namespace. It exits only after the stop,
+retention and non-revival witnesses, without normal-path cleanup or a forced
+release of reviewed authorities. Parent descriptor equality and the prior
+identity-fault proof pass before the new mandatory marker is accepted. This is
+fixture disposal, not product recovery. Original mounts/grants are not detached;
+no real disk, TDB mutation or device write is used to trigger loss.
+
+The first actual guest exposed missing empty child share destinations in the
+new fixture. Shared create-only preparation now serves both fixed callers;
+all C type/mode/ownership checks remain intact. Temporary diagnostic probes are
+removed before the clean regression passes. No original timeout is expanded:
+the new child has preparation10/startup40/access20/supervision20 and parent90;
+the original identity-fault40, guest180 and runtime guards remain unchanged.
+
+This qualifies completed-transfer/idle source-alias replacement, not physical
+disk failure, active sessions, mid-transfer/worker cancellation, unexpected exit
+or uncertain teardown. The updated complete six-guest union and whole 950-input
+image/audit are separate gates; the last fully audited image remains946 below.
+This is not a fix for the hosted coordinator timeout, product activation, HTTP
+surface, migration, recovery or EX4 qualification.
+
 ## Current component — planned-stop observation, focused host/QEMU proof
 
 On 2026-10-08, the separate QEMU-only `ObservePlannedStopQEMU` passes pinned
 Linux seven-package checks, race-count3, ARMv5 cross-build, 63 Linux verifier
-tests and the actual focused data guest. The same service's daemon is observed
+tests and all six independently enrolled ARMv5 guests using one compilation.
+The complete ordered proof union and unchanged census/base pass. The same service's daemon is observed
 live before supervision and stopped/reaped afterward, with all 15 private
 daemon inputs plus the original code, management/service configuration and
 state references retained. Repeated observation does not release authority;
@@ -25,7 +59,7 @@ This is retention/stop evidence, not fresh input validity, recovery authority,
 composed source-loss/uncertain-teardown coverage or a hosted timeout fix. The
 latest fully audited whole image remains the 946-input checkpoint below; the
 new 948-input source has only the component qualification described here.
-The complete updated six-guest union and whole-image audit remain separate.
+The 948-input six-guest union passes; the whole-image audit remains separate.
 No deadline expansion, product activation, HTTP surface or NAS access is added.
 
 ## Current component — composed Samba supervision, normal host/QEMU proof

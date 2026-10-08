@@ -45,6 +45,9 @@ func run() error {
 	if len(os.Args) == 2 && os.Args[1] == "native-startup-fault" && os.Getuid() == 0 && os.Geteuid() == 0 {
 		return nativeIdentityStateFaultQEMU()
 	}
+	if len(os.Args) == 2 && os.Args[1] == "native-planned-source-fault" && os.Getuid() == 0 && os.Geteuid() == 0 {
+		return nativePlannedSourceFaultQEMU()
+	}
 	if len(os.Args) == 2 && os.Args[1] == "native-credentials" && os.Getuid() == 0 && os.Geteuid() == 0 {
 		err := nativeCredentialFixture(nativeCredentialsCampaignQEMU)
 		if err != nil {

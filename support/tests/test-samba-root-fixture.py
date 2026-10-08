@@ -65,14 +65,15 @@ def campaign_rows():
         "service": [*fixture.MARKERS[:enrollment],
                     "PHANTOWD_SAMBA_ROOT_SERVICE_DONE", SCAN_COST],
         "native": [*fixture.MARKERS[:3], CENSUS,
-                   *(row for row in fixture.MARKERS[enrollment:-3]
+                   *(row for row in fixture.MARKERS[enrollment:-4]
                      if row not in (*access, candidate)),
                    "PHANTOWD_SAMBA_ROOT_NATIVE_DONE", SCAN_COST],
         "candidate": [*census, candidate,
                       "PHANTOWD_SAMBA_ROOT_CANDIDATE_DONE", SCAN_COST],
-        "lifecycle": [*census, fixture.MARKERS[-3],
+        "lifecycle": [*census, fixture.MARKERS[-4],
                       "PHANTOWD_SAMBA_ROOT_DONE", SCAN_COST],
-        "fault": [*census, fixture.MARKERS[-2],
+        "fault": [*census, fixture.MARKERS[-3],
+                  fixture.PLANNED_SOURCE_FAULT_MARKER,
                   "PHANTOWD_SAMBA_ROOT_FAULT_DONE", SCAN_COST],
         "data": [*census, *access,
                  "PHANTOWD_SAMBA_ROOT_DATA_DONE", SCAN_COST],
@@ -80,6 +81,38 @@ def campaign_rows():
 
 
 class SambaRootFixture(unittest.TestCase):
+    def test_planned_source_fault_requires_stop_retention_and_nonrevival(self):
+        proof = (
+            "PHANTOWD_SAMBA_OWNER_PLANNED_SOURCE_FAULT_READY "
+            "same_authorities=true same_daemon=true data_verified=true "
+            "source_covered=true exclusive_supervision=true "
+            "review_sticky=true stopped_reaped=true private_inputs=15 "
+            "runtime_inputs_retained=true originals_busy=true "
+            "cover_removed=true restoration_refused=true "
+            "private_mount_namespace=true subprocess_disposal=true "
+            "parent_fd_equal=true activation=false scope=qemu-only")
+        self.assertIn(proof, fixture.MARKERS)
+        logs = {phase: "\n".join(rows)
+                for phase, rows in campaign_rows().items()}
+        fixture.check_campaign(logs["fault"], "fault")
+        for replacement in ("", proof + "\n" + proof,
+                            proof.replace("stopped_reaped=true",
+                                          "stopped_reaped=false"),
+                            proof.replace("originals_busy=true",
+                                          "originals_busy=false"),
+                            proof.replace("restoration_refused=true",
+                                          "restoration_refused=false"),
+                            proof.replace("private_inputs=15",
+                                          "private_inputs=13")):
+            with self.subTest(replacement=replacement):
+                with self.assertRaises(ValueError):
+                    fixture.check_campaign(
+                        logs["fault"].replace(proof, replacement), "fault")
+        for phase in fixture.CAMPAIGNS:
+            if phase != "fault":
+                with self.assertRaises(ValueError):
+                    fixture.check_campaign(logs[phase] + "\n" + proof, phase)
+
     def test_planned_stop_requires_private_inputs_and_owned_daemon_proof(self):
         proof = (
             "PHANTOWD_SAMBA_OWNER_PLANNED_STOP_READY "
@@ -317,7 +350,7 @@ class SambaRootFixture(unittest.TestCase):
                        if row.startswith(
                            "PHANTOWD_SAMBA_OWNER_PLANNED_CANDIDATE_READY"))
         native = [*fixture.MARKERS[:3], CENSUS,
-                  *(row for row in fixture.MARKERS[native_split:-3]
+                  *(row for row in fixture.MARKERS[native_split:-4]
                     if row != planned and not row.startswith((
                         "PHANTOWD_SAMBA_OWNER_PLANNED_STARTUP_READY",
                         "PHANTOWD_SAMBA_OWNER_PLANNED_DATA_READY",
@@ -1359,6 +1392,14 @@ class SambaRootFixture(unittest.TestCase):
             "close_no_retry=true "
             "subprocess_disposal=true no_fd_leak=true "
             "service_owner=false scope=qemu-only",
+            "PHANTOWD_SAMBA_OWNER_PLANNED_SOURCE_FAULT_READY "
+            "same_authorities=true same_daemon=true data_verified=true "
+            "source_covered=true exclusive_supervision=true "
+            "review_sticky=true stopped_reaped=true private_inputs=15 "
+            "runtime_inputs_retained=true originals_busy=true "
+            "cover_removed=true restoration_refused=true "
+            "private_mount_namespace=true subprocess_disposal=true "
+            "parent_fd_equal=true activation=false scope=qemu-only",
             "PHANTOWD_SAMBA_ROOT_DONE",
         ]
         fixture.check_guest("\r\n".join(lines + [SCAN_COST]))
