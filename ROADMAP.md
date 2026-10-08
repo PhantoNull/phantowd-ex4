@@ -1148,10 +1148,19 @@ storage. No production roster provider or activation path exists.
   authority, live observation and full close-before-release pass the complete
   original three-guest suite. It has no HTTP/product policy surface; the new
   normal trace explicitly claims no data transfers by this coordinator.
-  Next qualify constructor/late-close uncertainty, effective live grant/ACL
+  Code checkpoint `e3e1d5b` additionally qualifies six fixed data clients through
+  that SAME retained service: exact SMB read/write bytes, Unix ownership,
+  kernel read-only and symlink/write denial, genuinely enabled ungranted
+  authentication refusal and verified closure before release. Host/race and
+  all four actual ARMv5 guests pass; canceled/repeated probes refuse. This is
+  not a complete ungranted UNC/mixed-ACL matrix or ongoing health claim.
+  The new data scenario has its own fresh enrolled snapshot after measured
+  cumulative overload, using the SAME single compilation. All prior proofs,
+  complete per-guest hashes, worker/readiness/180-second bounds and privileges
+  remain mandatory; no retry, borrowed state or extra firmware build is added.
+  Next qualify constructor/late-close uncertainty, broader effective grant/ACL
   access, complete drift/settlement supervision and the changed943 image/source
-  audit. Measure cumulative guest budgets before adding work; neither a fourth
-  guest nor relaxed deadlines/predicates is a timeout fix. All hosted/clean,
+  audit. Guest isolation is not a proven hosted timeout fix. All hosted/clean,
   hardware and product-activation gates remain open.
 - **M4.2 — Single service owner.** Define start/reload/stop and child-process
   ownership; bound diagnostics and verify readiness. Preserve the last known

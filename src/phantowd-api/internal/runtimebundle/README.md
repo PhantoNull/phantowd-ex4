@@ -500,10 +500,28 @@ service role. Its owned ready PID's two child views must match the retained
 original objects and exact protected RO/RW flags; caller-selected PIDs/paths
 cannot supply observation authority. Legacy start APIs remain blocked.
 
-Normal startup, canceled/duplicate refusal, busy identity/handoff authority,
+Earlier normal startup, canceled/duplicate refusal, busy identity/handoff authority,
 fresh live observation and full close-before-release pass host/race and the
 complete original three-guest ARMv5 suite. Startup failure retains review and
 both original authorities without retrying uncertain teardown. This is not a
 constructor/late-close fault qualification, data-access/supervision proof,
 product policy lease or new complete image audit. See
 [the current qualification scope](../../../../IMPLEMENTATION-STATUS.md).
+
+The newer fixed `ProbePlannedDataAccessQEMU` uses ONLY the already-running
+startup-bound service role. It accepts no caller path, credential, runtime,
+command or backend; six bounded clients check exact read/write bytes, peer Unix
+ownership, kernel read-only, write/symlink refusal and enabled-ungranted IPC
+authentication refusal. Complete live code/config/state/original-view checks
+bracket every client. Its containing coordinator freshly verifies its SAME
+identity and complete storage authorities outside the runtime gate, serializes
+single use and keeps review on uncertainty. Full runtime closure precedes
+release; `DataVerified` is historical completion, not health or authorization.
+
+Pinned Linux host/race and all four actual ARMv5 campaigns pass at `e3e1d5b`.
+One overlay compilation feeds four fresh, independently enrolled snapshots;
+all previous proofs, complete per-guest censuses and original deadlines remain.
+The new action has its own 20-second budget after startup/preparation40, not
+unused startup time. This does not qualify a complete ungranted UNC/mixed-ACL
+matrix, constructor/late-close faults, drift supervision, changed whole-image
+audit, hosted timeout fix, product activation or physical EX4 operation.

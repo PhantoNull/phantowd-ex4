@@ -740,9 +740,9 @@ Ownership, wrong-password/access denials, Unix-mode enforcement, kernel RO,
 original-path/symlink denial, one Unicode filename and owned-group stop are
 checked. This is a distinct test-only native fixture, never installed into the
 product image. See [runtime profile and remaining gates](SAMBA-RUNTIME-PROFILE.md).
-The current wrapper compiles once and runs separate fresh service/native/lifecycle
+The current wrapper compiles once and runs fresh service/native/lifecycle/data
 snapshots, each bounded to 180 seconds. It independently verifies each phase,
-requires all three complete proofs with matching runtime census, then prints combined
+requires all four complete proofs with matching runtime census, then prints combined
 coverage. This is not a state/daemon lease across boots. Every original contract,
 base check, worker admission fence and deadline remains required by the complete
 suite. The lifecycle guest independently creates real disabled-first accounts
@@ -752,13 +752,17 @@ daemon/idle-disable cycle. Authentication, idle/live disable and backend-binding
 proofs remain mandatory in the native guest, never fabricated in lifecycle.
 Independent inspector refusals and generic-adapter retention experiments now
 run once, in service, and remain mandatory in the complete union. Native and
-lifecycle each run the SAME zero-capability/read-only boundary and actual
+lifecycle/data each run the SAME zero-capability/read-only boundary and actual
 complete census/hash inspection of their OWN staged tree, but emit a separate
 `CENSUS_READY` proof explicitly saying those independent controls did not run.
-There is no borrowed runtime authority, cached hash, fourth guest, weaker
-worker revalidation or increased deadline. The host verifier rejects missing
+The new data guest independently creates and enrolls its own real identities,
+then verifies fixed SMB transfers and denials through the SAME retained planned
+service. Startup/preparation and the new data action retain separate 40/20-second
+budgets. No earlier guest supplies identity, passdb, runtime or mount authority.
+There is no borrowed authority, cached hash, weaker worker revalidation or
+increased deadline. The host verifier rejects missing
 original service proofs, incomplete census, wrong-phase/duplicate markers and
-false claims that omitted controls ran. A local all-three pass is not proof
+false claims that omitted controls ran. A local all-four pass is not proof
 that intermittent hosted enrollment/guest timeouts are fixed.
 Deliberately quarantined captures and identity references remain held until a
 disposable subprocess proves group stop and exits; that exit is not recovery.
@@ -769,12 +773,12 @@ For a focused local diagnosis, select exactly one unchanged guest campaign:
 .\support\test-samba-root.ps1 -Campaign lifecycle
 ```
 
-Allowed selections are `service`, `native`, `lifecycle` and the default `all`.
+Allowed selections are `service`, `native`, `lifecycle`, `data` and default `all`.
 Invalid values fail before guest/fixture construction. A focused run still
 compiles current source, checks all base hashes, uses read-only inputs and
 bounded tmpfs, verifies that phase's exact proof, retains its 180-second limit
 and cleans its disposable container. Its completion explicitly reports
-`complete_image=false`; it cannot substitute for the default three-campaign
+`complete_image=false`; it cannot substitute for the default four-campaign
 qualification or clean Buildroot/hosted/release evidence. Existing full-build
 callers continue to select all campaigns without modification.
 
@@ -790,7 +794,7 @@ fixture logs only, not a product/device log collector; save the command output
 if needed. Additional temporary instrumentation still requires a separate clean
 replay after it is removed.
 
-The QEMU-only native and lifecycle fixtures also emit bounded cumulative
+The QEMU-only native, lifecycle and data fixtures also emit bounded cumulative
 `PHANTOWD_DIAG_NATIVE_PHASE` timings with fixed phase names, `qualifying=false`
 and `scope=qemu-only`. The monotonic clock starts inside credential setup,
 not at host compilation or guest boot. Timings distinguish enrollment, backend

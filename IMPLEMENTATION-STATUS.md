@@ -3,7 +3,39 @@
 
 # Implementation status
 
-## Same-authority planned startup — local host/QEMU component qualification
+## Same-authority SMB access — local host/QEMU component qualification
+
+Code checkpoint `e3e1d5b845b72558688ec37aedfec23307853c9f` adds a single-use,
+fixed `VerifyDataAccess` probe through the already-running planned service.
+The SAME identity Owner, startup-fixed backend, complete mounted roster and
+original share pins remain retained. Fresh complete observations bracket the
+probe outside the runtime gate; full code/configuration/state/child checks
+bracket each of its six bounded SMB clients.
+
+On 2026-10-08, Windows API/UI preflight, pinned Linux tagged vet/package tests,
+six-package race-count3, ARMv5 cross-build, all 59 POSIX verifier tests and all
+four actual Samba guests pass locally. The data guest verifies transfer bytes,
+effective Unix ownership, kernel read-only enforcement, write/symlink denials,
+enabled-but-ungranted authentication denial, canceled/repeated probe refusal
+and runtime-close-before-authority-release, with final descriptor equality.
+`DataVerified` records completion of that probe, not ongoing health or authority.
+
+The former expanded native guest exceeded its 180-second cumulative limit.
+A reduced diagnostic completed the new work in about 37 seconds; its incomplete
+proof was correctly refused. After removing all temporary probes, one compiled
+overlay runs four fresh snapshots: service, native, lifecycle and data. Each
+guest creates its own state and hashes its complete runtime. Every prior proof
+remains mandatory, with matching censuses, original deadlines/privileges and
+no retries or new Docker images/volumes. This does not establish a causal fix
+for intermittent hosted enrollment or other CI timeouts.
+
+This is fixed normal access qualification, not a complete ungranted UNC/mixed
+ACL matrix, constructor/late-close fault proof, continuous drift supervision,
+product activation, HTTP route or EX4 qualification. The changed 943-input
+image/source audit, exact-head hosted checks and clean reproduction remain
+separate; the earlier prepared941 audit below is not borrowed as their proof.
+
+## Earlier same-authority planned startup — local component qualification
 
 Code checkpoint `8dcd541d29acb253c03320e0d712d511bbe51dbb` adds single-use
 `NativePlannedServiceQEMU.Start`. The coordinator retains its original identity

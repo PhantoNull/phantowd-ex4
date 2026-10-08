@@ -254,3 +254,22 @@ before NEW admission, never by refreshing a consumer or fabricating passdb.
 
 This is not product activation, storage/grant or continuous-bootstrap authority,
 complete cached/clean/hosted qualification, durable recovery or EX4 evidence.
+
+### Planned service and fixed data access (QEMU only)
+
+`NativePlannedServiceQEMU` retains the SAME identity Owner/startup backend,
+complete mounted roster and original share pins. Trusted callers transfer
+lifecycle control; they must not concurrently operate runtime/backend aliases.
+Fresh complete planning is outside the runtime gate, under storage-first
+ordering. Uncertainty retains review; verified runtime closure precedes release
+of either original authority, and uncertain closure is never retried.
+
+Its single-use `VerifyDataAccess` exercises six fixed clients through the SAME
+already-running service. It accepts no alternate runtime, root, credential,
+command or backend. Cancel/busy/unstarted/repeated operations refuse; complete
+authority observations bracket the probe. `DataVerified` is historical proof
+completion, not health or permission to activate a product service. Host/race
+and four real ARMv5 snapshots qualify normal access at `e3e1d5b`, not full
+UNC/mixed ACL, constructor/late-close faults, continuous supervision, changed
+whole-image audit, hosted/clean or EX4 behavior. See
+[implementation status](../../../../IMPLEMENTATION-STATUS.md).

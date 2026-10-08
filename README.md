@@ -36,7 +36,7 @@ scope; [component contracts](src/phantowd-api/README.md) describe the boundaries
 | Build | Pinned Buildroot 2025.02.18 LTS / Linux 6.18.55 LTS; complete local ARMv5 integration and exact source/image/SBOM audit pass | Exact-head hosted checks, independent clean reproduction, installable EX4 image and release qualification |
 | Web management | Bounded read-only snapshots, development administrator authentication/password changes, SMB/NFS policy editing with before/after review and cross-protocol folder advisories | Complete setup/recovery, certificate lifecycle, browser qualification and live service management |
 | Storage | Non-root read-only broker, complete sysfs inventory, manual GPT observations, duplicate-identity detection, protected registry with reader-bound rechecks, rechecked registry/census policy and backing reviews, internal MD/mount-owner fixtures | Trusted production lifecycle, persistent volume IDs, global-use accounting, qualified import and RAID management |
-| Sharing and identities | SMB3/NFS fixtures, disabled-first Samba accounts, session revocation, retained startup/state-fault fixtures, Unicode/CP850, streams and POSIX ACL tests | Product account workflows, supervised service activation/recovery and legacy permission migration |
+| Sharing and identities | SMB3/NFS fixtures, disabled-first Samba accounts, session revocation, retained same-authority SMB startup/access fixtures, Unicode/CP850, streams and POSIX ACL tests | Product account workflows, supervised service activation/recovery and legacy permission migration |
 | iSCSI | Coherent desired policy, root-only CHAP reader, registry/share review, private declared SMB/NFS exposure refusal, shared backing-object reservations and retained-storage LIO/CHAP composition with ARMv5 access/session/fault fixtures | Product authority/composition, credential provisioning/recovery, external/cross-protocol use and complete session guards, import and target-management UI |
 | Health | Bounded SMART interpretation, generation-bound coordinator, private complete sysfs census including in-use disks, retained descriptor-generation witness, subprocess replay and native/ARMv5 synthetic producer fixtures | Qualified command/device provider, report-to-device binding, history, authorized test jobs, notifications and UI |
 | Network policy | Desired dual-stack policy, private read-only kernel inventories and internal local-address conflict diagnostics in host/ARMv5 QEMU | Qualified physical interface binding, external address-conflict/routing admission, persistent trial/confirmation/rollback and management UI |
@@ -71,8 +71,10 @@ See the [dependency qualification record](support/DEPENDENCY-REVIEW.md).
 That qualified checkpoint includes same-authority coordinator preparation and
 the complete original three-campaign Samba union. It does not activate a
 planned SMB/NFS service; see [implementation status](IMPLEMENTATION-STATUS.md).
-Newer QEMU-only retained startup is qualified separately as a component, not
-an installable image or product service.
+Newer retained SMB startup and fixed data-access checks pass separately in
+host/QEMU. The Samba lane compiles once and checks four disposable guests;
+this is component qualification, not a new audited installable image or product
+service.
 
 ## Roadmap
 
