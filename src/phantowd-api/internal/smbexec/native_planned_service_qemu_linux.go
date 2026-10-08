@@ -11,6 +11,7 @@ import (
 	"encoding/json"
 	"errors"
 	"sync/atomic"
+	"time"
 
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/fileservice"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/identityowner"
@@ -177,6 +178,10 @@ func (s *NativePlannedServiceQEMU) Observe(ctx context.Context) error {
 		return err
 	}
 	defer func() { <-s.gate }()
+	return s.observe(ctx)
+}
+
+func (s *NativePlannedServiceQEMU) observe(ctx context.Context) error {
 	if s.closed || s.review || s.stopped {
 		return runtimebundle.ErrReviewRequired
 	}
@@ -186,6 +191,40 @@ func (s *NativePlannedServiceQEMU) Observe(ctx context.Context) error {
 	s.checks++
 	s.publish()
 	return nil
+}
+
+// One exclusive lifecycle loop; no catch-up scans or replacement authorities.
+// Complete storage-first/identity observations stay outside the runtime gate.
+// Accepted idle cancellation stops the whole owned group before returning,
+// retaining BOTH originals until a separate successful full runtime Close.
+// Any failed scan/stop remains review without restart or uncertainty retry.
+func (s *NativePlannedServiceQEMU) Supervise(ctx context.Context, interval time.Duration) error {
+	if interval < time.Second || interval > time.Hour {
+		return ErrInvalid
+	}
+	if err := s.enter(ctx); err != nil {
+		return err
+	}
+	defer func() { <-s.gate }()
+	if s.closed || s.review || !s.started || s.stopped {
+		return runtimebundle.ErrReviewRequired
+	}
+	timer := time.NewTimer(interval)
+	defer timer.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return errors.Join(ctx.Err(), s.stop())
+		case <-timer.C:
+			if ctx.Err() != nil {
+				continue
+			}
+			if err := s.observe(ctx); err != nil {
+				return err
+			}
+			timer.Reset(interval)
+		}
+	}
 }
 
 // Start is a separate planned-service admission; legacy runtime start remains
@@ -242,17 +281,29 @@ func (s *NativePlannedServiceQEMU) VerifyDataAccess(ctx context.Context) error {
 	return nil
 }
 
-func (s *NativePlannedServiceQEMU) quarantine(cause error) error {
-	s.review = true
-	if s.started && !s.stopped && s.closeErr == nil {
+func (s *NativePlannedServiceQEMU) stop() error {
+	if s.closeErr != nil {
+		s.publish() // Preserve review telemetry even when uncertain cleanup cannot retry.
+		return errors.Join(runtimebundle.ErrReviewRequired, s.closeErr)
+	}
+	if s.started && !s.stopped {
 		if err := s.inputs.Backend.runtime.StopNativeServiceQEMU(context.Background()); err != nil {
-			s.closeErr = err
+			s.closeErr, s.review = err, true
 		} else {
 			s.stopped = true
 		}
 	}
 	s.publish()
-	return errors.Join(runtimebundle.ErrReviewRequired, cause, s.closeErr)
+	if s.closeErr != nil {
+		return errors.Join(runtimebundle.ErrReviewRequired, s.closeErr)
+	}
+	return nil
+}
+
+func (s *NativePlannedServiceQEMU) quarantine(cause error) error {
+	s.review = true
+	stopErr := s.stop()
+	return errors.Join(runtimebundle.ErrReviewRequired, cause, stopErr)
 }
 
 // Runtime copies close before EITHER original authority is released. A first

@@ -57,7 +57,8 @@ def campaign_rows():
         "PHANTOWD_SAMBA_OWNER_PLANNED_CANDIDATE_READY"))
     access = tuple(row for row in fixture.MARKERS if row.startswith((
         "PHANTOWD_SAMBA_OWNER_PLANNED_STARTUP_READY",
-        "PHANTOWD_SAMBA_OWNER_PLANNED_DATA_READY")))
+        "PHANTOWD_SAMBA_OWNER_PLANNED_DATA_READY",
+        "PHANTOWD_SAMBA_OWNER_PLANNED_SUPERVISION_READY")))
     census = [*fixture.MARKERS[:3], CENSUS, fixture.MARKERS[enrollment]]
     return {
         "service": [*fixture.MARKERS[:enrollment],
@@ -78,6 +79,30 @@ def campaign_rows():
 
 
 class SambaRootFixture(unittest.TestCase):
+    def test_planned_supervision_is_required_once_in_the_data_trace(self):
+        rows = campaign_rows()
+        proof = (
+            "PHANTOWD_SAMBA_OWNER_PLANNED_SUPERVISION_READY "
+            "same_authorities=true complete_scan=true serialized=true "
+            "cancellation_stopped=true originals_retained=true "
+            "restart_refused=true close_before_release=true "
+            "stopped_reaped=true no_fd_leak=true "
+            "activation=false scope=qemu-only")
+        valid = [row for row in rows["data"] if row != proof]
+        valid.insert(-2, proof)
+        fixture.check_campaign("\n".join(valid), "data")
+        with self.assertRaises(ValueError):
+            fixture.check_campaign(
+                "\n".join(row for row in valid if row != proof), "data")
+        with self.assertRaises(ValueError):
+            fixture.check_campaign("\n".join(valid + [proof]), "data")
+        for phase in fixture.CAMPAIGNS:
+            if phase != "data":
+                with self.subTest(wrong_phase=phase):
+                    with self.assertRaises(ValueError):
+                        fixture.check_campaign(
+                            "\n".join(rows[phase] + [proof]), phase)
+
     def test_all_requires_independent_candidate_startup_fault_traces(self):
         rows = campaign_rows()
         phases = ("service", "native", "candidate", "lifecycle", "fault",
@@ -170,7 +195,9 @@ class SambaRootFixture(unittest.TestCase):
             "PHANTOWD_SAMBA_OWNER_PLANNED_STARTUP_READY"))
         rows = [*fixture.MARKERS[:3], CENSUS,
                 fixture.MARKERS[native_split], startup,
-                marker, "PHANTOWD_SAMBA_ROOT_DATA_DONE", SCAN_COST]
+                marker, next(row for row in fixture.MARKERS if row.startswith(
+                    "PHANTOWD_SAMBA_OWNER_PLANNED_SUPERVISION_READY")),
+                "PHANTOWD_SAMBA_ROOT_DATA_DONE", SCAN_COST]
         good = "\n".join(rows)
         fixture.check_campaign(good, "data")
         for replacement in ("", marker + "\n" + marker,
@@ -210,7 +237,10 @@ class SambaRootFixture(unittest.TestCase):
         data = next(row for row in fixture.MARKERS if row.startswith(
             "PHANTOWD_SAMBA_OWNER_PLANNED_DATA_READY"))
         rows = [*fixture.MARKERS[:3], CENSUS, fixture.MARKERS[split],
-                marker, data, "PHANTOWD_SAMBA_ROOT_DATA_DONE", SCAN_COST]
+                marker, data,
+                next(row for row in fixture.MARKERS if row.startswith(
+                    "PHANTOWD_SAMBA_OWNER_PLANNED_SUPERVISION_READY")),
+                "PHANTOWD_SAMBA_ROOT_DATA_DONE", SCAN_COST]
         good = "\n".join(rows)
         fixture.check_campaign(good, "data")
         for invalid in (good.replace(marker, ""),
@@ -253,7 +283,8 @@ class SambaRootFixture(unittest.TestCase):
                   *(row for row in fixture.MARKERS[native_split:-3]
                     if row != planned and not row.startswith((
                         "PHANTOWD_SAMBA_OWNER_PLANNED_STARTUP_READY",
-                        "PHANTOWD_SAMBA_OWNER_PLANNED_DATA_READY"))),
+                        "PHANTOWD_SAMBA_OWNER_PLANNED_DATA_READY",
+                        "PHANTOWD_SAMBA_OWNER_PLANNED_SUPERVISION_READY"))),
                   "PHANTOWD_SAMBA_ROOT_NATIVE_DONE",
                   SCAN_COST]
         fixture.check_campaign(timings + "\n" + "\n".join(native),
@@ -1244,6 +1275,12 @@ class SambaRootFixture(unittest.TestCase):
             "readonly_EROFS=true readonly_denied=true symlink_denied=true "
             "fresh_observation=true stopped_before_release=true "
             "no_fd_leak=true activation=false scope=qemu-only",
+            "PHANTOWD_SAMBA_OWNER_PLANNED_SUPERVISION_READY "
+            "same_authorities=true complete_scan=true serialized=true "
+            "cancellation_stopped=true originals_retained=true "
+            "restart_refused=true close_before_release=true "
+            "stopped_reaped=true no_fd_leak=true "
+            "activation=false scope=qemu-only",
             "PHANTOWD_SAMBA_OWNER_PLANNED_CANDIDATE_READY "
             "owner=actual_native_backend storage=mounted_roster "
             "locked_plan=true exact_declaration=true original_objects=true "

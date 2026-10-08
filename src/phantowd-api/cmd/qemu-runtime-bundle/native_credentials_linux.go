@@ -240,6 +240,7 @@ func nativeCredentialFixture(campaign nativeCredentialCampaignQEMU) (result erro
 		nativeCredentialEnrollmentMarkerQEMU()
 		fmt.Println(plannedStartupMarkerQEMU)
 		fmt.Println(plannedDataMarkerQEMU)
+		fmt.Println(plannedSupervisionMarkerQEMU)
 		return nil
 	}
 	// Each scenario owns a fresh guest and genuine disabled-first enrollment.

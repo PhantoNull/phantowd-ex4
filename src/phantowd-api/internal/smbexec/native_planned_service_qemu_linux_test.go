@@ -9,6 +9,7 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/identityowner"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/mountowner"
@@ -44,6 +45,39 @@ func TestNativePlannedStartRefusesMissingAuthority(t *testing.T) {
 	var service *NativePlannedServiceQEMU
 	if err := service.Start(context.Background()); !errors.Is(err, ErrInvalid) {
 		t.Fatal("absent planned service admitted startup:", err)
+	}
+}
+
+func TestNativePlannedSupervisionRefusesMissingAuthority(t *testing.T) {
+	var absent *NativePlannedServiceQEMU
+	if err := absent.Supervise(context.Background(), time.Second); !errors.Is(err, ErrInvalid) {
+		t.Fatal("absent planned service admitted supervision:", err)
+	}
+	var uninitialized NativePlannedServiceQEMU
+	if err := uninitialized.Supervise(context.Background(), time.Second); !errors.Is(err, ErrInvalid) {
+		t.Fatal("uninitialized planned service admitted supervision:", err)
+	}
+}
+
+func TestNativePlannedCloseFailurePublishesStickyReview(t *testing.T) {
+	// Negative-only admission fixture: this invalid runtime cannot own or start
+	// a process. Exercise Close/Status, never fabricate a healthy authority.
+	service := &NativePlannedServiceQEMU{gate: make(chan struct{}, 1), inputs: NativePlannedInputsQEMU{
+		Backend: &NativeBackendQEMU{runtime: &runtimebundle.NativeSambaRuntimeQEMU{}},
+	}}
+	if err := service.Close(context.Background()); !errors.Is(err, runtimebundle.ErrReviewRequired) {
+		t.Fatal("invalid runtime close was reported as settled:", err)
+	}
+	status, err := service.Status()
+	if err != nil || status.State != "review-required" || status.RuntimeClosed || status.IdentityRetained || status.SharesRetained {
+		t.Fatal("failed runtime close did not publish unqualified review:", status, err)
+	}
+	if err := service.Close(context.Background()); !errors.Is(err, runtimebundle.ErrReviewRequired) {
+		t.Fatal("uncertain runtime close was retried as success:", err)
+	}
+	unchanged, err := service.Status()
+	if err != nil || unchanged != status {
+		t.Fatal("repeated uncertain close changed review:", unchanged, err)
 	}
 }
 

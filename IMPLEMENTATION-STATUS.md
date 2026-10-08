@@ -3,6 +3,38 @@
 
 # Implementation status
 
+## Current component — composed Samba supervision, normal host/QEMU proof
+
+On 2026-10-08, `NativePlannedServiceQEMU.Supervise` passes pinned Go 1.26.6
+tagged Linux checks, seven-package race-count3, ARMv5 cross-build, 62 Linux
+verifier tests and all six actual disposable ARMv5 guests using one compilation.
+Complete 114-file/27,384,058-byte censuses agree; every original campaign proof,
+new mandatory supervision proof, FD equality and unchanged base check pass.
+Windows API/UI/lab preflight also passes. This is component qualification, not
+a newer complete source/image audit than the 945-input checkpoint below.
+
+The SAME original identity Owner/backend, mounted roster and share pins survive
+startup, actual access and supervision. One exclusive loop serializes complete
+storage-first/identity checks, refuses competing lifecycle operations, stops on
+accepted idle cancellation and retains both originals until separate successful
+full runtime closure. No retry, restart or replacement authority is admitted.
+The new supervised fixture action is independently bounded to 20 seconds;
+prior phase, worker/readiness/stop and guest180 guards remain unchanged.
+
+Only the normal path is qualified here. Composed drift, unexpected exit,
+mid-worker cancellation and uncertain stop/close need coordinator-specific
+proofs; earlier identity-only faults cannot substitute. Product authorization,
+storage/identity lifetimes, durable recovery, hosted/clean/EX4 and install gates
+remain open. No HTTP surface or NAS operation is added. See the
+[component contract](src/phantowd-api/internal/smbexec/README.md#planned-service-and-fixed-data-access-qemu-only).
+
+Post-run review found and corrected a telemetry regression in the factored stop
+path: pre-existing close uncertainty must publish `review-required` even when
+cleanup is not retried. A pinned Linux negative-only Close/Status test reproduces
+the missing snapshot, then passes after restoring publication. It uses an invalid
+runtime that cannot execute or own processes, not fabricated healthy evidence.
+This host refusal proof does not qualify a live daemon's uncertain teardown.
+
 ## Current complete cached integration — six Samba scenarios and exact945 audit
 
 Frozen `5a087ed1c5e6cda9957a2554038bfd4303c485fa`, API tree

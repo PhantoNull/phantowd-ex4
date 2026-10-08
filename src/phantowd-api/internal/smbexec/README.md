@@ -273,3 +273,29 @@ and four real ARMv5 snapshots qualify normal access at `e3e1d5b`, not full
 UNC/mixed ACL, constructor/late-close faults, continuous supervision, changed
 whole-image audit, hosted/clean or EX4 behavior. See
 [implementation status](../../../../IMPLEMENTATION-STATUS.md).
+
+`Supervise(ctx, interval)` now owns the composed lifecycle exclusively while
+performing serial complete storage-first/identity scans at a fixed idle interval
+of 1 second to 1 hour. It accepts no replacement authority, runtime or backend.
+Competing observations/start/access/close and a second loop refuse; there are
+no catch-up scans or automatic restarts. Accepted idle cancellation verifies
+daemon/client stop but retains BOTH original identity and share authorities
+until a separate successful full runtime `Close`. Failed scans or uncertain
+stop/close preserve review, retained authority and refusal of uncertainty retry.
+Immutable `Status` is telemetry only, never admission or recovery evidence.
+
+On 2026-10-08, tagged Linux tests, seven-package race-count3, ARMv5 cross-build,
+62 Linux verifier tests and all six independently enrolled ARMv5 campaigns pass.
+The actual data guest keeps the SAME service through original startup/access,
+a complete timed scan, exclusive refusals, idle cancellation, stopped-authority
+retention, restart refusal and full-close-before-release/FD equality. Its new
+proof is mandatory exactly once in data; all old proof bytes/order and deadlines
+remain. The supervised action has its own 20-second fixture budget, not leftover
+startup/data time. This qualifies only the normal composed supervision path.
+Composed drift/exit/mid-worker/uncertain stop/late-close proofs and a new complete
+source/image audit remain open; previous identity-only fault proofs do not
+qualify this coordinator. No HTTP, product activation or physical NAS operation.
+
+A post-run negative-only Close/Status regression preserves review telemetry
+when a prior close error prohibits cleanup retry. Invalid runtime admission
+cannot start or own a process; this does not qualify live uncertain teardown.

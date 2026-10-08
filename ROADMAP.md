@@ -75,7 +75,11 @@ configured stripping, and verifies installed/image/exported API, seven hashes,
 Linux AND headers 6.18.55, SBOM, release and legal-source bindings; see
 [exact scope](IMPLEMENTATION-STATUS.md#current-complete-cached-integration--six-samba-scenarios-and-exact945-audit).
 Normal same-authority planned Samba startup and access are qualified only in
-disposable fixtures. Continuous supervision, uncertain construction/teardown,
+disposable fixtures. A newer component also passes exclusive composed supervision
+with serial complete scans, idle cancellation/verified stop, retained originals
+and full-close-before-release, across all six ARMv5 scenarios. This normal-path
+proof is not a newer full image audit; composed drift/exit/mid-worker/uncertain
+stop/close faults remain to qualify. Complete supervision, uncertain construction/teardown,
 production storage/identity composition, exact-head hosted promotion, clean
 reproducibility and product/hardware/release gates remain open. This is not a
 causal fix of the earlier hosted timeout. Historical task evidence below keeps

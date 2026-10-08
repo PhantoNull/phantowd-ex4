@@ -72,6 +72,10 @@ That qualified checkpoint includes retained same-authority SMB startup and
 fixed data-access checks, plus every original Samba proof. The current Samba
 lane compiles once and checks six disposable guests, separating candidate,
 startup and fault work; all six and the updated full-image audit pass locally.
+Newer component tests also qualify normal composed supervision: serial complete
+scans, exclusive lifecycle operations, verified cancellation stop and retained
+authority until full closure. Composed fault coverage and a new image audit
+remain separate; see [implementation status](IMPLEMENTATION-STATUS.md).
 Exact-head hosted checks remain required before integration. No product SMB/NFS service
 is activated. Component/cached verification is not an installable
 image or product service; see [implementation status](IMPLEMENTATION-STATUS.md).

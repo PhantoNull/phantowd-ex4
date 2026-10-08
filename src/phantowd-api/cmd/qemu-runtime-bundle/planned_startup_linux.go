@@ -185,6 +185,25 @@ func nativePlannedStartupFixtureQEMU(plan *runtimebundle.Plan, lookup fileservic
 		if !errors.Is(owner.Close(), identityowner.ErrBusy) || !errors.Is(handoff.Close(), mountowner.ErrHandoffBusy) {
 			return errors.New("planned startup released authority before start")
 		}
+		prepared, err := service.Status()
+		if err != nil || prepared.State != "prepared" {
+			return errors.New("planned startup missing prepared supervision state")
+		}
+		for _, interval := range []time.Duration{-time.Second, 0, time.Millisecond, time.Hour + time.Nanosecond} {
+			if err := service.Supervise(ctx, interval); !errors.Is(err, smbexec.ErrInvalid) {
+				return errors.New("planned supervision admitted invalid interval")
+			}
+		}
+		if err := service.Supervise(nil, time.Second); !errors.Is(err, smbexec.ErrInvalid) {
+			return errors.New("planned supervision admitted absent context")
+		}
+		if err := service.Supervise(ctx, time.Second); !errors.Is(err, runtimebundle.ErrReviewRequired) {
+			return errors.New("planned prepared service admitted supervision")
+		}
+		unchanged, err := service.Status()
+		if err != nil || unchanged != prepared {
+			return errors.New("refused planned supervision changed prepared authority")
+		}
 		canceled, cancelStart := context.WithCancel(ctx)
 		cancelStart()
 		if err := service.Start(canceled); !errors.Is(err, context.Canceled) {
@@ -226,6 +245,15 @@ func nativePlannedStartupFixtureQEMU(plan *runtimebundle.Plan, lookup fileservic
 		if err != nil || !status.DataVerified || status.State != "ready" || !status.IdentityRetained || !status.SharesRetained ||
 			!errors.Is(owner.Close(), identityowner.ErrBusy) || !errors.Is(handoff.Close(), mountowner.ErrHandoffBusy) {
 			return errors.New("planned data lost continuous service authority")
+		}
+		// A separate supervised action must not spend leftover data/startup
+		// time. This keeps data20 and guest180/worker/readiness/stop unchanged.
+		cancelData()
+		superviseCtx, cancelSupervise := context.WithTimeout(context.Background(), 20*time.Second)
+		defer cancelSupervise()
+		ctx = superviseCtx
+		if err := qualifyPlannedSupervisionQEMU(ctx, service, owner, handoff); err != nil {
+			return err
 		}
 		if err := service.Close(context.Background()); err != nil {
 			return err
