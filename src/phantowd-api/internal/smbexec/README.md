@@ -254,3 +254,70 @@ before NEW admission, never by refreshing a consumer or fabricating passdb.
 
 This is not product activation, storage/grant or continuous-bootstrap authority,
 complete cached/clean/hosted qualification, durable recovery or EX4 evidence.
+
+### Planned service and fixed data access (QEMU only)
+
+`NativePlannedServiceQEMU` retains the SAME identity Owner/startup backend,
+complete mounted roster and original share pins. Trusted callers transfer
+lifecycle control; they must not concurrently operate runtime/backend aliases.
+Fresh complete planning is outside the runtime gate, under storage-first
+ordering. Uncertainty retains review; verified runtime closure precedes release
+of either original authority, and uncertain closure is never retried.
+
+Its single-use `VerifyDataAccess` exercises six fixed clients through the SAME
+already-running service. It accepts no alternate runtime, root, credential,
+command or backend. Cancel/busy/unstarted/repeated operations refuse; complete
+authority observations bracket the probe. `DataVerified` is historical proof
+completion, not health or permission to activate a product service. Host/race
+and four real ARMv5 snapshots qualify normal access at `e3e1d5b`, not full
+UNC/mixed ACL, constructor/late-close faults, continuous supervision, changed
+whole-image audit, hosted/clean or EX4 behavior. See
+[implementation status](../../../../IMPLEMENTATION-STATUS.md).
+
+`Supervise(ctx, interval)` now owns the composed lifecycle exclusively while
+performing serial complete storage-first/identity scans at a fixed idle interval
+of 1 second to 1 hour. It accepts no replacement authority, runtime or backend.
+Competing observations/start/access/close and a second loop refuse; there are
+no catch-up scans or automatic restarts. Accepted idle cancellation verifies
+daemon/client stop but retains BOTH original identity and share authorities
+until a separate successful full runtime `Close`. Failed scans or uncertain
+stop/close preserve review, retained authority and refusal of uncertainty retry.
+Immutable `Status` is telemetry only, never admission or recovery evidence.
+
+On 2026-10-08, tagged Linux tests, seven-package race-count3, ARMv5 cross-build,
+62 Linux verifier tests and all six independently enrolled ARMv5 campaigns pass.
+The actual data guest keeps the SAME service through original startup/access,
+a complete timed scan, exclusive refusals, idle cancellation, stopped-authority
+retention, restart refusal and full-close-before-release/FD equality. Its new
+proof is mandatory exactly once in data; all old proof bytes/order and deadlines
+remain. The supervised action has its own 20-second fixture budget, not leftover
+startup/data time. This qualifies only the normal composed supervision path.
+Composed drift/exit/mid-worker/uncertain stop/late-close proofs and a new complete
+source/image audit remain open; previous identity-only fault proofs do not
+qualify this coordinator. No HTTP, product activation or physical NAS operation.
+
+A post-run negative-only Close/Status regression preserves review telemetry
+when a prior close error prohibits cleanup retry. Invalid runtime admission
+cannot start or own a process; this does not qualify live uncertain teardown.
+
+### Composed source-alias fault (QEMU only)
+
+The focused fault guest now also exercises the SAME planned service through
+genuine enrollment, retained startup/access and exclusive complete supervision.
+A fixed private-namespace child covers only the qualified synthetic volume
+alias with guest tmpfs; original volume/share mounts and object pins survive.
+The next scan enters sticky review and verifies daemon stop/reap. Independent
+read-only observations require all15 private daemon inputs plus original runtime
+code, both configurations and state retained; both original authorities stay busy.
+Only the observed cover is unmounted. Original mount identity is restored,
+but every revival operation still refuses. No normal-path Close releases review.
+
+Child exit disposes its namespace only after these witnesses; parent FD equality
+and the original identity-only fault proof remain mandatory. This is not product
+recovery. A missing launcher prerequisite exposed by the first actual trace is
+fixed in shared create-only scaffolding, not by relaxing C admission guards.
+Pinned Linux/race3/ARM-build,64 verifier tests and the actual focused fault pass;
+updated complete six-guest/image qualification remain separate. This idle,
+completed-transfer alias replacement does not qualify physical failure, held
+sessions, mid-transfer/worker cancellation or uncertain teardown. No HTTP,
+product activation or NAS operation is added.
