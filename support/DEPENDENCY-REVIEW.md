@@ -3,7 +3,34 @@
 
 # Dependency review and update qualification
 
-## Current cached945 integration and exact artifact audit (2026-10-08)
+## Current cached946 integration and exact artifact audit (2026-10-08)
+
+Frozen `1e68966f91d27c6d449a7624212720cf3d7da86b`, API tree
+`0280c9719f3ac808b5a5d25c077492a81e6bc954`, passes the complete cached
+host/ARMv5 lane and independent post-terminal read-only audit. All six Samba
+guests, the new normal composed-supervision proof, original checks and both
+synthetic SMART lanes pass. This is not composed fault qualification.
+
+All **946** API inputs match compiled package and legal source archive without
+stale extras or generated-marker exemptions. Configured strip/installed/rootfs/
+export, seven ordered hashes, actual kernel AND headers 6.18.55 source/license/
+SBOM/legal/release and linked Go 1.26.6/CGO0/ARM5 agree. All946 before/after source
+hashes match; 1,915 regular audit inputs are rechecked.
+
+Stripped API: 10,708,180 bytes, SHA256
+`1bee0443b5dc5d239ef8352a2fa0d3dbce9a966cf15f092317f2044b3492c63c`.
+Source archive SHA256:
+`2da6abd51a9ab8935dd6792c1317b437c99da0767e3fdf200c340e0e092a6eb0`.
+Ordered artifact manifest SHA256:
+`efbc4d5a2c2c500bd58ee2a4b7950165d1248480ad4b6973fa02595e0265e357`.
+These are new measured identities, not the older945 image/archive hashes.
+
+Only the existing image/two volumes are reused. This is not independent clean,
+hosted, advisory-complete, EX4, migration, product activation or installation
+qualification. The earlier `2c2c04c` hosted run fails during identity-coordinator
+disable/peer continuity at its fixed45-second deadline; cause remains unproven.
+
+## Earlier cached945 integration and exact artifact audit (2026-10-08)
 
 Frozen `5a087ed1c5e6cda9957a2554038bfd4303c485fa`, API tree
 `dccdc1fd2722097520f18b263ac0558c1a4e4c2c`, passes one complete cached

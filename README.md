@@ -62,7 +62,7 @@ compliance or physical EX4 qualification. [versions.env](versions.env) is the
 source of truth for build pins.
 
 The last fully audited Linux 6.18.55 cached build passes the complete host and ARMv5
-integration campaigns. Its post-build audit matches all 945 API source inputs,
+integration campaigns. Its post-build audit matches all 946 API source inputs,
 actual images, kernel/header source archives, release metadata, SBOM and license
 files. This cached local proof does not qualify an EX4 installation, independent
 clean reproducibility or a fix for the intermittent hosted Samba timeout.
@@ -72,10 +72,12 @@ That qualified checkpoint includes retained same-authority SMB startup and
 fixed data-access checks, plus every original Samba proof. The current Samba
 lane compiles once and checks six disposable guests, separating candidate,
 startup and fault work; all six and the updated full-image audit pass locally.
-Newer component tests also qualify normal composed supervision: serial complete
+That complete cached image also qualifies normal composed supervision: serial complete
 scans, exclusive lifecycle operations, verified cancellation stop and retained
-authority until full closure. Composed fault coverage and a new image audit
-remain separate; see [implementation status](IMPLEMENTATION-STATUS.md).
+authority until full closure. Composed fault coverage remains separate;
+see [implementation status](IMPLEMENTATION-STATUS.md). The latest hosted run
+still fails in the identity-coordinator revocation/continuity test; local
+success does not establish its cause or authorize integration.
 Exact-head hosted checks remain required before integration. No product SMB/NFS service
 is activated. Component/cached verification is not an installable
 image or product service; see [implementation status](IMPLEMENTATION-STATUS.md).

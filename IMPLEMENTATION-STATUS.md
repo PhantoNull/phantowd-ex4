@@ -10,8 +10,8 @@ tagged Linux checks, seven-package race-count3, ARMv5 cross-build, 62 Linux
 verifier tests and all six actual disposable ARMv5 guests using one compilation.
 Complete 114-file/27,384,058-byte censuses agree; every original campaign proof,
 new mandatory supervision proof, FD equality and unchanged base check pass.
-Windows API/UI/lab preflight also passes. This is component qualification, not
-a newer complete source/image audit than the 945-input checkpoint below.
+Windows API/UI/lab preflight also passes. The corrected component is included
+in the complete 946-input cached image and independent audit below.
 
 The SAME original identity Owner/backend, mounted roster and share pins survive
 startup, actual access and supervision. One exclusive loop serializes complete
@@ -35,30 +35,37 @@ the missing snapshot, then passes after restoring publication. It uses an invali
 runtime that cannot execute or own processes, not fabricated healthy evidence.
 This host refusal proof does not qualify a live daemon's uncertain teardown.
 
-## Current complete cached integration — six Samba scenarios and exact945 audit
+## Current complete cached integration — six Samba scenarios and exact946 audit
 
-Frozen `5a087ed1c5e6cda9957a2554038bfd4303c485fa`, API tree
-`dccdc1fd2722097520f18b263ac0558c1a4e4c2c`, passes one complete cached
+Frozen `1e68966f91d27c6d449a7624212720cf3d7da86b`, API tree
+`0280c9719f3ac808b5a5d25c077492a81e6bc954`, passes one complete cached
 Buildroot/host/ARMv5 integration run and an independent post-terminal read-only
 audit on 2026-10-08. Standard smoke, MD/state reboot, launcher/runtime/loader/
 atomic, all six independently enrolled Samba guests and both synthetic SMART
 lanes pass. Every original proof and each complete runtime census remain required.
 
-All **945** API source files match both the compiled package and collected
+All **946** API source files match both the compiled package and collected
 source archive, with no stale extras or generated-marker exemptions. Configured
 stripping, installed/rootfs/exported API, seven ordered hashes, actual images,
 kernel AND headers 6.18.55 source/license/SBOM/legal/release bindings and linked
-Go 1.26.6/CGO0/Linux ARM5 agree. All 945 before/after source hashes match;
-1,913 regular audit inputs are rechecked. Only the existing pinned image and
+Go 1.26.6/CGO0/Linux ARM5 agree. All 946 before/after source hashes match;
+1,915 regular audit inputs are rechecked. Only the existing pinned image and
 two project volumes are reused. See [exact artifact identities](support/DEPENDENCY-REVIEW.md).
 
 This qualifies the current cached local image, not independent clean builds,
-the new publication's own hosted checks, a causal fix of the earlier hosted
+the new publication's own hosted checks, a causal fix of the hosted
 failure, physical EX4, migration, product service activation or installation.
-Normal retained startup/access is tested; complete grants/ACLs, constructor/
-late-close faults and continuous planned-service supervision remain open.
+Normal retained startup/access and composed supervision are tested; complete
+grants/ACLs, constructor/late-close and composed supervision faults remain open.
 
-## Current QEMU component — independently enrolled bounded scenarios
+The earlier integration checkpoint `2c2c04c` has a passing host check but its
+[own hosted QEMU run](https://github.com/PhantoNull/phantowd-ex4/actions/runs/37753497490)
+fails during identity-coordinator disable/peer continuity at the fixed
+45-second fixture deadline. Its first worker classification is pre-admission/
+other, not proof of lost peer connectivity. Cause and a regression fix remain
+unqualified; do not merge that checkpoint on the strength of this local pass.
+
+## Earlier QEMU component — independently enrolled bounded scenarios
 
 On 2026-10-08, the updated Samba lane passes pinned Go 1.26.6 tagged vet,
 seven-package tests and seven-package race-count3, ARMv5 cross-build, all 61
