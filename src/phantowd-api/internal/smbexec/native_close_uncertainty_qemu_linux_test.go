@@ -62,6 +62,14 @@ func TestNativeBackendInnerCloseFailureSurvivesPublicCloseAndReplacement(t *test
 		func() error { return b.SetPasswordDisabled(ctx, account, []byte("native-close-fixture-only-password")) },
 		func() error { return b.Enable(ctx, account) },
 		func() error { return b.Disable(ctx, account) },
+		func() error { _, err := b.ObserveNativeSessionPairQEMU(ctx); return err },
+		func() error {
+			return b.VerifyNativePeerSessionQEMU(ctx, NativeSessionPairQEMU{
+				backend: b,
+				target:  smbStatusSession{SessionID: "negative-only-target"},
+				peer:    smbStatusSession{SessionID: "negative-only-peer"},
+			})
+		},
 	} {
 		if err := operation(); err == nil {
 			t.Fatal("closed native wrapper admitted an operation")
@@ -75,6 +83,55 @@ func TestNativeBackendInnerCloseFailureSurvivesPublicCloseAndReplacement(t *test
 	}
 	if _, err := replacement.Stat(); err != nil {
 		t.Fatal("repeated close touched the replacement", err)
+	}
+}
+
+func TestNativeSessionObservationRejectsPreCanceledContextBeforeDispatch(t *testing.T) {
+	// Negative-only command boundary; no admitted runtime or healthy session
+	// witness is constructed. An open real file lets the test reach the context
+	// fence rather than failing at absent configuration.
+	calls := 0
+	backend := &Backend{config: closeFixtureFile(t), runner: runnerFunc(func(context.Context, string, []string, *os.File, []byte, bool) ([]byte, error) {
+		calls++
+		return nil, nil
+	})}
+	t.Cleanup(func() {
+		if err := backend.Close(); err != nil {
+			t.Error(err)
+		}
+	})
+	native := &NativeBackendQEMU{inner: backend}
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	sessions, err := native.readNativeSessionsQEMU(ctx)
+	if sessions != nil || !errors.Is(err, context.Canceled) || calls != 0 {
+		t.Fatalf("pre-canceled session observation dispatched or lost refusal: sessions=%v error=%v calls=%d", sessions, err, calls)
+	}
+}
+
+func TestNativeSessionObservationRejectsClosedInnerBeforeDispatch(t *testing.T) {
+	// Actual regular-file close failure leaves the original inner bookkeeping
+	// available, but its terminal lifetime must still forbid a status worker.
+	original := closeFixtureFile(t)
+	calls := 0
+	backend := &Backend{config: original, runner: runnerFunc(func(context.Context, string, []string, *os.File, []byte, bool) ([]byte, error) {
+		calls++
+		return nil, nil
+	})}
+	if err := original.Close(); err != nil {
+		t.Fatal(err)
+	}
+	first := backend.Close()
+	if !errors.Is(first, os.ErrClosed) {
+		t.Fatal("closed-file fault did not reach the inner lifecycle", first)
+	}
+	native := &NativeBackendQEMU{inner: backend}
+	sessions, err := native.readNativeSessionsQEMU(context.Background())
+	if sessions != nil || !errors.Is(err, ErrInvalid) || calls != 0 {
+		t.Fatalf("closed inner dispatched a session worker: sessions=%v error=%v calls=%d", sessions, err, calls)
+	}
+	if backend.Close() != first || native.closed || native.inner != backend {
+		t.Fatal("read-only refusal changed terminal bookkeeping or retried close")
 	}
 }
 

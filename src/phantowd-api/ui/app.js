@@ -545,6 +545,7 @@ function setAuthError(message) {
 }
 
 function showAuthUnavailable() {
+  const moveFocus = ["dashboard-content", "logout", "auth-form"].some((id) => byId(id).contains(document.activeElement));
   clearSnapshot("Administrator session unavailable. No current diagnostic snapshot is shown.");
   clearGPTObservation("Administrator session unavailable. No GPT observation is shown.");
   clearPasswordFields();
@@ -561,6 +562,7 @@ function showAuthUnavailable() {
   setText("auth-description", "Sign-in status cannot be checked right now, so diagnostic data is hidden. Retry after the local service is available.");
   setAuthError("The local API could not be reached. No current system or storage data is shown.");
   setConnectionState("API unavailable", "unavailable");
+  if (moveFocus) byId("auth-title").focus({ preventScroll: true });
 }
 
 async function updateAuthView({ refresh = true, notice = "", current = () => true, signal } = {}) {
@@ -573,6 +575,10 @@ async function updateAuthView({ refresh = true, notice = "", current = () => tru
   const password = byId("auth-password");
   const submit = byId("auth-submit");
   const authError = byId("auth-error");
+  const focused = document.activeElement;
+  const leavingAuth = authPanel.contains(focused);
+  const leavingDashboard = dashboard.contains(focused) || logout === focused;
+  const leavingRetry = byId("auth-retry") === focused;
   authError.hidden = true;
   form.hidden = false;
   byId("auth-retry").hidden = true;
@@ -582,6 +588,7 @@ async function updateAuthView({ refresh = true, notice = "", current = () => tru
     dashboard.hidden = false;
     logout.hidden = false;
     setConnectionState("Authenticated", "loading");
+    if (leavingAuth) byId("page-title").focus({ preventScroll: true });
     if (refresh) await refreshSnapshot();
     return;
   }
@@ -605,6 +612,7 @@ async function updateAuthView({ refresh = true, notice = "", current = () => tru
   password.value = "";
   setConnectionState("Sign-in required");
   if (notice) setAuthError(notice);
+  if (leavingDashboard || leavingRetry) byId("auth-title").focus({ preventScroll: true });
 }
 
 byId("auth-retry").addEventListener("click", async () => {

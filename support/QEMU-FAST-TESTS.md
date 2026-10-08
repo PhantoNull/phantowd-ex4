@@ -2,6 +2,14 @@
 
 ## Bounded cached full validation
 
+The existing QEMU and EX4 B2/B3 kernel-configuration auditors reject builtin
+or module entries in the unused `CONFIG_CRYPTO_USER_API*` namespace (AF_ALG),
+including future options. Internal kernel crypto libraries remain permitted.
+No hash provider or kernel selection changes: cheap mutation tests plus
+read-only resolved-config audits verify this build guard without compiling
+another image. This follows [upstream AF_ALG guidance](https://www.kernel.org/doc/html/latest/crypto/userspace-if.html),
+not a claim that the pinned kernel implements newer-version restrictions.
+
 The QEMU builder selects one CPU job ceiling from Linux process affinity and
 the visible cgroup v1/v2 quota hierarchy. Fractional CPU quotas round down, with
 a minimum of one job. `PHANTOWD_BUILD_JOBS` can request a smaller positive
@@ -782,12 +790,12 @@ For a focused local diagnosis, select exactly one unchanged guest campaign:
 ```
 
 Allowed selections are `service`, `native`, `candidate`, `lifecycle`, `fault`,
-`data` and default `all`.
+`data`, `exit` and default `all`.
 Invalid values fail before guest/fixture construction. A focused run still
 compiles current source, checks all base hashes, uses read-only inputs and
 bounded tmpfs, verifies that phase's exact proof, retains its 180-second limit
 and cleans its disposable container. Its completion explicitly reports
-`complete_image=false`; it cannot substitute for the default six-campaign
+`complete_image=false`; it cannot substitute for the default seven-campaign
 qualification or clean Buildroot/hosted/release evidence. Existing full-build
 callers continue to select all campaigns without modification.
 
@@ -814,6 +822,74 @@ A last timing row only bounds completed work: it neither identifies a blocked
 worker inside the next phase nor proves its success. All original proof markers,
 descriptor census, hashes and command/phase/180-second guest limits remain
 independent and mandatory. Passing telemetry tests is not a timeout fix.
+
+### Diagnose a native fixture timeout before a full CI build
+
+Use the existing matching pinned image, workspace and manifest-verified base:
+
+```powershell
+.\support\test-samba-root.ps1 -Campaign lifecycle -DiagnosticLogs
+```
+
+Do not edit source or run another build against the same workspace while it
+executes. Preserve the exact Git revision, uncommitted changes, base manifest,
+command, actual terminal status and complete escaped diagnostic record. This
+lane neither downloads a new image nor creates a named volume; its scratch is
+disposable. It still requires matching cached dependencies and checks the
+selected campaign, not an entire new firmware image.
+
+Read the **first failed operation** rather than treating every elapsed timer
+as the same timeout:
+
+| Boundary | Current fixture scope | What a failure does not establish |
+| --- | --- | --- |
+| Initial native credential setup, 60 s | Construction and explicit enrollment of the fixture accounts; precedes `phase=enrolled` | The later coordinator operation was reached |
+| Lifecycle preparation, 20 s | Original journal admission, canceled-disable refusal and creation/qualification of two held clients | Revocation or continuity has completed |
+| Lifecycle revocation, 45 s | Stale-revision refusal, actual disable, successor journal and original peer/new-login verification | Every individual worker exceeded its own deadline |
+| Guest, 180 s | The complete disposable boot and selected campaign | A specific account, worker or coordinator caused expiry |
+
+These are test-context limits, not physical EX4 performance guarantees or
+product request deadlines. See the actual [credential fixture](../src/phantowd-api/cmd/qemu-runtime-bundle/native_credentials_linux.go)
+and [lifecycle fixture](../src/phantowd-api/cmd/qemu-runtime-bundle/native_identity_startup_linux.go)
+when changing their orchestration. A cumulative parent deadline can expire
+after several individually successful operations; a child deadline can also
+expire while its parent still has time. Neither permits ignoring uncertainty,
+reusing reviewed authority or skipping a verification.
+
+The current QEMU-only lifecycle driver replaces its former cumulative45 context
+with serial preparation20 and revocation45 contexts. This deliberately raises
+the combined contextual allowance to65 seconds; it is not a performance gain
+or product request policy. The SAME service, Owner, startup-fixed backend,
+journal and opaque original session pair cross the handoff. Uncertain/expired
+preparation refuses the second phase, shorter parent deadlines still bound both,
+and a late nil return cannot report success. Contexts are cooperative, not a
+guarantee to preempt an uninterruptible callback. Worker/readiness/stop and the
+external guest180 guard are unchanged. Fake-clock regression tests exercise the
+actual internal phase runner without inventing runtime/session authority.
+
+A focused local ARMv5 lifecycle replay passes all original proofs after this
+change. An unchanged-source fresh guest also passed, while another failed on an
+independent post-admission worker deadline during client preparation. Therefore
+one candidate pass does not establish that historical hosted outer deadlines
+or independent child expiries are fixed. Full current-source integration and
+own-head hosted qualification remain required; do not rerun heavy CI merely to
+substitute a lucky green for a diagnosed failure.
+
+Fixed `PHANTOWD_QEMU_NATIVE_WORKER_FAILURE` phase/reason labels are diagnostic,
+not authorization. `reason=other` is not proof that no deadline occurred:
+an intermediate refusal can discard the underlying typed cause. Conversely,
+absence of a worker label does not mean the campaign succeeded. The last
+`PHANTOWD_DIAG_NATIVE_PHASE` row identifies completed work only; missing
+`phase=enrolled` means a proposed *post-enrollment* experiment did not reach
+its trigger, not that its intended setting was applied.
+
+Require the original verifier's terminal success and complete selected-phase
+proofs. A failed fixture may deliberately shut down with guest exit 0; that
+does not override failure markers or the host verifier's nonzero result.
+Save complete JSON diagnostics before cleanup: a clipped console tail is not
+the full trace. A new disposable diagnostic guest is not recovery or a retry
+of a reviewed Owner. Local success, changed CPU quotas, or narrower diagnosis
+cannot waive exact-head hosted checks, clean-build or hardware qualification.
 
 Its fixed runtime now includes IBM850 plus a strictly bounded, hash-verified
 conversion catalog. A dynamic probe tests exact non-ASCII CP850/UTF-8 conversions

@@ -183,6 +183,28 @@ overlay pass. Original seven base hashes remain unchanged. No JavaScript is
 executed by QEMU; these proofs do not replace real-browser/accessibility tests,
 clean hosted qualification, product enrollment or physical EX4 validation.
 
+## M5.5b authentication focus continuity
+
+The first skip link targets a focusable main landmark. Authentication and
+overview headings use `tabindex="-1"`, not extra sequential tab stops. Before
+hiding a focused authentication form/retry, dashboard or sign-out control,
+capture that focus and transfer it to the newly visible heading with
+`preventScroll`. Do not autofocus on initial status or move focus during an
+unchanged view, a retired response or when the focused control remains visible.
+Shared keyboard outlines and system-color overrides cover the existing
+interactive elements. No request, retry, authentication semantics, endpoint,
+privilege or activation is added.
+
+Actual-source DOM tests model containment/focus retirement and reproduce the
+missing destination on the frozen prior JavaScript. Three regression groups
+cover login/setup, expiration, local/global logout, authentication availability,
+confirmed/uncertain password changes, unchanged views and retired replies.
+Complete Windows API/UI/vet/tagged checks and ARMv5 test cross-compilation pass;
+the pinned Go 1.26.8 Linux host verifies embedded dashboard assets and the QEMU
+self-test markers. These are DOM/source/host-asset proofs, not actual browser
+keyboard navigation, CSS rendering, screen-reader announcements, WCAG
+conformance, current ARMv5 execution or new complete image qualification.
+
 ## Development file-service configuration API
 
 `GET` and `PUT /api/v1/file-services/configuration` operate on the combined

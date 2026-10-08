@@ -14,7 +14,8 @@ import (
 )
 
 type PlannedReviewStopObservationQEMU struct {
-	GroupStopped, InputsRetained bool
+	GroupStopped, InputsRetained  bool
+	CaptureRetained, BeforeWorker bool
 }
 
 // ObservePlannedReviewStopQEMU observes the fixed planned data lifetime only
@@ -28,8 +29,24 @@ func (r *NativeSambaRuntimeQEMU) ObservePlannedReviewStopQEMU(ctx context.Contex
 	}
 	defer func() { <-r.gate }()
 	if r.closed || !r.plannedDataPrepared || !r.daemonAttempted || !r.owner.review || r.daemonPID <= 1 ||
-		r.clients == nil || r.clientsAttempted || r.pending != nil || r.owner.processes == nil || r.owner.serviceConfiguration == nil {
+		r.clients == nil || r.clientsAttempted || r.owner.processes == nil || r.owner.serviceConfiguration == nil {
 		return PlannedReviewStopObservationQEMU{}, ErrReviewRequired
+	}
+	// An exited daemon can refuse admission AFTER the credential worker's
+	// inputs have been duplicated. Retain that capture, but accept it only
+	// when it was never consumed and has no live child/group. An executed,
+	// uncertain or closed capture still refuses. No Close or cleanup retry.
+	beforeWorker := false
+	if r.pending != nil {
+		unconsumed, err := r.pending.UnconsumedQEMU(ctx)
+		if err != nil || !unconsumed {
+			return PlannedReviewStopObservationQEMU{}, ErrReviewRequired
+		}
+		settled, err := r.pending.Settled(ctx)
+		if err != nil || !settled {
+			return PlannedReviewStopObservationQEMU{}, ErrReviewRequired
+		}
+		beforeWorker = true
 	}
 	daemon, err := r.owner.processes.ObserveNativeDataReviewStopQEMU(ctx)
 	if err != nil || !daemon.GroupStopped || !daemon.InputsRetained || unix.Kill(-r.daemonPID, 0) != unix.ESRCH {
@@ -77,5 +94,6 @@ func (r *NativeSambaRuntimeQEMU) ObservePlannedReviewStopQEMU(ctx context.Contex
 	if err := ctx.Err(); err != nil {
 		return PlannedReviewStopObservationQEMU{}, err
 	}
-	return PlannedReviewStopObservationQEMU{GroupStopped: true, InputsRetained: true}, nil
+	return PlannedReviewStopObservationQEMU{GroupStopped: true, InputsRetained: true,
+		CaptureRetained: r.pending != nil, BeforeWorker: beforeWorker}, nil
 }

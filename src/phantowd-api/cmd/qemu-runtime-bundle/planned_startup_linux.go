@@ -38,12 +38,15 @@ const plannedStopMarkerQEMU = "PHANTOWD_SAMBA_OWNER_PLANNED_STOP_READY same_daem
 // A separate access proof exercises actual transfers through that SAME service.
 // The startup marker alone claims neither transfers nor product activation.
 func nativePlannedStartupFixtureQEMU(plan *runtimebundle.Plan, lookup fileserviceplan.SambaEnrollmentLookup, authority string, inventory identityowner.Inventory) (result error) {
-	return nativePlannedServiceFixtureQEMU(plan, lookup, authority, inventory, false)
+	return nativePlannedServiceFixtureQEMU(plan, lookup, authority, inventory, "")
 }
 
 // The source-fault variant is reachable only through the fixed guarded child.
 // It shares real startup/access construction, not a fabricated healthy backend.
-func nativePlannedServiceFixtureQEMU(plan *runtimebundle.Plan, lookup fileserviceplan.SambaEnrollmentLookup, authority string, inventory identityowner.Inventory, sourceFault bool) (result error) {
+func nativePlannedServiceFixtureQEMU(plan *runtimebundle.Plan, lookup fileserviceplan.SambaEnrollmentLookup, authority string, inventory identityowner.Inventory, fault string) (result error) {
+	if fault != "" && fault != "source" && fault != "exit" {
+		return errors.New("invalid fixed planned fault")
+	}
 	ctx, cancel := context.WithTimeout(context.Background(), 40*time.Second)
 	defer cancel()
 	var callers [3]*os.File
@@ -280,11 +283,15 @@ func nativePlannedServiceFixtureQEMU(plan *runtimebundle.Plan, lookup fileservic
 		superviseCtx, cancelSupervise := context.WithTimeout(context.Background(), 20*time.Second)
 		defer cancelSupervise()
 		ctx = superviseCtx
-		if sourceFault {
-			if err := qualifyPlannedSourceFaultQEMU(ctx, service, runtime, owner, handoff); err != nil {
+		if fault != "" {
+			qualify, proof := qualifyPlannedSourceFaultQEMU, plannedSourceFaultChildProofQEMU
+			if fault == "exit" {
+				qualify, proof = qualifyPlannedExitFaultQEMU, plannedExitFaultChildProofQEMU
+			}
+			if err := qualify(ctx, service, runtime, owner, handoff); err != nil {
 				return err
 			}
-			if _, err := io.WriteString(os.Stdout, plannedSourceFaultChildProofQEMU); err != nil {
+			if _, err := io.WriteString(os.Stdout, proof); err != nil {
 				return err
 			}
 			// The owned daemon is already stopped/reaped and BOTH original

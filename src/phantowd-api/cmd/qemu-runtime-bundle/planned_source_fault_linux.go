@@ -31,24 +31,41 @@ const plannedSourceFaultMarkerQEMU = "PHANTOWD_SAMBA_OWNER_PLANNED_SOURCE_FAULT_
 const plannedSourceFaultChildProofQEMU = "PHANTOWD_PLANNED_SOURCE_FAULT_CHILD_READY same_authorities=true same_daemon=true data_verified=true source_covered=true exclusive_supervision=true review_sticky=true stopped_reaped=true private_inputs=15 runtime_inputs_retained=true originals_busy=true cover_removed=true restoration_refused=true private_mount_namespace=true scope=qemu-subprocess-only\n"
 
 func nativePlannedSourceFaultSubprocessQEMU() error {
+	return nativePlannedFaultSubprocessQEMU("source")
+}
+
+func nativePlannedFaultSubprocessQEMU(fault string) error {
+	commandName, proof := "native-planned-source-fault", plannedSourceFaultChildProofQEMU
+	if fault == "exit" {
+		commandName, proof = "native-planned-exit-fault", plannedExitFaultChildProofQEMU
+	} else if fault != "source" {
+		return errors.New("invalid fixed planned fault subprocess")
+	}
 	// NEW fixed fault action: preparation10/startup40/data20/supervision20.
 	// Original identity-fault40 and guest180 budgets are unchanged. Neither
 	// successful child output nor guest exit alone replaces parent FD/union checks.
 	ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
 	defer cancel()
-	command := exec.CommandContext(ctx, "/usr/sbin/phantowd-runtime-bundle-probe", "native-planned-source-fault")
+	command := exec.CommandContext(ctx, "/usr/sbin/phantowd-runtime-bundle-probe", commandName)
 	command.Env = []string{"PATH=/usr/sbin:/usr/bin:/sbin:/bin", "LANG=C", "LC_ALL=C"}
 	command.SysProcAttr = &syscall.SysProcAttr{Cloneflags: unix.CLONE_NEWNS}
 	command.WaitDelay = 2 * time.Second
 	var output nativeFaultOutput
 	command.Stdout, command.Stderr = &output, &output
-	if err := command.Run(); err != nil || output.String() != plannedSourceFaultChildProofQEMU {
-		return errors.New("planned source fault subprocess proof incomplete")
+	if err := command.Run(); err != nil || output.String() != proof {
+		return fmt.Errorf("planned %s fault subprocess proof incomplete", fault)
 	}
 	return nil
 }
 
 func nativePlannedSourceFaultQEMU() error {
+	return nativePlannedFaultQEMU("source")
+}
+
+func nativePlannedFaultQEMU(fault string) error {
+	if fault != "source" && fault != "exit" {
+		return errors.New("invalid fixed planned fault")
+	}
 	// Refuse hosts BEFORE any open of authority/storage or namespace mutation.
 	if runtime.GOARCH != "arm" || os.Getuid() != 0 || os.Geteuid() != 0 {
 		return errors.New("planned source fault requires disposable ARM guest")
@@ -99,7 +116,7 @@ func nativePlannedSourceFaultQEMU() error {
 	}
 	// The guest's actual disabled-first enrollment precedes this NEW consumer;
 	// no copied passdb, replacement SID, healthy fixture backend or lease refresh.
-	return nativePlannedServiceFixtureQEMU(plan, lookup, authority, inventory, true)
+	return nativePlannedServiceFixtureQEMU(plan, lookup, authority, inventory, fault)
 }
 
 func qualifyPlannedSourceFaultQEMU(ctx context.Context, service *smbexec.NativePlannedServiceQEMU, native *runtimebundle.NativeSambaRuntimeQEMU, owner *identityowner.Owner, handoff *mountowner.ServiceHandoff) error {
