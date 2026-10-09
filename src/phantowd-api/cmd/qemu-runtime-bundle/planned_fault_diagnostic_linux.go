@@ -22,7 +22,7 @@ func plannedFaultFailureDiagnosticQEMU(phase string, err error) string {
 		return ""
 	}
 	output := fmt.Sprintf("PHANTOWD_QEMU_PLANNED_FAULT_FAILURE phase=%s deadline=%t review=%t scope=diagnostic-only\n", phase, errors.Is(err, context.DeadlineExceeded), errors.Is(err, runtimebundle.ErrReviewRequired))
-	return output + plannedDataFailureDiagnosticQEMU(runtimebundle.ObserveNativeDataFailureQEMU(err))
+	return output + plannedDataFailureDiagnosticQEMU(runtimebundle.ObserveNativeDataFailureQEMU(err)) + plannedExitFailureDiagnosticQEMU(err)
 }
 
 func plannedDataFailureDiagnosticQEMU(data runtimebundle.NativeDataFailureObservationQEMU) string {
@@ -79,6 +79,12 @@ func plannedFaultSubprocessDiagnosticQEMU(ctxErr, runErr error, captured, proof 
 	seen := make(map[string]bool)
 	for _, line := range strings.Split(captured, "\n") {
 		fields := strings.Split(line, " ")
+		if validPlannedExitDiagnosticQEMU(fields) && !seen[line] {
+			seen[line] = true
+			output.WriteString(line)
+			output.WriteByte('\n')
+			continue
+		}
 		if validPlannedDataDiagnosticQEMU(fields) && !seen[line] {
 			seen[line] = true
 			output.WriteString(line)

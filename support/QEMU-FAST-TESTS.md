@@ -917,6 +917,19 @@ bound, original proof bytes, deadlines and verifier remain unchanged. This
 observability improvement does not resolve the intermittent all-campaign fault
 failure or qualify product/hardware operation.
 
+The exit fixture additionally relays validated, deduplicated
+`PHANTOWD_QEMU_PLANNED_EXIT_FAILURE` rows with an allowlisted inner phase and
+`busy` boolean. These distinguish request/repeated-request admission, initial
+scan, quarantine and stop/capture/authority checks without disclosing raw errors.
+The original error chain is retained; `busy=true` means that the chain contains
+a busy refusal, not that a particular lock or root cause has been proved.
+Unknown/injected/extra fields refuse, and telemetry is never success evidence.
+Root/non-root pinned-Go vet/race checks and a focused actual ARMv5 exit guest
+pass. A current full cached run failed at exit supervision after six Samba
+campaigns; unchanged-source and instrumented focused guests subsequently passed.
+This improves diagnosis only: the intermittent failure remains unresolved and
+no complete current image/audit or hosted-failure repair is qualified.
+
 Require the original verifier's terminal success and complete selected-phase
 proofs. A failed fixture may deliberately shut down with guest exit 0; that
 does not override failure markers or the host verifier's nonzero result.
