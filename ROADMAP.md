@@ -67,7 +67,7 @@ currently product-qualified for migration.
 
 ## Current baseline
 
-A newer component-only follow-up passes host checks and all seven fresh ARMv5
+An earlier component-only follow-up passes host checks and all seven fresh ARMv5
 Samba overlay guests. One authorized original IPC$ session remains under the
 SAME planned service's exclusive supervision. Source-alias loss stops client
 and daemon, retaining reviewed identity/storage/runtime despite restoration
@@ -75,6 +75,13 @@ or repeated Close. Older observers refuse the extra group. This is not a new
 complete image or normal full-close/in-flight/durable-handle qualification.
 The separate OpenSSL PR's own QEMU run fails at the source child's data phase;
 no merge/retry or causal fix is claimed by the newer local result.
+
+The newer focused `file` guest qualifies one actual original data opening:
+the same composed service retains/matches its original O_PATH object and exact
+session/tree/server/open identity through a complete exclusive supervised scan,
+verified cancellation group stop and full runtime Close before release. It is
+separate from default eight-campaign regression, full-image auditing and hosted
+qualification. In-flight faults, durable reconnect and recovery remain open.
 
 The fully audited local checkpoint `e234644` selects Go 1.26.8 and host OpenSSL
 3.5.9 and passes the
@@ -1594,14 +1601,23 @@ storage. No production roster provider or activation path exists.
 - **M4.5 — Failure and shutdown.** Cover startup with absent disks, service crash,
   read-only/full volume, client reconnect, stale NFS handles, shutdown with open
   files and restart ordering. Distinguish safely unavailable from healthy.
-  A private fixed-producer open-file status prerequisite now passes host
-  root/non-root checks, race-count3 and ARMv5 cross-compilation. It refuses
-  ambiguous/incomplete identities and distinguishes observed change from
-  unavailable status, but does not retain a file or bind an original disk
-  object. Before composition, calibrate actual Samba output, hold and match
-  the original object, recheck complete original authorities and prove real
-  client/open generation continuity. ARM guest/open-file faults, in-flight
-  work, durable reconnect and uncertain teardown remain unqualified.
+  The private fixed-producer status observation is now consumed by a separate
+  original-object composition in the explicit `file` guest. A fixed authorized
+  client opens one existing synthetic file once, without create/truncate/reopen.
+  The service retains the original O_PATH object through its original share
+  root and matches device/inode plus complete session/tree/server/open identity.
+  Exact configured producer name `Writable` is calibrated, not case-folded.
+  Complete original storage/identity rechecks precede and follow admission and
+  recur under the same exclusive serialized supervisor. Accepted cancellation
+  verifies client/daemon group settlement while the object,15 inputs and both
+  authorities remain held until full runtime Close. Repeated-close/closed
+  refusal and FD/base equality pass in an actual cleaned-source ARMv5 guest.
+  Root/non-root vet/race3, Windows preflight and ARM cross-compilation also pass.
+  The fixture omits only a measured duplicate pre-supervision Observe, retaining
+  Start's post-admission and supervisor's complete rechecks and all prior limits.
+  The focused proof does not imply default-all coverage, a current full image,
+  hosted failure repair, in-flight work, durable reconnect or product safety.
+  Open-file faults and uncertain teardown remain unqualified.
   The private original-session-pair recheck prerequisite now passes root-isolated
   host race-count3 and a focused actual ARMv5 native campaign. It requires the
   same complete pair before target-only revocation, refuses the old pair afterward
@@ -1633,8 +1649,9 @@ storage. No production roster provider or activation path exists.
   unchanged inputs (970 API inputs), with 67 verifier tests and all prior proofs/limits.
   No new privilege, image/volume, HTTP or physical-device action is introduced.
 
-  **Next bounded host/QEMU packet:** qualify original data-file handles and
-  open-file/in-flight loss separately, then late/uncertain cleanup. Require
+  **Next bounded host/QEMU packet:** qualify source-alias loss with the already
+  qualified original data opening, then in-flight loss and late/uncertain cleanup
+  separately. Keep idle IPC$ and actual-open-file proofs distinct. Require
   evidence that the actual original handle is open under the retained authorized
   session before fault injection; a successful earlier transfer or IPC$ echo is
   not sufficient. Never substitute a new login, backing object or backend.
