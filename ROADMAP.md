@@ -73,8 +73,10 @@ SAME planned service's exclusive supervision. Source-alias loss stops client
 and daemon, retaining reviewed identity/storage/runtime despite restoration
 or repeated Close. Older observers refuse the extra group. This is not a new
 complete image or normal full-close/in-flight/durable-handle qualification.
-The separate OpenSSL PR's own QEMU run fails at the source child's data phase;
-no merge/retry or causal fix is claimed by the newer local result.
+The separate OpenSSL PR's newest own QEMU run fails native account Enable at
+the cumulative 60-second fixture deadline; its earlier source-child failure
+is a separate historical observation.
+No merge/retry or causal fix is claimed by the newer local result.
 
 The newer focused `file` guest qualifies one actual original data opening:
 the same composed service retains/matches its original O_PATH object and exact
@@ -85,18 +87,18 @@ guest adds original-open-file source-alias loss as the mandatory tenth campaign;
 all ten actual ARMv5 overlay guests pass with independent saved-log/source-witness
 replay. Verified client/daemon stop retains the original file, 15 inputs and both
 authorities in sticky review despite restoration/repeated Close. Frozen
-`97957e9` additionally passes complete cached integration and a separate exact
+`382004a` additionally passes complete cached integration and a separate exact
 full-image/source/archive/SBOM audit. Own-head hosted qualification remains required.
 The fixed exit fault runs within the same exclusive supervisor, correcting a
 controlled fixture alias race without retry or relaxed proof/deadlines. In-flight
 faults, durable reconnect and recovery remain open.
 
-The fully audited local checkpoint `97957e9` selects Go 1.26.8 and host OpenSSL
+The fully audited local checkpoint `382004a` selects Go 1.26.8 and host OpenSSL
 3.5.9 and passes the
-complete cached Buildroot/host/ARMv5 lane: all nine independently enrolled
+complete cached Buildroot/host/ARMv5 lane: all ten independently enrolled
 Samba scenarios and both synthetic SMART lanes. Independent post-terminal
-auditing matches all 976 API inputs to compiled package/source archive and all
-1,269 tracked build witnesses. Configured stripping, installed/image/exported
+auditing matches all 977 API inputs to compiled package/source archive and all
+1,270 tracked build witnesses. Configured stripping, installed/image/exported
 API, seven hashes, Linux AND headers 6.18.55, actual selected/installed Go SDK,
 SBOM, release and legal sources agree. The OpenSSL recipe/four patches/original
 and legal source/license/SBOM match; its three installed objects reproduce built
@@ -117,7 +119,10 @@ settled; reviewed authority is not released or automatically restarted.
 Normal held-session retirement and original-open-file cancellation/closure
 also pass in separate fresh guests. The newer mandatory file-source campaign
 qualifies source-alias loss with that original idle opening, not in-flight
-transfer loss or physical disk failure; its complete image audit remains open.
+transfer loss or physical disk failure; its complete cached image audit passes.
+An unchanged-source CPU-only differential reproduces the cumulative Enable
+expiry locally, with a different inner worker boundary; normal-quota full native
+qualification passes. This supplies a diagnostic loop, not a causal hosted fix.
 
 After source restoration, two normal coordinator `Close` attempts are also
 refused while the same runtime inputs and both original authorities stay retained.

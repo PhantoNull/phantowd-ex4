@@ -27,9 +27,18 @@ all seven original artifact hashes.
 
 This proves source-alias loss with an idle original open file, not pending I/O,
 kernel EIO, physical disk failure, transfer integrity, durable reconnect or
-recovery. The newest complete image/archive/SBOM audit remains the separate
-`97957e9`/976-input checkpoint below. The 977-input overlay needs its own full
-image audit and exact-head hosted qualification. No HTTP, product activation,
+recovery. Frozen `382004a` subsequently passes the complete cached host/ARMv5
+integration, all ten Samba guests and both synthetic SMART lanes. Its separate
+post-terminal audit matches all 1,270 tracked witnesses and 977 API inputs,
+package/archive census without stale extras, configured strip/image/export,
+Go 1.26.8 SDK, kernel and headers 6.18.55, host OpenSSL 3.5.9 source/install/
+consumer/legal/SBOM and seven artifact hashes; 25,319 audit inputs recheck.
+Exact-head hosted qualification remains open. The existing integration PR
+still fails native Enable at the cumulative 60-second fixture deadline. With
+unchanged source/base, CPU quota 0.6 reproduces the outer Enable expiry, whereas
+quota 2 passes the complete native campaign. The inner boundary differs
+(pre-admission locally, post-admission in CI); this is not a causal hosted fix,
+retry or deadline relaxation. No HTTP, product activation,
 NAS access, real-disk operation or installable release is introduced.
 
 ## Serialized exit qualification and mandatory open-file regression
@@ -221,12 +230,12 @@ environment and rejects stale, mismatching, malformed or incomplete observations
 Test-first selected/mismatching-library checks, full shell/refusal tests and the
 actual cached 3.5.8 refusal pass.
 
-Frozen `97957e9` passes the original complete cached host/ARMv5 lane, all nine
+Frozen `382004a` passes the original complete cached host/ARMv5 lane, all ten
 independently enrolled Samba campaigns and both synthetic SMART lanes. A separate
-post-terminal read-only audit matches all 1,269 tracked witnesses and 976 API
+post-terminal read-only audit matches all 1,270 tracked witnesses and 977 API
 inputs, configured strip/installed/rootfs/export, kernel and headers 6.18.55,
 selected/installed Go 1.26.8 SDK, source archives, seven artifact hashes, legal
-metadata and SBOM; 25,317 regular audit inputs remain unchanged.
+metadata and SBOM; 25,319 regular audit inputs remain unchanged.
 The authenticated OpenSSL archive, four patches, license and selected metadata
 agree with 3.5.9. All three installed OpenSSL objects exactly reproduce their
 built bytes after only Buildroot's authenticated configured RPATH normalization.

@@ -5,12 +5,12 @@
 
 ## Current OpenSSL 3.5.9 complete cached qualification (2026-10-09)
 
-Frozen `97957e9d287aaece30795eeee4e477ab7538e49c`, API tree
-`8285e5d4be6306847569501d2fab667511954ae7`, passes the original complete cached
-host/ARMv5 lane, all nine Samba campaigns and both synthetic SMART lanes.
+Frozen `382004ad13f9d826d9b383bedb9def44829866a9`, API tree
+`40304cdcc15427b8f8e6188740de356c586e5d5b`, passes the original complete cached
+host/ARMv5 lane, all ten Samba campaigns and both synthetic SMART lanes.
 Independent post-terminal auditing preserves all previous source/package/SDK/
-kernel/image/legal guards: all 1,269 tracked witnesses, 976 API source inputs,
-11,510 installed Go 1.26.8 SDK files and 25,317 regular audit inputs agree.
+kernel/image/legal guards: all 1,270 tracked witnesses, 977 API source inputs,
+11,510 installed Go 1.26.8 SDK files and 25,319 regular audit inputs agree.
 Configured strip/installed/rootfs/export, kernel AND headers 6.18.55, source
 archives, release bindings, legal metadata and all seven artifact hashes match.
 
@@ -18,11 +18,12 @@ archives, release bindings, legal metadata and all seven artifact hashes match.
 | --- | --- |
 | API (10,708,180 bytes) | `edbafb68a8e4c42535403b13c1b5aacc9bf65dcd27c5fc4d1a2d4ce610a0c035` |
 | rootfs.ext2 (83,886,080 bytes) | `b5faf0b108a059a6e7bdd4ba1678a8964a26c77900b87694182dfa8efd47393f` |
-| API source archive | `42bc520ed8b0d0b6f049fc4d422387c8666991a353b88d39f341078d5dc7fd13` |
+| API source archive | `258851d0e1abe8eab46ac311a50b57d7102ebcdc8cdded28ed69dcda0f495865` |
 | SHA256SUMS | `efb2d88cdd9e79856a951c603b918e4e8445259dc64e8e07dae159bd9510a7e4` |
 
 The ninth guest qualifies original-open-file continuity and accepted
-cancellation/closure, not file-loss or in-flight transfer faults. The fixed
+cancellation/closure; the tenth qualifies source-alias loss with that original
+idle opening. Neither qualifies pending I/O, physical disk failure or recovery. The fixed
 idle exit request now runs inside the exclusive supervisor after its first
 complete scan. A controlled actual ARM timing probe reproduces the previous
 competing-request race; this does not explain all older uninstrumented failures.
@@ -41,8 +42,13 @@ byte equality; these were audit expectations, not runtime defects.
 
 This supersedes the earlier host3.5.8 cached image below, not its dated evidence.
 The core Go/reviewed-Close checkpoint passed its own hosted checks and merged
-into `develop`; this separate host update needs its own hosted checks. Independent
-clean reproduction, a fresh host-Python header rebuild, full upstream regression
+into `develop`; this separate host update needs its own hosted checks.
+
+The existing update PR's own hosted QEMU run fails native Enable at its shared
+60-second fixture deadline. An unchanged-source CPU differential reproduces
+the outer expiry locally, not the identical inner boundary; normal-quota native
+qualification passes. No retry, budget waiver or causal hosted fix is claimed.
+Independent clean reproduction, a fresh host-Python header rebuild, full upstream regression
 coverage, remaining advisory dispositions and EX4 host-consumer/hardware/release
 qualification remain separate. No target OpenSSL, NAS HTTPS exposure, physical
 disk operation or vulnerability-free/licensing-complete assertion.

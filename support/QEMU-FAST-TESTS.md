@@ -832,9 +832,13 @@ durable reconnect or product recovery.
 All ten actual ARMv5 overlay guests pass, with independent replay of every
 saved actual log and all 1,270 source witnesses (977 API inputs), equal runtime
 censuses and unchanged original artifact hashes. All 71 Linux verifier tests,
-lint, shell and default/focused wrapper checks pass. This does not qualify the
-new complete image/archive/SBOM or own-head hosted checks; the base's audit
-describes its 976-input API, not the injected candidate.
+lint, shell and default/focused wrapper checks pass. That overlay alone did not
+qualify the new image/archive/SBOM. Frozen `382004a` subsequently passes the
+complete cached host/ARMv5 lane, all ten Samba guests and both synthetic SMART
+lanes; an independent post-terminal audit matches all 1,270 source witnesses,
+977 API inputs, images/archives/SDK/kernel/headers/OpenSSL consumer/legal/SBOM
+and 25,319 reread audit inputs. This does not establish independent clean or
+own-head hosted qualification; the actual native Enable CI timeout remains open.
 
 The fixed exit qualification injects its canceled, admitted and repeated
 requests inside the original service's exclusive loop after a complete scan,
