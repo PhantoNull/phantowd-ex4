@@ -790,7 +790,7 @@ For a focused local diagnosis, select exactly one unchanged guest campaign:
 ```
 
 Allowed selections are `service`, `native`, `candidate`, `lifecycle`, `fault`,
-`data`, `exit`, `held` and default `all`.
+`data`, `exit`, `held`, focused-only `file` and default `all`.
 Invalid values fail before guest/fixture construction. A focused run still
 compiles current source, checks all base hashes, uses read-only inputs and
 bounded tmpfs, verifies that phase's exact proof, retains its 180-second limit
@@ -805,6 +805,18 @@ older proofs remain mandatory and unchanged; no old idle observer is relabeled
 to cover the extra group. Complete mode requires all eight ordered logs and
 equal runtime census, with one overlay compilation and independent snapshots.
 This does not qualify open data handles, in-flight loss or durable reconnect.
+
+The separate developmental `file` selection opens one existing synthetic file
+once through the same authorized client and daemon. Qualification requires
+original retained-object/open matching, complete original identity/storage
+rechecks, exclusive serialized supervision, verified cancellation group stop,
+retention until full Close, repeated-close/closed-observer refusal and FD/base
+equality. It is not included in default `all`: an eight-campaign pass does not
+establish file coverage. Run `-Campaign file` explicitly in addition to the
+existing regression union. Startup/data/supervision/worker/stop/guest limits
+are unchanged. Start's complete post-admission match and the supervisor's next
+complete scan are required; no extra duplicate fixture scan consumes the
+supervision budget. This does not prove mid-I/O faults or product safety.
 
 For troubleshooting, add `-DiagnosticLogs` to the same command. After each
 guest exits, this opt-in mode emits its complete bounded log as one escaped JSON

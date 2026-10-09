@@ -56,7 +56,7 @@ func qualifyPlannedSupervisionQEMU(ctx context.Context, service *smbexec.NativeP
 			}
 			// Status is telemetry, never an admission token. The supervisor owns
 			// the exclusive gate even between scans; none of these may compete.
-			for _, operation := range []func(context.Context) error{service.Observe, service.Start, service.VerifyDataAccess, service.StartHeldSessionQEMU, service.Close} {
+			for _, operation := range []func(context.Context) error{service.Observe, service.Start, service.VerifyDataAccess, service.StartHeldSessionQEMU, service.StartHeldOpenFileQEMU, service.Close} {
 				if err := operation(ctx); !errors.Is(err, processowner.ErrBusy) {
 					cancelLoop()
 					return errors.Join(errors.New("planned supervision lost exclusive lifecycle"), err, <-completed)
@@ -77,7 +77,7 @@ func qualifyPlannedSupervisionQEMU(ctx context.Context, service *smbexec.NativeP
 			if !errors.Is(owner.Close(), identityowner.ErrBusy) || !errors.Is(handoff.Close(), mountowner.ErrHandoffBusy) {
 				return errors.New("planned stopped supervision lost original authorities")
 			}
-			for _, operation := range []func(context.Context) error{service.Start, service.Observe, service.VerifyDataAccess, service.StartHeldSessionQEMU} {
+			for _, operation := range []func(context.Context) error{service.Start, service.Observe, service.VerifyDataAccess, service.StartHeldSessionQEMU, service.StartHeldOpenFileQEMU} {
 				if err := operation(ctx); !errors.Is(err, runtimebundle.ErrReviewRequired) {
 					return errors.New("planned stopped service resumed without new admission")
 				}

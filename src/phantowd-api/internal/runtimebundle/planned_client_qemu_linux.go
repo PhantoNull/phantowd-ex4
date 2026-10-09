@@ -7,6 +7,7 @@ package runtimebundle
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"os"
 	"time"
@@ -19,6 +20,16 @@ import (
 // The containing coordinator must verify its original storage/identity on both
 // sides and prove the actual complete session inventory, outside this gate.
 func (r *NativeSambaRuntimeQEMU) StartPlannedClientQEMU(ctx context.Context) (result error) {
+	return r.startPlannedClientQEMU(ctx, false)
+}
+
+// Separate fixed file holder; the coordinator must retain/match the actual
+// original object and recheck complete original storage/identity authority.
+func (r *NativeSambaRuntimeQEMU) StartPlannedFileClientQEMU(ctx context.Context) error {
+	return r.startPlannedClientQEMU(ctx, true)
+}
+
+func (r *NativeSambaRuntimeQEMU) startPlannedClientQEMU(ctx context.Context, file bool) (result error) {
 	if err := r.enter(ctx); err != nil {
 		return err
 	}
@@ -31,6 +42,7 @@ func (r *NativeSambaRuntimeQEMU) StartPlannedClientQEMU(ctx context.Context) (re
 		return err
 	}
 	r.plannedClientAttempted = true
+	r.plannedFileClient = file
 	defer func() {
 		if result != nil {
 			r.owner.review = true
@@ -52,6 +64,11 @@ func (r *NativeSambaRuntimeQEMU) StartPlannedClientQEMU(ctx context.Context) (re
 		},
 		ReadyTimeout: 4 * time.Second, ProbeInterval: 100 * time.Millisecond, StopTimeout: time.Second,
 	}}
+	if file {
+		spec.Name = "planned-file-qpsecond"
+		spec.Process.Args = []string{"native-file-session"}
+		spec.Process.Ready = r.plannedFileClientReadyQEMU
+	}
 	var err error
 	r.plannedClient, err = processowner.NewPinnedSet([]processowner.MemberSpec{spec}, []*os.File{r.helper})
 	if err != nil {
@@ -95,11 +112,19 @@ type PlannedHeldStopObservationQEMU struct {
 // The unused two-client inventory remains required unchanged; this separate
 // observer additionally proves the actually started single holder's settlement.
 func (r *NativeSambaRuntimeQEMU) ObservePlannedHeldStopQEMU(ctx context.Context) (PlannedHeldStopObservationQEMU, error) {
+	return r.observePlannedClientStopQEMU(ctx, false)
+}
+
+func (r *NativeSambaRuntimeQEMU) ObservePlannedFileStopQEMU(ctx context.Context) (PlannedHeldStopObservationQEMU, error) {
+	return r.observePlannedClientStopQEMU(ctx, true)
+}
+
+func (r *NativeSambaRuntimeQEMU) observePlannedClientStopQEMU(ctx context.Context, file bool) (PlannedHeldStopObservationQEMU, error) {
 	if err := r.enter(ctx); err != nil {
 		return PlannedHeldStopObservationQEMU{}, err
 	}
 	defer func() { <-r.gate }()
-	if r.closed || !r.plannedClientAttempted || r.plannedClient == nil || r.plannedClientPID <= 1 || r.plannedClientStopErr != nil {
+	if r.closed || !r.plannedClientAttempted || r.plannedFileClient != file || r.plannedClient == nil || r.plannedClientPID <= 1 || r.plannedClientStopErr != nil {
 		return PlannedHeldStopObservationQEMU{}, ErrReviewRequired
 	}
 	base, err := r.observePlannedStopQEMU(ctx)
@@ -107,7 +132,11 @@ func (r *NativeSambaRuntimeQEMU) ObservePlannedHeldStopQEMU(ctx context.Context)
 		return PlannedHeldStopObservationQEMU{}, err
 	}
 	client, err := r.plannedClient.Observe(ctx)
-	if err != nil || client.Generation != 1 || len(client.Members) != 1 || client.Members[0].Name != "planned-qpsecond" {
+	name := "planned-qpsecond"
+	if file {
+		name = "planned-file-qpsecond"
+	}
+	if err != nil || client.Generation != 1 || len(client.Members) != 1 || client.Members[0].Name != name {
 		return PlannedHeldStopObservationQEMU{}, errors.Join(ErrReviewRequired, err)
 	}
 	member := client.Members[0].Process
@@ -119,4 +148,31 @@ func (r *NativeSambaRuntimeQEMU) ObservePlannedHeldStopQEMU(ctx context.Context)
 		return PlannedHeldStopObservationQEMU{}, err
 	}
 	return PlannedHeldStopObservationQEMU{DaemonStopped: base.DaemonStopped, ClientStopped: stopped, InputsRetained: base.InputsRetained}, nil
+}
+
+// This bounded availability probe is NOT a file/session/object witness. The
+// containing coordinator independently applies its complete strict parser and
+// original-object binding after Start. Only a complete empty producer inventory
+// permits waiting for the same single client; failures never retry or reopen.
+func (r *NativeSambaRuntimeQEMU) plannedFileClientReadyQEMU(ctx context.Context) (bool, error) {
+	output, err := r.executeQEMU(ctx, processowner.NativeSambaStatusQEMU, "", nil)
+	defer clear(output)
+	if err != nil {
+		return false, err
+	}
+	var status struct {
+		Version string                     `json:"version"`
+		Files   map[string]json.RawMessage `json:"open_files"`
+	}
+	if len(output) == 0 || len(output) > 1<<20 || json.Unmarshal(output, &status) != nil || status.Version != "4.22.11" || status.Files == nil || len(status.Files) > 1 {
+		return false, ErrMismatch
+	}
+	if len(status.Files) == 0 {
+		return false, nil
+	}
+	_, expected := status.Files["/shares/writable/created"]
+	if !expected {
+		return false, ErrMismatch
+	}
+	return true, nil
 }

@@ -95,6 +95,13 @@ func run() error {
 		}
 		return err
 	}
+	if len(os.Args) == 2 && os.Args[1] == "native-planned-file" && os.Getuid() == 0 && os.Geteuid() == 0 {
+		err := nativeCredentialFixture(nativePlannedOpenFileCampaignQEMU)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "native planned file fixture:", err)
+		}
+		return err
+	}
 	if len(os.Args) == 2 && os.Args[1] == "native-planned-exit" && os.Getuid() == 0 && os.Geteuid() == 0 {
 		err := nativeCredentialFixture(nativePlannedExitCampaignQEMU)
 		if err != nil {

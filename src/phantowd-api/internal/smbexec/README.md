@@ -335,7 +335,7 @@ A post-run negative-only Close/Status regression preserves review telemetry
 when a prior close error prohibits cleanup retry. Invalid runtime admission
 cannot start or own a process; this does not qualify live uncertain teardown.
 
-### Private open-file status prerequisite (host tests only)
+### Private open-file status and original-object composition (QEMU only)
 
 `ObservePlannedOpenFileQEMU` and `VerifyPlannedOpenFileQEMU` use the existing
 fixed, bounded, read-only status operation. The private non-serializable
@@ -347,13 +347,20 @@ ambiguous, failed or canceled status; none authorizes recovery or replacement.
 Case aliases are rejected for interpreted fields in this observer only; the
 general status reader's contract is unchanged.
 
-Root command-boundary tests and race-count3 pass, alongside non-root regression
-checks and ARMv5 cross-compilation. No actual open-file guest proof is claimed.
-This is NOT an original Owner-held file/object witness: a later coordinator
-must independently retain/match that object and bracket observations with
-complete original storage/identity rechecks. The composed service does not
-consume this prerequisite yet. Existing IPC$ holder proofs, admission,
-supervision, worker/stop budgets and product boundaries remain unchanged.
+The standalone status observation is NOT an original retained-object witness.
+The separate fixed `StartHeldOpenFileQEMU` now retains the existing synthetic
+file through its original share root, matches that object's device/inode to the
+strict opening observation, and rechecks both original storage/identity
+authorities after admission and in the exclusive supervisor. The pinned
+producer reports the configured tree name `Writable` exactly; lowercase is
+not a substitute. IPC$ and file holders are mutually exclusive in one lifetime.
+
+The actual cleaned-source focused `file` guest qualifies original-object/open
+continuity, verified cancellation group stop, retained object/15 inputs/both
+authorities, full runtime Close before release, repeat/closed refusal and FD
+equality. It is separate from default all eight older campaigns. This is not
+mid-I/O loss, durable reconnect, full-image or product qualification. Existing
+IPC$ proofs and admission/supervision/worker/stop budgets are unchanged.
 
 ### Composed source-alias fault (QEMU only)
 

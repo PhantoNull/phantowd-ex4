@@ -3,7 +3,33 @@
 
 # Implementation status
 
-## Private open-file status prerequisite (host only)
+## Original open-file continuity and cancellation (focused QEMU only)
+
+The explicit `file` campaign now opens one existing synthetic file exactly
+once through the original authorized Samba client and daemon. The composed
+Owner privately retains the original O_PATH object and matches its device/inode
+with the strict complete opening/session/tree/server-generation observation.
+Original storage/identity qualification remains required after admission and
+in the exclusive fixed-interval serialized supervisor. Accepted cancellation
+verifies whole client/daemon group stop and retains the object, all15 runtime
+inputs and both authorities until successful full runtime Close. Repeated
+Close, closed-observer refusal, FD equality and unchanged base hashes pass in
+an actual cleaned-source ARMv5 guest. No caller-selected command/path, reopen,
+replacement holder, restart, HTTP or product activation is added.
+
+The configured producer tree name `Writable` is matched exactly; a reproduced
+lowercase assumption is corrected without case folding. An isolated timed
+guest exposed a redundant fixture Observe consuming the fixed20s supervision
+action; only that duplicate is removed. Start's post-admission and supervised
+complete rechecks and all original limits remain unchanged. This is not a
+universal timing guarantee or a demonstrated fix for older hosted failures.
+
+`file` is focused-only, not included in default `all`; this new proof does not
+replace current-source regression of the eight older guests, an exact current
+full image/SBOM audit or hosted qualification. It does not qualify mid-I/O loss,
+durable reconnect, physical EX4, disk migration or a supported release.
+
+## Earlier private open-file status prerequisite (host only)
 
 The QEMU/Linux-tagged backend can privately observe and recheck one fixed
 Samba 4.22.11 `writable/created` opening. The witness binds the same backend,

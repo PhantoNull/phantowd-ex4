@@ -18,7 +18,7 @@ import (
 // not a real open-file/retained-disk qualification. share_file_id is a STRING
 // in that producer, unlike the numeric example in the current manual.
 func testPlannedOpenFileJSONQEMU() string {
-	return `{"version":"4.22.11","sessions":{"1000000000002":{"session_id":"1000000000002","username":"qpsecond","uid":2001,"gid":2001,"server_id":{"pid":"1002","task_id":"0","vnn":"4294967295","unique_id":"987654321"}}},"tcons":{"21":{"service":"writable","session_id":"1000000000002","tcon_id":"21","server_id":{"pid":"1002","task_id":"0","vnn":"4294967295","unique_id":"987654321"}}},"open_files":{"/shares/writable/created":{"service_path":"/shares/writable","filename":"created","fileid":{"devid":8,"inode":123456,"extid":0},"num_pending_deletes":0,"opens":{"1002/42":{"server_id":{"pid":"1002","task_id":"0","vnn":"4294967295","unique_id":"987654321"},"uid":2001,"share_file_id":"42","access_mask":{"hex":"0x00000003","READ_DATA":true,"WRITE_DATA":true}}}}}}`
+	return `{"version":"4.22.11","sessions":{"1000000000002":{"session_id":"1000000000002","username":"qpsecond","uid":2001,"gid":2001,"server_id":{"pid":"1002","task_id":"0","vnn":"4294967295","unique_id":"987654321"}}},"tcons":{"21":{"service":"Writable","session_id":"1000000000002","tcon_id":"21","server_id":{"pid":"1002","task_id":"0","vnn":"4294967295","unique_id":"987654321"}}},"open_files":{"/shares/writable/created":{"service_path":"/shares/writable","filename":"created","fileid":{"devid":8,"inode":123456,"extid":0},"num_pending_deletes":0,"opens":{"1002/42":{"server_id":{"pid":"1002","task_id":"0","vnn":"4294967295","unique_id":"987654321"},"uid":2001,"share_file_id":"42","access_mask":{"hex":"0x00000003","READ_DATA":true,"WRITE_DATA":true}}}}}}`
 }
 
 func TestNativePlannedFileRequiresSameObservedSessionAndOpenGeneration(t *testing.T) {
@@ -49,6 +49,31 @@ func TestNativePlannedFileRequiresSameObservedSessionAndOpenGeneration(t *testin
 	}
 	if _, err := json.Marshal(original); err == nil || json.Unmarshal([]byte(`{}`), &original) == nil {
 		t.Fatal("private file observation crossed serialization boundary")
+	}
+}
+
+func TestNativePlannedFileAcceptsExactConfiguredServiceName(t *testing.T) {
+	if os.Geteuid() != 0 {
+		t.Skip("trusted Samba adapter tests require root-owned fixture config")
+	}
+	fixture := testPlannedOpenFileJSONQEMU()
+	backend, err := testBackend(t, secureConfig(t), runnerFunc(func(context.Context, string, []string, *os.File, []byte, bool) ([]byte, error) {
+		return []byte(fixture), nil
+	}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	native := &NativeBackendQEMU{inner: backend}
+	original, err := native.ObservePlannedOpenFileQEMU(context.Background())
+	if err != nil {
+		t.Fatal("pinned producer's exact configured share name was refused:", err)
+	}
+	if err := native.VerifyPlannedOpenFileQEMU(context.Background(), original); err != nil {
+		t.Fatal(err)
+	}
+	fixture = strings.Replace(fixture, `"service":"Writable"`, `"service":"writable"`, 1)
+	if err := native.VerifyPlannedOpenFileQEMU(context.Background(), original); !errors.Is(err, ErrUnavailable) {
+		t.Fatal("different declared service name bypassed exact matching:", err)
 	}
 }
 
@@ -151,7 +176,7 @@ func TestNativePlannedFileRefusesIncompleteAmbiguousOrForeignStatus(t *testing.T
 		{"aliased version", `"version":`, `"VERSION":`},
 		{"aliased access", `"READ_DATA":true`, `"read_data":true`},
 		{"tree key mismatch", `"tcon_id":"21"`, `"tcon_id":"22"`},
-		{"foreign tree", `"service":"writable"`, `"service":"readonly"`},
+		{"foreign tree", `"service":"Writable"`, `"service":"readonly"`},
 		{"extra tree", `"tcons":{`, `"tcons":{"22":{},`},
 		{"extra file", `"open_files":{`, `"open_files":{"/other":{},`},
 		{"extra open", `"opens":{`, `"opens":{"1002/43":{},`},

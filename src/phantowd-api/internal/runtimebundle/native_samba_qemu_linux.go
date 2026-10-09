@@ -57,6 +57,7 @@ type NativeSambaRuntimeQEMU struct {
 	plannedExitAttempted       bool
 	plannedClient              *processowner.PinnedSet
 	plannedClientAttempted     bool
+	plannedFileClient          bool
 	plannedClientPID           int
 	plannedClientStopAttempted bool
 	plannedClientStopErr       error
@@ -182,6 +183,15 @@ func (r *NativeSambaRuntimeQEMU) ExecuteQEMU(ctx context.Context, operation proc
 		return nil, err
 	}
 	defer func() { <-r.gate }()
+	return r.executeQEMU(ctx, operation, name, stdin)
+}
+
+// Only fixed runtime readiness may call this while already holding the gate.
+// No authority callback, gate re-entry or caller-selected process is introduced.
+func (r *NativeSambaRuntimeQEMU) executeQEMU(ctx context.Context, operation processowner.NativeSambaOperationQEMU, name string, stdin []byte) ([]byte, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	if r.closed || r.owner.review || r.pending != nil {
 		return nil, ErrReviewRequired
 	}

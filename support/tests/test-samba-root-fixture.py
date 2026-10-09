@@ -86,6 +86,40 @@ def campaign_rows():
 
 
 class SambaRootFixture(unittest.TestCase):
+    def test_open_file_probe_requires_original_object_proof(self):
+        marker = (
+            "PHANTOWD_SAMBA_OWNER_PLANNED_OPEN_FILE_READY "
+            "same_authorities=true same_daemon=true data_verified=true "
+            "original_object=true original_open=true "
+            "exclusive_supervision=true "
+            "accepted_cancellation=true client_daemon_stopped=true "
+            "private_inputs=15 original_file_retained=true "
+            "originals_busy=true "
+            "old_observers_refused=true runtime_close_before_release=true "
+            "repeated_close=true closed_refused=true no_fd_leak=true "
+            "activation=false scope=qemu-only")
+        enrollment = next(row for row in fixture.MARKERS if row.startswith(
+            "PHANTOWD_SAMBA_OWNER_NATIVE_ENROLLMENT_READY"))
+        rows = [*fixture.MARKERS[:3], CENSUS, enrollment, marker,
+                "PHANTOWD_SAMBA_ROOT_FILE_DONE", SCAN_COST]
+        fixture.check_campaign("\n".join(rows), "file")
+        self.assertEqual(fixture.select_campaigns("file"), ("file",))
+        self.assertNotIn("file", fixture.select_campaigns("all"))
+        for field in ("original_object", "original_open",
+                      "original_file_retained",
+                      "originals_busy", "client_daemon_stopped",
+                      "runtime_close_before_release", "no_fd_leak"):
+            for replacement in ("", field + "=false"):
+                with self.subTest(field=field, replacement=replacement):
+                    with self.assertRaises(ValueError):
+                        fixture.check_campaign("\n".join(rows).replace(
+                            field + "=true", replacement), "file")
+        for replacement in ("", fixture.PLANNED_HELD_CLOSE_MARKER,
+                            marker + "\n" + marker):
+            with self.assertRaises(ValueError):
+                fixture.check_campaign("\n".join(rows).replace(
+                    marker, replacement), "file")
+
     def test_held_cancellation_requires_separate_complete_close_proof(self):
         marker = (
             "PHANTOWD_SAMBA_OWNER_PLANNED_HELD_CLOSE_READY "

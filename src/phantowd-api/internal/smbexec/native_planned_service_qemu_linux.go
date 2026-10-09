@@ -10,6 +10,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"os"
 	"sync/atomic"
 	"time"
 
@@ -57,6 +58,8 @@ type NativePlannedServiceQEMU struct {
 	pendingRoots  []mountowner.ServiceShareDescriptorQEMU
 	heldAttempted bool
 	heldSession   NativePlannedSessionQEMU
+	heldFile      NativePlannedOpenFileQEMU
+	originalFile  *os.File
 }
 
 type NativePlannedStatusQEMU struct {
@@ -174,6 +177,9 @@ func (s *NativePlannedServiceQEMU) verify(ctx context.Context) error {
 	}
 	if s.heldSession.backend != nil {
 		return s.inputs.Backend.VerifyPlannedSessionQEMU(ctx, s.heldSession)
+	}
+	if s.heldFile.backend != nil {
+		return s.verifyPlannedOriginalFileQEMU(ctx)
 	}
 	return nil
 }
@@ -367,6 +373,10 @@ func (s *NativePlannedServiceQEMU) Close(ctx context.Context) error {
 			return s.quarantine(err)
 		}
 		s.runtimeClosed, s.stopped = true, true
+		if err := s.closePlannedOriginalFileQEMU(); err != nil {
+			s.closeErr = err
+			return s.quarantine(err)
+		}
 		if err := s.lease.Release(); err != nil {
 			s.closeErr = err
 			return s.quarantine(err)

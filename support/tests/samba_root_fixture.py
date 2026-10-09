@@ -13,6 +13,8 @@ from runtime_loader_fixture import MAX_LOG, MAX_REPORT, read_bounded, validate
 
 CAMPAIGNS = ("service", "native", "candidate", "lifecycle", "fault", "data",
              "exit", "held")
+# Explicit development probe, not part of or qualified by the eight-log union.
+FOCUSED_CAMPAIGNS = (*CAMPAIGNS, "file")
 ENTRIES = ("usr/sbin/smbd", "usr/bin/smbpasswd", "usr/bin/testparm",
            "usr/lib/samba/vfs/streams_xattr.so", "usr/lib/gconv/IBM850.so",
            "usr/bin/pdbedit", "usr/bin/smbstatus", "usr/bin/smbcontrol")
@@ -56,6 +58,15 @@ PLANNED_HELD_CLOSE_MARKER = (
     "original_session=true exclusive_supervision=true "
     "accepted_cancellation=true client_daemon_stopped=true "
     "private_inputs=15 originals_retained=true "
+    "old_observers_refused=true runtime_close_before_release=true "
+    "repeated_close=true closed_refused=true no_fd_leak=true "
+    "activation=false scope=qemu-only")
+PLANNED_OPEN_FILE_MARKER = (
+    "PHANTOWD_SAMBA_OWNER_PLANNED_OPEN_FILE_READY "
+    "same_authorities=true same_daemon=true data_verified=true "
+    "original_object=true original_open=true exclusive_supervision=true "
+    "accepted_cancellation=true client_daemon_stopped=true "
+    "private_inputs=15 original_file_retained=true originals_busy=true "
     "old_observers_refused=true runtime_close_before_release=true "
     "repeated_close=true closed_refused=true no_fd_leak=true "
     "activation=false scope=qemu-only")
@@ -272,7 +283,7 @@ def check_guest(log):
 
 def check_campaign(log, phase):
     if (not isinstance(log, str) or len(log.encode("utf-8")) > MAX_LOG
-            or phase not in CAMPAIGNS):
+            or phase not in FOCUSED_CAMPAIGNS):
         raise ValueError("invalid campaign evidence")
     enrollment = next(i for i, row in enumerate(MARKERS)
                       if row.startswith(
@@ -309,6 +320,8 @@ def check_campaign(log, phase):
                            "PHANTOWD_SAMBA_ROOT_EXIT_DONE")),
         "held": (census + (MARKERS[enrollment], PLANNED_HELD_CLOSE_MARKER,
                            "PHANTOWD_SAMBA_ROOT_HELD_DONE")),
+        "file": (census + (MARKERS[enrollment], PLANNED_OPEN_FILE_MARKER,
+                           "PHANTOWD_SAMBA_ROOT_FILE_DONE")),
     }[phase]
     prefixes = ("PHANTOWD_SAMBA_ROOT_", "PHANTOWD_SAMBA_OWNER_")
     markers = tuple(line for line in log.splitlines()
@@ -324,7 +337,7 @@ def select_campaigns(selection):
         raise ValueError("invalid campaign selection")
     if selection == "all":
         return CAMPAIGNS
-    if selection not in CAMPAIGNS:
+    if selection not in FOCUSED_CAMPAIGNS:
         raise ValueError("invalid campaign selection")
     return (selection,)
 
@@ -332,7 +345,7 @@ def select_campaigns(selection):
 def diagnostic_record(log, phase, status):
     """Bounded escaped fixture telemetry, never campaign acceptance."""
     if (not isinstance(log, str) or len(log.encode("utf-8")) > MAX_LOG
-            or phase not in CAMPAIGNS
+            or phase not in FOCUSED_CAMPAIGNS
             or type(status) is not int or not 0 <= status <= 255):
         raise ValueError("invalid campaign diagnostics")
     return json.dumps({"format": "phantowd-qemu-campaign-diagnostic",
@@ -422,12 +435,12 @@ def main():
     verify.add_argument("--held-log")
     campaign = sub.add_parser("verify-campaign")
     campaign.add_argument("log")
-    campaign.add_argument("phase", choices=CAMPAIGNS)
+    campaign.add_argument("phase", choices=FOCUSED_CAMPAIGNS)
     selection = sub.add_parser("select-campaigns")
-    selection.add_argument("selection", choices=("all", *CAMPAIGNS))
+    selection.add_argument("selection", choices=("all", *FOCUSED_CAMPAIGNS))
     diagnostics = sub.add_parser("diagnostic-log")
     diagnostics.add_argument("log")
-    diagnostics.add_argument("phase", choices=CAMPAIGNS)
+    diagnostics.add_argument("phase", choices=FOCUSED_CAMPAIGNS)
     diagnostics.add_argument("status", type=int)
     args = parser.parse_args()
     if args.command == "prepare":

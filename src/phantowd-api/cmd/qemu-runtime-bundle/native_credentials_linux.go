@@ -32,10 +32,11 @@ const (
 	nativeIdentityFaultCampaignQEMU
 	nativePlannedExitCampaignQEMU
 	nativePlannedHeldCampaignQEMU
+	nativePlannedOpenFileCampaignQEMU
 )
 
 func nativeCredentialFixture(campaign nativeCredentialCampaignQEMU) (result error) {
-	if campaign > nativePlannedHeldCampaignQEMU {
+	if campaign > nativePlannedOpenFileCampaignQEMU {
 		return errors.New("native credential campaign guard")
 	}
 	commandLine, err := os.ReadFile("/proc/cmdline")
@@ -216,7 +217,7 @@ func nativeCredentialFixture(campaign nativeCredentialCampaignQEMU) (result erro
 		}
 	}
 	reportNativePhaseTimingQEMU(nativeFixtureEnrolledQEMU, started)
-	if campaign == nativePlannedDataCampaignQEMU || campaign == nativePlannedHeldCampaignQEMU {
+	if campaign == nativePlannedDataCampaignQEMU || campaign == nativePlannedHeldCampaignQEMU || campaign == nativePlannedOpenFileCampaignQEMU {
 		// Fresh guest: these are empty child mount destinations, not data
 		// authority or state inherited from the older credential campaign.
 		if err := owner.Close(); err != nil {
@@ -230,6 +231,9 @@ func nativeCredentialFixture(campaign nativeCredentialCampaignQEMU) (result erro
 		if campaign == nativePlannedHeldCampaignQEMU {
 			scenario = "held"
 		}
+		if campaign == nativePlannedOpenFileCampaignQEMU {
+			scenario = "file"
+		}
 		if err := nativePlannedServiceFixtureQEMU(plan, lookup, authority, inventory, scenario); err != nil {
 			return fmt.Errorf("native planned data: %w", err)
 		}
@@ -239,6 +243,10 @@ func nativeCredentialFixture(campaign nativeCredentialCampaignQEMU) (result erro
 			return errors.New("planned data credential descriptor leak")
 		}
 		nativeCredentialEnrollmentMarkerQEMU()
+		if campaign == nativePlannedOpenFileCampaignQEMU {
+			fmt.Println(plannedOpenFileMarkerQEMU)
+			return nil
+		}
 		if campaign == nativePlannedHeldCampaignQEMU {
 			fmt.Println(plannedHeldCloseMarkerQEMU)
 			return nil

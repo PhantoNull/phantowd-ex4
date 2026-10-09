@@ -156,7 +156,7 @@ func parsePlannedOpenFileQEMU(output []byte) (NativePlannedOpenFileQEMU, error) 
 	for id, tree := range root.Trees {
 		number, err := strconv.ParseUint(id, 10, 32)
 		if err != nil || number == 0 || strconv.FormatUint(number, 10) != id || tree.TreeID != id ||
-			tree.Service != "writable" || tree.SessionID != observed.session.SessionID || tree.ServerID != observed.session.ServerID {
+			tree.Service != "Writable" || tree.SessionID != observed.session.SessionID || tree.ServerID != observed.session.ServerID {
 			return NativePlannedOpenFileQEMU{}, ErrUnavailable
 		}
 		observed.treeID = id

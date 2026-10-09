@@ -24,6 +24,17 @@ A real unused-set premature-close regression qualifies only
 terminal error bookkeeping, not an admitted healthy runtime or kernel EIO.
 See [current evidence scope](../../../../IMPLEMENTATION-STATUS.md).
 
+The separate focused `file` campaign uses one fixed `qpsecond` client that
+opens the existing `writable/created` file exactly once. It does not create,
+truncate, reopen, reconnect or restart. Readiness is availability only; the
+containing service must independently match its retained original O_PATH
+object with the complete status observation and recheck original storage and
+identity. Its separate group observer refuses a profile mismatch; older
+idle/IPC$ observers cannot certify this file holder. Both original authorities
+and the original object remain held after verified client/daemon stop until
+full runtime closure. `file` is explicit and is not included in default `all`.
+This is not in-flight failure, durable reconnect or product activation.
+
 `runtimebundle` provides code verification and an internal retained-code Owner
 prototype for M4.4, not an approved runtime manifest or installation token. Ordinary
 product startup does not call it. It has no HTTP/RPC or JSON input/output.

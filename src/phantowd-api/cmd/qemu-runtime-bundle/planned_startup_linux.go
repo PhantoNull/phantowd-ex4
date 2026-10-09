@@ -50,7 +50,7 @@ func nativePlannedServiceFixtureQEMU(plan *runtimebundle.Plan, lookup fileservic
 			fmt.Fprint(os.Stderr, plannedFaultFailureDiagnosticQEMU(phase, result))
 		}
 	}()
-	if fault != "" && fault != "source" && fault != "exit" && fault != "held" {
+	if fault != "" && fault != "source" && fault != "exit" && fault != "held" && fault != "file" {
 		return errors.New("invalid fixed planned fault")
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 40*time.Second)
@@ -315,7 +315,11 @@ func nativePlannedServiceFixtureQEMU(plan *runtimebundle.Plan, lookup fileservic
 			os.Exit(0)
 			return errors.New("planned fault child did not exit")
 		}
-		if fault == "held" {
+		if fault == "file" {
+			if err := qualifyPlannedOpenFileQEMU(ctx, service, runtime, owner, handoff); err != nil {
+				return err
+			}
+		} else if fault == "held" {
 			if err := qualifyPlannedHeldCancellationQEMU(ctx, service, runtime, owner, handoff); err != nil {
 				return err
 			}

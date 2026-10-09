@@ -94,6 +94,9 @@ run_native_fixture() {
     elif [ "$campaign" = held ]; then
         /usr/sbin/phantowd-runtime-bundle-probe native-planned-held || return 1
         echo PHANTOWD_SAMBA_ROOT_HELD_DONE
+    elif [ "$campaign" = file ]; then
+        /usr/sbin/phantowd-runtime-bundle-probe native-planned-file || return 1
+        echo PHANTOWD_SAMBA_ROOT_FILE_DONE
     else
         /usr/sbin/phantowd-runtime-bundle-probe native-credentials || return 1
         echo PHANTOWD_SAMBA_ROOT_NATIVE_DONE
@@ -114,6 +117,7 @@ run_fixture() {
         phantowd_samba_campaign=data) campaign=data ;;
         phantowd_samba_campaign=exit) campaign='exit' ;;
         phantowd_samba_campaign=held) campaign=held ;;
+        phantowd_samba_campaign=file) campaign='file' ;;
         *) return 1 ;;
     esac
     # This guest has no normal hardware entropy sources. Require the real
