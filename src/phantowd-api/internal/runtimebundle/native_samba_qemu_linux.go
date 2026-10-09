@@ -13,6 +13,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/fileserviceplan"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/processowner"
@@ -220,23 +221,32 @@ func (r *NativeSambaRuntimeQEMU) executeQEMU(ctx context.Context, operation proc
 	r.pending = capture
 	// Duplicating inputs above has no command/state effects. Admit the complete
 	// retained tuple ONCE here, then recheck it after verified worker teardown.
-	if err := r.revalidateNativeRuntimeQEMU(ctx); err != nil {
+	stageStarted := time.Now()
+	admissionErr := r.revalidateNativeRuntimeQEMU(ctx)
+	reportNativeWorkerTimingQEMU(ctx, operation, nativeWorkerAdmissionQEMU, stageStarted, admissionErr)
+	if err := admissionErr; err != nil {
 		r.owner.review = true
 		// Close owns the pending unlaunched capture. Retain review and a private
 		// cause, but disclose only fixed phase/reason labels, never cause text.
 		return nil, r.nativeWorkerFailureQEMU(nativeWorkerAdmissionQEMU, err)
 	}
+	stageStarted = time.Now()
 	observed, runErr := capture.Capture(ctx)
+	reportNativeWorkerTimingQEMU(ctx, operation, nativeWorkerExecutionQEMU, stageStarted, runErr)
 	defer clear(observed.Stderr)
+	stageStarted = time.Now()
 	settled, settleErr := capture.Settled(context.Background())
 	closeErr := capture.Close(context.Background())
+	reportNativeWorkerTimingQEMU(ctx, operation, nativeWorkerSettlementQEMU, stageStarted, errors.Join(settleErr, closeErr))
 	if !settled || settleErr != nil || closeErr != nil {
 		clear(observed.Stdout)
 		r.owner.review = true
 		return nil, r.nativeWorkerFailureQEMU(nativeWorkerSettlementQEMU, errors.Join(settleErr, closeErr)) // Keep pending and all original authority.
 	}
 	r.pending = nil
+	stageStarted = time.Now()
 	checkErr := r.revalidateNativeRuntimeQEMU(ctx)
+	reportNativeWorkerTimingQEMU(ctx, operation, nativeWorkerPostAdmissionQEMU, stageStarted, checkErr)
 	if runErr != nil || observed.Kind != processowner.CaptureExited || observed.ExitCode != 0 || strings.Count(string(observed.Stderr), nativeCredentialHandoff) != 1 || checkErr != nil {
 		clear(observed.Stdout)
 		r.owner.review = true

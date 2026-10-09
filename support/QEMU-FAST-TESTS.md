@@ -902,6 +902,17 @@ with independent replay of all actual logs and source witnesses, equal runtime
 censuses and unchanged base images. This is not the changed full-image/archive/
 SBOM audit or own-head hosted qualification required before promotion.
 
+The fixed native fixture additionally emits `PHANTOWD_DIAG_NATIVE_LIVE`
+operation boundaries and `PHANTOWD_DIAG_NATIVE_WORKER` stage costs. Labels are
+typed and durations bounded; rows disclose only timings, remaining context
+budget and fixed cause classes, never account names, credentials, commands or
+worker output. They are always `qualifying=false`; expected negative controls
+can have `failed=true` even in a successful campaign. They do not reset a
+context, change deadlines/admissions, retry work or replace mandatory proofs.
+Preserve the complete diagnostics and tested source when comparing CPU quotas.
+A focused native pass and a same-source reduced-CPU refusal characterize timing;
+they do not qualify the default ten-guest union, a new whole image or hosted CI.
+
 For troubleshooting, add `-DiagnosticLogs` to the same command. After each
 guest exits, this opt-in mode emits its complete bounded log as one escaped JSON
 record (`phantowd-qemu-campaign-diagnostic`, schema 1, `qualifying=false`) with

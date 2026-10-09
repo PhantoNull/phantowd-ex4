@@ -3,6 +3,25 @@
 
 # Implementation status
 
+## Native timing diagnosis: focused host/QEMU only
+
+Fixed QEMU-only live-operation and worker-stage telemetry now separates the
+shared phase budget from individual admission/execution/settlement checks.
+Typed labels, bounded durations and redacted cause classes disclose no account,
+command, password or worker output; diagnostic rows never qualify a campaign.
+Original contexts, verification calls, deadlines and no-retry behavior remain.
+Pinned Go 1.26.8 vet/unit/race tests and ARMv5 cross-compilation pass.
+
+One focused native ARMv5 campaign passes with its mandatory proofs and an
+independent log replay: the live phase finishes in approximately 30 of 45 seconds.
+An unchanged-source CPU-quota control exhausts the same 45-second parent during
+the changed-pair post-admission check, after revocation completes. An earlier
+local run instead fails an internal worker deadline with the parent still valid.
+These are distinct measured boundaries, not a causal fix for intermittent timing.
+The latest OpenSSL integration PR still fails its own hosted QEMU fresh-login
+deadline. No local result waives that gate, qualifies a new complete image,
+changes the exclusive supervisor or enables product/NAS services.
+
 ## Pending-write client prerequisite: host mock / compile only
 
 A distinct fixed same-open client now has passing C orchestration tests under

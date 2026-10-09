@@ -544,12 +544,20 @@ class SambaRootFixture(unittest.TestCase):
         with self.assertRaises(ValueError):
             fixture.check_campaign(good, "lifecycle")
 
-    def test_native_phase_timing_cannot_replace_or_weaken_acceptance(self):
+    def test_native_timing_cannot_replace_or_weaken_acceptance(self):
         timings = "\n".join(
             "PHANTOWD_DIAG_NATIVE_PHASE phase=" + phase
             + " elapsed_ms=123 qualifying=false scope=qemu-only"
             for phase in ("entered", "admitted", "enrolled",
                           "authority-closed", "data-verified"))
+        timings += ("\nPHANTOWD_DIAG_NATIVE_LIVE operation=revoke state=end "
+                    "phase_ms=24012 operation_ms=15809 remaining_ms=20987 "
+                    "parent_done=false failed=true cause=other "
+                    "qualifying=false scope=qemu-only\n"
+                    "PHANTOWD_DIAG_NATIVE_WORKER operation=status "
+                    "phase=execution elapsed_ms=1000 remaining_ms=0 "
+                    "parent_done=true failed=true cause=deadline "
+                    "qualifying=false scope=qemu-only")
         good = "\n".join([*fixture.MARKERS, SCAN_COST])
         fixture.check_guest(timings + "\n" + good)
         with self.assertRaises(ValueError):

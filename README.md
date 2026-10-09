@@ -87,7 +87,8 @@ complete fault coverage or an installable release. The native QEMU fixture now
 separates preparation from enrollment and preserves the cause of incomplete
 revocation observations. Behavioral regression tests and the complete local
 lane pass; the integration PR still requires new-head hosted qualification.
-This does not establish a fix for every earlier hosted timing failure.
+Hosted QEMU qualification still fails at a later live-session deadline;
+local success does not establish a timing fix or waive that gate.
 The core checkpoint passed its own hosted checks and merged into `develop`;
 the separate OpenSSL update must pass its own hosted checks before integration. No product
 SMB/NFS service is activated; see [implementation status](IMPLEMENTATION-STATUS.md).

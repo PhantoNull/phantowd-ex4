@@ -425,41 +425,68 @@ func nativeCredentialFixture(campaign nativeCredentialCampaignQEMU) (result erro
 	sessionContext, stopSessionContext := context.WithTimeout(context.Background(), 45*time.Second)
 	defer stopSessionContext()
 	sessionStarted := time.Now()
-	if err := runtime.StartNativeClientsQEMU(sessionContext); err != nil {
+	liveOperationStarted := beginNativeLiveTimingQEMU(sessionContext, nativeLiveClientsQEMU, sessionStarted)
+	err = runtime.StartNativeClientsQEMU(sessionContext)
+	reportNativeLiveTimingQEMU(sessionContext, nativeLiveClientsQEMU, false, sessionStarted, liveOperationStarted, err)
+	if err != nil {
 		return fmt.Errorf("native held session clients: %w", err)
 	}
+	liveOperationStarted = beginNativeLiveTimingQEMU(sessionContext, nativeLivePairObserveQEMU, sessionStarted)
 	pair, err := backend.ObserveNativeSessionPairQEMU(sessionContext)
+	reportNativeLiveTimingQEMU(sessionContext, nativeLivePairObserveQEMU, false, sessionStarted, liveOperationStarted, err)
 	if err != nil {
 		return fmt.Errorf("native real qualified session pair: %w", err)
 	}
-	if err := backend.VerifyNativeSessionPairQEMU(sessionContext, pair); err != nil {
+	liveOperationStarted = beginNativeLiveTimingQEMU(sessionContext, nativeLivePairVerifyQEMU, sessionStarted)
+	err = backend.VerifyNativeSessionPairQEMU(sessionContext, pair)
+	reportNativeLiveTimingQEMU(sessionContext, nativeLivePairVerifyQEMU, false, sessionStarted, liveOperationStarted, err)
+	if err != nil {
 		return fmt.Errorf("native original held pair continuity: %w", err)
 	}
+	liveOperationStarted = beginNativeLiveTimingQEMU(sessionContext, nativeLiveRevokeQEMU, sessionStarted)
 	successor, err := disable.DisableForFileService(sessionContext, journal.Revision, consumer)
+	reportNativeLiveTimingQEMU(sessionContext, nativeLiveRevokeQEMU, false, sessionStarted, liveOperationStarted, err)
 	if err != nil {
 		return fmt.Errorf("native live session revoke elapsed=%v context=%v: %w", time.Since(sessionStarted), sessionContext.Err(), err)
 	}
 	revocationLeases = append(revocationLeases, successor)
-	if err := consumer.Verify(sessionContext); !errors.Is(err, identityowner.ErrReview) {
+	liveOperationStarted = beginNativeLiveTimingQEMU(sessionContext, nativeLiveOldConsumerQEMU, sessionStarted)
+	err = consumer.Verify(sessionContext)
+	reportNativeLiveTimingQEMU(sessionContext, nativeLiveOldConsumerQEMU, false, sessionStarted, liveOperationStarted, err)
+	if !errors.Is(err, identityowner.ErrReview) {
 		return errors.New("native superseded identity token verified")
 	}
-	if err := successor.Verify(sessionContext); err != nil {
+	liveOperationStarted = beginNativeLiveTimingQEMU(sessionContext, nativeLiveSuccessorQEMU, sessionStarted)
+	err = successor.Verify(sessionContext)
+	reportNativeLiveTimingQEMU(sessionContext, nativeLiveSuccessorQEMU, false, sessionStarted, liveOperationStarted, err)
+	if err != nil {
 		return fmt.Errorf("native successor identity evidence: %w", err)
 	}
 	if err := owner.Close(); !errors.Is(err, identityowner.ErrBusy) {
 		return errors.New("native successor did not retain identity authority")
 	}
+	liveOperationStarted = beginNativeLiveTimingQEMU(sessionContext, nativeLiveJournalQEMU, sessionStarted)
 	journal, err = disable.Load(sessionContext)
+	reportNativeLiveTimingQEMU(sessionContext, nativeLiveJournalQEMU, false, sessionStarted, liveOperationStarted, err)
 	if err != nil || journal.Phase != smbprovision.Disabled || journal.SID != sid {
 		return errors.New("native live session disabled confirmation")
 	}
-	if err := backend.VerifyNativePeerSessionQEMU(sessionContext, pair); err != nil {
+	liveOperationStarted = beginNativeLiveTimingQEMU(sessionContext, nativeLivePeerQEMU, sessionStarted)
+	err = backend.VerifyNativePeerSessionQEMU(sessionContext, pair)
+	reportNativeLiveTimingQEMU(sessionContext, nativeLivePeerQEMU, false, sessionStarted, liveOperationStarted, err)
+	if err != nil {
 		return fmt.Errorf("native same peer session elapsed=%v context=%v: %w", time.Since(sessionStarted), sessionContext.Err(), err)
 	}
-	if err := requireNativeRevokedPairChangedQEMU(backend.VerifyNativeSessionPairQEMU(sessionContext, pair)); err != nil {
+	liveOperationStarted = beginNativeLiveTimingQEMU(sessionContext, nativeLiveChangedPairQEMU, sessionStarted)
+	err = requireNativeRevokedPairChangedQEMU(backend.VerifyNativeSessionPairQEMU(sessionContext, pair))
+	reportNativeLiveTimingQEMU(sessionContext, nativeLiveChangedPairQEMU, false, sessionStarted, liveOperationStarted, err)
+	if err != nil {
 		return err
 	}
-	if err := runtime.VerifyNativeIdleDisableQEMU(sessionContext); err != nil {
+	liveOperationStarted = beginNativeLiveTimingQEMU(sessionContext, nativeLiveFreshLoginQEMU, sessionStarted)
+	err = runtime.VerifyNativeIdleDisableQEMU(sessionContext)
+	reportNativeLiveTimingQEMU(sessionContext, nativeLiveFreshLoginQEMU, false, sessionStarted, liveOperationStarted, err)
+	if err != nil {
 		return fmt.Errorf("native revoked fresh login elapsed=%v context=%v: %w", time.Since(sessionStarted), sessionContext.Err(), err)
 	}
 	reportNativePhaseTimingQEMU(nativeFixtureLiveVerifiedQEMU, started)

@@ -380,6 +380,16 @@ button to an unqualified backend simply because the screen exists.
   deadline at client preparation. Do not conflate these with hosted continuity
   expiry. New full source/image audit, repeatable-load and own-head hosted
   qualification remain open; this is not a product timing policy or speedup.
+  Fixed QEMU-only live-operation/worker-stage telemetry now distinguishes
+  shared-phase expiry from an internal worker deadline without logging raw
+  output, account names or secrets. Pinned host/race/ARM-cross tests and one
+  focused native guest pass; a same-source reduced-CPU control exhausts the
+  unchanged45s parent at changed-pair post-admission, while an earlier local
+  run expires an internal execution deadline with parent headroom. Latest
+  hosted integration fails later at fresh login. These are measured distinct
+  boundaries, not a causal fix. Next establish worker-cost/scheduling evidence
+  before changing fixture orchestration or refreshing heavy CI; preserve every
+  identity/session/admission/stop proof and do not enlarge timeouts blindly.
 - **M0.4 — Maintain release inputs.** Dependency update changes include source
   signatures/hashes, ARMv5 compatibility, package configuration, vulnerability
   review, license material and regenerated SBOM. Test the selected package set.
