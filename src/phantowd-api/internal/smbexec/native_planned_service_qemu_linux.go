@@ -243,6 +243,18 @@ func (s *NativePlannedServiceQEMU) observe(ctx context.Context) error {
 // retaining BOTH originals until a separate successful full runtime Close.
 // Any failed scan/stop remains review without restart or uncertainty retry.
 func (s *NativePlannedServiceQEMU) Supervise(ctx context.Context, interval time.Duration) error {
+	return s.superviseQEMU(ctx, interval, false)
+}
+
+// SuperviseExitFaultQEMU is a fixed disposable-guest qualification, not a
+// product control or callback API. Inject only through the startup-owned
+// runtime AFTER a complete scan, within the SAME exclusive cycle. An external
+// runtime alias must not compete with that cycle to manufacture the fault.
+func (s *NativePlannedServiceQEMU) SuperviseExitFaultQEMU(ctx context.Context, interval time.Duration) error {
+	return s.superviseQEMU(ctx, interval, true)
+}
+
+func (s *NativePlannedServiceQEMU) superviseQEMU(ctx context.Context, interval time.Duration, exitFault bool) error {
 	if interval < time.Second || interval > time.Hour {
 		return ErrInvalid
 	}
@@ -253,11 +265,18 @@ func (s *NativePlannedServiceQEMU) Supervise(ctx context.Context, interval time.
 	if s.closed || s.review || !s.started || s.stopped {
 		return runtimebundle.ErrReviewRequired
 	}
+	if exitFault && (!s.dataVerified || s.heldAttempted || s.inputs.Backend == nil || s.inputs.Backend.runtime == nil) {
+		return runtimebundle.ErrReviewRequired
+	}
+	exitRequested := false
 	timer := time.NewTimer(interval)
 	defer timer.Stop()
 	for {
 		select {
 		case <-ctx.Done():
+			if exitRequested {
+				return s.quarantine(ctx.Err()) // An admitted fault never becomes normal cancellation.
+			}
 			return errors.Join(ctx.Err(), s.stop())
 		case <-timer.C:
 			if ctx.Err() != nil {
@@ -265,6 +284,21 @@ func (s *NativePlannedServiceQEMU) Supervise(ctx context.Context, interval time.
 			}
 			if err := s.observe(ctx); err != nil {
 				return err
+			}
+			if exitFault && !exitRequested {
+				canceled, cancel := context.WithCancel(ctx)
+				cancel()
+				runtime := s.inputs.Backend.runtime
+				if err := runtime.RequestPlannedDaemonExitQEMU(canceled); !errors.Is(err, context.Canceled) {
+					return s.quarantine(errors.Join(errors.New("planned fault accepted canceled request"), err))
+				}
+				if err := runtime.RequestPlannedDaemonExitQEMU(ctx); err != nil {
+					return s.quarantine(err)
+				}
+				exitRequested = true
+				if err := runtime.RequestPlannedDaemonExitQEMU(ctx); !errors.Is(err, runtimebundle.ErrReviewRequired) {
+					return s.quarantine(errors.Join(errors.New("planned fault accepted repeated request"), err))
+				}
 			}
 			timer.Reset(interval)
 		}

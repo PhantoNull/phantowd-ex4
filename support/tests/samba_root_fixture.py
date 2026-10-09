@@ -12,9 +12,8 @@ from runtime_loader_fixture import MAX_LOG, MAX_REPORT, read_bounded, validate
 
 
 CAMPAIGNS = ("service", "native", "candidate", "lifecycle", "fault", "data",
-             "exit", "held")
-# Explicit development probe, not part of or qualified by the eight-log union.
-FOCUSED_CAMPAIGNS = (*CAMPAIGNS, "file")
+             "exit", "held", "file")
+FOCUSED_CAMPAIGNS = CAMPAIGNS
 ENTRIES = ("usr/sbin/smbd", "usr/bin/smbpasswd", "usr/bin/testparm",
            "usr/lib/samba/vfs/streams_xattr.so", "usr/lib/gconv/IBM850.so",
            "usr/bin/pdbedit", "usr/bin/smbstatus", "usr/bin/smbcontrol")
@@ -355,10 +354,10 @@ def diagnostic_record(log, phase, status):
 
 
 def check_campaigns(service, native, candidate, lifecycle=None, fault=None,
-                    data=None, exit_log=None, held_log=None):
+                    data=None, exit_log=None, held_log=None, file_log=None):
     costs = tuple(check_campaign(log, phase) for log, phase in zip(
         (service, native, candidate, lifecycle, fault, data,
-         exit_log, held_log),
+         exit_log, held_log, file_log),
         CAMPAIGNS))
     if any(costs[0][:2] != cost[:2] for cost in costs[1:]):
         raise ValueError("campaign runtime census differs")
@@ -433,6 +432,7 @@ def main():
     verify.add_argument("--data-log")
     verify.add_argument("--exit-log")
     verify.add_argument("--held-log")
+    verify.add_argument("--file-log")
     campaign = sub.add_parser("verify-campaign")
     campaign.add_argument("log")
     campaign.add_argument("phase", choices=FOCUSED_CAMPAIGNS)
@@ -464,9 +464,10 @@ def main():
     else:
         log = read_bounded(args.log, MAX_LOG)
         paths = (args.native_log, args.candidate_log, args.lifecycle_log,
-                 args.fault_log, args.data_log, args.exit_log, args.held_log)
+                 args.fault_log, args.data_log, args.exit_log, args.held_log,
+                 args.file_log)
         if any(paths) and not all(paths):
-            raise ValueError("all eight campaign logs required")
+            raise ValueError("all nine campaign logs required")
         if args.native_log:
             costs = check_campaigns(
                 log, *(read_bounded(path, MAX_LOG) for path in paths))
@@ -481,6 +482,8 @@ def main():
         print(f"{SCAN_PREFIX} files={files} bytes={size} elapsed_ns={elapsed} "
               "scope=qemu-emulation-only")
         print("\n".join(MARKERS))
+        if args.native_log:
+            print(PLANNED_OPEN_FILE_MARKER)
 
 
 if __name__ == "__main__":

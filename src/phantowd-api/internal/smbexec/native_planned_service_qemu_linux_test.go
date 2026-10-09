@@ -81,6 +81,50 @@ func TestNativePlannedSupervisionRefusesMissingAuthority(t *testing.T) {
 	}
 }
 
+func TestNativePlannedExitSupervisionRefusesMissingCanceledAndBusyAuthority(t *testing.T) {
+	var absent *NativePlannedServiceQEMU
+	if err := absent.SuperviseExitFaultQEMU(context.Background(), time.Second); !errors.Is(err, ErrInvalid) {
+		t.Fatal("absent service admitted synthetic exit:", err)
+	}
+	service := &NativePlannedServiceQEMU{gate: make(chan struct{}, 1)}
+	if err := service.SuperviseExitFaultQEMU(nil, time.Second); !errors.Is(err, ErrInvalid) {
+		t.Fatal("missing context admitted synthetic exit:", err)
+	}
+	canceled, cancel := context.WithCancel(context.Background())
+	cancel()
+	if err := service.SuperviseExitFaultQEMU(canceled, time.Second); !errors.Is(err, context.Canceled) {
+		t.Fatal("pre-canceled synthetic exit admission proceeded:", err)
+	}
+	service.gate <- struct{}{}
+	err := service.SuperviseExitFaultQEMU(context.Background(), time.Second)
+	<-service.gate
+	if !errors.Is(err, processowner.ErrBusy) {
+		t.Fatal("synthetic exit admitted a competing cycle:", err)
+	}
+	for _, interval := range []time.Duration{0, time.Second - 1, time.Hour + 1} {
+		if err := service.SuperviseExitFaultQEMU(context.Background(), interval); !errors.Is(err, ErrInvalid) {
+			t.Fatal("synthetic exit weakened interval bounds:", err)
+		}
+	}
+	if err := service.SuperviseExitFaultQEMU(context.Background(), time.Second); !errors.Is(err, runtimebundle.ErrReviewRequired) {
+		t.Fatal("unstarted service accessed the runtime:", err)
+	}
+}
+
+func TestNativePlannedExitSupervisionRefusesIneligibleLifetimesBeforeRuntime(t *testing.T) {
+	// Negative-only lifetimes; there is no valid backend/process to signal.
+	for _, service := range []*NativePlannedServiceQEMU{
+		{closed: true}, {review: true}, {started: true, stopped: true},
+		{started: true}, {started: true, dataVerified: true},
+		{started: true, dataVerified: true, heldAttempted: true},
+	} {
+		service.gate = make(chan struct{}, 1)
+		if err := service.SuperviseExitFaultQEMU(context.Background(), time.Second); !errors.Is(err, runtimebundle.ErrReviewRequired) {
+			t.Fatal("ineligible synthetic exit reached an absent runtime:", err)
+		}
+	}
+}
+
 func TestNativePlannedCloseFailurePublishesStickyReview(t *testing.T) {
 	// Negative-only admission fixture: this invalid runtime cannot own or start
 	// a process. Exercise Close/Status, never fabricate a healthy authority.

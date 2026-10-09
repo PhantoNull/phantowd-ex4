@@ -44,7 +44,7 @@ func qualifyPlannedExitFaultQEMU(ctx context.Context, service *smbexec.NativePla
 	defer cancelLoop()
 	completed := make(chan error, 1)
 	phase = "first-scan"
-	go func() { completed <- service.Supervise(loopCtx, time.Second) }()
+	go func() { completed <- service.SuperviseExitFaultQEMU(loopCtx, time.Second) }()
 	ticker := time.NewTicker(10 * time.Millisecond)
 	defer ticker.Stop()
 	for {
@@ -68,25 +68,8 @@ func qualifyPlannedExitFaultQEMU(ctx context.Context, service *smbexec.NativePla
 				cancelLoop()
 				return errors.Join(errors.New("planned exit supervisor lost exclusivity"), err, <-completed)
 			}
-			canceled, cancelRequest := context.WithCancel(ctx)
-			cancelRequest()
-			phase = "canceled-request"
-			if err := native.RequestPlannedDaemonExitQEMU(canceled); !errors.Is(err, context.Canceled) {
-				cancelLoop()
-				return errors.Join(errors.New("planned exit accepted canceled request"), err, <-completed)
-			}
-			// No caller PID/path/program/group is accepted. This fault requests
-			// exit through the ORIGINAL owned Process; it is not a Stop witness.
-			phase = "request"
-			if err := native.RequestPlannedDaemonExitQEMU(ctx); err != nil {
-				cancelLoop()
-				return errors.Join(errors.New("planned original-handle exit refused"), err, <-completed)
-			}
-			phase = "repeated-request"
-			if err := native.RequestPlannedDaemonExitQEMU(ctx); !errors.Is(err, runtimebundle.ErrReviewRequired) {
-				cancelLoop()
-				return errors.Join(errors.New("planned exit request repeated"), err, <-completed)
-			}
+			// Fixed canceled/actual/repeated signal admission belongs to the
+			// exclusive supervisor itself; never operate its runtime alias here.
 			phase = "quarantine"
 			select {
 			case err := <-completed:

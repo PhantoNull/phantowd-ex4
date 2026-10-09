@@ -115,7 +115,7 @@ try {
             Remove-Item -LiteralPath $probeRoot -Force
         }
     }
-    'PHANTOWD_SAMBA_WRAPPER_TESTS_READY defaults=true default_campaigns=8 focused_campaigns=9 refusals=6 scope=mock-command-boundary-only'
+    'PHANTOWD_SAMBA_WRAPPER_TESTS_READY defaults=true default_campaigns=9 focused_campaigns=9 refusals=6 scope=mock-command-boundary-only'
 } finally {
     Remove-Variable phantowdSambaWrapperTestState -Scope Global
     $global:LASTEXITCODE = $previousExitCode

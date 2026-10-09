@@ -790,19 +790,19 @@ For a focused local diagnosis, select exactly one unchanged guest campaign:
 ```
 
 Allowed selections are `service`, `native`, `candidate`, `lifecycle`, `fault`,
-`data`, `exit`, `held`, focused-only `file` and default `all`.
+`data`, `exit`, `held`, `file` and default `all`.
 Invalid values fail before guest/fixture construction. A focused run still
 compiles current source, checks all base hashes, uses read-only inputs and
 bounded tmpfs, verifies that phase's exact proof, retains its 180-second limit
 and cleans its disposable container. Its completion explicitly reports
-`complete_image=false`; it cannot substitute for the default eight-campaign
+`complete_image=false`; it cannot substitute for the default nine-campaign
 qualification or clean Buildroot/hosted/release evidence. Existing full-build
 callers continue to select all campaigns without modification.
 
 The separately enrolled `held` guest adds normal cancellation/full runtime
 Close for the planned service's SAME fixed authorized IPC$ holder. All seven
 older proofs remain mandatory and unchanged; no old idle observer is relabeled
-to cover the extra group. Complete mode requires all eight ordered logs and
+to cover the extra group. Complete mode requires all nine ordered logs and
 equal runtime census, with one overlay compilation and independent snapshots.
 This does not qualify open data handles, in-flight loss or durable reconnect.
 
@@ -811,12 +811,25 @@ once through the same authorized client and daemon. Qualification requires
 original retained-object/open matching, complete original identity/storage
 rechecks, exclusive serialized supervision, verified cancellation group stop,
 retention until full Close, repeated-close/closed-observer refusal and FD/base
-equality. It is not included in default `all`: an eight-campaign pass does not
-establish file coverage. Run `-Campaign file` explicitly in addition to the
-existing regression union. Startup/data/supervision/worker/stop/guest limits
+equality. Default `all` now requires this ninth independently enrolled guest;
+the old eight-log union is refused. `-Campaign file` remains available for
+focused diagnosis, not complete qualification. One compilation feeds all nine
+guests. Startup/data/supervision/worker/stop/guest limits
 are unchanged. Start's complete post-admission match and the supervisor's next
 complete scan are required; no extra duplicate fixture scan consumes the
 supervision budget. This does not prove mid-I/O faults or product safety.
+
+The fixed exit qualification injects its canceled, admitted and repeated
+requests inside the original service's exclusive loop after a complete scan,
+not through an external runtime alias competing with the next scan. A
+controlled 1100-ms timing probe reproduced external-request `busy=true`; the
+same-delay serial variant and a cleaned-source focused ARMv5 replay passed.
+The temporary probe is removed. No retry, deadline or proof was relaxed.
+This diagnoses that fixture race, not every historical hosted/full failure.
+The changed complete nine-guest overlay regression passes on unchanged source,
+with independent replay of all actual logs and source witnesses, equal runtime
+censuses and unchanged base images. This is not the changed full-image/archive/
+SBOM audit or own-head hosted qualification required before promotion.
 
 For troubleshooting, add `-DiagnosticLogs` to the same command. After each
 guest exits, this opt-in mode emits its complete bounded log as one escaped JSON

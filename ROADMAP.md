@@ -80,8 +80,12 @@ The newer focused `file` guest qualifies one actual original data opening:
 the same composed service retains/matches its original O_PATH object and exact
 session/tree/server/open identity through a complete exclusive supervised scan,
 verified cancellation group stop and full runtime Close before release. It is
-separate from default eight-campaign regression, full-image auditing and hosted
-qualification. In-flight faults, durable reconnect and recovery remain open.
+now mandatory as the ninth default regression campaign. All nine actual ARMv5
+overlay guests pass with independent saved-log/source-witness replay; changed
+full-image auditing and own-head hosted qualification remain required.
+The fixed exit fault runs within the same exclusive supervisor, correcting a
+controlled fixture alias race without retry or relaxed proof/deadlines. In-flight
+faults, durable reconnect and recovery remain open.
 
 The fully audited local checkpoint `e234644` selects Go 1.26.8 and host OpenSSL
 3.5.9 and passes the

@@ -319,6 +319,16 @@ until a separate successful full runtime `Close`. Failed scans or uncertain
 stop/close preserve review, retained authority and refusal of uncertainty retry.
 Immutable `Status` is telemetry only, never admission or recovery evidence.
 
+`SuperviseExitFaultQEMU` is a fixed disposable-guest qualification, not a
+product control or callback. After the first complete successful scan it
+checks a pre-canceled request, signals the startup-owned daemon once and
+refuses repetition inside the SAME exclusive loop. No caller-selected runtime,
+PID, command or backend is accepted. A subsequent cancellation preserves
+review rather than classifying the admitted fault as normal retirement.
+Ordinary `Supervise` retains its existing contract. This removes demonstrated
+fixture alias competition, not every historical hosted failure; cleaned-source
+focused ARMv5 and root/non-root host checks pass, not a changed full image.
+
 On 2026-10-08, tagged Linux tests, seven-package race-count3, ARMv5 cross-build,
 62 Linux verifier tests and all six independently enrolled ARMv5 campaigns pass.
 The actual data guest keeps the SAME service through original startup/access,
@@ -358,7 +368,11 @@ not a substitute. IPC$ and file holders are mutually exclusive in one lifetime.
 The actual cleaned-source focused `file` guest qualifies original-object/open
 continuity, verified cancellation group stop, retained object/15 inputs/both
 authorities, full runtime Close before release, repeat/closed refusal and FD
-equality. It is separate from default all eight older campaigns. This is not
+equality. Default `all` now requires this ninth independently enrolled campaign
+in addition to all eight older campaigns; a missing file log refuses the union.
+All nine actual ARMv5 overlay guests and independent saved-log/source replay
+now pass; a changed full-image/audit and hosted qualification remain separate.
+This is not
 mid-I/O loss, durable reconnect, full-image or product qualification. Existing
 IPC$ proofs and admission/supervision/worker/stop budgets are unchanged.
 

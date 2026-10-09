@@ -3,6 +3,31 @@
 
 # Implementation status
 
+## Serialized exit qualification and mandatory open-file regression
+
+A controlled actual ARMv5 timing probe reproduced competition between the
+fixture's external daemon-exit request and the next exclusive service scan
+(`busy=true`). The fixed QEMU-only qualification now issues canceled, single-use
+and repeated requests inside the same supervisor after a complete scan. The
+same-delay differential and cleaned-source focused exit guest pass with the
+original proof, authority/capture retention, verified group stop, FD equality
+and base hashes. Root/non-root pinned Go 1.26.8 vet/race and Windows API/UI/ARM
+cross-compilation pass. Temporary instrumentation is removed. Ordinary
+supervision, deadlines, no-restart and sticky-review contracts are unchanged.
+This is not a causal fix for all earlier uninstrumented full/hosted failures.
+
+Default `all` now includes the original-open-file campaign as a mandatory ninth
+fresh guest. The verifier refuses any missing, duplicated, wrong-phase or
+unequal-census log and emits its file proof only after complete verification.
+All 69 Linux verifier tests, lint and shell checks pass; one overlay compilation
+feeds all nine guests. The complete actual ARMv5 overlay regression now passes
+all nine guests, ordered exact proofs, equal 114-file/27,384,058-byte censuses,
+FD checks and unchanged base images. Independent replay of every saved guest
+log and all 1,269 source witnesses (976 API inputs) passes; source hashes agree
+before/after. The changed full-image/archive/SBOM audit remains pending, not
+inferred from overlay or parser success. No HTTP, product
+activation, physical disk operation or installable release is introduced.
+
 ## Original open-file continuity and cancellation (focused QEMU only)
 
 The explicit `file` campaign now opens one existing synthetic file exactly
@@ -24,8 +49,8 @@ action; only that duplicate is removed. Start's post-admission and supervised
 complete rechecks and all original limits remain unchanged. This is not a
 universal timing guarantee or a demonstrated fix for older hosted failures.
 
-`file` is focused-only, not included in default `all`; this new proof does not
-replace current-source regression of the eight older guests, an exact current
+`file` remains selectable for focused diagnosis and is now required in default
+`all`; this focused proof does not replace the complete nine-guest regression, an exact current
 full image/SBOM audit or hosted qualification. It does not qualify mid-I/O loss,
 durable reconnect, physical EX4, disk migration or a supported release.
 
