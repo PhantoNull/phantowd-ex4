@@ -548,6 +548,19 @@ identity and complete storage authorities outside the runtime gate, serializes
 single use and keeps review on uncertainty. Full runtime closure precedes
 release; `DataVerified` is historical completion, not health or authorization.
 
+QEMU/Linux-tagged data failures now retain a private error witness with fixed
+operation/phase/reason labels. The wrapper preserves original `errors.Is`
+semantics and review decisions without formatting the underlying cause.
+Planned postconditions identify Unix ownership, kernel-RO, transfers, denials
+and final daemon recheck. Error-only classification runs no command, changes
+no state and provides no admission or recovery authority. The child diagnostic
+formatter/relay rejects unknown or injected labels; its existing 1,024-byte
+output bound and exact successful proof equality remain mandatory. Initial
+runtime/coordinator guard refusals remain coarse, not invented data operations.
+Root/non-root host/race and all seven fresh ARMv5 overlay campaigns pass;
+this is not reproduction or a causal fix for intermittent hosted failures,
+new complete image qualification or product activation.
+
 Pinned Linux host/race and all four actual ARMv5 campaigns pass at `e3e1d5b`.
 One overlay compilation feeds four fresh, independently enrolled snapshots;
 all previous proofs, complete per-guest censuses and original deadlines remain.

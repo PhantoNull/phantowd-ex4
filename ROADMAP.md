@@ -1627,6 +1627,16 @@ storage. No production roster provider or activation path exists.
   cleanup separately; IPC$ continuity proves neither data handles nor durable
   reconnect. Hosted source-child data failures need an exact-head local feedback
   loop and a causal fix before promotion; local green is not one.
+
+  The fixed operation/worker-stage feedback seam now passes root/non-root
+  host/race and all seven actual ARMv5 overlays on1,262 unchanged inputs.
+  Private data-error wrappers preserve existing error/review semantics;
+  only allowlisted operation/phase/reason rows survive diagnostic relay.
+  Unknown labels, secrets and diagnostic-contaminated success proofs refuse;
+  child-output1,024 and all existing deadlines remain unchanged. Guard/coordinator
+  failures stay coarse. This improves the feedback loop only: no intermittent
+  failure was reproduced or causally fixed, and normal held retirement remains
+  the next functional packet above.
 - **M4.6 — Product persistence.** Reboot with saved policies, identities and data;
   verify activation of the intended revision and no recreation of credentials,
   permissions or missing directory trees as a recovery shortcut.

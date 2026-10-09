@@ -3,6 +3,25 @@
 
 # Implementation status
 
+## Fixed data-failure diagnostics (QEMU only)
+
+The six fixed SMB data clients now preserve a private failure witness for
+pre-admission, execution, settlement, result and post-admission boundaries.
+Planned Unix ownership, kernel-RO, transfer, denial and final-daemon checks
+also identify their fixed boundary. Only allowlisted operation/phase/reason
+labels may leave the child; unknown labels and free-form error/output are
+excluded. Initial runtime/coordinator guard refusals remain coarse rather
+than inventing an operation. Error identity and existing review decisions,
+exact successful child proof and the 1,024-byte child-output bound are unchanged.
+
+Root/non-root Go 1.26.8 vet/tests/race-count3, Windows API/UI checks and all
+seven actual ARMv5 Samba overlay guests pass. All1,262 source witnesses,
+including969 API inputs, match after execution; old access, supervision,
+stop/review, FD-equality, census and base-image assertions remain mandatory.
+The existing worker and guest deadlines are unchanged. This is diagnostic
+feedback, not reproduction or a causal fix for the hosted data-phase failure,
+new complete image/SBOM audit, held-client normal retirement or product activation.
+
 ## Authorized held-session source loss (QEMU only)
 
 The SAME planned service retains one fixed authorized `qpsecond` IPC$ client

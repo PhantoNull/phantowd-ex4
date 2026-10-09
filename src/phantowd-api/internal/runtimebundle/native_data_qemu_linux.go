@@ -108,7 +108,7 @@ func (p *Plan) ProbeNativeDataDescriptorQEMU(ctx context.Context, code, configur
 func (r *NativeSambaRuntimeQEMU) nativeDataClientQEMU(ctx context.Context, operation string) error {
 	input, err := sealedNativeCredentialInputQEMU(nil)
 	if err != nil {
-		return err
+		return nativeDataFailureQEMU(operation, nativeWorkerAdmissionQEMU, err)
 	}
 	args := []string{"native-data-client", operation}
 	if operation == "ungranted" {
@@ -123,7 +123,7 @@ func (r *NativeSambaRuntimeQEMU) nativeDataClientQEMU(ctx context.Context, opera
 		if capture != nil {
 			err = errors.Join(err, capture.Close(context.Background()))
 		}
-		return err
+		return nativeDataFailureQEMU(operation, nativeWorkerAdmissionQEMU, err)
 	}
 	r.pending = capture
 	observed, runErr := capture.Capture(ctx)
@@ -133,11 +133,11 @@ func (r *NativeSambaRuntimeQEMU) nativeDataClientQEMU(ctx context.Context, opera
 	closeErr := capture.Close(context.Background())
 	if !settled || settleErr != nil || closeErr != nil {
 		r.owner.review = true
-		return ErrReviewRequired
+		return nativeDataFailureQEMU(operation, nativeWorkerSettlementQEMU, ErrReviewRequired)
 	}
 	r.pending = nil
 	if runErr != nil || observed.Kind != processowner.CaptureExited {
-		return errors.Join(ErrReviewRequired, runErr)
+		return nativeDataFailureQEMU(operation, nativeWorkerExecutionQEMU, errors.Join(ErrReviewRequired, runErr))
 	}
 	output := append(observed.Stdout, observed.Stderr...)
 	defer clear(output)
@@ -157,5 +157,5 @@ func (r *NativeSambaRuntimeQEMU) nativeDataClientQEMU(ctx context.Context, opera
 	} else if observed.ExitCode == 0 && !bytes.Contains(output, []byte("NT_STATUS_")) {
 		return nil
 	}
-	return errors.New("native SMB data operation or denial mismatch")
+	return nativeDataFailureQEMU(operation, nativeWorkerResultQEMU, errors.New("native SMB data operation or denial mismatch"))
 }

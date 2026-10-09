@@ -55,3 +55,54 @@ func TestPlannedFaultSubprocessDiagnosticsNeverRelayRawChildOutput(t *testing.T)
 		t.Fatalf("diagnostic-contaminated proof treated as success: %q", got)
 	}
 }
+
+func TestPlannedFaultSubprocessRelaysOnlyFixedDataBoundaryOnce(t *testing.T) {
+	const proof = "exact-fixed-child-proof\n"
+	const data = "PHANTOWD_QEMU_DATA_FAILURE operation=rw-read phase=execution reason=deadline scope=diagnostic-only\n"
+	const invalid = "PHANTOWD_QEMU_DATA_FAILURE operation=private-path phase=execution reason=deadline scope=diagnostic-only\n"
+	want := "PHANTOWD_QEMU_PLANNED_FAULT_SUBPROCESS_FAILURE deadline=false child_failed=true proof_match=false scope=diagnostic-only\n" + data
+	got := plannedFaultSubprocessDiagnosticQEMU(nil, errors.New("private-credential"), data+invalid+data, proof)
+	if got != want {
+		t.Fatalf("data boundary missing, unsafe or duplicated: %q", got)
+	}
+	for _, bad := range []string{
+		strings.Replace(data, "phase=execution", "phase=private-phase", 1),
+		strings.Replace(data, "reason=deadline", "reason=private-cause", 1),
+		strings.TrimSuffix(data, "\n") + " private-secret\n",
+		strings.Replace(data, "scope=diagnostic-only", "scope=qualified", 1),
+		strings.Replace(data, "operation=rw-read", "operation=unknown", 1),
+	} {
+		if got := plannedFaultSubprocessDiagnosticQEMU(nil, errors.New("child-failed"), bad, proof); strings.Contains(got, "PHANTOWD_QEMU_DATA_FAILURE") {
+			t.Fatalf("invalid child data row relayed: %q", got)
+		}
+	}
+	if got := plannedFaultSubprocessDiagnosticQEMU(nil, nil, data+proof, proof); !strings.Contains(got, "child_failed=false proof_match=false") {
+		t.Fatal("data diagnostics weakened exact successful proof", got)
+	}
+	var bounded nativeFaultOutput
+	if _, err := bounded.Write([]byte(strings.Repeat("x", 1024))); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := bounded.Write([]byte(data)); err == nil || len(bounded.String()) != 1024 {
+		t.Fatal("new diagnostic widened child output bound")
+	}
+}
+
+func TestPlannedDataDiagnosticRefusesMissingUnknownOrInjectedLabels(t *testing.T) {
+	data := runtimebundle.NativeDataFailureObservationQEMU{Present: true, Operation: "ro-write", Phase: "result", Reason: "other"}
+	want := "PHANTOWD_QEMU_DATA_FAILURE operation=ro-write phase=result reason=other scope=diagnostic-only\n"
+	if got := plannedDataFailureDiagnosticQEMU(data); got != want {
+		t.Fatal("fixed observed data boundary not formatted", got)
+	}
+	for _, invalid := range []runtimebundle.NativeDataFailureObservationQEMU{
+		{Operation: "ro-write", Phase: "result", Reason: "other"},
+		{Present: true, Operation: "unknown", Phase: "result", Reason: "other"},
+		{Present: true, Operation: "rw-write", Phase: "unknown", Reason: "other"},
+		{Present: true, Operation: "rw-read\nFAKE_READY", Phase: "result", Reason: "other"},
+		{Present: true, Operation: "rw-read", Phase: "result", Reason: "private-secret"},
+	} {
+		if got := plannedDataFailureDiagnosticQEMU(invalid); got != "" {
+			t.Fatal("unqualified diagnostic label emitted", got)
+		}
+	}
+}
