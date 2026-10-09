@@ -1594,6 +1594,14 @@ storage. No production roster provider or activation path exists.
 - **M4.5 — Failure and shutdown.** Cover startup with absent disks, service crash,
   read-only/full volume, client reconnect, stale NFS handles, shutdown with open
   files and restart ordering. Distinguish safely unavailable from healthy.
+  A private fixed-producer open-file status prerequisite now passes host
+  root/non-root checks, race-count3 and ARMv5 cross-compilation. It refuses
+  ambiguous/incomplete identities and distinguishes observed change from
+  unavailable status, but does not retain a file or bind an original disk
+  object. Before composition, calibrate actual Samba output, hold and match
+  the original object, recheck complete original authorities and prove real
+  client/open generation continuity. ARM guest/open-file faults, in-flight
+  work, durable reconnect and uncertain teardown remain unqualified.
   The private original-session-pair recheck prerequisite now passes root-isolated
   host race-count3 and a focused actual ARMv5 native campaign. It requires the
   same complete pair before target-only revocation, refuses the old pair afterward

@@ -335,6 +335,26 @@ A post-run negative-only Close/Status regression preserves review telemetry
 when a prior close error prohibits cleanup retry. Invalid runtime admission
 cannot start or own a process; this does not qualify live uncertain teardown.
 
+### Private open-file status prerequisite (host tests only)
+
+`ObservePlannedOpenFileQEMU` and `VerifyPlannedOpenFileQEMU` use the existing
+fixed, bounded, read-only status operation. The private non-serializable
+observation requires one qualified `qpsecond` session, one writable tree and
+one `writable/created` read/write opening from the pinned 4.22.11 producer.
+Backend, complete server/session generation, tree, device/inode and opening
+ID must remain unchanged. Complete observed change differs from unavailable,
+ambiguous, failed or canceled status; none authorizes recovery or replacement.
+Case aliases are rejected for interpreted fields in this observer only; the
+general status reader's contract is unchanged.
+
+Root command-boundary tests and race-count3 pass, alongside non-root regression
+checks and ARMv5 cross-compilation. No actual open-file guest proof is claimed.
+This is NOT an original Owner-held file/object witness: a later coordinator
+must independently retain/match that object and bracket observations with
+complete original storage/identity rechecks. The composed service does not
+consume this prerequisite yet. Existing IPC$ holder proofs, admission,
+supervision, worker/stop budgets and product boundaries remain unchanged.
+
 ### Composed source-alias fault (QEMU only)
 
 The newer source child starts only the granted `qpsecond` IPC$ holder through

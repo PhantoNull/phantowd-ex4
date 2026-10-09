@@ -3,6 +3,30 @@
 
 # Implementation status
 
+## Private open-file status prerequisite (host only)
+
+The QEMU/Linux-tagged backend can privately observe and recheck one fixed
+Samba 4.22.11 `writable/created` opening. The witness binds the same backend,
+qualified session/server generation, tree, observed device/inode and opening
+ID. A complete mismatch or observed absence is distinct from malformed,
+ambiguous, canceled or failed status work. Duplicate/case-aliased interpreted
+fields, foreign users/trees/opens, unsupported IDs and incomplete inventories
+fail closed. No identifiers can be serialized; no caller-selected path or
+command, HTTP surface, activation or recovery authority is introduced.
+
+Actual compile/behavioral RED/GREEN, six new root-isolated adapter tests,
+Go 1.26.8 root/non-root vet/tests/race-count3, Windows API/UI preflight and
+ARMv5 command/test-package cross-compilation pass on 1,265 unchanged source
+inputs, including 972 API inputs. Only the external status command boundary
+is substituted; these are not real Samba opening or ARM guest execution proofs.
+
+This point-in-time status prerequisite is NOT a retained file descriptor,
+original disk-object binding, data-holding client, in-flight/durable reconnect,
+new complete image or product qualification. Actual producer calibration,
+retained-object matching and complete original authority rechecks must precede
+composition. Existing supervision, review, deadlines and no-restart semantics
+remain unchanged; the older hosted failure remains unresolved.
+
 ## Normal held-client cancellation and full Close (QEMU only)
 
 A separate fresh `held` guest retains the SAME authorized IPC$ session,
