@@ -174,8 +174,13 @@ profile truncates its final inventory when four measured workers each take
 about2.6 seconds; the independently capped control cannot consume the entire
 new aggregate budget. This fixture-only adjustment is not an EX4 performance
 specification or a product deadline change. All complete admissions remain.
-The controller retains separate startup20/idle20/session45-second phases, with enrollment60 and guest180
-unchanged. Ordinary non-root Linux timing tests cover the complete composite
+The controller retains separate startup20/idle20/session45-second phases and
+guest180. The QEMU native fixture now separates original preparation20 from
+enrollment60 instead of sharing60 (combined allowance80, not a performance
+gain); worker limits and shorter parent deadlines remain unchanged. Only the
+exact changed-pair sentinel qualifies its post-revocation observation; nil
+means unchanged and uncertain outcomes preserve their causes without becoming
+revocation evidence. Ordinary non-root Linux timing tests cover the complete composite
 sequence and uncertain-control/no-retry path; constructor ownership and actual
 wrapper binding retain separate root/ARMv5 tests. Host/race tests enforce both
 profiles and shorter caller deadlines.
