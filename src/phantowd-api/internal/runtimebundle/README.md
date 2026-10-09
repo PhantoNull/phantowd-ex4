@@ -46,6 +46,8 @@ hash scratch buffer, reused only within that pass. Concurrent calls have
 independent buffers; nothing is pooled or retained in the Plan. This reduces
 per-file allocation churn without caching hashes or reducing census, content,
 metadata, ACL/capability, cancellation or trailing original-identity checks.
+Digest finalization uses that pass's existing scratch and copies the result
+into a by-value array; no per-file digest slice is allocated or returned.
 Digest-loop host tests/benchmarks do not qualify complete runtime admission,
 physical EX4 performance or eliminate timing-sensitive guest failures.
 

@@ -140,6 +140,10 @@ func TestRuntimeFileHashScratchReuseDoesNotReuseDigestOrOldBytes(t *testing.T) {
 		if err != nil || count != int64(size) || digest != sha256.Sum256(data) {
 			t.Fatal("scratch reuse changed digest or length", size, count, err)
 		}
+		clear(scratch)
+		if digest != sha256.Sum256(data) {
+			t.Fatal("returned digest aliases the reused scratch")
+		}
 	}
 	file := runtimeHashFixture(t, []byte("unread"))
 	for _, invalid := range [][]byte{nil, make([]byte, 1), make([]byte, runtimeHashScratchSize+1)} {
@@ -155,7 +159,7 @@ func TestRuntimeFileHashScratchReuseDoesNotReuseDigestOrOldBytes(t *testing.T) {
 
 // Allocation evidence for the real digest loop only, not complete admission,
 // ARMv5/EX4 throughput or a diagnosis of the lifecycle timeout.
-func TestRuntimeFileHashBatchHasNoPerFileScratchAllocation(t *testing.T) {
+func TestRuntimeFileHashBatchHasNoPerFileScratchOrDigestAllocation(t *testing.T) {
 	const files = 64
 	file := runtimeHashFixture(t, bytes.Repeat([]byte{0x37}, 4096))
 	allocations := testing.AllocsPerRun(3, func() {
@@ -169,11 +173,11 @@ func TestRuntimeFileHashBatchHasNoPerFileScratchAllocation(t *testing.T) {
 			}
 		}
 	})
-	// One batch scratch plus per-file digest Sum; allow bounded fixed runtime/
-	// race bookkeeping overhead, not another scratch allocation per file.
+	// One batch scratch; allow bounded fixed runtime/race bookkeeping overhead,
+	// but neither another scratch nor an allocated digest for every file.
 	// This is a digest-loop allocation contract, not an Inspector admission test.
-	if allocations > files+8 {
-		t.Fatalf("per-file scratch allocations remain: got %.0f, maximum %d", allocations, files+8)
+	if allocations > 8 {
+		t.Fatalf("per-file hash allocations remain: got %.0f, maximum 8", allocations)
 	}
 }
 
