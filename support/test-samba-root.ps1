@@ -3,7 +3,7 @@
 [CmdletBinding()]
 param(
     [string]$BaseArtifactDir,
-    [ValidateSet('all', 'service', 'native', 'candidate', 'lifecycle', 'fault', 'data', 'exit')]
+    [ValidateSet('all', 'service', 'native', 'candidate', 'lifecycle', 'fault', 'data', 'exit', 'held')]
     [string]$Campaign = 'all',
     [switch]$DiagnosticLogs
 )

@@ -1613,19 +1613,27 @@ storage. No production roster provider or activation path exists.
   hashes pass. All1,260 witnesses match; existing startup40/data20/supervision20/
   child90/guest180 and worker limits remain.
 
-  **Next bounded host/QEMU packet:** qualify that SAME fixed authorized holder
-  through accepted idle cancellation and normal full runtime Close. Retain
-  original session checks, identity/backend/complete mounted roster and RO/RW
-  grants without granting the excluded account or supplying replacement inputs.
-  Require both group absence/reap and the unused two-client generation-zero
-  census before releasing retained programs/inputs. Preserve old-observer
-  refusals while the extra group exists. Only full successful closure releases
-  either original authority; uncertainty retains review and the first error
-  without retry. Test repeated healthy Close, final parent FD equality and
-  unchanged base images. No physical disk, HTTP activation, new privilege or
-  widened deadline. Then qualify open-file/in-flight loss and late/uncertain
-  cleanup separately; IPC$ continuity proves neither data handles nor durable
-  reconnect. Hosted source-child data failures need an exact-head local feedback
+  **Normal held-client retirement qualified, host/QEMU only:** the SAME fixed
+  authorized holder passes accepted idle cancellation and normal full runtime
+  Close in a NEW separately enrolled `held` guest. Original session, identity/
+  backend/complete mounted roster and RO/RW grants remain; the excluded account
+  is not admitted. Both group absence/reap and unused two-client gen0 census
+  precede retained-input release; all three older observers refuse the extra
+  group. BOTH original authorities stay busy until full runtime Close. Repeated
+  healthy Close, closed-observer refusal, final FD equality and base hashes pass.
+  Root/non-root vet/tests/race3 and all EIGHT actual ARMv5 overlays pass on 1,263
+  unchanged inputs (970 API inputs), with 67 verifier tests and all prior proofs/limits.
+  No new privilege, image/volume, HTTP or physical-device action is introduced.
+
+  **Next bounded host/QEMU packet:** qualify original data-file handles and
+  open-file/in-flight loss separately, then late/uncertain cleanup. Require
+  evidence that the actual original handle is open under the retained authorized
+  session before fault injection; a successful earlier transfer or IPC$ echo is
+  not sufficient. Never substitute a new login, backing object or backend.
+  Verify whole-group settlement before any release; uncertain results preserve
+  the first error, review and authority without retry/restart. Do not infer
+  durable reconnect, data integrity or recovery from idle-session coverage.
+  Hosted source-child data failures still need an exact-head local feedback
   loop and a causal fix before promotion; local green is not one.
 
   The fixed operation/worker-stage feedback seam now passes root/non-root
@@ -1635,8 +1643,8 @@ storage. No production roster provider or activation path exists.
   Unknown labels, secrets and diagnostic-contaminated success proofs refuse;
   child-output1,024 and all existing deadlines remain unchanged. Guard/coordinator
   failures stay coarse. This improves the feedback loop only: no intermittent
-  failure was reproduced or causally fixed, and normal held retirement remains
-  the next functional packet above.
+  failure was reproduced or causally fixed. The normal held-retirement packet
+  above adds a distinct qualification, not a hosted-failure fix.
 - **M4.6 — Product persistence.** Reboot with saved policies, identities and data;
   verify activation of the intended revision and no recreation of credentials,
   permissions or missing directory trees as a recovery shortcut.

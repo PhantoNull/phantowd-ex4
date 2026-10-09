@@ -14,8 +14,13 @@ census, the additional holder's generation/group absence and retained daemon/
 runtime inputs. Older idle/two-client/exit observers refuse this additional
 group. All seven fresh ARMv5 overlay guests qualify source-alias loss with the
 holder active; restoration/repeated Close leave review and both originals busy.
-Normal full-close retirement of this added holder and live uncertain teardown
-remain unqualified. A real unused-set premature-close regression qualifies only
+The separate fresh `held` guest now qualifies accepted idle cancellation and
+normal full Close: both groups settle while all 15 inputs and BOTH originals
+remain retained, then runtime closure precedes original authority release.
+Repeated healthy Close, closed-observer refusal, FD equality and unchanged base
+pass in the complete eight-campaign overlay union. This is not open-file,
+in-flight/durable reconnect, live uncertain teardown or product qualification.
+A real unused-set premature-close regression qualifies only
 terminal error bookkeeping, not an admitted healthy runtime or kernel EIO.
 See [current evidence scope](../../../../IMPLEMENTATION-STATUS.md).
 

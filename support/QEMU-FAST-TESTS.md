@@ -790,14 +790,21 @@ For a focused local diagnosis, select exactly one unchanged guest campaign:
 ```
 
 Allowed selections are `service`, `native`, `candidate`, `lifecycle`, `fault`,
-`data`, `exit` and default `all`.
+`data`, `exit`, `held` and default `all`.
 Invalid values fail before guest/fixture construction. A focused run still
 compiles current source, checks all base hashes, uses read-only inputs and
 bounded tmpfs, verifies that phase's exact proof, retains its 180-second limit
 and cleans its disposable container. Its completion explicitly reports
-`complete_image=false`; it cannot substitute for the default seven-campaign
+`complete_image=false`; it cannot substitute for the default eight-campaign
 qualification or clean Buildroot/hosted/release evidence. Existing full-build
 callers continue to select all campaigns without modification.
+
+The separately enrolled `held` guest adds normal cancellation/full runtime
+Close for the planned service's SAME fixed authorized IPC$ holder. All seven
+older proofs remain mandatory and unchanged; no old idle observer is relabeled
+to cover the extra group. Complete mode requires all eight ordered logs and
+equal runtime census, with one overlay compilation and independent snapshots.
+This does not qualify open data handles, in-flight loss or durable reconnect.
 
 For troubleshooting, add `-DiagnosticLogs` to the same command. After each
 guest exits, this opt-in mode emits its complete bounded log as one escaped JSON

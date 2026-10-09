@@ -12,7 +12,7 @@ from runtime_loader_fixture import MAX_LOG, MAX_REPORT, read_bounded, validate
 
 
 CAMPAIGNS = ("service", "native", "candidate", "lifecycle", "fault", "data",
-             "exit")
+             "exit", "held")
 ENTRIES = ("usr/sbin/smbd", "usr/bin/smbpasswd", "usr/bin/testparm",
            "usr/lib/samba/vfs/streams_xattr.so", "usr/lib/gconv/IBM850.so",
            "usr/bin/pdbedit", "usr/bin/smbstatus", "usr/bin/smbcontrol")
@@ -50,6 +50,15 @@ PLANNED_EXIT_FAULT_MARKER = (
     "restart_refused=true normal_stop_refused=true "
     "private_mount_namespace=true subprocess_disposal=true "
     "parent_fd_equal=true activation=false scope=qemu-only")
+PLANNED_HELD_CLOSE_MARKER = (
+    "PHANTOWD_SAMBA_OWNER_PLANNED_HELD_CLOSE_READY "
+    "same_authorities=true same_daemon=true data_verified=true "
+    "original_session=true exclusive_supervision=true "
+    "accepted_cancellation=true client_daemon_stopped=true "
+    "private_inputs=15 originals_retained=true "
+    "old_observers_refused=true runtime_close_before_release=true "
+    "repeated_close=true closed_refused=true no_fd_leak=true "
+    "activation=false scope=qemu-only")
 MARKERS = (
     "PHANTOWD_SAMBA_ROOT_ENTROPY_READY provider=virtio-rng scope=qemu-only",
     "PHANTOWD_SAMBA_ROOT_STAGE_READY fresh=true hashes_during_copy=true "
@@ -298,6 +307,8 @@ def check_campaign(log, phase):
                  + ("PHANTOWD_SAMBA_ROOT_DATA_DONE",)),
         "exit": (census + (MARKERS[enrollment], PLANNED_EXIT_FAULT_MARKER,
                            "PHANTOWD_SAMBA_ROOT_EXIT_DONE")),
+        "held": (census + (MARKERS[enrollment], PLANNED_HELD_CLOSE_MARKER,
+                           "PHANTOWD_SAMBA_ROOT_HELD_DONE")),
     }[phase]
     prefixes = ("PHANTOWD_SAMBA_ROOT_", "PHANTOWD_SAMBA_OWNER_")
     markers = tuple(line for line in log.splitlines()
@@ -331,9 +342,10 @@ def diagnostic_record(log, phase, status):
 
 
 def check_campaigns(service, native, candidate, lifecycle=None, fault=None,
-                    data=None, exit_log=None):
+                    data=None, exit_log=None, held_log=None):
     costs = tuple(check_campaign(log, phase) for log, phase in zip(
-        (service, native, candidate, lifecycle, fault, data, exit_log),
+        (service, native, candidate, lifecycle, fault, data,
+         exit_log, held_log),
         CAMPAIGNS))
     if any(costs[0][:2] != cost[:2] for cost in costs[1:]):
         raise ValueError("campaign runtime census differs")
@@ -407,6 +419,7 @@ def main():
     verify.add_argument("--fault-log")
     verify.add_argument("--data-log")
     verify.add_argument("--exit-log")
+    verify.add_argument("--held-log")
     campaign = sub.add_parser("verify-campaign")
     campaign.add_argument("log")
     campaign.add_argument("phase", choices=CAMPAIGNS)
@@ -438,9 +451,9 @@ def main():
     else:
         log = read_bounded(args.log, MAX_LOG)
         paths = (args.native_log, args.candidate_log, args.lifecycle_log,
-                 args.fault_log, args.data_log, args.exit_log)
+                 args.fault_log, args.data_log, args.exit_log, args.held_log)
         if any(paths) and not all(paths):
-            raise ValueError("all seven campaign logs required")
+            raise ValueError("all eight campaign logs required")
         if args.native_log:
             costs = check_campaigns(
                 log, *(read_bounded(path, MAX_LOG) for path in paths))

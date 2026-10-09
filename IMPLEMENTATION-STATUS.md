@@ -3,6 +3,31 @@
 
 # Implementation status
 
+## Normal held-client cancellation and full Close (QEMU only)
+
+A separate fresh `held` guest retains the SAME authorized IPC$ session,
+startup-bound backend, identity Owner, complete mounted roster and share grants
+through exclusive serialized supervision. Accepted cancellation verifies whole
+client/daemon group absence and reap while retaining all 15 private daemon inputs
+and BOTH original authorities. The dormant two-client generation-zero census
+stays mandatory; all three older observers refuse the additional group.
+Only subsequent successful full runtime Close releases the originals. Repeated
+healthy Close, closed-observer refusal, final FD equality and unchanged base
+images pass. No excluded account, replacement inputs, retry or restart is added.
+
+Actual verifier/missing-command ARMv5 RED/GREEN, root/non-root Go 1.26.8
+vet/tests/race-count3, ARM compilation, Windows API/UI and all EIGHT fresh
+ARMv5 overlay guests pass on 1,263 unchanged source inputs, including 970 API
+inputs. The driver has 67 tests and requires all eight ordered complete logs: the seven older
+proof contracts are unchanged, not replaced by the new holder proof. A single
+overlay compilation feeds the guests using the existing image and two caches;
+startup40/data20/supervision20/worker4/stop1/guest180 remain unchanged.
+
+This qualifies normal idle IPC$ retirement only, not open-file/in-flight loss,
+durable reconnect, uncertain kernel teardown/recovery, a new complete image/
+archive/SBOM, hosted qualification, product activation or physical EX4 support.
+The older PR130 hosted data failure remains unresolved and unwaived.
+
 ## Fixed data-failure diagnostics (QEMU only)
 
 The six fixed SMB data clients now preserve a private failure witness for
@@ -39,9 +64,10 @@ and unchanged base images. All1,260 source witnesses, including967 API inputs,
 match after execution. Startup40/data20/supervision20/child90/guest180 and
 worker/readiness/stop limits remain unchanged.
 
-The added holder's normal full-close retirement, open-file/in-flight/durable
-reconnect, uncertain kernel teardown and recovery remain unqualified. This is
-not a new complete image/SBOM audit, hosted qualification or product activation.
+That source-loss checkpoint did not qualify normal full-close retirement;
+the separate normal-path qualification above now does. Open-file/in-flight/
+durable reconnect, uncertain kernel teardown and recovery remain unqualified.
+This is not a new complete image/SBOM audit, hosted qualification or product activation.
 The separate OpenSSL PR's own hosted QEMU run fails at its planned-source
 child's data phase; host/B3 pass. No merge or automatic retry was performed;
 newer local success is not a demonstrated fix. The latest complete cached

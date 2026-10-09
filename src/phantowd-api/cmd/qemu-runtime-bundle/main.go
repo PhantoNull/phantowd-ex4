@@ -88,6 +88,13 @@ func run() error {
 		}
 		return err
 	}
+	if len(os.Args) == 2 && os.Args[1] == "native-planned-held" && os.Getuid() == 0 && os.Geteuid() == 0 {
+		err := nativeCredentialFixture(nativePlannedHeldCampaignQEMU)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "native planned held fixture:", err)
+		}
+		return err
+	}
 	if len(os.Args) == 2 && os.Args[1] == "native-planned-exit" && os.Getuid() == 0 && os.Geteuid() == 0 {
 		err := nativeCredentialFixture(nativePlannedExitCampaignQEMU)
 		if err != nil {
