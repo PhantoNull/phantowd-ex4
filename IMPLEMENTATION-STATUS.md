@@ -24,8 +24,12 @@ feeds all nine guests. The complete actual ARMv5 overlay regression now passes
 all nine guests, ordered exact proofs, equal 114-file/27,384,058-byte censuses,
 FD checks and unchanged base images. Independent replay of every saved guest
 log and all 1,269 source witnesses (976 API inputs) passes; source hashes agree
-before/after. The changed full-image/archive/SBOM audit remains pending, not
-inferred from overlay or parser success. No HTTP, product
+before/after. Frozen `97957e9` subsequently passes the complete cached integration
+lane and an independent post-terminal full-image/archive/SBOM audit: all 1,269
+tracked witnesses and 976 API inputs match; 25,317 regular audit inputs recheck.
+All nine Samba guests and both synthetic SMART lanes pass in that full lane,
+not inferred from overlay or parser success. Own-head hosted qualification
+remains required. No HTTP, product
 activation, physical disk operation or installable release is introduced.
 
 ## Original open-file continuity and cancellation (focused QEMU only)
@@ -188,12 +192,12 @@ environment and rejects stale, mismatching, malformed or incomplete observations
 Test-first selected/mismatching-library checks, full shell/refusal tests and the
 actual cached 3.5.8 refusal pass.
 
-Frozen `e234644` passes the original complete cached host/ARMv5 lane, all seven
+Frozen `97957e9` passes the original complete cached host/ARMv5 lane, all nine
 independently enrolled Samba campaigns and both synthetic SMART lanes. A separate
-post-terminal read-only audit matches all 1,255 tracked witnesses and 962 API
+post-terminal read-only audit matches all 1,269 tracked witnesses and 976 API
 inputs, configured strip/installed/rootfs/export, kernel and headers 6.18.55,
 selected/installed Go 1.26.8 SDK, source archives, seven artifact hashes, legal
-metadata and SBOM; 25,289 regular audit inputs remain unchanged.
+metadata and SBOM; 25,317 regular audit inputs remain unchanged.
 The authenticated OpenSSL archive, four patches, license and selected metadata
 agree with 3.5.9. All three installed OpenSSL objects exactly reproduce their
 built bytes after only Buildroot's authenticated configured RPATH normalization.

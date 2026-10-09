@@ -5,14 +5,28 @@
 
 ## Current OpenSSL 3.5.9 complete cached qualification (2026-10-09)
 
-Frozen `e2346443b8517e3d67df1255503030530a409168`, API tree
-`8eae4e2b1fa4a9832428c26d2e7e5ace3a06a706`, passes the original complete cached
-host/ARMv5 lane, all seven Samba campaigns and both synthetic SMART lanes.
+Frozen `97957e9d287aaece30795eeee4e477ab7538e49c`, API tree
+`8285e5d4be6306847569501d2fab667511954ae7`, passes the original complete cached
+host/ARMv5 lane, all nine Samba campaigns and both synthetic SMART lanes.
 Independent post-terminal auditing preserves all previous source/package/SDK/
-kernel/image/legal guards: all 1,255 tracked witnesses, 962 API source inputs,
-11,510 installed Go 1.26.8 SDK files and 25,289 regular audit inputs agree.
+kernel/image/legal guards: all 1,269 tracked witnesses, 976 API source inputs,
+11,510 installed Go 1.26.8 SDK files and 25,317 regular audit inputs agree.
 Configured strip/installed/rootfs/export, kernel AND headers 6.18.55, source
 archives, release bindings, legal metadata and all seven artifact hashes match.
+
+| Artifact | SHA-256 |
+| --- | --- |
+| API (10,708,180 bytes) | `edbafb68a8e4c42535403b13c1b5aacc9bf65dcd27c5fc4d1a2d4ce610a0c035` |
+| rootfs.ext2 (83,886,080 bytes) | `b5faf0b108a059a6e7bdd4ba1678a8964a26c77900b87694182dfa8efd47393f` |
+| API source archive | `42bc520ed8b0d0b6f049fc4d422387c8666991a353b88d39f341078d5dc7fd13` |
+| SHA256SUMS | `efb2d88cdd9e79856a951c603b918e4e8445259dc64e8e07dae159bd9510a7e4` |
+
+The ninth guest qualifies original-open-file continuity and accepted
+cancellation/closure, not file-loss or in-flight transfer faults. The fixed
+idle exit request now runs inside the exclusive supervisor after its first
+complete scan. A controlled actual ARM timing probe reproduces the previous
+competing-request race; this does not explain all older uninstrumented failures.
+Existing proofs, deadlines, sticky review and no-restart semantics remain.
 
 The selected host OpenSSL 3.5.9 recipe/source/license/four-patch roster and SBOM
 agree. Its three installed CLI/library objects match their built objects

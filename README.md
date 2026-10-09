@@ -67,9 +67,9 @@ CLI/library guards. Its complete cached integration and independent artifact/
 source/license/SBOM audit pass. This does not enable target OpenSSL or qualify
 a NAS HTTPS service, independent clean reproduction or physical EX4 support.
 
-The latest fully audited local checkpoint, `e234644`, selects Go 1.26.8 and
+The latest fully audited local checkpoint, `97957e9`, selects Go 1.26.8 and
 host OpenSSL 3.5.9, and
-passes the complete cached host/ARMv5 integration lane, all seven independently enrolled Samba guests
+passes the complete cached host/ARMv5 integration lane, all nine independently enrolled Samba guests
 and both synthetic SMART lanes. It includes retained same-authority startup,
 real data access, exclusive supervision and a source-alias-loss fault that
 stops the daemon without releasing reviewed authority or restarting it.
@@ -80,7 +80,13 @@ The reviewed coordinator also refuses normal `Close` after source restoration:
 two attempts retain its runtime inputs and both original authorities.
 Validated QEMU-only diagnostics report fixed, redacted failure boundaries;
 they do not weaken proof equality or establish the cause of intermittent failures.
-An independent audit matches all 962 API inputs, actual images, kernel/header
+Normal held-session retirement and original-open-file cancellation/closure also
+pass. The file campaign is mandatory in the complete regression; it retains the
+same original object and authorities until verified runtime closure. The fixed
+exit-fault request is serialized inside the supervisor after a complete scan;
+a controlled timing probe reproduces the old competing-request race, not every
+historical failure. In-flight file faults remain unqualified.
+An independent audit matches all 976 API inputs, actual images, kernel/header
 archives, the selected and installed Go SDK, release metadata, SBOM and declared
 license files. OpenSSL's three installed objects are byte-exact reproductions
 of their built objects after Buildroot's configured RPATH normalization. The
