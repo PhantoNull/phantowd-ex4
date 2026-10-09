@@ -3,6 +3,26 @@
 
 # Internal code-only runtime bundle inspection
 
+The private `qemu && linux` pending-client input primitive retains two separate
+complete immutable roots: actual ARM client/library closure/fixed documents,
+and the static bootstrap helper. Plans contain independently supplied hashes;
+existing complete inspection, original pins and late revalidation are reused.
+Fixed documents contain no caller-selected account, credential or policy.
+Both roots must be distinct root-owned RO/nosuid/nodev executable tmpfs mounts.
+Programs use the existing exact 0555 code mode, documents 0444, directories 0755.
+ARM ELF/interpreter/needed-library checks are additional refusals, not loader
+or ABI qualification. The guarded disposable probe verifies both wrong-program
+hashes, partial-construction cleanup, independent caller closure, cancellation,
+released-reference refusal and final FD equality.
+
+This is **not a process Owner or execution token**: it starts no process and
+exposes no descriptor to a consumer. Its future containing Owner must serialize
+access, recheck after fixing all other inputs, retain originals until verified
+whole-group settlement, and preserve review on uncertainty. Close failure is
+sticky, retaining unattempted originals without retry. No ordinary build,
+product startup, HTTP, NAS, actual SMB or pending-I/O qualification is added.
+Use the optional [complete-input lane](../../../../support/QEMU-FAST-TESTS.md).
+
 The QEMU-only planned runtime additionally retains one fixed authorized IPC$
 holder, distinct from the unused two-account client set. No caller chooses its
 program, user, credential or process profile. Its startup/stop uncertainty is

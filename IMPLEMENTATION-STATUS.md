@@ -22,7 +22,22 @@ The latest OpenSSL integration PR still fails its own hosted QEMU fresh-login
 deadline. No local result waives that gate, qualifies a new complete image,
 changes the exclusive supervisor or enables product/NAS services.
 
-## Pending-write client prerequisite: host mock / compile only
+## Pending-write client prerequisites: separate host / ARMv5 fixtures
+
+The new complete-input ARMv5 guest constructs separate sealed tmpfs client
+and bootstrap roots from independently expected build hashes. It retains the
+actual client, library/loader roster and six fixed non-secret documents through
+complete original-object rechecks. Both wrong-program hashes, partial cleanup,
+caller-duplicate closure, cancellation and released-reference refusal pass;
+final FD equality and unchanged base are required. The C handoff now requires
+the existing immutable 0555 program mode; its separate synthetic boundary still
+passes. Host parsing/mode/budget tests and exact log negative controls pass.
+See `support/test-samba-pending-launcher.ps1 -RetainedInputs`.
+
+The new primitive launches no process. This is not actual dynamic loading,
+healthy real SMB execution, a containing process Owner, original request/object
+binding, pending-I/O, a complete rebuilt image or product/hardware qualification.
+The existing generic/root helper, idle observer and ten campaigns are unchanged.
 
 The dedicated fixed launcher additionally passes Linux real-descriptor tests
 under ASan/UBSan and a fresh ARMv5 **synthetic boundary** guest: private namespace,
@@ -30,8 +45,8 @@ cloned RO root, all UID/GID slots65534, no groups/caps, no-new-privileges, origi
 descriptor execution and group settlement before original references close.
 Three malformed handoffs refuse and parent/base remain unchanged. This uses a
 separate static probe, not the actual SMB client or a complete retained Owner.
-It qualifies neither real library loading nor code/config census, SMB request
-identity or pending I/O. The generic helper/idle observer and ten campaigns are
+That synthetic lane alone qualifies neither real library loading nor complete
+code/config census, SMB request identity or pending I/O. The helper/idle observer and ten campaigns are
 unchanged. See `support/test-samba-pending-launcher.ps1` for the bounded test.
 
 A distinct fixed same-open client now has passing C orchestration tests under

@@ -121,7 +121,8 @@ static int inputs(struct stat objects[2])
     for (int i = 0; i < 2; ++i) {
         int fd = 4 + i;
         struct statfs fs;
-        mode_t mode = i ? S_IFREG | 0755 : S_IFDIR | 0755;
+        /* Match the existing StageQEMU/NewPlan immutable code contract. */
+        mode_t mode = i ? S_IFREG | 0555 : S_IFDIR | 0755;
         unsigned long mask = ST_RDONLY | ST_NOSUID | ST_NODEV | ST_NOEXEC;
         unsigned long expected = ST_RDONLY | ST_NOSUID | ST_NODEV;
         if (readonly_descriptor(fd, !i, &objects[i]) || objects[i].st_mode != mode ||

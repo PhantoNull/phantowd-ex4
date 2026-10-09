@@ -13,10 +13,10 @@ run_fixture() {
     input=/run/phantowd-pending-client-input
     mkdir -p "$input/fixture" "$input/sys/firmware/devicetree/base" || return 1
     cp /usr/sbin/phantowd-pending-launcher-boundary "$input/fixture/pending-write" || return 1
-    chmod 0755 "$input/fixture/pending-write" || return 1
+    chmod 0555 "$input/fixture/pending-write" || return 1
     cmp /usr/sbin/phantowd-pending-launcher-boundary "$input/fixture/pending-write" || return 1
     cp /sys/firmware/devicetree/base/model "$input/sys/firmware/devicetree/base/model" || return 1
-    chmod 0644 "$input/sys/firmware/devicetree/base/model" || return 1
+    chmod 0444 "$input/sys/firmware/devicetree/base/model" || return 1
     cmp /sys/firmware/devicetree/base/model "$input/sys/firmware/devicetree/base/model" || return 1
     mount -o remount,ro,nosuid,nodev "$input" || return 1
     /usr/sbin/phantowd-pending-launcher-boundary

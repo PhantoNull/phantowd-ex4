@@ -1,6 +1,36 @@
 # Fast API and file-service integration checks
 
-## Same-open write client: host mock and ARM compile only
+## Dedicated same-open client prerequisites: host and QEMU
+
+The optional complete-input lane constructs and retains the actual ARM client,
+its offline library/loader closure and six fixed non-secret documents:
+
+```powershell
+.\support\test-samba-pending-launcher.ps1 -RetainedInputs
+```
+
+Expected hashes come from separate build inputs, not the inspected roots.
+The guarded guest stages two separate tmpfs roots, seals them read-only and
+retains each root and every regular file independently. Complete census,
+content, metadata, ACL/capability and original-identity rechecks remain required.
+Wrong client/helper hashes, cancellation and released references refuse;
+caller duplicates can close without losing the private originals. Final FD
+equality and unchanged base are mandatory. Exact log controls reject incomplete,
+duplicate, unknown, altered or failure receipts. Build metadata is diagnostic,
+not a signed release manifest or execution token.
+
+This lane launches **neither the real client nor a server**. ELF interpreter /
+needed-library checks do not establish actual loading, ABI closure, SMB access,
+original request/session/object binding or pending-I/O behavior. The next gate
+is a containing lifecycle Owner and healthy real-client execution, followed by
+fault correlation. No NAS, HTTP endpoint or product startup is involved.
+
+It reuses the same image/workspace read-only: one auto-removed non-root
+container, 2 CPUs, 2 GiB memory, 256 PIDs, 1536 MiB `/tmp` and 128 MiB `/var/tmp`
+RAM scratch; one snapshot guest has a 60-second outer limit. Only the new
+disposable tmpfs image copy is enlarged. No base image, device or named volume
+is created/modified. Source must stay frozen during the run. The default lane
+keeps its original smaller 1 GiB / 128 PID / 256 MiB scratch profile.
 
 The separate dedicated launcher now has a synthetic ARMv5 boundary test:
 
@@ -28,8 +58,9 @@ The fixed helper ABI uses pipes0-3 and independently retained root/program FDs
 4/5. It clones the original root before namespace separation and executes the
 original program with `execveat`; the fixed staging path is only a destination,
 never an executable/root source fallback. This does **not** qualify a complete
-code/loader/configuration census or containing production Owner. Before real
-client use, qualify those original authorities and their lifecycle; before
+containing production Owner. Complete-input admission is tested separately
+above; before real client use, qualify its containing lifecycle and actual
+loader execution; before
 fault injection, also qualify original server/session/request/object/extent
 binding. No NAS, HTTP endpoint or product startup is added.
 

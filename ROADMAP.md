@@ -1645,10 +1645,15 @@ storage. No production roster provider or activation path exists.
   privileges before original-inode exec. Real Linux descriptor controls and a
   static synthetic ARM probe pass; malformed inputs refuse and group absence
   precedes original-reference release. Exact receipt negative controls pass.
-  This is not actual libsmbclient execution, complete retained Owner/census,
-  request/extent binding or pending-I/O qualification. Next: construct/recheck
-  the complete original client/loader/config/model root under retained authority,
-  execute the healthy real client and correlate its original server/session/
+  A separate guarded ARMv5 input probe now constructs and retains complete
+  original client/library/loader/config/model and bootstrap roots, using
+  independently expected hashes and the existing immutable code contract.
+  Complete rechecks, wrong-hash/partial-cleanup/canceled/released refusals,
+  independent caller closure, exact receipts and final FD/base equality pass.
+  It starts no process; this is not actual libsmbclient execution, a containing
+  process Owner, request/extent binding or pending-I/O qualification. Next:
+  compose its serialized lifecycle and execute the healthy real client,
+  then correlate its original server/session/
   open/object identities before admitting any pending-write fault. Keep review
   and original references on uncertainty; no generic-profile/idle-observer
   widening, product startup, HTTP or physical NAS action.
