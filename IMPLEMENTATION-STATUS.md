@@ -24,6 +24,16 @@ changes the exclusive supervisor or enables product/NAS services.
 
 ## Pending-write client prerequisite: host mock / compile only
 
+The dedicated fixed launcher additionally passes Linux real-descriptor tests
+under ASan/UBSan and a fresh ARMv5 **synthetic boundary** guest: private namespace,
+cloned RO root, all UID/GID slots65534, no groups/caps, no-new-privileges, original
+descriptor execution and group settlement before original references close.
+Three malformed handoffs refuse and parent/base remain unchanged. This uses a
+separate static probe, not the actual SMB client or a complete retained Owner.
+It qualifies neither real library loading nor code/config census, SMB request
+identity or pending I/O. The generic helper/idle observer and ten campaigns are
+unchanged. See `support/test-samba-pending-launcher.ps1` for the bounded test.
+
 A distinct fixed same-open client now has passing C orchestration tests under
 ASan/UBSan and a strict ARMv5 soft-float compile/link against the already built
 Samba4.22.11 public library. Host entry refuses before Samba context allocation;

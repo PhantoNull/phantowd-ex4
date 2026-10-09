@@ -2,6 +2,37 @@
 
 ## Same-open write client: host mock and ARM compile only
 
+The separate dedicated launcher now has a synthetic ARMv5 boundary test:
+
+```powershell
+.\support\test-samba-pending-launcher.ps1
+```
+
+It requires the existing pinned image/workspace and base artifacts, creates no
+image or named volume, and uses one auto-removed non-root container with bounded
+RAM scratch. Host ASan/UBSan tests exercise real pipe access/alias/FIFO refusals,
+read-only descriptor types and same-byte copy/symlink/missing-program refusals.
+Strict ARM compilation keeps the helper static and the actual SMB client PIE.
+
+One fresh snapshot boots a **different static synthetic probe**, not the SMB
+client. Its containing harness retains the original helper/root/program until
+the group exits and is observed absent. The probe verifies the cloned RO root,
+private mount namespace, all UID/GID slots65534, no groups or capabilities,
+no-new-privileges, closed authority descriptors and anonymous control/secret
+pipes. Three malformed handoffs refuse; the parent view and base stay unchanged.
+Only exact complete receipts qualify this boundary. There is no SMB server,
+actual libsmbclient execution, credential use or pending-I/O/durability proof.
+The original ten-campaign union and generic/root helper remain unchanged.
+
+The fixed helper ABI uses pipes0-3 and independently retained root/program FDs
+4/5. It clones the original root before namespace separation and executes the
+original program with `execveat`; the fixed staging path is only a destination,
+never an executable/root source fallback. This does **not** qualify a complete
+code/loader/configuration census or containing production Owner. Before real
+client use, qualify those original authorities and their lifecycle; before
+fault injection, also qualify original server/session/request/object/extent
+binding. No NAS, HTTP endpoint or product startup is added.
+
 `support/tests/samba-pending-write-fixture.c` is a distinct test-only client,
 not installed in the product or connected to the existing ten-guest campaign.
 The existing idle-file holder and its strict status observer are unchanged.

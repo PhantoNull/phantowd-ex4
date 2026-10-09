@@ -1638,6 +1638,20 @@ storage. No production roster provider or activation path exists.
 - **M4.5 — Failure and shutdown.** Cover startup with absent disks, service crash,
   read-only/full volume, client reconnect, stale NFS handles, shutdown with open
   files and restart ordering. Distinguish safely unavailable from healthy.
+  **Dedicated pending-client handoff prerequisite, host/QEMU only:** a new fixed
+  helper (not the generic/root launcher) accepts original RO root/program FDs
+  and four independent anonymous pipes. It clones before mount-namespace
+  separation, drops all UID/GID slots to65534/groups/caps and sets no-new-
+  privileges before original-inode exec. Real Linux descriptor controls and a
+  static synthetic ARM probe pass; malformed inputs refuse and group absence
+  precedes original-reference release. Exact receipt negative controls pass.
+  This is not actual libsmbclient execution, complete retained Owner/census,
+  request/extent binding or pending-I/O qualification. Next: construct/recheck
+  the complete original client/loader/config/model root under retained authority,
+  execute the healthy real client and correlate its original server/session/
+  open/object identities before admitting any pending-write fault. Keep review
+  and original references on uncertainty; no generic-profile/idle-observer
+  widening, product startup, HTTP or physical NAS action.
   The private fixed-producer status observation is now consumed by a separate
   original-object composition in the explicit `file` guest. A fixed authorized
   client opens one existing synthetic file once, without create/truncate/reopen.
