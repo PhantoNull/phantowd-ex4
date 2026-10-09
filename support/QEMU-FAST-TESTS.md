@@ -837,8 +837,20 @@ qualify the new image/archive/SBOM. Frozen `382004a` subsequently passes the
 complete cached host/ARMv5 lane, all ten Samba guests and both synthetic SMART
 lanes; an independent post-terminal audit matches all 1,270 source witnesses,
 977 API inputs, images/archives/SDK/kernel/headers/OpenSSL consumer/legal/SBOM
-and 25,319 reread audit inputs. This does not establish independent clean or
-own-head hosted qualification; the actual native Enable CI timeout remains open.
+and 25,319 reread audit inputs. This historical checkpoint does not establish
+independent clean or new-head hosted qualification.
+
+The newer frozen `1be0b32` passes complete cached host/ARMv5 integration with
+all ten guests and both synthetic SMART lanes. Its separate post-terminal
+audit matches all 1,273 tracked witnesses, 980 API inputs, exact package/archive
+census, configured strip/image/export, seven artifact hashes, installed SDK,
+kernel/headers/OpenSSL consumer/legal/SBOM and 25,325 unchanged audit rereads.
+The native preparation/enrollment accounting and strict refusal diagnostics
+described below are included in that actual full lane, not inferred from a
+focused or cross-build result. The old integration PR's native Enable failure
+is historical evidence; promotion still needs new-head hosted checks, not a
+blind rerun or a universal timing-fix claim. Pending-I/O, physical EX4 and
+independent clean reproduction remain unqualified.
 
 The fixed exit qualification injects its canceled, admitted and repeated
 requests inside the original service's exclusive loop after a complete scan,

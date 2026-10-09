@@ -73,10 +73,11 @@ SAME planned service's exclusive supervision. Source-alias loss stops client
 and daemon, retaining reviewed identity/storage/runtime despite restoration
 or repeated Close. Older observers refuse the extra group. This is not a new
 complete image or normal full-close/in-flight/durable-handle qualification.
-The separate OpenSSL PR's newest own QEMU run fails native account Enable at
+The separate OpenSSL PR's earlier own QEMU run fails native account Enable at
 the cumulative 60-second fixture deadline; its earlier source-child failure
 is a separate historical observation.
-No merge/retry or causal fix is claimed by the newer local result.
+That dated failure is not waived by a local result; new-head hosted checks
+remain required before integration.
 
 The newer focused `file` guest qualifies one actual original data opening:
 the same composed service retains/matches its original O_PATH object and exact
@@ -93,12 +94,13 @@ The fixed exit fault runs within the same exclusive supervisor, correcting a
 controlled fixture alias race without retry or relaxed proof/deadlines. In-flight
 faults, durable reconnect and recovery remain open.
 
-The fully audited local checkpoint `382004a` selects Go 1.26.8 and host OpenSSL
+The latest fully audited local checkpoint `1be0b32` selects Go 1.26.8 and host OpenSSL
 3.5.9 and passes the
 complete cached Buildroot/host/ARMv5 lane: all ten independently enrolled
 Samba scenarios and both synthetic SMART lanes. Independent post-terminal
-auditing matches all 977 API inputs to compiled package/source archive and all
-1,270 tracked build witnesses. Configured stripping, installed/image/exported
+auditing matches all 980 API inputs to compiled package/source archive and all
+1,273 tracked build witnesses, with 25,325 unchanged audit rereads. Configured
+stripping, installed/image/exported
 API, seven hashes, Linux AND headers 6.18.55, actual selected/installed Go SDK,
 SBOM, release and legal sources agree. The OpenSSL recipe/four patches/original
 and legal source/license/SBOM match; its three installed objects reproduce built
@@ -123,6 +125,15 @@ transfer loss or physical disk failure; its complete cached image audit passes.
 An unchanged-source CPU-only differential reproduces the cumulative Enable
 expiry locally, with a different inner worker boundary; normal-quota full native
 qualification passes. This supplies a diagnostic loop, not a causal hosted fix.
+
+The QEMU-only native driver now separates preparation (20 s) from enrollment
+(60 s), instead of their shared 60 s allowance: aggregate 80 s, not a throughput improvement. Its
+original parent, single-use handoff and uncertain/expired/canceled refusal
+remain enforced. Actual-call-site RED/GREEN and typed post-revocation refusal
+regressions pass. Low quota completes enrollment but still refuses a later
+unchanged live-session 45 s deadline; normal CPU2 native and the complete current lane
+pass. Worker/readiness/stop/guest limits and exact proofs are unchanged.
+This qualifies the accounting/diagnostic changes, not every hosted failure.
 
 After source restoration, two normal coordinator `Close` attempts are also
 refused while the same runtime inputs and both original authorities stay retained.

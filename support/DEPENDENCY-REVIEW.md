@@ -5,12 +5,12 @@
 
 ## Current OpenSSL 3.5.9 complete cached qualification (2026-10-09)
 
-Frozen `382004ad13f9d826d9b383bedb9def44829866a9`, API tree
-`40304cdcc15427b8f8e6188740de356c586e5d5b`, passes the original complete cached
+Frozen `1be0b320b78cf1ea9c9a98d04e6ccd7096cdab76`, API tree
+`ceb0729febf311c3f1b055b3d9b452259b73bb18`, passes the original complete cached
 host/ARMv5 lane, all ten Samba campaigns and both synthetic SMART lanes.
 Independent post-terminal auditing preserves all previous source/package/SDK/
-kernel/image/legal guards: all 1,270 tracked witnesses, 977 API source inputs,
-11,510 installed Go 1.26.8 SDK files and 25,319 regular audit inputs agree.
+kernel/image/legal guards: all 1,273 tracked witnesses, 980 API source inputs,
+11,510 installed Go 1.26.8 SDK files and 25,325 regular audit inputs agree.
 Configured strip/installed/rootfs/export, kernel AND headers 6.18.55, source
 archives, release bindings, legal metadata and all seven artifact hashes match.
 
@@ -18,7 +18,7 @@ archives, release bindings, legal metadata and all seven artifact hashes match.
 | --- | --- |
 | API (10,708,180 bytes) | `edbafb68a8e4c42535403b13c1b5aacc9bf65dcd27c5fc4d1a2d4ce610a0c035` |
 | rootfs.ext2 (83,886,080 bytes) | `b5faf0b108a059a6e7bdd4ba1678a8964a26c77900b87694182dfa8efd47393f` |
-| API source archive | `258851d0e1abe8eab46ac311a50b57d7102ebcdc8cdded28ed69dcda0f495865` |
+| API source archive | `6155515cabd22157ec9a8af0a9226144fda60816ed22b1951fd665d058d531a9` |
 | SHA256SUMS | `efb2d88cdd9e79856a951c603b918e4e8445259dc64e8e07dae159bd9510a7e4` |
 
 The ninth guest qualifies original-open-file continuity and accepted
@@ -44,10 +44,15 @@ This supersedes the earlier host3.5.8 cached image below, not its dated evidence
 The core Go/reviewed-Close checkpoint passed its own hosted checks and merged
 into `develop`; this separate host update needs its own hosted checks.
 
-The existing update PR's own hosted QEMU run fails native Enable at its shared
+The update PR's earlier own hosted QEMU run fails native Enable at its shared
 60-second fixture deadline. An unchanged-source CPU differential reproduces
-the outer expiry locally, not the identical inner boundary; normal-quota native
-qualification passes. No retry, budget waiver or causal hosted fix is claimed.
+the outer expiry locally, not the identical inner boundary. Actual-call-site
+RED/GREEN now qualifies separate preparation20/enrollment60 contexts with the
+original parent retained, and exact-sentinel revocation refusal diagnostics.
+The aggregate allowance becomes80, not a speedup; live45/worker/guest limits
+are unchanged. A low-quota guest finishes enrollment but still refuses a later
+live deadline. Normal-quota native and the complete current lane pass. This is
+not proof of every hosted failure cause; new-head hosted checks remain required.
 Independent clean reproduction, a fresh host-Python header rebuild, full upstream regression
 coverage, remaining advisory dispositions and EX4 host-consumer/hardware/release
 qualification remain separate. No target OpenSSL, NAS HTTPS exposure, physical

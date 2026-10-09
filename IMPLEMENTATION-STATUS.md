@@ -3,6 +3,37 @@
 
 # Implementation status
 
+## Current native accounting and exact full-image qualification
+
+Frozen `1be0b320b78cf1ea9c9a98d04e6ccd7096cdab76`, API tree
+`ceb0729febf311c3f1b055b3d9b452259b73bb18`, passes complete cached
+host/ARMv5 integration, all ten independently enrolled Samba guests and both
+synthetic SMART lanes. The independent post-terminal audit matches all 1,273
+tracked witnesses and 980 API inputs, exact package/source-archive census,
+configured stripping and installed/image/exported bytes, seven artifacts,
+Go 1.26.8 SDK, Linux and headers 6.18.55, host OpenSSL 3.5.9 consumer/legal/SBOM;
+all 25,325 audit inputs recheck unchanged. See the
+[artifact qualification](support/DEPENDENCY-REVIEW.md).
+
+The QEMU-only native driver separates preparation (20 s) from enrollment (60 s)
+instead of spending their former shared 60 s context. Combined allowance becomes 80 s,
+not a speedup; the original parent still bounds both phases. Actual-call-site
+behavioral RED/GREEN covers consumed preparation, single-use handoff and failed,
+expired, uncertain, canceled or late completion. The post-revocation guard
+accepts only the exact changed-pair sentinel and preserves typed incomplete
+observation causes; wrapped/joined changed outcomes still refuse. Tagged
+Go 1.26.8 vet/tests/race-count3, Windows API/UI and ARM cross-build checks pass.
+Worker/readiness/stop, live-session (45 s) and guest (180 s) limits remain unchanged.
+
+A CPU0.6 campaign now completes enrollment beyond the old shared60 allowance
+but later refuses a live-session deadline; its complete verifier remains red.
+Normal CPU2 focused native and the full default ten-guest lane pass. This
+qualifies the accounting and diagnostic changes, not every hosted timeout.
+The integration PR's old own-head native Enable failure is retained as dated
+evidence; promotion requires its new-head hosted checks. No product activation,
+HTTP service operation, NAS access, real-disk operation, pending-I/O fault,
+independent clean reproduction or installable release is qualified.
+
 ## Original-open-file source loss and mandatory ten-guest regression
 
 The fixed QEMU-only `file-source` guest covers only the synthetic volume's
