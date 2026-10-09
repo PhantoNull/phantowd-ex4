@@ -80,8 +80,11 @@ The newer focused `file` guest qualifies one actual original data opening:
 the same composed service retains/matches its original O_PATH object and exact
 session/tree/server/open identity through a complete exclusive supervised scan,
 verified cancellation group stop and full runtime Close before release. It is
-now mandatory as the ninth default regression campaign. All nine actual ARMv5
-overlay guests pass with independent saved-log/source-witness replay. Frozen
+the ninth campaign at the fully audited checkpoint. The newer `file-source`
+guest adds original-open-file source-alias loss as the mandatory tenth campaign;
+all ten actual ARMv5 overlay guests pass with independent saved-log/source-witness
+replay. Verified client/daemon stop retains the original file, 15 inputs and both
+authorities in sticky review despite restoration/repeated Close. Frozen
 `97957e9` additionally passes complete cached integration and a separate exact
 full-image/source/archive/SBOM audit. Own-head hosted qualification remains required.
 The fixed exit fault runs within the same exclusive supervisor, correcting a
@@ -112,8 +115,9 @@ full-close-before-release, idle source-alias loss and original-owned idle exit.
 The exit proof requires its retained worker capture to be unconsumed and
 settled; reviewed authority is not released or automatically restarted.
 Normal held-session retirement and original-open-file cancellation/closure
-also pass in separate fresh guests. The mandatory file campaign does not
-qualify source loss while a file is open or in-flight transfer loss.
+also pass in separate fresh guests. The newer mandatory file-source campaign
+qualifies source-alias loss with that original idle opening, not in-flight
+transfer loss or physical disk failure; its complete image audit remains open.
 
 After source restoration, two normal coordinator `Close` attempts are also
 refused while the same runtime inputs and both original authorities stay retained.
@@ -1622,9 +1626,10 @@ storage. No production roster provider or activation path exists.
   Root/non-root vet/race3, Windows preflight and ARM cross-compilation also pass.
   The fixture omits only a measured duplicate pre-supervision Observe, retaining
   Start's post-admission and supervisor's complete rechecks and all prior limits.
-  The focused proof does not imply default-all coverage, a current full image,
+  The focused proof alone does not imply a current full image,
   hosted failure repair, in-flight work, durable reconnect or product safety.
-  Open-file faults and uncertain teardown remain unqualified.
+  The separately qualified idle-open-file alias-loss proof below does not
+  qualify in-flight faults or uncertain teardown.
   The private original-session-pair recheck prerequisite now passes root-isolated
   host race-count3 and a focused actual ARMv5 native campaign. It requires the
   same complete pair before target-only revocation, refuses the old pair afterward
@@ -1656,9 +1661,21 @@ storage. No production roster provider or activation path exists.
   unchanged inputs (970 API inputs), with 67 verifier tests and all prior proofs/limits.
   No new privilege, image/volume, HTTP or physical-device action is introduced.
 
-  **Next bounded host/QEMU packet:** qualify source-alias loss with the already
-  qualified original data opening, then in-flight loss and late/uncertain cleanup
-  separately. Keep idle IPC$ and actual-open-file proofs distinct. Require
+  **Original-open-file source-alias loss qualified, host/QEMU only:** the
+  mandatory `file-source` guest reuses the original data opening, object/session
+  witness and complete exclusive supervisor. Actual source cover leads to
+  verified whole client/daemon stop, with the file, 15 inputs and BOTH original
+  authorities retained in review. Removing the exact cover and repeating normal
+  Close cannot revive/release authority. Parent FD/base proofs and all ten
+  independently enrolled ARMv5 overlays pass on 1,270 frozen inputs (977 API
+  inputs), with independent actual-log/every-source replay and 71 verifier tests.
+  No timing/guard relaxation or physical disk action; changed full-image/archive/
+  SBOM audit and own-head hosted qualification remain separate.
+
+  **Next bounded host/QEMU packet:** qualify actual pending I/O loss and
+  late/uncertain cleanup separately. Keep idle IPC$ and actual-open-file proofs
+  distinct; the new alias-loss proof holds an idle opening, not a pending write.
+  Require
   evidence that the actual original handle is open under the retained authorized
   session before fault injection; a successful earlier transfer or IPC$ echo is
   not sufficient. Never substitute a new login, backing object or backend.

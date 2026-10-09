@@ -38,6 +38,8 @@ func nativePlannedFaultSubprocessQEMU(fault string) error {
 	commandName, proof := "native-planned-source-fault", plannedSourceFaultChildProofQEMU
 	if fault == "exit" {
 		commandName, proof = "native-planned-exit-fault", plannedExitFaultChildProofQEMU
+	} else if fault == "file-source" {
+		commandName, proof = "native-planned-file-source-fault", plannedFileSourceFaultChildProofQEMU
 	} else if fault != "source" {
 		return errors.New("invalid fixed planned fault subprocess")
 	}
@@ -64,7 +66,7 @@ func nativePlannedSourceFaultQEMU() error {
 }
 
 func nativePlannedFaultQEMU(fault string) error {
-	if fault != "source" && fault != "exit" {
+	if fault != "source" && fault != "exit" && fault != "file-source" {
 		return errors.New("invalid fixed planned fault")
 	}
 	// Refuse hosts BEFORE any open of authority/storage or namespace mutation.
@@ -120,7 +122,14 @@ func nativePlannedFaultQEMU(fault string) error {
 	return nativePlannedServiceFixtureQEMU(plan, lookup, authority, inventory, fault)
 }
 
-func qualifyPlannedSourceFaultQEMU(ctx context.Context, service *smbexec.NativePlannedServiceQEMU, native *runtimebundle.NativeSambaRuntimeQEMU, owner *identityowner.Owner, handoff *mountowner.ServiceHandoff) (result error) {
+func qualifyPlannedSourceFaultQEMU(ctx context.Context, service *smbexec.NativePlannedServiceQEMU, native *runtimebundle.NativeSambaRuntimeQEMU, owner *identityowner.Owner, handoff *mountowner.ServiceHandoff) error {
+	return qualifyPlannedHeldSourceFaultQEMU(ctx, service, native, owner, handoff, false)
+}
+
+// Fixed fixture modes only, never caller-supplied authority, backend or action.
+// The file mode uses its already-qualified original opening and distinct group
+// observer. The original idle IPC$ proof and its complete guards remain intact.
+func qualifyPlannedHeldSourceFaultQEMU(ctx context.Context, service *smbexec.NativePlannedServiceQEMU, native *runtimebundle.NativeSambaRuntimeQEMU, owner *identityowner.Owner, handoff *mountowner.ServiceHandoff, file bool) (result error) {
 	phase := "initial"
 	defer func() {
 		fmt.Fprint(os.Stderr, plannedFaultFailureDiagnosticQEMU(phase, result))
@@ -130,20 +139,30 @@ func qualifyPlannedSourceFaultQEMU(ctx context.Context, service *smbexec.NativeP
 		return errors.New("planned source fault lacks original live access authority")
 	}
 	phase = "startup" // Fixed authorized holder, not a second daemon.
+	startHeld, observeHeld := service.StartHeldSessionQEMU, observePlannedHeldFaultStopQEMU
+	if file {
+		startHeld, observeHeld = service.StartHeldOpenFileQEMU, observePlannedOpenFileStopQEMU
+	}
 	canceled, cancel := context.WithCancel(ctx)
 	cancel()
-	if err := service.StartHeldSessionQEMU(canceled); !errors.Is(err, context.Canceled) {
+	if err := startHeld(canceled); !errors.Is(err, context.Canceled) {
 		return errors.New("planned held session accepted canceled admission")
 	}
-	if err := service.StartHeldSessionQEMU(ctx); err != nil {
+	if err := startHeld(ctx); err != nil {
 		return err
 	}
-	if err := service.StartHeldSessionQEMU(ctx); !errors.Is(err, runtimebundle.ErrReviewRequired) {
+	if err := startHeld(ctx); !errors.Is(err, runtimebundle.ErrReviewRequired) {
 		return errors.New("planned held session accepted duplicate admission")
 	}
-	live, err := observePlannedHeldFaultStopQEMU(ctx, native)
+	live, err := observeHeld(ctx, native)
 	if err != nil || live.DaemonStopped || live.ClientStopped || !live.InputsRetained {
 		return errors.Join(errors.New("planned live holder supplied stopped or released evidence"), err)
+	}
+	if file {
+		retained, err := service.ObserveOriginalOpenFileRetainedQEMU(ctx)
+		if err != nil || !retained || !errors.Is(service.StartHeldSessionQEMU(ctx), runtimebundle.ErrReviewRequired) {
+			return errors.Join(errors.New("planned file fault lacks original object or admits IPC replacement"), err)
+		}
 	}
 	const target = "/srv/phantowd/volumes/qemu-native"
 	fd, err := unix.Openat2(unix.AT_FDCWD, target, &unix.OpenHow{
@@ -212,12 +231,18 @@ func qualifyPlannedSourceFaultQEMU(ctx context.Context, service *smbexec.NativeP
 			}
 			phase = "retention"
 			for range 2 {
-				stopped, err := observePlannedHeldFaultStopQEMU(ctx, native)
+				stopped, err := observeHeld(ctx, native)
 				status, statusErr := service.Status()
 				if err != nil || !stopped.DaemonStopped || !stopped.ClientStopped || !stopped.InputsRetained || statusErr != nil ||
 					status.State != "review-required" || !status.IdentityRetained || !status.SharesRetained || status.RuntimeClosed ||
 					!errors.Is(owner.Close(), identityowner.ErrBusy) || !errors.Is(handoff.Close(), mountowner.ErrHandoffBusy) {
 					return errors.Join(errors.New("planned source fault lost stop or retained authority"), err, statusErr)
+				}
+				if file {
+					retained, err := service.ObserveOriginalOpenFileRetainedQEMU(ctx)
+					if err != nil || !retained {
+						return errors.Join(errors.New("planned file source loss released original object"), err)
+					}
 				}
 			}
 			// Remove exactly the observed cover, not the original mount/grants.
@@ -233,7 +258,7 @@ func qualifyPlannedSourceFaultQEMU(ctx context.Context, service *smbexec.NativeP
 			if err != nil || current != original {
 				return errors.Join(errors.New("planned fault original alias not restored"), err)
 			}
-			for _, operation := range []func(context.Context) error{service.Start, service.Observe, service.VerifyDataAccess, service.StartHeldSessionQEMU} {
+			for _, operation := range []func(context.Context) error{service.Start, service.Observe, service.VerifyDataAccess, service.StartHeldSessionQEMU, service.StartHeldOpenFileQEMU} {
 				if err := operation(ctx); !errors.Is(err, runtimebundle.ErrReviewRequired) {
 					return errors.New("planned source restoration revived service")
 				}
@@ -246,11 +271,17 @@ func qualifyPlannedSourceFaultQEMU(ctx context.Context, service *smbexec.NativeP
 				if err := service.Close(ctx); !errors.Is(err, runtimebundle.ErrReviewRequired) {
 					return errors.Join(errors.New("planned source review close was admitted"), err)
 				}
-				stopped, stopErr := observePlannedHeldFaultStopQEMU(ctx, native)
+				stopped, stopErr := observeHeld(ctx, native)
 				status, err := service.Status()
 				if stopErr != nil || !stopped.DaemonStopped || !stopped.ClientStopped || !stopped.InputsRetained || err != nil || status.State != "review-required" || !status.IdentityRetained || !status.SharesRetained || status.RuntimeClosed ||
 					!errors.Is(owner.Close(), identityowner.ErrBusy) || !errors.Is(handoff.Close(), mountowner.ErrHandoffBusy) {
 					return errors.Join(errors.New("planned source review close released original authority"), err, stopErr)
+				}
+				if file {
+					retained, err := service.ObserveOriginalOpenFileRetainedQEMU(ctx)
+					if err != nil || !retained {
+						return errors.Join(errors.New("planned file review close released original object"), err)
+					}
 				}
 			}
 			status, err = service.Status()

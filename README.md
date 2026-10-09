@@ -36,7 +36,7 @@ scope; [component contracts](src/phantowd-api/README.md) describe the boundaries
 | Build | Pinned Buildroot 2025.02.18 LTS / Linux 6.18.55 LTS; complete local ARMv5 integration and exact source/image/SBOM audit pass | Exact-head hosted checks, independent clean reproduction, installable EX4 image and release qualification |
 | Web management | Bounded read-only snapshots, development authentication/password changes with focus-preserving navigation, SMB/NFS policy editing with before/after review and cross-protocol folder advisories | Complete setup/recovery, certificate lifecycle, browser/accessibility qualification and live service management |
 | Storage | Non-root read-only broker, complete sysfs inventory, manual GPT observations, duplicate-identity detection, protected registry with reader-bound rechecks, rechecked registry/census policy and backing reviews, internal MD/mount-owner fixtures | Trusted production lifecycle, persistent volume IDs, global-use accounting, qualified import and RAID management |
-| Sharing and identities | SMB3/NFS fixtures, disabled-first Samba accounts, session revocation, retained same-authority SMB startup/access, exclusive supervision, held-session source-loss, verified client/daemon closure and focused original-open-file continuity fixtures, Unicode/CP850, streams and POSIX ACL tests | Product account workflows, complete fault coverage, supervised service activation/recovery and legacy permission migration |
+| Sharing and identities | SMB3/NFS fixtures, disabled-first Samba accounts, session revocation, retained same-authority SMB startup/access, exclusive supervision, held-session and original-open-file source-loss, verified client/daemon closure, Unicode/CP850, streams and POSIX ACL tests | Product account workflows, complete fault coverage, supervised service activation/recovery and legacy permission migration |
 | iSCSI | Coherent desired policy, root-only CHAP reader, registry/share review, private declared SMB/NFS exposure refusal, shared backing-object reservations and retained-storage LIO/CHAP composition with ARMv5 access/session/fault fixtures | Product authority/composition, credential provisioning/recovery, external/cross-protocol use and complete session guards, import and target-management UI |
 | Health | Bounded SMART interpretation, generation-bound coordinator, private complete sysfs census including in-use disks, retained descriptor-generation witness, subprocess replay and native/ARMv5 synthetic producer fixtures | Qualified command/device provider, report-to-device binding, history, authorized test jobs, notifications and UI |
 | Network policy | Desired dual-stack policy, private read-only kernel inventories and internal local-address conflict diagnostics in host/ARMv5 QEMU | Qualified physical interface binding, external address-conflict/routing admission, persistent trial/confirmation/rollback and management UI |
@@ -86,6 +86,16 @@ same original object and authorities until verified runtime closure. The fixed
 exit-fault request is serialized inside the supervisor after a complete scan;
 a controlled timing probe reproduces the old competing-request race, not every
 historical failure. In-flight file faults remain unqualified.
+
+The newer userspace overlay adds original-open-file source-alias loss as a
+mandatory tenth independently enrolled guest. All ten actual ARMv5 guests and
+independent log/source replay pass. The same original file, session and
+authorities remain retained in review after verified client/daemon stop; source
+restoration cannot revive the service or release review. This is an idle-open
+handle fault, not a pending write or physical disk failure. The fully audited
+image below still has 976 API inputs; the newer 977-input overlay needs its own
+complete image/archive/SBOM and exact-head hosted qualification.
+
 An independent audit matches all 976 API inputs, actual images, kernel/header
 archives, the selected and installed Go SDK, release metadata, SBOM and declared
 license files. OpenSSL's three installed objects are byte-exact reproductions

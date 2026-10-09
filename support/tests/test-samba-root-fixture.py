@@ -84,10 +84,57 @@ def campaign_rows():
                  "PHANTOWD_SAMBA_ROOT_HELD_DONE", SCAN_COST],
         "file": [*census, fixture.PLANNED_OPEN_FILE_MARKER,
                  "PHANTOWD_SAMBA_ROOT_FILE_DONE", SCAN_COST],
+        "file-source": [*census, fixture.PLANNED_FILE_SOURCE_FAULT_MARKER,
+                        "PHANTOWD_SAMBA_ROOT_FILE_SOURCE_DONE", SCAN_COST],
     }
 
 
 class SambaRootFixture(unittest.TestCase):
+    def test_complete_union_refuses_nine_without_file_source_fault(self):
+        logs = campaign_rows()
+        old_phases = ("service", "native", "candidate", "lifecycle", "fault",
+                      "data", "exit", "held", "file")
+        with self.assertRaises(ValueError):
+            fixture.check_campaigns(
+                *("\n".join(logs[phase]) for phase in old_phases))
+
+    def test_open_file_source_fault_requires_its_original_handle_proof(self):
+        marker = (
+            "PHANTOWD_SAMBA_OWNER_PLANNED_FILE_SOURCE_FAULT_READY "
+            "same_authorities=true same_daemon=true data_verified=true "
+            "original_object=true original_open=true "
+            "client_daemon_stopped=true original_file_retained=true "
+            "old_observers_refused=true source_covered=true "
+            "exclusive_supervision=true review_sticky=true "
+            "private_inputs=15 runtime_inputs_retained=true "
+            "originals_busy=true cover_removed=true "
+            "restoration_refused=true close_refused=true "
+            "private_mount_namespace=true subprocess_disposal=true "
+            "parent_fd_equal=true activation=false scope=qemu-only")
+        enrollment = next(row for row in fixture.MARKERS if row.startswith(
+            "PHANTOWD_SAMBA_OWNER_NATIVE_ENROLLMENT_READY"))
+        rows = [*fixture.MARKERS[:3], CENSUS, enrollment, marker,
+                "PHANTOWD_SAMBA_ROOT_FILE_SOURCE_DONE", SCAN_COST]
+        fixture.check_campaign("\n".join(rows), "file-source")
+        self.assertEqual(fixture.select_campaigns("file-source"),
+                         ("file-source",))
+        # Separate actual ARM qualification precedes mandatory inclusion.
+        # Synthetic verifier success is not guest qualification.
+        self.assertIn("file-source", fixture.select_campaigns("all"))
+        for field in ("original_object", "original_open",
+                      "original_file_retained", "client_daemon_stopped",
+                      "originals_busy", "review_sticky", "close_refused"):
+            with self.subTest(field=field):
+                with self.assertRaises(ValueError):
+                    fixture.check_campaign("\n".join(rows).replace(
+                        field + "=true", field + "=false"), "file-source")
+        for replacement in ("", fixture.PLANNED_SOURCE_FAULT_MARKER,
+                            fixture.PLANNED_OPEN_FILE_MARKER,
+                            marker + "\n" + marker):
+            with self.assertRaises(ValueError):
+                fixture.check_campaign("\n".join(rows).replace(
+                    marker, replacement), "file-source")
+
     def test_complete_union_refuses_legacy_eight_without_open_file(self):
         logs = campaign_rows()
         old_phases = ("service", "native", "candidate", "lifecycle", "fault",
@@ -331,15 +378,15 @@ class SambaRootFixture(unittest.TestCase):
     def test_all_requires_independent_candidate_startup_fault_traces(self):
         rows = campaign_rows()
         phases = ("service", "native", "candidate", "lifecycle", "fault",
-                  "data", "exit", "held", "file")
+                  "data", "exit", "held", "file", "file-source")
         logs = tuple("\n".join(rows[phase]) for phase in phases)
         self.assertEqual(fixture.check_campaigns(*logs),
-                         ((104, 12000000, 123456789),) * 9)
+                         ((104, 12000000, 123456789),) * 10)
         self.assertEqual(fixture.select_campaigns("all"), phases)
         self.assertEqual({row for values in rows.values() for row in values
                           if row in fixture.MARKERS}, set(fixture.MARKERS))
 
-    def test_complete_cli_requires_all_nine_ordered_campaign_logs(self):
+    def test_complete_cli_requires_all_ten_ordered_campaign_logs(self):
         with tempfile.TemporaryDirectory() as scratch:
             paths = {}
             for phase, rows in campaign_rows().items():
@@ -350,16 +397,20 @@ class SambaRootFixture(unittest.TestCase):
                     "verify", paths["service"]]
             pairs = [["--" + phase + "-log", paths[phase]]
                      for phase in ("native", "candidate", "lifecycle",
-                                   "fault", "data", "exit", "held", "file")]
+                                   "fault", "data", "exit", "held", "file",
+                                   "file-source")]
             complete = [item for pair in pairs for item in pair]
             result = subprocess.run(base + complete, capture_output=True,
                                     text=True, check=False, timeout=5)
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertEqual(result.stdout.splitlines().count(
                 fixture.PLANNED_OPEN_FILE_MARKER), 1)
+            self.assertEqual(result.stdout.splitlines().count(
+                fixture.PLANNED_FILE_SOURCE_FAULT_MARKER), 1)
             fixture.check_guest("\n".join(
                 row for row in result.stdout.splitlines()
-                if row != fixture.PLANNED_OPEN_FILE_MARKER))
+                if row not in (fixture.PLANNED_OPEN_FILE_MARKER,
+                               fixture.PLANNED_FILE_SOURCE_FAULT_MARKER)))
             for omitted in range(len(pairs)):
                 partial = [item for index, pair in enumerate(pairs)
                            if index != omitted for item in pair]
@@ -374,10 +425,11 @@ class SambaRootFixture(unittest.TestCase):
         rows = tuple(campaign_rows().values())
         logs = tuple("\n".join(values) for values in rows)
         self.assertEqual(fixture.check_campaigns(*logs),
-                         ((104, 12000000, 123456789),) * 9)
+                         ((104, 12000000, 123456789),) * 10)
         self.assertEqual(fixture.select_campaigns("all"),
                          ("service", "native", "candidate", "lifecycle",
-                          "fault", "data", "exit", "held", "file"))
+                          "fault", "data", "exit", "held", "file",
+                          "file-source"))
         self.assertEqual(fixture.check_campaign(logs[5], "data"),
                          (104, 12000000, 123456789))
         self.assertEqual({row for values in rows for row in values
@@ -578,7 +630,8 @@ class SambaRootFixture(unittest.TestCase):
     def test_campaign_selection_defaults_to_complete_proof(self):
         self.assertEqual(fixture.select_campaigns("all"),
                          ("service", "native", "candidate", "lifecycle",
-                          "fault", "data", "exit", "held", "file"))
+                          "fault", "data", "exit", "held", "file",
+                          "file-source"))
 
     @unittest.skipUnless(os.name == "posix", "POSIX driver admission")
     def test_invalid_diagnostic_mode_never_calls_python(self):
@@ -616,7 +669,8 @@ class SambaRootFixture(unittest.TestCase):
         command = [sys.executable, "-B", str(Path(fixture.__file__)),
                    "select-campaigns"]
         for selection in ("all", "service", "native", "candidate", "lifecycle",
-                          "fault", "data", "exit", "held", "file"):
+                          "fault", "data", "exit", "held", "file",
+                          "file-source"):
             result = subprocess.run(command + [selection], check=False,
                                     capture_output=True, text=True, timeout=5)
             self.assertEqual(result.returncode, 0, result.stderr)
@@ -729,7 +783,7 @@ class SambaRootFixture(unittest.TestCase):
             with self.assertRaises(ValueError):
                 fixture.check_guest(good.replace(expected, replacement))
 
-    def test_nine_bounded_campaigns_require_every_original_proof(self):
+    def test_ten_bounded_campaigns_require_every_original_proof(self):
         split = next(i for i, row in enumerate(fixture.MARKERS)
                      if row.startswith(
                          "PHANTOWD_SAMBA_OWNER_NATIVE_NSS_READY"))
@@ -747,6 +801,8 @@ class SambaRootFixture(unittest.TestCase):
                    if row in fixture.MARKERS}
         self.assertEqual(covered, set(fixture.MARKERS))
         self.assertIn(fixture.PLANNED_OPEN_FILE_MARKER, rows["file"])
+        self.assertIn(fixture.PLANNED_FILE_SOURCE_FAULT_MARKER,
+                      rows["file-source"])
         # Each fresh native guest inspects its OWN complete code census. All
         # independent negative/retention experiments stay mandatory in service,
         # never asserted by a guest that did not run them. New data work has
@@ -773,7 +829,7 @@ class SambaRootFixture(unittest.TestCase):
             self.assertNotIn(proof, rows["lifecycle"])
             self.assertNotIn(proof, rows["data"])
         self.assertEqual(fixture.check_campaigns(*good),
-                         ((104, 12000000, 123456789),) * 9)
+                         ((104, 12000000, 123456789),) * 10)
         for index, phase in enumerate(rows):
             self.assertEqual(fixture.check_campaign(good[index], phase),
                              (104, 12000000, 123456789))

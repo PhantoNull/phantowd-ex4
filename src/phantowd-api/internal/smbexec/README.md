@@ -368,13 +368,35 @@ not a substitute. IPC$ and file holders are mutually exclusive in one lifetime.
 The actual cleaned-source focused `file` guest qualifies original-object/open
 continuity, verified cancellation group stop, retained object/15 inputs/both
 authorities, full runtime Close before release, repeat/closed refusal and FD
-equality. Default `all` now requires this ninth independently enrolled campaign
-in addition to all eight older campaigns; a missing file log refuses the union.
-All nine actual ARMv5 overlay guests and independent saved-log/source replay
-now pass; a changed full-image/audit and hosted qualification remain separate.
-This is not
-mid-I/O loss, durable reconnect, full-image or product qualification. Existing
+equality. This is the ninth independently enrolled campaign; default `all`
+also requires the distinct tenth file-source fault below. A missing file or
+file-source log refuses the union. All ten actual ARMv5 overlay guests and
+independent saved-log/source replay pass; a changed full-image/audit and hosted
+qualification remain separate.
+This is not mid-I/O loss, durable reconnect, full-image or product qualification. Existing
 IPC$ proofs and admission/supervision/worker/stop budgets are unchanged.
+
+### Original-open-file source-alias loss (QEMU only)
+
+The fixed `file-source` fixture reuses the original file opener, original-object/
+session witness and distinct actual group observers; it does not add another
+Owner API or caller-selected fault action. In a guarded private guest namespace,
+only the synthetic volume's source alias is covered. Complete exclusive scans
+detect the change and verify whole client/daemon stop. The SAME original file,
+all 15 runtime inputs and BOTH original storage/identity authorities remain held
+in review. Removing only the observed cover restores the source identity, but
+start, access, old observers, supervision and repeated normal Close cannot
+revive or release reviewed authority. Child disposal and parent FD equality
+are test-only settlement, not product recovery.
+
+The actual focused guest and complete ten-guest ARMv5 overlay pass with all
+original proofs, budgets, equal runtime census and base hashes. Independent
+saved-log/every-source replay validates 1,270 inputs (977 API inputs). Root/non-root
+pinned Go 1.26.8 vet/race-count3, Windows API/UI/ARM cross and 71 verifier tests
+also pass. This qualifies an idle open handle's alias loss, not pending I/O,
+kernel EIO, physical disk failure, transfer integrity or durable reconnect.
+The newer complete image/archive/SBOM and own-head hosted checks remain separate.
+No HTTP, product activation or physical NAS operation is added.
 
 ### Composed source-alias fault (QEMU only)
 

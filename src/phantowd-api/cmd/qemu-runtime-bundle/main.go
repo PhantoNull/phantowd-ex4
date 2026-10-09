@@ -51,6 +51,9 @@ func run() error {
 	if len(os.Args) == 2 && os.Args[1] == "native-planned-exit-fault" && os.Getuid() == 0 && os.Geteuid() == 0 {
 		return nativePlannedExitFaultQEMU()
 	}
+	if len(os.Args) == 2 && os.Args[1] == "native-planned-file-source-fault" && os.Getuid() == 0 && os.Geteuid() == 0 {
+		return nativePlannedFileSourceFaultQEMU()
+	}
 	if len(os.Args) == 2 && os.Args[1] == "native-credentials" && os.Getuid() == 0 && os.Geteuid() == 0 {
 		err := nativeCredentialFixture(nativeCredentialsCampaignQEMU)
 		if err != nil {
@@ -99,6 +102,13 @@ func run() error {
 		err := nativeCredentialFixture(nativePlannedOpenFileCampaignQEMU)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, "native planned file fixture:", err)
+		}
+		return err
+	}
+	if len(os.Args) == 2 && os.Args[1] == "native-planned-file-source" && os.Getuid() == 0 && os.Geteuid() == 0 {
+		err := nativeCredentialFixture(nativePlannedFileSourceCampaignQEMU)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "native planned file source fixture:", err)
 		}
 		return err
 	}

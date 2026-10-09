@@ -749,9 +749,9 @@ original-path/symlink denial, one Unicode filename and owned-group stop are
 checked. This is a distinct test-only native fixture, never installed into the
 product image. See [runtime profile and remaining gates](SAMBA-RUNTIME-PROFILE.md).
 The current wrapper compiles once and runs fresh service/native/candidate/
-lifecycle/fault/data
+lifecycle/fault/data/exit/held/file/file-source
 snapshots, each bounded to 180 seconds. It independently verifies each phase,
-requires all six complete proofs with matching runtime census, then prints combined
+requires all ten complete proofs with matching runtime census, then prints combined
 coverage. This is not a state/daemon lease across boots. Every original contract,
 base check, worker admission fence and deadline remains required by the complete
 suite. The lifecycle guest independently creates real disabled-first accounts
@@ -764,7 +764,7 @@ daemon/idle-disable cycle. Authentication, idle/live disable and backend-binding
 proofs remain mandatory in the native guest, never fabricated in lifecycle.
 Independent inspector refusals and generic-adapter retention experiments now
 run once, in service, and remain mandatory in the complete union. Native and
-candidate/lifecycle/fault/data each run the SAME zero-capability/read-only boundary and actual
+candidate/lifecycle/fault/data/exit/held/file/file-source each run the SAME zero-capability/read-only boundary and actual
 complete census/hash inspection of their OWN staged tree, but emit a separate
 `CENSUS_READY` proof explicitly saying those independent controls did not run.
 The new data guest independently creates and enrolls its own real identities,
@@ -790,19 +790,19 @@ For a focused local diagnosis, select exactly one unchanged guest campaign:
 ```
 
 Allowed selections are `service`, `native`, `candidate`, `lifecycle`, `fault`,
-`data`, `exit`, `held`, `file` and default `all`.
+`data`, `exit`, `held`, `file`, `file-source` and default `all`.
 Invalid values fail before guest/fixture construction. A focused run still
 compiles current source, checks all base hashes, uses read-only inputs and
 bounded tmpfs, verifies that phase's exact proof, retains its 180-second limit
 and cleans its disposable container. Its completion explicitly reports
-`complete_image=false`; it cannot substitute for the default nine-campaign
+`complete_image=false`; it cannot substitute for the default ten-campaign
 qualification or clean Buildroot/hosted/release evidence. Existing full-build
 callers continue to select all campaigns without modification.
 
 The separately enrolled `held` guest adds normal cancellation/full runtime
 Close for the planned service's SAME fixed authorized IPC$ holder. All seven
 older proofs remain mandatory and unchanged; no old idle observer is relabeled
-to cover the extra group. Complete mode requires all nine ordered logs and
+to cover the extra group. Complete mode requires all ten ordered logs and
 equal runtime census, with one overlay compilation and independent snapshots.
 This does not qualify open data handles, in-flight loss or durable reconnect.
 
@@ -811,13 +811,30 @@ once through the same authorized client and daemon. Qualification requires
 original retained-object/open matching, complete original identity/storage
 rechecks, exclusive serialized supervision, verified cancellation group stop,
 retention until full Close, repeated-close/closed-observer refusal and FD/base
-equality. Default `all` now requires this ninth independently enrolled guest;
-the old eight-log union is refused. `-Campaign file` remains available for
-focused diagnosis, not complete qualification. One compilation feeds all nine
+equality. This is the ninth independently enrolled guest; `all` also requires
+the distinct tenth `file-source` guest below. Both old eight- and nine-log
+unions refuse. `-Campaign file` remains available for
+focused diagnosis, not complete qualification. One compilation feeds all ten
 guests. Startup/data/supervision/worker/stop/guest limits
 are unchanged. Start's complete post-admission match and the supervisor's next
 complete scan are required; no extra duplicate fixture scan consumes the
 supervision budget. This does not prove mid-I/O faults or product safety.
+
+`file-source` holds the SAME original data opening under its original authorized
+session and then covers only the synthetic source alias in a fixed private
+guest namespace. Exclusive supervision verifies whole client/daemon stop while
+the original file, all 15 runtime inputs and both original authorities remain
+held in review. Exact cover removal cannot revive the service or make repeated
+normal Close release authority. Parent FD equality and base hashes are required.
+This does not simulate kernel EIO or qualify a pending write, transfer integrity,
+durable reconnect or product recovery.
+
+All ten actual ARMv5 overlay guests pass, with independent replay of every
+saved actual log and all 1,270 source witnesses (977 API inputs), equal runtime
+censuses and unchanged original artifact hashes. All 71 Linux verifier tests,
+lint, shell and default/focused wrapper checks pass. This does not qualify the
+new complete image/archive/SBOM or own-head hosted checks; the base's audit
+describes its 976-input API, not the injected candidate.
 
 The fixed exit qualification injects its canceled, admitted and repeated
 requests inside the original service's exclusive loop after a complete scan,
@@ -826,7 +843,7 @@ controlled 1100-ms timing probe reproduced external-request `busy=true`; the
 same-delay serial variant and a cleaned-source focused ARMv5 replay passed.
 The temporary probe is removed. No retry, deadline or proof was relaxed.
 This diagnoses that fixture race, not every historical hosted/full failure.
-The changed complete nine-guest overlay regression passes on unchanged source,
+The earlier serialized-exit checkpoint's complete nine-guest overlay passes,
 with independent replay of all actual logs and source witnesses, equal runtime
 censuses and unchanged base images. This is not the changed full-image/archive/
 SBOM audit or own-head hosted qualification required before promotion.

@@ -3,6 +3,35 @@
 
 # Implementation status
 
+## Original-open-file source loss and mandatory ten-guest regression
+
+The fixed QEMU-only `file-source` guest covers only the synthetic volume's
+source alias while the SAME authorized client retains its original data opening.
+The original object, session/tree/server/open identity, backend and both
+storage/identity authorities are retained; no replacement login, object or
+backend supplies evidence. Complete exclusive supervision detects the change
+and verifies whole client/daemon group stop. The original file, all 15 runtime
+inputs and both authorities stay held in sticky review. Removing only the
+observed cover restores the source, but start/access/normal Close still refuse,
+including repeated Close. Parent FD equality and original base hashes pass.
+
+Default `all` now requires ten independently enrolled actual ARMv5 guests;
+an old nine-log union cannot qualify. One compilation feeds all ten disposable
+snapshots. All 71 Linux verifier tests, lint, shell and default/focused wrapper
+checks pass, as do root/non-root pinned Go 1.26.8 vet/race-count3, Windows API/UI
+and ARM cross-build checks. The actual complete ten-guest overlay passes with
+ordered exact proofs, equal 114-file/27,384,058-byte runtime censuses and all prior
+guards/deadlines unchanged. Independent replay validates every saved actual log,
+all 1,270 source witnesses (977 API inputs), equal before/after source hashes and
+all seven original artifact hashes.
+
+This proves source-alias loss with an idle original open file, not pending I/O,
+kernel EIO, physical disk failure, transfer integrity, durable reconnect or
+recovery. The newest complete image/archive/SBOM audit remains the separate
+`97957e9`/976-input checkpoint below. The 977-input overlay needs its own full
+image audit and exact-head hosted qualification. No HTTP, product activation,
+NAS access, real-disk operation or installable release is introduced.
+
 ## Serialized exit qualification and mandatory open-file regression
 
 A controlled actual ARMv5 timing probe reproduced competition between the
@@ -16,7 +45,7 @@ cross-compilation pass. Temporary instrumentation is removed. Ordinary
 supervision, deadlines, no-restart and sticky-review contracts are unchanged.
 This is not a causal fix for all earlier uninstrumented full/hosted failures.
 
-Default `all` now includes the original-open-file campaign as a mandatory ninth
+At `97957e9`, default `all` includes the original-open-file campaign as a mandatory ninth
 fresh guest. The verifier refuses any missing, duplicated, wrong-phase or
 unequal-census log and emits its file proof only after complete verification.
 All 69 Linux verifier tests, lint and shell checks pass; one overlay compilation
@@ -54,7 +83,7 @@ complete rechecks and all original limits remain unchanged. This is not a
 universal timing guarantee or a demonstrated fix for older hosted failures.
 
 `file` remains selectable for focused diagnosis and is now required in default
-`all`; this focused proof does not replace the complete nine-guest regression, an exact current
+`all`; this focused proof does not replace the complete ten-guest regression, an exact current
 full image/SBOM audit or hosted qualification. It does not qualify mid-I/O loss,
 durable reconnect, physical EX4, disk migration or a supported release.
 

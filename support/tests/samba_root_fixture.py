@@ -12,7 +12,7 @@ from runtime_loader_fixture import MAX_LOG, MAX_REPORT, read_bounded, validate
 
 
 CAMPAIGNS = ("service", "native", "candidate", "lifecycle", "fault", "data",
-             "exit", "held", "file")
+             "exit", "held", "file", "file-source")
 FOCUSED_CAMPAIGNS = CAMPAIGNS
 ENTRIES = ("usr/sbin/smbd", "usr/bin/smbpasswd", "usr/bin/testparm",
            "usr/lib/samba/vfs/streams_xattr.so", "usr/lib/gconv/IBM850.so",
@@ -69,6 +69,18 @@ PLANNED_OPEN_FILE_MARKER = (
     "old_observers_refused=true runtime_close_before_release=true "
     "repeated_close=true closed_refused=true no_fd_leak=true "
     "activation=false scope=qemu-only")
+PLANNED_FILE_SOURCE_FAULT_MARKER = (
+    "PHANTOWD_SAMBA_OWNER_PLANNED_FILE_SOURCE_FAULT_READY "
+    "same_authorities=true same_daemon=true data_verified=true "
+    "original_object=true original_open=true "
+    "client_daemon_stopped=true original_file_retained=true "
+    "old_observers_refused=true source_covered=true "
+    "exclusive_supervision=true review_sticky=true "
+    "private_inputs=15 runtime_inputs_retained=true "
+    "originals_busy=true cover_removed=true "
+    "restoration_refused=true close_refused=true "
+    "private_mount_namespace=true subprocess_disposal=true "
+    "parent_fd_equal=true activation=false scope=qemu-only")
 MARKERS = (
     "PHANTOWD_SAMBA_ROOT_ENTROPY_READY provider=virtio-rng scope=qemu-only",
     "PHANTOWD_SAMBA_ROOT_STAGE_READY fresh=true hashes_during_copy=true "
@@ -321,6 +333,9 @@ def check_campaign(log, phase):
                            "PHANTOWD_SAMBA_ROOT_HELD_DONE")),
         "file": (census + (MARKERS[enrollment], PLANNED_OPEN_FILE_MARKER,
                            "PHANTOWD_SAMBA_ROOT_FILE_DONE")),
+        "file-source": (census + (MARKERS[enrollment],
+                                  PLANNED_FILE_SOURCE_FAULT_MARKER,
+                                  "PHANTOWD_SAMBA_ROOT_FILE_SOURCE_DONE")),
     }[phase]
     prefixes = ("PHANTOWD_SAMBA_ROOT_", "PHANTOWD_SAMBA_OWNER_")
     markers = tuple(line for line in log.splitlines()
@@ -354,10 +369,11 @@ def diagnostic_record(log, phase, status):
 
 
 def check_campaigns(service, native, candidate, lifecycle=None, fault=None,
-                    data=None, exit_log=None, held_log=None, file_log=None):
+                    data=None, exit_log=None, held_log=None, file_log=None,
+                    file_source_log=None):
     costs = tuple(check_campaign(log, phase) for log, phase in zip(
         (service, native, candidate, lifecycle, fault, data,
-         exit_log, held_log, file_log),
+         exit_log, held_log, file_log, file_source_log),
         CAMPAIGNS))
     if any(costs[0][:2] != cost[:2] for cost in costs[1:]):
         raise ValueError("campaign runtime census differs")
@@ -433,6 +449,7 @@ def main():
     verify.add_argument("--exit-log")
     verify.add_argument("--held-log")
     verify.add_argument("--file-log")
+    verify.add_argument("--file-source-log")
     campaign = sub.add_parser("verify-campaign")
     campaign.add_argument("log")
     campaign.add_argument("phase", choices=FOCUSED_CAMPAIGNS)
@@ -465,9 +482,9 @@ def main():
         log = read_bounded(args.log, MAX_LOG)
         paths = (args.native_log, args.candidate_log, args.lifecycle_log,
                  args.fault_log, args.data_log, args.exit_log, args.held_log,
-                 args.file_log)
+                 args.file_log, args.file_source_log)
         if any(paths) and not all(paths):
-            raise ValueError("all nine campaign logs required")
+            raise ValueError("all ten campaign logs required")
         if args.native_log:
             costs = check_campaigns(
                 log, *(read_bounded(path, MAX_LOG) for path in paths))
@@ -484,6 +501,7 @@ def main():
         print("\n".join(MARKERS))
         if args.native_log:
             print(PLANNED_OPEN_FILE_MARKER)
+            print(PLANNED_FILE_SOURCE_FAULT_MARKER)
 
 
 if __name__ == "__main__":

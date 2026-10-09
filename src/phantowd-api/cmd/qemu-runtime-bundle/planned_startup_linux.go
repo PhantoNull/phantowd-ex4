@@ -50,7 +50,7 @@ func nativePlannedServiceFixtureQEMU(plan *runtimebundle.Plan, lookup fileservic
 			fmt.Fprint(os.Stderr, plannedFaultFailureDiagnosticQEMU(phase, result))
 		}
 	}()
-	if fault != "" && fault != "source" && fault != "exit" && fault != "held" && fault != "file" {
+	if fault != "" && fault != "source" && fault != "exit" && fault != "held" && fault != "file" && fault != "file-source" {
 		return errors.New("invalid fixed planned fault")
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 40*time.Second)
@@ -297,10 +297,12 @@ func nativePlannedServiceFixtureQEMU(plan *runtimebundle.Plan, lookup fileservic
 		defer cancelSupervise()
 		ctx = superviseCtx
 		phase = "supervision"
-		if fault == "source" || fault == "exit" {
+		if fault == "source" || fault == "exit" || fault == "file-source" {
 			qualify, proof := qualifyPlannedSourceFaultQEMU, plannedSourceFaultChildProofQEMU
 			if fault == "exit" {
 				qualify, proof = qualifyPlannedExitFaultQEMU, plannedExitFaultChildProofQEMU
+			} else if fault == "file-source" {
+				qualify, proof = qualifyPlannedFileSourceFaultQEMU, plannedFileSourceFaultChildProofQEMU
 			}
 			if err := qualify(ctx, service, runtime, owner, handoff); err != nil {
 				return err

@@ -33,10 +33,11 @@ const (
 	nativePlannedExitCampaignQEMU
 	nativePlannedHeldCampaignQEMU
 	nativePlannedOpenFileCampaignQEMU
+	nativePlannedFileSourceCampaignQEMU
 )
 
 func nativeCredentialFixture(campaign nativeCredentialCampaignQEMU) (result error) {
-	if campaign > nativePlannedOpenFileCampaignQEMU {
+	if campaign > nativePlannedFileSourceCampaignQEMU {
 		return errors.New("native credential campaign guard")
 	}
 	commandLine, err := os.ReadFile("/proc/cmdline")
@@ -261,7 +262,7 @@ func nativeCredentialFixture(campaign nativeCredentialCampaignQEMU) (result erro
 	// Candidate retains this SAME Owner/backend/runtime for its whole trace;
 	// startup and fault close enrollment admission before their NEW consumers.
 	// No passdb, lease or pins cross boots. All original proofs stay mandatory.
-	if campaign == nativePlannedCandidateCampaignQEMU || campaign == nativeLifecycleCampaignQEMU || campaign == nativeIdentityFaultCampaignQEMU || campaign == nativePlannedExitCampaignQEMU {
+	if campaign == nativePlannedCandidateCampaignQEMU || campaign == nativeLifecycleCampaignQEMU || campaign == nativeIdentityFaultCampaignQEMU || campaign == nativePlannedExitCampaignQEMU || campaign == nativePlannedFileSourceCampaignQEMU {
 		var stage *plannedConfigurationStageQEMU
 		if campaign == nativePlannedCandidateCampaignQEMU {
 			stage, err = nativePlannedCandidateFixtureQEMU(owner, backend, runtime)
@@ -301,6 +302,11 @@ func nativeCredentialFixture(campaign nativeCredentialCampaignQEMU) (result erro
 				return err
 			}
 			reportNativePhaseTimingQEMU(nativeFixtureFaultVerifiedQEMU, started)
+		case nativePlannedFileSourceCampaignQEMU:
+			if err := nativePlannedFaultSubprocessQEMU("file-source"); err != nil {
+				return err
+			}
+			reportNativePhaseTimingQEMU(nativeFixtureFaultVerifiedQEMU, started)
 		}
 		after, err := os.ReadDir("/proc/self/fd")
 		if err != nil || len(after) != len(before) {
@@ -317,6 +323,8 @@ func nativeCredentialFixture(campaign nativeCredentialCampaignQEMU) (result erro
 			fmt.Println(plannedSourceFaultMarkerQEMU)
 		case nativePlannedExitCampaignQEMU:
 			fmt.Println(plannedExitFaultMarkerQEMU)
+		case nativePlannedFileSourceCampaignQEMU:
+			fmt.Println(plannedFileSourceFaultMarkerQEMU)
 		}
 		return nil
 	}
