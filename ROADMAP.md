@@ -3,7 +3,7 @@
 
 # Implementation roadmap
 
-Reviewed: **2026-10-08**. This is the product specification and work breakdown,
+Reviewed: **2026-10-09**. This is the product specification and work breakdown,
 not a release announcement. The [README](README.md) is the concise entry point;
 component contracts remain authoritative for implemented behavior.
 
@@ -67,14 +67,46 @@ currently product-qualified for migration.
 
 ## Current baseline
 
-The fully audited local checkpoint `cea5e0a` selects Go 1.26.8 and passes the
-complete cached Buildroot/host/ARMv5 lane: all seven independently enrolled
+An earlier component-only follow-up passes host checks and all seven fresh ARMv5
+Samba overlay guests. One authorized original IPC$ session remains under the
+SAME planned service's exclusive supervision. Source-alias loss stops client
+and daemon, retaining reviewed identity/storage/runtime despite restoration
+or repeated Close. Older observers refuse the extra group. This is not a new
+complete image or normal full-close/in-flight/durable-handle qualification.
+The separate OpenSSL PR's earlier own QEMU run fails native account Enable at
+the cumulative 60-second fixture deadline; its earlier source-child failure
+is a separate historical observation.
+That dated failure is not waived by a local result; new-head hosted checks
+remain required before integration.
+
+The newer focused `file` guest qualifies one actual original data opening:
+the same composed service retains/matches its original O_PATH object and exact
+session/tree/server/open identity through a complete exclusive supervised scan,
+verified cancellation group stop and full runtime Close before release. It is
+the ninth campaign at the fully audited checkpoint. The newer `file-source`
+guest adds original-open-file source-alias loss as the mandatory tenth campaign;
+all ten actual ARMv5 overlay guests pass with independent saved-log/source-witness
+replay. Verified client/daemon stop retains the original file, 15 inputs and both
+authorities in sticky review despite restoration/repeated Close. Frozen
+`382004a` additionally passes complete cached integration and a separate exact
+full-image/source/archive/SBOM audit. Own-head hosted qualification remains required.
+The fixed exit fault runs within the same exclusive supervisor, correcting a
+controlled fixture alias race without retry or relaxed proof/deadlines. In-flight
+faults, durable reconnect and recovery remain open.
+
+The latest fully audited local checkpoint `1be0b32` selects Go 1.26.8 and host OpenSSL
+3.5.9 and passes the
+complete cached Buildroot/host/ARMv5 lane: all ten independently enrolled
 Samba scenarios and both synthetic SMART lanes. Independent post-terminal
-auditing matches all 962 API inputs to compiled package/source archive and all
-1,250 tracked build witnesses. Configured stripping, installed/image/exported
+auditing matches all 980 API inputs to compiled package/source archive and all
+1,273 tracked build witnesses, with 25,325 unchanged audit rereads. Configured
+stripping, installed/image/exported
 API, seven hashes, Linux AND headers 6.18.55, actual selected/installed Go SDK,
-SBOM, release and legal sources agree; see
-[exact qualification](IMPLEMENTATION-STATUS.md#current-complete-cached-integration--seven-samba-scenarios-and-exact962-audit).
+SBOM, release and legal sources agree. The OpenSSL recipe/four patches/original
+and legal source/license/SBOM match; its three installed objects reproduce built
+bytes after configured RPATH normalization. Actual Buildroot Python passes
+mapped-library/version/certificate/private TLS 1.3 checks; see
+[exact qualification](IMPLEMENTATION-STATUS.md#current-complete-cached-openssl-359-qualification).
 
 The QEMU lifecycle fixture separates preparation (20 seconds) from revocation
 (45 seconds), changing the combined allowance from 45 to 65 seconds. Original worker/service/readiness/stop/
@@ -86,7 +118,22 @@ exclusive serial supervision, cancellation/verified stop, retained originals,
 full-close-before-release, idle source-alias loss and original-owned idle exit.
 The exit proof requires its retained worker capture to be unconsumed and
 settled; reviewed authority is not released or automatically restarted.
-Normal and held-client observers remain unchanged.
+Normal held-session retirement and original-open-file cancellation/closure
+also pass in separate fresh guests. The newer mandatory file-source campaign
+qualifies source-alias loss with that original idle opening, not in-flight
+transfer loss or physical disk failure; its complete cached image audit passes.
+An unchanged-source CPU-only differential reproduces the cumulative Enable
+expiry locally, with a different inner worker boundary; normal-quota full native
+qualification passes. This supplies a diagnostic loop, not a causal hosted fix.
+
+The QEMU-only native driver now separates preparation (20 s) from enrollment
+(60 s), instead of their shared 60 s allowance: aggregate 80 s, not a throughput improvement. Its
+original parent, single-use handoff and uncertain/expired/canceled refusal
+remain enforced. Actual-call-site RED/GREEN and typed post-revocation refusal
+regressions pass. Low quota completes enrollment but still refuses a later
+unchanged live-session 45 s deadline; normal CPU2 native and the complete current lane
+pass. Worker/readiness/stop/guest limits and exact proofs are unchanged.
+This qualifies the accounting/diagnostic changes, not every hosted failure.
 
 After source restoration, two normal coordinator `Close` attempts are also
 refused while the same runtime inputs and both original authorities stay retained.
@@ -95,7 +142,8 @@ the exact proof contract; the intermittent failure cause remains unresolved.
 
 This is not held-session/mid-transfer fault coverage, uncertain construction/
 teardown, product recovery or production storage/identity composition.
-Exact-head hosted promotion, independent clean reproduction, complete advisory
+The separate core PR passed its own hosted checks and merged into `develop`;
+this OpenSSL update's own hosted promotion, independent clean reproduction, complete advisory
 review, hardware, migration, recovery and signed release gates remain open.
 Earlier PR #128/#129 checkpoints failed hosted coordinator-continuity checks; local success
 is not their causal fix. Keep existing guards and finite budgets. No HTTP
@@ -1580,6 +1628,88 @@ storage. No production roster provider or activation path exists.
 - **M4.5 — Failure and shutdown.** Cover startup with absent disks, service crash,
   read-only/full volume, client reconnect, stale NFS handles, shutdown with open
   files and restart ordering. Distinguish safely unavailable from healthy.
+  The private fixed-producer status observation is now consumed by a separate
+  original-object composition in the explicit `file` guest. A fixed authorized
+  client opens one existing synthetic file once, without create/truncate/reopen.
+  The service retains the original O_PATH object through its original share
+  root and matches device/inode plus complete session/tree/server/open identity.
+  Exact configured producer name `Writable` is calibrated, not case-folded.
+  Complete original storage/identity rechecks precede and follow admission and
+  recur under the same exclusive serialized supervisor. Accepted cancellation
+  verifies client/daemon group settlement while the object,15 inputs and both
+  authorities remain held until full runtime Close. Repeated-close/closed
+  refusal and FD/base equality pass in an actual cleaned-source ARMv5 guest.
+  Root/non-root vet/race3, Windows preflight and ARM cross-compilation also pass.
+  The fixture omits only a measured duplicate pre-supervision Observe, retaining
+  Start's post-admission and supervisor's complete rechecks and all prior limits.
+  The focused proof alone does not imply a current full image,
+  hosted failure repair, in-flight work, durable reconnect or product safety.
+  The separately qualified idle-open-file alias-loss proof below does not
+  qualify in-flight faults or uncertain teardown.
+  The private original-session-pair recheck prerequisite now passes root-isolated
+  host race-count3 and a focused actual ARMv5 native campaign. It requires the
+  same complete pair before target-only revocation, refuses the old pair afterward
+  and distinguishes validated inventory change from command/parser/deadline
+  failure. All old same-peer/access/stop/FD/base guards and session45/guest180
+  remain; the two new proof fields are mandatory in the 66-test driver.
+  This is NOT a composed-storage held-session fault, retained data handle,
+  in-flight/durable reconnect, complete changed image or recovery qualification.
+
+  The composed held-session source-loss packet now passes all seven fresh
+  ARMv5 overlay guests plus root/non-root host checks. The SAME original
+  service retains one fixed authorized client; the enabled ungranted account
+  stays excluded. Complete original-session observations precede the alias
+  cover. Client and daemon stop/reap; originals and all15 private daemon inputs
+  remain retained. Old observers refuse the additional group and restoration/
+  repeated Close cannot revive or release review. Parent FD equality and base
+  hashes pass. All1,260 witnesses match; existing startup40/data20/supervision20/
+  child90/guest180 and worker limits remain.
+
+  **Normal held-client retirement qualified, host/QEMU only:** the SAME fixed
+  authorized holder passes accepted idle cancellation and normal full runtime
+  Close in a NEW separately enrolled `held` guest. Original session, identity/
+  backend/complete mounted roster and RO/RW grants remain; the excluded account
+  is not admitted. Both group absence/reap and unused two-client gen0 census
+  precede retained-input release; all three older observers refuse the extra
+  group. BOTH original authorities stay busy until full runtime Close. Repeated
+  healthy Close, closed-observer refusal, final FD equality and base hashes pass.
+  Root/non-root vet/tests/race3 and all EIGHT actual ARMv5 overlays pass on 1,263
+  unchanged inputs (970 API inputs), with 67 verifier tests and all prior proofs/limits.
+  No new privilege, image/volume, HTTP or physical-device action is introduced.
+
+  **Original-open-file source-alias loss qualified, host/QEMU only:** the
+  mandatory `file-source` guest reuses the original data opening, object/session
+  witness and complete exclusive supervisor. Actual source cover leads to
+  verified whole client/daemon stop, with the file, 15 inputs and BOTH original
+  authorities retained in review. Removing the exact cover and repeating normal
+  Close cannot revive/release authority. Parent FD/base proofs and all ten
+  independently enrolled ARMv5 overlays pass on 1,270 frozen inputs (977 API
+  inputs), with independent actual-log/every-source replay and 71 verifier tests.
+  No timing/guard relaxation or physical disk action; changed full-image/archive/
+  SBOM audit and own-head hosted qualification remain separate.
+
+  **Next bounded host/QEMU packet:** qualify actual pending I/O loss and
+  late/uncertain cleanup separately. Keep idle IPC$ and actual-open-file proofs
+  distinct; the new alias-loss proof holds an idle opening, not a pending write.
+  Require
+  evidence that the actual original handle is open under the retained authorized
+  session before fault injection; a successful earlier transfer or IPC$ echo is
+  not sufficient. Never substitute a new login, backing object or backend.
+  Verify whole-group settlement before any release; uncertain results preserve
+  the first error, review and authority without retry/restart. Do not infer
+  durable reconnect, data integrity or recovery from idle-session coverage.
+  Hosted source-child data failures still need an exact-head local feedback
+  loop and a causal fix before promotion; local green is not one.
+
+  The fixed operation/worker-stage feedback seam now passes root/non-root
+  host/race and all seven actual ARMv5 overlays on1,262 unchanged inputs.
+  Private data-error wrappers preserve existing error/review semantics;
+  only allowlisted operation/phase/reason rows survive diagnostic relay.
+  Unknown labels, secrets and diagnostic-contaminated success proofs refuse;
+  child-output1,024 and all existing deadlines remain unchanged. Guard/coordinator
+  failures stay coarse. This improves the feedback loop only: no intermittent
+  failure was reproduced or causally fixed. The normal held-retirement packet
+  above adds a distinct qualification, not a hosted-failure fix.
 - **M4.6 — Product persistence.** Reboot with saved policies, identities and data;
   verify activation of the intended revision and no recreation of credentials,
   permissions or missing directory trees as a recovery shortcut.

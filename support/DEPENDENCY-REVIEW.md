@@ -3,6 +3,61 @@
 
 # Dependency review and update qualification
 
+## Current OpenSSL 3.5.9 complete cached qualification (2026-10-09)
+
+Frozen `1be0b320b78cf1ea9c9a98d04e6ccd7096cdab76`, API tree
+`ceb0729febf311c3f1b055b3d9b452259b73bb18`, passes the original complete cached
+host/ARMv5 lane, all ten Samba campaigns and both synthetic SMART lanes.
+Independent post-terminal auditing preserves all previous source/package/SDK/
+kernel/image/legal guards: all 1,273 tracked witnesses, 980 API source inputs,
+11,510 installed Go 1.26.8 SDK files and 25,325 regular audit inputs agree.
+Configured strip/installed/rootfs/export, kernel AND headers 6.18.55, source
+archives, release bindings, legal metadata and all seven artifact hashes match.
+
+| Artifact | SHA-256 |
+| --- | --- |
+| API (10,708,180 bytes) | `edbafb68a8e4c42535403b13c1b5aacc9bf65dcd27c5fc4d1a2d4ce610a0c035` |
+| rootfs.ext2 (83,886,080 bytes) | `b5faf0b108a059a6e7bdd4ba1678a8964a26c77900b87694182dfa8efd47393f` |
+| API source archive | `6155515cabd22157ec9a8af0a9226144fda60816ed22b1951fd665d058d531a9` |
+| SHA256SUMS | `efb2d88cdd9e79856a951c603b918e4e8445259dc64e8e07dae159bd9510a7e4` |
+
+The ninth guest qualifies original-open-file continuity and accepted
+cancellation/closure; the tenth qualifies source-alias loss with that original
+idle opening. Neither qualifies pending I/O, physical disk failure or recovery. The fixed
+idle exit request now runs inside the exclusive supervisor after its first
+complete scan. A controlled actual ARM timing probe reproduces the previous
+competing-request race; this does not explain all older uninstrumented failures.
+Existing proofs, deadlines, sticky review and no-restart semantics remain.
+
+The selected host OpenSSL 3.5.9 recipe/source/license/four-patch roster and SBOM
+agree. Its three installed CLI/library objects match their built objects
+byte-for-byte after the exact configured RPATH change, authenticated against
+the original Buildroot Makefile/fix-rpath source; altered bytes are not exempted.
+Actual Buildroot Python 3.12.14 loads those same host libraries and passes exact
+runtime version/number binding, certificate verification and a private loopback
+TLS 1.3 exchange. An initial raw-object comparison omitted normal RPATH
+finalization, and a private Python check misread its legacy five-field version
+tuple. Corrected full auditing passes without changing artifacts or waiving
+byte equality; these were audit expectations, not runtime defects.
+
+This supersedes the earlier host3.5.8 cached image below, not its dated evidence.
+The core Go/reviewed-Close checkpoint passed its own hosted checks and merged
+into `develop`; this separate host update needs its own hosted checks.
+
+The update PR's earlier own hosted QEMU run fails native Enable at its shared
+60-second fixture deadline. An unchanged-source CPU differential reproduces
+the outer expiry locally, not the identical inner boundary. Actual-call-site
+RED/GREEN now qualifies separate preparation20/enrollment60 contexts with the
+original parent retained, and exact-sentinel revocation refusal diagnostics.
+The aggregate allowance becomes80, not a speedup; live45/worker/guest limits
+are unchanged. A low-quota guest finishes enrollment but still refuses a later
+live deadline. Normal-quota native and the complete current lane pass. This is
+not proof of every hosted failure cause; new-head hosted checks remain required.
+Independent clean reproduction, a fresh host-Python header rebuild, full upstream regression
+coverage, remaining advisory dispositions and EX4 host-consumer/hardware/release
+qualification remain separate. No target OpenSSL, NAS HTTPS exposure, physical
+disk operation or vulnerability-free/licensing-complete assertion.
+
 ## Current cached962 Go 1.26.8 integration and exact artifact audit (2026-10-08)
 
 Frozen `cea5e0a66d8fed7acec6f5ab63aefec9fa8178b0`, API tree
@@ -401,11 +456,36 @@ product/hardware/recovery/release gates remain open.
    above now pass from authenticated, coherent kernel/header/hash consumers.
    They do not replace resolved EX4 configurations or device-write/thermal
    fences. A compile does not authorize a physical boot or disk operation.
-2. **Host OpenSSL 3.5.9 candidate:** retain the Buildroot LTS baseline unless a
+2. **Host OpenSSL 3.5.9 selected update:** retain the Buildroot LTS baseline unless a
    concrete requirement calls for a branch change. Review its exact recipe and
    four patches, source/license hashes and host reverse dependencies. Qualify the
    actual host consumers and regenerated package/SBOM metadata. Do not add target
    OpenSSL merely to satisfy a scanner or expose new crypto services.
+   **Focused candidate proof (2026-10-08):** upstream 3.5.9 archive SHA-256
+   `603f5602e2eef00d77fbd429d34dcd5822bb301757a1bc9cdb24c670f1eb859a`
+   and its PGP signature match the [official release key](https://openssl-library.org/source/),
+   primary fingerprint `B146647E45A7B33947AB226B2A2C87D161692D40`.
+   All four existing Buildroot patches apply with fuzz0; LICENSE.txt is unchanged.
+   A bounded disposable-RAM host build using the current host configure options
+   passes actual 3.5.9 CLI/shared-library/default-provider binding, SHA-256,
+   certificate and signature verification, and a private loopback TLS1.3 exchange.
+   This is not the complete upstream test suite or actual Buildroot installation.
+   The new exact-state maintenance applicator and shell tests qualify coherent
+   application/idempotence and no-effect rejection of mixed/unknown/missing/
+   symlink inputs and changed/incomplete/extra upstream patch rosters. The actual
+   changed-patch regression first fails, then passes after whole-roster checks.
+   **Selection guards (2026-10-09):** versions.env now selects 3.5.9 and that
+   archive hash; the applicator precedes the shared board-only preparation return.
+   QEMU and research builders build/check host-libopenssl before expensive work;
+   QEMU repeats the check after full make. The installed CLI and loaded library
+   must both match, with inherited configuration/library/module environment
+   removed. Selected-version and wrong-library RED/GREEN tests, complete refusal/
+   shell checks and refusal of the actual old cached3.5.8 installation pass.
+   The complete cached qualification above now binds actual installed3.5.9,
+   configured RPATH transform, original/legal source/license/SBOM and actual host
+   Python mapped-library/certificate/TLS1.3 behavior. Own hosted, independent clean,
+   EX4 consumers, full upstream tests and complete advisory review remain open.
+   No target crypto package, NAS HTTPS or product security claim.
 3. **Go 1.26.8 candidate:** authenticate the exact SDK/source inputs, update the
    Buildroot recipe without unpinned toolchain downloads and preserve the module
    vendor set. Run ordinary/race/fuzz checks and the original ARMv5 campaigns;

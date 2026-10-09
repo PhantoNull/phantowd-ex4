@@ -3,6 +3,38 @@
 
 # Internal code-only runtime bundle inspection
 
+The QEMU-only planned runtime additionally retains one fixed authorized IPC$
+holder, distinct from the unused two-account client set. No caller chooses its
+program, user, credential or process profile. Its startup/stop uncertainty is
+sticky; original references survive until verified settlement and closure.
+The containing coordinator owns lifecycle control and must not operate aliases.
+
+`ObservePlannedHeldStopQEMU` is read-only: it requires the original unused-client
+census, the additional holder's generation/group absence and retained daemon/
+runtime inputs. Older idle/two-client/exit observers refuse this additional
+group. All seven fresh ARMv5 overlay guests qualify source-alias loss with the
+holder active; restoration/repeated Close leave review and both originals busy.
+The separate fresh `held` guest now qualifies accepted idle cancellation and
+normal full Close: both groups settle while all 15 inputs and BOTH originals
+remain retained, then runtime closure precedes original authority release.
+Repeated healthy Close, closed-observer refusal, FD equality and unchanged base
+pass in the complete eight-campaign overlay union. This is not open-file,
+in-flight/durable reconnect, live uncertain teardown or product qualification.
+A real unused-set premature-close regression qualifies only
+terminal error bookkeeping, not an admitted healthy runtime or kernel EIO.
+See [current evidence scope](../../../../IMPLEMENTATION-STATUS.md).
+
+The separate focused `file` campaign uses one fixed `qpsecond` client that
+opens the existing `writable/created` file exactly once. It does not create,
+truncate, reopen, reconnect or restart. Readiness is availability only; the
+containing service must independently match its retained original O_PATH
+object with the complete status observation and recheck original storage and
+identity. Its separate group observer refuses a profile mismatch; older
+idle/IPC$ observers cannot certify this file holder. Both original authorities
+and the original object remain held after verified client/daemon stop until
+full runtime closure. `file` is explicit and is not included in default `all`.
+This is not in-flight failure, durable reconnect or product activation.
+
 `runtimebundle` provides code verification and an internal retained-code Owner
 prototype for M4.4, not an approved runtime manifest or installation token. Ordinary
 product startup does not call it. It has no HTTP/RPC or JSON input/output.
@@ -531,6 +563,19 @@ bracket every client. Its containing coordinator freshly verifies its SAME
 identity and complete storage authorities outside the runtime gate, serializes
 single use and keeps review on uncertainty. Full runtime closure precedes
 release; `DataVerified` is historical completion, not health or authorization.
+
+QEMU/Linux-tagged data failures now retain a private error witness with fixed
+operation/phase/reason labels. The wrapper preserves original `errors.Is`
+semantics and review decisions without formatting the underlying cause.
+Planned postconditions identify Unix ownership, kernel-RO, transfers, denials
+and final daemon recheck. Error-only classification runs no command, changes
+no state and provides no admission or recovery authority. The child diagnostic
+formatter/relay rejects unknown or injected labels; its existing 1,024-byte
+output bound and exact successful proof equality remain mandatory. Initial
+runtime/coordinator guard refusals remain coarse, not invented data operations.
+Root/non-root host/race and all seven fresh ARMv5 overlay campaigns pass;
+this is not reproduction or a causal fix for intermittent hosted failures,
+new complete image qualification or product activation.
 
 Pinned Linux host/race and all four actual ARMv5 campaigns pass at `e3e1d5b`.
 One overlay compilation feeds four fresh, independently enrolled snapshots;

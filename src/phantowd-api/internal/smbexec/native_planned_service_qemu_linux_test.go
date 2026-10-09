@@ -48,6 +48,28 @@ func TestNativePlannedStartRefusesMissingAuthority(t *testing.T) {
 	}
 }
 
+func TestNativePlannedHeldSessionRefusesMissingCanceledBusyAndUnstartedAuthority(t *testing.T) {
+	var absent *NativePlannedServiceQEMU
+	if err := absent.StartHeldSessionQEMU(context.Background()); !errors.Is(err, ErrInvalid) {
+		t.Fatal("absent service admitted held session:", err)
+	}
+	service := &NativePlannedServiceQEMU{gate: make(chan struct{}, 1)}
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	if err := service.StartHeldSessionQEMU(ctx); !errors.Is(err, context.Canceled) {
+		t.Fatal("pre-canceled held session admission proceeded:", err)
+	}
+	service.gate <- struct{}{}
+	err := service.StartHeldSessionQEMU(context.Background())
+	<-service.gate
+	if !errors.Is(err, processowner.ErrBusy) {
+		t.Fatal("competing held session admission proceeded:", err)
+	}
+	if err := service.StartHeldSessionQEMU(context.Background()); !errors.Is(err, runtimebundle.ErrReviewRequired) {
+		t.Fatal("unstarted service accessed backend:", err)
+	}
+}
+
 func TestNativePlannedSupervisionRefusesMissingAuthority(t *testing.T) {
 	var absent *NativePlannedServiceQEMU
 	if err := absent.Supervise(context.Background(), time.Second); !errors.Is(err, ErrInvalid) {
@@ -56,6 +78,50 @@ func TestNativePlannedSupervisionRefusesMissingAuthority(t *testing.T) {
 	var uninitialized NativePlannedServiceQEMU
 	if err := uninitialized.Supervise(context.Background(), time.Second); !errors.Is(err, ErrInvalid) {
 		t.Fatal("uninitialized planned service admitted supervision:", err)
+	}
+}
+
+func TestNativePlannedExitSupervisionRefusesMissingCanceledAndBusyAuthority(t *testing.T) {
+	var absent *NativePlannedServiceQEMU
+	if err := absent.SuperviseExitFaultQEMU(context.Background(), time.Second); !errors.Is(err, ErrInvalid) {
+		t.Fatal("absent service admitted synthetic exit:", err)
+	}
+	service := &NativePlannedServiceQEMU{gate: make(chan struct{}, 1)}
+	if err := service.SuperviseExitFaultQEMU(nil, time.Second); !errors.Is(err, ErrInvalid) {
+		t.Fatal("missing context admitted synthetic exit:", err)
+	}
+	canceled, cancel := context.WithCancel(context.Background())
+	cancel()
+	if err := service.SuperviseExitFaultQEMU(canceled, time.Second); !errors.Is(err, context.Canceled) {
+		t.Fatal("pre-canceled synthetic exit admission proceeded:", err)
+	}
+	service.gate <- struct{}{}
+	err := service.SuperviseExitFaultQEMU(context.Background(), time.Second)
+	<-service.gate
+	if !errors.Is(err, processowner.ErrBusy) {
+		t.Fatal("synthetic exit admitted a competing cycle:", err)
+	}
+	for _, interval := range []time.Duration{0, time.Second - 1, time.Hour + 1} {
+		if err := service.SuperviseExitFaultQEMU(context.Background(), interval); !errors.Is(err, ErrInvalid) {
+			t.Fatal("synthetic exit weakened interval bounds:", err)
+		}
+	}
+	if err := service.SuperviseExitFaultQEMU(context.Background(), time.Second); !errors.Is(err, runtimebundle.ErrReviewRequired) {
+		t.Fatal("unstarted service accessed the runtime:", err)
+	}
+}
+
+func TestNativePlannedExitSupervisionRefusesIneligibleLifetimesBeforeRuntime(t *testing.T) {
+	// Negative-only lifetimes; there is no valid backend/process to signal.
+	for _, service := range []*NativePlannedServiceQEMU{
+		{closed: true}, {review: true}, {started: true, stopped: true},
+		{started: true}, {started: true, dataVerified: true},
+		{started: true, dataVerified: true, heldAttempted: true},
+	} {
+		service.gate = make(chan struct{}, 1)
+		if err := service.SuperviseExitFaultQEMU(context.Background(), time.Second); !errors.Is(err, runtimebundle.ErrReviewRequired) {
+			t.Fatal("ineligible synthetic exit reached an absent runtime:", err)
+		}
 	}
 }
 

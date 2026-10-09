@@ -21,7 +21,41 @@ func plannedFaultFailureDiagnosticQEMU(phase string, err error) string {
 	if err == nil || !validPlannedFaultPhaseQEMU(phase) {
 		return ""
 	}
-	return fmt.Sprintf("PHANTOWD_QEMU_PLANNED_FAULT_FAILURE phase=%s deadline=%t review=%t scope=diagnostic-only\n", phase, errors.Is(err, context.DeadlineExceeded), errors.Is(err, runtimebundle.ErrReviewRequired))
+	output := fmt.Sprintf("PHANTOWD_QEMU_PLANNED_FAULT_FAILURE phase=%s deadline=%t review=%t scope=diagnostic-only\n", phase, errors.Is(err, context.DeadlineExceeded), errors.Is(err, runtimebundle.ErrReviewRequired))
+	return output + plannedDataFailureDiagnosticQEMU(runtimebundle.ObserveNativeDataFailureQEMU(err)) + plannedExitFailureDiagnosticQEMU(err)
+}
+
+func plannedDataFailureDiagnosticQEMU(data runtimebundle.NativeDataFailureObservationQEMU) string {
+	if !data.Present {
+		return ""
+	}
+	row := fmt.Sprintf("PHANTOWD_QEMU_DATA_FAILURE operation=%s phase=%s reason=%s scope=diagnostic-only", data.Operation, data.Phase, data.Reason)
+	if !validPlannedDataDiagnosticQEMU(strings.Split(row, " ")) {
+		return ""
+	}
+	return row + "\n"
+}
+
+func validPlannedDataDiagnosticQEMU(fields []string) bool {
+	if len(fields) != 5 || fields[0] != "PHANTOWD_QEMU_DATA_FAILURE" || fields[4] != "scope=diagnostic-only" {
+		return false
+	}
+	switch fields[1] {
+	case "operation=rw-write", "operation=rw-read", "operation=ro-read", "operation=ro-write", "operation=escape", "operation=ungranted", "operation=unix-owner", "operation=kernel-ro", "operation=transfer", "operation=denial", "operation=final-daemon":
+	default:
+		return false
+	}
+	switch fields[2] {
+	case "phase=pre-admission", "phase=execution", "phase=settlement", "phase=post-admission", "phase=result":
+	default:
+		return false
+	}
+	switch fields[3] {
+	case "reason=deadline", "reason=canceled", "reason=mismatch", "reason=unavailable", "reason=other":
+		return true
+	default:
+		return false
+	}
 }
 
 func validPlannedFaultPhaseQEMU(phase string) bool {
@@ -45,6 +79,18 @@ func plannedFaultSubprocessDiagnosticQEMU(ctxErr, runErr error, captured, proof 
 	seen := make(map[string]bool)
 	for _, line := range strings.Split(captured, "\n") {
 		fields := strings.Split(line, " ")
+		if validPlannedExitDiagnosticQEMU(fields) && !seen[line] {
+			seen[line] = true
+			output.WriteString(line)
+			output.WriteByte('\n')
+			continue
+		}
+		if validPlannedDataDiagnosticQEMU(fields) && !seen[line] {
+			seen[line] = true
+			output.WriteString(line)
+			output.WriteByte('\n')
+			continue
+		}
 		if len(fields) != 5 || fields[0] != "PHANTOWD_QEMU_PLANNED_FAULT_FAILURE" || fields[4] != "scope=diagnostic-only" {
 			continue
 		}

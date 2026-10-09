@@ -42,6 +42,7 @@ func TestPlannedStopObservationDoesNotReplaceHeldClientContract(t *testing.T) {
 		{plannedDataPrepared: true}, // Prepared inputs are not a started daemon.
 		{plannedDataPrepared: true, daemonAttempted: true, clients: &processowner.PinnedSet{}},
 		{plannedDataPrepared: true, daemonAttempted: true, clientsAttempted: true},
+		{plannedDataPrepared: true, daemonAttempted: true, plannedClientAttempted: true},
 		{plannedDataPrepared: true, daemonAttempted: true, pending: &processowner.CaptureOwner{}},
 	} {
 		r.owner, r.gate = &Owner{}, make(chan struct{}, 1)

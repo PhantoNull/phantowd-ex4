@@ -15,7 +15,7 @@ selection=${8:-all}
 diagnostics=${9:-none}
 case "$diagnostics" in none|diagnostic) ;; *) exit 1 ;; esac
 case "$selection" in
-    all|service|native|candidate|lifecycle|fault|data|exit) ;;
+    all|service|native|candidate|lifecycle|fault|data|exit|held|file|file-source) ;;
     *) exit 1 ;;
 esac
 tmpdir=${TMPDIR:-/tmp}
@@ -44,7 +44,7 @@ cleanup() {
         "$scratch/streams_xattr.json" "$scratch/ibm850.json" "$scratch/manifest" \
         "$scratch/launcher" "$scratch/charset" "$scratch/bundle" "$scratch/owner" \
         "$scratch/service.log" "$scratch/native.log" "$scratch/candidate.log" \
-        "$scratch/lifecycle.log" "$scratch/fault.log" "$scratch/data.log" "$scratch/exit.log"
+        "$scratch/lifecycle.log" "$scratch/fault.log" "$scratch/data.log" "$scratch/exit.log" "$scratch/held.log" "$scratch/file.log" "$scratch/file-source.log"
     rm -rf "$scratch/go-cache" "$scratch/go-path"
     rmdir "$scratch"
 }
@@ -136,12 +136,15 @@ if [ "$selection" = all ] && ! python3 -B "$source_dir/support/tests/samba_root_
     "$scratch/service.log" --native-log "$scratch/native.log" \
     --candidate-log "$scratch/candidate.log" \
     --lifecycle-log "$scratch/lifecycle.log" --fault-log "$scratch/fault.log" \
-    --data-log "$scratch/data.log" --exit-log "$scratch/exit.log"; then
+    --data-log "$scratch/data.log" --exit-log "$scratch/exit.log" \
+    --held-log "$scratch/held.log" --file-log "$scratch/file.log" \
+    --file-source-log "$scratch/file-source.log"; then
     if [ -n "$failure_log" ]; then
         mkdir -p "$(dirname "$failure_log")"
         cat "$scratch/service.log" "$scratch/native.log" \
             "$scratch/candidate.log" "$scratch/lifecycle.log" \
-            "$scratch/fault.log" "$scratch/data.log" "$scratch/exit.log" >"$failure_log"
+            "$scratch/fault.log" "$scratch/data.log" "$scratch/exit.log" \
+            "$scratch/held.log" "$scratch/file.log" "$scratch/file-source.log" >"$failure_log"
     fi
     tail -n 60 "$scratch/service.log" >&2
     tail -n 60 "$scratch/native.log" >&2
@@ -150,6 +153,9 @@ if [ "$selection" = all ] && ! python3 -B "$source_dir/support/tests/samba_root_
     tail -n 60 "$scratch/fault.log" >&2
     tail -n 60 "$scratch/data.log" >&2
     tail -n 60 "$scratch/exit.log" >&2
+    tail -n 60 "$scratch/held.log" >&2
+    tail -n 60 "$scratch/file.log" >&2
+    tail -n 60 "$scratch/file-source.log" >&2
     exit 1
 fi
 [ "$(sha256sum "$base/rootfs.ext2" | awk '{print $1}')" = "$base_hash" ]

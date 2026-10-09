@@ -36,7 +36,7 @@ scope; [component contracts](src/phantowd-api/README.md) describe the boundaries
 | Build | Pinned Buildroot 2025.02.18 LTS / Linux 6.18.55 LTS; complete local ARMv5 integration and exact source/image/SBOM audit pass | Exact-head hosted checks, independent clean reproduction, installable EX4 image and release qualification |
 | Web management | Bounded read-only snapshots, development authentication/password changes with focus-preserving navigation, SMB/NFS policy editing with before/after review and cross-protocol folder advisories | Complete setup/recovery, certificate lifecycle, browser/accessibility qualification and live service management |
 | Storage | Non-root read-only broker, complete sysfs inventory, manual GPT observations, duplicate-identity detection, protected registry with reader-bound rechecks, rechecked registry/census policy and backing reviews, internal MD/mount-owner fixtures | Trusted production lifecycle, persistent volume IDs, global-use accounting, qualified import and RAID management |
-| Sharing and identities | SMB3/NFS fixtures, disabled-first Samba accounts, session revocation, retained same-authority SMB startup/access, normal supervision and focused source-alias/original-owned exit fixtures, Unicode/CP850, streams and POSIX ACL tests | Product account workflows, complete fault coverage, supervised service activation/recovery and legacy permission migration |
+| Sharing and identities | SMB3/NFS fixtures, disabled-first Samba accounts, session revocation, retained same-authority SMB startup/access, exclusive supervision, held-session and original-open-file source-loss, verified client/daemon closure, Unicode/CP850, streams and POSIX ACL tests | Product account workflows, complete fault coverage, supervised service activation/recovery and legacy permission migration |
 | iSCSI | Coherent desired policy, root-only CHAP reader, registry/share review, private declared SMB/NFS exposure refusal, shared backing-object reservations and retained-storage LIO/CHAP composition with ARMv5 access/session/fault fixtures | Product authority/composition, credential provisioning/recovery, external/cross-protocol use and complete session guards, import and target-management UI |
 | Health | Bounded SMART interpretation, generation-bound coordinator, private complete sysfs census including in-use disks, retained descriptor-generation witness, subprocess replay and native/ARMv5 synthetic producer fixtures | Qualified command/device provider, report-to-device binding, history, authorized test jobs, notifications and UI |
 | Network policy | Desired dual-stack policy, private read-only kernel inventories and internal local-address conflict diagnostics in host/ARMv5 QEMU | Qualified physical interface binding, external address-conflict/routing admission, persistent trial/confirmation/rollback and management UI |
@@ -62,30 +62,34 @@ not establish independent clean-build reproducibility, complete licensing
 compliance or physical EX4 qualification. [versions.env](versions.env) is the
 source of truth for build pins.
 
-The latest fully audited local checkpoint, `cea5e0a`, selects Go 1.26.8 and
-passes the complete cached host/ARMv5 integration lane, all seven independently enrolled Samba guests
-and both synthetic SMART lanes. It includes retained same-authority startup,
-real data access, exclusive supervision and a source-alias-loss fault that
-stops the daemon without releasing reviewed authority or restarting it.
-The original-owned idle exit scenario also verifies sticky review, group
-stop/reap and retained unconsumed worker inputs; it does not qualify
-mid-transfer/session loss or recovery.
-The reviewed coordinator also refuses normal `Close` after source restoration:
-two attempts retain its runtime inputs and both original authorities.
-Validated QEMU-only diagnostics report fixed, redacted failure boundaries;
-they do not weaken proof equality or establish the cause of intermittent failures.
-An independent audit matches all 962 API inputs, actual images, kernel/header
-archives, the selected and installed Go SDK, release metadata, SBOM and declared
-license files; see the [exact qualification record](support/DEPENDENCY-REVIEW.md).
-The QEMU lifecycle fixture separates preparation (20 seconds) from revocation
-verification (45 seconds), increasing their combined allowance from 45 to 65
-seconds without changing worker, service, stop or guest limits. This is not a
-performance improvement or a demonstrated fix for hosted failures.
+The builder selects host OpenSSL 3.5.9 with exact recipe/hash and installed
+CLI/library guards. Its complete cached integration and independent artifact/
+source/license/SBOM audit pass. This does not enable target OpenSSL or qualify
+a NAS HTTPS service, independent clean reproduction or physical EX4 support.
 
+The latest fully audited local checkpoint, `1be0b32`, selects Go 1.26.8 and
+host OpenSSL 3.5.9. Complete cached host/ARMv5 integration, all ten independently
+enrolled Samba guests and both synthetic SMART lanes pass. The sharing fixtures
+cover same-authority startup, real data access, exclusive supervision, verified
+closure and idle original-session/open-file faults with retained review and no
+restart. Source restoration does not release reviewed authority. These are not
+pending-I/O, physical disk failure, durable reconnect or recovery qualifications.
+
+An independent audit matches all 980 API inputs, actual images, kernel/header
+archives, the selected and installed Go SDK, release metadata, SBOM and declared
+license files. OpenSSL's three installed objects are byte-exact reproductions
+of their built objects after Buildroot's configured RPATH normalization. The
+actual Buildroot Python consumer loads those libraries and passes certificate
+verification and private loopback TLS 1.3; see the
+[exact qualification record](support/DEPENDENCY-REVIEW.md).
 This does not establish independent clean reproduction, physical EX4 support,
-complete fault coverage or an installable release. The previous hosted
-identity-coordinator timeout remains unexplained; local success is not a fix.
-The updated PR must pass its own hosted checks before integration. No product
+complete fault coverage or an installable release. The native QEMU fixture now
+separates preparation from enrollment and preserves the cause of incomplete
+revocation observations. Behavioral regression tests and the complete local
+lane pass; the integration PR still requires new-head hosted qualification.
+This does not establish a fix for every earlier hosted timing failure.
+The core checkpoint passed its own hosted checks and merged into `develop`;
+the separate OpenSSL update must pass its own hosted checks before integration. No product
 SMB/NFS service is activated; see [implementation status](IMPLEMENTATION-STATUS.md).
 
 ## Roadmap

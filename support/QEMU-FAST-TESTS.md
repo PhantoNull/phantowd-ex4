@@ -749,9 +749,9 @@ original-path/symlink denial, one Unicode filename and owned-group stop are
 checked. This is a distinct test-only native fixture, never installed into the
 product image. See [runtime profile and remaining gates](SAMBA-RUNTIME-PROFILE.md).
 The current wrapper compiles once and runs fresh service/native/candidate/
-lifecycle/fault/data
+lifecycle/fault/data/exit/held/file/file-source
 snapshots, each bounded to 180 seconds. It independently verifies each phase,
-requires all six complete proofs with matching runtime census, then prints combined
+requires all ten complete proofs with matching runtime census, then prints combined
 coverage. This is not a state/daemon lease across boots. Every original contract,
 base check, worker admission fence and deadline remains required by the complete
 suite. The lifecycle guest independently creates real disabled-first accounts
@@ -764,7 +764,7 @@ daemon/idle-disable cycle. Authentication, idle/live disable and backend-binding
 proofs remain mandatory in the native guest, never fabricated in lifecycle.
 Independent inspector refusals and generic-adapter retention experiments now
 run once, in service, and remain mandatory in the complete union. Native and
-candidate/lifecycle/fault/data each run the SAME zero-capability/read-only boundary and actual
+candidate/lifecycle/fault/data/exit/held/file/file-source each run the SAME zero-capability/read-only boundary and actual
 complete census/hash inspection of their OWN staged tree, but emit a separate
 `CENSUS_READY` proof explicitly saying those independent controls did not run.
 The new data guest independently creates and enrolls its own real identities,
@@ -790,14 +790,79 @@ For a focused local diagnosis, select exactly one unchanged guest campaign:
 ```
 
 Allowed selections are `service`, `native`, `candidate`, `lifecycle`, `fault`,
-`data`, `exit` and default `all`.
+`data`, `exit`, `held`, `file`, `file-source` and default `all`.
 Invalid values fail before guest/fixture construction. A focused run still
 compiles current source, checks all base hashes, uses read-only inputs and
 bounded tmpfs, verifies that phase's exact proof, retains its 180-second limit
 and cleans its disposable container. Its completion explicitly reports
-`complete_image=false`; it cannot substitute for the default seven-campaign
+`complete_image=false`; it cannot substitute for the default ten-campaign
 qualification or clean Buildroot/hosted/release evidence. Existing full-build
 callers continue to select all campaigns without modification.
+
+The separately enrolled `held` guest adds normal cancellation/full runtime
+Close for the planned service's SAME fixed authorized IPC$ holder. All seven
+older proofs remain mandatory and unchanged; no old idle observer is relabeled
+to cover the extra group. Complete mode requires all ten ordered logs and
+equal runtime census, with one overlay compilation and independent snapshots.
+This does not qualify open data handles, in-flight loss or durable reconnect.
+
+The separate developmental `file` selection opens one existing synthetic file
+once through the same authorized client and daemon. Qualification requires
+original retained-object/open matching, complete original identity/storage
+rechecks, exclusive serialized supervision, verified cancellation group stop,
+retention until full Close, repeated-close/closed-observer refusal and FD/base
+equality. This is the ninth independently enrolled guest; `all` also requires
+the distinct tenth `file-source` guest below. Both old eight- and nine-log
+unions refuse. `-Campaign file` remains available for
+focused diagnosis, not complete qualification. One compilation feeds all ten
+guests. Startup/data/supervision/worker/stop/guest limits
+are unchanged. Start's complete post-admission match and the supervisor's next
+complete scan are required; no extra duplicate fixture scan consumes the
+supervision budget. This does not prove mid-I/O faults or product safety.
+
+`file-source` holds the SAME original data opening under its original authorized
+session and then covers only the synthetic source alias in a fixed private
+guest namespace. Exclusive supervision verifies whole client/daemon stop while
+the original file, all 15 runtime inputs and both original authorities remain
+held in review. Exact cover removal cannot revive the service or make repeated
+normal Close release authority. Parent FD equality and base hashes are required.
+This does not simulate kernel EIO or qualify a pending write, transfer integrity,
+durable reconnect or product recovery.
+
+All ten actual ARMv5 overlay guests pass, with independent replay of every
+saved actual log and all 1,270 source witnesses (977 API inputs), equal runtime
+censuses and unchanged original artifact hashes. All 71 Linux verifier tests,
+lint, shell and default/focused wrapper checks pass. That overlay alone did not
+qualify the new image/archive/SBOM. Frozen `382004a` subsequently passes the
+complete cached host/ARMv5 lane, all ten Samba guests and both synthetic SMART
+lanes; an independent post-terminal audit matches all 1,270 source witnesses,
+977 API inputs, images/archives/SDK/kernel/headers/OpenSSL consumer/legal/SBOM
+and 25,319 reread audit inputs. This historical checkpoint does not establish
+independent clean or new-head hosted qualification.
+
+The newer frozen `1be0b32` passes complete cached host/ARMv5 integration with
+all ten guests and both synthetic SMART lanes. Its separate post-terminal
+audit matches all 1,273 tracked witnesses, 980 API inputs, exact package/archive
+census, configured strip/image/export, seven artifact hashes, installed SDK,
+kernel/headers/OpenSSL consumer/legal/SBOM and 25,325 unchanged audit rereads.
+The native preparation/enrollment accounting and strict refusal diagnostics
+described below are included in that actual full lane, not inferred from a
+focused or cross-build result. The old integration PR's native Enable failure
+is historical evidence; promotion still needs new-head hosted checks, not a
+blind rerun or a universal timing-fix claim. Pending-I/O, physical EX4 and
+independent clean reproduction remain unqualified.
+
+The fixed exit qualification injects its canceled, admitted and repeated
+requests inside the original service's exclusive loop after a complete scan,
+not through an external runtime alias competing with the next scan. A
+controlled 1100-ms timing probe reproduced external-request `busy=true`; the
+same-delay serial variant and a cleaned-source focused ARMv5 replay passed.
+The temporary probe is removed. No retry, deadline or proof was relaxed.
+This diagnoses that fixture race, not every historical hosted/full failure.
+The earlier serialized-exit checkpoint's complete nine-guest overlay passes,
+with independent replay of all actual logs and source witnesses, equal runtime
+censuses and unchanged base images. This is not the changed full-image/archive/
+SBOM audit or own-head hosted qualification required before promotion.
 
 For troubleshooting, add `-DiagnosticLogs` to the same command. After each
 guest exits, this opt-in mode emits its complete bounded log as one escaped JSON
@@ -843,7 +908,8 @@ as the same timeout:
 
 | Boundary | Current fixture scope | What a failure does not establish |
 | --- | --- | --- |
-| Initial native credential setup, 60 s | Construction and explicit enrollment of the fixture accounts; precedes `phase=enrolled` | The later coordinator operation was reached |
+| Initial native preparation, 20 s | Original Owner/backend construction and admission; precedes `phase=admitted` | Account enrollment has completed |
+| Native enrollment, 60 s | Both disabled-first journaled enrollments and explicit enable, after successful preparation; precedes `phase=enrolled` | The later coordinator operation was reached |
 | Lifecycle preparation, 20 s | Original journal admission, canceled-disable refusal and creation/qualification of two held clients | Revocation or continuity has completed |
 | Lifecycle revocation, 45 s | Stale-revision refusal, actual disable, successor journal and original peer/new-login verification | Every individual worker exceeded its own deadline |
 | Guest, 180 s | The complete disposable boot and selected campaign | A specific account, worker or coordinator caused expiry |
@@ -855,6 +921,23 @@ when changing their orchestration. A cumulative parent deadline can expire
 after several individually successful operations; a child deadline can also
 expire while its parent still has time. Neither permits ignoring uncertainty,
 reusing reviewed authority or skipping a verification.
+
+The QEMU-only native driver gives preparation20 and enrollment60 separate
+single-use phases instead of their former shared60 context. This raises the
+combined contextual allowance to80 seconds, not hashing throughput. A shorter
+original parent still bounds both. Failed, uncertain, expired or canceled
+preparation cannot begin enrollment; duplicate handoff cannot refresh its
+deadline and a late nil completion refuses. Accounting tests exercise the exact
+private helper used by the fixture, not synthetic identity or session authority.
+Worker/readiness/stop, live-session45 and guest180 limits remain unchanged.
+
+After revocation, only the exact changed-pair sentinel establishes a completed
+changed observation. An unchanged pair and an incomplete observation have
+distinct refusal messages; incomplete outcomes retain their typed causes.
+Wrapped or joined changed sentinels still refuse. A deadline is not proof of
+revocation. Local native success and a slower-emulation negative do not establish
+that the integration PR's own hosted failure is fixed; full current-source and
+own-head hosted qualification remain separate gates.
 
 The current QEMU-only lifecycle driver replaces its former cumulative45 context
 with serial preparation20 and revocation45 contexts. This deliberately raises
@@ -897,6 +980,19 @@ expected proof still fail exact child-proof equality. The 1-KiB child-output
 bound, original proof bytes, deadlines and verifier remain unchanged. This
 observability improvement does not resolve the intermittent all-campaign fault
 failure or qualify product/hardware operation.
+
+The exit fixture additionally relays validated, deduplicated
+`PHANTOWD_QEMU_PLANNED_EXIT_FAILURE` rows with an allowlisted inner phase and
+`busy` boolean. These distinguish request/repeated-request admission, initial
+scan, quarantine and stop/capture/authority checks without disclosing raw errors.
+The original error chain is retained; `busy=true` means that the chain contains
+a busy refusal, not that a particular lock or root cause has been proved.
+Unknown/injected/extra fields refuse, and telemetry is never success evidence.
+Root/non-root pinned-Go vet/race checks and a focused actual ARMv5 exit guest
+pass. A current full cached run failed at exit supervision after six Samba
+campaigns; unchanged-source and instrumented focused guests subsequently passed.
+This improves diagnosis only: the intermittent failure remains unresolved and
+no complete current image/audit or hosted-failure repair is qualified.
 
 Require the original verifier's terminal success and complete selected-phase
 proofs. A failed fixture may deliberately shut down with guest exit 0; that
