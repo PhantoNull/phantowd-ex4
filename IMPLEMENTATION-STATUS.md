@@ -3,6 +3,34 @@
 
 # Implementation status
 
+## Pending-write client prerequisite: host mock / compile only
+
+A distinct fixed same-open client now has passing C orchestration tests under
+ASan/UBSan and a strict ARMv5 soft-float compile/link against the already built
+Samba4.22.11 public library. Host entry refuses before Samba context allocation;
+mock tests cover same-handle open/seek/write/close, early explicit close,
+operation/auth/partial/invalid-control failures, missing callbacks, bounded
+credential input and secret clearing. No ARM client or real SMB operation runs.
+The existing idle client, observer and ten-guest runtime census are unchanged.
+
+The new helper is not installed or wired to a guest/Owner/HTTP/product path.
+It uses one fixed pre-existing object, one library write and no wrapper retry
+or uncertain library cleanup. All notices remain `proof=false`; one library
+call may contain multiple wire writes, and global no-reconnect is not proved.
+Offline alias-aware inventory finds one additional144,568-byte library object
+and loader binding; actual retained-code/loader/isolation and original request/
+session/object/extent correlation remain prerequisites before fault injection.
+See the [bounded check and exact scope](support/QEMU-FAST-TESTS.md#same-open-write-client-host-mock-and-arm-compile-only).
+
+The first host sanitizer attempt failed with repeated diagnostics and was
+explicitly stopped. A puts-only ASan control also failed; later PIE controls
+passed, so this environment issue is intermittent, not causally resolved.
+The final fixed non-PIE host mock passes both sanitizers; ARM remains PIE.
+Execution/diagnostic/core limits bound future failures. An independent test
+setup error retained an auth-refusal latch across cases; resetting only the
+test setup passes without weakening the client latch. These do not qualify
+pending-I/O loss, transport integrity, recovery, new full-image or EX4 behavior.
+
 ## Current native accounting and exact full-image qualification
 
 Frozen `1be0b320b78cf1ea9c9a98d04e6ccd7096cdab76`, API tree

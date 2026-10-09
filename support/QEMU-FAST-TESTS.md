@@ -1,5 +1,43 @@
 # Fast API and file-service integration checks
 
+## Same-open write client: host mock and ARM compile only
+
+`support/tests/samba-pending-write-fixture.c` is a distinct test-only client,
+not installed in the product or connected to the existing ten-guest campaign.
+The existing idle-file holder and its strict status observer are unchanged.
+With a trusted existing Buildroot output and a disposable tmpfs `TMPDIR`:
+
+```sh
+sh support/tests/test-samba-pending-write-client.sh /path/to/existing-output "$PWD"
+```
+
+This runs C orchestration mocks with ASan/UBSan and compiles/links the actual
+ARMv5 client against the existing public `libsmbclient` header/library. It
+executes no ARM program, guest, authentication or real SMB request. Strict
+compiler warnings remain errors. The mock is non-PIE; the ARM client remains
+PIE. An intermittent ASan PIE startup failure was reproduced by a puts-only
+control, but subsequent PIE controls passed: no universal sanitizer fix is
+claimed. Five-second host execution and bounded diagnostics/core suppression
+prevent a failing sanitizer from flooding logs or consuming persistent storage.
+
+The client source admits only its fixed QEMU model/isolation profile, localhost
+port1445 and one pre-existing `Writable/pending-write` object. A pipe supplies a
+bounded fixture credential; no argv/environment secret or prompt is used.
+After one non-creating/non-truncating open, a fixed control byte permits one
+512-byte library write at offset512 on the SAME opaque handle. Errors, partial
+returns, auth drift or invalid controls refuse without wrapper retry, reopening
+or uncertain library cleanup. Normal explicit close is attempted once. Its
+notices are telemetry (`proof=false`), not server/pending-I/O/durability proofs.
+`libsmbclient` can issue remainder protocol requests within one call; complete
+transport/reconnect behavior remains unqualified.
+
+Before any actual guest use, independently qualify the original retained
+launcher/client/loader/configuration/root inputs, privilege drop and owned
+process lifecycle, original server/session/open/object identity, cache/journal/
+extent-to-request correlation and uncertain teardown. Do not widen the generic
+root launcher, relax the old idle observer or treat a mock/compile success as
+permission to run this on an EX4. No product endpoint or NAS operation is added.
+
 ## Bounded cached full validation
 
 The existing QEMU and EX4 B2/B3 kernel-configuration auditors reject builtin

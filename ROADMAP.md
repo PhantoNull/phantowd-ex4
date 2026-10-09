@@ -1691,6 +1691,18 @@ storage. No production roster provider or activation path exists.
   **Next bounded host/QEMU packet:** qualify actual pending I/O loss and
   late/uncertain cleanup separately. Keep idle IPC$ and actual-open-file proofs
   distinct; the new alias-loss proof holds an idle opening, not a pending write.
+  A distinct fixed same-open client now passes host C mocks (ASan/UBSan) and
+  ARMv5 compile/link only; it is NOT installed or wired to an Owner/guest.
+  One fixed pre-existing object, one non-creating/non-truncating open, fixed
+  offset/payload and one library write; wrapper errors/partial/auth drift refuse
+  without retry/reopen or uncertain library cleanup. Notices are not proofs.
+  Next qualify its retained executable/library/config/root construction,
+  fixed nonroot launcher and original process lifecycle before actual use;
+  then original session/server/open/object and pending request-to-extent/cache/
+  journal correlation before any fault. Do not widen the existing root helper
+  or relax the existing idle observer. Compile/mocks are not runtime admission,
+  loader/transport/no-reconnect or pending-I/O-loss qualification. See the
+  [bounded prerequisite check](support/QEMU-FAST-TESTS.md#same-open-write-client-host-mock-and-arm-compile-only).
   Require
   evidence that the actual original handle is open under the retained authorized
   session before fault injection; a successful earlier transfer or IPC$ echo is
