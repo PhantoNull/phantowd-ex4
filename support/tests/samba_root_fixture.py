@@ -368,6 +368,61 @@ def diagnostic_record(log, phase, status):
                       ensure_ascii=True, separators=(",", ":"))
 
 
+WORKER_TIMING_PREFIX = "PHANTOWD_DIAG_NATIVE_WORKER"
+WORKER_TIMING = re.compile(
+    re.escape(WORKER_TIMING_PREFIX)
+    + r" operation=(check|list|create|password|enable|disable|status|revoke)"
+    r" phase=(pre-admission|execution|settlement|post-admission)"
+    r" elapsed_ms=(0|[1-9][0-9]{0,5}) remaining_ms=(0|[1-9][0-9]{0,5})"
+    r" parent_done=(true|false) failed=(true|false)"
+    r" cause=(none|deadline|canceled|mismatch|unavailable|other)"
+    r" qualifying=false scope=qemu-only")
+
+
+def timing_summary(log, phase):
+    """Redacted reported row sums, never elapsed wall time or campaign proof.
+
+    Repeated operations and separate parent budgets may coexist in a log.
+    No attempt is made to identify operations or infer whole-scope coverage.
+    """
+    if (not isinstance(log, str) or len(log.encode("utf-8")) > MAX_LOG
+            or phase not in (*FOCUSED_CAMPAIGNS, "pending")):
+        raise ValueError("invalid timing summary input")
+    result = {"format": "phantowd-qemu-worker-timing-summary",
+              "schema_version": 1, "qualifying": False, "scope": "qemu-only",
+              "phase": phase, "available": False,
+              "coverage": "recognized-worker-records-only",
+              "timing_records": 0, "failed_records": 0,
+              "stage_elapsed_sum_ms": {"pre-admission": 0, "execution": 0,
+                                       "settlement": 0, "post-admission": 0},
+              "last_record": None, "last_failed_record": None}
+    for line in log.splitlines():
+        if not line.startswith(WORKER_TIMING_PREFIX):
+            continue
+        match = WORKER_TIMING.fullmatch(line)
+        if match is None or result["timing_records"] >= 512:
+            raise ValueError("unsupported or oversized worker timings")
+        operation, stage, elapsed, remaining, parent_done, failed, cause = (
+            match.groups())
+        elapsed, remaining = int(elapsed), int(remaining)
+        failed = failed == "true"
+        if (elapsed > 600000 or remaining > 600000
+                or failed != (cause != "none")):
+            raise ValueError("inconsistent worker timing")
+        result["timing_records"] += 1
+        result["failed_records"] += int(failed)
+        result["stage_elapsed_sum_ms"][stage] += elapsed
+        result["last_record"] = {"operation": operation, "stage": stage,
+                                 "elapsed_ms": elapsed,
+                                 "remaining_ms": remaining,
+                                 "parent_done": parent_done == "true",
+                                 "failed": failed, "cause": cause}
+        if failed:
+            result["last_failed_record"] = dict(result["last_record"])
+    result["available"] = result["timing_records"] != 0
+    return result
+
+
 def check_campaigns(service, native, candidate, lifecycle=None, fault=None,
                     data=None, exit_log=None, held_log=None, file_log=None,
                     file_source_log=None):
@@ -459,6 +514,9 @@ def main():
     diagnostics.add_argument("log")
     diagnostics.add_argument("phase", choices=FOCUSED_CAMPAIGNS)
     diagnostics.add_argument("status", type=int)
+    timings = sub.add_parser("timing-summary")
+    timings.add_argument("log")
+    timings.add_argument("phase", choices=(*FOCUSED_CAMPAIGNS, "pending"))
     args = parser.parse_args()
     if args.command == "prepare":
         reports = [json.loads(read_bounded(name, MAX_REPORT)) for name in (
@@ -478,6 +536,12 @@ def main():
             raise ValueError("regular fixture log required")
         print(diagnostic_record(read_bounded(args.log, MAX_LOG),
                                 args.phase, args.status))
+    elif args.command == "timing-summary":
+        if Path(args.log).is_symlink() or not Path(args.log).is_file():
+            raise ValueError("regular fixture log required")
+        summary = timing_summary(read_bounded(args.log, MAX_LOG), args.phase)
+        print(json.dumps(summary, ensure_ascii=True,
+                         separators=(",", ":")))
     else:
         log = read_bounded(args.log, MAX_LOG)
         paths = (args.native_log, args.candidate_log, args.lifecycle_log,

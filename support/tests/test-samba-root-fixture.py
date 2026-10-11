@@ -90,6 +90,132 @@ def campaign_rows():
 
 
 class SambaRootFixture(unittest.TestCase):
+    @staticmethod
+    def timing_row(operation="list", phase="pre-admission", elapsed=17,
+                   remaining=45000, parent_done="false", failed="false",
+                   cause="none"):
+        return (f"PHANTOWD_DIAG_NATIVE_WORKER operation={operation} "
+                f"phase={phase} elapsed_ms={elapsed} remaining_ms={remaining} "
+                f"parent_done={parent_done} failed={failed} cause={cause} "
+                "qualifying=false scope=qemu-only")
+
+    def test_timing_summary_observes_rows_not_operations_or_proof(self):
+        rows = [self.timing_row(), self.timing_row(),
+                self.timing_row(phase="execution", elapsed=2, remaining=0,
+                                parent_done="true", failed="true",
+                                cause="deadline")]
+        summary = fixture.timing_summary("private-path\n" + "\n".join(rows),
+                                         "native")
+        self.assertEqual(summary["schema_version"], 1)
+        self.assertFalse(summary["qualifying"])
+        self.assertTrue(summary["available"])
+        self.assertEqual(summary["timing_records"], 3)
+        self.assertEqual(summary["stage_elapsed_sum_ms"], {
+            "pre-admission": 34, "execution": 2,
+            "settlement": 0, "post-admission": 0})
+        self.assertEqual(summary["failed_records"], 1)
+        self.assertEqual(summary["last_record"]["cause"], "deadline")
+        self.assertTrue(summary["last_record"]["parent_done"])
+        self.assertNotIn("private-path", json.dumps(summary))
+        with self.assertRaises(ValueError):
+            fixture.check_campaign(json.dumps(summary), "native")
+
+    def test_timing_summary_absent_rows_are_unavailable_not_success(self):
+        for phase in (*fixture.FOCUSED_CAMPAIGNS, "pending"):
+            summary = fixture.timing_summary("no timings", phase)
+            self.assertFalse(summary["available"])
+            self.assertFalse(summary["qualifying"])
+            self.assertEqual(summary["timing_records"], 0)
+            self.assertIsNone(summary["last_record"])
+            self.assertIsNone(summary["last_failed_record"])
+
+    def test_timing_summary_keeps_failure_when_later_cleanup_succeeds(self):
+        log = "\n".join([
+            self.timing_row(phase="execution", failed="true",
+                            cause="canceled"),
+            self.timing_row(phase="settlement")])
+        summary = fixture.timing_summary(log, "native")
+        self.assertEqual(summary["failed_records"], 1)
+        self.assertEqual(summary["last_failed_record"]["cause"], "canceled")
+        self.assertFalse(summary["last_record"]["failed"])
+        summary["last_record"]["cause"] = "other"
+        self.assertEqual(summary["last_failed_record"]["cause"], "canceled")
+
+    def test_timing_summary_refuses_malformed_or_unbounded_records(self):
+        row = self.timing_row()
+        invalid = [row.replace("operation=list", "operation=private-secret"),
+                   row.replace("phase=pre-admission", "phase=unknown"),
+                   row.replace("elapsed_ms=17", "elapsed_ms=600001"),
+                   row.replace("remaining_ms=45000", "remaining_ms=600001"),
+                   row.replace("elapsed_ms=17", "elapsed_ms=017"),
+                   row.replace("elapsed_ms=17", "elapsed_ms=-1"),
+                   row.replace("failed=false", "failed=true"),
+                   row.replace("cause=none", "cause=deadline"),
+                   row.replace("qualifying=false", "qualifying=true"),
+                   row.replace("scope=qemu-only", "scope=product"),
+                   row + " extra=private-secret", row[:-1],
+                   row.replace("parent_done=false", "parent_done=null"),
+                   "PHANTOWD_DIAG_NATIVE_WORKER_BYPASS private-secret"]
+        for bad in invalid:
+            with self.subTest(row=bad):
+                with self.assertRaises(ValueError) as caught:
+                    fixture.timing_summary(row + "\n" + bad, "native")
+                self.assertNotIn("private-secret", str(caught.exception))
+        for log, phase in ((None, "native"), ("", "unknown"),
+                           ("x" * (fixture.MAX_LOG + 1), "native"),
+                           ("\n".join([row] * 513), "native")):
+            with self.assertRaises(ValueError):
+                fixture.timing_summary(log, phase)
+
+    def test_timing_summary_exact_record_and_duration_limits(self):
+        row = self.timing_row(elapsed=600000, remaining=600000)
+        summary = fixture.timing_summary("\r\n".join([row] * 512), "native")
+        self.assertEqual(summary["timing_records"], 512)
+        self.assertEqual(summary["stage_elapsed_sum_ms"]["pre-admission"],
+                         512 * 600000)
+
+    def test_timing_summary_cli_and_actual_driver_failure_block(self):
+        with tempfile.TemporaryDirectory() as directory:
+            log = Path(directory) / "native.log"
+            row = self.timing_row(failed="true", cause="deadline",
+                                  parent_done="true", remaining=0)
+            log.write_text(row + "\n", encoding="utf-8")
+            command = [sys.executable, "-B", str(Path(fixture.__file__)),
+                       "timing-summary", str(log), "native"]
+            result = subprocess.run(command, capture_output=True, text=True)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(json.loads(result.stdout)["last_record"]["cause"],
+                             "deadline")
+            driver_path = Path(__file__).with_name("test-qemu-samba-root.sh")
+            driver = driver_path.read_text()
+            start = driver.index('if [ "$verified" -ne 1 ]; then')
+            end = driver.index('\nfi', start) + len('\nfi')
+            block = driver[start:end]
+            self.assertIn('timing-summary', block)
+            self.assertLess(block.index('timing-summary'),
+                            block.index('tail -n'))
+            if os.name != "posix":
+                return  # Windows covers CLI/contract, not /bin/sh execution.
+            repo_path = Path(__file__).resolve().parents[2]
+            environment = dict(os.environ, verified="0", failure_log="",
+                               scratch=directory, campaign="native",
+                               source_dir=str(repo_path))
+            result = subprocess.run(["/bin/sh", "-c", block], env=environment,
+                                    capture_output=True, text=True)
+            self.assertEqual(result.returncode, 1)
+            report = next(line for line in result.stderr.splitlines()
+                          if line.startswith('{"format":'))
+            self.assertEqual(json.loads(report)["failed_records"], 1)
+            self.assertIn("Samba campaign failed: native", result.stderr)
+            self.assertEqual(log.read_text(), row + "\n")
+            log.write_text(row + " private-secret\n", encoding="utf-8")
+            result = subprocess.run(["/bin/sh", "-c", block], env=environment,
+                                    capture_output=True, text=True)
+            self.assertEqual(result.returncode, 1)
+            self.assertIn("PHANTOWD_SAMBA_TIMING_SUMMARY_UNAVAILABLE",
+                          result.stderr)
+            self.assertIn("Samba campaign failed: native", result.stderr)
+
     def test_complete_union_refuses_nine_without_file_source_fault(self):
         logs = campaign_rows()
         old_phases = ("service", "native", "candidate", "lifecycle", "fault",

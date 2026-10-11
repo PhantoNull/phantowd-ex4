@@ -1080,6 +1080,31 @@ fixture logs only, not a product/device log collector; save the command output
 if needed. Additional temporary instrumentation still requires a separate clean
 replay after it is removed.
 
+On campaign refusal, the host driver now emits one bounded redacted JSON
+`phantowd-qemu-worker-timing-summary` before the existing failure-log tail.
+Only the fixed native worker grammar is recognized: at most 512 rows, each
+elapsed/remaining value at most 600,000 ms. It reports row counts, sums of
+reported stage durations, the last row and last reported failure. These are
+neither operation counts, wall time, complete-scope coverage nor root-cause
+proof. Expected negative controls may also contribute failures. Missing rows
+mean unavailable; malformed/unsupported rows refuse the summary without
+publishing partial totals. If reporting fails, an unavailable notice is emitted
+and the original campaign still exits 1. No timing summary can satisfy the
+original campaign verifier or change `verified`, contexts, retries or deadlines.
+The existing synthetic raw-log tail is not replaced by this redacted report.
+
+For an already saved synthetic fixture log:
+
+```powershell
+python -B support/tests/samba_root_fixture.py timing-summary .\artifacts\native-fixture.log native
+```
+
+The host-only reporter passes 77 pinned Linux tests, lint and shell checks,
+including execution of the actual failure block and reporting-failure fallback.
+Windows passes 77 tests with five platform-specific skips. Replay of an actual
+failed ARM guest preserves original-verifier refusal and yields the same fixed
+typed observations. This is not a new full guest/image or hosted timing fix.
+
 The QEMU-only native, candidate, lifecycle, fault and data fixtures also emit bounded cumulative
 `PHANTOWD_DIAG_NATIVE_PHASE` timings with fixed phase names, `qualifying=false`
 and `scope=qemu-only`. The monotonic clock starts inside credential setup,

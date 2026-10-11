@@ -107,6 +107,20 @@ No product service, endpoint, NAS or physical disk operation is added.
 
 ## Native timing diagnosis: focused host/QEMU only
 
+The host campaign-refusal path now reports bounded redacted worker timing row
+counts/stage sums plus the last observation and last reported failure, before
+the unchanged synthetic log tail. Missing/unsupported/malformed observations
+are unavailable, never acceptance. Reporting failure preserves campaign exit1;
+the original verifier, contexts, deadlines and Go/guest code are unchanged.
+Windows77 tests (five skips), pinned Linux77 tests/lint/shell checks and actual
+ARM failure-log replay pass, including the real shell failure block and fallback.
+Row sums are not wall time, operation counts, coverage or root-cause proof.
+The current reduced-CPU control fails earlier during enrollment, not the hosted
+fresh-login stage. A one-variable test-only async-preemption-off control also
+fails enrollment; its temporary change is removed with all1321 inputs restored.
+This does not qualify that flag as a fix or exclude every scheduling contributor.
+No new full guest/image/hosted qualification or service activation follows.
+
 Fixed QEMU-only live-operation and worker-stage telemetry now separates the
 shared phase budget from individual admission/execution/settlement checks.
 Typed labels, bounded durations and redacted cause classes disclose no account,

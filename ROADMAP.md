@@ -390,6 +390,16 @@ button to an unqualified backend simply because the screen exists.
   boundaries, not a causal fix. Next establish worker-cost/scheduling evidence
   before changing fixture orchestration or refreshing heavy CI; preserve every
   identity/session/admission/stop proof and do not enlarge timeouts blindly.
+  The host refusal path now automatically summarizes only bounded fixed-label
+  worker observations, with explicit non-qualifying/partial coverage, missing
+  data unavailable, and last reported failure preserved after successful cleanup.
+  Malformed/over-bound rows refuse all totals; helper failure cannot change the
+  original exit1/verifier/deadlines. Host77 tests/lint/actual shell failure-block
+  checks and complete actual ARM failure-log replay pass; no new guest/image
+  qualification is claimed. Current CPU-reduced stress fails enrollment before
+  the hosted fresh-login gate. A temporary single-variable preemption-off
+  experiment does not pass it and is fully removed. Do not adopt that flag,
+  claim a root cause from summed rows or refresh heavy CI on this diagnostic.
 - **M0.4 — Maintain release inputs.** Dependency update changes include source
   signatures/hashes, ARMv5 compatibility, package configuration, vulnerability
   review, license material and regenerated SBOM. Test the selected package set.

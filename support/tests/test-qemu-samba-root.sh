@@ -167,6 +167,12 @@ if [ "$status" -eq 0 ]; then
     fi
 fi
 if [ "$verified" -ne 1 ]; then
+    # Diagnostics cannot set verified or replace the original failure status.
+    # Summed reported worker stages are neither wall time nor scope coverage.
+    if ! python3 -B "$source_dir/support/tests/samba_root_fixture.py" timing-summary \
+        "$scratch/$campaign.log" "$campaign" >&2; then
+        echo 'PHANTOWD_SAMBA_TIMING_SUMMARY_UNAVAILABLE qualifying=false scope=qemu-only' >&2
+    fi
     if [ -n "$failure_log" ]; then
         mkdir -p "$(dirname "$failure_log")"
         cp "$scratch/$campaign.log" "$failure_log"
