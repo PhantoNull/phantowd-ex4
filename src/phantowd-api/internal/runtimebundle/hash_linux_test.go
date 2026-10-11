@@ -202,3 +202,45 @@ func BenchmarkRuntimeFileHashBatch(b *testing.B) {
 		}
 	}
 }
+
+// Compare the actual bounded file-digest loop with the same SHA-256 chunk
+// schedule over preloaded synthetic bytes. This is calculation-only evidence:
+// it does not admit code, model complete metadata/census cost or qualify EX4
+// throughput. Keep the file, size and digest checks in every measured iteration.
+func BenchmarkRuntimeFileHashMiB(b *testing.B) {
+	data := bytes.Repeat([]byte{0x37}, 1<<20)
+	want := sha256.Sum256(data)
+	b.Run("File", func(b *testing.B) {
+		file := runtimeHashFixture(b, data)
+		scratch := make([]byte, runtimeHashScratchSize)
+		b.SetBytes(int64(len(data)))
+		b.ReportAllocs()
+		b.ResetTimer()
+		for iteration := 0; iteration < b.N; iteration++ {
+			if _, err := file.Seek(0, 0); err != nil {
+				b.Fatal(err)
+			}
+			digest, count, err := hashRuntimeFile(context.Background(), file, int64(len(data)), scratch)
+			if err != nil || count != int64(len(data)) || digest != want {
+				b.Fatal("bounded file digest changed", count, err)
+			}
+		}
+	})
+	b.Run("Memory", func(b *testing.B) {
+		scratch := make([]byte, runtimeHashScratchSize)
+		b.SetBytes(int64(len(data)))
+		b.ReportAllocs()
+		b.ResetTimer()
+		for iteration := 0; iteration < b.N; iteration++ {
+			hash := sha256.New()
+			for offset := 0; offset < len(data); offset += runtimeHashScratchSize {
+				_, _ = hash.Write(data[offset : offset+runtimeHashScratchSize])
+			}
+			var digest [32]byte
+			copy(digest[:], hash.Sum(scratch[:0]))
+			if digest != want {
+				b.Fatal("preloaded digest changed")
+			}
+		}
+	})
+}

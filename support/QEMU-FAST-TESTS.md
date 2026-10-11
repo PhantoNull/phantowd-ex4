@@ -1051,6 +1051,35 @@ worker inside the next phase nor proves its success. All original proof markers,
 descriptor census, hashes and command/phase/180-second guest limits remain
 independent and mandatory. Passing telemetry tests is not a timeout fix.
 
+### Narrow digest cost comparison (Linux development host)
+
+The calculation-only `BenchmarkRuntimeFileHashMiB` compares the actual bounded
+file-digest helper with the same SHA-256 chunk schedule over one preloaded
+synthetic MiB. Every iteration checks the expected digest; the file case also
+checks its exact byte count. Existing length/cancellation/scratch regressions
+run alongside it. No code admission, mount, service or device authority is
+constructed.
+
+From `src/phantowd-api`, with the chosen Linux SDK:
+
+```sh
+GOTOOLCHAIN=local GOPROXY=off go test -mod=vendor ./internal/runtimebundle \
+  -run '^TestRuntimeFileHash' -bench '^BenchmarkRuntimeFileHashMiB$' \
+  -benchtime=500ms -count=3 -cpu=1
+```
+
+Use a development host, not the NAS. Fixtures create and remove temporary
+regular files; no operator data is an input. Native x86 timing is not ARMv5
+timing. Guest measurements require a separately isolated synthetic test
+environment; this command does not boot QEMU.
+
+The difference includes seek/read/copy and context/length handling, not just
+disk I/O. The memory case is a diagnostic control, never a production hash
+cache or weaker verification path. Neither result measures complete code
+census/metadata admission, hosted scheduling or physical EX4 throughput.
+Do not skip checks, change cancellation granularity or enlarge a timeout to
+turn this microbenchmark into a service qualification.
+
 ### Diagnose a native fixture timeout before a full CI build
 
 Use the existing matching pinned image, workspace and manifest-verified base:
