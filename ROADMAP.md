@@ -2881,6 +2881,19 @@ These features are separate scope, not shortcuts around core acceptance:
 
 ## Next bounded work packets
 
+M4.5 TCP wire prerequisite (2026-10-11): a private QEMU-only decoder and
+[focused check](support/test-pending-tcp-wire.ps1) now qualify fixed IPv4
+ESTABLISHED framing/identity/bounds, interrupted/foreign/duplicate refusal and
+copied completion-only rows. The kernel query exists only in tests: real
+reciprocal loopback identities remain equal across two observations and vanish
+after closure. Tagged Linux vet/unit/race3, 10,017 fuzz executions and nine
+actual ARM926 cases repeated three times pass, source/base unchanged. No
+default pipeline/campaign, launcher, Owner or product wiring is altered.
+Next still requires the separately reviewed original-client/worker proc and
+namespace binding, followed by opaque SMB handle/request/extent/cache/journal
+proofs before WRITE/fault admission. Wire completion is not atomicity or
+process/socket authority; the hosted timing gate remains unwaived.
+
 Local efficiency increment (2026-10-07): code inspection/preparation reuses
 one 32 KiB scratch buffer per pass, with every original hash/metadata/identity
 fence retained. Host digest allocation/chunk/cancellation/reuse regressions,

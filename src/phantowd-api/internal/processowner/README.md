@@ -104,6 +104,29 @@ actual static generic-only producer through the SMART coordinator with regular
 synthetic traces and an explicitly fake census, including source-change refusal.
 No disk/ioctl, HTTP endpoint, scheduler or product service is enabled.
 
+### TCP wire prerequisite (QEMU-only)
+
+A private `qemu && linux` decoder accepts only bounded IPv4 ESTABLISHED
+SOCK_DIAG multipart observations for the expected sequence/receiver port. It
+checks native/network byte orders, mandatory nonzero inode/cookie/endpoints,
+duplicate inode/cookie refusal and complete successful DONE. Failed or
+interrupted framing permanently discards partial rows. Returned rows are copies.
+Limits are 4 KiB per record, 64 KiB per datagram, 256 KiB per dump, 256 sockets
+and 32 framed extensions per record; unconsumed extensions confer no authority.
+
+Kernel querying exists only in a test file. Its fixed TCP request, kernel
+sender/truncation checks and real reciprocal loopback sockets are exercised
+on non-root Linux and ARM926 QEMU, including unchanged repeated observations
+and post-close disappearance. Pure framing/identity/refusal/bound controls and
+fuzz tests are separate. The optional
+[focused runner](../../../../support/QEMU-FAST-TESTS.md#kernel-tcp-wire-prerequisite-not-client-binding)
+reuses the pinned builder/base read-only and runs nine cases three times.
+
+This is not an atomic inventory, namespace/process generation binding, retained
+socket authority, remote SMB client-handle, request/extent proof or permission
+to WRITE. No decoder is wired into the existing Owner, generic launcher,
+product startup, HTTP or fault admission. Those boundaries remain separate.
+
 ### Retained service and isolated-child adapters
 
 `NewPinnedSet` is a separate internal constructor that copies fixed specs and

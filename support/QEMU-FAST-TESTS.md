@@ -2,6 +2,41 @@
 
 ## Dedicated same-open client prerequisites: host and QEMU
 
+### Kernel TCP wire prerequisite: not client binding
+
+The private QEMU-only TCP decoder has a separate focused check:
+
+```powershell
+.\support\test-pending-tcp-wire.ps1
+```
+
+With the existing pinned builder/workspace and verified base artifacts, this
+cross-compiles one test binary and boots one disposable ARM926/256 MiB guest.
+Nine cases execute three times: fixed identity decoding, incomplete/foreign/
+interrupted/duplicate/framing/bound refusal, complete copied observations and
+real reciprocal loopback socket identity/continuity/post-close disappearance.
+The kernel query is test-only, with fixed IPv4 TCP ESTABLISHED request scope and
+kernel-sender/truncation checks. No Samba client or server is launched there.
+Completion means wire framing, not an atomic socket inventory or process lease.
+
+The auto-removed non-root container uses 2 CPUs, 2 GiB, 256 PIDs and 1536 MiB RAM
+scratch, no network/capabilities, no-new-privileges and read-only source/base/
+workspace mounts. Only the copied image receives test files; injection bytes
+and the unchanged borrowed base are verified. Go compilation is bounded180s,
+guest tests30s and QEMU90s; the guest exposes only loopback. No image pull/build,
+new volume, default campaign/pipeline change, hardware or NAS access occurs.
+Keep source frozen during execution. `-BaseArtifactDir` selects another local
+verified QEMU artifact directory, not physical storage.
+
+This prerequisite does **not** bind the original owned SMB client/worker,
+namespace, opaque handle or request/extent, and authorizes neither WRITE nor
+fault admission. The existing same-open campaign and its guards stay separate.
+For Linux-native checks, run `go test -tags=qemu -run '^TestPendingTCPWire'`
+against `./internal/processowner` from `src/phantowd-api`; cross-compilation
+alone is not ARM execution.
+
+### Same-open SMB client and server-side witness
+
 The separate healthy execution lane uses a freshly enrolled native Samba data
 server and the complete original client/bootstrap roots:
 

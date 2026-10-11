@@ -5,6 +5,18 @@
 
 ## Pending client: independent original server-open observation
 
+A separate private QEMU-only TCP wire prerequisite is now host/ARM-qualified.
+It decodes bounded IPv4 ESTABLISHED responses, refuses foreign/interrupted/
+duplicate/incomplete observations and exposes only completed copied rows.
+The test-only fixed kernel request observes both reciprocal socket inode/cookie/
+endpoint identities twice and verifies disappearance after explicit closure.
+Non-root pinned Linux tagged vet/unit/race3, 10,017 wire fuzz executions and
+nine ARM926 cases repeated three times pass, with 1321 frozen inputs/base
+unchanged. The new [focused runner](support/test-pending-tcp-wire.ps1) is opt-in:
+it changes neither the default campaign nor the existing launcher/Owner.
+This does not establish an atomic dump, original owned process/namespace
+binding, remote SMB handle/request/extent, WRITE or product authority.
+
 The optional `pending` ARMv5 guest now independently observes the fixed Samba
 STATUS producer twice while the original client remains open. Both snapshots
 must preserve server generation, session, tree and share-file ID. A retained
