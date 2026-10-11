@@ -41,6 +41,7 @@ flags=(-DPHANTOWD_SAMBA_SOURCE_OBSERVER_FIXTURE=1 -D_SAMBA_BUILD_=4 -DHAVE_CONFI
 timeout --signal=TERM --kill-after=1 30 "$compiler" "${flags[@]}" \
     -c "$source/support/tests/samba-pending-handle-observer-fixture.c" -o "$scratch/observer.o"
 "$compiler" -shared -Wl,--gc-sections,-z,defs,-rpath,/usr/lib/samba \
+    -Wl,-soname,libphantowd-pending-handle-qemu.so \
     -Wl,--version-script="$source/support/tests/samba-pending-handle-observer-fixture.map" \
     -Wl,-rpath-link,"$output/staging/usr/lib/samba" -L"$output/staging/usr/lib/samba" \
     -o "$scratch/observer.so" "$scratch/observer.o" -lsamba-util -l:libcli-smb-common-private-samba.so
@@ -64,6 +65,7 @@ for name in observer.so observer-test; do
     grep -Eq 'Flags:.*Version5 EABI, soft-float ABI' "$scratch/observer.headers"
     grep -F 'Tag_CPU_arch: v5TEJ' "$scratch/observer.headers"
 done
+"$readelf" -d "$scratch/observer.so" | grep -F 'Library soname: [libphantowd-pending-handle-qemu.so]'
 "$readelf" --dyn-syms -W "$scratch/observer-test" >"$scratch/observer.symbols"
 # The positive seam must not bring back unused wire operations/event engines.
 if grep -Eq 'smb2cli_(create|read|write|close|ioctl).*|tevent_req_' "$scratch/observer.symbols"; then exit 1; fi

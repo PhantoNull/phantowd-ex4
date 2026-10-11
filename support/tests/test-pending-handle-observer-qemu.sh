@@ -17,8 +17,9 @@ done
 (cd "$base" && sha256sum -c SHA256SUMS)
 base_hash=$(sha256sum "$base/rootfs.ext2" | cut -d ' ' -f 1)
 scratch=$(mktemp -d "$tmpdir/phantowd-handle-source.XXXXXX")
-trap 'rm -f "$scratch/observer.o" "$scratch/observer.so" "$scratch/observer-test" "$scratch/observer-test.o" "$scratch/observer-test-reduced.o" "$scratch/observer.headers" "$scratch/observer.symbols" "$scratch/rootfs.ext2" "$scratch/guest.log" "$scratch/inserted.so" "$scratch/inserted-test"; rmdir "$scratch"' EXIT
+trap 'rm -f "$scratch/observer.o" "$scratch/observer.so" "$scratch/observer-test" "$scratch/observer-test.o" "$scratch/observer-test-reduced.o" "$scratch/observer.headers" "$scratch/observer.symbols" "$scratch/rootfs.ext2" "$scratch/guest.log" "$scratch/inserted.so" "$scratch/inserted-test" "$scratch/handle-host-test" "$scratch/handle-host.log" "$scratch/handle-client" "$scratch/handle-client.headers" "$scratch/handle-client.symbols"; rmdir "$scratch"' EXIT
 bash "$source/support/tests/build-samba-pending-handle-observer.sh" "$output" "$source" "$scratch"
+bash "$source/support/tests/test-samba-pending-handle-client.sh" "$output" "$source" "$scratch"
 cp "$base/rootfs.ext2" "$scratch/rootfs.ext2"
 debugfs="$output/host/sbin/debugfs"
 for pair in "$scratch/observer.so /usr/lib/phantowd-pending-handle-fixture.so" \

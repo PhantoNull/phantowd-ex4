@@ -160,9 +160,20 @@ refusals using its real imports. Two accepted and nineteen rejected receipt
 controls pass. Exact inserted bytes and unchanged borrowed base are checked.
 This is not an actual client opening, server bridge, retained library execution
 authority, lifetime/atomic observation, reconnect or pending-I/O qualification.
-The reader is not wired into an Owner, client or existing campaign. Its returned
+The reader is not wired into an Owner or existing campaign. Its returned
 copy is metadata only; a reused fnum exposes a changed tuple rather than retaining
 identity. The future containing fence must compare original observations.
+
+The wrapper also tests/compiles a distinct close-only client build selected by
+`PHANTOWD_PENDING_HANDLE_OBSERVER_QEMU`. It reads the original context/file twice,
+after OPEN/stat and before CLOSE, emits bounded canonical private notices and
+requires exact fieldwise ID continuity. ASan/UBSan mocks cover sixteen reader/
+ID/auth refusals, exact ordering and 64-bit values, changed tuples and forbidden
+controls. It rejects `W` and has no write/seek imports. The default client keeps
+its original behavior and mock/ARM compile checks. The module's fixed
+`libphantowd-pending-handle-qemu.so` SONAME prevents a scratch DT_NEEDED path.
+**This client variant is compile/mock-tested only**, not injected or executed by
+the guest. The actual guest still tests only the separate source/IDR seam above.
 
 The auto-removed non-root container uses the existing image/workspace read-only,
 no network/capabilities, NNP, 2 CPUs / 512 MiB / 128 PIDs and 256 MiB `/tmp` plus
@@ -171,7 +182,7 @@ QEMU30s with no guest NICs; no pulls/new images/volumes or full build. Source
 must stay frozen. This lane does not authenticate the full transitive SDK/source
 or qualify a current complete image/SBOM, hosted timing repair or EX4 support.
 
-Original-client integration and the independent server bridge are still
+Complete retained original-client/Owner integration and the independent server bridge are still
 **unimplemented and unqualified**. Do not copy private layouts, read
 process memory by PID, replace the public library in the product, or use an
 observer notice as execution authority. Missing, foreign, duplicated, replayed

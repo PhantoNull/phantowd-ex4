@@ -1735,7 +1735,13 @@ storage. No production roster provider or activation path exists.
   (36 refusals and fnum reuse), using real pinned private definitions and one
   exported symbol. The positive connection getters are mocked; loaded DSO
   early-refusal checks are real. Strict receipts, inserted bytes and base hashes
-  pass. It is not wired into the original client/Owner or a server observer;
+  pass. An optional close-only client build now observes its original context/
+  file after OPEN/stat and before CLOSE, validates bounded IDs and fieldwise
+  continuity, and refuses all writes. Sixteen observer/identity/auth refusal
+  mocks, exact ordered notices, old-client regressions and ARMv5 compilation
+  pass; a fixed reader SONAME excludes scratch dependency paths. This new client
+  has not run against actual SMB. Complete retained module/loader input admission,
+  containing Owner/parser and server bridge are still missing;
   no actual original-handle proof, WRITE or default-campaign change follows.
   Next retain/qualify its full inputs in the dedicated client composition,
   observe the original client mapping, and independently bridge the same server

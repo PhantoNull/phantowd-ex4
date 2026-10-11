@@ -19,6 +19,10 @@
 #include <sys/vfs.h>
 #include <unistd.h>
 #include <libsmbclient.h>
+#ifdef PHANTOWD_PENDING_HANDLE_OBSERVER_QEMU
+#include <inttypes.h>
+#include "samba-pending-handle-observer-fixture.h"
+#endif
 
 /* Match the target Samba SDK's public stat/seek ABI on 32-bit ARM. */
 _Static_assert(sizeof(off_t) == 8, "libsmbclient requires 64-bit file offsets");
@@ -126,22 +130,59 @@ static int notice(const char *message)
     return fputs(message, stdout) < 0 || fflush(stdout) ? -1 : 0;
 }
 
+#ifdef PHANTOWD_PENDING_HANDLE_OBSERVER_QEMU
+/* Copied client metadata only: not server-object or execution authority.
+ * Never compare these remote IDs with the server's share-mode generation. */
+static int handle_notice(const struct phantowd_pending_handle_observation_v1 *handle)
+{
+    char message[256];
+    if (!handle->session_id || handle->session_id == UINT64_MAX ||
+        !handle->tree_id || handle->tree_id == UINT32_MAX ||
+        !handle->persistent_id || handle->persistent_id == UINT64_MAX ||
+        !handle->volatile_id || handle->volatile_id == UINT64_MAX) return -1;
+    int size = snprintf(message, sizeof(message),
+        "PHANTOWD_SMB_CLIENT_HANDLE_NOTICE session=%" PRIu64 " tree=%" PRIu32
+        " persistent=%" PRIu64 " volatile=%" PRIu64 " scope=qemu-only proof=false\n",
+        handle->session_id, handle->tree_id, handle->persistent_id, handle->volatile_id);
+    if (size <= 0 || (size_t)size >= sizeof(message)) return -1;
+    return notice(message);
+}
+
+static int same_handle(const struct phantowd_pending_handle_observation_v1 *left,
+                       const struct phantowd_pending_handle_observation_v1 *right)
+{
+    return left->session_id == right->session_id && left->tree_id == right->tree_id &&
+        left->persistent_id == right->persistent_id && left->volatile_id == right->volatile_id;
+}
+#endif
+
 static int transfer(SMBCCTX *context)
 {
     smbc_open_fn open_file = smbc_getFunctionOpen(context);
     smbc_fstat_fn observe = smbc_getFunctionFstat(context);
+#ifndef PHANTOWD_PENDING_HANDLE_OBSERVER_QEMU
     smbc_lseek_fn seek = smbc_getFunctionLseek(context);
     smbc_write_fn write_file = smbc_getFunctionWrite(context);
+#endif
     smbc_close_fn close_file = smbc_getFunctionClose(context);
-    if (!open_file || !observe || !seek || !write_file || !close_file || auth_refused) return -1;
+    if (!open_file || !observe || !close_file || auth_refused) return -1;
+#ifndef PHANTOWD_PENDING_HANDLE_OBSERVER_QEMU
+    if (!seek || !write_file) return -1;
+#endif
     SMBCFILE *file = open_file(context, remote, O_RDWR, 0); /* ONCE, no create/truncate. */
     if (!file || auth_refused) return -1;
     struct stat info;
     if (observe(context, file, &info) || auth_refused ||
         !S_ISREG(info.st_mode) || info.st_size != 4096) return -1;
+#ifdef PHANTOWD_PENDING_HANDLE_OBSERVER_QEMU
+    struct phantowd_pending_handle_observation_v1 initial = {0};
+    if (phantowd_qemu_observe_smb_handle_v1(context, file, &initial) ||
+        auth_refused || handle_notice(&initial)) return -1;
+#endif
     if (notice("PHANTOWD_SMB_WRITE_CLIENT_OPEN_NOTICE scope=qemu-only proof=false\n")) return -1;
     char command;
     if (read(0, &command, 1) != 1) return -1;
+#ifndef PHANTOWD_PENDING_HANDLE_OBSERVER_QEMU
     if (command == 'W') {
         unsigned char payload[512];
         memset(payload, 0xa5, sizeof(payload));
@@ -154,7 +195,15 @@ static int transfer(SMBCCTX *context)
         if (notice("PHANTOWD_SMB_WRITE_CLIENT_RETURN_NOTICE scope=qemu-only proof=false durable=false\n") ||
             read(0, &command, 1) != 1) return -1;
     }
+#endif
     if (command != 'C') return -1;
+#ifdef PHANTOWD_PENDING_HANDLE_OBSERVER_QEMU
+    /* This distinct build accepts ONLY CLOSE. Even a valid copied handle does
+     * not qualify WRITE. Observe the ORIGINAL context/file, never reopen. */
+    struct phantowd_pending_handle_observation_v1 current = {0};
+    if (phantowd_qemu_observe_smb_handle_v1(context, file, &current) ||
+        auth_refused || !same_handle(&initial, &current) || handle_notice(&current)) return -1;
+#endif
     /* A close error is uncertain, not repeatable. No error path issues CLOSE,
      * reopens, reconnects or retries via this wrapper. Process exit settles only
      * local descriptors, not server state or the containing service authority. */

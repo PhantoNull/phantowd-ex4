@@ -27,8 +27,9 @@ set -eu
 . /src/versions.env
 config_hash="$(sha256sum /src/configs/phantowd_qemu_armv5_defconfig | cut -c1-16)"
 output="/workspace/output/$BUILDROOT_VERSION-$config_hash"
-shellcheck /src/support/tests/build-samba-pending-handle-observer.sh /src/support/tests/test-pending-handle-observer-qemu.sh /src/support/tests/pending-handle-observer-init.sh /src/support/tests/test-pending-handle-observer-log.sh
+shellcheck /src/support/tests/build-samba-pending-handle-observer.sh /src/support/tests/test-samba-pending-handle-client.sh /src/support/tests/test-pending-handle-observer-qemu.sh /src/support/tests/pending-handle-observer-init.sh /src/support/tests/test-pending-handle-observer-log.sh
 bash /src/support/tests/test-pending-handle-observer-log.sh /src
+bash /src/support/tests/test-samba-pending-write-client.sh "$output" /src
 bash /src/support/tests/test-pending-handle-observer-qemu.sh /base "$output" /src
 '@
 $encoded = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($linuxScript.Replace("`r`n", "`n")))

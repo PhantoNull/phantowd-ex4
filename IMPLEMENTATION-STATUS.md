@@ -3,6 +3,28 @@
 
 # Implementation status
 
+## Close-only client handle observations — host/compile prerequisite
+
+An opt-in test build of the fixed client now calls the pinned source reader on
+the same original context/file after OPEN/stat and again immediately before
+CLOSE. It copies and validates session/tree/persistent/volatile IDs, emits bounded
+canonical notices and requires fieldwise equality; drift or uncertain observation
+refuses without CLOSE, reopen or retry. This variant accepts only `C`, has no
+write/seek imports and does not enable pending writes. The ordinary client is
+unchanged in behavior and its mock/ARM compile regression passes.
+
+ASan/UBSan orchestration mocks verify exact ordered notices, 64-bit values,
+sixteen observer/identity/auth refusals, forbidden controls and existing operation
+failures. The new ARMv5 executable links a fixed observer SONAME, never its scratch
+path. The standalone reader guest still passes its real IDR/36-refusal seam and
+three loaded-DSO early refusals; positive connection getters remain mocked.
+**The new client has not executed against real SMB.** Its complete retained
+loader/module inputs, containing Owner/parser and independent same-server-open
+bridge remain unimplemented/unqualified. No proof flag, default campaign, HTTP,
+NAS, full-image or hosted timing qualification changes. Use the existing
+[source-reader wrapper](support/QEMU-FAST-TESTS.md#remaining-original-handle-witness)
+for both host/client compile prerequisites and the separate source-reader guest.
+
 ## Original-handle source reader — standalone ARMv5 prerequisite
 
 A separate approximately 7 KiB fixture library reads the actual pinned Samba

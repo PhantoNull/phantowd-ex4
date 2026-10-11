@@ -13,12 +13,51 @@ static SMBCFILE *const expected_file = (SMBCFILE *)&file_token;
 static int phase, missing, opened, observed, sought, written, closed, contexts;
 static off_t remote_size;
 static mode_t remote_mode;
+#ifdef PHANTOWD_PENDING_HANDLE_OBSERVER_QEMU
+static int handles, handle_failure;
+#endif
 
 static void require_at(int condition, int line)
 {
     if (!condition) { fprintf(stderr, "mock orchestration assertion failed line=%d\n", line); exit(2); }
 }
 #define require(condition) require_at((condition), __LINE__)
+
+#ifdef PHANTOWD_PENDING_HANDLE_OBSERVER_QEMU
+/* Mock-only orchestration oracle; actual Samba source/IDR tests are separate. */
+int phantowd_qemu_observe_smb_handle_v1(SMBCCTX *context, SMBCFILE *file,
+    struct phantowd_pending_handle_observation_v1 *result)
+{
+    require(context == expected_context && file == expected_file && result && closed == 0);
+    handles++;
+    memset(result, 0, sizeof(*result));
+    if ((handle_failure == 1 && handles == 1) || (handle_failure == 2 && handles == 2)) return -1;
+    result->session_id = UINT64_C(4294967297);
+    result->tree_id = 3;
+    result->persistent_id = UINT64_C(4294967301);
+    result->volatile_id = UINT64_C(4294967303);
+    if (handle_failure >= 3 && handle_failure <= 10) {
+        uint64_t invalid = handle_failure % 2 ? 0 : UINT64_MAX;
+        switch ((handle_failure - 3) / 2) {
+        case 0: result->session_id = invalid; break;
+        case 1: result->tree_id = (uint32_t)invalid; break;
+        case 2: result->persistent_id = invalid; break;
+        case 3: result->volatile_id = invalid; break;
+        }
+    }
+    if (handles == 2) {
+        switch (handle_failure) {
+        case 11: result->session_id++; break;
+        case 12: result->tree_id++; break;
+        case 13: result->persistent_id++; break;
+        case 14: result->volatile_id++; break;
+        case 15: auth_refused = 1; break;
+        }
+    }
+    if (handle_failure == 16) auth_refused = 1;
+    return 0;
+}
+#endif
 
 static SMBCFILE *mock_open(SMBCCTX *context, const char *name, int flags, mode_t mode)
 {
@@ -83,6 +122,9 @@ static void reset(void)
 {
     phase = missing = opened = observed = sought = written = closed = auth_refused = 0;
     remote_size = 4096; remote_mode = S_IFREG | 0640; forget_secret();
+#ifdef PHANTOWD_PENDING_HANDLE_OBSERVER_QEMU
+    handles = handle_failure = 0;
+#endif
 }
 
 static int run_transfer(const char *commands)
@@ -125,23 +167,65 @@ int main(void)
     require(waitpid(child, &status, 0) == child && WIFEXITED(status) && WEXITSTATUS(status) == 1);
     int output = open("/dev/null", O_WRONLY | O_CLOEXEC), saved_output = fcntl(1, F_DUPFD_CLOEXEC, 64);
     require(output >= 0 && saved_output >= 64 && dup2(output, 1) == 1 && !close(output));
+#ifndef PHANTOWD_PENDING_HANDLE_OBSERVER_QEMU
     reset(); require(run_transfer("WC") == 0 && opened == 1 && observed == 1 && sought == 1 && written == 1 && closed == 1);
+#endif
     reset(); require(run_transfer("C") == 0 && opened == 1 && observed == 1 && sought == 0 && written == 0 && closed == 1);
+#ifdef PHANTOWD_PENDING_HANDLE_OBSERVER_QEMU
+    require(handles == 2);
+    /* Assert the exact ordered bytes, including both 64-bit IDs and notices. */
+    int notices[2]; require(!pipe(notices));
+    require(dup2(notices[1], 1) == 1 && !close(notices[1]));
+    reset(); require(run_transfer("C") == 0 && handles == 2 && closed == 1);
+    output = open("/dev/null", O_WRONLY | O_CLOEXEC);
+    require(output >= 0 && dup2(output, 1) == 1 && !close(output));
+    char receipt[1024] = {0};
+    ssize_t received = read(notices[0], receipt, sizeof(receipt));
+    require(received > 0 && received < (ssize_t)sizeof(receipt) && !close(notices[0]));
+    const char expected[] =
+        "PHANTOWD_SMB_CLIENT_HANDLE_NOTICE session=4294967297 tree=3 persistent=4294967301 volatile=4294967303 scope=qemu-only proof=false\n"
+        "PHANTOWD_SMB_WRITE_CLIENT_OPEN_NOTICE scope=qemu-only proof=false\n"
+        "PHANTOWD_SMB_CLIENT_HANDLE_NOTICE session=4294967297 tree=3 persistent=4294967301 volatile=4294967303 scope=qemu-only proof=false\n"
+        "PHANTOWD_SMB_WRITE_CLIENT_CLOSE_NOTICE scope=qemu-only proof=false\n";
+    require(received == (ssize_t)strlen(expected) && !strcmp(receipt, expected));
+    for (int failure = 1; failure <= 16; ++failure) {
+        reset(); handle_failure = failure;
+        require(run_transfer("C") == -1 && opened == 1 && observed == 1 && closed == 0 && written == 0);
+        require(handles == ((failure == 2 || (failure >= 11 && failure <= 15)) ? 2 : 1));
+    }
+    const char *forbidden[] = {"W", "WC", "WW", "X", ""};
+    for (size_t i = 0; i < sizeof(forbidden) / sizeof(forbidden[0]); ++i) {
+        reset(); require(run_transfer(forbidden[i]) == -1 && handles == 1 && opened == 1 &&
+            written == 0 && sought == 0 && closed == 0);
+    }
+    const int operation_failures[] = {1, 2, 5, 6, 7, 10};
+    for (size_t i = 0; i < sizeof(operation_failures) / sizeof(operation_failures[0]); ++i) {
+        reset(); phase = operation_failures[i];
+        require(run_transfer("C") == -1 && opened == 1 && written == 0);
+        require(closed == (phase == 5 || phase == 10));
+    }
+#else
     for (int failure = 1; failure <= 13; ++failure) {
         reset(); phase = failure;
         require(run_transfer("WC") == -1 && opened == 1 && written <= 1);
         require(closed == (failure == 5 || failure == 10));
     }
+#endif
     for (int accessor = 1; accessor <= 5; ++accessor) {
+#ifdef PHANTOWD_PENDING_HANDLE_OBSERVER_QEMU
+        if (accessor == 3 || accessor == 4) continue; /* Not imported by close-only variant. */
+#endif
         reset(); missing = accessor;
         require(run_transfer("WC") == -1 && opened == 0 && written == 0 && closed == 0);
     }
     reset(); remote_size = 4095; require(run_transfer("WC") == -1 && written == 0 && closed == 0);
     reset(); remote_mode = S_IFDIR | 0755; require(run_transfer("WC") == -1 && written == 0 && closed == 0);
+#ifndef PHANTOWD_PENDING_HANDLE_OBSERVER_QEMU
     const char *bad[] = {"", "X", "WW", "W"};
     for (size_t i = 0; i < sizeof(bad) / sizeof(bad[0]); ++i) {
         reset(); require(run_transfer(bad[i]) == -1 && opened == 1 && written <= 1 && closed == 0);
     }
+#endif
     reset(); auth_refused = 1; require(run_transfer("WC") == -1 && opened == 0);
     char group[16], user[32], password[160];
     auth_refused = 0; /* Independent callback case; the earlier latch stays sticky within its case. */
@@ -170,6 +254,10 @@ int main(void)
     secret_case(longest, 129, 1); longest[128] = 'x'; longest[129] = '\n'; secret_case(longest, 130, 0);
     forget_secret();
     require(dup2(saved_output, 1) == 1 && !close(saved_output));
+#ifdef PHANTOWD_PENDING_HANDLE_OBSERVER_QEMU
+    puts("PHANTOWD_SMB_HANDLE_CLIENT_HOST_MOCK_DONE handle_refusals=16 close_only=true actual_smb=false guest=false transport=false scope=host-mock-only");
+#else
     puts("PHANTOWD_SMB_WRITE_CLIENT_HOST_MOCK_DONE actual_smb=false guest=false transport=false scope=host-mock-only");
+#endif
     return 0;
 }
