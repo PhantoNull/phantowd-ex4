@@ -19,7 +19,8 @@ flags, types, real foreign-process creator refusal and immediate sticky review
 after failed startup. Tagged Linux vet/unit and focused race tests pass; the
 existing context and canonical VFS-loader ARM regressions and Windows API/UI/
 cross-compilation preflight pass. Strict receipts accept two positive controls
-and reject thirty-two malformed cases, including missing/reordered drift proof.
+and reject forty-six malformed cases, including missing/reordered drift and
+code-binding proofs.
 
 A fresh second adapter in the same disposable guest now qualifies an actual
 live sender-option drift against smbd. Discrete `Observe` checks bracket the
@@ -30,6 +31,17 @@ cleanup on cancellation. Host tests exercise real sockets and foreground
 children; both missing-check behaviors have actual RED/GREEN regressions.
 No continuous supervision, active-worker packet binding, arbitrary live fault,
 uncertain-stop recovery or complete containing authority is qualified.
+
+A separate **partial S2 code-input prerequisite**, before daemon startup,
+retains the complete declared code census and binds the fixed code-root path
+to the original directory and unique mount identity. Actual ARM RED/GREEN
+shows why hashing retained originals alone is insufficient: an independently
+sealed identical copy can cover the launch path while the originals still
+pass. The copy is now refused, original references survive, and restoring the
+path cannot clear review. Caller-close independence, foreign-root refusal/FD
+equality and host guards pass. This does not yet retain the observation module,
+SDK or bootstrap closure, join code checking to live daemon containment, or
+qualify a process/channel Owner. No generic retention primitive is weakened.
 
 Two fixture preparation mistakes were diagnosed, not waived: 64 KiB cannot
 hold Samba's state databases; the new fixture caps state at 8 MiB (observed

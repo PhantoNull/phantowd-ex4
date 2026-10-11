@@ -57,7 +57,8 @@ mount -t tmpfs -o nosuid,nodev,noexec,size=8m,mode=0700 tmpfs "$state"
 for role in private lock state cache pid rpc; do mkdir -m 0700 "$state/$role"; done
 mount -t ext4 -o ro,nosuid,nodev,noexec /dev/sdb /run/observer-readonly
 mount -t ext4 -o rw,nosuid,nodev,noexec /dev/sdc /run/observer-writable
-if /usr/sbin/phantowd-server-observer-daemon-test -test.run '^TestNativeObserverSambaDaemonQEMU$' -test.v; then
+if /usr/sbin/phantowd-runtime-bundle-probe server-observer-code-binding &&
+    /usr/sbin/phantowd-server-observer-daemon-test -test.run '^TestNativeObserverSambaDaemonQEMU$' -test.v; then
     echo PHANTOWD_SERVER_OBSERVER_DAEMON_GUEST_DONE
 else
     echo PHANTOWD_SERVER_OBSERVER_DAEMON_GUEST_FAILED

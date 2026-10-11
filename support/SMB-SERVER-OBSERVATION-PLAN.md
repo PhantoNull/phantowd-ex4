@@ -44,6 +44,15 @@ verified stop, original references retained, restored option still reviewed and
 restart refused. This is a **partial S5 endpoint fault**, not continuous
 supervision, active worker/module/configuration fault coverage or full S5.
 
+The same optional lane now has a **partial S2 code-input prerequisite**, run
+before the daemon: privately retained complete declared code, original fixed
+path/mount binding and exact-byte-copy overmount refusal. Actual ARM RED/GREEN,
+caller-close independence, foreign-root refusal/FD equality and retained sticky
+review after path restoration pass. It is not a live containing Owner; the
+observer module, full SDK/bootstrap inputs and channel/process composition are
+still required. Original code hashing/census is preserved, not replaced by a
+path check. No generic launcher or default boot is changed.
+
 ## Deliverable and existing boundaries
 
 The next deliverable is an independently qualified bridge from the original

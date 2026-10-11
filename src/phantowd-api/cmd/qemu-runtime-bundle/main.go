@@ -36,6 +36,31 @@ func run() error {
 	if len(os.Args) == 2 && os.Args[1] == "stage" && os.Getuid() == 0 && os.Geteuid() == 0 {
 		return stageFixture()
 	}
+	if len(os.Args) == 2 && os.Args[1] == "server-observer-code-binding" && os.Getuid() == 0 && os.Geteuid() == 0 {
+		files, aliases, err := inputs()
+		if err != nil {
+			return err
+		}
+		plan, err := runtimebundle.NewPlan(files, aliases)
+		if err != nil {
+			return err
+		}
+		root, err := stageRoot("/run/phantowd-samba-code")
+		if err != nil {
+			return err
+		}
+		defer root.Close()
+		source, err := stageRoot("/")
+		if err != nil {
+			return err
+		}
+		defer source.Close()
+		err = plan.ProbeServerObserverCodeBindingQEMU(context.Background(), root, source)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "server observer code binding:", err)
+		}
+		return err
+	}
 	if len(os.Args) == 2 && os.Args[1] == "native-lookup" && os.Getuid() == 0 && os.Geteuid() == 0 {
 		return nativeLookupFixture(false)
 	}

@@ -3080,6 +3080,13 @@ The same dedicated adapter now has a qualified discrete original-endpoint drift
 check and actual smbd stop/retention/restoration-refusal case (partial S5 only).
 Continuous supervision and complete module/configuration/worker/closure faults
 remain required, alongside the containing authority work above.
+A separate code-input prerequisite now retains the complete declared tree and
+original fixed-path/unique-mount binding. Actual ARM rejects an identical copy
+covering that path even while the original census still passes; caller-close,
+foreign-root refusal and sticky review after restoration are checked. This
+pre-startup probe is not yet joined to daemon containment and does not complete
+SDK/module/bootstrap retention or S2/S4. Next compose those original authorities;
+do not interpret the probe as live service activation or a pending-WRITE lease.
 Client-launcher approval alone is not server approval. This does not waive the
 failed full-integration/hosted gates or authorize product/NAS startup.
 
