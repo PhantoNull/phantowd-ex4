@@ -8,10 +8,12 @@ import { readFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createContext, Script } from "node:vm";
+import { supportFixture } from "./tests/test-support-bundle.mjs";
 
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
 const source = await readFile(join(repoRoot, "src/phantowd-api/ui/app.js"), "utf8");
 const serviceSource = await readFile(join(repoRoot, "src/phantowd-api/ui/service-policy.js"), "utf8");
+const supportSource = await readFile(join(repoRoot, "src/phantowd-api/ui/support-bundle.js"), "utf8");
 const markup = await readFile(join(repoRoot, "src/phantowd-api/ui/index.html"), "utf8");
 const styles = await readFile(join(repoRoot, "src/phantowd-api/ui/app.css"), "utf8");
 const markupIDs = [...markup.matchAll(/\bid="([^"]+)"/g)].map((match) => match[1]);
@@ -223,6 +225,7 @@ async function createHarness(respond, timing = {}) {
     "profile-notice-title", "profile-notice-copy", "profile-notice-mark",
     "observed-at", "device-count", "device-list", "array-count", "array-list", "mount-count", "mount-list",
     "gpt-observe", "gpt-observation-status",
+    "support-panel", "support-help", "support-download", "support-status",
     ...["load", "status", "result", "summary", "shares"].map((id) => `saved-${id}`),
     ...["load", "prepare", "save", "status", "current", "summary", "document", "review", "change", "samba", "nfs", "editor", "target", "member", "action", "edit-preview", "diff", "diff-summary", "overlaps", "overlap-summary", "backup-controls", "backup-download", "restore-file", "restore-preview"].map((id) => `service-${id}`),
     ...["form", "submit", "clear", "result", "error", "status", "requirements", "samba", "nfs", "nfs-fields", "uuid", "name", "path", "user", "smb-access", "nfs-enabled", "export-id", "network", "nfs-access", "squash", "uid", "gid", "security"].map((id) => `policy-${id}`),
@@ -279,6 +282,7 @@ async function createHarness(respond, timing = {}) {
     clearTimeout: timing.clearTimeout ?? clearTimeout,
   });
   new Script(serviceSource).runInContext(context);
+  new Script(supportSource).runInContext(context);
   new Script(source).runInContext(context);
   await new Promise((resolve) => setImmediate(resolve));
   return { context, elements, requests, document };
@@ -337,6 +341,7 @@ async function testAuthFocusMovesOnlyWhenItsControlIsHidden() {
     });
     h.elements[all ? "logout-all" : "logout"].focus();
     await h.elements[all ? "logout-all" : "logout"].listeners.get("click")();
+    assert.equal(h.elements["support-download"].disabled, true, "sign-out must retire diagnostic export");
     assert.ok(h.document.activeElement === h.elements["auth-title"], "hidden logout control must return focus to authentication heading");
     assert.equal(h.requests.filter((r) => r.options?.method === "POST").length, 1, "focus handling must not add requests");
   }
@@ -360,6 +365,7 @@ async function testAuthFocusAfterPasswordChangeOrUncertainty() {
     h.elements["password-confirm"].value = h.elements["password-new"].value;
     h.elements["password-submit"].focus();
     await h.elements["password-form"].listeners.get("submit")({ preventDefault() {} });
+    assert.equal(h.elements["support-download"].disabled, true, "confirmed or uncertain password change must retire diagnostic export");
     assert.ok(h.document.activeElement === h.elements["auth-title"], "confirmed or uncertain credential boundary must have a visible focus destination");
     assert.equal(h.elements["auth-form"].hidden, !confirmed);
     assert.equal(h.requests.filter((r) => r.options?.method === "POST").length, 1, "focus handling must not retry password change");
@@ -1819,4 +1825,70 @@ async function testServiceBackupCancellationAndReadDeadline() {
 }
 
 await testServiceBackupCancellationAndReadDeadline();
+async function testSanitizedSupportExportLifecycle() {
+  let authenticated = true, unavailable = false, pending = false;
+  const releases = [];
+  const input = supportFixture();
+  const h = await createHarness(async (path) => {
+    if (path === "/api/v1/auth/status") return jsonResponse({ authenticated });
+    const domain = path.split("/").at(-1);
+    if (!["system", "storage", "arrays", "mounts"].includes(domain)) throw new Error("unexpected support request");
+    if (pending) return new Promise((resolve) => releases.push(() => resolve(jsonResponse(input[domain]))));
+    if (unavailable && domain === "storage") return jsonResponse({ error: "PRIVATE-SENTINEL" }, 503);
+    return jsonResponse(input[domain]);
+  });
+  await settleUI();
+  assert.equal(h.elements["support-download"].disabled, false);
+  const count = h.requests.length;
+  h.elements["support-download"].listeners.get("click")();
+  assert.equal(h.requests.length, count, "report export must not collect or authenticate again");
+  assert.equal(h.document.downloads.length, 1);
+  assert.equal(h.document.downloads[0].filename, "phantowd-sanitized-support-v1.json");
+  const text = await h.document.blobs[0].text();
+  assert.ok(!text.includes("PRIVATE-SENTINEL"));
+  assert.equal(JSON.parse(text).observations.arrays.status, "partial");
+  await new Promise((resolve) => setTimeout(resolve, 5));
+  assert.equal(h.document.revokedURLs.length, 1);
+  assert.equal(h.document.body.children.length, 0, "download anchor must be removed");
+
+  unavailable = true;
+  await h.context.refreshSnapshot();
+  h.context.exportSupportSnapshot();
+  const partial = JSON.parse(await h.document.blobs.at(-1).text());
+  assert.deepEqual(partial.observations.storage, { status: "unavailable" }, "failed refresh must never reuse prior storage values");
+  assert.equal(partial.observations.system.status, "available");
+
+  pending = true;
+  const retired = h.context.refreshSnapshot();
+  await settleUI();
+  const downloads = h.document.downloads.length;
+  assert.equal(h.elements["support-download"].disabled, true, "refresh retires previous report immediately");
+  h.context.exportSupportSnapshot();
+  assert.equal(h.document.downloads.length, downloads);
+  authenticated = false;
+  h.context.showAuthUnavailable();
+  for (const release of releases) release();
+  await retired;
+  assert.equal(h.elements["support-download"].disabled, true, "retired late replies must not re-enable export");
+  h.context.exportSupportSnapshot();
+  assert.equal(h.document.downloads.length, downloads);
+}
+
+async function testSanitizedSupportDownloadFailure() {
+  const h = await createHarness(async (path) => path === "/api/v1/auth/status" ? jsonResponse({ authenticated: true }) : snapshotResponse(path));
+  await settleUI();
+  h.context.URL.createObjectURL = () => { throw new Error("PRIVATE-SENTINEL"); };
+  const count = h.requests.length;
+  h.context.exportSupportSnapshot();
+  assert.equal(h.document.downloads.length, 0);
+  assert.match(h.elements["support-status"].textContent, /could not be completed/);
+  assert.ok(!h.elements["support-status"].textContent.includes("PRIVATE-SENTINEL"));
+  assert.equal(h.elements["support-download"].disabled, false);
+  assert.equal(h.requests.length, count);
+  h.context.clearSnapshot("fixture logout boundary");
+  assert.equal(h.elements["support-download"].disabled, true);
+}
+
+await testSanitizedSupportExportLifecycle();
+await testSanitizedSupportDownloadFailure();
 process.stdout.write("Dashboard UI interaction smoke tests passed (DOM fixture; no visual browser coverage).\n");

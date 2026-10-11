@@ -414,11 +414,55 @@ async function fetchJSON(path, { signal } = {}) {
 
 let snapshotGeneration = 0;
 let snapshotController = null;
+let supportSnapshot = null;
+
+function clearSupportSnapshot() {
+  supportSnapshot = null;
+  byId("support-download").disabled = true;
+  setText("support-status", "No current loaded snapshot to export. Refresh the snapshot first.");
+}
+
+function prepareSupportSnapshot(results) {
+  clearSupportSnapshot();
+  try {
+    const loaded = Object.fromEntries(["system", "storage", "arrays", "mounts"].map((key, index) =>
+      [key, results[index].status === "fulfilled" ? results[index].value : null]));
+    supportSnapshot = PhantoWDSupportBundle.create(loaded, Date.now());
+    byId("support-download").disabled = false;
+    setText("support-status", "Report ready from this loaded snapshot, including unavailable or invalid sections. Export will not refresh device observations.");
+  } catch {
+    setText("support-status", "Could not prepare a sanitized report. No file was created.");
+  }
+}
+
+function exportSupportSnapshot() {
+  const button = byId("support-download");
+  if (!supportSnapshot || button.disabled || snapshotController || logoutBusy || passwordBusy || byId("dashboard-content").hidden) return;
+  button.disabled = true;
+  let anchor, url;
+  try {
+    const text = supportSnapshot.serialize(Date.now());
+    url = URL.createObjectURL(new Blob([text], { type: "application/json" }));
+    anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = "phantowd-sanitized-support-v1.json";
+    document.body.append(anchor);
+    anchor.click();
+    setText("support-status", "Sanitized report download requested. Review counts, times and runtime details before sharing; this is not a configuration or data backup.");
+  } catch {
+    setText("support-status", "Report download could not be completed. No automatic retry was made.");
+  } finally {
+    anchor?.remove();
+    if (url) setTimeout(() => URL.revokeObjectURL(url), 0);
+    button.disabled = !supportSnapshot || byId("dashboard-content").hidden;
+  }
+}
 
 function clearSnapshot(message) {
   snapshotGeneration++;
   snapshotController?.abort();
   snapshotController = null;
+  clearSupportSnapshot();
   clearSystemObservation();
   clearStorageObservation();
   clearArrayObservation();
@@ -435,6 +479,7 @@ async function refreshSnapshot() {
   const generation = ++snapshotGeneration;
   const controller = new AbortController();
   snapshotController = controller;
+  clearSupportSnapshot();
   const current = () => generation === snapshotGeneration;
   const timeout = setTimeout(() => controller.abort(), 10000);
   const button = byId("refresh");
@@ -478,6 +523,7 @@ async function refreshSnapshot() {
     else clearArrayObservation();
     if (mountsCurrent) renderMounts(mountsResult.value);
     else clearMountObservation();
+    prepareSupportSnapshot(results);
 
     if (systemCurrent && storageCurrent && arraysCurrent && mountsCurrent) {
       status.textContent = "Read-only system, storage, RAID, and mount observations updated.";
@@ -510,6 +556,7 @@ async function refreshSnapshot() {
     error.hidden = false;
   } catch (failure) {
     if (!current()) return;
+    clearSupportSnapshot();
     if (failure?.status === 401) {
       status.textContent = "Session expired. Sign in again to view a current snapshot.";
       try {
@@ -1055,5 +1102,6 @@ byId("policy-form").addEventListener("input", () => { invalidatePolicyPreview();
 byId("policy-form").addEventListener("change", () => { invalidatePolicyPreview(); syncPolicyNFS(); });
 byId("policy-clear").addEventListener("click", clearPolicyDraft);
 byId("refresh").addEventListener("click", refreshSnapshot);
+byId("support-download").addEventListener("click", exportSupportSnapshot);
 byId("gpt-observe").addEventListener("click", observeGPTMetadata);
 updateAuthView().catch(showAuthUnavailable);

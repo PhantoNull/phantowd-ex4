@@ -23,6 +23,31 @@ SMB and NFS desired policy in one strictly coherent revision. It shares the
 tested transaction engine with the original store but has a distinct format
 and filenames, no implicit migration, and no service activation.
 
+## Sanitized browser diagnostic report
+
+After an authenticated dashboard snapshot load, explicitly download
+`phantowd-sanitized-support-v1.json`. This browser-created report contains a
+versioned, at-most4 KiB allowlist: runtime/memory values and aggregate sysfs,
+MD-health and visible-mount counts. Unknown fields, names, paths, raw identifiers,
+addresses, configuration, logs and credentials are not copied. Kernel build
+labels are stripped; filesystem types outside the fixed list become `other`.
+Absent, invalid, partial and unsupported sections stay explicit without stale
+fallback values. Browser receipt/export times and age are included; a regressed
+clock makes age unknown. Counts and runtime details remain potentially sensitive:
+review the file before sharing it.
+
+Export makes no new API/authentication request, device query, state write or
+file-content read. Refresh, sign-out, credential changes and unavailable auth
+retire the retained sanitized projection; late responses cannot restore a
+retired session's report. Download anchors and Blob URLs are disposed. Source
+objects are not retained or serialized. The report is not trusted device
+attestation, an atomic inventory, a health/migration decision, an operation audit,
+SMART history, a configuration backup or a substitute for data backups.
+The static asset is included in host HTTP and ARM HTTP/HTTPS asset checks;
+dependency-free projection/DOM checks cover privacy, bounds, clocks, lifecycle
+and unavailable domains. Real-browser/accessibility and product deployment
+qualification remain separate.
+
 ## M9.1b existing backing metadata prerequisite
 
 The additional [root-only CHAP reader](internal/iscsicredentials/README.md)

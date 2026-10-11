@@ -111,6 +111,7 @@ const assets = new Map([
   ["/assets/app.css", ["app.css", "text/css; charset=utf-8"]],
   ["/assets/app.js", ["app.js", "text/javascript; charset=utf-8"]],
   ["/assets/service-policy.js", ["service-policy.js", "text/javascript; charset=utf-8"]],
+  ["/assets/support-bundle.js", ["support-bundle.js", "text/javascript; charset=utf-8"]],
   ["/assets/ghost.svg", ["ghost.svg", "image/svg+xml"]],
 ]);
 

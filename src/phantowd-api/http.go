@@ -152,7 +152,7 @@ func newHandlerWithStorageGPTObservation(collect collector, collectStorage stora
 
 func isDashboardPath(path string) bool {
 	switch path {
-	case "/", "/assets/app.css", "/assets/app.js", "/assets/service-policy.js", "/assets/ghost.svg":
+	case "/", "/assets/app.css", "/assets/app.js", "/assets/service-policy.js", "/assets/support-bundle.js", "/assets/ghost.svg":
 		return true
 	default:
 		return false
@@ -202,6 +202,8 @@ func dashboardAsset(path string) (string, string) {
 		return "ui/app.js", "text/javascript; charset=utf-8"
 	case "/assets/service-policy.js":
 		return "ui/service-policy.js", "text/javascript; charset=utf-8"
+	case "/assets/support-bundle.js":
+		return "ui/support-bundle.js", "text/javascript; charset=utf-8"
 	case "/assets/ghost.svg":
 		return "ui/ghost.svg", "image/svg+xml"
 	default:

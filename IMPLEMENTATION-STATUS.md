@@ -28,6 +28,32 @@ legacy migration or installation. Own-head hosted checks are still required
 before merge. No physical NAS/disks or persistent device operations were used.
 See the [artifact identities and limits](support/DEPENDENCY-REVIEW.md#current-combined-cached-qualification-2026-10-11).
 
+## Sanitized diagnostic report — development web workflow
+
+An explicit dashboard download now exports a versioned browser-created report
+from the already loaded snapshot, without new requests, polling or device I/O.
+It allowlists runtime/memory values and bounded aggregate sysfs, MD-health and
+visible-mount counts; names, paths, identifiers, addresses, configuration,
+credentials, raw errors/logs and file contents are omitted. Source objects do
+not survive in the retained projection. Output is capped at4 KiB with explicit
+unavailable/invalid/partial states and browser-clock age, unknown after rollback.
+Refresh and authentication boundaries retire export immediately; delayed
+responses cannot restore it. Download objects are disposed and failures do not
+retry. Counts, times and runtime details remain: review before sharing.
+
+Actual-source projection and DOM controls pass, including original-source
+mutation, private sentinel inputs, limit boundaries, unsafe counters, partial
+  failures, session retirement and failed downloads. Host HTTP and ARM HTTP/HTTPS
+  asset checks include the new script. Pinned Linux Go 1.26.8 full tagged vet/tests
+  and three API/policy/store race passes succeed. The actual ARMv5 standard smoke
+  and separate two-boot overlay both pass on unchanged source and borrowed base;
+  they test asset delivery, not execution of browser JavaScript inside the guest.
+  Windows preflight and ARMv5 cross-compilation also pass. This does not rebuild
+  the full image/SBOM or inherit another head's hosted CI qualification.
+This is not an appliance backup, attestation, atomic inventory, SMART history,
+operation audit or storage-health/migration qualification. Real-browser,
+accessibility, product startup and complete support diagnostics remain open.
+
 ## SMB/NFS configuration backup and reviewed restore — development web workflow
 
 The dashboard can download saved desired SMB/NFS configuration and validate an

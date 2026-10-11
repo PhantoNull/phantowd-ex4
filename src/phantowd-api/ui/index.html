@@ -11,6 +11,7 @@
   <link rel="icon" href="/assets/ghost.svg" type="image/svg+xml">
   <link rel="stylesheet" href="/assets/app.css">
   <script src="/assets/service-policy.js" defer></script>
+  <script src="/assets/support-bundle.js" defer></script>
   <script src="/assets/app.js" defer></script>
 </head>
 <body>
@@ -81,6 +82,13 @@
         <p><strong id="profile-notice-title">Development image.</strong> <span id="profile-notice-copy">This view is not a release qualification or storage-management interface.</span></p>
         <span class="notice-mark" id="profile-notice-mark">NOT RELEASE QUALIFIED</span>
       </section>
+
+      <details class="card policy-panel" id="support-panel">
+        <summary>Sanitized diagnostic report</summary>
+        <p class="policy-help" id="support-help">Download a small versioned report of the already loaded snapshot: runtime and memory values plus storage, RAID and mount counts. No new API request or disk operation is performed. Names, paths, UUIDs, serials, addresses, credentials, configuration, logs and file contents are omitted. Counts, times and runtime details remain: review the file before sharing it. This is not a backup, device attestation or health qualification.</p>
+        <button class="refresh-button" id="support-download" type="button" disabled aria-describedby="support-help support-status">Download sanitized report</button>
+        <p class="snapshot-status" id="support-status" role="status" aria-live="polite">Load a snapshot before exporting a report.</p>
+      </details>
 
       <div class="section-heading">
         <div>

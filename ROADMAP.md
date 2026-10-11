@@ -2019,6 +2019,19 @@ milestone before enabling its controls; M1/M6 for deployment.
 - **M5.6 — Audit and diagnostics.** Record actor, operation ID, revisions and
   redacted outcome; bound retention. Export a sanitized support bundle that
   excludes credentials, private keys, passdb hashes and user file contents.
+  **M5.6a — sanitized snapshot report (partial development workflow):** explicitly
+  download a versioned browser-created report from the already loaded four-domain
+  snapshot. Allowlist runtime/memory values and aggregate sysfs, MD-health and
+  mount counts; omit names, paths, identifiers, addresses, configuration and raw
+  errors/logs. Preserve per-domain unavailable/invalid/partial states and report
+  browser receipt/export times with unknown age after clock regression. Cap
+  output at4 KiB; never retain original inputs in the report factory, poll,
+  authenticate again or perform device operations. Refresh/session retirement
+  immediately clears report authority; late replies cannot restore it. Blob
+  URLs and temporary anchors are disposed. This is not trusted attestation,
+  an atomic inventory, SMART history, appliance backup or operation audit.
+  Real-browser/accessibility qualification and the remaining audit/diagnostics
+  workflow remain separate from DOM/HTTP and guest asset checks.
 
 **Start in:** `src/phantowd-api/http.go`, authentication handlers, `ui/`,
 component API contracts, `support/test-dashboard-ui.mjs`.
