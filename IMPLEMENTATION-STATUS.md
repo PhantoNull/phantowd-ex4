@@ -409,6 +409,14 @@ samples do not prove overhead. It does not measure subprocess CPU or the live
 interval alone. Original source is restored byte-exact. No cache, timer, retry,
 preemption or authority change follows; hosted qualification remains required.
 
+Test-only read-schedule controls now compare the real 32 KiB digest helper with
+32/64/128/256 KiB controls, including differential boundary/length tests. An
+isolated ARMv5 guest passes those regressions and all five lanes in three
+alternating-order rounds; every measured operation checks digest and count.
+Time drift prevents a causal service-speedup claim. A separate pinned compiler
+PGO control shows no compelling digest advantage. Neither optimization is
+adopted; production hashing, cancellation and all service deadlines remain.
+
 The host campaign-refusal path now reports bounded redacted worker timing row
 counts/stage sums plus the last observation and last reported failure, before
 the unchanged synthetic log tail. Missing/unsupported/malformed observations
@@ -417,7 +425,7 @@ the original verifier, contexts, deadlines and Go/guest code are unchanged.
 Windows77 tests (five skips), pinned Linux77 tests/lint/shell checks and actual
 ARM failure-log replay pass, including the real shell failure block and fallback.
 Row sums are not wall time, operation counts, coverage or root-cause proof.
-The current reduced-CPU control fails earlier during enrollment, not the hosted
+An earlier reduced-CPU control fails during enrollment, not the hosted
 fresh-login stage. A one-variable test-only async-preemption-off control also
 fails enrollment; its temporary change is removed with all1321 inputs restored.
 This does not qualify that flag as a fix or exclude every scheduling contributor.

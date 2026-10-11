@@ -1460,6 +1460,34 @@ not isolate subprocess startup or all metadata/census costs, compare every C
 implementation, establish physical EX4 throughput or fix the hosted timeout.
 The measured applet path is not a faster replacement for admission. No backend,
 hash cache, checks, cancellation granularity, deadlines or default CI lane change.
+
+#### Read-schedule controls
+
+`BenchmarkRuntimeFileHashReadSchedule` compares the actual 32 KiB helper with
+test-only 32/64/128/256 KiB controls on the same synthetic 16 MiB bytes. Every
+iteration verifies the complete SHA-256 and byte count. Differential tests
+compare the controls with production at chunk boundaries and for short and
+overlong files. The controls grant no census, metadata, code or service authority.
+
+```sh
+GOTOOLCHAIN=local GOPROXY=off go test -mod=vendor ./internal/runtimebundle \
+  -run '^TestRuntimeFileHash' -bench '^BenchmarkRuntimeFileHashReadSchedule$' \
+  -benchtime=3x -count=3 -cpu=1
+```
+
+Use only synthetic development-host/isolated-guest inputs, never the NAS. The
+command does not boot QEMU. Alternate lane order when investigating differences;
+three sequential samples cannot distinguish a small gain from host/guest drift.
+Larger controls also change cancellation/read-ahead granularity: they are not
+drop-in production implementations, even when their complete digests match.
+
+A separate ARM926 snapshot executed all five lanes in three rounds (middle
+round reversed), with three measured iterations per lane per round, original
+hash regressions and unchanged base. Samples exhibit substantial time drift;
+no causal end-to-end deadline fix is established. A separate pinned Go 1.26.8
+profile-guided compilation control also showed no compelling digest advantage.
+Neither experiment changes the production helper, compiler flags, timers,
+default campaigns or hosted qualification requirements.
 Temporary guest setup is removed after measurement; no product tool is installed.
 
 ### Diagnose a native fixture timeout before a full CI build
