@@ -1357,7 +1357,19 @@ censuses and unchanged base images. This is not the changed full-image/archive/
 SBOM audit or own-head hosted qualification required before promotion.
 
 The fixed native fixture additionally emits `PHANTOWD_DIAG_NATIVE_LIVE`
-operation boundaries and `PHANTOWD_DIAG_NATIVE_WORKER` stage costs. Labels are
+operation boundaries and `PHANTOWD_DIAG_NATIVE_WORKER` stage costs.
+Worker timing rows require the trusted fixture's explicit context annotation,
+`WithNativeWorkerTimingQEMU`; ordinary contexts are silent. The parent campaign
+opts in, while exact-proof subprocesses deliberately do not. This annotation
+preserves the existing deadline, cancellation and values; no environment/request
+selector or alternate authority is introduced. Diagnostics plus a valid proof
+still fail exact child-output equality: do not filter them into success or widen
+the existing 1-KiB child-output bound. A real host child/emitter regression fails
+before this correction; tagged vet/tests/race-count3 and the actual ARMv5 fault
+campaign pass afterward. The strict fault receipt covers both identity-state and
+planned-source faults. This is not complete-image or hosted-timing qualification.
+
+All timing labels are
 typed and durations bounded; rows disclose only timings, remaining context
 budget and fixed cause classes, never account names, credentials, commands or
 worker output. They are always `qualifying=false`; expected negative controls

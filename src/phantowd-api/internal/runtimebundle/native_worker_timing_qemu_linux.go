@@ -13,6 +13,19 @@ import (
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/processowner"
 )
 
+type nativeWorkerTimingContextKeyQEMU struct{}
+
+// WithNativeWorkerTimingQEMU annotates an existing trusted fixture context for
+// nonqualifying cost logs. It grants no authority and preserves its deadline,
+// cancellation and values. Exact-proof subprocesses must remain unannotated;
+// never configure this through a product request or environment variable.
+func WithNativeWorkerTimingQEMU(ctx context.Context) context.Context {
+	if ctx == nil {
+		return nil
+	}
+	return context.WithValue(ctx, nativeWorkerTimingContextKeyQEMU{}, true)
+}
+
 // Fixed-label fixture cost observations, never worker output or admission
 // evidence. No caller-selected sink, command, identity or replacement context.
 func nativeWorkerTimingQEMU(operation processowner.NativeSambaOperationQEMU, stage nativeWorkerStageQEMU,
@@ -32,7 +45,7 @@ func nativeWorkerTimingQEMU(operation processowner.NativeSambaOperationQEMU, sta
 
 func reportNativeWorkerTimingQEMU(ctx context.Context, operation processowner.NativeSambaOperationQEMU,
 	stage nativeWorkerStageQEMU, started time.Time, operationErr error) {
-	if ctx == nil {
+	if ctx == nil || ctx.Value(nativeWorkerTimingContextKeyQEMU{}) != true {
 		return
 	}
 	deadline, bounded := ctx.Deadline()

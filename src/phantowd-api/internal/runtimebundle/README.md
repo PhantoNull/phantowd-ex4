@@ -194,6 +194,16 @@ physical EX4 performance or eliminate timing-sensitive guest failures.
 
 The private QEMU native credential runtime retains its first worker-failure
 classification for bounded diagnostic observation, including after closure.
+Worker timing emission is separately opt-in through a trusted context annotation
+(`WithNativeWorkerTimingQEMU`). Default contexts stay silent so an exact-proof
+subprocess cannot contaminate its fixed output with telemetry. The parent native
+campaign explicitly opts in; the original context's deadline, cancellation and
+values remain intact. No request/environment selector, proof filtering, larger
+output bound, retry, timer change or new authority is provided. Host child/emitter
+RED/GREEN and tagged vet/tests/race-count3 pass, followed by the actual ARMv5
+identity-state/planned-source fault campaign. This fixes fixture output pollution,
+not the independent hosted live-session deadline or product service startup.
+
 Only fixed phase/reason labels are exposed; cause text, stdin, stderr, account
 identities and secrets are not. The error retains review and its private cause
 for internal `errors.Is` checks. Observation serializes with runtime operations,

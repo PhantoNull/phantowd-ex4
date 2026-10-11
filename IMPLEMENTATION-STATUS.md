@@ -35,6 +35,28 @@ physical EX4 operation, legacy migration or installable firmware. See the
 [workflow contract](src/phantowd-api/README.md#download-and-reviewed-restore) and
 [remaining product tasks](ROADMAP.md#m5-product-web-management-and-security).
 
+## Exact-proof subprocess timing pollution — focused host/ARMv5 correction
+
+A current complete cached run and a focused unchanged-source ARM fault campaign
+failed at the native identity startup-fault child's exact output check. The real
+host child/emitter regression isolates unconditional timing stdout: the child
+can exit successfully while diagnostic + proof is still correctly refused.
+
+Worker timing is now opt-in through a trusted fixture context annotation.
+Default contexts are quiet; parent diagnostic campaigns explicitly opt in.
+The original deadline, cancellation, values, exact proof bytes and 1-KiB output
+bound remain. No filtering of telemetry into success, retry, timer, admission or
+authority change. Tagged vet/tests and three runtimebundle/driver race passes
+succeed. The actual ARMv5 focused fault campaign passes with unchanged base,
+including identity drift and planned-source loss, stopped/reaped processes,
+retained review/authority and no restart. No temporary debug probe remains.
+
+This is a fixture logging correction, not product behavior, a hosted timing fix
+or a complete image qualification. The earlier complete run remains failed;
+all campaigns, post-terminal artifact audit and own-head hosted acceptance must
+still pass before integration. NAS/physical storage and persistent device state
+remain untouched. See the [diagnostic boundary](support/QEMU-FAST-TESTS.md).
+
 ## Retained metadata cancellation — focused host/ARMv5 correction
 
 Actual guarded ARMv5 RAM fixtures reproduced successful metadata collection

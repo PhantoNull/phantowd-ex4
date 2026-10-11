@@ -62,7 +62,7 @@ func nativeCredentialFixture(campaign nativeCredentialCampaignQEMU) (result erro
 	if err != nil {
 		return err
 	}
-	budget, err := newNativeCredentialBudgetQEMU(context.Background())
+	budget, err := newNativeCredentialBudgetQEMU(runtimebundle.WithNativeWorkerTimingQEMU(context.Background()))
 	if err != nil {
 		return err
 	}
@@ -387,7 +387,7 @@ func nativeCredentialFixture(campaign nativeCredentialCampaignQEMU) (result erro
 	// Authentication is another separately bounded phase. Native preparation20
 	// and enrollment60 no longer share a timer (combined allowance80, not60).
 	// Worker/service/stop limits are unchanged; the outer guest still has180s.
-	daemonContext, stopDaemonContext := context.WithTimeout(context.Background(), 20*time.Second)
+	daemonContext, stopDaemonContext := context.WithTimeout(runtimebundle.WithNativeWorkerTimingQEMU(context.Background()), 20*time.Second)
 	defer stopDaemonContext()
 	canceled, cancelStart := context.WithCancel(daemonContext)
 	cancelStart()
@@ -404,7 +404,7 @@ func nativeCredentialFixture(campaign nativeCredentialCampaignQEMU) (result erro
 	// Authentication has completed. Idle-disable verification is a different
 	// phase: do not reuse the remaining startup deadline for three workers,
 	// journal confirmation and the two fresh-login probes.
-	idleContext, stopIdleContext := context.WithTimeout(context.Background(), 20*time.Second)
+	idleContext, stopIdleContext := context.WithTimeout(runtimebundle.WithNativeWorkerTimingQEMU(context.Background()), 20*time.Second)
 	defer stopIdleContext()
 	idleStarted := time.Now()
 	// No client is held open here. The unchanged backend must perform its two
@@ -434,7 +434,7 @@ func nativeCredentialFixture(campaign nativeCredentialCampaignQEMU) (result erro
 	// Give this bounded preparation its own twenty seconds instead of charging
 	// it to the unchanged forty-five-second live-session campaign. All live
 	// pair/revocation/continuity/login checks remain inside that fixed budget.
-	preparationContext, stopPreparationContext := context.WithTimeout(context.Background(), 20*time.Second)
+	preparationContext, stopPreparationContext := context.WithTimeout(runtimebundle.WithNativeWorkerTimingQEMU(context.Background()), 20*time.Second)
 	defer stopPreparationContext()
 	if err := disable.Enable(preparationContext, journal.Revision); err != nil {
 		return fmt.Errorf("native session explicit re-enable: %w", err)
@@ -459,7 +459,7 @@ func nativeCredentialFixture(campaign nativeCredentialCampaignQEMU) (result erro
 	}
 	stopPreparationContext()
 	reportNativePhaseTimingQEMU(nativeFixtureClientsPreparedQEMU, started)
-	sessionContext, stopSessionContext := context.WithTimeout(context.Background(), 45*time.Second)
+	sessionContext, stopSessionContext := context.WithTimeout(runtimebundle.WithNativeWorkerTimingQEMU(context.Background()), 45*time.Second)
 	defer stopSessionContext()
 	sessionStarted := time.Now()
 	liveOperationStarted := beginNativeLiveTimingQEMU(sessionContext, nativeLiveClientsQEMU, sessionStarted)
@@ -606,7 +606,7 @@ func reportNativeWorkerFailureQEMU(runtime *runtimebundle.NativeSambaRuntimeQEMU
 // an account mutation. The complete credential/start/revoke campaigns retain
 // their existing independent budgets; the outer guest limit is unchanged.
 func nativeIdentityBackendProbeQEMU(owner *identityowner.Owner, backend *smbexec.NativeBackendQEMU) (result error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	ctx, cancel := context.WithTimeout(runtimebundle.WithNativeWorkerTimingQEMU(context.Background()), 20*time.Second)
 	defer cancel()
 	started := time.Now()
 	evidence, err := owner.FileServiceSnapshot(ctx)
