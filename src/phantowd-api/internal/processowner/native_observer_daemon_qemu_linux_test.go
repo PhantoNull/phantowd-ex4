@@ -291,6 +291,44 @@ func TestNativeObserverSambaDaemonQEMU(t *testing.T) {
 		t.Fatal("owned release consumed original caller:", err)
 	}
 	fmt.Println("PHANTOWD_SERVER_OBSERVER_DAEMON_PROOF actual_smbd=true negotiate_smb302=true endpoint_retained=true stop_before_release=true restart_refused=true scope=qemu-only")
+	// A fresh single-use adapter proves a concrete live-channel fault, without
+	// restarting the settled original adapter or borrowing its process authority.
+	owned, err = NewNativeObserverDaemonQEMU(spec, program, config, state, roots, sender)
+	if err != nil {
+		t.Fatal("fresh drift fixture:", err)
+	}
+	if started, err := owned.Start(context.Background()); err != nil || started.State != StateReady {
+		t.Fatal("actual drift fixture did not negotiate:", started, err)
+	}
+	if healthy, err := owned.Observe(context.Background()); err != nil || healthy.State != StateReady {
+		t.Fatal("actual healthy observation:", healthy, err)
+	}
+	if err := unix.SetsockoptInt(pair[1], unix.SOL_SOCKET, unix.SO_PASSCRED, 1); err != nil {
+		t.Fatal(err)
+	}
+	fault, err := owned.Observe(context.Background())
+	if !errors.Is(err, ErrReviewRequired) || fault.State != StateReviewRequired ||
+		fault.Members[0].Process.PID != 0 || fault.Generation != 1 {
+		t.Fatal("actual daemon endpoint fault not settled:", fault, err)
+	}
+	for _, pin := range append([]*os.File{receiver, sender}, owned.owned.pins...) {
+		if _, err := pin.Stat(); err != nil {
+			t.Fatal("actual fault released original references:", err)
+		}
+	}
+	if err := unix.SetsockoptInt(pair[1], unix.SOL_SOCKET, unix.SO_PASSCRED, 0); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := owned.Observe(context.Background()); !errors.Is(err, ErrReviewRequired) {
+		t.Fatal("actual restoration cleared review:", err)
+	}
+	if _, err := owned.Start(context.Background()); !errors.Is(err, ErrReviewRequired) {
+		t.Fatal("actual restoration allowed restart:", err)
+	}
+	if err := owned.Close(); err != nil {
+		t.Fatal("actual verified fault settlement release:", err)
+	}
+	fmt.Println("PHANTOWD_SERVER_OBSERVER_DAEMON_DRIFT_PROOF actual_smbd=true original_endpoint_drift=true stop_verified=true originals_retained=true restoration_refused=true scope=qemu-only")
 }
 
 func TestNativeObserverFailedStartupImmediatelyPreservesReviewAndOriginal(t *testing.T) {
@@ -322,5 +360,89 @@ func TestNativeObserverFailedStartupImmediatelyPreservesReviewAndOriginal(t *tes
 	}
 	if err := owner.Close(); err != nil {
 		t.Fatal("verified stopped original could not be released:", err)
+	}
+}
+
+func TestNativeObserverLiveEndpointDriftStopsWithoutReleasingOrRestarting(t *testing.T) {
+	for _, operation := range []string{"observe", "explicit-stop"} {
+		t.Run(operation, func(t *testing.T) { nativeObserverLiveEndpointDriftCase(t, operation) })
+	}
+}
+
+func nativeObserverLiveEndpointDriftCase(t *testing.T, operation string) {
+	file, err := os.Open("/usr/bin/sleep")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer file.Close()
+	pair, err := unix.Socketpair(unix.AF_UNIX, unix.SOCK_SEQPACKET|unix.SOCK_CLOEXEC, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	receiver := os.NewFile(uintptr(pair[0]), "fixture-original-receiver")
+	sender := os.NewFile(uintptr(pair[1]), "fixture-original-sender")
+	defer receiver.Close()
+	defer sender.Close()
+	pin, identity, err := duplicateNativeObserverSenderQEMU(sender)
+	if err != nil {
+		t.Fatal(err)
+	}
+	set, err := NewPinnedSet([]MemberSpec{{Name: "fixture", Process: Spec{
+		Executable: "/fixed/fixture", Args: []string{"60"},
+		Ready:        func(context.Context) (bool, error) { return true, nil },
+		ReadyTimeout: time.Second, ProbeInterval: 10 * time.Millisecond, StopTimeout: time.Second,
+	}}}, []*os.File{file})
+	if err != nil {
+		pin.Close()
+		t.Fatal(err)
+	}
+	set.pins = append(set.pins, pin)
+	owner := &NativeObserverDaemonQEMU{owned: set, check: func() error {
+		observed, err := snapshotNativeObserverSenderQEMU(pin)
+		if err != nil || observed != identity {
+			return ErrReviewRequired
+		}
+		return nil
+	}}
+	t.Cleanup(func() { owner.Stop(context.Background()); owner.Close() })
+	started, err := owner.Start(context.Background())
+	if err != nil || started.State != StateReady {
+		t.Fatal("real owned child did not start:", started, err)
+	}
+	if healthy, err := owner.Observe(context.Background()); err != nil ||
+		healthy.State != StateReady || healthy.Members[0].Process.PID != started.Members[0].Process.PID {
+		t.Fatal("healthy observation changed original child:", healthy, err)
+	}
+	if err := unix.SetsockoptInt(pair[1], unix.SOL_SOCKET, unix.SO_PASSCRED, 1); err != nil {
+		t.Fatal(err)
+	}
+	var observed SetSnapshot
+	if operation == "explicit-stop" {
+		stopCtx, cancel := context.WithCancel(context.Background())
+		cancel()
+		observed, err = owner.Stop(stopCtx)
+	} else {
+		observed, err = owner.Observe(context.Background())
+	}
+	if !errors.Is(err, ErrReviewRequired) || observed.State != StateReviewRequired ||
+		observed.Members[0].Process.PID != 0 || observed.Generation != started.Generation {
+		t.Fatal("live endpoint drift was not contained:", observed, err)
+	}
+	for _, original := range append([]*os.File{receiver, sender}, set.pins...) {
+		if _, err := original.Stat(); err != nil {
+			t.Fatal("drift released original authority:", err)
+		}
+	}
+	if err := unix.SetsockoptInt(pair[1], unix.SOL_SOCKET, unix.SO_PASSCRED, 0); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := owner.Observe(context.Background()); !errors.Is(err, ErrReviewRequired) {
+		t.Fatal("restoration cleared review:", err)
+	}
+	if _, err := owner.Start(context.Background()); !errors.Is(err, ErrReviewRequired) {
+		t.Fatal("restoration permitted restart:", err)
+	}
+	if err := owner.Close(); err != nil {
+		t.Fatal("verified stopped group prevented explicit release:", err)
 	}
 }

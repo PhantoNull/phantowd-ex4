@@ -84,10 +84,65 @@ func (o *NativeObserverDaemonQEMU) retainReview() {
 }
 
 func (o *NativeObserverDaemonQEMU) Stop(ctx context.Context) (SetSnapshot, error) {
+	if o == nil || o.owned == nil || ctx == nil {
+		return SetSnapshot{}, ErrUnavailable
+	}
+	pins := o.owned
+	// As with the fixed Owner, accepted cleanup is not abandoned because
+	// the request context was canceled. The existing stop bounds still apply.
+	if err := pins.enter(context.Background()); err != nil {
+		return SetSnapshot{}, err
+	}
+	defer func() { <-pins.gate }()
+	if !pins.set.reviewRequired && (o.check == nil || o.check() != nil) {
+		o.retainReview()
+	}
+	_, err := pins.set.Stop(context.Background())
+	if err != nil || o.check == nil || o.check() != nil {
+		o.retainReview()
+	}
+	if pins.set.reviewRequired {
+		return pins.set.snapshot(), errors.Join(ErrReviewRequired, err)
+	}
+	return pins.set.snapshot(), nil
+}
+
+// Observe rechecks the original endpoint around the owned process observation.
+// Drift settles the group once and retains review; no input is released here.
+// This is a discrete fixture check, not continuous channel/worker authority.
+func (o *NativeObserverDaemonQEMU) Observe(ctx context.Context) (SetSnapshot, error) {
 	if o == nil || o.owned == nil {
 		return SetSnapshot{}, ErrUnavailable
 	}
-	return o.owned.Stop(ctx)
+	pins := o.owned
+	if err := pins.enter(ctx); err != nil {
+		return SetSnapshot{}, err
+	}
+	defer func() { <-pins.gate }()
+	if pins.set.reviewRequired {
+		return pins.set.snapshot(), ErrReviewRequired
+	}
+	var checkErr error
+	if o.check == nil {
+		checkErr = ErrReviewRequired
+	} else {
+		checkErr = o.check()
+	}
+	if checkErr == nil {
+		observed, err := pins.set.Observe(ctx)
+		if err == nil {
+			checkErr = o.check()
+			if checkErr == nil && ctx.Err() == nil {
+				return observed, nil
+			}
+			checkErr = errors.Join(checkErr, ctx.Err())
+		} else {
+			checkErr = err
+		}
+	}
+	o.retainReview()
+	_, stopErr := pins.set.Stop(context.Background())
+	return pins.set.snapshot(), errors.Join(ErrReviewRequired, checkErr, stopErr)
 }
 
 func (o *NativeObserverDaemonQEMU) Close() error {

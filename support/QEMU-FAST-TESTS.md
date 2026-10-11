@@ -182,7 +182,11 @@ service/HTTP/NAS or experimental WRITE. Existing campaign timers are unchanged.
 Optional partial S2 only: actual pinned smbd, original executable/FD3 and fixed
 SMB 3.02 NEGOTIATE on guest loopback, stop-before-release and no restart.
 Twelve constructor refusals each run three times in ARM; host endpoint/foreign
-creator/startup-review controls and strict2 positive/20 malformed receipts pass.
+creator/startup-review controls and strict2 positive/32 malformed receipts pass.
+A fresh second adapter in the same guest proves live original sender-option
+drift, verified group stop, retained originals and sticky review after restoration.
+Discrete Observe/explicit-Stop checks do not qualify continuous supervision or
+active-worker packet authority. The existing guest/readiness/stop bounds remain.
 No authentication, file OPEN, active VFS sampling, WRITE or complete code/SDK/
 containing authority. The canonical VFS module remains CONNECT-refusing.
 

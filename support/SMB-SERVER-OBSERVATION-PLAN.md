@@ -38,6 +38,12 @@ generic/native/product launchers remain unchanged. No authentication, file OPEN
 or active VFS sample is requested. Complete SDK/code/containing authority and
 S2–S6 remain unqualified; neither an inherited FD nor NEGOTIATE grants a lease.
 
+The dedicated adapter also checks the original endpoint during discrete Observe
+and explicit Stop. A fresh second smbd fixture proves a real sender-option drift:
+verified stop, original references retained, restored option still reviewed and
+restart refused. This is a **partial S5 endpoint fault**, not continuous
+supervision, active worker/module/configuration fault coverage or full S5.
+
 ## Deliverable and existing boundaries
 
 The next deliverable is an independently qualified bridge from the original

@@ -3076,6 +3076,10 @@ Complete SDK/runtime closure and containing Owner composition, active producer,
 lifetime binding and faults remain open: neither S1/S2 nor the server bridge is
 complete. Next bind the retained code/channel authority, then qualify a bounded
 still-open worker capture; no WRITE experiment is admitted by these prerequisites.
+The same dedicated adapter now has a qualified discrete original-endpoint drift
+check and actual smbd stop/retention/restoration-refusal case (partial S5 only).
+Continuous supervision and complete module/configuration/worker/closure faults
+remain required, alongside the containing authority work above.
 Client-launcher approval alone is not server approval. This does not waive the
 failed full-integration/hosted gates or authorize product/NAS startup.
 

@@ -19,7 +19,17 @@ flags, types, real foreign-process creator refusal and immediate sticky review
 after failed startup. Tagged Linux vet/unit and focused race tests pass; the
 existing context and canonical VFS-loader ARM regressions and Windows API/UI/
 cross-compilation preflight pass. Strict receipts accept two positive controls
-and reject twenty malformed cases.
+and reject thirty-two malformed cases, including missing/reordered drift proof.
+
+A fresh second adapter in the same disposable guest now qualifies an actual
+live sender-option drift against smbd. Discrete `Observe` checks bracket the
+owned process observation; drift stops the whole group, retains original
+descriptors and review, and refuses restart even after the option is restored.
+Explicit Stop also checks the original endpoint without abandoning accepted
+cleanup on cancellation. Host tests exercise real sockets and foreground
+children; both missing-check behaviors have actual RED/GREEN regressions.
+No continuous supervision, active-worker packet binding, arbitrary live fault,
+uncertain-stop recovery or complete containing authority is qualified.
 
 Two fixture preparation mistakes were diagnosed, not waived: 64 KiB cannot
 hold Samba's state databases; the new fixture caps state at 8 MiB (observed
