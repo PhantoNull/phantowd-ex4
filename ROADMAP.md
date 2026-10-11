@@ -67,6 +67,18 @@ currently product-qualified for migration.
 
 ## Current baseline
 
+The optional dedicated VFS capture fixture now implements bounded synchronous
+and asynchronous read sampling with two ordered nonblocking records and sticky
+failure, without retaining FSA pointers in completion callbacks. Twenty actual
+ARMv5 cases use real Samba registry/tevent/kernel sockets but synthetic opens
+and a thin local-pread backend; data/FD equality and two-positive/30-malformed
+receipt controls pass. This advances partial S1/S3 only. Next, include the
+capture module/complete input closure in the retained daemon runtime, confirm
+the original client's wire OPEN before two sequential reads, and join every
+record to the same original worker, remote FileId and local object. No active
+SMB worker, product activation, WRITE, full SDK or full/hosted qualification is
+claimed by this fixture. Existing loader CONNECT refusal and launchers remain.
+
 An earlier component-only follow-up passes host checks and all seven fresh ARMv5
 Samba overlay guests. One authorized original IPC$ session remains under the
 SAME planned service's exclusive supervision. Source-alias loss stops client

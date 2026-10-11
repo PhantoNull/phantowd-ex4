@@ -67,6 +67,19 @@ complete fault qualification; no default CI, privilege or timer change.
 
 ## Deliverable and existing boundaries
 
+The optional `support/test-server-capture.ps1` now implements a separate fixed
+capture module variant. Sync/async read callbacks sample current FSA metadata
+without retaining a file pointer and send two ordered frames nonblocking via
+FD3; failures, cancellation/overlap, restored inputs and a third sample refuse.
+Twenty actual ARM cases use the real registry/tevent/socket transport but
+**synthetic open/connection records and a thin local-pread test backend**. They
+do not include a real SMB client/worker or grant remote-handle authority.
+Sensitive SDK pins and fixed ELF boundaries are checked, not a complete SDK
+lease. Next, join this module to the retained runtime and qualify two sequential
+one-byte reads only after independently confirmed original client OPEN, then
+match kernel sender/worker generation, remote FileId and original local object.
+The loader-only module, generic launchers and old campaigns remain unchanged.
+
 The next deliverable is an independently qualified bridge from the original
 client's remote SMB FileId to the original server worker's still-open local
 file. Successful SMB OPEN, copied IDs, STATUS output and transport credentials

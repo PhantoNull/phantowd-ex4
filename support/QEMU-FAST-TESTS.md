@@ -1,5 +1,28 @@
 # Fast API and file-service integration checks
 
+## Bounded VFS capture callbacks — synthetic opens, not an SMB worker
+
+Run `support/test-server-capture.ps1` for the optional fixed capture-module
+fixture. It builds only in RAM with the existing pinned SDK and boots one
+disposable ARM926/256MiB guest, no NIC or physical storage. A separate variant
+of the canonical VFS module emits two fixed 88-byte records during sequential
+one-byte reads at offset zero; sync/async callbacks never retain an FSA pointer.
+Twenty fresh-process cases use real Samba loader/registry/tevent, real temporary
+files and kernel sockets, but synthetic open/connection objects and a thin
+local pread backend. Kernel credentials, paired records, sticky faults, full/
+closed queue, cancellation/overlap, unchanged data and parent/child FD equality
+are asserted. Strict log checks exercise two positive and 30 malformed inputs.
+
+Twenty-six sensitive SDK/source hashes and fixed ELF ABI/export/import/direct
+dependencies/hardening are guarded; full transitive SDK qualification remains
+open. A copied base is byte-verified, injected bytes/mode/root ownership are
+read back and the borrowed base is checked unchanged. Outer limits: existing
+image/volume only, auto-removal, read-only source/base/workspace, non-root,
+caps0/NNP, network none, CPU2/512MiB/128PIDs and 256MiB RAM scratch. Guest tmpfs
+64KiB, QEMU30s, parent15s, child5s, outer180s. No default CI change or extra
+volume/image. No wire OPEN, live worker, module/runtime lease, WRITE, product
+activation, hardware qualification or full/hosted gate waiver is implied.
+
 ## Verified Samba guest staging
 
 The Samba-root driver enlarges only its disposable regular tmpfs root copy to

@@ -3,6 +3,40 @@
 
 # Implementation status
 
+## Dedicated bounded VFS capture module — host/QEMU fixture only
+
+`support/test-server-capture.ps1` now builds a separate capture variant at the
+fixed Samba VFS path, leaving the loader-only CONNECT refusal untouched. Its
+sync/async read callbacks sample the current FSA through the existing pinned
+reader, emit at most two ordered 88-byte records via the original fixed FD3
+with nonblocking/no-SIGPIPE sends, and retain only copied metadata. No FSA
+pointer is retained by an asynchronous completion/destruction callback. The
+control state is talloc-retained through an async request; overlapping or
+canceled requests cannot start a replacement sample. Read extent is fixed to
+one byte at offset zero on the `readonly`/`nobody` fixture profile.
+
+Actual ARMv5 runs 20 fresh-process cases through Samba's real loader, VFS table,
+tevent and kernel sockets. Synthetic connection/open records and a thin local
+pread backend verify paired sync/async records, kernel sender credentials,
+foreign/copy/pre-FSA/closing/null/bounds refusals, changed metadata/share/channel,
+full/closed channel, reconnect/disconnect, backend error, cancellation and
+overlap. Restored inputs stay refused; data/metadata and parent/child FD counts
+remain unchanged. Children run UID/GID65534, no supplementary groups, caps0/NNP.
+The strict receipt has two positive and 30 malformed controls. Twenty-six
+sensitive SDK/source pins, the sole module export, six fixed direct dependencies,
+explicit imports, ARMv5 soft-float ABI and RELRO/NOW/NX-stack checks are enforced.
+
+This advances **partial S1/S3**, not a complete server-open bridge: there is no
+SMB client, successful wire OPEN, active server worker, original worker/remote
+FileId lease, full transitive SDK audit or containing runtime/module composition
+in this lane. It does not activate SMB, authorize WRITE, modify the generic
+launcher, change default CI or touch the NAS. The guest uses only a copied
+read-only/snapshot base plus 64KiB tmpfs; the existing builder/workspace are
+borrowed read-only, with no new Docker image or volume. Fixture limits are
+30s QEMU, 15s parent, 5s child and 180s outer container; existing lanes keep
+their original limits. Full-image, hosted, storage/recovery and release gates
+remain mandatory.
+
 ## Retained dedicated Samba observer runtime — host/QEMU only
 
 The optional observer lane now composes the declared immutable code closure and
