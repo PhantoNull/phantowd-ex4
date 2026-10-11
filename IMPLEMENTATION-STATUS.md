@@ -395,6 +395,20 @@ No product service, endpoint, NAS or physical disk operation is added.
 
 ## Native timing diagnosis: focused host/QEMU only
 
+A current-source local control now reproduces the hosted **fresh-login / shared
+45-second deadline** pattern: only the disposable container's CPU quota changes
+from 2 to 0.6 after client preparation. Revocation and changed-pair checks finish;
+fresh login starts with about 3.1 seconds left and refuses at 45.05 seconds. The
+complete log independently fails the unchanged strict verifier. This demonstrates
+a CPU-quota-sensitive wall-time path, not the actual hosted cause or a fix.
+
+A temporary ARMv5 parent-process CPU profile, removed after capture, covers the
+post-preparation campaign including closure/data verification. SHA-256 and system
+calls dominate sampled cost; cumulative percentages overlap, and preemption
+samples do not prove overhead. It does not measure subprocess CPU or the live
+interval alone. Original source is restored byte-exact. No cache, timer, retry,
+preemption or authority change follows; hosted qualification remains required.
+
 The host campaign-refusal path now reports bounded redacted worker timing row
 counts/stage sums plus the last observation and last reported failure, before
 the unchanged synthetic log tail. Missing/unsupported/malformed observations
