@@ -85,7 +85,7 @@ func newHandlerWithStorageGPTObservation(collect collector, collectStorage stora
 			readPolicy(w, r)
 			return
 		}
-		if r.URL.Path == serviceStatePath {
+		if r.URL.Path == serviceStatePath || r.URL.Path == serviceBackupPath || r.URL.Path == serviceRestorePreviewPath {
 			serviceState(w, r)
 			return
 		}

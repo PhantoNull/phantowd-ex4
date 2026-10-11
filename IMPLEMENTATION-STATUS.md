@@ -3,6 +3,38 @@
 
 # Implementation status
 
+## SMB/NFS configuration backup and reviewed restore — development web workflow
+
+The dashboard can download saved desired SMB/NFS configuration and validate an
+uploaded versioned backup against explicitly loaded state. The server strictly
+validates original bounded bytes, rejects stale revisions and returns an unsaved
+candidate. The existing full before/after review precedes an explicit revisioned
+Save; importing never silently overwrites state or activates a service. Session
+loss, late file/network replies and duplicate operations cannot revive drafts.
+Uncertain Save still requires complete-document reconciliation without retry.
+
+The backup includes private names, networks and filesystem UUIDs. It is not a
+sanitized support bundle, disk backup or whole-device recovery archive: passwords,
+Unix/Samba accounts, passdb, iSCSI policy and user files are excluded. Desired
+account/volume references do not create accounts or authorize mounts. The backend
+remains opt-in, QEMU/Linux-only and loopback-only; normal product startup does not
+gain writable configuration or service activation.
+
+Windows Go 1.27.0 API/UI/vet/cross-compilation and pinned Linux Go 1.26.8 complete
+tagged vet/tests plus three API/policy/store race passes succeed. A real private
+store close/reopen verifies explicit commit persistence. Actual ARMv5 standard
+smoke and the existing two-boot overlay succeed on the same frozen code, testing
+real loopback HTTP/HTTPS preview, explicit Save, exact export and stale refusal.
+Source and borrowed base image remain unchanged. Terminal exit/completion markers
+were observed, but the terminal log was truncated; no complete-capture replay is
+claimed. No new images/volumes were created; scratch containers auto-remove.
+
+This does not qualify visual/accessibility behavior, independent clean builds,
+new full-image/SBOM outputs, hosted timing repair, production state lifecycle,
+physical EX4 operation, legacy migration or installable firmware. See the
+[workflow contract](src/phantowd-api/README.md#download-and-reviewed-restore) and
+[remaining product tasks](ROADMAP.md#m5-product-web-management-and-security).
+
 ## Retained metadata cancellation — focused host/ARMv5 correction
 
 Actual guarded ARMv5 RAM fixtures reproduced successful metadata collection

@@ -251,6 +251,14 @@
             <button id="service-prepare" class="logout-button" type="button" disabled>Preview addition from form</button>
           </div>
           <p id="service-status" class="snapshot-status" role="status" aria-live="polite">Not loaded. Save is unavailable until development storage is verified.</p>
+          <fieldset id="service-backup-controls" class="policy-grid" disabled>
+            <legend>Back up and restore desired file-service configuration</legend>
+            <p class="policy-help" id="service-backup-help">The JSON file contains private share names, usernames, filesystem UUIDs and NFS networks. Keep it private. It contains no passwords, Unix/Samba accounts, disk contents or iSCSI settings and is not a complete device backup. Restoring replaces the whole desired SMB/NFS policy only after review and an explicit save; it never activates services or deletes data files.</p>
+            <button id="service-backup-download" class="logout-button" type="button" disabled>Download saved SMB/NFS configuration</button>
+            <label for="service-restore-file">Configuration backup (JSON)</label>
+            <input id="service-restore-file" type="file" accept="application/json,.json" aria-describedby="service-backup-help">
+            <button id="service-restore-preview" class="logout-button" type="button" disabled>Validate and review replacement</button>
+          </fieldset>
           <div id="service-current" hidden>
             <p id="service-summary" class="policy-help"></p>
             <details><summary>Complete saved desired configuration</summary><pre id="service-document"></pre></details>

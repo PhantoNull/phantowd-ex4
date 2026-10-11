@@ -1944,6 +1944,21 @@ milestone before enabling its controls; M1/M6 for deployment.
   pass on the combined increment. Counts/retention limits are fixture-tested,
   not measured browser/device performance. Hosted acceptance, browser and
   product activation remain open.
+  **M5.4b — desired-policy backup and reviewed restore (partial; locally tested):**
+  explicitly load current state, download an initialized private SMB/NFS backup,
+  or select one bounded versioned file. Validate original bytes server-side,
+  require the observed expected revision and rebase every policy revision only
+  after strict validation. Review the whole replacement with M5.4a and require
+  the existing explicit CAS Save; preview never commits. Preserve auth/CSRF,
+  shared request admission, deadline/session lifecycle, stale-writer refusal and
+  uncertain-write reconciliation without automatic retry. Backups contain private
+  names/networks/UUIDs but no credentials, native accounts, iSCSI or user data;
+  restoring references does not provision users or qualify volumes. Windows/DOM,
+  pinned Linux tagged/race-count3 and actual ARMv5 HTTP/HTTPS standard/two-boot
+  overlay pass on frozen source. Complete terminal guest-log replay, real-browser
+  qualification, production persistence/provisioning/service composition and
+  recovery remain open. This is not the M5.6 sanitized support bundle, a complete
+  appliance backup or an installer/legacy migration qualification.
 - **M5.5 — Accessible efficient UI.** Keyboard operation, labels/focus, narrow
   viewports, screen-reader status and high contrast; bounded static assets and
   shared observations. Avoid per-client hardware polling, stale-response

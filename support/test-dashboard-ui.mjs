@@ -92,6 +92,7 @@ class FixtureElement {
     this.value = "";
     this.className = "";
     this.disabled = false;
+    this.files = [];
     this.parentElement = null;
     this.classList = {
       toggle: (name, force) => {
@@ -123,6 +124,14 @@ class FixtureElement {
 
   removeAttribute(name) {
     this.attributes.delete(name);
+  }
+
+  click() {
+    if (this.download && !this.disabled) this.ownerDocument.downloads.push({ href: this.href, filename: this.download });
+  }
+
+  remove() {
+    this.ownerDocument.body.children = this.ownerDocument.body.children.filter((node) => node !== this);
   }
 
   contains(node) {
@@ -215,10 +224,10 @@ async function createHarness(respond, timing = {}) {
     "observed-at", "device-count", "device-list", "array-count", "array-list", "mount-count", "mount-list",
     "gpt-observe", "gpt-observation-status",
     ...["load", "status", "result", "summary", "shares"].map((id) => `saved-${id}`),
-    ...["load", "prepare", "save", "status", "current", "summary", "document", "review", "change", "samba", "nfs", "editor", "target", "member", "action", "edit-preview", "diff", "diff-summary", "overlaps", "overlap-summary"].map((id) => `service-${id}`),
+    ...["load", "prepare", "save", "status", "current", "summary", "document", "review", "change", "samba", "nfs", "editor", "target", "member", "action", "edit-preview", "diff", "diff-summary", "overlaps", "overlap-summary", "backup-controls", "backup-download", "restore-file", "restore-preview"].map((id) => `service-${id}`),
     ...["form", "submit", "clear", "result", "error", "status", "requirements", "samba", "nfs", "nfs-fields", "uuid", "name", "path", "user", "smb-access", "nfs-enabled", "export-id", "network", "nfs-access", "squash", "uid", "gid", "security"].map((id) => `policy-${id}`),
   ];
-  const document = { activeElement: null, focusCalls: [] };
+  const document = { activeElement: null, focusCalls: [], downloads: [], blobs: [], revokedURLs: [] };
   const elements = Object.fromEntries(ids.map((id) => [id, new FixtureElement(document)]));
   document.body = new FixtureElement(document);
   document.activeElement = document.body;
@@ -259,6 +268,12 @@ async function createHarness(respond, timing = {}) {
     Error,
     Promise,
     TextEncoder,
+    TextDecoder,
+    Blob,
+    URL: {
+      createObjectURL: (blob) => { document.blobs.push(blob); return `blob:fixture-${document.blobs.length}`; },
+      revokeObjectURL: (url) => document.revokedURLs.push(url),
+    },
     AbortController,
     setTimeout: timing.setTimeout ?? setTimeout,
     clearTimeout: timing.clearTimeout ?? clearTimeout,
@@ -1013,12 +1028,13 @@ function serviceSaved(revision) {
     applied: false, runtime_validated: false, activation_available: false };
 }
 
-async function serviceHarness(stateResponse, previewResponse = () => jsonResponse(policyFixture()), sessionResponse = () => jsonResponse({ csrf_token: "fixture-only" })) {
+async function serviceHarness(stateResponse, previewResponse = () => jsonResponse(policyFixture()), sessionResponse = () => jsonResponse({ csrf_token: "fixture-only" }), backupResponse = () => { throw new Error("unexpected backup request"); }) {
   return createHarness(async (path, options) => {
     if (path === "/api/v1/file-services/configuration") return stateResponse(options);
     if (path === "/api/v1/auth/status") return jsonResponse({ authenticated: true });
     if (path === "/api/v1/auth/session") return sessionResponse();
     if (path === "/api/v1/file-services/preview") return previewResponse(options);
+    if (path === "/api/v1/file-services/backup" || path === "/api/v1/file-services/restore-preview") return backupResponse(path, options);
     if (path === "/api/v1/system") return jsonResponse(systemFixture());
     if (path === "/api/v1/storage") return jsonResponse({ observations: [] });
     if (path === "/api/v1/arrays") return jsonResponse(arraysFixture());
@@ -1647,4 +1663,160 @@ await testDesiredChangeReviewEdits();
 await testDesiredChangeReviewBoundsAndRendering();
 await testCrossProtocolPairRelationships();
 await testCrossProtocolPairBoundsAndRendering();
+
+function backupFixture(configuration) {
+  return { format: "phantowd-file-service-backup", schema_version: 1, configuration };
+}
+
+function backupFile(text) {
+  const bytes = typeof text === "string" ? new TextEncoder().encode(text) : text;
+  return { size: bytes.byteLength, arrayBuffer: async () => bytes.slice().buffer };
+}
+
+function restoreFixture(c, expected) {
+  return { schema_version: 1, scope: "file-service-restore-preview-only", expected_revision: expected,
+    configuration: c, preview: policyFixture(), saved: false, applied: false, runtime_validated: false, activation_available: false };
+}
+
+async function testServiceBackupDownloadAndPrivacy() {
+  const c = { format: "phantowd-file-service-config", schema_version: 1, revision: 1,
+    shares: { ...savedFixture().configuration, revision: 1 },
+    nfs: { format: "phantowd-nfs-policy", schema_version: 1, revision: 1, volume_revision: 1, exports: [] } };
+  for (const changed of [false, true]) {
+    const backup = backupFixture(structuredClone(c));
+    if (changed) backup.configuration.shares.shares[0].name += "-changed";
+    const h = await serviceHarness(() => jsonResponse(serviceReply(c)), undefined, undefined, () => jsonResponse(backup));
+    await h.context.exportServiceBackup();
+    assert.equal(h.requests.some((r) => r.path.endsWith("/backup")), false, "no export before explicit load");
+    await h.context.loadServicePolicy();
+    await h.elements["service-backup-download"].listeners.get("click")();
+    assert.equal(h.document.downloads.length, changed ? 0 : 1);
+    assert.equal(h.requests.some((r) => ["POST", "PUT"].includes(r.options?.method)), false, "export must not request CSRF, preview or mutation");
+    if (!changed) {
+      assert.equal(h.document.downloads[0].filename, "phantowd-file-services.json");
+      assert.deepEqual(JSON.parse(await h.document.blobs[0].text()), backup);
+      assert.equal(h.document.body.children.length, 0, "temporary download anchor released");
+      await new Promise((resolve) => setTimeout(resolve, 1));
+      assert.deepEqual(h.document.revokedURLs, ["blob:fixture-1"]);
+      assert.match(h.elements["service-status"].textContent, /not a data or credential backup/);
+    } else assert.match(h.elements["service-status"].textContent, /changed/);
+  }
+  assert.match(markup, /Keep it private/);
+  assert.match(markup, /not a complete device backup/);
+}
+
+async function testServiceRestoreRawPreviewAndExplicitSave() {
+  let current = null;
+  let uploaded;
+  const c = { format: "phantowd-file-service-config", schema_version: 1, revision: 1,
+    shares: { ...savedFixture().configuration, revision: 1 },
+    nfs: { format: "phantowd-nfs-policy", schema_version: 1, revision: 1, volume_revision: 1, exports: [] } };
+  const h = await serviceHarness((options) => {
+    if (options.method === "PUT") { current = JSON.parse(options.body); return jsonResponse(serviceSaved(current.revision)); }
+    return jsonResponse(serviceReply(current));
+  }, undefined, undefined, (_path, options) => { uploaded = options; return jsonResponse(restoreFixture(c, 0)); });
+  await h.context.loadServicePolicy();
+  const text = JSON.stringify(backupFixture(c), null, 2);
+  h.elements["service-restore-file"].files = [backupFile(text)];
+  h.elements["service-restore-file"].listeners.get("change")();
+  await h.elements["service-restore-preview"].listeners.get("click")();
+  assert.equal(uploaded.body, text, "original whitespace and duplicate-key evidence must not be collapsed by JSON.parse");
+  assert.equal(uploaded.headers["X-PhantoWD-Expected-Revision"], "0");
+  assert.equal(uploaded.headers["X-PhantoWD-CSRF"], "fixture-only");
+  assert.equal(h.requests.some((r) => r.options?.method === "PUT"), false, "import selection/preview never saves automatically");
+  assert.equal(h.elements["service-save"].disabled, false);
+  assert.match(h.elements["service-change"].textContent, /Replace the complete.*Definitions and grants absent/);
+  await h.context.saveServiceChange();
+  assert.deepEqual(current, c);
+  assert.equal(h.requests.filter((r) => r.options?.method === "PUT").length, 1);
+  assert.match(h.elements["service-status"].textContent, /confirmed saved.*No services/);
+}
+
+async function testServiceRestoreRefusalsAndOriginalEncoding() {
+  for (const kind of ["oversize", "empty", "invalid-utf8", "BOM", "duplicates", "conflict", "unsupported-response"]) {
+    let upload;
+    const h = await serviceHarness(() => jsonResponse(serviceReply(null)), undefined, undefined, (_path, options) => {
+      upload = options;
+      return kind === "unsupported-response" ? jsonResponse({ saved: true }) : jsonResponse({}, kind === "conflict" ? 409 : 422);
+    });
+    await h.context.loadServicePolicy();
+    let file = backupFile(kind === "BOM" ? "\ufeff{}" : kind === "duplicates" ? '{"format":"a","format":"b"}' : "{}");
+    if (kind === "invalid-utf8") file = backupFile(new Uint8Array([0x7b, 0xff, 0x7d]));
+    if (kind === "oversize") file = { size: 525057, arrayBuffer: () => { throw new Error("oversize file must not be read"); } };
+    if (kind === "empty") file = { size: 0, arrayBuffer: () => { throw new Error("empty file must not be read"); } };
+    h.elements["service-restore-file"].files = [file];
+    await h.context.previewServiceRestore();
+    assert.equal(Boolean(upload), !["oversize", "empty", "invalid-utf8"].includes(kind));
+    if (kind === "BOM") assert.equal(upload.body.charCodeAt(0), 0xfeff, "BOM is not silently removed");
+    if (kind === "duplicates") assert.equal(upload.body, '{"format":"a","format":"b"}');
+    assert.equal(h.elements["service-save"].disabled, true);
+    assert.equal(h.elements["service-review"].hidden, true);
+    assert.equal(h.requests.some((r) => r.options?.method === "PUT"), false);
+  }
+}
+
+async function testServiceRestoreLateFileAndPreviewRefusal() {
+  for (const boundary of ["file", "preview"]) {
+    let finish, reads = 0;
+    const pending = new Promise((resolve) => { finish = resolve; });
+    const h = await serviceHarness(() => jsonResponse(serviceReply(null)), undefined, undefined, () => { reads++; return pending; });
+    await h.context.loadServicePolicy();
+    const file = backupFile("{}");
+    if (boundary === "file") file.arrayBuffer = () => pending;
+    h.elements["service-restore-file"].files = [file];
+    const operation = h.context.previewServiceRestore();
+    await new Promise((resolve) => setImmediate(resolve));
+    await h.context.previewServiceRestore();
+    assert.equal(reads, boundary === "file" ? 0 : 1, "only one import operation owns file/HTTP reads");
+    h.context.clearServicePolicy();
+    if (boundary === "file") finish(new TextEncoder().encode("{}").buffer);
+    else finish(jsonResponse(restoreFixture({ revision: 1 }, 0)));
+    await operation;
+    assert.equal(h.elements["service-save"].disabled, true);
+    assert.equal(h.elements["service-review"].hidden, true);
+    assert.equal(h.elements["service-document"].textContent, "");
+    assert.equal(h.requests.some((r) => r.options?.method === "PUT"), false);
+    if (boundary === "file") assert.equal(reads, 0, "retired file read must not invoke HTTP");
+  }
+}
+
+await testServiceBackupDownloadAndPrivacy();
+await testServiceRestoreRawPreviewAndExplicitSave();
+await testServiceRestoreRefusalsAndOriginalEncoding();
+await testServiceRestoreLateFileAndPreviewRefusal();
+
+async function testServiceBackupCancellationAndReadDeadline() {
+  const h = await serviceHarness(() => jsonResponse(serviceReply(null)));
+  const controller = new AbortController();
+  let finish;
+  const file = { arrayBuffer: () => new Promise((resolve) => { finish = resolve; }) };
+  const read = h.context.readServiceBackupFile(file, controller.signal);
+  await new Promise((resolve) => setImmediate(resolve));
+  controller.abort();
+  await assert.rejects(read, (failure) => failure.name === "AbortError");
+  finish(new Uint8Array([123, 125]).buffer);
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(h.requests.some((r) => r.path.endsWith("/restore-preview")), false);
+
+  let expire;
+  const timed = await createHarness(async (path) => {
+    if (path === "/api/v1/auth/status") return jsonResponse({ authenticated: true });
+    if (path === "/api/v1/file-services/configuration") return jsonResponse(serviceReply(null));
+    return snapshotResponse(path);
+  }, { setTimeout: (callback) => { expire = callback; return 1; }, clearTimeout() {} });
+  await timed.context.loadServicePolicy();
+  let settle;
+  timed.elements["service-restore-file"].files = [{ size: 2, arrayBuffer: () => new Promise((resolve) => { settle = resolve; }) }];
+  const operation = timed.context.previewServiceRestore();
+  await new Promise((resolve) => setImmediate(resolve));
+  expire();
+  await operation;
+  assert.equal(timed.elements["service-load"].disabled, false, "deadline releases the UI gate even if file read has not settled");
+  assert.match(timed.elements["service-status"].textContent, /timed out.*No save/);
+  settle(new TextEncoder().encode("{}").buffer);
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(timed.requests.some((r) => r.path.endsWith("/restore-preview")), false, "late file read after timeout cannot submit");
+}
+
+await testServiceBackupCancellationAndReadDeadline();
 process.stdout.write("Dashboard UI interaction smoke tests passed (DOM fixture; no visual browser coverage).\n");

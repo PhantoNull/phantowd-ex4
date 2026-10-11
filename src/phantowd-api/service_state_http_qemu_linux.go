@@ -16,7 +16,10 @@ import (
 	"net/http/httptest"
 	"os"
 	"reflect"
+	"strconv"
 	"time"
+
+	"github.com/PhantoNull/phantowd-ex4/phantowd-api/fileservice"
 )
 
 // Actual loopback HTTP(S), actual configuration backend, synthetic session.
@@ -50,20 +53,23 @@ func exerciseQEMUServiceHTTP(directory string, expected, next uint64, secure boo
 	}
 	client := srv.Client()
 	client.Timeout = 5 * time.Second
-	request := func(method string, data []byte, authenticated, csrf bool) (int, []byte, error) {
-		r, err := http.NewRequest(method, origin+serviceStatePath, bytes.NewReader(data))
+	requestAt := func(method, path string, data []byte, authenticated, csrf bool, expectedRevision *uint64) (int, []byte, error) {
+		r, err := http.NewRequest(method, origin+path, bytes.NewReader(data))
 		if err != nil {
 			return 0, nil, err
 		}
 		if authenticated {
 			r.AddCookie(&http.Cookie{Name: sessionName, Value: token})
 		}
-		if method == http.MethodPut {
+		if method != http.MethodGet {
 			r.Header.Set("Origin", origin)
 			r.Header.Set("Content-Type", "application/json")
 			if csrf {
 				r.Header.Set("X-PhantoWD-CSRF", session.csrf)
 			}
+		}
+		if expectedRevision != nil {
+			r.Header.Set(serviceExpectedRevisionHeader, strconv.FormatUint(*expectedRevision, 10))
 		}
 		resp, err := client.Do(r)
 		if err != nil {
@@ -75,6 +81,9 @@ func exerciseQEMUServiceHTTP(directory string, expected, next uint64, secure boo
 			return 0, nil, errors.New("service policy cached")
 		}
 		return resp.StatusCode, body, err
+	}
+	request := func(method string, data []byte, authenticated, csrf bool) (int, []byte, error) {
+		return requestAt(method, serviceStatePath, data, authenticated, csrf, nil)
 	}
 	checkRead := func(revision uint64) error {
 		status, body, err := request(http.MethodGet, nil, true, false)
@@ -105,7 +114,27 @@ func exerciseQEMUServiceHTTP(directory string, expected, next uint64, secure boo
 			return errors.New("HTTPS accepted HTTP session cookie")
 		}
 	}
-	data, err := json.Marshal(qemuPersistentServices(next))
+	backup, err := fileservice.EncodeBackup(qemuPersistentServices(next))
+	if err != nil {
+		return err
+	}
+	status, body, err := requestAt(http.MethodPost, serviceRestorePreviewPath, backup, true, true, &expected)
+	var restore struct {
+		Configuration    fileservice.Config  `json:"configuration"`
+		ExpectedRevision uint64              `json:"expected_revision"`
+		Preview          fileservice.Preview `json:"preview"`
+		Saved            bool                `json:"saved"`
+		Applied          bool                `json:"applied"`
+	}
+	if err != nil || status != 200 || json.Unmarshal(body, &restore) != nil || restore.ExpectedRevision != expected ||
+		!reflect.DeepEqual(restore.Configuration, qemuPersistentServices(next)) || restore.Saved || restore.Applied ||
+		restore.Preview.Persisted || restore.Preview.Applied || restore.Preview.RuntimeValidated || restore.Preview.ActivationAvailable {
+		return errors.New("wire backup restore preview invalid")
+	}
+	if err := checkRead(expected); err != nil {
+		return errors.New("wire restore preview changed saved state")
+	}
+	data, err := json.Marshal(restore.Configuration)
 	if err != nil {
 		return err
 	}
@@ -132,6 +161,14 @@ func exerciseQEMUServiceHTTP(directory string, expected, next uint64, secure boo
 	}
 	if err := checkRead(next); err != nil {
 		return err
+	}
+	status, body, err = requestAt(http.MethodGet, serviceBackupPath, nil, true, false, nil)
+	if err != nil || status != 200 || !bytes.Equal(body, backup) {
+		return errors.New("wire backup does not match saved policy")
+	}
+	status, _, err = requestAt(http.MethodPost, serviceRestorePreviewPath, backup, true, true, &expected)
+	if err != nil || status != http.StatusConflict {
+		return errors.New("wire stale restore preview accepted")
 	}
 	srv.Close()
 	if err := closeState(); err != nil {

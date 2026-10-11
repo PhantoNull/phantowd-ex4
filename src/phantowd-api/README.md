@@ -745,6 +745,8 @@ and refuses non-Versatile PB machines. See the
 | `GET /api/v1/shares/configuration` | Authenticated read of the optional original share-only store; not running-service state |
 | `GET /api/v1/file-services/configuration` | Authenticated combined desired policy; development backend only, uninitialized state remains explicit |
 | `PUT /api/v1/file-services/configuration` | Development-only, Origin/CSRF-protected full revision commit; never activation |
+| `GET /api/v1/file-services/backup` | Authenticated download of initialized desired SMB/NFS policy; private configuration, not credentials or data |
+| `POST /api/v1/file-services/restore-preview` | Origin/CSRF-protected strict backup validation against an explicit expected revision; returns an unsaved replacement candidate |
 | `GET /api/v1/system` | Authenticated versioned JSON: observation time, kernel, architecture/GOARM, uptime, total/available memory, effective UID, development safety flags |
 | `GET /api/v1/storage` | Authenticated, sorted, bounded kernel block-node observations, schema v2: name, major/minor, 512-byte-sector capacity, read-only/removable flags, partition number, transient parent name/major/minor for partitions, and `serial_status` / `wwn_status` for non-partition block nodes |
 | Incomplete or inconsistent storage inventory | `503 storage_unavailable`; no partial observations, raw identifiers or sysfs paths |
@@ -1046,6 +1048,62 @@ the existing session and CSRF protection, ignore duplicate submission, and
 abort after ten seconds. The browser supplies the request Origin.
 
 ### Development configuration manager
+
+#### Download and reviewed restore
+
+Use **Load/reconcile** first. Download exports the saved combined desired SMB/NFS
+policy as `phantowd-file-services.json`; it is unavailable for an uninitialized
+store. Select one backup file, validate/review its complete replacement and then
+use the existing explicit **Save** action. Validation does not save anything.
+Definitions or grants absent from the replacement are removed from desired
+policy, not from user files or running services. The existing bounded semantic
+before/after review and cross-protocol folder advisories apply to this candidate.
+
+The exact wrapper has three fields: `format: "phantowd-file-service-backup"`,
+`schema_version: 1` and `configuration` (the existing strict combined document).
+The entire file is limited to **525,056 bytes**. It contains private user/share
+names, networks and filesystem UUIDs: protect it as private configuration, not
+a sanitized support bundle. It excludes passwords, Unix/Samba accounts, passdb,
+iSCSI policy, other device settings and file contents. Importing user references
+does not provision accounts; imported volume references do not qualify disks.
+This is not a whole-device backup or a migration/activation authority.
+
+Both endpoints use the existing startup-bound development backend, authentication,
+Host/origin restrictions and the same non-queuing read/save slot. GET accepts no
+body or query; absent saved state returns 409. POST additionally requires the
+exact Origin, CSRF header, JSON Content-Type and exactly one canonical decimal
+`X-PhantoWD-Expected-Revision`. Zero means an explicitly observed uninitialized
+store, not permission to overwrite existing state. Stale expected state returns
+409. Missing backend still returns 503; no default store is created.
+
+The server validates the original uploaded bytes before rebasing all four
+configuration revisions to expected + 1. Unknown/duplicate fields, malformed
+UTF-8, nulls, unsupported format/version, incoherent policy and oversized input
+refuse. Rebasing must still satisfy every component and combined size bound.
+POST returns schema 1, scope `file-service-restore-preview-only`, the expected
+revision, candidate and existing preview; `saved`, `applied`, `runtime_validated`
+and `activation_available` are all false. The existing explicit PUT performs
+the whole-document compare-and-swap; a competing save invalidates the candidate.
+
+The browser sends original file text after fatal UTF-8 validation, without JSON
+normalization (a BOM is preserved for server refusal). File reading and requests
+share the existing ten-second observation deadline and single-flight lifecycle.
+Logout, cancellation, file changes or late replies cannot submit or resurrect a
+retired candidate. Downloaded state must still match the explicitly loaded
+baseline. A timed-out file observation does not prove underlying OS work stopped.
+After an uncertain Save, reconcile the full stored document before proceeding;
+never automatically retry or treat the old preview as a completed write.
+
+Local qualification (2026-10-11): complete Windows API/UI checks and ARMv5 test
+cross-compilation (Go 1.27.0), pinned Linux vet/tagged tests and three race passes
+for the API/policy/store (Go 1.26.8), and actual ARMv5 standard smoke plus the
+existing two-boot overlay pass. The latter uses real loopback HTTP and HTTPS to
+verify preview without a write, explicit save, exact export, stale refusal and
+state reopening. Native tests separately close/reopen a real private store.
+The terminal ARM log was truncated; completion markers/exit were observed, not
+independently replayed from a complete archived capture. DOM tests do not qualify
+browser rendering or accessibility. No new kernel/package image, SBOM, hosted
+timing repair, physical NAS operation or product service activation is claimed.
 
 #### Desired change-review task contract
 
