@@ -26,6 +26,8 @@ ec32b188fb42bc607196f51554016b3469a5c52c07c6293cad3d2b47164ea4c0  source3/libsmb
 9e1b3f3c4f6a24cce3df8a005242cbb7c445a98b35e38ef5a3fba058c0f5e1eb  libcli/smb/smbXcli_base.h
 99fa883cf03d219525056bb9de495e5d2540408727e1842c3dacbdcdf46c8392  lib/util/idtree.c
 eaa36a7262e7680bfdf38ab43a302de7a5ee1b18fb5e5a69c693660e5ab407d1  lib/util/idtree.h
+99a482728fd5b493269a5768c574e3c96d7ede3458528a5fc55e651f2202fbd1  source3/libsmb/libsmb_file.c
+1a3cbb8a9d9d5306ae11fe5cfa86236e35991875953105e3d92a945f2ce701b4  lib/util/dlinklist.h
 HASHES
 )
 compiler="$output/host/bin/arm-buildroot-linux-gnueabi-gcc"
@@ -40,7 +42,7 @@ flags=(-DPHANTOWD_SAMBA_SOURCE_OBSERVER_FIXTURE=1 -D_SAMBA_BUILD_=4 -DHAVE_CONFI
     -I"$samba/lib" -I"$samba/include")
 timeout --signal=TERM --kill-after=1 30 "$compiler" "${flags[@]}" \
     -c "$source/support/tests/samba-pending-handle-observer-fixture.c" -o "$scratch/observer.o"
-"$compiler" -shared -Wl,--gc-sections,-z,defs,-rpath,/usr/lib/samba \
+"$compiler" -shared -Wl,--gc-sections,-z,defs,--enable-new-dtags,-rpath,/usr/lib/samba \
     -Wl,-soname,libphantowd-pending-handle-qemu.so \
     -Wl,--version-script="$source/support/tests/samba-pending-handle-observer-fixture.map" \
     -Wl,-rpath-link,"$output/staging/usr/lib/samba" -L"$output/staging/usr/lib/samba" \
@@ -53,7 +55,7 @@ timeout --signal=TERM --kill-after=1 30 "$compiler" "${flags[@]}" \
 "$output/host/bin/arm-buildroot-linux-gnueabi-ld" -r --gc-sections \
     -u main -u phantowd_qemu_observe_smb_handle_v1 \
     -o "$scratch/observer-test-reduced.o" "$scratch/observer-test.o"
-"$compiler" -Wl,--gc-sections,-z,defs,-rpath,/usr/lib/samba -Wl,-rpath-link,"$output/staging/usr/lib/samba" \
+"$compiler" -Wl,--gc-sections,-z,defs,--enable-new-dtags,-rpath,/usr/lib/samba -Wl,-rpath-link,"$output/staging/usr/lib/samba" \
     -Wl,--version-script="$source/support/tests/samba-pending-handle-observer-fixture.map" \
     -L"$output/staging/usr/lib/samba" -o "$scratch/observer-test" \
     "$scratch/observer-test-reduced.o" \
@@ -64,6 +66,8 @@ for name in observer.so observer-test; do
     grep -Eq 'Machine:.*ARM' "$scratch/observer.headers"
     grep -Eq 'Flags:.*Version5 EABI, soft-float ABI' "$scratch/observer.headers"
     grep -F 'Tag_CPU_arch: v5TEJ' "$scratch/observer.headers"
+    grep -F 'Library runpath: [/usr/lib/samba]' "$scratch/observer.headers"
+    if grep -F '(RPATH)' "$scratch/observer.headers"; then exit 1; fi
 done
 "$readelf" -d "$scratch/observer.so" | grep -F 'Library soname: [libphantowd-pending-handle-qemu.so]'
 "$readelf" --dyn-syms -W "$scratch/observer-test" >"$scratch/observer.symbols"

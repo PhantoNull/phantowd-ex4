@@ -144,13 +144,16 @@ prerequisite lane:
 ```
 
 It compiles the reader in the actual pinned Samba fnum translation unit and uses
-its real private definitions, not copied layouts. Eight sensitive source hashes,
+its real private definitions, not copied layouts. Ten sensitive source hashes,
 strict ARMv5 compilation, one exported symbol and a local-read import whitelist
 are required. The separate approximately 7 KiB library never replaces installed
 Samba. The combined source-built artifact retains upstream GPL terms/notices.
 A partial-link GC step keeps the standalone test free of unused wire/event code;
 final undefined-symbol errors remain enabled. Fixed `/usr/lib/samba` RUNPATH
 resolves the existing private dependency closure, never an environment override.
+Explicit new dtags and readelf guards require RUNPATH and reject RPATH. Earlier
+documentation incorrectly called the original RPATH output RUNPATH; the stricter
+independent closure inspector exposed and rejected that difference.
 
 The actual ARM fixture exercises the real upstream IDR mapping allocation,
 lookup/removal and same-fnum reuse with distinct remote IDs. Thirty-six refusal
@@ -158,11 +161,13 @@ cases clear all output bytes. Connection/session/tree getters are **mocked** in
 this positive seam; a separate loaded DSO exercises three early invalid-context
 refusals using its real imports. Two accepted and nineteen rejected receipt
 controls pass. Exact inserted bytes and unchanged borrowed base are checked.
-This is not an actual client opening, server bridge, retained library execution
-authority, lifetime/atomic observation, reconnect or pending-I/O qualification.
-The reader is not wired into an Owner or existing campaign. Its returned
-copy is metadata only; a reused fnum exposes a changed tuple rather than retaining
-identity. The future containing fence must compare original observations.
+This standalone seam is not an actual client opening, server bridge, retained
+library execution authority, lifetime/atomic observation, reconnect or pending-I/O
+qualification. It now constructs the file list with the actual upstream
+`DLIST_ADD` macro: singleton `prev` points to itself, not NULL. A real-macro
+RED/GREEN regression corrected the reader's earlier mistaken NULL assumption.
+Its returned copy is metadata only; a reused fnum exposes a changed tuple rather
+than retaining identity. The containing fence must compare original observations.
 
 The wrapper also tests/compiles a distinct close-only client build selected by
 `PHANTOWD_PENDING_HANDLE_OBSERVER_QEMU`. It reads the original context/file twice,
@@ -172,8 +177,9 @@ ID/auth refusals, exact ordering and 64-bit values, changed tuples and forbidden
 controls. It rejects `W` and has no write/seek imports. The default client keeps
 its original behavior and mock/ARM compile checks. The module's fixed
 `libphantowd-pending-handle-qemu.so` SONAME prevents a scratch DT_NEEDED path.
-**This client variant is compile/mock-tested only**, not injected or executed by
-the guest. The actual guest still tests only the separate source/IDR seam above.
+This source-reader wrapper still tests only compilation/mocks and the separate
+source/IDR guest. To execute the new client against actual SMB, use the distinct
+composed campaign below; neither lane is part of the default ten guests.
 
 The auto-removed non-root container uses the existing image/workspace read-only,
 no network/capabilities, NNP, 2 CPUs / 512 MiB / 128 PIDs and 256 MiB `/tmp` plus
@@ -182,15 +188,39 @@ QEMU30s with no guest NICs; no pulls/new images/volumes or full build. Source
 must stay frozen. This lane does not authenticate the full transitive SDK/source
 or qualify a current complete image/SBOM, hosted timing repair or EX4 support.
 
-Complete retained original-client/Owner integration and the independent server bridge are still
-**unimplemented and unqualified**. Do not copy private layouts, read
-process memory by PID, replace the public library in the product, or use an
-observer notice as execution authority. Missing, foreign, duplicated, replayed
-or changed handle/session/tree observations must refuse with retained review.
-Qualification needs actual healthy and negative ARM fixtures before changing
-`smb_object_bound=false`; request/extent/cache/journal correlation is a separate
-gate before WRITE. One `SMBC_write_ctx` call uses `cli_writeall` and does not by
-itself prove one wire request, write-through or durability.
+The composed actual-client prerequisite is available separately:
+
+```powershell
+.\support\test-samba-root.ps1 -Campaign pending-handle
+```
+
+The build independently inspects the fixed module in a new RAM-only inspection
+tree. Shared closure objects and bindings must equal the original client graph;
+only the bounded canonical module may be added. Inspection is not execution
+authority. The containing Owner retains complete original roots/descriptors,
+requires the fixed ARM module/SONAME/client dependency, fixes the client mode at
+construction and rechecks all inputs around metadata publication. Its bounded
+ordered parser latches the complete initial tuple only, rejects drift/replay and
+never publishes raw notices in the qualification log.
+
+The real client reads the original context/file after OPEN/stat and before CLOSE;
+the composition matches session/tree to independent STATUS and rechecks the
+original process/namespaces/TCP/server/local-object witnesses before CLOSE. The
+client's original executable is descriptor-executed through the dedicated
+bootstrap, with a private mount namespace/root, UID/GID65534, no capabilities and
+NNP. Client group exit, daemon settlement, unchanged data and FD/base equality
+precede release. Actual ARM acceptance and the older `pending` regression pass.
+Sequential observations are not atomic or continuous; the initial accessor is
+cached metadata, not a new live observation or lease.
+
+The independent **remote-FileId/server-file-generation bridge is still missing**.
+Never equate persistent/volatile IDs with STATUS `share_file_id`. Do not copy
+private layouts, read process memory by PID, replace product libraries or use a
+notice as execution authority. Complete healthy/fault qualification remains
+necessary before changing `smb_object_bound=false`; request/extent/cache/journal
+correlation is separate before WRITE. `pending_io=false` remains required. One
+`SMBC_write_ctx` call uses `cli_writeall` and does not by itself prove one wire
+request, write-through or durability. No product startup, HTTP or NAS action.
 
 This optional campaign is deliberately outside the default ten-guest union.
 It reuses the existing pinned image/workspace read-only, one auto-removed

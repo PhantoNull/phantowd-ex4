@@ -34,19 +34,28 @@ PEER_EXIT_READY = (
 PEER_EXIT_EXPECTED = (*samba.MARKERS[:3], samba.CENSUS_MARKER, ENROLLMENT,
                       PEER_EXIT_READY,
                       "PHANTOWD_SAMBA_ROOT_PENDING_PEER_EXIT_DONE")
+HANDLE_READY = READY.replace(
+    "PENDING_CLIENT_READY", "PENDING_HANDLE_READY").replace(
+    "smb_object_bound=false", "client_handle_observed=true "
+    "client_handle_continuity=true client_session_tree_matched=true "
+    "smb_object_bound=false")
+HANDLE_EXPECTED = (*samba.MARKERS[:3], samba.CENSUS_MARKER, ENROLLMENT,
+                   HANDLE_READY, "PHANTOWD_SAMBA_ROOT_PENDING_HANDLE_DONE")
 
 
 def verify(log, mode="healthy"):
-    if mode not in ("healthy", "peer-exit"):
+    if mode not in ("healthy", "peer-exit", "handle"):
         raise ValueError("fixed pending-client mode required")
     if not isinstance(log, str) or len(log.encode()) > MAX_LOG:
         raise ValueError("bounded guest evidence required")
     prefixes = ("PHANTOWD_SAMBA_ROOT_", "PHANTOWD_SAMBA_OWNER_",
                 "PHANTOWD_PENDING_", "PHANTOWD_SMB_WRITE_CLIENT_",
-                "PHANTOWD_RUNTIME_BUNDLE_", "PHANTOWD_DIAG_PENDING_")
+                "PHANTOWD_RUNTIME_BUNDLE_", "PHANTOWD_DIAG_PENDING_",
+                "PHANTOWD_SMB_CLIENT_HANDLE_")
     rows = tuple(line for line in log.splitlines()
                  if line.startswith(prefixes))
-    expected = EXPECTED if mode == "healthy" else PEER_EXIT_EXPECTED
+    expected = {"healthy": EXPECTED, "peer-exit": PEER_EXIT_EXPECTED,
+                "handle": HANDLE_EXPECTED}[mode]
     if rows != expected:
         raise ValueError("ordered healthy-client prerequisite required")
     return samba.scan_cost(log)
@@ -57,6 +66,7 @@ if __name__ == "__main__":
         raise SystemExit("one disposable guest log and fixed mode required")
     mode = sys.argv[2] if len(sys.argv) == 3 else "healthy"
     verify(read_bounded(sys.argv[1], MAX_LOG), mode)
-    marker = "HEALTHY" if mode == "healthy" else "PEER_EXIT"
+    marker = {"healthy": "HEALTHY", "peer-exit": "PEER_EXIT",
+              "handle": "HANDLE"}[mode]
     print(f"PHANTOWD_PENDING_{marker}_LOG_VERIFIED scope=qemu-only "
           "smb_object_bound=false pending_io=false product=false")

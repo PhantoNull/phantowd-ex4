@@ -8,6 +8,34 @@ import pending_client_healthy_log as fixture
 
 
 class HealthyLog(unittest.TestCase):
+    def test_handle_campaign_requires_distinct_exact_ordered_evidence(self):
+        cost = ("PHANTOWD_RUNTIME_SCAN_COST files=114 bytes=27384058 "
+                "elapsed_ns=123456789 scope=qemu-emulation-only")
+        rows = (*fixture.HANDLE_EXPECTED, cost)
+        good = "\n".join(rows)
+        for separator in ("\n", "\r\n"):
+            self.assertEqual(fixture.verify(separator.join(rows), "handle"),
+                             (114, 27384058, 123456789))
+        for index in range(len(rows)):
+            for altered in (rows[:index] + rows[index + 1:],
+                            (*rows, rows[index])):
+                with self.assertRaises(ValueError):
+                    fixture.verify("\n".join(altered), "handle")
+        for field in fixture.HANDLE_READY.split()[1:]:
+            with self.assertRaises(ValueError):
+                fixture.verify(good.replace(field, field + "-altered"),
+                               "handle")
+        for wrong in ("\n".join((*fixture.EXPECTED, cost)),
+                      "\n".join((*fixture.PEER_EXIT_EXPECTED, cost)),
+                      "\n".join(reversed(rows)),
+                      good + "\nPHANTOWD_RUNTIME_BUNDLE_FAILED",
+                      good + "\nPHANTOWD_SMB_CLIENT_HANDLE_NOTICE"):
+            with self.assertRaises(ValueError):
+                fixture.verify(wrong, "handle")
+        for mode in ("healthy", "peer-exit"):
+            with self.assertRaises(ValueError):
+                fixture.verify(good, mode)
+
     def test_peer_exit_requires_distinct_complete_ordered_evidence(self):
         cost = ("PHANTOWD_RUNTIME_SCAN_COST files=114 bytes=27384058 "
                 "elapsed_ns=123456789 scope=qemu-emulation-only")

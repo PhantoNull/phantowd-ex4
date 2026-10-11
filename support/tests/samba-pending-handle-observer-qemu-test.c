@@ -79,7 +79,8 @@ int main(void)
     require(NT_STATUS_IS_OK(map_smb2_handle_to_fnum(cli, 0x1111222233334444,
         0x5555666677778888, false, &fnum)));
     SMBCFILE file = {.cli_fd = fnum, .targetcli = cli, .file = true};
-    struct SMBC_internal_data internal = {.initialized = true, .files = &file};
+    struct SMBC_internal_data internal = {.initialized = true};
+    DLIST_ADD(internal.files, &file); /* Actual SMBC_open_ctx singleton contract. */
     SMBCCTX context = {.internal = &internal};
     struct phantowd_pending_handle_observation_v1 original, output;
     require(!phantowd_qemu_observe_smb_handle_v1(&context, &file, &original));
@@ -93,7 +94,7 @@ int main(void)
     internal.initialized = false; refused(&context, &file); internal.initialized = true;
     internal.files = NULL; refused(&context, &file); internal.files = &file;
     file.next = &file; refused(&context, &file); file.next = NULL;
-    file.prev = &file; refused(&context, &file); file.prev = NULL;
+    file.prev = NULL; refused(&context, &file); file.prev = &file;
     file.file = false; refused(&context, &file); file.file = true;
     file.dir_list = (struct smbc_dir_list *)&connection_token;
     refused(&context, &file); file.dir_list = NULL;

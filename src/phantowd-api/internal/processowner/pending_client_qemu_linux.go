@@ -44,6 +44,8 @@ type PendingClientQEMU struct {
 	originalProc                 *os.File
 	originalGeneration           pendingProcGenerationQEMU
 	connection                   *pendingConnectionQEMU
+	handleMode                   bool
+	handleInitial                PendingHandleObservationQEMU
 	stdout, stderr               *diagnosticRing
 	started, settled, review     bool
 	closeSent, closed, stopTried bool
@@ -65,12 +67,22 @@ func validPendingSecretQEMU(secret []byte) bool {
 // Fixed fixture constructor. No command, path, account, profile or per-call
 // descriptor injection; secret copied once and sent only through a fresh pipe.
 func NewPendingClientQEMU(helper, root, client *os.File, secret []byte) (_ *PendingClientQEMU, result error) {
+	return newPendingClientQEMU(helper, root, client, secret, false)
+}
+
+// Dedicated close-only reader variant, fixed at construction. Containing Owner
+// must separately retain and qualify the complete module/loader input census.
+func NewPendingHandleClientQEMU(helper, root, client *os.File, secret []byte) (*PendingClientQEMU, error) {
+	return newPendingClientQEMU(helper, root, client, secret, true)
+}
+
+func newPendingClientQEMU(helper, root, client *os.File, secret []byte, handleMode bool) (_ *PendingClientQEMU, result error) {
 	model, err := os.ReadFile("/sys/firmware/devicetree/base/model")
 	if runtime.GOARCH != "arm" || err != nil || string(model) != "ARM Versatile PB\x00" ||
 		os.Getuid() != 0 || os.Geteuid() != 0 || os.Getgid() != 0 || os.Getegid() != 0 || !validPendingSecretQEMU(secret) {
 		return nil, ErrInvalid
 	}
-	c := &PendingClientQEMU{gate: make(chan struct{}, 1), secret: bytes.Clone(secret)}
+	c := &PendingClientQEMU{gate: make(chan struct{}, 1), secret: bytes.Clone(secret), handleMode: handleMode}
 	c.self = c
 	defer func() {
 		if result != nil {
@@ -203,6 +215,16 @@ func (c *PendingClientQEMU) notices(closing bool) (bool, error) {
 	out, diagnostic := c.stdout.snapshot(), c.stderr.snapshot()
 	defer clear(out)
 	defer clear(diagnostic)
+	if c.handleMode {
+		observed, ready, err := pendingHandleNoticesQEMU(out, diagnostic, closing, c.handleInitial)
+		if err == nil && ready && !closing {
+			if c.handleInitial.valid() && c.handleInitial != observed {
+				return false, ErrReviewRequired
+			}
+			c.handleInitial = observed
+		}
+		return ready, err
+	}
 	return pendingNoticesQEMU(out, diagnostic, closing)
 }
 

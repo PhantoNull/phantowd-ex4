@@ -18,6 +18,8 @@ import (
 
 const pendingClientProgramQEMU = "fixture/pending-write"
 const pendingClientBootstrapQEMU = "fixture/launcher"
+const pendingClientObserverQEMU = "usr/lib/libphantowd-pending-handle-qemu.so"
+const pendingClientObserverSONAMEQEMU = "libphantowd-pending-handle-qemu.so"
 
 // PendingClientDocumentsQEMU returns fixed, non-secret client-root inputs for
 // trusted fixture construction. These bytes do not authorize an image/runtime.
@@ -79,6 +81,7 @@ func pendingClientPlansQEMU(client, bootstrap *Plan) error {
 // Do not pass its private descriptors to a consumer or operate on aliases.
 type pendingClientInputsQEMU struct {
 	client, bootstrap *retainedCode
+	handleMode        bool
 	releaseErr        error
 }
 
@@ -96,6 +99,19 @@ func newPendingClientInputsQEMU(ctx context.Context, clientPlan, bootstrapPlan *
 		return nil, err
 	}
 	i := &pendingClientInputsQEMU{}
+	for _, file := range clientPlan.files {
+		if file.Path == pendingClientObserverQEMU {
+			if file.Mode != 0555 || file.Size > 1<<20 {
+				return nil, ErrMismatch
+			}
+			i.handleMode = true
+		}
+	}
+	for _, alias := range clientPlan.aliases {
+		if alias.Path == pendingClientObserverQEMU || alias.Target == pendingClientObserverQEMU {
+			return nil, ErrMismatch
+		}
+	}
 	defer func() {
 		if result != nil {
 			result = errors.Join(result, i.release())
@@ -189,7 +205,42 @@ func (i *pendingClientInputsQEMU) revalidate(ctx context.Context) error {
 	if !found {
 		return ErrMismatch
 	}
+	if err := pendingObserverDependencyQEMU(needed, i.handleMode); err != nil {
+		return err
+	}
+	if i.handleMode {
+		module := i.client.files[pendingClientObserverQEMU]
+		if module == nil {
+			return ErrMismatch
+		}
+		observer, err := elf.NewFile(module)
+		if err != nil || observer.Class != elf.ELFCLASS32 || observer.Data != elf.ELFDATA2LSB || observer.Machine != elf.EM_ARM || observer.Type != elf.ET_DYN {
+			return ErrMismatch
+		}
+		for _, segment := range observer.Progs {
+			if segment.Type == elf.PT_INTERP {
+				return ErrMismatch
+			}
+		}
+		soname, err := observer.DynString(elf.DT_SONAME)
+		if err != nil || len(soname) != 1 || soname[0] != pendingClientObserverSONAMEQEMU {
+			return ErrMismatch
+		}
+	}
 	return ctx.Err()
+}
+
+func pendingObserverDependencyQEMU(needed []string, present bool) error {
+	count := 0
+	for _, name := range needed {
+		if name == pendingClientObserverSONAMEQEMU {
+			count++
+		}
+	}
+	if (present && count != 1) || (!present && count != 0) {
+		return ErrMismatch
+	}
+	return nil
 }
 
 // This releases no processes and is private to trusted containing composition.

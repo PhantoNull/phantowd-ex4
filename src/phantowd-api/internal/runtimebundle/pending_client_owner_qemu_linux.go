@@ -69,7 +69,11 @@ func newPendingClientOwnerQEMU(ctx context.Context, client, bootstrap *Plan, cli
 		}
 		return o, errors.Join(ErrMismatch, statErr, closeErr)
 	}
-	o.adapter, err = processowner.NewPendingClientQEMU(
+	constructor := processowner.NewPendingClientQEMU
+	if o.inputs.handleMode {
+		constructor = processowner.NewPendingHandleClientQEMU
+	}
+	o.adapter, err = constructor(
 		o.inputs.bootstrap.files[pendingClientBootstrapQEMU], root,
 		o.inputs.client.files[pendingClientProgramQEMU], secret)
 	if closeErr := root.Close(); err != nil || closeErr != nil {
@@ -102,6 +106,29 @@ func (o *pendingClientOwnerQEMU) enter(ctx context.Context) error {
 		return ErrUnavailable
 	}
 	return nil
+}
+
+// Cached client metadata only, bracketed by complete retained input rechecks.
+// The existing owned process/connection/server observations remain mandatory.
+func (o *pendingClientOwnerQEMU) initialHandle(ctx context.Context) (processowner.PendingHandleObservationQEMU, error) {
+	if err := o.enter(ctx); err != nil {
+		return processowner.PendingHandleObservationQEMU{}, err
+	}
+	defer func() { <-o.gate }()
+	if o.review || !o.started || o.settled || o.adapter == nil || o.inputs == nil || !o.inputs.handleMode {
+		return processowner.PendingHandleObservationQEMU{}, ErrReviewRequired
+	}
+	if err := o.inputs.revalidate(ctx); err != nil {
+		return processowner.PendingHandleObservationQEMU{}, o.fail(err)
+	}
+	observed, err := o.adapter.InitialHandleObservationQEMU(ctx)
+	if err != nil {
+		return processowner.PendingHandleObservationQEMU{}, o.fail(err)
+	}
+	if err := o.inputs.revalidate(ctx); err != nil {
+		return processowner.PendingHandleObservationQEMU{}, o.fail(err)
+	}
+	return observed, nil
 }
 
 func (o *pendingClientOwnerQEMU) fail(cause error) error {

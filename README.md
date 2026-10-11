@@ -53,8 +53,10 @@ A separate ARMv5 fixture now verifies a retained, isolated real SMB3 client
 opening and closing synthetic data without changes or leaked descriptors.
 Its independent server-side snapshots now match the same worker generation,
 session, tree and open to the retained local file. The original client/worker
-processes, retained namespaces and reciprocal TCP connection now also match;
-remote client-handle/request binding remains unqualified.
+processes, retained namespaces and reciprocal TCP connection now also match.
+An optional composed guest now observes the original client handle and matches
+its session/tree to the independent server witness. Remote-FileId-to-local-object
+and request binding remain unqualified.
 A separate peer-stop fixture also verifies client refusal, sticky review and
 original-reference retention with unchanged data and verified subprocess disposal.
 It does not qualify pending writes, recovery or product service activation;

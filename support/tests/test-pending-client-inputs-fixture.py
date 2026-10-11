@@ -5,7 +5,8 @@ import copy
 from pathlib import Path
 import tempfile
 import unittest
-from pending_client_inputs_fixture import (DOCUMENTS, manifest, merge_charset,
+from pending_client_inputs_fixture import (DOCUMENTS, OBSERVER, manifest,
+                                           merge_charset, merge_observer,
                                            read_bounded)
 
 
@@ -73,6 +74,52 @@ class PendingInputsTests(unittest.TestCase):
         report["total_bytes"] = sum(item["size"] for item in report["objects"])
         with self.assertRaises(ValueError):
             manifest(report, self.documents, b"client", b"helper")
+
+    def test_observer_closure_requires_exact_shared_and_only_one_new(self):
+        observer = {**copy.deepcopy(self.report), "entry": OBSERVER,
+                    "total_bytes": 2}
+        module = {"path": OBSERVER, "sha256": "44" * 32, "size": 1,
+                  "bindings": [OBSERVER]}
+        observer["objects"] = [copy.deepcopy(self.report["objects"][0]),
+                               module]
+        before = copy.deepcopy(self.report)
+        merged = merge_observer(self.report, observer)
+        self.assertEqual(self.report, before)
+        self.assertEqual(merged["total_bytes"], 4)
+        self.assertEqual(merged["objects"][-1], module)
+        value = manifest(merged, self.documents, b"client", b"helper")
+        self.assertEqual(len(value["RootFiles"]), 12)
+        for field, value in (("entry", "usr/sbin/smbd"),
+                             ("execution_authorized", True),
+                             ("runtime_qualified", True),
+                             ("total_bytes", True)):
+            bad = copy.deepcopy(observer)
+            bad[field] = value
+            with self.assertRaises(ValueError):
+                merge_observer(self.report, bad)
+        for field, value in (("sha256", "ff" * 32), ("size", 2),
+                             ("bindings", ["lib/ld-linux.so.3", "lib/alias"])):
+            bad = copy.deepcopy(observer)
+            bad["objects"][0][field] = value
+            bad["total_bytes"] = sum(item["size"] for item in bad["objects"])
+            with self.assertRaises(ValueError):
+                merge_observer(self.report, bad)
+        for field, value in (("size", 1024 * 1024 + 1),
+                             ("bindings", [OBSERVER, "usr/lib/alternate.so"])):
+            bad = copy.deepcopy(observer)
+            bad["objects"][-1][field] = value
+            bad["total_bytes"] = sum(item["size"] for item in bad["objects"])
+            with self.assertRaises(ValueError):
+                merge_observer(self.report, bad)
+        bad = copy.deepcopy(observer)
+        bad["objects"].append({"path": "usr/lib/unqualified.so",
+                               "sha256": "55" * 32, "size": 1,
+                               "bindings": ["usr/lib/unqualified.so"]})
+        bad["total_bytes"] += 1
+        with self.assertRaises(ValueError):
+            merge_observer(self.report, bad)
+        with self.assertRaises(ValueError):
+            merge_observer(merged, observer)
 
     def test_candidate_scope_and_byte_budget_refuse(self):
         for field, value in (("execution_authorized", True),

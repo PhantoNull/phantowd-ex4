@@ -1739,13 +1739,20 @@ storage. No production roster provider or activation path exists.
   file after OPEN/stat and before CLOSE, validates bounded IDs and fieldwise
   continuity, and refuses all writes. Sixteen observer/identity/auth refusal
   mocks, exact ordered notices, old-client regressions and ARMv5 compilation
-  pass; a fixed reader SONAME excludes scratch dependency paths. This new client
-  has not run against actual SMB. Complete retained module/loader input admission,
-  containing Owner/parser and server bridge are still missing;
-  no actual original-handle proof, WRITE or default-campaign change follows.
-  Next retain/qualify its full inputs in the dedicated client composition,
-  observe the original client mapping, and independently bridge the same server
-  open before changing any proof flag. Keep review
+  pass; a fixed reader SONAME excludes scratch dependency paths. The separate
+  `pending-handle` guest now executes the actual client with complete retained
+  module/loader inputs, a constructor-fixed adapter and bounded initial-tuple
+  cache/parser. Its original session/tree match independent STATUS, with original
+  process/namespace/TCP/server/local-object rechecks before CLOSE, unchanged data
+  and verified both-group disposal before release. The old `pending` regression
+  also passes; no default-campaign change. Independent closure rejection corrected
+  RPATH to genuine RUNPATH; real `DLIST_ADD` RED/GREEN corrected singleton `prev`
+  from NULL to self, with ten pinned sensitive source hashes.
+  The remote persistent/volatile FileIds are still not independently bridged to
+  the server's share-mode file generation. Next qualify that same-server-open
+  bridge and composed negative controls, then request/extent/cache/journal before
+  WRITE or any proof flag change. Initial metadata is cached, not a live lease;
+  sequential checks are not atomic or continuous. Keep review
   and original references on uncertainty; no generic-profile/idle-observer
   widening, product startup, HTTP or physical NAS action.
   The private fixed-producer status observation is now consumed by a separate

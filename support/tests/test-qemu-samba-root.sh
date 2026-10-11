@@ -15,7 +15,7 @@ selection=${8:-all}
 diagnostics=${9:-none}
 case "$diagnostics" in none|diagnostic) ;; *) exit 1 ;; esac
 case "$selection" in
-    all|service|native|candidate|lifecycle|fault|data|exit|held|file|file-source|pending|pending-peer-exit) ;;
+    all|service|native|candidate|lifecycle|fault|data|exit|held|file|file-source|pending|pending-peer-exit|pending-handle) ;;
     *) exit 1 ;;
 esac
 tmpdir=${TMPDIR:-/tmp}
@@ -26,7 +26,7 @@ esac
 case "$tmpdir" in /*) ;; *) exit 1 ;; esac
 awk -v target="$tmpdir" '$3 == "tmpfs" && (target == $2 || index(target, $2 "/") == 1) { found = 1 } END { exit !found }' /proc/mounts || exit 1
 pending_profile=0
-case "$selection" in pending|pending-peer-exit) pending_profile=1 ;; esac
+case "$selection" in pending|pending-peer-exit|pending-handle) pending_profile=1 ;; esac
 if [ "$pending_profile" -eq 1 ]; then
     campaigns=$selection # Separate prerequisites, NOT the default union.
 else
@@ -51,7 +51,7 @@ cleanup() {
         "$scratch/launcher" "$scratch/charset" "$scratch/bundle" "$scratch/owner" \
         "$scratch/service.log" "$scratch/native.log" "$scratch/candidate.log" \
         "$scratch/lifecycle.log" "$scratch/fault.log" "$scratch/data.log" "$scratch/exit.log" "$scratch/held.log" "$scratch/file.log" "$scratch/file-source.log"
-    rm -f "$scratch/pending.log" "$scratch/pending-peer-exit.log"
+    rm -f "$scratch/pending.log" "$scratch/pending-peer-exit.log" "$scratch/pending-handle.log"
     if [ "$pending_profile" -eq 1 ]; then rm -rf "$scratch/pending"; fi
     rm -rf "$scratch/go-cache" "$scratch/go-path"
     rmdir "$scratch"
@@ -93,14 +93,36 @@ if [ "$pending_profile" -eq 1 ]; then
     (cd "$source_dir/src/phantowd-api" && CGO_ENABLED=0 GOOS=linux GOARCH=arm GOARM=5 \
         "$go_binary" build -tags=qemu -trimpath -o "$scratch/pending/arm-inputs" ./cmd/qemu-pending-client-inputs)
     "$scratch/lab" inspect-runtime-closure "$target" usr/lib/libsmbclient.so.0 >"$scratch/pending/closure.json"
-    "$compiler" -std=c11 -O2 -Wall -Wextra -Werror \
-        -I"$target/../staging/usr/include/samba-4.0" -Wl,-rpath-link,"$target/../staging/usr/lib/samba" \
-        -o "$scratch/pending/client" "$source_dir/support/tests/samba-pending-write-fixture.c" -lsmbclient
+    if [ "$selection" = pending-handle ]; then
+        pinned_output=$(dirname "$target")
+        bash "$source_dir/support/tests/build-samba-pending-handle-observer.sh" "$pinned_output" "$source_dir" "$scratch/pending"
+        bash "$source_dir/support/tests/test-samba-pending-handle-client.sh" "$pinned_output" "$source_dir" "$scratch/pending"
+        cp "$scratch/pending/handle-client" "$scratch/pending/client"
+        python3 -B "$source_dir/support/tests/pending_client_inputs_fixture.py" observer-tree \
+            "$scratch/pending/closure.json" "$scratch/ibm850.json" "$target" \
+            "$scratch/pending/observer.so" "$scratch/pending/observer-tree"
+        if ! "$scratch/lab" inspect-runtime-closure "$scratch/pending/observer-tree" \
+            usr/lib/libphantowd-pending-handle-qemu.so >"$scratch/pending/observer.json"; then
+            head -c 32768 "$scratch/pending/observer.json" >&2
+            exit 1
+        fi
+    else
+        "$compiler" -std=c11 -O2 -Wall -Wextra -Werror \
+            -I"$target/../staging/usr/include/samba-4.0" -Wl,-rpath-link,"$target/../staging/usr/lib/samba" \
+            -o "$scratch/pending/client" "$source_dir/support/tests/samba-pending-write-fixture.c" -lsmbclient
+    fi
     "$compiler" -std=c11 -O2 -static -Wall -Wextra -Werror \
         -o "$scratch/pending/helper" "$source_dir/support/tests/samba-pending-write-launcher-fixture.c"
-    python3 -B "$source_dir/support/tests/pending_client_inputs_fixture.py" \
-        "$scratch/pending/closure.json" "$scratch/ibm850.json" "$scratch/pending/documents.json" \
-        "$scratch/pending/client" "$scratch/pending/helper" "$target" "$scratch/pending"
+    if [ "$selection" = pending-handle ]; then
+        python3 -B "$source_dir/support/tests/pending_client_inputs_fixture.py" \
+            "$scratch/pending/closure.json" "$scratch/ibm850.json" "$scratch/pending/documents.json" \
+            "$scratch/pending/client" "$scratch/pending/helper" "$target" "$scratch/pending" \
+            "$scratch/pending/observer.json" "$scratch/pending/observer.so"
+    else
+        python3 -B "$source_dir/support/tests/pending_client_inputs_fixture.py" \
+            "$scratch/pending/closure.json" "$scratch/ibm850.json" "$scratch/pending/documents.json" \
+            "$scratch/pending/client" "$scratch/pending/helper" "$target" "$scratch/pending"
+    fi
 fi
 rm -rf "$scratch/go-cache" "$scratch/go-path"
 cp "$base/rootfs.ext2" "$scratch/rootfs.ext2"
@@ -162,7 +184,9 @@ if [ "$diagnostics" = diagnostic ]; then
 fi
 verified=0
 if [ "$status" -eq 0 ]; then
-    if [ "$selection" = pending-peer-exit ]; then
+    if [ "$selection" = pending-handle ]; then
+        python3 -B "$source_dir/support/tests/pending_client_healthy_log.py" "$scratch/$campaign.log" handle && verified=1
+    elif [ "$selection" = pending-peer-exit ]; then
         python3 -B "$source_dir/support/tests/pending_client_healthy_log.py" "$scratch/$campaign.log" peer-exit && verified=1
     elif [ "$selection" = pending ]; then
         python3 -B "$source_dir/support/tests/pending_client_healthy_log.py" "$scratch/$campaign.log" && verified=1

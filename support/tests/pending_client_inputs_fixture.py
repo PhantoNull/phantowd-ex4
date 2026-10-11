@@ -16,6 +16,7 @@ from runtime_loader_fixture import validate
 DOCUMENTS = frozenset({"sys/firmware/devicetree/base/model", "etc/passwd",
                        "etc/group", "etc/nsswitch.conf", "etc/hosts",
                        "etc/samba/smb.conf", "usr/lib/gconv/gconv-modules"})
+OBSERVER = "usr/lib/libphantowd-pending-handle-qemu.so"
 
 
 def merge_charset(report, charset):
@@ -67,6 +68,66 @@ def read_bounded(path, limit):
                        for key in fields)):
             raise ValueError("original build input changed")
         return data
+
+
+def merge_observer(report, observer):
+    """Independent fixed module closure; shared evidence must match exactly."""
+    manifest(report, {name: "scope-validation" for name in DOCUMENTS},
+             b"client-scope", b"helper-scope")
+    extra, _, _ = validate(observer, fixed_entry=OBSERVER)
+    known = {item["path"]: item for item in report["objects"]}
+    if OBSERVER in known:
+        raise ValueError("observer already present in base candidate")
+    merged = list(report["objects"])
+    for item in extra:
+        prior = known.get(item["path"])
+        if prior is not None:
+            if prior != item:
+                raise ValueError("shared observer dependency changed")
+        elif item["path"] == OBSERVER:
+            if item["size"] > 1024 * 1024 or item["bindings"] != [OBSERVER]:
+                raise ValueError("fixed bounded observer required")
+            merged.append(item)
+        else:
+            raise ValueError("unqualified additional observer dependency")
+    result = {**report, "objects": merged,
+              "total_bytes": sum(item["size"] for item in merged)}
+    manifest(result, {name: "scope-validation" for name in DOCUMENTS},
+             b"client-scope", b"helper-scope")
+    return result
+
+
+def observer_tree(report_path, charset_path, target_path, module_path,
+                  root_path):
+    """Minimal disposable inspection tree, not a retained execution root."""
+    combined = merge_charset(
+        json.loads(read_bounded(report_path, 1024 * 1024)),
+        json.loads(read_bounded(charset_path, 1024 * 1024)))
+    plan = manifest(combined, {name: "scope-validation" for name in DOCUMENTS},
+                    b"client-scope", b"helper-scope")
+    if any(item["Path"] == OBSERVER for item in plan["RootFiles"]):
+        raise ValueError("observer already in original closure")
+    if any(item["Path"] == OBSERVER for item in plan["RootAliases"]):
+        raise ValueError("observer binding collision")
+    module = read_bounded(module_path, 1024 * 1024)
+    root = Path(root_path)
+    root.mkdir(mode=0o700)  # Refuse existing/caller-replaced destinations.
+    for item in combined["objects"]:
+        data = read_bounded(Path(target_path) / item["path"],
+                            64 * 1024 * 1024)
+        if (len(data) != item["size"]
+                or hashlib.sha256(data).hexdigest() != item["sha256"]):
+            raise ValueError("inspection source changed")
+        actual = root / item["path"]
+        actual.parent.mkdir(parents=True, exist_ok=True)
+        actual.write_bytes(data)
+    for item in plan["RootAliases"]:
+        alias = root / item["Path"]
+        alias.parent.mkdir(parents=True, exist_ok=True)
+        alias.symlink_to(os.path.relpath(root / item["Target"], alias.parent))
+    actual = root / OBSERVER
+    actual.parent.mkdir(parents=True, exist_ok=True)
+    actual.write_bytes(module)
 
 
 def canonical(value):
@@ -154,7 +215,8 @@ def manifest(report, documents, client, helper):
 
 
 def produce(report_path, charset_path, documents_path, client_path,
-            helper_path, target_path, scratch_path):
+            helper_path, target_path, scratch_path, observer_report=None,
+            observer_path=None):
     # All outputs belong to the wrapper's newly-created disposable tmpfs tree.
     scratch = Path(scratch_path)
     report_data = read_bounded(report_path, 1024 * 1024)
@@ -164,6 +226,11 @@ def produce(report_path, charset_path, documents_path, client_path,
     client = read_bounded(client_path, 1024 * 1024)
     helper = read_bounded(helper_path, 1024 * 1024)
     combined = merge_charset(json.loads(report_data), json.loads(charset_data))
+    if (observer_report is None) != (observer_path is None):
+        raise ValueError("both fixed observer inputs required")
+    if observer_report is not None:
+        combined = merge_observer(combined, json.loads(
+            read_bounded(observer_report, 1024 * 1024)))
     value = manifest(combined, documents, client, helper)
     docs = scratch / "documents"
     docs.mkdir(mode=0o700)
@@ -179,6 +246,8 @@ def produce(report_path, charset_path, documents_path, client_path,
             actual = Path(client_path)
         elif path == "fixture/launcher":
             actual = Path(helper_path)
+        elif path == OBSERVER and observer_path is not None:
+            actual = Path(observer_path)
         else:
             actual = Path(target_path) / path
         if actual.is_symlink() or not actual.is_file():
@@ -208,6 +277,9 @@ def produce(report_path, charset_path, documents_path, client_path,
 
 
 if __name__ == "__main__":
-    if len(sys.argv) != 8:
+    if len(sys.argv) == 7 and sys.argv[1] == "observer-tree":
+        observer_tree(*sys.argv[2:])
+    elif len(sys.argv) in (8, 10):
+        produce(*sys.argv[1:])
+    else:
         raise SystemExit("fixed fixture build inputs required")
-    produce(*sys.argv[1:])

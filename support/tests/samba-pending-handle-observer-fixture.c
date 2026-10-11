@@ -24,7 +24,7 @@ int phantowd_qemu_observe_smb_handle_v1(SMBCCTX *context, SMBCFILE *file,
     /* This fixed client has one opening only. Membership precedes any file
      * dereference; an arbitrary handle, extra opening or directory refuses. */
     if (!context || !context->internal || !context->internal->initialized ||
-        !file || context->internal->files != file || file->next || file->prev ||
+        !file || context->internal->files != file || file->next || file->prev != file ||
         !file->file || file->dir_list || file->dirplus_list || file->offset != 0 ||
         file->cli_fd <= 0 || file->cli_fd > 0xfffe || !file->targetcli) return -1;
     struct cli_state *cli = file->targetcli; /* Never cached srv->cli (DFS). */

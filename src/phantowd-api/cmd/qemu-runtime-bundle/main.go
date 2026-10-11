@@ -73,6 +73,13 @@ func run() error {
 	if len(os.Args) == 2 && os.Args[1] == "native-pending-peer-exit" && os.Getuid() == 0 && os.Geteuid() == 0 {
 		return nativeCredentialFixture(nativePendingPeerExitCampaignQEMU)
 	}
+	if len(os.Args) == 2 && os.Args[1] == "native-pending-handle" && os.Getuid() == 0 && os.Geteuid() == 0 {
+		err := nativeCredentialFixture(nativePendingHandleCampaignQEMU)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "native pending handle fixture:", err)
+		}
+		return err
+	}
 	if len(os.Args) == 2 && os.Args[1] == "native-pending-peer-exit-child" && os.Getuid() == 0 && os.Geteuid() == 0 {
 		return nativePendingPeerExitChildQEMU()
 	}

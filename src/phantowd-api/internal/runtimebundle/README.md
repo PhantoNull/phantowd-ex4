@@ -70,6 +70,25 @@ sequential, not atomic; adversarial live drift/uncertain teardown in this new
 composition remain unqualified. `smb_object_bound=false` remains mandatory.
 No WRITE, new deadline/default campaign or product capability is exposed.
 
+The separate optional `pending-handle` campaign now retains the fixed source
+reader module together with the complete original client/loader closure. Its
+independent build closure must share identical objects/bindings; the Owner checks
+the fixed ARM module/SONAME and selects a dedicated close-only adapter once at
+construction. A bounded canonical parser caches only the complete initial tuple;
+changed/replayed notices refuse without replacing it. The accessor returns that
+cached metadata, not a live observation, descriptor or execution authority.
+
+Actual ARM client observations bracket the original opening; session/tree match
+the independent server witness, with original process/namespaces/TCP/server/local
+object rechecks before CLOSE. Both groups settle before input/reference release,
+with unchanged data and FD/base equality. The old healthy campaign also passes.
+The dedicated bootstrap uses retained root/program descriptors and drops to
+UID/GID65534, zero capabilities and NNP inside its private mount namespace/root.
+The generic launcher is not widened. True RUNPATH guards and real upstream
+DLIST singleton construction correct two earlier prerequisite assumptions.
+Remote FileId halves remain distinct from server share-mode generation: this
+does not qualify their missing bridge, faults, WRITE, HTTP or product activation.
+
 The optional `pending-peer-exit` fault guest uses that same actual binding, then
 stops only its owned daemon group. Concrete adapter refusal must stop its client;
 the containing Owner retains review, complete client inputs, server code/helper,

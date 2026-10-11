@@ -31,6 +31,13 @@ func nativeDataFixtureProfileQEMU(plan *runtimebundle.Plan, lookup fileservicepl
 var pendingPeerExitOriginalsQEMU []*os.File
 
 func nativeDataFixtureModeQEMU(plan *runtimebundle.Plan, lookup fileserviceplan.SambaEnrollmentLookup, pending, peerExit bool) error {
+	return nativeDataFixtureHandleModeQEMU(plan, lookup, pending, peerExit, false)
+}
+
+func nativeDataFixtureHandleModeQEMU(plan *runtimebundle.Plan, lookup fileserviceplan.SambaEnrollmentLookup, pending, peerExit, handle bool) error {
+	if handle && (!pending || peerExit) {
+		return errors.New("invalid handle fixture profile")
+	}
 	if peerExit && !pending {
 		return errors.New("invalid peer-exit fixture profile")
 	}
@@ -133,6 +140,8 @@ func nativeDataFixtureModeQEMU(plan *runtimebundle.Plan, lookup fileserviceplan.
 		pendingPeerExitOriginalsQEMU = append(pendingPeerExitOriginalsQEMU, callers[:]...)
 		pendingPeerExitOriginalsQEMU = append(pendingPeerExitOriginalsQEMU, roots[:]...)
 		probeErr = plan.ProbeNativePendingPeerExitQEMU(ctx, callers[0], callers[1], callers[2], lookup, roots)
+	} else if handle {
+		probeErr = plan.ProbeNativePendingHandleQEMU(ctx, callers[0], callers[1], callers[2], lookup, roots)
 	} else if pending {
 		probeErr = plan.ProbeNativePendingClientQEMU(ctx, callers[0], callers[1], callers[2], lookup, roots)
 	} else {

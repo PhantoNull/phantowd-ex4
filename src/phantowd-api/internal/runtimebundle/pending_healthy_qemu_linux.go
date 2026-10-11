@@ -37,16 +37,22 @@ type pendingHealthyRetentionQEMU struct {
 // client once and performs CLOSE only. OPEN telemetry is NOT an independent
 // original SMB server/session/open/object witness or permission to WRITE.
 func (p *Plan) ProbeNativePendingClientQEMU(ctx context.Context, code, configuration, state *os.File, lookup fileserviceplan.SambaEnrollmentLookup, roots [2]*os.File) (result error) {
-	return p.probeNativePendingClientQEMU(ctx, code, configuration, state, lookup, roots, false)
+	return p.probeNativePendingClientQEMU(ctx, code, configuration, state, lookup, roots, false, false)
 }
 
 // Fixed fault-only prerequisite in a disposable subprocess, not a WRITE or
 // recovery operation. Reviewed originals survive until that process exits.
 func (p *Plan) ProbeNativePendingPeerExitQEMU(ctx context.Context, code, configuration, state *os.File, lookup fileserviceplan.SambaEnrollmentLookup, roots [2]*os.File) error {
-	return p.probeNativePendingClientQEMU(ctx, code, configuration, state, lookup, roots, true)
+	return p.probeNativePendingClientQEMU(ctx, code, configuration, state, lookup, roots, true, false)
 }
 
-func (p *Plan) probeNativePendingClientQEMU(ctx context.Context, code, configuration, state *os.File, lookup fileserviceplan.SambaEnrollmentLookup, roots [2]*os.File, peerExit bool) (result error) {
+// Fixed optional read-only-handle campaign. Matching session/tree does NOT join
+// remote FileId halves to the server's separate share-mode file generation.
+func (p *Plan) ProbeNativePendingHandleQEMU(ctx context.Context, code, configuration, state *os.File, lookup fileserviceplan.SambaEnrollmentLookup, roots [2]*os.File) error {
+	return p.probeNativePendingClientQEMU(ctx, code, configuration, state, lookup, roots, false, true)
+}
+
+func (p *Plan) probeNativePendingClientQEMU(ctx context.Context, code, configuration, state *os.File, lookup fileserviceplan.SambaEnrollmentLookup, roots [2]*os.File, peerExit, handleMode bool) (result error) {
 	if ctx == nil {
 		return ErrInvalid
 	}
@@ -115,6 +121,9 @@ func (p *Plan) probeNativePendingClientQEMU(ctx context.Context, code, configura
 	if err != nil {
 		return err // Reviewed authority belongs to whole disposable-guest teardown.
 	}
+	if client.inputs.handleMode != handleMode {
+		return ErrMismatch
+	}
 	r, err := p.newNativeSambaRuntimeQEMU(ctx, code, configuration, state, lookup, &roots)
 	retained.runtime = r
 	if err != nil {
@@ -181,6 +190,24 @@ func (p *Plan) probeNativePendingClientQEMU(ctx context.Context, code, configura
 	}
 	if err := client.recheckConnection(ctx); err != nil {
 		return fmt.Errorf("pending original connection continuity: %w", err)
+	}
+	if handleMode {
+		initialHandle, err := client.initialHandle(ctx)
+		if err != nil {
+			return fmt.Errorf("pending original handle observation: %w", err)
+		}
+		if strconv.FormatUint(initialHandle.SessionID, 10) != retained.server.status.session ||
+			strconv.FormatUint(uint64(initialHandle.TreeID), 10) != retained.server.status.tree {
+			return ErrMismatch
+		}
+		// Recheck the independently observed same worker/session/tree/open and
+		// original connection after this metadata comparison, before CLOSE.
+		if err := retained.server.recheckQEMU(ctx, file, initial); err != nil {
+			return err
+		}
+		if err := client.recheckConnection(ctx); err != nil {
+			return err
+		}
 	}
 	if peerExit {
 		if err := retained.qualifyPeerExitQEMU(ctx, initial); err != nil {

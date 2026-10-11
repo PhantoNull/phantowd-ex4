@@ -3,7 +3,7 @@
 
 # Implementation status
 
-## Close-only client handle observations — host/compile prerequisite
+## Original client handle observations — composed ARMv5 prerequisite
 
 An opt-in test build of the fixed client now calls the pinned source reader on
 the same original context/file after OPEN/stat and again immediately before
@@ -18,12 +18,37 @@ sixteen observer/identity/auth refusals, forbidden controls and existing operati
 failures. The new ARMv5 executable links a fixed observer SONAME, never its scratch
 path. The standalone reader guest still passes its real IDR/36-refusal seam and
 three loaded-DSO early refusals; positive connection getters remain mocked.
-**The new client has not executed against real SMB.** Its complete retained
-loader/module inputs, containing Owner/parser and independent same-server-open
-bridge remain unimplemented/unqualified. No proof flag, default campaign, HTTP,
-NAS, full-image or hosted timing qualification changes. Use the existing
-[source-reader wrapper](support/QEMU-FAST-TESTS.md#remaining-original-handle-witness)
-for both host/client compile prerequisites and the separate source-reader guest.
+The optional `pending-handle` campaign now executes this client against the real
+native Samba server in a disposable ARMv5 guest. Independent inspection qualifies
+the fixed observer closure; shared dependencies must match the original client
+closure exactly. The containing Owner retains all original code/loader/module/
+document descriptors and fixes the adapter mode once at construction. Its bounded
+parser accepts only ordered canonical notices, caches the complete initial tuple
+and refuses changed or replayed observations. Raw IDs do not enter public logs.
+
+The actual client observes its original mapping twice. The containing composition
+matches its session/tree IDs to the independent STATUS witness and rechecks the
+original process, namespaces, reciprocal TCP connection, server opening and local
+object before CLOSE. Verified client exit/group absence and daemon settlement
+precede descriptor release; unchanged file bytes and final FD/base equality pass.
+The previous `pending` guest also passes as a regression. The default ten guests,
+generic launcher and original deadlines are unchanged. Run
+`support/test-samba-root.ps1 -Campaign pending-handle` for this separate proof.
+
+Two previously hidden assumptions were corrected without relaxing admission:
+the linker emitted RPATH, not the previously documented RUNPATH; explicit new
+dtags and exact readelf guards now require RUNPATH. Samba's actual `DLIST_ADD`
+sets a singleton's `prev` to itself, not NULL; a source-built RED/GREEN control
+now uses that macro and the reader requires the real singleton representation.
+Ten sensitive source hashes pin both allocation/list definitions as well as the
+mapping/getters. The separate standalone positive getter seam remains mocked.
+
+This is not the missing remote-FileId-to-server-file-generation bridge. Client
+persistent/volatile IDs are **not** STATUS `share_file_id`. Complete fault,
+request/extent/cache/journal and WRITE qualification remain open;
+`smb_object_bound=false` and `pending_io=false` remain mandatory. No HTTP, NAS,
+current complete-image or hosted timing qualification is added. See the
+[focused contract](support/QEMU-FAST-TESTS.md#remaining-original-handle-witness).
 
 ## Original-handle source reader — standalone ARMv5 prerequisite
 
@@ -31,7 +56,7 @@ A separate approximately 7 KiB fixture library reads the actual pinned Samba
 4.22.11 fnum mapping and private definitions in one translation unit. It accepts
 one active fixed-client opening only, clears refused output and copies session,
 tree and persistent/volatile IDs without wire requests, allocation, map changes,
-close or reconnect. The build checks eight sensitive source hashes, ARMv5 ABI,
+close or reconnect. The build checks ten sensitive source hashes, ARMv5 ABI,
 one export and a local-read import whitelist; installed libraries are untouched.
 
 Actual ARM tests use the real upstream IDR allocation/lookup/removal and prove

@@ -36,10 +36,11 @@ const (
 	nativePlannedFileSourceCampaignQEMU
 	nativePendingClientCampaignQEMU
 	nativePendingPeerExitCampaignQEMU
+	nativePendingHandleCampaignQEMU
 )
 
 func nativeCredentialFixture(campaign nativeCredentialCampaignQEMU) (result error) {
-	if campaign > nativePendingPeerExitCampaignQEMU {
+	if campaign > nativePendingHandleCampaignQEMU {
 		return errors.New("native credential campaign guard")
 	}
 	commandLine, err := os.ReadFile("/proc/cmdline")
@@ -231,7 +232,7 @@ func nativeCredentialFixture(campaign nativeCredentialCampaignQEMU) (result erro
 		return fmt.Errorf("native enrollment phase completion: %w", err)
 	}
 	reportNativePhaseTimingQEMU(nativeFixtureEnrolledQEMU, started)
-	if campaign == nativePendingClientCampaignQEMU || campaign == nativePendingPeerExitCampaignQEMU {
+	if campaign == nativePendingClientCampaignQEMU || campaign == nativePendingPeerExitCampaignQEMU || campaign == nativePendingHandleCampaignQEMU {
 		if err := owner.Close(); err != nil {
 			return err
 		}
@@ -241,6 +242,8 @@ func nativeCredentialFixture(campaign nativeCredentialCampaignQEMU) (result erro
 		var pendingErr error
 		if campaign == nativePendingPeerExitCampaignQEMU {
 			pendingErr = nativePendingPeerExitSubprocessQEMU()
+		} else if campaign == nativePendingHandleCampaignQEMU {
+			pendingErr = nativeDataFixtureHandleModeQEMU(plan, lookup, true, false, true)
 		} else {
 			pendingErr = nativeDataFixtureProfileQEMU(plan, lookup, true)
 		}
@@ -254,6 +257,10 @@ func nativeCredentialFixture(campaign nativeCredentialCampaignQEMU) (result erro
 		nativeCredentialEnrollmentMarkerQEMU()
 		if campaign == nativePendingPeerExitCampaignQEMU {
 			fmt.Println(pendingPeerExitMarkerQEMU)
+			return nil
+		}
+		if campaign == nativePendingHandleCampaignQEMU {
+			fmt.Println("PHANTOWD_SAMBA_OWNER_PENDING_HANDLE_READY complete_inputs=true actual_client=true actual_loader=true single_open=true close_only=true client_exit0=true client_group_absent=true daemon_stopped=true caller_duplicates_closed=true local_object_unchanged=true no_fd_leak=true server_open_observed=true server_open_continuity=true local_object_matched=true connection_original=true connection_continuity=true retained_namespaces=true client_handle_observed=true client_handle_continuity=true client_session_tree_matched=true smb_object_bound=false pending_io=false activation=false scope=qemu-only")
 			return nil
 		}
 		fmt.Println("PHANTOWD_SAMBA_OWNER_PENDING_CLIENT_READY complete_inputs=true actual_client=true actual_loader=true single_open=true close_only=true client_exit0=true client_group_absent=true daemon_stopped=true caller_duplicates_closed=true local_object_unchanged=true no_fd_leak=true server_open_observed=true server_open_continuity=true local_object_matched=true connection_original=true connection_continuity=true retained_namespaces=true smb_object_bound=false pending_io=false activation=false scope=qemu-only")
