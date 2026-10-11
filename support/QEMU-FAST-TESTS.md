@@ -17,6 +17,19 @@ failure and measurement-only output. OPEN is telemetry, not an independent
 original SMB session/open/object witness or permission to WRITE. Request,
 extent/cache/journal and pending-I/O fault correlation remain unqualified.
 
+The same guest additionally requires two independent server-side snapshots:
+original server generation/session/tree/share-file ID, retained worker proc
+directory/start ticks, original daemon parent/group/executable, and STATUS
+device/inode matching the retained local descriptor and metadata. Actual ARM
+acceptance and bounded Linux/race3/Windows controls pass. Exact receipts now also
+require `server_open_observed`, `server_open_continuity` and `local_object_matched`;
+missing/altered fields refuse. This is not remote-client socket/opaque-handle or
+request binding; `smb_object_bound=false`/`pending_io=false` remain mandatory.
+The native data profile's exact lowercase service and libsmbclient generic
+read/write mask have separate RED/GREEN guards from the older CLI-holder profile.
+The fixed status worker still admits the complete original runtime before and
+after execution; redundant surrounding scans are avoided. No deadline changes.
+
 This optional campaign is deliberately outside the default ten-guest union.
 It reuses the existing pinned image/workspace read-only, one auto-removed
 non-root container, 2 CPUs / 2 GiB / 256 PIDs and bounded 1536 MiB `/tmp` plus

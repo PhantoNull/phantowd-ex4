@@ -30,6 +30,7 @@ type pendingHealthyRetentionQEMU struct {
 	client  *pendingClientOwnerQEMU
 	runtime *NativeSambaRuntimeQEMU
 	file    *os.File
+	server  *pendingServerOpenQEMU
 }
 
 // This healthy prerequisite retains actual server inputs, executes the real
@@ -65,6 +66,12 @@ func (p *Plan) ProbeNativePendingClientQEMU(ctx context.Context, code, configura
 			if err := retained.file.Close(); err != nil {
 				result = errors.Join(ErrReviewRequired, err)
 				return
+			}
+		}
+		if retained.server != nil && retained.server.proc != nil {
+			if err := retained.server.proc.Close(); err != nil {
+				result = errors.Join(ErrReviewRequired, err)
+				return // Never retry an uncertain close.
 			}
 		}
 		pendingHealthyRetainedQEMU = nil
@@ -142,6 +149,18 @@ func (p *Plan) ProbeNativePendingClientQEMU(ctx context.Context, code, configura
 	}
 	if err := r.verifyNativeDaemonQEMU(ctx, r.daemonPID); err != nil {
 		return errors.Join(err, client.stop(context.Background()))
+	}
+	// Independent STATUS producer, original server worker and retained local
+	// inode. Still NOT the remote socket/opaque client-handle/request binding.
+	retained.server, err = r.observePendingServerOpenQEMU(ctx, file, initial)
+	if err != nil {
+		return fmt.Errorf("pending server open observation: %w", err)
+	}
+	if err := client.inputs.revalidate(ctx); err != nil {
+		return err
+	}
+	if err := retained.server.recheckQEMU(ctx, file, initial); err != nil {
+		return fmt.Errorf("pending original server open continuity: %w", err)
 	}
 	if err := client.closeClient(ctx); err != nil {
 		return fmt.Errorf("pending client close: %w", err)

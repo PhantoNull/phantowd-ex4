@@ -44,6 +44,22 @@ The private Owner exposes no write, descriptor, per-call backend or product
 service capability. Storage/identity/server/session/open/object admission is
 still separate and required before any pending-write fault.
 
+The same optional guest now adds a private independent server-open witness:
+two fixed STATUS inventories must preserve the original server generation,
+session, tree and share-file ID. Its retained worker proc directory/start ticks,
+daemon parent/group and original executable are checked against the original
+runtime; STATUS device/inode and worker-view metadata must match the retained
+read-only local object. Partial construction/refusal keeps the witness reachable
+through reviewed whole-guest disposal. Normal closure releases its proc reference
+only after verified client/server settlement. Actual ARM and host/race3 controls
+pass with unchanged bytes/FD/base. The fixed worker's complete both-side runtime
+admission is reused rather than duplicated. No old observer, deadline or default
+campaign changes. Native `[writable]` and libsmbclient generic read/write are
+distinct from the older planned `[Writable]`/CLI-open contracts, with RED/GREEN
+refusal guards. This still does not identify the remote client socket, opaque
+handle or request; `smb_object_bound=false` remains mandatory. No WRITE or
+product capability is exposed.
+
 The QEMU-only planned runtime additionally retains one fixed authorized IPC$
 holder, distinct from the unused two-account client set. No caller chooses its
 program, user, credential or process profile. Its startup/stop uncertainty is

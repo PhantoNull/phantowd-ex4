@@ -3,6 +3,31 @@
 
 # Implementation status
 
+## Pending client: independent original server-open observation
+
+The optional `pending` ARMv5 guest now independently observes the fixed Samba
+STATUS producer twice while the original client remains open. Both snapshots
+must preserve server generation, session, tree and share-file ID. A retained
+worker proc directory/start-tick witness requires the original daemon parent
+and group, original smbd executable and original local file metadata; STATUS
+device/inode must match the retained read-only descriptor. Actual ARM acceptance,
+unchanged file bytes, client exit0/group absence, server stop and FD/base equality
+pass. All1312 tested source inputs are unchanged across final qualification.
+Pinned Linux vet/unit/race3/ARM cross and Windows API/UI/cross/wrapper checks pass.
+
+Initial refusals exposed two different fixture contracts: native `[writable]`
+versus the older planned `[Writable]`, and libsmbclient's generic read/write
+mask versus the older CLI holder's data-only mask. Both have minimized RED/GREEN
+guards; neither older observer nor default-ten assertion is weakened. Only the
+new observer's redundant scans are removed: the fixed worker still performs
+complete original-runtime admission on both sides. All deadlines are unchanged.
+
+This is an independent **server-side** observation, not a remote-client socket,
+opaque client-handle or request/extent witness. `smb_object_bound=false` and
+`pending_io=false` remain required. No WRITE, HTTP, product activation, NAS or
+new full-image/hosted qualification is added. Next correlate the original owned
+client connection/handle, then request/extent/cache/journal before fault admission.
+
 ## Dedicated retained-client healthy execution — focused ARMv5 qualification
 
 The optional `support/test-samba-root.ps1 -Campaign pending` lane now executes

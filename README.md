@@ -51,6 +51,9 @@ successful parser checks do not activate a product service.
 
 A separate ARMv5 fixture now verifies a retained, isolated real SMB3 client
 opening and closing synthetic data without changes or leaked descriptors.
+Its independent server-side snapshots now match the same worker generation,
+session, tree and open to the retained local file; remote client-handle/request
+binding remains unqualified.
 It does not qualify pending writes, recovery or product service activation;
 see the [focused test contract](support/QEMU-FAST-TESTS.md#dedicated-same-open-client-prerequisites-host-and-qemu).
 

@@ -37,6 +37,9 @@ class HealthyLog(unittest.TestCase):
         for field in ("complete_inputs=true", "client_exit0=true",
                       "client_group_absent=true",
                       "local_object_unchanged=true",
+                      "server_open_observed=true",
+                      "server_open_continuity=true",
+                      "local_object_matched=true",
                       "no_fd_leak=true", "smb_object_bound=false",
                       "pending_io=false", "activation=false"):
             with self.assertRaises(ValueError):

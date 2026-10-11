@@ -1665,8 +1665,18 @@ storage. No production roster provider or activation path exists.
   guards. Only the new client startup is calibrated12s after measuredOPEN5.557s;
   CLOSE5/parent35/guest180 and the existing ten-campaign union remain unchanged.
   This is focused healthy execution, not full-image/hosted or product proof.
-  Next correlate its original server/session/
-  open/object identities before admitting any pending-write fault. Keep review
+  The new guest also requires two independent original server-side STATUS
+  snapshots with unchanged server generation/session/tree/share-file ID,
+  retained worker proc/start ticks, daemon parent/group, original smbd and
+  matching original local metadata/device/inode. Actual ARM acceptance and
+  Linux/race3/Windows controls pass. Separate native/planned service-name and
+  client access-mask contracts have RED/GREEN guards; older observers stay
+  unchanged. Complete runtime admission still brackets each fixed worker once;
+  redundant new-observer scans are removed without deadline changes.
+  This is not the remote-client socket/opaque-handle/request witness:
+  `smb_object_bound=false`/`pending_io=false` remain required. Next correlate
+  that original owned client connection/handle and request/extent/cache/journal
+  before any WRITE or pending-write fault. Keep review
   and original references on uncertainty; no generic-profile/idle-observer
   widening, product startup, HTTP or physical NAS action.
   The private fixed-producer status observation is now consumed by a separate
