@@ -29,6 +29,8 @@ python3 -B "$source/support/tests/samba_root_fixture.py" prepare \
     "$scratch/smbstatus.json" "$scratch/smbcontrol.json" "$target/usr/lib/gconv/gconv-modules" "$scratch/manifest"
 (cd "$source/src/phantowd-api" && CGO_ENABLED=0 GOOS=linux GOARCH=arm GOARM=5 \
     timeout --signal=TERM --kill-after=1 30 "$go" build -tags=qemu -trimpath -o "$scratch/stager" ./cmd/qemu-runtime-bundle)
+(cd "$source/src/phantowd-api" && CGO_ENABLED=0 GOOS=linux GOARCH=arm GOARM=5 \
+    timeout --signal=TERM --kill-after=1 30 "$go" test -tags=qemu -c -trimpath -o "$scratch/capture-adapter-tests" ./internal/processowner)
 mkdir "$scratch/module"
 bash "$source/support/tests/build-samba-server-capture-fixture.sh" "$output" "$source" "$scratch/module"
 timeout --signal=TERM --kill-after=1 30 "$cc" -static -std=c11 -O2 -Wall -Wextra -Werror -Wno-unused-function \
@@ -47,6 +49,7 @@ debugfs="$output/host/sbin/debugfs"
 for pair in "$scratch/bootstrap /usr/sbin/phantowd-server-observer-daemon-bootstrap" \
     "$scratch/module/phantowd_open_qemu.so /usr/lib/samba/vfs/phantowd_open_qemu.so" \
     "$scratch/stager /usr/sbin/phantowd-runtime-bundle-probe" \
+    "$scratch/capture-adapter-tests /usr/sbin/phantowd-capture-adapter-tests" \
     "$scratch/manifest /usr/lib/phantowd/qemu-samba-root.manifest" \
     "$source/support/tests/server-capture-runtime-init.sh /usr/sbin/phantowd-server-capture-runtime-init"; do
     input=${pair%% *}; name=${pair#* }; mode=0100555

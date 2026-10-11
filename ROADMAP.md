@@ -72,8 +72,11 @@ declared/retained in a fixed private runtime profile. Actual ARM smbd/NEGOTIATE,
 stop-before-release, existing synthetic passdb refusal without mutation, sticky
 review/reference retention and FD equality pass; the original runtime also
 passes. This is partial S2 input composition, **not authentication/OPEN/frames**.
-Next, join the retained dedicated read-only client and new notice protocol,
-then qualify original worker/FileId/local-object/transport matching.
+The dedicated fixed client process adapter now passes host and ARM parser/
+lifecycle-refusal tests, plus scoped host race checks; actual commands remain
+unexecuted. Next, compose its complete retained root/bootstrap census with the
+authenticated daemon, then qualify original worker/FileId/local-object/transport
+matching and actual read/close/fault outcomes.
 
 A dedicated fixed read-only capture client now passes host mock orchestration
 (three positive flows, 121 refusals) and ARMv5 ELF compilation; it has not run

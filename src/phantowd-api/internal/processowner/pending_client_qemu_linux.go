@@ -46,6 +46,8 @@ type PendingClientQEMU struct {
 	connection                   *pendingConnectionQEMU
 	handleMode                   bool
 	handleInitial                PendingHandleObservationQEMU
+	captureMode                  bool // Dedicated constructor only, never caller-selected per operation.
+	captureReads                 uint8
 	stdout, stderr               *diagnosticRing
 	started, settled, review     bool
 	closeSent, closed, stopTried bool
@@ -215,6 +217,13 @@ func (c *PendingClientQEMU) notices(closing bool) (bool, error) {
 	out, diagnostic := c.stdout.snapshot(), c.stderr.snapshot()
 	defer clear(out)
 	defer clear(diagnostic)
+	if c.captureMode {
+		observed, ready, err := serverCaptureClientNoticesQEMU(out, diagnostic, c.captureReads, closing, c.handleInitial)
+		if err == nil && ready && !closing {
+			c.handleInitial = observed
+		}
+		return ready, err
+	}
 	if c.handleMode {
 		observed, ready, err := pendingHandleNoticesQEMU(out, diagnostic, closing, c.handleInitial)
 		if err == nil && ready && !closing {
@@ -315,7 +324,20 @@ func (c *PendingClientQEMU) Start(ctx context.Context) (result error) {
 			return c.fail(errors.Join(ErrNotReady, err))
 		}
 		if ready {
-			return c.recheckAfterStart()
+			if c.captureMode {
+				if err := bounded.Err(); err != nil {
+					return c.fail(err)
+				}
+			}
+			if err := c.recheckAfterStart(); err != nil {
+				return err
+			}
+			if c.captureMode {
+				if err := bounded.Err(); err != nil {
+					return c.fail(err)
+				}
+			}
+			return nil
 		}
 		select {
 		case <-bounded.Done():
@@ -328,6 +350,11 @@ func (c *PendingClientQEMU) Start(ctx context.Context) (result error) {
 func (c *PendingClientQEMU) recheckAfterStart() error {
 	if err := c.recheckPins(); err != nil {
 		return c.fail(err)
+	}
+	if c.captureMode {
+		if err := c.captureRecheckProcessQEMU(); err != nil {
+			return c.fail(err)
+		}
 	}
 	return nil
 }
@@ -344,6 +371,17 @@ func (c *PendingClientQEMU) CloseClient(ctx context.Context) error {
 	}
 	if err := c.recheckPins(); err != nil {
 		return c.fail(err)
+	}
+	if c.captureMode {
+		if ready, err := c.notices(false); err != nil || !ready {
+			return c.fail(errors.Join(ErrNotReady, err))
+		}
+		if err := c.captureRecheckProcessQEMU(); err != nil {
+			return c.fail(err)
+		}
+		if err := ctx.Err(); err != nil {
+			return err
+		}
 	}
 	c.closeSent = true
 	if c.connection != nil {

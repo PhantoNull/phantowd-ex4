@@ -80,6 +80,13 @@ authenticated client, OPEN, active module callback/frame or original-worker
 authority is yet exercised. New client protocol/retained closure and all S4
 worker/FileId/local-object/namespace/TCP witnesses remain mandatory.
 
+The dedicated `ServerCaptureClientQEMU` process adapter now handles the new
+canonical OPEN/max-two-READ/CLOSE notice stream and keeps original process
+generation/executable/non-root status checks. Host and ARM parser/refusal tests
+and scoped race checks pass; this is not actual command/client execution or an
+input/server lease. Complete retained client-root composition, authentication,
+successful OPEN/reads and S4 original-worker witnesses remain next.
+
 The optional `support/test-server-capture.ps1` now implements a separate fixed
 capture module variant. Sync/async read callbacks sample current FSA metadata
 without retaining a file pointer and send two ordered frames nonblocking via

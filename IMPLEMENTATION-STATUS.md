@@ -3,6 +3,29 @@
 
 # Implementation status
 
+## Dedicated capture process adapter — parser/lifecycle guards, not SMB execution
+
+A fixed QEMU-only `ServerCaptureClientQEMU` now consumes the dedicated client's
+new notice protocol without widening the old close-only constructors. OPEN
+publishes only a complete canonical tuple; READ intent allows at most two
+ordered acknowledgements on that same tuple; CLOSE consumes the exact remaining
+stream. Partial output, drift, unrequested/reordered reads, old protocol output,
+diagnostics and overflow refuse. Originals and uncertainty remain retained;
+there is no retry/reconnect or data-write operation. The adapter rechecks its
+original client process generation, executable and non-root/caps0 status.
+Containing composition must still retain/revalidate the complete input census.
+
+Host RED/GREEN, all tagged process-owner/runtime tests and scoped race repeated
+three times pass. The optional capture-runtime guest now also executes four ARM
+parser/refusal tests after its existing real-daemon proof; strict receipts require
+all four ordered test RUN/PASS pairs and the final summary (two positive/37
+negative controls), preventing a zero-test false green. They still explicitly
+declare authentication/OPEN/samples/authority false. Windows
+API/UI/vet/unit/cross preflight passes. No actual capture client command has yet
+run against Samba: successful authentication, actual READ/CLOSE, worker/FileId/
+object/transport witnesses and fault integration remain unqualified. No product
+or NAS operation, new Docker image/volume, default CI or full/hosted gate waiver.
+
 ## Capture-module runtime/bootstrap composition — private host/QEMU prerequisite
 
 `support/test-server-capture-runtime.ps1` now independently builds and declares
@@ -23,7 +46,9 @@ before the bootstrap guard and passes after it. Its initial 256KiB observation
 guess was corrected from measured421888-byte TDB allocation to a bounded1MiB
 streaming fixture hash, without changing product policy or service deadlines.
 
-Strict receipts pass two positive/30 malformed controls. Tagged Linux vet/unit,
+Initial runtime-only receipts passed two positive/30 malformed controls; the
+current adapter lane above additionally requires four executed Go tests.
+Tagged Linux vet/unit,
 capture/observer runtime race tests repeated three times, the original ARM
 observer runtime/drift regression and Windows API/UI/cross preflight pass.
 A combined host command failed race compilation in its 256MiB RAM scratch;

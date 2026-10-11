@@ -8,7 +8,15 @@ remain retained through verified daemon-group stop. The dedicated bootstrap
 creates only a synthetic RAM account via stdin; any existing passdb/uncertain
 lookup refuses before mutation. Actual smbd/NEGOTIATE, live-Close refusal,
 retained original inputs, explicit existing-state refusal with unchanged TDB
-and final FD equality pass. Strict receipts have two positive/30 negative cases.
+and final FD equality pass. Strict receipts have two positive/37 negative cases.
+
+The same guest also executes four dedicated Go capture-client protocol and
+lifecycle-refusal tests (five-second test bound). The verifier requires all four
+ordered RUN/PASS pairs and the summary, refusing a zero-test false green.
+These only exercise parser/
+bookkeeping/constructor refusals, not successful client startup or SMB commands.
+The fixed adapter accepts no data-write operation and the old close-only role
+remains independent. Guest/readiness/stop/outer limits are unchanged.
 
 This does **not** exercise authentication, OPEN, active VFS frames, worker/FileId
 binding or a service lease. Full SDK/fault/hosted/product gates remain open.
