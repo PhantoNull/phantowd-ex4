@@ -30,6 +30,55 @@ assert.match(styles, /:is\(a, button, input, select, textarea, summary, \[tabind
 assert.match(styles, /\.skip-link:focus\s*\{ transform: none; \}/);
 assert.match(styles, /@media \(forced-colors: active\)/);
 
+// Numeric guard for the small secondary text palette, not a browser/CSS
+// cascade or whole-page accessibility audit. Read the actual embedded asset.
+// WCAG 2.2 1.4.3: https://www.w3.org/WAI/WCAG22/Understanding/contrast-minimum.html
+function luminance(rgb) {
+  const linear = rgb.map((channel) => {
+    const value = channel / 255;
+    return value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
+  });
+  return 0.2126 * linear[0] + 0.7152 * linear[1] + 0.0722 * linear[2];
+}
+
+function contrast(foreground, background) {
+  const values = [luminance(foreground), luminance(background)].sort((a, b) => a - b);
+  return (values[1] + 0.05) / (values[0] + 0.05);
+}
+
+function blend(foreground, background, alpha) {
+  return foreground.map((channel, index) => channel * alpha + background[index] * (1 - alpha));
+}
+
+function secondaryTextPalette(css) {
+  const root = css.match(/:root\s*\{([^}]+)\}/)?.[1];
+  assert.ok(root, "embedded stylesheet must declare its palette");
+  const colors = new Map([...root.matchAll(/--([\w-]+):\s*#([\da-f]{6})\s*;/gi)]
+    .map((match) => [match[1], match[2].match(/../g).map((channel) => parseInt(channel, 16))]));
+  for (const name of ["quiet", "canvas", "surface", "surface-raised"]) {
+    assert.ok(colors.has(name), `missing opaque palette color ${name}`);
+  }
+  return colors;
+}
+
+assert.equal(contrast([0, 0, 0], [255, 255, 255]), 21);
+assert.equal(contrast([127, 127, 127], [127, 127, 127]), 1);
+const textPalette = secondaryTextPalette(styles);
+for (const name of ["canvas", "surface", "surface-raised"]) {
+  const ratio = contrast(textPalette.get("quiet"), textPalette.get(name));
+  assert.ok(ratio >= 4.5, `secondary text on ${name}: ${ratio}:1 is below 4.5:1`);
+}
+// Guard the declared maximum stops; this does not emulate gradient rendering.
+assert.match(styles, /rgb\(255 255 255 \/ 2%\)/);
+assert.match(styles, /rgb\(112 86 187 \/ 16%\)/);
+for (const [name, background] of [
+  ["card highlight", blend([255, 255, 255], textPalette.get("surface"), 0.02)],
+  ["canvas highlight", blend([112, 86, 187], textPalette.get("canvas"), 0.16)],
+]) {
+  const ratio = contrast(textPalette.get("quiet"), background);
+  assert.ok(ratio >= 4.5, `secondary text on ${name}: ${ratio}:1 is below 4.5:1`);
+}
+
 class FixtureElement {
   constructor(ownerDocument = null) {
     this.ownerDocument = ownerDocument;

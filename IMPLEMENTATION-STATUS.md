@@ -617,6 +617,22 @@ bypass, new whole-image qualification or the lifecycle timeout fix. No guest,
 hardware or persistent resource creation; the timing-contract choice remains
 open and the integration PRs retain their failed QEMU gates.
 
+## Current UI component — secondary text palette, host-only proof
+
+M5.5c corrects only the small secondary-text color. An actual-source regression
+fails on the previous CSS (`quiet` on canvas: 4.2594:1), then the complete DOM
+suite passes. The new palette gives 6.6697:1 / 6.0458:1 / 5.4907:1 on the
+declared canvas / surface / raised surface; the two tested highlight stops also
+pass the unrounded 4.5:1 threshold. Calculation controls include black/white and
+equal colors. This guard covers those declared colors, not the browser cascade.
+
+Complete Windows Go 1.27.0 API/UI/vet/tagged tests and ARMv5 test cross-compilation
+pass. Pinned Go 1.26.8 Linux tagged vet and embedded dashboard/self-test asset
+tests with race-count3 pass. Frozen nonignored inputs match before/after tests.
+No browser, screen-reader, all-text WCAG, actual ARM execution, new complete image
+or hosted qualification is claimed. No JavaScript, dependency, privilege,
+endpoint, polling, service activation or NAS change; existing CI gates remain.
+
 ## Current UI component — authentication focus continuity, host-only proof
 
 M5.5b adds a main-content skip link, non-tabbable focus destinations and shared

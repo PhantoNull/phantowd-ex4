@@ -205,6 +205,17 @@ self-test markers. These are DOM/source/host-asset proofs, not actual browser
 keyboard navigation, CSS rendering, screen-reader announcements, WCAG
 conformance, current ARMv5 execution or new complete image qualification.
 
+## M5.5c secondary text palette guard
+
+The small secondary-text `quiet` color is checked against the three declared
+opaque surfaces and two maximum highlight stops directly from the embedded CSS.
+The dependency-free dashboard test uses unrounded sRGB luminance/contrast and
+black/white/equal-color calculation controls; it fails against the prior color.
+This is a narrow palette regression, not a CSS cascade, rendered-gradient,
+all-text contrast or WCAG audit. Browser, screen-reader and complete-image
+qualification remain separate. The correction changes only a CSS color:
+no new runtime dependency, request, endpoint, service or privilege.
+
 ## Development file-service configuration API
 
 `GET` and `PUT /api/v1/file-services/configuration` operate on the combined

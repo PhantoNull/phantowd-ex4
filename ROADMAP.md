@@ -1862,6 +1862,15 @@ milestone before enabling its controls; M1/M6 for deployment.
   Linux embedded-asset tests pass. DOM focus/stylesheet contracts are not
   browser rendering, screen-reader, contrast or whole-image qualification.
   No new request, retry, endpoint, privilege, polling or activation.
+- **M5.5c — Secondary text contrast (partial; host-tested).** The small-text
+  `quiet` palette now meets the unrounded 4.5:1 numeric threshold against the
+  three declared opaque surfaces and the two tested maximum highlight stops.
+  The actual embedded CSS regression fails before the color-only correction;
+  black/white and equal-color controls check the calculation. Complete DOM/
+  Windows API checks, ARMv5 test cross-compilation and pinned Linux embedded
+  asset tests pass. This is not computed-style, gradient-rendering, browser,
+  screen-reader, all-text WCAG or complete-image qualification. No dependency,
+  request, endpoint, service behavior or activation change.
 - **M5.6 — Audit and diagnostics.** Record actor, operation ID, revisions and
   redacted outcome; bound retention. Export a sanitized support bundle that
   excludes credentials, private keys, passdb hashes and user file contents.
