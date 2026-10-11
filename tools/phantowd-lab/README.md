@@ -188,7 +188,12 @@ does not imply payload validity, installation permission or device readiness.
 distribution path. It requests one exact version tag from the PhantoWD EX4
 repository (it does not follow a mutable `latest` pointer), requires the API to
 report a published immutable release, and checks that the stable/non-stable
-release flag is consistent with the requested channel. It downloads only
+release flag is consistent with the requested channel. Asset requests start
+only after the [API metadata boundary](githubrelease/README.md) accepts
+unique, exact decoded consumed-field names, required non-null typed flags and
+asset records. Case aliases, duplicate fields and missing `draft`/`prerelease`
+observations cannot acquire published-release status. Additional GitHub fields
+remain supported; they are not treated as signed application metadata. It fetches
 `manifest.json` and `manifest.sig` first. The exact-byte signature, schema,
 model, board revision, channel and signed version-to-tag match must pass before
 the tool downloads any firmware payload. It then downloads exactly the assets

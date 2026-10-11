@@ -2759,6 +2759,18 @@ Then qualify the selected backend and migration objects on expendable EX4 media.
   observed files are not retained immutable staging. Next qualify provenance,
   signing-key authorization/rotation and authenticated runtime roster delivery
   with the release/installer owner; no product trust or target transaction.
+  **M10.2d — unambiguous GitHub API metadata (partial; host-tested):** before
+  any asset request, require exact decoded consumed-field names, unique release/
+  asset fields, required non-null scalar types and the bounded asset list.
+  Missing publication flags are not false observations. Additional GitHub
+  fields remain supported; their nested contents are not application metadata.
+  Actual local HTTP regression reproduces duplicate `immutable` and missing/null
+  `draft` acceptance before correction. Request counters prove refusal before
+  all assets; positive escaped-name/extension controls preserve full signature/
+  hash verification. Complete Windows toolkit vet/tests, pinned Linux whole
+  toolkit vet/tests/race3 and 10,000 structural fuzz executions pass. No CLI,
+  signature/trust-root/schema change, target installer, firmware build or device
+  operation; release and recovery qualification remain separate.
 - **M10.3 — Target transaction.** Explicit preflight, staged, verified, installing,
   boot-pending, health-confirmed and recovery states. Journal durable boundaries;
   check space/power prerequisites. An ambiguous state must not restart installation

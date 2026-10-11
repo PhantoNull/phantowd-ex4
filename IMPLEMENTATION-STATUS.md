@@ -3412,6 +3412,20 @@ and tmpfs registry. No second policy owner/scanner, writer, HTTP, planner-ready
 token, mount/import or activation; clean/hosted/physical qualification remains
 separate. No new Docker image/volume or surviving project test container.
 
+M10.2d separately hardens the unsigned GitHub API metadata boundary. Local HTTP
+regressions first reproduce duplicate `immutable` acceptance twice and absent/
+null `draft` interpreted as published, with all three assets fetched. A bounded
+structural guard now requires unique exact decoded consumed-field names and
+required non-null types at release/asset levels before typed decoding. The
+existing 1 MiB/18-asset bounds are retained; additional API fields remain
+supported and are not recursively qualified as application data. Invalid
+metadata makes zero manifest/signature/payload requests. Positive escaped-name/
+extension tests still pass the full signature/hash pipeline. Complete Windows
+toolkit vet/tests, pinned Go 1.26.8 Linux whole toolkit vet/tests/race3 and 10,000
+structural fuzz executions pass on matching frozen inputs. No CLI, signing,
+trust-root, target privilege, firmware build or device installation is added;
+the earlier hosted QEMU timing failure remains unrelated and unwaived.
+
 M10.2b hardens the host signed-manifest boundary without a firmware rebuild.
 A real signed root/artifact case-alias regression fails twice before the fixed
 schema scanner refuses non-exact/missing/null/wrong-shape/encoding inputs.
