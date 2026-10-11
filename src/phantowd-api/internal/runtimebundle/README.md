@@ -110,6 +110,16 @@ construction still precede remote-bridge/WRITE admission; generic launcher and
 product surfaces are unchanged. Known compiled-out `SO_PASSSEC` is distinguished
 from enabled or failed options; this does not qualify a product security profile.
 
+The private release boundary closes the receiver before the sender and retains
+its first terminal result. A failed receiver close leaves the sender untouched;
+a failed sender close preserves the earlier confirmed receiver closure. Repeated
+release returns the original result without consulting replacement endpoint
+fields. Constructor cleanup and gated closure share this bookkeeping, without
+changing endpoint admission, producer settlement or public redacted review.
+Regression tests use prematurely closed real socket files at the private release
+boundary, plus healthy public closure and pre-admission refusal controls. They
+do not inject kernel EIO or qualify uncertain live-worker closure or recovery.
+
 Actual ARM controls now distinguish automatic sender real UID/GID from explicit
 SCM_CREDENTIALS containing its effective/saved IDs. The latter can be accepted
 even without effective/permitted/inheritable capabilities. The socket creator

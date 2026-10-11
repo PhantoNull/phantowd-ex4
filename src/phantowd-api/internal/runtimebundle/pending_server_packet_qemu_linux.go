@@ -27,6 +27,8 @@ type pendingServerPacketQEMU struct {
 	sequence                         uint32
 	initial                          pendingServerPacketObservationQEMU
 	review, closed, closeTried       bool
+	releaseTried                     bool
+	releaseErr                       error
 }
 
 type pendingServerPacketEndpointQEMU struct {
@@ -77,7 +79,7 @@ func newPendingServerPacketQEMU(ctx context.Context) (*pendingServerPacketQEMU, 
 	if err != nil {
 		// Constructor has never exported an endpoint or started a producer.
 		pair.closeTried = true
-		closeErr := errors.Join(pair.receiver.Close(), pair.sender.Close())
+		closeErr := pair.releaseEndpointsQEMU()
 		if closeErr != nil {
 			pair.review = true
 			return pair, errors.Join(ErrReviewRequired, err, closeErr)
@@ -259,10 +261,26 @@ func (p *pendingServerPacketQEMU) close() error {
 		return ErrReviewRequired
 	}
 	p.closeTried = true
-	if errors.Join(p.receiver.Close(), p.sender.Close()) != nil {
+	if p.releaseEndpointsQEMU() != nil {
 		p.review = true
 		return ErrReviewRequired
 	}
 	p.closed = true
 	return nil
+}
+
+// Private release boundary only. The constructor owns unpublished endpoints;
+// later callers own the gate and must independently settle every producer.
+// Preserve the first terminal result before any later access to endpoint fields.
+// An uncertain earlier close must not attempt the remaining endpoint or retry.
+func (p *pendingServerPacketQEMU) releaseEndpointsQEMU() error {
+	if p.releaseTried {
+		return p.releaseErr
+	}
+	p.releaseTried = true
+	p.releaseErr = p.receiver.Close()
+	if p.releaseErr == nil {
+		p.releaseErr = p.sender.Close()
+	}
+	return p.releaseErr
 }

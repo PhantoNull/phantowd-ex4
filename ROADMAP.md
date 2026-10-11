@@ -1796,6 +1796,11 @@ storage. No production roster provider or activation path exists.
   review, exclusive calls and unchanged FD counts on ancillary refusal. A fixed
   synthetic C producer inherits only its fixture FD3 and settles before close.
   It is NOT an admitted VFS worker/producer/code lease or live-generation proof.
+  Private release bookkeeping now closes endpoints sequentially, retains the
+  first terminal result and never retries or touches replacement fields after
+  that result. Real-file regression controls cover premature closure at this
+  private boundary, healthy public closure and refusal before release; they do
+  not inject kernel EIO or qualify live-worker close uncertainty or recovery.
   Actual ARM credential-domain controls distinguish automatic real IDs from
   explicitly supplied effective/saved IDs accepted by the kernel even with zero
   effective/permitted/inheritable capabilities. Neither proves Samba account

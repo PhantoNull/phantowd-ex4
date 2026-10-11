@@ -25,6 +25,134 @@ func pendingPacketFixtureFrameQEMU(sequence uint32) []byte {
 	return frame
 }
 
+// Bypass endpoint re-admission only to test the real release boundary's
+// bookkeeping with prematurely closed real files. No producer is launched:
+// this is not injected kernel EIO or a qualified live-worker close fault.
+func TestPendingServerOpenPacketReleaseRetainsFirstErrorAndUntouchedInputs(t *testing.T) {
+	for _, role := range []string{"receiver", "sender"} {
+		t.Run(role, func(t *testing.T) {
+			pair, err := newPendingServerPacketQEMU(context.Background())
+			if err != nil {
+				t.Fatal(err)
+			}
+			// Explicit fixture disposal, not a production recovery/release retry.
+			defer pair.originalReceiver.Close()
+			defer pair.originalSender.Close()
+			fault := pair.receiver
+			if role == "sender" {
+				fault = pair.sender
+			}
+			if err := fault.Close(); err != nil {
+				t.Fatal(err)
+			}
+			first := pair.releaseEndpointsQEMU()
+			if !errors.Is(first, os.ErrClosed) {
+				t.Fatal("release did not observe the real file Close refusal", first)
+			}
+			if role == "receiver" {
+				if _, err := pair.originalSender.Stat(); err != nil {
+					t.Error("uncertain receiver closure attempted the untouched sender", err)
+				}
+			} else if _, err := pair.originalReceiver.Stat(); !errors.Is(err, os.ErrClosed) {
+				t.Error("confirmed earlier receiver closure was not preserved", err)
+			}
+			foreign, err := newPendingServerPacketQEMU(context.Background())
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer foreign.originalReceiver.Close()
+			defer foreign.originalSender.Close()
+			pair.receiver, pair.sender = foreign.receiver, foreign.sender
+			if next := pair.releaseEndpointsQEMU(); next != first {
+				t.Error("repeat release forgot its first error or retried closure", next)
+			}
+			for _, file := range []*os.File{foreign.receiver, foreign.sender} {
+				if _, err := file.Stat(); err != nil {
+					t.Error("repeat release touched a replacement endpoint", err)
+				}
+			}
+		})
+	}
+}
+
+func TestPendingServerOpenPacketSuccessfulCloseIsTerminal(t *testing.T) {
+	before, err := os.ReadDir("/proc/self/fd")
+	if err != nil {
+		t.Fatal(err)
+	}
+	pair, err := newPendingServerPacketQEMU(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer pair.originalReceiver.Close()
+	defer pair.originalSender.Close()
+	if err := pair.close(); err != nil || !pair.closed || !pair.closeTried ||
+		!pair.releaseTried || pair.releaseErr != nil || pair.review {
+		t.Fatal("healthy close did not retain successful terminal state", err)
+	}
+	for _, file := range []*os.File{pair.originalReceiver, pair.originalSender} {
+		if _, err := file.Stat(); !errors.Is(err, os.ErrClosed) {
+			t.Fatal("healthy close left an original endpoint open", err)
+		}
+	}
+	foreign, err := newPendingServerPacketQEMU(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer foreign.originalReceiver.Close()
+	defer foreign.originalSender.Close()
+	pair.receiver, pair.sender = foreign.receiver, foreign.sender
+	for range 2 {
+		if err := pair.close(); err != nil {
+			t.Fatal("completed public close lost idempotence", err)
+		}
+		if err := pair.releaseEndpointsQEMU(); err != nil {
+			t.Fatal("completed private release lost its terminal result", err)
+		}
+		for _, file := range []*os.File{foreign.receiver, foreign.sender} {
+			if _, err := file.Stat(); err != nil {
+				t.Fatal("completed release touched a replacement endpoint", err)
+			}
+		}
+	}
+	if err := foreign.close(); err != nil {
+		t.Fatal(err)
+	}
+	after, err := os.ReadDir("/proc/self/fd")
+	if err != nil || len(after) != len(before) {
+		t.Fatal("completed releases leaked or consumed unrelated descriptors", err)
+	}
+}
+
+func TestPendingServerOpenPacketPrematureCloseRefusesBeforeRelease(t *testing.T) {
+	for _, role := range []string{"receiver", "sender"} {
+		t.Run(role, func(t *testing.T) {
+			pair, err := newPendingServerPacketQEMU(context.Background())
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer pair.originalReceiver.Close()
+			defer pair.originalSender.Close()
+			fault, untouched := pair.receiver, pair.sender
+			if role == "sender" {
+				fault, untouched = pair.sender, pair.receiver
+			}
+			if err := fault.Close(); err != nil {
+				t.Fatal(err)
+			}
+			for range 2 {
+				if err := pair.close(); !errors.Is(err, ErrReviewRequired) || !pair.review ||
+					pair.closed || pair.closeTried || pair.releaseTried || pair.releaseErr != nil {
+					t.Fatal("changed endpoint reached release or cleared review", err)
+				}
+				if _, err := untouched.Stat(); err != nil {
+					t.Fatal("pre-admission refusal touched the other endpoint", err)
+				}
+			}
+		})
+	}
+}
+
 func TestPendingServerOpenPacketPair(t *testing.T) {
 	pair, err := newPendingServerPacketQEMU(context.Background())
 	if err != nil {
