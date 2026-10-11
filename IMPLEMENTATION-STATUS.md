@@ -3,6 +3,25 @@
 
 # Implementation status
 
+## Retained metadata cancellation — focused host/ARMv5 correction
+
+Actual guarded ARMv5 RAM fixtures reproduced successful metadata collection
+and retained-pin revalidation after cancellation at the last pre-read check.
+Both now refuse with typed cancellation; collection returns no table. Fresh
+metadata is compared directly against the immutable original snapshot without
+a transient table, while full content inspection, exact metadata, original-pin
+checks and late context fences remain. Temporary descriptor-close uncertainty
+refuses; no hash cache, timer, restart or privilege change is introduced.
+
+The existing static-code Owner boot repeats all four new test groups three
+times and preserves its previous lifecycle/drift/forced-review proofs. Real
+native Samba authentication, revocation, data and closure regression also pass;
+the borrowed base and frozen tested source remain unchanged. Linux vet/tagged
+tests/race-count3 and Windows preflight pass (different native SDK versions).
+The narrow four-node allocation result is 14 → 8, not an end-to-end performance
+claim. This does not repair or waive the hosted fresh-login deadline, qualify
+a new full image, activate product services or establish physical EX4 support.
+
 ## Samba guest staging — focused local correction
 
 The native campaign exposed incomplete file injection when the borrowed ext2

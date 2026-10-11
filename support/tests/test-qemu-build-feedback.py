@@ -260,7 +260,8 @@ class BuildFeedbackTests(unittest.TestCase):
 
     def test_local_full_lane_checks_exact_fuzz_roster_before_build(self):
         runner = (ROOT / "support/container/test-api.sh").read_text()
-        checker = (ROOT / "support/test-firmware-workflow-paths.sh").read_text()
+        checker = (ROOT / "support/"
+                   "test-firmware-workflow-paths.sh").read_text()
         declarations = re.findall(
             r'^require_fixed_fuzz_campaigns '
             r'"\$repo_root/support/container/test-api.sh" ([1-9][0-9]*)$',
@@ -281,16 +282,20 @@ class BuildFeedbackTests(unittest.TestCase):
                 f"./internal/{package}")
             self.assertEqual(campaigns.count(expected), 1)
         full = (ROOT / "support/container/build-qemu.sh").read_text()
-        invocation = 'sh "$external_dir/support/test-firmware-workflow-paths.sh"'
+        invocation = ('sh "$external_dir/support/'
+                      'test-firmware-workflow-paths.sh"')
         self.assertIn(invocation, full)
         self.assertLess(full.index(invocation), full.index("shellcheck -s sh"))
-        broker = (ROOT / "support/tests/test-storage-broker-buildroot.sh").read_text()
-        self.assertIn('git -c safe.directory="$repo_root" -C "$repo_root"', broker)
+        broker = (ROOT / "support/tests/"
+                  "test-storage-broker-buildroot.sh").read_text()
+        self.assertIn('git -c safe.directory="$repo_root" -C "$repo_root"',
+                      broker)
 
     def test_network_inventory_requires_actual_kernel_assertion(self):
         smoke = (ROOT / "support/qemu-smoke.sh").read_text()
         selftest = (ROOT / "src/phantowd-api/selftest.go").read_text()
-        fixture = (ROOT / "src/phantowd-api/network_inventory_qemu_linux.go").read_text()
+        fixture = (ROOT / "src/phantowd-api/"
+                   "network_inventory_qemu_linux.go").read_text()
         for claim in ("PHANTOWD_NETWORK_INVENTORY_READY", "kernel=true",
                       "repeated=true", "routes=true", "fib_only=true",
                       "rules=true", "nexthops=true", "object_fixture=true",
@@ -299,40 +304,50 @@ class BuildFeedbackTests(unittest.TestCase):
             self.assertIn(claim, smoke)
             self.assertIn(claim, selftest)
         self.assertIn("exerciseQEMUNetworkInventory()", selftest)
-        self.assertIn("networkinventory.Collect(context.Background())", fixture)
-        self.assertIn("networkinventory.Recheck(context.Background(),o)", fixture.replace(" ", ""))
+        self.assertIn("networkinventory.Collect(context.Background())",
+                      fixture)
+        self.assertIn("networkinventory.Recheck(context.Background(),o)",
+                      fixture.replace(" ", ""))
         self.assertIn("summary.Routes < 1", fixture)
         self.assertIn("summary.Rules < 1", fixture)
         self.assertIn("networkinventory.QEMUObjectFixture()", fixture)
         self.assertIn("networkinventory.QEMUAddressFixture()", fixture)
-        collector = (ROOT / "src/phantowd-api/internal/networkinventory/collect_linux.go").read_text()
-        self.assertIn("r.query(ctx, unix.RTM_GETNEXTHOP, unix.RTM_NEWNEXTHOP, unix.AF_UNSPEC)", collector)
+        collector = (ROOT / "src/phantowd-api/internal/networkinventory/"
+                     "collect_linux.go").read_text()
+        self.assertIn("r.query(ctx, unix.RTM_GETNEXTHOP, "
+                      "unix.RTM_NEWNEXTHOP, unix.AF_UNSPEC)", collector)
         runner = (ROOT / "support/container/test-api.sh").read_text()
         for gate in ("TestQEMUNetworkPolicy", "TestQEMUNetworkInventory",
-                     "FuzzWireConsume", "FuzzRoute", "FuzzRule", "FuzzNextHopObject"):
+                     "FuzzWireConsume", "FuzzRoute", "FuzzRule",
+                     "FuzzNextHopObject"):
             self.assertIn(gate, runner)
 
     def test_network_policy_requires_same_boot_guest_assertion(self):
         smoke = (ROOT / "support/qemu-smoke.sh").read_text()
         selftest = (ROOT / "src/phantowd-api/selftest.go").read_text()
-        fixture = (ROOT / "src/phantowd-api/networkpolicy_selftest.go").read_text()
+        fixture = (ROOT / "src/phantowd-api/"
+                   "networkpolicy_selftest.go").read_text()
         for claim in ("PHANTOWD_NETWORK_POLICY_READY", "dual_stack=true",
-                      "conflict_refused=true", "strict_json=true", "apply=false"):
+                      "conflict_refused=true", "strict_json=true",
+                      "apply=false"):
             self.assertIn(claim, smoke)
             self.assertIn(claim, selftest)
         self.assertIn("exerciseQEMUNetworkPolicy()", selftest)
-        self.assertIn('networkpolicy.Decode(strings.NewReader(input))', fixture)
+        self.assertIn('networkpolicy.Decode(strings.NewReader(input))',
+                      fixture)
         self.assertIn('"192.0.2.10/16"', fixture)
 
     def test_smart_census_witness_set_requires_actual_guest_assertion(self):
         smoke = (ROOT / "support/qemu-smoke.sh").read_text()
         md = (ROOT / "src/phantowd-api/md_stack_qemu_linux.go").read_text()
-        fixture = (ROOT / "src/phantowd-api/smart_census_witness_set_qemu_linux.go").read_text()
+        fixture = (ROOT / "src/phantowd-api/"
+                   "smart_census_witness_set_qemu_linux.go").read_text()
         marker = "PHANTOWD_SMART_CENSUS_WITNESS_SET_READY"
         self.assertIn(marker, smoke)
         self.assertIn(marker, md)
         self.assertIn("exerciseQEMUSMARTCensusWitnessSet()", md)
-        for claim in ("leaves=7", "rollback_no_leak=true", "review_pins_retained=true",
+        for claim in ("leaves=7", "rollback_no_leak=true",
+                      "review_pins_retained=true",
                       "reader_failure_sticky=true", "explicit_release=true"):
             self.assertIn(claim, smoke)
             self.assertIn(claim, md)
@@ -343,7 +358,8 @@ class BuildFeedbackTests(unittest.TestCase):
         marker = "PHANTOWD_SMART_FD_WITNESS_READY"
         smoke = (ROOT / "support/qemu-smoke.sh").read_text()
         md = (ROOT / "src/phantowd-api/md_stack_qemu_linux.go").read_text()
-        fixture = (ROOT / "src/phantowd-api/smart_witness_qemu_linux.go").read_text()
+        fixture = (ROOT / "src/phantowd-api/"
+                   "smart_witness_qemu_linux.go").read_text()
         self.assertIn(marker, smoke)
         self.assertIn(marker, md)
         self.assertIn("metadata_ioctl=BLKGETDISKSEQ", smoke)
@@ -367,6 +383,12 @@ class BuildFeedbackTests(unittest.TestCase):
         self.assertIn("device_opened=false", smoke)
 
     def test_runtime_code_owner_disposable_lane_is_bounded(self):
+        init = (ROOT / "support/tests/runtime-owner-init.sh").read_text()
+        self.assertLess(init.index('mount -t tmpfs'),
+                        init.index('export TMPDIR=/run'))
+        self.assertLess(init.index('export TMPDIR=/run'),
+                        init.index('-test.run'))
+        self.assertIn('-test.count=3 -test.cpu=1', init)
         script = (ROOT / "support/container/build-qemu.sh").read_text()
         self.assertIn('support/tests/test-qemu-runtime-owner.sh', script)
         self.assertIn('qemu-runtime-owner-failure.log', script)
@@ -390,8 +412,9 @@ class BuildFeedbackTests(unittest.TestCase):
         )
         scan_source = (ROOT / "src/phantowd-api/cmd/"
                        "qemu-runtime-bundle/scan_drift.go").read_text()
-        scan_marker = re.search(r'fmt.Println\("(PHANTOWD_CODE_OWNER_SCAN_READY[^\"]*)"\)',
-                                scan_source)
+        scan_marker = re.search(
+            r'fmt.Println\("(PHANTOWD_CODE_OWNER_SCAN_READY[^\"]*)"\)',
+            scan_source)
         self.assertIsNotNone(scan_marker)
         self.assertIn("scan='" + scan_marker.group(1) + "'", fixture)
         self.assertIn('//go:build qemu && linux', scan_source)

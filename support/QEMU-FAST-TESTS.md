@@ -594,6 +594,17 @@ attachment. It never builds/pulls an image or creates a volume. Its rootfs copy,
 compiler cache and guest data are disposable; the compile cache is removed
 before the image copy to fit the 512 MiB tmpfs budget.
 
+The same boot runs four real retained-metadata test groups three times each,
+using fresh 1 MiB read-only code-inspection tmpfs trees under `/run`. The exact
+model/fixture flag and `/run` tmpfs admission are required; host/EX4 skips are
+not accepted by this driver. Late cancellation must discard collection and
+refuse revalidation, original descriptors/table must survive comparison, and
+changed/incomplete expected snapshots must refuse. This is not executable
+authority or qualification of product mounts. No extra CI guest is introduced.
+Only the disposable rootfs copy is enlarged to 128 MiB (larger bases refuse),
+and all three injected programs are verified by exact readback/type/mode/root
+ownership. The shared staging regression also checks stale/exhausted copies.
+
 The separate guest has a finite 120-second budget, no retries and no Samba
 entropy/network readiness dependency. A copied static fixture checks code/root
 pin lifetime, caller close, immutable launch inputs, duplicate-start refusal,

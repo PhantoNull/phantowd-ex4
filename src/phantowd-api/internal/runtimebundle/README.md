@@ -321,6 +321,24 @@ revalidation after its other inputs are fixed and before publication/launch.
 The extraction preserves the existing census/hash/identity sequence; it does
 not replace late pathname checks with early metadata or add a constructor scan.
 
+Metadata collection now rejects cancellation after its final open/stat/close
+and returns no partial table. Revalidation compares every fresh observation
+directly with the protected original table, without allocating a replacement
+table or caching metadata. Complete `Inspect`, exact stat fields, original-file
+checks and final context fences remain mandatory; uncertain temporary closure
+also refuses. Containing Owner serialization and reference lifetimes are unchanged.
+
+The existing static-code Owner guest includes four actual RAM-only metadata
+regressions, each repeated three times: late cancellation of collection and
+retained-pin revalidation, original-table/descriptor preservation, and changed
+or incomplete snapshot refusal. Construction uses real read-only tmpfs roots
+and descriptors, guarded by the exact VersatilePB model and fixture flag;
+native hosts and physical EX4 hardware cannot run these mount fixtures.
+The four-node comparison reduces narrow measured allocations from 14 to 8;
+this is not an end-to-end timing fix or physical-memory benchmark. The original
+static Owner proofs and a separate real native Samba campaign pass. Hosted
+fresh-login timing, complete-image and product activation gates remain separate.
+
 The containing Owner serializes all access, decides review/stop policy and
 establishes complete process-group absence before releasing code references.
 After a descriptor-close error, retained code/configuration/state and pinned

@@ -18,6 +18,8 @@ case "$destination:$mode" in
     /usr/sbin/phantowd-samba-root-launcher:0100755|\
     /usr/sbin/phantowd-samba-charset-probe:0100755|\
     /usr/sbin/phantowd-runtime-bundle-probe:0100755|\
+    /usr/sbin/phantowd-runtime-metadata-tests:0100755|\
+    /usr/sbin/phantowd-runtime-owner-init:0100755|\
     /usr/sbin/phantowd-samba-owner-probe:0100755|\
     /usr/sbin/phantowd-samba-root-init:0100755|\
     /usr/lib/phantowd/qemu-samba-root.manifest:0100644) ;;
