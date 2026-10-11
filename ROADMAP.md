@@ -3,7 +3,7 @@
 
 # Implementation roadmap
 
-Reviewed: **2026-10-09**. This is the product specification and work breakdown,
+Reviewed: **2026-10-11**. This is the product specification and work breakdown,
 not a release announcement. The [README](README.md) is the concise entry point;
 component contracts remain authoritative for implemented behavior.
 
@@ -94,19 +94,28 @@ The fixed exit fault runs within the same exclusive supervisor, correcting a
 controlled fixture alias race without retry or relaxed proof/deadlines. In-flight
 faults, durable reconnect and recovery remain open.
 
-The latest fully audited local checkpoint `1be0b32` selects Go 1.26.8 and host OpenSSL
+The latest fully audited local checkpoint `68895cd` selects Go 1.26.8 and host OpenSSL
 3.5.9 and passes the
 complete cached Buildroot/host/ARMv5 lane: all ten independently enrolled
 Samba scenarios and both synthetic SMART lanes. Independent post-terminal
-auditing matches all 980 API inputs to compiled package/source archive and all
-1,273 tracked build witnesses, with 25,325 unchanged audit rereads. Configured
+auditing matches all 1,025 API inputs to compiled package/source archive and all
+1,367 tracked build witnesses, with 25,464 unchanged audit rereads. Configured
 stripping, installed/image/exported
 API, seven hashes, Linux AND headers 6.18.55, actual selected/installed Go SDK,
 SBOM, release and legal sources agree. The OpenSSL recipe/four patches/original
 and legal source/license/SBOM match; its three installed objects reproduce built
 bytes after configured RPATH normalization. Actual Buildroot Python passes
 mapped-library/version/certificate/private TLS 1.3 checks; see
-[exact qualification](IMPLEMENTATION-STATUS.md#current-complete-cached-openssl-359-qualification).
+[exact qualification](IMPLEMENTATION-STATUS.md#current-combined-local-qualification).
+
+This combined checkpoint includes the desired SMB/NFS backup/reviewed-restore
+workflow and the exact-proof worker-log correction. The original complete
+scenario and independent artifact audit pass after that correction, without
+changing proof bytes, output caps or deadlines. Nine complete Samba guest logs
+also pass independent strict replay with three negative controls each; the tenth
+is verified by the original full controller, not a separately captured replay.
+Own-head hosted acceptance, clean reproduction and product/hardware gates remain
+open. Do not infer pending-I/O, physical disk failure or installability.
 
 The QEMU lifecycle fixture separates preparation (20 seconds) from revocation
 (45 seconds), changing the combined allowance from 45 to 65 seconds. Original worker/service/readiness/stop/
@@ -1869,7 +1878,7 @@ storage. No production roster provider or activation path exists.
   journal correlation before any fault. Do not widen the existing root helper
   or relax the existing idle observer. Compile/mocks are not runtime admission,
   loader/transport/no-reconnect or pending-I/O-loss qualification. See the
-  [bounded prerequisite check](support/QEMU-FAST-TESTS.md#same-open-write-client-host-mock-and-arm-compile-only).
+  [bounded prerequisite check](support/QEMU-FAST-TESTS.md#dedicated-same-open-client-prerequisites-host-and-qemu).
   Require
   evidence that the actual original handle is open under the retained authorized
   session before fault injection; a successful earlier transfer or IPC$ echo is

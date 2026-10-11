@@ -3,7 +3,37 @@
 
 # Dependency review and update qualification
 
-## Current OpenSSL 3.5.9 complete cached qualification (2026-10-09)
+## Current combined cached qualification (2026-10-11)
+
+Frozen `68895cd8d7532b91960caef092523bd5937f1019`, API tree
+`b12175f399d683ca23b2367057ad8cc08e4a6d24`, passes the original complete cached
+host/ARMv5 lane, all ten Samba campaigns and both synthetic SMART lanes.
+An independent post-terminal audit retains the previous guards: all 1,367
+tracked witnesses, 1,025 API package/archive inputs, 11,510 installed Go 1.26.8
+SDK files and 25,464 regular audit inputs match and remain unchanged. Configured
+strip/installed/image/export, Linux/header 6.18.55, legal sources/licenses,
+release metadata, selected OpenSSL 3.5.9 and seven hashes agree. Actual Buildroot
+Python loads the same configured-RPATH libraries and verifies a certificate and
+private-loopback TLS 1.3 exchange.
+
+| Artifact | SHA-256 |
+| --- | --- |
+| API (10,708,212 bytes) | `3f83d093ff607a360d592b51b129fbd92b12fecc869c0366250530992f265d30` |
+| rootfs.ext2 (83,886,080 bytes) | `c03b331bdb3d5e696abc8139e75ae36d9d73a3ed0a96ae732602035591a91a30` |
+| API source archive | `2ba417aba0014868aeed3a7c67894f4e52fe042221ff92665b4c5953e6e2de78` |
+| SHA256SUMS | `a0c6434d28534ce7536a8ae03d6517a903be861709fb9f1ea39755acc1eb5481` |
+
+The original startup-fault exact-proof failure no longer reproduces after
+trusted-context-only worker timing opt-in. Fixed proof bytes, output caps and
+deadlines remain unchanged. Nine saved complete Samba logs independently pass
+strict replay and 27 negative controls; the tenth is accepted by the original
+controller, without an independent saved-log replay. This does not resolve the
+separate earlier hosted live-session deadline or qualify pending-I/O loss,
+recovery, production services, physical EX4 support or an installer. Require
+the publication head's own hosted checks. Existing image/two project volumes
+are reused; independent clean reproduction and full compliance remain open.
+
+## Earlier OpenSSL 3.5.9 complete cached qualification (2026-10-09)
 
 Frozen `1be0b320b78cf1ea9c9a98d04e6ccd7096cdab76`, API tree
 `ceb0729febf311c3f1b055b3d9b452259b73bb18`, passes the original complete cached

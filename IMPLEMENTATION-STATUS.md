@@ -3,6 +3,31 @@
 
 # Implementation status
 
+## Current combined local qualification
+
+Frozen `68895cd8d7532b91960caef092523bd5937f1019` passes the original complete
+cached Buildroot/host/ARMv5 integration: main smoke, MD comparisons, clean
+two-boot state, isolated launcher/static-code Owner, loader/atomic checks,
+all ten Samba campaigns and both synthetic SMART lanes. The startup-fault
+child failure no longer reproduces in that original scenario. Proof equality,
+output bounds and deadlines remain unchanged; no retry hides a failed test.
+
+Independent post-terminal auditing matches all 1,025 API inputs against the
+compiled package and legal archive, all 1,367 frozen tracked witnesses, the
+11,510 installed Go 1.26.8 SDK files, and 25,464 unchanged regular audit inputs.
+Configured stripping reproduces the installed/image/exported API. Seven hashes,
+Linux/header 6.18.55, release metadata, host OpenSSL 3.5.9, configured RPATH,
+actual Python certificate/TLS 1.3 consumption, licenses and SBOM agree.
+Nine complete guest logs separately pass exact-byte/strict replay with 27 total
+missing/duplicate/failure-marker refusals. The tenth was accepted by the original
+full controller; its full log was not preserved for an independent replay.
+
+This qualifies a combined cached local software checkpoint, not independent
+clean reproduction, hosted timing repair, EX4 hardware, product activation,
+legacy migration or installation. Own-head hosted checks are still required
+before merge. No physical NAS/disks or persistent device operations were used.
+See the [artifact identities and limits](support/DEPENDENCY-REVIEW.md#current-combined-cached-qualification-2026-10-11).
+
 ## SMB/NFS configuration backup and reviewed restore — development web workflow
 
 The dashboard can download saved desired SMB/NFS configuration and validate an
@@ -51,10 +76,11 @@ succeed. The actual ARMv5 focused fault campaign passes with unchanged base,
 including identity drift and planned-source loss, stopped/reaped processes,
 retained review/authority and no restart. No temporary debug probe remains.
 
-This is a fixture logging correction, not product behavior, a hosted timing fix
-or a complete image qualification. The earlier complete run remains failed;
-all campaigns, post-terminal artifact audit and own-head hosted acceptance must
-still pass before integration. NAS/physical storage and persistent device state
+This is a fixture logging correction, not product behavior or a hosted timing
+fix. The earlier complete run remains failed as historical evidence; the newer
+combined checkpoint above passes the original full scenario and post-terminal
+audit. Own-head hosted acceptance is still required before integration.
+NAS/physical storage and persistent device state
 remain untouched. See the [diagnostic boundary](support/QEMU-FAST-TESTS.md).
 
 ## Retained metadata cancellation — focused host/ARMv5 correction
@@ -563,7 +589,7 @@ call may contain multiple wire writes, and global no-reconnect is not proved.
 Offline alias-aware inventory finds one additional144,568-byte library object
 and loader binding; actual retained-code/loader/isolation and original request/
 session/object/extent correlation remain prerequisites before fault injection.
-See the [bounded check and exact scope](support/QEMU-FAST-TESTS.md#same-open-write-client-host-mock-and-arm-compile-only).
+See the [bounded check and exact scope](support/QEMU-FAST-TESTS.md#dedicated-same-open-client-prerequisites-host-and-qemu).
 
 The first host sanitizer attempt failed with repeated diagnostics and was
 explicitly stopped. A puts-only ASan control also failed; later PIE controls

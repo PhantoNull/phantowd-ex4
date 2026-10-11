@@ -80,7 +80,7 @@ CLI/library guards. Its complete cached integration and independent artifact/
 source/license/SBOM audit pass. This does not enable target OpenSSL or qualify
 a NAS HTTPS service, independent clean reproduction or physical EX4 support.
 
-The latest fully audited local checkpoint, `1be0b32`, selects Go 1.26.8 and
+The latest fully audited local checkpoint, `68895cd`, selects Go 1.26.8 and
 host OpenSSL 3.5.9. Complete cached host/ARMv5 integration, all ten independently
 enrolled Samba guests and both synthetic SMART lanes pass. The sharing fixtures
 cover same-authority startup, real data access, exclusive supervision, verified
@@ -88,7 +88,7 @@ closure and idle original-session/open-file faults with retained review and no
 restart. Source restoration does not release reviewed authority. These are not
 pending-I/O, physical disk failure, durable reconnect or recovery qualifications.
 
-An independent audit matches all 980 API inputs, actual images, kernel/header
+An independent audit matches all 1,025 API inputs, actual images, kernel/header
 archives, the selected and installed Go SDK, release metadata, SBOM and declared
 license files. OpenSSL's three installed objects are byte-exact reproductions
 of their built objects after Buildroot's configured RPATH normalization. The
@@ -100,10 +100,10 @@ complete fault coverage or an installable release. The native QEMU fixture now
 separates preparation from enrollment and preserves the cause of incomplete
 revocation observations. Behavioral regression tests and the complete local
 lane pass; the integration PR still requires new-head hosted qualification.
-Hosted QEMU qualification still fails at a later live-session deadline;
-local success does not establish a timing fix or waive that gate.
+An earlier hosted QEMU run failed at a later live-session deadline;
+local success does not establish a hosted timing fix or waive that gate.
 The core checkpoint passed its own hosted checks and merged into `develop`;
-the separate OpenSSL update must pass its own hosted checks before integration. No product
+this newer combined candidate must pass its own hosted checks before integration. No product
 SMB/NFS service is activated; see [implementation status](IMPLEMENTATION-STATUS.md).
 
 ## Roadmap
