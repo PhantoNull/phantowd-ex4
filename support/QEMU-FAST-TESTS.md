@@ -116,6 +116,36 @@ recovery, new full image or product/NAS qualification follows from this test.
 The fixed status worker still admits the complete original runtime before and
 after execution; redundant surrounding scans are avoided. No deadline changes.
 
+#### Remaining original-handle witness
+
+Source inspection of pinned Samba 4.22.11 identifies separate ID domains:
+
+| Observation | Source meaning | Not sufficient for |
+| --- | --- | --- |
+| Client `SMBCFILE` | Opaque public handle; internally retains `targetcli` and `cli_fd` | Guessing a private memory layout or selecting the cached server connection |
+| Client SMB2 fnum mapping | Original connection maps fnum to persistent/volatile FileId | An independently observed server/local-object binding |
+| STATUS `share_file_id` | Share-mode file-handle generation (`fh_get_gen_id`) | Direct equality with either remote FileId half |
+| Server CREATE FileId | `smbXsrv_open` persistent/volatile open IDs | Joining an unrelated STATUS entry by numeric coincidence |
+
+The ordinary `file_new` path binds an SMB open and separately assigns the
+process-local file-handle generation. `status_json.c` exports that share-mode
+generation; `smb2_create.c` returns the open's remote FileId instead. Preserve
+both domains. Neither path/name, username, inode alone nor a numeric match
+establishes the original client handle. The global-open database schema also
+does not supply the missing share-mode-generation join by itself.
+
+The next proposed fixture must observe the actual original client mapping and
+the same server `files_struct`, retaining the existing process/namespace/TCP and
+local-object fences. A source-built, narrowly scoped read-only observer is a
+candidate, **not implemented or qualified**. Do not copy private layouts, read
+process memory by PID, replace the public library in the product, or use an
+observer notice as execution authority. Missing, foreign, duplicated, replayed
+or changed handle/session/tree observations must refuse with retained review.
+Qualification needs actual healthy and negative ARM fixtures before changing
+`smb_object_bound=false`; request/extent/cache/journal correlation is a separate
+gate before WRITE. One `SMBC_write_ctx` call uses `cli_writeall` and does not by
+itself prove one wire request, write-through or durability.
+
 This optional campaign is deliberately outside the default ten-guest union.
 It reuses the existing pinned image/workspace read-only, one auto-removed
 non-root container, 2 CPUs / 2 GiB / 256 PIDs and bounded 1536 MiB `/tmp` plus

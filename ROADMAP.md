@@ -1726,7 +1726,12 @@ storage. No production roster provider or activation path exists.
   the opaque SMB handle/request witness: `smb_object_bound=false`/`pending_io=false`
   remain required. Next qualify remaining composed fault controls, then the original
   handle and request/extent/cache/journal
-  before any WRITE or pending-write fault. Keep review
+  before any WRITE or pending-write fault. Keep ID domains separate: pinned
+  Samba's STATUS `share_file_id` is a file-handle
+  generation, not either CREATE persistent/volatile FileId. An original client
+  mapping and independent same-server-open bridge are still required; see the
+  [source-backed handle prerequisite](support/QEMU-FAST-TESTS.md#remaining-original-handle-witness).
+  No source observer or actual handle proof is implemented by that research. Keep review
   and original references on uncertainty; no generic-profile/idle-observer
   widening, product startup, HTTP or physical NAS action.
   The private fixed-producer status observation is now consumed by a separate
