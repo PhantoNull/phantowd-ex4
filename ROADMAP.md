@@ -400,6 +400,14 @@ button to an unqualified backend simply because the screen exists.
   the hosted fresh-login gate. A temporary single-variable preemption-off
   experiment does not pass it and is fully removed. Do not adopt that flag,
   claim a root cause from summed rows or refresh heavy CI on this diagnostic.
+  A test-only identical-input ARMv5 digest comparison now measures the current
+  bounded Go reader, chunked memory control and complete existing BusyBox process.
+  All six1/16MiB lanes execute three times with exact digests and unchanged base;
+  the base applet matches the pinned target bytes. The measured process is slower
+  than the Go file path, so do not adopt it as an admission optimization. Sparse
+  large-input samples and included process overhead cannot establish compression-
+  only, complete-census or physical performance. Production checks/deadlines and
+  the original hosted qualification gate remain unchanged.
 - **M0.4 — Maintain release inputs.** Dependency update changes include source
   signatures/hashes, ARMv5 compatibility, package configuration, vulnerability
   review, license material and regenerated SBOM. Test the selected package set.

@@ -1146,6 +1146,34 @@ census/metadata admission, hosted scheduling or physical EX4 throughput.
 Do not skip checks, change cancellation granularity or enlarge a timeout to
 turn this microbenchmark into a service qualification.
 
+The test-only `BenchmarkRuntimeFileHashBackends` extends this comparison to
+synthetic 1 and 16 MiB inputs: `GoFile`, `GoMemory` and `BusyBoxProcess`.
+Run the same development-host command with
+`-bench '^BenchmarkRuntimeFileHashBackends$' -benchtime=300ms`.
+The process lane skips outside ARM with the exact VersatilePB model and explicit
+`phantowd_hash_benchmark=1` command-line token. Host success is not applet/ARM
+execution; cross-compilation alone cannot supply that evidence.
+
+An isolated ARM926/256 MiB snapshot with no NIC, read-only borrowed base and
+32 MiB RAM inputs ran all six lanes three times. Every iteration checks its
+digest; the applet reads the same regular-file stdin and must return the exact
+SHA-256 text for that input. It includes process startup, reads and output
+handling, not just C compression. The extracted base BusyBox exactly matches
+the cached target executable. Final medians in milliseconds were:
+
+| Input | Go file | Go memory | BusyBox process |
+| --- | ---: | ---: | ---: |
+| 1 MiB | 20.66 | 17.40 | 45.80 |
+| 16 MiB | 340.89 | 275.80 | 393.18 |
+
+The 16 MiB samples use only one or two iterations each; three samples in one
+guest are diagnostic, not a statistical performance qualification. This does
+not isolate subprocess startup or all metadata/census costs, compare every C
+implementation, establish physical EX4 throughput or fix the hosted timeout.
+The measured applet path is not a faster replacement for admission. No backend,
+hash cache, checks, cancellation granularity, deadlines or default CI lane change.
+Temporary guest setup is removed after measurement; no product tool is installed.
+
 ### Diagnose a native fixture timeout before a full CI build
 
 Use the existing matching pinned image, workspace and manifest-verified base:

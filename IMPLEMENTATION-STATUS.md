@@ -1551,6 +1551,26 @@ all four selections, unchanged resource/read-only isolation, and six refusal
 cases. The regression is also included in host CI; hosted qualification remains
 pending. This does not address the ARMv5 lifecycle timeout or change guest limits.
 
+## Digest backend cost control — test-only ARMv5 comparison
+
+`BenchmarkRuntimeFileHashBackends` compares the real bounded Go file digest,
+the same chunked digest over memory and one complete pinned BusyBox SHA-256
+process on identical synthetic 1/16 MiB data. Exact digest checks remain in every
+iteration. Native Linux skips the guarded applet lane; an isolated ARM926 QEMU
+guest executes all six lanes three times, with hash regressions and borrowed-base
+equality. A separate extraction matches the actual base/target BusyBox bytes.
+Windows API/UI/cross and pinned Linux vet/hash tests also pass.
+
+The final 16 MiB medians are Go file340.891ms, memory275.8035ms and complete
+BusyBox process393.181ms; this measured applet is not a faster admission path.
+Process startup/stdin/output costs are included; parent allocations are not
+child/peak RAM. Only1–2 iterations per large sample/three samples are diagnostic,
+not statistical or physical performance qualification. Initial kernel-console
+interleaving is preserved separately; the final numerical rows are complete.
+No production hash/authority/deadline changes, full-image audit, hosted timing
+fix, new named volume or NAS operation follows. See the
+[focused comparison contract](support/QEMU-FAST-TESTS.md#narrow-digest-cost-comparison-linux-development-host).
+
 ## Per-scan hash scratch — local allocation and cached integration qualification
 
 Code inspection and retained-code preparation now own one 32 KiB scratch buffer
