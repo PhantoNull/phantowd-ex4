@@ -401,6 +401,22 @@ button to an unqualified backend simply because the screen exists.
   boundaries, not a causal fix. Next establish worker-cost/scheduling evidence
   before changing fixture orchestration or refreshing heavy CI; preserve every
   identity/session/admission/stop proof and do not enlarge timeouts blindly.
+  After observed shared-budget refusals and explicit operator approval, the
+  native-only fixture now separates live continuity/revocation45 from fresh
+  authentication15, a combined allowance60 rather than shared45. SAME authority
+  crosses this seam; uncertain/late/canceled first work cannot continue, and
+  monotonic deadline checks reject exact-boundary late nil results independently
+  of timer-goroutine scheduling. Actual-runner virtual-clock RED/GREEN, pinned
+  tagged command vet/tests, phase race3, ARMv5 test cross-compilation and Windows
+  API/UI preflight and the actual ordinary-profile native ARMv5 guest pass.
+  Independent original-log replay refuses five invalid/incomplete proofs.
+  Reduced-CPU stress completes both phases and authority closure, then fails
+  the unchanged180s guest limit before data/final proof. Do not promote this
+  partial result or claim a deadlock/hosted cause. Full default-union/image
+  and own-head hosted requalification remain open.
+  No per-worker/readiness/stop/guest180 or product limit changes, proof removal,
+  retry or activation. First-phase expiry remains a hard refusal, not rescued by
+  the authentication budget. This is accounting, not measured acceleration.
   The host refusal path now automatically summarizes only bounded fixed-label
   worker observations, with explicit non-qualifying/partial coverage, missing
   data unavailable, and last reported failure preserved after successful cleanup.

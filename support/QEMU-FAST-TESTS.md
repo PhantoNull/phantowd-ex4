@@ -1356,6 +1356,27 @@ with independent replay of all actual logs and source witnesses, equal runtime
 censuses and unchanged base images. This is not the changed full-image/archive/
 SBOM audit or own-head hosted qualification required before promotion.
 
+The current native-only live orchestration explicitly separates two serial
+workloads: original session/revocation/continuity checks keep their 45-second
+bound, then new-login denial and unaffected-peer authentication get 15 seconds.
+This replaces the shared 45 seconds with at most 60 seconds; it is a fixture
+accounting change, not a speedup or a product timeout policy. The second phase
+runs only after timely, successful completion of the first, using the SAME
+retained Owner/runtime/backend. Errors and parent cancellation remain binding;
+no retry, new authority or continuation after uncertain work is allowed.
+Both admission and completion check the original monotonic deadline as well
+as context cancellation, including the exact expiry boundary. All per-worker,
+readiness, stop and 180-second guest limits and required proofs are unchanged.
+The orchestration helper is built only with `qemu && linux`. A continuity phase
+that itself exceeds 45 seconds still fails and never attempts fresh logins.
+The ordinary local two-CPU native guest passes all required proofs, including
+data access/stop/FD equality. Independent replay rejects incomplete, altered,
+duplicate, wrong-phase and the original failed reduced-CPU guest records.
+A separate 0.6-CPU stress run completes both phases and authority closure but
+expires at the unchanged 180-second guest bound before the data/final proofs.
+It is a failed campaign, not a partial pass or a proven data-path deadlock.
+Updated default-union/full-image and own-head hosted qualification remain required.
+
 The fixed native fixture additionally emits `PHANTOWD_DIAG_NATIVE_LIVE`
 operation boundaries and `PHANTOWD_DIAG_NATIVE_WORKER` stage costs.
 Worker timing rows require the trusted fixture's explicit context annotation,

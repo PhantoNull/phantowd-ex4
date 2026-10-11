@@ -528,6 +528,26 @@ No product service, endpoint, NAS or physical disk operation is added.
 
 ## Native timing diagnosis: focused host/QEMU only
 
+Current QEMU-only orchestration now keeps the original live revocation and
+session-continuity checks inside 45 seconds, then allows a separate 15 seconds
+for fresh-login denial and peer authentication. The combined maximum explicitly
+changes from 45 to 60 seconds; this is not a performance optimization. The SAME
+retained authority crosses the seam. Failed, canceled or expired first work
+never continues or retries, and exact monotonic deadline checks reject late
+success even before asynchronous context cancellation becomes visible.
+Actual-runner virtual-clock RED/GREEN verifies the accounting boundary and
+deadline fence. Pinned Go 1.26.8 tagged command vet/tests, phase race-count3,
+ARMv5 test cross-compilation and Windows API/UI preflight pass. The actual native
+ARMv5 campaign also passes on the ordinary two-CPU local profile, including data,
+stop/reap and descriptor proofs; independent replay refuses five altered or
+incomplete records. A separate 0.6-CPU stress run completes continuity in 44.235
+seconds and fresh authentication in 3.894 seconds, then closes authority, but
+hits the unchanged 180-second guest limit before the data/final proofs. That run
+fails; partial phase success is not complete guest qualification or a proven
+data-path deadlock. Complete-image/default-union/own-head hosted qualification
+remain pending. Worker/readiness/stop/guest180 and product limits remain
+unchanged. First-phase expiry still fails; no old CI gate is waived.
+
 A current-source local control now reproduces the hosted **fresh-login / shared
 45-second deadline** pattern: only the disposable container's CPU quota changes
 from 2 to 0.6 after client preparation. Revocation and changed-pair checks finish;
