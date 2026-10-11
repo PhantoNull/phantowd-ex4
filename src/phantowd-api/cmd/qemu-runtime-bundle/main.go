@@ -63,6 +63,13 @@ func run() error {
 		}
 		return err
 	}
+	if len(os.Args) == 2 && os.Args[1] == "native-pending-client" && os.Getuid() == 0 && os.Geteuid() == 0 {
+		err := nativeCredentialFixture(nativePendingClientCampaignQEMU)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "native pending client fixture:", err)
+		}
+		return err
+	}
 	if len(os.Args) == 2 && os.Args[1] == "native-lifecycle" && os.Getuid() == 0 && os.Geteuid() == 0 {
 		err := nativeCredentialFixture(nativeLifecycleCampaignQEMU)
 		if err != nil {

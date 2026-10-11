@@ -34,10 +34,11 @@ const (
 	nativePlannedHeldCampaignQEMU
 	nativePlannedOpenFileCampaignQEMU
 	nativePlannedFileSourceCampaignQEMU
+	nativePendingClientCampaignQEMU
 )
 
 func nativeCredentialFixture(campaign nativeCredentialCampaignQEMU) (result error) {
-	if campaign > nativePlannedFileSourceCampaignQEMU {
+	if campaign > nativePendingClientCampaignQEMU {
 		return errors.New("native credential campaign guard")
 	}
 	commandLine, err := os.ReadFile("/proc/cmdline")
@@ -229,6 +230,24 @@ func nativeCredentialFixture(campaign nativeCredentialCampaignQEMU) (result erro
 		return fmt.Errorf("native enrollment phase completion: %w", err)
 	}
 	reportNativePhaseTimingQEMU(nativeFixtureEnrolledQEMU, started)
+	if campaign == nativePendingClientCampaignQEMU {
+		if err := owner.Close(); err != nil {
+			return err
+		}
+		if err := runtime.Close(context.Background()); err != nil {
+			return err
+		}
+		if err := nativeDataFixtureProfileQEMU(plan, lookup, true); err != nil {
+			return fmt.Errorf("native pending client fixture: %w", err)
+		}
+		after, err := os.ReadDir("/proc/self/fd")
+		if err != nil || len(after) != len(before) {
+			return errors.New("pending client parent descriptor leak")
+		}
+		nativeCredentialEnrollmentMarkerQEMU()
+		fmt.Println("PHANTOWD_SAMBA_OWNER_PENDING_CLIENT_READY complete_inputs=true actual_client=true actual_loader=true single_open=true close_only=true client_exit0=true client_group_absent=true daemon_stopped=true caller_duplicates_closed=true local_object_unchanged=true no_fd_leak=true smb_object_bound=false pending_io=false activation=false scope=qemu-only")
+		return nil
+	}
 	if campaign == nativePlannedDataCampaignQEMU || campaign == nativePlannedHeldCampaignQEMU || campaign == nativePlannedOpenFileCampaignQEMU {
 		// Fresh guest: these are empty child mount destinations, not data
 		// authority or state inherited from the older credential campaign.

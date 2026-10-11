@@ -21,6 +21,12 @@ import (
 const pendingOpenNoticeQEMU = "PHANTOWD_SMB_WRITE_CLIENT_OPEN_NOTICE scope=qemu-only proof=false\n"
 const pendingCloseNoticeQEMU = "PHANTOWD_SMB_WRITE_CLIENT_CLOSE_NOTICE scope=qemu-only proof=false\n"
 
+// First corrected ARMv5 SMB3 handshake measured5.557s, beyond the constructor-
+// only checkpoint's unqualified5s guess. Bound this distinct startup at the
+// existing native daemon's12s ceiling; parent cancellation still wins. Explicit
+// CLOSE keeps5s. No existing launcher/campaign or protocol deadline changes.
+const pendingClientStartTimeoutQEMU = 12 * time.Second
+
 // PendingClientQEMU is a fixed, single-use process adapter, not complete code,
 // storage or SMB authority. Trusted composition retains and rechecks the whole
 // root/helper census before/after Start and throughout this adapter's lifetime.
@@ -260,7 +266,7 @@ func (c *PendingClientQEMU) Start(ctx context.Context) (result error) {
 	}
 	c.process = &managedProcess{command: command, pid: command.Process.Pid, done: make(chan struct{}), stopTimeout: time.Second}
 	go c.process.wait()
-	bounded, cancel := context.WithTimeout(ctx, 5*time.Second)
+	bounded, cancel := context.WithTimeout(ctx, pendingClientStartTimeoutQEMU)
 	defer cancel()
 	ticker := time.NewTicker(20 * time.Millisecond)
 	defer ticker.Stop()

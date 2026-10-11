@@ -14,7 +14,7 @@ import (
 
 func pendingPlansFixture(t *testing.T) (*Plan, *Plan) {
 	t.Helper()
-	files := []File{exampleFile(pendingClientProgramQEMU), exampleFile("lib/ld-linux.so.3"), exampleFile("usr/lib/libsmbclient.so.0")}
+	files := []File{exampleFile(pendingClientProgramQEMU), exampleFile("lib/ld-linux.so.3"), exampleFile("usr/lib/libsmbclient.so.0"), exampleFile("usr/lib/gconv/IBM850.so")}
 	for name, value := range PendingClientDocumentsQEMU() {
 		files = append(files, File{Path: name, Mode: 0444, Size: int64(len(value)), SHA256: sha256.Sum256([]byte(value))})
 	}
@@ -47,7 +47,7 @@ func TestPendingClientFixedPlansAndDocuments(t *testing.T) {
 			t.Fatal("changed fixed document accepted", client.files[index].Path)
 		}
 	}
-	for _, name := range []string{pendingClientProgramQEMU, "etc/passwd", "sys/firmware/devicetree/base/model", "lib/ld-linux.so.3", "usr/lib/libsmbclient.so.0"} {
+	for _, name := range []string{pendingClientProgramQEMU, "etc/passwd", "sys/firmware/devicetree/base/model", "lib/ld-linux.so.3", "usr/lib/libsmbclient.so.0", "usr/lib/gconv/IBM850.so", "usr/lib/gconv/gconv-modules"} {
 		changed, _ := pendingPlansFixture(t)
 		var files []File
 		for _, file := range changed.files {

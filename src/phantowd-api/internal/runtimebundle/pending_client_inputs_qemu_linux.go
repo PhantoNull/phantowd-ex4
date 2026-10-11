@@ -29,6 +29,8 @@ func PendingClientDocumentsQEMU() map[string]string {
 		"etc/group":                          "nobody:!:65534:\n",
 		"etc/nsswitch.conf":                  "passwd: files\ngroup: files\nhosts: files\n",
 		"etc/hosts":                          "127.0.0.1 localhost\n",
+		"usr/lib/gconv/gconv-modules": "alias CP850// IBM850//\n" +
+			"module IBM850// INTERNAL IBM850 1\nmodule INTERNAL IBM850// IBM850 1\n",
 		"etc/samba/smb.conf": "[global]\n" +
 			"client min protocol = SMB3_11\nclient max protocol = SMB3_11\n" +
 			"client signing = mandatory\nclient ipc signing = mandatory\nname resolve order = host\n",
@@ -54,7 +56,7 @@ func pendingClientPlansQEMU(client, bootstrap *Plan) error {
 			return ErrMismatch
 		}
 	}
-	for _, binding := range []string{"lib/ld-linux.so.3", "usr/lib/libsmbclient.so.0"} {
+	for _, binding := range []string{"lib/ld-linux.so.3", "usr/lib/libsmbclient.so.0", "usr/lib/gconv/IBM850.so"} {
 		file, exists := files[binding]
 		if !exists {
 			for _, alias := range client.aliases {

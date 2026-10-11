@@ -1657,12 +1657,15 @@ storage. No production roster provider or activation path exists.
   complete input release. Its actual ARM never-started constructor/closure,
   partial rollback, independent caller closure, copy/cancel/busy/released
   refusals and FD/base equality pass. Host vet/unit/race3 and ARM cross pass.
-  Next: execute the healthy real client using the dedicated single-use adapter (fixed
-  descriptor ABI, distinct output pipes, copied pipe-only secret, exact ordered
-  telemetry, close-only control and sticky review/reference retention).
-  The adapter has NOT executed a target child; cross-compilation and host
-  bookkeeping tests cannot qualify loader, group lifecycle or SMB access.
-  Then correlate its original server/session/
+  The separate optional `pending` guest now executes that real client against
+  a freshly enrolled retained native data server: one pre-existing synthetic
+  object OPEN/CLOSE, no WRITE. Actual loader execution, unchanged retained local
+  object/bytes, client exit0/group absence, daemon stop and FD/base equality pass.
+  Missing dynamic CP850 inputs and caller/target large-file ABI have RED/GREEN
+  guards. Only the new client startup is calibrated12s after measuredOPEN5.557s;
+  CLOSE5/parent35/guest180 and the existing ten-campaign union remain unchanged.
+  This is focused healthy execution, not full-image/hosted or product proof.
+  Next correlate its original server/session/
   open/object identities before admitting any pending-write fault. Keep review
   and original references on uncertainty; no generic-profile/idle-observer
   widening, product startup, HTTP or physical NAS action.

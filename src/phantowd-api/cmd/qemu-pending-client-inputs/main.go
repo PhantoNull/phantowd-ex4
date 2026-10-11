@@ -7,9 +7,7 @@
 package main
 
 import (
-	"bytes"
 	"context"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -20,44 +18,15 @@ import (
 	"golang.org/x/sys/unix"
 )
 
-type fixtureFile struct {
-	Path, SHA256 string
-	Size         int64
-	Mode         uint32
-}
-
-type fixtureManifest struct {
-	Format         string
-	RootFiles      []fixtureFile
-	RootAliases    []runtimebundle.Alias
-	BootstrapFiles []fixtureFile
-}
+type fixtureFile = runtimebundle.PendingExpectedFileQEMU
+type fixtureManifest = runtimebundle.PendingExpectedManifestQEMU
 
 func decodeManifest(data []byte) (fixtureManifest, error) {
-	var manifest fixtureManifest
-	if len(data) > 128<<10 {
-		return manifest, errors.New("fixture manifest budget")
-	}
-	decoder := json.NewDecoder(bytes.NewReader(data))
-	decoder.DisallowUnknownFields()
-	if decoder.Decode(&manifest) != nil || decoder.Decode(new(any)) != io.EOF || manifest.Format != "phantowd-qemu-pending-client-inputs-v1" {
-		return fixtureManifest{}, errors.New("fixture manifest")
-	}
-	return manifest, nil
+	return runtimebundle.DecodePendingExpectedQEMU(data)
 }
 
 func plan(files []fixtureFile, aliases []runtimebundle.Alias) (*runtimebundle.Plan, error) {
-	var result []runtimebundle.File
-	for _, file := range files {
-		decoded, err := hex.DecodeString(file.SHA256)
-		if err != nil || len(decoded) != 32 {
-			return nil, errors.New("fixture digest")
-		}
-		var digest [32]byte
-		copy(digest[:], decoded)
-		result = append(result, runtimebundle.File{Path: file.Path, SHA256: digest, Size: file.Size, Mode: file.Mode})
-	}
-	return runtimebundle.NewPlan(result, aliases)
+	return runtimebundle.PendingExpectedPlanQEMU(files, aliases)
 }
 
 func root(path string) (*os.File, error) {

@@ -5,7 +5,8 @@
 
 The private `qemu && linux` pending-client input primitive retains two separate
 complete immutable roots: actual ARM client/library closure/fixed documents,
-and the static bootstrap helper. Plans contain independently supplied hashes;
+including the fixed IBM850 conversion module and CP850 catalog, and the static
+bootstrap helper. Plans contain independently supplied hashes;
 existing complete inspection, original pins and late revalidation are reused.
 Fixed documents contain no caller-selected account, credential or policy.
 Both roots must be distinct root-owned RO/nosuid/nodev executable tmpfs mounts.
@@ -22,14 +23,23 @@ complete retention. It rechecks all inputs after construction and before/after
 start and explicit close, retains originals until verified whole-group
 settlement, and preserves review on uncertainty. Close failure is
 sticky, retaining unattempted originals without retry. No ordinary build,
-product startup, HTTP, NAS, actual SMB or pending-I/O qualification is added.
+product startup, HTTP, NAS or pending-I/O qualification is added.
 Use the optional [complete-input lane](../../../../support/QEMU-FAST-TESTS.md).
 
 That lane also qualifies the containing Owner's ARM constructor and
 never-started closure, failed-constructor cleanup, caller-duplicate closure,
 copy/cancel/busy/released refusals and final FD equality. It runs no adapter
 child or server. Host lifecycle refusal/release-order tests and race3 pass;
-actual healthy library/client execution and launched settlement remain untested.
+the distinct optional `pending` campaign now tests actual healthy library/client
+execution and launched settlement against a freshly enrolled native data server.
+It performs one pre-existing-object OPEN and CLOSE only, requires unchanged
+retained local identity/bytes, exit0 and original-group absence before releasing
+complete inputs, daemon stop and final FD/base equality. OPEN telemetry does
+not independently bind the original SMB session/open/object. The client matches
+the target's 64-bit file-offset/stat ABI; missing dynamic conversion inputs
+refuse. Dedicated startup is bounded12s, CLOSE5s; parent35s and guest180s remain,
+without retry or context renewal. Existing launchers/idle observers/default ten
+are unchanged. This is focused fixture qualification, not a new full image.
 The private Owner exposes no write, descriptor, per-call backend or product
 service capability. Storage/identity/server/session/open/object admission is
 still separate and required before any pending-write fault.

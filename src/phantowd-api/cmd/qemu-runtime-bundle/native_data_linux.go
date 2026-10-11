@@ -20,6 +20,10 @@ import (
 // are fully closed. This is individual descriptor/SMB access qualification,
 // not continuous complete-roster/identity authority or product activation.
 func nativeDataFixtureQEMU(plan *runtimebundle.Plan, lookup fileserviceplan.SambaEnrollmentLookup) error {
+	return nativeDataFixtureProfileQEMU(plan, lookup, false)
+}
+
+func nativeDataFixtureProfileQEMU(plan *runtimebundle.Plan, lookup fileserviceplan.SambaEnrollmentLookup, pending bool) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 35*time.Second)
 	defer cancel()
 	const config = "/run/phantowd-native-data-config"
@@ -81,6 +85,24 @@ func nativeDataFixtureQEMU(plan *runtimebundle.Plan, lookup fileserviceplan.Samb
 	if err := os.Symlink(source+"/native-readonly/seed", source+"/native-readonly/escape"); err != nil {
 		return err
 	}
+	if pending {
+		file, err := os.OpenFile(source+"/native-writable/pending-write", os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0600)
+		if err != nil {
+			return err
+		}
+		data := make([]byte, 4096)
+		for index := range data {
+			data[index] = 0x3c
+		}
+		written, writeErr := file.Write(data)
+		closeErr := file.Close()
+		if written != len(data) || writeErr != nil || closeErr != nil {
+			return errors.Join(errors.New("synthetic pending object construction"), writeErr, closeErr)
+		}
+		if err := os.Chown(source+"/native-writable/pending-write", 2001, 2001); err != nil {
+			return err
+		}
+	}
 	var roots [2]*os.File
 	for index, name := range []string{"readonly", "writable"} {
 		roots[index], err = nativeDataRootCloneQEMU(source+"/native-"+name, handoff+"/"+name, index == 0)
@@ -96,8 +118,14 @@ func nativeDataFixtureQEMU(plan *runtimebundle.Plan, lookup fileserviceplan.Samb
 		}
 		callers[index] = os.NewFile(uintptr(fd), "native-data-fixture-caller")
 	}
-	if err := plan.ProbeNativeDataDescriptorQEMU(ctx, callers[0], callers[1], callers[2], lookup, roots); err != nil {
-		return err // Test process exit disposes a failed/quarantined experiment.
+	var probeErr error
+	if pending {
+		probeErr = plan.ProbeNativePendingClientQEMU(ctx, callers[0], callers[1], callers[2], lookup, roots)
+	} else {
+		probeErr = plan.ProbeNativeDataDescriptorQEMU(ctx, callers[0], callers[1], callers[2], lookup, roots)
+	}
+	if probeErr != nil {
+		return probeErr // Test process exit disposes a failed/quarantined experiment.
 	}
 	// Successful probe already stopped/reaped every owned client and daemon and
 	// closed their copies. Only then release originals/detach controller clones.
@@ -117,7 +145,11 @@ func nativeDataFixtureQEMU(plan *runtimebundle.Plan, lookup fileserviceplan.Samb
 	// Only this successful, fully closed disposable experiment's client files.
 	// The later complete-authority tracer must prove NEW transfers, not accept
 	// byte-identical downloads left by this independent prerequisite.
-	for _, path := range []string{"/run/native-share-upload", "/run/native-share-download-rw", "/run/native-share-download-ro"} {
+	paths := []string{"/run/native-share-upload"}
+	if !pending {
+		paths = append(paths, "/run/native-share-download-rw", "/run/native-share-download-ro")
+	}
+	for _, path := range paths {
 		if err := os.Remove(path); err != nil {
 			return err
 		}

@@ -10,10 +10,40 @@ import stat
 from pathlib import Path, PurePosixPath
 import sys
 
+from runtime_loader_fixture import validate
+
 
 DOCUMENTS = frozenset({"sys/firmware/devicetree/base/model", "etc/passwd",
                        "etc/group", "etc/nsswitch.conf", "etc/hosts",
-                       "etc/samba/smb.conf"})
+                       "etc/samba/smb.conf", "usr/lib/gconv/gconv-modules"})
+
+
+def merge_charset(report, charset):
+    """Add the fixed dynamic conversion closure, not an arbitrary module."""
+    extra, _, _ = validate(charset, fixed_entry="usr/lib/gconv/IBM850.so")
+    if (not isinstance(report, dict)
+            or not isinstance(report.get("objects"), list)):
+        raise ValueError("invalid client candidate")
+    objects = report["objects"]
+    if (any(not isinstance(item, dict) or type(item.get("size")) is not int
+            or item["size"] <= 0 or not canonical(item.get("path"))
+            for item in objects)
+            or type(report.get("total_bytes")) is not int
+            or report["total_bytes"] != sum(item["size"] for item in objects)):
+        raise ValueError("invalid original client byte evidence")
+    known = {item["path"]: item for item in objects}
+    if len(known) != len(objects):
+        raise ValueError("duplicate original client object")
+    merged = list(objects)
+    for item in extra:
+        prior = known.get(item["path"])
+        if prior is not None:
+            if prior != item:
+                raise ValueError("shared conversion dependency changed")
+        else:
+            merged.append(item)
+    return {**report, "objects": merged,
+            "total_bytes": sum(item["size"] for item in merged)}
 
 
 def read_bounded(path, limit):
@@ -99,7 +129,8 @@ def manifest(report, documents, client, helper):
             or report["total_bytes"] != total
             or total > 64 * 1024 * 1024 or len(bindings) > 1024
             or "lib/ld-linux.so.3" not in bindings
-            or "usr/lib/libsmbclient.so.0" not in bindings):
+            or "usr/lib/libsmbclient.so.0" not in bindings
+            or "usr/lib/gconv/IBM850.so" not in bindings):
         raise ValueError("closure budget or missing fixed binding")
     if (not isinstance(documents, dict) or set(documents) != DOCUMENTS
             or any(not isinstance(value, str) or not value
@@ -122,16 +153,18 @@ def manifest(report, documents, client, helper):
             "BootstrapFiles": [metadata("fixture/launcher", helper, 0o555)]}
 
 
-def produce(report_path, documents_path, client_path, helper_path,
-            target_path, scratch_path):
+def produce(report_path, charset_path, documents_path, client_path,
+            helper_path, target_path, scratch_path):
     # All outputs belong to the wrapper's newly-created disposable tmpfs tree.
     scratch = Path(scratch_path)
     report_data = read_bounded(report_path, 1024 * 1024)
+    charset_data = read_bounded(charset_path, 1024 * 1024)
     documents_data = read_bounded(documents_path, 64 * 1024)
     documents = json.loads(documents_data)
     client = read_bounded(client_path, 1024 * 1024)
     helper = read_bounded(helper_path, 1024 * 1024)
-    value = manifest(json.loads(report_data), documents, client, helper)
+    combined = merge_charset(json.loads(report_data), json.loads(charset_data))
+    value = manifest(combined, documents, client, helper)
     docs = scratch / "documents"
     docs.mkdir(mode=0o700)
     source = "/usr/lib/phantowd/pending-source"
@@ -175,6 +208,6 @@ def produce(report_path, documents_path, client_path, helper_path,
 
 
 if __name__ == "__main__":
-    if len(sys.argv) != 7:
+    if len(sys.argv) != 8:
         raise SystemExit("fixed fixture build inputs required")
     produce(*sys.argv[1:])

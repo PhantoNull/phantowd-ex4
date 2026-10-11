@@ -5,7 +5,8 @@ import copy
 from pathlib import Path
 import tempfile
 import unittest
-from pending_client_inputs_fixture import DOCUMENTS, manifest, read_bounded
+from pending_client_inputs_fixture import (DOCUMENTS, manifest, merge_charset,
+                                           read_bounded)
 
 
 class PendingInputsTests(unittest.TestCase):
@@ -15,12 +16,14 @@ class PendingInputsTests(unittest.TestCase):
             "entry": "usr/lib/libsmbclient.so.0",
             "static_dependencies_resolved": True,
             "runtime_qualified": False, "execution_authorized": False,
-            "total_bytes": 2,
+            "total_bytes": 3,
             "objects": [
                 {"path": "lib/ld-linux.so.3", "sha256": "11" * 32,
                  "size": 1, "bindings": ["lib/ld-linux.so.3"]},
                 {"path": "usr/lib/libsmbclient.so.0.8.0", "sha256": "22" * 32,
                  "size": 1, "bindings": ["usr/lib/libsmbclient.so.0"]},
+                {"path": "usr/lib/gconv/IBM850.so", "sha256": "33" * 32,
+                 "size": 1, "bindings": ["usr/lib/gconv/IBM850.so"]},
             ],
         }
         self.documents = {name: "non-secret-test-document"
@@ -28,19 +31,54 @@ class PendingInputsTests(unittest.TestCase):
 
     def test_fixed_roles_modes_and_aliases(self):
         value = manifest(self.report, self.documents, b"client", b"helper")
-        self.assertEqual(len(value["RootFiles"]), 9)
+        self.assertEqual(len(value["RootFiles"]), 11)
         self.assertEqual(value["RootAliases"], [{
             "Path": "usr/lib/libsmbclient.so.0",
             "Target": "usr/lib/libsmbclient.so.0.8.0"}])
         self.assertEqual(value["BootstrapFiles"][0]["Mode"], 0o555)
         self.assertEqual(sum(item["Mode"] == 0o444
-                             for item in value["RootFiles"]), 6)
+                             for item in value["RootFiles"]), 7)
+
+    def test_conversion_closure_union_preserves_original_evidence(self):
+        charset = {**copy.deepcopy(self.report),
+                   "entry": "usr/lib/gconv/IBM850.so", "total_bytes": 2}
+        charset["objects"] = [charset["objects"][0], charset["objects"][2]]
+        original = copy.deepcopy(self.report)
+        original["objects"].pop()
+        original["total_bytes"] = 2
+        before = copy.deepcopy(original)
+        merged = merge_charset(original, charset)
+        self.assertEqual(merged, self.report)
+        self.assertEqual(original, before)
+        self.assertEqual(merge_charset(merged, charset), merged)
+        for field, value in (("entry", "usr/sbin/smbd"),
+                             ("execution_authorized", True),
+                             ("total_bytes", 3)):
+            bad = copy.deepcopy(charset)
+            bad[field] = value
+            with self.assertRaises(ValueError):
+                merge_charset(original, bad)
+        charset["objects"][0]["sha256"] = "44" * 32
+        with self.assertRaises(ValueError):
+            merge_charset(original, charset)
+        for total in (True, 1, 3):
+            bad = {**original, "total_bytes": total}
+            with self.assertRaises(ValueError):
+                merge_charset(bad, charset)
+
+    def test_missing_dynamic_cp850_refuses(self):
+        report = copy.deepcopy(self.report)
+        report["objects"] = [item for item in report["objects"]
+                             if item["path"] != "usr/lib/gconv/IBM850.so"]
+        report["total_bytes"] = sum(item["size"] for item in report["objects"])
+        with self.assertRaises(ValueError):
+            manifest(report, self.documents, b"client", b"helper")
 
     def test_candidate_scope_and_byte_budget_refuse(self):
         for field, value in (("execution_authorized", True),
                              ("runtime_qualified", True),
                              ("schema_version", True), ("total_bytes", True),
-                             ("total_bytes", 3), ("entry", "usr/sbin/smbd")):
+                             ("total_bytes", 4), ("entry", "usr/sbin/smbd")):
             report = copy.deepcopy(self.report)
             report[field] = value
             with self.assertRaises(ValueError):

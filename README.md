@@ -49,6 +49,11 @@ Do not expose them through a LAN listener or reverse proxy. Service experiments
 and mount fixtures are not enabled for user disks. Desired configuration and
 successful parser checks do not activate a product service.
 
+A separate ARMv5 fixture now verifies a retained, isolated real SMB3 client
+opening and closing synthetic data without changes or leaked descriptors.
+It does not qualify pending writes, recovery or product service activation;
+see the [focused test contract](support/QEMU-FAST-TESTS.md#dedicated-same-open-client-prerequisites-host-and-qemu).
+
 The code-only inspector rejects undeclared entries, incorrect hashes/modes,
 cross-mount or symlink traversal, file capabilities and access/default ACLs.
 This rule is separate from supported **data-share ACLs**. Its point-in-time

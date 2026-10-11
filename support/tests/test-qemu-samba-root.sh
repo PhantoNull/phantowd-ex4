@@ -15,7 +15,7 @@ selection=${8:-all}
 diagnostics=${9:-none}
 case "$diagnostics" in none|diagnostic) ;; *) exit 1 ;; esac
 case "$selection" in
-    all|service|native|candidate|lifecycle|fault|data|exit|held|file|file-source) ;;
+    all|service|native|candidate|lifecycle|fault|data|exit|held|file|file-source|pending) ;;
     *) exit 1 ;;
 esac
 tmpdir=${TMPDIR:-/tmp}
@@ -25,7 +25,11 @@ case "$base:$target:$go_binary:$debugfs:$compiler:$source_dir:$failure_log:$tmpd
 esac
 case "$tmpdir" in /*) ;; *) exit 1 ;; esac
 awk -v target="$tmpdir" '$3 == "tmpfs" && (target == $2 || index(target, $2 "/") == 1) { found = 1 } END { exit !found }' /proc/mounts || exit 1
-campaigns=$(python3 -B "$source_dir/support/tests/samba_root_fixture.py" select-campaigns "$selection")
+if [ "$selection" = pending ]; then
+    campaigns=pending # Separate prerequisite, deliberately NOT the default union.
+else
+    campaigns=$(python3 -B "$source_dir/support/tests/samba_root_fixture.py" select-campaigns "$selection")
+fi
 for file in rootfs.ext2 zImage versatile-pb.dtb SHA256SUMS; do
     [ -f "$base/$file" ] && [ ! -L "$base/$file" ] || exit 1
 done
@@ -45,6 +49,8 @@ cleanup() {
         "$scratch/launcher" "$scratch/charset" "$scratch/bundle" "$scratch/owner" \
         "$scratch/service.log" "$scratch/native.log" "$scratch/candidate.log" \
         "$scratch/lifecycle.log" "$scratch/fault.log" "$scratch/data.log" "$scratch/exit.log" "$scratch/held.log" "$scratch/file.log" "$scratch/file-source.log"
+    rm -f "$scratch/pending.log"
+    if [ "$selection" = pending ]; then rm -rf "$scratch/pending"; fi
     rm -rf "$scratch/go-cache" "$scratch/go-path"
     rmdir "$scratch"
 }
@@ -77,8 +83,35 @@ python3 -B "$source_dir/support/tests/samba_root_fixture.py" prepare \
     "$go_binary" build -tags=qemu -trimpath -o "$scratch/bundle" ./cmd/qemu-runtime-bundle)
 (cd "$source_dir/src/phantowd-api" && CGO_ENABLED=0 GOOS=linux GOARCH=arm GOARM=5 \
     "$go_binary" build -tags=qemu -trimpath -o "$scratch/owner" ./cmd/qemu-samba-owner)
+if [ "$selection" = pending ]; then
+    mkdir "$scratch/pending"
+    (cd "$source_dir/src/phantowd-api" && "$go_binary" build -tags=qemu -trimpath \
+        -o "$scratch/pending/host-inputs" ./cmd/qemu-pending-client-inputs)
+    "$scratch/pending/host-inputs" documents >"$scratch/pending/documents.json"
+    (cd "$source_dir/src/phantowd-api" && CGO_ENABLED=0 GOOS=linux GOARCH=arm GOARM=5 \
+        "$go_binary" build -tags=qemu -trimpath -o "$scratch/pending/arm-inputs" ./cmd/qemu-pending-client-inputs)
+    "$scratch/lab" inspect-runtime-closure "$target" usr/lib/libsmbclient.so.0 >"$scratch/pending/closure.json"
+    "$compiler" -std=c11 -O2 -Wall -Wextra -Werror \
+        -I"$target/../staging/usr/include/samba-4.0" -Wl,-rpath-link,"$target/../staging/usr/lib/samba" \
+        -o "$scratch/pending/client" "$source_dir/support/tests/samba-pending-write-fixture.c" -lsmbclient
+    "$compiler" -std=c11 -O2 -static -Wall -Wextra -Werror \
+        -o "$scratch/pending/helper" "$source_dir/support/tests/samba-pending-write-launcher-fixture.c"
+    python3 -B "$source_dir/support/tests/pending_client_inputs_fixture.py" \
+        "$scratch/pending/closure.json" "$scratch/ibm850.json" "$scratch/pending/documents.json" \
+        "$scratch/pending/client" "$scratch/pending/helper" "$target" "$scratch/pending"
+fi
 rm -rf "$scratch/go-cache" "$scratch/go-path"
 cp "$base/rootfs.ext2" "$scratch/rootfs.ext2"
+if [ "$selection" = pending ]; then
+    # Enlarge ONLY this new regular tmpfs image copy. Original base stays RO.
+    [ -f "$scratch/rootfs.ext2" ] && [ ! -L "$scratch/rootfs.ext2" ] || exit 1
+    truncate -s 128M "$scratch/rootfs.ext2"
+    "$(dirname "$debugfs")/resize2fs" -f "$scratch/rootfs.ext2" >/dev/null 2>&1
+    "$debugfs" -w -f "$scratch/pending/stage.commands" "$scratch/rootfs.ext2" >/dev/null 2>&1
+    "$debugfs" -w -R "write $scratch/pending/inputs.json /usr/lib/phantowd/qemu-pending-client-inputs.json" "$scratch/rootfs.ext2" >/dev/null 2>&1
+    "$debugfs" -w -R "write $scratch/pending/arm-inputs /usr/sbin/phantowd-pending-client-inputs" "$scratch/rootfs.ext2" >/dev/null 2>&1
+    "$debugfs" -w -R 'set_inode_field /usr/sbin/phantowd-pending-client-inputs mode 0100555' "$scratch/rootfs.ext2" >/dev/null 2>&1
+fi
 # Format only this newly-created regular tmpfs file, never a block-device path.
 truncate -s 16M "$scratch/acl.ext4"
 [ -f "$scratch/acl.ext4" ] && [ ! -L "$scratch/acl.ext4" ] || exit 1
@@ -118,11 +151,22 @@ child_pid=
 if [ "$diagnostics" = diagnostic ]; then
     # Escaped, bounded telemetry only. Emitted before verification even for a
     # timeout; never a success marker or substitute for original acceptance.
-    python3 -B "$source_dir/support/tests/samba_root_fixture.py" diagnostic-log \
-        "$scratch/$campaign.log" "$campaign" "$status"
+    if [ "$selection" = pending ]; then
+        cat "$scratch/$campaign.log" # Fixed fixture contains no operator secrets.
+    else
+        python3 -B "$source_dir/support/tests/samba_root_fixture.py" diagnostic-log \
+            "$scratch/$campaign.log" "$campaign" "$status"
+    fi
 fi
-if [ "$status" -ne 0 ] || ! python3 -B "$source_dir/support/tests/samba_root_fixture.py" verify-campaign \
-    "$scratch/$campaign.log" "$campaign"; then
+verified=0
+if [ "$status" -eq 0 ]; then
+    if [ "$selection" = pending ]; then
+        python3 -B "$source_dir/support/tests/pending_client_healthy_log.py" "$scratch/$campaign.log" && verified=1
+    else
+        python3 -B "$source_dir/support/tests/samba_root_fixture.py" verify-campaign "$scratch/$campaign.log" "$campaign" && verified=1
+    fi
+fi
+if [ "$verified" -ne 1 ]; then
     if [ -n "$failure_log" ]; then
         mkdir -p "$(dirname "$failure_log")"
         cp "$scratch/$campaign.log" "$failure_log"

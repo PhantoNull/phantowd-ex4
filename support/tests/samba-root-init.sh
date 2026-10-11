@@ -76,7 +76,16 @@ run_native_fixture() {
     # OWN real Unix accounts in each guest. Independent libc/config/handoff
     # experiments run once after the service guest's other groups close.
     /usr/sbin/phantowd-runtime-bundle-probe native-lookup-bootstrap || return 1
-    if [ "$campaign" = data ]; then
+    if [ "$campaign" = pending ]; then
+        mkdir -m 0700 /run/phantowd-pending-client-input /run/phantowd-pending-client-bootstrap /run/phantowd-pending-client-root || return 1
+        mount -t tmpfs -o mode=0700,size=32m,nosuid,nodev tmpfs /run/phantowd-pending-client-input || return 1
+        mount -t tmpfs -o mode=0700,size=1m,nosuid,nodev tmpfs /run/phantowd-pending-client-bootstrap || return 1
+        /usr/sbin/phantowd-pending-client-inputs stage || return 1
+        mount -o remount,ro,nosuid,nodev /run/phantowd-pending-client-input || return 1
+        mount -o remount,ro,nosuid,nodev /run/phantowd-pending-client-bootstrap || return 1
+        /usr/sbin/phantowd-runtime-bundle-probe native-pending-client || return 1
+        echo PHANTOWD_SAMBA_ROOT_PENDING_DONE
+    elif [ "$campaign" = data ]; then
         /usr/sbin/phantowd-runtime-bundle-probe native-planned-data || return 1
         echo PHANTOWD_SAMBA_ROOT_DATA_DONE
     elif [ "$campaign" = candidate ]; then
@@ -122,6 +131,7 @@ run_fixture() {
         phantowd_samba_campaign=held) campaign=held ;;
         phantowd_samba_campaign=file) campaign='file' ;;
         phantowd_samba_campaign=file-source) campaign='file-source' ;;
+        phantowd_samba_campaign=pending) campaign=pending ;;
         *) return 1 ;;
     esac
     # This guest has no normal hardware entropy sources. Require the real

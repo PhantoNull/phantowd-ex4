@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /* SPDX-FileCopyrightText: 2026 PhantoWD EX4 contributors */
-/* Test-only same-open client. Not installed or wired to any guest/product. */
+/* Fixed same-open client for disposable QEMU only. Never a product helper. */
+#define _FILE_OFFSET_BITS 64
 #define _GNU_SOURCE
 #include <errno.h>
 #include <fcntl.h>
@@ -18,6 +19,10 @@
 #include <sys/vfs.h>
 #include <unistd.h>
 #include <libsmbclient.h>
+
+/* Match the target Samba SDK's public stat/seek ABI on 32-bit ARM. */
+_Static_assert(sizeof(off_t) == 8, "libsmbclient requires 64-bit file offsets");
+_Static_assert(sizeof(((struct stat *)0)->st_size) == 8, "libsmbclient requires 64-bit stat size");
 
 static char secret[129];
 static int auth_refused;

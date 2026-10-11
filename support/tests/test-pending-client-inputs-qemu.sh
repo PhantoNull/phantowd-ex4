@@ -30,13 +30,14 @@ debugfs="$output/host/sbin/debugfs"
     "$go_binary" build -tags=qemu -trimpath -o "$scratch/arm-inputs" ./cmd/qemu-pending-client-inputs)
 (cd "$source/tools/phantowd-lab" && "$go_binary" build -trimpath -o "$scratch/lab" ./cmd/phantowd-lab)
 "$scratch/lab" inspect-runtime-closure "$output/target" usr/lib/libsmbclient.so.0 >"$scratch/closure.json"
+"$scratch/lab" inspect-runtime-closure "$output/target" usr/lib/gconv/IBM850.so >"$scratch/charset.json"
 "$compiler" -std=c11 -O2 -Wall -Wextra -Werror \
     -I"$output/staging/usr/include/samba-4.0" -Wl,-rpath-link,"$output/staging/usr/lib/samba" \
     -o "$scratch/client" "$source/support/tests/samba-pending-write-fixture.c" -lsmbclient
 "$compiler" -std=c11 -O2 -static -Wall -Wextra -Werror \
     -o "$scratch/launcher" "$source/support/tests/samba-pending-write-launcher-fixture.c"
 python3 -B "$source/support/tests/pending_client_inputs_fixture.py" \
-    "$scratch/closure.json" "$scratch/documents.json" "$scratch/client" "$scratch/launcher" "$output/target" "$scratch"
+    "$scratch/closure.json" "$scratch/charset.json" "$scratch/documents.json" "$scratch/client" "$scratch/launcher" "$output/target" "$scratch"
 rm -rf "$scratch/cache" "$scratch/path"
 cp "$base/rootfs.ext2" "$scratch/rootfs.ext2"
 # Enlarge ONLY this fresh regular tmpfs copy, never a base/device/user disk.

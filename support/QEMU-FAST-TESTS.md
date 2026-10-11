@@ -2,8 +2,40 @@
 
 ## Dedicated same-open client prerequisites: host and QEMU
 
+The separate healthy execution lane uses a freshly enrolled native Samba data
+server and the complete original client/bootstrap roots:
+
+```powershell
+.\support\test-samba-root.ps1 -Campaign pending
+```
+
+It opens one pre-existing synthetic 4096-byte object and sends CLOSE only.
+Actual ARMv5 client/loader execution, unchanged retained local object/bytes,
+exit0, original-group absence, daemon stop, caller closure, FD equality and
+unchanged base pass. Exact ordered receipts reject missing, repeated, altered,
+failure and measurement-only output. OPEN is telemetry, not an independent
+original SMB session/open/object witness or permission to WRITE. Request,
+extent/cache/journal and pending-I/O fault correlation remain unqualified.
+
+This optional campaign is deliberately outside the default ten-guest union.
+It reuses the existing pinned image/workspace read-only, one auto-removed
+non-root container, 2 CPUs / 2 GiB / 256 PIDs and bounded 1536 MiB `/tmp` plus
+128 MiB `/var/tmp` RAM scratch. The snapshot guest retains its 180-second outer
+limit and the data phase its 35-second context. Dedicated client startup is
+bounded at 12 seconds, CLOSE at 5, library operations at 2 and process alarm at
+30. Corrected-input diagnostic measured OPEN at 5.557 seconds, exceeding the
+constructor-only checkpoint's unqualified initial 5-second startup guess.
+Existing launchers, idle observers and guest/protocol deadlines are unchanged;
+there is no retry or context renewal. No product install, HTTP or NAS action.
+
+The client pins the target Samba 64-bit file-offset/stat ABI before all C
+headers, with compile-time assertions. The original root includes the fixed
+dynamically loaded IBM850 conversion closure and CP850 catalog; static ELF
+dependencies alone omitted these inputs. Missing module/catalog and conflicting
+shared dependencies refuse instead of suppressing Samba's ASCII fallback.
+
 The optional complete-input lane constructs and retains the actual ARM client,
-its offline library/loader closure and six fixed non-secret documents:
+its offline library/loader/conversion closure and seven fixed non-secret documents:
 
 ```powershell
 .\support\test-samba-pending-launcher.ps1 -RetainedInputs
@@ -27,9 +59,9 @@ mandatory. This does not test launched-child settlement or actual SMB.
 
 This lane launches **neither the real client nor a server**. ELF interpreter /
 needed-library checks do not establish actual loading, ABI closure, SMB access,
-original request/session/object binding or pending-I/O behavior. The next gate
-is healthy real-client execution through the containing Owner, followed by
-original object and fault correlation. No NAS, HTTP endpoint or product startup
+original request/session/object binding or pending-I/O behavior. Healthy
+real-client execution is qualified by the distinct lane above; original object
+and fault correlation remain subsequent gates. No NAS, HTTP endpoint or product startup
 is involved.
 
 It reuses the same image/workspace read-only: one auto-removed non-root

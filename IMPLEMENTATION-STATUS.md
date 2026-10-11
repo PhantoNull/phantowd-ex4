@@ -3,7 +3,35 @@
 
 # Implementation status
 
-## Complete client composition: ARM construction tested, execution pending
+## Dedicated retained-client healthy execution — focused ARMv5 qualification
+
+The optional `support/test-samba-root.ps1 -Campaign pending` lane now executes
+the actual original ARM client/loader through its serialized input Owner against
+a freshly enrolled native Samba data server. One pre-existing synthetic object
+is opened and explicitly closed without WRITE. Exact ordered log verification,
+unchanged retained local identity/bytes, client exit0/original-group absence,
+daemon stop, caller closure, FD equality and unchanged base pass. All 1308
+recorded source inputs remain unchanged across final host/guest/regression runs.
+Pinned Go1.26.8 vet/unit/race3/ARM cross, C sanitizer/ARM ABI checks, Windows
+API/UI/vet/cross, original data guest and complete-input constructor guest pass.
+
+Actual diagnosis found a missing dynamic CP850 module/catalog and an independent
+32-bit caller ABI against Samba's 64-bit file-offset/stat ABI. Both now have
+RED/GREEN guards. Corrected OPEN measured5.557s in a diagnostic explicitly
+rejected by the strict verifier; only this distinct new startup allowance is
+calibrated to12s. CLOSE5/library2/alarm30/parent35/guest180 remain; no existing
+campaign, launcher, protocol/fault assertion, retry or context renewal changes.
+Temporary diagnostics are removed. Complete root now includes104 regular files,
+19 aliases and seven fixed non-secret documents, independently expected and held.
+
+This is not independent original SMB session/open/object or pending-I/O proof,
+a complete rebuilt image/audit, a hosted timeout fix, product activation, HTTP
+or NAS qualification. The default ten-guest union is unchanged; the focused
+lane is separate. Next bind the original server/session/open/object and request/
+extent/cache/journal before any WRITE or fault. Latest fully audited complete
+checkpoint remains `1be0b32`; the failed hosted integration gate is not waived.
+
+## Complete client composition: ARM constructor qualification
 
 A private serialized QEMU-only Owner now binds the complete original client,
 library/loader, fixed-document and bootstrap pins to the concrete dedicated
@@ -17,7 +45,8 @@ The actual optional ARM guest also passes never-started construction/closure,
 partial constructor cleanup, caller-duplicate closure, copied/canceled/busy/
 released refusals, exact ordered log controls and FD/base equality. These
 checks execute neither an adapter child nor a Samba server; launched lifecycle,
-actual loading and healthy SMB open/close remain the next qualification gate.
+actual loading and healthy SMB open/close are qualified only in the separate
+focused lane above, not by constructor bookkeeping.
 
 ### Dedicated process adapter
 
@@ -29,10 +58,9 @@ uncertain start/stop/release. Host refusal, command-description, parser, secret,
 never-launched release and sticky-close tests pass with race-count3; pinned
 Go1.26.8 vet and ARMv5 test cross-compilation also pass. Windows preflight passes.
 
-These tests execute no adapter child or SMB request. Complete retained-input
-composition exists as described above, but actual QEMU loading/healthy client/
-group-settlement proof is still next; original session/object binding and
-pending-I/O remain subsequent gates.
+These host tests execute no adapter child or SMB request. The separate focused
+ARM lane above qualifies actual loading/healthy client/group settlement;
+original session/object binding and pending-I/O remain subsequent gates.
 No product service, endpoint, NAS or physical disk operation is added.
 
 ## Native timing diagnosis: focused host/QEMU only
@@ -58,7 +86,7 @@ changes the exclusive supervisor or enables product/NAS services.
 
 The new complete-input ARMv5 guest constructs separate sealed tmpfs client
 and bootstrap roots from independently expected build hashes. It retains the
-actual client, library/loader roster and six fixed non-secret documents through
+actual client, library/loader/conversion roster and seven fixed non-secret documents through
 complete original-object rechecks. Both wrong-program hashes, partial cleanup,
 caller-duplicate closure, cancellation and released-reference refusal pass;
 final FD equality and unchanged base are required. The C handoff now requires
