@@ -3,6 +3,31 @@
 
 # Implementation status
 
+## Original-handle source reader — standalone ARMv5 prerequisite
+
+A separate approximately 7 KiB fixture library reads the actual pinned Samba
+4.22.11 fnum mapping and private definitions in one translation unit. It accepts
+one active fixed-client opening only, clears refused output and copies session,
+tree and persistent/volatile IDs without wire requests, allocation, map changes,
+close or reconnect. The build checks eight sensitive source hashes, ARMv5 ABI,
+one export and a local-read import whitelist; installed libraries are untouched.
+
+Actual ARM tests use the real upstream IDR allocation/lookup/removal and prove
+same-fnum reuse returns distinct IDs, with 36 output-clearing refusal cases.
+The positive seam mocks connection/session/tree getters. Separately loading the
+actual DSO exercises three early invalid-context refusals, not healthy SMB.
+Two valid/nineteen invalid receipt controls, byte-exact insertion, unchanged
+borrowed base and Windows API/UI/vet/ARM cross checks pass. Partial-link GC fixes
+unused upstream wire/event DSO references without weakening undefined-symbol
+checks; fixed private-library RUNPATH fixes the observed loader refusal.
+
+Run [the source-reader lane](support/QEMU-FAST-TESTS.md#remaining-original-handle-witness).
+It creates no persistent image/volume and changes no default campaign, product
+launcher or proof flag. Original-client retained integration, an independent
+same-server-open bridge, request/extent/cache/journal, WRITE, full-image/hosted
+and physical-device qualification remain open. A successful copied observation
+is not a lifetime lease or execution authority. Firmware is not installable.
+
 ## Original peer exit — composed ARMv5 fault prerequisite
 
 The separate optional `pending-peer-exit` guest starts the same retained real

@@ -49,3 +49,11 @@ all Buildroot modifications, toolchain/package source coverage, configurations,
 license notices and distribution obligations still require release review.
 The collected tree stays in the build workspace; the current binary CI artifact
 upload is not a publication of that source bundle.
+
+The optional Samba handle-observer fixture compiles original adapter/test code
+with the pinned upstream GPL-3.0-or-later translation unit and private headers.
+Those combined artifacts retain Samba's upstream license and notices; the
+Apache headers on the original adapter do not relicense upstream material.
+The fixture borrows the existing source collection and publishes no binary or
+source bundle. Any future distribution requires its own corresponding-source
+and license review; compile/guest success does not qualify that distribution.

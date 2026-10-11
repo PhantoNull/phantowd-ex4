@@ -134,10 +134,45 @@ both domains. Neither path/name, username, inode alone nor a numeric match
 establishes the original client handle. The global-open database schema also
 does not supply the missing share-mode-generation join by itself.
 
-The next proposed fixture must observe the actual original client mapping and
+The complete fixture must observe the actual original client mapping and
 the same server `files_struct`, retaining the existing process/namespace/TCP and
-local-object fences. A source-built, narrowly scoped read-only observer is a
-candidate, **not implemented or qualified**. Do not copy private layouts, read
+local-object fences. A narrowly scoped source-built reader now has a standalone
+prerequisite lane:
+
+```powershell
+.\support\test-pending-handle-observer.ps1
+```
+
+It compiles the reader in the actual pinned Samba fnum translation unit and uses
+its real private definitions, not copied layouts. Eight sensitive source hashes,
+strict ARMv5 compilation, one exported symbol and a local-read import whitelist
+are required. The separate approximately 7 KiB library never replaces installed
+Samba. The combined source-built artifact retains upstream GPL terms/notices.
+A partial-link GC step keeps the standalone test free of unused wire/event code;
+final undefined-symbol errors remain enabled. Fixed `/usr/lib/samba` RUNPATH
+resolves the existing private dependency closure, never an environment override.
+
+The actual ARM fixture exercises the real upstream IDR mapping allocation,
+lookup/removal and same-fnum reuse with distinct remote IDs. Thirty-six refusal
+cases clear all output bytes. Connection/session/tree getters are **mocked** in
+this positive seam; a separate loaded DSO exercises three early invalid-context
+refusals using its real imports. Two accepted and nineteen rejected receipt
+controls pass. Exact inserted bytes and unchanged borrowed base are checked.
+This is not an actual client opening, server bridge, retained library execution
+authority, lifetime/atomic observation, reconnect or pending-I/O qualification.
+The reader is not wired into an Owner, client or existing campaign. Its returned
+copy is metadata only; a reused fnum exposes a changed tuple rather than retaining
+identity. The future containing fence must compare original observations.
+
+The auto-removed non-root container uses the existing image/workspace read-only,
+no network/capabilities, NNP, 2 CPUs / 512 MiB / 128 PIDs and 256 MiB `/tmp` plus
+128 MiB `/var/tmp` scratch. Compile steps are bounded30s, guest process5s and
+QEMU30s with no guest NICs; no pulls/new images/volumes or full build. Source
+must stay frozen. This lane does not authenticate the full transitive SDK/source
+or qualify a current complete image/SBOM, hosted timing repair or EX4 support.
+
+Original-client integration and the independent server bridge are still
+**unimplemented and unqualified**. Do not copy private layouts, read
 process memory by PID, replace the public library in the product, or use an
 observer notice as execution authority. Missing, foreign, duplicated, replayed
 or changed handle/session/tree observations must refuse with retained review.

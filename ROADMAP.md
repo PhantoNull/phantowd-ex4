@@ -1731,7 +1731,15 @@ storage. No production roster provider or activation path exists.
   generation, not either CREATE persistent/volatile FileId. An original client
   mapping and independent same-server-open bridge are still required; see the
   [source-backed handle prerequisite](support/QEMU-FAST-TESTS.md#remaining-original-handle-witness).
-  No source observer or actual handle proof is implemented by that research. Keep review
+  A separate source-built reader now passes actual ARM mapping/IDR controls
+  (36 refusals and fnum reuse), using real pinned private definitions and one
+  exported symbol. The positive connection getters are mocked; loaded DSO
+  early-refusal checks are real. Strict receipts, inserted bytes and base hashes
+  pass. It is not wired into the original client/Owner or a server observer;
+  no actual original-handle proof, WRITE or default-campaign change follows.
+  Next retain/qualify its full inputs in the dedicated client composition,
+  observe the original client mapping, and independently bridge the same server
+  open before changing any proof flag. Keep review
   and original references on uncertainty; no generic-profile/idle-observer
   widening, product startup, HTTP or physical NAS action.
   The private fixed-producer status observation is now consumed by a separate
