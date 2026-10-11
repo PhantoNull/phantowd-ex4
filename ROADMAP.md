@@ -2997,6 +2997,13 @@ These features are separate scope, not shortcuts around core acceptance:
 
 ## Next bounded work packets
 
+The proposed [M4.5 server-open integration packet](support/SMB-SERVER-OBSERVATION-PLAN.md)
+now specifies fixed build closure, a separate server descriptor handoff, live
+capture, containing authority, fault/lifetime controls and regression ordering.
+The dedicated server VFS/bootstrap decision is still pending; no module or new
+profile is implemented/authorized by that plan, and client-launcher approval is
+not server approval. This does not waive the hosted deadline or product gates.
+
 M4.5 TCP wire prerequisite (2026-10-11): a private QEMU-only decoder and
 [focused check](support/test-pending-tcp-wire.ps1) now qualify fixed IPv4
 ESTABLISHED framing/identity/bounds, interrupted/foreign/duplicate refusal and
