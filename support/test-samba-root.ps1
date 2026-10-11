@@ -37,7 +37,7 @@ python3 -B /src/support/tests/test-runtime-loader-fixture.py
 python3 -B /src/support/tests/test-pending-client-healthy-log.py
 python3 -B /src/support/tests/test-pending-client-inputs-fixture.py
 python3 -B -m flake8 /src/support/tests/samba_root_fixture.py /src/support/tests/test-samba-root-fixture.py /src/support/tests/runtime_loader_fixture.py
-shellcheck /src/support/tests/samba-root-init.sh /src/support/tests/test-qemu-samba-root.sh
+shellcheck /src/support/tests/samba-root-init.sh /src/support/tests/test-qemu-samba-root.sh /src/support/tests/stage-samba-root-file.sh /src/support/tests/test-samba-root-staging.sh
 python3 -B -m flake8 /src/support/tests/pending_client_healthy_log.py /src/support/tests/test-pending-client-healthy-log.py
 python3 -B -m flake8 /src/support/tests/pending_client_inputs_fixture.py /src/support/tests/test-pending-client-inputs-fixture.py
 exec sh /src/support/tests/test-qemu-samba-root.sh /base "$output/target" \

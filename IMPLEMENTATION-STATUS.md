@@ -3,6 +3,19 @@
 
 # Implementation status
 
+## Samba guest staging — focused local correction
+
+The native campaign exposed incomplete file injection when the borrowed ext2
+base lacked free blocks; `debugfs` command success did not guarantee a complete
+copy. All Samba-root campaigns now enlarge only their disposable tmpfs copy to
+128 MiB, refuse larger bases rather than shrink them, and verify the five fixed
+programs plus manifest by readback, file type, mode and root ownership before
+boot. An actual pinned-debugfs fixture refuses stale and exhausted-image copies.
+The final focused native ARMv5 campaign passes with unchanged source and base.
+No timeout, retry, authority check or generic launcher changes. The separate
+hosted fresh-login deadline remains open; this is not a new complete-image,
+all-campaign, physical-device or product-service qualification.
+
 ## Private server-open packet transport — host/ARMv5 prerequisite
 
 The optional wire guest now also sends two fixed C-produced records through a

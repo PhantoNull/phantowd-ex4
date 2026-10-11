@@ -1,5 +1,18 @@
 # Fast API and file-service integration checks
 
+## Verified Samba guest staging
+
+The Samba-root driver enlarges only its disposable regular tmpfs root copy to
+128 MiB and refuses a larger input rather than shrinking it. The borrowed base
+remains read-only and hash-checked. Before boot, each of the five injected
+programs and the manifest must read back byte-exact with its fixed file type,
+mode and root ownership: a successful `debugfs` exit alone is insufficient.
+An actual pinned-debugfs regression checks an intact copy, stale existing bytes
+and a nonzero file that exhausts a synthetic ext2 image; the latter two refuse.
+The corrected focused native ARMv5 campaign passes. This repairs local image
+preparation, not the separate hosted live-session deadline, and does not qualify
+all campaigns, a complete image, product activation or physical EX4 hardware.
+
 ## Dedicated same-open client prerequisites: host and QEMU
 
 ### Kernel TCP wire prerequisite: not client binding

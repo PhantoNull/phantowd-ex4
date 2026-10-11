@@ -36,6 +36,7 @@ for file in rootfs.ext2 zImage versatile-pb.dtb SHA256SUMS; do
     [ -f "$base/$file" ] && [ ! -L "$base/$file" ] || exit 1
 done
 [ -d "$target" ] && [ ! -L "$target" ] || exit 1
+sh "$source_dir/support/tests/test-samba-root-staging.sh" "$debugfs" "$source_dir"
 scratch=$(mktemp -d "$tmpdir/phantowd-samba-root.XXXXXX")
 child_pid=
 cleanup() {
@@ -126,11 +127,16 @@ if [ "$pending_profile" -eq 1 ]; then
 fi
 rm -rf "$scratch/go-cache" "$scratch/go-path"
 cp "$base/rootfs.ext2" "$scratch/rootfs.ext2"
+# Enlarge ONLY this new regular tmpfs image copy. The default Go programs
+# can also exhaust the borrowed base's free blocks; original base stays RO.
+[ -f "$scratch/rootfs.ext2" ] && [ ! -L "$scratch/rootfs.ext2" ] || exit 1
+[ "$(wc -c < "$scratch/rootfs.ext2")" -le 134217728 ] || {
+    echo 'Samba root copy exceeds the fixed 128 MiB staging bound' >&2
+    exit 1
+}
+truncate -s 128M "$scratch/rootfs.ext2"
+"$(dirname "$debugfs")/resize2fs" -f "$scratch/rootfs.ext2" >/dev/null 2>&1
 if [ "$pending_profile" -eq 1 ]; then
-    # Enlarge ONLY this new regular tmpfs image copy. Original base stays RO.
-    [ -f "$scratch/rootfs.ext2" ] && [ ! -L "$scratch/rootfs.ext2" ] || exit 1
-    truncate -s 128M "$scratch/rootfs.ext2"
-    "$(dirname "$debugfs")/resize2fs" -f "$scratch/rootfs.ext2" >/dev/null 2>&1
     "$debugfs" -w -f "$scratch/pending/stage.commands" "$scratch/rootfs.ext2" >/dev/null 2>&1
     "$debugfs" -w -R "write $scratch/pending/inputs.json /usr/lib/phantowd/qemu-pending-client-inputs.json" "$scratch/rootfs.ext2" >/dev/null 2>&1
     "$debugfs" -w -R "write $scratch/pending/arm-inputs /usr/sbin/phantowd-pending-client-inputs" "$scratch/rootfs.ext2" >/dev/null 2>&1
@@ -150,12 +156,13 @@ for pair in "launcher phantowd-samba-root-launcher" \
     input=${pair%% *}
     output=${pair#* }
     case "$input" in /*) ;; *) input="$scratch/$input" ;; esac
-    "$debugfs" -w -R "write $input /usr/sbin/$output" "$scratch/rootfs.ext2" >/dev/null 2>&1
-    "$debugfs" -w -R "set_inode_field /usr/sbin/$output mode 0100755" "$scratch/rootfs.ext2" >/dev/null 2>&1
-    "$debugfs" -w -R "set_inode_field /usr/sbin/$output uid 0" "$scratch/rootfs.ext2" >/dev/null 2>&1
-    "$debugfs" -w -R "set_inode_field /usr/sbin/$output gid 0" "$scratch/rootfs.ext2" >/dev/null 2>&1
+    sh "$source_dir/support/tests/stage-samba-root-file.sh" "$debugfs" \
+        "$scratch/rootfs.ext2" "$input" "/usr/sbin/$output" \
+        "$scratch/stage-roundtrip" 0100755
 done
-"$debugfs" -w -R "write $scratch/manifest /usr/lib/phantowd/qemu-samba-root.manifest" "$scratch/rootfs.ext2" >/dev/null 2>&1
+sh "$source_dir/support/tests/stage-samba-root-file.sh" "$debugfs" \
+    "$scratch/rootfs.ext2" "$scratch/manifest" \
+    /usr/lib/phantowd/qemu-samba-root.manifest "$scratch/stage-roundtrip" 0100644
 # Default remains the complete qualification. Explicit local selection narrows
 # only which fresh guest is run, never its guards, assertions or180s deadline.
 for campaign in $campaigns; do
