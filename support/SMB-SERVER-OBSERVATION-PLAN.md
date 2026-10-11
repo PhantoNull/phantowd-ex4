@@ -3,11 +3,21 @@
 
 # M4.5: retained server-open observation integration plan
 
-Status: **proposed, not implemented or authorized for product startup**.
-The dedicated server VFS/bootstrap boundary requires an explicit architecture
-decision before implementation. Existing client-launcher approval does not
-approve a server profile. All initial work is host/disposable VersatilePB QEMU
-only; no NAS, physical media, HTTP, installed helper or pending WRITE experiment.
+Status: **dedicated fixture boundary approved; partial S1 loader prerequisite;
+not an active observer or authorized product startup**. Approval covers a
+dedicated VFS module/bootstrap in host/disposable VersatilePB QEMU only, retained
+original code/socket references through verified stop, with no extra privileges
+or generic-launcher widening. No NAS, physical media, HTTP, installed helper or
+pending WRITE experiment. Client-launcher approval alone is not server approval.
+
+`support/test-server-vfs-loader.ps1` now exercises the real pinned Samba loader
+and VFS registry at one canonical path. The fixture module deliberately refuses
+CONNECT with `ENOTSUP`: no endpoint or sampling path exists yet. Actual ARMv5
+loader/ABI/name/duplicate controls and non-root/caps0/NNP execution pass. Six
+sensitive SDK/configuration hashes, fixed exports/imports/direct dependencies,
+RELRO/NOW and non-executable stack are guarded. This is only **S1's loader
+prerequisite**, not a complete SDK/dynamic-closure lease, active-worker bridge or
+completed S1/S2. No default campaign or pipeline boot is added.
 
 ## Deliverable and existing boundaries
 
@@ -49,7 +59,7 @@ this behavior. A new dedicated server handoff must retain only its explicitly
 validated observation endpoint after root construction; do not add a generic
 extra-FD switch or relax the existing native bootstrap check.
 
-## Ordered implementation packets, after the boundary decision
+## Ordered implementation packets, within the approved fixture boundary
 
 1. **S1 — fixed build closure.** Add one fixture-only VFS producer using the
    existing source reader and wire encoder. Independently pin the actual SDK,

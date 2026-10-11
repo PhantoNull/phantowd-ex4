@@ -129,6 +129,26 @@ recovery, new full image or product/NAS qualification follows from this test.
 The fixed status worker still admits the complete original runtime before and
 after execution; redundant surrounding scans are avoided. No deadline changes.
 
+#### Dedicated server VFS loader prerequisite
+
+```powershell
+.\support\test-server-vfs-loader.ps1
+```
+
+Optional partial S1 only: actual Samba4.22.11 canonical module load/registration,
+CONNECT refusal while handoff/capture is absent, six real loader/ABI refusals,
+UID/GID65534/caps0/NNP, strict two-marker proof with2 positive/21 negative receipt
+controls. Fixed ARMv5 ABI/init export/imports/direct dependencies/SONAME/RUNPATH,
+RELRO/NOW/non-executable stack and6 sensitive SDK hashes are guarded. Compiler
+30s, guest30s, test process5s, wrapper180s; no changed existing guest deadline.
+One auto-removed non-root CPU2/RAM512MiB/PIDs128 container reuses the pinned
+image/workspace read-only and256MiB tmpfs. Only a disposable snapshot copy is
+injected; exact inserted bytes/base hash agree. No image/volume is created.
+No NIC, active daemon/worker, producer/channel/lease, new privilege or generic
+launcher mutation; no default campaign/pipeline, product package/HTTP/NAS.
+Complete transitive closure and S2-S6 remain required; see the
+[dedicated integration plan](SMB-SERVER-OBSERVATION-PLAN.md).
+
 #### Server-side original-open reader prerequisite
 
 ```powershell

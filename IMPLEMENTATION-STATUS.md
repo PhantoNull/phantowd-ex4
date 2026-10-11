@@ -3,6 +3,33 @@
 
 # Implementation status
 
+## New fixture-only server VFS loader prerequisite
+
+The approved dedicated server boundary has a first partial S1 implementation:
+`support/test-server-vfs-loader.ps1` compiles a fixed `phantowd_open_qemu` module
+and exercises Samba 4.22.11's actual canonical subsystem loader and VFS registry
+in ARM926 QEMU. The module refuses CONNECT, including absent inputs, with
+`ENOTSUP`; it does not sample files or enable a share. Invalid subsystem/name,
+slash path, missing module, wrong VFS ABI and duplicate registration refuse.
+The test drops to UID/GID 65534, verifies caps0/NNP and uses no daemon or NIC.
+
+Six sensitive SDK/configuration hashes, ARMv5 soft-float, sole init export,
+bounded allowed imports, exact two direct dependencies, fixed SONAME/RUNPATH,
+RELRO/NOW and non-executable stack are guarded. Inserted bytes, original base
+hash, strict ordered proof and malformed-receipt controls are checked. This is
+not complete transitive SDK/runtime authority or an active worker/producer.
+S1's full closure and S2-S6 handoff/capture/lifetime/regression remain open.
+No generic launcher, product package, default campaign or pipeline is changed.
+See the [integration plan](support/SMB-SERVER-OBSERVATION-PLAN.md).
+
+The later native45/15 candidate's complete local run stopped at its unchanged
+external 30-minute bound during the last SMART fixture. Ten Samba campaigns and
+their union passed, but the whole run failed; its success-gated image/source
+audit was not run. The unchanged last SMART lane separately passes within its
+original 90-second guest bound. This is not a replacement full result or hosted
+timing fix. The fully audited combined checkpoint below remains historical;
+this new source still needs complete local and own-head hosted qualification.
+
 ## Current combined local qualification
 
 Frozen `3ccc2df78cced5c58c05319fedf04f2a32b82180` passes the original complete

@@ -3057,12 +3057,17 @@ These features are separate scope, not shortcuts around core acceptance:
 
 ## Next bounded work packets
 
-The proposed [M4.5 server-open integration packet](support/SMB-SERVER-OBSERVATION-PLAN.md)
+The [M4.5 server-open integration packet](support/SMB-SERVER-OBSERVATION-PLAN.md)
 now specifies fixed build closure, a separate server descriptor handoff, live
 capture, containing authority, fault/lifetime controls and regression ordering.
-The dedicated server VFS/bootstrap decision is still pending; no module or new
-profile is implemented/authorized by that plan, and client-launcher approval is
-not server approval. This does not waive the hosted deadline or product gates.
+The dedicated VFS/bootstrap boundary is now approved for host/disposable QEMU
+only, with retained original references, no added privileges or generic-launcher
+widening. A partial S1 loader prerequisite uses Samba's actual canonical loader
+and registry; the module refuses CONNECT until trusted handoff/capture exists.
+Complete SDK/runtime closure, dedicated bootstrap, active producer, lifetime
+binding and faults remain open: neither S1 nor the server bridge is complete.
+Client-launcher approval alone is not server approval. This does not waive the
+failed full-integration/hosted gates or authorize product/NAS startup.
 
 M4.5 TCP wire prerequisite (2026-10-11): a private QEMU-only decoder and
 [focused check](support/test-pending-tcp-wire.ps1) now qualify fixed IPv4
