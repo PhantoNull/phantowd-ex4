@@ -3,6 +3,16 @@
 
 # M4.5: retained server-open observation integration plan
 
+The current optional OPEN lane adds a fixed STATUS-only helper with unchanged
+native12 namespace/chroot/capability/FD boundary. Two independently captured
+STATUS observations match the original client session/tree and retained worker
+proc/start/parent/group/executable/FD3 plus local-file view. Actual ARM and final
+data/FD/base checks pass. Helper settlement and complete original input fences
+are mandatory; its exact isolated-network warning is source-verified, not an
+arbitrary diagnostic allowance. This is partial S4 observation, not an original
+worker data-FD lease, reciprocal TCP/namespace pair, remote FileId/local-object
+match or request/frame authority. These are the next integration deliverables.
+
 Status: **dedicated fixture boundary approved; authenticated ARMv5 OPEN/CLOSE
 composition, but no active READ/frame or independent worker lease**. Approval covers a
 dedicated VFS module/bootstrap in host/disposable VersatilePB QEMU only, retained

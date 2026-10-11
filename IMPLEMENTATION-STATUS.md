@@ -3,6 +3,32 @@
 
 # Implementation status
 
+## Capture STATUS and retained worker observations — host/QEMU only
+
+The authenticated capture OPEN lane now runs a dedicated STATUS-only bootstrap
+through the unchanged twelve-input native boundary. Complete original code,
+configuration and state fences bracket each bounded helper; its group must
+settle before closure. Two independent STATUS snapshots identify the same
+session/tree/open and retained worker proc generation, parent/group, executable,
+inherited original endpoint and local-file view. Session/tree match the original
+client's cached handle; original worker refs survive until verified server stop.
+
+Actual ARMv5 passes with unchanged synthetic data, base and parent FD count.
+Host vet/unit/scoped race3, original capture-runtime regression and Windows
+API/UI/cross preflight pass. Strict OPEN receipts now have two positive/34
+negative controls. The isolated STATUS helper emits an exact pinned Samba
+warning about absent network interfaces: this is expected from CLONE_NEWNET,
+not ignored arbitrary stderr. A correct-seam regression requires the complete
+handoff/warning stream and refuses missing, repeated, foreign or reordered text.
+Initial actual refusals and diagnosis are preserved; temporary DEBUG is removed.
+
+This remains an observation prerequisite: no original worker data-FD pin,
+remote persistent/volatile FileId-to-local-object match, TCP/namespace pair,
+READ/frame/request authority, complete faults or product service is qualified.
+No privileges, generic/native launchers, default CI, NAS, physical disks or
+Docker image/volume creation are added. Full-image/hosted/SDK/recovery gates
+remain separate; focused results do not waive their failures.
+
 ## Authenticated capture client OPEN/CLOSE — actual ARMv5, not a worker lease
 
 `support/test-server-capture-open.ps1` composes the original fixed capture
@@ -16,7 +42,8 @@ not widened. No READ or VFS frame is requested.
 Actual ARMv5 authentication/OPEN/CLOSE, failed-constructor FD rollback,
 live-Close refusal, original module/channel retention, unchanged four-byte
 synthetic data and final descriptor equality pass. Strict receipts pass two
-positive/33 negative controls. Tagged Linux vet/unit, scoped old/new Owner race
+positive/33 negative controls at the OPEN-only checkpoint; the newer STATUS
+lane above extends the strict receipt to 34. Tagged Linux vet/unit, scoped old/new Owner race
 tests repeated three times, Windows API/UI/cross preflight and the original
 capture-runtime regression pass. The fixture uses only existing read-only
 builder/workspace/base inputs, auto-removed containers and bounded RAM scratch.

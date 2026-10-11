@@ -8,7 +8,17 @@ observer, bootstrap and library inputs are byte/mode/owner read back after
 staging and retained/revalidated around OPEN, cached handle observation and
 CLOSE. Failed-constructor rollback, live-Close refusal, server stop before
 client-input release, unchanged synthetic data and FD equality pass. The
-ordered redacted receipt has two positive/33 malformed controls.
+ordered redacted receipt now has two positive/34 malformed controls.
+
+The same lane independently builds/retains a STATUS-only static bootstrap using
+the unchanged native twelve-input boundary. Two actual STATUS helpers settle
+before closure; complete original code/config/state fences bracket each. Their
+fixed isolated-network warning is required exactly with the original handoff,
+not treated as arbitrary accepted stderr. The original worker proc/start/parent/
+group/executable/FD3 and local-file view stay retained; unchanged STATUS
+session/tree match the original client's cached tuple. Host refusal controls
+cover the exact receipt/profile and uncertain helper settlement. No actual
+worker data-FD pin, remote FileId binding, TCP pair or frame is yet qualified.
 
 This guest requests **no READ or VFS frame** and grants no worker/FileId/object/
 TCP authority. It does not run the four parser/refusal tests in the runtime-only

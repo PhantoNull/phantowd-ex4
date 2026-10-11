@@ -3,7 +3,7 @@
 
 # Implementation roadmap
 
-Reviewed: **2026-10-11**. This is the product specification and work breakdown,
+Reviewed: **2026-10-12**. This is the product specification and work breakdown,
 not a release announcement. The [README](README.md) is the concise entry point;
 component contracts remain authoritative for implemented behavior.
 
@@ -66,6 +66,16 @@ The initial evidence-backed status is tracked in
 currently product-qualified for migration.
 
 ## Current baseline
+
+The capture OPEN lane now also qualifies two independent STATUS observations
+on the original retained worker generation/executable/group/endpoint and local
+file view; session/tree match the original client handle. Its fixed STATUS-only
+bootstrap reuses the unchanged native twelve-input boundary and complete input
+fences. Actual ARM, data/FD/base equality, host checks and original runtime
+regression pass. Next, retain/recheck original process namespaces and reciprocal
+TCP, then consume bounded VFS records to match remote FileIds to the local object.
+No worker data-FD pin, READ/frame/request authority or product activation is
+claimed; full/hosted/recovery and complete fault gates remain mandatory.
 
 The optional capture OPEN lane now authenticates the original ARMv5 client,
 opens synthetic data O_RDONLY and explicitly closes the same handle through

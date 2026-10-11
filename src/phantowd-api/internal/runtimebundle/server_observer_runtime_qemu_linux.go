@@ -36,6 +36,8 @@ type serverObserverRuntimeQEMU struct {
 	channel       *pendingServerPacketQEMU
 	daemon        *processowner.NativeObserverDaemonQEMU
 	proc          *os.File
+	captureStatus *processowner.CaptureOwner
+	captureWorker *serverCaptureWorkerQEMU
 	pid           int
 	attempted     bool
 	review        bool
@@ -358,6 +360,13 @@ func (r *serverObserverRuntimeQEMU) Close() error {
 	if r.closed {
 		return nil
 	}
+	if r.captureStatus != nil {
+		settled, err := r.captureStatus.Settled(context.Background())
+		if err != nil || !settled {
+			r.review = true
+			return errors.Join(ErrReviewRequired, err)
+		}
+	}
 	if r.daemon != nil {
 		if err := r.daemon.Close(); err != nil {
 			if !errors.Is(err, processowner.ErrAlreadyRunning) && !errors.Is(err, processowner.ErrBusy) {
@@ -367,6 +376,18 @@ func (r *serverObserverRuntimeQEMU) Close() error {
 		}
 	}
 	for _, close := range []func() error{
+		func() error {
+			if r.captureStatus != nil {
+				return r.captureStatus.Close(context.Background())
+			}
+			return nil
+		},
+		func() error {
+			if r.captureWorker != nil && r.captureWorker.proc != nil {
+				return r.captureWorker.proc.Close()
+			}
+			return nil
+		},
 		func() error {
 			if r.proc != nil {
 				return r.proc.Close()

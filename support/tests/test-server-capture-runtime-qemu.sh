@@ -50,6 +50,18 @@ truncate -s 128M "$scratch/rootfs.ext2"
 "$output/host/sbin/resize2fs" -f "$scratch/rootfs.ext2" >/dev/null 2>&1
 debugfs="$output/host/sbin/debugfs"
 if "$client_open"; then
+    timeout --signal=TERM --kill-after=1 30 "$cc" -static -std=c11 -O2 -Wall -Wextra -Werror -Wno-unused-function \
+        -ffunction-sections -fdata-sections -Wl,--gc-sections,-z,relro,-z,now \
+        -DPHANTOWD_SAMBA_CAPTURE_STATUS_FIXTURE=1 -o "$scratch/status-bootstrap" "$source/support/tests/samba-server-capture-status-bootstrap-qemu.c"
+    status_path=/usr/sbin/phantowd-server-capture-status-bootstrap
+    printf '%s %s %s\n' "$(sha256sum "$scratch/status-bootstrap" | cut -d ' ' -f 1)" "$status_path" "$status_path" >>"$scratch/manifest"
+    "$debugfs" -w -R "write $scratch/status-bootstrap $status_path" "$scratch/rootfs.ext2" >/dev/null 2>&1
+    "$debugfs" -w -R "set_inode_field $status_path mode 0100555" "$scratch/rootfs.ext2" >/dev/null 2>&1
+    "$debugfs" -w -R "set_inode_field $status_path uid 0" "$scratch/rootfs.ext2" >/dev/null 2>&1
+    "$debugfs" -w -R "set_inode_field $status_path gid 0" "$scratch/rootfs.ext2" >/dev/null 2>&1
+    "$debugfs" -R "dump $status_path $scratch/readback" "$scratch/rootfs.ext2" >/dev/null 2>&1
+    cmp "$scratch/status-bootstrap" "$scratch/readback"
+    rm "$scratch/readback"
     client_scratch="$scratch/client"
     mkdir "$client_scratch"
     bash "$source/support/tests/build-samba-pending-handle-observer.sh" "$output" "$source" "$client_scratch"

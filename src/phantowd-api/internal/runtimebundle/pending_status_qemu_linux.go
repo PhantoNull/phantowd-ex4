@@ -36,6 +36,19 @@ type pendingStatusQEMU struct {
 // Missing, duplicate, null, ambiguous, aliased or unqualified fields refuse.
 // Unknown producer fields may exist, but are still bounded/duplicate checked.
 func parsePendingStatusQEMU(output []byte) (pendingStatusQEMU, error) {
+	return parsePendingStatusProfileQEMU(output, false)
+}
+
+// Fixed private capture profile, never caller-selected expectations or a grant.
+func parseServerCaptureStatusQEMU(output []byte) (pendingStatusQEMU, error) {
+	return parsePendingStatusProfileQEMU(output, true)
+}
+
+func parsePendingStatusProfileQEMU(output []byte, capture bool) (pendingStatusQEMU, error) {
+	username, identity, service, filename, mask := "qpsecond", uint32(2001), "writable", "pending-write", "0x0012019f"
+	if capture {
+		username, identity, service, filename, mask = "nobody", 65534, "readonly", "capture-read", "0x00120089"
+	}
 	if len(output) == 0 || len(output) > 1<<20 || !utf8.Valid(output) || !canonicalPendingJSONQEMU(output) {
 		return pendingStatusQEMU{}, ErrMismatch
 	}
@@ -81,8 +94,8 @@ func parsePendingStatusQEMU(output []byte) (pendingStatusQEMU, error) {
 	}
 	var observed pendingStatusQEMU
 	for key, session := range root.Sessions {
-		if !pendingNumberQEMU(key, 64, true) || session.ID != key || session.Username != "qpsecond" ||
-			session.UID == nil || *session.UID != 2001 || session.GID == nil || *session.GID != 2001 ||
+		if !pendingNumberQEMU(key, 64, true) || session.ID != key || session.Username != username ||
+			session.UID == nil || *session.UID != identity || session.GID == nil || *session.GID != identity ||
 			!pendingNumberQEMU(session.Server.PID, 32, true) || session.Server.PID == "1" ||
 			session.Server.TaskID != "0" || session.Server.VNN != "4294967295" ||
 			!pendingNumberQEMU(session.Server.UniqueID, 64, true) || session.Server.UniqueID == "18446744073709551615" {
@@ -91,23 +104,23 @@ func parsePendingStatusQEMU(output []byte) (pendingStatusQEMU, error) {
 		observed.session, observed.server = key, session.Server
 	}
 	for key, tree := range root.Trees {
-		if !pendingNumberQEMU(key, 32, true) || tree.ID != key || tree.Service != "writable" ||
+		if !pendingNumberQEMU(key, 32, true) || tree.ID != key || tree.Service != service ||
 			tree.Session != observed.session || tree.Server != observed.server {
 			return pendingStatusQEMU{}, fmt.Errorf("pending STATUS tree: %w", ErrMismatch)
 		}
 		observed.tree = key
 	}
-	file, exists := root.Files["/shares/writable/pending-write"]
-	if !exists || file.Path != "/shares/writable" || file.Name != "pending-write" ||
+	file, exists := root.Files["/shares/"+service+"/"+filename]
+	if !exists || file.Path != "/shares/"+service || file.Name != filename ||
 		file.ID.Device == nil || *file.ID.Device == 0 || file.ID.Inode == nil || *file.ID.Inode == 0 ||
 		file.ID.ExtID == nil || *file.ID.ExtID != 0 || file.Deletes == nil || *file.Deletes != 0 || len(file.Opens) != 1 {
 		return pendingStatusQEMU{}, fmt.Errorf("pending STATUS file: %w", ErrMismatch)
 	}
 	for key, open := range file.Opens {
 		if !pendingNumberQEMU(open.ID, 64, true) || key != observed.server.PID+"/"+open.ID ||
-			open.Server != observed.server || open.UID == nil || *open.UID != 2001 ||
-			open.Access.Hex != "0x0012019f" || open.Access.Read == nil || !*open.Access.Read ||
-			open.Access.Write == nil || !*open.Access.Write {
+			open.Server != observed.server || open.UID == nil || *open.UID != identity ||
+			open.Access.Hex != mask || open.Access.Read == nil || !*open.Access.Read ||
+			open.Access.Write == nil || *open.Access.Write == capture {
 			return pendingStatusQEMU{}, fmt.Errorf("pending STATUS open: %w", ErrMismatch)
 		}
 		observed.shareFileID, _ = strconv.ParseUint(open.ID, 10, 64)
