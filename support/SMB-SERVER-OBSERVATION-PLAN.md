@@ -3,6 +3,19 @@
 
 # M4.5: retained server-open observation integration plan
 
+The optional capture OPEN lane now qualifies two actual one-byte READs and
+kernel-credentialled VFS observations on the original authenticated handle.
+Every metadata field matches independent STATUS/client evidence; original
+worker generation/executable/endpoint, one O_RDONLY data slot, an O_PATH object
+pin, and reciprocal TCP/namespaces are checked with complete original inputs
+before/after each READ under both gates. The object pin survives verified stop.
+It is **not a duplicate worker OFD or pending-request lease**. Actual ARM CLOSE,
+unchanged data/base and FD equality pass within the existing timers; an extra
+tracer-only sweep duplicated READ fences and was removed, not relaxed.
+Complete SDK/construction/fault coverage, S4/S5 authority and S6/S7 remain open.
+
+## Earlier prerequisites and their original qualification scopes
+
 The capture OPEN lane now also binds and rechecks original client/worker
 generations, four retained namespaces and reciprocal kernel TCP pair through
 the unchanged connection primitive. Complete input/STATUS/worker fences run

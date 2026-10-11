@@ -163,7 +163,7 @@ else
 fi
 [ "$(sha256sum "$base/rootfs.ext2" | cut -d ' ' -f 1)" = "$base_hash" ]
 if "$client_open"; then
-    echo 'PHANTOWD_CAPTURE_OPEN_COMPLETE base_unchanged=true reads=false samples=false authority=false scope=qemu-only'
+    echo 'PHANTOWD_CAPTURE_OPEN_COMPLETE base_unchanged=true reads=true samples=true authority=false scope=qemu-only'
 else
     echo 'PHANTOWD_CAPTURE_RUNTIME_COMPLETE base_unchanged=true authentication=false file_open=false samples=false authority=false scope=qemu-only'
 fi

@@ -67,6 +67,22 @@ currently product-qualified for migration.
 
 ## Current baseline
 
+The optional capture lane now qualifies two actual one-byte READs on the same
+authenticated ARMv5 handle. Kernel-credentialled VFS metadata matches every
+remote FileId/session/tree/worker/local-object field against independent STATUS
+and the retained client tuple. One real O_RDONLY worker descriptor is selected
+by a bounded proc census; an O_PATH object pin survives until verified stop.
+Client-first dual locks bracket complete inputs, original worker and TCP/
+namespace fences around each READ. Explicit CLOSE/data/base/FD equality pass
+within unchanged deadlines after removing a duplicate tracer-only sweep.
+This is **not an OFD or pending-request lease**. Next: qualify active worker/
+module/configuration/channel drift, uncertain READ/stop and retained review;
+finish SDK/construction/fault coverage and exact regression union before any
+pending-I/O admission or product activation. No physical NAS work is authorized
+by these observations.
+
+### Earlier capture prerequisites (historical checkpoints)
+
 Dedicated capture OPEN now also binds and rechecks the original client/worker
 processes, four retained namespaces and reciprocal kernel TCP pair in ARMv5.
 Complete client/runtime/STATUS fences are serialized under fixed client-first

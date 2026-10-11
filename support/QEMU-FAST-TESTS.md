@@ -1,14 +1,14 @@
 # Fast API and file-service integration checks
 
-## Authenticated capture OPEN/CLOSE — one disposable ARM guest
+## Authenticated capture OPEN/two-READ/CLOSE — one disposable ARM guest
 
 Run `support/test-server-capture-open.ps1` for the actual fixed read-only client
 against the dedicated retained capture runtime. Independently declared client,
 observer, bootstrap and library inputs are byte/mode/owner read back after
-staging and retained/revalidated around OPEN, cached handle observation and
-CLOSE. Failed-constructor rollback, live-Close refusal, server stop before
+staging and retained/revalidated around OPEN, two one-byte READs on the same
+handle, and CLOSE. Failed-constructor rollback, live-Close refusal, server stop before
 client-input release, unchanged synthetic data and FD equality pass. The
-ordered redacted receipt now has two positive/35 malformed controls.
+ordered redacted receipt now has two positive/37 malformed controls.
 
 The same lane independently builds/retains a STATUS-only static bootstrap using
 the unchanged native twelve-input boundary. Two actual STATUS helpers settle
@@ -17,23 +17,32 @@ fixed isolated-network warning is required exactly with the original handoff,
 not treated as arbitrary accepted stderr. The original worker proc/start/parent/
 group/executable/FD3 and local-file view stay retained; unchanged STATUS
 session/tree match the original client's cached tuple. Host refusal controls
-cover the exact receipt/profile and uncertain helper settlement. No actual
-worker data-FD pin, remote FileId binding or frame is yet qualified.
+cover the exact receipt/profile and uncertain helper settlement. A bounded
+original-worker proc census selects one O_RDONLY data FD, refusing write or
+multiple readable aliases and ignoring O_PATH-only aliases. An O_PATH object
+pin is retained through verified stop; it is not a duplicate of the worker OFD.
 
 The same guest now binds/rechecks the original client/worker generations, four
 retained net/mnt namespaces and reciprocal kernel TCP pair. The private client
 Owner holds client then runtime locks together across complete input and STATUS/
 worker fences; rechecks accept no replacement peer. Kernel/TCP primitives and
 generic launchers are unchanged. Healthy exact ARM and host/refusal/race checks
-pass; this is not complete fault or remote-handle/request authority.
+pass; this is not complete fault or remote-handle/request authority. Each READ
+matches the original client's remote FileIds with every independently observed
+STATUS/worker/local-object field in the kernel-credentialled VFS record. Real
+sender UID/GID are independently read from the original proc, not inferred from
+the authenticated account. Complete inputs, worker/object and TCP fences run
+before and after each READ under both gates. Only an extra tracer-only sweep
+before the first READ was removed; global queue/fence rules remain unchanged.
 
-This guest requests **no READ or VFS frame** and grants no worker/FileId/object/
-TCP authority. It does not run the four parser/refusal tests in the runtime-only
+These two observations grant **no pending request or WRITE authority**. It does
+not run the five parser/refusal tests in the runtime-only
 lane below; those remain separately regression-tested. Existing base/source/
 workspace/image stay read-only; non-root/caps0/NNP/network-none auto-removal,
 CPU4/2GiB/256PIDs and1GiB RAM scratch, ARM926/256MiB/no NIC/all disk snapshots,
 96MiB run/8MiB private state/32MiB client-code/1MiB bootstrap tmpfs apply.
-QEMU60s, readiness/client-start12s, client-CLOSE5s, daemon-stop4s and outer180s
+QEMU60s, client alarm30s, each READ5s, frame receive1s, readiness/client-start12s,
+client-CLOSE5s, daemon-stop4s and outer180s
 remain unchanged. No Docker build/pull/new volume, physical media/NAS, data WRITE,
 HTTP/product installation, default CI or full/hosted qualification waiver.
 

@@ -9,6 +9,7 @@ import (
 	"context"
 	"errors"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/processowner"
@@ -52,6 +53,23 @@ func TestServerCaptureClientOwnerRefusesMissingInputsAndUnverifiedRelease(t *tes
 	}
 }
 
+func TestServerCaptureWorkerSenderUsesObservedRealCredentialsNotBootstrapUID(t *testing.T) {
+	actual := "Pid:\t1002\nUid:\t65534\t65534\t0\t65534\nGid:\t0\t65534\t0\t65534\nNoNewPrivs:\t1\n"
+	if value, err := parseCaptureWorkerSenderQEMU([]byte(actual), "1002"); err != nil || value != (unix.Ucred{Pid: 1002, Uid: 65534, Gid: 0}) {
+		t.Fatal("observed Samba real-root/effective-nobody GID refused", value, err)
+	}
+	good := "Pid:\t1002\nUid:\t65534\t65534\t0\t65534\nGid:\t65534\t65534\t0\t65534\nNoNewPrivs:\t1\n"
+	value, err := parseCaptureWorkerSenderQEMU([]byte(good), "1002")
+	if err != nil || value != (unix.Ucred{Pid: 1002, Uid: 65534, Gid: 65534}) {
+		t.Fatal("actual read-worker credential mode refused", value, err)
+	}
+	for _, pair := range [][2]string{{"1002", "1003"}, {"65534\t65534\t0\t65534", "2001\t2001\t0\t2001"}, {"NoNewPrivs:\t1", "NoNewPrivs:\t0"}, {"Pid:\t1002", "Pid:\t1002\nPid:\t1002"}, {"Gid:\t65534\t65534\t0\t65534", "Gid:\t65534\t65534\t0\t0"}} {
+		if value, err := parseCaptureWorkerSenderQEMU([]byte(strings.Replace(good, pair[0], pair[1], 1)), "1002"); err == nil || value != (unix.Ucred{}) {
+			t.Fatal("missing/drifted/foreign sender credentials admitted", pair)
+		}
+	}
+}
+
 func TestServerCaptureClientOwnerConnectionRejectsMissingCopyCancellationAndBusy(t *testing.T) {
 	file, err := os.Open(os.DevNull)
 	if err != nil {
@@ -83,6 +101,32 @@ func TestServerCaptureClientOwnerConnectionRejectsMissingCopyCancellationAndBusy
 	}
 	if _, err := file.Stat(); err != nil {
 		t.Fatal("refusal discarded caller original", err)
+	}
+}
+
+func TestServerCaptureClientOwnerFrameRefusesAbsentCopiedCanceledBusyAndUnbound(t *testing.T) {
+	var absent *pendingClientOwnerQEMU
+	if frame, err := absent.readCaptureFrameQEMU(context.Background()); err == nil || frame != (pendingServerPacketObservationQEMU{}) {
+		t.Fatal("absent frame owner admitted")
+	}
+	o := &pendingClientOwnerQEMU{gate: make(chan struct{}, 1), captureAdapter: &processowner.ServerCaptureClientQEMU{}}
+	o.self = o
+	copied := *o
+	if frame, err := copied.readCaptureFrameQEMU(context.Background()); err == nil || frame != (pendingServerPacketObservationQEMU{}) {
+		t.Fatal("copied frame owner admitted")
+	}
+	canceled, cancel := context.WithCancel(context.Background())
+	cancel()
+	if frame, err := o.readCaptureFrameQEMU(canceled); !errors.Is(err, context.Canceled) || frame != (pendingServerPacketObservationQEMU{}) || o.review {
+		t.Fatal("canceled frame had effects")
+	}
+	o.gate <- struct{}{}
+	if frame, err := o.readCaptureFrameQEMU(context.Background()); !errors.Is(err, processowner.ErrBusy) || frame != (pendingServerPacketObservationQEMU{}) {
+		t.Fatal("frame exclusive gate bypassed")
+	}
+	<-o.gate
+	if frame, err := o.readCaptureFrameQEMU(context.Background()); err == nil || frame != (pendingServerPacketObservationQEMU{}) {
+		t.Fatal("unbound frame owner admitted")
 	}
 }
 

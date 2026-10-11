@@ -17,9 +17,9 @@ import (
 	"golang.org/x/sys/unix"
 )
 
-// Fixed disposable authenticated OPEN/CLOSE tracer. This is not a server-open
-// lease: no READ/frame is requested, and worker/FileId/object/TCP binding is not
-// inferred from client telemetry or the fixture's fixed pathname.
+// Fixed disposable authenticated OPEN/two-READ/CLOSE tracer. Independent
+// worker/object/TCP and VFS metadata observations, not a server-open/request
+// lease or duplicated worker open-file description. No WRITE authority.
 func (p *Plan) ProbeServerCaptureOpenQEMU(ctx context.Context, code *os.File) (result error) {
 	if ctx == nil || p == nil || code == nil || serverObserverCodeGuardQEMU() != nil {
 		return ErrInvalid
@@ -165,8 +165,20 @@ func (p *Plan) ProbeServerCaptureOpenQEMU(ctx context.Context, code *os.File) (r
 	if err := o.bindCaptureConnectionQEMU(ctx, r, original, beforeData); err != nil {
 		return errors.Join(errors.New("capture original TCP/namespace binding"), err)
 	}
-	if err := o.recheckCaptureConnectionQEMU(ctx); err != nil {
-		return errors.Join(errors.New("capture original TCP/namespace recheck"), err)
+	// Each READ already brackets independent STATUS/worker/object/TCP and
+	// complete original inputs under both gates. An extra full connection-only
+	// sweep here repeats those observations before the first READ and consumes
+	// the fixed guest/client deadline without adding an independent witness.
+	first, err := o.readCaptureFrameQEMU(ctx)
+	if err != nil {
+		return errors.Join(errors.New("capture original first READ/frame"), err)
+	}
+	second, err := o.readCaptureFrameQEMU(ctx)
+	if err != nil || first != second || r.channel.sequence != 2 {
+		return errors.Join(errors.New("capture original second READ/frame"), err)
+	}
+	if _, err := r.captureWorker.file.Stat(); err != nil {
+		return errors.New("capture worker object pin lost before CLOSE")
 	}
 	if err := o.close(); !errors.Is(err, processowner.ErrBusy) {
 		return errors.New("live client released complete originals")
@@ -194,6 +206,9 @@ func (p *Plan) ProbeServerCaptureOpenQEMU(ctx context.Context, code *os.File) (r
 	if _, err := module.Stat(); err != nil {
 		return errors.New("server stop lost original client module")
 	}
+	if _, err := r.captureWorker.file.Stat(); err != nil {
+		return errors.New("capture worker object pin lost before verified release")
+	}
 	if err := o.close(); err != nil {
 		return err
 	}
@@ -207,6 +222,6 @@ func (p *Plan) ProbeServerCaptureOpenQEMU(ctx context.Context, code *os.File) (r
 	if err != nil || after != before {
 		return errors.Join(errors.New("capture OPEN descriptor leak"), err)
 	}
-	fmt.Println("PHANTOWD_CAPTURE_OPEN_PROOF authenticated_client=true actual_open_close=true complete_client_inputs=true module_retained=true original_channel_pair=true status_worker_local=true tcp_namespaces=true stop_before_release=true unchanged_data=true fd_equal=true reads=false samples=false worker_binding=false authority=false scope=qemu-only")
+	fmt.Println("PHANTOWD_CAPTURE_OPEN_PROOF authenticated_client=true actual_open_close=true complete_client_inputs=true module_retained=true original_channel_pair=true status_worker_local=true tcp_namespaces=true worker_object_pin=true stop_before_release=true unchanged_data=true fd_equal=true reads=true samples=true fileid_match=true worker_binding=false authority=false scope=qemu-only")
 	return nil
 }

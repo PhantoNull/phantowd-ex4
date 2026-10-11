@@ -34,6 +34,9 @@ func parseServerCaptureStatusResultQEMU(observed processowner.CaptureResult, run
 // module frame or request lease. The containing runtime owns it until stop.
 type serverCaptureWorkerQEMU struct {
 	proc   *os.File
+	file   *os.File // O_PATH object pin, not a duplicate open-file description.
+	slot   string
+	flags  uint32
 	status pendingStatusQEMU
 	start  string
 }
@@ -174,6 +177,23 @@ func (r *serverObserverRuntimeQEMU) observeCaptureWorkerLockedQEMU(ctx context.C
 	n, err := unix.Readlinkat(int(w.proc.Fd()), "fd/3", link[:])
 	if err != nil || string(link[:n]) != fmt.Sprintf("socket:[%d]", r.channel.right.inode) {
 		return fmt.Errorf("capture worker original endpoint: %w", ErrMismatch)
+	}
+	slot, flags, err := captureWorkerFileSlotQEMU(ctx, w.proc, initial)
+	if err != nil {
+		return fmt.Errorf("capture worker data descriptor census: %w", err)
+	}
+	if w.file == nil {
+		// Intentional fixed proc magic-link traversal: the proc reference is
+		// original and slot is kernel-enumerated, never caller-selected.
+		fd, err := unix.Openat(int(w.proc.Fd()), "fd/"+slot, unix.O_PATH|unix.O_CLOEXEC, 0)
+		if err != nil {
+			return err
+		}
+		w.file, w.slot, w.flags = os.NewFile(uintptr(fd), "original-worker-data-object-pin"), slot, flags
+	}
+	var pinned unix.Stat_t
+	if slot != w.slot || flags != w.flags || unix.Fstat(int(w.file.Fd()), &pinned) != nil || !samePendingObjectQEMU(initial, pinned) {
+		return fmt.Errorf("capture original worker data-object pin: %w", ErrMismatch)
 	}
 	after, err := pendingWorkerStatQEMU(base, w.status.server.PID, r.pid)
 	if err != nil || before != after {

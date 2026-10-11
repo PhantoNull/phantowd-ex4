@@ -377,6 +377,12 @@ func (r *serverObserverRuntimeQEMU) Close() error {
 	}
 	for _, close := range []func() error{
 		func() error {
+			if r.captureWorker != nil && r.captureWorker.file != nil {
+				return r.captureWorker.file.Close()
+			}
+			return nil
+		},
+		func() error {
 			if r.captureStatus != nil {
 				return r.captureStatus.Close(context.Background())
 			}

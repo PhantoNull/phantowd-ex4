@@ -3,7 +3,39 @@
 
 # Implementation status
 
-## Capture TCP/namespace composition — retained originals in actual ARMv5
+## Capture READ/FileId observations — actual ARMv5, not request authority
+
+The optional capture OPEN lane now performs two one-byte READs on the original
+authenticated handle. Each kernel-credentialled VFS record matches every field
+against independent STATUS and the original client tuple, including remote
+persistent/volatile FileIds and the retained local device/inode. Complete
+original client/runtime inputs, worker generation/executable/endpoint, and the
+reciprocal TCP/namespaces are rechecked before and after each READ while both
+Owner gates remain held in client-first order.
+
+The original worker's bounded `/proc` descriptor census identifies one actual
+O_RDONLY data slot, excludes O_PATH aliases, and refuses writable or ambiguous
+aliases. Its retained O_PATH object pin survives verified server stop and is
+released afterward. This pins file-object identity, **not the worker's original
+open-file description** or a pending request. Two matched observations,
+explicit CLOSE, unchanged data/base and final descriptor equality pass in ARM.
+
+Real Samba credentials explain the initially refused fixture: real/effective/
+saved/fs UID is 65534/65534/0/65534, but GID is 0/65534/0/65534. The frame must
+match independently observed real credentials, never an assumed share GID.
+An additional connection-only sweep in the tracer duplicated the READ fences
+and exhausted the unchanged guest deadline; removing that fixture-only sweep
+allows the actual pair to pass, without reducing either READ's fences or
+changing the connection primitive, global queue guards or timeouts. Strict
+OPEN receipts now require object-pin/read/sample/FileId fields (two positive/
+37 negative controls). No DEBUG instrumentation remains.
+
+These are bounded observations only. Complete SDK/construction/fault and
+worker-OFD/request qualification, full-image/hosted/recovery/product gates
+remain open. No WRITE, generic-launcher change, installed service, HTTP, NAS,
+physical disk or new Docker image/volume is involved.
+
+## Earlier capture TCP/namespace checkpoint — retained originals in ARMv5
 
 The dedicated capture client now reuses the unchanged original-process,
 four-namespace and reciprocal kernel TCP checks. Its private containing Owner
@@ -25,7 +57,7 @@ is qualified yet. Complete construction/fault/SDK/full-image/hosted/recovery/
 product gates remain separate. Generic launchers, the underlying connection
 primitive, privileges, timers, NAS/physical media and Docker storage are unchanged.
 
-## Capture STATUS and retained worker observations — host/QEMU only
+## Earlier capture STATUS checkpoint — host/QEMU only
 
 The authenticated capture OPEN lane now runs a dedicated STATUS-only bootstrap
 through the unchanged twelve-input native boundary. Complete original code,
@@ -51,7 +83,7 @@ No privileges, generic/native launchers, default CI, NAS, physical disks or
 Docker image/volume creation are added. Full-image/hosted/SDK/recovery gates
 remain separate; focused results do not waive their failures.
 
-## Authenticated capture client OPEN/CLOSE — actual ARMv5, not a worker lease
+## Earlier capture OPEN/CLOSE checkpoint — not a worker lease
 
 `support/test-server-capture-open.ps1` composes the original fixed capture
 runtime with independently declared client/bootstrap/library inputs. The

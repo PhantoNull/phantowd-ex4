@@ -54,9 +54,13 @@ opening and closing synthetic data without changes or leaked descriptors.
 Its independent server-side snapshots now match the same worker generation,
 session, tree and open to the retained local file. The original client/worker
 processes, retained namespaces and reciprocal TCP connection now also match.
+Two one-byte READs now also match kernel-credentialled VFS metadata against
+the original client FileIds and independent worker/local-file observations.
+A retained worker file-object pin is not a duplicate open-file description
+or request lease; complete faults and product activation remain unqualified.
 An optional composed guest now observes the original client handle and matches
 its session/tree to the independent server witness. Remote-FileId-to-local-object
-and request binding remain unqualified.
+matching is observed only in that fixture; request binding remains unqualified.
 A separate peer-stop fixture also verifies client refusal, sticky review and
 original-reference retention with unchanged data and verified subprocess disposal.
 It does not qualify pending writes, recovery or product service activation;
