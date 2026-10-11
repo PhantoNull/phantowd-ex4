@@ -4,6 +4,24 @@
 fixed, ordered set of such processes. It is not a product service manager and
 is not reachable over HTTP or RPC.
 
+The separate `qemu && linux` `PendingClientQEMU` adapter fixes a single-use
+dedicated launcher, read-only root and client descriptors at construction.
+It uses distinct stdout/stderr pipes, a copied bounded secret through a fresh
+anonymous pipe, fixed descriptor roles and an owned process group. Client OPEN
+and CLOSE notices are telemetry, never server/session/object or durability
+proofs. Only explicit close is available; there is no write/reopen/retry/restart
+operation. Failed start, timeout, forced stop or uncertain closure preserves
+review and original pins. Normal reference release requires exit0 and verified
+original-group absence; close errors are sticky and retain later references.
+
+Current qualification is host refusal/parser/command-description/release
+bookkeeping tests, race tests and ARMv5 cross-compilation only. No adapter child
+has run in QEMU yet. The containing owner must still bind/recheck the complete
+client/loader/configuration/bootstrap census and original storage/identity,
+qualify actual healthy library/client execution and then original SMB object
+correlation. This constructor is not complete execution/product authority;
+ordinary builds/startup, generic launchers and HTTP remain unchanged.
+
 The caller supplies a fixed executable, arguments and bounded readiness/stop
 timeouts. The owner opens a regular executable without following symlinks,
 starts it in its own process group with a minimal environment, captures a

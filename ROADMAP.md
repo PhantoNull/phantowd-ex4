@@ -1653,6 +1653,11 @@ storage. No production roster provider or activation path exists.
   It starts no process; this is not actual libsmbclient execution, a containing
   process Owner, request/extent binding or pending-I/O qualification. Next:
   compose its serialized lifecycle and execute the healthy real client,
+  using the new host-tested dedicated single-use process adapter (fixed
+  descriptor ABI, distinct output pipes, copied pipe-only secret, exact ordered
+  telemetry, close-only control and sticky review/reference retention).
+  The adapter has NOT executed a target child; cross-compilation and host
+  bookkeeping tests cannot qualify loader, group lifecycle or SMB access.
   then correlate its original server/session/
   open/object identities before admitting any pending-write fault. Keep review
   and original references on uncertainty; no generic-profile/idle-observer

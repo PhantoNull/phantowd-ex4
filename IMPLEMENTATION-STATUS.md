@@ -3,6 +3,21 @@
 
 # Implementation status
 
+## Dedicated client process adapter: host-tested, target execution pending
+
+A separate QEMU-only single-use adapter now fixes the launcher/root/client
+descriptors, independent output pipes and anonymous secret pipe. It parses
+only exact ordered OPEN/CLOSE telemetry, supports one explicit close and no
+write/reopen/retry/restart operation, and keeps review/original pins after any
+uncertain start/stop/release. Host refusal, command-description, parser, secret,
+never-launched release and sticky-close tests pass with race-count3; pinned
+Go1.26.8 vet and ARMv5 test cross-compilation also pass. Windows preflight passes.
+
+These tests execute no adapter child or SMB request. Complete retained-input
+composition and actual QEMU loading/healthy client/group-settlement proof are
+next; original session/object binding and pending-I/O remain subsequent gates.
+No product service, endpoint, NAS or physical disk operation is added.
+
 ## Native timing diagnosis: focused host/QEMU only
 
 Fixed QEMU-only live-operation and worker-stage telemetry now separates the
