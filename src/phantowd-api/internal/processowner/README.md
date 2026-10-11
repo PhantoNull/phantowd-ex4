@@ -128,7 +128,18 @@ run on non-root Linux and ARM926 QEMU. They retain no process/socket authority
 and do not qualify adversarial mutation or general cancellation timing.
 Pure framing/identity/refusal/bound controls and fuzz tests are separate. The optional
 [focused runner](../../../../support/QEMU-FAST-TESTS.md#kernel-tcp-wire-prerequisite-not-client-binding)
-reuses the pinned builder/base read-only and runs eleven cases three times.
+reuses the pinned builder/base read-only and runs fifteen cases three times.
+
+The separate pure copied-pair matcher consumes bounded completed observations
+and two inode observations, never PIDs/paths/descriptors. It requires distinct
+original inode/cookie identities and fixed reciprocal loopback1445 endpoints,
+rejects missing/reversed/cross-pair/duplicate/foreign or malformed rows, and
+publishes no pair after cancellation. Full UID/cookie/endpoint rows are retained
+as copied values for continuity comparison. Host/race3 and actual ARMv5 tests
+match two same-UID/same-server connections to independent descriptors and
+require peer preservation after one pair closes. This does not trust the caller's
+inode census, qualify principals, pin processes/namespaces, or bind the actual
+SMB client; no method is added to `PendingClientQEMU` or its containing Owner.
 
 This is not an atomic inventory, namespace/process generation binding, retained
 socket authority, remote SMB client-handle, request/extent proof or permission

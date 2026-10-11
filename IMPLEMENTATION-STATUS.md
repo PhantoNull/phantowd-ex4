@@ -29,6 +29,18 @@ No NAS, physical disk, product endpoint or legacy migration is qualified.
 
 ## Pending client: independent original server-open observation
 
+A new private copied-pair prerequisite now compares exact inode observations
+against completed TCP rows, preserves both cookie/UID/endpoint identities and
+requires the fixed reciprocal loopback1445 fixture. Missing, swapped, cross-pair,
+duplicate, foreign, malformed or oversized observations refuse without a pair;
+cancellation includes a final publication fence. Pinned Linux tagged module
+vet and wire/pair unit/race-count3, Windows API/UI/ARM cross, and the strict
+fifteen-case ARM926 runner repeated three times pass. The actual two-connection
+fixture independently matches descriptor identities, checks closure/peer
+preservation and unchanged FD counts; all1323 tested inputs and base are unchanged.
+This is pure comparison, **not a trusted process/socket binding**: no Owner
+method, namespace lease, actual SMB client handle, WRITE or fault is added.
+
 A separate private QEMU-only TCP wire prerequisite is now host/ARM-qualified.
 It decodes bounded IPv4 ESTABLISHED responses, refuses foreign/interrupted/
 duplicate/incomplete observations and exposes only completed copied rows.

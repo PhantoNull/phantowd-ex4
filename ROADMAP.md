@@ -2922,6 +2922,18 @@ namespace binding, followed by opaque SMB handle/request/extent/cache/journal
 proofs before WRITE/fault admission. Wire completion is not atomicity or
 process/socket authority; the hosted timing gate remains unwaived.
 
+The subsequent copied-pair comparison adds four cases to that same optional
+runner (fifteen total, each repeated three times). It admits only two distinct
+observed inode/cookie identities with reciprocal fixed loopback1445 endpoints,
+refusing missing/cross-pair/reversed/duplicate/foreign/malformed/over-bound input
+and canceled publication. Full copied UID/cookie/endpoint identities expose
+continuity changes. Actual host/ARM two-connection descriptor oracles and
+closure/peer preservation pass, along with tagged vet/race3/Windows preflight;
+1323 source inputs/base unchanged. It is not connected to the Owner and does
+not qualify the supplied inode census, principals, namespaces or actual SMB
+handle/request. The original-process binding and all later gates remain open;
+the default ten-campaign lane and deadlines are unchanged.
+
 Local efficiency increment (2026-10-07): code inspection/preparation reuses
 one 32 KiB scratch buffer per pass, with every original hash/metadata/identity
 fence retained. Host digest allocation/chunk/cancellation/reuse regressions,

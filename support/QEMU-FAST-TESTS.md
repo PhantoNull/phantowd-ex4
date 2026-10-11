@@ -12,7 +12,7 @@ The private QEMU-only TCP decoder has a separate focused check:
 
 With the existing pinned builder/workspace and verified base artifacts, this
 cross-compiles one test binary and boots one disposable ARM926/256 MiB guest.
-Eleven cases execute three times: fixed identity decoding, incomplete/foreign/
+Fifteen cases execute three times: fixed identity decoding, incomplete/foreign/
 interrupted/duplicate/framing/bound refusal, complete copied observations and
 real reciprocal loopback socket identity/continuity/post-close disappearance.
 Actual dump identities match independent descriptor Fstat/SO_COOKIE/address/
@@ -24,6 +24,19 @@ mid-receive cancellation, adversarial socket drift or process/socket ownership.
 The kernel query is test-only, with fixed IPv4 TCP ESTABLISHED request scope and
 kernel-sender/truncation checks. No Samba client or server is launched there.
 Completion means wire framing, not an atomic socket inventory or process lease.
+
+The private copied-pair matcher selects exact original inode observations and
+requires distinct cookie/inode identities and reciprocal `127.0.0.1:1445`
+endpoints, without bound interfaces. It rejects missing, reversed, cross-pair,
+foreign and duplicate tuple/cookie/inode observations, including invalid
+unselected rows and oversized input. Both full rows retain UID/cookie/endpoints,
+so changing those fields cannot compare equal to an earlier pair. Cancellation
+at admission or final publication exposes no partial pair. A real two-connection
+kernel fixture checks each pair against independent descriptors, then closes
+one and requires only the other to remain observable. It starts no Samba.
+The matcher does not qualify the supplied inode census, principals, process or
+namespace, nor make the completed dump atomic; trusted retained composition is
+still required. It is not wired into an Owner or fault admission.
 
 The auto-removed non-root container uses 2 CPUs, 2 GiB, 256 PIDs and 1536 MiB RAM
 scratch, no network/capabilities, no-new-privileges and read-only source/base/
@@ -37,7 +50,7 @@ verified QEMU artifact directory, not physical storage.
 This prerequisite does **not** bind the original owned SMB client/worker,
 namespace, opaque handle or request/extent, and authorizes neither WRITE nor
 fault admission. The existing same-open campaign and its guards stay separate.
-For Linux-native checks, run `go test -tags=qemu -run '^TestPendingTCPWire'`
+For Linux-native checks, run `go test -tags=qemu -run '^TestPendingTCP(Wire|Pair)'`
 against `./internal/processowner` from `src/phantowd-api`; cross-compilation
 alone is not ARM execution.
 

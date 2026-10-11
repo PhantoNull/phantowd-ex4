@@ -73,7 +73,7 @@ wait "$child_pid" || status=$?
 child_pid=
 tr -d '\r' <"$scratch/guest.log" >"$scratch/normalized.log"
 if [ "$status" -ne 0 ] || \
-    [ "$(grep -Fxc 'PHANTOWD_PENDING_TCP_ARM_DONE cases=11 repetitions=3 binding=false scope=qemu-only' "$scratch/normalized.log")" -ne 1 ] || \
+    [ "$(grep -Fxc 'PHANTOWD_PENDING_TCP_ARM_DONE cases=15 repetitions=3 binding=false scope=qemu-only' "$scratch/normalized.log")" -ne 1 ] || \
     grep -Eq '^--- FAIL:|^FAIL|PHANTOWD_PENDING_TCP_ARM_FAILED' "$scratch/normalized.log"; then
     tail -n 100 "$scratch/normalized.log" >&2
     exit 1
@@ -83,6 +83,10 @@ for name in ActualKernelLoopbackIdentityAndClosure ActualKernelDistinctConnectio
     DumpPublishesOnlyCompleteCopiedRows DumpRefusesForeignInterruptedAndPartialData \
     DumpCompletionAndEarlierRowsFailClosed DumpBoundsRowsAndBytes ExtensionBoundsAndNonAuthority ExactRecordLimit; do
     [ "$(grep -c "^--- PASS: TestPendingTCPWire$name " "$scratch/normalized.log")" -eq 3 ]
+done
+for name in SelectsExactReciprocalObjects RefusesAmbiguousMissingAndForeignObservations \
+    CancellationAndContinuity ActualKernelDistinctOriginalsAndClosure; do
+    [ "$(grep -c "^--- PASS: TestPendingTCPPair$name " "$scratch/normalized.log")" -eq 3 ]
 done
 grep -E '^--- PASS:|^PASS$|^PHANTOWD_PENDING_TCP_ARM_DONE' "$scratch/normalized.log"
 [ "$(sha256sum /base/rootfs.ext2 | awk '{print $1}')" = "$base_hash" ]
