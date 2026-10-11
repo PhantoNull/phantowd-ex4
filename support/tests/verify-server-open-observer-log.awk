@@ -1,0 +1,9 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 PhantoWD EX4 contributors
+{ sub(/\r$/, "") }
+/PHANTOWD_/ {
+    if ($0 == "PHANTOWD_SERVER_OPEN_SOURCE_READY refusals=65 dso_refusals=65 real_fd=true real_getters=true synthetic_open=true active_worker=false authority=false scope=qemu-only" && state == 0) { state = 1; next }
+    if ($0 == "PHANTOWD_SERVER_OPEN_SOURCE_GUEST_DONE" && state == 1) { state = 2; next }
+    failed = 1
+}
+END { if (failed || state != 2) exit 1 }

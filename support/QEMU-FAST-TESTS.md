@@ -116,6 +116,46 @@ recovery, new full image or product/NAS qualification follows from this test.
 The fixed status worker still admits the complete original runtime before and
 after execution; redundant surrounding scans are avoided. No deadline changes.
 
+#### Server-side original-open reader prerequisite
+
+```powershell
+.\support\test-server-open-observer.ps1
+```
+
+This independent source-built prerequisite copies a fixed72-byte private tuple
+from the same pinned Samba4.22.11 `files_struct`: session/tree, persistent/volatile
+remote IDs, share-mode generation, worker identity and device/inode. Complete
+bounded internal membership precedes file dereference; reciprocal open/tree
+links, non-durable state, local worker identity and a real single-link regular
+descriptor must agree. The reader performs local getters/fstat only, clears
+refused output and never opens a path, allocates, sends SMB, closes or writes.
+It accepts trusted in-process context/output pointers, not untrusted memory or
+caller-supplied runtime authority. Its narrow predicate is not product disk/share
+eligibility or compatibility policy.
+
+The ARM guest uses actual upstream fd_handle allocation/getters and list macros
+with real temporary files. All65 refusals also execute through the separately
+loaded DSO and actual installed Samba getters, without getter mocks. Copied/
+foreign file, list cycle, different real inode, EBADF, directory and actual
+hard-link controls refuse; repeated positive metadata and unchanged data pass.
+The open/tree/connection records themselves are **synthetic**. There is no active
+daemon, protocol/session/worker binding or complete observer-input authority.
+Fourteen sensitive source hashes, fixed ARMv5 ABI/RUNPATH/SONAME, one export and
+local-read/stack-protector imports are guarded. Original code is combined with
+pinned GPL Samba definitions/functions under their upstream terms. No installed
+Samba object is replaced; artifacts are not product runtime inputs.
+
+The optional wrapper reuses only the existing pinned image/workspace read-only,
+with one auto-removed non-root user1000/caps0/NNP/networknone container,
+CPU2/RAM512MiB/PIDs128 and256+128MiB tmpfs scratch. Compile30s/process5s/QEMU30s;
+the guest has no NIC, a read-only snapshot root and1MiB temporary files in tmpfs.
+Inserted module/test bytes, strict two-positive/nineteen-negative receipt controls
+and unchanged borrowed-base hash are required. Freeze sources while running.
+No new image/volume/full build or default-ten/pipeline change. Live retained
+producer/channel admission, original-worker capture, independent same-open bridge
+and composed fault controls remain missing; `smb_object_bound=false` and
+`pending_io=false` stay mandatory. No WRITE, HTTP, NAS or release qualification.
+
 #### Remaining original-handle witness
 
 Source inspection of pinned Samba 4.22.11 identifies separate ID domains:

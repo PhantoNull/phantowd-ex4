@@ -1755,6 +1755,16 @@ storage. No production roster provider or activation path exists.
   sequential checks are not atomic or continuous. Keep review
   and original references on uncertainty; no generic-profile/idle-observer
   widening, product startup, HTTP or physical NAS action.
+  A separate server-side source reader now copies both remote IDs and share-mode
+  generation from one pinned files_struct, including worker/session/tree and
+  real-descriptor device/inode checks. Actual ARM source and loaded DSO run65
+  refusals with real upstream getters/list/fstat; open/tree records are synthetic.
+  Fourteen sensitive source hashes, ABI/import/SONAME/RUNPATH guards and strict
+  base/receipt controls pass. This is not the active-worker bridge. Next bind a
+  dedicated retained producer/metadata channel and capture the actual original
+  worker opening before comparing the client/server/local-object tuple; preserve
+  all existing fences, refusal/review, fault and pre-WRITE requirements. See the
+  [server reader prerequisite](support/QEMU-FAST-TESTS.md#server-side-original-open-reader-prerequisite).
   The private fixed-producer status observation is now consumed by a separate
   original-object composition in the explicit `file` guest. A fixed authorized
   client opens one existing synthetic file once, without create/truncate/reopen.

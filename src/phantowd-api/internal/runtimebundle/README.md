@@ -89,6 +89,14 @@ DLIST singleton construction correct two earlier prerequisite assumptions.
 Remote FileId halves remain distinct from server share-mode generation: this
 does not qualify their missing bridge, faults, WRITE, HTTP or product activation.
 
+The separate [server reader source lane](../../../../support/QEMU-FAST-TESTS.md#server-side-original-open-reader-prerequisite)
+now copies remote IDs, share-mode generation and local descriptor identity from
+one actual-type files_struct, with ARM source/loaded-DSO refusal controls and
+real Samba getters/fstat. The supplied open/tree records remain synthetic. It is
+not called by this Owner, not a live worker observer or execution authority;
+retained producer/channel construction and actual same-open comparison remain
+required. No runtime constructor or product surface changes in this prerequisite.
+
 The optional `pending-peer-exit` fault guest uses that same actual binding, then
 stops only its owned daemon group. Concrete adapter refusal must stop its client;
 the containing Owner retains review, complete client inputs, server code/helper,

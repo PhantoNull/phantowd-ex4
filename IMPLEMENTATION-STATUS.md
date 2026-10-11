@@ -3,6 +3,33 @@
 
 # Implementation status
 
+## Server-side original-open reader — standalone ARMv5 prerequisite
+
+A separate source-built fixture now copies the remote persistent/volatile IDs,
+session/tree, share-mode file generation, worker identity and local device/inode
+from the same pinned Samba `files_struct`. It checks bounded complete file-list
+membership before dereferencing the supplied file, reciprocal open/tree links,
+active non-durable state and a real regular-file descriptor via `fstat`. IDs from
+different domains remain separate. Refused output is cleared; no open, close,
+allocation, VFS operation, wire request or write is performed by the reader.
+
+The actual ARM guest uses real upstream `fd_handle` allocation/getters/list macros
+and temporary files. Sixty-five refusal cases run both against the source-built
+test and the loaded DSO using actual installed Samba getters, without getter
+mocks. These include a foreign/copied file, list cycle, changed local object,
+closed/directory descriptor and real hard link. Repeated positive tuples and
+unchanged file data pass. Fourteen sensitive source hashes, ARMv5 ABI/RUNPATH,
+fixed SONAME, one export, bounded local-read/stack-protector imports, exact
+insertion, strict receipts and borrowed-base equality are checked.
+
+**Open/tree/connection records are synthetic, not an active server worker.**
+This does not qualify the live remote-FileId/server-generation bridge, protocol
+or lifetime authority. Complete retained producer/channel construction, actual
+worker capture and comparison under the existing original process/namespace/TCP/
+server/local-object fences remain required. No Owner, default campaign, product,
+HTTP or NAS behavior changes. Run `support/test-server-open-observer.ps1`; see the
+[standalone contract](support/QEMU-FAST-TESTS.md#server-side-original-open-reader-prerequisite).
+
 ## Original client handle observations — composed ARMv5 prerequisite
 
 An opt-in test build of the fixed client now calls the pinned source reader on
