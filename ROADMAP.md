@@ -67,6 +67,16 @@ currently product-qualified for migration.
 
 ## Current baseline
 
+An optional ARMv5 worker-exit fixture now qualifies loss between two requests:
+one READ is independently matched, the original worker is terminated via a
+generation-bound pidfd, the next READ returns a zero frame and both Owners
+retain review/original pins after independently verified client/server stop.
+Retry/restart/close refuse; data/base stay unchanged. Runtime Close now refuses
+review before any disposal, with a real descriptor-effect host regression.
+This is partial S5, **not interruption of pending I/O**. Next: active original
+module/configuration/channel drift and uncertain READ/stop coverage, retained
+SDK/construction/OFD/request qualification and the exact regression union.
+
 The optional capture lane now qualifies two actual one-byte READs on the same
 authenticated ARMv5 handle. Kernel-credentialled VFS metadata matches every
 remote FileId/session/tree/worker/local-object field against independent STATUS

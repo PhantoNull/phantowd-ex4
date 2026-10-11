@@ -37,6 +37,8 @@ func (p *Plan) ProbeServerCaptureOpenQEMU(ctx context.Context, code *os.File) (r
 	if !marked {
 		return ErrInvalid
 	}
+	workerExit := captureWorkerExitFixtureQEMU()
+	retainedFault := false
 	var roots [6]*os.File
 	for i, name := range []string{"/run/phantowd-native-samba-root/etc", "/run/phantowd-native-samba-state", "/run/observer-readonly", "/run/observer-writable", "/run/phantowd-pending-client-input", "/run/phantowd-pending-client-bootstrap"} {
 		fd, err := unix.Open(name, unix.O_PATH|unix.O_DIRECTORY|unix.O_CLOEXEC|unix.O_NOFOLLOW, 0)
@@ -118,7 +120,7 @@ func (p *Plan) ProbeServerCaptureOpenQEMU(ctx context.Context, code *os.File) (r
 		return err
 	}
 	defer func() {
-		if !r.closed {
+		if !r.closed && !retainedFault {
 			stopped, stopErr := r.Stop(context.Background())
 			closeErr := r.Close()
 			if closeErr != nil || len(stopped.Members) != 1 || stopped.Members[0].Process.PID != 0 {
@@ -136,7 +138,7 @@ func (p *Plan) ProbeServerCaptureOpenQEMU(ctx context.Context, code *os.File) (r
 		return err
 	}
 	defer func() {
-		if !o.closed {
+		if !o.closed && !retainedFault {
 			if o.started && !o.settled {
 				result = errors.Join(result, o.stop(context.Background()))
 			}
@@ -159,9 +161,9 @@ func (p *Plan) ProbeServerCaptureOpenQEMU(ctx context.Context, code *os.File) (r
 	if err != nil || initial.SessionID == 0 || initial.TreeID == 0 || initial.PersistentID == 0 || initial.VolatileID == 0 {
 		return errors.Join(ErrMismatch, err)
 	}
-	if _, err := r.Observe(ctx); err != nil {
-		return err
-	}
+	// Binding immediately below repeats Observe's complete runtime/process
+	// fences within the stronger client-first dual-lock scope, then adds the
+	// original worker/object/TCP witnesses. Do not prepend an identical sweep.
 	if err := o.bindCaptureConnectionQEMU(ctx, r, original, beforeData); err != nil {
 		return errors.Join(errors.New("capture original TCP/namespace binding"), err)
 	}
@@ -172,6 +174,19 @@ func (p *Plan) ProbeServerCaptureOpenQEMU(ctx context.Context, code *os.File) (r
 	first, err := o.readCaptureFrameQEMU(ctx)
 	if err != nil {
 		return errors.Join(errors.New("capture original first READ/frame"), err)
+	}
+	if workerExit {
+		if err := captureWorkerExitProofQEMU(ctx, o, r, original, beforeData); err != nil {
+			return errors.Join(errors.New("capture original worker-exit refusal"), err)
+		}
+		if err := checkData(); err != nil {
+			return err
+		}
+		// All producers are verified absent. Review intentionally keeps these
+		// owned original pins; no retry/disposal, until fixture process teardown.
+		retainedFault = true
+		fmt.Println("PHANTOWD_CAPTURE_WORKER_EXIT_PROOF first_read_matched=true original_pidfd=true worker_exit=true next_read_refused=true zero_frame=true client_stopped=true server_stopped=true review=true originals_retained=true no_retry=true unchanged_data=true samples=1 authority=false scope=qemu-only")
+		return nil
 	}
 	second, err := o.readCaptureFrameQEMU(ctx)
 	if err != nil || first != second || r.channel.sequence != 2 {

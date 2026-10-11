@@ -92,3 +92,32 @@ func TestServerObserverRuntimeCloseUncertaintyRetainsUnattemptedOriginalsWithout
 		t.Fatal("copied runtime acquired disposal authority", err)
 	}
 }
+
+func TestServerObserverRuntimeReviewCloseNeverReleasesOriginalWorkerObject(t *testing.T) {
+	fd, err := unix.Open(t.TempDir(), unix.O_PATH|unix.O_CLOEXEC, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	pin := os.NewFile(uintptr(fd), "retained-reviewed-object")
+	defer pin.Close()
+	closed, err := os.Open(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := closed.Close(); err != nil {
+		t.Fatal(err)
+	}
+	// Review must refuse before attempting ANY release, even if a later
+	// original is already unavailable. No fabricated healthy daemon/state.
+	r := &serverObserverRuntimeQEMU{gate: make(chan struct{}, 1), review: true,
+		captureWorker: &serverCaptureWorkerQEMU{file: pin}, shares: [2]*os.File{closed, nil}}
+	r.self = r
+	for range 3 {
+		if err := r.Close(); !errors.Is(err, ErrReviewRequired) || r.closed || r.releaseErr != nil {
+			t.Fatal("review attempted disposal", err)
+		}
+		if _, err := pin.Stat(); err != nil {
+			t.Fatal("review released original worker object", err)
+		}
+	}
+}

@@ -172,6 +172,35 @@ func TestServerCaptureClientConnectionRefusesAbsentCopiedCanceledAndUnstarted(t 
 	}
 }
 
+func TestServerCaptureStoppedObservationRefusesAbsentCopiedCanceledBusyAndUnsettled(t *testing.T) {
+	var absent *ServerCaptureClientQEMU
+	if settled, err := absent.StoppedInReviewQEMU(context.Background()); settled || err == nil {
+		t.Fatal("absent stop declared verified")
+	}
+	inner := &PendingClientQEMU{gate: make(chan struct{}, 1), captureMode: true, handleMode: true}
+	inner.self = inner
+	client := &ServerCaptureClientQEMU{adapter: inner}
+	client.self = client
+	copied := *client
+	if settled, err := copied.StoppedInReviewQEMU(context.Background()); settled || err == nil {
+		t.Fatal("copied stop declared verified")
+	}
+	canceled, cancel := context.WithCancel(context.Background())
+	cancel()
+	if settled, err := client.StoppedInReviewQEMU(canceled); settled || !errors.Is(err, context.Canceled) || inner.review {
+		t.Fatal("canceled observation changed state")
+	}
+	inner.gate <- struct{}{}
+	if settled, err := client.StoppedInReviewQEMU(context.Background()); settled || !errors.Is(err, ErrBusy) {
+		t.Fatal("exclusive stop observation bypassed")
+	}
+	<-inner.gate
+	inner.review, inner.stopTried = true, true
+	if settled, err := client.StoppedInReviewQEMU(context.Background()); settled || err == nil || !inner.review {
+		t.Fatal("missing process declared settled or review cleared")
+	}
+}
+
 func TestServerCaptureClientAccumulatedNoticesNeverLatchPartialOrAcceptUnrequestedRead(t *testing.T) {
 	h := PendingHandleObservationQEMU{SessionID: 11, TreeID: 3, PersistentID: 17, VolatileID: 19}
 	c := &PendingClientQEMU{captureMode: true, handleMode: true, stdout: newDiagnosticRing(), stderr: newDiagnosticRing()}

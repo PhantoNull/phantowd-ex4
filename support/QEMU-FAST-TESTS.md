@@ -1,5 +1,28 @@
 # Fast API and file-service integration checks
 
+## Capture worker loss — one separate disposable ARM guest
+
+Run `support/test-server-capture-open.ps1 -WorkerExit` to verify original-worker
+loss **between requests**, after one matched READ. A separate fixed kernel
+marker and exact VersatilePB/root guard constrain the injector. It opens a
+pidfd only for the held original worker, rechecks the original proc generation
+after binding and then signals through that descriptor. Pinned kernel pidfs
+poll semantics admit mandatory IN plus optional HUP after parent reaping.
+No caller-supplied PID, numeric-PID signal or generic launcher change exists.
+
+The next READ must publish a zero frame and quarantine both Owners. Dedicated
+read-only settlement checks prove client/group absence without treating forced
+stop as SMB CLOSE. Server/group absence, retained original object/proc/code/
+channel references, unchanged data/base and repeated READ/start/close refusal
+are mandatory. Reviewed pins intentionally remain until fixture-process
+teardown. The strict fault receipt has two positive/25 negative controls and
+cannot be substituted for the healthy OPEN/two-READ/CLOSE proof below.
+
+The same existing read-only inputs and bounded auto-removed RAM container apply.
+Guest60s/client30s/outer180s limits remain; pidfd exit observation is bounded2s.
+No pending-I/O/WRITE/durable reconnect/physical fault/full/hosted/product gate
+waiver, default campaign boot, NAS operation or new Docker storage is added.
+
 ## Authenticated capture OPEN/two-READ/CLOSE — one disposable ARM guest
 
 Run `support/test-server-capture-open.ps1` for the actual fixed read-only client
@@ -54,7 +77,10 @@ remain retained through verified daemon-group stop. The dedicated bootstrap
 creates only a synthetic RAM account via stdin; any existing passdb/uncertain
 lookup refuses before mutation. Actual smbd/NEGOTIATE, live-Close refusal,
 retained original inputs, explicit existing-state refusal with unchanged TDB
-and final FD equality pass. Strict receipts have two positive/39 negative cases.
+and exact healthy FD equality pass. The separate existing-passdb refusal checks
+verified stop, unchanged database and sticky review retaining original pins
+until fixture-process teardown; it does not claim aggregate FD equality after
+an intentionally retained refusal. Strict receipts have two positive/41 negative cases.
 
 The same guest also executes five dedicated Go capture-client protocol,
 lifecycle and connection-refusal tests (five-second test bound). The verifier requires all five

@@ -6,7 +6,9 @@ base=${1:?base artifacts required}
 output=${2:?existing output required}
 source=${3:?repository required}
 client_open=false
+worker_exit=false
 if [ "$#" -eq 4 ] && [ "$4" = --client-open ]; then client_open=true
+elif [ "$#" -eq 4 ] && [ "$4" = --client-worker-exit ]; then client_open=true; worker_exit=true
 elif [ "$#" -ne 3 ]; then exit 1
 fi
 tmpdir=${TMPDIR:-/tmp}
@@ -146,6 +148,7 @@ export TMPDIR="$scratch"
 status=0
 command_line='console=ttyAMA0 root=/dev/sda rootwait ro panic=-1 phantowd_observer_daemon_fixture=1 phantowd_capture_runtime_fixture=1 init=/usr/sbin/phantowd-server-capture-runtime-init'
 if "$client_open"; then command_line="$command_line phantowd_capture_client_open_fixture=1"; fi
+if "$worker_exit"; then command_line="$command_line phantowd_capture_worker_exit_fixture=1"; fi
 timeout --signal=TERM --kill-after=2 60 qemu-system-arm -M versatilepb -cpu arm926 -m 256M \
     -object rng-random,id=capture-rng,filename=/dev/urandom -device virtio-rng-pci,rng=capture-rng \
     -kernel "$base/zImage" -dtb "$base/versatile-pb.dtb" \
@@ -156,13 +159,17 @@ timeout --signal=TERM --kill-after=2 60 qemu-system-arm -M versatilepb -cpu arm9
     -display none -serial stdio -monitor none -nic none -no-reboot >"$scratch/guest.log" 2>&1 || status=$?
 cat "$scratch/guest.log"
 [ "$status" -eq 0 ] || exit 1
-if "$client_open"; then
+if "$worker_exit"; then
+    awk -f "$source/support/tests/verify-server-capture-worker-exit-log.awk" "$scratch/guest.log"
+elif "$client_open"; then
     awk -f "$source/support/tests/verify-server-capture-open-log.awk" "$scratch/guest.log"
 else
     awk -f "$source/support/tests/verify-server-capture-runtime-log.awk" "$scratch/guest.log"
 fi
 [ "$(sha256sum "$base/rootfs.ext2" | cut -d ' ' -f 1)" = "$base_hash" ]
-if "$client_open"; then
+if "$worker_exit"; then
+    echo 'PHANTOWD_CAPTURE_WORKER_EXIT_COMPLETE base_unchanged=true authority=false scope=qemu-only'
+elif "$client_open"; then
     echo 'PHANTOWD_CAPTURE_OPEN_COMPLETE base_unchanged=true reads=true samples=true authority=false scope=qemu-only'
 else
     echo 'PHANTOWD_CAPTURE_RUNTIME_COMPLETE base_unchanged=true authentication=false file_open=false samples=false authority=false scope=qemu-only'

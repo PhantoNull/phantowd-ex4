@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 PhantoWD EX4 contributors
 [CmdletBinding()]
-param([string]$BaseArtifactDir)
+param([string]$BaseArtifactDir, [switch]$WorkerExit)
 $ErrorActionPreference = 'Stop'
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 if (-not $BaseArtifactDir) { $BaseArtifactDir = Join-Path $repoRoot 'artifacts/qemu-armv5' }
@@ -25,8 +25,11 @@ config_hash="$(sha256sum /src/configs/phantowd_qemu_armv5_defconfig | cut -c1-16
 output="/workspace/output/$BUILDROOT_VERSION-$config_hash"
 shellcheck /src/support/tests/test-server-capture-runtime-qemu.sh /src/support/tests/server-capture-runtime-init.sh /src/support/tests/test-server-capture-open-log.sh
 bash /src/support/tests/test-server-capture-open-log.sh /src
+shellcheck /src/support/tests/test-server-capture-worker-exit-log.sh
+bash /src/support/tests/test-server-capture-worker-exit-log.sh /src
 bash /src/support/tests/test-server-capture-runtime-qemu.sh /base "$output" /src --client-open
 '@
+if ($WorkerExit) { $linux = $linux.Replace('--client-open', '--client-worker-exit') }
 $encoded = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($linux.Replace("`r`n", "`n")))
 docker run --rm --pull never --network none --read-only `
     --user 1000:1000 --cap-drop ALL --security-opt no-new-privileges `

@@ -5,7 +5,7 @@ set -eu
 source=${1:?repository required}
 [ "$#" -eq 1 ] || exit 1
 stage='PHANTOWD_SAMBA_ROOT_STAGE_READY fresh=true hashes_during_copy=true no_overwrite=true refusals=5 scope=qemu-only'
-proof='PHANTOWD_CAPTURE_RUNTIME_PROOF actual_smbd=true module_retained=true original_channel_pair=true stop_before_release=true existing_passdb_refused=true unchanged_passdb=true fd_equal=true authentication=false file_open=false samples=false authority=false scope=qemu-only'
+proof='PHANTOWD_CAPTURE_RUNTIME_PROOF actual_smbd=true module_retained=true original_channel_pair=true stop_before_release=true existing_passdb_refused=true unchanged_passdb=true healthy_fd_equal=true existing_state_review_retained=true authentication=false file_open=false samples=false authority=false scope=qemu-only'
 done='PHANTOWD_CAPTURE_RUNTIME_GUEST_DONE'
 arm_tests=$'=== RUN   TestServerCaptureClientNoticesRequireCompleteSameOpenSequence\n--- PASS: TestServerCaptureClientNoticesRequireCompleteSameOpenSequence (0.05s)\n=== RUN   TestServerCaptureClientNoticesRefuseDriftUnrequestedReadsAndOtherProtocols\n--- PASS: TestServerCaptureClientNoticesRefuseDriftUnrequestedReadsAndOtherProtocols (0.00s)\n=== RUN   TestServerCaptureClientDedicatedLifecycleRefusesHostNilCopyCancelBusyAndReview\n--- PASS: TestServerCaptureClientDedicatedLifecycleRefusesHostNilCopyCancelBusyAndReview (0.02s)\n=== RUN   TestServerCaptureClientConnectionRefusesAbsentCopiedCanceledAndUnstarted\n--- PASS: TestServerCaptureClientConnectionRefusesAbsentCopiedCanceledAndUnstarted (0.00s)\n=== RUN   TestServerCaptureClientAccumulatedNoticesNeverLatchPartialOrAcceptUnrequestedRead\n--- PASS: TestServerCaptureClientAccumulatedNoticesNeverLatchPartialOrAcceptUnrequestedRead (0.00s)\nPASS'
 bare_proof=$proof
@@ -33,7 +33,7 @@ done
 for mutation in 'actual_smbd=true/actual_smbd=false' 'module_retained=true/module_retained=false' \
     'original_channel_pair=true/original_channel_pair=false' 'stop_before_release=true/stop_before_release=false' \
     'existing_passdb_refused=true/existing_passdb_refused=false' 'unchanged_passdb=true/unchanged_passdb=false' \
-    'fd_equal=true/fd_equal=false' 'authentication=false/authentication=true' \
+    'healthy_fd_equal=true/healthy_fd_equal=false' 'existing_state_review_retained=true/existing_state_review_retained=false' 'authentication=false/authentication=true' \
     'file_open=false/file_open=true' 'samples=false/samples=true' 'authority=false/authority=true' \
     'scope=qemu-only/scope=product' 'scope=qemu-only/scope=qemu-only unexpected=true'; do
     refused "$stage$newline${proof/${mutation%%\/*}/${mutation#*\/}}$newline$done"
@@ -47,4 +47,5 @@ refused "$stage$newline${proof/(0.05s)/(nans)}$newline$done"
 refused "$stage$newline${proof/--- PASS: TestServerCaptureClientAccumulatedNoticesNeverLatchPartialOrAcceptUnrequestedRead (0.00s)/--- PASS: OtherTest (0.00s)}$newline$done"
 refused "$stage$newline${proof/=== RUN   TestServerCaptureClientConnectionRefusesAbsentCopiedCanceledAndUnstarted/}$newline$done"
 refused "$stage$newline${proof/--- PASS: TestServerCaptureClientConnectionRefusesAbsentCopiedCanceledAndUnstarted (0.00s)/}$newline$done"
+refused "$stage$newline${proof/healthy_fd_equal=true existing_state_review_retained=true/fd_equal=true}$newline$done"
 printf 'PHANTOWD_CAPTURE_RUNTIME_LOG_CONTROLS_DONE positive=2 negative=%s scope=host-parser-only guest=false\n' "$negative"

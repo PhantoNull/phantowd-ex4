@@ -357,6 +357,9 @@ func (r *serverObserverRuntimeQEMU) Close() error {
 	if r.releaseErr != nil {
 		return errors.Join(ErrReviewRequired, r.releaseErr)
 	}
+	if r.review {
+		return ErrReviewRequired
+	}
 	if r.closed {
 		return nil
 	}

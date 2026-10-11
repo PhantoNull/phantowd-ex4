@@ -14,6 +14,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"golang.org/x/sys/unix"
 )
 
 const serverCaptureClientHandlePrefixQEMU = "PHANTOWD_CAPTURE_CLIENT_HANDLE "
@@ -136,6 +138,32 @@ func (c *ServerCaptureClientQEMU) Close() error {
 		return ErrUnavailable
 	}
 	return c.adapter.Close()
+}
+
+// Read-only settlement observation after quarantine. Does not clear review,
+// release pins, signal, retry or authorize a protocol CLOSE/restart.
+func (client *ServerCaptureClientQEMU) StoppedInReviewQEMU(ctx context.Context) (bool, error) {
+	if !client.validQEMU() {
+		return false, ErrUnavailable
+	}
+	c := client.adapter
+	if err := c.enter(ctx); err != nil {
+		return false, err
+	}
+	defer func() { <-c.gate }()
+	if !c.review || !c.started || !c.stopTried || c.stopErr != nil || c.process == nil || c.originalProc == nil || !c.process.exited() {
+		return false, ErrReviewRequired
+	}
+	if err := verifyProcessGroupExited(c.process); err != nil {
+		return false, err
+	}
+	if _, err := pendingProcGenerationReadQEMU(c.originalProc); !errors.Is(err, unix.ENOENT) && !errors.Is(err, unix.ESRCH) {
+		return false, errors.Join(ErrReviewRequired, err)
+	}
+	if err := ctx.Err(); err != nil {
+		return false, err
+	}
+	return true, nil
 }
 
 // Only the containing original-worker runtime may supply the first proc

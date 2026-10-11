@@ -3,6 +3,44 @@
 
 # Implementation status
 
+## Capture worker loss between READs — bounded host/QEMU fault fixture
+
+`support/test-server-capture-open.ps1 -WorkerExit` reuses the existing retained
+runtime/client and one verified READ. A QEMU-only injector binds a pidfd to the
+original worker with held-proc generation checks before/after binding; it never
+signals an arbitrary or caller-supplied PID. After verified worker exit, the
+next READ returns no frame, both Owners remain in review, client and server
+groups are independently verified stopped, and original code/channel/proc/
+file-object references remain open. Repeated READ/start/close attempts refuse;
+synthetic data and base are unchanged. Actual ARMv5 passes. The separate ordered
+fault receipt has two positive/25 malformed controls; no default CI boot is
+added and all existing timers/privileges/launchers remain unchanged.
+
+A correct-seam host regression exposed a real `Close` gap: runtime review was
+not checked before attempting owned-descriptor disposal. `Close` now refuses
+review before any release. A dedicated read-only client settlement observation
+checks the original group/process disappearance without clearing quarantine,
+releasing references or treating forced stop as successful SMB CLOSE. The
+fixture intentionally retains reviewed pins until process teardown, not a
+healthy-release FD-equality claim.
+
+The original existing-passdb refusal fixture previously required reviewed
+inputs to be disposed. Its corrected receipt now separates exact healthy FD
+equality from explicitly retained existing-state review; passdb hashes/metadata,
+stopped group, repeated startup/Close refusal and retained originals are checked.
+The five ordered ARM adapter tests remain mandatory, with two positive/41
+malformed receipt controls. No aggregate FD-equality claim is made for the
+intentionally retained fault authority. A failed healthy guest60 regression and
+that genuine old-fixture contradiction are preserved; the redundant tracer-only
+Observe immediately before the complete dual-lock bind was removed without
+changing bind/READ fences or timers.
+
+This is **worker loss after a completed READ, before the next request**. It
+does not qualify interruption of pending READ/WRITE, durable reconnect,
+physical disk faults, complete module/config/channel/SDK/construction coverage,
+full-image/hosted checks, recovery or product activation. No NAS, physical media,
+HTTP/WRITE experiment or new Docker image/volume is involved.
+
 ## Capture READ/FileId observations — actual ARMv5, not request authority
 
 The optional capture OPEN lane now performs two one-byte READs on the original

@@ -3,6 +3,21 @@
 
 # M4.5: retained server-open observation integration plan
 
+Partial S5 now includes actual original-worker loss **after one completed READ,
+before the next request**. The optional `-WorkerExit` lane uses a generation-
+bound pidfd, refuses the next READ with a zero frame, proves client/server stop,
+retains original object/proc/code/channel pins in sticky review, and refuses
+retry/restart/close. A host regression fixes runtime Close's missing early
+review refusal. Actual ARMv5 and independent strict fault receipts pass. This
+does not qualify interrupted pending I/O, durable reconnect, remaining active
+module/config/channel faults or complete S4/S5/SDK/construction/S6/S7.
+The existing-state refusal regression now also forbids reviewed disposal and
+retains unchanged passdb/code/channel/state references after verified stop.
+Its healthy FD equality and retained-fault scopes are distinct, with all five
+ordered ARM adapter tests and strict2+41 controls still mandatory. Only a
+redundant tracer Observe before the complete dual-lock bind was removed; no
+bind/READ/global queue fence or timer was weakened.
+
 The optional capture OPEN lane now qualifies two actual one-byte READs and
 kernel-credentialled VFS observations on the original authenticated handle.
 Every metadata field matches independent STATUS/client evidence; original

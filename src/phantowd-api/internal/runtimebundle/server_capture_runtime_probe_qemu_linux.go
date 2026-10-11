@@ -86,14 +86,17 @@ func (p *Plan) ProbeServerCaptureRuntimeQEMU(ctx context.Context, code *os.File)
 	if err := r.Close(); err != nil {
 		return err
 	}
-	if err := p.serverCaptureExistingStateRefusalQEMU(ctx, code, roots); err != nil {
-		return err
-	}
 	after, err := retainedFixtureFDCount()
 	if err != nil || before != after {
 		return errors.Join(errors.New("capture runtime descriptor leak"), err)
 	}
-	fmt.Println("PHANTOWD_CAPTURE_RUNTIME_PROOF actual_smbd=true module_retained=true original_channel_pair=true stop_before_release=true existing_passdb_refused=true unchanged_passdb=true fd_equal=true authentication=false file_open=false samples=false authority=false scope=qemu-only")
+	// The following negative operation must retain quarantine references, not
+	// release them merely to make the aggregate FD census equal. Healthy exact
+	// equality above is separate; reviewed pins live until fixture teardown.
+	if err := p.serverCaptureExistingStateRefusalQEMU(ctx, code, roots); err != nil {
+		return err
+	}
+	fmt.Println("PHANTOWD_CAPTURE_RUNTIME_PROOF actual_smbd=true module_retained=true original_channel_pair=true stop_before_release=true existing_passdb_refused=true unchanged_passdb=true healthy_fd_equal=true existing_state_review_retained=true authentication=false file_open=false samples=false authority=false scope=qemu-only")
 	return nil
 }
 
@@ -128,8 +131,9 @@ func (p *Plan) serverCaptureExistingStateRefusalQEMU(ctx context.Context, code *
 	if err != nil {
 		return err
 	}
+	retainedReview := false
 	defer func() {
-		if !r.closed {
+		if !r.closed && !retainedReview {
 			stopped, stopErr := r.Stop(context.Background())
 			closeErr := r.Close()
 			if closeErr != nil || len(stopped.Members) != 1 || stopped.Members[0].Process.PID != 0 {
@@ -152,6 +156,21 @@ func (p *Plan) serverCaptureExistingStateRefusalQEMU(ctx context.Context, code *
 	if _, err := r.Start(ctx); !errors.Is(err, ErrReviewRequired) {
 		return errors.New("reviewed bootstrap retried")
 	}
+	stopped, stopErr := r.Stop(context.Background())
+	if !errors.Is(stopErr, ErrReviewRequired) || stopped.State != processowner.StateReviewRequired || len(stopped.Members) != 1 || stopped.Members[0].Process.PID != 0 {
+		return errors.Join(errors.New("reviewed existing-state group not settled"), stopErr)
+	}
+	if !errors.Is(r.Close(), ErrReviewRequired) || r.closed || r.releaseErr != nil {
+		return errors.New("existing-state review attempted release")
+	}
+	for _, pin := range []*os.File{r.code.code.files[serverCaptureModuleObjectQEMU], r.code.code.files[serverObserverBootstrapObjectQEMU], r.channel.sender, r.channel.receiver, r.state.root} {
+		if pin == nil {
+			return ErrMismatch
+		}
+		if _, err := pin.Stat(); err != nil {
+			return errors.Join(errors.New("existing-state Close discarded reviewed input"), err)
+		}
+	}
 	current, err := hash()
 	var after unix.Stat_t
 	if err != nil || unix.Fstat(fd, &after) != nil || current != digest || before.Dev != after.Dev || before.Ino != after.Ino ||
@@ -159,5 +178,6 @@ func (p *Plan) serverCaptureExistingStateRefusalQEMU(ctx context.Context, code *
 		before.Nlink != after.Nlink || before.Mtim != after.Mtim || before.Ctim != after.Ctim {
 		return errors.Join(errors.New("refused bootstrap changed original passdb"), err)
 	}
-	return r.Close()
+	retainedReview = true
+	return nil
 }
