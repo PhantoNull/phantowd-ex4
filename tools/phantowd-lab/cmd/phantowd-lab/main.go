@@ -940,14 +940,16 @@ func observeStorageImage(file *os.File, size int64) (storageImageReport, error) 
 }
 
 type storageImageSetPartitionSummary struct {
-	Number                int                    `json:"partition_number"`
-	DeclaredTypeGUID      string                 `json:"declared_type_guid"`
-	ExtStatus             diskimage.ExtStatus    `json:"ext_status"`
-	ExtCleanUnmount       bool                   `json:"ext_clean_unmount_flag"`
-	ExtNeedsJournalRepair bool                   `json:"ext_needs_journal_recovery"`
-	MDV12Status           diskimage.MDStatus     `json:"md_v1_2_status"`
-	MDV10Status           diskimage.MDV10Status  `json:"md_v1_0_status"`
-	MDV090Status          diskimage.MDV090Status `json:"md_v0_90_status"`
+	Number                 int                    `json:"partition_number"`
+	DeclaredTypeGUID       string                 `json:"declared_type_guid"`
+	ExtStatus              diskimage.ExtStatus    `json:"ext_status"`
+	ExtFilesystemState     string                 `json:"ext_filesystem_state"`
+	ExtCleanUnmount        bool                   `json:"ext_clean_unmount_flag"`
+	ExtNeedsJournalRepair  bool                   `json:"ext_needs_journal_recovery"`
+	ExtNeedsOrphanRecovery bool                   `json:"ext_needs_orphan_recovery"`
+	MDV12Status            diskimage.MDStatus     `json:"md_v1_2_status"`
+	MDV10Status            diskimage.MDV10Status  `json:"md_v1_0_status"`
+	MDV090Status           diskimage.MDV090Status `json:"md_v0_90_status"`
 }
 
 type storageImageSetInputSummary struct {
@@ -992,7 +994,7 @@ func inspectStorageImageSet(args []string, output io.Writer) (int, error) {
 	}
 	result := storageImageSetAssessment{
 		Format:          "phantowd-read-only-storage-image-set-observation",
-		SchemaVersion:   2,
+		SchemaVersion:   3,
 		Status:          "incomplete",
 		WDCompatibility: "unqualified",
 		Inputs:          []storageImageSetInputSummary{},
@@ -1051,9 +1053,11 @@ func inspectStorageImageSet(args []string, output io.Writer) (int, error) {
 			candidateStorageLayers := 0
 			partitionSummary := storageImageSetPartitionSummary{
 				Number: partition.Number, ExtStatus: partition.Ext.Status,
-				ExtCleanUnmount:       partition.Ext.CleanUnmount,
-				ExtNeedsJournalRepair: partition.Ext.NeedsJournalRecovery,
-				MDV12Status:           partition.MDV12.Status, MDV10Status: partition.MDV10.Status,
+				ExtFilesystemState:     partition.Ext.FilesystemState,
+				ExtCleanUnmount:        partition.Ext.CleanUnmount,
+				ExtNeedsJournalRepair:  partition.Ext.NeedsJournalRecovery,
+				ExtNeedsOrphanRecovery: partition.Ext.NeedsOrphanRecovery,
+				MDV12Status:            partition.MDV12.Status, MDV10Status: partition.MDV10.Status,
 				MDV090Status: partition.MDV090.Status,
 			}
 			for _, gptPartition := range observed.GPT.Partitions {
@@ -1072,7 +1076,8 @@ func inspectStorageImageSet(args []string, output io.Writer) (int, error) {
 				} else {
 					extFingerprints = append(extFingerprints, partition.Ext.FilesystemIdentityFingerprint)
 				}
-				if !partition.Ext.CleanUnmount || partition.Ext.NeedsJournalRecovery || partition.Ext.FilesystemState == "errors-recorded" {
+				if !partition.Ext.CleanUnmount || partition.Ext.NeedsJournalRecovery || partition.Ext.NeedsOrphanRecovery ||
+					partition.Ext.FilesystemState != "clean-unmount-flag-set" {
 					needsReview = true
 					extFilesystemNeedsReview = true
 				}
@@ -1197,7 +1202,7 @@ func inspectStorageImageSet(args []string, output io.Writer) (int, error) {
 		result.Findings = append(result.Findings, "one or more partitions contain both an ext-family filesystem candidate and an MD component candidate")
 	}
 	if extFilesystemNeedsReview {
-		result.Findings = append(result.Findings, "an ext-family superblock is not marked clean, records filesystem errors, or advertises journal recovery; no repair or recovery was attempted")
+		result.Findings = append(result.Findings, "an ext-family superblock is not marked clean, records errors or unknown state flags, or indicates journal/orphan recovery; no repair or recovery was attempted")
 	}
 	if err := writeJSON(output, result); err != nil {
 		return 1, err

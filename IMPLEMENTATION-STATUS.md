@@ -3,6 +3,30 @@
 
 # Implementation status
 
+## Offline ext recovery assessment — host-only schema 2/3
+
+The offline toolkit now holds ext candidates for review when orphan-recovery
+indicators or unknown state bits accompany the raw clean bit. Real parser and
+CLI regressions reproduced the former false `metadata-observed`/exit0 result;
+the image-set command now returns `incomplete`/exit2 for those inputs. Ext report
+schema2 preserves the clean bit independently from errors/recovery and adds
+`needs_orphan_recovery`; image-set schema3 includes filesystem state and the
+separate orphan flag. The whole-image envelope remains schema2.
+
+Only the existing 1024-byte superblock read is used. Tests require independent
+journal/orphan flags, checksum refusal, redaction, unchanged inputs and no
+assembly/mount/migration authority. Complete Windows toolkit vet/tests and
+pinned Go1.26.8 Linux vet/unit-count3 plus parser/CLI race-count3 pass.
+The actual MD/ext2 QEMU fixture also passes its strengthened schema3 consumer,
+original broker/mount-owner checks and unchanged-image guards. This uses the
+new host toolkit with the earlier audited base/API, **not a newly built API or
+complete firmware**. An initial container refusal was a snapshot temporary
+directory on a read-only filesystem; directing scratch to the bounded tmpfs
+resolved that environment error without changing fixture deadlines.
+
+Orphan chains/files are not followed or validated, and no repair is attempted.
+No NAS, physical disk, product endpoint or legacy migration is qualified.
+
 ## Pending client: independent original server-open observation
 
 A separate private QEMU-only TCP wire prerequisite is now host/ARM-qualified.

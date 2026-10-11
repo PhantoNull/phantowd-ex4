@@ -970,10 +970,16 @@ are missing. **Depends on:** M1; M7 for hardware.
   regular-file images, detects duplicate disk/partition/filesystem identity fingerprints,
   and withholds cross-image conclusions when any GPT input is invalid. It
   reports mixed filesystem/array signatures and inconsistent or incomplete
-  metadata for review (including ext state not marked clean or requesting
-  journal recovery); even a clean `metadata-observed` result remains
+  metadata for review (including ext state not marked clean, errors, unknown
+  state flags, or journal/orphan recovery indicators, independently of the
+  raw clean bit); even a clean `metadata-observed` result remains
   `wd_compatibility=unqualified` and cannot authorize migration, assembly or
-  mount. Static review of the extracted stock installer found data-array
+  mount. The host inspector's ext schema2/image-set schema3 correction has
+  actual parser/CLI RED-to-GREEN evidence, complete Windows/pinned Linux tests,
+  and a focused MD/ext2 QEMU consumer check using an earlier audited base.
+  The orphan indicators remain bounded superblock observations, not validated
+  chains, recovery, new firmware qualification or physical-disk compatibility.
+  Static review of the extracted stock installer found data-array
   creation paths using MD metadata 1.0 (root-array paths use 0.90); the generic
   host inspector now reads and compares 1.0 components from offline images. This
   advances format observation only, not WD layout qualification. A dedicated
