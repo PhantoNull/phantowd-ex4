@@ -8,13 +8,18 @@
 A separate private QEMU-only TCP wire prerequisite is now host/ARM-qualified.
 It decodes bounded IPv4 ESTABLISHED responses, refuses foreign/interrupted/
 duplicate/incomplete observations and exposes only completed copied rows.
-The test-only fixed kernel request observes both reciprocal socket inode/cookie/
-endpoint identities twice and verifies disappearance after explicit closure.
-Non-root pinned Linux tagged vet/unit/race3, 10,017 wire fuzz executions and
-nine ARM926 cases repeated three times pass, with 1321 frozen inputs/base
+The test-only fixed kernel request compares reciprocal identities against
+independent descriptor Fstat/SO_COOKIE/address/unbound-device observations,
+checks continuity and explicit closure. Same-UID connections to one server
+endpoint remain distinct across 32 concurrent queries; closing one pair
+preserves the other. Nil/canceled/expired and just-sent canceled requests
+expose no rows; success/refusal preserve descriptor counts. Non-root pinned
+Linux tagged vet/unit/race3, 10,000 wire fuzz executions and
+eleven ARM926 cases repeated three times pass, with 1321 frozen inputs/base
 unchanged. The new [focused runner](support/test-pending-tcp-wire.ps1) is opt-in:
 it changes neither the default campaign nor the existing launcher/Owner.
-This does not establish an atomic dump, original owned process/namespace
+This does not establish arbitrary mid-receive cancellation, adversarial drift,
+an atomic dump, original owned process/namespace
 binding, remote SMB handle/request/extent, WRITE or product authority.
 
 The optional `pending` ARMv5 guest now independently observes the fixed Samba

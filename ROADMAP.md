@@ -2885,8 +2885,12 @@ M4.5 TCP wire prerequisite (2026-10-11): a private QEMU-only decoder and
 [focused check](support/test-pending-tcp-wire.ps1) now qualify fixed IPv4
 ESTABLISHED framing/identity/bounds, interrupted/foreign/duplicate refusal and
 copied completion-only rows. The kernel query exists only in tests: real
-reciprocal loopback identities remain equal across two observations and vanish
-after closure. Tagged Linux vet/unit/race3, 10,017 fuzz executions and nine
+reciprocal loopback identities independently match descriptor Fstat/SO_COOKIE/
+address/unbound-device observations and vanish after closure. Same-UID
+connections to the same server endpoint remain distinct across 32 concurrent
+queries; closing one pair preserves the other. Success/refusal preserve FD
+counts, including cancellation immediately after the real request. Tagged
+Linux vet/unit/race3, 10,000 fuzz executions and eleven
 actual ARM926 cases repeated three times pass, source/base unchanged. No
 default pipeline/campaign, launcher, Owner or product wiring is altered.
 Next still requires the separately reviewed original-client/worker proc and

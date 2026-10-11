@@ -14,7 +14,7 @@ mount -t tmpfs -o size=4m,mode=0700 tmpfs /tmp || exit 1
 ip link set lo up || exit 1
 ulimit -f 128 || exit 1
 if /usr/sbin/phantowd-pending-tcp-test -test.v -test.count=3 -test.timeout=30s -test.run '^TestPendingTCPWire'; then
-    echo 'PHANTOWD_PENDING_TCP_ARM_DONE cases=9 repetitions=3 binding=false scope=qemu-only'
+    echo 'PHANTOWD_PENDING_TCP_ARM_DONE cases=11 repetitions=3 binding=false scope=qemu-only'
 else
     echo 'PHANTOWD_PENDING_TCP_ARM_FAILED'
 fi

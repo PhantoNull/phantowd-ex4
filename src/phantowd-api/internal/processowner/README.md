@@ -14,14 +14,17 @@ operation. Failed start, timeout, forced stop or uncertain closure preserves
 review and original pins. Normal reference release requires exit0 and verified
 original-group absence; close errors are sticky and retain later references.
 
-Current qualification is host refusal/parser/command-description/release
-bookkeeping tests, race tests and ARMv5 cross-compilation only. No adapter child
-has run in QEMU yet. The separate private runtimebundle Owner now binds and
-rechecks the complete client/loader/configuration/bootstrap census; its ARM
-constructor and never-started closure pass. It must still bind original
-storage/identity, qualify actual healthy library/client execution and then original SMB object
-correlation. This constructor is not complete execution/product authority;
-ordinary builds/startup, generic launchers and HTTP remain unchanged.
+Host refusal/parser/command-description/release tests, race tests and ARMv5
+cross-compilation pass. The separate private runtimebundle Owner binds and
+rechecks the complete client/loader/configuration/bootstrap census. Its focused
+ARM fixture now also executes the actual retained client/loader against Samba:
+healthy OPEN/CLOSE and independently observed original server worker/session/
+tree/local-file identity pass, with verified settlement before release. This
+supersedes the earlier constructor-only qualification, not product authority.
+Original client process/namespace/socket and remote handle/request/extent
+binding, pending I/O and product storage/identity composition remain unqualified.
+Ordinary builds/startup, generic launchers and HTTP remain unchanged; see the
+[focused client contract](../../../../support/QEMU-FAST-TESTS.md#dedicated-same-open-client-prerequisites-host-and-qemu).
 
 The caller supplies a fixed executable, arguments and bounded readiness/stop
 timeouts. The owner opens a regular executable without following symlinks,
@@ -114,13 +117,18 @@ interrupted framing permanently discards partial rows. Returned rows are copies.
 Limits are 4 KiB per record, 64 KiB per datagram, 256 KiB per dump, 256 sockets
 and 32 framed extensions per record; unconsumed extensions confer no authority.
 
-Kernel querying exists only in a test file. Its fixed TCP request, kernel
-sender/truncation checks and real reciprocal loopback sockets are exercised
-on non-root Linux and ARM926 QEMU, including unchanged repeated observations
-and post-close disappearance. Pure framing/identity/refusal/bound controls and
-fuzz tests are separate. The optional
+Kernel querying exists only in a test file. Independent Fstat, SO_COOKIE,
+getsockname/getpeername and empty SO_BINDTODEVICE observations now check every
+fixed identity field against the actual dump, not merely a second dump. Real
+same-UID connections to the same server endpoint stay distinct across 32
+concurrent queries; closing one pair removes only that pair. Nil/canceled/
+expired contexts and cancellation immediately after the real request expose
+no rows; successful/refused queries preserve descriptor counts. These fixtures
+run on non-root Linux and ARM926 QEMU. They retain no process/socket authority
+and do not qualify adversarial mutation or general cancellation timing.
+Pure framing/identity/refusal/bound controls and fuzz tests are separate. The optional
 [focused runner](../../../../support/QEMU-FAST-TESTS.md#kernel-tcp-wire-prerequisite-not-client-binding)
-reuses the pinned builder/base read-only and runs nine cases three times.
+reuses the pinned builder/base read-only and runs eleven cases three times.
 
 This is not an atomic inventory, namespace/process generation binding, retained
 socket authority, remote SMB client-handle, request/extent proof or permission

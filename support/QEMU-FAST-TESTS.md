@@ -12,9 +12,15 @@ The private QEMU-only TCP decoder has a separate focused check:
 
 With the existing pinned builder/workspace and verified base artifacts, this
 cross-compiles one test binary and boots one disposable ARM926/256 MiB guest.
-Nine cases execute three times: fixed identity decoding, incomplete/foreign/
+Eleven cases execute three times: fixed identity decoding, incomplete/foreign/
 interrupted/duplicate/framing/bound refusal, complete copied observations and
 real reciprocal loopback socket identity/continuity/post-close disappearance.
+Actual dump identities match independent descriptor Fstat/SO_COOKIE/address/
+unbound-device observations. Same-UID connections to the same server endpoint
+stay distinct across 32 concurrent queries; closing one pair preserves the
+other. Cancellation before admission and immediately after a real fixed
+request returns no rows and preserves descriptor counts. This is not arbitrary
+mid-receive cancellation, adversarial socket drift or process/socket ownership.
 The kernel query is test-only, with fixed IPv4 TCP ESTABLISHED request scope and
 kernel-sender/truncation checks. No Samba client or server is launched there.
 Completion means wire framing, not an atomic socket inventory or process lease.
