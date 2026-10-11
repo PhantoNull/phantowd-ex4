@@ -1775,6 +1775,15 @@ storage. No production roster provider or activation path exists.
   existing process/namespace/TCP/local-object fences and fault controls. No
   generic launcher widening, Owner activation or WRITE in this prerequisite.
   [Wire contract and exact command](support/QEMU-FAST-TESTS.md#server-open-private-wire-prerequisite).
+  A private sequenced-packet prerequisite now passes host and actual ARM tests:
+  original endpoint/option/cookie checks, per-packet kernel credentials (not
+  creator credentials), two ordered equal records, extra-output refusal, sticky
+  review, exclusive calls and unchanged FD counts on ancillary refusal. A fixed
+  synthetic C producer inherits only its fixture FD3 and settles before close.
+  It is NOT an admitted VFS worker/producer/code lease or live-generation proof.
+  Next qualify dedicated server descriptor handoff and complete producer authority,
+  then bind actual worker observations under all original lifecycle fences. Do
+  not infer active-worker, global replay, pending-I/O or WRITE qualification.
   The private fixed-producer status observation is now consumed by a separate
   original-object composition in the explicit `file` guest. A fixed authorized
   client opens one existing synthetic file once, without create/truncate/reopen.

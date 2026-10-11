@@ -174,10 +174,39 @@ metadata/redacted errors on refusal. Full-header mutations, every short length,
 extra/concatenated frames, reserved IDs and wrong sequence refuse. The comparison
 keeps client persistent/volatile IDs separate from independent STATUS share-mode
 generation, local device/inode and full worker/session/tree; changed and
-noncanonical fields refuse. Six actual ARM tests include 32 concurrent readers,
+noncanonical fields refuse. Thirteen actual ARM tests include 32 concurrent readers,
 capture-bound checks and actual C-to-Go bytes with an independently known child
 PID. Host tagged vet/unit, three race passes and 10,000 fuzz executions pass. The plain source
 lane and its old receipt contract remain valid.
+
+The optional lane also runs the fixed C fixture with `--packets`: only inherited
+FD3 is accepted, verified as a Unix sequenced-packet endpoint whose creator is
+the parent. Two 88-byte packets are sent once each, without retries or stdout.
+Go owns the original endpoint pair and checks wrapper/FD/object/cookie identity,
+domain/type/protocol, CLOEXEC/status flags, receiver PASSCRED and disabled PIDFD/
+security ancillary delivery. It reads exactly one kernel credential record per
+packet and requires its PID to match the payload; socket creator credentials
+are not substituted for sender credentials. Ordered observations and complete
+credentials must match. A one-byte no-control-buffer peek refuses even empty
+extra packets without importing descriptors. Completed-pair rechecks catch late
+extras; an empty queue is only a point-in-time observation, not future exclusion.
+
+Nine malformed/ancillary cases, three queued-extra cases, eight endpoint/second-
+record cases and copy/pre-cancel/busy/in-flight cancellation controls pass on
+actual sockets. Refused ancillary packets leave descriptor counts unchanged.
+Refusal retains review/original references; replaced endpoints are not closed.
+This helper owns transport references only: the containing lifecycle must settle
+its producer before closing them. The C fixture exits and closes its synthetic
+file BEFORE observation, so this test deliberately proves no live-worker lease.
+
+Linux 6.18.55 `net/core/sock.c` and `net/core/scm.c` establish that `SO_PASSSEC`
+returns `EOPNOTSUPP` and emits no security ancillary data when SECURITY_NETWORK
+is compiled out, as in this guest. That availability state is retained; supported
+but enabled options and all other errors refuse. The ARM case verifies it cannot
+be enabled; the host covers enabled-option refusal. No guard/deadline is waived.
+The strict wire log requires source, wire, packet and completion markers in
+order, with two positive and 29 negative parser controls. Plain source controls
+remain two positive/19 negative; parser controls alone are not guest evidence.
 
 One existing auto-rm non-root/caps0/NNP/networknone container uses CPU 2/RAM 2GiB/
 PIDs 128 and 1536+128MiB tmpfs only for this optional compilation. The cached SDK
@@ -186,7 +215,7 @@ tests 20s and QEMU 30s. Cache is deleted before boot; module/C-test/Go-test/init
 insertion bytes and unchanged borrowed base are checked. Only the fresh tmpfs
 root copy is enlarged to 128MiB; there is no new image, named volume or full build.
 
-No VFS hook, retained producer/channel/Owner integration or same-worker bridge
+No VFS hook, admitted live-worker producer/channel/Owner integration or same-worker bridge
 exists yet. These open/tree records remain synthetic. Framing and equality do
 not prove provenance, continuity, protocol identity, global replay protection,
 pending IO, WRITE, product activation, HTTP or NAS compatibility. A future Owner

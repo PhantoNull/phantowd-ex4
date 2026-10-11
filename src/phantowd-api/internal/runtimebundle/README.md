@@ -97,6 +97,19 @@ authority. Synthetic open/tree records and metadata equality do not qualify the
 active worker bridge, replay/lifetime protections or WRITE. Complete retained
 producer/channel construction and original-worker capture remain required.
 
+A private `qemu && linux` packet prerequisite now creates and retains only its
+own Unix sequenced-packet endpoints. It compares original wrappers/FDs/object
+cookies and exact socket settings, accepts two equal ordered records with kernel
+credentials and refuses extra output, endpoint drift, copies or concurrent use.
+In-flight cancellation/refusal keeps review; closure refuses changed objects and
+never retries uncertain closes. The fixed synthetic C producer inherits FD3,
+sends each record once and settles before fixture closure. Neither this packet
+helper nor its copied observation is connected to this Owner or grants worker/
+code/process/lifetime authority. Actual worker capture and full retained producer
+construction still precede remote-bridge/WRITE admission; generic launcher and
+product surfaces are unchanged. Known compiled-out `SO_PASSSEC` is distinguished
+from enabled or failed options; this does not qualify a product security profile.
+
 The separate [server reader source lane](../../../../support/QEMU-FAST-TESTS.md#server-side-original-open-reader-prerequisite)
 now copies remote IDs, share-mode generation and local descriptor identity from
 one actual-type files_struct, with ARM source/loaded-DSO refusal controls and

@@ -3,10 +3,40 @@
 
 # Implementation status
 
+## Private server-open packet transport — host/ARMv5 prerequisite
+
+The optional wire guest now also sends two fixed C-produced records through a
+private Unix sequenced-packet pair. The receiver checks each packet's kernel
+credentials against its claimed PID, separately from the socket creator's
+credentials. Original endpoint wrappers, descriptor numbers, object identities,
+socket cookies, protocol/options and flags are retained and rechecked. Only two
+ordered, equal observations are admitted; queued extras and later queue drift
+refuse. Copies, endpoint substitution, option drift and in-flight cancellation
+preserve review and original references. Concurrent operations refuse busy.
+
+Thirteen actual ARM tests now pass, including real C packets, nine malformed/
+ancillary cases, three queued-extra cases and eight endpoint/continuity cases.
+Descriptor counts are unchanged across ancillary refusals. Linux tagged vet/unit,
+three runtimebundle race passes, 10,000 frame fuzz executions, Windows/API/UI/cross
+checks and the old standalone source guest pass. Strict receipt controls require
+the new packet marker; the borrowed base stays unchanged and all scratch is RAM.
+
+The ARM kernel has no `SECURITY_NETWORK`: its `SO_PASSSEC` returns `EOPNOTSUPP`.
+That source-verified unavailable state is retained, not treated as an arbitrary
+error waiver. Available security ancillary output must remain disabled; every
+other error refuses. Host and guest cover different availability branches.
+
+**This is not an admitted active-worker channel or service authority.** The C
+producer is synthetic, closes its temporary file and exits before observation;
+no live-worker/lifetime or global replay proof is claimed. Qualified producer/code
+retention, dedicated server handoff, actual VFS capture and existing process/
+namespace/TCP/local-object fences remain required. No generic launcher, Owner,
+HTTP, default campaign, product or NAS changes; hosted CI failure remains open.
+
 ## Server-open metadata framing — C-to-Go ARMv5 prerequisite
 
 An optional `support/test-server-open-observer.ps1 -Wire` guest now runs the
-original C reader/refusal fixture and six Go tests, including capture of two
+original C reader/refusal fixture and thirteen Go tests, including capture of two
 actual ARM C-produced frames. The private 88-byte format explicitly encodes
 version, payload size, sequence and separate ID domains in little-endian order;
 it never dumps native padding. Missing/truncated/extra/duplicate frames, invalid

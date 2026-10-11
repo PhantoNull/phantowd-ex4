@@ -1,7 +1,7 @@
 #!/bin/sh
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 PhantoWD EX4 contributors
-# Private C-to-Go bytes; no active server, network, data disk or service owner.
+# Private C-to-Go bytes/credentialled packets; no active server or service owner.
 export PATH=/usr/sbin:/usr/bin:/sbin:/bin
 run_fixture() {
     mount -t proc -o nosuid,nodev,noexec proc /proc || return 1

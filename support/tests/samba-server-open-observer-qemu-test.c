@@ -5,6 +5,7 @@
 #include "samba-server-open-observer-fixture.c"
 #include "source3/smbd/fd_handle.c"
 #include <dlfcn.h>
+#include <sys/socket.h>
 
 static unsigned refusals;
 static int (*loaded_reader)(const connection_struct *, const files_struct *,
@@ -34,7 +35,25 @@ int main(int argc, char **argv)
 {
     alarm(5);
     bool emit_frames = argc == 2 && !strcmp(argv[1], "--frames");
-    require(argc == 1 || emit_frames);
+    bool emit_packets = argc == 2 && !strcmp(argv[1], "--packets");
+    require(argc == 1 || emit_frames || emit_packets);
+    if (emit_packets) {
+        /* Fixed inherited fixture endpoint only; no path/arbitrary FD selector.
+         * SO_PEERCRED identifies our parent creator, not us as packet sender. */
+        for (unsigned index = 0; index < 3; ++index) {
+            const int options[] = {SO_DOMAIN, SO_TYPE, SO_PROTOCOL};
+            const int expected[] = {AF_UNIX, SOCK_SEQPACKET, 0};
+            int value = -1;
+            socklen_t length = sizeof(value);
+            require(!getsockopt(3, SOL_SOCKET, options[index], &value, &length) &&
+                length == sizeof(value) && value == expected[index]);
+        }
+        struct ucred creator = {0};
+        socklen_t length = sizeof(creator);
+        require(!getsockopt(3, SOL_SOCKET, SO_PEERCRED, &creator, &length) &&
+            length == sizeof(creator) && creator.pid == getppid() &&
+            creator.uid == geteuid() && creator.gid == getegid());
+    }
     char name[] = "/tmp/phantowd-server-open.XXXXXX";
     int fd = mkstemp(name);
     require(fd >= 0 && write(fd, "synthetic-data", 14) == 14);
@@ -172,6 +191,13 @@ int main(int argc, char **argv)
         /* Private subprocess bytes only. The Go test captures them without
          * logging raw IDs; this is not the future retained worker channel. */
         require(write(STDOUT_FILENO, frames, sizeof(frames)) == sizeof(frames));
+        return 0;
+    }
+    if (emit_packets) {
+        /* Exactly two metadata packets, each sent once. The original synthetic
+         * file has already closed; this does not claim active-worker lifetime. */
+        require(send(3, frames, 88, MSG_DONTWAIT | MSG_NOSIGNAL) == 88 &&
+            send(3, frames + 88, 88, MSG_DONTWAIT | MSG_NOSIGNAL) == 88);
         return 0;
     }
     printf("PHANTOWD_SERVER_OPEN_SOURCE_READY refusals=%u dso_refusals=%u real_fd=true real_getters=true synthetic_open=true active_worker=false authority=false scope=qemu-only\n", refusals, refusals);
