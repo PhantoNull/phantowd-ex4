@@ -56,9 +56,19 @@ pass with unchanged bytes/FD/base. The fixed worker's complete both-side runtime
 admission is reused rather than duplicated. No old observer, deadline or default
 campaign changes. Native `[writable]` and libsmbclient generic read/write are
 distinct from the older planned `[Writable]`/CLI-open contracts, with RED/GREEN
-refusal guards. This still does not identify the remote client socket, opaque
-handle or request; `smb_object_bound=false` remains mandatory. No WRITE or
-product capability is exposed.
+refusal guards. The containing client Owner now additionally binds the validated
+worker once to the original owned client's proc/generation, net/mount namespaces
+and reciprocal TCP inode/cookie/principal/endpoints. Complete client inputs and
+original server/local-object checks bracket binding and same-reference recheck;
+the fixed client repeats connection admission before CLOSE. Client and server
+settlement precede releasing all connection references. Actual ARM acceptance,
+FD/base equality, host/race3 and descriptor-oracle regressions pass. Partial or
+uncertain binding retains review, references and a single containment attempt;
+no PID, peer or descriptor replacement is accepted by later checks.
+This still does not identify the opaque SMB handle or request. Observations are
+sequential, not atomic; adversarial live drift/uncertain teardown in this new
+composition remain unqualified. `smb_object_bound=false` remains mandatory.
+No WRITE, new deadline/default campaign or product capability is exposed.
 
 The QEMU-only planned runtime additionally retains one fixed authorized IPC$
 holder, distinct from the unused two-account client set. No caller chooses its

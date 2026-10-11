@@ -16,6 +16,8 @@ READY = (
     "no_fd_leak=true "
     "server_open_observed=true server_open_continuity=true "
     "local_object_matched=true "
+    "connection_original=true connection_continuity=true "
+    "retained_namespaces=true "
     "smb_object_bound=false pending_io=false activation=false scope=qemu-only")
 ENROLLMENT = next(row for row in samba.MARKERS if row.startswith(
     "PHANTOWD_SAMBA_OWNER_NATIVE_ENROLLMENT_READY"))

@@ -40,6 +40,9 @@ class HealthyLog(unittest.TestCase):
                       "server_open_observed=true",
                       "server_open_continuity=true",
                       "local_object_matched=true",
+                      "connection_original=true",
+                      "connection_continuity=true",
+                      "retained_namespaces=true",
                       "no_fd_leak=true", "smb_object_bound=false",
                       "pending_io=false", "activation=false"):
             with self.assertRaises(ValueError):

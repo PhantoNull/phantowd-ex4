@@ -21,8 +21,19 @@ ARM fixture now also executes the actual retained client/loader against Samba:
 healthy OPEN/CLOSE and independently observed original server worker/session/
 tree/local-file identity pass, with verified settlement before release. This
 supersedes the earlier constructor-only qualification, not product authority.
-Original client process/namespace/socket and remote handle/request/extent
-binding, pending I/O and product storage/identity composition remain unqualified.
+The adapter now captures its original proc reference/generation before Wait can
+reap it. A one-time private binding duplicates that reference and the validated
+server-worker proc, retains both net/mount namespaces and compares complete
+bounded FD censuses with a fixed ESTABLISHED TCP dump. Same network namespace,
+distinct mount namespaces, original executable, all client UID/GID65534, no
+groups/capabilities and no-new-privileges are required. Later checks select no
+PID/FD; original socket inode/cookie/principal/endpoints must remain identical.
+Actual ARM Samba binding/recheck/CLOSE/stop/FD equality pass. References stay
+through both verified stops; uncertainty retains review without retry. Host
+controls and the independent TCP descriptor oracle also pass on ARM.
+These sequential observations are not atomic or continuous. Adversarial live
+drift/uncertain teardown in the new composition, remote handle/request/extent,
+pending I/O and product storage/identity composition remain unqualified.
 Ordinary builds/startup, generic launchers and HTTP remain unchanged; see the
 [focused client contract](../../../../support/QEMU-FAST-TESTS.md#dedicated-same-open-client-prerequisites-host-and-qemu).
 

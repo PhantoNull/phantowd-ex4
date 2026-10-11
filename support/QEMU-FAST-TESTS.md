@@ -77,8 +77,22 @@ directory/start ticks, original daemon parent/group/executable, and STATUS
 device/inode matching the retained local descriptor and metadata. Actual ARM
 acceptance and bounded Linux/race3/Windows controls pass. Exact receipts now also
 require `server_open_observed`, `server_open_continuity` and `local_object_matched`;
-missing/altered fields refuse. This is not remote-client socket/opaque-handle or
-request binding; `smb_object_bound=false`/`pending_io=false` remain mandatory.
+missing/altered fields refuse. The same focused guest now also requires
+`connection_original`, `connection_continuity` and `retained_namespaces`.
+Its adapter captures original client proc/start ticks before Wait can reap it;
+the containing Owner binds the validated worker once. Both net/mount namespaces
+are retained, original processes/executable/client credentials rechecked and
+bounded unique FD censuses matched to reciprocal TCP inode/cookie/endpoints.
+The query runs in the checked original network namespace without setns, filters
+or destroy; one-second query cap and shorter parent cancellation win. Complete
+code inputs and server/local-object checks bracket bind/recheck; connection
+checks also precede CLOSE. Both verified stops precede reference release.
+Actual ARM healthy binding and the original fifteen-case TCP runner (including
+the new reader against independent descriptor observations) pass, with unchanged
+bytes/FD/base and existing startup12/CLOSE5/parent35/guest180 bounds.
+Adversarial live drift/uncertain teardown in this new composition, opaque SMB
+handle/request and pending-I/O are not qualified. These are sequential, not
+atomic observations; `smb_object_bound=false`/`pending_io=false` remain mandatory.
 The native data profile's exact lowercase service and libsmbclient generic
 read/write mask have separate RED/GREEN guards from the older CLI-holder profile.
 The fixed status worker still admits the complete original runtime before and

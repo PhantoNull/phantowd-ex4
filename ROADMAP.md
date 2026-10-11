@@ -1705,9 +1705,19 @@ storage. No production roster provider or activation path exists.
   client access-mask contracts have RED/GREEN guards; older observers stay
   unchanged. Complete runtime admission still brackets each fixed worker once;
   redundant new-observer scans are removed without deadline changes.
-  This is not the remote-client socket/opaque-handle/request witness:
-  `smb_object_bound=false`/`pending_io=false` remain required. Next correlate
-  that original owned client connection/handle and request/extent/cache/journal
+  The same optional guest now qualifies the original owned client/worker TCP
+  connection: client proc/start/parent/group captured before Wait, retained
+  net/mount namespaces, executable/fixed credentials, complete bounded FD
+  censuses and reciprocal inode/cookie/principal/endpoints; same-reference
+  checks and both verified stops precede release. Complete input/server/object
+  fences remain, with a one-second query cap and all existing parent limits.
+  Actual ARM healthy binding, strict mandatory receipts, original bytes/FD/base,
+  Linux vet/unit/race3, Windows and15 ARM TCP cases3 pass on1326 frozen inputs.
+  Adversarial live drift/uncertain teardown in the new composition are not yet
+  qualified; sequential observations are not atomic or continuous. This is not
+  the opaque SMB handle/request witness: `smb_object_bound=false`/`pending_io=false`
+  remain required. Next qualify composed fault controls, then the original
+  handle and request/extent/cache/journal
   before any WRITE or pending-write fault. Keep review
   and original references on uncertainty; no generic-profile/idle-observer
   widening, product startup, HTTP or physical NAS action.
@@ -2925,9 +2935,10 @@ counts, including cancellation immediately after the real request. Tagged
 Linux vet/unit/race3, 10,000 fuzz executions and eleven
 actual ARM926 cases repeated three times pass, source/base unchanged. No
 default pipeline/campaign, launcher, Owner or product wiring is altered.
-Next still requires the separately reviewed original-client/worker proc and
-namespace binding, followed by opaque SMB handle/request/extent/cache/journal
-proofs before WRITE/fault admission. Wire completion is not atomicity or
+The later focused `pending` guest now composes original client/worker proc,
+namespace and TCP binding with healthy closure (details in M4.5 above). Composed
+adversarial fault controls and opaque SMB handle/request/extent/cache/journal
+proofs remain required before WRITE/fault admission. Wire completion is not atomicity or
 process/socket authority; the hosted timing gate remains unwaived.
 
 The subsequent copied-pair comparison adds four cases to that same optional

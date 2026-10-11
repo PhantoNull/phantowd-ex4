@@ -19,10 +19,13 @@ import (
 // pins outlive the adapter and every possible child. No descriptors, launcher
 // profile, password or backend can be replaced after construction.
 type pendingClientOwnerQEMU struct {
-	self    *pendingClientOwnerQEMU
-	gate    chan struct{}
-	inputs  *pendingClientInputsQEMU
-	adapter *processowner.PendingClientQEMU
+	self              *pendingClientOwnerQEMU
+	gate              chan struct{}
+	inputs            *pendingClientInputsQEMU
+	adapter           *processowner.PendingClientQEMU
+	connectionPeer    *pendingServerOpenQEMU
+	connectionFile    *os.File // Original object held by the containing fixture.
+	connectionInitial unix.Stat_t
 
 	started, settled, review, closed bool
 	stopTried                        bool
@@ -151,6 +154,62 @@ func (o *pendingClientOwnerQEMU) closeClient(ctx context.Context) error {
 		return o.fail(err)
 	}
 	o.settled = true
+	return nil
+}
+
+// Private read-only original-connection composition. The peer is the already
+// validated retained server worker, never a caller-selected PID or descriptor.
+func (o *pendingClientOwnerQEMU) bindConnection(ctx context.Context, peer *pendingServerOpenQEMU, file *os.File, initial unix.Stat_t) error {
+	if err := o.enter(ctx); err != nil {
+		return err
+	}
+	defer func() { <-o.gate }()
+	if o.review || !o.started || o.settled || o.adapter == nil || peer == nil || o.connectionPeer != nil {
+		return ErrReviewRequired
+	}
+	o.connectionPeer, o.connectionFile, o.connectionInitial = peer, file, initial
+	if err := o.inputs.revalidate(ctx); err != nil {
+		return o.fail(err)
+	}
+	if start, err := peer.verifyWorkerQEMU(file, initial); err != nil || start != peer.start {
+		return o.fail(errors.Join(ErrMismatch, err))
+	}
+	if err := o.adapter.BindConnectionQEMU(ctx, peer.proc); err != nil {
+		return o.fail(err)
+	}
+	if start, err := peer.verifyWorkerQEMU(file, initial); err != nil || start != peer.start {
+		return o.fail(errors.Join(ErrMismatch, err))
+	}
+	if err := o.inputs.revalidate(ctx); err != nil {
+		return o.fail(err)
+	}
+	return nil
+}
+
+func (o *pendingClientOwnerQEMU) recheckConnection(ctx context.Context) error {
+	if err := o.enter(ctx); err != nil {
+		return err
+	}
+	defer func() { <-o.gate }()
+	if o.review || !o.started || o.settled || o.adapter == nil || o.connectionPeer == nil {
+		return ErrReviewRequired
+	}
+	peer, file, initial := o.connectionPeer, o.connectionFile, o.connectionInitial
+	if err := o.inputs.revalidate(ctx); err != nil {
+		return o.fail(err)
+	}
+	if start, err := peer.verifyWorkerQEMU(file, initial); err != nil || start != peer.start {
+		return o.fail(errors.Join(ErrMismatch, err))
+	}
+	if err := o.adapter.RecheckConnectionQEMU(ctx); err != nil {
+		return o.fail(err)
+	}
+	if start, err := peer.verifyWorkerQEMU(file, initial); err != nil || start != peer.start {
+		return o.fail(errors.Join(ErrMismatch, err))
+	}
+	if err := o.inputs.revalidate(ctx); err != nil {
+		return o.fail(err)
+	}
 	return nil
 }
 

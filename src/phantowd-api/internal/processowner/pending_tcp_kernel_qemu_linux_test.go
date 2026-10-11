@@ -177,6 +177,28 @@ func TestPendingTCPWireActualKernelLoopbackIdentityAndClosure(t *testing.T) {
 		if err != nil {
 			t.Fatal("actual kernel dump failed", err)
 		}
+		ownedRows, ownedErr := pendingTCPKernelQEMU(ctx)
+		if ownedErr != nil {
+			t.Fatal("bounded containing-reader dump failed", ownedErr)
+		}
+		matched := 0
+		for _, row := range ownedRows {
+			if row.inode == clientInode {
+				if row != clientExpected {
+					t.Fatal("containing-reader client oracle mismatch")
+				}
+				matched++
+			}
+			if row.inode == serverInode {
+				if row != serverExpected {
+					t.Fatal("containing-reader server oracle mismatch")
+				}
+				matched++
+			}
+		}
+		if matched != 2 {
+			t.Fatal("containing reader did not publish both original descriptor identities")
+		}
 		var foundClient, foundServer bool
 		for _, row := range rows {
 			if row.inode == clientInode && row.local == local && row.peer == peer {

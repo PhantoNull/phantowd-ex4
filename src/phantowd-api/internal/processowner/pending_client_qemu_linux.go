@@ -12,6 +12,7 @@ import (
 	"os"
 	"os/exec"
 	"runtime"
+	"strconv"
 	"syscall"
 	"time"
 
@@ -40,6 +41,9 @@ type PendingClientQEMU struct {
 	secret                       []byte
 	control                      *os.File
 	process                      *managedProcess
+	originalProc                 *os.File
+	originalGeneration           pendingProcGenerationQEMU
+	connection                   *pendingConnectionQEMU
 	stdout, stderr               *diagnosticRing
 	started, settled, review     bool
 	closeSent, closed, stopTried bool
@@ -265,7 +269,20 @@ func (c *PendingClientQEMU) Start(ctx context.Context) (result error) {
 		return c.fail(err)
 	}
 	c.process = &managedProcess{command: command, pid: command.Process.Pid, done: make(chan struct{}), stopTimeout: time.Second}
+	// Capture the owned process before permitting Wait to reap it. Binding
+	// duplicates this original reference, never reopens a later numeric PID.
+	procFD, procErr := unix.Open("/proc/"+strconv.Itoa(c.process.pid), unix.O_RDONLY|unix.O_DIRECTORY|unix.O_CLOEXEC|unix.O_NOFOLLOW, 0)
+	if procErr == nil {
+		c.originalProc = os.NewFile(uintptr(procFD), "original-owned-pending-client")
+		c.originalGeneration, procErr = pendingProcGenerationReadQEMU(c.originalProc)
+		if procErr == nil && (c.originalGeneration.pid != c.process.pid || c.originalGeneration.parent != os.Getpid() || c.originalGeneration.group != c.process.pid) {
+			procErr = ErrUnavailable
+		}
+	}
 	go c.process.wait()
+	if procErr != nil {
+		return c.fail(procErr)
+	}
 	bounded, cancel := context.WithTimeout(ctx, pendingClientStartTimeoutQEMU)
 	defer cancel()
 	ticker := time.NewTicker(20 * time.Millisecond)
@@ -307,6 +324,12 @@ func (c *PendingClientQEMU) CloseClient(ctx context.Context) error {
 		return c.fail(err)
 	}
 	c.closeSent = true
+	if c.connection != nil {
+		pair, err := c.connection.observeQEMU(ctx, c)
+		if err != nil || pair != c.connection.pair {
+			return c.fail(errors.Join(ErrUnavailable, err))
+		}
+	}
 	written, err := c.control.Write([]byte{'C'})
 	if err != nil || written != 1 {
 		return c.fail(errors.Join(ErrUnavailable, err))
@@ -364,6 +387,14 @@ func (c *PendingClientQEMU) Close() error {
 	if c.started && (!c.settled || verifyProcessGroupExited(c.process) != nil) {
 		return ErrAlreadyRunning
 	}
+	if c.connection != nil {
+		if _, err := pendingProcGenerationReadQEMU(c.connection.peer); err == nil {
+			return ErrBusy // The separately owned original server worker is still live.
+		} else if !errors.Is(err, unix.ENOENT) && !errors.Is(err, unix.ESRCH) {
+			c.review = true
+			return ErrReviewRequired
+		}
+	}
 	c.closed = true
 	if err := c.release(); err != nil {
 		c.releaseErr = err
@@ -375,6 +406,18 @@ func (c *PendingClientQEMU) Close() error {
 func (c *PendingClientQEMU) release() error {
 	clear(c.secret)
 	c.secret = nil
+	if c.connection != nil {
+		if err := c.connection.releaseQEMU(); err != nil {
+			return err
+		}
+		c.connection = nil
+	}
+	if c.originalProc != nil {
+		if err := c.originalProc.Close(); err != nil {
+			return err
+		}
+		c.originalProc = nil
+	}
 	if c.control != nil {
 		if err := c.control.Close(); err != nil {
 			return err

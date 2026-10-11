@@ -156,11 +156,17 @@ func (p *Plan) ProbeNativePendingClientQEMU(ctx context.Context, code, configura
 	if err != nil {
 		return fmt.Errorf("pending server open observation: %w", err)
 	}
+	if err := client.bindConnection(ctx, retained.server, file, initial); err != nil {
+		return fmt.Errorf("pending original connection bind: %w", err)
+	}
 	if err := client.inputs.revalidate(ctx); err != nil {
 		return err
 	}
 	if err := retained.server.recheckQEMU(ctx, file, initial); err != nil {
 		return fmt.Errorf("pending original server open continuity: %w", err)
+	}
+	if err := client.recheckConnection(ctx); err != nil {
+		return fmt.Errorf("pending original connection continuity: %w", err)
 	}
 	if err := client.closeClient(ctx); err != nil {
 		return fmt.Errorf("pending client close: %w", err)
@@ -180,13 +186,18 @@ func (p *Plan) ProbeNativePendingClientQEMU(ctx context.Context, code, configura
 	if err := r.verifyNativeDaemonQEMU(ctx, r.daemonPID); err != nil {
 		return err
 	}
+	// Keep client and peer proc/namespace references through verified server
+	// teardown too. The client is already protocol-closed and group-settled.
+	if err := r.Close(context.Background()); err != nil {
+		return err
+	}
 	if err := client.close(); err != nil {
 		return err
 	}
 	if client.start(ctx) == nil || client.closeClient(ctx) == nil {
 		return ErrMismatch
 	}
-	return r.Close(context.Background()) // Client settled before original server inputs release.
+	return nil // Both groups settled before releasing the connection references.
 }
 
 func samePendingObjectQEMU(left, right unix.Stat_t) bool {

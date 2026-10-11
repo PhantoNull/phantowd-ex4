@@ -3,6 +3,33 @@
 
 # Implementation status
 
+## Original client connection — composed healthy ARMv5 qualification
+
+The optional `pending` Samba guest now binds its original single-use client to
+the already validated server worker. Client proc/start/parent/group references
+are captured before Wait can reap the process; later checks never reopen a
+numeric PID. Both process and network/mount namespace references are retained.
+Original executable, all client UID/GID65534, no groups/capabilities and
+no-new-privileges are checked. Complete bounded process FD censuses and a fixed
+ESTABLISHED kernel dump select one reciprocal TCP inode/cookie/principal/endpoint
+pair in the same network namespace; the querying OS thread is checked too.
+
+The containing Owner fixes peer/local object once, brackets bind/recheck with
+complete inputs and original worker/object checks, and the adapter repeats
+connection observation before CLOSE. Both verified stops precede reference
+release. Actual ARM healthy binding, mandatory new receipts, unchanged synthetic
+bytes, FD equality and unchanged base pass. Pinned Linux module vet, whole
+runtimebundle/processowner tests3 and focused race3, Windows API/UI/vet/ARM
+cross, and fifteen TCP ARM cases3 (new reader versus descriptor oracle) pass.
+All1326 recorded inputs remain unchanged across final qualification.
+
+An initial host fixture exposed the valid container group1; only the utility
+parser accepts that, while binding still requires the exact owned child group.
+Sequential observations are not atomic or continuous. New composed adversarial
+drift/uncertain teardown, opaque SMB handle/request/extent/cache/journal, WRITE,
+product activation, hosted timing repair and a complete new image remain open.
+Default ten campaigns, generic launchers, existing deadlines and NAS are untouched.
+
 ## Native worker result publication — host/QEMU cancellation fence
 
 The private `qemu && linux` credential runtime now checks the original context
