@@ -25,7 +25,8 @@ type pendingClientOwnerQEMU struct {
 	adapter           *processowner.PendingClientQEMU
 	captureAdapter    *processowner.ServerCaptureClientQEMU
 	connectionPeer    *pendingServerOpenQEMU
-	connectionFile    *os.File // Original object held by the containing fixture.
+	capturePeer       *serverObserverRuntimeQEMU // Dedicated original runtime, not a replacement PID.
+	connectionFile    *os.File                   // Original object held by the containing fixture.
 	connectionInitial unix.Stat_t
 
 	started, settled, review, closed bool

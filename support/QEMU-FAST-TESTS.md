@@ -8,7 +8,7 @@ observer, bootstrap and library inputs are byte/mode/owner read back after
 staging and retained/revalidated around OPEN, cached handle observation and
 CLOSE. Failed-constructor rollback, live-Close refusal, server stop before
 client-input release, unchanged synthetic data and FD equality pass. The
-ordered redacted receipt now has two positive/34 malformed controls.
+ordered redacted receipt now has two positive/35 malformed controls.
 
 The same lane independently builds/retains a STATUS-only static bootstrap using
 the unchanged native twelve-input boundary. Two actual STATUS helpers settle
@@ -18,7 +18,14 @@ not treated as arbitrary accepted stderr. The original worker proc/start/parent/
 group/executable/FD3 and local-file view stay retained; unchanged STATUS
 session/tree match the original client's cached tuple. Host refusal controls
 cover the exact receipt/profile and uncertain helper settlement. No actual
-worker data-FD pin, remote FileId binding, TCP pair or frame is yet qualified.
+worker data-FD pin, remote FileId binding or frame is yet qualified.
+
+The same guest now binds/rechecks the original client/worker generations, four
+retained net/mnt namespaces and reciprocal kernel TCP pair. The private client
+Owner holds client then runtime locks together across complete input and STATUS/
+worker fences; rechecks accept no replacement peer. Kernel/TCP primitives and
+generic launchers are unchanged. Healthy exact ARM and host/refusal/race checks
+pass; this is not complete fault or remote-handle/request authority.
 
 This guest requests **no READ or VFS frame** and grants no worker/FileId/object/
 TCP authority. It does not run the four parser/refusal tests in the runtime-only
@@ -38,10 +45,10 @@ remain retained through verified daemon-group stop. The dedicated bootstrap
 creates only a synthetic RAM account via stdin; any existing passdb/uncertain
 lookup refuses before mutation. Actual smbd/NEGOTIATE, live-Close refusal,
 retained original inputs, explicit existing-state refusal with unchanged TDB
-and final FD equality pass. Strict receipts have two positive/37 negative cases.
+and final FD equality pass. Strict receipts have two positive/39 negative cases.
 
-The same guest also executes four dedicated Go capture-client protocol and
-lifecycle-refusal tests (five-second test bound). The verifier requires all four
+The same guest also executes five dedicated Go capture-client protocol,
+lifecycle and connection-refusal tests (five-second test bound). The verifier requires all five
 ordered RUN/PASS pairs and the summary, refusing a zero-test false green.
 These only exercise parser/
 bookkeeping/constructor refusals, not successful client startup or SMB commands.

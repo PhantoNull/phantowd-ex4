@@ -138,6 +138,23 @@ func (c *ServerCaptureClientQEMU) Close() error {
 	return c.adapter.Close()
 }
 
+// Only the containing original-worker runtime may supply the first proc
+// reference. The unchanged primitive retains both generations, four namespaces
+// and a reciprocal kernel TCP pair; later checks accept no replacement peer.
+func (c *ServerCaptureClientQEMU) BindConnectionQEMU(ctx context.Context, peer *os.File) error {
+	if !c.validQEMU() {
+		return ErrUnavailable
+	}
+	return c.adapter.BindConnectionQEMU(ctx, peer)
+}
+
+func (c *ServerCaptureClientQEMU) RecheckConnectionQEMU(ctx context.Context) error {
+	if !c.validQEMU() {
+		return ErrUnavailable
+	}
+	return c.adapter.RecheckConnectionQEMU(ctx)
+}
+
 // Rechecks the originally retained proc directory, not a reopened numeric PID.
 // This is process containment only, not a worker/SMB/local-file observation.
 func (c *PendingClientQEMU) captureRecheckProcessQEMU() error {

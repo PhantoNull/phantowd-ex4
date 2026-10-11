@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/processowner"
+	"golang.org/x/sys/unix"
 )
 
 func TestServerCaptureClientOwnerRefusesMissingInputsAndUnverifiedRelease(t *testing.T) {
@@ -48,6 +49,40 @@ func TestServerCaptureClientOwnerRefusesMissingInputsAndUnverifiedRelease(t *tes
 	o.releaseErr = witness
 	if o.release() != witness || len(inputs.client.files) != 1 {
 		t.Fatal("uncertain release retried")
+	}
+}
+
+func TestServerCaptureClientOwnerConnectionRejectsMissingCopyCancellationAndBusy(t *testing.T) {
+	file, err := os.Open(os.DevNull)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = file.Close() })
+	var absent *pendingClientOwnerQEMU
+	if absent.bindCaptureConnectionQEMU(context.Background(), nil, file, unix.Stat_t{}) == nil || absent.recheckCaptureConnectionQEMU(context.Background()) == nil {
+		t.Fatal("absent containing owner admitted")
+	}
+	o := &pendingClientOwnerQEMU{gate: make(chan struct{}, 1), captureAdapter: &processowner.ServerCaptureClientQEMU{}}
+	o.self = o
+	copied := *o
+	if copied.bindCaptureConnectionQEMU(context.Background(), nil, file, unix.Stat_t{}) == nil || copied.recheckCaptureConnectionQEMU(context.Background()) == nil {
+		t.Fatal("copied containing owner admitted")
+	}
+	canceled, cancel := context.WithCancel(context.Background())
+	cancel()
+	if !errors.Is(o.bindCaptureConnectionQEMU(canceled, nil, file, unix.Stat_t{}), context.Canceled) || o.review || o.capturePeer != nil {
+		t.Fatal("canceled containing bind had effects")
+	}
+	o.gate <- struct{}{}
+	if !errors.Is(o.bindCaptureConnectionQEMU(context.Background(), nil, file, unix.Stat_t{}), processowner.ErrBusy) || !errors.Is(o.recheckCaptureConnectionQEMU(context.Background()), processowner.ErrBusy) {
+		t.Fatal("containing exclusive gate bypassed")
+	}
+	<-o.gate
+	if o.bindCaptureConnectionQEMU(context.Background(), nil, file, unix.Stat_t{}) == nil || o.capturePeer != nil {
+		t.Fatal("unstarted containing bind admitted")
+	}
+	if _, err := file.Stat(); err != nil {
+		t.Fatal("refusal discarded caller original", err)
 	}
 }
 

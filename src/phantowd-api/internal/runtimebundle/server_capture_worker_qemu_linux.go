@@ -125,6 +125,18 @@ func (r *serverObserverRuntimeQEMU) observeCaptureWorkerQEMU(ctx context.Context
 			result = errors.Join(result, err)
 		}
 	}()
+	return r.observeCaptureWorkerLockedQEMU(ctx, original, initial)
+}
+
+// Internal only. Caller holds the original runtime gate; connection composition
+// keeps client then runtime gates together across both worker/TCP fences.
+func (r *serverObserverRuntimeQEMU) observeCaptureWorkerLockedQEMU(ctx context.Context, original *os.File, initial unix.Stat_t) (result error) {
+	if original == nil {
+		return ErrInvalid
+	}
+	if r.closed || r.review || r.daemon == nil || r.pid <= 1 {
+		return ErrReviewRequired
+	}
 	observed, err := r.captureStatusLockedQEMU(ctx)
 	if err != nil {
 		return fmt.Errorf("capture STATUS observation: %w", err)

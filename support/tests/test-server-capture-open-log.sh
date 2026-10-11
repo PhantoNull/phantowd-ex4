@@ -5,7 +5,7 @@ set -eu
 source=${1:?repository required}
 [ "$#" -eq 1 ] || exit 1
 stage='PHANTOWD_SAMBA_ROOT_STAGE_READY fresh=true hashes_during_copy=true no_overwrite=true refusals=5 scope=qemu-only'
-proof='PHANTOWD_CAPTURE_OPEN_PROOF authenticated_client=true actual_open_close=true complete_client_inputs=true module_retained=true original_channel_pair=true status_worker_local=true stop_before_release=true unchanged_data=true fd_equal=true reads=false samples=false worker_binding=false authority=false scope=qemu-only'
+proof='PHANTOWD_CAPTURE_OPEN_PROOF authenticated_client=true actual_open_close=true complete_client_inputs=true module_retained=true original_channel_pair=true status_worker_local=true tcp_namespaces=true stop_before_release=true unchanged_data=true fd_equal=true reads=false samples=false worker_binding=false authority=false scope=qemu-only'
 done='PHANTOWD_CAPTURE_OPEN_GUEST_DONE'
 negative=0
 newline=$'\n'
@@ -31,7 +31,7 @@ for text in '' "$stage" "$proof" "$done" \
 done
 for mutation in 'authenticated_client=true/authenticated_client=false' 'actual_open_close=true/actual_open_close=false' \
     'complete_client_inputs=true/complete_client_inputs=false' 'module_retained=true/module_retained=false' \
-    'original_channel_pair=true/original_channel_pair=false' 'status_worker_local=true/status_worker_local=false' 'stop_before_release=true/stop_before_release=false' \
+    'original_channel_pair=true/original_channel_pair=false' 'status_worker_local=true/status_worker_local=false' 'tcp_namespaces=true/tcp_namespaces=false' 'stop_before_release=true/stop_before_release=false' \
     'unchanged_data=true/unchanged_data=false' 'fd_equal=true/fd_equal=false' 'reads=false/reads=true' \
     'samples=false/samples=true' 'worker_binding=false/worker_binding=true' 'authority=false/authority=true' \
     'scope=qemu-only/scope=product' 'scope=qemu-only/scope=qemu-only unexpected=true'; do

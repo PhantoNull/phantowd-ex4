@@ -3,6 +3,15 @@
 
 # M4.5: retained server-open observation integration plan
 
+The capture OPEN lane now also binds and rechecks original client/worker
+generations, four retained namespaces and reciprocal kernel TCP pair through
+the unchanged connection primitive. Complete input/STATUS/worker fences run
+with both Owner gates held in client-first order; rechecks accept no replacement
+peer. Actual ARM CLOSE/stop/data/base/FD proofs and host/race/refusal tests pass.
+Containment belongs to the public/dual-owner boundary, not its locked helper.
+The original worker data-FD and active VFS/FileId/frame/request bridge remain
+unqualified; no complete S4/S5, product startup, privilege or timer change.
+
 The current optional OPEN lane adds a fixed STATUS-only helper with unchanged
 native12 namespace/chroot/capability/FD boundary. Two independently captured
 STATUS observations match the original client session/tree and retained worker

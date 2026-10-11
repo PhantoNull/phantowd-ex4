@@ -11,7 +11,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"strconv"
 	"strings"
 
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/processowner"
@@ -163,15 +162,11 @@ func (p *Plan) ProbeServerCaptureOpenQEMU(ctx context.Context, code *os.File) (r
 	if _, err := r.Observe(ctx); err != nil {
 		return err
 	}
-	if err := r.observeCaptureWorkerQEMU(ctx, original, beforeData); err != nil {
-		return errors.Join(errors.New("capture original worker first observation"), err)
+	if err := o.bindCaptureConnectionQEMU(ctx, r, original, beforeData); err != nil {
+		return errors.Join(errors.New("capture original TCP/namespace binding"), err)
 	}
-	if r.captureWorker.status.session != strconv.FormatUint(initial.SessionID, 10) || r.captureWorker.status.tree != strconv.FormatUint(uint64(initial.TreeID), 10) {
-		_, err := r.contain(ErrMismatch)
-		return err
-	}
-	if err := r.observeCaptureWorkerQEMU(ctx, original, beforeData); err != nil {
-		return errors.Join(errors.New("capture original worker recheck"), err)
+	if err := o.recheckCaptureConnectionQEMU(ctx); err != nil {
+		return errors.Join(errors.New("capture original TCP/namespace recheck"), err)
 	}
 	if err := o.close(); !errors.Is(err, processowner.ErrBusy) {
 		return errors.New("live client released complete originals")
@@ -212,6 +207,6 @@ func (p *Plan) ProbeServerCaptureOpenQEMU(ctx context.Context, code *os.File) (r
 	if err != nil || after != before {
 		return errors.Join(errors.New("capture OPEN descriptor leak"), err)
 	}
-	fmt.Println("PHANTOWD_CAPTURE_OPEN_PROOF authenticated_client=true actual_open_close=true complete_client_inputs=true module_retained=true original_channel_pair=true status_worker_local=true stop_before_release=true unchanged_data=true fd_equal=true reads=false samples=false worker_binding=false authority=false scope=qemu-only")
+	fmt.Println("PHANTOWD_CAPTURE_OPEN_PROOF authenticated_client=true actual_open_close=true complete_client_inputs=true module_retained=true original_channel_pair=true status_worker_local=true tcp_namespaces=true stop_before_release=true unchanged_data=true fd_equal=true reads=false samples=false worker_binding=false authority=false scope=qemu-only")
 	return nil
 }

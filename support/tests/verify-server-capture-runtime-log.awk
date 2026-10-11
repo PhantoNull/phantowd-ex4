@@ -7,17 +7,19 @@ BEGIN {
     tests[1] = "TestServerCaptureClientNoticesRequireCompleteSameOpenSequence"
     tests[2] = "TestServerCaptureClientNoticesRefuseDriftUnrequestedReadsAndOtherProtocols"
     tests[3] = "TestServerCaptureClientDedicatedLifecycleRefusesHostNilCopyCancelBusyAndReview"
-    tests[4] = "TestServerCaptureClientAccumulatedNoticesNeverLatchPartialOrAcceptUnrequestedRead"
+    tests[4] = "TestServerCaptureClientConnectionRefusesAbsentCopiedCanceledAndUnstarted"
+    tests[5] = "TestServerCaptureClientAccumulatedNoticesNeverLatchPartialOrAcceptUnrequestedRead"
+    required = 5
 }
 { sub(/\r$/, "") }
 /PHANTOWD_/ {
     if (state == 0 && $0 == stage) { state = 1; next }
     if (state == 1 && $0 == proof) { state = 2; next }
-    if (state == 2 && $0 == done && completed == 4 && summary) { state = 3; next }
+    if (state == 2 && $0 == done && completed == required && summary) { state = 3; next }
     refused = 1
 }
 /^=== RUN/ {
-    if (state != 2 || summary || running || completed >= 4 || $0 != "=== RUN   " tests[completed+1]) { refused = 1; next }
+    if (state != 2 || summary || running || completed >= required || $0 != "=== RUN   " tests[completed+1]) { refused = 1; next }
     running = 1
     next
 }
@@ -29,10 +31,10 @@ BEGIN {
     next
 }
 /^PASS$/ {
-    if (state != 2 || summary || running || completed != 4) { refused = 1; next }
+    if (state != 2 || summary || running || completed != required) { refused = 1; next }
     summary = 1
     next
 }
 /^--- (FAIL|SKIP):|^FAIL($|[ \t])/ { refused = 1 }
 /Kernel panic|INTERNAL ERROR|AddressSanitizer|runtime error:/ { refused = 1 }
-END { if (state != 3 || completed != 4 || !summary || running || refused) exit 1 }
+END { if (state != 3 || completed != required || !summary || running || refused) exit 1 }

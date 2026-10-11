@@ -149,6 +149,29 @@ func TestServerCaptureClientDedicatedLifecycleRefusesHostNilCopyCancelBusyAndRev
 	}
 }
 
+func TestServerCaptureClientConnectionRefusesAbsentCopiedCanceledAndUnstarted(t *testing.T) {
+	var absent *ServerCaptureClientQEMU
+	if absent.BindConnectionQEMU(context.Background(), nil) == nil || absent.RecheckConnectionQEMU(context.Background()) == nil {
+		t.Fatal("absent capture connection admitted")
+	}
+	inner := &PendingClientQEMU{gate: make(chan struct{}, 1), captureMode: true, handleMode: true}
+	inner.self = inner
+	client := &ServerCaptureClientQEMU{adapter: inner}
+	client.self = client
+	copied := *client
+	if copied.BindConnectionQEMU(context.Background(), nil) == nil || copied.RecheckConnectionQEMU(context.Background()) == nil {
+		t.Fatal("copied capture connection admitted")
+	}
+	canceled, cancel := context.WithCancel(context.Background())
+	cancel()
+	if !errors.Is(client.BindConnectionQEMU(canceled, nil), context.Canceled) || inner.connection != nil || inner.review {
+		t.Fatal("canceled bind had effects")
+	}
+	if client.BindConnectionQEMU(context.Background(), nil) == nil || client.RecheckConnectionQEMU(context.Background()) == nil || inner.connection != nil {
+		t.Fatal("unstarted capture connection admitted")
+	}
+}
+
 func TestServerCaptureClientAccumulatedNoticesNeverLatchPartialOrAcceptUnrequestedRead(t *testing.T) {
 	h := PendingHandleObservationQEMU{SessionID: 11, TreeID: 3, PersistentID: 17, VolatileID: 19}
 	c := &PendingClientQEMU{captureMode: true, handleMode: true, stdout: newDiagnosticRing(), stderr: newDiagnosticRing()}

@@ -67,6 +67,15 @@ currently product-qualified for migration.
 
 ## Current baseline
 
+Dedicated capture OPEN now also binds and rechecks the original client/worker
+processes, four retained namespaces and reciprocal kernel TCP pair in ARMv5.
+Complete client/runtime/STATUS fences are serialized under fixed client-first
+lock order, with no replacement peer on recheck. Explicit CLOSE, verified server
+stop, data/base/FD equality and strict host/ARM regressions pass. Next, retain
+the original worker data-FD and consume bounded VFS records to compare remote
+FileIds with independent STATUS/local-object evidence; no READ/frame/request
+authority or product activation is claimed by the current observation lane.
+
 The capture OPEN lane now also qualifies two independent STATUS observations
 on the original retained worker generation/executable/group/endpoint and local
 file view; session/tree match the original client handle. Its fixed STATUS-only

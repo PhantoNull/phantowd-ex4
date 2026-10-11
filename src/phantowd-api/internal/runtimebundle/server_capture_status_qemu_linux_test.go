@@ -123,3 +123,25 @@ func TestServerCaptureWorkerRefusesAbsentCanceledBusyAndUnsettledHelper(t *testi
 		t.Fatal("uncertain helper discarded worker original", err)
 	}
 }
+
+func TestServerCaptureWorkerLockedRefusalLeavesContainmentToContainingOwner(t *testing.T) {
+	file, err := os.Open(os.DevNull)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = file.Close() })
+	// Invalid concrete adapter, not an invented healthy process. The internal
+	// helper must return its refusal without separately attempting containment;
+	// the public runtime/dual-owner boundary is responsible for that operation.
+	r := &serverObserverRuntimeQEMU{gate: make(chan struct{}, 1), pid: 2, daemon: &processowner.NativeObserverDaemonQEMU{}}
+	r.self = r
+	r.gate <- struct{}{}
+	err = r.observeCaptureWorkerLockedQEMU(context.Background(), file, unix.Stat_t{})
+	<-r.gate
+	if err == nil || r.review || r.captureWorker != nil {
+		t.Fatal("internal refusal duplicated containing-owner effects", err)
+	}
+	if _, err := file.Stat(); err != nil {
+		t.Fatal("internal refusal discarded caller original", err)
+	}
+}

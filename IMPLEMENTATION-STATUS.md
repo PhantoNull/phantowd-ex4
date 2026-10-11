@@ -3,6 +3,28 @@
 
 # Implementation status
 
+## Capture TCP/namespace composition — retained originals in actual ARMv5
+
+The dedicated capture client now reuses the unchanged original-process,
+four-namespace and reciprocal kernel TCP checks. Its private containing Owner
+holds client then runtime gates together across complete input and independent
+STATUS/worker fences; later checks accept no replacement peer. Real ARMv5
+qualifies one bind and a same-original recheck during authenticated O_RDONLY
+OPEN, then explicit CLOSE, server stop, unchanged data/base and FD equality.
+
+Adapter/Owner RED/GREEN, tagged host vet/unit and scoped race3 pass. A separate
+refusal regression places containment at the public/dual-owner boundary rather
+than also in its locked helper. The runtime-only guest now executes five named
+ARM protocol/lifecycle/connection-refusal tests; strict receipts require all
+ordered RUN/PASS pairs and summary (two positive/39 negative controls). The first
+old four-test receipt correctly refused the extra test and is superseded, not
+waived. OPEN receipts have two positive/35 controls; Windows preflight passes.
+
+No READ/frame, original worker data-FD pin or remote FileId/request authority
+is qualified yet. Complete construction/fault/SDK/full-image/hosted/recovery/
+product gates remain separate. Generic launchers, the underlying connection
+primitive, privileges, timers, NAS/physical media and Docker storage are unchanged.
+
 ## Capture STATUS and retained worker observations — host/QEMU only
 
 The authenticated capture OPEN lane now runs a dedicated STATUS-only bootstrap
