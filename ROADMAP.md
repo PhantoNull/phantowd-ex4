@@ -3064,8 +3064,13 @@ The dedicated VFS/bootstrap boundary is now approved for host/disposable QEMU
 only, with retained original references, no added privileges or generic-launcher
 widening. A partial S1 loader prerequisite uses Samba's actual canonical loader
 and registry; the module refuses CONNECT until trusted handoff/capture exists.
-Complete SDK/runtime closure, dedicated bootstrap, active producer, lifetime
-binding and faults remain open: neither S1 nor the server bridge is complete.
+An optional partial S2 context probe now verifies a separate fixed bootstrap,
+original endpoint handoff, root/FD/capability boundary and original-reference
+checks after verified child/group settlement. Actual endpoint-loss and leaked-FD
+mutations refuse. It does not launch smbd or supply containing execution authority.
+Complete SDK/runtime closure, real daemon bootstrap/Owner composition, active
+producer, lifetime binding and faults remain open: neither S1/S2 nor the server
+bridge is complete.
 Client-launcher approval alone is not server approval. This does not waive the
 failed full-integration/hosted gates or authorize product/NAS startup.
 

@@ -19,6 +19,15 @@ RELRO/NOW and non-executable stack are guarded. This is only **S1's loader
 prerequisite**, not a complete SDK/dynamic-closure lease, active-worker bridge or
 completed S1/S2. No default campaign or pipeline boot is added.
 
+`support/test-server-observer-context.ps1` adds a **partial S2 context
+prerequisite**: a fixed separate bootstrap retains only the validated original
+sender at FD3 after isolated-root construction and execs a static context probe.
+Actual ARM verifies the root/capability/FD boundary, kernel child credentials and
+original references after verified child/group settlement. Endpoint loss and
+config-FD leakage refuse. Neither the existing generic/native helper nor the
+VFS CONNECT refusal changes. This is not a real smbd bootstrap, complete code/
+SDK lease, containing Owner, active worker or S2 completion; those remain next.
+
 ## Deliverable and existing boundaries
 
 The next deliverable is an independently qualified bridge from the original

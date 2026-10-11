@@ -149,6 +149,30 @@ launcher mutation; no default campaign/pipeline, product package/HTTP/NAS.
 Complete transitive closure and S2-S6 remain required; see the
 [dedicated integration plan](SMB-SERVER-OBSERVATION-PLAN.md).
 
+#### Dedicated server context handoff prerequisite
+
+```powershell
+.\support\test-server-observer-context.ps1
+```
+
+Optional partial S2 only: fixed config/state/share descriptor roles plus one
+original AF_UNIX/SOCK_SEQPACKET sender, private mount namespace/chroot, only FD3
+surviving exec, original capability set0xdb/NNP, real child SCM credentials and
+original-reference rechecks after verified child/group settlement. The executed
+program is a **context probe**, not smbd or an observation producer. Complete
+SDK authority and containing Owner remain required.
+
+Host endpoint controls, strict2 positive/16 malformed receipts and actual ARM
+endpoint-closure/config-FD-leak mutation controls pass. Existing native/root and
+product helpers are unchanged; the canonical VFS loader remains CONNECT-refusing.
+The script reuses the pinned image and existing workspace RO, one auto-removed
+non-root CPU2/RAM768MiB/PIDs128 container and256MiB tmpfs. Three static compilers
+are independently bounded30s; guest45s, host endpoint5s, wrapper180s. Two new
+16MiB regular tmpfs ext4 files and a borrowed base copy are snapshot-only;
+insertion bytes/modes/root ownership and the unchanged base are checked.
+No new Docker image/volume, NIC, physical device, default boot/CI, product
+service/HTTP/NAS or experimental WRITE. Existing campaign timers are unchanged.
+
 #### Server-side original-open reader prerequisite
 
 ```powershell

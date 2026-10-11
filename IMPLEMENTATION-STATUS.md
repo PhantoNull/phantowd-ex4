@@ -3,6 +3,34 @@
 
 # Implementation status
 
+## Dedicated server context handoff prerequisite — partial S2
+
+`support/test-server-observer-context.ps1` now exercises a separate fixed
+bootstrap and context probe in disposable ARM926 QEMU. Five immutable config
+objects, seven mutable state directories and two synthetic share roots are
+cloned from their original descriptors. One validated Unix sequenced-packet
+sender survives at FD3; all descriptors 4+ are closed before exec. The original
+native/root and product launchers are unchanged.
+
+The actual probe verifies the isolated read-only root, absent proc/dev/run,
+root's existing restricted capability set `0xdb`, no supplementary groups,
+NNP, and the endpoint's original identity/settings. Kernel packet credentials
+identify the executed child separately from the socketpair creator. The parent
+retains code/config/state/share and both socket originals through verified child
+and process-group settlement, then rechecks and closes them.
+
+Actual ARM mutations that close the endpoint or leak a config descriptor
+refuse; restoring the correct bootstrap passes. Host socket-role/type/flags/
+creator/replacement/closure controls and strict2 positive/16 malformed-receipt
+controls pass. The unchanged canonical VFS loader regression and Windows
+API/UI/toolkit/cross-compilation preflight pass.
+
+This is a **context-only prerequisite**, not a containing Owner/execution
+lease, actual smbd handoff, active VFS sampling or completed S2. Full S1 closure,
+S2 composition and S3-S6 remain open. Only a disposable snapshot guest uses two
+16MiB synthetic ext4 files; no NAS, physical disks, network listener, HTTP,
+experimental WRITE, product package or default CI campaign is changed.
+
 ## New fixture-only server VFS loader prerequisite
 
 The approved dedicated server boundary has a first partial S1 implementation:
