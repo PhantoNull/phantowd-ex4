@@ -67,6 +67,19 @@ complete fault qualification; no default CI, privilege or timer change.
 
 ## Deliverable and existing boundaries
 
+`support/test-server-capture-runtime.ps1` now joins independently expected
+capture-module/bootstrap code inputs to a separate fixed runtime profile.
+The old negotiation-only configuration and launchers stay unchanged. The new
+bootstrap uses a fresh stdin pipe for one synthetic nobody account in private
+RAM state; its credential helper closes the observer FD and stays in the same
+owned group. Any existing passdb or uncertain lookup refuses before mutation.
+Actual ARM verifies smbd/NEGOTIATE, original module/channel retention, verified
+stop-before-release, existing-state refusal with unchanged TDB and FD equality.
+This supersedes "module absent" only for the declared input composition: no
+authenticated client, OPEN, active module callback/frame or original-worker
+authority is yet exercised. New client protocol/retained closure and all S4
+worker/FileId/local-object/namespace/TCP witnesses remain mandatory.
+
 The optional `support/test-server-capture.ps1` now implements a separate fixed
 capture module variant. Sync/async read callbacks sample current FSA metadata
 without retaining a file pointer and send two ordered frames nonblocking via

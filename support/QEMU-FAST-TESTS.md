@@ -1,5 +1,24 @@
 # Fast API and file-service integration checks
 
+## Capture runtime inputs — one disposable ARM guest, no client/file request
+
+Run `support/test-server-capture-runtime.ps1` for fixed module/bootstrap input
+composition. The independently declared module/bootstrap and original closure
+remain retained through verified daemon-group stop. The dedicated bootstrap
+creates only a synthetic RAM account via stdin; any existing passdb/uncertain
+lookup refuses before mutation. Actual smbd/NEGOTIATE, live-Close refusal,
+retained original inputs, explicit existing-state refusal with unchanged TDB
+and final FD equality pass. Strict receipts have two positive/30 negative cases.
+
+This does **not** exercise authentication, OPEN, active VFS frames, worker/FileId
+binding or a service lease. Full SDK/fault/hosted/product gates remain open.
+Original negotiated-only runtime and launchers are unchanged and independently
+regression-tested. Existing image/workspace/base/source stay read-only; auto-
+removed non-root/caps0/NNP/network-none container, CPU4/2GiB/256PIDs, 1GiB RAM
+scratch, guest ARM926/256MiB/no NIC with96MiB run/8MiB private state and16MiB
+synthetic share files. QEMU60s, readiness12s, stop4s, outer180s. No new Docker
+image/volume, physical disk/NAS operation, default CI or data WRITE.
+
 ## Read-only capture client — no guest or SMB execution yet
 
 Run `support/test-server-capture-client.ps1` with the existing pinned builder

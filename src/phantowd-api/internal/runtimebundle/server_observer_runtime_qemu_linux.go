@@ -59,7 +59,14 @@ func serverObserverDocumentsQEMU() map[string]string {
 }
 
 func newServerObserverRuntimeQEMU(ctx context.Context, plan *Plan, code, configuration, state *os.File, shares [2]*os.File) (retained *serverObserverRuntimeQEMU, result error) {
+	return newServerObserverProfileRuntimeQEMU(ctx, plan, code, configuration, state, shares, serverObserverNegotiationProfileQEMU)
+}
+
+func newServerObserverProfileRuntimeQEMU(ctx context.Context, plan *Plan, code, configuration, state *os.File, shares [2]*os.File, profile serverObserverProfileQEMU) (retained *serverObserverRuntimeQEMU, result error) {
 	if ctx == nil || plan == nil || code == nil || configuration == nil || state == nil || shares[0] == nil || shares[1] == nil {
+		return nil, ErrInvalid
+	}
+	if profile != serverObserverNegotiationProfileQEMU && profile != serverObserverCaptureProfileQEMU {
 		return nil, ErrInvalid
 	}
 	if err := ctx.Err(); err != nil {
@@ -88,8 +95,15 @@ func newServerObserverRuntimeQEMU(ctx context.Context, plan *Plan, code, configu
 	if helper == nil || r.code.code.files["usr/sbin/smbd"] == nil || staticExecutable(helper) != nil {
 		return nil, ErrInvalid
 	}
+	documents := serverObserverDocumentsQEMU()
+	if profile == serverObserverCaptureProfileQEMU {
+		if r.code.code.files[serverCaptureModuleObjectQEMU] == nil {
+			return nil, ErrInvalid
+		}
+		documents = serverCaptureDocumentsQEMU()
+	}
 	var expected []File
-	for name, contents := range serverObserverDocumentsQEMU() {
+	for name, contents := range documents {
 		mode := uint32(0644)
 		if name == "samba/smb.conf" {
 			mode = 0600

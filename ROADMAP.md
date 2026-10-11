@@ -67,6 +67,14 @@ currently product-qualified for migration.
 
 ## Current baseline
 
+The capture module and dedicated account-bootstrap are now independently
+declared/retained in a fixed private runtime profile. Actual ARM smbd/NEGOTIATE,
+stop-before-release, existing synthetic passdb refusal without mutation, sticky
+review/reference retention and FD equality pass; the original runtime also
+passes. This is partial S2 input composition, **not authentication/OPEN/frames**.
+Next, join the retained dedicated read-only client and new notice protocol,
+then qualify original worker/FileId/local-object/transport matching.
+
 A dedicated fixed read-only capture client now passes host mock orchestration
 (three positive flows, 121 refusals) and ARMv5 ELF compilation; it has not run
 against Samba or in ARM. It reads at most twice on one original handle and

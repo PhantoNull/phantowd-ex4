@@ -3,6 +3,40 @@
 
 # Implementation status
 
+## Capture-module runtime/bootstrap composition — private host/QEMU prerequisite
+
+`support/test-server-capture-runtime.ps1` now independently builds and declares
+the module and a dedicated static bootstrap in the retained code Plan. A fixed
+construction-only capture profile requires that module, read-only/nobody share,
+no guest access and mandatory signing; the original negotiated-only profile
+and generic/native launchers remain unchanged. The bootstrap initializes one
+synthetic account through a fresh stdin pipe in the original process group;
+the helper cannot inherit the observer endpoint. It refuses an existing passdb
+or uncertain lookup before mutation. Only retained private RAM state is written.
+
+Actual ARMv5 verifies real smbd/NEGOTIATE, original module and channel retention,
+live-Close refusal, group stop before release and parent FD equality. A separate
+explicit startup against the existing synthetic state fails and settles, keeps
+original references/review, refuses another Start and leaves original passdb
+bytes/identity/mode/owner/size/mtime/ctime unchanged. The new regression fails
+before the bootstrap guard and passes after it. Its initial 256KiB observation
+guess was corrected from measured421888-byte TDB allocation to a bounded1MiB
+streaming fixture hash, without changing product policy or service deadlines.
+
+Strict receipts pass two positive/30 malformed controls. Tagged Linux vet/unit,
+capture/observer runtime race tests repeated three times, the original ARM
+observer runtime/drift regression and Windows API/UI/cross preflight pass.
+A combined host command failed race compilation in its 256MiB RAM scratch;
+the separate bounded512MiB scratch race check passes. This was not diskC growth.
+The optional wrapper uses existing read-only image/workspace/base, auto-removal,
+RAM scratch and no NIC/physical media; 60/12/4/180s fixture limits are unchanged.
+
+This advances **partial S2 input composition**, not an active module/worker or
+server-open authority. No client authentication, file OPEN or samples are yet
+requested; complete SDK, client/worker/FileId/transport/fault and full/hosted/
+recovery/product gates remain open. No NAS, data WRITE, new Docker storage,
+default CI trigger or installed product helper.
+
 ## Dedicated capture client prerequisite — host mocks and ARM compilation only
 
 `support/test-server-capture-client.ps1` builds a separate fixed read-only
