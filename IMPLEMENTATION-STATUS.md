@@ -5,22 +5,25 @@
 
 ## Current combined local qualification
 
-Frozen `68895cd8d7532b91960caef092523bd5937f1019` passes the original complete
+Frozen `3ccc2df78cced5c58c05319fedf04f2a32b82180` passes the original complete
 cached Buildroot/host/ARMv5 integration: main smoke, MD comparisons, clean
 two-boot state, isolated launcher/static-code Owner, loader/atomic checks,
 all ten Samba campaigns and both synthetic SMART lanes. The startup-fault
 child failure no longer reproduces in that original scenario. Proof equality,
 output bounds and deadlines remain unchanged; no retry hides a failed test.
 
-Independent post-terminal auditing matches all 1,025 API inputs against the
-compiled package and legal archive, all 1,367 frozen tracked witnesses, the
-11,510 installed Go 1.26.8 SDK files, and 25,464 unchanged regular audit inputs.
+Independent post-terminal auditing matches all 1,026 API inputs against the
+compiled package and legal archive, all 1,370 frozen tracked witnesses, the
+11,510 installed Go 1.26.8 SDK files, and 25,468 unchanged regular audit inputs.
 Configured stripping reproduces the installed/image/exported API. Seven hashes,
 Linux/header 6.18.55, release metadata, host OpenSSL 3.5.9, configured RPATH,
 actual Python certificate/TLS 1.3 consumption, licenses and SBOM agree.
-Nine complete guest logs separately pass exact-byte/strict replay with 27 total
-missing/duplicate/failure-marker refusals. The tenth was accepted by the original
-full controller; its full log was not preserved for an independent replay.
+Seven intact original guest logs separately pass exact-byte/strict replay with
+28 missing/altered/duplicate/wrong-phase refusals. All ten were accepted by the
+original full controller and union verifier. No independent saved-log replay is
+claimed for lifecycle, file or file-source; truncated capture is not complete
+evidence. This checkpoint also includes sanitized diagnostic export and the
+supplied-TMPDIR staging correction, without changed guest deadlines.
 
 This qualifies a combined cached local software checkpoint, not independent
 clean reproduction, hosted timing repair, EX4 hardware, product activation,
@@ -43,13 +46,16 @@ retry. Counts, times and runtime details remain: review before sharing.
 
 Actual-source projection and DOM controls pass, including original-source
 mutation, private sentinel inputs, limit boundaries, unsafe counters, partial
-  failures, session retirement and failed downloads. Host HTTP and ARM HTTP/HTTPS
-  asset checks include the new script. Pinned Linux Go 1.26.8 full tagged vet/tests
-  and three API/policy/store race passes succeed. The actual ARMv5 standard smoke
-  and separate two-boot overlay both pass on unchanged source and borrowed base;
-  they test asset delivery, not execution of browser JavaScript inside the guest.
-  Windows preflight and ARMv5 cross-compilation also pass. This does not rebuild
-  the full image/SBOM or inherit another head's hosted CI qualification.
+failures, session retirement and failed downloads. Host HTTP and ARM HTTP/HTTPS
+asset checks include the new script. Pinned Linux Go 1.26.8 full tagged vet/tests
+and three API/policy/store race passes succeed. The actual ARMv5 standard smoke
+and separate two-boot overlay both pass on unchanged source and borrowed base;
+they test asset delivery, not execution of browser JavaScript inside the guest.
+Windows preflight and ARMv5 cross-compilation also pass. Those focused checks
+alone do not rebuild a full image/SBOM or inherit hosted CI qualification.
+The separate complete checkpoint above now includes this workflow and its
+actual rebuilt package/image/source archive/SBOM. Browser execution and the
+publication head's own hosted checks remain separate.
 This is not an appliance backup, attestation, atomic inventory, SMART history,
 operation audit or storage-health/migration qualification. Real-browser,
 accessibility, product startup and complete support diagnostics remain open.
@@ -80,8 +86,10 @@ Source and borrowed base image remain unchanged. Terminal exit/completion marker
 were observed, but the terminal log was truncated; no complete-capture replay is
 claimed. No new images/volumes were created; scratch containers auto-remove.
 
-This does not qualify visual/accessibility behavior, independent clean builds,
-new full-image/SBOM outputs, hosted timing repair, production state lifecycle,
+Those focused checks do not qualify visual/accessibility behavior, independent
+clean builds or new full-image/SBOM outputs. The complete checkpoint above now
+includes the workflow; neither lane establishes hosted timing repair,
+production state lifecycle,
 physical EX4 operation, legacy migration or installable firmware. See the
 [workflow contract](src/phantowd-api/README.md#download-and-reviewed-restore) and
 [remaining product tasks](ROADMAP.md#m5-product-web-management-and-security).

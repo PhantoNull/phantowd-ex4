@@ -94,12 +94,12 @@ The fixed exit fault runs within the same exclusive supervisor, correcting a
 controlled fixture alias race without retry or relaxed proof/deadlines. In-flight
 faults, durable reconnect and recovery remain open.
 
-The latest fully audited local checkpoint `68895cd` selects Go 1.26.8 and host OpenSSL
+The latest fully audited local checkpoint `3ccc2df` selects Go 1.26.8 and host OpenSSL
 3.5.9 and passes the
 complete cached Buildroot/host/ARMv5 lane: all ten independently enrolled
 Samba scenarios and both synthetic SMART lanes. Independent post-terminal
-auditing matches all 1,025 API inputs to compiled package/source archive and all
-1,367 tracked build witnesses, with 25,464 unchanged audit rereads. Configured
+auditing matches all 1,026 API inputs to compiled package/source archive and all
+1,370 tracked build witnesses, with 25,468 unchanged audit rereads. Configured
 stripping, installed/image/exported
 API, seven hashes, Linux AND headers 6.18.55, actual selected/installed Go SDK,
 SBOM, release and legal sources agree. The OpenSSL recipe/four patches/original
@@ -109,11 +109,13 @@ mapped-library/version/certificate/private TLS 1.3 checks; see
 [exact qualification](IMPLEMENTATION-STATUS.md#current-combined-local-qualification).
 
 This combined checkpoint includes the desired SMB/NFS backup/reviewed-restore
-workflow and the exact-proof worker-log correction. The original complete
+workflow, sanitized snapshot report, supplied-TMPDIR staging fix and the
+exact-proof worker-log correction. The original complete
 scenario and independent artifact audit pass after that correction, without
-changing proof bytes, output caps or deadlines. Nine complete Samba guest logs
-also pass independent strict replay with three negative controls each; the tenth
-is verified by the original full controller, not a separately captured replay.
+changing proof bytes, output caps or deadlines. Seven intact Samba guest logs
+also pass independent strict replay with four negative controls each; all ten
+are verified by the original full controller and union. No saved-log replay is
+claimed for lifecycle/file/file-source; incomplete capture is excluded.
 Own-head hosted acceptance, clean reproduction and product/hardware gates remain
 open. Do not infer pending-I/O, physical disk failure or installability.
 

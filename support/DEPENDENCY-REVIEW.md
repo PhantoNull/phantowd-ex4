@@ -5,12 +5,12 @@
 
 ## Current combined cached qualification (2026-10-11)
 
-Frozen `68895cd8d7532b91960caef092523bd5937f1019`, API tree
-`b12175f399d683ca23b2367057ad8cc08e4a6d24`, passes the original complete cached
+Frozen `3ccc2df78cced5c58c05319fedf04f2a32b82180`, API tree
+`13d2597f04fcb876c6a8d6dc22fdd9ece6dba877`, passes the original complete cached
 host/ARMv5 lane, all ten Samba campaigns and both synthetic SMART lanes.
-An independent post-terminal audit retains the previous guards: all 1,367
-tracked witnesses, 1,025 API package/archive inputs, 11,510 installed Go 1.26.8
-SDK files and 25,464 regular audit inputs match and remain unchanged. Configured
+An independent post-terminal audit retains the previous guards: all 1,370
+tracked witnesses, 1,026 API package/archive inputs, 11,510 installed Go 1.26.8
+SDK files and 25,468 regular audit inputs match and remain unchanged. Configured
 strip/installed/image/export, Linux/header 6.18.55, legal sources/licenses,
 release metadata, selected OpenSSL 3.5.9 and seven hashes agree. Actual Buildroot
 Python loads the same configured-RPATH libraries and verifies a certificate and
@@ -18,17 +18,20 @@ private-loopback TLS 1.3 exchange.
 
 | Artifact | SHA-256 |
 | --- | --- |
-| API (10,708,212 bytes) | `3f83d093ff607a360d592b51b129fbd92b12fecc869c0366250530992f265d30` |
-| rootfs.ext2 (83,886,080 bytes) | `c03b331bdb3d5e696abc8139e75ae36d9d73a3ed0a96ae732602035591a91a30` |
-| API source archive | `2ba417aba0014868aeed3a7c67894f4e52fe042221ff92665b4c5953e6e2de78` |
-| SHA256SUMS | `a0c6434d28534ce7536a8ae03d6517a903be861709fb9f1ea39755acc1eb5481` |
+| API (10,708,276 bytes) | `fa012dd74fc69277cf42a1ffe8579110e973a1d06fdc62872b1bc3eda8038a42` |
+| rootfs.ext2 (83,886,080 bytes) | `8d52ef40af338d93b080d22ba24eb8b5b1c13aaf1254d76e9cd4cd8cd9f6fc85` |
+| API source archive | `0ee73fbc6fc68ffe8b3ec501b20a07356c08b91532b7d4e6cab51ab305cff95a` |
+| SHA256SUMS | `20cb14c4350848577be95e98b3bd75fa763cedd13031617c753ebce16cdc242b` |
 
 The original startup-fault exact-proof failure no longer reproduces after
 trusted-context-only worker timing opt-in. Fixed proof bytes, output caps and
-deadlines remain unchanged. Nine saved complete Samba logs independently pass
-strict replay and 27 negative controls; the tenth is accepted by the original
-controller, without an independent saved-log replay. This does not resolve the
-separate earlier hosted live-session deadline or qualify pending-I/O loss,
+deadlines remain unchanged. This checkpoint includes sanitized report export and
+the CI staging correction that honors a qualified supplied TMPDIR. Seven intact
+saved Samba logs independently pass strict replay and 28 negative controls;
+all ten pass the original controller and union verifier. Lifecycle/file/file-source
+logs were not independently preserved/replayed; truncated capture is excluded.
+This does not resolve the separate earlier hosted live-session deadline or
+qualify pending-I/O loss,
 recovery, production services, physical EX4 support or an installer. Require
 the publication head's own hosted checks. Existing image/two project volumes
 are reused; independent clean reproduction and full compliance remain open.
