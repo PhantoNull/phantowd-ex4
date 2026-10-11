@@ -1662,6 +1662,14 @@ storage. No production roster provider or activation path exists.
 - **M4.5 — Failure and shutdown.** Cover startup with absent disks, service crash,
   read-only/full volume, client reconnect, stale NFS handles, shutdown with open
   files and restart ordering. Distinguish safely unavailable from healthy.
+  The QEMU-only native worker now checks the original context at its final
+  result decision, after settlement/closure, post-admission and diagnostics.
+  Late cancellation/expiry refuses output, preserves review/first failure and
+  existing error precedence, without retry, extra admission or new deadlines.
+  Real seam RED2, Linux vet/unit/race3, Windows and three ARM seam cases3 pass;
+  the unchanged strict actual native Samba campaign passes separately. This
+  point-in-time seam proof is not real admitted-worker fault injection,
+  pending-I/O, a hosted timing fix, new complete image or product activation.
   **Dedicated pending-client handoff prerequisite, host/QEMU only:** a new fixed
   helper (not the generic/root launcher) accepts original RO root/program FDs
   and four independent anonymous pipes. It clones before mount-namespace

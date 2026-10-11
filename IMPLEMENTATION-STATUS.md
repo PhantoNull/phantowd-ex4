@@ -3,6 +3,27 @@
 
 # Implementation status
 
+## Native worker result publication — host/QEMU cancellation fence
+
+The private `qemu && linux` credential runtime now checks the original context
+again at its final result decision, after verified capture settlement/closure
+and post-admission. Observed cancellation/expiry clears captured stdout and
+retains review; existing execution/post-admission/result precedence and the
+first diagnostic failure remain unchanged. No deadline, retry, admission pass,
+generic launcher or ordinary product startup is changed.
+
+The real return seam reproduced the missing fence twice before correction.
+Pinned Linux module vet, runtimebundle/processowner tests repeated three times,
+focused race-count3 and Windows API/UI/vet/ARM cross checks pass. Three isolated
+completion-seam cases execute three times on ARM926. The original actual Samba
+`native` campaign also passes its strict enrollment/authentication/revocation/
+synthetic-data/closure verifier. All1324 tested inputs and the borrowed base
+remain unchanged across qualification; the temporary seam guest is removed.
+
+State-only seam tests are not admitted-worker fault injection, and the final
+check is not atomic against subsequent cancellation. This is not a hosted
+timing fix, a new complete image, pending-I/O or product/NAS qualification.
+
 ## Offline ext recovery assessment — host-only schema 2/3
 
 The offline toolkit now holds ext candidates for review when orphan-recovery

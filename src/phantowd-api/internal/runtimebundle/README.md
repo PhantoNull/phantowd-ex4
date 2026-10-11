@@ -119,6 +119,16 @@ error redaction remains unchanged; guest output is explicitly diagnostic-only,
 never a qualification marker. Host tests qualify the bookkeeping/redaction
 boundary, not an actual ARMv5 worker fault, timeout fix or product recovery.
 
+The native credential worker's private final result decision also checks the
+original context after settlement/closure, post-admission and timing telemetry.
+Cancellation/expiry observed there clears stdout and retains review without
+retry, extra admission or altered deadlines. Existing failure precedence and
+the first diagnostic failure remain. State-only host/race and actual ARMv5
+completion-seam tests qualify this point-in-time guard, not an admitted-worker
+cancellation injection or atomicity against later cancellation. The original
+strict native Samba campaign passes as a distinct healthy regression control;
+neither result fixes hosted timing or enables ordinary product startup.
+
 Live-daemon code/configuration revalidation, bootstrap inspection and process
 observation refusals preserve their private typed causes behind the same
 generic review-only error text. Ordered admission checks and failure behavior

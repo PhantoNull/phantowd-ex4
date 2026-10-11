@@ -247,6 +247,20 @@ func (r *NativeSambaRuntimeQEMU) executeQEMU(ctx context.Context, operation proc
 	stageStarted = time.Now()
 	checkErr := r.revalidateNativeRuntimeQEMU(ctx)
 	reportNativeWorkerTimingQEMU(ctx, operation, nativeWorkerPostAdmissionQEMU, stageStarted, checkErr)
+	return r.completeNativeWorkerQEMU(ctx, observed, runErr, checkErr)
+}
+
+// Private publication decision, called only after original capture settlement,
+// closure and post-admission. It cannot launch a worker or establish those
+// prerequisites; keep it separate so the actual return/quarantine seam is tested.
+func (r *NativeSambaRuntimeQEMU) completeNativeWorkerQEMU(ctx context.Context, observed processowner.CaptureResult, runErr, checkErr error) ([]byte, error) {
+	// Admission/capture may have completed before cancellation. Observability
+	// work and the final return are still inside the original operation budget.
+	if ctx == nil {
+		checkErr = errors.Join(checkErr, ErrInvalid)
+	} else {
+		checkErr = errors.Join(checkErr, ctx.Err())
+	}
 	if runErr != nil || observed.Kind != processowner.CaptureExited || observed.ExitCode != 0 || strings.Count(string(observed.Stderr), nativeCredentialHandoff) != 1 || checkErr != nil {
 		clear(observed.Stdout)
 		r.owner.review = true
