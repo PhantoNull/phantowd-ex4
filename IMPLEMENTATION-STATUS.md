@@ -617,6 +617,30 @@ bypass, new whole-image qualification or the lifecycle timeout fix. No guest,
 hardware or persistent resource creation; the timing-contract choice remains
 open and the integration PRs retain their failed QEMU gates.
 
+## Current capture component — cooperative admission cancellation
+
+The regular-stdin CaptureOwner previously hashed retained input after a
+cancellation between entry and admission. A real-file inotify regression
+reproduces the read twice; moving the operation context before admission
+eliminates it. Hashing now checks cancellation between reads and before returning
+the digest. Pre-launch cancellation remains unconsumed; actual observed drift
+and post-launch cancellation preserve review. No canceled result is published.
+
+Complete Windows API/UI/vet/cross preflight and pinned Linux all-API vet/tests,
+tagged vet, owner/SMART/runtime tests and owner/SMART race-count3 pass. Five
+new admission/hash cases execute three times on ARM926 QEMU; the existing actual
+generic smartctl producer/parser/coordinator lane also passes seven synthetic
+cases and source-change refusal. The dedicated cancellation guest uses a
+constructor-compatible BusyBox mode only in its disposable copied image;
+the borrowed base and frozen source remain unchanged. The post-execution output
+discard regression executes on native Linux, not in that cancellation guest.
+
+Cancellation remains cooperative: constructor baseline hashing, an in-progress
+filesystem syscall and private fixture validators have no hard interruption
+guarantee. No permission/hash/admission guard, timeout constant, retry, product
+service or NAS operation is relaxed. This is not a full-image, hosted-timing,
+physical SMART, standby, device-provenance or release qualification.
+
 ## Current UI component — secondary text palette, host-only proof
 
 M5.5c corrects only the small secondary-text color. An actual-source regression

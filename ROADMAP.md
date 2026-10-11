@@ -2108,6 +2108,12 @@ not host/QEMU progress.
     Linux single-use capture primitive now retains fixed code/regular-stdin
     descriptors, copies options, observes bounded before/after drift digests,
     stream-bounds stdout/stderr and distinguishes real ordinary exits/signals.
+    Its operation budget now starts before admission and includes post-capture hashes:
+    cooperative hash-read/final cancellation fences preserve zero results,
+    while observed drift remains review rather than a cancellation shortcut.
+    Constructor hashing and blocking filesystem/fixture calls are not given
+    a hard interruption guarantee. This is a primitive reliability correction,
+    not trusted device/runtime collection or a hosted timing fix.
     Host lifecycle tests and a test-only adapter in the existing ARM926 producer
     boot pass seven genuine generic-producer projections and fake-source-change
     refusal. This closes neither authenticated/isolated runtime nor device

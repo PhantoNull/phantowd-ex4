@@ -81,7 +81,13 @@ stdin is at most 64 KiB and executable observation at most 16 MiB. Normal wait
 joins output workers and distinguishes genuine 0..255 ordinary exit codes from
 signals; signals expose no report. Cancellation reuses the existing bounded
 group cleanup and publishes no result. Failed exec consumes the instance too.
-Observed input drift or canceled/uncertain ownership cannot authorize retry.
+The operation budget starts before code/input admission and covers post-capture
+hash checks, not constructor baseline hashing. Cancellation is checked between
+hash reads and before digest publication; it cannot interrupt an in-progress
+filesystem syscall or private fixture validator. Cancellation before launch
+leaves the instance unconsumed and does not by itself quarantine it. Observed
+drift and post-launch canceled/uncertain ownership retain review and cannot
+authorize retry.
 
 `Settled` only verifies absence; `Close` releases pins only after verified
 absence and never signals/retries a process. Failed descriptor release remains
