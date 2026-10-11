@@ -58,7 +58,8 @@ for role in private lock state cache pid rpc; do mkdir -m 0700 "$state/$role"; d
 mount -t ext4 -o ro,nosuid,nodev,noexec /dev/sdb /run/observer-readonly
 mount -t ext4 -o rw,nosuid,nodev,noexec /dev/sdc /run/observer-writable
 if /usr/sbin/phantowd-runtime-bundle-probe server-observer-code-binding &&
-    /usr/sbin/phantowd-server-observer-daemon-test -test.run '^TestNativeObserverSambaDaemonQEMU$' -test.v; then
+    /usr/sbin/phantowd-server-observer-daemon-test -test.run '^TestNativeObserverSambaDaemonQEMU$' -test.v &&
+    /usr/sbin/phantowd-runtime-bundle-probe server-observer-runtime; then
     echo PHANTOWD_SERVER_OBSERVER_DAEMON_GUEST_DONE
 else
     echo PHANTOWD_SERVER_OBSERVER_DAEMON_GUEST_FAILED

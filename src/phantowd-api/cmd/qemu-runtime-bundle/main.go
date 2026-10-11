@@ -36,7 +36,7 @@ func run() error {
 	if len(os.Args) == 2 && os.Args[1] == "stage" && os.Getuid() == 0 && os.Geteuid() == 0 {
 		return stageFixture()
 	}
-	if len(os.Args) == 2 && os.Args[1] == "server-observer-code-binding" && os.Getuid() == 0 && os.Geteuid() == 0 {
+	if len(os.Args) == 2 && (os.Args[1] == "server-observer-code-binding" || os.Args[1] == "server-observer-runtime") && os.Getuid() == 0 && os.Geteuid() == 0 {
 		files, aliases, err := inputs()
 		if err != nil {
 			return err
@@ -55,7 +55,11 @@ func run() error {
 			return err
 		}
 		defer source.Close()
-		err = plan.ProbeServerObserverCodeBindingQEMU(context.Background(), root, source)
+		if os.Args[1] == "server-observer-runtime" {
+			err = plan.ProbeServerObserverRuntimeQEMU(context.Background(), root)
+		} else {
+			err = plan.ProbeServerObserverCodeBindingQEMU(context.Background(), root, source)
+		}
 		if err != nil {
 			fmt.Fprintln(os.Stderr, "server observer code binding:", err)
 		}

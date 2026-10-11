@@ -36,6 +36,9 @@ timeout --signal=TERM --kill-after=1 30 "$cc" -static -std=c11 -O2 -Wall -Wextra
     -ffunction-sections -fdata-sections -Wl,--gc-sections,-z,relro,-z,now \
     -DPHANTOWD_SAMBA_OBSERVER_DAEMON_FIXTURE=1 -o "$scratch/bootstrap" "$source/support/tests/samba-server-observer-daemon-qemu.c"
 if "$output/host/bin/arm-buildroot-linux-gnueabi-nm" "$scratch/bootstrap" | grep 'phantowd_legacy_fixture_unused_entry'; then exit 1; fi
+# Independently built helper expected before staging, not self-hashed admitted code.
+printf '%s /usr/sbin/phantowd-server-observer-daemon-bootstrap /usr/sbin/phantowd-server-observer-daemon-bootstrap\n' \
+    "$(sha256sum "$scratch/bootstrap" | cut -d ' ' -f 1)" >>"$scratch/manifest"
 cp "$base/rootfs.ext2" "$scratch/rootfs.ext2"
 [ "$(wc -c < "$scratch/rootfs.ext2")" -le 134217728 ] || exit 1
 truncate -s 128M "$scratch/rootfs.ext2"

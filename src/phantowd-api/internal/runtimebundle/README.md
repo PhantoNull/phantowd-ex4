@@ -3,6 +3,25 @@
 
 # Internal code-only runtime bundle inspection
 
+The separate `qemu && linux` server-observer runtime now joins original code
+and fixed-path/unique-mount binding, independently built static bootstrap,
+fixed rendered configuration, mutable-state directory identities, synthetic
+share roots, both original channel endpoints and a dedicated single-use daemon
+adapter. All access is serialized; no per-call backend/profile/probe or input
+descriptor escapes. The original daemon proc directory is retained and checked
+against the original smbd/FD3. Close never signals and releases inputs only
+after the adapter verifies whole-group absence. A close error is terminal and
+preserves unattempted inputs; review never permits restart or input adoption.
+
+The optional observer guest proves real receiver-option drift and live code
+cover containment, original retention after settlement, restoration refusal,
+canceled explicit cleanup and final parent FD equality. These are discrete
+checks, not continuous supervision or complete construction-race/fault
+qualification. The active VFS module/SDK/producer and worker/FileId bridge are
+still absent. No authenticated file OPEN, frame consumption, WRITE, HTTP,
+ordinary product startup, extra privilege or generic-launcher change is added.
+See the [ordered observer plan](../../../../support/SMB-SERVER-OBSERVATION-PLAN.md).
+
 The private `qemu && linux` pending-client input primitive retains two separate
 complete immutable roots: actual ARM client/library closure/fixed documents,
 including the fixed IBM850 conversion module and CP850 catalog, and the static

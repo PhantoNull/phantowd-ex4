@@ -182,7 +182,7 @@ service/HTTP/NAS or experimental WRITE. Existing campaign timers are unchanged.
 Optional partial S2 only: actual pinned smbd, original executable/FD3 and fixed
 SMB 3.02 NEGOTIATE on guest loopback, stop-before-release and no restart.
 Twelve constructor refusals each run three times in ARM; host endpoint/foreign
-creator/startup-review controls and strict2 positive/46 malformed receipts pass.
+creator/startup-review controls and strict2 positive/61 malformed receipts pass.
 A fresh second adapter in the same guest proves live original sender-option
 drift, verified group stop, retained originals and sticky review after restoration.
 Discrete Observe/explicit-Stop checks do not qualify continuous supervision or
@@ -190,9 +190,15 @@ active-worker packet authority. The existing guest/readiness/stop bounds remain.
 Before daemon startup, an independent code-input probe retains the complete
 declared code census and rejects an exact-byte copy covering the fixed code
 path. Original mount identity, caller-close independence, foreign-root refusal,
-reference retention and sticky review after restoration are checked. This is
-not yet joined to the daemon Owner and does not qualify module/SDK/bootstrap
-closure or live code-drift containment. Copies/faults are confined to `/run`.
+reference retention and sticky review after restoration are checked. Copies/
+faults are confined to `/run`. A private runtime now joins the declared code
+and independently built bootstrap to fixed configuration, original state/share
+roots, both channel endpoints and the daemon adapter. Real receiver-option drift
+and live code-path cover settle smbd with originals retained; restoration cannot
+restart, final parent FD equality and sticky close uncertainty pass. No caller
+probe, process, descriptor or backend can replace those inputs. This does not
+qualify module/full SDK, active VFS producer, worker bridge or continuous
+supervision. The same existing guest/budget carries the optional proofs.
 No authentication, file OPEN, active VFS sampling, WRITE or complete code/SDK/
 containing authority. The canonical VFS module remains CONNECT-refusing.
 

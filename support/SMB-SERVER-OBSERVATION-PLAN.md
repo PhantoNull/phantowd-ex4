@@ -53,6 +53,18 @@ observer module, full SDK/bootstrap inputs and channel/process composition are
 still required. Original code hashing/census is preserved, not replaced by a
 path check. No generic launcher or default boot is changed.
 
+The lane now additionally composes a private single-use runtime retaining the
+declared code and independently built bootstrap, fixed configuration, original
+mutable-state/share roots, both endpoints and the dedicated daemon adapter.
+Actual ARM receiver-option drift and live code-path cover settle real smbd and
+keep original references plus review; restoration cannot restart. Healthy
+negotiation, proc/executable/FD3 checks, close-before-stop refusal, canceled
+cleanup and final parent FD equality pass. This advances partial S2/S5, but is
+not complete S1/S2/S4: the observation module/SDK/active producer is absent,
+no frames or file OPEN are requested, and actual worker/FileId binding remains
+the next deliverable. Current constructors still require construction-race and
+complete fault qualification; no default CI, privilege or timer change.
+
 ## Deliverable and existing boundaries
 
 The next deliverable is an independently qualified bridge from the original

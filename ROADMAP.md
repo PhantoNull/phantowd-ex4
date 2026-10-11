@@ -3090,6 +3090,17 @@ do not interpret the probe as live service activation or a pending-WRITE lease.
 Client-launcher approval alone is not server approval. This does not waive the
 failed full-integration/hosted gates or authorize product/NAS startup.
 
+Dedicated observer composition now connects the declared immutable code and
+independently built static bootstrap, fixed rendered configuration, original
+state/share roots, both channel endpoints and fixed daemon adapter under one
+private single-use lifecycle. Actual ARM receiver-option drift and live code
+cover stop real smbd and retain originals/review; restoration cannot restart.
+Parent FD equality, canceled cleanup, host close-uncertainty/copy refusals and
+strict2+61 pass within original bounds. This advances partial S2/S5, not the
+active worker bridge: complete module/SDK/producer closure, construction races,
+continuous supervision, all worker/frame bindings and S3–S6 remain required.
+No product startup, NAS or pending-WRITE admission follows from this experiment.
+
 M4.5 TCP wire prerequisite (2026-10-11): a private QEMU-only decoder and
 [focused check](support/test-pending-tcp-wire.ps1) now qualify fixed IPv4
 ESTABLISHED framing/identity/bounds, interrupted/foreign/duplicate refusal and

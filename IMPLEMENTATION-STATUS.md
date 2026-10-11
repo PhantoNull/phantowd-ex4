@@ -3,6 +3,35 @@
 
 # Implementation status
 
+## Retained dedicated Samba observer runtime — host/QEMU only
+
+The optional observer lane now composes the declared immutable code closure and
+independently built static bootstrap, fixed rendered configuration, original
+mutable-state directories, two synthetic share roots, both original channel
+endpoints and the dedicated single-use process adapter. The private runtime
+serializes construction/start/observation/stop/close, retains the original
+daemon proc directory and checks its executable/FD3. Input checks bracket live
+observations; Close cannot release anything while the adapter still owns a
+process. Code paths retain their original unique mount binding.
+
+Actual ARMv5 RED/GREEN reproduces receiver-option drift missed by sender-only
+checks, then verifies whole-daemon settlement, retained originals and sticky
+review after restoration. A fresh second runtime also stops real smbd when the
+code path is covered while its original code census still passes. No reference
+or replacement process is adopted. Explicit cleanup tolerates caller
+cancellation, successful Close is idempotent, and final parent FD equality
+passes. Host guards and real close-uncertainty/copy refusals, tagged Linux
+vet/unit/race3 and Windows API/UI/cross preflight pass. Strict receipts now
+require six ordered markers, two positive controls and 61 malformed refusals.
+
+This is **partial S2/S5 fixture composition**, not a product service or complete
+observer authority: no VFS samples, authenticated file OPEN, worker/FileId bridge,
+pending request or WRITE. The observation module/full SDK and active-producer
+closure, continuous supervision, adversarial construction races and complete
+fault coverage remain unqualified. Existing generic/native/C launchers,
+privileges, 60/12/4/180-second bounds, product startup and default CI are unchanged.
+No new Docker image/volume, NAS operation or full/hosted gate waiver.
+
 ## Dedicated Samba daemon handoff — partial S2, QEMU only
 
 `support/test-server-observer-daemon.ps1` adds a separate, optional fixed
@@ -19,8 +48,8 @@ flags, types, real foreign-process creator refusal and immediate sticky review
 after failed startup. Tagged Linux vet/unit and focused race tests pass; the
 existing context and canonical VFS-loader ARM regressions and Windows API/UI/
 cross-compilation preflight pass. Strict receipts accept two positive controls
-and reject forty-six malformed cases, including missing/reordered drift and
-code-binding proofs.
+and reject sixty-one malformed cases, including missing/reordered drift,
+code-binding and composed-runtime proofs.
 
 A fresh second adapter in the same disposable guest now qualifies an actual
 live sender-option drift against smbd. Discrete `Observe` checks bracket the
@@ -39,9 +68,10 @@ shows why hashing retained originals alone is insufficient: an independently
 sealed identical copy can cover the launch path while the originals still
 pass. The copy is now refused, original references survive, and restoring the
 path cannot clear review. Caller-close independence, foreign-root refusal/FD
-equality and host guards pass. This does not yet retain the observation module,
-SDK or bootstrap closure, join code checking to live daemon containment, or
-qualify a process/channel Owner. No generic retention primitive is weakened.
+equality and host guards pass. This separate pre-startup probe alone does not
+qualify a live runtime; the composed runtime above now joins its original code
+and bootstrap to daemon containment. Observation-module/SDK and active-worker
+authority remain open. No generic retention primitive is weakened.
 
 Two fixture preparation mistakes were diagnosed, not waived: 64 KiB cannot
 hold Samba's state databases; the new fixture caps state at 8 MiB (observed
@@ -50,7 +80,7 @@ fixed test requests 3.02; its configuration now explicitly selects 3.02.
 Neither change is a production configuration, RAM qualification or deadline
 increase. The bootstrap retains the original `0xdb` capability/NNP boundary.
 
-This is **not complete S2**: transitive code/SDK and containing runtime/channel
+This is **not complete S2**: observation-module/SDK and active-producer/channel
 authority, active worker capture, remote-FileId/local-object binding and S3–S6
 fault/regression qualification remain open. The generic/native/product
 launchers, ordinary package/startup and default CI are unchanged. Only one
