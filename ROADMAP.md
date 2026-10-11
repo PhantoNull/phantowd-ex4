@@ -67,20 +67,30 @@ currently product-qualified for migration.
 
 ## Current baseline
 
+The optional capture OPEN lane now authenticates the original ARMv5 client,
+opens synthetic data O_RDONLY and explicitly closes the same handle through
+real Samba. Complete original client/bootstrap inputs remain revalidated and
+retained until verified client/server stop; unchanged data and FD equality
+pass. No READ/frame or independent original-worker lease is claimed. Next,
+qualify the original worker generation and its FileId/local-object/transport
+relationship before consuming bounded read samples. Full/hosted/product and
+physical EX4 gates remain independent.
+
 The capture module and dedicated account-bootstrap are now independently
 declared/retained in a fixed private runtime profile. Actual ARM smbd/NEGOTIATE,
 stop-before-release, existing synthetic passdb refusal without mutation, sticky
 review/reference retention and FD equality pass; the original runtime also
-passes. This is partial S2 input composition, **not authentication/OPEN/frames**.
+passes. This runtime-only lane is partial S2 input composition, not frames.
 The dedicated fixed client process adapter now passes host and ARM parser/
-lifecycle-refusal tests, plus scoped host race checks; actual commands remain
-unexecuted. Next, compose its complete retained root/bootstrap census with the
-authenticated daemon, then qualify original worker/FileId/local-object/transport
+lifecycle-refusal tests, plus scoped host race checks; the newer OPEN lane above
+also composes its complete retained root/bootstrap census with the authenticated
+daemon. Next, qualify original worker/FileId/local-object/transport
 matching and actual read/close/fault outcomes.
 
 A dedicated fixed read-only capture client now passes host mock orchestration
-(three positive flows, 121 refusals) and ARMv5 ELF compilation; it has not run
-against Samba or in ARM. It reads at most twice on one original handle and
+(three positive flows, 121 refusals) and ARMv5 ELF compilation; authenticated
+OPEN/CLOSE is now exercised by the separate guest above. It permits at most
+two reads on one original handle and
 imports no mutation accessor. The old close-only variant remains unchanged.
 This is an integration prerequisite, not a completed client/worker bridge.
 Next, retain independently expected client/module/bootstrap closures and prove

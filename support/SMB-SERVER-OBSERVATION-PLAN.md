@@ -3,12 +3,21 @@
 
 # M4.5: retained server-open observation integration plan
 
-Status: **dedicated fixture boundary approved; partial S1 loader prerequisite;
-not an active observer or authorized product startup**. Approval covers a
+Status: **dedicated fixture boundary approved; authenticated ARMv5 OPEN/CLOSE
+composition, but no active READ/frame or independent worker lease**. Approval covers a
 dedicated VFS module/bootstrap in host/disposable VersatilePB QEMU only, retained
 original code/socket references through verified stop, with no extra privileges
 or generic-launcher widening. No NAS, physical media, HTTP, installed helper or
 pending WRITE experiment. Client-launcher approval alone is not server approval.
+
+`support/test-server-capture-open.ps1` now qualifies actual authentication and
+one original read-only OPEN/CLOSE in the fixed capture runtime. Complete
+independently expected client/bootstrap inputs are retained and revalidated;
+original modules/channel, unchanged data and FD equality survive verified
+client/server stop. No READ or VFS frame is requested. This supersedes only the
+earlier "capture client not executed" gap below: original worker generation,
+remote FileId/local-object/transport matching and fault qualification remain
+mandatory before a server-open authority or pending-I/O experiment.
 
 `support/test-server-vfs-loader.ps1` now exercises the real pinned Samba loader
 and VFS registry at one canonical path. The fixture module deliberately refuses
@@ -76,16 +85,16 @@ owned group. Any existing passdb or uncertain lookup refuses before mutation.
 Actual ARM verifies smbd/NEGOTIATE, original module/channel retention, verified
 stop-before-release, existing-state refusal with unchanged TDB and FD equality.
 This supersedes "module absent" only for the declared input composition: no
-authenticated client, OPEN, active module callback/frame or original-worker
-authority is yet exercised. New client protocol/retained closure and all S4
+authenticated client, OPEN or frame in that runtime-only lane. The newer OPEN
+lane above composes actual authentication/OPEN/CLOSE; all S4
 worker/FileId/local-object/namespace/TCP witnesses remain mandatory.
 
 The dedicated `ServerCaptureClientQEMU` process adapter now handles the new
 canonical OPEN/max-two-READ/CLOSE notice stream and keeps original process
 generation/executable/non-root status checks. Host and ARM parser/refusal tests
-and scoped race checks pass; this is not actual command/client execution or an
-input/server lease. Complete retained client-root composition, authentication,
-successful OPEN/reads and S4 original-worker witnesses remain next.
+and scoped race checks pass; these adapter tests alone are not a server lease.
+The separate OPEN lane above now qualifies retained client roots and actual
+authentication/OPEN/CLOSE. Successful reads and S4 worker witnesses remain next.
 
 The optional `support/test-server-capture.ps1` now implements a separate fixed
 capture module variant. Sync/async read callbacks sample current FSA metadata
@@ -107,8 +116,9 @@ no mutation accessor imports and depends on the existing source handle reader.
 At most two one-byte reads reuse the original context/file, checking its tuple
 before reading and after local seek-to-zero. Early explicit CLOSE is allowed;
 unknown/third-read commands and uncertain results never retry or reopen.
-The client is not yet executed against Samba/in ARM or joined to retained code,
-bootstrap, actual worker or transport authority. Its new notice protocol is
+This compile-only lane does not execute the client; the OPEN lane above now
+joins retained code/bootstrap to actual ARM Samba. Original worker and transport
+authority remain unqualified. Its new notice protocol is
 distinct: do not route it through the old close-only process adapter. Existing
 launchers/adapter/configuration and default campaigns stay unchanged.
 

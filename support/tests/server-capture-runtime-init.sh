@@ -60,11 +60,25 @@ mount -t tmpfs -o nosuid,nodev,noexec,size=8m,mode=0700 tmpfs "$state"
 for role in private lock state cache pid rpc; do mkdir -m 0700 "$state/$role"; done
 mount -t ext4 -o ro,nosuid,nodev,noexec /dev/sdb /run/observer-readonly
 mount -t ext4 -o rw,nosuid,nodev,noexec /dev/sdc /run/observer-writable
-if /usr/sbin/phantowd-runtime-bundle-probe server-capture-runtime && \
-    /usr/sbin/phantowd-capture-adapter-tests -test.run '^TestServerCaptureClient' -test.timeout 5s -test.count 1 -test.v; then
-    echo PHANTOWD_CAPTURE_RUNTIME_GUEST_DONE
+if grep -qw 'phantowd_capture_client_open_fixture=1' /proc/cmdline; then
+    mkdir -m 0700 /run/phantowd-pending-client-input /run/phantowd-pending-client-bootstrap /run/phantowd-pending-client-root
+    mount -t tmpfs -o mode=0700,size=32m,nosuid,nodev tmpfs /run/phantowd-pending-client-input
+    mount -t tmpfs -o mode=0700,size=1m,nosuid,nodev tmpfs /run/phantowd-pending-client-bootstrap
+    /usr/sbin/phantowd-pending-client-inputs stage
+    mount -o remount,ro,nosuid,nodev /run/phantowd-pending-client-input
+    mount -o remount,ro,nosuid,nodev /run/phantowd-pending-client-bootstrap
+    if /usr/sbin/phantowd-runtime-bundle-probe server-capture-open; then
+        echo PHANTOWD_CAPTURE_OPEN_GUEST_DONE
+    else
+        echo PHANTOWD_CAPTURE_OPEN_GUEST_FAILED
+    fi
 else
-    echo PHANTOWD_CAPTURE_RUNTIME_GUEST_FAILED
+    if /usr/sbin/phantowd-runtime-bundle-probe server-capture-runtime && \
+        /usr/sbin/phantowd-capture-adapter-tests -test.run '^TestServerCaptureClient' -test.timeout 5s -test.count 1 -test.v; then
+        echo PHANTOWD_CAPTURE_RUNTIME_GUEST_DONE
+    else
+        echo PHANTOWD_CAPTURE_RUNTIME_GUEST_FAILED
+    fi
 fi
 sync
 reboot -f

@@ -3,6 +3,31 @@
 
 # Implementation status
 
+## Authenticated capture client OPEN/CLOSE — actual ARMv5, not a worker lease
+
+`support/test-server-capture-open.ps1` composes the original fixed capture
+runtime with independently declared client/bootstrap/library inputs. The
+dedicated client Owner retains and revalidates its complete original census
+around authenticated O_RDONLY OPEN, cached handle observation and explicit
+CLOSE. Client inputs stay held until verified server-group stop; uncertain
+closure preserves review. The old close-only role and generic launchers are
+not widened. No READ or VFS frame is requested.
+
+Actual ARMv5 authentication/OPEN/CLOSE, failed-constructor FD rollback,
+live-Close refusal, original module/channel retention, unchanged four-byte
+synthetic data and final descriptor equality pass. Strict receipts pass two
+positive/33 negative controls. Tagged Linux vet/unit, scoped old/new Owner race
+tests repeated three times, Windows API/UI/cross preflight and the original
+capture-runtime regression pass. The fixture uses only existing read-only
+builder/workspace/base inputs, auto-removed containers and bounded RAM scratch.
+
+This supersedes the earlier capture-client execution gap below, not the
+independent worker/FileId/local-object/transport gap. Successful OPEN and client
+telemetry do not establish a server-open lease. Actual reads/frames, original
+worker binding, complete fault coverage and full/hosted/recovery/product gates
+remain open. No NAS, physical disk, data WRITE, new Docker image/volume, default
+CI or installed product service is involved.
+
 ## Dedicated capture process adapter — parser/lifecycle guards, not SMB execution
 
 A fixed QEMU-only `ServerCaptureClientQEMU` now consumes the dedicated client's
@@ -13,7 +38,8 @@ stream. Partial output, drift, unrequested/reordered reads, old protocol output,
 diagnostics and overflow refuse. Originals and uncertainty remain retained;
 there is no retry/reconnect or data-write operation. The adapter rechecks its
 original client process generation, executable and non-root/caps0 status.
-Containing composition must still retain/revalidate the complete input census.
+The containing OPEN/CLOSE composition above now retains/revalidates the complete
+declared input census; worker and request authority remain separate.
 
 Host RED/GREEN, all tagged process-owner/runtime tests and scoped race repeated
 three times pass. The optional capture-runtime guest now also executes four ARM
@@ -21,9 +47,9 @@ parser/refusal tests after its existing real-daemon proof; strict receipts requi
 all four ordered test RUN/PASS pairs and the final summary (two positive/37
 negative controls), preventing a zero-test false green. They still explicitly
 declare authentication/OPEN/samples/authority false. Windows
-API/UI/vet/unit/cross preflight passes. No actual capture client command has yet
-run against Samba: successful authentication, actual READ/CLOSE, worker/FileId/
-object/transport witnesses and fault integration remain unqualified. No product
+API/UI/vet/unit/cross preflight passes. This adapter-only checkpoint did not run
+actual SMB commands; the newer composition above qualifies authentication and
+OPEN/CLOSE, but not READ, worker/FileId/object/transport or fault integration. No product
 or NAS operation, new Docker image/volume, default CI or full/hosted gate waiver.
 
 ## Capture-module runtime/bootstrap composition — private host/QEMU prerequisite
@@ -57,8 +83,9 @@ The optional wrapper uses existing read-only image/workspace/base, auto-removal,
 RAM scratch and no NIC/physical media; 60/12/4/180s fixture limits are unchanged.
 
 This advances **partial S2 input composition**, not an active module/worker or
-server-open authority. No client authentication, file OPEN or samples are yet
-requested; complete SDK, client/worker/FileId/transport/fault and full/hosted/
+server-open authority. This runtime-only lane requests no authentication, file
+OPEN or samples; the separate newer OPEN lane above qualifies authentication
+and OPEN/CLOSE. Complete SDK, worker/FileId/transport/fault and full/hosted/
 recovery/product gates remain open. No NAS, data WRITE, new Docker storage,
 default CI trigger or installed product helper.
 
@@ -77,7 +104,8 @@ original process/group before releasing references.
 Three positive mock flows, exact ordered notices and 121 negative cases pass
 with ASan/UBSan. Target compilation checks ARMv5 soft-float PIE, fixed interpreter,
 original observer SONAME, RELRO/NOW/NX stack and absent mutation accessors. The
-18,388-byte compiled client has **not been executed in ARM or against SMB**.
+18,388-byte compiled client was not executed by this compile-only checkpoint;
+the separate OPEN lane above now executes it in ARM against SMB.
 The original close-only client's tests still pass and its source/launchers are
 unchanged. Ten sensitive upstream reader inputs are checked, not the complete
 SDK/runtime closure. Windows API/UI/static/test/cross preflight passes.

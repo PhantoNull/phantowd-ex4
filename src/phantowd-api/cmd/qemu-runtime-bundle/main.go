@@ -36,7 +36,7 @@ func run() error {
 	if len(os.Args) == 2 && os.Args[1] == "stage" && os.Getuid() == 0 && os.Geteuid() == 0 {
 		return stageFixture()
 	}
-	if len(os.Args) == 2 && (os.Args[1] == "server-observer-code-binding" || os.Args[1] == "server-observer-runtime" || os.Args[1] == "server-capture-runtime") && os.Getuid() == 0 && os.Geteuid() == 0 {
+	if len(os.Args) == 2 && (os.Args[1] == "server-observer-code-binding" || os.Args[1] == "server-observer-runtime" || os.Args[1] == "server-capture-runtime" || os.Args[1] == "server-capture-open") && os.Getuid() == 0 && os.Geteuid() == 0 {
 		files, aliases, err := inputs()
 		if err != nil {
 			return err
@@ -55,7 +55,9 @@ func run() error {
 			return err
 		}
 		defer source.Close()
-		if os.Args[1] == "server-capture-runtime" {
+		if os.Args[1] == "server-capture-open" {
+			err = plan.ProbeServerCaptureOpenQEMU(context.Background(), root)
+		} else if os.Args[1] == "server-capture-runtime" {
 			err = plan.ProbeServerCaptureRuntimeQEMU(context.Background(), root)
 		} else if os.Args[1] == "server-observer-runtime" {
 			err = plan.ProbeServerObserverRuntimeQEMU(context.Background(), root)

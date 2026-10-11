@@ -1,5 +1,25 @@
 # Fast API and file-service integration checks
 
+## Authenticated capture OPEN/CLOSE — one disposable ARM guest
+
+Run `support/test-server-capture-open.ps1` for the actual fixed read-only client
+against the dedicated retained capture runtime. Independently declared client,
+observer, bootstrap and library inputs are byte/mode/owner read back after
+staging and retained/revalidated around OPEN, cached handle observation and
+CLOSE. Failed-constructor rollback, live-Close refusal, server stop before
+client-input release, unchanged synthetic data and FD equality pass. The
+ordered redacted receipt has two positive/33 malformed controls.
+
+This guest requests **no READ or VFS frame** and grants no worker/FileId/object/
+TCP authority. It does not run the four parser/refusal tests in the runtime-only
+lane below; those remain separately regression-tested. Existing base/source/
+workspace/image stay read-only; non-root/caps0/NNP/network-none auto-removal,
+CPU4/2GiB/256PIDs and1GiB RAM scratch, ARM926/256MiB/no NIC/all disk snapshots,
+96MiB run/8MiB private state/32MiB client-code/1MiB bootstrap tmpfs apply.
+QEMU60s, readiness/client-start12s, client-CLOSE5s, daemon-stop4s and outer180s
+remain unchanged. No Docker build/pull/new volume, physical media/NAS, data WRITE,
+HTTP/product installation, default CI or full/hosted qualification waiver.
+
 ## Capture runtime inputs — one disposable ARM guest, no client/file request
 
 Run `support/test-server-capture-runtime.ps1` for fixed module/bootstrap input
@@ -27,7 +47,7 @@ scratch, guest ARM926/256MiB/no NIC with96MiB run/8MiB private state and16MiB
 synthetic share files. QEMU60s, readiness12s, stop4s, outer180s. No new Docker
 image/volume, physical disk/NAS operation, default CI or data WRITE.
 
-## Read-only capture client — no guest or SMB execution yet
+## Read-only capture client — compile/mock lane, no guest in this lane
 
 Run `support/test-server-capture-client.ps1` with the existing pinned builder
 and workspace. The optional compile-only lane builds the actual source-based

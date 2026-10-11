@@ -23,6 +23,7 @@ type pendingClientOwnerQEMU struct {
 	gate              chan struct{}
 	inputs            *pendingClientInputsQEMU
 	adapter           *processowner.PendingClientQEMU
+	captureAdapter    *processowner.ServerCaptureClientQEMU
 	connectionPeer    *pendingServerOpenQEMU
 	connectionFile    *os.File // Original object held by the containing fixture.
 	connectionInitial unix.Stat_t
@@ -33,6 +34,15 @@ type pendingClientOwnerQEMU struct {
 }
 
 func newPendingClientOwnerQEMU(ctx context.Context, client, bootstrap *Plan, clientRoot, bootstrapRoot *os.File, secret []byte) (owner *pendingClientOwnerQEMU, result error) {
+	return newPendingClientOwnerRoleQEMU(ctx, client, bootstrap, clientRoot, bootstrapRoot, secret, false)
+}
+
+// Dedicated construction only; no caller-selected operation/backend/profile.
+func newServerCaptureClientOwnerQEMU(ctx context.Context, client, bootstrap *Plan, clientRoot, bootstrapRoot *os.File, secret []byte) (*pendingClientOwnerQEMU, error) {
+	return newPendingClientOwnerRoleQEMU(ctx, client, bootstrap, clientRoot, bootstrapRoot, secret, true)
+}
+
+func newPendingClientOwnerRoleQEMU(ctx context.Context, client, bootstrap *Plan, clientRoot, bootstrapRoot *os.File, secret []byte, capture bool) (owner *pendingClientOwnerQEMU, result error) {
 	o := &pendingClientOwnerQEMU{gate: make(chan struct{}, 1)}
 	o.self = o
 	var err error
@@ -56,6 +66,9 @@ func newPendingClientOwnerQEMU(ctx context.Context, client, bootstrap *Plan, cli
 			}
 		}
 	}()
+	if capture && !o.inputs.handleMode {
+		return o, ErrInvalid
+	}
 	rootFD, err := openBeneath(int(o.inputs.client.root.Fd()), ".", unix.O_RDONLY|unix.O_DIRECTORY)
 	if err != nil {
 		return o, err
@@ -69,13 +82,19 @@ func newPendingClientOwnerQEMU(ctx context.Context, client, bootstrap *Plan, cli
 		}
 		return o, errors.Join(ErrMismatch, statErr, closeErr)
 	}
-	constructor := processowner.NewPendingClientQEMU
-	if o.inputs.handleMode {
-		constructor = processowner.NewPendingHandleClientQEMU
+	if capture {
+		o.captureAdapter, err = processowner.NewServerCaptureClientQEMU(
+			o.inputs.bootstrap.files[pendingClientBootstrapQEMU], root,
+			o.inputs.client.files[pendingClientProgramQEMU], secret)
+	} else {
+		constructor := processowner.NewPendingClientQEMU
+		if o.inputs.handleMode {
+			constructor = processowner.NewPendingHandleClientQEMU
+		}
+		o.adapter, err = constructor(
+			o.inputs.bootstrap.files[pendingClientBootstrapQEMU], root,
+			o.inputs.client.files[pendingClientProgramQEMU], secret)
 	}
-	o.adapter, err = constructor(
-		o.inputs.bootstrap.files[pendingClientBootstrapQEMU], root,
-		o.inputs.client.files[pendingClientProgramQEMU], secret)
 	if closeErr := root.Close(); err != nil || closeErr != nil {
 		if closeErr != nil {
 			o.review = true // Uncertain local close cannot release other originals.
@@ -87,6 +106,30 @@ func newPendingClientOwnerQEMU(ctx context.Context, client, bootstrap *Plan, cli
 		return o, err
 	}
 	return o, nil
+}
+
+// Internal lifecycle dispatch is fixed by construction. No interface/backend
+// is accepted from a caller. Connection binding remains the old concrete role;
+// capture worker/frame/transport authority must be composed independently.
+type pendingClientLifecycleQEMU interface {
+	Start(context.Context) error
+	CloseClient(context.Context) error
+	Stop(context.Context) error
+	Close() error
+	InitialHandleObservationQEMU(context.Context) (processowner.PendingHandleObservationQEMU, error)
+}
+
+func (o *pendingClientOwnerQEMU) clientLifecycleQEMU() pendingClientLifecycleQEMU {
+	if o.adapter != nil && o.captureAdapter != nil {
+		return nil
+	}
+	if o.captureAdapter != nil {
+		return o.captureAdapter
+	}
+	if o.adapter != nil {
+		return o.adapter
+	}
+	return nil
 }
 
 func (o *pendingClientOwnerQEMU) enter(ctx context.Context) error {
@@ -115,13 +158,14 @@ func (o *pendingClientOwnerQEMU) initialHandle(ctx context.Context) (processowne
 		return processowner.PendingHandleObservationQEMU{}, err
 	}
 	defer func() { <-o.gate }()
-	if o.review || !o.started || o.settled || o.adapter == nil || o.inputs == nil || !o.inputs.handleMode {
+	adapter := o.clientLifecycleQEMU()
+	if o.review || !o.started || o.settled || adapter == nil || o.inputs == nil || !o.inputs.handleMode {
 		return processowner.PendingHandleObservationQEMU{}, ErrReviewRequired
 	}
 	if err := o.inputs.revalidate(ctx); err != nil {
 		return processowner.PendingHandleObservationQEMU{}, o.fail(err)
 	}
-	observed, err := o.adapter.InitialHandleObservationQEMU(ctx)
+	observed, err := adapter.InitialHandleObservationQEMU(ctx)
 	if err != nil {
 		return processowner.PendingHandleObservationQEMU{}, o.fail(err)
 	}
@@ -133,9 +177,9 @@ func (o *pendingClientOwnerQEMU) initialHandle(ctx context.Context) (processowne
 
 func (o *pendingClientOwnerQEMU) fail(cause error) error {
 	o.review = true
-	if o.adapter != nil && !o.stopTried {
+	if adapter := o.clientLifecycleQEMU(); adapter != nil && !o.stopTried {
 		o.stopTried = true
-		o.stopErr = o.adapter.Stop(context.Background())
+		o.stopErr = adapter.Stop(context.Background())
 	}
 	return errors.Join(ErrReviewRequired, cause, o.stopErr)
 }
@@ -147,14 +191,15 @@ func (o *pendingClientOwnerQEMU) start(ctx context.Context) error {
 		return err
 	}
 	defer func() { <-o.gate }()
-	if o.review || o.started || o.releaseErr != nil || o.adapter == nil {
+	adapter := o.clientLifecycleQEMU()
+	if o.review || o.started || o.releaseErr != nil || adapter == nil {
 		return ErrReviewRequired
 	}
 	if err := o.inputs.revalidate(ctx); err != nil {
 		return o.fail(err)
 	}
 	o.started = true
-	if err := o.adapter.Start(ctx); err != nil {
+	if err := adapter.Start(ctx); err != nil {
 		return o.fail(err)
 	}
 	if err := o.inputs.revalidate(ctx); err != nil {
@@ -168,13 +213,14 @@ func (o *pendingClientOwnerQEMU) closeClient(ctx context.Context) error {
 		return err
 	}
 	defer func() { <-o.gate }()
-	if o.review || !o.started || o.settled || o.adapter == nil {
+	adapter := o.clientLifecycleQEMU()
+	if o.review || !o.started || o.settled || adapter == nil {
 		return ErrReviewRequired
 	}
 	if err := o.inputs.revalidate(ctx); err != nil {
 		return o.fail(err)
 	}
-	if err := o.adapter.CloseClient(ctx); err != nil {
+	if err := adapter.CloseClient(ctx); err != nil {
 		return o.fail(err)
 	}
 	if err := o.inputs.revalidate(ctx); err != nil {
@@ -290,11 +336,15 @@ func (o *pendingClientOwnerQEMU) release() error {
 	if o.releaseErr != nil {
 		return o.releaseErr
 	}
-	if o.adapter != nil {
-		if err := o.adapter.Close(); err != nil {
+	if o.adapter != nil && o.captureAdapter != nil {
+		return ErrInvalid
+	}
+	if adapter := o.clientLifecycleQEMU(); adapter != nil {
+		if err := adapter.Close(); err != nil {
 			return err
 		}
 		o.adapter = nil
+		o.captureAdapter = nil
 	}
 	return o.inputs.release()
 }
