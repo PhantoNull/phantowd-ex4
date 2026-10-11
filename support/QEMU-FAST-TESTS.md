@@ -174,7 +174,7 @@ metadata/redacted errors on refusal. Full-header mutations, every short length,
 extra/concatenated frames, reserved IDs and wrong sequence refuse. The comparison
 keeps client persistent/volatile IDs separate from independent STATUS share-mode
 generation, local device/inode and full worker/session/tree; changed and
-noncanonical fields refuse. Thirteen actual ARM tests include 32 concurrent readers,
+noncanonical fields refuse. Fourteen actual ARM tests include 32 concurrent readers,
 capture-bound checks and actual C-to-Go bytes with an independently known child
 PID. Host tagged vet/unit, three race passes and 10,000 fuzz executions pass. The plain source
 lane and its old receipt contract remain valid.
@@ -199,13 +199,24 @@ This helper owns transport references only: the containing lifecycle must settle
 its producer before closing them. The C fixture exits and closes its synthetic
 file BEFORE observation, so this test deliberately proves no live-worker lease.
 
+The root-only disposable ARM credential-domain test uses two additional fixed
+modes: `--packets-real-ids` and `--packets-explicit-ids`. In both children real
+UID/GID become 65534 while effective IDs remain 0. Automatic credentials report
+real IDs; explicit SCM_CREDENTIALS can instead report effective/saved IDs 0,
+even after effective/permitted/inheritable capabilities are zero. The original
+socket creator credentials remain unchanged. Each producer settles before its
+two packets are checked. Host tests skip this root guest case explicitly; no
+Samba worker, user authorization, code lease or live generation is established.
+Producer admission must fix and qualify its credential mode/context; packet
+credentials alone cannot replace independent identity/lifetime authority.
+
 Linux 6.18.55 `net/core/sock.c` and `net/core/scm.c` establish that `SO_PASSSEC`
 returns `EOPNOTSUPP` and emits no security ancillary data when SECURITY_NETWORK
 is compiled out, as in this guest. That availability state is retained; supported
 but enabled options and all other errors refuse. The ARM case verifies it cannot
 be enabled; the host covers enabled-option refusal. No guard/deadline is waived.
-The strict wire log requires source, wire, packet and completion markers in
-order, with two positive and 29 negative parser controls. Plain source controls
+The strict wire log requires source, wire, packet, credential-domain and completion
+markers in order, with two positive and 44 negative parser controls. Plain source controls
 remain two positive/19 negative; parser controls alone are not guest evidence.
 
 One existing auto-rm non-root/caps0/NNP/networknone container uses CPU 2/RAM 2GiB/

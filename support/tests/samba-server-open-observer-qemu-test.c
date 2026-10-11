@@ -6,6 +6,8 @@
 #include "source3/smbd/fd_handle.c"
 #include <dlfcn.h>
 #include <sys/socket.h>
+#include <linux/capability.h>
+#include <sys/syscall.h>
 
 static unsigned refusals;
 static int (*loaded_reader)(const connection_struct *, const files_struct *,
@@ -35,7 +37,9 @@ int main(int argc, char **argv)
 {
     alarm(5);
     bool emit_frames = argc == 2 && !strcmp(argv[1], "--frames");
-    bool emit_packets = argc == 2 && !strcmp(argv[1], "--packets");
+    bool explicit_ids = argc == 2 && !strcmp(argv[1], "--packets-explicit-ids");
+    bool real_ids = explicit_ids || (argc == 2 && !strcmp(argv[1], "--packets-real-ids"));
+    bool emit_packets = real_ids || (argc == 2 && !strcmp(argv[1], "--packets"));
     require(argc == 1 || emit_frames || emit_packets);
     if (emit_packets) {
         /* Fixed inherited fixture endpoint only; no path/arbitrary FD selector.
@@ -196,8 +200,49 @@ int main(int argc, char **argv)
     if (emit_packets) {
         /* Exactly two metadata packets, each sent once. The original synthetic
          * file has already closed; this does not claim active-worker lifetime. */
-        require(send(3, frames, 88, MSG_DONTWAIT | MSG_NOSIGNAL) == 88 &&
-            send(3, frames + 88, 88, MSG_DONTWAIT | MSG_NOSIGNAL) == 88);
+        if (real_ids) {
+            /* Disposable child only. Automatic SCM credentials use REAL IDs,
+             * unlike effective credentials/creation-time SO_PEERCRED. No parent,
+             * Owner or product identity is changed or inferred here. */
+            require(getuid() == 0 && geteuid() == 0 && getgid() == 0 && getegid() == 0);
+            require(!setresgid(65534, 0, 0) && !setresuid(65534, 0, 0) &&
+                getuid() == 65534 && getgid() == 65534 &&
+                geteuid() == 0 && getegid() == 0);
+        }
+        if (explicit_ids) {
+            /* A sender may supply its effective/saved IDs even without any
+             * capabilities. Kernel-accepted credentials are not user authority. */
+            struct __user_cap_header_struct header = {
+                .version = _LINUX_CAPABILITY_VERSION_3, .pid = 0,
+            };
+            struct __user_cap_data_struct capabilities[2] = {{0}};
+            require(!syscall(SYS_capset, &header, capabilities) &&
+                !syscall(SYS_capget, &header, capabilities));
+            for (unsigned index = 0; index < 2; ++index) {
+                require(capabilities[index].effective == 0 &&
+                    capabilities[index].permitted == 0 &&
+                    capabilities[index].inheritable == 0);
+            }
+            for (unsigned index = 0; index < 2; ++index) {
+                union {
+                    struct cmsghdr alignment;
+                    unsigned char bytes[CMSG_SPACE(sizeof(struct ucred))];
+                } control = {0};
+                struct iovec vector = {.iov_base = frames + index * 88, .iov_len = 88};
+                struct msghdr message = {.msg_iov = &vector, .msg_iovlen = 1,
+                    .msg_control = control.bytes, .msg_controllen = sizeof(control.bytes)};
+                struct cmsghdr *credential = CMSG_FIRSTHDR(&message);
+                credential->cmsg_level = SOL_SOCKET;
+                credential->cmsg_type = SCM_CREDENTIALS;
+                credential->cmsg_len = CMSG_LEN(sizeof(struct ucred));
+                struct ucred supplied = {.pid = getpid(), .uid = 0, .gid = 0};
+                memcpy(CMSG_DATA(credential), &supplied, sizeof(supplied));
+                require(sendmsg(3, &message, MSG_DONTWAIT | MSG_NOSIGNAL) == 88);
+            }
+        } else {
+            require(send(3, frames, 88, MSG_DONTWAIT | MSG_NOSIGNAL) == 88 &&
+                send(3, frames + 88, 88, MSG_DONTWAIT | MSG_NOSIGNAL) == 88);
+        }
         return 0;
     }
     printf("PHANTOWD_SERVER_OPEN_SOURCE_READY refusals=%u dso_refusals=%u real_fd=true real_getters=true synthetic_open=true active_worker=false authority=false scope=qemu-only\n", refusals, refusals);

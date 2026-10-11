@@ -110,6 +110,15 @@ construction still precede remote-bridge/WRITE admission; generic launcher and
 product surfaces are unchanged. Known compiled-out `SO_PASSSEC` is distinguished
 from enabled or failed options; this does not qualify a product security profile.
 
+Actual ARM controls now distinguish automatic sender real UID/GID from explicit
+SCM_CREDENTIALS containing its effective/saved IDs. The latter can be accepted
+even without effective/permitted/inheritable capabilities. The socket creator
+snapshot remains separate and unchanged. Thus copied packet credentials are not
+the authenticated Samba user's identity or permission authority. The finite
+synthetic producers settle before observation; no live worker is admitted by
+these controls. Retained producer/code/process and independent identity fences
+remain mandatory, with a fixed qualified credential mode/context.
+
 The separate [server reader source lane](../../../../support/QEMU-FAST-TESTS.md#server-side-original-open-reader-prerequisite)
 now copies remote IDs, share-mode generation and local descriptor identity from
 one actual-type files_struct, with ARM source/loaded-DSO refusal controls and

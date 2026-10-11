@@ -410,3 +410,54 @@ func TestPendingServerOpenPacketCProducerQEMU(t *testing.T) {
 	}
 	fmt.Println("PHANTOWD_SERVER_OPEN_PACKET_READY frames=2 kernel_credentials=true original_pair=true synthetic_open=true active_worker=false proof=false scope=qemu-only")
 }
+
+func TestPendingServerOpenPacketRealCredentialsQEMU(t *testing.T) {
+	if os.Getenv("PHANTOWD_SERVER_OPEN_WIRE_FIXTURE") != "1" {
+		t.Skip("explicit disposable root ARM guest only; no product identity is inferred")
+	}
+	if os.Getuid() != 0 || os.Geteuid() != 0 || os.Getgid() != 0 || os.Getegid() != 0 {
+		t.Fatal("fixed credential-domain fixture requires its disposable root guest")
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 7*time.Second)
+	defer cancel()
+	// Separate original pairs: no reset/recovery of a completed transport.
+	for _, candidate := range []struct {
+		mode     string
+		expected uint32
+	}{{"--packets-real-ids", 65534}, {"--packets-explicit-ids", 0}} {
+		t.Run(candidate.mode, func(t *testing.T) {
+			pair, err := newPendingServerPacketQEMU(ctx)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer func() {
+				if err := pair.close(); err != nil {
+					t.Error("original fixture channel did not close")
+				}
+			}()
+			cmd := exec.CommandContext(ctx, "/usr/sbin/phantowd-server-open-source-test", candidate.mode)
+			cmd.ExtraFiles = []*os.File{pair.sender}
+			var output, diagnostic pendingServerFrameTestCaptureQEMU
+			cmd.Stdout, cmd.Stderr = &output, &diagnostic
+			if err := cmd.Run(); err != nil || output.used != 0 || diagnostic.used != 0 {
+				t.Fatal("fixed real/effective credential producer refused")
+			}
+			if pair.left.peer.Uid != 0 || pair.left.peer.Gid != 0 {
+				t.Fatal("original creator credentials changed after child identity transition")
+			}
+			for range 2 {
+				got, err := pair.next(context.Background())
+				if err != nil || got.credentials.Pid != int32(cmd.Process.Pid) || got.credentials.Uid != candidate.expected || got.credentials.Gid != candidate.expected || got.metadata.workerPID != uint32(cmd.Process.Pid) {
+					t.Fatal("packet credentials confused automatic/explicit/creator ID domains")
+				}
+			}
+			if err := pair.recheck(context.Background()); err != nil {
+				t.Fatal("settled synthetic credential pair did not recheck")
+			}
+		})
+	}
+	if t.Failed() {
+		return
+	}
+	fmt.Println("PHANTOWD_SERVER_OPEN_REAL_IDS_READY frames=2 real_ids=true effective_ids=false permitted_override=true producer_settled=true active_worker=false proof=false scope=qemu-only")
+}

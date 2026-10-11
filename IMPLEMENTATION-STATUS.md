@@ -14,12 +14,23 @@ ordered, equal observations are admitted; queued extras and later queue drift
 refuse. Copies, endpoint substitution, option drift and in-flight cancellation
 preserve review and original references. Concurrent operations refuse busy.
 
-Thirteen actual ARM tests now pass, including real C packets, nine malformed/
+Fourteen actual ARM tests now pass, including real C packets, nine malformed/
 ancillary cases, three queued-extra cases and eight endpoint/continuity cases.
 Descriptor counts are unchanged across ancillary refusals. Linux tagged vet/unit,
 three runtimebundle race passes, 10,000 frame fuzz executions, Windows/API/UI/cross
 checks and the old standalone source guest pass. Strict receipt controls require
 the new packet marker; the borrowed base stays unchanged and all scratch is RAM.
+
+The additional ARM fixture separates creator, automatic sender and explicitly
+supplied credentials. A disposable child has real UID/GID 65534 but effective
+IDs 0: automatic packet credentials report 65534, whereas explicit credentials
+may report its permitted effective IDs 0 even after effective/permitted/
+inheritable capabilities are zero. This is kernel-permitted metadata, not proof
+of the Samba account or user authorization. Both fixed producers settle before
+observation. Strict wire receipts now require the credential-domain marker;
+two positive/44 negative parser controls pass. The existing dedicated client
+launcher's separate synthetic ARM boundary also passes unchanged: private root/
+namespace, retained program handoff, UID/GID 65534, zero capabilities and NNP.
 
 The ARM kernel has no `SECURITY_NETWORK`: its `SO_PASSSEC` returns `EOPNOTSUPP`.
 That source-verified unavailable state is retained, not treated as an arbitrary
@@ -36,7 +47,7 @@ HTTP, default campaign, product or NAS changes; hosted CI failure remains open.
 ## Server-open metadata framing — C-to-Go ARMv5 prerequisite
 
 An optional `support/test-server-open-observer.ps1 -Wire` guest now runs the
-original C reader/refusal fixture and thirteen Go tests, including capture of two
+original C reader/refusal fixture and fourteen Go tests, including capture of two
 actual ARM C-produced frames. The private 88-byte format explicitly encodes
 version, payload size, sequence and separate ID domains in little-endian order;
 it never dumps native padding. Missing/truncated/extra/duplicate frames, invalid

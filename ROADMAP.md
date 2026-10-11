@@ -1781,6 +1781,11 @@ storage. No production roster provider or activation path exists.
   review, exclusive calls and unchanged FD counts on ancillary refusal. A fixed
   synthetic C producer inherits only its fixture FD3 and settles before close.
   It is NOT an admitted VFS worker/producer/code lease or live-generation proof.
+  Actual ARM credential-domain controls distinguish automatic real IDs from
+  explicitly supplied effective/saved IDs accepted by the kernel even with zero
+  effective/permitted/inheritable capabilities. Neither proves Samba account
+  authorization. Preserve independent retained producer and identity admission;
+  qualify the producer's fixed credential context before interpreting packets.
   Next qualify dedicated server descriptor handoff and complete producer authority,
   then bind actual worker observations under all original lifecycle fences. Do
   not infer active-worker, global replay, pending-I/O or WRITE qualification.
