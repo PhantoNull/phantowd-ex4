@@ -19,7 +19,7 @@ for file in rootfs.ext2 zImage versatile-pb.dtb SHA256SUMS; do
     [ -f "$base/$file" ] && [ ! -L "$base/$file" ] || exit 1
 done
 (cd "$base" && sha256sum -c SHA256SUMS)
-sh "$source_dir/support/tests/test-samba-root-staging.sh" "$debugfs" "$source_dir"
+sh "$source_dir/support/tests/test-samba-root-staging-environment.sh" "$debugfs" "$source_dir"
 base_hash=$(sha256sum "$base/rootfs.ext2" | awk '{print $1}')
 scratch=$(mktemp -d "$tmpdir/phantowd-code-owner.XXXXXX")
 child_pid=

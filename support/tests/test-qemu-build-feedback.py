@@ -37,6 +37,21 @@ def make_target_position(script, target):
 
 
 class BuildFeedbackTests(unittest.TestCase):
+    def test_runtime_owner_staging_qualifies_supplied_physical_tmpfs(self):
+        tests = ROOT / "support/tests"
+        staging = (tests / "test-samba-root-staging.sh").read_text()
+        driver = (tests / "test-qemu-runtime-owner.sh").read_text()
+        environment = tests / "test-samba-root-staging-environment.sh"
+        controls = environment.read_text()
+        self.assertIn('tmpdir=${TMPDIR:-/tmp}', staging)
+        self.assertIn('cd -P "$tmpdir" && pwd -P', staging)
+        qualification = staging.index('awk -v target=')
+        self.assertLess(staging.index('cd -P'), qualification)
+        self.assertLess(qualification, staging.index('mktemp'))
+        self.assertIn('test-samba-root-staging-environment.sh', driver)
+        self.assertIn('TMPDIR="$scratch/nested"', controls)
+        self.assertIn('"$scratch/proc-link" "$scratch/../../proc"', controls)
+
     def test_go_recipe_and_installed_sdk_are_checked_before_heavy_tests(self):
         script = (ROOT / "support/container/build-qemu.sh").read_text()
         patch_fixture = script.index(
