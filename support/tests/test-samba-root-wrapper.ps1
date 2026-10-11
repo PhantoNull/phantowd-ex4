@@ -47,7 +47,7 @@ function Assert-True {
 try {
     $repoRoot = (Microsoft.PowerShell.Management\Resolve-Path (Join-Path $PSScriptRoot '../..')).Path
     $state = $global:phantowdSambaWrapperTestState
-    foreach ($campaign in @('all', 'service', 'native', 'candidate', 'lifecycle', 'fault', 'data', 'exit', 'held', 'file', 'file-source', 'pending')) {
+    foreach ($campaign in @('all', 'service', 'native', 'candidate', 'lifecycle', 'fault', 'data', 'exit', 'held', 'file', 'file-source', 'pending', 'pending-peer-exit')) {
         foreach ($baseArgument in @('', (Join-Path $repoRoot 'mock-explicit-base'))) {
             $state.Calls.Clear()
             $state.Files.Clear()
@@ -63,7 +63,7 @@ try {
                 '/var/tmp:rw,noexec,nosuid,nodev,size=128m')) {
                 Assert-True ($argument -in $run) "Missing fixed isolation: $argument"
             }
-            $expectedScratch = if ($campaign -eq 'pending') { '1536m' } else { '512m' }
+            $expectedScratch = if ($campaign -in @('pending', 'pending-peer-exit')) { '1536m' } else { '512m' }
             Assert-True ("/tmp:rw,exec,nosuid,nodev,size=$expectedScratch" -in $run) 'Scratch bound/profile changed.'
             Assert-True (@($run | Where-Object { $_ -match '^type=volume,.*readonly,volume-nocopy$' }).Count -eq 1) 'Workspace must remain read-only.'
             Assert-True (@($run | Where-Object { $_ -match '^type=bind,.*readonly$' }).Count -eq 2) 'Source/base must remain read-only.'
@@ -117,7 +117,7 @@ try {
             Remove-Item -LiteralPath $probeRoot -Force
         }
     }
-    'PHANTOWD_SAMBA_WRAPPER_TESTS_READY defaults=true default_campaigns=10 focused_campaigns=11 refusals=6 scope=mock-command-boundary-only'
+    'PHANTOWD_SAMBA_WRAPPER_TESTS_READY defaults=true default_campaigns=10 focused_campaigns=12 refusals=6 scope=mock-command-boundary-only'
 } finally {
     Remove-Variable phantowdSambaWrapperTestState -Scope Global
     $global:LASTEXITCODE = $previousExitCode

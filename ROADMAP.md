@@ -1713,10 +1713,18 @@ storage. No production roster provider or activation path exists.
   fences remain, with a one-second query cap and all existing parent limits.
   Actual ARM healthy binding, strict mandatory receipts, original bytes/FD/base,
   Linux vet/unit/race3, Windows and15 ARM TCP cases3 pass on1326 frozen inputs.
-  Adversarial live drift/uncertain teardown in the new composition are not yet
-  qualified; sequential observations are not atomic or continuous. This is not
+  The optional `pending-peer-exit` guest now qualifies deliberate verified peer
+  stop after the real binding: concrete adapter refusal/verified client group
+  stop, containing review, refused client CLOSE/start/rebind/repeated release,
+  original proc/namespaces/complete client inputs/server code/helper/local file
+  retained until private subprocess disposal; unchanged bytes and parent FD
+  equality. Actual fault and healthy ARM regressions, tagged host vet/unit/race3,
+  Windows and strict controls pass on1329 unchanged inputs/base. Defaultten and
+  existing deadlines are unchanged. Other live drift/uncertain teardown in the
+  new composition remain unqualified; sequential observations are not atomic
+  or continuous. This is not
   the opaque SMB handle/request witness: `smb_object_bound=false`/`pending_io=false`
-  remain required. Next qualify composed fault controls, then the original
+  remain required. Next qualify remaining composed fault controls, then the original
   handle and request/extent/cache/journal
   before any WRITE or pending-write fault. Keep review
   and original references on uncertainty; no generic-profile/idle-observer

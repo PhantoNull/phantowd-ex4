@@ -3,7 +3,7 @@
 [CmdletBinding()]
 param(
     [string]$BaseArtifactDir,
-    [ValidateSet('all', 'service', 'native', 'candidate', 'lifecycle', 'fault', 'data', 'exit', 'held', 'file', 'file-source', 'pending')]
+    [ValidateSet('all', 'service', 'native', 'candidate', 'lifecycle', 'fault', 'data', 'exit', 'held', 'file', 'file-source', 'pending', 'pending-peer-exit')]
     [string]$Campaign = 'all',
     [switch]$DiagnosticLogs
 )
@@ -48,7 +48,7 @@ $linuxScript = $linuxScript.Replace('__PHANTOWD_CAMPAIGN__', $Campaign)
 $diagnosticArgument = if ($DiagnosticLogs) { " 'diagnostic'" } else { '' }
 $linuxScript = $linuxScript.Replace('__PHANTOWD_DIAGNOSTIC__', $diagnosticArgument)
 $encoded = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($linuxScript.Replace("`r`n", "`n")))
-$scratchLimit = if ($Campaign -eq 'pending') { '1536m' } else { '512m' }
+$scratchLimit = if ($Campaign -in @('pending', 'pending-peer-exit')) { '1536m' } else { '512m' }
 docker run --rm --pull never --network none --read-only `
     --user 1000:1000 --cap-drop ALL --security-opt no-new-privileges `
     --cpus 2 --memory 2g --pids-limit 256 `

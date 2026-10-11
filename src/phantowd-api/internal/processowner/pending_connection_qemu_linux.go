@@ -505,3 +505,40 @@ func (w *pendingConnectionQEMU) releaseQEMU() error {
 	}
 	return nil
 }
+
+// Fixed reviewed-connection observation for the disposable fault fixture. No
+// recovery/release is performed or descriptor returned. A failed stop refuses.
+func (c *PendingClientQEMU) VerifyConnectionReviewQEMU(ctx context.Context) error {
+	if err := c.enter(ctx); err != nil {
+		return err
+	}
+	defer func() { <-c.gate }()
+	if !c.review || !c.started || c.settled || c.closed || c.closeSent || !c.stopTried || c.stopErr != nil ||
+		c.connection == nil || c.originalProc == nil || c.control == nil || c.process == nil || !c.process.exited() ||
+		verifyProcessGroupExited(c.process) != nil || len(c.connection.namespaces) != 4 {
+		return ErrUnavailable
+	}
+	if err := c.recheckPins(); err != nil {
+		return err
+	}
+	for _, proc := range []*os.File{c.originalProc, c.connection.client, c.connection.peer} {
+		if proc == nil {
+			return ErrUnavailable
+		}
+		if _, err := proc.Stat(); err != nil {
+			return err
+		}
+		if _, err := pendingProcGenerationReadQEMU(proc); !errors.Is(err, unix.ENOENT) && !errors.Is(err, unix.ESRCH) {
+			return errors.Join(ErrUnavailable, err)
+		}
+	}
+	for _, namespace := range c.connection.namespaces {
+		if namespace == nil {
+			return ErrUnavailable
+		}
+		if _, err := namespace.Stat(); err != nil {
+			return err
+		}
+	}
+	return ctx.Err()
+}

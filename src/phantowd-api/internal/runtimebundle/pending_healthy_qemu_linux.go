@@ -37,6 +37,16 @@ type pendingHealthyRetentionQEMU struct {
 // client once and performs CLOSE only. OPEN telemetry is NOT an independent
 // original SMB server/session/open/object witness or permission to WRITE.
 func (p *Plan) ProbeNativePendingClientQEMU(ctx context.Context, code, configuration, state *os.File, lookup fileserviceplan.SambaEnrollmentLookup, roots [2]*os.File) (result error) {
+	return p.probeNativePendingClientQEMU(ctx, code, configuration, state, lookup, roots, false)
+}
+
+// Fixed fault-only prerequisite in a disposable subprocess, not a WRITE or
+// recovery operation. Reviewed originals survive until that process exits.
+func (p *Plan) ProbeNativePendingPeerExitQEMU(ctx context.Context, code, configuration, state *os.File, lookup fileserviceplan.SambaEnrollmentLookup, roots [2]*os.File) error {
+	return p.probeNativePendingClientQEMU(ctx, code, configuration, state, lookup, roots, true)
+}
+
+func (p *Plan) probeNativePendingClientQEMU(ctx context.Context, code, configuration, state *os.File, lookup fileserviceplan.SambaEnrollmentLookup, roots [2]*os.File, peerExit bool) (result error) {
 	if ctx == nil {
 		return ErrInvalid
 	}
@@ -50,6 +60,7 @@ func (p *Plan) ProbeNativePendingClientQEMU(ctx context.Context, code, configura
 		return ErrReviewRequired
 	}
 	retained := &pendingHealthyRetentionQEMU{}
+	retainedReview := false
 	pendingHealthyRetainedQEMU = retained
 	defer func() {
 		if result != nil {
@@ -61,6 +72,9 @@ func (p *Plan) ProbeNativePendingClientQEMU(ctx context.Context, code, configura
 				retained.runtime.owner.review = true
 			}
 			return // Keep all authorities/file; never retry release in review.
+		}
+		if retainedReview {
+			return // Qualified fault still owns every reviewed original.
 		}
 		if retained.file != nil {
 			if err := retained.file.Close(); err != nil {
@@ -167,6 +181,13 @@ func (p *Plan) ProbeNativePendingClientQEMU(ctx context.Context, code, configura
 	}
 	if err := client.recheckConnection(ctx); err != nil {
 		return fmt.Errorf("pending original connection continuity: %w", err)
+	}
+	if peerExit {
+		if err := retained.qualifyPeerExitQEMU(ctx, initial); err != nil {
+			return fmt.Errorf("pending original peer exit: %w", err)
+		}
+		retainedReview = true
+		return nil
 	}
 	if err := client.closeClient(ctx); err != nil {
 		return fmt.Errorf("pending client close: %w", err)

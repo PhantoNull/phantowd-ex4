@@ -166,3 +166,32 @@ func TestPendingConnectionLifecycleRejectsMissingCopyBusyAndCanceled(t *testing.
 		t.Fatal("closed admitted")
 	}
 }
+
+func TestPendingConnectionReviewedObservationRefusesIncompleteOrUnsettled(t *testing.T) {
+	var absent *PendingClientQEMU
+	if absent.VerifyConnectionReviewQEMU(context.Background()) == nil {
+		t.Fatal("nil reviewed client accepted")
+	}
+	c := &PendingClientQEMU{gate: make(chan struct{}, 1), review: true, started: true, stopTried: true}
+	c.self = c
+	copy := *c
+	if copy.VerifyConnectionReviewQEMU(context.Background()) == nil || c.VerifyConnectionReviewQEMU(context.Background()) == nil {
+		t.Fatal("copied/incomplete reviewed client accepted")
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	if !errors.Is(c.VerifyConnectionReviewQEMU(ctx), context.Canceled) {
+		t.Fatal("canceled review accepted")
+	}
+	c.gate <- struct{}{}
+	if !errors.Is(c.VerifyConnectionReviewQEMU(context.Background()), ErrBusy) {
+		t.Fatal("concurrent review accepted")
+	}
+	<-c.gate
+	for _, uncertainty := range []error{ErrUnavailable, context.DeadlineExceeded} {
+		c.stopErr = uncertainty
+		if c.VerifyConnectionReviewQEMU(context.Background()) == nil || !c.review || c.closed {
+			t.Fatal("uncertain settlement admitted or mutated")
+		}
+	}
+}

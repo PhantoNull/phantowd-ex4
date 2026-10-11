@@ -70,6 +70,16 @@ sequential, not atomic; adversarial live drift/uncertain teardown in this new
 composition remain unqualified. `smb_object_bound=false` remains mandatory.
 No WRITE, new deadline/default campaign or product capability is exposed.
 
+The optional `pending-peer-exit` fault guest uses that same actual binding, then
+stops only its owned daemon group. Concrete adapter refusal must stop its client;
+the containing Owner retains review, complete client inputs, server code/helper,
+original proc/namespaces and unchanged local file. Client CLOSE/start/rebind/
+repeated release refuse; generic server Close is not changed. All reviewed
+originals survive until private subprocess disposal with exact bounded proof,
+exit0 and parent FD equality. Actual fault and healthy ARM regressions pass.
+Other drift/uncertain teardown, opaque handles/requests, WRITE and product
+activation remain unqualified; no retry, server restart or recovery is added.
+
 The QEMU-only planned runtime additionally retains one fixed authorized IPC$
 holder, distinct from the unused two-account client set. No caller chooses its
 program, user, credential or process profile. Its startup/stop uncertainty is

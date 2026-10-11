@@ -70,6 +70,12 @@ func run() error {
 		}
 		return err
 	}
+	if len(os.Args) == 2 && os.Args[1] == "native-pending-peer-exit" && os.Getuid() == 0 && os.Geteuid() == 0 {
+		return nativeCredentialFixture(nativePendingPeerExitCampaignQEMU)
+	}
+	if len(os.Args) == 2 && os.Args[1] == "native-pending-peer-exit-child" && os.Getuid() == 0 && os.Geteuid() == 0 {
+		return nativePendingPeerExitChildQEMU()
+	}
 	if len(os.Args) == 2 && os.Args[1] == "native-lifecycle" && os.Getuid() == 0 && os.Geteuid() == 0 {
 		err := nativeCredentialFixture(nativeLifecycleCampaignQEMU)
 		if err != nil {

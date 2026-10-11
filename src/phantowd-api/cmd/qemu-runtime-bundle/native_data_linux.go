@@ -24,6 +24,16 @@ func nativeDataFixtureQEMU(plan *runtimebundle.Plan, lookup fileserviceplan.Samb
 }
 
 func nativeDataFixtureProfileQEMU(plan *runtimebundle.Plan, lookup fileserviceplan.SambaEnrollmentLookup, pending bool) error {
+	return nativeDataFixtureModeQEMU(plan, lookup, pending, false)
+}
+
+// Strong references survive the qualified fault until subprocess disposal.
+var pendingPeerExitOriginalsQEMU []*os.File
+
+func nativeDataFixtureModeQEMU(plan *runtimebundle.Plan, lookup fileserviceplan.SambaEnrollmentLookup, pending, peerExit bool) error {
+	if peerExit && !pending {
+		return errors.New("invalid peer-exit fixture profile")
+	}
 	ctx, cancel := context.WithTimeout(context.Background(), 35*time.Second)
 	defer cancel()
 	const config = "/run/phantowd-native-data-config"
@@ -119,13 +129,20 @@ func nativeDataFixtureProfileQEMU(plan *runtimebundle.Plan, lookup fileservicepl
 		callers[index] = os.NewFile(uintptr(fd), "native-data-fixture-caller")
 	}
 	var probeErr error
-	if pending {
+	if peerExit {
+		pendingPeerExitOriginalsQEMU = append(pendingPeerExitOriginalsQEMU, callers[:]...)
+		pendingPeerExitOriginalsQEMU = append(pendingPeerExitOriginalsQEMU, roots[:]...)
+		probeErr = plan.ProbeNativePendingPeerExitQEMU(ctx, callers[0], callers[1], callers[2], lookup, roots)
+	} else if pending {
 		probeErr = plan.ProbeNativePendingClientQEMU(ctx, callers[0], callers[1], callers[2], lookup, roots)
 	} else {
 		probeErr = plan.ProbeNativeDataDescriptorQEMU(ctx, callers[0], callers[1], callers[2], lookup, roots)
 	}
 	if probeErr != nil {
 		return probeErr // Test process exit disposes a failed/quarantined experiment.
+	}
+	if peerExit {
+		return nil // Reviewed originals/clones are NOT released as healthy cleanup.
 	}
 	// Successful probe already stopped/reaped every owned client and daemon and
 	// closed their copies. Only then release originals/detach controller clones.

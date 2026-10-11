@@ -3,6 +3,31 @@
 
 # Implementation status
 
+## Original peer exit — composed ARMv5 fault prerequisite
+
+The separate optional `pending-peer-exit` guest starts the same retained real
+client/server, verifies the original connection and then stops only the owned
+daemon group. The concrete adapter's same-reference observation must refuse,
+quarantine and verify its client group absent; the containing Owner preserves
+review. Client CLOSE/start/rebind/repeated release refuse. Original proc/network/
+mount namespace references, complete client inputs, server code/helper and local
+file remain held. The synthetic file's identity/metadata/bytes stay unchanged.
+
+Reviewed authorities and original caller/root handles remain strongly reachable
+inside a private-mount-namespace subprocess until verified disposal. The parent
+requires exact bounded child proof, exit0 and FD equality. Diagnostic worker
+timings cannot replace that proof. Actual ARM fault and healthy regressions pass
+on the same1329 frozen inputs; original base unchanged. Pinned Linux tagged vet,
+all command/runtimebundle/processowner tests3 and focused race3, Windows preflight,
+strict two-mode parser, existing77 campaign controls and wrapper checks pass.
+
+This qualifies deliberate verified peer stop, not uncertain stop, namespace/PID
+reuse/socket replacement, arbitrary link loss, pending I/O or product recovery.
+`close_refused` and `restart_refused` are client checks; generic server Close is
+unchanged. Default ten campaigns, startup12/CLOSE5/data35/guest180 bounds and
+generic launchers remain unchanged. No WRITE, hosted timing fix, new complete
+image, service activation or NAS operation is qualified.
+
 ## Original client connection — composed healthy ARMv5 qualification
 
 The optional `pending` Samba guest now binds its original single-use client to

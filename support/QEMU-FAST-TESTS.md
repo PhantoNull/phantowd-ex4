@@ -95,6 +95,24 @@ handle/request and pending-I/O are not qualified. These are sequential, not
 atomic observations; `smb_object_bound=false`/`pending_io=false` remain mandatory.
 The native data profile's exact lowercase service and libsmbclient generic
 read/write mask have separate RED/GREEN guards from the older CLI-holder profile.
+For a separate fixed original-peer-stop fault (not part of default `all`), run:
+
+```powershell
+.\support\test-samba-root.ps1 -Campaign pending-peer-exit
+```
+
+It performs the same actual original binding before stopping the owned daemon
+group. Concrete client observation refuses, verifies its owned group absent and
+retains original references in review; client CLOSE/start/rebind/repeated release
+refuse. Original local bytes/metadata stay unchanged. A private-mount-namespace
+subprocess retains authorities until exit; bounded exact child proof plus exit0,
+parent FD equality and separate strict ordered guest markers are mandatory.
+`close_refused`/`restart_refused` refer to client operations, not a new generic
+server Close contract. Actual fault and healthy ARM regressions pass, with
+data35/startup12/CLOSE5/guest180 unchanged; the new subprocess is bounded40s.
+No uncertain-stop/namespace/PID/socket replacement, pending-I/O, automatic
+recovery, new full image or product/NAS qualification follows from this test.
+
 The fixed status worker still admits the complete original runtime before and
 after execution; redundant surrounding scans are avoided. No deadline changes.
 

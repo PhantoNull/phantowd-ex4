@@ -15,7 +15,7 @@ selection=${8:-all}
 diagnostics=${9:-none}
 case "$diagnostics" in none|diagnostic) ;; *) exit 1 ;; esac
 case "$selection" in
-    all|service|native|candidate|lifecycle|fault|data|exit|held|file|file-source|pending) ;;
+    all|service|native|candidate|lifecycle|fault|data|exit|held|file|file-source|pending|pending-peer-exit) ;;
     *) exit 1 ;;
 esac
 tmpdir=${TMPDIR:-/tmp}
@@ -25,8 +25,10 @@ case "$base:$target:$go_binary:$debugfs:$compiler:$source_dir:$failure_log:$tmpd
 esac
 case "$tmpdir" in /*) ;; *) exit 1 ;; esac
 awk -v target="$tmpdir" '$3 == "tmpfs" && (target == $2 || index(target, $2 "/") == 1) { found = 1 } END { exit !found }' /proc/mounts || exit 1
-if [ "$selection" = pending ]; then
-    campaigns=pending # Separate prerequisite, deliberately NOT the default union.
+pending_profile=0
+case "$selection" in pending|pending-peer-exit) pending_profile=1 ;; esac
+if [ "$pending_profile" -eq 1 ]; then
+    campaigns=$selection # Separate prerequisites, NOT the default union.
 else
     campaigns=$(python3 -B "$source_dir/support/tests/samba_root_fixture.py" select-campaigns "$selection")
 fi
@@ -49,8 +51,8 @@ cleanup() {
         "$scratch/launcher" "$scratch/charset" "$scratch/bundle" "$scratch/owner" \
         "$scratch/service.log" "$scratch/native.log" "$scratch/candidate.log" \
         "$scratch/lifecycle.log" "$scratch/fault.log" "$scratch/data.log" "$scratch/exit.log" "$scratch/held.log" "$scratch/file.log" "$scratch/file-source.log"
-    rm -f "$scratch/pending.log"
-    if [ "$selection" = pending ]; then rm -rf "$scratch/pending"; fi
+    rm -f "$scratch/pending.log" "$scratch/pending-peer-exit.log"
+    if [ "$pending_profile" -eq 1 ]; then rm -rf "$scratch/pending"; fi
     rm -rf "$scratch/go-cache" "$scratch/go-path"
     rmdir "$scratch"
 }
@@ -83,7 +85,7 @@ python3 -B "$source_dir/support/tests/samba_root_fixture.py" prepare \
     "$go_binary" build -tags=qemu -trimpath -o "$scratch/bundle" ./cmd/qemu-runtime-bundle)
 (cd "$source_dir/src/phantowd-api" && CGO_ENABLED=0 GOOS=linux GOARCH=arm GOARM=5 \
     "$go_binary" build -tags=qemu -trimpath -o "$scratch/owner" ./cmd/qemu-samba-owner)
-if [ "$selection" = pending ]; then
+if [ "$pending_profile" -eq 1 ]; then
     mkdir "$scratch/pending"
     (cd "$source_dir/src/phantowd-api" && "$go_binary" build -tags=qemu -trimpath \
         -o "$scratch/pending/host-inputs" ./cmd/qemu-pending-client-inputs)
@@ -102,7 +104,7 @@ if [ "$selection" = pending ]; then
 fi
 rm -rf "$scratch/go-cache" "$scratch/go-path"
 cp "$base/rootfs.ext2" "$scratch/rootfs.ext2"
-if [ "$selection" = pending ]; then
+if [ "$pending_profile" -eq 1 ]; then
     # Enlarge ONLY this new regular tmpfs image copy. Original base stays RO.
     [ -f "$scratch/rootfs.ext2" ] && [ ! -L "$scratch/rootfs.ext2" ] || exit 1
     truncate -s 128M "$scratch/rootfs.ext2"
@@ -151,7 +153,7 @@ child_pid=
 if [ "$diagnostics" = diagnostic ]; then
     # Escaped, bounded telemetry only. Emitted before verification even for a
     # timeout; never a success marker or substitute for original acceptance.
-    if [ "$selection" = pending ]; then
+    if [ "$pending_profile" -eq 1 ]; then
         cat "$scratch/$campaign.log" # Fixed fixture contains no operator secrets.
     else
         python3 -B "$source_dir/support/tests/samba_root_fixture.py" diagnostic-log \
@@ -160,7 +162,9 @@ if [ "$diagnostics" = diagnostic ]; then
 fi
 verified=0
 if [ "$status" -eq 0 ]; then
-    if [ "$selection" = pending ]; then
+    if [ "$selection" = pending-peer-exit ]; then
+        python3 -B "$source_dir/support/tests/pending_client_healthy_log.py" "$scratch/$campaign.log" peer-exit && verified=1
+    elif [ "$selection" = pending ]; then
         python3 -B "$source_dir/support/tests/pending_client_healthy_log.py" "$scratch/$campaign.log" && verified=1
     else
         python3 -B "$source_dir/support/tests/samba_root_fixture.py" verify-campaign "$scratch/$campaign.log" "$campaign" && verified=1

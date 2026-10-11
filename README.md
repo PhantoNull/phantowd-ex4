@@ -55,6 +55,8 @@ Its independent server-side snapshots now match the same worker generation,
 session, tree and open to the retained local file. The original client/worker
 processes, retained namespaces and reciprocal TCP connection now also match;
 remote client-handle/request binding remains unqualified.
+A separate peer-stop fixture also verifies client refusal, sticky review and
+original-reference retention with unchanged data and verified subprocess disposal.
 It does not qualify pending writes, recovery or product service activation;
 see the [focused test contract](support/QEMU-FAST-TESTS.md#dedicated-same-open-client-prerequisites-host-and-qemu).
 

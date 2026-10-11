@@ -34,6 +34,12 @@ controls and the independent TCP descriptor oracle also pass on ARM.
 These sequential observations are not atomic or continuous. Adversarial live
 drift/uncertain teardown in the new composition, remote handle/request/extent,
 pending I/O and product storage/identity composition remain unqualified.
+The separate actual ARM peer-exit fixture now verifies concrete connection
+refusal after the owned daemon group stops, client quarantine/group absence and
+original proc/namespaces/pins retained. A read-only reviewed-state check requires
+verified stop, absent original tasks and all original references still open;
+missing/copied/busy/canceled/incomplete states refuse. This is not uncertain-stop
+qualification, automatic recovery or permission to release reviewed authority.
 Ordinary builds/startup, generic launchers and HTTP remain unchanged; see the
 [focused client contract](../../../../support/QEMU-FAST-TESTS.md#dedicated-same-open-client-prerequisites-host-and-qemu).
 
