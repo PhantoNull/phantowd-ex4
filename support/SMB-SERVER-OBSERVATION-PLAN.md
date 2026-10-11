@@ -80,6 +80,18 @@ one-byte reads only after independently confirmed original client OPEN, then
 match kernel sender/worker generation, remote FileId and original local object.
 The loader-only module, generic launchers and old campaigns remain unchanged.
 
+`support/test-server-capture-client.ps1` now prepares a separate fixed O_RDONLY
+client for that integration. Three mock-positive flows, exact ordered receipts
+and 121 refusals pass with ASan/UBSan; the independently compiled ARMv5 PIE has
+no mutation accessor imports and depends on the existing source handle reader.
+At most two one-byte reads reuse the original context/file, checking its tuple
+before reading and after local seek-to-zero. Early explicit CLOSE is allowed;
+unknown/third-read commands and uncertain results never retry or reopen.
+The client is not yet executed against Samba/in ARM or joined to retained code,
+bootstrap, actual worker or transport authority. Its new notice protocol is
+distinct: do not route it through the old close-only process adapter. Existing
+launchers/adapter/configuration and default campaigns stay unchanged.
+
 The next deliverable is an independently qualified bridge from the original
 client's remote SMB FileId to the original server worker's still-open local
 file. Successful SMB OPEN, copied IDs, STATUS output and transport credentials

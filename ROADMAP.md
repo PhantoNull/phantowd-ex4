@@ -67,6 +67,14 @@ currently product-qualified for migration.
 
 ## Current baseline
 
+A dedicated fixed read-only capture client now passes host mock orchestration
+(three positive flows, 121 refusals) and ARMv5 ELF compilation; it has not run
+against Samba or in ARM. It reads at most twice on one original handle and
+imports no mutation accessor. The old close-only variant remains unchanged.
+This is an integration prerequisite, not a completed client/worker bridge.
+Next, retain independently expected client/module/bootstrap closures and prove
+the actual authenticated OPEN, original worker/channel and remote/local match.
+
 The optional dedicated VFS capture fixture now implements bounded synchronous
 and asynchronous read sampling with two ordered nonblocking records and sticky
 failure, without retaining FSA pointers in completion callbacks. Twenty actual

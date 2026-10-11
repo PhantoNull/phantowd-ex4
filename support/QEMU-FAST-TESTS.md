@@ -1,5 +1,22 @@
 # Fast API and file-service integration checks
 
+## Read-only capture client — no guest or SMB execution yet
+
+Run `support/test-server-capture-client.ps1` with the existing pinned builder
+and workspace. The optional compile-only lane builds the actual source-based
+handle observer and a dedicated fixed client: one O_RDONLY OPEN, at most two
+one-byte reads on that same handle, local offset reset/check and explicit CLOSE.
+Host orchestration mocks verify three successful flows, ordered notices and
+121 refusals under ASan/UBSan. ARM ELF checks enforce the original observer
+SONAME, fixed interpreter/ABI and hardening, and reject mutation imports.
+The old close-only client also passes, without source or launcher changes.
+
+This is **not actual SMB, ARM guest execution, worker binding or an authority**.
+There is no server bootstrap, retained runtime composition or NAS operation in
+this lane. Existing image/workspace/source stay read-only; non-root/caps0/NNP,
+network none, CPU2/256MiB/64PIDs, 64MiB RAM scratch, auto-removal and 120s outer
+limit apply. No new images/volumes, default CI trigger or full/hosted gate waiver.
+
 ## Bounded VFS capture callbacks — synthetic opens, not an SMB worker
 
 Run `support/test-server-capture.ps1` for the optional fixed capture-module

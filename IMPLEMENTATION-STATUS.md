@@ -3,6 +3,34 @@
 
 # Implementation status
 
+## Dedicated capture client prerequisite — host mocks and ARM compilation only
+
+`support/test-server-capture-client.ps1` builds a separate fixed read-only
+client for the capture-module integration. One original context/file opens
+`readonly/capture-read` with O_RDONLY; at most two explicit one-byte reads are
+followed by local seek-to-zero and same-handle checks, then explicit CLOSE.
+The fixed loopback/nobody authentication callback is sticky on refusal. No
+WRITE/create/delete accessor is imported, and uncertain outcomes never issue
+protocol cleanup, retry, reconnect or reopen. Copied handle notices remain
+telemetry, not an authority. The containing Owner must separately settle the
+original process/group before releasing references.
+
+Three positive mock flows, exact ordered notices and 121 negative cases pass
+with ASan/UBSan. Target compilation checks ARMv5 soft-float PIE, fixed interpreter,
+original observer SONAME, RELRO/NOW/NX stack and absent mutation accessors. The
+18,388-byte compiled client has **not been executed in ARM or against SMB**.
+The original close-only client's tests still pass and its source/launchers are
+unchanged. Ten sensitive upstream reader inputs are checked, not the complete
+SDK/runtime closure. Windows API/UI/static/test/cross preflight passes.
+
+This optional lane uses the existing image/workspace read-only and 64MiB RAM
+scratch, non-root/caps0/NNP, no network and no guest, with a 120s outer limit.
+It creates no image/volume or product API. Next: independently declare and retain
+the new client/module/bootstrap closures, authenticate in the dedicated runtime,
+consume two original-worker samples and match original process/TCP/FileId/local
+object evidence. Full-image/hosted/recovery/product gates remain open; no NAS,
+WRITE or installation qualification.
+
 ## Dedicated bounded VFS capture module — host/QEMU fixture only
 
 `support/test-server-capture.ps1` now builds a separate capture variant at the
