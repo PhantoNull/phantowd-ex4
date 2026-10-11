@@ -89,6 +89,14 @@ DLIST singleton construction correct two earlier prerequisite assumptions.
 Remote FileId halves remain distinct from server share-mode generation: this
 does not qualify their missing bridge, faults, WRITE, HTTP or product activation.
 
+The optional [private wire lane](../../../../support/QEMU-FAST-TESTS.md#server-open-private-wire-prerequisite)
+now executes a fixed C-to-Go frame decoder and separate all-field client/STATUS
+metadata comparison in ARM, with bounded capture, refusal/concurrency/race/fuzz
+controls. Neither helper is connected to this Owner or accepts producer/channel
+authority. Synthetic open/tree records and metadata equality do not qualify the
+active worker bridge, replay/lifetime protections or WRITE. Complete retained
+producer/channel construction and original-worker capture remain required.
+
 The separate [server reader source lane](../../../../support/QEMU-FAST-TESTS.md#server-side-original-open-reader-prerequisite)
 now copies remote IDs, share-mode generation and local descriptor identity from
 one actual-type files_struct, with ARM source/loaded-DSO refusal controls and

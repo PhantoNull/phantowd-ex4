@@ -30,9 +30,11 @@ static void refused(const connection_struct *connection, const files_struct *fil
     refusals++;
 }
 
-int main(void)
+int main(int argc, char **argv)
 {
     alarm(5);
+    bool emit_frames = argc == 2 && !strcmp(argv[1], "--frames");
+    require(argc == 1 || emit_frames);
     char name[] = "/tmp/phantowd-server-open.XXXXXX";
     int fd = mkstemp(name);
     require(fd >= 0 && write(fd, "synthetic-data", 14) == 14);
@@ -157,6 +159,21 @@ int main(void)
     require(!close(fd) && !unlink(name));
     fsp_set_fd(&file, -1);
     TALLOC_FREE(file.fh);
+    unsigned char frames[176];
+    memset(frames, 0xa5, sizeof(frames));
+    require(phantowd_qemu_encode_server_open_v1(frames, &observed, 0) != 0);
+    for (unsigned index = 0; index < 88; ++index) require(frames[index] == 0);
+    require(phantowd_qemu_encode_server_open_v1(NULL, &observed, 1) != 0 &&
+        phantowd_qemu_encode_server_open_v1(frames, NULL, 1) != 0);
+    for (unsigned index = 0; index < 88; ++index) require(frames[index] == 0);
+    require(!phantowd_qemu_encode_server_open_v1(frames, &observed, 1) &&
+        !phantowd_qemu_encode_server_open_v1(frames + 88, &repeated, 2));
+    if (emit_frames) {
+        /* Private subprocess bytes only. The Go test captures them without
+         * logging raw IDs; this is not the future retained worker channel. */
+        require(write(STDOUT_FILENO, frames, sizeof(frames)) == sizeof(frames));
+        return 0;
+    }
     printf("PHANTOWD_SERVER_OPEN_SOURCE_READY refusals=%u dso_refusals=%u real_fd=true real_getters=true synthetic_open=true active_worker=false authority=false scope=qemu-only\n", refusals, refusals);
     return 0;
 }

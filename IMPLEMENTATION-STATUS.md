@@ -3,6 +3,30 @@
 
 # Implementation status
 
+## Server-open metadata framing — C-to-Go ARMv5 prerequisite
+
+An optional `support/test-server-open-observer.ps1 -Wire` guest now runs the
+original C reader/refusal fixture and six Go tests, including capture of two
+actual ARM C-produced frames. The private 88-byte format explicitly encodes
+version, payload size, sequence and separate ID domains in little-endian order;
+it never dumps native padding. Missing/truncated/extra/duplicate frames, invalid
+IDs and wrong observation sequence refuse with zero metadata and redacted errors.
+The capture is bounded, and the decoded worker PID matches its actual subprocess.
+
+A separate internal comparison checks each field against client-handle and STATUS
+metadata, including the independent share-mode generation and local device/inode.
+Synthetic changed-field, cross-domain substitution and noncanonical STATUS tests,
+32 concurrent readers, three host race passes and 10,000 fuzz executions pass. Windows/API/UI/
+ARM cross checks and the original standalone ARM lane also pass.
+
+**This is a codec/comparison prerequisite, not a retained authenticated worker
+channel.** Open/tree records remain synthetic; the actual worker VFS capture,
+complete producer/channel/code authority, existing lifecycle fences and composed
+faults remain required before the remote bridge or any WRITE claim. No Owner,
+launcher, default campaign, product, HTTP or NAS activation changes. The optional
+Go compilation uses bounded temporary RAM and the existing toolchain read-only;
+no new image or volume. See the [wire contract](support/QEMU-FAST-TESTS.md#server-open-private-wire-prerequisite).
+
 ## Server-side original-open reader — standalone ARMv5 prerequisite
 
 A separate source-built fixture now copies the remote persistent/volatile IDs,

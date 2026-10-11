@@ -156,6 +156,46 @@ producer/channel admission, original-worker capture, independent same-open bridg
 and composed fault controls remain missing; `smb_object_bound=false` and
 `pending_io=false` stay mandatory. No WRITE, HTTP, NAS or release qualification.
 
+#### Server-open private wire prerequisite
+
+```powershell
+.\support\test-server-open-observer.ps1 -Wire
+```
+
+This optional standalone guest adds the current ARM Go runtimebundle test binary
+to the same pinned-source C reader fixture. The C subprocess copies two 88-byte
+frames over its private captured stdout; raw IDs never enter the public receipt.
+The format is eight magic bytes `PWDOPEN\0`, LE16 version 1/payload 72, LE32 sequence
+1 or 2, then seven LE64 and four LE32 fields in the source-reader tuple order.
+This is explicit framing, not a native struct dump or an authenticated channel.
+
+The Go decoder requires exact length/header/sequence and valid IDs, with zero
+metadata/redacted errors on refusal. Full-header mutations, every short length,
+extra/concatenated frames, reserved IDs and wrong sequence refuse. The comparison
+keeps client persistent/volatile IDs separate from independent STATUS share-mode
+generation, local device/inode and full worker/session/tree; changed and
+noncanonical fields refuse. Six actual ARM tests include 32 concurrent readers,
+capture-bound checks and actual C-to-Go bytes with an independently known child
+PID. Host tagged vet/unit, three race passes and 10,000 fuzz executions pass. The plain source
+lane and its old receipt contract remain valid.
+
+One existing auto-rm non-root/caps0/NNP/networknone container uses CPU 2/RAM 2GiB/
+PIDs 128 and 1536+128MiB tmpfs only for this optional compilation. The cached SDK
+version must match versions.env; build 120s, C subprocess 5s/Go capture 7s, guest
+tests 20s and QEMU 30s. Cache is deleted before boot; module/C-test/Go-test/init
+insertion bytes and unchanged borrowed base are checked. Only the fresh tmpfs
+root copy is enlarged to 128MiB; there is no new image, named volume or full build.
+
+No VFS hook, retained producer/channel/Owner integration or same-worker bridge
+exists yet. These open/tree records remain synthetic. Framing and equality do
+not prove provenance, continuity, protocol identity, global replay protection,
+pending IO, WRITE, product activation, HTTP or NAS compatibility. A future Owner
+must independently admit/retain producer/channel/code, serialize observations,
+recheck original process/namespace/TCP/local-object fences and retain sticky
+review on missing/extra/replayed/drifted output or uncertain stop. Do not widen
+the generic launcher; the dedicated VFS/channel architecture remains a separate
+design decision. No default-ten/pipeline/privilege/deadline changes.
+
 #### Remaining original-handle witness
 
 Source inspection of pinned Samba 4.22.11 identifies separate ID domains:

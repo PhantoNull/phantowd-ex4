@@ -1765,6 +1765,16 @@ storage. No production roster provider or activation path exists.
   worker opening before comparing the client/server/local-object tuple; preserve
   all existing fences, refusal/review, fault and pre-WRITE requirements. See the
   [server reader prerequisite](support/QEMU-FAST-TESTS.md#server-side-original-open-reader-prerequisite).
+  Its optional private wire lane now proves explicit C-to-Go ARM framing,
+  bounded capture, sequence/refusal controls and separate all-field comparison
+  to synthetic client/STATUS metadata. Host race3/10000 fuzz and standalone/ARM
+  regressions pass; raw IDs do not enter receipts. This is not authenticated
+  worker provenance or global replay/lifetime authority. Next implement a
+  dedicated admitted VFS producer/channel, retain its full original code/root/
+  transport authority, then capture and compare the actual same opening with
+  existing process/namespace/TCP/local-object fences and fault controls. No
+  generic launcher widening, Owner activation or WRITE in this prerequisite.
+  [Wire contract and exact command](support/QEMU-FAST-TESTS.md#server-open-private-wire-prerequisite).
   The private fixed-producer status observation is now consumed by a separate
   original-object composition in the explicit `file` guest. A fixed authorized
   client opens one existing synthetic file once, without create/truncate/reopen.
