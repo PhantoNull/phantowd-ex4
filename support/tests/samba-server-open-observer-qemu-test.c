@@ -80,6 +80,7 @@ int main(int argc, char **argv)
         .status = NT_STATUS_OK};
     files_struct file = {.conn = &connection, .op = &opening, .vuid = 42, .fnum = 456,
         .file_id = {.devid = initial.st_dev, .inode = initial.st_ino}};
+    file.fsp_flags.is_fsa = true;
     /* Real upstream allocation/getters/setters, not a copied fd_handle layout. */
     file.fh = fd_handle_create(NULL);
     require(file.fh != NULL);
@@ -121,6 +122,7 @@ int main(int argc, char **argv)
     BAD(server.files, NULL); BAD(server.num_files, 0); BAD(server.num_files, 2);
     BAD(file.next, &file); BAD(file.conn, NULL); BAD(file.fh, NULL);
     fh_set_refcount(file.fh, 2); refused(&connection, &file); fh_set_refcount(file.fh, 1);
+    file.fsp_flags.is_fsa = false; refused(&connection, &file); file.fsp_flags.is_fsa = true;
     file.fsp_flags.is_pathref = true; refused(&connection, &file); file.fsp_flags.is_pathref = false;
     file.fsp_flags.is_directory = true; refused(&connection, &file); file.fsp_flags.is_directory = false;
     file.fsp_flags.is_dirfsp = true; refused(&connection, &file); file.fsp_flags.is_dirfsp = false;

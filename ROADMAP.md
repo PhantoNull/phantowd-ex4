@@ -1757,14 +1757,20 @@ storage. No production roster provider or activation path exists.
   widening, product startup, HTTP or physical NAS action.
   A separate server-side source reader now copies both remote IDs and share-mode
   generation from one pinned files_struct, including worker/session/tree and
-  real-descriptor device/inode checks. Actual ARM source and loaded DSO run65
+  real-descriptor device/inode checks. Actual ARM source and loaded DSO run 66
   refusals with real upstream getters/list/fstat; open/tree records are synthetic.
-  Fourteen sensitive source hashes, ABI/import/SONAME/RUNPATH guards and strict
+  Sixteen sensitive source hashes, ABI/import/SONAME/RUNPATH guards and strict
   base/receipt controls pass. This is not the active-worker bridge. Next bind a
   dedicated retained producer/metadata channel and capture the actual original
   worker opening before comparing the client/server/local-object tuple; preserve
-  all existing fences, refusal/review, fault and pre-WRITE requirements. See the
-  [server reader prerequisite](support/QEMU-FAST-TESTS.md#server-side-original-open-reader-prerequisite).
+  all existing fences, refusal/review, fault and pre-WRITE requirements.
+  Pinned lifecycle analysis requires `is_fsa` for a normal file, but neither that
+  flag nor CREATE_FILE returning success proves the final SMB response. Capture
+  must be admitted only after independent original-client OPEN success, while
+  the original file remains open. Do not use VFS CLOSE for the second sample:
+  SMB2 sets `closing` first. Do not inherit the old synthetic child's parent-PID
+  check: a real worker is forked by smbd, not directly by the socket creator.
+  See the [server reader prerequisite](support/QEMU-FAST-TESTS.md#server-side-original-open-reader-prerequisite).
   Its optional private wire lane now proves explicit C-to-Go ARM framing,
   bounded capture, sequence/refusal controls and separate all-field comparison
   to synthetic client/STATUS metadata. Host race3/10000 fuzz and standalone/ARM

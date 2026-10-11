@@ -134,13 +134,17 @@ caller-supplied runtime authority. Its narrow predicate is not product disk/shar
 eligibility or compatibility policy.
 
 The ARM guest uses actual upstream fd_handle allocation/getters and list macros
-with real temporary files. All65 refusals also execute through the separately
+with real temporary files. All 66 refusals also execute through the separately
 loaded DSO and actual installed Samba getters, without getter mocks. Copied/
 foreign file, list cycle, different real inode, EBADF, directory and actual
-hard-link controls refuse; repeated positive metadata and unchanged data pass.
+hard-link and inconsistent non-FSA controls refuse; repeated positive metadata
+and unchanged data pass. A normal non-pathref file must have `is_fsa` set, as
+required by the pinned Samba state contract. That flag is not SMB response success:
+later CREATE response construction can fail. SMB2 sets `closing` before the
+VFS-close callback, so observations must bracket the still-open file, not CLOSE.
 The open/tree/connection records themselves are **synthetic**. There is no active
 daemon, protocol/session/worker binding or complete observer-input authority.
-Fourteen sensitive source hashes, fixed ARMv5 ABI/RUNPATH/SONAME, one export and
+Sixteen sensitive source hashes, fixed ARMv5 ABI/RUNPATH/SONAME, one export and
 local-read/stack-protector imports are guarded. Original code is combined with
 pinned GPL Samba definitions/functions under their upstream terms. No installed
 Samba object is replaced; artifacts are not product runtime inputs.

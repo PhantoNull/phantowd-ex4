@@ -74,16 +74,18 @@ A separate source-built fixture now copies the remote persistent/volatile IDs,
 session/tree, share-mode file generation, worker identity and local device/inode
 from the same pinned Samba `files_struct`. It checks bounded complete file-list
 membership before dereferencing the supplied file, reciprocal open/tree links,
-active non-durable state and a real regular-file descriptor via `fstat`. IDs from
+FSA-processed non-pathref state, active non-durable links and a real regular-file
+descriptor via `fstat`. FSA processing does not prove a successful SMB response. IDs from
 different domains remain separate. Refused output is cleared; no open, close,
 allocation, VFS operation, wire request or write is performed by the reader.
 
 The actual ARM guest uses real upstream `fd_handle` allocation/getters/list macros
-and temporary files. Sixty-five refusal cases run both against the source-built
+and temporary files. Sixty-six refusal cases run both against the source-built
 test and the loaded DSO using actual installed Samba getters, without getter
 mocks. These include a foreign/copied file, list cycle, changed local object,
-closed/directory descriptor and real hard link. Repeated positive tuples and
-unchanged file data pass. Fourteen sensitive source hashes, ARMv5 ABI/RUNPATH,
+closed/directory descriptor, inconsistent non-FSA state and real hard link.
+Repeated positive tuples and unchanged file data pass. Sixteen sensitive source
+hashes, including the actual open/SMB2-close lifecycle, ARMv5 ABI/RUNPATH,
 fixed SONAME, one export, bounded local-read/stack-protector imports, exact
 insertion, strict receipts and borrowed-base equality are checked.
 

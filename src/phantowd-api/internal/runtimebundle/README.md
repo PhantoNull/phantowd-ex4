@@ -121,8 +121,15 @@ remain mandatory, with a fixed qualified credential mode/context.
 
 The separate [server reader source lane](../../../../support/QEMU-FAST-TESTS.md#server-side-original-open-reader-prerequisite)
 now copies remote IDs, share-mode generation and local descriptor identity from
-one actual-type files_struct, with ARM source/loaded-DSO refusal controls and
-real Samba getters/fstat. The supplied open/tree records remain synthetic. It is
+the same actual-type FSA-processed, non-pathref `files_struct`, using real Samba
+getters/fstat. Inconsistent pre-FSA/internal state is
+refused by both source and loaded DSO, with 66 actual ARM negative controls.
+FSA processing is not a completed SMB response. The future containing producer
+must independently admit the original client's successful OPEN and observe the
+file while still open: SMB2 marks it closing before the VFS-close callback.
+The original worker is forked by smbd, not the socket creator; the finite
+synthetic child's parent-PID check cannot be reused as worker admission.
+The supplied open/tree records remain synthetic. It is
 not called by this Owner, not a live worker observer or execution authority;
 retained producer/channel construction and actual same-open comparison remain
 required. No runtime constructor or product surface changes in this prerequisite.

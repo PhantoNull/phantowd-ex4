@@ -30,9 +30,11 @@ int phantowd_qemu_observe_server_open_v1(const connection_struct *connection,
         if (++count > 128) return -1;
         if (entry == file) found++;
     }
+    /* FSA distinguishes completed backend data opens from internal/pre-FSA
+     * structures. It is NOT proof that the SMB CREATE response succeeded. */
     if (!count || count != connection->sconn->num_files || found != 1 ||
         file->conn != connection || !file->fh || fh_get_refcount(file->fh) != 1 ||
-        file->fsp_flags.is_pathref || file->fsp_flags.is_directory ||
+        !file->fsp_flags.is_fsa || file->fsp_flags.is_pathref || file->fsp_flags.is_directory ||
         file->fsp_flags.is_dirfsp || file->fsp_flags.closing ||
         file->fsp_flags.modified || file->fsp_flags.posix_open ||
         file->fsp_flags.delete_on_close || file->fsp_flags.initial_delete_on_close ||
