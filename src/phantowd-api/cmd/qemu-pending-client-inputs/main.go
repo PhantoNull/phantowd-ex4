@@ -119,7 +119,10 @@ func run() error {
 		}
 		return bootstrap.StageQEMU(context.Background(), source, bootstrapRoot)
 	}
-	return client.ProbePendingClientInputsQEMU(context.Background(), bootstrap, clientRoot, bootstrapRoot)
+	if err := client.ProbePendingClientInputsQEMU(context.Background(), bootstrap, clientRoot, bootstrapRoot); err != nil {
+		return err
+	}
+	return client.ProbePendingClientOwnerQEMU(context.Background(), bootstrap, clientRoot, bootstrapRoot)
 }
 
 func main() {

@@ -7,7 +7,8 @@ source=${1:?repository source required}
 verifier="$source/support/tests/verify-pending-client-inputs-log.awk"
 ready='PHANTOWD_PENDING_INPUTS_READY complete_root=true complete_bootstrap=true fixed_documents=true original_pins=true caller_duplicate_closed=true late_rechecked=true mismatches=2 canceled_refused=true released_refused=true no_fd_leak=true execution=false scope=qemu-only'
 guest=PHANTOWD_PENDING_INPUTS_GUEST_DONE
-good=$(printf '%s\n%s' "$ready" "$guest")
+owner='PHANTOWD_PENDING_OWNER_READY complete_inputs=true adapter_bound=true constructor_refused=true caller_duplicate_closed=true late_rechecked=true copied_refused=true canceled_refused=true busy_refused=true released_refused=true no_fd_leak=true execution=false scope=qemu-only'
+good=$(printf '%s\n%s\n%s' "$ready" "$owner" "$guest")
 check() {
     expected=$1
     status=0
@@ -15,10 +16,16 @@ check() {
     [ "$status" -eq "$expected" ] || exit 1
 }
 check 0 "$good"
-printf '%s\r\n%s\r\n' "$ready" "$guest" | awk -f "$verifier"
+printf '%s\r\n%s\r\n%s\r\n' "$ready" "$owner" "$guest" | awk -f "$verifier"
 check 1 ''
 check 1 "$ready"
 check 1 "$guest"
+check 1 "$(printf '%s\n%s' "$ready" "$guest")"
+check 1 "$(printf '%s\n%s' "$owner" "$guest")"
+check 1 "$(printf '%s\n%s' "$good" "$owner")"
+check 1 "$(printf '%s\n%s\n%s' "$owner" "$ready" "$guest")"
+check 1 "$(printf '%s\n%s\n%s' "$ready" "$guest" "$owner")"
+check 1 "${good/constructor_refused=true/constructor_refused=false}"
 check 1 "$(printf '%s\n%s' "$good" "$guest")"
 check 1 "$(printf '%s\n%s' "$good" "$ready")"
 check 1 "$(printf '%s\n%s' "$good" PHANTOWD_PENDING_INPUTS_GUEST_FAILED)"

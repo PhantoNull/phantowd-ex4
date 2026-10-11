@@ -16,12 +16,23 @@ hashes, partial-construction cleanup, independent caller closure, cancellation,
 released-reference refusal and final FD equality.
 
 This is **not a process Owner or execution token**: it starts no process and
-exposes no descriptor to a consumer. Its future containing Owner must serialize
-access, recheck after fixing all other inputs, retain originals until verified
-whole-group settlement, and preserve review on uncertainty. Close failure is
+exposes no descriptor to a consumer. A separate private containing Owner now
+serializes access and fixes the concrete dedicated process adapter after
+complete retention. It rechecks all inputs after construction and before/after
+start and explicit close, retains originals until verified whole-group
+settlement, and preserves review on uncertainty. Close failure is
 sticky, retaining unattempted originals without retry. No ordinary build,
 product startup, HTTP, NAS, actual SMB or pending-I/O qualification is added.
 Use the optional [complete-input lane](../../../../support/QEMU-FAST-TESTS.md).
+
+That lane also qualifies the containing Owner's ARM constructor and
+never-started closure, failed-constructor cleanup, caller-duplicate closure,
+copy/cancel/busy/released refusals and final FD equality. It runs no adapter
+child or server. Host lifecycle refusal/release-order tests and race3 pass;
+actual healthy library/client execution and launched settlement remain untested.
+The private Owner exposes no write, descriptor, per-call backend or product
+service capability. Storage/identity/server/session/open/object admission is
+still separate and required before any pending-write fault.
 
 The QEMU-only planned runtime additionally retains one fixed authorized IPC$
 holder, distinct from the unused two-account client set. No caller chooses its

@@ -19,11 +19,18 @@ equality and unchanged base are mandatory. Exact log controls reject incomplete,
 duplicate, unknown, altered or failure receipts. Build metadata is diagnostic,
 not a signed release manifest or execution token.
 
+The same guest also constructs the private containing lifecycle Owner with its
+concrete dedicated process adapter. It verifies failed-constructor rollback,
+independent caller closure, copied/canceled/concurrent/released refusals and
+never-started closure without leaks. Ordered input/Owner/guest receipts are all
+mandatory. This does not test launched-child settlement or actual SMB.
+
 This lane launches **neither the real client nor a server**. ELF interpreter /
 needed-library checks do not establish actual loading, ABI closure, SMB access,
 original request/session/object binding or pending-I/O behavior. The next gate
-is a containing lifecycle Owner and healthy real-client execution, followed by
-fault correlation. No NAS, HTTP endpoint or product startup is involved.
+is healthy real-client execution through the containing Owner, followed by
+original object and fault correlation. No NAS, HTTP endpoint or product startup
+is involved.
 
 It reuses the same image/workspace read-only: one auto-removed non-root
 container, 2 CPUs, 2 GiB memory, 256 PIDs, 1536 MiB `/tmp` and 128 MiB `/var/tmp`

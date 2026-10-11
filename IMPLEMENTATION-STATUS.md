@@ -3,7 +3,23 @@
 
 # Implementation status
 
-## Dedicated client process adapter: host-tested, target execution pending
+## Complete client composition: ARM construction tested, execution pending
+
+A private serialized QEMU-only Owner now binds the complete original client,
+library/loader, fixed-document and bootstrap pins to the concrete dedicated
+process adapter. It rechecks the full inputs before/after start and explicit
+close, releases adapter references before complete inputs, and retains review
+on drift, uncertain stop or failed closure. No write operation or replaceable
+per-call backend is available.
+
+Pinned Go1.26.8 tagged vet/unit/race-count3 and ARMv5 cross-compilation pass.
+The actual optional ARM guest also passes never-started construction/closure,
+partial constructor cleanup, caller-duplicate closure, copied/canceled/busy/
+released refusals, exact ordered log controls and FD/base equality. These
+checks execute neither an adapter child nor a Samba server; launched lifecycle,
+actual loading and healthy SMB open/close remain the next qualification gate.
+
+### Dedicated process adapter
 
 A separate QEMU-only single-use adapter now fixes the launcher/root/client
 descriptors, independent output pipes and anonymous secret pipe. It parses
@@ -14,8 +30,9 @@ never-launched release and sticky-close tests pass with race-count3; pinned
 Go1.26.8 vet and ARMv5 test cross-compilation also pass. Windows preflight passes.
 
 These tests execute no adapter child or SMB request. Complete retained-input
-composition and actual QEMU loading/healthy client/group-settlement proof are
-next; original session/object binding and pending-I/O remain subsequent gates.
+composition exists as described above, but actual QEMU loading/healthy client/
+group-settlement proof is still next; original session/object binding and
+pending-I/O remain subsequent gates.
 No product service, endpoint, NAS or physical disk operation is added.
 
 ## Native timing diagnosis: focused host/QEMU only
@@ -50,7 +67,7 @@ passes. Host parsing/mode/budget tests and exact log negative controls pass.
 See `support/test-samba-pending-launcher.ps1 -RetainedInputs`.
 
 The new primitive launches no process. This is not actual dynamic loading,
-healthy real SMB execution, a containing process Owner, original request/object
+healthy real SMB execution, launched Owner lifecycle, original request/object
 binding, pending-I/O, a complete rebuilt image or product/hardware qualification.
 The existing generic/root helper, idle observer and ten campaigns are unchanged.
 

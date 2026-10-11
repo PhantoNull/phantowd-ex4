@@ -1650,15 +1650,19 @@ storage. No production roster provider or activation path exists.
   independently expected hashes and the existing immutable code contract.
   Complete rechecks, wrong-hash/partial-cleanup/canceled/released refusals,
   independent caller closure, exact receipts and final FD/base equality pass.
-  It starts no process; this is not actual libsmbclient execution, a containing
-  process Owner, request/extent binding or pending-I/O qualification. Next:
-  compose its serialized lifecycle and execute the healthy real client,
-  using the new host-tested dedicated single-use process adapter (fixed
+  It starts no process; this is not actual libsmbclient execution,
+  request/extent binding or pending-I/O qualification. A private serialized
+  containing Owner now binds these complete original inputs to the dedicated
+  adapter; full rechecks fence start/close and adapter settlement must precede
+  complete input release. Its actual ARM never-started constructor/closure,
+  partial rollback, independent caller closure, copy/cancel/busy/released
+  refusals and FD/base equality pass. Host vet/unit/race3 and ARM cross pass.
+  Next: execute the healthy real client using the dedicated single-use adapter (fixed
   descriptor ABI, distinct output pipes, copied pipe-only secret, exact ordered
   telemetry, close-only control and sticky review/reference retention).
   The adapter has NOT executed a target child; cross-compilation and host
   bookkeeping tests cannot qualify loader, group lifecycle or SMB access.
-  then correlate its original server/session/
+  Then correlate its original server/session/
   open/object identities before admitting any pending-write fault. Keep review
   and original references on uncertainty; no generic-profile/idle-observer
   widening, product startup, HTTP or physical NAS action.

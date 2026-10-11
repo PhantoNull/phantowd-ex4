@@ -16,9 +16,10 @@ original-group absence; close errors are sticky and retain later references.
 
 Current qualification is host refusal/parser/command-description/release
 bookkeeping tests, race tests and ARMv5 cross-compilation only. No adapter child
-has run in QEMU yet. The containing owner must still bind/recheck the complete
-client/loader/configuration/bootstrap census and original storage/identity,
-qualify actual healthy library/client execution and then original SMB object
+has run in QEMU yet. The separate private runtimebundle Owner now binds and
+rechecks the complete client/loader/configuration/bootstrap census; its ARM
+constructor and never-started closure pass. It must still bind original
+storage/identity, qualify actual healthy library/client execution and then original SMB object
 correlation. This constructor is not complete execution/product authority;
 ordinary builds/startup, generic launchers and HTTP remain unchanged.
 
