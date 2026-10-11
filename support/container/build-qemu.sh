@@ -82,7 +82,9 @@ shellcheck "$external_dir/support/tests/test-qemu-samba-root.sh" \
 shellcheck "$external_dir/support/tests/test-qemu-service-launcher.sh" \
     "$external_dir/support/tests/service-launcher-init.sh"
 shellcheck "$external_dir/support/tests/test-qemu-runtime-owner.sh" \
-    "$external_dir/support/tests/runtime-owner-init.sh"
+    "$external_dir/support/tests/runtime-owner-init.sh" \
+    "$external_dir/support/tests/test-samba-root-staging-environment.sh" \
+    "$external_dir/support/tests/test-samba-root-staging.sh"
 shellcheck "$external_dir/support/tests/test-qemu-smart-report.sh" \
     "$external_dir/support/tests/smart-report-init.sh"
 shellcheck "$external_dir/support/tests/test-qemu-smart-replay.sh" \

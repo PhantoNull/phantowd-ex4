@@ -5,8 +5,15 @@
 set -eu
 [ "$#" -eq 2 ] || exit 1
 debugfs=$1 source_dir=$2
-awk '$2 == "/tmp" && $3 == "tmpfs" { found = 1 } END { exit !found }' /proc/mounts || exit 1
-scratch=$(mktemp -d /tmp/phantowd-samba-staging.XXXXXX)
+tmpdir=${TMPDIR:-/tmp}
+case "$tmpdir" in /*) ;; *) exit 1 ;; esac
+case "$tmpdir" in *[!a-zA-Z0-9_./-]*) exit 1 ;; esac
+# Qualify the physical directory, not a lexical prefix containing '..' or
+# symlink components. CI provides a dedicated tmpfs rather than mounting /tmp.
+tmpdir=$(CDPATH='' cd -P "$tmpdir" && pwd -P) || exit 1
+awk -v target="$tmpdir" '$3 == "tmpfs" && (target == $2 || index(target, $2 "/") == 1) { found = 1 } END { exit !found }' /proc/mounts || exit 1
+export TMPDIR="$tmpdir"
+scratch=$(mktemp -d "$tmpdir/phantowd-samba-staging.XXXXXX")
 trap 'rm -f "$scratch/image.ext2" "$scratch/input" "$scratch/check"; rmdir "$scratch"' EXIT
 stage="$source_dir/support/tests/stage-samba-root-file.sh"
 truncate -s 4M "$scratch/image.ext2"

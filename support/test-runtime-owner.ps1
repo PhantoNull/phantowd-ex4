@@ -26,7 +26,7 @@ set -eu
 config_hash="$(sha256sum /src/configs/phantowd_qemu_armv5_defconfig | cut -c1-16)"
 output="/workspace/output/$BUILDROOT_VERSION-$config_hash"
 python3 -B /src/support/tests/test-qemu-build-feedback.py
-shellcheck /src/support/tests/runtime-owner-init.sh /src/support/tests/test-qemu-runtime-owner.sh /src/support/tests/stage-samba-root-file.sh /src/support/tests/test-samba-root-staging.sh
+shellcheck /src/support/tests/runtime-owner-init.sh /src/support/tests/test-qemu-runtime-owner.sh /src/support/tests/stage-samba-root-file.sh /src/support/tests/test-samba-root-staging.sh /src/support/tests/test-samba-root-staging-environment.sh
 exec sh /src/support/tests/test-qemu-runtime-owner.sh /base "$output/host/bin/go" \
     "$output/host/sbin/debugfs" /src
 '@
