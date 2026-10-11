@@ -26,7 +26,17 @@ Actual ARM verifies the root/capability/FD boundary, kernel child credentials an
 original references after verified child/group settlement. Endpoint loss and
 config-FD leakage refuse. Neither the existing generic/native helper nor the
 VFS CONNECT refusal changes. This is not a real smbd bootstrap, complete code/
-SDK lease, containing Owner, active worker or S2 completion; those remain next.
+SDK lease, containing Owner, active worker or S2 completion.
+
+`support/test-server-observer-daemon.ps1` now adds the separately qualified
+**partial S2 real-daemon handoff**: fixed single-use adapter, retained sender,
+actual pinned smbd executable/FD3 checks, guest-loopback SMB 3.02 NEGOTIATE and
+verified whole-group stop before descriptor release. Twelve constructor
+refusals run three times in ARM; failed startup immediately retains review
+without retry. The existing context fixture shares only the private C boundary;
+generic/native/product launchers remain unchanged. No authentication, file OPEN
+or active VFS sample is requested. Complete SDK/code/containing authority and
+S2–S6 remain unqualified; neither an inherited FD nor NEGOTIATE grants a lease.
 
 ## Deliverable and existing boundaries
 

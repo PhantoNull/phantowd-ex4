@@ -3068,9 +3068,14 @@ An optional partial S2 context probe now verifies a separate fixed bootstrap,
 original endpoint handoff, root/FD/capability boundary and original-reference
 checks after verified child/group settlement. Actual endpoint-loss and leaked-FD
 mutations refuse. It does not launch smbd or supply containing execution authority.
-Complete SDK/runtime closure, real daemon bootstrap/Owner composition, active
-producer, lifetime binding and faults remain open: neither S1/S2 nor the server
-bridge is complete.
+A separate optional daemon fixture now qualifies actual pinned smbd startup,
+the original executable/sender FD3, fixed guest-loopback SMB3.02 NEGOTIATE,
+twelve constructor refusals, single-use startup review and verified stop before
+descriptor release. No authentication/file OPEN or active VFS sample occurs.
+Complete SDK/runtime closure and containing Owner composition, active producer,
+lifetime binding and faults remain open: neither S1/S2 nor the server bridge is
+complete. Next bind the retained code/channel authority, then qualify a bounded
+still-open worker capture; no WRITE experiment is admitted by these prerequisites.
 Client-launcher approval alone is not server approval. This does not waive the
 failed full-integration/hosted gates or authorize product/NAS startup.
 

@@ -3,6 +3,40 @@
 
 # Implementation status
 
+## Dedicated Samba daemon handoff — partial S2, QEMU only
+
+`support/test-server-observer-daemon.ps1` adds a separate, optional fixed
+bootstrap and single-use process adapter. Actual ARM926 QEMU starts pinned
+Samba 4.22.11, verifies its original executable and inherited sender FD3,
+negotiates the fixture's exact SMB 3.02 dialect on guest loopback, then verifies
+process-group settlement before releasing retained descriptors. Live Close and
+restart refuse. No user authentication, tree/file OPEN, VFS sampling or data
+WRITE is performed. The existing VFS module still refuses CONNECT.
+
+Twelve actual guest constructor-refusal cases each run three times with FD
+equality and unchanged original sender checks. Host tests cover sender roles,
+flags, types, real foreign-process creator refusal and immediate sticky review
+after failed startup. Tagged Linux vet/unit and focused race tests pass; the
+existing context and canonical VFS-loader ARM regressions and Windows API/UI/
+cross-compilation preflight pass. Strict receipts accept two positive controls
+and reject twenty malformed cases.
+
+Two fixture preparation mistakes were diagnosed, not waived: 64 KiB cannot
+hold Samba's state databases; the new fixture caps state at 8 MiB (observed
+allocation about 4 MiB). Samba's symbolic `SMB3` minimum means 3.11, while this
+fixed test requests 3.02; its configuration now explicitly selects 3.02.
+Neither change is a production configuration, RAM qualification or deadline
+increase. The bootstrap retains the original `0xdb` capability/NNP boundary.
+
+This is **not complete S2**: transitive code/SDK and containing runtime/channel
+authority, active worker capture, remote-FileId/local-object binding and S3–S6
+fault/regression qualification remain open. The generic/native/product
+launchers, ordinary package/startup and default CI are unchanged. Only one
+auto-removed container, existing read-only workspace/image, bounded RAM scratch
+and synthetic snapshot disks are used; no new image/volume or NAS operation.
+The failed complete integration and own-head hosted gates below remain failed/
+pending; focused success does not authorize merge or installation.
+
 ## Dedicated server context handoff prerequisite — partial S2
 
 `support/test-server-observer-context.ps1` now exercises a separate fixed

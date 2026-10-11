@@ -1,0 +1,33 @@
+#!/bin/bash
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 PhantoWD EX4 contributors
+set -eu
+source=${1:?repository required}
+[ "$#" -eq 1 ] || exit 1
+stage='PHANTOWD_SAMBA_ROOT_STAGE_READY fresh=true hashes_during_copy=true no_overwrite=true refusals=5 scope=qemu-only'
+proof='PHANTOWD_SERVER_OBSERVER_DAEMON_PROOF actual_smbd=true negotiate_smb302=true endpoint_retained=true stop_before_release=true restart_refused=true scope=qemu-only'
+done='PHANTOWD_SERVER_OBSERVER_DAEMON_GUEST_DONE'
+verify() { awk -f "$source/support/tests/verify-server-observer-daemon-log.awk"; }
+refused() { if verify; then echo 'Observer daemon verifier accepted malformed proof' >&2; exit 1; fi; }
+printf '%s\n' "$stage" "$proof" "$done" | verify
+printf '%s\r\n' "$stage" "$proof" "$done" | verify
+printf '' | refused
+printf '%s\n' "$stage" | refused
+printf '%s\n' "$stage" "$proof" | refused
+printf '%s\n' "$proof" "$done" | refused
+printf '%s\n' "$done" "$stage" "$proof" | refused
+printf '%s\n' "$stage" "$done" "$proof" | refused
+printf '%s\n' "$stage" "$stage" "$proof" "$done" | refused
+printf '%s\n' "$stage" "$proof" "$proof" "$done" | refused
+printf '%s\n' "$stage" "$proof" "$done" "$done" | refused
+printf '%s\n' "$stage" 'PHANTOWD_SERVER_OBSERVER_DAEMON_GUEST_FAILED' "$proof" "$done" | refused
+printf '%s\n' "$stage" "prefix $proof" "$done" | refused
+printf '%s\n' "$stage" "$proof suffix" "$done" | refused
+printf '%s\n' "$stage" "$proof" "$done" 'PHANTOWD_UNRELATED_SUCCESS' | refused
+printf '%s\n' "$stage" "$proof" "$done" "$stage" | refused
+for mutation in 'actual_smbd=true/actual_smbd=false' 'negotiate_smb302=true/negotiate_smb302=false' \
+    'endpoint_retained=true/endpoint_retained=false' 'stop_before_release=true/stop_before_release=false' \
+    'restart_refused=true/restart_refused=false' 'scope=qemu-only/scope=product'; do
+    printf '%s\n' "$stage" "${proof/${mutation%%\/*}/${mutation#*\/}}" "$done" | refused
+done
+echo 'PHANTOWD_SERVER_OBSERVER_DAEMON_LOG_CONTROLS_DONE positive=2 negative=20 scope=host-parser-only guest=false'

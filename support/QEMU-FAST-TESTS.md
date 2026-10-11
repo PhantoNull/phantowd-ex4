@@ -173,6 +173,30 @@ insertion bytes/modes/root ownership and the unchanged base are checked.
 No new Docker image/volume, NIC, physical device, default boot/CI, product
 service/HTTP/NAS or experimental WRITE. Existing campaign timers are unchanged.
 
+#### Dedicated observer daemon handoff prerequisite
+
+```powershell
+.\support\test-server-observer-daemon.ps1
+```
+
+Optional partial S2 only: actual pinned smbd, original executable/FD3 and fixed
+SMB 3.02 NEGOTIATE on guest loopback, stop-before-release and no restart.
+Twelve constructor refusals each run three times in ARM; host endpoint/foreign
+creator/startup-review controls and strict2 positive/20 malformed receipts pass.
+No authentication, file OPEN, active VFS sampling, WRITE or complete code/SDK/
+containing authority. The canonical VFS module remains CONNECT-refusing.
+
+The new lane uses one auto-removed non-root CPU4/RAM2GiB/PIDs256 container with
+1GiB disposable tmpfs, the existing pinned image/workspace read-only and no new
+Docker images/volumes. Four compile commands are individually bounded30s;
+guest60s, readiness12s, stop4s and outer180s. Existing campaign timers are
+unchanged. Guest RAM256MiB, `/run` cap96MiB and mutable Samba state cap8MiB;
+the latter used4092KiB in a diagnostic success. Two16MiB synthetic ext4 disks
+and a128MiB borrowed root copy are snapshot-only. Inserted bytes/modes/owners
+and original base hashes are checked. No NIC, host port, physical device,
+default boot/CI, product package, HTTP or NAS operation. Failed full-image and
+own-head hosted gates are not waived.
+
 #### Server-side original-open reader prerequisite
 
 ```powershell
