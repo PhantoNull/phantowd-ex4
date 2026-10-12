@@ -67,6 +67,17 @@ currently product-qualified for migration.
 
 ## Current baseline
 
+Three fixed optional ARMv5 cases now qualify original module/configuration/
+receiver drift between completed READ requests. Each proves zero next frame,
+verified client/server stop, complete original retention and repeated
+READ/start/Close refusal even after restoration, with stable reviewed FD counts
+and unchanged data/base. Restored metadata observation never clears the code
+keeper/runtime review. The older negotiation-only drift fixture is reconciled
+to that same retention contract, not aggregate healthy-release FD equality.
+Next: uncertain READ/stop and construction/SDK closure, then complete S4/S5/S6
+and explicit pending-I/O admission. No product activation or hardware gate is
+waived by these between-request observations.
+
 An optional ARMv5 worker-exit fixture now qualifies loss between two requests:
 one READ is independently matched, the original worker is terminated via a
 generation-bound pidfd, the next READ returns a zero frame and both Owners

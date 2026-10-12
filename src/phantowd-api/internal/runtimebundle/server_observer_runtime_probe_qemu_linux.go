@@ -53,16 +53,13 @@ func (p *Plan) ProbeServerObserverRuntimeQEMU(ctx context.Context, code *os.File
 	if err := errors.Join(a.Close(), b.Close()); err != nil {
 		return err
 	}
-	before, err := retainedFixtureFDCount()
-	if err != nil {
-		return err
-	}
 	r, err := newServerObserverRuntimeQEMU(ctx, p, code, configuration, state, shares)
 	if err != nil {
 		return err
 	}
+	retainedReview := false
 	defer func() {
-		if r.closed {
+		if r.closed || retainedReview {
 			return
 		}
 		stopped, stopErr := r.Stop(context.Background())
@@ -106,6 +103,10 @@ func (p *Plan) ProbeServerObserverRuntimeQEMU(ctx context.Context, code *os.File
 			return errors.Join(errors.New("fault released original channel/process reference"), err)
 		}
 	}
+	reviewFDs, err := retainedFixtureFDCount()
+	if err != nil {
+		return err
+	}
 	if err := unix.SetsockoptInt(int(r.channel.receiver.Fd()), unix.SOL_SOCKET, unix.SO_PASSCRED, 1); err != nil {
 		return err
 	}
@@ -122,20 +123,25 @@ func (p *Plan) ProbeServerObserverRuntimeQEMU(ctx context.Context, code *os.File
 	if !errors.Is(err, ErrReviewRequired) || len(stopped.Members) != 1 || stopped.Members[0].Process.PID != 0 {
 		return errors.Join(errors.New("reviewed canceled cleanup lost verified settlement"), err)
 	}
-	if err := r.Close(); err != nil {
-		return err
+	if err := r.Close(); !errors.Is(err, ErrReviewRequired) || r.closed || r.releaseErr != nil {
+		return errors.New("reviewed receiver fault attempted disposal")
 	}
-	if err := r.Close(); err != nil {
-		return err
+	if err := r.Close(); !errors.Is(err, ErrReviewRequired) {
+		return errors.New("repeated reviewed Close was accepted")
 	}
+	if after, err := retainedFixtureFDCount(); err != nil || after != reviewFDs {
+		return errors.Join(errors.New("reviewed receiver operations changed FD count"), err)
+	}
+	for _, pin := range []*os.File{r.channel.receiver, r.channel.sender, r.proc, r.code.anchor} {
+		if _, err := unix.FcntlInt(pin.Fd(), unix.F_GETFD, 0); err != nil {
+			return errors.Join(errors.New("reviewed Close discarded original receiver authority"), err)
+		}
+	}
+	retainedReview = true
 	if err := p.serverObserverLiveCodeFaultQEMU(ctx, code, configuration, state, shares); err != nil {
 		return err
 	}
-	after, err := retainedFixtureFDCount()
-	if err != nil || after != before {
-		return errors.Join(errors.New("observer runtime descriptor leak"), err)
-	}
-	fmt.Println("PHANTOWD_SERVER_OBSERVER_RUNTIME_PROOF actual_smbd=true complete_code_retained=true original_channel_pair=true receiver_drift_stopped=true live_code_cover_stopped=true originals_retained=true restoration_refused=true stop_before_release=true scope=qemu-only")
+	fmt.Println("PHANTOWD_SERVER_OBSERVER_RUNTIME_PROOF actual_smbd=true complete_code_retained=true original_channel_pair=true receiver_drift_stopped=true live_code_cover_stopped=true originals_retained=true restoration_refused=true stop_before_release=true review_close_refused=true stable_review_fds=true scope=qemu-only")
 	return nil
 }
 
@@ -144,8 +150,9 @@ func (p *Plan) serverObserverLiveCodeFaultQEMU(ctx context.Context, code, config
 	if err != nil {
 		return err
 	}
+	retainedReview := false
 	defer func() {
-		if r.closed {
+		if r.closed || retainedReview {
 			return
 		}
 		stopped, stopErr := r.Stop(context.Background())
@@ -191,6 +198,10 @@ func (p *Plan) serverObserverLiveCodeFaultQEMU(ctx context.Context, code, config
 			return errors.Join(errors.New("code fault lost original authority reference"), err)
 		}
 	}
+	reviewFDs, err := retainedFixtureFDCount()
+	if err != nil {
+		return err
+	}
 	if err := unix.Unmount("/"+serverObserverCodePathQEMU, 0); err != nil {
 		return err
 	}
@@ -204,8 +215,17 @@ func (p *Plan) serverObserverLiveCodeFaultQEMU(ctx context.Context, code, config
 	if _, err := r.Start(ctx); !errors.Is(err, ErrReviewRequired) {
 		return errors.New("code restoration restarted daemon")
 	}
-	if err := r.Close(); err != nil {
-		return err
+	if err := r.Close(); !errors.Is(err, ErrReviewRequired) || r.closed || r.releaseErr != nil {
+		return errors.New("reviewed code fault attempted disposal")
 	}
+	for _, pin := range []*os.File{r.proc, r.code.code.root, r.code.anchor, r.configuration.contents.root, r.state.root, r.shares[0], r.shares[1], r.channel.receiver, r.channel.sender} {
+		if _, err := unix.FcntlInt(pin.Fd(), unix.F_GETFD, 0); err != nil {
+			return errors.Join(errors.New("reviewed Close discarded original code authority"), err)
+		}
+	}
+	if after, err := retainedFixtureFDCount(); err != nil || after != reviewFDs {
+		return errors.Join(errors.New("reviewed code operations changed FD count"), err)
+	}
+	retainedReview = true
 	return nil
 }

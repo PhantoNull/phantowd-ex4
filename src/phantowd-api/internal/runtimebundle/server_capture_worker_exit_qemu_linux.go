@@ -86,16 +86,38 @@ func captureWorkerExitProofQEMU(ctx context.Context, o *pendingClientOwnerQEMU, 
 	if err := r.killCaptureWorkerForFixtureQEMU(ctx); err != nil {
 		return err
 	}
+	if err := captureReadRefusalStopQEMU(ctx, o, r); err != nil {
+		return err
+	}
+	return captureRetainedReviewProofQEMU(ctx, o, r, original, initial)
+}
+
+// Shared internal fixture assertions; neither backend injection nor authority.
+func captureReadRefusalStopQEMU(ctx context.Context, o *pendingClientOwnerQEMU, r *serverObserverRuntimeQEMU) error {
+	if ctx == nil || o == nil || r == nil || o.capturePeer != r || r.channel == nil || r.channel.sequence != 1 {
+		return ErrInvalid
+	}
 	if frame, err := o.readCaptureFrameQEMU(ctx); !errors.Is(err, ErrReviewRequired) || frame != (pendingServerPacketObservationQEMU{}) || !o.review || !r.review || r.channel.sequence != 1 {
 		return errors.Join(ErrMismatch, err)
 	}
 	settled, err := o.captureAdapter.StoppedInReviewQEMU(ctx)
 	if err != nil || !settled {
-		return errors.Join(ErrMismatch, err)
+		return fmt.Errorf("capture client settlement: %w", errors.Join(ErrMismatch, err))
 	}
 	stopped, err := r.Stop(ctx)
 	if !errors.Is(err, ErrReviewRequired) || stopped.State != processowner.StateReviewRequired || len(stopped.Members) != 1 || stopped.Members[0].Process.PID != 0 {
-		return errors.Join(ErrMismatch, err)
+		return fmt.Errorf("capture server settlement: %w", errors.Join(ErrMismatch, err))
+	}
+	return nil
+}
+
+func captureRetainedReviewProofQEMU(ctx context.Context, o *pendingClientOwnerQEMU, r *serverObserverRuntimeQEMU, original *os.File, initial unix.Stat_t) error {
+	if ctx == nil || o == nil || r == nil || original == nil || o.capturePeer != r || !o.review || !r.review || r.channel == nil || r.channel.sequence != 1 {
+		return ErrInvalid
+	}
+	before, err := retainedFixtureFDCount()
+	if err != nil {
+		return err
 	}
 	if !errors.Is(o.close(), ErrReviewRequired) || !errors.Is(r.Close(), ErrReviewRequired) || !errors.Is(o.start(ctx), ErrReviewRequired) {
 		return ErrMismatch
@@ -122,6 +144,19 @@ func captureWorkerExitProofQEMU(ctx context.Context, o *pendingClientOwnerQEMU, 
 	}
 	if unix.Fstat(int(r.captureWorker.file.Fd()), &held) != nil || !samePendingObjectQEMU(initial, held) {
 		return ErrMismatch
+	}
+	for _, files := range []map[string]*os.File{r.code.code.files, r.configuration.contents.files, r.state.files, o.inputs.client.files, o.inputs.bootstrap.files} {
+		for _, pin := range files {
+			if pin == nil {
+				return ErrMismatch
+			}
+			if _, err := unix.FcntlInt(pin.Fd(), unix.F_GETFD, 0); err != nil {
+				return err
+			}
+		}
+	}
+	if after, err := retainedFixtureFDCount(); err != nil || after != before {
+		return errors.Join(ErrMismatch, err)
 	}
 	return ctx.Err()
 }

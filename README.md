@@ -65,6 +65,8 @@ A separate peer-stop fixture also verifies client refusal, sticky review and
 original-reference retention with unchanged data and verified subprocess disposal.
 An original-worker loss fixture verifies the same refusal/retention between
 completed read requests, without claiming interruption of pending I/O.
+Module/configuration substitutions and receiver drift also retain review after
+restoration in dedicated disposable fixtures; they do not authorize a service.
 It does not qualify pending writes, recovery or product service activation;
 see the [focused test contract](support/QEMU-FAST-TESTS.md#dedicated-same-open-client-prerequisites-host-and-qemu).
 

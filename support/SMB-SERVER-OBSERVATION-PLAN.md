@@ -3,6 +3,24 @@
 
 # M4.5: retained server-open observation integration plan
 
+Partial S5 now additionally qualifies original module/configuration/receiver
+drift after one completed authenticated READ. Separate fixed `-InputDrift`
+guests prove zero next frame, verified client/server stop, complete original
+retention and READ/start/Close refusal after restoration, with stable reviewed
+FD counts and unchanged data/base. Module/configuration copies are byte-identical
+RAM path covers, not replacement execution authority. A read-only restored-input
+observation deliberately preserves the nested code keeper's review latch;
+normal revalidation of that latch was an actual refused diagnostic attempt.
+Strict fault receipts require each declared kind (six positive/82 negative).
+
+The original negotiation-only runtime regression now also preserves review
+instead of disposing after receiver/code drift. Its observed failure is retained;
+the corrected control requires repeated Close refusal, original references and
+stable reviewed FD counts, not healthy-release equality. Strict2+67 includes
+fatal-log refusals. No global input/queue/bind/READ fence or timer is relaxed.
+These are between-request faults only; uncertain READ/stop, complete SDK/
+construction/OFD/request/S6/S7 and product/hardware gates remain mandatory.
+
 Partial S5 now includes actual original-worker loss **after one completed READ,
 before the next request**. The optional `-WorkerExit` lane uses a generation-
 bound pidfd, refuses the next READ with a zero frame, proves client/server stop,

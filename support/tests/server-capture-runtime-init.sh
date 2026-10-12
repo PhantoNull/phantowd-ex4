@@ -68,7 +68,9 @@ if grep -qw 'phantowd_capture_client_open_fixture=1' /proc/cmdline; then
     mount -o remount,ro,nosuid,nodev /run/phantowd-pending-client-input
     mount -o remount,ro,nosuid,nodev /run/phantowd-pending-client-bootstrap
     if /usr/sbin/phantowd-runtime-bundle-probe server-capture-open; then
-        if grep -qw 'phantowd_capture_worker_exit_fixture=1' /proc/cmdline; then
+        if grep -Eq '(^| )phantowd_capture_input_fault_fixture=(module|configuration|channel)( |$)' /proc/cmdline; then
+            echo PHANTOWD_CAPTURE_INPUT_FAULT_GUEST_DONE
+        elif grep -qw 'phantowd_capture_worker_exit_fixture=1' /proc/cmdline; then
             echo PHANTOWD_CAPTURE_WORKER_EXIT_GUEST_DONE
         else
             echo PHANTOWD_CAPTURE_OPEN_GUEST_DONE

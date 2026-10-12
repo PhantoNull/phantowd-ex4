@@ -9,7 +9,7 @@ proof='PHANTOWD_SERVER_OBSERVER_DAEMON_PROOF actual_smbd=true negotiate_smb302=t
 done='PHANTOWD_SERVER_OBSERVER_DAEMON_GUEST_DONE'
 drift='PHANTOWD_SERVER_OBSERVER_DAEMON_DRIFT_PROOF actual_smbd=true original_endpoint_drift=true stop_verified=true originals_retained=true restoration_refused=true scope=qemu-only'
 binding='PHANTOWD_SERVER_OBSERVER_CODE_BINDING_PROOF complete_original_census=true caller_close=true foreign_root_refused=true identical_copy_refused=true originals_retained=true restoration_refused=true released=true scope=qemu-only'
-runtime='PHANTOWD_SERVER_OBSERVER_RUNTIME_PROOF actual_smbd=true complete_code_retained=true original_channel_pair=true receiver_drift_stopped=true live_code_cover_stopped=true originals_retained=true restoration_refused=true stop_before_release=true scope=qemu-only'
+runtime='PHANTOWD_SERVER_OBSERVER_RUNTIME_PROOF actual_smbd=true complete_code_retained=true original_channel_pair=true receiver_drift_stopped=true live_code_cover_stopped=true originals_retained=true restoration_refused=true stop_before_release=true review_close_refused=true stable_review_fds=true scope=qemu-only'
 verify() { awk -f "$source/support/tests/verify-server-observer-daemon-log.awk"; }
 refused() { if verify; then echo 'Observer daemon verifier accepted malformed proof' >&2; exit 1; fi; }
 printf '%s\n' "$stage" "$binding" "$proof" "$drift" "$runtime" "$done" | verify
@@ -66,7 +66,11 @@ for mutation in 'actual_smbd=true/actual_smbd=false' 'complete_code_retained=tru
     'original_channel_pair=true/original_channel_pair=false' 'receiver_drift_stopped=true/receiver_drift_stopped=false' \
     'live_code_cover_stopped=true/live_code_cover_stopped=false' \
     'originals_retained=true/originals_retained=false' 'restoration_refused=true/restoration_refused=false' \
-    'stop_before_release=true/stop_before_release=false' 'scope=qemu-only/scope=product'; do
+    'stop_before_release=true/stop_before_release=false' 'review_close_refused=true/review_close_refused=false' \
+    'stable_review_fds=true/stable_review_fds=false' 'scope=qemu-only/scope=product'; do
     printf '%s\n' "$stage" "$binding" "$proof" "$drift" "${runtime/${mutation%%\/*}/${mutation#*\/}}" "$done" | refused
 done
-echo 'PHANTOWD_SERVER_OBSERVER_DAEMON_LOG_CONTROLS_DONE positive=2 negative=61 scope=host-parser-only guest=false'
+for fatal in 'Kernel panic' 'INTERNAL ERROR' 'AddressSanitizer' 'runtime error:'; do
+    printf '%s\n' "$stage" "$binding" "$proof" "$drift" "$runtime" "$fatal" "$done" | refused
+done
+echo 'PHANTOWD_SERVER_OBSERVER_DAEMON_LOG_CONTROLS_DONE positive=2 negative=67 scope=host-parser-only guest=false'

@@ -38,6 +38,10 @@ func (p *Plan) ProbeServerCaptureOpenQEMU(ctx context.Context, code *os.File) (r
 		return ErrInvalid
 	}
 	workerExit := captureWorkerExitFixtureQEMU()
+	inputFault, err := parseCaptureInputFaultMarkerQEMU(line)
+	if err != nil {
+		return err
+	}
 	retainedFault := false
 	var roots [6]*os.File
 	for i, name := range []string{"/run/phantowd-native-samba-root/etc", "/run/phantowd-native-samba-state", "/run/observer-readonly", "/run/observer-writable", "/run/phantowd-pending-client-input", "/run/phantowd-pending-client-bootstrap"} {
@@ -174,6 +178,17 @@ func (p *Plan) ProbeServerCaptureOpenQEMU(ctx context.Context, code *os.File) (r
 	first, err := o.readCaptureFrameQEMU(ctx)
 	if err != nil {
 		return errors.Join(errors.New("capture original first READ/frame"), err)
+	}
+	if inputFault != "" {
+		if err := captureInputDriftProofQEMU(ctx, o, r, original, beforeData, inputFault); err != nil {
+			return errors.Join(errors.New("capture original input-drift refusal"), err)
+		}
+		if err := checkData(); err != nil {
+			return err
+		}
+		retainedFault = true
+		fmt.Printf("PHANTOWD_CAPTURE_INPUT_FAULT_PROOF kind=%s first_read_matched=true next_read_refused=true zero_frame=true client_stopped=true server_stopped=true review=true originals_retained=true input_restored=true restoration_refused=true stable_review_fds=true unchanged_data=true samples=1 authority=false scope=qemu-only\n", inputFault)
+		return nil
 	}
 	if workerExit {
 		if err := captureWorkerExitProofQEMU(ctx, o, r, original, beforeData); err != nil {

@@ -1,8 +1,10 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 PhantoWD EX4 contributors
 [CmdletBinding()]
-param([string]$BaseArtifactDir, [switch]$WorkerExit)
+param([string]$BaseArtifactDir, [switch]$WorkerExit,
+    [ValidateSet('module', 'configuration', 'channel')][string]$InputDrift)
 $ErrorActionPreference = 'Stop'
+if ($WorkerExit -and $InputDrift) { throw 'Choose exactly one fixed fault fixture.' }
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 if (-not $BaseArtifactDir) { $BaseArtifactDir = Join-Path $repoRoot 'artifacts/qemu-armv5' }
 $baseRoot = (Resolve-Path -LiteralPath $BaseArtifactDir).Path
@@ -27,9 +29,12 @@ shellcheck /src/support/tests/test-server-capture-runtime-qemu.sh /src/support/t
 bash /src/support/tests/test-server-capture-open-log.sh /src
 shellcheck /src/support/tests/test-server-capture-worker-exit-log.sh
 bash /src/support/tests/test-server-capture-worker-exit-log.sh /src
+shellcheck /src/support/tests/test-server-capture-input-fault-log.sh
+bash /src/support/tests/test-server-capture-input-fault-log.sh /src
 bash /src/support/tests/test-server-capture-runtime-qemu.sh /base "$output" /src --client-open
 '@
 if ($WorkerExit) { $linux = $linux.Replace('--client-open', '--client-worker-exit') }
+if ($InputDrift) { $linux = $linux.Replace('--client-open', "--client-$InputDrift-fault") }
 $encoded = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($linux.Replace("`r`n", "`n")))
 docker run --rm --pull never --network none --read-only `
     --user 1000:1000 --cap-drop ALL --security-opt no-new-privileges `

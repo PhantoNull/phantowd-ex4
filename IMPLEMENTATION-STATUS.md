@@ -3,6 +3,38 @@
 
 # Implementation status
 
+## Capture module/configuration/channel drift — bounded ARMv5 observations
+
+The optional `-InputDrift module|configuration|channel` fixtures start with one
+verified READ on the original authenticated handle. Module/configuration cases
+cover only prepared guest RAM input paths with byte-identical file copies;
+receiver drift disables the original SO_PASSCRED option. The next READ must
+publish no frame, quarantine both Owners, independently settle client/server,
+and retain the complete original code/configuration/state/client/bootstrap
+references. Inputs are restored only after verified containment; repeated
+READ/start/Close attempts still refuse, with stable reviewed FD counts and
+unchanged synthetic data/base. All three actual ARMv5 cases pass. Strict input
+receipts have six positive/82 negative controls and require the expected kind.
+
+Restoration is a **read-only metadata observation**, never revalidation or
+execution authority: a module fault also latches the nested code keeper's
+review. The first new fixture incorrectly expected normal revalidation after
+restoration and genuinely failed; diagnostics isolate that latch. The corrected
+observer checks original binding/hash/census/configuration/state/shares/channel
+without clearing either review state. Runtime bind/READ/global queue fences,
+launchers, privileges, existing deadlines and default CI are unchanged.
+
+The older negotiation-only receiver/code-cover fixture also expected reviewed
+disposal. Actual failure is preserved; both cases now require Close refusal,
+retained original descriptors and FD-count stability during reviewed operations,
+not aggregate equality after intentional retention. Its strict receipt adds
+these fields and fatal-log refusals (two positive/67 negative controls).
+
+These faults occur **between completed requests**, not during pending I/O.
+Uncertain READ/stop, construction races, complete SDK/OFD/request authority and
+full-image/hosted/recovery/product qualification remain open. No NAS, physical
+disk, WRITE/HTTP activation or new Docker image/volume is involved.
+
 ## Capture worker loss between READs — bounded host/QEMU fault fixture
 
 `support/test-server-capture-open.ps1 -WorkerExit` reuses the existing retained

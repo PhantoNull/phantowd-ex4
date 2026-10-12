@@ -1,5 +1,30 @@
 # Fast API and file-service integration checks
 
+## Capture input substitutions and receiver drift — separate disposable guests
+
+Run `support/test-server-capture-open.ps1 -InputDrift module`, `configuration`
+or `channel` separately. These are three fixed test faults, not launcher/profile
+or arbitrary-path/PID selection; combining them with `-WorkerExit` refuses
+before Docker. Each guest first matches one actual authenticated READ. The
+module/configuration cases bind-cover only a prepared parent RAM path with a
+byte-identical copy, leaving original retained inputs and the child's detached
+view unchanged. The channel case changes only the original receiver's
+SO_PASSCRED option.
+
+The next READ must return zero metadata, stop both original groups and retain
+review plus original code/configuration/state/client/bootstrap/proc/object/
+channel references. Restoration happens only after independently verified
+containment. A dedicated point-in-time observer then checks restored metadata;
+it never clears the code keeper's or runtime's review and cannot authorize
+execution. Repeated READ/start/Close refusal, stable reviewed FD count and
+unchanged data/base are mandatory. Strict receipts require the correct fault
+kind, with six positive/82 malformed controls. The first mistaken attempt to
+normally revalidate the reviewed keeper failed and is preserved, not waived.
+
+All three actual ARMv5 cases pass in the unchanged bounded RAM/RO/snapshot
+profile described below. No new default CI boot/image/volume/privilege, pending
+I/O/WRITE/durable-reconnect/product qualification or physical NAS action.
+
 ## Capture worker loss — one separate disposable ARM guest
 
 Run `support/test-server-capture-open.ps1 -WorkerExit` to verify original-worker
