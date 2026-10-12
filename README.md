@@ -67,6 +67,8 @@ An original-worker loss fixture verifies the same refusal/retention between
 completed read requests, without claiming interruption of pending I/O.
 Module/configuration substitutions and receiver drift also retain review after
 restoration in dedicated disposable fixtures; they do not authorize a service.
+A missing-READ-acknowledgement fixture additionally verifies stopped processes,
+sticky review and an unconsumed queued record, without certifying completion.
 It does not qualify pending writes, recovery or product service activation;
 see the [focused test contract](support/QEMU-FAST-TESTS.md#dedicated-same-open-client-prerequisites-host-and-qemu).
 

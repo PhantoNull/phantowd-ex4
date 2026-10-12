@@ -67,6 +67,16 @@ currently product-qualified for migration.
 
 ## Current baseline
 
+A fixed optional ARMv5 missing-READ-acknowledgement fixture now verifies zero
+metadata/sequence, the original 88-byte record left unconsumed, independently
+stopped client/server groups and original references retained in sticky review.
+Repeated READ/start/Close refuse with stable reviewed FD counts and unchanged
+data/base. Byte count is not authenticated record content or a successful
+client completion. Normal client bytes, launchers, privileges and time limits
+remain unchanged. Next: uncertain stop/cancellation, original-source lifetime
+and construction/SDK closure, complete S4/S5/S6 and explicit request/OFD
+admission before pending-I/O or product activation.
+
 Three fixed optional ARMv5 cases now qualify original module/configuration/
 receiver drift between completed READ requests. Each proves zero next frame,
 verified client/server stop, complete original retention and repeated
@@ -74,7 +84,7 @@ READ/start/Close refusal even after restoration, with stable reviewed FD counts
 and unchanged data/base. Restored metadata observation never clears the code
 keeper/runtime review. The older negotiation-only drift fixture is reconciled
 to that same retention contract, not aggregate healthy-release FD equality.
-Next: uncertain READ/stop and construction/SDK closure, then complete S4/S5/S6
+Next: uncertain stop/cancellation and construction/SDK closure, then complete S4/S5/S6
 and explicit pending-I/O admission. No product activation or hardware gate is
 waived by these between-request observations.
 
@@ -84,9 +94,10 @@ generation-bound pidfd, the next READ returns a zero frame and both Owners
 retain review/original pins after independently verified client/server stop.
 Retry/restart/close refuse; data/base stay unchanged. Runtime Close now refuses
 review before any disposal, with a real descriptor-effect host regression.
-This is partial S5, **not interruption of pending I/O**. Next: active original
-module/configuration/channel drift and uncertain READ/stop coverage, retained
-SDK/construction/OFD/request qualification and the exact regression union.
+This is partial S5, **not interruption of pending I/O**. The separate input-
+drift and missing-acknowledgement cases above add coverage, not complete S5.
+Uncertain stop/cancellation, retained SDK/construction/OFD/request qualification
+and the exact regression union remain required.
 
 The optional capture lane now qualifies two actual one-byte READs on the same
 authenticated ARMv5 handle. Kernel-credentialled VFS metadata matches every
@@ -96,9 +107,9 @@ by a bounded proc census; an O_PATH object pin survives until verified stop.
 Client-first dual locks bracket complete inputs, original worker and TCP/
 namespace fences around each READ. Explicit CLOSE/data/base/FD equality pass
 within unchanged deadlines after removing a duplicate tracer-only sweep.
-This is **not an OFD or pending-request lease**. Next: qualify active worker/
-module/configuration/channel drift, uncertain READ/stop and retained review;
-finish SDK/construction/fault coverage and exact regression union before any
+This is **not an OFD or pending-request lease**. The separate fault cases above
+qualify bounded review containment only. Finish SDK/construction/fault coverage
+and exact regression union before any
 pending-I/O admission or product activation. No physical NAS work is authorized
 by these observations.
 

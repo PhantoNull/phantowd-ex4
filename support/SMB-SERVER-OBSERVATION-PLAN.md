@@ -3,6 +3,16 @@
 
 # M4.5: retained server-open observation integration plan
 
+Partial S5 additionally exercises a separately compiled fixed client that
+withholds its READ acknowledgement. Its deliberate refusal sits after the
+one-byte read/seek/tuple check; the unchanged normal binary remains separate.
+Actual ARMv5 containment returns zero metadata, leaves sequence zero and the
+88-byte record unconsumed, verifies both groups stopped and retains originals
+in review. Repeated READ/start/Close refuse with stable reviewed FD counts and
+unchanged data/base. Only queued byte count is observed, never record contents
+or authority. Missing acknowledgement cannot certify client completion; this
+is not pending-request/OFD/WRITE, uncertain-stop or full S5 qualification.
+
 Partial S5 now additionally qualifies original module/configuration/receiver
 drift after one completed authenticated READ. Separate fixed `-InputDrift`
 guests prove zero next frame, verified client/server stop, complete original
@@ -18,7 +28,7 @@ instead of disposing after receiver/code drift. Its observed failure is retained
 the corrected control requires repeated Close refusal, original references and
 stable reviewed FD counts, not healthy-release equality. Strict2+67 includes
 fatal-log refusals. No global input/queue/bind/READ fence or timer is relaxed.
-These are between-request faults only; uncertain READ/stop, complete SDK/
+These are between-request faults only; uncertain stop/cancellation, complete SDK/
 construction/OFD/request/S6/S7 and product/hardware gates remain mandatory.
 
 Partial S5 now includes actual original-worker loss **after one completed READ,

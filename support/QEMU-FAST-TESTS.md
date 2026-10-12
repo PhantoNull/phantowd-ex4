@@ -1,5 +1,28 @@
 # Fast API and file-service integration checks
 
+## Missing READ acknowledgement — separate disposable ARM guest
+
+Run `support/test-server-capture-open.ps1 -UncertainRead` separately from
+`-WorkerExit` and `-InputDrift`; combinations refuse before Docker. A fixed
+compile-time-only client variant places refusal after its one-byte read/seek/
+same-tuple checks, without a READ notice, CLOSE, retry or reconnect. It is not
+installed or selected by a runtime launcher override. Default client bytes
+and its three mock-positive/121 refusal controls remain unchanged.
+
+The controller must return zero metadata and retain sequence zero. After
+verified client/server stop, the original receiver must still report 88 queued
+bytes. Repeated observation/refused READ/start/Close cannot consume or decode
+that record, import ancillary data, release originals or grow reviewed FD
+counts. Data/base remain unchanged. Missing acknowledgement cannot certify
+successful client completion or authorize the queued metadata. The independent
+receipt verifier has two positive/28 negative controls; sanitizer checks cover
+the fixed variant but are not actual SMB proof.
+
+Use the existing bounded read-only base/workspace and tmpfs/snapshot profile:
+no new images, volumes, default CI boots, privileges or deadlines. This is
+review containment only, not uncertain-stop, pending I/O, WRITE, recovery,
+hardware qualification or an installable product.
+
 ## Capture input substitutions and receiver drift — separate disposable guests
 
 Run `support/test-server-capture-open.ps1 -InputDrift module`, `configuration`

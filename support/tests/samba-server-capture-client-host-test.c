@@ -2,6 +2,9 @@
 /* SPDX-FileCopyrightText: 2026 PhantoWD EX4 contributors */
 /* Orchestration mocks only: no actual SMB, guest, worker or lease proof. */
 #define PHANTOWD_SAMBA_CAPTURE_CLIENT_FIXTURE 1
+#if defined(PHANTOWD_CAPTURE_WITHHELD_READ_HOST_TEST)
+#define PHANTOWD_CAPTURE_WITHHELD_READ_FIXTURE 1
+#endif
 #define main capture_fixture_main
 #include "samba-server-capture-client-qemu.c"
 #undef main
@@ -135,6 +138,7 @@ static void secret_case(const unsigned char *bytes, size_t size, int valid)
     for (size_t i = 0; i < sizeof(secret); ++i) require(secret[i] == 0);
 }
 static void forbidden_exit_cleanup(void) { _Exit(98); }
+#if !defined(PHANTOWD_CAPTURE_WITHHELD_READ_HOST_TEST)
 int main(void)
 {
     /* Real host entry refuses before context allocation, without atexit calls. */
@@ -217,3 +221,23 @@ int main(void)
     printf("PHANTOWD_CAPTURE_CLIENT_HOST_DONE same_open=true reads=2 refusals=%u actual_smb=false scope=host-mock-only\n", refusals);
     return 0;
 }
+#else
+int main(void)
+{
+    (void)secret_case; (void)forbidden_exit_cleanup;
+    int saved_output = fcntl(1, F_DUPFD_CLOEXEC, 64), output[2];
+    require(saved_output >= 64 && !pipe(output) && dup2(output[1], 1) == 1 && !close(output[1]));
+    reset();
+    require(run("RRC") == -1 && opens == 1 && reads == 1 && seeks == 1 && closes == 0 && handles == 3);
+    require(dup2(saved_output, 1) == 1 && !close(saved_output));
+    char receipt[1024] = {0};
+    ssize_t received = read(output[0], receipt, sizeof(receipt));
+    require(received > 0 && received < (ssize_t)sizeof(receipt) && !close(output[0]));
+    const char expected[] =
+        "PHANTOWD_CAPTURE_CLIENT_HANDLE session=4294967297 tree=3 persistent=4294967301 volatile=4294967303 scope=qemu-only proof=false\n"
+        "PHANTOWD_CAPTURE_CLIENT_OPEN scope=qemu-only proof=false\n";
+    require(received == (ssize_t)(sizeof(expected) - 1) && !memcmp(receipt, expected, sizeof(expected) - 1));
+    printf("PHANTOWD_CAPTURE_WITHHELD_HOST_DONE completed_mock_read=true read_ack=false close=false retries=false actual_smb=false scope=host-mock-only\n");
+    return 0;
+}
+#endif

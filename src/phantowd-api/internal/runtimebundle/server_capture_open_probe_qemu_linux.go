@@ -38,9 +38,13 @@ func (p *Plan) ProbeServerCaptureOpenQEMU(ctx context.Context, code *os.File) (r
 		return ErrInvalid
 	}
 	workerExit := captureWorkerExitFixtureQEMU()
+	uncertainRead := captureUncertainReadFixtureQEMU()
 	inputFault, err := parseCaptureInputFaultMarkerQEMU(line)
 	if err != nil {
 		return err
+	}
+	if uncertainRead && (workerExit || inputFault != "") {
+		return ErrInvalid
 	}
 	retainedFault := false
 	var roots [6]*os.File
@@ -175,6 +179,17 @@ func (p *Plan) ProbeServerCaptureOpenQEMU(ctx context.Context, code *os.File) (r
 	// complete original inputs under both gates. An extra full connection-only
 	// sweep here repeats those observations before the first READ and consumes
 	// the fixed guest/client deadline without adding an independent witness.
+	if uncertainRead {
+		if err := captureUncertainReadProofQEMU(ctx, o, r, original, beforeData); err != nil {
+			return errors.Join(errors.New("capture uncertain READ containment"), err)
+		}
+		if err := checkData(); err != nil {
+			return err
+		}
+		retainedFault = true
+		fmt.Println("PHANTOWD_CAPTURE_UNCERTAIN_READ_PROOF client_completion_unknown=true client_ack=false zero_frame=true sequence_zero=true queued_bytes=88 queue_unconsumed=true client_stopped=true server_stopped=true review=true originals_retained=true retry_refused=true stable_review_fds=true unchanged_data=true authority=false scope=qemu-only")
+		return nil
+	}
 	first, err := o.readCaptureFrameQEMU(ctx)
 	if err != nil {
 		return errors.Join(errors.New("capture original first READ/frame"), err)

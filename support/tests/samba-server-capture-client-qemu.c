@@ -159,6 +159,11 @@ static int transfer(SMBCCTX *context)
             seek_file(context, file, 0, SEEK_SET) != 0 || auth_refused ||
             observe_same(context, file, &initial)) return -1;
         ++samples;
+#if defined(PHANTOWD_CAPTURE_WITHHELD_READ_FIXTURE) && PHANTOWD_CAPTURE_WITHHELD_READ_FIXTURE == 1
+        /* Separate test-only build: completed read/seek/tuple recheck, then
+         * no acknowledgement, CLOSE, retry, reconnect or library cleanup. */
+        if (samples == 1) return -1;
+#endif
         if (notice(samples == 1 ? "PHANTOWD_CAPTURE_CLIENT_READ sequence=1 scope=qemu-only proof=false\n" :
             "PHANTOWD_CAPTURE_CLIENT_READ sequence=2 scope=qemu-only proof=false\n")) return -1;
     }

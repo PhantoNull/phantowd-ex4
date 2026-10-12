@@ -3,6 +3,28 @@
 
 # Implementation status
 
+## Missing READ acknowledgement — disposable ARMv5 containment
+
+The optional `support/test-server-capture-open.ps1 -UncertainRead` fixture uses
+a separately compiled fixed client variant: its deliberate refusal is placed
+after a one-byte READ, seek and same-handle check, before the READ notice. It
+does not send CLOSE, retry, reconnect or run uncertain library cleanup. The
+normal client remains byte-identical when the test-only define is absent.
+
+Actual ARMv5 verifies a zero returned frame, sequence still zero, an 88-byte
+record still queued, independently stopped client/server groups, retained
+original inputs/object/proc/channel references and sticky review. Repeated
+READ/start/Close refuse without consuming the queue or increasing reviewed FD
+counts; synthetic data and the base image are unchanged. The queue observer
+reads only a kernel byte count: no metadata decode or ancillary import.
+
+Without the client acknowledgement, the controller cannot certify successful
+client completion or authenticate that queued record. This is uncertainty
+containment, not a successful READ sample, request/OFD lease, interrupted WRITE,
+recovery or product activation. Strict receipts have two positive/28 malformed
+controls. Existing launcher, privilege and time limits and default CI remain
+unchanged; no NAS, physical disk or new Docker image/volume is involved.
+
 ## Capture module/configuration/channel drift — bounded ARMv5 observations
 
 The optional `-InputDrift module|configuration|channel` fixtures start with one
@@ -31,7 +53,7 @@ not aggregate equality after intentional retention. Its strict receipt adds
 these fields and fatal-log refusals (two positive/67 negative controls).
 
 These faults occur **between completed requests**, not during pending I/O.
-Uncertain READ/stop, construction races, complete SDK/OFD/request authority and
+Uncertain stop/cancellation, construction races, complete SDK/OFD/request authority and
 full-image/hosted/recovery/product qualification remain open. No NAS, physical
 disk, WRITE/HTTP activation or new Docker image/volume is involved.
 
