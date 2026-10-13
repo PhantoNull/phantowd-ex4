@@ -3,6 +3,16 @@
 
 # M4.5: retained server-open observation integration plan
 
+Partial S5 now additionally exercises cancellation of READ collection. A fixed
+waiting client variant keeps the original control pipe open without READ ACK;
+a joined bounded observer cancels only on 88 original queued bytes. Actual
+ARMv5 requires canceled context/review, zero frame/sequence, verified groups
+stopped and the queue/original references retained, with refusal on repeated
+READ/start/Close and stable reviewed FDs/data/base. Byte count is never decoded
+metadata authority or completion. Real-pipe behavioral RED/GREEN, sanitizer,
+real-socket refusal controls and strict2+30 pass. This is not interruption of
+server I/O, uncertain-stop, pending-WRITE/OFD/request or full S5 qualification.
+
 Partial S5 additionally exercises a separately compiled fixed client that
 withholds its READ acknowledgement. Its deliberate refusal sits after the
 one-byte read/seek/tuple check; the unchanged normal binary remains separate.

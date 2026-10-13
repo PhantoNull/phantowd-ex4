@@ -9,9 +9,11 @@ client_open=false
 worker_exit=false
 input_fault=none
 withheld_read=false
+cancel_read=false
 if [ "$#" -eq 4 ] && [ "$4" = --client-open ]; then client_open=true
 elif [ "$#" -eq 4 ] && [ "$4" = --client-worker-exit ]; then client_open=true; worker_exit=true
 elif [ "$#" -eq 4 ] && [ "$4" = --client-withheld-read ]; then client_open=true; withheld_read=true
+elif [ "$#" -eq 4 ] && [ "$4" = --client-cancel-read ]; then client_open=true; cancel_read=true
 elif [ "$#" -eq 4 ] && { [ "$4" = --client-module-fault ] || [ "$4" = --client-configuration-fault ] || [ "$4" = --client-channel-fault ]; }; then
     client_open=true; input_fault=${4#--client-}; input_fault=${input_fault%-fault}
 elif [ "$#" -ne 3 ]; then exit 1
@@ -72,7 +74,9 @@ if "$client_open"; then
     client_scratch="$scratch/client"
     mkdir "$client_scratch"
     bash "$source/support/tests/build-samba-pending-handle-observer.sh" "$output" "$source" "$client_scratch"
-    if "$withheld_read"; then
+    if "$cancel_read"; then
+        bash "$source/support/tests/test-samba-server-capture-client.sh" "$output" "$source" "$client_scratch" --wait-read
+    elif "$withheld_read"; then
         bash "$source/support/tests/test-samba-server-capture-client.sh" "$output" "$source" "$client_scratch" --withheld-read
     else
         bash "$source/support/tests/test-samba-server-capture-client.sh" "$output" "$source" "$client_scratch"
@@ -160,6 +164,7 @@ if "$client_open"; then command_line="$command_line phantowd_capture_client_open
 if "$worker_exit"; then command_line="$command_line phantowd_capture_worker_exit_fixture=1"; fi
 if [ "$input_fault" != none ]; then command_line="$command_line phantowd_capture_input_fault_fixture=$input_fault"; fi
 if "$withheld_read"; then command_line="$command_line phantowd_capture_uncertain_read_fixture=1"; fi
+if "$cancel_read"; then command_line="$command_line phantowd_capture_cancel_read_fixture=1"; fi
 timeout --signal=TERM --kill-after=2 60 qemu-system-arm -M versatilepb -cpu arm926 -m 256M \
     -object rng-random,id=capture-rng,filename=/dev/urandom -device virtio-rng-pci,rng=capture-rng \
     -kernel "$base/zImage" -dtb "$base/versatile-pb.dtb" \
@@ -170,7 +175,9 @@ timeout --signal=TERM --kill-after=2 60 qemu-system-arm -M versatilepb -cpu arm9
     -display none -serial stdio -monitor none -nic none -no-reboot >"$scratch/guest.log" 2>&1 || status=$?
 cat "$scratch/guest.log"
 [ "$status" -eq 0 ] || exit 1
-if "$withheld_read"; then
+if "$cancel_read"; then
+    awk -f "$source/support/tests/verify-server-capture-cancel-read-log.awk" "$scratch/guest.log"
+elif "$withheld_read"; then
     awk -f "$source/support/tests/verify-server-capture-uncertain-read-log.awk" "$scratch/guest.log"
 elif [ "$input_fault" != none ]; then
     awk -v kind="$input_fault" -f "$source/support/tests/verify-server-capture-input-fault-log.awk" "$scratch/guest.log"
@@ -182,7 +189,9 @@ else
     awk -f "$source/support/tests/verify-server-capture-runtime-log.awk" "$scratch/guest.log"
 fi
 [ "$(sha256sum "$base/rootfs.ext2" | cut -d ' ' -f 1)" = "$base_hash" ]
-if "$withheld_read"; then
+if "$cancel_read"; then
+    echo 'PHANTOWD_CAPTURE_CANCEL_READ_COMPLETE base_unchanged=true authority=false scope=qemu-only'
+elif "$withheld_read"; then
     echo 'PHANTOWD_CAPTURE_UNCERTAIN_READ_COMPLETE base_unchanged=true authority=false scope=qemu-only'
 elif [ "$input_fault" != none ]; then
     echo "PHANTOWD_CAPTURE_INPUT_FAULT_COMPLETE kind=$input_fault base_unchanged=true authority=false scope=qemu-only"

@@ -1,5 +1,29 @@
 # Fast API and file-service integration checks
 
+## Canceled READ collection — separate disposable ARM guest
+
+Run `support/test-server-capture-open.ps1 -CancelRead` without another fixed
+fault switch. The independent compile-time-only waiting client variant does
+not send a READ notice, CLOSE, retry or reconnect. It blocks on the original
+control pipe after its read/seek/tuple checks; EOF/any unexpected command refuses.
+This is a fixture, never an installed program or generic launcher override.
+
+An observer polls only queued byte count at 20 ms, bounded by five seconds and
+the original parent. Only 88 observed bytes trigger collection cancellation.
+Errors are terminal with no retry; the observer must be joined. The proof then
+requires canceled context/review, zero frame/sequence, independently stopped
+groups, unconsumed original queue, retained original references, repeated
+READ/start/Close refusal, stable reviewed FDs and unchanged synthetic data/base.
+Neither byte count nor cancellation certifies completion or record authority.
+
+Strict receipts require all fields (two positive/30 negative controls). Host
+real-pipe blocking/EOF tests use ASan/UBSan; real-socket canceled/oversized/empty
+deadline controls cannot cancel or consume. These are separate from actual
+SMB/ARM proof. The original missing-acknowledgement case uses the same retained-
+review assertions. Reuse the existing read-only SDK/base, tmpfs and snapshots:
+no new image/volume, CI boot, privilege or original deadline is added or widened.
+Pending I/O/WRITE/OFD/request, uncertain stop, recovery and product remain gates.
+
 ## Missing READ acknowledgement — separate disposable ARM guest
 
 Run `support/test-server-capture-open.ps1 -UncertainRead` separately from

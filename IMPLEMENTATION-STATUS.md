@@ -3,6 +3,34 @@
 
 # Implementation status
 
+## Canceled READ collection — bounded ARMv5 containment
+
+The optional `support/test-server-capture-open.ps1 -CancelRead` fixture uses a
+separately compiled fixed client that waits on its original control pipe after
+read/seek/tuple checks, without acknowledging READ or performing another SMB
+operation. EOF or an unexpected command refuses; the existing alarm is unchanged.
+A real-pipe host regression first failed when normal READ acknowledgement was
+still emitted; the waiting variant then passed ASan/UBSan and EOF/no-CLOSE tests.
+
+A bounded observer polls only the original receiver's queued byte count and
+cancels collection once 88 bytes are present. Observation errors are terminal,
+not retried; the observer is joined before returning. Actual ARMv5 verifies
+context cancellation plus review, zero frame/sequence, verified client/server
+stop, the original record still unconsumed, retained references and repeated
+READ/start/Close refusal with stable reviewed FDs and unchanged data/base.
+Client completion and queued metadata authority remain unknown/unqualified.
+
+Host real-socket controls also reject canceled witnesses, oversized records and
+empty-queue deadlines without canceling collection or consuming data. Strict
+receipts have two positive/30 malformed controls. This qualifies cancellation
+of collection, not interrupted server I/O, uncertain stop, pending WRITE/OFD/
+request, recovery or product activation. Existing launcher/privilege/guest/client
+limits and default CI remain unchanged; no NAS or new Docker storage is used.
+Fresh whole focused qualification passes on unchanged sources: pinned host
+vet/unit/scoped races, Windows API/UI/cross and nine sequential ARMv5 guests,
+including the older missing-acknowledgement, healthy and fault regressions.
+The interrupted earlier union's final outcome remains unverified, not borrowed.
+
 ## Missing READ acknowledgement — disposable ARMv5 containment
 
 The optional `support/test-server-capture-open.ps1 -UncertainRead` fixture uses

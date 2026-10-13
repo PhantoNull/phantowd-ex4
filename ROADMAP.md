@@ -3,7 +3,7 @@
 
 # Implementation roadmap
 
-Reviewed: **2026-10-12**. This is the product specification and work breakdown,
+Reviewed: **2026-10-14**. This is the product specification and work breakdown,
 not a release announcement. The [README](README.md) is the concise entry point;
 component contracts remain authoritative for implemented behavior.
 
@@ -67,13 +67,22 @@ currently product-qualified for migration.
 
 ## Current baseline
 
+A fixed optional ARMv5 canceled-collection case now verifies cancellation only
+after original queued bytes appear, a joined bounded observer, zero returned
+metadata/sequence, verified client/server stop and unconsumed original queue/
+references in sticky review. Repeated READ/start/Close refuse with stable FDs
+and unchanged data/base. This is collection cancellation, not confirmed client
+completion or interruption of server I/O. Uncertain stop, original-source
+lifetime, complete SDK/construction/OFD/request authority and all product/
+hardware/recovery/migration gates remain.
+
 A fixed optional ARMv5 missing-READ-acknowledgement fixture now verifies zero
 metadata/sequence, the original 88-byte record left unconsumed, independently
 stopped client/server groups and original references retained in sticky review.
 Repeated READ/start/Close refuse with stable reviewed FD counts and unchanged
 data/base. Byte count is not authenticated record content or a successful
 client completion. Normal client bytes, launchers, privileges and time limits
-remain unchanged. Next: uncertain stop/cancellation, original-source lifetime
+remain unchanged. Next: uncertain stop, original-source lifetime
 and construction/SDK closure, complete S4/S5/S6 and explicit request/OFD
 admission before pending-I/O or product activation.
 
@@ -84,7 +93,7 @@ READ/start/Close refusal even after restoration, with stable reviewed FD counts
 and unchanged data/base. Restored metadata observation never clears the code
 keeper/runtime review. The older negotiation-only drift fixture is reconciled
 to that same retention contract, not aggregate healthy-release FD equality.
-Next: uncertain stop/cancellation and construction/SDK closure, then complete S4/S5/S6
+Next: uncertain stop and construction/SDK closure, then complete S4/S5/S6
 and explicit pending-I/O admission. No product activation or hardware gate is
 waived by these between-request observations.
 
@@ -96,7 +105,7 @@ Retry/restart/close refuse; data/base stay unchanged. Runtime Close now refuses
 review before any disposal, with a real descriptor-effect host regression.
 This is partial S5, **not interruption of pending I/O**. The separate input-
 drift and missing-acknowledgement cases above add coverage, not complete S5.
-Uncertain stop/cancellation, retained SDK/construction/OFD/request qualification
+Uncertain stop, retained SDK/construction/OFD/request qualification
 and the exact regression union remain required.
 
 The optional capture lane now qualifies two actual one-byte READs on the same

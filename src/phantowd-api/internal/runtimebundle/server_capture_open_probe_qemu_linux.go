@@ -39,11 +39,15 @@ func (p *Plan) ProbeServerCaptureOpenQEMU(ctx context.Context, code *os.File) (r
 	}
 	workerExit := captureWorkerExitFixtureQEMU()
 	uncertainRead := captureUncertainReadFixtureQEMU()
+	cancelRead := captureCancelReadFixtureQEMU()
 	inputFault, err := parseCaptureInputFaultMarkerQEMU(line)
 	if err != nil {
 		return err
 	}
 	if uncertainRead && (workerExit || inputFault != "") {
+		return ErrInvalid
+	}
+	if cancelRead && (uncertainRead || workerExit || inputFault != "") {
 		return ErrInvalid
 	}
 	retainedFault := false
@@ -179,6 +183,17 @@ func (p *Plan) ProbeServerCaptureOpenQEMU(ctx context.Context, code *os.File) (r
 	// complete original inputs under both gates. An extra full connection-only
 	// sweep here repeats those observations before the first READ and consumes
 	// the fixed guest/client deadline without adding an independent witness.
+	if cancelRead {
+		if err := captureCancelReadProofQEMU(ctx, o, r, original, beforeData); err != nil {
+			return errors.Join(errors.New("capture canceled READ containment"), err)
+		}
+		if err := checkData(); err != nil {
+			return err
+		}
+		retainedFault = true
+		fmt.Println("PHANTOWD_CAPTURE_CANCEL_READ_PROOF collection_canceled=true witness_joined=true client_completion_unknown=true client_ack=false zero_frame=true sequence_zero=true queued_bytes=88 queue_unconsumed=true client_stopped=true server_stopped=true review=true originals_retained=true retry_refused=true stable_review_fds=true unchanged_data=true authority=false scope=qemu-only")
+		return nil
+	}
 	if uncertainRead {
 		if err := captureUncertainReadProofQEMU(ctx, o, r, original, beforeData); err != nil {
 			return errors.Join(errors.New("capture uncertain READ containment"), err)

@@ -61,6 +61,15 @@ func captureUncertainReadProofQEMU(ctx context.Context, o *pendingClientOwnerQEM
 	if frame, err := o.readCaptureFrameQEMU(ctx); !errors.Is(err, ErrReviewRequired) || frame != (pendingServerPacketObservationQEMU{}) || !o.review || !r.review || r.channel.sequence != 0 {
 		return errors.Join(ErrMismatch, err)
 	}
+	return captureQueuedReviewProofQEMU(ctx, o, r, original, initial)
+}
+
+// Post-containment fixture assertions shared by missing-ack and cancellation.
+// Does not admit work, clear review, consume queued records or supply a backend.
+func captureQueuedReviewProofQEMU(ctx context.Context, o *pendingClientOwnerQEMU, r *serverObserverRuntimeQEMU, original *os.File, initial unix.Stat_t) error {
+	if ctx == nil || o == nil || r == nil || original == nil || o.capturePeer != r || o.captureAdapter == nil || r.captureWorker == nil || r.channel == nil || !o.review || !r.review || r.channel.sequence != 0 {
+		return ErrInvalid
+	}
 	if settled, err := o.captureAdapter.StoppedInReviewQEMU(ctx); err != nil || !settled {
 		return errors.Join(ErrMismatch, err)
 	}

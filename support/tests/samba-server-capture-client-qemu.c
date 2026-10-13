@@ -163,6 +163,16 @@ static int transfer(SMBCCTX *context)
         /* Separate test-only build: completed read/seek/tuple recheck, then
          * no acknowledgement, CLOSE, retry, reconnect or library cleanup. */
         if (samples == 1) return -1;
+#elif defined(PHANTOWD_CAPTURE_WITHHELD_READ_FIXTURE) && PHANTOWD_CAPTURE_WITHHELD_READ_FIXTURE == 2
+        /* Separate cancellation fixture: block on the original control pipe,
+         * without READ acknowledgement or another SMB operation. EOF or any
+         * unexpected command refuses; the unchanged outer alarm bounds it. */
+        if (samples == 1) {
+            char unexpected;
+            ssize_t ignored = read(0, &unexpected, 1);
+            (void)ignored;
+            return -1;
+        }
 #endif
         if (notice(samples == 1 ? "PHANTOWD_CAPTURE_CLIENT_READ sequence=1 scope=qemu-only proof=false\n" :
             "PHANTOWD_CAPTURE_CLIENT_READ sequence=2 scope=qemu-only proof=false\n")) return -1;

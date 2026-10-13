@@ -4,12 +4,15 @@
 #define PHANTOWD_SAMBA_CAPTURE_CLIENT_FIXTURE 1
 #if defined(PHANTOWD_CAPTURE_WITHHELD_READ_HOST_TEST)
 #define PHANTOWD_CAPTURE_WITHHELD_READ_FIXTURE 1
+#elif defined(PHANTOWD_CAPTURE_WAIT_READ_HOST_TEST)
+#define PHANTOWD_CAPTURE_WITHHELD_READ_FIXTURE 2
 #endif
 #define main capture_fixture_main
 #include "samba-server-capture-client-qemu.c"
 #undef main
 #include <stdlib.h>
 #include <sys/wait.h>
+#include <poll.h>
 
 static int context_token, file_token;
 static SMBCCTX *const context = (SMBCCTX *)&context_token;
@@ -138,7 +141,7 @@ static void secret_case(const unsigned char *bytes, size_t size, int valid)
     for (size_t i = 0; i < sizeof(secret); ++i) require(secret[i] == 0);
 }
 static void forbidden_exit_cleanup(void) { _Exit(98); }
-#if !defined(PHANTOWD_CAPTURE_WITHHELD_READ_HOST_TEST)
+#if !defined(PHANTOWD_CAPTURE_WITHHELD_READ_HOST_TEST) && !defined(PHANTOWD_CAPTURE_WAIT_READ_HOST_TEST)
 int main(void)
 {
     /* Real host entry refuses before context allocation, without atexit calls. */
@@ -221,7 +224,7 @@ int main(void)
     printf("PHANTOWD_CAPTURE_CLIENT_HOST_DONE same_open=true reads=2 refusals=%u actual_smb=false scope=host-mock-only\n", refusals);
     return 0;
 }
-#else
+#elif defined(PHANTOWD_CAPTURE_WITHHELD_READ_HOST_TEST)
 int main(void)
 {
     (void)secret_case; (void)forbidden_exit_cleanup;
@@ -238,6 +241,43 @@ int main(void)
         "PHANTOWD_CAPTURE_CLIENT_OPEN scope=qemu-only proof=false\n";
     require(received == (ssize_t)(sizeof(expected) - 1) && !memcmp(receipt, expected, sizeof(expected) - 1));
     printf("PHANTOWD_CAPTURE_WITHHELD_HOST_DONE completed_mock_read=true read_ack=false close=false retries=false actual_smb=false scope=host-mock-only\n");
+    return 0;
+}
+#else
+int main(void)
+{
+    (void)secret_case; (void)forbidden_exit_cleanup; (void)run;
+    int command[2], output[2];
+    require(!pipe(command) && !pipe(output));
+    pid_t child = fork();
+    require(child >= 0);
+    if (!child) {
+        require(!close(command[1]) && !close(output[0]));
+        require(dup2(command[0], 0) == 0 && dup2(output[1], 1) == 1);
+        require(!close(command[0]) && !close(output[1]));
+        reset();
+        require(transfer(context) == -1 && opens == 1 && reads == 1 && seeks == 1 && closes == 0 && handles == 3);
+        _Exit(0);
+    }
+    require(!close(command[0]) && !close(output[1]) && write(command[1], "R", 1) == 1);
+    const char expected[] =
+        "PHANTOWD_CAPTURE_CLIENT_HANDLE session=4294967297 tree=3 persistent=4294967301 volatile=4294967303 scope=qemu-only proof=false\n"
+        "PHANTOWD_CAPTURE_CLIENT_OPEN scope=qemu-only proof=false\n";
+    char receipt[sizeof(expected) - 1];
+    size_t received = 0;
+    while (received < sizeof(receipt)) {
+        ssize_t n = read(output[0], receipt + received, sizeof(receipt) - received);
+        require(n > 0); received += (size_t)n;
+    }
+    require(!memcmp(receipt, expected, sizeof(receipt)));
+    struct pollfd waiting = {.fd = output[0], .events = POLLIN};
+    int status = 0;
+    require(poll(&waiting, 1, 100) == 0 && waitpid(child, &status, WNOHANG) == 0);
+    require(!close(command[1]));
+    require(waitpid(child, &status, 0) == child && WIFEXITED(status) && WEXITSTATUS(status) == 0);
+    char extra;
+    require(read(output[0], &extra, 1) == 0 && !close(output[0]));
+    puts("PHANTOWD_CAPTURE_WAIT_HOST_DONE blocked_without_ack=true eof_refused=true close=false retries=false actual_smb=false scope=host-mock-only");
     return 0;
 }
 #endif
