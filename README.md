@@ -52,6 +52,9 @@ successful parser checks do not activate a product service.
 Configuration transaction fixtures also pass ARMv5 interrupted-writer,
 full-ext4 and read-only-ext4 tests with confirmed policy retained. This is not
 power-loss recovery or qualification of the EX4's physical state medium.
+A separate internal read-only observer distinguishes current policy and
+incomplete evidence without initialization, recovery or service admission.
+Its empty-directory result is not proof that the NAS is pristine.
 
 A separate ARMv5 fixture now verifies a retained, isolated real SMB3 client
 opening and closing synthetic data without changes or leaked descriptors.

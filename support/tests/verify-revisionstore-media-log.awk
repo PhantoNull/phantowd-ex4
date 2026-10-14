@@ -2,7 +2,28 @@
 # SPDX-FileCopyrightText: 2026 PhantoWD EX4 contributors
 BEGIN {
     stage = "PHANTOWD_REVISIONSTORE_MEDIA_PREPARED synthetic_ext4=true snapshot=true profiles=2 stages=7 scope=qemu-only"
-    done = "PHANTOWD_REVISIONSTORE_MEDIA_DONE sigkill=14 readonly=true enospc=true normal_unmount=true scope=qemu-only"
+    done = "PHANTOWD_REVISIONSTORE_MEDIA_DONE sigkill=14 readonly=true enospc=true bootstrap=true normal_unmount=true scope=qemu-only"
+    expected[++required] = "TestBootstrapEmptyDirectoryObservationDoesNotInitializeOrChangeMetadata"
+    expected[++required] = "TestBootstrapPendingEvidenceIsNeverPromotedOrDiscarded"
+    expected[++required] = "TestBootstrapPendingEvidenceIsNeverPromotedOrDiscarded/false"
+    expected[++required] = "TestBootstrapPendingEvidenceIsNeverPromotedOrDiscarded/true"
+    expected[++required] = "TestBootstrapValidCurrentPolicyObservationDoesNotChangeFilesOrReturnPolicy"
+    expected[++required] = "TestBootstrapInvalidOrUnsupportedPolicyIsNeverMissingOrReset"
+    split("0 11 2 50", invalid, " ")
+    for (i = 1; i <= 4; i++) { expected[++required] = "TestBootstrapInvalidOrUnsupportedPolicyIsNeverMissingOrReset/" invalid[i] }
+    expected[++required] = "TestBootstrapUnrecognizedEntriesArePreservedWithoutClaimingEmptyOrConfirmed"
+    expected[++required] = "TestBootstrapUnrecognizedEntriesArePreservedWithoutClaimingEmptyOrConfirmed/1"
+    expected[++required] = "TestBootstrapUnrecognizedEntriesArePreservedWithoutClaimingEmptyOrConfirmed/16"
+    expected[++required] = "TestBootstrapRefusesUnsafeNamedObjectsWithoutOpeningTheirData"
+    split("shares.json .shares.pending", roles, " ")
+    split("symlink hardlink fifo directory permissions", objects, " ")
+    for (r = 1; r <= 2; r++) {
+        for (i = 1; i <= 5; i++) { expected[++required] = "TestBootstrapRefusesUnsafeNamedObjectsWithoutOpeningTheirData/" roles[r] "/" objects[i] }
+    }
+    expected[++required] = "TestBootstrapRefusesBusyCanceledMissingAndOversizedStateWithoutMutation"
+    expected[++required] = "TestBootstrapWritableOpenDuringDecodeRefusesEvenWithUnchangedMetadata"
+    expected[++required] = "TestBootstrapCancellationDuringDecodeReturnsNoObservation"
+    expected[++required] = "TestBootstrapRefusesInvalidCodecDirectoryAndMissingRootWithoutInitialization"
     split("partial-write full-write file-sync file-close before-rename after-rename directory-sync", points, " ")
     split("TestBundleSIGKILLRecovery TestNASBundleSIGKILLRecovery", profiles, " ")
     for (p = 1; p <= 2; p++) {
@@ -11,6 +32,7 @@ BEGIN {
     }
     expected[++required] = "TestRevisionStoreMediaReadOnlyRetainsConfirmedPolicyAndReview"
     expected[++required] = "TestRevisionStoreMediaFullFilesystemRetainsConfirmedPolicyAndReview"
+    expected[++required] = "TestNASBootstrapAdapterNeverImportsLegacyState"
 }
 { sub(/\r$/, "") }
 /^[ \t]*--- PASS: / {

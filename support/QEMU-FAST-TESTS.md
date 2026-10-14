@@ -2,6 +2,20 @@
 
 ## Policy-store interruption and media faults — optional ARMv5 ext4 guest
 
+The same lane now also executes the protected read-only bootstrap observer
+and fixed NAS adapter, requiring47 ordered PASS receipts: ten bootstrap test
+groups/subcases, adapter and all previous SIGKILL/media campaigns. Five
+kind/revision values are observations only: no fsync/init/promote/delete/lease/
+admission/recovery/HTTP or startup. Empty directory is not NAS pristine; valid
+current document is not durable-confirmed state. Errors return zero; unknown/
+pending/invalid evidence is preserved. Strict verifier controls now2+123.
+
+Whole tagged pinned host vet/unit/scoped race3 and ARM pass. Two driver calls
+passed but aggregate tool capture was truncated; an additional same-source
+guest supplies all47 untruncated receipts, normal unmount/base hash. Preserve
+that limitation, not an invented complete two-guest raw record. All original
+resource/time limits remain; no default boot/image/volume/privilege is added.
+
 Run `support/test-revisionstore-media.ps1` with the existing pinned SDK and
 manifest-verified base. It creates no Docker image/volume: source/base/SDK are
 read-only, preparation/caches/images are bounded private tmpfs, containers
@@ -24,7 +38,7 @@ the store attempt. The exact ARM/model/marker/device/filesystem/size guard
 prevents media cases from running as ordinary host tests. No error injection
 replaces the store's actual filesystem syscalls.
 
-The independent verifier requires all18 ordered top-level/stage PASS receipts,
+The original media-only checkpoint required18 ordered top-level/stage PASS receipts,
 one Go PASS, preparation/completion, no skip/zero-test/fatal diagnostics and
 normal unmount. Two positive/64 malformed controls include every missing/
 duplicated receipt, wrong order and foreign markers. Two consecutive guests

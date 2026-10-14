@@ -8,6 +8,7 @@
 package naspolicystore
 
 import (
+	"context"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/naspolicy"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/revisionstore"
 )
@@ -37,6 +38,13 @@ func Open(directory string) (*Store, error) {
 // leases. It is not product boot wiring, migration or service authority.
 func OpenOwner(directory string) (*Owner, error) {
 	return revisionstore.OpenOwnedWithCodec(directory, policyCodec())
+}
+
+// ObserveBootstrap uses only this package's fixed names/schema. The redacted
+// observation is not initialization, recovery, a policy lease or permission
+// to open/activate an Owner later. No HTTP or product startup is wired here.
+func ObserveBootstrap(ctx context.Context, directory string) (revisionstore.BootstrapObservation, error) {
+	return revisionstore.ObserveBootstrapWithCodec(ctx, directory, policyCodec())
 }
 
 func policyCodec() revisionstore.Codec[naspolicy.Config] {

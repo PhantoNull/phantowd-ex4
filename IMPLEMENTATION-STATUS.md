@@ -3,6 +3,37 @@
 
 # Implementation status
 
+## Policy bootstrap observation — read-only values, not admission
+
+`revisionstore.ObserveBootstrapWithCodec` and fixed-name/schema
+`naspolicystore.ObserveBootstrap` inspect protected policy state without fsync,
+initialization, pending promotion/deletion or publication. A temporary exclusive
+directory flock, O_NOATIME, existing no-follow/current same-filesystem fence,
+metadata brackets and an empty private inotify epoch protect the observation.
+Only kind/revision values return, not policy content/names/descriptors or leases.
+
+| Outcome | What it observes, not authorizes |
+| --- | --- |
+| `empty-directory` | Complete bounded empty scan; not whole-NAS pristine or enrollment permission |
+| `valid-current-policy` | Stable bounded current document passes codec; positive revision, not acknowledged/durable publication |
+| `pending-evidence` | Safe pending metadata; bytes are never decoded/promoted, even with current present |
+| `invalid-or-unsupported-policy` | Stable readable document fails codec; no reset or separate migration/version claim |
+| `unrecognized-entries` | Unknown/additional evidence; no usable revision or complete unknown-file inventory claim |
+
+Busy/unavailable/unsafe/canceled/drifting reads return error/zero, never empty
+state. Actual write-capable open/close during decode refuses even with unchanged
+data/metadata. No Store/Owner admission, HTTP/startup or durable review changes;
+the shared codec validator is equivalent to the previous constructor checks.
+
+Whole pinned tagged Linux vet/units, both store-package race count3 and Windows
+API/UI/cross checks pass. Two strict ARM drivers pass, but their aggregate raw
+capture was truncated. A subsequent same-source guest independently supplies
+all47 ordered PASS receipts, normal unmount and unchanged base. Strict2+123
+controls and all prior interruption/full/read-only assertions remain. No new
+Docker storage/default CI boot/NAS/privilege or timer change. This is not the
+product state bundle, retained admission, durable recovery, schema migration,
+physical placement, full/hosted/reproduction or installation qualification.
+
 ## Configuration transactions — synthetic ARMv5 ext4 fault qualification
 
 The optional `support/test-revisionstore-media.ps1` lane executes the existing

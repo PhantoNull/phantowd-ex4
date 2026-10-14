@@ -9,6 +9,39 @@ trusted codecs, file sync, one rename and directory sync. It never imports old
 formats, promotes pending state or treats corruption as empty configuration.
 `Store` remains the original snapshot/transaction API.
 
+## Read-only policy-directory bootstrap observation
+
+`ObserveBootstrapWithCodec` returns only kind/revision; the fixed
+`naspolicystore.ObserveBootstrap` adapter selects NAS names/schema. Codec code
+is trusted in-process, not HTTP-supplied. No syncing constructor, initialization,
+import/promotion/deletion, claims or changed Store/Owner admission is invoked.
+The temporary exclusive flock requires trusted parents/cooperating writers,
+an owned0700 directory and safe owned0600 single-link regular named entries.
+
+Kinds: `empty-directory`, `valid-current-policy`, `pending-evidence`,
+`invalid-or-unsupported-policy`, `unrecognized-entries`. Only valid current
+data yields a positive revision. Pending is metadata-only and takes precedence;
+unknown evidence is preserved and never a usable-directory claim. Errors yield
+zero, not empty state. Empty directory is not whole-NAS pristine; valid current
+bytes do not prove origin, acknowledged commit or filesystem durability.
+
+Census stops at three names; empty/known-only outcomes require EOF. Current
+reads reuse no-follow/no-cross-mount/O_NOATIME and trusted codec limits, checking
+context between at-most64KiB reads. Metadata brackets and a nonblocking empty
+inotify epoch refuse drift, including write-capable open/close with unchanged
+data/metadata. I/O is not guaranteed immediately cancellable. This is point-in-
+time on the held directory, not continuous/parent-path/retained admission.
+Invalid versus incompatible versions, whole state bundle/provisioning, durable
+review and operator recovery remain separate; no auto-reopen can erase review.
+
+The optional ARM ext4 lane now requires47 ordered PASS receipts including ten
+bootstrap groups, fixed adapter and every prior interruption/media assertion.
+Whole tagged pinned host vet/units/scoped race3 and Windows pass. A two-driver
+aggregate raw capture was truncated; a same-source guest supplies all47 complete
+receipts independently matched. Strict2+123/no-skip/unmount/base-hash checks
+pass with no default CI/storage/timer/privilege/NAS change. No installable
+product or durable recovery is qualified by these observations.
+
 ## Optional initialized-state owner
 
 `OpenOwnedWithCodec` privately retains that engine and requires initialized
@@ -63,14 +96,14 @@ and must not be automatically opened to bypass an earlier uncertain outcome.
 
 ## Verification boundary
 
-The optional `support/test-revisionstore-media.ps1` lane runs the original seven
+The original media-only `support/test-revisionstore-media.ps1` checkpoint ran seven
 SIGKILL boundaries for both nonempty SMB/NFS and three-protocol NAS policies on
 synthetic ARMv5 ext4. A32-MiB snapshot also exercises actual full/read-only media
 against initialized `OwnedStore`: failed Commit, retained lock/sticky review,
 refusal after restoration, unchanged confirmed policy and pending preservation
 on explicit fixture reconciliation without consumers. No store/Owner production
 behavior is replaced; no fake syscall failure is injected in the media cases.
-All18 ordered test receipts must PASS, not skip; two consecutive guests, pinned
+All18 ordered test receipts had to PASS, not skip; two consecutive guests, pinned
 host vet/unit/race3 and strict2+64 log controls pass with normal unmount/base
 hash unchanged. Outside the exact marked ARM guest, the media tests do not run.
 

@@ -669,6 +669,21 @@ and recovery do not. **Depends on:** M0 for tests; M7 for physical placement.
   corrupt, incompatible and unavailable states. Enrollment is allowed only from
   proven pristine state. Version upgrades need checked preconditions, retained
   recovery evidence and no implicit empty-state fallback.
+  **M1.2a/M1.3a — protected policy observation (host/ARM tested, not admission):**
+  a bounded read-only observer/fixed NAS adapter distinguishes empty directory,
+  valid current document, pending metadata, invalid/unsupported document and
+  unrecognized entries; errors return zero. No sync/init/promotion/deletion/
+  reset/lease, Owner admission or HTTP/startup. Empty directory is not NAS
+  pristine; valid bytes do not prove acknowledged/durable publication. Format
+  incompatibility and corruption are a combined diagnostic, not migration
+  qualification. Lock/no-atime/no-follow/current same-filesystem, metadata/
+  inotify and cancellation controls pass with whole tagged pinned host/scoped
+  race3, Windows and strict2+123. The expanded ARM lane requires47 receipts;
+  aggregate raw truncation is preserved and a same-source guest provides all
+  complete receipts. **Next:** retain one product state authority across
+  classification/admission, complete state-bundle/schema/provisioning/durable
+  intent-review semantics, then operator-authorized reconciliation. Never use
+  this value as permission or reopen an Owner automatically to erase review.
 - **M1.3 — Recover interrupted operations.** Extend current journal semantics
   to an explicit review/reconciliation workflow. An intent plus missing reply
   does not imply failure or success. Preserve orphaned publications; compare
