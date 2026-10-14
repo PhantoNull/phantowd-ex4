@@ -2269,6 +2269,19 @@ milestone before enabling its controls; M1/M6 for deployment.
   vet pass. Single-boot ARM overlay passes with complete raw HTTP/HTTPS asset
   markers; no browser JS execution, full metadata/byte/provenance, two-boot/full/
   hosted/hardware/product qualification is implied.
+- **M5.5f — Diagnostic transport budgets (partial; host/ARM asset-tested).** Existing
+  five read-only paths now bound decoded bytes before UTF-8/JSON parsing:
+  auth/system16KiB, storage64KiB, arrays512KiB, mounts4MiB. Reject empty chunks,
+  more than16384 fragments/depth16/1024 containers; geometric storage avoids
+  per-chunk retained objects. No unbounded JSON fallback or Content-Length trust.
+  Initial auth gets10s, shared snapshot deadline/session retirement unchanged.
+  Failure requests cancellation/releases reader without waiting for uncertain
+  cancellation; HTTP status preserved/no error-body consumption/no retry.
+  Correct-seam RED/GREEN and native stream size/UTF8/cancel/lock/deadline/max-escape
+  controls, whole pinned tagged Linux vet/units and single-boot ARM overlay pass
+  with complete raw HTTP/HTTPS asset markers. This is not full JSON/schema/provenance, browser heap/CPU hard
+  limits, live/compressed transport, all mutation/import response bounds or
+  verified server/kernel stop. See the component contract before extending it.
 - **M5.6 — Audit and diagnostics.** Record actor, operation ID, revisions and
   redacted outcome; bound retention. Export a sanitized support bundle that
   excludes credentials, private keys, passdb hashes and user file contents.

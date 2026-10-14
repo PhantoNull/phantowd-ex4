@@ -3,6 +3,26 @@
 
 # Implementation status
 
+## Diagnostic GET responses: byte and structural budgets
+
+The existing five diagnostic/auth-status GET paths now enforce decoded-body
+budgets before strict UTF-8/JSON parsing, with bounded chunk count, JSON nesting
+and container count. Buffer growth is geometric; no unbounded JSON fallback or
+Content-Length trust. Initial auth status has10s, and snapshot reads retain their
+shared10s generation. Refusal requests stream cancellation and releases its lock
+without awaiting a hung cancellation; no retries or stale publication. HTTP
+error status is preserved without error-body consumption.
+
+Actual-source RED/GREEN and native Web Streams controls cover inclusive/excess
+budgets, UTF-8 splits/errors, pending reads/cancellation, released locks, structure/
+fragmentation, no fallback and maximum escaped producer mount data. Previous
+display/session tests remain. This is not complete JSON/schema/provenance or
+browser heap/CPU/live-network/compressed-transport qualification, all mutation/
+import response bounds or verified server/kernel teardown. NAS and persistent
+device operations remain excluded. Whole pinned tagged Linux vet/units and a
+single-boot ARMv5 overlay pass with complete raw HTTP/HTTPS asset markers; QEMU
+does not execute browser JavaScript or qualify browser transport behavior.
+
 ## Independent display validation for every snapshot domain
 
 System, RAID and mount sections now join storage in requiring their existing

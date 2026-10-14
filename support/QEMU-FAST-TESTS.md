@@ -1,5 +1,29 @@
 # Fast API and file-service integration checks
 
+## Diagnostic byte-consumption controls
+
+The actual-source DOM suite now uses native Web Streams for diagnostic responses.
+Fixed decoded-byte caps are auth/system16KiB, storage64KiB, arrays512KiB and
+mounts4MiB; all inclusive/excess boundaries are tested independently of headers.
+There is no unbounded JSON fallback. Strict UTF-8, at most16384 nonempty chunks,
+JSON depth16/container1024 pre-scan and geometric storage precede parsing.
+Initial-auth10s and existing shared-snapshot10s/retirement/no-retry assertions
+cover delayed bodies. Error/excess/abort requests cancellation and releases the
+reader without waiting for a hung cancellation; this is not server/kernel stop.
+
+Tests include fragmented UTF-8, bad/missing streams, pending reads, hung cancel,
+released locks, structure/fragments/unknown paths, no fallback and the maximum
+HTML-escaped128x4096-byte mount envelope. This is host DOM/native stream behavior,
+not real-browser/live/compressed transport, all mutation/import paths or measured
+browser heap/CPU guarantees. Keep asset integration and full/hosted/hardware/
+recovery/product qualification separate. Budgets and test resources must not be
+relaxed to conceal a failed case.
+
+Whole pinned tagged Linux vet/units and single-boot ARM overlay pass with complete
+raw HTTP/HTTPS asset markers. The base/probe remain unchanged, no two-boot/full
+image or new Docker storage is involved. QEMU does not execute browser JS or
+qualify the live transport; stream behavior is tested in native Node fixtures.
+
 ## Independent snapshot display guards
 
 The actual-source DOM suite now also refuses malformed system, RAID and mount

@@ -164,7 +164,18 @@ class FixtureElement {
 }
 
 function jsonResponse(body, status = 200) {
-  return { ok: status >= 200 && status < 300, status, json: async () => body };
+  const bytes = new TextEncoder().encode(JSON.stringify(body));
+  return { ok: status >= 200 && status < 300, status, json: async () => body,
+    body: new ReadableStream({ start(controller) { controller.enqueue(bytes); controller.close(); } }) };
+}
+
+function deferredJSONResponse(body) {
+  let sent = false;
+  return { ok: true, status: 200, json: () => body,
+    body: { getReader: () => ({
+      read: async () => sent ? { done: true } : (sent = true, { done: false, value: new TextEncoder().encode(JSON.stringify(await body)) }),
+      cancel: async () => {}, releaseLock: () => {},
+    }) } };
 }
 
 function systemFixture() {
@@ -564,7 +575,8 @@ async function testSnapshotLateErrorsDoNotChangeUnavailableAuth() {
       await pending;
       if (outcome === "unauthorized") return jsonResponse({}, 401);
       if (outcome === "transport-error") return new Error("late transport failure");
-      return { ok: true, status: 200, json: async () => { throw new Error("late malformed body"); } };
+      return { ok: true, status: 200, json: async () => { throw new Error("late malformed body"); },
+        body: new ReadableStream({ start(controller) { controller.error(new Error("late malformed body")); } }) };
     });
     context.showAuthUnavailable();
     const message = elements["auth-error"].textContent;
@@ -585,7 +597,7 @@ async function testSnapshotLateAuthBodyCannotReplaceNewSession() {
   const currentRead = new Promise((resolve) => { releaseCurrent = resolve; });
   const { context, elements } = await createHarness(async (path) => {
     if (path === "/api/v1/auth/status") return phase === "expired" ?
-      { ok: true, status: 200, json: () => authBody } : jsonResponse({ authenticated: true });
+      deferredJSONResponse(authBody) : jsonResponse({ authenticated: true });
     if (phase === "expired") return jsonResponse({}, 401);
     if (phase === "current") await currentRead;
     return snapshotResponse(path, "current-session-kernel");
@@ -640,7 +652,7 @@ async function testSnapshotDeadlineIncludesBodyAndDoesNotRetry() {
   let nextTimer = 0;
   const { elements, requests } = await createHarness(async (path) => {
     if (path === "/api/v1/auth/status") return jsonResponse({ authenticated: true });
-    if (path === "/api/v1/system") return { ok: true, status: 200, json: () => body };
+    if (path === "/api/v1/system") return deferredJSONResponse(body);
     return snapshotResponse(path);
   }, {
     setTimeout: (callback, delay) => { const id = ++nextTimer; timers.set(id, { callback, delay }); return id; },
@@ -2157,4 +2169,156 @@ async function testRemainingSnapshotDomainsRefuseMalformedEnvelopes() {
   process.stdout.write(`Snapshot display-envelope controls passed: system=${groups[0].values.length} arrays=${groups[1].values.length} mounts=${groups[2].values.length} negative=${round} maxima=16/32/128.\n`);
 }
 await testRemainingSnapshotDomainsRefuseMalformedEnvelopes();
+
+async function testOversizedSnapshotBodyIsNotParsedAsCurrentSystem() {
+  let oversized = false, parsed = 0;
+  const h = await createHarness(async (path) => {
+    if (path === "/api/v1/auth/status") return jsonResponse({ authenticated: true });
+    if (path === "/api/v1/system" && oversized) {
+      const value = { ...systemFixture(), padding: "PRIVATE-SENTINEL".repeat(1200) };
+      const response = jsonResponse(value);
+      response.json = async () => { parsed++; return value; };
+      return response;
+    }
+    return snapshotResponse(path, "fresh-kernel");
+  });
+  await settleUI();
+  oversized = true;
+  const before = h.requests.length;
+  await h.context.refreshSnapshot();
+  assert.equal(h.elements["kernel-value"].textContent, "Unavailable", "A system body above16KiB must refuse before parsing");
+  assert.equal(parsed, 0, "Unbounded Response.json must never be invoked for snapshots");
+  assert.equal(h.elements["array-count"].textContent, "2 arrays");
+  assert.equal(h.elements["mount-count"].textContent, "2 mounts");
+  assert.equal(h.requests.length - before, 4);
+}
+await testOversizedSnapshotBodyIsNotParsedAsCurrentSystem();
+
+async function testInitialAuthBodyHasAFiniteReadDeadline() {
+  let release;
+  const pending = new Promise((resolve) => { release = resolve; });
+  const timers = new Map();
+  let id = 0;
+  const h = await createHarness(async () => deferredJSONResponse(pending), {
+    setTimeout: (callback, delay) => { const timer = ++id; timers.set(timer, { callback, delay }); return timer; },
+    clearTimeout: (timer) => timers.delete(timer),
+  });
+  assert.equal(timers.size, 1, "Initial authentication status must not hang without a deadline");
+  const deadline = [...timers.values()][0];
+  assert.equal(deadline.delay, 10000);
+  deadline.callback();
+  await settleUI();
+  assert.equal(h.elements["dashboard-content"].hidden, true);
+  assert.equal(h.elements["auth-retry"].hidden, false);
+  assert.equal(timers.size, 0);
+  const before = h.requests.length;
+  release({ authenticated: true });
+  await settleUI();
+  assert.equal(h.elements["dashboard-content"].hidden, true);
+  assert.equal(h.requests.length, before);
+}
+await testInitialAuthBodyHasAFiniteReadDeadline();
+
+async function testDiagnosticStructureIsBoundedBeforeParsing() {
+  let deep = null;
+  for (let i = 0; i < 16; i++) deep = [deep];
+  const value = { ...systemFixture(), extra: deep };
+  const h = await createHarness(async (path) => path === "/api/v1/auth/status" ? jsonResponse({ authenticated: true }) :
+    path === "/api/v1/system" ? jsonResponse(value) : snapshotResponse(path));
+  await settleUI();
+  assert.equal(h.elements["kernel-value"].textContent, "Unavailable", "Over-depth diagnostic bodies must refuse before object construction");
+  assert.equal(h.elements["array-count"].textContent, "2 arrays");
+}
+await testDiagnosticStructureIsBoundedBeforeParsing();
+
+async function testDiagnosticByteReaderBoundariesAndCleanup() {
+  let response = jsonResponse(systemFixture());
+  const h = await createHarness(async (path) => path === "/api/v1/auth/status" ? jsonResponse({ authenticated: true }) :
+    path === "/api/v1/system" ? response : snapshotResponse(path));
+  await settleUI();
+  const streamResponse = (parts, { close = true, status = 200, cancel = () => {}, headers = {} } = {}) => {
+    let index = 0;
+    const body = new ReadableStream({
+      pull(controller) { if (index < parts.length) controller.enqueue(parts[index++]); else if (close) controller.close(); },
+      cancel,
+    });
+    return { ok: status === 200, status, body, headers,
+      json: () => { throw new Error("Unbounded JSON fallback must not be used"); } };
+  };
+  const base = JSON.stringify(systemFixture());
+  const encoded = new TextEncoder().encode(base);
+  for (const [path, cap] of [["/api/v1/auth/status", 16384], ["/api/v1/system", 16384],
+    ["/api/v1/storage", 65536], ["/api/v1/arrays", 524288], ["/api/v1/mounts", 4194304]]) {
+    const text = base + " ".repeat(cap - encoded.length);
+    const bytes = new TextEncoder().encode(text);
+    response = streamResponse([bytes.subarray(0, 4093), bytes.subarray(4093)]);
+    const previousFetch = h.context.fetch;
+    h.context.fetch = async () => response;
+    try {
+      assert.equal((await h.context.fetchJSON(path)).kernel, "6.18.54", "Exact byte cap must remain inclusive");
+      assert.equal(response.body.locked, false);
+      let canceled = 0;
+      response = streamResponse([bytes, new Uint8Array([32])], { close: false,
+        headers: { get: () => "1" }, cancel: () => { canceled++; return new Promise(() => {}); } });
+      await assert.rejects(h.context.fetchJSON(path), /diagnostic body unavailable/);
+      assert.equal(canceled, 1, "Actual bytes, not Content-Length, must drive refusal/cancellation");
+      assert.equal(response.body.locked, false, "Hung cancellation must not retain the reader lock");
+    } finally { h.context.fetch = previousFetch; }
+  }
+  const utf8 = new TextEncoder().encode(JSON.stringify({ ...systemFixture(), extra: "x😀é" }));
+  const offset = utf8.indexOf(240);
+  response = streamResponse([utf8.subarray(0, offset + 1), utf8.subarray(offset + 1, offset + 3), utf8.subarray(offset + 3)]);
+  assert.equal((await h.context.fetchJSON("/api/v1/system")).extra, "x😀é", "UTF-8 splits must not corrupt valid bytes");
+  assert.equal(response.body.locked, false);
+  const badInputs = [new Uint8Array([255]), new TextEncoder().encode("{\"PRIVATE-SENTINEL\":"), new Uint8Array(0)];
+  for (const bytes of badInputs) {
+    response = streamResponse([bytes]);
+    await assert.rejects(h.context.fetchJSON("/api/v1/system"), /diagnostic body unavailable/);
+    assert.equal(response.body.locked, false);
+  }
+  response = streamResponse([new Uint8Array([123])], { status: 503, close: false, cancel: () => {} });
+  await assert.rejects(h.context.fetchJSON("/api/v1/system"), (failure) => failure.status === 503);
+  assert.equal(response.body.locked, false);
+  const before = h.requests.length;
+  await assert.rejects(h.context.fetchJSON("/api/v1/not-a-diagnostic"), /diagnostic path unavailable/);
+  assert.equal(h.requests.length, before, "Unknown paths must refuse before fetch");
+  response = { ok: true, status: 200, json: () => systemFixture() };
+  await assert.rejects(h.context.fetchJSON("/api/v1/system"), /diagnostic body unavailable/);
+
+  let canceled = 0;
+  response = streamResponse([], { close: false, cancel: () => { canceled++; return new Promise(() => {}); } });
+  const controller = new AbortController();
+  const waiting = h.context.fetchJSON("/api/v1/system", { signal: controller.signal });
+  await settleUI();
+  assert.equal(response.body.locked, true);
+  controller.abort();
+  await assert.rejects(waiting, (failure) => failure.name === "AbortError");
+  await settleUI();
+  assert.equal(canceled, 1);
+  assert.equal(response.body.locked, false);
+
+  const quoteText = JSON.stringify({ ...systemFixture(), extra: '\\"[[[{{}}]]]' });
+  response = streamResponse([new TextEncoder().encode(quoteText)]);
+  assert.equal((await h.context.fetchJSON("/api/v1/system")).extra, '\\"[[[{{}}]]]');
+  response = streamResponse([new TextEncoder().encode(JSON.stringify({ ...systemFixture(), extra: Array.from({ length: 1024 }, () => ({})) }))]);
+  await assert.rejects(h.context.fetchJSON("/api/v1/system"), /diagnostic body unavailable/);
+  const largestMounts = { ...mountsFixture(), mount_count: 128,
+    mounts: Array.from({ length: 128 }, () => ({ mount_point: ">".repeat(4096), filesystem: "x".repeat(64),
+      device_major: 4294967295, device_minor: 4294967295, read_only: false })) };
+  // Mirror encoding/json's HTML-escaping expansion on producer-bounded fields.
+  const escaped = JSON.stringify(largestMounts).replaceAll(">", "\\u003e");
+  assert.ok(new TextEncoder().encode(escaped).length < 4194304);
+  const prior = h.context.fetch;
+  response = streamResponse([new TextEncoder().encode(escaped)]);
+  h.context.fetch = async () => response;
+  try { assert.equal((await h.context.fetchJSON("/api/v1/mounts")).mounts.length, 128, "Maximum escaped producer envelope fits the byte budget"); }
+  finally { h.context.fetch = prior; }
+  const many = Array.from({ length: 16385 }, () => new Uint8Array([32]));
+  const previousFetch = h.context.fetch;
+  h.context.fetch = async () => streamResponse(many, { close: false });
+  try { await assert.rejects(h.context.fetchJSON("/api/v1/mounts"), /diagnostic body unavailable/); }
+  finally { h.context.fetch = previousFetch; }
+  process.stdout.write("Diagnostic byte-reader controls passed: paths=5 inclusive-limits=true UTF8-split=true cancellation-locks=true no-fallback=true fragmentation=true.\n");
+}
+await testDiagnosticByteReaderBoundariesAndCleanup();
 process.stdout.write("Dashboard UI interaction smoke tests passed (DOM fixture; no visual browser coverage).\n");

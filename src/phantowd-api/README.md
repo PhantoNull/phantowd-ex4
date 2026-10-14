@@ -289,6 +289,44 @@ the complete guest capture includes HTTP/HTTPS asset markers. No JavaScript
 executes in QEMU. Full metadata/response-byte/provenance validation, browser/
 accessibility, persistence/full/hosted and product gates remain separate.
 
+## M5.5f bounded diagnostic response consumption
+
+The five existing read-only GET paths now consume `Response.body` with fixed
+decoded-byte budgets before strict UTF-8 decoding and `JSON.parse`:
+
+| Path | Inclusive byte budget |
+| --- | --- |
+| `/api/v1/auth/status` | 16 KiB |
+| `/api/v1/system` | 16 KiB |
+| `/api/v1/storage` | 64 KiB |
+| `/api/v1/arrays` | 512 KiB |
+| `/api/v1/mounts` | 4 MiB |
+
+There is no `Response.json()` fallback or reliance on Content-Length. Geometric
+buffer growth avoids retaining one object per chunk; zero-byte chunks, more
+than 16,384 chunks, JSON depth above 16 or more than 1,024 containers refuse.
+The structural pre-scan is an allocation guard, not a full JSON/schema or
+duplicate-key validator. Unknown GET paths refuse before fetch. The initial
+authentication status also has a 10-second deadline; snapshot reads retain their
+existing shared 10-second generation, including delayed bodies.
+
+Failure/abort requests cancellation and releases the reader without awaiting
+a cancellation promise that may never settle. This uses the
+[WHATWG reader API](https://streams.spec.whatwg.org/#default-reader-release-lock),
+not verified server/kernel teardown. HTTP errors preserve their original status
+and do not consume the error body. Failures never retry or publish stale data.
+These bounds do not establish a browser heap/CPU hard limit, live/compressed
+transport interoperability or resource limits for other mutation/import flows.
+
+Actual-source regressions cover oversize parsing, initial-auth hang and excessive
+depth. Native Node Web Streams controls check every inclusive budget and excess,
+fragmented UTF-8, malformed input, pending reads/cancellation, released locks,
+no fallback/retry and the maximum HTML-escaped mount envelope. Existing display,
+session and deadline tests remain. Whole pinned tagged Linux vet/units and a
+single-boot ARMv5 overlay pass with complete raw HTTP/HTTPS asset markers. QEMU
+checks embedded-asset integration, not JavaScript/stream execution. Real-browser,
+live transport, two-boot/full/hosted and product qualification stay separate.
+
 ## Development file-service configuration API
 
 `GET` and `PUT /api/v1/file-services/configuration` operate on the combined

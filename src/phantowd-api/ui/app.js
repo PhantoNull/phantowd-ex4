@@ -439,17 +439,100 @@ function clearMountObservation() {
   byId("mount-list").replaceChildren(empty);
 }
 
+const diagnosticBodyLimits = Object.freeze({
+  "/api/v1/auth/status": 16 * 1024,
+  "/api/v1/system": 16 * 1024,
+  "/api/v1/storage": 64 * 1024,
+  "/api/v1/arrays": 512 * 1024,
+  "/api/v1/mounts": 4 * 1024 * 1024,
+});
+
+function boundedDiagnosticStructure(text) {
+  let quoted = false, escaped = false, depth = 0, containers = 0;
+  for (const char of text) {
+    if (quoted) {
+      if (escaped) escaped = false;
+      else if (char === "\\") escaped = true;
+      else if (char === '"') quoted = false;
+    } else if (char === '"') quoted = true;
+    else if (char === "{" || char === "[") {
+      if (++depth > 16 || ++containers > 1024) return false;
+    } else if (char === "}" || char === "]") {
+      if (--depth < 0) return false;
+    }
+  }
+  return !quoted && depth === 0;
+}
+
+async function readDiagnosticJSON(response, limit, signal) {
+  const invalid = () => new Error("diagnostic body unavailable");
+  const canceled = () => Object.assign(new Error("diagnostic read canceled"), { name: "AbortError" });
+  let reader;
+  try { reader = response.body.getReader(); } catch { throw invalid(); }
+  let complete = false, rejectAbort;
+  const aborted = signal ? new Promise((resolve, reject) => { rejectAbort = reject; }) : null;
+  const abort = () => rejectAbort(canceled());
+  if (signal) signal.addEventListener("abort", abort, { once: true });
+  try {
+    if (signal?.aborted) throw canceled();
+    let bytes = new Uint8Array(Math.min(4096, limit)), total = 0, chunks = 0;
+    for (;;) {
+      if (signal?.aborted) throw canceled();
+      const pending = reader.read();
+      const part = signal ? await Promise.race([pending, aborted]) : await pending;
+      if (signal?.aborted) throw canceled();
+      if (part?.done === true) break;
+      if (part?.done !== false || ++chunks > 16384 || !ArrayBuffer.isView(part.value) ||
+          part.value.BYTES_PER_ELEMENT !== 1 || part.value.byteLength === 0 || part.value.byteLength > limit - total) throw invalid();
+      const needed = total + part.value.byteLength;
+      if (needed > bytes.length) {
+        let capacity = bytes.length;
+        while (capacity < needed) capacity = Math.min(limit, capacity * 2);
+        const grown = new Uint8Array(capacity);
+        grown.set(bytes.subarray(0, total));
+        bytes = grown;
+      }
+      bytes.set(part.value, total);
+      total = needed;
+    }
+    const text = new TextDecoder("utf-8", { fatal: true }).decode(bytes.subarray(0, total));
+    if (!boundedDiagnosticStructure(text)) throw invalid();
+    const value = JSON.parse(text);
+    if (signal?.aborted) throw canceled();
+    complete = true;
+    return value;
+  } catch {
+    throw signal?.aborted ? canceled() : invalid();
+  } finally {
+    if (signal) signal.removeEventListener("abort", abort);
+    if (!complete) {
+      // Cleanup must not await an underlying cancellation that never settles.
+      // This requests stream cancellation, not verified server/kernel teardown.
+      try { Promise.resolve(reader.cancel()).catch(() => {}); } catch { /* refusal remains */ }
+    }
+    try { reader.releaseLock(); } catch { throw invalid(); }
+  }
+}
+
 async function fetchJSON(path, { signal } = {}) {
+  const limit = diagnosticBodyLimits[path];
+  if (!Number.isSafeInteger(limit)) throw new Error("diagnostic path unavailable");
+  if (!signal) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 10000);
+    try { return await fetchJSON(path, { signal: controller.signal }); }
+    finally { clearTimeout(timeout); }
+  }
   const read = async () => {
     const response = await fetch(path, { method: "GET", headers: { Accept: "application/json" }, cache: "no-store", credentials: "same-origin", signal });
     if (!response.ok) {
+      try { Promise.resolve(response.body?.cancel()).catch(() => {}); } catch { /* keep original HTTP refusal */ }
       const failure = new Error("diagnostics unavailable");
       failure.status = response.status;
       throw failure;
     }
-    return response.json();
+    return readDiagnosticJSON(response, limit, signal);
   };
-  if (!signal) return read();
   // Race the entire read, including body decoding. Late completion stays
   // handled even if a transport/body promise does not honor cancellation.
   return new Promise((resolve, reject) => {
