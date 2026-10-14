@@ -3,6 +3,24 @@
 
 # Implementation status
 
+## Independent display validation for every snapshot domain
+
+System, RAID and mount sections now join storage in requiring their existing
+typed display envelopes before being marked current or changing DOM rows.
+Missing lists are not empty inventories; negative/inconsistent memory is not a
+current system sample. Valid partial/unsupported/unavailable RAID and zero
+available memory remain explicit. Rejected private details become a fixed
+invalid marker in the sanitized report, preserving invalid/unavailable states
+without retaining the rejected data or adding a request.
+
+Actual-source regressions, 55 new malformed cases, mixed-domain freshness,
+16-array/32-member/128-mount boundaries and direct no-partial-render refusals
+pass alongside previous storage/session/deadline tests. Whole pinned tagged
+Linux vet/units and single-boot ARMv5 asset integration pass; complete raw guest
+output includes HTTP/HTTPS asset markers. QEMU does not execute browser JS.
+Full metadata/byte/provenance/browser, persistence/full/hosted/hardware/product
+gates remain; no endpoint, authorization, NAS or new Docker storage changes.
+
 ## Storage dashboard: invalid is not empty
 
 The UI now validates the existing schema-2 storage display envelope and exact

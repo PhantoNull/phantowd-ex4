@@ -169,6 +169,7 @@ function jsonResponse(body, status = 200) {
 
 function systemFixture() {
   return {
+    schema_version: 1,
     target: "qemu-armv5",
     mode: "development",
     flashable: false,
@@ -184,6 +185,8 @@ function systemFixture() {
 
 function arraysFixture() {
   return {
+    schema_version: 1, read_only: true, block_devices_opened: false,
+    disk_content_read: false, mutations_performed: false,
     status: "available",
     array_count: 2,
     arrays: [{
@@ -2012,4 +2015,146 @@ async function testSanitizedSupportDownloadFailure() {
 
 await testSanitizedSupportExportLifecycle();
 await testSanitizedSupportDownloadFailure();
+
+async function testMissingArrayListIsNotAnEmptyCurrentInventory() {
+  let arrays = arraysFixture();
+  const h = await createHarness(async (path) => path === "/api/v1/auth/status" ? jsonResponse({ authenticated: true }) :
+    path === "/api/v1/arrays" ? jsonResponse(arrays) : snapshotResponse(path, "current-kernel"));
+  await settleUI();
+  assert.equal(h.elements["array-count"].textContent, "2 arrays");
+  arrays = { ...arraysFixture(), array_count: 0, arrays: null };
+  const before = h.requests.length;
+  await h.context.refreshSnapshot();
+  assert.equal(h.elements["array-count"].textContent, "RAID unavailable", "Missing RAID rows must not imply an empty kernel inventory");
+  assert.equal(h.elements["kernel-value"].textContent, "Linux current-kernel");
+  assert.equal(h.elements["mount-count"].textContent, "2 mounts");
+  assert.equal(h.requests.length - before, 4);
+}
+await testMissingArrayListIsNotAnEmptyCurrentInventory();
+
+async function testMissingMountListIsNotAnEmptyCurrentInventory() {
+  let mounts = mountsFixture();
+  const h = await createHarness(async (path) => path === "/api/v1/auth/status" ? jsonResponse({ authenticated: true }) :
+    path === "/api/v1/mounts" ? jsonResponse(mounts) : snapshotResponse(path, "current-kernel"));
+  await settleUI();
+  mounts = { ...mountsFixture(), mount_count: 0, mounts: null };
+  await h.context.refreshSnapshot();
+  assert.equal(h.elements["mount-count"].textContent, "Mounts unavailable", "Missing mount rows must not imply an empty namespace");
+  assert.equal(h.elements["kernel-value"].textContent, "Linux current-kernel");
+  assert.equal(h.elements["array-count"].textContent, "2 arrays");
+}
+await testMissingMountListIsNotAnEmptyCurrentInventory();
+
+async function testInvalidMemoryDoesNotBecomeAHealthySystemSample() {
+  let system = systemFixture();
+  const h = await createHarness(async (path) => path === "/api/v1/auth/status" ? jsonResponse({ authenticated: true }) :
+    path === "/api/v1/system" ? jsonResponse(system) : snapshotResponse(path));
+  await settleUI();
+  system = { ...systemFixture(), memory: { total_bytes: 256 * 1024 ** 2, available_bytes: -1 } };
+  await h.context.refreshSnapshot();
+  assert.equal(h.elements["kernel-value"].textContent, "Unavailable", "Invalid memory must not leave a current system sample");
+  assert.equal(h.elements["array-count"].textContent, "2 arrays");
+  assert.equal(h.elements["mount-count"].textContent, "2 mounts");
+  system = { ...systemFixture(), memory: { total_bytes: 256 * 1024 ** 2, available_bytes: 0 } };
+  await h.context.refreshSnapshot();
+  assert.equal(h.elements["memory-value"].textContent, "0 MiB available", "A valid exhausted-memory sample is not missing data");
+}
+await testInvalidMemoryDoesNotBecomeAHealthySystemSample();
+
+async function testInvalidPrivateArrayDetailCannotBecomeAnAvailableReport() {
+  const arrays = { ...arraysFixture(), array_count: 1, arrays: [{ ...arraysFixture().arrays[0], members: [null] }] };
+  const h = await createHarness(async (path) => path === "/api/v1/auth/status" ? jsonResponse({ authenticated: true }) :
+    path === "/api/v1/arrays" ? jsonResponse(arrays) : snapshotResponse(path));
+  await settleUI();
+  assert.equal(h.elements["array-count"].textContent, "RAID unavailable");
+  const report = JSON.parse(new Script("supportSnapshot.serialize(Date.now())").runInContext(h.context));
+  assert.equal(report.observations.arrays.status, "invalid", "Rejected private details must not yield an available projected report");
+}
+await testInvalidPrivateArrayDetailCannotBecomeAnAvailableReport();
+
+async function testRemainingSnapshotDomainsRefuseMalformedEnvelopes() {
+  const system = systemFixture(), arrays = arraysFixture(), mounts = mountsFixture();
+  const groups = [
+    { domain: "system", element: "kernel-value", empty: "Unavailable", values: [null, {}, [],
+      { ...system, schema_version: 2 }, { ...system, memory: null }, { ...system, memory: [] },
+      { ...system, memory: { ...system.memory, total_bytes: 0 } },
+      { ...system, memory: { ...system.memory, total_bytes: "256" } },
+      { ...system, memory: { ...system.memory, available_bytes: -1 } },
+      { ...system, memory: { ...system.memory, available_bytes: system.memory.total_bytes + 1 } },
+      { ...system, memory: { ...system.memory, available_bytes: "0" } },
+      { ...system, uptime_seconds: -1 }, { ...system, uptime_seconds: "1" },
+      { ...system, uptime_seconds: Number.MAX_SAFE_INTEGER + 1 },
+      { ...system, flashable: "false" }, { ...system, hardware_validated: null }] },
+    { domain: "arrays", element: "array-count", empty: "RAID unavailable", values: [null, {}, [],
+      { ...arrays, schema_version: 2 }, { ...arrays, arrays: null }, { ...arrays, arrays: "PRIVATE-SENTINEL" },
+      { ...arrays, read_only: false }, { ...arrays, block_devices_opened: true }, { ...arrays, disk_content_read: true },
+      { ...arrays, mutations_performed: true }, { ...arrays, status: "PRIVATE-SENTINEL" },
+      { ...arrays, array_count: "2" }, { ...arrays, array_count: 0 },
+      { ...arrays, arrays: [null], array_count: 1 }, { ...arrays, arrays: [[]], array_count: 1 },
+      { ...arrays, arrays: [{ ...arrays.arrays[0], health: "PRIVATE-SENTINEL" }], array_count: 1 },
+      { ...arrays, status: "unavailable" }, { ...arrays, status: "unsupported" },
+      { ...arrays, arrays: [{ ...arrays.arrays[0], members: [null] }], array_count: 1 },
+      { ...arrays, arrays: [{ ...arrays.arrays[0], members: [[]] }], array_count: 1 },
+      { ...arrays, arrays: [{ ...arrays.arrays[0], members: Array.from({ length: 33 }, () => ({ name: "PRIVATE-SENTINEL" })) }], array_count: 1 },
+      { ...arrays, arrays: Array.from({ length: 17 }, () => arrays.arrays[0]), array_count: 17 }] },
+    { domain: "mounts", element: "mount-count", empty: "Mounts unavailable", values: [null, {}, [],
+      { ...mounts, schema_version: 2 }, { ...mounts, scope: "PRIVATE-SENTINEL" }, { ...mounts, mounts: null },
+      { ...mounts, mounts: "PRIVATE-SENTINEL" }, { ...mounts, read_only: false },
+      { ...mounts, filesystem_contents_read: true }, { ...mounts, mount_operations_performed: true },
+      { ...mounts, mount_count: "2" }, { ...mounts, mount_count: 0 },
+      { ...mounts, mounts: [null], mount_count: 1 }, { ...mounts, mounts: [[]], mount_count: 1 },
+      { ...mounts, mounts: [{ ...mounts.mounts[0], read_only: "false" }], mount_count: 1 },
+      { ...mounts, mounts: [{ ...mounts.mounts[0], filesystem: null }], mount_count: 1 },
+      { ...mounts, mounts: Array.from({ length: 129 }, () => mounts.mounts[0]), mount_count: 129 }] },
+  ];
+  let payloads = { system, arrays, mounts }, round = 0;
+  const h = await createHarness(async (path) => {
+    if (path === "/api/v1/auth/status") return jsonResponse({ authenticated: true });
+    const domain = path.split("/").at(-1);
+    return domain === "storage" ? jsonResponse(storageFixture([blockFixture({ name: `fresh-${round}` })])) : jsonResponse(payloads[domain]);
+  });
+  await settleUI();
+  for (const group of groups) for (const value of group.values) {
+    round++;
+    payloads = { system, arrays, mounts, [group.domain]: value };
+    const before = h.requests.length;
+    await h.context.refreshSnapshot();
+    assert.equal(h.elements[group.element].textContent, group.empty, `${group.domain} invalid case ${round}`);
+    assert.equal(h.elements["device-count"].textContent, "1 device");
+    assert.equal(h.elements["device-list"].children[0].children[0].children[1].children[0].textContent, `fresh-${round}`, "Valid domains must not reuse old values");
+    if (group.domain !== "system") assert.equal(h.elements["kernel-value"].textContent, "Linux 6.18.54");
+    if (group.domain !== "arrays") assert.equal(h.elements["array-count"].textContent, "2 arrays");
+    if (group.domain !== "mounts") assert.equal(h.elements["mount-count"].textContent, "2 mounts");
+    assert.equal(h.requests.length - before, 4);
+    const report = JSON.parse(new Script("supportSnapshot.serialize(Date.now())").runInContext(h.context));
+    assert.equal(report.observations[group.domain].status, value === null ? "unavailable" : "invalid");
+    assert.ok(!JSON.stringify(report).includes("PRIVATE-SENTINEL"));
+  }
+  for (const status of ["available", "partial", "unsupported", "unavailable"]) {
+    payloads = { system, mounts, arrays: { ...arrays, status, array_count: 0, arrays: [] } };
+    await h.context.refreshSnapshot();
+    assert.equal(h.elements["array-count"].textContent, status === "available" ? "0 arrays" : `RAID ${status}`);
+    assert.equal(JSON.parse(new Script("supportSnapshot.serialize(Date.now())").runInContext(h.context)).observations.arrays.status, status);
+  }
+  payloads = { system, arrays: { ...arrays, array_count: 16, arrays: Array.from({ length: 16 }, () => ({ ...arrays.arrays[0], members: Array.from({ length: 32 }, () => ({ name: "fixture" })) })) },
+    mounts: { ...mounts, mount_count: 128, mounts: Array.from({ length: 128 }, () => mounts.mounts[0]) } };
+  await h.context.refreshSnapshot();
+  assert.equal(h.elements["array-list"].children.length, 16);
+  assert.equal(h.elements["mount-list"].children.length, 128);
+  for (const [render, id, count] of [["renderArrays", "array-list", 16], ["renderMounts", "mount-list", 128]]) {
+    assert.throws(() => h.context[render]({}), /observation is invalid/);
+    assert.equal(h.elements[id].children.length, count, "Guard must refuse before changing any prior DOM row");
+  }
+  const kernel = h.elements["kernel-value"].textContent;
+  assert.throws(() => h.context.renderSystem({}), /observation is invalid/);
+  assert.equal(h.elements["kernel-value"].textContent, kernel);
+  payloads = { system: {}, arrays: {}, mounts: {} };
+  await h.context.refreshSnapshot();
+  assert.equal(h.elements["device-count"].textContent, "1 device");
+  assert.equal(h.elements["kernel-value"].textContent, "Unavailable");
+  assert.equal(h.elements["array-count"].textContent, "RAID unavailable");
+  assert.equal(h.elements["mount-count"].textContent, "Mounts unavailable");
+  process.stdout.write(`Snapshot display-envelope controls passed: system=${groups[0].values.length} arrays=${groups[1].values.length} mounts=${groups[2].values.length} negative=${round} maxima=16/32/128.\n`);
+}
+await testRemainingSnapshotDomainsRefuseMalformedEnvelopes();
 process.stdout.write("Dashboard UI interaction smoke tests passed (DOM fixture; no visual browser coverage).\n");

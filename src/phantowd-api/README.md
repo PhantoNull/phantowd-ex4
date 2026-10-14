@@ -265,6 +265,30 @@ the unchanged base volume-probe; its terminal raw capture is truncated, not a
 complete guest transcript. No JavaScript executes in QEMU; real-browser/
 accessibility, two-boot/full-image, hosted and product qualification remain open.
 
+## M5.5e independent system, RAID and mount display guards
+
+HTTP success is not sufficient to declare these sections current. System
+observations require the existing schema and consistent finite memory/uptime
+values plus typed runtime flags. RAID requires its schema/read-only flags,
+known status/health labels, exact counts bounded at 16 arrays and at most 32
+typed members per supplied list. Mounts require the existing namespace/read-only
+envelope, exact count at most 128 and typed filesystem/read-only rows. Missing
+lists do not mean a complete empty inventory; invalid domains are cleared before
+rendering without discarding newly fetched valid domains.
+
+Valid partial/unsupported/unavailable RAID observations remain explicit. Zero
+available memory is valid, unlike negative/inconsistent values. A domain rejected
+for malformed private display details cannot publish an available sanitized
+report: only a fixed invalid marker reaches the existing projection. Null stays
+unavailable. No new requests, retries, jobs, endpoints or service activation.
+
+Actual-source regressions plus 55 additional malformed cases, mixed-domain
+freshness/report checks, valid states and maximum-row/direct-refusal boundaries
+pass. Pinned whole tagged Linux vet/units and a single-boot ARMv5 overlay pass;
+the complete guest capture includes HTTP/HTTPS asset markers. No JavaScript
+executes in QEMU. Full metadata/response-byte/provenance validation, browser/
+accessibility, persistence/full/hosted and product gates remain separate.
+
 ## Development file-service configuration API
 
 `GET` and `PUT /api/v1/file-services/configuration` operate on the combined

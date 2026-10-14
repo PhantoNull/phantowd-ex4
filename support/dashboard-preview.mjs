@@ -84,7 +84,8 @@ const arraysFixture = {
 const mountsFixture = {
   schema_version: 1,
   observed_at: new Date().toISOString(),
-  scope: "synthetic-preview",
+  // Current API shape, not real mount evidence; the system banner stays synthetic.
+  scope: "current-process-mount-namespace",
   read_only: true,
   filesystem_contents_read: false,
   mount_operations_performed: false,

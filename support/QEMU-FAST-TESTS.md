@@ -1,5 +1,23 @@
 # Fast API and file-service integration checks
 
+## Independent snapshot display guards
+
+The actual-source DOM suite now also refuses malformed system, RAID and mount
+envelopes before rendering. Existing producer limits apply: 16 arrays, 32 supplied
+members, 128 mounts. Missing lists, inconsistent counts/flags and invalid memory
+cannot imply complete empty/current data. Valid partial/unsupported/unavailable
+RAID and exhausted available memory stay explicit. Other domains are fetched
+fresh, not reused; no extra request, retry, job or probe. Rejected private details
+are replaced by a fixed invalid marker before the existing sanitized projection.
+
+Four additional RED/GREEN regressions and 55 negative inputs plus maxima,
+mixed-domain, report and direct pre-DOM refusal controls pass. Whole pinned tagged
+Linux vet/units and single-boot ARM overlay pass. Complete raw guest output
+contains both HTTP/HTTPS asset-verification markers; browser JS runs only in the
+host DOM fixture. No two-boot/full/clean/SBOM/hosted/browser/hardware/product
+qualification or new Docker image/volume is implied. Metadata and byte-bounded
+transport/provenance validation remain separate.
+
 ## Storage display-envelope frontend regression
 
 `node support/test-dashboard-ui.mjs` executes the actual embedded JavaScript in

@@ -34,7 +34,17 @@ function setConnectionState(label, state = "ready") {
   indicator.classList.toggle("is-unavailable", state === "unavailable");
 }
 
+function validSystemObservation(system) {
+  return system?.schema_version === 1 && system.memory !== null && typeof system.memory === "object" &&
+    !Array.isArray(system.memory) && Number.isSafeInteger(system.memory.total_bytes) && system.memory.total_bytes > 0 &&
+    Number.isSafeInteger(system.memory.available_bytes) && system.memory.available_bytes >= 0 &&
+    system.memory.available_bytes <= system.memory.total_bytes &&
+    Number.isFinite(system.uptime_seconds) && system.uptime_seconds >= 0 && system.uptime_seconds <= Number.MAX_SAFE_INTEGER &&
+    typeof system.flashable === "boolean" && typeof system.hardware_validated === "boolean";
+}
+
 function renderSystem(system) {
+  if (!validSystemObservation(system)) throw new Error("System observation is invalid.");
   const buildLabel = system.target === "qemu-armv5" ? "QEMU · EMULATED" :
     system.target === "ui-preview-fixture" ? "LOCAL FIXTURES" : "DEVELOPMENT PROFILE";
   setConnectionState(buildLabel);
@@ -167,10 +177,27 @@ function renderStorage(storage) {
   }
 }
 
+function validArrayObservation(inventory) {
+  if (inventory?.schema_version !== 1 || inventory.read_only !== true ||
+      inventory.block_devices_opened !== false || inventory.disk_content_read !== false ||
+      inventory.mutations_performed !== false ||
+      !["available", "partial", "unavailable", "unsupported"].includes(inventory.status) ||
+      !Array.isArray(inventory.arrays) || inventory.arrays.length > 16 || inventory.array_count !== inventory.arrays.length ||
+      (["unavailable", "unsupported"].includes(inventory.status) && inventory.arrays.length !== 0)) return false;
+  for (const item of inventory.arrays) {
+    if (item === null || typeof item !== "object" || Array.isArray(item) ||
+        !["healthy", "degraded", "syncing", "paused", "inactive", "unknown"].includes(item.health) ||
+        (Array.isArray(item.members) && (item.members.length > 32 ||
+          item.members.some((member) => member === null || typeof member !== "object" || Array.isArray(member))))) return false;
+  }
+  return true;
+}
+
 function renderArrays(inventory) {
+  if (!validArrayObservation(inventory)) throw new Error("RAID observation is invalid.");
   const list = byId("array-list");
   list.replaceChildren();
-  const arrays = Array.isArray(inventory.arrays) ? inventory.arrays : [];
+  const arrays = inventory.arrays;
   const status = inventory.status || "unavailable";
   const count = Number(inventory.array_count);
   const visibleCount = Number.isInteger(count) ? count : arrays.length;
@@ -224,10 +251,22 @@ function renderArrays(inventory) {
   }
 }
 
+function validMountObservation(inventory) {
+  if (inventory?.schema_version !== 1 || inventory.scope !== "current-process-mount-namespace" ||
+      inventory.read_only !== true || inventory.filesystem_contents_read !== false || inventory.mount_operations_performed !== false ||
+      !Array.isArray(inventory.mounts) || inventory.mounts.length > 128 || inventory.mount_count !== inventory.mounts.length) return false;
+  for (const item of inventory.mounts) {
+    if (item === null || typeof item !== "object" || Array.isArray(item) ||
+        typeof item.read_only !== "boolean" || typeof item.filesystem !== "string") return false;
+  }
+  return true;
+}
+
 function renderMounts(inventory) {
+  if (!validMountObservation(inventory)) throw new Error("Mount observation is invalid.");
   const list = byId("mount-list");
   list.replaceChildren();
-  const mounts = Array.isArray(inventory.mounts) ? inventory.mounts : [];
+  const mounts = inventory.mounts;
   const count = Number(inventory.mount_count);
   const visibleCount = Number.isInteger(count) ? count : mounts.length;
   setText("mount-count", `${visibleCount} ${visibleCount === 1 ? "mount" : "mounts"}`);
@@ -532,10 +571,10 @@ async function refreshSnapshot() {
       return;
     }
 
-    const systemCurrent = systemResult.status === "fulfilled";
+    const systemCurrent = systemResult.status === "fulfilled" && validSystemObservation(systemResult.value);
     const storageCurrent = storageResult.status === "fulfilled" && validStorageObservation(storageResult.value);
-    const arraysCurrent = arraysResult.status === "fulfilled";
-    const mountsCurrent = mountsResult.status === "fulfilled";
+    const arraysCurrent = arraysResult.status === "fulfilled" && validArrayObservation(arraysResult.value);
+    const mountsCurrent = mountsResult.status === "fulfilled" && validMountObservation(mountsResult.value);
     if (systemCurrent) renderSystem(systemResult.value);
     else clearSystemObservation();
     if (storageCurrent) renderStorage(storageResult.value);
@@ -544,7 +583,12 @@ async function refreshSnapshot() {
     else clearArrayObservation();
     if (mountsCurrent) renderMounts(mountsResult.value);
     else clearMountObservation();
-    prepareSupportSnapshot(results);
+    const displayCurrent = [systemCurrent, storageCurrent, arraysCurrent, mountsCurrent];
+    // Do not publish an available aggregate after the displayed domain was
+    // rejected. A fixed empty record yields the report's existing "invalid"
+    // state without retaining private rejected details; null stays unavailable.
+    prepareSupportSnapshot(results.map((result, index) => result.status === "fulfilled" && result.value != null && !displayCurrent[index] ?
+      { status: "fulfilled", value: {} } : result));
 
     if (systemCurrent && storageCurrent && arraysCurrent && mountsCurrent) {
       status.textContent = "Read-only system, storage, RAID, and mount observations updated.";

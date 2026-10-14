@@ -2256,6 +2256,19 @@ milestone before enabling its controls; M1/M6 for deployment.
   terminal raw guest capture is truncated and kept as such. QEMU serves/checks
   assets, not JavaScript execution. Complete metadata/response-byte validation,
   real-browser/accessibility, two-boot/full/hosted/product gates remain open.
+- **M5.5e — Remaining snapshot display guards (partial; host/ARM asset-tested).**
+  System memory/uptime/runtime flags, RAID status/health/counts and mount namespace/
+  flags/counts now use existing schemas before rendering or declaring freshness.
+  Bounds match producers: 16 arrays, 32 members, 128 mounts. Invalid sections
+  cannot become empty inventories or clear freshly read independent domains.
+  Valid partial/unsupported/unavailable RAID and zero available memory remain
+  distinguishable. Rejected private display details yield a fixed invalid report
+  marker, not an available aggregate. Four existing requests/session/deadline
+  behavior remain unchanged. Actual-source RED/GREEN, 55 additional malformed
+  cases, mixed-domain/report/maxima controls and whole pinned tagged Linux units/
+  vet pass. Single-boot ARM overlay passes with complete raw HTTP/HTTPS asset
+  markers; no browser JS execution, full metadata/byte/provenance, two-boot/full/
+  hosted/hardware/product qualification is implied.
 - **M5.6 — Audit and diagnostics.** Record actor, operation ID, revisions and
   redacted outcome; bound retention. Export a sanitized support bundle that
   excludes credentials, private keys, passdb hashes and user file contents.
