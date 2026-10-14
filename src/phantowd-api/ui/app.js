@@ -387,7 +387,7 @@ async function observeGPTMetadata() {
       const failure = new Error("Session expired."); failure.status = 401; throw failure;
     }
     if (!sessionResponse.ok) throw new Error("Could not verify the administrator session.");
-    const session = await sessionResponse.json();
+    const session = await readAdministrativeJSON(sessionResponse, "/api/v1/auth/session", controller.signal);
     if (typeof session.csrf_token !== "string" || session.csrf_token.length !== 43) throw new Error("The session token is unavailable.");
     if (generation !== gptObservationGeneration) return;
     const response = await fetch("/api/v1/storage/gpt-observation", {
@@ -402,7 +402,7 @@ async function observeGPTMetadata() {
             "GPT observation failed. No partial result is shown.";
       const failure = new Error(message); failure.status = response.status; throw failure;
     }
-    renderGPTObservation(await response.json());
+    renderGPTObservation(await readAdministrativeJSON(response, "/api/v1/storage/gpt-observation", controller.signal));
   } catch (failure) {
     if (generation !== gptObservationGeneration) return;
     if (failure?.status === 401) {
@@ -447,7 +447,7 @@ const diagnosticBodyLimits = Object.freeze({
   "/api/v1/mounts": 4 * 1024 * 1024,
 });
 
-function boundedDiagnosticStructure(text) {
+function boundedDiagnosticStructure(text, maximumContainers = 1024) {
   let quoted = false, escaped = false, depth = 0, containers = 0;
   for (const char of text) {
     if (quoted) {
@@ -456,7 +456,7 @@ function boundedDiagnosticStructure(text) {
       else if (char === '"') quoted = false;
     } else if (char === '"') quoted = true;
     else if (char === "{" || char === "[") {
-      if (++depth > 16 || ++containers > 1024) return false;
+      if (++depth > 16 || ++containers > maximumContainers) return false;
     } else if (char === "}" || char === "]") {
       if (--depth < 0) return false;
     }
@@ -464,7 +464,7 @@ function boundedDiagnosticStructure(text) {
   return !quoted && depth === 0;
 }
 
-async function readDiagnosticJSON(response, limit, signal) {
+async function readDiagnosticJSON(response, limit, signal, maximumContainers = 1024) {
   const invalid = () => new Error("diagnostic body unavailable");
   const canceled = () => Object.assign(new Error("diagnostic read canceled"), { name: "AbortError" });
   let reader;
@@ -496,7 +496,7 @@ async function readDiagnosticJSON(response, limit, signal) {
       total = needed;
     }
     const text = new TextDecoder("utf-8", { fatal: true }).decode(bytes.subarray(0, total));
-    if (!boundedDiagnosticStructure(text)) throw invalid();
+    if (!boundedDiagnosticStructure(text, maximumContainers)) throw invalid();
     const value = JSON.parse(text);
     if (signal?.aborted) throw canceled();
     complete = true;
@@ -511,6 +511,30 @@ async function readDiagnosticJSON(response, limit, signal) {
       try { Promise.resolve(reader.cancel()).catch(() => {}); } catch { /* refusal remains */ }
     }
     try { reader.releaseLock(); } catch { throw invalid(); }
+  }
+}
+
+// Fixed existing administrative routes only. Large policies have a separate
+// structural allowance; diagnostic limits and all caller deadlines stay fixed.
+const administrativeBodyLimits = Object.freeze({
+  "/api/v1/auth/session": Object.freeze([16 * 1024, 1024]),
+  "/api/v1/auth/password": Object.freeze([16 * 1024, 1024]),
+  "/api/v1/storage/gpt-observation": Object.freeze([64 * 1024, 1024]),
+  "/api/v1/shares/configuration": Object.freeze([512 * 1024, 32768]),
+  "/api/v1/file-services/configuration": Object.freeze([1024 * 1024, 65536]),
+  "/api/v1/file-services/backup": Object.freeze([1024 * 1024, 65536]),
+  "/api/v1/file-services/preview": Object.freeze([4 * 1024 * 1024, 65536]),
+  "/api/v1/file-services/restore-preview": Object.freeze([4 * 1024 * 1024, 65536]),
+});
+
+async function readAdministrativeJSON(response, path, signal, method = "GET") {
+  const profile = Object.hasOwn(administrativeBodyLimits, path) ? administrativeBodyLimits[path] : null;
+  if (!profile) throw new Error("administrative path unavailable");
+  const shortReply = response.ok === false || (path === "/api/v1/file-services/configuration" && method === "PUT");
+  try { return await readDiagnosticJSON(response, shortReply ? 16 * 1024 : profile[0], signal, shortReply ? 1024 : profile[1]); }
+  catch (failure) {
+    if (failure?.name === "AbortError") throw failure;
+    throw new Error("administrative body unavailable");
   }
 }
 
@@ -883,7 +907,7 @@ async function signOut(all = false) {
   try {
     const sessionResponse = await fetch("/api/v1/auth/session", { credentials: "same-origin", cache: "no-store", signal: controller.signal });
     if (!sessionResponse.ok) throw new Error("Session unavailable");
-    const session = await sessionResponse.json();
+    const session = await readAdministrativeJSON(sessionResponse, "/api/v1/auth/session", controller.signal);
     if (typeof session.csrf_token !== "string" || session.csrf_token.length !== 43) throw new Error("Session unavailable");
     const response = await fetch(all ? "/api/v1/auth/logout-all" : "/api/v1/auth/logout", {
       method: "POST",
@@ -936,14 +960,14 @@ byId("password-form").addEventListener("submit", async (event) => {
   try {
     const sessionResponse = await fetch("/api/v1/auth/session", { credentials: "same-origin", cache: "no-store", signal: controller.signal });
     if (!sessionResponse.ok) throw new Error("Session unavailable");
-    const session = await sessionResponse.json();
+    const session = await readAdministrativeJSON(sessionResponse, "/api/v1/auth/session", controller.signal);
     if (typeof session.csrf_token !== "string" || session.csrf_token.length !== 43) throw new Error("Session unavailable");
     const response = await fetch("/api/v1/auth/password", {
       method: "POST", headers: { Accept: "application/json", "Content-Type": "application/json", "X-PhantoWD-CSRF": session.csrf_token },
       credentials: "same-origin", cache: "no-store", signal: controller.signal,
       body: JSON.stringify({ current_password: currentPassword, new_password: newPassword }),
     });
-    const result = await response.json();
+    const result = await readAdministrativeJSON(response, "/api/v1/auth/password", controller.signal);
     if (!response.ok) {
       const message = response.status === 401 && result.error === "current_password_invalid" ? "Current password is not correct. No password was changed." :
         response.status === 422 && result.error === "new_password_invalid" ? "The new password does not meet the requirements. No password was changed." :
@@ -1071,7 +1095,7 @@ async function submitPolicyProposal(event) {
       const failure = new Error("Session expired. Sign in again."); failure.status = 401; throw failure;
     }
     if (!sessionResponse.ok) throw new Error("Cannot verify the session. Retry after signing in.");
-    const session = await sessionResponse.json();
+    const session = await readAdministrativeJSON(sessionResponse, "/api/v1/auth/session", controller.signal);
     if (typeof session.csrf_token !== "string" || !session.csrf_token) throw new Error("The session token is unavailable.");
     if (generation !== policyGeneration) return;
     const response = await fetch("/api/v1/file-services/preview", {
@@ -1086,7 +1110,7 @@ async function submitPolicyProposal(event) {
             response.status === 503 ? "Preview service busy. Retry shortly." : "The proposal could not be validated. Nothing was applied.";
       const failure = new Error(message); failure.status = response.status; throw failure;
     }
-    const preview = await response.json();
+    const preview = await readAdministrativeJSON(response, "/api/v1/file-services/preview", controller.signal);
     if (generation !== policyGeneration) return;
     renderPolicyPreview(preview);
   } catch (failure) {
@@ -1212,14 +1236,14 @@ async function loadSavedPolicy() {
       return;
     }
     if (!response.ok) {
-      const body = await response.json().catch(() => ({}));
+      const body = await readAdministrativeJSON(response, "/api/v1/shares/configuration", controller.signal).catch(() => ({}));
       if (generation !== savedGeneration) return;
       setText("saved-status", response.status === 503 && body.error === "share_configuration_not_configured" ?
         "Configuration storage is not connected in this build. No saved policy is available through the API." :
         "Saved configuration is unavailable or busy. No previous values are shown; retry later. No service was changed.");
       return;
     }
-    const body = await response.json();
+    const body = await readAdministrativeJSON(response, "/api/v1/shares/configuration", controller.signal);
     if (generation !== savedGeneration) return;
     renderSavedPolicy(body);
   } catch (failure) {

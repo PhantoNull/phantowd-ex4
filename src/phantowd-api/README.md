@@ -318,6 +318,34 @@ and do not consume the error body. Failures never retry or publish stale data.
 These bounds do not establish a browser heap/CPU hard limit, live/compressed
 transport interoperability or resource limits for other mutation/import flows.
 
+### Administrative response consumption
+
+All currently parsed administrative JSON replies now reuse the same strict
+native-stream reader, without changing endpoints, request bodies or privileges.
+Inclusive caps: session/password16KiB, GPT64KiB, share-only512KiB, combined
+configuration/backup1MiB and preview/restore-preview4MiB. Configuration PUT
+confirmation is16KiB, not the larger GET envelope; parsed error replies also
+use16KiB. Diagnostic depth16/container1024 stays unchanged; policy views allow
+32768 (share-only) or65536 (combined/preview) containers within their byte cap.
+These fixed higher bounds cover formal policy cardinalities and avoid treating
+legitimate large policies as invalid. The pre-scan is still not full JSON/schema
+or duplicate-key validation. Own-property route lookup refuses inherited names.
+
+Existing caller deadlines, generation retirement, HTTP status, CSRF and revision
+checks remain. An oversized/unreadable/aborted save receipt retains the attempted
+document and unknown outcome until explicit GET reconciliation, without retry.
+Credential-change uncertainty still hides the dashboard and asks for fresh
+sign-in verification. Cancel requests and reader unlock do not prove server stop
+or absence of committed effects. Actual-source DOM/native-stream and host tests
+do not qualify live browser/compressed transport, heap/CPU, ARM JavaScript or
+production service activation.
+
+The single-boot ARMv5 overlay now verifies embedded-asset delivery over guest
+HTTP and HTTPS, with the baseline/probe unchanged. It does not execute browser
+JavaScript, rerun two-boot state or qualify the complete image/installer.
+
+### Earlier diagnostic-only verification
+
 Actual-source regressions cover oversize parsing, initial-auth hang and excessive
 depth. Native Node Web Streams controls check every inclusive budget and excess,
 fragmented UTF-8, malformed input, pending reads/cancellation, released locks,

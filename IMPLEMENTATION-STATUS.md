@@ -26,6 +26,24 @@ cause remain unqualified; see the [diagnostic contract](support/QEMU-FAST-TESTS.
 
 ## Diagnostic GET responses: byte and structural budgets
 
+The local M5.5g increment also bounds every currently parsed administrative
+JSON response through the same native-stream reader. Session/password/save
+receipts use16KiB; GPT64KiB; share policy512KiB; combined policy/backup1MiB;
+preview/restore-preview4MiB. Method-bound PUT confirmations stay short even
+though GET on the same route can carry a large policy. Policy-specific bounded
+container allowances preserve high-cardinality documents; diagnostic bounds
+are unchanged. No `Response.json()` fallback remains in the dashboard assets.
+
+Actual-source UI regressions refuse oversize frames before dispatch/Save,
+preserve unconfirmed password/save outcomes and require explicit reconciliation,
+reject inherited profile names before acquiring a reader, and retain cancellation/
+lock/deadline behavior. A large component-byte-bounded64-user/8-share/32-export
+fixture still loads. Windows and pinned Linux API checks and single-boot ARM
+HTTP/HTTPS asset delivery pass. These are not browser heap/CPU/transport or
+complete-image/product qualification; this increment is separate from the
+audited/published candidate above. No endpoint/privilege/timer/backend/device
+or mutation-admission changes are made.
+
 The existing five diagnostic/auth-status GET paths now enforce decoded-body
 budgets before strict UTF-8/JSON parsing, with bounded chunk count, JSON nesting
 and container count. Buffer growth is geometric; no unbounded JSON fallback or

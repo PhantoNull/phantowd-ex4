@@ -434,8 +434,11 @@ async function serviceOperation(action) {
       failure.status = response.status; throw failure;
     }
     let body;
-    try { body = await response.json(); }
-    catch { throw new Error("Configuration service returned an unreadable response."); }
+    try { body = await readAdministrativeJSON(response, path, controller.signal, options.method); }
+    catch (failure) {
+      if (failure?.name === "AbortError") throw failure;
+      throw new Error("Configuration service returned an unreadable response.");
+    }
     if (!current()) throw new Error("superseded");
     return body;
   };

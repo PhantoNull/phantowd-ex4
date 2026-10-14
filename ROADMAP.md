@@ -2304,6 +2304,20 @@ milestone before enabling its controls; M1/M6 for deployment.
   with complete raw HTTP/HTTPS asset markers. This is not full JSON/schema/provenance, browser heap/CPU hard
   limits, live/compressed transport, all mutation/import response bounds or
   verified server/kernel stop. See the component contract before extending it.
+- **M5.5g — Administrative response budgets (partial; local host/ARM asset verification).**
+  Reuse the strict stream reader for all parsed existing administrative replies.
+  Session/password/PUT confirmations16KiB; GPT64KiB; share-only512KiB;
+  combined-policy/backup1MiB; preview/restore4MiB. Retain diagnostic16-depth/
+  1024-container budgets separately from bounded higher-cardinality policies.
+  Fixed own-property route profiles reject unknown/inherited names; no JSON
+  fallback. Native-stream cleanup does not establish server settlement. Preserve
+  existing deadlines/generations/CSRF/revisions and attempted-save retention;
+  unreadable, oversized or canceled replies never confirm credentials or saves
+  or trigger retry. Public-interface UI RED/GREEN, inclusive/excess/cancel/hung-
+  cleanup/unknown-route and large-policy controls cover the consumer contract.
+  Single-boot ARM HTTP/HTTPS asset delivery passes; real-browser/transport/heap/
+  CPU, two-boot/current complete-image and product gates
+  remain separate; no endpoint, privileged backend or physical-device activation.
 - **M5.6 — Audit and diagnostics.** Record actor, operation ID, revisions and
   redacted outcome; bound retention. Export a sanitized support bundle that
   excludes credentials, private keys, passdb hashes and user file contents.

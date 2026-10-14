@@ -52,6 +52,20 @@ raw HTTP/HTTPS asset markers. The base/probe remain unchanged, no two-boot/full
 image or new Docker storage is involved. QEMU does not execute browser JS or
 qualify the live transport; stream behavior is tested in native Node fixtures.
 
+## Administrative response controls
+
+The M5.5g administrative consumer increment is independently tested by the same
+actual-source DOM/native Web Streams suite. Eight fixed parsed routes have
+inclusive byte caps (16KiB..4MiB), method-bound short PUT acknowledgement and
+bounded higher policy container counts; no unbounded JSON fallback remains.
+Oversize session/preview cannot dispatch/admit changes, and uncertain password/
+save replies preserve existing no-retry/reconcile behavior. Cancel/deadline/
+unknown-profile and large valid policy tests retain diagnostic limits. Host
+verification and single-boot ARM HTTP/HTTPS asset delivery pass; this is not
+browser execution/heap/transport, two-boot/full image or product/device
+qualification. Keep the currently published PR head's
+own hosted checks separate; do not repush it merely to run these local tests.
+
 ## Independent snapshot display guards
 
 The actual-source DOM suite now also refuses malformed system, RAID and mount
