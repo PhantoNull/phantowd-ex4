@@ -16,6 +16,7 @@ import (
 type Store = revisionstore.Store[naspolicy.Config]
 type Owner = revisionstore.OwnedStore[naspolicy.Config]
 type Lease = revisionstore.PolicyLease[naspolicy.Config]
+type BootstrapAuthority = revisionstore.BootstrapAuthority[naspolicy.Config]
 
 var (
 	ErrNotInitialized = revisionstore.ErrNotInitialized
@@ -45,6 +46,12 @@ func OpenOwner(directory string) (*Owner, error) {
 // to open/activate an Owner later. No HTTP or product startup is wired here.
 func ObserveBootstrap(ctx context.Context, directory string) (revisionstore.BootstrapObservation, error) {
 	return revisionstore.ObserveBootstrapWithCodec(ctx, directory, policyCodec())
+}
+
+// OpenBootstrapAuthority retains the fixed NAS read-only directory/codec/watch
+// lifetime. It does not grant Owner admission, leases, mutation or recovery.
+func OpenBootstrapAuthority(ctx context.Context, directory string) (*BootstrapAuthority, error) {
+	return revisionstore.OpenBootstrapAuthorityWithCodec(ctx, directory, policyCodec())
 }
 
 func policyCodec() revisionstore.Codec[naspolicy.Config] {

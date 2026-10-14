@@ -7,6 +7,13 @@ source=${1:?repository required}
 stage='PHANTOWD_REVISIONSTORE_MEDIA_PREPARED synthetic_ext4=true snapshot=true profiles=2 stages=7 scope=qemu-only'
 done='PHANTOWD_REVISIONSTORE_MEDIA_DONE sigkill=14 readonly=true enospc=true bootstrap=true normal_unmount=true scope=qemu-only'
 proof="$stage"
+for name in TestBootstrapAuthorityRetainsOneLockAcrossFreshReadOnlyObservations \
+    TestBootstrapAuthorityWritableLifetimeDriftKeepsReviewAndLockWithUnchangedMetadata \
+    TestBootstrapAuthorityCanceledReadRetainsReviewButPreworkCancelHasNoEffects \
+    TestBootstrapAuthorityRejectsCopiesSerializationAndInvalidConstruction \
+    TestBootstrapAuthorityUncertainCloseRetainsUnattemptedRootWithoutRetry; do
+    proof+=$'\n'"--- PASS: $name (0.01s)"
+done
 for name in TestBootstrapEmptyDirectoryObservationDoesNotInitializeOrChangeMetadata \
     TestBootstrapPendingEvidenceIsNeverPromotedOrDiscarded \
     TestBootstrapPendingEvidenceIsNeverPromotedOrDiscarded/false \

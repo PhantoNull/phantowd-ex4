@@ -25,6 +25,15 @@ BEGIN {
     expected[++required] = "TestBootstrapCancellationDuringDecodeReturnsNoObservation"
     expected[++required] = "TestBootstrapRefusesInvalidCodecDirectoryAndMissingRootWithoutInitialization"
     split("partial-write full-write file-sync file-close before-rename after-rename directory-sync", points, " ")
+    # bootstrap_authority_linux_test.go sorts before bootstrap_linux_test.go.
+    # Prepend its independently required receipts to the existing collector list.
+    for (i = required; i >= 1; i--) { expected[i+5] = expected[i] }
+    expected[1] = "TestBootstrapAuthorityRetainsOneLockAcrossFreshReadOnlyObservations"
+    expected[2] = "TestBootstrapAuthorityWritableLifetimeDriftKeepsReviewAndLockWithUnchangedMetadata"
+    expected[3] = "TestBootstrapAuthorityCanceledReadRetainsReviewButPreworkCancelHasNoEffects"
+    expected[4] = "TestBootstrapAuthorityRejectsCopiesSerializationAndInvalidConstruction"
+    expected[5] = "TestBootstrapAuthorityUncertainCloseRetainsUnattemptedRootWithoutRetry"
+    required += 5
     split("TestBundleSIGKILLRecovery TestNASBundleSIGKILLRecovery", profiles, " ")
     for (p = 1; p <= 2; p++) {
         expected[++required] = profiles[p]

@@ -93,6 +93,14 @@ func ObserveBootstrapWithCodec[T any](ctx context.Context, directory string, cod
 		n, err := unix.Read(watch, buffer[:])
 		return n == -1 && errors.Is(err, unix.EAGAIN)
 	}
+	return observeBootstrapHeld(ctx, root, codec, before, quiet)
+}
+
+// Private shared collector. Caller retains the exclusive original directory
+// lock/watch and supplies a read cursor on that same directory. No ownership
+// transfer, new backend selector or admission token is exposed.
+func observeBootstrapHeld[T any](ctx context.Context, root *os.File, codec Codec[T], before unix.Stat_t, quiet func() bool) (BootstrapObservation, error) {
+	fd := int(root.Fd())
 	if !quiet() {
 		return BootstrapObservation{}, ErrReview
 	}

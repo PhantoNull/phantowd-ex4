@@ -7,6 +7,7 @@ package revisionstore_test
 
 import (
 	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
@@ -37,5 +38,19 @@ func TestNASBootstrapAdapterNeverImportsLegacyState(t *testing.T) {
 	}
 	if names, err := os.ReadDir(dir); err != nil || len(names) != 1 {
 		t.Fatal("observer created current state", names, err)
+	}
+	a, err := naspolicystore.OpenBootstrapAuthority(context.Background(), dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer a.Close()
+	if observed, err := a.Observe(context.Background()); err != nil || observed.Kind != revisionstore.BootstrapUnrecognizedEntries || observed.Revision != 0 {
+		t.Fatal("fixed authority imported legacy evidence", observed, err)
+	}
+	if other, err := naspolicystore.Open(dir); !errors.Is(err, naspolicystore.ErrBusy) {
+		if other != nil {
+			other.Close()
+		}
+		t.Fatal("fixed authority did not retain lock", err)
 	}
 }

@@ -3,6 +3,36 @@
 
 # Implementation status
 
+## Retained policy bootstrap authority — read-only lifetime only
+
+`OpenBootstrapAuthorityWithCodec` and fixed NAS adapter retain the original
+directory/flock, trusted codec and inotify watch until explicit verified Close.
+Serialized Observe uses a fresh confined directory cursor, the existing shared
+collector and original metadata/watch checks; it never reopens a parent path
+or substitutes the authority's roots/backend. Other writers remain locked out
+between reads. Copied/forged/serialized handles cannot read or dispose it.
+
+Drift/read uncertainty latches instance review, including write-capable open/
+close with unchanged file metadata/content and in-flight cancellation. Restored
+inputs cannot resume; prework cancellation leaves the retained lifetime intact.
+Explicit Close releases only this observer, with no consumers/leases. Close
+errors are terminal and retain unattempted originals without retry; controlled
+premature-watch-descriptor closure verifies the root/lock remains retained.
+This does not qualify real kernel EIO or media cleanup failure.
+
+Whole pinned tagged API vet/units, both store race count3, actual ARMv5 ext4
+and Windows API/UI/cross checks pass on exact sources. The guest requires all52
+ordered PASS receipts, strict2+133 controls, normal unmount and unchanged base;
+no prior observer/interruption/media assertion or timer is removed. No new
+Docker image/volume/default CI boot/privilege or NAS operation.
+
+No init/sync/publish, lease, Owner handoff/admission, journal/recovery/HTTP or
+product startup is added. A valid current value is not durable confirmation;
+empty directory is not NAS pristine. Review is not durable across restart and
+closing/reopening must not become automatic recovery. Next: state-bundle and
+durable intent/receipt/reconciliation contracts before admission; physical
+placement/hardware/full/hosted/reproduction/installer gates remain.
+
 ## Policy bootstrap observation — read-only values, not admission
 
 `revisionstore.ObserveBootstrapWithCodec` and fixed-name/schema

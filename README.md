@@ -55,6 +55,8 @@ power-loss recovery or qualification of the EX4's physical state medium.
 A separate internal read-only observer distinguishes current policy and
 incomplete evidence without initialization, recovery or service admission.
 Its empty-directory result is not proof that the NAS is pristine.
+An internal read-only lifetime also retains its lock and original references
+between observations, refusing further reads after drift or uncertainty.
 
 A separate ARMv5 fixture now verifies a retained, isolated real SMB3 client
 opening and closing synthetic data without changes or leaked descriptors.

@@ -11,6 +11,27 @@ formats, promotes pending state or treats corruption as empty configuration.
 
 ## Read-only policy-directory bootstrap observation
 
+`OpenBootstrapAuthorityWithCodec` optionally retains one directory/flock/
+trusted-codec/watch lifetime. Fixed `naspolicystore.OpenBootstrapAuthority`
+chooses NAS roles. Observe is serialized and uses fresh confined cursors on
+the original directory plus the same collector below; it does not reacquire
+a path or accept a per-call backend. Other writers are excluded between reads.
+Drift/read uncertainty, including unchanged-data writable open/close and
+in-flight cancellation, latches review. Prework cancel has no effects; restored
+inputs cannot resume. Copies/serialization cannot transfer read/disposal rights.
+
+No leases/consumers are issued. Explicit Close disposes only this observer;
+uncertain close is terminal, preserving unattempted roots without retry. The
+premature-watch-descriptor test characterizes this refusal, not actual media
+EIO. Review remains instance-local, not a durable recovery record. No init/
+write/admission/Owner handoff/journal/HTTP/startup is implemented. A future
+receipt/state-bundle contract must govern boot and operator recovery.
+
+Whole tagged pinned API vet/unit/store race3, Windows and actual ARM52 ordered
+receipts pass with strict2+133, normal unmount/base hash and unchanged limits.
+No new default boot/Docker storage/NAS/privilege or removed older assertion.
+The standalone observer remains its separate temporary-lifetime interface.
+
 `ObserveBootstrapWithCodec` returns only kind/revision; the fixed
 `naspolicystore.ObserveBootstrap` adapter selects NAS names/schema. Codec code
 is trusted in-process, not HTTP-supplied. No syncing constructor, initialization,

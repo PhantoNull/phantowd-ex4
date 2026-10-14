@@ -2,6 +2,18 @@
 
 ## Policy-store interruption and media faults — optional ARMv5 ext4 guest
 
+Retained read-only bootstrap lifetime is now also mandatory: SAME original
+directory/codec/flock/watch, fresh confined cursor per serialized read, sticky
+review on drift/cancel/uncertainty and copy/serialization refusal. Writer lock
+persists between reads and through review. Controlled premature-watch-close
+refuses disposal and preserves unattempted root/lock; it is not kernel EIO.
+No mutation/lease/Owner admission/handoff/journal/recovery/HTTP/startup follows.
+The current exact guest requires52 ordered receipts and strict2+133 controls;
+whole pinned tagged API vet/unit/store race3, Windows and ARM pass. Normal
+unmount/base hash, all previous cases/resources/timers and no-default-CI/no-new-
+Docker-storage/NAS boundaries remain. Earlier47/18 checkpoints below are
+historical scopes, not the current required receipt count.
+
 The same lane now also executes the protected read-only bootstrap observer
 and fixed NAS adapter, requiring47 ordered PASS receipts: ten bootstrap test
 groups/subcases, adapter and all previous SIGKILL/media campaigns. Five

@@ -684,6 +684,19 @@ and recovery do not. **Depends on:** M0 for tests; M7 for physical placement.
   classification/admission, complete state-bundle/schema/provisioning/durable
   intent-review semantics, then operator-authorized reconciliation. Never use
   this value as permission or reopen an Owner automatically to erase review.
+  **M1.2b — retained read-only policy authority (host/ARM tested):**
+  hold the SAME directory/flock/codec/watch across serialized fresh observations,
+  reuse the existing collector with confined read cursors and original metadata
+  fences. Other writers cannot enter between reads. Drift/uncertainty keeps
+  instance review after restoration; copied/serialized handles refuse. Explicit
+  observer-only Close has no consumers/leases; close errors retain unattempted
+  roots without retry. Controlled descriptor-close faults are not real EIO.
+  Whole pinned API vet/unit/store race3, Windows and actual ARM52 receipts/
+  strict2+133/unmount/base hash pass at unchanged bounds. No mutation/handoff/
+  Owner admission/HTTP/startup. **M1.3b next:** specify durable intent/receipt
+  records and recovery identity; interrupted publication without confirmed
+  readback remains review. Keep state-bundle/provisioning and qualified physical
+  placement separate. A volatile watch/value is never durable boot permission.
 - **M1.3 — Recover interrupted operations.** Extend current journal semantics
   to an explicit review/reconciliation workflow. An intent plus missing reply
   does not imply failure or success. Preserve orphaned publications; compare
