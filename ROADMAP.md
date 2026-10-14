@@ -454,6 +454,15 @@ button to an unqualified backend simply because the screen exists.
   pull/build an image or create a volume. Preserve isolation, exact-source
   hashes and clean-build/reproducibility lanes. Cache hits are an optimization,
   never qualification evidence.
+  **Current source-loss gate:** the complete candidate fails final file-source
+  quarantine/supervision despite nine accepted campaigns; no default union,
+  SMART, audit or integration waiver. Bounded failure-only cumulative step costs
+  now distinguish held-client setup, observations, first scan and verified
+  cover from final settlement. Host vet/unit/race and scoped ARM healthy checks
+  pass; failing ARM emission/root cause remain open. Preserve all action limits,
+  exact proof and1024-byte output cap. Use this minimized feedback loop before
+  another full/hosted run; an isolated pass does not resolve intermittency.
+  [Contract](support/QEMU-FAST-TESTS.md#failure-only-source-fault-checkpoint-costs).
   The local Linux API runner now has an explicit non-root/no-capabilities/no-new-
   privileges profile, four CPUs/2 GiB/256 PIDs/1 GiB disposable tmpfs and a 180s
   Linux-suite timeout with 10s termination grace. It bypasses ownership repair,
@@ -593,6 +602,13 @@ button to an unqualified backend simply because the screen exists.
 - **M0.4 — Maintain release inputs.** Dependency update changes include source
   signatures/hashes, ARMv5 compatibility, package configuration, vulnerability
   review, license material and regenerated SBOM. Test the selected package set.
+  **Samba follow-up:** current target4.22.11 must be re-evaluated against the
+  newer stable line before release. Qualify the candidate's authenticated
+  sources, six-patch disposition, ARMv5 footprint, private module/reader ABI,
+  disabled-first credentials, exact status observations, ACL/streams/charset,
+  session/source-loss proofs and migration. Do not reuse4.22 private layouts or
+  enable experimental persistent handles as an upgrade shortcut.
+  [Dated upstream findings and acceptance packet](support/DEPENDENCY-REVIEW.md#samba-update-follow-up-2026-10-14).
   The [dated dependency review](support/DEPENDENCY-REVIEW.md) now identifies
   Linux 6.18.55, host OpenSSL 3.5.9 and Go 1.26.8 as separate update packets.
   Go 1.26.8 has authenticated SDK/source/license and focused host proof on

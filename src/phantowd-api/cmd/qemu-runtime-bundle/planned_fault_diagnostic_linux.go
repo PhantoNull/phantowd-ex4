@@ -79,6 +79,12 @@ func plannedFaultSubprocessDiagnosticQEMU(ctxErr, runErr error, captured, proof 
 	seen := make(map[string]bool)
 	for _, line := range strings.Split(captured, "\n") {
 		fields := strings.Split(line, " ")
+		if validPlannedSourceCostDiagnosticQEMU(fields) && !seen[line] {
+			seen[line] = true
+			output.WriteString(line)
+			output.WriteByte('\n')
+			continue
+		}
 		if validPlannedExitDiagnosticQEMU(fields) && !seen[line] {
 			seen[line] = true
 			output.WriteString(line)

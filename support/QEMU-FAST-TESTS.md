@@ -1,5 +1,29 @@
 # Fast API and file-service integration checks
 
+## Failure-only source-fault checkpoint costs
+
+`support/test-samba-root.ps1 -Campaign file-source -DiagnosticLogs` retains the
+existing guards, one-shot actions and exact child proof. On source-fault failure,
+the child can emit one `PHANTOWD_QEMU_PLANNED_SOURCE_COSTS` row: reached checkpoint
+count0..4, cumulative held-client/holder-observation/first-scan/verified-cover
+milliseconds and total elapsed time. Unreached values are zero. Fixed keys/order,
+canonical integers, monotonic checkpoints and the guest180s telemetry ceiling
+are validated; untrusted rows are dropped and repeated rows relayed only once.
+
+These are elapsed checkpoints from the qualifier's entry, not independent CPU
+durations, successful syscall receipts or permission. No original error, path,
+credential or object ID is printed. Success remains completely quiet: telemetry
+cannot replace or accompany the exact successful child proof. The existing
+1024-byte child-output cap, source-child90s, supervision20s, guest180s and all
+worker/readiness/stop limits are unchanged. No default guest or CI stage is added.
+
+Pinned Linux command-package vet/unit/race and a focused actual ARMv5 healthy
+run pass; the failure-only emission branch is unit-tested on Linux, not yet
+observed in a failing instrumented ARM guest. The earlier complete candidate
+failed its final file-source fixture: isolated success is not a fix, complete
+integration or hosted qualification. Measure setup versus scan/stop before
+changing behavior; do not suppress that full failure or relax its acceptance.
+
 ## Diagnostic byte-consumption controls
 
 The actual-source DOM suite now uses native Web Streams for diagnostic responses.

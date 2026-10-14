@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/processowner"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/runtimebundle"
@@ -155,5 +156,80 @@ func TestPlannedDataDiagnosticRefusesMissingUnknownOrInjectedLabels(t *testing.T
 		if got := plannedDataFailureDiagnosticQEMU(invalid); got != "" {
 			t.Fatal("unqualified diagnostic label emitted", got)
 		}
+	}
+}
+
+func TestPlannedFaultSubprocessRelaysOnlyBoundedSourceCostsOnce(t *testing.T) {
+	const proof = "exact-fixed-child-proof\n"
+	const prefix = "PHANTOWD_QEMU_PLANNED_FAULT_SUBPROCESS_FAILURE deadline=false child_failed=true proof_match=false scope=diagnostic-only\n"
+	const row = "PHANTOWD_QEMU_PLANNED_SOURCE_COSTS steps=4 held_ms=6200 observed_ms=8400 first_scan_ms=11200 covered_ms=11201 total_ms=20004 scope=diagnostic-only\n"
+	got := plannedFaultSubprocessDiagnosticQEMU(nil, errors.New("private-cause"), row+row, proof)
+	if got != prefix+row {
+		t.Fatalf("bounded source costs missing or duplicated: %q", got)
+	}
+	for _, bad := range []string{
+		strings.Replace(row, "steps=4", "steps=5", 1),
+		strings.Replace(row, "steps=4", "steps=3", 1),
+		strings.Replace(row, "held_ms=6200", "held_ms=06200", 1),
+		strings.Replace(row, "held_ms=6200", "held_ms=-1", 1),
+		strings.Replace(row, "held_ms=6200", "held_ms=private-secret", 1),
+		strings.Replace(row, "observed_ms=8400", "observed_ms=6199", 1),
+		strings.Replace(row, "total_ms=20004", "total_ms=11200", 1),
+		strings.Replace(row, "total_ms=20004", "total_ms=180001", 1),
+		strings.Replace(row, "total_ms=20004", "total_ms=18446744073709551616", 1),
+		strings.Replace(row, "covered_ms=11201", "arbitrary_path=11201", 1),
+		strings.Replace(row, "scope=diagnostic-only", "scope=qualified", 1),
+		strings.TrimSuffix(row, "\n") + " private-secret\n",
+	} {
+		got := plannedFaultSubprocessDiagnosticQEMU(nil, errors.New("private-cause"), bad, proof)
+		if got != prefix {
+			t.Fatalf("untrusted source-cost row relayed: %q", got)
+		}
+	}
+	if got := plannedFaultSubprocessDiagnosticQEMU(nil, nil, row+proof, proof); !strings.Contains(got, "child_failed=false proof_match=false") {
+		t.Fatal("source costs weakened exact successful child proof", got)
+	}
+}
+
+func TestPlannedSourceCostsPreserveOriginalRefusalAndNeverEmitOnSuccess(t *testing.T) {
+	private := errors.New("private-path-and-credential")
+	cause := errors.Join(private, context.DeadlineExceeded, runtimebundle.ErrReviewRequired)
+	observed := &plannedSourceCostFailureQEMU{cause: cause, costs: plannedSourceCostsQEMU{
+		steps: 4, ms: [4]int64{6200, 8400, 11200, 11201}, total: 20004,
+	}}
+	const row = "PHANTOWD_QEMU_PLANNED_SOURCE_COSTS steps=4 held_ms=6200 observed_ms=8400 first_scan_ms=11200 covered_ms=11201 total_ms=20004 scope=diagnostic-only\n"
+	wrapped := fmt.Errorf("private-wrapper: %w", observed)
+	if !errors.Is(wrapped, private) || !errors.Is(wrapped, context.DeadlineExceeded) || !errors.Is(wrapped, runtimebundle.ErrReviewRequired) {
+		t.Fatal("timing annotation lost original refusal")
+	}
+	if got := plannedSourceCostDiagnosticQEMU(wrapped); got != row || strings.Contains(got, private.Error()) || strings.Contains(observed.Error(), private.Error()) {
+		t.Fatal("timing diagnostic absent or discloses cause", got)
+	}
+	for _, invalid := range []error{nil, private, (*plannedSourceCostFailureQEMU)(nil),
+		&plannedSourceCostFailureQEMU{costs: observed.costs},
+		&plannedSourceCostFailureQEMU{cause: cause, costs: plannedSourceCostsQEMU{steps: 5}},
+		&plannedSourceCostFailureQEMU{cause: cause, costs: plannedSourceCostsQEMU{total: -1}},
+		&plannedSourceCostFailureQEMU{cause: cause, costs: plannedSourceCostsQEMU{total: 180001}},
+	} {
+		if got := plannedSourceCostDiagnosticQEMU(invalid); got != "" {
+			t.Fatal("unqualified timing emitted", got)
+		}
+	}
+	clock := plannedSourceCostClockQEMU{start: time.Now()}
+	clock.mark()
+	annotated := clock.annotate(cause)
+	clock.mark()
+	var captured *plannedSourceCostFailureQEMU
+	if !errors.As(annotated, &captured) || captured.costs.steps != 1 || !errors.Is(annotated, cause) {
+		t.Fatal("annotation retained mutable clock or discarded original cause")
+	}
+	if clock.annotate(nil) != nil || plannedSourceCostDiagnosticQEMU(nil) != "" {
+		t.Fatal("healthy child proof received timing output")
+	}
+	clock.mark()
+	clock.mark()
+	clock.mark()
+	if clock.annotate(cause) != cause {
+		t.Fatal("invalid checkpoint sequence changed original error")
 	}
 }

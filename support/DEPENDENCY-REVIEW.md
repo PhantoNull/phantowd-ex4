@@ -3,6 +3,31 @@
 
 # Dependency review and update qualification
 
+## Samba update follow-up (2026-10-14)
+
+The rebuilt target remains4.22.11. Upstream lists stable4.25.0 (September24) and
+the4.24-series update4.24.8 (October12); these are candidate inputs, not adopted versions.
+[Upstream releases](https://www.samba.org/samba/latest_news.html).
+4.25's persistent handles remain experimental, impose additional durable-write
+cost and require SMB-exclusive access incompatible with NFS/POSIX sharing.
+Keep them disabled for the general-purpose NAS profile.
+[4.25 release notes](https://www.samba.org/samba/history/samba-4.25.0.html).
+
+Before selecting a replacement: verify lifecycle/advisory coverage and signed
+archives; disposition all six current patches individually, including the
+disabled-password adapter and JSON support; rebuild private VFS/reader code
+against that exact upstream source; inspect real ELF/charset/module closure
+and measure ARMv5 resource usage. Re-run actual enrollment/authentication,
+revocation, ACL/streams/Unicode/CP850, status/read/open and source-loss proofs.
+Then qualify state/configuration migration, complete image/legal/SBOM matching
+and own hosted checks. No old private layouts or copied state are acceptance
+evidence. New features do not establish safe recovery or cross-protocol use.
+
+The release-planning wiki returned429 during this review; exact4.22 end-of-life
+status is not established here. Do not turn the July security-release date into
+a current maintenance or blanket safety claim. Version pins and cache output
+remain unchanged while the separate source-loss diagnosis is in progress.
+
 ## Current combined cached qualification (2026-10-11)
 
 Frozen `3ccc2df78cced5c58c05319fedf04f2a32b82180`, API tree

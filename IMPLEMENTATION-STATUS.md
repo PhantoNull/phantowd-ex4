@@ -3,6 +3,19 @@
 
 # Implementation status
 
+## Source-loss fixture diagnosis, not a complete candidate pass
+
+The latest complete cached lane failed the last `file-source` campaign's private
+quarantine/supervision deadline before the global build limit. The preceding
+nine campaign logs independently verify, but the default union and SMART were
+not reached. No current full-image/audit/hosted or installation claim follows.
+
+QEMU-only failure diagnostics now carry bounded cumulative checkpoint costs,
+without raw errors or changes to effects, authority, timing limits or exact
+successful proof. Pinned Linux command-package vet/unit/race and a focused ARM
+healthy run pass. Failure-only ARM emission and the intermittent full failure
+remain unqualified; see the [diagnostic contract](support/QEMU-FAST-TESTS.md#failure-only-source-fault-checkpoint-costs).
+
 ## Diagnostic GET responses: byte and structural budgets
 
 The existing five diagnostic/auth-status GET paths now enforce decoded-body

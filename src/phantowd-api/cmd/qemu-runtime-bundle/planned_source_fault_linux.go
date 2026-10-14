@@ -131,8 +131,12 @@ func qualifyPlannedSourceFaultQEMU(ctx context.Context, service *smbexec.NativeP
 // observer. The original idle IPC$ proof and its complete guards remain intact.
 func qualifyPlannedHeldSourceFaultQEMU(ctx context.Context, service *smbexec.NativePlannedServiceQEMU, native *runtimebundle.NativeSambaRuntimeQEMU, owner *identityowner.Owner, handoff *mountowner.ServiceHandoff, file bool) (result error) {
 	phase := "initial"
+	costClock := plannedSourceCostClockQEMU{start: time.Now()}
 	defer func() {
+		result = costClock.annotate(result)
 		fmt.Fprint(os.Stderr, plannedFaultFailureDiagnosticQEMU(phase, result))
+		// Exactly one bounded cost row on failure, never on successful proof.
+		fmt.Fprint(os.Stderr, plannedSourceCostDiagnosticQEMU(result))
 	}()
 	initial, err := service.Status()
 	if err != nil || initial.State != "ready" || !initial.DataVerified || !initial.IdentityRetained || !initial.SharesRetained || initial.RuntimeClosed {
@@ -151,6 +155,7 @@ func qualifyPlannedHeldSourceFaultQEMU(ctx context.Context, service *smbexec.Nat
 	if err := startHeld(ctx); err != nil {
 		return err
 	}
+	costClock.mark() // Original held client admitted, not yet fully observed.
 	if err := startHeld(ctx); !errors.Is(err, runtimebundle.ErrReviewRequired) {
 		return errors.New("planned held session accepted duplicate admission")
 	}
@@ -164,6 +169,7 @@ func qualifyPlannedHeldSourceFaultQEMU(ctx context.Context, service *smbexec.Nat
 			return errors.Join(errors.New("planned file fault lacks original object or admits IPC replacement"), err)
 		}
 	}
+	costClock.mark() // All original holder/open-object observations complete.
 	const target = "/srv/phantowd/volumes/qemu-native"
 	fd, err := unix.Openat2(unix.AT_FDCWD, target, &unix.OpenHow{
 		Flags:   unix.O_PATH | unix.O_DIRECTORY | unix.O_CLOEXEC,
@@ -203,6 +209,7 @@ func qualifyPlannedHeldSourceFaultQEMU(ctx context.Context, service *smbexec.Nat
 				cancelLoop()
 				return errors.Join(errors.New("planned fault supervisor lost exclusivity"), err, <-completed)
 			}
+			costClock.mark() // First complete exclusive scan, before source loss.
 			// Cover ONLY the already-qualified synthetic volume alias. All
 			// original mounts, grant clones and pinned objects remain attached.
 			// Never detach a grant or alter data/TDBs/devices to trigger loss.
@@ -220,6 +227,7 @@ func qualifyPlannedHeldSourceFaultQEMU(ctx context.Context, service *smbexec.Nat
 				return errors.Join(errors.New("planned fault source cover not witnessed"), err, retainedErr, <-completed)
 			}
 			phase = "quarantine"
+			costClock.mark() // Cover and original/covered mount identities checked.
 			select {
 			case err := <-completed:
 				if !errors.Is(err, runtimebundle.ErrReviewRequired) {
