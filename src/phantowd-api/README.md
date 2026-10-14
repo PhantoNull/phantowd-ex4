@@ -9,6 +9,18 @@ It is included only in the non-flashable QEMU development configuration and
 contains an embedded browser dashboard with read-only diagnostics and a
 non-mutating desired file-share preview form.
 
+Setup and login accept one flat, bounded UTF-8 JSON object with exactly the
+required `username` and `password` string fields. The shared configuration
+envelope rejects case aliases, decoded duplicates, unknown/missing/null fields,
+invalid bytes or unpaired UTF-16 escapes before credential operations. Escaped
+canonical keys, valid paired escapes and literal U+FFFD remain supported; do not
+silently repair or normalize password bytes. The existing 2 KiB body cap, login
+quota, origin checks, KDF bounds, credential state and session logic are unchanged.
+HTTP controls verify no enrollment/session issue or existing-session revocation
+on refusal, including unknown-length excess bodies and inclusive valid limits.
+The existing QEMU HTTPS fixture now refuses an alias and invalid UTF-8 before
+canonical first setup, without consuming its login-attempt quota.
+
 The [share configuration package](shareconfig/README.md) validates the first
 desired-policy schema for volumes, file-service users and share grants. It is
 exercised with synthetic fixtures in the QEMU self-test and accepted by the

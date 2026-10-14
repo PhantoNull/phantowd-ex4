@@ -183,6 +183,134 @@ func TestAuthRejectsCrossOriginAndMalformedRequests(t *testing.T) {
 	}
 }
 
+func TestAuthSetupRejectsNonExactCredentialKeys(t *testing.T) {
+	auth, _ := newEmptyTestAuth(t)
+	handler := newHandler(nil, nil, auth)
+	body, err := json.Marshal(map[string]string{"Username": "nas-admin", "password": testAdminPassword})
+	if err != nil {
+		t.Fatal(err)
+	}
+	response := httptest.NewRecorder()
+	handler.ServeHTTP(response, authRequest(http.MethodPost, authSetupPath, string(body)))
+	if response.Code != http.StatusBadRequest || len(response.Result().Cookies()) != 0 {
+		t.Fatalf("non-exact credential keys reached enrollment/session issuance: status=%d", response.Code)
+	}
+	status := httptest.NewRecorder()
+	handler.ServeHTTP(status, authRequest(http.MethodGet, authStatusPath, ""))
+	var state authStatus
+	if err := json.Unmarshal(status.Body.Bytes(), &state); err != nil || !state.SetupRequired || state.Authenticated {
+		t.Fatal("rejected credential JSON changed observable account state")
+	}
+}
+
+func TestCredentialJSONRefusalsPreserveAccountAndSessions(t *testing.T) {
+	password, _ := json.Marshal(testAdminPassword)
+	valid := `{"username":"nas-admin","password":` + string(password) + `}`
+	cases := []struct{ name, body string }{
+		{"username alias", `{"Username":"nas-admin","password":` + string(password) + `}`},
+		{"password alias", `{"username":"nas-admin","Password":` + string(password) + `}`},
+		{"case duplicate", `{"username":"nas-admin","Username":"other","password":` + string(password) + `}`},
+		{"escaped alias", `{"\u0055sername":"nas-admin","password":` + string(password) + `}`},
+		{"unicode alias", `{"username":"nas-admin","paſſword":` + string(password) + `}`},
+		{"duplicate", `{"username":"nas-admin","username":"other","password":` + string(password) + `}`},
+		{"escaped duplicate", `{"username":"nas-admin","user\u006eame":"other","password":` + string(password) + `}`},
+		{"missing username", `{"password":` + string(password) + `}`},
+		{"missing password", `{"username":"nas-admin"}`},
+		{"null username", `{"username":null,"password":` + string(password) + `}`},
+		{"null password", `{"username":"nas-admin","password":null}`},
+		{"number", `{"username":"nas-admin","password":123}`},
+		{"boolean", `{"username":true,"password":` + string(password) + `}`},
+		{"object", `{"username":"nas-admin","password":{}}`},
+		{"array", `{"username":"nas-admin","password":[]}`},
+		{"unknown", `{"username":"nas-admin","password":` + string(password) + `,"role":"root"}`},
+		{"null root", `null`},
+		{"empty root", `{}`},
+		{"array root", `[]`},
+		{"scalar root", `"text"`},
+		{"trailing document", valid + valid},
+		{"deep input", `{"username":"nas-admin","password":[[[[["text"]]]]]}`},
+		{"invalid UTF8", `{"username":"nas-admin","password":"long enough text ` + string([]byte{0xff}) + `"}`},
+		{"unpaired high surrogate", `{"username":"nas-admin","password":"long enough text \ud800"}`},
+		{"unpaired low surrogate", `{"username":"nas-admin","password":"long enough text \udc00"}`},
+		{"over budget", valid + strings.Repeat(" ", maxAuthBodySize)},
+	}
+	for _, path := range []string{authSetupPath, authLoginPath} {
+		for _, test := range cases {
+			t.Run(path+"/"+test.name, func(t *testing.T) {
+				auth, _ := newEmptyTestAuth(t)
+				handler := newHandler(nil, nil, auth)
+				var originalCookie *http.Cookie
+				if path == authLoginPath {
+					setup := httptest.NewRecorder()
+					handler.ServeHTTP(setup, authRequest(http.MethodPost, authSetupPath, valid))
+					if setup.Code != http.StatusCreated || len(setup.Result().Cookies()) != 1 {
+						t.Fatal("canonical prerequisite setup failed")
+					}
+					originalCookie = setup.Result().Cookies()[0]
+				}
+				request := authRequest(http.MethodPost, path, test.body)
+				if test.name == "over budget" {
+					// Exercise bounded body consumption without trusting a declared length.
+					request.ContentLength = -1
+				}
+				response := httptest.NewRecorder()
+				handler.ServeHTTP(response, request)
+				if response.Code != http.StatusBadRequest || len(response.Result().Cookies()) != 0 || strings.Contains(response.Body.String(), testAdminPassword) {
+					t.Fatalf("malformed credentials were admitted or echoed: status=%d", response.Code)
+				}
+				statusRequest := authRequest(http.MethodGet, authStatusPath, "")
+				if originalCookie != nil {
+					statusRequest.AddCookie(originalCookie)
+				}
+				status := httptest.NewRecorder()
+				handler.ServeHTTP(status, statusRequest)
+				var state authStatus
+				if status.Code != http.StatusOK || json.Unmarshal(status.Body.Bytes(), &state) != nil ||
+					state.SetupRequired != (path == authSetupPath) || state.Authenticated != (path == authLoginPath) {
+					t.Fatal("refusal changed account state or revoked an existing session")
+				}
+			})
+		}
+	}
+}
+
+func TestCredentialJSONPreservesUnicodeEscapedKeysAndInclusiveBudget(t *testing.T) {
+	for _, test := range []struct{ name, password, encoded string }{
+		{"multibyte", "valid multilingual 密碼 passphrase 😀", ""},
+		{"literal replacement character", "intentional \ufffd valid passphrase", ""},
+		{"paired UTF16 escape", "long enough text 😀", `"long enough text \ud83d\ude00"`},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			auth, _ := newEmptyTestAuth(t)
+			handler := newHandler(nil, nil, auth)
+			encoded := test.encoded
+			if encoded == "" {
+				data, err := json.Marshal(test.password)
+				if err != nil {
+					t.Fatal(err)
+				}
+				encoded = string(data)
+			}
+			body := `{"user\u006eame":"nas-admin","pass\u0077ord":` + encoded + `}`
+			body += strings.Repeat(" ", maxAuthBodySize-len(body))
+			setup := httptest.NewRecorder()
+			handler.ServeHTTP(setup, authRequest(http.MethodPost, authSetupPath, body))
+			if setup.Code != http.StatusCreated || len(setup.Result().Cookies()) != 1 {
+				t.Fatalf("valid Unicode/escaped keys/inclusive budget refused: status=%d", setup.Code)
+			}
+			loginBody, err := json.Marshal(loginRequest{Username: "nas-admin", Password: test.password})
+			if err != nil {
+				t.Fatal(err)
+			}
+			login := httptest.NewRecorder()
+			handler.ServeHTTP(login, authRequest(http.MethodPost, authLoginPath, string(loginBody)))
+			if login.Code != http.StatusOK || len(login.Result().Cookies()) != 1 {
+				t.Fatalf("credential bytes were rewritten or login refused: status=%d", login.Code)
+			}
+		})
+	}
+}
+
 func TestLoginRateLimitAndCredentialErrorAreUniform(t *testing.T) {
 	auth, accounts := newEmptyTestAuth(t)
 	if err := accounts.setup(context.Background(), "nas-admin", testAdminPassword); err != nil {

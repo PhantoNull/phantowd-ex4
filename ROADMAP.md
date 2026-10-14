@@ -2195,6 +2195,19 @@ milestone before enabling its controls; M1/M6 for deployment.
   Preserve strict decoding, origin/Host validation, CSRF, bounded requests,
   generic errors and per-operation concurrency limits. Long jobs return durable
   identity/status; cancellation must distinguish requested from actually stopped.
+  **M5.3a — exact credential JSON (partial; local host/ARM verification):** setup/
+  login reuse the existing bounded Unicode/duplicate/exact-key envelope instead
+  of a parallel recursive scanner. A case-alias request previously enrolled an
+  account and issued a cookie (two HTTP REDs); the decoder now refuses before
+  credential operations. Fifty-two malformed HTTP cases retain account/session
+  state; Unicode, paired escapes, literal U+FFFD, escaped canonical keys and
+  inclusive 2 KiB controls preserve credential bytes. Unknown-length excess
+  input is bounded without trusting Content-Length. Existing body/rate/KDF/
+  origin/session limits and persistent formats remain unchanged. Windows and
+  pinned Linux preflight and actual one-boot ARM overlay pass; the HTTPS fixture
+  refuses two setup requests before canonical enrollment without altering login
+  quota. Source/base/probe hashes agree and scratch is discarded. This is not
+  current own-hosted/full/two-boot/SBOM, browser or product qualification.
 - **M5.4 — Complete workflows.** Setup, system health, disks/arrays, shares,
   identities, iSCSI, network, updates and recovery screens must show freshness,
   partial failure, confirmation/preview and observed results. Do not display

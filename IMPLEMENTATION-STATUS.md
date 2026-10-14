@@ -3,6 +3,22 @@
 
 # Implementation status
 
+## Setup/login: exact bounded credential JSON
+
+M5.3a replaces the separate recursive duplicate scanner with the existing
+bounded UTF-8/surrogate/exact-required-key envelope. A case-alias setup request
+returned201 and issued a session in two REDs; corrected requests return400 before
+credential operations. Fifty-two HTTP refusals preserve account and existing
+session state; valid Unicode/paired escapes/literal U+FFFD, escaped canonical
+keys and inclusive 2 KiB positive controls still authenticate exact bytes.
+Windows API/UI/vet/cross and pinned Linux whole API vet/unit/tagged-vet/proc
+checks and actual single-boot ARM overlay pass. The HTTPS fixture tests alias/
+invalid-UTF8 rejection before first setup, without extra login attempts; base/
+probe/source witnesses agree. No new endpoint, persistent schema, KDF/rate/body
+limit or activation authority. Full/own hosted verification for this increment
+must be assessed separately; the management threat model
+remains draft and its other product gates stay open.
+
 ## Development transport: plaintext listener admission and threat model
 
 M5.2a closes a configuration-guard bypass: an explicitly non-loopback HTTP

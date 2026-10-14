@@ -126,6 +126,30 @@ func exerciseQEMUTLSWithAccountFactory(openAccounts func(string) (*accountStore,
 	defer client.CloseIdleConnections()
 
 	credentials := setupRequest{Username: "qemu-tls-admin", Password: "qemu-tls-self-test-password"}
+	malformedAlias, err := json.Marshal(map[string]string{"Username": credentials.Username, "password": credentials.Password})
+	if err != nil {
+		return errors.New("cannot encode credential JSON refusal fixture")
+	}
+	invalidUTF8 := append([]byte(`{"username":"qemu-tls-admin","password":"long enough text `), 0xff)
+	invalidUTF8 = append(invalidUTF8, []byte(`"}`)...)
+	for _, malformed := range [][]byte{malformedAlias, invalidUTF8} {
+		request, err := http.NewRequest(http.MethodPost, transport.AllowedOrigin+authSetupPath, bytes.NewReader(malformed))
+		if err != nil {
+			return errors.New("cannot create credential JSON refusal request")
+		}
+		request.Header.Set("Origin", transport.AllowedOrigin)
+		request.Header.Set("Content-Type", "application/json")
+		response, err := client.Do(request)
+		if err != nil {
+			return errors.New("HTTPS credential JSON refusal request failed")
+		}
+		closeErr := response.Body.Close()
+		if closeErr != nil || response.StatusCode != http.StatusBadRequest || len(response.Cookies()) != 0 {
+			return errors.New("malformed credential JSON reached HTTPS enrollment")
+		}
+	}
+	// The canonical setup below must still create the first account. Negative
+	// setup requests do not consume login attempts or change its existing quota.
 	body, err := json.Marshal(credentials)
 	if err != nil {
 		return errors.New("cannot encode TLS account setup request")
