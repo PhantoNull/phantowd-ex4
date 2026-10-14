@@ -3223,6 +3223,18 @@ Then qualify the selected backend and migration objects on expendable EX4 media.
   toolkit vet/tests/race3 and 10,000 structural fuzz executions pass. No CLI,
   signature/trust-root/schema change, target installer, firmware build or device
   operation; release and recovery qualification remain separate.
+  **M10.2e — host body-read diagnostic redaction (partial; locally tested):**
+  response headers do not end the transport-error boundary. Manifest/signature
+  reads and payload streaming now redact reader errors using the existing
+  request wrapper, preserving programmatic cause/cancellation without exposing
+  signed URLs in public messages. Real local HTTP/TLS plus an external-reader
+  one-byte fault reproduces manifest and payload disclosure twice each before
+  their separate fixes. All three asset stages refuse without later downloads,
+  retry or positive verification, close once and clean temporary staging.
+  Whole Windows toolkit vet/tests and pinned Go1.26.8 Linux whole toolkit
+  vet/tests/race plus reader race-count3 pass. This is synthetic error-injection
+  evidence, not an observed public GitHub credential leak. No API/schema/CLI,
+  trust root, redirect, byte/timeout limit, firmware build or device change.
 - **M10.3 — Target transaction.** Explicit preflight, staged, verified, installing,
   boot-pending, health-confirmed and recovery states. Journal durable boundaries;
   check space/power prerequisites. An ambiguous state must not restart installation
