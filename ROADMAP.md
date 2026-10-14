@@ -2244,6 +2244,18 @@ milestone before enabling its controls; M1/M6 for deployment.
   asset tests pass. This is not computed-style, gradient-rendering, browser,
   screen-reader, all-text WCAG or complete-image qualification. No dependency,
   request, endpoint, service behavior or activation change.
+- **M5.5d — Storage display envelope (partial; host/ARM asset-tested).** HTTP
+  success with missing/malformed storage data no longer means zero devices.
+  Require existing schema2/sysfs/read-only flags, exact count at most32 and
+  typed row kind/read-only/removable/block-identity status labels before DOM
+  mutation. Invalid storage clears only storage/GPT values, preserving freshly
+  received other domains with partial freshness; no new/retried requests.
+  DOM regressions cover27 malformed cases, valid empty/32-row boundaries,
+  partial-DOM refusal and matching report unavailable/invalid classification.
+  Whole pinned Linux tagged vet/units and actual single-boot ARM overlay pass;
+  terminal raw guest capture is truncated and kept as such. QEMU serves/checks
+  assets, not JavaScript execution. Complete metadata/response-byte validation,
+  real-browser/accessibility, two-boot/full/hosted/product gates remain open.
 - **M5.6 — Audit and diagnostics.** Record actor, operation ID, revisions and
   redacted outcome; bound retention. Export a sanitized support bundle that
   excludes credentials, private keys, passdb hashes and user file contents.

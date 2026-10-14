@@ -1,5 +1,24 @@
 # Fast API and file-service integration checks
 
+## Storage display-envelope frontend regression
+
+`node support/test-dashboard-ui.mjs` executes the actual embedded JavaScript in
+a DOM fixture. Storage must match the existing schema-2/read-only envelope,
+exact observation count bounded at32 and typed row flags/status labels before
+rendering. Missing inventories, inconsistent counts and malformed rows are not
+empty current inventories. Refusal is local to storage, preserves newly read
+other sections and does not add/retry API calls or run GPT probing. Tests cover
+27 invalid payloads, complete empty/32-row bounds, report classifications and
+refusal before partial DOM changes; previous session/deadline tests remain.
+
+Pinned Go1.26.8 whole tagged Linux vet/units and a single-boot ARMv5 API overlay
+pass. The overlay reuses the unchanged schema-2 base volume-probe and leaves the
+base artifacts intact. Its terminal tool transcript is truncated; driver exit0
+and hashes are evidence, not a complete raw guest log. No JavaScript runs in
+QEMU. Browser rendering/keyboard/accessibility was unavailable, and no two-boot,
+full/clean/hosted image or product qualification is implied. Existing timers,
+resources, source/base/workspace read-only mounts and discarded tmpfs remain.
+
 ## Bounded optional Linux host preflight
 
 Run `support/test-api-linux.ps1` after the no-Docker Windows preflight when the

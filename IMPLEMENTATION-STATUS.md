@@ -3,6 +3,24 @@
 
 # Implementation status
 
+## Storage dashboard: invalid is not empty
+
+The UI now validates the existing schema-2 storage display envelope and exact
+bounded observation count before declaring it current or changing rows. HTTP200
+with absent/inconsistent data cannot claim zero devices. Invalid storage clears
+that domain/GPT values without discarding fresh system/RAID/mount observations;
+request/session lifetimes and explicit-only operations are unchanged. Sanitized
+reports retain invalid/unavailable distinctions. Synthetic fixtures use the
+current envelope and remain explicitly labelled generated data.
+
+Actual-source DOM regressions, 27 malformed inputs, valid empty/32-row bounds,
+no-partial-DOM/no-extra-request checks and pinned Linux whole tagged vet/units
+pass. A single-boot ARMv5 overlay passes with unchanged base/probe; terminal raw
+output was truncated, so no complete-transcript claim is made. QEMU verifies
+asset integration, not JavaScript/browser behavior. Browser connection was
+unavailable; rendering/accessibility, two-boot/full/hosted/product gates remain.
+No API/authorization, NAS, physical storage or new Docker image/volume change.
+
 ## Bounded optional local Linux API preflight
 
 `support/test-api-linux.ps1` now explicitly uses the existing pinned image and

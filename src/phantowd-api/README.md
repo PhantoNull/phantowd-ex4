@@ -241,6 +241,30 @@ all-text contrast or WCAG audit. Browser, screen-reader and complete-image
 qualification remain separate. The correction changes only a CSS color:
 no new runtime dependency, request, endpoint, service or privilege.
 
+## M5.5d storage display-envelope guard
+
+An HTTP 200 response alone does not make a storage inventory current. The
+dashboard requires the existing schema-2 sysfs/read-only envelope, an exact
+count of at most 32 observations, typed row kinds/read-only/removable flags and
+known block-identity status labels before modifying device rows. Missing or
+malformed lists never become a successful empty inventory. A rejected domain
+clears its old storage/GPT observation while retaining freshly read system,
+RAID and mount sections; no retry, authentication request or probe is added.
+
+This is a display/count guard, not complete metadata validation, byte-bounded
+response decoding, stable identity or storage/mount/admission permission. The
+sanitized report preserves its own unavailable/invalid aggregate classification.
+Fixtures and the loopback-only synthetic preview now use the current envelope;
+the preview warning still identifies every value as generated data.
+
+Actual-source DOM regressions reproduce false zero-device counts and unrelated
+domain loss, then pass the corrected flows, 27 malformed cases, valid empty/32-row
+boundaries, no-partial-DOM refusal and unchanged request counts. Pinned Linux
+tagged vet/whole units and the single-boot ARMv5 overlay pass. The overlay uses
+the unchanged base volume-probe; its terminal raw capture is truncated, not a
+complete guest transcript. No JavaScript executes in QEMU; real-browser/
+accessibility, two-boot/full-image, hosted and product qualification remain open.
+
 ## Development file-service configuration API
 
 `GET` and `PUT /api/v1/file-services/configuration` operate on the combined

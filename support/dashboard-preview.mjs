@@ -31,8 +31,10 @@ const systemFixture = {
 };
 
 const storageFixture = {
-  schema_version: 1,
-  scope: "preview-fixture-only",
+  // Simulate the current API envelope; the system banner identifies every
+  // value as synthetic. This does not collect or qualify real sysfs evidence.
+  schema_version: 2,
+  scope: "kernel-sysfs-only",
   inventory_read_only: true,
   block_devices_opened: false,
   content_read: false,

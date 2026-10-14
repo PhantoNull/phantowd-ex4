@@ -97,10 +97,31 @@ function makeIdentityChip(label, status) {
   return chip;
 }
 
+function validStorageObservation(storage) {
+  if (!(storage?.schema_version === 2 && storage.scope === "kernel-sysfs-only" &&
+    storage.inventory_read_only === true && storage.block_devices_opened === false &&
+    storage.content_read === false && storage.mutations_performed === false &&
+    storage.stable_identity_available === false &&
+    Array.isArray(storage.observations) && storage.observations.length <= 32 &&
+    storage.device_count === storage.observations.length)) return false;
+  const identities = ["unavailable", "present", "invalid", "ambiguous", "unreadable"];
+  // Validate the bounded display envelope, not physical/stable identities or
+  // authorization. Reject all rows before touching the DOM; missing metadata
+  // never proves a complete empty inventory or current kernel read-only flag.
+  for (const item of storage.observations) {
+    if (item === null || typeof item !== "object" || Array.isArray(item) ||
+        !["block", "partition"].includes(item.kind) ||
+        typeof item.read_only !== "boolean" || typeof item.removable !== "boolean" ||
+        (item.kind === "block" && (!identities.includes(item.serial_status) || !identities.includes(item.wwn_status)))) return false;
+  }
+  return true;
+}
+
 function renderStorage(storage) {
+  if (!validStorageObservation(storage)) throw new Error("Storage observation is invalid.");
   const list = byId("device-list");
   list.replaceChildren();
-  const observations = Array.isArray(storage.observations) ? storage.observations : [];
+  const observations = storage.observations;
   setText("device-count", `${observations.length} ${observations.length === 1 ? "device" : "devices"}`);
   if (observations.length === 0) {
     const empty = document.createElement("p");
@@ -512,7 +533,7 @@ async function refreshSnapshot() {
     }
 
     const systemCurrent = systemResult.status === "fulfilled";
-    const storageCurrent = storageResult.status === "fulfilled";
+    const storageCurrent = storageResult.status === "fulfilled" && validStorageObservation(storageResult.value);
     const arraysCurrent = arraysResult.status === "fulfilled";
     const mountsCurrent = mountsResult.status === "fulfilled";
     if (systemCurrent) renderSystem(systemResult.value);

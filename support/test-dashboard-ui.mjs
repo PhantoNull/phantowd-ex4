@@ -198,6 +198,20 @@ function arraysFixture() {
   };
 }
 
+function storageFixture(observations = []) {
+  return {
+    schema_version: 2, scope: "kernel-sysfs-only", inventory_read_only: true,
+    block_devices_opened: false, content_read: false, mutations_performed: false,
+    stable_identity_available: false, device_count: observations.length,
+    observations, limitations: [],
+  };
+}
+
+function blockFixture(overrides = {}) {
+  return { name: "sda", kind: "block", major: 8, minor: 0, size_bytes: 2 ** 40,
+    read_only: false, removable: false, serial_status: "present", wwn_status: "unavailable", ...overrides };
+}
+
 function mountsFixture() {
   return {
     schema_version: 1,
@@ -403,10 +417,7 @@ async function testReadOnlySnapshotAndSafeRendering() {
     if (path === "/api/v1/auth/status") return jsonResponse({ authenticated: true });
     if (path === "/api/v1/system") return jsonResponse(systemFixture());
     if (path === "/api/v1/storage") {
-      return jsonResponse({ observations: [{
-        name: "disk<script>", kind: "disk", major: 8, minor: 0,
-        size_bytes: 2 ** 40, serial_status: "present", wwn_status: "unavailable", read_only: true,
-      }] });
+      return jsonResponse(storageFixture([blockFixture({ name: "disk<script>", read_only: true })]));
     }
     if (path === "/api/v1/arrays") return jsonResponse(arraysFixture());
     if (path === "/api/v1/mounts") return jsonResponse(mountsFixture());
@@ -475,7 +486,7 @@ async function testExpiredSessionReturnsToLogin() {
     }
     if (expired) return jsonResponse({ error: "unauthorized" }, 401);
     if (path === "/api/v1/system") return jsonResponse(systemFixture());
-    if (path === "/api/v1/storage") return jsonResponse({ observations: [] });
+    if (path === "/api/v1/storage") return jsonResponse(storageFixture());
     if (path === "/api/v1/arrays") return jsonResponse(arraysFixture());
     if (path === "/api/v1/mounts") return jsonResponse(mountsFixture());
     throw new Error(`Unexpected request: ${path}`);
@@ -491,7 +502,7 @@ async function testExpiredSessionReturnsToLogin() {
 
 function snapshotResponse(path, kernel = "retired-session-kernel") {
   if (path === "/api/v1/system") return jsonResponse({ ...systemFixture(), kernel });
-  if (path === "/api/v1/storage") return jsonResponse({ observations: [] });
+  if (path === "/api/v1/storage") return jsonResponse(storageFixture());
   if (path === "/api/v1/arrays") return jsonResponse(arraysFixture());
   if (path === "/api/v1/mounts") return jsonResponse(mountsFixture());
   throw new Error(`Unexpected snapshot request: ${path}`);
@@ -655,7 +666,7 @@ async function testStorageFailureKeepsOnlyCurrentSystemObservation() {
     if (path === "/api/v1/auth/status") return jsonResponse({ authenticated: true });
     if (path === "/api/v1/system") return jsonResponse(systemFixture());
     if (path === "/api/v1/storage") {
-      return storageAvailable ? jsonResponse({ observations: [{ name: "sda", kind: "block", major: 8, minor: 0, size_bytes: 2 ** 40 }] }) : jsonResponse({ error: "unavailable" }, 503);
+      return storageAvailable ? jsonResponse(storageFixture([blockFixture()])) : jsonResponse({ error: "unavailable" }, 503);
     }
     if (path === "/api/v1/arrays") return jsonResponse(arraysFixture());
     if (path === "/api/v1/mounts") return jsonResponse(mountsFixture());
@@ -677,7 +688,7 @@ async function testSystemFailureKeepsOnlyCurrentStorageObservation() {
   const { context, elements } = await createHarness(async (path) => {
     if (path === "/api/v1/auth/status") return jsonResponse({ authenticated: true });
     if (path === "/api/v1/system") return systemAvailable ? jsonResponse(systemFixture()) : jsonResponse({ error: "unavailable" }, 503);
-    if (path === "/api/v1/storage") return jsonResponse({ observations: [{ name: "sda", kind: "block", major: 8, minor: 0, size_bytes: 2 ** 40 }] });
+    if (path === "/api/v1/storage") return jsonResponse(storageFixture([blockFixture()]));
     if (path === "/api/v1/arrays") return jsonResponse(arraysFixture());
     if (path === "/api/v1/mounts") return jsonResponse(mountsFixture());
     throw new Error(`Unexpected request: ${path}`);
@@ -713,7 +724,7 @@ async function testMountFailureClearsOnlyMountObservation() {
   const { context, elements } = await createHarness(async (path) => {
     if (path === "/api/v1/auth/status") return jsonResponse({ authenticated: true });
     if (path === "/api/v1/system") return jsonResponse(systemFixture());
-    if (path === "/api/v1/storage") return jsonResponse({ observations: [{ name: "sda", kind: "block", major: 8, minor: 0, size_bytes: 2 ** 40 }] });
+    if (path === "/api/v1/storage") return jsonResponse(storageFixture([blockFixture()]));
     if (path === "/api/v1/arrays") return jsonResponse(arraysFixture());
     if (path === "/api/v1/mounts") return mountsAvailable ? jsonResponse(mountsFixture()) : jsonResponse({ error: "unavailable" }, 503);
     throw new Error(`Unexpected request: ${path}`);
@@ -744,7 +755,7 @@ async function testGPTObservationRunsOnlyOnExplicitClickAndUsesRedactedCSRFReque
     if (path === "/api/v1/auth/session") return jsonResponse({ csrf_token: "x".repeat(43) });
     if (path === "/api/v1/storage/gpt-observation") return jsonResponse(summary);
     if (path === "/api/v1/system") return jsonResponse(systemFixture());
-    if (path === "/api/v1/storage") return jsonResponse({ observations: [] });
+    if (path === "/api/v1/storage") return jsonResponse(storageFixture());
     if (path === "/api/v1/arrays") return jsonResponse(arraysFixture());
     if (path === "/api/v1/mounts") return jsonResponse(mountsFixture());
     throw new Error(`Unexpected request: ${path} ${JSON.stringify(options)}`);
@@ -792,7 +803,7 @@ async function policyHarness(previewResponse = () => jsonResponse(policyFixture(
     if (path === "/api/v1/auth/session") return sessionResponse();
     if (path === "/api/v1/file-services/preview") return previewResponse(options);
     if (path === "/api/v1/system") return jsonResponse(systemFixture());
-    if (path === "/api/v1/storage") return jsonResponse({ observations: [] });
+    if (path === "/api/v1/storage") return jsonResponse(storageFixture());
     if (path === "/api/v1/arrays") return jsonResponse(arraysFixture());
     if (path === "/api/v1/mounts") return jsonResponse(mountsFixture());
     throw new Error(`Unexpected request ${path}`);
@@ -1012,7 +1023,7 @@ async function testSavedPolicyLateRepliesAndAuthLoss() {
       if (path === "/api/v1/auth/status") return jsonResponse({ authenticated: !expired, setup_required: false }, expired && statusFails ? 503 : 200);
       if (path === "/api/v1/shares/configuration") { expired = true; return jsonResponse({}, 401); }
       if (path === "/api/v1/system") return jsonResponse(systemFixture());
-      if (path === "/api/v1/storage") return jsonResponse({ observations: [] });
+      if (path === "/api/v1/storage") return jsonResponse(storageFixture());
       if (path === "/api/v1/arrays") return jsonResponse(arraysFixture());
       if (path === "/api/v1/mounts") return jsonResponse(mountsFixture());
       throw new Error(`Unexpected request ${path}`);
@@ -1042,7 +1053,7 @@ async function serviceHarness(stateResponse, previewResponse = () => jsonRespons
     if (path === "/api/v1/file-services/preview") return previewResponse(options);
     if (path === "/api/v1/file-services/backup" || path === "/api/v1/file-services/restore-preview") return backupResponse(path, options);
     if (path === "/api/v1/system") return jsonResponse(systemFixture());
-    if (path === "/api/v1/storage") return jsonResponse({ observations: [] });
+    if (path === "/api/v1/storage") return jsonResponse(storageFixture());
     if (path === "/api/v1/arrays") return jsonResponse(arraysFixture());
     if (path === "/api/v1/mounts") return jsonResponse(mountsFixture());
     throw new Error(`Unexpected request ${path}`);
@@ -1230,7 +1241,117 @@ await testStorageFailureKeepsOnlyCurrentSystemObservation();
 await testSystemFailureKeepsOnlyCurrentStorageObservation();
 await testAllDiagnosticFailuresClearValues();
 await testMountFailureClearsOnlyMountObservation();
+await testMalformedStorageDoesNotBecomeEmptyOrClearOtherDomains();
+await testStorageCountIsNotAnEmptyInventory();
+await testStorageEnvelopeCannotClaimCurrentData();
+await testMalformedStorageRowClearsOnlyStorage();
+await testStorageDisplayEnvelopeBoundsAndInvalidReport();
 await testGPTObservationRunsOnlyOnExplicitClickAndUsesRedactedCSRFRequest();
+
+async function testMalformedStorageDoesNotBecomeEmptyOrClearOtherDomains() {
+  let storage = storageFixture([{ name: "sda", kind: "block", major: 8, minor: 0,
+    size_bytes: 2 ** 40, read_only: false, removable: false,
+    serial_status: "present", wwn_status: "present" }]);
+  const h = await createHarness(async (path) => {
+    if (path === "/api/v1/auth/status") return jsonResponse({ authenticated: true });
+    if (path === "/api/v1/storage") return jsonResponse(storage);
+    return snapshotResponse(path, "current-kernel");
+  });
+  await settleUI();
+  assert.equal(h.elements["device-count"].textContent, "1 device");
+  storage = {};
+  const before = h.requests.length;
+  await h.context.refreshSnapshot();
+  assert.equal(h.elements["device-count"].textContent, "Storage unavailable",
+    "HTTP success without an inventory must not claim zero kernel devices");
+  assert.match(h.elements["device-list"].children[0].textContent, /no current device values/i);
+  assert.equal(h.elements["kernel-value"].textContent, "Linux current-kernel");
+  assert.equal(h.elements["array-count"].textContent, "2 arrays");
+  assert.equal(h.elements["mount-count"].textContent, "2 mounts");
+  assert.match(h.elements["snapshot-status"].textContent, /system, RAID, mount.*current.*storage.*unavailable/i);
+  assert.equal(h.requests.length - before, 4, "invalid data must not add or retry requests");
+}
+
+async function testStorageCountIsNotAnEmptyInventory() {
+  let storage = storageFixture();
+  const h = await createHarness(async (path) => path === "/api/v1/auth/status" ? jsonResponse({ authenticated: true }) :
+    path === "/api/v1/storage" ? jsonResponse(storage) : snapshotResponse(path));
+  await settleUI();
+  assert.equal(h.elements["device-count"].textContent, "0 devices");
+  storage = { ...storageFixture(), device_count: 1 };
+  await h.context.refreshSnapshot();
+  assert.equal(h.elements["device-count"].textContent, "Storage unavailable",
+    "A missing declared row must not become a complete empty inventory");
+  assert.equal(h.elements["array-count"].textContent, "2 arrays");
+}
+
+async function testStorageEnvelopeCannotClaimCurrentData() {
+  const storage = { ...storageFixture(), schema_version: 1 };
+  const h = await createHarness(async (path) => path === "/api/v1/auth/status" ? jsonResponse({ authenticated: true }) :
+    path === "/api/v1/storage" ? jsonResponse(storage) : snapshotResponse(path));
+  await settleUI();
+  assert.equal(h.elements["device-count"].textContent, "Storage unavailable",
+    "Unsupported storage schema must not claim an empty current inventory");
+  assert.equal(h.elements["array-count"].textContent, "2 arrays");
+}
+
+async function testMalformedStorageRowClearsOnlyStorage() {
+  const h = await createHarness(async (path) => path === "/api/v1/auth/status" ? jsonResponse({ authenticated: true }) :
+    path === "/api/v1/storage" ? jsonResponse(storageFixture([null])) : snapshotResponse(path));
+  await settleUI();
+  assert.equal(h.elements["device-count"].textContent, "Storage unavailable");
+  assert.equal(h.elements["kernel-value"].textContent, "Linux retired-session-kernel",
+    "A malformed row must not clear independently valid system data");
+  assert.equal(h.elements["array-count"].textContent, "2 arrays");
+  assert.equal(h.elements["mount-count"].textContent, "2 mounts");
+}
+
+async function testStorageDisplayEnvelopeBoundsAndInvalidReport() {
+  const empty = storageFixture();
+  const invalid = [null, {}, [], true, "PRIVATE-SENTINEL",
+    { ...empty, observations: null }, { ...empty, observations: "PRIVATE-SENTINEL" },
+    { ...empty, device_count: "0" }, { ...empty, device_count: -1 }, { ...empty, device_count: 1 },
+    { ...empty, schema_version: 1 }, { ...empty, schema_version: "2" },
+    { ...empty, scope: "PRIVATE-SENTINEL" }, { ...empty, inventory_read_only: false },
+    { ...empty, block_devices_opened: true }, { ...empty, content_read: true },
+    { ...empty, mutations_performed: true }, { ...empty, stable_identity_available: true },
+    storageFixture([null]), storageFixture([[]]), storageFixture(["PRIVATE-SENTINEL"]),
+    storageFixture([blockFixture({ kind: "disk" })]),
+    storageFixture([blockFixture({ read_only: "false" })]),
+    storageFixture([blockFixture({ removable: 0 })]),
+    storageFixture([blockFixture({ serial_status: "PRIVATE-SENTINEL" })]),
+    storageFixture([blockFixture({ wwn_status: null })]),
+    storageFixture(Array.from({ length: 33 }, () => blockFixture())),
+  ];
+  let storage = empty, round = 0;
+  const h = await createHarness(async (path) => path === "/api/v1/auth/status" ? jsonResponse({ authenticated: true }) :
+    path === "/api/v1/storage" ? jsonResponse(storage) : snapshotResponse(path, `fresh-${round}`));
+  await settleUI();
+  assert.equal(h.elements["device-count"].textContent, "0 devices", "A validated complete empty inventory stays distinguishable");
+  for (const value of invalid) {
+    storage = value;
+    round++;
+    const before = h.requests.length;
+    await h.context.refreshSnapshot();
+    assert.equal(h.elements["device-count"].textContent, "Storage unavailable", `invalid storage case ${round}`);
+    assert.equal(h.elements["kernel-value"].textContent, `Linux fresh-${round}`, "Valid domains must be refreshed, not reused");
+    assert.equal(h.elements["array-count"].textContent, "2 arrays");
+    assert.equal(h.elements["mount-count"].textContent, "2 mounts");
+    assert.equal(h.requests.length - before, 4, "No retry/auth/probe is added for invalid data");
+    assert.ok(!h.elements["snapshot-status"].textContent.includes("PRIVATE-SENTINEL"));
+    const report = JSON.parse(new Script("supportSnapshot.serialize(Date.now())").runInContext(h.context));
+    assert.equal(report.observations.storage.status, value === null ? "unavailable" : "invalid");
+    assert.ok(!JSON.stringify(report).includes("PRIVATE-SENTINEL"));
+  }
+  storage = storageFixture(Array.from({ length: 32 }, (_, i) => blockFixture({ name: `disk-${i}` })));
+  await h.context.refreshSnapshot();
+  assert.equal(h.elements["device-count"].textContent, "32 devices");
+  assert.equal(h.elements["device-list"].children.length, 32);
+  const before = h.requests.length;
+  assert.throws(() => h.context.renderStorage({}), /Storage observation is invalid/);
+  assert.equal(h.elements["device-list"].children.length, 32, "Refusal must happen before partial DOM changes");
+  assert.equal(h.requests.length, before);
+}
 
 async function editorFixture() {
   const h = await serviceHarness(() => jsonResponse(serviceReply(null)));
@@ -1368,7 +1489,7 @@ for (const outcome of ["success", "uncertain", "rejected"]) {
     if (path === "/api/v1/auth/session") return jsonResponse({ csrf_token: "x".repeat(43) });
     if (path === "/api/v1/auth/logout-all") { ended = true; return pending; }
     if (path === "/api/v1/system") return jsonResponse(systemFixture());
-    if (path === "/api/v1/storage") return jsonResponse({ observations: [] });
+    if (path === "/api/v1/storage") return jsonResponse(storageFixture());
     if (path === "/api/v1/arrays") return jsonResponse(arraysFixture());
     if (path === "/api/v1/mounts") return jsonResponse(mountsFixture());
     throw new Error(`Unexpected sign-out request: ${path}`);
@@ -1406,7 +1527,7 @@ for (const outcome of ["success", "wrong-current", "uncertain", "rejected", "mal
     if (path === "/api/v1/auth/session") return jsonResponse({ csrf_token: "x".repeat(43) });
     if (path === "/api/v1/auth/password") return pending;
     if (path === "/api/v1/system") return jsonResponse(systemFixture());
-    if (path === "/api/v1/storage") return jsonResponse({ observations: [] });
+    if (path === "/api/v1/storage") return jsonResponse(storageFixture());
     if (path === "/api/v1/arrays") return jsonResponse(arraysFixture());
     if (path === "/api/v1/mounts") return jsonResponse(mountsFixture());
     throw new Error(`Unexpected password request: ${path}`);
