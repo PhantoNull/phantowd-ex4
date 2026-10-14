@@ -33,7 +33,7 @@ scope; [component contracts](src/phantowd-api/README.md) describe the boundaries
 
 | Area | Implemented / tested | Still needed for the product |
 | --- | --- | --- |
-| Build | Pinned Buildroot 2025.02.18 LTS / Linux 6.18.55 LTS; complete local ARMv5 integration and exact source/image/SBOM audit pass | Exact-head hosted checks, independent clean reproduction, installable EX4 image and release qualification |
+| Build | Pinned Buildroot 2025.02.18 LTS / Linux 6.18.55 LTS; complete local ARMv5 integration and exact source/image/SBOM audit pass; integrated PR #131 passed its own host, QEMU and EX4 compile-only checks | Each new source increment's own checks, independent clean reproduction, installable EX4 image and release qualification |
 | Web management | Byte-bounded snapshots and administrative JSON replies, independent display validation and invalid/empty-inventory distinction, development authentication/password changes, SMB/NFS policy editing, configuration download and reviewed restore with explicit revisioned save, sanitized snapshot report export | Complete setup/recovery, certificate lifecycle, browser/accessibility qualification and live service management |
 | Storage | Non-root read-only broker, complete sysfs inventory, manual GPT observations, duplicate-identity detection, protected registry with reader-bound rechecks, rechecked registry/census policy and backing reviews, internal MD/mount-owner fixtures | Trusted production lifecycle, persistent volume IDs, global-use accounting, qualified import and RAID management |
 | Sharing and identities | SMB3/NFS fixtures, disabled-first Samba accounts, session revocation, retained same-authority SMB startup/access, exclusive supervision, held-session and original-open-file source-loss, verified client/daemon closure, Unicode/CP850, streams and POSIX ACL tests | Product account workflows, complete fault coverage, supervised service activation/recovery and legacy permission migration |
@@ -123,14 +123,13 @@ verification and private loopback TLS 1.3; see the
 This does not establish independent clean reproduction, physical EX4 support,
 complete fault coverage or an installable release. The native QEMU fixture now
 separates preparation from enrollment and preserves the cause of incomplete
-revocation observations. Behavioral regression tests and the complete local
-lane pass; the integration PR still requires new-head hosted qualification.
-An earlier hosted QEMU run failed at a later live-session deadline;
-local success does not establish a hosted timing fix or waive that gate.
-The earlier complete candidate's final source-loss deadline remains unexplained;
-this newer complete pass is not a demonstrated timing fix. The combined candidate
-must pass its own hosted checks before integration. No product
-SMB/NFS service is activated; see [implementation status](IMPLEMENTATION-STATUS.md).
+revocation observations. Integrated PR #131 passed its own exact-head host,
+ARMv5 QEMU and EX4 compile-only checks; its source-identical promotion to `main`
+preserves both branch histories. The earlier hosted live-session failure and
+local source-loss deadline remain unexplained: later successful runs are not a
+demonstrated timing fix. New increments, including the administrative response
+budgets, require their own integration qualification. No product SMB/NFS service
+is activated; see [implementation status](IMPLEMENTATION-STATUS.md).
 
 ## Roadmap
 

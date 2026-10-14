@@ -16,7 +16,12 @@ logs independently replay; the last three rely on the original controller.
 The preceding `5b90e22` full lane failed the final file-source quarantine/
 supervision deadline. Its cause remains unknown; this complete pass does not
 establish a timing repair, independent clean reproduction or hosted/physical/
-product/installation qualification. Require the publication head's own checks.
+product/installation qualification. The publication head `d40b545` passed its
+own host, ARMv5 QEMU and EX4 compile-only checks in PR #131 and was integrated
+as `b64109f` with the identical tree. PR #132 promoted that runtime source to
+`main`, retaining main's existing development-status README note and both
+histories. Promotion is not a new complete run. These results do not qualify
+the newer administrative-response increment described below.
 
 QEMU-only failure diagnostics now carry bounded cumulative checkpoint costs,
 without raw errors or changes to effects, authority, timing limits or exact
