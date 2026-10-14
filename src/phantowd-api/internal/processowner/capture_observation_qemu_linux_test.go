@@ -18,6 +18,9 @@ func TestQEMUCaptureObservationDistinguishesUnconsumedFromSettled(t *testing.T) 
 		if before, err := c.UnconsumedQEMU(ctx); !before || err != nil {
 			t.Fatal("observation consumed or lost unlaunched capture", err)
 		}
+		if settled, err := c.Settled(ctx); !settled || err != nil {
+			t.Fatal("never-consumed capture supplied live group", err)
+		}
 	}
 	if result, err := c.Capture(ctx); err != nil || result.ExitCode != 0 || string(result.Stdout) != "synthetic" {
 		t.Fatal("original capture unavailable after observation", err)

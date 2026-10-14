@@ -248,7 +248,7 @@ members = arrays[0].get("members", []) if len(arrays) == 1 else []
 inputs = component_set.get("inputs", [])
 identity_scan = component_set.get("identity_scan", {})
 if (component_set.get("format") != "phantowd-read-only-storage-image-set-observation"
-        or component_set.get("schema_version") != 2
+        or component_set.get("schema_version") != 3
         or component_set.get("status") != "ambiguous"
         or component_set.get("wd_compatibility") != "unqualified"
         or len(inputs) != 2
@@ -258,6 +258,11 @@ if (component_set.get("format") != "phantowd-read-only-storage-image-set-observa
                or len(item.get("partition_observations", [])) != 1
                or item["partition_observations"][0].get("partition_number") != 1
                or item["partition_observations"][0].get("declared_type_guid") != "a19d880f-05fc-4d3b-a006-743f0f84911e"
+               or item["partition_observations"][0].get("ext_status") != "ext-superblock-candidate"
+               or item["partition_observations"][0].get("ext_filesystem_state") != "clean-unmount-flag-set"
+               or item["partition_observations"][0].get("ext_clean_unmount_flag") is not True
+               or item["partition_observations"][0].get("ext_needs_journal_recovery") is not False
+               or item["partition_observations"][0].get("ext_needs_orphan_recovery") is not False
                or item["partition_observations"][0].get("md_v1_0_status") != "md-v1.0-superblock-candidate"
                for item in inputs)
         or identity_scan.get("complete") is not True

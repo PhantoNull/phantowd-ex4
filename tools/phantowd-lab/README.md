@@ -2,7 +2,8 @@
 
 `phantowd-lab` is a host-only research tool with no device or installation
 path. It validates local copies of the legacy WD My Cloud EX4 update,
-logical-mtd3 and logical-rescue formats, verifies signed release metadata,
+logical-mtd3 and logical-rescue formats, prepares unsigned release metadata
+from explicit regular payload files, verifies signed release metadata,
 optionally inspects a public GitHub release, and replays passive captures of
 the internal front-controller protocol.
 
@@ -24,6 +25,7 @@ boundary, not a qualified controller driver or permission to transmit commands.
 ## Commands
 
 ```text
+phantowd-lab build-release-manifest --artifacts DIR --public-key FILE --release-version VERSION --channel stable|beta|nightly --model ID --revision ID --source-commit SHA --buildroot-version VERSION --kernel-version VERSION --minimum-installer VERSION --artifact NAME:ROLE [--revision ID ...] [--artifact NAME:ROLE ...]
 phantowd-lab inspect-github-release --tag VERSION --public-key FILE --model ID --revision ID --channel stable|beta|nightly [--current-version VERSION] [--installer-version VERSION]
 phantowd-lab inspect-release --manifest FILE --signature FILE --public-key FILE --artifacts DIR --model ID --revision ID --channel stable|beta|nightly [--current-version VERSION] [--installer-version VERSION]
 phantowd-lab inspect-update FILE
@@ -50,6 +52,24 @@ phantowd-lab catalog-mcu
 phantowd-lab decode-mcu "fa 23 00 00 00 00 fb"
 phantowd-lab replay-mcu [--format raw|hex] FILE
 ```
+
+`build-release-manifest` emits **unsigned** schema1 JSON on stdout. It accepts
+only a raw 32-byte public key, not a private key. Repeat `--artifact NAME:ROLE`
+and `--revision ID` for explicit lists (at most16 each); payload filenames must
+be flat, unique and safe. Revisions/names are sorted for reproducible bytes;
+the public-key fingerprint, payload sizes and SHA-256 values are measured.
+The existing manifest validators and size+1 bounded reader are reused. The
+whole set's 1 GiB/member and 2 GiB/combined limits, plus the 64 KiB encoded
+manifest limit, are checked before hashing. Source/target/version declarations
+remain caller input, not provenance or hardware qualification. Payloads are
+point-in-time observations, not retained immutable staging. A future approved
+signing process must independently qualify provenance/staging and sign the exact
+bytes. Private release keys must never enter ordinary PR jobs.
+
+Exit `0` means an unsigned candidate was prepared, **not** a verified release or
+permission to install. Invalid inputs/source observations return `1` without
+metadata output. Output-write failures may leave a partial stream; discard it.
+The command writes no file, payload, image or device and publishes no release.
 
 Artifact inspectors return exit status `0` when all currently understood
 structure and XOR checks pass, `2` when a parsed artifact fails validation,
@@ -168,7 +188,12 @@ does not imply payload validity, installation permission or device readiness.
 distribution path. It requests one exact version tag from the PhantoWD EX4
 repository (it does not follow a mutable `latest` pointer), requires the API to
 report a published immutable release, and checks that the stable/non-stable
-release flag is consistent with the requested channel. It downloads only
+release flag is consistent with the requested channel. Asset requests start
+only after the [API metadata boundary](githubrelease/README.md) accepts
+unique, exact decoded consumed-field names, required non-null typed flags and
+asset records. Case aliases, duplicate fields and missing `draft`/`prerelease`
+observations cannot acquire published-release status. Additional GitHub fields
+remain supported; they are not treated as signed application metadata. It fetches
 `manifest.json` and `manifest.sig` first. The exact-byte signature, schema,
 model, board revision, channel and signed version-to-tag match must pass before
 the tool downloads any firmware payload. It then downloads exactly the assets
@@ -291,9 +316,12 @@ were supplied, determine health or filesystem integrity, or authorize
 assembly, mounting, import, or migration. It emits no input paths or unique
 disk GUIDs, PARTUUIDs, filesystem UUIDs, or raw array IDs; generic GPT type
 GUIDs may appear as declarations only. It never opens a block device or
-modifies an image. An ext-family candidate not marked clean, recording errors,
-or advertising journal recovery is held as `incomplete`; the tool never runs
-repair or recovery. Inputs are not locked or snapshotted, so callers must use
+modifies an image. An ext-family candidate not marked clean, recording errors
+or unknown state flags, or indicating journal/orphan recovery is held as
+`incomplete`; the tool never runs repair or recovery. Set schema **3** includes
+`ext_filesystem_state` and independent `ext_needs_orphan_recovery` summaries;
+these review findings return exit `2`, even when the raw clean bit is set.
+Inputs are not locked or snapshotted, so callers must use
 stable offline copies and prevent concurrent modification during inspection.
 
 `inspect-md-v1.2-image-set` accepts two to four whole-disk regular image files,
@@ -383,7 +411,7 @@ arrays, mount filesystems, or modify images.
 `inspect-ext-partition` first requires a structurally valid GPT, then reads
 only the standard 1024-byte ext-family superblock at byte offset 1024 within
 the selected GPT partition. It reports bounded geometry, feature masks,
-clean-unmount/journal-recovery flags and a redacted filesystem-UUID fingerprint
+clean-unmount/journal/orphan-recovery flags and a redacted filesystem-UUID fingerprint
 when present. Its `ext-superblock-candidate` status only means that selected
 fields are structurally plausible; it does not distinguish ext2/3/4, validate
 other filesystem metadata checksums, inspect file contents, or establish
@@ -394,6 +422,18 @@ checksum as not advertised or unknown. Exit status is `0`
 for a plausible superblock, `2` for absent/damaged/unsupported metadata and
 `1` for usage, I/O or file-open errors. Like the GPT command, it never opens a
 block device, mounts, or writes the input image.
+
+Ext report schema **2** exposes the raw clean bit independently from errors,
+unknown state flags and recovery indicators. `needs_orphan_recovery` observes
+the orphan-processing state bit, a nonzero legacy orphan-list head, or the
+orphan-present feature; it does not follow or validate an orphan chain/file.
+Journal recovery remains a separate flag. A single-partition exit `0` is still
+only structural recognition, not a safe-mount verdict. The whole-image envelope
+remains schema **2**, with nested ext report **2**; the image-set assessment is
+schema **3**. Flag definitions follow the
+[upstream ext superblock documentation](https://www.kernel.org/doc/html/latest/filesystems/ext4/super.html)
+and recovery indicators are cross-checked against
+[Linux v6.18 ext4](https://github.com/torvalds/linux/blob/v6.18/fs/ext4/super.c).
 
 `inspect-md-v1.2-partition` first requires a structurally valid GPT, then reads
 only one Linux native MD metadata v1.2 component superblock at its

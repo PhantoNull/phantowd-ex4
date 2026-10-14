@@ -7,6 +7,7 @@ package naspolicystore
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"os"
@@ -29,6 +30,31 @@ func emptyPolicy(revision uint64) naspolicy.Config {
 			NFS: nfsconfig.Policy{Format: nfsconfig.Format, SchemaVersion: 1, Revision: revision, VolumeRevision: revision, Exports: []nfsconfig.Export{}}},
 		ISCSI: iscsipolicy.Policy{Format: iscsipolicy.Format, SchemaVersion: 1, Revision: revision, VolumeRevision: revision,
 			Backings: []iscsipolicy.Backing{}, Targets: []iscsipolicy.Target{}}}
+}
+
+func TestNASBootstrapUsesFixedSchemaWithoutImportOrInitialization(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.Chmod(dir, 0700); err != nil {
+		t.Fatal(err)
+	}
+	got, err := ObserveBootstrap(context.Background(), dir)
+	if err != nil || got.Kind != "empty-directory" || got.Revision != 0 {
+		t.Fatal("empty fixed policy directory not observed", got, err)
+	}
+	if entries, err := os.ReadDir(dir); err != nil || len(entries) != 0 {
+		t.Fatal("observer initialized files", entries, err)
+	}
+	name := filepath.Join(dir, "file-services.json")
+	if err := os.WriteFile(name, []byte("legacy evidence"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	got, err = ObserveBootstrap(context.Background(), dir)
+	if err != nil || got.Kind != "unrecognized-entries" || got.Revision != 0 {
+		t.Fatal("implicit legacy import or reset", got, err)
+	}
+	if data, err := os.ReadFile(name); err != nil || string(data) != "legacy evidence" {
+		t.Fatal("legacy evidence changed", err)
+	}
 }
 
 func TestAtomicNASPolicyLockingReopenAndEvidencePreservation(t *testing.T) {

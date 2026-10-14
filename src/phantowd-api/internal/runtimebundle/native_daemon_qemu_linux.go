@@ -21,12 +21,18 @@ import (
 // Replace the unused old fixture process spec BEFORE publication. All daemon
 // inputs duplicate the same admitted originals retained for credential workers.
 func (r *NativeSambaRuntimeQEMU) prepareNativeDaemonQEMU(ctx context.Context, roots *[2]*os.File) error {
-	fd, err := unix.Openat(int(r.owner.configuration.contents.root.Fd()), ".", unix.O_RDONLY|unix.O_DIRECTORY|unix.O_CLOEXEC|unix.O_NOFOLLOW, 0)
+	configuration := r.owner.configuration
+	if roots != nil && r.owner.serviceConfiguration != nil {
+		// Only the planned input constructor supplies this role. Credential
+		// workers remain on management; legacy data/auth profiles are unchanged.
+		configuration = r.owner.serviceConfiguration
+	}
+	fd, err := unix.Openat(int(configuration.contents.root.Fd()), ".", unix.O_RDONLY|unix.O_DIRECTORY|unix.O_CLOEXEC|unix.O_NOFOLLOW, 0)
 	if err != nil {
 		return err
 	}
 	root := os.NewFile(uintptr(fd), "native-daemon-config-caller")
-	config := [5]*os.File{root, r.owner.configuration.contents.files["passwd"], r.owner.configuration.contents.files["group"], r.owner.configuration.contents.files["nsswitch.conf"], r.owner.configuration.contents.files["samba/smb.conf"]}
+	config := [5]*os.File{root, configuration.contents.files["passwd"], configuration.contents.files["group"], configuration.contents.files["nsswitch.conf"], configuration.contents.files["samba/smb.conf"]}
 	var state [7]*os.File
 	for index, name := range sambaStateDirectories {
 		state[index] = r.owner.sambaState.files[name]
@@ -198,10 +204,10 @@ func (r *NativeSambaRuntimeQEMU) StopNativeServiceQEMU(ctx context.Context) erro
 }
 
 func (r *NativeSambaRuntimeQEMU) stopNativeDaemonQEMU() error {
-	var clientErr error
+	clientErr := r.stopPlannedClientQEMU()
 	if r.clients != nil {
 		clients, err := r.clients.Stop(context.Background())
-		clientErr = err
+		clientErr = errors.Join(clientErr, err)
 		if clients.State != processowner.StateStopped {
 			clientErr = errors.Join(clientErr, ErrReviewRequired)
 		}
@@ -289,12 +295,32 @@ func (r *NativeSambaRuntimeQEMU) nativeClientQEMU(ctx context.Context, user stri
 	return false, false, ErrMismatch
 }
 
+// Retain a refusal's typed cause for private fixed-label diagnostics, without
+// printing its text or weakening the review marker. This is not a retry,
+// readiness result or permission to operate on an uncertain daemon.
+type nativeDaemonReviewQEMU struct{ cause error }
+
+func (e *nativeDaemonReviewQEMU) Error() string { return ErrReviewRequired.Error() }
+
+func (e *nativeDaemonReviewQEMU) Unwrap() []error {
+	return []error{ErrReviewRequired, e.cause}
+}
+
 func (r *NativeSambaRuntimeQEMU) verifyNativeDaemonQEMU(ctx context.Context, pid int) error {
-	if pid <= 1 || r.owner.revalidate(ctx) != nil || r.owner.processes.CheckNativeSambaBootstrapQEMU(ctx) != nil {
+	if pid <= 1 {
 		return ErrReviewRequired
 	}
+	if err := r.owner.revalidate(ctx); err != nil {
+		return &nativeDaemonReviewQEMU{cause: err}
+	}
+	if err := r.owner.processes.CheckNativeSambaBootstrapQEMU(ctx); err != nil {
+		return &nativeDaemonReviewQEMU{cause: err}
+	}
 	observed, err := r.owner.processes.Observe(ctx)
-	if err != nil || observed.State != processowner.StateReady || len(observed.Members) != 1 || observed.Members[0].Process.PID != pid {
+	if err != nil {
+		return &nativeDaemonReviewQEMU{cause: err}
+	}
+	if observed.State != processowner.StateReady || len(observed.Members) != 1 || observed.Members[0].Process.PID != pid {
 		return ErrReviewRequired
 	}
 	group, err := unix.Getpgid(pid)
@@ -339,11 +365,23 @@ func (r *NativeSambaRuntimeQEMU) verifyNativeDaemonQEMU(ctx context.Context, pid
 			return errors.New("native daemon code view changed")
 		}
 	}
-	for name, pin := range r.owner.configuration.contents.files {
+	configuration := r.owner.configuration
+	if r.plannedDataPrepared {
+		if r.owner.serviceConfiguration == nil {
+			return ErrReviewRequired
+		}
+		configuration = r.owner.serviceConfiguration
+	}
+	for name, pin := range configuration.contents.files {
 		actual, err := os.Stat(base + "/root/etc/" + name)
 		expected, expectedErr := pin.Stat()
 		if err != nil || expectedErr != nil || !os.SameFile(actual, expected) {
 			return errors.New("native daemon original configuration mismatch")
+		}
+	}
+	if r.plannedDataPrepared {
+		if err := r.owner.processes.VerifyNativeDataViewsQEMU(ctx, pid); err != nil {
+			return errors.Join(ErrReviewRequired, err)
 		}
 	}
 	return r.owner.verifyLiveSambaStateQEMU(pid)

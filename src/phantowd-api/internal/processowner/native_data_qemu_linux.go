@@ -6,13 +6,103 @@
 package processowner
 
 import (
+	"context"
 	"errors"
 	"os"
+	"strconv"
 
 	"golang.org/x/sys/unix"
 )
 
 const nativeDataBootstrapMarkerQEMU = "PHANTOWD_NATIVE_DATA_HANDOFF_READY inputs=14 original_config=true original_state=true original_shares=true individual_clones=true closed_before_exec=true scope=qemu-only\n"
+
+type NativeDataStopObservationQEMU struct {
+	Stopped, InputsRetained bool
+}
+
+// ObserveNativeDataStopQEMU reports only this fixed data-daemon profile. A
+// stopped snapshot requires the owned group to have been reaped and verified
+// absent; all fifteen private pins are observed without reopening paths. This
+// neither signals nor releases anything, re-admits inputs, or clears review.
+func (s *PinnedSet) ObserveNativeDataStopQEMU(ctx context.Context) (NativeDataStopObservationQEMU, error) {
+	if err := s.enter(ctx); err != nil {
+		return NativeDataStopObservationQEMU{}, err
+	}
+	defer func() { <-s.gate }()
+	if len(s.pins) != 15 || len(s.set.members) != 1 || s.set.members[0].name != "native-samba-data" || s.set.generation == 0 {
+		return NativeDataStopObservationQEMU{}, ErrInvalid
+	}
+	observed, err := s.set.Observe(ctx)
+	if err != nil {
+		return NativeDataStopObservationQEMU{}, err
+	}
+	result := NativeDataStopObservationQEMU{
+		Stopped: observed.State == StateStopped && len(observed.Members) == 1 &&
+			observed.Members[0].Process.State == StateStopped && observed.Members[0].Process.PID == 0,
+		InputsRetained: true,
+	}
+	for _, pin := range s.pins {
+		if pin == nil {
+			result.InputsRetained = false
+			continue
+		}
+		if _, err := pin.Stat(); err != nil {
+			result.InputsRetained = false
+		}
+	}
+	if err := ctx.Err(); err != nil {
+		return NativeDataStopObservationQEMU{}, err
+	}
+	return result, nil
+}
+
+// VerifyNativeDataViewsQEMU compares only this set's owned, ready daemon with
+// its retained original two roots. Clone mount IDs deliberately differ from
+// source IDs; object identity and exact protected RO/RW roles must agree.
+// No path, descriptor, data bytes or new lifecycle authority is returned.
+func (s *PinnedSet) VerifyNativeDataViewsQEMU(ctx context.Context, pid int) error {
+	if err := s.enter(ctx); err != nil {
+		return err
+	}
+	defer func() { <-s.gate }()
+	if pid <= 1 || len(s.pins) != 15 || len(s.set.members) != 1 || s.set.members[0].name != "native-samba-data" {
+		return ErrInvalid
+	}
+	observed, err := s.set.Observe(ctx)
+	if err != nil || observed.State != StateReady || len(observed.Members) != 1 || observed.Members[0].Process.PID != pid {
+		return errors.Join(ErrReviewRequired, err)
+	}
+	var identities [2]unix.Statx_t
+	for index, name := range []string{"readonly", "writable"} {
+		original := s.pins[13+index]
+		if original == nil {
+			return ErrInvalid
+		}
+		actual, err := os.Stat("/proc/" + strconv.Itoa(pid) + "/root/shares/" + name)
+		expected, expectedErr := original.Stat()
+		var sourceFS, viewFS unix.Statfs_t
+		const protected = unix.ST_NOSUID | unix.ST_NODEV | unix.ST_NOEXEC
+		flags := int64(protected)
+		if index == 0 {
+			flags |= unix.ST_RDONLY
+		}
+		path := "/proc/" + strconv.Itoa(pid) + "/root/shares/" + name
+		const mask = unix.STATX_TYPE | unix.STATX_INO | unix.STATX_MNT_ID_UNIQUE
+		if err != nil || expectedErr != nil || !os.SameFile(actual, expected) || !actual.IsDir() ||
+			unix.Fstatfs(int(original.Fd()), &sourceFS) != nil || unix.Statfs(path, &viewFS) != nil ||
+			sourceFS.Type != unix.EXT4_SUPER_MAGIC || viewFS.Type != unix.EXT4_SUPER_MAGIC ||
+			int64(sourceFS.Flags)&(protected|unix.ST_RDONLY) != flags || int64(viewFS.Flags)&(protected|unix.ST_RDONLY) != flags ||
+			unix.Statx(unix.AT_FDCWD, path, unix.AT_NO_AUTOMOUNT, mask, &identities[index]) != nil ||
+			identities[index].Mask&mask != mask || identities[index].Mnt_id == 0 ||
+			identities[index].Attributes_mask&unix.STATX_ATTR_MOUNT_ROOT == 0 || identities[index].Attributes&unix.STATX_ATTR_MOUNT_ROOT == 0 {
+			return ErrReviewRequired
+		}
+		if index == 1 && identities[0].Mnt_id == identities[1].Mnt_id {
+			return ErrReviewRequired
+		}
+	}
+	return ctx.Err()
+}
 
 // Mutable data roots are not immutable code/configuration. No hash, ctime,
 // root ownership, exact mode or no-ACL restriction belongs to this admission.

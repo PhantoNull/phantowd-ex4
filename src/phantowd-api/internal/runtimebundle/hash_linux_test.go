@@ -12,8 +12,11 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"runtime"
 	"testing"
+	"time"
 )
 
 // These files are calculation fixtures, not admitted code trees or device
@@ -93,6 +96,44 @@ func TestRuntimeFileHashCancellationAndReadFailureAreNotObservations(t *testing.
 	}
 }
 
+// Cancel immediately after a successful context check. This deterministically
+// models cancellation between that check and the final regular-file EOF read;
+// it is not a wall-clock/scheduling test or a code-admission fixture.
+type cancelAfterHashCheckContext struct {
+	context.Context
+	cancel   context.CancelFunc
+	checks   int
+	cancelAt int
+}
+
+func (c *cancelAfterHashCheckContext) Err() error {
+	err := c.Context.Err()
+	c.checks++
+	if c.checks == c.cancelAt {
+		c.cancel()
+	}
+	return err
+}
+
+func TestRuntimeFileHashFinalReadCancellationHasNoObservation(t *testing.T) {
+	for _, size := range []int{1, runtimeHashScratchSize, runtimeHashScratchSize + 1} {
+		t.Run(fmt.Sprint(size), func(t *testing.T) {
+			file := runtimeHashFixture(t, bytes.Repeat([]byte{0xa5}, size))
+			base, cancel := context.WithCancel(context.Background())
+			defer cancel()
+			ctx := &cancelAfterHashCheckContext{Context: base, cancel: cancel,
+				cancelAt: (size+runtimeHashScratchSize-1)/runtimeHashScratchSize + 1}
+			digest, count, err := hashRuntimeFile(ctx, file, int64(size), make([]byte, runtimeHashScratchSize))
+			if !errors.Is(base.Err(), context.Canceled) {
+				t.Fatal("fixture did not cancel at the final read boundary")
+			}
+			if !errors.Is(err, context.Canceled) || digest != ([32]byte{}) || count != 0 {
+				t.Fatal("final-read cancellation returned a completed digest", count, err)
+			}
+		})
+	}
+}
+
 func TestRuntimeFileHashScratchReuseDoesNotReuseDigestOrOldBytes(t *testing.T) {
 	scratch := make([]byte, runtimeHashScratchSize)
 	for _, size := range []int{65537, 1, 32769, 17} {
@@ -101,6 +142,10 @@ func TestRuntimeFileHashScratchReuseDoesNotReuseDigestOrOldBytes(t *testing.T) {
 		digest, count, err := hashRuntimeFile(context.Background(), file, int64(size), scratch)
 		if err != nil || count != int64(size) || digest != sha256.Sum256(data) {
 			t.Fatal("scratch reuse changed digest or length", size, count, err)
+		}
+		clear(scratch)
+		if digest != sha256.Sum256(data) {
+			t.Fatal("returned digest aliases the reused scratch")
 		}
 	}
 	file := runtimeHashFixture(t, []byte("unread"))
@@ -117,7 +162,7 @@ func TestRuntimeFileHashScratchReuseDoesNotReuseDigestOrOldBytes(t *testing.T) {
 
 // Allocation evidence for the real digest loop only, not complete admission,
 // ARMv5/EX4 throughput or a diagnosis of the lifecycle timeout.
-func TestRuntimeFileHashBatchHasNoPerFileScratchAllocation(t *testing.T) {
+func TestRuntimeFileHashBatchHasNoPerFileScratchOrDigestAllocation(t *testing.T) {
 	const files = 64
 	file := runtimeHashFixture(t, bytes.Repeat([]byte{0x37}, 4096))
 	allocations := testing.AllocsPerRun(3, func() {
@@ -131,11 +176,11 @@ func TestRuntimeFileHashBatchHasNoPerFileScratchAllocation(t *testing.T) {
 			}
 		}
 	})
-	// One batch scratch plus per-file digest Sum; allow bounded fixed runtime/
-	// race bookkeeping overhead, not another scratch allocation per file.
+	// One batch scratch; allow bounded fixed runtime/race bookkeeping overhead,
+	// but neither another scratch nor an allocated digest for every file.
 	// This is a digest-loop allocation contract, not an Inspector admission test.
-	if allocations > files+8 {
-		t.Fatalf("per-file scratch allocations remain: got %.0f, maximum %d", allocations, files+8)
+	if allocations > 8 {
+		t.Fatalf("per-file hash allocations remain: got %.0f, maximum 8", allocations)
 	}
 }
 
@@ -159,4 +204,133 @@ func BenchmarkRuntimeFileHashBatch(b *testing.B) {
 			}
 		}
 	}
+}
+
+// Compare the actual bounded file-digest loop with the same SHA-256 chunk
+// schedule over preloaded synthetic bytes. This is calculation-only evidence:
+// it does not admit code, model complete metadata/census cost or qualify EX4
+// throughput. Keep the file, size and digest checks in every measured iteration.
+func BenchmarkRuntimeFileHashMiB(b *testing.B) {
+	data := bytes.Repeat([]byte{0x37}, 1<<20)
+	want := sha256.Sum256(data)
+	b.Run("File", func(b *testing.B) {
+		file := runtimeHashFixture(b, data)
+		scratch := make([]byte, runtimeHashScratchSize)
+		b.SetBytes(int64(len(data)))
+		b.ReportAllocs()
+		b.ResetTimer()
+		for iteration := 0; iteration < b.N; iteration++ {
+			if _, err := file.Seek(0, 0); err != nil {
+				b.Fatal(err)
+			}
+			digest, count, err := hashRuntimeFile(context.Background(), file, int64(len(data)), scratch)
+			if err != nil || count != int64(len(data)) || digest != want {
+				b.Fatal("bounded file digest changed", count, err)
+			}
+		}
+	})
+	b.Run("Memory", func(b *testing.B) {
+		scratch := make([]byte, runtimeHashScratchSize)
+		b.SetBytes(int64(len(data)))
+		b.ReportAllocs()
+		b.ResetTimer()
+		for iteration := 0; iteration < b.N; iteration++ {
+			hash := sha256.New()
+			for offset := 0; offset < len(data); offset += runtimeHashScratchSize {
+				_, _ = hash.Write(data[offset : offset+runtimeHashScratchSize])
+			}
+			var digest [32]byte
+			copy(digest[:], hash.Sum(scratch[:0]))
+			if digest != want {
+				b.Fatal("preloaded digest changed")
+			}
+		}
+	})
+}
+
+// This compares complete digest operations, not interchangeable admission
+// backends. The applet includes process startup, stdin reads and output parsing;
+// the Go memory control excludes file reads. Neither bypasses a code gate.
+// Only the explicitly guarded system-QEMU ARMv5 diagnostic may run the applet.
+func BenchmarkRuntimeFileHashBackends(b *testing.B) {
+	for _, size := range []int{1 << 20, 16 << 20} {
+		b.Run(fmt.Sprintf("%dMiB", size>>20), func(b *testing.B) {
+			data := bytes.Repeat([]byte{0x37}, size)
+			want := sha256.Sum256(data)
+			b.Run("GoFile", func(b *testing.B) {
+				file := runtimeHashFixture(b, data)
+				scratch := make([]byte, runtimeHashScratchSize)
+				b.SetBytes(int64(size))
+				b.ReportAllocs()
+				b.ResetTimer()
+				for iteration := 0; iteration < b.N; iteration++ {
+					if _, err := file.Seek(0, 0); err != nil {
+						b.Fatal(err)
+					}
+					digest, count, err := hashRuntimeFile(context.Background(), file, int64(size), scratch)
+					if err != nil || count != int64(size) || digest != want {
+						b.Fatal("Go file digest differs", count, err)
+					}
+				}
+			})
+			b.Run("GoMemory", func(b *testing.B) {
+				scratch := make([]byte, runtimeHashScratchSize)
+				b.SetBytes(int64(size))
+				b.ReportAllocs()
+				b.ResetTimer()
+				for iteration := 0; iteration < b.N; iteration++ {
+					hash := sha256.New()
+					for offset := 0; offset < len(data); offset += runtimeHashScratchSize {
+						_, _ = hash.Write(data[offset : offset+runtimeHashScratchSize])
+					}
+					var digest [32]byte
+					copy(digest[:], hash.Sum(scratch[:0]))
+					if digest != want {
+						b.Fatal("Go memory digest differs")
+					}
+				}
+			})
+			b.Run("BusyBoxProcess", func(b *testing.B) {
+				if !runtimeHashAppletFixtureAllowed() {
+					b.Skip("applet comparison requires the guarded ARMv5 QEMU hash fixture")
+				}
+				file := runtimeHashFixture(b, data)
+				wantOutput := fmt.Sprintf("%x  -\n", want)
+				b.SetBytes(int64(size))
+				b.ReportAllocs()
+				b.ResetTimer()
+				for iteration := 0; iteration < b.N; iteration++ {
+					if _, err := file.Seek(0, 0); err != nil {
+						b.Fatal(err)
+					}
+					ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+					command := exec.CommandContext(ctx, "/bin/busybox", "sha256sum")
+					command.Env = []string{"PATH=/usr/bin:/bin", "LC_ALL=C"}
+					command.Stdin = file
+					output, err := command.Output()
+					cancel()
+					if err != nil || string(output) != wantOutput {
+						b.Fatal("applet digest differs or process failed", err)
+					}
+				}
+			})
+		})
+	}
+}
+
+func runtimeHashAppletFixtureAllowed() bool {
+	if runtime.GOARCH != "arm" {
+		return false
+	}
+	model, modelErr := os.ReadFile("/sys/firmware/devicetree/base/model")
+	commandLine, commandErr := os.ReadFile("/proc/cmdline")
+	if modelErr != nil || commandErr != nil || string(model) != "ARM Versatile PB\x00" {
+		return false
+	}
+	for _, argument := range bytes.Fields(commandLine) {
+		if string(argument) == "phantowd_hash_benchmark=1" {
+			return true
+		}
+	}
+	return false
 }

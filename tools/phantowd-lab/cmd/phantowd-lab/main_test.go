@@ -602,7 +602,7 @@ func TestInspectStorageImageSetComparesMDV10ComponentsWithoutWriting(t *testing.
 	if err := json.Unmarshal(output.Bytes(), &report); err != nil {
 		t.Fatalf("invalid JSON report: %v: %s", err, output.String())
 	}
-	if report.SchemaVersion != 2 || report.Status != "ambiguous" || report.WDCompatibility != "unqualified" || report.MigrationAuthorized ||
+	if report.SchemaVersion != 3 || report.Status != "ambiguous" || report.WDCompatibility != "unqualified" || report.MigrationAuthorized ||
 		report.MutationsPerformed || report.AssemblyPerformed || report.MountPerformed ||
 		len(report.MDV10Comparison.Arrays) != 1 || report.MDV10Comparison.Arrays[0].Status != "metadata-consistent" ||
 		report.MDV10Comparison.Arrays[0].ObservedActiveRoles != 2 {
@@ -939,6 +939,83 @@ func TestInspectStorageImageSetRequiresReviewForDirtyExtState(t *testing.T) {
 	if report.Status != "incomplete" || len(report.Inputs) != 1 || len(report.Inputs[0].PartitionObservations) != 1 ||
 		report.Inputs[0].PartitionObservations[0].ExtCleanUnmount || !report.Inputs[0].PartitionObservations[0].ExtNeedsJournalRepair {
 		t.Fatalf("dirty ext state was not held for review: %+v", report)
+	}
+}
+
+func TestInspectStorageImageSetRequiresReviewForExtOrphansAndUnknownState(t *testing.T) {
+	for _, test := range []struct {
+		name       string
+		state      uint16
+		lastOrphan uint32
+		roCompat   uint32
+		wantCode   int
+	}{
+		{name: "clean control", state: 1, wantCode: 0},
+		{name: "orphan recovery state", state: 1 | 4, wantCode: 2},
+		{name: "legacy orphan list", state: 1, lastOrphan: 11, wantCode: 2},
+		{name: "orphan file may contain entries", state: 1, roCompat: 0x10000, wantCode: 2},
+		{name: "unknown state", state: 1 | 0x8000, wantCode: 2},
+		{name: "errors plus clean bit", state: 1 | 2, wantCode: 2},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			fixture := syntheticGPTImageWithMDV090()
+			clear(fixture[64*512 : 1985*512])
+			sb := fixture[64*512+1024 : 64*512+2048]
+			binary.LittleEndian.PutUint32(sb[0:4], 32)
+			binary.LittleEndian.PutUint32(sb[4:8], 32)
+			binary.LittleEndian.PutUint32(sb[12:16], 8)
+			binary.LittleEndian.PutUint32(sb[20:24], 1)
+			binary.LittleEndian.PutUint32(sb[32:36], 32)
+			binary.LittleEndian.PutUint32(sb[40:44], 32)
+			binary.LittleEndian.PutUint16(sb[56:58], 0xef53)
+			binary.LittleEndian.PutUint16(sb[58:60], test.state)
+			binary.LittleEndian.PutUint32(sb[76:80], 1)
+			binary.LittleEndian.PutUint32(sb[92:96], 4)
+			binary.LittleEndian.PutUint32(sb[100:104], test.roCompat)
+			binary.LittleEndian.PutUint32(sb[0xe8:0xec], test.lastOrphan)
+			copy(sb[104:120], []byte("SYNTHETIC-EXT-ID"))
+			path := filepath.Join(t.TempDir(), "private-ext-fixture.img")
+			if err := os.WriteFile(path, fixture, 0600); err != nil {
+				t.Fatal(err)
+			}
+			var output bytes.Buffer
+			code, err := run([]string{"inspect-storage-image-set", path}, &output)
+			var report storageImageSetAssessment
+			if err := json.Unmarshal(output.Bytes(), &report); err != nil {
+				t.Fatal(err)
+			}
+			if err != nil || code != test.wantCode {
+				t.Fatalf("code=%d want=%d err=%v status=%s", code, test.wantCode, err, report.Status)
+			}
+			if report.MigrationAuthorized || report.BlockDeviceOpened || report.MutationsPerformed ||
+				report.AssemblyPerformed || report.MountPerformed || report.WDCompatibility != "unqualified" {
+				t.Fatal("offline observation acquired authority")
+			}
+			if test.wantCode == 2 && report.Status != "incomplete" {
+				t.Fatal("recovery or unknown state not held for review", report.Status)
+			}
+			if report.SchemaVersion != 3 || len(report.Inputs) != 1 || len(report.Inputs[0].PartitionObservations) != 1 {
+				t.Fatal("missing versioned complete partition summary")
+			}
+			partition := report.Inputs[0].PartitionObservations[0]
+			wantOrphan := test.state&4 != 0 || test.lastOrphan != 0 || test.roCompat&0x10000 != 0
+			if partition.ExtNeedsOrphanRecovery != wantOrphan || partition.ExtNeedsJournalRepair ||
+				!strings.Contains(output.String(), `"ext_needs_orphan_recovery":`) {
+				t.Fatal("orphan indicator missing or conflated with journal recovery")
+			}
+			if partition.ExtCleanUnmount != (test.state&1 != 0) || partition.ExtFilesystemState == "" ||
+				(test.state&0x8000 != 0 && partition.ExtFilesystemState != "unknown-state-flags") ||
+				(test.state&2 != 0 && partition.ExtFilesystemState != "errors-recorded") {
+				t.Fatal("raw clean bit concealed other state indicators")
+			}
+			if strings.Contains(output.String(), path) || strings.Contains(output.String(), "SYNTHETIC-EXT-ID") {
+				t.Fatal("private input leaked")
+			}
+			after, err := os.ReadFile(path)
+			if err != nil || !bytes.Equal(after, fixture) {
+				t.Fatal("inspection changed its source", err)
+			}
+		})
 	}
 }
 

@@ -23,6 +23,31 @@ SMB and NFS desired policy in one strictly coherent revision. It shares the
 tested transaction engine with the original store but has a distinct format
 and filenames, no implicit migration, and no service activation.
 
+## Sanitized browser diagnostic report
+
+After an authenticated dashboard snapshot load, explicitly download
+`phantowd-sanitized-support-v1.json`. This browser-created report contains a
+versioned, at-most4 KiB allowlist: runtime/memory values and aggregate sysfs,
+MD-health and visible-mount counts. Unknown fields, names, paths, raw identifiers,
+addresses, configuration, logs and credentials are not copied. Kernel build
+labels are stripped; filesystem types outside the fixed list become `other`.
+Absent, invalid, partial and unsupported sections stay explicit without stale
+fallback values. Browser receipt/export times and age are included; a regressed
+clock makes age unknown. Counts and runtime details remain potentially sensitive:
+review the file before sharing it.
+
+Export makes no new API/authentication request, device query, state write or
+file-content read. Refresh, sign-out, credential changes and unavailable auth
+retire the retained sanitized projection; late responses cannot restore a
+retired session's report. Download anchors and Blob URLs are disposed. Source
+objects are not retained or serialized. The report is not trusted device
+attestation, an atomic inventory, a health/migration decision, an operation audit,
+SMART history, a configuration backup or a substitute for data backups.
+The static asset is included in host HTTP and ARM HTTP/HTTPS asset checks;
+dependency-free projection/DOM checks cover privacy, bounds, clocks, lifecycle
+and unavailable domains. Real-browser/accessibility and product deployment
+qualification remain separate.
+
 ## M9.1b existing backing metadata prerequisite
 
 The additional [root-only CHAP reader](internal/iscsicredentials/README.md)
@@ -182,6 +207,125 @@ feedback/fuzz contracts, actual ARMv5 embedded-asset smoke and clean two-boot
 overlay pass. Original seven base hashes remain unchanged. No JavaScript is
 executed by QEMU; these proofs do not replace real-browser/accessibility tests,
 clean hosted qualification, product enrollment or physical EX4 validation.
+
+## M5.5b authentication focus continuity
+
+The first skip link targets a focusable main landmark. Authentication and
+overview headings use `tabindex="-1"`, not extra sequential tab stops. Before
+hiding a focused authentication form/retry, dashboard or sign-out control,
+capture that focus and transfer it to the newly visible heading with
+`preventScroll`. Do not autofocus on initial status or move focus during an
+unchanged view, a retired response or when the focused control remains visible.
+Shared keyboard outlines and system-color overrides cover the existing
+interactive elements. No request, retry, authentication semantics, endpoint,
+privilege or activation is added.
+
+Actual-source DOM tests model containment/focus retirement and reproduce the
+missing destination on the frozen prior JavaScript. Three regression groups
+cover login/setup, expiration, local/global logout, authentication availability,
+confirmed/uncertain password changes, unchanged views and retired replies.
+Complete Windows API/UI/vet/tagged checks and ARMv5 test cross-compilation pass;
+the pinned Go 1.26.8 Linux host verifies embedded dashboard assets and the QEMU
+self-test markers. These are DOM/source/host-asset proofs, not actual browser
+keyboard navigation, CSS rendering, screen-reader announcements, WCAG
+conformance, current ARMv5 execution or new complete image qualification.
+
+## M5.5c secondary text palette guard
+
+The small secondary-text `quiet` color is checked against the three declared
+opaque surfaces and two maximum highlight stops directly from the embedded CSS.
+The dependency-free dashboard test uses unrounded sRGB luminance/contrast and
+black/white/equal-color calculation controls; it fails against the prior color.
+This is a narrow palette regression, not a CSS cascade, rendered-gradient,
+all-text contrast or WCAG audit. Browser, screen-reader and complete-image
+qualification remain separate. The correction changes only a CSS color:
+no new runtime dependency, request, endpoint, service or privilege.
+
+## M5.5d storage display-envelope guard
+
+An HTTP 200 response alone does not make a storage inventory current. The
+dashboard requires the existing schema-2 sysfs/read-only envelope, an exact
+count of at most 32 observations, typed row kinds/read-only/removable flags and
+known block-identity status labels before modifying device rows. Missing or
+malformed lists never become a successful empty inventory. A rejected domain
+clears its old storage/GPT observation while retaining freshly read system,
+RAID and mount sections; no retry, authentication request or probe is added.
+
+This is a display/count guard, not complete metadata validation, byte-bounded
+response decoding, stable identity or storage/mount/admission permission. The
+sanitized report preserves its own unavailable/invalid aggregate classification.
+Fixtures and the loopback-only synthetic preview now use the current envelope;
+the preview warning still identifies every value as generated data.
+
+Actual-source DOM regressions reproduce false zero-device counts and unrelated
+domain loss, then pass the corrected flows, 27 malformed cases, valid empty/32-row
+boundaries, no-partial-DOM refusal and unchanged request counts. Pinned Linux
+tagged vet/whole units and the single-boot ARMv5 overlay pass. The overlay uses
+the unchanged base volume-probe; its terminal raw capture is truncated, not a
+complete guest transcript. No JavaScript executes in QEMU; real-browser/
+accessibility, two-boot/full-image, hosted and product qualification remain open.
+
+## M5.5e independent system, RAID and mount display guards
+
+HTTP success is not sufficient to declare these sections current. System
+observations require the existing schema and consistent finite memory/uptime
+values plus typed runtime flags. RAID requires its schema/read-only flags,
+known status/health labels, exact counts bounded at 16 arrays and at most 32
+typed members per supplied list. Mounts require the existing namespace/read-only
+envelope, exact count at most 128 and typed filesystem/read-only rows. Missing
+lists do not mean a complete empty inventory; invalid domains are cleared before
+rendering without discarding newly fetched valid domains.
+
+Valid partial/unsupported/unavailable RAID observations remain explicit. Zero
+available memory is valid, unlike negative/inconsistent values. A domain rejected
+for malformed private display details cannot publish an available sanitized
+report: only a fixed invalid marker reaches the existing projection. Null stays
+unavailable. No new requests, retries, jobs, endpoints or service activation.
+
+Actual-source regressions plus 55 additional malformed cases, mixed-domain
+freshness/report checks, valid states and maximum-row/direct-refusal boundaries
+pass. Pinned whole tagged Linux vet/units and a single-boot ARMv5 overlay pass;
+the complete guest capture includes HTTP/HTTPS asset markers. No JavaScript
+executes in QEMU. Full metadata/response-byte/provenance validation, browser/
+accessibility, persistence/full/hosted and product gates remain separate.
+
+## M5.5f bounded diagnostic response consumption
+
+The five existing read-only GET paths now consume `Response.body` with fixed
+decoded-byte budgets before strict UTF-8 decoding and `JSON.parse`:
+
+| Path | Inclusive byte budget |
+| --- | --- |
+| `/api/v1/auth/status` | 16 KiB |
+| `/api/v1/system` | 16 KiB |
+| `/api/v1/storage` | 64 KiB |
+| `/api/v1/arrays` | 512 KiB |
+| `/api/v1/mounts` | 4 MiB |
+
+There is no `Response.json()` fallback or reliance on Content-Length. Geometric
+buffer growth avoids retaining one object per chunk; zero-byte chunks, more
+than 16,384 chunks, JSON depth above 16 or more than 1,024 containers refuse.
+The structural pre-scan is an allocation guard, not a full JSON/schema or
+duplicate-key validator. Unknown GET paths refuse before fetch. The initial
+authentication status also has a 10-second deadline; snapshot reads retain their
+existing shared 10-second generation, including delayed bodies.
+
+Failure/abort requests cancellation and releases the reader without awaiting
+a cancellation promise that may never settle. This uses the
+[WHATWG reader API](https://streams.spec.whatwg.org/#default-reader-release-lock),
+not verified server/kernel teardown. HTTP errors preserve their original status
+and do not consume the error body. Failures never retry or publish stale data.
+These bounds do not establish a browser heap/CPU hard limit, live/compressed
+transport interoperability or resource limits for other mutation/import flows.
+
+Actual-source regressions cover oversize parsing, initial-auth hang and excessive
+depth. Native Node Web Streams controls check every inclusive budget and excess,
+fragmented UTF-8, malformed input, pending reads/cancellation, released locks,
+no fallback/retry and the maximum HTML-escaped mount envelope. Existing display,
+session and deadline tests remain. Whole pinned tagged Linux vet/units and a
+single-boot ARMv5 overlay pass with complete raw HTTP/HTTPS asset markers. QEMU
+checks embedded-asset integration, not JavaScript/stream execution. Real-browser,
+live transport, two-boot/full/hosted and product qualification stay separate.
 
 ## Development file-service configuration API
 
@@ -712,6 +856,8 @@ and refuses non-Versatile PB machines. See the
 | `GET /api/v1/shares/configuration` | Authenticated read of the optional original share-only store; not running-service state |
 | `GET /api/v1/file-services/configuration` | Authenticated combined desired policy; development backend only, uninitialized state remains explicit |
 | `PUT /api/v1/file-services/configuration` | Development-only, Origin/CSRF-protected full revision commit; never activation |
+| `GET /api/v1/file-services/backup` | Authenticated download of initialized desired SMB/NFS policy; private configuration, not credentials or data |
+| `POST /api/v1/file-services/restore-preview` | Origin/CSRF-protected strict backup validation against an explicit expected revision; returns an unsaved replacement candidate |
 | `GET /api/v1/system` | Authenticated versioned JSON: observation time, kernel, architecture/GOARM, uptime, total/available memory, effective UID, development safety flags |
 | `GET /api/v1/storage` | Authenticated, sorted, bounded kernel block-node observations, schema v2: name, major/minor, 512-byte-sector capacity, read-only/removable flags, partition number, transient parent name/major/minor for partitions, and `serial_status` / `wwn_status` for non-partition block nodes |
 | Incomplete or inconsistent storage inventory | `503 storage_unavailable`; no partial observations, raw identifiers or sysfs paths |
@@ -1013,6 +1159,62 @@ the existing session and CSRF protection, ignore duplicate submission, and
 abort after ten seconds. The browser supplies the request Origin.
 
 ### Development configuration manager
+
+#### Download and reviewed restore
+
+Use **Load/reconcile** first. Download exports the saved combined desired SMB/NFS
+policy as `phantowd-file-services.json`; it is unavailable for an uninitialized
+store. Select one backup file, validate/review its complete replacement and then
+use the existing explicit **Save** action. Validation does not save anything.
+Definitions or grants absent from the replacement are removed from desired
+policy, not from user files or running services. The existing bounded semantic
+before/after review and cross-protocol folder advisories apply to this candidate.
+
+The exact wrapper has three fields: `format: "phantowd-file-service-backup"`,
+`schema_version: 1` and `configuration` (the existing strict combined document).
+The entire file is limited to **525,056 bytes**. It contains private user/share
+names, networks and filesystem UUIDs: protect it as private configuration, not
+a sanitized support bundle. It excludes passwords, Unix/Samba accounts, passdb,
+iSCSI policy, other device settings and file contents. Importing user references
+does not provision accounts; imported volume references do not qualify disks.
+This is not a whole-device backup or a migration/activation authority.
+
+Both endpoints use the existing startup-bound development backend, authentication,
+Host/origin restrictions and the same non-queuing read/save slot. GET accepts no
+body or query; absent saved state returns 409. POST additionally requires the
+exact Origin, CSRF header, JSON Content-Type and exactly one canonical decimal
+`X-PhantoWD-Expected-Revision`. Zero means an explicitly observed uninitialized
+store, not permission to overwrite existing state. Stale expected state returns
+409. Missing backend still returns 503; no default store is created.
+
+The server validates the original uploaded bytes before rebasing all four
+configuration revisions to expected + 1. Unknown/duplicate fields, malformed
+UTF-8, nulls, unsupported format/version, incoherent policy and oversized input
+refuse. Rebasing must still satisfy every component and combined size bound.
+POST returns schema 1, scope `file-service-restore-preview-only`, the expected
+revision, candidate and existing preview; `saved`, `applied`, `runtime_validated`
+and `activation_available` are all false. The existing explicit PUT performs
+the whole-document compare-and-swap; a competing save invalidates the candidate.
+
+The browser sends original file text after fatal UTF-8 validation, without JSON
+normalization (a BOM is preserved for server refusal). File reading and requests
+share the existing ten-second observation deadline and single-flight lifecycle.
+Logout, cancellation, file changes or late replies cannot submit or resurrect a
+retired candidate. Downloaded state must still match the explicitly loaded
+baseline. A timed-out file observation does not prove underlying OS work stopped.
+After an uncertain Save, reconcile the full stored document before proceeding;
+never automatically retry or treat the old preview as a completed write.
+
+Local qualification (2026-10-11): complete Windows API/UI checks and ARMv5 test
+cross-compilation (Go 1.27.0), pinned Linux vet/tagged tests and three race passes
+for the API/policy/store (Go 1.26.8), and actual ARMv5 standard smoke plus the
+existing two-boot overlay pass. The latter uses real loopback HTTP and HTTPS to
+verify preview without a write, explicit save, exact export, stale refusal and
+state reopening. Native tests separately close/reopen a real private store.
+The terminal ARM log was truncated; completion markers/exit were observed, not
+independently replayed from a complete archived capture. DOM tests do not qualify
+browser rendering or accessibility. No new kernel/package image, SBOM, hosted
+timing repair, physical NAS operation or product service activation is claimed.
 
 #### Desired change-review task contract
 

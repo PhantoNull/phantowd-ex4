@@ -113,6 +113,8 @@ func TestNativeDaemonLifecycleRefusesAbsentCanceledAndBusyAuthority(t *testing.T
 		absent.StartNativeDaemonQEMU, absent.StopNativeDaemonQEMU,
 		absent.VerifyNativeIdleDisableQEMU, absent.ProbeNativeDaemonQEMU,
 		absent.CheckNativeStartupQEMU, absent.StopNativeServiceQEMU,
+		absent.StartPlannedDaemonQEMU,
+		absent.ProbePlannedDataAccessQEMU,
 	} {
 		if err := operation(context.Background()); !errors.Is(err, ErrInvalid) {
 			t.Fatal("absent authority admitted lifecycle", err)
@@ -126,6 +128,8 @@ func TestNativeDaemonLifecycleRefusesAbsentCanceledAndBusyAuthority(t *testing.T
 	for _, operation := range []func(context.Context) error{
 		r.StartNativeDaemonQEMU, r.StopNativeDaemonQEMU, r.VerifyNativeIdleDisableQEMU,
 		r.CheckNativeStartupQEMU, r.StopNativeServiceQEMU,
+		r.StartPlannedDaemonQEMU,
+		r.ProbePlannedDataAccessQEMU,
 	} {
 		if err := operation(canceled); !errors.Is(err, context.Canceled) {
 			t.Fatal("canceled lifecycle proceeded", err)
@@ -136,5 +140,24 @@ func TestNativeDaemonLifecycleRefusesAbsentCanceledAndBusyAuthority(t *testing.T
 		if !errors.Is(err, processowner.ErrBusy) {
 			t.Fatal("concurrent lifecycle proceeded", err)
 		}
+	}
+}
+
+func TestNativeDaemonObservationRetainsUnavailableCauseAndReview(t *testing.T) {
+	// Deliberately incomplete authority, not a live or qualified daemon. No
+	// program starts and PID 2 is never inspected: missing retained code must
+	// refuse first. Exercise the public observation, not a fabricated success.
+	runtime := nativeReleaseFixture(t)
+	runtime.daemonPID = 2
+	err := runtime.VerifyNativeIdleDisableQEMU(context.Background())
+	if !errors.Is(err, ErrReviewRequired) || !errors.Is(err, ErrUnavailable) || !runtime.owner.review {
+		t.Fatal("daemon refusal lost the original cause or sticky review", err)
+	}
+	observed, observeErr := runtime.ObserveNativeWorkerFailureQEMU(context.Background())
+	if observeErr != nil || observed.Present {
+		t.Fatal("daemon inspection invented a credential worker failure", observed, observeErr)
+	}
+	if next := runtime.VerifyNativeIdleDisableQEMU(context.Background()); !errors.Is(next, ErrReviewRequired) {
+		t.Fatal("unavailable authority became reusable", next)
 	}
 }

@@ -17,6 +17,14 @@ case "$stage" in
 esac
 test -s "$kernel_config"
 
+# No userspace AF_ALG consumer is part of this RAM research profile. Deny
+# builtin and modular exposure, including future members of that namespace;
+# internal kernel crypto libraries are separate and remain permitted.
+if grep -Eq '^CONFIG_CRYPTO_USER_API(_[A-Z0-9_]+)?=(y|m)$' "$kernel_config"; then
+    echo 'Unused AF_ALG kernel interface must be disabled' >&2
+    exit 1
+fi
+
 assert_enabled() {
     grep -Fx "CONFIG_$1=y" "$kernel_config" >/dev/null || {
         echo "Required Stage B kernel option is missing: CONFIG_$1" >&2

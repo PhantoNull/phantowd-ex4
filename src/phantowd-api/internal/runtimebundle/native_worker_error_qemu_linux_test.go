@@ -38,6 +38,34 @@ func TestNativeWorkerFailureKeepsReviewAndCauseWithoutLeakingCauseText(t *testin
 	}
 }
 
+func TestNativeWorkerFailureClassifiesRedactedDaemonRefusalWithoutCauseText(t *testing.T) {
+	private := errors.New("private-daemon-state\nPHANTOWD_FAKE_READY")
+	for _, test := range []struct {
+		cause  error
+		reason string
+	}{
+		{errors.Join(context.DeadlineExceeded, private), "deadline"},
+		{errors.Join(context.Canceled, private), "canceled"},
+		{errors.Join(ErrUnavailable, private), "unavailable"},
+		{errors.Join(ErrMismatch, private), "mismatch"},
+		{private, "other"},
+	} {
+		t.Run(test.reason, func(t *testing.T) {
+			refusal := &nativeDaemonReviewQEMU{cause: test.cause}
+			if refusal.Error() != ErrReviewRequired.Error() || !errors.Is(refusal, ErrReviewRequired) || !errors.Is(refusal, test.cause) {
+				t.Fatal("daemon refusal lost redaction, review or typed cause")
+			}
+			worker := nativeWorkerFailureQEMU(nativeWorkerAdmissionQEMU, refusal)
+			if !errors.Is(worker, ErrReviewRequired) || !errors.Is(worker, test.cause) || strings.ContainsAny(worker.Error(), "\r\n") || strings.Contains(worker.Error(), "private-daemon-state") {
+				t.Fatal("worker discarded refusal or disclosed private cause")
+			}
+			if !strings.Contains(worker.Error(), "phase=pre-admission reason="+test.reason+":") {
+				t.Fatal("redacted refusal misclassified", worker)
+			}
+		})
+	}
+}
+
 func TestNativeWorkerFailureObservationRefusesCanceledOrBusyWithoutEffects(t *testing.T) {
 	runtime := nativeReleaseFixture(t)
 	runtime.nativeWorkerFailureQEMU(nativeWorkerAdmissionQEMU, context.DeadlineExceeded)

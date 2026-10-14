@@ -145,6 +145,26 @@ func (p *ServiceSharePinsQEMU) Verify() error {
 	return p.verify()
 }
 
+// VerifySourceSetQEMU binds the handoff to the SAME complete mounted roster
+// used by a trusted planner. Matching volume labels/UUIDs are not enough: an
+// independently constructed roster is not this authority. A wrong caller's
+// assertion refuses without putting a healthy pin into review. Actual source
+// drift is still observed by the normal complete verification.
+func (p *ServiceSharePinsQEMU) VerifySourceSetQEMU(expected *MountedVolumeSet) error {
+	if p == nil || p.handoff == nil || expected == nil {
+		return ErrHandoffInvalid
+	}
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.handoff.mu.Lock()
+	same := p.handoff.set == expected
+	p.handoff.mu.Unlock()
+	if !same {
+		return ErrHandoffInvalid
+	}
+	return p.verify()
+}
+
 // VerifyDeclaredRoots compares the complete requested set with the exact
 // declaration retained by the live handoff. It cannot authorize services or
 // validate identity/policy freshness. A mismatching caller request refuses

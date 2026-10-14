@@ -11,6 +11,9 @@ from pathlib import Path
 from runtime_loader_fixture import MAX_LOG, MAX_REPORT, read_bounded, validate
 
 
+CAMPAIGNS = ("service", "native", "candidate", "lifecycle", "fault", "data",
+             "exit", "held", "file", "file-source")
+FOCUSED_CAMPAIGNS = CAMPAIGNS
 ENTRIES = ("usr/sbin/smbd", "usr/bin/smbpasswd", "usr/bin/testparm",
            "usr/lib/samba/vfs/streams_xattr.so", "usr/lib/gconv/IBM850.so",
            "usr/bin/pdbedit", "usr/bin/smbstatus", "usr/bin/smbcontrol")
@@ -23,6 +26,61 @@ CATALOG_ROWS = frozenset({
     ("module", "IBM850//", "INTERNAL", "IBM850", "1"),
     ("module", "INTERNAL", "IBM850//", "IBM850", "1"),
 })
+CENSUS_MARKER = ("PHANTOWD_SAMBA_ROOT_CENSUS_READY readonly=true "
+                 "complete_census=true hashes=true aliases=true "
+                 "negative_controls=false retained_control=false "
+                 "scope=qemu-only")
+PLANNED_SOURCE_FAULT_MARKER = (
+    "PHANTOWD_SAMBA_OWNER_PLANNED_SOURCE_FAULT_READY "
+    "same_authorities=true same_daemon=true data_verified=true "
+    "original_session=true held_client_stopped=true "
+    "held_client_retained=true old_observers_refused=true "
+    "source_covered=true exclusive_supervision=true review_sticky=true "
+    "stopped_reaped=true private_inputs=15 runtime_inputs_retained=true "
+    "originals_busy=true cover_removed=true restoration_refused=true "
+    "close_refused=true "
+    "private_mount_namespace=true subprocess_disposal=true "
+    "parent_fd_equal=true activation=false scope=qemu-only")
+PLANNED_EXIT_FAULT_MARKER = (
+    "PHANTOWD_SAMBA_OWNER_PLANNED_EXIT_FAULT_READY "
+    "same_authorities=true same_daemon=true data_verified=true "
+    "original_handle=true single_use=true exclusive_supervision=true "
+    "review_sticky=true stopped_reaped=true private_inputs=15 "
+    "capture_retained=true capture_before_worker=true "
+    "runtime_inputs_retained=true originals_busy=true "
+    "restart_refused=true normal_stop_refused=true "
+    "private_mount_namespace=true subprocess_disposal=true "
+    "parent_fd_equal=true activation=false scope=qemu-only")
+PLANNED_HELD_CLOSE_MARKER = (
+    "PHANTOWD_SAMBA_OWNER_PLANNED_HELD_CLOSE_READY "
+    "same_authorities=true same_daemon=true data_verified=true "
+    "original_session=true exclusive_supervision=true "
+    "accepted_cancellation=true client_daemon_stopped=true "
+    "private_inputs=15 originals_retained=true "
+    "old_observers_refused=true runtime_close_before_release=true "
+    "repeated_close=true closed_refused=true no_fd_leak=true "
+    "activation=false scope=qemu-only")
+PLANNED_OPEN_FILE_MARKER = (
+    "PHANTOWD_SAMBA_OWNER_PLANNED_OPEN_FILE_READY "
+    "same_authorities=true same_daemon=true data_verified=true "
+    "original_object=true original_open=true exclusive_supervision=true "
+    "accepted_cancellation=true client_daemon_stopped=true "
+    "private_inputs=15 original_file_retained=true originals_busy=true "
+    "old_observers_refused=true runtime_close_before_release=true "
+    "repeated_close=true closed_refused=true no_fd_leak=true "
+    "activation=false scope=qemu-only")
+PLANNED_FILE_SOURCE_FAULT_MARKER = (
+    "PHANTOWD_SAMBA_OWNER_PLANNED_FILE_SOURCE_FAULT_READY "
+    "same_authorities=true same_daemon=true data_verified=true "
+    "original_object=true original_open=true "
+    "client_daemon_stopped=true original_file_retained=true "
+    "old_observers_refused=true source_covered=true "
+    "exclusive_supervision=true review_sticky=true "
+    "private_inputs=15 runtime_inputs_retained=true "
+    "originals_busy=true cover_removed=true "
+    "restoration_refused=true close_refused=true "
+    "private_mount_namespace=true subprocess_disposal=true "
+    "parent_fd_equal=true activation=false scope=qemu-only")
 MARKERS = (
     "PHANTOWD_SAMBA_ROOT_ENTROPY_READY provider=virtio-rng scope=qemu-only",
     "PHANTOWD_SAMBA_ROOT_STAGE_READY fresh=true hashes_during_copy=true "
@@ -122,7 +180,9 @@ MARKERS = (
     "other_login_allowed=true same_daemon=true no_new_privileges=true "
     "stopped_reaped=true no_fd_leak=true scope=qemu-only",
     "PHANTOWD_SAMBA_OWNER_NATIVE_LIVE_REVOKE_READY accounts=2 "
-    "qualified_pair=true owner_bound=true same_sid=true target_absent=true "
+    "qualified_pair=true original_pair_rechecked=true "
+    "revoked_pair_refused=true "
+    "owner_bound=true same_sid=true target_absent=true "
     "same_peer_session=true new_login_denied=true other_login_allowed=true "
     "same_daemon=true no_new_privileges=true stopped_reaped=true "
     "no_fd_leak=true scope=qemu-only",
@@ -141,16 +201,47 @@ MARKERS = (
     "unix_owner=true symlink_denied=true private_namespace=true "
     "stopped_before_release=true no_fd_leak=true "
     "complete_storage_identity=false scope=qemu-only",
+    "PHANTOWD_SAMBA_OWNER_PLANNED_STARTUP_READY "
+    "owner=actual_native_backend storage=mounted_roster "
+    "same_authorities=true granted_only=true service_role=true "
+    "original_views=true before_start_busy=true after_start_busy=true "
+    "duplicate_refused=true canceled_start_refused=true "
+    "fresh_observation=true runtime_close_before_release=true "
+    "stopped_reaped=true no_fd_leak=true samba_data=false "
+    "activation=false scope=qemu-only",
+    "PHANTOWD_SAMBA_OWNER_PLANNED_DATA_READY "
+    "same_authorities=true same_daemon=true granted_only=true "
+    "ungranted_enabled_denied=true "
+    "smb_read=true smb_write=true unix_owner=true readonly_EROFS=true "
+    "readonly_denied=true symlink_denied=true fresh_observation=true "
+    "stopped_before_release=true no_fd_leak=true "
+    "activation=false scope=qemu-only",
+    "PHANTOWD_SAMBA_OWNER_PLANNED_SUPERVISION_READY "
+    "same_authorities=true complete_scan=true serialized=true "
+    "cancellation_stopped=true originals_retained=true "
+    "restart_refused=true close_before_release=true "
+    "stopped_reaped=true no_fd_leak=true "
+    "activation=false scope=qemu-only",
+    "PHANTOWD_SAMBA_OWNER_PLANNED_STOP_READY "
+    "same_daemon=true private_inputs=15 runtime_inputs_retained=true "
+    "live_not_stopped=true stopped_reaped=true "
+    "legacy_clients_guard=true repeated_readonly=true "
+    "closed_refused=true no_fd_leak=true activation=false "
+    "scope=qemu-only",
     "PHANTOWD_SAMBA_OWNER_PLANNED_CANDIDATE_READY "
     "owner=actual_native_backend storage=mounted_roster locked_plan=true "
     "exact_declaration=true original_objects=true caller_close=true "
     "fresh_recompiled=true rendered=true granted_only=true "
     "paired_lookup=true management_complete=true shared_globals=true "
     "management_bound=true protected_role=true management_unchanged=true "
+    "prepared_inputs=true service_config_bound=true share_inputs_bound=true "
+    "coordinator_bound=true same_roster=true policy_copy=true "
     "startup_blocked=true "
     "identity_retained=true handoff_close_gated=true "
     "desired_roundtrip=true journals_unchanged=true stale_refused=true "
+    "runtime_close_before_release=true "
     "released=true samba_data=false activation=false scope=qemu-only",
+    PLANNED_EXIT_FAULT_MARKER,
     "PHANTOWD_SAMBA_OWNER_NATIVE_IDENTITY_STARTUP_READY "
     "startup_bound=true exact_backend=true before_start_busy=true "
     "after_start_busy=true duplicate_refused=true canceled_start_refused=true "
@@ -169,6 +260,7 @@ MARKERS = (
     "inputs_retained=true restoration_refused=true close_no_retry=true "
     "subprocess_disposal=true no_fd_leak=true "
     "service_owner=false scope=qemu-only",
+    PLANNED_SOURCE_FAULT_MARKER,
     "PHANTOWD_SAMBA_ROOT_DONE",
 )
 
@@ -202,23 +294,48 @@ def check_guest(log):
 
 def check_campaign(log, phase):
     if (not isinstance(log, str) or len(log.encode("utf-8")) > MAX_LOG
-            or phase not in ("service", "native", "lifecycle")):
+            or phase not in FOCUSED_CAMPAIGNS):
         raise ValueError("invalid campaign evidence")
-    split = next(i for i, row in enumerate(MARKERS)
-                 if row.startswith("PHANTOWD_SAMBA_OWNER_NATIVE_NSS_READY"))
     enrollment = next(i for i, row in enumerate(MARKERS)
                       if row.startswith(
                           "PHANTOWD_SAMBA_OWNER_NATIVE_ENROLLMENT_READY"))
     planned = next(row for row in MARKERS
                    if row.startswith(
                        "PHANTOWD_SAMBA_OWNER_PLANNED_CANDIDATE_READY"))
-    native = tuple(row for row in MARKERS[split:-3] if row != planned)
+    access = tuple(row for row in MARKERS if row.startswith((
+        "PHANTOWD_SAMBA_OWNER_PLANNED_STARTUP_READY",
+        "PHANTOWD_SAMBA_OWNER_PLANNED_DATA_READY",
+        "PHANTOWD_SAMBA_OWNER_PLANNED_SUPERVISION_READY",
+        "PHANTOWD_SAMBA_OWNER_PLANNED_STOP_READY")))
+    native = tuple(row for row in MARKERS[enrollment:-4]
+                   if row not in (*access, planned, PLANNED_EXIT_FAULT_MARKER))
+    # Every guest still hashes its own complete code tree. The independently
+    # exercised refusals/retention remain mandatory once, in the service guest;
+    # neither a narrowed inspection nor another guest's state claims those.
+    census = MARKERS[:3] + (CENSUS_MARKER,)
     expected = {
-        "service": MARKERS[:split] + ("PHANTOWD_SAMBA_ROOT_SERVICE_DONE",),
-        "native": MARKERS[:5] + native
+        "service": MARKERS[:enrollment]
+        + ("PHANTOWD_SAMBA_ROOT_SERVICE_DONE",),
+        "native": census + native
         + ("PHANTOWD_SAMBA_ROOT_NATIVE_DONE",),
-        "lifecycle": (MARKERS[:5] + MARKERS[split:enrollment + 1]
-                      + (planned,) + MARKERS[-3:]),
+        "candidate": (census + (MARKERS[enrollment], planned)
+                      + ("PHANTOWD_SAMBA_ROOT_CANDIDATE_DONE",)),
+        "lifecycle": (census + (MARKERS[enrollment], MARKERS[-4],
+                                "PHANTOWD_SAMBA_ROOT_DONE")),
+        "fault": (census + (MARKERS[enrollment], MARKERS[-3],
+                            PLANNED_SOURCE_FAULT_MARKER,
+                            "PHANTOWD_SAMBA_ROOT_FAULT_DONE")),
+        "data": (census + (MARKERS[enrollment],) + access
+                 + ("PHANTOWD_SAMBA_ROOT_DATA_DONE",)),
+        "exit": (census + (MARKERS[enrollment], PLANNED_EXIT_FAULT_MARKER,
+                           "PHANTOWD_SAMBA_ROOT_EXIT_DONE")),
+        "held": (census + (MARKERS[enrollment], PLANNED_HELD_CLOSE_MARKER,
+                           "PHANTOWD_SAMBA_ROOT_HELD_DONE")),
+        "file": (census + (MARKERS[enrollment], PLANNED_OPEN_FILE_MARKER,
+                           "PHANTOWD_SAMBA_ROOT_FILE_DONE")),
+        "file-source": (census + (MARKERS[enrollment],
+                                  PLANNED_FILE_SOURCE_FAULT_MARKER,
+                                  "PHANTOWD_SAMBA_ROOT_FILE_SOURCE_DONE")),
     }[phase]
     prefixes = ("PHANTOWD_SAMBA_ROOT_", "PHANTOWD_SAMBA_OWNER_")
     markers = tuple(line for line in log.splitlines()
@@ -229,12 +346,12 @@ def check_campaign(log, phase):
 
 
 def select_campaigns(selection):
-    """A focused local probe is never the complete three-campaign proof."""
+    """A focused local probe is never the complete campaign proof."""
     if not isinstance(selection, str):
         raise ValueError("invalid campaign selection")
     if selection == "all":
-        return ("service", "native", "lifecycle")
-    if selection not in ("service", "native", "lifecycle"):
+        return CAMPAIGNS
+    if selection not in FOCUSED_CAMPAIGNS:
         raise ValueError("invalid campaign selection")
     return (selection,)
 
@@ -242,7 +359,7 @@ def select_campaigns(selection):
 def diagnostic_record(log, phase, status):
     """Bounded escaped fixture telemetry, never campaign acceptance."""
     if (not isinstance(log, str) or len(log.encode("utf-8")) > MAX_LOG
-            or phase not in ("service", "native", "lifecycle")
+            or phase not in FOCUSED_CAMPAIGNS
             or type(status) is not int or not 0 <= status <= 255):
         raise ValueError("invalid campaign diagnostics")
     return json.dumps({"format": "phantowd-qemu-campaign-diagnostic",
@@ -251,13 +368,71 @@ def diagnostic_record(log, phase, status):
                       ensure_ascii=True, separators=(",", ":"))
 
 
-def check_campaigns(service, native, lifecycle):
-    first = check_campaign(service, "service")
-    second = check_campaign(native, "native")
-    third = check_campaign(lifecycle, "lifecycle")
-    if first[:2] != second[:2] or first[:2] != third[:2]:
+WORKER_TIMING_PREFIX = "PHANTOWD_DIAG_NATIVE_WORKER"
+WORKER_TIMING = re.compile(
+    re.escape(WORKER_TIMING_PREFIX)
+    + r" operation=(check|list|create|password|enable|disable|status|revoke)"
+    r" phase=(pre-admission|execution|settlement|post-admission)"
+    r" elapsed_ms=(0|[1-9][0-9]{0,5}) remaining_ms=(0|[1-9][0-9]{0,5})"
+    r" parent_done=(true|false) failed=(true|false)"
+    r" cause=(none|deadline|canceled|mismatch|unavailable|other)"
+    r" qualifying=false scope=qemu-only")
+
+
+def timing_summary(log, phase):
+    """Redacted reported row sums, never elapsed wall time or campaign proof.
+
+    Repeated operations and separate parent budgets may coexist in a log.
+    No attempt is made to identify operations or infer whole-scope coverage.
+    """
+    if (not isinstance(log, str) or len(log.encode("utf-8")) > MAX_LOG
+            or phase not in (*FOCUSED_CAMPAIGNS, "pending")):
+        raise ValueError("invalid timing summary input")
+    result = {"format": "phantowd-qemu-worker-timing-summary",
+              "schema_version": 1, "qualifying": False, "scope": "qemu-only",
+              "phase": phase, "available": False,
+              "coverage": "recognized-worker-records-only",
+              "timing_records": 0, "failed_records": 0,
+              "stage_elapsed_sum_ms": {"pre-admission": 0, "execution": 0,
+                                       "settlement": 0, "post-admission": 0},
+              "last_record": None, "last_failed_record": None}
+    for line in log.splitlines():
+        if not line.startswith(WORKER_TIMING_PREFIX):
+            continue
+        match = WORKER_TIMING.fullmatch(line)
+        if match is None or result["timing_records"] >= 512:
+            raise ValueError("unsupported or oversized worker timings")
+        operation, stage, elapsed, remaining, parent_done, failed, cause = (
+            match.groups())
+        elapsed, remaining = int(elapsed), int(remaining)
+        failed = failed == "true"
+        if (elapsed > 600000 or remaining > 600000
+                or failed != (cause != "none")):
+            raise ValueError("inconsistent worker timing")
+        result["timing_records"] += 1
+        result["failed_records"] += int(failed)
+        result["stage_elapsed_sum_ms"][stage] += elapsed
+        result["last_record"] = {"operation": operation, "stage": stage,
+                                 "elapsed_ms": elapsed,
+                                 "remaining_ms": remaining,
+                                 "parent_done": parent_done == "true",
+                                 "failed": failed, "cause": cause}
+        if failed:
+            result["last_failed_record"] = dict(result["last_record"])
+    result["available"] = result["timing_records"] != 0
+    return result
+
+
+def check_campaigns(service, native, candidate, lifecycle=None, fault=None,
+                    data=None, exit_log=None, held_log=None, file_log=None,
+                    file_source_log=None):
+    costs = tuple(check_campaign(log, phase) for log, phase in zip(
+        (service, native, candidate, lifecycle, fault, data,
+         exit_log, held_log, file_log, file_source_log),
+        CAMPAIGNS))
+    if any(costs[0][:2] != cost[:2] for cost in costs[1:]):
         raise ValueError("campaign runtime census differs")
-    return first, second, third
+    return costs
 
 
 def validate_catalog(catalog):
@@ -322,18 +497,26 @@ def main():
     verify = sub.add_parser("verify")
     verify.add_argument("log")
     verify.add_argument("--native-log")
+    verify.add_argument("--candidate-log")
     verify.add_argument("--lifecycle-log")
+    verify.add_argument("--fault-log")
+    verify.add_argument("--data-log")
+    verify.add_argument("--exit-log")
+    verify.add_argument("--held-log")
+    verify.add_argument("--file-log")
+    verify.add_argument("--file-source-log")
     campaign = sub.add_parser("verify-campaign")
     campaign.add_argument("log")
-    campaign.add_argument("phase", choices=("service", "native", "lifecycle"))
+    campaign.add_argument("phase", choices=FOCUSED_CAMPAIGNS)
     selection = sub.add_parser("select-campaigns")
-    selection.add_argument("selection",
-                           choices=("all", "service", "native", "lifecycle"))
+    selection.add_argument("selection", choices=("all", *FOCUSED_CAMPAIGNS))
     diagnostics = sub.add_parser("diagnostic-log")
     diagnostics.add_argument("log")
-    diagnostics.add_argument("phase",
-                             choices=("service", "native", "lifecycle"))
+    diagnostics.add_argument("phase", choices=FOCUSED_CAMPAIGNS)
     diagnostics.add_argument("status", type=int)
+    timings = sub.add_parser("timing-summary")
+    timings.add_argument("log")
+    timings.add_argument("phase", choices=(*FOCUSED_CAMPAIGNS, "pending"))
     args = parser.parse_args()
     if args.command == "prepare":
         reports = [json.loads(read_bounded(name, MAX_REPORT)) for name in (
@@ -353,16 +536,24 @@ def main():
             raise ValueError("regular fixture log required")
         print(diagnostic_record(read_bounded(args.log, MAX_LOG),
                                 args.phase, args.status))
+    elif args.command == "timing-summary":
+        if Path(args.log).is_symlink() or not Path(args.log).is_file():
+            raise ValueError("regular fixture log required")
+        summary = timing_summary(read_bounded(args.log, MAX_LOG), args.phase)
+        print(json.dumps(summary, ensure_ascii=True,
+                         separators=(",", ":")))
     else:
         log = read_bounded(args.log, MAX_LOG)
-        if bool(args.native_log) != bool(args.lifecycle_log):
-            raise ValueError("all three campaign logs required")
+        paths = (args.native_log, args.candidate_log, args.lifecycle_log,
+                 args.fault_log, args.data_log, args.exit_log, args.held_log,
+                 args.file_log, args.file_source_log)
+        if any(paths) and not all(paths):
+            raise ValueError("all ten campaign logs required")
         if args.native_log:
-            native = read_bounded(args.native_log, MAX_LOG)
-            lifecycle = read_bounded(args.lifecycle_log, MAX_LOG)
-            costs = check_campaigns(log, native, lifecycle)
+            costs = check_campaigns(
+                log, *(read_bounded(path, MAX_LOG) for path in paths))
             for phase, (files, size, elapsed) in zip(
-                    ("native", "lifecycle"), costs[1:]):
+                    CAMPAIGNS[1:], costs[1:]):
                 print(f"PHANTOWD_SAMBA_CAMPAIGN_SCAN_COST phase={phase} "
                       f"files={files} bytes={size} elapsed_ns={elapsed} "
                       "scope=qemu-emulation-only")
@@ -372,6 +563,9 @@ def main():
         print(f"{SCAN_PREFIX} files={files} bytes={size} elapsed_ns={elapsed} "
               "scope=qemu-emulation-only")
         print("\n".join(MARKERS))
+        if args.native_log:
+            print(PLANNED_OPEN_FILE_MARKER)
+            print(PLANNED_FILE_SOURCE_FAULT_MARKER)
 
 
 if __name__ == "__main__":

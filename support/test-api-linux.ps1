@@ -60,16 +60,24 @@ printf 'PHANTOWD_LINUX_API_TESTS_READY buildroot=%s scope=all-api-packages-qemu-
 '@
 $linuxScript = $linuxScript.Replace("`r`n", "`n")
 $encodedLinuxScript = [Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes($linuxScript))
-$linuxCommand = "set -eu; printf '%s' '$encodedLinuxScript' | base64 -d > /tmp/phantowd-test-api-linux.sh; exec /bin/sh /tmp/phantowd-test-api-linux.sh"
+$linuxCommand = "set -eu; printf '%s' '$encodedLinuxScript' | base64 -d > /tmp/phantowd-test-api-linux.sh; exec timeout --signal=TERM --kill-after=10s 180s /bin/sh /tmp/phantowd-test-api-linux.sh"
 
 docker run --rm `
+    --pull never `
+    --cpus 4 `
+    --memory 2g `
+    --pids-limit 256 `
     --network none `
     --read-only `
-    --tmpfs /tmp:rw,exec,nosuid,nodev,size=2048m `
+    --user 1000:1000 `
+    --cap-drop ALL `
+    --security-opt no-new-privileges:true `
+    --tmpfs '/tmp:rw,exec,nosuid,nodev,size=1024m,uid=1000,gid=1000' `
+    --entrypoint /bin/sh `
     --mount $repoMount `
     --mount $workspaceMount `
     $imageName `
-    sh -ec $linuxCommand
+    -ec $linuxCommand
 
 if ($LASTEXITCODE -ne 0) {
     throw 'Linux API vet/tests failed.'

@@ -34,7 +34,17 @@ function setConnectionState(label, state = "ready") {
   indicator.classList.toggle("is-unavailable", state === "unavailable");
 }
 
+function validSystemObservation(system) {
+  return system?.schema_version === 1 && system.memory !== null && typeof system.memory === "object" &&
+    !Array.isArray(system.memory) && Number.isSafeInteger(system.memory.total_bytes) && system.memory.total_bytes > 0 &&
+    Number.isSafeInteger(system.memory.available_bytes) && system.memory.available_bytes >= 0 &&
+    system.memory.available_bytes <= system.memory.total_bytes &&
+    Number.isFinite(system.uptime_seconds) && system.uptime_seconds >= 0 && system.uptime_seconds <= Number.MAX_SAFE_INTEGER &&
+    typeof system.flashable === "boolean" && typeof system.hardware_validated === "boolean";
+}
+
 function renderSystem(system) {
+  if (!validSystemObservation(system)) throw new Error("System observation is invalid.");
   const buildLabel = system.target === "qemu-armv5" ? "QEMU · EMULATED" :
     system.target === "ui-preview-fixture" ? "LOCAL FIXTURES" : "DEVELOPMENT PROFILE";
   setConnectionState(buildLabel);
@@ -97,10 +107,31 @@ function makeIdentityChip(label, status) {
   return chip;
 }
 
+function validStorageObservation(storage) {
+  if (!(storage?.schema_version === 2 && storage.scope === "kernel-sysfs-only" &&
+    storage.inventory_read_only === true && storage.block_devices_opened === false &&
+    storage.content_read === false && storage.mutations_performed === false &&
+    storage.stable_identity_available === false &&
+    Array.isArray(storage.observations) && storage.observations.length <= 32 &&
+    storage.device_count === storage.observations.length)) return false;
+  const identities = ["unavailable", "present", "invalid", "ambiguous", "unreadable"];
+  // Validate the bounded display envelope, not physical/stable identities or
+  // authorization. Reject all rows before touching the DOM; missing metadata
+  // never proves a complete empty inventory or current kernel read-only flag.
+  for (const item of storage.observations) {
+    if (item === null || typeof item !== "object" || Array.isArray(item) ||
+        !["block", "partition"].includes(item.kind) ||
+        typeof item.read_only !== "boolean" || typeof item.removable !== "boolean" ||
+        (item.kind === "block" && (!identities.includes(item.serial_status) || !identities.includes(item.wwn_status)))) return false;
+  }
+  return true;
+}
+
 function renderStorage(storage) {
+  if (!validStorageObservation(storage)) throw new Error("Storage observation is invalid.");
   const list = byId("device-list");
   list.replaceChildren();
-  const observations = Array.isArray(storage.observations) ? storage.observations : [];
+  const observations = storage.observations;
   setText("device-count", `${observations.length} ${observations.length === 1 ? "device" : "devices"}`);
   if (observations.length === 0) {
     const empty = document.createElement("p");
@@ -146,10 +177,27 @@ function renderStorage(storage) {
   }
 }
 
+function validArrayObservation(inventory) {
+  if (inventory?.schema_version !== 1 || inventory.read_only !== true ||
+      inventory.block_devices_opened !== false || inventory.disk_content_read !== false ||
+      inventory.mutations_performed !== false ||
+      !["available", "partial", "unavailable", "unsupported"].includes(inventory.status) ||
+      !Array.isArray(inventory.arrays) || inventory.arrays.length > 16 || inventory.array_count !== inventory.arrays.length ||
+      (["unavailable", "unsupported"].includes(inventory.status) && inventory.arrays.length !== 0)) return false;
+  for (const item of inventory.arrays) {
+    if (item === null || typeof item !== "object" || Array.isArray(item) ||
+        !["healthy", "degraded", "syncing", "paused", "inactive", "unknown"].includes(item.health) ||
+        (Array.isArray(item.members) && (item.members.length > 32 ||
+          item.members.some((member) => member === null || typeof member !== "object" || Array.isArray(member))))) return false;
+  }
+  return true;
+}
+
 function renderArrays(inventory) {
+  if (!validArrayObservation(inventory)) throw new Error("RAID observation is invalid.");
   const list = byId("array-list");
   list.replaceChildren();
-  const arrays = Array.isArray(inventory.arrays) ? inventory.arrays : [];
+  const arrays = inventory.arrays;
   const status = inventory.status || "unavailable";
   const count = Number(inventory.array_count);
   const visibleCount = Number.isInteger(count) ? count : arrays.length;
@@ -203,10 +251,22 @@ function renderArrays(inventory) {
   }
 }
 
+function validMountObservation(inventory) {
+  if (inventory?.schema_version !== 1 || inventory.scope !== "current-process-mount-namespace" ||
+      inventory.read_only !== true || inventory.filesystem_contents_read !== false || inventory.mount_operations_performed !== false ||
+      !Array.isArray(inventory.mounts) || inventory.mounts.length > 128 || inventory.mount_count !== inventory.mounts.length) return false;
+  for (const item of inventory.mounts) {
+    if (item === null || typeof item !== "object" || Array.isArray(item) ||
+        typeof item.read_only !== "boolean" || typeof item.filesystem !== "string") return false;
+  }
+  return true;
+}
+
 function renderMounts(inventory) {
+  if (!validMountObservation(inventory)) throw new Error("Mount observation is invalid.");
   const list = byId("mount-list");
   list.replaceChildren();
-  const mounts = Array.isArray(inventory.mounts) ? inventory.mounts : [];
+  const mounts = inventory.mounts;
   const count = Number(inventory.mount_count);
   const visibleCount = Number.isInteger(count) ? count : mounts.length;
   setText("mount-count", `${visibleCount} ${visibleCount === 1 ? "mount" : "mounts"}`);
@@ -379,17 +439,100 @@ function clearMountObservation() {
   byId("mount-list").replaceChildren(empty);
 }
 
+const diagnosticBodyLimits = Object.freeze({
+  "/api/v1/auth/status": 16 * 1024,
+  "/api/v1/system": 16 * 1024,
+  "/api/v1/storage": 64 * 1024,
+  "/api/v1/arrays": 512 * 1024,
+  "/api/v1/mounts": 4 * 1024 * 1024,
+});
+
+function boundedDiagnosticStructure(text) {
+  let quoted = false, escaped = false, depth = 0, containers = 0;
+  for (const char of text) {
+    if (quoted) {
+      if (escaped) escaped = false;
+      else if (char === "\\") escaped = true;
+      else if (char === '"') quoted = false;
+    } else if (char === '"') quoted = true;
+    else if (char === "{" || char === "[") {
+      if (++depth > 16 || ++containers > 1024) return false;
+    } else if (char === "}" || char === "]") {
+      if (--depth < 0) return false;
+    }
+  }
+  return !quoted && depth === 0;
+}
+
+async function readDiagnosticJSON(response, limit, signal) {
+  const invalid = () => new Error("diagnostic body unavailable");
+  const canceled = () => Object.assign(new Error("diagnostic read canceled"), { name: "AbortError" });
+  let reader;
+  try { reader = response.body.getReader(); } catch { throw invalid(); }
+  let complete = false, rejectAbort;
+  const aborted = signal ? new Promise((resolve, reject) => { rejectAbort = reject; }) : null;
+  const abort = () => rejectAbort(canceled());
+  if (signal) signal.addEventListener("abort", abort, { once: true });
+  try {
+    if (signal?.aborted) throw canceled();
+    let bytes = new Uint8Array(Math.min(4096, limit)), total = 0, chunks = 0;
+    for (;;) {
+      if (signal?.aborted) throw canceled();
+      const pending = reader.read();
+      const part = signal ? await Promise.race([pending, aborted]) : await pending;
+      if (signal?.aborted) throw canceled();
+      if (part?.done === true) break;
+      if (part?.done !== false || ++chunks > 16384 || !ArrayBuffer.isView(part.value) ||
+          part.value.BYTES_PER_ELEMENT !== 1 || part.value.byteLength === 0 || part.value.byteLength > limit - total) throw invalid();
+      const needed = total + part.value.byteLength;
+      if (needed > bytes.length) {
+        let capacity = bytes.length;
+        while (capacity < needed) capacity = Math.min(limit, capacity * 2);
+        const grown = new Uint8Array(capacity);
+        grown.set(bytes.subarray(0, total));
+        bytes = grown;
+      }
+      bytes.set(part.value, total);
+      total = needed;
+    }
+    const text = new TextDecoder("utf-8", { fatal: true }).decode(bytes.subarray(0, total));
+    if (!boundedDiagnosticStructure(text)) throw invalid();
+    const value = JSON.parse(text);
+    if (signal?.aborted) throw canceled();
+    complete = true;
+    return value;
+  } catch {
+    throw signal?.aborted ? canceled() : invalid();
+  } finally {
+    if (signal) signal.removeEventListener("abort", abort);
+    if (!complete) {
+      // Cleanup must not await an underlying cancellation that never settles.
+      // This requests stream cancellation, not verified server/kernel teardown.
+      try { Promise.resolve(reader.cancel()).catch(() => {}); } catch { /* refusal remains */ }
+    }
+    try { reader.releaseLock(); } catch { throw invalid(); }
+  }
+}
+
 async function fetchJSON(path, { signal } = {}) {
+  const limit = diagnosticBodyLimits[path];
+  if (!Number.isSafeInteger(limit)) throw new Error("diagnostic path unavailable");
+  if (!signal) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 10000);
+    try { return await fetchJSON(path, { signal: controller.signal }); }
+    finally { clearTimeout(timeout); }
+  }
   const read = async () => {
     const response = await fetch(path, { method: "GET", headers: { Accept: "application/json" }, cache: "no-store", credentials: "same-origin", signal });
     if (!response.ok) {
+      try { Promise.resolve(response.body?.cancel()).catch(() => {}); } catch { /* keep original HTTP refusal */ }
       const failure = new Error("diagnostics unavailable");
       failure.status = response.status;
       throw failure;
     }
-    return response.json();
+    return readDiagnosticJSON(response, limit, signal);
   };
-  if (!signal) return read();
   // Race the entire read, including body decoding. Late completion stays
   // handled even if a transport/body promise does not honor cancellation.
   return new Promise((resolve, reject) => {
@@ -414,11 +557,55 @@ async function fetchJSON(path, { signal } = {}) {
 
 let snapshotGeneration = 0;
 let snapshotController = null;
+let supportSnapshot = null;
+
+function clearSupportSnapshot() {
+  supportSnapshot = null;
+  byId("support-download").disabled = true;
+  setText("support-status", "No current loaded snapshot to export. Refresh the snapshot first.");
+}
+
+function prepareSupportSnapshot(results) {
+  clearSupportSnapshot();
+  try {
+    const loaded = Object.fromEntries(["system", "storage", "arrays", "mounts"].map((key, index) =>
+      [key, results[index].status === "fulfilled" ? results[index].value : null]));
+    supportSnapshot = PhantoWDSupportBundle.create(loaded, Date.now());
+    byId("support-download").disabled = false;
+    setText("support-status", "Report ready from this loaded snapshot, including unavailable or invalid sections. Export will not refresh device observations.");
+  } catch {
+    setText("support-status", "Could not prepare a sanitized report. No file was created.");
+  }
+}
+
+function exportSupportSnapshot() {
+  const button = byId("support-download");
+  if (!supportSnapshot || button.disabled || snapshotController || logoutBusy || passwordBusy || byId("dashboard-content").hidden) return;
+  button.disabled = true;
+  let anchor, url;
+  try {
+    const text = supportSnapshot.serialize(Date.now());
+    url = URL.createObjectURL(new Blob([text], { type: "application/json" }));
+    anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = "phantowd-sanitized-support-v1.json";
+    document.body.append(anchor);
+    anchor.click();
+    setText("support-status", "Sanitized report download requested. Review counts, times and runtime details before sharing; this is not a configuration or data backup.");
+  } catch {
+    setText("support-status", "Report download could not be completed. No automatic retry was made.");
+  } finally {
+    anchor?.remove();
+    if (url) setTimeout(() => URL.revokeObjectURL(url), 0);
+    button.disabled = !supportSnapshot || byId("dashboard-content").hidden;
+  }
+}
 
 function clearSnapshot(message) {
   snapshotGeneration++;
   snapshotController?.abort();
   snapshotController = null;
+  clearSupportSnapshot();
   clearSystemObservation();
   clearStorageObservation();
   clearArrayObservation();
@@ -435,6 +622,7 @@ async function refreshSnapshot() {
   const generation = ++snapshotGeneration;
   const controller = new AbortController();
   snapshotController = controller;
+  clearSupportSnapshot();
   const current = () => generation === snapshotGeneration;
   const timeout = setTimeout(() => controller.abort(), 10000);
   const button = byId("refresh");
@@ -466,10 +654,10 @@ async function refreshSnapshot() {
       return;
     }
 
-    const systemCurrent = systemResult.status === "fulfilled";
-    const storageCurrent = storageResult.status === "fulfilled";
-    const arraysCurrent = arraysResult.status === "fulfilled";
-    const mountsCurrent = mountsResult.status === "fulfilled";
+    const systemCurrent = systemResult.status === "fulfilled" && validSystemObservation(systemResult.value);
+    const storageCurrent = storageResult.status === "fulfilled" && validStorageObservation(storageResult.value);
+    const arraysCurrent = arraysResult.status === "fulfilled" && validArrayObservation(arraysResult.value);
+    const mountsCurrent = mountsResult.status === "fulfilled" && validMountObservation(mountsResult.value);
     if (systemCurrent) renderSystem(systemResult.value);
     else clearSystemObservation();
     if (storageCurrent) renderStorage(storageResult.value);
@@ -478,6 +666,12 @@ async function refreshSnapshot() {
     else clearArrayObservation();
     if (mountsCurrent) renderMounts(mountsResult.value);
     else clearMountObservation();
+    const displayCurrent = [systemCurrent, storageCurrent, arraysCurrent, mountsCurrent];
+    // Do not publish an available aggregate after the displayed domain was
+    // rejected. A fixed empty record yields the report's existing "invalid"
+    // state without retaining private rejected details; null stays unavailable.
+    prepareSupportSnapshot(results.map((result, index) => result.status === "fulfilled" && result.value != null && !displayCurrent[index] ?
+      { status: "fulfilled", value: {} } : result));
 
     if (systemCurrent && storageCurrent && arraysCurrent && mountsCurrent) {
       status.textContent = "Read-only system, storage, RAID, and mount observations updated.";
@@ -510,6 +704,7 @@ async function refreshSnapshot() {
     error.hidden = false;
   } catch (failure) {
     if (!current()) return;
+    clearSupportSnapshot();
     if (failure?.status === 401) {
       status.textContent = "Session expired. Sign in again to view a current snapshot.";
       try {
@@ -545,6 +740,7 @@ function setAuthError(message) {
 }
 
 function showAuthUnavailable() {
+  const moveFocus = ["dashboard-content", "logout", "auth-form"].some((id) => byId(id).contains(document.activeElement));
   clearSnapshot("Administrator session unavailable. No current diagnostic snapshot is shown.");
   clearGPTObservation("Administrator session unavailable. No GPT observation is shown.");
   clearPasswordFields();
@@ -561,6 +757,7 @@ function showAuthUnavailable() {
   setText("auth-description", "Sign-in status cannot be checked right now, so diagnostic data is hidden. Retry after the local service is available.");
   setAuthError("The local API could not be reached. No current system or storage data is shown.");
   setConnectionState("API unavailable", "unavailable");
+  if (moveFocus) byId("auth-title").focus({ preventScroll: true });
 }
 
 async function updateAuthView({ refresh = true, notice = "", current = () => true, signal } = {}) {
@@ -573,6 +770,10 @@ async function updateAuthView({ refresh = true, notice = "", current = () => tru
   const password = byId("auth-password");
   const submit = byId("auth-submit");
   const authError = byId("auth-error");
+  const focused = document.activeElement;
+  const leavingAuth = authPanel.contains(focused);
+  const leavingDashboard = dashboard.contains(focused) || logout === focused;
+  const leavingRetry = byId("auth-retry") === focused;
   authError.hidden = true;
   form.hidden = false;
   byId("auth-retry").hidden = true;
@@ -582,6 +783,7 @@ async function updateAuthView({ refresh = true, notice = "", current = () => tru
     dashboard.hidden = false;
     logout.hidden = false;
     setConnectionState("Authenticated", "loading");
+    if (leavingAuth) byId("page-title").focus({ preventScroll: true });
     if (refresh) await refreshSnapshot();
     return;
   }
@@ -605,6 +807,7 @@ async function updateAuthView({ refresh = true, notice = "", current = () => tru
   password.value = "";
   setConnectionState("Sign-in required");
   if (notice) setAuthError(notice);
+  if (leavingDashboard || leavingRetry) byId("auth-title").focus({ preventScroll: true });
 }
 
 byId("auth-retry").addEventListener("click", async () => {
@@ -1039,10 +1242,14 @@ byId("service-target").addEventListener("change", selectServiceTarget);
 byId("service-member").addEventListener("change", selectServiceMember);
 byId("service-action").addEventListener("change", selectServiceAction);
 byId("service-edit-preview").addEventListener("click", prepareServiceEdit);
+byId("service-backup-download").addEventListener("click", exportServiceBackup);
+byId("service-restore-preview").addEventListener("click", previewServiceRestore);
+byId("service-restore-file").addEventListener("change", () => { policyGeneration++; invalidateServiceDraft(); });
 byId("policy-form").addEventListener("submit", submitPolicyProposal);
 byId("policy-form").addEventListener("input", () => { invalidatePolicyPreview(); syncPolicyNFS(); });
 byId("policy-form").addEventListener("change", () => { invalidatePolicyPreview(); syncPolicyNFS(); });
 byId("policy-clear").addEventListener("click", clearPolicyDraft);
 byId("refresh").addEventListener("click", refreshSnapshot);
+byId("support-download").addEventListener("click", exportSupportSnapshot);
 byId("gpt-observe").addEventListener("click", observeGPTMetadata);
 updateAuthView().catch(showAuthUnavailable);

@@ -19,6 +19,10 @@ const (
 	extIncompatRecover          = 0x0004
 	extIncompat64Bit            = 0x0080
 	extROCompatMetadataChecksum = 0x0400
+	extROCompatOrphanPresent    = 0x10000
+	extStateClean               = 0x0001
+	extStateErrors              = 0x0002
+	extStateOrphanRecovery      = 0x0004
 	extCRC32CChecksumType       = 1
 	extChecksumOffset           = 0x3fc
 )
@@ -54,6 +58,7 @@ type ExtReport struct {
 	FilesystemState               string    `json:"filesystem_state,omitempty"`
 	CleanUnmount                  bool      `json:"clean_unmount_flag"`
 	NeedsJournalRecovery          bool      `json:"needs_journal_recovery"`
+	NeedsOrphanRecovery           bool      `json:"needs_orphan_recovery"`
 	SuperblockChecksumStatus      string    `json:"superblock_checksum_status"`
 	RawIdentityRedacted           bool      `json:"raw_identity_redacted"`
 	ImageMetadataRead             bool      `json:"image_metadata_read"`
@@ -168,12 +173,23 @@ func InspectExtSuperblock(image io.ReaderAt, imageSize int64, firstLBA, lastLBA 
 	report.FilesystemBytes = blockCount * blockSize
 
 	state := binary.LittleEndian.Uint16(superblock[0x3a:0x3c])
+	// Schema v2 reports the clean bit independently: errors/recovery/unknown
+	// flags must not be hidden by it and the bit is never a health verdict.
+	report.CleanUnmount = state&extStateClean != 0
+	// These are independent recovery indicators, not proof that an orphan
+	// chain/file is valid. Inspect neither follows it nor performs recovery.
+	report.NeedsOrphanRecovery = state&extStateOrphanRecovery != 0 ||
+		binary.LittleEndian.Uint32(superblock[0xe8:0xec]) != 0 ||
+		report.FeatureROCompat&extROCompatOrphanPresent != 0
 	switch {
-	case state&0x0002 != 0:
+	case state&extStateErrors != 0:
 		report.FilesystemState = "errors-recorded"
-	case state&0x0001 != 0:
+	case state & ^uint16(extStateClean|extStateErrors|extStateOrphanRecovery) != 0:
+		report.FilesystemState = "unknown-state-flags"
+	case state&extStateOrphanRecovery != 0:
+		report.FilesystemState = "orphan-recovery-in-progress"
+	case state&extStateClean != 0:
 		report.FilesystemState = "clean-unmount-flag-set"
-		report.CleanUnmount = true
 	default:
 		report.FilesystemState = "not-marked-clean"
 	}
@@ -193,7 +209,7 @@ func extSuperblockChecksum(superblock []byte) uint32 {
 func newExtReport(firstLBA, lastLBA uint64) ExtReport {
 	return ExtReport{
 		Format:                   "phantowd-ext-superblock-inspection",
-		SchemaVersion:            1,
+		SchemaVersion:            2,
 		Status:                   ExtStatusUnsupported,
 		FilesystemFamily:         "unknown",
 		PartitionFirstLBA:        firstLBA,
@@ -209,6 +225,7 @@ func newExtReport(firstLBA, lastLBA uint64) ExtReport {
 			"only the 1024-byte ext-family superblock at partition offset 1024 is inspected",
 			"the ext superblock checksum is checked only when metadata_csum with CRC32C is advertised; no other filesystem checksums, metadata, or file data are read",
 			"a structurally plausible superblock is not proof of filesystem health, a supported WD layout, or safe mounting",
+			"journal and orphan recovery indicators are separate; orphan chains/files and unknown filesystem state flags are not interpreted or repaired",
 			"nonzero dynamic-revision filesystem UUIDs are replaced with deterministic SHA-256 fingerprints that are not authenticity checks",
 			"input must be a regular local image file; no block device is opened, mounted, or modified",
 		},

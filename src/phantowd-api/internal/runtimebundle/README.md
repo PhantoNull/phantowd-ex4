@@ -3,6 +3,208 @@
 
 # Internal code-only runtime bundle inspection
 
+The separate `qemu && linux` server-observer runtime now joins original code
+and fixed-path/unique-mount binding, independently built static bootstrap,
+fixed rendered configuration, mutable-state directory identities, synthetic
+share roots, both original channel endpoints and a dedicated single-use daemon
+adapter. All access is serialized; no per-call backend/profile/probe or input
+descriptor escapes. The original daemon proc directory is retained and checked
+against the original smbd/FD3. Close never signals and releases inputs only
+after the adapter verifies whole-group absence. A close error is terminal and
+preserves unattempted inputs; review never permits restart or input adoption.
+
+The optional observer guest proves real receiver-option drift and live code
+cover containment, original retention after settlement, restoration refusal,
+canceled explicit cleanup and final parent FD equality. These are discrete
+checks, not continuous supervision or complete construction-race/fault
+qualification. The active VFS module/SDK/producer and worker/FileId bridge are
+still absent. No authenticated file OPEN, frame consumption, WRITE, HTTP,
+ordinary product startup, extra privilege or generic-launcher change is added.
+See the [ordered observer plan](../../../../support/SMB-SERVER-OBSERVATION-PLAN.md).
+
+The private `qemu && linux` pending-client input primitive retains two separate
+complete immutable roots: actual ARM client/library closure/fixed documents,
+including the fixed IBM850 conversion module and CP850 catalog, and the static
+bootstrap helper. Plans contain independently supplied hashes;
+existing complete inspection, original pins and late revalidation are reused.
+Fixed documents contain no caller-selected account, credential or policy.
+Both roots must be distinct root-owned RO/nosuid/nodev executable tmpfs mounts.
+Programs use the existing exact 0555 code mode, documents 0444, directories 0755.
+ARM ELF/interpreter/needed-library checks are additional refusals, not loader
+or ABI qualification. The guarded disposable probe verifies both wrong-program
+hashes, partial-construction cleanup, independent caller closure, cancellation,
+released-reference refusal and final FD equality.
+
+This is **not a process Owner or execution token**: it starts no process and
+exposes no descriptor to a consumer. A separate private containing Owner now
+serializes access and fixes the concrete dedicated process adapter after
+complete retention. It rechecks all inputs after construction and before/after
+start and explicit close, retains originals until verified whole-group
+settlement, and preserves review on uncertainty. Close failure is
+sticky, retaining unattempted originals without retry. No ordinary build,
+product startup, HTTP, NAS or pending-I/O qualification is added.
+Use the optional [complete-input lane](../../../../support/QEMU-FAST-TESTS.md).
+
+That lane also qualifies the containing Owner's ARM constructor and
+never-started closure, failed-constructor cleanup, caller-duplicate closure,
+copy/cancel/busy/released refusals and final FD equality. It runs no adapter
+child or server. Host lifecycle refusal/release-order tests and race3 pass;
+the distinct optional `pending` campaign now tests actual healthy library/client
+execution and launched settlement against a freshly enrolled native data server.
+It performs one pre-existing-object OPEN and CLOSE only, requires unchanged
+retained local identity/bytes, exit0 and original-group absence before releasing
+complete inputs, daemon stop and final FD/base equality. OPEN telemetry does
+not independently bind the original SMB session/open/object. The client matches
+the target's 64-bit file-offset/stat ABI; missing dynamic conversion inputs
+refuse. Dedicated startup is bounded12s, CLOSE5s; parent35s and guest180s remain,
+without retry or context renewal. Existing launchers/idle observers/default ten
+are unchanged. This is focused fixture qualification, not a new full image.
+The private Owner exposes no write, descriptor, per-call backend or product
+service capability. Storage/identity/server/session/open/object admission is
+still separate and required before any pending-write fault.
+
+The same optional guest now adds a private independent server-open witness:
+two fixed STATUS inventories must preserve the original server generation,
+session, tree and share-file ID. Its retained worker proc directory/start ticks,
+daemon parent/group and original executable are checked against the original
+runtime; STATUS device/inode and worker-view metadata must match the retained
+read-only local object. Partial construction/refusal keeps the witness reachable
+through reviewed whole-guest disposal. Normal closure releases its proc reference
+only after verified client/server settlement. Actual ARM and host/race3 controls
+pass with unchanged bytes/FD/base. The fixed worker's complete both-side runtime
+admission is reused rather than duplicated. No old observer, deadline or default
+campaign changes. Native `[writable]` and libsmbclient generic read/write are
+distinct from the older planned `[Writable]`/CLI-open contracts, with RED/GREEN
+refusal guards. The containing client Owner now additionally binds the validated
+worker once to the original owned client's proc/generation, net/mount namespaces
+and reciprocal TCP inode/cookie/principal/endpoints. Complete client inputs and
+original server/local-object checks bracket binding and same-reference recheck;
+the fixed client repeats connection admission before CLOSE. Client and server
+settlement precede releasing all connection references. Actual ARM acceptance,
+FD/base equality, host/race3 and descriptor-oracle regressions pass. Partial or
+uncertain binding retains review, references and a single containment attempt;
+no PID, peer or descriptor replacement is accepted by later checks.
+This still does not identify the opaque SMB handle or request. Observations are
+sequential, not atomic; adversarial live drift/uncertain teardown in this new
+composition remain unqualified. `smb_object_bound=false` remains mandatory.
+No WRITE, new deadline/default campaign or product capability is exposed.
+
+The separate optional `pending-handle` campaign now retains the fixed source
+reader module together with the complete original client/loader closure. Its
+independent build closure must share identical objects/bindings; the Owner checks
+the fixed ARM module/SONAME and selects a dedicated close-only adapter once at
+construction. A bounded canonical parser caches only the complete initial tuple;
+changed/replayed notices refuse without replacing it. The accessor returns that
+cached metadata, not a live observation, descriptor or execution authority.
+
+Actual ARM client observations bracket the original opening; session/tree match
+the independent server witness, with original process/namespaces/TCP/server/local
+object rechecks before CLOSE. Both groups settle before input/reference release,
+with unchanged data and FD/base equality. The old healthy campaign also passes.
+The dedicated bootstrap uses retained root/program descriptors and drops to
+UID/GID65534, zero capabilities and NNP inside its private mount namespace/root.
+The generic launcher is not widened. True RUNPATH guards and real upstream
+DLIST singleton construction correct two earlier prerequisite assumptions.
+Remote FileId halves remain distinct from server share-mode generation: this
+does not qualify their missing bridge, faults, WRITE, HTTP or product activation.
+
+The optional [private wire lane](../../../../support/QEMU-FAST-TESTS.md#server-open-private-wire-prerequisite)
+now executes a fixed C-to-Go frame decoder and separate all-field client/STATUS
+metadata comparison in ARM, with bounded capture, refusal/concurrency/race/fuzz
+controls. Neither helper is connected to this Owner or accepts producer/channel
+authority. Synthetic open/tree records and metadata equality do not qualify the
+active worker bridge, replay/lifetime protections or WRITE. Complete retained
+producer/channel construction and original-worker capture remain required.
+
+A private `qemu && linux` packet prerequisite now creates and retains only its
+own Unix sequenced-packet endpoints. It compares original wrappers/FDs/object
+cookies and exact socket settings, accepts two equal ordered records with kernel
+credentials and refuses extra output, endpoint drift, copies or concurrent use.
+In-flight cancellation/refusal keeps review; closure refuses changed objects and
+never retries uncertain closes. The fixed synthetic C producer inherits FD3,
+sends each record once and settles before fixture closure. Neither this packet
+helper nor its copied observation is connected to this Owner or grants worker/
+code/process/lifetime authority. Actual worker capture and full retained producer
+construction still precede remote-bridge/WRITE admission; generic launcher and
+product surfaces are unchanged. Known compiled-out `SO_PASSSEC` is distinguished
+from enabled or failed options; this does not qualify a product security profile.
+
+The private release boundary closes the receiver before the sender and retains
+its first terminal result. A failed receiver close leaves the sender untouched;
+a failed sender close preserves the earlier confirmed receiver closure. Repeated
+release returns the original result without consulting replacement endpoint
+fields. Constructor cleanup and gated closure share this bookkeeping, without
+changing endpoint admission, producer settlement or public redacted review.
+Regression tests use prematurely closed real socket files at the private release
+boundary, plus healthy public closure and pre-admission refusal controls. They
+do not inject kernel EIO or qualify uncertain live-worker closure or recovery.
+
+Actual ARM controls now distinguish automatic sender real UID/GID from explicit
+SCM_CREDENTIALS containing its effective/saved IDs. The latter can be accepted
+even without effective/permitted/inheritable capabilities. The socket creator
+snapshot remains separate and unchanged. Thus copied packet credentials are not
+the authenticated Samba user's identity or permission authority. The finite
+synthetic producers settle before observation; no live worker is admitted by
+these controls. Retained producer/code/process and independent identity fences
+remain mandatory, with a fixed qualified credential mode/context.
+
+The separate [server reader source lane](../../../../support/QEMU-FAST-TESTS.md#server-side-original-open-reader-prerequisite)
+now copies remote IDs, share-mode generation and local descriptor identity from
+the same actual-type FSA-processed, non-pathref `files_struct`, using real Samba
+getters/fstat. Inconsistent pre-FSA/internal state is
+refused by both source and loaded DSO, with 66 actual ARM negative controls.
+FSA processing is not a completed SMB response. The future containing producer
+must independently admit the original client's successful OPEN and observe the
+file while still open: SMB2 marks it closing before the VFS-close callback.
+The original worker is forked by smbd, not the socket creator; the finite
+synthetic child's parent-PID check cannot be reused as worker admission.
+The supplied open/tree records remain synthetic. It is
+not called by this Owner, not a live worker observer or execution authority;
+retained producer/channel construction and actual same-open comparison remain
+required. No runtime constructor or product surface changes in this prerequisite.
+
+The optional `pending-peer-exit` fault guest uses that same actual binding, then
+stops only its owned daemon group. Concrete adapter refusal must stop its client;
+the containing Owner retains review, complete client inputs, server code/helper,
+original proc/namespaces and unchanged local file. Client CLOSE/start/rebind/
+repeated release refuse; generic server Close is not changed. All reviewed
+originals survive until private subprocess disposal with exact bounded proof,
+exit0 and parent FD equality. Actual fault and healthy ARM regressions pass.
+Other drift/uncertain teardown, opaque handles/requests, WRITE and product
+activation remain unqualified; no retry, server restart or recovery is added.
+
+The QEMU-only planned runtime additionally retains one fixed authorized IPC$
+holder, distinct from the unused two-account client set. No caller chooses its
+program, user, credential or process profile. Its startup/stop uncertainty is
+sticky; original references survive until verified settlement and closure.
+The containing coordinator owns lifecycle control and must not operate aliases.
+
+`ObservePlannedHeldStopQEMU` is read-only: it requires the original unused-client
+census, the additional holder's generation/group absence and retained daemon/
+runtime inputs. Older idle/two-client/exit observers refuse this additional
+group. All seven fresh ARMv5 overlay guests qualify source-alias loss with the
+holder active; restoration/repeated Close leave review and both originals busy.
+The separate fresh `held` guest now qualifies accepted idle cancellation and
+normal full Close: both groups settle while all 15 inputs and BOTH originals
+remain retained, then runtime closure precedes original authority release.
+Repeated healthy Close, closed-observer refusal, FD equality and unchanged base
+pass in the complete eight-campaign overlay union. This is not open-file,
+in-flight/durable reconnect, live uncertain teardown or product qualification.
+A real unused-set premature-close regression qualifies only
+terminal error bookkeeping, not an admitted healthy runtime or kernel EIO.
+See [current evidence scope](../../../../IMPLEMENTATION-STATUS.md).
+
+The separate focused `file` campaign uses one fixed `qpsecond` client that
+opens the existing `writable/created` file exactly once. It does not create,
+truncate, reopen, reconnect or restart. Readiness is availability only; the
+containing service must independently match its retained original O_PATH
+object with the complete status observation and recheck original storage and
+identity. Its separate group observer refuses a profile mismatch; older
+idle/IPC$ observers cannot certify this file holder. Both original authorities
+and the original object remain held after verified client/daemon stop until
+full runtime closure. `file` is explicit and is not included in default `all`.
+This is not in-flight failure, durable reconnect or product activation.
+
 `runtimebundle` provides code verification and an internal retained-code Owner
 prototype for M4.4, not an approved runtime manifest or installation token. Ordinary
 product startup does not call it. It has no HTTP/RPC or JSON input/output.
@@ -14,11 +216,23 @@ hash scratch buffer, reused only within that pass. Concurrent calls have
 independent buffers; nothing is pooled or retained in the Plan. This reduces
 per-file allocation churn without caching hashes or reducing census, content,
 metadata, ACL/capability, cancellation or trailing original-identity checks.
+Digest finalization uses that pass's existing scratch and copies the result
+into a by-value array; no per-file digest slice is allocated or returned.
 Digest-loop host tests/benchmarks do not qualify complete runtime admission,
 physical EX4 performance or eliminate timing-sensitive guest failures.
 
 The private QEMU native credential runtime retains its first worker-failure
 classification for bounded diagnostic observation, including after closure.
+Worker timing emission is separately opt-in through a trusted context annotation
+(`WithNativeWorkerTimingQEMU`). Default contexts stay silent so an exact-proof
+subprocess cannot contaminate its fixed output with telemetry. The parent native
+campaign explicitly opts in; the original context's deadline, cancellation and
+values remain intact. No request/environment selector, proof filtering, larger
+output bound, retry, timer change or new authority is provided. Host child/emitter
+RED/GREEN and tagged vet/tests/race-count3 pass, followed by the actual ARMv5
+identity-state/planned-source fault campaign. This fixes fixture output pollution,
+not the independent hosted live-session deadline or product service startup.
+
 Only fixed phase/reason labels are exposed; cause text, stdin, stderr, account
 identities and secrets are not. The error retains review and its private cause
 for internal `errors.Is` checks. Observation serializes with runtime operations,
@@ -27,6 +241,24 @@ admission. A missing diagnostic is not a health witness. Ordinary Samba adapter
 error redaction remains unchanged; guest output is explicitly diagnostic-only,
 never a qualification marker. Host tests qualify the bookkeeping/redaction
 boundary, not an actual ARMv5 worker fault, timeout fix or product recovery.
+
+The native credential worker's private final result decision also checks the
+original context after settlement/closure, post-admission and timing telemetry.
+Cancellation/expiry observed there clears stdout and retains review without
+retry, extra admission or altered deadlines. Existing failure precedence and
+the first diagnostic failure remain. State-only host/race and actual ARMv5
+completion-seam tests qualify this point-in-time guard, not an admitted-worker
+cancellation injection or atomicity against later cancellation. The original
+strict native Samba campaign passes as a distinct healthy regression control;
+neither result fixes hosted timing or enables ordinary product startup.
+
+Live-daemon code/configuration revalidation, bootstrap inspection and process
+observation refusals preserve their private typed causes behind the same
+generic review-only error text. Ordered admission checks and failure behavior
+are unchanged; a missing code authority still refuses before PID inspection.
+Fixed worker classification can distinguish a wrapped deadline/cancellation
+without printing its cause. This diagnostic correction neither extends a
+deadline nor settles reviewed authority; focused lifecycle timeout remains open.
 
 The `qemu`-only `SambaPlannedDataDocumentsQEMU` renderer produces seven bounded
 configuration documents from one immutable isolated Plan candidate. It preserves
@@ -108,8 +340,14 @@ pins and revalidation. A read-only bind does not make other views immutable.
 Trusted signature/model binding, ARM ABI and loader qualification, NSS/config,
 state/grants/device rules, privilege profiles, construction/activation/recovery
 and product wiring remain separate. No user data is read or modified here.
-Context cancellation is checked between bounded local reads, not a guarantee
-that an arbitrary kernel I/O stall can be interrupted.
+Context cancellation is checked between bounded local reads and before emitting
+a completed digest, not a guarantee that an arbitrary kernel I/O stall can be
+interrupted. A deterministic regular-file regression cancels just after the
+last successful pre-read check; the digest helper must return the typed
+cancellation with zero digest/count, even if EOF/finalization completed. This
+strengthens that internal calculation boundary; `Inspect` already has its own
+final context check. It is not a demonstrated admission bypass or a diagnosis
+of the QEMU lifecycle deadline.
 
 ## Shared prepared code references
 
@@ -121,6 +359,24 @@ authority: the containing constructor must perform the trailing full
 revalidation after its other inputs are fixed and before publication/launch.
 The extraction preserves the existing census/hash/identity sequence; it does
 not replace late pathname checks with early metadata or add a constructor scan.
+
+Metadata collection now rejects cancellation after its final open/stat/close
+and returns no partial table. Revalidation compares every fresh observation
+directly with the protected original table, without allocating a replacement
+table or caching metadata. Complete `Inspect`, exact stat fields, original-file
+checks and final context fences remain mandatory; uncertain temporary closure
+also refuses. Containing Owner serialization and reference lifetimes are unchanged.
+
+The existing static-code Owner guest includes four actual RAM-only metadata
+regressions, each repeated three times: late cancellation of collection and
+retained-pin revalidation, original-table/descriptor preservation, and changed
+or incomplete snapshot refusal. Construction uses real read-only tmpfs roots
+and descriptors, guarded by the exact VersatilePB model and fixture flag;
+native hosts and physical EX4 hardware cannot run these mount fixtures.
+The four-node comparison reduces narrow measured allocations from 14 to 8;
+this is not an end-to-end timing fix or physical-memory benchmark. The original
+static Owner proofs and a separate real native Samba campaign pass. Hosted
+fresh-login timing, complete-image and product activation gates remain separate.
 
 The containing Owner serializes all access, decides review/stop policy and
 establishes complete process-group absence before releasing code references.
@@ -470,3 +726,136 @@ relative to the legacy firmware.
 Trusted signed/model/ABI inputs, dynamic Samba-specific composition and
 privileges, storage leases, durable recovery and EX4/product qualification
 remain open. Passing this prototype does not activate SMB or NFS.
+
+The QEMU-only `PreparePlannedDataInputsQEMU` prerequisite independently matches
+both complete paired configuration expectations and prepares the fixed original
+five-config/seven-state/two-share tuple. Credential workers keep management
+lookup; data uses the retained service role. The trusted caller freshly compiles
+and retains identity/storage outside the runtime gate through verified Close.
+Host/race and the complete three-guest ARMv5 union qualify normal preparation,
+caller closure and runtime-close-before-authority-release. Existing start APIs
+still refuse the inert role: this is not planned daemon consumption, a complete
+constructor-fault proof, service supervision or a product activation surface.
+
+The QEMU-only `smbexec.NativePlannedServiceQEMU` now coordinates that prepared
+tuple with its SAME identity Owner/startup backend, original mounted roster and
+share pins. It privately copies policy, compiles its own paired roles and
+rechecks fresh complete retained evidence outside the runtime gate. Runtime
+copies close before either original authority releases; late construction
+failure returns a quarantined handle with the error, and uncertain closure
+keeps review without retry. Normal preparation/observation/closure, policy-copy
+isolation and unrelated-roster refusal pass host/race and the complete local
+ARMv5 union. It exposes no HTTP route or product policy authority.
+
+The separate QEMU-only coordinator `Start` now admits one prepared service
+tuple, freshly recompiling complete original storage/identity evidence before
+and after launch outside the runtime gate. `StartPlannedDaemonQEMU` refuses
+unprepared roles, pending work, repeated starts and retained-runtime review.
+Credential workers keep management configuration while the daemon uses the
+service role. Its owned ready PID's two child views must match the retained
+original objects and exact protected RO/RW flags; caller-selected PIDs/paths
+cannot supply observation authority. Legacy start APIs remain blocked.
+
+Earlier normal startup, canceled/duplicate refusal, busy identity/handoff authority,
+fresh live observation and full close-before-release pass host/race and the
+complete original three-guest ARMv5 suite. Startup failure retains review and
+both original authorities without retrying uncertain teardown. This is not a
+constructor/late-close fault qualification, data-access/supervision proof,
+product policy lease or new complete image audit. See
+[the current qualification scope](../../../../IMPLEMENTATION-STATUS.md).
+
+The newer fixed `ProbePlannedDataAccessQEMU` uses ONLY the already-running
+startup-bound service role. It accepts no caller path, credential, runtime,
+command or backend; six bounded clients check exact read/write bytes, peer Unix
+ownership, kernel read-only, write/symlink refusal and enabled-ungranted IPC
+authentication refusal. Complete live code/config/state/original-view checks
+bracket every client. Its containing coordinator freshly verifies its SAME
+identity and complete storage authorities outside the runtime gate, serializes
+single use and keeps review on uncertainty. Full runtime closure precedes
+release; `DataVerified` is historical completion, not health or authorization.
+
+QEMU/Linux-tagged data failures now retain a private error witness with fixed
+operation/phase/reason labels. The wrapper preserves original `errors.Is`
+semantics and review decisions without formatting the underlying cause.
+Planned postconditions identify Unix ownership, kernel-RO, transfers, denials
+and final daemon recheck. Error-only classification runs no command, changes
+no state and provides no admission or recovery authority. The child diagnostic
+formatter/relay rejects unknown or injected labels; its existing 1,024-byte
+output bound and exact successful proof equality remain mandatory. Initial
+runtime/coordinator guard refusals remain coarse, not invented data operations.
+Root/non-root host/race and all seven fresh ARMv5 overlay campaigns pass;
+this is not reproduction or a causal fix for intermittent hosted failures,
+new complete image qualification or product activation.
+
+Pinned Linux host/race and all four actual ARMv5 campaigns pass at `e3e1d5b`.
+One overlay compilation feeds four fresh, independently enrolled snapshots;
+all previous proofs, complete per-guest censuses and original deadlines remain.
+The new action has its own 20-second budget after startup/preparation40, not
+unused startup time. This does not qualify a complete ungranted UNC/mixed-ACL
+matrix, constructor/late-close faults, drift supervision, changed whole-image
+audit, hosted timeout fix, product activation or physical EX4 operation.
+
+### Planned-stop observation (QEMU only)
+
+`ObservePlannedStopQEMU` is a separate read-only observation, not a stop or
+recovery operation. The fixed data daemon's process owner witnesses its owned
+group state and all 15 private launcher/configuration/state/share inputs;
+the runtime also observes the original complete code and both configuration
+trees and state references. Retention does not imply unchanged contents or
+continued storage/identity admission. No descriptor, path, PID selection,
+callback, replacement authority, signal, close or retry is exposed.
+
+The constructor always prepares two held-client handles. In this planned data
+profile they must remain dormant, with exact members, zero generations/PIDs
+and no attempt. The older native observer's two-client contract is unchanged.
+Pending captures, absent/wrong/unstarted profiles, cancellation, concurrent
+operations and closed runtime refuse. Review is never cleared by observation.
+
+Pinned Linux/race3/ARM-build and 63 verifier tests pass. The actual focused
+ARMv5 data trace proves live-not-stopped, normal supervised stop/reap, retained
+original inputs, repeated read-only observation, legacy guard continuity,
+closed refusal and final descriptor equality. Its initial failed guest caught
+the mistaken nil-client assumption before correction. This is not composed
+source-loss/exit/mid-worker/uncertain-stop coverage, complete updated integration,
+product authorization, durable recovery or physical EX4 qualification.
+
+### Reviewed planned-stop observations and fixed owned exit (QEMU only)
+
+`ObserveNativeDataReviewStopQEMU` and `ObservePlannedReviewStopQEMU` keep
+review mandatory while observing verified owned-command/group teardown and
+retained inputs. They do not replace the strict normal-state or held-client
+observers. The fixed single launched generation must have been reaped and its
+whole group verified absent; all 15 private inputs remain open. The runtime
+also checks the original group for absence, both clients still dormant and
+original complete code, management/service configuration and state references
+retained. Group-number reuse or uncertainty refuses, never signals a replacement.
+
+No path/PID/process selection, signal delivery, Stop/Close retry, pin release,
+input re-admission, adoption, restart or recovery is exposed. Retention is not
+fresh contents, healthy storage/identity or activation authority. A pending
+credential capture is accepted only after separate unconsumed THEN settled
+observations; executed, closed or uncertain captures refuse. It remains retained,
+never closed/retried to manufacture stop evidence. The original normal and
+held-client observers remain unchanged.
+
+`RequestPlannedDaemonExitQEMU` is a fixed, single-use disposable ARM guest fault,
+not a Stop or recovery verb. Exact guest/root/tmpfs/private-namespace, launched
+generation, complete live runtime and dormant-client checks precede a SIGTERM
+through the ORIGINAL owned command. No caller chooses a PID, process group,
+signal or executable. Signal admission is not a stop/reap or review witness;
+the existing exclusive supervisor must establish those independently.
+
+Fresh Go 1.26.8 Linux vet/seven-package/race3/ARM5 cross/65 verifier checks and
+all seven independently enrolled ARMv5 campaigns pass. The new `exit` guest
+completes actual same-authority startup/data and a full scan before exit,
+verifies reviewed group stop/reap/absence, all15 private/runtime inputs retained,
+an unconsumed/settled capture, BOTH original authorities busy, normal-stop and
+restart/release refusal, private-child disposal and parent FD equality. The
+initial real failure identified retained capture as the new observer mismatch;
+temporary diagnostic instrumentation was removed before clean qualification.
+Host tests fabricate no healthy or successfully stopped runtime. Original
+guest/worker/readiness/stop limits and every previous proof remain mandatory.
+This is completed-transfer/idle fixture coverage, not held-session/mid-transfer,
+uncertain teardown, product activation, recovery or physical EX4 qualification.
+The complete954 image keeps its original source scope; a new image audit is
+still required. See [current status](../../../../IMPLEMENTATION-STATUS.md).

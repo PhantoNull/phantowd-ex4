@@ -36,14 +36,59 @@ func run() error {
 	if len(os.Args) == 2 && os.Args[1] == "stage" && os.Getuid() == 0 && os.Geteuid() == 0 {
 		return stageFixture()
 	}
+	if len(os.Args) == 2 && (os.Args[1] == "server-observer-code-binding" || os.Args[1] == "server-observer-runtime" || os.Args[1] == "server-capture-runtime" || os.Args[1] == "server-capture-open") && os.Getuid() == 0 && os.Geteuid() == 0 {
+		files, aliases, err := inputs()
+		if err != nil {
+			return err
+		}
+		plan, err := runtimebundle.NewPlan(files, aliases)
+		if err != nil {
+			return err
+		}
+		root, err := stageRoot("/run/phantowd-samba-code")
+		if err != nil {
+			return err
+		}
+		defer root.Close()
+		source, err := stageRoot("/")
+		if err != nil {
+			return err
+		}
+		defer source.Close()
+		if os.Args[1] == "server-capture-open" {
+			err = plan.ProbeServerCaptureOpenQEMU(context.Background(), root)
+		} else if os.Args[1] == "server-capture-runtime" {
+			err = plan.ProbeServerCaptureRuntimeQEMU(context.Background(), root)
+		} else if os.Args[1] == "server-observer-runtime" {
+			err = plan.ProbeServerObserverRuntimeQEMU(context.Background(), root)
+		} else {
+			err = plan.ProbeServerObserverCodeBindingQEMU(context.Background(), root, source)
+		}
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "server observer code binding:", err)
+		}
+		return err
+	}
 	if len(os.Args) == 2 && os.Args[1] == "native-lookup" && os.Getuid() == 0 && os.Geteuid() == 0 {
-		return nativeLookupFixture()
+		return nativeLookupFixture(false)
+	}
+	if len(os.Args) == 2 && os.Args[1] == "native-lookup-bootstrap" && os.Getuid() == 0 && os.Geteuid() == 0 {
+		return nativeLookupFixture(true)
 	}
 	if len(os.Args) == 2 && os.Args[1] == "native-startup-fault" && os.Getuid() == 0 && os.Geteuid() == 0 {
 		return nativeIdentityStateFaultQEMU()
 	}
+	if len(os.Args) == 2 && os.Args[1] == "native-planned-source-fault" && os.Getuid() == 0 && os.Geteuid() == 0 {
+		return nativePlannedSourceFaultQEMU()
+	}
+	if len(os.Args) == 2 && os.Args[1] == "native-planned-exit-fault" && os.Getuid() == 0 && os.Geteuid() == 0 {
+		return nativePlannedExitFaultQEMU()
+	}
+	if len(os.Args) == 2 && os.Args[1] == "native-planned-file-source-fault" && os.Getuid() == 0 && os.Geteuid() == 0 {
+		return nativePlannedFileSourceFaultQEMU()
+	}
 	if len(os.Args) == 2 && os.Args[1] == "native-credentials" && os.Getuid() == 0 && os.Geteuid() == 0 {
-		err := nativeCredentialFixture(false)
+		err := nativeCredentialFixture(nativeCredentialsCampaignQEMU)
 		if err != nil {
 			// Only fixture-defined stages and redacted sentinel errors, never
 			// command output, credential bytes or passdb records.
@@ -51,10 +96,79 @@ func run() error {
 		}
 		return err
 	}
+	if len(os.Args) == 2 && os.Args[1] == "native-pending-client" && os.Getuid() == 0 && os.Geteuid() == 0 {
+		err := nativeCredentialFixture(nativePendingClientCampaignQEMU)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "native pending client fixture:", err)
+		}
+		return err
+	}
+	if len(os.Args) == 2 && os.Args[1] == "native-pending-peer-exit" && os.Getuid() == 0 && os.Geteuid() == 0 {
+		return nativeCredentialFixture(nativePendingPeerExitCampaignQEMU)
+	}
+	if len(os.Args) == 2 && os.Args[1] == "native-pending-handle" && os.Getuid() == 0 && os.Geteuid() == 0 {
+		err := nativeCredentialFixture(nativePendingHandleCampaignQEMU)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "native pending handle fixture:", err)
+		}
+		return err
+	}
+	if len(os.Args) == 2 && os.Args[1] == "native-pending-peer-exit-child" && os.Getuid() == 0 && os.Geteuid() == 0 {
+		return nativePendingPeerExitChildQEMU()
+	}
 	if len(os.Args) == 2 && os.Args[1] == "native-lifecycle" && os.Getuid() == 0 && os.Geteuid() == 0 {
-		err := nativeCredentialFixture(true)
+		err := nativeCredentialFixture(nativeLifecycleCampaignQEMU)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, "native lifecycle fixture:", err)
+		}
+		return err
+	}
+	if len(os.Args) == 2 && os.Args[1] == "native-planned-candidate" && os.Getuid() == 0 && os.Geteuid() == 0 {
+		err := nativeCredentialFixture(nativePlannedCandidateCampaignQEMU)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "native planned candidate fixture:", err)
+		}
+		return err
+	}
+	if len(os.Args) == 2 && os.Args[1] == "native-identity-fault" && os.Getuid() == 0 && os.Geteuid() == 0 {
+		err := nativeCredentialFixture(nativeIdentityFaultCampaignQEMU)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "native identity fault fixture:", err)
+		}
+		return err
+	}
+	if len(os.Args) == 2 && os.Args[1] == "native-planned-data" && os.Getuid() == 0 && os.Geteuid() == 0 {
+		err := nativeCredentialFixture(nativePlannedDataCampaignQEMU)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "native planned data fixture:", err)
+		}
+		return err
+	}
+	if len(os.Args) == 2 && os.Args[1] == "native-planned-held" && os.Getuid() == 0 && os.Geteuid() == 0 {
+		err := nativeCredentialFixture(nativePlannedHeldCampaignQEMU)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "native planned held fixture:", err)
+		}
+		return err
+	}
+	if len(os.Args) == 2 && os.Args[1] == "native-planned-file" && os.Getuid() == 0 && os.Geteuid() == 0 {
+		err := nativeCredentialFixture(nativePlannedOpenFileCampaignQEMU)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "native planned file fixture:", err)
+		}
+		return err
+	}
+	if len(os.Args) == 2 && os.Args[1] == "native-planned-file-source" && os.Getuid() == 0 && os.Geteuid() == 0 {
+		err := nativeCredentialFixture(nativePlannedFileSourceCampaignQEMU)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "native planned file source fixture:", err)
+		}
+		return err
+	}
+	if len(os.Args) == 2 && os.Args[1] == "native-planned-exit" && os.Getuid() == 0 && os.Geteuid() == 0 {
+		err := nativeCredentialFixture(nativePlannedExitCampaignQEMU)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "native planned exit fixture:", err)
 		}
 		return err
 	}
@@ -100,7 +214,8 @@ func run() error {
 		return ownerFixtureChild()
 	}
 	composed := len(os.Args) == 2 && os.Args[1] == "composed-code"
-	if (len(os.Args) != 1 && !composed) || os.Getuid() != 1801 || os.Geteuid() != 1801 {
+	censusOnly := len(os.Args) == 2 && os.Args[1] == "census-only"
+	if (len(os.Args) != 1 && !composed && !censusOnly) || os.Getuid() != 1801 || os.Geteuid() != 1801 {
 		return errors.New("fixture guard")
 	}
 	status, err := os.ReadFile("/proc/self/status")
@@ -154,6 +269,13 @@ func run() error {
 		return errors.New("byte accounting")
 	}
 	fmt.Printf("PHANTOWD_RUNTIME_SCAN_COST files=%d bytes=%d elapsed_ns=%d scope=qemu-emulation-only\n", got.Files, got.Bytes, elapsed.Nanoseconds())
+	if censusOnly {
+		// Every non-service guest hashes its OWN full tree under the SAME zero-cap
+		// boundary. The service guest owns every original independent inspector
+		// refusal/retention experiment; no proof or authority crosses boots.
+		fmt.Println("PHANTOWD_SAMBA_ROOT_CENSUS_READY readonly=true complete_census=true hashes=true aliases=true negative_controls=false retained_control=false scope=qemu-only")
+		return nil
+	}
 	refuse := func(f []runtimebundle.File, a []runtimebundle.Alias) error {
 		bad, err := runtimebundle.NewPlan(f, a)
 		if err != nil {

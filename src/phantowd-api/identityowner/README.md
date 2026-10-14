@@ -189,7 +189,8 @@ incomplete/review evidence, stale fingerprints, cancellation and busy admission
 return no token. At most 16 consumers are retained; a released slot is reusable.
 Do not call it, `Verify`, or `Release` inside the pure snapshot callback.
 
-The opaque `FileServiceLease` provides `Verify(ctx)` and `Release()`. The
+The opaque `FileServiceLease` provides `Verify(ctx)`,
+`WithFileServiceSnapshot(ctx, inspect)` and `Release()`. The
 original Owner remains the only authority: its `Close` waits for active work
 then returns `ErrBusy`, releasing nothing, while any consumer remains. Token
 copies share one private state; repeated or concurrent release cannot drop
@@ -202,6 +203,14 @@ admission gives no positive verification and does not itself mark identity
 drift. Cancellation during an admitted observation is uncertain and sticky.
 Unrelated changes to the complete local Unix census also invalidate the
 fingerprint conservatively; this is not a selective foreign-account lease.
+
+The lease's snapshot callback derives only bounded in-memory data from that
+ONE freshly collected, membership/backend/fingerprint-verified observation,
+under the ORIGINAL Owner lock. It cannot re-enter an Owner, perform process,
+filesystem or network I/O, persist anything or activate a service. A pure
+callback refusal alone does not invalidate healthy identity evidence;
+cancellation after admission is uncertain and remains review-required. There
+is no caller-selected replacement backend or cached verification shortcut.
 
 Consumers do not hold the mutex between calls or freeze passdb bytes. Explicit
 desired-state changes, credential operations and account/session revocation

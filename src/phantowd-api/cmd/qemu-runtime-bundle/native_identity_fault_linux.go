@@ -111,9 +111,10 @@ func nativeIdentityStateFaultQEMU() error {
 	if err != nil {
 		return err
 	}
-	// The preceding coordinator campaign leaves the synthetic target disabled.
-	// Explicitly prepare it BEFORE acquiring this NEW service consumer. No stale
-	// consumer is refreshed and no passdb/journal bytes are copied or fabricated.
+	// This guest's genuine enrollment leaves the synthetic target enabled. The
+	// older same-guest coordinator sequence may instead leave it disabled; only
+	// that verified state can be explicitly prepared BEFORE a NEW consumer. No
+	// stale consumer is refreshed and no passdb/journal is copied or fabricated.
 	registry, _, err := owner.Snapshot(ctx)
 	if err != nil {
 		return err

@@ -9,6 +9,66 @@ trusted codecs, file sync, one rename and directory sync. It never imports old
 formats, promotes pending state or treats corruption as empty configuration.
 `Store` remains the original snapshot/transaction API.
 
+## Read-only policy-directory bootstrap observation
+
+`OpenBootstrapAuthorityWithCodec` optionally retains one directory/flock/
+trusted-codec/watch lifetime. Fixed `naspolicystore.OpenBootstrapAuthority`
+chooses NAS roles. Observe is serialized and uses fresh confined cursors on
+the original directory plus the same collector below; it does not reacquire
+a path or accept a per-call backend. Other writers are excluded between reads.
+Drift/read uncertainty, including unchanged-data writable open/close and
+in-flight cancellation, latches review. Prework cancel has no effects; restored
+inputs cannot resume. Copies/serialization cannot transfer read/disposal rights.
+
+No leases/consumers are issued. Explicit Close disposes only this observer;
+uncertain close is terminal, preserving unattempted roots without retry. The
+premature-watch-descriptor test characterizes this refusal, not actual media
+EIO. Review remains instance-local, not a durable recovery record. No init/
+write/admission/Owner handoff/journal/HTTP/startup is implemented. A future
+receipt/state-bundle contract must govern boot and operator recovery.
+
+[Recovery design and work packets](RECOVERY-DESIGN.md) propose versioned private
+intent/receipt matching before any writer or admission change. It is not yet an
+approved schema or implemented recovery mechanism. Local recorded confirmation
+and response delivery are distinct; restoring valid bytes does not settle an
+interrupted operation or clear prior review.
+
+Whole tagged pinned API vet/unit/store race3, Windows and actual ARM52 ordered
+receipts pass with strict2+133, normal unmount/base hash and unchanged limits.
+No new default boot/Docker storage/NAS/privilege or removed older assertion.
+The standalone observer remains its separate temporary-lifetime interface.
+
+`ObserveBootstrapWithCodec` returns only kind/revision; the fixed
+`naspolicystore.ObserveBootstrap` adapter selects NAS names/schema. Codec code
+is trusted in-process, not HTTP-supplied. No syncing constructor, initialization,
+import/promotion/deletion, claims or changed Store/Owner admission is invoked.
+The temporary exclusive flock requires trusted parents/cooperating writers,
+an owned0700 directory and safe owned0600 single-link regular named entries.
+
+Kinds: `empty-directory`, `valid-current-policy`, `pending-evidence`,
+`invalid-or-unsupported-policy`, `unrecognized-entries`. Only valid current
+data yields a positive revision. Pending is metadata-only and takes precedence;
+unknown evidence is preserved and never a usable-directory claim. Errors yield
+zero, not empty state. Empty directory is not whole-NAS pristine; valid current
+bytes do not prove origin, acknowledged commit or filesystem durability.
+
+Census stops at three names; empty/known-only outcomes require EOF. Current
+reads reuse no-follow/no-cross-mount/O_NOATIME and trusted codec limits, checking
+context between at-most64KiB reads. Metadata brackets and a nonblocking empty
+inotify epoch refuse drift, including write-capable open/close with unchanged
+data/metadata. I/O is not guaranteed immediately cancellable. This is point-in-
+time on the held directory, not continuous/parent-path/retained admission.
+Invalid versus incompatible versions, whole state bundle/provisioning, durable
+review and operator recovery remain separate; no auto-reopen can erase review.
+
+The optional ARM ext4 lane now requires47 ordered PASS receipts including ten
+bootstrap groups, fixed adapter and every prior interruption/media assertion.
+Whole tagged pinned host vet/units/scoped race3 and Windows pass. A two-driver
+aggregate raw capture was truncated; a same-source guest supplies all47 complete
+receipts independently matched. Strict2+123/no-skip/unmount/base-hash checks
+pass with no default CI/storage/timer/privilege/NAS change. No installable
+product or durable recovery is qualified by these observations.
+
 ## Optional initialized-state owner
 
 `OpenOwnedWithCodec` privately retains that engine and requires initialized
@@ -62,6 +122,25 @@ not a durable recovery journal. A fresh owner is not an operator recovery plan
 and must not be automatically opened to bypass an earlier uncertain outcome.
 
 ## Verification boundary
+
+The original media-only `support/test-revisionstore-media.ps1` checkpoint ran seven
+SIGKILL boundaries for both nonempty SMB/NFS and three-protocol NAS policies on
+synthetic ARMv5 ext4. A32-MiB snapshot also exercises actual full/read-only media
+against initialized `OwnedStore`: failed Commit, retained lock/sticky review,
+refusal after restoration, unchanged confirmed policy and pending preservation
+on explicit fixture reconciliation without consumers. No store/Owner production
+behavior is replaced; no fake syscall failure is injected in the media cases.
+All18 ordered test receipts had to PASS, not skip; two consecutive guests, pinned
+host vet/unit/race3 and strict2+64 log controls pass with normal unmount/base
+hash unchanged. Outside the exact marked ARM guest, the media tests do not run.
+
+A growing file's ENOSPC did not exhaust every usable block. The harness now
+uses a bounded fresh-file tail fill and still requires zero available blocks
+before publication. This fixes test setup, not a demonstrated production defect.
+The kernel remains alive during SIGKILL; this is not sudden-power-loss/cache-
+flush qualification. Review remains instance-sticky, not a durable journal.
+No product recovery/reopen, selected-medium durability, EX4 state placement or
+hardware/installer/full/hosted qualification follows from these fixtures.
 
 Native tests cover claim fencing, defensive values, bounds/concurrency/FD use,
 restored mutations, mutation during decode, uncertain writes/sync/rename/close,

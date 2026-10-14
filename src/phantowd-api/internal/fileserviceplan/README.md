@@ -31,9 +31,14 @@ storage generation/canonical volume-set fingerprint.
   roster has one synthetic volume; this does not provide a production roster
   source or prove physical inventory completeness. `BuildFromOwners` now
   holds the mounted roster/member locks first and then the identity Owner lock
-  while adapting both snapshots and building one candidate. Only deterministic
-  in-memory work runs under both locks; the function returns no apply or
-  activation capability. The ARMv5 fixture checks this ordered composition
+  while adapting both snapshots and building one candidate. The Owners collect
+  complete evidence under those locks; the derivation callback itself does only
+  deterministic in-memory work. The function returns no apply or activation
+  capability. `BuildFromRetainedOwners` preserves this storage-first order,
+  using the ORIGINAL identity lease's ONE fresh, complete observation for both
+  retention/fingerprint verification and planning. Released/review leases and
+  changed identity evidence refuse; no independent backend or cached snapshot
+  is supplied by an operation. The ARMv5 fixture checks this ordered composition
   with redacted Owner/passdb evidence and one synthetic mounted volume; its
   NFS-only policy has no Samba share section.
 - Required volumes must be uniquely mapped, filesystem-UUID matched, mounted

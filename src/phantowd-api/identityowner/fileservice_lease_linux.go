@@ -88,7 +88,17 @@ func (o *Owner) retainFileServiceSnapshot(ctx context.Context, expected [32]byte
 }
 
 func (l *FileServiceLease) Verify(ctx context.Context) error {
-	if l == nil || l.state == nil || l.state.owner == nil {
+	return l.WithFileServiceSnapshot(ctx, func(FileServiceSnapshot) error { return nil })
+}
+
+// WithFileServiceSnapshot derives bounded in-memory data from ONE freshly
+// verified retained observation while the original mutation lock is held.
+// The callback has the same pure derivation contract as Owner's method: no
+// Owner re-entry, process/filesystem/network I/O, persistence or activation.
+// It never accepts a replacement Owner, backend or expected fingerprint.
+// A pure callback refusal alone does not invalidate healthy identity evidence.
+func (l *FileServiceLease) WithFileServiceSnapshot(ctx context.Context, inspect func(FileServiceSnapshot) error) error {
+	if inspect == nil || l == nil || l.state == nil || l.state.owner == nil {
 		return ErrUnavailable
 	}
 	o := l.state.owner
@@ -115,7 +125,12 @@ func (l *FileServiceLease) Verify(ctx context.Context) error {
 		l.state.review = true
 		return ErrReview
 	}
-	return nil
+	err = inspect(evidence)
+	if ctx.Err() != nil {
+		l.state.review = true
+		return ErrReview
+	}
+	return err
 }
 
 // Release only drops the cooperative consumer reference. It closes no input

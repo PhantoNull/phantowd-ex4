@@ -4,7 +4,7 @@
 
 set -eu
 
-repo_root=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)
+repo_root=$(CDPATH='' cd -- "$(dirname -- "$0")/../.." && pwd)
 audit="$repo_root/support/container/audit-ex4-stage-b-kernel-config.sh"
 temp_dir=$(mktemp -d "${TMPDIR:-/tmp}/phantowd-kconfig-audit.XXXXXX")
 trap 'rm -f "$temp_dir"/*; rmdir "$temp_dir"' EXIT HUP INT TERM
@@ -106,5 +106,24 @@ if sh "$audit" b3 "$temp_dir/missing-driver.config" >/dev/null 2>&1; then
     echo 'kernel-config audit accepted a missing EX4 Ethernet driver' >&2
     exit 1
 fi
+
+for stage in b2 b3; do
+    cp "$temp_dir/valid-$stage.config" "$temp_dir/internal-crypto.config"
+    printf '%s\n' 'CONFIG_CRYPTO_LIB_SHA256=y' \
+        'CONFIG_CRYPTO_LIB_SHA256_ARCH=y' >> "$temp_dir/internal-crypto.config"
+    sh "$audit" "$stage" "$temp_dir/internal-crypto.config" >/dev/null
+    for option in CRYPTO_USER_API CRYPTO_USER_API_HASH CRYPTO_USER_API_SKCIPHER \
+        CRYPTO_USER_API_AEAD CRYPTO_USER_API_RNG CRYPTO_USER_API_RNG_CAVP \
+        CRYPTO_USER_API_FUTURE_FIXTURE; do
+        for enabled in y m; do
+            cp "$temp_dir/valid-$stage.config" "$temp_dir/af-alg.config"
+            printf 'CONFIG_%s=%s\n' "$option" "$enabled" >> "$temp_dir/af-alg.config"
+            if sh "$audit" "$stage" "$temp_dir/af-alg.config" >/dev/null 2>&1; then
+                echo "kernel-config audit accepted unused AF_ALG: $stage $option=$enabled" >&2
+                exit 1
+            fi
+        done
+    done
+done
 
 printf 'Stage B kernel-config audit tests passed\n'

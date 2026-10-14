@@ -4,6 +4,7 @@
 """Fixed QEMU kernel inputs and configuration checks; no build authority."""
 import argparse
 import hashlib
+import re
 from pathlib import Path
 
 
@@ -57,6 +58,9 @@ def fingerprint(external, buildroot):
 
 def audit(config):
     lines = read_regular(config).decode("ascii").splitlines()
+    if any(re.fullmatch(r"CONFIG_CRYPTO_USER_API(?:_[A-Z0-9_]+)?=[ym]", line)
+           for line in lines):
+        raise ValueError("unused AF_ALG kernel interface must be disabled")
     for expected in REQUIRED:
         key = expected.split("=", 1)[0].removeprefix("# ").split(" ", 1)[0]
         observed = [line for line in lines if line.startswith(key + "=")
