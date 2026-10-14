@@ -50,7 +50,7 @@ func nativePlannedServiceFixtureQEMU(plan *runtimebundle.Plan, lookup fileservic
 			fmt.Fprint(os.Stderr, plannedFaultFailureDiagnosticQEMU(phase, result))
 		}
 	}()
-	if fault != "" && fault != "source" && fault != "exit" {
+	if fault != "" && fault != "source" && fault != "exit" && fault != "held" && fault != "file" && fault != "file-source" {
 		return errors.New("invalid fixed planned fault")
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 40*time.Second)
@@ -297,10 +297,12 @@ func nativePlannedServiceFixtureQEMU(plan *runtimebundle.Plan, lookup fileservic
 		defer cancelSupervise()
 		ctx = superviseCtx
 		phase = "supervision"
-		if fault != "" {
+		if fault == "source" || fault == "exit" || fault == "file-source" {
 			qualify, proof := qualifyPlannedSourceFaultQEMU, plannedSourceFaultChildProofQEMU
 			if fault == "exit" {
 				qualify, proof = qualifyPlannedExitFaultQEMU, plannedExitFaultChildProofQEMU
+			} else if fault == "file-source" {
+				qualify, proof = qualifyPlannedFileSourceFaultQEMU, plannedFileSourceFaultChildProofQEMU
 			}
 			if err := qualify(ctx, service, runtime, owner, handoff); err != nil {
 				return err
@@ -315,32 +317,42 @@ func nativePlannedServiceFixtureQEMU(plan *runtimebundle.Plan, lookup fileservic
 			os.Exit(0)
 			return errors.New("planned fault child did not exit")
 		}
-		if err := qualifyPlannedSupervisionQEMU(ctx, service, owner, handoff); err != nil {
-			return err
-		}
-		for range 2 {
-			stopped, err := runtime.ObservePlannedStopQEMU(ctx)
-			if err != nil || !stopped.DaemonStopped || !stopped.InputsRetained {
-				return errors.Join(errors.New("planned stop lacks owned-group and retained-input proof"), err)
+		if fault == "file" {
+			if err := qualifyPlannedOpenFileQEMU(ctx, service, runtime, owner, handoff); err != nil {
+				return err
 			}
-		}
-		if legacy, err := runtime.ObserveNativeStopQEMU(ctx); err != nil || !legacy.DaemonStopped || !legacy.ClientsStopped || !legacy.InputsRetained {
-			return errors.Join(errors.New("planned stopped role lost legacy two-client observation"), err)
-		}
-		stillStopped, err := service.Status()
-		if err != nil || stillStopped.State != "stopped" || !stillStopped.IdentityRetained || !stillStopped.SharesRetained || stillStopped.RuntimeClosed ||
-			!errors.Is(owner.Close(), identityowner.ErrBusy) || !errors.Is(handoff.Close(), mountowner.ErrHandoffBusy) {
-			return errors.New("read-only planned stop changed original authority")
-		}
-		if err := service.Close(context.Background()); err != nil {
-			return err
-		}
-		if observed, err := runtime.ObservePlannedStopQEMU(ctx); observed != (runtimebundle.PlannedStopObservationQEMU{}) || !errors.Is(err, runtimebundle.ErrReviewRequired) {
-			return errors.New("closed planned runtime supplied retained-input evidence")
-		}
-		status, err = service.Status()
-		if err != nil || status.State != "stopped" || status.IdentityRetained || status.SharesRetained || !status.RuntimeClosed {
-			return errors.New("planned startup released authorities before full runtime close")
+		} else if fault == "held" {
+			if err := qualifyPlannedHeldCancellationQEMU(ctx, service, runtime, owner, handoff); err != nil {
+				return err
+			}
+		} else {
+			if err := qualifyPlannedSupervisionQEMU(ctx, service, owner, handoff); err != nil {
+				return err
+			}
+			for range 2 {
+				stopped, err := runtime.ObservePlannedStopQEMU(ctx)
+				if err != nil || !stopped.DaemonStopped || !stopped.InputsRetained {
+					return errors.Join(errors.New("planned stop lacks owned-group and retained-input proof"), err)
+				}
+			}
+			if legacy, err := runtime.ObserveNativeStopQEMU(ctx); err != nil || !legacy.DaemonStopped || !legacy.ClientsStopped || !legacy.InputsRetained {
+				return errors.Join(errors.New("planned stopped role lost legacy two-client observation"), err)
+			}
+			stillStopped, err := service.Status()
+			if err != nil || stillStopped.State != "stopped" || !stillStopped.IdentityRetained || !stillStopped.SharesRetained || stillStopped.RuntimeClosed ||
+				!errors.Is(owner.Close(), identityowner.ErrBusy) || !errors.Is(handoff.Close(), mountowner.ErrHandoffBusy) {
+				return errors.New("read-only planned stop changed original authority")
+			}
+			if err := service.Close(context.Background()); err != nil {
+				return err
+			}
+			if observed, err := runtime.ObservePlannedStopQEMU(ctx); observed != (runtimebundle.PlannedStopObservationQEMU{}) || !errors.Is(err, runtimebundle.ErrReviewRequired) {
+				return errors.New("closed planned runtime supplied retained-input evidence")
+			}
+			status, err = service.Status()
+			if err != nil || status.State != "stopped" || status.IdentityRetained || status.SharesRetained || !status.RuntimeClosed {
+				return errors.New("planned startup released authorities before full runtime close")
+			}
 		}
 		if err := handoff.Close(); err != nil {
 			return err

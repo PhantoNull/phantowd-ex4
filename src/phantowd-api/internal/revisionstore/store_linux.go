@@ -40,6 +40,14 @@ type Codec[T any] struct {
 	Revision    func(T) uint64
 }
 
+func (codec Codec[T]) valid() bool {
+	validName := func(name string) bool {
+		return len(name) > 0 && len(name) <= 64 && name != "." && name != ".." && filepath.Base(name) == name
+	}
+	return validName(codec.CurrentName) && validName(codec.PendingName) && codec.CurrentName != codec.PendingName &&
+		codec.MaxBytes > 0 && codec.MaxBytes <= 1<<20 && codec.Decode != nil && codec.Validate != nil && codec.Revision != nil
+}
+
 // Store holds an exclusive advisory directory lock until Close. All writers
 // must use this store, and no other code may modify/replace its directory.
 // It is safe for concurrent method calls, but callers must not concurrently
@@ -75,11 +83,7 @@ func systemOps() fileOps {
 // uses fixed names relative to the retained directory descriptor.
 func OpenWithCodec[T any](directory string, codec Codec[T]) (*Store[T], error) {
 	// Bound the trusted adapter too; no path traversal or unbounded file reads.
-	validName := func(name string) bool {
-		return len(name) > 0 && len(name) <= 64 && name != "." && name != ".." && filepath.Base(name) == name
-	}
-	if !validName(codec.CurrentName) || !validName(codec.PendingName) || codec.CurrentName == codec.PendingName ||
-		codec.MaxBytes <= 0 || codec.MaxBytes > 1<<20 || codec.Decode == nil || codec.Validate == nil || codec.Revision == nil {
+	if !codec.valid() {
 		return nil, ErrUnsafe
 	}
 	if !filepath.IsAbs(directory) || filepath.Clean(directory) != directory {

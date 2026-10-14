@@ -4,6 +4,7 @@
 import pathlib
 import os
 import re
+import shlex
 import subprocess
 import tempfile
 import unittest
@@ -25,7 +26,32 @@ def save_log(destination, source):
     )
 
 
+def make_target_position(script, target):
+    """Find a target in a real multiline make command, not a literal roster."""
+    for command in re.finditer(
+            r"(?m)^make -C (?:[^\n]*\\\n)*[^\n]*(?:\n|$)", script):
+        words = shlex.split(command.group().replace("\\\n", " "))
+        if target in words:
+            return command.start()
+    raise AssertionError(f"No make invocation builds {target}")
+
+
 class BuildFeedbackTests(unittest.TestCase):
+    def test_runtime_owner_staging_qualifies_supplied_physical_tmpfs(self):
+        tests = ROOT / "support/tests"
+        staging = (tests / "test-samba-root-staging.sh").read_text()
+        driver = (tests / "test-qemu-runtime-owner.sh").read_text()
+        environment = tests / "test-samba-root-staging-environment.sh"
+        controls = environment.read_text()
+        self.assertIn('tmpdir=${TMPDIR:-/tmp}', staging)
+        self.assertIn('cd -P "$tmpdir" && pwd -P', staging)
+        qualification = staging.index('awk -v target=')
+        self.assertLess(staging.index('cd -P'), qualification)
+        self.assertLess(qualification, staging.index('mktemp'))
+        self.assertIn('test-samba-root-staging-environment.sh', driver)
+        self.assertIn('TMPDIR="$scratch/nested"', controls)
+        self.assertIn('"$scratch/proc-link" "$scratch/../../proc"', controls)
+
     def test_go_recipe_and_installed_sdk_are_checked_before_heavy_tests(self):
         script = (ROOT / "support/container/build-qemu.sh").read_text()
         patch_fixture = script.index(
@@ -34,7 +60,7 @@ class BuildFeedbackTests(unittest.TestCase):
         patch_apply = script.index(
             'sh "$external_dir/support/container/'
             'apply-buildroot-go-maintenance.sh" \\\n')
-        sdk_build = script.index("    host-go-bin\n")
+        sdk_build = make_target_position(script, "host-go-bin")
         sdk_check = script.index(
             'sh "$external_dir/support/container/'
             'check-buildroot-go-sdk.sh" \\\n')
@@ -46,6 +72,52 @@ class BuildFeedbackTests(unittest.TestCase):
         self.assertLess(sdk_build, sdk_check)
         self.assertLess(sdk_check, host_test)
         self.assertLess(host_test, target_build)
+
+    def test_make_target_lookup_allows_multiple_targets_not_mentions(self):
+        script = ('# host-go-bin\n'
+                  'echo host-go-bin\n'
+                  'make -C "$source" \\\n'
+                  '    O="$output" host-libopenssl host-go-bin\n')
+        expected = script.index('make -C')
+        self.assertEqual(make_target_position(script, "host-go-bin"), expected)
+        self.assertEqual(make_target_position(script, "host-libopenssl"),
+                         expected)
+        for missing in ("host-go", "libopenssl", "host-go-bin-dirclean"):
+            with self.subTest(target=missing):
+                with self.assertRaises(AssertionError):
+                    make_target_position(script, missing)
+
+    def test_openssl_selection_precedes_board_only_return_and_heavy_work(self):
+        script = (ROOT / "support/container/build-qemu.sh").read_text()
+        apply = script.index(
+            'sh "$external_dir/support/container/'
+            'apply-buildroot-openssl-maintenance.sh" \\\n')
+        prepare_return = script.index(
+            'if [ "${PHANTOWD_PREPARE_ONLY:-0}" = 1 ]; then')
+        host_build = make_target_position(script, "host-libopenssl")
+        check = ('sh "$external_dir/support/container/'
+                 'check-buildroot-openssl-tool.sh" \\\n')
+        checks = [
+            match.start() for match in re.finditer(re.escape(check), script)
+        ]
+        full_build = script.index('\n    PARALLEL_JOBS="$build_jobs" '
+                                  '-j"$build_jobs"\n')
+        self.assertLess(apply, prepare_return)
+        self.assertLess(prepare_return, host_build)
+        self.assertEqual(len(checks), 2)
+        self.assertLess(host_build, checks[0])
+        self.assertLess(checks[0], script.index(
+            'sh "$external_dir/support/container/test-api.sh"'))
+        self.assertLess(full_build, checks[1])
+        for name in ("a", "b", "b2"):
+            with self.subTest(stage=name):
+                board = (ROOT / f"support/container/"
+                         f"build-ex4-stage-{name}.sh").read_text()
+                self.assertLess(make_target_position(board, "host-libopenssl"),
+                                board.index(check))
+        board = (ROOT / "support/container/build-ex4-stage-b2.sh").read_text()
+        self.assertLess(board.index(check),
+                        make_target_position(board, "linux-configure"))
 
     def test_enrollment_lookup_requires_exact_unique_serial_evidence(self):
         marker = (
@@ -171,7 +243,7 @@ class BuildFeedbackTests(unittest.TestCase):
         self.assertNotIn("BR2_CMAKE_HOST_DEPENDENCY=", script)
         probe = script.index('"$external_dir/support/tests/'
                              'test-buildroot-system-cmake.sh" \\\n')
-        self.assertLess(probe, script.index("    host-go-bin\n"))
+        self.assertLess(probe, make_target_position(script, "host-go-bin"))
         fixture = (ROOT / "support/tests/test-buildroot-system-cmake.sh")
         fixture = fixture.read_text()
         self.assertIn("O=\"$scratch/output\"", fixture)
@@ -203,7 +275,8 @@ class BuildFeedbackTests(unittest.TestCase):
 
     def test_local_full_lane_checks_exact_fuzz_roster_before_build(self):
         runner = (ROOT / "support/container/test-api.sh").read_text()
-        checker = (ROOT / "support/test-firmware-workflow-paths.sh").read_text()
+        checker = (ROOT / "support/"
+                   "test-firmware-workflow-paths.sh").read_text()
         declarations = re.findall(
             r'^require_fixed_fuzz_campaigns '
             r'"\$repo_root/support/container/test-api.sh" ([1-9][0-9]*)$',
@@ -224,16 +297,20 @@ class BuildFeedbackTests(unittest.TestCase):
                 f"./internal/{package}")
             self.assertEqual(campaigns.count(expected), 1)
         full = (ROOT / "support/container/build-qemu.sh").read_text()
-        invocation = 'sh "$external_dir/support/test-firmware-workflow-paths.sh"'
+        invocation = ('sh "$external_dir/support/'
+                      'test-firmware-workflow-paths.sh"')
         self.assertIn(invocation, full)
         self.assertLess(full.index(invocation), full.index("shellcheck -s sh"))
-        broker = (ROOT / "support/tests/test-storage-broker-buildroot.sh").read_text()
-        self.assertIn('git -c safe.directory="$repo_root" -C "$repo_root"', broker)
+        broker = (ROOT / "support/tests/"
+                  "test-storage-broker-buildroot.sh").read_text()
+        self.assertIn('git -c safe.directory="$repo_root" -C "$repo_root"',
+                      broker)
 
     def test_network_inventory_requires_actual_kernel_assertion(self):
         smoke = (ROOT / "support/qemu-smoke.sh").read_text()
         selftest = (ROOT / "src/phantowd-api/selftest.go").read_text()
-        fixture = (ROOT / "src/phantowd-api/network_inventory_qemu_linux.go").read_text()
+        fixture = (ROOT / "src/phantowd-api/"
+                   "network_inventory_qemu_linux.go").read_text()
         for claim in ("PHANTOWD_NETWORK_INVENTORY_READY", "kernel=true",
                       "repeated=true", "routes=true", "fib_only=true",
                       "rules=true", "nexthops=true", "object_fixture=true",
@@ -242,40 +319,50 @@ class BuildFeedbackTests(unittest.TestCase):
             self.assertIn(claim, smoke)
             self.assertIn(claim, selftest)
         self.assertIn("exerciseQEMUNetworkInventory()", selftest)
-        self.assertIn("networkinventory.Collect(context.Background())", fixture)
-        self.assertIn("networkinventory.Recheck(context.Background(),o)", fixture.replace(" ", ""))
+        self.assertIn("networkinventory.Collect(context.Background())",
+                      fixture)
+        self.assertIn("networkinventory.Recheck(context.Background(),o)",
+                      fixture.replace(" ", ""))
         self.assertIn("summary.Routes < 1", fixture)
         self.assertIn("summary.Rules < 1", fixture)
         self.assertIn("networkinventory.QEMUObjectFixture()", fixture)
         self.assertIn("networkinventory.QEMUAddressFixture()", fixture)
-        collector = (ROOT / "src/phantowd-api/internal/networkinventory/collect_linux.go").read_text()
-        self.assertIn("r.query(ctx, unix.RTM_GETNEXTHOP, unix.RTM_NEWNEXTHOP, unix.AF_UNSPEC)", collector)
+        collector = (ROOT / "src/phantowd-api/internal/networkinventory/"
+                     "collect_linux.go").read_text()
+        self.assertIn("r.query(ctx, unix.RTM_GETNEXTHOP, "
+                      "unix.RTM_NEWNEXTHOP, unix.AF_UNSPEC)", collector)
         runner = (ROOT / "support/container/test-api.sh").read_text()
         for gate in ("TestQEMUNetworkPolicy", "TestQEMUNetworkInventory",
-                     "FuzzWireConsume", "FuzzRoute", "FuzzRule", "FuzzNextHopObject"):
+                     "FuzzWireConsume", "FuzzRoute", "FuzzRule",
+                     "FuzzNextHopObject"):
             self.assertIn(gate, runner)
 
     def test_network_policy_requires_same_boot_guest_assertion(self):
         smoke = (ROOT / "support/qemu-smoke.sh").read_text()
         selftest = (ROOT / "src/phantowd-api/selftest.go").read_text()
-        fixture = (ROOT / "src/phantowd-api/networkpolicy_selftest.go").read_text()
+        fixture = (ROOT / "src/phantowd-api/"
+                   "networkpolicy_selftest.go").read_text()
         for claim in ("PHANTOWD_NETWORK_POLICY_READY", "dual_stack=true",
-                      "conflict_refused=true", "strict_json=true", "apply=false"):
+                      "conflict_refused=true", "strict_json=true",
+                      "apply=false"):
             self.assertIn(claim, smoke)
             self.assertIn(claim, selftest)
         self.assertIn("exerciseQEMUNetworkPolicy()", selftest)
-        self.assertIn('networkpolicy.Decode(strings.NewReader(input))', fixture)
+        self.assertIn('networkpolicy.Decode(strings.NewReader(input))',
+                      fixture)
         self.assertIn('"192.0.2.10/16"', fixture)
 
     def test_smart_census_witness_set_requires_actual_guest_assertion(self):
         smoke = (ROOT / "support/qemu-smoke.sh").read_text()
         md = (ROOT / "src/phantowd-api/md_stack_qemu_linux.go").read_text()
-        fixture = (ROOT / "src/phantowd-api/smart_census_witness_set_qemu_linux.go").read_text()
+        fixture = (ROOT / "src/phantowd-api/"
+                   "smart_census_witness_set_qemu_linux.go").read_text()
         marker = "PHANTOWD_SMART_CENSUS_WITNESS_SET_READY"
         self.assertIn(marker, smoke)
         self.assertIn(marker, md)
         self.assertIn("exerciseQEMUSMARTCensusWitnessSet()", md)
-        for claim in ("leaves=7", "rollback_no_leak=true", "review_pins_retained=true",
+        for claim in ("leaves=7", "rollback_no_leak=true",
+                      "review_pins_retained=true",
                       "reader_failure_sticky=true", "explicit_release=true"):
             self.assertIn(claim, smoke)
             self.assertIn(claim, md)
@@ -286,7 +373,8 @@ class BuildFeedbackTests(unittest.TestCase):
         marker = "PHANTOWD_SMART_FD_WITNESS_READY"
         smoke = (ROOT / "support/qemu-smoke.sh").read_text()
         md = (ROOT / "src/phantowd-api/md_stack_qemu_linux.go").read_text()
-        fixture = (ROOT / "src/phantowd-api/smart_witness_qemu_linux.go").read_text()
+        fixture = (ROOT / "src/phantowd-api/"
+                   "smart_witness_qemu_linux.go").read_text()
         self.assertIn(marker, smoke)
         self.assertIn(marker, md)
         self.assertIn("metadata_ioctl=BLKGETDISKSEQ", smoke)
@@ -310,6 +398,12 @@ class BuildFeedbackTests(unittest.TestCase):
         self.assertIn("device_opened=false", smoke)
 
     def test_runtime_code_owner_disposable_lane_is_bounded(self):
+        init = (ROOT / "support/tests/runtime-owner-init.sh").read_text()
+        self.assertLess(init.index('mount -t tmpfs'),
+                        init.index('export TMPDIR=/run'))
+        self.assertLess(init.index('export TMPDIR=/run'),
+                        init.index('-test.run'))
+        self.assertIn('-test.count=3 -test.cpu=1', init)
         script = (ROOT / "support/container/build-qemu.sh").read_text()
         self.assertIn('support/tests/test-qemu-runtime-owner.sh', script)
         self.assertIn('qemu-runtime-owner-failure.log', script)
@@ -333,8 +427,9 @@ class BuildFeedbackTests(unittest.TestCase):
         )
         scan_source = (ROOT / "src/phantowd-api/cmd/"
                        "qemu-runtime-bundle/scan_drift.go").read_text()
-        scan_marker = re.search(r'fmt.Println\("(PHANTOWD_CODE_OWNER_SCAN_READY[^\"]*)"\)',
-                                scan_source)
+        scan_marker = re.search(
+            r'fmt.Println\("(PHANTOWD_CODE_OWNER_SCAN_READY[^\"]*)"\)',
+            scan_source)
         self.assertIsNotNone(scan_marker)
         self.assertIn("scan='" + scan_marker.group(1) + "'", fixture)
         self.assertIn('//go:build qemu && linux', scan_source)
@@ -444,7 +539,7 @@ class BuildFeedbackTests(unittest.TestCase):
 
     def test_pinned_host_tests_precede_full_build(self):
         script = (ROOT / "support/container/build-qemu.sh").read_text()
-        toolchain = script.index("    host-go-bin\n")
+        toolchain = make_target_position(script, "host-go-bin")
         api = script.index('sh "$external_dir/support/container/test-api.sh"')
         lab = script.index(
             'sh "$external_dir/support/container/test-lab-tools.sh"'

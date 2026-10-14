@@ -168,6 +168,7 @@ func TestDashboardServesReadOnlyDevelopmentUIAndAssets(t *testing.T) {
 		{"/assets/app.css", "text/css; charset=utf-8", []string{"@media", "prefers-reduced-motion"}},
 		{"/assets/app.js", "text/javascript; charset=utf-8", []string{"/api/v1/system", "/api/v1/storage", "/api/v1/arrays", "/api/v1/mounts", "textContent"}},
 		{"/assets/service-policy.js", "text/javascript; charset=utf-8", []string{"sameServiceDocument", "saveServiceChange"}},
+		{"/assets/support-bundle.js", "text/javascript; charset=utf-8", []string{"phantowd-sanitized-support", "browser-loaded-read-only-snapshot"}},
 	} {
 		t.Run(test.path, func(t *testing.T) {
 			response := httptest.NewRecorder()
@@ -205,6 +206,8 @@ func TestDashboardServesReadOnlyDevelopmentUIAndAssets(t *testing.T) {
 		{http.MethodPost, "/", "", http.StatusMethodNotAllowed},
 		{http.MethodGet, "/assets/app.css?file=/etc/passwd", "", http.StatusBadRequest},
 		{http.MethodGet, "/assets/app.js", "unexpected", http.StatusBadRequest},
+		{http.MethodPost, "/assets/support-bundle.js", "", http.StatusMethodNotAllowed},
+		{http.MethodGet, "/assets/support-bundle.js?path=secret", "", http.StatusBadRequest},
 	} {
 		response := httptest.NewRecorder()
 		handler.ServeHTTP(response, httptest.NewRequest(test.method, test.path, strings.NewReader(test.body)))

@@ -146,6 +146,23 @@ The witness is private, backend-bound and nonserializable; empty, incomplete,
 foreign or replaced evidence is refused. Whole client/daemon groups settle
 before original pins close; final FD equality and unchanged base are mandatory.
 
+The QEMU-only backend now also rechecks **both original sessions** against the
+same private witness. It compares complete session records, including qualified
+server generations, and refuses replacement logins, either missing session,
+foreign witnesses, terminal adapters and canceled or late command replies.
+`ErrNativeSessionPairChangedQEMU` means a successfully validated complete
+inventory differs; command/parser/deadline failure must never be interpreted
+as that observed change. No raw inventory or new session witness is returned.
+
+Root-isolated Linux race-count3 and a focused actual ARMv5 native campaign pass.
+The guest requires original-pair continuity before revocation and an explicit
+changed-pair observation afterward, while preserving the original same-peer,
+target-denial, owned-stop, final-FD and unchanged-base proofs. New proof fields
+are mandatory; omitted/false fields refuse. Existing session45/guest180 and
+worker bounds are unchanged. This is a point-in-time observation, not a retained
+session/data-handle lease, composed-storage fault, full changed-image audit,
+durable-reconnect/recovery or product service qualification.
+
 Complete native worker admissions require a separate fixed timing profile:
 status4/control4/aggregate20 seconds, while ordinary commands retain
 status2/control-at-most5/aggregate5. The aggregate native verification budget
@@ -157,8 +174,13 @@ profile truncates its final inventory when four measured workers each take
 about2.6 seconds; the independently capped control cannot consume the entire
 new aggregate budget. This fixture-only adjustment is not an EX4 performance
 specification or a product deadline change. All complete admissions remain.
-The controller retains separate startup20/idle20/session45-second phases, with enrollment60 and guest180
-unchanged. Ordinary non-root Linux timing tests cover the complete composite
+The controller retains separate startup20/idle20/session45-second phases and
+guest180. The QEMU native fixture now separates original preparation20 from
+enrollment60 instead of sharing60 (combined allowance80, not a performance
+gain); worker limits and shorter parent deadlines remain unchanged. Only the
+exact changed-pair sentinel qualifies its post-revocation observation; nil
+means unchanged and uncertain outcomes preserve their causes without becoming
+revocation evidence. Ordinary non-root Linux timing tests cover the complete composite
 sequence and uncertain-control/no-retry path; constructor ownership and actual
 wrapper binding retain separate root/ARMv5 tests. Host/race tests enforce both
 profiles and shorter caller deadlines.
@@ -302,6 +324,16 @@ until a separate successful full runtime `Close`. Failed scans or uncertain
 stop/close preserve review, retained authority and refusal of uncertainty retry.
 Immutable `Status` is telemetry only, never admission or recovery evidence.
 
+`SuperviseExitFaultQEMU` is a fixed disposable-guest qualification, not a
+product control or callback. After the first complete successful scan it
+checks a pre-canceled request, signals the startup-owned daemon once and
+refuses repetition inside the SAME exclusive loop. No caller-selected runtime,
+PID, command or backend is accepted. A subsequent cancellation preserves
+review rather than classifying the admitted fault as normal retirement.
+Ordinary `Supervise` retains its existing contract. This removes demonstrated
+fixture alias competition, not every historical hosted failure; cleaned-source
+focused ARMv5 and root/non-root host checks pass, not a changed full image.
+
 On 2026-10-08, tagged Linux tests, seven-package race-count3, ARMv5 cross-build,
 62 Linux verifier tests and all six independently enrolled ARMv5 campaigns pass.
 The actual data guest keeps the SAME service through original startup/access,
@@ -318,9 +350,79 @@ A post-run negative-only Close/Status regression preserves review telemetry
 when a prior close error prohibits cleanup retry. Invalid runtime admission
 cannot start or own a process; this does not qualify live uncertain teardown.
 
+### Private open-file status and original-object composition (QEMU only)
+
+`ObservePlannedOpenFileQEMU` and `VerifyPlannedOpenFileQEMU` use the existing
+fixed, bounded, read-only status operation. The private non-serializable
+observation requires one qualified `qpsecond` session, one writable tree and
+one `writable/created` read/write opening from the pinned 4.22.11 producer.
+Backend, complete server/session generation, tree, device/inode and opening
+ID must remain unchanged. Complete observed change differs from unavailable,
+ambiguous, failed or canceled status; none authorizes recovery or replacement.
+Case aliases are rejected for interpreted fields in this observer only; the
+general status reader's contract is unchanged.
+
+The standalone status observation is NOT an original retained-object witness.
+The separate fixed `StartHeldOpenFileQEMU` now retains the existing synthetic
+file through its original share root, matches that object's device/inode to the
+strict opening observation, and rechecks both original storage/identity
+authorities after admission and in the exclusive supervisor. The pinned
+producer reports the configured tree name `Writable` exactly; lowercase is
+not a substitute. IPC$ and file holders are mutually exclusive in one lifetime.
+
+The actual cleaned-source focused `file` guest qualifies original-object/open
+continuity, verified cancellation group stop, retained object/15 inputs/both
+authorities, full runtime Close before release, repeat/closed refusal and FD
+equality. This is the ninth independently enrolled campaign; default `all`
+also requires the distinct tenth file-source fault below. A missing file or
+file-source log refuses the union. All ten actual ARMv5 overlay guests and
+independent saved-log/source replay pass; a changed full-image/audit and hosted
+qualification remain separate.
+This is not mid-I/O loss, durable reconnect, full-image or product qualification. Existing
+IPC$ proofs and admission/supervision/worker/stop budgets are unchanged.
+
+### Original-open-file source-alias loss (QEMU only)
+
+The fixed `file-source` fixture reuses the original file opener, original-object/
+session witness and distinct actual group observers; it does not add another
+Owner API or caller-selected fault action. In a guarded private guest namespace,
+only the synthetic volume's source alias is covered. Complete exclusive scans
+detect the change and verify whole client/daemon stop. The SAME original file,
+all 15 runtime inputs and BOTH original storage/identity authorities remain held
+in review. Removing only the observed cover restores the source identity, but
+start, access, old observers, supervision and repeated normal Close cannot
+revive or release reviewed authority. Child disposal and parent FD equality
+are test-only settlement, not product recovery.
+
+The actual focused guest and complete ten-guest ARMv5 overlay pass with all
+original proofs, budgets, equal runtime census and base hashes. Independent
+saved-log/every-source replay validates 1,270 inputs (977 API inputs). Root/non-root
+pinned Go 1.26.8 vet/race-count3, Windows API/UI/ARM cross and 71 verifier tests
+also pass. This qualifies an idle open handle's alias loss, not pending I/O,
+kernel EIO, physical disk failure, transfer integrity or durable reconnect.
+The newer complete image/archive/SBOM and own-head hosted checks remain separate.
+No HTTP, product activation or physical NAS operation is added.
+
 ### Composed source-alias fault (QEMU only)
 
-The focused fault guest now also exercises the SAME planned service through
+The newer source child starts only the granted `qpsecond` IPC$ holder through
+`StartHeldSessionQEMU`. The private `NativePlannedSessionQEMU` witness requires
+that exact complete qualified session; it cannot be serialized or replaced by
+fresh login. `verify` rechecks it under the SAME exclusive coordinator gate
+after complete storage-first/identity observation. Validated inventory change
+differs from unavailable worker/parser/deadline results; neither grants recovery.
+
+All seven fresh ARMv5 overlay guests and root/non-root host regressions pass.
+Both actual holder and daemon groups stop/reap; original identity/storage/code/
+configuration/state and private daemon inputs remain retained. Older observers
+refuse the additional group; the separate read-only witness also requires the
+original unused two-client census. Restoration/repeated Close cannot release
+review. All1,260 source witnesses/base hashes match with unchanged budgets.
+This does not qualify normal full retirement of the added holder, open-file/
+in-flight/durable handles, uncertain kernel teardown, a new complete image/SBOM
+audit, hosted/physical EX4 qualification or product activation.
+
+The earlier idle fault guest exercised the SAME planned service through
 genuine enrollment, retained startup/access and exclusive complete supervision.
 A fixed private-namespace child covers only the qualified synthetic volume
 alias with guest tmpfs; original volume/share mounts and object pins survive.

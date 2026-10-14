@@ -41,6 +41,203 @@ func TestInspectDownloadsOnlySignedExactGitHubReleaseAssets(t *testing.T) {
 	}
 }
 
+func TestInspectAmbiguousImmutableMetadataNeverRequestsAssets(t *testing.T) {
+	fixture := newReleaseFixture(t, []byte("synthetic payload"))
+	fixture.metadataTransform = func(body string) string {
+		changed := strings.Replace(body, `"immutable":true`, `"immutable":false,"immutable":true`, 1)
+		if changed == body {
+			t.Error("metadata mutation did not apply")
+		}
+		return changed
+	}
+	fixture.serve(t, true, nil)
+	result, err := Inspect(context.Background(), fixture.options())
+	if err == nil || result.Verification.Valid || fixture.manifestRequests != 0 || fixture.signatureRequests != 0 || fixture.payloadRequests != 0 {
+		t.Fatalf("ambiguous immutable metadata crossed asset gate: report=%+v requests=%d/%d/%d err=%v",
+			result.Verification, fixture.manifestRequests, fixture.signatureRequests, fixture.payloadRequests, err)
+	}
+}
+
+func TestInspectMissingOrNullDraftNeverRequestsAssets(t *testing.T) {
+	for _, replacement := range []string{"", `"draft":null,`} {
+		t.Run(replacement, func(t *testing.T) {
+			fixture := newReleaseFixture(t, []byte("synthetic payload"))
+			fixture.metadataTransform = func(body string) string {
+				changed := strings.Replace(body, `"draft":false,`, replacement, 1)
+				if changed == body {
+					t.Error("metadata mutation did not apply")
+				}
+				return changed
+			}
+			fixture.serve(t, true, nil)
+			result, err := Inspect(context.Background(), fixture.options())
+			if err == nil || result.Verification.Valid || fixture.manifestRequests != 0 || fixture.signatureRequests != 0 || fixture.payloadRequests != 0 {
+				t.Fatalf("absent draft observation became published status: report=%+v requests=%d/%d/%d err=%v",
+					result.Verification, fixture.manifestRequests, fixture.signatureRequests, fixture.payloadRequests, err)
+			}
+		})
+	}
+}
+
+func TestInspectMalformedMetadataNeverRequestsAssets(t *testing.T) {
+	for _, mutation := range []struct{ name, old, replacement string }{
+		{"immutable case alias", `"immutable":true`, `"IMMUTABLE":true`},
+		{"conflicting case alias", `"immutable":true`, `"immutable":false,"IMMUTABLE":true`},
+		{"escaped duplicate", `"immutable":true`, `"\u0069mmutable":false,"immutable":true`},
+		{"root id alias", `"id":77`, `"ID":77`},
+		{"draft alias", `"draft":false`, `"Draft":false`},
+		{"prerelease alias", `"prerelease":true`, `"Prerelease":true`},
+		{"tag alias", `"tag_name":`, `"Tag_Name":`},
+		{"assets alias", `"assets":`, `"Assets":`},
+		{"immutable wrong shape", `"immutable":true`, `"immutable":{"immutable":true}`},
+		{"draft wrong type", `"draft":false`, `"draft":"false"`},
+		{"asset id alias", `"id":1,`, `"ID":1,`},
+		{"asset name alias", `"name":"manifest.json"`, `"Name":"manifest.json"`},
+		{"asset size alias", `"size":`, `"Size":`},
+		{"asset url alias", `"url":`, `"URL":`},
+		{"asset state alias", `"state":"uploaded"`, `"State":"uploaded"`},
+		{"asset duplicate state", `"state":"uploaded"`, `"state":"new","state":"uploaded"`},
+		{"asset escaped duplicate", `"state":"uploaded"`, `"\u0073tate":"new","state":"uploaded"`},
+		{"asset name surrogate repair", `"name":"manifest.json"`, `"name":"manifest\ud800.json"`},
+		{"tag surrogate repair", `"tag_name":"v0.1.0"`, `"tag_name":"v0.1.0\ud800"`},
+		{"trailing JSON", `"id":77`, `"id":77`},
+	} {
+		t.Run(mutation.name, func(t *testing.T) {
+			fixture := newReleaseFixture(t, []byte("synthetic payload"))
+			fixture.metadataTransform = func(body string) string {
+				if mutation.name == "trailing JSON" {
+					return body + "{}"
+				}
+				changed := strings.Replace(body, mutation.old, mutation.replacement, 1)
+				if changed == body {
+					t.Error("metadata mutation did not apply")
+				}
+				return changed
+			}
+			fixture.serve(t, true, nil)
+			assertMetadataRefusedBeforeAssets(t, fixture)
+		})
+	}
+}
+
+func TestInspectRequiresEveryObservedReleaseAndAssetField(t *testing.T) {
+	for _, scope := range []string{"release", "asset"} {
+		keys := []string{"id", "tag_name", "draft", "prerelease", "immutable", "assets"}
+		if scope == "asset" {
+			keys = []string{"id", "name", "size", "url", "state"}
+		}
+		for _, key := range keys {
+			for _, missing := range []bool{true, false} {
+				t.Run(fmt.Sprintf("%s/%s/missing=%t", scope, key, missing), func(t *testing.T) {
+					fixture := newReleaseFixture(t, []byte("synthetic payload"))
+					fixture.metadataTransform = func(body string) string {
+						var root map[string]json.RawMessage
+						if err := json.Unmarshal([]byte(body), &root); err != nil {
+							t.Error(err)
+							return ""
+						}
+						selected := root
+						var assets []map[string]json.RawMessage
+						if scope == "asset" {
+							if err := json.Unmarshal(root["assets"], &assets); err != nil || len(assets) == 0 {
+								t.Error("missing fixture assets")
+								return ""
+							}
+							selected = assets[0]
+						}
+						if missing {
+							delete(selected, key)
+						} else {
+							selected[key] = json.RawMessage("null")
+						}
+						if scope == "asset" {
+							root["assets"], _ = json.Marshal(assets)
+						}
+						encoded, err := json.Marshal(root)
+						if err != nil {
+							t.Error(err)
+						}
+						return string(encoded)
+					}
+					fixture.serve(t, true, nil)
+					assertMetadataRefusedBeforeAssets(t, fixture)
+				})
+			}
+		}
+	}
+}
+
+func assertMetadataRefusedBeforeAssets(t *testing.T, fixture *releaseFixture) {
+	t.Helper()
+	result, err := Inspect(context.Background(), fixture.options())
+	if err == nil || result.Verification.Valid || result.Verification.SignatureValid || result.ReleaseID != 0 ||
+		fixture.manifestRequests != 0 || fixture.signatureRequests != 0 || fixture.payloadRequests != 0 {
+		t.Fatalf("invalid API metadata crossed asset boundary: report=%+v requests=%d/%d/%d err=%v",
+			result, fixture.manifestRequests, fixture.signatureRequests, fixture.payloadRequests, err)
+	}
+}
+
+func TestInspectMetadataExtensionAndEscapingPreserveVerification(t *testing.T) {
+	fixture := newReleaseFixture(t, []byte("synthetic payload"))
+	fixture.metadataTransform = func(body string) string {
+		body = strings.Replace(body, `"assets":`, `"author":{"login":"synthetic","other":[null,{"draft":true}]},"body":"Synthetic Unicode ✓","assets":`, 1)
+		body = strings.Replace(body, `"immutable":`, `"\u0069mmutable":`, 1)
+		return strings.Replace(body, `"name":"manifest.json"`, `"label":null,"uploader":{"id":42},"name":"manifest.json"`, 1)
+	}
+	fixture.serve(t, true, nil)
+	result, err := Inspect(context.Background(), fixture.options())
+	if err != nil || !result.Verification.Valid || !result.Verification.SignatureValid || !result.Verification.ArtifactsValid ||
+		result.Verification.InstallationAuthorized || fixture.manifestRequests != 1 || fixture.signatureRequests != 1 || fixture.payloadRequests != 1 {
+		t.Fatalf("valid extensible metadata changed the signature/payload boundary: result=%+v err=%v", result, err)
+	}
+}
+
+func TestInspectMetadataEncodingAndAssetBoundsNeverRequestAssets(t *testing.T) {
+	for _, mode := range []string{"invalid UTF-8", "oversized", "too many assets", "null asset", "non-object", "fractional id"} {
+		t.Run(mode, func(t *testing.T) {
+			fixture := newReleaseFixture(t, []byte("synthetic payload"))
+			fixture.metadataTransform = func(body string) string {
+				switch mode {
+				case "invalid UTF-8":
+					return strings.Replace(body, `"immutable":true`, "\"unused\":\"\xff\",\"immutable\":true", 1)
+				case "oversized":
+					return strings.Replace(body, `"immutable":true`, `"unused":"`+strings.Repeat("x", maxReleaseJSON)+`","immutable":true`, 1)
+				case "non-object":
+					return "[" + body + "]"
+				case "fractional id":
+					return strings.Replace(body, `"id":77`, `"id":77.5`, 1)
+				}
+				var root map[string]json.RawMessage
+				if err := json.Unmarshal([]byte(body), &root); err != nil {
+					t.Error(err)
+					return ""
+				}
+				if mode == "null asset" {
+					root["assets"] = json.RawMessage("[null]")
+				} else {
+					var assets []releaseAsset
+					if err := json.Unmarshal(root["assets"], &assets); err != nil {
+						t.Error(err)
+						return ""
+					}
+					for len(assets) <= maxReleaseAssets {
+						id := int64(len(assets) + 1)
+						assets = append(assets, releaseAsset{ID: id, Name: fmt.Sprintf("extra-%d", id), Size: 1, URL: fixture.assetURL(id), State: "uploaded"})
+					}
+					root["assets"], _ = json.Marshal(assets)
+				}
+				encoded, err := json.Marshal(root)
+				if err != nil {
+					t.Error(err)
+				}
+				return string(encoded)
+			}
+			fixture.serve(t, true, nil)
+			assertMetadataRefusedBeforeAssets(t, fixture)
+		})
+	}
+}
+
 func TestInspectSignedMalformedStructureNeverDownloadsPayload(t *testing.T) {
 	for _, mutation := range []struct{ name, old, replacement string }{
 		{"root case alias", `"model_id":`, `"Model_ID":`},
@@ -485,6 +682,7 @@ type releaseFixture struct {
 	foreignAssetURL   bool
 	signedRedirects   bool
 	assetURLQuery     bool
+	metadataTransform func(string) string
 	manifestRequests  int
 	signatureRequests int
 	payloadRequests   int
@@ -585,6 +783,15 @@ func (f *releaseFixture) writeRelease(w http.ResponseWriter, prerelease bool) {
 	}
 	body := map[string]any{"id": 77, "tag_name": f.releaseTag, "draft": false, "prerelease": prerelease, "immutable": f.immutable, "assets": f.assets}
 	w.Header().Set("Content-Type", "application/json")
+	if f.metadataTransform != nil {
+		encoded, err := json.Marshal(body)
+		if err != nil {
+			f.testingT.Error(err)
+			return
+		}
+		_, _ = w.Write([]byte(f.metadataTransform(string(encoded))))
+		return
+	}
 	_ = json.NewEncoder(w).Encode(body)
 }
 

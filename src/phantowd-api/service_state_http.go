@@ -5,7 +5,6 @@ package main
 
 import (
 	"bytes"
-	"encoding/json"
 	"errors"
 	"io"
 	"mime"
@@ -45,8 +44,18 @@ func newServiceStateHandler(auth *authController, backend *serviceStateBackend) 
 	// accumulate HTTP goroutines waiting for its mutex or whole request bodies.
 	active := make(chan struct{}, 1)
 	return func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodGet && r.Method != http.MethodPut {
-			w.Header().Set("Allow", "GET, PUT")
+		allow := "GET, PUT"
+		methodOK := r.Method == http.MethodGet || r.Method == http.MethodPut
+		if r.URL.Path == serviceBackupPath {
+			allow = "GET"
+			methodOK = r.Method == http.MethodGet
+		}
+		if r.URL.Path == serviceRestorePreviewPath {
+			allow = "POST"
+			methodOK = r.Method == http.MethodPost
+		}
+		if !methodOK {
+			w.Header().Set("Allow", allow)
 			writeJSON(w, 405, map[string]string{"error": "method_not_allowed"})
 			return
 		}
@@ -63,7 +72,7 @@ func newServiceStateHandler(auth *authController, backend *serviceStateBackend) 
 			writeJSON(w, 403, map[string]string{"error": "origin_not_allowed"})
 			return
 		}
-		if r.Method == http.MethodPut && (len(r.Header.Values("X-PhantoWD-CSRF")) != 1 || !auth.validateCSRF(r)) {
+		if r.Method != http.MethodGet && (len(r.Header.Values("X-PhantoWD-CSRF")) != 1 || !auth.validateCSRF(r)) {
 			writeJSON(w, 403, map[string]string{"error": "csrf_validation_failed"})
 			return
 		}
@@ -71,8 +80,14 @@ func newServiceStateHandler(auth *authController, backend *serviceStateBackend) 
 			if !readRequestHasNoInput(w, r) {
 				return
 			}
-		} else if !validServiceStateWrite(w, r) {
-			return
+		} else {
+			limit := int64(fileservice.MaxConfigBytes)
+			if r.URL.Path == serviceRestorePreviewPath {
+				limit = fileservice.MaxBackupBytes
+			}
+			if !validServiceStateWriteLimit(w, r, limit) {
+				return
+			}
 		}
 		if backend == nil || backend.load == nil || backend.commit == nil {
 			writeJSON(w, 503, map[string]string{"error": "service_configuration_not_configured"})
@@ -87,23 +102,20 @@ func newServiceStateHandler(auth *authController, backend *serviceStateBackend) 
 			return
 		}
 		if r.Method == http.MethodGet {
-			c, err := backend.load()
-			if err == nil && c != nil {
-				// Validate before encoding and apply the strict encoded-size rule.
-				err = c.Validate()
-				if err == nil {
-					var data []byte
-					data, err = json.Marshal(c)
-					if err == nil {
-						_, err = fileservice.DecodeConfig(bytes.NewReader(data))
-					}
-				}
+			if r.URL.Path == serviceBackupPath {
+				serviceBackupOperation(w, r, auth, backend)
+				return
 			}
+			c, err := loadValidatedServiceConfiguration(backend)
 			if err != nil {
 				serviceStateError(w, err)
 				return
 			}
 			writeJSON(w, 200, serviceStateResponse{SchemaVersion: 1, Scope: "development-stored-file-service-policy-only", Initialized: c != nil, Configuration: c})
+			return
+		}
+		if r.URL.Path == serviceRestorePreviewPath {
+			serviceBackupOperation(w, r, auth, backend)
 			return
 		}
 		data, err := io.ReadAll(http.MaxBytesReader(w, r.Body, fileservice.MaxConfigBytes))
@@ -148,7 +160,7 @@ func newServiceStateHandler(auth *authController, backend *serviceStateBackend) 
 	}
 }
 
-func validServiceStateWrite(w http.ResponseWriter, r *http.Request) bool {
+func validServiceStateWriteLimit(w http.ResponseWriter, r *http.Request, limit int64) bool {
 	if r.URL.RawQuery != "" || r.URL.ForceQuery || len(r.Header.Values("Content-Type")) != 1 || len(r.Header.Values("Content-Encoding")) != 0 {
 		writeJSON(w, 400, map[string]string{"error": "invalid_service_configuration_request"})
 		return false
@@ -159,7 +171,7 @@ func validServiceStateWrite(w http.ResponseWriter, r *http.Request) bool {
 		writeJSON(w, 400, map[string]string{"error": "invalid_service_configuration_request"})
 		return false
 	}
-	if r.ContentLength > fileservice.MaxConfigBytes {
+	if r.ContentLength > limit {
 		writeJSON(w, 413, map[string]string{"error": "service_configuration_too_large"})
 		return false
 	}

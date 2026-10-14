@@ -13,6 +13,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/fileserviceplan"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/processowner"
@@ -42,21 +43,27 @@ func SambaCredentialDocumentsQEMU(lookup fileserviceplan.SambaEnrollmentLookup) 
 // experiment. No product startup exists. Pending captures remain owned until
 // verified teardown.
 type NativeSambaRuntimeQEMU struct {
-	owner                *Owner
-	helper               *os.File
-	pending              *processowner.CaptureOwner
-	gate                 chan struct{}
-	closed               bool
-	daemonAttempted      bool
-	daemonPID            int
-	authPaths            []string
-	clients              *processowner.PinnedSet
-	clientsAttempted     bool
-	plannedDataPrepared  bool
-	plannedDataAttempted bool
-	plannedExitAttempted bool
-	releaseErr           error
-	workerFailure        *nativeWorkerErrorQEMU
+	owner                      *Owner
+	helper                     *os.File
+	pending                    *processowner.CaptureOwner
+	gate                       chan struct{}
+	closed                     bool
+	daemonAttempted            bool
+	daemonPID                  int
+	authPaths                  []string
+	clients                    *processowner.PinnedSet
+	clientsAttempted           bool
+	plannedDataPrepared        bool
+	plannedDataAttempted       bool
+	plannedExitAttempted       bool
+	plannedClient              *processowner.PinnedSet
+	plannedClientAttempted     bool
+	plannedFileClient          bool
+	plannedClientPID           int
+	plannedClientStopAttempted bool
+	plannedClientStopErr       error
+	releaseErr                 error
+	workerFailure              *nativeWorkerErrorQEMU
 }
 
 func (p *Plan) NewNativeSambaRuntimeQEMU(ctx context.Context, code, configuration, state *os.File, lookup fileserviceplan.SambaEnrollmentLookup) (_ *NativeSambaRuntimeQEMU, result error) {
@@ -177,6 +184,15 @@ func (r *NativeSambaRuntimeQEMU) ExecuteQEMU(ctx context.Context, operation proc
 		return nil, err
 	}
 	defer func() { <-r.gate }()
+	return r.executeQEMU(ctx, operation, name, stdin)
+}
+
+// Only fixed runtime readiness may call this while already holding the gate.
+// No authority callback, gate re-entry or caller-selected process is introduced.
+func (r *NativeSambaRuntimeQEMU) executeQEMU(ctx context.Context, operation processowner.NativeSambaOperationQEMU, name string, stdin []byte) ([]byte, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	if r.closed || r.owner.review || r.pending != nil {
 		return nil, ErrReviewRequired
 	}
@@ -205,23 +221,46 @@ func (r *NativeSambaRuntimeQEMU) ExecuteQEMU(ctx context.Context, operation proc
 	r.pending = capture
 	// Duplicating inputs above has no command/state effects. Admit the complete
 	// retained tuple ONCE here, then recheck it after verified worker teardown.
-	if err := r.revalidateNativeRuntimeQEMU(ctx); err != nil {
+	stageStarted := time.Now()
+	admissionErr := r.revalidateNativeRuntimeQEMU(ctx)
+	reportNativeWorkerTimingQEMU(ctx, operation, nativeWorkerAdmissionQEMU, stageStarted, admissionErr)
+	if err := admissionErr; err != nil {
 		r.owner.review = true
 		// Close owns the pending unlaunched capture. Retain review and a private
 		// cause, but disclose only fixed phase/reason labels, never cause text.
 		return nil, r.nativeWorkerFailureQEMU(nativeWorkerAdmissionQEMU, err)
 	}
+	stageStarted = time.Now()
 	observed, runErr := capture.Capture(ctx)
+	reportNativeWorkerTimingQEMU(ctx, operation, nativeWorkerExecutionQEMU, stageStarted, runErr)
 	defer clear(observed.Stderr)
+	stageStarted = time.Now()
 	settled, settleErr := capture.Settled(context.Background())
 	closeErr := capture.Close(context.Background())
+	reportNativeWorkerTimingQEMU(ctx, operation, nativeWorkerSettlementQEMU, stageStarted, errors.Join(settleErr, closeErr))
 	if !settled || settleErr != nil || closeErr != nil {
 		clear(observed.Stdout)
 		r.owner.review = true
 		return nil, r.nativeWorkerFailureQEMU(nativeWorkerSettlementQEMU, errors.Join(settleErr, closeErr)) // Keep pending and all original authority.
 	}
 	r.pending = nil
+	stageStarted = time.Now()
 	checkErr := r.revalidateNativeRuntimeQEMU(ctx)
+	reportNativeWorkerTimingQEMU(ctx, operation, nativeWorkerPostAdmissionQEMU, stageStarted, checkErr)
+	return r.completeNativeWorkerQEMU(ctx, observed, runErr, checkErr)
+}
+
+// Private publication decision, called only after original capture settlement,
+// closure and post-admission. It cannot launch a worker or establish those
+// prerequisites; keep it separate so the actual return/quarantine seam is tested.
+func (r *NativeSambaRuntimeQEMU) completeNativeWorkerQEMU(ctx context.Context, observed processowner.CaptureResult, runErr, checkErr error) ([]byte, error) {
+	// Admission/capture may have completed before cancellation. Observability
+	// work and the final return are still inside the original operation budget.
+	if ctx == nil {
+		checkErr = errors.Join(checkErr, ErrInvalid)
+	} else {
+		checkErr = errors.Join(checkErr, ctx.Err())
+	}
 	if runErr != nil || observed.Kind != processowner.CaptureExited || observed.ExitCode != 0 || strings.Count(string(observed.Stderr), nativeCredentialHandoff) != 1 || checkErr != nil {
 		clear(observed.Stdout)
 		r.owner.review = true
@@ -246,6 +285,21 @@ func (r *NativeSambaRuntimeQEMU) Close(ctx context.Context) error {
 	}
 	if r.closed {
 		return nil
+	}
+	if r.plannedClient != nil {
+		// Settle every owned group before releasing the additional holder's
+		// code pin. Stop uncertainty is terminal at this containing boundary.
+		if err := r.stopNativeDaemonQEMU(); err != nil {
+			r.owner.review, r.releaseErr = true, err
+			r.owner.snapshot.State = processowner.StateReviewRequired
+			return errors.Join(ErrReviewRequired, err)
+		}
+		if err := r.plannedClient.Close(); err != nil {
+			r.owner.review, r.releaseErr = true, err
+			r.owner.snapshot.State = processowner.StateReviewRequired
+			return errors.Join(ErrReviewRequired, err)
+		}
+		r.plannedClient = nil
 	}
 	if r.pending != nil {
 		settled, err := r.pending.Settled(context.Background())

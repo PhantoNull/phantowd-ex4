@@ -188,7 +188,12 @@ does not imply payload validity, installation permission or device readiness.
 distribution path. It requests one exact version tag from the PhantoWD EX4
 repository (it does not follow a mutable `latest` pointer), requires the API to
 report a published immutable release, and checks that the stable/non-stable
-release flag is consistent with the requested channel. It downloads only
+release flag is consistent with the requested channel. Asset requests start
+only after the [API metadata boundary](githubrelease/README.md) accepts
+unique, exact decoded consumed-field names, required non-null typed flags and
+asset records. Case aliases, duplicate fields and missing `draft`/`prerelease`
+observations cannot acquire published-release status. Additional GitHub fields
+remain supported; they are not treated as signed application metadata. It fetches
 `manifest.json` and `manifest.sig` first. The exact-byte signature, schema,
 model, board revision, channel and signed version-to-tag match must pass before
 the tool downloads any firmware payload. It then downloads exactly the assets
@@ -311,9 +316,12 @@ were supplied, determine health or filesystem integrity, or authorize
 assembly, mounting, import, or migration. It emits no input paths or unique
 disk GUIDs, PARTUUIDs, filesystem UUIDs, or raw array IDs; generic GPT type
 GUIDs may appear as declarations only. It never opens a block device or
-modifies an image. An ext-family candidate not marked clean, recording errors,
-or advertising journal recovery is held as `incomplete`; the tool never runs
-repair or recovery. Inputs are not locked or snapshotted, so callers must use
+modifies an image. An ext-family candidate not marked clean, recording errors
+or unknown state flags, or indicating journal/orphan recovery is held as
+`incomplete`; the tool never runs repair or recovery. Set schema **3** includes
+`ext_filesystem_state` and independent `ext_needs_orphan_recovery` summaries;
+these review findings return exit `2`, even when the raw clean bit is set.
+Inputs are not locked or snapshotted, so callers must use
 stable offline copies and prevent concurrent modification during inspection.
 
 `inspect-md-v1.2-image-set` accepts two to four whole-disk regular image files,
@@ -403,7 +411,7 @@ arrays, mount filesystems, or modify images.
 `inspect-ext-partition` first requires a structurally valid GPT, then reads
 only the standard 1024-byte ext-family superblock at byte offset 1024 within
 the selected GPT partition. It reports bounded geometry, feature masks,
-clean-unmount/journal-recovery flags and a redacted filesystem-UUID fingerprint
+clean-unmount/journal/orphan-recovery flags and a redacted filesystem-UUID fingerprint
 when present. Its `ext-superblock-candidate` status only means that selected
 fields are structurally plausible; it does not distinguish ext2/3/4, validate
 other filesystem metadata checksums, inspect file contents, or establish
@@ -414,6 +422,18 @@ checksum as not advertised or unknown. Exit status is `0`
 for a plausible superblock, `2` for absent/damaged/unsupported metadata and
 `1` for usage, I/O or file-open errors. Like the GPT command, it never opens a
 block device, mounts, or writes the input image.
+
+Ext report schema **2** exposes the raw clean bit independently from errors,
+unknown state flags and recovery indicators. `needs_orphan_recovery` observes
+the orphan-processing state bit, a nonzero legacy orphan-list head, or the
+orphan-present feature; it does not follow or validate an orphan chain/file.
+Journal recovery remains a separate flag. A single-partition exit `0` is still
+only structural recognition, not a safe-mount verdict. The whole-image envelope
+remains schema **2**, with nested ext report **2**; the image-set assessment is
+schema **3**. Flag definitions follow the
+[upstream ext superblock documentation](https://www.kernel.org/doc/html/latest/filesystems/ext4/super.html)
+and recovery indicators are cross-checked against
+[Linux v6.18 ext4](https://github.com/torvalds/linux/blob/v6.18/fs/ext4/super.c).
 
 `inspect-md-v1.2-partition` first requires a structurally valid GPT, then reads
 only one Linux native MD metadata v1.2 component superblock at its

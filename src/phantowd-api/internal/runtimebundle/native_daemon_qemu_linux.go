@@ -204,10 +204,10 @@ func (r *NativeSambaRuntimeQEMU) StopNativeServiceQEMU(ctx context.Context) erro
 }
 
 func (r *NativeSambaRuntimeQEMU) stopNativeDaemonQEMU() error {
-	var clientErr error
+	clientErr := r.stopPlannedClientQEMU()
 	if r.clients != nil {
 		clients, err := r.clients.Stop(context.Background())
-		clientErr = err
+		clientErr = errors.Join(clientErr, err)
 		if clients.State != processowner.StateStopped {
 			clientErr = errors.Join(clientErr, ErrReviewRequired)
 		}

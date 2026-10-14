@@ -3,7 +3,7 @@
 [CmdletBinding()]
 param(
     [string]$BaseArtifactDir,
-    [ValidateSet('all', 'service', 'native', 'candidate', 'lifecycle', 'fault', 'data', 'exit')]
+    [ValidateSet('all', 'service', 'native', 'candidate', 'lifecycle', 'fault', 'data', 'exit', 'held', 'file', 'file-source', 'pending', 'pending-peer-exit', 'pending-handle')]
     [string]$Campaign = 'all',
     [switch]$DiagnosticLogs
 )
@@ -34,8 +34,12 @@ config_hash="$(sha256sum /src/configs/phantowd_qemu_armv5_defconfig | cut -c1-16
 output="/workspace/output/$BUILDROOT_VERSION-$config_hash"
 python3 -B /src/support/tests/test-samba-root-fixture.py
 python3 -B /src/support/tests/test-runtime-loader-fixture.py
+python3 -B /src/support/tests/test-pending-client-healthy-log.py
+python3 -B /src/support/tests/test-pending-client-inputs-fixture.py
 python3 -B -m flake8 /src/support/tests/samba_root_fixture.py /src/support/tests/test-samba-root-fixture.py /src/support/tests/runtime_loader_fixture.py
-shellcheck /src/support/tests/samba-root-init.sh /src/support/tests/test-qemu-samba-root.sh
+shellcheck /src/support/tests/samba-root-init.sh /src/support/tests/test-qemu-samba-root.sh /src/support/tests/stage-samba-root-file.sh /src/support/tests/test-samba-root-staging.sh
+python3 -B -m flake8 /src/support/tests/pending_client_healthy_log.py /src/support/tests/test-pending-client-healthy-log.py
+python3 -B -m flake8 /src/support/tests/pending_client_inputs_fixture.py /src/support/tests/test-pending-client-inputs-fixture.py
 exec sh /src/support/tests/test-qemu-samba-root.sh /base "$output/target" \
     "$output/host/bin/go" "$output/host/sbin/debugfs" \
     "$output/host/bin/arm-buildroot-linux-gnueabi-gcc" /src '' '__PHANTOWD_CAMPAIGN__'__PHANTOWD_DIAGNOSTIC__
@@ -44,10 +48,11 @@ $linuxScript = $linuxScript.Replace('__PHANTOWD_CAMPAIGN__', $Campaign)
 $diagnosticArgument = if ($DiagnosticLogs) { " 'diagnostic'" } else { '' }
 $linuxScript = $linuxScript.Replace('__PHANTOWD_DIAGNOSTIC__', $diagnosticArgument)
 $encoded = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($linuxScript.Replace("`r`n", "`n")))
+$scratchLimit = if ($Campaign -in @('pending', 'pending-peer-exit', 'pending-handle')) { '1536m' } else { '512m' }
 docker run --rm --pull never --network none --read-only `
     --user 1000:1000 --cap-drop ALL --security-opt no-new-privileges `
     --cpus 2 --memory 2g --pids-limit 256 `
-    --tmpfs /tmp:rw,exec,nosuid,nodev,size=512m `
+    --tmpfs "/tmp:rw,exec,nosuid,nodev,size=$scratchLimit" `
     --tmpfs /var/tmp:rw,noexec,nosuid,nodev,size=128m `
     --entrypoint /bin/sh `
     --mount "type=bind,source=$repoRoot,target=/src,readonly" `

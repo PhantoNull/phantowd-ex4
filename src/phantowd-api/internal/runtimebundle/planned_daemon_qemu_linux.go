@@ -87,13 +87,13 @@ func (r *NativeSambaRuntimeQEMU) ProbePlannedDataAccessQEMU(ctx context.Context)
 	pid := r.daemonPID
 	for _, operation := range []string{"rw-write", "rw-read", "ro-read", "ro-write", "escape", "ungranted"} {
 		if err := r.verifyNativeDaemonQEMU(ctx, pid); err != nil {
-			return err
+			return nativeDataFailureQEMU(operation, nativeWorkerAdmissionQEMU, err)
 		}
 		if err := r.nativeDataClientQEMU(ctx, operation); err != nil {
 			return err
 		}
 		if err := r.verifyNativeDaemonQEMU(ctx, pid); err != nil {
-			return err
+			return nativeDataFailureQEMU(operation, nativeWorkerPostAdmissionQEMU, err)
 		}
 	}
 	// The owned daemon and its original source objects/RO-RW views have just
@@ -102,29 +102,32 @@ func (r *NativeSambaRuntimeQEMU) ProbePlannedDataAccessQEMU(ctx context.Context)
 	var created unix.Stat_t
 	if unix.Lstat(base+"writable/created", &created) != nil || created.Mode&unix.S_IFMT != unix.S_IFREG ||
 		created.Uid != 2001 || created.Gid != 2001 || created.Size != 22 {
-		return errors.New("planned SMB write lost effective peer identity")
+		return nativeDataFailureQEMU("unix-owner", nativeWorkerResultQEMU, errors.New("planned SMB write lost effective peer identity"))
 	}
 	fd, writeErr := unix.Open(base+"readonly/kernel-ro-proof", unix.O_WRONLY|unix.O_CREAT|unix.O_EXCL|unix.O_CLOEXEC|unix.O_NOFOLLOW, 0600)
 	if fd >= 0 {
 		if err := unix.Close(fd); err != nil {
-			return err
+			return nativeDataFailureQEMU("kernel-ro", nativeWorkerSettlementQEMU, err)
 		}
 	}
 	if !errors.Is(writeErr, unix.EROFS) {
-		return errors.New("planned read-only share not kernel-enforced")
+		return nativeDataFailureQEMU("kernel-ro", nativeWorkerResultQEMU, errors.New("planned read-only share not kernel-enforced"))
 	}
 	for _, path := range []string{"/run/native-share-download-rw", "/run/native-share-download-ro"} {
 		contents, err := os.ReadFile(path)
 		matched := err == nil && string(contents) == "native-share-qualified"
 		clear(contents)
 		if !matched {
-			return errors.New("planned SMB transfer contents mismatch")
+			return nativeDataFailureQEMU("transfer", nativeWorkerResultQEMU, errors.New("planned SMB transfer contents mismatch"))
 		}
 	}
 	for _, path := range []string{"/run/native-share-download-escape", base + "readonly/forbidden", base + "readonly/kernel-ro-proof"} {
 		if _, err := os.Lstat(path); !errors.Is(err, os.ErrNotExist) {
-			return errors.New("planned SMB denial created an unintended file")
+			return nativeDataFailureQEMU("denial", nativeWorkerResultQEMU, errors.New("planned SMB denial created an unintended file"))
 		}
 	}
-	return r.verifyNativeDaemonQEMU(ctx, pid)
+	if err := r.verifyNativeDaemonQEMU(ctx, pid); err != nil {
+		return nativeDataFailureQEMU("final-daemon", nativeWorkerPostAdmissionQEMU, err)
+	}
+	return nil
 }

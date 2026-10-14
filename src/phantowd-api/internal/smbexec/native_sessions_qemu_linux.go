@@ -18,6 +18,10 @@ type NativeSessionPairQEMU struct {
 	target, peer smbStatusSession
 }
 
+// A complete successfully validated inventory differs from the original pair.
+// This is not inferred absence on a command, parser or deadline failure.
+var ErrNativeSessionPairChangedQEMU = errors.New("native original session pair changed")
+
 func (NativeSessionPairQEMU) MarshalJSON() ([]byte, error) {
 	return nil, errors.New("native session witness is not serializable")
 }
@@ -108,6 +112,30 @@ func (b *NativeBackendQEMU) VerifyNativePeerSessionQEMU(ctx context.Context, bef
 	peer, ok := sessions[before.peer.SessionID]
 	if !ok || peer != before.peer {
 		return ErrUnavailable // fresh login, changed generation or target row is not continuity
+	}
+	return nil
+}
+
+// VerifyNativeSessionPairQEMU observes continuity of BOTH original sessions
+// through this startup-fixed backend. A successful fresh login, replacement
+// worker generation or partial inventory is not the original pair. This is a
+// read-only point-in-time observation, not a retained session or data-handle
+// lease; the containing coordinator must serialize and recheck its authority.
+func (b *NativeBackendQEMU) VerifyNativeSessionPairQEMU(ctx context.Context, before NativeSessionPairQEMU) error {
+	if b == nil || before.backend != b || before.target.SessionID == "" || before.peer.SessionID == "" {
+		return ErrInvalid
+	}
+	sessions, err := b.readNativeSessionsQEMU(ctx)
+	if err != nil {
+		return err
+	}
+	if len(sessions) != 2 {
+		return ErrNativeSessionPairChangedQEMU
+	}
+	target, targetPresent := sessions[before.target.SessionID]
+	peer, peerPresent := sessions[before.peer.SessionID]
+	if !targetPresent || !peerPresent || target != before.target || peer != before.peer {
+		return ErrNativeSessionPairChangedQEMU
 	}
 	return nil
 }

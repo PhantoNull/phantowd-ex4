@@ -10,6 +10,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"os"
 	"sync/atomic"
 	"time"
 
@@ -55,6 +56,10 @@ type NativePlannedServiceQEMU struct {
 	runtimeClosed bool
 	closeErr      error
 	pendingRoots  []mountowner.ServiceShareDescriptorQEMU
+	heldAttempted bool
+	heldSession   NativePlannedSessionQEMU
+	heldFile      NativePlannedOpenFileQEMU
+	originalFile  *os.File
 }
 
 type NativePlannedStatusQEMU struct {
@@ -170,6 +175,45 @@ func (s *NativePlannedServiceQEMU) verify(ctx context.Context) error {
 	if err != nil || !s.plan.FreshAgainst(fresh.Freshness()) {
 		return errors.Join(runtimebundle.ErrReviewRequired, err)
 	}
+	if s.heldSession.backend != nil {
+		return s.inputs.Backend.VerifyPlannedSessionQEMU(ctx, s.heldSession)
+	}
+	if s.heldFile.backend != nil {
+		return s.verifyPlannedOriginalFileQEMU(ctx)
+	}
+	return nil
+}
+
+// Fixed QEMU-only authorized session. Caller supplies no name, credential,
+// witness or runtime. Supervision rechecks this exact original witness under
+// the same exclusive gate; no replacement session can repair this lifetime.
+func (s *NativePlannedServiceQEMU) StartHeldSessionQEMU(ctx context.Context) error {
+	if err := s.enter(ctx); err != nil {
+		return err
+	}
+	defer func() { <-s.gate }()
+	if s.closed || s.review || !s.started || s.stopped || !s.dataVerified || s.heldAttempted {
+		return runtimebundle.ErrReviewRequired
+	}
+	s.heldAttempted = true
+	if err := s.verify(ctx); err != nil {
+		return s.quarantine(err)
+	}
+	if err := s.inputs.Backend.runtime.StartPlannedClientQEMU(ctx); err != nil {
+		// Runtime owns startup rollback/stop. Retain its uncertain result;
+		// neither supervision nor Close may retry settlement.
+		s.closeErr, s.review = err, true
+		s.publish()
+		return errors.Join(runtimebundle.ErrReviewRequired, err)
+	}
+	original, err := s.inputs.Backend.ObservePlannedSessionQEMU(ctx)
+	if err != nil {
+		return s.quarantine(err)
+	}
+	s.heldSession = original
+	if err := s.verify(ctx); err != nil {
+		return s.quarantine(err)
+	}
 	return nil
 }
 
@@ -199,6 +243,18 @@ func (s *NativePlannedServiceQEMU) observe(ctx context.Context) error {
 // retaining BOTH originals until a separate successful full runtime Close.
 // Any failed scan/stop remains review without restart or uncertainty retry.
 func (s *NativePlannedServiceQEMU) Supervise(ctx context.Context, interval time.Duration) error {
+	return s.superviseQEMU(ctx, interval, false)
+}
+
+// SuperviseExitFaultQEMU is a fixed disposable-guest qualification, not a
+// product control or callback API. Inject only through the startup-owned
+// runtime AFTER a complete scan, within the SAME exclusive cycle. An external
+// runtime alias must not compete with that cycle to manufacture the fault.
+func (s *NativePlannedServiceQEMU) SuperviseExitFaultQEMU(ctx context.Context, interval time.Duration) error {
+	return s.superviseQEMU(ctx, interval, true)
+}
+
+func (s *NativePlannedServiceQEMU) superviseQEMU(ctx context.Context, interval time.Duration, exitFault bool) error {
 	if interval < time.Second || interval > time.Hour {
 		return ErrInvalid
 	}
@@ -209,11 +265,18 @@ func (s *NativePlannedServiceQEMU) Supervise(ctx context.Context, interval time.
 	if s.closed || s.review || !s.started || s.stopped {
 		return runtimebundle.ErrReviewRequired
 	}
+	if exitFault && (!s.dataVerified || s.heldAttempted || s.inputs.Backend == nil || s.inputs.Backend.runtime == nil) {
+		return runtimebundle.ErrReviewRequired
+	}
+	exitRequested := false
 	timer := time.NewTimer(interval)
 	defer timer.Stop()
 	for {
 		select {
 		case <-ctx.Done():
+			if exitRequested {
+				return s.quarantine(ctx.Err()) // An admitted fault never becomes normal cancellation.
+			}
 			return errors.Join(ctx.Err(), s.stop())
 		case <-timer.C:
 			if ctx.Err() != nil {
@@ -221,6 +284,21 @@ func (s *NativePlannedServiceQEMU) Supervise(ctx context.Context, interval time.
 			}
 			if err := s.observe(ctx); err != nil {
 				return err
+			}
+			if exitFault && !exitRequested {
+				canceled, cancel := context.WithCancel(ctx)
+				cancel()
+				runtime := s.inputs.Backend.runtime
+				if err := runtime.RequestPlannedDaemonExitQEMU(canceled); !errors.Is(err, context.Canceled) {
+					return s.quarantine(errors.Join(errors.New("planned fault accepted canceled request"), err))
+				}
+				if err := runtime.RequestPlannedDaemonExitQEMU(ctx); err != nil {
+					return s.quarantine(err)
+				}
+				exitRequested = true
+				if err := runtime.RequestPlannedDaemonExitQEMU(ctx); !errors.Is(err, runtimebundle.ErrReviewRequired) {
+					return s.quarantine(errors.Join(errors.New("planned fault accepted repeated request"), err))
+				}
 			}
 			timer.Reset(interval)
 		}
@@ -329,6 +407,10 @@ func (s *NativePlannedServiceQEMU) Close(ctx context.Context) error {
 			return s.quarantine(err)
 		}
 		s.runtimeClosed, s.stopped = true, true
+		if err := s.closePlannedOriginalFileQEMU(); err != nil {
+			s.closeErr = err
+			return s.quarantine(err)
+		}
 		if err := s.lease.Release(); err != nil {
 			s.closeErr = err
 			return s.quarantine(err)

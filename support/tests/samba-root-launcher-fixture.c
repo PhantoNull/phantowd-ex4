@@ -1023,9 +1023,13 @@ static int native_client_mode(const char *user, const char *kind, int hold, cons
     char *arguments[] = {"smbclient", "-t", "2", "-m", "SMB3_11", "-p", "1445",
         "-A", "/proc/self/fd/4", "//127.0.0.1/IPC$", "-c", "quit", NULL};
     if (data_operation) {
-        if (wrong || hold || strcmp(user, "qpsecond"))
+        if (wrong || strcmp(user, "qpsecond"))
             return fail();
-        if (!strcmp(data_operation, "rw-write")) {
+        if (hold && !strcmp(data_operation, "hold-created")) {
+            arguments[9] = "//127.0.0.1/writable";
+        } else if (hold) {
+            return fail();
+        } else if (!strcmp(data_operation, "rw-write")) {
             arguments[9] = "//127.0.0.1/writable";
             arguments[11] = "put /run/native-share-upload created";
         } else if (!strcmp(data_operation, "rw-read")) {
@@ -1050,7 +1054,8 @@ static int native_client_mode(const char *user, const char *kind, int hold, cons
             return fail();
         /* Fixed interactive clients only, with an owned pipe kept open by
          * this foreground group leader. Echo exercises the same connection;
-         * no shell, arbitrary command, data share or host listener is used.
+         * no shell, arbitrary command or host listener is used. The data
+         * variant opens only its one fixed existing file, once.
          * The controller, not a bootstrap marker, proves both real sessions. */
         int input[2];
         if (pipe2(input, O_CLOEXEC))
@@ -1071,6 +1076,14 @@ static int native_client_mode(const char *user, const char *kind, int hold, cons
         sigemptyset(&no_pipe_signal.sa_mask);
         if (sigaction(SIGPIPE, &no_pipe_signal, NULL))
             return fail(); /* parent only; child already preserves defaults */
+        if (data_operation) {
+            /* One existing file, one opening, no create/truncate/reopen. Its
+             * actual access and identity are checked by the coordinator. */
+            const char open_command[] = "open created\n";
+            if (write(input[1], open_command, sizeof(open_command) - 1) !=
+                    (ssize_t)(sizeof(open_command) - 1))
+                return fail();
+        }
         const char command[] = "echo 1 phantowd-qemu-session\n";
         int live = 1, pipe_open = 1;
         for (;;) {
@@ -1126,6 +1139,8 @@ int main(int argc, char **argv)
         return native_client("qpmanaged", "good", 0);
     if (argc == 3 && !strcmp(argv[1], "native-session"))
         return native_client(argv[2], "good", 1);
+    if (argc == 2 && !strcmp(argv[1], "native-file-session"))
+        return native_client_mode("qpsecond", "good", 1, "hold-created");
     if (argc == 2 && !strcmp(argv[1], "runtime-bundle"))
         return inspect_runtime_bundle();
     if (argc == 2 && !strcmp(argv[1], "runtime-census"))

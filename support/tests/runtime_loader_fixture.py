@@ -25,7 +25,8 @@ def validate(report, *, fixed_entry=FIXED_ENTRY):
     if fixed_entry not in (
             FIXED_ENTRY, "usr/bin/smbpasswd", "usr/bin/testparm",
             "usr/bin/pdbedit", "usr/bin/smbstatus", "usr/bin/smbcontrol",
-            "usr/lib/samba/vfs/streams_xattr.so", "usr/lib/gconv/IBM850.so"):
+            "usr/lib/samba/vfs/streams_xattr.so", "usr/lib/gconv/IBM850.so",
+            "usr/lib/libphantowd-pending-handle-qemu.so"):
         raise ValueError("unsupported fixed fixture entry")
     if not isinstance(report, dict):
         raise ValueError("invalid candidate")
@@ -61,13 +62,15 @@ def validate(report, *, fixed_entry=FIXED_ENTRY):
                 raise ValueError("conflicting binding")
             aliases[alias] = name
             bindings += 1
+    library_entries = ("usr/lib/samba/vfs/streams_xattr.so",
+                       "usr/lib/gconv/IBM850.so",
+                       "usr/lib/libphantowd-pending-handle-qemu.so")
     if (total > 64 * 1024 * 1024 or bindings > 1024
             or type(report.get("total_bytes")) is not int
             or report["total_bytes"] != total
             or fixed_entry not in paths
             or aliases.get(fixed_entry) != fixed_entry
-            or (fixed_entry not in ("usr/lib/samba/vfs/streams_xattr.so",
-                                    "usr/lib/gconv/IBM850.so")
+            or (fixed_entry not in library_entries
                 and aliases.get("lib/ld-linux.so.3") != "lib/ld-linux.so.3")):
         raise ValueError("candidate budget or fixed entry refused")
     for name in paths:

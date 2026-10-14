@@ -42,14 +42,7 @@ func (p *Plan) ProbeNativeDataDescriptorQEMU(ctx context.Context, code, configur
 	defer func() { result = errors.Join(result, r.Close(context.Background())) }()
 	// The peer was explicitly enrolled/enabled by the preceding actual native
 	// credential campaign. No synthetic passdb entry or automatic enable here.
-	const auth = "/run/native-qpsecond-good.auth"
-	file, err := os.OpenFile(auth, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0600)
-	if err != nil {
-		return err
-	}
-	r.authPaths = append(r.authPaths, auth)
-	_, err = file.WriteString("username = qpsecond\npassword = native-qemu-only-password-29\n")
-	if err := errors.Join(err, file.Close()); err != nil {
+	if err := r.prepareNativeDataAuthenticationQEMU(); err != nil {
 		return err
 	}
 	r.daemonAttempted = true
@@ -105,10 +98,35 @@ func (p *Plan) ProbeNativeDataDescriptorQEMU(ctx context.Context, code, configur
 	return r.Close(context.Background()) // Whole daemon/clients settle before original roots release.
 }
 
+// The fixed data daemon's readiness probe uses this independently enrolled
+// peer's root-only input. Share the prerequisite rather than silently depend
+// on a prior campaign's auth file. No caller-selected account/path/secret.
+func (r *NativeSambaRuntimeQEMU) prepareNativeDataAuthenticationQEMU() error {
+	if err := sambaCodeFixtureGuard(); err != nil {
+		return err
+	}
+	if r == nil || r.owner == nil || r.gate == nil || r.closed || r.owner.review || r.daemonAttempted || len(r.authPaths) != 0 {
+		return ErrInvalid
+	}
+	const auth = "/run/native-qpsecond-good.auth"
+	const input = "username = qpsecond\npassword = native-qemu-only-password-29\n"
+	file, err := os.OpenFile(auth, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0600)
+	if err != nil {
+		return err
+	}
+	r.authPaths = append(r.authPaths, auth)
+	n, writeErr := file.WriteString(input)
+	closeErr := file.Close()
+	if n != len(input) || writeErr != nil || closeErr != nil {
+		return errors.Join(ErrUnavailable, writeErr, closeErr)
+	}
+	return nil
+}
+
 func (r *NativeSambaRuntimeQEMU) nativeDataClientQEMU(ctx context.Context, operation string) error {
 	input, err := sealedNativeCredentialInputQEMU(nil)
 	if err != nil {
-		return err
+		return nativeDataFailureQEMU(operation, nativeWorkerAdmissionQEMU, err)
 	}
 	args := []string{"native-data-client", operation}
 	if operation == "ungranted" {
@@ -123,7 +141,7 @@ func (r *NativeSambaRuntimeQEMU) nativeDataClientQEMU(ctx context.Context, opera
 		if capture != nil {
 			err = errors.Join(err, capture.Close(context.Background()))
 		}
-		return err
+		return nativeDataFailureQEMU(operation, nativeWorkerAdmissionQEMU, err)
 	}
 	r.pending = capture
 	observed, runErr := capture.Capture(ctx)
@@ -133,11 +151,11 @@ func (r *NativeSambaRuntimeQEMU) nativeDataClientQEMU(ctx context.Context, opera
 	closeErr := capture.Close(context.Background())
 	if !settled || settleErr != nil || closeErr != nil {
 		r.owner.review = true
-		return ErrReviewRequired
+		return nativeDataFailureQEMU(operation, nativeWorkerSettlementQEMU, ErrReviewRequired)
 	}
 	r.pending = nil
 	if runErr != nil || observed.Kind != processowner.CaptureExited {
-		return errors.Join(ErrReviewRequired, runErr)
+		return nativeDataFailureQEMU(operation, nativeWorkerExecutionQEMU, errors.Join(ErrReviewRequired, runErr))
 	}
 	output := append(observed.Stdout, observed.Stderr...)
 	defer clear(output)
@@ -157,5 +175,5 @@ func (r *NativeSambaRuntimeQEMU) nativeDataClientQEMU(ctx context.Context, opera
 	} else if observed.ExitCode == 0 && !bytes.Contains(output, []byte("NT_STATUS_")) {
 		return nil
 	}
-	return errors.New("native SMB data operation or denial mismatch")
+	return nativeDataFailureQEMU(operation, nativeWorkerResultQEMU, errors.New("native SMB data operation or denial mismatch"))
 }

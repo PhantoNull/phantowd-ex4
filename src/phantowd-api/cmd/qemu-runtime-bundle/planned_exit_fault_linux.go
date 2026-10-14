@@ -29,7 +29,13 @@ func nativePlannedExitFaultQEMU() error {
 	return nativePlannedFaultQEMU("exit")
 }
 
-func qualifyPlannedExitFaultQEMU(ctx context.Context, service *smbexec.NativePlannedServiceQEMU, native *runtimebundle.NativeSambaRuntimeQEMU, owner *identityowner.Owner, handoff *mountowner.ServiceHandoff) error {
+func qualifyPlannedExitFaultQEMU(ctx context.Context, service *smbexec.NativePlannedServiceQEMU, native *runtimebundle.NativeSambaRuntimeQEMU, owner *identityowner.Owner, handoff *mountowner.ServiceHandoff) (result error) {
+	phase := "initial"
+	defer func() {
+		if result != nil {
+			result = &plannedExitBoundaryFailureQEMU{phase: phase, cause: result}
+		}
+	}()
 	initial, err := service.Status()
 	if err != nil || initial.State != "ready" || !initial.DataVerified || !initial.IdentityRetained || !initial.SharesRetained || initial.RuntimeClosed {
 		return errors.New("planned exit fault lacks original live access authority")
@@ -37,7 +43,8 @@ func qualifyPlannedExitFaultQEMU(ctx context.Context, service *smbexec.NativePla
 	loopCtx, cancelLoop := context.WithCancel(ctx)
 	defer cancelLoop()
 	completed := make(chan error, 1)
-	go func() { completed <- service.Supervise(loopCtx, time.Second) }()
+	phase = "first-scan"
+	go func() { completed <- service.SuperviseExitFaultQEMU(loopCtx, time.Second) }()
 	ticker := time.NewTicker(10 * time.Millisecond)
 	defer ticker.Stop()
 	for {
@@ -56,26 +63,14 @@ func qualifyPlannedExitFaultQEMU(ctx context.Context, service *smbexec.NativePla
 			if status.Checks <= initial.Checks {
 				continue
 			}
+			phase = "exclusivity"
 			if err := service.Observe(ctx); !errors.Is(err, processowner.ErrBusy) {
 				cancelLoop()
 				return errors.Join(errors.New("planned exit supervisor lost exclusivity"), err, <-completed)
 			}
-			canceled, cancelRequest := context.WithCancel(ctx)
-			cancelRequest()
-			if err := native.RequestPlannedDaemonExitQEMU(canceled); !errors.Is(err, context.Canceled) {
-				cancelLoop()
-				return errors.Join(errors.New("planned exit accepted canceled request"), err, <-completed)
-			}
-			// No caller PID/path/program/group is accepted. This fault requests
-			// exit through the ORIGINAL owned Process; it is not a Stop witness.
-			if err := native.RequestPlannedDaemonExitQEMU(ctx); err != nil {
-				cancelLoop()
-				return errors.Join(errors.New("planned original-handle exit refused"), err, <-completed)
-			}
-			if !errors.Is(native.RequestPlannedDaemonExitQEMU(ctx), runtimebundle.ErrReviewRequired) {
-				cancelLoop()
-				return errors.Join(errors.New("planned exit request repeated"), <-completed)
-			}
+			// Fixed canceled/actual/repeated signal admission belongs to the
+			// exclusive supervisor itself; never operate its runtime alias here.
+			phase = "quarantine"
 			select {
 			case err := <-completed:
 				if !errors.Is(err, runtimebundle.ErrReviewRequired) {
@@ -86,25 +81,40 @@ func qualifyPlannedExitFaultQEMU(ctx context.Context, service *smbexec.NativePla
 				return errors.Join(ctx.Err(), <-completed)
 			}
 			for range 2 {
+				phase = "stop-observation"
 				stopped, err := native.ObservePlannedReviewStopQEMU(ctx)
 				status, statusErr := service.Status()
 				if err != nil || !stopped.GroupStopped || !stopped.InputsRetained || !stopped.CaptureRetained || !stopped.BeforeWorker || statusErr != nil ||
 					status.State != "review-required" || !status.IdentityRetained || !status.SharesRetained || status.RuntimeClosed ||
 					!errors.Is(owner.Close(), identityowner.ErrBusy) || !errors.Is(handoff.Close(), mountowner.ErrHandoffBusy) {
+					if err == nil {
+						switch {
+						case !stopped.GroupStopped || !stopped.InputsRetained:
+							phase = "stop-witness"
+						case !stopped.CaptureRetained || !stopped.BeforeWorker:
+							phase = "capture-witness"
+						default:
+							phase = "authority"
+						}
+					}
 					return errors.Join(errors.New("planned exit lost reviewed stop or retained authority"), err, statusErr)
 				}
+				phase = "normal-stop-refusal"
 				if normal, err := native.ObservePlannedStopQEMU(ctx); normal != (runtimebundle.PlannedStopObservationQEMU{}) || !errors.Is(err, runtimebundle.ErrReviewRequired) {
 					return errors.New("planned exit was reclassified as normal stop")
 				}
 			}
+			phase = "nonrevival"
 			for _, operation := range []func(context.Context) error{service.Start, service.Observe, service.VerifyDataAccess, service.Close, native.RequestPlannedDaemonExitQEMU} {
 				if !errors.Is(operation(ctx), runtimebundle.ErrReviewRequired) {
 					return errors.New("planned exit revived operation or released authority")
 				}
 			}
+			phase = "supervisor-refusal"
 			if !errors.Is(service.Supervise(ctx, time.Second), runtimebundle.ErrReviewRequired) {
 				return errors.New("planned exit revived supervision")
 			}
+			phase = "final-retention"
 			stopped, err := native.ObservePlannedReviewStopQEMU(ctx)
 			status, statusErr := service.Status()
 			if err != nil || !stopped.GroupStopped || !stopped.InputsRetained || !stopped.CaptureRetained || !stopped.BeforeWorker || statusErr != nil || status.State != "review-required" ||

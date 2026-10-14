@@ -246,7 +246,10 @@ func hashRuntimeFile(ctx context.Context, file *os.File, size int64, scratch []b
 		}
 	}
 	var digest [32]byte
-	copy(digest[:], hash.Sum(nil))
+	// All read bytes have already been consumed by Write. Finalize into this
+	// scan's existing scratch, then copy into the returned value: no per-file
+	// digest allocation, shared pool, retained buffer or cached observation.
+	copy(digest[:], hash.Sum(scratch[:0]))
 	// Cancellation can arrive after the final pre-read check, including while
 	// reading EOF or finalizing SHA-256. Never publish that completed digest.
 	if err := ctx.Err(); err != nil {

@@ -194,6 +194,81 @@ func TestInspectExtSuperblockCombines64BitCountersWithinLargeSparseImage(t *test
 	}
 }
 
+func TestInspectExtSuperblockDoesNotCallOrphanOrUnknownStateClean(t *testing.T) {
+	for _, test := range []struct {
+		name      string
+		state     uint16
+		wantState string
+	}{
+		{name: "clean", state: 1, wantState: "clean-unmount-flag-set"},
+		{name: "errors win", state: 1 | 2 | 4, wantState: "errors-recorded"},
+		{name: "orphan recovery", state: 4, wantState: "orphan-recovery-in-progress"},
+		{name: "orphan plus clean bit", state: 1 | 4, wantState: "orphan-recovery-in-progress"},
+		{name: "unknown plus clean bit", state: 1 | 0x8000, wantState: "unknown-state-flags"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			image := syntheticGPTImage()
+			putExtSuperblock(image, 40, extFixture{blockCount: 5, revision: 1, state: test.state,
+				featureROCompat: extROCompatMetadataChecksum})
+			report, err := InspectExtSuperblock(bytes.NewReader(image), int64(len(image)), 40, 49)
+			if err != nil || report.Status != ExtStatusCandidate || report.SuperblockChecksumStatus != "valid" ||
+				report.FilesystemState != test.wantState || report.CleanUnmount != (test.state&1 != 0) {
+				t.Fatalf("state=%s want=%s status=%s err=%v", report.FilesystemState, test.wantState, report.Status, err)
+			}
+		})
+	}
+}
+
+func TestInspectExtSuperblockOrphanIndicatorsAreBoundedAndIndependent(t *testing.T) {
+	for _, test := range []struct {
+		name        string
+		state       uint16
+		lastOrphan  uint32
+		roCompat    uint32
+		incompat    uint32
+		wantOrphan  bool
+		wantJournal bool
+	}{
+		{name: "clean", state: 1},
+		{name: "recovery state", state: 1 | 4, wantOrphan: true},
+		{name: "orphan list", state: 1, lastOrphan: 11, wantOrphan: true},
+		{name: "unvalidated list head", state: 1, lastOrphan: ^uint32(0), wantOrphan: true},
+		{name: "orphan present", state: 1, roCompat: extROCompatOrphanPresent, wantOrphan: true},
+		{name: "journal only", state: 1, incompat: extIncompatRecover, wantJournal: true},
+		{name: "both", state: 1, lastOrphan: 11, incompat: extIncompatRecover, wantJournal: true, wantOrphan: true},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			sb := make([]byte, extSuperblockBytes)
+			putExtSuperblockFields(sb, extFixture{blockCount: 5, revision: 1, state: test.state,
+				featureROCompat: test.roCompat | extROCompatMetadataChecksum, featureIncompat: test.incompat})
+			binary.LittleEndian.PutUint32(sb[0xe8:0xec], test.lastOrphan)
+			refreshExtSuperblockChecksum(sb)
+			original := append([]byte(nil), sb...)
+			reader := fixedMetadataReader{offset: 40*logicalSectorBytes + extSuperblockOffset, data: sb}
+			report, err := InspectExtSuperblock(reader, 128*logicalSectorBytes, 40, 49)
+			if err != nil || report.Status != ExtStatusCandidate || report.SchemaVersion != 2 ||
+				report.SuperblockChecksumStatus != "valid" || report.NeedsOrphanRecovery != test.wantOrphan ||
+				report.NeedsJournalRecovery != test.wantJournal || report.BlockDeviceOpened || report.MutationsPerformed || report.MountPerformed {
+				t.Fatalf("wrong bounded recovery observation: %+v err=%v", report, err)
+			}
+			if !bytes.Equal(sb, original) {
+				t.Fatal("inspection changed metadata")
+			}
+			encoded, err := json.Marshal(report)
+			if err != nil || !strings.Contains(string(encoded), `"needs_orphan_recovery":`) ||
+				strings.Contains(string(encoded), "fixture-ext-uuid") || strings.Contains(string(encoded), "EXT4_PRIVATE_LABEL") {
+				t.Fatal("recovery output missing or not redacted", err)
+			}
+			sb[0xe8] ^= 0x80 // Do not refresh: recovery fields remain checksum-covered.
+			report, err = InspectExtSuperblock(reader, 128*logicalSectorBytes, 40, 49)
+			if err != nil || report.Status != ExtStatusDamaged || report.SuperblockChecksumStatus != "invalid" ||
+				report.NeedsOrphanRecovery || report.CleanUnmount {
+				t.Fatal("bad checksum became a recovery or clean observation", err)
+			}
+		})
+	}
+}
+
 type extFixture struct {
 	blockCount      uint32
 	freeBlocks      uint32

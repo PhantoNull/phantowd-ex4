@@ -188,6 +188,14 @@ support/tests/test-ex4-stage-b-kernel-config-audit.sh
 .github/workflows/host-tools.yml
 '
 
+# The optional local Linux API wrapper changes no firmware input. Validate its
+# external command contract in cheap host CI without unrelated image builds.
+for path in 'support/test-api-linux.ps1' 'support/tests/test-api-linux-wrapper.ps1'; do
+    require_triggered_path "$host_workflow" "$path"
+    require_ignored_path "$qemu_workflow" "$path"
+    require_ignored_path "$stage_b3_workflow" "$path"
+done
+
 # Internal launcher tests must not rebuild EX4 research profiles, but must
 # retain the one QEMU lane and cheap native host refusals.
 for path in 'src/phantowd-service-launcher/**' \

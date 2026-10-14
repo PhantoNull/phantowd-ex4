@@ -71,4 +71,10 @@ check_kernel_hash_lock board/qemu/armv5/patches/linux/linux.hash
 check_kernel_hash_lock board/qemu/armv5/patches/linux-headers/linux-headers.hash
 check_kernel_license_hash_lock
 
+openssl_patch="$repo_root/support/buildroot-patches/$BUILDROOT_VERSION/0005-libopenssl-$OPENSSL_VERSION-maintenance.patch"
+grep -Fx "+LIBOPENSSL_VERSION = $OPENSSL_VERSION" "$openssl_patch" >/dev/null
+grep -Fx "+sha256  $OPENSSL_ARCHIVE_SHA256  openssl-$OPENSSL_VERSION.tar.gz" \
+    "$openssl_patch" >/dev/null
+
 printf 'All firmware Linux version locks match %s.\n' "$LINUX_VERSION"
+printf 'Host OpenSSL version/hash locks match %s.\n' "$OPENSSL_VERSION"

@@ -8,10 +8,12 @@ import { readFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createContext, Script } from "node:vm";
+import { supportFixture } from "./tests/test-support-bundle.mjs";
 
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
 const source = await readFile(join(repoRoot, "src/phantowd-api/ui/app.js"), "utf8");
 const serviceSource = await readFile(join(repoRoot, "src/phantowd-api/ui/service-policy.js"), "utf8");
+const supportSource = await readFile(join(repoRoot, "src/phantowd-api/ui/support-bundle.js"), "utf8");
 const markup = await readFile(join(repoRoot, "src/phantowd-api/ui/index.html"), "utf8");
 const styles = await readFile(join(repoRoot, "src/phantowd-api/ui/app.css"), "utf8");
 const markupIDs = [...markup.matchAll(/\bid="([^"]+)"/g)].map((match) => match[1]);
@@ -30,6 +32,55 @@ assert.match(styles, /:is\(a, button, input, select, textarea, summary, \[tabind
 assert.match(styles, /\.skip-link:focus\s*\{ transform: none; \}/);
 assert.match(styles, /@media \(forced-colors: active\)/);
 
+// Numeric guard for the small secondary text palette, not a browser/CSS
+// cascade or whole-page accessibility audit. Read the actual embedded asset.
+// WCAG 2.2 1.4.3: https://www.w3.org/WAI/WCAG22/Understanding/contrast-minimum.html
+function luminance(rgb) {
+  const linear = rgb.map((channel) => {
+    const value = channel / 255;
+    return value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
+  });
+  return 0.2126 * linear[0] + 0.7152 * linear[1] + 0.0722 * linear[2];
+}
+
+function contrast(foreground, background) {
+  const values = [luminance(foreground), luminance(background)].sort((a, b) => a - b);
+  return (values[1] + 0.05) / (values[0] + 0.05);
+}
+
+function blend(foreground, background, alpha) {
+  return foreground.map((channel, index) => channel * alpha + background[index] * (1 - alpha));
+}
+
+function secondaryTextPalette(css) {
+  const root = css.match(/:root\s*\{([^}]+)\}/)?.[1];
+  assert.ok(root, "embedded stylesheet must declare its palette");
+  const colors = new Map([...root.matchAll(/--([\w-]+):\s*#([\da-f]{6})\s*;/gi)]
+    .map((match) => [match[1], match[2].match(/../g).map((channel) => parseInt(channel, 16))]));
+  for (const name of ["quiet", "canvas", "surface", "surface-raised"]) {
+    assert.ok(colors.has(name), `missing opaque palette color ${name}`);
+  }
+  return colors;
+}
+
+assert.equal(contrast([0, 0, 0], [255, 255, 255]), 21);
+assert.equal(contrast([127, 127, 127], [127, 127, 127]), 1);
+const textPalette = secondaryTextPalette(styles);
+for (const name of ["canvas", "surface", "surface-raised"]) {
+  const ratio = contrast(textPalette.get("quiet"), textPalette.get(name));
+  assert.ok(ratio >= 4.5, `secondary text on ${name}: ${ratio}:1 is below 4.5:1`);
+}
+// Guard the declared maximum stops; this does not emulate gradient rendering.
+assert.match(styles, /rgb\(255 255 255 \/ 2%\)/);
+assert.match(styles, /rgb\(112 86 187 \/ 16%\)/);
+for (const [name, background] of [
+  ["card highlight", blend([255, 255, 255], textPalette.get("surface"), 0.02)],
+  ["canvas highlight", blend([112, 86, 187], textPalette.get("canvas"), 0.16)],
+]) {
+  const ratio = contrast(textPalette.get("quiet"), background);
+  assert.ok(ratio >= 4.5, `secondary text on ${name}: ${ratio}:1 is below 4.5:1`);
+}
+
 class FixtureElement {
   constructor(ownerDocument = null) {
     this.ownerDocument = ownerDocument;
@@ -43,6 +94,7 @@ class FixtureElement {
     this.value = "";
     this.className = "";
     this.disabled = false;
+    this.files = [];
     this.parentElement = null;
     this.classList = {
       toggle: (name, force) => {
@@ -76,6 +128,14 @@ class FixtureElement {
     this.attributes.delete(name);
   }
 
+  click() {
+    if (this.download && !this.disabled) this.ownerDocument.downloads.push({ href: this.href, filename: this.download });
+  }
+
+  remove() {
+    this.ownerDocument.body.children = this.ownerDocument.body.children.filter((node) => node !== this);
+  }
+
   contains(node) {
     for (let current = node; current; current = current.parentElement) {
       if (current === this) return true;
@@ -104,11 +164,23 @@ class FixtureElement {
 }
 
 function jsonResponse(body, status = 200) {
-  return { ok: status >= 200 && status < 300, status, json: async () => body };
+  const bytes = new TextEncoder().encode(JSON.stringify(body));
+  return { ok: status >= 200 && status < 300, status, json: async () => body,
+    body: new ReadableStream({ start(controller) { controller.enqueue(bytes); controller.close(); } }) };
+}
+
+function deferredJSONResponse(body) {
+  let sent = false;
+  return { ok: true, status: 200, json: () => body,
+    body: { getReader: () => ({
+      read: async () => sent ? { done: true } : (sent = true, { done: false, value: new TextEncoder().encode(JSON.stringify(await body)) }),
+      cancel: async () => {}, releaseLock: () => {},
+    }) } };
 }
 
 function systemFixture() {
   return {
+    schema_version: 1,
     target: "qemu-armv5",
     mode: "development",
     flashable: false,
@@ -124,6 +196,8 @@ function systemFixture() {
 
 function arraysFixture() {
   return {
+    schema_version: 1, read_only: true, block_devices_opened: false,
+    disk_content_read: false, mutations_performed: false,
     status: "available",
     array_count: 2,
     arrays: [{
@@ -136,6 +210,20 @@ function arraysFixture() {
       sync_action: "frozen", members: [{ name: "sda3" }, { name: "sdb3" }],
     }],
   };
+}
+
+function storageFixture(observations = []) {
+  return {
+    schema_version: 2, scope: "kernel-sysfs-only", inventory_read_only: true,
+    block_devices_opened: false, content_read: false, mutations_performed: false,
+    stable_identity_available: false, device_count: observations.length,
+    observations, limitations: [],
+  };
+}
+
+function blockFixture(overrides = {}) {
+  return { name: "sda", kind: "block", major: 8, minor: 0, size_bytes: 2 ** 40,
+    read_only: false, removable: false, serial_status: "present", wwn_status: "unavailable", ...overrides };
 }
 
 function mountsFixture() {
@@ -165,11 +253,12 @@ async function createHarness(respond, timing = {}) {
     "profile-notice-title", "profile-notice-copy", "profile-notice-mark",
     "observed-at", "device-count", "device-list", "array-count", "array-list", "mount-count", "mount-list",
     "gpt-observe", "gpt-observation-status",
+    "support-panel", "support-help", "support-download", "support-status",
     ...["load", "status", "result", "summary", "shares"].map((id) => `saved-${id}`),
-    ...["load", "prepare", "save", "status", "current", "summary", "document", "review", "change", "samba", "nfs", "editor", "target", "member", "action", "edit-preview", "diff", "diff-summary", "overlaps", "overlap-summary"].map((id) => `service-${id}`),
+    ...["load", "prepare", "save", "status", "current", "summary", "document", "review", "change", "samba", "nfs", "editor", "target", "member", "action", "edit-preview", "diff", "diff-summary", "overlaps", "overlap-summary", "backup-controls", "backup-download", "restore-file", "restore-preview"].map((id) => `service-${id}`),
     ...["form", "submit", "clear", "result", "error", "status", "requirements", "samba", "nfs", "nfs-fields", "uuid", "name", "path", "user", "smb-access", "nfs-enabled", "export-id", "network", "nfs-access", "squash", "uid", "gid", "security"].map((id) => `policy-${id}`),
   ];
-  const document = { activeElement: null, focusCalls: [] };
+  const document = { activeElement: null, focusCalls: [], downloads: [], blobs: [], revokedURLs: [] };
   const elements = Object.fromEntries(ids.map((id) => [id, new FixtureElement(document)]));
   document.body = new FixtureElement(document);
   document.activeElement = document.body;
@@ -210,11 +299,18 @@ async function createHarness(respond, timing = {}) {
     Error,
     Promise,
     TextEncoder,
+    TextDecoder,
+    Blob,
+    URL: {
+      createObjectURL: (blob) => { document.blobs.push(blob); return `blob:fixture-${document.blobs.length}`; },
+      revokeObjectURL: (url) => document.revokedURLs.push(url),
+    },
     AbortController,
     setTimeout: timing.setTimeout ?? setTimeout,
     clearTimeout: timing.clearTimeout ?? clearTimeout,
   });
   new Script(serviceSource).runInContext(context);
+  new Script(supportSource).runInContext(context);
   new Script(source).runInContext(context);
   await new Promise((resolve) => setImmediate(resolve));
   return { context, elements, requests, document };
@@ -273,6 +369,7 @@ async function testAuthFocusMovesOnlyWhenItsControlIsHidden() {
     });
     h.elements[all ? "logout-all" : "logout"].focus();
     await h.elements[all ? "logout-all" : "logout"].listeners.get("click")();
+    assert.equal(h.elements["support-download"].disabled, true, "sign-out must retire diagnostic export");
     assert.ok(h.document.activeElement === h.elements["auth-title"], "hidden logout control must return focus to authentication heading");
     assert.equal(h.requests.filter((r) => r.options?.method === "POST").length, 1, "focus handling must not add requests");
   }
@@ -296,6 +393,7 @@ async function testAuthFocusAfterPasswordChangeOrUncertainty() {
     h.elements["password-confirm"].value = h.elements["password-new"].value;
     h.elements["password-submit"].focus();
     await h.elements["password-form"].listeners.get("submit")({ preventDefault() {} });
+    assert.equal(h.elements["support-download"].disabled, true, "confirmed or uncertain password change must retire diagnostic export");
     assert.ok(h.document.activeElement === h.elements["auth-title"], "confirmed or uncertain credential boundary must have a visible focus destination");
     assert.equal(h.elements["auth-form"].hidden, !confirmed);
     assert.equal(h.requests.filter((r) => r.options?.method === "POST").length, 1, "focus handling must not retry password change");
@@ -333,10 +431,7 @@ async function testReadOnlySnapshotAndSafeRendering() {
     if (path === "/api/v1/auth/status") return jsonResponse({ authenticated: true });
     if (path === "/api/v1/system") return jsonResponse(systemFixture());
     if (path === "/api/v1/storage") {
-      return jsonResponse({ observations: [{
-        name: "disk<script>", kind: "disk", major: 8, minor: 0,
-        size_bytes: 2 ** 40, serial_status: "present", wwn_status: "unavailable", read_only: true,
-      }] });
+      return jsonResponse(storageFixture([blockFixture({ name: "disk<script>", read_only: true })]));
     }
     if (path === "/api/v1/arrays") return jsonResponse(arraysFixture());
     if (path === "/api/v1/mounts") return jsonResponse(mountsFixture());
@@ -405,7 +500,7 @@ async function testExpiredSessionReturnsToLogin() {
     }
     if (expired) return jsonResponse({ error: "unauthorized" }, 401);
     if (path === "/api/v1/system") return jsonResponse(systemFixture());
-    if (path === "/api/v1/storage") return jsonResponse({ observations: [] });
+    if (path === "/api/v1/storage") return jsonResponse(storageFixture());
     if (path === "/api/v1/arrays") return jsonResponse(arraysFixture());
     if (path === "/api/v1/mounts") return jsonResponse(mountsFixture());
     throw new Error(`Unexpected request: ${path}`);
@@ -421,7 +516,7 @@ async function testExpiredSessionReturnsToLogin() {
 
 function snapshotResponse(path, kernel = "retired-session-kernel") {
   if (path === "/api/v1/system") return jsonResponse({ ...systemFixture(), kernel });
-  if (path === "/api/v1/storage") return jsonResponse({ observations: [] });
+  if (path === "/api/v1/storage") return jsonResponse(storageFixture());
   if (path === "/api/v1/arrays") return jsonResponse(arraysFixture());
   if (path === "/api/v1/mounts") return jsonResponse(mountsFixture());
   throw new Error(`Unexpected snapshot request: ${path}`);
@@ -480,7 +575,8 @@ async function testSnapshotLateErrorsDoNotChangeUnavailableAuth() {
       await pending;
       if (outcome === "unauthorized") return jsonResponse({}, 401);
       if (outcome === "transport-error") return new Error("late transport failure");
-      return { ok: true, status: 200, json: async () => { throw new Error("late malformed body"); } };
+      return { ok: true, status: 200, json: async () => { throw new Error("late malformed body"); },
+        body: new ReadableStream({ start(controller) { controller.error(new Error("late malformed body")); } }) };
     });
     context.showAuthUnavailable();
     const message = elements["auth-error"].textContent;
@@ -501,7 +597,7 @@ async function testSnapshotLateAuthBodyCannotReplaceNewSession() {
   const currentRead = new Promise((resolve) => { releaseCurrent = resolve; });
   const { context, elements } = await createHarness(async (path) => {
     if (path === "/api/v1/auth/status") return phase === "expired" ?
-      { ok: true, status: 200, json: () => authBody } : jsonResponse({ authenticated: true });
+      deferredJSONResponse(authBody) : jsonResponse({ authenticated: true });
     if (phase === "expired") return jsonResponse({}, 401);
     if (phase === "current") await currentRead;
     return snapshotResponse(path, "current-session-kernel");
@@ -556,7 +652,7 @@ async function testSnapshotDeadlineIncludesBodyAndDoesNotRetry() {
   let nextTimer = 0;
   const { elements, requests } = await createHarness(async (path) => {
     if (path === "/api/v1/auth/status") return jsonResponse({ authenticated: true });
-    if (path === "/api/v1/system") return { ok: true, status: 200, json: () => body };
+    if (path === "/api/v1/system") return deferredJSONResponse(body);
     return snapshotResponse(path);
   }, {
     setTimeout: (callback, delay) => { const id = ++nextTimer; timers.set(id, { callback, delay }); return id; },
@@ -585,7 +681,7 @@ async function testStorageFailureKeepsOnlyCurrentSystemObservation() {
     if (path === "/api/v1/auth/status") return jsonResponse({ authenticated: true });
     if (path === "/api/v1/system") return jsonResponse(systemFixture());
     if (path === "/api/v1/storage") {
-      return storageAvailable ? jsonResponse({ observations: [{ name: "sda", kind: "block", major: 8, minor: 0, size_bytes: 2 ** 40 }] }) : jsonResponse({ error: "unavailable" }, 503);
+      return storageAvailable ? jsonResponse(storageFixture([blockFixture()])) : jsonResponse({ error: "unavailable" }, 503);
     }
     if (path === "/api/v1/arrays") return jsonResponse(arraysFixture());
     if (path === "/api/v1/mounts") return jsonResponse(mountsFixture());
@@ -607,7 +703,7 @@ async function testSystemFailureKeepsOnlyCurrentStorageObservation() {
   const { context, elements } = await createHarness(async (path) => {
     if (path === "/api/v1/auth/status") return jsonResponse({ authenticated: true });
     if (path === "/api/v1/system") return systemAvailable ? jsonResponse(systemFixture()) : jsonResponse({ error: "unavailable" }, 503);
-    if (path === "/api/v1/storage") return jsonResponse({ observations: [{ name: "sda", kind: "block", major: 8, minor: 0, size_bytes: 2 ** 40 }] });
+    if (path === "/api/v1/storage") return jsonResponse(storageFixture([blockFixture()]));
     if (path === "/api/v1/arrays") return jsonResponse(arraysFixture());
     if (path === "/api/v1/mounts") return jsonResponse(mountsFixture());
     throw new Error(`Unexpected request: ${path}`);
@@ -643,7 +739,7 @@ async function testMountFailureClearsOnlyMountObservation() {
   const { context, elements } = await createHarness(async (path) => {
     if (path === "/api/v1/auth/status") return jsonResponse({ authenticated: true });
     if (path === "/api/v1/system") return jsonResponse(systemFixture());
-    if (path === "/api/v1/storage") return jsonResponse({ observations: [{ name: "sda", kind: "block", major: 8, minor: 0, size_bytes: 2 ** 40 }] });
+    if (path === "/api/v1/storage") return jsonResponse(storageFixture([blockFixture()]));
     if (path === "/api/v1/arrays") return jsonResponse(arraysFixture());
     if (path === "/api/v1/mounts") return mountsAvailable ? jsonResponse(mountsFixture()) : jsonResponse({ error: "unavailable" }, 503);
     throw new Error(`Unexpected request: ${path}`);
@@ -674,7 +770,7 @@ async function testGPTObservationRunsOnlyOnExplicitClickAndUsesRedactedCSRFReque
     if (path === "/api/v1/auth/session") return jsonResponse({ csrf_token: "x".repeat(43) });
     if (path === "/api/v1/storage/gpt-observation") return jsonResponse(summary);
     if (path === "/api/v1/system") return jsonResponse(systemFixture());
-    if (path === "/api/v1/storage") return jsonResponse({ observations: [] });
+    if (path === "/api/v1/storage") return jsonResponse(storageFixture());
     if (path === "/api/v1/arrays") return jsonResponse(arraysFixture());
     if (path === "/api/v1/mounts") return jsonResponse(mountsFixture());
     throw new Error(`Unexpected request: ${path} ${JSON.stringify(options)}`);
@@ -722,7 +818,7 @@ async function policyHarness(previewResponse = () => jsonResponse(policyFixture(
     if (path === "/api/v1/auth/session") return sessionResponse();
     if (path === "/api/v1/file-services/preview") return previewResponse(options);
     if (path === "/api/v1/system") return jsonResponse(systemFixture());
-    if (path === "/api/v1/storage") return jsonResponse({ observations: [] });
+    if (path === "/api/v1/storage") return jsonResponse(storageFixture());
     if (path === "/api/v1/arrays") return jsonResponse(arraysFixture());
     if (path === "/api/v1/mounts") return jsonResponse(mountsFixture());
     throw new Error(`Unexpected request ${path}`);
@@ -942,7 +1038,7 @@ async function testSavedPolicyLateRepliesAndAuthLoss() {
       if (path === "/api/v1/auth/status") return jsonResponse({ authenticated: !expired, setup_required: false }, expired && statusFails ? 503 : 200);
       if (path === "/api/v1/shares/configuration") { expired = true; return jsonResponse({}, 401); }
       if (path === "/api/v1/system") return jsonResponse(systemFixture());
-      if (path === "/api/v1/storage") return jsonResponse({ observations: [] });
+      if (path === "/api/v1/storage") return jsonResponse(storageFixture());
       if (path === "/api/v1/arrays") return jsonResponse(arraysFixture());
       if (path === "/api/v1/mounts") return jsonResponse(mountsFixture());
       throw new Error(`Unexpected request ${path}`);
@@ -964,14 +1060,15 @@ function serviceSaved(revision) {
     applied: false, runtime_validated: false, activation_available: false };
 }
 
-async function serviceHarness(stateResponse, previewResponse = () => jsonResponse(policyFixture()), sessionResponse = () => jsonResponse({ csrf_token: "fixture-only" })) {
+async function serviceHarness(stateResponse, previewResponse = () => jsonResponse(policyFixture()), sessionResponse = () => jsonResponse({ csrf_token: "fixture-only" }), backupResponse = () => { throw new Error("unexpected backup request"); }) {
   return createHarness(async (path, options) => {
     if (path === "/api/v1/file-services/configuration") return stateResponse(options);
     if (path === "/api/v1/auth/status") return jsonResponse({ authenticated: true });
     if (path === "/api/v1/auth/session") return sessionResponse();
     if (path === "/api/v1/file-services/preview") return previewResponse(options);
+    if (path === "/api/v1/file-services/backup" || path === "/api/v1/file-services/restore-preview") return backupResponse(path, options);
     if (path === "/api/v1/system") return jsonResponse(systemFixture());
-    if (path === "/api/v1/storage") return jsonResponse({ observations: [] });
+    if (path === "/api/v1/storage") return jsonResponse(storageFixture());
     if (path === "/api/v1/arrays") return jsonResponse(arraysFixture());
     if (path === "/api/v1/mounts") return jsonResponse(mountsFixture());
     throw new Error(`Unexpected request ${path}`);
@@ -1159,7 +1256,117 @@ await testStorageFailureKeepsOnlyCurrentSystemObservation();
 await testSystemFailureKeepsOnlyCurrentStorageObservation();
 await testAllDiagnosticFailuresClearValues();
 await testMountFailureClearsOnlyMountObservation();
+await testMalformedStorageDoesNotBecomeEmptyOrClearOtherDomains();
+await testStorageCountIsNotAnEmptyInventory();
+await testStorageEnvelopeCannotClaimCurrentData();
+await testMalformedStorageRowClearsOnlyStorage();
+await testStorageDisplayEnvelopeBoundsAndInvalidReport();
 await testGPTObservationRunsOnlyOnExplicitClickAndUsesRedactedCSRFRequest();
+
+async function testMalformedStorageDoesNotBecomeEmptyOrClearOtherDomains() {
+  let storage = storageFixture([{ name: "sda", kind: "block", major: 8, minor: 0,
+    size_bytes: 2 ** 40, read_only: false, removable: false,
+    serial_status: "present", wwn_status: "present" }]);
+  const h = await createHarness(async (path) => {
+    if (path === "/api/v1/auth/status") return jsonResponse({ authenticated: true });
+    if (path === "/api/v1/storage") return jsonResponse(storage);
+    return snapshotResponse(path, "current-kernel");
+  });
+  await settleUI();
+  assert.equal(h.elements["device-count"].textContent, "1 device");
+  storage = {};
+  const before = h.requests.length;
+  await h.context.refreshSnapshot();
+  assert.equal(h.elements["device-count"].textContent, "Storage unavailable",
+    "HTTP success without an inventory must not claim zero kernel devices");
+  assert.match(h.elements["device-list"].children[0].textContent, /no current device values/i);
+  assert.equal(h.elements["kernel-value"].textContent, "Linux current-kernel");
+  assert.equal(h.elements["array-count"].textContent, "2 arrays");
+  assert.equal(h.elements["mount-count"].textContent, "2 mounts");
+  assert.match(h.elements["snapshot-status"].textContent, /system, RAID, mount.*current.*storage.*unavailable/i);
+  assert.equal(h.requests.length - before, 4, "invalid data must not add or retry requests");
+}
+
+async function testStorageCountIsNotAnEmptyInventory() {
+  let storage = storageFixture();
+  const h = await createHarness(async (path) => path === "/api/v1/auth/status" ? jsonResponse({ authenticated: true }) :
+    path === "/api/v1/storage" ? jsonResponse(storage) : snapshotResponse(path));
+  await settleUI();
+  assert.equal(h.elements["device-count"].textContent, "0 devices");
+  storage = { ...storageFixture(), device_count: 1 };
+  await h.context.refreshSnapshot();
+  assert.equal(h.elements["device-count"].textContent, "Storage unavailable",
+    "A missing declared row must not become a complete empty inventory");
+  assert.equal(h.elements["array-count"].textContent, "2 arrays");
+}
+
+async function testStorageEnvelopeCannotClaimCurrentData() {
+  const storage = { ...storageFixture(), schema_version: 1 };
+  const h = await createHarness(async (path) => path === "/api/v1/auth/status" ? jsonResponse({ authenticated: true }) :
+    path === "/api/v1/storage" ? jsonResponse(storage) : snapshotResponse(path));
+  await settleUI();
+  assert.equal(h.elements["device-count"].textContent, "Storage unavailable",
+    "Unsupported storage schema must not claim an empty current inventory");
+  assert.equal(h.elements["array-count"].textContent, "2 arrays");
+}
+
+async function testMalformedStorageRowClearsOnlyStorage() {
+  const h = await createHarness(async (path) => path === "/api/v1/auth/status" ? jsonResponse({ authenticated: true }) :
+    path === "/api/v1/storage" ? jsonResponse(storageFixture([null])) : snapshotResponse(path));
+  await settleUI();
+  assert.equal(h.elements["device-count"].textContent, "Storage unavailable");
+  assert.equal(h.elements["kernel-value"].textContent, "Linux retired-session-kernel",
+    "A malformed row must not clear independently valid system data");
+  assert.equal(h.elements["array-count"].textContent, "2 arrays");
+  assert.equal(h.elements["mount-count"].textContent, "2 mounts");
+}
+
+async function testStorageDisplayEnvelopeBoundsAndInvalidReport() {
+  const empty = storageFixture();
+  const invalid = [null, {}, [], true, "PRIVATE-SENTINEL",
+    { ...empty, observations: null }, { ...empty, observations: "PRIVATE-SENTINEL" },
+    { ...empty, device_count: "0" }, { ...empty, device_count: -1 }, { ...empty, device_count: 1 },
+    { ...empty, schema_version: 1 }, { ...empty, schema_version: "2" },
+    { ...empty, scope: "PRIVATE-SENTINEL" }, { ...empty, inventory_read_only: false },
+    { ...empty, block_devices_opened: true }, { ...empty, content_read: true },
+    { ...empty, mutations_performed: true }, { ...empty, stable_identity_available: true },
+    storageFixture([null]), storageFixture([[]]), storageFixture(["PRIVATE-SENTINEL"]),
+    storageFixture([blockFixture({ kind: "disk" })]),
+    storageFixture([blockFixture({ read_only: "false" })]),
+    storageFixture([blockFixture({ removable: 0 })]),
+    storageFixture([blockFixture({ serial_status: "PRIVATE-SENTINEL" })]),
+    storageFixture([blockFixture({ wwn_status: null })]),
+    storageFixture(Array.from({ length: 33 }, () => blockFixture())),
+  ];
+  let storage = empty, round = 0;
+  const h = await createHarness(async (path) => path === "/api/v1/auth/status" ? jsonResponse({ authenticated: true }) :
+    path === "/api/v1/storage" ? jsonResponse(storage) : snapshotResponse(path, `fresh-${round}`));
+  await settleUI();
+  assert.equal(h.elements["device-count"].textContent, "0 devices", "A validated complete empty inventory stays distinguishable");
+  for (const value of invalid) {
+    storage = value;
+    round++;
+    const before = h.requests.length;
+    await h.context.refreshSnapshot();
+    assert.equal(h.elements["device-count"].textContent, "Storage unavailable", `invalid storage case ${round}`);
+    assert.equal(h.elements["kernel-value"].textContent, `Linux fresh-${round}`, "Valid domains must be refreshed, not reused");
+    assert.equal(h.elements["array-count"].textContent, "2 arrays");
+    assert.equal(h.elements["mount-count"].textContent, "2 mounts");
+    assert.equal(h.requests.length - before, 4, "No retry/auth/probe is added for invalid data");
+    assert.ok(!h.elements["snapshot-status"].textContent.includes("PRIVATE-SENTINEL"));
+    const report = JSON.parse(new Script("supportSnapshot.serialize(Date.now())").runInContext(h.context));
+    assert.equal(report.observations.storage.status, value === null ? "unavailable" : "invalid");
+    assert.ok(!JSON.stringify(report).includes("PRIVATE-SENTINEL"));
+  }
+  storage = storageFixture(Array.from({ length: 32 }, (_, i) => blockFixture({ name: `disk-${i}` })));
+  await h.context.refreshSnapshot();
+  assert.equal(h.elements["device-count"].textContent, "32 devices");
+  assert.equal(h.elements["device-list"].children.length, 32);
+  const before = h.requests.length;
+  assert.throws(() => h.context.renderStorage({}), /Storage observation is invalid/);
+  assert.equal(h.elements["device-list"].children.length, 32, "Refusal must happen before partial DOM changes");
+  assert.equal(h.requests.length, before);
+}
 
 async function editorFixture() {
   const h = await serviceHarness(() => jsonResponse(serviceReply(null)));
@@ -1297,7 +1504,7 @@ for (const outcome of ["success", "uncertain", "rejected"]) {
     if (path === "/api/v1/auth/session") return jsonResponse({ csrf_token: "x".repeat(43) });
     if (path === "/api/v1/auth/logout-all") { ended = true; return pending; }
     if (path === "/api/v1/system") return jsonResponse(systemFixture());
-    if (path === "/api/v1/storage") return jsonResponse({ observations: [] });
+    if (path === "/api/v1/storage") return jsonResponse(storageFixture());
     if (path === "/api/v1/arrays") return jsonResponse(arraysFixture());
     if (path === "/api/v1/mounts") return jsonResponse(mountsFixture());
     throw new Error(`Unexpected sign-out request: ${path}`);
@@ -1335,7 +1542,7 @@ for (const outcome of ["success", "wrong-current", "uncertain", "rejected", "mal
     if (path === "/api/v1/auth/session") return jsonResponse({ csrf_token: "x".repeat(43) });
     if (path === "/api/v1/auth/password") return pending;
     if (path === "/api/v1/system") return jsonResponse(systemFixture());
-    if (path === "/api/v1/storage") return jsonResponse({ observations: [] });
+    if (path === "/api/v1/storage") return jsonResponse(storageFixture());
     if (path === "/api/v1/arrays") return jsonResponse(arraysFixture());
     if (path === "/api/v1/mounts") return jsonResponse(mountsFixture());
     throw new Error(`Unexpected password request: ${path}`);
@@ -1598,4 +1805,520 @@ await testDesiredChangeReviewEdits();
 await testDesiredChangeReviewBoundsAndRendering();
 await testCrossProtocolPairRelationships();
 await testCrossProtocolPairBoundsAndRendering();
+
+function backupFixture(configuration) {
+  return { format: "phantowd-file-service-backup", schema_version: 1, configuration };
+}
+
+function backupFile(text) {
+  const bytes = typeof text === "string" ? new TextEncoder().encode(text) : text;
+  return { size: bytes.byteLength, arrayBuffer: async () => bytes.slice().buffer };
+}
+
+function restoreFixture(c, expected) {
+  return { schema_version: 1, scope: "file-service-restore-preview-only", expected_revision: expected,
+    configuration: c, preview: policyFixture(), saved: false, applied: false, runtime_validated: false, activation_available: false };
+}
+
+async function testServiceBackupDownloadAndPrivacy() {
+  const c = { format: "phantowd-file-service-config", schema_version: 1, revision: 1,
+    shares: { ...savedFixture().configuration, revision: 1 },
+    nfs: { format: "phantowd-nfs-policy", schema_version: 1, revision: 1, volume_revision: 1, exports: [] } };
+  for (const changed of [false, true]) {
+    const backup = backupFixture(structuredClone(c));
+    if (changed) backup.configuration.shares.shares[0].name += "-changed";
+    const h = await serviceHarness(() => jsonResponse(serviceReply(c)), undefined, undefined, () => jsonResponse(backup));
+    await h.context.exportServiceBackup();
+    assert.equal(h.requests.some((r) => r.path.endsWith("/backup")), false, "no export before explicit load");
+    await h.context.loadServicePolicy();
+    await h.elements["service-backup-download"].listeners.get("click")();
+    assert.equal(h.document.downloads.length, changed ? 0 : 1);
+    assert.equal(h.requests.some((r) => ["POST", "PUT"].includes(r.options?.method)), false, "export must not request CSRF, preview or mutation");
+    if (!changed) {
+      assert.equal(h.document.downloads[0].filename, "phantowd-file-services.json");
+      assert.deepEqual(JSON.parse(await h.document.blobs[0].text()), backup);
+      assert.equal(h.document.body.children.length, 0, "temporary download anchor released");
+      await new Promise((resolve) => setTimeout(resolve, 1));
+      assert.deepEqual(h.document.revokedURLs, ["blob:fixture-1"]);
+      assert.match(h.elements["service-status"].textContent, /not a data or credential backup/);
+    } else assert.match(h.elements["service-status"].textContent, /changed/);
+  }
+  assert.match(markup, /Keep it private/);
+  assert.match(markup, /not a complete device backup/);
+}
+
+async function testServiceRestoreRawPreviewAndExplicitSave() {
+  let current = null;
+  let uploaded;
+  const c = { format: "phantowd-file-service-config", schema_version: 1, revision: 1,
+    shares: { ...savedFixture().configuration, revision: 1 },
+    nfs: { format: "phantowd-nfs-policy", schema_version: 1, revision: 1, volume_revision: 1, exports: [] } };
+  const h = await serviceHarness((options) => {
+    if (options.method === "PUT") { current = JSON.parse(options.body); return jsonResponse(serviceSaved(current.revision)); }
+    return jsonResponse(serviceReply(current));
+  }, undefined, undefined, (_path, options) => { uploaded = options; return jsonResponse(restoreFixture(c, 0)); });
+  await h.context.loadServicePolicy();
+  const text = JSON.stringify(backupFixture(c), null, 2);
+  h.elements["service-restore-file"].files = [backupFile(text)];
+  h.elements["service-restore-file"].listeners.get("change")();
+  await h.elements["service-restore-preview"].listeners.get("click")();
+  assert.equal(uploaded.body, text, "original whitespace and duplicate-key evidence must not be collapsed by JSON.parse");
+  assert.equal(uploaded.headers["X-PhantoWD-Expected-Revision"], "0");
+  assert.equal(uploaded.headers["X-PhantoWD-CSRF"], "fixture-only");
+  assert.equal(h.requests.some((r) => r.options?.method === "PUT"), false, "import selection/preview never saves automatically");
+  assert.equal(h.elements["service-save"].disabled, false);
+  assert.match(h.elements["service-change"].textContent, /Replace the complete.*Definitions and grants absent/);
+  await h.context.saveServiceChange();
+  assert.deepEqual(current, c);
+  assert.equal(h.requests.filter((r) => r.options?.method === "PUT").length, 1);
+  assert.match(h.elements["service-status"].textContent, /confirmed saved.*No services/);
+}
+
+async function testServiceRestoreRefusalsAndOriginalEncoding() {
+  for (const kind of ["oversize", "empty", "invalid-utf8", "BOM", "duplicates", "conflict", "unsupported-response"]) {
+    let upload;
+    const h = await serviceHarness(() => jsonResponse(serviceReply(null)), undefined, undefined, (_path, options) => {
+      upload = options;
+      return kind === "unsupported-response" ? jsonResponse({ saved: true }) : jsonResponse({}, kind === "conflict" ? 409 : 422);
+    });
+    await h.context.loadServicePolicy();
+    let file = backupFile(kind === "BOM" ? "\ufeff{}" : kind === "duplicates" ? '{"format":"a","format":"b"}' : "{}");
+    if (kind === "invalid-utf8") file = backupFile(new Uint8Array([0x7b, 0xff, 0x7d]));
+    if (kind === "oversize") file = { size: 525057, arrayBuffer: () => { throw new Error("oversize file must not be read"); } };
+    if (kind === "empty") file = { size: 0, arrayBuffer: () => { throw new Error("empty file must not be read"); } };
+    h.elements["service-restore-file"].files = [file];
+    await h.context.previewServiceRestore();
+    assert.equal(Boolean(upload), !["oversize", "empty", "invalid-utf8"].includes(kind));
+    if (kind === "BOM") assert.equal(upload.body.charCodeAt(0), 0xfeff, "BOM is not silently removed");
+    if (kind === "duplicates") assert.equal(upload.body, '{"format":"a","format":"b"}');
+    assert.equal(h.elements["service-save"].disabled, true);
+    assert.equal(h.elements["service-review"].hidden, true);
+    assert.equal(h.requests.some((r) => r.options?.method === "PUT"), false);
+  }
+}
+
+async function testServiceRestoreLateFileAndPreviewRefusal() {
+  for (const boundary of ["file", "preview"]) {
+    let finish, reads = 0;
+    const pending = new Promise((resolve) => { finish = resolve; });
+    const h = await serviceHarness(() => jsonResponse(serviceReply(null)), undefined, undefined, () => { reads++; return pending; });
+    await h.context.loadServicePolicy();
+    const file = backupFile("{}");
+    if (boundary === "file") file.arrayBuffer = () => pending;
+    h.elements["service-restore-file"].files = [file];
+    const operation = h.context.previewServiceRestore();
+    await new Promise((resolve) => setImmediate(resolve));
+    await h.context.previewServiceRestore();
+    assert.equal(reads, boundary === "file" ? 0 : 1, "only one import operation owns file/HTTP reads");
+    h.context.clearServicePolicy();
+    if (boundary === "file") finish(new TextEncoder().encode("{}").buffer);
+    else finish(jsonResponse(restoreFixture({ revision: 1 }, 0)));
+    await operation;
+    assert.equal(h.elements["service-save"].disabled, true);
+    assert.equal(h.elements["service-review"].hidden, true);
+    assert.equal(h.elements["service-document"].textContent, "");
+    assert.equal(h.requests.some((r) => r.options?.method === "PUT"), false);
+    if (boundary === "file") assert.equal(reads, 0, "retired file read must not invoke HTTP");
+  }
+}
+
+await testServiceBackupDownloadAndPrivacy();
+await testServiceRestoreRawPreviewAndExplicitSave();
+await testServiceRestoreRefusalsAndOriginalEncoding();
+await testServiceRestoreLateFileAndPreviewRefusal();
+
+async function testServiceBackupCancellationAndReadDeadline() {
+  const h = await serviceHarness(() => jsonResponse(serviceReply(null)));
+  const controller = new AbortController();
+  let finish;
+  const file = { arrayBuffer: () => new Promise((resolve) => { finish = resolve; }) };
+  const read = h.context.readServiceBackupFile(file, controller.signal);
+  await new Promise((resolve) => setImmediate(resolve));
+  controller.abort();
+  await assert.rejects(read, (failure) => failure.name === "AbortError");
+  finish(new Uint8Array([123, 125]).buffer);
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(h.requests.some((r) => r.path.endsWith("/restore-preview")), false);
+
+  let expire;
+  const timed = await createHarness(async (path) => {
+    if (path === "/api/v1/auth/status") return jsonResponse({ authenticated: true });
+    if (path === "/api/v1/file-services/configuration") return jsonResponse(serviceReply(null));
+    return snapshotResponse(path);
+  }, { setTimeout: (callback) => { expire = callback; return 1; }, clearTimeout() {} });
+  await timed.context.loadServicePolicy();
+  let settle;
+  timed.elements["service-restore-file"].files = [{ size: 2, arrayBuffer: () => new Promise((resolve) => { settle = resolve; }) }];
+  const operation = timed.context.previewServiceRestore();
+  await new Promise((resolve) => setImmediate(resolve));
+  expire();
+  await operation;
+  assert.equal(timed.elements["service-load"].disabled, false, "deadline releases the UI gate even if file read has not settled");
+  assert.match(timed.elements["service-status"].textContent, /timed out.*No save/);
+  settle(new TextEncoder().encode("{}").buffer);
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(timed.requests.some((r) => r.path.endsWith("/restore-preview")), false, "late file read after timeout cannot submit");
+}
+
+await testServiceBackupCancellationAndReadDeadline();
+async function testSanitizedSupportExportLifecycle() {
+  let authenticated = true, unavailable = false, pending = false;
+  const releases = [];
+  const input = supportFixture();
+  const h = await createHarness(async (path) => {
+    if (path === "/api/v1/auth/status") return jsonResponse({ authenticated });
+    const domain = path.split("/").at(-1);
+    if (!["system", "storage", "arrays", "mounts"].includes(domain)) throw new Error("unexpected support request");
+    if (pending) return new Promise((resolve) => releases.push(() => resolve(jsonResponse(input[domain]))));
+    if (unavailable && domain === "storage") return jsonResponse({ error: "PRIVATE-SENTINEL" }, 503);
+    return jsonResponse(input[domain]);
+  });
+  await settleUI();
+  assert.equal(h.elements["support-download"].disabled, false);
+  const count = h.requests.length;
+  h.elements["support-download"].listeners.get("click")();
+  assert.equal(h.requests.length, count, "report export must not collect or authenticate again");
+  assert.equal(h.document.downloads.length, 1);
+  assert.equal(h.document.downloads[0].filename, "phantowd-sanitized-support-v1.json");
+  const text = await h.document.blobs[0].text();
+  assert.ok(!text.includes("PRIVATE-SENTINEL"));
+  assert.equal(JSON.parse(text).observations.arrays.status, "partial");
+  await new Promise((resolve) => setTimeout(resolve, 5));
+  assert.equal(h.document.revokedURLs.length, 1);
+  assert.equal(h.document.body.children.length, 0, "download anchor must be removed");
+
+  unavailable = true;
+  await h.context.refreshSnapshot();
+  h.context.exportSupportSnapshot();
+  const partial = JSON.parse(await h.document.blobs.at(-1).text());
+  assert.deepEqual(partial.observations.storage, { status: "unavailable" }, "failed refresh must never reuse prior storage values");
+  assert.equal(partial.observations.system.status, "available");
+
+  pending = true;
+  const retired = h.context.refreshSnapshot();
+  await settleUI();
+  const downloads = h.document.downloads.length;
+  assert.equal(h.elements["support-download"].disabled, true, "refresh retires previous report immediately");
+  h.context.exportSupportSnapshot();
+  assert.equal(h.document.downloads.length, downloads);
+  authenticated = false;
+  h.context.showAuthUnavailable();
+  for (const release of releases) release();
+  await retired;
+  assert.equal(h.elements["support-download"].disabled, true, "retired late replies must not re-enable export");
+  h.context.exportSupportSnapshot();
+  assert.equal(h.document.downloads.length, downloads);
+}
+
+async function testSanitizedSupportDownloadFailure() {
+  const h = await createHarness(async (path) => path === "/api/v1/auth/status" ? jsonResponse({ authenticated: true }) : snapshotResponse(path));
+  await settleUI();
+  h.context.URL.createObjectURL = () => { throw new Error("PRIVATE-SENTINEL"); };
+  const count = h.requests.length;
+  h.context.exportSupportSnapshot();
+  assert.equal(h.document.downloads.length, 0);
+  assert.match(h.elements["support-status"].textContent, /could not be completed/);
+  assert.ok(!h.elements["support-status"].textContent.includes("PRIVATE-SENTINEL"));
+  assert.equal(h.elements["support-download"].disabled, false);
+  assert.equal(h.requests.length, count);
+  h.context.clearSnapshot("fixture logout boundary");
+  assert.equal(h.elements["support-download"].disabled, true);
+}
+
+await testSanitizedSupportExportLifecycle();
+await testSanitizedSupportDownloadFailure();
+
+async function testMissingArrayListIsNotAnEmptyCurrentInventory() {
+  let arrays = arraysFixture();
+  const h = await createHarness(async (path) => path === "/api/v1/auth/status" ? jsonResponse({ authenticated: true }) :
+    path === "/api/v1/arrays" ? jsonResponse(arrays) : snapshotResponse(path, "current-kernel"));
+  await settleUI();
+  assert.equal(h.elements["array-count"].textContent, "2 arrays");
+  arrays = { ...arraysFixture(), array_count: 0, arrays: null };
+  const before = h.requests.length;
+  await h.context.refreshSnapshot();
+  assert.equal(h.elements["array-count"].textContent, "RAID unavailable", "Missing RAID rows must not imply an empty kernel inventory");
+  assert.equal(h.elements["kernel-value"].textContent, "Linux current-kernel");
+  assert.equal(h.elements["mount-count"].textContent, "2 mounts");
+  assert.equal(h.requests.length - before, 4);
+}
+await testMissingArrayListIsNotAnEmptyCurrentInventory();
+
+async function testMissingMountListIsNotAnEmptyCurrentInventory() {
+  let mounts = mountsFixture();
+  const h = await createHarness(async (path) => path === "/api/v1/auth/status" ? jsonResponse({ authenticated: true }) :
+    path === "/api/v1/mounts" ? jsonResponse(mounts) : snapshotResponse(path, "current-kernel"));
+  await settleUI();
+  mounts = { ...mountsFixture(), mount_count: 0, mounts: null };
+  await h.context.refreshSnapshot();
+  assert.equal(h.elements["mount-count"].textContent, "Mounts unavailable", "Missing mount rows must not imply an empty namespace");
+  assert.equal(h.elements["kernel-value"].textContent, "Linux current-kernel");
+  assert.equal(h.elements["array-count"].textContent, "2 arrays");
+}
+await testMissingMountListIsNotAnEmptyCurrentInventory();
+
+async function testInvalidMemoryDoesNotBecomeAHealthySystemSample() {
+  let system = systemFixture();
+  const h = await createHarness(async (path) => path === "/api/v1/auth/status" ? jsonResponse({ authenticated: true }) :
+    path === "/api/v1/system" ? jsonResponse(system) : snapshotResponse(path));
+  await settleUI();
+  system = { ...systemFixture(), memory: { total_bytes: 256 * 1024 ** 2, available_bytes: -1 } };
+  await h.context.refreshSnapshot();
+  assert.equal(h.elements["kernel-value"].textContent, "Unavailable", "Invalid memory must not leave a current system sample");
+  assert.equal(h.elements["array-count"].textContent, "2 arrays");
+  assert.equal(h.elements["mount-count"].textContent, "2 mounts");
+  system = { ...systemFixture(), memory: { total_bytes: 256 * 1024 ** 2, available_bytes: 0 } };
+  await h.context.refreshSnapshot();
+  assert.equal(h.elements["memory-value"].textContent, "0 MiB available", "A valid exhausted-memory sample is not missing data");
+}
+await testInvalidMemoryDoesNotBecomeAHealthySystemSample();
+
+async function testInvalidPrivateArrayDetailCannotBecomeAnAvailableReport() {
+  const arrays = { ...arraysFixture(), array_count: 1, arrays: [{ ...arraysFixture().arrays[0], members: [null] }] };
+  const h = await createHarness(async (path) => path === "/api/v1/auth/status" ? jsonResponse({ authenticated: true }) :
+    path === "/api/v1/arrays" ? jsonResponse(arrays) : snapshotResponse(path));
+  await settleUI();
+  assert.equal(h.elements["array-count"].textContent, "RAID unavailable");
+  const report = JSON.parse(new Script("supportSnapshot.serialize(Date.now())").runInContext(h.context));
+  assert.equal(report.observations.arrays.status, "invalid", "Rejected private details must not yield an available projected report");
+}
+await testInvalidPrivateArrayDetailCannotBecomeAnAvailableReport();
+
+async function testRemainingSnapshotDomainsRefuseMalformedEnvelopes() {
+  const system = systemFixture(), arrays = arraysFixture(), mounts = mountsFixture();
+  const groups = [
+    { domain: "system", element: "kernel-value", empty: "Unavailable", values: [null, {}, [],
+      { ...system, schema_version: 2 }, { ...system, memory: null }, { ...system, memory: [] },
+      { ...system, memory: { ...system.memory, total_bytes: 0 } },
+      { ...system, memory: { ...system.memory, total_bytes: "256" } },
+      { ...system, memory: { ...system.memory, available_bytes: -1 } },
+      { ...system, memory: { ...system.memory, available_bytes: system.memory.total_bytes + 1 } },
+      { ...system, memory: { ...system.memory, available_bytes: "0" } },
+      { ...system, uptime_seconds: -1 }, { ...system, uptime_seconds: "1" },
+      { ...system, uptime_seconds: Number.MAX_SAFE_INTEGER + 1 },
+      { ...system, flashable: "false" }, { ...system, hardware_validated: null }] },
+    { domain: "arrays", element: "array-count", empty: "RAID unavailable", values: [null, {}, [],
+      { ...arrays, schema_version: 2 }, { ...arrays, arrays: null }, { ...arrays, arrays: "PRIVATE-SENTINEL" },
+      { ...arrays, read_only: false }, { ...arrays, block_devices_opened: true }, { ...arrays, disk_content_read: true },
+      { ...arrays, mutations_performed: true }, { ...arrays, status: "PRIVATE-SENTINEL" },
+      { ...arrays, array_count: "2" }, { ...arrays, array_count: 0 },
+      { ...arrays, arrays: [null], array_count: 1 }, { ...arrays, arrays: [[]], array_count: 1 },
+      { ...arrays, arrays: [{ ...arrays.arrays[0], health: "PRIVATE-SENTINEL" }], array_count: 1 },
+      { ...arrays, status: "unavailable" }, { ...arrays, status: "unsupported" },
+      { ...arrays, arrays: [{ ...arrays.arrays[0], members: [null] }], array_count: 1 },
+      { ...arrays, arrays: [{ ...arrays.arrays[0], members: [[]] }], array_count: 1 },
+      { ...arrays, arrays: [{ ...arrays.arrays[0], members: Array.from({ length: 33 }, () => ({ name: "PRIVATE-SENTINEL" })) }], array_count: 1 },
+      { ...arrays, arrays: Array.from({ length: 17 }, () => arrays.arrays[0]), array_count: 17 }] },
+    { domain: "mounts", element: "mount-count", empty: "Mounts unavailable", values: [null, {}, [],
+      { ...mounts, schema_version: 2 }, { ...mounts, scope: "PRIVATE-SENTINEL" }, { ...mounts, mounts: null },
+      { ...mounts, mounts: "PRIVATE-SENTINEL" }, { ...mounts, read_only: false },
+      { ...mounts, filesystem_contents_read: true }, { ...mounts, mount_operations_performed: true },
+      { ...mounts, mount_count: "2" }, { ...mounts, mount_count: 0 },
+      { ...mounts, mounts: [null], mount_count: 1 }, { ...mounts, mounts: [[]], mount_count: 1 },
+      { ...mounts, mounts: [{ ...mounts.mounts[0], read_only: "false" }], mount_count: 1 },
+      { ...mounts, mounts: [{ ...mounts.mounts[0], filesystem: null }], mount_count: 1 },
+      { ...mounts, mounts: Array.from({ length: 129 }, () => mounts.mounts[0]), mount_count: 129 }] },
+  ];
+  let payloads = { system, arrays, mounts }, round = 0;
+  const h = await createHarness(async (path) => {
+    if (path === "/api/v1/auth/status") return jsonResponse({ authenticated: true });
+    const domain = path.split("/").at(-1);
+    return domain === "storage" ? jsonResponse(storageFixture([blockFixture({ name: `fresh-${round}` })])) : jsonResponse(payloads[domain]);
+  });
+  await settleUI();
+  for (const group of groups) for (const value of group.values) {
+    round++;
+    payloads = { system, arrays, mounts, [group.domain]: value };
+    const before = h.requests.length;
+    await h.context.refreshSnapshot();
+    assert.equal(h.elements[group.element].textContent, group.empty, `${group.domain} invalid case ${round}`);
+    assert.equal(h.elements["device-count"].textContent, "1 device");
+    assert.equal(h.elements["device-list"].children[0].children[0].children[1].children[0].textContent, `fresh-${round}`, "Valid domains must not reuse old values");
+    if (group.domain !== "system") assert.equal(h.elements["kernel-value"].textContent, "Linux 6.18.54");
+    if (group.domain !== "arrays") assert.equal(h.elements["array-count"].textContent, "2 arrays");
+    if (group.domain !== "mounts") assert.equal(h.elements["mount-count"].textContent, "2 mounts");
+    assert.equal(h.requests.length - before, 4);
+    const report = JSON.parse(new Script("supportSnapshot.serialize(Date.now())").runInContext(h.context));
+    assert.equal(report.observations[group.domain].status, value === null ? "unavailable" : "invalid");
+    assert.ok(!JSON.stringify(report).includes("PRIVATE-SENTINEL"));
+  }
+  for (const status of ["available", "partial", "unsupported", "unavailable"]) {
+    payloads = { system, mounts, arrays: { ...arrays, status, array_count: 0, arrays: [] } };
+    await h.context.refreshSnapshot();
+    assert.equal(h.elements["array-count"].textContent, status === "available" ? "0 arrays" : `RAID ${status}`);
+    assert.equal(JSON.parse(new Script("supportSnapshot.serialize(Date.now())").runInContext(h.context)).observations.arrays.status, status);
+  }
+  payloads = { system, arrays: { ...arrays, array_count: 16, arrays: Array.from({ length: 16 }, () => ({ ...arrays.arrays[0], members: Array.from({ length: 32 }, () => ({ name: "fixture" })) })) },
+    mounts: { ...mounts, mount_count: 128, mounts: Array.from({ length: 128 }, () => mounts.mounts[0]) } };
+  await h.context.refreshSnapshot();
+  assert.equal(h.elements["array-list"].children.length, 16);
+  assert.equal(h.elements["mount-list"].children.length, 128);
+  for (const [render, id, count] of [["renderArrays", "array-list", 16], ["renderMounts", "mount-list", 128]]) {
+    assert.throws(() => h.context[render]({}), /observation is invalid/);
+    assert.equal(h.elements[id].children.length, count, "Guard must refuse before changing any prior DOM row");
+  }
+  const kernel = h.elements["kernel-value"].textContent;
+  assert.throws(() => h.context.renderSystem({}), /observation is invalid/);
+  assert.equal(h.elements["kernel-value"].textContent, kernel);
+  payloads = { system: {}, arrays: {}, mounts: {} };
+  await h.context.refreshSnapshot();
+  assert.equal(h.elements["device-count"].textContent, "1 device");
+  assert.equal(h.elements["kernel-value"].textContent, "Unavailable");
+  assert.equal(h.elements["array-count"].textContent, "RAID unavailable");
+  assert.equal(h.elements["mount-count"].textContent, "Mounts unavailable");
+  process.stdout.write(`Snapshot display-envelope controls passed: system=${groups[0].values.length} arrays=${groups[1].values.length} mounts=${groups[2].values.length} negative=${round} maxima=16/32/128.\n`);
+}
+await testRemainingSnapshotDomainsRefuseMalformedEnvelopes();
+
+async function testOversizedSnapshotBodyIsNotParsedAsCurrentSystem() {
+  let oversized = false, parsed = 0;
+  const h = await createHarness(async (path) => {
+    if (path === "/api/v1/auth/status") return jsonResponse({ authenticated: true });
+    if (path === "/api/v1/system" && oversized) {
+      const value = { ...systemFixture(), padding: "PRIVATE-SENTINEL".repeat(1200) };
+      const response = jsonResponse(value);
+      response.json = async () => { parsed++; return value; };
+      return response;
+    }
+    return snapshotResponse(path, "fresh-kernel");
+  });
+  await settleUI();
+  oversized = true;
+  const before = h.requests.length;
+  await h.context.refreshSnapshot();
+  assert.equal(h.elements["kernel-value"].textContent, "Unavailable", "A system body above16KiB must refuse before parsing");
+  assert.equal(parsed, 0, "Unbounded Response.json must never be invoked for snapshots");
+  assert.equal(h.elements["array-count"].textContent, "2 arrays");
+  assert.equal(h.elements["mount-count"].textContent, "2 mounts");
+  assert.equal(h.requests.length - before, 4);
+}
+await testOversizedSnapshotBodyIsNotParsedAsCurrentSystem();
+
+async function testInitialAuthBodyHasAFiniteReadDeadline() {
+  let release;
+  const pending = new Promise((resolve) => { release = resolve; });
+  const timers = new Map();
+  let id = 0;
+  const h = await createHarness(async () => deferredJSONResponse(pending), {
+    setTimeout: (callback, delay) => { const timer = ++id; timers.set(timer, { callback, delay }); return timer; },
+    clearTimeout: (timer) => timers.delete(timer),
+  });
+  assert.equal(timers.size, 1, "Initial authentication status must not hang without a deadline");
+  const deadline = [...timers.values()][0];
+  assert.equal(deadline.delay, 10000);
+  deadline.callback();
+  await settleUI();
+  assert.equal(h.elements["dashboard-content"].hidden, true);
+  assert.equal(h.elements["auth-retry"].hidden, false);
+  assert.equal(timers.size, 0);
+  const before = h.requests.length;
+  release({ authenticated: true });
+  await settleUI();
+  assert.equal(h.elements["dashboard-content"].hidden, true);
+  assert.equal(h.requests.length, before);
+}
+await testInitialAuthBodyHasAFiniteReadDeadline();
+
+async function testDiagnosticStructureIsBoundedBeforeParsing() {
+  let deep = null;
+  for (let i = 0; i < 16; i++) deep = [deep];
+  const value = { ...systemFixture(), extra: deep };
+  const h = await createHarness(async (path) => path === "/api/v1/auth/status" ? jsonResponse({ authenticated: true }) :
+    path === "/api/v1/system" ? jsonResponse(value) : snapshotResponse(path));
+  await settleUI();
+  assert.equal(h.elements["kernel-value"].textContent, "Unavailable", "Over-depth diagnostic bodies must refuse before object construction");
+  assert.equal(h.elements["array-count"].textContent, "2 arrays");
+}
+await testDiagnosticStructureIsBoundedBeforeParsing();
+
+async function testDiagnosticByteReaderBoundariesAndCleanup() {
+  let response = jsonResponse(systemFixture());
+  const h = await createHarness(async (path) => path === "/api/v1/auth/status" ? jsonResponse({ authenticated: true }) :
+    path === "/api/v1/system" ? response : snapshotResponse(path));
+  await settleUI();
+  const streamResponse = (parts, { close = true, status = 200, cancel = () => {}, headers = {} } = {}) => {
+    let index = 0;
+    const body = new ReadableStream({
+      pull(controller) { if (index < parts.length) controller.enqueue(parts[index++]); else if (close) controller.close(); },
+      cancel,
+    });
+    return { ok: status === 200, status, body, headers,
+      json: () => { throw new Error("Unbounded JSON fallback must not be used"); } };
+  };
+  const base = JSON.stringify(systemFixture());
+  const encoded = new TextEncoder().encode(base);
+  for (const [path, cap] of [["/api/v1/auth/status", 16384], ["/api/v1/system", 16384],
+    ["/api/v1/storage", 65536], ["/api/v1/arrays", 524288], ["/api/v1/mounts", 4194304]]) {
+    const text = base + " ".repeat(cap - encoded.length);
+    const bytes = new TextEncoder().encode(text);
+    response = streamResponse([bytes.subarray(0, 4093), bytes.subarray(4093)]);
+    const previousFetch = h.context.fetch;
+    h.context.fetch = async () => response;
+    try {
+      assert.equal((await h.context.fetchJSON(path)).kernel, "6.18.54", "Exact byte cap must remain inclusive");
+      assert.equal(response.body.locked, false);
+      let canceled = 0;
+      response = streamResponse([bytes, new Uint8Array([32])], { close: false,
+        headers: { get: () => "1" }, cancel: () => { canceled++; return new Promise(() => {}); } });
+      await assert.rejects(h.context.fetchJSON(path), /diagnostic body unavailable/);
+      assert.equal(canceled, 1, "Actual bytes, not Content-Length, must drive refusal/cancellation");
+      assert.equal(response.body.locked, false, "Hung cancellation must not retain the reader lock");
+    } finally { h.context.fetch = previousFetch; }
+  }
+  const utf8 = new TextEncoder().encode(JSON.stringify({ ...systemFixture(), extra: "x😀é" }));
+  const offset = utf8.indexOf(240);
+  response = streamResponse([utf8.subarray(0, offset + 1), utf8.subarray(offset + 1, offset + 3), utf8.subarray(offset + 3)]);
+  assert.equal((await h.context.fetchJSON("/api/v1/system")).extra, "x😀é", "UTF-8 splits must not corrupt valid bytes");
+  assert.equal(response.body.locked, false);
+  const badInputs = [new Uint8Array([255]), new TextEncoder().encode("{\"PRIVATE-SENTINEL\":"), new Uint8Array(0)];
+  for (const bytes of badInputs) {
+    response = streamResponse([bytes]);
+    await assert.rejects(h.context.fetchJSON("/api/v1/system"), /diagnostic body unavailable/);
+    assert.equal(response.body.locked, false);
+  }
+  response = streamResponse([new Uint8Array([123])], { status: 503, close: false, cancel: () => {} });
+  await assert.rejects(h.context.fetchJSON("/api/v1/system"), (failure) => failure.status === 503);
+  assert.equal(response.body.locked, false);
+  const before = h.requests.length;
+  await assert.rejects(h.context.fetchJSON("/api/v1/not-a-diagnostic"), /diagnostic path unavailable/);
+  assert.equal(h.requests.length, before, "Unknown paths must refuse before fetch");
+  response = { ok: true, status: 200, json: () => systemFixture() };
+  await assert.rejects(h.context.fetchJSON("/api/v1/system"), /diagnostic body unavailable/);
+
+  let canceled = 0;
+  response = streamResponse([], { close: false, cancel: () => { canceled++; return new Promise(() => {}); } });
+  const controller = new AbortController();
+  const waiting = h.context.fetchJSON("/api/v1/system", { signal: controller.signal });
+  await settleUI();
+  assert.equal(response.body.locked, true);
+  controller.abort();
+  await assert.rejects(waiting, (failure) => failure.name === "AbortError");
+  await settleUI();
+  assert.equal(canceled, 1);
+  assert.equal(response.body.locked, false);
+
+  const quoteText = JSON.stringify({ ...systemFixture(), extra: '\\"[[[{{}}]]]' });
+  response = streamResponse([new TextEncoder().encode(quoteText)]);
+  assert.equal((await h.context.fetchJSON("/api/v1/system")).extra, '\\"[[[{{}}]]]');
+  response = streamResponse([new TextEncoder().encode(JSON.stringify({ ...systemFixture(), extra: Array.from({ length: 1024 }, () => ({})) }))]);
+  await assert.rejects(h.context.fetchJSON("/api/v1/system"), /diagnostic body unavailable/);
+  const largestMounts = { ...mountsFixture(), mount_count: 128,
+    mounts: Array.from({ length: 128 }, () => ({ mount_point: ">".repeat(4096), filesystem: "x".repeat(64),
+      device_major: 4294967295, device_minor: 4294967295, read_only: false })) };
+  // Mirror encoding/json's HTML-escaping expansion on producer-bounded fields.
+  const escaped = JSON.stringify(largestMounts).replaceAll(">", "\\u003e");
+  assert.ok(new TextEncoder().encode(escaped).length < 4194304);
+  const prior = h.context.fetch;
+  response = streamResponse([new TextEncoder().encode(escaped)]);
+  h.context.fetch = async () => response;
+  try { assert.equal((await h.context.fetchJSON("/api/v1/mounts")).mounts.length, 128, "Maximum escaped producer envelope fits the byte budget"); }
+  finally { h.context.fetch = prior; }
+  const many = Array.from({ length: 16385 }, () => new Uint8Array([32]));
+  const previousFetch = h.context.fetch;
+  h.context.fetch = async () => streamResponse(many, { close: false });
+  try { await assert.rejects(h.context.fetchJSON("/api/v1/mounts"), /diagnostic body unavailable/); }
+  finally { h.context.fetch = previousFetch; }
+  process.stdout.write("Diagnostic byte-reader controls passed: paths=5 inclusive-limits=true UTF8-split=true cancellation-locks=true no-fallback=true fragmentation=true.\n");
+}
+await testDiagnosticByteReaderBoundariesAndCleanup();
 process.stdout.write("Dashboard UI interaction smoke tests passed (DOM fixture; no visual browser coverage).\n");

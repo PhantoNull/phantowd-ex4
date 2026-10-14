@@ -36,6 +36,39 @@ func run() error {
 	if len(os.Args) == 2 && os.Args[1] == "stage" && os.Getuid() == 0 && os.Geteuid() == 0 {
 		return stageFixture()
 	}
+	if len(os.Args) == 2 && (os.Args[1] == "server-observer-code-binding" || os.Args[1] == "server-observer-runtime" || os.Args[1] == "server-capture-runtime" || os.Args[1] == "server-capture-open") && os.Getuid() == 0 && os.Geteuid() == 0 {
+		files, aliases, err := inputs()
+		if err != nil {
+			return err
+		}
+		plan, err := runtimebundle.NewPlan(files, aliases)
+		if err != nil {
+			return err
+		}
+		root, err := stageRoot("/run/phantowd-samba-code")
+		if err != nil {
+			return err
+		}
+		defer root.Close()
+		source, err := stageRoot("/")
+		if err != nil {
+			return err
+		}
+		defer source.Close()
+		if os.Args[1] == "server-capture-open" {
+			err = plan.ProbeServerCaptureOpenQEMU(context.Background(), root)
+		} else if os.Args[1] == "server-capture-runtime" {
+			err = plan.ProbeServerCaptureRuntimeQEMU(context.Background(), root)
+		} else if os.Args[1] == "server-observer-runtime" {
+			err = plan.ProbeServerObserverRuntimeQEMU(context.Background(), root)
+		} else {
+			err = plan.ProbeServerObserverCodeBindingQEMU(context.Background(), root, source)
+		}
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "server observer code binding:", err)
+		}
+		return err
+	}
 	if len(os.Args) == 2 && os.Args[1] == "native-lookup" && os.Getuid() == 0 && os.Geteuid() == 0 {
 		return nativeLookupFixture(false)
 	}
@@ -51,6 +84,9 @@ func run() error {
 	if len(os.Args) == 2 && os.Args[1] == "native-planned-exit-fault" && os.Getuid() == 0 && os.Geteuid() == 0 {
 		return nativePlannedExitFaultQEMU()
 	}
+	if len(os.Args) == 2 && os.Args[1] == "native-planned-file-source-fault" && os.Getuid() == 0 && os.Geteuid() == 0 {
+		return nativePlannedFileSourceFaultQEMU()
+	}
 	if len(os.Args) == 2 && os.Args[1] == "native-credentials" && os.Getuid() == 0 && os.Geteuid() == 0 {
 		err := nativeCredentialFixture(nativeCredentialsCampaignQEMU)
 		if err != nil {
@@ -59,6 +95,26 @@ func run() error {
 			fmt.Fprintln(os.Stderr, "native credential fixture:", err)
 		}
 		return err
+	}
+	if len(os.Args) == 2 && os.Args[1] == "native-pending-client" && os.Getuid() == 0 && os.Geteuid() == 0 {
+		err := nativeCredentialFixture(nativePendingClientCampaignQEMU)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "native pending client fixture:", err)
+		}
+		return err
+	}
+	if len(os.Args) == 2 && os.Args[1] == "native-pending-peer-exit" && os.Getuid() == 0 && os.Geteuid() == 0 {
+		return nativeCredentialFixture(nativePendingPeerExitCampaignQEMU)
+	}
+	if len(os.Args) == 2 && os.Args[1] == "native-pending-handle" && os.Getuid() == 0 && os.Geteuid() == 0 {
+		err := nativeCredentialFixture(nativePendingHandleCampaignQEMU)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "native pending handle fixture:", err)
+		}
+		return err
+	}
+	if len(os.Args) == 2 && os.Args[1] == "native-pending-peer-exit-child" && os.Getuid() == 0 && os.Geteuid() == 0 {
+		return nativePendingPeerExitChildQEMU()
 	}
 	if len(os.Args) == 2 && os.Args[1] == "native-lifecycle" && os.Getuid() == 0 && os.Geteuid() == 0 {
 		err := nativeCredentialFixture(nativeLifecycleCampaignQEMU)
@@ -85,6 +141,27 @@ func run() error {
 		err := nativeCredentialFixture(nativePlannedDataCampaignQEMU)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, "native planned data fixture:", err)
+		}
+		return err
+	}
+	if len(os.Args) == 2 && os.Args[1] == "native-planned-held" && os.Getuid() == 0 && os.Geteuid() == 0 {
+		err := nativeCredentialFixture(nativePlannedHeldCampaignQEMU)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "native planned held fixture:", err)
+		}
+		return err
+	}
+	if len(os.Args) == 2 && os.Args[1] == "native-planned-file" && os.Getuid() == 0 && os.Geteuid() == 0 {
+		err := nativeCredentialFixture(nativePlannedOpenFileCampaignQEMU)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "native planned file fixture:", err)
+		}
+		return err
+	}
+	if len(os.Args) == 2 && os.Args[1] == "native-planned-file-source" && os.Getuid() == 0 && os.Geteuid() == 0 {
+		err := nativeCredentialFixture(nativePlannedFileSourceCampaignQEMU)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "native planned file source fixture:", err)
 		}
 		return err
 	}
