@@ -3,6 +3,24 @@
 
 # M4.5: retained server-open observation integration plan
 
+Partial S5 adds the fixed parent source-leaf cover after one matched READ.
+The old input fence accepted the changed parent alias while the held object
+and child remained original; bounded diagnostic70937 proves only that gap,
+not a successful subsequent READ. Original4258 refusal failure and50153
+60-second diagnostic timeout are preserved. A no-follow parent-relative object
+check now brackets worker observations, never reopening/adopting a copy.
+Corrected actual ARM39040 and the final source guest refuse the next READ,
+settle both groups, retain originals/review and reject work after restoration.
+Restored source metadata is checked after stop without clearing review.
+Strict input receipts now8+109 for four declared kinds. Complete source/root/
+device lifetime, uncertain stop, SDK/construction/OFD/request and S6/S7 remain.
+The latest clean focused union now passes all ten guests on identical source
+witnesses, with pinned host and Windows checks. Earlier healthy60s failures
+remain reliability evidence; twelve parent checks total1.949ms in one measured
+guest do not establish the sole cause of variation. The duplicate tracer sweep
+experiment was reverted/all DEBUG removed; no timing fix, full/hosted gate
+waiver or installation is claimed.
+
 Partial S5 now additionally exercises cancellation of READ collection. A fixed
 waiting client variant keeps the original control pipe open without READ ACK;
 a joined bounded observer cancels only on 88 original queued bytes. Actual

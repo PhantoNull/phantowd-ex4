@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 PhantoWD EX4 contributors
 BEGIN {
-    if (kind != "module" && kind != "configuration" && kind != "channel") { refused = 1 }
+    if (kind != "module" && kind != "configuration" && kind != "channel" && kind != "source") { refused = 1 }
     stage = "PHANTOWD_SAMBA_ROOT_STAGE_READY fresh=true hashes_during_copy=true no_overwrite=true refusals=5 scope=qemu-only"
     proof = "PHANTOWD_CAPTURE_INPUT_FAULT_PROOF kind=" kind " first_read_matched=true next_read_refused=true zero_frame=true client_stopped=true server_stopped=true review=true originals_retained=true input_restored=true restoration_refused=true stable_review_fds=true unchanged_data=true samples=1 authority=false scope=qemu-only"
     done = "PHANTOWD_CAPTURE_INPUT_FAULT_GUEST_DONE"

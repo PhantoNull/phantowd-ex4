@@ -3,6 +3,41 @@
 
 # Implementation status
 
+## Parent source alias — retained object identity, not equal bytes
+
+The fixed optional `-InputDrift source` case covers only the prepared parent
+`capture-read` leaf with a private RAM copy after one matched READ. Copy bytes,
+mode, ownership and size match, but object identity differs; the held original
+and the detached worker view remain original. A bounded pre-READ diagnostic
+showed the older input fence accepted this parent alias. The first full refusal
+test failed and one diagnostic exceeded its unchanged 60-second guest limit;
+neither is treated as qualification or evidence of successful next READ.
+
+The worker observer now brackets its original observations with no-follow
+`Fstatat` relative to the retained parent share and original `Fstat` comparisons.
+Missing, copied or symlink leaves cannot replace the expected object. No new
+open/adoption, identity refresh, generic launcher or input-fence relaxation.
+Actual corrected ARMv5 refuses the next READ with zero frame/unchanged sequence,
+verifies both groups stopped and retains original references in sticky review.
+After verified containment, restoring the parent path is checked only as
+metadata; READ/start/Close still refuse with stable reviewed FDs/data/base.
+
+Host real-file controls cover the original, identical foreign leaf, symlink,
+missing leaf and canceled observation. Strict input receipts now require the
+declared four fixed kinds (eight positive/109 malformed controls). This is a
+fixed parent-leaf binding, not complete source/mount/device lifetime, original
+OFD/request, interrupted I/O or product activation. No NAS, actual disk WRITE,
+new Docker storage, default CI boot, privilege or original timer change.
+A complete clean local focused union now passes all ten ARMv5 guests on exact
+source witnesses, alongside pinned host vet/unit/scoped races and Windows
+API/UI/cross checks. Earlier unions and healthy replicas hit the unchanged
+deadline and remain test-reliability evidence. The new guard's twelve measured
+calls total about 1.95 ms; this does not explain multi-second variation in that
+run or establish its sole cause. No timing fix is claimed. The duplicate-sweep
+experiment was reverted and DEBUG removed; all original fences/limits remain.
+This component checkpoint does not waive full-image, own hosted, independent
+reproduction or installation/release qualification.
+
 ## Canceled READ collection — bounded ARMv5 containment
 
 The optional `support/test-server-capture-open.ps1 -CancelRead` fixture uses a

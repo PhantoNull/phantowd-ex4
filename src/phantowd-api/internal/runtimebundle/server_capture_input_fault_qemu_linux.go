@@ -33,7 +33,7 @@ func parseCaptureInputFaultMarkerQEMU(line []byte) (captureInputFaultKindQEMU, e
 			continue
 		}
 		value := captureInputFaultKindQEMU(strings.TrimPrefix(field, prefix))
-		if kind != "" || (value != "module" && value != "configuration" && value != "channel") {
+		if kind != "" || (value != "module" && value != "configuration" && value != "channel" && value != "source") {
 			return "", ErrInvalid
 		}
 		kind = value
@@ -54,7 +54,7 @@ type captureInputCoverQEMU struct {
 	restoreErr        error
 }
 
-func newCaptureInputCoverQEMU(ctx context.Context, r *serverObserverRuntimeQEMU, kind captureInputFaultKindQEMU) (*captureInputCoverQEMU, error) {
+func newCaptureInputCoverQEMU(ctx context.Context, r *serverObserverRuntimeQEMU, kind captureInputFaultKindQEMU, originalData *os.File) (*captureInputCoverQEMU, error) {
 	if ctx == nil || r == nil || serverObserverCodeGuardQEMU() != nil {
 		return nil, ErrInvalid
 	}
@@ -86,10 +86,22 @@ func newCaptureInputCoverQEMU(ctx context.Context, r *serverObserverRuntimeQEMU,
 	if kind == "module" {
 		original = r.code.code.files[serverCaptureModuleObjectQEMU]
 		cover.target = "/" + serverObserverCodePathQEMU + "/" + serverCaptureModuleObjectQEMU
-	} else {
+	} else if kind == "configuration" {
 		original = r.configuration.contents.files["samba/smb.conf"]
 		cover.target = "/run/phantowd-native-samba-root/etc/samba/smb.conf"
 		flags |= unix.MS_NOEXEC
+	} else if kind == "source" {
+		// Borrow the already-held original ONLY to clone synthetic fixture
+		// bytes. Never reopen/adopt the covered alias as data authority.
+		original = originalData
+		cover.target = "/run/observer-readonly/capture-read"
+		flags |= unix.MS_NOEXEC
+		var held, pinned, named unix.Stat_t
+		if original == nil || unix.Fstat(int(original.Fd()), &held) != nil || unix.Fstat(int(r.captureWorker.file.Fd()), &pinned) != nil || unix.Lstat(cover.target, &named) != nil || !samePendingObjectQEMU(held, pinned) || !samePendingObjectQEMU(held, named) || held.Mode != unix.S_IFREG|0444 || held.Uid != 65534 || held.Gid != 65534 || held.Nlink != 1 || held.Size != 4 {
+			return nil, ErrMismatch
+		}
+	} else {
+		return nil, ErrInvalid
 	}
 	if original == nil {
 		return nil, ErrInvalid
@@ -114,6 +126,11 @@ func newCaptureInputCoverQEMU(ctx context.Context, r *serverObserverRuntimeQEMU,
 	if err := os.Chmod(path, info.Mode().Perm()); err != nil {
 		return cover, err
 	}
+	if kind == "source" {
+		if err := os.Chown(path, 65534, 65534); err != nil {
+			return cover, err
+		}
+	}
 	// Only the parent's prepared input path is covered. The isolated child's
 	// detached original code/configuration remains held and unchanged.
 	if err := unix.Mount(path, cover.target, "", unix.MS_BIND, ""); err != nil {
@@ -121,6 +138,20 @@ func newCaptureInputCoverQEMU(ctx context.Context, r *serverObserverRuntimeQEMU,
 	}
 	if err := unix.Mount("", cover.target, "", unix.MS_REMOUNT|unix.MS_BIND|flags, ""); err != nil {
 		return cover, err
+	}
+	if kind == "source" {
+		var held, named unix.Stat_t
+		if unix.Fstat(int(original.Fd()), &held) != nil || unix.Lstat(cover.target, &named) != nil || (held.Dev == named.Dev && held.Ino == named.Ino) || named.Mode != held.Mode || named.Uid != held.Uid || named.Gid != held.Gid || named.Size != held.Size || named.Nlink != held.Nlink {
+			return cover, ErrMismatch
+		}
+		copy, err := os.Open(cover.target)
+		if err != nil {
+			return cover, err
+		}
+		data, readErr := io.ReadAll(io.LimitReader(copy, 5))
+		if err := errors.Join(readErr, copy.Close()); err != nil || string(data) != "data" {
+			return cover, errors.Join(ErrMismatch, err)
+		}
 	}
 	return cover, ctx.Err()
 }
@@ -145,7 +176,7 @@ func (c *captureInputCoverQEMU) restoreQEMU() error {
 }
 
 func captureInputDriftProofQEMU(ctx context.Context, o *pendingClientOwnerQEMU, r *serverObserverRuntimeQEMU, original *os.File, initial unix.Stat_t, kind captureInputFaultKindQEMU) error {
-	cover, err := newCaptureInputCoverQEMU(ctx, r, kind)
+	cover, err := newCaptureInputCoverQEMU(ctx, r, kind, original)
 	if err != nil {
 		return fmt.Errorf("input cover construction: %w", err)
 	}
@@ -157,6 +188,13 @@ func captureInputDriftProofQEMU(ctx context.Context, o *pendingClientOwnerQEMU, 
 	}
 	if err := observeRestoredCaptureInputsQEMU(ctx, r); err != nil {
 		return fmt.Errorf("restored input fence: %w", err)
+	}
+	if kind == "source" {
+		// Point-in-time metadata only after verified stop; never clear review
+		// or resume from a path that happens to look restored.
+		if err := recheckCaptureSourceQEMU(ctx, r.shares[0], original, initial); err != nil {
+			return fmt.Errorf("restored parent source observation: %w", err)
+		}
 	}
 	if err := captureRetainedReviewProofQEMU(ctx, o, r, original, initial); err != nil {
 		return fmt.Errorf("retained review: %w", err)

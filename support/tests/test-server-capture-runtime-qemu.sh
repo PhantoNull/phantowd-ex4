@@ -14,7 +14,7 @@ if [ "$#" -eq 4 ] && [ "$4" = --client-open ]; then client_open=true
 elif [ "$#" -eq 4 ] && [ "$4" = --client-worker-exit ]; then client_open=true; worker_exit=true
 elif [ "$#" -eq 4 ] && [ "$4" = --client-withheld-read ]; then client_open=true; withheld_read=true
 elif [ "$#" -eq 4 ] && [ "$4" = --client-cancel-read ]; then client_open=true; cancel_read=true
-elif [ "$#" -eq 4 ] && { [ "$4" = --client-module-fault ] || [ "$4" = --client-configuration-fault ] || [ "$4" = --client-channel-fault ]; }; then
+elif [ "$#" -eq 4 ] && { [ "$4" = --client-module-fault ] || [ "$4" = --client-configuration-fault ] || [ "$4" = --client-channel-fault ] || [ "$4" = --client-source-fault ]; }; then
     client_open=true; input_fault=${4#--client-}; input_fault=${input_fault%-fault}
 elif [ "$#" -ne 3 ]; then exit 1
 fi

@@ -1,5 +1,35 @@
 # Fast API and file-service integration checks
 
+## Parent source leaf substitution — separate disposable ARM guest
+
+Run `support/test-server-capture-open.ps1 -InputDrift source` alone. After one
+matched READ, the fixture clones only the already-held synthetic four-byte
+object into private RAM, preserving bytes/mode/ownership/size, and covers the
+fixed parent leaf read-only/nosuid/nodev/noexec. It does not overwrite original
+data or adopt a copied alias. The detached child and retained original remain
+original. This is not a general path/PID/program selection interface.
+
+The worker observation now rechecks the fixed parent leaf without following
+symlinks, against the held original's metadata, before/after its existing
+observations. The next READ must return zero metadata, retain sequence one,
+settle both groups and retain review/original references. Restore only after
+verified stop; restored-leaf metadata is not admission or recovery. Repeated
+READ/start/Close refuse; reviewed FD count, data and base remain unchanged.
+
+The original input-fault verifier now admits only four fixed kinds, with eight
+positive/109 malformed controls. Real-file unit controls and unchanged old
+fault/healthy regressions remain required. Preserve the first failed refusal
+and the 60-second diagnostic timeout; the bounded earlier-fence observation
+is diagnosis only, never proof of READ success. No widened original limits,
+privileges, default CI boots or Docker storage. Complete source/root/device
+lifetime, original OFD/request, interrupted I/O and product remain unqualified.
+The latest complete clean focused union passes all ten guests, with original
+fences/deadlines preserved and DEBUG removed. Keep earlier deadline failures
+and older-commit baseline success as reliability evidence: a favorable complete
+rerun is not a timing fix. Twelve guard checks measured about 1.95 ms total in
+one healthy guest; the sole cause of timing variation remains unproven. Full/
+own-hosted/reproducibility/product/installation qualification is not waived.
+
 ## Canceled READ collection — separate disposable ARM guest
 
 Run `support/test-server-capture-open.ps1 -CancelRead` without another fixed
@@ -50,7 +80,7 @@ hardware qualification or an installable product.
 ## Capture input substitutions and receiver drift — separate disposable guests
 
 Run `support/test-server-capture-open.ps1 -InputDrift module`, `configuration`
-or `channel` separately. These are three fixed test faults, not launcher/profile
+or `channel` separately. Together with `source` above these are four fixed test faults, not launcher/profile
 or arbitrary-path/PID selection; combining them with `-WorkerExit` refuses
 before Docker. Each guest first matches one actual authenticated READ. The
 module/configuration cases bind-cover only a prepared parent RAM path with a
@@ -65,7 +95,7 @@ containment. A dedicated point-in-time observer then checks restored metadata;
 it never clears the code keeper's or runtime's review and cannot authorize
 execution. Repeated READ/start/Close refusal, stable reviewed FD count and
 unchanged data/base are mandatory. Strict receipts require the correct fault
-kind, with six positive/82 malformed controls. The first mistaken attempt to
+kind, now with eight positive/109 malformed controls. The first mistaken attempt to
 normally revalidate the reviewed keeper failed and is preserved, not waived.
 
 All three actual ARMv5 cases pass in the unchanged bounded RAM/RO/snapshot

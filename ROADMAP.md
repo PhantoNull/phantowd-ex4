@@ -67,6 +67,22 @@ currently product-qualified for migration.
 
 ## Current baseline
 
+A fixed parent source-leaf substitution case now qualifies refusal after one
+matched READ: byte-identical RAM copy is not the original object. Parent-
+relative no-follow metadata checks bracket worker observations; next READ
+returns zero metadata without advancing sequence, both groups stop, originals
+and review remain, and restored metadata cannot allow READ/start/Close. Data/
+base and reviewed FD counts remain unchanged. Four input-fault kinds now have
+eight positive/109 malformed receipt controls. This is not complete source/
+root/device lifetime or original OFD/request authority. Remaining uncertain
+stop, SDK/construction, full/exact-head hosted, hardware/recovery/migration and
+product gates are unchanged.
+A complete clean focused union now passes ten ARMv5 guests plus pinned host
+and Windows checks. Earlier healthy deadlines remain an engineering-reliability
+gate; twelve new checks measured1.949ms in one guest are not a demonstrated
+timing fix. Full/own-hosted/independent reproduction and product qualification
+remain mandatory. Original owner fences and deadlines are unchanged.
+
 A fixed optional ARMv5 canceled-collection case now verifies cancellation only
 after original queued bytes appear, a joined bounded observer, zero returned
 metadata/sequence, verified client/server stop and unconsumed original queue/

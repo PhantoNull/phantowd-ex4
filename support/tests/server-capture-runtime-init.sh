@@ -72,7 +72,7 @@ if grep -qw 'phantowd_capture_client_open_fixture=1' /proc/cmdline; then
             echo PHANTOWD_CAPTURE_CANCEL_READ_GUEST_DONE
         elif grep -qw 'phantowd_capture_uncertain_read_fixture=1' /proc/cmdline; then
             echo PHANTOWD_CAPTURE_UNCERTAIN_READ_GUEST_DONE
-        elif grep -Eq '(^| )phantowd_capture_input_fault_fixture=(module|configuration|channel)( |$)' /proc/cmdline; then
+        elif grep -Eq '(^| )phantowd_capture_input_fault_fixture=(module|configuration|channel|source)( |$)' /proc/cmdline; then
             echo PHANTOWD_CAPTURE_INPUT_FAULT_GUEST_DONE
         elif grep -qw 'phantowd_capture_worker_exit_fixture=1' /proc/cmdline; then
             echo PHANTOWD_CAPTURE_WORKER_EXIT_GUEST_DONE
