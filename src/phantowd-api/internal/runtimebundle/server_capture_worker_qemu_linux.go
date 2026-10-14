@@ -140,6 +140,12 @@ func (r *serverObserverRuntimeQEMU) observeCaptureWorkerLockedQEMU(ctx context.C
 	if r.closed || r.review || r.daemon == nil || r.pid <= 1 {
 		return ErrReviewRequired
 	}
+	if r.code == nil || r.code.anchor == nil {
+		return ErrInvalid
+	}
+	if err := recheckCaptureShareBindingQEMU(ctx, r.code.anchor, r.shares[0], r.shareIdentity[0]); err != nil {
+		return fmt.Errorf("capture parent share binding: %w", err)
+	}
 	if err := recheckCaptureSourceQEMU(ctx, r.shares[0], original, initial); err != nil {
 		return fmt.Errorf("capture parent source binding: %w", err)
 	}
@@ -205,6 +211,9 @@ func (r *serverObserverRuntimeQEMU) observeCaptureWorkerLockedQEMU(ctx context.C
 	w.start = before
 	if err := recheckCaptureSourceQEMU(ctx, r.shares[0], original, initial); err != nil {
 		return fmt.Errorf("capture parent source after worker observation: %w", err)
+	}
+	if err := recheckCaptureShareBindingQEMU(ctx, r.code.anchor, r.shares[0], r.shareIdentity[0]); err != nil {
+		return fmt.Errorf("capture parent share after worker observation: %w", err)
 	}
 	return ctx.Err()
 }

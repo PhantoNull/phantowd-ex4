@@ -13,7 +13,7 @@ refused() {
     if printf '%s\n' "$1" | verify; then echo 'Input-fault verifier accepted incomplete proof' >&2; exit 1; fi
     negative=$((negative + 1))
 }
-for kind in module configuration channel source; do
+for kind in module configuration channel source source-root; do
     proof="PHANTOWD_CAPTURE_INPUT_FAULT_PROOF kind=$kind first_read_matched=true next_read_refused=true zero_frame=true client_stopped=true server_stopped=true review=true originals_retained=true input_restored=true restoration_refused=true stable_review_fds=true unchanged_data=true samples=1 authority=false scope=qemu-only"
     printf '%s\n' "$stage" "$proof" "$done" | verify
     printf '%s\r\n' "$stage" "$proof" "$done" | verify
@@ -35,4 +35,4 @@ for kind in module configuration channel source; do
 done
 kind=unknown
 refused "$stage$newline$proof$newline$done"
-printf 'PHANTOWD_CAPTURE_INPUT_FAULT_LOG_CONTROLS_DONE positive=8 negative=%s scope=host-parser-only guest=false\n' "$negative"
+printf 'PHANTOWD_CAPTURE_INPUT_FAULT_LOG_CONTROLS_DONE positive=10 negative=%s scope=host-parser-only guest=false\n' "$negative"

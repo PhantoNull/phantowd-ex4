@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strconv"
 	"strings"
 
 	"golang.org/x/sys/unix"
@@ -33,7 +34,7 @@ func parseCaptureInputFaultMarkerQEMU(line []byte) (captureInputFaultKindQEMU, e
 			continue
 		}
 		value := captureInputFaultKindQEMU(strings.TrimPrefix(field, prefix))
-		if kind != "" || (value != "module" && value != "configuration" && value != "channel" && value != "source") {
+		if kind != "" || (value != "module" && value != "configuration" && value != "channel" && value != "source" && value != "source-root") {
 			return "", ErrInvalid
 		}
 		kind = value
@@ -80,6 +81,32 @@ func newCaptureInputCoverQEMU(ctx context.Context, r *serverObserverRuntimeQEMU,
 			return cover, err
 		}
 		return cover, nil
+	}
+	if kind == "source-root" {
+		// Cover the fixed parent mount with the SAME original directory.
+		// Bytes/device/inode remain equal, but unique mount identity changes.
+		// The already-detached worker must retain its original mount/object.
+		cover.target = "/run/observer-readonly"
+		if err := recheckCaptureShareBindingQEMU(ctx, r.code.anchor, r.shares[0], r.shareIdentity[0]); err != nil {
+			return nil, err
+		}
+		if err := unix.Mount("/proc/self/fd/"+strconv.FormatUint(uint64(r.shares[0].Fd()), 10), cover.target, "", unix.MS_BIND, ""); err != nil {
+			return cover, err
+		}
+		if err := unix.Mount("", cover.target, "", unix.MS_REMOUNT|unix.MS_BIND|unix.MS_RDONLY|unix.MS_NOSUID|unix.MS_NODEV|unix.MS_NOEXEC, ""); err != nil {
+			return cover, err
+		}
+		fd, err := unix.Open(cover.target, unix.O_PATH|unix.O_DIRECTORY|unix.O_NOFOLLOW|unix.O_CLOEXEC, 0)
+		if err != nil {
+			return cover, err
+		}
+		changed, statErr := serverObserverRootIdentityFromFDQEMU(fd)
+		closeErr := unix.Close(fd)
+		expected := r.shareIdentity[0]
+		if statErr != nil || closeErr != nil || changed.deviceMajor != expected.deviceMajor || changed.deviceMinor != expected.deviceMinor || changed.inode != expected.inode || changed.mount == expected.mount {
+			return cover, errors.Join(ErrMismatch, statErr, closeErr)
+		}
+		return cover, ctx.Err()
 	}
 	var original *os.File
 	flags := uintptr(unix.MS_RDONLY | unix.MS_NOSUID | unix.MS_NODEV)
@@ -168,7 +195,7 @@ func (c *captureInputCoverQEMU) restoreQEMU() error {
 		c.restoreErr = unix.SetsockoptInt(int(c.receiver.Fd()), unix.SOL_SOCKET, unix.SO_PASSCRED, 1)
 	} else {
 		c.restoreErr = unix.Unmount(c.target, 0)
-		if c.restoreErr == nil {
+		if c.restoreErr == nil && c.directory != "" {
 			c.restoreErr = os.RemoveAll(c.directory)
 		}
 	}
@@ -189,9 +216,12 @@ func captureInputDriftProofQEMU(ctx context.Context, o *pendingClientOwnerQEMU, 
 	if err := observeRestoredCaptureInputsQEMU(ctx, r); err != nil {
 		return fmt.Errorf("restored input fence: %w", err)
 	}
-	if kind == "source" {
+	if kind == "source" || kind == "source-root" {
 		// Point-in-time metadata only after verified stop; never clear review
 		// or resume from a path that happens to look restored.
+		if err := recheckCaptureShareBindingQEMU(ctx, r.code.anchor, r.shares[0], r.shareIdentity[0]); err != nil {
+			return fmt.Errorf("restored parent share observation: %w", err)
+		}
 		if err := recheckCaptureSourceQEMU(ctx, r.shares[0], original, initial); err != nil {
 			return fmt.Errorf("restored parent source observation: %w", err)
 		}

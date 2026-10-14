@@ -14,7 +14,7 @@ if [ "$#" -eq 4 ] && [ "$4" = --client-open ]; then client_open=true
 elif [ "$#" -eq 4 ] && [ "$4" = --client-worker-exit ]; then client_open=true; worker_exit=true
 elif [ "$#" -eq 4 ] && [ "$4" = --client-withheld-read ]; then client_open=true; withheld_read=true
 elif [ "$#" -eq 4 ] && [ "$4" = --client-cancel-read ]; then client_open=true; cancel_read=true
-elif [ "$#" -eq 4 ] && { [ "$4" = --client-module-fault ] || [ "$4" = --client-configuration-fault ] || [ "$4" = --client-channel-fault ] || [ "$4" = --client-source-fault ]; }; then
+elif [ "$#" -eq 4 ] && { [ "$4" = --client-module-fault ] || [ "$4" = --client-configuration-fault ] || [ "$4" = --client-channel-fault ] || [ "$4" = --client-source-fault ] || [ "$4" = --client-source-root-fault ]; }; then
     client_open=true; input_fault=${4#--client-}; input_fault=${input_fault%-fault}
 elif [ "$#" -ne 3 ]; then exit 1
 fi
@@ -59,6 +59,15 @@ truncate -s 128M "$scratch/rootfs.ext2"
 "$output/host/sbin/resize2fs" -f "$scratch/rootfs.ext2" >/dev/null 2>&1
 debugfs="$output/host/sbin/debugfs"
 if "$client_open"; then
+    (cd "$source/src/phantowd-api" && CGO_ENABLED=0 GOOS=linux GOARCH=arm GOARM=5 \
+        timeout --signal=TERM --kill-after=1 30 "$go" test -tags=qemu -c -trimpath -o "$scratch/capture-source-tests" ./internal/runtimebundle)
+    "$debugfs" -w -R "write $scratch/capture-source-tests /usr/sbin/phantowd-capture-source-tests" "$scratch/rootfs.ext2" >/dev/null 2>&1
+    "$debugfs" -w -R "set_inode_field /usr/sbin/phantowd-capture-source-tests mode 0100555" "$scratch/rootfs.ext2" >/dev/null 2>&1
+    "$debugfs" -w -R "set_inode_field /usr/sbin/phantowd-capture-source-tests uid 0" "$scratch/rootfs.ext2" >/dev/null 2>&1
+    "$debugfs" -w -R "set_inode_field /usr/sbin/phantowd-capture-source-tests gid 0" "$scratch/rootfs.ext2" >/dev/null 2>&1
+    "$debugfs" -R "dump /usr/sbin/phantowd-capture-source-tests $scratch/source-tests-readback" "$scratch/rootfs.ext2" >/dev/null 2>&1
+    cmp "$scratch/capture-source-tests" "$scratch/source-tests-readback"
+    rm "$scratch/source-tests-readback"
     timeout --signal=TERM --kill-after=1 30 "$cc" -static -std=c11 -O2 -Wall -Wextra -Werror -Wno-unused-function \
         -ffunction-sections -fdata-sections -Wl,--gc-sections,-z,relro,-z,now \
         -DPHANTOWD_SAMBA_CAPTURE_STATUS_FIXTURE=1 -o "$scratch/status-bootstrap" "$source/support/tests/samba-server-capture-status-bootstrap-qemu.c"
@@ -175,6 +184,10 @@ timeout --signal=TERM --kill-after=2 60 qemu-system-arm -M versatilepb -cpu arm9
     -display none -serial stdio -monitor none -nic none -no-reboot >"$scratch/guest.log" 2>&1 || status=$?
 cat "$scratch/guest.log"
 [ "$status" -eq 0 ] || exit 1
+if "$client_open"; then
+    [ "$(awk '{ sub(/\r$/, "") } /^--- PASS: TestServerCaptureShareBindingRejectsReplacedParentWithoutAdoptingIt \([0-9.]+s\)$/ { passed++ } END { print passed+0 }' "$scratch/guest.log")" -eq 1 ]
+    if grep -Eq '^--- (SKIP|FAIL):|^testing: warning: no tests to run' "$scratch/guest.log"; then exit 1; fi
+fi
 if "$cancel_read"; then
     awk -f "$source/support/tests/verify-server-capture-cancel-read-log.awk" "$scratch/guest.log"
 elif "$withheld_read"; then

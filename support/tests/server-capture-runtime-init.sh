@@ -67,12 +67,14 @@ if grep -qw 'phantowd_capture_client_open_fixture=1' /proc/cmdline; then
     /usr/sbin/phantowd-pending-client-inputs stage
     mount -o remount,ro,nosuid,nodev /run/phantowd-pending-client-input
     mount -o remount,ro,nosuid,nodev /run/phantowd-pending-client-bootstrap
-    if /usr/sbin/phantowd-runtime-bundle-probe server-capture-open; then
+    export TMPDIR=/run
+    if /usr/sbin/phantowd-capture-source-tests -test.run '^TestServerCaptureShareBindingRejectsReplacedParentWithoutAdoptingIt$' -test.timeout 5s -test.count 1 -test.v && \
+        /usr/sbin/phantowd-runtime-bundle-probe server-capture-open; then
         if grep -qw 'phantowd_capture_cancel_read_fixture=1' /proc/cmdline; then
             echo PHANTOWD_CAPTURE_CANCEL_READ_GUEST_DONE
         elif grep -qw 'phantowd_capture_uncertain_read_fixture=1' /proc/cmdline; then
             echo PHANTOWD_CAPTURE_UNCERTAIN_READ_GUEST_DONE
-        elif grep -Eq '(^| )phantowd_capture_input_fault_fixture=(module|configuration|channel|source)( |$)' /proc/cmdline; then
+        elif grep -Eq '(^| )phantowd_capture_input_fault_fixture=(module|configuration|channel|source|source-root)( |$)' /proc/cmdline; then
             echo PHANTOWD_CAPTURE_INPUT_FAULT_GUEST_DONE
         elif grep -qw 'phantowd_capture_worker_exit_fixture=1' /proc/cmdline; then
             echo PHANTOWD_CAPTURE_WORKER_EXIT_GUEST_DONE

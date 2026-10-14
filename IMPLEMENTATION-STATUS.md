@@ -3,6 +3,35 @@
 
 # Implementation status
 
+## Parent share mount — original identity, not an equal directory
+
+The optional `-InputDrift source-root` guest bind-covers the fixed parent
+share with the SAME original directory after one matched READ. Device, inode
+and content remain equal; unique mount identity differs. Existing held
+share/worker objects remain original, without writes to data or a new backend.
+
+The private worker fence now also checks that fixed share beneath the existing
+retained root anchor, with beneath/no-symlink O_PATH traversal and directory
+device/inode/unique-mount comparison before/after worker observations. The
+temporary descriptor is metadata only and is closed, never adopted as a share.
+Original root/code/input/ownership/filesystem/flag checks remain mandatory.
+
+Actual ARMv5 proves next-READ refusal, zero frame, verified group stop,
+original-reference retention, sticky review and refusal after mount restoration.
+Real directory replacement, symlink, missing/restored path and cancellation
+controls execute in the pinned guest. The wrapper requires that exact test to
+PASS, not skip or match zero tests. WSL lacks unique mount IDs: its host test
+proves refusal, not positive compatibility; no fallback weakens this boundary.
+
+The exact focused regression passes eleven sequential ARM guests, pinned host
+vet/tagged units/both scoped race tests and Windows API/UI/cross checks.
+Strict input receipts now cover five fixed kinds (10 positive/136 malformed
+controls). Original limits/fences/privileges and normal client bytes are
+unchanged; no new image/volume, default CI boot or NAS operation. This remains
+partial fixture lifetime qualification, not complete source/device/OFD/request,
+uncertain-stop, full-image/hosted, recovery or product activation. Prior deadline
+failures remain reliability evidence, not resolved by a successful rerun.
+
 ## Parent source alias — retained object identity, not equal bytes
 
 The fixed optional `-InputDrift source` case covers only the prepared parent
@@ -23,8 +52,8 @@ After verified containment, restoring the parent path is checked only as
 metadata; READ/start/Close still refuse with stable reviewed FDs/data/base.
 
 Host real-file controls cover the original, identical foreign leaf, symlink,
-missing leaf and canceled observation. Strict input receipts now require the
-declared four fixed kinds (eight positive/109 malformed controls). This is a
+missing leaf and canceled observation. Its original strict input checkpoint
+covered four fixed kinds (eight positive/109 malformed controls). This is a
 fixed parent-leaf binding, not complete source/mount/device lifetime, original
 OFD/request, interrupted I/O or product activation. No NAS, actual disk WRITE,
 new Docker storage, default CI boot, privilege or original timer change.

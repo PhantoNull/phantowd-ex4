@@ -73,6 +73,8 @@ A canceled-collection fixture additionally verifies bounded observer settlement
 and the same review/queue retention, not interruption of server I/O.
 A parent source-leaf substitution fixture rejects a byte-identical replacement
 against the original held object and preserves review after restoration.
+A fixed parent-share fixture also rejects a new mount of the same directory:
+equal content and inode do not replace the original unique mount identity.
 It does not qualify pending writes, recovery or product service activation;
 see the [focused test contract](support/QEMU-FAST-TESTS.md#dedicated-same-open-client-prerequisites-host-and-qemu).
 

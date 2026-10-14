@@ -72,3 +72,80 @@ func TestServerCaptureSourceBindingRejectsIdenticalForeignLeaf(t *testing.T) {
 		t.Fatal("canceled observation lost cause", err)
 	}
 }
+
+func TestServerCaptureShareBindingRejectsReplacedParentWithoutAdoptingIt(t *testing.T) {
+	anchorName := t.TempDir()
+	rootName := filepath.Join(anchorName, "run", "observer-readonly")
+	if err := os.MkdirAll(rootName, 0755); err != nil {
+		t.Fatal(err)
+	}
+	anchor, err := os.Open(anchorName)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer anchor.Close()
+	root, err := os.Open(rootName)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer root.Close()
+	var initial unix.Statx_t
+	const required = unix.STATX_BASIC_STATS | unix.STATX_MNT_ID_UNIQUE
+	if err := unix.Statx(int(root.Fd()), "", unix.AT_EMPTY_PATH|unix.AT_NO_AUTOMOUNT, required, &initial); err != nil {
+		t.Fatal("original root identity unavailable", err)
+	}
+	if initial.Mask&required != required {
+		// A host kernel without unique mount IDs cannot qualify the positive
+		// binding. Verify refusal here; the pinned ARM guest must run, not skip,
+		// the real replacement/symlink/missing/restoration controls below.
+		expected := serverObserverRootIdentityQEMU{initial.Dev_major, initial.Dev_minor, initial.Ino, 1}
+		if err := recheckCaptureShareBindingQEMU(context.Background(), anchor, root, expected); !errors.Is(err, ErrMismatch) {
+			t.Fatal("incomplete kernel identity admitted", err)
+		}
+		t.Skip("unique mount IDs unavailable; positive controls require pinned guest")
+	}
+	expected := serverObserverRootIdentityQEMU{initial.Dev_major, initial.Dev_minor, initial.Ino, initial.Mnt_id}
+	if err := recheckCaptureShareBindingQEMU(context.Background(), anchor, root, expected); err != nil {
+		t.Fatal("original share binding refused", err)
+	}
+	if err := os.Rename(rootName, rootName+"-held"); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Mkdir(rootName, 0755); err != nil {
+		t.Fatal(err)
+	}
+	for range 3 {
+		if err := recheckCaptureShareBindingQEMU(context.Background(), anchor, root, expected); !errors.Is(err, ErrMismatch) {
+			t.Fatal("replacement share adopted", err)
+		}
+		if _, err := root.Stat(); err != nil {
+			t.Fatal("original share lost", err)
+		}
+	}
+	if err := os.Remove(rootName); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(rootName+"-held", rootName); err != nil {
+		t.Fatal(err)
+	}
+	if err := recheckCaptureShareBindingQEMU(context.Background(), anchor, root, expected); !errors.Is(err, ErrMismatch) {
+		t.Fatal("share symlink admitted", err)
+	}
+	if err := os.Remove(rootName); err != nil {
+		t.Fatal(err)
+	}
+	if err := recheckCaptureShareBindingQEMU(context.Background(), anchor, root, expected); !errors.Is(err, ErrMismatch) {
+		t.Fatal("missing share admitted", err)
+	}
+	if err := os.Rename(rootName+"-held", rootName); err != nil {
+		t.Fatal(err)
+	}
+	if err := recheckCaptureShareBindingQEMU(context.Background(), anchor, root, expected); err != nil {
+		t.Fatal("restored metadata refused", err)
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	if err := recheckCaptureShareBindingQEMU(ctx, anchor, root, expected); !errors.Is(err, context.Canceled) {
+		t.Fatal("cancellation lost", err)
+	}
+}

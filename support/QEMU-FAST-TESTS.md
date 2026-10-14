@@ -1,5 +1,31 @@
 # Fast API and file-service integration checks
 
+## Parent share-mount substitution — separate disposable ARM guest
+
+Run `support/test-server-capture-open.ps1 -InputDrift source-root` alone.
+After one matched READ, bind-cover only the prepared parent share with the
+SAME original directory, read-only/nosuid/nodev/noexec. Device/inode/content
+remain equal; unique mount ID must differ. The detached worker and held
+original share remain original. No data rewrite or arbitrary path selection.
+
+Fixed original-root-relative no-symlink O_PATH observations bracket worker
+checks. The temporary directory descriptor supplies metadata only, never a
+replacement share. Next READ must refuse with zero frame; independently
+settled groups, sticky review/original references, restoration refusal and
+stable reviewed FDs/data/base are mandatory. Restore the mount only after
+verified stop; post-stop metadata observations do not authorize recovery.
+
+All nine client guests also execute the exact real directory-binding unit in
+the pinned ARM kernel: replacement/symlink/missing/restoration/cancellation.
+One exact PASS is required; SKIP/FAIL/zero tests refuse. Host kernels lacking
+unique mount IDs prove refusal only and cannot qualify the positive controls.
+The five fixed input kinds have10 positive/136 malformed receipt controls.
+The complete eleven-guest focused union and pinned host/Windows checks pass.
+No original deadline/fence/privilege change, new image/volume or default CI
+boot. Earlier timing failures remain unresolved; full/hosted/independent
+reproduction, complete source/device/OFD/request/uncertain-stop, hardware and
+product qualification are not waived.
+
 ## Parent source leaf substitution — separate disposable ARM guest
 
 Run `support/test-server-capture-open.ps1 -InputDrift source` alone. After one
@@ -16,7 +42,7 @@ settle both groups and retain review/original references. Restore only after
 verified stop; restored-leaf metadata is not admission or recovery. Repeated
 READ/start/Close refuse; reviewed FD count, data and base remain unchanged.
 
-The original input-fault verifier now admits only four fixed kinds, with eight
+The original input-fault checkpoint admitted four fixed kinds, with eight
 positive/109 malformed controls. Real-file unit controls and unchanged old
 fault/healthy regressions remain required. Preserve the first failed refusal
 and the 60-second diagnostic timeout; the bounded earlier-fence observation
@@ -80,7 +106,7 @@ hardware qualification or an installable product.
 ## Capture input substitutions and receiver drift — separate disposable guests
 
 Run `support/test-server-capture-open.ps1 -InputDrift module`, `configuration`
-or `channel` separately. Together with `source` above these are four fixed test faults, not launcher/profile
+or `channel` separately. Together with `source` and `source-root` above these are five fixed test faults, not launcher/profile
 or arbitrary-path/PID selection; combining them with `-WorkerExit` refuses
 before Docker. Each guest first matches one actual authenticated READ. The
 module/configuration cases bind-cover only a prepared parent RAM path with a
@@ -95,7 +121,7 @@ containment. A dedicated point-in-time observer then checks restored metadata;
 it never clears the code keeper's or runtime's review and cannot authorize
 execution. Repeated READ/start/Close refusal, stable reviewed FD count and
 unchanged data/base are mandatory. Strict receipts require the correct fault
-kind, now with eight positive/109 malformed controls. The first mistaken attempt to
+kind, now with10 positive/136 malformed controls. The first mistaken attempt to
 normally revalidate the reviewed keeper failed and is preserved, not waived.
 
 All three actual ARMv5 cases pass in the unchanged bounded RAM/RO/snapshot

@@ -8,7 +8,7 @@ package runtimebundle
 import "testing"
 
 func TestServerCaptureInputFaultMarkerIsFixedAndUnambiguous(t *testing.T) {
-	for _, kind := range []string{"module", "configuration", "channel", "source"} {
+	for _, kind := range []string{"module", "configuration", "channel", "source", "source-root"} {
 		value, err := parseCaptureInputFaultMarkerQEMU([]byte("console=ttyAMA0 phantowd_capture_input_fault_fixture=" + kind + " root=/dev/sda"))
 		if err != nil || string(value) != kind {
 			t.Fatal("fixed fixture marker refused", kind, err)

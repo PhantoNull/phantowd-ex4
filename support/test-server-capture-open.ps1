@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 PhantoWD EX4 contributors
 [CmdletBinding()]
 param([string]$BaseArtifactDir, [switch]$WorkerExit, [switch]$UncertainRead, [switch]$CancelRead,
-    [ValidateSet('module', 'configuration', 'channel', 'source')][string]$InputDrift)
+    [ValidateSet('module', 'configuration', 'channel', 'source', 'source-root')][string]$InputDrift)
 $ErrorActionPreference = 'Stop'
 if ($WorkerExit -and $InputDrift) { throw 'Choose exactly one fixed fault fixture.' }
 if ($UncertainRead -and ($WorkerExit -or $InputDrift)) { throw 'Choose exactly one fixed fault fixture.' }

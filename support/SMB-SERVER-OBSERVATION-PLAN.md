@@ -3,6 +3,19 @@
 
 # M4.5: retained server-open observation integration plan
 
+Partial S5 now also covers the fixed parent share mount: binding the SAME
+directory at its parent path preserves inode/content but changes unique mount
+identity. No-symlink original-root-relative O_PATH metadata fences bracket
+worker observations, close temporary observations and never adopt a replacement
+share. Actual ARM next-READ refusal/verified groups/sticky originals-review/
+restoration refusal/data/base pass. Real directory/symlink/missing controls
+must PASS in the pinned guest, not skip. Unsupported WSL host kernels prove
+refusal only. Exact eleven-guest union/pinned host/Windows and strict10+136
+pass at original bounds. Complete source/device lifetime, uncertain stop,
+SDK/construction/OFD/request/S6/S7/full/hosted/product gates remain; a favorable
+rerun does not fix prior reliability failures. No NAS/new Docker storage or
+new privileges/default CI boot.
+
 Partial S5 adds the fixed parent source-leaf cover after one matched READ.
 The old input fence accepted the changed parent alias while the held object
 and child remained original; bounded diagnostic70937 proves only that gap,
@@ -12,7 +25,7 @@ check now brackets worker observations, never reopening/adopting a copy.
 Corrected actual ARM39040 and the final source guest refuse the next READ,
 settle both groups, retain originals/review and reject work after restoration.
 Restored source metadata is checked after stop without clearing review.
-Strict input receipts now8+109 for four declared kinds. Complete source/root/
+That checkpoint's strict input receipts were8+109 for four declared kinds. Complete source/root/
 device lifetime, uncertain stop, SDK/construction/OFD/request and S6/S7 remain.
 The latest clean focused union now passes all ten guests on identical source
 witnesses, with pinned host and Windows checks. Earlier healthy60s failures

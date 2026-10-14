@@ -67,12 +67,24 @@ currently product-qualified for migration.
 
 ## Current baseline
 
+The optional fixed parent-share mount substitution now also passes: binding
+the SAME directory at the parent path changes unique mount identity without
+changing device/inode/content. Original-root-relative no-symlink metadata
+fences reject that replacement before the next READ; verified stop, retained
+review/originals, restored-metadata-only observations and retry/Close refusal
+pass. Real directory/symlink/missing controls must execute, not skip, in the
+pinned ARM guest; unsupported host kernels refuse without an identity fallback.
+Eleven focused guests and pinned host/Windows checks pass on exact sources;
+five fault kinds have10+136 receipt controls. No timer/fence/privilege widening
+or new Docker storage/CI boot. Complete lifetime, request/OFD, uncertain-stop,
+full/own-hosted/reliability/hardware/recovery/product gates remain required.
+
 A fixed parent source-leaf substitution case now qualifies refusal after one
 matched READ: byte-identical RAM copy is not the original object. Parent-
 relative no-follow metadata checks bracket worker observations; next READ
 returns zero metadata without advancing sequence, both groups stop, originals
 and review remain, and restored metadata cannot allow READ/start/Close. Data/
-base and reviewed FD counts remain unchanged. Four input-fault kinds now have
+base and reviewed FD counts remain unchanged. Its four input-fault kinds had
 eight positive/109 malformed receipt controls. This is not complete source/
 root/device lifetime or original OFD/request authority. Remaining uncertain
 stop, SDK/construction, full/exact-head hosted, hardware/recovery/migration and
