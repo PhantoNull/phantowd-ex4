@@ -3,6 +3,17 @@
 
 # Implementation status
 
+## Next state/recovery contract — proposed, not implemented
+
+The [M1.3b recovery design](src/phantowd-api/internal/revisionstore/RECOVERY-DESIGN.md)
+defines proposed bounded intent/receipt records, read-only matching, ordered work
+packets and interruption/refusal tests. It distinguishes recorded local commit
+confirmation from client acknowledgement and preserves current bootstrap/Owner
+boundaries. Schema approval, a retained evidence collector, writer/reconciliation,
+complete state-bundle provisioning and physical placement remain outstanding.
+No journal, automatic recovery, HTTP surface or service activation is added by
+this documentation checkpoint.
+
 ## Retained policy bootstrap authority — read-only lifetime only
 
 `OpenBootstrapAuthorityWithCodec` and fixed NAS adapter retain the original

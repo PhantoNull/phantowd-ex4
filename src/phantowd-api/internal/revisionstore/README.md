@@ -27,6 +27,12 @@ EIO. Review remains instance-local, not a durable recovery record. No init/
 write/admission/Owner handoff/journal/HTTP/startup is implemented. A future
 receipt/state-bundle contract must govern boot and operator recovery.
 
+[Recovery design and work packets](RECOVERY-DESIGN.md) propose versioned private
+intent/receipt matching before any writer or admission change. It is not yet an
+approved schema or implemented recovery mechanism. Local recorded confirmation
+and response delivery are distinct; restoring valid bytes does not settle an
+interrupted operation or clear prior review.
+
 Whole tagged pinned API vet/unit/store race3, Windows and actual ARM52 ordered
 receipts pass with strict2+133, normal unmount/base hash and unchanged limits.
 No new default boot/Docker storage/NAS/privilege or removed older assertion.

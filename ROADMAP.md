@@ -697,6 +697,17 @@ and recovery do not. **Depends on:** M0 for tests; M7 for physical placement.
   records and recovery identity; interrupted publication without confirmed
   readback remains review. Keep state-bundle/provisioning and qualified physical
   placement separate. A volatile watch/value is never durable boot permission.
+  The [proposed operation-evidence contract](src/phantowd-api/internal/revisionstore/RECOVERY-DESIGN.md)
+  separates local commit records from client response delivery. It is a design,
+  not an implemented journal or approved admission protocol. Implement in order:
+  **M1.3b.1/b.2** strict private intent/receipt codecs and pure diagnostic matcher;
+  **M1.3b.3** retained read-only evidence collection;
+  **M1.3c** one-attempt writer with preserved base and every interrupted boundary;
+  **M1.3d** explicitly authorized reconciliation; **M1.2c** complete boot bundle.
+  Missing/mismatched evidence never authorizes replay or service startup. The
+  schema API, namespace/atomic-publication strategy, low-space retention and
+  durable-review recovery require explicit decisions before the respective
+  mutating implementation. Existing Store/Owner semantics remain unchanged.
 - **M1.3 — Recover interrupted operations.** Extend current journal semantics
   to an explicit review/reconciliation workflow. An intent plus missing reply
   does not imply failure or success. Preserve orphaned publications; compare
