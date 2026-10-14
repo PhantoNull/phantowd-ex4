@@ -29,7 +29,11 @@ not use Docker. If the pinned Buildroot image and workspace are already
 available, `support/test-api-linux.ps1` additionally runs the full API vet/test
 suite on Linux/amd64, including Linux-only tests; it reuses the workspace
 read-only and never pulls/builds an image or creates a volume. This remains
-host execution, not ARMv5/QEMU qualification. The full QEMU builder retains two
+host execution, not ARMv5/QEMU qualification. It bypasses the builder's ownership
+repair entrypoint and runs UID/GID 1000 with no capabilities/no-new-privileges,
+four CPUs, 2 GiB memory, 256 PIDs and 1 GiB disposable tmpfs. Its Linux suite
+times out at 180 seconds with a 10-second termination grace; timeout/OOM/failure
+does not trigger another run or resource cleanup. The full QEMU builder retains two
 fixed named Docker volumes for incremental Buildroot output and compiler cache.
 It requires 40 GiB free on the Docker data drive, but that is a start-time
 guard, not a quota. Inspect

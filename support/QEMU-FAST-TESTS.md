@@ -1,5 +1,30 @@
 # Fast API and file-service integration checks
 
+## Bounded optional Linux host preflight
+
+Run `support/test-api-linux.ps1` after the no-Docker Windows preflight when the
+pinned image/workspace already exist. It executes the same four Go checks:
+whole untagged API vet/units, tagged vet and the tagged proc-reader diagnostic.
+This is Linux/amd64 host execution, not an ARM guest or complete tagged units.
+
+The single `--rm --pull never` container mounts source and the existing workspace
+read-only/no-copy, uses UID/GID 1000, zero capabilities/no-new-privileges, no network
+and read-only root. Bypassing the builder entrypoint prevents ownership repair.
+Four CPUs/2 GiB/256 PIDs and 1 GiB tmpfs bound test resources; all Go cache/scratch
+is discarded with the container. The Linux suite has 180s plus 10s termination
+grace. Docker connectivity/image/volume preflight is outside that deadline.
+Missing dependencies, timeout, OOM or other failure refuse without a retry,
+pull/build/prune or resource deletion. This bounds this test's cache, not Docker's
+whole VHDX, WSL swap or unrelated applications' disk use.
+
+`support/tests/test-api-linux-wrapper.ps1` mocks only the external Docker command:
+profile/exact argument pairs, mounts, preserved Go commands and six refusal cases.
+Windows PowerShell tests and an actual pinned Linux suite/effective-profile
+inspection pass; local PowerShell 7 was absent, so hosted execution is not claimed.
+Shellcheck and workflow routing checks also pass. Changes only to this wrapper/
+test are host-tool inputs, not QEMU/B3 image inputs. No NAS, physical device,
+new image/volume, clean build, ARM, speedup or product activation is qualified.
+
 ## Policy-store interruption and media faults — optional ARMv5 ext4 guest
 
 Retained read-only bootstrap lifetime is now also mandatory: SAME original

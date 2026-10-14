@@ -3,6 +3,23 @@
 
 # Implementation status
 
+## Bounded optional local Linux API preflight
+
+`support/test-api-linux.ps1` now explicitly uses the existing pinned image and
+read-only workspace without ownership repair, pull/build or volume creation.
+One auto-removed UID/GID 1000 container has zero capabilities/no-new-privileges,
+four CPUs, 2 GiB memory, 256 PIDs and 1 GiB disposable tmpfs. The Linux suite runs
+under a 180s timeout with 10s termination grace; failure/timeout/OOM never retries.
+
+Windows PowerShell command-boundary tests check the profile, original four Go
+commands and six refusal cases. Actual Go1.26.8 Linux/amd64 vet/whole untagged
+units/tagged vet and the existing tagged proc diagnostic pass under the inspected
+effective Docker limits; the container is removed and six preexisting volumes
+remain. Shellcheck and workflow path contracts pass. Wrapper-only changes select
+cheap host CI rather than rebuilding QEMU/B3. Local PowerShell 7 was unavailable;
+its hosted execution remains unqualified. No timing speedup, ARM execution,
+full-image/hosted result, NAS or product-service qualification is claimed.
+
 ## Next state/recovery contract — proposed, not implemented
 
 The [M1.3b recovery design](src/phantowd-api/internal/revisionstore/RECOVERY-DESIGN.md)

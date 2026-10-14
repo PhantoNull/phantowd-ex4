@@ -172,7 +172,10 @@ cd phantowd-ex4
 These checks do not use Docker or contact the NAS. ARMv5 cross-compilation is
 not guest execution. With the pinned image/workspace already present,
 `support/test-api-linux.ps1` adds Linux-native checks without pulling an image
-or creating volumes. Use the [fast integration lane](support/QEMU-FAST-TESTS.md)
+or creating volumes. Its non-root container is capped at four CPUs, 2 GiB RAM,
+256 processes and 1 GiB disposable tmpfs; the Linux suite has a 180-second
+timeout with a 10-second termination grace. A timeout is a failure, not a retry.
+Use the [fast integration lane](support/QEMU-FAST-TESTS.md)
 for eligible userspace changes; clean builds remain separate qualification.
 
 ### Build and boot QEMU

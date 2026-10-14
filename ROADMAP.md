@@ -454,6 +454,16 @@ button to an unqualified backend simply because the screen exists.
   pull/build an image or create a volume. Preserve isolation, exact-source
   hashes and clean-build/reproducibility lanes. Cache hits are an optimization,
   never qualification evidence.
+  The local Linux API runner now has an explicit non-root/no-capabilities/no-new-
+  privileges profile, four CPUs/2 GiB/256 PIDs/1 GiB disposable tmpfs and a 180s
+  Linux-suite timeout with 10s termination grace. It bypasses ownership repair,
+  forbids pulls, retains all four existing Go commands and refuses timeout/OOM
+  without retries. Windows command-boundary tests cover six refusal cases;
+  actual pinned Linux vet/units/tagged vet/proc diagnostic pass under inspected
+  cgroup/mount limits. Workflow contracts route wrapper-only changes to cheap
+  host checks, not QEMU/B3 rebuilds. This is not ARM, full-image, power-loss,
+  general performance or product qualification; Docker preflight connectivity
+  is outside the Linux-suite deadline.
   Native session-worker timing now has an explicit fixed profile, rather than
   doubling an aggregate command timeout. A slow-worker host model and controlled
   ARMv5 diagnostic reproduce the final-subdeadline failure. The fixture profile
