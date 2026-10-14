@@ -63,6 +63,25 @@ and must not be automatically opened to bypass an earlier uncertain outcome.
 
 ## Verification boundary
 
+The optional `support/test-revisionstore-media.ps1` lane runs the original seven
+SIGKILL boundaries for both nonempty SMB/NFS and three-protocol NAS policies on
+synthetic ARMv5 ext4. A32-MiB snapshot also exercises actual full/read-only media
+against initialized `OwnedStore`: failed Commit, retained lock/sticky review,
+refusal after restoration, unchanged confirmed policy and pending preservation
+on explicit fixture reconciliation without consumers. No store/Owner production
+behavior is replaced; no fake syscall failure is injected in the media cases.
+All18 ordered test receipts must PASS, not skip; two consecutive guests, pinned
+host vet/unit/race3 and strict2+64 log controls pass with normal unmount/base
+hash unchanged. Outside the exact marked ARM guest, the media tests do not run.
+
+A growing file's ENOSPC did not exhaust every usable block. The harness now
+uses a bounded fresh-file tail fill and still requires zero available blocks
+before publication. This fixes test setup, not a demonstrated production defect.
+The kernel remains alive during SIGKILL; this is not sudden-power-loss/cache-
+flush qualification. Review remains instance-sticky, not a durable journal.
+No product recovery/reopen, selected-medium durability, EX4 state placement or
+hardware/installer/full/hosted qualification follows from these fixtures.
+
 Native tests cover claim fencing, defensive values, bounds/concurrency/FD use,
 restored mutations, mutation during decode, uncertain writes/sync/rename/close,
 post-publication cancellation and retained locks. The existing generated-media

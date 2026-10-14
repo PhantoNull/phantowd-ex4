@@ -1,5 +1,40 @@
 # Fast API and file-service integration checks
 
+## Policy-store interruption and media faults — optional ARMv5 ext4 guest
+
+Run `support/test-revisionstore-media.ps1` with the existing pinned SDK and
+manifest-verified base. It creates no Docker image/volume: source/base/SDK are
+read-only, preparation/caches/images are bounded private tmpfs, containers
+auto-remove, and both virtual disks use snapshots with no NIC or host ports.
+Nothing from this lane is installed in the product or started on an EX4.
+
+The generated32-MiB ext4 data disk runs seven existing SIGKILL boundaries for
+each nonempty SMB/NFS and SMB/NFS/iSCSI format. The parent verifies the live
+exclusive lock, actual signal exit, exact old/new policy, preserved pending
+bytes, stale commit refusal and explicit later publication. New initialized
+Owner cases then verify real read-only and zero-available-space failures,
+exclusive lock/sticky review and refusal after restoration. With no consumer,
+explicit fixture close/reopen reads exact confirmed state and preserves full-
+media pending evidence; it is not an automatic product recovery mechanism.
+
+File-extension ENOSPC is not sufficient to establish complete exhaustion.
+The bounded filler uses at most32MiB plus16 one-byte fresh-file tail attempts
+on the fixed small guest mount; zero available blocks is still required before
+the store attempt. The exact ARM/model/marker/device/filesystem/size guard
+prevents media cases from running as ordinary host tests. No error injection
+replaces the store's actual filesystem syscalls.
+
+The independent verifier requires all18 ordered top-level/stage PASS receipts,
+one Go PASS, preparation/completion, no skip/zero-test/fatal diagnostics and
+normal unmount. Two positive/64 malformed controls include every missing/
+duplicated receipt, wrong order and foreign markers. Two consecutive guests
+plus pinned host vet/unit/race3 and separate Windows API/UI checks pass.
+The declared new-lane budgets are Go45s, guest60s, outer180s; resource caps are
+four CPUs/2GiB/256PIDs and1GiB host tmpfs, guest256MiB. No default CI boot is
+added. SIGKILL is process loss while the kernel stays alive, not power loss or
+physical device/cache/state-medium durability. Product placement, durable
+review/recovery, EX4/full-image/own-hosted/reproducibility gates remain separate.
+
 ## Parent share-mount substitution — separate disposable ARM guest
 
 Run `support/test-server-capture-open.ps1 -InputDrift source-root` alone.

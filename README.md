@@ -49,6 +49,10 @@ Do not expose them through a LAN listener or reverse proxy. Service experiments
 and mount fixtures are not enabled for user disks. Desired configuration and
 successful parser checks do not activate a product service.
 
+Configuration transaction fixtures also pass ARMv5 interrupted-writer,
+full-ext4 and read-only-ext4 tests with confirmed policy retained. This is not
+power-loss recovery or qualification of the EX4's physical state medium.
+
 A separate ARMv5 fixture now verifies a retained, isolated real SMB3 client
 opening and closing synthetic data without changes or leaked descriptors.
 Its independent server-side snapshots now match the same worker generation,

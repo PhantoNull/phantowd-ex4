@@ -677,17 +677,33 @@ and recovery do not. **Depends on:** M0 for tests; M7 for physical placement.
   sync, ENOSPC, read-only storage, corrupt/truncated files, replacement/symlink
   attacks, concurrent writers and process exits at each durable boundary.
   Clean reboot and process exit are not power-loss guarantees.
-  **M1.4a — abrupt combined-policy writer (native-tested; not complete):**
+  **M1.4a — abrupt policy writer (native/ARM fixture-tested; not complete):**
   a test-only child holds the actual revision-store lock while its parent
   confirms exclusion, then sends SIGKILL at seven write/sync/close/publication
   boundaries. Reopening returns the exact old/new nonempty SMB/NFS policy,
   never staged or mixed components; pending evidence survives observation,
   stale commits refuse and explicit subsequent commits succeed. Three native
   Linux race-enabled repetitions and whole tagged API vet/race tests pass.
-  The campaign uses temporary tmpfs regular files without mounts/devices;
-  production code and firmware inputs are unchanged. This is not ARMv5/EX4
+  That original native campaign uses tmpfs regular files without mounts/devices;
+  production code and firmware inputs are unchanged. Its result was not ARMv5/EX4
   execution, real ENOSPC/read-only-media qualification, power interruption,
   selected state-medium durability or an implemented reconciliation workflow.
+  The optional `support/test-revisionstore-media.ps1` follow-up now executes
+  both SMB/NFS and SMB/NFS/iSCSI profiles on synthetic ARMv5 ext4: all14
+  interruption stages pass in two consecutive snapshots. Exact old/new policy,
+  pending evidence, live lock and signal-exit checks are unchanged. This extends
+  process-interruption qualification, not sudden-power-loss evidence.
+  **M1.4b — actual full/read-only media (ARM fixture-tested; not complete):**
+  the same generated32-MiB ext4 lane requires real zero-available-block
+  exhaustion and read-only remount, failed owned Commit/sticky review, retained
+  exclusive lock, refusal after space/mount restoration and exact confirmed
+  three-protocol state after explicit fixture close/reopen with no consumers.
+  Pending evidence remains. A bounded fresh-file tail fill fixes the harness's
+  disproved assumption that one growing file's ENOSPC implies a full filesystem;
+  no production error behavior or zero-space predicate is relaxed. Two actual
+  guests, pinned host vet/unit/race3, Windows checks and strict2+64 pass.
+  This does not complete M1: product provisioning/placement, durable review,
+  power-loss/cache-flush/failing-device tests and operator recovery remain.
 
 **Start in:** [admincredentials](src/phantowd-api/admincredentials/README.md),
 [fileservicestore](src/phantowd-api/fileservicestore/README.md),

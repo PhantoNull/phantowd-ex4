@@ -3,6 +3,38 @@
 
 # Implementation status
 
+## Configuration transactions — synthetic ARMv5 ext4 fault qualification
+
+The optional `support/test-revisionstore-media.ps1` lane executes the existing
+two policy-store SIGKILL campaigns on a generated 32-MiB ext4 QEMU snapshot.
+All seven write/sync/close/rename/directory-sync boundaries run for both the
+combined SMB/NFS and three-protocol NAS formats. Original live-child lock,
+confirmed signal exit, exact old/new nonempty policy, pending preservation,
+stale-revision refusal and explicit subsequent publication assertions remain.
+
+Two new test-only cases exercise the actual initialized policy Owner on that
+filesystem. Read-only remount and real complete exhaustion make Commit fail
+to sticky review while retaining the exclusive lock. Restoring writable media
+or freeing space cannot permit Commit/new claims. Explicit fixture close/reopen
+with no consumers reads the exact last confirmed SMB/NFS/iSCSI policy; full-
+media pending evidence is preserved. No automatic recovery is implemented.
+
+The full-media harness first failed: extending one file returned ENOSPC while
+two available blocks remained. A fresh-file write/sync consumed a block; smaller
+extension requests alone did not. Bounded fresh-file tail filling now consumes
+that space, retaining the strict zero-available-block precondition. Earlier
+failures are preserved; temporary diagnostics are removed. Production store
+and Owner code are unchanged, with no fake syscall errors in the media cases.
+
+Pinned host vet/units/race count3 pass; two consecutive actual ARMv5 guests
+each require all 18 ordered PASS receipts, no skipped/missing tests, normal
+unmount and unchanged base. Independent log controls cover two positives and
+64 refusals. Windows API/UI/cross checks pass separately. Original new-lane
+budgets are Go45s/guest60s/container180s; no default CI boot, new Docker image/
+volume or NAS operation. Process interruption is not power loss, persistent
+review/reconciliation, selected-state-medium durability, physical EX4, full-
+image/hosted/reproducibility or product startup qualification.
+
 ## Parent share mount — original identity, not an equal directory
 
 The optional `-InputDrift source-root` guest bind-covers the fixed parent

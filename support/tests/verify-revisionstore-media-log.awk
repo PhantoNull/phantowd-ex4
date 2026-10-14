@@ -1,0 +1,33 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 PhantoWD EX4 contributors
+BEGIN {
+    stage = "PHANTOWD_REVISIONSTORE_MEDIA_PREPARED synthetic_ext4=true snapshot=true profiles=2 stages=7 scope=qemu-only"
+    done = "PHANTOWD_REVISIONSTORE_MEDIA_DONE sigkill=14 readonly=true enospc=true normal_unmount=true scope=qemu-only"
+    split("partial-write full-write file-sync file-close before-rename after-rename directory-sync", points, " ")
+    split("TestBundleSIGKILLRecovery TestNASBundleSIGKILLRecovery", profiles, " ")
+    for (p = 1; p <= 2; p++) {
+        expected[++required] = profiles[p]
+        for (i = 1; i <= 7; i++) { expected[++required] = profiles[p] "/" points[i] }
+    }
+    expected[++required] = "TestRevisionStoreMediaReadOnlyRetainsConfirmedPolicyAndReview"
+    expected[++required] = "TestRevisionStoreMediaFullFilesystemRetainsConfirmedPolicyAndReview"
+}
+{ sub(/\r$/, "") }
+/^[ \t]*--- PASS: / {
+    name = $0
+    sub(/^[ \t]*--- PASS: /, "", name)
+    if (!sub(/ \([0-9]+(\.[0-9]+)?s\)$/, "", name) || state != 1 || name != expected[++passed]) { refused = 1 }
+    next
+}
+/^PASS$/ {
+    if (state != 1 || passed != required) { refused = 1 }
+    state = 2
+    next
+}
+/PHANTOWD_/ {
+    if (state == 0 && $0 == stage) { state = 1; next }
+    if (state == 2 && $0 == done) { state = 3; next }
+    refused = 1
+}
+/--- (FAIL|SKIP):|^FAIL$|testing: warning: no tests to run|Kernel panic|INTERNAL ERROR|AddressSanitizer|runtime error:|WARNING: DATA RACE/ { refused = 1 }
+END { if (state != 3 || passed != required || refused) exit 1 }
