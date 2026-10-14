@@ -31,8 +31,10 @@ const systemFixture = {
 };
 
 const storageFixture = {
-  schema_version: 1,
-  scope: "preview-fixture-only",
+  // Simulate the current API envelope; the system banner identifies every
+  // value as synthetic. This does not collect or qualify real sysfs evidence.
+  schema_version: 2,
+  scope: "kernel-sysfs-only",
   inventory_read_only: true,
   block_devices_opened: false,
   content_read: false,
@@ -82,7 +84,8 @@ const arraysFixture = {
 const mountsFixture = {
   schema_version: 1,
   observed_at: new Date().toISOString(),
-  scope: "synthetic-preview",
+  // Current API shape, not real mount evidence; the system banner stays synthetic.
+  scope: "current-process-mount-namespace",
   read_only: true,
   filesystem_contents_read: false,
   mount_operations_performed: false,
@@ -111,6 +114,7 @@ const assets = new Map([
   ["/assets/app.css", ["app.css", "text/css; charset=utf-8"]],
   ["/assets/app.js", ["app.js", "text/javascript; charset=utf-8"]],
   ["/assets/service-policy.js", ["service-policy.js", "text/javascript; charset=utf-8"]],
+  ["/assets/support-bundle.js", ["support-bundle.js", "text/javascript; charset=utf-8"]],
   ["/assets/ghost.svg", ["ghost.svg", "image/svg+xml"]],
 ]);
 

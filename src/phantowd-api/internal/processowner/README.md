@@ -4,6 +4,45 @@
 fixed, ordered set of such processes. It is not a product service manager and
 is not reachable over HTTP or RPC.
 
+The separate `qemu && linux` `PendingClientQEMU` adapter fixes a single-use
+dedicated launcher, read-only root and client descriptors at construction.
+It uses distinct stdout/stderr pipes, a copied bounded secret through a fresh
+anonymous pipe, fixed descriptor roles and an owned process group. Client OPEN
+and CLOSE notices are telemetry, never server/session/object or durability
+proofs. Only explicit close is available; there is no write/reopen/retry/restart
+operation. Failed start, timeout, forced stop or uncertain closure preserves
+review and original pins. Normal reference release requires exit0 and verified
+original-group absence; close errors are sticky and retain later references.
+
+Host refusal/parser/command-description/release tests, race tests and ARMv5
+cross-compilation pass. The separate private runtimebundle Owner binds and
+rechecks the complete client/loader/configuration/bootstrap census. Its focused
+ARM fixture now also executes the actual retained client/loader against Samba:
+healthy OPEN/CLOSE and independently observed original server worker/session/
+tree/local-file identity pass, with verified settlement before release. This
+supersedes the earlier constructor-only qualification, not product authority.
+The adapter now captures its original proc reference/generation before Wait can
+reap it. A one-time private binding duplicates that reference and the validated
+server-worker proc, retains both net/mount namespaces and compares complete
+bounded FD censuses with a fixed ESTABLISHED TCP dump. Same network namespace,
+distinct mount namespaces, original executable, all client UID/GID65534, no
+groups/capabilities and no-new-privileges are required. Later checks select no
+PID/FD; original socket inode/cookie/principal/endpoints must remain identical.
+Actual ARM Samba binding/recheck/CLOSE/stop/FD equality pass. References stay
+through both verified stops; uncertainty retains review without retry. Host
+controls and the independent TCP descriptor oracle also pass on ARM.
+These sequential observations are not atomic or continuous. Adversarial live
+drift/uncertain teardown in the new composition, remote handle/request/extent,
+pending I/O and product storage/identity composition remain unqualified.
+The separate actual ARM peer-exit fixture now verifies concrete connection
+refusal after the owned daemon group stops, client quarantine/group absence and
+original proc/namespaces/pins retained. A read-only reviewed-state check requires
+verified stop, absent original tasks and all original references still open;
+missing/copied/busy/canceled/incomplete states refuse. This is not uncertain-stop
+qualification, automatic recovery or permission to release reviewed authority.
+Ordinary builds/startup, generic launchers and HTTP remain unchanged; see the
+[focused client contract](../../../../support/QEMU-FAST-TESTS.md#dedicated-same-open-client-prerequisites-host-and-qemu).
+
 The caller supplies a fixed executable, arguments and bounded readiness/stop
 timeouts. The owner opens a regular executable without following symlinks,
 starts it in its own process group with a minimal environment, captures a
@@ -62,7 +101,13 @@ stdin is at most 64 KiB and executable observation at most 16 MiB. Normal wait
 joins output workers and distinguishes genuine 0..255 ordinary exit codes from
 signals; signals expose no report. Cancellation reuses the existing bounded
 group cleanup and publishes no result. Failed exec consumes the instance too.
-Observed input drift or canceled/uncertain ownership cannot authorize retry.
+The operation budget starts before code/input admission and covers post-capture
+hash checks, not constructor baseline hashing. Cancellation is checked between
+hash reads and before digest publication; it cannot interrupt an in-progress
+filesystem syscall or private fixture validator. Cancellation before launch
+leaves the instance unconsumed and does not by itself quarantine it. Observed
+drift and post-launch canceled/uncertain ownership retain review and cannot
+authorize retry.
 
 `Settled` only verifies absence; `Close` releases pins only after verified
 absence and never signals/retries a process. Failed descriptor release remains
@@ -78,6 +123,45 @@ cleanup and release uncertainty. The tagged `smartcapture` QEMU adapter runs the
 actual static generic-only producer through the SMART coordinator with regular
 synthetic traces and an explicitly fake census, including source-change refusal.
 No disk/ioctl, HTTP endpoint, scheduler or product service is enabled.
+
+### TCP wire prerequisite (QEMU-only)
+
+A private `qemu && linux` decoder accepts only bounded IPv4 ESTABLISHED
+SOCK_DIAG multipart observations for the expected sequence/receiver port. It
+checks native/network byte orders, mandatory nonzero inode/cookie/endpoints,
+duplicate inode/cookie refusal and complete successful DONE. Failed or
+interrupted framing permanently discards partial rows. Returned rows are copies.
+Limits are 4 KiB per record, 64 KiB per datagram, 256 KiB per dump, 256 sockets
+and 32 framed extensions per record; unconsumed extensions confer no authority.
+
+Kernel querying exists only in a test file. Independent Fstat, SO_COOKIE,
+getsockname/getpeername and empty SO_BINDTODEVICE observations now check every
+fixed identity field against the actual dump, not merely a second dump. Real
+same-UID connections to the same server endpoint stay distinct across 32
+concurrent queries; closing one pair removes only that pair. Nil/canceled/
+expired contexts and cancellation immediately after the real request expose
+no rows; successful/refused queries preserve descriptor counts. These fixtures
+run on non-root Linux and ARM926 QEMU. They retain no process/socket authority
+and do not qualify adversarial mutation or general cancellation timing.
+Pure framing/identity/refusal/bound controls and fuzz tests are separate. The optional
+[focused runner](../../../../support/QEMU-FAST-TESTS.md#kernel-tcp-wire-prerequisite-not-client-binding)
+reuses the pinned builder/base read-only and runs fifteen cases three times.
+
+The separate pure copied-pair matcher consumes bounded completed observations
+and two inode observations, never PIDs/paths/descriptors. It requires distinct
+original inode/cookie identities and fixed reciprocal loopback1445 endpoints,
+rejects missing/reversed/cross-pair/duplicate/foreign or malformed rows, and
+publishes no pair after cancellation. Full UID/cookie/endpoint rows are retained
+as copied values for continuity comparison. Host/race3 and actual ARMv5 tests
+match two same-UID/same-server connections to independent descriptors and
+require peer preservation after one pair closes. This does not trust the caller's
+inode census, qualify principals, pin processes/namespaces, or bind the actual
+SMB client; no method is added to `PendingClientQEMU` or its containing Owner.
+
+This is not an atomic inventory, namespace/process generation binding, retained
+socket authority, remote SMB client-handle, request/extent proof or permission
+to WRITE. No decoder is wired into the existing Owner, generic launcher,
+product startup, HTTP or fault admission. Those boundaries remain separate.
 
 ### Retained service and isolated-child adapters
 

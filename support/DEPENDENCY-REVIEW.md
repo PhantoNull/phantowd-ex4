@@ -3,6 +3,318 @@
 
 # Dependency review and update qualification
 
+## Samba update follow-up (2026-10-14)
+
+The rebuilt target remains4.22.11. Upstream lists stable4.25.0 (September24) and
+the4.24-series update4.24.8 (October12); these are candidate inputs, not adopted versions.
+[Upstream releases](https://www.samba.org/samba/latest_news.html).
+4.25's persistent handles remain experimental, impose additional durable-write
+cost and require SMB-exclusive access incompatible with NFS/POSIX sharing.
+Keep them disabled for the general-purpose NAS profile.
+[4.25 release notes](https://www.samba.org/samba/history/samba-4.25.0.html).
+
+Before selecting a replacement: verify lifecycle/advisory coverage and signed
+archives; disposition all six current patches individually, including the
+disabled-password adapter and JSON support; rebuild private VFS/reader code
+against that exact upstream source; inspect real ELF/charset/module closure
+and measure ARMv5 resource usage. Re-run actual enrollment/authentication,
+revocation, ACL/streams/Unicode/CP850, status/read/open and source-loss proofs.
+Then qualify state/configuration migration, complete image/legal/SBOM matching
+and own hosted checks. No old private layouts or copied state are acceptance
+evidence. New features do not establish safe recovery or cross-protocol use.
+
+The release-planning wiki returned429 during this review; exact4.22 end-of-life
+status is not established here. Do not turn the July security-release date into
+a current maintenance or blanket safety claim. Version pins and cache output
+remain unchanged while the separate source-loss diagnosis is in progress.
+
+## Current combined cached qualification (2026-10-14)
+
+Frozen code `5245ada6ce5e195ab3d4bdc9594e405944a33acd`, API tree
+`60f85bf6f3e49cba0395013cfce4aa525b061d45`, passes the original complete
+cached host/ARMv5 lane, all ten fresh Samba campaigns and their strict union,
+and both synthetic SMART lanes. The independent post-terminal audit matches
+all 1,472 frozen tracked inputs, 1,067 API source/package/archive inputs,
+11,510 installed Go 1.26.8 SDK files and 25,611 regular input rechecks.
+No stale/generated-source exemption is added. Actual source/license/SBOM,
+Linux/header/release, configured strip/image/export, OpenSSL 3.5.9 patch and
+RPATH objects and the real Python certificate/private-loopback TLS 1.3 consumer
+pass with unchanged predicates. The publication adds only five public Markdown
+files; this is qualification of the frozen code checkpoint, not a claim that
+the publication head already passed its own hosted checks.
+
+| Artifact | SHA-256 |
+| --- | --- |
+| API (10,708,276 bytes) | `bd31261344a18b58c2f92d79c49a0308614a868b550bc5d87c5c176ac349b945` |
+| rootfs.ext2 (83,886,080 bytes) | `8c4bb843e21eb0998a4afa5b4d8fa22df6f251e30b3000a0199840c59bb69f83` |
+| API source archive | `b199337a313847313f69cca36dc133b7ef143010ff35aff2a8065e4fa82035e9` |
+| SHA256SUMS | `94651dbf42bb7e874e49c0df0a9740119ab52d3d098710a308397abf20f7343e` |
+
+Seven complete guest logs are saved with explicit LF normalization and pass
+independent strict replay. The remaining held/file/file-source logs were
+accepted by the original controller but not preserved for independent replay;
+a post-disposal capture refusal is not a new runtime failure. The stale saved
+failure artifact belongs to the earlier `5b90e22` run, not this successful one.
+That earlier final source-loss deadline remains unexplained. Bounded failure-
+only checkpoint diagnostics do not fire on healthy proof and do not establish
+a repair. Keep the historical failure and hosted deadline gates open.
+
+Existing pinned image/two caches are reused, with no new Docker storage or
+physical device operations. Independent clean reproduction, full compliance,
+own-head hosted qualification, complete faults, recovery, product services,
+physical EX4 support and installation remain unqualified.
+
+## Earlier combined cached qualification (2026-10-11)
+
+<a id="current-combined-cached-qualification-2026-10-11"></a>
+
+Frozen `3ccc2df78cced5c58c05319fedf04f2a32b82180`, API tree
+`13d2597f04fcb876c6a8d6dc22fdd9ece6dba877`, passes the original complete cached
+host/ARMv5 lane, all ten Samba campaigns and both synthetic SMART lanes.
+An independent post-terminal audit retains the previous guards: all 1,370
+tracked witnesses, 1,026 API package/archive inputs, 11,510 installed Go 1.26.8
+SDK files and 25,468 regular audit inputs match and remain unchanged. Configured
+strip/installed/image/export, Linux/header 6.18.55, legal sources/licenses,
+release metadata, selected OpenSSL 3.5.9 and seven hashes agree. Actual Buildroot
+Python loads the same configured-RPATH libraries and verifies a certificate and
+private-loopback TLS 1.3 exchange.
+
+| Artifact | SHA-256 |
+| --- | --- |
+| API (10,708,276 bytes) | `fa012dd74fc69277cf42a1ffe8579110e973a1d06fdc62872b1bc3eda8038a42` |
+| rootfs.ext2 (83,886,080 bytes) | `8d52ef40af338d93b080d22ba24eb8b5b1c13aaf1254d76e9cd4cd8cd9f6fc85` |
+| API source archive | `0ee73fbc6fc68ffe8b3ec501b20a07356c08b91532b7d4e6cab51ab305cff95a` |
+| SHA256SUMS | `20cb14c4350848577be95e98b3bd75fa763cedd13031617c753ebce16cdc242b` |
+
+The original startup-fault exact-proof failure no longer reproduces after
+trusted-context-only worker timing opt-in. Fixed proof bytes, output caps and
+deadlines remain unchanged. This checkpoint includes sanitized report export and
+the CI staging correction that honors a qualified supplied TMPDIR. Seven intact
+saved Samba logs independently pass strict replay and 28 negative controls;
+all ten pass the original controller and union verifier. Lifecycle/file/file-source
+logs were not independently preserved/replayed; truncated capture is excluded.
+This does not resolve the separate earlier hosted live-session deadline or
+qualify pending-I/O loss,
+recovery, production services, physical EX4 support or an installer. Require
+the publication head's own hosted checks. Existing image/two project volumes
+are reused; independent clean reproduction and full compliance remain open.
+
+## Earlier OpenSSL 3.5.9 complete cached qualification (2026-10-09)
+
+Frozen `1be0b320b78cf1ea9c9a98d04e6ccd7096cdab76`, API tree
+`ceb0729febf311c3f1b055b3d9b452259b73bb18`, passes the original complete cached
+host/ARMv5 lane, all ten Samba campaigns and both synthetic SMART lanes.
+Independent post-terminal auditing preserves all previous source/package/SDK/
+kernel/image/legal guards: all 1,273 tracked witnesses, 980 API source inputs,
+11,510 installed Go 1.26.8 SDK files and 25,325 regular audit inputs agree.
+Configured strip/installed/rootfs/export, kernel AND headers 6.18.55, source
+archives, release bindings, legal metadata and all seven artifact hashes match.
+
+| Artifact | SHA-256 |
+| --- | --- |
+| API (10,708,180 bytes) | `edbafb68a8e4c42535403b13c1b5aacc9bf65dcd27c5fc4d1a2d4ce610a0c035` |
+| rootfs.ext2 (83,886,080 bytes) | `b5faf0b108a059a6e7bdd4ba1678a8964a26c77900b87694182dfa8efd47393f` |
+| API source archive | `6155515cabd22157ec9a8af0a9226144fda60816ed22b1951fd665d058d531a9` |
+| SHA256SUMS | `efb2d88cdd9e79856a951c603b918e4e8445259dc64e8e07dae159bd9510a7e4` |
+
+The ninth guest qualifies original-open-file continuity and accepted
+cancellation/closure; the tenth qualifies source-alias loss with that original
+idle opening. Neither qualifies pending I/O, physical disk failure or recovery. The fixed
+idle exit request now runs inside the exclusive supervisor after its first
+complete scan. A controlled actual ARM timing probe reproduces the previous
+competing-request race; this does not explain all older uninstrumented failures.
+Existing proofs, deadlines, sticky review and no-restart semantics remain.
+
+The selected host OpenSSL 3.5.9 recipe/source/license/four-patch roster and SBOM
+agree. Its three installed CLI/library objects match their built objects
+byte-for-byte after the exact configured RPATH change, authenticated against
+the original Buildroot Makefile/fix-rpath source; altered bytes are not exempted.
+Actual Buildroot Python 3.12.14 loads those same host libraries and passes exact
+runtime version/number binding, certificate verification and a private loopback
+TLS 1.3 exchange. An initial raw-object comparison omitted normal RPATH
+finalization, and a private Python check misread its legacy five-field version
+tuple. Corrected full auditing passes without changing artifacts or waiving
+byte equality; these were audit expectations, not runtime defects.
+
+This supersedes the earlier host3.5.8 cached image below, not its dated evidence.
+The core Go/reviewed-Close checkpoint passed its own hosted checks and merged
+into `develop`; this separate host update needs its own hosted checks.
+
+The update PR's earlier own hosted QEMU run fails native Enable at its shared
+60-second fixture deadline. An unchanged-source CPU differential reproduces
+the outer expiry locally, not the identical inner boundary. Actual-call-site
+RED/GREEN now qualifies separate preparation20/enrollment60 contexts with the
+original parent retained, and exact-sentinel revocation refusal diagnostics.
+The aggregate allowance becomes80, not a speedup; live45/worker/guest limits
+are unchanged. A low-quota guest finishes enrollment but still refuses a later
+live deadline. Normal-quota native and the complete current lane pass. This is
+not proof of every hosted failure cause; new-head hosted checks remain required.
+Independent clean reproduction, a fresh host-Python header rebuild, full upstream regression
+coverage, remaining advisory dispositions and EX4 host-consumer/hardware/release
+qualification remain separate. No target OpenSSL, NAS HTTPS exposure, physical
+disk operation or vulnerability-free/licensing-complete assertion.
+
+## Current cached962 Go 1.26.8 integration and exact artifact audit (2026-10-08)
+
+Frozen `cea5e0a66d8fed7acec6f5ab63aefec9fa8178b0`, API tree
+`8eae4e2b1fa4a9832428c26d2e7e5ace3a06a706`, passes the complete original
+cached host/ARMv5 lane and a separate independent post-terminal read-only audit.
+All original campaigns, seven independently enrolled Samba guests and both
+synthetic SMART lanes pass. Lifecycle preparation (20 seconds) and revocation
+(45 seconds) have separate contextual budgets (combined allowance 45 becomes
+65); all original worker, service, readiness, stop and guest limits remain
+unchanged. Normal exclusive composed
+supervision, idle source-alias loss and original-owned idle exit with retained
+review qualify. Mid-transfer/session loss, uncertain constructor/teardown and
+recovery remain separate work.
+
+The restored-source fault proof now also requires two normal coordinator Close
+refusals with the same runtime inputs and both original authorities retained.
+Fixed, redacted QEMU diagnostics do not change proof equality or resolve the
+intermittent failure's cause.
+
+All **962** API inputs match compiled package AND legal source archive, without
+stale extras or generated-marker exemptions. Configured strip/installed/rootfs/
+export, seven ordered hashes, actual kernel AND headers 6.18.55 bindings and
+linked Go 1.26.8/CGO0/ARM5 agree. The selected recipe, official SDK/source
+hashes, all **11,510** installed SDK files, host source/license manifest and
+SBOM agree. All 1,250 tracked source witnesses remain unchanged; **25,263**
+regular audit inputs are rechecked.
+
+| Artifact | SHA-256 |
+| --- | --- |
+| API (10,708,180 bytes) | `3262712f6a62dd0b7f4723290ab8134ee516592b7f4762ec293db688232e8127` |
+| rootfs.ext2 (83,886,080 bytes) | `9bc5707171ed06d2a5a51e3979c649bf3451db0e90f06505926da78c07db81fd` |
+| API source archive | `37f777994a226e403c4b0395c67243588398983391e07d8ef493478e1f545689` |
+| SHA256SUMS | `5673e3fa96920a91cace444636a6556e8f75e5ab77da407e3ce283f1498cba1e` |
+
+These identities are measured from this checkpoint, not adopted from the
+earlier950 image or candidate-only probes. Existing image/two project volumes
+are reused. This is not independent clean, exact-head hosted, advisory-complete,
+EX4, migration, recovery, product activation or install qualification. It does
+not demonstrate a speedup or resolve the intermittent hosted timeout. Require
+the publication head's own hosted checks before merge. This supersedes the
+earlier960 current-summary scope; its exact identities remain in Git history.
+
+## Earlier cached950 integration and exact artifact audit (2026-10-08)
+
+Frozen `5355a5cb033ecd1106294c4fcd4bb256fe2e3e2a`, API tree
+`82955d54b74934ae4fcf1351339a39483a5fa40f`, passes the complete cached
+host/ARMv5 lane and a separate independent post-terminal read-only audit.
+All original campaigns, six independently enrolled Samba guests, normal
+composed supervision, planned-stop observation, the idle source-alias-loss
+fault and both synthetic SMART lanes pass with unchanged original limits.
+
+All **950** API inputs match compiled package AND legal source archive without
+stale extras or generated-marker exemptions. Configured strip/installed/rootfs/
+export, seven ordered hashes, actual kernel AND headers 6.18.55 source/license/
+SBOM/legal/release and linked Go 1.26.6/CGO0/ARM5 agree. All 950 pre-build source
+hashes remain unchanged; 1,923 regular audit inputs are rechecked.
+
+| Artifact | SHA-256 |
+| --- | --- |
+| API (10,708,180 bytes) | `09d721ecefc9f437fa34b55858846b8b5b8a4e08fe747b352e9784a45da2dfef` |
+| rootfs.ext2 (83,886,080 bytes) | `3bfa05401f5d0a92d8e86cdb85f149c77ce49bfaa805b3778843560725b6de2f` |
+| API source archive | `1f1ff6fde616e28627a739bf6618f6fe6f1fdea5fad41a0d49650376472db05a` |
+| SHA256SUMS | `c5c0d93e742cbf6b633dcd075a6528347c639793d398a733e0e1f78edbd36c16` |
+
+These are measured from this checkpoint, not adopted from the earlier946
+image. Existing image/two project volumes are reused. This is not independent
+clean, hosted, advisory-complete, EX4, migration, product activation or install
+qualification. Source-alias replacement is not physical disk failure or full
+fault coverage. The prior `2c2c04c` hosted coordinator continuity failure stays
+unexplained; require the new publication head's own hosted checks before merge.
+The dependency candidates and incomplete advisory review below remain separate.
+
+## Earlier cached946 integration and exact artifact audit (2026-10-08)
+
+Frozen `1e68966f91d27c6d449a7624212720cf3d7da86b`, API tree
+`0280c9719f3ac808b5a5d25c077492a81e6bc954`, passes the complete cached
+host/ARMv5 lane and independent post-terminal read-only audit. All six Samba
+guests, the new normal composed-supervision proof, original checks and both
+synthetic SMART lanes pass. This is not composed fault qualification.
+
+All **946** API inputs match compiled package and legal source archive without
+stale extras or generated-marker exemptions. Configured strip/installed/rootfs/
+export, seven ordered hashes, actual kernel AND headers 6.18.55 source/license/
+SBOM/legal/release and linked Go 1.26.6/CGO0/ARM5 agree. All946 before/after source
+hashes match; 1,915 regular audit inputs are rechecked.
+
+Stripped API: 10,708,180 bytes, SHA256
+`1bee0443b5dc5d239ef8352a2fa0d3dbce9a966cf15f092317f2044b3492c63c`.
+Source archive SHA256:
+`2da6abd51a9ab8935dd6792c1317b437c99da0767e3fdf200c340e0e092a6eb0`.
+Ordered artifact manifest SHA256:
+`efbc4d5a2c2c500bd58ee2a4b7950165d1248480ad4b6973fa02595e0265e357`.
+These are new measured identities, not the older945 image/archive hashes.
+
+Only the existing image/two volumes are reused. This is not independent clean,
+hosted, advisory-complete, EX4, migration, product activation or installation
+qualification. The earlier `2c2c04c` hosted run fails during identity-coordinator
+disable/peer continuity at its fixed45-second deadline; cause remains unproven.
+
+## Earlier cached945 integration and exact artifact audit (2026-10-08)
+
+Frozen `5a087ed1c5e6cda9957a2554038bfd4303c485fa`, API tree
+`dccdc1fd2722097520f18b263ac0558c1a4e4c2c`, passes one complete cached
+host/ARMv5 lane and an independent post-terminal read-only audit. All original
+host/guest checks, six independently enrolled Samba scenarios and both
+synthetic SMART lanes pass. Every original proof and complete runtime census
+remain required; no state or authority is borrowed across boots.
+
+All **945** API inputs match compiled package AND legal source archive, with
+no stale extras or generated-marker exemptions. Declared licenses, configured
+strip/installed/rootfs/export, seven ordered hashes, actual kernel AND headers
+6.18.55 source/license/SBOM/legal/release bindings and linked Go 1.26.6/CGO0/ARM5
+agree. All 945 before/after source hashes match; 1,913 regular inputs recheck.
+Stripped API: 10,708,180 bytes, SHA256
+`66286bb8edd1c65ca9e13cb177f0fdc9272e6c8dd7da26cf7a50f488bcfdec78`.
+NEW source archive SHA256:
+`c4e2778265e3ad1f9f830652fdeb3153ba8f6ec7b0255805ab990c0f33001c1d`.
+Ordered artifact manifest SHA256:
+`5782dcf6b2d487d4eee4d420fb0bbb3fae68121b37e7df6fcad3eec7b591d2cd`.
+QEMU-only changes leave installed product/image bytes unchanged; the new
+source archive is independently checked, not borrowed from the older audit.
+
+The existing image/two project volumes are reused. This is cached local
+qualification, not a fresh advisory review, independent clean reproduction,
+exact-head hosted, physical EX4, migration, product activation or installation
+qualification. The old prepared941 hosted failure stays failed and its natural
+post-admission cause is not established by this pass. Earlier advisory
+inventories/open package reviews below remain dated evidence.
+
+## Earlier cached943 integration and exact artifact audit (2026-10-08)
+
+Frozen `2ce88f03ee2211f03e1efb73426aab0bccf0efe3`, API tree
+`aa88877c1336c4d20f9eeb0def51ea8daf8de84a`, passes the complete cached
+host/ARMv5 lane, including standard smoke, MD/state, launcher/runtime/loader/
+atomic, all four Samba guests and both synthetic SMART lanes. The new normal
+planned startup/data tracer retains its SAME identity/backend/storage/share
+authorities; this is not full grant/ACL, fault or supervision qualification.
+
+An independent post-terminal read-only audit matches all **943** API inputs
+against compiled package AND legal source archive, with no stale extras or
+generated-marker exemptions. Declared licenses, configured strip/installed/
+rootfs/export, seven ordered hashes, actual kernel AND headers 6.18.55
+source/license/SBOM/legal/release bindings and linked Go 1.26.6/CGO0/ARM5 agree.
+All 943 before-build source hashes remain unchanged; 1,909 regular audit
+inputs are rechecked. The stripped API is 10,708,180 bytes, SHA256
+`66286bb8edd1c65ca9e13cb177f0fdc9272e6c8dd7da26cf7a50f488bcfdec78`.
+Its source archive SHA256 is
+`631fd2d67ff4756c52a5f68098c7aee423a0ac2d3f64ca4e71af288abe873521`;
+the ordered artifact-manifest SHA256 is
+`5782dcf6b2d487d4eee4d420fb0bbb3fae68121b37e7df6fcad3eec7b591d2cd`.
+
+This is cached local qualification, not independent clean reproducibility,
+complete advisory/licensing compliance, physical EX4, migration, installation
+or product activation. The earlier prepared941 own hosted run
+[37734668729](https://github.com/PhantoNull/phantowd-ex4/actions/runs/37734668729)
+fails at planned candidate construction, worker post-admission/deadline;
+the cause remains unproven and this local pass is not a hosted fix.
+Existing image/two project volumes and bounded disposable scratch are reused.
+Earlier advisory inventories and their open package reviews below remain
+dated evidence, not a fresh vulnerability review of this newer checkpoint.
+
 ## Scope of the 2026-10-07 review
 
 This is a **partial advisory review**, not a vulnerability-free assertion or
@@ -23,7 +335,7 @@ records. These are different inventories, not interchangeable counts.
 | Linux and headers | Earlier advisory inventory: 6.18.54; current selected and locally rebuilt image: 6.18.55 | Authenticated source, complete cached ARMv5 integration and exact metadata/source/image audit pass; hosted/EX4/release gates remain |
 | Samba | 4.22.11 target, six declared patches | Upstream's July security release; no complete Samba advisory/configuration review claimed |
 | OpenSSL | 3.5.8 **host only**, four declared patches | September advisory requires evaluating an update to 3.5.9; affected host call paths remain unassessed |
-| Go | 1.26.6 host SDK **and compiled target runtime** | 1.26.8 is a maintenance candidate, not a demonstrated security or QEMU-timeout fix |
+| Go | Dated inventory: 1.26.6; current complete cached954 audit: 1.26.8 SDK/runtime | Locally qualified maintenance update, not a demonstrated security or QEMU-timeout fix |
 | x/crypto | v0.57.0 target API module | Reviewed SSH records [6354](https://vuln.go.dev/ID/GO-2026-6354.json)/[6355](https://vuln.go.dev/ID/GO-2026-6355.json) are fixed at v0.56.0; this API uses Argon2, not an SSH server |
 | x/sys | v0.48.0 target API module | Reviewed Windows record [5024](https://vuln.go.dev/ID/GO-2026-5024.json) is fixed at v0.44.0; this is not an ARMv5 exposure finding |
 | BusyBox / util-linux | 1.37.0 / 2.40.4 target, 20 / 15 declared patches | Upstream base-version matching alone loses backport information; dispositions remain to be reviewed |
@@ -117,7 +429,7 @@ licensing review, hosted-head or resolved EX4/physical qualification. Go and
 host OpenSSL update packets remain separate. A successful local Samba run does
 not demonstrate a fix for historical hosted timeouts or authorize deployment.
 
-## Current cached integration requalification (2026-10-08)
+## Earlier cached parent requalification (2026-10-08)
 
 Frozen `4ca65d557c746eec08d36dadf72a97bdcbce9757`, API tree
 `677a3f8f76122ab310c5763d6cd0ee631ace4543`, passes the complete cached
@@ -142,6 +454,67 @@ reproducibility, waive failed hosted checks, qualify physical EX4 peripherals,
 activate product services or authorize installation. Other dependency update
 packets and all release gates remain separate.
 
+## Current planned-input cached qualification (2026-10-08)
+
+Frozen `0d12dca66bcaa41f80666aeebcac0145f64e92c2`, API tree
+`599446ec8424e9622683cea9a156d4a347759c8f`, passes the complete cached
+host/ARMv5 driver. Original ordinary/race/fixed fuzz, smoke, MD/state,
+launcher/runtime/loader/atomic, all three Samba campaigns and both synthetic
+SMART lanes remain mandatory and pass with unchanged limits and privileges.
+The paired-role prerequisite prepares original configuration/state/share inputs;
+it admits no planned daemon or product activation.
+
+The independent post-terminal read-only audit matches exactly **939** tracked
+API files against compiled package AND collected source archive. It rejects
+stale extras and uses zero generated-marker exemptions. All original license,
+configured-strip, installed/image/export, seven-artifact, actual Linux/header
+6.18.55, metadata/SBOM/release, authenticated legal-source/license and linked
+Go 1.26.6 checks pass. Twenty-one regular-file witnesses recheck unchanged.
+The preceding 935/937 source and artifact hashes describe their own frozen
+parents, not this new image.
+
+| Artifact | SHA-256 |
+| --- | --- |
+| Normal API (10,708,180 bytes) | `e383bca363eb5c5204c3d3f4cfae262f62afdbc57e655839749a5f82a4e85be5` |
+| rootfs.ext2 | `1e98047cf1876d249da9bb06ddc6edaa36814293549d930f2dfe44837c5155fb` |
+| API source archive | `dcf8eedfe8e9d3c775604ce99381f865506897944d3b8bf24856d5a9ca15e351` |
+| SHA256SUMS | `d8f5cf650bc0da3cc7fff15df890812b987d2d430e7f08bb50900d869c273fbc` |
+
+This extends local complete qualification only. It does not renew complete
+advisory/backport or release licensing review, establish independent clean
+reproducibility, resolve hosted timeouts, qualify physical EX4 peripherals or
+installation, or complete paired-role service supervision. Constructor and
+late-uncertainty faults, other dependency packets and all release gates remain.
+
+## Prepared same-authority coordinator complete qualification (2026-10-08)
+
+Frozen `19d189178d155bb6a721d775495b45136809c96f`, API tree
+`e8ba603a77553d715564e155789d2525ce4a1e59`, passes ONE complete cached
+host/ARMv5 build: ordinary/race/fixed fuzz, standard smoke, MD/state,
+launcher/runtime/loader/atomic, all three Samba campaigns and both synthetic
+SMART lanes. Existing resource ceilings, assertions and deadlines remain.
+
+The independent post-terminal read-only audit verifies all **941** API inputs
+against compiled package AND source archive, with no stale extras or generated
+marker exemptions. Declared licenses, configured strip/installed/image/export,
+seven hashes, actual kernel AND headers 6.18.55, legal source/license/SBOM/
+release bindings and linked Go 1.26.6/CGO0/Linux ARMv5 agree. Twenty-one regular
+inputs recheck unchanged; all thirteen component-tested code hashes also match
+before and after. The earlier 939-input image is not adopted as this proof.
+
+| Artifact | SHA-256 |
+| --- | --- |
+| API (10,708,180 bytes) | `a8ef0ccd990c37eb4fccaf2df0f3ff57194c856e811cc4c51ca13d88e45713de` |
+| rootfs.ext2 (83,886,080 bytes) | `40e7f9478afbadf7806f5d65302fbba2e93152eca0c578e00e65ce126fd61d7c` |
+| API source archive | `fce983ec5226cbf774f5f66ce992b4b557c26e15729b7f3bea67f479973c764b` |
+| SHA256SUMS | `0a05c4c44c16d5e0bd226a225f834346369f02a522a94a35bb47b464e54aa6cb` |
+
+This qualifies cached local preparation only, not planned daemon Start,
+continuous identity/storage service supervision, exact-head hosted checks,
+independent clean reproduction, a causal timeout fix, complete advisory/license
+review, EX4 behavior or installation. Constructor/late-close faults and all
+product/hardware/recovery/release gates remain open.
+
 ## Important interpretation boundaries
 
 - OpenSSL CVE-2026-84782 has a DTLS-specific path and is fixed in 3.5.9.
@@ -150,7 +523,7 @@ packets and all release gates remain separate.
   build environment from review. Record affected host applications/configuration
   before assigning an exposure disposition.
 - `host-go-bin` being a host package does not make Go findings host-only:
-  `go version -m` on the exported API confirms Go 1.26.6, CGO disabled,
+  `go version -m` on the dated inventory's exported API confirms Go 1.26.6, CGO disabled,
   Linux/ARM/GOARM=5 and the two module versions above. Its standard library
   is part of the target executable. Module manifests alone do not prove this.
 - The reviewed recent stdlib/toolchain records GO-2026-5026, 5942, 5972,
@@ -179,17 +552,79 @@ packets and all release gates remain separate.
    above now pass from authenticated, coherent kernel/header/hash consumers.
    They do not replace resolved EX4 configurations or device-write/thermal
    fences. A compile does not authorize a physical boot or disk operation.
-2. **Host OpenSSL 3.5.9 candidate:** retain the Buildroot LTS baseline unless a
+2. **Host OpenSSL 3.5.9 selected update:** retain the Buildroot LTS baseline unless a
    concrete requirement calls for a branch change. Review its exact recipe and
    four patches, source/license hashes and host reverse dependencies. Qualify the
    actual host consumers and regenerated package/SBOM metadata. Do not add target
    OpenSSL merely to satisfy a scanner or expose new crypto services.
+   **Focused candidate proof (2026-10-08):** upstream 3.5.9 archive SHA-256
+   `603f5602e2eef00d77fbd429d34dcd5822bb301757a1bc9cdb24c670f1eb859a`
+   and its PGP signature match the [official release key](https://openssl-library.org/source/),
+   primary fingerprint `B146647E45A7B33947AB226B2A2C87D161692D40`.
+   All four existing Buildroot patches apply with fuzz0; LICENSE.txt is unchanged.
+   A bounded disposable-RAM host build using the current host configure options
+   passes actual 3.5.9 CLI/shared-library/default-provider binding, SHA-256,
+   certificate and signature verification, and a private loopback TLS1.3 exchange.
+   This is not the complete upstream test suite or actual Buildroot installation.
+   The new exact-state maintenance applicator and shell tests qualify coherent
+   application/idempotence and no-effect rejection of mixed/unknown/missing/
+   symlink inputs and changed/incomplete/extra upstream patch rosters. The actual
+   changed-patch regression first fails, then passes after whole-roster checks.
+   **Selection guards (2026-10-09):** versions.env now selects 3.5.9 and that
+   archive hash; the applicator precedes the shared board-only preparation return.
+   QEMU and research builders build/check host-libopenssl before expensive work;
+   QEMU repeats the check after full make. The installed CLI and loaded library
+   must both match, with inherited configuration/library/module environment
+   removed. Selected-version and wrong-library RED/GREEN tests, complete refusal/
+   shell checks and refusal of the actual old cached3.5.8 installation pass.
+   The complete cached qualification above now binds actual installed3.5.9,
+   configured RPATH transform, original/legal source/license/SBOM and actual host
+   Python mapped-library/certificate/TLS1.3 behavior. Own hosted, independent clean,
+   EX4 consumers, full upstream tests and complete advisory review remain open.
+   No target crypto package, NAS HTTPS or product security claim.
 3. **Go 1.26.8 candidate:** authenticate the exact SDK/source inputs, update the
    Buildroot recipe without unpinned toolchain downloads and preserve the module
    vendor set. Run ordinary/race/fuzz checks and the original ARMv5 campaigns;
    verify the compiler version embedded in the exported API, source/license
    collection and image equality. Do not infer a speedup, drop revalidation or
    change test budgets to obtain a pass.
+   **Focused host proof (2026-10-08):** official source and Linux/amd64 SDK
+   archives pass SHA-256 verification from [Go download metadata](https://go.dev/dl/?mode=json).
+   Source and SDK licenses agree with the current recipe's license hash.
+   Frozen `c995c6e`, API tree `7b612fe2`, passes ordinary/vet/tagged-vet,
+   all-package race, all 22 existing fixed-count API fuzz campaigns, seven
+   tagged authority packages and their race-count3 checks, ARMv5 cross-build
+   and all 64 Linux Samba-driver verifier tests. All 954 tracked API inputs
+   have matching before/after hashes. The temporary cross-built probe reports
+   Go 1.26.8, CGO0/Linux ARM5 and the exact unmodified source revision.
+   SDK/source/cache live in bounded disposable RAM scratch using the existing
+   container image; no new image or named volume is created.
+   **Focused ARMv5 component proof (2026-10-08):** successor `01e6045`, with
+   the same API tree, passes toolkit vet/ordinary/race and all five original
+   fixed-count fuzz campaigns, then all six freshly enrolled Samba guest
+   campaigns using Go 1.26.8-compiled probes. The complete original proof union,
+   matching 114-file runtime census and unchanged-base checks pass without
+   changing guest or worker limits. A separate read-only replay of the six
+   complete traces verifies the union again. All 1,083 API/toolkit/harness
+   inputs match their pre-run hashes; temporary scratch and the container are
+   removed. No new image or volume is created.
+   **Candidate Buildroot inputs:** the feature selects Go 1.26.8 with a
+   versioned common recipe patch covering the source archive, all six host
+   SDK archives and the unchanged license hash. The authenticated 1.26 cgo
+   workaround is preserved. The applicator accepts only exact complete
+   original/patched states, dry-runs without fuzz and rejects mixed, unknown,
+   missing or symlinked inputs before writes. RAM fixtures exercise the real
+   package and prove idempotence and no-effect refusal. The actual installed
+   Linux SDK must match the selected pin before native tests or target builds;
+   automatic Go toolchain downloads are disabled.
+   **Complete cached image qualified (2026-10-08):** frozen `ab5f4d1` now passes
+   one complete Buildroot/host/ARMv5 lane, all original campaigns and the exact
+   960-input image/source/package/archive/Go/license/SBOM audit recorded above.
+   Actual installed SDK/source/recipe and exported runtime bind Go 1.26.8;
+   candidate-only proofs are not substituted for this new image qualification.
+   Independent clean reproduction, exact-head hosted checks, complete advisory
+   review and EX4/release qualification remain required. This is neither an
+   observed speedup nor a fix for the intermittent hosted timeout.
 4. **Complete the review:** cover every selected host/target component and linked
    Go package, actual backport contents and disabled/compiled features. Record
    advisory ID, upstream affected/fixed ranges, source/patch identity, exact

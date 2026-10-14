@@ -47,7 +47,7 @@ function Assert-True {
 try {
     $repoRoot = (Microsoft.PowerShell.Management\Resolve-Path (Join-Path $PSScriptRoot '../..')).Path
     $state = $global:phantowdSambaWrapperTestState
-    foreach ($campaign in @('all', 'service', 'native', 'lifecycle')) {
+    foreach ($campaign in @('all', 'service', 'native', 'candidate', 'lifecycle', 'fault', 'data', 'exit', 'held', 'file', 'file-source', 'pending', 'pending-peer-exit', 'pending-handle')) {
         foreach ($baseArgument in @('', (Join-Path $repoRoot 'mock-explicit-base'))) {
             $state.Calls.Clear()
             $state.Files.Clear()
@@ -60,9 +60,11 @@ try {
             foreach ($argument in @('run', '--rm', '--pull', 'never', '--network', 'none', '--read-only',
                 '--user', '1000:1000', '--cap-drop', 'ALL', '--security-opt', 'no-new-privileges',
                 '--cpus', '2', '--memory', '2g', '--pids-limit', '256', '--entrypoint', '/bin/sh',
-                '/tmp:rw,exec,nosuid,nodev,size=512m', '/var/tmp:rw,noexec,nosuid,nodev,size=128m')) {
+                '/var/tmp:rw,noexec,nosuid,nodev,size=128m')) {
                 Assert-True ($argument -in $run) "Missing fixed isolation: $argument"
             }
+            $expectedScratch = if ($campaign -in @('pending', 'pending-peer-exit', 'pending-handle')) { '1536m' } else { '512m' }
+            Assert-True ("/tmp:rw,exec,nosuid,nodev,size=$expectedScratch" -in $run) 'Scratch bound/profile changed.'
             Assert-True (@($run | Where-Object { $_ -match '^type=volume,.*readonly,volume-nocopy$' }).Count -eq 1) 'Workspace must remain read-only.'
             Assert-True (@($run | Where-Object { $_ -match '^type=bind,.*readonly$' }).Count -eq 2) 'Source/base must remain read-only.'
             Assert-True (-not ($run | Where-Object { $_ -match '^--(privileged|device|publish)$' })) 'Privilege/device/port exposure.'
@@ -73,12 +75,12 @@ try {
         }
     }
     $state.Calls.Clear()
-    & $wrapper -Campaign lifecycle -DiagnosticLogs
+    & $wrapper -Campaign data -DiagnosticLogs
     Assert-True ($state.Calls.Count -eq 3) 'Diagnostics must not add a Docker operation.'
     $diagnosticRun = $state.Calls[2]
     Assert-True ($diagnosticRun[-1] -match "printf '%s' '([A-Za-z0-9+/=]+)' \| base64 -d \| sh") 'Diagnostic command missing.'
     $diagnosticLinux = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($Matches[1]))
-    Assert-True ($diagnosticLinux.Contains("/src '' 'lifecycle' 'diagnostic'")) 'Diagnostic mode not passed to the same guest driver.'
+    Assert-True ($diagnosticLinux.Contains("/src '' 'data' 'diagnostic'")) 'Diagnostic mode not passed to the same guest driver.'
     foreach ($failure in @('image inspect', 'volume inspect', 'run', 'directory', 'symlink')) {
         $state.Calls.Clear()
         $state.Failure = $failure
@@ -115,7 +117,7 @@ try {
             Remove-Item -LiteralPath $probeRoot -Force
         }
     }
-    'PHANTOWD_SAMBA_WRAPPER_TESTS_READY defaults=true campaigns=4 refusals=6 scope=mock-command-boundary-only'
+    'PHANTOWD_SAMBA_WRAPPER_TESTS_READY defaults=true default_campaigns=10 focused_campaigns=13 refusals=6 scope=mock-command-boundary-only'
 } finally {
     Remove-Variable phantowdSambaWrapperTestState -Scope Global
     $global:LASTEXITCODE = $previousExitCode

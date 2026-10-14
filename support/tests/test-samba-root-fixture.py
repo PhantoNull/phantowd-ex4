@@ -25,6 +25,9 @@ module INTERNAL IBM850// IBM850 1
 
 SCAN_COST = ("PHANTOWD_RUNTIME_SCAN_COST files=104 bytes=12000000 "
              "elapsed_ns=123456789 scope=qemu-emulation-only")
+CENSUS = ("PHANTOWD_SAMBA_ROOT_CENSUS_READY readonly=true "
+          "complete_census=true hashes=true aliases=true "
+          "negative_controls=false retained_control=false scope=qemu-only")
 
 
 def merge(values):
@@ -45,13 +48,642 @@ def reports():
     } for entry in fixture.ENTRIES]
 
 
+def campaign_rows():
+    """Synthetic verifier inputs, not executed guest qualification."""
+    enrollment = next(i for i, row in enumerate(fixture.MARKERS) if
+                      row.startswith(
+                          "PHANTOWD_SAMBA_OWNER_NATIVE_ENROLLMENT_READY"))
+    candidate = next(row for row in fixture.MARKERS if row.startswith(
+        "PHANTOWD_SAMBA_OWNER_PLANNED_CANDIDATE_READY"))
+    access = tuple(row for row in fixture.MARKERS if row.startswith((
+        "PHANTOWD_SAMBA_OWNER_PLANNED_STARTUP_READY",
+        "PHANTOWD_SAMBA_OWNER_PLANNED_DATA_READY",
+        "PHANTOWD_SAMBA_OWNER_PLANNED_SUPERVISION_READY",
+        "PHANTOWD_SAMBA_OWNER_PLANNED_STOP_READY")))
+    census = [*fixture.MARKERS[:3], CENSUS, fixture.MARKERS[enrollment]]
+    return {
+        "service": [*fixture.MARKERS[:enrollment],
+                    "PHANTOWD_SAMBA_ROOT_SERVICE_DONE", SCAN_COST],
+        "native": [*fixture.MARKERS[:3], CENSUS,
+                   *(row for row in fixture.MARKERS[enrollment:-4]
+                     if row not in (*access, candidate,
+                                    fixture.PLANNED_EXIT_FAULT_MARKER)),
+                   "PHANTOWD_SAMBA_ROOT_NATIVE_DONE", SCAN_COST],
+        "candidate": [*census, candidate,
+                      "PHANTOWD_SAMBA_ROOT_CANDIDATE_DONE", SCAN_COST],
+        "lifecycle": [*census, fixture.MARKERS[-4],
+                      "PHANTOWD_SAMBA_ROOT_DONE", SCAN_COST],
+        "fault": [*census, fixture.MARKERS[-3],
+                  fixture.PLANNED_SOURCE_FAULT_MARKER,
+                  "PHANTOWD_SAMBA_ROOT_FAULT_DONE", SCAN_COST],
+        "data": [*census, *access,
+                 "PHANTOWD_SAMBA_ROOT_DATA_DONE", SCAN_COST],
+        "exit": [*census, fixture.PLANNED_EXIT_FAULT_MARKER,
+                 "PHANTOWD_SAMBA_ROOT_EXIT_DONE", SCAN_COST],
+        "held": [*census, fixture.PLANNED_HELD_CLOSE_MARKER,
+                 "PHANTOWD_SAMBA_ROOT_HELD_DONE", SCAN_COST],
+        "file": [*census, fixture.PLANNED_OPEN_FILE_MARKER,
+                 "PHANTOWD_SAMBA_ROOT_FILE_DONE", SCAN_COST],
+        "file-source": [*census, fixture.PLANNED_FILE_SOURCE_FAULT_MARKER,
+                        "PHANTOWD_SAMBA_ROOT_FILE_SOURCE_DONE", SCAN_COST],
+    }
+
+
 class SambaRootFixture(unittest.TestCase):
-    def test_native_phase_timing_cannot_replace_or_weaken_acceptance(self):
+    @staticmethod
+    def timing_row(operation="list", phase="pre-admission", elapsed=17,
+                   remaining=45000, parent_done="false", failed="false",
+                   cause="none"):
+        return (f"PHANTOWD_DIAG_NATIVE_WORKER operation={operation} "
+                f"phase={phase} elapsed_ms={elapsed} remaining_ms={remaining} "
+                f"parent_done={parent_done} failed={failed} cause={cause} "
+                "qualifying=false scope=qemu-only")
+
+    def test_timing_summary_observes_rows_not_operations_or_proof(self):
+        rows = [self.timing_row(), self.timing_row(),
+                self.timing_row(phase="execution", elapsed=2, remaining=0,
+                                parent_done="true", failed="true",
+                                cause="deadline")]
+        summary = fixture.timing_summary("private-path\n" + "\n".join(rows),
+                                         "native")
+        self.assertEqual(summary["schema_version"], 1)
+        self.assertFalse(summary["qualifying"])
+        self.assertTrue(summary["available"])
+        self.assertEqual(summary["timing_records"], 3)
+        self.assertEqual(summary["stage_elapsed_sum_ms"], {
+            "pre-admission": 34, "execution": 2,
+            "settlement": 0, "post-admission": 0})
+        self.assertEqual(summary["failed_records"], 1)
+        self.assertEqual(summary["last_record"]["cause"], "deadline")
+        self.assertTrue(summary["last_record"]["parent_done"])
+        self.assertNotIn("private-path", json.dumps(summary))
+        with self.assertRaises(ValueError):
+            fixture.check_campaign(json.dumps(summary), "native")
+
+    def test_timing_summary_absent_rows_are_unavailable_not_success(self):
+        for phase in (*fixture.FOCUSED_CAMPAIGNS, "pending"):
+            summary = fixture.timing_summary("no timings", phase)
+            self.assertFalse(summary["available"])
+            self.assertFalse(summary["qualifying"])
+            self.assertEqual(summary["timing_records"], 0)
+            self.assertIsNone(summary["last_record"])
+            self.assertIsNone(summary["last_failed_record"])
+
+    def test_timing_summary_keeps_failure_when_later_cleanup_succeeds(self):
+        log = "\n".join([
+            self.timing_row(phase="execution", failed="true",
+                            cause="canceled"),
+            self.timing_row(phase="settlement")])
+        summary = fixture.timing_summary(log, "native")
+        self.assertEqual(summary["failed_records"], 1)
+        self.assertEqual(summary["last_failed_record"]["cause"], "canceled")
+        self.assertFalse(summary["last_record"]["failed"])
+        summary["last_record"]["cause"] = "other"
+        self.assertEqual(summary["last_failed_record"]["cause"], "canceled")
+
+    def test_timing_summary_refuses_malformed_or_unbounded_records(self):
+        row = self.timing_row()
+        invalid = [row.replace("operation=list", "operation=private-secret"),
+                   row.replace("phase=pre-admission", "phase=unknown"),
+                   row.replace("elapsed_ms=17", "elapsed_ms=600001"),
+                   row.replace("remaining_ms=45000", "remaining_ms=600001"),
+                   row.replace("elapsed_ms=17", "elapsed_ms=017"),
+                   row.replace("elapsed_ms=17", "elapsed_ms=-1"),
+                   row.replace("failed=false", "failed=true"),
+                   row.replace("cause=none", "cause=deadline"),
+                   row.replace("qualifying=false", "qualifying=true"),
+                   row.replace("scope=qemu-only", "scope=product"),
+                   row + " extra=private-secret", row[:-1],
+                   row.replace("parent_done=false", "parent_done=null"),
+                   "PHANTOWD_DIAG_NATIVE_WORKER_BYPASS private-secret"]
+        for bad in invalid:
+            with self.subTest(row=bad):
+                with self.assertRaises(ValueError) as caught:
+                    fixture.timing_summary(row + "\n" + bad, "native")
+                self.assertNotIn("private-secret", str(caught.exception))
+        for log, phase in ((None, "native"), ("", "unknown"),
+                           ("x" * (fixture.MAX_LOG + 1), "native"),
+                           ("\n".join([row] * 513), "native")):
+            with self.assertRaises(ValueError):
+                fixture.timing_summary(log, phase)
+
+    def test_timing_summary_exact_record_and_duration_limits(self):
+        row = self.timing_row(elapsed=600000, remaining=600000)
+        summary = fixture.timing_summary("\r\n".join([row] * 512), "native")
+        self.assertEqual(summary["timing_records"], 512)
+        self.assertEqual(summary["stage_elapsed_sum_ms"]["pre-admission"],
+                         512 * 600000)
+
+    def test_timing_summary_cli_and_actual_driver_failure_block(self):
+        with tempfile.TemporaryDirectory() as directory:
+            log = Path(directory) / "native.log"
+            row = self.timing_row(failed="true", cause="deadline",
+                                  parent_done="true", remaining=0)
+            log.write_text(row + "\n", encoding="utf-8")
+            command = [sys.executable, "-B", str(Path(fixture.__file__)),
+                       "timing-summary", str(log), "native"]
+            result = subprocess.run(command, capture_output=True, text=True)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(json.loads(result.stdout)["last_record"]["cause"],
+                             "deadline")
+            driver_path = Path(__file__).with_name("test-qemu-samba-root.sh")
+            driver = driver_path.read_text()
+            start = driver.index('if [ "$verified" -ne 1 ]; then')
+            end = driver.index('\nfi', start) + len('\nfi')
+            block = driver[start:end]
+            self.assertIn('timing-summary', block)
+            self.assertLess(block.index('timing-summary'),
+                            block.index('tail -n'))
+            if os.name != "posix":
+                return  # Windows covers CLI/contract, not /bin/sh execution.
+            repo_path = Path(__file__).resolve().parents[2]
+            environment = dict(os.environ, verified="0", failure_log="",
+                               scratch=directory, campaign="native",
+                               source_dir=str(repo_path))
+            result = subprocess.run(["/bin/sh", "-c", block], env=environment,
+                                    capture_output=True, text=True)
+            self.assertEqual(result.returncode, 1)
+            report = next(line for line in result.stderr.splitlines()
+                          if line.startswith('{"format":'))
+            self.assertEqual(json.loads(report)["failed_records"], 1)
+            self.assertIn("Samba campaign failed: native", result.stderr)
+            self.assertEqual(log.read_text(), row + "\n")
+            log.write_text(row + " private-secret\n", encoding="utf-8")
+            result = subprocess.run(["/bin/sh", "-c", block], env=environment,
+                                    capture_output=True, text=True)
+            self.assertEqual(result.returncode, 1)
+            self.assertIn("PHANTOWD_SAMBA_TIMING_SUMMARY_UNAVAILABLE",
+                          result.stderr)
+            self.assertIn("Samba campaign failed: native", result.stderr)
+
+    def test_complete_union_refuses_nine_without_file_source_fault(self):
+        logs = campaign_rows()
+        old_phases = ("service", "native", "candidate", "lifecycle", "fault",
+                      "data", "exit", "held", "file")
+        with self.assertRaises(ValueError):
+            fixture.check_campaigns(
+                *("\n".join(logs[phase]) for phase in old_phases))
+
+    def test_open_file_source_fault_requires_its_original_handle_proof(self):
+        marker = (
+            "PHANTOWD_SAMBA_OWNER_PLANNED_FILE_SOURCE_FAULT_READY "
+            "same_authorities=true same_daemon=true data_verified=true "
+            "original_object=true original_open=true "
+            "client_daemon_stopped=true original_file_retained=true "
+            "old_observers_refused=true source_covered=true "
+            "exclusive_supervision=true review_sticky=true "
+            "private_inputs=15 runtime_inputs_retained=true "
+            "originals_busy=true cover_removed=true "
+            "restoration_refused=true close_refused=true "
+            "private_mount_namespace=true subprocess_disposal=true "
+            "parent_fd_equal=true activation=false scope=qemu-only")
+        enrollment = next(row for row in fixture.MARKERS if row.startswith(
+            "PHANTOWD_SAMBA_OWNER_NATIVE_ENROLLMENT_READY"))
+        rows = [*fixture.MARKERS[:3], CENSUS, enrollment, marker,
+                "PHANTOWD_SAMBA_ROOT_FILE_SOURCE_DONE", SCAN_COST]
+        fixture.check_campaign("\n".join(rows), "file-source")
+        self.assertEqual(fixture.select_campaigns("file-source"),
+                         ("file-source",))
+        # Separate actual ARM qualification precedes mandatory inclusion.
+        # Synthetic verifier success is not guest qualification.
+        self.assertIn("file-source", fixture.select_campaigns("all"))
+        for field in ("original_object", "original_open",
+                      "original_file_retained", "client_daemon_stopped",
+                      "originals_busy", "review_sticky", "close_refused"):
+            with self.subTest(field=field):
+                with self.assertRaises(ValueError):
+                    fixture.check_campaign("\n".join(rows).replace(
+                        field + "=true", field + "=false"), "file-source")
+        for replacement in ("", fixture.PLANNED_SOURCE_FAULT_MARKER,
+                            fixture.PLANNED_OPEN_FILE_MARKER,
+                            marker + "\n" + marker):
+            with self.assertRaises(ValueError):
+                fixture.check_campaign("\n".join(rows).replace(
+                    marker, replacement), "file-source")
+
+    def test_complete_union_refuses_legacy_eight_without_open_file(self):
+        logs = campaign_rows()
+        old_phases = ("service", "native", "candidate", "lifecycle", "fault",
+                      "data", "exit", "held")
+        with self.assertRaises(ValueError):
+            fixture.check_campaigns(
+                *("\n".join(logs[phase]) for phase in old_phases))
+
+    def test_open_file_probe_requires_original_object_proof(self):
+        marker = (
+            "PHANTOWD_SAMBA_OWNER_PLANNED_OPEN_FILE_READY "
+            "same_authorities=true same_daemon=true data_verified=true "
+            "original_object=true original_open=true "
+            "exclusive_supervision=true "
+            "accepted_cancellation=true client_daemon_stopped=true "
+            "private_inputs=15 original_file_retained=true "
+            "originals_busy=true "
+            "old_observers_refused=true runtime_close_before_release=true "
+            "repeated_close=true closed_refused=true no_fd_leak=true "
+            "activation=false scope=qemu-only")
+        enrollment = next(row for row in fixture.MARKERS if row.startswith(
+            "PHANTOWD_SAMBA_OWNER_NATIVE_ENROLLMENT_READY"))
+        rows = [*fixture.MARKERS[:3], CENSUS, enrollment, marker,
+                "PHANTOWD_SAMBA_ROOT_FILE_DONE", SCAN_COST]
+        fixture.check_campaign("\n".join(rows), "file")
+        self.assertEqual(fixture.select_campaigns("file"), ("file",))
+        self.assertIn("file", fixture.select_campaigns("all"))
+        for field in ("original_object", "original_open",
+                      "original_file_retained",
+                      "originals_busy", "client_daemon_stopped",
+                      "runtime_close_before_release", "no_fd_leak"):
+            for replacement in ("", field + "=false"):
+                with self.subTest(field=field, replacement=replacement):
+                    with self.assertRaises(ValueError):
+                        fixture.check_campaign("\n".join(rows).replace(
+                            field + "=true", replacement), "file")
+        for replacement in ("", fixture.PLANNED_HELD_CLOSE_MARKER,
+                            marker + "\n" + marker):
+            with self.assertRaises(ValueError):
+                fixture.check_campaign("\n".join(rows).replace(
+                    marker, replacement), "file")
+
+    def test_held_cancellation_requires_separate_complete_close_proof(self):
+        marker = (
+            "PHANTOWD_SAMBA_OWNER_PLANNED_HELD_CLOSE_READY "
+            "same_authorities=true same_daemon=true data_verified=true "
+            "original_session=true exclusive_supervision=true "
+            "accepted_cancellation=true client_daemon_stopped=true "
+            "private_inputs=15 originals_retained=true "
+            "old_observers_refused=true runtime_close_before_release=true "
+            "repeated_close=true closed_refused=true no_fd_leak=true "
+            "activation=false scope=qemu-only")
+        enrollment = next(row for row in fixture.MARKERS if row.startswith(
+            "PHANTOWD_SAMBA_OWNER_NATIVE_ENROLLMENT_READY"))
+        rows = [*fixture.MARKERS[:3], CENSUS, enrollment, marker,
+                "PHANTOWD_SAMBA_ROOT_HELD_DONE", SCAN_COST]
+        fixture.check_campaign("\n".join(rows), "held")
+        for field in ("same_authorities", "same_daemon", "data_verified",
+                      "original_session", "exclusive_supervision",
+                      "accepted_cancellation", "client_daemon_stopped",
+                      "originals_retained", "old_observers_refused",
+                      "runtime_close_before_release", "repeated_close",
+                      "closed_refused", "no_fd_leak"):
+            for replacement in ("", field + "=false"):
+                with self.subTest(field=field, replacement=replacement):
+                    changed = marker.replace(field + "=true", replacement)
+                    with self.assertRaises(ValueError):
+                        fixture.check_campaign("\n".join(
+                            changed if row == marker else row for row in rows),
+                            "held")
+        for replacement in ("", marker + "\n" + marker,
+                            marker.replace("private_inputs=15",
+                                           "private_inputs=14"),
+                            marker.replace("activation=false",
+                                           "activation=true"),
+                            marker.replace("scope=qemu-only",
+                                           "scope=product")):
+            with self.assertRaises(ValueError):
+                fixture.check_campaign("\n".join(rows).replace(
+                    marker, replacement), "held")
+
+    def test_native_pair_continuity_requires_both_new_observations(self):
+        marker = next(row for row in fixture.MARKERS if row.startswith(
+            "PHANTOWD_SAMBA_OWNER_NATIVE_LIVE_REVOKE_READY"))
+        fields = ("original_pair_rechecked", "revoked_pair_refused")
+        for field in fields:
+            self.assertIn(field + "=true", marker)
+        rows = campaign_rows()["native"]
+        fixture.check_campaign("\n".join(rows), "native")
+        for field in fields:
+            for replacement in ("", field + "=false"):
+                changed = marker.replace(field + "=true", replacement)
+                log = "\n".join(changed if row == marker else row
+                                for row in rows)
+                with self.assertRaises(ValueError):
+                    fixture.check_campaign(log, "native")
+
+    def test_planned_exit_requires_separate_owned_reviewed_stop_proof(self):
+        proof = (
+            "PHANTOWD_SAMBA_OWNER_PLANNED_EXIT_FAULT_READY "
+            "same_authorities=true same_daemon=true data_verified=true "
+            "original_handle=true single_use=true exclusive_supervision=true "
+            "review_sticky=true stopped_reaped=true private_inputs=15 "
+            "capture_retained=true capture_before_worker=true "
+            "runtime_inputs_retained=true originals_busy=true "
+            "restart_refused=true normal_stop_refused=true "
+            "private_mount_namespace=true subprocess_disposal=true "
+            "parent_fd_equal=true activation=false scope=qemu-only")
+        self.assertIn(proof, fixture.MARKERS)
+
+        logs = {phase: "\n".join(rows)
+                for phase, rows in campaign_rows().items()}
+        fixture.check_campaign(logs["exit"], "exit")
+        for replacement in ("", proof + "\n" + proof,
+                            proof.replace("original_handle=true",
+                                          "original_handle=false"),
+                            proof.replace("single_use=true",
+                                          "single_use=false"),
+                            proof.replace("stopped_reaped=true",
+                                          "stopped_reaped=false"),
+                            proof.replace("capture_retained=true",
+                                          "capture_retained=false"),
+                            proof.replace("capture_before_worker=true",
+                                          "capture_before_worker=false"),
+                            proof.replace("originals_busy=true",
+                                          "originals_busy=false"),
+                            proof.replace("normal_stop_refused=true",
+                                          "normal_stop_refused=false")):
+            with self.subTest(replacement=replacement):
+                with self.assertRaises(ValueError):
+                    fixture.check_campaign(
+                        logs["exit"].replace(proof, replacement), "exit")
+        for phase in fixture.CAMPAIGNS:
+            if phase != "exit":
+                with self.assertRaises(ValueError):
+                    fixture.check_campaign(logs[phase] + "\n" + proof, phase)
+
+    def test_planned_source_fault_requires_stop_retention_and_nonrevival(self):
+        proof = (
+            "PHANTOWD_SAMBA_OWNER_PLANNED_SOURCE_FAULT_READY "
+            "same_authorities=true same_daemon=true data_verified=true "
+            "original_session=true held_client_stopped=true "
+            "held_client_retained=true old_observers_refused=true "
+            "source_covered=true exclusive_supervision=true "
+            "review_sticky=true stopped_reaped=true private_inputs=15 "
+            "runtime_inputs_retained=true originals_busy=true "
+            "cover_removed=true restoration_refused=true close_refused=true "
+            "private_mount_namespace=true subprocess_disposal=true "
+            "parent_fd_equal=true activation=false scope=qemu-only")
+        self.assertIn(proof, fixture.MARKERS)
+        logs = {phase: "\n".join(rows)
+                for phase, rows in campaign_rows().items()}
+        fixture.check_campaign(logs["fault"], "fault")
+        for replacement in ("", proof + "\n" + proof,
+                            proof.replace("stopped_reaped=true",
+                                          "stopped_reaped=false"),
+                            proof.replace("originals_busy=true",
+                                          "originals_busy=false"),
+                            proof.replace("restoration_refused=true",
+                                          "restoration_refused=false"),
+                            proof.replace("close_refused=true",
+                                          "close_refused=false"),
+                            proof.replace("close_refused=true ", ""),
+                            proof.replace("private_inputs=15",
+                                          "private_inputs=13"),
+                            *(proof.replace(field + "=true", field + "=false")
+                              for field in ("original_session",
+                                            "held_client_stopped",
+                                            "held_client_retained",
+                                            "old_observers_refused")),
+                            *(proof.replace(field + "=true ", "")
+                              for field in ("original_session",
+                                            "held_client_stopped",
+                                            "held_client_retained",
+                                            "old_observers_refused"))):
+            with self.subTest(replacement=replacement):
+                with self.assertRaises(ValueError):
+                    fixture.check_campaign(
+                        logs["fault"].replace(proof, replacement), "fault")
+        for phase in fixture.CAMPAIGNS:
+            if phase != "fault":
+                with self.assertRaises(ValueError):
+                    fixture.check_campaign(logs[phase] + "\n" + proof, phase)
+
+    def test_planned_stop_requires_private_inputs_and_owned_daemon_proof(self):
+        proof = (
+            "PHANTOWD_SAMBA_OWNER_PLANNED_STOP_READY "
+            "same_daemon=true private_inputs=15 runtime_inputs_retained=true "
+            "live_not_stopped=true stopped_reaped=true "
+            "legacy_clients_guard=true repeated_readonly=true "
+            "closed_refused=true no_fd_leak=true activation=false "
+            "scope=qemu-only")
+        self.assertIn(proof, fixture.MARKERS)
+        rows = campaign_rows()
+        good = "\n".join(rows["data"])
+        fixture.check_campaign(good, "data")
+        for replacement in ("", proof + "\n" + proof,
+                            proof.replace("private_inputs=15",
+                                          "private_inputs=13"),
+                            proof.replace("stopped_reaped=true",
+                                          "stopped_reaped=false"),
+                            proof.replace("legacy_clients_guard=true",
+                                          "legacy_clients_guard=false"),
+                            proof.replace("activation=false",
+                                          "activation=true")):
+            with self.subTest(replacement=replacement):
+                with self.assertRaises(ValueError):
+                    fixture.check_campaign(good.replace(proof, replacement),
+                                           "data")
+        for phase in fixture.CAMPAIGNS:
+            if phase != "data":
+                with self.subTest(wrong_phase=phase):
+                    with self.assertRaises(ValueError):
+                        fixture.check_campaign(
+                            "\n".join(rows[phase] + [proof]), phase)
+
+    def test_planned_supervision_is_required_once_in_the_data_trace(self):
+        rows = campaign_rows()
+        proof = (
+            "PHANTOWD_SAMBA_OWNER_PLANNED_SUPERVISION_READY "
+            "same_authorities=true complete_scan=true serialized=true "
+            "cancellation_stopped=true originals_retained=true "
+            "restart_refused=true close_before_release=true "
+            "stopped_reaped=true no_fd_leak=true "
+            "activation=false scope=qemu-only")
+        valid = [row for row in rows["data"] if row != proof]
+        valid.insert(-3, proof)
+        fixture.check_campaign("\n".join(valid), "data")
+        with self.assertRaises(ValueError):
+            fixture.check_campaign(
+                "\n".join(row for row in valid if row != proof), "data")
+        with self.assertRaises(ValueError):
+            fixture.check_campaign("\n".join(valid + [proof]), "data")
+        for phase in fixture.CAMPAIGNS:
+            if phase != "data":
+                with self.subTest(wrong_phase=phase):
+                    with self.assertRaises(ValueError):
+                        fixture.check_campaign(
+                            "\n".join(rows[phase] + [proof]), phase)
+
+    def test_all_requires_independent_candidate_startup_fault_traces(self):
+        rows = campaign_rows()
+        phases = ("service", "native", "candidate", "lifecycle", "fault",
+                  "data", "exit", "held", "file", "file-source")
+        logs = tuple("\n".join(rows[phase]) for phase in phases)
+        self.assertEqual(fixture.check_campaigns(*logs),
+                         ((104, 12000000, 123456789),) * 10)
+        self.assertEqual(fixture.select_campaigns("all"), phases)
+        self.assertEqual({row for values in rows.values() for row in values
+                          if row in fixture.MARKERS}, set(fixture.MARKERS))
+
+    def test_complete_cli_requires_all_ten_ordered_campaign_logs(self):
+        with tempfile.TemporaryDirectory() as scratch:
+            paths = {}
+            for phase, rows in campaign_rows().items():
+                path = Path(scratch) / (phase + ".log")
+                path.write_text("\n".join(rows), encoding="utf-8")
+                paths[phase] = str(path)
+            base = [sys.executable, "-B", str(Path(fixture.__file__)),
+                    "verify", paths["service"]]
+            pairs = [["--" + phase + "-log", paths[phase]]
+                     for phase in ("native", "candidate", "lifecycle",
+                                   "fault", "data", "exit", "held", "file",
+                                   "file-source")]
+            complete = [item for pair in pairs for item in pair]
+            result = subprocess.run(base + complete, capture_output=True,
+                                    text=True, check=False, timeout=5)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(result.stdout.splitlines().count(
+                fixture.PLANNED_OPEN_FILE_MARKER), 1)
+            self.assertEqual(result.stdout.splitlines().count(
+                fixture.PLANNED_FILE_SOURCE_FAULT_MARKER), 1)
+            fixture.check_guest("\n".join(
+                row for row in result.stdout.splitlines()
+                if row not in (fixture.PLANNED_OPEN_FILE_MARKER,
+                               fixture.PLANNED_FILE_SOURCE_FAULT_MARKER)))
+            for omitted in range(len(pairs)):
+                partial = [item for index, pair in enumerate(pairs)
+                           if index != omitted for item in pair]
+                with self.subTest(omitted=omitted):
+                    result = subprocess.run(
+                        base + partial, capture_output=True, text=True,
+                        check=False, timeout=5)
+                    self.assertNotEqual(result.returncode, 0)
+                    self.assertEqual(result.stdout, "")
+
+    def test_new_data_guest_is_required_without_replacing_old_campaigns(self):
+        rows = tuple(campaign_rows().values())
+        logs = tuple("\n".join(values) for values in rows)
+        self.assertEqual(fixture.check_campaigns(*logs),
+                         ((104, 12000000, 123456789),) * 10)
+        self.assertEqual(fixture.select_campaigns("all"),
+                         ("service", "native", "candidate", "lifecycle",
+                          "fault", "data", "exit", "held", "file",
+                          "file-source"))
+        self.assertEqual(fixture.check_campaign(logs[5], "data"),
+                         (104, 12000000, 123456789))
+        self.assertEqual({row for values in rows for row in values
+                          if row in fixture.MARKERS}, set(fixture.MARKERS))
+        with self.assertRaises(ValueError):
+            fixture.check_campaigns(*logs[:5])
+        for omitted in rows[5][:-1]:
+            with self.subTest(omitted=omitted):
+                with self.assertRaises(ValueError):
+                    fixture.check_campaigns(*logs[:5],
+                                            logs[5].replace(omitted, ""),
+                                            logs[6])
+
+    def test_independent_lookup_moves_once_without_borrowed_native_state(self):
+        enrollment = next(
+            i for i, row in enumerate(fixture.MARKERS)
+            if row.startswith("PHANTOWD_SAMBA_OWNER_NATIVE_ENROLLMENT_READY"))
+        logs = tuple("\n".join(rows) for rows in campaign_rows().values())
+        fixture.check_campaigns(*logs)
+        split = next(i for i, row in enumerate(fixture.MARKERS) if
+                     row.startswith("PHANTOWD_SAMBA_OWNER_NATIVE_NSS_READY"))
+        for proof in fixture.MARKERS[split:enrollment]:
+            for other in logs[1:]:
+                self.assertNotIn(proof, other)
+            with self.assertRaises(ValueError):
+                fixture.check_campaigns(logs[0].replace(proof, ""),
+                                        *logs[1:])
+            with self.assertRaises(ValueError):
+                fixture.check_campaigns(logs[0], logs[1] + "\n" + proof,
+                                        *logs[2:])
+
+    def test_planned_data_requires_actual_retained_access_proof(self):
+        marker = (
+            "PHANTOWD_SAMBA_OWNER_PLANNED_DATA_READY "
+            "same_authorities=true same_daemon=true granted_only=true "
+            "ungranted_enabled_denied=true "
+            "smb_read=true smb_write=true unix_owner=true readonly_EROFS=true "
+            "readonly_denied=true symlink_denied=true fresh_observation=true "
+            "stopped_before_release=true no_fd_leak=true "
+            "activation=false scope=qemu-only")
+        native_split = next(
+            i for i, row in enumerate(fixture.MARKERS)
+            if row.startswith("PHANTOWD_SAMBA_OWNER_NATIVE_ENROLLMENT_READY"))
+        startup = next(row for row in fixture.MARKERS if row.startswith(
+            "PHANTOWD_SAMBA_OWNER_PLANNED_STARTUP_READY"))
+        rows = [*fixture.MARKERS[:3], CENSUS,
+                fixture.MARKERS[native_split], startup,
+                marker, next(row for row in fixture.MARKERS if row.startswith(
+                    "PHANTOWD_SAMBA_OWNER_PLANNED_SUPERVISION_READY")),
+                next(row for row in fixture.MARKERS if row.startswith(
+                    "PHANTOWD_SAMBA_OWNER_PLANNED_STOP_READY")),
+                "PHANTOWD_SAMBA_ROOT_DATA_DONE", SCAN_COST]
+        good = "\n".join(rows)
+        fixture.check_campaign(good, "data")
+        for replacement in ("", marker + "\n" + marker,
+                            marker.replace("same_daemon=true",
+                                           "same_daemon=false"),
+                            marker.replace("same_authorities=true",
+                                           "same_authorities=false"),
+                            marker.replace("readonly_EROFS=true",
+                                           "readonly_EROFS=false"),
+                            marker.replace("ungranted_enabled_denied=true",
+                                           "ungranted_enabled_denied=false"),
+                            marker.replace("activation=false",
+                                           "activation=true")):
+            with self.subTest(replacement=replacement):
+                with self.assertRaises(ValueError):
+                    fixture.check_campaign(good.replace(marker, replacement),
+                                           "data")
+        with self.assertRaises(ValueError):
+            fixture.check_campaign(good, "native")
+        with self.assertRaises(ValueError):
+            fixture.check_campaign(good, "lifecycle")
+
+    def test_planned_startup_requires_complete_retained_authorities(self):
+        marker = (
+            "PHANTOWD_SAMBA_OWNER_PLANNED_STARTUP_READY "
+            "owner=actual_native_backend storage=mounted_roster "
+            "same_authorities=true granted_only=true service_role=true "
+            "original_views=true before_start_busy=true after_start_busy=true "
+            "duplicate_refused=true canceled_start_refused=true "
+            "fresh_observation=true runtime_close_before_release=true "
+            "stopped_reaped=true no_fd_leak=true samba_data=false "
+            "activation=false scope=qemu-only")
+        split = next(
+            i for i, row in enumerate(fixture.MARKERS)
+            if row.startswith("PHANTOWD_SAMBA_OWNER_NATIVE_ENROLLMENT_READY"))
+        self.assertIn(marker, fixture.MARKERS)
+        data = next(row for row in fixture.MARKERS if row.startswith(
+            "PHANTOWD_SAMBA_OWNER_PLANNED_DATA_READY"))
+        rows = [*fixture.MARKERS[:3], CENSUS, fixture.MARKERS[split],
+                marker, data,
+                next(row for row in fixture.MARKERS if row.startswith(
+                    "PHANTOWD_SAMBA_OWNER_PLANNED_SUPERVISION_READY")),
+                next(row for row in fixture.MARKERS if row.startswith(
+                    "PHANTOWD_SAMBA_OWNER_PLANNED_STOP_READY")),
+                "PHANTOWD_SAMBA_ROOT_DATA_DONE", SCAN_COST]
+        good = "\n".join(rows)
+        fixture.check_campaign(good, "data")
+        for invalid in (good.replace(marker, ""),
+                        good.replace(marker, marker + "\n" + marker),
+                        good.replace("same_authorities=true",
+                                     "same_authorities=false"),
+                        good.replace("original_views=true",
+                                     "original_views=false"),
+                        good.replace("activation=false", "activation=true")):
+            with self.subTest(invalid=invalid):
+                with self.assertRaises(ValueError):
+                    fixture.check_campaign(invalid, "data")
+        with self.assertRaises(ValueError):
+            fixture.check_campaign(good, "native")
+        with self.assertRaises(ValueError):
+            fixture.check_campaign(good, "lifecycle")
+
+    def test_native_timing_cannot_replace_or_weaken_acceptance(self):
         timings = "\n".join(
             "PHANTOWD_DIAG_NATIVE_PHASE phase=" + phase
             + " elapsed_ms=123 qualifying=false scope=qemu-only"
             for phase in ("entered", "admitted", "enrolled",
                           "authority-closed", "data-verified"))
+        timings += ("\nPHANTOWD_DIAG_NATIVE_LIVE operation=revoke state=end "
+                    "phase_ms=24012 operation_ms=15809 remaining_ms=20987 "
+                    "parent_done=false failed=true cause=other "
+                    "qualifying=false scope=qemu-only\n"
+                    "PHANTOWD_DIAG_NATIVE_WORKER operation=status "
+                    "phase=execution elapsed_ms=1000 remaining_ms=0 "
+                    "parent_done=true failed=true cause=deadline "
+                    "qualifying=false scope=qemu-only")
         good = "\n".join([*fixture.MARKERS, SCAN_COST])
         fixture.check_guest(timings + "\n" + good)
         with self.assertRaises(ValueError):
@@ -63,13 +695,19 @@ class SambaRootFixture(unittest.TestCase):
                         timings + "\n" + good.replace(marker, ""))
         native_split = next(
             i for i, row in enumerate(fixture.MARKERS)
-            if row.startswith("PHANTOWD_SAMBA_OWNER_NATIVE_NSS_READY"))
+            if row.startswith("PHANTOWD_SAMBA_OWNER_NATIVE_ENROLLMENT_READY"))
         planned = next(row for row in fixture.MARKERS
                        if row.startswith(
                            "PHANTOWD_SAMBA_OWNER_PLANNED_CANDIDATE_READY"))
-        native = [*fixture.MARKERS[:5],
-                  *(row for row in fixture.MARKERS[native_split:-3]
-                    if row != planned), "PHANTOWD_SAMBA_ROOT_NATIVE_DONE",
+        native = [*fixture.MARKERS[:3], CENSUS,
+                  *(row for row in fixture.MARKERS[native_split:-4]
+                    if row != planned and not row.startswith((
+                        "PHANTOWD_SAMBA_OWNER_PLANNED_STARTUP_READY",
+                        "PHANTOWD_SAMBA_OWNER_PLANNED_DATA_READY",
+                        "PHANTOWD_SAMBA_OWNER_PLANNED_SUPERVISION_READY",
+                        "PHANTOWD_SAMBA_OWNER_PLANNED_STOP_READY",
+                        "PHANTOWD_SAMBA_OWNER_PLANNED_EXIT_FAULT_READY"))),
+                  "PHANTOWD_SAMBA_ROOT_NATIVE_DONE",
                   SCAN_COST]
         fixture.check_campaign(timings + "\n" + "\n".join(native),
                                "native")
@@ -125,7 +763,9 @@ class SambaRootFixture(unittest.TestCase):
 
     def test_campaign_selection_defaults_to_complete_proof(self):
         self.assertEqual(fixture.select_campaigns("all"),
-                         ("service", "native", "lifecycle"))
+                         ("service", "native", "candidate", "lifecycle",
+                          "fault", "data", "exit", "held", "file",
+                          "file-source"))
 
     @unittest.skipUnless(os.name == "posix", "POSIX driver admission")
     def test_invalid_diagnostic_mode_never_calls_python(self):
@@ -149,7 +789,8 @@ class SambaRootFixture(unittest.TestCase):
                 self.assertEqual(result.stderr, "")
 
     def test_campaign_selection_is_one_exact_phase(self):
-        for phase in ("service", "native", "lifecycle"):
+        for phase in ("service", "native", "candidate", "lifecycle", "fault",
+                      "data", "exit"):
             self.assertEqual(fixture.select_campaigns(phase), (phase,))
 
     def test_campaign_selection_refuses_untrusted_values(self):
@@ -161,7 +802,9 @@ class SambaRootFixture(unittest.TestCase):
     def test_campaign_selection_cli_has_exact_output(self):
         command = [sys.executable, "-B", str(Path(fixture.__file__)),
                    "select-campaigns"]
-        for selection in ("all", "service", "native", "lifecycle"):
+        for selection in ("all", "service", "native", "candidate", "lifecycle",
+                          "fault", "data", "exit", "held", "file",
+                          "file-source"):
             result = subprocess.run(command + [selection], check=False,
                                     capture_output=True, text=True, timeout=5)
             self.assertEqual(result.returncode, 0, result.stderr)
@@ -237,10 +880,13 @@ class SambaRootFixture(unittest.TestCase):
             "caller_close=true fresh_recompiled=true rendered=true "
             "granted_only=true paired_lookup=true management_complete=true "
             "shared_globals=true management_bound=true protected_role=true "
-            "management_unchanged=true "
+            "management_unchanged=true prepared_inputs=true "
+            "service_config_bound=true share_inputs_bound=true "
+            "coordinator_bound=true same_roster=true policy_copy=true "
             "startup_blocked=true identity_retained=true "
             "handoff_close_gated=true desired_roundtrip=true "
-            "journals_unchanged=true stale_refused=true released=true "
+            "journals_unchanged=true stale_refused=true "
+            "runtime_close_before_release=true released=true "
             "samba_data=false activation=false scope=qemu-only")
         self.assertIn(expected, fixture.MARKERS)
         good = "\n".join([*fixture.MARKERS, SCAN_COST])
@@ -249,10 +895,13 @@ class SambaRootFixture(unittest.TestCase):
                       "caller_close", "fresh_recompiled", "rendered",
                       "granted_only", "paired_lookup", "management_complete",
                       "shared_globals", "management_bound", "protected_role",
-                      "management_unchanged",
+                      "management_unchanged", "prepared_inputs",
+                      "service_config_bound", "share_inputs_bound",
+                      "coordinator_bound", "same_roster", "policy_copy",
                       "startup_blocked", "identity_retained",
                       "handoff_close_gated", "desired_roundtrip",
-                      "journals_unchanged", "stale_refused", "released"):
+                      "journals_unchanged", "stale_refused",
+                      "runtime_close_before_release", "released"):
             with self.subTest(field=field):
                 with self.assertRaises(ValueError):
                     altered = expected.replace(field + "=true",
@@ -268,7 +917,7 @@ class SambaRootFixture(unittest.TestCase):
             with self.assertRaises(ValueError):
                 fixture.check_guest(good.replace(expected, replacement))
 
-    def test_three_bounded_campaigns_require_every_original_proof(self):
+    def test_ten_bounded_campaigns_require_every_original_proof(self):
         split = next(i for i, row in enumerate(fixture.MARKERS)
                      if row.startswith(
                          "PHANTOWD_SAMBA_OWNER_NATIVE_NSS_READY"))
@@ -278,34 +927,44 @@ class SambaRootFixture(unittest.TestCase):
         planned = next(row for row in fixture.MARKERS
                        if row.startswith(
                            "PHANTOWD_SAMBA_OWNER_PLANNED_CANDIDATE_READY"))
-        rows = {
-            "service": [*fixture.MARKERS[:split],
-                        "PHANTOWD_SAMBA_ROOT_SERVICE_DONE", SCAN_COST],
-            "native": [*fixture.MARKERS[:5],
-                       *(row for row in fixture.MARKERS[split:-3]
-                         if row != planned),
-                       "PHANTOWD_SAMBA_ROOT_NATIVE_DONE", SCAN_COST],
-            "lifecycle": [*fixture.MARKERS[:5],
-                          *fixture.MARKERS[split:enrollment + 1],
-                          planned,
-                          *fixture.MARKERS[-3:], SCAN_COST],
-        }
-        good = ["\n".join(rows[phase])
-                for phase in ("service", "native", "lifecycle")]
+        rows = campaign_rows()
+        good = ["\n".join(values) for values in rows.values()]
         # Every original contract remains mandatory in the complete union.
         # Lifecycle must not claim the idle-disable proof exercised in native.
         covered = {row for values in rows.values() for row in values
                    if row in fixture.MARKERS}
         self.assertEqual(covered, set(fixture.MARKERS))
+        self.assertIn(fixture.PLANNED_OPEN_FILE_MARKER, rows["file"])
+        self.assertIn(fixture.PLANNED_FILE_SOURCE_FAULT_MARKER,
+                      rows["file-source"])
+        # Each fresh native guest inspects its OWN complete code census. All
+        # independent negative/retention experiments stay mandatory in service,
+        # never asserted by a guest that did not run them. New data work has
+        # its own boot, with genuine enrollment and no inherited passdb/state.
+        for proof in fixture.MARKERS[3:5]:
+            self.assertIn(proof, rows["service"])
+            self.assertNotIn(proof, rows["native"])
+            self.assertNotIn(proof, rows["lifecycle"])
+            self.assertNotIn(proof, rows["data"])
         self.assertFalse(any("NATIVE_IDLE_DISABLE_READY" in row
                              for row in rows["lifecycle"]))
         self.assertTrue(any("NATIVE_IDLE_DISABLE_READY" in row
                             for row in rows["native"]))
         self.assertNotIn(planned, rows["native"])
-        self.assertIn(planned, rows["lifecycle"])
+        self.assertIn(planned, rows["candidate"])
+        self.assertNotIn(planned, rows["lifecycle"])
+        self.assertNotIn(planned, rows["fault"])
+        # Independent libc/config/handoff scenarios run once, in service.
+        # Each native guest still creates its OWN real identities and enrolls
+        # both accounts; it cannot borrow state or proof from another guest.
+        for proof in fixture.MARKERS[split:enrollment]:
+            self.assertIn(proof, rows["service"])
+            self.assertNotIn(proof, rows["native"])
+            self.assertNotIn(proof, rows["lifecycle"])
+            self.assertNotIn(proof, rows["data"])
         self.assertEqual(fixture.check_campaigns(*good),
-                         ((104, 12000000, 123456789),) * 3)
-        for index, phase in enumerate(("service", "native", "lifecycle")):
+                         ((104, 12000000, 123456789),) * 10)
+        for index, phase in enumerate(rows):
             self.assertEqual(fixture.check_campaign(good[index], phase),
                              (104, 12000000, 123456789))
             for row_index in range(len(rows[phase])):
@@ -315,10 +974,24 @@ class SambaRootFixture(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     fixture.check_campaigns(*changed)
             for altered in (good[index] + "\n" + rows[phase][0],
-                            good[(index + 1) % 3],
+                            good[(index + 1) % len(fixture.CAMPAIGNS)],
                             good[index].replace("files=104", "files=105")):
                 changed = list(good)
                 changed[index] = altered
+                with self.assertRaises(ValueError):
+                    fixture.check_campaigns(*changed)
+
+        for index in range(1, len(fixture.CAMPAIGNS)):
+            for field in ("readonly", "complete_census", "hashes", "aliases"):
+                changed = list(good)
+                changed[index] = good[index].replace(
+                    CENSUS, CENSUS.replace(field + "=true", field + "=false"))
+                with self.assertRaises(ValueError):
+                    fixture.check_campaigns(*changed)
+            for field in ("negative_controls", "retained_control"):
+                changed = list(good)
+                changed[index] = good[index].replace(
+                    CENSUS, CENSUS.replace(field + "=false", field + "=true"))
                 with self.assertRaises(ValueError):
                     fixture.check_campaigns(*changed)
 
@@ -445,7 +1118,9 @@ class SambaRootFixture(unittest.TestCase):
 
     def test_native_live_revoke_requires_real_pair_and_peer_continuity(self):
         expected = ("PHANTOWD_SAMBA_OWNER_NATIVE_LIVE_REVOKE_READY "
-                    "accounts=2 qualified_pair=true owner_bound=true "
+                    "accounts=2 qualified_pair=true "
+                    "original_pair_rechecked=true revoked_pair_refused=true "
+                    "owner_bound=true "
                     "same_sid=true target_absent=true same_peer_session=true "
                     "new_login_denied=true other_login_allowed=true "
                     "same_daemon=true no_new_privileges=true "
@@ -453,7 +1128,8 @@ class SambaRootFixture(unittest.TestCase):
         self.assertIn(expected, fixture.MARKERS)
         good = "\n".join([*fixture.MARKERS, SCAN_COST])
         fixture.check_guest(good)
-        for field in ("qualified_pair", "owner_bound", "same_sid",
+        for field in ("qualified_pair", "original_pair_rechecked",
+                      "revoked_pair_refused", "owner_bound", "same_sid",
                       "target_absent", "same_peer_session", "new_login_denied",
                       "other_login_allowed", "same_daemon",
                       "no_new_privileges",
@@ -512,7 +1188,7 @@ class SambaRootFixture(unittest.TestCase):
     def test_campaigns_cannot_substitute_two_for_three_proofs(self):
         split = next(i for i, row in enumerate(fixture.MARKERS)
                      if row.startswith(
-                         "PHANTOWD_SAMBA_OWNER_NATIVE_NSS_READY"))
+                         "PHANTOWD_SAMBA_OWNER_NATIVE_ENROLLMENT_READY"))
         service = [*fixture.MARKERS[:split],
                    "PHANTOWD_SAMBA_ROOT_SERVICE_DONE", SCAN_COST]
         native = [*fixture.MARKERS[:5], *fixture.MARKERS[split:], SCAN_COST]
@@ -992,7 +1668,8 @@ class SambaRootFixture(unittest.TestCase):
             "other_login_allowed=true same_daemon=true no_new_privileges=true "
             "stopped_reaped=true no_fd_leak=true scope=qemu-only",
             "PHANTOWD_SAMBA_OWNER_NATIVE_LIVE_REVOKE_READY accounts=2 "
-            "qualified_pair=true owner_bound=true same_sid=true "
+            "qualified_pair=true original_pair_rechecked=true "
+            "revoked_pair_refused=true owner_bound=true same_sid=true "
             "target_absent=true same_peer_session=true new_login_denied=true "
             "other_login_allowed=true same_daemon=true "
             "no_new_privileges=true stopped_reaped=true no_fd_leak=true "
@@ -1014,16 +1691,46 @@ class SambaRootFixture(unittest.TestCase):
             "symlink_denied=true private_namespace=true "
             "stopped_before_release=true no_fd_leak=true "
             "complete_storage_identity=false scope=qemu-only",
+            "PHANTOWD_SAMBA_OWNER_PLANNED_STARTUP_READY "
+            "owner=actual_native_backend storage=mounted_roster "
+            "same_authorities=true granted_only=true service_role=true "
+            "original_views=true before_start_busy=true after_start_busy=true "
+            "duplicate_refused=true canceled_start_refused=true "
+            "fresh_observation=true runtime_close_before_release=true "
+            "stopped_reaped=true no_fd_leak=true samba_data=false "
+            "activation=false scope=qemu-only",
+            "PHANTOWD_SAMBA_OWNER_PLANNED_DATA_READY "
+            "same_authorities=true same_daemon=true granted_only=true "
+            "ungranted_enabled_denied=true "
+            "smb_read=true smb_write=true unix_owner=true "
+            "readonly_EROFS=true readonly_denied=true symlink_denied=true "
+            "fresh_observation=true stopped_before_release=true "
+            "no_fd_leak=true activation=false scope=qemu-only",
+            "PHANTOWD_SAMBA_OWNER_PLANNED_SUPERVISION_READY "
+            "same_authorities=true complete_scan=true serialized=true "
+            "cancellation_stopped=true originals_retained=true "
+            "restart_refused=true close_before_release=true "
+            "stopped_reaped=true no_fd_leak=true "
+            "activation=false scope=qemu-only",
+            "PHANTOWD_SAMBA_OWNER_PLANNED_STOP_READY "
+            "same_daemon=true private_inputs=15 runtime_inputs_retained=true "
+            "live_not_stopped=true stopped_reaped=true "
+            "legacy_clients_guard=true repeated_readonly=true "
+            "closed_refused=true no_fd_leak=true activation=false "
+            "scope=qemu-only",
             "PHANTOWD_SAMBA_OWNER_PLANNED_CANDIDATE_READY "
             "owner=actual_native_backend storage=mounted_roster "
             "locked_plan=true exact_declaration=true original_objects=true "
             "caller_close=true fresh_recompiled=true rendered=true "
             "granted_only=true paired_lookup=true management_complete=true "
             "shared_globals=true management_bound=true protected_role=true "
-            "management_unchanged=true "
+            "management_unchanged=true prepared_inputs=true "
+            "service_config_bound=true share_inputs_bound=true "
+            "coordinator_bound=true same_roster=true policy_copy=true "
             "startup_blocked=true identity_retained=true "
             "handoff_close_gated=true desired_roundtrip=true "
-            "journals_unchanged=true stale_refused=true released=true "
+            "journals_unchanged=true stale_refused=true "
+            "runtime_close_before_release=true released=true "
             "samba_data=false activation=false scope=qemu-only",
             "PHANTOWD_SAMBA_OWNER_NATIVE_IDENTITY_STARTUP_READY "
             "startup_bound=true exact_backend=true before_start_busy=true "
@@ -1045,8 +1752,23 @@ class SambaRootFixture(unittest.TestCase):
             "close_no_retry=true "
             "subprocess_disposal=true no_fd_leak=true "
             "service_owner=false scope=qemu-only",
+            "PHANTOWD_SAMBA_OWNER_PLANNED_SOURCE_FAULT_READY "
+            "same_authorities=true same_daemon=true data_verified=true "
+            "original_session=true held_client_stopped=true "
+            "held_client_retained=true old_observers_refused=true "
+            "source_covered=true exclusive_supervision=true "
+            "review_sticky=true stopped_reaped=true private_inputs=15 "
+            "runtime_inputs_retained=true originals_busy=true "
+            "cover_removed=true restoration_refused=true close_refused=true "
+            "private_mount_namespace=true subprocess_disposal=true "
+            "parent_fd_equal=true activation=false scope=qemu-only",
             "PHANTOWD_SAMBA_ROOT_DONE",
         ]
+        # The new independent exit proof is additional; all older literal
+        # golden proofs remain required, in their original relative order.
+        index = next(i for i, row in enumerate(lines) if row.startswith(
+            "PHANTOWD_SAMBA_OWNER_NATIVE_IDENTITY_STARTUP_READY"))
+        lines.insert(index, fixture.PLANNED_EXIT_FAULT_MARKER)
         fixture.check_guest("\r\n".join(lines + [SCAN_COST]))
         self.assertEqual(fixture.scan_cost("\r\n".join(lines + [SCAN_COST])),
                          (104, 12000000, 123456789))

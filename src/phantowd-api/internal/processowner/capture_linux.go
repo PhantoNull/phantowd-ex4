@@ -108,42 +108,87 @@ func (c *CaptureOwner) enter(ctx context.Context) error {
 	}
 }
 
-func (c *CaptureOwner) inputsUnchanged() bool {
+func (c *CaptureOwner) inputsUnchanged(ctx context.Context) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	if c.executable == nil || c.input == nil || trustedExecutable(c.executable) != nil {
-		return false
+		return ErrReviewRequired
 	}
 	if c.fixtureInputsValid != nil && !c.fixtureInputsValid() {
-		return false
+		return ErrReviewRequired
+	}
+	if err := ctx.Err(); err != nil {
+		return err
 	}
 	var code, input unix.Stat_t
 	if unix.Fstat(int(c.executable.Fd()), &code) != nil || unix.Fstat(int(c.input.Fd()), &input) != nil ||
 		!sameCaptureObject(code, c.executableStat) || !sameCaptureObject(input, c.inputStat) {
-		return false
+		return ErrReviewRequired
 	}
-	codeDigest, err := captureDigest(c.executable, code, MaxCaptureExecutable)
-	if err != nil || codeDigest != c.executableDigest {
-		return false
+	codeDigest, err := captureDigestContext(ctx, c.executable, code, MaxCaptureExecutable)
+	if err != nil {
+		return err
 	}
-	inputDigest, err := captureDigest(c.input, input, MaxCaptureInput)
-	return err == nil && inputDigest == c.inputDigest
+	if codeDigest != c.executableDigest {
+		return ErrReviewRequired
+	}
+	inputDigest, err := captureDigestContext(ctx, c.input, input, MaxCaptureInput)
+	if err != nil {
+		return err
+	}
+	if inputDigest != c.inputDigest {
+		return ErrReviewRequired
+	}
+	return nil
 }
 
 // Bounded descriptor reads do not change the shared stdin offset. These hashes
 // observe drift only: they are not authenticated expected release digests or an
 // atomic snapshot against a concurrently writing trusted owner.
 func captureDigest(file *os.File, before unix.Stat_t, limit int64) ([32]byte, error) {
+	return captureDigestContext(context.Background(), file, before, limit)
+}
+
+func captureDigestContext(ctx context.Context, file *os.File, before unix.Stat_t, limit int64) ([32]byte, error) {
+	if err := ctx.Err(); err != nil {
+		return [32]byte{}, err
+	}
 	if before.Size < 0 || before.Size > limit {
 		return [32]byte{}, ErrInvalid
 	}
 	hash := sha256.New()
-	count, err := io.Copy(hash, io.NewSectionReader(file, 0, before.Size))
+	count, err := io.Copy(hash, captureContextReader{ctx: ctx, reader: io.NewSectionReader(file, 0, before.Size)})
+	if err != nil {
+		return [32]byte{}, err
+	}
 	var after unix.Stat_t
-	if err != nil || count != before.Size || unix.Fstat(int(file.Fd()), &after) != nil || !sameCaptureObject(before, after) {
+	if count != before.Size || unix.Fstat(int(file.Fd()), &after) != nil || !sameCaptureObject(before, after) {
 		return [32]byte{}, ErrInvalid
+	}
+	if err := ctx.Err(); err != nil {
+		return [32]byte{}, err
 	}
 	var digest [32]byte
 	copy(digest[:], hash.Sum(nil))
+	if err := ctx.Err(); err != nil {
+		return [32]byte{}, err
+	}
 	return digest, nil
+}
+
+// Cooperative cancellation between bounded reads; this cannot interrupt a
+// filesystem syscall already in progress or a private fixture validator.
+type captureContextReader struct {
+	ctx    context.Context
+	reader io.Reader
+}
+
+func (r captureContextReader) Read(data []byte) (int, error) {
+	if err := r.ctx.Err(); err != nil {
+		return 0, err
+	}
+	return r.reader.Read(data)
 }
 
 func sameCaptureObject(a, b unix.Stat_t) bool {
@@ -167,7 +212,15 @@ func (c *CaptureOwner) Capture(ctx context.Context) (CaptureResult, error) {
 	if c.consumed {
 		return CaptureResult{}, ErrCaptureConsumed
 	}
-	if !c.inputsUnchanged() {
+	operation, cancel := context.WithTimeout(ctx, c.spec.Timeout)
+	defer cancel()
+	if err := operation.Err(); err != nil {
+		return CaptureResult{}, err
+	}
+	if err := c.inputsUnchanged(operation); err != nil {
+		if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+			return CaptureResult{}, err
+		}
 		c.review = true
 		return CaptureResult{}, ErrReviewRequired
 	}
@@ -176,8 +229,6 @@ func (c *CaptureOwner) Capture(ctx context.Context) (CaptureResult, error) {
 		c.review = true
 		return CaptureResult{}, ErrReviewRequired
 	}
-	operation, cancel := context.WithTimeout(ctx, c.spec.Timeout)
-	defer cancel()
 	if err := operation.Err(); err != nil {
 		return CaptureResult{}, err
 	}
@@ -220,8 +271,11 @@ func (c *CaptureOwner) Capture(ctx context.Context) (CaptureResult, error) {
 	if err := c.verifySettled(); err != nil {
 		return CaptureResult{}, err
 	}
-	if !c.inputsUnchanged() {
+	if err := c.inputsUnchanged(operation); err != nil {
 		c.review = true
+		if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+			return CaptureResult{}, err
+		}
 		return CaptureResult{}, ErrReviewRequired
 	}
 	if stdout.overflow || stderr.overflow {

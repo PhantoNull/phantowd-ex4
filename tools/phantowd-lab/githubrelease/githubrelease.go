@@ -238,6 +238,9 @@ func validateOptions(options Options) error {
 }
 
 func decodeRelease(data []byte, destination *release) error {
+	if err := checkReleaseStructure(data); err != nil {
+		return err
+	}
 	decoder := json.NewDecoder(strings.NewReader(string(data)))
 	if err := decoder.Decode(destination); err != nil {
 		return fmt.Errorf("decode GitHub release metadata: %w", err)

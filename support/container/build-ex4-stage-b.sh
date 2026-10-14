@@ -66,6 +66,10 @@ make -C "$buildroot_source" BR2_EXTERNAL="$external_dir" \
     BR2_DL_DIR="$download_dir" O="$output_dir" \
     phantowd_ex4_stage_b_defconfig
 make -C "$buildroot_source" BR2_EXTERNAL="$external_dir" \
+    BR2_DL_DIR="$download_dir" O="$output_dir" host-libopenssl
+sh "$external_dir/support/container/check-buildroot-openssl-tool.sh" \
+    "$output_dir/host" "$OPENSSL_VERSION"
+make -C "$buildroot_source" BR2_EXTERNAL="$external_dir" \
     BR2_DL_DIR="$download_dir" O="$output_dir" \
     -j"$(getconf _NPROCESSORS_ONLN)"
 

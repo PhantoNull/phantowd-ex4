@@ -326,13 +326,14 @@ static int writer_identity(void)
  * changed. Drop all bounding/ambient/effective authority before the Go probe. */
 static int inspect_runtime_bundle_mode(const char *mode)
 {
+    const int census_only = mode && !strcmp(mode, "runtime-census");
     if (unshare(CLONE_NEWNS) ||
         mount(NULL, "/", NULL, MS_REC | MS_PRIVATE, NULL) ||
         mount(code_root, code_root, NULL, MS_BIND, NULL) ||
         mount(NULL, code_root, NULL, MS_BIND | MS_REMOUNT | MS_RDONLY | MS_NOSUID |
               MS_NODEV, NULL))
         return fail();
-    if (mode && (mount(root, root, NULL, MS_BIND, NULL) || code_views() ||
+    if (mode && !census_only && (mount(root, root, NULL, MS_BIND, NULL) || code_views() ||
         mount(NULL, root, NULL, MS_BIND | MS_REMOUNT | MS_RDONLY | MS_NOSUID,
               NULL)))
         return fail();
@@ -383,7 +384,8 @@ static int inspect_runtime_bundle_mode(const char *mode)
     }
     if (!last || writer_identity())
         return fail();
-    char *args[] = {"qemu-runtime-bundle", mode ? "composed-code" : NULL, NULL};
+    char *args[] = {"qemu-runtime-bundle", census_only ? "census-only" :
+                    (mode ? "composed-code" : NULL), NULL};
     char *environment[] = {"PATH=/usr/sbin:/usr/bin:/sbin:/bin", "LC_ALL=C", NULL};
     execve("/usr/sbin/phantowd-runtime-bundle-probe", args, environment);
     return fail();
@@ -1021,9 +1023,13 @@ static int native_client_mode(const char *user, const char *kind, int hold, cons
     char *arguments[] = {"smbclient", "-t", "2", "-m", "SMB3_11", "-p", "1445",
         "-A", "/proc/self/fd/4", "//127.0.0.1/IPC$", "-c", "quit", NULL};
     if (data_operation) {
-        if (wrong || hold || strcmp(user, "qpsecond"))
+        if (wrong || strcmp(user, "qpsecond"))
             return fail();
-        if (!strcmp(data_operation, "rw-write")) {
+        if (hold && !strcmp(data_operation, "hold-created")) {
+            arguments[9] = "//127.0.0.1/writable";
+        } else if (hold) {
+            return fail();
+        } else if (!strcmp(data_operation, "rw-write")) {
             arguments[9] = "//127.0.0.1/writable";
             arguments[11] = "put /run/native-share-upload created";
         } else if (!strcmp(data_operation, "rw-read")) {
@@ -1048,7 +1054,8 @@ static int native_client_mode(const char *user, const char *kind, int hold, cons
             return fail();
         /* Fixed interactive clients only, with an owned pipe kept open by
          * this foreground group leader. Echo exercises the same connection;
-         * no shell, arbitrary command, data share or host listener is used.
+         * no shell, arbitrary command or host listener is used. The data
+         * variant opens only its one fixed existing file, once.
          * The controller, not a bootstrap marker, proves both real sessions. */
         int input[2];
         if (pipe2(input, O_CLOEXEC))
@@ -1069,6 +1076,14 @@ static int native_client_mode(const char *user, const char *kind, int hold, cons
         sigemptyset(&no_pipe_signal.sa_mask);
         if (sigaction(SIGPIPE, &no_pipe_signal, NULL))
             return fail(); /* parent only; child already preserves defaults */
+        if (data_operation) {
+            /* One existing file, one opening, no create/truncate/reopen. Its
+             * actual access and identity are checked by the coordinator. */
+            const char open_command[] = "open created\n";
+            if (write(input[1], open_command, sizeof(open_command) - 1) !=
+                    (ssize_t)(sizeof(open_command) - 1))
+                return fail();
+        }
         const char command[] = "echo 1 phantowd-qemu-session\n";
         int live = 1, pipe_open = 1;
         for (;;) {
@@ -1120,10 +1135,16 @@ int main(int argc, char **argv)
         return native_client(argv[2], argv[3], 0);
     if (argc == 3 && !strcmp(argv[1], "native-data-client"))
         return native_client_mode("qpsecond", "good", 0, argv[2]);
+    if (argc == 2 && !strcmp(argv[1], "native-ungranted-client"))
+        return native_client("qpmanaged", "good", 0);
     if (argc == 3 && !strcmp(argv[1], "native-session"))
         return native_client(argv[2], "good", 1);
+    if (argc == 2 && !strcmp(argv[1], "native-file-session"))
+        return native_client_mode("qpsecond", "good", 1, "hold-created");
     if (argc == 2 && !strcmp(argv[1], "runtime-bundle"))
         return inspect_runtime_bundle();
+    if (argc == 2 && !strcmp(argv[1], "runtime-census"))
+        return inspect_runtime_bundle_mode("runtime-census");
     if (argc == 2 && !strcmp(argv[1], "composed-code"))
         return inspect_runtime_bundle_mode("composed-code");
     if (argc == 2 && !strcmp(argv[1], "composed-code-copy"))

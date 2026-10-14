@@ -15,6 +15,9 @@ function syncServiceControls() {
   byId("service-save").disabled = serviceState.busy || serviceState.candidate === null || serviceState.attempted !== null;
   byId("service-editor").disabled = serviceState.busy || serviceState.baseline === undefined || serviceState.attempted !== null;
   byId("service-edit-preview").disabled = byId("service-editor").disabled;
+  byId("service-backup-controls").disabled = byId("service-editor").disabled;
+  byId("service-backup-download").disabled = byId("service-editor").disabled || serviceState.baseline === null;
+  byId("service-restore-preview").disabled = byId("service-editor").disabled || byId("service-restore-file").files?.length !== 1;
 }
 
 function invalidateServiceDraft() {
@@ -33,6 +36,7 @@ function clearServicePolicy() {
   serviceState.generation++;
   serviceState.controller?.abort();
   Object.assign(serviceState, { baseline: undefined, candidate: null, attempted: null, busy: false, controller: null });
+  byId("service-restore-file").value = "";
   invalidateServiceDraft();
   byId("service-current").hidden = true;
   renderServiceTargets(null);
@@ -440,7 +444,12 @@ async function serviceOperation(action) {
     if (typeof s.csrf_token !== "string" || !s.csrf_token) throw new Error("Session token unavailable.");
     return { Accept: "application/json", "Content-Type": "application/json", "X-PhantoWD-CSRF": s.csrf_token };
   };
-  try { await action(request, session); }
+  const live = () => {
+    if (!current()) return false;
+    if (controller.signal.aborted) { const failure = new Error("Request timed out."); failure.name = "AbortError"; throw failure; }
+    return true;
+  };
+  try { await action(request, session, live, controller.signal); }
   catch (failure) {
     if (!current()) return;
     invalidateServiceDraft();
@@ -497,16 +506,105 @@ async function previewServiceChange(build) {
     const preview = await request("/api/v1/file-services/preview", { method: "POST", headers, body: JSON.stringify({ shares: c.shares, nfs: c.nfs }) });
     if (draftGeneration !== policyGeneration) { setText("service-status", "Form changed. Preview again before saving."); return; }
     validatePolicyPreview(preview);
-    const changes = describeServiceChanges(serviceState.baseline, c);
-    const overlaps = describeServiceOverlaps(serviceState.baseline, c);
-    renderServiceChanges(changes);
-    renderServiceOverlaps(overlaps);
-    serviceState.candidate = c;
-    setText("service-change", `${summary} Save revision ${c.revision}, including ${c.shares.shares.length} SMB share(s) and ${c.nfs.exports.length} NFS export(s). No service activation or file deletion.`);
-    setText("service-samba", preview.samba.samba_share_sections || "No SMB sections.");
-    setText("service-nfs", preview.nfs.exports_table || "No NFS exports.");
-    byId("service-review").hidden = false;
-    setText("service-status", "Complete policy preview passed. Review the result, then save explicitly. No service will be activated.");
+    showServiceCandidate(c, preview, summary);
+  });
+}
+
+function showServiceCandidate(c, preview, summary) {
+  checkedServiceReviewDocument(c);
+  validatePolicyPreview(preview);
+  const changes = describeServiceChanges(serviceState.baseline, c);
+  const overlaps = describeServiceOverlaps(serviceState.baseline, c);
+  renderServiceChanges(changes);
+  renderServiceOverlaps(overlaps);
+  serviceState.candidate = c;
+  setText("service-change", `${summary} Save revision ${c.revision}, including ${c.shares.shares.length} SMB share(s) and ${c.nfs.exports.length} NFS export(s). No service activation or file deletion.`);
+  setText("service-samba", preview.samba.samba_share_sections || "No SMB sections.");
+  setText("service-nfs", preview.nfs.exports_table || "No NFS exports.");
+  byId("service-review").hidden = false;
+  setText("service-status", "Complete policy preview passed. Review the result, then save explicitly. No service will be activated.");
+}
+
+async function exportServiceBackup() {
+  if (!serviceState.baseline || serviceState.attempted !== null) return;
+  return serviceOperation(async (request, _session, current) => {
+    const baseline = serviceState.baseline;
+    const backup = await request("/api/v1/file-services/backup", { method: "GET", headers: { Accept: "application/json" } });
+    if (!current()) return;
+    if (!backup || Object.keys(backup).sort().join(",") !== "configuration,format,schema_version" ||
+        backup.format !== "phantowd-file-service-backup" || backup.schema_version !== 1 ||
+        !sameServiceDocument(checkedServiceReviewDocument(backup.configuration), baseline)) {
+      throw new Error("Saved configuration changed or the backup is unsupported. Reload before exporting.");
+    }
+    const text = JSON.stringify(backup);
+    if (new TextEncoder().encode(text).length > 525056) throw new Error("Backup exceeds the file limit.");
+    const url = URL.createObjectURL(new Blob([text], { type: "application/json" }));
+    try {
+      const link = document.createElement("a");
+      link.href = url; link.download = "phantowd-file-services.json";
+      document.body.append(link);
+      try { link.click(); } finally { link.remove(); }
+      setText("service-status", `Download requested for saved revision ${baseline.revision}. Keep this private policy file safe; it is not a data or credential backup.`);
+    } finally {
+      // Defer release until the browser has consumed the activated download.
+      setTimeout(() => URL.revokeObjectURL(url), 0);
+    }
+  });
+}
+
+async function previewServiceRestore() {
+  if (serviceState.baseline === undefined || serviceState.attempted !== null) return;
+  return serviceOperation(async (request, session, current, signal) => {
+    invalidateServiceDraft();
+    const file = byId("service-restore-file").files?.[0];
+    if (byId("service-restore-file").files?.length !== 1 || !file || !Number.isSafeInteger(file.size) || file.size < 1 || file.size > 525056) {
+      throw new Error("Choose one nonempty JSON configuration backup of at most 525056 bytes.");
+    }
+    const generation = policyGeneration;
+    const expected = serviceState.baseline?.revision ?? 0;
+    if (!Number.isSafeInteger(expected + 1)) throw new Error("Revision exceeds browser precision. Restore is disabled.");
+    setText("service-status", "Validating the original backup file. No save has been sent.");
+    const bytes = await readServiceBackupFile(file, signal);
+    const unchanged = () => current() && generation === policyGeneration && byId("service-restore-file").files?.[0] === file;
+    if (!unchanged()) return;
+    if (bytes.byteLength !== file.size || bytes.byteLength > 525056) throw new Error("Backup exceeds the file limit or changed during reading.");
+    // Fatal UTF-8 and retained BOM: File.text() would silently replace invalid
+    // bytes, while a default TextDecoder would remove a leading BOM.
+    let text;
+    try { text = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(bytes); }
+    catch { throw new Error("Backup must be valid UTF-8 JSON. Nothing was saved."); }
+    const headers = await session();
+    if (!unchanged()) return;
+    // Send original text, not JSON.parse/stringify: duplicate keys must reach
+    // the server's strict bounded decoder unchanged.
+    headers["X-PhantoWD-Expected-Revision"] = String(expected);
+    const reply = await request("/api/v1/file-services/restore-preview", { method: "POST", headers, body: text });
+    if (!unchanged()) return;
+    if (reply?.schema_version !== 1 || reply.scope !== "file-service-restore-preview-only" ||
+        reply.expected_revision !== expected || reply.configuration?.revision !== expected + 1 ||
+        reply.saved !== false || reply.applied !== false || reply.runtime_validated !== false || reply.activation_available !== false) {
+      throw new Error("Unverified restore preview. Nothing was saved.");
+    }
+    showServiceCandidate(reply.configuration, reply.preview,
+      "Replace the complete desired SMB/NFS policy with the backup. Definitions and grants absent from the backup will be removed from desired configuration only.");
+  });
+}
+
+// Cancellation retires this observation and releases the UI gate; it does not
+// promise that the browser's underlying file read has physically stopped.
+function readServiceBackupFile(file, signal) {
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    const finish = (failure, bytes) => {
+      if (settled) return;
+      settled = true;
+      signal.removeEventListener("abort", abort);
+      if (failure) reject(failure); else resolve(bytes);
+    };
+    const abort = () => { const failure = new Error("Backup read cancelled."); failure.name = "AbortError"; finish(failure); };
+    signal.addEventListener("abort", abort, { once: true });
+    if (signal.aborted) { abort(); return; }
+    Promise.resolve().then(() => file.arrayBuffer()).then((bytes) => finish(null, bytes), () => finish(new Error("Backup could not be read. Nothing was saved.")));
   });
 }
 

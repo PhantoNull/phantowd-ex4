@@ -37,6 +37,14 @@ shellcheck -s sh \
 	"$external_dir/support/test-compare-build-artifacts.sh" \
 	"$external_dir/support/container/apply-buildroot-samba-json-patch.sh" \
 	"$external_dir/support/tests/test-buildroot-samba-json-patch.sh" \
+	"$external_dir/support/container/apply-buildroot-go-maintenance.sh" \
+	"$external_dir/support/container/check-buildroot-go-sdk.sh" \
+	"$external_dir/support/tests/test-buildroot-go-maintenance.sh" \
+	"$external_dir/support/tests/test-buildroot-go-sdk.sh" \
+	"$external_dir/support/container/apply-buildroot-openssl-maintenance.sh" \
+	"$external_dir/support/container/check-buildroot-openssl-tool.sh" \
+	"$external_dir/support/tests/test-buildroot-openssl-maintenance.sh" \
+	"$external_dir/support/tests/test-buildroot-openssl-tool.sh" \
 	"$external_dir/package/phantowd-api/S02phantowd-mdev" \
 	"$external_dir/package/phantowd-api/S40phantowd-storage-broker" \
 	"$external_dir/board/qemu/armv5/rootfs-overlay/etc/init.d/S49phantowd-identity-owner" \
@@ -74,7 +82,9 @@ shellcheck "$external_dir/support/tests/test-qemu-samba-root.sh" \
 shellcheck "$external_dir/support/tests/test-qemu-service-launcher.sh" \
     "$external_dir/support/tests/service-launcher-init.sh"
 shellcheck "$external_dir/support/tests/test-qemu-runtime-owner.sh" \
-    "$external_dir/support/tests/runtime-owner-init.sh"
+    "$external_dir/support/tests/runtime-owner-init.sh" \
+    "$external_dir/support/tests/test-samba-root-staging-environment.sh" \
+    "$external_dir/support/tests/test-samba-root-staging.sh"
 shellcheck "$external_dir/support/tests/test-qemu-smart-report.sh" \
     "$external_dir/support/tests/smart-report-init.sh"
 shellcheck "$external_dir/support/tests/test-qemu-smart-replay.sh" \
@@ -196,6 +206,24 @@ elif [ "$old_gpl_hash_count" -ne 0 ] || [ "$linux_gpl_hash_count" -ne 1 ]; then
     exit 1
 fi
 
+# Host OpenSSL is shared by QEMU and the board-only kernel research builds.
+# Apply this before PREPARE_ONLY returns; package stamps cannot substitute for
+# the installed CLI/library check after the actual host package is built.
+if [ "$OPENSSL_VERSION" != 3.5.9 ] || \
+    [ "$OPENSSL_ARCHIVE_SHA256" != 603f5602e2eef00d77fbd429d34dcd5822bb301757a1bc9cdb24c670f1eb859a ]; then
+    echo 'Selected OpenSSL pins do not match the versioned maintenance patch' >&2
+    exit 1
+fi
+sh "$external_dir/support/tests/test-buildroot-openssl-maintenance.sh" "$buildroot_source"
+sh "$external_dir/support/tests/test-buildroot-openssl-tool.sh"
+sh "$external_dir/support/container/apply-buildroot-openssl-maintenance.sh" \
+    "$buildroot_source" \
+    "$external_dir/support/buildroot-patches/$BUILDROOT_VERSION/0005-libopenssl-3.5.9-maintenance.patch"
+grep -Fx "LIBOPENSSL_VERSION = $OPENSSL_VERSION" \
+    "$buildroot_source/package/libopenssl/libopenssl.mk" >/dev/null
+grep -Fx "sha256  $OPENSSL_ARCHIVE_SHA256  openssl-$OPENSSL_VERSION.tar.gz" \
+    "$buildroot_source/package/libopenssl/libopenssl.hash" >/dev/null
+
 # Board-only research builds need the same verified sources, not the much
 # larger QEMU root filesystem, Go packages and smoke-test output.
 if [ "${PHANTOWD_PREPARE_ONLY:-0}" = 1 ]; then
@@ -217,6 +245,21 @@ shellcheck -s sh "$external_dir/support/tests/test-buildroot-system-cmake.sh"
 TMPDIR=/phantowd-qemu-fixture-tmp sh \
     "$external_dir/support/tests/test-buildroot-system-cmake.sh" \
     "$buildroot_source" "$external_dir"
+
+# Update all common Go recipe inputs together, after exact-state tmpfs tests.
+# Never silently use an inherited SDK version from the cached host install.
+[ "$GO_VERSION" = 1.26.8 ] || {
+    echo 'Selected Go pin does not match the versioned maintenance patch' >&2
+    exit 1
+}
+TMPDIR=/phantowd-qemu-fixture-tmp sh \
+    "$external_dir/support/tests/test-buildroot-go-maintenance.sh" "$buildroot_source"
+TMPDIR=/phantowd-qemu-fixture-tmp sh \
+    "$external_dir/support/tests/test-buildroot-go-sdk.sh"
+sh "$external_dir/support/container/apply-buildroot-go-maintenance.sh" \
+    "$buildroot_source" \
+    "$external_dir/support/buildroot-patches/$BUILDROOT_VERSION/0004-go-1.26.8-maintenance.patch"
+grep -Fx "GO_VERSION = $GO_VERSION" "$buildroot_source/package/go/go.mk" >/dev/null
 
 # Add structured Samba server IDs without enabling the much larger AD-DC role.
 # This patch is pinned to the Buildroot release and is idempotent in the cache.
@@ -344,14 +387,19 @@ if [ "$previous_jansson_enabled" = 0 ]; then
 	samba_package_rebuild=1
 fi
 
-# Obtain the pinned native Go toolchain first. Linux lifecycle/race failures
+# Obtain the selected host tools first. Linux lifecycle/race failures
 # must fail before the expensive kernel/Samba/target build, not an hour later.
 make -C "$buildroot_source" \
     BR2_EXTERNAL="$external_dir" \
     BR2_DL_DIR="$download_dir" \
     O="$output_dir" \
     PARALLEL_JOBS="$build_jobs" \
-    host-go-bin
+    host-go-bin host-libopenssl
+
+sh "$external_dir/support/container/check-buildroot-go-sdk.sh" \
+    "$output_dir/host/bin/go" "$GO_VERSION"
+sh "$external_dir/support/container/check-buildroot-openssl-tool.sh" \
+    "$output_dir/host" "$OPENSSL_VERSION"
 
 GOCACHE="$workspace_dir/api-host-cache" \
     sh "$external_dir/support/container/test-api.sh" \
@@ -409,6 +457,9 @@ make -C "$buildroot_source" \
     BR2_DL_DIR="$download_dir" \
     O="$output_dir" \
     PARALLEL_JOBS="$build_jobs" -j"$build_jobs"
+
+sh "$external_dir/support/container/check-buildroot-openssl-tool.sh" \
+    "$output_dir/host" "$OPENSSL_VERSION"
 
 # Compare literal Configure source, not the build shell's variables.
 # shellcheck disable=SC2016

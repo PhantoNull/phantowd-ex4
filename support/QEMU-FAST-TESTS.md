@@ -1,6 +1,1021 @@
 # Fast API and file-service integration checks
 
+## Failure-only source-fault checkpoint costs
+
+`support/test-samba-root.ps1 -Campaign file-source -DiagnosticLogs` retains the
+existing guards, one-shot actions and exact child proof. On source-fault failure,
+the child can emit one `PHANTOWD_QEMU_PLANNED_SOURCE_COSTS` row: reached checkpoint
+count0..4, cumulative held-client/holder-observation/first-scan/verified-cover
+milliseconds and total elapsed time. Unreached values are zero. Fixed keys/order,
+canonical integers, monotonic checkpoints and the guest180s telemetry ceiling
+are validated; untrusted rows are dropped and repeated rows relayed only once.
+
+These are elapsed checkpoints from the qualifier's entry, not independent CPU
+durations, successful syscall receipts or permission. No original error, path,
+credential or object ID is printed. Success remains completely quiet: telemetry
+cannot replace or accompany the exact successful child proof. The existing
+1024-byte child-output cap, source-child90s, supervision20s, guest180s and all
+worker/readiness/stop limits are unchanged. No default guest or CI stage is added.
+
+Pinned Linux command-package vet/unit/race and a focused actual ARMv5 healthy
+run pass; the failure-only emission branch is unit-tested on Linux, not yet
+observed in a failing instrumented ARM guest. The earlier complete candidate
+failed its final file-source fixture. Code checkpoint `5245ada` subsequently
+passes the original complete cached lane, all ten Samba campaigns/strict union,
+both SMART lanes and independent exact-source/image audit. Seven complete
+normalized logs independently replay; the final three are controller-only.
+Neither focused nor later complete success is a demonstrated timing fix or
+own-head hosted/clean/physical qualification. Measure setup versus scan/stop before
+changing behavior; do not suppress that full failure or relax its acceptance.
+
+## Diagnostic byte-consumption controls
+
+The actual-source DOM suite now uses native Web Streams for diagnostic responses.
+Fixed decoded-byte caps are auth/system16KiB, storage64KiB, arrays512KiB and
+mounts4MiB; all inclusive/excess boundaries are tested independently of headers.
+There is no unbounded JSON fallback. Strict UTF-8, at most16384 nonempty chunks,
+JSON depth16/container1024 pre-scan and geometric storage precede parsing.
+Initial-auth10s and existing shared-snapshot10s/retirement/no-retry assertions
+cover delayed bodies. Error/excess/abort requests cancellation and releases the
+reader without waiting for a hung cancellation; this is not server/kernel stop.
+
+Tests include fragmented UTF-8, bad/missing streams, pending reads, hung cancel,
+released locks, structure/fragments/unknown paths, no fallback and the maximum
+HTML-escaped128x4096-byte mount envelope. This is host DOM/native stream behavior,
+not real-browser/live/compressed transport, all mutation/import paths or measured
+browser heap/CPU guarantees. Keep asset integration and full/hosted/hardware/
+recovery/product qualification separate. Budgets and test resources must not be
+relaxed to conceal a failed case.
+
+Whole pinned tagged Linux vet/units and single-boot ARM overlay pass with complete
+raw HTTP/HTTPS asset markers. The base/probe remain unchanged, no two-boot/full
+image or new Docker storage is involved. QEMU does not execute browser JS or
+qualify the live transport; stream behavior is tested in native Node fixtures.
+
+## Independent snapshot display guards
+
+The actual-source DOM suite now also refuses malformed system, RAID and mount
+envelopes before rendering. Existing producer limits apply: 16 arrays, 32 supplied
+members, 128 mounts. Missing lists, inconsistent counts/flags and invalid memory
+cannot imply complete empty/current data. Valid partial/unsupported/unavailable
+RAID and exhausted available memory stay explicit. Other domains are fetched
+fresh, not reused; no extra request, retry, job or probe. Rejected private details
+are replaced by a fixed invalid marker before the existing sanitized projection.
+
+Four additional RED/GREEN regressions and 55 negative inputs plus maxima,
+mixed-domain, report and direct pre-DOM refusal controls pass. Whole pinned tagged
+Linux vet/units and single-boot ARM overlay pass. Complete raw guest output
+contains both HTTP/HTTPS asset-verification markers; browser JS runs only in the
+host DOM fixture. No two-boot/full/clean/SBOM/hosted/browser/hardware/product
+qualification or new Docker image/volume is implied. Metadata and byte-bounded
+transport/provenance validation remain separate.
+
+## Storage display-envelope frontend regression
+
+`node support/test-dashboard-ui.mjs` executes the actual embedded JavaScript in
+a DOM fixture. Storage must match the existing schema-2/read-only envelope,
+exact observation count bounded at32 and typed row flags/status labels before
+rendering. Missing inventories, inconsistent counts and malformed rows are not
+empty current inventories. Refusal is local to storage, preserves newly read
+other sections and does not add/retry API calls or run GPT probing. Tests cover
+27 invalid payloads, complete empty/32-row bounds, report classifications and
+refusal before partial DOM changes; previous session/deadline tests remain.
+
+Pinned Go1.26.8 whole tagged Linux vet/units and a single-boot ARMv5 API overlay
+pass. The overlay reuses the unchanged schema-2 base volume-probe and leaves the
+base artifacts intact. Its terminal tool transcript is truncated; driver exit0
+and hashes are evidence, not a complete raw guest log. No JavaScript runs in
+QEMU. Browser rendering/keyboard/accessibility was unavailable, and no two-boot,
+full/clean/hosted image or product qualification is implied. Existing timers,
+resources, source/base/workspace read-only mounts and discarded tmpfs remain.
+
+## Bounded optional Linux host preflight
+
+Run `support/test-api-linux.ps1` after the no-Docker Windows preflight when the
+pinned image/workspace already exist. It executes the same four Go checks:
+whole untagged API vet/units, tagged vet and the tagged proc-reader diagnostic.
+This is Linux/amd64 host execution, not an ARM guest or complete tagged units.
+
+The single `--rm --pull never` container mounts source and the existing workspace
+read-only/no-copy, uses UID/GID 1000, zero capabilities/no-new-privileges, no network
+and read-only root. Bypassing the builder entrypoint prevents ownership repair.
+Four CPUs/2 GiB/256 PIDs and 1 GiB tmpfs bound test resources; all Go cache/scratch
+is discarded with the container. The Linux suite has 180s plus 10s termination
+grace. Docker connectivity/image/volume preflight is outside that deadline.
+Missing dependencies, timeout, OOM or other failure refuse without a retry,
+pull/build/prune or resource deletion. This bounds this test's cache, not Docker's
+whole VHDX, WSL swap or unrelated applications' disk use.
+
+`support/tests/test-api-linux-wrapper.ps1` mocks only the external Docker command:
+profile/exact argument pairs, mounts, preserved Go commands and six refusal cases.
+Windows PowerShell tests and an actual pinned Linux suite/effective-profile
+inspection pass; local PowerShell 7 was absent, so hosted execution is not claimed.
+Shellcheck and workflow routing checks also pass. Changes only to this wrapper/
+test are host-tool inputs, not QEMU/B3 image inputs. No NAS, physical device,
+new image/volume, clean build, ARM, speedup or product activation is qualified.
+
+## Policy-store interruption and media faults — optional ARMv5 ext4 guest
+
+Retained read-only bootstrap lifetime is now also mandatory: SAME original
+directory/codec/flock/watch, fresh confined cursor per serialized read, sticky
+review on drift/cancel/uncertainty and copy/serialization refusal. Writer lock
+persists between reads and through review. Controlled premature-watch-close
+refuses disposal and preserves unattempted root/lock; it is not kernel EIO.
+No mutation/lease/Owner admission/handoff/journal/recovery/HTTP/startup follows.
+The current exact guest requires52 ordered receipts and strict2+133 controls;
+whole pinned tagged API vet/unit/store race3, Windows and ARM pass. Normal
+unmount/base hash, all previous cases/resources/timers and no-default-CI/no-new-
+Docker-storage/NAS boundaries remain. Earlier47/18 checkpoints below are
+historical scopes, not the current required receipt count.
+
+The same lane now also executes the protected read-only bootstrap observer
+and fixed NAS adapter, requiring47 ordered PASS receipts: ten bootstrap test
+groups/subcases, adapter and all previous SIGKILL/media campaigns. Five
+kind/revision values are observations only: no fsync/init/promote/delete/lease/
+admission/recovery/HTTP or startup. Empty directory is not NAS pristine; valid
+current document is not durable-confirmed state. Errors return zero; unknown/
+pending/invalid evidence is preserved. Strict verifier controls now2+123.
+
+Whole tagged pinned host vet/unit/scoped race3 and ARM pass. Two driver calls
+passed but aggregate tool capture was truncated; an additional same-source
+guest supplies all47 untruncated receipts, normal unmount/base hash. Preserve
+that limitation, not an invented complete two-guest raw record. All original
+resource/time limits remain; no default boot/image/volume/privilege is added.
+
+Run `support/test-revisionstore-media.ps1` with the existing pinned SDK and
+manifest-verified base. It creates no Docker image/volume: source/base/SDK are
+read-only, preparation/caches/images are bounded private tmpfs, containers
+auto-remove, and both virtual disks use snapshots with no NIC or host ports.
+Nothing from this lane is installed in the product or started on an EX4.
+
+The generated32-MiB ext4 data disk runs seven existing SIGKILL boundaries for
+each nonempty SMB/NFS and SMB/NFS/iSCSI format. The parent verifies the live
+exclusive lock, actual signal exit, exact old/new policy, preserved pending
+bytes, stale commit refusal and explicit later publication. New initialized
+Owner cases then verify real read-only and zero-available-space failures,
+exclusive lock/sticky review and refusal after restoration. With no consumer,
+explicit fixture close/reopen reads exact confirmed state and preserves full-
+media pending evidence; it is not an automatic product recovery mechanism.
+
+File-extension ENOSPC is not sufficient to establish complete exhaustion.
+The bounded filler uses at most32MiB plus16 one-byte fresh-file tail attempts
+on the fixed small guest mount; zero available blocks is still required before
+the store attempt. The exact ARM/model/marker/device/filesystem/size guard
+prevents media cases from running as ordinary host tests. No error injection
+replaces the store's actual filesystem syscalls.
+
+The original media-only checkpoint required18 ordered top-level/stage PASS receipts,
+one Go PASS, preparation/completion, no skip/zero-test/fatal diagnostics and
+normal unmount. Two positive/64 malformed controls include every missing/
+duplicated receipt, wrong order and foreign markers. Two consecutive guests
+plus pinned host vet/unit/race3 and separate Windows API/UI checks pass.
+The declared new-lane budgets are Go45s, guest60s, outer180s; resource caps are
+four CPUs/2GiB/256PIDs and1GiB host tmpfs, guest256MiB. No default CI boot is
+added. SIGKILL is process loss while the kernel stays alive, not power loss or
+physical device/cache/state-medium durability. Product placement, durable
+review/recovery, EX4/full-image/own-hosted/reproducibility gates remain separate.
+
+## Parent share-mount substitution — separate disposable ARM guest
+
+Run `support/test-server-capture-open.ps1 -InputDrift source-root` alone.
+After one matched READ, bind-cover only the prepared parent share with the
+SAME original directory, read-only/nosuid/nodev/noexec. Device/inode/content
+remain equal; unique mount ID must differ. The detached worker and held
+original share remain original. No data rewrite or arbitrary path selection.
+
+Fixed original-root-relative no-symlink O_PATH observations bracket worker
+checks. The temporary directory descriptor supplies metadata only, never a
+replacement share. Next READ must refuse with zero frame; independently
+settled groups, sticky review/original references, restoration refusal and
+stable reviewed FDs/data/base are mandatory. Restore the mount only after
+verified stop; post-stop metadata observations do not authorize recovery.
+
+All nine client guests also execute the exact real directory-binding unit in
+the pinned ARM kernel: replacement/symlink/missing/restoration/cancellation.
+One exact PASS is required; SKIP/FAIL/zero tests refuse. Host kernels lacking
+unique mount IDs prove refusal only and cannot qualify the positive controls.
+The five fixed input kinds have10 positive/136 malformed receipt controls.
+The complete eleven-guest focused union and pinned host/Windows checks pass.
+No original deadline/fence/privilege change, new image/volume or default CI
+boot. Earlier timing failures remain unresolved; full/hosted/independent
+reproduction, complete source/device/OFD/request/uncertain-stop, hardware and
+product qualification are not waived.
+
+## Parent source leaf substitution — separate disposable ARM guest
+
+Run `support/test-server-capture-open.ps1 -InputDrift source` alone. After one
+matched READ, the fixture clones only the already-held synthetic four-byte
+object into private RAM, preserving bytes/mode/ownership/size, and covers the
+fixed parent leaf read-only/nosuid/nodev/noexec. It does not overwrite original
+data or adopt a copied alias. The detached child and retained original remain
+original. This is not a general path/PID/program selection interface.
+
+The worker observation now rechecks the fixed parent leaf without following
+symlinks, against the held original's metadata, before/after its existing
+observations. The next READ must return zero metadata, retain sequence one,
+settle both groups and retain review/original references. Restore only after
+verified stop; restored-leaf metadata is not admission or recovery. Repeated
+READ/start/Close refuse; reviewed FD count, data and base remain unchanged.
+
+The original input-fault checkpoint admitted four fixed kinds, with eight
+positive/109 malformed controls. Real-file unit controls and unchanged old
+fault/healthy regressions remain required. Preserve the first failed refusal
+and the 60-second diagnostic timeout; the bounded earlier-fence observation
+is diagnosis only, never proof of READ success. No widened original limits,
+privileges, default CI boots or Docker storage. Complete source/root/device
+lifetime, original OFD/request, interrupted I/O and product remain unqualified.
+The latest complete clean focused union passes all ten guests, with original
+fences/deadlines preserved and DEBUG removed. Keep earlier deadline failures
+and older-commit baseline success as reliability evidence: a favorable complete
+rerun is not a timing fix. Twelve guard checks measured about 1.95 ms total in
+one healthy guest; the sole cause of timing variation remains unproven. Full/
+own-hosted/reproducibility/product/installation qualification is not waived.
+
+## Canceled READ collection — separate disposable ARM guest
+
+Run `support/test-server-capture-open.ps1 -CancelRead` without another fixed
+fault switch. The independent compile-time-only waiting client variant does
+not send a READ notice, CLOSE, retry or reconnect. It blocks on the original
+control pipe after its read/seek/tuple checks; EOF/any unexpected command refuses.
+This is a fixture, never an installed program or generic launcher override.
+
+An observer polls only queued byte count at 20 ms, bounded by five seconds and
+the original parent. Only 88 observed bytes trigger collection cancellation.
+Errors are terminal with no retry; the observer must be joined. The proof then
+requires canceled context/review, zero frame/sequence, independently stopped
+groups, unconsumed original queue, retained original references, repeated
+READ/start/Close refusal, stable reviewed FDs and unchanged synthetic data/base.
+Neither byte count nor cancellation certifies completion or record authority.
+
+Strict receipts require all fields (two positive/30 negative controls). Host
+real-pipe blocking/EOF tests use ASan/UBSan; real-socket canceled/oversized/empty
+deadline controls cannot cancel or consume. These are separate from actual
+SMB/ARM proof. The original missing-acknowledgement case uses the same retained-
+review assertions. Reuse the existing read-only SDK/base, tmpfs and snapshots:
+no new image/volume, CI boot, privilege or original deadline is added or widened.
+Pending I/O/WRITE/OFD/request, uncertain stop, recovery and product remain gates.
+
+## Missing READ acknowledgement — separate disposable ARM guest
+
+Run `support/test-server-capture-open.ps1 -UncertainRead` separately from
+`-WorkerExit` and `-InputDrift`; combinations refuse before Docker. A fixed
+compile-time-only client variant places refusal after its one-byte read/seek/
+same-tuple checks, without a READ notice, CLOSE, retry or reconnect. It is not
+installed or selected by a runtime launcher override. Default client bytes
+and its three mock-positive/121 refusal controls remain unchanged.
+
+The controller must return zero metadata and retain sequence zero. After
+verified client/server stop, the original receiver must still report 88 queued
+bytes. Repeated observation/refused READ/start/Close cannot consume or decode
+that record, import ancillary data, release originals or grow reviewed FD
+counts. Data/base remain unchanged. Missing acknowledgement cannot certify
+successful client completion or authorize the queued metadata. The independent
+receipt verifier has two positive/28 negative controls; sanitizer checks cover
+the fixed variant but are not actual SMB proof.
+
+Use the existing bounded read-only base/workspace and tmpfs/snapshot profile:
+no new images, volumes, default CI boots, privileges or deadlines. This is
+review containment only, not uncertain-stop, pending I/O, WRITE, recovery,
+hardware qualification or an installable product.
+
+## Capture input substitutions and receiver drift — separate disposable guests
+
+Run `support/test-server-capture-open.ps1 -InputDrift module`, `configuration`
+or `channel` separately. Together with `source` and `source-root` above these are five fixed test faults, not launcher/profile
+or arbitrary-path/PID selection; combining them with `-WorkerExit` refuses
+before Docker. Each guest first matches one actual authenticated READ. The
+module/configuration cases bind-cover only a prepared parent RAM path with a
+byte-identical copy, leaving original retained inputs and the child's detached
+view unchanged. The channel case changes only the original receiver's
+SO_PASSCRED option.
+
+The next READ must return zero metadata, stop both original groups and retain
+review plus original code/configuration/state/client/bootstrap/proc/object/
+channel references. Restoration happens only after independently verified
+containment. A dedicated point-in-time observer then checks restored metadata;
+it never clears the code keeper's or runtime's review and cannot authorize
+execution. Repeated READ/start/Close refusal, stable reviewed FD count and
+unchanged data/base are mandatory. Strict receipts require the correct fault
+kind, now with10 positive/136 malformed controls. The first mistaken attempt to
+normally revalidate the reviewed keeper failed and is preserved, not waived.
+
+All three actual ARMv5 cases pass in the unchanged bounded RAM/RO/snapshot
+profile described below. No new default CI boot/image/volume/privilege, pending
+I/O/WRITE/durable-reconnect/product qualification or physical NAS action.
+
+## Capture worker loss — one separate disposable ARM guest
+
+Run `support/test-server-capture-open.ps1 -WorkerExit` to verify original-worker
+loss **between requests**, after one matched READ. A separate fixed kernel
+marker and exact VersatilePB/root guard constrain the injector. It opens a
+pidfd only for the held original worker, rechecks the original proc generation
+after binding and then signals through that descriptor. Pinned kernel pidfs
+poll semantics admit mandatory IN plus optional HUP after parent reaping.
+No caller-supplied PID, numeric-PID signal or generic launcher change exists.
+
+The next READ must publish a zero frame and quarantine both Owners. Dedicated
+read-only settlement checks prove client/group absence without treating forced
+stop as SMB CLOSE. Server/group absence, retained original object/proc/code/
+channel references, unchanged data/base and repeated READ/start/close refusal
+are mandatory. Reviewed pins intentionally remain until fixture-process
+teardown. The strict fault receipt has two positive/25 negative controls and
+cannot be substituted for the healthy OPEN/two-READ/CLOSE proof below.
+
+The same existing read-only inputs and bounded auto-removed RAM container apply.
+Guest60s/client30s/outer180s limits remain; pidfd exit observation is bounded2s.
+No pending-I/O/WRITE/durable reconnect/physical fault/full/hosted/product gate
+waiver, default campaign boot, NAS operation or new Docker storage is added.
+
+## Authenticated capture OPEN/two-READ/CLOSE — one disposable ARM guest
+
+Run `support/test-server-capture-open.ps1` for the actual fixed read-only client
+against the dedicated retained capture runtime. Independently declared client,
+observer, bootstrap and library inputs are byte/mode/owner read back after
+staging and retained/revalidated around OPEN, two one-byte READs on the same
+handle, and CLOSE. Failed-constructor rollback, live-Close refusal, server stop before
+client-input release, unchanged synthetic data and FD equality pass. The
+ordered redacted receipt now has two positive/37 malformed controls.
+
+The same lane independently builds/retains a STATUS-only static bootstrap using
+the unchanged native twelve-input boundary. Two actual STATUS helpers settle
+before closure; complete original code/config/state fences bracket each. Their
+fixed isolated-network warning is required exactly with the original handoff,
+not treated as arbitrary accepted stderr. The original worker proc/start/parent/
+group/executable/FD3 and local-file view stay retained; unchanged STATUS
+session/tree match the original client's cached tuple. Host refusal controls
+cover the exact receipt/profile and uncertain helper settlement. A bounded
+original-worker proc census selects one O_RDONLY data FD, refusing write or
+multiple readable aliases and ignoring O_PATH-only aliases. An O_PATH object
+pin is retained through verified stop; it is not a duplicate of the worker OFD.
+
+The same guest now binds/rechecks the original client/worker generations, four
+retained net/mnt namespaces and reciprocal kernel TCP pair. The private client
+Owner holds client then runtime locks together across complete input and STATUS/
+worker fences; rechecks accept no replacement peer. Kernel/TCP primitives and
+generic launchers are unchanged. Healthy exact ARM and host/refusal/race checks
+pass; this is not complete fault or remote-handle/request authority. Each READ
+matches the original client's remote FileIds with every independently observed
+STATUS/worker/local-object field in the kernel-credentialled VFS record. Real
+sender UID/GID are independently read from the original proc, not inferred from
+the authenticated account. Complete inputs, worker/object and TCP fences run
+before and after each READ under both gates. Only an extra tracer-only sweep
+before the first READ was removed; global queue/fence rules remain unchanged.
+
+These two observations grant **no pending request or WRITE authority**. It does
+not run the five parser/refusal tests in the runtime-only
+lane below; those remain separately regression-tested. Existing base/source/
+workspace/image stay read-only; non-root/caps0/NNP/network-none auto-removal,
+CPU4/2GiB/256PIDs and1GiB RAM scratch, ARM926/256MiB/no NIC/all disk snapshots,
+96MiB run/8MiB private state/32MiB client-code/1MiB bootstrap tmpfs apply.
+QEMU60s, client alarm30s, each READ5s, frame receive1s, readiness/client-start12s,
+client-CLOSE5s, daemon-stop4s and outer180s
+remain unchanged. No Docker build/pull/new volume, physical media/NAS, data WRITE,
+HTTP/product installation, default CI or full/hosted qualification waiver.
+
+## Capture runtime inputs — one disposable ARM guest, no client/file request
+
+Run `support/test-server-capture-runtime.ps1` for fixed module/bootstrap input
+composition. The independently declared module/bootstrap and original closure
+remain retained through verified daemon-group stop. The dedicated bootstrap
+creates only a synthetic RAM account via stdin; any existing passdb/uncertain
+lookup refuses before mutation. Actual smbd/NEGOTIATE, live-Close refusal,
+retained original inputs, explicit existing-state refusal with unchanged TDB
+and exact healthy FD equality pass. The separate existing-passdb refusal checks
+verified stop, unchanged database and sticky review retaining original pins
+until fixture-process teardown; it does not claim aggregate FD equality after
+an intentionally retained refusal. Strict receipts have two positive/41 negative cases.
+
+The same guest also executes five dedicated Go capture-client protocol,
+lifecycle and connection-refusal tests (five-second test bound). The verifier requires all five
+ordered RUN/PASS pairs and the summary, refusing a zero-test false green.
+These only exercise parser/
+bookkeeping/constructor refusals, not successful client startup or SMB commands.
+The fixed adapter accepts no data-write operation and the old close-only role
+remains independent. Guest/readiness/stop/outer limits are unchanged.
+
+This does **not** exercise authentication, OPEN, active VFS frames, worker/FileId
+binding or a service lease. Full SDK/fault/hosted/product gates remain open.
+Original negotiated-only runtime and launchers are unchanged and independently
+regression-tested. Existing image/workspace/base/source stay read-only; auto-
+removed non-root/caps0/NNP/network-none container, CPU4/2GiB/256PIDs, 1GiB RAM
+scratch, guest ARM926/256MiB/no NIC with96MiB run/8MiB private state and16MiB
+synthetic share files. QEMU60s, readiness12s, stop4s, outer180s. No new Docker
+image/volume, physical disk/NAS operation, default CI or data WRITE.
+
+## Read-only capture client — compile/mock lane, no guest in this lane
+
+Run `support/test-server-capture-client.ps1` with the existing pinned builder
+and workspace. The optional compile-only lane builds the actual source-based
+handle observer and a dedicated fixed client: one O_RDONLY OPEN, at most two
+one-byte reads on that same handle, local offset reset/check and explicit CLOSE.
+Host orchestration mocks verify three successful flows, ordered notices and
+121 refusals under ASan/UBSan. ARM ELF checks enforce the original observer
+SONAME, fixed interpreter/ABI and hardening, and reject mutation imports.
+The old close-only client also passes, without source or launcher changes.
+
+This is **not actual SMB, ARM guest execution, worker binding or an authority**.
+There is no server bootstrap, retained runtime composition or NAS operation in
+this lane. Existing image/workspace/source stay read-only; non-root/caps0/NNP,
+network none, CPU2/256MiB/64PIDs, 64MiB RAM scratch, auto-removal and 120s outer
+limit apply. No new images/volumes, default CI trigger or full/hosted gate waiver.
+
+## Bounded VFS capture callbacks — synthetic opens, not an SMB worker
+
+Run `support/test-server-capture.ps1` for the optional fixed capture-module
+fixture. It builds only in RAM with the existing pinned SDK and boots one
+disposable ARM926/256MiB guest, no NIC or physical storage. A separate variant
+of the canonical VFS module emits two fixed 88-byte records during sequential
+one-byte reads at offset zero; sync/async callbacks never retain an FSA pointer.
+Twenty fresh-process cases use real Samba loader/registry/tevent, real temporary
+files and kernel sockets, but synthetic open/connection objects and a thin
+local pread backend. Kernel credentials, paired records, sticky faults, full/
+closed queue, cancellation/overlap, unchanged data and parent/child FD equality
+are asserted. Strict log checks exercise two positive and 30 malformed inputs.
+
+Twenty-six sensitive SDK/source hashes and fixed ELF ABI/export/import/direct
+dependencies/hardening are guarded; full transitive SDK qualification remains
+open. A copied base is byte-verified, injected bytes/mode/root ownership are
+read back and the borrowed base is checked unchanged. Outer limits: existing
+image/volume only, auto-removal, read-only source/base/workspace, non-root,
+caps0/NNP, network none, CPU2/512MiB/128PIDs and 256MiB RAM scratch. Guest tmpfs
+64KiB, QEMU30s, parent15s, child5s, outer180s. No default CI change or extra
+volume/image. No wire OPEN, live worker, module/runtime lease, WRITE, product
+activation, hardware qualification or full/hosted gate waiver is implied.
+
+## Verified Samba guest staging
+
+The Samba-root driver enlarges only its disposable regular tmpfs root copy to
+128 MiB and refuses a larger input rather than shrinking it. The borrowed base
+remains read-only and hash-checked. Before boot, each of the five injected
+programs and the manifest must read back byte-exact with its fixed file type,
+mode and root ownership: a successful `debugfs` exit alone is insufficient.
+An actual pinned-debugfs regression checks an intact copy, stale existing bytes
+and a nonzero file that exhausts a synthetic ext2 image; the latter two refuse.
+The corrected focused native ARMv5 campaign passes. This repairs local image
+preparation, not the separate hosted live-session deadline, and does not qualify
+all campaigns, a complete image, product activation or physical EX4 hardware.
+
+## Dedicated same-open client prerequisites: host and QEMU
+
+### Kernel TCP wire prerequisite: not client binding
+
+The private QEMU-only TCP decoder has a separate focused check:
+
+```powershell
+.\support\test-pending-tcp-wire.ps1
+```
+
+With the existing pinned builder/workspace and verified base artifacts, this
+cross-compiles one test binary and boots one disposable ARM926/256 MiB guest.
+Fifteen cases execute three times: fixed identity decoding, incomplete/foreign/
+interrupted/duplicate/framing/bound refusal, complete copied observations and
+real reciprocal loopback socket identity/continuity/post-close disappearance.
+Actual dump identities match independent descriptor Fstat/SO_COOKIE/address/
+unbound-device observations. Same-UID connections to the same server endpoint
+stay distinct across 32 concurrent queries; closing one pair preserves the
+other. Cancellation before admission and immediately after a real fixed
+request returns no rows and preserves descriptor counts. This is not arbitrary
+mid-receive cancellation, adversarial socket drift or process/socket ownership.
+The kernel query is test-only, with fixed IPv4 TCP ESTABLISHED request scope and
+kernel-sender/truncation checks. No Samba client or server is launched there.
+Completion means wire framing, not an atomic socket inventory or process lease.
+
+The private copied-pair matcher selects exact original inode observations and
+requires distinct cookie/inode identities and reciprocal `127.0.0.1:1445`
+endpoints, without bound interfaces. It rejects missing, reversed, cross-pair,
+foreign and duplicate tuple/cookie/inode observations, including invalid
+unselected rows and oversized input. Both full rows retain UID/cookie/endpoints,
+so changing those fields cannot compare equal to an earlier pair. Cancellation
+at admission or final publication exposes no partial pair. A real two-connection
+kernel fixture checks each pair against independent descriptors, then closes
+one and requires only the other to remain observable. It starts no Samba.
+The matcher does not qualify the supplied inode census, principals, process or
+namespace, nor make the completed dump atomic; trusted retained composition is
+still required. It is not wired into an Owner or fault admission.
+
+The auto-removed non-root container uses 2 CPUs, 2 GiB, 256 PIDs and 1536 MiB RAM
+scratch, no network/capabilities, no-new-privileges and read-only source/base/
+workspace mounts. Only the copied image receives test files; injection bytes
+and the unchanged borrowed base are verified. Go compilation is bounded180s,
+guest tests30s and QEMU90s; the guest exposes only loopback. No image pull/build,
+new volume, default campaign/pipeline change, hardware or NAS access occurs.
+Keep source frozen during execution. `-BaseArtifactDir` selects another local
+verified QEMU artifact directory, not physical storage.
+
+This prerequisite does **not** bind the original owned SMB client/worker,
+namespace, opaque handle or request/extent, and authorizes neither WRITE nor
+fault admission. The existing same-open campaign and its guards stay separate.
+For Linux-native checks, run `go test -tags=qemu -run '^TestPendingTCP(Wire|Pair)'`
+against `./internal/processowner` from `src/phantowd-api`; cross-compilation
+alone is not ARM execution.
+
+### Same-open SMB client and server-side witness
+
+The separate healthy execution lane uses a freshly enrolled native Samba data
+server and the complete original client/bootstrap roots:
+
+```powershell
+.\support\test-samba-root.ps1 -Campaign pending
+```
+
+It opens one pre-existing synthetic 4096-byte object and sends CLOSE only.
+Actual ARMv5 client/loader execution, unchanged retained local object/bytes,
+exit0, original-group absence, daemon stop, caller closure, FD equality and
+unchanged base pass. Exact ordered receipts reject missing, repeated, altered,
+failure and measurement-only output. OPEN is telemetry, not an independent
+original SMB session/open/object witness or permission to WRITE. Request,
+extent/cache/journal and pending-I/O fault correlation remain unqualified.
+
+The same guest additionally requires two independent server-side snapshots:
+original server generation/session/tree/share-file ID, retained worker proc
+directory/start ticks, original daemon parent/group/executable, and STATUS
+device/inode matching the retained local descriptor and metadata. Actual ARM
+acceptance and bounded Linux/race3/Windows controls pass. Exact receipts now also
+require `server_open_observed`, `server_open_continuity` and `local_object_matched`;
+missing/altered fields refuse. The same focused guest now also requires
+`connection_original`, `connection_continuity` and `retained_namespaces`.
+Its adapter captures original client proc/start ticks before Wait can reap it;
+the containing Owner binds the validated worker once. Both net/mount namespaces
+are retained, original processes/executable/client credentials rechecked and
+bounded unique FD censuses matched to reciprocal TCP inode/cookie/endpoints.
+The query runs in the checked original network namespace without setns, filters
+or destroy; one-second query cap and shorter parent cancellation win. Complete
+code inputs and server/local-object checks bracket bind/recheck; connection
+checks also precede CLOSE. Both verified stops precede reference release.
+Actual ARM healthy binding and the original fifteen-case TCP runner (including
+the new reader against independent descriptor observations) pass, with unchanged
+bytes/FD/base and existing startup12/CLOSE5/parent35/guest180 bounds.
+Adversarial live drift/uncertain teardown in this new composition, opaque SMB
+handle/request and pending-I/O are not qualified. These are sequential, not
+atomic observations; `smb_object_bound=false`/`pending_io=false` remain mandatory.
+The native data profile's exact lowercase service and libsmbclient generic
+read/write mask have separate RED/GREEN guards from the older CLI-holder profile.
+For a separate fixed original-peer-stop fault (not part of default `all`), run:
+
+```powershell
+.\support\test-samba-root.ps1 -Campaign pending-peer-exit
+```
+
+It performs the same actual original binding before stopping the owned daemon
+group. Concrete client observation refuses, verifies its owned group absent and
+retains original references in review; client CLOSE/start/rebind/repeated release
+refuse. Original local bytes/metadata stay unchanged. A private-mount-namespace
+subprocess retains authorities until exit; bounded exact child proof plus exit0,
+parent FD equality and separate strict ordered guest markers are mandatory.
+`close_refused`/`restart_refused` refer to client operations, not a new generic
+server Close contract. Actual fault and healthy ARM regressions pass, with
+data35/startup12/CLOSE5/guest180 unchanged; the new subprocess is bounded40s.
+No uncertain-stop/namespace/PID/socket replacement, pending-I/O, automatic
+recovery, new full image or product/NAS qualification follows from this test.
+
+The fixed status worker still admits the complete original runtime before and
+after execution; redundant surrounding scans are avoided. No deadline changes.
+
+#### Dedicated server VFS loader prerequisite
+
+```powershell
+.\support\test-server-vfs-loader.ps1
+```
+
+Optional partial S1 only: actual Samba4.22.11 canonical module load/registration,
+CONNECT refusal while handoff/capture is absent, six real loader/ABI refusals,
+UID/GID65534/caps0/NNP, strict two-marker proof with2 positive/21 negative receipt
+controls. Fixed ARMv5 ABI/init export/imports/direct dependencies/SONAME/RUNPATH,
+RELRO/NOW/non-executable stack and6 sensitive SDK hashes are guarded. Compiler
+30s, guest30s, test process5s, wrapper180s; no changed existing guest deadline.
+One auto-removed non-root CPU2/RAM512MiB/PIDs128 container reuses the pinned
+image/workspace read-only and256MiB tmpfs. Only a disposable snapshot copy is
+injected; exact inserted bytes/base hash agree. No image/volume is created.
+No NIC, active daemon/worker, producer/channel/lease, new privilege or generic
+launcher mutation; no default campaign/pipeline, product package/HTTP/NAS.
+Complete transitive closure and S2-S6 remain required; see the
+[dedicated integration plan](SMB-SERVER-OBSERVATION-PLAN.md).
+
+#### Dedicated server context handoff prerequisite
+
+```powershell
+.\support\test-server-observer-context.ps1
+```
+
+Optional partial S2 only: fixed config/state/share descriptor roles plus one
+original AF_UNIX/SOCK_SEQPACKET sender, private mount namespace/chroot, only FD3
+surviving exec, original capability set0xdb/NNP, real child SCM credentials and
+original-reference rechecks after verified child/group settlement. The executed
+program is a **context probe**, not smbd or an observation producer. Complete
+SDK authority and containing Owner remain required.
+
+Host endpoint controls, strict2 positive/16 malformed receipts and actual ARM
+endpoint-closure/config-FD-leak mutation controls pass. Existing native/root and
+product helpers are unchanged; the canonical VFS loader remains CONNECT-refusing.
+The script reuses the pinned image and existing workspace RO, one auto-removed
+non-root CPU2/RAM768MiB/PIDs128 container and256MiB tmpfs. Three static compilers
+are independently bounded30s; guest45s, host endpoint5s, wrapper180s. Two new
+16MiB regular tmpfs ext4 files and a borrowed base copy are snapshot-only;
+insertion bytes/modes/root ownership and the unchanged base are checked.
+No new Docker image/volume, NIC, physical device, default boot/CI, product
+service/HTTP/NAS or experimental WRITE. Existing campaign timers are unchanged.
+
+#### Dedicated observer daemon handoff prerequisite
+
+```powershell
+.\support\test-server-observer-daemon.ps1
+```
+
+Optional partial S2 only: actual pinned smbd, original executable/FD3 and fixed
+SMB 3.02 NEGOTIATE on guest loopback, stop-before-release and no restart.
+Twelve constructor refusals each run three times in ARM; host endpoint/foreign
+creator/startup-review controls and strict2 positive/61 malformed receipts pass.
+A fresh second adapter in the same guest proves live original sender-option
+drift, verified group stop, retained originals and sticky review after restoration.
+Discrete Observe/explicit-Stop checks do not qualify continuous supervision or
+active-worker packet authority. The existing guest/readiness/stop bounds remain.
+Before daemon startup, an independent code-input probe retains the complete
+declared code census and rejects an exact-byte copy covering the fixed code
+path. Original mount identity, caller-close independence, foreign-root refusal,
+reference retention and sticky review after restoration are checked. Copies/
+faults are confined to `/run`. A private runtime now joins the declared code
+and independently built bootstrap to fixed configuration, original state/share
+roots, both channel endpoints and the daemon adapter. Real receiver-option drift
+and live code-path cover settle smbd with originals retained; restoration cannot
+restart, final parent FD equality and sticky close uncertainty pass. No caller
+probe, process, descriptor or backend can replace those inputs. This does not
+qualify module/full SDK, active VFS producer, worker bridge or continuous
+supervision. The same existing guest/budget carries the optional proofs.
+No authentication, file OPEN, active VFS sampling, WRITE or complete code/SDK/
+containing authority. The canonical VFS module remains CONNECT-refusing.
+
+The new lane uses one auto-removed non-root CPU4/RAM2GiB/PIDs256 container with
+1GiB disposable tmpfs, the existing pinned image/workspace read-only and no new
+Docker images/volumes. Four compile commands are individually bounded30s;
+guest60s, readiness12s, stop4s and outer180s. Existing campaign timers are
+unchanged. Guest RAM256MiB, `/run` cap96MiB and mutable Samba state cap8MiB;
+the latter used4092KiB in a diagnostic success. Two16MiB synthetic ext4 disks
+and a128MiB borrowed root copy are snapshot-only. Inserted bytes/modes/owners
+and original base hashes are checked. No NIC, host port, physical device,
+default boot/CI, product package, HTTP or NAS operation. Failed full-image and
+own-head hosted gates are not waived.
+
+#### Server-side original-open reader prerequisite
+
+```powershell
+.\support\test-server-open-observer.ps1
+```
+
+This independent source-built prerequisite copies a fixed72-byte private tuple
+from the same pinned Samba4.22.11 `files_struct`: session/tree, persistent/volatile
+remote IDs, share-mode generation, worker identity and device/inode. Complete
+bounded internal membership precedes file dereference; reciprocal open/tree
+links, non-durable state, local worker identity and a real single-link regular
+descriptor must agree. The reader performs local getters/fstat only, clears
+refused output and never opens a path, allocates, sends SMB, closes or writes.
+It accepts trusted in-process context/output pointers, not untrusted memory or
+caller-supplied runtime authority. Its narrow predicate is not product disk/share
+eligibility or compatibility policy.
+
+The ARM guest uses actual upstream fd_handle allocation/getters and list macros
+with real temporary files. All 66 refusals also execute through the separately
+loaded DSO and actual installed Samba getters, without getter mocks. Copied/
+foreign file, list cycle, different real inode, EBADF, directory and actual
+hard-link and inconsistent non-FSA controls refuse; repeated positive metadata
+and unchanged data pass. A normal non-pathref file must have `is_fsa` set, as
+required by the pinned Samba state contract. That flag is not SMB response success:
+later CREATE response construction can fail. SMB2 sets `closing` before the
+VFS-close callback, so observations must bracket the still-open file, not CLOSE.
+The open/tree/connection records themselves are **synthetic**. There is no active
+daemon, protocol/session/worker binding or complete observer-input authority.
+Sixteen sensitive source hashes, fixed ARMv5 ABI/RUNPATH/SONAME, one export and
+local-read/stack-protector imports are guarded. Original code is combined with
+pinned GPL Samba definitions/functions under their upstream terms. No installed
+Samba object is replaced; artifacts are not product runtime inputs.
+
+The optional wrapper reuses only the existing pinned image/workspace read-only,
+with one auto-removed non-root user1000/caps0/NNP/networknone container,
+CPU2/RAM512MiB/PIDs128 and256+128MiB tmpfs scratch. Compile30s/process5s/QEMU30s;
+the guest has no NIC, a read-only snapshot root and1MiB temporary files in tmpfs.
+Inserted module/test bytes, strict two-positive/nineteen-negative receipt controls
+and unchanged borrowed-base hash are required. Freeze sources while running.
+No new image/volume/full build or default-ten/pipeline change. Live retained
+producer/channel admission, original-worker capture, independent same-open bridge
+and composed fault controls remain missing; `smb_object_bound=false` and
+`pending_io=false` stay mandatory. No WRITE, HTTP, NAS or release qualification.
+
+#### Server-open private wire prerequisite
+
+```powershell
+.\support\test-server-open-observer.ps1 -Wire
+```
+
+This optional standalone guest adds the current ARM Go runtimebundle test binary
+to the same pinned-source C reader fixture. The C subprocess copies two 88-byte
+frames over its private captured stdout; raw IDs never enter the public receipt.
+The format is eight magic bytes `PWDOPEN\0`, LE16 version 1/payload 72, LE32 sequence
+1 or 2, then seven LE64 and four LE32 fields in the source-reader tuple order.
+This is explicit framing, not a native struct dump or an authenticated channel.
+
+The Go decoder requires exact length/header/sequence and valid IDs, with zero
+metadata/redacted errors on refusal. Full-header mutations, every short length,
+extra/concatenated frames, reserved IDs and wrong sequence refuse. The comparison
+keeps client persistent/volatile IDs separate from independent STATUS share-mode
+generation, local device/inode and full worker/session/tree; changed and
+noncanonical fields refuse. Fourteen actual ARM tests include 32 concurrent readers,
+capture-bound checks and actual C-to-Go bytes with an independently known child
+PID. Host tagged vet/unit, three race passes and 10,000 fuzz executions pass. The plain source
+lane and its old receipt contract remain valid.
+
+The optional lane also runs the fixed C fixture with `--packets`: only inherited
+FD3 is accepted, verified as a Unix sequenced-packet endpoint whose creator is
+the parent. Two 88-byte packets are sent once each, without retries or stdout.
+Go owns the original endpoint pair and checks wrapper/FD/object/cookie identity,
+domain/type/protocol, CLOEXEC/status flags, receiver PASSCRED and disabled PIDFD/
+security ancillary delivery. It reads exactly one kernel credential record per
+packet and requires its PID to match the payload; socket creator credentials
+are not substituted for sender credentials. Ordered observations and complete
+credentials must match. A one-byte no-control-buffer peek refuses even empty
+extra packets without importing descriptors. Completed-pair rechecks catch late
+extras; an empty queue is only a point-in-time observation, not future exclusion.
+
+Nine malformed/ancillary cases, three queued-extra cases, eight endpoint/second-
+record cases and copy/pre-cancel/busy/in-flight cancellation controls pass on
+actual sockets. Refused ancillary packets leave descriptor counts unchanged.
+Refusal retains review/original references; replaced endpoints are not closed.
+This helper owns transport references only: the containing lifecycle must settle
+its producer before closing them. The C fixture exits and closes its synthetic
+file BEFORE observation, so this test deliberately proves no live-worker lease.
+
+The root-only disposable ARM credential-domain test uses two additional fixed
+modes: `--packets-real-ids` and `--packets-explicit-ids`. In both children real
+UID/GID become 65534 while effective IDs remain 0. Automatic credentials report
+real IDs; explicit SCM_CREDENTIALS can instead report effective/saved IDs 0,
+even after effective/permitted/inheritable capabilities are zero. The original
+socket creator credentials remain unchanged. Each producer settles before its
+two packets are checked. Host tests skip this root guest case explicitly; no
+Samba worker, user authorization, code lease or live generation is established.
+Producer admission must fix and qualify its credential mode/context; packet
+credentials alone cannot replace independent identity/lifetime authority.
+
+Linux 6.18.55 `net/core/sock.c` and `net/core/scm.c` establish that `SO_PASSSEC`
+returns `EOPNOTSUPP` and emits no security ancillary data when SECURITY_NETWORK
+is compiled out, as in this guest. That availability state is retained; supported
+but enabled options and all other errors refuse. The ARM case verifies it cannot
+be enabled; the host covers enabled-option refusal. No guard/deadline is waived.
+The strict wire log requires source, wire, packet, credential-domain and completion
+markers in order, with two positive and 44 negative parser controls. Plain source controls
+remain two positive/19 negative; parser controls alone are not guest evidence.
+
+One existing auto-rm non-root/caps0/NNP/networknone container uses CPU 2/RAM 2GiB/
+PIDs 128 and 1536+128MiB tmpfs only for this optional compilation. The cached SDK
+version must match versions.env; build 120s, C subprocess 5s/Go capture 7s, guest
+tests 20s and QEMU 30s. Cache is deleted before boot; module/C-test/Go-test/init
+insertion bytes and unchanged borrowed base are checked. Only the fresh tmpfs
+root copy is enlarged to 128MiB; there is no new image, named volume or full build.
+
+No VFS hook, admitted live-worker producer/channel/Owner integration or same-worker bridge
+exists yet. These open/tree records remain synthetic. Framing and equality do
+not prove provenance, continuity, protocol identity, global replay protection,
+pending IO, WRITE, product activation, HTTP or NAS compatibility. A future Owner
+must independently admit/retain producer/channel/code, serialize observations,
+recheck original process/namespace/TCP/local-object fences and retain sticky
+review on missing/extra/replayed/drifted output or uncertain stop. Do not widen
+the generic launcher; the dedicated VFS/channel architecture remains a separate
+design decision. No default-ten/pipeline/privilege/deadline changes.
+
+#### Remaining original-handle witness
+
+Source inspection of pinned Samba 4.22.11 identifies separate ID domains:
+
+| Observation | Source meaning | Not sufficient for |
+| --- | --- | --- |
+| Client `SMBCFILE` | Opaque public handle; internally retains `targetcli` and `cli_fd` | Guessing a private memory layout or selecting the cached server connection |
+| Client SMB2 fnum mapping | Original connection maps fnum to persistent/volatile FileId | An independently observed server/local-object binding |
+| STATUS `share_file_id` | Share-mode file-handle generation (`fh_get_gen_id`) | Direct equality with either remote FileId half |
+| Server CREATE FileId | `smbXsrv_open` persistent/volatile open IDs | Joining an unrelated STATUS entry by numeric coincidence |
+
+The ordinary `file_new` path binds an SMB open and separately assigns the
+process-local file-handle generation. `status_json.c` exports that share-mode
+generation; `smb2_create.c` returns the open's remote FileId instead. Preserve
+both domains. Neither path/name, username, inode alone nor a numeric match
+establishes the original client handle. The global-open database schema also
+does not supply the missing share-mode-generation join by itself.
+
+The complete fixture must observe the actual original client mapping and
+the same server `files_struct`, retaining the existing process/namespace/TCP and
+local-object fences. A narrowly scoped source-built reader now has a standalone
+prerequisite lane:
+
+```powershell
+.\support\test-pending-handle-observer.ps1
+```
+
+It compiles the reader in the actual pinned Samba fnum translation unit and uses
+its real private definitions, not copied layouts. Ten sensitive source hashes,
+strict ARMv5 compilation, one exported symbol and a local-read import whitelist
+are required. The separate approximately 7 KiB library never replaces installed
+Samba. The combined source-built artifact retains upstream GPL terms/notices.
+A partial-link GC step keeps the standalone test free of unused wire/event code;
+final undefined-symbol errors remain enabled. Fixed `/usr/lib/samba` RUNPATH
+resolves the existing private dependency closure, never an environment override.
+Explicit new dtags and readelf guards require RUNPATH and reject RPATH. Earlier
+documentation incorrectly called the original RPATH output RUNPATH; the stricter
+independent closure inspector exposed and rejected that difference.
+
+The actual ARM fixture exercises the real upstream IDR mapping allocation,
+lookup/removal and same-fnum reuse with distinct remote IDs. Thirty-six refusal
+cases clear all output bytes. Connection/session/tree getters are **mocked** in
+this positive seam; a separate loaded DSO exercises three early invalid-context
+refusals using its real imports. Two accepted and nineteen rejected receipt
+controls pass. Exact inserted bytes and unchanged borrowed base are checked.
+This standalone seam is not an actual client opening, server bridge, retained
+library execution authority, lifetime/atomic observation, reconnect or pending-I/O
+qualification. It now constructs the file list with the actual upstream
+`DLIST_ADD` macro: singleton `prev` points to itself, not NULL. A real-macro
+RED/GREEN regression corrected the reader's earlier mistaken NULL assumption.
+Its returned copy is metadata only; a reused fnum exposes a changed tuple rather
+than retaining identity. The containing fence must compare original observations.
+
+The wrapper also tests/compiles a distinct close-only client build selected by
+`PHANTOWD_PENDING_HANDLE_OBSERVER_QEMU`. It reads the original context/file twice,
+after OPEN/stat and before CLOSE, emits bounded canonical private notices and
+requires exact fieldwise ID continuity. ASan/UBSan mocks cover sixteen reader/
+ID/auth refusals, exact ordering and 64-bit values, changed tuples and forbidden
+controls. It rejects `W` and has no write/seek imports. The default client keeps
+its original behavior and mock/ARM compile checks. The module's fixed
+`libphantowd-pending-handle-qemu.so` SONAME prevents a scratch DT_NEEDED path.
+This source-reader wrapper still tests only compilation/mocks and the separate
+source/IDR guest. To execute the new client against actual SMB, use the distinct
+composed campaign below; neither lane is part of the default ten guests.
+
+The auto-removed non-root container uses the existing image/workspace read-only,
+no network/capabilities, NNP, 2 CPUs / 512 MiB / 128 PIDs and 256 MiB `/tmp` plus
+128 MiB `/var/tmp` scratch. Compile steps are bounded30s, guest process5s and
+QEMU30s with no guest NICs; no pulls/new images/volumes or full build. Source
+must stay frozen. This lane does not authenticate the full transitive SDK/source
+or qualify a current complete image/SBOM, hosted timing repair or EX4 support.
+
+The composed actual-client prerequisite is available separately:
+
+```powershell
+.\support\test-samba-root.ps1 -Campaign pending-handle
+```
+
+The build independently inspects the fixed module in a new RAM-only inspection
+tree. Shared closure objects and bindings must equal the original client graph;
+only the bounded canonical module may be added. Inspection is not execution
+authority. The containing Owner retains complete original roots/descriptors,
+requires the fixed ARM module/SONAME/client dependency, fixes the client mode at
+construction and rechecks all inputs around metadata publication. Its bounded
+ordered parser latches the complete initial tuple only, rejects drift/replay and
+never publishes raw notices in the qualification log.
+
+The real client reads the original context/file after OPEN/stat and before CLOSE;
+the composition matches session/tree to independent STATUS and rechecks the
+original process/namespaces/TCP/server/local-object witnesses before CLOSE. The
+client's original executable is descriptor-executed through the dedicated
+bootstrap, with a private mount namespace/root, UID/GID65534, no capabilities and
+NNP. Client group exit, daemon settlement, unchanged data and FD/base equality
+precede release. Actual ARM acceptance and the older `pending` regression pass.
+Sequential observations are not atomic or continuous; the initial accessor is
+cached metadata, not a new live observation or lease.
+
+The independent **remote-FileId/server-file-generation bridge is still missing**.
+Never equate persistent/volatile IDs with STATUS `share_file_id`. Do not copy
+private layouts, read process memory by PID, replace product libraries or use a
+notice as execution authority. Complete healthy/fault qualification remains
+necessary before changing `smb_object_bound=false`; request/extent/cache/journal
+correlation is separate before WRITE. `pending_io=false` remains required. One
+`SMBC_write_ctx` call uses `cli_writeall` and does not by itself prove one wire
+request, write-through or durability. No product startup, HTTP or NAS action.
+
+This optional campaign is deliberately outside the default ten-guest union.
+It reuses the existing pinned image/workspace read-only, one auto-removed
+non-root container, 2 CPUs / 2 GiB / 256 PIDs and bounded 1536 MiB `/tmp` plus
+128 MiB `/var/tmp` RAM scratch. The snapshot guest retains its 180-second outer
+limit and the data phase its 35-second context. Dedicated client startup is
+bounded at 12 seconds, CLOSE at 5, library operations at 2 and process alarm at
+30. Corrected-input diagnostic measured OPEN at 5.557 seconds, exceeding the
+constructor-only checkpoint's unqualified initial 5-second startup guess.
+Existing launchers, idle observers and guest/protocol deadlines are unchanged;
+there is no retry or context renewal. No product install, HTTP or NAS action.
+
+The client pins the target Samba 64-bit file-offset/stat ABI before all C
+headers, with compile-time assertions. The original root includes the fixed
+dynamically loaded IBM850 conversion closure and CP850 catalog; static ELF
+dependencies alone omitted these inputs. Missing module/catalog and conflicting
+shared dependencies refuse instead of suppressing Samba's ASCII fallback.
+
+The optional complete-input lane constructs and retains the actual ARM client,
+its offline library/loader/conversion closure and seven fixed non-secret documents:
+
+```powershell
+.\support\test-samba-pending-launcher.ps1 -RetainedInputs
+```
+
+Expected hashes come from separate build inputs, not the inspected roots.
+The guarded guest stages two separate tmpfs roots, seals them read-only and
+retains each root and every regular file independently. Complete census,
+content, metadata, ACL/capability and original-identity rechecks remain required.
+Wrong client/helper hashes, cancellation and released references refuse;
+caller duplicates can close without losing the private originals. Final FD
+equality and unchanged base are mandatory. Exact log controls reject incomplete,
+duplicate, unknown, altered or failure receipts. Build metadata is diagnostic,
+not a signed release manifest or execution token.
+
+The same guest also constructs the private containing lifecycle Owner with its
+concrete dedicated process adapter. It verifies failed-constructor rollback,
+independent caller closure, copied/canceled/concurrent/released refusals and
+never-started closure without leaks. Ordered input/Owner/guest receipts are all
+mandatory. This does not test launched-child settlement or actual SMB.
+
+This lane launches **neither the real client nor a server**. ELF interpreter /
+needed-library checks do not establish actual loading, ABI closure, SMB access,
+original request/session/object binding or pending-I/O behavior. Healthy
+real-client execution is qualified by the distinct lane above; original object
+and fault correlation remain subsequent gates. No NAS, HTTP endpoint or product startup
+is involved.
+
+It reuses the same image/workspace read-only: one auto-removed non-root
+container, 2 CPUs, 2 GiB memory, 256 PIDs, 1536 MiB `/tmp` and 128 MiB `/var/tmp`
+RAM scratch; one snapshot guest has a 60-second outer limit. Only the new
+disposable tmpfs image copy is enlarged. No base image, device or named volume
+is created/modified. Source must stay frozen during the run. The default lane
+keeps its original smaller 1 GiB / 128 PID / 256 MiB scratch profile.
+
+The separate dedicated launcher now has a synthetic ARMv5 boundary test:
+
+```powershell
+.\support\test-samba-pending-launcher.ps1
+```
+
+It requires the existing pinned image/workspace and base artifacts, creates no
+image or named volume, and uses one auto-removed non-root container with bounded
+RAM scratch. Host ASan/UBSan tests exercise real pipe access/alias/FIFO refusals,
+read-only descriptor types and same-byte copy/symlink/missing-program refusals.
+Strict ARM compilation keeps the helper static and the actual SMB client PIE.
+
+One fresh snapshot boots a **different static synthetic probe**, not the SMB
+client. Its containing harness retains the original helper/root/program until
+the group exits and is observed absent. The probe verifies the cloned RO root,
+private mount namespace, all UID/GID slots65534, no groups or capabilities,
+no-new-privileges, closed authority descriptors and anonymous control/secret
+pipes. Three malformed handoffs refuse; the parent view and base stay unchanged.
+Only exact complete receipts qualify this boundary. There is no SMB server,
+actual libsmbclient execution, credential use or pending-I/O/durability proof.
+The original ten-campaign union and generic/root helper remain unchanged.
+
+The fixed helper ABI uses pipes0-3 and independently retained root/program FDs
+4/5. It clones the original root before namespace separation and executes the
+original program with `execveat`; the fixed staging path is only a destination,
+never an executable/root source fallback. This does **not** qualify a complete
+containing production Owner. Complete-input admission is tested separately
+above; before real client use, qualify its containing lifecycle and actual
+loader execution; before
+fault injection, also qualify original server/session/request/object/extent
+binding. No NAS, HTTP endpoint or product startup is added.
+
+`support/tests/samba-pending-write-fixture.c` is a distinct test-only client,
+not installed in the product or connected to the existing ten-guest campaign.
+The existing idle-file holder and its strict status observer are unchanged.
+With a trusted existing Buildroot output and a disposable tmpfs `TMPDIR`:
+
+```sh
+sh support/tests/test-samba-pending-write-client.sh /path/to/existing-output "$PWD"
+```
+
+This runs C orchestration mocks with ASan/UBSan and compiles/links the actual
+ARMv5 client against the existing public `libsmbclient` header/library. It
+executes no ARM program, guest, authentication or real SMB request. Strict
+compiler warnings remain errors. The mock is non-PIE; the ARM client remains
+PIE. An intermittent ASan PIE startup failure was reproduced by a puts-only
+control, but subsequent PIE controls passed: no universal sanitizer fix is
+claimed. Five-second host execution and bounded diagnostics/core suppression
+prevent a failing sanitizer from flooding logs or consuming persistent storage.
+
+The client source admits only its fixed QEMU model/isolation profile, localhost
+port1445 and one pre-existing `Writable/pending-write` object. A pipe supplies a
+bounded fixture credential; no argv/environment secret or prompt is used.
+After one non-creating/non-truncating open, a fixed control byte permits one
+512-byte library write at offset512 on the SAME opaque handle. Errors, partial
+returns, auth drift or invalid controls refuse without wrapper retry, reopening
+or uncertain library cleanup. Normal explicit close is attempted once. Its
+notices are telemetry (`proof=false`), not server/pending-I/O/durability proofs.
+`libsmbclient` can issue remainder protocol requests within one call; complete
+transport/reconnect behavior remains unqualified.
+
+Before any actual guest use, independently qualify the original retained
+launcher/client/loader/configuration/root inputs, privilege drop and owned
+process lifecycle, original server/session/open/object identity, cache/journal/
+extent-to-request correlation and uncertain teardown. Do not widen the generic
+root launcher, relax the old idle observer or treat a mock/compile success as
+permission to run this on an EX4. No product endpoint or NAS operation is added.
+
 ## Bounded cached full validation
+
+The existing QEMU and EX4 B2/B3 kernel-configuration auditors reject builtin
+or module entries in the unused `CONFIG_CRYPTO_USER_API*` namespace (AF_ALG),
+including future options. Internal kernel crypto libraries remain permitted.
+No hash provider or kernel selection changes: cheap mutation tests plus
+read-only resolved-config audits verify this build guard without compiling
+another image. This follows [upstream AF_ALG guidance](https://www.kernel.org/doc/html/latest/crypto/userspace-if.html),
+not a claim that the pinned kernel implements newer-version restrictions.
 
 The QEMU builder selects one CPU job ceiling from Linux process affinity and
 the visible cgroup v1/v2 quota hierarchy. Fractional CPU quotas round down, with
@@ -104,6 +1119,17 @@ hash-verified QEMU base, with read-only mounts and no network/host-device
 attachment. It never builds/pulls an image or creates a volume. Its rootfs copy,
 compiler cache and guest data are disposable; the compile cache is removed
 before the image copy to fit the 512 MiB tmpfs budget.
+
+The same boot runs four real retained-metadata test groups three times each,
+using fresh 1 MiB read-only code-inspection tmpfs trees under `/run`. The exact
+model/fixture flag and `/run` tmpfs admission are required; host/EX4 skips are
+not accepted by this driver. Late cancellation must discard collection and
+refuse revalidation, original descriptors/table must survive comparison, and
+changed/incomplete expected snapshots must refuse. This is not executable
+authority or qualification of product mounts. No extra CI guest is introduced.
+Only the disposable rootfs copy is enlarged to 128 MiB (larger bases refuse),
+and all three injected programs are verified by exact readback/type/mode/root
+ownership. The shared staging regression also checks stale/exhausted copies.
 
 The separate guest has a finite 120-second budget, no retries and no Samba
 entropy/network readiness dependency. A copied static fixture checks code/root
@@ -740,16 +1766,38 @@ Ownership, wrong-password/access denials, Unix-mode enforcement, kernel RO,
 original-path/symlink denial, one Unicode filename and owned-group stop are
 checked. This is a distinct test-only native fixture, never installed into the
 product image. See [runtime profile and remaining gates](SAMBA-RUNTIME-PROFILE.md).
-The current wrapper compiles once and runs separate fresh service/native/lifecycle
+The current wrapper compiles once and runs fresh service/native/candidate/
+lifecycle/fault/data/exit/held/file/file-source
 snapshots, each bounded to 180 seconds. It independently verifies each phase,
-requires all three complete proofs with matching runtime census, then prints combined
+requires all ten complete proofs with matching runtime census, then prints combined
 coverage. This is not a state/daemon lease across boots. Every original contract,
 base check, worker admission fence and deadline remains required by the complete
 suite. The lifecycle guest independently creates real disabled-first accounts
-and explicitly enables them, then tests retained startup/supervision, coordinator
-revocation and one state-alias fault. It does not duplicate native's first
+and explicitly enables them, then tests retained startup/supervision and coordinator
+revocation. Candidate and state-alias fault now have independently enrolled
+guests instead of accumulating inside lifecycle. Candidate retains the SAME
+Owner/backend/runtime/roster; fault closes enrollment admission before its NEW
+service consumer and disposal subprocess. Lifecycle does not duplicate native's first
 daemon/idle-disable cycle. Authentication, idle/live disable and backend-binding
 proofs remain mandatory in the native guest, never fabricated in lifecycle.
+Independent inspector refusals and generic-adapter retention experiments now
+run once, in service, and remain mandatory in the complete union. Native and
+candidate/lifecycle/fault/data/exit/held/file/file-source each run the SAME zero-capability/read-only boundary and actual
+complete census/hash inspection of their OWN staged tree, but emit a separate
+`CENSUS_READY` proof explicitly saying those independent controls did not run.
+The new data guest independently creates and enrolls its own real identities,
+then verifies fixed SMB transfers and denials through the SAME retained planned
+service. Startup/preparation and the new data action retain separate 40/20-second
+budgets. No earlier guest supplies identity, passdb, runtime or mount authority.
+There is no borrowed authority, cached hash or weaker worker revalidation.
+Worker/readiness/stop/guest deadlines remain unchanged. Candidate's distinct
+declaration and prepared-input scenarios use two serial30-second contexts
+instead of sharing30; failed/expired first work cannot proceed or retry and
+parent cancellation remains binding. This is fixture orchestration, not a
+product timeout extension. The host verifier rejects missing
+original service proofs, incomplete census, wrong-phase/duplicate markers and
+false claims that omitted controls ran. A local all-six pass is not proof
+that intermittent hosted enrollment/guest timeouts are fixed.
 Deliberately quarantined captures and identity references remain held until a
 disposable subprocess proves group stop and exits; that exit is not recovery.
 
@@ -759,14 +1807,124 @@ For a focused local diagnosis, select exactly one unchanged guest campaign:
 .\support\test-samba-root.ps1 -Campaign lifecycle
 ```
 
-Allowed selections are `service`, `native`, `lifecycle` and the default `all`.
+Allowed selections are `service`, `native`, `candidate`, `lifecycle`, `fault`,
+`data`, `exit`, `held`, `file`, `file-source` and default `all`.
 Invalid values fail before guest/fixture construction. A focused run still
 compiles current source, checks all base hashes, uses read-only inputs and
 bounded tmpfs, verifies that phase's exact proof, retains its 180-second limit
 and cleans its disposable container. Its completion explicitly reports
-`complete_image=false`; it cannot substitute for the default three-campaign
+`complete_image=false`; it cannot substitute for the default ten-campaign
 qualification or clean Buildroot/hosted/release evidence. Existing full-build
 callers continue to select all campaigns without modification.
+
+The separately enrolled `held` guest adds normal cancellation/full runtime
+Close for the planned service's SAME fixed authorized IPC$ holder. All seven
+older proofs remain mandatory and unchanged; no old idle observer is relabeled
+to cover the extra group. Complete mode requires all ten ordered logs and
+equal runtime census, with one overlay compilation and independent snapshots.
+This does not qualify open data handles, in-flight loss or durable reconnect.
+
+The separate developmental `file` selection opens one existing synthetic file
+once through the same authorized client and daemon. Qualification requires
+original retained-object/open matching, complete original identity/storage
+rechecks, exclusive serialized supervision, verified cancellation group stop,
+retention until full Close, repeated-close/closed-observer refusal and FD/base
+equality. This is the ninth independently enrolled guest; `all` also requires
+the distinct tenth `file-source` guest below. Both old eight- and nine-log
+unions refuse. `-Campaign file` remains available for
+focused diagnosis, not complete qualification. One compilation feeds all ten
+guests. Startup/data/supervision/worker/stop/guest limits
+are unchanged. Start's complete post-admission match and the supervisor's next
+complete scan are required; no extra duplicate fixture scan consumes the
+supervision budget. This does not prove mid-I/O faults or product safety.
+
+`file-source` holds the SAME original data opening under its original authorized
+session and then covers only the synthetic source alias in a fixed private
+guest namespace. Exclusive supervision verifies whole client/daemon stop while
+the original file, all 15 runtime inputs and both original authorities remain
+held in review. Exact cover removal cannot revive the service or make repeated
+normal Close release authority. Parent FD equality and base hashes are required.
+This does not simulate kernel EIO or qualify a pending write, transfer integrity,
+durable reconnect or product recovery.
+
+All ten actual ARMv5 overlay guests pass, with independent replay of every
+saved actual log and all 1,270 source witnesses (977 API inputs), equal runtime
+censuses and unchanged original artifact hashes. All 71 Linux verifier tests,
+lint, shell and default/focused wrapper checks pass. That overlay alone did not
+qualify the new image/archive/SBOM. Frozen `382004a` subsequently passes the
+complete cached host/ARMv5 lane, all ten Samba guests and both synthetic SMART
+lanes; an independent post-terminal audit matches all 1,270 source witnesses,
+977 API inputs, images/archives/SDK/kernel/headers/OpenSSL consumer/legal/SBOM
+and 25,319 reread audit inputs. This historical checkpoint does not establish
+independent clean or new-head hosted qualification.
+
+The newer frozen `1be0b32` passes complete cached host/ARMv5 integration with
+all ten guests and both synthetic SMART lanes. Its separate post-terminal
+audit matches all 1,273 tracked witnesses, 980 API inputs, exact package/archive
+census, configured strip/image/export, seven artifact hashes, installed SDK,
+kernel/headers/OpenSSL consumer/legal/SBOM and 25,325 unchanged audit rereads.
+The native preparation/enrollment accounting and strict refusal diagnostics
+described below are included in that actual full lane, not inferred from a
+focused or cross-build result. The old integration PR's native Enable failure
+is historical evidence; promotion still needs new-head hosted checks, not a
+blind rerun or a universal timing-fix claim. Pending-I/O, physical EX4 and
+independent clean reproduction remain unqualified.
+
+The fixed exit qualification injects its canceled, admitted and repeated
+requests inside the original service's exclusive loop after a complete scan,
+not through an external runtime alias competing with the next scan. A
+controlled 1100-ms timing probe reproduced external-request `busy=true`; the
+same-delay serial variant and a cleaned-source focused ARMv5 replay passed.
+The temporary probe is removed. No retry, deadline or proof was relaxed.
+This diagnoses that fixture race, not every historical hosted/full failure.
+The earlier serialized-exit checkpoint's complete nine-guest overlay passes,
+with independent replay of all actual logs and source witnesses, equal runtime
+censuses and unchanged base images. This is not the changed full-image/archive/
+SBOM audit or own-head hosted qualification required before promotion.
+
+The current native-only live orchestration explicitly separates two serial
+workloads: original session/revocation/continuity checks keep their 45-second
+bound, then new-login denial and unaffected-peer authentication get 15 seconds.
+This replaces the shared 45 seconds with at most 60 seconds; it is a fixture
+accounting change, not a speedup or a product timeout policy. The second phase
+runs only after timely, successful completion of the first, using the SAME
+retained Owner/runtime/backend. Errors and parent cancellation remain binding;
+no retry, new authority or continuation after uncertain work is allowed.
+Both admission and completion check the original monotonic deadline as well
+as context cancellation, including the exact expiry boundary. All per-worker,
+readiness, stop and 180-second guest limits and required proofs are unchanged.
+The orchestration helper is built only with `qemu && linux`. A continuity phase
+that itself exceeds 45 seconds still fails and never attempts fresh logins.
+The ordinary local two-CPU native guest passes all required proofs, including
+data access/stop/FD equality. Independent replay rejects incomplete, altered,
+duplicate, wrong-phase and the original failed reduced-CPU guest records.
+A separate 0.6-CPU stress run completes both phases and authority closure but
+expires at the unchanged 180-second guest bound before the data/final proofs.
+It is a failed campaign, not a partial pass or a proven data-path deadlock.
+Updated default-union/full-image and own-head hosted qualification remain required.
+
+The fixed native fixture additionally emits `PHANTOWD_DIAG_NATIVE_LIVE`
+operation boundaries and `PHANTOWD_DIAG_NATIVE_WORKER` stage costs.
+Worker timing rows require the trusted fixture's explicit context annotation,
+`WithNativeWorkerTimingQEMU`; ordinary contexts are silent. The parent campaign
+opts in, while exact-proof subprocesses deliberately do not. This annotation
+preserves the existing deadline, cancellation and values; no environment/request
+selector or alternate authority is introduced. Diagnostics plus a valid proof
+still fail exact child-output equality: do not filter them into success or widen
+the existing 1-KiB child-output bound. A real host child/emitter regression fails
+before this correction; tagged vet/tests/race-count3 and the actual ARMv5 fault
+campaign pass afterward. The strict fault receipt covers both identity-state and
+planned-source faults. This is not complete-image or hosted-timing qualification.
+
+All timing labels are
+typed and durations bounded; rows disclose only timings, remaining context
+budget and fixed cause classes, never account names, credentials, commands or
+worker output. They are always `qualifying=false`; expected negative controls
+can have `failed=true` even in a successful campaign. They do not reset a
+context, change deadlines/admissions, retry work or replace mandatory proofs.
+Preserve the complete diagnostics and tested source when comparing CPU quotas.
+A focused native pass and a same-source reduced-CPU refusal characterize timing;
+they do not qualify the default ten-guest union, a new whole image or hosted CI.
 
 For troubleshooting, add `-DiagnosticLogs` to the same command. After each
 guest exits, this opt-in mode emits its complete bounded log as one escaped JSON
@@ -780,16 +1938,241 @@ fixture logs only, not a product/device log collector; save the command output
 if needed. Additional temporary instrumentation still requires a separate clean
 replay after it is removed.
 
-The QEMU-only native and lifecycle fixtures also emit bounded cumulative
+On campaign refusal, the host driver now emits one bounded redacted JSON
+`phantowd-qemu-worker-timing-summary` before the existing failure-log tail.
+Only the fixed native worker grammar is recognized: at most 512 rows, each
+elapsed/remaining value at most 600,000 ms. It reports row counts, sums of
+reported stage durations, the last row and last reported failure. These are
+neither operation counts, wall time, complete-scope coverage nor root-cause
+proof. Expected negative controls may also contribute failures. Missing rows
+mean unavailable; malformed/unsupported rows refuse the summary without
+publishing partial totals. If reporting fails, an unavailable notice is emitted
+and the original campaign still exits 1. No timing summary can satisfy the
+original campaign verifier or change `verified`, contexts, retries or deadlines.
+The existing synthetic raw-log tail is not replaced by this redacted report.
+
+For an already saved synthetic fixture log:
+
+```powershell
+python -B support/tests/samba_root_fixture.py timing-summary .\artifacts\native-fixture.log native
+```
+
+The host-only reporter passes 77 pinned Linux tests, lint and shell checks,
+including execution of the actual failure block and reporting-failure fallback.
+Windows passes 77 tests with five platform-specific skips. Replay of an actual
+failed ARM guest preserves original-verifier refusal and yields the same fixed
+typed observations. This is not a new full guest/image or hosted timing fix.
+
+The QEMU-only native, candidate, lifecycle, fault and data fixtures also emit bounded cumulative
 `PHANTOWD_DIAG_NATIVE_PHASE` timings with fixed phase names, `qualifying=false`
 and `scope=qemu-only`. The monotonic clock starts inside credential setup,
 not at host compilation or guest boot. Timings distinguish enrollment, backend
 observation, authentication, revocation, verified authority closure and the
-later new data profile; lifecycle uses its own candidate/startup/fault phases.
+later new data profile. Candidate/startup/fault timings belong to their own
+independently enrolled traces, never a continuous authority across boots.
 A last timing row only bounds completed work: it neither identifies a blocked
 worker inside the next phase nor proves its success. All original proof markers,
 descriptor census, hashes and command/phase/180-second guest limits remain
 independent and mandatory. Passing telemetry tests is not a timeout fix.
+
+### Narrow digest cost comparison (Linux development host)
+
+The calculation-only `BenchmarkRuntimeFileHashMiB` compares the actual bounded
+file-digest helper with the same SHA-256 chunk schedule over one preloaded
+synthetic MiB. Every iteration checks the expected digest; the file case also
+checks its exact byte count. Existing length/cancellation/scratch regressions
+run alongside it. No code admission, mount, service or device authority is
+constructed.
+
+From `src/phantowd-api`, with the chosen Linux SDK:
+
+```sh
+GOTOOLCHAIN=local GOPROXY=off go test -mod=vendor ./internal/runtimebundle \
+  -run '^TestRuntimeFileHash' -bench '^BenchmarkRuntimeFileHashMiB$' \
+  -benchtime=500ms -count=3 -cpu=1
+```
+
+Use a development host, not the NAS. Fixtures create and remove temporary
+regular files; no operator data is an input. Native x86 timing is not ARMv5
+timing. Guest measurements require a separately isolated synthetic test
+environment; this command does not boot QEMU.
+
+The difference includes seek/read/copy and context/length handling, not just
+disk I/O. The memory case is a diagnostic control, never a production hash
+cache or weaker verification path. Neither result measures complete code
+census/metadata admission, hosted scheduling or physical EX4 throughput.
+Do not skip checks, change cancellation granularity or enlarge a timeout to
+turn this microbenchmark into a service qualification.
+
+The test-only `BenchmarkRuntimeFileHashBackends` extends this comparison to
+synthetic 1 and 16 MiB inputs: `GoFile`, `GoMemory` and `BusyBoxProcess`.
+Run the same development-host command with
+`-bench '^BenchmarkRuntimeFileHashBackends$' -benchtime=300ms`.
+The process lane skips outside ARM with the exact VersatilePB model and explicit
+`phantowd_hash_benchmark=1` command-line token. Host success is not applet/ARM
+execution; cross-compilation alone cannot supply that evidence.
+
+An isolated ARM926/256 MiB snapshot with no NIC, read-only borrowed base and
+32 MiB RAM inputs ran all six lanes three times. Every iteration checks its
+digest; the applet reads the same regular-file stdin and must return the exact
+SHA-256 text for that input. It includes process startup, reads and output
+handling, not just C compression. The extracted base BusyBox exactly matches
+the cached target executable. Final medians in milliseconds were:
+
+| Input | Go file | Go memory | BusyBox process |
+| --- | ---: | ---: | ---: |
+| 1 MiB | 20.66 | 17.40 | 45.80 |
+| 16 MiB | 340.89 | 275.80 | 393.18 |
+
+The 16 MiB samples use only one or two iterations each; three samples in one
+guest are diagnostic, not a statistical performance qualification. This does
+not isolate subprocess startup or all metadata/census costs, compare every C
+implementation, establish physical EX4 throughput or fix the hosted timeout.
+The measured applet path is not a faster replacement for admission. No backend,
+hash cache, checks, cancellation granularity, deadlines or default CI lane change.
+
+#### Read-schedule controls
+
+`BenchmarkRuntimeFileHashReadSchedule` compares the actual 32 KiB helper with
+test-only 32/64/128/256 KiB controls on the same synthetic 16 MiB bytes. Every
+iteration verifies the complete SHA-256 and byte count. Differential tests
+compare the controls with production at chunk boundaries and for short and
+overlong files. The controls grant no census, metadata, code or service authority.
+
+```sh
+GOTOOLCHAIN=local GOPROXY=off go test -mod=vendor ./internal/runtimebundle \
+  -run '^TestRuntimeFileHash' -bench '^BenchmarkRuntimeFileHashReadSchedule$' \
+  -benchtime=3x -count=3 -cpu=1
+```
+
+Use only synthetic development-host/isolated-guest inputs, never the NAS. The
+command does not boot QEMU. Alternate lane order when investigating differences;
+three sequential samples cannot distinguish a small gain from host/guest drift.
+Larger controls also change cancellation/read-ahead granularity: they are not
+drop-in production implementations, even when their complete digests match.
+
+A separate ARM926 snapshot executed all five lanes in three rounds (middle
+round reversed), with three measured iterations per lane per round, original
+hash regressions and unchanged base. Samples exhibit substantial time drift;
+no causal end-to-end deadline fix is established. A separate pinned Go 1.26.8
+profile-guided compilation control also showed no compelling digest advantage.
+Neither experiment changes the production helper, compiler flags, timers,
+default campaigns or hosted qualification requirements.
+Temporary guest setup is removed after measurement; no product tool is installed.
+
+### Diagnose a native fixture timeout before a full CI build
+
+Use the existing matching pinned image, workspace and manifest-verified base:
+
+```powershell
+.\support\test-samba-root.ps1 -Campaign lifecycle -DiagnosticLogs
+```
+
+Do not edit source or run another build against the same workspace while it
+executes. Preserve the exact Git revision, uncommitted changes, base manifest,
+command, actual terminal status and complete escaped diagnostic record. This
+lane neither downloads a new image nor creates a named volume; its scratch is
+disposable. It still requires matching cached dependencies and checks the
+selected campaign, not an entire new firmware image.
+
+Read the **first failed operation** rather than treating every elapsed timer
+as the same timeout:
+
+| Boundary | Current fixture scope | What a failure does not establish |
+| --- | --- | --- |
+| Initial native preparation, 20 s | Original Owner/backend construction and admission; precedes `phase=admitted` | Account enrollment has completed |
+| Native enrollment, 60 s | Both disabled-first journaled enrollments and explicit enable, after successful preparation; precedes `phase=enrolled` | The later coordinator operation was reached |
+| Lifecycle preparation, 20 s | Original journal admission, canceled-disable refusal and creation/qualification of two held clients | Revocation or continuity has completed |
+| Lifecycle revocation, 45 s | Stale-revision refusal, actual disable, successor journal and original peer/new-login verification | Every individual worker exceeded its own deadline |
+| Guest, 180 s | The complete disposable boot and selected campaign | A specific account, worker or coordinator caused expiry |
+
+These are test-context limits, not physical EX4 performance guarantees or
+product request deadlines. See the actual [credential fixture](../src/phantowd-api/cmd/qemu-runtime-bundle/native_credentials_linux.go)
+and [lifecycle fixture](../src/phantowd-api/cmd/qemu-runtime-bundle/native_identity_startup_linux.go)
+when changing their orchestration. A cumulative parent deadline can expire
+after several individually successful operations; a child deadline can also
+expire while its parent still has time. Neither permits ignoring uncertainty,
+reusing reviewed authority or skipping a verification.
+
+The QEMU-only native driver gives preparation20 and enrollment60 separate
+single-use phases instead of their former shared60 context. This raises the
+combined contextual allowance to80 seconds, not hashing throughput. A shorter
+original parent still bounds both. Failed, uncertain, expired or canceled
+preparation cannot begin enrollment; duplicate handoff cannot refresh its
+deadline and a late nil completion refuses. Accounting tests exercise the exact
+private helper used by the fixture, not synthetic identity or session authority.
+Worker/readiness/stop, live-session45 and guest180 limits remain unchanged.
+
+After revocation, only the exact changed-pair sentinel establishes a completed
+changed observation. An unchanged pair and an incomplete observation have
+distinct refusal messages; incomplete outcomes retain their typed causes.
+Wrapped or joined changed sentinels still refuse. A deadline is not proof of
+revocation. Local native success and a slower-emulation negative do not establish
+that the integration PR's own hosted failure is fixed; full current-source and
+own-head hosted qualification remain separate gates.
+
+The current QEMU-only lifecycle driver replaces its former cumulative45 context
+with serial preparation20 and revocation45 contexts. This deliberately raises
+the combined contextual allowance to65 seconds; it is not a performance gain
+or product request policy. The SAME service, Owner, startup-fixed backend,
+journal and opaque original session pair cross the handoff. Uncertain/expired
+preparation refuses the second phase, shorter parent deadlines still bound both,
+and a late nil return cannot report success. Contexts are cooperative, not a
+guarantee to preempt an uninterruptible callback. Worker/readiness/stop and the
+external guest180 guard are unchanged. Fake-clock regression tests exercise the
+actual internal phase runner without inventing runtime/session authority.
+
+A focused local ARMv5 lifecycle replay passes all original proofs after this
+change. An unchanged-source fresh guest also passed, while another failed on an
+independent post-admission worker deadline during client preparation. Therefore
+one candidate pass does not establish that historical hosted outer deadlines
+or independent child expiries are fixed. Full current-source integration and
+own-head hosted qualification remain required; do not rerun heavy CI merely to
+substitute a lucky green for a diagnosed failure.
+
+Fixed `PHANTOWD_QEMU_NATIVE_WORKER_FAILURE` phase/reason labels are diagnostic,
+not authorization. `reason=other` is not proof that no deadline occurred:
+an intermediate refusal can discard the underlying typed cause. Conversely,
+absence of a worker label does not mean the campaign succeeded. The last
+`PHANTOWD_DIAG_NATIVE_PHASE` row identifies completed work only; missing
+`phase=enrolled` means a proposed *post-enrollment* experiment did not reach
+its trigger, not that its intended setting was applied.
+
+The planned source/exit subprocess boundary also emits fixed-label
+`PHANTOWD_QEMU_PLANNED_FAULT_SUBPROCESS_FAILURE` diagnostics on failure. Its
+`deadline` flag describes the outer 90-second child context, `child_failed`
+describes the command result, and `proof_match` describes exact captured-proof
+equality. Validated, deduplicated `PHANTOWD_QEMU_PLANNED_FAULT_FAILURE` rows
+identify fixture phases and typed deadline/review membership without relaying
+raw child errors, commands, paths, credentials or passdb. An absent child row
+does not localize the cause; `deadline=false` does not rule out an inner expiry
+whose typed error was redacted earlier. Unknown/malformed rows are discarded.
+All rows are `scope=diagnostic-only`; even diagnostics accompanied by the
+expected proof still fail exact child-proof equality. The 1-KiB child-output
+bound, original proof bytes, deadlines and verifier remain unchanged. This
+observability improvement does not resolve the intermittent all-campaign fault
+failure or qualify product/hardware operation.
+
+The exit fixture additionally relays validated, deduplicated
+`PHANTOWD_QEMU_PLANNED_EXIT_FAILURE` rows with an allowlisted inner phase and
+`busy` boolean. These distinguish request/repeated-request admission, initial
+scan, quarantine and stop/capture/authority checks without disclosing raw errors.
+The original error chain is retained; `busy=true` means that the chain contains
+a busy refusal, not that a particular lock or root cause has been proved.
+Unknown/injected/extra fields refuse, and telemetry is never success evidence.
+Root/non-root pinned-Go vet/race checks and a focused actual ARMv5 exit guest
+pass. A current full cached run failed at exit supervision after six Samba
+campaigns; unchanged-source and instrumented focused guests subsequently passed.
+This improves diagnosis only: the intermittent failure remains unresolved and
+no complete current image/audit or hosted-failure repair is qualified.
+
+Require the original verifier's terminal success and complete selected-phase
+proofs. A failed fixture may deliberately shut down with guest exit 0; that
+does not override failure markers or the host verifier's nonzero result.
+Save complete JSON diagnostics before cleanup: a clipped console tail is not
+the full trace. A new disposable diagnostic guest is not recovery or a retry
+of a reviewed Owner. Local success, changed CPU quotas, or narrower diagnosis
+cannot waive exact-head hosted checks, clean-build or hardware qualification.
 
 Its fixed runtime now includes IBM850 plus a strictly bounded, hash-verified
 conversion catalog. A dynamic probe tests exact non-ASCII CP850/UTF-8 conversions

@@ -48,19 +48,58 @@ scope; [component contracts](src/phantowd-api/README.md) describe the boundaries
 | Area | Implemented / tested | Still needed for the product |
 | --- | --- | --- |
 | Build | Pinned Buildroot 2025.02.18 LTS / Linux 6.18.55 LTS; complete local ARMv5 integration and exact source/image/SBOM audit pass | Exact-head hosted checks, independent clean reproduction, installable EX4 image and release qualification |
-| Web management | Bounded read-only snapshots, development administrator authentication/password changes, SMB/NFS policy editing with before/after review and cross-protocol folder advisories | Complete setup/recovery, certificate lifecycle, browser qualification and live service management |
+| Web management | Byte-bounded read-only snapshots with independent display validation and invalid/empty-inventory distinction, development authentication/password changes, SMB/NFS policy editing, configuration download and reviewed restore with explicit revisioned save, sanitized snapshot report export | Complete setup/recovery, certificate lifecycle, browser/accessibility qualification and live service management |
 | Storage | Non-root read-only broker, complete sysfs inventory, manual GPT observations, duplicate-identity detection, protected registry with reader-bound rechecks, rechecked registry/census policy and backing reviews, internal MD/mount-owner fixtures | Trusted production lifecycle, persistent volume IDs, global-use accounting, qualified import and RAID management |
-| Sharing and identities | SMB3/NFS fixtures, disabled-first Samba accounts, session revocation, retained startup/state-fault fixtures, Unicode/CP850, streams and POSIX ACL tests | Product account workflows, supervised service activation/recovery and legacy permission migration |
+| Sharing and identities | SMB3/NFS fixtures, disabled-first Samba accounts, session revocation, retained same-authority SMB startup/access, exclusive supervision, held-session and original-open-file source-loss, verified client/daemon closure, Unicode/CP850, streams and POSIX ACL tests | Product account workflows, complete fault coverage, supervised service activation/recovery and legacy permission migration |
 | iSCSI | Coherent desired policy, root-only CHAP reader, registry/share review, private declared SMB/NFS exposure refusal, shared backing-object reservations and retained-storage LIO/CHAP composition with ARMv5 access/session/fault fixtures | Product authority/composition, credential provisioning/recovery, external/cross-protocol use and complete session guards, import and target-management UI |
 | Health | Bounded SMART interpretation, generation-bound coordinator, private complete sysfs census including in-use disks, retained descriptor-generation witness, subprocess replay and native/ARMv5 synthetic producer fixtures | Qualified command/device provider, report-to-device binding, history, authorized test jobs, notifications and UI |
 | Network policy | Desired dual-stack policy, private read-only kernel inventories and internal local-address conflict diagnostics in host/ARMv5 QEMU | Qualified physical interface binding, external address-conflict/routing admission, persistent trial/confirmation/rollback and management UI |
 | Service isolation | Static-child owner/grant isolation, bounded-privilege Samba fixture with retained code/configuration, mutable-state directory lifetimes and descriptor handoff, separate read-only code/service views with copied-object refusal, verified code staging, offline ARM-header/build-attribute observations, actual QEMU libatomic dispatch tests and supervised retained static-code Owner | Product-authorized runtime inputs, complete descriptor-bound construction, identity/state/storage composition, durable recovery and product startup |
 | EX4 hardware | Bounded diskless RAM research; see [board notes](board/wd/ex4/README.md) | Sustained networking, factory MAC handoff, SATA, cooling, LEDs/display, thermal safety and recovery |
+| Release tooling | Host-only deterministic unsigned manifest producer and exact-byte signature/payload verification | Trusted provenance/staging, key provisioning/signing, target transaction, recovery and release qualification |
 
 The API/dashboard are development-only and guest-loopback-only by default.
 Do not expose them through a LAN listener or reverse proxy. Service experiments
 and mount fixtures are not enabled for user disks. Desired configuration and
 successful parser checks do not activate a product service.
+
+Configuration transaction fixtures also pass ARMv5 interrupted-writer,
+full-ext4 and read-only-ext4 tests with confirmed policy retained. This is not
+power-loss recovery or qualification of the EX4's physical state medium.
+A separate internal read-only observer distinguishes current policy and
+incomplete evidence without initialization, recovery or service admission.
+Its empty-directory result is not proof that the NAS is pristine.
+An internal read-only lifetime also retains its lock and original references
+between observations, refusing further reads after drift or uncertainty.
+
+A separate ARMv5 fixture now verifies a retained, isolated real SMB3 client
+opening and closing synthetic data without changes or leaked descriptors.
+Its independent server-side snapshots now match the same worker generation,
+session, tree and open to the retained local file. The original client/worker
+processes, retained namespaces and reciprocal TCP connection now also match.
+Two one-byte READs now also match kernel-credentialled VFS metadata against
+the original client FileIds and independent worker/local-file observations.
+A retained worker file-object pin is not a duplicate open-file description
+or request lease; complete faults and product activation remain unqualified.
+An optional composed guest now observes the original client handle and matches
+its session/tree to the independent server witness. Remote-FileId-to-local-object
+matching is observed only in that fixture; request binding remains unqualified.
+A separate peer-stop fixture also verifies client refusal, sticky review and
+original-reference retention with unchanged data and verified subprocess disposal.
+An original-worker loss fixture verifies the same refusal/retention between
+completed read requests, without claiming interruption of pending I/O.
+Module/configuration substitutions and receiver drift also retain review after
+restoration in dedicated disposable fixtures; they do not authorize a service.
+A missing-READ-acknowledgement fixture additionally verifies stopped processes,
+sticky review and an unconsumed queued record, without certifying completion.
+A canceled-collection fixture additionally verifies bounded observer settlement
+and the same review/queue retention, not interruption of server I/O.
+A parent source-leaf substitution fixture rejects a byte-identical replacement
+against the original held object and preserves review after restoration.
+A fixed parent-share fixture also rejects a new mount of the same directory:
+equal content and inode do not replace the original unique mount identity.
+It does not qualify pending writes, recovery or product service activation;
+see the [focused test contract](support/QEMU-FAST-TESTS.md#dedicated-same-open-client-prerequisites-host-and-qemu).
 
 The code-only inspector rejects undeclared entries, incorrect hashes/modes,
 cross-mount or symlink traversal, file capabilities and access/default ACLs.
@@ -75,12 +114,37 @@ not establish independent clean-build reproducibility, complete licensing
 compliance or physical EX4 qualification. [versions.env](versions.env) is the
 source of truth for build pins.
 
-The Linux 6.18.55 complete cached local build passes the original host and ARMv5
-integration campaigns. Its post-build audit matches all 937 API source inputs,
-actual images, kernel/header source archives, release metadata, SBOM and license
-files. This cached local proof does not qualify an EX4 installation, independent
-clean reproducibility or a fix for the intermittent hosted Samba timeout.
-See the [dependency qualification record](support/DEPENDENCY-REVIEW.md).
+The builder selects host OpenSSL 3.5.9 with exact recipe/hash and installed
+CLI/library guards. Its complete cached integration and independent artifact/
+source/license/SBOM audit pass. This does not enable target OpenSSL or qualify
+a NAS HTTPS service, independent clean reproduction or physical EX4 support.
+
+The latest fully audited local code checkpoint, `5245ada`, selects Go 1.26.8 and
+host OpenSSL 3.5.9. Complete cached host/ARMv5 integration, all ten independently
+enrolled Samba guests and both synthetic SMART lanes pass. The sharing fixtures
+cover same-authority startup, real data access, exclusive supervision, verified
+closure and idle original-session/open-file faults with retained review and no
+restart. Source restoration does not release reviewed authority. These are not
+pending-I/O, physical disk failure, durable reconnect or recovery qualifications.
+
+An independent audit matches all 1,067 API inputs, actual images, kernel/header
+archives, the selected and installed Go SDK, release metadata, SBOM and declared
+license files. OpenSSL's three installed objects are byte-exact reproductions
+of their built objects after Buildroot's configured RPATH normalization. The
+actual Buildroot Python consumer loads those libraries and passes certificate
+verification and private loopback TLS 1.3; see the
+[exact qualification record](support/DEPENDENCY-REVIEW.md).
+This does not establish independent clean reproduction, physical EX4 support,
+complete fault coverage or an installable release. The native QEMU fixture now
+separates preparation from enrollment and preserves the cause of incomplete
+revocation observations. Behavioral regression tests and the complete local
+lane pass; the integration PR still requires new-head hosted qualification.
+An earlier hosted QEMU run failed at a later live-session deadline;
+local success does not establish a hosted timing fix or waive that gate.
+The earlier complete candidate's final source-loss deadline remains unexplained;
+this newer complete pass is not a demonstrated timing fix. The combined candidate
+must pass its own hosted checks before integration. No product
+SMB/NFS service is activated; see [implementation status](IMPLEMENTATION-STATUS.md).
 
 ## Roadmap
 
@@ -96,7 +160,7 @@ tests, failure handling and contributor handoffs.
 | [M6: Network and system services](ROADMAP.md#m6-network-and-system-services) | Desired model tested; apply planned | Recoverable networking, time, discovery and administration |
 | [M7: EX4 board and cooling](ROADMAP.md#m7-ex4-board-controller-and-thermal-qualification) | Research | Qualified peripherals, thermal safety and recoverable boot |
 | [M8–M9: Health, migration and iSCSI](ROADMAP.md#m8-raid-health-and-legacy-migration) | Offline inspectors; management planned | SMART monitoring/tests, notifications, RAID, supported legacy layouts and guarded LUNs |
-| [M10–M11: Installer and release](ROADMAP.md#m10-signed-installer-upgrades-and-recovery) | Host verifier only | Signed model-specific installation, recovery and public beta qualification |
+| [M10–M11: Installer and release](ROADMAP.md#m10-signed-installer-upgrades-and-recovery) | Host metadata producer/verifier only | Signed model-specific installation, recovery and public beta qualification |
 
 Resource-qualified applications and a possible mobile companion follow the
 core NAS release. No release date or completion percentage is promised before
@@ -123,7 +187,10 @@ cd phantowd-ex4
 These checks do not use Docker or contact the NAS. ARMv5 cross-compilation is
 not guest execution. With the pinned image/workspace already present,
 `support/test-api-linux.ps1` adds Linux-native checks without pulling an image
-or creating volumes. Use the [fast integration lane](support/QEMU-FAST-TESTS.md)
+or creating volumes. Its non-root container is capped at four CPUs, 2 GiB RAM,
+256 processes and 1 GiB disposable tmpfs; the Linux suite has a 180-second
+timeout with a 10-second termination grace. A timeout is a failure, not a retry.
+Use the [fast integration lane](support/QEMU-FAST-TESTS.md)
 for eligible userspace changes; clean builds remain separate qualification.
 
 ### Build and boot QEMU

@@ -73,25 +73,76 @@ func (p *Plan) prepareRetainedCode(ctx context.Context, root *os.File) (*retaine
 }
 
 func (c *retainedCode) nodeMetadata(ctx context.Context) (map[string]unix.Statx_t, error) {
+	if c == nil || c.root == nil || c.plan == nil || len(c.plan.nodes) == 0 {
+		return nil, ErrUnavailable
+	}
+	if ctx == nil {
+		return nil, ErrInvalid
+	}
 	result := make(map[string]unix.Statx_t, len(c.plan.nodes))
 	for name := range c.plan.nodes {
 		if err := ctx.Err(); err != nil {
 			return nil, err
 		}
-		fd, err := openBeneath(int(c.root.Fd()), name, unix.O_PATH)
+		stat, err := c.readNodeMetadata(name)
 		if err != nil {
 			return nil, err
 		}
-		var stat unix.Statx_t
-		const required = unix.STATX_BASIC_STATS | unix.STATX_MNT_ID_UNIQUE
-		statErr := unix.Statx(fd, "", unix.AT_EMPTY_PATH|unix.AT_NO_AUTOMOUNT, required, &stat)
-		_ = unix.Close(fd)
-		if statErr != nil || stat.Mask&required != required {
-			return nil, ErrUnavailable
-		}
 		result[name] = stat
 	}
+	// The last context check precedes real open/stat/close syscalls. Do not
+	// publish a complete-looking table if cancellation arrived during them.
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	return result, nil
+}
+
+func (c *retainedCode) readNodeMetadata(name string) (unix.Statx_t, error) {
+	var stat unix.Statx_t
+	fd, err := openBeneath(int(c.root.Fd()), name, unix.O_PATH)
+	if err != nil {
+		return stat, err
+	}
+	const required = unix.STATX_BASIC_STATS | unix.STATX_MNT_ID_UNIQUE
+	statErr := unix.Statx(fd, "", unix.AT_EMPTY_PATH|unix.AT_NO_AUTOMOUNT, required, &stat)
+	closeErr := unix.Close(fd)
+	if statErr != nil || closeErr != nil || stat.Mask&required != required {
+		return stat, ErrUnavailable
+	}
+	return stat, nil
+}
+
+// Compare every fresh path observation with the original protected table.
+// No new table, metadata cache, identity replacement or weaker late fence.
+// The containing Owner serializes use; the original table is never changed.
+func (c *retainedCode) verifyNodeMetadata(ctx context.Context) error {
+	if c == nil || c.root == nil || c.plan == nil || len(c.plan.nodes) == 0 {
+		return ErrUnavailable
+	}
+	if ctx == nil {
+		return ErrInvalid
+	}
+	if len(c.metadata) != len(c.plan.nodes) {
+		return ErrMismatch
+	}
+	for name := range c.plan.nodes {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		initial, present := c.metadata[name]
+		if !present {
+			return ErrMismatch
+		}
+		current, err := c.readNodeMetadata(name)
+		if err != nil {
+			return err
+		}
+		if current != initial {
+			return ErrMismatch
+		}
+	}
+	return ctx.Err()
 }
 
 func (c *retainedCode) revalidate(ctx context.Context) error {
@@ -102,22 +153,19 @@ func (c *retainedCode) revalidate(ctx context.Context) error {
 	if _, err := c.plan.Inspect(ctx, c.root); err != nil {
 		return err
 	}
-	current, err := c.nodeMetadata(ctx)
-	if err != nil {
+	if err := c.verifyNodeMetadata(ctx); err != nil {
 		return err
 	}
-	for name, initial := range c.metadata {
-		if current[name] != initial {
-			return ErrMismatch
-		}
-	}
 	for name, pin := range c.files {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
 		metadata, err := inspectMetadata(int(pin.Fd()), unix.S_IFREG, c.metadata["."].Mnt_id)
 		if err != nil || metadata != c.metadata[name] {
 			return ErrMismatch
 		}
 	}
-	return nil
+	return ctx.Err()
 }
 
 // release owns no processes. The containing Owner must establish their absence
