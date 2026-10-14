@@ -3,6 +3,25 @@
 
 # Implementation status
 
+## Development transport: plaintext listener admission and threat model
+
+M5.2a closes a configuration-guard bypass: an explicitly non-loopback HTTP
+listener with a loopback public origin is refused with zero usable transport
+configuration. Sixteen negative/positive controls preserve valid loopback HTTP
+and existing TLS tests. Windows API/UI/vet/ARM cross and pinned Linux whole API
+vet/unit/tagged-vet/proc checks pass. Actual single-boot ARMv5 overlay executes
+the same loader's four negative guards before the existing HTTPS fixture;
+default smoke passes, original base/probe unchanged. No external listener,
+physical device or new Docker image/volume is used. This is not actual product
+startup, two-boot/full-image/SBOM, browser, LAN or hardware qualification.
+
+The [management threat model](src/phantowd-api/THREAT-MODEL.md) now inventories
+current routes, actors/assets and trust boundaries with explicit open acceptance
+packets. First-owner presence, certificate lifecycle, durable state/recovery,
+privileged service composition and independent security review remain required.
+This draft and the guard fix do not authorize deployment; own hosted acceptance
+is separate.
+
 ## Host release downloads: response-body error redaction
 
 M10.2e extends the existing fixed public transport-error boundary to manifest,

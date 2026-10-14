@@ -1,5 +1,9 @@
 # Development diagnostics API
 
+The [management-plane threat model](THREAT-MODEL.md) maps the current HTTP
+surface and product admission gaps. It is a source-based draft, not security
+sign-off or permission to expose this development server.
+
 This is the first product-owned Go package, not a complete management plane.
 It is included only in the non-flashable QEMU development configuration and
 contains an embedded browser dashboard with read-only diagnostics and a

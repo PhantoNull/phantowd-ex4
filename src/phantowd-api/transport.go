@@ -77,7 +77,9 @@ func loadAPITransportConfigFrom(lookup environmentLookup) (apiTransportConfig, e
 	if !tlsEnabled && parsedOrigin.Scheme != "http" {
 		return apiTransportConfig{}, errors.New("HTTPS public origin requires a TLS certificate and key")
 	}
-	if !tlsEnabled && !isLoopbackHost(parsedOrigin.Hostname()) {
+	// An origin is an application claim, not proof of the listener's exposure.
+	// Plain HTTP requires BOTH independently configured hosts to be loopback.
+	if !tlsEnabled && (!isLoopbackHost(host) || !isLoopbackHost(parsedOrigin.Hostname())) {
 		return apiTransportConfig{}, errors.New("non-loopback listeners require TLS")
 	}
 	if !tlsEnabled && wildcard {

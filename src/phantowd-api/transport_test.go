@@ -89,6 +89,54 @@ func TestAPITransportDefaultsToDevelopmentLoopback(t *testing.T) {
 	}
 }
 
+func TestAPITransportRejectsPlaintextExternalListenerWithLoopbackOrigin(t *testing.T) {
+	config, err := loadAPITransportConfigFrom(transportEnvironment(map[string]string{
+		listenAddressEnv: "192.0.2.10:8080",
+		publicOriginEnv:  "http://127.0.0.1:8080",
+	}))
+	if err == nil || config.Address != "" || config.AllowedOrigin != "" || config.TLSConfig != nil {
+		t.Fatalf("loopback origin admitted a plaintext external listener: config=%+v err=%v", config, err)
+	}
+}
+
+func TestAPITransportPlaintextRequiresBothLoopbackHosts(t *testing.T) {
+	for _, test := range []struct {
+		name, address, origin string
+		allowed               bool
+	}{
+		{"IPv4", "127.0.0.1:8080", "http://127.0.0.1:8080", true},
+		{"IPv4 alternate", "127.0.0.2:8080", "http://127.0.0.2:8080", true},
+		{"IPv6", "[::1]:8080", "http://[::1]:8080", true},
+		{"IPv4-mapped loopback", "[::ffff:127.0.0.1]:8080", "http://[::ffff:127.0.0.1]:8080", true},
+		{"localhost", "localhost:8080", "http://localhost:8080", true},
+		{"case-insensitive localhost", "LOCALHOST:8080", "http://localhost:8080", true},
+		{"external IPv4", "192.0.2.10:8080", "http://127.0.0.1:8080", false},
+		{"external IPv6", "[2001:db8::10]:8080", "http://[::1]:8080", false},
+		{"mapped external IPv4", "[::ffff:192.0.2.10]:8080", "http://127.0.0.1:8080", false},
+		{"IPv4 wildcard", "0.0.0.0:8080", "http://127.0.0.1:8080", false},
+		{"IPv6 wildcard", "[::]:8080", "http://[::1]:8080", false},
+		{"empty-host wildcard", ":8080", "http://localhost:8080", false},
+		{"unresolved listener name", "unresolved.example:8080", "http://localhost:8080", false},
+		{"external origin", "127.0.0.1:8080", "http://unresolved.example:8080", false},
+		{"different loopback hosts", "127.0.0.1:8080", "http://127.0.0.2:8080", false},
+		{"different ports", "127.0.0.1:8080", "http://127.0.0.1:8081", false},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			config, err := loadAPITransportConfigFrom(transportEnvironment(map[string]string{
+				listenAddressEnv: test.address,
+				publicOriginEnv:  test.origin,
+			}))
+			if test.allowed {
+				if err != nil || config.Address != test.address || config.AllowedOrigin == "" || config.TLSConfig != nil {
+					t.Fatalf("valid loopback development transport refused: %+v %v", config, err)
+				}
+			} else if err == nil || config.Address != "" || config.AllowedOrigin != "" || config.TLSConfig != nil {
+				t.Fatalf("unsafe plaintext transport returned usable configuration: %+v %v", config, err)
+			}
+		})
+	}
+}
+
 func TestAPITransportRejectsUnsafeOrIncompleteConfiguration(t *testing.T) {
 	for _, test := range []struct {
 		name   string

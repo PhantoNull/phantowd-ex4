@@ -2177,6 +2177,20 @@ milestone before enabling its controls; M1/M6 for deployment.
 - **M5.2 — HTTPS lifecycle.** Specify initial certificate trust, device naming,
   replacement/renewal, key permissions, time errors and restart behavior.
   Transport support is not a certificate provisioning strategy.
+  **M5.2a — plaintext listener admission (partial; locally tested):** require
+  both the actual configured listener host and public-origin host to be loopback
+  before permitting HTTP. A loopback origin previously admitted a concrete
+  external listener without TLS; two RED reproductions precede the minimal
+  guard fix. Sixteen IPv4/IPv6/name/wildcard/port controls preserve supported
+  loopback HTTP and existing HTTPS tests. Windows API/UI/vet/ARM cross and pinned
+  Linux whole API vet/unit/tagged-vet/proc checks pass. Actual single-boot ARMv5
+  overlay executes four negative guards before the unchanged TLS fixture and
+  preserves default smoke/base hashes. No external socket is opened by those
+  checks. This is not product certificate provisioning, LAN deployment, complete
+  image/SBOM, physical support or its own hosted qualification.
+  The [management threat model](src/phantowd-api/THREAT-MODEL.md) maps current
+  routes/trust boundaries, TM-01–TM-10 acceptance packets and remaining product
+  gates. It is a source-based draft, not an independent security sign-off.
 - **M5.3 — Typed operation API.** Map privileges and state transitions to endpoints.
   Preserve strict decoding, origin/Host validation, CSRF, bounded requests,
   generic errors and per-operation concurrency limits. Long jobs return durable

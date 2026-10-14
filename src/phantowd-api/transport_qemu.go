@@ -37,6 +37,18 @@ func exerciseQEMUTLS() error {
 // The non-Linux host test injects memory-only credentials. Actual ARMv5 runs
 // always enter through exerciseQEMUTLS and use the production Linux adapter.
 func exerciseQEMUTLSWithAccountFactory(openAccounts func(string) (*accountStore, error)) error {
+	// Exercise the real configuration admission before opening any listener.
+	// Synthetic addresses are never bound or resolved by this negative check.
+	for _, address := range []string{"192.0.2.10:8080", "[2001:db8::10]:8080", "0.0.0.0:8080", "unresolved.example:8080"} {
+		values := map[string]string{listenAddressEnv: address, publicOriginEnv: "http://127.0.0.1:8080"}
+		config, err := loadAPITransportConfigFrom(func(name string) (string, bool) {
+			value, ok := values[name]
+			return value, ok
+		})
+		if err == nil || config.Address != "" || config.AllowedOrigin != "" || config.TLSConfig != nil {
+			return errors.New("plaintext test listener accepted outside loopback")
+		}
+	}
 	directory, err := os.MkdirTemp("", "phantowd-qemu-tls-")
 	if err != nil {
 		return errors.New("cannot create temporary TLS test state")

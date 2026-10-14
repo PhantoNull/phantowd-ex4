@@ -215,7 +215,8 @@ unrelated Docker resources remain; Docker's VHDX may need separate compaction.
 ## Codebase guide
 
 - [Management API/UI](src/phantowd-api/README.md): authentication, configuration,
-  identity coordination and development fixtures.
+  identity coordination, development fixtures and a
+  [draft management threat model](src/phantowd-api/THREAT-MODEL.md).
 - [Storage probe](src/phantowd-volume-probe/README.md): restricted descriptor-based
   metadata helper.
 - [Research toolkit](tools/phantowd-lab/README.md): host-only image, metadata and
