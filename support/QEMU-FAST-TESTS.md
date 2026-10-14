@@ -2078,6 +2078,16 @@ selected campaign, not an entire new firmware image.
 Read the **first failed operation** rather than treating every elapsed timer
 as the same timeout:
 
+The distinct native data profile now emits four fixed
+`PHANTOWD_DIAG_NATIVE_DATA` rows: `entered`, `prepared`, `probed`, `closed`.
+Their monotonic elapsed time starts at that profile, not boot or enrollment.
+`prepared` precedes the real descriptor/SMB probe; `probed` follows its return;
+`closed` follows original-reference release, clone detach and fixture cleanup.
+They contain no paths, identities, secrets or error text and do not replace any
+receipt, renew a deadline or prove the hosted timeout's cause. Pending-client
+profiles do not emit these rows. Guest180/data35 and every original assertion
+remain unchanged; a last row does not identify a blocked instruction.
+
 | Boundary | Current fixture scope | What a failure does not establish |
 | --- | --- | --- |
 | Initial native preparation, 20 s | Original Owner/backend construction and admission; precedes `phase=admitted` | Account enrollment has completed |

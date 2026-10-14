@@ -41,8 +41,12 @@ func nativeDataFixtureHandleModeQEMU(plan *runtimebundle.Plan, lookup fileservic
 	if peerExit && !pending {
 		return errors.New("invalid peer-exit fixture profile")
 	}
+	started := time.Now()
 	ctx, cancel := context.WithTimeout(context.Background(), 35*time.Second)
 	defer cancel()
+	if !pending {
+		reportNativeDataTimingQEMU(nativeDataEnteredQEMU, started)
+	}
 	const config = "/run/phantowd-native-data-config"
 	const root = "/run/phantowd-native-samba-root"
 	const handoff = "/run/phantowd-native-data-roots"
@@ -135,6 +139,9 @@ func nativeDataFixtureHandleModeQEMU(plan *runtimebundle.Plan, lookup fileservic
 		}
 		callers[index] = os.NewFile(uintptr(fd), "native-data-fixture-caller")
 	}
+	if !pending {
+		reportNativeDataTimingQEMU(nativeDataPreparedQEMU, started)
+	}
 	var probeErr error
 	if peerExit {
 		pendingPeerExitOriginalsQEMU = append(pendingPeerExitOriginalsQEMU, callers[:]...)
@@ -149,6 +156,9 @@ func nativeDataFixtureHandleModeQEMU(plan *runtimebundle.Plan, lookup fileservic
 	}
 	if probeErr != nil {
 		return probeErr // Test process exit disposes a failed/quarantined experiment.
+	}
+	if !pending {
+		reportNativeDataTimingQEMU(nativeDataProbedQEMU, started)
 	}
 	if peerExit {
 		return nil // Reviewed originals/clones are NOT released as healthy cleanup.
@@ -179,6 +189,9 @@ func nativeDataFixtureHandleModeQEMU(plan *runtimebundle.Plan, lookup fileservic
 		if err := os.Remove(path); err != nil {
 			return err
 		}
+	}
+	if !pending {
+		reportNativeDataTimingQEMU(nativeDataClosedQEMU, started)
 	}
 	return nil
 }

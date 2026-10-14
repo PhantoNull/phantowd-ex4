@@ -684,6 +684,10 @@ class SambaRootFixture(unittest.TestCase):
                     "phase=execution elapsed_ms=1000 remaining_ms=0 "
                     "parent_done=true failed=true cause=deadline "
                     "qualifying=false scope=qemu-only")
+        timings += "\n" + "\n".join(
+            "PHANTOWD_DIAG_NATIVE_DATA phase=" + phase
+            + " elapsed_ms=123 qualifying=false scope=qemu-only"
+            for phase in ("entered", "prepared", "probed", "closed"))
         good = "\n".join([*fixture.MARKERS, SCAN_COST])
         fixture.check_guest(timings + "\n" + good)
         with self.assertRaises(ValueError):
