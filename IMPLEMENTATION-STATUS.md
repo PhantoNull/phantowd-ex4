@@ -3,6 +3,20 @@
 
 # Implementation status
 
+## Host release downloads: response-body error redaction
+
+M10.2e extends the existing fixed public transport-error boundary to manifest,
+signature and payload body reads. The original cause/cancellation remains
+available programmatically, but reader-supplied signed URLs do not appear in
+public error messages. Separate manifest/payload RED regressions reproduce
+twice each; all three asset-stage controls pass, including one read/close,
+no retry/later download, no verification success and staging cleanup.
+Whole Windows toolkit vet/tests, pinned Linux Go1.26.8 whole toolkit vet/tests/
+race and reader race-count3 pass locally. Faults are injected after one byte
+from a real local HTTP/TLS response, not observed public GitHub outages.
+No target installer, trust provisioning, firmware/ARM build, product service
+or hardware qualification is added; publication/own hosted checks are separate.
+
 ## Complete cached code checkpoint; source-loss cause still open
 
 Code checkpoint `5245ada` now passes the original complete cached lane: host

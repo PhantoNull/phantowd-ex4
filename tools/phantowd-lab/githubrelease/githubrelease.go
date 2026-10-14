@@ -80,7 +80,9 @@ type releaseAsset struct {
 
 // net/http includes the redirected URL in request errors. An asset URL can
 // contain expiring download credentials, so its public message must not echo
-// that URL or a caller-supplied redirect error. Preserve the cause for
+// that URL or a caller-supplied redirect/body-read error. Apply the same
+// boundary after response headers arrive, including payload stream reads.
+// Preserve the cause for
 // errors.Is/As and cancellation checks, not for public diagnostic formatting.
 type redactedRequestError struct{ cause error }
 
@@ -303,7 +305,7 @@ func getBounded(ctx context.Context, client *http.Client, target, accept string,
 	}
 	data, err := io.ReadAll(io.LimitReader(response.Body, maximum+1))
 	if err != nil {
-		return nil, err
+		return nil, &redactedRequestError{cause: err}
 	}
 	if int64(len(data)) > maximum {
 		return nil, errors.New("HTTP response exceeds size limit")
@@ -349,7 +351,7 @@ func downloadAsset(ctx context.Context, client *http.Client, target, destination
 	syncErr := file.Sync()
 	closeErr := file.Close()
 	if copyErr != nil {
-		return copyErr
+		return &redactedRequestError{cause: copyErr}
 	}
 	if syncErr != nil {
 		return syncErr
