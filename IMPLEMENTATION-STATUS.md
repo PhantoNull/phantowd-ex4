@@ -3,18 +3,26 @@
 
 # Implementation status
 
-## Source-loss fixture diagnosis, not a complete candidate pass
+## Complete cached code checkpoint; source-loss cause still open
 
-The latest complete cached lane failed the last `file-source` campaign's private
-quarantine/supervision deadline before the global build limit. The preceding
-nine campaign logs independently verify, but the default union and SMART were
-not reached. No current full-image/audit/hosted or installation claim follows.
+Code checkpoint `5245ada` now passes the original complete cached lane: host
+tests/fuzz, build, ARMv5 integration, all ten Samba campaigns and their strict
+union, and both synthetic SMART lanes. Independent post-terminal audit matches
+all 1,472 tracked inputs, 1,067 API package/archive inputs, 11,510 installed SDK
+files, 25,611 regular rechecks, actual images, configured strip/RPATH, declared
+sources/licenses, release metadata and SBOM. Seven complete normalized guest
+logs independently replay; the last three rely on the original controller.
+
+The preceding `5b90e22` full lane failed the final file-source quarantine/
+supervision deadline. Its cause remains unknown; this complete pass does not
+establish a timing repair, independent clean reproduction or hosted/physical/
+product/installation qualification. Require the publication head's own checks.
 
 QEMU-only failure diagnostics now carry bounded cumulative checkpoint costs,
 without raw errors or changes to effects, authority, timing limits or exact
 successful proof. Pinned Linux command-package vet/unit/race and a focused ARM
-healthy run pass. Failure-only ARM emission and the intermittent full failure
-remain unqualified; see the [diagnostic contract](support/QEMU-FAST-TESTS.md#failure-only-source-fault-checkpoint-costs).
+healthy runs pass. Failure-only ARM emission and the intermittent failure's
+cause remain unqualified; see the [diagnostic contract](support/QEMU-FAST-TESTS.md#failure-only-source-fault-checkpoint-costs).
 
 ## Diagnostic GET responses: byte and structural budgets
 

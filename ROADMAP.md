@@ -454,14 +454,20 @@ button to an unqualified backend simply because the screen exists.
   pull/build an image or create a volume. Preserve isolation, exact-source
   hashes and clean-build/reproducibility lanes. Cache hits are an optimization,
   never qualification evidence.
-  **Current source-loss gate:** the complete candidate fails final file-source
-  quarantine/supervision despite nine accepted campaigns; no default union,
-  SMART, audit or integration waiver. Bounded failure-only cumulative step costs
+  **Current source-loss gate:** earlier `5b90e22` failed final file-source
+  quarantine/supervision despite nine accepted campaigns. Instrumented code
+  checkpoint `5245ada` now passes the original complete cached lane, all ten
+  campaigns/strict union, both SMART lanes and exact 1,472/1,067-input audit.
+  This is not a demonstrated intermittency repair or integration waiver;
+  independent clean/own hosted/product qualification remain open.
+  Bounded failure-only cumulative step costs
   now distinguish held-client setup, observations, first scan and verified
   cover from final settlement. Host vet/unit/race and scoped ARM healthy checks
   pass; failing ARM emission/root cause remain open. Preserve all action limits,
   exact proof and1024-byte output cap. Use this minimized feedback loop before
-  another full/hosted run; an isolated pass does not resolve intermittency.
+  another diagnostic retry; neither isolated nor later full success resolves
+  intermittency without a causal regression. See the
+  [exact complete checkpoint](support/DEPENDENCY-REVIEW.md#current-combined-cached-qualification-2026-10-14).
   [Contract](support/QEMU-FAST-TESTS.md#failure-only-source-fault-checkpoint-costs).
   The local Linux API runner now has an explicit non-root/no-capabilities/no-new-
   privileges profile, four CPUs/2 GiB/256 PIDs/1 GiB disposable tmpfs and a 180s

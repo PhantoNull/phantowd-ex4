@@ -28,7 +28,45 @@ status is not established here. Do not turn the July security-release date into
 a current maintenance or blanket safety claim. Version pins and cache output
 remain unchanged while the separate source-loss diagnosis is in progress.
 
-## Current combined cached qualification (2026-10-11)
+## Current combined cached qualification (2026-10-14)
+
+Frozen code `5245ada6ce5e195ab3d4bdc9594e405944a33acd`, API tree
+`60f85bf6f3e49cba0395013cfce4aa525b061d45`, passes the original complete
+cached host/ARMv5 lane, all ten fresh Samba campaigns and their strict union,
+and both synthetic SMART lanes. The independent post-terminal audit matches
+all 1,472 frozen tracked inputs, 1,067 API source/package/archive inputs,
+11,510 installed Go 1.26.8 SDK files and 25,611 regular input rechecks.
+No stale/generated-source exemption is added. Actual source/license/SBOM,
+Linux/header/release, configured strip/image/export, OpenSSL 3.5.9 patch and
+RPATH objects and the real Python certificate/private-loopback TLS 1.3 consumer
+pass with unchanged predicates. The publication adds only five public Markdown
+files; this is qualification of the frozen code checkpoint, not a claim that
+the publication head already passed its own hosted checks.
+
+| Artifact | SHA-256 |
+| --- | --- |
+| API (10,708,276 bytes) | `bd31261344a18b58c2f92d79c49a0308614a868b550bc5d87c5c176ac349b945` |
+| rootfs.ext2 (83,886,080 bytes) | `8c4bb843e21eb0998a4afa5b4d8fa22df6f251e30b3000a0199840c59bb69f83` |
+| API source archive | `b199337a313847313f69cca36dc133b7ef143010ff35aff2a8065e4fa82035e9` |
+| SHA256SUMS | `94651dbf42bb7e874e49c0df0a9740119ab52d3d098710a308397abf20f7343e` |
+
+Seven complete guest logs are saved with explicit LF normalization and pass
+independent strict replay. The remaining held/file/file-source logs were
+accepted by the original controller but not preserved for independent replay;
+a post-disposal capture refusal is not a new runtime failure. The stale saved
+failure artifact belongs to the earlier `5b90e22` run, not this successful one.
+That earlier final source-loss deadline remains unexplained. Bounded failure-
+only checkpoint diagnostics do not fire on healthy proof and do not establish
+a repair. Keep the historical failure and hosted deadline gates open.
+
+Existing pinned image/two caches are reused, with no new Docker storage or
+physical device operations. Independent clean reproduction, full compliance,
+own-head hosted qualification, complete faults, recovery, product services,
+physical EX4 support and installation remain unqualified.
+
+## Earlier combined cached qualification (2026-10-11)
+
+<a id="current-combined-cached-qualification-2026-10-11"></a>
 
 Frozen `3ccc2df78cced5c58c05319fedf04f2a32b82180`, API tree
 `13d2597f04fcb876c6a8d6dc22fdd9ece6dba877`, passes the original complete cached

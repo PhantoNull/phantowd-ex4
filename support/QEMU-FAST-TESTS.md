@@ -20,8 +20,12 @@ worker/readiness/stop limits are unchanged. No default guest or CI stage is adde
 Pinned Linux command-package vet/unit/race and a focused actual ARMv5 healthy
 run pass; the failure-only emission branch is unit-tested on Linux, not yet
 observed in a failing instrumented ARM guest. The earlier complete candidate
-failed its final file-source fixture: isolated success is not a fix, complete
-integration or hosted qualification. Measure setup versus scan/stop before
+failed its final file-source fixture. Code checkpoint `5245ada` subsequently
+passes the original complete cached lane, all ten Samba campaigns/strict union,
+both SMART lanes and independent exact-source/image audit. Seven complete
+normalized logs independently replay; the final three are controller-only.
+Neither focused nor later complete success is a demonstrated timing fix or
+own-head hosted/clean/physical qualification. Measure setup versus scan/stop before
 changing behavior; do not suppress that full failure or relax its acceptance.
 
 ## Diagnostic byte-consumption controls
