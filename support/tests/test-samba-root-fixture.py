@@ -90,6 +90,24 @@ def campaign_rows():
 
 
 class SambaRootFixture(unittest.TestCase):
+    def test_independent_native_data_requires_its_own_exact_proofs(self):
+        enrollment = next(row for row in fixture.MARKERS if row.startswith(
+            "PHANTOWD_SAMBA_OWNER_NATIVE_ENROLLMENT_READY"))
+        data = next(row for row in fixture.MARKERS if row.startswith(
+            "PHANTOWD_SAMBA_OWNER_NATIVE_DATA_READY"))
+        rows = [*fixture.MARKERS[:3], CENSUS, enrollment, data,
+                "PHANTOWD_SAMBA_ROOT_NATIVE_DATA_DONE", SCAN_COST]
+        fixture.check_campaign("\n".join(rows), "native-data")
+        for missing in rows[:-1]:
+            with self.subTest(missing=missing):
+                with self.assertRaises(ValueError):
+                    fixture.check_campaign(
+                        "\n".join(row for row in rows if row != missing),
+                        "native-data")
+        with self.assertRaises(ValueError):
+            fixture.check_campaign("\n".join(campaign_rows()["native"]),
+                                   "native-data")
+
     @staticmethod
     def timing_row(operation="list", phase="pre-admission", elapsed=17,
                    remaining=45000, parent_done="false", failed="false",

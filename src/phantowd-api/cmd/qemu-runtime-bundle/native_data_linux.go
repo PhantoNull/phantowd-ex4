@@ -16,6 +16,8 @@ import (
 	"golang.org/x/sys/unix"
 )
 
+const nativeDataDescriptorMarkerQEMU = "PHANTOWD_SAMBA_OWNER_NATIVE_DATA_READY original_objects=true individual_clones=true readonly_EROFS=true smb_read=true smb_write=true unix_owner=true symlink_denied=true private_namespace=true stopped_before_release=true no_fd_leak=true complete_storage_identity=false scope=qemu-only"
+
 // A NEW fixed data profile after the prior native runtime and identity Owner
 // are fully closed. This is individual descriptor/SMB access qualification,
 // not continuous complete-roster/identity authority or product activation.

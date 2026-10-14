@@ -93,6 +93,9 @@ run_native_fixture() {
             /usr/sbin/phantowd-runtime-bundle-probe native-pending-client || return 1
             echo PHANTOWD_SAMBA_ROOT_PENDING_DONE
         fi
+    elif [ "$campaign" = native-data ]; then
+        /usr/sbin/phantowd-runtime-bundle-probe native-descriptor-data || return 1
+        echo PHANTOWD_SAMBA_ROOT_NATIVE_DATA_DONE
     elif [ "$campaign" = data ]; then
         /usr/sbin/phantowd-runtime-bundle-probe native-planned-data || return 1
         echo PHANTOWD_SAMBA_ROOT_DATA_DONE
@@ -131,6 +134,7 @@ run_fixture() {
     case "$campaign" in
         phantowd_samba_campaign=service) campaign=service ;;
         phantowd_samba_campaign=native) campaign=native ;;
+        phantowd_samba_campaign=native-data) campaign=native-data ;;
         phantowd_samba_campaign=candidate) campaign=candidate ;;
         phantowd_samba_campaign=lifecycle) campaign=lifecycle ;;
         phantowd_samba_campaign=fault) campaign=fault ;;

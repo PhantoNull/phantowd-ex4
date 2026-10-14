@@ -15,7 +15,7 @@ selection=${8:-all}
 diagnostics=${9:-none}
 case "$diagnostics" in none|diagnostic) ;; *) exit 1 ;; esac
 case "$selection" in
-    all|service|native|candidate|lifecycle|fault|data|exit|held|file|file-source|pending|pending-peer-exit|pending-handle) ;;
+    all|service|native|native-data|candidate|lifecycle|fault|data|exit|held|file|file-source|pending|pending-peer-exit|pending-handle) ;;
     *) exit 1 ;;
 esac
 tmpdir=${TMPDIR:-/tmp}
@@ -50,7 +50,7 @@ cleanup() {
         "$scratch/smbstatus.json" "$scratch/smbcontrol.json" \
         "$scratch/streams_xattr.json" "$scratch/ibm850.json" "$scratch/manifest" \
         "$scratch/launcher" "$scratch/charset" "$scratch/bundle" "$scratch/owner" \
-        "$scratch/service.log" "$scratch/native.log" "$scratch/candidate.log" \
+        "$scratch/service.log" "$scratch/native.log" "$scratch/native-data.log" "$scratch/candidate.log" \
         "$scratch/lifecycle.log" "$scratch/fault.log" "$scratch/data.log" "$scratch/exit.log" "$scratch/held.log" "$scratch/file.log" "$scratch/file-source.log"
     rm -f "$scratch/pending.log" "$scratch/pending-peer-exit.log" "$scratch/pending-handle.log"
     if [ "$pending_profile" -eq 1 ]; then rm -rf "$scratch/pending"; fi

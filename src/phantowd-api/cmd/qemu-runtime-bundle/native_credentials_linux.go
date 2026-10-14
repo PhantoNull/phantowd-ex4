@@ -37,10 +37,11 @@ const (
 	nativePendingClientCampaignQEMU
 	nativePendingPeerExitCampaignQEMU
 	nativePendingHandleCampaignQEMU
+	nativeDescriptorDataCampaignQEMU
 )
 
 func nativeCredentialFixture(campaign nativeCredentialCampaignQEMU) (result error) {
-	if campaign > nativePendingHandleCampaignQEMU {
+	if campaign > nativeDescriptorDataCampaignQEMU {
 		return errors.New("native credential campaign guard")
 	}
 	commandLine, err := os.ReadFile("/proc/cmdline")
@@ -232,6 +233,28 @@ func nativeCredentialFixture(campaign nativeCredentialCampaignQEMU) (result erro
 		return fmt.Errorf("native enrollment phase completion: %w", err)
 	}
 	reportNativePhaseTimingQEMU(nativeFixtureEnrolledQEMU, started)
+	if campaign == nativeDescriptorDataCampaignQEMU {
+		// Independently enrolled guest. No passdb, identity lease or runtime
+		// from the live-revocation campaign is imported into this prerequisite.
+		if err := owner.Close(); err != nil {
+			return err
+		}
+		if err := runtime.Close(context.Background()); err != nil {
+			return err
+		}
+		reportNativePhaseTimingQEMU(nativeFixtureAuthorityClosedQEMU, started)
+		if err := nativeDataFixtureQEMU(plan, lookup); err != nil {
+			return fmt.Errorf("independent native data descriptor profile: %w", err)
+		}
+		reportNativePhaseTimingQEMU(nativeFixtureDataVerifiedQEMU, started)
+		after, err := os.ReadDir("/proc/self/fd")
+		if err != nil || len(after) != len(before) {
+			return errors.New("independent native data descriptor leak")
+		}
+		nativeCredentialEnrollmentMarkerQEMU()
+		fmt.Println(nativeDataDescriptorMarkerQEMU)
+		return nil
+	}
 	if campaign == nativePendingClientCampaignQEMU || campaign == nativePendingPeerExitCampaignQEMU || campaign == nativePendingHandleCampaignQEMU {
 		if err := owner.Close(); err != nil {
 			return err
@@ -567,7 +590,7 @@ func nativeCredentialFixture(campaign nativeCredentialCampaignQEMU) (result erro
 	fmt.Println("PHANTOWD_SAMBA_OWNER_NATIVE_LIVE_REVOKE_READY accounts=2 qualified_pair=true original_pair_rechecked=true revoked_pair_refused=true owner_bound=true same_sid=true target_absent=true same_peer_session=true new_login_denied=true other_login_allowed=true same_daemon=true no_new_privileges=true stopped_reaped=true no_fd_leak=true scope=qemu-only")
 	fmt.Println("PHANTOWD_SAMBA_OWNER_NATIVE_BACKEND_BINDING_READY owner_bound=true backend_bound=true unchanged_verified=true foreign_refused=true close_busy=true released_before_start=true release_no_mutation=true stopped_reaped=true no_fd_leak=true service_owner=false scope=qemu-only")
 	fmt.Println("PHANTOWD_SAMBA_OWNER_NATIVE_DISABLE_HANDOFF_READY owner_bound=true backend_bound=true atomic_successor=true old_review=true new_verified=true close_busy=true same_peer_session=true retained_until_stop=true stopped_reaped=true no_fd_leak=true startup_bound=false service_owner=false scope=qemu-only")
-	fmt.Println("PHANTOWD_SAMBA_OWNER_NATIVE_DATA_READY original_objects=true individual_clones=true readonly_EROFS=true smb_read=true smb_write=true unix_owner=true symlink_denied=true private_namespace=true stopped_before_release=true no_fd_leak=true complete_storage_identity=false scope=qemu-only")
+	fmt.Println(nativeDataDescriptorMarkerQEMU)
 	return nil
 }
 

@@ -2062,6 +2062,17 @@ Temporary guest setup is removed after measurement; no product tool is installed
 
 ### Diagnose a native fixture timeout before a full CI build
 
+An optional `-Campaign native-data -DiagnosticLogs` guest performs its own real
+disabled-first enrollment, then closes its identity Owner/runtime and tests
+the original descriptor/data profile, including RO denial, SMB transfers,
+Unix ownership, symlink denial, verified shutdown and descriptor cleanup.
+It imports no passdb or lease from another guest. This is an independent cost/
+qualification probe, not a replacement for the mandatory `native` trace:
+the latter still tests data against the passdb changed by live revocation.
+Both accounts are explicitly enabled in the independent profile; it does not
+qualify post-revocation data behavior. The default union remains ten guests
+with all original proofs. Guest180/data35/worker limits are unchanged.
+
 Use the existing matching pinned image, workspace and manifest-verified base:
 
 ```powershell

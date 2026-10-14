@@ -13,7 +13,8 @@ from runtime_loader_fixture import MAX_LOG, MAX_REPORT, read_bounded, validate
 
 CAMPAIGNS = ("service", "native", "candidate", "lifecycle", "fault", "data",
              "exit", "held", "file", "file-source")
-FOCUSED_CAMPAIGNS = CAMPAIGNS
+# Independent descriptor/data prerequisite; not yet part of the default union.
+FOCUSED_CAMPAIGNS = CAMPAIGNS + ("native-data",)
 ENTRIES = ("usr/sbin/smbd", "usr/bin/smbpasswd", "usr/bin/testparm",
            "usr/lib/samba/vfs/streams_xattr.so", "usr/lib/gconv/IBM850.so",
            "usr/bin/pdbedit", "usr/bin/smbstatus", "usr/bin/smbcontrol")
@@ -318,6 +319,10 @@ def check_campaign(log, phase):
         + ("PHANTOWD_SAMBA_ROOT_SERVICE_DONE",),
         "native": census + native
         + ("PHANTOWD_SAMBA_ROOT_NATIVE_DONE",),
+        "native-data": census + (MARKERS[enrollment], next(
+            row for row in MARKERS if row.startswith(
+                "PHANTOWD_SAMBA_OWNER_NATIVE_DATA_READY")),
+            "PHANTOWD_SAMBA_ROOT_NATIVE_DATA_DONE"),
         "candidate": (census + (MARKERS[enrollment], planned)
                       + ("PHANTOWD_SAMBA_ROOT_CANDIDATE_DONE",)),
         "lifecycle": (census + (MARKERS[enrollment], MARKERS[-4],
