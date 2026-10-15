@@ -3545,6 +3545,15 @@ and failed-update recovery demonstrated beyond merely reaching a boot prompt.
   enrollment/recovery, updates, sessions, secrets, application execution and data
   access. Review dependency advisories and document mitigation/response ownership.
   No known unresolved critical data-loss, authentication or cooling issue ships.
+  **Partial Samba July packet:** six upstream advisories are reconciled with
+  selected4.22.11 and190 archive-identical source files. Distinguish declared
+  AD DC exclusion from actual compiled/installed CTDB; an absent CTDB init
+  entry is not proof against all activation paths. The QEMU preview-parser
+  fixture explicitly disables clustering and queries actual target `testparm`;
+  this does not change the share-only renderer or qualify a product global
+  profile, remove a build feature, settle lifecycle or close all advisories.
+  Keep source-page inconsistencies and upstream's remaining CTDB packet-size
+  protection requirement visible. [Review packet](support/DEPENDENCY-REVIEW.md#samba-july-advisorysource-cross-check-2026-10-15).
   **Build-only hardening increment:** existing QEMU and EX4 B2/B3 resolved-config
   auditors refuse unused `CONFIG_CRYPTO_USER_API*` builtin/module interfaces.
   Internal kernel crypto remains available; no AF_ALG hash backend or kernel

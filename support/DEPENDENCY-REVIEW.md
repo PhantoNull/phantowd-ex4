@@ -3,6 +3,60 @@
 
 # Dependency review and update qualification
 
+## Samba July advisory/source cross-check (2026-10-15)
+
+This is a **six-advisory source/configuration review**, not complete Samba CVE,
+binary-exploit, lifecycle or release qualification. The selected/cached package
+is still 4.22.11, whose [official security release notes](https://www.samba.org/samba/history/samba-4.22.11.html)
+associate it with the July 28 fixes below. No dependency version changes here.
+
+| Advisory | Relevant upstream component | Bounded disposition |
+| --- | --- | --- |
+| [CVE-2026-6949](https://www.samba.org/samba/security/CVE-2026-6949.html) | Internal DNS TSIG length calculation | Included in the 4.22.11 security release; do not infer standalone file-server reachability from a package version alone. |
+| [CVE-2026-58216](https://www.samba.org/samba/security/CVE-2026-58216.html) | Kerberos password-change ASN.1 handling | Included in 4.22.11; a KDC service is not part of the declared standalone profile. |
+| [CVE-2026-58218](https://www.samba.org/samba/security/CVE-2026-58218.html) | DNS TKEY cache admission | Included in 4.22.11; the advisory body has an inconsistent 2025 identifier, so retain the linked 2026 release identity rather than silently rewriting the source. |
+| [CVE-2026-58221](https://www.samba.org/samba/security/CVE-2026-58221.html) | AD LDAP access to internal LDB configuration | Included in 4.22.11; the selected recipe explicitly excludes the AD DC. This is not a test of arbitrary LDAP deployments. |
+| [CVE-2026-58222](https://www.samba.org/samba/security/CVE-2026-58222.html) | AD LDAP Compare filter/trust handling | Included in 4.22.11; same AD DC scope limitation, not a general authentication-security assertion. |
+| [CVE-2026-58224](https://www.samba.org/samba/security/CVE-2026-58224.html) | CTDB packet decoding | The release includes the fixes, **but CTDB is compiled and installed** in this cached package. Upstream also leaves overall packet-size/OOM handling dependent on separate network protection; do not label all CTDB risks eliminated. |
+
+The upstream advisory pages contain unresolved version placeholders; the CTDB
+page also names 4.22.10 while the 4.22.11 release lists that fix. These are
+source inconsistencies, not evidence that our package's selected version is
+different. This review uses the explicit 4.22.11 release and exact archive,
+without claiming every advisory's prose is internally consistent.
+
+The archive SHA-256 remains
+`d569b298a81cc212a39e9d1813bc4ca5c71ac93c4ceb2eec03db178096958d00`.
+All 190 regular files under its DNS server, KDC, DSDB LDB modules, LDAP server
+and CTDB protocol subtrees match the cached patched build source byte-for-byte.
+That verifies these source scopes were not changed by our local patch set;
+it is not independent proof of all compiled fixes or exploit regression tests.
+Other source areas and all other advisories remain outside this packet.
+
+The actual cached recipe uses `--without-ad-dc --with-json` **and**
+`--with-cluster-support`; resolved headers/cache define `CLUSTER_SUPPORT=1`,
+and `ctdbd` is installed. No dedicated CTDB init entry was found; the reviewed
+custom `S91smb` invokes only `smbd`. Those are artifact/startup-file observations,
+not a complete live process/listener census or proof that CTDB cannot be started.
+
+The pinned manual defaults clustering off, consistent with the
+[current upstream parameter description](https://www.samba.org/samba/docs/current/man-html/smb.conf.5.html#CLUSTERING).
+The separate QEMU preview-parser profile now states `clustering = no` explicitly
+and queries the actual target `testparm` for `No` before its unchanged share
+checks. This changes **only a synthetic parser fixture**: the production renderer
+still emits share sections only, no global settings, and no native-runtime
+configuration, package feature or service activation changes. Removing unused
+cluster support requires a separate recipe/ABI/dependency/runtime rebuild and
+full image/resource qualification; it is not performed here.
+
+Verification: whole Windows API/DOM/preview preflight and ARMv5 test
+cross-compilation pass. Pinned Go1.26.8 Linux API vet/units/tagged vet and focused
+race-count3, 34 runner controls and workflow contracts pass. The actual standard
+single-boot ARMv5 overlay passes both calls to the preview fixture across API
+restart, including the new target-parser assertion, all existing smoke guards
+and guest READY. This is not the separate native/two-boot/full/hosted lane, a
+fresh Samba rebuild, physical support or permission to merge failed CI.
+
 ## Samba update follow-up (2026-10-14)
 
 The rebuilt target remains4.22.11. Upstream lists stable4.25.0 (September24) and

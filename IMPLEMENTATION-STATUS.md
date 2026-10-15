@@ -3,6 +3,30 @@
 
 # Implementation status
 
+## Dependency security: Samba July source/configuration packet
+
+The six July 2026 Samba advisories now have a bounded source/configuration
+review in [dependency review](support/DEPENDENCY-REVIEW.md#samba-july-advisorysource-cross-check-2026-10-15).
+The unchanged selected 4.22.11 release includes those upstream fixes; 190 files
+in the reviewed DNS/KDC/LDAP/CTDB source scopes match its original archive.
+The cached build excludes AD DC but includes cluster support and installed
+`ctdbd`: no broad "CTDB compiled out" or vulnerability-free claim is justified.
+The reviewed custom init invokes only `smbd`, not a complete live census.
+
+The QEMU-only preview-parser preamble now explicitly disables clustering and
+queries target `testparm` for `No` before the existing share checks. Its actual
+host regression first fails without that declaration. The share-only renderer,
+native-runtime globals, package features and all existing deadlines are unchanged.
+This is not a product global profile, CTDB removal, new service activation,
+complete advisory/ABI review or exploit/hardware/release qualification.
+
+Whole Windows and pinned Go1.26.8 Linux checks pass, including the focused
+non-clustered-profile race3 regression and existing runner/workflow contracts.
+The actual standard single-boot ARMv5 overlay reaches READY with both preview
+receipts across API restart; each follows the new target-parser check. No new
+native/two-boot/full/hosted run or Samba rebuild is claimed. The separate native
+timing-contract decision remains unanswered; no failed CI gate is waived.
+
 ## Dashboard: actual Go authentication through the host browser
 
 An explicit optional mode now drives current forms against a separately compiled

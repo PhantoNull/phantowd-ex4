@@ -65,6 +65,10 @@ paths. A bounded fuzz campaign exercises decoding and preview generation.
 The QEMU self-test writes a fixed temporary candidate and queries the target's
 `testparm` for the rendered access lists, path and safety options. It does not
 launch another Samba daemon or replace the guest's existing smoke share.
+Its separate fixed global preamble explicitly sets `clustering = no` and the
+target parser must report `No`. This is not output of the share-section renderer,
+removal of compiled CTDB support, a product global profile or service activation.
+See the [bounded advisory/source review](../../../support/DEPENDENCY-REVIEW.md#samba-july-advisorysource-cross-check-2026-10-15).
 The host test skips explicitly when `/usr/bin/testparm` is unavailable; the
 actual ARMv5 smoke must execute it and emit its required readiness marker.
 

@@ -7,8 +7,15 @@ package main
 
 import (
 	"os"
+	"strings"
 	"testing"
 )
+
+func TestQEMUSMBPreviewIsExplicitlyNonClustered(t *testing.T) {
+	if strings.Count(qemuSMBPreviewGlobals, "\n    clustering = no\n") != 1 {
+		t.Fatal("standalone synthetic profile must explicitly disable clustering")
+	}
+}
 
 func TestQEMUSMBPreview(t *testing.T) {
 	if _, err := os.Stat("/usr/bin/testparm"); err != nil {
