@@ -447,7 +447,7 @@ const diagnosticBodyLimits = Object.freeze({
   "/api/v1/mounts": 4 * 1024 * 1024,
 });
 
-function boundedDiagnosticStructure(text) {
+function boundedDiagnosticStructure(text, maxContainers = 1024) {
   let quoted = false, escaped = false, depth = 0, containers = 0;
   for (const char of text) {
     if (quoted) {
@@ -456,7 +456,7 @@ function boundedDiagnosticStructure(text) {
       else if (char === '"') quoted = false;
     } else if (char === '"') quoted = true;
     else if (char === "{" || char === "[") {
-      if (++depth > 16 || ++containers > 1024) return false;
+      if (++depth > 16 || ++containers > maxContainers) return false;
     } else if (char === "}" || char === "]") {
       if (--depth < 0) return false;
     }
@@ -464,7 +464,7 @@ function boundedDiagnosticStructure(text) {
   return !quoted && depth === 0;
 }
 
-async function readDiagnosticJSON(response, limit, signal) {
+async function readDiagnosticJSON(response, limit, signal, maxContainers = 1024) {
   const invalid = () => new Error("diagnostic body unavailable");
   const canceled = () => Object.assign(new Error("diagnostic read canceled"), { name: "AbortError" });
   let reader;
@@ -496,7 +496,7 @@ async function readDiagnosticJSON(response, limit, signal) {
       total = needed;
     }
     const text = new TextDecoder("utf-8", { fatal: true }).decode(bytes.subarray(0, total));
-    if (!boundedDiagnosticStructure(text)) throw invalid();
+    if (!boundedDiagnosticStructure(text, maxContainers)) throw invalid();
     const value = JSON.parse(text);
     if (signal?.aborted) throw canceled();
     complete = true;

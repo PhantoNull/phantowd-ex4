@@ -7,8 +7,10 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"reflect"
 	"slices"
+	"strings"
 	"testing"
 
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/nfsconfig"
@@ -140,6 +142,75 @@ func TestRejectEnvelopeAndPolicyAmbiguities(t *testing.T) {
 	} {
 		if _, err := Decode(invalid); err == nil {
 			t.Fatal("invalid nested policy accepted")
+		}
+	}
+}
+
+// Actual producer output, not hand-written browser JSON. These dense cases
+// exercise valid large policies and encoding/json's HTML escaping. They are
+// regression samples, not a proof of the maximum of all possible policies.
+func TestRenderedPoliciesFitBrowserResponseBudgets(t *testing.T) {
+	for _, pathText := range []string{strings.Repeat("x", 512), strings.Repeat("&", 384)} {
+		c := configFixture(1)
+		c.Shares.Users = nil
+		for i := 0; i < 128; i++ {
+			c.Shares.Users = append(c.Shares.Users, shareconfig.User{ID: fmt.Sprintf("u%03d", i), Name: fmt.Sprintf("u%03d%s", i, strings.Repeat("x", 28))})
+		}
+		baseShare, baseExport := c.Shares.Shares[0], c.NFS.Exports[0]
+		c.Shares.Shares, c.NFS.Exports = nil, nil
+		for i := 0; i < 32; i++ {
+			s := baseShare
+			s.ID, s.Name, s.RelativePath = fmt.Sprintf("s%03d", i), fmt.Sprintf("S%03d%s", i, strings.Repeat("x", 76)), fmt.Sprintf("s%03d/%s", i, pathText)
+			s.Grants = nil
+			for _, user := range c.Shares.Users {
+				s.Grants = append(s.Grants, shareconfig.Grant{UserID: user.ID, Access: "rw"})
+			}
+			c.Shares.Shares = append(c.Shares.Shares, s)
+		}
+		for i := 0; i < 16; i++ {
+			e := baseExport
+			e.ID, e.RelativePath = fmt.Sprintf("%08x-2222-3333-4444-555555555555", i+1), fmt.Sprintf("e%03d/%s", i, pathText)
+			e.Clients = nil
+			for j := 0; j < 64; j++ {
+				client := baseExport.Clients[0]
+				client.Network, client.Security = fmt.Sprintf("2001:db8:%x::/48", j+1), "krb5p"
+				client.AnonymousUID, client.AnonymousGID = 4294967294, 4294967294
+				e.Clients = append(e.Clients, client)
+			}
+			c.NFS.Exports = append(c.NFS.Exports, e)
+		}
+		encoded, err := json.Marshal(c)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := c.Shares.Validate(); err != nil {
+			t.Fatal("dense share fixture", err)
+		}
+		if err := c.NFS.Validate(c.Shares); err != nil {
+			t.Fatal("dense NFS fixture", err)
+		}
+		validated, err := DecodeConfig(bytes.NewReader(encoded))
+		if err != nil {
+			t.Fatal("dense producer fixture is not valid", err)
+		}
+		preview, err := Build(validated.Shares, validated.NFS)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, sample := range []struct {
+			name  string
+			value any
+			limit int
+		}{
+			{"configuration", map[string]any{"configuration": validated}, 525056},
+			{"preview", preview, 4 << 20},
+			{"restore", map[string]any{"configuration": validated, "preview": preview}, 4 << 20},
+		} {
+			data, err := json.Marshal(sample.value)
+			if err != nil || len(data)+256 > sample.limit {
+				t.Fatalf("%s producer exceeds browser response budget: bytes=%d error=%v", sample.name, len(data), err)
+			}
+			t.Logf("%s bytes=%d, plus256-byte envelope reserve, cap=%d", sample.name, len(data), sample.limit)
 		}
 	}
 }

@@ -6,6 +6,17 @@
 // Desired-state transactions only. No activation, automatic PUT retry, browser
 // persistence or implicit import from the older share-only store.
 const servicePath = "/api/v1/file-services/configuration";
+// Wire-response bounds, not request bounds or effective-access validation.
+// Configuration/backup envelopes fit MaxConfigBytes + 256. Rendered previews
+// duplicate paths/grants; restore returns both a document and its preview.
+const serviceResponseLimits = Object.freeze({
+  "GET /api/v1/auth/session": 16 * 1024,
+  "GET /api/v1/file-services/configuration": 525056,
+  "PUT /api/v1/file-services/configuration": 16 * 1024,
+  "GET /api/v1/file-services/backup": 525056,
+  "POST /api/v1/file-services/preview": 4 * 1024 * 1024,
+  "POST /api/v1/file-services/restore-preview": 4 * 1024 * 1024,
+});
 const serviceState = { baseline: undefined, candidate: null, attempted: null, busy: false, generation: 0, controller: null };
 const policyCopy = (value) => JSON.parse(JSON.stringify(value));
 
@@ -419,13 +430,19 @@ async function serviceOperation(action) {
   syncServiceControls();
   const current = () => generation === serviceState.generation;
   const request = async (path, options = {}) => {
+    if (!live()) throw new Error("superseded");
+    const limit = serviceResponseLimits[`${options.method || "GET"} ${path}`];
+    if (!Number.isSafeInteger(limit)) throw new Error("Unsupported configuration request.");
     let response;
     try { response = await fetch(path, { credentials: "same-origin", cache: "no-store", ...options, signal: controller.signal }); }
     catch (failure) {
       if (failure?.name === "AbortError") throw failure;
       throw new Error("Configuration service could not be reached.");
     }
-    if (!current()) throw new Error("superseded");
+    if (!current() || controller.signal.aborted || !response.ok) {
+      try { Promise.resolve(response.body?.cancel()).catch(() => {}); } catch { /* preserve refusal */ }
+    }
+    if (!live()) throw new Error("superseded");
     if (!response.ok) {
       const failure = new Error(response.status === 401 ? "Session expired. Sign in again." : response.status === 409 ?
         "The saved revision changed. Reload and review before another save." : response.status === 422 ?
@@ -434,9 +451,17 @@ async function serviceOperation(action) {
       failure.status = response.status; throw failure;
     }
     let body;
-    try { body = await response.json(); }
-    catch { throw new Error("Configuration service returned an unreadable response."); }
-    if (!current()) throw new Error("superseded");
+    try {
+      // Full desired documents may contain 128x128 grants and128x64 clients.
+      // Keep diagnostic defaults unchanged; restore contains document + preview.
+      const containers = path === "/api/v1/auth/session" ? 1024 :
+        path === "/api/v1/file-services/restore-preview" ? 65536 : 32768;
+      body = await readDiagnosticJSON(response, limit, controller.signal, containers);
+    } catch (failure) {
+      if (failure?.name === "AbortError") throw failure;
+      throw new Error("Configuration service returned an unreadable response.");
+    }
+    if (!live()) throw new Error("superseded");
     return body;
   };
   const session = async () => {

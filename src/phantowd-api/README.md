@@ -352,6 +352,50 @@ single-boot ARMv5 overlay pass with complete raw HTTP/HTTPS asset markers. QEMU
 checks embedded-asset integration, not JavaScript/stream execution. Real-browser,
 live transport, two-boot/full/hosted and product qualification stay separate.
 
+## Bounded file-service manager responses
+
+The combined desired-policy manager reuses the diagnostic stream reader for
+its six fixed method/path pairs. Bounds apply to decoded response bytes before
+UTF-8/JSON parsing, independently of Content-Length:
+
+| Method and path | Inclusive response limit |
+| --- | --- |
+| GET `/api/v1/auth/session` | 16 KiB |
+| GET `/api/v1/file-services/configuration` | 525,056 bytes |
+| PUT `/api/v1/file-services/configuration` | 16 KiB |
+| GET `/api/v1/file-services/backup` | 525,056 bytes |
+| POST `/api/v1/file-services/preview` | 4 MiB |
+| POST `/api/v1/file-services/restore-preview` | 4 MiB |
+
+Unknown pairs refuse before fetch. The existing depth16/chunk16,384 guards
+remain; session structure retains1,024 containers, policy responses allow32,768,
+and restore allows65,536 for the document plus preview. Legitimate grant/client
+collections must not inherit the smaller diagnostic container budget. Existing
+diagnostic paths and defaults are unchanged. These pre-scans bound allocation;
+they are not a duplicate-key validator, policy authorization or hard heap limit.
+
+The existing10-second operation signal covers body reads. Recheck cancellation
+before fetch, after response admission and after body handoff; a completed reader
+must not publish a result after its deadline. Error bodies are canceled without
+consumption, preserving HTTP status. Body failures release the reader without
+waiting for uncertain cancellation. This requests browser cancellation, not
+verified server/kernel teardown or a hard interruption of synchronous parsing.
+
+Oversize, malformed, canceled or unconfirmed PUT responses retain the attempted
+configuration and require explicit Load / reconcile; they never authorize a
+second automatic save. Refused previews/restores cannot publish a candidate,
+and refused backup bodies cannot create a download. Retired-session replies
+cannot restore state. No endpoint, backend privilege, save semantics, persistent
+format, service activation or product startup is added. Other legacy panel flows
+outside this manager still require separate response-budget qualification.
+
+Actual-source DOM controls cover every inclusive/excess byte bound, six HTTP
+refusals, twelve pending-body deadline/auth-retirement cases, six completion-
+handoff cancellations and redacted malformed/over-structure input. Actual Go
+renderers additionally validate dense grant/client and HTML-escaped policy
+samples, including a restore envelope over1 MiB. These are regression samples,
+not an exhaustive maximum-size proof or real-browser/performance qualification.
+
 ## Development file-service configuration API
 
 `GET` and `PUT /api/v1/file-services/configuration` operate on the combined

@@ -2361,6 +2361,23 @@ milestone before enabling its controls; M1/M6 for deployment.
   with complete raw HTTP/HTTPS asset markers. This is not full JSON/schema/provenance, browser heap/CPU hard
   limits, live/compressed transport, all mutation/import response bounds or
   verified server/kernel stop. See the component contract before extending it.
+- **M5.5g — File-service response lifetimes (partial; host-tested).** The combined
+  desired-policy manager consumes six fixed method/path responses through the
+  existing bounded stream reader. Session/save16KiB, configuration/backup525056
+  bytes, preview/restore4MiB; preserve diagnostic defaults while allowing bounded
+  large grant/client collections and document-plus-preview restore structure.
+  HTTP errors retain status without body consumption; failure requests cancel
+  and releases the lock without awaiting peer cleanup. Existing10s operation
+  cancellation is rechecked at completed body handoff before publication.
+  Overflow and handoff-cancellation RED regressions precede fixes. Whole final
+  Windows/pinned Linux checks and actual-source DOM controls pass, including
+  inclusive/excess bounds on every route, canceled/retired bodies, dense real Go
+  producer samples and retained uncertain PUT reconciliation with no retry.
+  The final standard single-boot ARMv5 overlay also passes embedded-asset and
+  existing TLS/auth checks; it does not execute browser JavaScript or qualify
+  the separate native timing campaign.
+  Other panel flows, browser/load/heap, complete transport/teardown, hosted and
+  product qualification remain separate. No activation or authority is added.
 - **M5.6 — Audit and diagnostics.** Record actor, operation ID, revisions and
   redacted outcome; bound retention. Export a sanitized support bundle that
   excludes credentials, private keys, passdb hashes and user file contents.

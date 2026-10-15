@@ -2424,4 +2424,197 @@ async function testDiagnosticByteReaderBoundariesAndCleanup() {
   process.stdout.write("Diagnostic byte-reader controls passed: paths=5 inclusive-limits=true UTF8-split=true cancellation-locks=true no-fallback=true fragmentation=true.\n");
 }
 await testDiagnosticByteReaderBoundariesAndCleanup();
+
+async function testServiceLoadRefusesOversizedBody() {
+  let unboundedReads = 0;
+  const value = { ...serviceReply(null), private_padding: "PRIVATE-SENTINEL".repeat(36000) };
+  const h = await serviceHarness(() => {
+    const reply = jsonResponse(value);
+    reply.json = async () => { unboundedReads++; return value; };
+    return reply;
+  });
+  await h.context.loadServicePolicy();
+  assert.equal(h.elements["service-current"].hidden, true, "Oversized policy response must not publish a baseline");
+  assert.equal(h.elements["service-save"].disabled, true);
+  assert.equal(unboundedReads, 0, "Policy reads must not call unbounded Response.json");
+  assert.equal(h.requests.filter((r) => r.path === "/api/v1/file-services/configuration").length, 1);
+  assert.doesNotMatch(h.elements["service-status"].textContent, /PRIVATE-SENTINEL/);
+}
+await testServiceLoadRefusesOversizedBody();
+
+function serviceConfigFixture() {
+  return { format: "phantowd-file-service-config", schema_version: 1, revision: 1,
+    shares: { ...savedFixture().configuration, revision: 1 },
+    nfs: { format: "phantowd-nfs-policy", schema_version: 1, revision: 1, volume_revision: 1, exports: [] } };
+}
+
+// Exercise the visible workflows, not a second implementation of the reader.
+async function serviceBodyScenario(phase, respond) {
+  const c = serviceConfigFixture();
+  let active = false, replies = 0;
+  const target = (value) => { replies++; return respond(value); };
+  const h = await serviceHarness((options) => {
+    if (options.method === "PUT") return phase === "save" && active ? target(serviceSaved(1)) : jsonResponse(serviceSaved(1));
+    return phase === "load" && active ? target(serviceReply(null)) : jsonResponse(serviceReply(phase === "backup" ? c : null));
+  }, () => phase === "preview" && active ? target(policyFixture()) : jsonResponse(policyFixture()),
+  () => phase === "session" && active ? target({ csrf_token: "fixture-only" }) : jsonResponse({ csrf_token: "fixture-only" }),
+  (path) => target(path.endsWith("/backup") ? backupFixture(c) : restoreFixture(c, 0)));
+  await settleUI();
+  fillPolicy(h.elements);
+  if (phase !== "load") await h.context.loadServicePolicy();
+  if (phase === "save") await h.context.prepareServiceAddition();
+  if (phase === "restore") h.elements["service-restore-file"].files = [backupFile(JSON.stringify(backupFixture(c)))];
+  const actions = { load: "loadServicePolicy", session: "prepareServiceAddition", preview: "prepareServiceAddition",
+    save: "saveServiceChange", backup: "exportServiceBackup", restore: "previewServiceRestore" };
+  return { ...h, run: () => { active = true; return h.context[actions[phase]](); }, replies: () => replies };
+}
+
+async function testServiceBodyByteBoundsAndOutcomes() {
+  for (const [phase, limit] of [["load", 525056], ["session", 16384], ["preview", 4194304],
+    ["save", 16384], ["backup", 525056], ["restore", 4194304]]) {
+    for (const excess of [0, 1]) {
+      let reply, canceled = 0, reads = 0;
+      const h = await serviceBodyScenario(phase, (value) => {
+        const raw = new TextEncoder().encode(JSON.stringify(value));
+        const bytes = new Uint8Array(limit + excess).fill(32); bytes.set(raw);
+        // Include a false Content-Length and a cancellation that never settles.
+        reply = { ok: true, status: 200, headers: { get: () => "1" },
+          json: () => { throw new Error("Unbounded response fallback"); },
+          body: new ReadableStream({
+            pull(controller) {
+              reads++;
+              if (reads === 1) controller.enqueue(bytes.subarray(0, limit));
+              else if (reads === 2 && excess) controller.enqueue(bytes.subarray(limit));
+              else if (!excess) controller.close();
+            },
+            cancel() { canceled++; return new Promise(() => {}); },
+          }) };
+        return reply;
+      });
+      await h.run();
+      assert.equal(h.replies(), 1, `${phase}: no retry`);
+      assert.equal(reply.body.locked, false, `${phase}: reader lock released`);
+      assert.equal(canceled, excess, `${phase}: overflow requests cancellation`);
+      assert.equal(h.requests.filter((r) => r.options?.method === "PUT").length, phase === "save" ? 1 : 0);
+      if (!excess) {
+        if (phase === "load") assert.equal(h.elements["service-current"].hidden, false);
+        else if (phase === "save") assert.match(h.elements["service-status"].textContent, /confirmed saved/);
+        else if (phase === "backup") assert.equal(h.document.downloads.length, 1);
+        else assert.equal(h.elements["service-review"].hidden, false, `${phase}: inclusive byte limit`);
+      } else {
+        assert.equal(h.elements["service-save"].disabled, true);
+        assert.equal(h.elements["service-review"].hidden, true);
+        assert.equal(h.document.downloads.length, 0);
+        if (phase === "load") assert.equal(h.elements["service-current"].hidden, true);
+        if (phase === "save") {
+          assert.match(h.elements["service-status"].textContent, /not confirmed.*may have committed/i);
+          await h.context.saveServiceChange();
+          assert.equal(h.requests.filter((r) => r.options?.method === "PUT").length, 1, "Overflow cannot authorize a second save");
+        }
+      }
+    }
+  }
+}
+await testServiceBodyByteBoundsAndOutcomes();
+
+async function testServiceHTTPRefusalsDoNotConsumeErrorBodies() {
+  for (const phase of ["load", "session", "preview", "save", "backup", "restore"]) {
+    let canceled = 0;
+    const h = await serviceBodyScenario(phase, () => ({ ok: false, status: 503,
+      body: { cancel: () => { canceled++; return new Promise(() => {}); }, getReader: () => { throw new Error("Error body was consumed"); } },
+      json: () => { throw new Error("Error JSON was consumed"); } }));
+    await h.run();
+    assert.equal(h.replies(), 1);
+    assert.equal(canceled, 1, "HTTP error body cancellation is requested but not awaited");
+    assert.equal(h.elements["service-save"].disabled, true);
+    assert.equal(h.elements["service-review"].hidden, true);
+    assert.equal(h.document.downloads.length, 0);
+    assert.match(h.elements["service-status"].textContent, phase === "save" ? /not confirmed/ : /unavailable, disabled or busy/);
+  }
+}
+await testServiceHTTPRefusalsDoNotConsumeErrorBodies();
+
+async function testServiceBodyDeadlineAndRetiredResults() {
+  for (const phase of ["load", "session", "preview", "save", "backup", "restore"]) {
+    for (const boundary of ["timeout", "auth-loss"]) {
+      let release, reply, canceled = 0, expired, completed = false;
+      const pending = new Promise((resolve) => { release = resolve; });
+      const h = await serviceBodyScenario(phase, (value) => {
+        reply = deferredJSONResponse(pending.then(() => value));
+        reply.body.getReader = () => ({ read: () => pending.then(() => ({ done: false,
+          value: new TextEncoder().encode(JSON.stringify(value)) })),
+        cancel: () => { canceled++; return new Promise(() => {}); }, releaseLock: () => {} });
+        return reply;
+      });
+      h.context.setTimeout = (callback, delay) => { assert.equal(delay, 10000); expired = callback; return 1; };
+      h.context.clearTimeout = () => {};
+      const operation = h.run().then(() => { completed = true; });
+      await settleUI();
+      if (boundary === "timeout") expired(); else h.context.showAuthUnavailable();
+      await settleUI();
+      assert.equal(completed, true, `${phase}: canceled body must release UI without waiting for the peer`);
+      await operation;
+      assert.equal(canceled, 1);
+      assert.equal(h.replies(), 1);
+      assert.equal(h.elements["service-save"].disabled, true);
+      assert.equal(h.elements["service-review"].hidden, true);
+      assert.equal(h.document.downloads.length, 0);
+      if (phase === "save" && boundary === "timeout") assert.match(h.elements["service-status"].textContent, /not confirmed.*may have committed/i);
+      const text = h.elements["service-status"].textContent;
+      const count = h.requests.length;
+      release(); await settleUI();
+      assert.equal(h.elements["service-status"].textContent, text, "Late body cannot confirm a canceled operation");
+      assert.equal(h.requests.length, count);
+      assert.equal(h.document.downloads.length, 0);
+    }
+  }
+}
+await testServiceBodyDeadlineAndRetiredResults();
+
+async function testServiceDeadlineAtCompletedBodyHandoff() {
+  for (const phase of ["load", "session", "preview", "save", "backup", "restore"]) {
+    let expire;
+    const h = await serviceBodyScenario(phase, (value) => {
+      let sent = false;
+      return { ok: true, status: 200, body: { getReader: () => ({
+        read: async () => sent ? { done: true } : (sent = true, { done: false, value: new TextEncoder().encode(JSON.stringify(value)) }),
+        cancel: async () => {},
+        // Deterministic cancellation at the completed-reader/consumer seam.
+        releaseLock: () => expire(),
+      }) } };
+    });
+    h.context.setTimeout = (callback) => { expire = callback; return 1; };
+    h.context.clearTimeout = () => {};
+    await h.run();
+    if (phase === "load") assert.equal(h.elements["service-current"].hidden, true, "Deadline at the body handoff cannot publish current policy");
+    assert.equal(h.elements["service-review"].hidden, true);
+    assert.equal(h.elements["service-save"].disabled, true);
+    assert.equal(h.document.downloads.length, 0);
+    assert.match(h.elements["service-status"].textContent, phase === "save" ? /not confirmed/ : /timed out/);
+    assert.equal(h.requests.filter((r) => r.options?.method === "PUT").length, phase === "save" ? 1 : 0);
+    if (phase === "session") assert.equal(h.requests.filter((r) => r.path.endsWith("/preview")).length, 0);
+  }
+}
+await testServiceDeadlineAtCompletedBodyHandoff();
+
+async function testServiceBodiesKeepPolicySizedStructureAndRefuseMalformedData() {
+  const c = serviceConfigFixture();
+  c.shares.users = Array.from({ length: 128 }, (_, i) => ({ id: `user-${i}`, name: `user${i}` }));
+  c.shares.shares = Array.from({ length: 16 }, (_, i) => ({ id: `share-${i}`, name: `Share ${i}`, volume_id: "media", relative_path: `folder-${i}`,
+    grants: c.shares.users.map((u) => ({ user_id: u.id, access: "ro" })) }));
+  const h = await serviceHarness(() => jsonResponse(serviceReply(c)));
+  await h.context.loadServicePolicy();
+  assert.equal(h.elements["service-current"].hidden, false, "More than1024 legitimate policy containers must remain loadable");
+  assert.match(h.elements["service-summary"].textContent, /16 SMB/);
+  for (const bytes of [new Uint8Array([255]), new TextEncoder().encode('{"PRIVATE-SENTINEL":'),
+    new TextEncoder().encode(JSON.stringify({ ...serviceReply(null), extra: Array.from({ length: 32768 }, () => ({})) })),
+    new TextEncoder().encode(JSON.stringify({ ...serviceReply(null), extra: [[[[[[[[[[[[[[[[null]]]]]]]]]]]]]]]] }))]) {
+    const broken = await serviceBodyScenario("load", () => new Response(bytes));
+    await broken.run();
+    assert.equal(broken.elements["service-current"].hidden, true);
+    assert.doesNotMatch(broken.elements["service-status"].textContent, /PRIVATE-SENTINEL/);
+  }
+  process.stdout.write("Service response controls passed: routes=6 inclusive/excess=true deadlines/auth-retirement=12 uncertain-save=true policy-containers=true.\n");
+}
+await testServiceBodiesKeepPolicySizedStructureAndRefuseMalformedData();
 process.stdout.write("Dashboard UI interaction smoke tests passed (DOM fixture; no visual browser coverage).\n");

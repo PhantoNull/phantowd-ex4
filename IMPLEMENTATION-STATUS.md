@@ -3,6 +3,27 @@
 
 # Implementation status
 
+## File-service manager: bounded responses and canceled-result refusal
+
+Six existing desired-policy method/path pairs now reuse the bounded stream
+reader instead of `Response.json()`: fixed byte/structure budgets, strict UTF-8,
+no Content-Length trust or unbounded fallback. Diagnostic defaults are unchanged;
+policy grants/clients and combined restore get appropriately larger finite
+container budgets. HTTP errors preserve status without consuming their bodies.
+Canceled/failed reads release the reader without waiting for peer cancellation.
+The existing operation deadline is also checked after completed body handoff;
+its deterministic RED previously published current policy after cancellation.
+
+Whole final Windows/pinned Linux checks and DOM regressions pass. Every route
+has inclusive/excess controls, deadline/session retirement and handoff refusals;
+uncertain PUTs remain blocked pending explicit reconciliation, never retry.
+Real Go renderers validate dense/HTML-escaped samples; these are not exhaustive
+size or browser memory/performance proofs. The final single-boot ARMv5 overlay
+also passes embedded-asset and existing TLS/auth smoke checks; it does not run
+browser JavaScript. Other panel flows, actual browser, two-boot/full/hosted and
+product qualification remain separate. No new endpoint, service activation or
+device operation is added; the independent native timing gate is unchanged.
+
 ## Host CI compiler selection
 
 The host-tool workflow now selects the exact `GO_VERSION` from `versions.env`
