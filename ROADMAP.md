@@ -2552,6 +2552,15 @@ stop conditions and suitable equipment/media; not ordinary software work.
   Keep15-byte buffering and unknown checksum status. Generic ACK flag evidence
   does not establish command correlation. No serial opener/transmitter, safe fan
   setting, active hardware or complete wire-protocol qualification is provided.
+  **M7.2b — length-specific passive dispatch (host-only):** classify7-byte
+  thermistor replies by fixed03/08 prefix plus supported sensor1/2 and status
+  families40/41/42 by byte1; only MCUVer is eligible at15bytes. Leave13-byte
+  envelopes unclassified because the legacy RTC path bypasses selector checks.
+  Preserve raw dispatch bytes, bounded diagnostics, unknown integrity and no
+  temperature conversion. Acceptance: actual regression failures before fixes,
+  all38templates across3lengths, sensor/status byte boundaries, capture splits,
+  CLI behavior and complete Windows/pinned Linux vet/race/fixed-count fuzz.
+  This does not establish checksum/payload validity or authorize hardware I/O.
 - **M7.3 — Cooling safety.** Independently measure temperature and fan/tach
   behavior. Define startup-safe fan state, unavailable/stale sensor handling,
   controller/daemon failure, overtemperature and safe shutdown. Do not disable

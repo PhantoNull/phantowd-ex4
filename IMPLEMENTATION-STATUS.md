@@ -3,6 +3,24 @@
 
 # Implementation status
 
+## Passive controller: length-specific receive classification
+
+The host-only decoder now uses the receive handler's length and fixed prefix,
+not a blanket three-byte match. Thermistor sensor1/2 replies and status families
+with variable payload bytes are recognized. Only MCUVer is classified at15bytes;
+13-byte RTC envelopes remain unknown because their stock branch does not
+validate selectors. Long button-shaped envelopes cannot change replayed button
+state. The JSON shape is unchanged; `dispatch_key` remains raw bytes1..3 and
+`known` means classification, not integrity, device state or execution evidence.
+
+Three regressions fail before their respective fixes and pass afterward.
+Catalog/length, raw sensor/status byte boundaries, every mixed-capture split
+and CLI controls pass locally. Whole Windows and pinned Linux checks pass,
+including Linux race and five fixed-count fuzz campaigns (450,000 executions).
+No temperature lookup,
+serial opener/transmitter, hardware test or cooling qualification is added.
+Checksums and active controller support remain unqualified.
+
 ## File-service manager: bounded responses and canceled-result refusal
 
 Six existing desired-policy method/path pairs now reuse the bounded stream

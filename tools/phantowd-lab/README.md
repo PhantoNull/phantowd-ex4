@@ -569,7 +569,24 @@ shown above):
 aggregate counts, architectures, interpreters and required-library frequencies.
 
 The MCU decoder recognizes the statically recovered 7-, 13-, and 15-byte
-receive envelopes and classifies the first three selector bytes. It reports
+receive envelopes. Handler classification is length-specific:
+
+| Envelope | Supported classification |
+| --- | --- |
+| 7 bytes | Three-byte catalog prefixes, except the version handler; thermistor prefix `03 08` with sensor byte `01` or `02`; status families `40`, `41`, `42` by their first byte only |
+| 13 bytes | Retained as an unknown envelope: the stock RTC branch bypasses selector validation, so matching its first bytes is not enough to establish a catalog identity |
+| 15 bytes | Only the `MCUVer` handler, with its three-byte catalog prefix |
+
+`dispatch_key` always retains raw bytes 1 through 3, including bytes which are
+payload in the variable-prefix families; it is not a universal fixed selector.
+`known` means a supported handler classification, not integrity, device state
+or command completion. The fourth template byte remains catalog metadata.
+The thermistor sensor byte selects the stock SATA/main destinations, but the
+decoder deliberately does not convert the raw lookup input into a temperature:
+physical calibration, valid range and units remain unqualified. It does not
+reproduce the legacy receiver's unchecked lookup or other side effects.
+
+The decoder reports
 every new `0xfa` as a fresh frame start, abandoning any incomplete prefix and
 counting it as malformed; input chunk boundaries do not change that result.
 Standalone decoding rejects interior start markers without assigning a selector
@@ -584,8 +601,8 @@ The stock ACK handler writes a generic XMLDB flag, and the sender tests that
 flag; recognizing an ACK selector does not confirm a particular command.
 
 The decoder still reports
-checksums as `unknown-not-validated`; the fourth selector-template byte,
-variable payloads, ACK correlation, and thermal fail-safe behavior remain
+checksums as `unknown-not-validated`; complete payload interpretation,
+ACK correlation, and thermal fail-safe behavior remain
 research questions. Synthetic replay is not proof that active hardware control
 is safe.
 

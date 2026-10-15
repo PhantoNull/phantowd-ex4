@@ -1480,6 +1480,7 @@ func replayMCU(args []string, output io.Writer) (int, error) {
 		State:  state,
 		Limitations: []string{
 			"checksum and variable payload semantics are not yet assigned",
+			"13-byte RTC envelopes are not catalog-classified; known handlers do not establish integrity, calibrated temperature or device state",
 			"this is a passive software model, not evidence of safe hardware control",
 		},
 	}

@@ -135,6 +135,43 @@ func TestDecodeMCUCommand(t *testing.T) {
 	}
 }
 
+func TestDecodeMCUCommandHandlerBoundaries(t *testing.T) {
+	for _, test := range []struct {
+		input string
+		name  string
+	}{
+		{"fa 03 08 01 00 2a fb", "GetThemister"},
+		{"fa 03 08 02 00 2a fb", "GetThemister"},
+		{"fa 41 01 02 00 00 fb", "APR_STAT"},
+		{"fa 03 05 00 00 00 fb", ""},
+		{"fa 03 05 00 00 00 00 00 00 00 00 00 00 00 fb", "MCUVer"},
+		{"fa 23 00 00 00 00 00 00 00 00 00 00 fb", ""},
+		{"fa 23 00 00 00 00 00 00 00 00 00 00 00 00 fb", ""},
+		{"fa 01 00 03 00 00 00 00 00 00 00 00 fb", ""},
+		{"fa 03 08 00 00 2a fb", ""},
+	} {
+		var output bytes.Buffer
+		code, err := run([]string{"decode-mcu", test.input}, &output)
+		if err != nil || code != 0 {
+			t.Fatalf("input %s: code=%d err=%v", test.input, code, err)
+		}
+		var decoded struct {
+			Known          bool     `json:"known"`
+			Names          []string `json:"names"`
+			ChecksumStatus string   `json:"checksum_status"`
+		}
+		if err := json.Unmarshal(output.Bytes(), &decoded); err != nil {
+			t.Fatal(err)
+		}
+		if decoded.Known != (test.name != "") || decoded.ChecksumStatus != "unknown-not-validated" {
+			t.Fatalf("input %s: unexpected observation %+v", test.input, decoded)
+		}
+		if test.name == "" && len(decoded.Names) != 0 || test.name != "" && (len(decoded.Names) != 1 || decoded.Names[0] != test.name) {
+			t.Fatalf("input %s: wrong handler names %v", test.input, decoded.Names)
+		}
+	}
+}
+
 func TestReplayHexCapture(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "capture.hex")
 	if err := os.WriteFile(path, []byte("# synthetic\nfa 23 00 00 00 00 fb\nfa 2a 00 00 00 00 fb # release\n"), 0o600); err != nil {
