@@ -38,7 +38,7 @@ scope; [component contracts](src/phantowd-api/README.md) describe the boundaries
 | Storage | Non-root read-only broker, complete sysfs inventory, manual GPT observations, duplicate-identity detection, protected registry with reader-bound rechecks, rechecked registry/census policy and backing reviews, internal MD/mount-owner fixtures | Trusted production lifecycle, persistent volume IDs, global-use accounting, qualified import and RAID management |
 | Sharing and identities | SMB3/NFS fixtures, disabled-first Samba accounts, session revocation, retained same-authority SMB startup/access, exclusive supervision, held-session and original-open-file source-loss, verified client/daemon closure, Unicode/CP850, streams and POSIX ACL tests | Product account workflows, complete fault coverage, supervised service activation/recovery and legacy permission migration |
 | iSCSI | Coherent desired policy, root-only CHAP reader, registry/share review, private declared SMB/NFS exposure refusal, shared backing-object reservations and retained-storage LIO/CHAP composition with ARMv5 access/session/fault fixtures | Product authority/composition, credential provisioning/recovery, external/cross-protocol use and complete session guards, import and target-management UI |
-| Health | Bounded SMART interpretation, generation-bound coordinator, private complete sysfs census including in-use disks, retained descriptor-generation witness, subprocess replay and native/ARMv5 synthetic producer fixtures | Qualified command/device provider, report-to-device binding, history, authorized test jobs, notifications and UI |
+| Health | Bounded SMART interpretation, generation-bound coordinator, complete sysfs census including in-use disks, fixed-opener/census witness composition, subprocess replay and native/ARMv5 synthetic producer fixtures | Qualified command/device provider, report-to-device binding, history, authorized test jobs, notifications and UI |
 | Network policy | Desired dual-stack policy, private read-only kernel inventories and internal local-address conflict diagnostics in host/ARMv5 QEMU | Qualified physical interface binding, external address-conflict/routing admission, persistent trial/confirmation/rollback and management UI |
 | Service isolation | Static-child owner/grant isolation, bounded-privilege Samba fixture with retained code/configuration, mutable-state directory lifetimes and descriptor handoff, separate read-only code/service views with copied-object refusal, verified code staging, offline ARM-header/build-attribute observations, actual QEMU libatomic dispatch tests and supervised retained static-code Owner | Product-authorized runtime inputs, complete descriptor-bound construction, identity/state/storage composition, durable recovery and product startup |
 | EX4 hardware | Bounded diskless RAM research; see [board notes](board/wd/ex4/README.md) | Sustained networking, factory MAC handoff, SATA, cooling, LEDs/display, thermal safety and recovery |
@@ -105,15 +105,15 @@ CLI/library guards. Its complete cached integration and independent artifact/
 source/license/SBOM audit pass. This does not enable target OpenSSL or qualify
 a NAS HTTPS service, independent clean reproduction or physical EX4 support.
 
-The current integration candidate selects Go 1.26.8 and host OpenSSL 3.5.9.
-Complete cached host/ARMv5 integration, all ten independently
+The last complete cached integration checkpoint uses Go 1.26.8 and host
+OpenSSL 3.5.9. Its complete host/ARMv5 integration, all ten independently
 enrolled Samba guests and both synthetic SMART lanes pass. The sharing fixtures
 cover same-authority startup, real data access, exclusive supervision, verified
 closure and idle original-session/open-file faults with retained review and no
 restart. Source restoration does not release reviewed authority. These are not
 pending-I/O, physical disk failure, durable reconnect or recovery qualifications.
 
-An independent audit matches all 1,088 API inputs, actual images, kernel/header
+Its independent audit matches all 1,088 API inputs, actual images, kernel/header
 archives, the selected and installed Go SDK, release metadata, SBOM and declared
 license files. OpenSSL's three installed objects are byte-exact reproductions
 of their built objects after Buildroot's configured RPATH normalization. The

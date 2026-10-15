@@ -141,6 +141,65 @@ func exerciseQEMUSMARTCensusWitnessSet() error {
 	return nil
 }
 
+// Separate bounded construction test, not time borrowed from the earlier
+// borrowed-source fixture. Every block device belongs to this disposable guest.
+func exerciseQEMUSMARTCensusOpenSet() error {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	reader := &qemuSMARTWitnessSetFS{base: os.DirFS("/sys")}
+	census, err := collectSMARTDiskCensus(ctx, reader)
+	if err != nil || len(census.disks) != 7 {
+		return errors.New("SMART open-set fixture census incomplete")
+	}
+	devices := make([]volumeprobe.ObservedBlockDevice, len(census.disks))
+	for i, disk := range census.disks {
+		devices[i] = volumeprobe.ObservedBlockDevice{Name: disk.name, Generation: disk.generation}
+	}
+	initial, err := qemuSMARTSourceFDCount(devices)
+	if err != nil {
+		return err
+	}
+	s, err := openSMARTCensusWitnessSet(ctx, reader)
+	if err != nil {
+		return errors.New("SMART fixed census opener refused")
+	}
+	defer s.Close(context.Background())
+	if len(s.witnesses) != 7 || s.openedSources != nil || s.Check(ctx) != nil {
+		return errors.New("SMART fixed opener did not retain complete independent pins")
+	}
+	if count, err := qemuSMARTSourceFDCount(devices); err != nil || count != initial+7 {
+		return errors.New("SMART fixed opener retained extra original descriptors")
+	}
+	reader.fail = true
+	if !errors.Is(s.Check(ctx), smartdevice.ErrUnsafe) {
+		return errors.New("SMART opened set accepted failed census")
+	}
+	reader.fail = false
+	if !errors.Is(s.Check(ctx), smartdevice.ErrReview) || s.Close(ctx) != nil {
+		return errors.New("SMART opened set revived or did not release review pins")
+	}
+	if count, err := qemuSMARTSourceFDCount(devices); err != nil || count != initial {
+		return errors.New("SMART opened set leaked generation pins")
+	}
+	// The only injected behavior is a reader failure AFTER the genuine fixed
+	// opener. No device mutation, alternate /dev root or healthy fake backend.
+	failed, err := openSMARTCensusWitnessSetWith(ctx, reader, func(observed []volumeprobe.ObservedBlockDevice) ([]volumeprobe.BlockDeviceSource, error) {
+		sources, err := volumeprobe.OpenObservedBlockSources(observed)
+		if err == nil {
+			reader.fail = true
+		}
+		return sources, err
+	})
+	reader.fail = false
+	if failed != nil || !errors.Is(err, smartdevice.ErrUnsafe) {
+		return errors.New("SMART fixed opener admitted failed post-open census")
+	}
+	if count, err := qemuSMARTSourceFDCount(devices); err != nil || count != initial {
+		return errors.New("SMART failed opener construction leaked sources or pins")
+	}
+	return nil
+}
+
 // Bound this test-only census to current-process FDs and known fixture device
 // numbers; report only a count. No link targets, unrelated IDs or paths escape.
 func qemuSMARTSourceFDCount(devices []volumeprobe.ObservedBlockDevice) (int, error) {

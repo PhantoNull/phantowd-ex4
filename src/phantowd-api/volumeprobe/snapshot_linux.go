@@ -17,9 +17,11 @@ import (
 // candidates beneath the fixed /dev directory. It accepts only names and
 // generation tuples already validated by its caller; it never reads sysfs or
 // accepts a caller path. It uses read-only descriptors and returns no partial
-// set. The caller must still establish complete discovery, eligibility,
-// unmounted state and stable topology, then reconcile the sysfs inventory
-// before any handoff or action.
+// set. The caller must establish complete discovery, whole-disk topology and
+// the policy for its intended observation, then reconcile the sysfs inventory.
+// Generation-only witnesses can include in-use leaves; content-probe/import
+// callers retain their separate eligibility, unmounted/exclusivity checks.
+// This opener grants no content-probe, SMART-query, import or mount authority.
 func OpenObservedBlockSources(devices []ObservedBlockDevice) ([]BlockDeviceSource, error) {
 	if err := validateObservedBlockDevices(devices); err != nil {
 		return nil, err

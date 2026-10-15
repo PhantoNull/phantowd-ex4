@@ -100,7 +100,8 @@ closed there.
 This primitive trusts the caller's observed names/generations. It does not prove
 that the caller is the trusted broker, prove inventory completeness, establish
 whole-disk eligibility or unmounted state, map partitions/MD/multipath topology,
-or revalidate the pathname after opening. The Linux integration confines calls
+or revalidate the pathname after opening. The Linux content-probe integration
+confines calls
 to a dedicated non-root storage-broker process. The broker consumes a complete
 validated sysfs inventory, excludes visible mounts and other ineligible
 devices, opens the complete candidate set read-only, and reconciles sysfs,
@@ -115,6 +116,13 @@ the system init script. The QEMU fixtures exercise this boundary, but do not
 qualify real EX4 hardware or authorize mounting or mutation. A caller must
 continue through `OrderCompleteBlockSources` and `ObserveBlockSet`; none of
 these operations authorize mounting or mutation.
+
+The private SMART generation-witness constructor separately reuses only this
+fixed opener and kernel-generation checks for its complete whole-leaf census,
+including in-use disks. It runs no content helper or transport command and is
+not wired to product startup, device permissions or the broker protocol. This
+does not relax any content-probe/import eligibility, unmounted-state or
+exclusivity requirement. No device open is a no-wake guarantee.
 
 The internal API bridge `completeObservedBlockDeviceSet` derives transient
 generation tuples for every whole-disk node in a collector-produced,

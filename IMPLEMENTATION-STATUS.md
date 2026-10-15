@@ -33,6 +33,33 @@ witnesses unchanged. The pass does not prove that error fidelity fixed timing;
 no repeated attempts were selected and no CPU/worker/phase/guest limit changed.
 Complete-image and own-head hosted qualification remain open.
 
+## M8.5b: fixed census opening, metadata witnesses only
+
+The private Linux constructor now derives all whole-leaf names/generations from
+one complete sysfs census and reuses the existing fixed read-only `/dev` opener.
+The initial census remains its baseline across opening and descriptor checks;
+in-use and ambiguous-VPD leaves are not silently omitted. Independent pins
+survive closure of constructor-owned original FDs. Borrowed-source construction
+still leaves caller files untouched. Uncertain cleanup returns a non-usable
+review handle with error and cannot retry into success.
+
+Native unit/race3 and Windows/API cross-build checks pass. All 35 Linux workflow
+contract tests, lint and shell checks pass after formatting-only lint corrections.
+The actual ARMv5 standard smoke overlay passes: seven genuine virtual block
+opens, original-FD closure, retained review and rollback after failed post-open
+census with no leaked block descriptors. The host requires one exact new receipt;
+missing, duplicate and suffixed rows fail, including mixed valid/forged receipts.
+The stricter host guard is independently replayed against the actual saved ARM
+trace after the smoke; guest/API/base source witnesses remain unchanged.
+This lane explicitly skips the separate two-boot fixture and does not rebuild
+the complete image/package/SBOM or qualify hosted/clean/physical behavior.
+
+Only generation metadata is observed, not disk contents or SMART transport.
+No command, capability, device permission, normal startup or HTTP path is added.
+Opening devices has no no-wake guarantee. Authenticated command/runtime, actual
+transport/report attribution, stable identity/history, self-test jobs, standby
+and physical qualification remain prerequisites to product health management.
+
 ## Native QEMU timing: coordinated clock and complete local integration pass
 
 Ordinary native now has one300s monotonic work deadline, with one fixed

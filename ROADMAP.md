@@ -2906,8 +2906,18 @@ not host/QEMU progress.
     guest lanes subsequently pass on35ae558, with seven exported hashes and
     image/export/target API equality verified. Independent clean reproduction,
     hosted qualification, command authority and product wiring remain open.
-    Do not add
-    history/UI by treating this transient tuple as a stable media identity.
+    A private fixed-opener composition now derives every name/generation from
+    the initial complete census, reuses the existing read-only `/dev` opener,
+    keeps that pre-open baseline and retains independent witnesses. Constructor-
+    owned original FDs close before success; borrowed inputs remain borrowed.
+    Uncertain construction cleanup returns a non-usable review handle plus error,
+    never a partial usable set or automatic retry. Native unit/race tests and
+    actual seven-leaf ARMv5 metadata opening, retained-review and failed post-open
+    census rollback pass in the standard smoke overlay. Its new exact marker
+    refuses missing/duplicate/suffixed receipts. Two-boot, complete rebuilt-image/
+    SBOM, clean/hosted, physical/non-root/standby and SMART command qualification
+    remain open. Product startup, broker operations and HTTP are unchanged.
+    Do not add history/UI by treating this transient tuple as stable media identity.
   - **M8.5c — Wake policy.** Specify exact no-check/device-detection behavior per
     tool and transport. Low-power skip must have explicit evidence; exit bit 1
     alone is ambiguous. Do not parse tool prose to claim standby. Verify that

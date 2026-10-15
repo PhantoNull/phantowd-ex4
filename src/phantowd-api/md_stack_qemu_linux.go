@@ -201,6 +201,10 @@ func runQEMUMDStackTest() (result error) {
 		return err
 	}
 	fmt.Println("PHANTOWD_SMART_CENSUS_WITNESS_SET_READY leaves=7 complete=true partial_refused=true rollback_no_leak=true caller_close=true review_pins_retained=true reader_failure_sticky=true explicit_release=true content_read=false smart_command=false scope=qemu-fixture-only")
+	if err := exerciseQEMUSMARTCensusOpenSet(); err != nil {
+		return err
+	}
+	fmt.Println("PHANTOWD_SMART_CENSUS_OPEN_SET_READY leaves=7 fixed_opener=true in_use_included=true original_fds_closed=true review_sticky=true post_open_reader_failure_refused=true rollback_no_leak=true explicit_release=true content_read=false smart_command=false scope=qemu-fixture-only")
 	census, err := collectTrustedMountedExtCensus(context.Background(), sysfs, os.DirFS("/proc"))
 	if err != nil || census.coverage.processRootExcluded != 1 || census.coverage.observedRootCount != len(census.identities) {
 		return errors.New("private mounted-ext census did not retain complete scoped coverage")

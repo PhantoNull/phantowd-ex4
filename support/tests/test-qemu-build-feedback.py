@@ -342,16 +342,19 @@ class BuildFeedbackTests(unittest.TestCase):
     def test_thermal_projection_requires_same_boot_guest_assertion(self):
         smoke = (ROOT / "support/qemu-smoke.sh").read_text()
         selftest = (ROOT / "src/phantowd-api/selftest.go").read_text()
-        fixture = (ROOT / "src/phantowd-api/thermalreport_selftest.go").read_text()
+        fixture = (ROOT / "src/phantowd-api/"
+                   "thermalreport_selftest.go").read_text()
         marker = ("PHANTOWD_THERMAL_REPORT_READY identity=true age=true "
                   "quality=true zero_distinct=true no_fallback=true "
-                  "tach_arithmetic=true control=false scope=synthetic-memory-only")
+                  "tach_arithmetic=true control=false "
+                  "scope=synthetic-memory-only")
         self.assertIn(marker, smoke)
         self.assertIn(marker, selftest)
         self.assertIn("exerciseQEMUThermalReport()", selftest)
         self.assertIn("thermalreport.Evaluate", fixture)
-        for refusal in ("IdentityMismatch", "Stale", "InvalidTime", "ReadFailed",
-                        "Unqualified", "OutOfRange", "SourceSleeping", "Missing"):
+        for refusal in ("IdentityMismatch", "Stale", "InvalidTime",
+                        "ReadFailed", "Unqualified", "OutOfRange",
+                        "SourceSleeping", "Missing"):
             self.assertIn(refusal, fixture)
         # Only memory evaluation belongs in this fixture. Physical input and
         # fan/controller behavior require a separately qualified provider.
@@ -364,10 +367,12 @@ class BuildFeedbackTests(unittest.TestCase):
         init = (ROOT / "board/qemu/armv5/rootfs-overlay/etc/init.d/"
                 "S99phantowd-ready").read_text()
         self.assertEqual(init.count('/usr/lib/phantowd/qemu-selftest-once.sh '
-                                    '/usr/bin/phantowd-api "$api_error_log"'), 2)
+                                    '/usr/bin/phantowd-api '
+                                    '"$api_error_log"'), 2)
         marker = ("PHANTOWD_THERMAL_REPORT_READY identity=true age=true "
                   "quality=true zero_distinct=true no_fallback=true "
-                  "tach_arithmetic=true control=false scope=synthetic-memory-only")
+                  "tach_arithmetic=true control=false "
+                  "scope=synthetic-memory-only")
         # Execute the actual guard, not a second implementation of its count.
         guard = next(block for block in re.findall(
             r"(?m)^        if ! test .*?^        fi$", smoke, re.DOTALL)
@@ -391,18 +396,23 @@ class BuildFeedbackTests(unittest.TestCase):
     def test_dashboard_assets_share_exact_checks_for_http_and_tls(self):
         normal = (ROOT / "src/phantowd-api/selftest.go").read_text()
         tls = (ROOT / "src/phantowd-api/transport_qemu.go").read_text()
-        helper = (ROOT / "src/phantowd-api/dashboard_assets_selftest.go").read_text()
-        self.assertIn('exerciseQEMUDashboardAssets(client, "http://"+listenAddress)', normal)
-        self.assertIn('exerciseQEMUDashboardAssets(client, transport.AllowedOrigin)', tls)
+        helper = (ROOT / "src/phantowd-api/"
+                  "dashboard_assets_selftest.go").read_text()
+        self.assertIn('exerciseQEMUDashboardAssets(client, '
+                      '"http://"+listenAddress)', normal)
+        self.assertIn('exerciseQEMUDashboardAssets(client, '
+                      'transport.AllowedOrigin)', tls)
         for body in (normal, tls):
             self.assertIn('PHANTOWD_DASHBOARD_ASSETS_READY transport=', body)
             self.assertIn('byte_exact=true scope=qemu-loopback-only', body)
-        for contract in ('bytes.Equal(data, expected)', 'qemuDashboardAssetLimit+1',
+        for contract in ('bytes.Equal(data, expected)',
+                         'qemuDashboardAssetLimit+1',
                          'response.Body.Close()', 'closeErr != nil',
                          'len(values) != 1', 'Content-Security-Policy',
                          'X-Content-Type-Options'):
             self.assertIn(contract, helper)
-        for wrapper in ('support/test-api.ps1', 'support/container/test-api.sh'):
+        for wrapper in ('support/test-api.ps1',
+                        'support/container/test-api.sh'):
             self.assertIn('TestQEMUDashboardAssets(HTTPAndTLS|Refusals)',
                           (ROOT / wrapper).read_text())
 
@@ -440,7 +450,8 @@ class BuildFeedbackTests(unittest.TestCase):
             for transport in ('http', 'https'):
                 for wrong_assets in (6, 8):
                     lines = [marker.format(transport=kind).replace(
-                        'assets=7', f'assets={wrong_assets}' if kind == transport else 'assets=7')
+                        'assets=7', f'assets={wrong_assets}'
+                        if kind == transport else 'assets=7')
                         for kind in ('http', 'https') for _ in range(2)]
                     log.write_text('\n'.join(lines)+'\n')
                     result = subprocess.run(
@@ -480,6 +491,46 @@ class BuildFeedbackTests(unittest.TestCase):
             self.assertIn(claim, md)
         self.assertIn("fs.ReadLinkFS = (*qemuSMARTWitnessSetFS)(nil)", fixture)
         self.assertIn("Readdirnames(129)", fixture)
+
+    def test_smart_fixed_census_opener_requires_actual_guest_assertion(self):
+        marker = "PHANTOWD_SMART_CENSUS_OPEN_SET_READY"
+        smoke = (ROOT / "support/qemu-smoke.sh").read_text()
+        md = (ROOT / "src/phantowd-api/md_stack_qemu_linux.go").read_text()
+        fixture = (ROOT / "src/phantowd-api/"
+                   "smart_census_witness_set_qemu_linux.go").read_text()
+        self.assertIn(marker, smoke)
+        self.assertIn(marker, md)
+        self.assertIn("exerciseQEMUSMARTCensusOpenSet()", md)
+        for claim in ("original_fds_closed=true", "review_sticky=true",
+                      "post_open_reader_failure_refused=true",
+                      "rollback_no_leak=true", "smart_command=false"):
+            self.assertIn(claim, smoke)
+            self.assertIn(claim, md)
+        self.assertIn("openSMARTCensusWitnessSet(ctx, reader)", fixture)
+        self.assertIn("volumeprobe.OpenObservedBlockSources(observed)",
+                      fixture)
+        self.assertIn("count != initial+7", fixture)
+        guard = next(block for block in re.findall(
+            r"(?m)^        if ! test .*?^        fi$", smoke, re.DOTALL)
+            if marker in block)
+        row = re.search(r"grep -Fxc '([^']+)'", guard).group(1)
+        with tempfile.TemporaryDirectory() as temp:
+            log = pathlib.Path(temp) / "guest.log"
+            for count in (0, 1, 2):
+                log.write_bytes(((row + "\r\n") * count).encode())
+                result = subprocess.run(
+                    ["sh", "-c", 'log_file="$1"\n' + guard,
+                     "smart-open-guard", str(log)], capture_output=True,
+                    text=True, timeout=3)
+                self.assertEqual(result.returncode, 0 if count == 1 else 1)
+            for bad in (row + " extra\n", row + "\n" + row + " extra\n",
+                        row + "\n" + marker + "_forged\n"):
+                log.write_text(bad)
+                result = subprocess.run(
+                    ["sh", "-c", 'log_file="$1"\n' + guard,
+                     "smart-open-guard", str(log)], capture_output=True,
+                    text=True, timeout=3)
+                self.assertNotEqual(result.returncode, 0)
 
     def test_smart_generation_witness_requires_actual_md_guest_assertion(self):
         marker = "PHANTOWD_SMART_FD_WITNESS_READY"
