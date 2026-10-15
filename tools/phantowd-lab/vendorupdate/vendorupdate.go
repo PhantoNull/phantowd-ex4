@@ -268,7 +268,8 @@ func InspectLogicalImage(r io.ReaderAt, size int64) (LogicalImage, error) {
 
 // InspectRescueImage validates a regular-file copy of the packed logical
 // rescue format. It never exposes the two per-device MAC fields present in the
-// legacy header and makes no physical NAND/OOB/ECC claim.
+// legacy header or the opaque per-unit slot labelled "key" by the stock merger.
+// It makes no physical NAND/OOB/ECC or inner-payload-layout claim.
 func InspectRescueImage(r io.ReaderAt, size int64) (RescueImage, error) {
 	report := RescueImage{
 		Format:           "wd-mycloud-ex4-legacy-logical-rescue",

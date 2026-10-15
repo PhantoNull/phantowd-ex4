@@ -2493,6 +2493,31 @@ stop conditions and suitable equipment/media; not ordinary software work.
   bad-block policy, vendor headers/checksums, boot validation, environment and
   device identity dependencies. Verify backups and an independent rescue path.
   A raw image copy or recognizable SquashFS magic is insufficient.
+  **M7.6a — stock source/configuration cross-check (partial, offline):**
+  hash-bound GPL configuration/Orion/core ECC evidence selects software Hamming,
+  not the compiled-out RS override or its `nandEcc=` parser. For observed
+  2048/64 geometry the source path implies 256-byte steps, three ECC bytes per
+  step and OOB positions 40–63; this is not a measured page decode, exact build
+  reproduction or U-Boot parity. Final `chk_image` separately selects an mtd4
+  fallback from a register bit and seeks 5 MiB + 4 KiB in a requested 10 MiB packed
+  dump; unchecked command/seek/write results prevent a restore guarantee.
+  Acceptance still requires reconciling both rescue readers/producers and the
+  register writer, a reviewed raw-versus-logical capture specification with
+  identity/ECC/bad-block preservation, and independent bootloader-readable
+  restore/interruption drills on sacrificial EX4 hardware before any writer.
+  See the [source anchors and remaining gates](board/wd/ex4/NAND-RECOVERY-RESEARCH.md).
+  **M7.6b — rescue identity and legacy mutation boundary (partial, offline):**
+  final updater merger rewrites only its 2 KiB binary header plus an
+  identity-bearing config text file, with unchecked I/O and pathname reopen;
+  its serial-derived field labelled "key" does not establish cryptography or
+  explain the inner rescue body. Synthetic host inspector tests retain this
+  field's opacity through success/refusal/errors without mutating input.
+  Static `mtd_check` main can select destructive UBIFS config reinitialization
+  and return zero without verified remount; its stock init invocation is
+  conditional on USB detection/retry state. Never execute it as a diagnostic.
+  Acceptance still needs an independently evidenced rescue body producer/
+  payload, register writer, exact-unit capture design and recovery drill;
+  no new payload parser, legacy-helper execution or installer is authorized.
 
 **Start in:** [EX4 board research](board/wd/ex4/README.md),
 `board/wd/ex4/`, `configs/`, `tools/phantowd-lab/mcuproto/`,
