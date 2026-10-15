@@ -3,6 +3,35 @@
 
 # Implementation status
 
+## Management prerequisite: explicit desired user references
+
+The existing combined SMB/NFS manager can now add an unused desired user
+reference without creating a share/grant, or explicitly remove an exact selected
+reference only when no desired SMB grant uses it. Invalid/reserved/duplicate
+names and the129th reference are refused. All other policy and input snapshots
+are preserved; semantic diff, preview, explicit CAS Save and uncertain-write
+reconciliation are reused. Selecting a user does not preselect deletion.
+
+These operations never allocate/rename/disable Unix or Samba accounts, set a
+password, enroll Samba, revoke sessions or release native identity/history.
+Unused in desired policy is not proof of absent/inactive accounts. No new HTTP
+endpoint, privilege, startup writer or service activation. Complete DOM tests
+cover first/last references, maximum rosters, ID-bound removal, retained grants/
+NFS and no retry after an uncertain save. The actual authenticated HTTP handlers
+also preview/save/read these references and reject dangling grants before commit.
+Whole Windows API/DOM/cross-compilation and pinned Linux API vet/units/tagged vet,
+focused HTTP race-count3 and32 runner contracts pass. Browser rendering and
+assistive-technology, physical deployment and product account workflows remain
+unqualified; QEMU asset checks do not execute JavaScript.
+
+The final standard ARMv5 overlay exits0 with the new user-operation/refusal
+markers present in embedded JavaScript over HTTP across the intentional API
+restart. Separate existing TLS/authentication/preview checks also pass; they do
+not establish HTTPS asset-marker parity. The final explanatory markup is outside the editor
+grid with an explicit accessible description, checked by final DOM/Windows and
+that fresh ARM run. This is not full/two-boot/native/hosted or real-browser
+qualification, and it does not resolve the pending native timing contract.
+
 ## Tachometer prerequisite: exact count/window arithmetic
 
 M7.3f adds `thermalreport.EstimateTach`: a private immutable calculation from

@@ -2293,6 +2293,18 @@ milestone before enabling its controls; M1/M6 for deployment.
   not device observation age, health or an atomic snapshot. Complete DOM and
   Windows/pinned Linux preflight and one actual ARMv5 embedded-asset smoke pass;
   no JavaScript executes in QEMU. Browser/full/hosted/product gates stay separate.
+  **M5.4d — explicit desired user references (partial development workflow):**
+  create a reference without grants or remove one exact selected reference only
+  after its last desired SMB grant is explicitly removed. Preserve all unrelated
+  definitions/rules, show before/after review and require existing revisioned
+  Save; no default-delete selection, cascading cleanup or automatic retry.
+  These are policy references, not Unix/Samba accounts, credentials, live access
+  revocation, rename or native identity reuse. Acceptance: name/duplicate/128
+  bounds, selected-ID binding, referenced-removal refusal, immutable baseline,
+  grant/NFS preservation, first/last reference, uncertain-save reconciliation,
+  actual authenticated HTTP round trips and dangling-reference rejection. Verify
+  updated embedded assets in ARM; real-browser/accessibility and native account
+  management/recovery remain separate product gates.
 - **M5.5 — Accessible efficient UI.** Keyboard operation, labels/focus, narrow
   viewports, screen-reader status and high contrast; bounded static assets and
   shared observations. Avoid per-client hardware polling, stale-response

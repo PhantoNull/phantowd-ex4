@@ -1371,8 +1371,8 @@ and export UUIDs are refused locally; the server validates the entire result,
 including limits, overlap and policy compatibility, before a save is enabled.
 All component revisions advance together.
 
-After loading, a separate editor selects a saved SMB share or NFS export by
-stable policy ID, not by display name or current list position. Selection
+After loading, a separate editor selects a saved SMB share, NFS export or user
+reference by exact policy ID, not by display name or current list position. Selection
 copies its volume/path into the form; choosing an existing user/CIDR rule
 copies that rule's fields. Only the chosen operation consumes those fields:
 
@@ -1382,6 +1382,8 @@ copies that rule's fields. Only the chosen operation consumes those fields:
 | SMB grant add/update | One exact username's ro/rw grant; adds a user reference if needed | All other grants, share path, NFS policy |
 | SMB grant remove | One exact username's grant | User reference, other grants, all NFS policy |
 | SMB definition remove | Selected share definition | Files, users, volumes and every NFS export |
+| User reference add | New desired name/reference, without any grant | All existing users, shares, grants, volumes and NFS policy; no account is provisioned |
+| Unused user reference remove | Exact selected reference, only if no SMB grant refers to it | All accounts, credentials, sessions, native identity history, files and NFS policy |
 | Independent NFS add | New export UUID, volume/path and first client rule | All SMB shares and existing exports |
 | NFS properties | Volume reference and relative path | Export UUID, every client rule, all SMB policy |
 | NFS client add/update | One exact CIDR's access, squash, anonymous IDs and security flavor | Other client rules, export identity/path, SMB grants |
@@ -1391,11 +1393,24 @@ copies that rule's fields. Only the chosen operation consumes those fields:
 Changing a client network requires an explicit new rule/removal, not an
 implicit rename of an old CIDR. Removing the last grant/client rule is refused;
 the owner must choose definition removal instead. Unused user/volume references
-are retained, not garbage-collected. Missing targets, mismatched protocol/action,
+are retained, not garbage-collected; only an explicit unused-user-reference
+operation removes a user reference. Missing targets, mismatched protocol/action,
 duplicate identities/names and no-change edits are refused locally. Remaining
 schema/limit/overlap checks are authoritative on the server. No generated-ID
 choice permits bypassing those checks. Edit operations preserve unrelated
 objects, including existing multi-user and multi-client policy.
+
+User-reference creation uses only the entered username; removal uses only the
+selected policy ID, not a stale username in the form. Reserved/invalid/duplicate
+names and the129th reference are refused locally, with whole-policy validation
+still authoritative on the server. Selecting a reference shows its loaded desired
+SMB grant count, disables the inapplicable rule selector and requires an explicit
+operation choice rather than preselecting removal. No rename, password, Unix
+account allocation, Samba enrollment, account disable or session revocation is
+performed. Absence of desired grants does not prove that an account is absent or
+unused elsewhere. Policy IDs are not native UID/GID allocation/reuse authority.
+Preview, semantic diff, explicit revisioned Save and uncertain-PUT reconciliation
+are the same existing workflow; no endpoint, request type or auto-save is added.
 
 Changing a definition's volume/path moves no files. Its old protocol peer does
 not follow automatically: an SMB path edit/removal does not change or revoke

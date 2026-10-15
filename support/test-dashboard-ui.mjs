@@ -23,6 +23,8 @@ for (const match of (source + serviceSource).matchAll(/(?:byId|setText)\("([^"]+
 }
 assert.match(markup, /id="policy-nfs-fields"[^>]*hidden disabled/);
 assert.match(markup, /id="policy-form"[^>]*autocomplete="off"/);
+assert.match(markup, /id="service-editor"[^>]*aria-describedby="service-user-help"/);
+assert.ok(markup.indexOf('id="service-user-help"') < markup.indexOf('id="service-editor"'), "long reference guidance belongs outside the two-column editor grid");
 assert.match(markup, /<body>\s*<a class="skip-link" id="skip-to-content" href="#main-content">Skip to main content<\/a>/);
 assert.match(markup, /<main id="main-content" tabindex="-1">/);
 for (const id of ["auth-title", "page-title"]) {
@@ -1336,6 +1338,9 @@ await testServiceRefusalsAndInvalidation();
 await testServiceFormEditsAndReconcileFailure();
 await testServiceEditingContracts();
 await testServiceEditorInteraction();
+await testServiceUserReferenceContracts();
+await testServiceUserReferenceInteraction();
+await testServiceUserReferenceUncertainSave();
 await testSavedPolicyStatesAndSafeRendering();
 await testSavedPolicyMalformedReplies();
 await testSavedPolicyLateRepliesAndAuthLoss();
@@ -1561,7 +1566,7 @@ async function testServiceEditorInteraction() {
     return jsonResponse(serviceReply(stored));
   });
   fillPolicy(elements); await context.loadServicePolicy();
-  assert.equal(elements["service-target"].children.length, 5);
+  assert.equal(elements["service-target"].children.length, 7, "shares, exports and desired user references are selectable");
   elements["service-target"].value = "smb:share-1";
   context.selectServiceTarget();
   assert.equal(elements["policy-name"].value, "Books");
@@ -1594,6 +1599,120 @@ async function testServiceEditorInteraction() {
   assert.equal(elements["service-target"].children.length, 1);
   assert.equal(elements["service-member"].children.length, 1);
   assert.equal(elements["service-editor"].disabled, true);
+}
+
+async function testServiceUserReferenceContracts() {
+  const { context, c, values } = await editorFixture();
+  const original = structuredClone(c);
+  const edit = (baseline, action, target, overrides = {}) =>
+    JSON.parse(JSON.stringify(context.buildServiceEdit(baseline, action, target, { ...values, ...overrides }).configuration));
+  const added = edit(c, "user-add", "smb:share-1", { user: "newreader", uuid: "not-used", path: "not-used" });
+  assert.equal(added.shares.users.length, 3);
+  assert.deepEqual(added.shares.users.slice(0, 2), c.shares.users);
+  assert.deepEqual(added.shares.shares, c.shares.shares, "adding a reference must grant nothing");
+  assert.deepEqual(added.shares.volumes, c.shares.volumes);
+  assert.deepEqual(added.nfs, { ...c.nfs, revision: 2, volume_revision: 2 });
+  assert.equal(added.revision, 2); assert.equal(added.shares.revision, 2);
+  assert.deepEqual(c, original, "reference edits must not mutate the loaded baseline");
+  assert.deepEqual(Array.from(context.describeServiceChanges(c, added), (r) => r.kind), ["User reference"]);
+  const created = added.shares.users[2];
+  // Removal is bound to selected ID, never a stale username in the form.
+  const removed = edit(added, "user-remove", `user:${created.id}`, { user: "writer" });
+  assert.deepEqual(removed.shares.users, c.shares.users);
+  assert.deepEqual(removed.shares.shares, c.shares.shares);
+  assert.deepEqual(removed.nfs, { ...c.nfs, revision: 3, volume_revision: 3 });
+  assert.deepEqual(Array.from(context.describeServiceChanges(added, removed), (r) => r.kind), ["User reference"]);
+  for (const target of ["user:user-1", "user:user-2"]) {
+    assert.throws(() => edit(c, "user-remove", target), /still has SMB grants/);
+  }
+  for (const target of ["user:missing", "smb:share-1", `nfs:${c.nfs.exports[0].id}`, ""]) {
+    assert.throws(() => edit(c, "user-remove", target));
+  }
+  for (const user of ["", "root", "nobody", "phantowd", "Upper", "1reader", "reader name", "reader/../", "a".repeat(33), "é", null, 3]) {
+    assert.throws(() => edit(c, "user-add", "", { user }));
+  }
+  assert.throws(() => edit(c, "user-add", "", { user: "reader" }), /already/);
+  assert.throws(() => edit(c, "user-rename", "user:user-1", { user: "renamed" }));
+  assert.throws(() => edit(c, "", "user:user-1"), /explicit change/);
+  const full = structuredClone(c);
+  for (let i = 0; i < 125; i++) full.shares.users.push({ id: `unused-${i}`, name: `unused${i}` });
+  const maximum = edit(full, "user-add", "", { user: "a".repeat(32) });
+  assert.equal(maximum.shares.users.length, 128);
+  assert.throws(() => edit(maximum, "user-add", "", { user: "overlimit" }), /maximum/);
+  const only = edit(null, "user-add", "", { user: "first" });
+  assert.deepEqual(only.shares.volumes, []); assert.deepEqual(only.shares.shares, []); assert.deepEqual(only.nfs.exports, []);
+  const empty = edit(only, "user-remove", `user:${only.shares.users[0].id}`);
+  assert.deepEqual(empty.shares.users, []); assert.deepEqual(empty.shares.shares, []);
+  context.checkedServiceReviewDocument(only); context.checkedServiceReviewDocument(empty);
+}
+
+async function testServiceUserReferenceInteraction() {
+  const { c } = await editorFixture();
+  let stored = c;
+  const h = await serviceHarness((options) => {
+    if (options.method === "PUT") { stored = JSON.parse(options.body); return jsonResponse(serviceSaved(stored.revision)); }
+    return jsonResponse(serviceReply(stored));
+  });
+  const { context, elements, requests } = h;
+  await context.loadServicePolicy();
+  elements["service-target"].value = "user:user-2"; context.selectServiceTarget();
+  assert.equal(elements["policy-user"].value, "writer");
+  assert.equal(elements["service-action"].value, "", "selection must not default to removal");
+  assert.equal(elements["service-member"].disabled, true);
+  assert.match(elements["service-status"].textContent, /2 SMB share grant/);
+  elements["service-action"].value = "user-remove"; context.selectServiceAction();
+  const before = requests.length;
+  await context.prepareServiceEdit();
+  assert.equal(requests.length, before, "referenced deletion must fail before authentication/preview/PUT requests");
+  assert.match(elements["service-status"].textContent, /still has SMB grants/);
+  assert.equal(elements["service-save"].disabled, true);
+  elements["service-target"].value = "smb:share-1"; context.selectServiceTarget();
+  assert.equal(elements["service-member"].disabled, false, "normal rule editing must recover after selecting a user");
+  elements["service-action"].value = "user-add"; context.selectServiceAction();
+  elements["policy-user"].value = "newreader";
+  elements["policy-uuid"].value = "not-used"; elements["policy-path"].value = "not-used";
+  await context.prepareServiceEdit();
+  assert.match(elements["service-change"].textContent, /without any grants.*does not create an account/i);
+  assert.equal(requests.filter((r) => r.options?.method === "PUT").length, 0);
+  assert.equal(elements["service-save"].disabled, false);
+  await context.saveServiceChange();
+  assert.equal(stored.shares.users.length, 3);
+  assert.deepEqual(stored.shares.shares, c.shares.shares);
+  const added = stored.shares.users.find((u) => u.name === "newreader");
+  elements["service-target"].value = `user:${added.id}`; context.selectServiceTarget();
+  elements["service-action"].value = "user-remove"; context.selectServiceAction();
+  elements["policy-user"].value = "writer";
+  await context.prepareServiceEdit();
+  assert.match(elements["service-change"].textContent, /Remove only unused desired reference newreader.*does not disable an account/i);
+  await context.saveServiceChange();
+  assert.deepEqual(stored.shares.users, c.shares.users);
+  assert.deepEqual(stored.shares.shares, c.shares.shares);
+  assert.deepEqual(stored.nfs.exports, c.nfs.exports);
+  assert.equal(requests.filter((r) => r.options?.method === "PUT").length, 2);
+  context.showAuthUnavailable();
+  assert.equal(elements["service-target"].children.length, 1);
+  assert.equal(elements["service-review"].hidden, true);
+}
+
+async function testServiceUserReferenceUncertainSave() {
+  let stored = null;
+  const h = await serviceHarness((options) => {
+    if (options.method === "PUT") { stored = JSON.parse(options.body); return new Error("lost reply after commit"); }
+    return jsonResponse(serviceReply(stored));
+  });
+  await h.context.loadServicePolicy();
+  h.elements["service-action"].value = "user-add";
+  h.elements["policy-user"].value = "newreader";
+  await h.context.prepareServiceEdit(); await h.context.saveServiceChange();
+  assert.match(h.elements["service-status"].textContent, /not confirmed.*may have committed/i);
+  assert.equal(h.elements["service-save"].disabled, true);
+  await h.context.prepareServiceEdit(); await h.context.saveServiceChange();
+  assert.equal(h.requests.filter((r) => r.options?.method === "PUT").length, 1);
+  await h.context.loadServicePolicy();
+  assert.match(h.elements["service-status"].textContent, /complete attempted configuration.*confirmed saved/i);
+  assert.deepEqual(stored.shares.shares, []); assert.equal(stored.shares.users.length, 1);
+  assert.equal(h.requests.filter((r) => r.options?.method === "PUT").length, 1);
+  process.stdout.write("Desired user-reference controls passed: explicit-create=true grants-preserved=true unused-only-remove=true no-default-delete=true unknown-save-no-retry=true accounts-provisioned=false.\n");
 }
 
 // Global panel sign-out is single-flight, authenticated/CSRF-bound, and never
