@@ -3,6 +3,23 @@
 
 # Implementation status
 
+## EX4 cooling: partial offline legacy reconstruction
+
+Hash-bound static analysis now connects the WD fan-level request to IPC,
+distinguishes GPIO boolean fan state from the separate UART helper, and traces
+the board-temperature request/cache path. Initial boot data selects LOW then
+conditionally HIGH, not MAX. A zero reading reuses a previous nonzero value
+without an age check in that wrapper; requested speed publication does not
+verify application. These are observations, not product behavior to copy.
+
+[Thermal research](board/wd/ex4/THERMAL-RESEARCH.md) records exact artifact
+identities, ELF locations, independent cross-checks and remaining implementation/
+hardware gates. No vendor executable, NAS, physical disk or controller command
+was run. No cooling code, sensor calibration, safe fan setting or longer boot
+is qualified; actual RPM, register mapping, full regulation and shutdown paths
+remain incomplete. Documentation-only work does not require another firmware
+build or repair the outstanding native QEMU timing gate.
+
 ## iSCSI management prerequisite: coherent desired review projection
 
 The new private projection validates the whole SMB/NFS/iSCSI desired revision

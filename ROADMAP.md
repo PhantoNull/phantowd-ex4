@@ -2565,6 +2565,16 @@ stop conditions and suitable equipment/media; not ordinary software work.
   behavior. Define startup-safe fan state, unavailable/stale sensor handling,
   controller/daemon failure, overtemperature and safe shutdown. Do not disable
   watchdogs or alarms to prolong an unstable experiment.
+  **M7.3a — offline legacy path reconstruction (partial):** hash-bound final
+  ARM analysis maps level-request IPC, initial LOW/conditional HIGH boot,
+  GPIO boolean-state selection and zero-result last-good temperature fallback.
+  Requested speed is not confirmed speed; generic ACK and cached nonzero XML
+  do not prove command application or fresh temperature. No active controller
+  or safe thresholds are supplied. See the [evidence and contributor handoff](board/wd/ex4/THERMAL-RESEARCH.md).
+  Remaining offline work: exact tach/register/error interface, conversion and
+  freshness, HDD normalization/hysteresis/overheat-to-shutdown path, hibernation
+  ownership. Replacement contract/tests must distinguish requested/observed
+  state and invalid/stale samples before separately qualified hardware controls.
 - **M7.4 — Peripheral support.** Qualify SATA bays, USB, RTC, LEDs, LCD, buttons,
   watchdog and power control. Hardware alarms override cosmetic display choices.
   Record LED/button semantics and shutdown completion, not just driver presence.
