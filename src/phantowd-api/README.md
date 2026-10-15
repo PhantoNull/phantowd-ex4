@@ -1597,6 +1597,53 @@ qualification. QEMU independently checks the embedded bytes over HTTP/HTTPS;
 it does not execute a browser engine. The narrow-screen regression removes a
 fixed 320 px body minimum that overflowed the 305 px available beside a 15 px scrollbar.
 
+To exercise the existing Go authentication handlers from that browser, first
+compile a **test binary**, then explicitly select it (from the repository root):
+
+```powershell
+Push-Location src/phantowd-api
+$env:GOTOOLCHAIN = 'local'
+$env:GOPROXY = 'off'
+$env:GOFLAGS = '-mod=vendor'
+try {
+  go test -c -o ../../artifacts/dashboard-browser-api/phantowd-browser-api.test.exe .
+  if ($LASTEXITCODE -ne 0) { throw 'Browser API fixture compilation failed.' }
+} finally { Pop-Location }
+node support/test-dashboard-browser.mjs --browser "C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --api-fixture artifacts/dashboard-browser-api/phantowd-browser-api.test.exe
+```
+
+On Linux, use the same command with a native `phantowd-browser-api.test` binary
+and explicit installed browser path. Never pass a firmware/ARM binary to a host
+runner. Recompile after changes: the test server reports six embedded-asset
+hashes and the runner refuses a source mismatch. This does not authenticate the
+entire source tree or executable's provenance.
+
+This opt-in `_test.go` fixture starts only ephemeral loopback and is absent from
+firmware. It uses actual HTTP handlers, Argon2id, cookie/session and CSRF logic,
+but an explicitly **memory-only account backend on every platform**. Initial
+enrollment, wrong-password refusal, logout/login, password replacement, old-
+password refusal, new-password login and global logout are exercised through
+the current forms. Exact previous HttpOnly test cookies are independently
+replayed over HTTP: accepted before each operation, refused after logout,
+password replacement and global logout. Cookie values/headers/bodies are not
+written to the result. This is not a second-browser/multi-session race proof.
+
+Only system proc input is invented; storage/RAID/mount collectors are explicitly
+unavailable, with no host device/proc/sysfs collection. The partial snapshot
+must remain visible as partial. The browser still checks three viewport widths,
+keyboard skip link and refresh. Result/screenshots use
+`artifacts/dashboard-browser-api/`; success additionally requires explicit stdin
+stop, fixture zero exit and disposal receipt. Fixture and work deadlines bound
+the healthy test; forced disposal remains a failure, not a successful recovery.
+Fast host CI checks authentication/synthetic-observation boundaries and that the
+server skips without its opt-in flag; it does not download or launch a browser.
+These host-only files do not trigger firmware builds; other API inputs still do.
+
+This adds browser-to-handler evidence, **not** production persistence/enrollment,
+TLS/HTTPS browser trust, certificate lifecycle, simultaneous sessions/races,
+password-manager/assistive-technology qualification or NAS/service activation.
+All file-service backend operations remain unavailable in this fixture.
+
 Guest initialization probes the GET endpoints and QEMU-only authentication
 flow, verifies that QEMU's root block node appears through sysfs without being
 opened, rejects unauthorized and malformed operations, validates non-root

@@ -2426,6 +2426,18 @@ milestone before enabling its controls; M1/M6 for deployment.
   This does not qualify Go authentication, all management workflows, assistive
   technology/WCAG, heap/performance, network isolation or hardware. Embedded
   ARMv5 asset parity is a separate proof, not guest browser execution.
+- **M5.5j — Browser-to-auth-handler smoke (partial; host fixture).** Reuse the
+  installed-browser runner with an explicitly compiled test-only Go server,
+  memory-only accounts and invented system input. Exercise setup, incorrect
+  credentials, logout/login, password change and old/new password behavior,
+  global logout; independently replay each original HttpOnly cookie before/
+  after revocation. Preserve partial storage/RAID/mount unavailability without
+  a real collector. Match embedded UI hashes before navigation; verify explicit
+  fixture stop, zero exit and disposal receipt before success. The normal host
+  suite must prove auth admission, synthetic-only values and opt-in server skip.
+  No production code, persistence, privilege, HTTPS trust, second-browser/race,
+  account recovery, service activation or physical device qualification follows.
+  Keep exact pure-host paths in cheap CI without excluding other API sources.
 - **M5.6 — Audit and diagnostics.** Record actor, operation ID, revisions and
   redacted outcome; bound retention. Export a sanitized support bundle that
   excludes credentials, private keys, passdb hashes and user file contents.

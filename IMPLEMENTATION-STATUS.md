@@ -3,6 +3,40 @@
 
 # Implementation status
 
+## Dashboard: actual Go authentication through the host browser
+
+An explicit optional mode now drives current forms against a separately compiled
+Go test server: actual handlers, Argon2id, sessions/cookies and CSRF, with a
+memory-only account backend on every platform. The fixture cannot use production
+account persistence or storage observers. Invented system data and unavailable
+storage/RAID/mounts deliberately produce a partial snapshot, not healthy disks.
+
+Actual Edge executes setup, incorrect-password refusal, logout/login, password
+replacement, rejection of the old password, new-password login and global logout.
+Each original HttpOnly test cookie is separately replayed against the Go server:
+accepted before and refused after logout/change/global logout. This proves those
+serial original-cookie cases, not simultaneous sessions or in-flight revocation.
+Three-width containment, keyboard skip link and explicit refresh remain checked.
+Success additionally requires current six-asset hashes, no unexpected fixture
+error output, explicit stdin stop, zero fixture exit and its disposal receipt.
+
+The server skips ordinary test runs unless explicitly opted in. A normal host
+test verifies unauthorized reads, real enrollment, invented proc values and
+unavailable storage observers; cheap host CI includes those checks. Exact
+host-only paths avoid firmware rebuilds without excluding other API inputs.
+No production Go/UI code or existing native timing budget changes.
+This is not durable enrollment/password recovery, product startup/HTTPS browser
+trust, all management flows, accessibility or EX4/device qualification.
+
+Whole Windows API/DOM/preview/tagged checks and ARMv5 test cross-compilation
+pass. Pinned Go 1.26.8 Linux whole API vet/units/tagged vet, focused asset/TLS
+race3 and the new synthetic-boundary race3 pass; the listener fixture explicitly
+skips without opt-in. Both final actual Edge modes pass with no owned profile or
+process remaining. Invalid browser startup produces a failed result while the
+started API fixture is stopped and the temporary profile removed. Final workflow
+contracts pass with the exact host-only path filters. No new ARM guest/full/
+native/hosted run is claimed: only tests/tooling/docs changed from `eb15be2`.
+
 ## Dashboard: real-browser synthetic overview and narrow-screen correction
 
 An optional dependency-free Node 24+ harness uses an already installed headless

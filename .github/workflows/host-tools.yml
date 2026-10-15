@@ -66,6 +66,7 @@ on:
       - 'support/tests/test-api-linux-wrapper.ps1'
       - 'support/test-dashboard-browser.mjs'
       - 'support/tests/test-dashboard-preview.mjs'
+      - 'src/phantowd-api/browser_fixture_test.go'
       - 'support/clean-qemu-build-volumes.ps1'
       - 'support/test-lab-tools.ps1'
       - 'support/container/test-lab-tools.sh'
@@ -150,6 +151,7 @@ on:
       - 'support/tests/test-api-linux-wrapper.ps1'
       - 'support/test-dashboard-browser.mjs'
       - 'support/tests/test-dashboard-preview.mjs'
+      - 'src/phantowd-api/browser_fixture_test.go'
       - 'support/clean-qemu-build-volumes.ps1'
       - 'support/test-lab-tools.ps1'
       - 'support/container/test-lab-tools.sh'
@@ -235,6 +237,14 @@ jobs:
         run: |
           node --check support/test-dashboard-browser.mjs
           node support/tests/test-dashboard-preview.mjs
+
+      - name: Verify host-only browser API fixture boundaries
+        working-directory: src/phantowd-api
+        env:
+          GOPROXY: off
+          GOTOOLCHAIN: local
+          GOFLAGS: -mod=vendor
+        run: go test -count=1 -run '^Test(BrowserFixtureDiagnosticsStaySynthetic|DashboardBrowserAPIFixture)$' .
 
       - name: Verify QEMU build feedback contracts
         run: |

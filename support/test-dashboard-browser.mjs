@@ -3,7 +3,9 @@
 
 // Host-only Chromium/Edge rendering checks against the existing GET-only
 // synthetic preview. No package download, existing browser profile, real API,
-// account, NAS, device or Docker access. Requires Node 24+ and --browser PATH.
+// account, NAS, device or Docker access. Optional --api-fixture PATH uses a
+// separately compiled Go test binary with actual auth and memory-only accounts.
+// Requires Node 24+ and --browser PATH.
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { spawn } from "node:child_process";
@@ -14,8 +16,16 @@ import { fileURLToPath } from "node:url";
 import { setTimeout as delay } from "node:timers/promises";
 
 const repo = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-assert.equal(process.argv.length, 4, "usage: node support/test-dashboard-browser.mjs --browser PATH");
+assert.ok([4, 6].includes(process.argv.length), "usage: node support/test-dashboard-browser.mjs --browser PATH [--api-fixture PATH]");
 assert.equal(process.argv[2], "--browser", "an explicit browser path is required");
+let apiFixture;
+if (process.argv.length === 6) {
+  assert.equal(process.argv[4], "--api-fixture");
+  apiFixture = await realpath(process.argv[5]);
+  assert.ok((await lstat(apiFixture)).isFile(), "API fixture must be a regular test binary");
+  assert.ok(/^phantowd-browser-api\.test(\.exe)?$/.test(basename(apiFixture)), "unexpected API fixture binary name");
+}
+const scope = apiFixture ? "headless-browser-go-auth-memory-fixture" : "headless-browser-synthetic-preview-only";
 const browserPath = await realpath(process.argv[3]);
 assert.ok((await lstat(browserPath)).isFile(), "browser must be a regular file");
 assert.ok(/^(msedge|chrome|chromium)(\.exe)?$/i.test(basename(browserPath)), "unsupported browser executable");
@@ -29,7 +39,7 @@ const tempRoot = await realpath(tmpdir());
 let profile, cdp;
 let successful = false;
 let failure, result;
-const artifacts = join(repo, "artifacts", "dashboard-browser");
+const artifacts = join(repo, "artifacts", apiFixture ? "dashboard-browser-api" : "dashboard-browser");
 const uiHashes = async () => {
   const hashes = {};
   for (const name of ["index.html", "app.css", "app.js", "service-policy.js", "support-bundle.js", "ghost.svg"]) {
@@ -42,14 +52,14 @@ const uiHashes = async () => {
 const sourceHashes = await uiHashes();
 await mkdir(artifacts, { recursive: true });
 await writeFile(join(artifacts, "result.json"), JSON.stringify({
-  schema_version: 1, status: "running", scope: "headless-browser-synthetic-preview-only", ui_sha256: sourceHashes,
+  schema_version: 1, status: "running", scope, ui_sha256: sourceHashes,
 }, null, 2) + "\n");
 
 function start(file, args, options = {}) {
   const child = spawn(file, args, { cwd: repo, windowsHide: true, stdio: ["ignore", "pipe", "pipe"], ...options });
   child.finished = new Promise((accept, reject) => {
     child.once("error", reject);
-    child.once("exit", (code, signal) => accept({ code, signal }));
+    child.once("close", (code, signal) => accept({ code, signal }));
   });
   // Keep startup errors handled until a specific readiness wait observes them.
   child.finished.catch(() => {});
@@ -57,13 +67,13 @@ function start(file, args, options = {}) {
   return child;
 }
 
-function live(child) { return child.exitCode === null && child.signalCode === null; }
+function live(child) { return Boolean(child.pid) && child.exitCode === null && child.signalCode === null; }
 
 async function settled(child, milliseconds) {
   let timer;
   try {
     return await Promise.race([
-      child.finished.then(() => true),
+      child.finished.then(() => true, () => true),
       new Promise((accept) => { timer = setTimeout(() => accept(false), milliseconds); }),
     ]);
   } finally { clearTimeout(timer); }
@@ -142,20 +152,33 @@ class CDP {
 
 try {
   profile = await mkdtemp(join(tempRoot, "phantowd-dashboard-browser-"));
-  const preview = start(process.execPath, [join(repo, "support", "dashboard-preview.mjs")], {
+  const preview = apiFixture ? start(apiFixture, ["-test.run=^TestDashboardBrowserAPIFixture$", "-test.timeout=90s"], {
+    env: { ...process.env, PHANTOWD_BROWSER_API_FIXTURE: "1" }, stdio: ["pipe", "pipe", "pipe"],
+  }) : start(process.execPath, [join(repo, "support", "dashboard-preview.mjs")], {
     env: { ...process.env, PHANTOWD_PREVIEW_PORT: "0" },
   });
+  preview.isAPIFixture = Boolean(apiFixture);
+  preview.stdin?.on("error", () => { preview.stopWriteFailed = true; });
   let previewText = "";
   let previewOutputExceeded = false;
+  let previewErrorOutput = false;
   preview.stdout.on("data", (data) => {
     if (previewText.length + data.length > 4096) { previewOutputExceeded = true; return; }
     previewText += data;
   });
-  preview.stderr.resume();
+  preview.stderr.on("data", () => { previewErrorOutput = true; });
+  preview.stopVerified = () => !preview.stopWriteFailed && !previewOutputExceeded && !previewErrorOutput &&
+    previewText.includes("PHANTOWD_BROWSER_API_STOPPED account=memory-only");
   const origin = await until(() => {
     assert.ok(!previewOutputExceeded, "preview output exceeded");
-    const match = /^Dashboard preview at (http:\/\/127\.0\.0\.1:([0-9]+))\/ \(synthetic data only\)\r?\n$/.exec(previewText);
+    const match = (apiFixture ? /^Dashboard API fixture at (http:\/\/127\.0\.0\.1:([0-9]+))\/ \(test-only authentication\)\r?\n/m :
+      /^Dashboard preview at (http:\/\/127\.0\.0\.1:([0-9]+))\/ \(synthetic data only\)\r?\n$/).exec(previewText);
     if (!match) return null;
+    if (apiFixture) {
+      const manifest = /^PHANTOWD_BROWSER_API_ASSETS (\{[^\r\n]+\})\r?$/m.exec(previewText);
+      if (!manifest) return null;
+      assert.deepEqual(JSON.parse(manifest[1]), sourceHashes, "Go fixture embeds stale UI assets");
+    }
     assert.ok(Number(match[2]) >= 1024 && Number(match[2]) <= 65535, "unexpected preview port");
     return match[1];
   }, preview, "synthetic preview startup");
@@ -202,7 +225,37 @@ try {
   await send("Network.enable");
   await send("Emulation.setDeviceMetricsOverride", { width: 1365, height: 900, deviceScaleFactor: 1, mobile: false });
   await send("Page.navigate", { url: origin });
-  await until(() => evaluate(`document.getElementById('snapshot-status')?.textContent === 'Read-only system, storage, RAID, and mount observations updated.'`), browser, "rendered synthetic snapshot");
+  const snapshotReady = apiFixture ? `!document.getElementById('dashboard-content').hidden && !document.getElementById('refresh').disabled && document.getElementById('kernel-value').textContent === 'Linux 6.18.53' && document.getElementById('snapshot-status').textContent === 'system observation is current. storage, RAID, mount observations unavailable. Failed values were cleared.'` :
+    `document.getElementById('snapshot-status')?.textContent === 'Read-only system, storage, RAID, and mount observations updated.' && !document.getElementById('refresh').disabled`;
+  const signInReady = `!document.getElementById('auth-panel').hidden && !document.getElementById('auth-submit').disabled && document.getElementById('auth-form').dataset.mode === 'login'`;
+  const submitLogin = async (password) => {
+    await evaluate(`(() => { document.getElementById('auth-username').value = 'browser-admin'; document.getElementById('auth-password').value = ${JSON.stringify(password)}; document.getElementById('auth-submit').click(); })()`);
+  };
+  const fixturePassword = "browser fixture original passphrase";
+  const nextPassword = "browser fixture replacement passphrase";
+  const currentCookie = async () => {
+    const { cookies } = await send("Network.getCookies", { urls: [origin] });
+    assert.equal(cookies.length, 1, "unexpected fixture cookie roster");
+    assert.equal(cookies[0].httpOnly, true, "session cookie was not HttpOnly");
+    return `${cookies[0].name}=${cookies[0].value}`;
+  };
+  const cookieStatus = async (cookie) => {
+    // Replay the exact former HttpOnly test cookie outside the browser jar.
+    // Never log/store its value, response body or request headers.
+    const response = await fetch(origin + "/api/v1/system", {
+      headers: { Cookie: cookie }, redirect: "error", signal: AbortSignal.timeout(2000),
+    });
+    const status = response.status;
+    await response.body?.cancel();
+    return status;
+  };
+  if (apiFixture) {
+    await until(() => evaluate(`!document.getElementById('auth-panel').hidden && document.getElementById('auth-form').dataset.mode === 'setup'`), browser, "actual setup form");
+    assert.equal(await evaluate("document.getElementById('dashboard-content').hidden"), true);
+    assert.equal(await evaluate("fetch('/api/v1/system').then(r => r.status)"), 401);
+    await submitLogin(fixturePassword);
+  }
+  await until(() => evaluate(snapshotReady), browser, "rendered synthetic snapshot");
   assert.equal(await evaluate("document.getElementById('profile-notice-mark').textContent"), "FIXTURE DATA");
   assert.equal(await evaluate("document.getElementById('dashboard-content').hidden"), false);
   assert.equal(await evaluate("document.getElementById('auth-panel').hidden"), true);
@@ -211,7 +264,7 @@ try {
 
   // Use actual browser keyboard dispatch, not HTMLElement.focus(), for Tab.
   await send("Page.navigate", { url: origin });
-  await until(() => evaluate(`document.getElementById('snapshot-status')?.textContent === 'Read-only system, storage, RAID, and mount observations updated.'`), browser, "keyboard page load");
+  await until(() => evaluate(snapshotReady), browser, "keyboard page load");
   await send("Input.dispatchKeyEvent", { type: "keyDown", key: "Tab", code: "Tab", windowsVirtualKeyCode: 9 });
   await send("Input.dispatchKeyEvent", { type: "keyUp", key: "Tab", code: "Tab", windowsVirtualKeyCode: 9 });
   assert.equal(await evaluate("document.activeElement.id"), "skip-to-content");
@@ -234,41 +287,94 @@ try {
   }
   const before = cdp.requests.filter((r) => new URL(r.url).pathname === "/api/v1/system").length;
   await evaluate("document.getElementById('refresh').click()");
-  await until(() => evaluate(`document.getElementById('snapshot-status')?.textContent === 'Read-only system, storage, RAID, and mount observations updated.' && !document.getElementById('refresh').disabled`), browser, "explicit browser refresh");
+  await until(() => evaluate(snapshotReady), browser, "explicit browser refresh");
   assert.equal(cdp.requests.filter((r) => new URL(r.url).pathname === "/api/v1/system").length, before + 1);
+  if (apiFixture) {
+    let oldCookie = await currentCookie();
+    assert.equal(await cookieStatus(oldCookie), 200);
+    await evaluate("document.getElementById('logout').click()");
+    await until(() => evaluate(signInReady), browser, "actual logout");
+    assert.equal(await cookieStatus(oldCookie), 401, "logout did not revoke original cookie");
+    assert.equal(await evaluate("document.getElementById('support-download').disabled"), true);
+    await submitLogin("browser fixture intentionally wrong passphrase");
+    await until(() => evaluate(`!document.getElementById('auth-error').hidden && document.getElementById('auth-error').textContent === 'The username or password is not correct.' && !document.getElementById('auth-submit').disabled`), browser, "wrong-password refusal");
+    assert.equal(await evaluate("document.getElementById('dashboard-content').hidden"), true);
+    await submitLogin(fixturePassword);
+    await until(() => evaluate(snapshotReady), browser, "actual login");
+    oldCookie = await currentCookie();
+    assert.equal(await cookieStatus(oldCookie), 200);
+    await evaluate(`(() => { document.getElementById('password-panel').open = true; document.getElementById('password-current').value = ${JSON.stringify(fixturePassword)}; document.getElementById('password-new').value = ${JSON.stringify(nextPassword)}; document.getElementById('password-confirm').value = ${JSON.stringify(nextPassword)}; document.getElementById('password-submit').click(); })()`);
+    await until(() => evaluate(`${signInReady} && document.getElementById('auth-error').textContent === 'Password changed. All panel sessions ended. Sign in with the new password.'`), browser, "actual password replacement");
+    assert.equal(await cookieStatus(oldCookie), 401, "password replacement did not revoke original cookie");
+    assert.equal(await evaluate("['password-current', 'password-new', 'password-confirm'].every(id => document.getElementById(id).value === '')"), true);
+    await submitLogin(fixturePassword);
+    await until(() => evaluate(`!document.getElementById('auth-error').hidden && document.getElementById('auth-error').textContent === 'The username or password is not correct.' && !document.getElementById('auth-submit').disabled`), browser, "old-password refusal");
+    await submitLogin(nextPassword);
+    await until(() => evaluate(snapshotReady), browser, "replacement-password login");
+    oldCookie = await currentCookie();
+    assert.equal(await cookieStatus(oldCookie), 200);
+    await evaluate("document.getElementById('logout-all').click()");
+    await until(() => evaluate(signInReady), browser, "global panel logout");
+    assert.equal(await cookieStatus(oldCookie), 401, "global logout did not revoke original cookie");
+    oldCookie = undefined;
+    assert.equal(await evaluate("fetch('/api/v1/system').then(r => r.status)"), 401);
+    assert.equal(cdp.requests.filter(r => new URL(r.url).pathname === "/api/v1/auth/setup" && r.method === "POST").length, 1);
+    assert.equal(cdp.requests.filter(r => new URL(r.url).pathname === "/api/v1/auth/login" && r.method === "POST").length, 4);
+    assert.equal(cdp.requests.filter(r => new URL(r.url).pathname === "/api/v1/auth/password" && r.method === "POST").length, 1);
+  }
   assert.equal(cdp.exceptions, 0, "uncaught page JavaScript exception");
   assert.ok(!cdp.fault, "browser protocol observation failed");
   for (const request of cdp.requests) {
     assert.equal(new URL(request.url).origin, origin, "page attempted an external request");
-    assert.equal(request.method, "GET", "read-only preview attempted a mutation");
+    assert.ok(request.method === "GET" || (apiFixture && request.method === "POST" &&
+      ["setup", "login", "logout", "logout-all", "password"].some(action => new URL(request.url).pathname === `/api/v1/auth/${action}`)), "unexpected browser mutation");
   }
   assert.ok(live(preview), "owned preview exited during browser verification");
+  assert.ok(!previewErrorOutput, "owned fixture wrote an unexpected error");
   assert.deepEqual(await uiHashes(), sourceHashes, "dashboard source changed during browser verification");
   result = {
-    schema_version: 1, scope: "headless-browser-synthetic-preview-only", browser: version.product,
+    schema_version: 1, scope, browser: version.product,
     ui_sha256: sourceHashes,
     layouts, keyboard_skip_link: true, explicit_refresh: true, page_requests: cdp.requests.length,
-    uncaught_exceptions: cdp.exceptions, authentication_qualified: false, hardware_qualified: false,
+    uncaught_exceptions: cdp.exceptions, actual_go_auth_memory_fixture: Boolean(apiFixture),
+    original_cookie_revocation_checked: Boolean(apiFixture), authentication_qualified: false, hardware_qualified: false,
   };
   successful = true;
 } catch (error) {
   failure = error;
 } finally {
   clearTimeout(deadline);
+  const cleanupErrors = [];
   try {
     if (cdp) {
       // Browser.close may close the socket before acknowledging the command.
       await cdp.send("Browser.close").catch(() => {});
     }
     for (const child of children.toReversed()) {
-      if (live(child)) {
-        // The preview intentionally runs until signaled; it needs no idle wait.
-        if (!child.isBrowser) child.kill();
-        else if (!await settled(child, 3000) && live(child)) child.kill();
+      try {
+        if (live(child)) {
+          // The preview intentionally runs until signaled; it needs no idle wait.
+          if (child.isAPIFixture) {
+            child.stdin.end(Buffer.from([4]));
+            assert.ok(await settled(child, 5000), "API fixture did not acknowledge stop");
+          } else if (!child.isBrowser) child.kill();
+          else if (!await settled(child, 3000) && live(child)) child.kill();
+        }
+        assert.ok(await settled(child, 5000), "owned process did not stop");
+        if (child.isAPIFixture) {
+          assert.equal(child.exitCode, 0, "API fixture failed");
+          assert.ok(child.stopVerified(), "API fixture disposal receipt missing");
+        }
+      } catch (error) {
+        cleanupErrors.push(error);
+        // A failed graceful disposal remains a failure even if forced stop
+        // succeeds; nevertheless attempt to release every owned process.
+        if (live(child)) child.kill();
+        if (!await settled(child, 5000)) cleanupErrors.push(new Error("owned process forced stop unconfirmed"));
       }
-      assert.ok(await settled(child, 5000), "owned process did not stop");
     }
     if (profile) {
+      assert.ok(children.every(child => !live(child)), "profile still has a live owner");
       // Validate this exact owned target before any Windows recursive removal.
       assert.equal(dirname(resolve(profile)), tempRoot, "profile escaped temporary root");
       assert.ok(basename(profile).startsWith("phantowd-dashboard-browser-"));
@@ -276,15 +382,16 @@ try {
       await rm(profile, { recursive: true });
     }
   } catch (error) {
-    failure = new AggregateError([failure, error].filter(Boolean), "browser verification or cleanup failed");
+    cleanupErrors.push(error);
   }
+  if (cleanupErrors.length) failure = new AggregateError([failure, ...cleanupErrors].filter(Boolean), "browser verification or cleanup failed");
 }
 if (failure) {
   await writeFile(join(artifacts, "result.json"), JSON.stringify({
-    schema_version: 1, status: "failed", scope: "headless-browser-synthetic-preview-only", ui_sha256: sourceHashes,
+    schema_version: 1, status: "failed", scope, ui_sha256: sourceHashes,
   }, null, 2) + "\n");
   throw failure;
 }
 assert.ok(successful, "browser test did not finish");
 await writeFile(join(artifacts, "result.json"), JSON.stringify({ ...result, status: "passed", owned_profile_removed: true }, null, 2) + "\n");
-console.log("PHANTOWD_DASHBOARD_BROWSER_READY scope=synthetic-preview-only viewports=3 keyboard=skip-link requests=read-only");
+console.log(`PHANTOWD_DASHBOARD_BROWSER_READY scope=${scope} viewports=3 keyboard=skip-link`);
