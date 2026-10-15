@@ -2250,6 +2250,15 @@ milestone before enabling its controls; M1/M6 for deployment.
   qualification, production persistence/provisioning/service composition and
   recovery remain open. This is not the M5.6 sanitized support bundle, a complete
   appliance backup or an installer/legacy migration qualification.
+  **M5.4c — snapshot load age (partial; host-tested):** show monotonic browser
+  time since current complete/partial load, independently of backend/wall-clock
+  timestamps. One local30s watcher, no API/disk polling/history; refresh/auth
+  invalidation retires it and queued old callbacks cannot overwrite newer state.
+  Invalid/regressing/missing clock means unknown age, without hiding valid data
+  or automatic recovery before refresh. All-unavailable results have no watcher;
+  hidden tabs skip periodic text writes and age is not a live region. This is
+  not device observation age, health or an atomic snapshot. Complete DOM and
+  Windows/pinned Linux preflight pass; browser/ARM/hosted/product gates separate.
 - **M5.5 — Accessible efficient UI.** Keyboard operation, labels/focus, narrow
   viewports, screen-reader status and high contrast; bounded static assets and
   shared observations. Avoid per-client hardware polling, stale-response

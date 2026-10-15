@@ -3,6 +3,18 @@
 
 # Implementation status
 
+## Dashboard: explicit browser snapshot load age
+
+The overview displays monotonic elapsed browser time since the current complete
+or partial snapshot was loaded. One local30s timer performs no API/disk polling;
+refresh/authentication boundaries retire it, and queued old ticks cannot
+repopulate age. Invalid/regressing/missing clocks show unknown age without
+discarding valid observations or silently switching to wall time. Full failure
+retains no watcher; hidden tabs do not receive periodic text updates.
+Actual-source DOM controls and whole Windows/pinned Linux preflight pass.
+This is not device observation age, atomic freshness, health, browser/assistive-
+technology qualification or product activation. ARM asset integration is separate.
+
 ## Setup/login: exact bounded credential JSON
 
 M5.3a replaces the separate recursive duplicate scanner with the existing

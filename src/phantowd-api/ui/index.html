@@ -70,8 +70,10 @@
           <h1 id="page-title" tabindex="-1">Know what the system sees.</h1>
         <p class="lede">Read-only observations from this development image. Each section reports its own current state; unavailable values are cleared. Nothing here assembles, mounts, or changes storage.</p>
         <p class="snapshot-status" id="snapshot-status" role="status" aria-live="polite" aria-atomic="true">Waiting for the local API…</p>
+        <p class="snapshot-status" id="snapshot-age">No loaded snapshot.</p>
+        <p class="policy-help">Load age is elapsed browser time, not device observation age or health. Sections are read separately; refresh explicitly for new observations.</p>
         </div>
-        <button class="refresh-button" id="refresh" type="button" aria-describedby="snapshot-status">
+        <button class="refresh-button" id="refresh" type="button" aria-describedby="snapshot-status snapshot-age">
           <span class="refresh-icon" aria-hidden="true">↻</span>
           <span id="refresh-label">Refresh snapshot</span>
         </button>

@@ -558,6 +558,47 @@ async function fetchJSON(path, { signal } = {}) {
 let snapshotGeneration = 0;
 let snapshotController = null;
 let supportSnapshot = null;
+let snapshotAge = null;
+let snapshotAgeTimer = null;
+
+function clearSnapshotAge() {
+  if (snapshotAgeTimer !== null) clearInterval(snapshotAgeTimer);
+  snapshotAgeTimer = null;
+  snapshotAge = null;
+  setText("snapshot-age", "No loaded snapshot.");
+}
+
+function startSnapshotAge(generation) {
+  clearSnapshotAge();
+  const readClock = () => {
+    try {
+      const now = performance.now();
+      return Number.isFinite(now) && now >= 0 && now <= Number.MAX_SAFE_INTEGER ? now : null;
+    } catch { return null; }
+  };
+  const unavailable = () => {
+    clearSnapshotAge();
+    setText("snapshot-age", "Snapshot load age unavailable. Refresh to reset the clock.");
+  };
+  const started = readClock();
+  if (started === null) { unavailable(); return; }
+  const age = { generation, started, last: started };
+  snapshotAge = age;
+  const update = () => {
+    if (snapshotAge !== age || age.generation !== snapshotGeneration) return;
+    const now = readClock();
+    if (now === null || now < age.last) { unavailable(); return false; }
+    age.last = now;
+    if (document.hidden) return true;
+    const minutes = Math.floor((now - age.started) / 60000);
+    const count = minutes < 60 ? minutes : minutes < 1440 ? Math.floor(minutes / 60) : Math.floor(minutes / 1440);
+    const unit = minutes < 60 ? "minute" : minutes < 1440 ? "hour" : "day";
+    setText("snapshot-age", minutes === 0 ? "Snapshot loaded just now." :
+      `Snapshot loaded ${count} ${unit}${count === 1 ? "" : "s"} ago.`);
+    return true;
+  };
+  if (update()) snapshotAgeTimer = setInterval(update, 30000);
+}
 
 function clearSupportSnapshot() {
   supportSnapshot = null;
@@ -606,6 +647,7 @@ function clearSnapshot(message) {
   snapshotController?.abort();
   snapshotController = null;
   clearSupportSnapshot();
+  clearSnapshotAge();
   clearSystemObservation();
   clearStorageObservation();
   clearArrayObservation();
@@ -623,6 +665,7 @@ async function refreshSnapshot() {
   const controller = new AbortController();
   snapshotController = controller;
   clearSupportSnapshot();
+  clearSnapshotAge();
   const current = () => generation === snapshotGeneration;
   const timeout = setTimeout(() => controller.abort(), 10000);
   const button = byId("refresh");
@@ -672,6 +715,7 @@ async function refreshSnapshot() {
     // state without retaining private rejected details; null stays unavailable.
     prepareSupportSnapshot(results.map((result, index) => result.status === "fulfilled" && result.value != null && !displayCurrent[index] ?
       { status: "fulfilled", value: {} } : result));
+    if (displayCurrent.some(Boolean)) startSnapshotAge(generation);
 
     if (systemCurrent && storageCurrent && arraysCurrent && mountsCurrent) {
       status.textContent = "Read-only system, storage, RAID, and mount observations updated.";
@@ -705,6 +749,7 @@ async function refreshSnapshot() {
   } catch (failure) {
     if (!current()) return;
     clearSupportSnapshot();
+    clearSnapshotAge();
     if (failure?.status === 401) {
       status.textContent = "Session expired. Sign in again to view a current snapshot.";
       try {

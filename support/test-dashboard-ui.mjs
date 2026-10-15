@@ -246,7 +246,7 @@ async function createHarness(respond, timing = {}) {
     "main-content", "page-title", "skip-to-content",
     "auth-panel", "auth-title", "auth-description", "auth-form", "auth-username",
     "auth-password", "auth-submit", "auth-retry", "auth-error", "dashboard-content",
-    "logout", "logout-all", "refresh", "refresh-label", "snapshot-status", "error-banner",
+    "logout", "logout-all", "refresh", "refresh-label", "snapshot-status", "snapshot-age", "error-banner",
     ...["panel", "form", "current", "new", "confirm", "submit", "status"].map((id) => `password-${id}`),
     "service-status-dot", "build-label", "kernel-value", "runtime-value", "target-value",
     "memory-value", "memory-detail", "memory-meter", "firmware-value", "firmware-detail",
@@ -287,11 +287,14 @@ async function createHarness(respond, timing = {}) {
     if (result instanceof Error) throw result;
     return result;
   };
+  const ageIntervals = new Map();
+  let nextAgeInterval = 0;
   const context = createContext({
     document,
     fetch,
     Intl,
-    Date,
+    Date: timing.Date ?? Date,
+    performance: timing.performance ?? { now: () => 0 },
     Number,
     String,
     Math,
@@ -308,12 +311,109 @@ async function createHarness(respond, timing = {}) {
     AbortController,
     setTimeout: timing.setTimeout ?? setTimeout,
     clearTimeout: timing.clearTimeout ?? clearTimeout,
+    setInterval: (callback, delay) => {
+      const id = ++nextAgeInterval; ageIntervals.set(id, { callback, delay }); return id;
+    },
+    clearInterval: (id) => ageIntervals.delete(id),
   });
   new Script(serviceSource).runInContext(context);
   new Script(supportSource).runInContext(context);
   new Script(source).runInContext(context);
   await new Promise((resolve) => setImmediate(resolve));
-  return { context, elements, requests, document };
+  return { context, elements, requests, document, ageIntervals };
+}
+
+async function testSnapshotLoadAgeUsesOnlyBrowserElapsedTime() {
+  let now = 1000;
+  let wall = 1700000000000;
+  class WallClock extends Date { static now() { return wall; } }
+  const h = await createHarness(async (path) => path === "/api/v1/auth/status" ?
+    jsonResponse({ authenticated: true }) : snapshotResponse(path), {
+    performance: { now: () => now }, Date: WallClock,
+  });
+  assert.equal(h.elements["snapshot-age"].textContent, "Snapshot loaded just now.");
+  assert.equal(h.ageIntervals.size, 1);
+  const timer = [...h.ageIntervals.values()][0];
+  assert.equal(timer.delay, 30000);
+  const before = h.requests.length;
+  for (const [elapsed, label] of [[60000, "1 minute"], [120000, "2 minutes"],
+    [3600000, "1 hour"], [86400000, "1 day"]]) {
+    now = 1000 + elapsed; wall -= 123456789;
+    timer.callback();
+    assert.equal(h.elements["snapshot-age"].textContent, `Snapshot loaded ${label} ago.`);
+  }
+  assert.equal(h.requests.length, before, "Age updates must not poll the API or disks");
+}
+
+async function testSnapshotLoadAgeRefusesInvalidOrRegressingClock() {
+  const respond = async (path) => path === "/api/v1/auth/status" ?
+    jsonResponse({ authenticated: true }) : snapshotResponse(path, "clock-fixture");
+  for (const now of [NaN, Infinity, -1, Number.MAX_SAFE_INTEGER + 1, null]) {
+    const h = await createHarness(respond, {
+      performance: { now: () => { if (now === null) throw new Error("clock failed"); return now; } },
+    });
+    assert.equal(h.elements["kernel-value"].textContent, "Linux clock-fixture", "Clock failure must not erase valid observations");
+    assert.equal(h.elements["snapshot-age"].textContent, "Snapshot load age unavailable. Refresh to reset the clock.");
+    assert.equal(h.ageIntervals.size, 0);
+  }
+  let now = 1000;
+  const h = await createHarness(respond, { performance: { now: () => now } });
+  const tick = [...h.ageIntervals.values()][0].callback;
+  now = 121000; tick();
+  now = 61000; tick();
+  assert.match(h.elements["snapshot-age"].textContent, /age unavailable/);
+  assert.equal(h.ageIntervals.size, 0);
+  now = 181000; tick();
+  assert.match(h.elements["snapshot-age"].textContent, /age unavailable/, "A retired clock must not recover without refresh");
+}
+
+async function testSnapshotAgeLifecycleAndPartialResults() {
+  let now = 0;
+  let authenticated = true;
+  let failures = new Set();
+  let pending = null;
+  const h = await createHarness(async (path) => {
+    if (path === "/api/v1/auth/logout") { authenticated = false; return jsonResponse({}); }
+    if (path === "/api/v1/auth/status") return jsonResponse({ configured: true, authenticated });
+    if (pending) await pending;
+    return failures.has(path) ? jsonResponse({}, 503) : snapshotResponse(path);
+  }, { performance: { now: () => now } });
+  const retired = [...h.ageIntervals.values()][0].callback;
+  let release;
+  pending = new Promise((resolve) => { release = resolve; });
+  const loading = h.elements.refresh.listeners.get("click")();
+  assert.equal(h.elements["snapshot-age"].textContent, "No loaded snapshot.");
+  assert.equal(h.ageIntervals.size, 0, "Refresh must retire the prior age watcher");
+  now = 60000; retired();
+  assert.equal(h.elements["snapshot-age"].textContent, "No loaded snapshot.");
+  pending = null; release(); await loading;
+  assert.equal(h.ageIntervals.size, 1);
+  assert.equal(h.elements["snapshot-age"].textContent, "Snapshot loaded just now.");
+  retired();
+  assert.equal(h.elements["snapshot-age"].textContent, "Snapshot loaded just now.");
+  failures = new Set(["/api/v1/storage"]);
+  await h.elements.refresh.listeners.get("click")();
+  assert.equal(h.ageIntervals.size, 1, "A partial snapshot owns only one local watcher");
+  assert.match(h.elements["snapshot-status"].textContent, /storage observation unavailable/);
+  const tick = [...h.ageIntervals.values()][0].callback;
+  h.document.hidden = true; now += 120000; tick();
+  assert.equal(h.elements["snapshot-age"].textContent, "Snapshot loaded just now.");
+  h.document.hidden = false; tick();
+  assert.equal(h.elements["snapshot-age"].textContent, "Snapshot loaded 2 minutes ago.");
+  failures = new Set(["/api/v1/system", "/api/v1/storage", "/api/v1/arrays", "/api/v1/mounts"]);
+  await h.elements.refresh.listeners.get("click")();
+  assert.equal(h.ageIntervals.size, 0);
+  assert.equal(h.elements["snapshot-age"].textContent, "No loaded snapshot.");
+  tick();
+  assert.equal(h.elements["snapshot-age"].textContent, "No loaded snapshot.");
+  failures.clear();
+  await h.elements.refresh.listeners.get("click")();
+  const beforeLogout = [...h.ageIntervals.values()][0].callback;
+  await h.elements.logout.listeners.get("click")();
+  assert.equal(h.ageIntervals.size, 0);
+  now += 60000; beforeLogout();
+  assert.equal(h.elements["snapshot-age"].textContent, "No loaded snapshot.");
+  assert.equal(h.elements["dashboard-content"].hidden, true);
 }
 
 async function testAuthFocusMovesOnlyWhenItsControlIsHidden() {
@@ -1242,6 +1342,9 @@ await testSavedPolicyLateRepliesAndAuthLoss();
 await testPolicyBuilderAndSafePreview();
 await testPolicyFailuresAndStaleResponses();
 await testReadOnlySnapshotAndSafeRendering();
+await testSnapshotLoadAgeUsesOnlyBrowserElapsedTime();
+await testSnapshotLoadAgeRefusesInvalidOrRegressingClock();
+await testSnapshotAgeLifecycleAndPartialResults();
 await testUnavailableAuthIsVisibleAndRetryable();
 await testExpiredSessionReturnsToLogin();
 await testAuthFocusMovesOnlyWhenItsControlIsHidden();

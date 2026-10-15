@@ -194,6 +194,15 @@ planner evidence, a selected path, a lease or service activation authority.
 
 ## M5.5a diagnostic snapshot lifecycle task contract
 
+The dashboard also shows browser-monotonic **load age** after a complete or
+partial refresh. This is not device observation age, an atomic snapshot or a
+health assessment. One local 30-second timer updates visible text without any
+API/disk polling or history. Refresh/authentication boundaries retire it;
+queued old callbacks cannot change newer state. Invalid/regressing/unavailable
+clocks show unknown age without erasing valid observations; only explicit
+refresh resets that clock. All-unavailable results retain no age watcher.
+The age text is not a periodically announced live region.
+
 The browser's existing four read-only snapshot requests must share one bounded
 single-flight generation. An authentication boundary (sign-out/password change,
 unavailable status or unauthenticated status) aborts that generation and clears
