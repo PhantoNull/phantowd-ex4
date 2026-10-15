@@ -2926,6 +2926,14 @@ not host/QEMU progress.
     SBOM, clean/hosted, physical/non-root/standby and SMART command qualification
     remain open. Product startup, broker operations and HTTP are unchanged.
     Do not add history/UI by treating this transient tuple as stable media identity.
+    A separate offline report-comparison prerequisite now requires exact caller-
+    supplied serial plus NAA-5 WWN, integer4/24/36-bit fields and the original
+    bounded report/exit semantics, with no missing-ID fallback or normalization.
+    Windows unit/vet/fuzz scopes pass; genuine producer and Linux/ARM execution
+    remain open for this new comparison. It is not connected to the coordinator
+    or a provider, and matching JSON does not authenticate its source. Next
+    qualify the same identifiers from actual producer fixtures, then the retained
+    device/command composition; do not infer ATA/sysfs equivalence or disk support.
   - **M8.5c — Wake policy.** Specify exact no-check/device-detection behavior per
     tool and transport. Low-power skip must have explicit evidence; exit bit 1
     alone is ambiguous. Do not parse tool prose to claim standby. Verify that

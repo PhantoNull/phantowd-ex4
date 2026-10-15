@@ -50,6 +50,33 @@ must be separate and describe collection scope, device generation and age.
 
 ## Remaining product gates
 
+`ParseMatchingATAIdentity` is a separate **offline comparison prerequisite**:
+it requires both an exact printable-ASCII serial (1..20 bytes, no surrounding
+whitespace) and an NAA-5 WWN supplied by a separately trusted caller. It uses
+the same bounded decoder and health semantics as `Parse`, then checks the
+report's exact ATA protocol/serial and integer `wwn.naa`/`oui`/`id` fields.
+WWN components are bounded to4/24/36 bits and combined as integer bits, never
+floating point. There is no trimming, case folding, report-derived expected
+identity or serial-only/path/bay fallback. Missing or unsupported identity
+evidence refuses with no projection and a fixed error. Matching disabled or
+unsupported-SMART reports retains their no-assessment state. `Parse` itself
+continues to accept its original profile without requiring identity fields.
+
+The field layout is inspected in the locally hash-verified upstream7.4/7.5
+archives (`ataprint.cpp`, `print_drive_info`). The narrow comparison profile
+is not a promise that all ATA identifiers fit it or that sysfs VPD and ATA
+IDENTIFY strings have equivalent representations. Windows units/vet, all256
+exit projections per release, negative/numeric/privacy controls and fuzz pass;
+the new comparison has not yet run on Linux/ARM or a genuine producer corpus.
+Root API ARM cross-compilation is not execution of this package's test binary.
+
+Matching identifiers in supplied JSON is **not report provenance**: copied or
+forged JSON can match too. This function does not bind a process to a disk,
+mint a census token/stable identity, inspect duplicates, authorize a command,
+change `smartcollect` admission or expose an endpoint. No collector calls it.
+Provider/retained-device/transport/standby qualification remains required before
+using the comparison as one check in an attributed collection pipeline.
+
 Bind reports to a trusted retained device generation, exact executable/options,
 bounded subprocess/output/time and explicit observed exit. Qualify ATA transport
 and a standby-preserving collection policy (autodetection itself can wake a

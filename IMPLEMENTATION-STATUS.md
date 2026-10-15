@@ -48,6 +48,15 @@ product activation. The separate planned-budget decision remains open.
 
 ## M8.5b: fixed census opening, metadata witnesses only
 
+A separate offline `smartreport.ParseMatchingATAIdentity` now compares supplied
+reports against an exact expected serial and NAA-5 WWN with integer field bounds,
+shared whole-report validation and no weaker fallback. Original `Parse` semantics
+and collector admission are unchanged. Windows preflight, all256 exit projections
+per known release, identity/uncertainty/privacy controls and fuzz pass. Matching
+JSON is not device provenance; no collector invokes this function. New Linux/ARM,
+genuine-producer and provider qualification remain open while Docker maintenance
+is pending. See the [comparison contract](src/phantowd-api/internal/smartreport/README.md).
+
 The private Linux constructor now derives all whole-leaf names/generations from
 one complete sysfs census and reuses the existing fixed read-only `/dev` opener.
 The initial census remains its baseline across opening and descriptor checks;

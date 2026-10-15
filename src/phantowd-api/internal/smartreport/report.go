@@ -95,23 +95,35 @@ func (*Observation) UnmarshalJSON([]byte) error  { return ErrPrivate }
 // the report's provenance. Unknown fields are discarded after bounded syntax
 // validation. An incomplete collection can still contain a reported failure.
 func Parse(data []byte, observedExit int) (Observation, error) {
+	root, err := readReport(data, observedExit)
+	if err != nil {
+		return Observation{}, err
+	}
+	return parseReport(root, observedExit)
+}
+
+func readReport(data []byte, observedExit int) (map[string]any, error) {
 	if observedExit < 0 || observedExit > 255 || len(data) == 0 || len(data) > MaxBytes || !utf8.Valid(data) {
-		return Observation{}, ErrInvalid
+		return nil, ErrInvalid
 	}
 	d := json.NewDecoder(bytes.NewReader(data))
 	d.UseNumber()
 	remaining := maxTokens
 	v, err := readValue(d, 0, &remaining)
 	if err != nil {
-		return Observation{}, ErrInvalid
+		return nil, ErrInvalid
 	}
 	if _, err = d.Token(); !errors.Is(err, io.EOF) {
-		return Observation{}, ErrInvalid
+		return nil, ErrInvalid
 	}
 	root, ok := v.(map[string]any)
 	if !ok {
-		return Observation{}, ErrInvalid
+		return nil, ErrInvalid
 	}
+	return root, nil
+}
+
+func parseReport(root map[string]any, observedExit int) (Observation, error) {
 	format, err := pair(root["json_format_version"])
 	if err != nil {
 		return Observation{}, ErrInvalid
