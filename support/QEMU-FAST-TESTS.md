@@ -2325,6 +2325,28 @@ absence of a worker label does not mean the campaign succeeded. The last
 `phase=enrolled` means a proposed *post-enrollment* experiment did not reach
 its trigger, not that its intended setting was applied.
 
+The planned fixture's sequential clock preserves the original parent across
+startup, data and supervision. Each phase must finish before its deadline to
+advance; cancellation, late nil completion, skipped/repeated transitions and
+unconstructed/copied/closed clocks refuse. New phase timers derive from that
+same parent, never a fresh Background or a canceled preceding phase. Normal
+service closure uses the current bounded context. Synchronous cleanup already
+in progress is not forcibly interruptible and no new recovery claim follows.
+
+The fixed fault subprocess inherits its caller's parent and retains its existing
+90-second watch. A child creates a local bounded parent; the outer exec watch
+still enforces the cross-process bound. Exact proof alone cannot qualify after
+the parent's monotonic deadline, including before context timer notification.
+Direct planned paths inherit existing opt-in diagnostic context values; fixed
+exact-proof children remain unannotated and retain the original 1-KiB capture.
+Startup40/data20/supervision20, worker caps and guest180 (ordinary-native360)
+are unchanged. Five deterministic Linux tests cover parent/transition/late-nil
+refusal and the real pre-canceled entry points, not a fabricated healthy daemon.
+Two distinct final-source focused ARMv5 `data` and `fault` campaigns pass all
+original proofs with eleven unchanged source/base witnesses. This does not
+reproduce or repair the hosted intermittency, replace the default complete
+campaign union, or resolve the separate pending planned-budget decision.
+
 The planned source/exit subprocess boundary also emits fixed-label
 `PHANTOWD_QEMU_PLANNED_FAULT_SUBPROCESS_FAILURE` diagnostics on failure. Its
 `deadline` flag describes the outer 90-second child context, `child_failed`

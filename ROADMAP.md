@@ -475,6 +475,14 @@ button to an unqualified backend simply because the screen exists.
   intermittent failures are not declared repaired by these successful runs.
   It supersedes historical suggestions below to repeat
   already completed profiling. No product or generic timeout changes follow.
+  Planned fixture phases now preserve their original parent and reject late
+  completion or repeated/skipped transitions; fixed child proof also requires
+  a live parent. Existing40/20/20 phases,90 child and guest/worker caps remain.
+  Deterministic Linux/vet/race3 and distinct ARM data/fault campaigns pass with
+  unchanged source/base witnesses. This is orchestration correctness, not a
+  hosted timing repair, complete current-image qualification or permission to
+  widen the separately pending planned budgets. Synchronous cleanup already
+  executing is not made interruptible by context propagation.
   **Current source-loss gate:** earlier `5b90e22` failed final file-source
   quarantine/supervision despite nine accepted campaigns. Instrumented code
   checkpoint `5245ada` now passes the original complete cached lane, all ten

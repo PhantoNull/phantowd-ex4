@@ -33,6 +33,19 @@ witnesses unchanged. The pass does not prove that error fidelity fixed timing;
 no repeated attempts were selected and no CPU/worker/phase/guest limit changed.
 Complete-image and own-head hosted qualification remain open.
 
+The planned fixture now keeps its original parent across startup, data and
+supervision. A sequential private clock rejects expired/late-nil completion,
+repeated or skipped transitions and cancellation before opening inputs or
+launching a fixed child. Child success requires both exact proof and a live
+parent; normal closure uses the current bounded phase. Existing 40/20/20-second
+phase caps, 90-second child watch, worker limits, guest caps and strict proofs
+are unchanged. Already-running synchronous cleanup is not made interruptible.
+Pinned Linux tagged tests/vet/race3, Windows preflight and two distinct focused
+ARMv5 campaigns (`data`, `fault`) pass with all eleven source/base witnesses
+unchanged. This is fixture-orchestration qualification, not an identical
+reproduction or repair of the hosted timing failure, a full current image or
+product activation. The separate planned-budget decision remains open.
+
 ## M8.5b: fixed census opening, metadata witnesses only
 
 The private Linux constructor now derives all whole-leaf names/generations from

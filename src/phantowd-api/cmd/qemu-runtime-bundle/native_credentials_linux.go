@@ -321,7 +321,7 @@ func nativeCredentialFixture(campaign nativeCredentialCampaignQEMU) (result erro
 		if campaign == nativePlannedOpenFileCampaignQEMU {
 			scenario = "file"
 		}
-		if err := nativePlannedServiceFixtureQEMU(plan, lookup, authority, inventory, scenario); err != nil {
+		if err := nativePlannedServiceFixtureQEMU(workParent, plan, lookup, authority, inventory, scenario); err != nil {
 			return fmt.Errorf("native planned data: %w", err)
 		}
 		reportNativePhaseTimingQEMU(nativeFixtureDataVerifiedQEMU, started)
@@ -379,17 +379,17 @@ func nativeCredentialFixture(campaign nativeCredentialCampaignQEMU) (result erro
 			if err := nativeIdentityFaultSubprocessQEMU(); err != nil {
 				return err
 			}
-			if err := nativePlannedSourceFaultSubprocessQEMU(); err != nil {
+			if err := nativePlannedSourceFaultSubprocessQEMU(workParent); err != nil {
 				return err
 			}
 			reportNativePhaseTimingQEMU(nativeFixtureFaultVerifiedQEMU, started)
 		case nativePlannedExitCampaignQEMU:
-			if err := nativePlannedExitFaultSubprocessQEMU(); err != nil {
+			if err := nativePlannedExitFaultSubprocessQEMU(workParent); err != nil {
 				return err
 			}
 			reportNativePhaseTimingQEMU(nativeFixtureFaultVerifiedQEMU, started)
 		case nativePlannedFileSourceCampaignQEMU:
-			if err := nativePlannedFaultSubprocessQEMU("file-source"); err != nil {
+			if err := nativePlannedFaultSubprocessQEMU(workParent, "file-source"); err != nil {
 				return err
 			}
 			reportNativePhaseTimingQEMU(nativeFixtureFaultVerifiedQEMU, started)

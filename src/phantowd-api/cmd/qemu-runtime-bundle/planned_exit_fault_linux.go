@@ -21,8 +21,8 @@ const plannedExitFaultMarkerQEMU = "PHANTOWD_SAMBA_OWNER_PLANNED_EXIT_FAULT_READ
 
 const plannedExitFaultChildProofQEMU = "PHANTOWD_PLANNED_EXIT_FAULT_CHILD_READY same_authorities=true same_daemon=true data_verified=true original_handle=true single_use=true exclusive_supervision=true review_sticky=true stopped_reaped=true private_inputs=15 capture_retained=true capture_before_worker=true runtime_inputs_retained=true originals_busy=true restart_refused=true normal_stop_refused=true private_mount_namespace=true scope=qemu-subprocess-only\n"
 
-func nativePlannedExitFaultSubprocessQEMU() error {
-	return nativePlannedFaultSubprocessQEMU("exit")
+func nativePlannedExitFaultSubprocessQEMU(parent context.Context) error {
+	return nativePlannedFaultSubprocessQEMU(parent, "exit")
 }
 
 func nativePlannedExitFaultQEMU() error {

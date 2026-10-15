@@ -37,13 +37,9 @@ const plannedStopMarkerQEMU = "PHANTOWD_SAMBA_OWNER_PLANNED_STOP_READY same_daem
 // roster and original share pins from planning through startup and full Close.
 // A separate access proof exercises actual transfers through that SAME service.
 // The startup marker alone claims neither transfers nor product activation.
-func nativePlannedStartupFixtureQEMU(plan *runtimebundle.Plan, lookup fileserviceplan.SambaEnrollmentLookup, authority string, inventory identityowner.Inventory) (result error) {
-	return nativePlannedServiceFixtureQEMU(plan, lookup, authority, inventory, "")
-}
-
 // The source-fault variant is reachable only through the fixed guarded child.
 // It shares real startup/access construction, not a fabricated healthy backend.
-func nativePlannedServiceFixtureQEMU(plan *runtimebundle.Plan, lookup fileserviceplan.SambaEnrollmentLookup, authority string, inventory identityowner.Inventory, fault string) (result error) {
+func nativePlannedServiceFixtureQEMU(parent context.Context, plan *runtimebundle.Plan, lookup fileserviceplan.SambaEnrollmentLookup, authority string, inventory identityowner.Inventory, fault string) (result error) {
 	phase := "construction"
 	defer func() {
 		if fault != "" {
@@ -53,8 +49,13 @@ func nativePlannedServiceFixtureQEMU(plan *runtimebundle.Plan, lookup fileservic
 	if fault != "" && fault != "source" && fault != "exit" && fault != "held" && fault != "file" && fault != "file-source" {
 		return errors.New("invalid fixed planned fault")
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 40*time.Second)
-	defer cancel()
+	clock, err := newPlannedPhaseClockQEMU(parent)
+	if err != nil {
+		return err
+	}
+	defer clock.Close()
+	defer func() { result = errors.Join(result, clock.Check()) }()
+	ctx := clock.ctx
 	var callers [3]*os.File
 	for index, path := range []string{"/run/phantowd-samba-code", "/run/phantowd-native-samba-root/etc", "/run/phantowd-native-samba-state"} {
 		fd, err := unix.Open(path, unix.O_PATH|unix.O_DIRECTORY|unix.O_CLOEXEC|unix.O_NOFOLLOW, 0)
@@ -269,10 +270,10 @@ func nativePlannedServiceFixtureQEMU(plan *runtimebundle.Plan, lookup fileservic
 		// The original startup/preparation remains bounded40. Data access is a
 		// NEW action with its OWN20-second budget, not leftovers from startup.
 		// Guest180/readiness12/worker4/stop bounds remain unchanged.
-		cancel()
-		dataCtx, cancelData := context.WithTimeout(context.Background(), 20*time.Second)
-		defer cancelData()
-		ctx = dataCtx
+		if err := clock.Advance(plannedDataQEMU); err != nil {
+			return err
+		}
+		ctx = clock.ctx
 		canceledData, cancelProbe := context.WithCancel(ctx)
 		cancelProbe()
 		if err := service.VerifyDataAccess(canceledData); !errors.Is(err, context.Canceled) {
@@ -292,10 +293,10 @@ func nativePlannedServiceFixtureQEMU(plan *runtimebundle.Plan, lookup fileservic
 		}
 		// A separate supervised action must not spend leftover data/startup
 		// time. This keeps data20 and guest180/worker/readiness/stop unchanged.
-		cancelData()
-		superviseCtx, cancelSupervise := context.WithTimeout(context.Background(), 20*time.Second)
-		defer cancelSupervise()
-		ctx = superviseCtx
+		if err := clock.Advance(plannedSupervisionQEMU); err != nil {
+			return err
+		}
+		ctx = clock.ctx
 		phase = "supervision"
 		if fault == "source" || fault == "exit" || fault == "file-source" {
 			qualify, proof := qualifyPlannedSourceFaultQEMU, plannedSourceFaultChildProofQEMU
@@ -307,7 +308,13 @@ func nativePlannedServiceFixtureQEMU(plan *runtimebundle.Plan, lookup fileservic
 			if err := qualify(ctx, service, runtime, owner, handoff); err != nil {
 				return err
 			}
+			if err := clock.Check(); err != nil {
+				return err
+			}
 			if _, err := io.WriteString(os.Stdout, proof); err != nil {
+				return err
+			}
+			if err := clock.Check(); err != nil {
 				return err
 			}
 			// The owned daemon is already stopped/reaped and BOTH original
@@ -343,7 +350,10 @@ func nativePlannedServiceFixtureQEMU(plan *runtimebundle.Plan, lookup fileservic
 				!errors.Is(owner.Close(), identityowner.ErrBusy) || !errors.Is(handoff.Close(), mountowner.ErrHandoffBusy) {
 				return errors.New("read-only planned stop changed original authority")
 			}
-			if err := service.Close(context.Background()); err != nil {
+			if err := clock.Check(); err != nil {
+				return err
+			}
+			if err := service.Close(ctx); err != nil {
 				return err
 			}
 			if observed, err := runtime.ObservePlannedStopQEMU(ctx); observed != (runtimebundle.PlannedStopObservationQEMU{}) || !errors.Is(err, runtimebundle.ErrReviewRequired) {
@@ -353,6 +363,9 @@ func nativePlannedServiceFixtureQEMU(plan *runtimebundle.Plan, lookup fileservic
 			if err != nil || status.State != "stopped" || status.IdentityRetained || status.SharesRetained || !status.RuntimeClosed {
 				return errors.New("planned startup released authorities before full runtime close")
 			}
+		}
+		if err := clock.Check(); err != nil {
+			return err
 		}
 		if err := handoff.Close(); err != nil {
 			return err
@@ -375,7 +388,13 @@ func nativePlannedServiceFixtureQEMU(plan *runtimebundle.Plan, lookup fileservic
 	}); err != nil {
 		return err
 	}
+	if err := clock.Check(); err != nil {
+		return err
+	}
 	if err := owner.Close(); err != nil {
+		return err
+	}
+	if err := clock.Check(); err != nil {
 		return err
 	}
 	return stage.removeAfterRuntimeClose()

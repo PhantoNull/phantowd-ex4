@@ -30,11 +30,11 @@ const plannedSourceFaultMarkerQEMU = "PHANTOWD_SAMBA_OWNER_PLANNED_SOURCE_FAULT_
 
 const plannedSourceFaultChildProofQEMU = "PHANTOWD_PLANNED_SOURCE_FAULT_CHILD_READY same_authorities=true same_daemon=true data_verified=true original_session=true held_client_stopped=true held_client_retained=true old_observers_refused=true source_covered=true exclusive_supervision=true review_sticky=true stopped_reaped=true private_inputs=15 runtime_inputs_retained=true originals_busy=true cover_removed=true restoration_refused=true close_refused=true private_mount_namespace=true scope=qemu-subprocess-only\n"
 
-func nativePlannedSourceFaultSubprocessQEMU() error {
-	return nativePlannedFaultSubprocessQEMU("source")
+func nativePlannedSourceFaultSubprocessQEMU(parent context.Context) error {
+	return nativePlannedFaultSubprocessQEMU(parent, "source")
 }
 
-func nativePlannedFaultSubprocessQEMU(fault string) error {
+func nativePlannedFaultSubprocessQEMU(parent context.Context, fault string) error {
 	commandName, proof := "native-planned-source-fault", plannedSourceFaultChildProofQEMU
 	if fault == "exit" {
 		commandName, proof = "native-planned-exit-fault", plannedExitFaultChildProofQEMU
@@ -46,17 +46,28 @@ func nativePlannedFaultSubprocessQEMU(fault string) error {
 	// NEW fixed fault action: preparation10/startup40/data20/supervision20.
 	// Original identity-fault40 and guest180 budgets are unchanged. Neither
 	// successful child output nor guest exit alone replaces parent FD/union checks.
-	ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
+	if parent == nil {
+		return errPlannedPhaseQEMU
+	}
+	if err := parent.Err(); err != nil {
+		return err
+	}
+	ctx, cancel := context.WithTimeout(parent, plannedFaultLimitQEMU)
 	defer cancel()
+	if err := nativeLivePhaseErrorQEMU(ctx); err != nil {
+		return err
+	}
 	command := exec.CommandContext(ctx, "/usr/sbin/phantowd-runtime-bundle-probe", commandName)
 	command.Env = []string{"PATH=/usr/sbin:/usr/bin:/sbin:/bin", "LANG=C", "LC_ALL=C"}
 	command.SysProcAttr = &syscall.SysProcAttr{Cloneflags: unix.CLONE_NEWNS}
 	command.WaitDelay = 2 * time.Second
 	var output nativeFaultOutput
 	command.Stdout, command.Stderr = &output, &output
-	if err := command.Run(); err != nil || output.String() != proof {
-		fmt.Fprint(os.Stderr, plannedFaultSubprocessDiagnosticQEMU(ctx.Err(), err, output.String(), proof))
-		return fmt.Errorf("planned %s fault subprocess proof incomplete", fault)
+	runErr := command.Run()
+	ctxErr := nativeLivePhaseErrorQEMU(ctx)
+	if ctxErr != nil || runErr != nil || output.String() != proof {
+		fmt.Fprint(os.Stderr, plannedFaultSubprocessDiagnosticQEMU(ctxErr, runErr, output.String(), proof))
+		return errors.Join(fmt.Errorf("planned %s fault subprocess proof incomplete", fault), ctxErr)
 	}
 	return nil
 }
@@ -92,7 +103,9 @@ func nativePlannedFaultQEMU(fault string) error {
 	if err := unix.Mount("", "/", "", unix.MS_REC|unix.MS_PRIVATE, ""); err != nil {
 		return err
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	parentCtx, cancelParent := context.WithTimeout(context.Background(), plannedFaultLimitQEMU)
+	defer cancelParent()
+	ctx, cancel := context.WithTimeout(parentCtx, 10*time.Second)
 	defer cancel()
 	const authority = "/run/phantowd-native-authority"
 	inventory := func(context.Context) (serviceaccounts.Reservations, error) {
@@ -114,12 +127,12 @@ func nativePlannedFaultQEMU(fault string) error {
 	if err != nil {
 		return err
 	}
-	if err := ctx.Err(); err != nil {
+	if err := nativeLivePhaseErrorQEMU(ctx); err != nil {
 		return err
 	}
 	// The guest's actual disabled-first enrollment precedes this NEW consumer;
 	// no copied passdb, replacement SID, healthy fixture backend or lease refresh.
-	return nativePlannedServiceFixtureQEMU(plan, lookup, authority, inventory, fault)
+	return nativePlannedServiceFixtureQEMU(parentCtx, plan, lookup, authority, inventory, fault)
 }
 
 func qualifyPlannedSourceFaultQEMU(ctx context.Context, service *smbexec.NativePlannedServiceQEMU, native *runtimebundle.NativeSambaRuntimeQEMU, owner *identityowner.Owner, handoff *mountowner.ServiceHandoff) error {
