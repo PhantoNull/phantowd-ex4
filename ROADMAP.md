@@ -2404,7 +2404,7 @@ milestone before enabling its controls; M1/M6 for deployment.
   Other panel flows, browser/load/heap, complete transport/teardown, hosted and
   product qualification remain separate. No activation or authority is added.
   **M5.5h — exact HTTP/HTTPS dashboard asset fixtures:** use one verifier for all
-  six embedded assets over both existing loopback transports. Enforce64KiB
+  seven embedded assets over both existing loopback transports. Enforce64KiB
   response bounds, exact decoded-body match, source markers, single exact MIME/
   no-store/nosniff/CSP headers and body read/close success. Require both transports
   before/after API restart; missing/excess/lookalike receipts refuse readiness.
@@ -2418,7 +2418,7 @@ milestone before enabling its controls; M1/M6 for deployment.
   host-only synthetic preview. Verify applied CSS and horizontal containment
   at 1365/390/320 px, actual Tab/Enter skip-link navigation, explicit refresh,
   no uncaught exceptions and only same-origin GET page requests. Record all
-  six source hashes and bounded screenshots; fail on source drift or uncertain
+  current source hashes and bounded screenshots; fail on source drift or uncertain
   child/profile cleanup. The reproduced 320 px viewport/305 px client-width
   overflow is corrected by removing the fixed body minimum. Fast host checks
   separately enforce preview port admission, ephemeral loopback and route
@@ -2438,6 +2438,23 @@ milestone before enabling its controls; M1/M6 for deployment.
   No production code, persistence, privilege, HTTPS trust, second-browser/race,
   account recovery, service activation or physical device qualification follows.
   Keep exact pure-host paths in cheap CI without excluding other API sources.
+- **M5.5k — Bounded setup/login submission (partial).** One ten-second browser
+  deadline covers credential POST headers/body and its follow-up status read;
+  cap the decoded JSON reply at16KiB and obtain session authority only from
+  status. Diagnostic refresh retains its separate existing lifetime. Refuse
+  duplicate active submissions and retire old continuations without touching
+  replacement attempts. Known400/401/409/429 refusals use fixed messages;
+  unknown/expired outcomes hide data/forms, clear input and release controls
+  without retry. Explicit reconnect reads status only, including completed setup.
+  Keep each asset within64KiB by deferring authentication in a separate module;
+  verify the complete seven-file roster over both transports across API restart.
+  Acceptance: actual-source RED/GREEN for setup/login header/body/status stalls,
+  inclusive/excess replies, fixed/redacted failures, duplicate/retired events
+  and late/status-only reconciliation; real-browser controlled pre-header login
+  stall; whole host/Linux and actual ARM asset smoke. Browser scheduling is not
+  a hard wall-clock guarantee; abort is not server rollback/cancel proof.
+  Other mutation response bounds, concurrent tabs, production auth/recovery,
+  certificate and full accessibility qualification remain separate.
 - **M5.6 — Audit and diagnostics.** Record actor, operation ID, revisions and
   redacted outcome; bound retention. Export a sanitized support bundle that
   excludes credentials, private keys, passdb hashes and user file contents.

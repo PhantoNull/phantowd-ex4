@@ -12,13 +12,20 @@ import { supportFixture } from "./tests/test-support-bundle.mjs";
 
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
 const source = await readFile(join(repoRoot, "src/phantowd-api/ui/app.js"), "utf8");
+const authSource = await readFile(join(repoRoot, "src/phantowd-api/ui/auth.js"), "utf8");
 const serviceSource = await readFile(join(repoRoot, "src/phantowd-api/ui/service-policy.js"), "utf8");
 const supportSource = await readFile(join(repoRoot, "src/phantowd-api/ui/support-bundle.js"), "utf8");
 const markup = await readFile(join(repoRoot, "src/phantowd-api/ui/index.html"), "utf8");
 const styles = await readFile(join(repoRoot, "src/phantowd-api/ui/app.css"), "utf8");
+assert.ok(markup.indexOf('<script src="/assets/auth.js" defer>') > markup.indexOf('<script src="/assets/app.js" defer>'), "auth module must load after its shared UI helpers");
+assert.ok(authSource.includes("updateAuthView().catch(showAuthUnavailable)"));
+assert.ok(!source.includes("updateAuthView().catch(showAuthUnavailable)"), "only the auth module starts authentication");
+for (const name of ["index.html", "app.css", "app.js", "auth.js", "service-policy.js", "support-bundle.js", "ghost.svg"]) {
+  assert.ok((await readFile(join(repoRoot, "src/phantowd-api/ui", name))).byteLength <= 65536, "per-asset budget must not grow");
+}
 const markupIDs = [...markup.matchAll(/\bid="([^"]+)"/g)].map((match) => match[1]);
 assert.equal(new Set(markupIDs).size, markupIDs.length, "duplicate HTML IDs");
-for (const match of (source + serviceSource).matchAll(/(?:byId|setText)\("([^"]+)"/g)) {
+for (const match of (source + authSource + serviceSource).matchAll(/(?:byId|setText)\("([^"]+)"/g)) {
   assert.ok(markupIDs.includes(match[1]), `script references missing HTML ID ${match[1]}`);
 }
 assert.match(markup, /id="policy-nfs-fields"[^>]*hidden disabled/);
@@ -321,6 +328,7 @@ async function createHarness(respond, timing = {}) {
   new Script(serviceSource).runInContext(context);
   new Script(supportSource).runInContext(context);
   new Script(source).runInContext(context);
+  new Script(authSource).runInContext(context);
   await new Promise((resolve) => setImmediate(resolve));
   return { context, elements, requests, document, ageIntervals };
 }
@@ -2440,6 +2448,183 @@ async function testInitialAuthBodyHasAFiniteReadDeadline() {
   assert.equal(h.requests.length, before);
 }
 await testInitialAuthBodyHasAFiniteReadDeadline();
+
+async function testCredentialSubmissionHasOneFiniteDeadline() {
+  for (const setup of [false, true]) {
+    const timers = new Map();
+    let timerID = 0, release;
+    const pending = new Promise(resolve => { release = resolve; });
+    const route = `/api/v1/auth/${setup ? "setup" : "login"}`;
+    const h = await createHarness(async path => {
+      if (path === route) return pending; // Deliberately ignores AbortSignal.
+      if (path === "/api/v1/auth/status") return jsonResponse({ setup_required: setup, authenticated: false });
+      return snapshotResponse(path);
+    }, {
+      setTimeout: (callback, delay) => { const id = ++timerID; timers.set(id, { callback, delay }); return id; },
+      clearTimeout: id => timers.delete(id),
+    });
+    await settleUI();
+    h.elements["auth-username"].value = "fixture-admin";
+    h.elements["auth-password"].value = "fixture-only original passphrase";
+    const submission = h.elements["auth-form"].listeners.get("submit")({ preventDefault() {} });
+    await settleUI();
+    const request = h.requests.find(request => request.path === route);
+    assert.ok(request?.options.signal, "Credential POST must own a cancellation signal");
+    assert.equal(timers.size, 1, "Credential POST must not wait indefinitely for response headers");
+    const deadline = [...timers.values()][0];
+    assert.equal(deadline.delay, 10000);
+    deadline.callback();
+    await submission;
+    assert.equal(request.options.signal.aborted, true);
+    assert.equal(h.elements["auth-submit"].disabled, false);
+    assert.equal(h.elements["auth-password"].value, "");
+    assert.equal(h.elements["dashboard-content"].hidden, true);
+    assert.equal(h.elements["auth-form"].hidden, true, "Unknown submission needs a status reread, not blind resubmission");
+    assert.equal(h.elements["auth-retry"].hidden, false);
+    assert.match(h.elements["auth-error"].textContent, /not retried/i);
+    assert.equal(timers.size, 0);
+    const count = h.requests.length;
+    release(jsonResponse({ authenticated: true }));
+    await settleUI();
+    assert.equal(h.requests.length, count, "Late POST completion must not reread state or publish a session");
+    assert.equal(h.elements["dashboard-content"].hidden, true);
+  }
+}
+await testCredentialSubmissionHasOneFiniteDeadline();
+
+async function credentialHarness(setup, post, status) {
+  const timers = new Map();
+  let id = 0;
+  const route = `/api/v1/auth/${setup ? "setup" : "login"}`;
+  const h = await createHarness(async (path, options) => {
+    if (path === route) return post(options);
+    if (path === "/api/v1/auth/status") return status ? status(options) : jsonResponse({ setup_required: setup, authenticated: false });
+    return snapshotResponse(path);
+  }, {
+    setTimeout: (callback, delay) => { const timer = ++id; timers.set(timer, { callback, delay }); return timer; },
+    clearTimeout: timer => timers.delete(timer),
+  });
+  await settleUI();
+  const submit = () => {
+    h.elements["auth-username"].value = "fixture-admin";
+    h.elements["auth-password"].value = "fixture-only new passphrase";
+    return h.elements["auth-form"].listeners.get("submit")({ preventDefault() {} });
+  };
+  return { h, timers, route, submit };
+}
+
+async function testCredentialBodyAndStatusShareDeadline() {
+  for (const setup of [false, true]) for (const phase of ["body", "status"]) {
+    let release, reads = 0;
+    const pending = new Promise(resolve => { release = resolve; });
+    const { h, timers, route, submit } = await credentialHarness(setup,
+      () => phase === "body" ? deferredJSONResponse(pending) : jsonResponse({ authenticated: true }),
+      () => ++reads === 1 ? jsonResponse({ setup_required: setup, authenticated: false }) : deferredJSONResponse(pending));
+    const submission = submit();
+    await settleUI();
+    assert.equal(timers.size, 1, "Reply and status must not renew the credential budget");
+    const post = h.requests.find(request => request.path === route);
+    if (phase === "status") assert.equal(h.requests.at(-1).options.signal, post.options.signal);
+    [...timers.values()][0].callback();
+    await submission;
+    assert.equal(h.elements["auth-form"].hidden, true);
+    assert.equal(h.elements["auth-submit"].disabled, false);
+    assert.equal(timers.size, 0);
+    const before = h.requests.length;
+    release({ authenticated: true });
+    await settleUI();
+    assert.equal(h.requests.length, before);
+    assert.equal(h.elements["dashboard-content"].hidden, true);
+  }
+}
+await testCredentialBodyAndStatusShareDeadline();
+
+async function testCredentialRefusalsAndReplyBounds() {
+  for (const setup of [false, true]) {
+    for (const code of [400, 401, 409, 429]) {
+      const { h, timers, route, submit } = await credentialHarness(setup, () => jsonResponse({ error: "PRIVATE-SENTINEL" }, code));
+      await submit();
+      assert.equal(h.elements["auth-form"].hidden, false, `definitive ${code} must retain the sign-in form`);
+      assert.equal(h.elements["auth-submit"].disabled, false);
+      assert.equal(h.elements["auth-password"].value, "");
+      assert.equal(timers.size, 0);
+      assert.ok(!h.elements["auth-error"].textContent.includes("PRIVATE-SENTINEL"));
+      assert.equal(h.requests.filter(request => request.path === route).length, 1);
+      assert.equal(h.requests.filter(request => request.path === "/api/v1/auth/status").length, 1);
+    }
+    for (const kind of ["network", "server", "invalid-json", "oversize"]) {
+      const { h, timers, submit } = await credentialHarness(setup, () => {
+        if (kind === "network") throw new Error("PRIVATE-SENTINEL");
+        if (kind === "server") return jsonResponse({ error: "PRIVATE-SENTINEL" }, 503);
+        if (kind === "oversize") return jsonResponse({ data: "x".repeat(16384) });
+        return { ok: true, status: 200, body: new ReadableStream({ start(controller) { controller.enqueue(new TextEncoder().encode("PRIVATE-SENTINEL")); controller.close(); } }) };
+      });
+      await submit();
+      assert.equal(h.elements["auth-form"].hidden, true, `uncertain ${kind} must require reconciliation`);
+      assert.equal(h.elements["auth-retry"].hidden, false);
+      assert.equal(timers.size, 0);
+      assert.ok(!h.elements["auth-error"].textContent.includes("PRIVATE-SENTINEL"));
+    }
+    let reads = 0;
+    const text = JSON.stringify({ authenticated: true });
+    const { h, timers, submit } = await credentialHarness(setup, () => ({
+      ok: true, status: 200, body: new ReadableStream({ start(controller) {
+        controller.enqueue(new TextEncoder().encode(text + " ".repeat(16384 - text.length))); controller.close();
+      } }), json: () => { throw new Error("unbounded JSON fallback"); },
+    }), () => jsonResponse({ authenticated: ++reads > 1, setup_required: setup }));
+    await submit();
+    assert.equal(h.elements["dashboard-content"].hidden, false, "Exact16KiB reply remains inclusive");
+    assert.equal(timers.size, 0);
+  }
+}
+await testCredentialRefusalsAndReplyBounds();
+
+async function testCredentialDuplicatesRetirementAndExplicitReconciliation() {
+  for (const setup of [false, true]) {
+    const pending = [];
+    let authenticated = false;
+    const { h, timers, route, submit } = await credentialHarness(setup,
+      () => new Promise(resolve => { pending.push(resolve); }), () => jsonResponse({ authenticated, setup_required: setup }));
+    const old = submit();
+    await settleUI();
+    const oldTimeout = [...timers.values()][0].callback;
+    await submit();
+    assert.equal(pending.length, 1, "Repeated submit event must not issue a second credential POST");
+    h.context.showAuthUnavailable();
+    await old;
+    await h.elements["auth-retry"].listeners.get("click")();
+    const current = submit();
+    await settleUI();
+    const signal = h.requests.filter(request => request.path === route).at(-1).options.signal;
+    const count = h.requests.length;
+    pending[0](jsonResponse({ authenticated: true })); oldTimeout();
+    await settleUI();
+    assert.equal(h.requests.length, count);
+    assert.equal(h.elements["auth-submit"].disabled, true, "Retired finalizers must not unlock a new submission");
+    assert.equal(signal.aborted, false);
+    assert.equal(timers.size, 1);
+    authenticated = true;
+    pending[1](jsonResponse({ authenticated: true }));
+    await current;
+    assert.equal(h.elements["dashboard-content"].hidden, false);
+    assert.equal(timers.size, 0);
+  }
+  for (const authenticated of [false, true]) {
+    let after = false;
+    const { h, timers, route, submit } = await credentialHarness(true, () => new Promise(() => {}),
+      () => jsonResponse({ authenticated: after && authenticated, setup_required: !after }));
+    const submission = submit(); await settleUI();
+    [...timers.values()][0].callback(); await submission;
+    after = true;
+    await h.elements["auth-retry"].listeners.get("click")();
+    assert.equal(h.requests.filter(request => request.path === route).length, 1, "Reconnect rereads status, never retries credentials");
+    assert.equal(h.elements["dashboard-content"].hidden, !authenticated);
+    if (!authenticated) assert.equal(h.elements["auth-form"].dataset.mode, "login", "Completed setup must not be offered again");
+    assert.equal(timers.size, 0);
+  }
+  process.stdout.write("Credential submission controls passed: header/body/status deadlines, 16KiB replies, duplicate/retired events, fixed refusals and explicit status-only reconciliation.\n");
+}
+await testCredentialDuplicatesRetirementAndExplicitReconciliation();
 
 async function testDiagnosticStructureIsBoundedBeforeParsing() {
   let deep = null;

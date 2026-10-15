@@ -3,6 +3,45 @@
 
 # Implementation status
 
+## Dashboard: bounded setup/login and seven-asset packaging
+
+Setup/login now use one ten-second browser deadline across credential POST
+headers, a decoded JSON reply capped at16KiB and the subsequent status read.
+Only status grants the local authenticated view. Diagnostic loading keeps its
+separate existing lifetime. Duplicate submissions are refused; retired replies
+cannot change or unlock a replacement attempt. Known400/401/409/429 refusals
+use fixed text. Other failures hide the form/data, clear the password input and
+release controls without retry; explicit reconnect reads status only because
+setup may already have completed remotely. Abort does not prove server rollback
+or cancellation, and browser timer scheduling is not a hard wall-clock bound.
+
+The previously unbounded POST is reproduced twice before correction by tests
+of the actual event handler. Setup/login header/body/status stalls, reply bounds,
+fixed/redacted errors, duplicate/retired events, late completion and explicit
+reconciliation pass. Whole Windows and pinned Go1.26.8 Linux suites pass,
+including focused race checks and runner contracts. Actual Edge also passes
+both fixture modes and a controlled pre-header login stall using its real timer;
+this is not proof of cancellation of a server mutation.
+
+Authentication now lives in a deferred module after shared dashboard helpers.
+All seven embedded files remain below the unchanged64KiB per-asset cap; the
+largest is app.js at53,994bytes, auth.js is13,982bytes. One route mapping now
+also determines dashboard admission, removing the duplicate allowlist exposed
+by the initial module integration failure. Browser manifests and previews use
+the seven-file roster; old six-file receipts are rejected by the current runner.
+The dated six-asset evidence below remains historical, not current packaging.
+
+The actual standard single-boot ARMv5 overlay exits0 with guest READY and two
+exact seven-asset receipts per transport across API restart. Existing smoke
+guards pass; no browser runs in that guest. The base kernel/packages/probe are
+unchanged: this is not a regenerated full image/SBOM, native/two-boot/hosted run,
+clean-build qualification or a repair of the separate failed hosted fixture.
+
+No account backend, KDF/session/cookie contract, service activation or production
+device is changed. Complete authentication/recovery, password-change/logout
+response bounds, physical storage and the separate native timing gate remain
+unqualified. No failed hosted gate is waived.
+
 ## Dependency security: Samba July source/configuration packet
 
 The six July 2026 Samba advisories now have a bounded source/configuration

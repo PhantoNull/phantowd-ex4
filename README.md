@@ -187,6 +187,8 @@ real API authentication, all workflows or accessibility; CI downloads no browser
 Its optional compiled Go test-fixture mode additionally exercises current
 authentication forms and original-cookie revocation with memory-only accounts;
 this is not production persistence, HTTPS browser trust or account recovery.
+Setup/login now share a finite POST/body/status deadline and bounded reply;
+uncertain outcomes require an explicit status check, never an automatic retry.
 
 With a trusted compatible base and unchanged volume-probe sources,
 `support/test-api-overlay.ps1 -ReuseBaseVolumeProbe` rebuilds only the API and

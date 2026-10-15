@@ -262,6 +262,33 @@ self-test markers. These are DOM/source/host-asset proofs, not actual browser
 keyboard navigation, CSS rendering, screen-reader announcements, WCAG
 conformance, current ARMv5 execution or new complete image qualification.
 
+## M5.5k bounded setup/login submission
+
+The deferred `auth.js` module starts authentication after the shared dashboard
+helpers in `app.js`. Each setup/login submission has one ten-second browser
+deadline for POST headers, its at-most16KiB decoded JSON reply and the following
+status read. Session authority comes only from that status, never reply fields.
+Diagnostic refresh then uses its existing separate bounded lifetime. All seven
+embedded assets retain the unchanged64KiB per-file limit.
+
+An active-attempt latch refuses duplicate submissions. Retirement aborts the
+attempt, clears the password input and releases the button; late continuations
+cannot change or unlock a replacement attempt. Known400/401/409/429 refusals
+use fixed notices, not response/error text. Network, malformed, oversized or
+expired outcomes hide the form and diagnostics without retrying credentials.
+Explicit reconnect reads status only: setup may already have completed remotely.
+Aborting a browser request does not roll back or prove cancellation of a server
+operation, and timer delivery depends on browser event-loop scheduling.
+
+Actual-source DOM controls reproduce the missing POST deadline before the fix
+and cover setup/login header/body/status stalls, shared-budget cancellation,
+inclusive/excess replies, known/unknown refusals, duplicate and retired events,
+late completion and explicit authenticated/unauthenticated reconciliation.
+An optional actual-browser Go-fixture test also intercepts one login before
+headers, observes the real timer and checks status-only reconnect. This does
+not qualify server-operation cancellation, complete authentication/recovery,
+password-change/logout response bounds, production persistence or hardware.
+
 ## M5.5c secondary text palette guard
 
 The small secondary-text `quiet` color is checked against the three declared
@@ -1614,7 +1641,7 @@ node support/test-dashboard-browser.mjs --browser "C:\Program Files (x86)\Micros
 
 On Linux, use the same command with a native `phantowd-browser-api.test` binary
 and explicit installed browser path. Never pass a firmware/ARM binary to a host
-runner. Recompile after changes: the test server reports six embedded-asset
+runner. Recompile after changes: the test server reports seven embedded-asset
 hashes and the runner refuses a source mismatch. This does not authenticate the
 entire source tree or executable's provenance.
 
@@ -1627,6 +1654,12 @@ the current forms. Exact previous HttpOnly test cookies are independently
 replayed over HTTP: accepted before each operation, refused after logout,
 password replacement and global logout. Cookie values/headers/bodies are not
 written to the result. This is not a second-browser/multi-session race proof.
+
+After those nominal flows, controlled network interception holds one login
+before headers. The real browser deadline must clear the input, release the
+button, hide the form and show the uncertain-outcome notice. Explicit reconnect
+then returns to sign-in without retrying credentials. Only the protocol request
+handle is retained, not its headers/body. This is not server-side cancellation.
 
 Only system proc input is invented; storage/RAID/mount collectors are explicitly
 unavailable, with no host device/proc/sysfs collection. The partial snapshot
@@ -1647,7 +1680,7 @@ All file-service backend operations remain unavailable in this fixture.
 Guest initialization probes the GET endpoints and QEMU-only authentication
 flow, verifies that QEMU's root block node appears through sysfs without being
 opened, rejects unauthorized and malformed operations, validates non-root
-identity and ARMv5 metadata, checks all six embedded dashboard assets over
+identity and ARMv5 metadata, checks all seven embedded dashboard assets over
 guest-loopback HTTP and separately trusted temporary HTTPS, rejects mutating/query dashboard requests, and prints an
 RSS sample with a 48 MiB ceiling. It then restarts only the API process and
 verifies that the account reloads while sessions remain memory-only. A failure
@@ -1660,7 +1693,7 @@ response limit, retain the declared feature markers and have exactly one
 expected MIME, no-store, nosniff and CSP header. Read/close/metadata/body failure
 refuses the fixture with fixed errors; response bodies are closed and no manual
 retry or timing budget is added. Root HTML and other assets keep their distinct
-CSP profiles. The standard runner requires two exact six-asset receipts per
+CSP profiles. The standard runner requires two exact seven-asset receipts per
 transport across its intentional API restart, not merely a TLS handshake marker.
 Host tests use actual loopback HTTP/HTTPS plus altered-marker-preserving, header,
 read/close, oversized, redirect and request-error controls. These assertions

@@ -42,7 +42,7 @@ let failure, result;
 const artifacts = join(repo, "artifacts", apiFixture ? "dashboard-browser-api" : "dashboard-browser");
 const uiHashes = async () => {
   const hashes = {};
-  for (const name of ["index.html", "app.css", "app.js", "service-policy.js", "support-bundle.js", "ghost.svg"]) {
+  for (const name of ["index.html", "app.css", "app.js", "auth.js", "service-policy.js", "support-bundle.js", "ghost.svg"]) {
     const bytes = await readFile(join(repo, "src", "phantowd-api", "ui", name));
     assert.ok(bytes.length <= 65536, "dashboard source exceeded asset budget");
     hashes[name] = createHash("sha256").update(bytes).digest("hex");
@@ -98,6 +98,7 @@ class CDP {
     this.pending = new Map();
     this.exceptions = 0;
     this.requests = [];
+    this.paused = [];
     socket.addEventListener("message", ({ data }) => {
       try {
         assert.ok(typeof data === "string" && data.length <= 16 * 1024 * 1024, "protocol message exceeded");
@@ -111,6 +112,10 @@ class CDP {
           else waiter.accept(message.result);
         } else if (message.method === "Runtime.exceptionThrown") {
           this.exceptions++;
+        } else if (message.method === "Fetch.requestPaused") {
+          assert.ok(this.paused.length < 2, "interception count exceeded");
+          // Retain only the protocol request handle, never credentials/headers.
+          this.paused.push(message.params.requestId);
         } else if (message.method === "Network.requestWillBeSent") {
           if (this.requests.length >= 256) throw new Error("browser request census exceeded");
           this.requests.push({ url: message.params.request.url, method: message.params.request.method });
@@ -321,6 +326,19 @@ try {
     assert.equal(cdp.requests.filter(r => new URL(r.url).pathname === "/api/v1/auth/setup" && r.method === "POST").length, 1);
     assert.equal(cdp.requests.filter(r => new URL(r.url).pathname === "/api/v1/auth/login" && r.method === "POST").length, 4);
     assert.equal(cdp.requests.filter(r => new URL(r.url).pathname === "/api/v1/auth/password" && r.method === "POST").length, 1);
+    // Freeze one login before headers, while using the real browser's timer.
+    // This is controlled network interception, not server-operation cancel proof.
+    await send("Fetch.enable", { patterns: [{ urlPattern: origin + "/api/v1/auth/login", requestStage: "Request" }] });
+    await submitLogin(nextPassword);
+    await until(() => cdp.paused.length === 1, browser, "controlled credential interception");
+    await until(() => evaluate(`document.getElementById('auth-form').hidden && !document.getElementById('auth-retry').hidden && document.getElementById('auth-error').textContent.includes('The request was not retried.')`), browser, "credential header deadline", 15000);
+    assert.equal(await evaluate("document.getElementById('auth-submit').disabled"), false);
+    assert.equal(await evaluate("document.getElementById('auth-password').value"), "");
+    await send("Fetch.failRequest", { requestId: cdp.paused[0], errorReason: "Aborted" }).catch(() => {});
+    await send("Fetch.disable");
+    await evaluate("document.getElementById('auth-retry').click()");
+    await until(() => evaluate(signInReady), browser, "explicit status-only reconciliation");
+    assert.equal(cdp.paused.length, 1, "credential request must not automatically retry");
   }
   assert.equal(cdp.exceptions, 0, "uncaught page JavaScript exception");
   assert.ok(!cdp.fault, "browser protocol observation failed");
@@ -338,6 +356,7 @@ try {
     layouts, keyboard_skip_link: true, explicit_refresh: true, page_requests: cdp.requests.length,
     uncaught_exceptions: cdp.exceptions, actual_go_auth_memory_fixture: Boolean(apiFixture),
     original_cookie_revocation_checked: Boolean(apiFixture), authentication_qualified: false, hardware_qualified: false,
+    intercepted_credential_deadline: Boolean(apiFixture),
   };
   successful = true;
 } catch (error) {

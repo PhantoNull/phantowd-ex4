@@ -500,7 +500,7 @@ while [ "$attempt" -lt "$smoke_timeout" ]; do
             exit 1
         fi
         for transport in http https; do
-            if ! test "$(sed 's/\r$//' "$log_file" | grep -Fxc "PHANTOWD_DASHBOARD_ASSETS_READY transport=$transport assets=6 byte_exact=true scope=qemu-loopback-only")" -eq 2; then
+            if ! test "$(sed 's/\r$//' "$log_file" | grep -Fxc "PHANTOWD_DASHBOARD_ASSETS_READY transport=$transport assets=7 byte_exact=true scope=qemu-loopback-only")" -eq 2; then
                 echo 'Missing or excess exact dashboard asset receipts across API restart' >&2
                 exit 1
             fi

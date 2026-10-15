@@ -412,7 +412,7 @@ class BuildFeedbackTests(unittest.TestCase):
                           r'[\s\S]*?^        done$', smoke).group()
         self.assertIn('PHANTOWD_DASHBOARD_ASSETS_READY', guard)
         marker = ('PHANTOWD_DASHBOARD_ASSETS_READY transport={transport} '
-                  'assets=6 byte_exact=true scope=qemu-loopback-only')
+                  'assets=7 byte_exact=true scope=qemu-loopback-only')
         with tempfile.TemporaryDirectory() as temp:
             log = pathlib.Path(temp) / 'guest.log'
             for transport in ('http', 'https'):
@@ -436,6 +436,18 @@ class BuildFeedbackTests(unittest.TestCase):
                  'asset-guard', str(log)], capture_output=True,
                 text=True, timeout=3)
             self.assertNotEqual(result.returncode, 0)
+
+            for transport in ('http', 'https'):
+                for wrong_assets in (6, 8):
+                    lines = [marker.format(transport=kind).replace(
+                        'assets=7', f'assets={wrong_assets}' if kind == transport else 'assets=7')
+                        for kind in ('http', 'https') for _ in range(2)]
+                    log.write_text('\n'.join(lines)+'\n')
+                    result = subprocess.run(
+                        ['sh', '-c', 'log_file="$1"\n'+guard,
+                         'asset-guard', str(log)], capture_output=True,
+                        text=True, timeout=3)
+                    self.assertNotEqual(result.returncode, 0)
 
     def test_network_policy_requires_same_boot_guest_assertion(self):
         smoke = (ROOT / "support/qemu-smoke.sh").read_text()

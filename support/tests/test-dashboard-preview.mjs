@@ -64,6 +64,7 @@ try {
     ["/", "GET", 200], ["/assets/app.css", "GET", 200], ["/assets/app.js", "GET", 200],
     ["/assets/service-policy.js", "GET", 200], ["/assets/support-bundle.js", "GET", 200],
     ["/assets/ghost.svg", "GET", 200], ["/api/v1/system", "GET", 200],
+    ["/assets/auth.js", "GET", 200],
     ["/api/v1/storage", "GET", 200], ["/api/v1/arrays", "GET", 200], ["/api/v1/mounts", "GET", 200],
     ["/api/v1/auth/status", "GET", 200], ["/?unexpected=1", "GET", 400],
     ["/", "POST", 405], ["/not-a-route", "GET", 404],
@@ -85,4 +86,4 @@ try {
   if (child.exitCode === null && child.signalCode === null) child.kill();
   await exited(child, 3000);
 }
-console.log("Dashboard preview boundaries passed: invalid-ports=12 ephemeral-loopback=true routes=14 mutations=false devices=false.");
+console.log("Dashboard preview boundaries passed: invalid-ports=12 ephemeral-loopback=true routes=15 mutations=false devices=false.");
