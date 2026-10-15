@@ -301,9 +301,17 @@ func inspectGitHubRelease(args []string, output io.Writer) (int, error) {
 	revision := flags.String("revision", "", "exact requested hardware revision")
 	channel := flags.String("channel", "", "expected channel: stable, beta, or nightly")
 	currentVersion := flags.String("current-version", "", "installed vMAJOR.MINOR.PATCH for optional monotonic-upgrade assessment")
+	requireUpgrade := flags.Bool("require-upgrade", false, "refuse equal/older signed releases before payload I/O; requires --current-version")
 	installerVersion := flags.String("installer-version", "", "caller-supplied installer version for optional signed-minimum preflight")
 	if err := flags.Parse(args); err != nil || flags.NArg() != 0 || *tag == "" || *publicKeyPath == "" || *modelID == "" || *revision == "" || *channel == "" {
-		return 1, errors.New("usage: phantowd-lab inspect-github-release --tag VERSION --public-key FILE --model ID --revision ID --channel stable|beta|nightly [--current-version VERSION] [--installer-version VERSION]")
+		return 1, errors.New("usage: phantowd-lab inspect-github-release --tag VERSION --public-key FILE --model ID --revision ID --channel stable|beta|nightly [--current-version VERSION [--require-upgrade]] [--installer-version VERSION]")
+	}
+	upgradeFrom := ""
+	if *requireUpgrade {
+		if _, err := releaseverify.CompareVersions(*currentVersion, *currentVersion); err != nil {
+			return 1, errors.New("--require-upgrade requires --current-version with strict v-prefixed SemVer syntax")
+		}
+		upgradeFrom = *currentVersion
 	}
 	keyFile, keySize, err := openRegular(*publicKeyPath)
 	if err != nil {
@@ -323,11 +331,12 @@ func inspectGitHubRelease(args []string, output io.Writer) (int, error) {
 		APIBase: githubrelease.DefaultAPIBase, Owner: githubrelease.ProjectOwner,
 		Repository: githubrelease.ProjectRepository, Tag: *tag, PublicKey: publicKey,
 		ModelID: *modelID, Revision: *revision, Channel: *channel, InstallerVersion: *installerVersion,
+		RequireUpgradeFrom: upgradeFrom,
 	})
 	if err != nil {
 		return 1, err
 	}
-	if *currentVersion != "" {
+	if *currentVersion != "" && (!*requireUpgrade || result.Verification.ArtifactsChecked) {
 		result.Verification = releaseverify.AssessUpgradeVersion(result.Verification, *currentVersion)
 	}
 	if err := writeJSON(output, result); err != nil {
@@ -350,9 +359,15 @@ func inspectRelease(args []string, output io.Writer) (int, error) {
 	revision := flags.String("revision", "", "exact requested hardware revision")
 	channel := flags.String("channel", "", "expected release channel: stable, beta, or nightly")
 	currentVersion := flags.String("current-version", "", "installed vMAJOR.MINOR.PATCH for optional monotonic-upgrade assessment")
+	requireUpgrade := flags.Bool("require-upgrade", false, "refuse equal/older signed releases before payload I/O; requires --current-version")
 	installerVersion := flags.String("installer-version", "", "caller-supplied installer version for optional signed-minimum preflight")
 	if err := flags.Parse(args); err != nil || flags.NArg() != 0 || *manifestPath == "" || *signaturePath == "" || *publicKeyPath == "" || *artifactDir == "" || *modelID == "" || *revision == "" || *channel == "" {
-		return 1, errors.New("usage: phantowd-lab inspect-release --manifest FILE --signature FILE --public-key FILE --artifacts DIR --model ID --revision ID --channel stable|beta|nightly [--current-version VERSION] [--installer-version VERSION]")
+		return 1, errors.New("usage: phantowd-lab inspect-release --manifest FILE --signature FILE --public-key FILE --artifacts DIR --model ID --revision ID --channel stable|beta|nightly [--current-version VERSION [--require-upgrade]] [--installer-version VERSION]")
+	}
+	if *requireUpgrade {
+		if _, err := releaseverify.CompareVersions(*currentVersion, *currentVersion); err != nil {
+			return 1, errors.New("--require-upgrade requires --current-version with strict v-prefixed SemVer syntax")
+		}
 	}
 	manifest, _, err := openRegular(*manifestPath)
 	if err != nil {
@@ -379,11 +394,16 @@ func inspectRelease(args []string, output io.Writer) (int, error) {
 	if err != nil || len(publicKey) != 32 {
 		return 1, errors.New("cannot read trusted Ed25519 public key")
 	}
-	report, err := releaseverify.InspectWithInstallerVersion(manifest, signature, publicKey, *artifactDir, *modelID, *revision, *channel, *installerVersion)
+	var report releaseverify.Report
+	if *requireUpgrade {
+		report, err = releaseverify.InspectUpgrade(manifest, signature, publicKey, *artifactDir, *modelID, *revision, *channel, *installerVersion, *currentVersion)
+	} else {
+		report, err = releaseverify.InspectWithInstallerVersion(manifest, signature, publicKey, *artifactDir, *modelID, *revision, *channel, *installerVersion)
+	}
 	if err != nil {
 		return 1, err
 	}
-	if *currentVersion != "" {
+	if *currentVersion != "" && (!*requireUpgrade || report.ArtifactsChecked) {
 		report = releaseverify.AssessUpgradeVersion(report, *currentVersion)
 	}
 	if err := writeJSON(output, report); err != nil {

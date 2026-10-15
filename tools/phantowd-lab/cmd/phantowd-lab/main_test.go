@@ -76,6 +76,51 @@ func TestInspectReleaseCLIValidatesSignatureTargetAndPayload(t *testing.T) {
 		t.Fatalf("optional monotonic version assessment failed safely: code=%d err=%v output=%s", code, err, output.String())
 	}
 
+	requiredArgs := append(append([]string(nil), args...), "--require-upgrade", "--current-version", "v0.1.0")
+	output.Reset()
+	code, err = run(requiredArgs, &output)
+	if err != nil || code != 2 || !strings.Contains(output.String(), `"upgrade_prerequisite":`) ||
+		!strings.Contains(output.String(), `"artifacts_checked": false`) || !strings.Contains(output.String(), `"strictly_newer": false`) {
+		t.Fatalf("required upgrade did not refuse equal version before payload reads: code=%d err=%v output=%s", code, err, output.String())
+	}
+	for _, test := range []struct {
+		current  string
+		required bool
+		code     int
+		checked  bool
+	}{
+		{"v0.0.9", true, 0, true}, {"v0.1.0-rc.1", true, 0, true},
+		{"v0.2.0", true, 2, false}, {"v0.1.0", false, 0, true},
+		{"v0.2.0", false, 0, true}, {"v00.1.0", false, 0, true},
+	} {
+		policyArgs := append(append([]string(nil), args...), "--current-version", test.current, "--installer-version", "v0.1.0")
+		if test.required {
+			policyArgs = append(policyArgs, "--require-upgrade")
+			if !test.checked {
+				for index := range policyArgs {
+					if policyArgs[index] == "--artifacts" {
+						policyArgs[index+1] = filepath.Join(root, "not-created")
+					}
+				}
+			}
+		}
+		output.Reset()
+		code, err = run(policyArgs, &output)
+		var report struct {
+			Valid               bool            `json:"valid"`
+			ArtifactsChecked    bool            `json:"artifacts_checked"`
+			UpgradePrerequisite json.RawMessage `json:"upgrade_prerequisite"`
+			Authorized          bool            `json:"installation_authorized"`
+		}
+		if decodeErr := json.Unmarshal(output.Bytes(), &report); decodeErr != nil {
+			t.Fatal(decodeErr)
+		}
+		if err != nil || code != test.code || report.Valid != test.checked || report.ArtifactsChecked != test.checked ||
+			(len(report.UpgradePrerequisite) > 0) != test.required || report.Authorized {
+			t.Fatalf("required=%v current=%s changed compatibility/authority: %+v code=%d err=%v", test.required, test.current, report, code, err)
+		}
+	}
+
 	output.Reset()
 	installerArgs := append(append([]string(nil), args...), "--installer-version", "v0.1.0")
 	code, err = run(installerArgs, &output)
@@ -121,6 +166,27 @@ func TestInspectGitHubReleaseRequiresExplicitPinnedInputs(t *testing.T) {
 	code, err := run([]string{"inspect-github-release"}, &output)
 	if code != 1 || err == nil || !strings.Contains(err.Error(), "--tag VERSION") {
 		t.Fatalf("GitHub release command did not fail closed on missing inputs: code=%d err=%v output=%q", code, err, output.String())
+	}
+}
+
+func TestRequiredUpgradeCLIRefusesBadCurrentVersionBeforeFileOrHTTPAccess(t *testing.T) {
+	for _, command := range []string{"inspect-release", "inspect-github-release"} {
+		for _, current := range []string{"", "v00.1.0", "0.1.0", "v0.1.0+build", strings.Repeat("v", 129)} {
+			args := []string{command, "--public-key", "not-opened", "--model", "wd-my-cloud-ex4", "--revision", "board-r1", "--channel", "nightly", "--require-upgrade"}
+			if command == "inspect-release" {
+				args = append(args, "--manifest", "not-opened", "--signature", "not-opened", "--artifacts", "not-opened")
+			} else {
+				args = append(args, "--tag", "v0.1.0")
+			}
+			if current != "" {
+				args = append(args, "--current-version", current)
+			}
+			var output bytes.Buffer
+			code, err := run(args, &output)
+			if err == nil || code != 1 || output.Len() != 0 || !strings.Contains(err.Error(), "--require-upgrade requires --current-version") {
+				t.Fatalf("%s current=%q reached external inputs: code=%d err=%v", command, current, code, err)
+			}
+		}
 	}
 }
 

@@ -69,35 +69,49 @@ type Artifact struct {
 // Report deliberately distinguishes cryptographic validity from model
 // matching and from hardware qualification. Valid never authorizes install.
 type Report struct {
-	Format                 string           `json:"format"`
-	SchemaVersion          int              `json:"schema_version"`
-	Valid                  bool             `json:"valid"`
-	SignatureValid         bool             `json:"signature_valid"`
-	ArtifactsChecked       bool             `json:"artifacts_checked"`
-	ArtifactsValid         bool             `json:"artifacts_valid"`
-	TargetMatched          bool             `json:"target_matched"`
-	ChannelMatched         bool             `json:"channel_matched"`
-	InstallationAuthorized bool             `json:"installation_authorized"`
-	HardwareQualified      bool             `json:"hardware_qualified"`
-	ManifestSHA256         string           `json:"manifest_sha256,omitempty"`
-	SigningKeyID           string           `json:"signing_key_id,omitempty"`
-	ReleaseVersion         string           `json:"release_version,omitempty"`
-	Channel                string           `json:"channel,omitempty"`
-	ModelID                string           `json:"model_id,omitempty"`
-	HardwareRevisions      []string         `json:"hardware_revisions,omitempty"`
-	RequestedModelID       string           `json:"requested_model_id,omitempty"`
-	RequestedHardware      string           `json:"requested_hardware_revision,omitempty"`
-	RequestedChannel       string           `json:"requested_channel,omitempty"`
-	Artifacts              []ArtifactResult `json:"artifacts"`
-	UpdatePolicy           *UpdatePolicy    `json:"update_policy,omitempty"`
-	InstallerPolicy        *InstallerPolicy `json:"installer_policy,omitempty"`
-	Findings               []string         `json:"findings"`
-	Limitations            []string         `json:"limitations"`
+	Format                 string               `json:"format"`
+	SchemaVersion          int                  `json:"schema_version"`
+	Valid                  bool                 `json:"valid"`
+	SignatureValid         bool                 `json:"signature_valid"`
+	ArtifactsChecked       bool                 `json:"artifacts_checked"`
+	ArtifactsValid         bool                 `json:"artifacts_valid"`
+	TargetMatched          bool                 `json:"target_matched"`
+	ChannelMatched         bool                 `json:"channel_matched"`
+	InstallationAuthorized bool                 `json:"installation_authorized"`
+	HardwareQualified      bool                 `json:"hardware_qualified"`
+	ManifestSHA256         string               `json:"manifest_sha256,omitempty"`
+	SigningKeyID           string               `json:"signing_key_id,omitempty"`
+	ReleaseVersion         string               `json:"release_version,omitempty"`
+	Channel                string               `json:"channel,omitempty"`
+	ModelID                string               `json:"model_id,omitempty"`
+	HardwareRevisions      []string             `json:"hardware_revisions,omitempty"`
+	RequestedModelID       string               `json:"requested_model_id,omitempty"`
+	RequestedHardware      string               `json:"requested_hardware_revision,omitempty"`
+	RequestedChannel       string               `json:"requested_channel,omitempty"`
+	Artifacts              []ArtifactResult     `json:"artifacts"`
+	UpdatePolicy           *UpdatePolicy        `json:"update_policy,omitempty"`
+	InstallerPolicy        *InstallerPolicy     `json:"installer_policy,omitempty"`
+	UpgradePrerequisite    *UpgradePrerequisite `json:"upgrade_prerequisite,omitempty"`
+	Findings               []string             `json:"findings"`
+	Limitations            []string             `json:"limitations"`
 }
 
 // UpdatePolicy reports only whether a fully verified release is newer than a
 // caller-supplied installed version. It never authorizes installation.
 type UpdatePolicy struct {
+	Evaluated              bool   `json:"evaluated"`
+	CurrentVersion         string `json:"current_version,omitempty"`
+	ReleaseVersion         string `json:"release_version,omitempty"`
+	StrictlyNewer          bool   `json:"strictly_newer"`
+	InstallationAuthorized bool   `json:"installation_authorized"`
+	Finding                string `json:"finding,omitempty"`
+}
+
+// UpgradePrerequisite compares authenticated metadata before payload I/O. It is
+// separate from UpdatePolicy, which requires full artifact verification. Neither
+// a caller-supplied current version nor this observation is device attestation,
+// durable anti-rollback state or installation authority.
+type UpgradePrerequisite struct {
 	Evaluated              bool   `json:"evaluated"`
 	CurrentVersion         string `json:"current_version,omitempty"`
 	ReleaseVersion         string `json:"release_version,omitempty"`
@@ -157,6 +171,29 @@ func (v *VerifiedManifest) Channel() string {
 		return ""
 	}
 	return v.manifest.Channel
+}
+
+// AssessUpgradePrerequisite uses only immutable authenticated metadata. A
+// positive result still requires payload verification and grants no authority.
+func (v *VerifiedManifest) AssessUpgradePrerequisite(currentVersion string) UpgradePrerequisite {
+	policy := UpgradePrerequisite{}
+	if v == nil || !v.report.SignatureValid || !v.report.TargetMatched || !v.report.ChannelMatched {
+		policy.Finding = "verified signed metadata for the exact target and channel is required"
+		return policy
+	}
+	order, err := CompareVersions(v.manifest.ReleaseVersion, currentVersion)
+	if err != nil {
+		policy.Finding = "current and signed release versions must use strict v-prefixed SemVer syntax"
+		return policy
+	}
+	policy.Evaluated = true
+	policy.CurrentVersion = currentVersion
+	policy.ReleaseVersion = v.manifest.ReleaseVersion
+	policy.StrictlyNewer = order > 0
+	if !policy.StrictlyNewer {
+		policy.Finding = "signed release is not a strictly newer version"
+	}
+	return policy
 }
 
 // AssessInstallerVersion uses only the immutable, authenticated minimum. A
@@ -319,6 +356,21 @@ func Inspect(manifestReader, signatureReader io.Reader, publicKey ed25519.Public
 // before artifact I/O. Empty version preserves integrity-only Inspect behavior.
 // The supplied version is host input, not an attested installed component.
 func InspectWithInstallerVersion(manifestReader, signatureReader io.Reader, publicKey ed25519.PublicKey, artifactDirectory, modelID, hardwareRevision, channel, installerVersion string) (Report, error) {
+	return inspectWithPrerequisites(manifestReader, signatureReader, publicKey, artifactDirectory, modelID, hardwareRevision, channel, installerVersion, "")
+}
+
+// InspectUpgrade additionally requires the signed version to be strictly newer
+// than the caller-supplied current version before reading any payload. It is a
+// host preflight, not an installer or a persistent rollback policy. Existing
+// Inspect functions retain their integrity-only/advisory behavior.
+func InspectUpgrade(manifestReader, signatureReader io.Reader, publicKey ed25519.PublicKey, artifactDirectory, modelID, hardwareRevision, channel, installerVersion, currentVersion string) (Report, error) {
+	if _, err := CompareVersions(currentVersion, currentVersion); err != nil {
+		return Report{}, errors.New("current version must use strict v-prefixed SemVer syntax")
+	}
+	return inspectWithPrerequisites(manifestReader, signatureReader, publicKey, artifactDirectory, modelID, hardwareRevision, channel, installerVersion, currentVersion)
+}
+
+func inspectWithPrerequisites(manifestReader, signatureReader io.Reader, publicKey ed25519.PublicKey, artifactDirectory, modelID, hardwareRevision, channel, installerVersion, upgradeFrom string) (Report, error) {
 	if installerVersion != "" {
 		if _, err := CompareVersions(installerVersion, installerVersion); err != nil {
 			return Report{}, errors.New("installer version must use strict v-prefixed SemVer syntax")
@@ -337,8 +389,19 @@ func InspectWithInstallerVersion(manifestReader, signatureReader io.Reader, publ
 			return report, nil
 		}
 	}
+	var upgrade *UpgradePrerequisite
+	if upgradeFrom != "" {
+		assessment := verified.AssessUpgradePrerequisite(upgradeFrom)
+		upgrade = &assessment
+		report.UpgradePrerequisite = upgrade
+		if !assessment.StrictlyNewer {
+			report.InstallerPolicy = policy
+			return report, nil
+		}
+	}
 	report = verified.VerifyArtifacts(artifactDirectory)
 	report.InstallerPolicy = policy
+	report.UpgradePrerequisite = upgrade
 	return report, nil
 }
 

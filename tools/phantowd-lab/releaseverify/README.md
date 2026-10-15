@@ -1,5 +1,21 @@
 # Host release verification boundary
 
+## Opt-in strict-upgrade preflight
+
+`InspectUpgrade` requires a valid caller-supplied current version, then checks
+signature/schema/exact target/channel and the optional minimum installer before
+comparing the authenticated release version. Equal/older releases return an
+invalid, payload-unchecked report without reading payload files. Newer releases
+still require full size/hash verification. Existing `Inspect` and
+`InspectWithInstallerVersion` behavior is unchanged.
+
+`VerifiedManifest.AssessUpgradePrerequisite` returns a copy derived from private
+authenticated metadata, refusing nil/zero receivers and invalid versions. Its
+optional `upgrade_prerequisite` report field is metadata-only, distinct from
+`update_policy`, whose assessment still requires full artifact verification.
+Neither field attests installed state, persists rollback protection, implements
+recovery or authorizes installation. The signed manifest schema is unchanged.
+
 ## Strict manifest and bounded payload task contract (before implementation)
 
 1. **Input/authority:** exact signed manifest bytes, already capped at64KiB;
