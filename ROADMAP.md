@@ -3255,6 +3255,20 @@ Then qualify the selected backend and migration objects on expendable EX4 media.
   vet/tests/race plus reader race-count3 pass. This is synthetic error-injection
   evidence, not an observed public GitHub credential leak. No API/schema/CLI,
   trust root, redirect, byte/timeout limit, firmware build or device change.
+  **M10.2f — opt-in host strict-upgrade prerequisite (partial; host-tested):**
+  `--require-upgrade` requires valid caller-supplied `--current-version` and
+  refuses equal/older authenticated releases before payload I/O/staging.
+  Existing advisory-only mode and exit status remain unchanged. Keep separate
+  metadata-only `upgrade_prerequisite` evidence, never weaken the full-payload
+  `update_policy` contract. Preserve signature/schema/model/revision/channel,
+  signed GitHub tag and minimum-installer gates; a newer version still requires
+  complete size/hash verification. Acceptance: CLI failure before implementation,
+  immutable/nil/zero metadata boundaries, version/pre-release limits, missing/
+  invalid input before HTTP/files, local unavailable-payload refusal, HTTP request
+  counts, staging failure sentinel with positive control, preceding-gate and
+  corrupt-payload refusals, legacy advisory behavior and whole host vet/race/fuzz.
+  This is not installed-state attestation, durable anti-rollback, owner-approved
+  downgrade recovery, signing/trust provisioning or target installation.
 - **M10.3 — Target transaction.** Explicit preflight, staged, verified, installing,
   boot-pending, health-confirmed and recovery states. Journal durable boundaries;
   check space/power prerequisites. An ambiguous state must not restart installation

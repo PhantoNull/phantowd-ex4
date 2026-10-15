@@ -52,6 +52,9 @@ type Options struct {
 	Channel    string
 	// Optional host prerequisite; not an attestation of a device installer.
 	InstallerVersion string
+	// Optional strict-upgrade prerequisite before payload download/staging.
+	// Empty preserves existing behavior; the supplied version is not attested.
+	RequireUpgradeFrom string
 }
 
 // Result contains verification evidence, never an install authorization.
@@ -181,6 +184,15 @@ func Inspect(ctx context.Context, options Options) (Result, error) {
 			return result, nil
 		}
 	}
+	var upgrade *releaseverify.UpgradePrerequisite
+	if options.RequireUpgradeFrom != "" {
+		assessment := verified.AssessUpgradePrerequisite(options.RequireUpgradeFrom)
+		upgrade = &assessment
+		result.Verification.UpgradePrerequisite = upgrade
+		if !assessment.StrictlyNewer {
+			return result, nil
+		}
+	}
 
 	specifications := verified.Artifacts()
 	if len(assets) != len(specifications)+2 {
@@ -215,10 +227,16 @@ func Inspect(ctx context.Context, options Options) (Result, error) {
 	}
 	result.Verification = verified.VerifyArtifacts(stage)
 	result.Verification.InstallerPolicy = installerPolicy
+	result.Verification.UpgradePrerequisite = upgrade
 	return result, nil
 }
 
 func validateOptions(options Options) error {
+	if options.RequireUpgradeFrom != "" {
+		if _, err := releaseverify.CompareVersions(options.RequireUpgradeFrom, options.RequireUpgradeFrom); err != nil {
+			return errors.New("current version must use strict v-prefixed SemVer syntax")
+		}
+	}
 	if options.InstallerVersion != "" {
 		if _, err := releaseverify.CompareVersions(options.InstallerVersion, options.InstallerVersion); err != nil {
 			return errors.New("installer version must use strict v-prefixed SemVer syntax")

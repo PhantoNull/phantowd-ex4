@@ -26,8 +26,8 @@ boundary, not a qualified controller driver or permission to transmit commands.
 
 ```text
 phantowd-lab build-release-manifest --artifacts DIR --public-key FILE --release-version VERSION --channel stable|beta|nightly --model ID --revision ID --source-commit SHA --buildroot-version VERSION --kernel-version VERSION --minimum-installer VERSION --artifact NAME:ROLE [--revision ID ...] [--artifact NAME:ROLE ...]
-phantowd-lab inspect-github-release --tag VERSION --public-key FILE --model ID --revision ID --channel stable|beta|nightly [--current-version VERSION] [--installer-version VERSION]
-phantowd-lab inspect-release --manifest FILE --signature FILE --public-key FILE --artifacts DIR --model ID --revision ID --channel stable|beta|nightly [--current-version VERSION] [--installer-version VERSION]
+phantowd-lab inspect-github-release --tag VERSION --public-key FILE --model ID --revision ID --channel stable|beta|nightly [--current-version VERSION [--require-upgrade]] [--installer-version VERSION]
+phantowd-lab inspect-release --manifest FILE --signature FILE --public-key FILE --artifacts DIR --model ID --revision ID --channel stable|beta|nightly [--current-version VERSION [--require-upgrade]] [--installer-version VERSION]
 phantowd-lab inspect-update FILE
 phantowd-lab inspect-mtd3 FILE
 phantowd-lab inspect-rescue FILE
@@ -163,7 +163,8 @@ changed opened size, short/long reads and observed metadata drift fail closed.
 The report covers bytes read during that check only; a future device updater
 must verify again immediately before installation. Exit status is `0` only
 when the signature, metadata, target, and every artifact pass; `2` means a parsed
-release is invalid for that key/target or one or more payloads fail; `1` is
+release is invalid for that key/target, a requested prerequisite refuses it,
+or one or more payloads fail; `1` is
 reserved for usage, input, or structural errors.
 
 Both release-inspection commands optionally accept `--current-version` with the
@@ -174,6 +175,20 @@ the installed version is caller-supplied, no anti-rollback state is persisted,
 and the result never authorizes installation. A same-version release or
 downgrade is reported as not monotonic but does not change the release-integrity
 exit status.
+
+Add `--require-upgrade` to require a strictly newer signed release **before**
+payload reads/downloads or temporary payload staging. This opt-in mode requires
+a valid `--current-version`; missing/malformed syntax returns exit `1` before
+opening CLI input files or making HTTP requests. Signature/schema/exact-target/
+channel, GitHub signed-tag and optional minimum-installer checks still precede
+the comparison. An equal/older version returns exit `2`, with
+`upgrade_prerequisite` metadata-only evidence and `artifacts_checked: false`.
+A newer version must still pass all payload size/hash checks. The separate
+`update_policy` keeps its existing full-verification meaning; without the new
+flag, existing advisory behavior and exit status are unchanged.
+
+This avoids unnecessary host downloads; it is not device attestation, durable
+anti-rollback protection, a rollback exception or installation permission.
 
 Both commands also accept optional `--installer-version`. After signed metadata
 and target checks, `installer_policy` compares that caller-supplied version
