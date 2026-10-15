@@ -2575,6 +2575,16 @@ stop conditions and suitable equipment/media; not ordinary software work.
   freshness, HDD normalization/hysteresis/overheat-to-shutdown path, hibernation
   ownership. Replacement contract/tests must distinguish requested/observed
   state and invalid/stale samples before separately qualified hardware controls.
+  **M7.3b — tach/register static reconstruction (partial):** exact `libshare`
+  paths map raw input versus latched cause, the wall-clock/iteration-bounded
+  transition estimator, fixed15x conversion and conditional nominal publication
+  substitutions. `/dev/mem` open/map failures collapse to zero, write receipts
+  are unconditional and failed-map paths retain an opened descriptor. Selected
+  GPL source supports bank1 bit7/GPIO39 under its mapping, not physical wiring
+  or permission to request a line. Acceptance before a real provider: calibrated
+  edge/count/elapsed provenance, monotonic overflow-safe sampling, explicit
+  read/clock errors, no nominal RPM substitution and no broad MMIO authority.
+  Host-only analysis does not qualify that provider or release the hardware gate.
 - **M7.4 — Peripheral support.** Qualify SATA bays, USB, RTC, LEDs, LCD, buttons,
   watchdog and power control. Hardware alarms override cosmetic display choices.
   Record LED/button semantics and shutdown completion, not just driver presence.

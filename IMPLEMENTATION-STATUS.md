@@ -16,9 +16,17 @@ verify application. These are observations, not product behavior to copy.
 identities, ELF locations, independent cross-checks and remaining implementation/
 hardware gates. No vendor executable, NAS, physical disk or controller command
 was run. No cooling code, sensor calibration, safe fan setting or longer boot
-is qualified; actual RPM, register mapping, full regulation and shutdown paths
+is qualified; actual RPM, physical binding, full regulation and shutdown paths
 remain incomplete. Documentation-only work does not require another firmware
 build or repair the outstanding native QEMU timing gate.
+
+The follow-up maps the selected `libshare` tach/register path: GPIO transitions
+are converted with a fixed multiplier without actual-window normalization;
+some changed positive estimates are replaced by nominal values before display.
+MMIO read errors collapse to zero and write returns do not report success;
+mapping-failure branches leak an opened descriptor. Selected GPL definitions
+support bank1 data/latched-cause and candidate GPIO39, not verified board wiring
+or calibrated RPM. No driver, DTS, sensor provider or product telemetry is added.
 
 ## iSCSI management prerequisite: coherent desired review projection
 
