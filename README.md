@@ -34,7 +34,7 @@ scope; [component contracts](src/phantowd-api/README.md) describe the boundaries
 | Area | Implemented / tested | Still needed for the product |
 | --- | --- | --- |
 | Build | Pinned Buildroot 2025.02.18 LTS / Linux 6.18.55 LTS; complete local ARMv5 integration and exact source/image/SBOM audit pass | Exact-head hosted checks, independent clean reproduction, installable EX4 image and release qualification |
-| Web management | Byte-bounded read-only snapshots with independent display validation and invalid/empty-inventory distinction, development authentication/password changes, SMB/NFS policy editing, configuration download and reviewed restore with explicit revisioned save, sanitized snapshot report export | Complete setup/recovery, certificate lifecycle, browser/accessibility qualification and live service management |
+| Web management | Byte-bounded snapshots and administrative replies with explicit browser load age, independent display validation and invalid/empty-inventory distinction, development authentication/password changes, SMB/NFS policy and desired user-reference editing, configuration download and reviewed restore with explicit revisioned save, sanitized snapshot report export | Complete setup/recovery, certificate lifecycle, browser/accessibility qualification and live service management |
 | Storage | Non-root read-only broker, complete sysfs inventory, manual GPT observations, duplicate-identity detection, protected registry with reader-bound rechecks, rechecked registry/census policy and backing reviews, internal MD/mount-owner fixtures | Trusted production lifecycle, persistent volume IDs, global-use accounting, qualified import and RAID management |
 | Sharing and identities | SMB3/NFS fixtures, disabled-first Samba accounts, session revocation, retained same-authority SMB startup/access, exclusive supervision, held-session and original-open-file source-loss, verified client/daemon closure, Unicode/CP850, streams and POSIX ACL tests | Product account workflows, complete fault coverage, supervised service activation/recovery and legacy permission migration |
 | iSCSI | Coherent desired policy, root-only CHAP reader, registry/share review, private declared SMB/NFS exposure refusal, shared backing-object reservations and retained-storage LIO/CHAP composition with ARMv5 access/session/fault fixtures | Product authority/composition, credential provisioning/recovery, external/cross-protocol use and complete session guards, import and target-management UI |
@@ -105,15 +105,15 @@ CLI/library guards. Its complete cached integration and independent artifact/
 source/license/SBOM audit pass. This does not enable target OpenSSL or qualify
 a NAS HTTPS service, independent clean reproduction or physical EX4 support.
 
-The latest fully audited local code checkpoint, `5245ada`, selects Go 1.26.8 and
-host OpenSSL 3.5.9. Complete cached host/ARMv5 integration, all ten independently
+The current integration candidate selects Go 1.26.8 and host OpenSSL 3.5.9.
+Complete cached host/ARMv5 integration, all ten independently
 enrolled Samba guests and both synthetic SMART lanes pass. The sharing fixtures
 cover same-authority startup, real data access, exclusive supervision, verified
 closure and idle original-session/open-file faults with retained review and no
 restart. Source restoration does not release reviewed authority. These are not
 pending-I/O, physical disk failure, durable reconnect or recovery qualifications.
 
-An independent audit matches all 1,067 API inputs, actual images, kernel/header
+An independent audit matches all 1,088 API inputs, actual images, kernel/header
 archives, the selected and installed Go SDK, release metadata, SBOM and declared
 license files. OpenSSL's three installed objects are byte-exact reproductions
 of their built objects after Buildroot's configured RPATH normalization. The
@@ -121,16 +121,12 @@ actual Buildroot Python consumer loads those libraries and passes certificate
 verification and private loopback TLS 1.3; see the
 [exact qualification record](support/DEPENDENCY-REVIEW.md).
 This does not establish independent clean reproduction, physical EX4 support,
-complete fault coverage or an installable release. The native QEMU fixture now
-separates preparation from enrollment and preserves the cause of incomplete
-revocation observations. Behavioral regression tests and the complete local
-lane pass; the integration PR still requires new-head hosted qualification.
-An earlier hosted QEMU run failed at a later live-session deadline;
-local success does not establish a hosted timing fix or waive that gate.
-The earlier complete candidate's final source-loss deadline remains unexplained;
-this newer complete pass is not a demonstrated timing fix. The combined candidate
-must pass its own hosted checks before integration. No product
-SMB/NFS service is activated; see [implementation status](IMPLEMENTATION-STATUS.md).
+complete fault coverage or an installable release. Ordinary-native QEMU work
+and verified settlement now share coordinated fixed deadlines without changing
+product/worker limits or removing proof. Successful local runs do not establish
+that earlier intermittent hosted failures are repaired. The current publication
+still requires its own hosted checks before integration. No product SMB/NFS
+service is activated; see [implementation status](IMPLEMENTATION-STATUS.md).
 
 ## Roadmap
 
@@ -179,6 +175,24 @@ timeout with a 10-second termination grace. A timeout is a failure, not a retry.
 Use the [fast integration lane](support/QEMU-FAST-TESTS.md)
 for eligible userspace changes; clean builds remain separate qualification.
 
+An optional [headless browser check](src/phantowd-api/README.md#test-commands)
+uses Node 24+ and an already installed Chromium-family browser with a disposable
+profile. It checks the synthetic overview at desktop and narrow widths, skip-link
+keyboard navigation and refresh. That default synthetic mode does not qualify
+real API authentication, all workflows or accessibility; CI downloads no browser.
+Its optional compiled Go test-fixture mode additionally exercises current
+authentication forms and original-cookie revocation with memory-only accounts;
+this is not production persistence, HTTPS browser trust or account recovery.
+Setup/login, password changes and sign-out use finite request/body/status
+deadlines and bounded replies; uncertain outcomes require an explicit status
+check, never an automatic mutation retry.
+
+With a trusted compatible base and unchanged volume-probe sources,
+`support/test-api-overlay.ps1 -ReuseBaseVolumeProbe` rebuilds only the API and
+runs one ARMv5 smoke boot in disposable RAM scratch. It uses read-only caches,
+never builds/pulls images or creates volumes, and has its own bounded resource
+profile; it does not replace the full build's 40 GiB headroom requirement.
+
 ### Build and boot QEMU
 
 With Docker Desktop running **Linux containers**, run from the repository root:
@@ -215,7 +229,8 @@ unrelated Docker resources remain; Docker's VHDX may need separate compaction.
 ## Codebase guide
 
 - [Management API/UI](src/phantowd-api/README.md): authentication, configuration,
-  identity coordination and development fixtures.
+  identity coordination, development fixtures and a
+  [draft management threat model](src/phantowd-api/THREAT-MODEL.md).
 - [Storage probe](src/phantowd-volume-probe/README.md): restricted descriptor-based
   metadata helper.
 - [Research toolkit](tools/phantowd-lab/README.md): host-only image, metadata and

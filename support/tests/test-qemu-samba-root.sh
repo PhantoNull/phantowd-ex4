@@ -15,7 +15,7 @@ selection=${8:-all}
 diagnostics=${9:-none}
 case "$diagnostics" in none|diagnostic) ;; *) exit 1 ;; esac
 case "$selection" in
-    all|service|native|candidate|lifecycle|fault|data|exit|held|file|file-source|pending|pending-peer-exit|pending-handle) ;;
+    all|service|native|native-data|candidate|lifecycle|fault|data|exit|held|file|file-source|pending|pending-peer-exit|pending-handle) ;;
     *) exit 1 ;;
 esac
 tmpdir=${TMPDIR:-/tmp}
@@ -50,7 +50,7 @@ cleanup() {
         "$scratch/smbstatus.json" "$scratch/smbcontrol.json" \
         "$scratch/streams_xattr.json" "$scratch/ibm850.json" "$scratch/manifest" \
         "$scratch/launcher" "$scratch/charset" "$scratch/bundle" "$scratch/owner" \
-        "$scratch/service.log" "$scratch/native.log" "$scratch/candidate.log" \
+        "$scratch/service.log" "$scratch/native.log" "$scratch/native-data.log" "$scratch/candidate.log" \
         "$scratch/lifecycle.log" "$scratch/fault.log" "$scratch/data.log" "$scratch/exit.log" "$scratch/held.log" "$scratch/file.log" "$scratch/file-source.log"
     rm -f "$scratch/pending.log" "$scratch/pending-peer-exit.log" "$scratch/pending-handle.log"
     if [ "$pending_profile" -eq 1 ]; then rm -rf "$scratch/pending"; fi
@@ -164,9 +164,11 @@ sh "$source_dir/support/tests/stage-samba-root-file.sh" "$debugfs" \
     "$scratch/rootfs.ext2" "$scratch/manifest" \
     /usr/lib/phantowd/qemu-samba-root.manifest "$scratch/stage-roundtrip" 0100644
 # Default remains the complete qualification. Explicit local selection narrows
-# only which fresh guest is run, never its guards, assertions or180s deadline.
+# only which fresh guest is run, never its guards or assertions. Ordinary native
+# has the reviewed common-clock/reserve cap; every other guest keeps180s.
 for campaign in $campaigns; do
-    timeout --signal=TERM --kill-after=5 180 qemu-system-arm \
+    guest_seconds=$(python3 -B "$source_dir/support/tests/samba_root_fixture.py" guest-timeout "$campaign")
+    timeout --signal=TERM --kill-after=5 "$guest_seconds" qemu-system-arm \
     -M versatilepb -cpu arm926 -m 256M -nographic -no-reboot -nic none \
     -object rng-random,id=samba-rng,filename=/dev/urandom \
     -device virtio-rng-pci,rng=samba-rng \

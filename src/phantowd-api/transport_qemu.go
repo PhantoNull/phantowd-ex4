@@ -37,6 +37,18 @@ func exerciseQEMUTLS() error {
 // The non-Linux host test injects memory-only credentials. Actual ARMv5 runs
 // always enter through exerciseQEMUTLS and use the production Linux adapter.
 func exerciseQEMUTLSWithAccountFactory(openAccounts func(string) (*accountStore, error)) error {
+	// Exercise the real configuration admission before opening any listener.
+	// Synthetic addresses are never bound or resolved by this negative check.
+	for _, address := range []string{"192.0.2.10:8080", "[2001:db8::10]:8080", "0.0.0.0:8080", "unresolved.example:8080"} {
+		values := map[string]string{listenAddressEnv: address, publicOriginEnv: "http://127.0.0.1:8080"}
+		config, err := loadAPITransportConfigFrom(func(name string) (string, bool) {
+			value, ok := values[name]
+			return value, ok
+		})
+		if err == nil || config.Address != "" || config.AllowedOrigin != "" || config.TLSConfig != nil {
+			return errors.New("plaintext test listener accepted outside loopback")
+		}
+	}
 	directory, err := os.MkdirTemp("", "phantowd-qemu-tls-")
 	if err != nil {
 		return errors.New("cannot create temporary TLS test state")
@@ -47,6 +59,9 @@ func exerciseQEMUTLSWithAccountFactory(openAccounts func(string) (*accountStore,
 	}
 	certificatePath, keyPath, certificatePEM, err := createQEMUTLSFixture(directory)
 	if err != nil {
+		return err
+	}
+	if err := exerciseQEMUTLSMaterialBounds(directory, certificatePath, keyPath, certificatePEM); err != nil {
 		return err
 	}
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
@@ -114,6 +129,30 @@ func exerciseQEMUTLSWithAccountFactory(openAccounts func(string) (*accountStore,
 	defer client.CloseIdleConnections()
 
 	credentials := setupRequest{Username: "qemu-tls-admin", Password: "qemu-tls-self-test-password"}
+	malformedAlias, err := json.Marshal(map[string]string{"Username": credentials.Username, "password": credentials.Password})
+	if err != nil {
+		return errors.New("cannot encode credential JSON refusal fixture")
+	}
+	invalidUTF8 := append([]byte(`{"username":"qemu-tls-admin","password":"long enough text `), 0xff)
+	invalidUTF8 = append(invalidUTF8, []byte(`"}`)...)
+	for _, malformed := range [][]byte{malformedAlias, invalidUTF8} {
+		request, err := http.NewRequest(http.MethodPost, transport.AllowedOrigin+authSetupPath, bytes.NewReader(malformed))
+		if err != nil {
+			return errors.New("cannot create credential JSON refusal request")
+		}
+		request.Header.Set("Origin", transport.AllowedOrigin)
+		request.Header.Set("Content-Type", "application/json")
+		response, err := client.Do(request)
+		if err != nil {
+			return errors.New("HTTPS credential JSON refusal request failed")
+		}
+		closeErr := response.Body.Close()
+		if closeErr != nil || response.StatusCode != http.StatusBadRequest || len(response.Cookies()) != 0 {
+			return errors.New("malformed credential JSON reached HTTPS enrollment")
+		}
+	}
+	// The canonical setup below must still create the first account. Negative
+	// setup requests do not consume login attempts or change its existing quota.
 	body, err := json.Marshal(credentials)
 	if err != nil {
 		return errors.New("cannot encode TLS account setup request")
@@ -138,6 +177,10 @@ func exerciseQEMUTLSWithAccountFactory(openAccounts func(string) (*accountStore,
 	if response.StatusCode != http.StatusCreated || response.TLS == nil || response.TLS.Version < tls.VersionTLS12 || !secureSessionCookie {
 		return errors.New("HTTPS account setup did not satisfy the TLS and cookie policy")
 	}
+	if err := exerciseQEMUDashboardAssets(client, transport.AllowedOrigin); err != nil {
+		return err
+	}
+	fmt.Printf("PHANTOWD_DASHBOARD_ASSETS_READY transport=https assets=%d byte_exact=true scope=qemu-loopback-only\n", len(qemuDashboardAssets))
 
 	if err := exerciseQEMUFileServicePreview(client, transport.AllowedOrigin); err != nil {
 		return err
@@ -200,6 +243,52 @@ func exerciseQEMUTLSWithAccountFactory(openAccounts func(string) (*accountStore,
 		return errors.New("TLS test server returned an unexpected result")
 	}
 	serverStopped = true
+	return nil
+}
+
+// Valid PEM prefixes with excess whitespace must refuse before any listener
+// opens. These are fresh, synthetic files under this fixture's own directory.
+func exerciseQEMUTLSMaterialBounds(directory, certPath, keyPath string, certificatePEM []byte) error {
+	keyPEM, err := os.ReadFile(keyPath)
+	if err != nil {
+		return errors.New("cannot read generated TLS fixture key")
+	}
+	defer clear(keyPEM)
+	for _, test := range []struct {
+		name    string
+		prefix  []byte
+		limit   int64
+		private bool
+	}{
+		{"oversized.crt", certificatePEM, maxTLSCertificatePEMBytes, false},
+		{"oversized.key", keyPEM, maxTLSPrivateKeyPEMBytes, true},
+	} {
+		if int64(len(test.prefix)) > test.limit {
+			return errors.New("unexpected TLS fixture prefix size")
+		}
+		payload := append([]byte(nil), test.prefix...)
+		payload = append(payload, bytes.Repeat([]byte{'\n'}, int(test.limit)+1-len(payload))...)
+		path := filepath.Join(directory, test.name)
+		writeErr := os.WriteFile(path, payload, 0600)
+		clear(payload)
+		if writeErr != nil {
+			return errors.New("cannot write bounded TLS refusal fixture")
+		}
+		certificate, key := certPath, keyPath
+		if test.private {
+			key = path
+		} else {
+			certificate = path
+		}
+		values := map[string]string{
+			listenAddressEnv: "127.0.0.1:8443", publicOriginEnv: "https://127.0.0.1:8443",
+			tlsCertFileEnv: certificate, tlsKeyFileEnv: key,
+		}
+		config, err := loadAPITransportConfigFrom(func(name string) (string, bool) { value, ok := values[name]; return value, ok })
+		if err == nil || config.Address != "" || config.AllowedOrigin != "" || config.TLSConfig != nil {
+			return errors.New("oversized TLS fixture material admitted")
+		}
+	}
 	return nil
 }
 

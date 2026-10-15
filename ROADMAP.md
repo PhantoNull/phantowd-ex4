@@ -458,6 +458,23 @@ button to an unqualified backend simply because the screen exists.
   pull/build an image or create a volume. Preserve isolation, exact-source
   hashes and clean-build/reproducibility lanes. Cache hits are an optimization,
   never qualification evidence.
+  **Current native timing gate:** coordinated fixture-only budget design is
+  approved and implemented: ordinary-native work300s, one fixed settlement
+  deadline at original work deadline+30s, host360s including30s boot/final
+  margin. Other guests retain180s. Nine sequential phase caps still total255s;
+  native4s status/20s revocation and generic2/5s worker limits remain unchanged.
+  Maxima are not minimum runtime, and an outer extension does not repair child
+  expiry. Earlier hash/allocation/applet/scratch/PGO measurements do not supply
+  a new end-to-end optimization to adopt. The
+  [timing-contract work packet](support/QEMU-FAST-TESTS.md#native-timing-contract-decision-gate)
+  specifies complete hierarchy/cleanup reserves, actual-runner clock tests,
+  unchanged proofs/default union, focused-first verification and own-head/full
+  integration gates. The focused original trace and complete cached local
+  integration now pass, followed by an independent exact1088-source/image/
+  SDK/legal/SBOM audit. Own-head hosted checks remain required; historical
+  intermittent failures are not declared repaired by these successful runs.
+  It supersedes historical suggestions below to repeat
+  already completed profiling. No product or generic timeout changes follow.
   **Current source-loss gate:** earlier `5b90e22` failed final file-source
   quarantine/supervision despite nine accepted campaigns. Instrumented code
   checkpoint `5245ada` now passes the original complete cached lane, all ten
@@ -882,6 +899,13 @@ qualification remain open. The revocation primitive is currently QEMU-only.
   do not prove injected kernel EIO, native-wrapper teardown, clean-build or
   physical-device qualification, or
   resolution of the independent promotion-blocking timeout.
+  Failed `identityowner.Open` now also propagates redacted cleanup uncertainty:
+  early backend closure and post-lock Owner cleanup preserve the original
+  admission error plus review/unavailability instead of discarding the result.
+  Confirmed cleanup retains exact errors; no new handle or retry is introduced.
+  Whole isolated Linux identityowner race-count3 covers real lock retention/
+  release with modeled external teardown. This is not kernel-close EIO,
+  durable quarantine/recovery, new HTTP/startup or physical qualification.
   Reopened intent becomes
   review-required without command replay. The internal credential-bearing
   version-2 Unix-socket methods, including explicit `enable` and `disable`, are bound to the
@@ -2181,10 +2205,46 @@ milestone before enabling its controls; M1/M6 for deployment.
 - **M5.2 — HTTPS lifecycle.** Specify initial certificate trust, device naming,
   replacement/renewal, key permissions, time errors and restart behavior.
   Transport support is not a certificate provisioning strategy.
+  **M5.2a — plaintext listener admission (partial; locally tested):** require
+  both the actual configured listener host and public-origin host to be loopback
+  before permitting HTTP. A loopback origin previously admitted a concrete
+  external listener without TLS; two RED reproductions precede the minimal
+  guard fix. Sixteen IPv4/IPv6/name/wildcard/port controls preserve supported
+  loopback HTTP and existing HTTPS tests. Windows API/UI/vet/ARM cross and pinned
+  Linux whole API vet/unit/tagged-vet/proc checks pass. Actual single-boot ARMv5
+  overlay executes four negative guards before the unchanged TLS fixture and
+  preserves default smoke/base hashes. No external socket is opened by those
+  checks. This is not product certificate provisioning, LAN deployment, complete
+  image/SBOM, physical support or its own hosted qualification.
+  The [management threat model](src/phantowd-api/THREAT-MODEL.md) maps current
+  routes/trust boundaries, TM-01–TM-10 acceptance packets and remaining product
+  gates. It is a source-based draft, not an independent security sign-off.
+  **M5.2b — bounded supplied TLS material (partial):** read certificate/key PEM
+  through checked open files, with inclusive256/64KiB input bounds and zero
+  transport result on refusal. Both leaves must be regular and non-symlink;
+  Linux no-follow/nonblocking opens and metadata rechecks preserve POSIX key
+  permissions. The standard HTTPS fixture adds oversized valid-prefix refusals
+  before its listener. Windows/pinned Linux whole checks, focused race-count3
+  and one normal ARMv5 smoke pass. This is not retained parent authority, all-change/low-
+  level I/O-fault coverage, an I/O deadline, whole-TLS memory qualification,
+  certificate provisioning/renewal or product LAN admission.
 - **M5.3 — Typed operation API.** Map privileges and state transitions to endpoints.
   Preserve strict decoding, origin/Host validation, CSRF, bounded requests,
   generic errors and per-operation concurrency limits. Long jobs return durable
   identity/status; cancellation must distinguish requested from actually stopped.
+  **M5.3a — exact credential JSON (partial; local host/ARM verification):** setup/
+  login reuse the existing bounded Unicode/duplicate/exact-key envelope instead
+  of a parallel recursive scanner. A case-alias request previously enrolled an
+  account and issued a cookie (two HTTP REDs); the decoder now refuses before
+  credential operations. Fifty-two malformed HTTP cases retain account/session
+  state; Unicode, paired escapes, literal U+FFFD, escaped canonical keys and
+  inclusive 2 KiB controls preserve credential bytes. Unknown-length excess
+  input is bounded without trusting Content-Length. Existing body/rate/KDF/
+  origin/session limits and persistent formats remain unchanged. Windows and
+  pinned Linux preflight and actual one-boot ARM overlay pass; the HTTPS fixture
+  refuses two setup requests before canonical enrollment without altering login
+  quota. Source/base/probe hashes agree and scratch is discarded. This is not
+  current own-hosted/full/two-boot/SBOM, browser or product qualification.
 - **M5.4 — Complete workflows.** Setup, system health, disks/arrays, shares,
   identities, iSCSI, network, updates and recovery screens must show freshness,
   partial failure, confirmation/preview and observed results. Do not display
@@ -2227,6 +2287,28 @@ milestone before enabling its controls; M1/M6 for deployment.
   qualification, production persistence/provisioning/service composition and
   recovery remain open. This is not the M5.6 sanitized support bundle, a complete
   appliance backup or an installer/legacy migration qualification.
+  **M5.4c — snapshot load age (partial; host-tested):** show monotonic browser
+  time since current complete/partial load, independently of backend/wall-clock
+  timestamps. One local30s watcher, no API/disk polling/history; refresh/auth
+  invalidation retires it and queued old callbacks cannot overwrite newer state.
+  Invalid/regressing/missing clock means unknown age, without hiding valid data
+  or automatic recovery before refresh. All-unavailable results have no watcher;
+  hidden tabs skip periodic text writes and age is not a live region. This is
+  not device observation age, health or an atomic snapshot. Complete DOM and
+  Windows/pinned Linux preflight and one actual ARMv5 embedded-asset smoke pass;
+  no JavaScript executes in QEMU. Browser/full/hosted/product gates stay separate.
+  **M5.4d — explicit desired user references (partial development workflow):**
+  create a reference without grants or remove one exact selected reference only
+  after its last desired SMB grant is explicitly removed. Preserve all unrelated
+  definitions/rules, show before/after review and require existing revisioned
+  Save; no default-delete selection, cascading cleanup or automatic retry.
+  These are policy references, not Unix/Samba accounts, credentials, live access
+  revocation, rename or native identity reuse. Acceptance: name/duplicate/128
+  bounds, selected-ID binding, referenced-removal refusal, immutable baseline,
+  grant/NFS preservation, first/last reference, uncertain-save reconciliation,
+  actual authenticated HTTP round trips and dangling-reference rejection. Verify
+  updated embedded assets in ARM; real-browser/accessibility and native account
+  management/recovery remain separate product gates.
 - **M5.5 — Accessible efficient UI.** Keyboard operation, labels/focus, narrow
   viewports, screen-reader status and high contrast; bounded static assets and
   shared observations. Avoid per-client hardware polling, stale-response
@@ -2308,6 +2390,109 @@ milestone before enabling its controls; M1/M6 for deployment.
   with complete raw HTTP/HTTPS asset markers. This is not full JSON/schema/provenance, browser heap/CPU hard
   limits, live/compressed transport, all mutation/import response bounds or
   verified server/kernel stop. See the component contract before extending it.
+- **M5.5g — File-service response lifetimes (partial; host-tested).** The combined
+  desired-policy manager consumes six fixed method/path responses through the
+  existing bounded stream reader. Session/save16KiB, configuration/backup525056
+  bytes, preview/restore4MiB; preserve diagnostic defaults while allowing bounded
+  large grant/client collections and document-plus-preview restore structure.
+  HTTP errors retain status without body consumption; failure requests cancel
+  and releases the lock without awaiting peer cleanup. Existing10s operation
+  cancellation is rechecked at completed body handoff before publication.
+  Overflow and handoff-cancellation RED regressions precede fixes. Whole final
+  Windows/pinned Linux checks and actual-source DOM controls pass, including
+  inclusive/excess bounds on every route, canceled/retired bodies, dense real Go
+  producer samples and retained uncertain PUT reconciliation with no retry.
+  The final standard single-boot ARMv5 overlay also passes embedded-asset and
+  existing TLS/auth checks; it does not execute browser JavaScript or qualify
+  the separate native timing campaign.
+  Other panel flows, browser/load/heap, complete transport/teardown, hosted and
+  product qualification remain separate. No activation or authority is added.
+  **M5.5h — exact HTTP/HTTPS dashboard asset fixtures:** use one verifier for all
+  seven embedded assets over both existing loopback transports. Enforce64KiB
+  response bounds, exact decoded-body match, source markers, single exact MIME/
+  no-store/nosniff/CSP headers and body read/close success. Require both transports
+  before/after API restart; missing/excess/lookalike receipts refuse readiness.
+  Acceptance: real host HTTP/HTTPS, marker-preserving corruption and metadata/
+  read/close/overflow/redirect/error refusals, tagged race tests, actual ARM smoke
+  and runner-negative controls. This is packaging/transport parity within the
+  running binary, not browser execution, signed release provenance or product
+  certificate lifecycle; no timeout, privilege or normal startup change.
+- **M5.5i — Actual-browser synthetic overview smoke (partial).** Reuse an
+  installed Chromium-family browser, an isolated disposable profile and the
+  host-only synthetic preview. Verify applied CSS and horizontal containment
+  at 1365/390/320 px, actual Tab/Enter skip-link navigation, explicit refresh,
+  no uncaught exceptions and only same-origin GET page requests. Record all
+  current source hashes and bounded screenshots; fail on source drift or uncertain
+  child/profile cleanup. The reproduced 320 px viewport/305 px client-width
+  overflow is corrected by removing the fixed body minimum. Fast host checks
+  separately enforce preview port admission, ephemeral loopback and route
+  refusals; no browser download or automatic browser dependency is introduced.
+  This does not qualify Go authentication, all management workflows, assistive
+  technology/WCAG, heap/performance, network isolation or hardware. Embedded
+  ARMv5 asset parity is a separate proof, not guest browser execution.
+- **M5.5j — Browser-to-auth-handler smoke (partial; host fixture).** Reuse the
+  installed-browser runner with an explicitly compiled test-only Go server,
+  memory-only accounts and invented system input. Exercise setup, incorrect
+  credentials, logout/login, password change and old/new password behavior,
+  global logout; independently replay each original HttpOnly cookie before/
+  after revocation. Preserve partial storage/RAID/mount unavailability without
+  a real collector. Match embedded UI hashes before navigation; verify explicit
+  fixture stop, zero exit and disposal receipt before success. The normal host
+  suite must prove auth admission, synthetic-only values and opt-in server skip.
+  No production code, persistence, privilege, HTTPS trust, second-browser/race,
+  account recovery, service activation or physical device qualification follows.
+  Keep exact pure-host paths in cheap CI without excluding other API sources.
+- **M5.5k — Bounded setup/login submission (partial).** One ten-second browser
+  deadline covers credential POST headers/body and its follow-up status read;
+  cap the decoded JSON reply at16KiB and obtain session authority only from
+  status. Diagnostic refresh retains its separate existing lifetime. Refuse
+  duplicate active submissions and retire old continuations without touching
+  replacement attempts. Known400/401/409/429 refusals use fixed messages;
+  unknown/expired outcomes hide data/forms, clear input and release controls
+  without retry. Explicit reconnect reads status only, including completed setup.
+  Keep each asset within64KiB by deferring authentication in a separate module;
+  verify the complete seven-file roster over both transports across API restart.
+  Acceptance: actual-source RED/GREEN for setup/login header/body/status stalls,
+  inclusive/excess replies, fixed/redacted failures, duplicate/retired events
+  and late/status-only reconciliation; real-browser controlled pre-header login
+  stall; whole host/Linux and actual ARM asset smoke. Browser scheduling is not
+  a hard wall-clock guarantee; abort is not server rollback/cancel proof.
+  Concurrent tabs, production auth/recovery,
+  certificate and full accessibility qualification remain separate.
+- **M5.5l — Bounded authenticated mutations (partial).** Password replacement,
+  local logout and global panel logout share one exclusive lifetime and original
+  ten-second controller through session/CSRF GET, mutation POST and final status.
+  Bound each decoded JSON response at16KiB; no unbounded JSON fallback or renewed
+  status timer. Require existing endpoint confirmation flags plus explicit
+  `authenticated:false`; HTTP200 alone is insufficient. Fixed password refusal
+  notices require the matching401/422/429 code. Unknown/expired outcomes hide
+  data/form and require explicit status-only reconnect, with no mutation retry.
+  Retirement cancels old work/releases controls/clears fields; old finalizers
+  cannot unlock replacements. Block snapshot/report work during the mutation.
+  Acceptance: actual-source RED/GREEN;18 session/POST/status header/body stalls,
+  inclusive/excess/malformed replies, invalid CSRF sessions, network/HTTP errors,
+  confirmation/refusal cases, duplicates and retired/replacement ownership;
+  actual-browser controlled password/global-logout stalls with original-cookie
+  validity and no false revocation/retry; whole host/Linux and ARM asset smoke.
+  Browser scheduling/abort is not hard wall clock or server cancellation/rollback.
+  Durable account recovery, concurrent tabs, other workflows, full security and
+  accessibility/product/hardware qualification remain separate.
+- **M5.5m — Reconcile the two administrative-response candidates (partial).**
+  Join PR133's exact source/history with the later guard candidate, preserving
+  both test sets. Retain M5.5g's stricter six method/path consumer limits and
+  M5.5k/l's separate single-flight authentication module byte-for-byte. Add the
+  earlier bounded consumers for GPT64KiB, saved share-only policy512KiB,
+  standalone preview4MiB and their session16KiB reads. The generic eight-profile
+  reader retains tested1MiB combined/backup ceilings, but the active combined
+  manager still enforces525056bytes; these are not interchangeable contracts.
+  Keep diagnostic defaults and higher-cardinality policy structure bounds,
+  no JSON fallback, generation/CSRF/revision/uncertain-save guards and all tests.
+  Prevent resurrection of old duplicate authentication handlers during merging.
+  Acceptance: both complete DOM suites, Windows/pinned Linux and current browser
+  smoke, then exact seven-asset ARM parity; no history loss or implicit develop
+  merge. Previous isolated source proofs do not qualify the new combined head.
+  Full/own-hosted/native timing, browser coverage of all workflows, physical
+  recovery, product service activation and installation remain separate gates.
 - **M5.6 — Audit and diagnostics.** Record actor, operation ID, revisions and
   redacted outcome; bound retention. Export a sanitized support bundle that
   excludes credentials, private keys, passdb hashes and user file contents.
@@ -2452,8 +2637,9 @@ do not fabricate or clone addresses.
 
 ## M7: EX4 board, controller and thermal qualification
 
-**State:** hardware research only. **Entry:** a separately approved plan with
-stop conditions and suitable equipment/media; not ordinary software work.
+**State:** partial offline research/software prerequisites; hardware unqualified.
+**Hardware entry:** a separately approved plan with stop conditions and suitable
+equipment/media; not ordinary software work.
 
 - **M7.1 — Evidence inventory.** Map supported board revisions, SoC/RAM, UARTs,
   GPIO/pinmux, interrupts, controllers and boot handoff. Keep model-specific
@@ -2482,6 +2668,66 @@ stop conditions and suitable equipment/media; not ordinary software work.
   behavior. Define startup-safe fan state, unavailable/stale sensor handling,
   controller/daemon failure, overtemperature and safe shutdown. Do not disable
   watchdogs or alarms to prolong an unstable experiment.
+  **M7.3a — offline legacy path reconstruction (partial):** hash-bound final
+  ARM analysis maps level-request IPC, initial LOW/conditional HIGH boot,
+  GPIO boolean-state selection and zero-result last-good temperature fallback.
+  Requested speed is not confirmed speed; generic ACK and cached nonzero XML
+  do not prove command application or fresh temperature. No active controller
+  or safe thresholds are supplied. See the [evidence and contributor handoff](board/wd/ex4/THERMAL-RESEARCH.md).
+  Remaining offline work: exact tach/register/error interface, conversion and
+  freshness, HDD normalization/hysteresis/overheat-to-shutdown path, hibernation
+  ownership. Replacement contract/tests must distinguish requested/observed
+  state and invalid/stale samples before separately qualified hardware controls.
+  **M7.3b — tach/register static reconstruction (partial):** exact `libshare`
+  paths map raw input versus latched cause, the wall-clock/iteration-bounded
+  transition estimator, fixed15x conversion and conditional nominal publication
+  substitutions. `/dev/mem` open/map failures collapse to zero, write receipts
+  are unconditional and failed-map paths retain an opened descriptor. Selected
+  GPL source supports bank1 bit7/GPIO39 under its mapping, not physical wiring
+  or permission to request a line. Acceptance before a real provider: calibrated
+  edge/count/elapsed provenance, monotonic overflow-safe sampling, explicit
+  read/clock errors, no nominal RPM substitution and no broad MMIO authority.
+  Host-only analysis does not qualify that provider or release the hardware gate.
+  **M7.3c — thermal input/shutdown static linkage (partial):** receiver lookup
+  precedes selector validation without a visible index guard; visible initialized
+  data is not a proven declared-array bound or calibrated Celsius. Map differing
+  model predicates, HDD display-versus-control transformations, skipped sleeping
+  slots, composite score and counter-based thermal request. Selected consumer
+  clears the request before a double activity gate and asynchronous shutdown;
+  remaining marker/reassertion paths are not a verified shutdown transaction.
+  Replacement acceptance: per-sensor/per-disk quality, no brand exclusion or
+  nominal health, bounded monotonic deadlines, retained intent/verified deferral
+  and cooling ownership through shutdown. No safe numerical thresholds or
+  physical shutdown qualification follow from the legacy constants.
+  **M7.3d — deferral/hibernation static linkage (partial):** boot attempts a
+  persistent-to-temporary marker move, then the consumer attempts unlink before
+  its activity gate, without checked results. USB/SATA guards are not global
+  admission. The selected `set_pwm` manages disk activity/sleep bitmaps, not an
+  observed direct cooling command; its dependencies/MCU effects remain open.
+  Acceptance: retained deferral/replay intent, per-disk generation/freshness,
+  helper crash invalidation, index equivalence with slot holes, bounded wake/
+  shutdown settlement and thermal-safe workload admission. Do not infer physical
+  sleep, cooling handoff or power-off from a command, bitmap or readiness marker.
+  **M7.3e — private observation evaluation (host/QEMU prerequisite):** a bounded
+  pure evaluator distinguishes missing/generation mismatch, invalid clock/stale,
+  unavailable/read failure/disk sleep, unqualified/raw and out-of-range samples.
+  Only a current point-in-time observation exposes its number, including genuine
+  zero; no last-good or nominal substitution. Roster, generation, monotonic
+  origin, units/calibration, TTL and measurement interval remain trusted-caller
+  obligations, not properties proven by input flags. No safe thermal policy,
+  I/O, HTTP, history, controller or activation. Acceptance: exact time/range
+  boundaries and overflow, whole-roster refusal, private immutable output,
+  fixed-count fuzz and invented-source fixture in the existing standard ARM boot.
+  See the [component contract](src/phantowd-api/internal/thermalreport/README.md).
+  **M7.3f — exact tach arithmetic (host/QEMU prerequisite):** normalize a supplied
+  transition count by its actual window and explicit transitions/revolution,
+  not WD's fixed multiplier. Preserve all inputs and fractional-result evidence;
+  exact128-bit products/checked division must reject unrepresentable RPM without
+  clipping. No physical calibration, trustworthy counting/window, source
+  qualification, safe-speed threshold or actuator follows from arithmetic.
+  Acceptance: independent big-integer oracle including wide products, signed
+  output bounds, zero/fractional cases, fixed-count fuzz, allocation benchmark
+  with exact scope and synthetic execution in the existing ARM self-test.
 - **M7.4 — Peripheral support.** Qualify SATA bays, USB, RTC, LEDs, LCD, buttons,
   watchdog and power control. Hardware alarms override cosmetic display choices.
   Record LED/button semantics and shutdown completion, not just driver presence.
@@ -3161,6 +3407,24 @@ support per tested combination; refuse untested combinations without mutation.
   Next compose qualified code/backend, registry/media identity, access and
   allocation, global-use/session and protected credentials, then product
   supervision/recovery. No extra guest boot, HTTP surface or NAS operation.
+- **M9.2f — Desired iSCSI management projection (internal prerequisite).**
+  Reuse the whole coherent policy validator; never add an independent dialect
+  or choose/migrate authoritative old/new stores through display code. Project
+  complete target/LUN/initiator/grant relationships and proposed backing fields,
+  omitting credential usernames, SecretRefs and raw filesystem UUIDs. Preserve
+  exact uint64 revision/capacity as decimal strings and bounded numeric counts/
+  LUN numbers. Desired enabled is not running; storage, credentials, runtime and
+  activation remain explicitly unqualified. Return no partial output on invalid
+  or mixed revisions, never truncate accepted rows, cap encoded output at256KiB,
+  and keep input/output ownership separate. No file/secret/device/process I/O.
+  Acceptance: exact large integers, nil/empty distinctions, seven revision
+  refusals, foreign refs/RO escalation, privacy/copy controls, dense1024grants,
+  bounded arbitrary-JSON fuzz through the existing decoder, whole Windows/Linux
+  and actual standard ARMv5 synthetic projection/stale-refusal assertions.
+  Next, scope an authenticated manual preview and text-only panel with finite
+  body/response budgets and session lifetime. That interface preference remains
+  pending; no HTTP, persistence, service activation or NAS operation is added
+  by this internal prerequisite. Never run a second authoritative policy writer.
 - **M9.3 — Guard mutations.** Create/enable/disable/grow/remove operations check
   real initiator/session ownership and backing-volume state. Prevent local
   filesystem mounting while an initiator owns the LUN; prohibit unsafe shrink.
@@ -3336,6 +3600,15 @@ and failed-update recovery demonstrated beyond merely reaching a boot prompt.
   enrollment/recovery, updates, sessions, secrets, application execution and data
   access. Review dependency advisories and document mitigation/response ownership.
   No known unresolved critical data-loss, authentication or cooling issue ships.
+  **Partial Samba July packet:** six upstream advisories are reconciled with
+  selected4.22.11 and190 archive-identical source files. Distinguish declared
+  AD DC exclusion from actual compiled/installed CTDB; an absent CTDB init
+  entry is not proof against all activation paths. The QEMU preview-parser
+  fixture explicitly disables clustering and queries actual target `testparm`;
+  this does not change the share-only renderer or qualify a product global
+  profile, remove a build feature, settle lifecycle or close all advisories.
+  Keep source-page inconsistencies and upstream's remaining CTDB packet-size
+  protection requirement visible. [Review packet](support/DEPENDENCY-REVIEW.md#samba-july-advisorysource-cross-check-2026-10-15).
   **Build-only hardening increment:** existing QEMU and EX4 B2/B3 resolved-config
   auditors refuse unused `CONFIG_CRYPTO_USER_API*` builtin/module interfaces.
   Internal kernel crypto remains available; no AF_ALG hash backend or kernel

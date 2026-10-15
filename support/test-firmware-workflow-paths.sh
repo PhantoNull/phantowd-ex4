@@ -252,6 +252,9 @@ PY
 host_tool_paths='
 tools/phantowd-lab/**
 support/test-lab-tools.ps1
+support/test-dashboard-browser.mjs
+support/tests/test-dashboard-preview.mjs
+src/phantowd-api/browser_fixture_test.go
 support/container/test-lab-tools.sh
 support/build-qemu.ps1
 support/clean-qemu-build-volumes.ps1
@@ -469,7 +472,7 @@ for path in 'support/build-qemu.ps1' \
     require_ignored_path "$stage_b3_workflow" "$path"
 done
 require_bounded_qemu_ccache "$qemu_workflow"
-require_fixed_fuzz_campaigns "$repo_root/support/container/test-api.sh" 22
+require_fixed_fuzz_campaigns "$repo_root/support/container/test-api.sh" 24
 require_fixed_fuzz_campaigns "$repo_root/support/container/test-lab-tools.sh" 5
 require_fixed_fuzz_campaigns "$host_workflow" 4
 
@@ -538,6 +541,14 @@ if ! grep -F 'package/phantowd-api/mdev.conf' "$overlay_script" >/dev/null ||
 fi
 
 require_locked_host_go_sdk "$host_workflow" "$repo_root/versions.env"
+for command in '          node --check support/test-dashboard-browser.mjs' \
+    '          node support/tests/test-dashboard-preview.mjs' \
+    "        run: go test -count=1 -run '^Test(BrowserFixtureDiagnosticsStaySynthetic|DashboardBrowserAPIFixture)\$' ."; do
+    if ! grep -Fx "$command" "$host_workflow" >/dev/null; then
+        printf 'host workflow must execute dashboard check: %s\n' "$command" >&2
+        exit 1
+    fi
+done
 sh "$repo_root/support/tests/test-storage-broker-buildroot.sh"
 
 printf 'Firmware workflow path-contract tests passed\n'

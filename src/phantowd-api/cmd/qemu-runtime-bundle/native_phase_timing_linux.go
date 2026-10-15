@@ -52,3 +52,28 @@ func reportNativePhaseTimingQEMU(phase nativeFixturePhaseQEMU, started time.Time
 		fmt.Println(row)
 	}
 }
+
+type nativeDataPhaseQEMU uint8
+
+const (
+	nativeDataEnteredQEMU nativeDataPhaseQEMU = iota
+	nativeDataPreparedQEMU
+	nativeDataProbedQEMU
+	nativeDataClosedQEMU
+)
+
+// Local elapsed time starts at this separate data profile, not guest boot or
+// credential admission. Rows neither renew a deadline nor qualify completion.
+func nativeDataTimingQEMU(phase nativeDataPhaseQEMU, elapsed time.Duration) string {
+	labels := [...]string{"entered", "prepared", "probed", "closed"}
+	if int(phase) >= len(labels) || elapsed < 0 || elapsed > 10*time.Minute {
+		return ""
+	}
+	return fmt.Sprintf("PHANTOWD_DIAG_NATIVE_DATA phase=%s elapsed_ms=%d qualifying=false scope=qemu-only", labels[phase], elapsed.Milliseconds())
+}
+
+func reportNativeDataTimingQEMU(phase nativeDataPhaseQEMU, started time.Time) {
+	if row := nativeDataTimingQEMU(phase, time.Since(started)); row != "" {
+		fmt.Println(row)
+	}
+}

@@ -290,7 +290,9 @@ class BuildFeedbackTests(unittest.TestCase):
                 ("FuzzWireConsume", "networkinventory"),
                 ("FuzzRoute", "networkinventory"),
                 ("FuzzRule", "networkinventory"),
-                ("FuzzNextHopObject", "networkinventory")):
+                ("FuzzNextHopObject", "networkinventory"),
+                ("FuzzEvaluate", "thermalreport"),
+                ("FuzzTachEstimate", "thermalreport")):
             expected = (
                 '"$go_binary" test -run \'^$\' '
                 f"-fuzz '^{target}$' -fuzztime=25000x -parallel=2 "
@@ -336,6 +338,116 @@ class BuildFeedbackTests(unittest.TestCase):
                      "FuzzWireConsume", "FuzzRoute", "FuzzRule",
                      "FuzzNextHopObject"):
             self.assertIn(gate, runner)
+
+    def test_thermal_projection_requires_same_boot_guest_assertion(self):
+        smoke = (ROOT / "support/qemu-smoke.sh").read_text()
+        selftest = (ROOT / "src/phantowd-api/selftest.go").read_text()
+        fixture = (ROOT / "src/phantowd-api/thermalreport_selftest.go").read_text()
+        marker = ("PHANTOWD_THERMAL_REPORT_READY identity=true age=true "
+                  "quality=true zero_distinct=true no_fallback=true "
+                  "tach_arithmetic=true control=false scope=synthetic-memory-only")
+        self.assertIn(marker, smoke)
+        self.assertIn(marker, selftest)
+        self.assertIn("exerciseQEMUThermalReport()", selftest)
+        self.assertIn("thermalreport.Evaluate", fixture)
+        for refusal in ("IdentityMismatch", "Stale", "InvalidTime", "ReadFailed",
+                        "Unqualified", "OutOfRange", "SourceSleeping", "Missing"):
+            self.assertIn(refusal, fixture)
+        # Only memory evaluation belongs in this fixture. Physical input and
+        # fan/controller behavior require a separately qualified provider.
+        for forbidden in ('"os"', '"os/exec"', '"net"', '"syscall"',
+                          '"golang.org/x/sys/unix"'):
+            self.assertNotIn(forbidden, fixture)
+
+    def test_thermal_receipts_match_both_intentional_api_selftests(self):
+        smoke = (ROOT / "support/qemu-smoke.sh").read_text()
+        init = (ROOT / "board/qemu/armv5/rootfs-overlay/etc/init.d/"
+                "S99phantowd-ready").read_text()
+        self.assertEqual(init.count('/usr/lib/phantowd/qemu-selftest-once.sh '
+                                    '/usr/bin/phantowd-api "$api_error_log"'), 2)
+        marker = ("PHANTOWD_THERMAL_REPORT_READY identity=true age=true "
+                  "quality=true zero_distinct=true no_fallback=true "
+                  "tach_arithmetic=true control=false scope=synthetic-memory-only")
+        # Execute the actual guard, not a second implementation of its count.
+        guard = next(block for block in re.findall(
+            r"(?m)^        if ! test .*?^        fi$", smoke, re.DOTALL)
+            if marker in block)
+        with tempfile.TemporaryDirectory() as temp:
+            log = pathlib.Path(temp) / "guest.log"
+            for count in (0, 1, 2, 3):
+                log.write_bytes(((marker + "\r\n") * count).encode())
+                result = subprocess.run(
+                    ["sh", "-c", 'log_file="$1"\n' + guard,
+                     "thermal-guard", str(log)], capture_output=True,
+                    text=True, timeout=3)
+                self.assertEqual(result.returncode, 0 if count == 2 else 1)
+            log.write_text(marker + "\n" + marker + " extra\n")
+            result = subprocess.run(
+                ["sh", "-c", 'log_file="$1"\n' + guard,
+                 "thermal-guard", str(log)], capture_output=True,
+                text=True, timeout=3)
+            self.assertNotEqual(result.returncode, 0)
+
+    def test_dashboard_assets_share_exact_checks_for_http_and_tls(self):
+        normal = (ROOT / "src/phantowd-api/selftest.go").read_text()
+        tls = (ROOT / "src/phantowd-api/transport_qemu.go").read_text()
+        helper = (ROOT / "src/phantowd-api/dashboard_assets_selftest.go").read_text()
+        self.assertIn('exerciseQEMUDashboardAssets(client, "http://"+listenAddress)', normal)
+        self.assertIn('exerciseQEMUDashboardAssets(client, transport.AllowedOrigin)', tls)
+        for body in (normal, tls):
+            self.assertIn('PHANTOWD_DASHBOARD_ASSETS_READY transport=', body)
+            self.assertIn('byte_exact=true scope=qemu-loopback-only', body)
+        for contract in ('bytes.Equal(data, expected)', 'qemuDashboardAssetLimit+1',
+                         'response.Body.Close()', 'closeErr != nil',
+                         'len(values) != 1', 'Content-Security-Policy',
+                         'X-Content-Type-Options'):
+            self.assertIn(contract, helper)
+        for wrapper in ('support/test-api.ps1', 'support/container/test-api.sh'):
+            self.assertIn('TestQEMUDashboardAssets(HTTPAndTLS|Refusals)',
+                          (ROOT / wrapper).read_text())
+
+    def test_dashboard_receipts_require_both_transports_across_restart(self):
+        smoke = (ROOT / "support/qemu-smoke.sh").read_text()
+        guard = re.search(r'(?m)^        for transport in http https; do\n'
+                          r'[\s\S]*?^        done$', smoke).group()
+        self.assertIn('PHANTOWD_DASHBOARD_ASSETS_READY', guard)
+        marker = ('PHANTOWD_DASHBOARD_ASSETS_READY transport={transport} '
+                  'assets=7 byte_exact=true scope=qemu-loopback-only')
+        with tempfile.TemporaryDirectory() as temp:
+            log = pathlib.Path(temp) / 'guest.log'
+            for transport in ('http', 'https'):
+                for count in (0, 1, 2, 3):
+                    counts = {'http': 2, 'https': 2, transport: count}
+                    lines = [marker.format(transport=kind)
+                             for kind in ('http', 'https')
+                             for _ in range(counts[kind])]
+                    log.write_bytes(('\r\n'.join(lines)+'\r\n').encode())
+                    result = subprocess.run(
+                        ['sh', '-c', 'log_file="$1"\n'+guard,
+                         'asset-guard', str(log)], capture_output=True,
+                        text=True, timeout=3)
+                    self.assertEqual(result.returncode, 0 if count == 2 else 1)
+            lines = [marker.format(transport=kind)
+                     for kind in ('http', 'https') for _ in range(2)]
+            lines[-1] += ' lookalike'
+            log.write_text('\n'.join(lines)+'\n')
+            result = subprocess.run(
+                ['sh', '-c', 'log_file="$1"\n'+guard,
+                 'asset-guard', str(log)], capture_output=True,
+                text=True, timeout=3)
+            self.assertNotEqual(result.returncode, 0)
+
+            for transport in ('http', 'https'):
+                for wrong_assets in (6, 8):
+                    lines = [marker.format(transport=kind).replace(
+                        'assets=7', f'assets={wrong_assets}' if kind == transport else 'assets=7')
+                        for kind in ('http', 'https') for _ in range(2)]
+                    log.write_text('\n'.join(lines)+'\n')
+                    result = subprocess.run(
+                        ['sh', '-c', 'log_file="$1"\n'+guard,
+                         'asset-guard', str(log)], capture_output=True,
+                        text=True, timeout=3)
+                    self.assertNotEqual(result.returncode, 0)
 
     def test_network_policy_requires_same_boot_guest_assertion(self):
         smoke = (ROOT / "support/qemu-smoke.sh").read_text()

@@ -6,6 +6,17 @@
 // Desired-state transactions only. No activation, automatic PUT retry, browser
 // persistence or implicit import from the older share-only store.
 const servicePath = "/api/v1/file-services/configuration";
+// Wire-response bounds, not request bounds or effective-access validation.
+// Configuration/backup envelopes fit MaxConfigBytes + 256. Rendered previews
+// duplicate paths/grants; restore returns both a document and its preview.
+const serviceResponseLimits = Object.freeze({
+  "GET /api/v1/auth/session": 16 * 1024,
+  "GET /api/v1/file-services/configuration": 525056,
+  "PUT /api/v1/file-services/configuration": 16 * 1024,
+  "GET /api/v1/file-services/backup": 525056,
+  "POST /api/v1/file-services/preview": 4 * 1024 * 1024,
+  "POST /api/v1/file-services/restore-preview": 4 * 1024 * 1024,
+});
 const serviceState = { baseline: undefined, candidate: null, attempted: null, busy: false, generation: 0, controller: null };
 const policyCopy = (value) => JSON.parse(JSON.stringify(value));
 
@@ -245,9 +256,11 @@ function renderServiceOverlaps(review) {
 }
 
 // Each operation edits one explicitly identified object/rule. References are
-// retained even when unused: removing policy is not account/volume deletion.
+// retained unless explicitly removed while unused: policy edits are never
+// account/volume deletion, account provisioning, identity rename or UID reuse.
 function buildServiceEdit(baseline, action, target, values) {
   if (baseline === undefined) throw new Error("Load current configuration first.");
+  if (action === "") throw new Error("Choose an explicit change to preview.");
   const c = baseline === null ? {
     format: "phantowd-file-service-config", schema_version: 1, revision: 0,
     shares: { format: "phantowd-share-config", schema_version: 1, revision: 0, volumes: [], users: [], shares: [] },
@@ -277,6 +290,23 @@ function buildServiceEdit(baseline, action, target, values) {
     if (c.nfs.exports.some((e) => e.id === values["export-id"])) throw new Error("NFS export UUID already exists.");
     c.nfs.exports.push({ id: values["export-id"], volume_id: volume(), relative_path: values.path, clients: [client()] });
     summary = `Add independent NFS export ${values["export-id"]} at ${values.path}; SMB is unchanged.`;
+  } else if (action === "user-add") {
+    if (typeof values.user !== "string" || values.user.length > 32 ||
+        !/^[a-z][a-z0-9_-]*$/.test(values.user) || ["root", "nobody", "phantowd"].includes(values.user)) {
+      throw new Error("Enter a non-reserved file-service username of 1–32 lowercase letters, digits, underscores or hyphens, starting with a letter.");
+    }
+    if (c.shares.users.some((u) => u.name === values.user)) throw new Error("That username already has a desired reference.");
+    if (c.shares.users.length >= 128) throw new Error("The desired policy already has the maximum of 128 user references.");
+    c.shares.users.push({ id: unique(c.shares.users, "user"), name: values.user });
+    summary = `Add desired user reference ${values.user}, without any grants. This does not create an account, set a password, enroll Samba or change NFS access.`;
+  } else if (action === "user-remove" && target.startsWith("user:")) {
+    const user = c.shares.users.find((u) => u.id === target.slice(5));
+    if (!user) throw new Error("Selected user reference is no longer in the loaded revision.");
+    if (c.shares.shares.some((s) => s.grants.some((g) => g.user_id === user.id))) {
+      throw new Error("This user reference still has SMB grants. Remove those grants or share definitions explicitly first; nothing was changed.");
+    }
+    c.shares.users = c.shares.users.filter((u) => u.id !== user.id);
+    summary = `Remove only unused desired reference ${user.name} (${user.id}). Unix/Samba accounts, credentials, sessions, files and NFS rules are unchanged; this does not disable an account or release its identity.`;
   } else if (action.startsWith("smb-") && target.startsWith("smb:")) {
     const s = c.shares.shares.find((s) => s.id === target.slice(4));
     if (!s) throw new Error("Selected SMB share is no longer in the loaded revision.");
@@ -325,7 +355,7 @@ function buildServiceEdit(baseline, action, target, values) {
         summary = `Set NFS client ${values.network} on export ${e.id} to ${values["nfs-access"]}, squash=${values.squash}, anonymous=${values.uid}:${values.gid}, security=${values.security}. Other clients and SMB grants are retained.`;
       }
     } else throw new Error("Unsupported NFS operation.");
-  } else throw new Error("Choose the matching saved SMB share or NFS export for this operation.");
+  } else throw new Error("Choose the matching saved SMB share, NFS export or user reference for this operation.");
   // Refuse accidental empty transactions. Revisions are compared before advance.
   if (baseline !== null && sameServiceDocument(c, baseline)) throw new Error("No policy change to save.");
   c.revision = c.shares.revision = c.nfs.revision = c.nfs.volume_revision = next;
@@ -343,15 +373,31 @@ function renderServiceTargets(c) {
   serviceOptions("service-target", "Choose a saved item", c === null ? [] : [
     ...c.shares.shares.map((s) => [`smb:${s.id}`, `SMB: ${s.name} (${s.id})`]),
     ...c.nfs.exports.map((e) => [`nfs:${e.id}`, `NFS: ${e.relative_path} (${e.id})`]),
+    ...c.shares.users.map((u) => [`user:${u.id}`, `User reference: ${u.name} (${u.id})`]),
   ]);
   serviceOptions("service-member", "Choose an existing access rule", []);
+  byId("service-member").disabled = false;
 }
 
 function selectServiceTarget() {
   invalidatePolicyPreview();
   const c = serviceState.baseline, target = byId("service-target").value;
   serviceOptions("service-member", "Choose an existing access rule", []);
+  byId("service-member").disabled = false;
   if (!c) return;
+  if (target.startsWith("user:")) {
+    const user = c.shares.users.find((u) => u.id === target.slice(5));
+    if (!user) return;
+    byId("policy-user").value = user.name;
+    byId("service-action").value = "";
+    byId("policy-nfs-enabled").value = "off";
+    byId("service-member").disabled = true;
+    syncPolicyNFS();
+    const shares = c.shares.shares.filter((s) => s.grants.some((g) => g.user_id === user.id));
+    setText("service-status", `Selected desired user reference ${user.name}: ${shares.length} SMB share grant(s). Only unused references can be removed; accounts and live access are not managed here.`);
+    return;
+  }
+  if (!target.startsWith("smb:") && !target.startsWith("nfs:")) return;
   const smb = target.startsWith("smb:");
   const item = (smb ? c.shares.shares : c.nfs.exports).find((item) => item.id === target.slice(4));
   if (!item) return;
@@ -363,7 +409,7 @@ function selectServiceTarget() {
     byId("policy-name").value = item.name;
     byId("policy-user").value = "";
     serviceOptions("service-member", "Choose a user grant", item.grants.map((g) => [g.user_id, `${c.shares.users.find((u) => u.id === g.user_id).name}: ${g.access}`]));
-  } else {
+  } else if (target.startsWith("nfs:")) {
     byId("policy-export-id").value = item.id;
     byId("policy-network").value = "";
     serviceOptions("service-member", "Choose a client rule", item.clients.map((rule) => [rule.network, `${rule.network}: ${rule.access}`]));
@@ -382,7 +428,7 @@ function selectServiceMember() {
     if (!grant) return;
     byId("policy-user").value = c.shares.users.find((u) => u.id === member).name;
     byId("policy-smb-access").value = grant.access;
-  } else {
+  } else if (target.startsWith("nfs:")) {
     const e = c.nfs.exports.find((e) => e.id === target.slice(4));
     const rule = e?.clients.find((rule) => rule.network === member);
     if (!rule) return;
@@ -405,7 +451,7 @@ function selectServiceAction() {
 function showServiceBaseline(c) {
   byId("service-current").hidden = false;
   setText("service-summary", c === null ? "Storage available, but no configuration initialized." :
-    `Saved revision ${c.revision}: ${c.shares.shares.length} SMB share(s), ${c.nfs.exports.length} NFS export(s). Desired state only.`);
+    `Saved revision ${c.revision}: ${c.shares.shares.length} SMB share(s), ${c.nfs.exports.length} NFS export(s), ${c.shares.users.length} user reference(s). Desired state only.`);
   setText("service-document", c === null ? "No saved document." : JSON.stringify(c, null, 2));
   renderServiceTargets(c);
 }
@@ -419,13 +465,19 @@ async function serviceOperation(action) {
   syncServiceControls();
   const current = () => generation === serviceState.generation;
   const request = async (path, options = {}) => {
+    if (!live()) throw new Error("superseded");
+    const limit = serviceResponseLimits[`${options.method || "GET"} ${path}`];
+    if (!Number.isSafeInteger(limit)) throw new Error("Unsupported configuration request.");
     let response;
     try { response = await fetch(path, { credentials: "same-origin", cache: "no-store", ...options, signal: controller.signal }); }
     catch (failure) {
       if (failure?.name === "AbortError") throw failure;
       throw new Error("Configuration service could not be reached.");
     }
-    if (!current()) throw new Error("superseded");
+    if (!current() || controller.signal.aborted || !response.ok) {
+      try { Promise.resolve(response.body?.cancel()).catch(() => {}); } catch { /* preserve refusal */ }
+    }
+    if (!live()) throw new Error("superseded");
     if (!response.ok) {
       const failure = new Error(response.status === 401 ? "Session expired. Sign in again." : response.status === 409 ?
         "The saved revision changed. Reload and review before another save." : response.status === 422 ?
@@ -434,9 +486,17 @@ async function serviceOperation(action) {
       failure.status = response.status; throw failure;
     }
     let body;
-    try { body = await response.json(); }
-    catch { throw new Error("Configuration service returned an unreadable response."); }
-    if (!current()) throw new Error("superseded");
+    try {
+      // Full desired documents may contain 128x128 grants and128x64 clients.
+      // Keep diagnostic defaults unchanged; restore contains document + preview.
+      const containers = path === "/api/v1/auth/session" ? 1024 :
+        path === "/api/v1/file-services/restore-preview" ? 65536 : 32768;
+      body = await readDiagnosticJSON(response, limit, controller.signal, containers);
+    } catch (failure) {
+      if (failure?.name === "AbortError") throw failure;
+      throw new Error("Configuration service returned an unreadable response.");
+    }
+    if (!live()) throw new Error("superseded");
     return body;
   };
   const session = async () => {

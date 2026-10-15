@@ -13,6 +13,7 @@
   <script src="/assets/service-policy.js" defer></script>
   <script src="/assets/support-bundle.js" defer></script>
   <script src="/assets/app.js" defer></script>
+  <script src="/assets/auth.js" defer></script>
 </head>
 <body>
   <a class="skip-link" id="skip-to-content" href="#main-content">Skip to main content</a>
@@ -70,8 +71,10 @@
           <h1 id="page-title" tabindex="-1">Know what the system sees.</h1>
         <p class="lede">Read-only observations from this development image. Each section reports its own current state; unavailable values are cleared. Nothing here assembles, mounts, or changes storage.</p>
         <p class="snapshot-status" id="snapshot-status" role="status" aria-live="polite" aria-atomic="true">Waiting for the local API…</p>
+        <p class="snapshot-status" id="snapshot-age">No loaded snapshot.</p>
+        <p class="policy-help">Load age is elapsed browser time, not device observation age or health. Sections are read separately; refresh explicitly for new observations.</p>
         </div>
-        <button class="refresh-button" id="refresh" type="button" aria-describedby="snapshot-status">
+        <button class="refresh-button" id="refresh" type="button" aria-describedby="snapshot-status snapshot-age">
           <span class="refresh-icon" aria-hidden="true">↻</span>
           <span id="refresh-label">Refresh snapshot</span>
         </button>
@@ -270,22 +273,26 @@
           <div id="service-current" hidden>
             <p id="service-summary" class="policy-help"></p>
             <details><summary>Complete saved desired configuration</summary><pre id="service-document"></pre></details>
-            <fieldset id="service-editor" class="policy-grid">
+            <p id="service-user-help" class="policy-help">User-reference operations change desired policy only: no Unix/Samba account creation, password, enrollment, rename, disable or session revocation. Add uses only the username entered above and grants no access. Remove uses only the selected reference and refuses every reference still used by SMB. Accounts and their identity/history remain unchanged; an unused policy reference does not prove that no account exists.</p>
+            <fieldset id="service-editor" class="policy-grid" aria-describedby="service-user-help">
               <legend>Edit saved desired policy</legend>
-              <label>Share or export<select id="service-target"><option value="">Choose a saved item</option></select></label>
+              <label>Share, export or user reference<select id="service-target"><option value="">Choose a saved item</option></select></label>
               <label>Existing access rule<select id="service-member"><option value="">Choose a rule, or enter a new one above</option></select></label>
               <label>Change to preview<select id="service-action">
+                <option value="">Choose an explicit operation</option>
                 <option value="smb-properties">SMB: change name, volume or folder</option>
                 <option value="smb-grant-upsert">SMB: add/update the entered user's grant</option>
                 <option value="smb-grant-remove">SMB: remove the entered user's grant</option>
                 <option value="smb-remove">SMB: remove the selected share definition</option>
+                <option value="user-add">User references: add the entered username, without grants</option>
+                <option value="user-remove">User references: remove the selected unused reference</option>
                 <option value="nfs-add">NFS: add an independent export from the form</option>
                 <option value="nfs-properties">NFS: change volume or folder, retain export UUID</option>
                 <option value="nfs-client-upsert">NFS: add/update the entered CIDR's rule</option>
                 <option value="nfs-client-remove">NFS: remove the entered CIDR's rule</option>
                 <option value="nfs-remove">NFS: remove the selected export definition</option>
               </select></label>
-              <p class="policy-help">Selecting an item fills its fields above. Selecting an access rule fills that user or CIDR. Only the chosen operation is changed; other grants, clients and the other protocol are retained. Removing SMB does not revoke NFS. Removing definitions never deletes files, volumes or users. Removing the last access rule is refused; remove the definition explicitly instead.</p>
+              <p class="policy-help">Selecting an item fills its fields above. Selecting an access rule fills that user or CIDR. Only the chosen operation is changed; other grants, clients and the other protocol are retained. Removing SMB does not revoke NFS. Removing share/export definitions never deletes files, volumes or user references. Removing the last access rule is refused; remove the definition explicitly instead.</p>
               <button id="service-edit-preview" class="logout-button" type="button" disabled>Preview selected change</button>
             </fieldset>
           </div>

@@ -38,10 +38,11 @@ var qemuDashboardAssets = []struct {
 	path, contentType string
 	markers           []string
 }{
-	{"/", "text/html; charset=utf-8", []string{"PhantoWD EX4", "Development image.", "profile-notice-title", "NOT RELEASE QUALIFIED", "policy-form", "NOT SAVED / NOT APPLIED / RUNTIME NOT VERIFIED", "saved-load", "SAVED POLICY / ACTIVATION NOT AVAILABLE", "support-download", "/assets/support-bundle.js"}},
+	{"/", "text/html; charset=utf-8", []string{"PhantoWD EX4", "Development image.", "profile-notice-title", "NOT RELEASE QUALIFIED", "policy-form", "NOT SAVED / NOT APPLIED / RUNTIME NOT VERIFIED", "saved-load", "SAVED POLICY / ACTIVATION NOT AVAILABLE", "support-download", "/assets/support-bundle.js", "/assets/auth.js"}},
 	{"/assets/app.css", "text/css; charset=utf-8", []string{"@media", "prefers-reduced-motion"}},
+	{"/assets/auth.js", "text/javascript; charset=utf-8", []string{"sendAuthCredentials", "retireAuthSubmission", "readAuthMutationReply", "retireAuthMutation", "The request was not retried.", "/api/v1/auth/setup", "/api/v1/auth/login"}},
 	{"/assets/app.js", "text/javascript; charset=utf-8", []string{"/api/v1/system", "/api/v1/storage", "/api/v1/storage/gpt-observation", "gpt-observe", "/api/v1/arrays", "/api/v1/mounts", "/api/v1/file-services/preview", "invalidatePolicyPreview", "textContent", "/api/v1/shares/configuration", "clearSavedPolicy"}},
-	{"/assets/service-policy.js", "text/javascript; charset=utf-8", []string{"/api/v1/file-services/configuration", "sameServiceDocument", "saveServiceChange", "clearServicePolicy"}},
+	{"/assets/service-policy.js", "text/javascript; charset=utf-8", []string{"/api/v1/file-services/configuration", "sameServiceDocument", "saveServiceChange", "clearServicePolicy", "user-add", "user-remove", "This user reference still has SMB grants"}},
 	{"/assets/support-bundle.js", "text/javascript; charset=utf-8", []string{"phantowd-sanitized-support", "browser-loaded-read-only-snapshot", "snapshot_age_seconds"}},
 	{"/assets/ghost.svg", "image/svg+xml", []string{"<svg", "PhantoWD ghost"}},
 }
@@ -74,6 +75,10 @@ func runSelfTest() error {
 		return err
 	}
 	fmt.Println("PHANTOWD_ISCSI_POLICY_READY schema=1 stable_refs=true lun_zero_explicit=true mutual_refs_distinct=true strict_json=true activation=false scope=synthetic-policy-only")
+	if err := exerciseQEMUThermalReport(); err != nil {
+		return err
+	}
+	fmt.Println("PHANTOWD_THERMAL_REPORT_READY identity=true age=true quality=true zero_distinct=true no_fallback=true tach_arithmetic=true control=false scope=synthetic-memory-only")
 	if err := exerciseQEMUNetworkInventory(); err != nil {
 		return err
 	}
@@ -273,26 +278,10 @@ func runSelfTest() error {
 	if strings.Contains(string(mountsData), "/dev/sda") || strings.Contains(string(mountsData), "errors=continue") {
 		return errors.New("mount source or raw mount option leaked through the API")
 	}
-	for _, asset := range qemuDashboardAssets {
-		response, err := client.Get("http://" + listenAddress + asset.path)
-		if err != nil {
-			return errors.New("dashboard loopback request failed")
-		}
-		data, readErr := io.ReadAll(io.LimitReader(response.Body, 65537))
-		response.Body.Close()
-		if readErr != nil || len(data) > 65536 || response.StatusCode != http.StatusOK ||
-			response.Header.Get("Content-Type") != asset.contentType || response.Header.Get("Cache-Control") != "no-store" {
-			return errors.New("invalid embedded dashboard asset")
-		}
-		for _, marker := range asset.markers {
-			if !strings.Contains(string(data), marker) {
-				return errors.New("dashboard asset failed its content assertion")
-			}
-		}
-		if asset.path == "/" && response.Header.Get("Content-Security-Policy") != "default-src 'none'; style-src 'self'; script-src 'self'; img-src 'self'; connect-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'" {
-			return errors.New("dashboard policy headers are missing or permissive")
-		}
+	if err := exerciseQEMUDashboardAssets(client, "http://"+listenAddress); err != nil {
+		return err
 	}
+	fmt.Printf("PHANTOWD_DASHBOARD_ASSETS_READY transport=http assets=%d byte_exact=true scope=qemu-loopback-only\n", len(qemuDashboardAssets))
 	for _, check := range []struct {
 		method, path string
 		status       int

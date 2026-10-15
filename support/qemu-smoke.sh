@@ -154,6 +154,11 @@ while [ "$attempt" -lt "$smoke_timeout" ]; do
             printf 'QEMU did not verify the synthetic iSCSI desired-policy contract\n' >&2
             exit 1
         fi
+        # S99 runs the API self-test before AND after its intentional restart.
+        if ! test "$(sed 's/\r$//' "$log_file" | grep -Fxc 'PHANTOWD_THERMAL_REPORT_READY identity=true age=true quality=true zero_distinct=true no_fallback=true tach_arithmetic=true control=false scope=synthetic-memory-only')" -eq 2; then
+            echo 'Expected two synthetic thermal observation assertions across API restart' >&2
+            exit 1
+        fi
         if ! grep -F 'PHANTOWD_NFS_POLICY_READY schema=1 mapping=all-squash scope=synthetic-policy-only' "$log_file" >/dev/null; then
             echo "Missing NFS policy validation assertion" >&2
             exit 1
@@ -494,6 +499,12 @@ while [ "$attempt" -lt "$smoke_timeout" ]; do
             echo "Missing ARMv5 TLS handshake and exact-origin assertion" >&2
             exit 1
         fi
+        for transport in http https; do
+            if ! test "$(sed 's/\r$//' "$log_file" | grep -Fxc "PHANTOWD_DASHBOARD_ASSETS_READY transport=$transport assets=7 byte_exact=true scope=qemu-loopback-only")" -eq 2; then
+                echo 'Missing or excess exact dashboard asset receipts across API restart' >&2
+                exit 1
+            fi
+        done
         if ! grep -F 'PHANTOWD_AUTH_STATE_READY account_survives=daemon-restart sessions_memory_only=true scope=qemu-loopback-only' "$log_file" >/dev/null; then
             echo "Missing account persistence across API process restart assertion" >&2
             exit 1

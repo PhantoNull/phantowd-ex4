@@ -8,7 +8,6 @@ package main
 import (
 	"context"
 	"errors"
-	"time"
 )
 
 // Fixture orchestration only: this timer carries no identity/runtime authority.
@@ -34,7 +33,7 @@ func newNativeCredentialBudgetQEMU(parent context.Context) (*nativeCredentialBud
 	}
 	// Separate bounded work: preparation20 plus enrollment60 allows80s rather
 	// than the old shared60s. Worker/service/stop/guest limits remain unchanged.
-	ctx, cancel := context.WithTimeout(parent, 20*time.Second)
+	ctx, cancel := context.WithTimeout(parent, nativePreparationLimitQEMU)
 	if err := ctx.Err(); err != nil {
 		cancel()
 		return nil, err
@@ -49,12 +48,12 @@ func (b *nativeCredentialBudgetQEMU) Enrollment(prior error) (context.Context, e
 		return nil, errors.Join(errNativeCredentialBudgetQEMU, prior)
 	}
 	b.handedOff = true
-	if err := errors.Join(prior, b.preparation.Err(), b.parent.Err()); err != nil {
+	if err := errors.Join(prior, nativeLivePhaseErrorQEMU(b.preparation), b.parent.Err()); err != nil {
 		b.Close()
 		return nil, err
 	}
 	b.cancelPreparation()
-	b.enrollment, b.cancelEnrollment = context.WithTimeout(b.parent, 60*time.Second)
+	b.enrollment, b.cancelEnrollment = context.WithTimeout(b.parent, nativeEnrollmentLimitQEMU)
 	if err := b.enrollment.Err(); err != nil {
 		b.Close()
 		return nil, err
@@ -68,7 +67,7 @@ func (b *nativeCredentialBudgetQEMU) CompleteEnrollment(result error) error {
 	if b == nil || b.parent == nil || b.closed || !b.handedOff || b.enrollment == nil || b.cancelEnrollment == nil {
 		return errors.Join(errNativeCredentialBudgetQEMU, result)
 	}
-	err := errors.Join(result, b.enrollment.Err(), b.parent.Err())
+	err := errors.Join(result, nativeLivePhaseErrorQEMU(b.enrollment), b.parent.Err())
 	b.Close()
 	return err
 }

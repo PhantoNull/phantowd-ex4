@@ -52,6 +52,26 @@ raw HTTP/HTTPS asset markers. The base/probe remain unchanged, no two-boot/full
 image or new Docker storage is involved. QEMU does not execute browser JS or
 qualify the live transport; stream behavior is tested in native Node fixtures.
 
+## Administrative response controls
+
+The original PR133 administrative consumer increment is tested by the same
+actual-source DOM/native Web Streams suite. Eight fixed parsed routes have
+inclusive byte caps (16KiB..4MiB), method-bound short PUT acknowledgement and
+bounded higher policy container counts; no unbounded JSON fallback remains.
+Oversize session/preview cannot dispatch/admit changes, and uncertain password/
+save replies preserve existing no-retry/reconcile behavior. Cancel/deadline/
+unknown-profile and large valid policy tests retain diagnostic limits. Host
+verification and single-boot ARM HTTP/HTTPS asset delivery pass; this is not
+browser execution/heap/transport, two-boot/full image or product/device
+qualification. Keep the currently published PR head's
+own hosted checks separate; do not repush it merely to run these local tests.
+
+M5.5m reconciles that source/history with the later branch: retain both test
+sets, the exact525056-byte combined-policy consumer and separate bounded auth
+module. Generic eight-profile ceilings are not the stricter manager's operative
+limits. Recheck the combined head locally; old PR133's failed native hosted run
+is not fixed by a local merge or a successful single-boot asset smoke.
+
 ## Independent snapshot display guards
 
 The actual-source DOM suite now also refuses malformed system, RAID and mount
@@ -1228,6 +1248,23 @@ cover this regression's boundary.
 ## Current-source overlay lane
 
 `container/test-qemu-api-overlay.sh` is an optional developer feedback lane.
+
+On Windows, use `support/test-api-overlay.ps1 -ReuseBaseVolumeProbe` only after
+reviewing that the trusted compatible base's volume-probe inputs are unchanged.
+It requires existing image/workspace and regular base inputs; missing inputs
+refuse without provisioning. The fixed API-only profile is 2 CPU / 2 GiB / 256 PIDs,
+1 GiB tmpfs scratch, no cgroup swap, non-root/no capabilities/NNP/no network,
+read-only source/base/workspace and automatic container removal. It reserves
+8 GiB host headroom on the actual Docker data drive, not the full builder's 40 GiB:
+all test writes are confined to RAM scratch. This does not bound unrelated/WSL
+host writes. Entire launcher has 360 s plus 10 s termination grace; the existing
+API smoke 240 s and native 180 s campaign limits are unchanged. It runs one smoke
+boot, not state reboot, all Samba campaigns, full image/SBOM/legal regeneration,
+clean build, browser execution or physical qualification. The fixed util-linux
+archive is checked for this pinned workspace but is not rebuilt in reuse mode.
+`support/tests/test-api-overlay-wrapper.ps1` separately verifies command-boundary
+guards, refusals and isolation without a Docker daemon; mocked success is not
+guest evidence. No CI trigger or default lane is changed by the launcher.
 It rebuilds the Go API with the pinned compiler and injects it, the current
 broker mdev rule, guest readiness script, NFS fixture helper and x/sys license
 into a **temporary copy** of a previously built QEMU filesystem. The original
@@ -2062,11 +2099,29 @@ Temporary guest setup is removed after measurement; no product tool is installed
 
 ### Diagnose a native fixture timeout before a full CI build
 
+An optional `-Campaign native-data -DiagnosticLogs` guest performs its own real
+disabled-first enrollment, then closes its identity Owner/runtime and tests
+the original descriptor/data profile, including RO denial, SMB transfers,
+Unix ownership, symlink denial, verified shutdown and descriptor cleanup.
+It imports no passdb or lease from another guest. This is an independent cost/
+qualification probe, not a replacement for the mandatory `native` trace:
+the latter still tests data against the passdb changed by live revocation.
+Both accounts are explicitly enabled in the independent profile; it does not
+qualify post-revocation data behavior. The default union remains ten guests
+with all original proofs. Data35/worker limits are unchanged; ordinary-native
+guest timing is now coordinated as specified below (other guests retain180s).
+
 Use the existing matching pinned image, workspace and manifest-verified base:
 
 ```powershell
-.\support\test-samba-root.ps1 -Campaign lifecycle -DiagnosticLogs
+.\support\test-samba-root.ps1 -Campaign native -DiagnosticLogs
 ```
+
+Choose one campaign for the question being investigated. `native` retains the
+complete original live-revocation and post-revocation data sequence. Use
+`-Campaign native-data` only for the independently enrolled descriptor/data
+probe above; `-Campaign lifecycle` instead investigates its separate startup/
+revocation coordinator. These narrower scopes cannot qualify the original trace.
 
 Do not edit source or run another build against the same workspace while it
 executes. Preserve the exact Git revision, uncommitted changes, base manifest,
@@ -2075,16 +2130,106 @@ lane neither downloads a new image nor creates a named volume; its scratch is
 disposable. It still requires matching cached dependencies and checks the
 selected campaign, not an entire new firmware image.
 
+### Native timing-contract decision gate
+
+Coordinated fixture-only timing is now approved. On the existing two-CPU,
+2GiB,256-PID wrapper profile, ordinary `native` uses one monotonic300-second
+work clock. Every phase below is clipped to the original remaining work time.
+Settlement has one absolute deadline at that original work deadline+30seconds,
+independent of work cancellation and never renewed per Stop/Close. The host
+cap is360seconds, allowing a declared30-second boot/final margin. That margin
+is not a measured guarantee of boot duration. All other guests retain180seconds;
+default selection still runs the same ten campaigns.
+
+The current ordinary `native` path has the following sequential phase caps.
+These are source limits, not measured durations or permission to change them.
+
+| Phase | Cap | Source |
+| --- | --- | --- |
+| Original Owner/runtime preparation | 20 s | `native_credential_budget_linux.go` |
+| Both journaled enrollments and enable | 60 s | `native_credential_budget_linux.go` |
+| Final identity/backend observation | 20 s | `nativeIdentityBackendProbeQEMU` |
+| Authentication-only daemon startup | 20 s | `native_credentials_linux.go` |
+| Idle disable and authentication checks | 20 s | `native_credentials_linux.go` |
+| Re-enable and held-client preparation | 20 s | `native_credentials_linux.go` |
+| Original live-session revocation/continuity | 45 s | `native_live_phases_linux.go` |
+| Fresh logins after timely live success | 15 s | `native_live_phases_linux.go` |
+| Same-passdb post-revocation data profile | 35 s | `native_data_linux.go` |
+
+Their configured caps total255 seconds. The former whole-guest cap was180seconds
+including boot; ordinary native now uses the hierarchy above. The sum does
+**not** establish a minimum runtime,
+a defect merely because maxima overlap, or a guaranteed255-second completion:
+operations can finish earlier, and some verified cleanup uses a background
+context. Native status workers additionally have4 seconds for complete before/
+execution/settlement/after admission; native revocation has20 seconds. Generic
+command status/revocation remain2/5 seconds. A longer outer guest alone cannot
+repair an earlier child expiry.
+
+Existing controlled profiles prioritize retained code revalidation, not an
+established deadlock. Previous allocation, applet-versus-Go, scratch schedule
+and PGO controls do not establish a further end-to-end optimization to adopt.
+Do not repeat them or propose skipped/cached hashes merely to obtain a pass.
+The hosted failure's precise cause remains unproven.
+
+The approved route coordinates fixture clocks rather than weakening proof.
+The implementation and qualification contract is:
+
+1. Preserve the profile and complete hierarchy declared above. Distinguish
+   work cancellation from teardown; never treat an expired work context as
+   evidence of stopped processes. Settlement checks before/after existing
+   verified Stop/Close operations. Their internal bounded cleanup is unchanged;
+   the outer context does not promise immediate preemption of every syscall.
+2. Centralize only the reviewed compile-tagged fixture policy. Keep generic/
+   product deadlines, authority, commands, hashes, revocation observations,
+   original session/passdb history and default ten-campaign union unchanged.
+   The independent `native-data` guest cannot replace post-revocation data.
+3. Test actual phase runners with controlled clocks: shorter parent, exact
+   deadline, late nil, prior failure, cancellation, duplicate handoff, remaining
+   budget and verified stop/reference retention. No failed work may renew its
+   budget, retry or continue into another phase.
+4. Run the focused original native trace locally first, with frozen source,
+   original two-CPU reference profile, exact base and complete strict proof.
+   Predeclare any additional slower control and its expected success/refusal
+   criteria; do not retune limits or rerun unchanged work for a lucky green.
+5. Require complete current-source local integration/artifact audit and the
+   publication head's own hosted qualification before merge. Preserve the
+   full-build40GiB guard; a bounded overlay pass is not a full-build waiver.
+
+Only the compile-tagged ordinary-native fixture's orchestration and host cap
+change. No product/generic worker timer, host affinity, scheduler/crypto flag,
+runtime privilege, NAS operation or installation qualification changes. A
+passing clock test is not original-trace/full/hosted qualification.
+
+Current local qualification includes the original focused native trace and the
+complete cached integration, all ten original Samba campaigns and a separate
+exact-source/package/archive/image/SDK/legal/SBOM audit. The focused and full
+native data-verified observations are116690ms and111392ms respectively. These
+are scoped successful executions, not performance benchmarks or a demonstrated
+repair of the earlier intermittent hosted failure. Own-head hosted checks and
+independent clean reproduction remain separate gates.
+
 Read the **first failed operation** rather than treating every elapsed timer
 as the same timeout:
+
+The distinct native data profile now emits four fixed
+`PHANTOWD_DIAG_NATIVE_DATA` rows: `entered`, `prepared`, `probed`, `closed`.
+Their monotonic elapsed time starts at that profile, not boot or enrollment.
+`prepared` precedes the real descriptor/SMB probe; `probed` follows its return;
+`closed` follows original-reference release, clone detach and fixture cleanup.
+They contain no paths, identities, secrets or error text and do not replace any
+receipt, renew a deadline or prove the hosted timeout's cause. Pending-client
+profiles do not emit these rows. Data35 and every original assertion
+remain unchanged; a last row does not identify a blocked instruction.
 
 | Boundary | Current fixture scope | What a failure does not establish |
 | --- | --- | --- |
 | Initial native preparation, 20 s | Original Owner/backend construction and admission; precedes `phase=admitted` | Account enrollment has completed |
 | Native enrollment, 60 s | Both disabled-first journaled enrollments and explicit enable, after successful preparation; precedes `phase=enrolled` | The later coordinator operation was reached |
+| Native peer/session observation, 4 s | Runtime admission, typed status command, settlement and post-admission, bounded also by the parent | Only the subprocess exceeded its execution limit, or the outer guest expired |
 | Lifecycle preparation, 20 s | Original journal admission, canceled-disable refusal and creation/qualification of two held clients | Revocation or continuity has completed |
 | Lifecycle revocation, 45 s | Stale-revision refusal, actual disable, successor journal and original peer/new-login verification | Every individual worker exceeded its own deadline |
-| Guest, 180 s | The complete disposable boot and selected campaign | A specific account, worker or coordinator caused expiry |
+| Guest, native360 s / others180 s | The complete disposable boot and selected campaign; ordinary-native work300s plus fixed settlement30s and boot/final margin30s | A specific account, worker or coordinator caused expiry |
 
 These are test-context limits, not physical EX4 performance guarantees or
 product request deadlines. See the actual [credential fixture](../src/phantowd-api/cmd/qemu-runtime-bundle/native_credentials_linux.go)
@@ -2094,6 +2239,20 @@ after several individually successful operations; a child deadline can also
 expire while its parent still has time. Neither permits ignoring uncertainty,
 reusing reviewed authority or skipping a verification.
 
+Recent local controls reach different first failures: enrollment expiry under
+reduced CPU and a native peer/session post-admission expiry at the normal
+container CPU quota. Neither reached the data probe. A separately enrolled
+`native-data` control completes that probe in about 17 seconds, with transfers
+and denials verified, but does not reproduce its post-revocation input history.
+These observations do not establish the hosted root cause or a timing repair.
+Increasing only the guest limit cannot repair an earlier child expiry. Inspect
+all applicable bounds before proposing a budget change; do not silently widen
+them, remove checks or retry the same campaign to obtain a lucky green.
+
+QEMU can exit zero after the guest reports a fixture failure and reboots. The
+wrapper and complete required-proof verifier must also pass; `guest_exit=0` in
+a non-qualifying diagnostic record is not a successful campaign receipt.
+
 The QEMU-only native driver gives preparation20 and enrollment60 separate
 single-use phases instead of their former shared60 context. This raises the
 combined contextual allowance to80 seconds, not hashing throughput. A shorter
@@ -2101,7 +2260,9 @@ original parent still bounds both. Failed, uncertain, expired or canceled
 preparation cannot begin enrollment; duplicate handoff cannot refresh its
 deadline and a late nil completion refuses. Accounting tests exercise the exact
 private helper used by the fixture, not synthetic identity or session authority.
-Worker/readiness/stop, live-session45 and guest180 limits remain unchanged.
+Worker/readiness/stop and live-session45 limits remain unchanged. Ordinary
+native now uses the shared300s work clock and360s host guard described above;
+this supersedes the earlier unchanged180s statement for that campaign only.
 
 After revocation, only the exact changed-pair sentinel establishes a completed
 changed observation. An unchanged pair and an incomplete observation have

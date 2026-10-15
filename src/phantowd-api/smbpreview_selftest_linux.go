@@ -18,6 +18,10 @@ import (
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/smbconfig"
 )
 
+// Fixed synthetic global policy, not the share-only production renderer or a
+// product service profile. CTDB support remains compiled in the selected Samba.
+const qemuSMBPreviewGlobals = "[global]\n    server role = standalone server\n    security = user\n    clustering = no\n    map to guest = Never\n    interfaces = lo\n    bind interfaces only = yes\n    server min protocol = SMB3_00\n    server max protocol = SMB3_11\n    load printers = no\n    printing = bsd\n    printcap name = /dev/null\n"
+
 // Parse a fixed synthetic candidate with the guest's actual Samba parser.
 // This starts no daemon and does not touch /etc/samba or any share path.
 func exerciseQEMUSMBPreview() error {
@@ -36,9 +40,15 @@ func exerciseQEMUSMBPreview() error {
 	}
 	defer os.RemoveAll(dir)
 	name := filepath.Join(dir, "smb.conf")
-	const global = "[global]\n    server role = standalone server\n    security = user\n    map to guest = Never\n    interfaces = lo\n    bind interfaces only = yes\n    server min protocol = SMB3_00\n    server max protocol = SMB3_11\n    load printers = no\n    printing = bsd\n    printcap name = /dev/null\n"
-	if err := os.WriteFile(name, []byte(global+preview.Sections), 0600); err != nil {
+	if err := os.WriteFile(name, []byte(qemuSMBPreviewGlobals+preview.Sections), 0600); err != nil {
 		return err
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	command := exec.CommandContext(ctx, "/usr/bin/testparm", "-s", "--section-name=global", "--parameter-name=clustering", name)
+	output, parseErr := command.Output()
+	cancel()
+	if parseErr != nil || strings.TrimSpace(string(output)) != "No" {
+		return errors.New("Samba parser did not preserve standalone clustering policy")
 	}
 	for _, parameter := range []struct{ name, want string }{
 		{"valid users", "alice bob"}, {"read list", "alice"}, {"write list", "bob"},

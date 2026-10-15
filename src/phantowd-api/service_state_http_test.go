@@ -10,6 +10,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -261,5 +262,103 @@ func TestServiceStateOptions(t *testing.T) {
 	}
 	if validateServiceStateOptions("/state", "", apiTransportConfig{Address: defaultListenAddress}) != nil {
 		t.Fatal("loopback refused")
+	}
+}
+
+// Exercise the real authenticated preview/store handlers with an in-memory
+// desired-policy backend only. No Unix/Samba owner or runtime service is wired.
+func TestServiceStateUserReferencesRemainDesiredOnly(t *testing.T) {
+	auth, cookie := newTestAuth(t)
+	var stored *fileservice.Config
+	commits := 0
+	backend := &serviceStateBackend{
+		load: func() (*fileservice.Config, error) {
+			if stored == nil {
+				return nil, nil
+			}
+			data, err := json.Marshal(stored)
+			if err != nil {
+				return nil, err
+			}
+			copy, err := fileservice.DecodeConfig(strings.NewReader(string(data)))
+			return &copy, err
+		},
+		commit: func(expected uint64, c fileservice.Config) error {
+			var revision uint64
+			if stored != nil {
+				revision = stored.Revision
+			}
+			if expected != revision {
+				return errServiceStateConflict
+			}
+			commits++
+			stored = &c
+			return nil
+		},
+	}
+	h := newHandlerWithServiceState(nil, nil, nil, nil, auth, nil, backend)
+	for revision := uint64(1); revision <= 3; revision++ {
+		c := serviceConfigFixture(revision)
+		c.Shares.Users = []shareconfig.User{{ID: "user-1", Name: "reader"}}
+		if revision == 2 {
+			c.Shares.Users = append(c.Shares.Users, shareconfig.User{ID: "user-2", Name: "unused"})
+		}
+		proposal, err := json.Marshal(struct {
+			Shares shareconfig.Config `json:"shares"`
+			NFS    nfsconfig.Policy   `json:"nfs"`
+		}{c.Shares, c.NFS})
+		if err != nil {
+			t.Fatal(err)
+		}
+		w := httptest.NewRecorder()
+		h.ServeHTTP(w, previewRequest(auth, cookie, string(proposal)))
+		var preview fileservice.Preview
+		if w.Code != 200 || json.Unmarshal(w.Body.Bytes(), &preview) != nil || preview.Persisted || preview.Applied || preview.RuntimeValidated || preview.ActivationAvailable {
+			t.Fatalf("reference preview is not desired-only: %d %s", w.Code, w.Body.String())
+		}
+		if commits != int(revision-1) {
+			t.Fatal("preview mutated desired storage")
+		}
+		w = httptest.NewRecorder()
+		h.ServeHTTP(w, serviceWriteRequest(auth, cookie, c))
+		var saved struct {
+			Saved               bool   `json:"saved"`
+			Revision            uint64 `json:"revision"`
+			Applied             *bool  `json:"applied"`
+			RuntimeValidated    *bool  `json:"runtime_validated"`
+			ActivationAvailable *bool  `json:"activation_available"`
+		}
+		if w.Code != 200 || json.Unmarshal(w.Body.Bytes(), &saved) != nil ||
+			!saved.Saved || saved.Revision != revision || saved.Applied == nil || *saved.Applied ||
+			saved.RuntimeValidated == nil || *saved.RuntimeValidated || saved.ActivationAvailable == nil || *saved.ActivationAvailable {
+			t.Fatalf("reference save changed activation contract: %d %s", w.Code, w.Body.String())
+		}
+		read := shareReadRequest(cookie)
+		read.URL.Path = serviceStatePath
+		w = httptest.NewRecorder()
+		h.ServeHTTP(w, read)
+		var reply serviceStateResponse
+		if w.Code != 200 || json.Unmarshal(w.Body.Bytes(), &reply) != nil || !reply.Initialized || reply.Configuration == nil || reply.Applied || reply.RuntimeValidated || reply.ActivationAvailable ||
+			!reflect.DeepEqual(*reply.Configuration, c) {
+			t.Fatal("desired references were not independently readable without grants")
+		}
+	}
+	// A direct PUT still cannot bypass relational validation and leave a grant
+	// to a missing reference, even though the UI refuses the removal earlier.
+	c := serviceConfigFixture(4)
+	c.Shares.Users = []shareconfig.User{{ID: "user-1", Name: "reader"}}
+	c.Shares.Volumes = []shareconfig.Volume{{ID: "volume-1", FilesystemUUID: "11111111-2222-3333-4444-555555555555"}}
+	c.Shares.Shares = []shareconfig.Share{{ID: "share-1", Name: "Fixture", VolumeID: "volume-1", RelativePath: "fixture", Grants: []shareconfig.Grant{{UserID: "user-1", Access: "ro"}}}}
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, serviceWriteRequest(auth, cookie, c))
+	if w.Code != 200 || commits != 4 {
+		t.Fatal("referenced baseline not saved")
+	}
+	c.Revision, c.Shares.Revision, c.NFS.Revision, c.NFS.VolumeRevision = 5, 5, 5, 5
+	c.Shares.Users = []shareconfig.User{}
+	w = httptest.NewRecorder()
+	h.ServeHTTP(w, serviceWriteRequest(auth, cookie, c))
+	if w.Code != 422 || commits != 4 || stored.Revision != 4 {
+		t.Fatal("dangling reference removal reached storage")
 	}
 }

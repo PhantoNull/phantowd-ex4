@@ -5,6 +5,7 @@
 import copy
 import hashlib
 import json
+import re
 import os
 from pathlib import Path
 import subprocess
@@ -90,6 +91,64 @@ def campaign_rows():
 
 
 class SambaRootFixture(unittest.TestCase):
+    def test_native_campaign_clock_matches_only_native_host_limit(self):
+        root = Path(__file__).resolve().parents[2]
+        clock = (root / "src/phantowd-api/cmd/qemu-runtime-bundle/"
+                 "native_campaign_clock_linux.go").read_text()
+        values = []
+        for name in ("Work", "Settlement", "Boot"):
+            match = re.search(r"nativeCampaign" + name
+                              + r"SecondsQEMU\s*=\s*([0-9]+)", clock)
+            self.assertIsNotNone(match)
+            values.append(int(match.group(1)))
+        self.assertEqual(values, [300, 30, 30])
+        self.assertEqual(fixture.guest_timeout("native"), sum(values))
+        for phase in (*fixture.FOCUSED_CAMPAIGNS, "pending",
+                      "pending-peer-exit", "pending-handle"):
+            if phase != "native":
+                self.assertEqual(fixture.guest_timeout(phase), 180)
+        for phase in (None, "all", "NATIVE", "native;exit", ""):
+            with self.assertRaises(ValueError):
+                fixture.guest_timeout(phase)
+
+    def test_native_clock_is_wired_through_original_campaign(self):
+        root = Path(__file__).resolve().parents[2]
+        source = (root / "src/phantowd-api/cmd/qemu-runtime-bundle/"
+                  "native_credentials_linux.go").read_text()
+        self.assertIn("if campaign == nativeCredentialsCampaignQEMU {", source)
+        self.assertIn("workParent, settlementContext = clock.work, "
+                      "clock.settlement", source)
+        self.assertIn("settle = clock.Settle", source)
+        for limit in ("Daemon", "Idle", "Clients"):
+            self.assertIn("context.WithTimeout(workParent, native"
+                          + limit + "LimitQEMU)", source)
+        self.assertIn("runNativeLivePhasesQEMU(workParent,", source)
+        self.assertIn("nativeDataFixtureContextQEMU(workParent,", source)
+        self.assertIn("nativeIdentityBackendProbeQEMU(workParent,", source)
+        self.assertNotIn("runtime.Close(context.Background())", source)
+        self.assertNotIn("runtime.StopNativeDaemonQEMU(context.Background())",
+                         source)
+        self.assertIn("settle(runtime.StopNativeDaemonQEMU)", source)
+        self.assertIn("settle(runtime.Close)", source)
+
+    def test_independent_native_data_requires_its_own_exact_proofs(self):
+        enrollment = next(row for row in fixture.MARKERS if row.startswith(
+            "PHANTOWD_SAMBA_OWNER_NATIVE_ENROLLMENT_READY"))
+        data = next(row for row in fixture.MARKERS if row.startswith(
+            "PHANTOWD_SAMBA_OWNER_NATIVE_DATA_READY"))
+        rows = [*fixture.MARKERS[:3], CENSUS, enrollment, data,
+                "PHANTOWD_SAMBA_ROOT_NATIVE_DATA_DONE", SCAN_COST]
+        fixture.check_campaign("\n".join(rows), "native-data")
+        for missing in rows[:-1]:
+            with self.subTest(missing=missing):
+                with self.assertRaises(ValueError):
+                    fixture.check_campaign(
+                        "\n".join(row for row in rows if row != missing),
+                        "native-data")
+        with self.assertRaises(ValueError):
+            fixture.check_campaign("\n".join(campaign_rows()["native"]),
+                                   "native-data")
+
     @staticmethod
     def timing_row(operation="list", phase="pre-admission", elapsed=17,
                    remaining=45000, parent_done="false", failed="false",
@@ -684,6 +743,10 @@ class SambaRootFixture(unittest.TestCase):
                     "phase=execution elapsed_ms=1000 remaining_ms=0 "
                     "parent_done=true failed=true cause=deadline "
                     "qualifying=false scope=qemu-only")
+        timings += "\n" + "\n".join(
+            "PHANTOWD_DIAG_NATIVE_DATA phase=" + phase
+            + " elapsed_ms=123 qualifying=false scope=qemu-only"
+            for phase in ("entered", "prepared", "probed", "closed"))
         good = "\n".join([*fixture.MARKERS, SCAN_COST])
         fixture.check_guest(timings + "\n" + good)
         with self.assertRaises(ValueError):
@@ -1985,7 +2048,8 @@ class SambaRootFixture(unittest.TestCase):
         init = (root / "support/tests/samba-root-init.sh").read_text()
         self.assertIn("--pull never --network none --read-only", wrapper)
         self.assertNotIn("docker volume create", wrapper)
-        self.assertIn("timeout --signal=TERM --kill-after=5 180", driver)
+        self.assertIn('timeout --signal=TERM --kill-after=5 "$guest_seconds"',
+                      driver)
         self.assertIn("-nic none", driver)
         self.assertIn("rootwait ro", driver)
         self.assertIn("if=scsi,snapshot=on", driver)

@@ -12,17 +12,31 @@ import { supportFixture } from "./tests/test-support-bundle.mjs";
 
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
 const source = await readFile(join(repoRoot, "src/phantowd-api/ui/app.js"), "utf8");
+const authSource = await readFile(join(repoRoot, "src/phantowd-api/ui/auth.js"), "utf8");
 const serviceSource = await readFile(join(repoRoot, "src/phantowd-api/ui/service-policy.js"), "utf8");
 const supportSource = await readFile(join(repoRoot, "src/phantowd-api/ui/support-bundle.js"), "utf8");
 const markup = await readFile(join(repoRoot, "src/phantowd-api/ui/index.html"), "utf8");
 const styles = await readFile(join(repoRoot, "src/phantowd-api/ui/app.css"), "utf8");
+assert.ok(markup.indexOf('<script src="/assets/auth.js" defer>') > markup.indexOf('<script src="/assets/app.js" defer>'), "auth module must load after its shared UI helpers");
+assert.ok(authSource.includes("updateAuthView().catch(showAuthUnavailable)"));
+assert.ok(!source.includes("updateAuthView().catch(showAuthUnavailable)"), "only the auth module starts authentication");
+assert.doesNotMatch(source + authSource + serviceSource, /\.json\s*\(/, "Merged dashboard consumers must retain bounded response readers");
+for (const name of ["setAuthError", "showAuthUnavailable", "updateAuthView", "signOut", "clearPasswordFields"]) {
+  assert.ok(!source.includes(`function ${name}(`), "The merge must not resurrect retired authentication handlers in app.js");
+  assert.ok(authSource.includes(`function ${name}(`));
+}
+for (const name of ["index.html", "app.css", "app.js", "auth.js", "service-policy.js", "support-bundle.js", "ghost.svg"]) {
+  assert.ok((await readFile(join(repoRoot, "src/phantowd-api/ui", name))).byteLength <= 65536, "per-asset budget must not grow");
+}
 const markupIDs = [...markup.matchAll(/\bid="([^"]+)"/g)].map((match) => match[1]);
 assert.equal(new Set(markupIDs).size, markupIDs.length, "duplicate HTML IDs");
-for (const match of (source + serviceSource).matchAll(/(?:byId|setText)\("([^"]+)"/g)) {
+for (const match of (source + authSource + serviceSource).matchAll(/(?:byId|setText)\("([^"]+)"/g)) {
   assert.ok(markupIDs.includes(match[1]), `script references missing HTML ID ${match[1]}`);
 }
 assert.match(markup, /id="policy-nfs-fields"[^>]*hidden disabled/);
 assert.match(markup, /id="policy-form"[^>]*autocomplete="off"/);
+assert.match(markup, /id="service-editor"[^>]*aria-describedby="service-user-help"/);
+assert.ok(markup.indexOf('id="service-user-help"') < markup.indexOf('id="service-editor"'), "long reference guidance belongs outside the two-column editor grid");
 assert.match(markup, /<body>\s*<a class="skip-link" id="skip-to-content" href="#main-content">Skip to main content<\/a>/);
 assert.match(markup, /<main id="main-content" tabindex="-1">/);
 for (const id of ["auth-title", "page-title"]) {
@@ -246,7 +260,7 @@ async function createHarness(respond, timing = {}) {
     "main-content", "page-title", "skip-to-content",
     "auth-panel", "auth-title", "auth-description", "auth-form", "auth-username",
     "auth-password", "auth-submit", "auth-retry", "auth-error", "dashboard-content",
-    "logout", "logout-all", "refresh", "refresh-label", "snapshot-status", "error-banner",
+    "logout", "logout-all", "refresh", "refresh-label", "snapshot-status", "snapshot-age", "error-banner",
     ...["panel", "form", "current", "new", "confirm", "submit", "status"].map((id) => `password-${id}`),
     "service-status-dot", "build-label", "kernel-value", "runtime-value", "target-value",
     "memory-value", "memory-detail", "memory-meter", "firmware-value", "firmware-detail",
@@ -287,11 +301,14 @@ async function createHarness(respond, timing = {}) {
     if (result instanceof Error) throw result;
     return result;
   };
+  const ageIntervals = new Map();
+  let nextAgeInterval = 0;
   const context = createContext({
     document,
     fetch,
     Intl,
-    Date,
+    Date: timing.Date ?? Date,
+    performance: timing.performance ?? { now: () => 0 },
     Number,
     String,
     Math,
@@ -308,12 +325,111 @@ async function createHarness(respond, timing = {}) {
     AbortController,
     setTimeout: timing.setTimeout ?? setTimeout,
     clearTimeout: timing.clearTimeout ?? clearTimeout,
+    setInterval: (callback, delay) => {
+      const id = ++nextAgeInterval; ageIntervals.set(id, { callback, delay }); return id;
+    },
+    clearInterval: (id) => ageIntervals.delete(id),
   });
   new Script(serviceSource).runInContext(context);
   new Script(supportSource).runInContext(context);
   new Script(source).runInContext(context);
+  new Script(authSource).runInContext(context);
   await new Promise((resolve) => setImmediate(resolve));
-  return { context, elements, requests, document };
+  return { context, elements, requests, document, ageIntervals };
+}
+
+async function testSnapshotLoadAgeUsesOnlyBrowserElapsedTime() {
+  let now = 1000;
+  let wall = 1700000000000;
+  class WallClock extends Date { static now() { return wall; } }
+  const h = await createHarness(async (path) => path === "/api/v1/auth/status" ?
+    jsonResponse({ authenticated: true }) : snapshotResponse(path), {
+    performance: { now: () => now }, Date: WallClock,
+  });
+  assert.equal(h.elements["snapshot-age"].textContent, "Snapshot loaded just now.");
+  assert.equal(h.ageIntervals.size, 1);
+  const timer = [...h.ageIntervals.values()][0];
+  assert.equal(timer.delay, 30000);
+  const before = h.requests.length;
+  for (const [elapsed, label] of [[60000, "1 minute"], [120000, "2 minutes"],
+    [3600000, "1 hour"], [86400000, "1 day"]]) {
+    now = 1000 + elapsed; wall -= 123456789;
+    timer.callback();
+    assert.equal(h.elements["snapshot-age"].textContent, `Snapshot loaded ${label} ago.`);
+  }
+  assert.equal(h.requests.length, before, "Age updates must not poll the API or disks");
+}
+
+async function testSnapshotLoadAgeRefusesInvalidOrRegressingClock() {
+  const respond = async (path) => path === "/api/v1/auth/status" ?
+    jsonResponse({ authenticated: true }) : snapshotResponse(path, "clock-fixture");
+  for (const now of [NaN, Infinity, -1, Number.MAX_SAFE_INTEGER + 1, null]) {
+    const h = await createHarness(respond, {
+      performance: { now: () => { if (now === null) throw new Error("clock failed"); return now; } },
+    });
+    assert.equal(h.elements["kernel-value"].textContent, "Linux clock-fixture", "Clock failure must not erase valid observations");
+    assert.equal(h.elements["snapshot-age"].textContent, "Snapshot load age unavailable. Refresh to reset the clock.");
+    assert.equal(h.ageIntervals.size, 0);
+  }
+  let now = 1000;
+  const h = await createHarness(respond, { performance: { now: () => now } });
+  const tick = [...h.ageIntervals.values()][0].callback;
+  now = 121000; tick();
+  now = 61000; tick();
+  assert.match(h.elements["snapshot-age"].textContent, /age unavailable/);
+  assert.equal(h.ageIntervals.size, 0);
+  now = 181000; tick();
+  assert.match(h.elements["snapshot-age"].textContent, /age unavailable/, "A retired clock must not recover without refresh");
+}
+
+async function testSnapshotAgeLifecycleAndPartialResults() {
+  let now = 0;
+  let authenticated = true;
+  let failures = new Set();
+  let pending = null;
+  const h = await createHarness(async (path) => {
+    if (path === "/api/v1/auth/logout") { authenticated = false; return jsonResponse({ logged_out: true }); }
+    if (path === "/api/v1/auth/session") return jsonResponse({ csrf_token: "x".repeat(43) });
+    if (path === "/api/v1/auth/status") return jsonResponse({ configured: true, authenticated });
+    if (pending) await pending;
+    return failures.has(path) ? jsonResponse({}, 503) : snapshotResponse(path);
+  }, { performance: { now: () => now } });
+  const retired = [...h.ageIntervals.values()][0].callback;
+  let release;
+  pending = new Promise((resolve) => { release = resolve; });
+  const loading = h.elements.refresh.listeners.get("click")();
+  assert.equal(h.elements["snapshot-age"].textContent, "No loaded snapshot.");
+  assert.equal(h.ageIntervals.size, 0, "Refresh must retire the prior age watcher");
+  now = 60000; retired();
+  assert.equal(h.elements["snapshot-age"].textContent, "No loaded snapshot.");
+  pending = null; release(); await loading;
+  assert.equal(h.ageIntervals.size, 1);
+  assert.equal(h.elements["snapshot-age"].textContent, "Snapshot loaded just now.");
+  retired();
+  assert.equal(h.elements["snapshot-age"].textContent, "Snapshot loaded just now.");
+  failures = new Set(["/api/v1/storage"]);
+  await h.elements.refresh.listeners.get("click")();
+  assert.equal(h.ageIntervals.size, 1, "A partial snapshot owns only one local watcher");
+  assert.match(h.elements["snapshot-status"].textContent, /storage observation unavailable/);
+  const tick = [...h.ageIntervals.values()][0].callback;
+  h.document.hidden = true; now += 120000; tick();
+  assert.equal(h.elements["snapshot-age"].textContent, "Snapshot loaded just now.");
+  h.document.hidden = false; tick();
+  assert.equal(h.elements["snapshot-age"].textContent, "Snapshot loaded 2 minutes ago.");
+  failures = new Set(["/api/v1/system", "/api/v1/storage", "/api/v1/arrays", "/api/v1/mounts"]);
+  await h.elements.refresh.listeners.get("click")();
+  assert.equal(h.ageIntervals.size, 0);
+  assert.equal(h.elements["snapshot-age"].textContent, "No loaded snapshot.");
+  tick();
+  assert.equal(h.elements["snapshot-age"].textContent, "No loaded snapshot.");
+  failures.clear();
+  await h.elements.refresh.listeners.get("click")();
+  const beforeLogout = [...h.ageIntervals.values()][0].callback;
+  await h.elements.logout.listeners.get("click")();
+  assert.equal(h.ageIntervals.size, 0);
+  now += 60000; beforeLogout();
+  assert.equal(h.elements["snapshot-age"].textContent, "No loaded snapshot.");
+  assert.equal(h.elements["dashboard-content"].hidden, true);
 }
 
 async function testAuthFocusMovesOnlyWhenItsControlIsHidden() {
@@ -363,7 +479,7 @@ async function testAuthFocusMovesOnlyWhenItsControlIsHidden() {
       if (path === "/api/v1/auth/session") return jsonResponse({ csrf_token: "x".repeat(43) });
       if (path === (all ? "/api/v1/auth/logout-all" : "/api/v1/auth/logout")) {
         authenticated = false;
-        return jsonResponse({ signed_out: true });
+        return jsonResponse(all ? { all_panel_sessions_revoked: true } : { logged_out: true });
       }
       return snapshotResponse(path);
     });
@@ -532,7 +648,7 @@ async function testSnapshotLateSuccessCannotSurviveAuthBoundary() {
     const { context, elements, requests } = await createHarness(async (path) => {
       if (path === "/api/v1/auth/status") return jsonResponse({ authenticated: !ended, setup_required: false });
       if (path === "/api/v1/auth/session") return jsonResponse({ csrf_token: "x".repeat(43) });
-      if (path === "/api/v1/auth/logout" || path === "/api/v1/auth/logout-all") { ended = true; return jsonResponse({ signed_out: true }); }
+      if (path === "/api/v1/auth/logout" || path === "/api/v1/auth/logout-all") { ended = true; return jsonResponse(path.endsWith("logout-all") ? { all_panel_sessions_revoked: true } : { logged_out: true }); }
       if (path === "/api/v1/auth/password") {
         ended = true;
         return jsonResponse({ password_changed: true, reauthentication_required: true, all_panel_sessions_revoked: true });
@@ -1014,7 +1130,7 @@ async function testSavedPolicyLateRepliesAndAuthLoss() {
       let release;
       const pending = new Promise((resolve) => { release = resolve; });
       const harness = await policyHarness(undefined, () => jsonResponse({}, 503), () =>
-        delayedBody ? { ok: true, status: 200, json: () => pending } : pending);
+        delayedBody ? deferredJSONResponse(pending) : pending);
       const { context, elements, requests } = harness;
       const operation = context.loadSavedPolicy();
       await new Promise((resolve) => setImmediate(resolve));
@@ -1236,12 +1352,18 @@ await testServiceRefusalsAndInvalidation();
 await testServiceFormEditsAndReconcileFailure();
 await testServiceEditingContracts();
 await testServiceEditorInteraction();
+await testServiceUserReferenceContracts();
+await testServiceUserReferenceInteraction();
+await testServiceUserReferenceUncertainSave();
 await testSavedPolicyStatesAndSafeRendering();
 await testSavedPolicyMalformedReplies();
 await testSavedPolicyLateRepliesAndAuthLoss();
 await testPolicyBuilderAndSafePreview();
 await testPolicyFailuresAndStaleResponses();
 await testReadOnlySnapshotAndSafeRendering();
+await testSnapshotLoadAgeUsesOnlyBrowserElapsedTime();
+await testSnapshotLoadAgeRefusesInvalidOrRegressingClock();
+await testSnapshotAgeLifecycleAndPartialResults();
 await testUnavailableAuthIsVisibleAndRetryable();
 await testExpiredSessionReturnsToLogin();
 await testAuthFocusMovesOnlyWhenItsControlIsHidden();
@@ -1458,7 +1580,7 @@ async function testServiceEditorInteraction() {
     return jsonResponse(serviceReply(stored));
   });
   fillPolicy(elements); await context.loadServicePolicy();
-  assert.equal(elements["service-target"].children.length, 5);
+  assert.equal(elements["service-target"].children.length, 7, "shares, exports and desired user references are selectable");
   elements["service-target"].value = "smb:share-1";
   context.selectServiceTarget();
   assert.equal(elements["policy-name"].value, "Books");
@@ -1491,6 +1613,120 @@ async function testServiceEditorInteraction() {
   assert.equal(elements["service-target"].children.length, 1);
   assert.equal(elements["service-member"].children.length, 1);
   assert.equal(elements["service-editor"].disabled, true);
+}
+
+async function testServiceUserReferenceContracts() {
+  const { context, c, values } = await editorFixture();
+  const original = structuredClone(c);
+  const edit = (baseline, action, target, overrides = {}) =>
+    JSON.parse(JSON.stringify(context.buildServiceEdit(baseline, action, target, { ...values, ...overrides }).configuration));
+  const added = edit(c, "user-add", "smb:share-1", { user: "newreader", uuid: "not-used", path: "not-used" });
+  assert.equal(added.shares.users.length, 3);
+  assert.deepEqual(added.shares.users.slice(0, 2), c.shares.users);
+  assert.deepEqual(added.shares.shares, c.shares.shares, "adding a reference must grant nothing");
+  assert.deepEqual(added.shares.volumes, c.shares.volumes);
+  assert.deepEqual(added.nfs, { ...c.nfs, revision: 2, volume_revision: 2 });
+  assert.equal(added.revision, 2); assert.equal(added.shares.revision, 2);
+  assert.deepEqual(c, original, "reference edits must not mutate the loaded baseline");
+  assert.deepEqual(Array.from(context.describeServiceChanges(c, added), (r) => r.kind), ["User reference"]);
+  const created = added.shares.users[2];
+  // Removal is bound to selected ID, never a stale username in the form.
+  const removed = edit(added, "user-remove", `user:${created.id}`, { user: "writer" });
+  assert.deepEqual(removed.shares.users, c.shares.users);
+  assert.deepEqual(removed.shares.shares, c.shares.shares);
+  assert.deepEqual(removed.nfs, { ...c.nfs, revision: 3, volume_revision: 3 });
+  assert.deepEqual(Array.from(context.describeServiceChanges(added, removed), (r) => r.kind), ["User reference"]);
+  for (const target of ["user:user-1", "user:user-2"]) {
+    assert.throws(() => edit(c, "user-remove", target), /still has SMB grants/);
+  }
+  for (const target of ["user:missing", "smb:share-1", `nfs:${c.nfs.exports[0].id}`, ""]) {
+    assert.throws(() => edit(c, "user-remove", target));
+  }
+  for (const user of ["", "root", "nobody", "phantowd", "Upper", "1reader", "reader name", "reader/../", "a".repeat(33), "é", null, 3]) {
+    assert.throws(() => edit(c, "user-add", "", { user }));
+  }
+  assert.throws(() => edit(c, "user-add", "", { user: "reader" }), /already/);
+  assert.throws(() => edit(c, "user-rename", "user:user-1", { user: "renamed" }));
+  assert.throws(() => edit(c, "", "user:user-1"), /explicit change/);
+  const full = structuredClone(c);
+  for (let i = 0; i < 125; i++) full.shares.users.push({ id: `unused-${i}`, name: `unused${i}` });
+  const maximum = edit(full, "user-add", "", { user: "a".repeat(32) });
+  assert.equal(maximum.shares.users.length, 128);
+  assert.throws(() => edit(maximum, "user-add", "", { user: "overlimit" }), /maximum/);
+  const only = edit(null, "user-add", "", { user: "first" });
+  assert.deepEqual(only.shares.volumes, []); assert.deepEqual(only.shares.shares, []); assert.deepEqual(only.nfs.exports, []);
+  const empty = edit(only, "user-remove", `user:${only.shares.users[0].id}`);
+  assert.deepEqual(empty.shares.users, []); assert.deepEqual(empty.shares.shares, []);
+  context.checkedServiceReviewDocument(only); context.checkedServiceReviewDocument(empty);
+}
+
+async function testServiceUserReferenceInteraction() {
+  const { c } = await editorFixture();
+  let stored = c;
+  const h = await serviceHarness((options) => {
+    if (options.method === "PUT") { stored = JSON.parse(options.body); return jsonResponse(serviceSaved(stored.revision)); }
+    return jsonResponse(serviceReply(stored));
+  });
+  const { context, elements, requests } = h;
+  await context.loadServicePolicy();
+  elements["service-target"].value = "user:user-2"; context.selectServiceTarget();
+  assert.equal(elements["policy-user"].value, "writer");
+  assert.equal(elements["service-action"].value, "", "selection must not default to removal");
+  assert.equal(elements["service-member"].disabled, true);
+  assert.match(elements["service-status"].textContent, /2 SMB share grant/);
+  elements["service-action"].value = "user-remove"; context.selectServiceAction();
+  const before = requests.length;
+  await context.prepareServiceEdit();
+  assert.equal(requests.length, before, "referenced deletion must fail before authentication/preview/PUT requests");
+  assert.match(elements["service-status"].textContent, /still has SMB grants/);
+  assert.equal(elements["service-save"].disabled, true);
+  elements["service-target"].value = "smb:share-1"; context.selectServiceTarget();
+  assert.equal(elements["service-member"].disabled, false, "normal rule editing must recover after selecting a user");
+  elements["service-action"].value = "user-add"; context.selectServiceAction();
+  elements["policy-user"].value = "newreader";
+  elements["policy-uuid"].value = "not-used"; elements["policy-path"].value = "not-used";
+  await context.prepareServiceEdit();
+  assert.match(elements["service-change"].textContent, /without any grants.*does not create an account/i);
+  assert.equal(requests.filter((r) => r.options?.method === "PUT").length, 0);
+  assert.equal(elements["service-save"].disabled, false);
+  await context.saveServiceChange();
+  assert.equal(stored.shares.users.length, 3);
+  assert.deepEqual(stored.shares.shares, c.shares.shares);
+  const added = stored.shares.users.find((u) => u.name === "newreader");
+  elements["service-target"].value = `user:${added.id}`; context.selectServiceTarget();
+  elements["service-action"].value = "user-remove"; context.selectServiceAction();
+  elements["policy-user"].value = "writer";
+  await context.prepareServiceEdit();
+  assert.match(elements["service-change"].textContent, /Remove only unused desired reference newreader.*does not disable an account/i);
+  await context.saveServiceChange();
+  assert.deepEqual(stored.shares.users, c.shares.users);
+  assert.deepEqual(stored.shares.shares, c.shares.shares);
+  assert.deepEqual(stored.nfs.exports, c.nfs.exports);
+  assert.equal(requests.filter((r) => r.options?.method === "PUT").length, 2);
+  context.showAuthUnavailable();
+  assert.equal(elements["service-target"].children.length, 1);
+  assert.equal(elements["service-review"].hidden, true);
+}
+
+async function testServiceUserReferenceUncertainSave() {
+  let stored = null;
+  const h = await serviceHarness((options) => {
+    if (options.method === "PUT") { stored = JSON.parse(options.body); return new Error("lost reply after commit"); }
+    return jsonResponse(serviceReply(stored));
+  });
+  await h.context.loadServicePolicy();
+  h.elements["service-action"].value = "user-add";
+  h.elements["policy-user"].value = "newreader";
+  await h.context.prepareServiceEdit(); await h.context.saveServiceChange();
+  assert.match(h.elements["service-status"].textContent, /not confirmed.*may have committed/i);
+  assert.equal(h.elements["service-save"].disabled, true);
+  await h.context.prepareServiceEdit(); await h.context.saveServiceChange();
+  assert.equal(h.requests.filter((r) => r.options?.method === "PUT").length, 1);
+  await h.context.loadServicePolicy();
+  assert.match(h.elements["service-status"].textContent, /complete attempted configuration.*confirmed saved/i);
+  assert.deepEqual(stored.shares.shares, []); assert.equal(stored.shares.users.length, 1);
+  assert.equal(h.requests.filter((r) => r.options?.method === "PUT").length, 1);
+  process.stdout.write("Desired user-reference controls passed: explicit-create=true grants-preserved=true unused-only-remove=true no-default-delete=true unknown-save-no-retry=true accounts-provisioned=false.\n");
 }
 
 // Global panel sign-out is single-flight, authenticated/CSRF-bound, and never
@@ -2219,6 +2455,368 @@ async function testInitialAuthBodyHasAFiniteReadDeadline() {
 }
 await testInitialAuthBodyHasAFiniteReadDeadline();
 
+async function testCredentialSubmissionHasOneFiniteDeadline() {
+  for (const setup of [false, true]) {
+    const timers = new Map();
+    let timerID = 0, release;
+    const pending = new Promise(resolve => { release = resolve; });
+    const route = `/api/v1/auth/${setup ? "setup" : "login"}`;
+    const h = await createHarness(async path => {
+      if (path === route) return pending; // Deliberately ignores AbortSignal.
+      if (path === "/api/v1/auth/status") return jsonResponse({ setup_required: setup, authenticated: false });
+      return snapshotResponse(path);
+    }, {
+      setTimeout: (callback, delay) => { const id = ++timerID; timers.set(id, { callback, delay }); return id; },
+      clearTimeout: id => timers.delete(id),
+    });
+    await settleUI();
+    h.elements["auth-username"].value = "fixture-admin";
+    h.elements["auth-password"].value = "fixture-only original passphrase";
+    const submission = h.elements["auth-form"].listeners.get("submit")({ preventDefault() {} });
+    await settleUI();
+    const request = h.requests.find(request => request.path === route);
+    assert.ok(request?.options.signal, "Credential POST must own a cancellation signal");
+    assert.equal(timers.size, 1, "Credential POST must not wait indefinitely for response headers");
+    const deadline = [...timers.values()][0];
+    assert.equal(deadline.delay, 10000);
+    deadline.callback();
+    await submission;
+    assert.equal(request.options.signal.aborted, true);
+    assert.equal(h.elements["auth-submit"].disabled, false);
+    assert.equal(h.elements["auth-password"].value, "");
+    assert.equal(h.elements["dashboard-content"].hidden, true);
+    assert.equal(h.elements["auth-form"].hidden, true, "Unknown submission needs a status reread, not blind resubmission");
+    assert.equal(h.elements["auth-retry"].hidden, false);
+    assert.match(h.elements["auth-error"].textContent, /not retried/i);
+    assert.equal(timers.size, 0);
+    const count = h.requests.length;
+    release(jsonResponse({ authenticated: true }));
+    await settleUI();
+    assert.equal(h.requests.length, count, "Late POST completion must not reread state or publish a session");
+    assert.equal(h.elements["dashboard-content"].hidden, true);
+  }
+}
+await testCredentialSubmissionHasOneFiniteDeadline();
+
+async function credentialHarness(setup, post, status) {
+  const timers = new Map();
+  let id = 0;
+  const route = `/api/v1/auth/${setup ? "setup" : "login"}`;
+  const h = await createHarness(async (path, options) => {
+    if (path === route) return post(options);
+    if (path === "/api/v1/auth/status") return status ? status(options) : jsonResponse({ setup_required: setup, authenticated: false });
+    return snapshotResponse(path);
+  }, {
+    setTimeout: (callback, delay) => { const timer = ++id; timers.set(timer, { callback, delay }); return timer; },
+    clearTimeout: timer => timers.delete(timer),
+  });
+  await settleUI();
+  const submit = () => {
+    h.elements["auth-username"].value = "fixture-admin";
+    h.elements["auth-password"].value = "fixture-only new passphrase";
+    return h.elements["auth-form"].listeners.get("submit")({ preventDefault() {} });
+  };
+  return { h, timers, route, submit };
+}
+
+async function testCredentialBodyAndStatusShareDeadline() {
+  for (const setup of [false, true]) for (const phase of ["body", "status"]) {
+    let release, reads = 0;
+    const pending = new Promise(resolve => { release = resolve; });
+    const { h, timers, route, submit } = await credentialHarness(setup,
+      () => phase === "body" ? deferredJSONResponse(pending) : jsonResponse({ authenticated: true }),
+      () => ++reads === 1 ? jsonResponse({ setup_required: setup, authenticated: false }) : deferredJSONResponse(pending));
+    const submission = submit();
+    await settleUI();
+    assert.equal(timers.size, 1, "Reply and status must not renew the credential budget");
+    const post = h.requests.find(request => request.path === route);
+    if (phase === "status") assert.equal(h.requests.at(-1).options.signal, post.options.signal);
+    [...timers.values()][0].callback();
+    await submission;
+    assert.equal(h.elements["auth-form"].hidden, true);
+    assert.equal(h.elements["auth-submit"].disabled, false);
+    assert.equal(timers.size, 0);
+    const before = h.requests.length;
+    release({ authenticated: true });
+    await settleUI();
+    assert.equal(h.requests.length, before);
+    assert.equal(h.elements["dashboard-content"].hidden, true);
+  }
+}
+await testCredentialBodyAndStatusShareDeadline();
+
+async function testCredentialRefusalsAndReplyBounds() {
+  for (const setup of [false, true]) {
+    for (const code of [400, 401, 409, 429]) {
+      const { h, timers, route, submit } = await credentialHarness(setup, () => jsonResponse({ error: "PRIVATE-SENTINEL" }, code));
+      await submit();
+      assert.equal(h.elements["auth-form"].hidden, false, `definitive ${code} must retain the sign-in form`);
+      assert.equal(h.elements["auth-submit"].disabled, false);
+      assert.equal(h.elements["auth-password"].value, "");
+      assert.equal(timers.size, 0);
+      assert.ok(!h.elements["auth-error"].textContent.includes("PRIVATE-SENTINEL"));
+      assert.equal(h.requests.filter(request => request.path === route).length, 1);
+      assert.equal(h.requests.filter(request => request.path === "/api/v1/auth/status").length, 1);
+    }
+    for (const kind of ["network", "server", "invalid-json", "oversize"]) {
+      const { h, timers, submit } = await credentialHarness(setup, () => {
+        if (kind === "network") throw new Error("PRIVATE-SENTINEL");
+        if (kind === "server") return jsonResponse({ error: "PRIVATE-SENTINEL" }, 503);
+        if (kind === "oversize") return jsonResponse({ data: "x".repeat(16384) });
+        return { ok: true, status: 200, body: new ReadableStream({ start(controller) { controller.enqueue(new TextEncoder().encode("PRIVATE-SENTINEL")); controller.close(); } }) };
+      });
+      await submit();
+      assert.equal(h.elements["auth-form"].hidden, true, `uncertain ${kind} must require reconciliation`);
+      assert.equal(h.elements["auth-retry"].hidden, false);
+      assert.equal(timers.size, 0);
+      assert.ok(!h.elements["auth-error"].textContent.includes("PRIVATE-SENTINEL"));
+    }
+    let reads = 0;
+    const text = JSON.stringify({ authenticated: true });
+    const { h, timers, submit } = await credentialHarness(setup, () => ({
+      ok: true, status: 200, body: new ReadableStream({ start(controller) {
+        controller.enqueue(new TextEncoder().encode(text + " ".repeat(16384 - text.length))); controller.close();
+      } }), json: () => { throw new Error("unbounded JSON fallback"); },
+    }), () => jsonResponse({ authenticated: ++reads > 1, setup_required: setup }));
+    await submit();
+    assert.equal(h.elements["dashboard-content"].hidden, false, "Exact16KiB reply remains inclusive");
+    assert.equal(timers.size, 0);
+  }
+}
+await testCredentialRefusalsAndReplyBounds();
+
+async function testCredentialDuplicatesRetirementAndExplicitReconciliation() {
+  for (const setup of [false, true]) {
+    const pending = [];
+    let authenticated = false;
+    const { h, timers, route, submit } = await credentialHarness(setup,
+      () => new Promise(resolve => { pending.push(resolve); }), () => jsonResponse({ authenticated, setup_required: setup }));
+    const old = submit();
+    await settleUI();
+    const oldTimeout = [...timers.values()][0].callback;
+    await submit();
+    assert.equal(pending.length, 1, "Repeated submit event must not issue a second credential POST");
+    h.context.showAuthUnavailable();
+    await old;
+    await h.elements["auth-retry"].listeners.get("click")();
+    const current = submit();
+    await settleUI();
+    const signal = h.requests.filter(request => request.path === route).at(-1).options.signal;
+    const count = h.requests.length;
+    pending[0](jsonResponse({ authenticated: true })); oldTimeout();
+    await settleUI();
+    assert.equal(h.requests.length, count);
+    assert.equal(h.elements["auth-submit"].disabled, true, "Retired finalizers must not unlock a new submission");
+    assert.equal(signal.aborted, false);
+    assert.equal(timers.size, 1);
+    authenticated = true;
+    pending[1](jsonResponse({ authenticated: true }));
+    await current;
+    assert.equal(h.elements["dashboard-content"].hidden, false);
+    assert.equal(timers.size, 0);
+  }
+  for (const authenticated of [false, true]) {
+    let after = false;
+    const { h, timers, route, submit } = await credentialHarness(true, () => new Promise(() => {}),
+      () => jsonResponse({ authenticated: after && authenticated, setup_required: !after }));
+    const submission = submit(); await settleUI();
+    [...timers.values()][0].callback(); await submission;
+    after = true;
+    await h.elements["auth-retry"].listeners.get("click")();
+    assert.equal(h.requests.filter(request => request.path === route).length, 1, "Reconnect rereads status, never retries credentials");
+    assert.equal(h.elements["dashboard-content"].hidden, !authenticated);
+    if (!authenticated) assert.equal(h.elements["auth-form"].dataset.mode, "login", "Completed setup must not be offered again");
+    assert.equal(timers.size, 0);
+  }
+  process.stdout.write("Credential submission controls passed: header/body/status deadlines, 16KiB replies, duplicate/retired events, fixed refusals and explicit status-only reconciliation.\n");
+}
+await testCredentialDuplicatesRetirementAndExplicitReconciliation();
+
+async function mutationHarness(kind, reply) {
+  const timers = new Map();
+  let id = 0, statusReads = 0;
+  const route = `/api/v1/auth/${kind}`;
+  const h = await createHarness(async (path, options) => {
+    if (path === "/api/v1/auth/status") {
+      if (++statusReads === 1) return jsonResponse({ authenticated: true });
+      return reply("status", options);
+    }
+    if (path === "/api/v1/auth/session") return reply("session", options);
+    if (path === route) return reply("post", options);
+    return snapshotResponse(path);
+  }, {
+    setTimeout: (callback, delay) => { const timer = ++id; timers.set(timer, { callback, delay }); return timer; },
+    clearTimeout: timer => timers.delete(timer),
+  });
+  await settleUI();
+  const submit = () => {
+    if (kind !== "password") return h.context.signOut(kind === "logout-all");
+    h.elements["password-current"].value = "fixture-only old passphrase";
+    h.elements["password-new"].value = "fixture-only new passphrase";
+    h.elements["password-confirm"].value = "fixture-only new passphrase";
+    return h.elements["password-form"].listeners.get("submit")({ preventDefault() {} });
+  };
+  return { h, route, timers, submit };
+}
+
+function mutationReply(stage, kind) {
+  return stage === "session" ? { csrf_token: "x".repeat(43) } : stage === "status" ? { authenticated: false } :
+    kind === "password" ? { password_changed: true, reauthentication_required: true, all_panel_sessions_revoked: true } :
+      kind === "logout-all" ? { all_panel_sessions_revoked: true } : { logged_out: true };
+}
+
+async function testAuthMutationLifetimeIncludesAllReads() {
+  for (const kind of ["logout", "logout-all", "password"]) {
+    for (const phase of ["session", "post", "status"]) for (const boundary of ["headers", "body"]) {
+      let release;
+      const pending = new Promise(resolve => { release = resolve; });
+      const { h, route, timers, submit } = await mutationHarness(kind, stage =>
+        stage === phase ? boundary === "headers" ? pending : deferredJSONResponse(pending) : jsonResponse(mutationReply(stage, kind)));
+      let settled = false;
+      const operation = submit().then(() => { settled = true; });
+      await settleUI();
+      assert.equal(timers.size, 1, `${kind}/${phase}/${boundary} must retain one original deadline`);
+      const deadline = [...timers.values()][0];
+      assert.equal(deadline.delay, 10000);
+      deadline.callback();
+      await settleUI();
+      assert.equal(settled, true, `${kind}/${phase}/${boundary} must settle even when transport ignores abort`);
+      await operation;
+      for (const id of ["password-submit", "logout", "logout-all"]) assert.equal(h.elements[id].disabled, false);
+      assert.equal(h.elements["dashboard-content"].hidden, true);
+      assert.equal(h.elements["auth-form"].hidden, true);
+      assert.equal(h.elements["auth-retry"].hidden, false);
+      assert.match(h.elements["auth-error"].textContent, /could not be confirmed.*not retried/is);
+      assert.equal(timers.size, 0);
+      const count = h.requests.length;
+      release(boundary === "headers" ? jsonResponse(mutationReply(phase, kind)) : mutationReply(phase, kind));
+      await settleUI();
+      assert.equal(h.requests.length, count, "Late mutation completion cannot post or reconcile status");
+      assert.equal(h.elements["dashboard-content"].hidden, true);
+      assert.equal(h.requests.filter(request => request.path === route).length, phase === "session" ? 0 : 1);
+    }
+  }
+}
+await testAuthMutationLifetimeIncludesAllReads();
+
+async function testAuthMutationReplyBoundsAndConfirmation() {
+  for (const kind of ["logout", "logout-all", "password"]) {
+    for (const value of [null, {}, { csrf_token: 43 }, { csrf_token: "x".repeat(42) }, { csrf_token: "x".repeat(44) }]) {
+      const { h, route, timers, submit } = await mutationHarness(kind, stage => jsonResponse(stage === "session" ? value : mutationReply(stage, kind)));
+      await submit();
+      assert.equal(timers.size, 0);
+      assert.equal(h.requests.filter(request => request.path === route).length, 0, "Invalid session cannot authorize a mutation POST");
+      assert.equal(h.elements["auth-retry"].hidden, false);
+    }
+    for (const stage of ["session", "post", "status"]) for (const failure of ["network", "http"]) {
+      const { h, timers, submit } = await mutationHarness(kind, actualStage => {
+        if (actualStage !== stage) return jsonResponse(mutationReply(actualStage, kind));
+        if (failure === "network") throw new Error("PRIVATE-SENTINEL");
+        return jsonResponse({ error: "PRIVATE-SENTINEL" }, 503);
+      });
+      await submit();
+      assert.equal(timers.size, 0);
+      assert.equal(h.elements["auth-retry"].hidden, false);
+      assert.match(h.elements["auth-error"].textContent, /could not be confirmed/);
+      assert.doesNotMatch(h.elements["auth-error"].textContent, /PRIVATE-SENTINEL/);
+    }
+    for (const stage of ["session", "post", "status"]) {
+      for (const failure of ["inclusive", "oversize", "invalid-json", "invalid-utf8", "deep"]) {
+        let unbounded = 0;
+        const { h, timers, route, submit } = await mutationHarness(kind, actualStage => {
+          if (actualStage !== stage) return jsonResponse(mutationReply(actualStage, kind));
+          const text = JSON.stringify(mutationReply(stage, kind));
+          let bytes = failure === "invalid-utf8" ? new Uint8Array([255]) : new TextEncoder().encode(
+            failure === "invalid-json" ? "PRIVATE-SENTINEL" : failure === "deep" ? "[".repeat(17) + "null" + "]".repeat(17) :
+              text + " ".repeat((failure === "inclusive" ? 16384 : 16385) - text.length));
+          return { ok: true, status: 200,
+            body: new ReadableStream({ start(controller) { controller.enqueue(bytes); controller.close(); } }),
+            json: () => { unbounded++; throw new Error("PRIVATE-SENTINEL unbounded fallback"); } };
+        });
+        await submit();
+        assert.equal(unbounded, 0);
+        assert.equal(timers.size, 0);
+        assert.equal(h.elements["auth-form"].hidden, failure !== "inclusive", `${kind}/${stage}/${failure}`);
+        if (failure !== "inclusive") assert.match(h.elements["auth-error"].textContent, /could not be confirmed/);
+        assert.doesNotMatch(h.elements["auth-error"].textContent, /PRIVATE-SENTINEL/);
+        assert.equal(h.requests.filter(request => request.path === route).length, failure !== "inclusive" && stage === "session" ? 0 : 1);
+      }
+    }
+    for (const value of [{}, null, { authenticated: true }, { authenticated: "false" }]) {
+      const { h, submit, timers } = await mutationHarness(kind, stage => jsonResponse(stage === "status" ? value : mutationReply(stage, kind)));
+      await submit();
+      assert.equal(timers.size, 0);
+      assert.equal(h.elements["dashboard-content"].hidden, true);
+      assert.equal(h.elements["auth-retry"].hidden, false, "Successful mutation reply alone cannot confirm sign-out");
+      assert.match(h.elements["auth-error"].textContent, /could not be confirmed/);
+    }
+    for (const value of [{}, null, { logged_out: false, all_panel_sessions_revoked: false }, { signed_out: true }]) {
+      const { h, submit } = await mutationHarness(kind, stage => jsonResponse(stage === "post" ? value : mutationReply(stage, kind)));
+      await submit();
+      assert.equal(h.elements["auth-retry"].hidden, false, "Require current endpoint's actual confirmation flags");
+      assert.equal(h.requests.filter(request => request.path === "/api/v1/auth/status").length, 1);
+    }
+  }
+  for (const [status, error, definite] of [
+    [401, "current_password_invalid", true], [422, "new_password_invalid", true], [429, "password_change_rate_limited", true],
+    [401, "PRIVATE-SENTINEL", false], [422, "PRIVATE-SENTINEL", false], [429, "PRIVATE-SENTINEL", false], [503, "PRIVATE-SENTINEL", false],
+  ]) {
+    const { h, timers, submit } = await mutationHarness("password", stage =>
+      stage === "post" ? jsonResponse({ error }, status) : jsonResponse(mutationReply(stage, "password")));
+    await submit();
+    assert.equal(timers.size, 0);
+    assert.equal(h.elements["dashboard-content"].hidden, !definite);
+    assert.doesNotMatch(h.elements["auth-error"].textContent + h.elements["password-status"].textContent, /PRIVATE-SENTINEL/);
+  }
+}
+await testAuthMutationReplyBoundsAndConfirmation();
+
+async function testAuthMutationRetirementAndReplacement() {
+  for (const kind of ["logout", "logout-all", "password"]) for (const stage of ["session", "post", "status"]) {
+    let oldRelease, newRelease, retiring = false, replacing = false;
+    const oldPending = new Promise(resolve => { oldRelease = resolve; });
+    const newPending = new Promise(resolve => { newRelease = resolve; });
+    const { h, timers, route, submit } = await mutationHarness(kind, actualStage => {
+      if (!retiring && actualStage === stage) return oldPending;
+      if (retiring && !replacing && actualStage === "status") return jsonResponse({ authenticated: true });
+      if (replacing && actualStage === "post") return newPending;
+      return jsonResponse(mutationReply(actualStage, kind));
+    });
+    let settled = false;
+    const old = submit().then(() => { settled = true; });
+    await settleUI();
+    const deadline = [...timers.values()][0].callback;
+    const before = h.requests.length;
+    await submit();
+    await h.context.signOut(kind !== "logout-all");
+    assert.equal(h.requests.length, before, "All auth mutations share one single-flight gate");
+    h.context.showAuthUnavailable();
+    await settleUI();
+    assert.equal(settled, true, "Auth-view retirement must settle old work without waiting for its timer");
+    await old;
+    retiring = true;
+    await h.context.updateAuthView({ refresh: false });
+    replacing = true;
+    const replacement = submit();
+    await settleUI();
+    const request = h.requests.filter(request => request.path === route).at(-1);
+    const count = h.requests.length;
+    oldRelease(jsonResponse(mutationReply(stage, kind))); deadline();
+    await settleUI();
+    assert.equal(h.requests.length, count);
+    assert.equal(request.options.signal.aborted, false);
+    assert.equal(timers.size, 1);
+    for (const id of ["password-submit", "logout", "logout-all"]) assert.equal(h.elements[id].disabled, true, "Old finalizer cannot unlock replacement");
+    newRelease(jsonResponse(mutationReply("post", kind)));
+    await replacement;
+    assert.equal(timers.size, 0);
+    assert.equal(h.elements["auth-form"].hidden, false);
+  }
+  assert.ok(!authSource.includes(".json()"), "Auth UI must not fall back to unbounded Response.json");
+  process.stdout.write("Auth mutation controls passed: session/POST/status headers+body deadlines=18, inclusive16KiB/refusals, endpoint confirmation, fixed errors, duplicate/retired work and replacement ownership.\n");
+}
+await testAuthMutationRetirementAndReplacement();
+
 async function testDiagnosticStructureIsBoundedBeforeParsing() {
   let deep = null;
   for (let i = 0; i < 16; i++) deep = [deep];
@@ -2321,4 +2919,388 @@ async function testDiagnosticByteReaderBoundariesAndCleanup() {
   process.stdout.write("Diagnostic byte-reader controls passed: paths=5 inclusive-limits=true UTF8-split=true cancellation-locks=true no-fallback=true fragmentation=true.\n");
 }
 await testDiagnosticByteReaderBoundariesAndCleanup();
+
+async function testServiceLoadRefusesOversizedBody() {
+  let unboundedReads = 0;
+  const value = { ...serviceReply(null), private_padding: "PRIVATE-SENTINEL".repeat(36000) };
+  const h = await serviceHarness(() => {
+    const reply = jsonResponse(value);
+    reply.json = async () => { unboundedReads++; return value; };
+    return reply;
+  });
+  await h.context.loadServicePolicy();
+  assert.equal(h.elements["service-current"].hidden, true, "Oversized policy response must not publish a baseline");
+  assert.equal(h.elements["service-save"].disabled, true);
+  assert.equal(unboundedReads, 0, "Policy reads must not call unbounded Response.json");
+  assert.equal(h.requests.filter((r) => r.path === "/api/v1/file-services/configuration").length, 1);
+  assert.doesNotMatch(h.elements["service-status"].textContent, /PRIVATE-SENTINEL/);
+}
+await testServiceLoadRefusesOversizedBody();
+
+function serviceConfigFixture() {
+  return { format: "phantowd-file-service-config", schema_version: 1, revision: 1,
+    shares: { ...savedFixture().configuration, revision: 1 },
+    nfs: { format: "phantowd-nfs-policy", schema_version: 1, revision: 1, volume_revision: 1, exports: [] } };
+}
+
+// Exercise the visible workflows, not a second implementation of the reader.
+async function serviceBodyScenario(phase, respond) {
+  const c = serviceConfigFixture();
+  let active = false, replies = 0;
+  const target = (value) => { replies++; return respond(value); };
+  const h = await serviceHarness((options) => {
+    if (options.method === "PUT") return phase === "save" && active ? target(serviceSaved(1)) : jsonResponse(serviceSaved(1));
+    return phase === "load" && active ? target(serviceReply(null)) : jsonResponse(serviceReply(phase === "backup" ? c : null));
+  }, () => phase === "preview" && active ? target(policyFixture()) : jsonResponse(policyFixture()),
+  () => phase === "session" && active ? target({ csrf_token: "fixture-only" }) : jsonResponse({ csrf_token: "fixture-only" }),
+  (path) => target(path.endsWith("/backup") ? backupFixture(c) : restoreFixture(c, 0)));
+  await settleUI();
+  fillPolicy(h.elements);
+  if (phase !== "load") await h.context.loadServicePolicy();
+  if (phase === "save") await h.context.prepareServiceAddition();
+  if (phase === "restore") h.elements["service-restore-file"].files = [backupFile(JSON.stringify(backupFixture(c)))];
+  const actions = { load: "loadServicePolicy", session: "prepareServiceAddition", preview: "prepareServiceAddition",
+    save: "saveServiceChange", backup: "exportServiceBackup", restore: "previewServiceRestore" };
+  return { ...h, run: () => { active = true; return h.context[actions[phase]](); }, replies: () => replies };
+}
+
+async function testServiceBodyByteBoundsAndOutcomes() {
+  for (const [phase, limit] of [["load", 525056], ["session", 16384], ["preview", 4194304],
+    ["save", 16384], ["backup", 525056], ["restore", 4194304]]) {
+    for (const excess of [0, 1]) {
+      let reply, canceled = 0, reads = 0;
+      const h = await serviceBodyScenario(phase, (value) => {
+        const raw = new TextEncoder().encode(JSON.stringify(value));
+        const bytes = new Uint8Array(limit + excess).fill(32); bytes.set(raw);
+        // Include a false Content-Length and a cancellation that never settles.
+        reply = { ok: true, status: 200, headers: { get: () => "1" },
+          json: () => { throw new Error("Unbounded response fallback"); },
+          body: new ReadableStream({
+            pull(controller) {
+              reads++;
+              if (reads === 1) controller.enqueue(bytes.subarray(0, limit));
+              else if (reads === 2 && excess) controller.enqueue(bytes.subarray(limit));
+              else if (!excess) controller.close();
+            },
+            cancel() { canceled++; return new Promise(() => {}); },
+          }) };
+        return reply;
+      });
+      await h.run();
+      assert.equal(h.replies(), 1, `${phase}: no retry`);
+      assert.equal(reply.body.locked, false, `${phase}: reader lock released`);
+      assert.equal(canceled, excess, `${phase}: overflow requests cancellation`);
+      assert.equal(h.requests.filter((r) => r.options?.method === "PUT").length, phase === "save" ? 1 : 0);
+      if (!excess) {
+        if (phase === "load") assert.equal(h.elements["service-current"].hidden, false);
+        else if (phase === "save") assert.match(h.elements["service-status"].textContent, /confirmed saved/);
+        else if (phase === "backup") assert.equal(h.document.downloads.length, 1);
+        else assert.equal(h.elements["service-review"].hidden, false, `${phase}: inclusive byte limit`);
+      } else {
+        assert.equal(h.elements["service-save"].disabled, true);
+        assert.equal(h.elements["service-review"].hidden, true);
+        assert.equal(h.document.downloads.length, 0);
+        if (phase === "load") assert.equal(h.elements["service-current"].hidden, true);
+        if (phase === "save") {
+          assert.match(h.elements["service-status"].textContent, /not confirmed.*may have committed/i);
+          await h.context.saveServiceChange();
+          assert.equal(h.requests.filter((r) => r.options?.method === "PUT").length, 1, "Overflow cannot authorize a second save");
+        }
+      }
+    }
+  }
+}
+await testServiceBodyByteBoundsAndOutcomes();
+
+async function testServiceHTTPRefusalsDoNotConsumeErrorBodies() {
+  for (const phase of ["load", "session", "preview", "save", "backup", "restore"]) {
+    let canceled = 0;
+    const h = await serviceBodyScenario(phase, () => ({ ok: false, status: 503,
+      body: { cancel: () => { canceled++; return new Promise(() => {}); }, getReader: () => { throw new Error("Error body was consumed"); } },
+      json: () => { throw new Error("Error JSON was consumed"); } }));
+    await h.run();
+    assert.equal(h.replies(), 1);
+    assert.equal(canceled, 1, "HTTP error body cancellation is requested but not awaited");
+    assert.equal(h.elements["service-save"].disabled, true);
+    assert.equal(h.elements["service-review"].hidden, true);
+    assert.equal(h.document.downloads.length, 0);
+    assert.match(h.elements["service-status"].textContent, phase === "save" ? /not confirmed/ : /unavailable, disabled or busy/);
+  }
+}
+await testServiceHTTPRefusalsDoNotConsumeErrorBodies();
+
+async function testServiceBodyDeadlineAndRetiredResults() {
+  for (const phase of ["load", "session", "preview", "save", "backup", "restore"]) {
+    for (const boundary of ["timeout", "auth-loss"]) {
+      let release, reply, canceled = 0, expired, completed = false;
+      const pending = new Promise((resolve) => { release = resolve; });
+      const h = await serviceBodyScenario(phase, (value) => {
+        reply = deferredJSONResponse(pending.then(() => value));
+        reply.body.getReader = () => ({ read: () => pending.then(() => ({ done: false,
+          value: new TextEncoder().encode(JSON.stringify(value)) })),
+        cancel: () => { canceled++; return new Promise(() => {}); }, releaseLock: () => {} });
+        return reply;
+      });
+      h.context.setTimeout = (callback, delay) => { assert.equal(delay, 10000); expired = callback; return 1; };
+      h.context.clearTimeout = () => {};
+      const operation = h.run().then(() => { completed = true; });
+      await settleUI();
+      if (boundary === "timeout") expired(); else h.context.showAuthUnavailable();
+      await settleUI();
+      assert.equal(completed, true, `${phase}: canceled body must release UI without waiting for the peer`);
+      await operation;
+      assert.equal(canceled, 1);
+      assert.equal(h.replies(), 1);
+      assert.equal(h.elements["service-save"].disabled, true);
+      assert.equal(h.elements["service-review"].hidden, true);
+      assert.equal(h.document.downloads.length, 0);
+      if (phase === "save" && boundary === "timeout") assert.match(h.elements["service-status"].textContent, /not confirmed.*may have committed/i);
+      const text = h.elements["service-status"].textContent;
+      const count = h.requests.length;
+      release(); await settleUI();
+      assert.equal(h.elements["service-status"].textContent, text, "Late body cannot confirm a canceled operation");
+      assert.equal(h.requests.length, count);
+      assert.equal(h.document.downloads.length, 0);
+    }
+  }
+}
+await testServiceBodyDeadlineAndRetiredResults();
+
+async function testServiceDeadlineAtCompletedBodyHandoff() {
+  for (const phase of ["load", "session", "preview", "save", "backup", "restore"]) {
+    let expire;
+    const h = await serviceBodyScenario(phase, (value) => {
+      let sent = false;
+      return { ok: true, status: 200, body: { getReader: () => ({
+        read: async () => sent ? { done: true } : (sent = true, { done: false, value: new TextEncoder().encode(JSON.stringify(value)) }),
+        cancel: async () => {},
+        // Deterministic cancellation at the completed-reader/consumer seam.
+        releaseLock: () => expire(),
+      }) } };
+    });
+    h.context.setTimeout = (callback) => { expire = callback; return 1; };
+    h.context.clearTimeout = () => {};
+    await h.run();
+    if (phase === "load") assert.equal(h.elements["service-current"].hidden, true, "Deadline at the body handoff cannot publish current policy");
+    assert.equal(h.elements["service-review"].hidden, true);
+    assert.equal(h.elements["service-save"].disabled, true);
+    assert.equal(h.document.downloads.length, 0);
+    assert.match(h.elements["service-status"].textContent, phase === "save" ? /not confirmed/ : /timed out/);
+    assert.equal(h.requests.filter((r) => r.options?.method === "PUT").length, phase === "save" ? 1 : 0);
+    if (phase === "session") assert.equal(h.requests.filter((r) => r.path.endsWith("/preview")).length, 0);
+  }
+}
+await testServiceDeadlineAtCompletedBodyHandoff();
+
+async function testServiceBodiesKeepPolicySizedStructureAndRefuseMalformedData() {
+  const c = serviceConfigFixture();
+  c.shares.users = Array.from({ length: 128 }, (_, i) => ({ id: `user-${i}`, name: `user${i}` }));
+  c.shares.shares = Array.from({ length: 16 }, (_, i) => ({ id: `share-${i}`, name: `Share ${i}`, volume_id: "media", relative_path: `folder-${i}`,
+    grants: c.shares.users.map((u) => ({ user_id: u.id, access: "ro" })) }));
+  const h = await serviceHarness(() => jsonResponse(serviceReply(c)));
+  await h.context.loadServicePolicy();
+  assert.equal(h.elements["service-current"].hidden, false, "More than1024 legitimate policy containers must remain loadable");
+  assert.match(h.elements["service-summary"].textContent, /16 SMB/);
+  for (const bytes of [new Uint8Array([255]), new TextEncoder().encode('{"PRIVATE-SENTINEL":'),
+    new TextEncoder().encode(JSON.stringify({ ...serviceReply(null), extra: Array.from({ length: 32768 }, () => ({})) })),
+    new TextEncoder().encode(JSON.stringify({ ...serviceReply(null), extra: [[[[[[[[[[[[[[[[null]]]]]]]]]]]]]]]] }))]) {
+    const broken = await serviceBodyScenario("load", () => new Response(bytes));
+    await broken.run();
+    assert.equal(broken.elements["service-current"].hidden, true);
+    assert.doesNotMatch(broken.elements["service-status"].textContent, /PRIVATE-SENTINEL/);
+  }
+  process.stdout.write("Service response controls passed: routes=6 inclusive/excess=true deadlines/auth-retirement=12 uncertain-save=true policy-containers=true.\n");
+}
+await testServiceBodiesKeepPolicySizedStructureAndRefuseMalformedData();
+
+async function testServiceSessionBodyOverflowCannotSendPreview() {
+  const h = await serviceHarness(() => jsonResponse(serviceReply(null)),
+    () => jsonResponse(policyFixture()),
+    () => new Response(JSON.stringify({ csrf_token: "fixture-only" }) + " ".repeat(16385)));
+  await h.context.loadServicePolicy();
+  fillPolicy(h.elements);
+  await h.context.prepareServiceAddition();
+  assert.equal(h.requests.filter((r) => r.path === "/api/v1/file-services/preview").length, 0,
+    "An oversized session body must refuse before a preview request");
+  assert.equal(h.elements["service-save"].disabled, true);
+  assert.equal(h.elements["service-review"].hidden, true);
+}
+await testServiceSessionBodyOverflowCannotSendPreview();
+async function testServiceOversizedSaveReplyStaysUnconfirmedUntilReconcile() {
+  let saved = null;
+  const h = await serviceHarness((options) => {
+    if (options.method === "PUT") {
+      saved = JSON.parse(options.body);
+      return new Response(JSON.stringify(serviceSaved(saved.revision)) + " ".repeat(16385));
+    }
+    return jsonResponse(serviceReply(saved));
+  });
+  await h.context.loadServicePolicy(); fillPolicy(h.elements);
+  await h.context.prepareServiceAddition(); await h.context.saveServiceChange();
+  assert.match(h.elements["service-status"].textContent, /not confirmed.*may have committed/,
+    "A valid but oversized reply cannot confirm a possibly committed save");
+  assert.equal(h.elements["service-save"].disabled, true);
+  await h.context.saveServiceChange();
+  assert.equal(h.requests.filter((r) => r.options?.method === "PUT").length, 1);
+  await h.context.loadServicePolicy();
+  assert.match(h.elements["service-status"].textContent, /attempted configuration.*confirmed saved/);
+}
+await testServiceOversizedSaveReplyStaysUnconfirmedUntilReconcile();
+async function testServiceOversizedConfigurationIsNotPublished() {
+  const h = await serviceHarness(() => new Response(JSON.stringify(serviceReply(null)) + " ".repeat(1024 * 1024)));
+  await h.context.loadServicePolicy();
+  assert.equal(h.elements["service-current"].hidden, true,
+    "An oversized policy frame must not publish even an otherwise valid empty baseline");
+  assert.equal(h.elements["service-prepare"].disabled, true);
+  assert.equal(h.elements["service-save"].disabled, true);
+}
+await testServiceOversizedConfigurationIsNotPublished();
+async function testServiceOversizedPreviewCannotEnableSave() {
+  const h = await serviceHarness(() => jsonResponse(serviceReply(null)),
+    () => new Response(JSON.stringify(policyFixture()) + " ".repeat(4 * 1024 * 1024)));
+  await h.context.loadServicePolicy(); fillPolicy(h.elements);
+  await h.context.prepareServiceAddition();
+  assert.equal(h.elements["service-save"].disabled, true,
+    "A preview with an oversized frame must never admit Save");
+  assert.equal(h.elements["service-review"].hidden, true);
+  assert.equal(h.requests.some((r) => r.options?.method === "PUT"), false);
+}
+await testServiceOversizedPreviewCannotEnableSave();
+async function testAdministrativeBodyRefusalRequestsCleanupAndNeverFallsBack() {
+  const h = await serviceHarness(() => jsonResponse(serviceReply(null)));
+  const route = "/api/v1/auth/session";
+  let canceled = 0, fallback = 0;
+  const response = { ok: true, status: 200,
+    body: new ReadableStream({
+      start(controller) { controller.enqueue(new Uint8Array(16385)); },
+      cancel() { canceled++; return new Promise(() => {}); },
+    }), json: () => { fallback++; return { csrf_token: "fixture-only" }; } };
+  await assert.rejects(h.context.readAdministrativeJSON(response, route), /administrative body unavailable/);
+  assert.equal(canceled, 1); assert.equal(fallback, 0); assert.equal(response.body.locked, false);
+  const controller = new AbortController();
+  let settled = false;
+  const pendingBody = new ReadableStream({ cancel() { settled = true; return new Promise(() => {}); } });
+  const waiting = h.context.readAdministrativeJSON({ ok: true, body: pendingBody }, route, controller.signal);
+  await settleUI(); controller.abort();
+  await assert.rejects(waiting, (failure) => failure.name === "AbortError");
+  assert.equal(settled, true); assert.equal(pendingBody.locked, false);
+}
+await testAdministrativeBodyRefusalRequestsCleanupAndNeverFallsBack();
+async function testOversizedSessionBodyCannotDispatchSignOut() {
+  const h = await createHarness(async (path) => {
+    if (path === "/api/v1/auth/status") return jsonResponse({ authenticated: true });
+    if (path === "/api/v1/auth/session") return new Response(JSON.stringify({ csrf_token: "x".repeat(43) }) + " ".repeat(16385));
+    if (path === "/api/v1/auth/logout") return jsonResponse({ signed_out: true });
+    return snapshotResponse(path);
+  });
+  await settleUI();
+  await h.elements.logout.listeners.get("click")();
+  assert.equal(h.requests.filter((r) => r.options?.method === "POST").length, 0,
+    "An oversized session must refuse before sign-out dispatch");
+  assert.equal(h.elements["dashboard-content"].hidden, true);
+}
+await testOversizedSessionBodyCannotDispatchSignOut();
+async function testOversizedPasswordReceiptCannotConfirmCredentialChange() {
+  const h = await createHarness(async (path) => {
+    if (path === "/api/v1/auth/status") return jsonResponse({ authenticated: true });
+    if (path === "/api/v1/auth/session") return jsonResponse({ csrf_token: "x".repeat(43) });
+    if (path === "/api/v1/auth/password") return new Response(JSON.stringify({
+      password_changed: true, reauthentication_required: true, all_panel_sessions_revoked: true,
+    }) + " ".repeat(16385));
+    return snapshotResponse(path);
+  });
+  await settleUI();
+  h.elements["password-current"].value = "old public test passphrase";
+  h.elements["password-new"].value = "new public test passphrase";
+  h.elements["password-confirm"].value = h.elements["password-new"].value;
+  await h.elements["password-form"].listeners.get("submit")({ preventDefault() {} });
+  assert.match(h.elements["auth-error"].textContent, /outcome could not be confirmed/,
+    "An oversized password receipt must remain an unknown outcome, not a success");
+  assert.equal(h.requests.filter((r) => r.path === "/api/v1/auth/password").length, 1);
+  assert.equal(h.elements["dashboard-content"].hidden, true);
+  assert.equal(h.elements["password-current"].value, "");
+}
+await testOversizedPasswordReceiptCannotConfirmCredentialChange();
+async function testAdministrativeUnknownRouteNeverAcquiresReader() {
+  const h = await serviceHarness(() => jsonResponse(serviceReply(null)));
+  let acquired = 0;
+  const response = { ok: true, body: { getReader() {
+    acquired++; return { read: async () => ({ done: true }), cancel: async () => {}, releaseLock() {} };
+  } } };
+  await assert.rejects(h.context.readAdministrativeJSON(response, "toString"), /administrative path unavailable/);
+  assert.equal(acquired, 0, "Inherited object names are not declared response profiles");
+}
+await testAdministrativeUnknownRouteNeverAcquiresReader();
+async function testLargeStructuredPolicyStillLoadsThroughBoundedReader() {
+  let configuration = null;
+  const h = await serviceHarness(() => jsonResponse(serviceReply(configuration)));
+  fillPolicy(h.elements);
+  const base = h.context.buildServiceAddition(null, h.context.buildPolicyProposal());
+  const uuid = (n) => `11111111-2222-4333-8444-${n.toString(16).padStart(12, "0")}`;
+  const users = Array.from({ length: 64 }, (_, i) => ({ id: `reader-${i}`, name: `reader${i}` }));
+  configuration = structuredClone(base);
+  configuration.shares.users = users;
+  configuration.shares.shares = Array.from({ length: 8 }, (_, i) => ({ ...base.shares.shares[0],
+    id: `share-${i}`, name: `Share${i}`, relative_path: `smb${i}`,
+    grants: users.map((user) => ({ user_id: user.id, access: "ro" })) }));
+  configuration.nfs.exports = Array.from({ length: 32 }, (_, i) => ({ ...base.nfs.exports[0],
+    id: uuid(2000 + i), relative_path: `nfs${i}`,
+    clients: Array.from({ length: 64 }, (_, j) => ({ ...base.nfs.exports[0].clients[0], network: `192.0.2.${j}/32` })) }));
+  assert.ok(new TextEncoder().encode(JSON.stringify(configuration.shares)).length <= 262144);
+  assert.ok(new TextEncoder().encode(JSON.stringify(configuration.nfs)).length <= 262144);
+  await h.context.loadServicePolicy();
+  assert.equal(h.elements["service-current"].hidden, false,
+    "A producer-bounded policy with over 1024 containers must remain usable");
+  assert.match(h.elements["service-summary"].textContent, /8 SMB share.*32 NFS export/);
+}
+await testLargeStructuredPolicyStillLoadsThroughBoundedReader();
+async function testServicePendingSessionBodyTimesOutWithoutSendingPreview() {
+  const timers = new Map(); let next = 0, canceled = 0;
+  const body = new ReadableStream({ cancel() { canceled++; return new Promise(() => {}); } });
+  const h = await createHarness(async (path) => {
+    if (path === "/api/v1/auth/status") return jsonResponse({ authenticated: true });
+    if (path === "/api/v1/file-services/configuration") return jsonResponse(serviceReply(null));
+    if (path === "/api/v1/auth/session") return { ok: true, status: 200, body };
+    if (path === "/api/v1/file-services/preview") return jsonResponse(policyFixture());
+    return snapshotResponse(path);
+  }, { setTimeout(callback, delay) { const id = ++next; timers.set(id, { callback, delay }); return id; },
+    clearTimeout(id) { timers.delete(id); } });
+  await settleUI(); await h.context.loadServicePolicy(); fillPolicy(h.elements);
+  const operation = h.context.prepareServiceAddition(); await settleUI();
+  const pending = [...timers.values()];
+  assert.equal(pending.length, 1); assert.equal(pending[0].delay, 10000);
+  pending[0].callback(); await operation;
+  assert.match(h.elements["service-status"].textContent, /timed out.*No save was sent/);
+  assert.equal(h.requests.filter((r) => r.path === "/api/v1/file-services/preview").length, 0);
+  assert.equal(canceled, 1); assert.equal(body.locked, false); assert.equal(timers.size, 0);
+}
+await testServicePendingSessionBodyTimesOutWithoutSendingPreview();
+async function testAdministrativeInclusiveByteCapsAndUTF8Refusals() {
+  const h = await serviceHarness(() => jsonResponse(serviceReply(null)));
+  const base = '{"value":"bounded"}';
+  for (const [path, cap, method] of [
+    ["/api/v1/auth/session", 16384, "GET"], ["/api/v1/auth/password", 16384, "POST"],
+    ["/api/v1/storage/gpt-observation", 65536, "POST"],
+    ["/api/v1/shares/configuration", 524288, "GET"],
+    ["/api/v1/file-services/configuration", 1048576, "GET"],
+    ["/api/v1/file-services/configuration", 16384, "PUT"],
+    ["/api/v1/file-services/backup", 1048576, "GET"],
+    ["/api/v1/file-services/preview", 4194304, "POST"],
+    ["/api/v1/file-services/restore-preview", 4194304, "POST"],
+  ]) {
+    const bytes = new TextEncoder().encode(base + " ".repeat(cap - base.length));
+    const response = new Response(bytes);
+    assert.equal((await h.context.readAdministrativeJSON(response, path, undefined, method)).value, "bounded");
+    assert.equal(response.body.locked, false);
+    const excess = new Response(new Uint8Array(cap + 1));
+    await assert.rejects(h.context.readAdministrativeJSON(excess, path, undefined, method), /administrative body unavailable/);
+    assert.equal(excess.body.locked, false);
+  }
+  for (const path of ["/api/v1/auth/session", "/api/v1/file-services/preview"]) {
+    await assert.rejects(h.context.readAdministrativeJSON(new Response(new Uint8Array([255])), path), /administrative body unavailable/);
+    await assert.rejects(h.context.readAdministrativeJSON({ ok: true, json: () => ({ value: "forbidden fallback" }) }, path), /administrative body unavailable/);
+  }
+  process.stdout.write("Administrative response controls passed: routes=8 method-bound-save=true inclusive-caps=true unknown-outcomes=true native-stream-cleanup=true no-fallback=true.\n");
+}
+await testAdministrativeInclusiveByteCapsAndUTF8Refusals();
 process.stdout.write("Dashboard UI interaction smoke tests passed (DOM fixture; no visual browser coverage).\n");

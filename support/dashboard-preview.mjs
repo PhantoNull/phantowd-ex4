@@ -9,10 +9,11 @@ import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
 const host = "127.0.0.1";
-const port = Number(process.env.PHANTOWD_PREVIEW_PORT || 18081);
+const portText = process.env.PHANTOWD_PREVIEW_PORT ?? "18081";
+const port = Number(portText);
 const uiDirectory = join(dirname(fileURLToPath(import.meta.url)), "..", "src", "phantowd-api", "ui");
-if (!Number.isInteger(port) || port < 1024 || port > 65535) {
-  throw new Error("PHANTOWD_PREVIEW_PORT must be an unprivileged TCP port");
+if (!/^(0|[1-9][0-9]{0,4})$/.test(portText) || (port !== 0 && port < 1024) || port > 65535) {
+  throw new Error("PHANTOWD_PREVIEW_PORT must be 0 or an unprivileged TCP port");
 }
 
 const systemFixture = {
@@ -113,6 +114,7 @@ const assets = new Map([
   ["/", ["index.html", "text/html; charset=utf-8"]],
   ["/assets/app.css", ["app.css", "text/css; charset=utf-8"]],
   ["/assets/app.js", ["app.js", "text/javascript; charset=utf-8"]],
+  ["/assets/auth.js", ["auth.js", "text/javascript; charset=utf-8"]],
   ["/assets/service-policy.js", ["service-policy.js", "text/javascript; charset=utf-8"]],
   ["/assets/support-bundle.js", ["support-bundle.js", "text/javascript; charset=utf-8"]],
   ["/assets/ghost.svg", ["ghost.svg", "image/svg+xml"]],
@@ -179,7 +181,7 @@ const server = createServer(async (request, response) => {
 });
 
 server.listen(port, host, () => {
-  process.stdout.write(`Dashboard preview at http://${host}:${port}/ (synthetic data only)\n`);
+  process.stdout.write(`Dashboard preview at http://${host}:${server.address().port}/ (synthetic data only)\n`);
 });
 
 for (const signal of ["SIGINT", "SIGTERM"]) {

@@ -40,3 +40,28 @@ func TestNativePhaseTimingIsBoundedFixedLabelNonqualifyingTelemetry(t *testing.T
 		}
 	}
 }
+
+func TestNativeDataTimingIsBoundedFixedLabelNonqualifyingTelemetry(t *testing.T) {
+	labels := []string{"entered", "prepared", "probed", "closed"}
+	for phase, label := range labels {
+		for _, elapsed := range []time.Duration{0, 999 * time.Microsecond, time.Second, 10 * time.Minute} {
+			want := fmt.Sprintf("PHANTOWD_DIAG_NATIVE_DATA phase=%s elapsed_ms=%d qualifying=false scope=qemu-only", label, elapsed.Milliseconds())
+			if row := nativeDataTimingQEMU(nativeDataPhaseQEMU(phase), elapsed); row != want {
+				t.Fatalf("data phase %d duration %v: %q", phase, elapsed, row)
+			}
+		}
+	}
+}
+
+func TestNativeDataTimingRefusesUnsupportedInputs(t *testing.T) {
+	for _, phase := range []nativeDataPhaseQEMU{nativeDataClosedQEMU + 1, 255} {
+		if row := nativeDataTimingQEMU(phase, time.Second); row != "" {
+			t.Fatalf("invalid data phase emits telemetry: %q", row)
+		}
+	}
+	for _, elapsed := range []time.Duration{-1, 10*time.Minute + 1, time.Duration(1<<63 - 1)} {
+		if row := nativeDataTimingQEMU(nativeDataEnteredQEMU, elapsed); row != "" {
+			t.Fatalf("invalid data duration emits telemetry: %q", row)
+		}
+	}
+}

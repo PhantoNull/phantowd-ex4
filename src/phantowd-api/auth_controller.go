@@ -12,6 +12,8 @@ import (
 	"net/http"
 	"sync"
 	"time"
+
+	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/configjson"
 )
 
 const (
@@ -323,7 +325,10 @@ func decodeAuthJSON(w http.ResponseWriter, r *http.Request, destination any) boo
 		return false
 	}
 	data, err := io.ReadAll(http.MaxBytesReader(w, r.Body, maxAuthBodySize))
-	if err != nil || rejectDuplicateJSONKeys(data) != nil {
+	if err == nil {
+		_, err = configjson.DecodeEnvelope(data, maxAuthBodySize, 1, "username", "password")
+	}
+	if err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_request"})
 		return false
 	}
@@ -338,67 +343,4 @@ func decodeAuthJSON(w http.ResponseWriter, r *http.Request, destination any) boo
 		return false
 	}
 	return true
-}
-
-func rejectDuplicateJSONKeys(data []byte) error {
-	decoder := json.NewDecoder(bytes.NewReader(data))
-	if err := scanJSONValue(decoder); err != nil {
-		return err
-	}
-	if _, err := decoder.Token(); !errors.Is(err, io.EOF) {
-		if err == nil {
-			return errors.New("trailing JSON value")
-		}
-		return err
-	}
-	return nil
-}
-
-func scanJSONValue(decoder *json.Decoder) error {
-	token, err := decoder.Token()
-	if err != nil {
-		return err
-	}
-	delimiter, ok := token.(json.Delim)
-	if !ok {
-		return nil
-	}
-	switch delimiter {
-	case '{':
-		seen := make(map[string]struct{})
-		for decoder.More() {
-			keyToken, err := decoder.Token()
-			if err != nil {
-				return err
-			}
-			key, ok := keyToken.(string)
-			if !ok {
-				return errors.New("invalid JSON object key")
-			}
-			if _, exists := seen[key]; exists {
-				return errors.New("duplicate JSON object key")
-			}
-			seen[key] = struct{}{}
-			if err := scanJSONValue(decoder); err != nil {
-				return err
-			}
-		}
-		closing, err := decoder.Token()
-		if err != nil || closing != json.Delim('}') {
-			return errors.New("unterminated JSON object")
-		}
-	case '[':
-		for decoder.More() {
-			if err := scanJSONValue(decoder); err != nil {
-				return err
-			}
-		}
-		closing, err := decoder.Token()
-		if err != nil || closing != json.Delim(']') {
-			return errors.New("unterminated JSON array")
-		}
-	default:
-		return errors.New("unexpected JSON delimiter")
-	}
-	return nil
 }

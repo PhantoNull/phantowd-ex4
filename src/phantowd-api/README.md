@@ -1,9 +1,25 @@
 # Development diagnostics API
 
+The [management-plane threat model](THREAT-MODEL.md) maps the current HTTP
+surface and product admission gaps. It is a source-based draft, not security
+sign-off or permission to expose this development server.
+
 This is the first product-owned Go package, not a complete management plane.
 It is included only in the non-flashable QEMU development configuration and
 contains an embedded browser dashboard with read-only diagnostics and a
 non-mutating desired file-share preview form.
+
+Setup and login accept one flat, bounded UTF-8 JSON object with exactly the
+required `username` and `password` string fields. The shared configuration
+envelope rejects case aliases, decoded duplicates, unknown/missing/null fields,
+invalid bytes or unpaired UTF-16 escapes before credential operations. Escaped
+canonical keys, valid paired escapes and literal U+FFFD remain supported; do not
+silently repair or normalize password bytes. The existing 2 KiB body cap, login
+quota, origin checks, KDF bounds, credential state and session logic are unchanged.
+HTTP controls verify no enrollment/session issue or existing-session revocation
+on refusal, including unknown-length excess bodies and inclusive valid limits.
+The existing QEMU HTTPS fixture now refuses an alias and invalid UTF-8 before
+canonical first setup, without consuming its login-attempt quota.
 
 The [share configuration package](shareconfig/README.md) validates the first
 desired-policy schema for volumes, file-service users and share grants. It is
@@ -102,6 +118,13 @@ coherent policy/use/permission admission and target activation remain absent.
 
 ## M9.2a desired iSCSI policy
 
+The private [desired iSCSI review projection](internal/iscsipreview/README.md)
+now prepares complete target/LUN/initiator/grant display data from the validated
+coherent revision, without exposing credential usernames/SecretRefs or raw
+filesystem UUIDs. Exact decimal strings preserve revision/capacity precision.
+Its explicit flags remain unvalidated/unavailable: it is not a backing opener,
+effective-access decision, service state, owner claim, HTTP endpoint or panel.
+
 The internal [coherent NAS policy](internal/naspolicy/README.md) additionally
 stores desired SMB/NFS/iSCSI as one strict revision through the existing Linux
 transaction engine. Native interruption tests and an actual ARMv5 two-boot
@@ -178,6 +201,15 @@ planner evidence, a selected path, a lease or service activation authority.
 
 ## M5.5a diagnostic snapshot lifecycle task contract
 
+The dashboard also shows browser-monotonic **load age** after a complete or
+partial refresh. This is not device observation age, an atomic snapshot or a
+health assessment. One local 30-second timer updates visible text without any
+API/disk polling or history. Refresh/authentication boundaries retire it;
+queued old callbacks cannot change newer state. Invalid/regressing/unavailable
+clocks show unknown age without erasing valid observations; only explicit
+refresh resets that clock. All-unavailable results retain no age watcher.
+The age text is not a periodically announced live region.
+
 The browser's existing four read-only snapshot requests must share one bounded
 single-flight generation. An authentication boundary (sign-out/password change,
 unavailable status or unauthenticated status) aborts that generation and clears
@@ -229,6 +261,64 @@ the pinned Go 1.26.8 Linux host verifies embedded dashboard assets and the QEMU
 self-test markers. These are DOM/source/host-asset proofs, not actual browser
 keyboard navigation, CSS rendering, screen-reader announcements, WCAG
 conformance, current ARMv5 execution or new complete image qualification.
+
+## M5.5k bounded setup/login submission
+
+The deferred `auth.js` module starts authentication after the shared dashboard
+helpers in `app.js`. Each setup/login submission has one ten-second browser
+deadline for POST headers, its at-most16KiB decoded JSON reply and the following
+status read. Session authority comes only from that status, never reply fields.
+Diagnostic refresh then uses its existing separate bounded lifetime. All seven
+embedded assets retain the unchanged64KiB per-file limit.
+
+An active-attempt latch refuses duplicate submissions. Retirement aborts the
+attempt, clears the password input and releases the button; late continuations
+cannot change or unlock a replacement attempt. Known400/401/409/429 refusals
+use fixed notices, not response/error text. Network, malformed, oversized or
+expired outcomes hide the form and diagnostics without retrying credentials.
+Explicit reconnect reads status only: setup may already have completed remotely.
+Aborting a browser request does not roll back or prove cancellation of a server
+operation, and timer delivery depends on browser event-loop scheduling.
+
+Actual-source DOM controls reproduce the missing POST deadline before the fix
+and cover setup/login header/body/status stalls, shared-budget cancellation,
+inclusive/excess replies, known/unknown refusals, duplicate and retired events,
+late completion and explicit authenticated/unauthenticated reconciliation.
+An optional actual-browser Go-fixture test also intercepts one login before
+headers, observes the real timer and checks status-only reconnect. This does
+not qualify server-operation cancellation, complete authentication/recovery,
+password-change/logout response bounds, production persistence or hardware.
+
+## M5.5l bounded password-change and sign-out operations
+
+Password replacement, local logout and global panel logout share one exclusive
+mutation lifetime. One ten-second controller covers the session/CSRF GET,
+mutation POST and final status GET, including headers and decoded bodies. Each
+JSON reply is limited to16KiB by the existing bounded UTF-8/structure reader;
+the authentication module has no `Response.json()` fallback. No stage renews
+the budget, and retirement releases controls/clears password inputs even if
+the transport ignores abort. Old replies and finalizers cannot change or unlock
+a replacement operation. Snapshot/report loading stays blocked during mutation.
+
+The UI requires the existing endpoint's actual success flags and a following
+status with `authenticated:false`, not merely HTTP200. Known password refusals
+retain fixed messages only for the matching401/422/429 error identifiers. Other
+errors, missing confirmations, incomplete bodies and expired outcomes hide
+data/form and require explicit status-only reconnect without mutation retry.
+Backend credential/session/revocation contracts and privileges are unchanged.
+An uncertain password change may already have happened remotely; browser abort
+does not prove cancellation/rollback. Timers depend on event-loop scheduling,
+and clearing fields does not zero every retained browser/network copy.
+
+Actual-source controls first reproduce logout waiting beyond its timer, then
+cover18 header/body stall seams, inclusive16KiB/excess and malformed replies,
+invalid CSRF sessions, network/HTTP errors, endpoint flags, still-authenticated
+status, duplicate mutations and retired/replacement ownership. The optional
+browser fixture additionally intercepts password/global-logout requests before
+the server receives them: real timers must release controls, retain uncertainty
+and reconcile status without retry. Original cookies remain valid in these
+intercepted cases; they are distinct from nominal revocation tests. This is
+not production persistence/recovery, simultaneous-tab or device qualification.
 
 ## M5.5c secondary text palette guard
 
@@ -318,6 +408,44 @@ and do not consume the error body. Failures never retry or publish stale data.
 These bounds do not establish a browser heap/CPU hard limit, live/compressed
 transport interoperability or resource limits for other mutation/import flows.
 
+### Administrative response consumption
+
+All currently parsed administrative JSON replies now reuse the same strict
+native-stream reader, without changing endpoints, request bodies or privileges.
+Inclusive caps: session/password16KiB, GPT64KiB, share-only512KiB, combined
+configuration/backup1MiB and preview/restore-preview4MiB. Configuration PUT
+confirmation is16KiB, not the larger GET envelope; parsed error replies also
+use16KiB. Diagnostic depth16/container1024 stays unchanged; policy views allow
+32768 (share-only) or65536 (combined/preview) containers within their byte cap.
+These fixed higher bounds cover formal policy cardinalities and avoid treating
+legitimate large policies as invalid. The pre-scan is still not full JSON/schema
+or duplicate-key validation. Own-property route lookup refuses inherited names.
+
+These are the generic profiles originally proposed in PR133, now reconciled
+with the later response-lifetime candidate. The active combined-policy manager
+keeps its stricter525056-byte configuration/backup limits and exact six method/
+path pairs; it does not use the generic1MiB ceiling. Authentication keeps its
+separate16KiB readers and full request/body/status lifetimes. The reconciled
+app uses the shared profiles for GPT, saved share-only configuration, standalone
+preview and session reads. Earlier duplicate auth handlers must not return to
+app.js. Both test sets remain; generic profile tests are not proof that every
+runtime consumer uses that profile. See M5.5g/k/l and roadmap M5.5m.
+
+Existing caller deadlines, generation retirement, HTTP status, CSRF and revision
+checks remain. An oversized/unreadable/aborted save receipt retains the attempted
+document and unknown outcome until explicit GET reconciliation, without retry.
+Credential-change uncertainty still hides the dashboard and asks for fresh
+sign-in verification. Cancel requests and reader unlock do not prove server stop
+or absence of committed effects. Actual-source DOM/native-stream and host tests
+do not qualify live browser/compressed transport, heap/CPU, ARM JavaScript or
+production service activation.
+
+The single-boot ARMv5 overlay now verifies embedded-asset delivery over guest
+HTTP and HTTPS, with the baseline/probe unchanged. It does not execute browser
+JavaScript, rerun two-boot state or qualify the complete image/installer.
+
+### Earlier diagnostic-only verification
+
 Actual-source regressions cover oversize parsing, initial-auth hang and excessive
 depth. Native Node Web Streams controls check every inclusive budget and excess,
 fragmented UTF-8, malformed input, pending reads/cancellation, released locks,
@@ -326,6 +454,50 @@ session and deadline tests remain. Whole pinned tagged Linux vet/units and a
 single-boot ARMv5 overlay pass with complete raw HTTP/HTTPS asset markers. QEMU
 checks embedded-asset integration, not JavaScript/stream execution. Real-browser,
 live transport, two-boot/full/hosted and product qualification stay separate.
+
+## Bounded file-service manager responses
+
+The combined desired-policy manager reuses the diagnostic stream reader for
+its six fixed method/path pairs. Bounds apply to decoded response bytes before
+UTF-8/JSON parsing, independently of Content-Length:
+
+| Method and path | Inclusive response limit |
+| --- | --- |
+| GET `/api/v1/auth/session` | 16 KiB |
+| GET `/api/v1/file-services/configuration` | 525,056 bytes |
+| PUT `/api/v1/file-services/configuration` | 16 KiB |
+| GET `/api/v1/file-services/backup` | 525,056 bytes |
+| POST `/api/v1/file-services/preview` | 4 MiB |
+| POST `/api/v1/file-services/restore-preview` | 4 MiB |
+
+Unknown pairs refuse before fetch. The existing depth16/chunk16,384 guards
+remain; session structure retains1,024 containers, policy responses allow32,768,
+and restore allows65,536 for the document plus preview. Legitimate grant/client
+collections must not inherit the smaller diagnostic container budget. Existing
+diagnostic paths and defaults are unchanged. These pre-scans bound allocation;
+they are not a duplicate-key validator, policy authorization or hard heap limit.
+
+The existing10-second operation signal covers body reads. Recheck cancellation
+before fetch, after response admission and after body handoff; a completed reader
+must not publish a result after its deadline. Error bodies are canceled without
+consumption, preserving HTTP status. Body failures release the reader without
+waiting for uncertain cancellation. This requests browser cancellation, not
+verified server/kernel teardown or a hard interruption of synchronous parsing.
+
+Oversize, malformed, canceled or unconfirmed PUT responses retain the attempted
+configuration and require explicit Load / reconcile; they never authorize a
+second automatic save. Refused previews/restores cannot publish a candidate,
+and refused backup bodies cannot create a download. Retired-session replies
+cannot restore state. No endpoint, backend privilege, save semantics, persistent
+format, service activation or product startup is added. Other legacy panel flows
+outside this manager still require separate response-budget qualification.
+
+Actual-source DOM controls cover every inclusive/excess byte bound, six HTTP
+refusals, twelve pending-body deadline/auth-retirement cases, six completion-
+handoff cancellations and redacted malformed/over-structure input. Actual Go
+renderers additionally validate dense grant/client and HTML-escaped policy
+samples, including a restore envelope over1 MiB. These are regression samples,
+not an exhaustive maximum-size proof or real-browser/performance qualification.
 
 ## Development file-service configuration API
 
@@ -674,9 +846,18 @@ and refuses non-Versatile PB machines. See the
 
 - Default IPv4 loopback listener: `127.0.0.1:8080` **inside the guest**.
   Optional listener configuration is fail-closed: non-loopback binds require a
-  TLS certificate/key pair and one exact HTTPS origin. TLS keys must be regular
-  non-symlink files not accessible to group/other users; the certificate must be currently valid and
-  match the origin host. TLS has a minimum version of 1.2. No proxy headers or
+  TLS certificate/key pair and one exact HTTPS origin. Certificate PEM input is
+  limited to 256 KiB and private-key PEM to 64 KiB, including padding. Both must
+  be nonempty regular non-symlink leaf files; POSIX keys must not be accessible
+  to group/other users. Linux opens leaves no-follow/nonblocking and checks the
+  opened identity/mode/size/mtime before and after bounded reads. The certificate
+  must be currently valid and match the origin host. TLS has a minimum version
+  of 1.2. Raw owned PEM buffers are cleared, not all parsed private-key memory.
+  This is a startup snapshot, not retained parent-directory/trust authority or
+  protection against all concurrent file changes. Byte bounds do not preempt
+  stalled regular-file I/O or qualify total TLS heap/handshake load. Non-Linux
+  development uses a portable opener and does not certify Linux flags or ACLs.
+  No proxy headers or
   certificate provisioning/renewal are implemented. The QEMU image does not
   opt into remote listening.
 - `PHANTOWD_LISTEN_ADDR` defaults to `127.0.0.1:8080`. Remote use additionally
@@ -1286,8 +1467,8 @@ and export UUIDs are refused locally; the server validates the entire result,
 including limits, overlap and policy compatibility, before a save is enabled.
 All component revisions advance together.
 
-After loading, a separate editor selects a saved SMB share or NFS export by
-stable policy ID, not by display name or current list position. Selection
+After loading, a separate editor selects a saved SMB share, NFS export or user
+reference by exact policy ID, not by display name or current list position. Selection
 copies its volume/path into the form; choosing an existing user/CIDR rule
 copies that rule's fields. Only the chosen operation consumes those fields:
 
@@ -1297,6 +1478,8 @@ copies that rule's fields. Only the chosen operation consumes those fields:
 | SMB grant add/update | One exact username's ro/rw grant; adds a user reference if needed | All other grants, share path, NFS policy |
 | SMB grant remove | One exact username's grant | User reference, other grants, all NFS policy |
 | SMB definition remove | Selected share definition | Files, users, volumes and every NFS export |
+| User reference add | New desired name/reference, without any grant | All existing users, shares, grants, volumes and NFS policy; no account is provisioned |
+| Unused user reference remove | Exact selected reference, only if no SMB grant refers to it | All accounts, credentials, sessions, native identity history, files and NFS policy |
 | Independent NFS add | New export UUID, volume/path and first client rule | All SMB shares and existing exports |
 | NFS properties | Volume reference and relative path | Export UUID, every client rule, all SMB policy |
 | NFS client add/update | One exact CIDR's access, squash, anonymous IDs and security flavor | Other client rules, export identity/path, SMB grants |
@@ -1306,11 +1489,24 @@ copies that rule's fields. Only the chosen operation consumes those fields:
 Changing a client network requires an explicit new rule/removal, not an
 implicit rename of an old CIDR. Removing the last grant/client rule is refused;
 the owner must choose definition removal instead. Unused user/volume references
-are retained, not garbage-collected. Missing targets, mismatched protocol/action,
+are retained, not garbage-collected; only an explicit unused-user-reference
+operation removes a user reference. Missing targets, mismatched protocol/action,
 duplicate identities/names and no-change edits are refused locally. Remaining
 schema/limit/overlap checks are authoritative on the server. No generated-ID
 choice permits bypassing those checks. Edit operations preserve unrelated
 objects, including existing multi-user and multi-client policy.
+
+User-reference creation uses only the entered username; removal uses only the
+selected policy ID, not a stale username in the form. Reserved/invalid/duplicate
+names and the129th reference are refused locally, with whole-policy validation
+still authoritative on the server. Selecting a reference shows its loaded desired
+SMB grant count, disables the inapplicable rule selector and requires an explicit
+operation choice rather than preselecting removal. No rename, password, Unix
+account allocation, Samba enrollment, account disable or session revocation is
+performed. Absence of desired grants does not prove that an account is absent or
+unused elsewhere. Policy IDs are not native UID/GID allocation/reuse authority.
+Preview, semantic diff, explicit revisioned Save and uncertain-PUT reconciliation
+are the same existing workflow; no endpoint, request type or auto-save is added.
 
 Changing a definition's volume/path moves no files. Its old protocol peer does
 not follow automatically: an SMB path edit/removal does not change or revoke
@@ -1346,6 +1542,18 @@ HTTP/HTTPS. ARMv5 smoke verifies embedded assets, not browser JavaScript
 execution. Visual and assistive-technology testing remain required. The host
 visual-fixture server intentionally reports this backend as unavailable and
 does not emulate saves or validate policy.
+
+### Private thermal observation prerequisite
+
+[Internal thermalreport](internal/thermalreport/README.md) evaluates a bounded
+caller-declared roster in memory. Generation/time/quality/range faults do not
+expose current values, missing observations stay explicit, and zero is not an
+error sentinel. Its immutable private projection contains no last-good fallback,
+safe threshold or actuation authority. The future trusted provider must qualify
+hardware identity, monotonic origin, units/calibration, age and measurement
+intervals. Input assertions cannot establish those properties. No normal startup,
+HTTP, device access or control is added; a synthetic fixture is called by the
+existing ARMv5 self-test, not by a new guest or privileged process.
 
 ### Private health census prerequisite
 
@@ -1456,18 +1664,116 @@ It binds only to `127.0.0.1:18081` and serves clearly labelled synthetic
 system, block-device, and software-RAID fixtures; it is not connected to the
 NAS and is never packaged into firmware. If that port is occupied, choose
 another unprivileged local port with `PHANTOWD_PREVIEW_PORT`.
+The value must be a canonical decimal port from 1024 through 65535, or `0` for
+an OS-selected ephemeral port; the startup message reports the actual address.
 This static fixture server does not implement policy validation or sessions;
 the proposal form requires the real authenticated development API for that.
+
+For an optional actual-browser smoke check, use Node 24+ and an already installed
+Edge/Chrome/Chromium executable (nothing is downloaded):
+
+```powershell
+node support/test-dashboard-browser.mjs --browser "C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe"
+```
+
+The host-only runner starts its own ephemeral loopback preview and headless
+browser with a new temporary profile, never the user's profile. It verifies
+synthetic snapshot rendering, applied CSS, horizontal containment at 1365/390/320 px,
+keyboard Tab/Enter skip-link navigation and one explicit refresh, with no uncaught
+page exceptions or observed non-GET/external page requests. It records source
+hashes, metrics and screenshots under ignored `artifacts/dashboard-browser/`;
+`result.json` is passed only after the owned child processes stop and the
+temporary profile is removed. Work, protocol calls and cleanup have finite
+deadlines; no browser run is added automatically to CI or the fast preflight.
+Those run the separate dependency-free preview route/port boundary suite.
+
+This is a synthetic overview smoke test, not real Go authentication, all panel
+workflows, assistive-technology/WCAG, performance, network sandboxing or EX4
+qualification. QEMU independently checks the embedded bytes over HTTP/HTTPS;
+it does not execute a browser engine. The narrow-screen regression removes a
+fixed 320 px body minimum that overflowed the 305 px available beside a 15 px scrollbar.
+
+To exercise the existing Go authentication handlers from that browser, first
+compile a **test binary**, then explicitly select it (from the repository root):
+
+```powershell
+Push-Location src/phantowd-api
+$env:GOTOOLCHAIN = 'local'
+$env:GOPROXY = 'off'
+$env:GOFLAGS = '-mod=vendor'
+try {
+  go test -c -o ../../artifacts/dashboard-browser-api/phantowd-browser-api.test.exe .
+  if ($LASTEXITCODE -ne 0) { throw 'Browser API fixture compilation failed.' }
+} finally { Pop-Location }
+node support/test-dashboard-browser.mjs --browser "C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --api-fixture artifacts/dashboard-browser-api/phantowd-browser-api.test.exe
+```
+
+On Linux, use the same command with a native `phantowd-browser-api.test` binary
+and explicit installed browser path. Never pass a firmware/ARM binary to a host
+runner. Recompile after changes: the test server reports seven embedded-asset
+hashes and the runner refuses a source mismatch. This does not authenticate the
+entire source tree or executable's provenance.
+
+This opt-in `_test.go` fixture starts only ephemeral loopback and is absent from
+firmware. It uses actual HTTP handlers, Argon2id, cookie/session and CSRF logic,
+but an explicitly **memory-only account backend on every platform**. Initial
+enrollment, wrong-password refusal, logout/login, password replacement, old-
+password refusal, new-password login and global logout are exercised through
+the current forms. Exact previous HttpOnly test cookies are independently
+replayed over HTTP: accepted before each operation, refused after logout,
+password replacement and global logout. Cookie values/headers/bodies are not
+written to the result. This is not a second-browser/multi-session race proof.
+
+After those nominal flows, controlled network interception holds one login
+before headers. The real browser deadline must clear the input, release the
+button, hide the form and show the uncertain-outcome notice. Explicit reconnect
+then returns to sign-in without retrying credentials. Only the protocol request
+handle is retained, not its headers/body. This is not server-side cancellation.
+The same mode also intercepts one password change and one global logout before
+server delivery. Both real timers must show uncertainty, clear fields and
+release controls; original-cookie replay must still succeed. Explicit reconnect
+restores the authenticated partial snapshot without retrying either mutation.
+The existing90-second harness and80-second Go fixture limits are unchanged.
+
+Only system proc input is invented; storage/RAID/mount collectors are explicitly
+unavailable, with no host device/proc/sysfs collection. The partial snapshot
+must remain visible as partial. The browser still checks three viewport widths,
+keyboard skip link and refresh. Result/screenshots use
+`artifacts/dashboard-browser-api/`; success additionally requires explicit stdin
+stop, fixture zero exit and disposal receipt. Fixture and work deadlines bound
+the healthy test; forced disposal remains a failure, not a successful recovery.
+Fast host CI checks authentication/synthetic-observation boundaries and that the
+server skips without its opt-in flag; it does not download or launch a browser.
+These host-only files do not trigger firmware builds; other API inputs still do.
+
+This adds browser-to-handler evidence, **not** production persistence/enrollment,
+TLS/HTTPS browser trust, certificate lifecycle, simultaneous sessions/races,
+password-manager/assistive-technology qualification or NAS/service activation.
+All file-service backend operations remain unavailable in this fixture.
 
 Guest initialization probes the GET endpoints and QEMU-only authentication
 flow, verifies that QEMU's root block node appears through sysfs without being
 opened, rejects unauthorized and malformed operations, validates non-root
-identity and ARMv5 metadata, checks the embedded dashboard and static assets
-over guest loopback, rejects mutating/query dashboard requests, and prints an
+identity and ARMv5 metadata, checks all seven embedded dashboard assets over
+guest-loopback HTTP and separately trusted temporary HTTPS, rejects mutating/query dashboard requests, and prints an
 RSS sample with a 48 MiB ceiling. It then restarts only the API process and
 verifies that the account reloads while sessions remain memory-only. A failure
 prevents QEMU readiness. The RSS sample is a smoke-test measurement, not a
 steady-state or real-EX4 benchmark.
+
+Both transports call the same QEMU-only asset verifier. Each decoded body must
+match this binary's embedded file byte-for-byte within the unchanged64KiB
+response limit, retain the declared feature markers and have exactly one
+expected MIME, no-store, nosniff and CSP header. Read/close/metadata/body failure
+refuses the fixture with fixed errors; response bodies are closed and no manual
+retry or timing budget is added. Root HTML and other assets keep their distinct
+CSP profiles. The standard runner requires two exact seven-asset receipts per
+transport across its intentional API restart, not merely a TLS handshake marker.
+Host tests use actual loopback HTTP/HTTPS plus altered-marker-preserving, header,
+read/close, oversized, redirect and request-error controls. These assertions
+establish decoded-body parity to the running binary, not signed source/image
+authenticity, raw wire equality, JavaScript execution, browser layout or a
+production certificate provisioning/renewal workflow.
 
 QEMU uses a disposable disk snapshot and `restrict=on` with no host forwarding
 or physical device passthrough. No NAS address or credential is required.

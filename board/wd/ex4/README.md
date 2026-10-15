@@ -20,6 +20,10 @@ fan/thermal control, LEDs, buttons, watchdog, RTC, and bootloader environment.
 
 Initial bring-up must boot from RAM, TFTP, or another non-persistent path.
 
+[Thermal-control research](THERMAL-RESEARCH.md) records hash-bound legacy
+fan-request, GPIO-state and temperature-cache paths, plus remaining safety
+requirements. Static reconstruction does not qualify active cooling or a boot.
+
 ## Linux 6.18 device-tree research baseline
 
 `patches/linux/0001-arm-dts-marvell-add-wd-my-cloud-ex4-baseline.patch`

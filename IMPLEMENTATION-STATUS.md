@@ -3,6 +3,407 @@
 
 # Implementation status
 
+## Native QEMU timing: coordinated clock and complete local integration pass
+
+Ordinary native now has one300s monotonic work deadline, with one fixed
+settlement deadline at original work deadline+30s and a360s host cap including
+30s boot/final margin. Existing phase caps and native4/20s / generic2/5s worker
+caps remain unchanged; all other guests retain180s and the default ten-campaign
+union is unchanged. Failed/late work cannot renew the clock or continue into
+another phase. Settlement is independent of work cancellation and checks before
+and after existing verified Stop/Close operations, whose internal bounded
+cleanup is unchanged. No product timer or runtime privilege changes.
+
+Actual phase-runner clock tests cover cancellation, shorter parents, remaining
+budget, late nil and fixed settlement/cause retention. Whole Windows and pinned
+Linux checks, including tagged cmd race3 and80 Samba-root runner tests, pass.
+The original two-CPU ARMv5 native trace passes strict verification, completing
+post-revocation data at116690ms while preserving original Owner/passdb/session,
+revocation, fresh-login, read/write and stopped/reaped/no-leak proofs. This is
+not a performance benchmark: host checks briefly overlapped staging/guest start.
+Complete current-source cached integration now passes: host ordinary/race/fuzz,
+target build, standard ARM smoke, MD comparison, two-boot state, launcher,
+runtime/loader/atomic, all ten original Samba campaigns and both synthetic SMART
+lanes. A separate read-only audit matches all1088 API source/package/archive
+inputs, installed SDK, configured strip and image/export bytes, kernel/header
+archives, release binding, legal metadata and all seven artifact hashes. Actual
+Buildroot Python/OpenSSL loopback TLS1.3 also passes. All1502 frozen source
+witnesses match before/after audit; subsequent edits only report these results.
+Own-head hosted qualification remains required. The earlier intermittent hosted
+failure is not declared repaired; no NAS or physical disks are involved.
+
+## Integration candidate: reconcile PR133 with later API work
+
+The later guard branch and PR133 were separate histories: the former contained
+current `develop` but not PR133's two commits. M5.5m joins both in the development
+candidate, rather than treating either candidate's tests as proof of the other.
+Conflict resolution retains the separate authentication module and stricter
+combined-policy consumer byte-for-byte. It restores PR133's bounded GPT/session,
+saved share-only policy and standalone-preview consumers and retains both suites.
+
+All72 named tests from the later branch and64 from PR133 remain in the83-test
+named-function union, without duplicate declarations. This is a source roster,
+not83 independent product qualifications; existing unnamed scenarios also run
+in the complete DOM suite. Static guards refuse unbounded JSON fallbacks and
+resurrected duplicate authentication handlers. Whole Windows/pinned Linux and
+both installed-browser modes pass on the combined source, including nominal
+cookie revocation and the controlled non-delivered auth failures.
+
+The generic eight-profile reader's1MiB combined ceiling does not replace the
+active manager's stricter525056-byte cap and exact method/path table. No service
+activation, privilege or native timing change follows. The local integration
+does not close PR133, repair its failed hosted run or merge into `develop`;
+the combined publication still needs its own hosted qualification before that.
+The complete cached local integration and artifact audit now pass as recorded
+above; earlier component receipts below retain their narrower original scopes.
+
+The combined standard single-boot ARMv5 overlay exits0 with READY, every original
+smoke guard and two exact seven-file receipts for HTTP and HTTPS each across
+API restart. No browser runs in QEMU; the base kernel/packages/probe are unchanged.
+This is not native/two-boot/full/hosted or physical/installation qualification.
+
+## Dashboard: bounded password changes and session termination
+
+Password replacement, local logout and global panel logout now share one
+exclusive lifetime and original ten-second controller for session/CSRF GET,
+mutation POST and final status GET, including headers/bodies. Each decoded reply
+is capped at16KiB; the auth module no longer uses unbounded `Response.json()`.
+Retirement aborts/releases/clears input even when transport ignores cancellation;
+old replies/finalizers cannot alter or unlock a replacement attempt. Existing
+snapshot/report gates use this same mutation lifetime.
+
+Confirmation requires existing endpoint flags plus `authenticated:false` from
+status; HTTP200 or a still-authenticated/missing status is not success. Only
+matching401/422/429 password errors receive fixed known-refusal notices. Other
+outcomes hide data/form and require explicit status-only reconciliation without
+retry. Backend account, KDF/cookie/session/revocation contracts are unchanged.
+Browser abort is not remote rollback/cancellation; timer scheduling is not a
+hard wall-clock guarantee, and clearing input is not complete memory erasure.
+
+The actual logout header-wait failure is reproduced twice before correction.
+Actual-source controls cover18 session/POST/status header/body stalls, inclusive
+and excess16KiB replies, invalid/malformed data, CSRF/session and network/HTTP
+refusals, endpoint flags/status and duplicate/retired/replacement cases. Whole
+Windows and pinned Go1.26.8 Linux checks pass. Actual Edge passes nominal auth
+and original-cookie revocation plus controlled password/global-logout stalls.
+The intercepted requests never reach the server: original cookies remain valid,
+and explicit reconnect restores the authenticated partial snapshot without retry.
+This is not concurrent-tab, account persistence/recovery or EX4 qualification.
+
+The separate authentication module remains15,856bytes and app.js53,966bytes;
+all seven embedded assets stay within64KiB each. No image/volume/dependency or
+product activation is added. Earlier checkpoint claims below describe their
+dated scopes; the password/logout-bound gap is superseded only as stated here.
+
+The actual standard single-boot ARMv5 overlay exits0 with guest READY, all
+original smoke guards and two exact seven-asset HTTP/HTTPS receipts each across
+API restart. No browser executes in the guest. Base kernel/packages/probe and
+all resource/time limits remain unchanged; no new native/two-boot/full/hosted
+qualification, regenerated SBOM or repair of the failed native CI is claimed.
+
+## Dashboard: bounded setup/login and seven-asset packaging
+
+Setup/login now use one ten-second browser deadline across credential POST
+headers, a decoded JSON reply capped at16KiB and the subsequent status read.
+Only status grants the local authenticated view. Diagnostic loading keeps its
+separate existing lifetime. Duplicate submissions are refused; retired replies
+cannot change or unlock a replacement attempt. Known400/401/409/429 refusals
+use fixed text. Other failures hide the form/data, clear the password input and
+release controls without retry; explicit reconnect reads status only because
+setup may already have completed remotely. Abort does not prove server rollback
+or cancellation, and browser timer scheduling is not a hard wall-clock bound.
+
+The previously unbounded POST is reproduced twice before correction by tests
+of the actual event handler. Setup/login header/body/status stalls, reply bounds,
+fixed/redacted errors, duplicate/retired events, late completion and explicit
+reconciliation pass. Whole Windows and pinned Go1.26.8 Linux suites pass,
+including focused race checks and runner contracts. Actual Edge also passes
+both fixture modes and a controlled pre-header login stall using its real timer;
+this is not proof of cancellation of a server mutation.
+
+Authentication now lives in a deferred module after shared dashboard helpers.
+All seven embedded files remain below the unchanged64KiB per-asset cap; the
+largest is app.js at53,994bytes, auth.js is13,982bytes. One route mapping now
+also determines dashboard admission, removing the duplicate allowlist exposed
+by the initial module integration failure. Browser manifests and previews use
+the seven-file roster; old six-file receipts are rejected by the current runner.
+The dated six-asset evidence below remains historical, not current packaging.
+
+The actual standard single-boot ARMv5 overlay exits0 with guest READY and two
+exact seven-asset receipts per transport across API restart. Existing smoke
+guards pass; no browser runs in that guest. The base kernel/packages/probe are
+unchanged: this is not a regenerated full image/SBOM, native/two-boot/hosted run,
+clean-build qualification or a repair of the separate failed hosted fixture.
+
+No account backend, KDF/session/cookie contract, service activation or production
+device is changed. Complete authentication/recovery, password-change/logout
+response bounds, physical storage and the separate native timing gate remain
+unqualified. No failed hosted gate is waived.
+
+## Dependency security: Samba July source/configuration packet
+
+The six July 2026 Samba advisories now have a bounded source/configuration
+review in [dependency review](support/DEPENDENCY-REVIEW.md#samba-july-advisorysource-cross-check-2026-10-15).
+The unchanged selected 4.22.11 release includes those upstream fixes; 190 files
+in the reviewed DNS/KDC/LDAP/CTDB source scopes match its original archive.
+The cached build excludes AD DC but includes cluster support and installed
+`ctdbd`: no broad "CTDB compiled out" or vulnerability-free claim is justified.
+The reviewed custom init invokes only `smbd`, not a complete live census.
+
+The QEMU-only preview-parser preamble now explicitly disables clustering and
+queries target `testparm` for `No` before the existing share checks. Its actual
+host regression first fails without that declaration. The share-only renderer,
+native-runtime globals, package features and all existing deadlines are unchanged.
+This is not a product global profile, CTDB removal, new service activation,
+complete advisory/ABI review or exploit/hardware/release qualification.
+
+Whole Windows and pinned Go1.26.8 Linux checks pass, including the focused
+non-clustered-profile race3 regression and existing runner/workflow contracts.
+The actual standard single-boot ARMv5 overlay reaches READY with both preview
+receipts across API restart; each follows the new target-parser check. No new
+native/two-boot/full/hosted run or Samba rebuild is claimed. The separate native
+timing-contract decision remains unanswered; no failed CI gate is waived.
+
+## Dashboard: actual Go authentication through the host browser
+
+An explicit optional mode now drives current forms against a separately compiled
+Go test server: actual handlers, Argon2id, sessions/cookies and CSRF, with a
+memory-only account backend on every platform. The fixture cannot use production
+account persistence or storage observers. Invented system data and unavailable
+storage/RAID/mounts deliberately produce a partial snapshot, not healthy disks.
+
+Actual Edge executes setup, incorrect-password refusal, logout/login, password
+replacement, rejection of the old password, new-password login and global logout.
+Each original HttpOnly test cookie is separately replayed against the Go server:
+accepted before and refused after logout/change/global logout. This proves those
+serial original-cookie cases, not simultaneous sessions or in-flight revocation.
+Three-width containment, keyboard skip link and explicit refresh remain checked.
+Success additionally requires current six-asset hashes, no unexpected fixture
+error output, explicit stdin stop, zero fixture exit and its disposal receipt.
+
+The server skips ordinary test runs unless explicitly opted in. A normal host
+test verifies unauthorized reads, real enrollment, invented proc values and
+unavailable storage observers; cheap host CI includes those checks. Exact
+host-only paths avoid firmware rebuilds without excluding other API inputs.
+No production Go/UI code or existing native timing budget changes.
+This is not durable enrollment/password recovery, product startup/HTTPS browser
+trust, all management flows, accessibility or EX4/device qualification.
+
+Whole Windows API/DOM/preview/tagged checks and ARMv5 test cross-compilation
+pass. Pinned Go 1.26.8 Linux whole API vet/units/tagged vet, focused asset/TLS
+race3 and the new synthetic-boundary race3 pass; the listener fixture explicitly
+skips without opt-in. Both final actual Edge modes pass with no owned profile or
+process remaining. Invalid browser startup produces a failed result while the
+started API fixture is stopped and the temporary profile removed. Final workflow
+contracts pass with the exact host-only path filters. No new ARM guest/full/
+native/hosted run is claimed: only tests/tooling/docs changed from `eb15be2`.
+
+## Dashboard: real-browser synthetic overview and narrow-screen correction
+
+An optional dependency-free Node 24+ harness uses an already installed headless
+Edge/Chrome/Chromium, its own temporary profile and the existing synthetic
+loopback preview. Actual Edge 155 rendering reproduced horizontal overflow twice
+at 320 px: a fixed 320 px body minimum exceeded the 305 px client width beside the
+classic scrollbar. Removing that minimum fixes the observed defect without
+changing panel JavaScript, API routes or service authority.
+
+Actual browser checks now pass at 1365/390/320 px, including applied CSS, synthetic
+four-domain snapshot display, Tab/Enter skip-link focus, one explicit refresh,
+zero uncaught page exceptions and same-origin GET-only observed page traffic.
+Six source hashes, bounded viewport screenshots and layout metrics are recorded;
+success requires stopped owned children and removal of the temporary profile.
+The preview now also accepts port 0 for an OS-selected loopback port and rejects
+noncanonical/privileged ports. Fast local/host CI runs 12 invalid-port and 14 route
+cases without a browser; the browser harness remains an explicit optional check.
+
+This is not a real Go authentication test, all-workflow or assistive-technology/
+WCAG qualification, a browser network sandbox, performance proof or EX4 support.
+QEMU's independent HTTP/HTTPS embedded-asset checks do not execute browser JS.
+The native fixture's pending timing decision and existing limits are unchanged.
+
+The final whole Windows API/DOM/preview preflight and ARMv5 cross-compilation
+pass. Pinned Go 1.26.8 Linux vet/units/tagged vet, focused HTTP/HTTPS asset/TLS
+race-count3, 34 runner controls and workflow-path contracts pass. The actual
+standard single-boot ARMv5 overlay exits0 with guest READY and two exact six-asset
+receipts per transport across API restart. This is not the separate native,
+two-boot/full/hosted lane or a regenerated clean firmware/SBOM.
+
+## Dashboard fixture: exact HTTP/HTTPS asset parity
+
+The existing QEMU HTTP and temporary trusted HTTPS fixtures now share one
+six-asset verifier. It checks decoded response bodies byte-for-byte against
+the running binary's embedded files, preserving the64KiB bound and feature
+markers. Single exact MIME/cache/nosniff/CSP fields and successful read/close
+are required; root and other-asset CSPs remain distinct. Fixed errors disclose
+no response/transport details. Standard readiness requires exactly two receipts
+for each transport across API restart, in addition to existing TLS/auth checks.
+
+Actual host HTTP/HTTPS serving passes; all six embedded files are covered.
+Fourteen response-fault cases include alteration that preserves every old
+marker, duplicate headers, read/close failures, empty/oversized bodies and
+redirect refusal; a separate transport error is redacted. Bodies are closed,
+reads stay bounded and collection of live system observations is not invoked.
+Whole Windows API/DOM/tagged checks and ARMv5 cross-compilation pass; pinned
+Go1.26.8 Linux API vet/units/tagged vet, focused asset/TLS race-count3 and34
+runner controls pass. Negative runner cases require both transport receipts
+before/after restart and reject missing/excess/lookalike lines.
+The actual standard single-boot ARMv5 overlay exits0 with two exact HTTP and
+two exact HTTPS asset receipts, guest READY and every existing smoke guard
+satisfied. No second boot, full/native/hosted run or source-authenticity claim.
+This is a test-only packaging/transport qualification, not JavaScript/browser
+execution, independent source authenticity, certificate lifecycle or product
+deployment. Existing timeout, resource and privilege limits are unchanged.
+
+## Management prerequisite: explicit desired user references
+
+The existing combined SMB/NFS manager can now add an unused desired user
+reference without creating a share/grant, or explicitly remove an exact selected
+reference only when no desired SMB grant uses it. Invalid/reserved/duplicate
+names and the129th reference are refused. All other policy and input snapshots
+are preserved; semantic diff, preview, explicit CAS Save and uncertain-write
+reconciliation are reused. Selecting a user does not preselect deletion.
+
+These operations never allocate/rename/disable Unix or Samba accounts, set a
+password, enroll Samba, revoke sessions or release native identity/history.
+Unused in desired policy is not proof of absent/inactive accounts. No new HTTP
+endpoint, privilege, startup writer or service activation. Complete DOM tests
+cover first/last references, maximum rosters, ID-bound removal, retained grants/
+NFS and no retry after an uncertain save. The actual authenticated HTTP handlers
+also preview/save/read these references and reject dangling grants before commit.
+Whole Windows API/DOM/cross-compilation and pinned Linux API vet/units/tagged vet,
+focused HTTP race-count3 and32 runner contracts pass. Browser rendering and
+assistive-technology, physical deployment and product account workflows remain
+unqualified; QEMU asset checks do not execute JavaScript.
+
+The earlier M5.4d standard ARMv5 overlay exits0 with new user-operation/refusal
+markers present in embedded JavaScript over HTTP across the intentional API
+restart. Separate existing TLS/authentication/preview checks also pass; they do
+not establish HTTPS asset-marker parity. The final explanatory markup is outside the editor
+grid with an explicit accessible description, checked by final DOM/Windows and
+that fresh ARM run. This is not full/two-boot/native/hosted or real-browser
+qualification, and it does not resolve the pending native timing contract.
+
+## Tachometer prerequisite: exact count/window arithmetic
+
+M7.3f adds `thermalreport.EstimateTach`: a private immutable calculation from
+explicit transition count, elapsed window and transitions/revolution. It retains
+those inputs and fractional-result evidence, uses exact128-bit products and
+checked integer division, and refuses invalid windows/factors or overflowing
+RPM. No nominal replacement, synthetic initial edge, default calibration or
+automatic source qualification. A positive count rounded below1RPM stays
+distinguishable from zero counted edges; neither establishes a stopped fan.
+
+378 extreme-input combinations match an independent arbitrary-precision oracle.
+Whole Windows API/DOM/ARMv5 cross-compilation and pinned Go1.26.8 Linux API
+vet/units/tagged vet, focused race-count3 and two25,000-execution fuzz campaigns
+pass. All32 runner controls, exact24-campaign roster, workflow/storage contracts
+and shellcheck pass. A100,000-iteration wide-input host benchmark reports
+zero allocations on Windows/amd64 and pinned Linux/amd64; its timing is not
+ARMv5 performance or a guarantee for a complete sensor/controller service.
+The actual one-boot ARMv5 overlay now exits0 with guest READY, both exact thermal
+receipts including tach arithmetic, and every standard smoke guard satisfied.
+The augmented fixture covers ordinary/wide/fractional arithmetic, invalid
+windows/overflow and refusal to qualify a source from calculation alone. This
+is not the two-boot/full/native/hosted lane or an EX4 hardware qualification.
+The estimator establishes arithmetic only, not physical counts, calibration,
+monotonic sampling, freshness, healthy fan state, safe speed or permission to
+activate hardware. See the [component contract](src/phantowd-api/internal/thermalreport/README.md).
+
+## Thermal observation prerequisite: private point-in-time evaluation
+
+[Internal thermalreport](src/phantowd-api/internal/thermalreport/README.md)
+evaluates up to eight declared sources without I/O. It keeps missing, changed
+generation, invalid/future clock, stale, unavailable, read-failed, sleeping,
+unqualified/raw and out-of-range observations distinct. Only current observations
+expose a value; zero is not an error sentinel or a health claim. Duplicate/unknown
+sources and malformed inputs return no partial report. No last-good fallback,
+legacy conversion, product provider, HTTP, controller or actuation is added.
+Calibration, complete roster, source binding, clock origin, measurement interval
+and TTL remain future trusted-provider obligations, not proven input flags.
+Retained reports do not advance age and cannot serve as cooling leases.
+
+Whole Windows API/DOM preflight and ARMv5 cross-compilation pass on Go1.27.0.
+Pinned Go1.26.8 Linux whole API vet/tests/tagged vet, synthetic tagged fixture,
+focused race-count3 and25,000 fuzz executions pass. The combined driver then
+failed an exact fuzz-roster contract:23 campaigns versus22 declared. After
+updating the declaration and requiring the new named campaign, all32 runner
+tests, workflow-path/storage contracts and shellcheck pass. No previous campaign
+or timing limit was removed.
+
+One actual standard ARMv5 overlay reaches guest READY and executes the synthetic
+thermal fixture twice, before/after the intentional API restart. The first host
+guard incorrectly required one receipt and made that overlay command exit1.
+The corrected guard requires exactly two; regression cases reject0/1/3 and a
+lookalike line, and the complete captured guest log passes every current smoke
+guard in an explicitly offline replay. No second guest/full/two-boot/native/
+hosted run is claimed. Pinned base/probe and firmware sources are unchanged by
+the host-only correction. No physical qualification or timing fix follows; the
+existing native timing decision remains a separate gate.
+
+## EX4 cooling: partial offline legacy reconstruction
+
+Hash-bound static analysis now connects the WD fan-level request to IPC,
+distinguishes GPIO boolean fan state from the separate UART helper, and traces
+the board-temperature request/cache path. Initial boot data selects LOW then
+conditionally HIGH, not MAX. A zero reading reuses a previous nonzero value
+without an age check in that wrapper; requested speed publication does not
+verify application. These are observations, not product behavior to copy.
+
+[Thermal research](board/wd/ex4/THERMAL-RESEARCH.md) records exact artifact
+identities, ELF locations, independent cross-checks and remaining implementation/
+hardware gates. No vendor executable, NAS, physical disk or controller command
+was run. No cooling controller, sensor calibration, safe fan setting or longer boot
+is qualified; actual RPM, physical binding, full regulation and shutdown paths
+remain incomplete. Documentation-only work does not require another firmware
+build or repair the outstanding native QEMU timing gate.
+
+The follow-up maps the selected `libshare` tach/register path: GPIO transitions
+are converted with a fixed multiplier without actual-window normalization;
+some changed positive estimates are replaced by nominal values before display.
+MMIO read errors collapse to zero and write returns do not report success;
+mapping-failure branches leak an opened descriptor. Selected GPL definitions
+support bank1 data/latched-cause and candidate GPIO39, not verified board wiring
+or calibrated RPM. No driver, DTS, sensor provider or product telemetry is added.
+
+The temperature/shutdown follow-up maps the unchecked receive lookup, different
+HDD model predicates and display/control transformations, cached composite input
+and invocation-based thermal request. Its selected consumer clears the request
+before two activity checks and asynchronous shutdown; other marker/reassertion
+paths remain incomplete. Dashboard `good` is marker absence, not sample health.
+These findings define explicit input-quality, deadline and retained-intent
+requirements, not a product thermal policy or evidence of physical power-off.
+
+Selected deferred-marker replay and hibernation paths are now mapped: marker
+consumption precedes shutdown admission; USB/SATA restart guards are partial;
+`set_pwm` publishes disk sleep state that affects HDD sampling without proving
+current disk state or cooling ownership. Wake requests and helper termination
+are not physical wake confirmation. The research handoff includes synthetic
+acceptance cases for stale/crashed helpers, slot holes, retained deferral and
+workload admission. None of those product controls is implemented by this
+documentation-only checkpoint.
+
+## iSCSI management prerequisite: coherent desired review projection
+
+The new private projection validates the whole SMB/NFS/iSCSI desired revision
+before returning complete target/LUN/initiator/grant and backing display rows.
+It omits credential usernames, SecretRefs and raw filesystem UUIDs; proposed
+IQNs/paths remain sensitive administrator data. Revision/capacity are exact
+decimal strings, not potentially rounded JavaScript numbers. Explicit flags
+never imply storage/credential/runtime validation or available activation.
+Invalid/mixed evidence yields no partial output; accepted rosters are not
+truncated and encoded output is capped at256KiB. No policy ownership or I/O.
+
+Whole Windows preflight/ARMv5 cross-compilation and focused projection controls
+pass, including a53,308-byte dense64-backing/1024-grant fixture, exact large
+integers, privacy/copies and thirteen invalid whole-policy cases. Whole pinned
+Linux vet/units/tagged vet, focused race-count3 and25,000 fuzz executions pass.
+The actual single-boot ARMv5 overlay passes, including the augmented pure iSCSI
+projection/stale-refusal fixture. No additional guest boot or fixture I/O is
+introduced; this is not the two-boot/full/hosted or browser qualification lane.
+No HTTP route, panel, state writer, target activation or device operation is
+added; the interface preference and independent native timing decision remain
+pending. This is not an installable/product-qualified iSCSI management plane.
+
 ## Host release planning: optional strict-upgrade prerequisite
 
 Both host release inspectors now support `--require-upgrade` with a valid
@@ -39,6 +440,27 @@ No temperature lookup,
 serial opener/transmitter, hardware test or cooling qualification is added.
 Checksums and active controller support remain unqualified.
 
+## File-service manager: bounded responses and canceled-result refusal
+
+Six existing desired-policy method/path pairs now reuse the bounded stream
+reader instead of `Response.json()`: fixed byte/structure budgets, strict UTF-8,
+no Content-Length trust or unbounded fallback. Diagnostic defaults are unchanged;
+policy grants/clients and combined restore get appropriately larger finite
+container budgets. HTTP errors preserve status without consuming their bodies.
+Canceled/failed reads release the reader without waiting for peer cancellation.
+The existing operation deadline is also checked after completed body handoff;
+its deterministic RED previously published current policy after cancellation.
+
+Whole final Windows/pinned Linux checks and DOM regressions pass. Every route
+has inclusive/excess controls, deadline/session retirement and handoff refusals;
+uncertain PUTs remain blocked pending explicit reconciliation, never retry.
+Real Go renderers validate dense/HTML-escaped samples; these are not exhaustive
+size or browser memory/performance proofs. The final single-boot ARMv5 overlay
+also passes embedded-asset and existing TLS/auth smoke checks; it does not run
+browser JavaScript. Other panel flows, actual browser, two-boot/full/hosted and
+product qualification remain separate. No new endpoint, service activation or
+device operation is added; the independent native timing gate is unchanged.
+
 ## Host CI compiler selection
 
 The host-tool workflow now selects the exact `GO_VERSION` from `versions.env`
@@ -62,6 +484,96 @@ thermal safety, ACK ordering and active controller support remain unqualified.
 There is no serial/device opener or transmitter and no firmware/hardware test
 or activation in this increment. This is not checksum/payload or thermal
 qualification and does not repair the independent native integration timeout.
+
+## HTTPS startup: bounded supplied certificate and private-key files
+
+The transport loader replaces unbounded path-based pair loading with checked
+open-file reads: inclusive256KiB certificate/64KiB key PEM, regular non-symlink
+leaves, private POSIX key permissions and identity/mode/size/mtime rechecks.
+Linux leaf opens are no-follow/nonblocking. Refusals return no partial transport
+or private I/O details; owned raw PEM is cleared, not all parsed key memory.
+Windows and pinned Linux whole API checks and three focused Linux race
+repetitions pass. The actual single-boot ARMv5 smoke executes oversized
+valid-prefix refusals before its existing HTTPS/auth/password-change fixture.
+This is not retained parent/trust authority, all concurrent-change/close-fault
+coverage, a regular-file I/O deadline, total TLS-memory qualification, certificate
+provisioning/recovery or a product LAN listener. There is no complete image/
+hosted/physical qualification; no prior native timing gate is waived.
+
+## Identity admission: failed-open cleanup uncertainty
+
+`identityowner` no longer drops an uncertain backend/Owner cleanup result when
+opening fails. It adds redacted review/unavailability classifications, keeps
+the original admission classification and attempts cleanup only once. Confirmed
+cleanup preserves exact original errors. Native isolated host tests exercise
+pre-path refusal, unavailable paths, acquired root/registry retention and normal
+release; the whole identityowner package passes three Linux race repetitions.
+The normal single-boot ARMv5 smoke also passes; injected failed-open faults
+remain host-only tests, not physical-device or recovery qualification.
+No new Owner handle, API, command retry, durable quarantine/recovery, product
+startup or physical-device qualification is provided. Callers must treat review
+as stronger than coexisting invalid/busy admission errors.
+
+## Native integration: distinct deadline failures remain open
+
+The latest original native controls fail before the data probe: one reduced-CPU
+run reaches enrollment expiry, while a normal-quota run reaches a peer/session
+post-admission deadline. Neither is a passing regression. An independently
+enrolled data-only control passes its original proofs and measures about 17 s
+inside the descriptor/data probe, without qualifying post-revocation behavior.
+Temporary profiling is removed. There is no demonstrated hosted timing fix;
+changing only the outer guest limit would not address these inner expiries.
+All existing bounds, checks and the default ten-campaign union remain unchanged.
+See the [local diagnostic scopes](support/QEMU-FAST-TESTS.md#diagnose-a-native-fixture-timeout-before-a-full-ci-build).
+
+## Dashboard: explicit browser snapshot load age
+
+The overview displays monotonic elapsed browser time since the current complete
+or partial snapshot was loaded. One local30s timer performs no API/disk polling;
+refresh/authentication boundaries retire it, and queued old ticks cannot
+repopulate age. Invalid/regressing/missing clocks show unknown age without
+discarding valid observations or silently switching to wall time. Full failure
+retains no watcher; hidden tabs do not receive periodic text updates.
+Actual-source DOM controls and whole Windows/pinned Linux preflight pass.
+One actual ARMv5 smoke boot now also verifies the current embedded HTTP/HTTPS
+assets and preserves the trusted base; JavaScript does not execute in QEMU.
+This is not device observation age, atomic freshness, health, browser/assistive-
+technology qualification, complete image or product activation.
+
+## Setup/login: exact bounded credential JSON
+
+M5.3a replaces the separate recursive duplicate scanner with the existing
+bounded UTF-8/surrogate/exact-required-key envelope. A case-alias setup request
+returned201 and issued a session in two REDs; corrected requests return400 before
+credential operations. Fifty-two HTTP refusals preserve account and existing
+session state; valid Unicode/paired escapes/literal U+FFFD, escaped canonical
+keys and inclusive 2 KiB positive controls still authenticate exact bytes.
+Windows API/UI/vet/cross and pinned Linux whole API vet/unit/tagged-vet/proc
+checks and actual single-boot ARM overlay pass. The HTTPS fixture tests alias/
+invalid-UTF8 rejection before first setup, without extra login attempts; base/
+probe/source witnesses agree. No new endpoint, persistent schema, KDF/rate/body
+limit or activation authority. Full/own hosted verification for this increment
+must be assessed separately; the management threat model
+remains draft and its other product gates stay open.
+
+## Development transport: plaintext listener admission and threat model
+
+M5.2a closes a configuration-guard bypass: an explicitly non-loopback HTTP
+listener with a loopback public origin is refused with zero usable transport
+configuration. Sixteen negative/positive controls preserve valid loopback HTTP
+and existing TLS tests. Windows API/UI/vet/ARM cross and pinned Linux whole API
+vet/unit/tagged-vet/proc checks pass. Actual single-boot ARMv5 overlay executes
+the same loader's four negative guards before the existing HTTPS fixture;
+default smoke passes, original base/probe unchanged. No external listener,
+physical device or new Docker image/volume is used. This is not actual product
+startup, two-boot/full-image/SBOM, browser, LAN or hardware qualification.
+
+The [management threat model](src/phantowd-api/THREAT-MODEL.md) now inventories
+current routes, actors/assets and trust boundaries with explicit open acceptance
+packets. First-owner presence, certificate lifecycle, durable state/recovery,
+privileged service composition and independent security review remain required.
+This draft and the guard fix do not authorize deployment; own hosted acceptance
+is separate.
 
 ## Host release downloads: response-body error redaction
 
@@ -90,7 +602,12 @@ logs independently replay; the last three rely on the original controller.
 The preceding `5b90e22` full lane failed the final file-source quarantine/
 supervision deadline. Its cause remains unknown; this complete pass does not
 establish a timing repair, independent clean reproduction or hosted/physical/
-product/installation qualification. Require the publication head's own checks.
+product/installation qualification. The publication head `d40b545` passed its
+own host, ARMv5 QEMU and EX4 compile-only checks in PR #131 and was integrated
+as `b64109f` with the identical tree. PR #132 promoted that runtime source to
+`main`, retaining main's existing development-status README note and both
+histories. Promotion is not a new complete run. These results do not qualify
+the newer administrative-response increment described below.
 
 QEMU-only failure diagnostics now carry bounded cumulative checkpoint costs,
 without raw errors or changes to effects, authority, timing limits or exact
@@ -99,6 +616,31 @@ healthy runs pass. Failure-only ARM emission and the intermittent failure's
 cause remain unqualified; see the [diagnostic contract](support/QEMU-FAST-TESTS.md#failure-only-source-fault-checkpoint-costs).
 
 ## Diagnostic GET responses: byte and structural budgets
+
+The original PR133 increment also bounds every currently parsed administrative
+JSON response through the same native-stream reader. Session/password/save
+receipts use16KiB; GPT64KiB; share policy512KiB; combined policy/backup1MiB;
+preview/restore-preview4MiB. Method-bound PUT confirmations stay short even
+though GET on the same route can carry a large policy. Policy-specific bounded
+container allowances preserve high-cardinality documents; diagnostic bounds
+are unchanged. No `Response.json()` fallback remains in the dashboard assets.
+
+Actual-source UI regressions refuse oversize frames before dispatch/Save,
+preserve unconfirmed password/save outcomes and require explicit reconciliation,
+reject inherited profile names before acquiring a reader, and retain cancellation/
+lock/deadline behavior. A large component-byte-bounded64-user/8-share/32-export
+fixture still loads. Windows and pinned Linux API checks and single-boot ARM
+HTTP/HTTPS asset delivery pass. These are not browser heap/CPU/transport or
+complete-image/product qualification; this increment is separate from the
+audited/published candidate above. No endpoint/privilege/timer/backend/device
+or mutation-admission changes are made.
+
+That paragraph records PR133's isolated generic-profile checkpoint. M5.5m
+reconciles it with the later branch without replacing the stricter525056-byte
+combined-policy consumer or the separate bounded authentication module. Both
+test sets remain. The generic1MiB profile is not the active manager's limit;
+current combined-head qualification and unresolved hosted/native gates must
+be checked separately from the historical source results.
 
 The existing five diagnostic/auth-status GET paths now enforce decoded-body
 budgets before strict UTF-8/JSON parsing, with bounded chunk count, JSON nesting

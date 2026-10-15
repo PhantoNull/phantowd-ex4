@@ -13,7 +13,20 @@ from runtime_loader_fixture import MAX_LOG, MAX_REPORT, read_bounded, validate
 
 CAMPAIGNS = ("service", "native", "candidate", "lifecycle", "fault", "data",
              "exit", "held", "file", "file-source")
-FOCUSED_CAMPAIGNS = CAMPAIGNS
+# Independent descriptor/data prerequisite; not yet part of the default union.
+FOCUSED_CAMPAIGNS = CAMPAIGNS + ("native-data",)
+
+
+def guest_timeout(phase):
+    """Fixed host caps; native includes work/settlement/boot reserves."""
+    if phase == "native":
+        return 360
+    if phase in (*FOCUSED_CAMPAIGNS, "pending", "pending-peer-exit",
+                 "pending-handle"):
+        return 180
+    raise ValueError("unsupported guest timeout profile")
+
+
 ENTRIES = ("usr/sbin/smbd", "usr/bin/smbpasswd", "usr/bin/testparm",
            "usr/lib/samba/vfs/streams_xattr.so", "usr/lib/gconv/IBM850.so",
            "usr/bin/pdbedit", "usr/bin/smbstatus", "usr/bin/smbcontrol")
@@ -318,6 +331,10 @@ def check_campaign(log, phase):
         + ("PHANTOWD_SAMBA_ROOT_SERVICE_DONE",),
         "native": census + native
         + ("PHANTOWD_SAMBA_ROOT_NATIVE_DONE",),
+        "native-data": census + (MARKERS[enrollment], next(
+            row for row in MARKERS if row.startswith(
+                "PHANTOWD_SAMBA_OWNER_NATIVE_DATA_READY")),
+            "PHANTOWD_SAMBA_ROOT_NATIVE_DATA_DONE"),
         "candidate": (census + (MARKERS[enrollment], planned)
                       + ("PHANTOWD_SAMBA_ROOT_CANDIDATE_DONE",)),
         "lifecycle": (census + (MARKERS[enrollment], MARKERS[-4],
@@ -510,6 +527,10 @@ def main():
     campaign.add_argument("phase", choices=FOCUSED_CAMPAIGNS)
     selection = sub.add_parser("select-campaigns")
     selection.add_argument("selection", choices=("all", *FOCUSED_CAMPAIGNS))
+    budget = sub.add_parser("guest-timeout")
+    budget.add_argument(
+        "phase", choices=(*FOCUSED_CAMPAIGNS, "pending",
+                          "pending-peer-exit", "pending-handle"))
     diagnostics = sub.add_parser("diagnostic-log")
     diagnostics.add_argument("log")
     diagnostics.add_argument("phase", choices=FOCUSED_CAMPAIGNS)
@@ -531,6 +552,8 @@ def main():
         print(f"Samba {args.phase} campaign verified")
     elif args.command == "select-campaigns":
         print(" ".join(select_campaigns(args.selection)))
+    elif args.command == "guest-timeout":
+        print(guest_timeout(args.phase))
     elif args.command == "diagnostic-log":
         if Path(args.log).is_symlink() or not Path(args.log).is_file():
             raise ValueError("regular fixture log required")

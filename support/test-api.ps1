@@ -17,6 +17,8 @@ foreach ($environmentName in $environmentNames) {
 New-Item -ItemType Directory -Path $reportRoot -Force | Out-Null
 node $dashboardTest
 if ($LASTEXITCODE -ne 0) { throw 'Dashboard interaction tests failed.' }
+node (Join-Path $repoRoot 'support/tests/test-dashboard-preview.mjs')
+if ($LASTEXITCODE -ne 0) { throw 'Synthetic dashboard preview boundary tests failed.' }
 Push-Location $moduleRoot
 try {
     $env:GOPROXY = 'off'
@@ -30,6 +32,10 @@ try {
     if ($LASTEXITCODE -ne 0) { throw 'Diagnostics API tests failed.' }
     go test -tags=qemu -run '^(TestQEMUDashboardAssetsMatchSelfTest|TestQEMUTLSLoopbackSmoke|TestQEMUShareConfig|TestQEMUShareStore|TestQEMUSMBPreview|TestQEMUNFSPolicy|TestQEMUNetworkPolicy|TestQEMUISCSIPolicy|TestQEMUNFSFixture|TestQEMUFileServicePreviewHTTP|TestQEMUSMBStatusJSONReturnsOnlyTargetGenerations|TestQEMUSMBStatusJSONRejectsUnavailableOrUnqualifiedSessions|TestQEMUSMBStatusJSONAcceptsEmptySessionInventory|TestQEMUAPIReadinessWaitsWithoutMutatingBeforeReady|TestQEMUStateProcReaderObservesAndRedactsOwnerCWD)$' -count=1 .
     if ($LASTEXITCODE -ne 0) { throw 'QEMU dashboard contract test failed.' }
+    go test -tags=qemu -run '^TestQEMUDashboardAssets(HTTPAndTLS|Refusals)$' -count=1 .
+    if ($LASTEXITCODE -ne 0) { throw 'HTTP/HTTPS dashboard asset assertions failed.' }
+    go test -tags=qemu -run '^TestQEMUThermalReport$' -count=1 .
+    if ($LASTEXITCODE -ne 0) { throw 'Synthetic thermal observation contract test failed.' }
 
     $env:GOOS = 'linux'
     $env:GOARCH = 'arm'

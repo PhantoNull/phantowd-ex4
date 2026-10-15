@@ -387,7 +387,7 @@ async function observeGPTMetadata() {
       const failure = new Error("Session expired."); failure.status = 401; throw failure;
     }
     if (!sessionResponse.ok) throw new Error("Could not verify the administrator session.");
-    const session = await sessionResponse.json();
+    const session = await readAdministrativeJSON(sessionResponse, "/api/v1/auth/session", controller.signal);
     if (typeof session.csrf_token !== "string" || session.csrf_token.length !== 43) throw new Error("The session token is unavailable.");
     if (generation !== gptObservationGeneration) return;
     const response = await fetch("/api/v1/storage/gpt-observation", {
@@ -402,7 +402,7 @@ async function observeGPTMetadata() {
             "GPT observation failed. No partial result is shown.";
       const failure = new Error(message); failure.status = response.status; throw failure;
     }
-    renderGPTObservation(await response.json());
+    renderGPTObservation(await readAdministrativeJSON(response, "/api/v1/storage/gpt-observation", controller.signal));
   } catch (failure) {
     if (generation !== gptObservationGeneration) return;
     if (failure?.status === 401) {
@@ -447,7 +447,7 @@ const diagnosticBodyLimits = Object.freeze({
   "/api/v1/mounts": 4 * 1024 * 1024,
 });
 
-function boundedDiagnosticStructure(text) {
+function boundedDiagnosticStructure(text, maxContainers = 1024) {
   let quoted = false, escaped = false, depth = 0, containers = 0;
   for (const char of text) {
     if (quoted) {
@@ -456,7 +456,7 @@ function boundedDiagnosticStructure(text) {
       else if (char === '"') quoted = false;
     } else if (char === '"') quoted = true;
     else if (char === "{" || char === "[") {
-      if (++depth > 16 || ++containers > 1024) return false;
+      if (++depth > 16 || ++containers > maxContainers) return false;
     } else if (char === "}" || char === "]") {
       if (--depth < 0) return false;
     }
@@ -464,7 +464,7 @@ function boundedDiagnosticStructure(text) {
   return !quoted && depth === 0;
 }
 
-async function readDiagnosticJSON(response, limit, signal) {
+async function readDiagnosticJSON(response, limit, signal, maxContainers = 1024) {
   const invalid = () => new Error("diagnostic body unavailable");
   const canceled = () => Object.assign(new Error("diagnostic read canceled"), { name: "AbortError" });
   let reader;
@@ -496,7 +496,7 @@ async function readDiagnosticJSON(response, limit, signal) {
       total = needed;
     }
     const text = new TextDecoder("utf-8", { fatal: true }).decode(bytes.subarray(0, total));
-    if (!boundedDiagnosticStructure(text)) throw invalid();
+    if (!boundedDiagnosticStructure(text, maxContainers)) throw invalid();
     const value = JSON.parse(text);
     if (signal?.aborted) throw canceled();
     complete = true;
@@ -511,6 +511,30 @@ async function readDiagnosticJSON(response, limit, signal) {
       try { Promise.resolve(reader.cancel()).catch(() => {}); } catch { /* refusal remains */ }
     }
     try { reader.releaseLock(); } catch { throw invalid(); }
+  }
+}
+
+// Fixed existing administrative routes only. Large policies have a separate
+// structural allowance; diagnostic limits and all caller deadlines stay fixed.
+const administrativeBodyLimits = Object.freeze({
+  "/api/v1/auth/session": Object.freeze([16 * 1024, 1024]),
+  "/api/v1/auth/password": Object.freeze([16 * 1024, 1024]),
+  "/api/v1/storage/gpt-observation": Object.freeze([64 * 1024, 1024]),
+  "/api/v1/shares/configuration": Object.freeze([512 * 1024, 32768]),
+  "/api/v1/file-services/configuration": Object.freeze([1024 * 1024, 65536]),
+  "/api/v1/file-services/backup": Object.freeze([1024 * 1024, 65536]),
+  "/api/v1/file-services/preview": Object.freeze([4 * 1024 * 1024, 65536]),
+  "/api/v1/file-services/restore-preview": Object.freeze([4 * 1024 * 1024, 65536]),
+});
+
+async function readAdministrativeJSON(response, path, signal, method = "GET") {
+  const profile = Object.hasOwn(administrativeBodyLimits, path) ? administrativeBodyLimits[path] : null;
+  if (!profile) throw new Error("administrative path unavailable");
+  const shortReply = response.ok === false || (path === "/api/v1/file-services/configuration" && method === "PUT");
+  try { return await readDiagnosticJSON(response, shortReply ? 16 * 1024 : profile[0], signal, shortReply ? 1024 : profile[1]); }
+  catch (failure) {
+    if (failure?.name === "AbortError") throw failure;
+    throw new Error("administrative body unavailable");
   }
 }
 
@@ -558,6 +582,47 @@ async function fetchJSON(path, { signal } = {}) {
 let snapshotGeneration = 0;
 let snapshotController = null;
 let supportSnapshot = null;
+let snapshotAge = null;
+let snapshotAgeTimer = null;
+
+function clearSnapshotAge() {
+  if (snapshotAgeTimer !== null) clearInterval(snapshotAgeTimer);
+  snapshotAgeTimer = null;
+  snapshotAge = null;
+  setText("snapshot-age", "No loaded snapshot.");
+}
+
+function startSnapshotAge(generation) {
+  clearSnapshotAge();
+  const readClock = () => {
+    try {
+      const now = performance.now();
+      return Number.isFinite(now) && now >= 0 && now <= Number.MAX_SAFE_INTEGER ? now : null;
+    } catch { return null; }
+  };
+  const unavailable = () => {
+    clearSnapshotAge();
+    setText("snapshot-age", "Snapshot load age unavailable. Refresh to reset the clock.");
+  };
+  const started = readClock();
+  if (started === null) { unavailable(); return; }
+  const age = { generation, started, last: started };
+  snapshotAge = age;
+  const update = () => {
+    if (snapshotAge !== age || age.generation !== snapshotGeneration) return;
+    const now = readClock();
+    if (now === null || now < age.last) { unavailable(); return false; }
+    age.last = now;
+    if (document.hidden) return true;
+    const minutes = Math.floor((now - age.started) / 60000);
+    const count = minutes < 60 ? minutes : minutes < 1440 ? Math.floor(minutes / 60) : Math.floor(minutes / 1440);
+    const unit = minutes < 60 ? "minute" : minutes < 1440 ? "hour" : "day";
+    setText("snapshot-age", minutes === 0 ? "Snapshot loaded just now." :
+      `Snapshot loaded ${count} ${unit}${count === 1 ? "" : "s"} ago.`);
+    return true;
+  };
+  if (update()) snapshotAgeTimer = setInterval(update, 30000);
+}
 
 function clearSupportSnapshot() {
   supportSnapshot = null;
@@ -580,7 +645,7 @@ function prepareSupportSnapshot(results) {
 
 function exportSupportSnapshot() {
   const button = byId("support-download");
-  if (!supportSnapshot || button.disabled || snapshotController || logoutBusy || passwordBusy || byId("dashboard-content").hidden) return;
+  if (!supportSnapshot || button.disabled || snapshotController || authMutation || byId("dashboard-content").hidden) return;
   button.disabled = true;
   let anchor, url;
   try {
@@ -606,6 +671,7 @@ function clearSnapshot(message) {
   snapshotController?.abort();
   snapshotController = null;
   clearSupportSnapshot();
+  clearSnapshotAge();
   clearSystemObservation();
   clearStorageObservation();
   clearArrayObservation();
@@ -618,11 +684,12 @@ function clearSnapshot(message) {
 }
 
 async function refreshSnapshot() {
-  if (snapshotController || logoutBusy || passwordBusy || byId("dashboard-content").hidden) return;
+  if (snapshotController || authMutation || byId("dashboard-content").hidden) return;
   const generation = ++snapshotGeneration;
   const controller = new AbortController();
   snapshotController = controller;
   clearSupportSnapshot();
+  clearSnapshotAge();
   const current = () => generation === snapshotGeneration;
   const timeout = setTimeout(() => controller.abort(), 10000);
   const button = byId("refresh");
@@ -672,6 +739,7 @@ async function refreshSnapshot() {
     // state without retaining private rejected details; null stays unavailable.
     prepareSupportSnapshot(results.map((result, index) => result.status === "fulfilled" && result.value != null && !displayCurrent[index] ?
       { status: "fulfilled", value: {} } : result));
+    if (displayCurrent.some(Boolean)) startSnapshotAge(generation);
 
     if (systemCurrent && storageCurrent && arraysCurrent && mountsCurrent) {
       status.textContent = "Read-only system, storage, RAID, and mount observations updated.";
@@ -705,6 +773,7 @@ async function refreshSnapshot() {
   } catch (failure) {
     if (!current()) return;
     clearSupportSnapshot();
+    clearSnapshotAge();
     if (failure?.status === 401) {
       status.textContent = "Session expired. Sign in again to view a current snapshot.";
       try {
@@ -733,238 +802,6 @@ async function refreshSnapshot() {
   }
 }
 
-function setAuthError(message) {
-  const error = byId("auth-error");
-  error.textContent = message;
-  error.hidden = false;
-}
-
-function showAuthUnavailable() {
-  const moveFocus = ["dashboard-content", "logout", "auth-form"].some((id) => byId(id).contains(document.activeElement));
-  clearSnapshot("Administrator session unavailable. No current diagnostic snapshot is shown.");
-  clearGPTObservation("Administrator session unavailable. No GPT observation is shown.");
-  clearPasswordFields();
-  clearServicePolicy();
-  clearSavedPolicy();
-  clearPolicyDraft();
-  byId("auth-panel").hidden = false;
-  byId("dashboard-content").hidden = true;
-  byId("logout").hidden = true;
-  byId("auth-form").hidden = true;
-  byId("auth-retry").hidden = false;
-  byId("auth-password").value = "";
-  setText("auth-title", "Local API unavailable.");
-  setText("auth-description", "Sign-in status cannot be checked right now, so diagnostic data is hidden. Retry after the local service is available.");
-  setAuthError("The local API could not be reached. No current system or storage data is shown.");
-  setConnectionState("API unavailable", "unavailable");
-  if (moveFocus) byId("auth-title").focus({ preventScroll: true });
-}
-
-async function updateAuthView({ refresh = true, notice = "", current = () => true, signal } = {}) {
-  const status = await fetchJSON("/api/v1/auth/status", { signal });
-  if (!current()) return;
-  const authPanel = byId("auth-panel");
-  const dashboard = byId("dashboard-content");
-  const logout = byId("logout");
-  const form = byId("auth-form");
-  const password = byId("auth-password");
-  const submit = byId("auth-submit");
-  const authError = byId("auth-error");
-  const focused = document.activeElement;
-  const leavingAuth = authPanel.contains(focused);
-  const leavingDashboard = dashboard.contains(focused) || logout === focused;
-  const leavingRetry = byId("auth-retry") === focused;
-  authError.hidden = true;
-  form.hidden = false;
-  byId("auth-retry").hidden = true;
-
-  if (status.authenticated) {
-    authPanel.hidden = true;
-    dashboard.hidden = false;
-    logout.hidden = false;
-    setConnectionState("Authenticated", "loading");
-    if (leavingAuth) byId("page-title").focus({ preventScroll: true });
-    if (refresh) await refreshSnapshot();
-    return;
-  }
-
-  dashboard.hidden = true;
-  clearSnapshot("Sign in to view a current diagnostic snapshot.");
-  clearGPTObservation("Sign in to run a manual GPT metadata observation.");
-  clearPasswordFields();
-  clearServicePolicy();
-  clearSavedPolicy();
-  clearPolicyDraft();
-  logout.hidden = true;
-  authPanel.hidden = false;
-  form.dataset.mode = status.setup_required ? "setup" : "login";
-  setText("auth-title", status.setup_required ? "Set up your administrator account." : "Sign in to PhantoWD.");
-  setText("auth-description", status.setup_required ?
-    "This initial account is stored in the configured system-state directory. Use at least 15 characters; a longer passphrase is better." :
-    "Enter your local administrator credentials to view the system snapshot.");
-  submit.textContent = status.setup_required ? "Create account" : "Sign in";
-  password.autocomplete = status.setup_required ? "new-password" : "current-password";
-  password.value = "";
-  setConnectionState("Sign-in required");
-  if (notice) setAuthError(notice);
-  if (leavingDashboard || leavingRetry) byId("auth-title").focus({ preventScroll: true });
-}
-
-byId("auth-retry").addEventListener("click", async () => {
-  const retry = byId("auth-retry");
-  retry.disabled = true;
-  setConnectionState("Checking local API…", "loading");
-  try {
-    await updateAuthView();
-  } catch {
-    showAuthUnavailable();
-  } finally {
-    retry.disabled = false;
-  }
-});
-
-byId("auth-form").addEventListener("submit", async (event) => {
-  event.preventDefault();
-  const form = byId("auth-form");
-  const submit = byId("auth-submit");
-  const error = byId("auth-error");
-  const username = byId("auth-username").value;
-  const password = byId("auth-password").value;
-  const route = form.dataset.mode === "setup" ? "/api/v1/auth/setup" : "/api/v1/auth/login";
-  if (route === "/api/v1/auth/setup" && [...password].length < 15) {
-    setAuthError("Use a passphrase with at least 15 characters.");
-    return;
-  }
-  if (new TextEncoder().encode(password).length > 1024) {
-    setAuthError("The password is longer than the 1024-byte limit.");
-    return;
-  }
-  submit.disabled = true;
-  error.hidden = true;
-  try {
-    const response = await fetch(route, {
-      method: "POST",
-      headers: { Accept: "application/json", "Content-Type": "application/json" },
-      credentials: "same-origin",
-      cache: "no-store",
-      body: JSON.stringify({ username, password }),
-    });
-    if (!response.ok) {
-      const message = response.status === 400 ? "Check the username and password requirements." :
-        response.status === 401 ? "The username or password is not correct." :
-          response.status === 409 ? "Account setup is no longer available. Reload and sign in." :
-            response.status === 429 ? "Too many attempts. Wait one minute before trying again." :
-              "The authentication service is temporarily unavailable.";
-      throw new Error(message);
-    }
-    byId("auth-password").value = "";
-    await updateAuthView();
-  } catch (failure) {
-    setAuthError(failure instanceof Error ? failure.message : "Authentication request failed.");
-  } finally {
-    submit.disabled = false;
-  }
-});
-
-let logoutBusy = false;
-async function signOut(all = false) {
-  if (logoutBusy || passwordBusy) return;
-  logoutBusy = true;
-  clearSnapshot("Signing out. Previous diagnostic observations were cleared.");
-  clearServicePolicy();
-  clearSavedPolicy();
-  clearPolicyDraft();
-  clearPasswordFields();
-  const logout = byId("logout");
-  logout.disabled = true;
-  byId("logout-all").disabled = true;
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 10000);
-  try {
-    const sessionResponse = await fetch("/api/v1/auth/session", { credentials: "same-origin", cache: "no-store", signal: controller.signal });
-    if (!sessionResponse.ok) throw new Error("Session unavailable");
-    const session = await sessionResponse.json();
-    if (typeof session.csrf_token !== "string" || session.csrf_token.length !== 43) throw new Error("Session unavailable");
-    const response = await fetch(all ? "/api/v1/auth/logout-all" : "/api/v1/auth/logout", {
-      method: "POST",
-      headers: { Accept: "application/json", "X-PhantoWD-CSRF": session.csrf_token },
-      credentials: "same-origin",
-      cache: "no-store",
-      signal: controller.signal,
-    });
-    if (!response.ok) throw new Error("Could not safely end the session.");
-    await updateAuthView();
-  } catch {
-    showAuthUnavailable();
-    setAuthError("Sign-out outcome could not be confirmed. Check connection status before signing in again; the request was not retried.");
-  } finally {
-    clearTimeout(timeout);
-    logout.disabled = false;
-    byId("logout-all").disabled = false;
-    logoutBusy = false;
-  }
-}
-byId("logout").addEventListener("click", () => signOut(false));
-byId("logout-all").addEventListener("click", () => signOut(true));
-
-let passwordBusy = false;
-function clearPasswordFields() {
-  for (const id of ["password-current", "password-new", "password-confirm"]) byId(id).value = "";
-}
-
-byId("password-form").addEventListener("submit", async (event) => {
-  event.preventDefault();
-  if (passwordBusy || logoutBusy) return;
-  const currentPassword = byId("password-current").value;
-  const newPassword = byId("password-new").value;
-  const confirmation = byId("password-confirm").value;
-  if (!currentPassword || [...newPassword].length < 15 || newPassword !== confirmation || newPassword === currentPassword ||
-      [currentPassword, newPassword].some((p) => new TextEncoder().encode(p).length > 1024)) {
-    setText("password-status", "Check the current password, use a different new passphrase of 15+ characters (at most 1024 UTF-8 bytes), and repeat it exactly.");
-    return;
-  }
-  passwordBusy = true;
-  clearSnapshot("Changing credentials. Previous diagnostic observations were cleared.");
-  clearPasswordFields();
-  clearServicePolicy();
-  clearSavedPolicy();
-  clearPolicyDraft();
-  for (const id of ["password-submit", "logout", "logout-all"]) byId(id).disabled = true;
-  setText("password-status", "Verifying and saving the new password…");
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 10000);
-  try {
-    const sessionResponse = await fetch("/api/v1/auth/session", { credentials: "same-origin", cache: "no-store", signal: controller.signal });
-    if (!sessionResponse.ok) throw new Error("Session unavailable");
-    const session = await sessionResponse.json();
-    if (typeof session.csrf_token !== "string" || session.csrf_token.length !== 43) throw new Error("Session unavailable");
-    const response = await fetch("/api/v1/auth/password", {
-      method: "POST", headers: { Accept: "application/json", "Content-Type": "application/json", "X-PhantoWD-CSRF": session.csrf_token },
-      credentials: "same-origin", cache: "no-store", signal: controller.signal,
-      body: JSON.stringify({ current_password: currentPassword, new_password: newPassword }),
-    });
-    const result = await response.json();
-    if (!response.ok) {
-      const message = response.status === 401 && result.error === "current_password_invalid" ? "Current password is not correct. No password was changed." :
-        response.status === 422 && result.error === "new_password_invalid" ? "The new password does not meet the requirements. No password was changed." :
-          response.status === 429 && result.error === "password_change_rate_limited" ? "Too many attempts. Wait one minute before trying again." : "";
-      if (message) { setText("password-status", message); return; }
-      throw new Error("Unconfirmed password change");
-    }
-    if (result.password_changed !== true || result.reauthentication_required !== true || result.all_panel_sessions_revoked !== true) {
-      throw new Error("Invalid confirmation");
-    }
-    await updateAuthView({ refresh: false, notice: "Password changed. All panel sessions ended. Sign in with the new password." });
-  } catch {
-    showAuthUnavailable();
-    setAuthError("Password-change outcome could not be confirmed. Do not repeat it automatically: reconnect and check sign-in with the new password first. If account storage is unavailable, stop and reconcile it. The request was not retried.");
-  } finally {
-    clearTimeout(timeout);
-    clearPasswordFields();
-    for (const id of ["password-submit", "logout", "logout-all"]) byId(id).disabled = false;
-    passwordBusy = false;
-  }
-});
 
 // Standalone desired-policy builder: no current configuration is loaded,
 // no draft is persisted, and no activation route exists here.
@@ -1071,7 +908,7 @@ async function submitPolicyProposal(event) {
       const failure = new Error("Session expired. Sign in again."); failure.status = 401; throw failure;
     }
     if (!sessionResponse.ok) throw new Error("Cannot verify the session. Retry after signing in.");
-    const session = await sessionResponse.json();
+    const session = await readAdministrativeJSON(sessionResponse, "/api/v1/auth/session", controller.signal);
     if (typeof session.csrf_token !== "string" || !session.csrf_token) throw new Error("The session token is unavailable.");
     if (generation !== policyGeneration) return;
     const response = await fetch("/api/v1/file-services/preview", {
@@ -1086,7 +923,7 @@ async function submitPolicyProposal(event) {
             response.status === 503 ? "Preview service busy. Retry shortly." : "The proposal could not be validated. Nothing was applied.";
       const failure = new Error(message); failure.status = response.status; throw failure;
     }
-    const preview = await response.json();
+    const preview = await readAdministrativeJSON(response, "/api/v1/file-services/preview", controller.signal);
     if (generation !== policyGeneration) return;
     renderPolicyPreview(preview);
   } catch (failure) {
@@ -1212,14 +1049,14 @@ async function loadSavedPolicy() {
       return;
     }
     if (!response.ok) {
-      const body = await response.json().catch(() => ({}));
+      const body = await readAdministrativeJSON(response, "/api/v1/shares/configuration", controller.signal).catch(() => ({}));
       if (generation !== savedGeneration) return;
       setText("saved-status", response.status === 503 && body.error === "share_configuration_not_configured" ?
         "Configuration storage is not connected in this build. No saved policy is available through the API." :
         "Saved configuration is unavailable or busy. No previous values are shown; retry later. No service was changed.");
       return;
     }
-    const body = await response.json();
+    const body = await readAdministrativeJSON(response, "/api/v1/shares/configuration", controller.signal);
     if (generation !== savedGeneration) return;
     renderSavedPolicy(body);
   } catch (failure) {
@@ -1252,4 +1089,3 @@ byId("policy-clear").addEventListener("click", clearPolicyDraft);
 byId("refresh").addEventListener("click", refreshSnapshot);
 byId("support-download").addEventListener("click", exportSupportSnapshot);
 byId("gpt-observe").addEventListener("click", observeGPTMetadata);
-updateAuthView().catch(showAuthUnavailable);

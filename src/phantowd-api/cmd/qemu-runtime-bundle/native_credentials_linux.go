@@ -37,10 +37,11 @@ const (
 	nativePendingClientCampaignQEMU
 	nativePendingPeerExitCampaignQEMU
 	nativePendingHandleCampaignQEMU
+	nativeDescriptorDataCampaignQEMU
 )
 
 func nativeCredentialFixture(campaign nativeCredentialCampaignQEMU) (result error) {
-	if campaign > nativePendingHandleCampaignQEMU {
+	if campaign > nativeDescriptorDataCampaignQEMU {
 		return errors.New("native credential campaign guard")
 	}
 	commandLine, err := os.ReadFile("/proc/cmdline")
@@ -49,6 +50,21 @@ func nativeCredentialFixture(campaign nativeCredentialCampaignQEMU) (result erro
 		unix.Statfs("/run", &fs) != nil || fs.Type != unix.TMPFS_MAGIC ||
 		unix.Statfs("/etc", &fs) != nil || fs.Type != unix.TMPFS_MAGIC {
 		return errors.New("native credential fixture guard")
+	}
+	workParent := runtimebundle.WithNativeWorkerTimingQEMU(context.Background())
+	settlementContext := context.Background()
+	settle := func(operation func(context.Context) error) error { return operation(settlementContext) }
+	if campaign == nativeCredentialsCampaignQEMU {
+		clock, err := newNativeCampaignClockQEMU(workParent)
+		if err != nil {
+			return err
+		}
+		workParent, settlementContext = clock.work, clock.settlement
+		settle = clock.Settle
+		defer clock.Close()
+		// Deferred last, after owned teardown but before clock disposal. A late
+		// nil cannot qualify the campaign, including uncontexted fixture syscalls.
+		defer func() { result = errors.Join(result, nativeLivePhaseErrorQEMU(workParent)) }()
 	}
 	// Initialize Go's pipe poller before establishing the descriptor baseline.
 	warmRead, warmWrite, err := os.Pipe()
@@ -62,7 +78,7 @@ func nativeCredentialFixture(campaign nativeCredentialCampaignQEMU) (result erro
 	if err != nil {
 		return err
 	}
-	budget, err := newNativeCredentialBudgetQEMU(runtimebundle.WithNativeWorkerTimingQEMU(context.Background()))
+	budget, err := newNativeCredentialBudgetQEMU(workParent)
 	if err != nil {
 		return err
 	}
@@ -160,8 +176,8 @@ func nativeCredentialFixture(campaign nativeCredentialCampaignQEMU) (result erro
 	if err != nil {
 		return err
 	}
-	defer func() { result = errors.Join(result, runtime.Close(context.Background())) }()
-	defer func() { reportNativeWorkerFailureQEMU(runtime, result) }()
+	defer func() { result = errors.Join(result, settle(runtime.Close)) }()
+	defer func() { reportNativeWorkerFailureContextQEMU(settlementContext, runtime, result) }()
 	backend, err := smbexec.NewNativeBackendQEMU(ctx, runtime)
 	if err != nil {
 		return fmt.Errorf("native backend admission: %w", err)
@@ -183,7 +199,7 @@ func nativeCredentialFixture(campaign nativeCredentialCampaignQEMU) (result erro
 		}
 		// Cleanup never drops a live/uncertain service reference. Stop/reap all
 		// clients and the daemon first, outside both Owner and runtime gates.
-		if err := runtime.StopNativeDaemonQEMU(context.Background()); err != nil {
+		if err := settle(runtime.StopNativeDaemonQEMU); err != nil {
 			result = errors.Join(result, err)
 			return
 		}
@@ -232,11 +248,33 @@ func nativeCredentialFixture(campaign nativeCredentialCampaignQEMU) (result erro
 		return fmt.Errorf("native enrollment phase completion: %w", err)
 	}
 	reportNativePhaseTimingQEMU(nativeFixtureEnrolledQEMU, started)
+	if campaign == nativeDescriptorDataCampaignQEMU {
+		// Independently enrolled guest. No passdb, identity lease or runtime
+		// from the live-revocation campaign is imported into this prerequisite.
+		if err := owner.Close(); err != nil {
+			return err
+		}
+		if err := settle(runtime.Close); err != nil {
+			return err
+		}
+		reportNativePhaseTimingQEMU(nativeFixtureAuthorityClosedQEMU, started)
+		if err := nativeDataFixtureQEMU(plan, lookup); err != nil {
+			return fmt.Errorf("independent native data descriptor profile: %w", err)
+		}
+		reportNativePhaseTimingQEMU(nativeFixtureDataVerifiedQEMU, started)
+		after, err := os.ReadDir("/proc/self/fd")
+		if err != nil || len(after) != len(before) {
+			return errors.New("independent native data descriptor leak")
+		}
+		nativeCredentialEnrollmentMarkerQEMU()
+		fmt.Println(nativeDataDescriptorMarkerQEMU)
+		return nil
+	}
 	if campaign == nativePendingClientCampaignQEMU || campaign == nativePendingPeerExitCampaignQEMU || campaign == nativePendingHandleCampaignQEMU {
 		if err := owner.Close(); err != nil {
 			return err
 		}
-		if err := runtime.Close(context.Background()); err != nil {
+		if err := settle(runtime.Close); err != nil {
 			return err
 		}
 		var pendingErr error
@@ -272,7 +310,7 @@ func nativeCredentialFixture(campaign nativeCredentialCampaignQEMU) (result erro
 		if err := owner.Close(); err != nil {
 			return err
 		}
-		if err := runtime.Close(context.Background()); err != nil {
+		if err := settle(runtime.Close); err != nil {
 			return err
 		}
 		reportNativePhaseTimingQEMU(nativeFixtureAuthorityClosedQEMU, started)
@@ -322,7 +360,7 @@ func nativeCredentialFixture(campaign nativeCredentialCampaignQEMU) (result erro
 		if err := owner.Close(); err != nil {
 			return err
 		}
-		if err := runtime.Close(context.Background()); err != nil {
+		if err := settle(runtime.Close); err != nil {
 			return err
 		}
 		if stage != nil {
@@ -380,14 +418,15 @@ func nativeCredentialFixture(campaign nativeCredentialCampaignQEMU) (result erro
 	// below. Do not repeat the same full scan outside that lock at the end of
 	// the cumulative enrollment budget. All per-worker admission fences and
 	// deadlines remain unchanged.
-	if err := nativeIdentityBackendProbeQEMU(owner, backend); err != nil {
+	if err := nativeIdentityBackendProbeQEMU(workParent, owner, backend); err != nil {
 		return fmt.Errorf("native read-only backend binding: %w", err)
 	}
 	reportNativePhaseTimingQEMU(nativeFixtureBackendObservedQEMU, started)
 	// Authentication is another separately bounded phase. Native preparation20
 	// and enrollment60 no longer share a timer (combined allowance80, not60).
-	// Worker/service/stop limits are unchanged; the outer guest still has180s.
-	daemonContext, stopDaemonContext := context.WithTimeout(runtimebundle.WithNativeWorkerTimingQEMU(context.Background()), 20*time.Second)
+	// Every ordinary-native phase now shares the original work deadline.
+	// Worker/service/stop limits remain unchanged.
+	daemonContext, stopDaemonContext := context.WithTimeout(workParent, nativeDaemonLimitQEMU)
 	defer stopDaemonContext()
 	canceled, cancelStart := context.WithCancel(daemonContext)
 	cancelStart()
@@ -400,11 +439,15 @@ func nativeCredentialFixture(campaign nativeCredentialCampaignQEMU) (result erro
 	if err := runtime.StartNativeDaemonQEMU(daemonContext); !errors.Is(err, runtimebundle.ErrReviewRequired) {
 		return errors.New("native duplicate start admitted")
 	}
+	if err := nativeLivePhaseErrorQEMU(daemonContext); err != nil {
+		return err
+	}
+	stopDaemonContext()
 	reportNativePhaseTimingQEMU(nativeFixtureDaemonAuthenticatedQEMU, started)
 	// Authentication has completed. Idle-disable verification is a different
 	// phase: do not reuse the remaining startup deadline for three workers,
 	// journal confirmation and the two fresh-login probes.
-	idleContext, stopIdleContext := context.WithTimeout(runtimebundle.WithNativeWorkerTimingQEMU(context.Background()), 20*time.Second)
+	idleContext, stopIdleContext := context.WithTimeout(workParent, nativeIdleLimitQEMU)
 	defer stopIdleContext()
 	idleStarted := time.Now()
 	// No client is held open here. The unchanged backend must perform its two
@@ -425,6 +468,10 @@ func nativeCredentialFixture(campaign nativeCredentialCampaignQEMU) (result erro
 	if err := runtime.VerifyNativeIdleDisableQEMU(idleContext); err != nil {
 		return fmt.Errorf("native idle disable authentication elapsed=%v context=%v: %w", time.Since(idleStarted), idleContext.Err(), err)
 	}
+	if err := nativeLivePhaseErrorQEMU(idleContext); err != nil {
+		return err
+	}
+	stopIdleContext()
 	reportNativePhaseTimingQEMU(nativeFixtureIdleVerifiedQEMU, started)
 	// Separate bounded active-session phase. The tagged native adapter has a
 	// fixed twenty-second revocation budget for complete worker admissions; generic
@@ -436,7 +483,7 @@ func nativeCredentialFixture(campaign nativeCredentialCampaignQEMU) (result erro
 	// continuity checks keep45s, then fresh-login verification gets its own15s
 	// only after timely successful continuity. The SAME authority is retained;
 	// combined live/login allowance is explicitly60s, not a speedup or retry.
-	preparationContext, stopPreparationContext := context.WithTimeout(runtimebundle.WithNativeWorkerTimingQEMU(context.Background()), 20*time.Second)
+	preparationContext, stopPreparationContext := context.WithTimeout(workParent, nativeClientsLimitQEMU)
 	defer stopPreparationContext()
 	if err := disable.Enable(preparationContext, journal.Revision); err != nil {
 		return fmt.Errorf("native session explicit re-enable: %w", err)
@@ -459,10 +506,13 @@ func nativeCredentialFixture(campaign nativeCredentialCampaignQEMU) (result erro
 	if err := owner.Close(); !errors.Is(err, identityowner.ErrBusy) {
 		return errors.New("native pre-revocation identity authority released")
 	}
+	if err := nativeLivePhaseErrorQEMU(preparationContext); err != nil {
+		return err
+	}
 	stopPreparationContext()
 	reportNativePhaseTimingQEMU(nativeFixtureClientsPreparedQEMU, started)
 	sessionStarted := time.Now()
-	if err := runNativeLivePhasesQEMU(runtimebundle.WithNativeWorkerTimingQEMU(context.Background()), func(sessionContext context.Context) error {
+	if err := runNativeLivePhasesQEMU(workParent, func(sessionContext context.Context) error {
 		liveOperationStarted := beginNativeLiveTimingQEMU(sessionContext, nativeLiveClientsQEMU, sessionStarted)
 		err = runtime.StartNativeClientsQEMU(sessionContext)
 		reportNativeLiveTimingQEMU(sessionContext, nativeLiveClientsQEMU, false, sessionStarted, liveOperationStarted, err)
@@ -534,7 +584,7 @@ func nativeCredentialFixture(campaign nativeCredentialCampaignQEMU) (result erro
 		return err
 	}
 	reportNativePhaseTimingQEMU(nativeFixtureLiveVerifiedQEMU, started)
-	if err := runtime.StopNativeDaemonQEMU(context.Background()); err != nil {
+	if err := settle(runtime.StopNativeDaemonQEMU); err != nil {
 		return err
 	}
 	for _, lease := range revocationLeases {
@@ -545,17 +595,17 @@ func nativeCredentialFixture(campaign nativeCredentialCampaignQEMU) (result erro
 	revocationLeases = nil
 	// Use a fresh context so this tests the single-use lifecycle refusal rather
 	// than cancellation of the already-completed authentication phase.
-	if err := runtime.StartNativeDaemonQEMU(context.Background()); !errors.Is(err, runtimebundle.ErrReviewRequired) {
+	if err := runtime.StartNativeDaemonQEMU(workParent); !errors.Is(err, runtimebundle.ErrReviewRequired) {
 		return errors.New("native stopped daemon restarted")
 	}
 	if err := owner.Close(); err != nil {
 		return err
 	}
-	if err := runtime.Close(context.Background()); err != nil {
+	if err := settle(runtime.Close); err != nil {
 		return err
 	}
 	reportNativePhaseTimingQEMU(nativeFixtureAuthorityClosedQEMU, started)
-	if err := nativeDataFixtureQEMU(plan, lookup); err != nil {
+	if err := nativeDataFixtureContextQEMU(workParent, plan, lookup, false, false, false); err != nil {
 		return fmt.Errorf("native data descriptor profile: %w", err)
 	}
 	reportNativePhaseTimingQEMU(nativeFixtureDataVerifiedQEMU, started)
@@ -567,7 +617,7 @@ func nativeCredentialFixture(campaign nativeCredentialCampaignQEMU) (result erro
 	fmt.Println("PHANTOWD_SAMBA_OWNER_NATIVE_LIVE_REVOKE_READY accounts=2 qualified_pair=true original_pair_rechecked=true revoked_pair_refused=true owner_bound=true same_sid=true target_absent=true same_peer_session=true new_login_denied=true other_login_allowed=true same_daemon=true no_new_privileges=true stopped_reaped=true no_fd_leak=true scope=qemu-only")
 	fmt.Println("PHANTOWD_SAMBA_OWNER_NATIVE_BACKEND_BINDING_READY owner_bound=true backend_bound=true unchanged_verified=true foreign_refused=true close_busy=true released_before_start=true release_no_mutation=true stopped_reaped=true no_fd_leak=true service_owner=false scope=qemu-only")
 	fmt.Println("PHANTOWD_SAMBA_OWNER_NATIVE_DISABLE_HANDOFF_READY owner_bound=true backend_bound=true atomic_successor=true old_review=true new_verified=true close_busy=true same_peer_session=true retained_until_stop=true stopped_reaped=true no_fd_leak=true startup_bound=false service_owner=false scope=qemu-only")
-	fmt.Println("PHANTOWD_SAMBA_OWNER_NATIVE_DATA_READY original_objects=true individual_clones=true readonly_EROFS=true smb_read=true smb_write=true unix_owner=true symlink_denied=true private_namespace=true stopped_before_release=true no_fd_leak=true complete_storage_identity=false scope=qemu-only")
+	fmt.Println(nativeDataDescriptorMarkerQEMU)
 	return nil
 }
 
@@ -599,10 +649,14 @@ func nativeCredentialEnrollmentMarkerQEMU() {
 // adapter redaction. This emits fixed-label telemetry only, never a proof,
 // secret, cause text or raw program diagnostics, and does not mutate state.
 func reportNativeWorkerFailureQEMU(runtime *runtimebundle.NativeSambaRuntimeQEMU, result error) {
+	reportNativeWorkerFailureContextQEMU(context.Background(), runtime, result)
+}
+
+func reportNativeWorkerFailureContextQEMU(ctx context.Context, runtime *runtimebundle.NativeSambaRuntimeQEMU, result error) {
 	if result == nil {
 		return
 	}
-	fault, err := runtime.ObserveNativeWorkerFailureQEMU(context.Background())
+	fault, err := runtime.ObserveNativeWorkerFailureQEMU(ctx)
 	if err == nil && fault.Present {
 		fmt.Fprintf(os.Stderr, "PHANTOWD_QEMU_NATIVE_WORKER_FAILURE phase=%s reason=%s scope=diagnostic-only\n", fault.Phase, fault.Reason)
 	}
@@ -611,10 +665,15 @@ func reportNativeWorkerFailureQEMU(runtime *runtimebundle.NativeSambaRuntimeQEMU
 // This read-only probe finishes and releases BEFORE daemon/client startup. It
 // does not turn a snapshot lease into service authority or refresh one after
 // an account mutation. The complete credential/start/revoke campaigns retain
-// their existing independent budgets; the outer guest limit is unchanged.
-func nativeIdentityBackendProbeQEMU(owner *identityowner.Owner, backend *smbexec.NativeBackendQEMU) (result error) {
-	ctx, cancel := context.WithTimeout(runtimebundle.WithNativeWorkerTimingQEMU(context.Background()), 20*time.Second)
+// their existing phase caps. Ordinary native clips them to its shared work
+// deadline; other campaigns retain their existing outer guest limit.
+func nativeIdentityBackendProbeQEMU(parent context.Context, owner *identityowner.Owner, backend *smbexec.NativeBackendQEMU) (result error) {
+	if parent == nil {
+		return errors.New("native identity probe parent unavailable")
+	}
+	ctx, cancel := context.WithTimeout(parent, nativeBackendLimitQEMU)
 	defer cancel()
+	defer func() { result = errors.Join(result, nativeLivePhaseErrorQEMU(ctx)) }()
 	started := time.Now()
 	evidence, err := owner.FileServiceSnapshot(ctx)
 	if err != nil {
