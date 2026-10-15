@@ -28,6 +28,14 @@ mapping-failure branches leak an opened descriptor. Selected GPL definitions
 support bank1 data/latched-cause and candidate GPIO39, not verified board wiring
 or calibrated RPM. No driver, DTS, sensor provider or product telemetry is added.
 
+The temperature/shutdown follow-up maps the unchecked receive lookup, different
+HDD model predicates and display/control transformations, cached composite input
+and invocation-based thermal request. Its selected consumer clears the request
+before two activity checks and asynchronous shutdown; other marker/reassertion
+paths remain incomplete. Dashboard `good` is marker absence, not sample health.
+These findings define explicit input-quality, deadline and retained-intent
+requirements, not a product thermal policy or evidence of physical power-off.
+
 ## iSCSI management prerequisite: coherent desired review projection
 
 The new private projection validates the whole SMB/NFS/iSCSI desired revision

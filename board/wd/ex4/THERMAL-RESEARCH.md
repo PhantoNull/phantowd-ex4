@@ -24,8 +24,12 @@ directories; these names are not claims about the running root filesystem.
 | `usrlib/libshare.so` (51,215 bytes) | `78abf720bc3898795ac07056d7cabd5ac50fbc901790c4a8bb059ec4d4087bd8` |
 | `usrsbin/up_send_ctl` | `6979fc69707a777c79dc9b410dff95adae3b664233a1a123673b00597ac34e5f` |
 | `usrsbin/up_send_daemon` | `5c12e7483f03989f42fd3b8bce71ba70d62e2a15e96503e4311e7eda3f6a0668` |
+| `usrsbin/up_read_daemon` | `66da626b7a96922a6c3875f5e956cd488281a13225e7c27ce8d6756193f84d18` |
 | `script/system_init` | `b7d7a62ca8d5a0c2d7d67c2c148e5cc637d9975eecf8e0d362f1e5fdd533c379` |
 | `script/shutdown.sh` | `9846c1c5a2f29951fa64bbc158067b2c62afce3404b0ce046f5b92ba9e7c88e8` |
+| `files/project_features` | `dfe989f1b5708fe3e3c4598daf017594da4e309944917512aa31b7c3eac598c4` |
+| `script/kill_running_process` | `08a227eabab9ed2f9f79e1ba214c841e9f3f10ef932fc26ffd5350451fb2205a` |
+| `localsbin/getTemperatureStatus.sh` | `77c6750f3d583e9b145adb48cbcf09cb16d23cd96411d3fd3f7a197dd7dc5eac` |
 
 This is not a complete firmware-carrier authenticity check. Contributors must
 supply their own lawfully acquired artifacts. Do not contribute vendor binaries,
@@ -141,6 +145,83 @@ logical GPIO value is not necessarily the raw data-in bit. This evidence does
 not authorize `/dev/mem`, a GPIO request, interrupt reconfiguration or a DTS
 change on the NAS.
 
+## Temperature input and shutdown-request boundary
+
+The receiver uses a shared unsigned-byte lookup for thermistor selectors1/2
+(`up_read_daemon` `0x8dac–0x8dd8`). It indexes with frame byte5 before checking
+the sensor selector. No index guard is visible. The initialized span beginning
+at `0x12644` has192 visible bytes before `_edata=0x12704`; this is not proof of
+the declared array length, since trailing padding is unresolved. A byte index
+of192–255 addresses beyond that initialized span. The visible numeric mapping
+decreases from127 to0; its final visible zeros feed the previously described
+last-good fallback. There is no explicit fault-sentinel treatment in this
+receive path. This does not qualify Celsius, sensor calibration or wiring.
+The passive toolkit deliberately performs no such lookup or conversion.
+
+HDD input is not treated uniformly by the legacy regulator:
+
+- The model-limit helper (`0x984c–0x9900`) strips an exact uppercase `WDC `
+  prefix, then selects65 only for uppercase `WD` with normalized model
+  characters4–6=`EFR`; other models select60.
+- A separate slot flag (`0x9a00–0x9a30`) compares the raw model's first two
+  bytes with `WD`, case-insensitively. It is a different predicate, not a
+  verified manufacturer identity or the same normalized-model check.
+- The normal read path publishes its pre-normalization value and a value>64
+  `over_temp` flag (`0xa32c–0xa368`). A secondary SMART-text fallback may have
+  supplied that value. Then an unflagged slot contributes zero to fan input;
+  a flagged slot keeps the value for model-limit65, or adds5 to a nonzero
+  value otherwise (`0xa36c–0xa458`). Display and regulating values differ.
+- A sleeping-slot mask skips the normal read/normalization path. Its branch
+  retains a prior loop register, not a fresh sample or a per-slot cache; it
+  does **not** itself repeat the5-unit adjustment. The aggregate is a maximum
+  against initial zero, not proof that all disks were successfully observed.
+- Configuration helper `0x991c–0x9ac4` tracks a minimum internally but returns10
+  and writes constant75 to `/runtime/temperature_limit`. That advertised value
+  is not a validated per-drive thermal limit.
+
+For ordinary bounded integer inputs, composite helper `0xa130–0xa1a4` uses
+`B > 20 ? B - 10 : B` when aggregate disk input `D=0`; otherwise it uses
+`max(D, B - 10)`. `B` is the board-temperature wrapper result, which can already
+be cached. A test override can replace the result. These are numeric legacy
+scores, not a portable policy for arbitrary disks or calibrated safe limits.
+
+The state machine at `0x9c1c–0x9f3c` operates on that composite input. Initial
+state1 enters state2 above64; state2 enters pending state3 above69, returning
+to state1 at64 or below. State3 at69 or below resets its counter and enters
+state2; its reset path then increments the counter to1. While still above69,
+it increments a counter; a prior counter exactly60 triggers mask`0x2` in the
+IPC word selected by arguments`(4,1)`. **This counts invocations, not seconds**.
+The regulator's loop includes sleeping, sampling and subprocess work; no
+qualified overtemperature-to-power-off deadline follows from these constants.
+
+### Request consumption is not verified shutdown
+
+Exact `chk_io` (14,215bytes, SHA-256
+`4b993bce4e14cf7e13d175a14fc0f579017f7ba3f6b53f39fa2ea043474bc680`)
+reads the matching IPC word at `0x9e14–0x9e24`, tests mask2, and clears it
+through `0x9ac8` **before** calling its shutdown gate at `0x9b1c`.
+The selected `LIB_Detect_Dangerous` path (`libshare` `0x2ff0–0x31a8`) reports
+process/volume activity: disk manager, firmware updater, resize and RAID
+rebuild/migration states. Cleanup proceeds only if two successive gate checks
+return zero. Other activity can return without verified shutdown; an updater
+on the first check attempts a persistent deferred-shutdown marker once per
+process, without checking its creation result. The second check's updater
+result instead returns directly. This is a potential deferral/retry gap,
+**not proof of permanent request loss**; other writers/marker consumers remain
+incompletely traced.
+
+The ordinary path eventually starts the shutdown script asynchronously.
+The supplied EX4 feature manifest selects the MCU shutdown/reboot branch.
+The script stops services, attempts unmounts and requests MCU shutdown, with
+a20-second delay before its fallback. That sequence is not proof of successful
+unmounts, cooling handoff, power-off or recoverable state. In particular, the
+regulator is stopped before the rest of shutdown is qualified. Do not reproduce
+these operations on the NAS as a consequence of this analysis.
+
+The dashboard temperature-status helper only tests whether an overtemperature
+marker exists: absence produces `good`, not proof of a current valid sensor
+sample. Replacement telemetry must distinguish unknown/stale/error from good.
+
 ## Replacement requirements and remaining work
 
 Do not port the legacy zero-sentinel cache or optimistic requested-speed state
@@ -153,10 +234,11 @@ The next offline pass can proceed without hardware:
    elapsed-time behavior and transitions per revolution before selecting a
    replacement provider. Preserve read failure separately from stopped fan;
    do not adopt broad `/dev/mem` mappings or whole-register status writes.
-2. Trace thermistor lookup, index bounds, unit conversion and calibration through
-   receive processing. Map HDD temperature normalization, missing/non-WD-drive
-   handling, hysteresis, overheating counters and the actual shutdown consumer.
-   Legacy constants are not qualified product thresholds.
+2. Qualify thermistor units/calibration and real sensor failure values; complete
+   regulator hysteresis/reachable-state review and the remaining deferred-marker
+   consumers. The lookup, brand-dependent HDD normalization and selected shutdown
+   consumer are mapped above, not qualified for reuse. Legacy constants are not
+   product thresholds or a measured shutdown deadline.
 3. Trace `set_pwm` and hibernation interactions before assigning exclusive
    cooling ownership. Its filename and presence in init do not prove its role.
 
@@ -170,6 +252,10 @@ Before implementation/activation, the reviewed thermal contract must specify:
   regulator-crash behavior; externally qualified safe response remains a gate;
 - startup and shutdown ownership/handoff, including faults before normal init;
 - hysteresis, bounded settling and deadlines, without restart/retry hiding faults;
+- disk input independent of model-name prefixes, with per-disk quality and
+  explicit sleep/missing observations; displayed values retain their provenance;
+- a retained shutdown intent and bounded acknowledgment/deferral contract,
+  preserving cooling until verified handoff rather than consuming an unchecked flag;
 - host fixtures for time/age/range/identity/fault transitions and bounded memory;
 - a separate hardware plan with independent temperature/tach observation,
   stop conditions, sacrificial media and recovery before advertising safety.

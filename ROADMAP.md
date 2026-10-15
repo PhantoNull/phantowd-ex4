@@ -2585,6 +2585,17 @@ stop conditions and suitable equipment/media; not ordinary software work.
   edge/count/elapsed provenance, monotonic overflow-safe sampling, explicit
   read/clock errors, no nominal RPM substitution and no broad MMIO authority.
   Host-only analysis does not qualify that provider or release the hardware gate.
+  **M7.3c — thermal input/shutdown static linkage (partial):** receiver lookup
+  precedes selector validation without a visible index guard; visible initialized
+  data is not a proven declared-array bound or calibrated Celsius. Map differing
+  model predicates, HDD display-versus-control transformations, skipped sleeping
+  slots, composite score and counter-based thermal request. Selected consumer
+  clears the request before a double activity gate and asynchronous shutdown;
+  remaining marker/reassertion paths are not a verified shutdown transaction.
+  Replacement acceptance: per-sensor/per-disk quality, no brand exclusion or
+  nominal health, bounded monotonic deadlines, retained intent/verified deferral
+  and cooling ownership through shutdown. No safe numerical thresholds or
+  physical shutdown qualification follow from the legacy constants.
 - **M7.4 — Peripheral support.** Qualify SATA bays, USB, RTC, LEDs, LCD, buttons,
   watchdog and power control. Hardware alarms override cosmetic display choices.
   Record LED/button semantics and shutdown completion, not just driver presence.
