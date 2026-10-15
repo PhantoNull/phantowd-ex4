@@ -290,7 +290,8 @@ class BuildFeedbackTests(unittest.TestCase):
                 ("FuzzWireConsume", "networkinventory"),
                 ("FuzzRoute", "networkinventory"),
                 ("FuzzRule", "networkinventory"),
-                ("FuzzNextHopObject", "networkinventory")):
+                ("FuzzNextHopObject", "networkinventory"),
+                ("FuzzEvaluate", "thermalreport")):
             expected = (
                 '"$go_binary" test -run \'^$\' '
                 f"-fuzz '^{target}$' -fuzztime=25000x -parallel=2 "
@@ -336,6 +337,55 @@ class BuildFeedbackTests(unittest.TestCase):
                      "FuzzWireConsume", "FuzzRoute", "FuzzRule",
                      "FuzzNextHopObject"):
             self.assertIn(gate, runner)
+
+    def test_thermal_projection_requires_same_boot_guest_assertion(self):
+        smoke = (ROOT / "support/qemu-smoke.sh").read_text()
+        selftest = (ROOT / "src/phantowd-api/selftest.go").read_text()
+        fixture = (ROOT / "src/phantowd-api/thermalreport_selftest.go").read_text()
+        marker = ("PHANTOWD_THERMAL_REPORT_READY identity=true age=true "
+                  "quality=true zero_distinct=true no_fallback=true "
+                  "control=false scope=synthetic-memory-only")
+        self.assertIn(marker, smoke)
+        self.assertIn(marker, selftest)
+        self.assertIn("exerciseQEMUThermalReport()", selftest)
+        self.assertIn("thermalreport.Evaluate", fixture)
+        for refusal in ("IdentityMismatch", "Stale", "InvalidTime", "ReadFailed",
+                        "Unqualified", "OutOfRange", "SourceSleeping", "Missing"):
+            self.assertIn(refusal, fixture)
+        # Only memory evaluation belongs in this fixture. Physical input and
+        # fan/controller behavior require a separately qualified provider.
+        for forbidden in ('"os"', '"os/exec"', '"net"', '"syscall"',
+                          '"golang.org/x/sys/unix"'):
+            self.assertNotIn(forbidden, fixture)
+
+    def test_thermal_receipts_match_both_intentional_api_selftests(self):
+        smoke = (ROOT / "support/qemu-smoke.sh").read_text()
+        init = (ROOT / "board/qemu/armv5/rootfs-overlay/etc/init.d/"
+                "S99phantowd-ready").read_text()
+        self.assertEqual(init.count('/usr/lib/phantowd/qemu-selftest-once.sh '
+                                    '/usr/bin/phantowd-api "$api_error_log"'), 2)
+        marker = ("PHANTOWD_THERMAL_REPORT_READY identity=true age=true "
+                  "quality=true zero_distinct=true no_fallback=true "
+                  "control=false scope=synthetic-memory-only")
+        # Execute the actual guard, not a second implementation of its count.
+        guard = next(block for block in re.findall(
+            r"(?m)^        if ! test .*?^        fi$", smoke, re.DOTALL)
+            if marker in block)
+        with tempfile.TemporaryDirectory() as temp:
+            log = pathlib.Path(temp) / "guest.log"
+            for count in (0, 1, 2, 3):
+                log.write_bytes(((marker + "\r\n") * count).encode())
+                result = subprocess.run(
+                    ["sh", "-c", 'log_file="$1"\n' + guard,
+                     "thermal-guard", str(log)], capture_output=True,
+                    text=True, timeout=3)
+                self.assertEqual(result.returncode, 0 if count == 2 else 1)
+            log.write_text(marker + "\n" + marker + " extra\n")
+            result = subprocess.run(
+                ["sh", "-c", 'log_file="$1"\n' + guard,
+                 "thermal-guard", str(log)], capture_output=True,
+                text=True, timeout=3)
+            self.assertNotEqual(result.returncode, 0)
 
     def test_network_policy_requires_same_boot_guest_assertion(self):
         smoke = (ROOT / "support/qemu-smoke.sh").read_text()

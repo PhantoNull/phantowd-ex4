@@ -288,6 +288,17 @@ These cases require host/disposable-QEMU fixtures and later separate physical
 qualification. This document adds no state schema, persistent writer, actuator,
 service-start rule, disk command or authority to test on the NAS.
 
+## Read-only observation prerequisite
+
+The private [thermalreport evaluator](../../../src/phantowd-api/internal/thermalreport/README.md)
+now implements the in-memory sample-quality portion only: caller-declared
+identity/generation, monotonic age, explicit failures and measurement interval.
+Missing/stale/unqualified values cannot silently become current; zero remains
+a possible observed number, not implicit success or failure. It has no device
+provider, legacy conversion, controller, threshold, shutdown intent or actuator.
+Its host/ARM fixtures use invented inputs, not physical calibration evidence.
+The trusted provider and subsequent control contract remain separate gates.
+
 ## Replacement requirements and remaining work
 
 Do not port the legacy zero-sentinel cache or optimistic requested-speed state
@@ -309,7 +320,7 @@ The next offline pass can proceed without hardware:
    ownership through hibernation and shutdown. Direct helper paths and selected
    marker replay are mapped above; their effects are not physical qualification.
 
-Before implementation/activation, the reviewed thermal contract must specify:
+Before implementing/activating control, the reviewed thermal contract must specify:
 
 - distinct requested and observed state; transport ACK is not application proof;
 - sample identity, monotonic age and validity, with no silent last-good-as-current;

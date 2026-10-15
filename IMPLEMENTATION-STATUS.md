@@ -3,6 +3,37 @@
 
 # Implementation status
 
+## Thermal observation prerequisite: private point-in-time evaluation
+
+[Internal thermalreport](src/phantowd-api/internal/thermalreport/README.md)
+evaluates up to eight declared sources without I/O. It keeps missing, changed
+generation, invalid/future clock, stale, unavailable, read-failed, sleeping,
+unqualified/raw and out-of-range observations distinct. Only current observations
+expose a value; zero is not an error sentinel or a health claim. Duplicate/unknown
+sources and malformed inputs return no partial report. No last-good fallback,
+legacy conversion, product provider, HTTP, controller or actuation is added.
+Calibration, complete roster, source binding, clock origin, measurement interval
+and TTL remain future trusted-provider obligations, not proven input flags.
+Retained reports do not advance age and cannot serve as cooling leases.
+
+Whole Windows API/DOM preflight and ARMv5 cross-compilation pass on Go1.27.0.
+Pinned Go1.26.8 Linux whole API vet/tests/tagged vet, synthetic tagged fixture,
+focused race-count3 and25,000 fuzz executions pass. The combined driver then
+failed an exact fuzz-roster contract:23 campaigns versus22 declared. After
+updating the declaration and requiring the new named campaign, all32 runner
+tests, workflow-path/storage contracts and shellcheck pass. No previous campaign
+or timing limit was removed.
+
+One actual standard ARMv5 overlay reaches guest READY and executes the synthetic
+thermal fixture twice, before/after the intentional API restart. The first host
+guard incorrectly required one receipt and made that overlay command exit1.
+The corrected guard requires exactly two; regression cases reject0/1/3 and a
+lookalike line, and the complete captured guest log passes every current smoke
+guard in an explicitly offline replay. No second guest/full/two-boot/native/
+hosted run is claimed. Pinned base/probe and firmware sources are unchanged by
+the host-only correction. No physical qualification or timing fix follows; the
+existing native timing decision remains a separate gate.
+
 ## EX4 cooling: partial offline legacy reconstruction
 
 Hash-bound static analysis now connects the WD fan-level request to IPC,
@@ -15,7 +46,7 @@ verify application. These are observations, not product behavior to copy.
 [Thermal research](board/wd/ex4/THERMAL-RESEARCH.md) records exact artifact
 identities, ELF locations, independent cross-checks and remaining implementation/
 hardware gates. No vendor executable, NAS, physical disk or controller command
-was run. No cooling code, sensor calibration, safe fan setting or longer boot
+was run. No cooling controller, sensor calibration, safe fan setting or longer boot
 is qualified; actual RPM, physical binding, full regulation and shutdown paths
 remain incomplete. Documentation-only work does not require another firmware
 build or repair the outstanding native QEMU timing gate.

@@ -1432,6 +1432,18 @@ execution. Visual and assistive-technology testing remain required. The host
 visual-fixture server intentionally reports this backend as unavailable and
 does not emulate saves or validate policy.
 
+### Private thermal observation prerequisite
+
+[Internal thermalreport](internal/thermalreport/README.md) evaluates a bounded
+caller-declared roster in memory. Generation/time/quality/range faults do not
+expose current values, missing observations stay explicit, and zero is not an
+error sentinel. Its immutable private projection contains no last-good fallback,
+safe threshold or actuation authority. The future trusted provider must qualify
+hardware identity, monotonic origin, units/calibration, age and measurement
+intervals. Input assertions cannot establish those properties. No normal startup,
+HTTP, device access or control is added; a synthetic fixture is called by the
+existing ARMv5 self-test, not by a new guest or privileged process.
+
 ### Private health census prerequisite
 
 `smart_census.go` derives a complete private sysfs sample and a deterministic

@@ -74,6 +74,10 @@ func runSelfTest() error {
 		return err
 	}
 	fmt.Println("PHANTOWD_ISCSI_POLICY_READY schema=1 stable_refs=true lun_zero_explicit=true mutual_refs_distinct=true strict_json=true activation=false scope=synthetic-policy-only")
+	if err := exerciseQEMUThermalReport(); err != nil {
+		return err
+	}
+	fmt.Println("PHANTOWD_THERMAL_REPORT_READY identity=true age=true quality=true zero_distinct=true no_fallback=true control=false scope=synthetic-memory-only")
 	if err := exerciseQEMUNetworkInventory(); err != nil {
 		return err
 	}

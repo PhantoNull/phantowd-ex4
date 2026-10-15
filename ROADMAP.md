@@ -2535,8 +2535,9 @@ do not fabricate or clone addresses.
 
 ## M7: EX4 board, controller and thermal qualification
 
-**State:** hardware research only. **Entry:** a separately approved plan with
-stop conditions and suitable equipment/media; not ordinary software work.
+**State:** partial offline research/software prerequisites; hardware unqualified.
+**Hardware entry:** a separately approved plan with stop conditions and suitable
+equipment/media; not ordinary software work.
 
 - **M7.1 — Evidence inventory.** Map supported board revisions, SoC/RAM, UARTs,
   GPIO/pinmux, interrupts, controllers and boot handoff. Keep model-specific
@@ -2605,6 +2606,17 @@ stop conditions and suitable equipment/media; not ordinary software work.
   helper crash invalidation, index equivalence with slot holes, bounded wake/
   shutdown settlement and thermal-safe workload admission. Do not infer physical
   sleep, cooling handoff or power-off from a command, bitmap or readiness marker.
+  **M7.3e — private observation evaluation (host/QEMU prerequisite):** a bounded
+  pure evaluator distinguishes missing/generation mismatch, invalid clock/stale,
+  unavailable/read failure/disk sleep, unqualified/raw and out-of-range samples.
+  Only a current point-in-time observation exposes its number, including genuine
+  zero; no last-good or nominal substitution. Roster, generation, monotonic
+  origin, units/calibration, TTL and measurement interval remain trusted-caller
+  obligations, not properties proven by input flags. No safe thermal policy,
+  I/O, HTTP, history, controller or activation. Acceptance: exact time/range
+  boundaries and overflow, whole-roster refusal, private immutable output,
+  fixed-count fuzz and invented-source fixture in the existing standard ARM boot.
+  See the [component contract](src/phantowd-api/internal/thermalreport/README.md).
 - **M7.4 — Peripheral support.** Qualify SATA bays, USB, RTC, LEDs, LCD, buttons,
   watchdog and power control. Hardware alarms override cosmetic display choices.
   Record LED/button semantics and shutdown completion, not just driver presence.
