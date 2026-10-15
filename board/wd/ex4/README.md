@@ -197,6 +197,12 @@ workspaces in CI; they do not incrementally reuse one another's build output.
 
 ## Installer and recovery status
 
+The [NAND/recovery research record](NAND-RECOVERY-RESEARCH.md) distinguishes
+the source-derived stock Hamming/OOB path from unproven bootloader parity,
+and maps the fixed-offset rescue fallback separately from the logical-header
+reader. It specifies the remaining capture/review/hardware gates, not a restore
+recipe.
+
 No installer or flashable firmware is produced. Static review of the final
 stock 2.13.108 update path found legacy XOR/CRC checks rather than cryptographic
 authenticity, component writers for the kernel/ramdisk/rootfs MTD regions, and
