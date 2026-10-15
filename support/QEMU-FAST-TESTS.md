@@ -2108,7 +2108,8 @@ qualification probe, not a replacement for the mandatory `native` trace:
 the latter still tests data against the passdb changed by live revocation.
 Both accounts are explicitly enabled in the independent profile; it does not
 qualify post-revocation data behavior. The default union remains ten guests
-with all original proofs. Guest180/data35/worker limits are unchanged.
+with all original proofs. Data35/worker limits are unchanged; ordinary-native
+guest timing is now coordinated as specified below (other guests retain180s).
 
 Use the existing matching pinned image, workspace and manifest-verified base:
 
@@ -2131,6 +2132,15 @@ selected campaign, not an entire new firmware image.
 
 ### Native timing-contract decision gate
 
+Coordinated fixture-only timing is now approved. On the existing two-CPU,
+2GiB,256-PID wrapper profile, ordinary `native` uses one monotonic300-second
+work clock. Every phase below is clipped to the original remaining work time.
+Settlement has one absolute deadline at that original work deadline+30seconds,
+independent of work cancellation and never renewed per Stop/Close. The host
+cap is360seconds, allowing a declared30-second boot/final margin. That margin
+is not a measured guarantee of boot duration. All other guests retain180seconds;
+default selection still runs the same ten campaigns.
+
 The current ordinary `native` path has the following sequential phase caps.
 These are source limits, not measured durations or permission to change them.
 
@@ -2146,8 +2156,9 @@ These are source limits, not measured durations or permission to change them.
 | Fresh logins after timely live success | 15 s | `native_live_phases_linux.go` |
 | Same-passdb post-revocation data profile | 35 s | `native_data_linux.go` |
 
-Their configured caps total255 seconds, while the host script bounds the whole
-guest at180 seconds including boot. This does **not** establish a minimum runtime,
+Their configured caps total255 seconds. The former whole-guest cap was180seconds
+including boot; ordinary native now uses the hierarchy above. The sum does
+**not** establish a minimum runtime,
 a defect merely because maxima overlap, or a guaranteed255-second completion:
 operations can finish earlier, and some verified cleanup uses a background
 context. Native status workers additionally have4 seconds for complete before/
@@ -2161,15 +2172,14 @@ and PGO controls do not establish a further end-to-end optimization to adopt.
 Do not repeat them or propose skipped/cached hashes merely to obtain a pass.
 The hosted failure's precise cause remains unproven.
 
-The next timing-contract implementation requires an explicit choice between
-coherent fixture-only budget design and performance-only work with every
-existing limit preserved. No new values are approved by this document. Once
-the budget-design route is chosen, the bounded work packet is:
+The approved route coordinates fixture clocks rather than weakening proof.
+The implementation and qualification contract is:
 
-1. Specify the supported host profile, complete phase/worker/deadline hierarchy,
-   boot and verified-cleanup reserves, and hard outer cap **before** selecting
-   new values. Distinguish normal-work cancellation from teardown; do not pass
-   an expired work context to cleanup and then claim processes were stopped.
+1. Preserve the profile and complete hierarchy declared above. Distinguish
+   work cancellation from teardown; never treat an expired work context as
+   evidence of stopped processes. Settlement checks before/after existing
+   verified Stop/Close operations. Their internal bounded cleanup is unchanged;
+   the outer context does not promise immediate preemption of every syscall.
 2. Centralize only the reviewed compile-tagged fixture policy. Keep generic/
    product deadlines, authority, commands, hashes, revocation observations,
    original session/passdb history and default ten-campaign union unchanged.
@@ -2186,8 +2196,18 @@ the budget-design route is chosen, the bounded work packet is:
    publication head's own hosted qualification before merge. Preserve the
    full-build40GiB guard; a bounded overlay pass is not a full-build waiver.
 
-This gate changes no source behavior, timer, host affinity, scheduler/crypto
-flag, runtime privilege, NAS operation or installation qualification.
+Only the compile-tagged ordinary-native fixture's orchestration and host cap
+change. No product/generic worker timer, host affinity, scheduler/crypto flag,
+runtime privilege, NAS operation or installation qualification changes. A
+passing clock test is not original-trace/full/hosted qualification.
+
+Current local qualification includes the original focused native trace and the
+complete cached integration, all ten original Samba campaigns and a separate
+exact-source/package/archive/image/SDK/legal/SBOM audit. The focused and full
+native data-verified observations are116690ms and111392ms respectively. These
+are scoped successful executions, not performance benchmarks or a demonstrated
+repair of the earlier intermittent hosted failure. Own-head hosted checks and
+independent clean reproduction remain separate gates.
 
 Read the **first failed operation** rather than treating every elapsed timer
 as the same timeout:
@@ -2199,7 +2219,7 @@ Their monotonic elapsed time starts at that profile, not boot or enrollment.
 `closed` follows original-reference release, clone detach and fixture cleanup.
 They contain no paths, identities, secrets or error text and do not replace any
 receipt, renew a deadline or prove the hosted timeout's cause. Pending-client
-profiles do not emit these rows. Guest180/data35 and every original assertion
+profiles do not emit these rows. Data35 and every original assertion
 remain unchanged; a last row does not identify a blocked instruction.
 
 | Boundary | Current fixture scope | What a failure does not establish |
@@ -2209,7 +2229,7 @@ remain unchanged; a last row does not identify a blocked instruction.
 | Native peer/session observation, 4 s | Runtime admission, typed status command, settlement and post-admission, bounded also by the parent | Only the subprocess exceeded its execution limit, or the outer guest expired |
 | Lifecycle preparation, 20 s | Original journal admission, canceled-disable refusal and creation/qualification of two held clients | Revocation or continuity has completed |
 | Lifecycle revocation, 45 s | Stale-revision refusal, actual disable, successor journal and original peer/new-login verification | Every individual worker exceeded its own deadline |
-| Guest, 180 s | The complete disposable boot and selected campaign | A specific account, worker or coordinator caused expiry |
+| Guest, native360 s / others180 s | The complete disposable boot and selected campaign; ordinary-native work300s plus fixed settlement30s and boot/final margin30s | A specific account, worker or coordinator caused expiry |
 
 These are test-context limits, not physical EX4 performance guarantees or
 product request deadlines. See the actual [credential fixture](../src/phantowd-api/cmd/qemu-runtime-bundle/native_credentials_linux.go)
@@ -2240,7 +2260,9 @@ original parent still bounds both. Failed, uncertain, expired or canceled
 preparation cannot begin enrollment; duplicate handoff cannot refresh its
 deadline and a late nil completion refuses. Accounting tests exercise the exact
 private helper used by the fixture, not synthetic identity or session authority.
-Worker/readiness/stop, live-session45 and guest180 limits remain unchanged.
+Worker/readiness/stop and live-session45 limits remain unchanged. Ordinary
+native now uses the shared300s work clock and360s host guard described above;
+this supersedes the earlier unchanged180s statement for that campaign only.
 
 After revocation, only the exact changed-pair sentinel establishes a completed
 changed observation. An unchanged pair and an incomplete observation have

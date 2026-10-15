@@ -37,6 +37,13 @@ func nativeDataFixtureModeQEMU(plan *runtimebundle.Plan, lookup fileserviceplan.
 }
 
 func nativeDataFixtureHandleModeQEMU(plan *runtimebundle.Plan, lookup fileserviceplan.SambaEnrollmentLookup, pending, peerExit, handle bool) error {
+	return nativeDataFixtureContextQEMU(context.Background(), plan, lookup, pending, peerExit, handle)
+}
+
+func nativeDataFixtureContextQEMU(parent context.Context, plan *runtimebundle.Plan, lookup fileserviceplan.SambaEnrollmentLookup, pending, peerExit, handle bool) (result error) {
+	if parent == nil || parent.Err() != nil {
+		return errors.New("native data parent unavailable")
+	}
 	if handle && (!pending || peerExit) {
 		return errors.New("invalid handle fixture profile")
 	}
@@ -44,8 +51,12 @@ func nativeDataFixtureHandleModeQEMU(plan *runtimebundle.Plan, lookup fileservic
 		return errors.New("invalid peer-exit fixture profile")
 	}
 	started := time.Now()
-	ctx, cancel := context.WithTimeout(context.Background(), 35*time.Second)
+	ctx, cancel := context.WithTimeout(parent, nativeDataLimitQEMU)
 	defer cancel()
+	defer func() { result = errors.Join(result, nativeLivePhaseErrorQEMU(ctx)) }()
+	if err := nativeLivePhaseErrorQEMU(ctx); err != nil {
+		return err
+	}
 	if !pending {
 		reportNativeDataTimingQEMU(nativeDataEnteredQEMU, started)
 	}

@@ -3,6 +3,35 @@
 
 # Implementation status
 
+## Native QEMU timing: coordinated clock and complete local integration pass
+
+Ordinary native now has one300s monotonic work deadline, with one fixed
+settlement deadline at original work deadline+30s and a360s host cap including
+30s boot/final margin. Existing phase caps and native4/20s / generic2/5s worker
+caps remain unchanged; all other guests retain180s and the default ten-campaign
+union is unchanged. Failed/late work cannot renew the clock or continue into
+another phase. Settlement is independent of work cancellation and checks before
+and after existing verified Stop/Close operations, whose internal bounded
+cleanup is unchanged. No product timer or runtime privilege changes.
+
+Actual phase-runner clock tests cover cancellation, shorter parents, remaining
+budget, late nil and fixed settlement/cause retention. Whole Windows and pinned
+Linux checks, including tagged cmd race3 and80 Samba-root runner tests, pass.
+The original two-CPU ARMv5 native trace passes strict verification, completing
+post-revocation data at116690ms while preserving original Owner/passdb/session,
+revocation, fresh-login, read/write and stopped/reaped/no-leak proofs. This is
+not a performance benchmark: host checks briefly overlapped staging/guest start.
+Complete current-source cached integration now passes: host ordinary/race/fuzz,
+target build, standard ARM smoke, MD comparison, two-boot state, launcher,
+runtime/loader/atomic, all ten original Samba campaigns and both synthetic SMART
+lanes. A separate read-only audit matches all1088 API source/package/archive
+inputs, installed SDK, configured strip and image/export bytes, kernel/header
+archives, release binding, legal metadata and all seven artifact hashes. Actual
+Buildroot Python/OpenSSL loopback TLS1.3 also passes. All1502 frozen source
+witnesses match before/after audit; subsequent edits only report these results.
+Own-head hosted qualification remains required. The earlier intermittent hosted
+failure is not declared repaired; no NAS or physical disks are involved.
+
 ## Integration candidate: reconcile PR133 with later API work
 
 The later guard branch and PR133 were separate histories: the former contained
@@ -24,7 +53,9 @@ The generic eight-profile reader's1MiB combined ceiling does not replace the
 active manager's stricter525056-byte cap and exact method/path table. No service
 activation, privilege or native timing change follows. The local integration
 does not close PR133, repair its failed hosted run or merge into `develop`;
-the combined publication needs its own full/hosted qualification before that.
+the combined publication still needs its own hosted qualification before that.
+The complete cached local integration and artifact audit now pass as recorded
+above; earlier component receipts below retain their narrower original scopes.
 
 The combined standard single-boot ARMv5 overlay exits0 with READY, every original
 smoke guard and two exact seven-file receipts for HTTP and HTTPS each across

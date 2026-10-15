@@ -458,18 +458,22 @@ button to an unqualified backend simply because the screen exists.
   pull/build an image or create a volume. Preserve isolation, exact-source
   hashes and clean-build/reproducibility lanes. Cache hits are an optimization,
   never qualification evidence.
-  **Current native timing decision gate:** source audit finds nine sequential
-  phase caps totaling255s under an outer180s guest, plus independent4s status
-  and20s native revocation limits. This is not a minimum-runtime calculation or
-  sufficient proof of a defect; recorded child and outer expiries remain
-  distinct. Earlier hash/allocation/applet/scratch/PGO measurements do not supply
-  a new end-to-end optimization to adopt. Before further native CI, choose a
-  coherent fixture-only budget design or preserve every limit for measured
-  performance-only work. No new durations are approved. The
+  **Current native timing gate:** coordinated fixture-only budget design is
+  approved and implemented: ordinary-native work300s, one fixed settlement
+  deadline at original work deadline+30s, host360s including30s boot/final
+  margin. Other guests retain180s. Nine sequential phase caps still total255s;
+  native4s status/20s revocation and generic2/5s worker limits remain unchanged.
+  Maxima are not minimum runtime, and an outer extension does not repair child
+  expiry. Earlier hash/allocation/applet/scratch/PGO measurements do not supply
+  a new end-to-end optimization to adopt. The
   [timing-contract work packet](support/QEMU-FAST-TESTS.md#native-timing-contract-decision-gate)
   specifies complete hierarchy/cleanup reserves, actual-runner clock tests,
   unchanged proofs/default union, focused-first verification and own-head/full
-  integration gates; it supersedes historical suggestions below to repeat
+  integration gates. The focused original trace and complete cached local
+  integration now pass, followed by an independent exact1088-source/image/
+  SDK/legal/SBOM audit. Own-head hosted checks remain required; historical
+  intermittent failures are not declared repaired by these successful runs.
+  It supersedes historical suggestions below to repeat
   already completed profiling. No product or generic timeout changes follow.
   **Current source-loss gate:** earlier `5b90e22` failed final file-source
   quarantine/supervision despite nine accepted campaigns. Instrumented code

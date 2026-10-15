@@ -20,7 +20,7 @@ func runNativeLivePhasesQEMU(parent context.Context, live, authenticate func(con
 	if parent == nil || live == nil || authenticate == nil {
 		return errors.New("native live fixture requires both phases and parent")
 	}
-	budgets := [...]time.Duration{45 * time.Second, 15 * time.Second}
+	budgets := [...]time.Duration{nativeLiveLimitQEMU, nativeFreshLoginLimitQEMU}
 	for index, phase := range []func(context.Context) error{live, authenticate} {
 		if err := parent.Err(); err != nil {
 			return err

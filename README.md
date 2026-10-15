@@ -105,15 +105,15 @@ CLI/library guards. Its complete cached integration and independent artifact/
 source/license/SBOM audit pass. This does not enable target OpenSSL or qualify
 a NAS HTTPS service, independent clean reproduction or physical EX4 support.
 
-The latest fully audited local code checkpoint, `5245ada`, selects Go 1.26.8 and
-host OpenSSL 3.5.9. Complete cached host/ARMv5 integration, all ten independently
+The current integration candidate selects Go 1.26.8 and host OpenSSL 3.5.9.
+Complete cached host/ARMv5 integration, all ten independently
 enrolled Samba guests and both synthetic SMART lanes pass. The sharing fixtures
 cover same-authority startup, real data access, exclusive supervision, verified
 closure and idle original-session/open-file faults with retained review and no
 restart. Source restoration does not release reviewed authority. These are not
 pending-I/O, physical disk failure, durable reconnect or recovery qualifications.
 
-An independent audit matches all 1,067 API inputs, actual images, kernel/header
+An independent audit matches all 1,088 API inputs, actual images, kernel/header
 archives, the selected and installed Go SDK, release metadata, SBOM and declared
 license files. OpenSSL's three installed objects are byte-exact reproductions
 of their built objects after Buildroot's configured RPATH normalization. The
@@ -121,15 +121,12 @@ actual Buildroot Python consumer loads those libraries and passes certificate
 verification and private loopback TLS 1.3; see the
 [exact qualification record](support/DEPENDENCY-REVIEW.md).
 This does not establish independent clean reproduction, physical EX4 support,
-complete fault coverage or an installable release. The native QEMU fixture now
-separates preparation from enrollment and preserves the cause of incomplete
-revocation observations. Integrated PR #131 passed its own exact-head host,
-ARMv5 QEMU and EX4 compile-only checks; its source-identical promotion to `main`
-preserves both branch histories. The earlier hosted live-session failure and
-local source-loss deadline remain unexplained: later successful runs are not a
-demonstrated timing fix. New increments, including the administrative response
-budgets, require their own integration qualification. No product SMB/NFS service
-is activated; see [implementation status](IMPLEMENTATION-STATUS.md).
+complete fault coverage or an installable release. Ordinary-native QEMU work
+and verified settlement now share coordinated fixed deadlines without changing
+product/worker limits or removing proof. Successful local runs do not establish
+that earlier intermittent hosted failures are repaired. The current publication
+still requires its own hosted checks before integration. No product SMB/NFS
+service is activated; see [implementation status](IMPLEMENTATION-STATUS.md).
 
 ## Roadmap
 
