@@ -61,6 +61,9 @@ func exerciseQEMUTLSWithAccountFactory(openAccounts func(string) (*accountStore,
 	if err != nil {
 		return err
 	}
+	if err := exerciseQEMUTLSMaterialBounds(directory, certificatePath, keyPath, certificatePEM); err != nil {
+		return err
+	}
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		return errors.New("cannot create loopback TLS test listener")
@@ -236,6 +239,52 @@ func exerciseQEMUTLSWithAccountFactory(openAccounts func(string) (*accountStore,
 		return errors.New("TLS test server returned an unexpected result")
 	}
 	serverStopped = true
+	return nil
+}
+
+// Valid PEM prefixes with excess whitespace must refuse before any listener
+// opens. These are fresh, synthetic files under this fixture's own directory.
+func exerciseQEMUTLSMaterialBounds(directory, certPath, keyPath string, certificatePEM []byte) error {
+	keyPEM, err := os.ReadFile(keyPath)
+	if err != nil {
+		return errors.New("cannot read generated TLS fixture key")
+	}
+	defer clear(keyPEM)
+	for _, test := range []struct {
+		name    string
+		prefix  []byte
+		limit   int64
+		private bool
+	}{
+		{"oversized.crt", certificatePEM, maxTLSCertificatePEMBytes, false},
+		{"oversized.key", keyPEM, maxTLSPrivateKeyPEMBytes, true},
+	} {
+		if int64(len(test.prefix)) > test.limit {
+			return errors.New("unexpected TLS fixture prefix size")
+		}
+		payload := append([]byte(nil), test.prefix...)
+		payload = append(payload, bytes.Repeat([]byte{'\n'}, int(test.limit)+1-len(payload))...)
+		path := filepath.Join(directory, test.name)
+		writeErr := os.WriteFile(path, payload, 0600)
+		clear(payload)
+		if writeErr != nil {
+			return errors.New("cannot write bounded TLS refusal fixture")
+		}
+		certificate, key := certPath, keyPath
+		if test.private {
+			key = path
+		} else {
+			certificate = path
+		}
+		values := map[string]string{
+			listenAddressEnv: "127.0.0.1:8443", publicOriginEnv: "https://127.0.0.1:8443",
+			tlsCertFileEnv: certificate, tlsKeyFileEnv: key,
+		}
+		config, err := loadAPITransportConfigFrom(func(name string) (string, bool) { value, ok := values[name]; return value, ok })
+		if err == nil || config.Address != "" || config.AllowedOrigin != "" || config.TLSConfig != nil {
+			return errors.New("oversized TLS fixture material admitted")
+		}
+	}
 	return nil
 }
 

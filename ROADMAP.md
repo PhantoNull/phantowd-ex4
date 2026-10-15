@@ -3,7 +3,7 @@
 
 # Implementation roadmap
 
-Reviewed: **2026-10-14**. This is the product specification and work breakdown,
+Reviewed: **2026-10-15**. This is the product specification and work breakdown,
 not a release announcement. The [README](README.md) is the concise entry point;
 component contracts remain authoritative for implemented behavior.
 
@@ -2198,6 +2198,15 @@ milestone before enabling its controls; M1/M6 for deployment.
   The [management threat model](src/phantowd-api/THREAT-MODEL.md) maps current
   routes/trust boundaries, TM-01–TM-10 acceptance packets and remaining product
   gates. It is a source-based draft, not an independent security sign-off.
+  **M5.2b — bounded supplied TLS material (partial):** read certificate/key PEM
+  through checked open files, with inclusive256/64KiB input bounds and zero
+  transport result on refusal. Both leaves must be regular and non-symlink;
+  Linux no-follow/nonblocking opens and metadata rechecks preserve POSIX key
+  permissions. The standard HTTPS fixture adds oversized valid-prefix refusals
+  before its listener. Windows/pinned Linux whole checks, focused race-count3
+  and one normal ARMv5 smoke pass. This is not retained parent authority, all-change/low-
+  level I/O-fault coverage, an I/O deadline, whole-TLS memory qualification,
+  certificate provisioning/renewal or product LAN admission.
 - **M5.3 — Typed operation API.** Map privileges and state transitions to endpoints.
   Preserve strict decoding, origin/Host validation, CSRF, bounded requests,
   generic errors and per-operation concurrency limits. Long jobs return durable

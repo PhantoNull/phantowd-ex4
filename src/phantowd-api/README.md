@@ -699,9 +699,18 @@ and refuses non-Versatile PB machines. See the
 
 - Default IPv4 loopback listener: `127.0.0.1:8080` **inside the guest**.
   Optional listener configuration is fail-closed: non-loopback binds require a
-  TLS certificate/key pair and one exact HTTPS origin. TLS keys must be regular
-  non-symlink files not accessible to group/other users; the certificate must be currently valid and
-  match the origin host. TLS has a minimum version of 1.2. No proxy headers or
+  TLS certificate/key pair and one exact HTTPS origin. Certificate PEM input is
+  limited to 256 KiB and private-key PEM to 64 KiB, including padding. Both must
+  be nonempty regular non-symlink leaf files; POSIX keys must not be accessible
+  to group/other users. Linux opens leaves no-follow/nonblocking and checks the
+  opened identity/mode/size/mtime before and after bounded reads. The certificate
+  must be currently valid and match the origin host. TLS has a minimum version
+  of 1.2. Raw owned PEM buffers are cleared, not all parsed private-key memory.
+  This is a startup snapshot, not retained parent-directory/trust authority or
+  protection against all concurrent file changes. Byte bounds do not preempt
+  stalled regular-file I/O or qualify total TLS heap/handshake load. Non-Linux
+  development uses a portable opener and does not certify Linux flags or ACLs.
+  No proxy headers or
   certificate provisioning/renewal are implemented. The QEMU image does not
   opt into remote listening.
 - `PHANTOWD_LISTEN_ADDR` defaults to `127.0.0.1:8080`. Remote use additionally

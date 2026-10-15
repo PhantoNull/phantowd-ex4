@@ -3,6 +3,21 @@
 
 # Implementation status
 
+## HTTPS startup: bounded supplied certificate and private-key files
+
+The transport loader replaces unbounded path-based pair loading with checked
+open-file reads: inclusive256KiB certificate/64KiB key PEM, regular non-symlink
+leaves, private POSIX key permissions and identity/mode/size/mtime rechecks.
+Linux leaf opens are no-follow/nonblocking. Refusals return no partial transport
+or private I/O details; owned raw PEM is cleared, not all parsed key memory.
+Windows and pinned Linux whole API checks and three focused Linux race
+repetitions pass. The actual single-boot ARMv5 smoke executes oversized
+valid-prefix refusals before its existing HTTPS/auth/password-change fixture.
+This is not retained parent/trust authority, all concurrent-change/close-fault
+coverage, a regular-file I/O deadline, total TLS-memory qualification, certificate
+provisioning/recovery or a product LAN listener. There is no complete image/
+hosted/physical qualification; no prior native timing gate is waived.
+
 ## Identity admission: failed-open cleanup uncertainty
 
 `identityowner` no longer drops an uncertain backend/Owner cleanup result when

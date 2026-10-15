@@ -12,7 +12,6 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -94,10 +93,7 @@ func loadAPITransportConfigFrom(lookup environmentLookup) (apiTransportConfig, e
 
 	config := apiTransportConfig{Address: address, AllowedOrigin: canonicalOrigin(parsedOrigin)}
 	if tlsEnabled {
-		if err := validatePrivateKeyFile(keyFile); err != nil {
-			return apiTransportConfig{}, err
-		}
-		pair, err := tls.LoadX509KeyPair(certFile, keyFile)
+		pair, err := loadBoundedTLSKeyPair(certFile, keyFile)
 		if err != nil {
 			return apiTransportConfig{}, errors.New("TLS certificate/key pair could not be loaded")
 		}
@@ -227,17 +223,6 @@ func isLoopbackHost(host string) bool {
 
 func sameHost(left, right string) bool {
 	return strings.EqualFold(strings.TrimSuffix(left, "."), strings.TrimSuffix(right, "."))
-}
-
-func validatePrivateKeyFile(path string) error {
-	info, err := os.Lstat(path)
-	if err != nil || !info.Mode().IsRegular() || info.Mode()&os.ModeSymlink != 0 {
-		return errors.New("TLS private key must be a regular non-symlink file")
-	}
-	if runtime.GOOS != "windows" && info.Mode().Perm()&0o077 != 0 {
-		return errors.New("TLS private key must not be accessible to group or other users")
-	}
-	return nil
 }
 
 func validOrigin(r *http.Request, allowedOrigin string) bool {
