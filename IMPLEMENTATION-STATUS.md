@@ -3,6 +3,24 @@
 
 # Implementation status
 
+## Current integration gate: hosted fault failure remains open
+
+Candidate `e4fc079` passes hosted host/B3 checks but fails its own QEMU fault
+campaign at data/ungranted/post-admission. It is not ready to merge. The complete
+cached integration below describes that earlier local checkpoint, not a repair
+of the hosted failure or qualification of every later source change.
+
+A subsequent QEMU-only diagnostic captures immutable runtime-entry/failure
+budget before containing-service cleanup, without changing execution limits or
+proof. Deterministic Linux tests, tagged vet, race3 and whole Windows/Linux
+preflights pass. Its actual normal fault guest instead refuses at data with no
+typed runtime boundary; one declared CPU-reduced control fails earlier in the
+native startup fault subprocess. Both campaigns fail strict verification and
+neither emits the new clock row. Target emission, exact hosted reproduction and
+the repair remain unqualified; no repeated run is selected as a substitute.
+No NAS or physical disk is involved. See the
+[diagnostic contract](support/QEMU-FAST-TESTS.md).
+
 ## Native QEMU timing: coordinated clock and complete local integration pass
 
 Ordinary native now has one300s monotonic work deadline, with one fixed

@@ -67,6 +67,8 @@ func (r *NativeSambaRuntimeQEMU) StartPlannedDaemonQEMU(ctx context.Context) (re
 // No caller supplies a path, root, credential, command or backend. The six
 // bounded clients use the existing private helper and never start a daemon.
 func (r *NativeSambaRuntimeQEMU) ProbePlannedDataAccessQEMU(ctx context.Context) (result error) {
+	clock := startNativeDataClockQEMU(ctx)
+	defer func() { result = clock.annotate(ctx, result) }()
 	if err := r.enter(ctx); err != nil {
 		return err
 	}

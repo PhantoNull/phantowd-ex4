@@ -626,6 +626,12 @@ button to an unqualified backend simply because the screen exists.
   large-input samples and included process overhead cannot establish compression-
   only, complete-census or physical performance. Production checks/deadlines and
   the original hosted qualification gate remain unchanged.
+  A later QEMU-only runtime data-clock diagnostic passes deterministic host,
+  redaction and race tests without changing limits or proof. Two actual fault
+  controls refuse at different earlier/untyped boundaries and do not exercise
+  its row. Preserve both failed traces; target emission, exact hosted failure
+  reproduction and repair remain open. Do not promote host-only instrumentation
+  as successful guest qualification or retry unchanged controls until one passes.
 - **M0.4 — Maintain release inputs.** Dependency update changes include source
   signatures/hashes, ARMv5 compatibility, package configuration, vulnerability
   review, license material and regenerated SBOM. Test the selected package set.

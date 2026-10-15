@@ -1975,6 +1975,20 @@ fixture logs only, not a product/device log collector; save the command output
 if needed. Additional temporary instrumentation still requires a separate clean
 replay after it is removed.
 
+Planned-data runtime refusals can additionally carry one fixed
+`PHANTOWD_QEMU_PLANNED_DATA_CLOCK` row: elapsed runtime time, remaining parent
+budget at entry/failure, and independent context-done/deadline-reached flags.
+The immutable snapshot is taken before the containing service quarantines or
+stops processes; it includes runtime gate waiting, not exclusive CPU time.
+Only typed data failures with a valid bounded clock emit it. Missing rows do
+not prove that the parent was live or that runtime data work was reached.
+The parent relays only the first valid row; each duration is at most180000ms.
+No raw cause, command, credential or path is emitted. Exact child proof plus
+telemetry still fails; execution deadlines, workers and checks are unchanged.
+Host deterministic-clock/redaction/race tests pass. Subsequent normal and
+post-enrollment CPU-reduced fault guests both fail before producing this row;
+they do not qualify target emission or repair the hosted failure.
+
 On campaign refusal, the host driver now emits one bounded redacted JSON
 `phantowd-qemu-worker-timing-summary` before the existing failure-log tail.
 Only the fixed native worker grammar is recognized: at most 512 rows, each

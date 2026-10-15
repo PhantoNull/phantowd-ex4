@@ -17,6 +17,63 @@ import (
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/runtimebundle"
 )
 
+func TestPlannedDataClockDiagnosticRelayKeepsFirstBoundedRow(t *testing.T) {
+	const row = "PHANTOWD_QEMU_PLANNED_DATA_CLOCK elapsed_ms=17001 entered_remaining_ms=17000 failed_remaining_ms=0 context_done=true deadline_reached=true scope=diagnostic-only\n"
+	const later = "PHANTOWD_QEMU_PLANNED_DATA_CLOCK elapsed_ms=18000 entered_remaining_ms=17000 failed_remaining_ms=0 context_done=true deadline_reached=true scope=diagnostic-only\n"
+	const prefix = "PHANTOWD_QEMU_PLANNED_FAULT_SUBPROCESS_FAILURE deadline=false child_failed=true proof_match=false scope=diagnostic-only\n"
+	got := plannedFaultSubprocessDiagnosticQEMU(nil, errors.New("private-child-error"), row+row+later, "exact-proof\n")
+	if got != prefix+row {
+		t.Fatalf("missing or repeated bounded data clock: %q", got)
+	}
+}
+
+func TestPlannedDataClockDiagnosticsValidateWithoutWeakeningProof(t *testing.T) {
+	const row = "PHANTOWD_QEMU_PLANNED_DATA_CLOCK elapsed_ms=17001 entered_remaining_ms=17000 failed_remaining_ms=0 context_done=true deadline_reached=true scope=diagnostic-only\n"
+	observation := runtimebundle.NativeDataClockObservationQEMU{Present: true, ContextDone: true, DeadlineReached: true, ElapsedMS: 17001, EnteredRemainingMS: 17000}
+	if got := plannedDataClockDiagnosticQEMU(observation); got != row {
+		t.Fatalf("valid immutable clock missing: %q", got)
+	}
+	observation.Present = false
+	if plannedDataClockDiagnosticQEMU(observation) != "" {
+		t.Fatal("missing observation invented telemetry")
+	}
+	const proof = "exact-proof\n"
+	const prefix = "PHANTOWD_QEMU_PLANNED_FAULT_SUBPROCESS_FAILURE deadline=false child_failed=true proof_match=false scope=diagnostic-only\n"
+	for _, bad := range []string{
+		strings.Replace(row, "elapsed_ms=17001", "elapsed_ms=017001", 1),
+		strings.Replace(row, "elapsed_ms=17001", "elapsed_ms=-1", 1),
+		strings.Replace(row, "elapsed_ms=17001", "elapsed_ms=+1", 1),
+		strings.Replace(row, "elapsed_ms=17001", "elapsed_ms=180001", 1),
+		strings.Replace(row, "elapsed_ms=17001", "elapsed_ms=4294967296", 1),
+		strings.Replace(row, "elapsed_ms=17001", "elapsed_ms=private-secret", 1),
+		strings.Replace(row, "elapsed_ms=17001", "elapsed_ms=16999", 1),
+		strings.Replace(row, "failed_remaining_ms=0", "failed_remaining_ms=1", 1),
+		strings.Replace(row, "failed_remaining_ms=0", "failed_remaining_ms=17001", 1),
+		strings.Replace(row, "entered_remaining_ms=17000", "entered_remaining_ms=180001", 1),
+		strings.Replace(row, "entered_remaining_ms=", "private_path=", 1),
+		strings.Replace(row, "context_done=true", "context_done=1", 1),
+		strings.Replace(row, "deadline_reached=true", "deadline_reached=private", 1),
+		strings.Replace(row, "scope=diagnostic-only", "scope=qualified", 1),
+		strings.TrimSuffix(row, "\n") + " private-secret\n",
+	} {
+		if got := plannedFaultSubprocessDiagnosticQEMU(nil, errors.New("private"), bad, proof); got != prefix {
+			t.Fatalf("invalid clock row relayed: %q", got)
+		}
+	}
+	if got := plannedFaultSubprocessDiagnosticQEMU(nil, nil, row+proof, proof); !strings.Contains(got, "child_failed=false proof_match=false") {
+		t.Fatal("diagnostic row weakened exact proof", got)
+	}
+	for _, c := range []runtimebundle.NativeDataClockObservationQEMU{
+		{Present: true},
+		{Present: true, ElapsedMS: 180000, EnteredRemainingMS: 180000, DeadlineReached: true},
+		{Present: true, ElapsedMS: 4000, EnteredRemainingMS: 20000, FailedRemainingMS: 16000},
+	} {
+		if plannedDataClockDiagnosticQEMU(c) == "" {
+			t.Fatal("valid boundary/independent worker failure refused", c)
+		}
+	}
+}
+
 func TestPlannedFaultFailureDiagnosticsAreFixedRedactedAndNotProof(t *testing.T) {
 	secret := errors.New("credential-and-private-path-must-not-leave-guest")
 	for _, tc := range []struct {
