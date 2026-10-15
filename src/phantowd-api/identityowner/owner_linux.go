@@ -78,8 +78,11 @@ func Open(directory string, inventory Inventory) (*Owner, error) {
 // OpenWithSMBBackend binds a trusted in-process Samba executor to the Owner for
 // its lifetime. Pass only a fixed implementation created by the firmware
 // service, never a per-request adapter; client protocols cannot configure it.
-// This transfers ownership: if opening fails, a closeable backend is closed;
-// otherwise Owner.Close closes it after draining active operations.
+// This transfers ownership: failed opening attempts one backend cleanup;
+// otherwise Owner.Close closes it after draining active operations. Uncertain
+// cleanup adds redacted ErrReview/ErrUnavailable to the original opening error.
+// ErrReview takes precedence over ordinary admission classifications: callers
+// must not retry opening or reuse the backend as if cleanup had succeeded.
 // The internal package type intentionally keeps this constructor inside the
 // phantowd-api module subtree.
 func OpenWithSMBBackend(directory string, inventory Inventory, smbBackend smbprovision.Backend) (*Owner, error) {
@@ -104,18 +107,16 @@ func ownerDependencies(inventory Inventory) dependencies {
 	}
 }
 
-func open(directory string, deps dependencies) (*Owner, error) {
+func open(directory string, deps dependencies) (_ *Owner, result error) {
 	if os.Getuid() != 0 || os.Geteuid() != 0 || deps.inventory == nil || deps.observe == nil || deps.executor == nil || !filepath.IsAbs(directory) || filepath.Clean(directory) != directory {
-		closeSMBBackend(deps.smbBackend)
-		return nil, ErrInvalid
+		return nil, closeFailedOpenBackend(deps.smbBackend, ErrInvalid)
 	}
 	fd, err := unix.Openat2(unix.AT_FDCWD, directory, &unix.OpenHow{
 		Flags:   unix.O_RDONLY | unix.O_DIRECTORY | unix.O_CLOEXEC,
 		Resolve: unix.RESOLVE_NO_SYMLINKS | unix.RESOLVE_NO_MAGICLINKS,
 	})
 	if err != nil {
-		closeSMBBackend(deps.smbBackend)
-		return nil, ErrUnavailable
+		return nil, closeFailedOpenBackend(deps.smbBackend, ErrUnavailable)
 	}
 	o := &Owner{root: fd, operations: -1, deps: deps, smbBackend: deps.smbBackend,
 		journals: make(map[string]*identityprovision.Store), smbJournals: make(map[string]*smbprovision.Store),
@@ -123,7 +124,11 @@ func open(directory string, deps dependencies) (*Owner, error) {
 	success := false
 	defer func() {
 		if !success {
-			o.Close()
+			if o.Close() != nil {
+				// An admission error is not proof that its acquired authority
+				// or startup-bound backend was disposed successfully.
+				result = errors.Join(result, ErrUnavailable, ErrReview)
+			}
 		}
 	}()
 	var st unix.Stat_t
@@ -157,10 +162,14 @@ func open(directory string, deps dependencies) (*Owner, error) {
 	return o, nil
 }
 
-func closeSMBBackend(smbBackend smbprovision.Backend) {
+func closeFailedOpenBackend(smbBackend smbprovision.Backend, openingErr error) error {
 	if closer, ok := smbBackend.(interface{ Close() error }); ok {
-		_ = closer.Close()
+		if closer.Close() != nil {
+			// Preserve the admission classification, never private backend text.
+			return errors.Join(openingErr, ErrUnavailable, ErrReview)
+		}
 	}
+	return openingErr
 }
 
 func privateDirectory(st unix.Stat_t) bool {

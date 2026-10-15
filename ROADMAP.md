@@ -878,6 +878,13 @@ qualification remain open. The revocation primitive is currently QEMU-only.
   do not prove injected kernel EIO, native-wrapper teardown, clean-build or
   physical-device qualification, or
   resolution of the independent promotion-blocking timeout.
+  Failed `identityowner.Open` now also propagates redacted cleanup uncertainty:
+  early backend closure and post-lock Owner cleanup preserve the original
+  admission error plus review/unavailability instead of discarding the result.
+  Confirmed cleanup retains exact errors; no new handle or retry is introduced.
+  Whole isolated Linux identityowner race-count3 covers real lock retention/
+  release with modeled external teardown. This is not kernel-close EIO,
+  durable quarantine/recovery, new HTTP/startup or physical qualification.
   Reopened intent becomes
   review-required without command replay. The internal credential-bearing
   version-2 Unix-socket methods, including explicit `enable` and `disable`, are bound to the

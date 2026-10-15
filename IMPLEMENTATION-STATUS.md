@@ -3,6 +3,20 @@
 
 # Implementation status
 
+## Identity admission: failed-open cleanup uncertainty
+
+`identityowner` no longer drops an uncertain backend/Owner cleanup result when
+opening fails. It adds redacted review/unavailability classifications, keeps
+the original admission classification and attempts cleanup only once. Confirmed
+cleanup preserves exact original errors. Native isolated host tests exercise
+pre-path refusal, unavailable paths, acquired root/registry retention and normal
+release; the whole identityowner package passes three Linux race repetitions.
+The normal single-boot ARMv5 smoke also passes; injected failed-open faults
+remain host-only tests, not physical-device or recovery qualification.
+No new Owner handle, API, command retry, durable quarantine/recovery, product
+startup or physical-device qualification is provided. Callers must treat review
+as stronger than coexisting invalid/busy admission errors.
+
 ## Dashboard: explicit browser snapshot load age
 
 The overview displays monotonic elapsed browser time since the current complete

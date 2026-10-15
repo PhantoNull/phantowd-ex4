@@ -47,9 +47,19 @@ registry and native/Samba journal refusal after the backend error, fail-closed
 observations and no automatic retry. A separate positive test verifies journal
 authority during backend teardown and normal idempotent closure. The fault test
 runs in a disposable subprocess to contain deliberately retained descriptors;
-its process-exit cleanup is not a product recovery qualification. Failed-Open
-cleanup, low-level close faults and complete runtime/product recovery still
-require separate lifecycle qualification.
+its process-exit cleanup is not a product recovery qualification.
+
+Failed-Open cleanup now also reports redacted `ErrReview`/`ErrUnavailable`
+alongside its original admission error if the one cleanup attempt is uncertain.
+Callers must prioritize review over any coexisting invalid/busy classification;
+there is still no usable Owner on failure and no automatic retry or recovery.
+An already-acquired authority follows the same `Close` retention behavior.
+Native host regressions cover pre-path refusal, unavailable paths and a failed
+snapshot after actual root/registry locking; subprocess exit contains deliberately
+retained test descriptors. Confirmed cleanup preserves exact original errors
+and releases locks. This models external backend uncertainty, not real kernel
+EIO, durable quarantine or all low-level close faults. Those cases and complete
+runtime/product recovery still require separate lifecycle qualification.
 
 Snapshots freshly decode the ledger/journals and refuse missing/orphan entries,
 wrong ownership/modes, symlinks, device changes, replaced known operation
