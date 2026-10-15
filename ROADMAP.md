@@ -2596,6 +2596,15 @@ stop conditions and suitable equipment/media; not ordinary software work.
   nominal health, bounded monotonic deadlines, retained intent/verified deferral
   and cooling ownership through shutdown. No safe numerical thresholds or
   physical shutdown qualification follow from the legacy constants.
+  **M7.3d — deferral/hibernation static linkage (partial):** boot attempts a
+  persistent-to-temporary marker move, then the consumer attempts unlink before
+  its activity gate, without checked results. USB/SATA guards are not global
+  admission. The selected `set_pwm` manages disk activity/sleep bitmaps, not an
+  observed direct cooling command; its dependencies/MCU effects remain open.
+  Acceptance: retained deferral/replay intent, per-disk generation/freshness,
+  helper crash invalidation, index equivalence with slot holes, bounded wake/
+  shutdown settlement and thermal-safe workload admission. Do not infer physical
+  sleep, cooling handoff or power-off from a command, bitmap or readiness marker.
 - **M7.4 — Peripheral support.** Qualify SATA bays, USB, RTC, LEDs, LCD, buttons,
   watchdog and power control. Hardware alarms override cosmetic display choices.
   Record LED/button semantics and shutdown completion, not just driver presence.

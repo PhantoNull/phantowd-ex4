@@ -207,8 +207,8 @@ return zero. Other activity can return without verified shutdown; an updater
 on the first check attempts a persistent deferred-shutdown marker once per
 process, without checking its creation result. The second check's updater
 result instead returns directly. This is a potential deferral/retry gap,
-**not proof of permanent request loss**; other writers/marker consumers remain
-incompletely traced.
+**not proof of permanent request loss**. The selected marker consumers and
+remaining coverage limits are described below.
 
 The ordinary path eventually starts the shutdown script asynchronously.
 The supplied EX4 feature manifest selects the MCU shutdown/reboot branch.
@@ -221,6 +221,72 @@ these operations on the NAS as a consequence of this analysis.
 The dashboard temperature-status helper only tests whether an overtemperature
 marker exists: absence produces `good`, not proof of a current valid sensor
 sample. Replacement telemetry must distinguish unknown/stale/error from good.
+
+## Deferred shutdown and hibernation ownership
+
+The boot script attempts to move a persistent deferred-shutdown marker into
+temporary runtime storage (`system_init`, line540), without checking the result.
+`chk_io` tests that temporary marker at `0x9dcc–0x9ddc`, then attempts to unlink
+it at `0x9ef8–0x9efc` **before** entering the same double activity gate; the
+unlink result is ignored. Thus the persistent-marker path does not itself
+add a verified completion receipt or retain the temporary request until success.
+An updater on the first gate check can attempt another persistent marker;
+the second-check and other-activity distinctions above remain important.
+
+The immediate-shutdown helper and UPS scheduling script also create the
+temporary marker. A bounded literal-reference search of174 regular utilities
+plus the supplied `script/`, `localsbin/` and `files/` trees found the marker
+in those scripts, boot init and `chk_io`. Six unreadable network-tool entries
+were excluded. This is not proof that dynamically constructed paths, libraries,
+other firmware regions or every possible retry producer have been covered.
+
+The `load_module` USB and default/SATA branches consult pending thermal state
+before their application-reload functions (lines447–455 and508–515). Those
+checks occur after preliminary work; the default branch has already called
+its system-file preparation helper. Completion markers are still written.
+The separate network branch is not governed by those two checks. They are
+specific restart guards, not global transactional admission for all services.
+
+Despite its name, selected `set_pwm` is a **disk-activity/hibernation helper**
+(14,035bytes, SHA-256
+`32f7aa4771edb047df076c0d136be1e939f3df3ffa1320f67853ca819213f8a3`):
+
+- Main `0x9d3c` discovers mapped disks and initializes the runtime sleep/standby
+  bitmap to zero (`0x9f08–0x9f2c`); diskstats activity drives its decisions.
+- A textual standby check precedes setting a sleep bit (`0x94c4–0x9520`).
+  The bit is derived from a mapped device identifier; activity clears a bit
+  using a tracked index (`0x9854–0x986c`). Equivalence with missing/reordered
+  slots has not been proved. The decimal bitmap is published to XML and a
+  temporary file, without generation or sample-freshness evidence.
+- Its explicit standby request compares diskstats across a5-second wait and
+  adjusts idle counters. Direct MCU operations observed are ErrStatus2032
+  set/clear. The reviewed helper showed no direct fan-speed, temperature-query
+  or RS232 call. Transitive library effects and MCU reaction remain unqualified;
+  absence of a direct call is not proof of complete hardware isolation.
+- Disabling hibernation requests disk wakeup in a separate helper invocation
+  and creates an off marker. The existing helper stops only after observing
+  that marker with its idle counter zero (`0x9900–0x99e8`). This is not a
+  bounded settlement, verified physical wakeup or crash cleanup guarantee.
+
+The fan daemon consumes this helper's sleep bitmap to skip HDD sampling but
+retains its separate board-temperature path. That dependency is **not** a
+cooling handoff. A stale bitmap after helper failure must not be interpreted
+as a fresh, confirmed per-disk sleep observation in the replacement firmware.
+
+### Required synthetic acceptance cases, not implemented controls
+
+| Case | Required replacement evidence before hardware activation |
+| --- | --- |
+| Shutdown blocked after request consumption or marker replay | The same intent remains pending/deferred with explicit reason; no completion claim or silent loss. Persistence/recovery uses the separately reviewed state contract |
+| Hibernation helper exits, crashes or publishes stale state | Per-disk observation becomes unknown/stale; no automatic cooling reduction or current-sleep claim |
+| Missing, reordered or replaced disk | Set/clear operations match one validated disk generation; compact index or bay alone cannot identify it |
+| Disable-hibernation wake request | Requested wake, helper settlement and independently observed disk state remain distinct |
+| Pending thermal shutdown during service reload | Admission is checked before affected workload mutations; readiness markers cannot imply successful activation |
+| Updater or RAID maintenance defers shutdown | Explicit reviewed abort/defer/recovery protocol and bounded observation, without blindly interrupting a flash write or inventing a safe thermal deadline |
+
+These cases require host/disposable-QEMU fixtures and later separate physical
+qualification. This document adds no state schema, persistent writer, actuator,
+service-start rule, disk command or authority to test on the NAS.
 
 ## Replacement requirements and remaining work
 
@@ -235,12 +301,13 @@ The next offline pass can proceed without hardware:
    replacement provider. Preserve read failure separately from stopped fan;
    do not adopt broad `/dev/mem` mappings or whole-register status writes.
 2. Qualify thermistor units/calibration and real sensor failure values; complete
-   regulator hysteresis/reachable-state review and the remaining deferred-marker
-   consumers. The lookup, brand-dependent HDD normalization and selected shutdown
+   regulator hysteresis/reachable-state review and indirect retry/dependency
+   coverage. The lookup, brand-dependent HDD normalization and selected shutdown
    consumer are mapped above, not qualified for reuse. Legacy constants are not
    product thresholds or a measured shutdown deadline.
-3. Trace `set_pwm` and hibernation interactions before assigning exclusive
-   cooling ownership. Its filename and presence in init do not prove its role.
+3. Qualify disk-identity equivalence, helper failure/settlement and cooling
+   ownership through hibernation and shutdown. Direct helper paths and selected
+   marker replay are mapped above; their effects are not physical qualification.
 
 Before implementation/activation, the reviewed thermal contract must specify:
 

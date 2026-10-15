@@ -36,6 +36,15 @@ paths remain incomplete. Dashboard `good` is marker absence, not sample health.
 These findings define explicit input-quality, deadline and retained-intent
 requirements, not a product thermal policy or evidence of physical power-off.
 
+Selected deferred-marker replay and hibernation paths are now mapped: marker
+consumption precedes shutdown admission; USB/SATA restart guards are partial;
+`set_pwm` publishes disk sleep state that affects HDD sampling without proving
+current disk state or cooling ownership. Wake requests and helper termination
+are not physical wake confirmation. The research handoff includes synthetic
+acceptance cases for stale/crashed helpers, slot holes, retained deferral and
+workload admission. None of those product controls is implemented by this
+documentation-only checkpoint.
+
 ## iSCSI management prerequisite: coherent desired review projection
 
 The new private projection validates the whole SMB/NFS/iSCSI desired revision
