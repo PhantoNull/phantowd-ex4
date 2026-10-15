@@ -3,6 +3,34 @@
 
 # Implementation status
 
+## Integration candidate: reconcile PR133 with later API work
+
+The later guard branch and PR133 were separate histories: the former contained
+current `develop` but not PR133's two commits. M5.5m joins both in the development
+candidate, rather than treating either candidate's tests as proof of the other.
+Conflict resolution retains the separate authentication module and stricter
+combined-policy consumer byte-for-byte. It restores PR133's bounded GPT/session,
+saved share-only policy and standalone-preview consumers and retains both suites.
+
+All72 named tests from the later branch and64 from PR133 remain in the83-test
+named-function union, without duplicate declarations. This is a source roster,
+not83 independent product qualifications; existing unnamed scenarios also run
+in the complete DOM suite. Static guards refuse unbounded JSON fallbacks and
+resurrected duplicate authentication handlers. Whole Windows/pinned Linux and
+both installed-browser modes pass on the combined source, including nominal
+cookie revocation and the controlled non-delivered auth failures.
+
+The generic eight-profile reader's1MiB combined ceiling does not replace the
+active manager's stricter525056-byte cap and exact method/path table. No service
+activation, privilege or native timing change follows. The local integration
+does not close PR133, repair its failed hosted run or merge into `develop`;
+the combined publication needs its own full/hosted qualification before that.
+
+The combined standard single-boot ARMv5 overlay exits0 with READY, every original
+smoke guard and two exact seven-file receipts for HTTP and HTTPS each across
+API restart. No browser runs in QEMU; the base kernel/packages/probe are unchanged.
+This is not native/two-boot/full/hosted or physical/installation qualification.
+
 ## Dashboard: bounded password changes and session termination
 
 Password replacement, local logout and global panel logout now share one
@@ -543,7 +571,12 @@ logs independently replay; the last three rely on the original controller.
 The preceding `5b90e22` full lane failed the final file-source quarantine/
 supervision deadline. Its cause remains unknown; this complete pass does not
 establish a timing repair, independent clean reproduction or hosted/physical/
-product/installation qualification. Require the publication head's own checks.
+product/installation qualification. The publication head `d40b545` passed its
+own host, ARMv5 QEMU and EX4 compile-only checks in PR #131 and was integrated
+as `b64109f` with the identical tree. PR #132 promoted that runtime source to
+`main`, retaining main's existing development-status README note and both
+histories. Promotion is not a new complete run. These results do not qualify
+the newer administrative-response increment described below.
 
 QEMU-only failure diagnostics now carry bounded cumulative checkpoint costs,
 without raw errors or changes to effects, authority, timing limits or exact
@@ -552,6 +585,31 @@ healthy runs pass. Failure-only ARM emission and the intermittent failure's
 cause remain unqualified; see the [diagnostic contract](support/QEMU-FAST-TESTS.md#failure-only-source-fault-checkpoint-costs).
 
 ## Diagnostic GET responses: byte and structural budgets
+
+The original PR133 increment also bounds every currently parsed administrative
+JSON response through the same native-stream reader. Session/password/save
+receipts use16KiB; GPT64KiB; share policy512KiB; combined policy/backup1MiB;
+preview/restore-preview4MiB. Method-bound PUT confirmations stay short even
+though GET on the same route can carry a large policy. Policy-specific bounded
+container allowances preserve high-cardinality documents; diagnostic bounds
+are unchanged. No `Response.json()` fallback remains in the dashboard assets.
+
+Actual-source UI regressions refuse oversize frames before dispatch/Save,
+preserve unconfirmed password/save outcomes and require explicit reconciliation,
+reject inherited profile names before acquiring a reader, and retain cancellation/
+lock/deadline behavior. A large component-byte-bounded64-user/8-share/32-export
+fixture still loads. Windows and pinned Linux API checks and single-boot ARM
+HTTP/HTTPS asset delivery pass. These are not browser heap/CPU/transport or
+complete-image/product qualification; this increment is separate from the
+audited/published candidate above. No endpoint/privilege/timer/backend/device
+or mutation-admission changes are made.
+
+That paragraph records PR133's isolated generic-profile checkpoint. M5.5m
+reconciles it with the later branch without replacing the stricter525056-byte
+combined-policy consumer or the separate bounded authentication module. Both
+test sets remain. The generic1MiB profile is not the active manager's limit;
+current combined-head qualification and unresolved hosted/native gates must
+be checked separately from the historical source results.
 
 The existing five diagnostic/auth-status GET paths now enforce decoded-body
 budgets before strict UTF-8/JSON parsing, with bounded chunk count, JSON nesting

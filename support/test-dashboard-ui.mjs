@@ -20,6 +20,11 @@ const styles = await readFile(join(repoRoot, "src/phantowd-api/ui/app.css"), "ut
 assert.ok(markup.indexOf('<script src="/assets/auth.js" defer>') > markup.indexOf('<script src="/assets/app.js" defer>'), "auth module must load after its shared UI helpers");
 assert.ok(authSource.includes("updateAuthView().catch(showAuthUnavailable)"));
 assert.ok(!source.includes("updateAuthView().catch(showAuthUnavailable)"), "only the auth module starts authentication");
+assert.doesNotMatch(source + authSource + serviceSource, /\.json\s*\(/, "Merged dashboard consumers must retain bounded response readers");
+for (const name of ["setAuthError", "showAuthUnavailable", "updateAuthView", "signOut", "clearPasswordFields"]) {
+  assert.ok(!source.includes(`function ${name}(`), "The merge must not resurrect retired authentication handlers in app.js");
+  assert.ok(authSource.includes(`function ${name}(`));
+}
 for (const name of ["index.html", "app.css", "app.js", "auth.js", "service-policy.js", "support-bundle.js", "ghost.svg"]) {
   assert.ok((await readFile(join(repoRoot, "src/phantowd-api/ui", name))).byteLength <= 65536, "per-asset budget must not grow");
 }
@@ -1125,7 +1130,7 @@ async function testSavedPolicyLateRepliesAndAuthLoss() {
       let release;
       const pending = new Promise((resolve) => { release = resolve; });
       const harness = await policyHarness(undefined, () => jsonResponse({}, 503), () =>
-        delayedBody ? { ok: true, status: 200, json: () => pending } : pending);
+        delayedBody ? deferredJSONResponse(pending) : pending);
       const { context, elements, requests } = harness;
       const operation = context.loadSavedPolicy();
       await new Promise((resolve) => setImmediate(resolve));
@@ -3107,4 +3112,195 @@ async function testServiceBodiesKeepPolicySizedStructureAndRefuseMalformedData()
   process.stdout.write("Service response controls passed: routes=6 inclusive/excess=true deadlines/auth-retirement=12 uncertain-save=true policy-containers=true.\n");
 }
 await testServiceBodiesKeepPolicySizedStructureAndRefuseMalformedData();
+
+async function testServiceSessionBodyOverflowCannotSendPreview() {
+  const h = await serviceHarness(() => jsonResponse(serviceReply(null)),
+    () => jsonResponse(policyFixture()),
+    () => new Response(JSON.stringify({ csrf_token: "fixture-only" }) + " ".repeat(16385)));
+  await h.context.loadServicePolicy();
+  fillPolicy(h.elements);
+  await h.context.prepareServiceAddition();
+  assert.equal(h.requests.filter((r) => r.path === "/api/v1/file-services/preview").length, 0,
+    "An oversized session body must refuse before a preview request");
+  assert.equal(h.elements["service-save"].disabled, true);
+  assert.equal(h.elements["service-review"].hidden, true);
+}
+await testServiceSessionBodyOverflowCannotSendPreview();
+async function testServiceOversizedSaveReplyStaysUnconfirmedUntilReconcile() {
+  let saved = null;
+  const h = await serviceHarness((options) => {
+    if (options.method === "PUT") {
+      saved = JSON.parse(options.body);
+      return new Response(JSON.stringify(serviceSaved(saved.revision)) + " ".repeat(16385));
+    }
+    return jsonResponse(serviceReply(saved));
+  });
+  await h.context.loadServicePolicy(); fillPolicy(h.elements);
+  await h.context.prepareServiceAddition(); await h.context.saveServiceChange();
+  assert.match(h.elements["service-status"].textContent, /not confirmed.*may have committed/,
+    "A valid but oversized reply cannot confirm a possibly committed save");
+  assert.equal(h.elements["service-save"].disabled, true);
+  await h.context.saveServiceChange();
+  assert.equal(h.requests.filter((r) => r.options?.method === "PUT").length, 1);
+  await h.context.loadServicePolicy();
+  assert.match(h.elements["service-status"].textContent, /attempted configuration.*confirmed saved/);
+}
+await testServiceOversizedSaveReplyStaysUnconfirmedUntilReconcile();
+async function testServiceOversizedConfigurationIsNotPublished() {
+  const h = await serviceHarness(() => new Response(JSON.stringify(serviceReply(null)) + " ".repeat(1024 * 1024)));
+  await h.context.loadServicePolicy();
+  assert.equal(h.elements["service-current"].hidden, true,
+    "An oversized policy frame must not publish even an otherwise valid empty baseline");
+  assert.equal(h.elements["service-prepare"].disabled, true);
+  assert.equal(h.elements["service-save"].disabled, true);
+}
+await testServiceOversizedConfigurationIsNotPublished();
+async function testServiceOversizedPreviewCannotEnableSave() {
+  const h = await serviceHarness(() => jsonResponse(serviceReply(null)),
+    () => new Response(JSON.stringify(policyFixture()) + " ".repeat(4 * 1024 * 1024)));
+  await h.context.loadServicePolicy(); fillPolicy(h.elements);
+  await h.context.prepareServiceAddition();
+  assert.equal(h.elements["service-save"].disabled, true,
+    "A preview with an oversized frame must never admit Save");
+  assert.equal(h.elements["service-review"].hidden, true);
+  assert.equal(h.requests.some((r) => r.options?.method === "PUT"), false);
+}
+await testServiceOversizedPreviewCannotEnableSave();
+async function testAdministrativeBodyRefusalRequestsCleanupAndNeverFallsBack() {
+  const h = await serviceHarness(() => jsonResponse(serviceReply(null)));
+  const route = "/api/v1/auth/session";
+  let canceled = 0, fallback = 0;
+  const response = { ok: true, status: 200,
+    body: new ReadableStream({
+      start(controller) { controller.enqueue(new Uint8Array(16385)); },
+      cancel() { canceled++; return new Promise(() => {}); },
+    }), json: () => { fallback++; return { csrf_token: "fixture-only" }; } };
+  await assert.rejects(h.context.readAdministrativeJSON(response, route), /administrative body unavailable/);
+  assert.equal(canceled, 1); assert.equal(fallback, 0); assert.equal(response.body.locked, false);
+  const controller = new AbortController();
+  let settled = false;
+  const pendingBody = new ReadableStream({ cancel() { settled = true; return new Promise(() => {}); } });
+  const waiting = h.context.readAdministrativeJSON({ ok: true, body: pendingBody }, route, controller.signal);
+  await settleUI(); controller.abort();
+  await assert.rejects(waiting, (failure) => failure.name === "AbortError");
+  assert.equal(settled, true); assert.equal(pendingBody.locked, false);
+}
+await testAdministrativeBodyRefusalRequestsCleanupAndNeverFallsBack();
+async function testOversizedSessionBodyCannotDispatchSignOut() {
+  const h = await createHarness(async (path) => {
+    if (path === "/api/v1/auth/status") return jsonResponse({ authenticated: true });
+    if (path === "/api/v1/auth/session") return new Response(JSON.stringify({ csrf_token: "x".repeat(43) }) + " ".repeat(16385));
+    if (path === "/api/v1/auth/logout") return jsonResponse({ signed_out: true });
+    return snapshotResponse(path);
+  });
+  await settleUI();
+  await h.elements.logout.listeners.get("click")();
+  assert.equal(h.requests.filter((r) => r.options?.method === "POST").length, 0,
+    "An oversized session must refuse before sign-out dispatch");
+  assert.equal(h.elements["dashboard-content"].hidden, true);
+}
+await testOversizedSessionBodyCannotDispatchSignOut();
+async function testOversizedPasswordReceiptCannotConfirmCredentialChange() {
+  const h = await createHarness(async (path) => {
+    if (path === "/api/v1/auth/status") return jsonResponse({ authenticated: true });
+    if (path === "/api/v1/auth/session") return jsonResponse({ csrf_token: "x".repeat(43) });
+    if (path === "/api/v1/auth/password") return new Response(JSON.stringify({
+      password_changed: true, reauthentication_required: true, all_panel_sessions_revoked: true,
+    }) + " ".repeat(16385));
+    return snapshotResponse(path);
+  });
+  await settleUI();
+  h.elements["password-current"].value = "old public test passphrase";
+  h.elements["password-new"].value = "new public test passphrase";
+  h.elements["password-confirm"].value = h.elements["password-new"].value;
+  await h.elements["password-form"].listeners.get("submit")({ preventDefault() {} });
+  assert.match(h.elements["auth-error"].textContent, /outcome could not be confirmed/,
+    "An oversized password receipt must remain an unknown outcome, not a success");
+  assert.equal(h.requests.filter((r) => r.path === "/api/v1/auth/password").length, 1);
+  assert.equal(h.elements["dashboard-content"].hidden, true);
+  assert.equal(h.elements["password-current"].value, "");
+}
+await testOversizedPasswordReceiptCannotConfirmCredentialChange();
+async function testAdministrativeUnknownRouteNeverAcquiresReader() {
+  const h = await serviceHarness(() => jsonResponse(serviceReply(null)));
+  let acquired = 0;
+  const response = { ok: true, body: { getReader() {
+    acquired++; return { read: async () => ({ done: true }), cancel: async () => {}, releaseLock() {} };
+  } } };
+  await assert.rejects(h.context.readAdministrativeJSON(response, "toString"), /administrative path unavailable/);
+  assert.equal(acquired, 0, "Inherited object names are not declared response profiles");
+}
+await testAdministrativeUnknownRouteNeverAcquiresReader();
+async function testLargeStructuredPolicyStillLoadsThroughBoundedReader() {
+  let configuration = null;
+  const h = await serviceHarness(() => jsonResponse(serviceReply(configuration)));
+  fillPolicy(h.elements);
+  const base = h.context.buildServiceAddition(null, h.context.buildPolicyProposal());
+  const uuid = (n) => `11111111-2222-4333-8444-${n.toString(16).padStart(12, "0")}`;
+  const users = Array.from({ length: 64 }, (_, i) => ({ id: `reader-${i}`, name: `reader${i}` }));
+  configuration = structuredClone(base);
+  configuration.shares.users = users;
+  configuration.shares.shares = Array.from({ length: 8 }, (_, i) => ({ ...base.shares.shares[0],
+    id: `share-${i}`, name: `Share${i}`, relative_path: `smb${i}`,
+    grants: users.map((user) => ({ user_id: user.id, access: "ro" })) }));
+  configuration.nfs.exports = Array.from({ length: 32 }, (_, i) => ({ ...base.nfs.exports[0],
+    id: uuid(2000 + i), relative_path: `nfs${i}`,
+    clients: Array.from({ length: 64 }, (_, j) => ({ ...base.nfs.exports[0].clients[0], network: `192.0.2.${j}/32` })) }));
+  assert.ok(new TextEncoder().encode(JSON.stringify(configuration.shares)).length <= 262144);
+  assert.ok(new TextEncoder().encode(JSON.stringify(configuration.nfs)).length <= 262144);
+  await h.context.loadServicePolicy();
+  assert.equal(h.elements["service-current"].hidden, false,
+    "A producer-bounded policy with over 1024 containers must remain usable");
+  assert.match(h.elements["service-summary"].textContent, /8 SMB share.*32 NFS export/);
+}
+await testLargeStructuredPolicyStillLoadsThroughBoundedReader();
+async function testServicePendingSessionBodyTimesOutWithoutSendingPreview() {
+  const timers = new Map(); let next = 0, canceled = 0;
+  const body = new ReadableStream({ cancel() { canceled++; return new Promise(() => {}); } });
+  const h = await createHarness(async (path) => {
+    if (path === "/api/v1/auth/status") return jsonResponse({ authenticated: true });
+    if (path === "/api/v1/file-services/configuration") return jsonResponse(serviceReply(null));
+    if (path === "/api/v1/auth/session") return { ok: true, status: 200, body };
+    if (path === "/api/v1/file-services/preview") return jsonResponse(policyFixture());
+    return snapshotResponse(path);
+  }, { setTimeout(callback, delay) { const id = ++next; timers.set(id, { callback, delay }); return id; },
+    clearTimeout(id) { timers.delete(id); } });
+  await settleUI(); await h.context.loadServicePolicy(); fillPolicy(h.elements);
+  const operation = h.context.prepareServiceAddition(); await settleUI();
+  const pending = [...timers.values()];
+  assert.equal(pending.length, 1); assert.equal(pending[0].delay, 10000);
+  pending[0].callback(); await operation;
+  assert.match(h.elements["service-status"].textContent, /timed out.*No save was sent/);
+  assert.equal(h.requests.filter((r) => r.path === "/api/v1/file-services/preview").length, 0);
+  assert.equal(canceled, 1); assert.equal(body.locked, false); assert.equal(timers.size, 0);
+}
+await testServicePendingSessionBodyTimesOutWithoutSendingPreview();
+async function testAdministrativeInclusiveByteCapsAndUTF8Refusals() {
+  const h = await serviceHarness(() => jsonResponse(serviceReply(null)));
+  const base = '{"value":"bounded"}';
+  for (const [path, cap, method] of [
+    ["/api/v1/auth/session", 16384, "GET"], ["/api/v1/auth/password", 16384, "POST"],
+    ["/api/v1/storage/gpt-observation", 65536, "POST"],
+    ["/api/v1/shares/configuration", 524288, "GET"],
+    ["/api/v1/file-services/configuration", 1048576, "GET"],
+    ["/api/v1/file-services/configuration", 16384, "PUT"],
+    ["/api/v1/file-services/backup", 1048576, "GET"],
+    ["/api/v1/file-services/preview", 4194304, "POST"],
+    ["/api/v1/file-services/restore-preview", 4194304, "POST"],
+  ]) {
+    const bytes = new TextEncoder().encode(base + " ".repeat(cap - base.length));
+    const response = new Response(bytes);
+    assert.equal((await h.context.readAdministrativeJSON(response, path, undefined, method)).value, "bounded");
+    assert.equal(response.body.locked, false);
+    const excess = new Response(new Uint8Array(cap + 1));
+    await assert.rejects(h.context.readAdministrativeJSON(excess, path, undefined, method), /administrative body unavailable/);
+    assert.equal(excess.body.locked, false);
+  }
+  for (const path of ["/api/v1/auth/session", "/api/v1/file-services/preview"]) {
+    await assert.rejects(h.context.readAdministrativeJSON(new Response(new Uint8Array([255])), path), /administrative body unavailable/);
+    await assert.rejects(h.context.readAdministrativeJSON({ ok: true, json: () => ({ value: "forbidden fallback" }) }, path), /administrative body unavailable/);
+  }
+  process.stdout.write("Administrative response controls passed: routes=8 method-bound-save=true inclusive-caps=true unknown-outcomes=true native-stream-cleanup=true no-fallback=true.\n");
+}
+await testAdministrativeInclusiveByteCapsAndUTF8Refusals();
 process.stdout.write("Dashboard UI interaction smoke tests passed (DOM fixture; no visual browser coverage).\n");

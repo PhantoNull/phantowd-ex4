@@ -2473,6 +2473,22 @@ milestone before enabling its controls; M1/M6 for deployment.
   Browser scheduling/abort is not hard wall clock or server cancellation/rollback.
   Durable account recovery, concurrent tabs, other workflows, full security and
   accessibility/product/hardware qualification remain separate.
+- **M5.5m — Reconcile the two administrative-response candidates (partial).**
+  Join PR133's exact source/history with the later guard candidate, preserving
+  both test sets. Retain M5.5g's stricter six method/path consumer limits and
+  M5.5k/l's separate single-flight authentication module byte-for-byte. Add the
+  earlier bounded consumers for GPT64KiB, saved share-only policy512KiB,
+  standalone preview4MiB and their session16KiB reads. The generic eight-profile
+  reader retains tested1MiB combined/backup ceilings, but the active combined
+  manager still enforces525056bytes; these are not interchangeable contracts.
+  Keep diagnostic defaults and higher-cardinality policy structure bounds,
+  no JSON fallback, generation/CSRF/revision/uncertain-save guards and all tests.
+  Prevent resurrection of old duplicate authentication handlers during merging.
+  Acceptance: both complete DOM suites, Windows/pinned Linux and current browser
+  smoke, then exact seven-asset ARM parity; no history loss or implicit develop
+  merge. Previous isolated source proofs do not qualify the new combined head.
+  Full/own-hosted/native timing, browser coverage of all workflows, physical
+  recovery, product service activation and installation remain separate gates.
 - **M5.6 — Audit and diagnostics.** Record actor, operation ID, revisions and
   redacted outcome; bound retention. Export a sanitized support bundle that
   excludes credentials, private keys, passdb hashes and user file contents.

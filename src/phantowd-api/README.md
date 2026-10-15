@@ -408,6 +408,44 @@ and do not consume the error body. Failures never retry or publish stale data.
 These bounds do not establish a browser heap/CPU hard limit, live/compressed
 transport interoperability or resource limits for other mutation/import flows.
 
+### Administrative response consumption
+
+All currently parsed administrative JSON replies now reuse the same strict
+native-stream reader, without changing endpoints, request bodies or privileges.
+Inclusive caps: session/password16KiB, GPT64KiB, share-only512KiB, combined
+configuration/backup1MiB and preview/restore-preview4MiB. Configuration PUT
+confirmation is16KiB, not the larger GET envelope; parsed error replies also
+use16KiB. Diagnostic depth16/container1024 stays unchanged; policy views allow
+32768 (share-only) or65536 (combined/preview) containers within their byte cap.
+These fixed higher bounds cover formal policy cardinalities and avoid treating
+legitimate large policies as invalid. The pre-scan is still not full JSON/schema
+or duplicate-key validation. Own-property route lookup refuses inherited names.
+
+These are the generic profiles originally proposed in PR133, now reconciled
+with the later response-lifetime candidate. The active combined-policy manager
+keeps its stricter525056-byte configuration/backup limits and exact six method/
+path pairs; it does not use the generic1MiB ceiling. Authentication keeps its
+separate16KiB readers and full request/body/status lifetimes. The reconciled
+app uses the shared profiles for GPT, saved share-only configuration, standalone
+preview and session reads. Earlier duplicate auth handlers must not return to
+app.js. Both test sets remain; generic profile tests are not proof that every
+runtime consumer uses that profile. See M5.5g/k/l and roadmap M5.5m.
+
+Existing caller deadlines, generation retirement, HTTP status, CSRF and revision
+checks remain. An oversized/unreadable/aborted save receipt retains the attempted
+document and unknown outcome until explicit GET reconciliation, without retry.
+Credential-change uncertainty still hides the dashboard and asks for fresh
+sign-in verification. Cancel requests and reader unlock do not prove server stop
+or absence of committed effects. Actual-source DOM/native-stream and host tests
+do not qualify live browser/compressed transport, heap/CPU, ARM JavaScript or
+production service activation.
+
+The single-boot ARMv5 overlay now verifies embedded-asset delivery over guest
+HTTP and HTTPS, with the baseline/probe unchanged. It does not execute browser
+JavaScript, rerun two-boot state or qualify the complete image/installer.
+
+### Earlier diagnostic-only verification
+
 Actual-source regressions cover oversize parsing, initial-auth hang and excessive
 depth. Native Node Web Streams controls check every inclusive budget and excess,
 fragmented UTF-8, malformed input, pending reads/cancellation, released locks,

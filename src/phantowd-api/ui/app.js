@@ -387,7 +387,7 @@ async function observeGPTMetadata() {
       const failure = new Error("Session expired."); failure.status = 401; throw failure;
     }
     if (!sessionResponse.ok) throw new Error("Could not verify the administrator session.");
-    const session = await sessionResponse.json();
+    const session = await readAdministrativeJSON(sessionResponse, "/api/v1/auth/session", controller.signal);
     if (typeof session.csrf_token !== "string" || session.csrf_token.length !== 43) throw new Error("The session token is unavailable.");
     if (generation !== gptObservationGeneration) return;
     const response = await fetch("/api/v1/storage/gpt-observation", {
@@ -402,7 +402,7 @@ async function observeGPTMetadata() {
             "GPT observation failed. No partial result is shown.";
       const failure = new Error(message); failure.status = response.status; throw failure;
     }
-    renderGPTObservation(await response.json());
+    renderGPTObservation(await readAdministrativeJSON(response, "/api/v1/storage/gpt-observation", controller.signal));
   } catch (failure) {
     if (generation !== gptObservationGeneration) return;
     if (failure?.status === 401) {
@@ -511,6 +511,30 @@ async function readDiagnosticJSON(response, limit, signal, maxContainers = 1024)
       try { Promise.resolve(reader.cancel()).catch(() => {}); } catch { /* refusal remains */ }
     }
     try { reader.releaseLock(); } catch { throw invalid(); }
+  }
+}
+
+// Fixed existing administrative routes only. Large policies have a separate
+// structural allowance; diagnostic limits and all caller deadlines stay fixed.
+const administrativeBodyLimits = Object.freeze({
+  "/api/v1/auth/session": Object.freeze([16 * 1024, 1024]),
+  "/api/v1/auth/password": Object.freeze([16 * 1024, 1024]),
+  "/api/v1/storage/gpt-observation": Object.freeze([64 * 1024, 1024]),
+  "/api/v1/shares/configuration": Object.freeze([512 * 1024, 32768]),
+  "/api/v1/file-services/configuration": Object.freeze([1024 * 1024, 65536]),
+  "/api/v1/file-services/backup": Object.freeze([1024 * 1024, 65536]),
+  "/api/v1/file-services/preview": Object.freeze([4 * 1024 * 1024, 65536]),
+  "/api/v1/file-services/restore-preview": Object.freeze([4 * 1024 * 1024, 65536]),
+});
+
+async function readAdministrativeJSON(response, path, signal, method = "GET") {
+  const profile = Object.hasOwn(administrativeBodyLimits, path) ? administrativeBodyLimits[path] : null;
+  if (!profile) throw new Error("administrative path unavailable");
+  const shortReply = response.ok === false || (path === "/api/v1/file-services/configuration" && method === "PUT");
+  try { return await readDiagnosticJSON(response, shortReply ? 16 * 1024 : profile[0], signal, shortReply ? 1024 : profile[1]); }
+  catch (failure) {
+    if (failure?.name === "AbortError") throw failure;
+    throw new Error("administrative body unavailable");
   }
 }
 
@@ -884,7 +908,7 @@ async function submitPolicyProposal(event) {
       const failure = new Error("Session expired. Sign in again."); failure.status = 401; throw failure;
     }
     if (!sessionResponse.ok) throw new Error("Cannot verify the session. Retry after signing in.");
-    const session = await sessionResponse.json();
+    const session = await readAdministrativeJSON(sessionResponse, "/api/v1/auth/session", controller.signal);
     if (typeof session.csrf_token !== "string" || !session.csrf_token) throw new Error("The session token is unavailable.");
     if (generation !== policyGeneration) return;
     const response = await fetch("/api/v1/file-services/preview", {
@@ -899,7 +923,7 @@ async function submitPolicyProposal(event) {
             response.status === 503 ? "Preview service busy. Retry shortly." : "The proposal could not be validated. Nothing was applied.";
       const failure = new Error(message); failure.status = response.status; throw failure;
     }
-    const preview = await response.json();
+    const preview = await readAdministrativeJSON(response, "/api/v1/file-services/preview", controller.signal);
     if (generation !== policyGeneration) return;
     renderPolicyPreview(preview);
   } catch (failure) {
@@ -1025,14 +1049,14 @@ async function loadSavedPolicy() {
       return;
     }
     if (!response.ok) {
-      const body = await response.json().catch(() => ({}));
+      const body = await readAdministrativeJSON(response, "/api/v1/shares/configuration", controller.signal).catch(() => ({}));
       if (generation !== savedGeneration) return;
       setText("saved-status", response.status === 503 && body.error === "share_configuration_not_configured" ?
         "Configuration storage is not connected in this build. No saved policy is available through the API." :
         "Saved configuration is unavailable or busy. No previous values are shown; retry later. No service was changed.");
       return;
     }
-    const body = await response.json();
+    const body = await readAdministrativeJSON(response, "/api/v1/shares/configuration", controller.signal);
     if (generation !== savedGeneration) return;
     renderSavedPolicy(body);
   } catch (failure) {
