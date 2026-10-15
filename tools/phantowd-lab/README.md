@@ -293,6 +293,15 @@ this exact encoding. Its 2 KiB header schema comes from static GPL-binary
 analysis and still needs corroboration from an exact-device logical rescue
 read; it is not a rescue writer or restore procedure.
 
+Static final-firmware analysis also identifies an opaque 64-byte per-unit
+header field labelled "key" by the stock merger, populated from serial-related
+input. This does not establish cryptographic semantics. The inspector does not
+decode or expose that slot. Synthetic success/refusal/error tests check JSON
+and formatted-report redaction plus unchanged input bytes; differing slot
+contents produce identical public reports. No real per-unit material is used.
+These tests do not qualify an inner rescue payload or authorize restoration;
+see the [board recovery research](../../board/wd/ex4/NAND-RECOVERY-RESEARCH.md).
+
 `inspect-gpt-image` inspects only bounded GPT metadata in a caller-supplied
 regular image file. It checks the protective MBR, primary and backup headers,
 header and partition-array CRCs, matching copies, partition bounds and
