@@ -3,6 +3,24 @@
 
 # Implementation status
 
+## Host release planning: optional strict-upgrade prerequisite
+
+Both host release inspectors now support `--require-upgrade` with a valid
+caller-supplied current version. After authentication/exact target/channel,
+signed GitHub tag and optional minimum-installer gates, equal/older releases
+refuse before payload I/O or temporary staging. The separate metadata-only
+`upgrade_prerequisite` does not weaken full-artifact `update_policy` evidence.
+Newer releases still require complete payload verification; the old advisory
+mode and exit status remain unchanged without the flag.
+
+The actual CLI initially rejects the missing option; focused local controls
+now pass for version/input/authority boundaries, preceding gates, corrupt
+payloads, real HTTP request counts and unavailable staging with a positive
+control. Whole Windows and pinned Go1.26.8 Linux toolkit vet/unit/race pass;
+the runner's five existing fixed-count fuzz campaigns also pass. No installed-state
+attestation, persistent anti-rollback, signing/manifest schema change, device
+installer, firmware/hardware operation or native timing waiver is introduced.
+
 ## Passive controller: length-specific receive classification
 
 The host-only decoder now uses the receive handler's length and fixed prefix,

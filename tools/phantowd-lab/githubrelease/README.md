@@ -30,6 +30,14 @@ temporary-directory cleanup, redirect restrictions and signed-query redaction
 remain unchanged. Neither API metadata nor a successful host verification
 authorizes installation, establishes physical compatibility or provisions trust.
 
+Optional `Options.RequireUpgradeFrom` adds a strictly-newer-version prerequisite
+against a caller-supplied current version. Invalid nonempty syntax fails before
+any HTTP; empty preserves the existing behavior. After the gates above, equal/
+older signed versions return `upgrade_prerequisite` and refuse before payload
+requests or creation of the temporary staging directory. Newer versions still
+require every payload hash. This is exposed by the host CLI's opt-in
+`--require-upgrade` with `--current-version`, not a device anti-rollback policy.
+
 ## Public transport errors
 
 Request and response-body read failures use a fixed public error message,
