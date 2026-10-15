@@ -172,6 +172,83 @@ require_fixed_fuzz_campaigns() {
     fi
 }
 
+# Execute the actual small workflow selector, not a second parser pretending
+# to cover it. Fixtures never download a toolchain or source versions.env.
+require_locked_host_go_sdk() {
+    python3 - "$1" "$2" <<'PY'
+import os
+import pathlib
+import re
+import subprocess
+import sys
+import tempfile
+
+workflow = pathlib.Path(sys.argv[1]).read_text(encoding="utf-8")
+pins = pathlib.Path(sys.argv[2]).read_text(encoding="utf-8")
+header = (
+    r"^      - name: Select pinned host Go SDK\n"
+    r"        id: host_go\n"
+    r"        shell: bash\n"
+    r"        run: \|\n"
+    r"(?P<script>(?:          .*\n)+)"
+)
+selectors = list(re.finditer(header, workflow, re.MULTILINE))
+if len(selectors) != 1:
+    raise SystemExit("host CI must select exactly one Go SDK from versions.env")
+selector = selectors[0]
+script = "\n".join(line[10:] for line in selector["script"].splitlines()) + "\n"
+locked_input = "          go-version: ${{ steps.host_go.outputs.version }}"
+runtime_check = '          test "$(go env GOVERSION)" = "go${{ steps.host_go.outputs.version }}"'
+if workflow.count(locked_input) != 1 or workflow.count(runtime_check) != 1:
+    raise SystemExit("host CI must select and verify the exact locked Go SDK")
+if re.search(r"^\s+go-version-file:", workflow, re.MULTILINE):
+    raise SystemExit("module language minimum must not select the host compiler")
+setup = workflow.find("        uses: actions/setup-go@")
+if setup < selector.end() or workflow.count("        uses: actions/setup-go@") != 1:
+    raise SystemExit("locked Go selection must precede the only setup-go step")
+actual = re.findall(r"^GO_VERSION=([0-9]+\.[0-9]+\.[0-9]+)$", pins, re.MULTILINE)
+if len(actual) != 1:
+    raise SystemExit("versions.env requires one canonical Go pin")
+cases = [
+    ("current-lock", pins, actual[0]),
+    ("synthetic-other-pin", "GO_VERSION=7.8.9\n", "7.8.9"),
+    ("not-shell-code", "OTHER=$(touch pin-was-executed)\nGO_VERSION=1.2.3\n", "1.2.3"),
+    ("missing", "OTHER=1\n", None),
+    ("empty", "GO_VERSION=\n", None),
+    ("duplicate", "GO_VERSION=1.2.3\nGO_VERSION=1.2.3\n", None),
+    ("duplicate-empty-after", "GO_VERSION=1.2.3\nGO_VERSION=\n", None),
+    ("duplicate-empty-before", "GO_VERSION=\nGO_VERSION=1.2.3\n", None),
+    ("conflicting", "GO_VERSION=1.2.3\nGO_VERSION=4.5.6\n", None),
+    ("no-patch", "GO_VERSION=1.2\n", None),
+    ("quoted", 'GO_VERSION="1.2.3"\n', None),
+    ("suffix", "GO_VERSION=1.2.3-extra\n", None),
+    ("trailing-space", "GO_VERSION=1.2.3 \n", None),
+    ("CRLF", "GO_VERSION=1.2.3\r\n", None),
+    ("not-an-assignment", "GO_VERSION\n", None),
+    ("payload", "GO_VERSION=1.2.3;touch pin-was-executed\n", None),
+]
+for name, contents, expected in cases:
+    with tempfile.TemporaryDirectory(prefix="phantowd-host-go-pin-") as directory:
+        root = pathlib.Path(directory)
+        (root / "versions.env").write_text(contents, encoding="utf-8")
+        output = root / "github-output"
+        environment = {"PATH": os.environ["PATH"], "LC_ALL": "C", "GITHUB_OUTPUT": str(output)}
+        result = subprocess.run(
+            ["bash", "--noprofile", "--norc", "-e", "-o", "pipefail", "-c", script],
+            cwd=root, env=environment, capture_output=True, timeout=5, check=False,
+        )
+        observed = output.read_bytes() if output.exists() else b""
+        if (root / "pin-was-executed").exists():
+            raise SystemExit(f"host Go selector executed pin data: {name}")
+        if expected is not None:
+            if result.returncode != 0 or observed != f"version={expected}\n".encode("ascii"):
+                raise SystemExit(f"host Go selector refused a canonical fixture: {name}")
+        elif result.returncode == 0 or observed:
+            raise SystemExit(f"host Go selector accepted an unsafe fixture: {name}")
+print(f"Locked host Go workflow selector passed {len(cases)} execution fixtures")
+PY
+}
+
 host_tool_paths='
 tools/phantowd-lab/**
 support/test-lab-tools.ps1
@@ -361,6 +438,7 @@ $qemu_unrelated_ex4_stage_paths
 EOF
 
 require_develop_push "$host_workflow"
+require_triggered_path "$host_workflow" versions.env
 for path in \
     'support/container/build-qemu-lio-kernel.sh' \
     'support/container/build-qemu-iscsi-client.sh' \
@@ -459,6 +537,7 @@ if ! grep -F 'package/phantowd-api/mdev.conf' "$overlay_script" >/dev/null ||
     exit 1
 fi
 
+require_locked_host_go_sdk "$host_workflow" "$repo_root/versions.env"
 sh "$repo_root/support/tests/test-storage-broker-buildroot.sh"
 
 printf 'Firmware workflow path-contract tests passed\n'
