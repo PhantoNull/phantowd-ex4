@@ -3,6 +3,16 @@
 
 # Implementation status
 
+## Host CI compiler selection
+
+The host-tool workflow now selects the exact `GO_VERSION` from `versions.env`
+instead of interpreting the toolkit module's minimum Go requirement as its
+compiler pin. It refuses missing, malformed or duplicate pins without sourcing
+the lock file, then checks the installed SDK version before vet/race/fuzz tests.
+Pin-only changes trigger both push and PR host checks. Sixteen local execution
+fixtures and the existing workflow path contracts pass; own hosted qualification
+is separate. Module requirements, target inputs and QEMU timeouts are unchanged.
+
 ## Passive EX4 controller research: restart framing and generic ACK boundary
 
 Offline ARM disassembly verifies immediate0xfa receive restart and a direct

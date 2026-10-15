@@ -19,6 +19,11 @@ PhantoWD EX4 is not ready for general device flashing. Start with the
 
 ## Tests and handoff
 
+Host toolkit CI selects the exact `GO_VERSION` compiler from `versions.env`
+and checks the installed SDK before testing. A module's `go` directive is its
+minimum language/toolchain requirement, not the CI compiler selector. Pin-only
+changes trigger host CI as well as the applicable firmware qualification.
+
 Use the [validation ladder](ROADMAP.md#validation-ladder). Report the exact
 commit, commands, environment, results and remaining limits. Include negative,
 concurrency and interruption tests for the behavior being changed. Exercise

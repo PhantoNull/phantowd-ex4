@@ -4,6 +4,7 @@ on:
   push:
     branches: [main, develop]
     paths:
+      - 'versions.env'
       - 'support/container/build-qemu-lio-kernel.sh'
       - 'support/container/build-qemu-iscsi-client.sh'
       - 'support/container/qemu_lio_inputs.py'
@@ -85,6 +86,7 @@ on:
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
     paths:
+      - 'versions.env'
       - 'support/container/build-qemu-lio-kernel.sh'
       - 'support/container/build-qemu-iscsi-client.sh'
       - 'support/container/qemu_lio_inputs.py'
@@ -183,10 +185,27 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Set up Go from module pin
+      - name: Select pinned host Go SDK
+        id: host_go
+        shell: bash
+        run: |
+          set -eu
+          version="$(awk -F= '
+            $1 == "GO_VERSION" { count++; value = substr($0, index($0, "=") + 1) }
+            END {
+              if (count != 1 || value !~ /^[0-9]+\.[0-9]+\.[0-9]+$/) {
+                print "Invalid or ambiguous GO_VERSION lock" > "/dev/stderr"
+                exit 1
+              }
+              print value
+            }
+          ' versions.env)"
+          printf 'version=%s\n' "$version" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Go from locked SDK
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version-file: tools/phantowd-lab/go.mod
+          go-version: ${{ steps.host_go.outputs.version }}
           cache-dependency-path: tools/phantowd-lab/go.mod
 
       - name: Verify host-tool packages
@@ -197,6 +216,7 @@ jobs:
           GOFLAGS: -mod=vendor
         run: |
           go version
+          test "$(go env GOVERSION)" = "go${{ steps.host_go.outputs.version }}"
           go vet ./...
           go test -race -count=1 ./...
           go test -run '^$' -fuzz '^FuzzInspect$' -fuzztime=10000x -parallel=2 -timeout=120s ./vendorupdate
