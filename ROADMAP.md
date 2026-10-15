@@ -448,8 +448,12 @@ button to an unqualified backend simply because the screen exists.
   state reboot. Next distinguish full process-group settlement, mapped/thread
   references and kernel deferred release with a deterministic lifecycle seam.
 - **M0.3 — Keep CI proportional.** Host/domain changes use fast checks; runtime
-  changes use QEMU; board changes use the relevant current probe. Windows host
-  iteration has a no-Docker preflight and an optional Linux/amd64 test runner
+  changes use QEMU; board changes use the relevant current probe. Host toolkit
+  CI selects and verifies the exact compiler from `GO_VERSION` in
+  `versions.env`, independently of module minimums; pin-only push/PR changes
+  trigger host checks. Local selector execution and path contracts pass;
+  exact-head hosted verification remains a separate gate.
+  Windows host iteration has a no-Docker preflight and an optional Linux/amd64 test runner
   that reuses only an already-present read-only Buildroot cache; it must not
   pull/build an image or create a volume. Preserve isolation, exact-source
   hashes and clean-build/reproducibility lanes. Cache hits are an optimization,
