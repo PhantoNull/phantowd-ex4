@@ -3,6 +3,32 @@
 
 # Implementation status
 
+## Tachometer prerequisite: exact count/window arithmetic
+
+M7.3f adds `thermalreport.EstimateTach`: a private immutable calculation from
+explicit transition count, elapsed window and transitions/revolution. It retains
+those inputs and fractional-result evidence, uses exact128-bit products and
+checked integer division, and refuses invalid windows/factors or overflowing
+RPM. No nominal replacement, synthetic initial edge, default calibration or
+automatic source qualification. A positive count rounded below1RPM stays
+distinguishable from zero counted edges; neither establishes a stopped fan.
+
+378 extreme-input combinations match an independent arbitrary-precision oracle.
+Whole Windows API/DOM/ARMv5 cross-compilation and pinned Go1.26.8 Linux API
+vet/units/tagged vet, focused race-count3 and two25,000-execution fuzz campaigns
+pass. All32 runner controls, exact24-campaign roster, workflow/storage contracts
+and shellcheck pass. A100,000-iteration wide-input host benchmark reports
+zero allocations on Windows/amd64 and pinned Linux/amd64; its timing is not
+ARMv5 performance or a guarantee for a complete sensor/controller service.
+The actual one-boot ARMv5 overlay now exits0 with guest READY, both exact thermal
+receipts including tach arithmetic, and every standard smoke guard satisfied.
+The augmented fixture covers ordinary/wide/fractional arithmetic, invalid
+windows/overflow and refusal to qualify a source from calculation alone. This
+is not the two-boot/full/native/hosted lane or an EX4 hardware qualification.
+The estimator establishes arithmetic only, not physical counts, calibration,
+monotonic sampling, freshness, healthy fan state, safe speed or permission to
+activate hardware. See the [component contract](src/phantowd-api/internal/thermalreport/README.md).
+
 ## Thermal observation prerequisite: private point-in-time evaluation
 
 [Internal thermalreport](src/phantowd-api/internal/thermalreport/README.md)

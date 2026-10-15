@@ -77,7 +77,7 @@ func runSelfTest() error {
 	if err := exerciseQEMUThermalReport(); err != nil {
 		return err
 	}
-	fmt.Println("PHANTOWD_THERMAL_REPORT_READY identity=true age=true quality=true zero_distinct=true no_fallback=true control=false scope=synthetic-memory-only")
+	fmt.Println("PHANTOWD_THERMAL_REPORT_READY identity=true age=true quality=true zero_distinct=true no_fallback=true tach_arithmetic=true control=false scope=synthetic-memory-only")
 	if err := exerciseQEMUNetworkInventory(); err != nil {
 		return err
 	}

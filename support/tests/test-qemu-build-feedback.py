@@ -291,7 +291,8 @@ class BuildFeedbackTests(unittest.TestCase):
                 ("FuzzRoute", "networkinventory"),
                 ("FuzzRule", "networkinventory"),
                 ("FuzzNextHopObject", "networkinventory"),
-                ("FuzzEvaluate", "thermalreport")):
+                ("FuzzEvaluate", "thermalreport"),
+                ("FuzzTachEstimate", "thermalreport")):
             expected = (
                 '"$go_binary" test -run \'^$\' '
                 f"-fuzz '^{target}$' -fuzztime=25000x -parallel=2 "
@@ -344,7 +345,7 @@ class BuildFeedbackTests(unittest.TestCase):
         fixture = (ROOT / "src/phantowd-api/thermalreport_selftest.go").read_text()
         marker = ("PHANTOWD_THERMAL_REPORT_READY identity=true age=true "
                   "quality=true zero_distinct=true no_fallback=true "
-                  "control=false scope=synthetic-memory-only")
+                  "tach_arithmetic=true control=false scope=synthetic-memory-only")
         self.assertIn(marker, smoke)
         self.assertIn(marker, selftest)
         self.assertIn("exerciseQEMUThermalReport()", selftest)
@@ -366,7 +367,7 @@ class BuildFeedbackTests(unittest.TestCase):
                                     '/usr/bin/phantowd-api "$api_error_log"'), 2)
         marker = ("PHANTOWD_THERMAL_REPORT_READY identity=true age=true "
                   "quality=true zero_distinct=true no_fallback=true "
-                  "control=false scope=synthetic-memory-only")
+                  "tach_arithmetic=true control=false scope=synthetic-memory-only")
         # Execute the actual guard, not a second implementation of its count.
         guard = next(block for block in re.findall(
             r"(?m)^        if ! test .*?^        fi$", smoke, re.DOTALL)

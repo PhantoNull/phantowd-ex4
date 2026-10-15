@@ -2,8 +2,9 @@
 // SPDX-FileCopyrightText: 2026 PhantoWD EX4 contributors
 
 // Package thermalreport evaluates caller-supplied thermal observations in memory.
-// It performs no I/O, conversion, health assessment or control. The trusted caller
-// must qualify the source roster, generations, clocks, calibration and ranges.
+// It performs no I/O, temperature conversion, health assessment or control.
+// Separate tach arithmetic does not qualify counts, windows or calibration.
+// The trusted caller must qualify sources, generations, clocks and ranges.
 package thermalreport
 
 import (

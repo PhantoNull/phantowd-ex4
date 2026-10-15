@@ -155,7 +155,7 @@ while [ "$attempt" -lt "$smoke_timeout" ]; do
             exit 1
         fi
         # S99 runs the API self-test before AND after its intentional restart.
-        if ! test "$(sed 's/\r$//' "$log_file" | grep -Fxc 'PHANTOWD_THERMAL_REPORT_READY identity=true age=true quality=true zero_distinct=true no_fallback=true control=false scope=synthetic-memory-only')" -eq 2; then
+        if ! test "$(sed 's/\r$//' "$log_file" | grep -Fxc 'PHANTOWD_THERMAL_REPORT_READY identity=true age=true quality=true zero_distinct=true no_fallback=true tach_arithmetic=true control=false scope=synthetic-memory-only')" -eq 2; then
             echo 'Expected two synthetic thermal observation assertions across API restart' >&2
             exit 1
         fi

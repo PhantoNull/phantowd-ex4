@@ -2617,6 +2617,15 @@ equipment/media; not ordinary software work.
   boundaries and overflow, whole-roster refusal, private immutable output,
   fixed-count fuzz and invented-source fixture in the existing standard ARM boot.
   See the [component contract](src/phantowd-api/internal/thermalreport/README.md).
+  **M7.3f — exact tach arithmetic (host/QEMU prerequisite):** normalize a supplied
+  transition count by its actual window and explicit transitions/revolution,
+  not WD's fixed multiplier. Preserve all inputs and fractional-result evidence;
+  exact128-bit products/checked division must reject unrepresentable RPM without
+  clipping. No physical calibration, trustworthy counting/window, source
+  qualification, safe-speed threshold or actuator follows from arithmetic.
+  Acceptance: independent big-integer oracle including wide products, signed
+  output bounds, zero/fractional cases, fixed-count fuzz, allocation benchmark
+  with exact scope and synthetic execution in the existing ARM self-test.
 - **M7.4 — Peripheral support.** Qualify SATA bays, USB, RTC, LEDs, LCD, buttons,
   watchdog and power control. Hardware alarms override cosmetic display choices.
   Record LED/button semantics and shutdown completion, not just driver presence.

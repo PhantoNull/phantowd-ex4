@@ -299,6 +299,14 @@ provider, legacy conversion, controller, threshold, shutdown intent or actuator.
 Its host/ARM fixtures use invented inputs, not physical calibration evidence.
 The trusted provider and subsequent control contract remain separate gates.
 
+The same package now contains separate exact count/window tach arithmetic.
+It requires an explicit transitions/revolution input, preserves the supplied
+count/window/factor and fractional-result evidence, and rejects overflow rather
+than substituting a plausible value. This fixes the *mathematical prerequisite*
+of using the actual elapsed interval; it does not qualify a physical sampling
+window, edge count, calibration or RPM provider. No legacy15x assumption or
+nominal bands are selected, and calculation does not mark a source qualified.
+
 ## Replacement requirements and remaining work
 
 Do not port the legacy zero-sentinel cache or optimistic requested-speed state

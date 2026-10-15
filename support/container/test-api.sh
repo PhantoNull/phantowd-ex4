@@ -35,6 +35,7 @@ cd "$module_dir"
 "$go_binary" test -run '^$' -fuzz '^FuzzRequest$' -fuzztime=25000x -parallel=2 ./identityrpc
 "$go_binary" test -run '^$' -fuzz '^FuzzPublicationRequiresAdmittedSourceAndOrdinaryExit$' -fuzztime=25000x -parallel=2 ./internal/smartcollect
 "$go_binary" test -run '^$' -fuzz '^FuzzEvaluate$' -fuzztime=25000x -parallel=2 ./internal/thermalreport
+"$go_binary" test -run '^$' -fuzz '^FuzzTachEstimate$' -fuzztime=25000x -parallel=2 ./internal/thermalreport
 "$go_binary" test -run '^$' -fuzz '^FuzzDecode$' -fuzztime=25000x -parallel=2 ./internal/networkpolicy
 "$go_binary" test -run '^$' -fuzz '^FuzzWireConsume$' -fuzztime=25000x -parallel=2 ./internal/networkinventory
 "$go_binary" test -run '^$' -fuzz '^FuzzRoute$' -fuzztime=25000x -parallel=2 ./internal/networkinventory

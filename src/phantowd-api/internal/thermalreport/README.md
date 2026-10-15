@@ -1,6 +1,6 @@
 # Internal thermal observation evaluation
 
-M7.3e prerequisite, not a cooling controller. `Evaluate` is a bounded, pure
+M7.3e–f prerequisites, not a cooling controller. `Evaluate` is a bounded, pure
 in-memory projection of a caller-declared roster and samples. Normal product
 startup does not call it. It opens no device, path or socket, invokes no process,
 reads no clock and sends no command. No HTTP, persistence, polling or history.
@@ -30,7 +30,8 @@ a sleep request nor the legacy bitmap qualifies the future provider's claim.
 
 `Reading.Value` returns a number only for `Current`. A genuine zero or negative
 temperature can be current; zero RPM can also be current **without implying a
-healthy or spinning fan**. Raw values are always unqualified and never converted.
+healthy or spinning fan**. Raw sample values stay unqualified and are never
+converted by `Evaluate`.
 There are no default TTLs, safe operating thresholds, brand-name adjustments,
 nominal RPM substitutions or last-good-as-current fallbacks. Measurement range
 qualification is not thermal policy: an accepted value can be dangerously hot.
@@ -55,6 +56,35 @@ standard ARMv5 self-test also evaluates invented sources/times/qualification,
 with no new I/O or guest boot. Its marker is required by `qemu-smoke.sh`.
 Cross-compilation alone is not guest execution; consult implementation status
 for the exact checks actually run on a checkpoint.
+
+## Separate tachometer arithmetic
+
+`EstimateTach(transitions, window, transitionsPerRevolution)` computes exactly:
+
+```text
+floor(transitions * 60,000,000,000 / (window_nanoseconds * transitionsPerRevolution))
+```
+
+The immutable private estimate retains the raw count, supplied window and
+conversion factor, plus whether the rational result had a fractional part.
+The factor has **no default**. It is a caller assertion to qualify independently,
+not a board constant inferred from WD's multiplier. Positive durations and
+nonzero factors are required. Malformed inputs or a quotient exceeding signed
+64-bit RPM return a zero/invalid estimate, never wrapped, clipped or nominal RPM.
+
+Both products use unsigned 128-bit integer arithmetic; division is exact, with
+at most36 shift/subtract steps for a wide denominator. No float, big-integer
+dependency or per-call heap allocation is needed in the runtime implementation.
+Tests use an independent `math/big` rational oracle, not the same algorithm.
+
+A positive count can round down below1RPM; `HasFraction` and the retained count
+keep it distinct from no counted transitions. Neither case proves a stopped
+fan. This is not a measurement-resolution/error bound, physical calibration,
+freshness, trusted source or safe operating speed. It does not construct a
+sample or mark a source `Qualified`. The future provider must bind the same
+physical generation, complete acquisition window, verified monotonic timing,
+counting/polarity and calibrated transitions/revolution before using its result.
+No synthetic initial transition, brand adjustment or nominal substitution.
 
 Next: qualify actual sensor/tach input, raw count/window/calibration provenance
 and source lifecycle before composing a thermal supervisor. No command codec,

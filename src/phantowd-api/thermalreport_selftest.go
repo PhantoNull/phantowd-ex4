@@ -33,6 +33,41 @@ func exerciseQEMUThermalReport() error {
 	if value, current := r.Readings()[1].Value(); !current || value != 0 {
 		return errors.New("synthetic thermal zero measurement lost")
 	}
+	estimate, err := thermalreport.EstimateTach(1, time.Second, 2)
+	rpm, valid := estimate.RPM()
+	if err != nil || !valid || rpm != 30 || estimate.Transitions() != 1 || estimate.Window() != time.Second || estimate.TransitionsPerRevolution() != 2 {
+		return errors.New("synthetic tach count/window calculation failed")
+	}
+	samples[0].Value = rpm
+	r, err = thermalreport.Evaluate(sources, samples, 11*time.Second, 2*time.Second)
+	if err != nil || !r.AllReportedCurrent() {
+		return errors.New("synthetic tach projection failed")
+	}
+	// Arithmetic never establishes physical source/calibration qualification.
+	sources[1].Qualified = false
+	r, err = thermalreport.Evaluate(sources, samples, 11*time.Second, 2*time.Second)
+	if err != nil || r.AllReportedCurrent() || r.Readings()[1].State() != thermalreport.Unqualified {
+		return errors.New("synthetic tach arithmetic qualified a source")
+	}
+	sources[1].Qualified = true
+	estimate, err = thermalreport.EstimateTach(uint64(1)<<63, time.Duration(1)<<48, uint32(1)<<16)
+	rpm, valid = estimate.RPM()
+	if err != nil || !valid || rpm != 30000000000 || estimate.HasFraction() {
+		return errors.New("synthetic tach wide-product calculation failed")
+	}
+	estimate, err = thermalreport.EstimateTach(1, 61*time.Second, 1)
+	rpm, valid = estimate.RPM()
+	if err != nil || !valid || rpm != 0 || !estimate.HasFraction() || estimate.Transitions() != 1 {
+		return errors.New("synthetic tach fractional observation lost")
+	}
+	for _, window := range []time.Duration{0, -1} {
+		if e, err := thermalreport.EstimateTach(1, window, 2); !errors.Is(err, thermalreport.ErrInvalidTach) || e.Valid() {
+			return errors.New("synthetic tach invalid window accepted")
+		}
+	}
+	if e, err := thermalreport.EstimateTach(math.MaxUint64, 1, 1); !errors.Is(err, thermalreport.ErrTachOverflow) || e.Valid() {
+		return errors.New("synthetic tach overflow accepted")
+	}
 	for _, tc := range []struct {
 		change func(*thermalreport.Source, *thermalreport.Sample)
 		want   thermalreport.State
