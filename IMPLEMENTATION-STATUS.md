@@ -3,6 +3,36 @@
 
 # Implementation status
 
+## Dashboard: real-browser synthetic overview and narrow-screen correction
+
+An optional dependency-free Node 24+ harness uses an already installed headless
+Edge/Chrome/Chromium, its own temporary profile and the existing synthetic
+loopback preview. Actual Edge 155 rendering reproduced horizontal overflow twice
+at 320 px: a fixed 320 px body minimum exceeded the 305 px client width beside the
+classic scrollbar. Removing that minimum fixes the observed defect without
+changing panel JavaScript, API routes or service authority.
+
+Actual browser checks now pass at 1365/390/320 px, including applied CSS, synthetic
+four-domain snapshot display, Tab/Enter skip-link focus, one explicit refresh,
+zero uncaught page exceptions and same-origin GET-only observed page traffic.
+Six source hashes, bounded viewport screenshots and layout metrics are recorded;
+success requires stopped owned children and removal of the temporary profile.
+The preview now also accepts port 0 for an OS-selected loopback port and rejects
+noncanonical/privileged ports. Fast local/host CI runs 12 invalid-port and 14 route
+cases without a browser; the browser harness remains an explicit optional check.
+
+This is not a real Go authentication test, all-workflow or assistive-technology/
+WCAG qualification, a browser network sandbox, performance proof or EX4 support.
+QEMU's independent HTTP/HTTPS embedded-asset checks do not execute browser JS.
+The native fixture's pending timing decision and existing limits are unchanged.
+
+The final whole Windows API/DOM/preview preflight and ARMv5 cross-compilation
+pass. Pinned Go 1.26.8 Linux vet/units/tagged vet, focused HTTP/HTTPS asset/TLS
+race-count3, 34 runner controls and workflow-path contracts pass. The actual
+standard single-boot ARMv5 overlay exits0 with guest READY and two exact six-asset
+receipts per transport across API restart. This is not the separate native,
+two-boot/full/hosted lane or a regenerated clean firmware/SBOM.
+
 ## Dashboard fixture: exact HTTP/HTTPS asset parity
 
 The existing QEMU HTTP and temporary trusted HTTPS fixtures now share one

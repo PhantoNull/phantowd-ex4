@@ -252,6 +252,8 @@ PY
 host_tool_paths='
 tools/phantowd-lab/**
 support/test-lab-tools.ps1
+support/test-dashboard-browser.mjs
+support/tests/test-dashboard-preview.mjs
 support/container/test-lab-tools.sh
 support/build-qemu.ps1
 support/clean-qemu-build-volumes.ps1
@@ -538,6 +540,13 @@ if ! grep -F 'package/phantowd-api/mdev.conf' "$overlay_script" >/dev/null ||
 fi
 
 require_locked_host_go_sdk "$host_workflow" "$repo_root/versions.env"
+for command in '          node --check support/test-dashboard-browser.mjs' \
+    '          node support/tests/test-dashboard-preview.mjs'; do
+    if ! grep -Fx "$command" "$host_workflow" >/dev/null; then
+        printf 'host workflow must execute dashboard check: %s\n' "$command" >&2
+        exit 1
+    fi
+done
 sh "$repo_root/support/tests/test-storage-broker-buildroot.sh"
 
 printf 'Firmware workflow path-contract tests passed\n'

@@ -17,6 +17,8 @@ foreach ($environmentName in $environmentNames) {
 New-Item -ItemType Directory -Path $reportRoot -Force | Out-Null
 node $dashboardTest
 if ($LASTEXITCODE -ne 0) { throw 'Dashboard interaction tests failed.' }
+node (Join-Path $repoRoot 'support/tests/test-dashboard-preview.mjs')
+if ($LASTEXITCODE -ne 0) { throw 'Synthetic dashboard preview boundary tests failed.' }
 Push-Location $moduleRoot
 try {
     $env:GOPROXY = 'off'

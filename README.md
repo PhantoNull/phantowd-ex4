@@ -179,6 +179,12 @@ timeout with a 10-second termination grace. A timeout is a failure, not a retry.
 Use the [fast integration lane](support/QEMU-FAST-TESTS.md)
 for eligible userspace changes; clean builds remain separate qualification.
 
+An optional [headless browser check](src/phantowd-api/README.md#test-commands)
+uses Node 24+ and an already installed Chromium-family browser with a disposable
+profile. It checks the synthetic overview at desktop and narrow widths, skip-link
+keyboard navigation and refresh. It does not qualify real API authentication,
+all management workflows or accessibility; no browser is downloaded by CI.
+
 With a trusted compatible base and unchanged volume-probe sources,
 `support/test-api-overlay.ps1 -ReuseBaseVolumeProbe` rebuilds only the API and
 runs one ARMv5 smoke boot in disposable RAM scratch. It uses read-only caches,

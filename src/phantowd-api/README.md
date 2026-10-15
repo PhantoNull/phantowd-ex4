@@ -1568,8 +1568,34 @@ It binds only to `127.0.0.1:18081` and serves clearly labelled synthetic
 system, block-device, and software-RAID fixtures; it is not connected to the
 NAS and is never packaged into firmware. If that port is occupied, choose
 another unprivileged local port with `PHANTOWD_PREVIEW_PORT`.
+The value must be a canonical decimal port from 1024 through 65535, or `0` for
+an OS-selected ephemeral port; the startup message reports the actual address.
 This static fixture server does not implement policy validation or sessions;
 the proposal form requires the real authenticated development API for that.
+
+For an optional actual-browser smoke check, use Node 24+ and an already installed
+Edge/Chrome/Chromium executable (nothing is downloaded):
+
+```powershell
+node support/test-dashboard-browser.mjs --browser "C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe"
+```
+
+The host-only runner starts its own ephemeral loopback preview and headless
+browser with a new temporary profile, never the user's profile. It verifies
+synthetic snapshot rendering, applied CSS, horizontal containment at 1365/390/320 px,
+keyboard Tab/Enter skip-link navigation and one explicit refresh, with no uncaught
+page exceptions or observed non-GET/external page requests. It records source
+hashes, metrics and screenshots under ignored `artifacts/dashboard-browser/`;
+`result.json` is passed only after the owned child processes stop and the
+temporary profile is removed. Work, protocol calls and cleanup have finite
+deadlines; no browser run is added automatically to CI or the fast preflight.
+Those run the separate dependency-free preview route/port boundary suite.
+
+This is a synthetic overview smoke test, not real Go authentication, all panel
+workflows, assistive-technology/WCAG, performance, network sandboxing or EX4
+qualification. QEMU independently checks the embedded bytes over HTTP/HTTPS;
+it does not execute a browser engine. The narrow-screen regression removes a
+fixed 320 px body minimum that overflowed the 305 px available beside a 15 px scrollbar.
 
 Guest initialization probes the GET endpoints and QEMU-only authentication
 flow, verifies that QEMU's root block node appears through sysfs without being

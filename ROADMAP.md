@@ -2413,6 +2413,19 @@ milestone before enabling its controls; M1/M6 for deployment.
   and runner-negative controls. This is packaging/transport parity within the
   running binary, not browser execution, signed release provenance or product
   certificate lifecycle; no timeout, privilege or normal startup change.
+- **M5.5i — Actual-browser synthetic overview smoke (partial).** Reuse an
+  installed Chromium-family browser, an isolated disposable profile and the
+  host-only synthetic preview. Verify applied CSS and horizontal containment
+  at 1365/390/320 px, actual Tab/Enter skip-link navigation, explicit refresh,
+  no uncaught exceptions and only same-origin GET page requests. Record all
+  six source hashes and bounded screenshots; fail on source drift or uncertain
+  child/profile cleanup. The reproduced 320 px viewport/305 px client-width
+  overflow is corrected by removing the fixed body minimum. Fast host checks
+  separately enforce preview port admission, ephemeral loopback and route
+  refusals; no browser download or automatic browser dependency is introduced.
+  This does not qualify Go authentication, all management workflows, assistive
+  technology/WCAG, heap/performance, network isolation or hardware. Embedded
+  ARMv5 asset parity is a separate proof, not guest browser execution.
 - **M5.6 — Audit and diagnostics.** Record actor, operation ID, revisions and
   redacted outcome; bound retention. Export a sanitized support bundle that
   excludes credentials, private keys, passdb hashes and user file contents.
