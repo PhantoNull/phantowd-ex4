@@ -1228,6 +1228,23 @@ cover this regression's boundary.
 ## Current-source overlay lane
 
 `container/test-qemu-api-overlay.sh` is an optional developer feedback lane.
+
+On Windows, use `support/test-api-overlay.ps1 -ReuseBaseVolumeProbe` only after
+reviewing that the trusted compatible base's volume-probe inputs are unchanged.
+It requires existing image/workspace and regular base inputs; missing inputs
+refuse without provisioning. The fixed API-only profile is 2 CPU / 2 GiB / 256 PIDs,
+1 GiB tmpfs scratch, no cgroup swap, non-root/no capabilities/NNP/no network,
+read-only source/base/workspace and automatic container removal. It reserves
+8 GiB host headroom on the actual Docker data drive, not the full builder's 40 GiB:
+all test writes are confined to RAM scratch. This does not bound unrelated/WSL
+host writes. Entire launcher has 360 s plus 10 s termination grace; the existing
+API smoke 240 s and native 180 s campaign limits are unchanged. It runs one smoke
+boot, not state reboot, all Samba campaigns, full image/SBOM/legal regeneration,
+clean build, browser execution or physical qualification. The fixed util-linux
+archive is checked for this pinned workspace but is not rebuilt in reuse mode.
+`support/tests/test-api-overlay-wrapper.ps1` separately verifies command-boundary
+guards, refusals and isolation without a Docker daemon; mocked success is not
+guest evidence. No CI trigger or default lane is changed by the launcher.
 It rebuilds the Go API with the pinned compiler and injects it, the current
 broker mdev rule, guest readiness script, NFS fixture helper and x/sys license
 into a **temporary copy** of a previously built QEMU filesystem. The original

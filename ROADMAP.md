@@ -2258,7 +2258,8 @@ milestone before enabling its controls; M1/M6 for deployment.
   or automatic recovery before refresh. All-unavailable results have no watcher;
   hidden tabs skip periodic text writes and age is not a live region. This is
   not device observation age, health or an atomic snapshot. Complete DOM and
-  Windows/pinned Linux preflight pass; browser/ARM/hosted/product gates separate.
+  Windows/pinned Linux preflight and one actual ARMv5 embedded-asset smoke pass;
+  no JavaScript executes in QEMU. Browser/full/hosted/product gates stay separate.
 - **M5.5 — Accessible efficient UI.** Keyboard operation, labels/focus, narrow
   viewports, screen-reader status and high contrast; bounded static assets and
   shared observations. Avoid per-client hardware polling, stale-response

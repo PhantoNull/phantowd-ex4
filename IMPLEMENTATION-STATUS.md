@@ -12,8 +12,10 @@ repopulate age. Invalid/regressing/missing clocks show unknown age without
 discarding valid observations or silently switching to wall time. Full failure
 retains no watcher; hidden tabs do not receive periodic text updates.
 Actual-source DOM controls and whole Windows/pinned Linux preflight pass.
+One actual ARMv5 smoke boot now also verifies the current embedded HTTP/HTTPS
+assets and preserves the trusted base; JavaScript does not execute in QEMU.
 This is not device observation age, atomic freshness, health, browser/assistive-
-technology qualification or product activation. ARM asset integration is separate.
+technology qualification, complete image or product activation.
 
 ## Setup/login: exact bounded credential JSON
 

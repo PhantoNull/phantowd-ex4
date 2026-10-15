@@ -179,6 +179,12 @@ timeout with a 10-second termination grace. A timeout is a failure, not a retry.
 Use the [fast integration lane](support/QEMU-FAST-TESTS.md)
 for eligible userspace changes; clean builds remain separate qualification.
 
+With a trusted compatible base and unchanged volume-probe sources,
+`support/test-api-overlay.ps1 -ReuseBaseVolumeProbe` rebuilds only the API and
+runs one ARMv5 smoke boot in disposable RAM scratch. It uses read-only caches,
+never builds/pulls images or creates volumes, and has its own bounded resource
+profile; it does not replace the full build's 40 GiB headroom requirement.
+
 ### Build and boot QEMU
 
 With Docker Desktop running **Linux containers**, run from the repository root:
