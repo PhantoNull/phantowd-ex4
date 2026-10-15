@@ -3,7 +3,7 @@
 
 # Implementation roadmap
 
-Reviewed: **2026-10-14**. This is the product specification and work breakdown,
+Reviewed: **2026-10-15**. This is the product specification and work breakdown,
 not a release announcement. The [README](README.md) is the concise entry point;
 component contracts remain authoritative for implemented behavior.
 
@@ -2458,6 +2458,13 @@ stop conditions and suitable equipment/media; not ordinary software work.
   framing/checksum, selectors, timing, replies, asynchronous alarms and failure
   behavior. Console UART is not the management-controller UART. Validate parser
   fixtures before considering any transmitted control command.
+  **M7.2a — passive receive restart (host-only):** static byte-identical final/
+  older daemon and direct RS232-read evidence establish immediate0xfa restart.
+  Decoder refuses interrupted standalone frames and recovers following frames
+  without inventing button events, independent of capture chunk boundaries.
+  Keep15-byte buffering and unknown checksum status. Generic ACK flag evidence
+  does not establish command correlation. No serial opener/transmitter, safe fan
+  setting, active hardware or complete wire-protocol qualification is provided.
 - **M7.3 — Cooling safety.** Independently measure temperature and fan/tach
   behavior. Define startup-safe fan state, unavailable/stale sensor handling,
   controller/daemon failure, overtemperature and safe shutdown. Do not disable

@@ -3,6 +3,20 @@
 
 # Implementation status
 
+## Passive EX4 controller research: restart framing and generic ACK boundary
+
+Offline ARM disassembly verifies immediate0xfa receive restart and a direct
+RS232 read wrapper. The host-only decoder now abandons interrupted prefixes,
+recovers following frames and refuses restarted standalone candidates before
+selector/button classification. Two RED regressions precede the fixes; whole
+Windows and pinned Linux toolkit checks, Linux race and all five fixed-count
+fuzz campaigns pass. Static ACK handling uses a generic flag, not an
+independently verified per-command execution receipt. Checksums, payloads,
+thermal safety, ACK ordering and active controller support remain unqualified.
+There is no serial/device opener or transmitter and no firmware/hardware test
+or activation in this increment. This is not checksum/payload or thermal
+qualification and does not repair the independent native integration timeout.
+
 ## Host release downloads: response-body error redaction
 
 M10.2e extends the existing fixed public transport-error boundary to manifest,

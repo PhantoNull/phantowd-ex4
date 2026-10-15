@@ -570,6 +570,20 @@ aggregate counts, architectures, interpreters and required-library frequencies.
 
 The MCU decoder recognizes the statically recovered 7-, 13-, and 15-byte
 receive envelopes and classifies the first three selector bytes. It reports
+every new `0xfa` as a fresh frame start, abandoning any incomplete prefix and
+counting it as malformed; input chunk boundaries do not change that result.
+Standalone decoding rejects interior start markers without assigning a selector
+or button event, while retaining only the existing bounded raw diagnostic.
+This follows the final firmware's `up_read_daemon` restart branch at0x88f8–0x8908;
+`librs232.so`'s `RS232_Read` at0x904–0x924 directly wraps `read` without an escape
+decoder. This is static host-receiver evidence, not an observed hardware trace.
+These are ELF virtual addresses, not device-register addresses. Input SHA-256:
+`up_read_daemon` `66da626b7a96922a6c3875f5e956cd488281a13225e7c27ce8d6756193f84d18`;
+`librs232.so` `de585e83da528c704f1d37524ccc7cd0e76684cb7863223f61857176c9b29794`.
+The stock ACK handler writes a generic XMLDB flag, and the sender tests that
+flag; recognizing an ACK selector does not confirm a particular command.
+
+The decoder still reports
 checksums as `unknown-not-validated`; the fourth selector-template byte,
 variable payloads, ACK correlation, and thermal fail-safe behavior remain
 research questions. Synthetic replay is not proof that active hardware control
