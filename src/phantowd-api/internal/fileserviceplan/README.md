@@ -38,8 +38,13 @@ storage generation/canonical volume-set fingerprint.
   using the ORIGINAL identity lease's ONE fresh, complete observation for both
   retention/fingerprint verification and planning. Released/review leases and
   changed identity evidence refuse; no independent backend or cached snapshot
-  is supplied by an operation. The ARMv5 fixture checks this ordered composition
-  with redacted Owner/passdb evidence and one synthetic mounted volume; its
+  is supplied by an operation.
+  A canceled/expired context at planning admission or either locked callback
+  preserves both `ErrNotReady` and the original context cause through
+  `errors.Is`; refusal supplies no plan or authority. Missing owners still
+  refuse independently of context. This is error fidelity, not extended time.
+  The ARMv5 fixture checks the ordered composition with redacted Owner/passdb
+  evidence and one synthetic mounted volume; its
   NFS-only policy has no Samba share section.
 - Required volumes must be uniquely mapped, filesystem-UUID matched, mounted
   at the fixed logical anchor, marked qualified, and writable when policy

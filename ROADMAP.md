@@ -632,6 +632,12 @@ button to an unqualified backend simply because the screen exists.
   its row. Preserve both failed traces; target emission, exact hosted failure
   reproduction and repair remain open. Do not promote host-only instrumentation
   as successful guest qualification or retry unchanged controls until one passes.
+  A further ARMv5 trace identifies `verify-owners` with an expired context even
+  though its error chain lacks the deadline cause. The three planner context
+  guards now preserve `ErrNotReady` plus cancellation/deadline, verified by a
+  real admission RED/GREEN and host/race checks. A subsequent normal fault guest
+  passes original proof with unchanged limits. This is error fidelity and one
+  focused pass, not a timing/hosted repair or complete-image qualification.
 - **M0.4 — Maintain release inputs.** Dependency update changes include source
   signatures/hashes, ARMv5 compatibility, package configuration, vulnerability
   review, license material and regenerated SBOM. Test the selected package set.

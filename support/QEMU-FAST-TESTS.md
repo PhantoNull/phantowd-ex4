@@ -1989,6 +1989,18 @@ Host deterministic-clock/redaction/race tests pass. Subsequent normal and
 post-enrollment CPU-reduced fault guests both fail before producing this row;
 they do not qualify target emission or repair the hosted failure.
 
+The separate `PHANTOWD_QEMU_PLANNED_SERVICE_FAILURE` row identifies only one
+fixed failed coordinator check and its pre-quarantine `context_done` /
+`deadline_reached` flags (`unavailable` when no observation exists). Only the
+first valid row is relayed. Error-chain `deadline=false` does not mean the
+parent was live: an actual ARMv5 refusal reached `verify-owners` with both flags
+true while the planning error omitted the context cause. The planner now keeps
+both `ErrNotReady` and the original cancellation/deadline sentinel at its three
+context guards. Deterministic admission RED/GREEN, complete Windows/pinned
+Linux checks and focused race3 pass. A subsequent unchanged-limit ordinary
+fault guest passes all original proofs; this does not attribute timing repair
+to error fidelity or qualify complete-image, clean/hosted or EX4 behavior.
+
 On campaign refusal, the host driver now emits one bounded redacted JSON
 `phantowd-qemu-worker-timing-summary` before the existing failure-log tail.
 Only the fixed native worker grammar is recognized: at most 512 rows, each

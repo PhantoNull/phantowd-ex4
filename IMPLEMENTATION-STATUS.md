@@ -21,6 +21,18 @@ the repair remain unqualified; no repeated run is selected as a substitute.
 No NAS or physical disk is involved. See the
 [diagnostic contract](support/QEMU-FAST-TESTS.md).
 
+A later fixed coordinator-boundary observation reaches `verify-owners` on
+ARMv5 with `context_done=true deadline_reached=true` despite error-chain
+`deadline=false`. This narrows that local refusal, not the earlier hosted
+ungranted operation. The planner's three context guards now preserve both
+`ErrNotReady` and the original cancellation/deadline cause without supplying
+evidence or extending time. Actual canceled-admission RED/GREEN, whole
+Windows/pinned Linux tests/vet and focused race3 pass. One subsequent normal
+ARMv5 fault campaign passes every original proof at123640ms with source/base
+witnesses unchanged. The pass does not prove that error fidelity fixed timing;
+no repeated attempts were selected and no CPU/worker/phase/guest limit changed.
+Complete-image and own-head hosted qualification remain open.
+
 ## Native QEMU timing: coordinated clock and complete local integration pass
 
 Ordinary native now has one300s monotonic work deadline, with one fixed

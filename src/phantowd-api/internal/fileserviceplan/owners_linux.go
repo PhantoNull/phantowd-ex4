@@ -7,6 +7,7 @@ package fileserviceplan
 
 import (
 	"context"
+	"errors"
 
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/fileservice"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/identityowner"
@@ -61,22 +62,25 @@ func buildFromLockedOwners(
 	storage *mountowner.MountedVolumeSet,
 	withIdentity func(context.Context, func(identityowner.FileServiceSnapshot) error) error,
 ) (Plan, error) {
-	if ctx == nil || storage == nil || withIdentity == nil || ctx.Err() != nil {
+	if ctx == nil || storage == nil || withIdentity == nil {
 		return Plan{}, ErrNotReady
+	}
+	if err := ctx.Err(); err != nil {
+		return Plan{}, errors.Join(ErrNotReady, err)
 	}
 
 	var candidate Plan
 	err := storage.WithEvidence(func(storageEvidence mountowner.MountedVolumeSetEvidence) error {
-		if ctx.Err() != nil {
-			return ErrNotReady
+		if err := ctx.Err(); err != nil {
+			return errors.Join(ErrNotReady, err)
 		}
 		storageSnapshot, err := StorageFromMountedOwnerSet(storageEvidence)
 		if err != nil {
 			return err
 		}
 		return withIdentity(ctx, func(identityEvidence identityowner.FileServiceSnapshot) error {
-			if ctx.Err() != nil {
-				return ErrNotReady
+			if err := ctx.Err(); err != nil {
+				return errors.Join(ErrNotReady, err)
 			}
 			identitySnapshot, err := identityFromOwnerEvidence(identityEvidence)
 			if err != nil {
