@@ -118,6 +118,13 @@ coherent policy/use/permission admission and target activation remain absent.
 
 ## M9.2a desired iSCSI policy
 
+The private [desired iSCSI review projection](internal/iscsipreview/README.md)
+now prepares complete target/LUN/initiator/grant display data from the validated
+coherent revision, without exposing credential usernames/SecretRefs or raw
+filesystem UUIDs. Exact decimal strings preserve revision/capacity precision.
+Its explicit flags remain unvalidated/unavailable: it is not a backing opener,
+effective-access decision, service state, owner claim, HTTP endpoint or panel.
+
 The internal [coherent NAS policy](internal/naspolicy/README.md) additionally
 stores desired SMB/NFS/iSCSI as one strict revision through the existing Linux
 transaction engine. Native interruption tests and an actual ARMv5 two-boot

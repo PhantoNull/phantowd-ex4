@@ -3219,6 +3219,24 @@ support per tested combination; refuse untested combinations without mutation.
   Next compose qualified code/backend, registry/media identity, access and
   allocation, global-use/session and protected credentials, then product
   supervision/recovery. No extra guest boot, HTTP surface or NAS operation.
+- **M9.2f — Desired iSCSI management projection (internal prerequisite).**
+  Reuse the whole coherent policy validator; never add an independent dialect
+  or choose/migrate authoritative old/new stores through display code. Project
+  complete target/LUN/initiator/grant relationships and proposed backing fields,
+  omitting credential usernames, SecretRefs and raw filesystem UUIDs. Preserve
+  exact uint64 revision/capacity as decimal strings and bounded numeric counts/
+  LUN numbers. Desired enabled is not running; storage, credentials, runtime and
+  activation remain explicitly unqualified. Return no partial output on invalid
+  or mixed revisions, never truncate accepted rows, cap encoded output at256KiB,
+  and keep input/output ownership separate. No file/secret/device/process I/O.
+  Acceptance: exact large integers, nil/empty distinctions, seven revision
+  refusals, foreign refs/RO escalation, privacy/copy controls, dense1024grants,
+  bounded arbitrary-JSON fuzz through the existing decoder, whole Windows/Linux
+  and actual standard ARMv5 synthetic projection/stale-refusal assertions.
+  Next, scope an authenticated manual preview and text-only panel with finite
+  body/response budgets and session lifetime. That interface preference remains
+  pending; no HTTP, persistence, service activation or NAS operation is added
+  by this internal prerequisite. Never run a second authoritative policy writer.
 - **M9.3 — Guard mutations.** Create/enable/disable/grow/remove operations check
   real initiator/session ownership and backing-volume state. Prevent local
   filesystem mounting while an initiator owns the LUN; prohibit unsafe shrink.

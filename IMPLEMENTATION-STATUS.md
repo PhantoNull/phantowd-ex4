@@ -3,6 +3,28 @@
 
 # Implementation status
 
+## iSCSI management prerequisite: coherent desired review projection
+
+The new private projection validates the whole SMB/NFS/iSCSI desired revision
+before returning complete target/LUN/initiator/grant and backing display rows.
+It omits credential usernames, SecretRefs and raw filesystem UUIDs; proposed
+IQNs/paths remain sensitive administrator data. Revision/capacity are exact
+decimal strings, not potentially rounded JavaScript numbers. Explicit flags
+never imply storage/credential/runtime validation or available activation.
+Invalid/mixed evidence yields no partial output; accepted rosters are not
+truncated and encoded output is capped at256KiB. No policy ownership or I/O.
+
+Whole Windows preflight/ARMv5 cross-compilation and focused projection controls
+pass, including a53,308-byte dense64-backing/1024-grant fixture, exact large
+integers, privacy/copies and thirteen invalid whole-policy cases. Whole pinned
+Linux vet/units/tagged vet, focused race-count3 and25,000 fuzz executions pass.
+The actual single-boot ARMv5 overlay passes, including the augmented pure iSCSI
+projection/stale-refusal fixture. No additional guest boot or fixture I/O is
+introduced; this is not the two-boot/full/hosted or browser qualification lane.
+No HTTP route, panel, state writer, target activation or device operation is
+added; the interface preference and independent native timing decision remain
+pending. This is not an installable/product-qualified iSCSI management plane.
+
 ## Host release planning: optional strict-upgrade prerequisite
 
 Both host release inspectors now support `--require-upgrade` with a valid

@@ -6,10 +6,15 @@
 package main
 
 import (
+	"encoding/json"
 	"errors"
 	"strings"
 
+	"github.com/PhantoNull/phantowd-ex4/phantowd-api/fileservice"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/iscsipolicy"
+	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/iscsipreview"
+	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/naspolicy"
+	"github.com/PhantoNull/phantowd-ex4/phantowd-api/nfsconfig"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/shareconfig"
 )
 
@@ -28,6 +33,27 @@ func exerciseQEMUISCSIPolicy() error {
 	p, err := iscsipolicy.Decode(strings.NewReader(fixture), volumes)
 	if err != nil || len(p.Targets) != 1 || p.Targets[0].LUNs[0].Number != 0 || p.Validate(volumes) != nil {
 		return errors.New("synthetic iSCSI policy positive fixture failed")
+	}
+	coherent := naspolicy.Config{Format: naspolicy.Format, SchemaVersion: 1, Revision: volumes.Revision,
+		FileServices: fileservice.Config{Format: fileservice.ConfigFormat, SchemaVersion: 1, Revision: volumes.Revision,
+			Shares: volumes, NFS: nfsconfig.Policy{Format: nfsconfig.Format, SchemaVersion: 1,
+				Revision: volumes.Revision, VolumeRevision: volumes.Revision, Exports: []nfsconfig.Export{}}}, ISCSI: p}
+	coherent.ISCSI.Revision = volumes.Revision
+	preview, err := iscsipreview.Build(coherent)
+	if err != nil || preview.Revision != "7" || preview.StorageValidated || preview.CredentialsValidated ||
+		preview.RuntimeValidated || preview.ActivationAvailable || len(preview.Targets) != 1 || len(preview.Backings) != 1 ||
+		preview.Backings[0].CapacityBytes != "1073741824" || preview.Targets[0].LUNs[0].Number != 0 ||
+		preview.Targets[0].Initiators[0].Grants[0].Access != "ro" {
+		return errors.New("synthetic desired iSCSI preview failed")
+	}
+	encoded, err := json.Marshal(preview)
+	if err != nil || len(encoded) > iscsipreview.MaxOutputBytes || strings.Contains(string(encoded), "fixture-inbound") ||
+		strings.Contains(string(encoded), "fixture-outbound") || strings.Contains(string(encoded), "secret_ref") {
+		return errors.New("synthetic desired iSCSI preview disclosure or bounds failure")
+	}
+	coherent.ISCSI.Revision++
+	if invalid, err := iscsipreview.Build(coherent); err != iscsipreview.ErrInvalid || invalid.Format != "" || invalid.Targets != nil || invalid.Backings != nil {
+		return errors.New("synthetic desired iSCSI preview admitted stale policy")
 	}
 	for _, input := range []string{
 		strings.Replace(fixture, `"number":0,`, "", 1),
