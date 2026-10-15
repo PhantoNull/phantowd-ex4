@@ -3,7 +3,10 @@
 
 package mcuproto
 
-import "testing"
+import (
+	"reflect"
+	"testing"
+)
 
 func TestCatalogCounts(t *testing.T) {
 	if len(TransmitSelectors) != 82 {
@@ -104,6 +107,79 @@ func TestStreamReplayAndButtonState(t *testing.T) {
 	}
 }
 
+func TestStreamResynchronizesAtRestartMarker(t *testing.T) {
+	push := []byte{FrameStart, 0x23, 0, 0, 0, 0, FrameEnd}
+	input := append([]byte{FrameStart, 0x01, 0}, push...)
+	decoder := &StreamDecoder{}
+	frames := decoder.Push(input)
+	decoder.Finalize()
+	if len(frames) != 1 || !frames[0].Known || len(frames[0].Names) != 1 || frames[0].Names[0] != "PWRPush" {
+		t.Fatalf("restart lost the complete following frame: %+v", frames)
+	}
+	stats := decoder.Stats()
+	if stats.Bytes != uint64(len(input)) || stats.Frames != 1 || stats.Known != 1 || stats.Malformed != 1 || stats.Truncated != 0 || stats.NoiseBytes != 0 {
+		t.Fatalf("restart accounting differs: %+v", stats)
+	}
+}
+
+func TestDecodeReceiveRefusesRestartedButtonFrame(t *testing.T) {
+	frame := []byte{FrameStart, 0x23, 0, 0, 0, FrameStart, FrameEnd}
+	decoded, err := DecodeReceive(frame)
+	if err == nil || decoded.Known || len(decoded.Names) != 0 || decoded.DispatchKey != [3]byte{} || decoded.ChecksumStatus != "unknown-not-validated" {
+		t.Fatalf("interrupted bytes classified as a complete button frame: %+v, err=%v", decoded, err)
+	}
+	state := NewState()
+	state.Apply(decoded)
+	if state.Buttons["power"] || state.EventCounts["PWRPush"] != 0 {
+		t.Fatal("rejected fragment changed the simulated power button")
+	}
+}
+
+func TestStreamRestartAccountingAcrossEverySplit(t *testing.T) {
+	for _, interrupted := range [][]byte{
+		{FrameStart, 0x23, 0, 0, 0},
+		{FrameStart, FrameStart, 0x23, 0, 0, 0},
+		{FrameStart, 0x23, 0, 0, 0, FrameStart, FrameEnd},
+	} {
+		release := []byte{FrameStart, 0x2a, 0, 0, 0, 0, FrameEnd}
+		input := append(append([]byte(nil), interrupted...), release...)
+		for split := 0; split <= len(input); split++ {
+			decoder := &StreamDecoder{}
+			frames := append(decoder.Push(input[:split]), decoder.Push(input[split:])...)
+			decoder.Finalize()
+			state := NewState()
+			for _, frame := range frames {
+				state.Apply(frame)
+			}
+			stats := decoder.Stats()
+			if len(frames) != 1 || state.EventCounts["PWRRelease"] != 1 || state.EventCounts["PWRPush"] != 0 || state.Buttons["power"] ||
+				stats.Frames != 1 || stats.Unknown != 0 || stats.Truncated != 0 || stats.Bytes != uint64(len(input)) {
+				t.Fatalf("split %d invented an event or lost the following frame: %+v %+v", split, stats, state)
+			}
+			wantMalformed := uint64(1)
+			if interrupted[1] == FrameStart || len(interrupted) == 7 {
+				wantMalformed = 2
+			}
+			if stats.Malformed != wantMalformed {
+				t.Fatalf("split %d restart count=%d want=%d", split, stats.Malformed, wantMalformed)
+			}
+		}
+	}
+}
+
+func TestDecodeReceiveRejectsEveryInteriorStartPosition(t *testing.T) {
+	for _, length := range []int{7, 13, 15} {
+		for position := 1; position < length-1; position++ {
+			frame := make([]byte, length)
+			frame[0], frame[position], frame[length-1] = FrameStart, FrameStart, FrameEnd
+			decoded, err := DecodeReceive(frame)
+			if err == nil || decoded.Known || len(decoded.Names) != 0 || len(decoded.RawHex) != 2*length || decoded.ChecksumStatus != "unknown-not-validated" {
+				t.Fatalf("interior start at %d/%d was admitted or lost bounded diagnostics", position, length)
+			}
+		}
+	}
+}
+
 func TestStreamFaultAccounting(t *testing.T) {
 	decoder := &StreamDecoder{}
 	decoder.Push([]byte{FrameStart, 1, 2})
@@ -120,7 +196,8 @@ func FuzzStreamDecoder(f *testing.F) {
 	f.Add([]byte{0, 1, 2, 3})
 	f.Fuzz(func(t *testing.T, data []byte) {
 		decoder := &StreamDecoder{}
-		for _, frame := range decoder.Push(data) {
+		frames := decoder.Push(data)
+		for _, frame := range frames {
 			if _, err := DecodeReceive(mustDecodeHex(t, frame.RawHex)); err != nil {
 				t.Fatalf("stream returned invalid frame: %v", err)
 			}
@@ -128,6 +205,13 @@ func FuzzStreamDecoder(f *testing.F) {
 		decoder.Finalize()
 		if len(decoder.buffer) != 0 {
 			t.Fatal("finalize retained buffered input")
+		}
+		split := len(data) / 2
+		fragmented := &StreamDecoder{}
+		other := append(fragmented.Push(data[:split]), fragmented.Push(data[split:])...)
+		fragmented.Finalize()
+		if !reflect.DeepEqual(frames, other) || decoder.Stats() != fragmented.Stats() {
+			t.Fatal("chunk boundaries changed framing or diagnostics")
 		}
 	})
 }

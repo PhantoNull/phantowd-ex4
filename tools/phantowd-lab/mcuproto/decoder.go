@@ -4,6 +4,7 @@
 package mcuproto
 
 import (
+	"bytes"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -42,6 +43,9 @@ func DecodeReceive(frame []byte) (DecodedFrame, error) {
 	if frame[0] != FrameStart || frame[len(frame)-1] != FrameEnd {
 		return decoded, errors.New("invalid frame boundary")
 	}
+	if bytes.IndexByte(frame[1:len(frame)-1], FrameStart) >= 0 {
+		return decoded, errors.New("frame interrupted by a new start marker")
+	}
 	copy(decoded.DispatchKey[:], frame[1:4])
 	for _, selector := range ReceiveSelectors {
 		if selector.Template[0] == frame[1] && selector.Template[1] == frame[2] && selector.Template[2] == frame[3] {
@@ -76,12 +80,18 @@ func (decoder *StreamDecoder) Push(data []byte) []DecodedFrame {
 	decoder.stats.Bytes += uint64(len(data))
 	var frames []DecodedFrame
 	for _, value := range data {
-		if len(decoder.buffer) == 0 {
-			if value != FrameStart {
-				decoder.stats.NoiseBytes++
-				continue
+		// The stock receive loop restarts immediately on every 0xfa, even
+		// before the 7/13/15-byte boundary tests. Never join an interrupted
+		// prefix to a later frame or classify its bytes as a button event.
+		if value == FrameStart {
+			if len(decoder.buffer) != 0 {
+				decoder.stats.Malformed++
 			}
-			decoder.buffer = append(decoder.buffer, value)
+			decoder.buffer = append(decoder.buffer[:0], value)
+			continue
+		}
+		if len(decoder.buffer) == 0 {
+			decoder.stats.NoiseBytes++
 			continue
 		}
 
@@ -104,9 +114,6 @@ func (decoder *StreamDecoder) Push(data []byte) []DecodedFrame {
 		if length >= MaxFrame {
 			decoder.stats.Malformed++
 			decoder.buffer = decoder.buffer[:0]
-			if value == FrameStart {
-				decoder.buffer = append(decoder.buffer, value)
-			}
 		}
 	}
 	return frames
