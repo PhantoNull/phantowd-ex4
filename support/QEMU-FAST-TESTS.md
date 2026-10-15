@@ -2109,6 +2109,66 @@ lane neither downloads a new image nor creates a named volume; its scratch is
 disposable. It still requires matching cached dependencies and checks the
 selected campaign, not an entire new firmware image.
 
+### Native timing-contract decision gate
+
+The current ordinary `native` path has the following sequential phase caps.
+These are source limits, not measured durations or permission to change them.
+
+| Phase | Cap | Source |
+| --- | --- | --- |
+| Original Owner/runtime preparation | 20 s | `native_credential_budget_linux.go` |
+| Both journaled enrollments and enable | 60 s | `native_credential_budget_linux.go` |
+| Final identity/backend observation | 20 s | `nativeIdentityBackendProbeQEMU` |
+| Authentication-only daemon startup | 20 s | `native_credentials_linux.go` |
+| Idle disable and authentication checks | 20 s | `native_credentials_linux.go` |
+| Re-enable and held-client preparation | 20 s | `native_credentials_linux.go` |
+| Original live-session revocation/continuity | 45 s | `native_live_phases_linux.go` |
+| Fresh logins after timely live success | 15 s | `native_live_phases_linux.go` |
+| Same-passdb post-revocation data profile | 35 s | `native_data_linux.go` |
+
+Their configured caps total255 seconds, while the host script bounds the whole
+guest at180 seconds including boot. This does **not** establish a minimum runtime,
+a defect merely because maxima overlap, or a guaranteed255-second completion:
+operations can finish earlier, and some verified cleanup uses a background
+context. Native status workers additionally have4 seconds for complete before/
+execution/settlement/after admission; native revocation has20 seconds. Generic
+command status/revocation remain2/5 seconds. A longer outer guest alone cannot
+repair an earlier child expiry.
+
+Existing controlled profiles prioritize retained code revalidation, not an
+established deadlock. Previous allocation, applet-versus-Go, scratch schedule
+and PGO controls do not establish a further end-to-end optimization to adopt.
+Do not repeat them or propose skipped/cached hashes merely to obtain a pass.
+The hosted failure's precise cause remains unproven.
+
+The next timing-contract implementation requires an explicit choice between
+coherent fixture-only budget design and performance-only work with every
+existing limit preserved. No new values are approved by this document. Once
+the budget-design route is chosen, the bounded work packet is:
+
+1. Specify the supported host profile, complete phase/worker/deadline hierarchy,
+   boot and verified-cleanup reserves, and hard outer cap **before** selecting
+   new values. Distinguish normal-work cancellation from teardown; do not pass
+   an expired work context to cleanup and then claim processes were stopped.
+2. Centralize only the reviewed compile-tagged fixture policy. Keep generic/
+   product deadlines, authority, commands, hashes, revocation observations,
+   original session/passdb history and default ten-campaign union unchanged.
+   The independent `native-data` guest cannot replace post-revocation data.
+3. Test actual phase runners with controlled clocks: shorter parent, exact
+   deadline, late nil, prior failure, cancellation, duplicate handoff, remaining
+   budget and verified stop/reference retention. No failed work may renew its
+   budget, retry or continue into another phase.
+4. Run the focused original native trace locally first, with frozen source,
+   original two-CPU reference profile, exact base and complete strict proof.
+   Predeclare any additional slower control and its expected success/refusal
+   criteria; do not retune limits or rerun unchanged work for a lucky green.
+5. Require complete current-source local integration/artifact audit and the
+   publication head's own hosted qualification before merge. Preserve the
+   full-build40GiB guard; a bounded overlay pass is not a full-build waiver.
+
+This gate changes no source behavior, timer, host affinity, scheduler/crypto
+flag, runtime privilege, NAS operation or installation qualification.
+
 Read the **first failed operation** rather than treating every elapsed timer
 as the same timeout:
 
