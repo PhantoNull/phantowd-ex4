@@ -7,6 +7,7 @@ package smartreport
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -74,6 +75,31 @@ func TestUpstreamReplayCorpus(t *testing.T) {
 			}
 			if o.Flags().SMARTCommandError != (tc.exit&4 != 0) || o.Flags().FailingStatus != (tc.exit&8 != 0) {
 				t.Fatal("collection/failure distinction lost")
+			}
+			// Expected identities come from the independently specified invented
+			// ATA words, never from the report we are about to compare. This is
+			// actual producer-field coverage, not physical source attribution.
+			matched, err := ParseMatchingATAIdentity(data, tc.exit, "SYNTHETIC-ONLY", 0x5abcdef123456789)
+			if tc.name == "empty" {
+				if matched != (Observation{}) || !errors.Is(err, ErrIdentity) {
+					t.Fatal("empty producer input gained a disk identity")
+				}
+				return
+			}
+			if err != nil || matched != o {
+				t.Fatal("actual producer identity comparison changed projection", err)
+			}
+			for _, expected := range []struct {
+				serial string
+				wwn    uint64
+			}{
+				{"SYNTHETIC-OTHER", 0x5abcdef123456789},
+				{"SYNTHETIC-ONLY", 0x5abcdef123456788},
+			} {
+				got, err := ParseMatchingATAIdentity(data, tc.exit, expected.serial, expected.wwn)
+				if got != (Observation{}) || !errors.Is(err, ErrIdentity) {
+					t.Fatal("different expected source accepted actual producer report")
+				}
 			}
 		})
 	}

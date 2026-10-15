@@ -29,6 +29,7 @@ on:
       - 'support/tests/test-qemu-smart-report.sh'
       - 'support/tests/smart-report-init.sh'
       - 'support/tests/test-smart-replay-contract.py'
+      - 'support/tests/test-smart-replay-identify.py'
       - 'support/test-smart-replay-arm.ps1'
       - 'support/tests/test-qemu-smart-replay.sh'
       - 'support/tests/smart-replay-arm-init.sh'
@@ -114,6 +115,7 @@ on:
       - 'support/tests/test-qemu-smart-report.sh'
       - 'support/tests/smart-report-init.sh'
       - 'support/tests/test-smart-replay-contract.py'
+      - 'support/tests/test-smart-replay-identify.py'
       - 'support/test-smart-replay-arm.ps1'
       - 'support/tests/test-qemu-smart-replay.sh'
       - 'support/tests/smart-replay-arm-init.sh'
@@ -268,6 +270,9 @@ jobs:
 
       - name: Verify SMART runner markers and disposable cleanup
         run: python3 -B support/tests/test-smart-replay-contract.py
+
+      - name: Verify invented ATA identity input and projection controls
+        run: python3 -B support/tests/test-smart-replay-identify.py
 
       - name: Verify SMART producer runner and guest init syntax
         run: |

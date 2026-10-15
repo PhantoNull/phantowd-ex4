@@ -2934,6 +2934,12 @@ not host/QEMU progress.
     or a provider, and matching JSON does not authenticate its source. Next
     qualify the same identifiers from actual producer fixtures, then the retained
     device/command composition; do not infer ATA/sysfs equivalence or disk support.
+    The existing seven-case corpus now prepares independent invented serial/WWN
+    words and original parser comparison/refusal checks, without changing cases,
+    commands or deadlines. Six host input/runner/routing controls and selected
+    Windows tagged tests pass; native7.4/7.5, ARM7.5, Linux shell contracts and
+    complete integration remain required for the changed fixture. Fake replies
+    are guard tests only and cannot qualify actual producer execution.
   - **M8.5c — Wake policy.** Specify exact no-check/device-detection behavior per
     tool and transport. Low-power skip must have explicit evidence; exit bit 1
     alone is ambiguous. Do not parse tool prose to claim standby. Verify that

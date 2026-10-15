@@ -48,6 +48,27 @@ replay-order/coverage warnings or output fields fail the test. Independently
 specified Go expectations consume the actual JSON through `smartreport.Parse`.
 The Go test is opt-in via the `smartreplay` test build tag, never a product CLI.
 
+### Prepared identity comparison extension (not yet producer-qualified)
+
+The invented IDENTIFY response now includes WWN-support bit8 in word87 and
+fixed words108..111 (`5abc def1 2345 6789`), alongside `SYNTHETIC-ONLY`.
+The Python producer guard requires the exact serial and structured NAA/OUI/ID;
+the tagged Go corpus test additionally compares them to independent constants
+using `ParseMatchingATAIdentity`. It preserves every existing assessment/exit,
+refuses a changed expected serial/WWN, and refuses identity attribution for the
+empty input. The original seven cases, fixed command, timeouts and generic-only
+backend remain unchanged. This does not authenticate a report's physical source.
+
+Six fast host tests verify the invented words, support-bit independence, runner
+acceptance/refusal with explicitly fake subprocess replies, and workflow routing.
+Fake replies never emit producer proof markers. The new Python-only test is
+routed to host checks; actual corpus/API changes still require QEMU. Windows
+tagged vet and selected parser/identity tests pass, but the actual producer corpus
+test is deliberately excluded without its generated inputs. Shell path-contract,
+native7.4/7.5 and ARM7.5 producer execution for this extension remain unqualified
+until Docker maintenance completes. Earlier successes below describe older
+fixture inputs, not this extension or the current source.
+
 The same native wrapper additionally runs eight actual-producer boundary tests
 for each explicitly selected release. These use only invented stdin replies:
 

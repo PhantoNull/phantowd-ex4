@@ -472,6 +472,12 @@ for path in 'support/build-qemu.ps1' \
     require_ignored_path "$stage_b3_workflow" "$path"
 done
 require_bounded_qemu_ccache "$qemu_workflow"
+require_triggered_path "$host_workflow" support/tests/test-smart-replay-identify.py
+require_ignored_path "$qemu_workflow" support/tests/test-smart-replay-identify.py
+require_ignored_path "$stage_b3_workflow" support/tests/test-smart-replay-identify.py
+for event in push pull_request; do
+    require_not_ignored_pattern "$qemu_workflow" "$event" support/tests/smart-replay-corpus.py
+done
 require_fixed_fuzz_campaigns "$repo_root/support/container/test-api.sh" 24
 require_fixed_fuzz_campaigns "$repo_root/support/container/test-lab-tools.sh" 5
 require_fixed_fuzz_campaigns "$host_workflow" 4

@@ -14,7 +14,9 @@ def identify(available=True, enabled=True):
     data = bytearray(512)
     for word, value in ((0, 0x0040), (49, 0x0200), (60, 32768),
                         (82, int(available)), (83, 0x4000),
-                        (85, int(enabled)), (87, 0x4000)):
+                        (85, int(enabled)), (87, 0x4100),
+                        (108, 0x5abc), (109, 0xdef1),
+                        (110, 0x2345), (111, 0x6789)):
         struct.pack_into("<H", data, word * 2, value)
     for word, width, text in ((10, 20, "SYNTHETIC-ONLY"),
                               (23, 8, "FIXTURE"),
@@ -90,9 +92,17 @@ def run(binary, output, version):
             raise RuntimeError(f"producer profile failed for {name}")
         if b"REPLAY-IOCTL" in result.stdout:
             raise RuntimeError(f"replay coverage/order failed for {name}")
+        # Invented ATA identity, checked independently of the Go comparator.
+        # These values do not describe a host disk or authenticate the report.
+        if name != "empty" and (
+                report.get("serial_number") != "SYNTHETIC-ONLY"
+                or report.get("wwn") != {
+                    "naa": 5, "oui": 11259375, "id": 4886718345}):
+            raise RuntimeError(f"producer identity projection failed for {name}")
         support = report.get("smart_support", {})
         if name == "empty" and ("device" in report or "smart_support" in report
-                                or "smart_status" in report):
+                                or "smart_status" in report
+                                or "serial_number" in report or "wwn" in report):
             raise RuntimeError("empty input unexpectedly reports device evidence")
         if available is not None and support.get("available") is not available:
             raise RuntimeError(f"support projection failed for {name}")

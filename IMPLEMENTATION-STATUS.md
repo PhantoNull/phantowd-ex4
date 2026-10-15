@@ -57,6 +57,12 @@ JSON is not device provenance; no collector invokes this function. New Linux/ARM
 genuine-producer and provider qualification remain open while Docker maintenance
 is pending. See the [comparison contract](src/phantowd-api/internal/smartreport/README.md).
 
+The existing seven-case producer fixture is now prepared with invented serial/
+WWN words and independent Python/Go comparison/refusal checks. Six host input/
+runner/path tests and selected tagged Windows parser tests pass; native7.4/7.5,
+ARM7.5, Linux shell contracts and full integration for these changed inputs have
+not run. No fake reply or previous producer success qualifies the extension.
+
 The private Linux constructor now derives all whole-leaf names/generations from
 one complete sysfs census and reuses the existing fixed read-only `/dev` opener.
 The initial census remains its baseline across opening and descriptor checks;
