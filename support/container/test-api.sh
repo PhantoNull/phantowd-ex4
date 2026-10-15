@@ -14,6 +14,7 @@ cd "$module_dir"
 "$go_binary" vet -tags=qemu ./...
 "$go_binary" test -tags=qemu -run '^(TestQEMUDashboardAssetsMatchSelfTest|TestQEMUTLSLoopbackSmoke|TestQEMUShareConfig|TestQEMUShareStore|TestQEMUSMBPreview|TestQEMUNFSPolicy|TestQEMUNFSFixture|TestQEMUFileServicePreviewHTTP|TestQEMUSMBEffectiveFixture|TestQEMUSMBDenialEvidence|TestQEMUSMBProvisionParser|TestQEMUSMBStatusJSONReturnsOnlyTargetGenerations|TestQEMUSMBStatusJSONRejectsUnavailableOrUnqualifiedSessions|TestQEMUSMBStatusJSONAcceptsEmptySessionInventory|TestQEMUCollisionFixture|TestQEMUStatePersistence|TestQEMUServiceStateBackend|TestQEMUIdentityOwnerServiceHostGuard|TestQEMUStateProcReaderObservesAndRedactsOwnerCWD|TestQEMUNetworkPolicy|TestQEMUNetworkInventory)$' -count=1 .
 "$go_binary" test -tags=qemu -run '^TestQEMUThermalReport$' -count=1 .
+"$go_binary" test -tags=qemu -run '^TestQEMUDashboardAssets(HTTPAndTLS|Refusals)$' -count=1 .
 "$go_binary" test -race -count=1 ./...
 # Fixed execution counts avoid false deadline failures in the pinned Go 1.26
 # fuzz coordinator while keeping CI fuzz coverage reproducible across runners.

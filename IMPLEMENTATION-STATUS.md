@@ -3,6 +3,32 @@
 
 # Implementation status
 
+## Dashboard fixture: exact HTTP/HTTPS asset parity
+
+The existing QEMU HTTP and temporary trusted HTTPS fixtures now share one
+six-asset verifier. It checks decoded response bodies byte-for-byte against
+the running binary's embedded files, preserving the64KiB bound and feature
+markers. Single exact MIME/cache/nosniff/CSP fields and successful read/close
+are required; root and other-asset CSPs remain distinct. Fixed errors disclose
+no response/transport details. Standard readiness requires exactly two receipts
+for each transport across API restart, in addition to existing TLS/auth checks.
+
+Actual host HTTP/HTTPS serving passes; all six embedded files are covered.
+Fourteen response-fault cases include alteration that preserves every old
+marker, duplicate headers, read/close failures, empty/oversized bodies and
+redirect refusal; a separate transport error is redacted. Bodies are closed,
+reads stay bounded and collection of live system observations is not invoked.
+Whole Windows API/DOM/tagged checks and ARMv5 cross-compilation pass; pinned
+Go1.26.8 Linux API vet/units/tagged vet, focused asset/TLS race-count3 and34
+runner controls pass. Negative runner cases require both transport receipts
+before/after restart and reject missing/excess/lookalike lines.
+The actual standard single-boot ARMv5 overlay exits0 with two exact HTTP and
+two exact HTTPS asset receipts, guest READY and every existing smoke guard
+satisfied. No second boot, full/native/hosted run or source-authenticity claim.
+This is a test-only packaging/transport qualification, not JavaScript/browser
+execution, independent source authenticity, certificate lifecycle or product
+deployment. Existing timeout, resource and privilege limits are unchanged.
+
 ## Management prerequisite: explicit desired user references
 
 The existing combined SMB/NFS manager can now add an unused desired user
@@ -24,7 +50,7 @@ focused HTTP race-count3 and32 runner contracts pass. Browser rendering and
 assistive-technology, physical deployment and product account workflows remain
 unqualified; QEMU asset checks do not execute JavaScript.
 
-The final standard ARMv5 overlay exits0 with the new user-operation/refusal
+The earlier M5.4d standard ARMv5 overlay exits0 with new user-operation/refusal
 markers present in embedded JavaScript over HTTP across the intentional API
 restart. Separate existing TLS/authentication/preview checks also pass; they do
 not establish HTTPS asset-marker parity. The final explanatory markup is outside the editor

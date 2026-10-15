@@ -177,6 +177,10 @@ func exerciseQEMUTLSWithAccountFactory(openAccounts func(string) (*accountStore,
 	if response.StatusCode != http.StatusCreated || response.TLS == nil || response.TLS.Version < tls.VersionTLS12 || !secureSessionCookie {
 		return errors.New("HTTPS account setup did not satisfy the TLS and cookie policy")
 	}
+	if err := exerciseQEMUDashboardAssets(client, transport.AllowedOrigin); err != nil {
+		return err
+	}
+	fmt.Printf("PHANTOWD_DASHBOARD_ASSETS_READY transport=https assets=%d byte_exact=true scope=qemu-loopback-only\n", len(qemuDashboardAssets))
 
 	if err := exerciseQEMUFileServicePreview(client, transport.AllowedOrigin); err != nil {
 		return err

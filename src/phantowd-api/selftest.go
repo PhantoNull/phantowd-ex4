@@ -277,26 +277,10 @@ func runSelfTest() error {
 	if strings.Contains(string(mountsData), "/dev/sda") || strings.Contains(string(mountsData), "errors=continue") {
 		return errors.New("mount source or raw mount option leaked through the API")
 	}
-	for _, asset := range qemuDashboardAssets {
-		response, err := client.Get("http://" + listenAddress + asset.path)
-		if err != nil {
-			return errors.New("dashboard loopback request failed")
-		}
-		data, readErr := io.ReadAll(io.LimitReader(response.Body, 65537))
-		response.Body.Close()
-		if readErr != nil || len(data) > 65536 || response.StatusCode != http.StatusOK ||
-			response.Header.Get("Content-Type") != asset.contentType || response.Header.Get("Cache-Control") != "no-store" {
-			return errors.New("invalid embedded dashboard asset")
-		}
-		for _, marker := range asset.markers {
-			if !strings.Contains(string(data), marker) {
-				return errors.New("dashboard asset failed its content assertion")
-			}
-		}
-		if asset.path == "/" && response.Header.Get("Content-Security-Policy") != "default-src 'none'; style-src 'self'; script-src 'self'; img-src 'self'; connect-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'" {
-			return errors.New("dashboard policy headers are missing or permissive")
-		}
+	if err := exerciseQEMUDashboardAssets(client, "http://"+listenAddress); err != nil {
+		return err
 	}
+	fmt.Printf("PHANTOWD_DASHBOARD_ASSETS_READY transport=http assets=%d byte_exact=true scope=qemu-loopback-only\n", len(qemuDashboardAssets))
 	for _, check := range []struct {
 		method, path string
 		status       int

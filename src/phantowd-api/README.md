@@ -1574,12 +1574,26 @@ the proposal form requires the real authenticated development API for that.
 Guest initialization probes the GET endpoints and QEMU-only authentication
 flow, verifies that QEMU's root block node appears through sysfs without being
 opened, rejects unauthorized and malformed operations, validates non-root
-identity and ARMv5 metadata, checks the embedded dashboard and static assets
-over guest loopback, rejects mutating/query dashboard requests, and prints an
+identity and ARMv5 metadata, checks all six embedded dashboard assets over
+guest-loopback HTTP and separately trusted temporary HTTPS, rejects mutating/query dashboard requests, and prints an
 RSS sample with a 48 MiB ceiling. It then restarts only the API process and
 verifies that the account reloads while sessions remain memory-only. A failure
 prevents QEMU readiness. The RSS sample is a smoke-test measurement, not a
 steady-state or real-EX4 benchmark.
+
+Both transports call the same QEMU-only asset verifier. Each decoded body must
+match this binary's embedded file byte-for-byte within the unchanged64KiB
+response limit, retain the declared feature markers and have exactly one
+expected MIME, no-store, nosniff and CSP header. Read/close/metadata/body failure
+refuses the fixture with fixed errors; response bodies are closed and no manual
+retry or timing budget is added. Root HTML and other assets keep their distinct
+CSP profiles. The standard runner requires two exact six-asset receipts per
+transport across its intentional API restart, not merely a TLS handshake marker.
+Host tests use actual loopback HTTP/HTTPS plus altered-marker-preserving, header,
+read/close, oversized, redirect and request-error controls. These assertions
+establish decoded-body parity to the running binary, not signed source/image
+authenticity, raw wire equality, JavaScript execution, browser layout or a
+production certificate provisioning/renewal workflow.
 
 QEMU uses a disposable disk snapshot and `restrict=on` with no host forwarding
 or physical device passthrough. No NAS address or credential is required.

@@ -2403,6 +2403,16 @@ milestone before enabling its controls; M1/M6 for deployment.
   the separate native timing campaign.
   Other panel flows, browser/load/heap, complete transport/teardown, hosted and
   product qualification remain separate. No activation or authority is added.
+  **M5.5h — exact HTTP/HTTPS dashboard asset fixtures:** use one verifier for all
+  six embedded assets over both existing loopback transports. Enforce64KiB
+  response bounds, exact decoded-body match, source markers, single exact MIME/
+  no-store/nosniff/CSP headers and body read/close success. Require both transports
+  before/after API restart; missing/excess/lookalike receipts refuse readiness.
+  Acceptance: real host HTTP/HTTPS, marker-preserving corruption and metadata/
+  read/close/overflow/redirect/error refusals, tagged race tests, actual ARM smoke
+  and runner-negative controls. This is packaging/transport parity within the
+  running binary, not browser execution, signed release provenance or product
+  certificate lifecycle; no timeout, privilege or normal startup change.
 - **M5.6 — Audit and diagnostics.** Record actor, operation ID, revisions and
   redacted outcome; bound retention. Export a sanitized support bundle that
   excludes credentials, private keys, passdb hashes and user file contents.
