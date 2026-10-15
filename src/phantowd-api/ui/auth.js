@@ -12,6 +12,7 @@ function setAuthError(message) {
 function showAuthUnavailable() {
   const moveFocus = ["dashboard-content", "logout", "auth-form"].some((id) => byId(id).contains(document.activeElement));
   retireAuthSubmission();
+  retireAuthMutation();
   clearSnapshot("Administrator session unavailable. No current diagnostic snapshot is shown.");
   clearGPTObservation("Administrator session unavailable. No GPT observation is shown.");
   clearPasswordFields();
@@ -31,10 +32,12 @@ function showAuthUnavailable() {
   if (moveFocus) byId("auth-title").focus({ preventScroll: true });
 }
 
-async function updateAuthView({ refresh = true, notice = "", current = () => true, signal } = {}) {
+async function updateAuthView({ refresh = true, notice = "", current = () => true, signal, requireSignedOut = false } = {}) {
   if (current() && authSubmission && signal !== authSubmission.controller.signal) retireAuthSubmission();
+  if (current() && authMutation && signal !== authMutation.controller.signal) retireAuthMutation();
   const status = await fetchJSON("/api/v1/auth/status", { signal });
   if (!current()) return;
+  if (requireSignedOut && status?.authenticated !== false) throw new Error("Session termination unconfirmed");
   const authPanel = byId("auth-panel");
   const dashboard = byId("dashboard-content");
   const logout = byId("logout");
@@ -84,6 +87,7 @@ async function updateAuthView({ refresh = true, notice = "", current = () => tru
 
 byId("auth-retry").addEventListener("click", async () => {
   retireAuthSubmission();
+  retireAuthMutation();
   const retry = byId("auth-retry");
   retry.disabled = true;
   setConnectionState("Checking local API…", "loading");
@@ -149,7 +153,7 @@ async function sendAuthCredentials(route, username, password, signal) {
 
 byId("auth-form").addEventListener("submit", async (event) => {
   event.preventDefault();
-  if (authSubmission) return;
+  if (authSubmission || authMutation) return;
   const form = byId("auth-form");
   const submit = byId("auth-submit");
   const error = byId("auth-error");
@@ -194,56 +198,97 @@ byId("auth-form").addEventListener("submit", async (event) => {
   if (authenticated) await refreshSnapshot();
 });
 
-let logoutBusy = false;
-async function signOut(all = false) {
-  if (logoutBusy || passwordBusy) return;
+let authMutation = null;
+
+function retireAuthMutation() {
+  const attempt = authMutation;
+  if (!attempt) return;
+  authMutation = null;
+  clearTimeout(attempt.timeout);
+  attempt.controller.abort();
+  clearPasswordFields();
+  for (const id of ["password-submit", "logout", "logout-all"]) byId(id).disabled = false;
+}
+
+function beginAuthMutation() {
   retireAuthSubmission();
-  logoutBusy = true;
+  const controller = new AbortController();
+  const attempt = { controller, timeout: setTimeout(() => controller.abort(), 10000) };
+  authMutation = attempt;
+  for (const id of ["password-submit", "logout", "logout-all"]) byId(id).disabled = true;
+  return attempt;
+}
+
+function finishAuthMutation(attempt) {
+  if (authMutation === attempt) retireAuthMutation();
+  else { clearTimeout(attempt.timeout); attempt.controller.abort(); }
+}
+
+async function readAuthMutationReply(path, signal, { csrf, body } = {}) {
+  const method = path === "/api/v1/auth/session" ? "GET" :
+    ["/api/v1/auth/logout", "/api/v1/auth/logout-all", "/api/v1/auth/password"].includes(path) ? "POST" : null;
+  if (!method || !signal || (method === "POST" && (typeof csrf !== "string" || csrf.length !== 43))) throw new Error("Session operation unavailable");
+  const canceled = () => Object.assign(new Error("Session operation canceled"), { name: "AbortError" });
+  const read = async () => {
+    const response = await fetch(path, {
+      method, headers: { Accept: "application/json", ...(csrf ? { "X-PhantoWD-CSRF": csrf } : {}), ...(body ? { "Content-Type": "application/json" } : {}) },
+      credentials: "same-origin", cache: "no-store", signal,
+      ...(body ? { body: JSON.stringify(body) } : {}),
+    });
+    if (signal.aborted || (!response.ok && path !== "/api/v1/auth/password")) {
+      try { Promise.resolve(response.body?.cancel()).catch(() => {}); } catch { /* preserve fixed refusal */ }
+      throw signal.aborted ? canceled() : new Error("Session operation unavailable");
+    }
+    const value = await readDiagnosticJSON(response, 16 * 1024, signal);
+    return { ok: response.ok, status: response.status, value };
+  };
+  // Includes pre-header waits even when an underlying transport ignores abort.
+  return new Promise((resolve, reject) => {
+    const abort = () => { signal.removeEventListener("abort", abort); reject(canceled()); };
+    if (signal.aborted) { abort(); return; }
+    signal.addEventListener("abort", abort, { once: true });
+    read().then(value => {
+      signal.removeEventListener("abort", abort);
+      if (signal.aborted) reject(canceled()); else resolve(value);
+    }, failure => { signal.removeEventListener("abort", abort); reject(failure); });
+  });
+}
+
+async function signOut(all = false) {
+  if (authMutation) return;
+  const attempt = beginAuthMutation();
+  const signal = attempt.controller.signal;
+  const current = () => authMutation === attempt && !signal.aborted;
   clearSnapshot("Signing out. Previous diagnostic observations were cleared.");
   clearServicePolicy();
   clearSavedPolicy();
   clearPolicyDraft();
   clearPasswordFields();
-  const logout = byId("logout");
-  logout.disabled = true;
-  byId("logout-all").disabled = true;
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 10000);
   try {
-    const sessionResponse = await fetch("/api/v1/auth/session", { credentials: "same-origin", cache: "no-store", signal: controller.signal });
-    if (!sessionResponse.ok) throw new Error("Session unavailable");
-    const session = await sessionResponse.json();
-    if (typeof session.csrf_token !== "string" || session.csrf_token.length !== 43) throw new Error("Session unavailable");
-    const response = await fetch(all ? "/api/v1/auth/logout-all" : "/api/v1/auth/logout", {
-      method: "POST",
-      headers: { Accept: "application/json", "X-PhantoWD-CSRF": session.csrf_token },
-      credentials: "same-origin",
-      cache: "no-store",
-      signal: controller.signal,
-    });
-    if (!response.ok) throw new Error("Could not safely end the session.");
-    await updateAuthView();
+    const session = await readAuthMutationReply("/api/v1/auth/session", signal);
+    if (!current()) return;
+    const response = await readAuthMutationReply(all ? "/api/v1/auth/logout-all" : "/api/v1/auth/logout", signal, { csrf: session.value?.csrf_token });
+    if (!current()) return;
+    if (response.value?.[all ? "all_panel_sessions_revoked" : "logged_out"] !== true) throw new Error("Session termination unconfirmed");
+    await updateAuthView({ refresh: false, current, signal, requireSignedOut: true });
   } catch {
+    if (authMutation !== attempt) return;
     showAuthUnavailable();
     setAuthError("Sign-out outcome could not be confirmed. Check connection status before signing in again; the request was not retried.");
   } finally {
-    clearTimeout(timeout);
-    logout.disabled = false;
-    byId("logout-all").disabled = false;
-    logoutBusy = false;
+    finishAuthMutation(attempt);
   }
 }
 byId("logout").addEventListener("click", () => signOut(false));
 byId("logout-all").addEventListener("click", () => signOut(true));
 
-let passwordBusy = false;
 function clearPasswordFields() {
   for (const id of ["password-current", "password-new", "password-confirm"]) byId(id).value = "";
 }
 
 byId("password-form").addEventListener("submit", async (event) => {
   event.preventDefault();
-  if (passwordBusy || logoutBusy) return;
+  if (authMutation) return;
   const currentPassword = byId("password-current").value;
   const newPassword = byId("password-new").value;
   const confirmation = byId("password-confirm").value;
@@ -252,47 +297,40 @@ byId("password-form").addEventListener("submit", async (event) => {
     setText("password-status", "Check the current password, use a different new passphrase of 15+ characters (at most 1024 UTF-8 bytes), and repeat it exactly.");
     return;
   }
-  retireAuthSubmission();
-  passwordBusy = true;
+  const attempt = beginAuthMutation();
+  const signal = attempt.controller.signal;
+  const current = () => authMutation === attempt && !signal.aborted;
   clearSnapshot("Changing credentials. Previous diagnostic observations were cleared.");
   clearPasswordFields();
   clearServicePolicy();
   clearSavedPolicy();
   clearPolicyDraft();
-  for (const id of ["password-submit", "logout", "logout-all"]) byId(id).disabled = true;
   setText("password-status", "Verifying and saving the new password…");
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 10000);
   try {
-    const sessionResponse = await fetch("/api/v1/auth/session", { credentials: "same-origin", cache: "no-store", signal: controller.signal });
-    if (!sessionResponse.ok) throw new Error("Session unavailable");
-    const session = await sessionResponse.json();
-    if (typeof session.csrf_token !== "string" || session.csrf_token.length !== 43) throw new Error("Session unavailable");
-    const response = await fetch("/api/v1/auth/password", {
-      method: "POST", headers: { Accept: "application/json", "Content-Type": "application/json", "X-PhantoWD-CSRF": session.csrf_token },
-      credentials: "same-origin", cache: "no-store", signal: controller.signal,
-      body: JSON.stringify({ current_password: currentPassword, new_password: newPassword }),
+    const session = await readAuthMutationReply("/api/v1/auth/session", signal);
+    if (!current()) return;
+    const response = await readAuthMutationReply("/api/v1/auth/password", signal, {
+      csrf: session.value?.csrf_token, body: { current_password: currentPassword, new_password: newPassword },
     });
-    const result = await response.json();
+    if (!current()) return;
+    const result = response.value;
     if (!response.ok) {
-      const message = response.status === 401 && result.error === "current_password_invalid" ? "Current password is not correct. No password was changed." :
-        response.status === 422 && result.error === "new_password_invalid" ? "The new password does not meet the requirements. No password was changed." :
-          response.status === 429 && result.error === "password_change_rate_limited" ? "Too many attempts. Wait one minute before trying again." : "";
+      const message = response.status === 401 && result?.error === "current_password_invalid" ? "Current password is not correct. No password was changed." :
+        response.status === 422 && result?.error === "new_password_invalid" ? "The new password does not meet the requirements. No password was changed." :
+          response.status === 429 && result?.error === "password_change_rate_limited" ? "Too many attempts. Wait one minute before trying again." : "";
       if (message) { setText("password-status", message); return; }
       throw new Error("Unconfirmed password change");
     }
-    if (result.password_changed !== true || result.reauthentication_required !== true || result.all_panel_sessions_revoked !== true) {
+    if (result?.password_changed !== true || result?.reauthentication_required !== true || result?.all_panel_sessions_revoked !== true) {
       throw new Error("Invalid confirmation");
     }
-    await updateAuthView({ refresh: false, notice: "Password changed. All panel sessions ended. Sign in with the new password." });
+    await updateAuthView({ refresh: false, current, signal, requireSignedOut: true, notice: "Password changed. All panel sessions ended. Sign in with the new password." });
   } catch {
+    if (authMutation !== attempt) return;
     showAuthUnavailable();
     setAuthError("Password-change outcome could not be confirmed. Do not repeat it automatically: reconnect and check sign-in with the new password first. If account storage is unavailable, stop and reconcile it. The request was not retried.");
   } finally {
-    clearTimeout(timeout);
-    clearPasswordFields();
-    for (const id of ["password-submit", "logout", "logout-all"]) byId(id).disabled = false;
-    passwordBusy = false;
+    finishAuthMutation(attempt);
   }
 });
 

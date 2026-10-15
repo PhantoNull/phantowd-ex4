@@ -621,7 +621,7 @@ function prepareSupportSnapshot(results) {
 
 function exportSupportSnapshot() {
   const button = byId("support-download");
-  if (!supportSnapshot || button.disabled || snapshotController || logoutBusy || passwordBusy || byId("dashboard-content").hidden) return;
+  if (!supportSnapshot || button.disabled || snapshotController || authMutation || byId("dashboard-content").hidden) return;
   button.disabled = true;
   let anchor, url;
   try {
@@ -660,7 +660,7 @@ function clearSnapshot(message) {
 }
 
 async function refreshSnapshot() {
-  if (snapshotController || logoutBusy || passwordBusy || byId("dashboard-content").hidden) return;
+  if (snapshotController || authMutation || byId("dashboard-content").hidden) return;
   const generation = ++snapshotGeneration;
   const controller = new AbortController();
   snapshotController = controller;

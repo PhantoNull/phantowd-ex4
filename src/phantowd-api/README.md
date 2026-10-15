@@ -289,6 +289,37 @@ headers, observes the real timer and checks status-only reconnect. This does
 not qualify server-operation cancellation, complete authentication/recovery,
 password-change/logout response bounds, production persistence or hardware.
 
+## M5.5l bounded password-change and sign-out operations
+
+Password replacement, local logout and global panel logout share one exclusive
+mutation lifetime. One ten-second controller covers the session/CSRF GET,
+mutation POST and final status GET, including headers and decoded bodies. Each
+JSON reply is limited to16KiB by the existing bounded UTF-8/structure reader;
+the authentication module has no `Response.json()` fallback. No stage renews
+the budget, and retirement releases controls/clears password inputs even if
+the transport ignores abort. Old replies and finalizers cannot change or unlock
+a replacement operation. Snapshot/report loading stays blocked during mutation.
+
+The UI requires the existing endpoint's actual success flags and a following
+status with `authenticated:false`, not merely HTTP200. Known password refusals
+retain fixed messages only for the matching401/422/429 error identifiers. Other
+errors, missing confirmations, incomplete bodies and expired outcomes hide
+data/form and require explicit status-only reconnect without mutation retry.
+Backend credential/session/revocation contracts and privileges are unchanged.
+An uncertain password change may already have happened remotely; browser abort
+does not prove cancellation/rollback. Timers depend on event-loop scheduling,
+and clearing fields does not zero every retained browser/network copy.
+
+Actual-source controls first reproduce logout waiting beyond its timer, then
+cover18 header/body stall seams, inclusive16KiB/excess and malformed replies,
+invalid CSRF sessions, network/HTTP errors, endpoint flags, still-authenticated
+status, duplicate mutations and retired/replacement ownership. The optional
+browser fixture additionally intercepts password/global-logout requests before
+the server receives them: real timers must release controls, retain uncertainty
+and reconcile status without retry. Original cookies remain valid in these
+intercepted cases; they are distinct from nominal revocation tests. This is
+not production persistence/recovery, simultaneous-tab or device qualification.
+
 ## M5.5c secondary text palette guard
 
 The small secondary-text `quiet` color is checked against the three declared
@@ -1660,6 +1691,11 @@ before headers. The real browser deadline must clear the input, release the
 button, hide the form and show the uncertain-outcome notice. Explicit reconnect
 then returns to sign-in without retrying credentials. Only the protocol request
 handle is retained, not its headers/body. This is not server-side cancellation.
+The same mode also intercepts one password change and one global logout before
+server delivery. Both real timers must show uncertainty, clear fields and
+release controls; original-cookie replay must still succeed. Explicit reconnect
+restores the authenticated partial snapshot without retrying either mutation.
+The existing90-second harness and80-second Go fixture limits are unchanged.
 
 Only system proc input is invented; storage/RAID/mount collectors are explicitly
 unavailable, with no host device/proc/sysfs collection. The partial snapshot

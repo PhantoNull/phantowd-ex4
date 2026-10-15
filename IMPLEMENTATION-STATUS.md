@@ -3,6 +3,45 @@
 
 # Implementation status
 
+## Dashboard: bounded password changes and session termination
+
+Password replacement, local logout and global panel logout now share one
+exclusive lifetime and original ten-second controller for session/CSRF GET,
+mutation POST and final status GET, including headers/bodies. Each decoded reply
+is capped at16KiB; the auth module no longer uses unbounded `Response.json()`.
+Retirement aborts/releases/clears input even when transport ignores cancellation;
+old replies/finalizers cannot alter or unlock a replacement attempt. Existing
+snapshot/report gates use this same mutation lifetime.
+
+Confirmation requires existing endpoint flags plus `authenticated:false` from
+status; HTTP200 or a still-authenticated/missing status is not success. Only
+matching401/422/429 password errors receive fixed known-refusal notices. Other
+outcomes hide data/form and require explicit status-only reconciliation without
+retry. Backend account, KDF/cookie/session/revocation contracts are unchanged.
+Browser abort is not remote rollback/cancellation; timer scheduling is not a
+hard wall-clock guarantee, and clearing input is not complete memory erasure.
+
+The actual logout header-wait failure is reproduced twice before correction.
+Actual-source controls cover18 session/POST/status header/body stalls, inclusive
+and excess16KiB replies, invalid/malformed data, CSRF/session and network/HTTP
+refusals, endpoint flags/status and duplicate/retired/replacement cases. Whole
+Windows and pinned Go1.26.8 Linux checks pass. Actual Edge passes nominal auth
+and original-cookie revocation plus controlled password/global-logout stalls.
+The intercepted requests never reach the server: original cookies remain valid,
+and explicit reconnect restores the authenticated partial snapshot without retry.
+This is not concurrent-tab, account persistence/recovery or EX4 qualification.
+
+The separate authentication module remains15,856bytes and app.js53,966bytes;
+all seven embedded assets stay within64KiB each. No image/volume/dependency or
+product activation is added. Earlier checkpoint claims below describe their
+dated scopes; the password/logout-bound gap is superseded only as stated here.
+
+The actual standard single-boot ARMv5 overlay exits0 with guest READY, all
+original smoke guards and two exact seven-asset HTTP/HTTPS receipts each across
+API restart. No browser executes in the guest. Base kernel/packages/probe and
+all resource/time limits remain unchanged; no new native/two-boot/full/hosted
+qualification, regenerated SBOM or repair of the failed native CI is claimed.
+
 ## Dashboard: bounded setup/login and seven-asset packaging
 
 Setup/login now use one ten-second browser deadline across credential POST

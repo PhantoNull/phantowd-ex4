@@ -2453,8 +2453,26 @@ milestone before enabling its controls; M1/M6 for deployment.
   and late/status-only reconciliation; real-browser controlled pre-header login
   stall; whole host/Linux and actual ARM asset smoke. Browser scheduling is not
   a hard wall-clock guarantee; abort is not server rollback/cancel proof.
-  Other mutation response bounds, concurrent tabs, production auth/recovery,
+  Concurrent tabs, production auth/recovery,
   certificate and full accessibility qualification remain separate.
+- **M5.5l — Bounded authenticated mutations (partial).** Password replacement,
+  local logout and global panel logout share one exclusive lifetime and original
+  ten-second controller through session/CSRF GET, mutation POST and final status.
+  Bound each decoded JSON response at16KiB; no unbounded JSON fallback or renewed
+  status timer. Require existing endpoint confirmation flags plus explicit
+  `authenticated:false`; HTTP200 alone is insufficient. Fixed password refusal
+  notices require the matching401/422/429 code. Unknown/expired outcomes hide
+  data/form and require explicit status-only reconnect, with no mutation retry.
+  Retirement cancels old work/releases controls/clears fields; old finalizers
+  cannot unlock replacements. Block snapshot/report work during the mutation.
+  Acceptance: actual-source RED/GREEN;18 session/POST/status header/body stalls,
+  inclusive/excess/malformed replies, invalid CSRF sessions, network/HTTP errors,
+  confirmation/refusal cases, duplicates and retired/replacement ownership;
+  actual-browser controlled password/global-logout stalls with original-cookie
+  validity and no false revocation/retry; whole host/Linux and ARM asset smoke.
+  Browser scheduling/abort is not hard wall clock or server cancellation/rollback.
+  Durable account recovery, concurrent tabs, other workflows, full security and
+  accessibility/product/hardware qualification remain separate.
 - **M5.6 — Audit and diagnostics.** Record actor, operation ID, revisions and
   redacted outcome; bound retention. Export a sanitized support bundle that
   excludes credentials, private keys, passdb hashes and user file contents.

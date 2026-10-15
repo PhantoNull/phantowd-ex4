@@ -383,7 +383,8 @@ async function testSnapshotAgeLifecycleAndPartialResults() {
   let failures = new Set();
   let pending = null;
   const h = await createHarness(async (path) => {
-    if (path === "/api/v1/auth/logout") { authenticated = false; return jsonResponse({}); }
+    if (path === "/api/v1/auth/logout") { authenticated = false; return jsonResponse({ logged_out: true }); }
+    if (path === "/api/v1/auth/session") return jsonResponse({ csrf_token: "x".repeat(43) });
     if (path === "/api/v1/auth/status") return jsonResponse({ configured: true, authenticated });
     if (pending) await pending;
     return failures.has(path) ? jsonResponse({}, 503) : snapshotResponse(path);
@@ -473,7 +474,7 @@ async function testAuthFocusMovesOnlyWhenItsControlIsHidden() {
       if (path === "/api/v1/auth/session") return jsonResponse({ csrf_token: "x".repeat(43) });
       if (path === (all ? "/api/v1/auth/logout-all" : "/api/v1/auth/logout")) {
         authenticated = false;
-        return jsonResponse({ signed_out: true });
+        return jsonResponse(all ? { all_panel_sessions_revoked: true } : { logged_out: true });
       }
       return snapshotResponse(path);
     });
@@ -642,7 +643,7 @@ async function testSnapshotLateSuccessCannotSurviveAuthBoundary() {
     const { context, elements, requests } = await createHarness(async (path) => {
       if (path === "/api/v1/auth/status") return jsonResponse({ authenticated: !ended, setup_required: false });
       if (path === "/api/v1/auth/session") return jsonResponse({ csrf_token: "x".repeat(43) });
-      if (path === "/api/v1/auth/logout" || path === "/api/v1/auth/logout-all") { ended = true; return jsonResponse({ signed_out: true }); }
+      if (path === "/api/v1/auth/logout" || path === "/api/v1/auth/logout-all") { ended = true; return jsonResponse(path.endsWith("logout-all") ? { all_panel_sessions_revoked: true } : { logged_out: true }); }
       if (path === "/api/v1/auth/password") {
         ended = true;
         return jsonResponse({ password_changed: true, reauthentication_required: true, all_panel_sessions_revoked: true });
@@ -2625,6 +2626,191 @@ async function testCredentialDuplicatesRetirementAndExplicitReconciliation() {
   process.stdout.write("Credential submission controls passed: header/body/status deadlines, 16KiB replies, duplicate/retired events, fixed refusals and explicit status-only reconciliation.\n");
 }
 await testCredentialDuplicatesRetirementAndExplicitReconciliation();
+
+async function mutationHarness(kind, reply) {
+  const timers = new Map();
+  let id = 0, statusReads = 0;
+  const route = `/api/v1/auth/${kind}`;
+  const h = await createHarness(async (path, options) => {
+    if (path === "/api/v1/auth/status") {
+      if (++statusReads === 1) return jsonResponse({ authenticated: true });
+      return reply("status", options);
+    }
+    if (path === "/api/v1/auth/session") return reply("session", options);
+    if (path === route) return reply("post", options);
+    return snapshotResponse(path);
+  }, {
+    setTimeout: (callback, delay) => { const timer = ++id; timers.set(timer, { callback, delay }); return timer; },
+    clearTimeout: timer => timers.delete(timer),
+  });
+  await settleUI();
+  const submit = () => {
+    if (kind !== "password") return h.context.signOut(kind === "logout-all");
+    h.elements["password-current"].value = "fixture-only old passphrase";
+    h.elements["password-new"].value = "fixture-only new passphrase";
+    h.elements["password-confirm"].value = "fixture-only new passphrase";
+    return h.elements["password-form"].listeners.get("submit")({ preventDefault() {} });
+  };
+  return { h, route, timers, submit };
+}
+
+function mutationReply(stage, kind) {
+  return stage === "session" ? { csrf_token: "x".repeat(43) } : stage === "status" ? { authenticated: false } :
+    kind === "password" ? { password_changed: true, reauthentication_required: true, all_panel_sessions_revoked: true } :
+      kind === "logout-all" ? { all_panel_sessions_revoked: true } : { logged_out: true };
+}
+
+async function testAuthMutationLifetimeIncludesAllReads() {
+  for (const kind of ["logout", "logout-all", "password"]) {
+    for (const phase of ["session", "post", "status"]) for (const boundary of ["headers", "body"]) {
+      let release;
+      const pending = new Promise(resolve => { release = resolve; });
+      const { h, route, timers, submit } = await mutationHarness(kind, stage =>
+        stage === phase ? boundary === "headers" ? pending : deferredJSONResponse(pending) : jsonResponse(mutationReply(stage, kind)));
+      let settled = false;
+      const operation = submit().then(() => { settled = true; });
+      await settleUI();
+      assert.equal(timers.size, 1, `${kind}/${phase}/${boundary} must retain one original deadline`);
+      const deadline = [...timers.values()][0];
+      assert.equal(deadline.delay, 10000);
+      deadline.callback();
+      await settleUI();
+      assert.equal(settled, true, `${kind}/${phase}/${boundary} must settle even when transport ignores abort`);
+      await operation;
+      for (const id of ["password-submit", "logout", "logout-all"]) assert.equal(h.elements[id].disabled, false);
+      assert.equal(h.elements["dashboard-content"].hidden, true);
+      assert.equal(h.elements["auth-form"].hidden, true);
+      assert.equal(h.elements["auth-retry"].hidden, false);
+      assert.match(h.elements["auth-error"].textContent, /could not be confirmed.*not retried/is);
+      assert.equal(timers.size, 0);
+      const count = h.requests.length;
+      release(boundary === "headers" ? jsonResponse(mutationReply(phase, kind)) : mutationReply(phase, kind));
+      await settleUI();
+      assert.equal(h.requests.length, count, "Late mutation completion cannot post or reconcile status");
+      assert.equal(h.elements["dashboard-content"].hidden, true);
+      assert.equal(h.requests.filter(request => request.path === route).length, phase === "session" ? 0 : 1);
+    }
+  }
+}
+await testAuthMutationLifetimeIncludesAllReads();
+
+async function testAuthMutationReplyBoundsAndConfirmation() {
+  for (const kind of ["logout", "logout-all", "password"]) {
+    for (const value of [null, {}, { csrf_token: 43 }, { csrf_token: "x".repeat(42) }, { csrf_token: "x".repeat(44) }]) {
+      const { h, route, timers, submit } = await mutationHarness(kind, stage => jsonResponse(stage === "session" ? value : mutationReply(stage, kind)));
+      await submit();
+      assert.equal(timers.size, 0);
+      assert.equal(h.requests.filter(request => request.path === route).length, 0, "Invalid session cannot authorize a mutation POST");
+      assert.equal(h.elements["auth-retry"].hidden, false);
+    }
+    for (const stage of ["session", "post", "status"]) for (const failure of ["network", "http"]) {
+      const { h, timers, submit } = await mutationHarness(kind, actualStage => {
+        if (actualStage !== stage) return jsonResponse(mutationReply(actualStage, kind));
+        if (failure === "network") throw new Error("PRIVATE-SENTINEL");
+        return jsonResponse({ error: "PRIVATE-SENTINEL" }, 503);
+      });
+      await submit();
+      assert.equal(timers.size, 0);
+      assert.equal(h.elements["auth-retry"].hidden, false);
+      assert.match(h.elements["auth-error"].textContent, /could not be confirmed/);
+      assert.doesNotMatch(h.elements["auth-error"].textContent, /PRIVATE-SENTINEL/);
+    }
+    for (const stage of ["session", "post", "status"]) {
+      for (const failure of ["inclusive", "oversize", "invalid-json", "invalid-utf8", "deep"]) {
+        let unbounded = 0;
+        const { h, timers, route, submit } = await mutationHarness(kind, actualStage => {
+          if (actualStage !== stage) return jsonResponse(mutationReply(actualStage, kind));
+          const text = JSON.stringify(mutationReply(stage, kind));
+          let bytes = failure === "invalid-utf8" ? new Uint8Array([255]) : new TextEncoder().encode(
+            failure === "invalid-json" ? "PRIVATE-SENTINEL" : failure === "deep" ? "[".repeat(17) + "null" + "]".repeat(17) :
+              text + " ".repeat((failure === "inclusive" ? 16384 : 16385) - text.length));
+          return { ok: true, status: 200,
+            body: new ReadableStream({ start(controller) { controller.enqueue(bytes); controller.close(); } }),
+            json: () => { unbounded++; throw new Error("PRIVATE-SENTINEL unbounded fallback"); } };
+        });
+        await submit();
+        assert.equal(unbounded, 0);
+        assert.equal(timers.size, 0);
+        assert.equal(h.elements["auth-form"].hidden, failure !== "inclusive", `${kind}/${stage}/${failure}`);
+        if (failure !== "inclusive") assert.match(h.elements["auth-error"].textContent, /could not be confirmed/);
+        assert.doesNotMatch(h.elements["auth-error"].textContent, /PRIVATE-SENTINEL/);
+        assert.equal(h.requests.filter(request => request.path === route).length, failure !== "inclusive" && stage === "session" ? 0 : 1);
+      }
+    }
+    for (const value of [{}, null, { authenticated: true }, { authenticated: "false" }]) {
+      const { h, submit, timers } = await mutationHarness(kind, stage => jsonResponse(stage === "status" ? value : mutationReply(stage, kind)));
+      await submit();
+      assert.equal(timers.size, 0);
+      assert.equal(h.elements["dashboard-content"].hidden, true);
+      assert.equal(h.elements["auth-retry"].hidden, false, "Successful mutation reply alone cannot confirm sign-out");
+      assert.match(h.elements["auth-error"].textContent, /could not be confirmed/);
+    }
+    for (const value of [{}, null, { logged_out: false, all_panel_sessions_revoked: false }, { signed_out: true }]) {
+      const { h, submit } = await mutationHarness(kind, stage => jsonResponse(stage === "post" ? value : mutationReply(stage, kind)));
+      await submit();
+      assert.equal(h.elements["auth-retry"].hidden, false, "Require current endpoint's actual confirmation flags");
+      assert.equal(h.requests.filter(request => request.path === "/api/v1/auth/status").length, 1);
+    }
+  }
+  for (const [status, error, definite] of [
+    [401, "current_password_invalid", true], [422, "new_password_invalid", true], [429, "password_change_rate_limited", true],
+    [401, "PRIVATE-SENTINEL", false], [422, "PRIVATE-SENTINEL", false], [429, "PRIVATE-SENTINEL", false], [503, "PRIVATE-SENTINEL", false],
+  ]) {
+    const { h, timers, submit } = await mutationHarness("password", stage =>
+      stage === "post" ? jsonResponse({ error }, status) : jsonResponse(mutationReply(stage, "password")));
+    await submit();
+    assert.equal(timers.size, 0);
+    assert.equal(h.elements["dashboard-content"].hidden, !definite);
+    assert.doesNotMatch(h.elements["auth-error"].textContent + h.elements["password-status"].textContent, /PRIVATE-SENTINEL/);
+  }
+}
+await testAuthMutationReplyBoundsAndConfirmation();
+
+async function testAuthMutationRetirementAndReplacement() {
+  for (const kind of ["logout", "logout-all", "password"]) for (const stage of ["session", "post", "status"]) {
+    let oldRelease, newRelease, retiring = false, replacing = false;
+    const oldPending = new Promise(resolve => { oldRelease = resolve; });
+    const newPending = new Promise(resolve => { newRelease = resolve; });
+    const { h, timers, route, submit } = await mutationHarness(kind, actualStage => {
+      if (!retiring && actualStage === stage) return oldPending;
+      if (retiring && !replacing && actualStage === "status") return jsonResponse({ authenticated: true });
+      if (replacing && actualStage === "post") return newPending;
+      return jsonResponse(mutationReply(actualStage, kind));
+    });
+    let settled = false;
+    const old = submit().then(() => { settled = true; });
+    await settleUI();
+    const deadline = [...timers.values()][0].callback;
+    const before = h.requests.length;
+    await submit();
+    await h.context.signOut(kind !== "logout-all");
+    assert.equal(h.requests.length, before, "All auth mutations share one single-flight gate");
+    h.context.showAuthUnavailable();
+    await settleUI();
+    assert.equal(settled, true, "Auth-view retirement must settle old work without waiting for its timer");
+    await old;
+    retiring = true;
+    await h.context.updateAuthView({ refresh: false });
+    replacing = true;
+    const replacement = submit();
+    await settleUI();
+    const request = h.requests.filter(request => request.path === route).at(-1);
+    const count = h.requests.length;
+    oldRelease(jsonResponse(mutationReply(stage, kind))); deadline();
+    await settleUI();
+    assert.equal(h.requests.length, count);
+    assert.equal(request.options.signal.aborted, false);
+    assert.equal(timers.size, 1);
+    for (const id of ["password-submit", "logout", "logout-all"]) assert.equal(h.elements[id].disabled, true, "Old finalizer cannot unlock replacement");
+    newRelease(jsonResponse(mutationReply("post", kind)));
+    await replacement;
+    assert.equal(timers.size, 0);
+    assert.equal(h.elements["auth-form"].hidden, false);
+  }
+  assert.ok(!authSource.includes(".json()"), "Auth UI must not fall back to unbounded Response.json");
+  process.stdout.write("Auth mutation controls passed: session/POST/status headers+body deadlines=18, inclusive16KiB/refusals, endpoint confirmation, fixed errors, duplicate/retired work and replacement ownership.\n");
+}
+await testAuthMutationRetirementAndReplacement();
 
 async function testDiagnosticStructureIsBoundedBeforeParsing() {
   let deep = null;

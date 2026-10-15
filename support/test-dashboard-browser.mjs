@@ -113,7 +113,7 @@ class CDP {
         } else if (message.method === "Runtime.exceptionThrown") {
           this.exceptions++;
         } else if (message.method === "Fetch.requestPaused") {
-          assert.ok(this.paused.length < 2, "interception count exceeded");
+          assert.ok(this.paused.length < 3, "interception count exceeded");
           // Retain only the protocol request handle, never credentials/headers.
           this.paused.push(message.params.requestId);
         } else if (message.method === "Network.requestWillBeSent") {
@@ -232,7 +232,7 @@ try {
   await send("Page.navigate", { url: origin });
   const snapshotReady = apiFixture ? `!document.getElementById('dashboard-content').hidden && !document.getElementById('refresh').disabled && document.getElementById('kernel-value').textContent === 'Linux 6.18.53' && document.getElementById('snapshot-status').textContent === 'system observation is current. storage, RAID, mount observations unavailable. Failed values were cleared.'` :
     `document.getElementById('snapshot-status')?.textContent === 'Read-only system, storage, RAID, and mount observations updated.' && !document.getElementById('refresh').disabled`;
-  const signInReady = `!document.getElementById('auth-panel').hidden && !document.getElementById('auth-submit').disabled && document.getElementById('auth-form').dataset.mode === 'login'`;
+  const signInReady = `!document.getElementById('auth-panel').hidden && !document.getElementById('auth-form').hidden && !document.getElementById('auth-submit').disabled && document.getElementById('auth-form').dataset.mode === 'login'`;
   const submitLogin = async (password) => {
     await evaluate(`(() => { document.getElementById('auth-username').value = 'browser-admin'; document.getElementById('auth-password').value = ${JSON.stringify(password)}; document.getElementById('auth-submit').click(); })()`);
   };
@@ -339,6 +339,32 @@ try {
     await evaluate("document.getElementById('auth-retry').click()");
     await until(() => evaluate(signInReady), browser, "explicit status-only reconciliation");
     assert.equal(cdp.paused.length, 1, "credential request must not automatically retry");
+    await submitLogin(nextPassword);
+    await until(() => evaluate(snapshotReady), browser, "login for controlled mutation failures");
+    for (const action of ["password", "logout-all"]) {
+      const path = `/api/v1/auth/${action}`;
+      const paused = cdp.paused.length;
+      const posts = () => cdp.requests.filter(r => new URL(r.url).pathname === path && r.method === "POST").length;
+      const before = posts();
+      oldCookie = await currentCookie();
+      await send("Fetch.enable", { patterns: [{ urlPattern: origin + path, requestStage: "Request" }] });
+      if (action === "password") {
+        await evaluate(`(() => { document.getElementById('password-panel').open = true; document.getElementById('password-current').value = ${JSON.stringify(nextPassword)}; document.getElementById('password-new').value = 'browser fixture intercepted third passphrase'; document.getElementById('password-confirm').value = 'browser fixture intercepted third passphrase'; document.getElementById('password-submit').click(); })()`);
+      } else await evaluate("document.getElementById('logout-all').click()");
+      await until(() => cdp.paused.length === paused + 1, browser, "controlled mutation interception");
+      await until(() => evaluate(`document.getElementById('auth-form').hidden && !document.getElementById('auth-retry').hidden && document.getElementById('auth-error').textContent.includes('not retried')`), browser, "mutation header deadline", 15000);
+      assert.equal(await evaluate("['password-submit', 'logout', 'logout-all'].every(id => !document.getElementById(id).disabled)"), true);
+      assert.equal(await evaluate("['password-current', 'password-new', 'password-confirm'].every(id => document.getElementById(id).value === '')"), true);
+      await send("Fetch.failRequest", { requestId: cdp.paused[paused], errorReason: "Aborted" }).catch(() => {});
+      await send("Fetch.disable");
+      // Interception deliberately prevents the mutation reaching the server:
+      // the old cookie remains valid, so do not report confirmed revocation.
+      assert.equal(await cookieStatus(oldCookie), 200);
+      oldCookie = undefined;
+      await evaluate("document.getElementById('auth-retry').click()");
+      await until(() => evaluate(snapshotReady), browser, "mutation status-only reconciliation");
+      assert.equal(posts(), before + 1, "uncertain mutation must not automatically retry");
+    }
   }
   assert.equal(cdp.exceptions, 0, "uncaught page JavaScript exception");
   assert.ok(!cdp.fault, "browser protocol observation failed");
@@ -357,6 +383,7 @@ try {
     uncaught_exceptions: cdp.exceptions, actual_go_auth_memory_fixture: Boolean(apiFixture),
     original_cookie_revocation_checked: Boolean(apiFixture), authentication_qualified: false, hardware_qualified: false,
     intercepted_credential_deadline: Boolean(apiFixture),
+    intercepted_auth_mutation_deadlines: apiFixture ? ["password", "logout-all"] : [],
   };
   successful = true;
 } catch (error) {
