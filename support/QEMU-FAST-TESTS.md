@@ -2093,8 +2093,14 @@ with all original proofs. Guest180/data35/worker limits are unchanged.
 Use the existing matching pinned image, workspace and manifest-verified base:
 
 ```powershell
-.\support\test-samba-root.ps1 -Campaign lifecycle -DiagnosticLogs
+.\support\test-samba-root.ps1 -Campaign native -DiagnosticLogs
 ```
+
+Choose one campaign for the question being investigated. `native` retains the
+complete original live-revocation and post-revocation data sequence. Use
+`-Campaign native-data` only for the independently enrolled descriptor/data
+probe above; `-Campaign lifecycle` instead investigates its separate startup/
+revocation coordinator. These narrower scopes cannot qualify the original trace.
 
 Do not edit source or run another build against the same workspace while it
 executes. Preserve the exact Git revision, uncommitted changes, base manifest,
@@ -2120,6 +2126,7 @@ remain unchanged; a last row does not identify a blocked instruction.
 | --- | --- | --- |
 | Initial native preparation, 20 s | Original Owner/backend construction and admission; precedes `phase=admitted` | Account enrollment has completed |
 | Native enrollment, 60 s | Both disabled-first journaled enrollments and explicit enable, after successful preparation; precedes `phase=enrolled` | The later coordinator operation was reached |
+| Native peer/session observation, 4 s | Runtime admission, typed status command, settlement and post-admission, bounded also by the parent | Only the subprocess exceeded its execution limit, or the outer guest expired |
 | Lifecycle preparation, 20 s | Original journal admission, canceled-disable refusal and creation/qualification of two held clients | Revocation or continuity has completed |
 | Lifecycle revocation, 45 s | Stale-revision refusal, actual disable, successor journal and original peer/new-login verification | Every individual worker exceeded its own deadline |
 | Guest, 180 s | The complete disposable boot and selected campaign | A specific account, worker or coordinator caused expiry |
@@ -2131,6 +2138,20 @@ when changing their orchestration. A cumulative parent deadline can expire
 after several individually successful operations; a child deadline can also
 expire while its parent still has time. Neither permits ignoring uncertainty,
 reusing reviewed authority or skipping a verification.
+
+Recent local controls reach different first failures: enrollment expiry under
+reduced CPU and a native peer/session post-admission expiry at the normal
+container CPU quota. Neither reached the data probe. A separately enrolled
+`native-data` control completes that probe in about 17 seconds, with transfers
+and denials verified, but does not reproduce its post-revocation input history.
+These observations do not establish the hosted root cause or a timing repair.
+Increasing only the guest limit cannot repair an earlier child expiry. Inspect
+all applicable bounds before proposing a budget change; do not silently widen
+them, remove checks or retry the same campaign to obtain a lucky green.
+
+QEMU can exit zero after the guest reports a fixture failure and reboots. The
+wrapper and complete required-proof verifier must also pass; `guest_exit=0` in
+a non-qualifying diagnostic record is not a successful campaign receipt.
 
 The QEMU-only native driver gives preparation20 and enrollment60 separate
 single-use phases instead of their former shared60 context. This raises the

@@ -17,6 +17,18 @@ No new Owner handle, API, command retry, durable quarantine/recovery, product
 startup or physical-device qualification is provided. Callers must treat review
 as stronger than coexisting invalid/busy admission errors.
 
+## Native integration: distinct deadline failures remain open
+
+The latest original native controls fail before the data probe: one reduced-CPU
+run reaches enrollment expiry, while a normal-quota run reaches a peer/session
+post-admission deadline. Neither is a passing regression. An independently
+enrolled data-only control passes its original proofs and measures about 17 s
+inside the descriptor/data probe, without qualifying post-revocation behavior.
+Temporary profiling is removed. There is no demonstrated hosted timing fix;
+changing only the outer guest limit would not address these inner expiries.
+All existing bounds, checks and the default ten-campaign union remain unchanged.
+See the [local diagnostic scopes](support/QEMU-FAST-TESTS.md#diagnose-a-native-fixture-timeout-before-a-full-ci-build).
+
 ## Dashboard: explicit browser snapshot load age
 
 The overview displays monotonic elapsed browser time since the current complete
