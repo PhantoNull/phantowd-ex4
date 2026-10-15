@@ -13,6 +13,7 @@ import (
 	"strings"
 
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/runtimebundle"
+	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/smbexec"
 )
 
 // Diagnostics identify a fixed fixture boundary, never prove qualification or
@@ -24,7 +25,50 @@ func plannedFaultFailureDiagnosticQEMU(phase string, err error) string {
 	}
 	output := fmt.Sprintf("PHANTOWD_QEMU_PLANNED_FAULT_FAILURE phase=%s deadline=%t review=%t scope=diagnostic-only\n", phase, errors.Is(err, context.DeadlineExceeded), errors.Is(err, runtimebundle.ErrReviewRequired))
 	return output + plannedDataFailureDiagnosticQEMU(runtimebundle.ObserveNativeDataFailureQEMU(err)) +
-		plannedDataClockDiagnosticQEMU(runtimebundle.ObserveNativeDataClockQEMU(err)) + plannedExitFailureDiagnosticQEMU(err)
+		plannedDataClockDiagnosticQEMU(runtimebundle.ObserveNativeDataClockQEMU(err)) +
+		plannedServiceFailureDiagnosticQEMU(smbexec.ObserveNativePlannedFailureQEMU(err)) + plannedExitFailureDiagnosticQEMU(err)
+}
+
+func plannedServiceFailureDiagnosticQEMU(failure smbexec.NativePlannedFailureObservationQEMU) string {
+	if !failure.Present {
+		return ""
+	}
+	contextDone, deadlineReached := "unavailable", "unavailable"
+	if failure.ContextPresent {
+		contextDone = strconv.FormatBool(failure.ContextDone)
+	}
+	if failure.ContextPresent && failure.DeadlinePresent {
+		deadlineReached = strconv.FormatBool(failure.DeadlineReached)
+	}
+	if (!failure.ContextPresent && (failure.ContextDone || failure.DeadlinePresent || failure.DeadlineReached)) || (!failure.DeadlinePresent && failure.DeadlineReached) {
+		return ""
+	}
+	row := "PHANTOWD_QEMU_PLANNED_SERVICE_FAILURE boundary=" + failure.Boundary + " context_done=" + contextDone + " deadline_reached=" + deadlineReached + " scope=diagnostic-only"
+	if !validPlannedServiceFailureDiagnosticQEMU(strings.Split(row, " ")) {
+		return ""
+	}
+	return row + "\n"
+}
+
+func validPlannedServiceFailureDiagnosticQEMU(fields []string) bool {
+	if len(fields) != 5 || fields[0] != "PHANTOWD_QEMU_PLANNED_SERVICE_FAILURE" || fields[4] != "scope=diagnostic-only" {
+		return false
+	}
+	if fields[2] != "context_done=true" && fields[2] != "context_done=false" && fields[2] != "context_done=unavailable" {
+		return false
+	}
+	if fields[3] != "deadline_reached=true" && fields[3] != "deadline_reached=false" && fields[3] != "deadline_reached=unavailable" {
+		return false
+	}
+	if fields[2] == "context_done=unavailable" && fields[3] != "deadline_reached=unavailable" {
+		return false
+	}
+	switch fields[1] {
+	case "boundary=verify-source-set", "boundary=verify-role", "boundary=verify-share-pins", "boundary=verify-owners", "boundary=verify-freshness", "boundary=verify-held-session", "boundary=verify-held-file", "boundary=data-admission", "boundary=data-state":
+		return true
+	default:
+		return false
+	}
 }
 
 func plannedDataClockDiagnosticQEMU(c runtimebundle.NativeDataClockObservationQEMU) string {
@@ -114,6 +158,12 @@ func plannedFaultSubprocessDiagnosticQEMU(ctxErr, runErr error, captured, proof 
 	seen := make(map[string]bool)
 	for _, line := range strings.Split(captured, "\n") {
 		fields := strings.Split(line, " ")
+		if validPlannedServiceFailureDiagnosticQEMU(fields) && !seen["service-boundary"] {
+			seen["service-boundary"] = true
+			output.WriteString(line)
+			output.WriteByte('\n')
+			continue
+		}
 		if validPlannedDataClockDiagnosticQEMU(fields) && !seen["data-clock"] {
 			seen["data-clock"] = true
 			output.WriteString(line)

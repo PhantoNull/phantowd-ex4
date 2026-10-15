@@ -165,21 +165,27 @@ func (s *NativePlannedServiceQEMU) enter(ctx context.Context) error {
 // reversing that order or invoking it from a runtime callback would deadlock.
 func (s *NativePlannedServiceQEMU) verify(ctx context.Context) error {
 	if err := s.inputs.Shares.VerifySourceSetQEMU(s.inputs.Storage); err != nil {
-		return err
+		return plannedFailureQEMU(ctx, "verify-source-set", err)
 	}
 	candidate, err := s.roles.ServiceCandidate()
-	if err != nil || candidate.VerifySharePinsQEMU(s.inputs.Shares) != nil {
-		return runtimebundle.ErrReviewRequired
+	if err != nil {
+		return plannedFailureQEMU(ctx, "verify-role", runtimebundle.ErrReviewRequired)
+	}
+	if candidate.VerifySharePinsQEMU(s.inputs.Shares) != nil {
+		return plannedFailureQEMU(ctx, "verify-share-pins", runtimebundle.ErrReviewRequired)
 	}
 	fresh, err := fileserviceplan.BuildFromRetainedOwners(ctx, s.inputs.Policy, s.inputs.ActiveRevision, s.lease, s.inputs.Storage)
-	if err != nil || !s.plan.FreshAgainst(fresh.Freshness()) {
-		return errors.Join(runtimebundle.ErrReviewRequired, err)
+	if err != nil {
+		return plannedFailureQEMU(ctx, "verify-owners", errors.Join(runtimebundle.ErrReviewRequired, err))
+	}
+	if !s.plan.FreshAgainst(fresh.Freshness()) {
+		return plannedFailureQEMU(ctx, "verify-freshness", errors.Join(runtimebundle.ErrReviewRequired, err))
 	}
 	if s.heldSession.backend != nil {
-		return s.inputs.Backend.VerifyPlannedSessionQEMU(ctx, s.heldSession)
+		return plannedFailureQEMU(ctx, "verify-held-session", s.inputs.Backend.VerifyPlannedSessionQEMU(ctx, s.heldSession))
 	}
 	if s.heldFile.backend != nil {
-		return s.verifyPlannedOriginalFileQEMU(ctx)
+		return plannedFailureQEMU(ctx, "verify-held-file", s.verifyPlannedOriginalFileQEMU(ctx))
 	}
 	return nil
 }
@@ -338,11 +344,11 @@ func (s *NativePlannedServiceQEMU) Start(ctx context.Context) error {
 // startup-bound runtime. It accepts no replacement authority or command.
 func (s *NativePlannedServiceQEMU) VerifyDataAccess(ctx context.Context) error {
 	if err := s.enter(ctx); err != nil {
-		return err
+		return plannedFailureQEMU(ctx, "data-admission", err)
 	}
 	defer func() { <-s.gate }()
 	if s.closed || s.review || !s.started || s.stopped || s.dataAttempted {
-		return runtimebundle.ErrReviewRequired
+		return plannedFailureQEMU(ctx, "data-state", runtimebundle.ErrReviewRequired)
 	}
 	s.dataAttempted = true
 	if err := s.verify(ctx); err != nil {

@@ -304,6 +304,14 @@ Fresh complete planning is outside the runtime gate, under storage-first
 ordering. Uncertainty retains review; verified runtime closure precedes release
 of either original authority, and uncertain closure is never retried.
 
+QEMU-only refusal diagnostics retain the first fixed verification/data-admission
+boundary and an immutable context/deadline-state snapshot taken before quarantine.
+Missing context/deadline information is explicit, not inferred from the error
+chain. Only fixed labels/flags are disclosed; original causes remain available
+through `errors.Is`/`errors.As`. These observations do not authorize a service,
+extend an execution limit or prove settlement. Successful exact child proofs
+remain free of diagnostic rows.
+
 Its single-use `VerifyDataAccess` exercises six fixed clients through the SAME
 already-running service. It accepts no alternate runtime, root, credential,
 command or backend. Cancel/busy/unstarted/repeated operations refuse; complete

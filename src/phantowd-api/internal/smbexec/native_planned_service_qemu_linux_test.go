@@ -17,6 +17,26 @@ import (
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/runtimebundle"
 )
 
+func TestNativePlannedVerificationRefusalIdentifiesFixedBoundary(t *testing.T) {
+	// Real refusal before any authority/process exists, not a healthy backend.
+	service := &NativePlannedServiceQEMU{}
+	err := service.verify(context.Background())
+	if err == nil || err.Error() != "native planned refusal boundary=verify-source-set" {
+		t.Fatalf("actual source-set refusal has no fixed boundary: %v", err)
+	}
+}
+
+func TestNativePlannedDataStateRefusalIdentifiesFixedBoundary(t *testing.T) {
+	service := &NativePlannedServiceQEMU{gate: make(chan struct{}, 1)}
+	err := service.VerifyDataAccess(context.Background())
+	if !errors.Is(err, runtimebundle.ErrReviewRequired) || err.Error() != "native planned refusal boundary=data-state" {
+		t.Fatalf("actual unstarted refusal lost state boundary/semantics: %v", err)
+	}
+	if service.dataAttempted || service.review || len(service.gate) != 0 {
+		t.Fatal("diagnostic refusal changed service ownership/state")
+	}
+}
+
 func TestNativePlannedServiceRefusesAbsentAuthorityBeforeOwnershipTransfer(t *testing.T) {
 	ctx := context.Background()
 	for _, inputs := range []NativePlannedInputsQEMU{

@@ -15,7 +15,54 @@ import (
 
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/processowner"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/runtimebundle"
+	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/smbexec"
 )
+
+func TestPlannedServiceFailureDiagnosticKeepsFirstRedactedBoundary(t *testing.T) {
+	const row = "PHANTOWD_QEMU_PLANNED_SERVICE_FAILURE boundary=verify-owners context_done=true deadline_reached=true scope=diagnostic-only\n"
+	const later = "PHANTOWD_QEMU_PLANNED_SERVICE_FAILURE boundary=verify-freshness context_done=false deadline_reached=false scope=diagnostic-only\n"
+	const prefix = "PHANTOWD_QEMU_PLANNED_FAULT_SUBPROCESS_FAILURE deadline=false child_failed=true proof_match=false scope=diagnostic-only\n"
+	const proof = "exact-child-proof\n"
+	private := errors.New("private-account/password/path")
+	if got := plannedFaultSubprocessDiagnosticQEMU(nil, private, row+row+later, proof); got != prefix+row {
+		t.Fatal("first boundary missing/replaced", got)
+	}
+	for _, bad := range []string{
+		strings.Replace(row, "verify-owners", "private-path", 1),
+		strings.Replace(row, "boundary=", "private=", 1),
+		strings.Replace(row, "scope=diagnostic-only", "scope=qualified", 1),
+		strings.Replace(row, "context_done=true", "context_done=private", 1),
+		strings.Replace(row, "deadline_reached=true", "deadline_reached=1", 1),
+		strings.Replace(row, "context_done=true", "context_done=unavailable", 1),
+		strings.TrimSuffix(row, "\n") + " private-secret\n",
+		strings.Replace(row, "boundary=verify-owners", "boundary=verify-owners\r", 1),
+	} {
+		if got := plannedFaultSubprocessDiagnosticQEMU(nil, private, bad, proof); got != prefix {
+			t.Fatal("untrusted service label relayed", got)
+		}
+	}
+	if got := plannedFaultSubprocessDiagnosticQEMU(nil, nil, row+proof, proof); !strings.Contains(got, "child_failed=false proof_match=false") {
+		t.Fatal("telemetry weakened exact successful child proof", got)
+	}
+	for _, invalid := range []smbexec.NativePlannedFailureObservationQEMU{{Boundary: "verify-owners"}, {Present: true, Boundary: private.Error()}, {Present: true, Boundary: "verify-owners", DeadlinePresent: true}, {Present: true, Boundary: "verify-owners", ContextPresent: true, DeadlineReached: true}} {
+		if plannedServiceFailureDiagnosticQEMU(invalid) != "" {
+			t.Fatal("missing/unknown service boundary emitted")
+		}
+	}
+	// Exercise the actual negative service admission, not an invented success.
+	var service *smbexec.NativePlannedServiceQEMU
+	err := service.VerifyDataAccess(context.Background())
+	got := plannedFaultFailureDiagnosticQEMU("data", err)
+	want := "PHANTOWD_QEMU_PLANNED_FAULT_FAILURE phase=data deadline=false review=false scope=diagnostic-only\nPHANTOWD_QEMU_PLANNED_SERVICE_FAILURE boundary=data-admission context_done=false deadline_reached=unavailable scope=diagnostic-only\n"
+	if got != want {
+		t.Fatal("real negative boundary did not reach fixed outer emitter", got)
+	}
+	for _, boundary := range []string{"verify-source-set", "verify-role", "verify-share-pins", "verify-owners", "verify-freshness", "verify-held-session", "verify-held-file", "data-admission", "data-state"} {
+		if got := plannedServiceFailureDiagnosticQEMU(smbexec.NativePlannedFailureObservationQEMU{Present: true, Boundary: boundary}); got == "" {
+			t.Fatal("fixed observed label refused", boundary)
+		}
+	}
+}
 
 func TestPlannedDataClockDiagnosticRelayKeepsFirstBoundedRow(t *testing.T) {
 	const row = "PHANTOWD_QEMU_PLANNED_DATA_CLOCK elapsed_ms=17001 entered_remaining_ms=17000 failed_remaining_ms=0 context_done=true deadline_reached=true scope=diagnostic-only\n"
