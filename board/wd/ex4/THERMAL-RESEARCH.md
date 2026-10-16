@@ -102,6 +102,10 @@ them individually at `0x8b6c–0x8b94`. No integrity-field calculation appears i
 these selected builders/forwarders. Literal zero bytes must not be named or
 validated as checksums on that evidence. The existing generic ACK flag does
 not establish a per-command execution receipt, acceptance or safe retry.
+The [selected transport analysis](FRONT-PANEL-RESEARCH.md#selected-transport-errors-retry-and-ack-association)
+now distinguishes11 queue attempts from10 general wire attempts, ignored write/
+setup errors and stale global ACK association. None establishes that a requested
+fan level was applied, nor authorizes retrying a cooling command.
 
 ## Tachometer and register-error boundary
 

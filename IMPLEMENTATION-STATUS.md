@@ -500,6 +500,21 @@ qualification, and it does not resolve the pending native timing contract.
 
 ## Front-panel prerequisite: bounded requested text
 
+M7.2c records additional [selected transmit/retry evidence](board/wd/ex4/FRONT-PANEL-RESEARCH.md#selected-transport-errors-retry-and-ack-association)
+from exact WD2.13.108 CLI/daemon/serial-library artifacts. Eleven blocking-capable
+queue attempts and ten general UART attempts are distinct. The sender ignores
+write/setup results, trusts a byte count without checking received payload size,
+and accepts an uncorrelated global ACK without pre-send clearing or verified
+deletion. Normal exhaustion skips its later failure diagnostic. Selected Read
+normalizes−1 to0, losing error/no-byte distinction rather than consuming an
+uninitialized byte. Three selected builders/forwarders calculate no integrity
+field; zero table bytes remain unknown. Main review rechecks198/30/9 original
+instruction words with zero mismatches, four selected body hashes/table entries
+and PLT/relocation-derived imports using existing Python/Capstone. This extends
+static knowledge, not executed fault, transport idempotence/application or
+physical cooling/recovery qualification. No firmware input, passive parser,
+transmitter, UART/NAS operation or new runtime test is added by this finding.
+
 M7.4b additionally records [selected split LED/alarm paths](board/wd/ex4/FRONT-PANEL-RESEARCH.md#led-ownership-and-selected-alarm-arbitration)
 from hash-bound final WD artifacts, with independent original-byte review.
 The selected alarm helper uses SoC-register wrappers; MCU `ErrStatus` publication

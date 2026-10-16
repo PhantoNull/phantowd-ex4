@@ -148,6 +148,76 @@ uncertain application; never clear them merely because a cached getter failed.
 
 ## Software prerequisite and remaining gates
 
+### Selected transport errors, retry and ACK association
+
+Additional original-artifact review separates queue submission, UART writes,
+generic ACK observation and actual command application. Besides `up_send_ctl`
+identified above, selected artifacts are:
+
+| Artifact | SHA-256 |
+| --- | --- |
+| `usrsbin/up_send_daemon` | `5c12e7483f03989f42fd3b8bce71ba70d62e2a15e96503e4311e7eda3f6a0668` |
+| `usrlib/librs232.so` | `de585e83da528c704f1d37524ccc7cd0e76684cb7863223f61857176c9b29794` |
+
+These are code observations, not successful transmission or observed faults:
+
+- The CLI IPC wrapper at `0x8ee4–0x8fa8` puts the caller's length modulo256
+  into a count byte but for positive lengths copies the full requested payload
+  and supplies `length+1`
+  to `msgsnd`. On negative results it makes at most **11 queue attempts**,
+  with nominal100-microsecond sleeps. Flags0 permit a blocking call; the sleeps
+  do not establish a deadline. This is distinct from the sender's wire retry.
+- The sender zeros its256-byte body, then checks `msgrcv` only for failure,
+  not whether the returned byte count covers the declared count. Its general
+  path writes body bytes1 through count individually at `0x8b6c–0x8b94`.
+  An overdeclared short message can therefore include the zero-filled remainder;
+  this observation does **not** establish an out-of-bounds read. A selected
+  MCU-status pattern branches around transmission at `0x8c08–0x8c40`, so not
+  every queued message reaches this general path.
+- `RS232_Send` at library `0x928–0x990` performs one `write`, returns1 only
+  for the exact requested count, otherwise0; it performs no write retry or
+  drain there. The sender discards that result at `0x8b7c–0x8b84`, as it also
+  discards its serial-parameter setup result. A queue success cannot establish
+  a complete frame write or even successful serial setup.
+- After each general send, the sender requests a300,000-microsecond sleep,
+  ignores the XML getter result and accepts exact text `ack` from
+  `/runtime/mcu/ack` (`0x8bc8–0x8bf4`). No command ID, sequence or freshness
+  condition is tested. It does **not** clear the flag before sending. Deletion
+  occurs only after a match (`0x8c44–0x8c58`) and its result is ignored.
+- Misses increment a counter; the tenth miss returns directly to queue receive
+  (`0x8bf8–0x8c04`). There are **10 total wire attempts**, not11. The later
+  `uart send fail` diagnostic requires a counter greater than10 on the matched
+  branch and is unreachable through this normal loop. Exhaustion is not a
+  command-specific failure returned to the CLI. Nominal sleeps are not a
+  three-second hard bound on blocking I/O, XML operations or delivery.
+- Conversely, `RS232_Read` at library `0x904–0x924` converts a `read` result
+  of−1 to0. The selected receive loop treats0 as no byte and polls again. This
+  loses error-versus-no-data distinction; it is **not** evidence that a negative
+  read result makes the parser consume an uninitialized byte.
+
+**Inference:** stale or delayed ACKs, or a failed flag deletion, may satisfy a
+later command's check; ignored write failure does not prevent that match.
+Repeated frames may repeat a non-idempotent action. These possibilities have
+not been demonstrated against an MCU, nor has its idempotence been established.
+Do not reproduce malformed commands or blind retries on a production NAS.
+
+Selected `FanControl`, transmitted `GetThemister` and `SysName` builders and
+the forwarding path calculate no checksum/CRC or escaping. The fixed zero
+fields in the first two come from their table entries; their meaning remains
+unknown, not “reserved” or a validated checksum. Absence of a calculation here
+does not establish the complete protocol's integrity rules. GetThemister tests
+the full parsed3/4 for local XML reads **before** truncating transmitted values
+to a byte: representable259 would select transmitted byte3, not the local3
+branch. This is static control-flow inference, not an executed request.
+
+For the replacement, qualify one retained transport owner, complete bounded
+frames/writes, explicit errors, loss and delayed/duplicate/asynchronous replies.
+Never reuse this global flag as a per-command receipt or infer application from
+queue success/CLI exit. Keep requested, submission, write completion and
+independently observed physical state distinct, with no unqualified automatic
+retry. The existing passive decoder's integrity status remains unknown; no
+transmitter, serial access or hardware authority is added by this research.
+
 [Internal text preparation](../../../src/phantowd-api/internal/frontpaneltext/README.md)
 now rejects empty/oversize/non-printable/non-ASCII input without truncation,
 under an explicit caller limit and no default hardware profile. It prepares

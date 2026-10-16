@@ -2750,6 +2750,21 @@ equipment/media; not ordinary software work.
   Keep15-byte buffering and unknown checksum status. Generic ACK flag evidence
   does not establish command correlation. No serial opener/transmitter, safe fan
   setting, active hardware or complete wire-protocol qualification is provided.
+  **M7.2c — selected transmit/retry boundary (static evidence only):** original
+  CLI/daemon/library bytes distinguish11 blocking-capable queue attempts from10
+  general wire attempts, ignored write/setup results, count-versus-message-size
+  mismatch and a special status bypass. The generic XML ACK has no command/
+  freshness binding, no pre-send clear and unchecked deletion; normal exhaustion
+  skips the later failure diagnostic. Read−1 becomes0, not an uninitialized-byte
+  parser read. Three selected builders/forwarders calculate no integrity field;
+  zero table bytes keep unknown semantics. Independent static scopes and root
+  PT_LOAD/instruction/import checks are not a runtime/hardware qualification.
+  See the [exact scoped finding](board/wd/ex4/FRONT-PANEL-RESEARCH.md#selected-transport-errors-retry-and-ack-association).
+  Next: qualify retained transport ownership, full bounded write/settlement and
+  command/reply association against passive original traffic; model source loss,
+  short/failed I/O and delayed/duplicate/asynchronous events before any separately
+  authorized TX trial. Never replace unknown integrity with “checksum valid”,
+  infer physical application from queue/ACK/exit, or carry over blind retries.
   **M7.2b — length-specific passive dispatch (host-only):** classify7-byte
   thermistor replies by fixed03/08 prefix plus supported sensor1/2 and status
   families40/41/42 by byte1; only MCUVer is eligible at15bytes. Leave13-byte
