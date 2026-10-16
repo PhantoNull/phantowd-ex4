@@ -25,8 +25,24 @@ for entry in pass:0 fail:8 partial-fail:12 partial-pass:4 unsupported:4 disabled
     fi
     echo "PHANTOWD_SMART_ARM_PRODUCER case=$name exit=$status"
 done
+mkdir /run/temperature-corpus || exit 1
+export PHANTOWD_SMART_TEMPERATURE_CORPUS=/run/temperature-corpus
+for name in reported zero-omitted upper invalid-omitted; do
+    status=0
+    /usr/sbin/phantowd-smartctl-replay -j -i -H -A - \
+        <"/usr/share/phantowd-smart-replay/temperature-$name.trace" \
+        >"/run/temperature-corpus/$name.json" 2>"/run/temperature-$name.stderr" || status=$?
+    if [ "$status" != 0 ] || [ -s "/run/temperature-$name.stderr" ] || \
+        grep -F 'REPLAY-IOCTL' "/run/temperature-corpus/$name.json" >/dev/null; then
+        echo "PHANTOWD_SMART_ARM_TEMPERATURE_FAILED case=$name exit=$status"
+        failed=1
+        break
+    fi
+    echo "PHANTOWD_SMART_ARM_TEMPERATURE_PRODUCER case=$name exit=$status"
+done
 if [ "$failed" = 0 ] && /usr/sbin/phantowd-smart-replay-test -test.v -test.timeout=45s; then
     echo 'PHANTOWD_SMART_ARM_REPLAY_READY scope=generic-synthetic-only version=7.5 cases=7'
+    echo 'PHANTOWD_SMART_ARM_TEMPERATURE_READY scope=generic-synthetic-only version=7.5 cases=4'
     export PHANTOWD_SMART_CAPTURE_FIXTURE=generic-only
     if /usr/sbin/phantowd-smart-capture-test -test.v -test.run '^TestFixedProducerCapture$' -test.timeout=30s; then
         echo 'PHANTOWD_SMART_ARM_CAPTURE_READY scope=generic-synthetic-only source=fake cases=7'

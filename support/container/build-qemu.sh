@@ -91,6 +91,9 @@ shellcheck "$external_dir/support/tests/test-qemu-smart-replay.sh" \
     "$external_dir/support/tests/smart-replay-arm-init.sh"
 python3 -B "$external_dir/support/tests/test-smart-replay-contract.py"
 python3 -B -m flake8 "$external_dir/support/tests/test-smart-replay-contract.py"
+python3 -B "$external_dir/support/tests/test-smart-replay-identify.py"
+python3 -B -m flake8 "$external_dir/support/tests/test-smart-replay-identify.py" \
+    "$external_dir/support/tests/smart-temperature-corpus.py"
 python3 -B -m flake8 "$external_dir/support/tests/test-perl-configure-date.py"
 sh "$external_dir/support/test-compare-build-artifacts.sh"
 python3 "$external_dir/support/test-volume-probe-build.py"

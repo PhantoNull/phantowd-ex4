@@ -2,11 +2,12 @@
 # SPDX-FileCopyrightText: 2026 PhantoWD EX4 contributors
 [CmdletBinding()]
 param(
-    [string]$BaseArtifactDir = (Join-Path (Split-Path -Parent $PSScriptRoot) 'artifacts/qemu-armv5'),
+    [string]$BaseArtifactDir = '',
     [string]$SourceArchive = ''
 )
 $ErrorActionPreference = 'Stop'
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
+if (-not $BaseArtifactDir) { $BaseArtifactDir = Join-Path $repoRoot 'artifacts/qemu-armv5' }
 $baseRoot = (Resolve-Path -LiteralPath $BaseArtifactDir).Path
 if (-not $SourceArchive) { $SourceArchive = Join-Path $repoRoot 'artifacts/smart-replay/smartmontools-7.5.tar.gz' }
 $archive = Get-Item -LiteralPath $SourceArchive
@@ -45,7 +46,7 @@ exec sh /src/support/tests/test-qemu-smart-replay.sh /base \
 $encoded = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($linuxScript.Replace("`r`n", "`n")))
 docker run --rm --pull never --network none --read-only --user 1000:1000 `
     --cap-drop ALL --security-opt no-new-privileges --cpus 2 --memory 1g --pids-limit 128 `
-    --tmpfs /tmp:rw,exec,nosuid,nodev,size=768m `
+    --tmpfs '/tmp:rw,exec,nosuid,nodev,size=768m' `
     --entrypoint /bin/sh `
     --mount "type=bind,source=$repoRoot,target=/src,readonly" `
     --mount "type=bind,source=$baseRoot,target=/base,readonly" `

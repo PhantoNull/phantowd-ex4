@@ -48,6 +48,33 @@ must be separate and describe collection scope, device generation and age.
   narrow profile can reject otherwise valid large/vendor-rich JSON; no truncation
   or partial success is allowed. Unknown fields and their nulls are discarded.
 
+## Separate optional ATA temperature projection
+
+`ParseATATemperature` uses the same bounded decoder, release/schema checks and
+health/exit semantics, but separately validates optional `temperature.current`.
+The original info+health `Parse` and identity comparison are unchanged. Its
+opaque result retains health plus an optional integer Celsius value; missing
+is not zero, and JSON serialization/deserialization is refused. Malformed,
+null, fractional/exponent, wrong-case, contradictory or out-of-profile values
+refuse atomically. Non-ATA reports do not gain ATA temperature interpretation;
+disabled/unsupported/unavailable reports do not publish a temperature sample.
+
+The interval **-128..127 is a producer representation bound, not an operating
+range**. In the hash-pinned 7.4/7.5 archives, `atacmds.cpp`'s attribute helper
+emits only 1..127; zero and other raw bytes are omitted, not reported as zero.
+`ataprint.cpp` also emits signed-byte device-statistics/SCT values. The global
+JSON field does not identify which source supplied it. A supplied negative or
+zero value is therefore retained as tool-reported, not reinterpreted as an
+attribute value, an authenticated sensor, fresh sample or calibrated safe input.
+The SCT path's sentinel handling is not a universal rule for all source paths.
+
+The separate actual-producer fixture uses fixed `-j -i -H -A -` and invented
+attribute194 values37,0,127,255. Native7.4/7.5 and static7.5 in ARM926 QEMU pass:
+37/127 are reported;0/255 are absent. Original seven info+health cases and eight
+native checksum/power controls remain. Negative/device-statistics/SCT cases
+have parser/static-source coverage, not actual-producer replay qualification.
+No collector, command approval, disk access, history, UI or fan policy is added.
+
 ## Remaining product gates
 
 `ParseMatchingATAIdentity` is a separate **offline comparison prerequisite**:

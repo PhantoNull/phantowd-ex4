@@ -48,6 +48,28 @@ replay-order/coverage warnings or output fields fail the test. Independently
 specified Go expectations consume the actual JSON through `smartreport.Parse`.
 The Go test is opt-in via the `smartreplay` test build tag, never a product CLI.
 
+### Separate temperature profile
+
+The same disposable producer builds also run four independent invented ATA
+attribute194 traces through `smartctl -j -i -H -A -`. This does not change the
+original seven traces or their `-j -i -H -` command. Raw37/127 must produce
+`temperature.current`; raw0/255 must omit it. Treating absence as zero or 255
+as a reported temperature fails the oracle. The tagged Go temperature test
+uses its own fixed expectations, requires exactly four temporary reports and
+checks the actual release plus unchanged health semantics.
+
+Native7.4/7.5 and ARM926 static7.5 pass this profile on2026-10-16; all original
+health/capture proofs remain required. The ARM runner additionally requires
+four temperature producer rows, its parser PASS and the separate temperature
+readiness marker. Existing guest/process/output/resource limits are unchanged;
+no additional guest, image, volume or physical device is added. Host input and
+fake-reply refusal tests do not count as actual-producer qualification.
+
+This qualifies attribute temperature JSON only. Signed device-statistics/SCT
+emitters, source authenticity, freshness, operating limits, transport, standby,
+history, thermal control and product collection remain unqualified. See the
+[offline projection contract](../src/phantowd-api/internal/smartreport/README.md#separate-optional-ata-temperature-projection).
+
 ### Identity comparison extension: scoped native and ARM qualification
 
 The invented IDENTIFY response now includes WWN-support bit8 in word87 and

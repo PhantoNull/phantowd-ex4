@@ -72,6 +72,8 @@ if grep -E 'INTERP|DYNAMIC' "$scratch/elf-segments" >/dev/null; then exit 1; fi
 echo 'PHANTOWD_SMART_ARM_REPLAY_ELF_READY abi=armv5te-or-v5tej-soft-float linkage=static backend=generic'
 mkdir "$scratch/traces"
 python3 -B "$source_dir/support/tests/smart-replay-corpus.py" --traces "$scratch/traces" 7.5
+mkdir "$scratch/temperature-traces"
+python3 -B "$source_dir/support/tests/smart-temperature-corpus.py" --traces "$scratch/temperature-traces" 7.5
 export GOPROXY=off GOTOOLCHAIN=local GOFLAGS='-mod=vendor -buildvcs=false -p=2' GOMAXPROCS=2
 export GOCACHE="$scratch/go-cache" GOPATH="$scratch/go-path"
 (cd "$source_dir/src/phantowd-api" && CGO_ENABLED=0 GOOS=linux GOARCH=arm GOARM=5 \
@@ -101,6 +103,9 @@ inject_checked() (
 for name in pass fail partial-fail partial-pass unsupported disabled empty; do
     inject_checked "$scratch/traces/$name.trace" "/usr/share/phantowd-smart-replay/$name.trace"
 done
+for name in reported zero-omitted upper invalid-omitted; do
+    inject_checked "$scratch/temperature-traces/$name.trace" "/usr/share/phantowd-smart-replay/temperature-$name.trace"
+done
 for pair in "$scratch/smartmontools-7.5/smartctl phantowd-smartctl-replay" \
     "$scratch/replay.test phantowd-smart-replay-test" \
     "$scratch/capture.test phantowd-smart-capture-test" \
@@ -124,7 +129,8 @@ wait "$child_pid" || status=$?
 child_pid=
 cr=$(printf '\r')
 if [ "$status" -ne 0 ] || ! grep -E "^PHANTOWD_SMART_ARM_REPLAY_READY scope=generic-synthetic-only version=7.5 cases=7${cr}?$" "$scratch/guest.log" >/dev/null || \
-    ! grep -E "^PHANTOWD_SMART_ARM_CAPTURE_READY scope=generic-synthetic-only source=fake cases=7${cr}?$" "$scratch/guest.log" >/dev/null; then
+    ! grep -E "^PHANTOWD_SMART_ARM_CAPTURE_READY scope=generic-synthetic-only source=fake cases=7${cr}?$" "$scratch/guest.log" >/dev/null || \
+    ! grep -E "^PHANTOWD_SMART_ARM_TEMPERATURE_READY scope=generic-synthetic-only version=7.5 cases=4${cr}?$" "$scratch/guest.log" >/dev/null; then
     printf 'PHANTOWD_SMART_ARM_REPLAY_RUNNER_FAILED exit=%s\n' "$status" >&2
     if [ -n "$failure_log" ]; then
         mkdir -p "$(dirname "$failure_log")"
@@ -137,6 +143,8 @@ grep -E "^PASS${cr}?$" "$scratch/guest.log" >/dev/null
 [ "$(grep -c '^PHANTOWD_SMART_ARM_PRODUCER case=' "$scratch/guest.log")" = 7 ]
 grep -E '^--- PASS: TestUpstreamReplayCorpus ' "$scratch/guest.log" >/dev/null
 grep -E '^--- PASS: TestFixedProducerCapture ' "$scratch/guest.log" >/dev/null
-grep -E '^PHANTOWD_SMART_ARM_(PRODUCER|REPLAY_READY|CAPTURE_READY)' "$scratch/guest.log"
+grep -E '^--- PASS: TestUpstreamTemperatureCorpus ' "$scratch/guest.log" >/dev/null
+[ "$(grep -c '^PHANTOWD_SMART_ARM_TEMPERATURE_PRODUCER case=' "$scratch/guest.log")" = 4 ]
+grep -E '^PHANTOWD_SMART_ARM_(PRODUCER|REPLAY_READY|CAPTURE_READY|TEMPERATURE_)' "$scratch/guest.log"
 [ "$(sha256sum "$base/rootfs.ext2" | awk '{print $1}')" = "$base_hash" ]
 echo 'PHANTOWD_SMART_ARM_REPLAY_BASE_UNCHANGED'

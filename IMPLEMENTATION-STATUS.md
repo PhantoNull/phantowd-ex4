@@ -42,6 +42,18 @@ This narrows the current local failure, not the older hosted operation or the
 earlier full-run held-file startup refusal. Fixture-budget choice remains open;
 no numeric limits, proofs or authority were relaxed.
 
+## Independent SMART temperature prerequisite
+
+An internal offline optional ATA temperature projection now preserves the
+original bounded health/exit semantics and distinguishes missing from zero.
+No command provider, device permission, HTTP/history or fan control is added.
+Actual generic-only native7.4/7.5 and static7.5 ARM926 producer/parser tests pass
+four invented attribute cases alongside the original seven health cases and
+existing native boundary/ARM capture proofs. Windows and pinned Linux API/vet
+checks pass; complete current image/hosted and physical qualification remain
+open. These focused successes do not repair or bypass either Samba gate above.
+See the [projection and remaining gates](src/phantowd-api/internal/smartreport/README.md#separate-optional-ata-temperature-projection).
+
 ## Earlier hosted fault gate remains open
 
 Candidate `e4fc079` passes hosted host/B3 checks but fails its own QEMU fault

@@ -41,10 +41,15 @@ python3 -B "$source_dir/support/tests/smart-replay-corpus.py" \
     "$scratch/smartmontools-$version/smartctl" "$scratch/corpus" "$version"
 python3 -B "$source_dir/support/tests/test-smart-replay-boundaries.py" \
     "$scratch/smartmontools-$version/smartctl" "$version"
+mkdir "$scratch/temperature-corpus"
+python3 -B "$source_dir/support/tests/smart-temperature-corpus.py" \
+    "$scratch/smartmontools-$version/smartctl" "$scratch/temperature-corpus" "$version"
 export GOPROXY=off GOTOOLCHAIN=local GOFLAGS='-mod=vendor -buildvcs=false -p=2' GOMAXPROCS=2
 export GOCACHE="$scratch/go-cache" GOPATH="$scratch/go-path"
 export PHANTOWD_SMART_REPLAY_CORPUS="$scratch/corpus"
+export PHANTOWD_SMART_TEMPERATURE_CORPUS="$scratch/temperature-corpus"
 cd "$source_dir/src/phantowd-api"
 timeout --signal=TERM --kill-after=5 120 "$go_binary" vet -tags smartreplay ./internal/smartreport
 timeout --signal=TERM --kill-after=5 180 "$go_binary" test -race -tags smartreplay -count=1 -timeout=60s ./internal/smartreport
 printf 'PHANTOWD_SMART_REPLAY_READY scope=native-generic-synthetic-only version=%s cases=7\n' "$version"
+printf 'PHANTOWD_SMART_TEMPERATURE_READY scope=native-generic-synthetic-only version=%s cases=4\n' "$version"

@@ -340,7 +340,8 @@ done
 for path in 'support/test-smart-replay-arm.ps1' \
     'support/tests/test-qemu-smart-replay.sh' \
     'support/tests/smart-replay-arm-init.sh' \
-    'support/tests/smart-replay-corpus.py'; do
+    'support/tests/smart-replay-corpus.py' \
+    'support/tests/smart-temperature-corpus.py'; do
     require_ignored_path "$stage_b3_workflow" "$path"
     require_triggered_path "$host_workflow" "$path"
     for event in push pull_request; do

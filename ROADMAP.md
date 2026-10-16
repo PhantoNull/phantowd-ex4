@@ -2966,6 +2966,14 @@ not host/QEMU progress.
     preserves all seven trace hashes. Complete current-image/own-head hosted and
     physical/provider qualification remain open. Fake replies are guard tests
     only; they do not qualify producer execution or authenticate a report.
+    A separate offline temperature prerequisite now validates optional ATA
+    `temperature.current` without changing the original health parser or granting
+    collection authority. Its signed-byte bound is not an operating limit, and
+    missing remains distinct from zero. Actual generic-only native7.4/7.5 and
+    static7.5 ARM926 fixtures pass invented attribute194 values37/0/127/255:
+    only37/127 are reported. Original health/boundary/capture proofs remain.
+    Signed device-statistics/SCT emitters have static-source/parser coverage,
+    not replay qualification; source/freshness/transport/thermal gates remain.
   - **M8.5c — Wake policy.** Specify exact no-check/device-detection behavior per
     tool and transport. Low-power skip must have explicit evidence; exit bit 1
     alone is ambiguous. Do not parse tool prose to claim standby. Verify that

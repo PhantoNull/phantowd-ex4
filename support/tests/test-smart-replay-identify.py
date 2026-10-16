@@ -16,6 +16,8 @@ from unittest import mock
 
 FIXTURE_PATH = Path(__file__).with_name("smart-replay-corpus.py")
 FIXTURE = runpy.run_path(str(FIXTURE_PATH))
+TEMPERATURE = runpy.run_path(str(
+    FIXTURE_PATH.with_name("smart-temperature-corpus.py")))
 ROOT = Path(__file__).resolve().parents[2]
 
 
@@ -97,6 +99,77 @@ class WorkflowRoutingTests(unittest.TestCase):
             self.assertNotIn(
                 "      - 'support/tests/smart-replay-corpus.py'", entries)
             self.assertNotIn("      - 'src/phantowd-api/**'", entries)
+            self.assertNotIn(
+                "      - 'support/tests/smart-temperature-corpus.py'", entries)
+
+
+class TemperatureInputTests(unittest.TestCase):
+    """Synthetic byte and fake-reply controls, not producer qualification."""
+
+    def test_attribute_sector_layout_checksum_and_original_health_cases(self):
+        cases = list(TEMPERATURE["fixture_cases"]())
+        self.assertEqual([(case[0], case[2]) for case in cases], [
+            ("reported", 37), ("zero-omitted", None), ("upper", 127),
+            ("invalid-omitted", None)])
+        for (_, trace, _), raw in zip(cases, (37, 0, 127, 255)):
+            lines = trace.decode("ascii").splitlines()
+            start = lines.index(
+                "===== [SMART READ ATTRIBUTE VALUES] "
+                "DATA START synthetic =====")
+            sector = bytes.fromhex(" ".join(
+                line.split(": ", 1)[1] for line in lines[start+1:start+33]))
+            self.assertEqual(len(sector), 512)
+            self.assertEqual(sum(sector) % 256, 0)
+            self.assertEqual(sector[2:14], bytes(
+                (194, 2, 0, 100, 100, raw, 0, 0, 0, 0, 0, 0)))
+            self.assertEqual(trace.count(b"DATA START synthetic"), 3)
+        self.assertEqual(len(FIXTURE["fixture_cases"]()), 7)
+
+    @staticmethod
+    def report(expected):
+        result = {
+            "json_format_version": [1, 0],
+            "smartctl": {"version": [7, 5], "pre_release": False,
+                         "exit_status": 0},
+            "device": {"protocol": "ATA"}, "smart_status": {"passed": True},
+        }
+        if expected is not None:
+            result["temperature"] = {"current": expected}
+        return result
+
+    def test_fixed_options_and_independent_expected_values(self):
+        cases = list(TEMPERATURE["fixture_cases"]())
+        replies = [subprocess.CompletedProcess(
+            [], 0, json.dumps(self.report(case[2])).encode("ascii"), b"")
+            for case in cases]
+        with tempfile.TemporaryDirectory() as temp:
+            with mock.patch.object(TEMPERATURE["subprocess"], "run",
+                                   side_effect=replies) as execute:
+                with redirect_stdout(io.StringIO()):
+                    TEMPERATURE["run"](Path("NOT-A-PRODUCER"), Path(temp),
+                                       [7, 5])
+            self.assertEqual(execute.call_count, 4)
+            self.assertEqual(len(list(Path(temp).iterdir())), 4)
+            for call, case in zip(execute.call_args_list, cases):
+                self.assertEqual(call.args[0], [
+                    "NOT-A-PRODUCER", "-j", "-i", "-H", "-A", "-"])
+                self.assertEqual(call.kwargs["input"], case[1])
+                self.assertEqual(call.kwargs["timeout"], 15)
+
+    def test_wrong_or_missing_temperature_refuses_before_write(self):
+        for field in ({}, {"current": None}, {"current": 36},
+                      {"current": "37"}):
+            report = self.report(37)
+            report["temperature"] = field
+            reply = subprocess.CompletedProcess(
+                [], 0, json.dumps(report).encode("ascii"), b"")
+            with tempfile.TemporaryDirectory() as temp:
+                with mock.patch.object(TEMPERATURE["subprocess"], "run",
+                                       return_value=reply):
+                    with self.assertRaisesRegex(RuntimeError, "projection"):
+                        TEMPERATURE["run"](Path("NOT-A-PRODUCER"), Path(temp),
+                                           [7, 5])
+                self.assertEqual(list(Path(temp).iterdir()), [])
 
 
 class ProjectionGuardTests(unittest.TestCase):
