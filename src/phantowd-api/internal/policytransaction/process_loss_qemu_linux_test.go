@@ -212,6 +212,12 @@ func crashCensus(dir *os.File, role int) (map[string]unix.Statx_t, error) {
 	return out, nil
 }
 func captureCrashRefs(path string) (*crashRefs, error) {
+	return captureRefsForFilesystem(path, unix.TMPFS_MAGIC)
+}
+
+// Test-only shared capture; the separate media fixture validates its fixed
+// bounded synthetic ext4 device before requesting that explicit profile.
+func captureRefsForFilesystem(path string, filesystem int64) (*crashRefs, error) {
 	r := &crashRefs{path: path}
 	fail := func() (*crashRefs, error) { return r, ErrReview }
 	var e error
@@ -220,7 +226,7 @@ func captureCrashRefs(path string) (*crashRefs, error) {
 		return fail()
 	}
 	var fs unix.Statfs_t
-	if unix.Fstatfs(int(r.dirs[0].Fd()), &fs) != nil || fs.Type != unix.TMPFS_MAGIC || !rootCensus(r.dirs[0]) {
+	if unix.Fstatfs(int(r.dirs[0].Fd()), &fs) != nil || int64(fs.Type) != filesystem || !rootCensus(r.dirs[0]) {
 		return fail()
 	}
 	for i, name := range []string{"", "policy", "operations"} {

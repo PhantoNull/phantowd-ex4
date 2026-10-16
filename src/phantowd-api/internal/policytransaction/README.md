@@ -170,11 +170,11 @@ guest retains14 original ext4 SIGKILL/read-only/ENOSPC cases and adds28 tmpfs
 process losses plus28 runtime-reader loss cases in a second test binary, not a
 second boot. The45s Go allowance is
 conservatively shared using remaining uptime seconds; hard60s guest/180s outer
-and resource caps stay unchanged. Normal tmpfs/ext4 unmount,112 exact ordered
+and resource caps stay unchanged. Normal tmpfs/ext4 unmount,121 exact ordered
 receipts and two Go PASS lines are mandatory. The closed original test selection
 is checked against the verifier catalogue before compilation/boot: helper-only
 SKIP or unregistered tests never become acceptable noise. Host parser controls
-require2 valid and264 refused traces. Both binary selectors are closed and
+require2 valid and283 refused traces. Both binary selectors are closed and
 checked against the mandatory verifier catalogue before boot.
 
 Actual ARMv5 passes this complete lane. Native WSL explicitly skips the positive
@@ -243,3 +243,19 @@ portable comparison/fuzz and shared-engine checks are distinct evidence.
 
 This is same-kernel process-loss diagnosis on synthetic tmpfs, not persistent
 restart, power loss, complete fault coverage, recovery or product boot admission.
+
+### Read-only ext4 diagnosis — M1.4c
+
+`TestRuntimeBundleObserverOnReadOnlyExt4` additionally tests the actual runtime
+reader with all six kinds and both pending roles after a verified read-only
+remount. It prepares invented evidence first, retains independent original
+references, and checks unchanged exact bytes/statx (including atime), root/policy
+exclusion, normal closure and FD baseline. The fixture accepts only its fixed
+bounded32MiB ext4 device in the marked ARM VersatilePB guest. Restoration to RW
+precedes temporary-file cleanup; neither action is a product recovery operation.
+Eight subcases and their parent receipt are mandatory in the existing media lane,
+with unchanged time/resource bounds and no extra boot/image/volume.
+
+This changes tests only. It establishes read-only diagnosis on synthetic ext4,
+not media-error recovery, system restart, power-loss durability, physical EX4
+placement, product format selection or permission to adopt a writer.

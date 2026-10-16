@@ -3,8 +3,8 @@
 BEGIN {
     stage = "PHANTOWD_REVISIONSTORE_MEDIA_PREPARED synthetic_ext4=true snapshot=true profiles=2 stages=7 scope=qemu-only"
     done = "PHANTOWD_REVISIONSTORE_MEDIA_DONE sigkill=14 readonly=true enospc=true bootstrap=true normal_unmount=true scope=qemu-only"
-    op_stage = "PHANTOWD_POLICY_OPERATION_PROCESSLOSS_PREPARED synthetic_tmpfs=true snapshot=true stages=56 runtime_reader=true admission=false scope=qemu-only"
-    op_done = "PHANTOWD_POLICY_OPERATION_PROCESSLOSS_DONE sigkill=56 runtime_reader=true original_refs=true readonly=true review=true pending_review=true normal_cleanup=true scope=qemu-only"
+    op_stage = "PHANTOWD_POLICY_OPERATION_PROCESSLOSS_PREPARED synthetic_tmpfs=true snapshot=true stages=56 runtime_reader=true readonly_ext4=true admission=false scope=qemu-only"
+    op_done = "PHANTOWD_POLICY_OPERATION_PROCESSLOSS_DONE sigkill=56 runtime_reader=true readonly_ext4=true original_refs=true readonly=true review=true pending_review=true normal_cleanup=true scope=qemu-only"
     operation[++op_required] = "TestPolicyOperationSIGKILLObservation"
     split("before-intent after-intent before-policy after-policy after-readback before-receipt after-receipt", operation_points, " ")
     for (i = 1; i <= 7; i++) { operation[++op_required] = "TestPolicyOperationSIGKILLObservation/" operation_points[i] }
@@ -19,6 +19,9 @@ BEGIN {
     for (r = 1; r <= 3; r++) {
         for (i = 1; i <= 7; i++) { operation[++op_required] = "TestRuntimeBundleObserverAfterProcessLoss/" operation_roles[r] "/" syscall_points[i] }
     }
+    operation[++op_required] = "TestRuntimeBundleObserverOnReadOnlyExt4"
+    split("no-operation base published confirmed inconsistent missing-current policy-pending operation-pending", media_cases, " ")
+    for (i = 1; i <= 8; i++) { operation[++op_required] = "TestRuntimeBundleObserverOnReadOnlyExt4/" media_cases[i] }
     expected[++required] = "TestBootstrapEmptyDirectoryObservationDoesNotInitializeOrChangeMetadata"
     expected[++required] = "TestBootstrapPendingEvidenceIsNeverPromotedOrDiscarded"
     expected[++required] = "TestBootstrapPendingEvidenceIsNeverPromotedOrDiscarded/false"

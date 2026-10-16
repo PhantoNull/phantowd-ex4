@@ -110,6 +110,11 @@ for either pending role, injected read/cancel faults, sticky restored drift and
 profile refusal. These do not automatically transfer every legacy fault test to
 the new profile, qualify physical media or establish uninterrupted writer locks.
 
+A separate eight-case media test now verifies the same reader on a fixed32MiB
+synthetic ext4 filesystem remounted read-only: six kinds plus both pending roles,
+unchanged original bytes/statx/atime, actual policy/root exclusion and FD baseline.
+This is not product boot admission, qualified physical placement or power loss.
+
 Still required: complete constructor/read/close/watcher fault and race campaigns,
 explicit atime/content/ownership/bounds qualification on supported media,
 independent writer-process and namespace history tests, product namespace and

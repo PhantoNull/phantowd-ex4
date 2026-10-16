@@ -887,9 +887,9 @@ and recovery do not. **Depends on:** M0 for tests; M7 for physical placement.
   gates fail/poison rather than report success. Pending is metadata-only to the
   test observer and suppresses matching; a separate no-atime oracle verifies
   synthetic staged bytes, never promotion/replay. Original18-case ARM smoke
-  also passes. Existing NIC-less media guest now requires112 receipts/two Go PASS
+  also passes. Existing NIC-less media guest now requires121 receipts/two Go PASS
   lines under unchanged60s/180s limits and a shared45s test allowance; both closed
-  selections and2+264 parser controls prevent helper SKIP/unknown-test drift.
+  selections and2+283 parser controls prevent helper SKIP/unknown-test drift.
   **c.4c retained bundle diagnosis (experimental host/ARM)** adds an explicit
   fixed-profile read-only opener using the same original-lock/mount/census/watch
   engine, not writer adoption or autodetection. Portable bounded comparison
@@ -918,6 +918,16 @@ and recovery do not. **Depends on:** M0 for tests; M7 for physical placement.
   sync, ENOSPC, read-only storage, corrupt/truncated files, replacement/symlink
   attacks, concurrent writers and process exits at each durable boundary.
   Clean reboot and process exit are not power-loss guarantees.
+  **M1.4c — read-only bundle diagnosis (ARM fixture-tested):** the real retained
+  reader now observes all six evidence kinds and both pending roles on the fixed
+  synthetic ext4 device after a verified read-only remount. Original references,
+  complete census/statx including atime, exact current/operation bytes and FD
+  baseline bracket the runtime lifetime; actual policy/root exclusion remains.
+  The test refuses outside the bounded32MiB VersatilePB media fixture, restores
+  the mount before cleanup, and shares the existing guest/time/resource limits.
+  No product/writer changes or physical placement, durable quarantine, restart,
+  power-loss/recovery/admission qualification is implied. Persistent-format
+  selection remains a separate decision, not inferred from these experiments.
   **M1.4a — abrupt policy writer (native/ARM fixture-tested; not complete):**
   a test-only child holds the actual revision-store lock while its parent
   confirms exclusion, then sends SIGKILL at seven write/sync/close/publication

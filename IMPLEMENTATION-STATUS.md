@@ -713,7 +713,25 @@ This does not repair Samba/full/hosted gates, qualify inside-syscall interruptio
 system restart/power loss/physical media, supply durable review/reconciliation,
 activate services or make the firmware installable.
 
-## M1.3c.4c retained bundle diagnosis — current host/ARM checkpoint
+## M1.4c read-only ext4 bundle diagnosis — current host/ARM checkpoint
+
+The actual runtime reader now passes all six diagnostic kinds and both pending
+roles while its fixed synthetic ext4 filesystem is verifiably read-only. Held
+original references and complete metadata including atime bracket the independent
+runtime lifetime; exact bytes, root/policy exclusion, normal closure and the FD
+baseline remain mandatory. Mount restoration precedes test cleanup. The guard
+requires the bounded32MiB ARM VersatilePB media fixture, not a physical disk.
+
+Whole Windows preflight and pinned Linux tagged vet/scoped units/race3 pass;
+native media execution explicitly skips outside the synthetic ARM guest. Actual
+ARM passes121 ordered receipts/two Go PASS plus2+283 host parser controls,
+normal unmounts and unchanged base. Existing56 operation/14ext4 SIGKILL cases
+and RO/ENOSPC gates remain under the original shared45s/60s VM/180s outer limits.
+Only tests/tooling/docs changed: runtime collector and writer sources are intact.
+This does not select a product format/medium, wire boot admission or qualify
+power loss, restart, persistent quarantine/recovery or an installable firmware.
+
+## M1.3c.4c retained bundle diagnosis — earlier host/ARM checkpoint
 
 The explicit experimental read-only bundle opener is now runtime-tested after
 all28 declared SIGKILL gates. It retains its own original locks and file objects;

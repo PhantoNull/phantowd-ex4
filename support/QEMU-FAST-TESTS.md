@@ -212,11 +212,18 @@ their own16MiB tmpfs mount, not physical storage. One boot still has the origina
 hard60s VM/180s outer limits; Go suites share the45s allowance with conservative
 remaining-second accounting. The original catalogue is closed and checked before
 boot, excluding subprocess-only helpers while enrolling their actual parent
-lock test. Current proof is53 original plus59 operation top-level/subcase receipts,
+lock test. Current proof is53 original plus68 operation top-level/subcase receipts,
 two Go PASS lines, both phase markers, normal unmounts and unchanged base.
-Two positive/264 malformed parser controls pass; both binary selectors match
+Two positive/283 malformed parser controls pass; both binary selectors match
 their exact mandatory catalogue before boot. No SKIP/no-tests/foreign marker
 waiver or extra default guest is added.
+
+The same test binary also runs eight retained-reader cases on the fixed synthetic
+ext4 mount after verifying its read-only remount: six diagnostic kinds and both
+pending roles. Original byte/statx/atime witnesses, root/policy locks, closure and
+FD baseline remain mandatory. The mount is restored before temporary cleanup;
+the guard refuses outside the marked bounded ARM media fixture. No production
+writer/provisioning or physical-medium/restart/power-loss qualification follows.
 
 The parent retains original references before loss, proves Busy/live and actual
 SIGKILL/reap, then acquires read-observation locks and validates unchanged bytes/
