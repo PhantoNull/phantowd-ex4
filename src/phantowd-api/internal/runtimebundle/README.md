@@ -3,6 +3,15 @@
 
 # Internal code-only runtime bundle inspection
 
+The QEMU-only data capture-return clock observes the parent context around the
+existing fixed 4-second `Capture`, before external settlement/closure. It is
+failure-only, preserves the first typed data error and never supplies an input
+or execution capability. The aggregate runtime clock remains distinct. Capture
+timing includes admission/wait/internal stop, not just peer I/O or a proven
+timeout cause. No ordinary product code, global deadline, state or privilege
+boundary changes; see the
+[diagnostic contract](../../../../support/QEMU-FAST-TESTS.md#data-capture-return-clock).
+
 The separate `qemu && linux` server-observer runtime now joins original code
 and fixed-path/unique-mount binding, independently built static bootstrap,
 fixed rendered configuration, mutable-state directory identities, synthetic

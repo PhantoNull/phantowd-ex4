@@ -134,7 +134,7 @@ func (r *NativeSambaRuntimeQEMU) nativeDataClientQEMU(ctx context.Context, opera
 	}
 	capture, err := processowner.NewCapture(processowner.CaptureSpec{
 		ExecutableLabel: sambaFixtureHelper, Args: args,
-		RunAs: &processowner.Credentials{UID: 0, GID: 0}, Timeout: 4 * time.Second, StopTimeout: time.Second,
+		RunAs: &processowner.Credentials{UID: 0, GID: 0}, Timeout: nativeDataCaptureTimeoutQEMU, StopTimeout: time.Second,
 	}, r.helper, input)
 	err = errors.Join(err, input.Close())
 	if err != nil {
@@ -144,7 +144,13 @@ func (r *NativeSambaRuntimeQEMU) nativeDataClientQEMU(ctx context.Context, opera
 		return nativeDataFailureQEMU(operation, nativeWorkerAdmissionQEMU, err)
 	}
 	r.pending = capture
+	captureClock := startNativeDataClockQEMU(ctx)
 	observed, runErr := capture.Capture(ctx)
+	var captureFailure error
+	if runErr != nil || observed.Kind != processowner.CaptureExited {
+		captureFailure = annotateNativeDataCaptureClockQEMU(ctx, captureClock,
+			nativeDataFailureQEMU(operation, nativeWorkerExecutionQEMU, errors.Join(ErrReviewRequired, runErr)))
+	}
 	defer clear(observed.Stdout)
 	defer clear(observed.Stderr)
 	settled, settleErr := capture.Settled(context.Background())
@@ -154,8 +160,8 @@ func (r *NativeSambaRuntimeQEMU) nativeDataClientQEMU(ctx context.Context, opera
 		return nativeDataFailureQEMU(operation, nativeWorkerSettlementQEMU, ErrReviewRequired)
 	}
 	r.pending = nil
-	if runErr != nil || observed.Kind != processowner.CaptureExited {
-		return nativeDataFailureQEMU(operation, nativeWorkerExecutionQEMU, errors.Join(ErrReviewRequired, runErr))
+	if captureFailure != nil {
+		return captureFailure
 	}
 	output := append(observed.Stdout, observed.Stderr...)
 	defer clear(output)

@@ -24,11 +24,42 @@ func plannedFaultFailureDiagnosticQEMU(phase string, err error) string {
 		return ""
 	}
 	output := fmt.Sprintf("PHANTOWD_QEMU_PLANNED_FAULT_FAILURE phase=%s deadline=%t review=%t scope=diagnostic-only\n", phase, errors.Is(err, context.DeadlineExceeded), errors.Is(err, runtimebundle.ErrReviewRequired))
+	clock := plannedDataClockDiagnosticQEMU(runtimebundle.ObserveNativeDataClockQEMU(err))
+	if captured := plannedDataCaptureClockDiagnosticQEMU(runtimebundle.ObserveNativeDataCaptureClockQEMU(err)); captured != "" {
+		// Prefer the narrower pre-cleanup boundary for capture failures. Keep one
+		// clock row so the original 1KiB child output bound remains unchanged.
+		clock = captured
+	}
 	return output + plannedDataFailureDiagnosticQEMU(runtimebundle.ObserveNativeDataFailureQEMU(err)) +
-		plannedDataClockDiagnosticQEMU(runtimebundle.ObserveNativeDataClockQEMU(err)) +
+		clock +
 		plannedServiceFailureDiagnosticQEMU(smbexec.ObserveNativePlannedFailureQEMU(err)) +
 		plannedServiceDataStageDiagnosticQEMU(smbexec.ObserveNativePlannedDataStageQEMU(err)) +
 		plannedServiceDataCostDiagnosticQEMU(smbexec.ObserveNativePlannedDataCostQEMU(err)) + plannedExitFailureDiagnosticQEMU(err)
+}
+
+func plannedDataCaptureClockDiagnosticQEMU(c runtimebundle.NativeDataCaptureClockObservationQEMU) string {
+	if !c.Present || c.LimitMS != 4000 {
+		return ""
+	}
+	row := fmt.Sprintf("PHANTOWD_QEMU_DATA_CAPTURE_CLOCK elapsed_ms=%d entered_remaining_ms=%d returned_remaining_ms=%d context_done=%t deadline_reached=%t limit_ms=%d scope=diagnostic-only", c.ElapsedMS, c.EnteredRemainingMS, c.FailedRemainingMS, c.ContextDone, c.DeadlineReached, c.LimitMS)
+	if !validPlannedDataCaptureClockDiagnosticQEMU(strings.Split(row, " ")) {
+		return ""
+	}
+	return row + "\n"
+}
+
+func validPlannedDataCaptureClockDiagnosticQEMU(fields []string) bool {
+	if len(fields) != 8 || fields[0] != "PHANTOWD_QEMU_DATA_CAPTURE_CLOCK" || fields[6] != "limit_ms=4000" {
+		return false
+	}
+	returned, ok := strings.CutPrefix(fields[3], "returned_remaining_ms=")
+	if !ok {
+		return false
+	}
+	return validPlannedDataClockDiagnosticQEMU([]string{
+		"PHANTOWD_QEMU_PLANNED_DATA_CLOCK", fields[1], fields[2], "failed_remaining_ms=" + returned,
+		fields[4], fields[5], fields[7],
+	})
 }
 
 func plannedServiceDataCostDiagnosticQEMU(c smbexec.NativePlannedDataCostObservationQEMU) string {
@@ -214,6 +245,12 @@ func plannedFaultSubprocessDiagnosticQEMU(ctxErr, runErr error, captured, proof 
 	seen := make(map[string]bool)
 	for _, line := range strings.Split(captured, "\n") {
 		fields := strings.Split(line, " ")
+		if validPlannedDataCaptureClockDiagnosticQEMU(fields) && !seen["data-capture-clock"] {
+			seen["data-capture-clock"] = true
+			output.WriteString(line)
+			output.WriteByte('\n')
+			continue
+		}
 		if validPlannedServiceDataCostDiagnosticQEMU(fields) && !seen["service-data-cost"] {
 			seen["service-data-cost"] = true
 			output.WriteString(line)

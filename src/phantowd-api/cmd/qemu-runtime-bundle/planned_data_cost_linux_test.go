@@ -58,14 +58,20 @@ func TestPlannedDataCostsRelayCanonicalFirstSnapshotOnly(t *testing.T) {
 func TestPlannedDataCostsKeepExistingChildCaptureBound(t *testing.T) {
 	// Largest numeric rows for the data-refusal path, including the inner
 	// runtime diagnostic. Source/exit-fault rows belong to later distinct phases.
-	rows := plannedFaultFailureDiagnosticQEMU("data", context.DeadlineExceeded) +
+	prefix := plannedFaultFailureDiagnosticQEMU("data", context.DeadlineExceeded) +
 		"PHANTOWD_QEMU_DATA_FAILURE operation=final-daemon phase=post-admission reason=deadline scope=diagnostic-only\n" +
-		plannedDataClockDiagnosticQEMU(runtimebundle.NativeDataClockObservationQEMU{Present: true, ContextDone: true, DeadlineReached: true, ElapsedMS: 180000, EnteredRemainingMS: 180000}) +
 		plannedServiceFailureDiagnosticQEMU(smbexec.NativePlannedFailureObservationQEMU{Present: true, Boundary: "verify-owners", ContextPresent: true, ContextDone: true, DeadlinePresent: true, DeadlineReached: true}) +
 		plannedServiceDataStageDiagnosticQEMU("after-runtime") +
 		plannedServiceDataCostDiagnosticQEMU(smbexec.NativePlannedDataCostObservationQEMU{Present: true, Steps: 2, BudgetMS: 180000, BeforeMS: 180000, ProbeMS: 180000, TotalMS: 180000})
-	var output nativeFaultOutput
-	if _, err := output.Write([]byte(rows)); err != nil || output.String() != rows || len(rows) > 1024 {
-		t.Fatal("failure telemetry no longer fits original 1KiB capture")
+	clock := runtimebundle.NativeDataClockObservationQEMU{Present: true, ContextDone: true, DeadlineReached: true, ElapsedMS: 180000, EnteredRemainingMS: 180000}
+	for _, row := range []string{plannedDataClockDiagnosticQEMU(clock), plannedDataCaptureClockDiagnosticQEMU(runtimebundle.NativeDataCaptureClockObservationQEMU{NativeDataClockObservationQEMU: clock, LimitMS: 4000})} {
+		rows := prefix + row
+		var output nativeFaultOutput
+		if row == "" {
+			t.Fatal("missing maximum clock row")
+		}
+		if _, err := output.Write([]byte(rows)); err != nil || output.String() != rows || len(rows) > 1024 {
+			t.Fatal("failure telemetry no longer fits original 1KiB capture", len(rows))
+		}
 	}
 }

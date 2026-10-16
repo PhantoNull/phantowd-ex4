@@ -28,6 +28,15 @@ complete/audit/hosted/merge, product and physical EX4 gates remain open.
 PR ancestry includes its older commits, but semantic preservation still requires
 diff review and exact new-head checks; it does not authorize an unstable merge.
 
+A QEMU-only capture-return clock now records the parent context around the
+fixed 4-second capture, before the caller's settlement/close, without changing
+generic Capture, phase budgets or failure semantics. Host controls cover the
+real non-root pre-exec refusal, immutable before/after-cleanup clocks, first-error
+binding, redaction and the original 1 KiB output cap; scoped race3 and whole
+host checks pass. One actual ARM held guest preserves the exact healthy proof
+without failure telemetry. Genuine failing ARM emission is not yet observed;
+this is sharper diagnostic coverage, not causal attribution or a timing repair.
+
 ## Earlier integration failure: SMART fixture staging corrected locally
 
 The complete cached qualifier of clean `907e172` passes host/race/fuzz, standard

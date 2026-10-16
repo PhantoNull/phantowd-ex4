@@ -1,5 +1,32 @@
 # Fast API and file-service integration checks
 
+## Data capture-return clock
+
+The `qemu && linux` planned-data diagnostic additionally snapshots the parent
+context immediately around `Capture`, before the caller's `Settled` and `Close`.
+The fixed `PHANTOWD_QEMU_DATA_CAPTURE_CLOCK` row reports elapsed/entered/returned
+remaining milliseconds, parent context/deadline flags and the unchanged 4000 ms
+capture limit. It does not prove that a command started, measure peer I/O alone
+or establish which deadline caused the refusal: `Capture` includes its own
+admission, waiting and possible internal stop work.
+
+Only a typed execution failure from one of the six fixed data clients can carry
+this snapshot. It preserves original error identity/classification, is immutable
+across later cleanup, and cannot displace an earlier joined data failure. No
+runtime code, credential, input, process or backend reference is exposed.
+Successful child proofs remain quiet and exact. On capture failure, the narrower
+row replaces the aggregate runtime-clock row in serial diagnostics to preserve
+the original 1 KiB child cap; both private observations remain available. Other
+failure paths retain the old runtime clock. The parent relays canonical fixed
+rows at most once, never treats them as qualification, and rejects unknown labels,
+limits or malformed counters. Caller-cost diagnostics remain separate.
+
+This instrumentation does not change the 20 s data action, 90 s child, 4 s
+capture, stop or 180 s guest bounds; it is not a repair or replacement for the
+failed complete `0beb01e` qualifier. Product activation and physical NAS access
+are unchanged. Use focused diagnostics, not unchanged complete reruns, to build
+a sharper reproduction before changing behavior.
+
 ## SMART report staging: checked disposable image
 
 `support/test-smart-report.ps1` first runs a real pinned-`debugfs` host staging
