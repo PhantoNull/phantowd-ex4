@@ -13,6 +13,17 @@ The future trusted provider must supply complete, unambiguous whole-disk
 eligibility and retain the correct generation-bound descriptor. No such physical
 provider or least-privilege command boundary is implemented by this coordinator.
 
+`NewWithATAReportComparison` additionally retains one immutable private expected
+ATA serial/NAA-5 WWN profile, fixed at construction, never supplied per call.
+It uses the same bounded parser once and requires exact report-field consistency.
+Missing/foreign identity or any report refusal yields no sample and sticky review;
+restoring report bytes cannot retry that lifetime. The original `New` profile
+remains unchanged. No new attributed/healthy state, stable ID or public field is
+introduced. Expected fields remain private in memory; generic JSON is refused
+and ordinary formatting is redacted. Matching text is not report provenance:
+the future provider must qualify its independently sourced expected identity,
+retained device, executable/runtime, transport and wake policy.
+
 Collection admits only one operation, with no queue or detached worker. It
 refuses value copies of its constructor-issued handle, preventing a copy from
 forking close/review state while retaining the same backend. It
@@ -38,6 +49,11 @@ settled process verification and seven report projections. An additional
 source-change case discards the genuine report and keeps review after restoration.
 Its source census/generation is explicitly invented; the adapter is test-only,
 not a device backend, authenticated runtime, isolated root or product service.
+The same boot also tests the fixed comparison profile with six matching producer
+projections, missing identity, foreign serial/WWN and changed fake generation.
+Missing identity cannot publish an attributed `Unavailable` sample. Refusals keep
+review and never re-run the producer; all ten compared-case receipts are required.
+The original seven projections and source-change control remain in place.
 
 After accepted capture, settled ownership is checked with a separate bounded
 one-second verification context, even when collection was canceled. Uncertain

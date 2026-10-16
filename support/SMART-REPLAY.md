@@ -175,6 +175,19 @@ retain review even after restoration. The source observations are explicitly
 synthetic, not disk identity/provenance. Both parser and capture success markers
 are required; neither test is replaced by a cross-compilation assertion.
 
+The same capture binary/boot also runs `TestFixedProducerCaptureCompared`:
+independently invented expected serial/WWN fixed at collector construction,
+six matched health projections, missing identity, foreign serial, foreign WWN
+and changed fake generation. Missing identity returns no sample, not attributed
+unavailability. Compared-report/source refusals retain review with no producer
+retry. A closed host receipt catalogue requires the parent and all ten leaf
+passes plus exactly one comparison marker; missing, duplicate, lookalike, extra,
+failed and skipped receipts refuse. Existing capture30s and guest90s limits,
+original tests and code/stdin ownership remain unchanged. This proves report
+consistency in the synthetic composition, not expected-field origin, physical
+report provenance, standby or SMART authority. Guard controls join the existing
+host suite; no extra CI stage or boot is added.
+
 The two Go guest test binaries omit debug symbols to fit the existing 80 MiB
 temporary filesystem without enlarging the base or removing product files.
 Every injected trace/binary/init is dumped back and compared byte-for-byte before

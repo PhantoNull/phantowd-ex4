@@ -3106,6 +3106,15 @@ not host/QEMU progress.
     provenance, ioctl, standby or physical qualification; no product startup
     uses the primitive. Debug-free guest tests fit the existing copied image;
     injected bytes are verified before boot even if debugfs reports success.
+    An optional constructor-fixed private ATA serial/NAA-5 WWN comparison now
+    runs in that coordinator without changing its original profile or sample
+    shape. Report refusal latches review, never retries or publishes partial
+    evidence. Whole host/vet, scoped race3 and the existing ARM926 replay boot
+    pass six matched projections plus missing/foreign identity and changed fake
+    source (ten compared cases), with the original proofs and budgets retained.
+    Matching report text is not provenance, stable identity or command authority;
+    qualify expected-field origin, retained runtime/device and standby before
+    attributed collection, history or UI. No product startup calls this profile.
     An additional private sysfs census reuses the complete schema-v2 collector
     and topology validator, not import/mount eligibility. Its non-virtual whole
     leaf view retains mounted disks, active MD members, removable/read-only

@@ -63,6 +63,11 @@ func (b *replayCaptureBackend) Settled(ctx context.Context) (bool, error) {
 
 func fixedReplayCollector(t *testing.T, name string) (*Collector, *replayCaptureBackend) {
 	t.Helper()
+	return fixedReplayCollectorProfile(t, name, nil)
+}
+
+func fixedReplayCollectorProfile(t *testing.T, name string, comparison *smartreport.ATAReportComparison) (*Collector, *replayCaptureBackend) {
+	t.Helper()
 	if os.Getenv("PHANTOWD_SMART_CAPTURE_FIXTURE") != "generic-only" || os.Getuid() != 0 {
 		t.Fatal("explicit disposable generic-only root fixture required")
 	}
@@ -88,7 +93,12 @@ func fixedReplayCollector(t *testing.T, name string) (*Collector, *replayCapture
 	}
 	target := Target{Generation: volumeprobe.BlockDeviceGeneration{Major: 8, Minor: 16, DiskSequence: 7}, CensusToken: [32]byte{1}}
 	backend := &replayCaptureBackend{owner: owner, target: target}
-	collector, err := New(backend, target, 5*time.Second)
+	var collector *Collector
+	if comparison == nil {
+		collector, err = New(backend, target, 5*time.Second)
+	} else {
+		collector, err = NewWithATAReportComparison(backend, target, 5*time.Second, *comparison)
+	}
 	if err != nil {
 		_ = owner.Close(context.Background())
 		t.Fatal(err)
@@ -104,6 +114,88 @@ func fixedReplayCollector(t *testing.T, name string) (*Collector, *replayCapture
 	})
 	// The caller descriptors close on return. Capture must use independent pins.
 	return collector, backend
+}
+
+func TestFixedProducerCaptureCompared(t *testing.T) {
+	// Expected fields are independent invented constants, never read back from
+	// producer JSON. The source/census still comes from the explicit fake above.
+	p, err := smartreport.NewATAReportComparison("SYNTHETIC-ONLY", 0x5abcdef123456789)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct {
+		name       string
+		exit       int
+		state      smartreport.State
+		assessment smartreport.Assessment
+	}{
+		{"pass", 0, smartreport.Complete, smartreport.ReportedPass},
+		{"fail", 8, smartreport.Complete, smartreport.ReportedFail},
+		{"partial-fail", 12, smartreport.Partial, smartreport.ReportedFail},
+		{"partial-pass", 4, smartreport.Partial, smartreport.ReportedPass},
+		{"unsupported", 4, smartreport.UnsupportedSMART, smartreport.NoAssessment},
+		{"disabled", 0, smartreport.Disabled, smartreport.NoAssessment},
+		{"empty", 2, smartreport.Unavailable, smartreport.NoAssessment},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			c, b := fixedReplayCollectorProfile(t, tc.name, &p)
+			sample, err := c.Collect(context.Background())
+			if b.kind != processowner.CaptureExited || b.exit != tc.exit || b.captures != 1 {
+				t.Fatal("actual ordinary capture missing")
+			}
+			if tc.name == "empty" {
+				assertNoSample(t, sample, err, ErrReport)
+				observations := b.observations
+				sample, err = c.Collect(context.Background())
+				assertNoSample(t, sample, err, ErrReview)
+				if b.captures != 1 || b.observations != observations {
+					t.Fatal("missing identity retried producer")
+				}
+				return
+			}
+			if err != nil || !sample.Valid() || sample.Generation() != b.target.Generation || b.observations != 2 ||
+				sample.Report().State() != tc.state || sample.Report().Assessment() != tc.assessment ||
+				sample.Report().Flags().SMARTCommandError != (tc.exit&4 != 0) || sample.Report().Flags().FailingStatus != (tc.exit&8 != 0) {
+				t.Fatal("compared producer projection/lifecycle changed", err)
+			}
+			if settled, err := b.Settled(context.Background()); !settled || err != nil {
+				t.Fatal("producer not settled", err)
+			}
+		})
+	}
+	for _, name := range []string{"foreign-serial", "foreign-wwn", "source-change"} {
+		t.Run(name, func(t *testing.T) {
+			serial, wwn := "SYNTHETIC-ONLY", uint64(0x5abcdef123456789)
+			if name == "foreign-serial" {
+				serial = "OTHER-SYNTHETIC"
+			}
+			if name == "foreign-wwn" {
+				wwn++
+			}
+			profile, err := smartreport.NewATAReportComparison(serial, wwn)
+			if err != nil {
+				t.Fatal(err)
+			}
+			c, b := fixedReplayCollectorProfile(t, "pass", &profile)
+			b.changeAfterCapture = name == "source-change"
+			sample, err := c.Collect(context.Background())
+			want := ErrReport
+			if name == "source-change" {
+				want = ErrSource
+			}
+			assertNoSample(t, sample, err, want)
+			if b.kind != processowner.CaptureExited || b.exit != 0 || b.captures != 1 {
+				t.Fatal("refusal did not use actual producer")
+			}
+			b.changeAfterCapture = false
+			observations := b.observations
+			sample, err = c.Collect(context.Background())
+			assertNoSample(t, sample, err, ErrReview)
+			if b.captures != 1 || b.observations != observations {
+				t.Fatal("review cleared or retried producer")
+			}
+		})
+	}
 }
 
 func TestFixedProducerCapture(t *testing.T) {

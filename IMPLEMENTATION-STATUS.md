@@ -72,6 +72,23 @@ or authorize a new full/hosted run or merge.
 
 ## Independent SMART temperature prerequisite
 
+The generation-bound coordinator now also accepts a private immutable ATA
+serial/NAA-5 WWN comparison fixed at construction, without changing its original
+profile, lifecycle or redacted sample shape. Any compared-report refusal returns
+zero sample and sticky review; restored bytes cannot cause a retry. This is
+supplied-field consistency only, not report provenance or stable media identity.
+Expected fields remain private; no physical provider, history, HTTP or service
+activation is added.
+
+Whole Windows and pinned Go1.26.8 Linux API tests/vet, scoped SMART race3 and
+closed receipt controls pass. The actual static generic-only7.5 producer in the
+existing ARM926 guest passes ten compared cases alongside all original health,
+temperature and capture proofs. Missing identity refuses rather than publishing
+an attributed unavailable sample. Guest30s/90s limits and base remain unchanged.
+The first native run passes Go/race but fails a Python line-length check; final
+guard/lint/path checks pass after a docstring-only correction and consolidation
+into the existing host suite. No full/hosted/physical qualification follows.
+
 An internal offline optional ATA temperature projection now preserves the
 original bounded health/exit semantics and distinguishes missing from zero.
 No command provider, device permission, HTTP/history or fan control is added.

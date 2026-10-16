@@ -6,11 +6,39 @@ package smartreport
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
+	"io"
 	"strconv"
 	"strings"
 )
 
 var ErrIdentity = errors.New("SMART report identity refused")
+
+// ATAReportComparison holds separately supplied expected report fields. It is
+// immutable private data, NOT stable media identity, provenance or authority.
+// The future provider must qualify where these expected values came from.
+type ATAReportComparison struct {
+	serial string
+	wwn    uint64
+}
+
+func NewATAReportComparison(serial string, wwn uint64) (ATAReportComparison, error) {
+	p := ATAReportComparison{serial: serial, wwn: wwn}
+	if !p.Valid() {
+		return ATAReportComparison{}, ErrIdentity
+	}
+	return p, nil
+}
+
+func (p ATAReportComparison) Valid() bool { return ataSerial(p.serial) && p.wwn>>60 == 5 }
+func (p ATAReportComparison) Parse(data []byte, observedExit int) (Observation, error) {
+	return ParseMatchingATAIdentity(data, observedExit, p.serial, p.wwn)
+}
+func (ATAReportComparison) Format(s fmt.State, _ rune) {
+	_, _ = io.WriteString(s, "ata-report-comparison{private}")
+}
+func (ATAReportComparison) MarshalJSON() ([]byte, error) { return nil, ErrPrivate }
+func (*ATAReportComparison) UnmarshalJSON([]byte) error  { return ErrPrivate }
 
 // ParseMatchingATAIdentity additionally requires an exact ATA serial and an
 // NAA-5 WWN, both supplied by a separately trusted caller. It does not discover,
@@ -18,7 +46,7 @@ var ErrIdentity = errors.New("SMART report identity refused")
 // Matching text is NOT provenance, stable identity, a device lease or command
 // authority: a future provider must still pin and qualify the actual source,
 // runtime, transport and complete-census generation before and after capture.
-// No product collector calls this offline parser.
+// No product startup uses this parser or supplies a physical command backend.
 func ParseMatchingATAIdentity(data []byte, observedExit int, serial string, wwn uint64) (Observation, error) {
 	if !ataSerial(serial) || wwn>>60 != 5 {
 		return Observation{}, ErrIdentity

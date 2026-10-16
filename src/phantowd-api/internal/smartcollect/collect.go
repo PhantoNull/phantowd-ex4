@@ -8,6 +8,8 @@ package smartcollect
 import (
 	"context"
 	"errors"
+	"fmt"
+	"io"
 	"reflect"
 	"time"
 
@@ -81,13 +83,15 @@ type Backend interface {
 }
 
 type Collector struct {
-	self    *Collector
-	gate    chan struct{}
-	backend Backend
-	target  Target
-	timeout time.Duration
-	review  bool
-	closed  bool
+	self       *Collector
+	gate       chan struct{}
+	backend    Backend
+	target     Target
+	timeout    time.Duration
+	review     bool
+	closed     bool
+	compareATA bool
+	comparison smartreport.ATAReportComparison
 }
 
 type Sample struct {
@@ -102,6 +106,21 @@ func (s Sample) Generation() volumeprobe.BlockDeviceGeneration { return s.genera
 
 // New copies target/budget and retains the trusted backend; no I/O occurs.
 func New(backend Backend, target Target, timeout time.Duration) (*Collector, error) {
+	return newCollector(backend, target, timeout, smartreport.ATAReportComparison{}, false)
+}
+
+// NewWithATAReportComparison adds a fixed expected-report comparison to the
+// original collection lifecycle. Used only by synthetic host/ARM fixtures; it
+// supplies no source/transport/runtime/wake or physical SMART authority. A
+// comparison failure latches review; changing inputs cannot retry that lifetime.
+func NewWithATAReportComparison(backend Backend, target Target, timeout time.Duration, comparison smartreport.ATAReportComparison) (*Collector, error) {
+	if !comparison.Valid() {
+		return nil, ErrInvalid
+	}
+	return newCollector(backend, target, timeout, comparison, true)
+}
+
+func newCollector(backend Backend, target Target, timeout time.Duration, comparison smartreport.ATAReportComparison, compareATA bool) (*Collector, error) {
 	if backend == nil || !validTarget(target) || timeout < time.Second || timeout > 30*time.Second {
 		return nil, ErrInvalid
 	}
@@ -112,7 +131,7 @@ func New(backend Backend, target Target, timeout time.Duration) (*Collector, err
 			return nil, ErrInvalid
 		}
 	}
-	c := &Collector{gate: make(chan struct{}, 1), backend: backend, target: target, timeout: timeout}
+	c := &Collector{gate: make(chan struct{}, 1), backend: backend, target: target, timeout: timeout, comparison: comparison, compareATA: compareATA}
 	c.self = c
 	return c, nil
 }
@@ -194,8 +213,17 @@ func (c *Collector) Collect(ctx context.Context) (Sample, error) {
 		len(result.Stdout) > smartreport.MaxBytes || len(result.Stderr) > MaxStderr {
 		return Sample{}, ErrCollection
 	}
-	report, err := smartreport.Parse(result.Stdout, result.ExitCode)
+	var report smartreport.Observation
+	var err error
+	if c.compareATA {
+		report, err = c.comparison.Parse(result.Stdout, result.ExitCode)
+	} else {
+		report, err = smartreport.Parse(result.Stdout, result.ExitCode)
+	}
 	if err != nil {
+		if c.compareATA {
+			c.review = true
+		}
 		return Sample{}, ErrReport
 	}
 	if err := c.source(operation); err != nil {
@@ -238,3 +266,4 @@ func (Sample) MarshalJSON() ([]byte, error)     { return nil, ErrPrivate }
 func (*Sample) UnmarshalJSON([]byte) error      { return ErrPrivate }
 func (*Collector) MarshalJSON() ([]byte, error) { return nil, ErrPrivate }
 func (*Collector) UnmarshalJSON([]byte) error   { return ErrPrivate }
+func (Collector) Format(s fmt.State, _ rune)    { _, _ = io.WriteString(s, "smart-collector{private}") }

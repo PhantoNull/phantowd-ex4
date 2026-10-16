@@ -104,7 +104,12 @@ image. Root API cross-compilation alone would not prove these executions.
 Matching identifiers in supplied JSON is **not report provenance**: copied or
 forged JSON can match too. This function does not bind a process to a disk,
 mint a census token/stable identity, inspect duplicates, authorize a command,
-change `smartcollect` admission or expose an endpoint. No collector calls it.
+expose an endpoint or confer command authority. A private immutable
+`ATAReportComparison` now fixes separately supplied expected fields for the
+optional constructor-bound `smartcollect` comparison profile. It retains those
+fields privately, rejects generic JSON and redacts ordinary formatting; the
+returned observation still retains no raw identity. Its synthetic host/ARM
+composition does not qualify expected-field origin or physical report attribution.
 Provider/retained-device/transport/standby qualification remains required before
 using the comparison as one check in an attributed collection pipeline.
 

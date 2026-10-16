@@ -338,6 +338,7 @@ done
 # Generic-producer replay is a disposable QEMU userspace fixture, not an EX4
 # kernel input. Keep actual guest execution selected and fast host checks too.
 for path in 'support/test-smart-replay-arm.ps1' \
+    'support/tests/smart-capture-receipts.py' \
     'support/tests/test-qemu-smart-replay.sh' \
     'support/tests/smart-replay-arm-init.sh' \
     'support/tests/smart-replay-corpus.py' \

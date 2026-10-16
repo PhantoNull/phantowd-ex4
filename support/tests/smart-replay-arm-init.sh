@@ -44,8 +44,9 @@ if [ "$failed" = 0 ] && /usr/sbin/phantowd-smart-replay-test -test.v -test.timeo
     echo 'PHANTOWD_SMART_ARM_REPLAY_READY scope=generic-synthetic-only version=7.5 cases=7'
     echo 'PHANTOWD_SMART_ARM_TEMPERATURE_READY scope=generic-synthetic-only version=7.5 cases=4'
     export PHANTOWD_SMART_CAPTURE_FIXTURE=generic-only
-    if /usr/sbin/phantowd-smart-capture-test -test.v -test.run '^TestFixedProducerCapture$' -test.timeout=30s; then
+    if /usr/sbin/phantowd-smart-capture-test -test.v -test.run '^(TestFixedProducerCapture|TestFixedProducerCaptureCompared)$' -test.timeout=30s; then
         echo 'PHANTOWD_SMART_ARM_CAPTURE_READY scope=generic-synthetic-only source=fake cases=7'
+        echo 'PHANTOWD_SMART_ARM_COMPARISON_READY scope=report-consistency-only source=fake cases=10'
     else
         echo 'PHANTOWD_SMART_ARM_CAPTURE_FAILED'
     fi

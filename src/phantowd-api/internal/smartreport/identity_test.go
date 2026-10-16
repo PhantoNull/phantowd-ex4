@@ -14,6 +14,50 @@ import (
 const identitySerial = "SYNTHETIC-ATA-01"
 const identityWWN uint64 = 0x5abcdef123456789
 
+func TestPrivateATAComparisonProfile(t *testing.T) {
+	for _, tc := range []struct {
+		serial string
+		wwn    uint64
+	}{
+		{"", identityWWN}, {" padded", identityWWN}, {strings.Repeat("A", 21), identityWWN},
+		{identitySerial, 0}, {identitySerial, 0x6abcdef123456789},
+	} {
+		p, err := NewATAReportComparison(tc.serial, tc.wwn)
+		if !errors.Is(err, ErrIdentity) || p != (ATAReportComparison{}) || p.Valid() {
+			t.Fatal("invalid comparison profile accepted")
+		}
+	}
+	var zero ATAReportComparison
+	if got, err := zero.Parse([]byte(identityFixture(0)), 0); got != (Observation{}) || !errors.Is(err, ErrIdentity) {
+		t.Fatal("zero profile parsed report")
+	}
+	p, err := NewATAReportComparison(identitySerial, identityWWN)
+	if err != nil || !p.Valid() {
+		t.Fatal(err)
+	}
+	for _, value := range []any{p, &p} {
+		for _, verb := range []string{"%v", "%+v", "%#v"} {
+			if got := fmt.Sprintf(verb, value); got != "ata-report-comparison{private}" {
+				t.Fatal("profile disclosed private fields")
+			}
+		}
+		if data, err := json.Marshal(value); len(data) != 0 || !errors.Is(err, ErrPrivate) {
+			t.Fatal("profile serialized")
+		}
+	}
+	if err := json.Unmarshal([]byte(`{}`), &p); !errors.Is(err, ErrPrivate) || !p.Valid() {
+		t.Fatal("generic JSON changed profile")
+	}
+	for exit := 0; exit < 256; exit++ {
+		data := []byte(identityFixture(exit))
+		want, err := ParseMatchingATAIdentity(data, exit, identitySerial, identityWWN)
+		got, profileErr := p.Parse(data, exit)
+		if err != nil || profileErr != nil || got != want {
+			t.Fatal("profile changed existing comparison semantics", err, profileErr)
+		}
+	}
+}
+
 func identityFixture(exit int) string {
 	input := strings.Replace(fixture(exit, exit&8 == 0), "PRIVATE-SERIAL", identitySerial, 1)
 	return strings.Replace(input, `"wwn":{"id":1234}`, `"wwn":{"naa":5,"oui":11259375,"id":4886718345}`, 1)

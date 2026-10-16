@@ -143,8 +143,9 @@ grep -E "^PASS${cr}?$" "$scratch/guest.log" >/dev/null
 [ "$(grep -c '^PHANTOWD_SMART_ARM_PRODUCER case=' "$scratch/guest.log")" = 7 ]
 grep -E '^--- PASS: TestUpstreamReplayCorpus ' "$scratch/guest.log" >/dev/null
 grep -E '^--- PASS: TestFixedProducerCapture ' "$scratch/guest.log" >/dev/null
+python3 -B "$source_dir/support/tests/smart-capture-receipts.py" "$scratch/guest.log"
 grep -E '^--- PASS: TestUpstreamTemperatureCorpus ' "$scratch/guest.log" >/dev/null
 [ "$(grep -c '^PHANTOWD_SMART_ARM_TEMPERATURE_PRODUCER case=' "$scratch/guest.log")" = 4 ]
-grep -E '^PHANTOWD_SMART_ARM_(PRODUCER|REPLAY_READY|CAPTURE_READY|TEMPERATURE_)' "$scratch/guest.log"
+grep -E '^PHANTOWD_SMART_ARM_(PRODUCER|REPLAY_READY|CAPTURE_READY|COMPARISON_READY|TEMPERATURE_)' "$scratch/guest.log"
 [ "$(sha256sum "$base/rootfs.ext2" | awk '{print $1}')" = "$base_hash" ]
 echo 'PHANTOWD_SMART_ARM_REPLAY_BASE_UNCHANGED'

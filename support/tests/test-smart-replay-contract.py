@@ -6,6 +6,7 @@
 from pathlib import Path
 import hashlib
 import os
+import runpy
 import subprocess
 import tempfile
 import unittest
@@ -13,6 +14,34 @@ import unittest
 ROOT = Path(__file__).resolve().parents[2]
 RUNNER = ROOT / "support/tests/test-qemu-smart-replay.sh"
 REPORT_RUNNER = ROOT / "support/tests/test-qemu-smart-report.sh"
+CAPTURE = runpy.run_path(str(
+    ROOT / "support/tests/smart-capture-receipts.py"))
+
+
+class CaptureReceiptTests(unittest.TestCase):
+    def test_exact_catalogue_and_each_missing_duplicate_lookalike(self):
+        parent, cases = CAPTURE["PARENT"], CAPTURE["CASES"]
+        verify = CAPTURE["verify"]
+        lines = ["--- PASS: " + parent + " (0.01s)"]
+        lines += ["    --- PASS: " + parent + "/" + name + " (0.01s)"
+                  for name in cases]
+        lines.append(CAPTURE["MARKER"])
+        good = "\n".join(lines)
+        verify(good)
+        verify(good.replace("\n", "\r\n"))
+        for index in range(len(lines)):
+            for changed in (lines[:index] + lines[index + 1:],
+                            lines + [lines[index]],
+                            lines[:index] + [lines[index] + "-lookalike"]
+                            + lines[index + 1:]):
+                with self.subTest(index=index, changed=changed):
+                    with self.assertRaises(ValueError):
+                        verify("\n".join(changed))
+        for extra in ("    --- PASS: " + parent + "/extra (0.01s)",
+                      "--- SKIP: " + parent + " (0.01s)",
+                      "--- FAIL: " + parent + "/pass (0.01s)"):
+            with self.assertRaises(ValueError):
+                verify(good + "\n" + extra)
 
 
 class ReplayContractTests(unittest.TestCase):
