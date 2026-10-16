@@ -204,23 +204,25 @@ review/recovery, EX4/full-image/own-hosted/reproducibility gates remain separate
 
 ### Current media-lane addition: operation process loss
 
-The existing media guest now also runs28 actual policy-operation SIGKILL
+The existing media guest now also runs56 actual policy-operation SIGKILL
 boundaries in a second test binary, after the original ext4 tests:7 method gates
-and21 intent/policy/receipt syscall-success gates. New cases use
+and21 intent/policy/receipt syscall-success gates, plus the same28 gates with
+the actual retained bundle reader. New cases use
 their own16MiB tmpfs mount, not physical storage. One boot still has the original
 hard60s VM/180s outer limits; Go suites share the45s allowance with conservative
 remaining-second accounting. The original catalogue is closed and checked before
 boot, excluding subprocess-only helpers while enrolling their actual parent
-lock test. Current proof is53 original plus30 operation top-level/subcase receipts,
+lock test. Current proof is53 original plus59 operation top-level/subcase receipts,
 two Go PASS lines, both phase markers, normal unmounts and unchanged base.
-Two positive/205 malformed parser controls pass; both binary selectors match
+Two positive/264 malformed parser controls pass; both binary selectors match
 their exact mandatory catalogue before boot. No SKIP/no-tests/foreign marker
 waiver or extra default guest is added.
 
 The parent retains original references before loss, proves Busy/live and actual
 SIGKILL/reap, then acquires read-observation locks and validates unchanged bytes/
 captured metadata. Matching confirmation still requires review. This is a
-test-only observer, not uninterrupted writer authority, a product reopener,
+test-only oracle plus an explicit runtime read-only collector, not uninterrupted
+writer authority, a product writer reopener,
 recovery or power-loss proof. The
 [full protocol/test scope](../src/phantowd-api/internal/policytransaction/README.md#actual-process-loss-observations--m13c4a)
 separates the new evidence from its remaining gates.

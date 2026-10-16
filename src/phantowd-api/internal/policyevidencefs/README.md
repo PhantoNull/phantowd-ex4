@@ -12,15 +12,15 @@ No NAS installation path, physical medium or writer protocol is selected.
 The QEMU fixture now obtains intent/base/candidate data from the separate private
 preparer and compares its candidate with an actual temporary Store commit. The
 receipt used for matcher cases remains invented fixture data, never a preparation
-result or proof of a durable operation. No observer runtime behavior is changed.
+result or proof of a durable operation.
 An additional disposable fixture checks the separate
 [anchored Store prerequisite](../revisionstore/ANCHORED-STORE.md): exact commit
 readback, actual policy-lock exclusion and sticky refusal after late pending
 evidence. This does not connect the observer to a writer or authorize recovery.
 The same QEMU-only fixture also runs the separate
 [disposable transaction protocol](../policytransaction/README.md). Its new
-`operation.json` profile is not accepted by this observer's fixed census;
-the read-only runtime and all no-action meanings remain unchanged.
+`operation.json` profile requires the separate explicit `OpenBundle` entry;
+ordinary `Open` retains its original fixed census and refuses that profile.
 
 ```text
 trusted-state-root/
@@ -31,6 +31,15 @@ trusted-state-root/
     intent.json             # optional private schema1 operation record
     receipt.json            # optional private schema1 local-confirmation record
 ```
+
+`OpenBundle(ctx, root, expectedInstallationID)` instead fixes operations to
+optional `operation.json` (maximum896KiB) and metadata-only `.operation.pending`.
+Policy names are identical. It reuses the same retained locks, original read-only
+files, unique mount/path witnesses, census, watches and cleanup engine, not a
+caller-selected codec or per-observation backend. Legacy/mixed names refuse;
+there is no layout guessing or migration. Either pending role latches review
+before **any** current/bundle data read. The portable private bundle comparison
+returns the same six no-action diagnoses and clears temporary decoded bytes.
 
 ## Lifetime contract
 
@@ -91,6 +100,15 @@ host controls reject missing/one/duplicate/lookalike receipts. The observer is
 read-only, but its QEMU fixture creates/disposes synthetic tmpfs files, takes
 self-bind mounts and probes the actual Store only on those temporary files.
 No new guest stage, persistent image/volume, HTTP route or NAS operation is added.
+
+The explicit bundle profile additionally passes actual ARMv5 observations after
+28 real SIGKILLs in the existing optional media guest. Original pre-loss references
+bracket its fresh diagnostic lifetime; policy/root exclusions, exact metadata
+including atime, repeated diagnoses, pending refusal and normal closure are
+independently checked. Its standard ARM fixture checks all six kinds, zero reads
+for either pending role, injected read/cancel faults, sticky restored drift and
+profile refusal. These do not automatically transfer every legacy fault test to
+the new profile, qualify physical media or establish uninterrupted writer locks.
 
 Still required: complete constructor/read/close/watcher fault and race campaigns,
 explicit atime/content/ownership/bounds qualification on supported media,

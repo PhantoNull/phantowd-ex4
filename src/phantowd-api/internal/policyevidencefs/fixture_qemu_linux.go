@@ -125,6 +125,9 @@ func ExerciseTemporaryQEMU(ctx context.Context, c naspolicy.Config) (result erro
 		return dir, nil
 	}
 	// Codec parity only, not a journal transaction or durable confirmation.
+	if err := exerciseBundleObservationQEMU(ctx, root, base, current, intent, receipt); err != nil {
+		return err
+	}
 	parity, err := makeLayout("preparation-store-parity", base, nil, nil)
 	if err != nil {
 		return err

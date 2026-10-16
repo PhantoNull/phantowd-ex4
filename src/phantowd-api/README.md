@@ -182,6 +182,12 @@ readback and local receipt. It uses only newly generated QEMU tmpfs namespaces;
 there is no existing-state opener, product format decision, HTTP save/recovery
 or consumer activation. Matching receipt files never override an uncertain Owner.
 
+An explicit read-only bundle collector now compares this experimental operation
+profile under its own retained original locks, without writer admission or layout
+autodetection. Actual ARMv5 tests inspect all28 declared process-loss gates using
+the runtime reader; pending metadata suppresses all data reads and matching.
+This is diagnosis only, not product save/recovery, restart or power-loss proof.
+
 The separate internal [iSCSI desired-policy model](internal/iscsipolicy/README.md)
 defines revision-bound target/LUN/backing relationships and per-initiator CHAP
 credential references. Its synthetic host/QEMU fixture opens no backing or

@@ -19,6 +19,7 @@ import (
 
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/naspolicy"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/policyevidence"
+	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/policytransaction"
 	"golang.org/x/sys/unix"
 )
 
@@ -58,6 +59,7 @@ type state struct {
 	files                       [3]object // current, intent, receipt
 	names                       [3]map[string]stamp
 	watch                       int
+	bundleProfile               bool // immutable fixed profile, never per-observation input
 	review, closed, closeFailed bool
 	uncertain                   []*os.File
 	// Trusted lifetime operations, never per-call/provider/HTTP parameters.
@@ -73,6 +75,17 @@ type state struct {
 // On uncertain cleanup, returns a nonnil reviewed handle WITH error to preserve
 // unattempted originals. It must never be used as a successful observation.
 func Open(ctx context.Context, directory, installation string) (observer *Observer, result error) {
+	return open(ctx, directory, installation, false)
+}
+
+// OpenBundle observes the separate experimental operation.json profile. It
+// never guesses/migrates a layout, opens a writer, or authorizes recovery.
+// All Open lifetime and uncertain-cleanup requirements apply unchanged.
+func OpenBundle(ctx context.Context, directory, installation string) (*Observer, error) {
+	return open(ctx, directory, installation, true)
+}
+
+func open(ctx context.Context, directory, installation string, bundleProfile bool) (observer *Observer, result error) {
 	if ctx == nil {
 		return nil, ErrInvalid
 	}
@@ -84,7 +97,7 @@ func Open(ctx context.Context, directory, installation string) (observer *Observ
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
-	s := &state{path: directory, installation: installation, watch: -1,
+	s := &state{path: directory, installation: installation, watch: -1, bundleProfile: bundleProfile,
 		closeFile: func(f *os.File) error { return f.Close() }, readAt: func(f *os.File, b []byte, off int64) (int, error) { return f.ReadAt(b, off) }}
 	a := &Observer{state: s}
 	s.self = a
@@ -144,7 +157,7 @@ func Open(ctx context.Context, directory, installation string) (observer *Observ
 			return nil, err
 		}
 	}
-	for i, spec := range roles {
+	for i, spec := range s.roleSpecs() {
 		expected, present := s.names[spec.parent][spec.name]
 		if !present {
 			continue
@@ -173,15 +186,32 @@ func Open(ctx context.Context, directory, installation string) (observer *Observ
 		return nil, err
 	}
 	_, s.review = s.names[1][".nas-services.pending"] // metadata only; never read
+	if s.bundleProfile {
+		_, pending := s.names[2][".operation.pending"]
+		s.review = s.review || pending
+	}
 	return a, nil
 }
 
-var roles = [...]struct {
+type roleSpec struct {
 	parent int
 	name   string
 	limit  int
-}{
+}
+
+var roles = [...]roleSpec{
 	{1, "nas-services.json", naspolicy.MaxInputBytes}, {2, "intent.json", policyevidence.MaxRecordBytes}, {2, "receipt.json", policyevidence.MaxRecordBytes},
+}
+
+var bundleRoles = [...]roleSpec{
+	{1, "nas-services.json", naspolicy.MaxInputBytes}, {2, "operation.json", policytransaction.MaxObservedBundleBytes},
+}
+
+func (s *state) roleSpecs() []roleSpec {
+	if s.bundleProfile {
+		return bundleRoles[:]
+	}
+	return roles[:]
 }
 
 func openFile(parent int, name string, dir bool, resolve uint64) (*os.File, error) {
@@ -263,6 +293,9 @@ func (s *state) census(ctx context.Context, index int) (found map[string]stamp, 
 		return nil, ErrReview
 	}
 	allowed := [...]map[string]bool{{"policy": true, "operations": true}, {"nas-services.json": true, ".nas-services.pending": true}, {"intent.json": true, "receipt.json": true}}
+	if s.bundleProfile {
+		allowed[2] = map[string]bool{"operation.json": true, ".operation.pending": true}
+	}
 	found = make(map[string]stamp, 2)
 	for len(found) <= 2 {
 		if err := ctx.Err(); err != nil {
@@ -412,7 +445,13 @@ func (a *Observer) Observe(ctx context.Context) (policyevidence.Diagnosis, error
 	if s.beforeMatch != nil {
 		s.beforeMatch()
 	}
-	d, err := policyevidence.Match(policyevidence.Evidence{InstallationID: s.installation, Current: slots[0], Intent: slots[1], Receipt: slots[2]})
+	var d policyevidence.Diagnosis
+	var err error
+	if s.bundleProfile {
+		d, err = policytransaction.MatchBundleObservation(s.installation, slots[0], slots[1])
+	} else {
+		d, err = policyevidence.Match(policyevidence.Evidence{InstallationID: s.installation, Current: slots[0], Intent: slots[1], Receipt: slots[2]})
+	}
 	if err != nil {
 		return fail(ErrInvalid)
 	}

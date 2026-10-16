@@ -66,6 +66,8 @@ and activate product services.
 Dedicated process-loss and syscall-boundary tests now inspect preserved evidence
 and pending metadata without recovery or retry; they do not qualify power loss
 or an EX4 state medium.
+The explicit bundle reader is also tested against those process-loss boundaries;
+its diagnoses never authorize retry, recovery or activation.
 
 A separate ARMv5 fixture now verifies a retained, isolated real SMB3 client
 opening and closing synthetic data without changes or leaked descriptors.

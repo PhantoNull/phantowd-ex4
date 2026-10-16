@@ -713,6 +713,20 @@ This does not repair Samba/full/hosted gates, qualify inside-syscall interruptio
 system restart/power loss/physical media, supply durable review/reconciliation,
 activate services or make the firmware installable.
 
+## M1.3c.4c retained bundle diagnosis — current host/ARM checkpoint
+
+The explicit experimental read-only bundle opener is now runtime-tested after
+all28 declared SIGKILL gates. It retains its own original locks and file objects;
+independent pre-loss references verify unchanged bytes/statx and normal closure.
+Both pending roles suppress data reads/matching; every result grants no action.
+The media lane passes112 ordered receipts/two Go PASS and2+264 parser controls,
+without widening budgets. Standard ARM passes six bundle kinds and seven fault/
+profile controls twice, alongside all previous assertions. Host/race/fuzz checks
+pass their scopes; positive native filesystem cases explicitly skip on WSL.
+This supersedes earlier missing runtime-reader scope, not their failure evidence.
+No existing-state writer, product boot/recovery, physical-medium or release
+qualification is supplied. Detailed contract and gates follow below.
+
 ## M1.3c.2–c.4 disposable protocol — one operation, not product recovery
 
 The new [experimental transaction package](src/phantowd-api/internal/policytransaction/README.md)
@@ -720,8 +734,20 @@ has a portable bounded private bundle codec and a QEMU/Linux-only writer that
 can create only fresh tmpfs state. It retains original root/child locks, unique
 mount/root witnesses and structural watch; initializes its own known fixture
 base, then serializes exactly one intent/base -> policy -> readback -> local
-receipt operation. Existing adapters/observer runtime remain unchanged. The
-older read-only collector rejects the new operation.json profile by design.
+receipt operation. Existing adapters remain unchanged. The older read-only
+collector entry rejects operation.json by design; an explicit bundle opener
+reuses the retained engine without layout autodetection or writer admission.
+
+The portable bundle comparison passes six-kind/exact-byte/strict-input/privacy
+controls and bounded fuzz. Its runtime reader also passes all28 declared loss
+gates after actual ARMv5 SIGKILL, independently bracketed by pre-loss original
+references and unchanged bytes/statx metadata. Pending forces review without
+matching; empty/matching evidence grants no action. Actual root/policy exclusion,
+normal closure and FD counts remain mandatory. The optional NIC-less media lane
+now requires112 receipts/two Go PASS,2+264 parser controls and normal unmounts
+under unchanged60s/180s/shared45s limits. Standard ARM adds six bundle kinds,
+zero reads for both pending roles, read/cancel/restoration and profile refusals;
+this does not qualify every inherited fault scenario for the new profile.
 
 Whole Windows and pinned Linux suites/vet pass. Final native package race3 and
 2000 bounded fuzz executions pass their scopes. WSL's missing unique mount IDs

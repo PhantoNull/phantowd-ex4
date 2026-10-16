@@ -5,13 +5,15 @@
 
 This package tests an actual **base/intent → policy → local receipt** sequence,
 not a deployable state store. Its private writer is compiled only with `qemu &&
-linux`. The only external entry point accepts invented policy data and creates
-a new owned tmpfs directory; there is no existing-state/path opener, HTTP route,
+linux`. Its fixture writer entry accepts invented policy data and creates
+a new owned tmpfs directory; there is no existing-state writer opener, HTTP route,
 service consumer, NAS operation or product installation path.
 
 The portable codec is an internal experimental format, **not** an approved
 product compatibility contract. Product bundle-versus-generation choice remains
-open. Existing policy adapters and the read-only evidence collector are unchanged.
+open. Existing policy adapters remain unchanged. A separate fixed-profile
+read-only collector can inspect this experimental bundle; it cannot adopt it
+into a writer or authorize recovery.
 
 ## Namespace and ownership
 
@@ -58,9 +60,19 @@ Decoding failure returns no partial bundle. The base binding is validated;
 candidate content is represented by its declared digest until actual readback.
 
 This profile uses `operation.json`, NOT the older collector's separate
-`intent.json`/`receipt.json`. That collector must continue rejecting this unknown
-entry; it is not silently extended or used for writer admission. A future product
-decision must reconcile these profiles explicitly, not infer compatibility.
+`intent.json`/`receipt.json`. Its `Open` entry still rejects the bundle profile;
+the explicit `OpenBundle` entry rejects legacy/mixed roles. Neither autodetects,
+migrates or supplies writer admission. A future product decision must reconcile
+these profiles explicitly, not infer compatibility.
+
+`MatchBundleObservation` is a portable bounded comparison over caller-owned
+current/bundle slots. It validates present documents and expected installation,
+decodes private owned bundle bytes, clears temporary buffers and returns only
+the existing six redacted kinds. Invalid input returns a zero diagnosis and a
+fixed error; absent/unavailable evidence is explicit, never inferred from IO.
+Exact bytes matter. Foreign installation or mismatched content is inconsistent,
+not usable confirmation. There is no IO, replay, write, provenance guarantee,
+anti-rollback proof or assertion that a browser received a reply.
 
 ## Ordered attempt and uncertainty
 
@@ -120,7 +132,7 @@ positive writer/race cases explicitly; ARM concurrency is not race instrumentati
 Still required: product namespace/medium/provisioning decisions, trusted complete
 boot state and consumer ownership, original-current/history fault coverage,
 every interrupted journal/policy/receipt boundary on qualified filesystems,
-durable-review recovery, retained read-only operation observation, authorized
+durable-review recovery, qualified product observation, authorized
 reconciliation/retention, multi-operation epochs and HTTP delivery/status wiring.
 An empty journal after a failed initial attempt is **not durable quarantine**.
 There is deliberately no opener that could adopt/retry this existing state.
@@ -155,13 +167,14 @@ observation and child reaping; it is not product retention or recovery.
 
 Run `support/test-revisionstore-media.ps1`. Its existing snapshot-only, NIC-less
 guest retains14 original ext4 SIGKILL/read-only/ENOSPC cases and adds28 tmpfs
-process losses in a second test binary, not a second boot. The45s Go allowance is
+process losses plus28 runtime-reader loss cases in a second test binary, not a
+second boot. The45s Go allowance is
 conservatively shared using remaining uptime seconds; hard60s guest/180s outer
-and resource caps stay unchanged. Normal tmpfs/ext4 unmount,83 exact ordered
+and resource caps stay unchanged. Normal tmpfs/ext4 unmount,112 exact ordered
 receipts and two Go PASS lines are mandatory. The closed original test selection
 is checked against the verifier catalogue before compilation/boot: helper-only
 SKIP or unregistered tests never become acceptable noise. Host parser controls
-require2 valid and205 refused traces. Both binary selectors are closed and
+require2 valid and264 refused traces. Both binary selectors are closed and
 checked against the mandatory verifier catalogue before boot.
 
 Actual ARMv5 passes this complete lane. Native WSL explicitly skips the positive
@@ -173,7 +186,7 @@ ordinary Store constructors keep their semantics.
 
 Still missing: arbitrary in-flight kernel-I/O interruption, real media errors,
 all constructor/close faults, persistent process/system restart,
-qualified medium/power loss, a retained product observer, durable review and
+qualified medium/power loss, product observation wiring, durable review and
 authorized reconciliation. Same-kernel tmpfs SIGKILL is none of those guarantees.
 
 ### Syscall boundaries — M1.3c.4b
@@ -208,3 +221,25 @@ base/intent/receipt bindings. It is not part of the observer or a recovery path.
 Original-reference/lock, bytes/statx, challenge/gate and normal FD disposal checks
 remain mandatory for all28 cases. No new guest/image/volume, timeout relaxation,
 physical storage, product recovery or full/hosted qualification follows.
+
+### Runtime bundle reader after process loss — M1.3c.4c
+
+The external Go test package repeats all28 declared gates with actual SIGKILL,
+then opens the real `policyevidencefs.OpenBundle`, not the test-only oracle.
+Original pre-loss references and metadata bracket its lifetime; its independently
+acquired observation locks exclude both a second reader and the actual policy
+Store. Observe twice must match the expected redacted kind, or return review
+with no kind for all15 pending cases. Normal Close and unchanged bytes/statx/FD
+counts are mandatory before the original independent oracle resumes. Fresh
+observation locks are not uninterrupted writer authority or permission to retry.
+Every kind still grants no action, including empty operation and matching receipt.
+
+The separate standard ARM fixture also tests all six bundle kinds, both pending
+roles with zero data-read calls, read failure, cancellation, restored drift and
+mixed/legacy-profile refusal. It preserves the existing legacy collector and
+18 normal writer scenarios within the unchanged fixture budget. Native positive
+filesystem/crash cases skip explicitly on kernels lacking unique mount IDs;
+portable comparison/fuzz and shared-engine checks are distinct evidence.
+
+This is same-kernel process-loss diagnosis on synthetic tmpfs, not persistent
+restart, power loss, complete fault coverage, recovery or product boot admission.

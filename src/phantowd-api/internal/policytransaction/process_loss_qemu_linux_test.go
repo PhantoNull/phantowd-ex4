@@ -506,6 +506,34 @@ func expectedCrashPhase(stage string) crashPhase {
 	return p
 }
 func testCrashStage(t *testing.T, stage string) {
+	testCrashStageWithProbe(t, stage, nil)
+}
+
+// RuntimeBundleLossStages and RunRuntimeBundleLossFixture are test-binary-only
+// bridges for the external collector test package, not product entry points.
+func RuntimeBundleLossStages() []string {
+	stages := append([]string(nil), crashStages...)
+	for _, role := range syscallCrashRoles {
+		for _, point := range syscallCrashPoints {
+			stages = append(stages, role+"/"+point)
+		}
+	}
+	return stages
+}
+
+func RunRuntimeBundleLossFixture(t *testing.T, stage string, probe func(context.Context, string, bool, policyevidence.Kind) error) {
+	t.Helper()
+	if !knownCrashStage(stage) || probe == nil {
+		t.Fatal("invalid runtime observer test profile")
+	}
+	var x unix.Statx_t
+	if unix.Statx(unix.AT_FDCWD, "/tmp", unix.AT_NO_AUTOMOUNT, unix.STATX_MNT_ID_UNIQUE, &x) != nil || x.Mask&unix.STATX_MNT_ID_UNIQUE == 0 {
+		t.Skip("unique mount IDs unavailable; no positive runtime-reader loss qualification")
+	}
+	testCrashStageWithProbe(t, stage, probe)
+}
+
+func testCrashStageWithProbe(t *testing.T, stage string, probe func(context.Context, string, bool, policyevidence.Kind) error) {
 	t.Helper()
 	// Initialize Go's pipe poller before measuring persistent runtime descriptors.
 	warmReader, warmWriter, e := os.Pipe()
@@ -620,6 +648,26 @@ func testCrashStage(t *testing.T, stage string) {
 	status, ok := exited.Sys().(syscall.WaitStatus)
 	if !ok || !status.Signaled() || status.Signal() != syscall.SIGKILL || ctx.Err() != nil || errorsOut.n != 0 {
 		t.Fatal("exit was not the planned live-child SIGKILL")
+	}
+	if probe != nil {
+		phase := expectedCrashPhase(stage)
+		kind := policyevidence.PublicationUnconfirmed
+		switch {
+		case phase.pending >= 0:
+			kind = ""
+		case phase.journal == 0:
+			kind = policyevidence.NoRecordedOperation
+		case phase.journal == 2:
+			kind = policyevidence.LocalConfirmationObserved
+		case phase.policy == 1:
+			kind = policyevidence.IntentBaseObserved
+		}
+		// The runtime reader acquires its own observation locks AFTER verified
+		// death and closes before these independent original references lock.
+		// Original held/census/statx checks bracket the whole runtime lifetime.
+		if refs.verify() != nil || probe(ctx, gate.Root, phase.pending >= 0, kind) != nil || refs.verify() != nil {
+			t.Fatal("runtime bundle observer changed or misdiagnosed preserved evidence")
+		}
 	}
 	// Reacquire only read-observation locks on the references held BEFORE loss.
 	// This is not uninterrupted writer authority, replay or admission after loss.

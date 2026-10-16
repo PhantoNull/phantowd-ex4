@@ -887,12 +887,21 @@ and recovery do not. **Depends on:** M0 for tests; M7 for physical placement.
   gates fail/poison rather than report success. Pending is metadata-only to the
   test observer and suppresses matching; a separate no-atime oracle verifies
   synthetic staged bytes, never promotion/replay. Original18-case ARM smoke
-  also passes. Existing NIC-less media guest now requires83 receipts/two Go PASS
+  also passes. Existing NIC-less media guest now requires112 receipts/two Go PASS
   lines under unchanged60s/180s limits and a shared45s test allowance; both closed
-  selections and2+205 parser controls prevent helper SKIP/unknown-test drift.
+  selections and2+264 parser controls prevent helper SKIP/unknown-test drift.
+  **c.4c retained bundle diagnosis (experimental host/ARM)** adds an explicit
+  fixed-profile read-only opener using the same original-lock/mount/census/watch
+  engine, not writer adoption or autodetection. Portable bounded comparison
+  distinguishes six redacted kinds; malformed input yields no partial diagnosis.
+  Repeat all28 loss gates with the runtime reader, independent pre-loss metadata
+  witnesses and actual root/policy exclusion. Either pending role refuses before
+  data reads; matching receipt/empty journal never grants action. Standard ARM
+  also checks six kinds, pending/read/cancel/restoration/profile controls. This
+  is not complete fault coverage, durable quarantine or product boot wiring.
   Still required: in-flight kernel-I/O interruption and real errors, complete
   constructor/close campaigns, system restart, persistent medium,
-  retained product observation, durable quarantine and authorized recovery.
+  qualified product observation wiring, durable quarantine and authorized recovery.
   **c.5 retention/reconciliation** requires bounded evidence preservation
   and explicit authorization; none is implemented by preparation;
   **M1.3d** explicitly authorized reconciliation; **M1.2c** complete boot bundle.
