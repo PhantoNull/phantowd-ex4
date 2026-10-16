@@ -61,6 +61,7 @@ type Store[T any] struct {
 	noAtime   bool // private owned-policy reads must not update file access time
 	io        fileOps
 	codec     Codec[T]
+	anchored  *directoryAnchor // optional strict constructor; legacy behavior unchanged
 }
 
 // These unexported operations allow deterministic syscall-failure tests.
@@ -125,6 +126,10 @@ func (s *Store[T]) check() error {
 		return ErrClosed
 	}
 	if s.uncertain {
+		return ErrUncertain
+	}
+	if s.anchored != nil && (!s.anchored.matches(s.dir) || !anchoredCensus(s.dir, s.codec.CurrentName)) {
+		s.uncertain = true
 		return ErrUncertain
 	}
 	return nil
@@ -211,6 +216,18 @@ func (s *Store[T]) Load() (T, error) {
 		var zero T
 		return zero, err
 	}
+	if s.anchored != nil {
+		v, data, err := s.loadExact()
+		clear(data)
+		if err != nil && !errors.Is(err, ErrNotInitialized) {
+			s.uncertain = true
+		}
+		if s.check() != nil {
+			var zero T
+			return zero, ErrUncertain
+		}
+		return v, err
+	}
 	return s.load()
 }
 
@@ -219,9 +236,17 @@ func (s *Store[T]) Load() (T, error) {
 // and directory sync all succeeded. It does not mean any NAS service changed.
 // On ErrUncertain publication was attempted but durability was not confirmed: do
 // not retry or activate services; close, reopen and reconcile the loaded state.
-func (s *Store[T]) Commit(expected uint64, next T) error {
+// The strict anchored profile additionally refuses unresolved pending evidence
+// on reopen; reopening it never performs reconciliation or confirms a commit.
+func (s *Store[T]) Commit(expected uint64, next T) (result error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	started := false
+	defer func() {
+		if s.anchored != nil && started && result != nil {
+			s.uncertain = true
+		}
+	}()
 	if err := s.check(); err != nil {
 		return err
 	}
@@ -241,7 +266,17 @@ func (s *Store[T]) Commit(expected uint64, next T) error {
 	if _, err := s.codec.Decode(bytes.NewReader(data)); err != nil {
 		return ErrInvalid
 	}
-	current, err := s.load()
+	var current T
+	if s.anchored != nil {
+		var data []byte
+		current, data, err = s.loadExact()
+		clear(data)
+		if err != nil && !errors.Is(err, ErrNotInitialized) {
+			s.uncertain = true
+		}
+	} else {
+		current, err = s.load()
+	}
 	if err != nil && !errors.Is(err, ErrNotInitialized) {
 		return err
 	}
@@ -258,6 +293,10 @@ func (s *Store[T]) Commit(expected uint64, next T) error {
 	var st unix.Stat_t
 	err = unix.Fstatat(s.dir, pendingName, &st, unix.AT_SYMLINK_NOFOLLOW)
 	if err == nil {
+		if s.anchored != nil {
+			s.uncertain = true
+			return ErrReview
+		} // never erase unresolved evidence
 		if st.Mode&unix.S_IFMT != unix.S_IFREG || st.Mode&07777 != 0600 ||
 			st.Uid != uint32(os.Geteuid()) || st.Nlink != 1 {
 			return ErrUnsafe
@@ -268,6 +307,7 @@ func (s *Store[T]) Commit(expected uint64, next T) error {
 	} else if !errors.Is(err, unix.ENOENT) {
 		return ErrIO
 	}
+	started = true
 	fd, err := unix.Openat(s.dir, pendingName, unix.O_WRONLY|unix.O_CREAT|unix.O_EXCL|unix.O_NOFOLLOW|unix.O_CLOEXEC, 0600)
 	if err != nil {
 		return ErrIO
@@ -279,7 +319,8 @@ func (s *Store[T]) Commit(expected uint64, next T) error {
 		syncErr = s.io.sync(f)
 	}
 	closeErr := s.io.close(f)
-	// Keep the bounded pending entry on failure for the next commit to discard.
+	// Legacy callers may discard this pending entry at their next commit. The
+	// strict anchored profile instead preserves evidence and refuses retry.
 	if writeErr != nil || n != len(data) || syncErr != nil || closeErr != nil {
 		return ErrIO
 	}
@@ -289,6 +330,9 @@ func (s *Store[T]) Commit(expected uint64, next T) error {
 	}
 	if s.io.syncDir(s.dir) != nil {
 		s.uncertain = true
+		return ErrUncertain
+	}
+	if s.anchored != nil && s.check() != nil {
 		return ErrUncertain
 	}
 	return nil

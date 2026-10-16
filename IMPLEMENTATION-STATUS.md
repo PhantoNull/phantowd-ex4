@@ -646,6 +646,37 @@ acceptance cases for stale/crashed helpers, slot holes, retained deferral and
 workload admission. None of those product controls is implemented by this
 documentation-only checkpoint.
 
+## M1.3c.2 prerequisite — anchored Store, not the transaction Owner
+
+The optional Linux [anchored profile](src/phantowd-api/internal/revisionstore/ANCHORED-STORE.md)
+captures a fixed child beneath a borrowed original parent and retains its actual
+exclusive Store flock. Open performs no sync, initialization or cleanup. Fresh
+bounded census refuses pending/unknown entries, including after construction;
+exact bounded readback compares held/named file metadata without re-encoding.
+Any attempted-mutation error poisons the strict instance, including pre-rename
+ErrIO. Restoring fixture contents cannot revive it; successful commits can still
+advance, so this is not a logical operation's single-attempt fence. Existing
+adapters/Owners keep their semantics; no product or HTTP caller uses the profile.
+
+Whole Windows host and pinned Linux suites pass their scopes. Final pinned tagged
+vet, explicit anchored tests repeated3 and race3 for revisionstore/naspolicystore/
+policyevidence pass. Native checks cover whitespace/defensive bytes, no-atime,
+actual lock exclusion, late entries, parent closure/replacement and synthetic
+partial/short-write, sync, close, rename and directory-sync errors. Actual standard
+ARMv5 smoke passes with real anchored policy commit/readback, competing legacy
+Store Busy, late pending preservation and sticky refusal after fixture-only
+restoration, twice in the existing collector fixture. Earlier proofs and guest
+budgets remain; no new stage/image/volume. Windows does not execute Linux-only
+tests, and synthetic errors are not physical failure qualification.
+
+Missing: root absolute/unique-mount authority, consumer exclusion, single-operation
+Owner, durable base/intent/receipt, retention/reconciliation and boot admission.
+Per-instance refusal is not durable quarantine; reopening or valid file presence
+does not prove earlier sync/confirmation. Full constructor/Close faults and media
+qualification remain open. Product namespace question is unanswered, no observer
+is reopened into a writer, no full/hosted/physical gate is waived and PR133 is not
+merged by this focused success.
+
 ## M1.3c.1 operation preparation — private host/ARM prototype, not a writer
 
 New private preparation retains exact base bytes and a Store-encoded candidate,

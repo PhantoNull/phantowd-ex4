@@ -143,6 +143,13 @@ func ExerciseTemporaryQEMU(ctx context.Context, c naspolicy.Config) (result erro
 	if d, err := policyevidence.Match(policyevidence.Evidence{InstallationID: installation, Current: policyevidence.Slot{State: policyevidence.Present, Data: persisted}, Intent: policyevidence.Slot{State: policyevidence.Present, Data: intent}, Receipt: policyevidence.Slot{State: policyevidence.Absent}}); err != nil || d.Kind() != policyevidence.PublicationUnconfirmed {
 		return ErrReview
 	}
+	anchored, err := makeLayout("anchored-store-prerequisite", base, nil, nil)
+	if err != nil {
+		return err
+	}
+	if err := exerciseAnchoredStore(ctx, anchored, current, c); err != nil {
+		return err
+	}
 	for i, tc := range []struct {
 		current, intent, receipt []byte
 		kind                     policyevidence.Kind

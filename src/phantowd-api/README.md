@@ -170,6 +170,12 @@ journal effect. It is namespace-independent data, not a receipt, single-use
 permission or transactional writer; the future Owner must still fence unresolved
 operations and preserve evidence instead of retrying bare Store.Commit.
 
+A separate [anchored Store prerequisite](internal/revisionstore/ANCHORED-STORE.md)
+retains the actual child-directory lock without syncing on open, returns exact
+bounded readback and refuses pending/unknown entries or retries after mutation
+uncertainty. Only host/QEMU fixtures use it; it is not the single-operation writer,
+durable review state, reconciliation or a change to existing HTTP adapters.
+
 The separate internal [iSCSI desired-policy model](internal/iscsipolicy/README.md)
 defines revision-bound target/LUN/backing relationships and per-initiator CHAP
 credential references. Its synthetic host/QEMU fixture opens no backing or

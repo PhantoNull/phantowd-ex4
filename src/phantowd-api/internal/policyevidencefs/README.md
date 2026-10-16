@@ -13,6 +13,10 @@ The QEMU fixture now obtains intent/base/candidate data from the separate privat
 preparer and compares its candidate with an actual temporary Store commit. The
 receipt used for matcher cases remains invented fixture data, never a preparation
 result or proof of a durable operation. No observer runtime behavior is changed.
+An additional disposable fixture checks the separate
+[anchored Store prerequisite](../revisionstore/ANCHORED-STORE.md): exact commit
+readback, actual policy-lock exclusion and sticky refusal after late pending
+evidence. This does not connect the observer to a writer or authorize recovery.
 
 ```text
 trusted-state-root/

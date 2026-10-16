@@ -855,6 +855,11 @@ and recovery do not. **Depends on:** M0 for tests; M7 for physical placement.
   **c.2 retained writer authority/namespace** must select an explicit bounded
   operation-bundle or generation/manifest protocol and preserve the original
   lock into effect ownership, not close/reopen the observer. Product choice open.
+  A separate [strict anchored Store prerequisite](src/phantowd-api/internal/revisionstore/ANCHORED-STORE.md)
+  now retains the actual child lock under a borrowed parent, does not sync on
+  open, returns exact bounded readback and fences pending/unknown entries plus
+  every attempted-mutation error. This is not the root Owner, a namespace decision,
+  logical single-attempt protocol or complete c.2/c.3. Existing adapters unchanged.
   **c.3 durable base/intent before policy** must forbid initial pending/unresolved
   evidence and every second attempt after uncertain I/O, even bare Store ErrIO;
   never exploit Store's later pending cleanup or mint a new ID to bypass review.
@@ -866,7 +871,8 @@ and recovery do not. **Depends on:** M0 for tests; M7 for physical placement.
   Missing/mismatched evidence never authorizes replay or service startup. The
   schema API, namespace/atomic-publication strategy, low-space retention and
   durable-review recovery require explicit decisions before the respective
-  mutating implementation. Existing Store/Owner semantics remain unchanged.
+  mutating implementation. Existing adapter/Owner semantics remain unchanged;
+  the optional anchored profile has its separate stricter refusal contract.
 - **M1.3 — Recover interrupted operations.** Extend current journal semantics
   to an explicit review/reconciliation workflow. An intent plus missing reply
   does not imply failure or success. Preserve orphaned publications; compare
