@@ -19,27 +19,30 @@ import (
 // are mutually exclusive for this original lifetime.
 func (s *NativePlannedServiceQEMU) StartHeldOpenFileQEMU(ctx context.Context) error {
 	if err := s.enter(ctx); err != nil {
-		return err
+		return plannedFailureQEMU(ctx, "held-file-admission", err)
 	}
 	defer func() { <-s.gate }()
 	if s.closed || s.review || !s.started || s.stopped || !s.dataVerified || s.heldAttempted {
-		return runtimebundle.ErrReviewRequired
+		return plannedFailureQEMU(ctx, "held-file-state", runtimebundle.ErrReviewRequired)
 	}
 	s.heldAttempted = true
 	if err := s.verify(ctx); err != nil {
 		return s.quarantine(err)
 	}
 	if err := s.retainPlannedOpenFileQEMU(); err != nil {
-		return s.quarantine(err)
+		return s.quarantine(plannedFailureQEMU(ctx, "held-file-retain", err))
 	}
 	if err := s.inputs.Backend.runtime.StartPlannedFileClientQEMU(ctx); err != nil {
+		// Snapshot before coordinator settlement; runtime startup has already
+		// performed its own bounded failure handling. Do not infer its entry clock.
+		err = plannedFailureQEMU(ctx, "held-file-client", err)
 		s.closeErr, s.review = err, true
 		s.publish()
 		return errors.Join(runtimebundle.ErrReviewRequired, err)
 	}
 	original, err := s.inputs.Backend.ObservePlannedOpenFileQEMU(ctx)
 	if err != nil {
-		return s.quarantine(err)
+		return s.quarantine(plannedFailureQEMU(ctx, "held-file-observe", err))
 	}
 	s.heldFile = original
 	if err := s.verify(ctx); err != nil {

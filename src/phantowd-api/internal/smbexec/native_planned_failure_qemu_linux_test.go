@@ -20,7 +20,7 @@ import (
 func TestNativePlannedFailurePreservesCauseFirstBoundaryAndRedaction(t *testing.T) {
 	private := errors.New("private-account/password/path\nFAKE_READY")
 	cause := errors.Join(private, runtimebundle.ErrReviewRequired, context.DeadlineExceeded)
-	for _, boundary := range []string{"verify-source-set", "verify-role", "verify-share-pins", "verify-owners", "verify-freshness", "verify-held-session", "verify-held-file", "data-admission", "data-state"} {
+	for _, boundary := range []string{"verify-source-set", "verify-role", "verify-share-pins", "verify-owners", "verify-freshness", "verify-held-session", "verify-held-file", "data-admission", "data-state", "held-file-admission", "held-file-state", "held-file-retain", "held-file-client", "held-file-observe"} {
 		err := plannedFailureQEMU(context.Background(), boundary, cause)
 		if got := ObserveNativePlannedFailureQEMU(err); !got.Present || got.Boundary != boundary {
 			t.Fatal("missing fixed failure boundary", got)

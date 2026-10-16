@@ -35,3 +35,26 @@ func TestPlannedOpenFileRefusesAbsentCanceledBusyAndUnstartedService(t *testing.
 		t.Fatal("unstarted service attempted file admission:", err)
 	}
 }
+
+func TestPlannedOpenFileActualNegativeAdmissionHasFixedDiagnostic(t *testing.T) {
+	var absent *NativePlannedServiceQEMU
+	err := absent.StartHeldOpenFileQEMU(context.Background())
+	if !errors.Is(err, ErrInvalid) || ObserveNativePlannedFailureQEMU(err).Boundary != "held-file-admission" {
+		t.Fatal("actual absent admission lost original cause or boundary", err)
+	}
+	s := &NativePlannedServiceQEMU{gate: make(chan struct{}, 1)}
+	err = s.StartHeldOpenFileQEMU(context.Background())
+	if !errors.Is(err, runtimebundle.ErrReviewRequired) || ObserveNativePlannedFailureQEMU(err).Boundary != "held-file-state" {
+		t.Fatal("actual unstarted admission lost original cause or boundary", err)
+	}
+	if s.heldAttempted || s.review || len(s.gate) != 0 {
+		t.Fatal("failure telemetry changed authority or attempted backend access")
+	}
+	canceled, cancel := context.WithCancel(context.Background())
+	cancel()
+	err = s.StartHeldOpenFileQEMU(canceled)
+	observed := ObserveNativePlannedFailureQEMU(err)
+	if !errors.Is(err, context.Canceled) || observed.Boundary != "held-file-admission" || !observed.ContextDone || observed.DeadlinePresent || s.heldAttempted {
+		t.Fatal("canceled admission lost snapshot or proceeded", err)
+	}
+}

@@ -66,6 +66,8 @@ func validPlannedServiceFailureDiagnosticQEMU(fields []string) bool {
 	switch fields[1] {
 	case "boundary=verify-source-set", "boundary=verify-role", "boundary=verify-share-pins", "boundary=verify-owners", "boundary=verify-freshness", "boundary=verify-held-session", "boundary=verify-held-file", "boundary=data-admission", "boundary=data-state":
 		return true
+	case "boundary=held-file-admission", "boundary=held-file-state", "boundary=held-file-retain", "boundary=held-file-client", "boundary=held-file-observe":
+		return true
 	default:
 		return false
 	}

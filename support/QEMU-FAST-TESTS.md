@@ -1999,7 +1999,15 @@ they do not qualify target emission or repair the hosted failure.
 The separate `PHANTOWD_QEMU_PLANNED_SERVICE_FAILURE` row identifies only one
 fixed failed coordinator check and its pre-quarantine `context_done` /
 `deadline_reached` flags (`unavailable` when no observation exists). Only the
-first valid row is relayed. Error-chain `deadline=false` does not mean the
+first valid row is relayed. Fixed `held-file-admission`, `held-file-state`,
+`held-file-retain`, `held-file-client` and `held-file-observe` labels additionally
+distinguish original-open-file startup refusals; earlier typed verify failures
+remain first. The client boundary is captured after the runtime's own failure
+handling, not at its entry. Actual negative-admission/redaction/relay tests,
+pinned Linux race checks and an unchanged-proof focused ARM campaign pass;
+that successful guest does not exercise failure-row emission or establish a
+repair of the intermittent complete-run admission failure.
+Error-chain `deadline=false` does not mean the
 parent was live: an actual ARMv5 refusal reached `verify-owners` with both flags
 true while the planning error omitted the context cause. The planner now keeps
 both `ErrNotReady` and the original cancellation/deadline sentinel at its three

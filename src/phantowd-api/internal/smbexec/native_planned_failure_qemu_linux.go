@@ -29,6 +29,8 @@ func validNativePlannedBoundaryQEMU(boundary string) bool {
 	switch boundary {
 	case "verify-source-set", "verify-role", "verify-share-pins", "verify-owners", "verify-freshness", "verify-held-session", "verify-held-file", "data-admission", "data-state":
 		return true
+	case "held-file-admission", "held-file-state", "held-file-retain", "held-file-client", "held-file-observe":
+		return true
 	default:
 		return false
 	}
