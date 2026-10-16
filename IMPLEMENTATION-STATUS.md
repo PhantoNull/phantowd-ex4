@@ -646,6 +646,40 @@ acceptance cases for stale/crashed helpers, slot holes, retained deferral and
 workload admission. None of those product controls is implemented by this
 documentation-only checkpoint.
 
+## M1.3c.4a process loss — actual SIGKILL and test-only observation
+
+Seven new actual SIGKILL gates cover before/after intent, before/after policy,
+after readback and before/after receipt. All new process/observer code is in the
+Go test binary; no product Go code, existing-state opener or HTTP/CLI is changed.
+Original PID/stage/challenge bind a bounded child gate with trailing/duplicate
+refusal. The parent retains separate original root/role/file references before
+loss, proves all three locks Busy, verifies planned SIGKILL/reap and then locks
+those same directory references for observation. Repeated no-atime reads verify
+complete census, unique identity, exact base/current/records and captured statx
+metadata. Actual SMB/NFS settings and desired iSCSI state change coherently.
+
+The test-only post-loss observer grants no action and requires review even for
+empty journal or matching confirmation. Its locks are reacquired for diagnosis,
+not uninterrupted writer authority. Explicit generated-fixture teardown is
+separate from observation, never product recovery or retention.
+
+Whole Windows/earlier pinned Linux suites pass their unaffected scopes; final
+tagged vet, gate/stream guards and scoped package race3 pass. Native WSL explicitly
+skips positive process loss without mandatory unique mount IDs. Actual complete
+ARMv5 media lane passes all61 ordered receipts, two Go PASS lines and normal
+unmounts, including original14 ext4 SIGKILL/RO/ENOSPC tests plus new7 tmpfs losses.
+No new boot/image/volume or60s guest/180s outer limit; suites share the old45s
+allowance conservatively. Closed init selection is checked against the verifier
+catalogue before boot; 2 valid/159 malformed host proofs pass their controls.
+
+Two earlier runs remain unqualified: fixture code reclosed StdinPipe after Wait,
+then a broad legacy Bootstrap selector enrolled a helper SKIP and an unregistered
+parent-lock test. Pinned Go semantics and explicit closed-catalogue enrollment
+correct those defects without ignoring close errors, SKIP or missing receipts.
+This does not repair Samba/full/hosted gates, qualify inside-syscall interruption,
+system restart/power loss/physical media, supply durable review/reconciliation,
+activate services or make the firmware installable.
+
 ## M1.3c.2–c.4 disposable protocol — one operation, not product recovery
 
 The new [experimental transaction package](src/phantowd-api/internal/policytransaction/README.md)

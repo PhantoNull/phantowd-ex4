@@ -126,3 +126,48 @@ An empty journal after a failed initial attempt is **not durable quarantine**.
 There is deliberately no opener that could adopt/retry this existing state.
 Tmpfs synchronization is not physical persistence or power-loss qualification;
 root provisioning/EX4/NAND/ECC/recovery and full/hosted release gates remain open.
+
+## Actual process-loss observations — M1.3c.4a
+
+`process_loss_qemu_linux_test.go` adds seven real SIGKILL boundaries: before/after
+intent, before/after policy, after readback and before/after receipt. Everything
+new is in the Go **test binary**, not a product opener, subprocess API or CLI.
+Each child creates its own fresh tmpfs namespace. Its selected stage, original
+PID and random challenge bind one bounded private gate; duplicate/prefetched
+trailing proof is rejected. The parent verifies an actual SIGKILL exit, not
+context expiry, a clean return or an injected error.
+
+Before loss, retain separate original root/role/file references while the child
+is frozen and independently verify all three locks are Busy. After verified
+death acquire observation locks on those same directory references; compare
+unique mount/path/named/held identities, complete census, exact policy/base/
+records and captured statx metadata including atime across repeated no-atime
+reads. SMB/NFS paths/permissions and desired iSCSI state change, not just counters.
+
+The post-loss observer is also test-only. Every diagnosis requires review,
+including empty journal and matching local-confirmation records. It refuses
+before verified death/lock acquisition and never opens an Owner/Store, syncs,
+promotes, replays or grants activation. These are **reacquired observation locks**,
+not uninterrupted writer authority. Explicit fixed-name test teardown follows
+observation and child reaping; it is not product retention or recovery.
+
+Run `support/test-revisionstore-media.ps1`. Its existing snapshot-only, NIC-less
+guest retains14 original ext4 SIGKILL/read-only/ENOSPC cases and adds these7 tmpfs
+process losses in a second test binary, not a second boot. The45s Go allowance is
+conservatively shared using remaining uptime seconds; hard60s guest/180s outer
+and resource caps stay unchanged. Normal tmpfs/ext4 unmount,61 exact ordered
+receipts and two Go PASS lines are mandatory. The closed original test selection
+is checked against the verifier catalogue before compilation/boot: helper-only
+SKIP or unregistered tests never become acceptable noise. Host parser controls
+require2 valid and159 refused traces.
+
+Actual ARMv5 passes this complete lane. Native WSL explicitly skips the positive
+process-loss profile without unique mount IDs; final native gate/stream controls,
+tagged vet and scoped package race3 pass, not positive writer/process-loss race.
+Initial fixture double-close and stale broad helper selection failures are
+retained as unqualified runs, not retrospectively green. Product code is unchanged.
+
+Still missing: interruption **inside** every journal/policy/receipt write/sync/
+close/rename, all constructor/close faults, persistent process/system restart,
+qualified medium/power loss, a retained product observer, durable review and
+authorized reconciliation. Same-kernel tmpfs SIGKILL is none of those guarantees.

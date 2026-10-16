@@ -202,6 +202,28 @@ added. SIGKILL is process loss while the kernel stays alive, not power loss or
 physical device/cache/state-medium durability. Product placement, durable
 review/recovery, EX4/full-image/own-hosted/reproducibility gates remain separate.
 
+### Current media-lane addition: operation process loss
+
+The existing media guest now also runs seven actual policy-operation SIGKILL
+boundaries in a second test binary, after the original ext4 tests. New cases use
+their own16MiB tmpfs mount, not physical storage. One boot still has the original
+hard60s VM/180s outer limits; Go suites share the45s allowance with conservative
+remaining-second accounting. The original catalogue is closed and checked before
+boot, excluding subprocess-only helpers while enrolling their actual parent
+lock test. Current proof is53 original plus8 operation top-level/subcase receipts,
+two Go PASS lines, both phase markers, normal unmounts and unchanged base.
+Two positive/159 malformed parser controls pass; no SKIP/no-tests/foreign marker
+waiver. The actual new7-case batch passes in about1.54s in the qualified run;
+that sample is not total build latency or a worst-case bound.
+
+The parent retains original references before loss, proves Busy/live and actual
+SIGKILL/reap, then acquires read-observation locks and validates unchanged bytes/
+captured metadata. Matching confirmation still requires review. This is a
+test-only observer, not uninterrupted writer authority, a product reopener,
+recovery or power-loss proof. The
+[full protocol/test scope](../src/phantowd-api/internal/policytransaction/README.md#actual-process-loss-observations--m13c4a)
+separates the new evidence from its remaining gates.
+
 ## Parent share-mount substitution — separate disposable ARM guest
 
 Run `support/test-server-capture-open.ps1 -InputDrift source-root` alone.

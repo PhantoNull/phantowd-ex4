@@ -19,12 +19,15 @@ export GOPROXY=off GOTOOLCHAIN=local GOFLAGS='-mod=vendor -buildvcs=false'
 export GOCACHE="$scratch/go-cache" GOPATH="$scratch/go-path"
 (cd "$source/src/phantowd-api" && CGO_ENABLED=0 GOOS=linux GOARCH=arm GOARM=5 \
     timeout --signal=TERM --kill-after=1 30 "$go" test -tags=qemu -c -trimpath -o "$scratch/tests" ./internal/revisionstore)
+(cd "$source/src/phantowd-api" && CGO_ENABLED=0 GOOS=linux GOARCH=arm GOARM=5 \
+    timeout --signal=TERM --kill-after=1 30 "$go" test -tags=qemu -c -trimpath -o "$scratch/operation-tests" ./internal/policytransaction)
 cp "$base/rootfs.ext2" "$scratch/rootfs.ext2"
 [ "$(wc -c < "$scratch/rootfs.ext2")" -le 134217728 ] || exit 1
 truncate -s 128M "$scratch/rootfs.ext2"
 "$output/host/sbin/resize2fs" -f "$scratch/rootfs.ext2" >/dev/null 2>&1
 debugfs="$output/host/sbin/debugfs"
 for pair in "$scratch/tests /usr/sbin/phantowd-revisionstore-media-tests" \
+    "$scratch/operation-tests /usr/sbin/phantowd-policy-operation-tests" \
     "$source/support/tests/revisionstore-media-init.sh /usr/sbin/phantowd-revisionstore-media-init"; do
     input=${pair%% *}; name=${pair#* }
     [ -f "$input" ] && [ ! -L "$input" ] || exit 1

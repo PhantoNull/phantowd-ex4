@@ -4,8 +4,16 @@
 set -eu
 source=${1:?repository required}
 [ "$#" -eq 1 ] || exit 1
+expected_selection=$(awk -v selection=1 -f "$source/support/tests/verify-revisionstore-media-log.awk" </dev/null)
+declared_selection=$(sed -n "s/^    selected='\(.*\)'$/\1/p" "$source/support/tests/revisionstore-media-init.sh")
+if [ -z "$expected_selection" ] || [ "$declared_selection" != "$expected_selection" ]; then
+    echo 'Media test selector drifted from the verified catalogue' >&2
+    exit 1
+fi
 stage='PHANTOWD_REVISIONSTORE_MEDIA_PREPARED synthetic_ext4=true snapshot=true profiles=2 stages=7 scope=qemu-only'
 done='PHANTOWD_REVISIONSTORE_MEDIA_DONE sigkill=14 readonly=true enospc=true bootstrap=true normal_unmount=true scope=qemu-only'
+op_stage='PHANTOWD_POLICY_OPERATION_PROCESSLOSS_PREPARED synthetic_tmpfs=true snapshot=true stages=7 admission=false scope=qemu-only'
+op_done='PHANTOWD_POLICY_OPERATION_PROCESSLOSS_DONE sigkill=7 original_refs=true readonly=true review=true normal_cleanup=true scope=qemu-only'
 proof="$stage"
 for name in TestBootstrapAuthorityRetainsOneLockAcrossFreshReadOnlyObservations \
     TestBootstrapAuthorityWritableLifetimeDriftKeepsReviewAndLockWithUnchangedMetadata \
@@ -37,13 +45,19 @@ for name in TestBootstrapRefusesBusyCanceledMissingAndOversizedStateWithoutMutat
     TestBootstrapRefusesInvalidCodecDirectoryAndMissingRootWithoutInitialization; do
     proof+=$'\n'"--- PASS: $name (0.01s)"
 done
+proof+=$'\n--- PASS: TestBootstrapParentAndSiblingLocksDoNotReplaceOriginalPolicyLock (0.01s)'
 for name in TestBundleSIGKILLRecovery TestNASBundleSIGKILLRecovery; do
     proof+=$'\n'"--- PASS: $name (0.02s)"
     for point in partial-write full-write file-sync file-close before-rename after-rename directory-sync; do
         proof+=$'\n'"    --- PASS: $name/$point (0.01s)"
     done
 done
-proof+=$'\n--- PASS: TestRevisionStoreMediaReadOnlyRetainsConfirmedPolicyAndReview (0.01s)\n--- PASS: TestRevisionStoreMediaFullFilesystemRetainsConfirmedPolicyAndReview (0.01s)\n--- PASS: TestNASBootstrapAdapterNeverImportsLegacyState (0.01s)\nPASS\n'"$done"
+proof+=$'\n--- PASS: TestRevisionStoreMediaReadOnlyRetainsConfirmedPolicyAndReview (0.01s)\n--- PASS: TestRevisionStoreMediaFullFilesystemRetainsConfirmedPolicyAndReview (0.01s)\n--- PASS: TestNASBootstrapAdapterNeverImportsLegacyState (0.01s)\nPASS\n'"$op_stage"
+proof+=$'\n--- PASS: TestPolicyOperationSIGKILLObservation (0.02s)'
+for point in before-intent after-intent before-policy after-policy after-readback before-receipt after-receipt; do
+    proof+=$'\n'"    --- PASS: TestPolicyOperationSIGKILLObservation/$point (0.01s)"
+done
+proof+=$'\nPASS\n'"$op_done"$'\n'"$done"
 verify() { awk -f "$source/support/tests/verify-revisionstore-media-log.awk"; }
 printf '%s\n' "$proof" | verify
 printf '%s\r\n' "${proof//$'\n'/$'\r\n'}" | verify
@@ -77,4 +91,12 @@ refused "$stage"$'\nPASS\n'"$done"
 refused "$stage"$'\n'"$proof"
 refused "$done"$'\n'"$proof"
 refused "$proof"$'\nPHANTOWD_FOREIGN_READY'
+refused "${proof/"$op_stage"/}"
+refused "${proof/"$op_done"/}"
+refused "${proof/"$op_stage"/"$op_stage"$'\n'"$op_stage"}"
+refused "${proof/original_refs=true/original_refs=false}"
+refused "${proof/review=true/review=false}"
+refused "${proof/admission=false/admission=true}"
+refused "${proof/sigkill=7/sigkill=6}"
+refused "${proof/normal_cleanup=true/normal_cleanup=false}"
 printf 'PHANTOWD_REVISIONSTORE_MEDIA_LOG_CONTROLS_DONE positive=2 negative=%s scope=host-parser-only guest=false\n' "$negative"

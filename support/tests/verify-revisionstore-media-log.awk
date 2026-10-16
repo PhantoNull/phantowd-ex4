@@ -3,6 +3,11 @@
 BEGIN {
     stage = "PHANTOWD_REVISIONSTORE_MEDIA_PREPARED synthetic_ext4=true snapshot=true profiles=2 stages=7 scope=qemu-only"
     done = "PHANTOWD_REVISIONSTORE_MEDIA_DONE sigkill=14 readonly=true enospc=true bootstrap=true normal_unmount=true scope=qemu-only"
+    op_stage = "PHANTOWD_POLICY_OPERATION_PROCESSLOSS_PREPARED synthetic_tmpfs=true snapshot=true stages=7 admission=false scope=qemu-only"
+    op_done = "PHANTOWD_POLICY_OPERATION_PROCESSLOSS_DONE sigkill=7 original_refs=true readonly=true review=true normal_cleanup=true scope=qemu-only"
+    operation[++op_required] = "TestPolicyOperationSIGKILLObservation"
+    split("before-intent after-intent before-policy after-policy after-readback before-receipt after-receipt", operation_points, " ")
+    for (i = 1; i <= 7; i++) { operation[++op_required] = "TestPolicyOperationSIGKILLObservation/" operation_points[i] }
     expected[++required] = "TestBootstrapEmptyDirectoryObservationDoesNotInitializeOrChangeMetadata"
     expected[++required] = "TestBootstrapPendingEvidenceIsNeverPromotedOrDiscarded"
     expected[++required] = "TestBootstrapPendingEvidenceIsNeverPromotedOrDiscarded/false"
@@ -34,6 +39,7 @@ BEGIN {
     expected[4] = "TestBootstrapAuthorityRejectsCopiesSerializationAndInvalidConstruction"
     expected[5] = "TestBootstrapAuthorityUncertainCloseRetainsUnattemptedRootWithoutRetry"
     required += 5
+    expected[++required] = "TestBootstrapParentAndSiblingLocksDoNotReplaceOriginalPolicyLock"
     split("TestBundleSIGKILLRecovery TestNASBundleSIGKILLRecovery", profiles, " ")
     for (p = 1; p <= 2; p++) {
         expected[++required] = profiles[p]
@@ -42,23 +48,44 @@ BEGIN {
     expected[++required] = "TestRevisionStoreMediaReadOnlyRetainsConfirmedPolicyAndReview"
     expected[++required] = "TestRevisionStoreMediaFullFilesystemRetainsConfirmedPolicyAndReview"
     expected[++required] = "TestNASBootstrapAdapterNeverImportsLegacyState"
+    # The init selector is closed and checked against this exact top-level
+    # catalogue before compilation/boot. Subprocess-only helpers never enroll.
+    if (selection == 1) {
+        expression = "^("; separator = ""
+        for (i = 1; i <= required; i++) {
+            if (index(expected[i], "/") == 0) {
+                expression = expression separator expected[i]; separator = "|"
+            }
+        }
+        print expression ")$"
+        exit
+    }
 }
 { sub(/\r$/, "") }
 /^[ \t]*--- PASS: / {
     name = $0
     sub(/^[ \t]*--- PASS: /, "", name)
-    if (!sub(/ \([0-9]+(\.[0-9]+)?s\)$/, "", name) || state != 1 || name != expected[++passed]) { refused = 1 }
+    if (!sub(/ \([0-9]+(\.[0-9]+)?s\)$/, "", name)) { refused = 1; next }
+    if (state == 1) { if (name != expected[++passed]) refused = 1 }
+    else if (state == 3) { if (name != operation[++op_passed]) refused = 1 }
+    else refused = 1
     next
 }
 /^PASS$/ {
-    if (state != 1 || passed != required) { refused = 1 }
-    state = 2
+    if (state == 1 && passed == required) state = 2
+    else if (state == 3 && op_passed == op_required) state = 4
+    else refused = 1
     next
 }
 /PHANTOWD_/ {
     if (state == 0 && $0 == stage) { state = 1; next }
-    if (state == 2 && $0 == done) { state = 3; next }
+    if (state == 2 && $0 == op_stage) { state = 3; next }
+    if (state == 4 && $0 == op_done) { state = 5; next }
+    if (state == 5 && $0 == done) { state = 6; next }
     refused = 1
 }
 /--- (FAIL|SKIP):|^FAIL$|testing: warning: no tests to run|Kernel panic|INTERNAL ERROR|AddressSanitizer|runtime error:|WARNING: DATA RACE/ { refused = 1 }
-END { if (state != 3 || passed != required || refused) exit 1 }
+END {
+    if (selection == 1) exit 0
+    if (state != 6 || passed != required || op_passed != op_required || refused) exit 1
+}

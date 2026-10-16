@@ -874,7 +874,18 @@ and recovery do not. **Depends on:** M0 for tests; M7 for physical placement.
   never exploit Store's later pending cleanup or mint a new ID to bypass review.
   **c.4 exact readback/receipt** must test each write/sync/rename/close/return
   boundary, keep uncertain confirmation and distinguish local return from HTTP
-  delivery. **c.5 retention/reconciliation** requires bounded evidence preservation
+  delivery. **c.4a method-boundary process loss (ARM fixture-tested)** now uses
+  actual SIGKILL at seven intent/policy/readback/receipt gates, retaining original
+  read-only references before loss and acquiring diagnostic locks only after
+  verified death. Repeated exact byte/statx observations preserve review even
+  with empty journal or matching receipt. Product code is unchanged: all new
+  process/observer logic is test-binary-only, not writer re-admission/recovery.
+  Existing NIC-less media guest requires61 receipts/two Go PASS lines under
+  unchanged60s/180s limits and a shared45s test allowance; closed selection and
+  2+159 parser controls prevent helper SKIP/unknown-test drift. Still required:
+  interruption INSIDE every syscall boundary, system restart, persistent medium,
+  retained product observation, durable quarantine and authorized recovery.
+  **c.5 retention/reconciliation** requires bounded evidence preservation
   and explicit authorization; none is implemented by preparation;
   **M1.3d** explicitly authorized reconciliation; **M1.2c** complete boot bundle.
   Missing/mismatched evidence never authorizes replay or service startup. The
