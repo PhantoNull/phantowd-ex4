@@ -1096,6 +1096,9 @@ process-disposal and guest-done receipts are all mandatory and ordered. The
 60-second guest limit, two-second termination grace and original base checks
 remain unchanged. This does not force numeric-FD reuse, simulate kernel EIO,
 execute a client/server, authorize WRITE or qualify recovery/product activation.
+The input-loss row additionally requires `cause_preserved=true`: repeated valid-
+context operations must retain the first mismatch cause, not merely the generic
+review marker. The older five-row transcript without this field is insufficient.
 
 This lane launches **neither the real client nor a server**. ELF interpreter /
 needed-library checks do not establish actual loading, ABI closure, SMB access,

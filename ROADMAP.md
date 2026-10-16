@@ -2362,6 +2362,10 @@ storage. No production roster provider or activation path exists.
   reviewed Owner until process exit; init verifies exit/reaping and equal parent
   FD counts. All old proofs and the 60-second guest bound remain. No client/server
   runs; this is not kernel EIO, guaranteed FD reuse or launched teardown.
+  A reproduced cause-loss defect is corrected in this private Owner: repeated
+  review refusals retain the original cause and stop/release uncertainty without
+  further adapter work. Host/race and actual ARM require cause preservation;
+  this does not qualify late syscall failure or a product lifecycle.
 
   Remaining tests must reach the real containing lifecycle without a forged healthy
   Owner, per-operation backend replacement or new privileges. Preserve original

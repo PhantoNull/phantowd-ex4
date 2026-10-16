@@ -59,6 +59,13 @@ five-row guard. This is pre-close containment, not kernel EIO, guaranteed FD
 reuse, launched-child teardown, pending I/O or recovery. It does not replace
 the failed complete run, audit/hosted gates or open product-state decisions.
 
+A subsequently reproduced diagnostic defect lost the initial cause on repeated
+review refusals. The private Owner now retains the first cause and recorded stop/
+release uncertainty without accumulating a stored error chain or repeating
+adapter work. Host regression/race checks and the real constructor-backed ARM
+input-loss proof pass with mandatory `cause_preserved=true`. This changes only
+the QEMU-only Owner, not product service activation or the full integration gate.
+
 ## Earlier integration failure: `0beb01e` held/data deadline
 
 The complete cached qualifier of clean `0beb01e` passes host/race/fuzz,

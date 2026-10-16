@@ -8,7 +8,7 @@ verifier="$source/support/tests/verify-pending-client-inputs-log.awk"
 ready='PHANTOWD_PENDING_INPUTS_READY complete_root=true complete_bootstrap=true fixed_documents=true original_pins=true caller_duplicate_closed=true late_rechecked=true mismatches=2 canceled_refused=true released_refused=true no_fd_leak=true execution=false scope=qemu-only'
 guest=PHANTOWD_PENDING_INPUTS_GUEST_DONE
 owner='PHANTOWD_PENDING_OWNER_READY complete_inputs=true adapter_bound=true constructor_refused=true caller_duplicate_closed=true late_rechecked=true copied_refused=true canceled_refused=true busy_refused=true released_refused=true no_fd_leak=true execution=false scope=qemu-only'
-loss='PHANTOWD_PENDING_OWNER_INPUT_LOSS_READY real_constructor=true never_started=true lost_pin_closed=true close_refused=true review_retained=true unattempted_retained=true repeated_refused=true review_fd_count_equal=true unrelated_kept=true client_executed=false scope=qemu-only'
+loss='PHANTOWD_PENDING_OWNER_INPUT_LOSS_READY real_constructor=true never_started=true lost_pin_closed=true close_refused=true review_retained=true unattempted_retained=true repeated_refused=true cause_preserved=true review_fd_count_equal=true unrelated_kept=true client_executed=false scope=qemu-only'
 disposed='PHANTOWD_PENDING_OWNER_INPUT_LOSS_PROCESS_READY exit0=true child_reaped=true parent_fd_count_equal=true client_executed=false scope=qemu-only'
 good=$(printf '%s\n%s\n%s\n%s\n%s' "$ready" "$owner" "$loss" "$disposed" "$guest")
 check() {
@@ -43,7 +43,7 @@ check 1 "$(printf '%s\n%s\n%s\n%s\n%s' "$ready" "$owner" "$disposed" "$loss" "$g
 check 1 "$(printf '%s\n%s' "$good" "$loss")"
 check 1 "$(printf '%s\n%s' "$good" "$disposed")"
 for field in real_constructor never_started lost_pin_closed close_refused \
-    review_retained unattempted_retained repeated_refused review_fd_count_equal \
+    review_retained unattempted_retained repeated_refused cause_preserved review_fd_count_equal \
     unrelated_kept exit0 child_reaped parent_fd_count_equal; do
     check 1 "${good/$field=true/$field=false}"
 done

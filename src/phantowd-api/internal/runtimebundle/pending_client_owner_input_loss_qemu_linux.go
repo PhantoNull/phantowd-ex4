@@ -102,6 +102,10 @@ func (p *Plan) ProbePendingClientOwnerInputLossQEMU(ctx context.Context, bootstr
 	if !errors.Is(firstErr, ErrReviewRequired) || !errors.Is(firstErr, ErrMismatch) || !owner.review || owner.started || owner.closed {
 		return errors.Join(ErrMismatch, firstErr)
 	}
+	firstCause := owner.reviewCause
+	if firstCause == nil || !errors.Is(firstErr, firstCause) {
+		return ErrMismatch
+	}
 	checkUnattempted := func() error {
 		if owner.inputs != inputs || inputs.client != codes[0].code || inputs.bootstrap != codes[1].code || owner.clientLifecycleQEMU() != adapter {
 			return ErrMismatch
@@ -140,7 +144,9 @@ func (p *Plan) ProbePendingClientOwnerInputLossQEMU(ctx context.Context, bootstr
 	}
 	for range 2 {
 		for _, refusal := range []error{owner.close(), owner.start(ctx), owner.closeClient(ctx)} {
-			if !errors.Is(refusal, ErrReviewRequired) || !owner.review || owner.closed || owner.started {
+			if !errors.Is(refusal, ErrReviewRequired) || !errors.Is(refusal, firstCause) ||
+				!errors.Is(refusal, ErrMismatch) || owner.reviewCause != firstCause ||
+				!owner.review || owner.closed || owner.started {
 				return errors.Join(firstErr, ErrMismatch, refusal)
 			}
 		}
@@ -151,6 +157,6 @@ func (p *Plan) ProbePendingClientOwnerInputLossQEMU(ctx context.Context, bootstr
 			return errors.Join(firstErr, ErrMismatch, err)
 		}
 	}
-	fmt.Println("PHANTOWD_PENDING_OWNER_INPUT_LOSS_READY real_constructor=true never_started=true lost_pin_closed=true close_refused=true review_retained=true unattempted_retained=true repeated_refused=true review_fd_count_equal=true unrelated_kept=true client_executed=false scope=qemu-only")
+	fmt.Println("PHANTOWD_PENDING_OWNER_INPUT_LOSS_READY real_constructor=true never_started=true lost_pin_closed=true close_refused=true review_retained=true unattempted_retained=true repeated_refused=true cause_preserved=true review_fd_count_equal=true unrelated_kept=true client_executed=false scope=qemu-only")
 	return nil
 }

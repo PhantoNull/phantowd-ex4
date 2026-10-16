@@ -66,6 +66,13 @@ the reviewed Owner until process exit, while init verifies exit/reaping and equa
 parent FD counts. This is not a replacement backend, guaranteed FD recycling,
 kernel EIO, launched teardown, recovery or product qualification.
 
+The private containing Owner retains the first review cause, plus recorded stop
+and release uncertainty. Valid-context lifecycle/observation calls in review
+refuse before further adapter work and preserve `errors.Is` cause identity.
+Later failures cannot replace the first cause or grow a stored error chain.
+The constructor-backed ARM input-loss proof now requires `cause_preserved=true`;
+pre-admission cancellation/busy/invalid and healthy closure keep their contracts.
+
 The distinct optional `pending` campaign now tests actual healthy library/client
 execution and launched settlement against a freshly enrolled native data server.
 It performs one pre-existing-object OPEN and CLOSE only, requires unchanged

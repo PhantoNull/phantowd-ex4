@@ -31,7 +31,7 @@ type pendingClientOwnerQEMU struct {
 
 	started, settled, review, closed bool
 	stopTried                        bool
-	stopErr, releaseErr              error
+	stopErr, releaseErr, reviewCause error
 }
 
 func newPendingClientOwnerQEMU(ctx context.Context, client, bootstrap *Plan, clientRoot, bootstrapRoot *os.File, secret []byte) (owner *pendingClientOwnerQEMU, result error) {
@@ -56,12 +56,16 @@ func newPendingClientOwnerRoleQEMU(ctx context.Context, client, bootstrap *Plan,
 	defer func() {
 		if result != nil {
 			if o.review {
-				result = errors.Join(result, ErrReviewRequired)
+				if o.reviewCause == nil {
+					o.reviewCause = result
+				}
+				result = errors.Join(result, o.reviewError())
 				return
 			}
 			if err := o.release(); err != nil {
 				o.review, o.releaseErr = true, err
-				result = errors.Join(result, ErrReviewRequired, err)
+				o.reviewCause = result
+				result = errors.Join(result, o.reviewError())
 			} else {
 				owner = nil
 			}
@@ -149,6 +153,11 @@ func (o *pendingClientOwnerQEMU) enter(ctx context.Context) error {
 		<-o.gate
 		return ErrUnavailable
 	}
+	if o.review {
+		err := o.reviewError()
+		<-o.gate
+		return err
+	}
 	return nil
 }
 
@@ -176,13 +185,23 @@ func (o *pendingClientOwnerQEMU) initialHandle(ctx context.Context) (processowne
 	return observed, nil
 }
 
+// Called only under the lifecycle gate (or during private construction).
+// Keep the original failure identity; later refusals must not replace it with
+// a generic review error or accumulate an unbounded error chain.
+func (o *pendingClientOwnerQEMU) reviewError() error {
+	return errors.Join(ErrReviewRequired, o.reviewCause, o.stopErr, o.releaseErr)
+}
+
 func (o *pendingClientOwnerQEMU) fail(cause error) error {
+	if o.reviewCause == nil {
+		o.reviewCause = cause
+	}
 	o.review = true
 	if adapter := o.clientLifecycleQEMU(); adapter != nil && !o.stopTried {
 		o.stopTried = true
 		o.stopErr = adapter.Stop(context.Background())
 	}
-	return errors.Join(ErrReviewRequired, cause, o.stopErr)
+	return o.reviewError()
 }
 
 // OPEN is telemetry only. Success does not authorize WRITE or assert the
@@ -311,7 +330,7 @@ func (o *pendingClientOwnerQEMU) close() error {
 	}
 	defer func() { <-o.gate }()
 	if o.review || o.releaseErr != nil {
-		return ErrReviewRequired
+		return o.reviewError()
 	}
 	if o.closed {
 		return nil

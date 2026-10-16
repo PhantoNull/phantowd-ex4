@@ -42,6 +42,10 @@ checks the child is reaped and compares bounded parent FD counts (not identities
 All five ordered receipts are mandatory. The original 60-second guest bound and
 base checks remain; no SMB client/server executes. This is not kernel EIO,
 guaranteed numeric-FD reuse, launched-child teardown or product qualification.
+The containing Owner now also retains its first review cause and recorded stop/
+release errors. The actual ARM proof requires cause identity across repeated
+refusals; host controls cover observation entrypoints and later-cause replacement.
+This diagnostic correction does not authorize retry, restart or input release.
 
 The scoped acceptance contract is:
 
