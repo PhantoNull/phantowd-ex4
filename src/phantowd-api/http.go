@@ -40,6 +40,7 @@ func newHandlerWithServiceState(collect collector, collectStorage storageSnapsho
 func newHandlerWithStorageGPTObservation(collect collector, collectStorage storageSnapshotCollector, collectArrays mdArraySnapshotCollector, collectMounts mountSnapshotCollector, auth *authController, loadPolicy sharePolicyLoader, state *serviceStateBackend, collectGPT storageGPTObservationCollector) http.Handler {
 	active := make(chan struct{}, 8)
 	preview := newFileServicePreviewHandler(auth)
+	iscsiPreview := newISCSIPreviewHandler(auth)
 	readPolicy := newSharePolicyReadHandler(auth, loadPolicy)
 	serviceState := newServiceStateHandler(auth, state)
 	gptObservation := newStorageGPTObservationHandler(auth, collectGPT)
@@ -79,6 +80,10 @@ func newHandlerWithStorageGPTObservation(collect collector, collectStorage stora
 		}
 		if r.URL.Path == fileServicePreviewPath {
 			preview(w, r)
+			return
+		}
+		if r.URL.Path == iscsiPreviewPath {
+			iscsiPreview(w, r)
 			return
 		}
 		if r.URL.Path == sharePolicyPath {
@@ -202,6 +207,8 @@ func dashboardAsset(path string) (string, string) {
 		return "ui/service-policy.js", "text/javascript; charset=utf-8"
 	case "/assets/support-bundle.js":
 		return "ui/support-bundle.js", "text/javascript; charset=utf-8"
+	case "/assets/iscsi-preview.js":
+		return "ui/iscsi-preview.js", "text/javascript; charset=utf-8"
 	case "/assets/ghost.svg":
 		return "ui/ghost.svg", "image/svg+xml"
 	default:

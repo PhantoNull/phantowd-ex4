@@ -15,6 +15,8 @@ import { dirname, join, resolve, basename } from "node:path";
 import { fileURLToPath } from "node:url";
 import { setTimeout as delay } from "node:timers/promises";
 import { classifyPageResource } from "./browser-resource-contract.mjs";
+import { iscsiPolicyFixture } from "./tests/test-iscsi-panel.mjs";
+import { readOwnedBrowserEndpoint } from "./browser-startup-contract.mjs";
 
 const repo = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 assert.ok([4, 6].includes(process.argv.length), "usage: node support/test-dashboard-browser.mjs --browser PATH [--api-fixture PATH]");
@@ -43,7 +45,7 @@ let failure, result;
 const artifacts = join(repo, "artifacts", apiFixture ? "dashboard-browser-api" : "dashboard-browser");
 const uiHashes = async () => {
   const hashes = {};
-  for (const name of ["index.html", "app.css", "app.js", "auth.js", "service-policy.js", "support-bundle.js", "ghost.svg"]) {
+  for (const name of ["index.html", "app.css", "app.js", "auth.js", "service-policy.js", "support-bundle.js", "iscsi-preview.js", "ghost.svg"]) {
     const bytes = await readFile(join(repo, "src", "phantowd-api", "ui", name));
     assert.ok(bytes.length <= 65536, "dashboard source exceeded asset budget");
     hashes[name] = createHash("sha256").update(bytes).digest("hex");
@@ -53,7 +55,7 @@ const uiHashes = async () => {
 const sourceHashes = await uiHashes();
 const harnessHashes = async () => {
   const hashes = {};
-  for (const name of ["support/test-dashboard-browser.mjs", "support/browser-resource-contract.mjs"]) {
+  for (const name of ["support/test-dashboard-browser.mjs", "support/browser-resource-contract.mjs", "support/browser-startup-contract.mjs", "support/tests/test-iscsi-panel.mjs"]) {
     const bytes = await readFile(join(repo, name));
     assert.ok(bytes.length <= 65536, "browser harness source exceeded budget");
     hashes[name] = createHash("sha256").update(bytes).digest("hex");
@@ -211,16 +213,7 @@ try {
   browser.isBrowser = true;
   browser.stdout.resume();
   browser.stderr.resume();
-  const endpoint = await until(async () => {
-    let text;
-    try { text = await readFile(join(profile, "DevToolsActivePort"), "utf8"); }
-    catch (error) { if (error.code === "ENOENT") return null; throw error; }
-    const match = /^([0-9]+)\r?\n(\/devtools\/browser\/[a-z0-9-]+)\r?\n?$/.exec(text);
-    assert.ok(match, "unexpected owned browser endpoint");
-    const port = Number(match[1]);
-    assert.ok(port >= 1024 && port <= 65535, "unexpected debugging port");
-    return `ws://127.0.0.1:${port}${match[2]}`;
-  }, browser, "owned headless browser startup");
+  const endpoint = await until(() => readOwnedBrowserEndpoint(join(profile, "DevToolsActivePort")), browser, "owned headless browser startup");
   const socket = new WebSocket(endpoint);
   await new Promise((accept, reject) => {
     const timer = setTimeout(() => reject(new Error("browser connection deadline")), 5_000);
@@ -330,6 +323,31 @@ try {
   assert.equal(await evaluate("document.getElementById('auth-panel').hidden"), true);
   assert.equal(await evaluate("document.getElementById('support-download').disabled"), false);
   assert.equal(await evaluate("getComputedStyle(document.body).backgroundColor"), "rgb(16, 19, 27)", "dashboard stylesheet was not applied");
+
+  if (apiFixture) {
+    await clickVisible("iscsi-document");
+    await replaceInput("iscsi-document", JSON.stringify(iscsiPolicyFixture()));
+    await clickVisible("iscsi-submit");
+    await until(() => evaluate(`!document.getElementById('iscsi-result').hidden && !document.getElementById('iscsi-submit').disabled`), browser, "actual iSCSI preview HTTP result");
+    const displayed = await evaluate("document.getElementById('iscsi-result').textContent");
+    assert.match(displayed, /LUN 0.*4096 bytes/);
+    assert.match(displayed, /iqn\.2001-04\.com\.example:target/);
+    assert.match(displayed, /desired enabled; running state unavailable/);
+    assert.doesNotMatch(displayed, /private-user|private-ref|11111111-2222/);
+    for (const width of [1365, 390, 320]) {
+      await send("Emulation.setDeviceMetricsOverride", { width, height: 900, deviceScaleFactor: 1, mobile: false });
+      await evaluate("document.getElementById('iscsi-result').scrollIntoView({block:'start'})");
+      assert.equal(await evaluate("document.documentElement.scrollWidth <= document.documentElement.clientWidth"), true, "iSCSI result overflow");
+      const shot = await send("Page.captureScreenshot", { format: "png", captureBeyondViewport: false });
+      assert.ok(shot.data.length <= 8 * 1024 * 1024);
+      await writeFile(join(artifacts, `iscsi-${width}.png`), Buffer.from(shot.data, "base64"));
+    }
+    await send("Emulation.setDeviceMetricsOverride", { width: 1365, height: 900, deviceScaleFactor: 1, mobile: false });
+    await clickVisible("iscsi-clear");
+    assert.equal(await evaluate("document.getElementById('iscsi-document').value"), "");
+    assert.equal(await evaluate("document.getElementById('iscsi-result').hidden"), true);
+    assert.equal(cdp.requests.filter(r => new URL(r.url).pathname === "/api/v1/iscsi/preview").length, 1);
+  }
 
   // Use actual browser keyboard dispatch, not HTMLElement.focus(), for Tab.
   await send("Page.navigate", { url: origin });
@@ -479,6 +497,7 @@ try {
     retired_service401_recheck: Boolean(apiFixture),
     visible_pointer_controls: pointerControls,
     auth_keyboard_tab_enter: Boolean(apiFixture),
+    iscsi_preview_actual_http: Boolean(apiFixture),
     local_inline_images: localInlineImages,
     same_origin_network_requests: cdp.requests.length - localInlineImages,
   };

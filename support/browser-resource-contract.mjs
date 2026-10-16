@@ -7,7 +7,10 @@ import { createHash } from "node:crypto";
 // It is a local image load, not a network request. No generic data/blob/about
 // exception: changed bytes, methods or resource types require fresh review.
 const inlineSVG = { length: 510, sha256: "4b52bc3e8d7825a3fca0aa8a1d541a413164bbb984eaf437373cb99e123dd799" };
-const authPaths = new Set(["setup", "login", "logout", "logout-all", "password"].map(action => `/api/v1/auth/${action}`));
+const fixturePostPaths = new Set([
+  ...["setup", "login", "logout", "logout-all", "password"].map(action => `/api/v1/auth/${action}`),
+  "/api/v1/iscsi/preview", // Caller-supplied read-only preview, never save/apply.
+]);
 
 export function classifyPageResource(request, origin, allowAuthMutations = false) {
   const refused = () => { throw new Error("unexpected browser page resource"); };
@@ -23,6 +26,6 @@ export function classifyPageResource(request, origin, allowAuthMutations = false
     refused();
   }
   if (url.protocol !== "http:" || url.origin !== origin || url.username || url.password) refused();
-  if (request.method !== "GET" && !(allowAuthMutations === true && request.method === "POST" && !url.search && authPaths.has(url.pathname))) refused();
+  if (request.method !== "GET" && !(allowAuthMutations === true && request.method === "POST" && !url.search && fixturePostPaths.has(url.pathname))) refused();
   return "same-origin-network";
 }

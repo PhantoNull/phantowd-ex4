@@ -36,7 +36,7 @@ func TestDashboardBrowserAPIFixture(t *testing.T) {
 	server.Start()
 	defer server.Close()
 	hashes := make(map[string]string)
-	for _, name := range []string{"index.html", "app.css", "app.js", "auth.js", "service-policy.js", "support-bundle.js", "ghost.svg"} {
+	for _, name := range []string{"index.html", "app.css", "app.js", "auth.js", "service-policy.js", "support-bundle.js", "iscsi-preview.js", "ghost.svg"} {
 		data, err := dashboardFiles.ReadFile("ui/" + name)
 		if err != nil || len(data) > 65536 {
 			t.Fatal("fixture asset unavailable or oversized")

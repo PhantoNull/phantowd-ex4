@@ -9,11 +9,32 @@ import { once } from "node:events";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { classifyPageResource } from "../browser-resource-contract.mjs";
+import { readOwnedBrowserEndpoint } from "../browser-startup-contract.mjs";
+
+const startupFile = "owned-test-profile/DevToolsActivePort";
+let startupReads = 0;
+const endpointStates = ["ENOENT", "EBUSY", "45678\n/devtools/browser/abcd-123\n"];
+const endpointReader = async (file, encoding) => {
+  assert.equal(file, startupFile); assert.equal(encoding, "utf8");
+  const value = endpointStates[startupReads++];
+  if (["ENOENT", "EBUSY"].includes(value)) throw Object.assign(new Error("fixture"), { code: value });
+  return value;
+};
+assert.equal(await readOwnedBrowserEndpoint(startupFile, endpointReader), null);
+assert.equal(await readOwnedBrowserEndpoint(startupFile, endpointReader), null);
+assert.equal(await readOwnedBrowserEndpoint(startupFile, endpointReader), "ws://127.0.0.1:45678/devtools/browser/abcd-123");
+assert.equal(startupReads, 3, "one read per bounded caller poll");
+for (const code of ["EACCES", "EPERM", "EIO"]) {
+  await assert.rejects(readOwnedBrowserEndpoint(startupFile, async () => { throw Object.assign(new Error("fixture"), { code }); }), { code });
+}
+for (const value of ["", "45678\n/devtools/browser/abcd-123\nextra", "80\n/devtools/browser/abcd\n", "45678\nhttps://attacker.invalid\n"]) {
+  await assert.rejects(readOwnedBrowserEndpoint(startupFile, async () => value), /unexpected/);
+}
 
 const expectedOrigin = "http://127.0.0.1:45678";
 assert.equal(classifyPageResource({ url: expectedOrigin + "/", method: "GET" }, expectedOrigin), "same-origin-network");
-for (const action of ["setup", "login", "logout", "logout-all", "password"]) {
-  const request = { url: expectedOrigin + `/api/v1/auth/${action}`, method: "POST" };
+for (const path of [...["setup", "login", "logout", "logout-all", "password"].map(action => `/api/v1/auth/${action}`), "/api/v1/iscsi/preview"]) {
+  const request = { url: expectedOrigin + path, method: "POST" };
   assert.equal(classifyPageResource(request, expectedOrigin, true), "same-origin-network");
   assert.throws(() => classifyPageResource(request, expectedOrigin), /^Error: unexpected browser page resource$/);
 }
@@ -21,6 +42,7 @@ for (const [index, [url, method, resourceType]] of [
   ["https://example.invalid/", "GET"], ["http://127.0.0.1:45679/", "GET"],
   ["http://user:secret@127.0.0.1:45678/", "GET"], [expectedOrigin + "/", "PUT"],
   [expectedOrigin + "/api/v1/storage", "POST"], [expectedOrigin + "/api/v1/auth/login?unexpected=1", "POST"],
+  [expectedOrigin + "/api/v1/iscsi/preview?unexpected=1", "POST"], [expectedOrigin + "/api/v1/iscsi/preview", "PUT"],
   ["about:blank", "GET"], ["file:///private", "GET"], ["javascript:void(0)", "GET"],
   ["blob:" + expectedOrigin + "/fixture", "GET"], ["data:text/html,fixture", "GET", "Document"],
   ["data:image/svg+xml;base64," + "A".repeat(484), "GET", "Image"],
@@ -32,7 +54,7 @@ for (const [index, [url, method, resourceType]] of [
     /^Error: unexpected browser page resource$/, `case ${index}: unknown resource must fail with a fixed non-echoing error`);
 }
 assert.throws(() => classifyPageResource({ url: expectedOrigin, method: "GET" }, "https://example.invalid"), /^Error: unexpected browser page resource$/);
-console.log("Browser resource boundary controls passed: explicit-auth-only=true external-refused=true unknown-local-refused=true fixed-errors=true.");
+console.log("Browser resource boundary controls passed: explicit-fixture-posts-only=true external-refused=true unknown-local-refused=true fixed-errors=true.");
 
 const repo = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 function preview(port) {
@@ -90,6 +112,7 @@ try {
     ["/assets/service-policy.js", "GET", 200], ["/assets/support-bundle.js", "GET", 200],
     ["/assets/ghost.svg", "GET", 200], ["/api/v1/system", "GET", 200],
     ["/assets/auth.js", "GET", 200],
+    ["/assets/iscsi-preview.js", "GET", 200],
     ["/api/v1/storage", "GET", 200], ["/api/v1/arrays", "GET", 200], ["/api/v1/mounts", "GET", 200],
     ["/api/v1/auth/status", "GET", 200], ["/?unexpected=1", "GET", 400],
     ["/", "POST", 405], ["/not-a-route", "GET", 404],
@@ -111,4 +134,4 @@ try {
   if (child.exitCode === null && child.signalCode === null) child.kill();
   await exited(child, 3000);
 }
-console.log("Dashboard preview boundaries passed: invalid-ports=12 ephemeral-loopback=true routes=15 mutations=false devices=false.");
+console.log("Dashboard preview boundaries passed: invalid-ports=12 ephemeral-loopback=true routes=16 mutations=false devices=false.");

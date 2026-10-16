@@ -9,28 +9,33 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createContext, Script } from "node:vm";
 import { supportFixture } from "./tests/test-support-bundle.mjs";
+import { testISCSIPanel } from "./tests/test-iscsi-panel.mjs";
 
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
 const source = await readFile(join(repoRoot, "src/phantowd-api/ui/app.js"), "utf8");
 const authSource = await readFile(join(repoRoot, "src/phantowd-api/ui/auth.js"), "utf8");
 const serviceSource = await readFile(join(repoRoot, "src/phantowd-api/ui/service-policy.js"), "utf8");
 const supportSource = await readFile(join(repoRoot, "src/phantowd-api/ui/support-bundle.js"), "utf8");
+const iscsiSource = await readFile(join(repoRoot, "src/phantowd-api/ui/iscsi-preview.js"), "utf8");
 const markup = await readFile(join(repoRoot, "src/phantowd-api/ui/index.html"), "utf8");
 const styles = await readFile(join(repoRoot, "src/phantowd-api/ui/app.css"), "utf8");
 assert.ok(markup.indexOf('<script src="/assets/auth.js" defer>') > markup.indexOf('<script src="/assets/app.js" defer>'), "auth module must load after its shared UI helpers");
+assert.ok(markup.indexOf('<script src="/assets/iscsi-preview.js" defer>') > markup.indexOf('<script src="/assets/app.js" defer>'));
+assert.ok(markup.indexOf('<script src="/assets/auth.js" defer>') > markup.indexOf('<script src="/assets/iscsi-preview.js" defer>'));
 assert.ok(authSource.includes("updateAuthView().catch(showAuthUnavailable)"));
 assert.ok(!source.includes("updateAuthView().catch(showAuthUnavailable)"), "only the auth module starts authentication");
-assert.doesNotMatch(source + authSource + serviceSource, /\.json\s*\(/, "Merged dashboard consumers must retain bounded response readers");
+assert.doesNotMatch(source + authSource + serviceSource + iscsiSource, /\.json\s*\(/, "Merged dashboard consumers must retain bounded response readers");
+assert.doesNotMatch(iscsiSource, /\.(?:innerHTML|outerHTML)\b/);
 for (const name of ["setAuthError", "showAuthUnavailable", "updateAuthView", "signOut", "clearPasswordFields"]) {
   assert.ok(!source.includes(`function ${name}(`), "The merge must not resurrect retired authentication handlers in app.js");
   assert.ok(authSource.includes(`function ${name}(`));
 }
-for (const name of ["index.html", "app.css", "app.js", "auth.js", "service-policy.js", "support-bundle.js", "ghost.svg"]) {
+for (const name of ["index.html", "app.css", "app.js", "auth.js", "service-policy.js", "support-bundle.js", "iscsi-preview.js", "ghost.svg"]) {
   assert.ok((await readFile(join(repoRoot, "src/phantowd-api/ui", name))).byteLength <= 65536, "per-asset budget must not grow");
 }
 const markupIDs = [...markup.matchAll(/\bid="([^"]+)"/g)].map((match) => match[1]);
 assert.equal(new Set(markupIDs).size, markupIDs.length, "duplicate HTML IDs");
-for (const match of (source + authSource + serviceSource).matchAll(/(?:byId|setText)\("([^"]+)"/g)) {
+for (const match of (source + authSource + serviceSource + iscsiSource).matchAll(/(?:byId|setText)\("([^"]+)"/g)) {
   assert.ok(markupIDs.includes(match[1]), `script references missing HTML ID ${match[1]}`);
 }
 assert.match(markup, /id="policy-nfs-fields"[^>]*hidden disabled/);
@@ -268,6 +273,7 @@ async function createHarness(respond, timing = {}) {
     "observed-at", "device-count", "device-list", "array-count", "array-list", "mount-count", "mount-list",
     "gpt-observe", "gpt-observation-status",
     "support-panel", "support-help", "support-download", "support-status",
+    ...["form", "document", "submit", "clear", "result", "status"].map(id => `iscsi-${id}`),
     ...["load", "status", "result", "summary", "shares"].map((id) => `saved-${id}`),
     ...["load", "prepare", "save", "status", "current", "summary", "document", "review", "change", "samba", "nfs", "editor", "target", "member", "action", "edit-preview", "diff", "diff-summary", "overlaps", "overlap-summary", "backup-controls", "backup-download", "restore-file", "restore-preview"].map((id) => `service-${id}`),
     ...["form", "submit", "clear", "result", "error", "status", "requirements", "samba", "nfs", "nfs-fields", "uuid", "name", "path", "user", "smb-access", "nfs-enabled", "export-id", "network", "nfs-access", "squash", "uid", "gid", "security"].map((id) => `policy-${id}`),
@@ -333,6 +339,7 @@ async function createHarness(respond, timing = {}) {
   new Script(serviceSource).runInContext(context);
   new Script(supportSource).runInContext(context);
   new Script(source).runInContext(context);
+  new Script(iscsiSource).runInContext(context);
   new Script(authSource).runInContext(context);
   await new Promise((resolve) => setImmediate(resolve));
   return { context, elements, requests, document, ageIntervals };
@@ -3448,4 +3455,5 @@ async function testAdministrativeInclusiveByteCapsAndUTF8Refusals() {
   process.stdout.write("Administrative response controls passed: routes=8 method-bound-save=true inclusive-caps=true unknown-outcomes=true native-stream-cleanup=true no-fallback=true.\n");
 }
 await testAdministrativeInclusiveByteCapsAndUTF8Refusals();
+await testISCSIPanel(createHarness, jsonResponse, snapshotResponse);
 process.stdout.write("Dashboard UI interaction smoke tests passed (DOM fixture; no visual browser coverage).\n");

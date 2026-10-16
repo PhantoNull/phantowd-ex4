@@ -45,6 +45,7 @@ var qemuDashboardAssets = []struct {
 	{"/assets/service-policy.js", "text/javascript; charset=utf-8", []string{"/api/v1/file-services/configuration", "sameServiceDocument", "saveServiceChange", "clearServicePolicy", "user-add", "user-remove", "This user reference still has SMB grants"}},
 	{"/assets/support-bundle.js", "text/javascript; charset=utf-8", []string{"phantowd-sanitized-support", "browser-loaded-read-only-snapshot", "snapshot_age_seconds"}},
 	{"/assets/ghost.svg", "image/svg+xml", []string{"<svg", "PhantoWD ghost"}},
+	{"/assets/iscsi-preview.js", "text/javascript; charset=utf-8", []string{"/api/v1/iscsi/preview", "retireISCSIPreview", "Nothing was saved or activated", "validateISCSIPreview"}},
 }
 
 func runSelfTest() error {

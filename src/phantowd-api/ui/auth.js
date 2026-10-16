@@ -17,6 +17,7 @@ function showAuthUnavailable() {
   clearGPTObservation("Administrator session unavailable. No GPT observation is shown.");
   clearPasswordFields();
   clearServicePolicy();
+  clearISCSIPreview();
   clearSavedPolicy();
   clearPolicyDraft();
   byId("auth-panel").hidden = false;
@@ -68,6 +69,7 @@ async function updateAuthView({ refresh = true, notice = "", current = () => tru
   clearGPTObservation("Sign in to run a manual GPT metadata observation.");
   clearPasswordFields();
   clearServicePolicy();
+  clearISCSIPreview();
   clearSavedPolicy();
   clearPolicyDraft();
   logout.hidden = true;
@@ -261,6 +263,7 @@ async function signOut(all = false) {
   const current = () => authMutation === attempt && !signal.aborted;
   clearSnapshot("Signing out. Previous diagnostic observations were cleared.");
   clearServicePolicy();
+    clearISCSIPreview();
   clearSavedPolicy();
   clearPolicyDraft();
   clearPasswordFields();
@@ -303,6 +306,7 @@ byId("password-form").addEventListener("submit", async (event) => {
   clearSnapshot("Changing credentials. Previous diagnostic observations were cleared.");
   clearPasswordFields();
   clearServicePolicy();
+    clearISCSIPreview();
   clearSavedPolicy();
   clearPolicyDraft();
   setText("password-status", "Verifying and saving the new password…");

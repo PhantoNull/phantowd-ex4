@@ -13,6 +13,7 @@
   <script src="/assets/service-policy.js" defer></script>
   <script src="/assets/support-bundle.js" defer></script>
   <script src="/assets/app.js" defer></script>
+  <script src="/assets/iscsi-preview.js" defer></script>
   <script src="/assets/auth.js" defer></script>
 </head>
 <body>
@@ -322,6 +323,22 @@
             <button id="service-save" class="refresh-button" type="button" disabled>Save reviewed change</button>
           </div>
         </section>
+      </section>
+      <section class="policy-panel" aria-labelledby="iscsi-title">
+        <p class="eyebrow">MANUAL DESIRED-POLICY REVIEW</p>
+        <h2 id="iscsi-title">iSCSI targets and access</h2>
+        <p id="iscsi-help" class="policy-help">Paste one complete coherent SMB/NFS/iSCSI JSON policy, not the older SMB/NFS-only backup. This preview does not load or save configuration, open LUN files or credentials, or start targets. Desired enabled does not mean running. CHAP does not encrypt traffic.</p>
+        <form id="iscsi-form" autocomplete="off" aria-describedby="iscsi-help iscsi-privacy">
+          <label for="iscsi-document">Complete coherent NAS policy JSON</label>
+          <textarea id="iscsi-document" class="iscsi-document" rows="10" maxlength="656128" spellcheck="false" autocomplete="off" required></textarea>
+          <p id="iscsi-privacy" class="policy-help">Contains private paths, IQNs and symbolic SecretRefs. Never paste actual CHAP passwords or keys. Input is sent only to this local API and is cleared when the administrator session ends; it is not stored in browser storage.</p>
+          <div class="policy-actions">
+            <button id="iscsi-submit" class="refresh-button" type="submit">Review desired iSCSI definitions</button>
+            <button id="iscsi-clear" class="refresh-button" type="button">Clear iSCSI review</button>
+          </div>
+        </form>
+        <p id="iscsi-status" class="policy-help" role="status">No current preview. Nothing was saved or activated.</p>
+        <div id="iscsi-result" hidden></div>
       </section>
       <p class="error-banner" id="error-banner" role="alert" hidden>Snapshot unavailable. The service did not return usable diagnostics.</p>
       </div>

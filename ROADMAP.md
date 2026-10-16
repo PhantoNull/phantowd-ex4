@@ -2468,7 +2468,7 @@ milestone before enabling its controls; M1/M6 for deployment.
   Other panel flows, browser/load/heap, complete transport/teardown, hosted and
   product qualification remain separate. No activation or authority is added.
   **M5.5h — exact HTTP/HTTPS dashboard asset fixtures:** use one verifier for all
-  seven embedded assets over both existing loopback transports. Enforce64KiB
+  fixed embedded assets (currently eight) over both existing loopback transports. Enforce64KiB
   response bounds, exact decoded-body match, source markers, single exact MIME/
   no-store/nosniff/CSP headers and body read/close success. Require both transports
   before/after API restart; missing/excess/lookalike receipts refuse readiness.
@@ -3584,10 +3584,34 @@ support per tested combination; refuse untested combinations without mutation.
   refusals, foreign refs/RO escalation, privacy/copy controls, dense1024grants,
   bounded arbitrary-JSON fuzz through the existing decoder, whole Windows/Linux
   and actual standard ARMv5 synthetic projection/stale-refusal assertions.
-  Next, scope an authenticated manual preview and text-only panel with finite
-  body/response budgets and session lifetime. That interface preference remains
-  pending; no HTTP, persistence, service activation or NAS operation is added
-  by this internal prerequisite. Never run a second authoritative policy writer.
+  The approved manual HTTP/panel adapter follows in M9.2g; this pure prerequisite
+  grants no persistence, activation or NAS authority. Never run a second writer.
+- **M9.2g — Authenticated manual iSCSI preview (local prototype).** Accept one
+  complete coherent SMB/NFS/iSCSI document at an explicit POST; reuse existing
+  decode/projection, never the old development store or an independent dialect.
+  Require current session, exact Origin, single CSRF header, strict JSON envelope,
+  query/encoding refusal and a non-queuing one-preview gate; recheck the session
+  before publication. Bound complete streamed input at656128bytes and exact
+  encoded response at262144bytes. No state save/load, backing/secret open,
+  runtime observation, create/enable action or second authoritative store.
+  Text-only UI displays every accepted target/LUN/initiator/grant and backing;
+  preserve exact decimal revision/capacity, explicit empty policy and desired
+  versus running distinction. One10s deadline includes session/POST headers and
+  response bodies; edit/clear/logout retire old work, late401/results cannot
+  change a replacement view, and session loss clears private input. No browser
+  storage, automatic retry or memory-zeroization claim. Warn against actual
+  passwords/keys and do not imply that CHAP encrypts traffic.
+  Local acceptance passes: whole Windows/pinned Linux vet/units, ARMv5 compile,
+  focused race3, strict HTTP/body/concurrency/revocation controls, independent
+  display validation, inclusive byte bounds and four non-cooperative deadline
+  seams. Installed Edge tests visible text/pointer submission against actual
+  memory-auth Go handlers, explicit clear and1365/390/320px result layouts.
+  Standard single-boot ARMv5 smoke requires two exact HTTP and two HTTPS preview
+  receipts across API restart, including privacy/precision and negative requests;
+  all eight embedded assets remain byte-exact on both transports. This is not
+  full/two-boot/hosted, production security, target activation or physical EX4
+  qualification. Next: authorized source-of-truth migration and guarded product
+  credential/storage/session composition before any saved target workflow.
 - **M9.3 — Guard mutations.** Create/enable/disable/grow/remove operations check
   real initiator/session ownership and backing-volume state. Prevent local
   filesystem mounting while an initiator owns the LUN; prohibit unsafe shrink.

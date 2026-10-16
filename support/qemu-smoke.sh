@@ -171,6 +171,14 @@ while [ "$attempt" -lt "$smoke_timeout" ]; do
             echo "Missing authenticated file-service preview assertion" >&2
             exit 1
         fi
+        if ! test "$(sed 's/\r$//' "$log_file" | grep -Fxc 'PHANTOWD_ISCSI_PREVIEW_HTTP_READY transport=http authenticated=true csrf=true coherent=true exact_decimals=true redacted=true activation=false scope=synthetic-desired-only')" -eq 2; then
+            echo 'Expected two authenticated HTTP iSCSI previews across API restart' >&2
+            exit 1
+        fi
+        if ! test "$(sed 's/\r$//' "$log_file" | grep -Fxc 'PHANTOWD_ISCSI_PREVIEW_HTTP_READY transport=https authenticated=true csrf=true coherent=true exact_decimals=true redacted=true activation=false scope=synthetic-desired-only')" -eq 2; then
+            echo 'Expected two authenticated HTTPS iSCSI previews across API restart' >&2
+            exit 1
+        fi
         if ! grep -F 'PHANTOWD_FILE_SERVICE_PLAN_READY snapshot=complete-mounted-owner-set-nonempty roster_lease=all_member_owned descriptor_revoked=true owner_scope=fixture_complete volume_count=1 revisions=bound fresh_check=passed parser=testparm isolated_candidate=true declared_root=bound json=false activation=false compatibility=synthetic-ext2 scope=disposable-qemu-only' "$log_file" >/dev/null; then
             echo "Missing internal file-service plan assertion" >&2
             exit 1
@@ -509,7 +517,7 @@ while [ "$attempt" -lt "$smoke_timeout" ]; do
             exit 1
         fi
         for transport in http https; do
-            if ! test "$(sed 's/\r$//' "$log_file" | grep -Fxc "PHANTOWD_DASHBOARD_ASSETS_READY transport=$transport assets=7 byte_exact=true scope=qemu-loopback-only")" -eq 2; then
+            if ! test "$(sed 's/\r$//' "$log_file" | grep -Fxc "PHANTOWD_DASHBOARD_ASSETS_READY transport=$transport assets=8 byte_exact=true scope=qemu-loopback-only")" -eq 2; then
                 echo 'Missing or excess exact dashboard asset receipts across API restart' >&2
                 exit 1
             fi

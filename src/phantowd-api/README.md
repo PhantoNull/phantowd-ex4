@@ -123,7 +123,20 @@ now prepares complete target/LUN/initiator/grant display data from the validated
 coherent revision, without exposing credential usernames/SecretRefs or raw
 filesystem UUIDs. Exact decimal strings preserve revision/capacity precision.
 Its explicit flags remain unvalidated/unavailable: it is not a backing opener,
-effective-access decision, service state, owner claim, HTTP endpoint or panel.
+effective-access decision, service state or owner claim.
+
+M9.2g adds an authenticated **manual** dashboard preview through
+`POST /api/v1/iscsi/preview`. Paste a complete coherent NAS JSON document, not
+the older SMB/NFS-only configuration backup; do not paste passwords or keys.
+The handler validates one whole revision and displays target/LUN/initiator/grant
+relationships with desired backing fields. It requires session, exact Origin
+and CSRF, accepts at most656128 UTF-8 bytes and returns at most256KiB. It does
+not load/save policy, open a backing/credential, inspect runtime or activate a
+target. The existing SMB/NFS development store is neither selected nor migrated.
+The panel retains exact decimal revision/capacity strings, renders text only,
+and uses one ten-second operation budget. Edit/clear/session retirement fences
+late results; session loss clears the source too. Browser storage and automatic
+retries are not used. See the [projection and adapter contract](internal/iscsipreview/README.md).
 
 The internal [coherent NAS policy](internal/naspolicy/README.md) additionally
 stores desired SMB/NFS/iSCSI as one strict revision through the existing Linux
@@ -136,7 +149,7 @@ The separate internal [iSCSI desired-policy model](internal/iscsipolicy/README.m
 defines revision-bound target/LUN/backing relationships and per-initiator CHAP
 credential references. Its synthetic host/QEMU fixture opens no backing or
 credential and starts no target. It is not part of the atomic SMB/NFS store,
-has no HTTP endpoint or persistence, and cannot activate a service. Backend,
+has no independent writer or activation endpoint. Backend,
 global-use/session admission, import and guarded transactions remain M9 work.
 
 ### M9.2b registered-volume and cross-protocol review
@@ -1720,7 +1733,7 @@ node support/test-dashboard-browser.mjs --browser "C:\Program Files (x86)\Micros
 
 On Linux, use the same command with a native `phantowd-browser-api.test` binary
 and explicit installed browser path. Never pass a firmware/ARM binary to a host
-runner. Recompile after changes: the test server reports seven embedded-asset
+runner. Recompile after changes: the test server reports eight embedded-asset
 hashes and the runner refuses a source mismatch. This does not authenticate the
 entire source tree or executable's provenance.
 
@@ -1757,7 +1770,8 @@ every viewport.
 
 The bounded page-resource census retains every observed request. HTTP requests
 must use the exact ephemeral loopback origin; POST is permitted only in this
-mode on the five fixed auth routes without query parameters. One exact510-char
+mode on the five fixed auth routes and the read-only iSCSI preview, all without
+query parameters. One exact510-char
 inline SVG image URL observed during installed Edge155 text input is recognized
 by type, GET method, MIME prefix, length and SHA-256, and counted separately from
 network requests. Its producer has not been independently established. No
@@ -1765,7 +1779,16 @@ generic `data:`, `blob:`, `about:` or file-resource exception is allowed; even a
 same-origin `blob:` fails. Changed inline bytes require explicit review. Fast
 dependency-free refusal tests use fixed errors without echoing resource input.
 These are observed-request checks, not a browser network sandbox. Results also
-record and recheck the driver/resource-contract source hashes.
+record and recheck the driver/resource/startup-contract and proposal-fixture
+source hashes. Startup polls the fresh owned `DevToolsActivePort` within its
+existing10s bound: ENOENT/EBUSY remain pending, while permission/I/O errors and
+malformed endpoints fail. No new browser/whole-action retry is added.
+
+The same actual-handler fixture now also accepts one complete synthetic NAS
+proposal through visible textarea/pointer submission, verifies target/LUN0/
+access and omitted private fields, renders results at1365/390/320px without
+horizontal overflow, and explicitly clears source/result. This manual preview
+does not install a policy store, inspect backing files or activate a target.
 
 After those nominal flows, controlled network interception holds one login
 before headers. The real browser deadline must clear the input, release the
@@ -1797,7 +1820,7 @@ All file-service backend operations remain unavailable in this fixture.
 Guest initialization probes the GET endpoints and QEMU-only authentication
 flow, verifies that QEMU's root block node appears through sysfs without being
 opened, rejects unauthorized and malformed operations, validates non-root
-identity and ARMv5 metadata, checks all seven embedded dashboard assets over
+identity and ARMv5 metadata, checks all eight embedded dashboard assets over
 guest-loopback HTTP and separately trusted temporary HTTPS, rejects mutating/query dashboard requests, and prints an
 RSS sample with a 48 MiB ceiling. It then restarts only the API process and
 verifies that the account reloads while sessions remain memory-only. A failure
@@ -1810,8 +1833,11 @@ response limit, retain the declared feature markers and have exactly one
 expected MIME, no-store, nosniff and CSP header. Read/close/metadata/body failure
 refuses the fixture with fixed errors; response bodies are closed and no manual
 retry or timing budget is added. Root HTML and other assets keep their distinct
-CSP profiles. The standard runner requires two exact seven-asset receipts per
+CSP profiles. The standard runner requires two exact eight-asset receipts per
 transport across its intentional API restart, not merely a TLS handshake marker.
+It also requires two exact authenticated iSCSI-preview receipts per transport,
+with complete synthetic policy, exact large decimals, privacy and negative
+request checks. These route checks execute Go on ARM, not browser JavaScript.
 Host tests use actual loopback HTTP/HTTPS plus altered-marker-preserving, header,
 read/close, oversized, redirect and request-error controls. These assertions
 establish decoded-body parity to the running binary, not signed source/image

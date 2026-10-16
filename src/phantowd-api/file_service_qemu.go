@@ -73,5 +73,5 @@ func exerciseQEMUFileServicePreview(client *http.Client, origin string) error {
 			}
 		}
 	}
-	return nil
+	return exerciseQEMUISCSIPreviewHTTP(client, origin, session.CSRFToken)
 }

@@ -631,6 +631,42 @@ acceptance cases for stale/crashed helpers, slot holes, retained deferral and
 workload admission. None of those product controls is implemented by this
 documentation-only checkpoint.
 
+## M9.2g manual authenticated iSCSI preview — local host/browser/ARM prototype
+
+An explicit `POST /api/v1/iscsi/preview` now validates one complete coherent
+SMB/NFS/iSCSI proposal and returns the existing redacted desired projection.
+Session/Origin/single-CSRF checks precede body reads; session revocation is
+rechecked before publication. Strict JSON/query/encoding and streamed656128-byte
+input bounds, one non-queuing preview and exact256KiB output are enforced.
+No state loader/writer, backing opener, credential resolver or target backend is
+connected. Proposed enabled is not running or effective access.
+
+The dashboard renders text-only complete relationships, exact decimal strings
+and explicit empty state; source/output are private admin data. One10s budget
+covers session and POST headers/bodies. Edit/clear/session changes retire old
+work; late401/results cannot replace new views. Session loss clears source text,
+without claiming memory erasure. No automatic retry or browser storage is used.
+
+Whole Windows and pinnedGo1.26.8 non-root Linux checks pass, plus focused
+race-count3, HTTP revocation/concurrency/envelope/privacy and DOM display/bounds/
+four stalled-stage controls. Installed Edge155 passes actual visible form
+submission against memory-only Go auth/API, explicit clear, zero uncaught
+exceptions and1365/390/320px results without horizontal overflow. Separate
+GET-only synthetic browser mode also passes. Its startup-file EBUSY was
+reproduced and narrowly treated as pending within the unchanged10s startup
+poll; permission/I/O/malformed endpoints still fail. No whole-action retry.
+
+The actual single-boot standard ARMv5 overlay passes: two exact HTTP plus two
+HTTPS preview assertions across API restart, exact large decimals and negative
+auth/CSRF/origin/revision/method requests, and eight byte-exact assets per
+transport per self-test. Base helper/kernel/packages remain reused and read-only;
+one disposable RAM scratch boot adds no persistent Docker image/volume. Forty
+runner controls, lint and shellcheck pass. The16,087,552-byte native browser
+binary was removed after verified process disposal; result records remain.
+This is not the full/two-boot/hosted/SBOM/release lane or physical EX4 testing.
+No target is saved or activated; product authority/recovery and the independent
+Samba timing decision remain open. PR133 is not merged by this checkpoint.
+
 ## iSCSI management prerequisite: coherent desired review projection
 
 The new private projection validates the whole SMB/NFS/iSCSI desired revision
@@ -649,9 +685,10 @@ Linux vet/units/tagged vet, focused race-count3 and25,000 fuzz executions pass.
 The actual single-boot ARMv5 overlay passes, including the augmented pure iSCSI
 projection/stale-refusal fixture. No additional guest boot or fixture I/O is
 introduced; this is not the two-boot/full/hosted or browser qualification lane.
-No HTTP route, panel, state writer, target activation or device operation is
-added; the interface preference and independent native timing decision remain
-pending. This is not an installable/product-qualified iSCSI management plane.
+That pure internal checkpoint added no HTTP route or panel; the later approved
+M9.2g adapter is recorded above. No state writer, target activation or device
+operation follows from either increment. The independent native timing decision
+remains pending. This is not an installable/product-qualified management plane.
 
 ## Host release planning: optional strict-upgrade prerequisite
 

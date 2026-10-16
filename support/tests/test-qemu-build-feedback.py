@@ -393,6 +393,35 @@ class BuildFeedbackTests(unittest.TestCase):
                 text=True, timeout=3)
             self.assertNotEqual(result.returncode, 0)
 
+    def test_iscsi_preview_requires_two_receipts_per_transport(self):
+        smoke = (ROOT / "support/qemu-smoke.sh").read_text()
+        for transport in ("http", "https"):
+            marker = (
+                "PHANTOWD_ISCSI_PREVIEW_HTTP_READY "
+                f"transport={transport} authenticated=true csrf=true "
+                "coherent=true exact_decimals=true redacted=true "
+                "activation=false scope=synthetic-desired-only"
+            )
+            guard = next(block for block in re.findall(
+                r"(?m)^        if ! test .*?^        fi$", smoke, re.DOTALL)
+                if marker in block)
+            with tempfile.TemporaryDirectory() as temp:
+                log = pathlib.Path(temp) / "guest.log"
+                for count in (0, 1, 2, 3):
+                    log.write_bytes(((marker + "\r\n") * count).encode())
+                    result = subprocess.run(
+                        ["sh", "-c", 'log_file="$1"\n' + guard,
+                         "iscsi-preview-guard", str(log)],
+                        capture_output=True, text=True, timeout=3)
+                    self.assertEqual(result.returncode,
+                                     0 if count == 2 else 1)
+                log.write_text(marker + "\n" + marker + " extra\n")
+                result = subprocess.run(
+                    ["sh", "-c", 'log_file="$1"\n' + guard,
+                     "iscsi-preview-guard", str(log)],
+                    capture_output=True, text=True, timeout=3)
+                self.assertNotEqual(result.returncode, 0)
+
     def test_front_panel_text_requires_both_synthetic_guest_receipts(self):
         smoke = (ROOT / "support/qemu-smoke.sh").read_text()
         selftest = (ROOT / "src/phantowd-api/selftest.go").read_text()
@@ -458,7 +487,7 @@ class BuildFeedbackTests(unittest.TestCase):
                           r'[\s\S]*?^        done$', smoke).group()
         self.assertIn('PHANTOWD_DASHBOARD_ASSETS_READY', guard)
         marker = ('PHANTOWD_DASHBOARD_ASSETS_READY transport={transport} '
-                  'assets=7 byte_exact=true scope=qemu-loopback-only')
+                  'assets=8 byte_exact=true scope=qemu-loopback-only')
         with tempfile.TemporaryDirectory() as temp:
             log = pathlib.Path(temp) / 'guest.log'
             for transport in ('http', 'https'):
@@ -484,10 +513,10 @@ class BuildFeedbackTests(unittest.TestCase):
             self.assertNotEqual(result.returncode, 0)
 
             for transport in ('http', 'https'):
-                for wrong_assets in (6, 8):
+                for wrong_assets in (7, 9):
                     lines = [marker.format(transport=kind).replace(
-                        'assets=7', f'assets={wrong_assets}'
-                        if kind == transport else 'assets=7')
+                        'assets=8', f'assets={wrong_assets}'
+                        if kind == transport else 'assets=8')
                         for kind in ('http', 'https') for _ in range(2)]
                     log.write_text('\n'.join(lines)+'\n')
                     result = subprocess.run(
