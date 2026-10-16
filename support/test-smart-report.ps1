@@ -31,7 +31,9 @@ set -eu
 . /src/versions.env
 config_hash="$(sha256sum /src/configs/phantowd_qemu_armv5_defconfig | cut -c1-16)"
 output="/workspace/output/$BUILDROOT_VERSION-$config_hash"
-shellcheck /src/support/tests/test-qemu-smart-report.sh /src/support/tests/smart-report-init.sh
+shellcheck /src/support/tests/test-qemu-smart-report.sh /src/support/tests/smart-report-init.sh \
+    /src/support/tests/stage-smart-report-file.sh /src/support/tests/test-smart-report-staging.sh
+sh /src/support/tests/test-smart-report-staging.sh "$output/host/sbin/debugfs" /src
 exec sh /src/support/tests/test-qemu-smart-report.sh /base \
     "$output/host/bin/go" "$output/host/sbin/debugfs" /src
 '@

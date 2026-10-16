@@ -20,6 +20,7 @@ awk -v target="$tmpdir" '$3 == "tmpfs" && (target == $2 || index(target, $2 "/")
 for file in rootfs.ext2 zImage versatile-pb.dtb SHA256SUMS; do
     [ -f "$base/$file" ] && [ ! -L "$base/$file" ] || exit 1
 done
+[ "$(wc -c < "$base/rootfs.ext2")" -le 134217728 ] || exit 1
 scratch=$(mktemp -d "$tmpdir/phantowd-smart-report.XXXXXX")
 child_pid=
 cleanup() {
@@ -28,7 +29,7 @@ cleanup() {
         wait "$child_pid" 2>/dev/null || true
     fi
     # All targets belong to this exact newly-created tmpfs directory.
-    rm -f "$scratch/rootfs.ext2" "$scratch/report.test" "$scratch/collector.test" "$scratch/guest.log"
+    rm -f "$scratch/rootfs.ext2" "$scratch/report.test" "$scratch/collector.test" "$scratch/guest.log" "$scratch/check"
     rm -rf "$scratch/go-cache" "$scratch/go-path"
     rmdir "$scratch"
 }
@@ -44,15 +45,21 @@ export GOCACHE="$scratch/go-cache" GOPATH="$scratch/go-path"
     "$go_binary" test -c -trimpath -o "$scratch/collector.test" ./internal/smartcollect)
 rm -rf "$scratch/go-cache" "$scratch/go-path"
 cp "$base/rootfs.ext2" "$scratch/rootfs.ext2"
+# Enlarge only this new regular tmpfs copy, never the read-only base image.
+[ -f "$scratch/rootfs.ext2" ] && [ ! -L "$scratch/rootfs.ext2" ] || exit 1
+[ "$(wc -c < "$scratch/rootfs.ext2")" -le 134217728 ] || exit 1
+truncate -s 128M "$scratch/rootfs.ext2"
+"$(dirname "$debugfs")/resize2fs" -f "$scratch/rootfs.ext2" >/dev/null 2>&1
 for pair in "$scratch/report.test phantowd-smart-report-test" \
     "$scratch/collector.test phantowd-smart-collector-test" \
     "$source_dir/support/tests/smart-report-init.sh phantowd-smart-report-init"; do
     input=${pair%% *}
     output=${pair#* }
-    "$debugfs" -w -R "write $input /usr/sbin/$output" "$scratch/rootfs.ext2" >/dev/null 2>&1
-    "$debugfs" -w -R "set_inode_field /usr/sbin/$output mode 0100755" "$scratch/rootfs.ext2" >/dev/null 2>&1
-    "$debugfs" -w -R "set_inode_field /usr/sbin/$output uid 0" "$scratch/rootfs.ext2" >/dev/null 2>&1
-    "$debugfs" -w -R "set_inode_field /usr/sbin/$output gid 0" "$scratch/rootfs.ext2" >/dev/null 2>&1
+    if ! sh "$source_dir/support/tests/stage-smart-report-file.sh" "$debugfs" \
+        "$scratch/rootfs.ext2" "$input" "/usr/sbin/$output" "$scratch/check"; then
+        echo 'PHANTOWD_SMART_REPORT_STAGING_FAILED exact_bytes_or_metadata=false' >&2
+        exit 1
+    fi
 done
 timeout --signal=TERM --kill-after=5 90 qemu-system-arm \
     -M versatilepb -cpu arm926 -m 256M -nographic -no-reboot -nic none \

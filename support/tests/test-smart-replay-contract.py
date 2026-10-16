@@ -106,7 +106,17 @@ class CollectionRunnerContractTests(unittest.TestCase):
                 "go": "#!/bin/sh\nwhile [ $# -gt 0 ]; do\n"
                       "if [ \"$1\" = -o ]; then shift; : > \"$1\"; fi\n"
                       "shift\ndone\n",
-                "debugfs": "#!/bin/sh\nexit 0\n",
+                "resize2fs": "#!/bin/sh\nexit 0\n",
+                "debugfs": "#!/bin/sh\n"
+                      "if [ \"$1\" = -w ]; then shift; fi\n"
+                      "command=$2\ncase \"$command\" in\n"
+                      "write\\ *) source=${command#write }; "
+                      "printf '%s' \"${source% *}\" >\"$STAGED_SOURCE\" ;;\n"
+                      "dump\\ *) cp \"$(cat \"$STAGED_SOURCE\")\" "
+                      "\"${command##* }\" ;;\n"
+                      "stat\\ *) printf '%s\\n' "
+                      "'Inode: 1 Type: regular Mode: 0755 Flags: 0x0' "
+                      "'User: 0 Group: 0 Project: 0' ;;\nesac\n",
                 "qemu-system-arm": "#!/bin/sh\n"
                       "echo boot >> \"$BOOT_COUNT\"\n"
                       "printf '%s\\n' \"$GUEST_OUTPUT\"\n",
@@ -129,6 +139,7 @@ class CollectionRunnerContractTests(unittest.TestCase):
                     env = dict(os.environ, TMPDIR=str(scratch),
                                PATH=str(tools) + ":" + os.environ["PATH"],
                                BOOT_COUNT=str(count),
+                               STAGED_SOURCE=str(root / "staged-source"),
                                GUEST_OUTPUT=passes + markers)
                     result = subprocess.run(
                         ["sh", str(REPORT_RUNNER), str(base),
@@ -138,6 +149,8 @@ class CollectionRunnerContractTests(unittest.TestCase):
                     )
                     self.assertEqual(result.returncode == 0, success,
                                      result.stdout + result.stderr)
+                    self.assertTrue(count.exists(),
+                                    result.stdout + result.stderr)
                     self.assertEqual(count.read_text(), "boot\n")
                     self.assertEqual(list(scratch.iterdir()), [])
                     self.assertEqual(

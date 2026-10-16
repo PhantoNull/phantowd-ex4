@@ -3,6 +3,30 @@
 
 # Implementation status
 
+## Current integration gate: SMART fixture staging corrected locally
+
+The complete cached qualifier of clean `907e172` passes host/race/fuzz, standard
+ARMv5, storage/state/owner/loader/atomic checks and all ten Samba campaigns plus
+their strict complete union. It then fails the synthetic SMART report guest:
+the borrowed 80 MiB image has no free blocks, `debugfs` returns zero despite
+allocation errors, the collector is incomplete and the init has no allocated
+blocks. The kernel refuses that init with error -8. The complete run remains
+failed; its later producer lane and post-success audit were not reached.
+
+A focused unchanged ARM reproduction confirms the same failure. A real pinned
+`debugfs` staging probe verifies the incomplete bytes and exhaustion. The
+regression reaches QEMU before the fix and refuses before QEMU afterward.
+The corrected fixture admits a base of at most 128 MiB, enlarges only its new
+regular tmpfs copy to 128 MiB, and verifies each fixed injected file's exact
+bytes, regular executable mode and root ownership before boot. Actual ARM
+parser/collector tests and the separate synthetic producer/temperature/capture/
+comparison lane pass, with the base image unchanged and original guest limits.
+
+These focused passes do not replace a complete corrected-candidate qualifier
+or establish repair of earlier Samba intermittency. No successful full/audit,
+hosted/merge, product activation or physical EX4 qualification is inferred.
+No persistent image, volume or device contents are enlarged by this correction.
+
 ## M6.1g manual network proposal preview — host/browser/ARM prototype
 
 The authenticated manual network panel now reviews one submitted desired
@@ -29,7 +53,7 @@ cheap host CI; runtime/API changes retain firmware checks. No full/two-boot/
 SBOM/hosted, physical networking, saved trial/recovery or product qualification
 follows. Existing Samba and product-state gates remain open.
 
-## Current integration gate: latest full candidate fails held-file admission
+## Earlier integration failure: `94e791f` held-file admission
 
 The single complete cached local qualifier of clean `94e791f` fails the final
 `file-source` campaign after nine original Samba campaigns pass. The actual
@@ -56,7 +80,7 @@ Real-child native/race and eight-case, three-repeat ARMv5 tests pass in the
 existing Owner guest with all earlier proofs and numeric limits unchanged.
 This is not an attribution or repair of the original Samba intermittency.
 
-## Current focused gate: data-phase final owner verification
+## Earlier focused failure: data-phase final owner verification
 
 The newer local `c34cb69` file-source preflight passes, but its `fault` preflight
 fails in the data phase at `verify-owners` with an expired context. A subsequent

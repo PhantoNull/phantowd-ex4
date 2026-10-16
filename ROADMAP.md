@@ -3,13 +3,21 @@
 
 # Implementation roadmap
 
-Reviewed: **2026-10-15**. This is the product specification and work breakdown,
+Reviewed: **2026-10-16**. This is the product specification and work breakdown,
 not a release announcement. The [README](README.md) is the concise entry point;
 component contracts remain authoritative for implemented behavior.
 
 The dated [code-to-roadmap comparison](IMPLEMENTATION-STATUS.md) records
 implemented evidence, missing product integration, planning estimate bands and
 the immediate execution sequence. Estimates are not release qualification.
+
+Current M0 gate: the complete `907e172` qualifier passes all ten Samba campaigns
+but fails SMART fixture staging on an exhausted temporary image. Checked,
+128 MiB-bounded staging and its real-allocation regression now pass focused
+host/ARM tests. Require a fresh complete corrected-candidate qualifier and audit;
+do not replace the failed result with selected passes or claim a Samba timing
+repair. See [implementation status](IMPLEMENTATION-STATUS.md) and the
+[focused staging contract](support/QEMU-FAST-TESTS.md#smart-report-staging-checked-disposable-image).
 
 ## Product contract
 

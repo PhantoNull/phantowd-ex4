@@ -86,7 +86,9 @@ shellcheck "$external_dir/support/tests/test-qemu-runtime-owner.sh" \
     "$external_dir/support/tests/test-samba-root-staging-environment.sh" \
     "$external_dir/support/tests/test-samba-root-staging.sh"
 shellcheck "$external_dir/support/tests/test-qemu-smart-report.sh" \
-    "$external_dir/support/tests/smart-report-init.sh"
+    "$external_dir/support/tests/smart-report-init.sh" \
+    "$external_dir/support/tests/stage-smart-report-file.sh" \
+    "$external_dir/support/tests/test-smart-report-staging.sh"
 shellcheck "$external_dir/support/tests/test-qemu-smart-replay.sh" \
     "$external_dir/support/tests/smart-replay-arm-init.sh"
 python3 -B "$external_dir/support/tests/test-smart-replay-contract.py"
@@ -645,6 +647,8 @@ if ! TMPDIR=/phantowd-qemu-fixture-tmp sh "$external_dir/support/tests/test-qemu
 fi
 
 # Pure report interpretation only: no SMART executable or device commands.
+TMPDIR=/phantowd-qemu-fixture-tmp sh "$external_dir/support/tests/test-smart-report-staging.sh" \
+    "$output_dir/host/sbin/debugfs" "$external_dir"
 TMPDIR=/phantowd-qemu-fixture-tmp sh "$external_dir/support/tests/test-qemu-smart-report.sh" \
     "$artifact_dir" "$output_dir/host/bin/go" "$output_dir/host/sbin/debugfs" \
     "$external_dir" "$artifact_dir/qemu-smart-report-failure.log"

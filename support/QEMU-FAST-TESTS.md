@@ -1,5 +1,29 @@
 # Fast API and file-service integration checks
 
+## SMART report staging: checked disposable image
+
+`support/test-smart-report.ps1` first runs a real pinned-`debugfs` host staging
+regression, then one ARMv5 parser/collector boot. Its helper admits only the
+three fixed test/init destinations, verifies exact readback and regular 0755,
+root-owned metadata, and refuses incomplete writes before launching QEMU.
+`debugfs` can return zero despite exhausted blocks; command status is not proof.
+
+The regression covers all three destinations, stale bytes, undeclared paths
+and a 129 MiB nonzero payload that cannot fit the bounded image. QEMU is replaced
+by a sentinel only in that negative host test, so it proves pre-boot refusal,
+not guest behavior. The ordinary ARM lane retains both mandatory independent
+parser/collector receipts and every existing check.
+
+Only the fixture's newly created regular tmpfs image is enlarged to 128 MiB;
+a larger base is refused. Source/base/workspace mounts stay read-only in the
+focused wrapper. Its CPU/memory/PID/tmpfs and 90-second guest bounds are unchanged;
+no persistent disk/image, volume, NAS or hardware backend is modified.
+
+The complete `907e172` qualifier passes all ten Samba campaigns but fails at
+SMART init before this correction. Focused corrected SMART lanes pass; they do
+not retroactively pass that full run or authorize its post-success audit. A new
+complete candidate, hosted checks and physical/product gates remain separate.
+
 ## Failure-only source-fault checkpoint costs
 
 `support/test-samba-root.ps1 -Campaign file-source -DiagnosticLogs` retains the
