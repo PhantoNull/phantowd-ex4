@@ -125,6 +125,15 @@ func ExerciseTemporaryQEMU(ctx context.Context, c naspolicy.Config) (result erro
 		return dir, nil
 	}
 	// Codec parity only, not a journal transaction or durable confirmation.
+	if err := exerciseCloseFaultMatrixQEMU(ctx, 6, func(boundary int, after bool) (*Observer, error) {
+		dir, err := makeLayout(fmt.Sprintf("close-%d-%t", boundary, after), current, intent, receipt)
+		if err != nil {
+			return nil, err
+		}
+		return Open(ctx, dir, installation)
+	}); err != nil {
+		return err
+	}
 	if err := exerciseBundleObservationQEMU(ctx, root, base, current, intent, receipt); err != nil {
 		return err
 	}

@@ -95,6 +95,20 @@ substitutions, nine unsafe layouts, pending/write-close/cancel/read/watch faults
 private/copied handles,12 concurrent reads and controlled close uncertainty.
 Injected faults are not physical EIO or kernel-close qualification.
 
+The existing standard boot additionally checks all eleven retained file/directory
+close positions (six legacy, five bundle), with both controlled pre-close failure
+and successful real close followed by an invented failure: 22 cases per API
+lifetime. The latter atomically allocates a duplicate at the released FD number,
+never overwriting another owner. Repeated Close/Observe must perform no later
+close, publish no diagnosis, retain remaining original references/metadata and
+locks, and leave that replacement readable. Known fixture-only disposal restores
+the FD baseline without retrying a completed close. Native tagged units/race
+exercise Close over synthetic descriptors without claiming Open admission on WSL;
+actual ARM cases use the real supported Open/OpenBundle constructors. Two exact
+new receipts across API restart are required alongside every original proof.
+Constructor faults, watch-close errors, kernel/media EIO and complete lifecycle
+race/ownership/durability qualification remain separate. Product code is unchanged.
+
 The standard guest requires two exact filesystem receipts across API restart;
 host controls reject missing/one/duplicate/lookalike receipts. The observer is
 read-only, but its QEMU fixture creates/disposes synthetic tmpfs files, takes

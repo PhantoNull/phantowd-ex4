@@ -10,6 +10,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -48,6 +49,15 @@ func exerciseBundleObservationQEMU(ctx context.Context, root string, base, curre
 			}
 		}
 		return dir, nil
+	}
+	if err := exerciseCloseFaultMatrixQEMU(ctx, 5, func(boundary int, after bool) (*Observer, error) {
+		dir, err := makeLayout(fmt.Sprintf("close-%d-%t", boundary, after), current, true, false)
+		if err != nil {
+			return nil, err
+		}
+		return OpenBundle(ctx, dir, installation)
+	}); err != nil {
+		return err
 	}
 	for _, tc := range []struct {
 		name              string

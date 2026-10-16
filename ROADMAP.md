@@ -841,7 +841,14 @@ and recovery do not. **Depends on:** M0 for tests; M7 for physical placement.
   read/cancel/watch faults, private/copy refusal,12 concurrent reads and controlled
   close uncertainty twice across API restart. Exact2 receipt controls pass.
   Remaining: full constructor/namespace/read/close/fault/atime/content/bounds and
-  independent-writer qualification on supported media; no positive native race,
+  independent-writer qualification on supported media; supplementary close tests
+  now cover all 11 file/directory positions in the two fixed profiles with controlled
+  before/after-real-close failures (22 cases), exact safe FD reuse, sticky review,
+  remaining-original/lock retention and disposal baseline. Native Close-only
+  units/race3 and actual standard ARM Open/OpenBundle cases twice across restart
+  pass with the existing 15 s fixture / 240 s guest limits. This is not constructor,
+  watch-close, kernel/media EIO, complete lifecycle race or durable qualification;
+  no positive native Open lifecycle race,
   durable-quarantine or physical-storage qualification is implied;
   **M1.3c** one-attempt writer with preserved base and every interrupted boundary:
   **c.1 private preparation (implemented, host/ARM prototype)** validates the exact

@@ -866,6 +866,17 @@ HTTP integration, boot admission and physical-medium qualification remain open.
 
 ## M1.3b.3 retained operation evidence — experimental host/ARM collector
 
+Additional controlled close coverage now spans all 11 retained file/directory
+positions in both profiles, before and after real successful closure: 22 cases.
+Exact FD reuse, no later close/diagnosis, retained original metadata/remaining
+locks and final FD baseline are checked. Native tagged units/race3 use synthetic
+owned descriptors, not unsupported WSL Open admission. Actual supported ARM
+constructors pass the full matrix twice across API restart at the original 15 s
+fixture / 240 s guest bounds, with every old proof retained. Whole Windows and
+pinned Linux API vet/units/tagged-vet pass; final 43 runner controls/lint/shellcheck
+pass after two host-test line-length corrections. No runtime observer change,
+constructor/watch-close/media-EIO, complete lifecycle race or product gate follows.
+
 The separate [Linux collector](src/phantowd-api/internal/policyevidencefs/README.md)
 retains original root/policy/operations directory locks, complete fixed census,
 owned no-atime read-only files and directory/file mutation watches. Unique

@@ -84,6 +84,7 @@ func runSelfTest() error {
 		return err
 	}
 	fmt.Println("PHANTOWD_POLICY_EVIDENCE_FS_READY roles=3 original_locks=true unique_mount=true complete=true sticky_review=true readonly=true admission=false scope=temporary-qemu-only")
+	fmt.Println("PHANTOWD_POLICY_EVIDENCE_CLOSE_READY profiles=2 boundaries=11 modes=2 cases=22 no_retry=true recycled_fd_safe=true remaining_retained=true admission=false scope=temporary-qemu-only")
 	if err := exerciseQEMUThermalReport(); err != nil {
 		return err
 	}
