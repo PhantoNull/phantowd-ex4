@@ -154,9 +154,14 @@ func (o *Owner) Start(ctx context.Context, spec Spec) (Snapshot, error) {
 		if process.exited() {
 			return o.failStart(process, ErrProcessExited)
 		}
+		if err := readinessContextError(ctx, startCtx); err != nil {
+			return o.failStart(process, errors.Join(ErrNotReady, err))
+		}
 		ready, probeErr := spec.Ready(startCtx)
-		if probeErr != nil {
-			return o.failStart(process, ErrNotReady)
+		// A probe's positive result is stale once either lifetime has ended.
+		// Preserve only fixed context causes, not private probe error text.
+		if err := readinessContextError(ctx, startCtx); err != nil || probeErr != nil {
+			return o.failStart(process, errors.Join(ErrNotReady, err))
 		}
 		if process.exited() {
 			return o.failStart(process, ErrProcessExited)
@@ -169,12 +174,26 @@ func (o *Owner) Start(ctx context.Context, spec Spec) (Snapshot, error) {
 		}
 		select {
 		case <-startCtx.Done():
-			return o.failStart(process, ErrNotReady)
+			return o.failStart(process, errors.Join(ErrNotReady, startCtx.Err()))
 		case <-process.done:
 			return o.failStart(process, ErrProcessExited)
 		case <-ticker.C:
 		}
 	}
+}
+
+// Inspect the original caller too: timer delivery to a derived context can lag
+// its monotonic deadline. This is a point-in-time fence, not probe preemption.
+func readinessContextError(contexts ...context.Context) error {
+	for _, ctx := range contexts {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		if deadline, ok := ctx.Deadline(); ok && !time.Now().Before(deadline) {
+			return context.DeadlineExceeded
+		}
+	}
+	return nil
 }
 
 // Stop performs a bounded graceful shutdown even if the request context was

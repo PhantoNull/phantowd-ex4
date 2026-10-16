@@ -28,7 +28,7 @@ cleanup() {
         kill "$child_pid" 2>/dev/null || true
         wait "$child_pid" 2>/dev/null || true
     fi
-    rm -f "$scratch/rootfs.ext2" "$scratch/probe" "$scratch/metadata" "$scratch/check" "$scratch/guest.log"
+    rm -f "$scratch/rootfs.ext2" "$scratch/probe" "$scratch/metadata" "$scratch/readiness" "$scratch/check" "$scratch/guest.log"
     rm -rf "$scratch/go-cache" "$scratch/go-path"
     rmdir "$scratch"
 }
@@ -42,12 +42,16 @@ export GOCACHE="$scratch/go-cache" GOPATH="$scratch/go-path"
 (cd "$source_dir/src/phantowd-api" && CGO_ENABLED=0 GOOS=linux GOARCH=arm GOARM=5 \
     "$go_binary" test -c -tags=qemu -trimpath -ldflags='-s -w' \
     -o "$scratch/metadata" ./internal/runtimebundle)
+(cd "$source_dir/src/phantowd-api" && CGO_ENABLED=0 GOOS=linux GOARCH=arm GOARM=5 \
+    "$go_binary" test -c -tags=qemu -trimpath -ldflags='-s -w' \
+    -o "$scratch/readiness" ./internal/processowner)
 rm -rf "$scratch/go-cache" "$scratch/go-path"
 cp "$base/rootfs.ext2" "$scratch/rootfs.ext2"
 [ "$(wc -c <"$scratch/rootfs.ext2")" -le 134217728 ] || exit 1
 "$(dirname "$debugfs")/resize2fs" "$scratch/rootfs.ext2" 128M >/dev/null
 for pair in "$scratch/probe phantowd-runtime-bundle-probe" \
     "$scratch/metadata phantowd-runtime-metadata-tests" \
+    "$scratch/readiness phantowd-process-readiness-tests" \
     "$source_dir/support/tests/runtime-owner-init.sh phantowd-runtime-owner-init"; do
     input=${pair%% *}
     output=${pair#* }
@@ -65,13 +69,18 @@ status=0
 wait "$child_pid" || status=$?
 child_pid=
 expected='PHANTOWD_CODE_OWNER_READY caller_close=true fixed_spec=true pinned_exec=true duplicate_start_no_effect=true stop_reaped=true scope=qemu-only'
+readiness='PHANTOWD_CODE_OWNER_READINESS_READY cases=8 repeats=3 late_ready_refused=true context_cause=true stopped=true generation_unchanged=true scope=qemu-only'
 metadata='PHANTOWD_CODE_OWNER_METADATA_READY late_cancellation=true original_pins=true transient_table_removed=true scope=qemu-only'
 supervised='PHANTOWD_CODE_OWNER_SUPERVISION_READY canceled=true drift=true unexpected_exit=true forced_review=true group_reaped=true pins_retained=true concurrent_refused=true scope=qemu-only'
 scan='PHANTOWD_CODE_OWNER_SCAN_READY actual_later_hash=true same_bytes=true inner_directory_replaced=true alias_replaced=true point_in_time_controls=true original_paths_refused=true before_child=true restoration_not_retried=true scope=qemu-only'
 review='PHANTOWD_CODE_OWNER_REVIEW_READY same_bytes_replacement=true before_child=true live_root_drift=true group_reaped=true restoration_not_retried=true scope=qemu-only'
 forced='PHANTOWD_CODE_OWNER_FORCED_REVIEW_READY forced=true pins_retained=true explicit_reap=true released_after_verification=true review_not_cleared=true scope=qemu-only'
-if [ "$status" -ne 0 ] || [ "$(grep '^PHANTOWD_CODE_OWNER_' "$scratch/guest.log" | tr -d '\r')" != "$(printf '%s\n%s\n%s\n%s\n%s\n%s\n%s' "$metadata" "$expected" "$supervised" "$scan" "$review" "$forced" PHANTOWD_CODE_OWNER_DONE)" ] || \
+readiness_cases=$(grep -Ec '^    --- PASS: TestReadinessCannotCommitAfterContextEnds/expired=(false|true)/ready=(false|true)/failed=(false|true) ' "$scratch/guest.log" || true)
+if [ "$status" -ne 0 ] || [ "$(grep '^PHANTOWD_CODE_OWNER_' "$scratch/guest.log" | tr -d '\r')" != "$(printf '%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s' "$readiness" "$metadata" "$expected" "$supervised" "$scan" "$review" "$forced" PHANTOWD_CODE_OWNER_DONE)" ] || \
     [ "$(grep -c '^--- PASS: TestRetainedMetadata' "$scratch/guest.log")" -ne 12 ] || \
+    [ "$(grep -c '^--- PASS: TestReadinessCannotCommitAfterContextEnds ' "$scratch/guest.log")" -ne 3 ] || \
+    [ "$(grep -c '^--- PASS: TestReadinessContextChecksOriginalAndDerivedMonotonicDeadlines ' "$scratch/guest.log")" -ne 3 ] || \
+    [ "$readiness_cases" -ne 24 ] || \
     grep -Eq '^--- FAIL:|^FAIL' "$scratch/guest.log" || grep -Fq -- '--- SKIP:' "$scratch/guest.log"; then
     if [ -n "$failure_log" ]; then
         mkdir -p "$(dirname "$failure_log")"

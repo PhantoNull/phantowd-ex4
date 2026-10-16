@@ -21,7 +21,7 @@ truncate -s 4M "$scratch/image.ext2"
 "$debugfs" -w -R 'mkdir /usr' "$scratch/image.ext2" >/dev/null 2>&1
 "$debugfs" -w -R 'mkdir /usr/sbin' "$scratch/image.ext2" >/dev/null 2>&1
 truncate -s 64K "$scratch/input"
-for destination in phantowd-samba-root-init phantowd-runtime-metadata-tests phantowd-runtime-owner-init; do
+for destination in phantowd-samba-root-init phantowd-runtime-metadata-tests phantowd-process-readiness-tests phantowd-runtime-owner-init; do
     sh "$stage" "$debugfs" "$scratch/image.ext2" "$scratch/input" \
         "/usr/sbin/$destination" "$scratch/check" 0100755
 done

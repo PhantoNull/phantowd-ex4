@@ -1675,6 +1675,13 @@ storage. No production roster provider or activation path exists.
   children do not simulate an unexpected crash or forced stop of `smbd` itself.
   This is still not an SMB/NFS service manager, persistent service state,
   configuration reload, last-known-good transaction, or product startup.
+  A separate reproduced cancellation defect is corrected: a probe that returns
+  ready after its context ends cannot advance the process generation. Original
+  and derived monotonic deadlines bracket the callback, verified failed-start
+  cleanup is retained, and only fixed context causes accompany `ErrNotReady`.
+  Native/race and eight-case ARMv5 regressions pass in the existing Owner guest
+  without broader timers or an extra boot. This does not repair or explain the
+  intermittent Samba admission failure; exact-head full/hosted gates stay open.
 - **M4.3 — Access semantics.** Specify SMB3 grants and denied cases; keep SMB1
   disabled. Support explicit NFS client/network rules, export paths and numeric
   identity/squash policy. NFSv3 compatibility has guest evidence; NFSv4 is a

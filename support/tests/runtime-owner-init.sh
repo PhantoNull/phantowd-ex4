@@ -10,11 +10,15 @@ prepare() {
     mount -t tmpfs -o mode=0755,size=32m tmpfs /run || return 1
     export TMPDIR=/run
 }
+readiness() {
+    /usr/sbin/phantowd-process-readiness-tests -test.v -test.run '^TestReadiness(CannotCommitAfterContextEnds|ContextChecksOriginalAndDerivedMonotonicDeadlines)$' -test.count=3 -test.cpu=1 -test.timeout=15s || return 1
+    echo 'PHANTOWD_CODE_OWNER_READINESS_READY cases=8 repeats=3 late_ready_refused=true context_cause=true stopped=true generation_unchanged=true scope=qemu-only'
+}
 metadata() {
     /usr/sbin/phantowd-runtime-metadata-tests -test.v -test.run '^TestRetainedMetadata' -test.count=3 -test.cpu=1 || return 1
     echo 'PHANTOWD_CODE_OWNER_METADATA_READY late_cancellation=true original_pins=true transient_table_removed=true scope=qemu-only'
 }
-if prepare && metadata && /usr/sbin/phantowd-runtime-bundle-probe owner; then
+if prepare && readiness && metadata && /usr/sbin/phantowd-runtime-bundle-probe owner; then
     echo PHANTOWD_CODE_OWNER_DONE
 else
     echo PHANTOWD_CODE_OWNER_FAILED

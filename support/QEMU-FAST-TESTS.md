@@ -1155,8 +1155,19 @@ refuse revalidation, original descriptors/table must survive comparison, and
 changed/incomplete expected snapshots must refuse. This is not executable
 authority or qualification of product mounts. No extra CI guest is introduced.
 Only the disposable rootfs copy is enlarged to 128 MiB (larger bases refuse),
-and all three injected programs are verified by exact readback/type/mode/root
+and all four injected programs are verified by exact readback/type/mode/root
 ownership. The shared staging regression also checks stale/exhausted copies.
+
+Before the metadata groups, the same guest runs real `processowner` startup
+regressions: cancellation/deadline, positive/negative readiness and private
+probe-error combinations (eight cases, three repeats), plus original/derived
+monotonic-deadline guards. Late results must not advance generation and must
+leave the original group stopped while retaining fixed context causes. The
+test binary has a 15-second cap inside the unchanged 120-second guest; exact
+24-case, two three-test counts, original 12 metadata tests and ordered receipts
+are mandatory. Missing/duplicate/failing/skipped receipts refuse in host controls.
+Native/race and actual ARMv5 pass. This is not a fix for the intermittent
+Samba admission failure or product service activation, and adds no guest.
 
 The separate guest has a finite 120-second budget, no retries and no Samba
 entropy/network readiness dependency. A copied static fixture checks code/root

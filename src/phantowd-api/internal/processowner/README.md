@@ -50,6 +50,16 @@ bounded 32 KiB diagnostics tail, and reports `ready` only after the supplied
 probe succeeds. The probe must be service-specific, bounded and must not
 re-enter the same owner.
 
+Readiness checks both the original caller and its derived startup deadline
+before/after each probe. A late positive probe cannot advance generation:
+the candidate takes the same verified failed-start cleanup path, and the
+returned `ErrNotReady` retains fixed cancellation/deadline causes without
+disclosing the probe's private error. Monotonic deadlines do not depend on
+timer delivery. This is a point-in-time admission fence, not preemption of a
+blocking callback or a guarantee against cancellation after the final check.
+Real-child native/race and ARMv5 tests cover eight late-result combinations;
+this separate correction does not identify the intermittent Samba fixture cause.
+
 `Spec.RunAs` optionally fixes a numeric UID, primary GID and exact
 supplementary-group list for the child before exec; `NewSet` copies that
 credential tuple and group slice. A nil `RunAs` retains the caller's current

@@ -18,8 +18,17 @@ two-boot state, launcher/runtime/loader/atomic and nine Samba campaign scopes pa
 the full run's later SMART lanes are not reached. Earlier focused SMART tests keep
 their separate scope. Generated images/metadata are not fully qualified; the
 strict post-success audit is not executed. No retry, timer/proof relaxation,
-merge or physical NAS operation follows. Next localize the first held-file
-admission with a bounded focused trace rather than another complete build.
+merge or physical NAS operation follows. Fixed first-admission diagnostics and
+three unchanged focused ARM trials pass, without reproducing that refusal.
+The next actual refusal must identify its fixed boundary; passing repetitions
+do not establish a repair or replace the failed full qualification.
+
+A separate deterministic `processowner` defect is corrected: a readiness probe
+returning success after cancellation/expiry no longer advances generation, and
+fixed context causes survive failed-start cleanup without exposing probe text.
+Real-child native/race and eight-case, three-repeat ARMv5 tests pass in the
+existing Owner guest with all earlier proofs and numeric limits unchanged.
+This is not an attribution or repair of the original Samba intermittency.
 
 ## Earlier hosted fault gate remains open
 

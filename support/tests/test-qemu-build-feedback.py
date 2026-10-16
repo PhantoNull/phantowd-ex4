@@ -600,6 +600,80 @@ class BuildFeedbackTests(unittest.TestCase):
                                 fixture.index('"$go_binary" build'))
         self.assertLess(release, fixture.index('cp "$base/rootfs.ext2"'))
 
+    def test_runtime_owner_late_readiness_uses_same_guest(self):
+        tests = ROOT / "support/tests"
+        driver = (tests / "test-qemu-runtime-owner.sh").read_text()
+        init = (tests / "runtime-owner-init.sh").read_text()
+        stage = (tests / "stage-samba-root-file.sh").read_text()
+        self.assertIn('"$scratch/readiness" ./internal/processowner', driver)
+        self.assertIn(
+            '"$scratch/readiness phantowd-process-readiness-tests"', driver)
+        self.assertIn(
+            '/usr/sbin/phantowd-process-readiness-tests:0100755', stage)
+        self.assertIn('^TestReadiness(CannotCommitAfterContextEnds|'
+                      'ContextChecksOriginalAndDerivedMonotonicDeadlines)$',
+                      init)
+        self.assertIn('-test.count=3 -test.cpu=1 -test.timeout=15s', init)
+        self.assertIn('prepare && readiness && metadata &&', init)
+        self.assertIn('"$readiness" "$metadata" "$expected"', driver)
+        self.assertIn('TestReadinessCannotCommitAfterContextEnds ', driver)
+        self.assertIn('TestReadinessContextChecksOriginalAndDerived'
+                      'MonotonicDeadlines ', driver)
+        self.assertIn('[ "$readiness_cases" -ne 24 ]', driver)
+        self.assertEqual(driver.count('qemu-system-arm \\\n'), 1)
+
+    def test_runtime_owner_readiness_receipts_use_real_guard(self):
+        tests = ROOT / 'support/tests'
+        driver = (tests / 'test-qemu-runtime-owner.sh').read_text()
+        guard = driver[driver.index("expected='"):driver.index(
+            '\n[ "$(sha256sum')]
+        markers = dict(re.findall(r"(?m)^(\w+)='([^'\n]+)'$", guard))
+        lines = [markers[name] for name in
+                 ('readiness', 'metadata', 'expected', 'supervised', 'scan',
+                  'review', 'forced')] + ['PHANTOWD_CODE_OWNER_DONE']
+        lines += ['--- PASS: TestRetainedMetadataSynthetic (0.00s)'] * 12
+        main = '--- PASS: TestReadinessCannotCommitAfterContextEnds (0.00s)'
+        clock = ('--- PASS: TestReadinessContextChecksOriginalAndDerived'
+                 'MonotonicDeadlines (0.00s)')
+        lines += [main, clock] * 3
+        cases = [f'    --- PASS: TestReadinessCannotCommitAfterContextEnds/'
+                 f'expired={expired}/ready={ready}/failed={failed} (0.00s)'
+                 for expired in ('false', 'true')
+                 for ready in ('false', 'true')
+                 for failed in ('false', 'true')]
+        lines += cases * 3
+        controls = [('LF', lines, 0, '\n', True),
+                    ('CRLF', lines, 0, '\r\n', True),
+                    ('missing-marker', lines[1:], 0, '\n', False),
+                    ('duplicate-marker', [lines[0]] + lines, 0, '\n', False),
+                    ('changed-marker', [lines[0].replace('cases=8', 'cases=7')]
+                     + lines[1:], 0, '\n', False),
+                    ('missing-case', lines[:-1], 0, '\n', False),
+                    ('extra-case', lines + [cases[0]], 0, '\n', False),
+                    ('missing-main', [line for line in lines if line != main],
+                     0, '\n', False),
+                    ('missing-clock',
+                     [line for line in lines if line != clock],
+                     0, '\n', False),
+                    ('guest-failed', lines, 1, '\n', False),
+                    ('test-failed', lines + ['--- FAIL: synthetic'],
+                     0, '\n', False),
+                    ('skipped', lines + ['    --- SKIP: synthetic'],
+                     0, '\n', False)]
+        with tempfile.TemporaryDirectory() as temporary:
+            log = pathlib.Path(temporary) / 'guest.log'
+            for label, rows, status, newline, accepted in controls:
+                with self.subTest(label=label):
+                    log.write_bytes((newline.join(rows) + newline).encode())
+                    header = 'scratch="$1"; status="$2"; failure_log=\n'
+                    result = subprocess.run(
+                        ['sh', '-ec', header + guard,
+                         'owner-readiness-guard', temporary,
+                         str(status)], text=True, capture_output=True,
+                        timeout=3)
+                    self.assertEqual(result.returncode == 0, accepted,
+                                     result.stderr)
+
     def test_perl_regression_precedes_build_and_scoped_refresh(self):
         script = (ROOT / "support/container/build-qemu.sh").read_text()
         regression = script.index(
