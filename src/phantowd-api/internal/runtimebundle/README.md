@@ -57,8 +57,16 @@ Use the optional [complete-input lane](../../../../support/QEMU-FAST-TESTS.md).
 That lane also qualifies the containing Owner's ARM constructor and
 never-started closure, failed-constructor cleanup, caller-duplicate closure,
 copy/cancel/busy/released refusals and final FD equality. It runs no adapter
-child or server. Host lifecycle refusal/release-order tests and race3 pass;
-the distinct optional `pending` campaign now tests actual healthy library/client
+child or server. Host lifecycle refusal/release-order tests and race3 pass.
+
+The separate fixed pre-close input-loss helper constructs that real Owner and
+normally closes one owned code file. Review preserves unattempted originals and
+refuses repeated operations; reviewed FD counts remain stable. The helper retains
+the reviewed Owner until process exit, while init verifies exit/reaping and equal
+parent FD counts. This is not a replacement backend, guaranteed FD recycling,
+kernel EIO, launched teardown, recovery or product qualification.
+
+The distinct optional `pending` campaign now tests actual healthy library/client
 execution and launched settlement against a freshly enrolled native data server.
 It performs one pre-existing-object OPEN and CLOSE only, requires unchanged
 retained local identity/bytes, exit0 and original-group absence before releasing

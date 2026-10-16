@@ -30,7 +30,20 @@ reviewed WRITE experiment. No WRITE, new privilege, HTTP or NAS authorization
 is created by this plan. The original qualification scopes below are history,
 not a list of prerequisites to reimplement.
 
-### First read-only lifetime acceptance packet
+### Constructor-backed pre-close packet: focused host/ARM tested
+
+The fixed `preclose-input-loss` mode now passes in the optional complete-input
+ARM guest. It constructs the real never-started Owner, normally closes one owned
+client-code `os.File`, and verifies mismatch/review with the original unattempted
+references retained. Repeated close/start/client-close calls refuse; the reviewed
+FD count stays stable and an independent descriptor survives. A strong reference
+keeps the reviewed Owner until helper-process exit. Init waits for exit zero,
+checks the child is reaped and compares bounded parent FD counts (not identities).
+All five ordered receipts are mandatory. The original 60-second guest bound and
+base checks remain; no SMB client/server executes. This is not kernel EIO,
+guaranteed numeric-FD reuse, launched-child teardown or product qualification.
+
+The scoped acceptance contract is:
 
 - Construct the real dedicated Owner from qualified original roots, with no
   client launch. Do not fabricate healthy `started`/`settled` state or inject a

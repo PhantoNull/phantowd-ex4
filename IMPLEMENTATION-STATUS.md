@@ -42,6 +42,23 @@ source/image audit, hosted or physical qualification is claimed. No budget is
 increased and the earlier failed full run remains failed. See the
 [interruption contract](support/QEMU-FAST-TESTS.md#interrupted-cached-run-diagnostics).
 
+### M4 constructor-backed pre-close input loss — focused host/ARM
+
+The optional complete-input guest now constructs the real never-started client
+Owner, normally closes one fixed owned code file and requires mismatch/review
+before release. Original unattempted references and the adapter remain held;
+repeated close/start/client-close calls refuse with stable reviewed FD counts,
+and an independent descriptor survives. A separate helper keeps the reviewed
+Owner reachable until exit; init verifies exit zero, reaping and equal bounded
+parent FD counts. No client/server executes and no Owner product behavior changes.
+
+Host checks, pinned Linux vet/selected tests, strict transcript controls and an
+actual ARM guest pass at the original 60-second bound. The old three-row ARM
+transcript is independently accepted by the old guard and refused by the new
+five-row guard. This is pre-close containment, not kernel EIO, guaranteed FD
+reuse, launched-child teardown, pending I/O or recovery. It does not replace
+the failed complete run, audit/hosted gates or open product-state decisions.
+
 ## Earlier integration failure: `0beb01e` held/data deadline
 
 The complete cached qualifier of clean `0beb01e` passes host/race/fuzz,

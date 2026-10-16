@@ -2355,7 +2355,15 @@ storage. No production roster provider or activation path exists.
   Its O_PATH object pin is not a duplicate worker open-file description or a
   pending-request lease. None of these variants authorizes product activation.
 
-  Next tests must reach the real containing lifecycle without a forged healthy
+  The first constructor-backed pre-close packet passes host checks and actual
+  ARM in the optional complete-input guest: a normally closed owned code file
+  causes mismatch/review, preserves unattempted originals and refuses repeated
+  operations with a stable reviewed FD count. The separate helper retains the
+  reviewed Owner until process exit; init verifies exit/reaping and equal parent
+  FD counts. All old proofs and the 60-second guest bound remain. No client/server
+  runs; this is not kernel EIO, guaranteed FD reuse or launched teardown.
+
+  Remaining tests must reach the real containing lifecycle without a forged healthy
   Owner, per-operation backend replacement or new privileges. Preserve original
   errors and unattempted pins after uncertain close, verify owned-group absence
   before release, and refuse restoration/retry/restart in review. Qualify the

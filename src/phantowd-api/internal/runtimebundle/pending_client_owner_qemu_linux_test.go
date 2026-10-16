@@ -104,3 +104,23 @@ func TestPendingClientOwnerStopIsStickyWithoutReadmission(t *testing.T) {
 		}
 	}
 }
+
+func TestPendingClientOwnerInputLossHostRefusesAndPreservesBorrowedRoots(t *testing.T) {
+	if sambaCodeFixtureGuard() == nil {
+		t.Skip("host refusal only; actual constructor fault has a guarded guest entry")
+	}
+	client, bootstrap := pendingPlansFixture(t)
+	root, err := os.Open(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = root.Close() })
+	for range 2 {
+		if err := client.ProbePendingClientOwnerInputLossQEMU(context.Background(), bootstrap, root, root); !errors.Is(err, ErrInvalid) {
+			t.Fatal("host fixture did not refuse before admission", err)
+		}
+		if _, err := root.Stat(); err != nil {
+			t.Fatal("host refusal consumed a caller-owned root", err)
+		}
+	}
+}

@@ -1083,6 +1083,20 @@ independent caller closure, copied/canceled/concurrent/released refusals and
 never-started closure without leaks. Ordered input/Owner/guest receipts are all
 mandatory. This does not test launched-child settlement or actual SMB.
 
+A separate fixed `preclose-input-loss` helper now constructs the real Owner,
+normally closes one retained client-code file and requires mismatch/review before
+release. Unattempted original references and the lifecycle adapter remain held;
+repeated close/start/client-close calls refuse with a stable reviewed FD count.
+An independent descriptor remains usable. The reviewed Owner stays reachable
+until this disposable helper exits: no cleanup pretends review is healthy closure.
+
+Init requires helper exit zero and reaping, plus equal bounded parent FD counts
+(3–128 entries, not descriptor identities). Input, healthy Owner, input-loss,
+process-disposal and guest-done receipts are all mandatory and ordered. The
+60-second guest limit, two-second termination grace and original base checks
+remain unchanged. This does not force numeric-FD reuse, simulate kernel EIO,
+execute a client/server, authorize WRITE or qualify recovery/product activation.
+
 This lane launches **neither the real client nor a server**. ELF interpreter /
 needed-library checks do not establish actual loading, ABI closure, SMB access,
 original request/session/object binding or pending-I/O behavior. Healthy
