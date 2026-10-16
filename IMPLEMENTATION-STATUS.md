@@ -942,6 +942,29 @@ qualification follows. No new Docker image/volume or NAS operation. Next is
 completing qualification of the separate experimental retained collector;
 writer/publication/retention/reconciliation and boot-bundle gates remain open.
 
+## M9.2i guided disabled-target draft — local host/browser/ARM prototype
+
+The panel can now prepare one disabled target/LUN0/backing/initiator with CHAP
+or mutual-CHAP symbolic references. It preserves existing SMB/NFS/iSCSI definitions,
+assigns collision-free draft IDs and advances all coherent revisions together.
+The exact original text is server-validated before the normalized candidate;
+only a verified candidate replaces the text. No new route/store, configuration
+save, backing creation/open, credential provisioning or service action is added.
+Both validations share the original10s budget and privacy/retirement bounds.
+Unsafe browser integers refuse; full-range manual JSON preview remains available.
+
+Whole Windows/pinned Linux vet/units/tagged-vet, focused HTTP race3 and DOM checks
+pass. DOM covers mutual-CHAP, nonempty SMB/NFS preservation, bad inputs/precision,
+base/candidate/projection refusal and six second-request header/body retirement
+cases. Real Edge drives CHAP fields and both API validations, observes disabled
+state, original definitions and explicit clear, and proves strict duplicate-key
+base refusal without candidate submission. Existing32-action/90s browser caps
+remain, with30 actions and no exceptions;1365/390/320px layouts remain contained.
+ARM serves the exact eight assets on HTTP/HTTPS and passes all earlier smoke
+assertions; JavaScript itself runs in the host browser, not QEMU. This is not
+saved target management, product authority/security, full/hosted or NAS release
+qualification; persistent format/boot/recovery and activation gates remain open.
+
 ## M9.2h configured backing exposure — local host/browser/ARM prototype
 
 The existing manual iSCSI preview now uses display schema2 and explicit SMB/NFS

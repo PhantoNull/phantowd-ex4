@@ -6,6 +6,8 @@
 // Manual caller-supplied coherent policy review; no store or activation route.
 const iscsiPreviewPath = "/api/v1/iscsi/preview";
 const iscsiPreviewState = { operation: null };
+const iscsiDraftFields = Object.freeze(["name", "volume", "path", "capacity", "block-size", "allocation", "access", "initiator", "auth", "chap-user", "secret-ref", "target-user", "target-secret-ref"]);
+const iscsiDraftDefaults = Object.freeze({ "block-size": "512", allocation: "sparse", access: "ro", auth: "chap" });
 
 function retireISCSIPreview(clearInput = false) {
   const operation = iscsiPreviewState.operation;
@@ -14,13 +16,63 @@ function retireISCSIPreview(clearInput = false) {
   if (operation) clearTimeout(operation.timer);
   byId("iscsi-submit").disabled = false;
   byId("iscsi-submit").removeAttribute("aria-busy");
+  byId("iscsi-draft-add").disabled = false;
+  byId("iscsi-draft-add").removeAttribute("aria-busy");
+  byId("iscsi-draft-fields").disabled = false;
   byId("iscsi-result").hidden = true;
   byId("iscsi-result").replaceChildren();
-  if (clearInput) byId("iscsi-document").value = "";
+  if (clearInput) {
+    byId("iscsi-document").value = "";
+    for (const field of iscsiDraftFields) byId(`iscsi-draft-${field}`).value = iscsiDraftDefaults[field] ?? "";
+  }
   setText("iscsi-status", "No current preview. Nothing was saved or activated.");
 }
 
 function clearISCSIPreview() { retireISCSIPreview(true); }
+
+// Local draft only. The ORIGINAL exact text must pass the server's strict
+// decoder before this normalized candidate can be submitted/published. This
+// prevents duplicate/unknown keys from being silently repaired by JSON.parse.
+function buildISCSIDraft(text, fields) {
+  const invalid = () => { throw new Error("Invalid guided iSCSI draft"); };
+  const c = JSON.parse(text, (_key, value) => {
+    if (typeof value === "number" && !Number.isSafeInteger(value)) invalid();
+    return value;
+  });
+  const p = c?.iscsi, fs = c?.file_services;
+  if (c?.format !== "phantowd-nas-service-config" || c.schema_version !== 1 || !Number.isSafeInteger(c.revision) || c.revision < 1 ||
+      !Number.isSafeInteger(c.revision + 1) || !Array.isArray(p?.targets) || !Array.isArray(p?.backings) ||
+      !Array.isArray(fs?.shares?.volumes) || !fs?.nfs || p.targets.length >= 16 || p.backings.length >= 64) invalid();
+  for (const field of iscsiDraftFields) if (typeof fields[field] !== "string" || fields[field].length > 1024 || /[\u0000-\u001f\u007f]/.test(fields[field])) invalid();
+  const bounded = (value, max) => value.length > 0 && value.length <= max;
+  const identifier = value => /^[a-z][a-z0-9-]{0,63}$/.test(value);
+  const user = value => /^[a-zA-Z0-9._@-]{1,128}$/.test(value);
+  if (!bounded(fields.name, 223) || !bounded(fields.initiator, 223) || !identifier(fields.volume) ||
+      !fs.shares.volumes.some(v => v.id === fields.volume) || !bounded(fields.path, 1024) || /[\\:]/.test(fields.path) ||
+      fields.path.split("/").some(part => !part || part === "." || part === "..") ||
+      !/^[1-9][0-9]{0,15}$/.test(fields.capacity) || !["512", "4096"].includes(fields["block-size"]) ||
+      !["sparse", "preallocated"].includes(fields.allocation) || !["ro", "rw"].includes(fields.access) ||
+      !["chap", "mutual-chap"].includes(fields.auth) || !user(fields["chap-user"]) || !identifier(fields["secret-ref"])) invalid();
+  const capacity = Number(fields.capacity), block = Number(fields["block-size"]);
+  if (!Number.isSafeInteger(capacity) || capacity < block || capacity % block !== 0 ||
+      (fields.auth === "chap" && (fields["target-user"] !== "" || fields["target-secret-ref"] !== "")) ||
+      (fields.auth === "mutual-chap" && (!user(fields["target-user"]) || !identifier(fields["target-secret-ref"]) || fields["secret-ref"] === fields["target-secret-ref"]))) invalid();
+  const unique = (items, prefix) => {
+    for (let i = 1; i <= 65; i++) if (!items.some(item => item.id === `${prefix}-${i}`)) return `${prefix}-${i}`;
+    invalid();
+  };
+  const targetID = unique(p.targets, "target"), backingID = unique(p.backings, "backing"), lunID = unique(p.targets.flatMap(t => t.luns), "lun");
+  const auth = { mode: fields.auth, initiator_user: fields["chap-user"], initiator_secret_ref: fields["secret-ref"] };
+  if (fields.auth === "mutual-chap") { auth.target_user = fields["target-user"]; auth.target_secret_ref = fields["target-secret-ref"]; }
+  p.backings.push({ id: backingID, volume_id: fields.volume, relative_path: fields.path, capacity_bytes: capacity, block_size: block, allocation: fields.allocation });
+  p.targets.push({ id: targetID, name: fields.name, state: "disabled", luns: [{ id: lunID, number: 0, backing_id: backingID, access: fields.access }],
+    initiators: [{ name: fields.initiator, authentication: auth, grants: [{ lun_id: lunID, access: fields.access }] }] });
+  c.revision++;
+  fs.revision = fs.shares.revision = fs.nfs.revision = fs.nfs.volume_revision = p.revision = p.volume_revision = c.revision;
+  const candidate = JSON.stringify(c);
+  if (new TextEncoder().encode(candidate).byteLength > 656128) invalid();
+  return { text: candidate, revision: String(c.revision), targetID, targets: p.targets.length, backings: p.backings.length };
+}
 
 function validateISCSIPreview(value) {
   const invalid = () => { throw new Error("Unverified iSCSI preview"); };
@@ -99,13 +151,18 @@ function renderISCSIPreview(value) {
   byId("iscsi-result").hidden = false;
 }
 
-async function submitISCSIPreview(event) {
+async function submitISCSIPreview(event, draft = false) {
   event?.preventDefault();
   if (iscsiPreviewState.operation) return;
   retireISCSIPreview();
   const text = byId("iscsi-document").value;
   if (text.length > 656128 || !text.trim() || new TextEncoder().encode(text).byteLength > 656128) {
     setText("iscsi-status", "Provide one complete coherent NAS policy, at most 656128 UTF-8 bytes. Nothing was sent."); return;
+  }
+  let candidate;
+  if (draft) {
+    try { candidate = buildISCSIDraft(text, Object.fromEntries(iscsiDraftFields.map(field => [field, byId(`iscsi-draft-${field}`).value]))); }
+    catch { setText("iscsi-status", "Guided draft refused. Check the complete policy, exact safe integers and proposed fields. The original text is unchanged; nothing was sent."); return; }
   }
   const operation = { controller: new AbortController(), timer: null };
   iscsiPreviewState.operation = operation;
@@ -122,6 +179,8 @@ async function submitISCSIPreview(event) {
     return response;
   };
   byId("iscsi-submit").disabled = true; byId("iscsi-submit").setAttribute("aria-busy", "true");
+  byId("iscsi-draft-add").disabled = true; byId("iscsi-draft-add").setAttribute("aria-busy", "true");
+  byId("iscsi-draft-fields").disabled = true;
   setText("iscsi-status", "Validating submitted definitions only…");
   operation.timer = setTimeout(() => operation.controller.abort(), 10000);
   let abort;
@@ -131,11 +190,21 @@ async function submitISCSIPreview(event) {
       const session = await readAdministrativeJSON(response, "/api/v1/auth/session", signal);
       ensureCurrent();
       if (typeof session.csrf_token !== "string" || !/^[A-Za-z0-9_-]{43}$/.test(session.csrf_token)) throw new Error("Session unavailable");
-      const preview = await request(iscsiPreviewPath, { method: "POST", headers: { Accept: "application/json", "Content-Type": "application/json", "X-PhantoWD-CSRF": session.csrf_token }, body: text });
-      const value = await readAdministrativeJSON(preview, iscsiPreviewPath, signal, "POST");
-      ensureCurrent();
+      const review = async body => {
+        const preview = await request(iscsiPreviewPath, { method: "POST", headers: { Accept: "application/json", "Content-Type": "application/json", "X-PhantoWD-CSRF": session.csrf_token }, body });
+        const value = await readAdministrativeJSON(preview, iscsiPreviewPath, signal, "POST");
+        ensureCurrent();
+        return validateISCSIPreview(value);
+      };
+      let value = await review(text);
+      if (candidate) {
+        value = await review(candidate.text);
+        if (value.revision !== candidate.revision || value.targets.length !== candidate.targets || value.backings.length !== candidate.backings ||
+            !value.targets.some(t => t.id === candidate.targetID && t.desired_state === "disabled")) throw new Error("Draft preview mismatch");
+      }
       renderISCSIPreview(value);
-      setText("iscsi-status", "Desired definitions reviewed. Nothing was saved, opened or activated.");
+      if (candidate) byId("iscsi-document").value = candidate.text;
+      setText("iscsi-status", candidate ? "Disabled target staged in this draft only. Nothing was saved, created, opened or activated." : "Desired definitions reviewed. Nothing was saved, opened or activated.");
     };
     await new Promise((resolve, reject) => {
       abort = () => reject(canceled());
@@ -154,6 +223,8 @@ async function submitISCSIPreview(event) {
     if (iscsiPreviewState.operation === operation) {
       iscsiPreviewState.operation = null;
       byId("iscsi-submit").disabled = false; byId("iscsi-submit").removeAttribute("aria-busy");
+      byId("iscsi-draft-add").disabled = false; byId("iscsi-draft-add").removeAttribute("aria-busy");
+      byId("iscsi-draft-fields").disabled = false;
     }
   }
 }
@@ -161,3 +232,5 @@ async function submitISCSIPreview(event) {
 byId("iscsi-form").addEventListener("submit", submitISCSIPreview);
 byId("iscsi-document").addEventListener("input", () => retireISCSIPreview());
 byId("iscsi-clear").addEventListener("click", clearISCSIPreview);
+byId("iscsi-draft-add").addEventListener("click", event => submitISCSIPreview(event, true));
+for (const field of iscsiDraftFields) byId(`iscsi-draft-${field}`).addEventListener("input", () => retireISCSIPreview());

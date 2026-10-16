@@ -3746,6 +3746,29 @@ support per tested combination; refuse untested combinations without mutation.
   Acceptance: full128-definition counts, whole model/HTTP/DOM checks, real browser
   POST/clear/narrow layouts and actual HTTP+HTTPS ARM fixtures with both overlaps.
   Filesystem aliases, real use and product activation remain separate gates.
+- **M9.2i — Guided disabled-target draft (host/browser prototype).** Add one
+  target/LUN0/backing/initiator to a supplied complete coherent NAS policy, not
+  the older SMB/NFS-only store. Preserve prior definitions and advance all nested
+  revisions together; generate collision-free draft IDs, not runtime authority.
+  Select CHAP/mutual-CHAP symbolic references, access, block size/allocation and
+  capacity; do not request passwords or provision credentials here. Target starts
+  desired-disabled; no backing allocation or service action. Validate exact
+  original input through the existing authenticated preview before validating
+  the normalized candidate: duplicate/unknown/invalid originals must not be
+  silently repaired. Replace local text only after verified candidate projection;
+  invalid/refused/expired/retired work leaves the original unchanged (session loss
+  clears it). Both POSTs share the original10s deadline and bounded readers,
+  session/Origin/CSRF, single-flight/no-retry and privacy guards; no new endpoint
+  or authoritative store. Refuse unsafe browser numbers rather than rounding;
+  full-range manual JSON preview remains usable. Local acceptance: strict invalid
+  fields/precision, nonempty three-protocol preservation, ID collisions, mutual
+  CHAP, base/candidate/projection refusal, six second-request header/body retirement
+  cases and explicit private-field clear. Real browser/Go API verifies CHAP draft
+  success/duplicate-base refusal/clear and1365/390/320px layouts under unchanged
+  resource/action budgets; ARM verifies exact embedded HTTP/HTTPS assets, not JS
+  execution. Still needed: qualified source-of-truth load/save/recovery, broader
+  target/multi-LUN/initiator editing and guarded credential/storage/session/runtime
+  composition before any product create/enable operation.
 - **M9.3 — Guard mutations.** Create/enable/disable/grow/remove operations check
   real initiator/session ownership and backing-volume state. Prevent local
   filesystem mounting while an initiator owns the LUN; prohibit unsafe shrink.

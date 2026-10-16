@@ -151,6 +151,17 @@ or for disabled targets. Zero is not isolation or safe-use proof; actual files,
 aliases, global use and effective access are not inspected. Old/missing/invalid
 counts refuse in the panel. The desired configuration format remains unchanged.
 
+M9.2i adds a guided **draft-only** form for one disabled target, LUN0, backing
+and initiator with CHAP or mutual-CHAP references. It preserves existing desired
+definitions and advances all coherent revisions together. The exact original
+document must pass the existing server preview before the candidate is submitted;
+only a verified candidate replaces the local text. Both POSTs share the original
+ten-second lifetime, byte bounds, session/CSRF and retirement guards. Nothing is
+saved, allocated, opened, provisioned or activated; no endpoint/store is added.
+Guided editing refuses unsafe JavaScript integers rather than rounding; manual
+JSON review retains the full supported uint64 range. Clear/session loss clears
+the private form fields too, without claiming browser-memory zeroization.
+
 The internal [coherent NAS policy](internal/naspolicy/README.md) additionally
 stores desired SMB/NFS/iSCSI as one strict revision through the existing Linux
 transaction engine. Native interruption tests and an actual ARMv5 two-boot

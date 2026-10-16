@@ -15,7 +15,7 @@ import { dirname, join, resolve, basename } from "node:path";
 import { fileURLToPath } from "node:url";
 import { setTimeout as delay } from "node:timers/promises";
 import { classifyPageResource } from "./browser-resource-contract.mjs";
-import { iscsiExposurePolicyFixture } from "./tests/test-iscsi-panel.mjs";
+import { iscsiExposurePolicyFixture, iscsiDraftFieldsFixture } from "./tests/test-iscsi-panel.mjs";
 import { readOwnedBrowserEndpoint } from "./browser-startup-contract.mjs";
 
 const repo = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -337,6 +337,21 @@ try {
     assert.match(displayed, /Review potential backing-file exposure/);
     assert.match(displayed, /Zero configured overlaps does not prove isolation/);
     assert.doesNotMatch(displayed, /private-user|private-ref|11111111-2222|Private share name|198\.51\.100\.1/);
+    await clickVisible("iscsi-draft-toggle");
+    for (const [name, value] of Object.entries(iscsiDraftFieldsFixture())) {
+      if (["block-size", "allocation", "access", "auth", "target-user", "target-secret-ref"].includes(name)) continue;
+      await clickVisible(`iscsi-draft-${name}`);
+      await replaceInput(`iscsi-draft-${name}`, value);
+    }
+    await clickVisible("iscsi-draft-add");
+    await until(() => evaluate(`document.getElementById('iscsi-status').textContent.includes('draft only') && !document.getElementById('iscsi-draft-add').disabled`), browser, "actual guided iSCSI candidate HTTP validation");
+    const draft = JSON.parse(await evaluate("document.getElementById('iscsi-document').value"));
+    assert.equal(draft.revision, 2); assert.equal(draft.iscsi.targets.length, 2);
+    assert.deepEqual(draft.iscsi.targets[0], iscsiExposurePolicyFixture().iscsi.targets[0]);
+    assert.equal(draft.iscsi.targets[1].state, "disabled");
+    assert.equal(draft.iscsi.targets[1].initiators[0].authentication.initiator_secret_ref, "draft-secret");
+    assert.match(await evaluate("document.getElementById('iscsi-result').textContent"), /desired disabled/);
+    assert.doesNotMatch(await evaluate("document.getElementById('iscsi-result').textContent"), /draft-user|draft-secret/);
     for (const width of [1365, 390, 320]) {
       await send("Emulation.setDeviceMetricsOverride", { width, height: 900, deviceScaleFactor: 1, mobile: false });
       await evaluate("document.getElementById('iscsi-result').scrollIntoView({block:'start'})");
@@ -344,12 +359,25 @@ try {
       const shot = await send("Page.captureScreenshot", { format: "png", captureBeyondViewport: false });
       assert.ok(shot.data.length <= 8 * 1024 * 1024);
       await writeFile(join(artifacts, `iscsi-${width}.png`), Buffer.from(shot.data, "base64"));
+      await evaluate("document.getElementById('iscsi-draft-fields').scrollIntoView({block:'start'})");
+      assert.equal(await evaluate("document.documentElement.scrollWidth <= document.documentElement.clientWidth"), true, "guided iSCSI fields overflow");
+      const formShot = await send("Page.captureScreenshot", { format: "png", captureBeyondViewport: false });
+      assert.ok(formShot.data.length <= 8 * 1024 * 1024);
+      await writeFile(join(artifacts, `iscsi-draft-${width}.png`), Buffer.from(formShot.data, "base64"));
     }
     await send("Emulation.setDeviceMetricsOverride", { width: 1365, height: 900, deviceScaleFactor: 1, mobile: false });
+    const duplicateBase = JSON.stringify(iscsiExposurePolicyFixture()).replace('"revision":1', '"revision":1,"revision":1');
+    await clickVisible("iscsi-document");
+    await replaceInput("iscsi-document", duplicateBase);
+    await clickVisible("iscsi-draft-add");
+    await until(() => evaluate(`document.getElementById('iscsi-status').textContent.includes('could not be verified') && !document.getElementById('iscsi-draft-add').disabled`), browser, "strict original-policy refusal before candidate submission");
+    assert.equal(await evaluate("document.getElementById('iscsi-document').value"), duplicateBase);
+    assert.equal(await evaluate("document.getElementById('iscsi-result').hidden"), true);
     await clickVisible("iscsi-clear");
     assert.equal(await evaluate("document.getElementById('iscsi-document').value"), "");
     assert.equal(await evaluate("document.getElementById('iscsi-result').hidden"), true);
-    assert.equal(cdp.requests.filter(r => new URL(r.url).pathname === "/api/v1/iscsi/preview").length, 1);
+    for (const name of ["name", "path", "initiator", "chap-user", "secret-ref"]) assert.equal(await evaluate(`document.getElementById('iscsi-draft-${name}').value`), "");
+    assert.equal(cdp.requests.filter(r => new URL(r.url).pathname === "/api/v1/iscsi/preview").length, 4);
   }
 
   // Use actual browser keyboard dispatch, not HTMLElement.focus(), for Tab.
@@ -501,6 +529,8 @@ try {
     visible_pointer_controls: pointerControls,
     auth_keyboard_tab_enter: Boolean(apiFixture),
     iscsi_preview_actual_http: Boolean(apiFixture),
+    iscsi_guided_draft_actual_http: Boolean(apiFixture),
+    iscsi_guided_base_refusal_actual_http: Boolean(apiFixture),
     local_inline_images: localInlineImages,
     same_origin_network_requests: cdp.requests.length - localInlineImages,
   };

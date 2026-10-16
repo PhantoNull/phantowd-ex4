@@ -17,14 +17,22 @@ export function iscsiPolicyFixture() {
 }
 
 export function iscsiPreviewFixture() {
-  const c = iscsiPolicyFixture();
-  return { format: "phantowd-desired-iscsi-preview", schema_version: 2, scope: "desired-policy-only", revision: "1",
+  return iscsiPreviewForPolicy(iscsiPolicyFixture());
+}
+
+export function iscsiPreviewForPolicy(c) {
+  return { format: "phantowd-desired-iscsi-preview", schema_version: 2, scope: "desired-policy-only", revision: String(c.revision),
     storage_validated: false, credentials_validated: false, runtime_validated: false, activation_available: false,
     smb_definitions: 0, nfs_definitions: 0,
     backings: c.iscsi.backings.map(b => ({ ...b, capacity_bytes: String(b.capacity_bytes), smb_path_overlap_count: 0, nfs_path_overlap_count: 0 })),
     targets: c.iscsi.targets.map(t => ({ id: t.id, name: t.name, desired_state: t.state, luns: t.luns,
       initiators: t.initiators.map(p => ({ name: p.name, desired_authentication: p.authentication.mode, grants: p.grants })) })),
     limitations: ["Desired definitions only.", "CHAP does not encrypt data traffic."] };
+}
+
+export function iscsiDraftFieldsFixture() {
+  return { name: "iqn.2026-01.org.example:draft", volume: "bulk", path: "luns/draft.img", capacity: "8192", "block-size": "512", allocation: "sparse", access: "ro",
+    initiator: "iqn.2026-01.org.example:draft-peer", auth: "chap", "chap-user": "draft-user", "secret-ref": "draft-secret", "target-user": "", "target-secret-ref": "" };
 }
 
 // Complete submitted policy, not a mocked response: used by the real browser
@@ -181,5 +189,101 @@ export async function testISCSIPanel(createHarness, jsonResponse, snapshotRespon
   await assert.rejects(h.context.readAdministrativeJSON(new Response("{}"), path), /administrative path unavailable/);
   const exact = new Response('{"ok":true}' + " ".repeat(262144 - 11));
   assert.equal((await h.context.readAdministrativeJSON(exact, path, undefined, "POST")).ok, true);
+  await testISCSIDraft(createHarness, jsonResponse, common);
   process.stdout.write("iSCSI panel controls passed: manual-only=true whole-policy=true exact-decimals=true bounds=true deadlines=4 private-clear=true activation=false.\n");
+}
+
+async function testISCSIDraft(createHarness, jsonResponse, common) {
+  const path = "/api/v1/iscsi/preview", original = iscsiPolicyFixture(), source = JSON.stringify(original);
+  const fill = h => {
+    h.elements["iscsi-document"].value = source;
+    for (const [name, value] of Object.entries(iscsiDraftFieldsFixture())) h.elements[`iscsi-draft-${name}`].value = value;
+  };
+  const reply = (route, options) => route === path ? jsonResponse(iscsiPreviewForPolicy(JSON.parse(options.body))) : common(route);
+  const h = await createHarness(reply); fill(h);
+  const result = h.context.buildISCSIDraft(source, iscsiDraftFieldsFixture());
+  const c = JSON.parse(result.text);
+  assert.equal(c.revision, 2);
+  for (const r of [c.file_services.revision, c.file_services.shares.revision, c.file_services.nfs.revision, c.file_services.nfs.volume_revision, c.iscsi.revision, c.iscsi.volume_revision]) assert.equal(r, 2);
+  assert.deepEqual(c.iscsi.targets[0], original.iscsi.targets[0]); assert.deepEqual(c.iscsi.backings[0], original.iscsi.backings[0]);
+  assert.deepEqual(c.file_services.shares.volumes, original.file_services.shares.volumes);
+  assert.equal(c.iscsi.targets[1].state, "disabled"); assert.equal(c.iscsi.targets[1].luns[0].number, 0);
+  const linkedBase = iscsiExposurePolicyFixture();
+  const linked = JSON.parse(h.context.buildISCSIDraft(JSON.stringify(linkedBase), iscsiDraftFieldsFixture()).text);
+  for (const key of ["volumes","users","shares"]) assert.deepEqual(linked.file_services.shares[key],linkedBase.file_services.shares[key]);
+  assert.deepEqual(linked.file_services.nfs.exports,linkedBase.file_services.nfs.exports);
+  const second = JSON.parse(h.context.buildISCSIDraft(result.text, { ...iscsiDraftFieldsFixture(), name: "iqn.2026-01.org.example:second", path: "luns/second.img", "secret-ref": "second-secret" }).text);
+  assert.notEqual(second.iscsi.targets[1].id, second.iscsi.targets[2].id);
+  assert.notEqual(second.iscsi.targets[1].luns[0].id, second.iscsi.targets[2].luns[0].id);
+  assert.equal(JSON.stringify(original), source, "caller data unchanged");
+  await h.context.submitISCSIPreview(undefined, true);
+  const posts = h.requests.filter(r => r.path === path);
+  assert.equal(posts.length, 2); assert.equal(posts[0].options.body, source); assert.equal(posts[1].options.body, result.text);
+  assert.ok(posts.every(r => r.options.method === "POST" && r.options.headers["X-PhantoWD-CSRF"] === "a".repeat(43)));
+  assert.equal(h.elements["iscsi-document"].value, result.text); assert.match(h.elements["iscsi-status"].textContent, /draft only/);
+  assert.match(text(h.elements["iscsi-result"]), /desired disabled/); assert.doesNotMatch(text(h.elements["iscsi-result"]), /draft-user|draft-secret/);
+  assert.equal(h.elements["iscsi-draft-add"].disabled, false); assert.equal(h.elements["iscsi-draft-fields"].disabled, false);
+  assert.ok(h.requests.every(r => r.options?.method !== "PUT" && r.options?.method !== "DELETE"));
+  const mutual = { ...iscsiDraftFieldsFixture(), auth: "mutual-chap", "target-user": "target-user", "target-secret-ref": "target-secret" };
+  const mc = JSON.parse(h.context.buildISCSIDraft(source, mutual).text);
+  assert.equal(mc.iscsi.targets[1].initiators[0].authentication.target_secret_ref, "target-secret");
+  for (const fields of [
+    { capacity:"9007199254740992" }, { capacity:"8193" }, { capacity:"1e4" }, { capacity:"08192" }, { capacity:"0" },
+    { "block-size":"1024" }, { access:"none" }, { auth:"none" }, { volume:"missing" }, { path:"../escape.img" }, { path:"/absolute" }, { path:"a\\b" }, { path:"a//b" },
+    { "secret-ref":"secret value" }, { "chap-user":"a\nPRIVATE" }, { "target-user":"unused" },
+  ]) assert.throws(() => h.context.buildISCSIDraft(source, { ...iscsiDraftFieldsFixture(), ...fields }), /Invalid guided/);
+  assert.throws(() => h.context.buildISCSIDraft(source.replace('"revision":1', '"revision":9007199254740991'), iscsiDraftFieldsFixture()), /Invalid guided/);
+  assert.throws(() => h.context.buildISCSIDraft(source.replace('"capacity_bytes":4096', '"capacity_bytes":9007199254740993'), iscsiDraftFieldsFixture()), /Invalid guided/);
+  assert.throws(() => h.context.buildISCSIDraft(source, { ...mutual, "target-secret-ref":"draft-secret" }), /Invalid guided/);
+  // Original strict input must be accepted first; never normalize duplicate
+  // keys/invalid schemas into a candidate that the server might accept.
+  for (const phase of ["base", "candidate", "projection"]) {
+    let n = 0;
+    const refused = await createHarness((route, options) => {
+      if (route !== path) return common(route);
+      n++;
+      if (phase === "base" || phase === "candidate" && n === 2) return jsonResponse({ error:"PRIVATE" },422);
+      return jsonResponse(phase === "projection" && n === 2 ? iscsiPreviewFixture() : iscsiPreviewForPolicy(JSON.parse(options.body)));
+    });
+    fill(refused);
+    if (phase === "base") refused.elements["iscsi-document"].value = source.replace('"revision":1', '"revision":1,"revision":1');
+    const saved = refused.elements["iscsi-document"].value;
+    await refused.context.submitISCSIPreview(undefined,true);
+    assert.equal(refused.elements["iscsi-document"].value,saved); assert.equal(refused.elements["iscsi-result"].hidden,true);
+    assert.equal(n,phase === "base" ? 1 : 2); assert.doesNotMatch(refused.elements["iscsi-status"].textContent,/PRIVATE/);
+  }
+  // The second validation shares the ORIGINAL single10s deadline. Expired or
+  // retired candidate responses cannot replace original text or a newer view.
+  for (const bodyStall of [false,true]) for (const retirement of ["timeout","edit","logout"]) {
+    const timers = new Map(); let id = 0, release, calls = 0, entered = false;
+    const gate = new Promise(resolve => { release = resolve; });
+    const b = await createHarness(async (route,options) => {
+      if (route !== path) return common(route);
+      if (++calls === 2) {
+        entered = true;
+        if (bodyStall) return { ok:true,status:200,body:{getReader:()=>({read:async()=>{await gate;return {done:false,value:new TextEncoder().encode(JSON.stringify(iscsiPreviewFixture()))};},cancel:async()=>{},releaseLock(){}})} };
+        await gate; return jsonResponse({},401);
+      }
+      return jsonResponse(iscsiPreviewForPolicy(JSON.parse(options.body)));
+    }, { setTimeout(callback,delay) { const key = ++id; timers.set(key,{callback,delay}); return key; },clearTimeout(key) { timers.delete(key); } });
+    fill(b);
+    const work = b.context.submitISCSIPreview(undefined,true); await turn(); assert.equal(entered,true);
+    assert.equal(b.elements["iscsi-draft-add"].disabled,true); assert.equal(b.elements["iscsi-draft-fields"].disabled,true);
+    const before = b.requests.length; await b.context.submitISCSIPreview(undefined,true); assert.equal(b.requests.length,before);
+    if (retirement === "timeout") { assert.equal(timers.size,1); const timer = [...timers.values()][0]; assert.equal(timer.delay,10000); timer.callback(); }
+    else if (retirement === "edit") b.elements["iscsi-draft-name"].listeners.get("input")();
+    else b.context.showAuthUnavailable();
+    await work;
+    assert.equal(b.elements["iscsi-document"].value,retirement === "logout" ? "" : source);
+    assert.equal(b.elements["iscsi-result"].hidden,true);
+    if (retirement === "logout") for (const name of ["name","path","initiator","chap-user","secret-ref","target-user","target-secret-ref"]) assert.equal(b.elements[`iscsi-draft-${name}`].value,"");
+    b.elements["dashboard-content"].hidden = false; fill(b);
+    await b.context.submitISCSIPreview(); assert.equal(b.elements["iscsi-result"].hidden,false);
+    release(); await turn(); await turn();
+    assert.equal(b.elements["iscsi-result"].hidden,false); assert.equal(b.elements["iscsi-document"].value,source);
+    assert.equal(b.elements["dashboard-content"].hidden,false);
+  }
+  h.context.clearISCSIPreview();
+  for (const name of ["name","volume","path","capacity","initiator","chap-user","secret-ref","target-user","target-secret-ref"]) assert.equal(h.elements[`iscsi-draft-${name}`].value,"");
+  process.stdout.write("iSCSI guided draft controls passed: disabled-first=true original-and-candidate-validation=true safe-integers=true preserved-definitions=true shared-deadline=true retirement=6 writes=false.\n");
 }
