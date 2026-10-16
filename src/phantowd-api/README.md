@@ -1341,6 +1341,16 @@ abort after ten seconds. The browser supplies the request Origin.
 
 ### Development configuration manager
 
+The combined manager owns one ten-second operation through headers, decoded
+bodies and any401 auth-status recheck. Cancellation/retirement settles visible
+work even if a transport does not reject pending headers; late replies cannot
+publish policy, send a later request or release replacement controls. A401 clears
+private policy data while retaining the original operation for the status read;
+that read cannot outlive its original signal/generation and change a later login.
+This is UI lifetime control, not proof that a server canceled or rolled back a
+save. An uncertain PUT still requires explicit full-state reconciliation, never
+automatic retry. Other administrative readers have separate contracts.
+
 #### Download and reviewed restore
 
 Use **Load/reconcile** first. Download exports the saved combined desired SMB/NFS
@@ -1723,6 +1733,17 @@ the current forms. Exact previous HttpOnly test cookies are independently
 replayed over HTTP: accepted before each operation, refused after logout,
 password replacement and global logout. Cookie values/headers/bodies are not
 written to the result. This is not a second-browser/multi-session race proof.
+
+A controlled desired-policy401 holds its original auth-status reply while the
+same browser logs out and signs back in through the real handlers. Delivering
+the retired status cannot replace the new view; original-cookie revocation is
+still checked. This reuses the original wrong/correct-login leg instead of
+adding attempts beyond the unchanged five-per-minute server quota. Interception
+retains at most seven request handles for the four explicit service/status
+pauses and three existing auth stalls; work/request/protocol limits are unchanged.
+Actions are triggered through the DOM. The synthetic snapshot profile hides
+auth controls, so this does not qualify visible pointer/keyboard operation of
+those controls, every management workflow or full accessibility.
 
 After those nominal flows, controlled network interception holds one login
 before headers. The real browser deadline must clear the input, release the

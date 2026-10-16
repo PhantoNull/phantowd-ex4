@@ -113,7 +113,7 @@ class CDP {
         } else if (message.method === "Runtime.exceptionThrown") {
           this.exceptions++;
         } else if (message.method === "Fetch.requestPaused") {
-          assert.ok(this.paused.length < 3, "interception count exceeded");
+          assert.ok(this.paused.length < 7, "interception count exceeded");
           // Retain only the protocol request handle, never credentials/headers.
           this.paused.push(message.params.requestId);
         } else if (message.method === "Network.requestWillBeSent") {
@@ -295,18 +295,47 @@ try {
   await until(() => evaluate(snapshotReady), browser, "explicit browser refresh");
   assert.equal(cdp.requests.filter((r) => new URL(r.url).pathname === "/api/v1/system").length, before + 1);
   if (apiFixture) {
-    let oldCookie = await currentCookie();
-    assert.equal(await cookieStatus(oldCookie), 200);
+    // Controlled401/status replies exercise the actual browser lifecycle;
+    // logout/login and cookie revocation still use the real memory backend.
+    // No desired-policy store or service activation is installed in the fixture.
+    const servicePaused = cdp.paused.length;
+    await send("Fetch.enable", { patterns: ["/api/v1/file-services/configuration", "/api/v1/auth/status"].map(path => ({
+      urlPattern: origin + path, requestStage: "Request",
+    })) });
+    await evaluate("document.getElementById('service-load').click()");
+    await until(() => cdp.paused.length === servicePaused + 1, browser, "controlled policy401 interception");
+    await send("Fetch.fulfillRequest", { requestId: cdp.paused[servicePaused], responseCode: 401,
+      responseHeaders: [{ name: "Content-Type", value: "application/json" }], body: Buffer.from("{}").toString("base64") });
+    await until(() => cdp.paused.length === servicePaused + 2, browser, "original401 status interception");
+    let retiredCookie = await currentCookie();
+    assert.equal(await cookieStatus(retiredCookie), 200);
     await evaluate("document.getElementById('logout').click()");
-    await until(() => evaluate(signInReady), browser, "actual logout");
-    assert.equal(await cookieStatus(oldCookie), 401, "logout did not revoke original cookie");
+    await until(() => cdp.paused.length === servicePaused + 3, browser, "replacement logout status");
+    await send("Fetch.continueRequest", { requestId: cdp.paused[servicePaused + 2] });
+    await until(() => evaluate(signInReady), browser, "logout retires pending policy status");
+    assert.equal(await cookieStatus(retiredCookie), 401, "real logout must revoke the prior cookie");
+    retiredCookie = undefined;
     assert.equal(await evaluate("document.getElementById('support-download').disabled"), true);
+    // Reuse the original wrong/correct-login leg instead of adding another
+    // login cycle: the real five-attempt/minute limiter stays unchanged.
     await submitLogin("browser fixture intentionally wrong passphrase");
     await until(() => evaluate(`!document.getElementById('auth-error').hidden && document.getElementById('auth-error').textContent === 'The username or password is not correct.' && !document.getElementById('auth-submit').disabled`), browser, "wrong-password refusal");
     assert.equal(await evaluate("document.getElementById('dashboard-content').hidden"), true);
     await submitLogin(fixturePassword);
-    await until(() => evaluate(snapshotReady), browser, "actual login");
-    oldCookie = await currentCookie();
+    await until(() => cdp.paused.length === servicePaused + 4, browser, "replacement login status");
+    await send("Fetch.continueRequest", { requestId: cdp.paused[servicePaused + 3] });
+    await until(() => evaluate(snapshotReady), browser, "replacement authenticated view");
+    // An aborted interception may no longer accept a reply. If it does, the
+    // old continuation must still have no view authority.
+    await send("Fetch.fulfillRequest", { requestId: cdp.paused[servicePaused + 1], responseCode: 200,
+      responseHeaders: [{ name: "Content-Type", value: "application/json" }],
+      body: Buffer.from(JSON.stringify({ authenticated: false, setup_required: false })).toString("base64") }).catch(() => {});
+    await send("Fetch.disable");
+    await evaluate("new Promise(resolve => setTimeout(resolve, 0))");
+    assert.equal(await evaluate(snapshotReady), true, "retired policy status overwrote a replacement login");
+    assert.equal(await evaluate("document.getElementById('service-load').disabled"), false);
+    assert.equal(await cookieStatus(await currentCookie()), 200);
+    let oldCookie = await currentCookie();
     assert.equal(await cookieStatus(oldCookie), 200);
     await evaluate(`(() => { document.getElementById('password-panel').open = true; document.getElementById('password-current').value = ${JSON.stringify(fixturePassword)}; document.getElementById('password-new').value = ${JSON.stringify(nextPassword)}; document.getElementById('password-confirm').value = ${JSON.stringify(nextPassword)}; document.getElementById('password-submit').click(); })()`);
     await until(() => evaluate(`${signInReady} && document.getElementById('auth-error').textContent === 'Password changed. All panel sessions ended. Sign in with the new password.'`), browser, "actual password replacement");
@@ -328,17 +357,18 @@ try {
     assert.equal(cdp.requests.filter(r => new URL(r.url).pathname === "/api/v1/auth/password" && r.method === "POST").length, 1);
     // Freeze one login before headers, while using the real browser's timer.
     // This is controlled network interception, not server-operation cancel proof.
+    const credentialPaused = cdp.paused.length;
     await send("Fetch.enable", { patterns: [{ urlPattern: origin + "/api/v1/auth/login", requestStage: "Request" }] });
     await submitLogin(nextPassword);
-    await until(() => cdp.paused.length === 1, browser, "controlled credential interception");
+    await until(() => cdp.paused.length === credentialPaused + 1, browser, "controlled credential interception");
     await until(() => evaluate(`document.getElementById('auth-form').hidden && !document.getElementById('auth-retry').hidden && document.getElementById('auth-error').textContent.includes('The request was not retried.')`), browser, "credential header deadline", 15000);
     assert.equal(await evaluate("document.getElementById('auth-submit').disabled"), false);
     assert.equal(await evaluate("document.getElementById('auth-password').value"), "");
-    await send("Fetch.failRequest", { requestId: cdp.paused[0], errorReason: "Aborted" }).catch(() => {});
+    await send("Fetch.failRequest", { requestId: cdp.paused[credentialPaused], errorReason: "Aborted" }).catch(() => {});
     await send("Fetch.disable");
     await evaluate("document.getElementById('auth-retry').click()");
     await until(() => evaluate(signInReady), browser, "explicit status-only reconciliation");
-    assert.equal(cdp.paused.length, 1, "credential request must not automatically retry");
+    assert.equal(cdp.paused.length, credentialPaused + 1, "credential request must not automatically retry");
     await submitLogin(nextPassword);
     await until(() => evaluate(snapshotReady), browser, "login for controlled mutation failures");
     for (const action of ["password", "logout-all"]) {
@@ -384,6 +414,7 @@ try {
     original_cookie_revocation_checked: Boolean(apiFixture), authentication_qualified: false, hardware_qualified: false,
     intercepted_credential_deadline: Boolean(apiFixture),
     intercepted_auth_mutation_deadlines: apiFixture ? ["password", "logout-all"] : [],
+    retired_service401_recheck: Boolean(apiFixture),
   };
   successful = true;
 } catch (error) {

@@ -69,6 +69,23 @@ checks pass; complete current image/hosted and physical qualification remain
 open. These focused successes do not repair or bypass either Samba gate above.
 See the [projection and remaining gates](src/phantowd-api/internal/smartreport/README.md#separate-optional-ata-temperature-projection).
 
+## Independent file-service panel lifetime correction
+
+The combined desired-policy manager now settles pending-header operations on
+its original ten-second deadline or retirement, even for a non-cooperative
+transport. Late results cannot publish policy, retry a save or unlock replacement
+work. Its401 status recheck retains the original signal/generation: a retired
+response cannot hide a replacement login or clear its policy. Both defects have
+twice-reproduced deterministic RED controls; byte/structure limits, CSRF/revision
+checks and uncertain-save reconciliation remain unchanged.
+
+Whole Windows/pinned Linux suites, actual Edge against memory-only Go auth
+with controlled401/status replies, and ARMv5 seven-asset HTTP/HTTPS byte parity
+pass. The browser test retains original cookie-revocation and login-rate limits;
+its actions are DOM-triggered, not complete pointer/keyboard/accessibility proof.
+No product activation, native policy-store browser qualification, full image/
+two-boot/hosted qualification or repair of the Samba gate follows.
+
 ## Earlier hosted fault gate remains open
 
 Candidate `e4fc079` passes hosted host/B3 checks but fails its own QEMU fault

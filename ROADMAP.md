@@ -2545,6 +2545,25 @@ milestone before enabling its controls; M1/M6 for deployment.
   merge. Previous isolated source proofs do not qualify the new combined head.
   Full/own-hosted/native timing, browser coverage of all workflows, physical
   recovery, product service activation and installation remain separate gates.
+- **M5.5n — File-service operation and401 ownership (partial).** The combined
+  development manager settles its original ten-second operation even when a
+  headers promise ignores abort. Late headers are disposed without waiting for
+  body cancellation; they cannot send another preview/PUT, publish policy or
+  unlock a replacement operation. A401 clears private policy data without
+  releasing the current operation before its auth-status recheck; that read
+  shares the original signal/deadline and generation. Retirement prevents old
+  status success/error from changing a later login. Preserve all response byte/
+  structure bounds, revisions/CSRF, single-flight and uncertain-save/no-retry rules.
+  Acceptance: twice-reproduced actual-source RED seams;12 header timeout/auth-loss
+  cases,2 post401 original-budget cases, replacement-view and replacement-gate
+  controls, whole Windows/pinned Linux, actual Edge auth-memory lifecycle with
+  controlled policy401/stale-status delivery and original cookie revocation,
+  and exact seven-asset HTTP/HTTPS ARM delivery. Reuse the existing wrong/correct
+  login leg so the original five-attempt/minute server quota is unchanged.
+  Browser actions are DOM-triggered; visible pointer/keyboard/assistive coverage,
+  real policy-store browser transactions, concurrent tabs, product enrollment/
+  recovery, full/hosted and physical qualification remain separate. This does
+  not change or qualify every other administrative reader.
 - **M5.6 — Audit and diagnostics.** Record actor, operation ID, revisions and
   redacted outcome; bound retention. Export a sanitized support bundle that
   excludes credentials, private keys, passdb hashes and user file contents.

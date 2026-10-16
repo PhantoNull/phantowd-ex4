@@ -1176,10 +1176,10 @@ function serviceSaved(revision) {
     applied: false, runtime_validated: false, activation_available: false };
 }
 
-async function serviceHarness(stateResponse, previewResponse = () => jsonResponse(policyFixture()), sessionResponse = () => jsonResponse({ csrf_token: "fixture-only" }), backupResponse = () => { throw new Error("unexpected backup request"); }) {
+async function serviceHarness(stateResponse, previewResponse = () => jsonResponse(policyFixture()), sessionResponse = () => jsonResponse({ csrf_token: "fixture-only" }), backupResponse = () => { throw new Error("unexpected backup request"); }, authResponse = () => jsonResponse({ authenticated: true })) {
   return createHarness(async (path, options) => {
     if (path === "/api/v1/file-services/configuration") return stateResponse(options);
-    if (path === "/api/v1/auth/status") return jsonResponse({ authenticated: true });
+    if (path === "/api/v1/auth/status") return authResponse(options);
     if (path === "/api/v1/auth/session") return sessionResponse();
     if (path === "/api/v1/file-services/preview") return previewResponse(options);
     if (path === "/api/v1/file-services/backup" || path === "/api/v1/file-services/restore-preview") return backupResponse(path, options);
@@ -3065,6 +3065,132 @@ async function testServiceBodyDeadlineAndRetiredResults() {
   }
 }
 await testServiceBodyDeadlineAndRetiredResults();
+
+async function testService401RecheckCannotOverwriteReplacementSession() {
+  let delayStatus = false, refuse = false, releaseStatus;
+  const pending = new Promise((resolve) => { releaseStatus = resolve; });
+  const h = await serviceHarness(() => refuse ? jsonResponse({}, 401) : jsonResponse(serviceReply(serviceConfigFixture())),
+    undefined, undefined, undefined,
+    () => delayStatus ? pending : jsonResponse({ authenticated: true }));
+  await settleUI();
+  refuse = delayStatus = true;
+  const old = h.context.loadServicePolicy();
+  await settleUI();
+  assert.equal(h.elements["dashboard-content"].hidden, true, "401 must hide the retired session");
+  // A real later login/status owns the view before the old status arrives.
+  h.context.showAuthUnavailable();
+  refuse = delayStatus = false;
+  await h.context.updateAuthView({ refresh: false });
+  await h.context.loadServicePolicy();
+  assert.equal(h.elements["dashboard-content"].hidden, false);
+  const document = h.elements["service-document"].textContent;
+  releaseStatus(jsonResponse({ authenticated: false, setup_required: false }));
+  await old; await settleUI();
+  assert.equal(h.elements["dashboard-content"].hidden, false, "Retired401 status cannot sign out the replacement view");
+  assert.equal(h.elements["service-document"].textContent, document, "Old status cannot erase replacement policy");
+  assert.equal(h.elements["auth-panel"].hidden, true);
+}
+await testService401RecheckCannotOverwriteReplacementSession();
+
+async function testService401RecheckKeepsOriginalDeadline() {
+  for (const boundary of ["headers", "body"]) {
+    let delayed = false, release, settled = false, nextTimer = 0;
+    const pending = new Promise((resolve) => { release = resolve; });
+    const timers = new Map();
+    const h = await serviceHarness(() => jsonResponse({}, 401), undefined, undefined, undefined,
+      () => !delayed ? jsonResponse({ authenticated: true }) : boundary === "headers" ? pending : deferredJSONResponse(pending));
+    await settleUI();
+    h.context.setTimeout = (callback, delay) => { assert.equal(delay, 10000); timers.set(++nextTimer, callback); return nextTimer; };
+    h.context.clearTimeout = (id) => timers.delete(id);
+    delayed = true;
+    const operation = h.context.loadServicePolicy().then(() => { settled = true; });
+    await settleUI();
+    assert.equal(timers.size, 1, "401 status must use the original timer, not renew its budget");
+    [...timers.values()][0]();
+    await settleUI();
+    assert.equal(settled, true, `401/${boundary} must settle on original deadline`);
+    await operation;
+    assert.equal(timers.size, 0);
+    assert.equal(h.elements["service-load"].disabled, false);
+    assert.equal(h.elements["dashboard-content"].hidden, true);
+    assert.equal(h.elements["auth-retry"].hidden, false);
+    const requests = h.requests.length;
+    release(boundary === "headers" ? jsonResponse({ authenticated: true }) : { authenticated: true });
+    await settleUI();
+    assert.equal(h.elements["dashboard-content"].hidden, true, "Late401 status cannot restore the dashboard");
+    assert.equal(h.requests.length, requests, "Auth status timeout cannot retry or collect diagnostics");
+  }
+}
+await testService401RecheckKeepsOriginalDeadline();
+
+async function testServiceHeaderDeadlineAndRetiredResults() {
+  for (const phase of ["load", "session", "preview", "save", "backup", "restore"]) {
+    for (const boundary of ["timeout", "auth-loss"]) {
+      let release, expire, completed = false, canceled = 0;
+      // Deliberately non-cooperative headers: cancellation must settle the
+      // visible workflow, not wait for the fetch implementation to reject.
+      const pending = new Promise((resolve) => { release = resolve; });
+      const h = await serviceBodyScenario(phase, (value) => pending.then(() => {
+        const reply = jsonResponse(value);
+        reply.body.cancel = () => { canceled++; return new Promise(() => {}); };
+        return reply;
+      }));
+      h.context.setTimeout = (callback, delay) => { assert.equal(delay, 10000); expire = callback; return 1; };
+      h.context.clearTimeout = () => {};
+      const operation = h.run().then(() => { completed = true; });
+      await settleUI();
+      const before = h.requests.length;
+      await h.run();
+      assert.equal(h.requests.length, before, "Active header wait must remain single-flight");
+      if (boundary === "timeout") expire(); else h.context.showAuthUnavailable();
+      await settleUI();
+      assert.equal(completed, true, `${phase}/${boundary}: pending headers must not retain the UI operation`);
+      await operation;
+      assert.equal(h.elements["service-load"].disabled, false);
+      assert.equal(h.elements["service-save"].disabled, true);
+      assert.equal(h.elements["service-review"].hidden, true);
+      assert.equal(h.document.downloads.length, 0);
+      if (phase === "save" && boundary === "timeout") assert.match(h.elements["service-status"].textContent, /not confirmed.*may have committed/i);
+      const status = h.elements["service-status"].textContent;
+      const requests = h.requests.length;
+      release(); await settleUI();
+      assert.equal(canceled, 1, "Late headers must cancel the body without awaiting cancellation");
+      assert.equal(h.elements["service-status"].textContent, status, "Late headers cannot republish retired state");
+      assert.equal(h.requests.length, requests, "Late headers cannot send another preview/save or retry");
+      assert.equal(h.document.downloads.length, 0);
+    }
+  }
+}
+await testServiceHeaderDeadlineAndRetiredResults();
+
+async function testServiceRetiredHeadersCannotUnlockReplacement() {
+  let releaseOld, releaseNew, calls = 0, nextTimer = 0;
+  const pendingOld = new Promise((resolve) => { releaseOld = resolve; });
+  const pendingNew = new Promise((resolve) => { releaseNew = resolve; });
+  const timers = new Map();
+  const h = await serviceBodyScenario("load", (value) => (++calls === 1 ? pendingOld : pendingNew).then(() => jsonResponse(value)));
+  h.context.setTimeout = (callback) => { timers.set(++nextTimer, callback); return nextTimer; };
+  h.context.clearTimeout = (id) => timers.delete(id);
+  const old = h.run();
+  await settleUI();
+  const oldDeadline = [...timers.values()][0]; oldDeadline();
+  await old;
+  const replacement = h.run();
+  await settleUI();
+  assert.equal(h.elements["service-load"].disabled, true);
+  assert.equal(timers.size, 1);
+  const status = h.elements["service-status"].textContent;
+  releaseOld(); await settleUI(); oldDeadline(); await settleUI();
+  assert.equal(h.elements["service-load"].disabled, true, "Old finalizer cannot release replacement's gate");
+  assert.equal(timers.size, 1, "Old finalizer cannot clear replacement's timer");
+  assert.equal(h.elements["service-status"].textContent, status);
+  releaseNew(); await replacement;
+  assert.equal(timers.size, 0);
+  assert.equal(h.elements["service-load"].disabled, false);
+  assert.equal(h.elements["service-current"].hidden, false);
+}
+await testServiceRetiredHeadersCannotUnlockReplacement();
+process.stdout.write("Service operation ownership controls passed: header-settlement=12 auth401-original-budget=2 retired401=true replacement-gate=true no-retry=true.\n");
 
 async function testServiceDeadlineAtCompletedBodyHandoff() {
   for (const phase of ["load", "session", "preview", "save", "backup", "restore"]) {

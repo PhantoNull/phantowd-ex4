@@ -46,7 +46,14 @@ function invalidateServiceDraft() {
 function clearServicePolicy() {
   serviceState.generation++;
   serviceState.controller?.abort();
-  Object.assign(serviceState, { baseline: undefined, candidate: null, attempted: null, busy: false, controller: null });
+  Object.assign(serviceState, { busy: false, controller: null });
+  clearServicePolicyData();
+}
+
+// A401 recheck clears private data immediately but keeps its original
+// operation/controller until auth status settles or that lifetime is retired.
+function clearServicePolicyData() {
+  Object.assign(serviceState, { baseline: undefined, candidate: null, attempted: null });
   byId("service-restore-file").value = "";
   invalidateServiceDraft();
   byId("service-current").hidden = true;
@@ -509,14 +516,38 @@ async function serviceOperation(action) {
     if (controller.signal.aborted) { const failure = new Error("Request timed out."); failure.name = "AbortError"; throw failure; }
     return true;
   };
-  try { await action(request, session, live, controller.signal); }
+  try {
+    // The controller owns headers as well as bodies. Settle UI work even if a
+    // transport ignores abort; handle late completion without granting it a
+    // second continuation or letting it issue another request.
+    await new Promise((resolve, reject) => {
+      const abort = () => {
+        controller.signal.removeEventListener("abort", abort);
+        const failure = new Error("Configuration operation canceled."); failure.name = "AbortError";
+        reject(failure);
+      };
+      if (controller.signal.aborted) { abort(); return; }
+      controller.signal.addEventListener("abort", abort, { once: true });
+      const work = async () => action(request, session, live, controller.signal);
+      work().then((value) => {
+        controller.signal.removeEventListener("abort", abort);
+        if (controller.signal.aborted) abort(); else resolve(value);
+      }, (failure) => {
+        controller.signal.removeEventListener("abort", abort);
+        reject(failure);
+      });
+    });
+  }
   catch (failure) {
     if (!current()) return;
     invalidateServiceDraft();
     if (failure?.status === 401) {
-      clearServicePolicy(); byId("dashboard-content").hidden = true;
-      try { await updateAuthView({ refresh: false, notice: "Session expired. Reload saved state after signing in; a pending save may have committed." }); }
-      catch { showAuthUnavailable(); }
+      clearServicePolicyData(); byId("dashboard-content").hidden = true;
+      try {
+        await updateAuthView({ refresh: false, signal: controller.signal,
+          current: () => current() && !controller.signal.aborted,
+          notice: "Session expired. Reload saved state after signing in; a pending save may have committed." });
+      } catch { if (current()) showAuthUnavailable(); }
     } else {
       setText("service-status", serviceState.attempted !== null ? failure?.status === 409 ?
         "Revision conflict: this save was refused. Use Load / reconcile, review current state and prepare again; no automatic retry will occur." :
