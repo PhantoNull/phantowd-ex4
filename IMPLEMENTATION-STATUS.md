@@ -458,6 +458,17 @@ qualification, and it does not resolve the pending native timing contract.
 
 ## Front-panel prerequisite: bounded requested text
 
+M7.4b additionally records [selected split LED/alarm paths](board/wd/ex4/FRONT-PANEL-RESEARCH.md#led-ownership-and-selected-alarm-arbitration)
+from hash-bound final WD artifacts, with independent original-byte review.
+The selected alarm helper uses SoC-register wrappers; MCU `ErrStatus` publication
+is separate and maps event codes to selector bytes, not a bitmask. Cosmetic LED
+disable does not override a recognized alarm in the final selected branch, but
+preliminary output and direct update/download paths prevent a global-dominance
+claim. Cached class 0/CLI exit 0 are not healthy/current/applied-state evidence.
+No runtime code, backend, GPIO/MMIO/DTS access, product activation or new QEMU
+campaign is added by this documentation-only checkpoint. See the detailed M7.4b
+acceptance gates before implementing hardware control.
+
 M7.4a also adds a separate [private text preparation prerequisite](src/phantowd-api/internal/frontpaneltext/README.md)
 for future front-panel management. It enforces caller-declared byte bounds and
 nonempty printable ASCII without silent truncation or numeric interpretation.

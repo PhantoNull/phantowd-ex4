@@ -2817,6 +2817,24 @@ equipment/media; not ordinary software work.
   Remaining product gates: independently qualified board/profile/repertoire,
   complete integrity/reply semantics, bounded ownership/settlement, alarm
   priority and physical behavior. See [exact static anchors and handoff](board/wd/ex4/FRONT-PANEL-RESEARCH.md).
+  **M7.4b — split LED ownership and alarm arbitration (partial static evidence):**
+  selected EX4 `led` alarm outputs use SoC-register wrappers, not solely MCU
+  requests. Exact cached class 2/1 flags override the cosmetic LED-enable setting
+  only in a final branch after preliminary output calls; direct update/download
+  paths bypass it. Class 0 does not prove valid/current/complete health. Separate
+  `ErrStatus` event codes map to compact selector bytes, not bit positions; its
+  unchecked numeric/byte and optional-text paths are not a product contract.
+  Before implementation: bind exact board/controller revisions and exclusive
+  backend ownership; qualify a narrow GPIO/kernel LED interface; define typed
+  events/boolean operations and bounded event-specific text; distinguish desired,
+  submitted and observed state; preserve alarm authority through stale sources,
+  uncertain clear, crash and boot/update/shutdown transitions. Acceptance must
+  cover cosmetic-off versus active alarms across **all** output paths, source
+  loss without false healthy/clear, concurrent source changes, malformed/overflow
+  inputs, delayed/duplicate application receipts and verified controller/driver
+  settlement. Host/QEMU first, then separately reviewed physical behavior; no
+  broad MMIO port, MCU encoder, hardware profile or product control is added by
+  this static checkpoint. Selected masks/selectors are not qualified wiring.
 - **M7.5 — Non-persistent boot.** Keep research targets and product configuration
   separate. Audit enabled write-capable subsystems, readiness/stop markers and
   state effects before a RAM trial. Never turn a narrow B3 success into a blanket
