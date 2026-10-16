@@ -8,6 +8,31 @@ import { spawn } from "node:child_process";
 import { once } from "node:events";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { classifyPageResource } from "../browser-resource-contract.mjs";
+
+const expectedOrigin = "http://127.0.0.1:45678";
+assert.equal(classifyPageResource({ url: expectedOrigin + "/", method: "GET" }, expectedOrigin), "same-origin-network");
+for (const action of ["setup", "login", "logout", "logout-all", "password"]) {
+  const request = { url: expectedOrigin + `/api/v1/auth/${action}`, method: "POST" };
+  assert.equal(classifyPageResource(request, expectedOrigin, true), "same-origin-network");
+  assert.throws(() => classifyPageResource(request, expectedOrigin), /^Error: unexpected browser page resource$/);
+}
+for (const [index, [url, method, resourceType]] of [
+  ["https://example.invalid/", "GET"], ["http://127.0.0.1:45679/", "GET"],
+  ["http://user:secret@127.0.0.1:45678/", "GET"], [expectedOrigin + "/", "PUT"],
+  [expectedOrigin + "/api/v1/storage", "POST"], [expectedOrigin + "/api/v1/auth/login?unexpected=1", "POST"],
+  ["about:blank", "GET"], ["file:///private", "GET"], ["javascript:void(0)", "GET"],
+  ["blob:" + expectedOrigin + "/fixture", "GET"], ["data:text/html,fixture", "GET", "Document"],
+  ["data:image/svg+xml;base64," + "A".repeat(484), "GET", "Image"],
+  ["data:image/svg+xml;base64," + "A".repeat(484), "POST", "Image"],
+  ["data:image/svg+xml;base64," + "A".repeat(484), "GET", "Document"],
+  [expectedOrigin + "/" + "a".repeat(8192), "GET"], ["not a URL", "GET"], [null, "GET"],
+].entries()) {
+  assert.throws(() => classifyPageResource({ url, method, resourceType }, expectedOrigin, true),
+    /^Error: unexpected browser page resource$/, `case ${index}: unknown resource must fail with a fixed non-echoing error`);
+}
+assert.throws(() => classifyPageResource({ url: expectedOrigin, method: "GET" }, "https://example.invalid"), /^Error: unexpected browser page resource$/);
+console.log("Browser resource boundary controls passed: explicit-auth-only=true external-refused=true unknown-local-refused=true fixed-errors=true.");
 
 const repo = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 function preview(port) {

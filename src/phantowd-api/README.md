@@ -1741,9 +1741,31 @@ still checked. This reuses the original wrong/correct-login leg instead of
 adding attempts beyond the unchanged five-per-minute server quota. Interception
 retains at most seven request handles for the four explicit service/status
 pauses and three existing auth stalls; work/request/protocol limits are unchanged.
-Actions are triggered through the DOM. The synthetic snapshot profile hides
-auth controls, so this does not qualify visible pointer/keyboard operation of
-those controls, every management workflow or full accessibility.
+The auth-memory fixture has a separate `browser-auth-fixture` target and an
+explicit invented-diagnostics/memory-only-account notice. Unlike the GET-only
+`ui-preview-fixture`, it keeps authenticated password and sign-out controls
+visible; the static preview still hides them. Tests do not reveal hidden UI.
+Setup/login and password fields now use actual pointer focus, text insertion
+and Tab/Enter input; sign-out and explicit reconnect use visible, hit-tested
+pointer controls. The driver supplies Enter's carriage-return text so Chromium
+dispatches the native form submission. It never sets authentication input
+values or invokes their click handlers through the DOM. Refresh and the
+controlled policy load still use DOM actions, so this is not every-workflow or
+full accessibility qualification. Setup runs at1365px; the overview is checked
+at all three widths and later auth operations run at320px, not every form at
+every viewport.
+
+The bounded page-resource census retains every observed request. HTTP requests
+must use the exact ephemeral loopback origin; POST is permitted only in this
+mode on the five fixed auth routes without query parameters. One exact510-char
+inline SVG image URL observed during installed Edge155 text input is recognized
+by type, GET method, MIME prefix, length and SHA-256, and counted separately from
+network requests. Its producer has not been independently established. No
+generic `data:`, `blob:`, `about:` or file-resource exception is allowed; even a
+same-origin `blob:` fails. Changed inline bytes require explicit review. Fast
+dependency-free refusal tests use fixed errors without echoing resource input.
+These are observed-request checks, not a browser network sandbox. Results also
+record and recheck the driver/resource-contract source hashes.
 
 After those nominal flows, controlled network interception holds one login
 before headers. The real browser deadline must clear the input, release the
@@ -1765,7 +1787,7 @@ stop, fixture zero exit and disposal receipt. Fixture and work deadlines bound
 the healthy test; forced disposal remains a failure, not a successful recovery.
 Fast host CI checks authentication/synthetic-observation boundaries and that the
 server skips without its opt-in flag; it does not download or launch a browser.
-These host-only files do not trigger firmware builds; other API inputs still do.
+No automatic browser stage or browser download is added to CI.
 
 This adds browser-to-handler evidence, **not** production persistence/enrollment,
 TLS/HTTPS browser trust, certificate lifecycle, simultaneous sessions/races,

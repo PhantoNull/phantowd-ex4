@@ -14,6 +14,7 @@ import { tmpdir } from "node:os";
 import { dirname, join, resolve, basename } from "node:path";
 import { fileURLToPath } from "node:url";
 import { setTimeout as delay } from "node:timers/promises";
+import { classifyPageResource } from "./browser-resource-contract.mjs";
 
 const repo = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 assert.ok([4, 6].includes(process.argv.length), "usage: node support/test-dashboard-browser.mjs --browser PATH [--api-fixture PATH]");
@@ -50,9 +51,19 @@ const uiHashes = async () => {
   return hashes;
 };
 const sourceHashes = await uiHashes();
+const harnessHashes = async () => {
+  const hashes = {};
+  for (const name of ["support/test-dashboard-browser.mjs", "support/browser-resource-contract.mjs"]) {
+    const bytes = await readFile(join(repo, name));
+    assert.ok(bytes.length <= 65536, "browser harness source exceeded budget");
+    hashes[name] = createHash("sha256").update(bytes).digest("hex");
+  }
+  return hashes;
+};
+const harnessSourceHashes = await harnessHashes();
 await mkdir(artifacts, { recursive: true });
 await writeFile(join(artifacts, "result.json"), JSON.stringify({
-  schema_version: 1, status: "running", scope, ui_sha256: sourceHashes,
+  schema_version: 1, status: "running", scope, ui_sha256: sourceHashes, harness_sha256: harnessSourceHashes,
 }, null, 2) + "\n");
 
 function start(file, args, options = {}) {
@@ -118,7 +129,8 @@ class CDP {
           this.paused.push(message.params.requestId);
         } else if (message.method === "Network.requestWillBeSent") {
           if (this.requests.length >= 256) throw new Error("browser request census exceeded");
-          this.requests.push({ url: message.params.request.url, method: message.params.request.method });
+          assert.ok(typeof message.params.request.url === "string" && message.params.request.url.length <= 8192, "browser request URL exceeded");
+          this.requests.push({ url: message.params.request.url, method: message.params.request.method, resourceType: message.params.type });
         }
       } catch {
         this.fault = new Error("invalid or excessive browser protocol message");
@@ -225,6 +237,37 @@ try {
     assert.ok(!result.exceptionDetails, "browser evaluation failed");
     return result.result.value;
   };
+  const pointerControls = [];
+  const key = async (key, code, windowsVirtualKeyCode, modifiers = 0) => {
+    for (const type of ["keyDown", "keyUp"]) {
+      await send("Input.dispatchKeyEvent", { type, key, code, windowsVirtualKeyCode, modifiers,
+        ...(type === "keyDown" && key === "Enter" ? { text: "\r", unmodifiedText: "\r" } : {}),
+      });
+    }
+  };
+  const clickVisible = async (id) => {
+    assert.ok(pointerControls.length < 32, "visible pointer action budget exceeded");
+    const point = await evaluate(`(() => {
+      const e = document.getElementById(${JSON.stringify(id)});
+      if (!e || e.disabled || e.closest('[hidden]')) return null;
+      e.scrollIntoView({ block: 'center', inline: 'center', behavior: 'instant' });
+      const r = e.getBoundingClientRect(), s = getComputedStyle(e);
+      if (!e.getClientRects().length || r.width <= 0 || r.height <= 0 || s.visibility !== 'visible') return null;
+      const x = r.x + r.width / 2, y = r.y + r.height / 2;
+      if (x < 0 || y < 0 || x >= innerWidth || y >= innerHeight) return null;
+      const hit = document.elementFromPoint(x, y);
+      return hit && (hit === e || e.contains(hit)) ? { x, y } : null;
+    })()`);
+    assert.ok(point, `control is not visible/hit-testable: ${id}`);
+    await send("Input.dispatchMouseEvent", { type: "mousePressed", ...point, button: "left", clickCount: 1 });
+    await send("Input.dispatchMouseEvent", { type: "mouseReleased", ...point, button: "left", clickCount: 1 });
+    pointerControls.push(id);
+  };
+  const replaceInput = async (id, text) => {
+    assert.equal(await evaluate("document.activeElement.id"), id, "input must have actual browser focus");
+    await key("a", "KeyA", 65, 2);
+    await send("Input.insertText", { text });
+  };
   await send("Page.enable");
   await send("Runtime.enable");
   await send("Network.enable");
@@ -234,7 +277,23 @@ try {
     `document.getElementById('snapshot-status')?.textContent === 'Read-only system, storage, RAID, and mount observations updated.' && !document.getElementById('refresh').disabled`;
   const signInReady = `!document.getElementById('auth-panel').hidden && !document.getElementById('auth-form').hidden && !document.getElementById('auth-submit').disabled && document.getElementById('auth-form').dataset.mode === 'login'`;
   const submitLogin = async (password) => {
-    await evaluate(`(() => { document.getElementById('auth-username').value = 'browser-admin'; document.getElementById('auth-password').value = ${JSON.stringify(password)}; document.getElementById('auth-submit').click(); })()`);
+    await clickVisible("auth-username");
+    await replaceInput("auth-username", "browser-admin");
+    await key("Tab", "Tab", 9);
+    await replaceInput("auth-password", password);
+    await key("Enter", "Enter", 13);
+  };
+  const changePassword = async (original, replacement) => {
+    if (!await evaluate("document.getElementById('password-panel').open")) await clickVisible("password-title");
+    await clickVisible("password-current");
+    await replaceInput("password-current", original);
+    await key("Tab", "Tab", 9);
+    await replaceInput("password-new", replacement);
+    await key("Tab", "Tab", 9);
+    await replaceInput("password-confirm", replacement);
+    await key("Tab", "Tab", 9);
+    assert.equal(await evaluate("document.activeElement.id"), "password-submit");
+    await key("Enter", "Enter", 13);
   };
   const fixturePassword = "browser fixture original passphrase";
   const nextPassword = "browser fixture replacement passphrase";
@@ -261,7 +320,12 @@ try {
     await submitLogin(fixturePassword);
   }
   await until(() => evaluate(snapshotReady), browser, "rendered synthetic snapshot");
-  assert.equal(await evaluate("document.getElementById('profile-notice-mark').textContent"), "FIXTURE DATA");
+  assert.equal(await evaluate("document.getElementById('profile-notice-mark').textContent"), apiFixture ? "MEMORY-ONLY AUTH FIXTURE" : "FIXTURE DATA");
+  if (apiFixture) {
+    for (const id of ["logout", "logout-all", "password-panel"]) {
+      assert.equal(await evaluate(`document.getElementById(${JSON.stringify(id)}).hidden`), false, "authentication control hidden by fixture profile");
+    }
+  }
   assert.equal(await evaluate("document.getElementById('dashboard-content').hidden"), false);
   assert.equal(await evaluate("document.getElementById('auth-panel').hidden"), true);
   assert.equal(await evaluate("document.getElementById('support-download').disabled"), false);
@@ -309,7 +373,7 @@ try {
     await until(() => cdp.paused.length === servicePaused + 2, browser, "original401 status interception");
     let retiredCookie = await currentCookie();
     assert.equal(await cookieStatus(retiredCookie), 200);
-    await evaluate("document.getElementById('logout').click()");
+    await clickVisible("logout");
     await until(() => cdp.paused.length === servicePaused + 3, browser, "replacement logout status");
     await send("Fetch.continueRequest", { requestId: cdp.paused[servicePaused + 2] });
     await until(() => evaluate(signInReady), browser, "logout retires pending policy status");
@@ -337,7 +401,7 @@ try {
     assert.equal(await cookieStatus(await currentCookie()), 200);
     let oldCookie = await currentCookie();
     assert.equal(await cookieStatus(oldCookie), 200);
-    await evaluate(`(() => { document.getElementById('password-panel').open = true; document.getElementById('password-current').value = ${JSON.stringify(fixturePassword)}; document.getElementById('password-new').value = ${JSON.stringify(nextPassword)}; document.getElementById('password-confirm').value = ${JSON.stringify(nextPassword)}; document.getElementById('password-submit').click(); })()`);
+    await changePassword(fixturePassword, nextPassword);
     await until(() => evaluate(`${signInReady} && document.getElementById('auth-error').textContent === 'Password changed. All panel sessions ended. Sign in with the new password.'`), browser, "actual password replacement");
     assert.equal(await cookieStatus(oldCookie), 401, "password replacement did not revoke original cookie");
     assert.equal(await evaluate("['password-current', 'password-new', 'password-confirm'].every(id => document.getElementById(id).value === '')"), true);
@@ -347,7 +411,7 @@ try {
     await until(() => evaluate(snapshotReady), browser, "replacement-password login");
     oldCookie = await currentCookie();
     assert.equal(await cookieStatus(oldCookie), 200);
-    await evaluate("document.getElementById('logout-all').click()");
+    await clickVisible("logout-all");
     await until(() => evaluate(signInReady), browser, "global panel logout");
     assert.equal(await cookieStatus(oldCookie), 401, "global logout did not revoke original cookie");
     oldCookie = undefined;
@@ -366,7 +430,7 @@ try {
     assert.equal(await evaluate("document.getElementById('auth-password').value"), "");
     await send("Fetch.failRequest", { requestId: cdp.paused[credentialPaused], errorReason: "Aborted" }).catch(() => {});
     await send("Fetch.disable");
-    await evaluate("document.getElementById('auth-retry').click()");
+    await clickVisible("auth-retry");
     await until(() => evaluate(signInReady), browser, "explicit status-only reconciliation");
     assert.equal(cdp.paused.length, credentialPaused + 1, "credential request must not automatically retry");
     await submitLogin(nextPassword);
@@ -379,8 +443,8 @@ try {
       oldCookie = await currentCookie();
       await send("Fetch.enable", { patterns: [{ urlPattern: origin + path, requestStage: "Request" }] });
       if (action === "password") {
-        await evaluate(`(() => { document.getElementById('password-panel').open = true; document.getElementById('password-current').value = ${JSON.stringify(nextPassword)}; document.getElementById('password-new').value = 'browser fixture intercepted third passphrase'; document.getElementById('password-confirm').value = 'browser fixture intercepted third passphrase'; document.getElementById('password-submit').click(); })()`);
-      } else await evaluate("document.getElementById('logout-all').click()");
+        await changePassword(nextPassword, "browser fixture intercepted third passphrase");
+      } else await clickVisible("logout-all");
       await until(() => cdp.paused.length === paused + 1, browser, "controlled mutation interception");
       await until(() => evaluate(`document.getElementById('auth-form').hidden && !document.getElementById('auth-retry').hidden && document.getElementById('auth-error').textContent.includes('not retried')`), browser, "mutation header deadline", 15000);
       assert.equal(await evaluate("['password-submit', 'logout', 'logout-all'].every(id => !document.getElementById(id).disabled)"), true);
@@ -391,30 +455,32 @@ try {
       // the old cookie remains valid, so do not report confirmed revocation.
       assert.equal(await cookieStatus(oldCookie), 200);
       oldCookie = undefined;
-      await evaluate("document.getElementById('auth-retry').click()");
+      await clickVisible("auth-retry");
       await until(() => evaluate(snapshotReady), browser, "mutation status-only reconciliation");
       assert.equal(posts(), before + 1, "uncertain mutation must not automatically retry");
     }
   }
   assert.equal(cdp.exceptions, 0, "uncaught page JavaScript exception");
   assert.ok(!cdp.fault, "browser protocol observation failed");
-  for (const request of cdp.requests) {
-    assert.equal(new URL(request.url).origin, origin, "page attempted an external request");
-    assert.ok(request.method === "GET" || (apiFixture && request.method === "POST" &&
-      ["setup", "login", "logout", "logout-all", "password"].some(action => new URL(request.url).pathname === `/api/v1/auth/${action}`)), "unexpected browser mutation");
-  }
+  let localInlineImages = 0;
+  for (const request of cdp.requests) if (classifyPageResource(request, origin, Boolean(apiFixture)) === "local-inline-image") localInlineImages++;
   assert.ok(live(preview), "owned preview exited during browser verification");
   assert.ok(!previewErrorOutput, "owned fixture wrote an unexpected error");
   assert.deepEqual(await uiHashes(), sourceHashes, "dashboard source changed during browser verification");
+  assert.deepEqual(await harnessHashes(), harnessSourceHashes, "browser harness changed during verification");
   result = {
     schema_version: 1, scope, browser: version.product,
-    ui_sha256: sourceHashes,
+    ui_sha256: sourceHashes, harness_sha256: harnessSourceHashes,
     layouts, keyboard_skip_link: true, explicit_refresh: true, page_requests: cdp.requests.length,
     uncaught_exceptions: cdp.exceptions, actual_go_auth_memory_fixture: Boolean(apiFixture),
     original_cookie_revocation_checked: Boolean(apiFixture), authentication_qualified: false, hardware_qualified: false,
     intercepted_credential_deadline: Boolean(apiFixture),
     intercepted_auth_mutation_deadlines: apiFixture ? ["password", "logout-all"] : [],
     retired_service401_recheck: Boolean(apiFixture),
+    visible_pointer_controls: pointerControls,
+    auth_keyboard_tab_enter: Boolean(apiFixture),
+    local_inline_images: localInlineImages,
+    same_origin_network_requests: cdp.requests.length - localInlineImages,
   };
   successful = true;
 } catch (error) {
@@ -465,7 +531,7 @@ try {
 }
 if (failure) {
   await writeFile(join(artifacts, "result.json"), JSON.stringify({
-    schema_version: 1, status: "failed", scope, ui_sha256: sourceHashes,
+    schema_version: 1, status: "failed", scope, ui_sha256: sourceHashes, harness_sha256: harnessSourceHashes,
   }, null, 2) + "\n");
   throw failure;
 }

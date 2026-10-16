@@ -2564,6 +2564,22 @@ milestone before enabling its controls; M1/M6 for deployment.
   real policy-store browser transactions, concurrent tabs, product enrollment/
   recovery, full/hosted and physical qualification remain separate. This does
   not change or qualify every other administrative reader.
+- **M5.5o — Visible authentication controls (partial).** Separate the actual
+  memory-auth test profile from the GET-only synthetic preview: invented system
+  data stays explicit, authenticated controls stay visible only in the former.
+  Exercise setup/login/password input with actual pointer focus, Tab and native
+  Enter submission; sign-out/reconnect use visible hit-tested pointer controls.
+  Preserve auth handlers, five-login quota, original-cookie revocation,401
+  retirement and controlled10s uncertainty proofs. Retain every bounded resource
+  observation; accept only same-origin HTTP plus one exact reviewed inline SVG,
+  rejecting unknown local schemes, external requests and non-auth mutations.
+  Acceptance: profile RED/GREEN controls, resource refusals, whole Windows/pinned
+  Linux, both installed-browser modes and exact embedded-asset ARM delivery.
+  Auth setup is exercised at1365px, overview at1365/390/320px and subsequent auth
+  flows at320px. Refresh/policy load remain DOM-triggered. Other forms/viewports,
+  multi-tab/password-manager/assistive testing, native policy-store browser
+  writes, product enrollment/recovery and HTTPS browser trust remain open.
+  This is not service activation, full firmware/hosted or physical qualification.
 - **M5.6 — Audit and diagnostics.** Record actor, operation ID, revisions and
   redacted outcome; bound retention. Export a sanitized support bundle that
   excludes credentials, private keys, passdb hashes and user file contents.

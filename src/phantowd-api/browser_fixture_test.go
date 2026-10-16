@@ -75,7 +75,7 @@ func newBrowserFixtureHandler(origin string) (http.Handler, *accountStore) {
 	auth := newAuthController(accounts, origin)
 	return newHandler(func() (systemSnapshot, error) {
 		snapshot, err := collectSystem(fixtureProc(), time.Now())
-		snapshot.Target = "ui-preview-fixture"
+		snapshot.Target = "browser-auth-fixture"
 		return snapshot, err
 	}, func() (storageSnapshot, error) {
 		return storageSnapshot{}, errors.New("browser fixture storage unavailable")
@@ -113,9 +113,12 @@ func TestBrowserFixtureDiagnosticsStaySynthetic(t *testing.T) {
 		}
 		var snapshot systemSnapshot
 		if response.Code != http.StatusOK || json.Unmarshal(response.Body.Bytes(), &snapshot) != nil ||
-			snapshot.Target != "ui-preview-fixture" || snapshot.Kernel != "6.18.53" ||
+			snapshot.Kernel != "6.18.53" ||
 			snapshot.Memory.TotalBytes != 268435456 || snapshot.Flashable || snapshot.HardwareValidated {
 			t.Fatal("fixture lost its synthetic system boundary")
+		}
+		if snapshot.Target != "browser-auth-fixture" {
+			t.Fatalf("wrong browser-auth fixture profile: %q", snapshot.Target)
 		}
 	}
 }

@@ -588,6 +588,25 @@ async function testReadOnlySnapshotAndSafeRendering() {
   assert.equal(elements["logout"].hidden, true);
 }
 
+async function testBrowserAuthFixtureKeepsVisibleRealAuthControls() {
+  const h = await createHarness(async (path) => {
+    if (path === "/api/v1/auth/status") return jsonResponse({ authenticated: true });
+    if (path === "/api/v1/system") return jsonResponse({ ...systemFixture(), target: "browser-auth-fixture" });
+    return snapshotResponse(path);
+  });
+  assert.equal(h.elements["profile-notice-title"].textContent, "Synthetic authentication fixture.");
+  assert.equal(h.elements["profile-notice-mark"].textContent, "MEMORY-ONLY AUTH FIXTURE");
+  assert.match(h.elements["profile-notice-copy"].textContent, /invented.*memory-only/);
+  for (const id of ["logout", "logout-all", "password-panel"]) assert.equal(h.elements[id].hidden, false, id);
+  const signedOut = await createHarness(async (path) => {
+    assert.equal(path, "/api/v1/auth/status");
+    return jsonResponse({ authenticated: false, setup_required: true });
+  });
+  assert.equal(signedOut.elements["logout"].hidden, true);
+  assert.equal(signedOut.elements["dashboard-content"].hidden, true);
+}
+await testBrowserAuthFixtureKeepsVisibleRealAuthControls();
+
 async function testUnavailableAuthIsVisibleAndRetryable() {
   let available = false;
   const { elements } = await createHarness(async (path) => {

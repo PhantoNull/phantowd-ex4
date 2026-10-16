@@ -46,12 +46,17 @@ function validSystemObservation(system) {
 function renderSystem(system) {
   if (!validSystemObservation(system)) throw new Error("System observation is invalid.");
   const buildLabel = system.target === "qemu-armv5" ? "QEMU · EMULATED" :
-    system.target === "ui-preview-fixture" ? "LOCAL FIXTURES" : "DEVELOPMENT PROFILE";
+    system.target === "ui-preview-fixture" ? "LOCAL FIXTURES" :
+    system.target === "browser-auth-fixture" ? "AUTH FIXTURES" : "DEVELOPMENT PROFILE";
   setConnectionState(buildLabel);
   const profileNotice = system.target === "qemu-armv5" ? {
     title: "Emulator only.",
     copy: "This image is not flashable or validated on EX4 hardware. No production disks or NAND are accessed.",
     mark: "HARDWARE NOT VALIDATED",
+  } : system.target === "browser-auth-fixture" ? {
+    title: "Synthetic authentication fixture.",
+    copy: "Diagnostics are invented; accounts and panel sessions are memory-only test data. No device, disk, or emulator was examined.",
+    mark: "MEMORY-ONLY AUTH FIXTURE",
   } : system.target === "ui-preview-fixture" ? {
     title: "Synthetic preview.",
     copy: "Every value in this view is generated fixture data. No device, disk, or emulator was examined.",

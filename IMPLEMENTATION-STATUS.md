@@ -86,6 +86,35 @@ its actions are DOM-triggered, not complete pointer/keyboard/accessibility proof
 No product activation, native policy-store browser qualification, full image/
 two-boot/hosted qualification or repair of the Samba gate follows.
 
+## Dashboard: visible authentication input, not hidden DOM controls
+
+M5.5o extends that earlier DOM-triggered evidence. Setup/login/password entry
+now uses real installed-browser pointer focus, text insertion and Tab/Enter;
+sign-out and explicit reconnect use visible hit-tested pointer controls. A
+distinct auth-memory fixture profile labels invented diagnostics and memory-only
+accounts while retaining authenticated controls. The GET-only preview still
+hides them. RED controls exposed two test-driver gaps: Enter lacked native text,
+and the old synthetic profile hid controls that DOM clicks had bypassed. Neither
+was an authentication-handler defect; handlers, quotas and deadlines stay fixed.
+
+Both actual Edge modes, whole Windows and pinned Linux suites pass. The auth
+run retains original-cookie revocation, all three controlled auth stalls and
+retired401/replacement-session checks:82 resource observations, zero page
+exceptions,80 same-origin HTTP requests and two occurrences of one exact inline
+SVG. Only its fixed image bytes/type/method are accepted; unknown data/blob/file
+resources and external/non-auth requests fail fast controls. This is a census,
+not network sandboxing. The SVG producer is not independently established.
+
+Overview containment/skip-link checks cover1365/390/320px; setup uses1365px and
+later auth flows320px. Refresh/policy load remain DOM-triggered. This does not
+qualify every form/viewport, assistive technology, password managers, concurrent
+tabs, product enrollment/recovery, HTTPS browser trust or live policy activation.
+One actual ARMv5 userspace-overlay smoke also passes: seven exact assets over
+both HTTP and HTTPS before and after API restart, with the verified base kernel/
+packages/probe unchanged. QEMU does not execute browser JavaScript. No two-boot,
+full image/SBOM/legal, clean or hosted qualification is implied. The existing
+Samba/full-image/hosted and physical release gates remain open.
+
 ## Earlier hosted fault gate remains open
 
 Candidate `e4fc079` passes hosted host/B3 checks but fails its own QEMU fault
