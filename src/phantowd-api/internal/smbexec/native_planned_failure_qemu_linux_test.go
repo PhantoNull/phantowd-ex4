@@ -84,3 +84,31 @@ func TestNativePlannedActualNegativeBoundaryPreservesUnderlyingHandoffError(t *t
 		t.Fatal("actual missing authority lost admission cause", err)
 	}
 }
+
+func TestNativePlannedDataStagePreservesFirstBoundaryCauseAndRedaction(t *testing.T) {
+	private := errors.New("private-path-and-credential\nFAKE_READY")
+	cause := plannedFailureQEMU(context.Background(), "verify-owners", errors.Join(private, context.DeadlineExceeded))
+	before := ObserveNativePlannedFailureQEMU(cause)
+	for _, stage := range []string{"before-runtime", "runtime", "after-runtime"} {
+		err := plannedDataStageFailureQEMU(stage, cause)
+		if ObserveNativePlannedDataStageQEMU(err) != stage || ObserveNativePlannedFailureQEMU(err) != before ||
+			!errors.Is(err, private) || !errors.Is(err, context.DeadlineExceeded) || !errors.Is(err, cause) ||
+			strings.Contains(err.Error(), "private") || strings.ContainsAny(err.Error(), "\r\n") {
+			t.Fatal("data stage replaced/disclosed original refusal", err)
+		}
+		if plannedDataStageFailureQEMU("after-runtime", err) != err || plannedDataStageFailureQEMU(stage, nil) != nil {
+			t.Fatal("first stage changed or success invented telemetry")
+		}
+	}
+	for _, stage := range []string{"", "private-path", "runtime\nREADY"} {
+		if plannedDataStageFailureQEMU(stage, cause) != cause {
+			t.Fatal("untrusted stage replaced original cause")
+		}
+	}
+	for _, err := range []error{nil, private, (*nativePlannedDataStageFailureQEMU)(nil),
+		&nativePlannedDataStageFailureQEMU{stage: "runtime"}, &nativePlannedDataStageFailureQEMU{stage: private.Error(), cause: cause}} {
+		if ObserveNativePlannedDataStageQEMU(err) != "" {
+			t.Fatal("unknown/missing data stage emitted")
+		}
+	}
+}

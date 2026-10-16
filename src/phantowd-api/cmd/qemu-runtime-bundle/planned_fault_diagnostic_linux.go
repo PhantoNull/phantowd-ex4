@@ -26,7 +26,23 @@ func plannedFaultFailureDiagnosticQEMU(phase string, err error) string {
 	output := fmt.Sprintf("PHANTOWD_QEMU_PLANNED_FAULT_FAILURE phase=%s deadline=%t review=%t scope=diagnostic-only\n", phase, errors.Is(err, context.DeadlineExceeded), errors.Is(err, runtimebundle.ErrReviewRequired))
 	return output + plannedDataFailureDiagnosticQEMU(runtimebundle.ObserveNativeDataFailureQEMU(err)) +
 		plannedDataClockDiagnosticQEMU(runtimebundle.ObserveNativeDataClockQEMU(err)) +
-		plannedServiceFailureDiagnosticQEMU(smbexec.ObserveNativePlannedFailureQEMU(err)) + plannedExitFailureDiagnosticQEMU(err)
+		plannedServiceFailureDiagnosticQEMU(smbexec.ObserveNativePlannedFailureQEMU(err)) +
+		plannedServiceDataStageDiagnosticQEMU(smbexec.ObserveNativePlannedDataStageQEMU(err)) + plannedExitFailureDiagnosticQEMU(err)
+}
+
+func plannedServiceDataStageDiagnosticQEMU(stage string) string {
+	row := "PHANTOWD_QEMU_PLANNED_DATA_STAGE phase=" + stage + " scope=diagnostic-only"
+	if !validPlannedServiceDataStageDiagnosticQEMU(strings.Split(row, " ")) {
+		return ""
+	}
+	return row + "\n"
+}
+
+func validPlannedServiceDataStageDiagnosticQEMU(fields []string) bool {
+	if len(fields) != 3 || fields[0] != "PHANTOWD_QEMU_PLANNED_DATA_STAGE" || fields[2] != "scope=diagnostic-only" {
+		return false
+	}
+	return fields[1] == "phase=before-runtime" || fields[1] == "phase=runtime" || fields[1] == "phase=after-runtime"
 }
 
 func plannedServiceFailureDiagnosticQEMU(failure smbexec.NativePlannedFailureObservationQEMU) string {
@@ -160,6 +176,12 @@ func plannedFaultSubprocessDiagnosticQEMU(ctxErr, runErr error, captured, proof 
 	seen := make(map[string]bool)
 	for _, line := range strings.Split(captured, "\n") {
 		fields := strings.Split(line, " ")
+		if validPlannedServiceDataStageDiagnosticQEMU(fields) && !seen["service-data-stage"] {
+			seen["service-data-stage"] = true
+			output.WriteString(line)
+			output.WriteByte('\n')
+			continue
+		}
 		if validPlannedServiceFailureDiagnosticQEMU(fields) && !seen["service-boundary"] {
 			seen["service-boundary"] = true
 			output.WriteString(line)

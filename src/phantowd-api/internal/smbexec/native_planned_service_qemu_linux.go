@@ -352,13 +352,13 @@ func (s *NativePlannedServiceQEMU) VerifyDataAccess(ctx context.Context) error {
 	}
 	s.dataAttempted = true
 	if err := s.verify(ctx); err != nil {
-		return s.quarantine(err)
+		return s.quarantine(plannedDataStageFailureQEMU("before-runtime", err))
 	}
 	if err := s.inputs.Backend.runtime.ProbePlannedDataAccessQEMU(ctx); err != nil {
-		return s.quarantine(err)
+		return s.quarantine(plannedDataStageFailureQEMU("runtime", err))
 	}
 	if err := s.verify(ctx); err != nil {
-		return s.quarantine(err)
+		return s.quarantine(plannedDataStageFailureQEMU("after-runtime", err))
 	}
 	s.dataVerified = true
 	s.publish()

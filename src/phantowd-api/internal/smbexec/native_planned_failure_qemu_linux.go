@@ -79,3 +79,46 @@ func ObserveNativePlannedFailureQEMU(err error) NativePlannedFailureObservationQ
 		ContextPresent: failure.contextPresent, ContextDone: failure.contextDone,
 		DeadlinePresent: failure.deadlinePresent, DeadlineReached: failure.deadlineReached}
 }
+
+// A distinct fixed caller stage must not replace the original verification
+// boundary/context snapshot. No clock, command or authority is added here.
+type nativePlannedDataStageFailureQEMU struct {
+	stage string
+	cause error
+}
+
+func validNativePlannedDataStageQEMU(stage string) bool {
+	return stage == "before-runtime" || stage == "runtime" || stage == "after-runtime"
+}
+
+func plannedDataStageFailureQEMU(stage string, cause error) error {
+	if cause == nil || !validNativePlannedDataStageQEMU(stage) || ObserveNativePlannedDataStageQEMU(cause) != "" {
+		return cause
+	}
+	return &nativePlannedDataStageFailureQEMU{stage: stage, cause: cause}
+}
+
+func (e *nativePlannedDataStageFailureQEMU) Error() string {
+	stage := ObserveNativePlannedDataStageQEMU(e)
+	if stage == "" {
+		stage = "unavailable"
+	}
+	return "native planned data refusal stage=" + stage
+}
+
+func (e *nativePlannedDataStageFailureQEMU) Unwrap() error {
+	if e == nil {
+		return nil
+	}
+	return e.cause
+}
+
+// Fixture telemetry only. The first fixed stage survives outer wrapping;
+// absent/invalid observations disclose nothing and never prove qualification.
+func ObserveNativePlannedDataStageQEMU(err error) string {
+	var failure *nativePlannedDataStageFailureQEMU
+	if !errors.As(err, &failure) || failure == nil || failure.cause == nil || !validNativePlannedDataStageQEMU(failure.stage) {
+		return ""
+	}
+	return failure.stage
+}

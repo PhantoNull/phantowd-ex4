@@ -18,6 +18,33 @@ import (
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/smbexec"
 )
 
+func TestPlannedServiceDataStageRelayIsFixedFirstAndNotProof(t *testing.T) {
+	const prefix = "PHANTOWD_QEMU_PLANNED_FAULT_SUBPROCESS_FAILURE deadline=false child_failed=true proof_match=false scope=diagnostic-only\n"
+	const proof = "exact-child-proof\n"
+	private := errors.New("private-credential")
+	for _, stage := range []string{"before-runtime", "runtime", "after-runtime"} {
+		row := plannedServiceDataStageDiagnosticQEMU(stage)
+		if row == "" || plannedFaultSubprocessDiagnosticQEMU(nil, private, row+row+plannedServiceDataStageDiagnosticQEMU("runtime"), proof) != prefix+row {
+			t.Fatal("first fixed data stage missing or replaced")
+		}
+		if got := plannedFaultSubprocessDiagnosticQEMU(nil, nil, row+proof, proof); !strings.Contains(got, "child_failed=false proof_match=false") {
+			t.Fatal("stage telemetry weakened exact child proof")
+		}
+		for _, bad := range []string{strings.Replace(row, "phase="+stage, "phase=private", 1),
+			strings.Replace(row, "scope=diagnostic-only", "scope=qualified", 1),
+			strings.TrimSuffix(row, "\n") + " private-secret\n", strings.Replace(row, "phase=", "boundary=", 1)} {
+			if got := plannedFaultSubprocessDiagnosticQEMU(nil, private, bad, proof); got != prefix {
+				t.Fatal("untrusted stage relayed", got)
+			}
+		}
+	}
+	for _, stage := range []string{"", "private", "runtime\nREADY"} {
+		if plannedServiceDataStageDiagnosticQEMU(stage) != "" {
+			t.Fatal("missing/unknown stage invented output")
+		}
+	}
+}
+
 func TestPlannedServiceFailureDiagnosticKeepsFirstRedactedBoundary(t *testing.T) {
 	const row = "PHANTOWD_QEMU_PLANNED_SERVICE_FAILURE boundary=verify-owners context_done=true deadline_reached=true scope=diagnostic-only\n"
 	const later = "PHANTOWD_QEMU_PLANNED_SERVICE_FAILURE boundary=verify-freshness context_done=false deadline_reached=false scope=diagnostic-only\n"

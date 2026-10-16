@@ -76,6 +76,13 @@ new complete qualification. Next instrument that bounded first admission and
 test the focused path. No timer/proof relaxation, full retry, hosted repair or
 merge is inferred; [current gate](IMPLEMENTATION-STATUS.md).
 
+A later local preflight passes file-source but fails fault/data. Fixed
+failure-only telemetry now distinguishes the final complete-owner check after
+the runtime probe returned nil: `after-runtime`, `verify-owners`, expired data
+context. It does not qualify the whole operation or establish a universal cause
+for older failures. New full/audit were not started, fixture-budget approval
+remains pending and all original numeric/proof/authority limits are retained.
+
 The optional fixed parent-share mount substitution now also passes: binding
 the SAME directory at the parent path changes unique mount identity without
 changing device/inode/content. Original-root-relative no-symlink metadata

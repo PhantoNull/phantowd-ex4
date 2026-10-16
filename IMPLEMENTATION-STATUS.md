@@ -30,6 +30,18 @@ Real-child native/race and eight-case, three-repeat ARMv5 tests pass in the
 existing Owner guest with all earlier proofs and numeric limits unchanged.
 This is not an attribution or repair of the original Samba intermittency.
 
+## Current focused gate: data-phase final owner verification
+
+The newer local `c34cb69` file-source preflight passes, but its `fault` preflight
+fails in the data phase at `verify-owners` with an expired context. A subsequent
+failure-only fixed-stage observation reaches `after-runtime`: the runtime probe
+returned nil before the final owner check refused. Original strict verification
+rejects both failed traces; no new complete build/audit was launched. Windows,
+pinned Linux tagged vet/race and diagnostic tests pass only their stated scopes.
+This narrows the current local failure, not the older hosted operation or the
+earlier full-run held-file startup refusal. Fixture-budget choice remains open;
+no numeric limits, proofs or authority were relaxed.
+
 ## Earlier hosted fault gate remains open
 
 Candidate `e4fc079` passes hosted host/B3 checks but fails its own QEMU fault

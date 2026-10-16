@@ -2052,6 +2052,17 @@ Windows passes 77 tests with five platform-specific skips. Replay of an actual
 failed ARM guest preserves original-verifier refusal and yields the same fixed
 typed observations. This is not a new full guest/image or hosted timing fix.
 
+`PHANTOWD_QEMU_PLANNED_DATA_STAGE` separately identifies the first fixed
+`before-runtime`, `runtime` or `after-runtime` failed data-access call. It
+preserves the original typed verification boundary and error causes; no timing
+or authority is added. The parent relays only the first valid fixed row, never
+raw child text, and telemetry still invalidates an exact success proof.
+Actual ARM now reaches `after-runtime` with `verify-owners`, context/deadline
+reached and a failed strict campaign: the runtime probe returned nil, then the
+final complete-owner check refused. This is not whole-operation, durability,
+hosted/full integration qualification or a timing repair. All budgets and the
+1 KiB child capture are unchanged; host redaction/relay/race tests pass.
+
 The QEMU-only native, candidate, lifecycle, fault and data fixtures also emit bounded cumulative
 `PHANTOWD_DIAG_NATIVE_PHASE` timings with fixed phase names, `qualifying=false`
 and `scope=qemu-only`. The monotonic clock starts inside credential setup,
