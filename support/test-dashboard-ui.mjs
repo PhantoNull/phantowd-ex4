@@ -274,7 +274,7 @@ async function createHarness(respond, timing = {}) {
     "gpt-observe", "gpt-observation-status",
     "support-panel", "support-help", "support-download", "support-status",
     ...["form", "document", "submit", "clear", "result", "status"].map(id => `iscsi-${id}`),
-    ...["fields", "add", "name", "volume", "path", "capacity", "block-size", "allocation", "access", "initiator", "auth", "chap-user", "secret-ref", "target-user", "target-secret-ref"].map(id => `iscsi-draft-${id}`),
+    ...["fields", "add", "mode", "target-id", "name", "volume", "path", "capacity", "block-size", "allocation", "access", "initiator", "auth", "chap-user", "secret-ref", "target-user", "target-secret-ref"].map(id => `iscsi-draft-${id}`),
     ...["load", "status", "result", "summary", "shares"].map((id) => `saved-${id}`),
     ...["load", "prepare", "save", "status", "current", "summary", "document", "review", "change", "samba", "nfs", "editor", "target", "member", "action", "edit-preview", "diff", "diff-summary", "overlaps", "overlap-summary", "backup-controls", "backup-download", "restore-file", "restore-preview"].map((id) => `service-${id}`),
     ...["form", "submit", "clear", "result", "error", "status", "requirements", "samba", "nfs", "nfs-fields", "uuid", "name", "path", "user", "smb-access", "nfs-enabled", "export-id", "network", "nfs-access", "squash", "uid", "gid", "security"].map((id) => `policy-${id}`),

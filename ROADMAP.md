@@ -3769,6 +3769,27 @@ support per tested combination; refuse untested combinations without mutation.
   execution. Still needed: qualified source-of-truth load/save/recovery, broader
   target/multi-LUN/initiator editing and guarded credential/storage/session/runtime
   composition before any product create/enable operation.
+- **M9.2j — Existing-target LUN draft extension (host/browser prototype).**
+  Extend M9.2i's same bounded two-preview operation, not a new store/backend.
+  Require exact target ID and IQN and desired-disabled state; this is not proof
+  of runtime inactivity or permission for a live change. Preserve target identity,
+  previous LUNs/backings and all old credentials/grants. Add one backing and
+  collision-free LUN ID with lowest unused number. If the named initiator exists,
+  require identical CHAP/mutual-CHAP mode/users/SecretRefs and append only its new
+  LUN grant. Otherwise propose one new initiator granted only that LUN; never
+  grant all existing peers automatically. Respect16target/64backing/16LUN/
+  32initiator/16grant limits, coherent revisions, safe browser integers and the
+  original strict server base/candidate validation. Refused or ambiguous original
+  evidence must not be normalized into accepted state. Bind candidate display to
+  target/LUN/backing/initiator/access as well as revision/counts. Do not replace
+  source text on refusal or retire old results into a newer operation. Acceptance:
+  correct-seam RED/GREEN, old/new peer and mutual-CHAP preservation, mismatch/
+  enabled/unknown/name refusal, self-consistent substituted projection refusal,
+  actual browser/Go API create→extend with one peer/two LUNs, six preview POSTs,
+  unchanged deadlines/action caps and three viewport checks. ARM qualifies exact
+  embedded HTTP/HTTPS bytes, not JS execution. No save/allocation/secret resolution/
+  target activation; product creation/enable/grow/remove still requires M9.3's
+  real session/storage/credential authority and M1 recovery/source of truth.
 - **M9.3 — Guard mutations.** Create/enable/disable/grow/remove operations check
   real initiator/session ownership and backing-volume state. Prevent local
   filesystem mounting while an initiator owns the LUN; prohibit unsafe shrink.

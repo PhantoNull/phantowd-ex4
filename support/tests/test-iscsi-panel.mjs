@@ -31,7 +31,7 @@ export function iscsiPreviewForPolicy(c) {
 }
 
 export function iscsiDraftFieldsFixture() {
-  return { name: "iqn.2026-01.org.example:draft", volume: "bulk", path: "luns/draft.img", capacity: "8192", "block-size": "512", allocation: "sparse", access: "ro",
+  return { mode: "new-target", "target-id": "", name: "iqn.2026-01.org.example:draft", volume: "bulk", path: "luns/draft.img", capacity: "8192", "block-size": "512", allocation: "sparse", access: "ro",
     initiator: "iqn.2026-01.org.example:draft-peer", auth: "chap", "chap-user": "draft-user", "secret-ref": "draft-secret", "target-user": "", "target-secret-ref": "" };
 }
 
@@ -212,6 +212,28 @@ async function testISCSIDraft(createHarness, jsonResponse, common) {
   const linked = JSON.parse(h.context.buildISCSIDraft(JSON.stringify(linkedBase), iscsiDraftFieldsFixture()).text);
   for (const key of ["volumes","users","shares"]) assert.deepEqual(linked.file_services.shares[key],linkedBase.file_services.shares[key]);
   assert.deepEqual(linked.file_services.nfs.exports,linkedBase.file_services.nfs.exports);
+  const extendFields = { ...iscsiDraftFieldsFixture(), mode:"existing-target", "target-id":result.targetID, path:"luns/extra.img" };
+  const extended = JSON.parse(h.context.buildISCSIDraft(result.text,extendFields).text);
+  assert.equal(extended.revision,3); assert.equal(extended.iscsi.targets.length,2);
+  assert.equal(extended.iscsi.backings.length,3);
+  assert.deepEqual(extended.iscsi.targets[0],c.iscsi.targets[0]);
+  assert.equal(extended.iscsi.targets[1].state,"disabled");
+  assert.equal(extended.iscsi.targets[1].luns.length,2);
+  assert.deepEqual(extended.iscsi.targets[1].luns[0],c.iscsi.targets[1].luns[0]);
+  assert.equal(extended.iscsi.targets[1].luns[1].number,1);
+  assert.equal(extended.iscsi.targets[1].initiators.length,1);
+  assert.deepEqual(extended.iscsi.targets[1].initiators[0].authentication,c.iscsi.targets[1].initiators[0].authentication);
+  assert.deepEqual(extended.iscsi.targets[1].initiators[0].grants[0],c.iscsi.targets[1].initiators[0].grants[0]);
+  assert.equal(extended.iscsi.targets[1].initiators[0].grants.length,2);
+  const newPeer = JSON.parse(h.context.buildISCSIDraft(result.text,{ ...extendFields, initiator:"iqn.2026-01.org.example:another-peer", "chap-user":"another", "secret-ref":"another-secret", access:"rw" }).text);
+  assert.deepEqual(newPeer.iscsi.targets[1].initiators[0],c.iscsi.targets[1].initiators[0]);
+  assert.equal(newPeer.iscsi.targets[1].initiators[1].grants.length,1);
+  assert.equal(newPeer.iscsi.targets[1].initiators[1].grants[0].access,"rw");
+  for (const change of [{"target-id":"missing"}, {name:"iqn.2026-01.org.example:wrong"}, {"secret-ref":"replacement"}, {"chap-user":"replacement"}, {mode:"unknown"}]) {
+    assert.throws(()=>h.context.buildISCSIDraft(result.text,{...extendFields,...change}),/Invalid guided/);
+  }
+  assert.throws(()=>h.context.buildISCSIDraft(source,{...extendFields,"target-id":"target",name:original.iscsi.targets[0].name}),/Invalid guided/);
+  assert.throws(()=>h.context.buildISCSIDraft(source,{...iscsiDraftFieldsFixture(),"target-id":"ignored"}),/Invalid guided/);
   const second = JSON.parse(h.context.buildISCSIDraft(result.text, { ...iscsiDraftFieldsFixture(), name: "iqn.2026-01.org.example:second", path: "luns/second.img", "secret-ref": "second-secret" }).text);
   assert.notEqual(second.iscsi.targets[1].id, second.iscsi.targets[2].id);
   assert.notEqual(second.iscsi.targets[1].luns[0].id, second.iscsi.targets[2].luns[0].id);
@@ -227,6 +249,10 @@ async function testISCSIDraft(createHarness, jsonResponse, common) {
   const mutual = { ...iscsiDraftFieldsFixture(), auth: "mutual-chap", "target-user": "target-user", "target-secret-ref": "target-secret" };
   const mc = JSON.parse(h.context.buildISCSIDraft(source, mutual).text);
   assert.equal(mc.iscsi.targets[1].initiators[0].authentication.target_secret_ref, "target-secret");
+  const mutualDraft = h.context.buildISCSIDraft(source,mutual);
+  const mutualExtended = JSON.parse(h.context.buildISCSIDraft(mutualDraft.text,{...mutual,mode:"existing-target","target-id":mutualDraft.targetID,path:"luns/mutual-extra.img"}).text);
+  assert.deepEqual(mutualExtended.iscsi.targets[1].initiators[0].authentication,mc.iscsi.targets[1].initiators[0].authentication);
+  assert.equal(mutualExtended.iscsi.targets[1].initiators[0].grants.length,2);
   for (const fields of [
     { capacity:"9007199254740992" }, { capacity:"8193" }, { capacity:"1e4" }, { capacity:"08192" }, { capacity:"0" },
     { "block-size":"1024" }, { access:"none" }, { auth:"none" }, { volume:"missing" }, { path:"../escape.img" }, { path:"/absolute" }, { path:"a\\b" }, { path:"a//b" },
@@ -237,13 +263,18 @@ async function testISCSIDraft(createHarness, jsonResponse, common) {
   assert.throws(() => h.context.buildISCSIDraft(source, { ...mutual, "target-secret-ref":"draft-secret" }), /Invalid guided/);
   // Original strict input must be accepted first; never normalize duplicate
   // keys/invalid schemas into a candidate that the server might accept.
-  for (const phase of ["base", "candidate", "projection"]) {
+  for (const phase of ["base", "candidate", "projection", "projection-lun"]) {
     let n = 0;
     const refused = await createHarness((route, options) => {
       if (route !== path) return common(route);
       n++;
       if (phase === "base" || phase === "candidate" && n === 2) return jsonResponse({ error:"PRIVATE" },422);
-      return jsonResponse(phase === "projection" && n === 2 ? iscsiPreviewFixture() : iscsiPreviewForPolicy(JSON.parse(options.body)));
+      const value = phase === "projection" && n === 2 ? iscsiPreviewFixture() : iscsiPreviewForPolicy(JSON.parse(options.body));
+      if (phase === "projection-lun" && n === 2) {
+        value.targets[1].luns[0].id = "substituted-lun";
+        value.targets[1].initiators[0].grants[0].lun_id = "substituted-lun";
+      }
+      return jsonResponse(value);
     });
     fill(refused);
     if (phase === "base") refused.elements["iscsi-document"].value = source.replace('"revision":1', '"revision":1,"revision":1');
@@ -285,5 +316,5 @@ async function testISCSIDraft(createHarness, jsonResponse, common) {
   }
   h.context.clearISCSIPreview();
   for (const name of ["name","volume","path","capacity","initiator","chap-user","secret-ref","target-user","target-secret-ref"]) assert.equal(h.elements[`iscsi-draft-${name}`].value,"");
-  process.stdout.write("iSCSI guided draft controls passed: disabled-first=true original-and-candidate-validation=true safe-integers=true preserved-definitions=true shared-deadline=true retirement=6 writes=false.\n");
+  process.stdout.write("iSCSI guided draft controls passed: disabled-first=true original-and-candidate-validation=true safe-integers=true preserved-definitions=true extend-lun=true credentials-preserved=true projection-bound=true shared-deadline=true retirement=6 writes=false.\n");
 }

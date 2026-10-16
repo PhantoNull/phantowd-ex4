@@ -162,6 +162,16 @@ Guided editing refuses unsafe JavaScript integers rather than rounding; manual
 JSON review retains the full supported uint64 range. Clear/session loss clears
 the private form fields too, without claiming browser-memory zeroization.
 
+M9.2j extends that draft flow with one new backing/LUN on a matching
+desired-disabled target. Reuse an existing initiator only with identical CHAP
+references, preserving credentials and older grants; otherwise propose a new
+initiator granted only the new LUN. Other initiators are unchanged. The target
+is not recreated, LUN IDs remain collision-free and its lowest unused number is
+selected. Candidate display must match the new LUN/backing/initiator/grant too.
+Desired disabled is not proof of runtime inactivity. Existing strict validation,
+limits, integer precision, shared deadline and no-save/open/activation boundaries
+remain; this does not qualify any live target mutation.
+
 The internal [coherent NAS policy](internal/naspolicy/README.md) additionally
 stores desired SMB/NFS/iSCSI as one strict revision through the existing Linux
 transaction engine. Native interruption tests and an actual ARMv5 two-boot

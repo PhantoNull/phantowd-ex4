@@ -942,6 +942,31 @@ qualification follows. No new Docker image/volume or NAS operation. Next is
 completing qualification of the separate experimental retained collector;
 writer/publication/retention/reconciliation and boot-bundle gates remain open.
 
+## M9.2j disabled-target LUN draft extension — local host/browser/ARM prototype
+
+The guided draft can add a backing/LUN to a matching desired-disabled target,
+without recreating that target or changing its previous LUNs. Reusing an initiator
+requires identical authentication references and appends only the new grant;
+a proposed new initiator receives only that LUN, with other grants unchanged.
+Target/initiator/LUN/backing bounds and exact original-then-candidate validation
+remain. The candidate projection must also match the new LUN/backing and grant.
+No server route/store/backend, credential rewrite, file allocation/open or live
+target operation is added; desired disabled is not observed runtime inactivity.
+
+The correct-seam RED test created a third target instead of extending the second;
+it passes with this implementation. Whole Windows/pinned Linux vet/units/tagged
+vet and focused race3 pass. DOM covers old/new initiator preservation, mutual
+CHAP, ID/name/enabled/mismatched-auth refusal and self-consistent but substituted
+projection rejection. Real Edge drives create then extend via actual pointer/
+keyboard events, confirms one target with two LUNs and unchanged credentials/
+old grant, and retains base-refusal/clear/three viewport checks. Six preview POSTs,
+zero exceptions and the unchanged32-pointer/90s browser limits; exact assets and
+all previous HTTP/HTTPS ARM smoke proofs pass. JavaScript runs in the host browser.
+
+No full/hosted/physical/release or saved-management qualification follows. Samba
+triage remains unreproduced, with no code/timer changes or repeated unchanged
+campaign; fixture-budget policy and product state format remain separate decisions.
+
 ## M9.2i guided disabled-target draft — local host/browser/ARM prototype
 
 The panel can now prepare one disabled target/LUN0/backing/initiator with CHAP
