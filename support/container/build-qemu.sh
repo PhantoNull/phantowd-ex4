@@ -1,6 +1,14 @@
 #!/bin/sh
 set -eu
 
+# Only the cached wrapper declares an already-bounded whole-group timeout.
+# Keep that controller until its signalled foreground fixture finishes cleanup;
+# the original timeout/kill-after still bounds the drain. Other callers retain
+# their existing default signal handling. Never retry work.
+if [ "${PHANTOWD_OUTER_GROUP_TIMEOUT:-0}" = 1 ]; then
+    trap 'exit 1' INT TERM
+fi
+
 external_dir="${PHANTOWD_EXTERNAL_DIR:-/external}"
 workspace_dir="${PHANTOWD_WORKSPACE_DIR:-/workspace}"
 ccache_dir="${PHANTOWD_CCACHE_DIR:-$workspace_dir/ccache}"

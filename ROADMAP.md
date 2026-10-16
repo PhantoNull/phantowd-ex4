@@ -492,6 +492,12 @@ button to an unqualified backend simply because the screen exists.
   pull/build an image or create a volume. Preserve isolation, exact-source
   hashes and clean-build/reproducibility lanes. Cache hits are an optimization,
   never qualification evidence.
+  Cached-full INT/TERM diagnostics now preserve an active Samba log prefix
+  (1 MiB artifact/16 KiB console) before tmpfs cleanup. Only the caller declaring
+  the existing bounded group timeout defers controller exit until foreground
+  cleanup; no timer or proof is relaxed. Actual-driver host controls and a real
+  Docker PID1 timeout with stub guest commands pass. This is not an ARM/full-run
+  qualification, repair of intermittency or guaranteed SIGKILL/durable logging.
   **Current native timing gate:** coordinated fixture-only budget design is
   approved and implemented: ordinary-native work300s, one fixed settlement
   deadline at original work deadline+30s, host360s including30s boot/final

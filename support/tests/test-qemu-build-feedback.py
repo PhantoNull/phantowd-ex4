@@ -1,12 +1,15 @@
 #!/usr/bin/env python3
 """Regression contracts for early feedback and failed-guest diagnostics."""
 
+import hashlib
 import pathlib
 import os
 import re
 import shlex
+import signal
 import subprocess
 import tempfile
+import time
 import unittest
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
@@ -1078,6 +1081,242 @@ class BuildFeedbackTests(unittest.TestCase):
             result = save_log(destination, directory / "missing.log")
             self.assertIn("did not create its log", destination.read_text())
             self.assertIn("did not create its log", result.stderr)
+
+
+@unittest.skipUnless(os.name == 'posix', 'POSIX process-group signal contract')
+class SambaSignalRetentionTests(unittest.TestCase):
+    """Actual driver cleanup with stub compiler, image and QEMU commands."""
+
+    def setUp(self):
+        self.temporary = tempfile.TemporaryDirectory(
+            prefix='phantowd-samba-signal-')
+        self.addCleanup(self.temporary.cleanup)
+        self.directory = pathlib.Path(self.temporary.name)
+        self.source = self.directory / 'source'
+        tests = self.source / 'support/tests'
+        tests.mkdir(parents=True)
+        for relative in ('tools/phantowd-lab', 'src/phantowd-api'):
+            (self.source / relative).mkdir(parents=True)
+        for name in ('test-samba-root-staging.sh',
+                     'stage-samba-root-file.sh'):
+            (tests / name).write_text('#!/bin/sh\nexit 0\n')
+        (tests / 'samba_root_fixture.py').write_text(
+            'import pathlib,sys\n'
+            'command=sys.argv[1]\n'
+            'if command=="select-campaigns": print("service")\n'
+            'elif command=="guest-timeout": print("180")\n'
+            'elif command=="prepare":\n'
+            ' pathlib.Path(sys.argv[-1]).write_text("synthetic manifest")\n'
+            'elif command not in ("verify-campaign","timing-summary"):\n'
+            ' sys.exit(2)\n')
+        self.base = self.directory / 'base'
+        self.base.mkdir()
+        payload = b'synthetic immutable base\n'
+        names = ('rootfs.ext2', 'zImage', 'versatile-pb.dtb')
+        for name in names:
+            (self.base / name).write_bytes(payload)
+        (self.base / 'SHA256SUMS').write_text(''.join(
+            hashlib.sha256(payload).hexdigest() + '  ' + name + '\n'
+            for name in names))
+        self.target = self.directory / 'target'
+        self.target.mkdir()
+        self.binary = self.directory / 'bin'
+        self.binary.mkdir()
+        tool = (
+            '#!/usr/bin/env python3\nimport pathlib,sys\n'
+            'if "-o" in sys.argv:\n'
+            ' output=pathlib.Path(sys.argv[sys.argv.index("-o")+1])\n'
+            ' output.write_text("#!/bin/sh\\nprintf \'{}\\\\n\'\\n"'
+            ' if output.name=="lab" else "synthetic executable")\n'
+            ' output.chmod(0o755)\n')
+        for name in ('go', 'compiler', 'debugfs', 'resize2fs', 'mke2fs'):
+            self.executable(name, tool)
+        self.executable('qemu-system-arm',
+                        '#!/usr/bin/env python3\n'
+                        'import os,pathlib,signal,sys\n'
+                        'root=pathlib.Path(os.environ['
+                        '"PHANTOWD_SIGNAL_FIXTURE_DIR"])\n'
+                        'def emit(data):\n'
+                        ' sys.stdout.buffer.write(data)\n'
+                        ' sys.stdout.buffer.flush()\n'
+                        ' with (root/"expected").open("ab") as stream:\n'
+                        '  stream.write(data)\n'
+                        'def stop(signum,frame):\n'
+                        ' signal.signal(signal.SIGTERM,signal.SIG_IGN)\n'
+                        ' emit(b"synthetic-final-on-stop\\n")\n'
+                        ' sys.exit(143)\n'
+                        'signal.signal(signal.SIGTERM,stop)\n'
+                        'emit(b"synthetic-before-interruption\\n")\n'
+                        'if os.environ.get("PHANTOWD_SIGNAL_FIXTURE_LARGE")'
+                        '=="yes": emit(b"x"*(1048576+65536))\n'
+                        'mode=os.environ["PHANTOWD_SIGNAL_FIXTURE_MODE"]\n'
+                        'if mode!="wait": sys.exit(0 if mode=="pass" else 7)\n'
+                        '(root/"ready").write_text(str(os.getpid()))\n'
+                        'while True: signal.pause()\n')
+        self.failure = self.directory / 'artifacts/failure.log'
+        self.failure.parent.mkdir()
+        self.failure.write_bytes(b'stale-before-this-run\n')
+        self.failure_argument = str(self.failure)
+        self.large = False
+
+    def executable(self, name, body):
+        path = self.binary / name
+        path.write_text(body)
+        path.chmod(0o755)
+
+    def driver_spec(self, mode):
+        command = [
+            'sh', str(ROOT / 'support/tests/test-qemu-samba-root.sh'),
+            str(self.base), str(self.target), str(self.binary / 'go'),
+            str(self.binary / 'debugfs'), str(self.binary / 'compiler'),
+            str(self.source), self.failure_argument, 'service']
+        environment = {
+            **os.environ, 'TMPDIR': str(self.directory),
+            'PATH': str(self.binary) + os.pathsep + os.environ['PATH'],
+            'PHANTOWD_SIGNAL_FIXTURE_DIR': str(self.directory),
+            'PHANTOWD_SIGNAL_FIXTURE_MODE': mode,
+            'PHANTOWD_OUTER_GROUP_TIMEOUT': '1',
+            'PHANTOWD_SIGNAL_FIXTURE_LARGE': 'yes' if self.large else 'no'}
+        return command, environment
+
+    def controller_script(self, command):
+        source = (ROOT / 'support/container/build-qemu.sh').read_text()
+        prologue = source.split('external_dir=', 1)[0]
+        # The actual controller's signal prologue, then its foreground-call
+        # shape. Heavy build commands are not executed by this unit fixture.
+        return prologue + '\n' + shlex.join(command) + (
+            '; status=$?; exit "$status"')
+
+    def test_controller_drain_requires_declared_outer_group_bound(self):
+        command, _ = self.driver_spec('pass')
+        prologue = self.controller_script(command)
+        self.assertIn('if [ "${PHANTOWD_OUTER_GROUP_TIMEOUT:-0}" = 1 ];',
+                      prologue)
+        self.assertEqual(prologue.count("trap 'exit 1' INT TERM"), 1)
+        wrapper = (ROOT / 'support/build-qemu.ps1').read_text()
+        self.assertEqual(wrapper.count(
+            'export PHANTOWD_OUTER_GROUP_TIMEOUT=1'), 1)
+        self.assertLess(wrapper.index(
+            'export PHANTOWD_OUTER_GROUP_TIMEOUT=1'), wrapper.index(
+                'exec /bin/sh /external/support/container/build-qemu.sh'))
+
+    def test_controller_without_bound_keeps_default_signals(self):
+        controller = ROOT / 'support/container/build-qemu.sh'
+        prologue = controller.read_text().split('external_dir=', 1)[0]
+        environment = dict(os.environ)
+        environment.pop('PHANTOWD_OUTER_GROUP_TIMEOUT', None)
+        result = subprocess.run(['sh', '-ec', prologue + '\ntrap'],
+                                env=environment, capture_output=True,
+                                text=True, timeout=3)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout, '')
+
+    def run_driver(self, mode, group_signal=False, controller=False,
+                   signum=signal.SIGTERM):
+        command, environment = self.driver_spec(mode)
+        if controller:
+            command = ['sh', '-c', self.controller_script(command)]
+        process = subprocess.Popen(
+            command, env=environment, stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE, start_new_session=True)
+        try:
+            if mode == 'wait':
+                deadline = time.monotonic() + 5
+                while not (self.directory / 'ready').exists():
+                    self.assertIsNone(process.poll(),
+                                      'driver exited before fake guest')
+                    self.assertLess(time.monotonic(), deadline,
+                                    'fake guest readiness deadline')
+                    time.sleep(0.01)
+                if group_signal:
+                    os.killpg(process.pid, signum)
+                else:
+                    process.send_signal(signum)
+            stdout, stderr = process.communicate(timeout=5)
+        finally:
+            # Only this test's newly-created session, never the test runner.
+            if process.poll() is None:
+                os.killpg(process.pid, signal.SIGKILL)
+                process.communicate(timeout=3)
+        self.assertEqual(list(self.directory.glob('phantowd-samba-root.*')),
+                         [], 'real driver cleanup left its tmpfs fixture')
+        if (self.directory / 'ready').exists():
+            guest_pid = int((self.directory / 'ready').read_text())
+            with self.assertRaises(ProcessLookupError):
+                os.kill(guest_pid, 0)
+        return process.returncode, stdout, stderr
+
+    def check_interrupted(self, group_signal, controller=False):
+        status, stdout, stderr = self.run_driver(
+            'wait', group_signal, controller)
+        self.assertNotEqual(status, 0)
+        self.assertEqual(self.failure.read_bytes(),
+                         (self.directory / 'expected').read_bytes())
+        self.assertIn(b'synthetic-final-on-stop\n', self.failure.read_bytes())
+        self.assertNotIn(b'PHANTOWD_SAMBA_FOCUSED_COMPLETE', stdout)
+        self.assertNotIn(b'PHANTOWD_SAMBA_ROOT_BASE_UNCHANGED', stdout)
+        self.assertIn(b'qualifying=false', stderr)
+
+    def test_parent_term_preserves_settled_active_log(self):
+        self.check_interrupted(False)
+
+    def test_group_term_preserves_settled_active_log(self):
+        self.check_interrupted(True)
+
+    def test_controller_group_term_preserves_settled_active_log(self):
+        self.check_interrupted(True, controller=True)
+
+    def test_group_int_still_fails_and_preserves_active_log(self):
+        status, stdout, stderr = self.run_driver(
+            'wait', group_signal=True, signum=signal.SIGINT)
+        self.assertNotEqual(status, 0)
+        self.assertEqual(self.failure.read_bytes(),
+                         (self.directory / 'expected').read_bytes())
+        self.assertNotIn(b'PHANTOWD_SAMBA_FOCUSED_COMPLETE', stdout)
+        self.assertIn(b'qualifying=false', stderr)
+
+    def test_interrupted_artifact_and_console_are_byte_bounded(self):
+        self.large = True
+        status, stdout, stderr = self.run_driver('wait', group_signal=True)
+        self.assertNotEqual(status, 0)
+        expected = (self.directory / 'expected').read_bytes()
+        self.assertGreater(len(expected), 1048576)
+        self.assertEqual(self.failure.read_bytes(), expected[:1048576])
+        self.assertLessEqual(len(stderr), 17408)
+        self.assertIn(b'completeness=unknown qualifying=false', stderr)
+        self.assertNotIn(b'PHANTOWD_SAMBA_FOCUSED_COMPLETE', stdout)
+
+    def test_no_artifact_path_keeps_console_diagnostics_only(self):
+        self.failure_argument = ''
+        status, stdout, stderr = self.run_driver('wait')
+        self.assertNotEqual(status, 0)
+        self.assertEqual(self.failure.read_bytes(), b'stale-before-this-run\n')
+        self.assertIn(b'synthetic-final-on-stop', stderr)
+        self.assertNotIn(b'PHANTOWD_SAMBA_FOCUSED_COMPLETE', stdout)
+
+    def test_artifact_write_refusal_does_not_mask_interruption(self):
+        self.failure.unlink()
+        self.failure.mkdir()
+        status, stdout, stderr = self.run_driver('wait')
+        self.assertNotEqual(status, 0)
+        self.assertTrue(self.failure.is_dir())
+        self.assertIn(b'PHANTOWD_SAMBA_INTERRUPTED_LOG_SAVE_FAILED', stderr)
+        self.assertIn(b'synthetic-final-on-stop', stderr)
+        self.assertNotIn(b'PHANTOWD_SAMBA_FOCUSED_COMPLETE', stdout)
+
+    def test_normal_failure_keeps_existing_raw_capture(self):
+        status, stdout, _ = self.run_driver('fail')
+        self.assertNotEqual(status, 0)
+        self.assertEqual(self.failure.read_bytes(),
+                         (self.directory / 'expected').read_bytes())
+        self.assertNotIn(b'PHANTOWD_SAMBA_FOCUSED_COMPLETE', stdout)
+
+    def test_success_does_not_replace_stale_failure_artifact(self):
+        status, stdout, stderr = self.run_driver('pass')
+        self.assertEqual(status, 0, stderr)
+        self.assertEqual(self.failure.read_bytes(), b'stale-before-this-run\n')
+        self.assertIn(b'PHANTOWD_SAMBA_FOCUSED_COMPLETE', stdout)
+        self.assertNotIn(b'qualifying=false', stderr)
 
 
 if __name__ == "__main__":

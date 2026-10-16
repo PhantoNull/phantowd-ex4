@@ -22,6 +22,26 @@ inputs, match their frozen witnesses after termination; the workspace is idle.
 The post-success audit guard refuses this failed terminal before Docker.
 No retry, budget increase, audit, PR promotion or merge follows from this result.
 
+### Interrupted-test log retention: host-only correction
+
+The cached wrapper now declares its existing bounded group timeout; that caller's
+controller waits for its signalled foreground fixture cleanup instead of exiting
+first. Other callers keep default signal handling. The Samba driver preserves
+up to 1 MiB of active regular-log bytes and a 16 KiB console tail on INT/TERM,
+after its existing child wait, before tmpfs deletion. Diagnostics explicitly
+remain incomplete/non-qualifying; unavailable output cannot turn failure into
+success. Ordinary captures and successful-run failure artifacts are unchanged.
+
+An actual-driver regression first reproduces stale artifacts on both parent and
+group SIGTERM. A real Docker PID1 timeout probe distinguishes controller teardown
+from the missing cleanup copy, then preserves final synthetic stop bytes with
+the same Docker exit 124. All 55 feedback tests, seven cached-preflight tests,
+80 Samba fixture controls, the Windows mocked-wrapper contract and lint pass.
+These compiler/image/QEMU commands are stubs: no new ARM, full integration,
+source/image audit, hosted or physical qualification is claimed. No budget is
+increased and the earlier failed full run remains failed. See the
+[interruption contract](support/QEMU-FAST-TESTS.md#interrupted-cached-run-diagnostics).
+
 ## Earlier integration failure: `0beb01e` held/data deadline
 
 The complete cached qualifier of clean `0beb01e` passes host/race/fuzz,

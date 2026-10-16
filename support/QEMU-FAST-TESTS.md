@@ -1,5 +1,31 @@
 # Fast API and file-service integration checks
 
+## Interrupted cached-run diagnostics
+
+The cached full wrapper declares its existing whole-process-group timeout to
+the build controller. Only that declared profile traps INT/TERM to let its
+already-signalled foreground fixture finish cleanup before controller exit;
+the original 1,800-second limit and 30-second kill grace are unchanged. Callers
+without that declaration retain their default signal handling. The declaration
+is a trusted harness setting, not proof of a timer or product authority.
+
+On INT/TERM, the Samba driver attempts to preserve the active regular, non-symlink
+guest log after its existing child wait and before removing tmpfs. The artifact
+is capped at 1 MiB and the console tail at 16 KiB. Its fixed diagnostic row states
+`completeness=unknown qualifying=false`: it may be a prefix, not a complete trace.
+An unavailable destination still fails the interrupted test and reports the
+save refusal; no retry or recovery occurs. Success does not overwrite a stale
+failure artifact, and ordinary failure/union captures retain their existing form.
+SIGKILL, a vanished caller, stuck I/O or an exhausted stop grace can still prevent
+preservation. This is best-effort diagnosis, not durable log storage.
+
+Fast host controls run the actual shell driver and controller signal prologue
+with stub compiler/image/QEMU commands. A separate real Docker PID1 timeout
+probe reproduces the lost-log path and then preserves the stub guest's final
+stop bytes while still returning Docker exit 124. These tests do not execute
+an ARM guest, qualify the original 30-minute run or repair Samba intermittency.
+All guest, worker, phase, stop, verification and post-success audit gates remain.
+
 ## Latest complete-run boundary
 
 The single clean `dedafa6` cached full run reaches eight strictly verified Samba

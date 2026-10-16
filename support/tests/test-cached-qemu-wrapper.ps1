@@ -75,6 +75,7 @@ try {
         '/ccache/.phantowd-owner-builder-v1', '/external/artifacts/.phantowd-owner-builder-v1',
         '[ -x "$output_dir/host/bin/go" ]', '[ -d "$output_dir/target" ]',
         '[ -w /workspace ] && [ -w /ccache ] && [ -w /external/artifacts ]',
+        'export PHANTOWD_OUTER_GROUP_TIMEOUT=1',
         'exec /bin/sh /external/support/container/build-qemu.sh')) {
         Assert-True ($scriptText.Contains($expected)) "Missing preflight contract: $expected"
     }

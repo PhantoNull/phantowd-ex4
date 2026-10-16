@@ -76,6 +76,8 @@ done
     printf 'Cached-only inputs require existing builder write permissions; no ownership repair is performed.\n' >&2
     exit 2
 }
+# This caller already has timeout1800/kill-after30 over the whole process group.
+export PHANTOWD_OUTER_GROUP_TIMEOUT=1
 exec /bin/sh /external/support/container/build-qemu.sh
 '@
     $cachedScript = $cachedScript.Replace("`r`n", "`n")

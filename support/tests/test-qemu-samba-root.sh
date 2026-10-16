@@ -39,10 +39,27 @@ done
 sh "$source_dir/support/tests/test-samba-root-staging.sh" "$debugfs" "$source_dir"
 scratch=$(mktemp -d "$tmpdir/phantowd-samba-root.XXXXXX")
 child_pid=
+interrupted=0
+failure_saved=0
 cleanup() {
     if [ -n "$child_pid" ] && kill -0 "$child_pid" 2>/dev/null; then
         kill "$child_pid" 2>/dev/null || true
         wait "$child_pid" 2>/dev/null || true
+    fi
+    if [ "$interrupted" -eq 1 ] && [ "$failure_saved" -eq 0 ] && \
+        [ -n "${campaign:-}" ] && [ -f "$scratch/${campaign:-}.log" ] && \
+        [ ! -L "$scratch/${campaign:-}.log" ]; then
+        # Best-effort synthetic evidence after the existing child wait, before
+        # removing tmpfs. A signal/partial log can never qualify a campaign.
+        active_log="$scratch/$campaign.log"
+        printf 'PHANTOWD_SAMBA_INTERRUPTED_LOG campaign=%s capture_limit_bytes=1048576 completeness=unknown qualifying=false scope=qemu-only\n' "$campaign" >&2
+        if [ -n "$failure_log" ]; then
+            if ! (mkdir -p "$(dirname "$failure_log")" && \
+                head -c 1048576 "$active_log" >"$failure_log"); then
+                echo 'PHANTOWD_SAMBA_INTERRUPTED_LOG_SAVE_FAILED qualifying=false scope=qemu-only' >&2
+            fi
+        fi
+        tail -c 16384 "$active_log" >&2 || true
     fi
     # Only this exact newly-created tmpfs directory owns these files.
     rm -f "$scratch/rootfs.ext2" "$scratch/acl.ext4" "$scratch/lab" "$scratch/smbd.json" \
@@ -58,7 +75,7 @@ cleanup() {
     rmdir "$scratch"
 }
 trap cleanup EXIT
-trap 'exit 1' INT TERM
+trap 'interrupted=1; exit 1' INT TERM
 (cd "$base" && sha256sum -c SHA256SUMS)
 base_hash=$(sha256sum "$base/rootfs.ext2" | awk '{print $1}')
 export GOPROXY=off GOTOOLCHAIN=local GOFLAGS='-mod=vendor -buildvcs=false'
@@ -213,6 +230,7 @@ if [ "$verified" -ne 1 ]; then
     if [ -n "$failure_log" ]; then
         mkdir -p "$(dirname "$failure_log")"
         cp "$scratch/$campaign.log" "$failure_log"
+        failure_saved=1
     fi
     printf 'Samba campaign failed: %s\n' "$campaign" >&2
     tail -n 120 "$scratch/$campaign.log" >&2
@@ -232,6 +250,7 @@ if [ "$selection" = all ] && ! python3 -B "$source_dir/support/tests/samba_root_
             "$scratch/candidate.log" "$scratch/lifecycle.log" \
             "$scratch/fault.log" "$scratch/data.log" "$scratch/exit.log" \
             "$scratch/held.log" "$scratch/file.log" "$scratch/file-source.log" >"$failure_log"
+        failure_saved=1
     fi
     tail -n 60 "$scratch/service.log" >&2
     tail -n 60 "$scratch/native.log" >&2
