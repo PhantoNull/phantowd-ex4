@@ -3,6 +3,16 @@
 
 # Dependency review and update qualification
 
+## Latest candidate boundary (2026-10-16)
+
+The single full cached run for clean `94e791f` fails final Samba file-source
+held-file admission after nine campaigns pass. Its generated images, package
+metadata and SBOM are **not a new complete qualification**. The guarded strict
+post-success source/image/SDK/legal audit is not executed on this exit1 run.
+Earlier complete audit checkpoints below remain dated evidence for their exact
+inputs; separate current focused SMART producer passes do not repair this gate.
+See [implementation status](../IMPLEMENTATION-STATUS.md).
+
 ## Samba July advisory/source cross-check (2026-10-15)
 
 This is a **six-advisory source/configuration review**, not complete Samba CVE,

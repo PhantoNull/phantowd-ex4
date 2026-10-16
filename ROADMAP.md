@@ -67,6 +67,15 @@ currently product-qualified for migration.
 
 ## Current baseline
 
+The single complete local qualifier for `94e791f` fails final Samba file-source
+held-file admission after nine campaigns pass. Zero source-cost checkpoints and
+6,717 ms localize the refusal before explicit source-cover injection, not its
+inner cause. All 1,513 tracked/1,098 API inputs stay unchanged. Later SMART lanes
+and strict post-success audit are not reached; generated artifacts are not a
+new complete qualification. Next instrument that bounded first admission and
+test the focused path. No timer/proof relaxation, full retry, hosted repair or
+merge is inferred; [current gate](IMPLEMENTATION-STATUS.md).
+
 The optional fixed parent-share mount substitution now also passes: binding
 the SAME directory at the parent path changes unique mount identity without
 changing device/inode/content. Original-root-relative no-symlink metadata

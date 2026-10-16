@@ -3,7 +3,25 @@
 
 # Implementation status
 
-## Current integration gate: hosted fault failure remains open
+## Current integration gate: latest full candidate fails held-file admission
+
+The single complete cached local qualifier of clean `94e791f` fails the final
+`file-source` campaign after nine original Samba campaigns pass. The actual
+source-cost row has zero reached checkpoints and 6,717 ms elapsed; source review
+places this refusal in the original held-open-file admission, before the explicit
+source-cover fault. Review is retained, exact child proof fails and the guest's
+ordinary reboot does not override the wrapper's exit1. The exact inner refusal
+is not yet observed; this is not the older hosted ungranted/post-admission cause.
+
+All 1,513 tracked/1,098 API inputs remain unchanged. Standard smoke, MD metadata,
+two-boot state, launcher/runtime/loader/atomic and nine Samba campaign scopes pass;
+the full run's later SMART lanes are not reached. Earlier focused SMART tests keep
+their separate scope. Generated images/metadata are not fully qualified; the
+strict post-success audit is not executed. No retry, timer/proof relaxation,
+merge or physical NAS operation follows. Next localize the first held-file
+admission with a bounded focused trace rather than another complete build.
+
+## Earlier hosted fault gate remains open
 
 Candidate `e4fc079` passes hosted host/B3 checks but fails its own QEMU fault
 campaign at data/ungranted/post-admission. It is not ready to merge. The complete

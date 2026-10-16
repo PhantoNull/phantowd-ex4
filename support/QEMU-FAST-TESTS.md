@@ -18,8 +18,15 @@ cannot replace or accompany the exact successful child proof. The existing
 worker/readiness/stop limits are unchanged. No default guest or CI stage is added.
 
 Pinned Linux command-package vet/unit/race and a focused actual ARMv5 healthy
-run pass; the failure-only emission branch is unit-tested on Linux, not yet
-observed in a failing instrumented ARM guest. The earlier complete candidate
+run pass. A later complete candidate `94e791f` now provides actual failing ARM
+emission: final file-source admission returns review with zero checkpoints and
+6,717 ms elapsed, before the source-cover action. The first held-open-file
+admission is localized, not its inner refusal or a deterministic runtime cause.
+The original host verifier also rejects the captured real failed trace. This
+closes the failure-emission observation gap, not qualification: nine campaigns
+pass, the final one fails and later SMART lanes/full audit are not reached.
+Source/authority/time/proof limits remain unchanged; no full retry is selected.
+The earlier complete candidate
 failed its final file-source fixture. Code checkpoint `5245ada` subsequently
 passes the original complete cached lane, all ten Samba campaigns/strict union,
 both SMART lanes and independent exact-source/image audit. Seven complete
