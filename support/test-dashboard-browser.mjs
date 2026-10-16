@@ -15,7 +15,7 @@ import { dirname, join, resolve, basename } from "node:path";
 import { fileURLToPath } from "node:url";
 import { setTimeout as delay } from "node:timers/promises";
 import { classifyPageResource } from "./browser-resource-contract.mjs";
-import { iscsiPolicyFixture } from "./tests/test-iscsi-panel.mjs";
+import { iscsiExposurePolicyFixture } from "./tests/test-iscsi-panel.mjs";
 import { readOwnedBrowserEndpoint } from "./browser-startup-contract.mjs";
 
 const repo = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -326,14 +326,17 @@ try {
 
   if (apiFixture) {
     await clickVisible("iscsi-document");
-    await replaceInput("iscsi-document", JSON.stringify(iscsiPolicyFixture()));
+    await replaceInput("iscsi-document", JSON.stringify(iscsiExposurePolicyFixture()));
     await clickVisible("iscsi-submit");
     await until(() => evaluate(`!document.getElementById('iscsi-result').hidden && !document.getElementById('iscsi-submit').disabled`), browser, "actual iSCSI preview HTTP result");
     const displayed = await evaluate("document.getElementById('iscsi-result').textContent");
     assert.match(displayed, /LUN 0.*4096 bytes/);
     assert.match(displayed, /iqn\.2001-04\.com\.example:target/);
     assert.match(displayed, /desired enabled; running state unavailable/);
-    assert.doesNotMatch(displayed, /private-user|private-ref|11111111-2222/);
+    assert.match(displayed, /1 SMB share\(s\), 1 NFS export\(s\)/);
+    assert.match(displayed, /Review potential backing-file exposure/);
+    assert.match(displayed, /Zero configured overlaps does not prove isolation/);
+    assert.doesNotMatch(displayed, /private-user|private-ref|11111111-2222|Private share name|198\.51\.100\.1/);
     for (const width of [1365, 390, 320]) {
       await send("Emulation.setDeviceMetricsOverride", { width, height: 900, deviceScaleFactor: 1, mobile: false });
       await evaluate("document.getElementById('iscsi-result').scrollIntoView({block:'start'})");

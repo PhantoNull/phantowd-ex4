@@ -9,13 +9,14 @@ import (
 	"encoding/json"
 	"errors"
 	"strconv"
+	"strings"
 
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/naspolicy"
 )
 
 const (
 	Format         = "phantowd-desired-iscsi-preview"
-	SchemaVersion  = 1
+	SchemaVersion  = 2
 	MaxOutputBytes = 256 << 10
 )
 
@@ -41,12 +42,14 @@ type Preview struct {
 }
 
 type Backing struct {
-	ID            string `json:"id"`
-	VolumeID      string `json:"volume_id"`
-	RelativePath  string `json:"relative_path"`
-	CapacityBytes string `json:"capacity_bytes"`
-	BlockSize     uint16 `json:"block_size"`
-	Allocation    string `json:"allocation"`
+	ID                  string `json:"id"`
+	VolumeID            string `json:"volume_id"`
+	RelativePath        string `json:"relative_path"`
+	CapacityBytes       string `json:"capacity_bytes"`
+	BlockSize           uint16 `json:"block_size"`
+	Allocation          string `json:"allocation"`
+	SMBPathOverlapCount int    `json:"smb_path_overlap_count"`
+	NFSPathOverlapCount int    `json:"nfs_path_overlap_count"`
 }
 
 type Target struct {
@@ -94,15 +97,27 @@ func Build(config naspolicy.Config) (Preview, error) {
 		Targets:        make([]Target, 0, len(config.ISCSI.Targets)),
 		Limitations: []string{
 			"Desired definitions only; enabled is not evidence of a running target.",
+			"Configured same-volume path overlaps are advisory only, including read-only shares and disabled targets. Zero does not exclude filesystem aliases, external shares or actual use.",
 			"Storage identity, backing size/allocation, free space and cross-protocol/global use are not validated.",
 			"Credentials, effective access, initiator sessions and network reachability are not validated.",
 			"CHAP does not encrypt data traffic. No service is saved, started or changed by this preview.",
 		},
 	}
 	for _, b := range config.ISCSI.Backings {
-		p.Backings = append(p.Backings, Backing{ID: string(b.ID), VolumeID: string(b.VolumeID),
+		row := Backing{ID: string(b.ID), VolumeID: string(b.VolumeID),
 			RelativePath: b.RelativePath, CapacityBytes: strconv.FormatUint(b.CapacityBytes, 10),
-			BlockSize: b.BlockSize, Allocation: b.Allocation})
+			BlockSize: b.BlockSize, Allocation: b.Allocation}
+		for _, share := range config.FileServices.Shares.Shares {
+			if share.VolumeID == b.VolumeID && configuredPathOverlap(share.RelativePath, b.RelativePath) {
+				row.SMBPathOverlapCount++
+			}
+		}
+		for _, export := range config.FileServices.NFS.Exports {
+			if export.VolumeID == b.VolumeID && configuredPathOverlap(export.RelativePath, b.RelativePath) {
+				row.NFSPathOverlapCount++
+			}
+		}
+		p.Backings = append(p.Backings, row)
 	}
 	for _, target := range config.ISCSI.Targets {
 		t := Target{ID: string(target.ID), Name: target.Name, DesiredState: target.State,
@@ -124,4 +139,10 @@ func Build(config naspolicy.Config) (Preview, error) {
 		return Preview{}, ErrInvalid
 	}
 	return p, nil
+}
+
+// Only validated canonical volume-relative paths enter this comparison. Never
+// normalize/case-fold, resolve filesystem objects or treat a negative as safety.
+func configuredPathOverlap(a, b string) bool {
+	return a == "." || b == "." || a == b || strings.HasPrefix(a, b+"/") || strings.HasPrefix(b, a+"/")
 }

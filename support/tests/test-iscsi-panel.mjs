@@ -18,13 +18,24 @@ export function iscsiPolicyFixture() {
 
 export function iscsiPreviewFixture() {
   const c = iscsiPolicyFixture();
-  return { format: "phantowd-desired-iscsi-preview", schema_version: 1, scope: "desired-policy-only", revision: "1",
+  return { format: "phantowd-desired-iscsi-preview", schema_version: 2, scope: "desired-policy-only", revision: "1",
     storage_validated: false, credentials_validated: false, runtime_validated: false, activation_available: false,
     smb_definitions: 0, nfs_definitions: 0,
-    backings: c.iscsi.backings.map(b => ({ ...b, capacity_bytes: String(b.capacity_bytes) })),
+    backings: c.iscsi.backings.map(b => ({ ...b, capacity_bytes: String(b.capacity_bytes), smb_path_overlap_count: 0, nfs_path_overlap_count: 0 })),
     targets: c.iscsi.targets.map(t => ({ id: t.id, name: t.name, desired_state: t.state, luns: t.luns,
       initiators: t.initiators.map(p => ({ name: p.name, desired_authentication: p.authentication.mode, grants: p.grants })) })),
     limitations: ["Desired definitions only.", "CHAP does not encrypt data traffic."] };
+}
+
+// Complete submitted policy, not a mocked response: used by the real browser
+// against the actual Go preview handler. Read-only shares still expose a LUN.
+export function iscsiExposurePolicyFixture() {
+  const c = iscsiPolicyFixture();
+  c.file_services.shares.users = [{ id: "reader", name: "reader" }];
+  c.file_services.shares.shares = [{ id: "share", name: "Private share name", volume_id: "bulk", relative_path: ".", grants: [{ user_id: "reader", access: "ro" }] }];
+  c.file_services.nfs.exports = [{ id: "aaaaaaaa-1111-2222-3333-444444444444", volume_id: "bulk", relative_path: "luns",
+    clients: [{ network: "198.51.100.1/32", access: "ro", squash: "all", anonymous_uid: 65534, anonymous_gid: 65534, security: "sys" }] }];
+  return c;
 }
 
 const text = (element) => [element.textContent, ...element.children.map(text)].join(" ");
@@ -46,6 +57,14 @@ export async function testISCSIPanel(createHarness, jsonResponse, snapshotRespon
   assert.match(text(h.elements["iscsi-result"]), /LUN 0.*4096 bytes/);
   assert.match(text(h.elements["iscsi-result"]), /desired enabled; running state unavailable/);
   assert.doesNotMatch(text(h.elements["iscsi-result"]), /private-user|private-ref|11111111-2222/);
+  assert.match(text(h.elements["iscsi-result"]), /No lexical overlap.*not proof of safe use/);
+  const overlap = iscsiPreviewFixture(); overlap.smb_definitions = 128; overlap.nfs_definitions = 128;
+  overlap.backings[0].smb_path_overlap_count = 128; overlap.backings[0].nfs_path_overlap_count = 128;
+  h.context.renderISCSIPreview(overlap);
+  assert.match(text(h.elements["iscsi-result"]), /128 SMB share\(s\), 128 NFS export\(s\)/);
+  assert.match(text(h.elements["iscsi-result"]), /Review potential backing-file exposure/);
+  assert.match(text(h.elements["iscsi-result"]), /including read-only shares and disabled targets/);
+  assert.match(text(h.elements["iscsi-result"]), /Zero configured overlaps does not prove isolation/);
   output = iscsiPreviewFixture(); output.revision = "18446744073709551615"; output.backings[0].capacity_bytes = "9223372036854771712";
   output.backings[0].relative_path = "luns/<img-onerror>";
   output.unknown_secret = "PRIVATE-UNKNOWN";
@@ -59,6 +78,13 @@ export async function testISCSIPanel(createHarness, jsonResponse, snapshotRespon
   assert.match(text(h.elements["iscsi-result"]), /Explicit empty desired iSCSI policy/);
   assert.match(text(h.elements["iscsi-result"]), /nothing about currently running targets/);
   for (const change of [
+    p => { p.schema_version = 1; }, p => { p.schema_version = 3; },
+    ...["smb_path_overlap_count", "nfs_path_overlap_count"].flatMap(key => [
+      p => { delete p.backings[0][key]; }, p => { p.backings[0][key] = -1; },
+      p => { p.backings[0][key] = 1; }, p => { p.backings[0][key] = 129; },
+      p => { p.backings[0][key] = "0"; }, p => { p.backings[0][key] = 0.5; },
+      p => { p.backings[0][key] = null; }, p => { p.backings[0][key] = NaN; },
+    ]),
     p => { p.activation_available = true; }, p => { p.storage_validated = true; },
     p => { p.credentials_validated = true; }, p => { p.runtime_validated = true; },
     p => { p.revision = 1; }, p => { p.revision = "18446744073709551616"; }, p => { p.revision = "01"; },

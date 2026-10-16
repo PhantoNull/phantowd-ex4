@@ -3647,6 +3647,19 @@ support per tested combination; refuse untested combinations without mutation.
   full/two-boot/hosted, production security, target activation or physical EX4
   qualification. Next: authorized source-of-truth migration and guarded product
   credential/storage/session composition before any saved target workflow.
+- **M9.2h — Configured backing exposure advisory (local prototype).** Extend the
+  existing authenticated preview to schema2 with explicit per-backing SMB/NFS
+  path-overlap counts bounded by the submitted complete definition rosters.
+  Compare only validated canonical paths on the same logical volume: root,
+  equal and ancestor/descendant components, case-sensitive without normalization.
+  Include read-only shares and disabled targets; no lexical match is not safety.
+  Display positive exposure warnings and explicit negative limitations using
+  text only. Refuse old/missing/malformed/contradictory counts; retain all original
+  authentication, byte/deadline/retirement/privacy and no-save/open/activation
+  boundaries. No overlapping share names, clients, UUIDs or secrets are added.
+  Acceptance: full128-definition counts, whole model/HTTP/DOM checks, real browser
+  POST/clear/narrow layouts and actual HTTP+HTTPS ARM fixtures with both overlaps.
+  Filesystem aliases, real use and product activation remain separate gates.
 - **M9.3 — Guard mutations.** Create/enable/disable/grow/remove operations check
   real initiator/session ownership and backing-volume state. Prevent local
   filesystem mounting while an initiator owns the LUN; prohibit unsafe shrink.

@@ -29,7 +29,7 @@ function validateISCSIPreview(value) {
   const array = (v, max, min = 0) => Array.isArray(v) && v.length >= min && v.length <= max;
   const decimal = (v, max) => typeof v === "string" && v.length <= max.length && /^[1-9][0-9]*$/.test(v) && (v.length < max.length || v <= max);
   const access = (v) => v === "ro" || v === "rw";
-  if (!record(value) || value.format !== "phantowd-desired-iscsi-preview" || value.schema_version !== 1 || value.scope !== "desired-policy-only" ||
+  if (!record(value) || value.format !== "phantowd-desired-iscsi-preview" || value.schema_version !== 2 || value.scope !== "desired-policy-only" ||
       !decimal(value.revision, "18446744073709551615") ||
       ["storage_validated", "credentials_validated", "runtime_validated", "activation_available"].some(key => value[key] !== false) ||
       ![value.smb_definitions, value.nfs_definitions].every(n => Number.isSafeInteger(n) && n >= 0 && n <= 128) ||
@@ -37,7 +37,9 @@ function validateISCSIPreview(value) {
   const backings = new Map(), used = new Set(), targetIDs = new Set(), targetNames = new Set(), lunIDs = new Set();
   for (const b of value.backings) {
     if (!record(b) || !text(b.id, 64) || backings.has(b.id) || !text(b.volume_id, 64) || !text(b.relative_path, 1024) ||
-        !decimal(b.capacity_bytes, "9223372036854775807") || ![512, 4096].includes(b.block_size) || !["sparse", "preallocated"].includes(b.allocation)) invalid();
+        !decimal(b.capacity_bytes, "9223372036854775807") || ![512, 4096].includes(b.block_size) || !["sparse", "preallocated"].includes(b.allocation) ||
+        !Number.isSafeInteger(b.smb_path_overlap_count) || b.smb_path_overlap_count < 0 || b.smb_path_overlap_count > value.smb_definitions ||
+        !Number.isSafeInteger(b.nfs_path_overlap_count) || b.nfs_path_overlap_count < 0 || b.nfs_path_overlap_count > value.nfs_definitions) invalid();
     backings.set(b.id, b);
   }
   for (const t of value.targets) {
@@ -70,7 +72,8 @@ function renderISCSIPreview(value) {
   const add = (parent, tag, text) => { const e = document.createElement(tag); e.textContent = text; parent.append(e); return e; };
   add(root, "h3", `Desired revision ${p.revision} — ${p.targets.length} targets, ${p.backings.length} proposed backings`);
   add(root, "p", "NOT SAVED / NOT APPLIED / STORAGE, CREDENTIALS AND RUNTIME NOT VERIFIED");
-  add(root, "p", `${p.smb_definitions} SMB and ${p.nfs_definitions} NFS definitions in the submitted revision. Overlap and global use are not checked.`);
+  add(root, "p", `${p.smb_definitions} SMB and ${p.nfs_definitions} NFS definitions in the submitted revision. Configured path overlap is advisory only, including read-only shares and disabled targets. Actual access and global use are not checked.`);
+  add(root, "p", "Zero configured overlaps does not prove isolation: filesystem aliases, external shares and actual use are not inspected.");
   if (p.targets.length === 0) add(root, "p", "Explicit empty desired iSCSI policy. This says nothing about currently running targets.");
   const backings = new Map(p.backings.map(b => [b.id, b]));
   for (const t of p.targets) {
@@ -81,6 +84,7 @@ function renderISCSIPreview(value) {
     for (const l of t.luns) {
       const b = backings.get(l.backing_id);
       add(luns, "li", `LUN ${l.number} (${l.id}), ${l.access}; backing ${b.id}, volume ${b.volume_id}, path ${b.relative_path}; ${b.capacity_bytes} bytes, ${b.block_size}-byte blocks, desired ${b.allocation}.`);
+      add(luns, "li", `Backing ${b.id}: configured path overlap advisory — ${b.smb_path_overlap_count} SMB share(s), ${b.nfs_path_overlap_count} NFS export(s). ${b.smb_path_overlap_count || b.nfs_path_overlap_count ? "Review potential backing-file exposure before any future activation." : "No lexical overlap in this proposal; not proof of safe use."}`);
     }
     for (const p of t.initiators) {
       const details = document.createElement("details"); card.append(details);

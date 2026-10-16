@@ -706,6 +706,27 @@ qualification follows. No new Docker image/volume or NAS operation. Next is
 retained complete-role evidence collection after its namespace/lifetime review;
 writer/publication/retention/reconciliation and boot-bundle gates remain open.
 
+## M9.2h configured backing exposure — local host/browser/ARM prototype
+
+The existing manual iSCSI preview now uses display schema2 and explicit SMB/NFS
+overlap counts for every backing. Only configured canonical same-volume paths
+are compared, including root/equal/nested components, read-only shares and disabled
+targets; different volumes, siblings and mere string prefixes do not match.
+The panel shows potential exposure and refuses absent/old-schema/invalid counts.
+Zero remains explicitly inconclusive about aliases, external shares and actual
+use. No filesystem/global-use/effective-access check or activation is introduced.
+Output adds no share names, client networks, UUIDs or credential fields.
+
+Whole supported Windows and pinnedGo1.26.8 non-root Linux vet/units/tagged-vet,
+focused race3, model/HTTP/DOM and complete128-SMB/128-NFS roster controls pass.
+Actual Edge155 submits an overlapping whole policy through visible controls to
+the real memory-auth handler and verifies counts1/1, clear and1365/390/320px
+containment. Standard single-boot ARMv5 smoke passes actual schema2/count1+1
+HTTP and HTTPS checks twice each across API restart, with previous guards intact.
+No separate two-boot/full/SBOM/hosted/physical or production security proof follows.
+No new API route, state writer, backing/secret opener, credential or service
+operation is added. Existing images/volumes only; generated host fixture removed.
+
 ## M9.2g manual authenticated iSCSI preview — local host/browser/ARM prototype
 
 An explicit `POST /api/v1/iscsi/preview` now validates one complete coherent

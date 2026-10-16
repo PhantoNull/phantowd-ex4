@@ -19,8 +19,8 @@ import (
 const qemuISCSIPreviewFixture = `{"format":"phantowd-nas-service-config","schema_version":1,"revision":18446744073709551615,
 "file_services":{"format":"phantowd-file-service-config","schema_version":1,"revision":18446744073709551615,
 "shares":{"format":"phantowd-share-config","schema_version":1,"revision":18446744073709551615,
-"volumes":[{"id":"bulk","filesystem_uuid":"11111111-2222-3333-4444-555555555555"}],"users":[],"shares":[]},
-"nfs":{"format":"phantowd-nfs-policy","schema_version":1,"revision":18446744073709551615,"volume_revision":18446744073709551615,"exports":[]}},
+"volumes":[{"id":"bulk","filesystem_uuid":"11111111-2222-3333-4444-555555555555"}],"users":[{"id":"reader","name":"reader"}],"shares":[{"id":"share","name":"Fixture share","volume_id":"bulk","relative_path":".","grants":[{"user_id":"reader","access":"ro"}]}]},
+"nfs":{"format":"phantowd-nfs-policy","schema_version":1,"revision":18446744073709551615,"volume_revision":18446744073709551615,"exports":[{"id":"aaaaaaaa-1111-2222-3333-444444444444","volume_id":"bulk","relative_path":"luns","clients":[{"network":"198.51.100.1/32","access":"ro","squash":"all","anonymous_uid":65534,"anonymous_gid":65534,"security":"sys"}]}]}},
 "iscsi":{"format":"phantowd-iscsi-policy","schema_version":1,"revision":18446744073709551615,"volume_revision":18446744073709551615,
 "backings":[{"id":"backing","volume_id":"bulk","relative_path":"luns/not-opened.img","capacity_bytes":9223372036854771712,"block_size":4096,"allocation":"sparse"}],
 "targets":[{"id":"target","name":"iqn.2001-04.com.example:target","state":"enabled","luns":[{"id":"lun","number":0,"backing_id":"backing","access":"rw"}],
@@ -56,10 +56,11 @@ func exerciseQEMUISCSIPreviewHTTP(client *http.Client, origin, csrf string) erro
 		}
 		if spec.status == http.StatusOK {
 			var p iscsipreview.Preview
-			if json.Unmarshal(data, &p) != nil || p.Format != iscsipreview.Format || p.SchemaVersion != 1 ||
+			if json.Unmarshal(data, &p) != nil || p.Format != iscsipreview.Format || p.SchemaVersion != 2 ||
 				p.Scope != "desired-policy-only" || p.Revision != "18446744073709551615" ||
 				p.StorageValidated || p.CredentialsValidated || p.RuntimeValidated || p.ActivationAvailable ||
 				len(p.Backings) != 1 || p.Backings[0].CapacityBytes != "9223372036854771712" ||
+				p.SMBDefinitions != 1 || p.NFSDefinitions != 1 || p.Backings[0].SMBPathOverlapCount != 1 || p.Backings[0].NFSPathOverlapCount != 1 ||
 				len(p.Targets) != 1 || p.Targets[0].DesiredState != "enabled" ||
 				len(p.Targets[0].LUNs) != 1 || p.Targets[0].LUNs[0].Number != 0 ||
 				len(p.Targets[0].Initiators) != 1 || len(p.Targets[0].Initiators[0].Grants) != 1 ||

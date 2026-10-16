@@ -17,6 +17,7 @@ import (
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/iscsipolicy"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/iscsipreview"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/naspolicy"
+	"github.com/PhantoNull/phantowd-ex4/phantowd-api/nfsconfig"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/shareconfig"
 )
 
@@ -37,6 +38,10 @@ func nonemptyNASPreviewFixture(t *testing.T) string {
 	c.Revision, c.FileServices.Revision, c.FileServices.Shares.Revision = math.MaxUint64, math.MaxUint64, math.MaxUint64
 	c.FileServices.NFS.Revision, c.FileServices.NFS.VolumeRevision, c.ISCSI.Revision, c.ISCSI.VolumeRevision = math.MaxUint64, math.MaxUint64, math.MaxUint64, math.MaxUint64
 	c.FileServices.Shares.Volumes = []shareconfig.Volume{{ID: "bulk", FilesystemUUID: "11111111-2222-3333-4444-555555555555"}}
+	c.FileServices.Shares.Users = []shareconfig.User{{ID: "reader", Name: "reader"}}
+	c.FileServices.Shares.Shares = []shareconfig.Share{{ID: "share", Name: "Private share name", VolumeID: "bulk", RelativePath: ".", Grants: []shareconfig.Grant{{UserID: "reader", Access: "ro"}}}}
+	c.FileServices.NFS.Exports = []nfsconfig.Export{{ID: "aaaaaaaa-1111-2222-3333-444444444444", VolumeID: "bulk", RelativePath: "luns",
+		Clients: []nfsconfig.Client{{Network: "198.51.100.1/32", Access: "ro", Squash: "all", AnonymousUID: 65534, AnonymousGID: 65534, Security: "sys"}}}}
 	c.ISCSI.Backings = []iscsipolicy.Backing{{ID: "backing", VolumeID: "bulk", RelativePath: "luns/not-opened.img", CapacityBytes: math.MaxInt64 - 4095, BlockSize: 4096, Allocation: "sparse"}}
 	c.ISCSI.Targets = []iscsipolicy.Target{{ID: "target", Name: "iqn.2001-04.com.example:target", State: "enabled", LUNs: []iscsipolicy.LUN{{ID: "lun", Number: 0, BackingID: "backing", Access: "rw"}}, Initiators: []iscsipolicy.Initiator{{Name: "iqn.2001-04.com.example:peer", Authentication: iscsipolicy.Authentication{Mode: "chap", InitiatorUser: "private-user", InitiatorSecretRef: "private-ref"}, Grants: []iscsipolicy.Grant{{LUNID: "lun", Access: "ro"}}}}}}
 	if c.Validate() != nil {
@@ -55,10 +60,11 @@ func TestISCSIPreviewHTTPExactNonemptyProjection(t *testing.T) {
 	w := httptest.NewRecorder()
 	h.ServeHTTP(w, iscsiRequest(auth, cookie, nonemptyNASPreviewFixture(t)))
 	var p iscsipreview.Preview
-	if w.Code != 200 || json.Unmarshal(w.Body.Bytes(), &p) != nil || p.Revision != "18446744073709551615" || len(p.Backings) != 1 || p.Backings[0].CapacityBytes != "9223372036854771712" || len(p.Targets) != 1 || p.Targets[0].LUNs[0].Number != 0 || p.Targets[0].Initiators[0].Grants[0].Access != "ro" || p.Targets[0].DesiredState != "enabled" || p.ActivationAvailable || p.RuntimeValidated {
+	if w.Code != 200 || json.Unmarshal(w.Body.Bytes(), &p) != nil || p.SchemaVersion != 2 || p.Revision != "18446744073709551615" || len(p.Backings) != 1 || p.Backings[0].CapacityBytes != "9223372036854771712" || len(p.Targets) != 1 || p.Targets[0].LUNs[0].Number != 0 || p.Targets[0].Initiators[0].Grants[0].Access != "ro" || p.Targets[0].DesiredState != "enabled" || p.ActivationAvailable || p.RuntimeValidated || p.StorageValidated || p.CredentialsValidated ||
+		p.SMBDefinitions != 1 || p.NFSDefinitions != 1 || p.Backings[0].SMBPathOverlapCount != 1 || p.Backings[0].NFSPathOverlapCount != 1 {
 		t.Fatal("nonempty preview lost precision, relationships or desired/runtime distinction", w.Code)
 	}
-	for _, private := range []string{"private-user", "private-ref", "11111111-2222-3333-4444-555555555555", "secret_ref", "initiator_user"} {
+	for _, private := range []string{"private-user", "private-ref", "11111111-2222-3333-4444-555555555555", "secret_ref", "initiator_user", "Private share name", "198.51.100.1/32", "aaaaaaaa-1111-2222-3333-444444444444"} {
 		if strings.Contains(w.Body.String(), private) {
 			t.Fatal("preview exposed private credential or raw filesystem field")
 		}

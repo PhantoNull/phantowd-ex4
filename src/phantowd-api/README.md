@@ -145,6 +145,12 @@ and uses one ten-second operation budget. Edit/clear/session retirement fences
 late results; session loss clears the source too. Browser storage and automatic
 retries are not used. See the [projection and adapter contract](internal/iscsipreview/README.md).
 
+M9.2h extends only that display response to schema2: per-backing counts warn
+about configured same-volume SMB/NFS path exposure, even through read-only shares
+or for disabled targets. Zero is not isolation or safe-use proof; actual files,
+aliases, global use and effective access are not inspected. Old/missing/invalid
+counts refuse in the panel. The desired configuration format remains unchanged.
+
 The internal [coherent NAS policy](internal/naspolicy/README.md) additionally
 stores desired SMB/NFS/iSCSI as one strict revision through the existing Linux
 transaction engine. Native interruption tests and an actual ARMv5 two-boot
