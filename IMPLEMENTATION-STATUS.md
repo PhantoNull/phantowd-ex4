@@ -646,6 +646,29 @@ acceptance cases for stale/crashed helpers, slot holes, retained deferral and
 workload admission. None of those product controls is implemented by this
 documentation-only checkpoint.
 
+## M1.3b.3 collector prerequisite — test and proposed contract only
+
+A Linux-only adapter test uses temporary policy files and actual Store/bootstrap
+constructors. Root and record-directory locks do not exclude the policy writer;
+the retained original policy-directory lock does, across repeated observations.
+An independent child verifies allowed/Busy/allowed as that original lock is
+acquired and released, while ancestor/sibling locks remain. CLOEXEC prevents
+descriptor inheritance. Each child must exit0 and supply one exact mode-bound
+receipt; missing, duplicate, lookalike and no-tests-to-run outputs are rejected.
+This is a regression test, not a new production collector or recovery path.
+
+Pinned Go1.26.8 non-root Linux race-count3, whole API units and ordinary/QEMU-
+tagged vet pass. The tagged proc diagnostic passes separately after correcting
+a PowerShell stdin trailing-CR invocation error; the combined invocation exits1
+and is not reported as an overall pass. No ARM guest or full build is rerun for
+this test/documentation-only change; existing target evidence remains separate.
+
+The [proposed collector contract](src/phantowd-api/internal/policyevidence/COLLECTOR-DESIGN.md)
+keeps records outside the existing policy census and requires complete retained
+read-only observations. Root/mount-origin qualification, the collector, record
+publication, reconciliation and boot admission remain open. No production Go
+source, API, Store behavior, NAS or physical disk is changed by this checkpoint.
+
 ## M1.3b.1/b.2 private policy-operation codecs and matcher — local prototype
 
 The approved [pure operation-evidence slice](src/phantowd-api/internal/policyevidence/README.md)

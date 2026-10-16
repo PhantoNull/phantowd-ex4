@@ -86,3 +86,5 @@ role namespace, with no-follow/same-medium/permissions/identity/lifetime and
 drift/cancellation/close-fault checks. Do not add record files to the existing
 two-name policy directory: its census intentionally rejects unknown entries.
 Writer/provisioning/reconciliation and state-root atomicity remain later gates.
+The [proposed collector contract](COLLECTOR-DESIGN.md) records exact lock,
+namespace/lifetime and refusal requirements; it is not an implemented collector.

@@ -102,6 +102,10 @@ Do not bolt receipt writes onto the existing two-name policy directory: its
 bootstrap census intentionally treats unknown entries as evidence. Define a
 separate explicit schema and bounded namespace before adding new file roles.
 Do not assume that two directories or files publish atomically as one bundle.
+The [read-only collector proposal](../policyevidence/COLLECTOR-DESIGN.md)
+also requires retaining the actual existing policy-directory lock: an ancestor
+or sibling lock does not exclude the current Store. A kernel/adapter regression
+checks that boundary; it does not implement the proposed collector or handoff.
 
 The future coordinator must:
 
