@@ -98,6 +98,31 @@ func (writer) Format(s fmt.State, _ rune) {
 }
 
 func newDisposable(ctx context.Context, id string, initial naspolicy.Config) (*writer, error) {
+	return newDisposableWithCrash(ctx, id, initial, nil)
+}
+
+// Private fixture-only construction input, fixed before any Store is published;
+// ordinary callers always pass nil. It cannot be selected by an operation/API.
+type disposableCrash struct {
+	role, point string
+	gate        func()
+}
+
+func newDisposableWithCrash(ctx context.Context, id string, initial naspolicy.Config, crash *disposableCrash) (*writer, error) {
+	var profile revisionstore.QEMUCommitCrash
+	if crash != nil {
+		target := uint64(2)
+		if crash.role == "intent" {
+			target = 1
+		} else if crash.role != "policy" && crash.role != "receipt" {
+			return nil, ErrInvalid
+		}
+		var e error
+		profile, e = revisionstore.NewQEMUCommitCrash(target, crash.point, crash.gate)
+		if e != nil {
+			return nil, ErrInvalid
+		}
+	}
 	if ctx == nil || initial.Revision != 1 || initial.Validate() != nil {
 		return nil, ErrInvalid
 	}
@@ -157,11 +182,19 @@ func newDisposable(ctx context.Context, id string, initial naspolicy.Config) (*w
 	if unix.Fstatfs(int(f.Fd()), &fs) != nil || fs.Type != unix.TMPFS_MAGIC || unix.Flock(int(f.Fd()), unix.LOCK_EX|unix.LOCK_NB) != nil {
 		return fail()
 	}
-	w.policy, err = revisionstore.OpenAnchoredWithCodec(f, "policy", policyCodec())
+	if crash != nil && crash.role == "policy" {
+		w.policy, err = revisionstore.OpenAnchoredQEMUCrashWithCodec(f, "policy", policyCodec(), profile)
+	} else {
+		w.policy, err = revisionstore.OpenAnchoredWithCodec(f, "policy", policyCodec())
+	}
 	if err != nil {
 		return fail()
 	}
-	w.journal, err = revisionstore.OpenAnchoredWithCodec(f, "operations", operationCodec())
+	if crash != nil && crash.role != "policy" {
+		w.journal, err = revisionstore.OpenAnchoredQEMUCrashWithCodec(f, "operations", operationCodec(), profile)
+	} else {
+		w.journal, err = revisionstore.OpenAnchoredWithCodec(f, "operations", operationCodec())
+	}
 	if err != nil {
 		return fail()
 	}

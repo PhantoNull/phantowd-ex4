@@ -646,6 +646,39 @@ acceptance cases for stale/crashed helpers, slot holes, retained deferral and
 workload admission. None of those product controls is implemented by this
 documentation-only checkpoint.
 
+## M1.3c.4b syscall boundaries — pending evidence never grants admission
+
+Twenty-one additional real SIGKILL cases cover intent/policy/receipt at partial
+eight-byte/full write, file sync/close, before/after rename and directory sync.
+The sealed QEMU-only crash profile is bound to one point/revision at strict Store
+construction, using the original actual lock, codec and syscalls. No per-operation
+backend, caller descriptor adoption or HTTP/CLI selection is added; returning
+gates fail/poison the Store. The ordinary disposable entry always passes nil.
+Non-QEMU/ordinary Store semantics stay unchanged.
+
+The test-only observer retains pending metadata, never opens its contents and
+requires review without a matched kind for all15 pre-publication pending cases.
+A separate no-atime test oracle verifies exact eight-byte prefixes/full coherent
+policy/base/intent/receipt bytes, not promotion or recovery. All original live
+locks, verified signal/reap, original references, exact bytes/statx and normal
+FD cleanup remain mandatory, including7 earlier method gates.
+
+Whole Windows and pinned Linux API/vet suites pass; native typed-profile controls
+actually execute all7 syscall-success points, base-revision exclusion, returning-
+gate refusal and no retry. Scoped race3 passes; positive whole-writer/syscall-loss
+tests explicitly skip on unsupported WSL unique mount IDs. Actual ARMv5 media
+lane passes83 exact ordered receipts/two Go PASS lines,28 tmpfs losses plus the
+original14 ext4 SIGKILL/RO/ENOSPC checks, normal unmounts and unchanged base.
+Both closed selections/2positive205negative parser guards pass before boot.
+Actual standard ARM smoke also passes the original18-case normal path twice,
+all earlier assertions and unchanged budgets; no new guest/image/volume.
+
+These are real syscall-return boundaries, not killing blocked kernel I/O. The
+partial write deliberately writes8bytes; no spontaneous short-write or physical
+failure is claimed. Persistent/system restart, complete constructor/close faults,
+real media errors, power-loss/EX4/thermal/recovery, product observation/admission,
+durable review/reconciliation, full/hosted and installable release gates remain.
+
 ## M1.3c.4a process loss — actual SIGKILL and test-only observation
 
 Seven new actual SIGKILL gates cover before/after intent, before/after policy,

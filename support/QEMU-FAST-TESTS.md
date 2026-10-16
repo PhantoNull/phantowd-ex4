@@ -204,17 +204,18 @@ review/recovery, EX4/full-image/own-hosted/reproducibility gates remain separate
 
 ### Current media-lane addition: operation process loss
 
-The existing media guest now also runs seven actual policy-operation SIGKILL
-boundaries in a second test binary, after the original ext4 tests. New cases use
+The existing media guest now also runs28 actual policy-operation SIGKILL
+boundaries in a second test binary, after the original ext4 tests:7 method gates
+and21 intent/policy/receipt syscall-success gates. New cases use
 their own16MiB tmpfs mount, not physical storage. One boot still has the original
 hard60s VM/180s outer limits; Go suites share the45s allowance with conservative
 remaining-second accounting. The original catalogue is closed and checked before
 boot, excluding subprocess-only helpers while enrolling their actual parent
-lock test. Current proof is53 original plus8 operation top-level/subcase receipts,
+lock test. Current proof is53 original plus30 operation top-level/subcase receipts,
 two Go PASS lines, both phase markers, normal unmounts and unchanged base.
-Two positive/159 malformed parser controls pass; no SKIP/no-tests/foreign marker
-waiver. The actual new7-case batch passes in about1.54s in the qualified run;
-that sample is not total build latency or a worst-case bound.
+Two positive/205 malformed parser controls pass; both binary selectors match
+their exact mandatory catalogue before boot. No SKIP/no-tests/foreign marker
+waiver or extra default guest is added.
 
 The parent retains original references before loss, proves Busy/live and actual
 SIGKILL/reap, then acquires read-observation locks and validates unchanged bytes/
@@ -223,6 +224,12 @@ test-only observer, not uninterrupted writer authority, a product reopener,
 recovery or power-loss proof. The
 [full protocol/test scope](../src/phantowd-api/internal/policytransaction/README.md#actual-process-loss-observations--m13c4a)
 separates the new evidence from its remaining gates.
+Pending contents are never opened by the observer: pending metadata requires
+review with no matched kind. An independent test oracle checks actual staged
+bytes without promoting them. The QEMU-only hook profile is bound once at Store
+construction; no operation/HTTP/CLI can select it. Native hook/returning-gate
+controls and actual standard ARM smoke also pass their separate scopes. These
+are syscall-return boundaries, not in-flight kernel I/O or power-cut tests.
 
 ## Parent share-mount substitution — separate disposable ARM guest
 

@@ -880,10 +880,18 @@ and recovery do not. **Depends on:** M0 for tests; M7 for physical placement.
   verified death. Repeated exact byte/statx observations preserve review even
   with empty journal or matching receipt. Product code is unchanged: all new
   process/observer logic is test-binary-only, not writer re-admission/recovery.
-  Existing NIC-less media guest requires61 receipts/two Go PASS lines under
-  unchanged60s/180s limits and a shared45s test allowance; closed selection and
-  2+159 parser controls prevent helper SKIP/unknown-test drift. Still required:
-  interruption INSIDE every syscall boundary, system restart, persistent medium,
+  **c.4b declared syscall-return boundaries (host/ARM fixture-tested)** now adds
+  21 actual SIGKILLs across intent/policy/receipt for partial/full write, file
+  sync/close, before/after rename and directory sync. A sealed QEMU-only profile
+  is fixed at strict Store construction; normal callers pass no plan. Returning
+  gates fail/poison rather than report success. Pending is metadata-only to the
+  test observer and suppresses matching; a separate no-atime oracle verifies
+  synthetic staged bytes, never promotion/replay. Original18-case ARM smoke
+  also passes. Existing NIC-less media guest now requires83 receipts/two Go PASS
+  lines under unchanged60s/180s limits and a shared45s test allowance; both closed
+  selections and2+205 parser controls prevent helper SKIP/unknown-test drift.
+  Still required: in-flight kernel-I/O interruption and real errors, complete
+  constructor/close campaigns, system restart, persistent medium,
   retained product observation, durable quarantine and authorized recovery.
   **c.5 retention/reconciliation** requires bounded evidence preservation
   and explicit authorization; none is implemented by preparation;

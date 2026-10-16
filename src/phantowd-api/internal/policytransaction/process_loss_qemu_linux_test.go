@@ -34,6 +34,8 @@ const crashStage = "PHANTOWD_OPERATION_CRASH_STAGE"
 const crashChallenge = "PHANTOWD_OPERATION_CRASH_CHALLENGE"
 
 var crashStages = []string{"before-intent", "after-intent", "before-policy", "after-policy", "after-readback", "before-receipt", "after-receipt"}
+var syscallCrashRoles = []string{"intent", "policy", "receipt"}
+var syscallCrashPoints = []string{"partial-write", "full-write", "file-sync", "file-close", "before-rename", "after-rename", "directory-sync"}
 
 type crashGate struct {
 	Stage     string `json:"stage"`
@@ -46,6 +48,16 @@ func knownCrashStage(s string) bool {
 	for _, stage := range crashStages {
 		if s == stage {
 			return true
+		}
+	}
+	role, point, ok := strings.Cut(s, "/")
+	if ok {
+		for _, r := range syscallCrashRoles {
+			for _, p := range syscallCrashPoints {
+				if role == r && point == p {
+					return true
+				}
+			}
 		}
 	}
 	return false
@@ -101,15 +113,12 @@ func TestPolicyOperationCrashChild(t *testing.T) {
 	if e != nil {
 		t.Fatal("invalid invented base")
 	}
-	w, e := newDisposable(context.Background(), testInstallation, c)
-	if e != nil {
-		t.Fatal("fresh child writer unavailable")
-	}
 	// Do not defer Close/disposal: the expected exit is actual SIGKILL, not a
 	// returned fake error, clean unwind, voluntary exit or timer expiration.
-	w.boundary = func(name string) {
-		if name != stage {
-			return
+	var w *writer
+	gate := func() {
+		if w == nil {
+			t.Fatal("gate intercepted base construction")
 		}
 		if json.NewEncoder(os.Stdout).Encode(crashGate{stage, challenge, os.Getpid(), w.path}) != nil {
 			t.Fatal("gate emission failed")
@@ -117,6 +126,21 @@ func TestPolicyOperationCrashChild(t *testing.T) {
 		var token [1]byte
 		_, _ = io.ReadFull(os.Stdin, token[:])
 		t.Fatal("crash gate unexpectedly resumed")
+	}
+	if role, point, syscallGate := strings.Cut(stage, "/"); syscallGate {
+		w, e = newDisposableWithCrash(context.Background(), testInstallation, c, &disposableCrash{role, point, gate})
+	} else {
+		w, e = newDisposable(context.Background(), testInstallation, c)
+		if e == nil {
+			w.boundary = func(name string) {
+				if name == stage {
+					gate()
+				}
+			}
+		}
+	}
+	if e != nil {
+		t.Fatal("fresh child writer unavailable")
 	}
 	fixtureRevision(&c, 2)
 	c.FileServices.Shares.Shares[0].RelativePath = "after-books"
@@ -223,9 +247,7 @@ func captureCrashRefs(path string) (*crashRefs, error) {
 		if e != nil {
 			return fail()
 		}
-		if _, pending := r.names[i][role.pending]; pending {
-			return fail()
-		} // never open staged bytes
+		// Pending entries are retained as metadata ONLY, never opened here.
 		x, present := r.names[i][role.current]
 		if !present {
 			continue
@@ -321,8 +343,9 @@ func (r *crashRefs) snapshot() ([2][]byte, error) {
 }
 
 type lossDiagnosis struct {
-	kind   policyevidence.Kind
-	review bool
+	kind    policyevidence.Kind
+	review  bool
+	pending bool
 }
 
 func (r *crashRefs) observeLoss() (lossDiagnosis, error) {
@@ -338,6 +361,11 @@ func (r *crashRefs) observeLoss() (lossDiagnosis, error) {
 			clear(b)
 		}
 	}()
+	for i, role := range crashRoles {
+		if _, present := r.names[i][role.pending]; present {
+			return lossDiagnosis{review: true, pending: true}, nil
+		}
+	}
 	evidence := policyevidence.Evidence{InstallationID: testInstallation, Current: policyevidence.Slot{State: policyevidence.Present, Data: snapshot[0]},
 		Intent: policyevidence.Slot{State: policyevidence.Absent}, Receipt: policyevidence.Slot{State: policyevidence.Absent}}
 	if snapshot[1] != nil {
@@ -376,8 +404,10 @@ func (r *crashRefs) dispose() error {
 		}
 	}
 	for i, role := range crashRoles {
-		if _, exists := r.names[i][role.current]; exists && unix.Unlinkat(int(r.dirs[i+1].Fd()), role.current, 0) != nil {
-			return ErrReview
+		for _, name := range []string{role.current, role.pending} {
+			if _, exists := r.names[i][name]; exists && unix.Unlinkat(int(r.dirs[i+1].Fd()), name, 0) != nil {
+				return ErrReview
+			}
 		}
 		name := []string{"policy", "operations"}[i]
 		if unix.Unlinkat(int(r.dirs[0].Fd()), name, unix.AT_REMOVEDIR) != nil || r.dirs[i+1].Close() != nil {
@@ -410,6 +440,70 @@ func TestPolicyOperationSIGKILLObservation(t *testing.T) {
 	for _, stage := range crashStages {
 		t.Run(stage, func(t *testing.T) { testCrashStage(t, stage) })
 	}
+}
+
+func TestPolicyOperationSyscallSIGKILLObservation(t *testing.T) {
+	var x unix.Statx_t
+	if unix.Statx(unix.AT_FDCWD, "/tmp", unix.AT_NO_AUTOMOUNT, unix.STATX_MNT_ID_UNIQUE, &x) != nil || x.Mask&unix.STATX_MNT_ID_UNIQUE == 0 {
+		t.Skip("unique mount IDs unavailable; no positive syscall-loss qualification")
+	}
+	for _, role := range syscallCrashRoles {
+		for _, point := range syscallCrashPoints {
+			stage := role + "/" + point
+			t.Run(stage, func(t *testing.T) { testCrashStage(t, stage) })
+		}
+	}
+}
+
+type crashPhase struct {
+	policy, journal uint64
+	pending         int
+	target          uint64
+	point           string
+}
+
+func expectedCrashPhase(stage string) crashPhase {
+	p := crashPhase{policy: 2, journal: 1, pending: -1}
+	if role, point, ok := strings.Cut(stage, "/"); ok {
+		p.point = point
+		p.target = 2
+		published := point == "after-rename" || point == "directory-sync"
+		switch role {
+		case "intent":
+			p.policy = 1
+			p.journal = 0
+			p.target = 1
+			if published {
+				p.journal = 1
+			}
+		case "policy":
+			p.policy = 1
+			if published {
+				p.policy = 2
+			}
+		case "receipt":
+			if published {
+				p.journal = 2
+			}
+		}
+		if !published {
+			p.pending = 1
+			if role == "policy" {
+				p.pending = 0
+			}
+		}
+		return p
+	}
+	if stage == "before-intent" || stage == "after-intent" || stage == "before-policy" {
+		p.policy = 1
+	}
+	if stage == "before-intent" {
+		p.journal = 0
+	}
+	if stage == "after-receipt" {
+		p.journal = 2
+	}
+	return p
 }
 func testCrashStage(t *testing.T, stage string) {
 	t.Helper()
@@ -507,7 +601,7 @@ func testCrashStage(t *testing.T, stage string) {
 	if e != nil {
 		t.Fatal("frozen child observation refused")
 	}
-	if d, e := refs.observeLoss(); e != ErrReview || d.review || d.kind != "" {
+	if d, e := refs.observeLoss(); e != ErrReview || d.review || d.pending || d.kind != "" {
 		t.Fatal("post-loss diagnosis admitted before verified death")
 	}
 	if cmd.Process.Kill() != nil {
@@ -548,10 +642,8 @@ func testCrashStage(t *testing.T, stage string) {
 	if e != nil {
 		t.Fatal("current became invalid")
 	}
-	wantRevision := uint64(2)
-	if stage == "before-intent" || stage == "after-intent" || stage == "before-policy" {
-		wantRevision = 1
-	}
+	phase := expectedCrashPhase(stage)
+	wantRevision := phase.policy
 	if current.Revision != wantRevision {
 		t.Fatal("incorrect post-loss policy phase")
 	}
@@ -567,12 +659,12 @@ func testCrashStage(t *testing.T, stage string) {
 	if !bytes.Equal(after[0], expected) {
 		t.Fatal("actual protocol settings became split or unexpected")
 	}
-	if stage == "before-intent" {
+	if phase.journal == 0 {
 		if after[1] != nil || !bytes.Equal(after[0], base) {
 			t.Fatal("pre-intent evidence changed")
 		}
 		d, e := refs.observeLoss()
-		if e != nil || d.kind != policyevidence.NoRecordedOperation || !d.review {
+		if e != nil || !d.review || (phase.pending < 0 && (d.kind != policyevidence.NoRecordedOperation || d.pending)) || (phase.pending >= 0 && (!d.pending || d.kind != "")) {
 			t.Fatal("empty journal erased process-loss review")
 		}
 	} else {
@@ -589,7 +681,7 @@ func testCrashStage(t *testing.T, stage string) {
 		if wantRevision == 1 {
 			wantKind = policyevidence.IntentBaseObserved
 		}
-		if stage == "after-receipt" {
+		if phase.journal == 2 {
 			if b.revision != 2 {
 				t.Fatal("receipt missing")
 			}
@@ -603,8 +695,19 @@ func testCrashStage(t *testing.T, stage string) {
 			t.Fatal("incorrect read-only post-loss diagnosis")
 		}
 		observed, e := refs.observeLoss()
-		if e != nil || observed.kind != wantKind || !observed.review {
+		if e != nil || !observed.review || (phase.pending < 0 && (observed.kind != wantKind || observed.pending)) || (phase.pending >= 0 && (!observed.pending || observed.kind != "")) {
 			t.Fatal("post-loss diagnosis cleared review or changed kind")
+		}
+	}
+	// Independent TEST ORACLE only: inspect synthetic staged bytes without atime
+	// changes. The post-loss observer above never opens/parses pending contents.
+	for i, role := range crashRoles {
+		_, present := refs.names[i][role.pending]
+		if present != (phase.pending == i) {
+			t.Fatal("wrong pending role at syscall boundary")
+		}
+		if present {
+			assertPendingCrashOracle(t, refs, i, phase, base)
 		}
 	}
 	// Never open a writer/Store, fsync, retry or mutate these files to observe
@@ -612,6 +715,70 @@ func testCrashStage(t *testing.T, stage string) {
 	repeated, e := refs.snapshot()
 	if e != nil || !reflect.DeepEqual(after, repeated) {
 		t.Fatal("read-only observation changed evidence")
+	}
+}
+
+func assertPendingCrashOracle(t *testing.T, refs *crashRefs, role int, phase crashPhase, base []byte) {
+	t.Helper()
+	if refs.verify() != nil {
+		t.Fatal("pending oracle identity refused")
+	}
+	fd, e := unix.Openat2(int(refs.dirs[role+1].Fd()), crashRoles[role].pending, &unix.OpenHow{Flags: unix.O_RDONLY | unix.O_NOFOLLOW | unix.O_NOATIME | unix.O_NONBLOCK | unix.O_CLOEXEC, Resolve: below})
+	if e != nil {
+		t.Fatal("synthetic pending oracle open failed")
+	}
+	f := os.NewFile(uintptr(fd), "independent-synthetic-pending-oracle")
+	meta, metaErr := crashFileStat(fd, "", unix.AT_EMPTY_PATH)
+	if metaErr != nil || meta != refs.names[role][crashRoles[role].pending] {
+		_ = f.Close()
+		t.Fatal("pending oracle original identity mismatch")
+	}
+	data, readErr := io.ReadAll(io.LimitReader(f, int64(crashRoles[role].limit)+1))
+	closeErr := f.Close()
+	defer clear(data)
+	if readErr != nil || closeErr != nil || len(data) > crashRoles[role].limit || refs.verify() != nil {
+		t.Fatal("pending oracle changed or exceeded evidence")
+	}
+	if phase.point == "partial-write" {
+		if !bytes.Equal(data, []byte(`{"format`)) {
+			t.Fatal("partial pending prefix was not exactly eight bytes")
+		}
+		return
+	}
+	// Derive independently declared next settings, never adopt staged contents.
+	c, e := naspolicy.Decode(bytes.NewReader(base))
+	if e != nil {
+		t.Fatal("oracle base")
+	}
+	fixtureRevision(&c, 2)
+	c.FileServices.Shares.Shares[0].RelativePath = "after-books"
+	c.FileServices.Shares.Shares[0].Grants[0].Access = "ro"
+	c.FileServices.NFS.Exports[0].RelativePath = "after-books"
+	c.ISCSI.Targets[0].State = "enabled"
+	wire, _ := json.Marshal(c)
+	if role == 0 {
+		if !bytes.Equal(data, wire) {
+			t.Fatal("pending policy is split or unexpected")
+		}
+	} else {
+		b, e := decodeBundle(bytes.NewReader(data))
+		if e != nil {
+			t.Fatal("full staged bundle invalid")
+		}
+		defer b.clear()
+		if b.revision != phase.target || !bytes.Equal(b.base, base) {
+			t.Fatal("staged operation lost base/phase")
+		}
+		rc := policyevidence.Slot{State: policyevidence.Absent}
+		want := policyevidence.PublicationUnconfirmed
+		if phase.target == 2 {
+			rc = policyevidence.Slot{State: policyevidence.Present, Data: b.receipt}
+			want = policyevidence.LocalConfirmationObserved
+		}
+		d, e := policyevidence.Match(policyevidence.Evidence{InstallationID: testInstallation, Current: policyevidence.Slot{State: policyevidence.Present, Data: wire}, Intent: policyevidence.Slot{State: policyevidence.Present, Data: b.intent}, Receipt: rc})
+		if e != nil || d.Kind() != want {
+			t.Fatal("staged operation candidate/receipt tuple mismatch")
+		}
 	}
 }
 

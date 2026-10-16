@@ -19,6 +19,11 @@ func TestDisposableWriterRejectsInvalidBeforeNamespace(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	for _, plan := range []*disposableCrash{{role: "unknown", point: "file-sync", gate: func() {}}, {role: "policy", point: "unknown", gate: func() {}}, {role: "intent", point: "file-sync"}} {
+		if w, e := newDisposableWithCrash(context.Background(), testInstallation, c, plan); w != nil || e != ErrInvalid {
+			t.Fatal("invalid constructor crash plan admitted")
+		}
+	}
 	if w, err := newDisposable(nil, testInstallation, c); w != nil || err != ErrInvalid {
 		t.Fatal("nil context")
 	}

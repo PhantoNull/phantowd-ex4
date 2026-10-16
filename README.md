@@ -63,8 +63,9 @@ diagnostic-only: product state placement, publication and recovery are not wired
 A separate QEMU-only one-operation prototype tests preserved exact base/intent,
 policy publication and local receipt. It cannot open existing state or recover
 and activate product services.
-Dedicated process-loss tests now inspect preserved evidence without recovery or
-retry; they do not qualify power loss or an EX4 state medium.
+Dedicated process-loss and syscall-boundary tests now inspect preserved evidence
+and pending metadata without recovery or retry; they do not qualify power loss
+or an EX4 state medium.
 
 A separate ARMv5 fixture now verifies a retained, isolated real SMB3 client
 opening and closing synthetic data without changes or leaked descriptors.

@@ -131,7 +131,9 @@ root provisioning/EX4/NAND/ECC/recovery and full/hosted release gates remain ope
 
 `process_loss_qemu_linux_test.go` adds seven real SIGKILL boundaries: before/after
 intent, before/after policy, after readback and before/after receipt. Everything
-new is in the Go **test binary**, not a product opener, subprocess API or CLI.
+in that child/observer profile is in the Go **test binary**, not a product opener,
+subprocess API or CLI. The separate syscall fixture below adds constructor-bound
+QEMU hooks; it does not expose a product control.
 Each child creates its own fresh tmpfs namespace. Its selected stage, original
 PID and random challenge bind one bounded private gate; duplicate/prefetched
 trailing proof is rejected. The parent verifies an actual SIGKILL exit, not
@@ -152,22 +154,57 @@ not uninterrupted writer authority. Explicit fixed-name test teardown follows
 observation and child reaping; it is not product retention or recovery.
 
 Run `support/test-revisionstore-media.ps1`. Its existing snapshot-only, NIC-less
-guest retains14 original ext4 SIGKILL/read-only/ENOSPC cases and adds these7 tmpfs
+guest retains14 original ext4 SIGKILL/read-only/ENOSPC cases and adds28 tmpfs
 process losses in a second test binary, not a second boot. The45s Go allowance is
 conservatively shared using remaining uptime seconds; hard60s guest/180s outer
-and resource caps stay unchanged. Normal tmpfs/ext4 unmount,61 exact ordered
+and resource caps stay unchanged. Normal tmpfs/ext4 unmount,83 exact ordered
 receipts and two Go PASS lines are mandatory. The closed original test selection
 is checked against the verifier catalogue before compilation/boot: helper-only
 SKIP or unregistered tests never become acceptable noise. Host parser controls
-require2 valid and159 refused traces.
+require2 valid and205 refused traces. Both binary selectors are closed and
+checked against the mandatory verifier catalogue before boot.
 
 Actual ARMv5 passes this complete lane. Native WSL explicitly skips the positive
 process-loss profile without unique mount IDs; final native gate/stream controls,
 tagged vet and scoped package race3 pass, not positive writer/process-loss race.
 Initial fixture double-close and stale broad helper selection failures are
-retained as unqualified runs, not retrospectively green. Product code is unchanged.
+retained as unqualified runs, not retrospectively green. Non-QEMU builds and
+ordinary Store constructors keep their semantics.
 
-Still missing: interruption **inside** every journal/policy/receipt write/sync/
-close/rename, all constructor/close faults, persistent process/system restart,
+Still missing: arbitrary in-flight kernel-I/O interruption, real media errors,
+all constructor/close faults, persistent process/system restart,
 qualified medium/power loss, a retained product observer, durable review and
 authorized reconciliation. Same-kernel tmpfs SIGKILL is none of those guarantees.
+
+### Syscall boundaries — M1.3c.4b
+
+An additional21 real SIGKILL cases cover intent, policy and receipt at seven
+declared points: partial eight-byte write, full write, file sync, file close,
+before rename, after rename and directory sync. These stop **at syscall success
+boundaries inside Commit**, not while a kernel syscall is blocked. Partial write
+is a deliberately short real write, not a claim to spontaneous device failure.
+
+`revisionstore.NewQEMUCommitCrash` seals one point/revision/gate profile at strict
+Store construction. The QEMU-only opener retains the same actual flock, codec
+and real syscalls; it never adopts caller descriptors or chooses per-operation
+backends. Only target revisions1/2 and the seven points are valid. A returning
+gate reports failure and poisons the strict Store, never successful publication.
+Native controls execute all seven boundaries, prove base revision1 is untouched
+by a revision2 profile, exact current/pending bytes and refusal of every retry.
+
+The private disposable-writer constructor admits a validated role/point plan
+before creating a namespace; its ordinary entry always passes nil. There is no
+new HTTP/CLI, product state opener or caller-controlled operation profile.
+The standard ARM smoke repeats the original18 scenarios and all earlier checks
+using that unchanged normal path. Positive whole-writer/crash race tests still
+skip on unsupported WSL kernels; native Store-hook tests actually execute.
+
+The test-only post-loss observer retains pending metadata without opening its
+contents. Every pre-rename pending case yields review with **no matched kind**;
+neither valid nor malformed staged bytes are promoted or used to manufacture
+confirmation. A separate, explicitly labelled test oracle opens synthetic staged
+files read-only/no-atime to check exact prefixes, coherent next policy and full
+base/intent/receipt bindings. It is not part of the observer or a recovery path.
+Original-reference/lock, bytes/statx, challenge/gate and normal FD disposal checks
+remain mandatory for all28 cases. No new guest/image/volume, timeout relaxation,
+physical storage, product recovery or full/hosted qualification follows.
