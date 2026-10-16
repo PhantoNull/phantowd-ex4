@@ -48,7 +48,7 @@ replay-order/coverage warnings or output fields fail the test. Independently
 specified Go expectations consume the actual JSON through `smartreport.Parse`.
 The Go test is opt-in via the `smartreplay` test build tag, never a product CLI.
 
-### Prepared identity comparison extension (not yet producer-qualified)
+### Identity comparison extension: scoped native and ARM qualification
 
 The invented IDENTIFY response now includes WWN-support bit8 in word87 and
 fixed words108..111 (`5abc def1 2345 6789`), alongside `SYNTHETIC-ONLY`.
@@ -63,11 +63,21 @@ Six fast host tests verify the invented words, support-bit independence, runner
 acceptance/refusal with explicitly fake subprocess replies, and workflow routing.
 Fake replies never emit producer proof markers. The new Python-only test is
 routed to host checks; actual corpus/API changes still require QEMU. Windows
-tagged vet and selected parser/identity tests pass, but the actual producer corpus
-test is deliberately excluded without its generated inputs. Shell path-contract,
-native7.4/7.5 and ARM7.5 producer execution for this extension remain unqualified
-until Docker maintenance completes. Earlier successes below describe older
-fixture inputs, not this extension or the current source.
+preflight and pinned Go 1.26.8 Linux units/tagged vet, focused race3, Python/lint/
+shell/path contracts pass. Formatting fixes preserve all seven ATA trace hashes.
+
+On 2026-10-16 the real generic-only native 7.4 and 7.5 producers each pass seven
+comparison/projection cases plus eight existing checksum/power boundary cases.
+The actual static7.5 producer, full tagged parser test binary and existing
+fake-source process-capture fixture also pass in ARM926 QEMU. Exact injection,
+original strict markers and unchanged-base checks remain. All fifteen selected
+source/archive/base witnesses match before/after these producer runs. Reused
+read-only caches and temporary RAM scratch create no image/named volume.
+
+This is not a complete rebuilt image/SBOM/legal audit, independent clean build,
+own-head hosted qualification, source provenance or physical transport/standby
+qualification. The collector still uses invented source observations; no NAS,
+device permission, privileged SMART command or product startup is enabled.
 
 The same native wrapper additionally runs eight actual-producer boundary tests
 for each explicitly selected release. These use only invented stdin replies:

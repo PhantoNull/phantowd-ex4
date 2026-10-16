@@ -53,15 +53,20 @@ reports against an exact expected serial and NAA-5 WWN with integer field bounds
 shared whole-report validation and no weaker fallback. Original `Parse` semantics
 and collector admission are unchanged. Windows preflight, all256 exit projections
 per known release, identity/uncertainty/privacy controls and fuzz pass. Matching
-JSON is not device provenance; no collector invokes this function. New Linux/ARM,
-genuine-producer and provider qualification remain open while Docker maintenance
-is pending. See the [comparison contract](src/phantowd-api/internal/smartreport/README.md).
+JSON is not device provenance; no collector invokes this function. Pinned
+Go 1.26.8 Linux units/vet/race3 and genuine generic-only native 7.4/7.5 reports now
+pass. Provider/transport/standby and physical qualification remain open. See the
+[comparison contract](src/phantowd-api/internal/smartreport/README.md).
 
-The existing seven-case producer fixture is now prepared with invented serial/
-WWN words and independent Python/Go comparison/refusal checks. Six host input/
-runner/path tests and selected tagged Windows parser tests pass; native7.4/7.5,
-ARM7.5, Linux shell contracts and full integration for these changed inputs have
-not run. No fake reply or previous producer success qualifies the extension.
+The existing seven-case producer fixture now includes invented serial/WWN words
+and independent Python/Go comparison/refusal checks. On 2026-10-16 both actual
+native producers pass seven cases plus eight checksum/power controls each.
+Actual ARM7.5 producer/parser/capture execution passes with all strict receipts,
+unchanged base and fifteen unchanged source/archive/base witnesses. Six host
+input/runner controls, Linux shell/path contracts and lint pass. Formatting-only
+corrections preserve all seven trace hashes. Fake guard replies remain distinct
+from actual producer runs. Full current-image/own-head hosted qualification and
+the real device/runtime provider are not supplied by these focused tests.
 
 The private Linux constructor now derives all whole-leaf names/generations from
 one complete sysfs census and reuses the existing fixed read-only `/dev` opener.

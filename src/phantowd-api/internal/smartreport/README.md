@@ -66,9 +66,13 @@ The field layout is inspected in the locally hash-verified upstream7.4/7.5
 archives (`ataprint.cpp`, `print_drive_info`). The narrow comparison profile
 is not a promise that all ATA identifiers fit it or that sysfs VPD and ATA
 IDENTIFY strings have equivalent representations. Windows units/vet, all256
-exit projections per release, negative/numeric/privacy controls and fuzz pass;
-the new comparison has not yet run on Linux/ARM or a genuine producer corpus.
-Root API ARM cross-compilation is not execution of this package's test binary.
+exit projections per release, negative/numeric/privacy controls and fuzz pass.
+Pinned Go 1.26.8 Linux vet/race3 and real generic-only native 7.4/7.5 reports
+now pass the comparison and mismatch controls. The actual static7.5 producer,
+full tagged parser test binary and existing process-capture fixture also pass
+in ARM926 QEMU with seven invented inputs and an unchanged base. This qualifies
+these synthetic reports, not physical source/transport/standby or an installable
+image. Root API cross-compilation alone would not prove these executions.
 
 Matching identifiers in supplied JSON is **not report provenance**: copied or
 forged JSON can match too. This function does not bind a process to a disk,

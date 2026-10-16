@@ -2929,17 +2929,20 @@ not host/QEMU progress.
     A separate offline report-comparison prerequisite now requires exact caller-
     supplied serial plus NAA-5 WWN, integer4/24/36-bit fields and the original
     bounded report/exit semantics, with no missing-ID fallback or normalization.
-    Windows unit/vet/fuzz scopes pass; genuine producer and Linux/ARM execution
-    remain open for this new comparison. It is not connected to the coordinator
-    or a provider, and matching JSON does not authenticate its source. Next
-    qualify the same identifiers from actual producer fixtures, then the retained
-    device/command composition; do not infer ATA/sysfs equivalence or disk support.
-    The existing seven-case corpus now prepares independent invented serial/WWN
+    Windows unit/vet/fuzz and pinned Go 1.26.8 Linux unit/vet/race3 scopes pass. It is
+    not connected to the coordinator or a provider, and matching JSON does not
+    authenticate its source. Next qualify retained device/command composition;
+    do not infer ATA/sysfs equivalence or disk support from report consistency.
+    The existing seven-case corpus now supplies independent invented serial/WWN
     words and original parser comparison/refusal checks, without changing cases,
     commands or deadlines. Six host input/runner/routing controls and selected
-    Windows tagged tests pass; native7.4/7.5, ARM7.5, Linux shell contracts and
-    complete integration remain required for the changed fixture. Fake replies
-    are guard tests only and cannot qualify actual producer execution.
+    Windows tagged tests pass. On 2026-10-16 actual native 7.4/7.5 reports pass
+    comparisons plus eight existing checksum/power cases each; actual ARM7.5
+    producer/parser/capture passes, base unchanged. Linux shell/path/lint controls
+    pass, all fifteen selected source/archive/base witnesses match and formatting
+    preserves all seven trace hashes. Complete current-image/own-head hosted and
+    physical/provider qualification remain open. Fake replies are guard tests
+    only; they do not qualify producer execution or authenticate a report.
   - **M8.5c — Wake policy.** Specify exact no-check/device-detection behavior per
     tool and transport. Low-power skip must have explicit evidence; exit bit 1
     alone is ambiguous. Do not parse tool prose to claim standby. Verify that
