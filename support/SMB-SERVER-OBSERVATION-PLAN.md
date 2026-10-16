@@ -3,6 +3,55 @@
 
 # M4.5: retained server-open observation integration plan
 
+## Current scope and remaining work
+
+The variants below are distinct. Existing construction/launch code must not be
+mistaken for missing work, or inherited as permission for a different operation.
+
+| Client path | Existing fixture scope | Still not established |
+| --- | --- | --- |
+| Generic pending client | Complete retained-input Owner; actual OPEN/CLOSE-only execution and server/process/transport observations. The C program opens O_RDWR, but the Owner exposes no WRITE command. | The program's WRITE branch has mock/compile evidence only, not a runtime WRITE qualification. |
+| Handle-observer build | WRITE is compiled out; original-handle observations and CLOSE are exercised. It still opens O_RDWR. | A read-only descriptor, original worker OFD duplication or pending-request authority. |
+| Separate capture client | O_RDONLY OPEN, two one-byte READs and CLOSE; same-open VFS metadata and selected between-request containment fixtures. | Complete construction/lifetime/uncertain-stop coverage, original OFD/request lease, interrupted server I/O or WRITE. |
+| Product service | The above are optional host/disposable-QEMU fixtures, not service startup. | Product state/identity/storage admission, activation, recovery and physical EX4 qualification. |
+
+Source boundaries are in the [generic/handle client](tests/samba-pending-write-fixture.c),
+[capture client](tests/samba-server-capture-client-qemu.c) and
+[containing Owner](../src/phantowd-api/internal/runtimebundle/pending_client_owner_qemu_linux.go).
+Fixture evidence remains commit/profile-specific; see the
+[test contracts](QEMU-FAST-TESTS.md) and [current integration gate](../IMPLEMENTATION-STATUS.md).
+
+Next work is read-only constructor/reference-lifetime and late/uncertain-close
+fault coverage at the real containing boundary, without fabricated healthy
+inputs or replaceable per-call backends. Retain original errors, review and
+unattempted references; verify original groups absent before release. Separate
+original worker OFD/request and outstanding-I/O semantics must precede a new
+reviewed WRITE experiment. No WRITE, new privilege, HTTP or NAS authorization
+is created by this plan. The original qualification scopes below are history,
+not a list of prerequisites to reimplement.
+
+### First read-only lifetime acceptance packet
+
+- Construct the real dedicated Owner from qualified original roots, with no
+  client launch. Do not fabricate healthy `started`/`settled` state or inject a
+  successful replacement adapter.
+- In a disposable fixture only, close one fixed owned client-code `os.File`
+  before normal close admission. Do not raw-close its numeric FD and risk later
+  closing a recycled descriptor. This models observed input loss, not kernel EIO.
+- Require refusal and sticky review, unchanged unattempted bootstrap/root pins,
+  no restart/retry/release after input loss, and continued usability of unrelated
+  independently owned descriptors. Reopening/replacing a closed pin is not
+  restoration of the original reference. A copied error field is not this test.
+- Keep reviewed originals until disposable process teardown. Reuse and qualify
+  the fixed isolated-child pattern where necessary; preserve parent FD equality
+  instead of pretending reviewed retention is healthy closure. No new default
+  guest, privilege or mutable backend is needed.
+- Retain all existing source/base hashes, complete-input proofs and original
+  deadlines. Claim only constructor-backed pre-close input-loss containment;
+  later close-syscall uncertainty and construction-race coverage remain separate.
+
+## Latest read-only qualification checkpoints
+
 Partial S5 now also covers the fixed parent share mount: binding the SAME
 directory at its parent path preserves inode/content but changes unique mount
 identity. No-symlink original-root-relative O_PATH metadata fences bracket
@@ -119,8 +168,10 @@ arbitrary diagnostic allowance. This is partial S4 observation, not an original
 worker data-FD lease, reciprocal TCP/namespace pair, remote FileId/local-object
 match or request/frame authority. These are the next integration deliverables.
 
-Status: **dedicated fixture boundary approved; authenticated ARMv5 OPEN/CLOSE
-composition, but no active READ/frame or independent worker lease**. Approval covers a
+Historical OPEN/CLOSE checkpoint: **dedicated fixture boundary approved; this
+checkpoint did not yet include READ/frame or an independent worker lease**.
+Subsequent READ/frame observations are described above; complete OFD/request
+authority remains unqualified. The approved boundary covers a
 dedicated VFS module/bootstrap in host/disposable VersatilePB QEMU only, retained
 original code/socket references through verified stop, with no extra privileges
 or generic-launcher widening. No NAS, physical media, HTTP, installed helper or

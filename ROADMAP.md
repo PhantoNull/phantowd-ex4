@@ -2336,20 +2336,33 @@ storage. No production roster provider or activation path exists.
   No timing/guard relaxation or physical disk action; changed full-image/archive/
   SBOM audit and own-head hosted qualification remain separate.
 
-  **Next bounded host/QEMU packet:** qualify actual pending I/O loss and
-  late/uncertain cleanup separately. Keep idle IPC$ and actual-open-file proofs
-  distinct; the new alias-loss proof holds an idle opening, not a pending write.
-  A distinct fixed same-open client now passes host C mocks (ASan/UBSan) and
-  ARMv5 compile/link only; it is NOT installed or wired to an Owner/guest.
-  One fixed pre-existing object, one non-creating/non-truncating open, fixed
-  offset/payload and one library write; wrapper errors/partial/auth drift refuse
-  without retry/reopen or uncertain library cleanup. Notices are not proofs.
-  Next qualify its retained executable/library/config/root construction,
-  fixed nonroot launcher and original process lifecycle before actual use;
-  then original session/server/open/object and pending request-to-extent/cache/
-  journal correlation before any fault. Do not widen the existing root helper
-  or relax the existing idle observer. Compile/mocks are not runtime admission,
-  loader/transport/no-reconnect or pending-I/O-loss qualification. See the
+  **Next bounded host/QEMU packet:** complete read-only construction/lifetime
+  and late/uncertain-close fault coverage under the existing retained Owners.
+  Keep idle IPC$, actual-open-file, completed READ and pending-request proofs
+  distinct. Do not repeat the basic client retention/launch work as though it
+  were absent: complete client/bootstrap construction and the dedicated Owner
+  already exist; optional ARM fixtures exercise OPEN/CLOSE, independent server
+  snapshots, original process/namespace/TCP binding and a separate peer-exit
+  fault. These are scoped observations, not complete lifetime qualification.
+
+  Distinguish the executable variants before extending them. The generic
+  `samba-pending-write-fixture.c` program opens O_RDWR, but its containing Owner
+  exposes only OPEN/CLOSE; the WRITE branch remains host-mock/ARM-compile
+  evidence, not an executed WRITE experiment. The handle-observer build compiles
+  WRITE out but still opens O_RDWR: CLOSE-only behavior is not an O_RDONLY FD.
+  The separate capture client opens O_RDONLY and has fixture-tested two one-byte
+  READs, same-open VFS metadata matching and selected between-request faults.
+  Its O_PATH object pin is not a duplicate worker open-file description or a
+  pending-request lease. None of these variants authorizes product activation.
+
+  Next tests must reach the real containing lifecycle without a forged healthy
+  Owner, per-operation backend replacement or new privileges. Preserve original
+  errors and unattempted pins after uncertain close, verify owned-group absence
+  before release, and refuse restoration/retry/restart in review. Qualify the
+  original worker OFD/request and outstanding extent/cache/journal semantics
+  before any separately reviewed pending-I/O/WRITE experiment. No such WRITE
+  experiment is approved by this roadmap update. Do not widen the root helper
+  or relax the idle observer. See the
   [bounded prerequisite check](support/QEMU-FAST-TESTS.md#dedicated-same-open-client-prerequisites-host-and-qemu).
   Require
   evidence that the actual original handle is open under the retained authorized
