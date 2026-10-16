@@ -843,7 +843,25 @@ and recovery do not. **Depends on:** M0 for tests; M7 for physical placement.
   Remaining: full constructor/namespace/read/close/fault/atime/content/bounds and
   independent-writer qualification on supported media; no positive native race,
   durable-quarantine or physical-storage qualification is implied;
-  **M1.3c** one-attempt writer with preserved base and every interrupted boundary;
+  **M1.3c** one-attempt writer with preserved base and every interrupted boundary:
+  **c.1 private preparation (implemented, host/ARM prototype)** validates the exact
+  coherent base plus Store-encoded next revision before internally generating an
+  opaque operation ID, retains defensive base/candidate copies and exposes only
+  private intent data. No receipt/write/admission or single-use authority. Host
+  bounds/privacy/entropy controls, actual temporary Store byte parity, race3 and
+  bounded2000fuzz pass; existing ARM fixture reuses the real preparer/Store and
+  requires unconfirmed without receipt, twice across restart. Production entropy
+  follows pinned Go's fatal-source policy, not fake-reader recoverability.
+  **c.2 retained writer authority/namespace** must select an explicit bounded
+  operation-bundle or generation/manifest protocol and preserve the original
+  lock into effect ownership, not close/reopen the observer. Product choice open.
+  **c.3 durable base/intent before policy** must forbid initial pending/unresolved
+  evidence and every second attempt after uncertain I/O, even bare Store ErrIO;
+  never exploit Store's later pending cleanup or mint a new ID to bypass review.
+  **c.4 exact readback/receipt** must test each write/sync/rename/close/return
+  boundary, keep uncertain confirmation and distinguish local return from HTTP
+  delivery. **c.5 retention/reconciliation** requires bounded evidence preservation
+  and explicit authorization; none is implemented by preparation;
   **M1.3d** explicitly authorized reconciliation; **M1.2c** complete boot bundle.
   Missing/mismatched evidence never authorizes replay or service startup. The
   schema API, namespace/atomic-publication strategy, low-space retention and

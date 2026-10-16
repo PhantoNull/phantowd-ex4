@@ -6,9 +6,8 @@
 package policyevidencefs
 
 import (
+	"bytes"
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -52,10 +51,43 @@ func ExerciseTemporaryQEMU(ctx context.Context, c naspolicy.Config) (result erro
 	if err != nil || c.Validate() != nil {
 		return ErrInvalid
 	}
-	hash := func(b []byte) string { sum := sha256.Sum256(b); return hex.EncodeToString(sum[:]) }
-	r := map[string]any{"format": policyevidence.IntentFormat, "schema_version": 1, "installation_id": installation, "operation_id": "aaaaaaaabbbbccccddddeeeeeeeeeeee", "base_revision": 1, "next_revision": 2, "base_sha256": hash(base), "next_sha256": hash(current)}
-	intent, _ := json.Marshal(r)
-	r["format"], r["phase"] = policyevidence.ReceiptFormat, "local-confirmed"
+	prepared, err := policyevidence.Prepare(installation, base, c)
+	if err != nil {
+		return err
+	}
+	baseCopy, err := prepared.BaseBytes()
+	if err != nil || !bytes.Equal(baseCopy, base) {
+		return ErrInvalid
+	}
+	candidateCopy, err := prepared.CandidateBytes()
+	if err != nil || !bytes.Equal(candidateCopy, current) {
+		return ErrInvalid
+	}
+	baseCopy[0] = '!'
+	candidateCopy[0] = '!'
+	baseAgain, _ := prepared.BaseBytes()
+	candidateAgain, _ := prepared.CandidateBytes()
+	if !bytes.Equal(baseAgain, base) || !bytes.Equal(candidateAgain, current) {
+		return ErrInvalid
+	}
+	if _, err := json.Marshal(prepared); !errors.Is(err, policyevidence.ErrPrivate) {
+		return ErrInvalid
+	}
+	i, err := prepared.Intent()
+	if err != nil {
+		return err
+	}
+	intent, err := policyevidence.EncodeIntent(i)
+	if err != nil {
+		return err
+	}
+	// Invented local-confirmation evidence for matcher tests, NOT a real receipt
+	// or preparation result. RawMessage preserves exact uint64 representations.
+	var r map[string]json.RawMessage
+	if json.Unmarshal(intent, &r) != nil {
+		return ErrInvalid
+	}
+	r["format"], r["phase"] = json.RawMessage(`"phantowd-nas-policy-receipt"`), json.RawMessage(`"local-confirmed"`)
 	receipt, _ := json.Marshal(r)
 	root, err := os.MkdirTemp("/tmp", "phantowd-policy-evidence-")
 	if err != nil {
@@ -87,6 +119,29 @@ func ExerciseTemporaryQEMU(ctx context.Context, c naspolicy.Config) (result erro
 			}
 		}
 		return dir, nil
+	}
+	// Codec parity only, not a journal transaction or durable confirmation.
+	parity, err := makeLayout("preparation-store-parity", base, nil, nil)
+	if err != nil {
+		return err
+	}
+	store, err := naspolicystore.Open(filepath.Join(parity, "policy"))
+	if err != nil {
+		return err
+	}
+	defer store.Close()
+	if err := store.Commit(1, c); err != nil {
+		return err
+	}
+	if store.Close() != nil {
+		return ErrReview
+	}
+	persisted, err := os.ReadFile(filepath.Join(parity, "policy/nas-services.json"))
+	if err != nil || !bytes.Equal(persisted, current) {
+		return ErrReview
+	}
+	if d, err := policyevidence.Match(policyevidence.Evidence{InstallationID: installation, Current: policyevidence.Slot{State: policyevidence.Present, Data: persisted}, Intent: policyevidence.Slot{State: policyevidence.Present, Data: intent}, Receipt: policyevidence.Slot{State: policyevidence.Absent}}); err != nil || d.Kind() != policyevidence.PublicationUnconfirmed {
+		return ErrReview
 	}
 	for i, tc := range []struct {
 		current, intent, receipt []byte

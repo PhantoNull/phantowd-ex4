@@ -10,6 +10,52 @@ BootstrapAuthority behavior is unchanged. The approved first slice implements
 the [operation-evidence design](../revisionstore/RECOVERY-DESIGN.md); later writer,
 namespace/publication, retention, reconciliation and provisioning decisions remain.
 
+## Private operation preparation — M1.3c.1
+
+`Prepare(installationID, exactBaseBytes, nextConfig)` is namespace-independent
+operation data, **not** a writer, confirmation, single-use token or retained
+authority. It strictly validates both whole coherent policies, all revisions
+and byte bounds before generating one nonzero128-bit operation ID internally
+with `crypto/rand.Read`. Positive base revision and exactly base+1 are required;
+initial enrollment and overflow refuse. No request chooses an operation ID,
+digest or entropy provider. The trusted future Owner supplies its captured
+installation ID and actual base; this function cannot prove their provenance.
+
+Keep an owned copy of **exact** base bytes, including whitespace, not merely a
+digest. Encode the candidate with the same `encoding/json` contract used by the
+current transaction engine, independently decode it, and bind both hashes and
+revisions in the existing private intent schema. Immutable Prepared values share
+private storage safely; byte accessors return defensive copies and Intent remains
+private data. Zero values refuse; generic JSON and ordinary formatting disclose
+neither policies nor identifiers. Inputs must remain stable during preparation;
+this is not protection against malicious in-process code or memory inspection.
+
+No receipt, file, sync, publication, transaction retry or service action is made.
+Generating a fresh ID cannot clear an unresolved prior operation. The future
+coordinator still must retain authority, exclude consumers/unresolved work and
+durably preserve base/intent **before** attempting the policy write. Bare current
+Store.Commit may remove a valid old pending file on a later call: never use that
+behavior as recovery or retry in the new protocol. Successful candidate
+publication with no receipt remains `publication-unconfirmed`, not success.
+
+Retained data is bounded by two whole-policy documents plus the intent tuple;
+validation and defensive accessors allocate additional bounded temporaries.
+No concurrency admission, retention budget or memory-zeroization guarantee is
+implemented here. System entropy is not a context-cancellable read. The pinned
+Go SDK's `crypto/rand.Read` terminates the process on an irrecoverable source
+failure; this occurs before any journal effect in this preparation layer.
+Private short/error/zero-output test seams check fixed refusals/no application
+retry, not recovery from the production RNG's fatal path. Random IDs alone prove
+neither installation provenance, uniqueness history nor rollback resistance.
+
+Host controls cover exact/base-versus-candidate encoding, defensive ownership,
+zero/privacy, invalid-before-entropy, short/error/zero-ID refusal, full656128-byte
+base bound and maximum uint64 transition. A separate Linux temporary-Store test
+and existing ARM fixture verify actual persisted bytes and unconfirmed outcome;
+these are codec-parity probes, not durable journal transactions. Bounded fuzz
+mutates base inputs up to4096bytes; explicit units cover the full policy bound.
+No new image stage or additional default fuzz campaign is added.
+
 ## Private record schema
 
 Both flat schema1 records have `format`, `schema_version`, `installation_id`,
@@ -89,4 +135,5 @@ Writer/provisioning/reconciliation and state-root atomicity remain later gates.
 The [proposed product collector contract](COLLECTOR-DESIGN.md) records exact
 lock/namespace/lifetime and refusal requirements. A separate experimental
 [Linux collector](../policyevidencefs/README.md) now supplies retained file reads
-in host/QEMU fixtures; this pure package and all no-action meanings are unchanged.
+in host/QEMU fixtures; existing codec/matcher behavior and all no-action meanings
+are unchanged. Preparation above adds only private bound data and entropy use.

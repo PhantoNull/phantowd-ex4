@@ -9,6 +9,11 @@ original locks. It is not product boot wiring, a second store, journal writer,
 recovery engine, durable quarantine, consumer lease or service admission.
 No NAS installation path, physical medium or writer protocol is selected.
 
+The QEMU fixture now obtains intent/base/candidate data from the separate private
+preparer and compares its candidate with an actual temporary Store commit. The
+receipt used for matcher cases remains invented fixture data, never a preparation
+result or proof of a durable operation. No observer runtime behavior is changed.
+
 ```text
 trusted-state-root/
   policy/

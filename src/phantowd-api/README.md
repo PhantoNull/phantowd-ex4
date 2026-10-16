@@ -164,6 +164,12 @@ unique mount identity and mutation watches. Its diagnoses cannot authorize
 replay, a new Owner or service activation. Host unsupported refusal and actual
 ARMv5 fixtures are separate evidence; no NAS state path or writer is selected.
 
+The private [operation preparation helper](internal/policyevidence/README.md#private-operation-preparation--m13c1)
+retains exact base/candidate bytes and generates a bound intent before any future
+journal effect. It is namespace-independent data, not a receipt, single-use
+permission or transactional writer; the future Owner must still fence unresolved
+operations and preserve evidence instead of retrying bare Store.Commit.
+
 The separate internal [iSCSI desired-policy model](internal/iscsipolicy/README.md)
 defines revision-bound target/LUN/backing relationships and per-initiator CHAP
 credential references. Its synthetic host/QEMU fixture opens no backing or

@@ -646,6 +646,36 @@ acceptance cases for stale/crashed helpers, slot holes, retained deferral and
 workload admission. None of those product controls is implemented by this
 documentation-only checkpoint.
 
+## M1.3c.1 operation preparation — private host/ARM prototype, not a writer
+
+New private preparation retains exact base bytes and a Store-encoded candidate,
+validates complete schemas/positive consecutive revisions/bounds before using
+system entropy for an internally generated128-bit operation ID, and binds hashes
+in the existing intent schema. Defensive accessors, zero/private JSON/fmt controls
+and no caller-selected ID/entropy/digest are tested. It produces no receipt,
+filesystem mutation, single-use authority or permission to recover/retry.
+
+Whole Windows API/DOM/vet/tagged tests and compile pass, plus final focused Windows
+package tests after the fixture/fuzz additions. Pinned non-root Linux whole API
+vet/units/tagged-vet, package race3 and2000fuzz executions pass. The first Linux
+parity test incorrectly tried initializing revision7 and correctly failed; fixing
+the synthetic transition to1->2 preserves the engine's contract. Full656128-byte
+base and maxuint64 controls are units; fuzz base input caps4096bytes.
+Native temporary Store publication matches exact prepared bytes and remains
+publication-unconfirmed without receipt. Actual standard ARMv5 smoke repeats real
+preparation, defensive/privacy checks and actual temporary Store parity inside
+the existing collector fixture twice across API restart; earlier assertions and
+bounds remain. No extra guest stage, image/volume, hosted/full/physical claim.
+
+Pinned Go1.26.8 source confirms production random-source failure can terminate
+the process; fake-reader error tests are not proof of recoverability from that
+fatal path. Entropy precedes any future journal effect. The current bare Store
+may discard a pending entry on later Commit: a future coordinator must fence
+unresolved work and every second attempt rather than reuse that behavior.
+Operation-bundle versus generation/manifest choice remains unanswered. Durable
+base/intent/receipt publication, single-writer composition, retention/reconciliation,
+HTTP integration, boot admission and physical-medium qualification remain open.
+
 ## M1.3b.3 retained operation evidence — experimental host/ARM collector
 
 The separate [Linux collector](src/phantowd-api/internal/policyevidencefs/README.md)

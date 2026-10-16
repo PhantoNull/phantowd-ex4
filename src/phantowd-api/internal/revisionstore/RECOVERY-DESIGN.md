@@ -101,6 +101,13 @@ invalid/unsupported diagnostic rather than inventing an automatic migration.
 
 ## Follow-up writer protocol: requirements, not an implementation
 
+The namespace-independent [preparation helper](../policyevidence/README.md#private-operation-preparation--m13c1)
+now retains exact base/candidate bytes and a generated private intent; it performs
+no journal write and generates no receipt. It is not proof of confirmed base,
+consumer exclusion or retained filesystem origin. Preparation cannot select or
+replace the durable state namespace. Separate bundle versus generation/manifest
+publication remains a product/prototype design choice, not silently decided here.
+
 Do not bolt receipt writes onto the existing two-name policy directory: its
 bootstrap census intentionally treats unknown entries as evidence. Define a
 separate explicit schema and bounded namespace before adding new file roles.
@@ -124,6 +131,12 @@ The future coordinator must:
 4. Perform the existing bounded policy transaction once. Any attempted uncertain
    I/O or in-flight cancellation remains review; never repeat the operation to
    discover whether it succeeded.
+   The existing Store can unlink a valid old pending entry on a later Commit;
+   that standalone-store behavior is NOT the new journal's recovery policy.
+   Require initial absence of pending/unresolved work before effects, then fence
+   every subsequent attempt after uncertain intent/base/policy/receipt I/O,
+   including errors that the bare Store classifies only as ErrIO. A new operation
+   ID or reopening/syncing the Store cannot bypass that fence or erase evidence.
 5. Reobserve the exact candidate under retained authority. Record local receipt
    only after successful local publication/readback and qualified synchronization.
    A failed or interrupted receipt leaves the operation unresolved even if the
