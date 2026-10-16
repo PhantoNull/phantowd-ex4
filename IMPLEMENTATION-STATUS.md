@@ -3,7 +3,26 @@
 
 # Implementation status
 
-## Current integration gate: `0beb01e` held/data deadline
+## Current integration gate: `dedafa6` outer qualification budget
+
+The single complete cached qualifier of clean `dedafa6` terminates at its
+unchanged 1,800-second outer limit: Docker records exit 124, and the wrapper
+returns failure. Initial host/build checks, standard ARMv5, storage/state/owner/
+loader/atomic fixtures and eight strict Samba campaigns pass: service, native,
+candidate, lifecycle, fault, data, exit and held. Successful file/file-source,
+the complete Samba union and the later SMART lanes are not established.
+
+This is a failed complete run, not successful qualification assembled from
+partial results. No new Samba data assertion is observed in the captured output.
+The passing held guest does not
+repair the earlier intermittent deadline. No genuine failed ARM capture-clock
+emission is observed. Existing failure-log files predate this run and must not
+be presented as its guest errors. All 1,585 tracked inputs, including 1,161 API
+inputs, match their frozen witnesses after termination; the workspace is idle.
+The post-success audit guard refuses this failed terminal before Docker.
+No retry, budget increase, audit, PR promotion or merge follows from this result.
+
+## Earlier integration failure: `0beb01e` held/data deadline
 
 The complete cached qualifier of clean `0beb01e` passes host/race/fuzz,
 standard ARMv5, storage/state/owner/loader/atomic checks and the first seven
@@ -28,8 +47,9 @@ complete/audit/hosted/merge, product and physical EX4 gates remain open.
 PR ancestry includes its older commits, but semantic preservation still requires
 diff review and exact new-head checks; it does not authorize an unstable merge.
 
-A QEMU-only capture-return clock now records the parent context around the
-fixed 4-second capture, before the caller's settlement/close, without changing
+A QEMU-only capture-return clock, subsequently published in `dedafa6`, records
+the parent context around the fixed 4-second capture, before the caller's
+settlement/close, without changing
 generic Capture, phase budgets or failure semantics. Host controls cover the
 real non-root pre-exec refusal, immutable before/after-cleanup clocks, first-error
 binding, redaction and the original 1 KiB output cap; scoped race3 and whole

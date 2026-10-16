@@ -1,5 +1,17 @@
 # Fast API and file-service integration checks
 
+## Latest complete-run boundary
+
+The single clean `dedafa6` cached full run reaches eight strictly verified Samba
+campaigns, including held, before the original 1,800-second outer limit expires
+with Docker exit 124. No new Samba data assertion is observed in the captured
+output, and this is not a complete pass: file/file-source, the full union,
+later SMART lanes and post-success audit are
+unqualified. Frozen source witnesses still match. Earlier saved failure logs
+predate this run; they are not its serial trace. No unchanged retry, timeout
+increase, partial-result promotion or causal repair is implied. The existing
+guest, phase, worker, stop and proof contracts remain unchanged.
+
 ## Data capture-return clock
 
 The `qemu && linux` planned-data diagnostic additionally snapshots the parent

@@ -3,14 +3,20 @@
 
 # Dependency review and update qualification
 
-## Latest candidate boundary (2026-10-16)
+## Latest candidate boundary (2026-10-17)
 
-The single full cached run for clean `94e791f` fails final Samba file-source
-held-file admission after nine campaigns pass. Its generated images, package
-metadata and SBOM are **not a new complete qualification**. The guarded strict
-post-success source/image/SDK/legal audit is not executed on this exit1 run.
+The single full cached run for clean `dedafa6` expires at the original
+1,800-second outer limit (Docker exit 124) after eight Samba campaigns pass,
+including held. Its generated images, package metadata and SBOM are **not a new
+complete qualification**. The remaining Samba/SMART proofs are incomplete and
+the guarded post-success source/image/SDK/legal audit refuses this failed run
+before Docker. All 1,585 frozen tracked inputs, including 1,161 API inputs,
+still match; no complete/hosted/merge or timing-repair claim follows.
+
+Earlier `94e791f` failed final Samba file-source held-file admission after nine
+campaigns; `0beb01e` failed held/data execution. Their failures remain separate.
 Earlier complete audit checkpoints below remain dated evidence for their exact
-inputs; separate current focused SMART producer passes do not repair this gate.
+inputs; focused SMART producer passes do not retroactively qualify a full run.
 See [implementation status](../IMPLEMENTATION-STATUS.md).
 
 ## Samba July advisory/source cross-check (2026-10-15)
