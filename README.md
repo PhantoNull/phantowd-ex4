@@ -60,6 +60,9 @@ between observations, refusing further reads after drift or uncertainty.
 An experimental Linux collector also compares current policy and operation
 records under their original locks and unique mount identities. It remains
 diagnostic-only: product state placement, publication and recovery are not wired.
+A separate QEMU-only one-operation prototype tests preserved exact base/intent,
+policy publication and local receipt. It cannot open existing state or recover
+and activate product services.
 
 A separate ARMv5 fixture now verifies a retained, isolated real SMB3 client
 opening and closing synthetic data without changes or leaked descriptors.

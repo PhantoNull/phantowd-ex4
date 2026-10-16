@@ -17,6 +17,10 @@ An additional disposable fixture checks the separate
 [anchored Store prerequisite](../revisionstore/ANCHORED-STORE.md): exact commit
 readback, actual policy-lock exclusion and sticky refusal after late pending
 evidence. This does not connect the observer to a writer or authorize recovery.
+The same QEMU-only fixture also runs the separate
+[disposable transaction protocol](../policytransaction/README.md). Its new
+`operation.json` profile is not accepted by this observer's fixed census;
+the read-only runtime and all no-action meanings remain unchanged.
 
 ```text
 trusted-state-root/

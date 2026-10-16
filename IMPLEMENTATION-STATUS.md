@@ -646,6 +646,35 @@ acceptance cases for stale/crashed helpers, slot holes, retained deferral and
 workload admission. None of those product controls is implemented by this
 documentation-only checkpoint.
 
+## M1.3c.2–c.4 disposable protocol — one operation, not product recovery
+
+The new [experimental transaction package](src/phantowd-api/internal/policytransaction/README.md)
+has a portable bounded private bundle codec and a QEMU/Linux-only writer that
+can create only fresh tmpfs state. It retains original root/child locks, unique
+mount/root witnesses and structural watch; initializes its own known fixture
+base, then serializes exactly one intent/base -> policy -> readback -> local
+receipt operation. Existing adapters/observer runtime remain unchanged. The
+older read-only collector rejects the new operation.json profile by design.
+
+Whole Windows and pinned Linux suites/vet pass. Final native package race3 and
+2000 bounded fuzz executions pass their scopes. WSL's missing unique mount IDs
+explicitly skip the positive writer lifecycle/race case, not mark it passed.
+Actual standard ARMv5 smoke passes all18 normal/concurrent, whole-method failure,
+cancellation, root restoration, readback and policy-drift scenarios twice in the
+existing filesystem fixture. Actual phases/base bytes/three flocks, single winner,
+sticky review/no retry and normal disposal/descriptor counts are checked under
+unchanged budgets, with no new image/stage/volume. A first portable roundtrip
+failure exposed nil-versus-empty receipt absence; explicit absence is normalized
+without weakening bindings. This is not physical IO or every-syscall coverage.
+
+Receipt-after/canceled-return cases deliberately leave a matching confirmation
+record while the Owner remains in review: record presence is not proof of a
+successful return or response delivery. No product state opener, HTTP save/status,
+service authority, durable quarantine/reconciliation, multiple operation epochs,
+product namespace/media selection, complete boot state or installable firmware
+is supplied. Full/hosted/Samba/physical recovery gates remain open; focused passes
+do not authorize merging PR133 or attaching valuable disks.
+
 ## M1.3c.2 prerequisite — anchored Store, not the transaction Owner
 
 The optional Linux [anchored profile](src/phantowd-api/internal/revisionstore/ANCHORED-STORE.md)

@@ -176,6 +176,12 @@ bounded readback and refuses pending/unknown entries or retries after mutation
 uncertainty. Only host/QEMU fixtures use it; it is not the single-operation writer,
 durable review state, reconciliation or a change to existing HTTP adapters.
 
+The separate [disposable operation protocol](internal/policytransaction/README.md)
+now composes those strict Stores for exact base/intent, one policy publication,
+readback and local receipt. It uses only newly generated QEMU tmpfs namespaces;
+there is no existing-state opener, product format decision, HTTP save/recovery
+or consumer activation. Matching receipt files never override an uncertain Owner.
+
 The separate internal [iSCSI desired-policy model](internal/iscsipolicy/README.md)
 defines revision-bound target/LUN/backing relationships and per-initiator CHAP
 credential references. Its synthetic host/QEMU fixture opens no backing or

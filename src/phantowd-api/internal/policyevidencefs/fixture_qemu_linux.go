@@ -19,6 +19,7 @@ import (
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/naspolicy"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/naspolicystore"
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/policyevidence"
+	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/policytransaction"
 	"golang.org/x/sys/unix"
 )
 
@@ -31,6 +32,9 @@ func ExerciseTemporaryQEMU(ctx context.Context, c naspolicy.Config) (result erro
 	if ctx == nil || unix.Statfs("/tmp", &fs) != nil || fs.Type != unix.TMPFS_MAGIC || c.Validate() != nil ||
 		len(c.FileServices.Shares.Shares) == 0 || len(c.FileServices.NFS.Exports) == 0 || len(c.ISCSI.Targets) == 0 {
 		return ErrInvalid
+	}
+	if err := policytransaction.ExerciseTemporaryQEMU(ctx, c); err != nil {
+		return err
 	}
 	revision := func(n uint64) {
 		c.Revision = n

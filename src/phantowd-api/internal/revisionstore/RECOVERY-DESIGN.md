@@ -4,8 +4,8 @@
 # Policy operation evidence and boot recovery
 
 **Status: the M1.3b.1/b.2 private codec/read-only matcher slice is approved and
-implemented; an experimental retained collector exists separately, while writer
-and product recovery remain proposed.**
+implemented; an experimental retained collector and a disposable QEMU writer
+exist separately, while the product writer and recovery remain proposed.**
 The [pure implementation](../policyevidence/README.md) grants no action.
 The current Store, OwnedStore and read-only BootstrapAuthority remain unchanged.
 The [collector prototype](../policyevidencefs/README.md) is diagnostic only and
@@ -100,6 +100,13 @@ When one role is ambiguous, return no usable match. Retain the existing separate
 invalid/unsupported diagnostic rather than inventing an automatic migration.
 
 ## Follow-up writer protocol: requirements, not an implementation
+
+A [QEMU-only prototype](../policytransaction/README.md) now tests an experimental
+separate operation bundle with exact base/intent, one policy commit, readback and
+local receipt. It can create only a fresh tmpfs namespace, not open existing
+product state. Eighteen method-boundary/cancellation/drift cases run in the
+existing standard guest; this is not every interrupted syscall, durable-review
+recovery, a chosen product format or completion of the requirements below.
 
 The namespace-independent [preparation helper](../policyevidence/README.md#private-operation-preparation--m13c1)
 now retains exact base/candidate bytes and a generated private intent; it performs

@@ -860,6 +860,15 @@ and recovery do not. **Depends on:** M0 for tests; M7 for physical placement.
   open, returns exact bounded readback and fences pending/unknown entries plus
   every attempted-mutation error. This is not the root Owner, a namespace decision,
   logical single-attempt protocol or complete c.2/c.3. Existing adapters unchanged.
+  A separate [QEMU-only one-operation prototype](src/phantowd-api/internal/policytransaction/README.md)
+  now composes an original root/unique-mount/watch and both strict Store locks,
+  privately creates/initializes only fresh tmpfs state, and fences a single
+  operation through base/intent -> policy -> exact readback -> local receipt.
+  Eighteen whole-method/cancellation/drift cases verify actual file phases,
+  original locks, one concurrent winner, review despite matching receipt and
+  no second attempt; existing standard ARM fixture repeats them twice. This is
+  partial c.2/c.3/c.4, not product namespace approval, existing-state admission,
+  every interrupted syscall/real media fault, durable quarantine or recovery.
   **c.3 durable base/intent before policy** must forbid initial pending/unresolved
   evidence and every second attempt after uncertain I/O, even bare Store ErrIO;
   never exploit Store's later pending cleanup or mint a new ID to bypass review.
