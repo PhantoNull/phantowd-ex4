@@ -11,12 +11,14 @@ The dated [code-to-roadmap comparison](IMPLEMENTATION-STATUS.md) records
 implemented evidence, missing product integration, planning estimate bands and
 the immediate execution sequence. Estimates are not release qualification.
 
-Current M0 gate: the complete `907e172` qualifier passes all ten Samba campaigns
-but fails SMART fixture staging on an exhausted temporary image. Checked,
-128 MiB-bounded staging and its real-allocation regression now pass focused
-host/ARM tests. Require a fresh complete corrected-candidate qualifier and audit;
-do not replace the failed result with selected passes or claim a Samba timing
-repair. See [implementation status](IMPLEMENTATION-STATUS.md) and the
+Current M0 gate: the complete corrected `0beb01e` qualifier passes seven Samba
+campaigns, then `held` fails its data/runtime `escape` execution deadline. One
+unchanged focused held guest passes, not a reliable reproduction or repair.
+The preceding SMART staging exhaustion is corrected with real-allocation and
+focused ARM evidence; the new full run does not reach SMART or the audit.
+Require causal diagnosis/calibrated fixture decisions, complete qualification
+and audit; never replace failed results with selected passes or relax proofs.
+See [implementation status](IMPLEMENTATION-STATUS.md) and the
 [focused staging contract](support/QEMU-FAST-TESTS.md#smart-report-staging-checked-disposable-image).
 
 ## Product contract

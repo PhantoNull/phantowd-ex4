@@ -19,10 +19,14 @@ a larger base is refused. Source/base/workspace mounts stay read-only in the
 focused wrapper. Its CPU/memory/PID/tmpfs and 90-second guest bounds are unchanged;
 no persistent disk/image, volume, NAS or hardware backend is modified.
 
-The complete `907e172` qualifier passes all ten Samba campaigns but fails at
+The preceding complete `907e172` qualifier passes all ten Samba campaigns but fails at
 SMART init before this correction. Focused corrected SMART lanes pass; they do
 not retroactively pass that full run or authorize its post-success audit. A new
-complete candidate, hosted checks and physical/product gates remain separate.
+complete `0beb01e` qualifier then passes seven Samba campaigns but fails `held`
+in data/runtime `escape` execution with a deadline, before reaching SMART.
+One unchanged focused held guest passes; the failed full trace still refuses
+strict replay. This is not a reproduction or timing repair. Original guest,
+worker and phase budgets are unchanged; audit/hosted/product gates stay open.
 
 ## Failure-only source-fault checkpoint costs
 

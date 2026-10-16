@@ -3,7 +3,32 @@
 
 # Implementation status
 
-## Current integration gate: SMART fixture staging corrected locally
+## Current integration gate: `0beb01e` held/data deadline
+
+The complete cached qualifier of clean `0beb01e` passes host/race/fuzz,
+standard ARMv5, storage/state/owner/loader/atomic checks and the first seven
+Samba campaigns. The eighth, `held`, fails before its held-session action:
+the data/runtime probe reports an execution deadline during `escape` (the
+symlink-denial check). Its runtime entered with 18,077 ms remaining and reports
+18,114 ms elapsed; the outer data action reports 19,998 ms budget, 1,920 ms
+before the runtime probe and 20,036 ms total. These observations localize the
+failure, not its cause or whether the individual worker limit is responsible.
+
+One unchanged focused `held` guest passes strict verification with the same
+guest/phase/worker/proof bounds, using the existing focused container profile.
+That is not an identical full-container experiment, a reliable reproduction,
+a timing repair or a replacement for the failed complete run. Offline replay
+of the exact failed trace refuses it; replay of the focused trace accepts it.
+The failed-terminal audit guard refuses before Docker. No further unchanged
+complete retry or timeout/proof relaxation was used to select a pass.
+
+The later file/file-source/SMART lanes and post-success audit are not reached.
+Earlier focused SMART staging evidence remains separately valid. Current
+complete/audit/hosted/merge, product and physical EX4 gates remain open.
+PR ancestry includes its older commits, but semantic preservation still requires
+diff review and exact new-head checks; it does not authorize an unstable merge.
+
+## Earlier integration failure: SMART fixture staging corrected locally
 
 The complete cached qualifier of clean `907e172` passes host/race/fuzz, standard
 ARMv5, storage/state/owner/loader/atomic checks and all ten Samba campaigns plus
