@@ -83,6 +83,14 @@ context. It does not qualify the whole operation or establish a universal cause
 for older failures. New full/audit were not started, fixture-budget approval
 remains pending and all original numeric/proof/authority limits are retained.
 
+The retained identity lease now also preserves standard caller cancellation/
+deadline classification at both admitted observation/derivation boundaries,
+alongside unchanged sticky review. Four deterministic root-native RED/GREEN
+cases, race3 and12 actual ARMv5 cases in the existing Owner guest pass; private
+causes, automatic retry/revival and input release remain refused. This improves
+future diagnosis without attributing or repairing earlier timing failures.
+No numeric limit, full/hosted gate or product activation authority changes.
+
 The optional fixed parent-share mount substitution now also passes: binding
 the SAME directory at the parent path changes unique mount identity without
 changing device/inode/content. Original-root-relative no-symlink metadata

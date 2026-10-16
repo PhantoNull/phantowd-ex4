@@ -5,6 +5,7 @@ package identityowner
 
 import (
 	"context"
+	"errors"
 	"reflect"
 
 	"github.com/PhantoNull/phantowd-ex4/phantowd-api/internal/smbprovision"
@@ -123,12 +124,15 @@ func (l *FileServiceLease) WithFileServiceSnapshot(ctx context.Context, inspect 
 	evidence, err := o.fileServiceSnapshotLocked(ctx)
 	if err != nil || ctx.Err() != nil || evidence.Fingerprint != l.state.fingerprint {
 		l.state.review = true
+		if ended := ctx.Err(); ended != nil {
+			return errors.Join(ErrReview, ended)
+		}
 		return ErrReview
 	}
 	err = inspect(evidence)
 	if ctx.Err() != nil {
 		l.state.review = true
-		return ErrReview
+		return errors.Join(ErrReview, ctx.Err())
 	}
 	return err
 }

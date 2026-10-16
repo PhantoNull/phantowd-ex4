@@ -396,13 +396,17 @@ class BuildFeedbackTests(unittest.TestCase):
     def test_front_panel_text_requires_both_synthetic_guest_receipts(self):
         smoke = (ROOT / "support/qemu-smoke.sh").read_text()
         selftest = (ROOT / "src/phantowd-api/selftest.go").read_text()
-        fixture = (ROOT / "src/phantowd-api/frontpaneltext_selftest.go").read_text()
+        fixture = (ROOT / "src/phantowd-api/"
+                   "frontpaneltext_selftest.go").read_text()
         marker = ("PHANTOWD_FRONT_PANEL_TEXT_READY ascii=true byte_bound=true "
-                  "no_truncation=true transmit=false scope=synthetic-memory-only")
+                  "no_truncation=true transmit=false "
+                  "scope=synthetic-memory-only")
         self.assertIn(marker, selftest)
         self.assertIn("exerciseQEMUFrontPanelText()", selftest)
-        for wrapper in ('support/test-api.ps1', 'support/container/test-api.sh'):
-            self.assertIn('TestQEMUFrontPanelText', (ROOT / wrapper).read_text())
+        for wrapper in ('support/test-api.ps1',
+                        'support/container/test-api.sh'):
+            self.assertIn('TestQEMUFrontPanelText',
+                          (ROOT / wrapper).read_text())
         for forbidden in ('"os"', '"os/exec"', '"net"', '"syscall"',
                           '"golang.org/x/sys/unix"'):
             self.assertNotIn(forbidden, fixture)
@@ -647,7 +651,8 @@ class BuildFeedbackTests(unittest.TestCase):
                       init)
         self.assertIn('-test.count=3 -test.cpu=1 -test.timeout=15s', init)
         self.assertIn('prepare && readiness && metadata &&', init)
-        self.assertIn('"$readiness" "$metadata" "$expected"', driver)
+        self.assertIn('"$readiness" "$metadata" "$identity_context" '
+                      '"$expected"', driver)
         self.assertIn('TestReadinessCannotCommitAfterContextEnds ', driver)
         self.assertIn('TestReadinessContextChecksOriginalAndDerived'
                       'MonotonicDeadlines ', driver)
@@ -661,8 +666,9 @@ class BuildFeedbackTests(unittest.TestCase):
             '\n[ "$(sha256sum')]
         markers = dict(re.findall(r"(?m)^(\w+)='([^'\n]+)'$", guard))
         lines = [markers[name] for name in
-                 ('readiness', 'metadata', 'expected', 'supervised', 'scan',
-                  'review', 'forced')] + ['PHANTOWD_CODE_OWNER_DONE']
+                 ('readiness', 'metadata', 'identity_context', 'expected',
+                  'supervised', 'scan', 'review', 'forced')]
+        lines += ['PHANTOWD_CODE_OWNER_DONE']
         lines += ['--- PASS: TestRetainedMetadataSynthetic (0.00s)'] * 12
         main = '--- PASS: TestReadinessCannotCommitAfterContextEnds (0.00s)'
         clock = ('--- PASS: TestReadinessContextChecksOriginalAndDerived'
@@ -674,14 +680,34 @@ class BuildFeedbackTests(unittest.TestCase):
                  for ready in ('false', 'true')
                  for failed in ('false', 'true')]
         lines += cases * 3
+        identity_main = ('--- PASS: TestFileServiceLeaseAdmittedContextFailure'
+                         'KeepsCauseAndReview (0.00s)')
+        identity_cases = [
+            '    --- PASS: TestFileServiceLeaseAdmittedContextFailure'
+            f'KeepsCauseAndReview/{stage}/{cause} (0.00s)'
+            for stage in ('observation', 'derivation')
+            for cause in ('canceled', 'deadline')]
+        lines += [identity_main] * 3 + identity_cases * 3
         controls = [('LF', lines, 0, '\n', True),
                     ('CRLF', lines, 0, '\r\n', True),
                     ('missing-marker', lines[1:], 0, '\n', False),
                     ('duplicate-marker', [lines[0]] + lines, 0, '\n', False),
                     ('changed-marker', [lines[0].replace('cases=8', 'cases=7')]
                      + lines[1:], 0, '\n', False),
-                    ('missing-case', lines[:-1], 0, '\n', False),
+                    ('missing-case', [line for index, line in enumerate(lines)
+                                      if index != lines.index(cases[0])],
+                     0, '\n', False),
                     ('extra-case', lines + [cases[0]], 0, '\n', False),
+                    ('missing-identity-main',
+                     [line for line in lines if line != identity_main],
+                     0, '\n', False),
+                    ('missing-identity-marker',
+                     [line for line in lines
+                      if line != markers['identity_context']],
+                     0, '\n', False),
+                    ('missing-identity-case', lines[:-1], 0, '\n', False),
+                    ('extra-identity-case', lines + [identity_cases[0]],
+                     0, '\n', False),
                     ('missing-main', [line for line in lines if line != main],
                      0, '\n', False),
                     ('missing-clock',
@@ -705,6 +731,22 @@ class BuildFeedbackTests(unittest.TestCase):
                         timeout=3)
                     self.assertEqual(result.returncode == 0, accepted,
                                      result.stderr)
+
+    def test_runtime_owner_identity_context_uses_same_guest(self):
+        tests = ROOT / 'support/tests'
+        driver = (tests / 'test-qemu-runtime-owner.sh').read_text()
+        init = (tests / 'runtime-owner-init.sh').read_text()
+        stage = (tests / 'stage-samba-root-file.sh').read_text()
+        self.assertIn('"$scratch/identity-context" ./identityowner', driver)
+        self.assertIn('"$scratch/identity-context '
+                      'phantowd-identity-context-tests"', driver)
+        self.assertIn('/usr/sbin/phantowd-identity-context-tests:0100755',
+                      stage)
+        self.assertIn('^TestFileServiceLeaseAdmittedContextFailure'
+                      'KeepsCauseAndReview$', init)
+        self.assertIn('metadata && identity_context &&', init)
+        self.assertIn('[ "$identity_cases" -ne 12 ]', driver)
+        self.assertEqual(driver.count('qemu-system-arm \\\n'), 1)
 
     def test_perl_regression_precedes_build_and_scoped_refresh(self):
         script = (ROOT / "support/container/build-qemu.sh").read_text()

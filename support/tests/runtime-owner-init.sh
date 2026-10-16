@@ -18,7 +18,11 @@ metadata() {
     /usr/sbin/phantowd-runtime-metadata-tests -test.v -test.run '^TestRetainedMetadata' -test.count=3 -test.cpu=1 || return 1
     echo 'PHANTOWD_CODE_OWNER_METADATA_READY late_cancellation=true original_pins=true transient_table_removed=true scope=qemu-only'
 }
-if prepare && readiness && metadata && /usr/sbin/phantowd-runtime-bundle-probe owner; then
+identity_context() {
+    /usr/sbin/phantowd-identity-context-tests -test.v -test.run '^TestFileServiceLeaseAdmittedContextFailureKeepsCauseAndReview$' -test.count=3 -test.cpu=1 -test.timeout=15s || return 1
+    echo 'PHANTOWD_CODE_OWNER_IDENTITY_CONTEXT_READY cases=4 repeats=3 context_cause=true private_cause=false review_retained=true retry=false scope=qemu-only'
+}
+if prepare && readiness && metadata && identity_context && /usr/sbin/phantowd-runtime-bundle-probe owner; then
     echo PHANTOWD_CODE_OWNER_DONE
 else
     echo PHANTOWD_CODE_OWNER_FAILED

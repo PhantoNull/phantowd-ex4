@@ -20,6 +20,7 @@ case "$destination:$mode" in
     /usr/sbin/phantowd-runtime-bundle-probe:0100755|\
     /usr/sbin/phantowd-runtime-metadata-tests:0100755|\
     /usr/sbin/phantowd-process-readiness-tests:0100755|\
+    /usr/sbin/phantowd-identity-context-tests:0100755|\
     /usr/sbin/phantowd-runtime-owner-init:0100755|\
     /usr/sbin/phantowd-samba-owner-probe:0100755|\
     /usr/sbin/phantowd-samba-root-init:0100755|\

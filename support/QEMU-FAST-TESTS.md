@@ -1155,7 +1155,7 @@ refuse revalidation, original descriptors/table must survive comparison, and
 changed/incomplete expected snapshots must refuse. This is not executable
 authority or qualification of product mounts. No extra CI guest is introduced.
 Only the disposable rootfs copy is enlarged to 128 MiB (larger bases refuse),
-and all four injected programs are verified by exact readback/type/mode/root
+and all five injected programs are verified by exact readback/type/mode/root
 ownership. The shared staging regression also checks stale/exhausted copies.
 
 Before the metadata groups, the same guest runs real `processowner` startup
@@ -1168,6 +1168,19 @@ test binary has a 15-second cap inside the unchanged 120-second guest; exact
 are mandatory. Missing/duplicate/failing/skipped receipts refuse in host controls.
 Native/race and actual ARMv5 pass. This is not a fix for the intermittent
 Samba admission failure or product service activation, and adds no guest.
+
+The same boot additionally runs four root-only retained-identity lease tests
+three times: original-context cancellation/deadline during the complete
+observation or the bounded derivation. Every first refusal preserves sticky
+review plus the standard context classification, never private context-cause
+text. Fresh contexts cannot retry observation or revive the lease, and the
+original Owner cannot close while it remains retained. Virtual time avoids
+real sleeps. The separate test binary has a15s cap inside the unchanged120s
+guest. Exact12 case receipts, three parent passes and one ordered fixed identity
+marker are mandatory alongside every existing proof; missing/extra/failed/
+skipped receipts refuse. The test-only binary is staged only into the temporary
+image and removed with the other scratch inputs. Native root/race3 and actual
+ARMv5 pass; this is error fidelity, not a Samba performance or timeout repair.
 
 The separate guest has a finite 120-second budget, no retries and no Samba
 entropy/network readiness dependency. A copied static fixture checks code/root

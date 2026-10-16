@@ -57,6 +57,19 @@ qualifies an operation. No timeout, capture bound, worker check or authority
 changes. About3.36s local margin is not a worst-case bound or hosted repair;
 the fixture-budget decision and complete current qualification remain open.
 
+## Retained identity lease: admitted context-cause fidelity
+
+The retained identity lease also now preserves standard caller cancellation/
+deadline causes alongside its original sticky `ErrReview` when the context
+ends during observation or bounded derivation. Four deterministic RED controls
+lose those causes on the old source; corrected root-native tests and race3 pass,
+as do all four cases repeated3 in the existing ARMv5 Owner guest. Private context
+causes are not returned; fresh contexts cannot revive/retry review, and original
+authority remains retained. All earlier Owner/metadata/readiness proofs and
+the120s guest limit remain mandatory. This narrows future error classification;
+it does not reproduce or repair the Samba timing gates above, change budgets
+or authorize a new full/hosted run or merge.
+
 ## Independent SMART temperature prerequisite
 
 An internal offline optional ATA temperature projection now preserves the

@@ -222,6 +222,18 @@ callback refusal alone does not invalidate healthy identity evidence;
 cancellation after admission is uncertain and remains review-required. There
 is no caller-selected replacement backend or cached verification shortcut.
 
+When the original context ends during an admitted observation or derivation,
+the first refusal now preserves both `ErrReview` and the standard
+`context.Canceled`/`context.DeadlineExceeded` classification. It does not return
+`context.Cause` or private backend text, retain a context, retry an observation
+or revive the lease with a fresh context. Later review refusals need not repeat
+that historical context cause. Pre-admission/nil/busy/released behavior is
+unchanged; this is cause fidelity, not a deadline extension or timing repair.
+Deterministic root-only tests exercise both boundaries and both context endings
+with virtual time, unchanged retained authority and no observation on retry.
+They also run three times in the existing disposable ARMv5 Owner guest; no new
+guest or product process is added.
+
 Consumers do not hold the mutex between calls or freeze passdb bytes. Explicit
 desired-state changes, credential operations and account/session revocation
 remain possible; the old lease will refuse changed evidence. `Release` drops
