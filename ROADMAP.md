@@ -807,6 +807,19 @@ and recovery do not. **Depends on:** M0 for tests; M7 for physical placement.
   separates local commit records from client response delivery. It is a design,
   not an implemented journal or approved admission protocol. Implement in order:
   **M1.3b.1/b.2** strict private intent/receipt codecs and pure diagnostic matcher;
+  this first slice is approved and implemented in
+  [policyevidence](src/phantowd-api/internal/policyevidence/README.md), without a
+  collector or effects. Schema1 records are flat/bounded4096bytes, fixed exact
+  keys and local-confirmed phase, nonzero opaque IDs, consecutive uint64 revisions
+  and exact policy-byte SHA-256. Explicit complete/absent/unavailable role inputs
+  yield six redacted diagnostic kinds; every kind grants no action. Validate
+  current whole NAS schema/revisions, reject foreign/orphan/mismatched evidence,
+  distinguish no recorded operation from pristine, and refuse generic JSON and
+  ordinary formatting leaks. Never infer earlier fsync returns/client delivery.
+  Acceptance: nonempty three-protocol pair, every tuple/role refusal, complete
+  byte bounds, maximum revisions, exact-byte changes, privacy, whole host vet/
+  units/race, bounded fuzz and same-boot pure ARM checks; no collector, journal
+  writes, recovery/replay, admission/HTTP/product activation or device operation.
   **M1.3b.3** retained read-only evidence collection;
   **M1.3c** one-attempt writer with preserved base and every interrupted boundary;
   **M1.3d** explicitly authorized reconciliation; **M1.2c** complete boot bundle.

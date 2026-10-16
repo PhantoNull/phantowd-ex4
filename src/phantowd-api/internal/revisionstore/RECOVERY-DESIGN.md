@@ -3,7 +3,9 @@
 
 # Policy operation evidence and boot recovery
 
-**Status: proposed M1.3b contract, not implemented or approved for product use.**
+**Status: the M1.3b.1/b.2 private codec/read-only matcher slice is approved and
+implemented; collection, writer and product recovery remain proposed.**
+The [pure implementation](../policyevidence/README.md) grants no action.
 The current Store, OwnedStore and read-only BootstrapAuthority remain unchanged.
 This design is a contributor handoff, not a migration or installation procedure.
 
@@ -44,9 +46,9 @@ trusted provisioning and parents, cooperating writers and a qualified medium.
 Without a separately designed rollback-resistant anchor, restoring an old
 complete state bundle cannot be distinguished reliably from legitimate history.
 
-## Proposed first implementation: pure evidence matching
+## Approved first slice: pure evidence matching
 
-Start with an internal, platform-independent strict codec and pure matcher.
+The internal, platform-independent strict codec and pure matcher now exist.
 Inputs are trusted in-process observations, never HTTP-supplied permissions.
 This slice has no file opener, writer, synchronization, recovery, consumer or
 Owner constructor. Its result is diagnostic data, never a capability.
@@ -170,7 +172,8 @@ Process interruption is not sudden power loss or failing EX4 NAND qualification.
 
 ## Decisions still required
 
-- Approve the record/matcher semantics before committing a new schema API.
+- The record/matcher-only schema is approved; this does not approve a collector,
+  state namespace, writer, reconciliation protocol or product admission.
 - Choose the state-root/bundle namespace and atomic publication strategy; a
   generation/manifest design is an option, not a silently selected format.
 - Specify what can authorize reconciliation after receipt-publication uncertainty,

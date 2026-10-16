@@ -646,6 +646,43 @@ acceptance cases for stale/crashed helpers, slot holes, retained deferral and
 workload admission. None of those product controls is implemented by this
 documentation-only checkpoint.
 
+## M1.3b.1/b.2 private policy-operation codecs and matcher — local prototype
+
+The approved [pure operation-evidence slice](src/phantowd-api/internal/policyevidence/README.md)
+implements versioned flat intent/local-receipt codecs and six redacted match
+kinds for whole coherent NAS policy. Records are bounded4096bytes with strict
+keys, Unicode, phases, canonical opaque IDs/digests and consecutive uint64
+revisions. Unknown/absent/unavailable role distinctions do not become pristine
+or success. Matching validates the complete current policy and its exact byte
+hash plus revision; a non-current digest remains an unverified record assertion.
+Missing receipt after publication remains unconfirmed; orphan/foreign/mixed
+records refuse a match. All kinds grant no action or historical durability/
+response-delivery proof. Generic JSON is refused, normal formatting is redacted,
+and no input references are retained. No collector, ID generation, journal/file
+write, recovery/replay, Owner admission, HTTP route or product activation exists.
+
+Whole supported Windows and pinnedGo1.26.8 non-root Linux vet/unit/tagged-vet
+checks pass, with ARMv5 cross-compilation separately recorded. Focused package
+units report99.0% statement coverage, race-count3 and two10,000-execution fuzz
+campaigns pass. Units include a nonempty three-protocol before/after pair,
+all six kinds, every tuple/role binding, exact-byte versus semantic difference,
+maximum uint64 and inclusive4096/656128-byte boundaries, malformed values,
+privacy and zero-on-error. The matching fuzz lane caps current bytes at8192;
+explicit units cover the full policy bound. Forty-one actual runner controls,
+module-flake8 and shellcheck pass. No default extra fuzz stage is added.
+
+Actual standard single-boot ARMv5 userspace overlay passes at the unchanged
+240s guest bound, including the new pure all-protocol/codec/matcher fixture
+twice across API restart and every original smoke assertion. Its exact two-
+receipt guard is exercised by missing/one/duplicate/lookalike host controls.
+The final tool-output preview was truncated; no independently replayable full
+serial log is claimed. The wrapper's terminal exit0 and pass line are retained
+with API/rootfs hashes. Existing base kernel/packages/probe stay unchanged.
+No JavaScript/browser rerun, full/two-boot/SBOM/hosted/physical or power-loss
+qualification follows. No new Docker image/volume or NAS operation. Next is
+retained complete-role evidence collection after its namespace/lifetime review;
+writer/publication/retention/reconciliation and boot-bundle gates remain open.
+
 ## M9.2g manual authenticated iSCSI preview — local host/browser/ARM prototype
 
 An explicit `POST /api/v1/iscsi/preview` now validates one complete coherent

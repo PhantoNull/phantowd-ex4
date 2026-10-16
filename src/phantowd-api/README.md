@@ -118,6 +118,13 @@ coherent policy/use/permission admission and target activation remain absent.
 
 ## M9.2a desired iSCSI policy
 
+The approved [private policy-operation evidence slice](internal/policyevidence/README.md)
+provides strict intent/local-receipt codecs and a pure diagnostic matcher for
+the whole NAS policy. It distinguishes unconfirmed publications from matching
+local records without treating either as browser acknowledgement or service
+permission. No collector, journal writer, recovery/HTTP or Store/Owner behavior
+change is included; these remain prerequisites to a safe saved-target workflow.
+
 The private [desired iSCSI review projection](internal/iscsipreview/README.md)
 now prepares complete target/LUN/initiator/grant display data from the validated
 coherent revision, without exposing credential usernames/SecretRefs or raw

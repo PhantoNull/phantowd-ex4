@@ -27,9 +27,10 @@ EIO. Review remains instance-local, not a durable recovery record. No init/
 write/admission/Owner handoff/journal/HTTP/startup is implemented. A future
 receipt/state-bundle contract must govern boot and operator recovery.
 
-[Recovery design and work packets](RECOVERY-DESIGN.md) propose versioned private
-intent/receipt matching before any writer or admission change. It is not yet an
-approved schema or implemented recovery mechanism. Local recorded confirmation
+[Recovery design and work packets](RECOVERY-DESIGN.md) separate versioned private
+intent/receipt matching from writer/admission changes. The approved pure
+[codec and matcher](../policyevidence/README.md) is implemented, not a recovery
+mechanism, collector, writer or change to this store. Local recorded confirmation
 and response delivery are distinct; restoring valid bytes does not settle an
 interrupted operation or clear prior review.
 

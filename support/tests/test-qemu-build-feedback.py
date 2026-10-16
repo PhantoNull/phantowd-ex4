@@ -393,6 +393,32 @@ class BuildFeedbackTests(unittest.TestCase):
                 text=True, timeout=3)
             self.assertNotEqual(result.returncode, 0)
 
+    def test_policy_evidence_requires_both_synthetic_guest_receipts(self):
+        smoke = (ROOT / "support/qemu-smoke.sh").read_text()
+        marker = (
+            "PHANTOWD_POLICY_EVIDENCE_READY schema=1 all_protocols=true "
+            "exact_bytes=true private=true readonly=true admission=false "
+            "scope=synthetic-memory-only"
+        )
+        guard = next(block for block in re.findall(
+            r"(?m)^        if ! test .*?^        fi$", smoke, re.DOTALL)
+            if marker in block)
+        with tempfile.TemporaryDirectory() as temp:
+            log = pathlib.Path(temp) / "guest.log"
+            for count in (0, 1, 2, 3):
+                log.write_bytes(((marker + "\r\n") * count).encode())
+                result = subprocess.run(
+                    ["sh", "-c", 'log_file="$1"\n' + guard,
+                     "policy-evidence-guard", str(log)],
+                    capture_output=True, text=True, timeout=3)
+                self.assertEqual(result.returncode, 0 if count == 2 else 1)
+            log.write_text(marker + "\n" + marker + " extra\n")
+            result = subprocess.run(
+                ["sh", "-c", 'log_file="$1"\n' + guard,
+                 "policy-evidence-guard", str(log)],
+                capture_output=True, text=True, timeout=3)
+            self.assertNotEqual(result.returncode, 0)
+
     def test_iscsi_preview_requires_two_receipts_per_transport(self):
         smoke = (ROOT / "support/qemu-smoke.sh").read_text()
         for transport in ("http", "https"):
