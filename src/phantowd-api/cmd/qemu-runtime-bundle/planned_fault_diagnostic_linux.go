@@ -27,7 +27,45 @@ func plannedFaultFailureDiagnosticQEMU(phase string, err error) string {
 	return output + plannedDataFailureDiagnosticQEMU(runtimebundle.ObserveNativeDataFailureQEMU(err)) +
 		plannedDataClockDiagnosticQEMU(runtimebundle.ObserveNativeDataClockQEMU(err)) +
 		plannedServiceFailureDiagnosticQEMU(smbexec.ObserveNativePlannedFailureQEMU(err)) +
-		plannedServiceDataStageDiagnosticQEMU(smbexec.ObserveNativePlannedDataStageQEMU(err)) + plannedExitFailureDiagnosticQEMU(err)
+		plannedServiceDataStageDiagnosticQEMU(smbexec.ObserveNativePlannedDataStageQEMU(err)) +
+		plannedServiceDataCostDiagnosticQEMU(smbexec.ObserveNativePlannedDataCostQEMU(err)) + plannedExitFailureDiagnosticQEMU(err)
+}
+
+func plannedServiceDataCostDiagnosticQEMU(c smbexec.NativePlannedDataCostObservationQEMU) string {
+	if !c.Present {
+		return ""
+	}
+	row := fmt.Sprintf("PHANTOWD_QEMU_PLANNED_CALLER_COSTS steps=%d budget_ms=%d before_ms=%d probe_ms=%d total_ms=%d scope=diagnostic-only", c.Steps, c.BudgetMS, c.BeforeMS, c.ProbeMS, c.TotalMS)
+	if !validPlannedServiceDataCostDiagnosticQEMU(strings.Split(row, " ")) {
+		return ""
+	}
+	return row + "\n"
+}
+
+func validPlannedServiceDataCostDiagnosticQEMU(fields []string) bool {
+	if len(fields) != 7 || fields[0] != "PHANTOWD_QEMU_PLANNED_CALLER_COSTS" || fields[6] != "scope=diagnostic-only" {
+		return false
+	}
+	keys := [...]string{"steps=", "budget_ms=", "before_ms=", "probe_ms=", "total_ms="}
+	var values [5]uint64
+	for index, key := range keys {
+		text, ok := strings.CutPrefix(fields[index+1], key)
+		value, err := strconv.ParseUint(text, 10, 32)
+		if !ok || err != nil || strconv.FormatUint(value, 10) != text || value > 180000 {
+			return false
+		}
+		values[index] = value
+	}
+	if values[0] > 2 || values[2] > values[4] || values[3] > values[4] {
+		return false
+	}
+	if values[0] == 0 {
+		return values[2] == 0 && values[3] == 0
+	}
+	if values[0] == 1 {
+		return values[3] == 0
+	}
+	return values[3] >= values[2]
 }
 
 func plannedServiceDataStageDiagnosticQEMU(stage string) string {
@@ -176,6 +214,12 @@ func plannedFaultSubprocessDiagnosticQEMU(ctxErr, runErr error, captured, proof 
 	seen := make(map[string]bool)
 	for _, line := range strings.Split(captured, "\n") {
 		fields := strings.Split(line, " ")
+		if validPlannedServiceDataCostDiagnosticQEMU(fields) && !seen["service-data-cost"] {
+			seen["service-data-cost"] = true
+			output.WriteString(line)
+			output.WriteByte('\n')
+			continue
+		}
 		if validPlannedServiceDataStageDiagnosticQEMU(fields) && !seen["service-data-stage"] {
 			seen["service-data-stage"] = true
 			output.WriteString(line)

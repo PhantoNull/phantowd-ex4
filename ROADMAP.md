@@ -499,6 +499,15 @@ button to an unqualified backend simply because the screen exists.
   hosted timing repair, complete current-image qualification or permission to
   widen the separately pending planned budgets. Synchronous cleanup already
   executing is not made interruptible by context propagation.
+  Planned-service caller profiling now distinguishes pre-check/runtime/final
+  intervals and the actual inherited entry budget without weakening any check.
+  Normal and declared0.85CPU controls pass; a deliberately forced post-success
+  diagnostic measures16.637s total/19.998s available, including1.875s pre-check,
+  12.876s runtime and1.886s final interval. Its failure is not a real timeout or
+  qualified campaign; the temporary injection is removed exactly. The older
+  failure remains unreproduced. Do not keep repeating unchanged cohorts/CPU
+  sweeps or old hashing work: resolve the pending fixture-budget contract, or
+  profile the next genuine failed trace. Current full/hosted gates remain.
   **Current source-loss gate:** earlier `5b90e22` failed final file-source
   quarantine/supervision despite nine accepted campaigns. Instrumented code
   checkpoint `5245ada` now passes the original complete cached lane, all ten

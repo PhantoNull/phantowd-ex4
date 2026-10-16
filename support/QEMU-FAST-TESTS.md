@@ -2063,6 +2063,25 @@ final complete-owner check refused. This is not whole-operation, durability,
 hosted/full integration qualification or a timing repair. All budgets and the
 1 KiB child capture are unchanged; host redaction/relay/race tests pass.
 
+The separate failure-only `PHANTOWD_QEMU_PLANNED_CALLER_COSTS` row records
+`steps`, entry `budget_ms`, cumulative `before_ms`, `probe_ms` and `total_ms`.
+Steps0/1/2 mean that zero, one or both pre-verification/runtime checkpoints
+completed; unreached checkpoint fields are zero. Values are canonical bounded
+integers, monotonic when reached, and captured before quarantine. The first
+valid row is relayed once. These are wall-time diagnostics, not CPU profiles,
+per-method proofs or authority. All data-error rows still fit the original
+1KiB child capture, and any telemetry still invalidates exact successful proof.
+
+On2026-10-16 the normal fault campaign and a predeclared0.85CPU control pass,
+not reproducing the old failure. An explicitly forced refusal after successful
+final verification measures1,875ms before/runtime-entry,14,751ms cumulative
+runtime completion,16,637ms total against19,998ms available. The runtime and
+final intervals are12,876ms and1,886ms respectively. This is a profiling probe,
+not a real timeout or qualification; strict verification rejects it. Its temporary
+`DEBUG-planned-cost` injection is removed and the normal source hash restored.
+Neither this measurement nor the positive controls repair the historical
+intermittency, establish hosted performance or approve larger fixture budgets.
+
 The QEMU-only native, candidate, lifecycle, fault and data fixtures also emit bounded cumulative
 `PHANTOWD_DIAG_NATIVE_PHASE` timings with fixed phase names, `qualifying=false`
 and `scope=qemu-only`. The monotonic clock starts inside credential setup,

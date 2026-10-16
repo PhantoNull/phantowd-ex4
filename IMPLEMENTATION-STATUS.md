@@ -42,6 +42,21 @@ This narrows the current local failure, not the older hosted operation or the
 earlier full-run held-file startup refusal. Fixture-budget choice remains open;
 no numeric limits, proofs or authority were relaxed.
 
+A later normal planned-fault campaign and one declared0.85CPU control both
+pass strict verification, without reproducing the refusal. A separate deliberately
+failing profiling probe records19,998ms available, first owner check1,875ms,
+cumulative runtime completion14,751ms and final completion16,637ms. Thus the
+runtime interval is12,876ms and final-owner interval1,886ms in that probe.
+Its refusal is injected only after all original checks returned nil; it is
+not a genuine timeout, a campaign pass or attribution of the older failure.
+The temporary injection is removed with exact normal-source restoration.
+
+Fixed QEMU-only failure diagnostics now retain those cumulative caller costs
+before quarantine; successful child proofs remain unchanged and telemetry never
+qualifies an operation. No timeout, capture bound, worker check or authority
+changes. About3.36s local margin is not a worst-case bound or hosted repair;
+the fixture-budget decision and complete current qualification remain open.
+
 ## Independent SMART temperature prerequisite
 
 An internal offline optional ATA temperature projection now preserves the
