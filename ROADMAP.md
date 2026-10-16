@@ -2802,6 +2802,21 @@ equipment/media; not ordinary software work.
 - **M7.4 — Peripheral support.** Qualify SATA bays, USB, RTC, LEDs, LCD, buttons,
   watchdog and power control. Hardware alarms override cosmetic display choices.
   Record LED/button semantics and shutdown completion, not just driver presence.
+  **M7.4a — internal text preparation (software prerequisite):** distinguish
+  raw `FanSpeed`/`SysName` display publication from `FanControl` actuation. The
+  selected legacy string builders do not enforce their payload bounds or an
+  encoding contract; table value20 is not an enforced LCD width. Prepare only
+  nonempty printable ASCII within an explicit caller byte limit, with zero
+  result/fixed error on refusal, no truncation and no default hardware profile.
+  The one-byte representation ceiling255 is not qualified MCU capacity. Keep
+  output private/requested, not observed or a measurement. Acceptance: all256
+  byte values, inclusive1..255 limit boundaries, Unicode/control/framing refusal,
+  preserved spaces, independent predicate fuzz, private JSON and synthetic
+  execution in the existing standard ARM self-test with both restart receipts.
+  No extra guest, frame encoder, transport, provider, HTTP or product startup.
+  Remaining product gates: independently qualified board/profile/repertoire,
+  complete integrity/reply semantics, bounded ownership/settlement, alarm
+  priority and physical behavior. See [exact static anchors and handoff](board/wd/ex4/FRONT-PANEL-RESEARCH.md).
 - **M7.5 — Non-persistent boot.** Keep research targets and product configuration
   separate. Audit enabled write-capable subsystems, readiness/stop markers and
   state effects before a RAM trial. Never turn a narrow B3 success into a blanket

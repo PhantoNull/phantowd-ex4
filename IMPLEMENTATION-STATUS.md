@@ -456,6 +456,29 @@ grid with an explicit accessible description, checked by final DOM/Windows and
 that fresh ARM run. This is not full/two-boot/native/hosted or real-browser
 qualification, and it does not resolve the pending native timing contract.
 
+## Front-panel prerequisite: bounded requested text
+
+M7.4a also adds a separate [private text preparation prerequisite](src/phantowd-api/internal/frontpaneltext/README.md)
+for future front-panel management. It enforces caller-declared byte bounds and
+nonempty printable ASCII without silent truncation or numeric interpretation.
+The legacy one-byte representation ceiling255 is not a hardware profile; the
+selected table value20 is not adopted as an LCD width. No frame encoder, serial
+I/O, WD process, HTTP, alarm policy or product startup is added. Host tests cover
+all256 bytes, inclusive1..255 limits, invalid Unicode/control/framing input,
+privacy and independent-predicate fuzz. Whole Windows API/UI/vet and ARMv5
+cross-compilation pass; the separate runner invocation on Windows fails because
+the required Linux shell is absent. In its intended pinned Linux environment,
+all38 runner controls and shellcheck pass, alongside whole API vet/units/tagged
+vet, the focused fixture, package race-count3 and10,000 fixed fuzz executions.
+Another10,000 fuzz executions pass on Windows. Host allocation tests observe
+zero per-call allocations; no complete-controller or ARM resource claim follows.
+The actual standard one-boot ARMv5 overlay exits0 with both exact new receipts,
+guest READY and unchanged selected source/base witnesses. It reuses base
+kernel/packages and disposable RAM scratch, not a clean/two-boot/full/native/
+hosted, SBOM/legal, physical LCD or product-activation qualification.
+The [new static handoff](board/wd/ex4/FRONT-PANEL-RESEARCH.md) separates display
+publication from measured RPM/actuator state and retains all physical gates.
+
 ## Tachometer prerequisite: exact count/window arithmetic
 
 M7.3f adds `thermalreport.EstimateTach`: a private immutable calculation from

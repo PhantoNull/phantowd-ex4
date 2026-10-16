@@ -57,6 +57,33 @@ symbol name nor the boolean GPIO result establishes calibrated physical RPM.
 
 ## Controller request boundary
 
+### Cached numeric input is not a validated sample
+
+A2026-10-16 original-byte cross-check further narrows the temperature-cache
+limitation. `Read_Temperature_UART` uses signed `fscanf("%d", ...)` at`0xf00`
+(format bytes at file`0x1238`) and ignores conversion/process results. At
+`0xf0c–0xf1c` the parsed value is tested only against zero for retry. The
+`fan_control` wrapper at`0x92d0–0x92d8` stores any nonzero signed result directly
+in its prior cache. A preceding signed`>74` branch writes status then rejoins
+that cache path; it does not reject the number.
+
+Under ordinary representable signed-decimal parsing, `-1` and `42junk` can
+therefore become nonzero cached results. This is inference from the selected
+instructions and `%d` semantics, not observed malformed input, calibrated
+temperature or proof of a physical failure. Integer-overflow and XML-library
+failure-buffer semantics remain unknown. The selected local getter branch in
+`up_send_ctl` (`0x92a8–0x92d4`) obtains `/runtime/themister/main` then prints
+`%s`, without checking/normalizing that returned text in the branch.
+
+The replacement must not invoke these WD helpers or inherit their zero-sentinel
+contract. If a future source adapter consumes numeric text, require complete
+bounded parsing, explicit conversion/overflow/failure results, and separate
+source calibration/range/identity/freshness. Valid negative/zero numbers are not
+automatically invalid, nor does a nonzero parse establish a qualified sample.
+After a failed acquisition a prior good value may remain historical evidence,
+never a fresh current sample. The existing pure evaluator enforces only its
+caller-declared observation contract, not the provenance of a source adapter.
+
 `up_send_ctl` main dispatch `0xc1f8–0xc1fc`, `0xc424–0xc430` selects the
 FanControl handler at `0x90d0`, not the nearby handler at `0x8fc8`.
 The former requires three arguments and a decimal result in0–4. It does not

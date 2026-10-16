@@ -24,6 +24,11 @@ Initial bring-up must boot from RAM, TFTP, or another non-persistent path.
 fan-request, GPIO-state and temperature-cache paths, plus remaining safety
 requirements. Static reconstruction does not qualify active cooling or a boot.
 
+[Front-panel text research](FRONT-PANEL-RESEARCH.md) distinguishes raw display
+publication from fan actuation, records selected legacy bounds failures and
+links the internal text-only preparation prerequisite. No display/LED driver,
+safe hardware profile or active transmission is qualified.
+
 ## Linux 6.18 device-tree research baseline
 
 `patches/linux/0001-arm-dts-marvell-add-wd-my-cloud-ex4-baseline.patch`

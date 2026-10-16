@@ -393,6 +393,38 @@ class BuildFeedbackTests(unittest.TestCase):
                 text=True, timeout=3)
             self.assertNotEqual(result.returncode, 0)
 
+    def test_front_panel_text_requires_both_synthetic_guest_receipts(self):
+        smoke = (ROOT / "support/qemu-smoke.sh").read_text()
+        selftest = (ROOT / "src/phantowd-api/selftest.go").read_text()
+        fixture = (ROOT / "src/phantowd-api/frontpaneltext_selftest.go").read_text()
+        marker = ("PHANTOWD_FRONT_PANEL_TEXT_READY ascii=true byte_bound=true "
+                  "no_truncation=true transmit=false scope=synthetic-memory-only")
+        self.assertIn(marker, selftest)
+        self.assertIn("exerciseQEMUFrontPanelText()", selftest)
+        for wrapper in ('support/test-api.ps1', 'support/container/test-api.sh'):
+            self.assertIn('TestQEMUFrontPanelText', (ROOT / wrapper).read_text())
+        for forbidden in ('"os"', '"os/exec"', '"net"', '"syscall"',
+                          '"golang.org/x/sys/unix"'):
+            self.assertNotIn(forbidden, fixture)
+        guard = next(block for block in re.findall(
+            r"(?m)^        if ! test .*?^        fi$", smoke, re.DOTALL)
+            if marker in block)
+        with tempfile.TemporaryDirectory() as temp:
+            log = pathlib.Path(temp) / "guest.log"
+            for count in (0, 1, 2, 3):
+                log.write_bytes(((marker + "\r\n") * count).encode())
+                result = subprocess.run(
+                    ["sh", "-c", 'log_file="$1"\n' + guard,
+                     "front-panel-guard", str(log)], capture_output=True,
+                    text=True, timeout=3)
+                self.assertEqual(result.returncode, 0 if count == 2 else 1)
+            log.write_text(marker + "\n" + marker + " extra\n")
+            result = subprocess.run(
+                ["sh", "-c", 'log_file="$1"\n' + guard,
+                 "front-panel-guard", str(log)], capture_output=True,
+                text=True, timeout=3)
+            self.assertNotEqual(result.returncode, 0)
+
     def test_dashboard_assets_share_exact_checks_for_http_and_tls(self):
         normal = (ROOT / "src/phantowd-api/selftest.go").read_text()
         tls = (ROOT / "src/phantowd-api/transport_qemu.go").read_text()

@@ -159,6 +159,10 @@ while [ "$attempt" -lt "$smoke_timeout" ]; do
             echo 'Expected two synthetic thermal observation assertions across API restart' >&2
             exit 1
         fi
+        if ! test "$(sed 's/\r$//' "$log_file" | grep -Fxc 'PHANTOWD_FRONT_PANEL_TEXT_READY ascii=true byte_bound=true no_truncation=true transmit=false scope=synthetic-memory-only')" -eq 2; then
+            echo 'Expected two synthetic front-panel text assertions across API restart' >&2
+            exit 1
+        fi
         if ! grep -F 'PHANTOWD_NFS_POLICY_READY schema=1 mapping=all-squash scope=synthetic-policy-only' "$log_file" >/dev/null; then
             echo "Missing NFS policy validation assertion" >&2
             exit 1
