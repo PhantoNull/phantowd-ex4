@@ -18,6 +18,7 @@ function showAuthUnavailable() {
   clearPasswordFields();
   clearServicePolicy();
   clearISCSIPreview();
+  clearNetworkPreview();
   clearSavedPolicy();
   clearPolicyDraft();
   byId("auth-panel").hidden = false;
@@ -70,6 +71,7 @@ async function updateAuthView({ refresh = true, notice = "", current = () => tru
   clearPasswordFields();
   clearServicePolicy();
   clearISCSIPreview();
+  clearNetworkPreview();
   clearSavedPolicy();
   clearPolicyDraft();
   logout.hidden = true;

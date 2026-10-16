@@ -46,6 +46,7 @@ var qemuDashboardAssets = []struct {
 	{"/assets/support-bundle.js", "text/javascript; charset=utf-8", []string{"phantowd-sanitized-support", "browser-loaded-read-only-snapshot", "snapshot_age_seconds"}},
 	{"/assets/ghost.svg", "image/svg+xml", []string{"<svg", "PhantoWD ghost"}},
 	{"/assets/iscsi-preview.js", "text/javascript; charset=utf-8", []string{"/api/v1/iscsi/preview", "retireISCSIPreview", "Nothing was saved or activated", "validateISCSIPreview"}},
+	{"/assets/network-preview.js", "text/javascript; charset=utf-8", []string{"/api/v1/network/preview", "retireNetworkPreview", "Nothing was saved or applied", "validateNetworkPreview"}},
 }
 
 func runSelfTest() error {

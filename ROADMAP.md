@@ -2825,6 +2825,22 @@ board network observations limited.
   endpoint or network change. Counts do not prove external address availability,
   policy ownership, address lifetimes/DAD or routing/DNS reachability. Factory
   binding, fresh authority and M6.2 recovery/application remain open.
+  **M6.1g — Manual desired-policy preview (host/browser/ARM prototype):** the
+  authenticated POST `/api/v1/network/preview` reuses the existing strict 16 KiB
+  model, with Origin/CSRF, one active body, revocation/cancellation fences and a
+  32 KiB response. Exact decimal revision, hostname, two logical slots, IPv4/IPv6,
+  routes and DNS describe only submitted settings. All saved/applied/binding/
+  live-state/conflict/reachability/activation flags remain explicitly false.
+  The panel sends original text without JSON re-encoding, bounds response bytes
+  and structure, shares one 10 s deadline across session and preview, retires
+  edited/logged-out work and clears private input without retry/browser storage.
+  Host/DOM/race controls, real memory-auth browser keyboard entry/refusal/clear
+  and three widths, plus actual ARM HTTP/HTTPS checks twice across API restart
+  pass. All nine UI assets are byte-exact on both transports; old checks and
+  budgets remain. Pure UI test modules select cheap host checks, not firmware
+  builds; runtime/API changes still select their original checks. No kernel
+  inventory, resolver or store is wired here. This closes neither physical-slot
+  binding nor M6.2 trial/recovery, production networking or product state gates.
 - **M6.2 — Recoverable changes.** Apply changes as a trial with explicit confirmation
   and a safe timeout/recovery route. Loss of the management connection must not
   strand the owner permanently. Qualify reboot mid-trial and address conflicts.

@@ -12,7 +12,7 @@ The current firmware remains non-installable. See the [product roadmap](../../RO
 
 The development API embeds fixed static assets, authenticates one panel
 administrator and exposes observations, desired SMB/NFS configuration and a
-manual caller-supplied coherent SMB/NFS/iSCSI preview.
+manual caller-supplied coherent SMB/NFS/iSCSI preview and desired network preview.
 Panel credentials are distinct from Unix/Samba identities and iSCSI CHAP.
 There is no HTTP service-activation, RAID-mutation, installer or reset workflow.
 An authenticated panel session is not storage, execution or installation authority.
@@ -62,6 +62,7 @@ assume one universal authorization wrapper: each specialized route owns checks.
 | `/api/v1/shares/configuration` | GET; session, Host/scheme and Origin if supplied; one active read | Private desired policy only. [share_policy_http.go](share_policy_http.go) |
 | `/api/v1/file-services/configuration`, `/backup`, `/restore-preview` | GET/PUT, GET, POST respectively; session and Host/scheme; writes/previews also require Origin/CSRF; one shared active operation | Explicit development store only; restore-preview does not save. No service activation. [service_state_http.go](service_state_http.go), [backup handlers](service_backup_http.go) |
 | `/api/v1/file-services/preview` | POST; session, Origin/CSRF, typed bounded body; one active preview | Pure desired-policy validation/rendering. [file_service_http.go](file_service_http.go) |
+| `/api/v1/network/preview` | POST; current session, Origin/CSRF, strict 16 KiB JSON; one active body, cancellation and final session recheck | Caller-supplied proposal only, exact decimal revision, response at most 32 KiB. No kernel inventory, resolver, persistence, physical binding or apply backend. [network_preview_http.go](network_preview_http.go) |
 | `/api/v1/iscsi/preview` | Explicit POST; current session, exact Origin/CSRF; one non-queuing preview;656128-byte input and256KiB output | Whole caller-supplied desired policy only; rechecks session before publication. No store, backing/secret open, runtime query or activation. IQNs/paths remain private admin data. [iscsi_preview_http.go](iscsi_preview_http.go) |
 | `/api/v1/storage/gpt-observation` | Explicit POST; session, Origin/CSRF and empty input; one active observation | Fixed broker read-only metadata operation, not caller-selected devices, import or mount. [storage_partition_http.go](storage_partition_http.go) |
 

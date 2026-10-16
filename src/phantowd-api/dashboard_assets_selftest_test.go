@@ -19,8 +19,8 @@ import (
 
 func TestQEMUDashboardAssetsHTTPAndTLS(t *testing.T) {
 	entries, err := dashboardFiles.ReadDir("ui")
-	if err != nil || len(entries) != 8 || len(qemuDashboardAssets) != len(entries) {
-		t.Fatal("receipt roster must cover the complete seven-file embedded UI")
+	if err != nil || len(entries) != 9 || len(qemuDashboardAssets) != len(entries) {
+		t.Fatal("receipt roster must cover the complete nine-file embedded UI")
 	}
 	covered := make(map[string]bool)
 	for _, asset := range qemuDashboardAssets {

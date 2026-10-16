@@ -3,6 +3,32 @@
 
 # Implementation status
 
+## M6.1g manual network proposal preview — host/browser/ARM prototype
+
+The authenticated manual network panel now reviews one submitted desired
+IPv4/IPv6/route/DNS policy through the existing strict model, not live network
+state. Input is bounded to 16 KiB; output to 32 KiB with exact decimal revision
+and explicit false saved/applied/binding/kernel/conflict/reachability/activation
+flags. One request, Origin/CSRF, final revocation/cancellation checks, original
+text, one 10 s browser deadline, retired-response refusal and private clear are
+verified. There is no network collector, resolver, writer, apply or trial backend.
+
+Whole Windows/pinned Linux API vet/units/tagged-vet and scoped HTTP race3 pass.
+DOM controls cover malformed authority/shape, byte limits, four deadline stages,
+single flight, late401 and session loss. Actual Edge/Go memory-auth network
+profile passes max revision, /16/IPv6, keyboard submission, duplicate refusal,
+clear and three widths (19 pointer actions, zero exceptions). Its first report
+incorrectly attributed iSCSI coverage to the new mode; reporting was corrected
+and both network and original iSCSI profiles then pass separately, with the
+original mode retaining its 32-action cap and cookie-revocation checks.
+
+Actual standard ARM HTTP/HTTPS preview checks and all nine exact UI assets pass
+twice across API restart, preserving every prior check and original guest bound.
+Final 44 runner/path/lint/shell controls pass. Pure imported UI tests now run in
+cheap host CI; runtime/API changes retain firmware checks. No full/two-boot/
+SBOM/hosted, physical networking, saved trial/recovery or product qualification
+follows. Existing Samba and product-state gates remain open.
+
 ## Current integration gate: latest full candidate fails held-file admission
 
 The single complete cached local qualifier of clean `94e791f` fails the final

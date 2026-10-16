@@ -16,19 +16,22 @@ import { fileURLToPath } from "node:url";
 import { setTimeout as delay } from "node:timers/promises";
 import { classifyPageResource } from "./browser-resource-contract.mjs";
 import { iscsiExposurePolicyFixture, iscsiDraftFieldsFixture } from "./tests/test-iscsi-panel.mjs";
+import { networkPolicyFixture } from "./tests/test-network-panel.mjs";
 import { readOwnedBrowserEndpoint } from "./browser-startup-contract.mjs";
 
 const repo = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-assert.ok([4, 6].includes(process.argv.length), "usage: node support/test-dashboard-browser.mjs --browser PATH [--api-fixture PATH]");
+assert.ok([4, 6, 7].includes(process.argv.length), "usage: node support/test-dashboard-browser.mjs --browser PATH [--api-fixture PATH [--network-preview]]");
 assert.equal(process.argv[2], "--browser", "an explicit browser path is required");
 let apiFixture;
-if (process.argv.length === 6) {
+if (process.argv.length >= 6) {
   assert.equal(process.argv[4], "--api-fixture");
   apiFixture = await realpath(process.argv[5]);
   assert.ok((await lstat(apiFixture)).isFile(), "API fixture must be a regular test binary");
   assert.ok(/^phantowd-browser-api\.test(\.exe)?$/.test(basename(apiFixture)), "unexpected API fixture binary name");
 }
-const scope = apiFixture ? "headless-browser-go-auth-memory-fixture" : "headless-browser-synthetic-preview-only";
+const networkMode = process.argv.length === 7;
+if (networkMode) assert.equal(process.argv[6], "--network-preview");
+const scope = networkMode ? "headless-browser-network-preview-go-auth-memory-fixture" : apiFixture ? "headless-browser-go-auth-memory-fixture" : "headless-browser-synthetic-preview-only";
 const browserPath = await realpath(process.argv[3]);
 assert.ok((await lstat(browserPath)).isFile(), "browser must be a regular file");
 assert.ok(/^(msedge|chrome|chromium)(\.exe)?$/i.test(basename(browserPath)), "unsupported browser executable");
@@ -42,10 +45,10 @@ const tempRoot = await realpath(tmpdir());
 let profile, cdp;
 let successful = false;
 let failure, result;
-const artifacts = join(repo, "artifacts", apiFixture ? "dashboard-browser-api" : "dashboard-browser");
+const artifacts = join(repo, "artifacts", networkMode ? "dashboard-browser-network" : apiFixture ? "dashboard-browser-api" : "dashboard-browser");
 const uiHashes = async () => {
   const hashes = {};
-  for (const name of ["index.html", "app.css", "app.js", "auth.js", "service-policy.js", "support-bundle.js", "iscsi-preview.js", "ghost.svg"]) {
+  for (const name of ["index.html", "app.css", "app.js", "auth.js", "service-policy.js", "support-bundle.js", "iscsi-preview.js", "network-preview.js", "ghost.svg"]) {
     const bytes = await readFile(join(repo, "src", "phantowd-api", "ui", name));
     assert.ok(bytes.length <= 65536, "dashboard source exceeded asset budget");
     hashes[name] = createHash("sha256").update(bytes).digest("hex");
@@ -55,7 +58,7 @@ const uiHashes = async () => {
 const sourceHashes = await uiHashes();
 const harnessHashes = async () => {
   const hashes = {};
-  for (const name of ["support/test-dashboard-browser.mjs", "support/browser-resource-contract.mjs", "support/browser-startup-contract.mjs", "support/tests/test-iscsi-panel.mjs"]) {
+  for (const name of ["support/test-dashboard-browser.mjs", "support/browser-resource-contract.mjs", "support/browser-startup-contract.mjs", "support/tests/test-iscsi-panel.mjs", "support/tests/test-network-panel.mjs"]) {
     const bytes = await readFile(join(repo, name));
     assert.ok(bytes.length <= 65536, "browser harness source exceeded budget");
     hashes[name] = createHash("sha256").update(bytes).digest("hex");
@@ -324,7 +327,7 @@ try {
   assert.equal(await evaluate("document.getElementById('support-download').disabled"), false);
   assert.equal(await evaluate("getComputedStyle(document.body).backgroundColor"), "rgb(16, 19, 27)", "dashboard stylesheet was not applied");
 
-  if (apiFixture) {
+  if (apiFixture && !networkMode) {
     await clickVisible("iscsi-document");
     await replaceInput("iscsi-document", JSON.stringify(iscsiExposurePolicyFixture()));
     await clickVisible("iscsi-submit");
@@ -408,6 +411,37 @@ try {
     assert.equal(await evaluate("document.getElementById('iscsi-result').hidden"), true);
     for (const name of ["name", "path", "initiator", "chap-user", "secret-ref"]) assert.equal(await evaluate(`document.getElementById('iscsi-draft-${name}').value`), "");
     assert.equal(cdp.requests.filter(r => new URL(r.url).pathname === "/api/v1/iscsi/preview").length, 6);
+  }
+
+  if (networkMode) {
+    const source = JSON.stringify(networkPolicyFixture()).replace('"revision":1', '"revision":18446744073709551615');
+    await clickVisible("network-document");
+    await replaceInput("network-document", source);
+    await key("Tab", "Tab", 9);
+    assert.equal(await evaluate("document.activeElement.id"), "network-submit");
+    await key("Enter", "Enter", 13);
+    await until(() => evaluate(`!document.getElementById('network-result').hidden && !document.getElementById('network-submit').disabled`), browser, "actual desired-network HTTP preview");
+    const displayed = await evaluate("document.getElementById('network-result').textContent");
+    assert.match(displayed, /18446744073709551615/);
+    assert.match(displayed, /192\.0\.2\.10\/16/); assert.match(displayed, /fe80::1/);
+    assert.match(displayed, /NOT SAVED \/ NOT APPLIED/); assert.match(displayed, /not a physical port mapping/);
+    for (const width of [1365, 390, 320]) {
+      await send("Emulation.setDeviceMetricsOverride", { width, height: 900, deviceScaleFactor: 1, mobile: false });
+      await evaluate("document.getElementById('network-title').scrollIntoView()");
+      assert.equal(await evaluate("document.documentElement.scrollWidth <= document.documentElement.clientWidth"), true);
+      const shot = await send("Page.captureScreenshot", { format: "png", captureBeyondViewport: false });
+      assert.ok(shot.data.length <= 8 * 1024 * 1024);
+      await writeFile(join(artifacts, `network-preview-${width}.png`), Buffer.from(shot.data, "base64"));
+    }
+    await send("Emulation.setDeviceMetricsOverride", { width: 1365, height: 900, deviceScaleFactor: 1, mobile: false });
+    await clickVisible("network-document");
+    await replaceInput("network-document", source.replace('"revision":18446744073709551615', '"revision":1,"revision":1'));
+    await key("Tab", "Tab", 9); await key("Enter", "Enter", 13);
+    await until(() => evaluate(`document.getElementById('network-status').textContent.includes('could not be verified') && !document.getElementById('network-submit').disabled`), browser, "strict desired-network refusal");
+    assert.equal(await evaluate("document.getElementById('network-result').hidden"), true);
+    await clickVisible("network-clear");
+    assert.equal(await evaluate("document.getElementById('network-document').value"), "");
+    assert.equal(cdp.requests.filter(r => new URL(r.url).pathname === "/api/v1/network/preview").length, 2);
   }
 
   // Use actual browser keyboard dispatch, not HTMLElement.focus(), for Tab.
@@ -558,10 +592,12 @@ try {
     retired_service401_recheck: Boolean(apiFixture),
     visible_pointer_controls: pointerControls,
     auth_keyboard_tab_enter: Boolean(apiFixture),
-    iscsi_preview_actual_http: Boolean(apiFixture),
-    iscsi_guided_draft_actual_http: Boolean(apiFixture),
-    iscsi_guided_base_refusal_actual_http: Boolean(apiFixture),
-    iscsi_guided_lun_extension_actual_http: Boolean(apiFixture),
+    iscsi_preview_actual_http: Boolean(apiFixture && !networkMode),
+    iscsi_guided_draft_actual_http: Boolean(apiFixture && !networkMode),
+    iscsi_guided_base_refusal_actual_http: Boolean(apiFixture && !networkMode),
+    iscsi_guided_lun_extension_actual_http: Boolean(apiFixture && !networkMode),
+    network_preview_actual_http: networkMode,
+    network_base_refusal_actual_http: networkMode,
     local_inline_images: localInlineImages,
     same_origin_network_requests: cdp.requests.length - localInlineImages,
   };

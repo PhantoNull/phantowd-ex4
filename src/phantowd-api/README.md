@@ -1696,6 +1696,45 @@ attribution, transport/wake policy, stable history identity or HTTP.
 
 ### Desired network policy prerequisite
 
+#### Manual network proposal preview
+
+`POST /api/v1/network/preview` accepts one complete schema-1 desired network
+document (at most 16 KiB), never current network state. It requires the current
+panel session, exact configured Origin/Host, CSRF and JSON media type; a single
+active body is admitted without queueing. The existing strict network model
+validates the whole input and rechecks cancellation/session validity before the reply. Replies
+are bounded to 32 KiB and preserve the uint64 revision as a decimal string.
+All `saved`, `applied`, `interface_binding_validated`, `kernel_state_validated`,
+`conflicts_validated`, `reachability_validated` and `activation_available` flags
+are explicitly false. Addresses/DNS in the response come only from the proposal:
+this is private configuration review, not a sanitized observation of the NAS.
+
+The panel accepts original JSON text without re-encoding or rounding revisions,
+shows both logical slots and desired family/default-route/static-route/DNS
+settings, and has no save/apply control. Response byte/structure guards and one
+10-second deadline cover session headers/body and preview headers/body, including
+non-cooperative replies. Input edits or session retirement discard old work;
+late401 cannot clear a newer preview. Logout clears private input/result; nothing
+is kept in browser storage and no request is retried automatically.
+
+For a synthetic proposal suitable for local development (not an installation
+recommendation), paste this complete document:
+
+```json
+{"format":"phantowd-network-policy","schema_version":1,"revision":1,"hostname":"nas-example","interfaces":[{"slot":"lan-1","ipv4":{"mode":"dhcp","addresses":[],"default_route":true,"metric":100},"ipv6":{"mode":"disabled","addresses":[],"default_route":false,"metric":0}},{"slot":"lan-2","ipv4":{"mode":"disabled","addresses":[],"default_route":false,"metric":0},"ipv6":{"mode":"disabled","addresses":[],"default_route":false,"metric":0}}],"routes":[],"dns":{"mode":"automatic","source":"lan-1","servers":[],"search_domains":[]}}
+```
+
+Host/DOM tests cover auth/body/precision/refusal and retirement boundaries. An
+opt-in real-browser profile exercises actual memory-only Go authentication,
+keyboard proposal submission, strict refusal, clear and 1365/390/320px layouts:
+append `--network-preview` to the browser command below. The original profile
+continues to exercise iSCSI instead; neither mode claims the other's checks.
+Both retain original 90-second / 32-pointer-action limits and cookie-revocation
+tests. The standard ARM boot also checks HTTP and temporary trusted HTTPS twice
+across API restart, alongside every old check and nine exact embedded assets.
+No current-network inventory, real interface binding, DNS lookup, persistence,
+trial/rollback or management-network mutation is enabled.
+
 [Internal networkpolicy](internal/networkpolicy/README.md) validates a bounded
 schema-1 desired document for two logical slots, dual-stack addressing, routes,
 hostname and DNS. It rejects known static conflicts and incoherent gateways;
@@ -1703,7 +1742,7 @@ it does not normalize addresses, resolve DNS or invoke a network operation.
 Host/ARMv5 fixtures test /16, aliases, scoped IPv6 link-local gateways, dynamic
 DNS, strict JSON and negative cases in the existing guest boot. Logical slots
 are not physical identity proof. Persistent state, actual interface admission,
-runtime conflict observation, trial/confirmation/rollback and API/UI integration
+runtime conflict observation, trial/confirmation/rollback and saved management
 remain open; no management-network change is enabled.
 
 [Private networkinventory](internal/networkinventory/README.md) separately
@@ -1797,7 +1836,7 @@ node support/test-dashboard-browser.mjs --browser "C:\Program Files (x86)\Micros
 
 On Linux, use the same command with a native `phantowd-browser-api.test` binary
 and explicit installed browser path. Never pass a firmware/ARM binary to a host
-runner. Recompile after changes: the test server reports eight embedded-asset
+runner. Recompile after changes: the test server reports nine embedded-asset
 hashes and the runner refuses a source mismatch. This does not authenticate the
 entire source tree or executable's provenance.
 
@@ -1884,7 +1923,7 @@ All file-service backend operations remain unavailable in this fixture.
 Guest initialization probes the GET endpoints and QEMU-only authentication
 flow, verifies that QEMU's root block node appears through sysfs without being
 opened, rejects unauthorized and malformed operations, validates non-root
-identity and ARMv5 metadata, checks all eight embedded dashboard assets over
+identity and ARMv5 metadata, checks all nine embedded dashboard assets over
 guest-loopback HTTP and separately trusted temporary HTTPS, rejects mutating/query dashboard requests, and prints an
 RSS sample with a 48 MiB ceiling. It then restarts only the API process and
 verifies that the account reloads while sessions remain memory-only. A failure
@@ -1897,7 +1936,7 @@ response limit, retain the declared feature markers and have exactly one
 expected MIME, no-store, nosniff and CSP header. Read/close/metadata/body failure
 refuses the fixture with fixed errors; response bodies are closed and no manual
 retry or timing budget is added. Root HTML and other assets keep their distinct
-CSP profiles. The standard runner requires two exact eight-asset receipts per
+CSP profiles. The standard runner requires two exact nine-asset receipts per
 transport across its intentional API restart, not merely a TLS handshake marker.
 It also requires two exact authenticated iSCSI-preview receipts per transport,
 with complete synthetic policy, exact large decimals, privacy and negative

@@ -183,6 +183,14 @@ while [ "$attempt" -lt "$smoke_timeout" ]; do
             echo "Missing authenticated file-service preview assertion" >&2
             exit 1
         fi
+        if ! test "$(sed 's/\r$//' "$log_file" | grep -Fxc 'PHANTOWD_NETWORK_PREVIEW_HTTP_READY transport=http authenticated=true csrf=true desired_only=true exact_revision=true apply=false scope=synthetic-submitted-only')" -eq 2; then
+            echo 'Expected two desired-only network preview HTTP assertions across API restart' >&2
+            exit 1
+        fi
+        if ! test "$(sed 's/\r$//' "$log_file" | grep -Fxc 'PHANTOWD_NETWORK_PREVIEW_HTTP_READY transport=https authenticated=true csrf=true desired_only=true exact_revision=true apply=false scope=synthetic-submitted-only')" -eq 2; then
+            echo 'Expected two desired-only network preview HTTPS assertions across API restart' >&2
+            exit 1
+        fi
         if ! test "$(sed 's/\r$//' "$log_file" | grep -Fxc 'PHANTOWD_ISCSI_PREVIEW_HTTP_READY transport=http authenticated=true csrf=true coherent=true exact_decimals=true redacted=true activation=false scope=synthetic-desired-only')" -eq 2; then
             echo 'Expected two authenticated HTTP iSCSI previews across API restart' >&2
             exit 1
@@ -529,7 +537,7 @@ while [ "$attempt" -lt "$smoke_timeout" ]; do
             exit 1
         fi
         for transport in http https; do
-            if ! test "$(sed 's/\r$//' "$log_file" | grep -Fxc "PHANTOWD_DASHBOARD_ASSETS_READY transport=$transport assets=8 byte_exact=true scope=qemu-loopback-only")" -eq 2; then
+            if ! test "$(sed 's/\r$//' "$log_file" | grep -Fxc "PHANTOWD_DASHBOARD_ASSETS_READY transport=$transport assets=9 byte_exact=true scope=qemu-loopback-only")" -eq 2; then
                 echo 'Missing or excess exact dashboard asset receipts across API restart' >&2
                 exit 1
             fi

@@ -10,6 +10,7 @@ const inlineSVG = { length: 510, sha256: "4b52bc3e8d7825a3fca0aa8a1d541a413164bb
 const fixturePostPaths = new Set([
   ...["setup", "login", "logout", "logout-all", "password"].map(action => `/api/v1/auth/${action}`),
   "/api/v1/iscsi/preview", // Caller-supplied read-only preview, never save/apply.
+  "/api/v1/network/preview", // Desired document only, never network observation/apply.
 ]);
 
 export function classifyPageResource(request, origin, allowAuthMutations = false) {

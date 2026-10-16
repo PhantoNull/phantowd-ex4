@@ -8,6 +8,11 @@ configuration. It has no sockets, device handles, subprocesses, privileged calls
 persistence, HTTP endpoint or apply operation. A positive revision is syntax,
 not a compare-and-swap, confirmed trial or authority to change networking.
 
+The separate management adapter now uses this unchanged model for an
+authenticated manual [network proposal preview](../../README.md#manual-network-proposal-preview).
+That HTTP/UI surface is not part of this package and adds no kernel observation,
+resolver, physical binding, persistence or apply operation.
+
 ## Input and authority
 
 The document contains a hostname, exactly two logical slots (`lan-1`, `lan-2`),

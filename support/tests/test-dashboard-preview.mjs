@@ -33,7 +33,7 @@ for (const value of ["", "45678\n/devtools/browser/abcd-123\nextra", "80\n/devto
 
 const expectedOrigin = "http://127.0.0.1:45678";
 assert.equal(classifyPageResource({ url: expectedOrigin + "/", method: "GET" }, expectedOrigin), "same-origin-network");
-for (const path of [...["setup", "login", "logout", "logout-all", "password"].map(action => `/api/v1/auth/${action}`), "/api/v1/iscsi/preview"]) {
+for (const path of [...["setup", "login", "logout", "logout-all", "password"].map(action => `/api/v1/auth/${action}`), "/api/v1/iscsi/preview", "/api/v1/network/preview"]) {
   const request = { url: expectedOrigin + path, method: "POST" };
   assert.equal(classifyPageResource(request, expectedOrigin, true), "same-origin-network");
   assert.throws(() => classifyPageResource(request, expectedOrigin), /^Error: unexpected browser page resource$/);
@@ -113,6 +113,7 @@ try {
     ["/assets/ghost.svg", "GET", 200], ["/api/v1/system", "GET", 200],
     ["/assets/auth.js", "GET", 200],
     ["/assets/iscsi-preview.js", "GET", 200],
+    ["/assets/network-preview.js", "GET", 200],
     ["/api/v1/storage", "GET", 200], ["/api/v1/arrays", "GET", 200], ["/api/v1/mounts", "GET", 200],
     ["/api/v1/auth/status", "GET", 200], ["/?unexpected=1", "GET", 400],
     ["/", "POST", 405], ["/not-a-route", "GET", 404],
@@ -134,4 +135,4 @@ try {
   if (child.exitCode === null && child.signalCode === null) child.kill();
   await exited(child, 3000);
 }
-console.log("Dashboard preview boundaries passed: invalid-ports=12 ephemeral-loopback=true routes=16 mutations=false devices=false.");
+console.log("Dashboard preview boundaries passed: invalid-ports=12 ephemeral-loopback=true routes=17 mutations=false devices=false.");

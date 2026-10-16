@@ -69,6 +69,8 @@ on:
       - 'support/tests/test-api-linux-wrapper.ps1'
       - 'support/test-dashboard-browser.mjs'
       - 'support/tests/test-dashboard-preview.mjs'
+      - 'support/tests/test-iscsi-panel.mjs'
+      - 'support/tests/test-network-panel.mjs'
       - 'src/phantowd-api/browser_fixture_test.go'
       - 'support/clean-qemu-build-volumes.ps1'
       - 'support/test-lab-tools.ps1'
@@ -157,6 +159,8 @@ on:
       - 'support/tests/test-api-linux-wrapper.ps1'
       - 'support/test-dashboard-browser.mjs'
       - 'support/tests/test-dashboard-preview.mjs'
+      - 'support/tests/test-iscsi-panel.mjs'
+      - 'support/tests/test-network-panel.mjs'
       - 'src/phantowd-api/browser_fixture_test.go'
       - 'support/clean-qemu-build-volumes.ps1'
       - 'support/test-lab-tools.ps1'
@@ -243,6 +247,7 @@ jobs:
         run: |
           node --check support/test-dashboard-browser.mjs
           node support/tests/test-dashboard-preview.mjs
+          node support/test-dashboard-ui.mjs
 
       - name: Verify host-only browser API fixture boundaries
         working-directory: src/phantowd-api

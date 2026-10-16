@@ -170,6 +170,7 @@ func TestDashboardServesReadOnlyDevelopmentUIAndAssets(t *testing.T) {
 		{"/assets/app.js", "text/javascript; charset=utf-8", []string{"/api/v1/system", "/api/v1/storage", "/api/v1/arrays", "/api/v1/mounts", "textContent"}},
 		{"/assets/service-policy.js", "text/javascript; charset=utf-8", []string{"sameServiceDocument", "saveServiceChange"}},
 		{"/assets/support-bundle.js", "text/javascript; charset=utf-8", []string{"phantowd-sanitized-support", "browser-loaded-read-only-snapshot"}},
+		{"/assets/network-preview.js", "text/javascript; charset=utf-8", []string{"validateNetworkPreview", "retireNetworkPreview", "/api/v1/network/preview"}},
 	} {
 		t.Run(test.path, func(t *testing.T) {
 			response := httptest.NewRecorder()

@@ -522,6 +522,7 @@ async function readDiagnosticJSON(response, limit, signal, maxContainers = 1024)
 // Fixed existing administrative routes only. Large policies have a separate
 // structural allowance; diagnostic limits and all caller deadlines stay fixed.
 const administrativeBodyLimits = Object.freeze({
+  "/api/v1/network/preview": Object.freeze([32 * 1024, 4096]),
   "/api/v1/iscsi/preview": Object.freeze([256 * 1024, 16384]),
   "/api/v1/auth/session": Object.freeze([16 * 1024, 1024]),
   "/api/v1/auth/password": Object.freeze([16 * 1024, 1024]),
@@ -534,7 +535,7 @@ const administrativeBodyLimits = Object.freeze({
 });
 
 async function readAdministrativeJSON(response, path, signal, method = "GET") {
-  if (path === "/api/v1/iscsi/preview" && method !== "POST") throw new Error("administrative path unavailable");
+  if (["/api/v1/iscsi/preview", "/api/v1/network/preview"].includes(path) && method !== "POST") throw new Error("administrative path unavailable");
   const profile = Object.hasOwn(administrativeBodyLimits, path) ? administrativeBodyLimits[path] : null;
   if (!profile) throw new Error("administrative path unavailable");
   const shortReply = response.ok === false || (path === "/api/v1/file-services/configuration" && method === "PUT");

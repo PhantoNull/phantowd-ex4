@@ -254,6 +254,8 @@ tools/phantowd-lab/**
 support/test-lab-tools.ps1
 support/test-dashboard-browser.mjs
 support/tests/test-dashboard-preview.mjs
+support/tests/test-iscsi-panel.mjs
+support/tests/test-network-panel.mjs
 src/phantowd-api/browser_fixture_test.go
 support/container/test-lab-tools.sh
 support/build-qemu.ps1
@@ -551,6 +553,7 @@ fi
 require_locked_host_go_sdk "$host_workflow" "$repo_root/versions.env"
 for command in '          node --check support/test-dashboard-browser.mjs' \
     '          node support/tests/test-dashboard-preview.mjs' \
+    '          node support/test-dashboard-ui.mjs' \
     "        run: go test -count=1 -run '^Test(BrowserFixtureDiagnosticsStaySynthetic|DashboardBrowserAPIFixture)\$' ."; do
     if ! grep -Fx "$command" "$host_workflow" >/dev/null; then
         printf 'host workflow must execute dashboard check: %s\n' "$command" >&2

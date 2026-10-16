@@ -41,6 +41,7 @@ func newHandlerWithStorageGPTObservation(collect collector, collectStorage stora
 	active := make(chan struct{}, 8)
 	preview := newFileServicePreviewHandler(auth)
 	iscsiPreview := newISCSIPreviewHandler(auth)
+	networkPreview := newNetworkPreviewHandler(auth)
 	readPolicy := newSharePolicyReadHandler(auth, loadPolicy)
 	serviceState := newServiceStateHandler(auth, state)
 	gptObservation := newStorageGPTObservationHandler(auth, collectGPT)
@@ -84,6 +85,10 @@ func newHandlerWithStorageGPTObservation(collect collector, collectStorage stora
 		}
 		if r.URL.Path == iscsiPreviewPath {
 			iscsiPreview(w, r)
+			return
+		}
+		if r.URL.Path == networkPreviewPath {
+			networkPreview(w, r)
 			return
 		}
 		if r.URL.Path == sharePolicyPath {
@@ -209,6 +214,8 @@ func dashboardAsset(path string) (string, string) {
 		return "ui/support-bundle.js", "text/javascript; charset=utf-8"
 	case "/assets/iscsi-preview.js":
 		return "ui/iscsi-preview.js", "text/javascript; charset=utf-8"
+	case "/assets/network-preview.js":
+		return "ui/network-preview.js", "text/javascript; charset=utf-8"
 	case "/assets/ghost.svg":
 		return "ui/ghost.svg", "image/svg+xml"
 	default:
