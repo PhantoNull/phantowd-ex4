@@ -646,7 +646,40 @@ acceptance cases for stale/crashed helpers, slot holes, retained deferral and
 workload admission. None of those product controls is implemented by this
 documentation-only checkpoint.
 
-## M1.3b.3 collector prerequisite — test and proposed contract only
+## M1.3b.3 retained operation evidence — experimental host/ARM collector
+
+The separate [Linux collector](src/phantowd-api/internal/policyevidencefs/README.md)
+retains original root/policy/operations directory locks, complete fixed census,
+owned no-atime read-only files and directory/file mutation watches. Unique
+mount IDs and original-path rechecks refuse root/child/file bind substitution.
+It supplies only redacted pure diagnoses, never an Owner, lease or action token.
+Pending publication is metadata-only. Drift, admitted cancellation, invalid
+content and read/close uncertainty preserve review, with standard context classes
+and no secret causes. Generic formatting/JSON/copies cannot transfer authority.
+
+Whole supported Windows API/DOM/native tagged tests and ARM cross-compilation
+pass. Pinned non-root Linux units/vet/tagged-vet pass after a fixture cancellation
+leak is corrected; final package tagged-vet also passes. The native WSL kernel
+lacks unique mount IDs: the new package verifies unsupported refusal and skips
+positive lifecycle cases. No positive native lifecycle/race claim is made.
+Forty-two actual runner controls, Python lint and shellcheck pass unchanged bounds.
+
+Actual standard oneboot ARMv5/Linux6.18 smoke passes two exact filesystem receipts
+across API restart: all six diagnoses with nonempty SMB/NFS/iSCSI state, repeated
+actual Store exclusion/release and stable FD counts, four self-bind substitutions,
+nine unsafe layouts, pending/write-close/read/cancel/watch faults, private/copied
+handles,12 concurrent reads and controlled close uncertainty. These injected
+faults do not prove physical EIO/close behavior. Previous smoke assertions remain.
+The observer is read-only; its fixture creates/disposes only synthetic tmpfs files
+and self-bind mounts. No extra guest stage, image/volume, NAS operation or product
+activation is added. Separate full/two-boot/SBOM/hosted/physical gates remain open.
+
+Full fault/race/atime/media qualification, product state namespace/provisioning,
+one-attempt writer, explicit reconciliation and boot admission remain unfinished.
+The prior collector design question is not treated as an answered product choice;
+this implementation advances only the broad authorized host/QEMU prototype work.
+
+## M1.3b.3 original collector prerequisite — adapter test and proposed contract
 
 A Linux-only adapter test uses temporary policy files and actual Store/bootstrap
 constructors. Root and record-directory locks do not exclude the policy writer;
@@ -655,7 +688,8 @@ An independent child verifies allowed/Busy/allowed as that original lock is
 acquired and released, while ancestor/sibling locks remain. CLOEXEC prevents
 descriptor inheritance. Each child must exit0 and supply one exact mode-bound
 receipt; missing, duplicate, lookalike and no-tests-to-run outputs are rejected.
-This is a regression test, not a new production collector or recovery path.
+This is a regression test, not a product collector or recovery path. The later
+experimental collector above is separately implemented and qualified.
 
 Pinned Go1.26.8 non-root Linux race-count3, whole API units and ordinary/QEMU-
 tagged vet pass. The tagged proc diagnostic passes separately after correcting
@@ -666,8 +700,9 @@ this test/documentation-only change; existing target evidence remains separate.
 The [proposed collector contract](src/phantowd-api/internal/policyevidence/COLLECTOR-DESIGN.md)
 keeps records outside the existing policy census and requires complete retained
 read-only observations. Root/mount-origin qualification, the collector, record
-publication, reconciliation and boot admission remain open. No production Go
-source, API, Store behavior, NAS or physical disk is changed by this checkpoint.
+publication, reconciliation and boot admission remained open at that checkpoint.
+No production Go source, API, Store behavior, NAS or physical disk was changed by
+that earlier prerequisite; the later prototype does not qualify product admission.
 
 ## M1.3b.1/b.2 private policy-operation codecs and matcher — local prototype
 
@@ -681,7 +716,7 @@ hash plus revision; a non-current digest remains an unverified record assertion.
 Missing receipt after publication remains unconfirmed; orphan/foreign/mixed
 records refuse a match. All kinds grant no action or historical durability/
 response-delivery proof. Generic JSON is refused, normal formatting is redacted,
-and no input references are retained. No collector, ID generation, journal/file
+and no input references are retained. Within this pure package no collector, ID generation, journal/file
 write, recovery/replay, Owner admission, HTTP route or product activation exists.
 
 Whole supported Windows and pinnedGo1.26.8 non-root Linux vet/unit/tagged-vet
@@ -703,7 +738,7 @@ serial log is claimed. The wrapper's terminal exit0 and pass line are retained
 with API/rootfs hashes. Existing base kernel/packages/probe stay unchanged.
 No JavaScript/browser rerun, full/two-boot/SBOM/hosted/physical or power-loss
 qualification follows. No new Docker image/volume or NAS operation. Next is
-retained complete-role evidence collection after its namespace/lifetime review;
+completing qualification of the separate experimental retained collector;
 writer/publication/retention/reconciliation and boot-bundle gates remain open.
 
 ## M9.2h configured backing exposure — local host/browser/ARM prototype

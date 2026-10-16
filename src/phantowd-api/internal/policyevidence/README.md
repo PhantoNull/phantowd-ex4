@@ -86,5 +86,7 @@ role namespace, with no-follow/same-medium/permissions/identity/lifetime and
 drift/cancellation/close-fault checks. Do not add record files to the existing
 two-name policy directory: its census intentionally rejects unknown entries.
 Writer/provisioning/reconciliation and state-root atomicity remain later gates.
-The [proposed collector contract](COLLECTOR-DESIGN.md) records exact lock,
-namespace/lifetime and refusal requirements; it is not an implemented collector.
+The [proposed product collector contract](COLLECTOR-DESIGN.md) records exact
+lock/namespace/lifetime and refusal requirements. A separate experimental
+[Linux collector](../policyevidencefs/README.md) now supplies retained file reads
+in host/QEMU fixtures; this pure package and all no-action meanings are unchanged.

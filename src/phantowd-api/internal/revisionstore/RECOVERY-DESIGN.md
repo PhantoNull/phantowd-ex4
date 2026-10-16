@@ -4,9 +4,12 @@
 # Policy operation evidence and boot recovery
 
 **Status: the M1.3b.1/b.2 private codec/read-only matcher slice is approved and
-implemented; collection, writer and product recovery remain proposed.**
+implemented; an experimental retained collector exists separately, while writer
+and product recovery remain proposed.**
 The [pure implementation](../policyevidence/README.md) grants no action.
 The current Store, OwnedStore and read-only BootstrapAuthority remain unchanged.
+The [collector prototype](../policyevidencefs/README.md) is diagnostic only and
+does not implement a product namespace, writer, handoff or admission protocol.
 This design is a contributor handoff, not a migration or installation procedure.
 
 ## Problem and existing boundaries

@@ -159,6 +159,10 @@ while [ "$attempt" -lt "$smoke_timeout" ]; do
             echo 'Expected two synthetic read-only policy evidence assertions across API restart' >&2
             exit 1
         fi
+        if ! test "$(sed 's/\r$//' "$log_file" | grep -Fxc 'PHANTOWD_POLICY_EVIDENCE_FS_READY roles=3 original_locks=true unique_mount=true complete=true sticky_review=true readonly=true admission=false scope=temporary-qemu-only')" -eq 2; then
+            echo 'Expected two retained read-only policy evidence filesystem assertions across API restart' >&2
+            exit 1
+        fi
         if ! test "$(sed 's/\r$//' "$log_file" | grep -Fxc 'PHANTOWD_THERMAL_REPORT_READY identity=true age=true quality=true zero_distinct=true no_fallback=true tach_arithmetic=true control=false scope=synthetic-memory-only')" -eq 2; then
             echo 'Expected two synthetic thermal observation assertions across API restart' >&2
             exit 1

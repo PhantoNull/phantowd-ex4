@@ -3,10 +3,13 @@
 
 # Retained policy-operation observation — M1.3b.3 proposal
 
-**Status: proposed collector contract; not implementation or approval of a
-product namespace, writer, recovery, boot admission or NAS operation.** The
+**Status: product contract remains proposed; an experimental internal
+[read-only prototype](../policyevidencefs/README.md) now exercises this boundary
+on host/QEMU, not product namespace/writer/recovery/boot/NAS approval.** The
 private record codecs/matcher are already implemented and separately approved.
-This document resolves their next filesystem boundary, not a second policy store.
+This document describes their filesystem boundary, not a second policy store.
+The prototype requires unique mount IDs and rechecks the original root path;
+its README distinguishes actual ARM evidence, native skips and remaining gates.
 
 ## Authority that must actually be retained
 

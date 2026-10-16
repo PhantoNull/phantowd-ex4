@@ -158,6 +158,12 @@ nonempty fixture pass. This distinct opt-in format performs no implicit import,
 does not replace the old development HTTP store, and supplies no credential,
 storage/global-use/session or activation authority.
 
+An experimental [retained policy-evidence collector](internal/policyevidencefs/README.md)
+now reads fixed current/intent/receipt roles under original directory locks,
+unique mount identity and mutation watches. Its diagnoses cannot authorize
+replay, a new Owner or service activation. Host unsupported refusal and actual
+ARMv5 fixtures are separate evidence; no NAS state path or writer is selected.
+
 The separate internal [iSCSI desired-policy model](internal/iscsipolicy/README.md)
 defines revision-bound target/LUN/backing relationships and per-initiator CHAP
 credential references. Its synthetic host/QEMU fixture opens no backing or

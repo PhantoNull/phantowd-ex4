@@ -80,6 +80,10 @@ func runSelfTest() error {
 		return err
 	}
 	fmt.Println("PHANTOWD_POLICY_EVIDENCE_READY schema=1 all_protocols=true exact_bytes=true private=true readonly=true admission=false scope=synthetic-memory-only")
+	if err := exerciseQEMUPolicyEvidenceFS(); err != nil {
+		return err
+	}
+	fmt.Println("PHANTOWD_POLICY_EVIDENCE_FS_READY roles=3 original_locks=true unique_mount=true complete=true sticky_review=true readonly=true admission=false scope=temporary-qemu-only")
 	if err := exerciseQEMUThermalReport(); err != nil {
 		return err
 	}

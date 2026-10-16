@@ -820,14 +820,29 @@ and recovery do not. **Depends on:** M0 for tests; M7 for physical placement.
   byte bounds, maximum revisions, exact-byte changes, privacy, whole host vet/
   units/race, bounded fuzz and same-boot pure ARM checks; no collector, journal
   writes, recovery/replay, admission/HTTP/product activation or device operation.
-  **M1.3b.3** retained read-only evidence collection; the
+  **M1.3b.3** retained read-only evidence collection (partial experimental
+  [Linux implementation](src/phantowd-api/internal/policyevidencefs/README.md)); the
   [collector proposal](src/phantowd-api/internal/policyevidence/COLLECTOR-DESIGN.md)
   specifies a separate fixed record namespace, retained originals and sticky
   uncertainty. A Linux adapter regression proves ancestor/sibling locks do not
   exclude the existing policy Store; the actual policy lock must remain held.
   Independent child probes require exact unique receipts, not merely exit0.
-  This prerequisite test is not a collector or namespace approval; root/mount
-  substitution, complete census and the whole retained lifetime still need tests;
+  The collector retains root/policy/record directories and actual Store lock,
+  no-atime read-only original files, complete bounded census and mutation watches.
+  Unique mount IDs and a fresh path witness reject root/child/file overmounts;
+  kernels without the feature refuse instead of degrading. Whole-role reads feed
+  the existing pure matcher, publish no raw bytes or leases, and latch review on
+  drift/cancellation/I/O/close uncertainty. No file initialization/sync/write or
+  recovery/Owner/HTTP/product startup. The root/record layout stays experimental,
+  not product namespace or physical placement approval. Current native WSL
+  verifies unsupported refusal with positive lifecycle cases explicitly skipped.
+  Actual ARMv5 standard smoke checks all six kinds, actual Store exclusion/release,
+  stable FD counts, four bind substitutions, nine unsafe layouts, pending/writer/
+  read/cancel/watch faults, private/copy refusal,12 concurrent reads and controlled
+  close uncertainty twice across API restart. Exact2 receipt controls pass.
+  Remaining: full constructor/namespace/read/close/fault/atime/content/bounds and
+  independent-writer qualification on supported media; no positive native race,
+  durable-quarantine or physical-storage qualification is implied;
   **M1.3c** one-attempt writer with preserved base and every interrupted boundary;
   **M1.3d** explicitly authorized reconciliation; **M1.2c** complete boot bundle.
   Missing/mismatched evidence never authorizes replay or service startup. The
